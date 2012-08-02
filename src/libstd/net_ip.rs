@@ -183,7 +183,7 @@ mod v4 {
             let ip_rep_result = parse_to_ipv4_rep(ip);
             if result::is_err(ip_rep_result) {
                 let err_str = result::get_err(ip_rep_result);
-                ret result::err({err_msg: err_str})
+                return result::err({err_msg: err_str})
             }
             // ipv4_rep.as_u32 is unsafe :/
             let input_is_inaddr_none =
@@ -196,11 +196,11 @@ mod v4 {
             let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name);
             if result::is_err(ref_ip_rep_result) {
                 let err_str = result::get_err(ref_ip_rep_result);
-                ret result::err({err_msg: err_str})
+                return result::err({err_msg: err_str})
             }
             if result::get(ref_ip_rep_result).as_u32() == INADDR_NONE &&
                  !input_is_inaddr_none {
-                ret result::err(
+                return result::err(
                     {err_msg: ~"uv_ip4_name produced invalid result."})
             }
             else {

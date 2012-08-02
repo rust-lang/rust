@@ -66,7 +66,7 @@ class dtor_res {
  * * len - The number of elements in the buffer
  */
 unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
-    ret c_vec_({
+    return c_vec_({
         base: base,
         len: len,
         rsrc: @dtor_res(option::none)
@@ -86,7 +86,7 @@ unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
  */
 unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
   -> c_vec<T> {
-    ret c_vec_({
+    return c_vec_({
         base: base,
         len: len,
         rsrc: @dtor_res(option::some(dtor))
@@ -104,7 +104,7 @@ unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
  */
 fn get<T: copy>(t: c_vec<T>, ofs: uint) -> T {
     assert ofs < len(t);
-    ret unsafe { *ptr::mut_offset((*t).base, ofs) };
+    return unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
 
 /**
@@ -123,12 +123,12 @@ fn set<T: copy>(t: c_vec<T>, ofs: uint, v: T) {
 
 /// Returns the length of the vector
 fn len<T>(t: c_vec<T>) -> uint {
-    ret (*t).len;
+    return (*t).len;
 }
 
 /// Returns a pointer to the first element of the vector
 unsafe fn ptr<T>(t: c_vec<T>) -> *mut T {
-    ret (*t).base;
+    return (*t).base;
 }
 
 #[cfg(test)]
@@ -140,7 +140,7 @@ mod tests {
 
         assert mem as int != 0;
 
-        ret unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
+        return unsafe { c_vec_with_dtor(mem as *mut u8, n as uint,
                                      ||free(mem)) };
     }
 

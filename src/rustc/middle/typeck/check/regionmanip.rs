@@ -56,7 +56,7 @@ fn replace_bound_regions_in_fn_ty(
         none { none }
     };
 
-    ret {isr: isr,
+    return {isr: isr,
          self_info: new_self_info,
          fn_ty: alt check ty::get(t_fn).struct { ty::ty_fn(o) {o} }};
 
@@ -169,7 +169,7 @@ fn replace_bound_regions_in_fn_ty(
  */
 fn region_of(fcx: @fn_ctxt, expr: @ast::expr) -> ty::region {
     debug!{"region_of(expr=%s)", expr_to_str(expr)};
-    ret alt expr.node {
+    return alt expr.node {
       ast::expr_path(path) {
         def(fcx, expr, lookup_def(fcx, path.span, expr.id))}
       ast::expr_field(base, _, _) {

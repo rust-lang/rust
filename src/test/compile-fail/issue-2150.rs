@@ -3,6 +3,6 @@ fn fail_len(v: ~[const int]) -> uint {
     for v.each |x| { i += 1u; }
     //~^ WARNING unreachable statement
     //~^^ ERROR the type of this value must be known
-    ret i;
+    return i;
 }
 fn main() {}

@@ -1,6 +1,6 @@
 
 
-fn mk() -> int { ret 1; }
+fn mk() -> int { return 1; }
 
 fn chk(&&a: int) { log(debug, a); assert (a == 1); }
 

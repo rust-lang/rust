@@ -12,14 +12,14 @@ fn test_generic<T: copy>(expected: T, not_expected: T, eq: compare<T>) {
 }
 
 fn test_bool() {
-    fn compare_bool(&&b1: bool, &&b2: bool) -> bool { ret b1 == b2; }
+    fn compare_bool(&&b1: bool, &&b2: bool) -> bool { return b1 == b2; }
     test_generic::<bool>(true, false, compare_bool);
 }
 
 fn test_rec() {
     type t = {a: int, b: int};
 
-    fn compare_rec(t1: t, t2: t) -> bool { ret t1 == t2; }
+    fn compare_rec(t1: t, t2: t) -> bool { return t1 == t2; }
     test_generic::<t>({a: 1, b: 2}, {a: 2, b: 3}, compare_rec);
 }
 

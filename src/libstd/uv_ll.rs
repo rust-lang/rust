@@ -303,15 +303,15 @@ type uv_getaddrinfo_t = {
 
 mod uv_ll_struct_stubgen {
     fn gen_stub_uv_tcp_t() -> uv_tcp_t {
-        ret gen_stub_os();
+        return gen_stub_os();
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "freebsd")]
         fn gen_stub_os() -> uv_tcp_t {
-            ret gen_stub_arch();
+            return gen_stub_arch();
             #[cfg(target_arch="x86_64")]
             fn gen_stub_arch() -> uv_tcp_t {
-                ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                return { fields: { loop_handle: ptr::null(), type_: 0u32,
                                 close_cb: ptr::null(),
                                 mut data: ptr::null() },
                     a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -336,7 +336,7 @@ mod uv_ll_struct_stubgen {
             }
             #[cfg(target_arch="x86")]
             fn gen_stub_arch() -> uv_tcp_t {
-                ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+                return { fields: { loop_handle: ptr::null(), type_: 0u32,
                                 close_cb: ptr::null(),
                                 mut data: ptr::null() },
                     a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -364,7 +364,7 @@ mod uv_ll_struct_stubgen {
         }
         #[cfg(windows)]
         fn gen_stub_os() -> uv_tcp_t {
-            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+            return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -385,7 +385,7 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(unix)]
     fn gen_stub_uv_connect_t() -> uv_connect_t {
-        ret {
+        return {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8
@@ -393,7 +393,7 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(windows)]
     fn gen_stub_uv_connect_t() -> uv_connect_t {
-        ret {
+        return {
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
             a03: 0 as *u8,
             a04: 0 as *u8, a05: 0 as *u8, a06: 0 as *u8,
@@ -403,10 +403,10 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(unix)]
     fn gen_stub_uv_async_t() -> uv_async_t {
-        ret gen_stub_arch();
+        return gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
         fn gen_stub_arch() -> uv_async_t {
-            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+            return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -421,7 +421,7 @@ mod uv_ll_struct_stubgen {
         }
         #[cfg(target_arch = "x86")]
         fn gen_stub_arch() -> uv_async_t {
-            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+            return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -438,7 +438,7 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(windows)]
     fn gen_stub_uv_async_t() -> uv_async_t {
-        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+        return { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
                         mut data: ptr::null() },
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -452,10 +452,10 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(unix)]
     fn gen_stub_uv_timer_t() -> uv_timer_t {
-        ret gen_stub_arch();
+        return gen_stub_arch();
         #[cfg(target_arch = "x86_64")]
         fn gen_stub_arch() -> uv_timer_t {
-            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+            return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -470,7 +470,7 @@ mod uv_ll_struct_stubgen {
         }
         #[cfg(target_arch = "x86")]
         fn gen_stub_arch() -> uv_timer_t {
-            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+            return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -489,7 +489,7 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(windows)]
     fn gen_stub_uv_timer_t() -> uv_timer_t {
-        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+        return { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
                         mut data: ptr::null() },
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -502,10 +502,10 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(unix)]
     fn gen_stub_uv_write_t() -> uv_write_t {
-        ret gen_stub_arch();
+        return gen_stub_arch();
         #[cfg(target_arch="x86_64")]
         fn gen_stub_arch() -> uv_write_t {
-            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+            return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -519,7 +519,7 @@ mod uv_ll_struct_stubgen {
         }
         #[cfg(target_arch="x86")]
         fn gen_stub_arch() -> uv_write_t {
-            ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+            return { fields: { loop_handle: ptr::null(), type_: 0u32,
                             close_cb: ptr::null(),
                             mut data: ptr::null() },
                 a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -534,7 +534,7 @@ mod uv_ll_struct_stubgen {
     }
     #[cfg(windows)]
     fn gen_stub_uv_write_t() -> uv_write_t {
-        ret { fields: { loop_handle: ptr::null(), type_: 0u32,
+        return { fields: { loop_handle: ptr::null(), type_: 0u32,
                         close_cb: ptr::null(),
                         mut data: ptr::null() },
             a00: 0 as *u8, a01: 0 as *u8, a02: 0 as *u8,
@@ -676,7 +676,7 @@ extern mod rustrt {
 }
 
 unsafe fn loop_new() -> *libc::c_void {
-    ret rustrt::rust_uv_loop_new();
+    return rustrt::rust_uv_loop_new();
 }
 
 unsafe fn loop_delete(loop_handle: *libc::c_void) {
@@ -684,7 +684,7 @@ unsafe fn loop_delete(loop_handle: *libc::c_void) {
 }
 
 unsafe fn loop_refcount(loop_ptr: *libc::c_void) -> libc::c_int {
-    ret rustrt::rust_uv_loop_refcount(loop_ptr);
+    return rustrt::rust_uv_loop_refcount(loop_ptr);
 }
 
 unsafe fn run(loop_handle: *libc::c_void) {
@@ -697,7 +697,7 @@ unsafe fn close<T>(handle: *T, cb: *u8) {
 
 unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
     -> libc::c_int {
-    ret rustrt::rust_uv_tcp_init(loop_handle, handle);
+    return rustrt::rust_uv_tcp_init(loop_handle, handle);
 }
 // FIXME ref #2064
 unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
@@ -707,7 +707,7 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
 -> libc::c_int {
     log(debug, fmt!{"b4 foreign tcp_connect--addr port: %u cb: %u",
                     (*addr_ptr).sin_port as uint, after_connect_cb as uint});
-    ret rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
+    return rustrt::rust_uv_tcp_connect(connect_ptr, tcp_handle_ptr,
                                     after_connect_cb, addr_ptr);
 }
 // FIXME ref #2064
@@ -716,30 +716,30 @@ unsafe fn tcp_connect6(connect_ptr: *uv_connect_t,
                       addr_ptr: *sockaddr_in6,
                       ++after_connect_cb: *u8)
 -> libc::c_int {
-    ret rustrt::rust_uv_tcp_connect6(connect_ptr, tcp_handle_ptr,
+    return rustrt::rust_uv_tcp_connect6(connect_ptr, tcp_handle_ptr,
                                     after_connect_cb, addr_ptr);
 }
 // FIXME ref #2064
 unsafe fn tcp_bind(tcp_server_ptr: *uv_tcp_t,
                    addr_ptr: *sockaddr_in) -> libc::c_int {
-    ret rustrt::rust_uv_tcp_bind(tcp_server_ptr,
+    return rustrt::rust_uv_tcp_bind(tcp_server_ptr,
                                  addr_ptr);
 }
 // FIXME ref #2064
 unsafe fn tcp_bind6(tcp_server_ptr: *uv_tcp_t,
                    addr_ptr: *sockaddr_in6) -> libc::c_int {
-    ret rustrt::rust_uv_tcp_bind6(tcp_server_ptr,
+    return rustrt::rust_uv_tcp_bind6(tcp_server_ptr,
                                  addr_ptr);
 }
 
 unsafe fn listen<T>(stream: *T, backlog: libc::c_int,
                  cb: *u8) -> libc::c_int {
-    ret rustrt::rust_uv_listen(stream as *libc::c_void, backlog, cb);
+    return rustrt::rust_uv_listen(stream as *libc::c_void, backlog, cb);
 }
 
 unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
     -> libc::c_int {
-    ret rustrt::rust_uv_accept(server as *libc::c_void,
+    return rustrt::rust_uv_accept(server as *libc::c_void,
                                client as *libc::c_void);
 }
 
@@ -747,41 +747,41 @@ unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *~[uv_buf_t], cb: *u8) -> libc::c_int {
     let buf_ptr = vec::unsafe::to_ptr(*buf_in);
     let buf_cnt = vec::len(*buf_in) as i32;
-    ret rustrt::rust_uv_write(req as *libc::c_void,
+    return rustrt::rust_uv_write(req as *libc::c_void,
                               stream as *libc::c_void,
                               buf_ptr, buf_cnt, cb);
 }
 unsafe fn read_start(stream: *uv_stream_t, on_alloc: *u8,
                      on_read: *u8) -> libc::c_int {
-    ret rustrt::rust_uv_read_start(stream as *libc::c_void,
+    return rustrt::rust_uv_read_start(stream as *libc::c_void,
                                    on_alloc, on_read);
 }
 
 unsafe fn read_stop(stream: *uv_stream_t) -> libc::c_int {
-    ret rustrt::rust_uv_read_stop(stream as *libc::c_void);
+    return rustrt::rust_uv_read_stop(stream as *libc::c_void);
 }
 
 unsafe fn last_error(loop_handle: *libc::c_void) -> uv_err_t {
-    ret rustrt::rust_uv_last_error(loop_handle);
+    return rustrt::rust_uv_last_error(loop_handle);
 }
 
 unsafe fn strerror(err: *uv_err_t) -> *libc::c_char {
-    ret rustrt::rust_uv_strerror(err);
+    return rustrt::rust_uv_strerror(err);
 }
 unsafe fn err_name(err: *uv_err_t) -> *libc::c_char {
-    ret rustrt::rust_uv_err_name(err);
+    return rustrt::rust_uv_err_name(err);
 }
 
 unsafe fn async_init(loop_handle: *libc::c_void,
                      async_handle: *uv_async_t,
                      cb: *u8) -> libc::c_int {
-    ret rustrt::rust_uv_async_init(loop_handle,
+    return rustrt::rust_uv_async_init(loop_handle,
                                    async_handle,
                                    cb);
 }
 
 unsafe fn async_send(async_handle: *uv_async_t) {
-    ret rustrt::rust_uv_async_send(async_handle);
+    return rustrt::rust_uv_async_send(async_handle);
 }
 unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
     let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
@@ -800,8 +800,8 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
     log(debug, fmt!{"buf_init - result %u len %u",
                      res_base as uint,
                      res_len as uint});
-    ret out_buf;
-    //ret result;
+    return out_buf;
+    //return result;
 }
 unsafe fn ip4_addr(ip: ~str, port: int)
 -> sockaddr_in {
@@ -860,15 +860,15 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
 
 unsafe fn timer_init(loop_ptr: *libc::c_void,
                      timer_ptr: *uv_timer_t) -> libc::c_int {
-    ret rustrt::rust_uv_timer_init(loop_ptr, timer_ptr);
+    return rustrt::rust_uv_timer_init(loop_ptr, timer_ptr);
 }
 unsafe fn timer_start(timer_ptr: *uv_timer_t, cb: *u8, timeout: uint,
                       repeat: uint) -> libc::c_int {
-    ret rustrt::rust_uv_timer_start(timer_ptr, cb, timeout as libc::c_uint,
+    return rustrt::rust_uv_timer_start(timer_ptr, cb, timeout as libc::c_uint,
                                     repeat as libc::c_uint);
 }
 unsafe fn timer_stop(timer_ptr: *uv_timer_t) -> libc::c_int {
-    ret rustrt::rust_uv_timer_stop(timer_ptr);
+    return rustrt::rust_uv_timer_stop(timer_ptr);
 }
 unsafe fn getaddrinfo(loop_ptr: *libc::c_void,
                            handle: *uv_getaddrinfo_t,
@@ -889,38 +889,38 @@ unsafe fn freeaddrinfo(res: *addrinfo) {
 
 // libuv struct initializers
 unsafe fn tcp_t() -> uv_tcp_t {
-    ret uv_ll_struct_stubgen::gen_stub_uv_tcp_t();
+    return uv_ll_struct_stubgen::gen_stub_uv_tcp_t();
 }
 unsafe fn connect_t() -> uv_connect_t {
-    ret uv_ll_struct_stubgen::gen_stub_uv_connect_t();
+    return uv_ll_struct_stubgen::gen_stub_uv_connect_t();
 }
 unsafe fn write_t() -> uv_write_t {
-    ret uv_ll_struct_stubgen::gen_stub_uv_write_t();
+    return uv_ll_struct_stubgen::gen_stub_uv_write_t();
 }
 unsafe fn async_t() -> uv_async_t {
-    ret uv_ll_struct_stubgen::gen_stub_uv_async_t();
+    return uv_ll_struct_stubgen::gen_stub_uv_async_t();
 }
 unsafe fn timer_t() -> uv_timer_t {
-    ret uv_ll_struct_stubgen::gen_stub_uv_timer_t();
+    return uv_ll_struct_stubgen::gen_stub_uv_timer_t();
 }
 unsafe fn getaddrinfo_t() -> uv_getaddrinfo_t {
-    ret uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
+    return uv_ll_struct_stubgen::gen_stub_uv_getaddrinfo_t();
 }
 
 // data access helpers
 unsafe fn get_loop_for_uv_handle<T>(handle: *T)
     -> *libc::c_void {
-    ret rustrt::rust_uv_get_loop_for_uv_handle(handle as *libc::c_void);
+    return rustrt::rust_uv_get_loop_for_uv_handle(handle as *libc::c_void);
 }
 unsafe fn get_stream_handle_from_connect_req(connect: *uv_connect_t)
     -> *uv_stream_t {
-    ret rustrt::rust_uv_get_stream_handle_from_connect_req(
+    return rustrt::rust_uv_get_stream_handle_from_connect_req(
         connect);
 }
 unsafe fn get_stream_handle_from_write_req(
     write_req: *uv_write_t)
     -> *uv_stream_t {
-    ret rustrt::rust_uv_get_stream_handle_from_write_req(
+    return rustrt::rust_uv_get_stream_handle_from_write_req(
         write_req);
 }
 unsafe fn get_data_for_uv_loop(loop_ptr: *libc::c_void) -> *libc::c_void {
@@ -930,7 +930,7 @@ unsafe fn set_data_for_uv_loop(loop_ptr: *libc::c_void, data: *libc::c_void) {
     rustrt::rust_uv_set_data_for_uv_loop(loop_ptr, data);
 }
 unsafe fn get_data_for_uv_handle<T>(handle: *T) -> *libc::c_void {
-    ret rustrt::rust_uv_get_data_for_uv_handle(handle as *libc::c_void);
+    return rustrt::rust_uv_get_data_for_uv_handle(handle as *libc::c_void);
 }
 unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
                     data: *U) {
@@ -938,7 +938,7 @@ unsafe fn set_data_for_uv_handle<T, U>(handle: *T,
                                            data as *libc::c_void);
 }
 unsafe fn get_data_for_req<T>(req: *T) -> *libc::c_void {
-    ret rustrt::rust_uv_get_data_for_req(req as *libc::c_void);
+    return rustrt::rust_uv_get_data_for_req(req as *libc::c_void);
 }
 unsafe fn set_data_for_req<T, U>(req: *T,
                     data: *U) {
@@ -946,14 +946,14 @@ unsafe fn set_data_for_req<T, U>(req: *T,
                                      data as *libc::c_void);
 }
 unsafe fn get_base_from_buf(buf: uv_buf_t) -> *u8 {
-    ret rustrt::rust_uv_get_base_from_buf(buf);
+    return rustrt::rust_uv_get_base_from_buf(buf);
 }
 unsafe fn get_len_from_buf(buf: uv_buf_t) -> libc::size_t {
-    ret rustrt::rust_uv_get_len_from_buf(buf);
+    return rustrt::rust_uv_get_len_from_buf(buf);
 }
 unsafe fn malloc_buf_base_of(suggested_size: libc::size_t)
     -> *u8 {
-    ret rustrt::rust_uv_malloc_buf_base_of(suggested_size);
+    return rustrt::rust_uv_malloc_buf_base_of(suggested_size);
 }
 unsafe fn free_base_of_buf(buf: uv_buf_t) {
     rustrt::rust_uv_free_base_of_buf(buf);
@@ -964,7 +964,7 @@ unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
     let err_ptr = ptr::addr_of(err);
     let err_name = str::unsafe::from_c_str(err_name(err_ptr));
     let err_msg = str::unsafe::from_c_str(strerror(err_ptr));
-    ret fmt!{"LIBUV ERROR: name: %s msg: %s",
+    return fmt!{"LIBUV ERROR: name: %s msg: %s",
                     err_name, err_msg};
 }
 
@@ -1028,7 +1028,7 @@ mod test {
                          handle,
                          char_ptr as uint,
                          suggested_size as uint});
-        ret buf_init(char_ptr, suggested_size as uint);
+        return buf_init(char_ptr, suggested_size as uint);
     }
 
     extern fn on_read_cb(stream: *uv_stream_t,
@@ -1277,7 +1277,7 @@ mod test {
             let err_msg = get_last_err_info(test_loop);
             log(debug, fmt!{"server_connect_cb: non-zero status: %?",
                          err_msg});
-            ret;
+            return;
         }
         let server_data = get_data_for_uv_handle(
             server_stream_ptr as *libc::c_void) as *tcp_server_data;

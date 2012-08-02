@@ -190,7 +190,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     if impl_m.tps != if_m.tps {
         tcx.sess.span_err(sp, ~"method `" + *if_m.ident +
                           ~"` has an incompatible set of type parameters");
-        ret;
+        return;
     }
 
     if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
@@ -199,7 +199,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                                   *if_m.ident,
                                   vec::len(impl_m.fty.inputs),
                                   vec::len(if_m.fty.inputs)});
-        ret;
+        return;
     }
 
     // Perform substitutions so that the trait/impl methods are expressed
@@ -230,7 +230,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
     require_same_types(
         tcx, none, sp, impl_fty, if_fty,
         || ~"method `" + *if_m.ident + ~"` has an incompatible type");
-    ret;
+    return;
 
     // Replaces bound references to the self region with `with_r`.
     fn replace_bound_self(tcx: ty::ctxt, ty: ty::t,
@@ -485,7 +485,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
     alt tcx.tcache.find(def_id) {
-      some(tpt) { ret tpt; }
+      some(tpt) { return tpt; }
       _ {}
     }
     let rp = tcx.region_paramd_items.contains_key(it.id);
@@ -494,7 +494,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         let typ = ccx.to_ty(empty_rscope, t);
         let tpt = no_params(typ);
         tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
+        return tpt;
       }
       ast::item_fn(decl, tps, _) {
         let bounds = ty_param_bounds(ccx, tps);
@@ -506,11 +506,11 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         debug!{"type of %s (id %d) is %s",
                *it.ident, it.id, ty_to_str(tcx, tpt.ty)};
         ccx.tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
+        return tpt;
       }
       ast::item_ty(t, tps) {
         alt tcx.tcache.find(local_def(it.id)) {
-          some(tpt) { ret tpt; }
+          some(tpt) { return tpt; }
           none { }
         }
 
@@ -530,7 +530,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         };
 
         tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
+        return tpt;
       }
       ast::item_enum(_, tps) {
         // Create a new generic polytype.
@@ -538,21 +538,21 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         let t = ty::mk_enum(tcx, local_def(it.id), substs);
         let tpt = {bounds: bounds, rp: rp, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
+        return tpt;
       }
       ast::item_trait(tps, ms) {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let t = ty::mk_trait(tcx, local_def(it.id), substs);
         let tpt = {bounds: bounds, rp: rp, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
-        ret tpt;
+        return tpt;
       }
       ast::item_class(tps, _, _, _, _) {
           let {bounds,substs} = mk_substs(ccx, tps, rp);
           let t = ty::mk_class(tcx, local_def(it.id), substs);
           let tpt = {bounds: bounds, rp: rp, ty: t};
           tcx.tcache.insert(local_def(it.id), tpt);
-          ret tpt;
+          return tpt;
       }
       ast::item_impl(*) | ast::item_mod(_) |
       ast::item_foreign_mod(_) { fail; }
@@ -564,7 +564,7 @@ fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
     -> ty::ty_param_bounds_and_ty {
     alt it.node {
       ast::foreign_item_fn(fn_decl, params) {
-        ret ty_of_foreign_fn_decl(ccx, fn_decl, params,
+        return ty_of_foreign_fn_decl(ccx, fn_decl, params,
                                   local_def(it.id));
       }
     }
@@ -627,7 +627,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
                                    ret_style: ast::return_val});
     let tpt = {bounds: bounds, rp: false, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
-    ret tpt;
+    return tpt;
 }
 
 fn mk_ty_params(ccx: @crate_ctxt, atps: ~[ast::ty_param])

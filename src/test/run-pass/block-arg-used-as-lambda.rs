@@ -1,5 +1,5 @@
 fn to_lambda(f: fn@(uint) -> uint) -> fn@(uint) -> uint {
-    ret f;
+    return f;
 }
 
 fn main() {

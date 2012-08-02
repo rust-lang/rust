@@ -51,7 +51,7 @@ fn test_simple() {
 #[test]
 fn test_simple_deep() {
     fn run(i: int) {
-        if i == 0 { ret }
+        if i == 0 { return }
 
         for walk_stack |_frame| {
             unsafe {

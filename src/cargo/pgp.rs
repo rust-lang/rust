@@ -1,5 +1,5 @@
 fn gpg(args: ~[~str]) -> { status: int, out: ~str, err: ~str } {
-    ret run::program_output(~"gpg", args);
+    return run::program_output(~"gpg", args);
 }
 
 fn signing_key() -> ~str {
@@ -91,7 +91,7 @@ fn verify(root: ~str, data: ~str, sig: ~str, keyfp: ~str) -> bool {
                  data]);
     let res = ~"Primary key fingerprint: " + keyfp;
     for str::split_char(p.err, '\n').each |line| {
-        if line == res { ret true; }
+        if line == res { return true; }
     }
-    ret false;
+    return false;
 }

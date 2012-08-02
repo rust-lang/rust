@@ -51,14 +51,14 @@ fn path_is_absolute(p: path) -> bool {
 
 #[cfg(windows)]
 fn path_is_absolute(p: ~str) -> bool {
-    ret str::char_at(p, 0u) == '/' ||
+    return str::char_at(p, 0u) == '/' ||
         str::char_at(p, 1u) == ':'
         && (str::char_at(p, 2u) == consts::path_sep
             || str::char_at(p, 2u) == consts::alt_path_sep);
 }
 
 /// Get the default path separator for the host platform
-fn path_sep() -> ~str { ret str::from_char(consts::path_sep); }
+fn path_sep() -> ~str { return str::from_char(consts::path_sep); }
 
 fn split_dirname_basename (pp: path) -> {dirname: ~str, basename: ~str} {
     alt str::rfind(pp, |ch|
@@ -82,7 +82,7 @@ fn split_dirname_basename (pp: path) -> {dirname: ~str, basename: ~str} {
  * If the path is not prefixed with a directory, then "." is returned.
  */
 fn dirname(pp: path) -> path {
-    ret split_dirname_basename(pp).dirname;
+    return split_dirname_basename(pp).dirname;
 }
 
 /**
@@ -95,7 +95,7 @@ fn dirname(pp: path) -> path {
  * with a path separator then an empty path is returned.
  */
 fn basename(pp: path) -> path {
-    ret split_dirname_basename(pp).basename;
+    return split_dirname_basename(pp).basename;
 }
 
 /**
@@ -119,7 +119,7 @@ fn connect(pre: path, post: path) -> path {
             str::unsafe::shift_byte(post_);
         }
     }
-    ret pre_ + path_sep() + post_;
+    return pre_ + path_sep() + post_;
 }
 
 /**
@@ -128,7 +128,7 @@ fn connect(pre: path, post: path) -> path {
  * Inserts path separators as needed.
  */
 fn connect_many(paths: ~[path]) -> path {
-    ret if vec::len(paths) == 1u {
+    return if vec::len(paths) == 1u {
         paths[0]
     } else {
         let rest = vec::slice(paths, 1u, vec::len(paths));
@@ -231,7 +231,7 @@ fn normalize(p: path) -> path {
         s
     };
 
-    ret s;
+    return s;
 
     fn strip_dots(s: ~[path]) -> ~[path] {
         vec::filter_map(s, |elem|
@@ -244,7 +244,7 @@ fn normalize(p: path) -> path {
 
     fn rollup_doubledots(s: ~[path]) -> ~[path] {
         if vec::is_empty(s) {
-            ret ~[];
+            return ~[];
         }
 
         let mut t = ~[];
@@ -267,7 +267,7 @@ fn normalize(p: path) -> path {
             vec::push(t, ~"..");
             skip -= 1;
         }
-        ret t;
+        return t;
     }
 
     #[cfg(unix)]
@@ -292,9 +292,9 @@ fn normalize(p: path) -> path {
         let last = orig[str::len(orig) - 1u];
         if last == consts::path_sep as u8
             || last == consts::path_sep as u8 {
-            ret newp + path_sep();
+            return newp + path_sep();
         } else {
-            ret newp;
+            return newp;
         }
     }
 }

@@ -1,13 +1,13 @@
 type point = {x: int, y: int};
 
 fn x_coord(p: &point) -> &int {
-    ret &p.x;
+    return &p.x;
 }
 
 fn foo(p: @point) -> &int {
     let xc = x_coord(p); //~ ERROR illegal borrow
     assert *xc == 3;
-    ret xc;
+    return xc;
 }
 
 fn main() {}

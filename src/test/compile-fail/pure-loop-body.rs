@@ -1,7 +1,7 @@
 pure fn range(from: uint, to: uint, f: fn(uint) -> bool) {
     let mut i = from;
     while i < to {
-        if !f(i) {ret;} // Note: legal to call argument, even if it is not pure.
+        if !f(i) {return;} // Note: legal to call argument, even if it is not pure.
         i += 1u;
     }
 }

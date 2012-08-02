@@ -13,7 +13,7 @@ fn putint(i: int) {
     while i < 36 { putstr(~"hi"); i = i + 1; }
 }
 
-fn zerg(i: int) -> int { ret i; }
+fn zerg(i: int) -> int { return i; }
 
 fn foo(x: int) -> int {
     let mut y: t = x + 2;
@@ -22,7 +22,7 @@ fn foo(x: int) -> int {
     let mut z: t;
     z = 0x55;
     foo(z);
-    ret 0;
+    return 0;
 }
 
 fn main() {

@@ -9,7 +9,7 @@ mod y {
 }
 
 fn bar(x: x::foo) -> y::foo {
-    ret x;
+    return x;
     //~^ ERROR mismatched types: expected `y::foo` but found `x::foo`
 }
 

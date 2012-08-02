@@ -61,7 +61,7 @@ fn get<T: const send>(rc: &arc<T>) -> &T {
         // Cast us back into the correct region
         let r = unsafe::reinterpret_cast(&ptr.data);
         unsafe::forget(ptr);
-        ret r;
+        return r;
     }
 }
 

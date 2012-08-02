@@ -9,7 +9,7 @@ fn iter<T>(v: ~[T], it: fn(T) -> bool) {
 fn find_pos<T>(n: T, h: ~[T]) -> option<uint> {
     let mut i = 0u;
     for iter(h) |e| {
-        if e == n { ret some(i); }
+        if e == n { return some(i); }
         i += 1u;
     }
     none
@@ -20,7 +20,7 @@ fn bail_deep(x: ~[~[bool]]) {
     for iter(x) |x| {
         for iter(x) |x| {
             assert !seen;
-            if x { seen = true; ret; }
+            if x { seen = true; return; }
         }
     }
     assert !seen;
@@ -29,10 +29,10 @@ fn bail_deep(x: ~[~[bool]]) {
 fn ret_deep() -> ~str {
     for iter(~[1, 2]) |e| {
         for iter(~[3, 4]) |x| {
-            if e + x > 4 { ret ~"hi"; }
+            if e + x > 4 { return ~"hi"; }
         }
     }
-    ret ~"bye";
+    return ~"bye";
 }
 
 fn main() {

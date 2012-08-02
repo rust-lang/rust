@@ -49,7 +49,7 @@ fn find_locals(tcx: ty::ctxt,
           with *visitor};
     visit::visit_fn(fk, f_decl, f_body, sp,
                     id, cx, visit::mk_vt(visitor));
-    ret cx;
+    return cx;
 }
 
 fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
@@ -68,7 +68,7 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
         tbl.insert(d_id, {path:p, descs:rslt});
       }
     }
-    ret next + 1u;
+    return next + 1u;
 }
 
 fn contains_constrained_calls(tcx: ty::ctxt, body: blk) -> bool {
@@ -83,7 +83,7 @@ fn contains_constrained_calls(tcx: ty::ctxt, body: blk) -> bool {
     let vtor = visit::default_visitor::<cx>();
     let vtor = @{visit_expr: visit_expr with *vtor};
     visit::visit_block(body, cx, visit::mk_vt(vtor));
-    ret cx.has;
+    return cx.has;
 
     fn visit_expr(e: @expr, &&cx: cx, v: visit::vt<cx>) {
         import syntax::print::pprust;

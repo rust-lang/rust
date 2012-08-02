@@ -69,7 +69,7 @@ impl reader_util for reader {
                 }
                 // can't satisfy this char with the existing data
                 if end > vec::len(buf) {
-                    ret (i - 1u, end - vec::len(buf));
+                    return (i - 1u, end - vec::len(buf));
                 }
                 let mut val = 0u;
                 while i < end {
@@ -85,7 +85,7 @@ impl reader_util for reader {
                     << (w - 1u) * 6u - w - 1u;
                 vec::push(chars,  val as char );
             }
-            ret (i, 0u);
+            return (i, 0u);
         }
         let mut buf: ~[u8] = ~[];
         let mut chars: ~[char] = ~[];
@@ -115,10 +115,10 @@ impl reader_util for reader {
     fn read_char() -> char {
         let c = self.read_chars(1u);
         if vec::len(c) == 0u {
-            ret -1 as char; // FIXME will this stay valid? // #2004
+            return -1 as char; // FIXME will this stay valid? // #2004
         }
         assert(vec::len(c) == 1u);
-        ret c[0];
+        return c[0];
     }
 
     fn read_line() -> ~str {
@@ -196,7 +196,7 @@ impl reader_util for reader {
 // Reader implementations
 
 fn convert_whence(whence: seek_style) -> i32 {
-    ret alt whence {
+    return alt whence {
       seek_set { 0i32 }
       seek_cur { 1i32 }
       seek_end { 2i32 }
@@ -214,14 +214,14 @@ impl of reader for *libc::FILE {
             count as uint
         }
     }
-    fn read_byte() -> int { ret libc::fgetc(self) as int; }
+    fn read_byte() -> int { return libc::fgetc(self) as int; }
     fn unread_byte(byte: int) { libc::ungetc(byte as c_int, self); }
-    fn eof() -> bool { ret libc::feof(self) != 0 as c_int; }
+    fn eof() -> bool { return libc::feof(self) != 0 as c_int; }
     fn seek(offset: int, whence: seek_style) {
         assert libc::fseek(self, offset as c_long, convert_whence(whence))
             == 0 as c_int;
     }
-    fn tell() -> uint { ret libc::ftell(self) as uint; }
+    fn tell() -> uint { return libc::ftell(self) as uint; }
 }
 
 // A forwarding impl of reader that also holds on to a resource for the
@@ -262,7 +262,7 @@ fn file_reader(path: ~str) -> result<reader, ~str> {
             libc::fopen(pathbuf, modebuf)
         )
     });
-    ret if f as uint == 0u { result::err(~"error opening " + path) }
+    return if f as uint == 0u { result::err(~"error opening " + path) }
     else {
         result::ok(FILE_reader(f, true))
     }
@@ -285,10 +285,10 @@ impl of reader for byte_buf {
         count
     }
     fn read_byte() -> int {
-        if self.pos == self.len { ret -1; }
+        if self.pos == self.len { return -1; }
         let b = self.buf[self.pos];
         self.pos += 1u;
-        ret b as int;
+        return b as int;
     }
     // FIXME (#2738): implement this
     fn unread_byte(_byte: int) { error!{"Unimplemented: unread_byte"}; fail; }
@@ -530,7 +530,7 @@ fn u64_from_be_bytes(data: ~[u8], start: uint, size: uint) -> u64 {
         val += (data[pos] as u64) << ((sz * 8u) as u64);
         pos += 1u;
     }
-    ret val;
+    return val;
 }
 
 impl writer_util for writer {
@@ -616,7 +616,7 @@ fn buffered_file_writer(path: ~str) -> result<writer, ~str> {
             libc::fopen(pathbuf, modebuf)
         }
     };
-    ret if f as uint == 0u { result::err(~"error opening " + path) }
+    return if f as uint == 0u { result::err(~"error opening " + path) }
     else { result::ok(FILE_writer(f, true)) }
 }
 
@@ -639,7 +639,7 @@ impl of writer for mem_buffer {
         if self.pos == buf_len {
             self.buf.push_all(v);
             self.pos += vlen;
-            ret;
+            return;
         }
 
         // FIXME #2004--use memcpy here?
@@ -696,7 +696,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
       seek_end { bpos = blen + offset; }
     }
     if bpos < 0 { bpos = 0; } else if bpos > blen { bpos = blen; }
-    ret bpos as uint;
+    return bpos as uint;
 }
 
 fn read_whole_file_str(file: ~str) -> result<~str, ~str> {
@@ -764,7 +764,7 @@ mod fsync {
         blk(res({
             val: file.f, opt_level: opt_level,
             fsync_fn: fn@(&&file: *libc::FILE, l: level) -> int {
-                ret os::fsync_fd(libc::fileno(file), l) as int;
+                return os::fsync_fd(libc::fileno(file), l) as int;
             }
         }));
     }
@@ -775,7 +775,7 @@ mod fsync {
         blk(res({
             val: fd.fd, opt_level: opt_level,
             fsync_fn: fn@(&&fd: fd_t, l: level) -> int {
-                ret os::fsync_fd(fd, l) as int;
+                return os::fsync_fd(fd, l) as int;
             }
         }));
     }
@@ -787,7 +787,7 @@ mod fsync {
     fn obj_sync(&&o: t, opt_level: option<level>, blk: fn(&&res<t>)) {
         blk(res({
             val: o, opt_level: opt_level,
-            fsync_fn: fn@(&&o: t, l: level) -> int { ret o.fsync(l); }
+            fsync_fn: fn@(&&o: t, l: level) -> int { return o.fsync(l); }
         }));
     }
 }

@@ -23,7 +23,7 @@ pure fn get<T: copy>(opt: option<T>) -> T {
      * Fails if the value equals `none`
      */
 
-    alt opt { some(x) { ret x; } none { fail ~"option none"; } }
+    alt opt { some(x) { return x; } none { fail ~"option none"; } }
 }
 
 pure fn expect<T: copy>(opt: option<T>, reason: ~str) -> T {
@@ -116,7 +116,7 @@ pure fn unwrap<T>(-opt: option<T>) -> T {
         };
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(opt);
-        ret liberated_value;
+        return liberated_value;
     }
 }
 

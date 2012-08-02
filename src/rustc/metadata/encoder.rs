@@ -248,7 +248,7 @@ fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
     encode_module_item_paths(ebml_w, ecx, crate.node.module, path, index);
     encode_reexport_paths(ebml_w, ecx, index);
     ebml_w.end_tag();
-    ret index;
+    return index;
 }
 
 fn encode_reexport_paths(ebml_w: ebml::writer,
@@ -273,7 +273,7 @@ fn encode_family(ebml_w: ebml::writer, c: char) {
     ebml_w.end_tag();
 }
 
-fn def_to_str(did: def_id) -> ~str { ret fmt!{"%d:%d", did.crate, did.node}; }
+fn def_to_str(did: def_id) -> ~str { fmt!{"%d:%d", did.crate, did.node} }
 
 fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
                             params: ~[ty_param]) {
@@ -617,7 +617,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 false
             }
         };
-    if !must_write && !reachable(ecx, item.id) { ret; }
+    if !must_write && !reachable(ecx, item.id) { return; }
 
     fn add_to_index_(item: @item, ebml_w: ebml::writer,
                      index: @mut ~[entry<int>]) {
@@ -854,7 +854,7 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                 nitem: @foreign_item,
                                 index: @mut ~[entry<int>],
                                 path: ast_map::path, abi: foreign_abi) {
-    if !reachable(ecx, nitem.id) { ret; }
+    if !reachable(ecx, nitem.id) { return; }
     vec::push(*index, {val: nitem.id, pos: ebml_w.writer.tell()});
 
     ebml_w.start_tag(tag_items_data_item);
@@ -922,7 +922,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
         with *visit::default_visitor()
     }));
     ebml_w.end_tag();
-    ret *index;
+    return *index;
 }
 
 
@@ -941,7 +941,7 @@ fn create_index<T: copy>(index: ~[entry<T>], hash_fn: fn@(T) -> uint) ->
     for buckets.each |bucket| {
         vec::push(buckets_frozen, @*bucket);
     }
-    ret buckets_frozen;
+    return buckets_frozen;
 }
 
 fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
@@ -1047,7 +1047,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
         let meta_items = vec::append(~[name_item, vers_item], other_items);
         let link_item = attr::mk_list_item(@~"link", meta_items);
 
-        ret attr::mk_attr(link_item);
+        return attr::mk_attr(link_item);
     }
 
     let mut attrs: ~[attribute] = ~[];
@@ -1070,7 +1070,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
 
     if !found_link_attr { vec::push(attrs, synthesize_link_attr(ecx, ~[])); }
 
-    ret attrs;
+    return attrs;
 }
 
 fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
@@ -1100,7 +1100,7 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
         }
 
         // mut -> immutable hack for vec::map
-        ret vec::slice(deps, 0u, vec::len(deps));
+        return vec::slice(deps, 0u, vec::len(deps));
     }
 
     // We're just going to write a list of crate 'name-hash-version's, with
@@ -1189,7 +1189,7 @@ fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
                abbrevs: tyencode::ac_no_abbrevs};
     let buf = io::mem_buffer();
     tyencode::enc_ty(io::mem_buffer_writer(buf), cx, t);
-    ret io::mem_buffer_str(buf);
+    return io::mem_buffer_str(buf);
 }
 
 

@@ -2,12 +2,12 @@
 enum t { a, b(~str), }
 
 fn make(i: int) -> t {
-    if i > 10 { ret a; }
+    if i > 10 { return a; }
     let mut s = ~"hello";
     // Ensure s is non-const.
 
     s += ~"there";
-    ret b(s);
+    return b(s);
 }
 
 fn main() {

@@ -104,14 +104,14 @@ fn main(args: ~[~str]) {
 
     if vec::contains(args, ~"-h") {
         config::usage();
-        ret;
+        return;
     }
 
     let config = alt config::parse_config(args) {
       result::ok(config) { config }
       result::err(err) {
         io::println(fmt!{"error: %s", err});
-        ret;
+        return;
       }
     };
 
@@ -123,7 +123,7 @@ fn time<T>(what: ~str, f: fn() -> T) -> T {
     let rv = f();
     let end = std::time::precise_time_s();
     info!{"time: %3.3f s    %s", end - start, what};
-    ret rv;
+    return rv;
 }
 
 /// Runs rustdoc over the given file

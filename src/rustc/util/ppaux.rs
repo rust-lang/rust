@@ -25,7 +25,7 @@ import driver::session::session;
 /// that attempts to explain a lifetime in a way it might plausibly be
 /// understood.
 fn explain_region(cx: ctxt, region: ty::region) -> ~str {
-    ret alt region {
+    return alt region {
       re_scope(node_id) => {
         let scope_str = alt cx.items.find(node_id) {
           some(ast_map::node_block(blk)) => {
@@ -167,7 +167,7 @@ fn mt_to_str(cx: ctxt, m: mt) -> ~str {
       ast::m_imm { ~"" }
       ast::m_const { ~"const " }
     };
-    ret mstr + ty_to_str(cx, m.ty);
+    return mstr + ty_to_str(cx, m.ty);
 }
 
 fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
@@ -234,25 +234,25 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
               ast::return_val { s += ty_to_str(cx, output); }
             }
         }
-        ret s;
+        return s;
     }
     fn method_to_str(cx: ctxt, m: method) -> ~str {
-        ret fn_to_str(
+        return fn_to_str(
             cx, m.fty.purity, m.fty.proto, some(m.ident), m.fty.inputs,
             m.fty.output, m.fty.ret_style) + ~";";
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
-        ret *f.ident + ~": " + mt_to_str(cx, f.mt);
+        return *f.ident + ~": " + mt_to_str(cx, f.mt);
     }
 
     // if there is an id, print that instead of the structural type:
     for ty::type_def_id(typ).each |def_id| {
         // note that this typedef cannot have type parameters
-        ret ast_map::path_to_str(ty::item_path(cx, def_id));
+        return ast_map::path_to_str(ty::item_path(cx, def_id));
     }
 
     // pretty print the structural type representation:
-    ret alt ty::get(typ).struct {
+    return alt ty::get(typ).struct {
       ty_nil { ~"()" }
       ty_bot { ~"_|_" }
       ty_bool { ~"bool" }
@@ -340,7 +340,7 @@ fn parameterized(cx: ctxt,
 fn ty_to_short_str(cx: ctxt, typ: t) -> ~str {
     let mut s = encoder::encoded_ty(cx, typ);
     if str::len(s) >= 32u { s = str::slice(s, 0u, 32u); }
-    ret s;
+    return s;
 }
 
 // Local Variables:

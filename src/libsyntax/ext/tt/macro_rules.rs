@@ -70,7 +70,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                                                ~[rhs]);
                     let p = parser(cx.parse_sess(), cx.cfg(),
                                    trncbr as reader, SOURCE_FILE);
-                    ret mr_expr(p.parse_expr());
+                    return mr_expr(p.parse_expr());
                   }
                   failure(sp, msg) {
                     if sp.lo >= best_fail_spot.lo {
@@ -87,5 +87,8 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     let exp = |cx, sp, arg| generic_extension(cx, sp, arg, lhses, rhses);
 
-    ret mr_def({ident: name, ext: expr_tt({expander: exp, span: some(sp)})});
+    return mr_def({
+        ident: name,
+        ext: expr_tt({expander: exp, span: some(sp)})
+    });
 }

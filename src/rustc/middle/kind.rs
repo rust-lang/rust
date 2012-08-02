@@ -100,7 +100,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
                       is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be sendable, regardless of whether it is
         // moved in or copied in.  Note that send implies owned.
-        if !check_send(cx, var_t, sp) { ret; }
+        if !check_send(cx, var_t, sp) { return; }
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
@@ -115,7 +115,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
     fn check_for_box(cx: ctx, id: node_id, fv: option<@freevar_entry>,
                      is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be owned
-        if !check_owned(cx.tcx, var_t, sp) { ret; }
+        if !check_owned(cx.tcx, var_t, sp) { return; }
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
@@ -498,14 +498,14 @@ fn check_cast_for_escaping_regions(
     let target_ty = ty::expr_ty(cx.tcx, target);
     let target_substs = alt ty::get(target_ty).struct {
       ty::ty_trait(_, substs) => {substs}
-      _ => { ret; /* not a cast to a trait */ }
+      _ => { return; /* not a cast to a trait */ }
     };
 
     // Check, based on the region associated with the trait, whether it can
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item):
     alt target_substs.self_r {
-      some(ty::re_scope(*)) => { ret; /* case (1) */ }
+      some(ty::re_scope(*)) => { return; /* case (1) */ }
       none | some(ty::re_static) | some(ty::re_free(*)) => {}
       some(ty::re_bound(*)) | some(ty::re_var(*)) => {
         cx.tcx.sess.span_bug(

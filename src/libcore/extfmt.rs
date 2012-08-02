@@ -90,7 +90,7 @@ mod ct {
                 let piece = piece_string(buf);
                 vec::push(pieces, piece);
             }
-            ret ~"";
+            return ~"";
         }
         let mut i = 0u;
         while i < lim {
@@ -114,15 +114,15 @@ mod ct {
             } else { buf += curr; i += size; }
         }
         flush_buf(buf, pieces);
-        ret pieces;
+        return pieces;
     }
     fn peek_num(s: ~str, i: uint, lim: uint) ->
        option<{num: uint, next: uint}> {
-        if i >= lim { ret none; }
+        if i >= lim { return none; }
         let c = s[i];
-        if !('0' as u8 <= c && c <= '9' as u8) { ret option::none; }
+        if !('0' as u8 <= c && c <= '9' as u8) { return option::none; }
         let n = (c - ('0' as u8)) as uint;
-        ret alt peek_num(s, i + 1u, lim) {
+        return alt peek_num(s, i + 1u, lim) {
               none { some({num: n, next: i + 1u}) }
               some(next) {
                 let m = next.num;
@@ -138,7 +138,7 @@ mod ct {
         let width = parse_count(s, flags.next, lim);
         let prec = parse_precision(s, width.next, lim);
         let ty = parse_type(s, prec.next, lim, error);
-        ret {piece:
+        return {piece:
                  piece_conv({param: parm.param,
                              flags: flags.flags,
                              width: width.count,
@@ -148,9 +148,9 @@ mod ct {
     }
     fn parse_parameter(s: ~str, i: uint, lim: uint) ->
        {param: option<int>, next: uint} {
-        if i >= lim { ret {param: none, next: i}; }
+        if i >= lim { return {param: none, next: i}; }
         let num = peek_num(s, i, lim);
-        ret alt num {
+        return alt num {
               none { {param: none, next: i} }
               some(t) {
                 let n = t.num;
@@ -164,7 +164,7 @@ mod ct {
     fn parse_flags(s: ~str, i: uint, lim: uint) ->
        {flags: ~[flag], next: uint} {
         let noflags: ~[flag] = ~[];
-        if i >= lim { ret {flags: noflags, next: i}; }
+        if i >= lim { return {flags: noflags, next: i}; }
 
         fn more_(f: flag, s: ~str, i: uint, lim: uint) ->
            {flags: ~[flag], next: uint} {
@@ -172,11 +172,11 @@ mod ct {
             let rest = next.flags;
             let j = next.next;
             let curr: ~[flag] = ~[f];
-            ret {flags: vec::append(curr, rest), next: j};
+            return {flags: vec::append(curr, rest), next: j};
         }
         let more = |x| more_(x, s, i, lim);
         let f = s[i];
-        ret if f == '-' as u8 {
+        return if f == '-' as u8 {
                 more(flag_left_justify)
             } else if f == '0' as u8 {
                 more(flag_left_zero_pad)
@@ -190,7 +190,7 @@ mod ct {
     }
     fn parse_count(s: ~str, i: uint, lim: uint)
         -> {count: count, next: uint} {
-        ret if i >= lim {
+        return if i >= lim {
                 {count: count_implied, next: i}
             } else if s[i] == '*' as u8 {
                 let param = parse_parameter(s, i + 1u, lim);
@@ -211,7 +211,7 @@ mod ct {
     }
     fn parse_precision(s: ~str, i: uint, lim: uint) ->
        {count: count, next: uint} {
-        ret if i >= lim {
+        return if i >= lim {
                 {count: count_implied, next: i}
             } else if s[i] == '.' as u8 {
                 let count = parse_count(s, i + 1u, lim);
@@ -255,7 +255,7 @@ mod ct {
             } else if str::eq(tstr, ~"?") {
                 ty_poly
             } else { error(~"unknown type in conversion: " + tstr) };
-        ret {ty: t, next: i + 1u};
+        return {ty: t, next: i + 1u};
     }
 }
 
@@ -288,7 +288,7 @@ mod rt {
                 unchecked { str::unshift_char(s, ' ') };
             }
         }
-        ret unchecked { pad(cv, s, pad_signed) };
+        return unchecked { pad(cv, s, pad_signed) };
     }
     pure fn conv_uint(cv: conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
@@ -300,17 +300,17 @@ mod rt {
               ty_bits { uint_to_str_prec(u, 2u, prec) }
               ty_octal { uint_to_str_prec(u, 8u, prec) }
             };
-        ret unchecked { pad(cv, rs, pad_unsigned) };
+        return unchecked { pad(cv, rs, pad_unsigned) };
     }
     pure fn conv_bool(cv: conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
-        ret conv_str(cv, s);
+        return conv_str(cv, s);
     }
     pure fn conv_char(cv: conv, c: char) -> ~str {
         let mut s = str::from_char(c);
-        ret unchecked { pad(cv, s, pad_nozero) };
+        return unchecked { pad(cv, s, pad_nozero) };
     }
     pure fn conv_str(cv: conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
@@ -323,7 +323,7 @@ mod rt {
             } else { s.to_unique() }
           }
         };
-        ret unchecked { pad(cv, unpadded, pad_nozero) };
+        return unchecked { pad(cv, unpadded, pad_nozero) };
     }
     pure fn conv_float(cv: conv, f: float) -> ~str {
         let (to_str, digits) = alt cv.precision {
@@ -338,17 +338,17 @@ mod rt {
                 s = ~" " + s;
             }
         }
-        ret unchecked { pad(cv, s, pad_float) };
+        return unchecked { pad(cv, s, pad_float) };
     }
     pure fn conv_poly<T>(cv: conv, v: T) -> ~str {
         let s = sys::log_str(v);
-        ret conv_str(cv, s);
+        return conv_str(cv, s);
     }
 
     // Convert an int to string with minimum number of digits. If precision is
     // 0 and num is 0 then the result is the empty string.
     pure fn int_to_str_prec(num: int, radix: uint, prec: uint) -> ~str {
-        ret if num < 0 {
+        return if num < 0 {
                 ~"-" + uint_to_str_prec(-num as uint, radix, prec)
             } else { uint_to_str_prec(num as uint, radix, prec) };
     }
@@ -357,7 +357,7 @@ mod rt {
     // is 0 and num is 0 then the result is the empty string. Could move this
     // to uint: but it doesn't seem all that useful.
     pure fn uint_to_str_prec(num: uint, radix: uint, prec: uint) -> ~str {
-        ret if prec == 0u && num == 0u {
+        return if prec == 0u && num == 0u {
                 ~""
             } else {
                 let s = uint::to_str(num, radix);
@@ -370,7 +370,7 @@ mod rt {
             };
     }
     pure fn get_int_precision(cv: conv) -> uint {
-        ret alt cv.precision {
+        return alt cv.precision {
               count_is(c) { c as uint }
               count_implied { 1u }
             };
@@ -378,19 +378,19 @@ mod rt {
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, pad_float }
     fn pad(cv: conv, &s: ~str, mode: pad_mode) -> ~str {
         let uwidth : uint = alt cv.width {
-          count_implied { ret s; }
+          count_implied { return s; }
           count_is(width) {
               // FIXME: width should probably be uint (see Issue #1996)
               width as uint
           }
         };
         let strlen = str::char_len(s);
-        if uwidth <= strlen { ret s; }
+        if uwidth <= strlen { return s; }
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
             let padstr = str::from_chars(vec::from_elem(diff, padchar));
-            ret s + padstr;
+            return s + padstr;
         }
         let {might_zero_pad, signed} = alt mode {
           pad_nozero {   {might_zero_pad:false, signed:false} }
@@ -399,7 +399,7 @@ mod rt {
           pad_unsigned { {might_zero_pad:true,  signed:false} }
         };
         pure fn have_precision(cv: conv) -> bool {
-            ret alt cv.precision { count_implied { false } _ { true } };
+            return alt cv.precision { count_implied { false } _ { true } };
         }
         let zero_padding = {
             if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&
@@ -420,13 +420,13 @@ mod rt {
             let head = str::shift_char(s);
             if head == '+' || head == '-' || head == ' ' {
                 let headstr = str::from_chars(vec::from_elem(1u, head));
-                ret headstr + padstr + s;
+                return headstr + padstr + s;
             }
             else {
                 str::unshift_char(s, head);
             }
         }
-        ret padstr + s;
+        return padstr + s;
     }
     pure fn have_flag(flags: u32, f: u32) -> bool {
         flags & f != 0

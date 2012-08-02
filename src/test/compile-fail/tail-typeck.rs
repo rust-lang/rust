@@ -1,7 +1,7 @@
 // error-pattern: mismatched types
 
-fn f() -> int { ret g(); }
+fn f() -> int { return g(); }
 
-fn g() -> uint { ret 0u; }
+fn g() -> uint { return 0u; }
 
 fn main() { let y = f(); }

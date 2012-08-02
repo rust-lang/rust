@@ -20,12 +20,12 @@ fn compute(x: &ast) -> uint {
 fn map_nums(x: &ast, f: fn(uint) -> uint) -> &ast {
     alt *x {
       num(x) {
-        ret &num(f(x)); //~ ERROR illegal borrow
+        return &num(f(x)); //~ ERROR illegal borrow
       }
       add(x, y) {
         let m_x = map_nums(x, f);
         let m_y = map_nums(y, f);
-        ret &add(m_x, m_y);  //~ ERROR illegal borrow
+        return &add(m_x, m_y);  //~ ERROR illegal borrow
       }
     }
 }

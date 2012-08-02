@@ -121,7 +121,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     let mut args = args;
     let binary = vec::shift(args);
 
-    if vec::len(args) == 0u { usage(binary); ret; }
+    if vec::len(args) == 0u { usage(binary); return; }
 
     let matches =
         alt getopts::getopts(args, opts()) {
@@ -133,24 +133,24 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
 
     if opt_present(matches, ~"h") || opt_present(matches, ~"help") {
         usage(binary);
-        ret;
+        return;
     }
 
     let lint_flags = vec::append(getopts::opt_strs(matches, ~"W"),
                                  getopts::opt_strs(matches, ~"warn"));
     if lint_flags.contains(~"help") {
         describe_warnings();
-        ret;
+        return;
     }
 
     if getopts::opt_strs(matches, ~"Z").contains(~"help") {
         describe_debug_flags();
-        ret;
+        return;
     }
 
     if opt_present(matches, ~"v") || opt_present(matches, ~"version") {
         version(binary);
-        ret;
+        return;
     }
     let input = alt vec::len(matches.free) {
       0u { early_error(demitter, ~"no input filename given") }
@@ -176,7 +176,10 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
                                          ~"normal"),
                     |a| parse_pretty(sess, a) );
     alt pretty {
-      some::<pp_mode>(ppm) { pretty_print_input(sess, cfg, input, ppm); ret; }
+      some::<pp_mode>(ppm) {
+        pretty_print_input(sess, cfg, input, ppm);
+        return;
+      }
       none::<pp_mode> {/* continue */ }
     }
     let ls = opt_present(matches, ~"ls");
@@ -189,7 +192,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
             early_error(demitter, ~"can not list metadata for stdin");
           }
         }
-        ret;
+        return;
     }
 
     compile_input(sess, cfg, input, odir, ofile);

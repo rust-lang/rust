@@ -34,7 +34,7 @@ fn rt_fail(expr: *c_char, file: *c_char, line: size_t) {
 
 #[rt(exchange_malloc)]
 fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    ret rustrt::rust_upcall_exchange_malloc(td, size);
+    return rustrt::rust_upcall_exchange_malloc(td, size);
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -47,7 +47,7 @@ fn rt_exchange_free(ptr: *c_char) {
 
 #[rt(malloc)]
 fn rt_malloc(td: *c_char, size: uintptr_t) -> *c_char {
-    ret rustrt::rust_upcall_malloc(td, size);
+    return rustrt::rust_upcall_malloc(td, size);
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from

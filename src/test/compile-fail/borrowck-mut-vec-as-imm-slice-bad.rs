@@ -1,7 +1,7 @@
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
     for vec::each(v) |i| { sum += i; }
-    ret sum;
+    return sum;
 }
 
 fn has_mut_vec(+v: @~[mut int]) -> int {

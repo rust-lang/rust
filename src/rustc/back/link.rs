@@ -51,9 +51,9 @@ mod write {
     fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
                ot == output_type_exe {
-            ret true;
+            return true;
         }
-        ret false;
+        return false;
     }
 
     // Decides what to call an intermediate file, given the name of the output
@@ -64,7 +64,7 @@ mod write {
           some(dot_pos) { str::slice(output_path, 0u, dot_pos) }
           none { output_path }
         };
-        ret stem + ~"." + extension;
+        return stem + ~"." + extension;
     }
 
     fn run_passes(sess: session, llmod: ModuleRef, output: ~str) {
@@ -234,7 +234,7 @@ mod write {
 
             llvm::LLVMDisposeModule(llmod);
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
-            ret;
+            return;
         }
 
         if opts.output_type == output_type_llvm_assembly {
@@ -334,7 +334,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                 }
             } else { vec::push(cmh_items, meta); }
         }
-        ret {name: name, vers: vers, cmh_items: cmh_items};
+        return {name: name, vers: vers, cmh_items: cmh_items};
     }
 
     // This calculates CMH as defined above
@@ -343,11 +343,11 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                               metas: provided_metas,
                               dep_hashes: ~[@~str]) -> ~str {
         fn len_and_str(s: ~str) -> ~str {
-            ret fmt!{"%u_%s", str::len(s), s};
+            return fmt!{"%u_%s", str::len(s), s};
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
-            ret len_and_str(pprust::lit_to_str(@l));
+            return len_and_str(pprust::lit_to_str(@l));
         }
 
         let cmh_items = attr::sort_meta_items(metas.cmh_items);
@@ -374,18 +374,18 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
             symbol_hasher.input_str(len_and_str(*dh));
         }
 
-        ret truncated_hash_result(symbol_hasher);
+        return truncated_hash_result(symbol_hasher);
     }
 
     fn warn_missing(sess: session, name: ~str, default: ~str) {
-        if !sess.building_library { ret; }
+        if !sess.building_library { return; }
         sess.warn(fmt!{"missing crate link meta `%s`, using `%s` as default",
                        name, default});
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
                        output: ~str, metas: provided_metas) -> @~str {
-        ret alt metas.name {
+        return alt metas.name {
               some(v) { v }
               none {
                 let name =
@@ -407,7 +407,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
 
     fn crate_meta_vers(sess: session, _crate: ast::crate,
                        metas: provided_metas) -> @~str {
-        ret alt metas.vers {
+        return alt metas.vers {
               some(v) { v }
               none {
                 let vers = ~"0.0";
@@ -424,7 +424,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     let extras_hash =
         crate_meta_extras_hash(symbol_hasher, c, provided_metas, dep_hashes);
 
-    ret {name: name, vers: vers, extras_hash: extras_hash};
+    return {name: name, vers: vers, extras_hash: extras_hash};
 }
 
 fn truncated_hash_result(symbol_hasher: hash::streaming) -> ~str unsafe {
@@ -447,16 +447,16 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: hash::streaming, t: ty::t,
     let hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
 
-    ret ~"_" + hash;
+    return ~"_" + hash;
 }
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
     alt ccx.type_hashcodes.find(t) {
-      some(h) { ret h; }
+      some(h) { return h; }
       none {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);
-        ret hash;
+        return hash;
       }
     }
 }
@@ -491,10 +491,10 @@ fn sanitize(s: ~str) -> ~str {
     if result.len() > 0u &&
         result[0] != '_' as u8 &&
         ! char::is_XID_start(result[0] as char) {
-        ret ~"_" + result;
+        return ~"_" + result;
     }
 
-    ret result;
+    return result;
 }
 
 fn mangle(ss: path) -> ~str {
@@ -513,14 +513,14 @@ fn mangle(ss: path) -> ~str {
 }
 
 fn exported_name(path: path, hash: @~str, vers: @~str) -> ~str {
-    ret mangle(
+    return mangle(
         vec::append_one(vec::append_one(path, path_name(hash)),
                         path_name(vers)));
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
-    ret exported_name(path, @hash, ccx.link_meta.vers);
+    return exported_name(path, @hash, ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
@@ -528,20 +528,20 @@ fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
    ~str {
     let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    ret mangle(~[path_name(name), path_name(s), path_name(@hash)]);
+    return mangle(~[path_name(name), path_name(s), path_name(@hash)]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
                                         flav: @~str) -> ~str {
-    ret mangle(vec::append_one(path, path_name(@ccx.names(*flav))));
+    return mangle(vec::append_one(path, path_name(@ccx.names(*flav))));
 }
 
 fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> ~str {
-    ret mangle(path);
+    return mangle(path);
 }
 
 fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @~str) -> ~str {
-    ret ccx.names(*flav);
+    return ccx.names(*flav);
 }
 
 // If the user wants an exe generated we need to invoke
@@ -558,15 +558,15 @@ fn link_binary(sess: session,
                 (config.os == session::os_linux ||
                  config.os == session::os_freebsd) &&
                 option::is_some(found) && option::get(found) == 0u {
-                ret str::slice(filename, 3u, str::len(filename));
-            } else { ret filename; }
+                return str::slice(filename, 3u, str::len(filename));
+            } else { return filename; }
         };
         fn rmext(filename: ~str) -> ~str {
             let mut parts = str::split_char(filename, '.');
             vec::pop(parts);
-            ret str::connect(parts, ~".");
+            return str::connect(parts, ~".");
         }
-        ret alt config.os {
+        return alt config.os {
               session::os_macos { rmext(rmlib(filename)) }
               session::os_linux { rmext(rmlib(filename)) }
               session::os_freebsd { rmext(rmlib(filename)) }

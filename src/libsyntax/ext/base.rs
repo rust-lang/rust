@@ -107,7 +107,7 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
                             builtin(ext::source_util::expand_mod));
     syntax_expanders.insert(~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
-    ret syntax_expanders;
+    return syntax_expanders;
 }
 
 
@@ -148,7 +148,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn backtrace() -> expn_info { self.backtrace }
         fn mod_push(i: ast::ident) { vec::push(self.mod_path, i); }
         fn mod_pop() { vec::pop(self.mod_path); }
-        fn mod_path() -> ~[ast::ident] { ret self.mod_path; }
+        fn mod_path() -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(ei: codemap::expn_info_) {
             alt ei {
               expanded_from({call_site: cs, callie: callie}) {
@@ -193,7 +193,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
             self.parse_sess.span_diagnostic.handler().bug(msg);
         }
         fn next_id() -> ast::node_id {
-            ret parse::next_node_id(self.parse_sess);
+            return parse::next_node_id(self.parse_sess);
         }
     }
     let imp : ctxt_repr = {
@@ -202,14 +202,14 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         mut backtrace: none,
         mut mod_path: ~[]
     };
-    ret imp as ext_ctxt
+    return imp as ext_ctxt
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
     alt expr.node {
       ast::expr_lit(l) {
         alt l.node {
-          ast::lit_str(s) { ret *s; }
+          ast::lit_str(s) { return *s; }
           _ { cx.span_fatal(l.span, error); }
         }
       }
@@ -222,7 +222,7 @@ fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ast::ident {
       ast::expr_path(p) {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
             cx.span_fatal(expr.span, error);
-        } else { ret p.idents[0]; }
+        } else { return p.idents[0]; }
       }
       _ { cx.span_fatal(expr.span, error); }
     }
@@ -230,7 +230,7 @@ fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ast::ident {
 
 fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                        min: uint, name: ~str) -> ~[@ast::expr] {
-    ret get_mac_args(cx, sp, arg, min, none, name);
+    return get_mac_args(cx, sp, arg, min, none, name);
 }
 
 fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
@@ -250,7 +250,7 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                 cx.span_fatal(sp, fmt!{"#%s needs at least %u arguments.",
                                        name, min});
               }
-              _ { ret elts; /* we're good */}
+              _ { return elts; /* we're good */}
             }
           }
           _ {
@@ -308,7 +308,7 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
           _ { fail ~"badly-structured parse result"; }
         };
 
-    ret some(@{id: parse::next_node_id(cx.parse_sess()),
+    return some(@{id: parse::next_node_id(cx.parse_sess()),
                callee_id: parse::next_node_id(cx.parse_sess()),
                node: ast::expr_vec(args, ast::m_imm), span: sp});
 }

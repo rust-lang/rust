@@ -68,7 +68,7 @@ mod map_reduce {
                 map_task(ctrl, i); // Task body
             }
         }
-        ret results;
+        return results;
     }
 
     fn map_task(ctrl: chan<ctrl_proto>, input: ~str) {
@@ -114,7 +114,7 @@ mod map_reduce {
                 alt recv(p) {
                   emit_val(v) {
                     // error!{"received %d", v};
-                    ret some(v);
+                    return some(v);
                   }
                   done {
                     // error!{"all done"};
@@ -124,7 +124,7 @@ mod map_reduce {
                   release { state.ref_count -= 1; }
                 }
             }
-            ret none;
+            return none;
         }
 
         reduce(key, || get(p, state) );
@@ -210,9 +210,9 @@ fn read_word(r: io::reader) -> option<~str> {
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != ~"" { ret some(w); } }
+        } else { if w != ~"" { return some(w); } }
     }
-    ret none;
+    return none;
 }
 
 fn is_digit(c: char) -> bool {

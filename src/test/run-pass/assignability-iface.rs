@@ -21,7 +21,7 @@ impl vec<A> of iterable<A> for ~[A] {
 fn length<A, T: iterable<A>>(x: T) -> uint {
     let mut len = 0;
     for x.iterate() |_y| { len += 1 }
-    ret len;
+    return len;
 }
 
 fn main() {

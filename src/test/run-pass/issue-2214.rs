@@ -2,7 +2,7 @@ import libc::{c_double, c_int};
 import f64::*;
 
 fn lgamma(n: c_double, value: &mut int) -> c_double {
-  ret m::lgamma(n, value as &mut c_int);
+  return m::lgamma(n, value as &mut c_int);
 }
 
 #[link_name = "m"]

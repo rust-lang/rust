@@ -75,7 +75,7 @@ fn recv_<T: send>(p: *rust_port) -> T {
         // this is a good place to yield
         task::yield();
     }
-    ret res;
+    return res;
 }
 
 

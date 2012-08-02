@@ -54,7 +54,7 @@ fn boring_old_factorial(n: int) -> int {
         result *= i;
         i += 1;
     }
-    ret result;
+    return result;
 }
 ~~~~
 
@@ -62,9 +62,7 @@ Several differences from C stand out. Types do not come before, but
 after variable names (preceded by a colon). For local variables
 (introduced with `let`), types are optional, and will be inferred when
 left off. Constructs like `while` and `if` do not require parentheses
-around the condition (though they allow them). Also, there's a
-tendency towards aggressive abbreviation in the keywords—`fn` for
-function, `ret` for return.
+around the condition (though they allow them).
 
 You should, however, not conclude that Rust is simply an evolution of
 C. As will become clear in the rest of this tutorial, it goes in quite
@@ -697,15 +695,15 @@ end of the block:
 fn signum(x: int) -> int {
     if x < 0 { -1 }
     else if x > 0 { 1 }
-    else { ret 0; }
+    else { return 0; }
 }
 ~~~~
 
-The `ret` (return) and its semicolon could have been left out without
+The `return` and its semicolon could have been left out without
 changing the meaning of this function, but it illustrates that you
 will not get a type error in this case, although the last arm doesn't
 have type `int`, because control doesn't reach the end of that arm
-(`ret` is jumping out of the function).
+(`return` is jumping out of the function).
 
 ## Pattern matching
 
@@ -913,11 +911,11 @@ colons and the return type follows the arrow.
 
 ~~~~
 fn int_to_str(i: int) -> ~str {
-    ret ~"tube sock";
+    return ~"tube sock";
 }
 ~~~~
 
-The `ret` keyword immediately returns from the body of a function. It
+The `return` keyword immediately returns from the body of a function. It
 is optionally followed by an expression to return. A function can
 also return a value by having its top level block produce an
 expression.
@@ -926,9 +924,9 @@ expression.
 # const copernicus: int = 0;
 fn int_to_str(i: int) -> ~str {
     if i == copernicus {
-        ret ~"tube sock";
+        return ~"tube sock";
     } else {
-        ret ~"violin";
+        return ~"violin";
     }
 }
 ~~~~
@@ -946,7 +944,7 @@ and both the return type and the return value may be omitted from
 the definition. The following two functions are equivalent.
 
 ~~~~
-fn do_nothing_the_hard_way() -> () { ret (); }
+fn do_nothing_the_hard_way() -> () { return (); }
 
 fn do_nothing_the_easy_way() { }
 ~~~~
@@ -1552,7 +1550,7 @@ their environment". For example you couldn't write the following:
 let foo = 10;
 
 fn bar() -> int {
-   ret foo; // `bar` cannot refer to `foo`
+   return foo; // `bar` cannot refer to `foo`
 }
 ~~~~
 
@@ -1617,7 +1615,7 @@ returns it from a function, and then calls it:
 use std;
 
 fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
-    ret fn@(s: ~str) -> ~str { s + suffix };
+    return fn@(s: ~str) -> ~str { s + suffix };
 }
 
 fn main() {
@@ -1635,7 +1633,7 @@ be written:
 
 ~~~~
 fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
-    ret |s| s + suffix;
+    return |s| s + suffix;
 }
 ~~~~
 
@@ -1742,7 +1740,7 @@ Empty argument lists can be omitted from `do` expressions.
 
 Most iteration in Rust is done with `for` loops. Like `do`,
 `for` is a nice syntax for doing control flow with closures.
-Additionally, within a `for` loop, `break`, `again`, and `ret`
+Additionally, within a `for` loop, `break`, `again`, and `retern`
 work just as they do with `while` and `loop`.
 
 Consider again our `each` function, this time improved to
@@ -1790,7 +1788,7 @@ for each(~[2, 4, 8, 5, 16]) |n| {
 }
 ~~~~
 
-As an added bonus, you can use the `ret` keyword, which is not
+As an added bonus, you can use the `return` keyword, which is not
 normally allowed in closures, in a block that appears as the body of a
 `for` loop — this will cause a return to happen from the outer
 function, not just the loop body.
@@ -1799,7 +1797,7 @@ function, not just the loop body.
 # import each = vec::each;
 fn contains(v: ~[int], elt: int) -> bool {
     for each(v) |x| {
-        if (x == elt) { ret true; }
+        if (x == elt) { return true; }
     }
     false
 }
@@ -1960,7 +1958,7 @@ copy, that's a win.
 ~~~~
 type person = {name: ~str, address: ~str};
 fn make_person(+name: ~str, +address: ~str) -> person {
-    ret {name: name, address: address};
+    return {name: name, address: address};
 }
 ~~~~
 
@@ -1987,7 +1985,7 @@ fn map<T, U>(vector: ~[T], function: fn(T) -> U) -> ~[U] {
     for vector.each |element| {
         vec::push(accumulator, function(element));
     }
-    ret accumulator;
+    return accumulator;
 }
 ~~~~
 
@@ -2473,7 +2471,7 @@ fn comma_sep<T: to_str>(elts: ~[T]) -> ~str {
         else { result += ~", "; }
         result += elt.to_str();
     }
-    ret result;
+    return result;
 }
 ~~~~
 
@@ -2633,14 +2631,14 @@ extern mod crypto {
 fn as_hex(data: ~[u8]) -> ~str {
     let mut acc = ~"";
     for data.each |byte| { acc += #fmt("%02x", byte as uint); }
-    ret acc;
+    return acc;
 }
 
 fn sha1(data: ~str) -> ~str unsafe {
     let bytes = str::bytes(data);
     let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                             vec::len(bytes) as c_uint, ptr::null());
-    ret as_hex(vec::unsafe::from_buf(hash, 20u));
+    return as_hex(vec::unsafe::from_buf(hash, 20u));
 }
 
 fn main(args: ~[~str]) {
@@ -2740,7 +2738,7 @@ fn sha1(data: ~str) -> ~str {
         let bytes = str::bytes(data);
         let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                                 vec::len(bytes), ptr::null());
-        ret as_hex(vec::unsafe::from_buf(hash, 20u));
+        return as_hex(vec::unsafe::from_buf(hash, 20u));
     }
 }
 ~~~~
@@ -2783,7 +2781,7 @@ Let's look at our `sha1` function again.
 let bytes = str::bytes(data);
 let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                         vec::len(bytes), ptr::null());
-ret as_hex(vec::unsafe::from_buf(hash, 20u));
+return as_hex(vec::unsafe::from_buf(hash, 20u));
 # }
 # }
 ~~~~
@@ -2830,7 +2828,7 @@ extern mod lib_c {
 fn unix_time_in_microseconds() -> u64 unsafe {
     let x = {mut tv_sec: 0 as c_ulonglong, mut tv_usec: 0 as c_ulonglong};
     lib_c::gettimeofday(ptr::addr_of(x), ptr::null());
-    ret (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
+    return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
 
 # fn main() { assert #fmt("%?", unix_time_in_microseconds()) != ~""; }

@@ -18,13 +18,13 @@ fn a(c: chan<int>) {
     send(c, 10);
 }
 
-fn k(x: int) -> int { ret 15; }
+fn k(x: int) -> int { return 15; }
 
 fn g(x: int, y: ~str) -> int {
     log(debug, x);
     log(debug, y);
     let z: int = k(1);
-    ret z;
+    return z;
 }
 
 fn main() {

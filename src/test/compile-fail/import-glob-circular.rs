@@ -6,7 +6,7 @@ mod circ1 {
     export f2;
     export common;
     fn f1() { debug!{"f1"}; }
-    fn common() -> uint { ret 0u; }
+    fn common() -> uint { return 0u; }
 }
 
 mod circ2 {
@@ -15,7 +15,7 @@ mod circ2 {
     export f2;
     export common;
     fn f2() { debug!{"f2"}; }
-    fn common() -> uint { ret 1u; }
+    fn common() -> uint { return 1u; }
 }
 
 mod test {

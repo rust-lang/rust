@@ -51,7 +51,7 @@ fn weighted_choice<T: copy>(r : rand::rng, v : ~[weighted<T>]) -> T {
     for {weight: weight, item: item} in v {
         so_far += weight;
         if so_far > chosen {
-            ret item;
+            return item;
         }
     }
     core::unreachable();

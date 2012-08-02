@@ -68,7 +68,7 @@ fn to_writer(wr: io::writer, j: json) {
       dict(d) {
         if d.size() == 0u {
             wr.write_str(~"{}");
-            ret;
+            return;
         }
 
         wr.write_str(~"{ ");
@@ -168,7 +168,7 @@ impl parser for parser {
     fn parse_value() -> result<json, error> {
         self.parse_whitespace();
 
-        if self.eof() { ret self.error(~"EOF while parsing value"); }
+        if self.eof() { return self.error(~"EOF while parsing value"); }
 
         alt self.ch {
           'n' { self.parse_ident(~"ull", null) }
@@ -210,20 +210,20 @@ impl parser for parser {
 
         let mut res = alt self.parse_integer() {
           ok(res) { res }
-          err(e) { ret err(e); }
+          err(e) { return err(e); }
         };
 
         if self.ch == '.' {
             alt self.parse_decimal(res) {
               ok(r) { res = r; }
-              err(e) { ret err(e); }
+              err(e) { return err(e); }
             }
         }
 
         if self.ch == 'e' || self.ch == 'E' {
             alt self.parse_exponent(res) {
               ok(r) { res = r; }
-              err(e) { ret err(e); }
+              err(e) { return err(e); }
             }
         }
 
@@ -239,7 +239,7 @@ impl parser for parser {
 
             // There can be only one leading '0'.
             alt self.ch {
-              '0' to '9' { ret self.error(~"invalid number"); }
+              '0' to '9' { return self.error(~"invalid number"); }
               _ {}
             }
           }
@@ -256,7 +256,7 @@ impl parser for parser {
                 }
             }
           }
-          _ { ret self.error(~"invalid number"); }
+          _ { return self.error(~"invalid number"); }
         }
 
         ok(res)
@@ -268,7 +268,7 @@ impl parser for parser {
         // Make sure a digit follows the decimal place.
         alt self.ch {
           '0' to '9' {}
-          _ { ret self.error(~"invalid number"); }
+          _ { return self.error(~"invalid number"); }
         }
 
         let mut res = res;
@@ -304,7 +304,7 @@ impl parser for parser {
         // Make sure a digit follows the exponent place.
         alt self.ch {
           '0' to '9' {}
-          _ { ret self.error(~"invalid number"); }
+          _ { return self.error(~"invalid number"); }
         }
 
         while !self.eof() {
@@ -356,19 +356,19 @@ impl parser for parser {
                               n = n * 10u +
                                   (self.ch as uint) - ('0' as uint);
                             }
-                            _ { ret self.error(~"invalid \\u escape"); }
+                            _ { return self.error(~"invalid \\u escape"); }
                           }
                           i += 1u;
                       }
 
                       // Error out if we didn't parse 4 digits.
                       if i != 4u {
-                          ret self.error(~"invalid \\u escape");
+                          return self.error(~"invalid \\u escape");
                       }
 
                       str::push_char(res, n as char);
                   }
-                  _ { ret self.error(~"invalid escape"); }
+                  _ { return self.error(~"invalid escape"); }
                 }
                 escape = false;
             } else if self.ch == '\\' {
@@ -376,7 +376,7 @@ impl parser for parser {
             } else {
                 if self.ch == '"' {
                     self.bump();
-                    ret ok(@res);
+                    return ok(@res);
                 }
                 str::push_char(res, self.ch);
             }
@@ -393,24 +393,24 @@ impl parser for parser {
 
         if self.ch == ']' {
             self.bump();
-            ret ok(list(@values));
+            return ok(list(@values));
         }
 
         loop {
             alt self.parse_value() {
               ok(v) { vec::push(values, v); }
-              e { ret e; }
+              e { return e; }
             }
 
             self.parse_whitespace();
             if self.eof() {
-                ret self.error(~"EOF while parsing list");
+                return self.error(~"EOF while parsing list");
             }
 
             alt self.ch {
               ',' { self.bump(); }
-              ']' { self.bump(); ret ok(list(@values)); }
-              _ { ret self.error(~"expected `,` or `]`"); }
+              ']' { self.bump(); return ok(list(@values)); }
+              _ { return self.error(~"expected `,` or `]`"); }
             }
         };
     }
@@ -423,46 +423,46 @@ impl parser for parser {
 
         if self.ch == '}' {
           self.bump();
-          ret ok(dict(values));
+          return ok(dict(values));
         }
 
         while !self.eof() {
             self.parse_whitespace();
 
             if self.ch != '"' {
-                ret self.error(~"key must be a string");
+                return self.error(~"key must be a string");
             }
 
             let key = alt self.parse_str() {
               ok(key) { key }
-              err(e) { ret err(e); }
+              err(e) { return err(e); }
             };
 
             self.parse_whitespace();
 
             if self.ch != ':' {
                 if self.eof() { break; }
-                ret self.error(~"expected `:`");
+                return self.error(~"expected `:`");
             }
             self.bump();
 
             alt self.parse_value() {
               ok(value) { values.insert(copy *key, value); }
-              e { ret e; }
+              e { return e; }
             }
             self.parse_whitespace();
 
             alt self.ch {
               ',' { self.bump(); }
-              '}' { self.bump(); ret ok(dict(values)); }
+              '}' { self.bump(); return ok(dict(values)); }
               _ {
                   if self.eof() { break; }
-                  ret self.error(~"expected `,` or `}`");
+                  return self.error(~"expected `,` or `}`");
               }
             }
         }
 
-        ret self.error(~"EOF while parsing object");
+        return self.error(~"EOF while parsing object");
     }
 }
 

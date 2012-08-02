@@ -18,7 +18,7 @@ enum smallintmap<T:copy> {
 /// Create a smallintmap
 fn mk<T: copy>() -> smallintmap<T> {
     let v = dvec();
-    ret smallintmap_(@{v: v});
+    return smallintmap_(@{v: v});
 }
 
 /**
@@ -36,8 +36,8 @@ fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
  * in the map then returns none
  */
 pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
-    if key < self.v.len() { ret self.v.get_elt(key); }
-    ret none::<T>;
+    if key < self.v.len() { return self.v.get_elt(key); }
+    return none::<T>;
 }
 
 /**
@@ -50,13 +50,13 @@ pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
 pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     alt find(self, key) {
       none { error!{"smallintmap::get(): key not present"}; fail; }
-      some(v) { ret v; }
+      some(v) { return v; }
     }
 }
 
 /// Returns true if the map contains a value for the specified key
 fn contains_key<T: copy>(self: smallintmap<T>, key: uint) -> bool {
-    ret !option::is_none(find(self, key));
+    return !option::is_none(find(self, key));
 }
 
 /// Implements the map::map interface for smallintmap
@@ -72,10 +72,10 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn insert(+key: uint, +value: V) -> bool {
         let exists = contains_key(self, key);
         insert(self, key, value);
-        ret !exists;
+        return !exists;
     }
     fn remove(&&key: uint) -> option<V> {
-        if key >= self.v.len() { ret none; }
+        if key >= self.v.len() { return none; }
         let old = self.v.get_elt(key);
         self.v.set_elt(key, none);
         old
@@ -105,7 +105,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn each_key(it: fn(&&uint) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
-            if self.v.get_elt(idx) != none && !it(idx) { ret; }
+            if self.v.get_elt(idx) != none && !it(idx) { return; }
             idx += 1u;
         }
     }

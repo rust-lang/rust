@@ -26,7 +26,7 @@ fn run(
 ) -> doc::doc {
 
     if output_style == config::doc_per_crate {
-        ret doc;
+        return doc;
     }
 
     let result_port = comm::port();
@@ -123,7 +123,7 @@ fn fold_nmod(
     let doc = fold::default_seq_fold_nmod(fold, doc);
     let page = doc::itempage(doc::nmodtag(doc));
     comm::send(fold.ctxt, some(page));
-    ret doc;
+    return doc;
 }
 
 #[test]

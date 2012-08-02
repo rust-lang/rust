@@ -13,7 +13,7 @@ fn bitv_to_str(enclosing: fn_info, v: ~bitv::bitv) -> str {
     for enclosing.vars.each_value |val| {
         if v.get(val) { s += "foo"; }
     }
-    ret s;
+    return s;
 }
 
 fn main() { debug!{"OK"}; }

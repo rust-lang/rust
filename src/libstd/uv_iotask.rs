@@ -213,7 +213,7 @@ mod test {
             run_loop(iotask_ch);
             exit_ch.send(());
         };
-        ret comm::recv(iotask_port);
+        return comm::recv(iotask_port);
     }
 
     extern fn lifetime_handle_close(handle: *libc::c_void) unsafe {

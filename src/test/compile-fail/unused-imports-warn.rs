@@ -11,7 +11,7 @@ mod bar {
     mod c {
         import foo::point;
         import foo::square;
-        fn cc(p: point) -> str { ret 2 * (p.x + p.y); }
+        fn cc(p: point) -> str { return 2 * (p.x + p.y); }
     }
 }
 

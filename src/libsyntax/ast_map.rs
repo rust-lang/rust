@@ -61,7 +61,7 @@ fn extend(cx: ctx, +elt: ident) -> @path {
 }
 
 fn mk_ast_map_visitor() -> vt {
-    ret visit::mk_vt(@{
+    return visit::mk_vt(@{
         visit_item: map_item,
         visit_expr: map_expr,
         visit_fn: map_fn,
@@ -79,7 +79,7 @@ fn map_crate(diag: span_handler, c: crate) -> map {
               mut local_id: 0u,
               diag: diag};
     visit::visit_crate(c, cx, mk_ast_map_visitor());
-    ret cx.map;
+    return cx.map;
 }
 
 // Used for items loaded from external crate that are being inlined into this

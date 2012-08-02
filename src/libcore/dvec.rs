@@ -72,7 +72,7 @@ fn from_vec<A>(+v: ~[mut A]) -> dvec<A> {
 /// Consumes the vector and returns its contents
 fn unwrap<A>(-d: dvec<A>) -> ~[mut A] {
     let dvec_({data: v}) <- d;
-    ret v;
+    return v;
 }
 
 impl private_methods<A> for dvec<A> {
@@ -92,7 +92,7 @@ impl private_methods<A> for dvec<A> {
             data <-> self.data;
             let data_ptr: *() = unsafe::reinterpret_cast(data);
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
-            ret f(data);
+            return f(data);
         }
     }
 
@@ -263,7 +263,7 @@ impl extensions<A:copy> for dvec<A> {
     #[inline(always)]
     pure fn get_elt(idx: uint) -> A {
         self.check_not_borrowed();
-        ret self.data[idx];
+        return self.data[idx];
     }
 
     /// Overwrites the contents of the element at `idx` with `a`
@@ -295,7 +295,7 @@ impl extensions<A:copy> for dvec<A> {
             fail ~"attempt to retrieve the last element of an empty vector";
         }
 
-        ret self.data[length - 1u];
+        return self.data[length - 1u];
     }
 
     /// Iterates over the elements in reverse order

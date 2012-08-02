@@ -133,12 +133,12 @@ impl public_methods for borrowck_ctxt {
         alt expr.node {
           ast::expr_unary(ast::deref, e_base) {
             if self.method_map.contains_key(expr.id) {
-                ret self.cat_rvalue(expr, expr_ty);
+                return self.cat_rvalue(expr, expr_ty);
             }
 
             let base_cmt = self.cat_expr(e_base);
             alt self.cat_deref(expr, base_cmt, 0u, true) {
-              some(cmt) { ret cmt; }
+              some(cmt) { return cmt; }
               none {
                 tcx.sess.span_bug(
                     e_base.span,
@@ -150,7 +150,7 @@ impl public_methods for borrowck_ctxt {
 
           ast::expr_field(base, f_name, _) {
             if self.method_map.contains_key(expr.id) {
-                ret self.cat_method_ref(expr, expr_ty);
+                return self.cat_method_ref(expr, expr_ty);
             }
 
             let base_cmt = self.cat_autoderef(base);
@@ -159,7 +159,7 @@ impl public_methods for borrowck_ctxt {
 
           ast::expr_index(base, _) {
             if self.method_map.contains_key(expr.id) {
-                ret self.cat_rvalue(expr, expr_ty);
+                return self.cat_rvalue(expr, expr_ty);
             }
 
             self.cat_index(expr, base)
@@ -183,7 +183,7 @@ impl public_methods for borrowck_ctxt {
           ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
           ast::expr_again | ast::expr_rec(*) | ast::expr_struct(*) |
           ast::expr_unary_move(*) {
-            ret self.cat_rvalue(expr, expr_ty);
+            return self.cat_rvalue(expr, expr_ty);
           }
         }
     }
@@ -297,7 +297,7 @@ impl public_methods for borrowck_ctxt {
     }
 
     fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
-        ret @{cat:cat_discr(cmt, alt_id) with *cmt};
+        return @{cat:cat_discr(cmt, alt_id) with *cmt};
     }
 
     /// inherited mutability: used in cases where the mutability of a
@@ -388,7 +388,7 @@ impl public_methods for borrowck_ctxt {
           }
         };
 
-        ret alt deref_kind(self.tcx, base_cmt.ty) {
+        return alt deref_kind(self.tcx, base_cmt.ty) {
           deref_ptr(ptr) {
             // (a) the contents are loanable if the base is loanable
             // and this is a *unique* vector
@@ -461,7 +461,7 @@ impl private_methods for borrowck_ctxt {
         loop {
             ctr += 1u;
             alt self.cat_deref(base, cmt, ctr, false) {
-              none { ret cmt; }
+              none { return cmt; }
               some(cmt1) { cmt = cmt1; }
             }
         }
@@ -476,7 +476,7 @@ fn field_mutbl(tcx: ty::ctxt,
       ty::ty_rec(fields) {
         for fields.each |f| {
             if f.ident == f_name {
-                ret some(f.mt.mutbl);
+                return some(f.mt.mutbl);
             }
         }
       }
@@ -487,12 +487,12 @@ fn field_mutbl(tcx: ty::ctxt,
                   ast::class_mutable { ast::m_mutbl }
                   ast::class_immutable { ast::m_imm }
                 };
-                ret some(m);
+                return some(m);
             }
         }
       }
       _ { }
     }
 
-    ret none;
+    return none;
 }

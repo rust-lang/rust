@@ -113,7 +113,7 @@ fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> ~str {
 
 fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
     let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-    ret ty::mk_imm_uniq(tcx, cbox_ty);
+    return ty::mk_imm_uniq(tcx, cbox_ty);
 }
 
 // Given a closure ty, emits a corresponding tuple ty
@@ -132,7 +132,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
     }
     let cdata_ty = ty::mk_tup(tcx, bound_tys);
     debug!{"cdata_ty=%s", ty_to_str(tcx, cdata_ty)};
-    ret cdata_ty;
+    return cdata_ty;
 }
 
 fn allocate_cbox(bcx: block,
@@ -168,7 +168,7 @@ fn allocate_cbox(bcx: block,
       }
     };
 
-    ret {bcx: bcx, val: val};
+    return {bcx: bcx, val: val};
 }
 
 type closure_result = {
@@ -247,7 +247,7 @@ fn store_environment(bcx: block,
     }
     for vec::each(temp_cleanups) |cleanup| { revoke_clean(bcx, cleanup); }
 
-    ret {llbox: llbox, cdata_ty: cdata_ty, bcx: bcx};
+    return {llbox: llbox, cdata_ty: cdata_ty, bcx: bcx};
 }
 
 // Given a context and a list of upvars, build a closure. This just
@@ -307,7 +307,7 @@ fn build_closure(bcx0: block,
         vec::push(env_vals,
                   env_ref(nil_ret, ty::mk_nil_ptr(tcx), lv_owned));
     }
-    ret store_environment(bcx, env_vals, ck);
+    return store_environment(bcx, env_vals, ck);
 }
 
 // Given an enclosing block context, a new function context, a closure type,
@@ -361,7 +361,7 @@ fn trans_expr_fn(bcx: block,
                  is_loop_body: option<option<ValueRef>>,
                  dest: dest) -> block {
     let _icx = bcx.insn_ctxt(~"closure::trans_expr_fn");
-    if dest == ignore { ret bcx; }
+    if dest == ignore { return bcx; }
     let ccx = bcx.ccx();
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
@@ -399,7 +399,7 @@ fn trans_expr_fn(bcx: block,
     };
     fill_fn_pair(bcx, get_dest_addr(dest), llfn, closure);
 
-    ret bcx;
+    return bcx;
 }
 
 fn make_fn_glue(
@@ -421,7 +421,7 @@ fn make_fn_glue(
         }
     };
 
-    ret alt ty::get(t).struct {
+    return alt ty::get(t).struct {
       ty::ty_fn({proto: ast::proto_bare, _}) |
       ty::ty_fn({proto: ast::proto_block, _}) |
       ty::ty_fn({proto: ast::proto_any, _}) { bcx }
@@ -439,8 +439,11 @@ fn make_opaque_cbox_take_glue(
     // Easy cases:
     let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_take_glue");
     alt ck {
-      ty::ck_block { ret bcx; }
-      ty::ck_box { incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr)); ret bcx; }
+      ty::ck_block { return bcx; }
+      ty::ck_box {
+        incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
+        return bcx;
+      }
       ty::ck_uniq { /* hard case: */ }
     }
 
@@ -507,7 +510,7 @@ fn make_opaque_cbox_free_glue(
     -> block {
     let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_free_glue");
     alt ck {
-      ty::ck_block { ret bcx; }
+      ty::ck_block { return bcx; }
       ty::ck_box | ty::ck_uniq { /* hard cases: */ }
     }
 
@@ -537,3 +540,4 @@ fn make_opaque_cbox_free_glue(
         }
     }
 }
+

@@ -85,7 +85,7 @@ impl methods for check_loan_ctxt {
     fn purity(scope_id: ast::node_id) -> option<purity_cause> {
         let default_purity = alt self.declared_purity {
           // an unsafe declaration overrides all
-          ast::unsafe_fn { ret none; }
+          ast::unsafe_fn { return none; }
 
           // otherwise, remember what was declared as the
           // default, but we must scan for requirements
@@ -103,11 +103,11 @@ impl methods for check_loan_ctxt {
         loop {
             alt pure_map.find(scope_id) {
               none {}
-              some(e) {ret some(pc_cmt(e));}
+              some(e) {return some(pc_cmt(e));}
             }
 
             alt region_map.find(scope_id) {
-              none { ret default_purity; }
+              none { return default_purity; }
               some(next_scope_id) { scope_id = next_scope_id; }
             }
         }
@@ -123,13 +123,13 @@ impl methods for check_loan_ctxt {
             for req_loan_map.find(scope_id).each |loanss| {
                 for (*loanss).each |loans| {
                     for (*loans).each |loan| {
-                        if !f(loan) { ret; }
+                        if !f(loan) { return; }
                     }
                 }
             }
 
             alt region_map.find(scope_id) {
-              none { ret; }
+              none { return; }
               some(next_scope_id) { scope_id = next_scope_id; }
             }
         }
@@ -140,7 +140,7 @@ impl methods for check_loan_ctxt {
                      f: fn(loan) -> bool) {
         for self.walk_loans(scope_id) |loan| {
             if loan.lp == lp {
-                if !f(loan) { ret; }
+                if !f(loan) { return; }
             }
         }
     }
@@ -182,11 +182,14 @@ impl methods for check_loan_ctxt {
                 let is_fn_arg =
                     did.crate == ast::local_crate &&
                     (*self.fn_args).contains(did.node);
-                if is_fn_arg { ret; } // case (a) above
+                if is_fn_arg { return; } // case (a) above
               }
               ast::expr_fn_block(*) | ast::expr_fn(*) |
               ast::expr_loop_body(*) | ast::expr_do_body(*) {
-                if self.is_stack_closure(expr.id) { ret; } // case (b) above
+                if self.is_stack_closure(expr.id) {
+                    // case (b) above
+                    return;
+                }
               }
               _ {}
             }
@@ -198,7 +201,7 @@ impl methods for check_loan_ctxt {
         alt ty::get(callee_ty).struct {
           ty::ty_fn(fn_ty) {
             alt fn_ty.purity {
-              ast::pure_fn { ret; } // case (c) above
+              ast::pure_fn { return; } // case (c) above
               ast::impure_fn | ast::unsafe_fn | ast::extern_fn {
                 self.report_purity_error(
                     pc, callee_span,
@@ -207,7 +210,7 @@ impl methods for check_loan_ctxt {
               }
             }
           }
-          _ { ret; } // case (d) above
+          _ { return; } // case (d) above
         }
     }
 
@@ -223,7 +226,7 @@ impl methods for check_loan_ctxt {
     }
 
     fn is_allowed_pure_arg(expr: @ast::expr) -> bool {
-        ret alt expr.node {
+        return alt expr.node {
           ast::expr_path(_) {
             let def = self.tcx().def_map.get(expr.id);
             let did = ast_util::def_id_of_def(def);
@@ -239,7 +242,7 @@ impl methods for check_loan_ctxt {
 
     fn check_for_conflicting_loans(scope_id: ast::node_id) {
         let new_loanss = alt self.req_maps.req_loan_map.find(scope_id) {
-            none { ret; }
+            none { return; }
             some(loanss) { loanss }
         };
 
@@ -310,7 +313,7 @@ impl methods for check_loan_ctxt {
                 self.bccx.span_err(
                     ex.span,
                     at.ing_form(self.bccx.cmt_to_str(cmt)));
-                ret;
+                return;
               }
             }
         }
@@ -360,7 +363,7 @@ impl methods for check_loan_ctxt {
                     loan.cmt.span,
                     fmt!{"loan of %s granted here",
                          self.bccx.cmt_to_str(loan.cmt)});
-                ret;
+                return;
               }
             }
         }
@@ -428,7 +431,7 @@ impl methods for check_loan_ctxt {
             self.bccx.span_err(
                 cmt.span,
                 fmt!{"moving out of %s", self.bccx.cmt_to_str(cmt)});
-            ret;
+            return;
           }
         }
 
@@ -436,7 +439,7 @@ impl methods for check_loan_ctxt {
 
         // check for a conflicting loan:
         let lp = alt cmt.lp {
-          none { ret; }
+          none { return; }
           some(lp) { lp }
         };
         for self.walk_loans_of(cmt.id, lp) |loan| {
@@ -448,7 +451,7 @@ impl methods for check_loan_ctxt {
                 loan.cmt.span,
                 fmt!{"loan of %s granted here",
                      self.bccx.cmt_to_str(loan.cmt)});
-            ret;
+            return;
         }
     }
 
@@ -458,14 +461,14 @@ impl methods for check_loan_ctxt {
     fn check_last_use(expr: @ast::expr) {
         let cmt = self.bccx.cat_expr(expr);
         let lp = alt cmt.lp {
-          none { ret; }
+          none { return; }
           some(lp) { lp }
         };
         for self.walk_loans_of(cmt.id, lp) |_loan| {
             debug!{"Removing last use entry %? due to outstanding loan",
                    expr.id};
             self.bccx.last_use_map.remove(expr.id);
-            ret;
+            return;
         }
     }
 

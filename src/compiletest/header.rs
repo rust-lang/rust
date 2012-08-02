@@ -51,7 +51,7 @@ fn load_props(testfile: ~str) -> test_props {
             vec::push(exec_env, ee);
         }
     };
-    ret {
+    return {
         error_patterns: error_patterns,
         compile_flags: compile_flags,
         pp_exact: pp_exact,
@@ -63,12 +63,12 @@ fn load_props(testfile: ~str) -> test_props {
 fn is_test_ignored(config: config, testfile: ~str) -> bool {
     let mut found = false;
     for iter_header(testfile) |ln| {
-        if parse_name_directive(ln, ~"xfail-test") { ret true; }
-        if parse_name_directive(ln, xfail_target()) { ret true; }
+        if parse_name_directive(ln, ~"xfail-test") { return true; }
+        if parse_name_directive(ln, xfail_target()) { return true; }
         if config.mode == common::mode_pretty &&
-           parse_name_directive(ln, ~"xfail-pretty") { ret true; }
+           parse_name_directive(ln, ~"xfail-pretty") { return true; }
     };
-    ret found;
+    return found;
 
     fn xfail_target() -> ~str {
         ~"xfail-" + os::sysname()
@@ -85,10 +85,10 @@ fn iter_header(testfile: ~str, it: fn(~str) -> bool) -> bool {
         // with a warm page cache. Maybe with a cold one.
         if str::starts_with(ln, ~"fn")
             || str::starts_with(ln, ~"mod") {
-            ret false;
-        } else { if !(it(ln)) { ret false; } }
+            return false;
+        } else { if !(it(ln)) { return false; } }
     }
-    ret true;
+    return true;
 }
 
 fn parse_error_pattern(line: ~str) -> option<~str> {

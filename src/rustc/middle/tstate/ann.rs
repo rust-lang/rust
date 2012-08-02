@@ -41,14 +41,18 @@ type pre_and_post_state = {prestate: prestate, poststate: poststate};
 
 type ts_ann = {conditions: pre_and_post, states: pre_and_post_state};
 
-fn true_precond(num_vars: uint) -> precond { ret create_tritv(num_vars); }
+fn true_precond(num_vars: uint) -> precond { return create_tritv(num_vars); }
 
-fn true_postcond(num_vars: uint) -> postcond { ret true_precond(num_vars); }
+fn true_postcond(num_vars: uint) -> postcond {
+    return true_precond(num_vars);
+}
 
-fn empty_prestate(num_vars: uint) -> prestate { ret true_precond(num_vars); }
+fn empty_prestate(num_vars: uint) -> prestate {
+    return true_precond(num_vars);
+}
 
 fn empty_poststate(num_vars: uint) -> poststate {
-    ret true_precond(num_vars);
+    return true_precond(num_vars);
 }
 
 fn false_postcond(num_vars: uint) -> postcond {
@@ -58,23 +62,23 @@ fn false_postcond(num_vars: uint) -> postcond {
 }
 
 fn empty_pre_post(num_vars: uint) -> pre_and_post {
-    ret {precondition: empty_prestate(num_vars),
+    return {precondition: empty_prestate(num_vars),
          postcondition: empty_poststate(num_vars)};
 }
 
 fn empty_states(num_vars: uint) -> pre_and_post_state {
-    ret {prestate: true_precond(num_vars),
+    return {prestate: true_precond(num_vars),
          poststate: true_postcond(num_vars)};
 }
 
 fn empty_ann(num_vars: uint) -> ts_ann {
-    ret {conditions: empty_pre_post(num_vars),
+    return {conditions: empty_pre_post(num_vars),
          states: empty_states(num_vars)};
 }
 
-fn get_pre(&&p: pre_and_post) -> precond { ret p.precondition; }
+fn get_pre(&&p: pre_and_post) -> precond { return p.precondition; }
 
-fn get_post(&&p: pre_and_post) -> postcond { ret p.postcondition; }
+fn get_post(&&p: pre_and_post) -> postcond { return p.postcondition; }
 
 fn difference(p1: precond, p2: precond) -> bool { p1.difference(p2) }
 
@@ -86,7 +90,7 @@ fn pps_len(p: pre_and_post) -> uint {
     // gratuitous check
 
     assert (p.precondition.nbits == p.postcondition.nbits);
-    ret p.precondition.nbits;
+    return p.precondition.nbits;
 }
 
 fn require(i: uint, p: pre_and_post) {
@@ -102,54 +106,54 @@ fn require_and_preserve(i: uint, p: pre_and_post) {
 
 fn set_in_postcond(i: uint, p: pre_and_post) -> bool {
     // sets the ith bit in p's post
-    ret set_in_postcond_(i, p.postcondition);
+    return set_in_postcond_(i, p.postcondition);
 }
 
 fn set_in_postcond_(i: uint, p: postcond) -> bool {
     let was_set = p.get(i);
     p.set(i, ttrue);
-    ret was_set != ttrue;
+    return was_set != ttrue;
 }
 
 fn set_in_poststate(i: uint, s: pre_and_post_state) -> bool {
     // sets the ith bit in p's post
-    ret set_in_poststate_(i, s.poststate);
+    return set_in_poststate_(i, s.poststate);
 }
 
 fn set_in_poststate_(i: uint, p: poststate) -> bool {
     let was_set = p.get(i);
     p.set(i, ttrue);
-    ret was_set != ttrue;
+    return was_set != ttrue;
 
 }
 
 fn clear_in_poststate(i: uint, s: pre_and_post_state) -> bool {
     // sets the ith bit in p's post
-    ret clear_in_poststate_(i, s.poststate);
+    return clear_in_poststate_(i, s.poststate);
 }
 
 fn clear_in_poststate_(i: uint, s: poststate) -> bool {
     let was_set = s.get(i);
     s.set(i, tfalse);
-    ret was_set != tfalse;
+    return was_set != tfalse;
 }
 
 fn clear_in_prestate(i: uint, s: pre_and_post_state) -> bool {
     // sets the ith bit in p's pre
-    ret clear_in_prestate_(i, s.prestate);
+    return clear_in_prestate_(i, s.prestate);
 }
 
 fn clear_in_prestate_(i: uint, s: prestate) -> bool {
     let was_set = s.get(i);
     s.set(i, tfalse);
-    ret was_set != tfalse;
+    return was_set != tfalse;
 }
 
 fn clear_in_postcond(i: uint, s: pre_and_post) -> bool {
     // sets the ith bit in p's post
     let was_set = s.postcondition.get(i);
     s.postcondition.set(i, tfalse);
-    ret was_set != tfalse;
+    return was_set != tfalse;
 }
 
 // Sets all the bits in a's precondition to equal the
@@ -195,12 +199,12 @@ fn extend_poststate(p: poststate, newv: poststate) -> bool {
 fn relax_prestate(i: uint, p: prestate) -> bool {
     let was_set = p.get(i);
     p.set(i, dont_care);
-    ret was_set != dont_care;
+    return was_set != dont_care;
 }
 
 // Clears the given bit in p
 fn relax_poststate(i: uint, p: poststate) -> bool {
-    ret relax_prestate(i, p);
+    return relax_prestate(i, p);
 }
 
 // Clears the given bit in p
@@ -212,14 +216,14 @@ fn clear(p: precond) { p.clear(); }
 // Sets all the bits in p to true
 fn set(p: precond) { p.set_all(); }
 
-fn ann_precond(a: ts_ann) -> precond { ret a.conditions.precondition; }
+fn ann_precond(a: ts_ann) -> precond { return a.conditions.precondition; }
 
-fn ann_prestate(a: ts_ann) -> prestate { ret a.states.prestate; }
+fn ann_prestate(a: ts_ann) -> prestate { return a.states.prestate; }
 
-fn ann_poststate(a: ts_ann) -> poststate { ret a.states.poststate; }
+fn ann_poststate(a: ts_ann) -> poststate { return a.states.poststate; }
 
 fn pp_clone(p: pre_and_post) -> pre_and_post {
-    ret {precondition: clone(p.precondition),
+    return {precondition: clone(p.precondition),
          postcondition: clone(p.postcondition)};
 }
 

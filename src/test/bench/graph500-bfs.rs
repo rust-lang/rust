@@ -320,7 +320,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
     };
     
-    if !status { ret status }
+    if !status { return status }
 
     // 2. Each tree edge connects vertices whose BFS levels differ by
     //    exactly one.
@@ -336,7 +336,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
     };
 
-    if !status { ret status }
+    if !status { return status }
 
     // 3. Every edge in the input list has vertices with levels that
     //    differ by at most one or that both are not in the BFS tree.
@@ -349,7 +349,7 @@ fn validate(edges: ~[(node_id, node_id)],
         abs(level[u] - level[v]) <= 1
     };
 
-    if !status { ret status }    
+    if !status { return status }    
 
     // 4. The BFS tree spans an entire connected component's vertices.
 
@@ -370,7 +370,7 @@ fn validate(edges: ~[(node_id, node_id)],
         }
     };
 
-    if !status { ret status }    
+    if !status { return status }    
 
     // If we get through here, all the tests passed!
     true

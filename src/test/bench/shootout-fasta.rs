@@ -12,7 +12,7 @@ import int;
 import str;
 import io::writer_util;
 
-fn LINE_LENGTH() -> uint { ret 60u; }
+fn LINE_LENGTH() -> uint { return 60u; }
 
 type myrandom = @{mut last: u32};
 
@@ -27,20 +27,20 @@ fn make_cumulative(aa: ~[aminoacids]) -> ~[aminoacids] {
     let mut cp: u32 = 0u32;
     let mut ans: ~[aminoacids] = ~[];
     for aa.each |a| { cp += a.prob; ans += ~[{ch: a.ch, prob: cp}]; }
-    ret ans;
+    return ans;
 }
 
 fn select_random(r: u32, genelist: ~[aminoacids]) -> char {
-    if r < genelist[0].prob { ret genelist[0].ch; }
+    if r < genelist[0].prob { return genelist[0].ch; }
     fn bisect(v: ~[aminoacids], lo: uint, hi: uint, target: u32) -> char {
         if hi > lo + 1u {
             let mid: uint = lo + (hi - lo) / 2u;
             if target < v[mid].prob {
-                ret bisect(v, lo, mid, target);
-            } else { ret bisect(v, mid, hi, target); }
-        } else { ret v[hi].ch; }
+                return bisect(v, lo, mid, target);
+            } else { return bisect(v, mid, hi, target); }
+        } else { return v[hi].ch; }
     }
-    ret bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);
+    return bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);
 }
 
 fn make_random_fasta(wr: io::writer, id: ~str, desc: ~str, genelist: ~[aminoacids], n: int) {
@@ -72,7 +72,7 @@ fn make_repeat_fasta(wr: io::writer, id: ~str, desc: ~str, s: ~str, n: int) unsa
     if str::len(op) > 0u { wr.write_line(op); }
 }
 
-fn acid(ch: char, prob: u32) -> aminoacids { ret {ch: ch, prob: prob}; }
+fn acid(ch: char, prob: u32) -> aminoacids { return {ch: ch, prob: prob}; }
 
 fn main(args: ~[~str]) {
     let args = if os::getenv(~"RUST_BENCH").is_some() {

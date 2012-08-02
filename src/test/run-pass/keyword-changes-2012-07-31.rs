@@ -1,4 +1,4 @@
-// ret -> return
+// return -> return
 // mod -> module
 // alt -> match
 

@@ -71,7 +71,7 @@ fn mk_cstore() -> cstore {
     let meta_cache = map::int_hash::<crate_metadata>();
     let crate_map = map::int_hash::<ast::crate_num>();
     let mod_path_map = new_def_hash();
-    ret private(@{metas: meta_cache,
+    return private(@{metas: meta_cache,
                   use_crate_map: crate_map,
                   mod_path_map: mod_path_map,
                   mut used_crate_files: ~[],
@@ -80,17 +80,17 @@ fn mk_cstore() -> cstore {
 }
 
 fn get_crate_data(cstore: cstore, cnum: ast::crate_num) -> crate_metadata {
-    ret p(cstore).metas.get(cnum);
+    return p(cstore).metas.get(cnum);
 }
 
 fn get_crate_hash(cstore: cstore, cnum: ast::crate_num) -> @~str {
     let cdata = get_crate_data(cstore, cnum);
-    ret decoder::get_crate_hash(cdata.data);
+    return decoder::get_crate_hash(cdata.data);
 }
 
 fn get_crate_vers(cstore: cstore, cnum: ast::crate_num) -> @~str {
     let cdata = get_crate_data(cstore, cnum);
-    ret decoder::get_crate_vers(cdata.data);
+    return decoder::get_crate_vers(cdata.data);
 }
 
 fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
@@ -104,7 +104,7 @@ fn set_crate_data(cstore: cstore, cnum: ast::crate_num,
 }
 
 fn have_crate_data(cstore: cstore, cnum: ast::crate_num) -> bool {
-    ret p(cstore).metas.contains_key(cnum);
+    return p(cstore).metas.contains_key(cnum);
 }
 
 fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
@@ -118,19 +118,19 @@ fn add_used_crate_file(cstore: cstore, lib: ~str) {
 }
 
 fn get_used_crate_files(cstore: cstore) -> ~[~str] {
-    ret p(cstore).used_crate_files;
+    return p(cstore).used_crate_files;
 }
 
 fn add_used_library(cstore: cstore, lib: ~str) -> bool {
     assert lib != ~"";
 
-    if vec::contains(p(cstore).used_libraries, lib) { ret false; }
+    if vec::contains(p(cstore).used_libraries, lib) { return false; }
     vec::push(p(cstore).used_libraries, lib);
-    ret true;
+    return true;
 }
 
 fn get_used_libraries(cstore: cstore) -> ~[~str] {
-    ret p(cstore).used_libraries;
+    return p(cstore).used_libraries;
 }
 
 fn add_used_link_args(cstore: cstore, args: ~str) {
@@ -138,7 +138,7 @@ fn add_used_link_args(cstore: cstore, args: ~str) {
 }
 
 fn get_used_link_args(cstore: cstore) -> ~[~str] {
-    ret p(cstore).used_link_args;
+    return p(cstore).used_link_args;
 }
 
 fn add_use_stmt_cnum(cstore: cstore, use_id: ast::node_id,
@@ -164,15 +164,15 @@ fn get_dep_hashes(cstore: cstore) -> ~[@~str] {
         vec::push(result, {name: @cdata.name, hash: hash});
     };
     fn lteq(a: crate_hash, b: crate_hash) -> bool {
-        ret *a.name <= *b.name;
+        return *a.name <= *b.name;
     }
     let sorted = std::sort::merge_sort(lteq, result);
     debug!{"sorted:"};
     for sorted.each |x| {
         debug!{"  hash[%s]: %s", *x.name, *x.hash};
     }
-    fn mapper(ch: crate_hash) -> @~str { ret ch.hash; }
-    ret vec::map(sorted, mapper);
+    fn mapper(ch: crate_hash) -> @~str { return ch.hash; }
+    return vec::map(sorted, mapper);
 }
 
 fn get_path(cstore: cstore, d: ast::def_id) -> ~[ast::ident] {

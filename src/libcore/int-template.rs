@@ -67,7 +67,7 @@ pure fn abs(i: T) -> T {
  * * radix - The base of the number
  */
 fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
-    if vec::len(buf) == 0u { ret none; }
+    if vec::len(buf) == 0u { return none; }
     let mut i = vec::len(buf) - 1u;
     let mut start = 0u;
     let mut power = 1 as T;
@@ -80,10 +80,10 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     loop {
         alt char::to_digit(buf[i] as char, radix) {
           some(d) { n += (d as T) * power; }
-          none { ret none; }
+          none { return none; }
         }
         power *= radix as T;
-        if i <= start { ret some(n); }
+        if i <= start { return some(n); }
         i -= 1u;
     };
 }
@@ -109,30 +109,30 @@ fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 }
 
 /// Convert to a string
-fn str(i: T) -> ~str { ret to_str(i, 10u); }
+fn str(i: T) -> ~str { return to_str(i, 10u); }
 
 impl ord of ord for T {
     pure fn lt(&&other: T) -> bool {
-        ret self < other;
+        return self < other;
     }
 }
 
 impl eq of eq for T {
     pure fn eq(&&other: T) -> bool {
-        ret self == other;
+        return self == other;
     }
 }
 
 impl num of num::num for T {
-    pure fn add(&&other: T)    -> T { ret self + other; }
-    pure fn sub(&&other: T)    -> T { ret self - other; }
-    pure fn mul(&&other: T)    -> T { ret self * other; }
-    pure fn div(&&other: T)    -> T { ret self / other; }
-    pure fn modulo(&&other: T) -> T { ret self % other; }
-    pure fn neg()              -> T { ret -self;        }
+    pure fn add(&&other: T)    -> T { return self + other; }
+    pure fn sub(&&other: T)    -> T { return self - other; }
+    pure fn mul(&&other: T)    -> T { return self * other; }
+    pure fn div(&&other: T)    -> T { return self / other; }
+    pure fn modulo(&&other: T) -> T { return self % other; }
+    pure fn neg()              -> T { return -self;        }
 
-    pure fn to_int()         -> int { ret self as int; }
-    pure fn from_int(n: int) -> T   { ret n as T;      }
+    pure fn to_int()         -> int { return self as int; }
+    pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
 impl times of iter::times for T {

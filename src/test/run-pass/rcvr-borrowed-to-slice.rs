@@ -7,7 +7,7 @@ impl foo of sum for &[int] {
     fn sum() -> int {
         let mut sum = 0;
         for vec::each(self) |e| { sum += e; }
-        ret sum;
+        return sum;
     }
 }
 

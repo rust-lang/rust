@@ -43,7 +43,7 @@ fn hash_nominal_id(&&ri: nominal_id) -> uint {
         h *= 33u;
         h += ty::type_id(t);
     }
-    ret h;
+    return h;
 }
 
 fn eq_nominal_id(&&mi: nominal_id, &&ni: nominal_id) -> bool {
@@ -57,7 +57,7 @@ fn eq_nominal_id(&&mi: nominal_id, &&ni: nominal_id) -> bool {
 }
 
 fn new_nominal_id_hash<T: copy>() -> hashmap<nominal_id, T> {
-    ret hashmap(hash_nominal_id, eq_nominal_id);
+    return hashmap(hash_nominal_id, eq_nominal_id);
 }
 
 type enum_data = {did: ast::def_id, substs: ty::substs};
@@ -113,7 +113,7 @@ fn mk_global(ccx: @crate_ctxt, name: ~str, llval: ValueRef, internal: bool) ->
         lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
     }
 
-    ret llglobal;
+    return llglobal;
 }
 
 
@@ -124,7 +124,7 @@ fn mk_global(ccx: @crate_ctxt, name: ~str, llval: ValueRef, internal: bool) ->
 fn round_up(size: u16, align: u8) -> u16 {
     assert (align >= 1u8);
     let alignment = align as u16;
-    ret size - 1u16 + alignment & !(alignment - 1u16);
+    return size - 1u16 + alignment & !(alignment - 1u16);
 }
 
 type size_align = {size: u16, align: u8};
@@ -149,7 +149,7 @@ fn enum_kind(ccx: @crate_ctxt, did: ast::def_id) -> enum_kind {
 
 // Returns the code corresponding to the pointer size on this architecture.
 fn s_int(tcx: ty_ctxt) -> u8 {
-    ret alt tcx.sess.targ_cfg.arch {
+    return alt tcx.sess.targ_cfg.arch {
         session::arch_x86 { shape_i32 }
         session::arch_x86_64 { shape_i64 }
         session::arch_arm { shape_i32 }
@@ -157,7 +157,7 @@ fn s_int(tcx: ty_ctxt) -> u8 {
 }
 
 fn s_uint(tcx: ty_ctxt) -> u8 {
-    ret alt tcx.sess.targ_cfg.arch {
+    return alt tcx.sess.targ_cfg.arch {
         session::arch_x86 { shape_u32 }
         session::arch_x86_64 { shape_u64 }
         session::arch_arm { shape_u32 }
@@ -165,7 +165,7 @@ fn s_uint(tcx: ty_ctxt) -> u8 {
 }
 
 fn s_float(tcx: ty_ctxt) -> u8 {
-    ret alt tcx.sess.targ_cfg.arch {
+    return alt tcx.sess.targ_cfg.arch {
         session::arch_x86 { shape_f64 }
         session::arch_x86_64 { shape_f64 }
         session::arch_arm { shape_f64 }
@@ -173,15 +173,15 @@ fn s_float(tcx: ty_ctxt) -> u8 {
 }
 
 fn s_variant_enum_t(tcx: ty_ctxt) -> u8 {
-    ret s_int(tcx);
+    return s_int(tcx);
 }
 
 fn s_tydesc(_tcx: ty_ctxt) -> u8 {
-    ret shape_tydesc;
+    return shape_tydesc;
 }
 
 fn s_send_tydesc(_tcx: ty_ctxt) -> u8 {
-    ret shape_send_tydesc;
+    return shape_send_tydesc;
 }
 
 fn mk_ctxt(llmod: ModuleRef) -> ctxt {
@@ -190,7 +190,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
         lib::llvm::llvm::LLVMAddGlobal(llmod, llshapetablesty, buf)
     });
 
-    ret {mut next_tag_id: 0u16,
+    return {mut next_tag_id: 0u16,
          pad: 0u16,
          tag_id_to_index: new_nominal_id_hash(),
          tag_order: dvec(),
@@ -367,7 +367,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
 fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info) -> ~[u8] {
     let mut s = ~[];
     for vec::each(v.args) |t| { s += shape_of(ccx, t); }
-    ret s;
+    return s;
 }
 
 fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
@@ -456,7 +456,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     header += data;
     header += lv_table;
 
-    ret mk_global(ccx, ~"tag_shapes", C_bytes(header), true);
+    return mk_global(ccx, ~"tag_shapes", C_bytes(header), true);
 
 /* tjc: Not annotating FIXMEs in this module because of #1498 */
     fn largest_variants(ccx: @crate_ctxt,
@@ -530,7 +530,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             if candidates[i] { vec::push(result, i); }
             i += 1u;
         }
-        ret result;
+        return result;
     }
 
     fn compute_static_enum_size(ccx: @crate_ctxt, largest_variants: ~[uint],
@@ -563,7 +563,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             if max_align < align { max_align = align; }
         }
 
-        ret {size: max_size, align: max_align};
+        return {size: max_size, align: max_align};
     }
 }
 
@@ -577,7 +577,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
             dtors += ~[trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];
         }
     }
-    ret mk_global(ccx, ~"resource_shapes", C_struct(dtors), true);
+    return mk_global(ccx, ~"resource_shapes", C_struct(dtors), true);
 }
 
 fn gen_shape_tables(ccx: @crate_ctxt) {
@@ -614,13 +614,13 @@ type tag_metrics = {
 
 // Returns the number of bytes clobbered by a Store to this type.
 fn llsize_of_store(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
+    return llvm::LLVMStoreSizeOfType(cx.td.lltd, t) as uint;
 }
 
 // Returns the number of bytes between successive elements of type T in an
 // array of T. This is the "ABI" size. It includes any ABI-mandated padding.
 fn llsize_of_alloc(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMABISizeOfType(cx.td.lltd, t) as uint;
+    return llvm::LLVMABISizeOfType(cx.td.lltd, t) as uint;
 }
 
 // Returns, as near as we can figure, the "real" size of a type. As in, the
@@ -644,7 +644,7 @@ fn llsize_of_real(cx: @crate_ctxt, t: TypeRef) -> uint {
 // (i.e. including alignment-padding), but goodness knows which alignment it
 // winds up using. Probably the ABI one? Not recommended.
 fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
+    return llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMSizeOf(t), cx.int_type,
                                False);
 }
 
@@ -653,22 +653,22 @@ fn llsize_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 // packing the type into structs. This will be used for things like
 // allocations inside a stack frame, which LLVM has a free hand in.
 fn llalign_of_pref(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
+    return llvm::LLVMPreferredAlignmentOfType(cx.td.lltd, t) as uint;
 }
 
 // Returns the minimum alignment of a type required by the plattform.
 // This is the alignment that will be used for struct fields, arrays,
 // and similar ABI-mandated things.
 fn llalign_of_min(cx: @crate_ctxt, t: TypeRef) -> uint {
-    ret llvm::LLVMABIAlignmentOfType(cx.td.lltd, t) as uint;
+    return llvm::LLVMABIAlignmentOfType(cx.td.lltd, t) as uint;
 }
 
 // Returns the "default" alignment of t, which is calculated by casting
 // null to a record containing a single-bit followed by a t value, then
 // doing gep(0,1) to get at the trailing (and presumably padded) t cell.
 fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
-    ret llvm::LLVMConstIntCast(lib::llvm::llvm::LLVMAlignOf(t), cx.int_type,
-                               False);
+    return llvm::LLVMConstIntCast(
+        lib::llvm::llvm::LLVMAlignOf(t), cx.int_type, False);
 }
 
 // Computes the static size of a enum, without using mk_tup(), which is
@@ -678,7 +678,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 
 // Computes the size of the data part of an enum.
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
-    if cx.enum_sizes.contains_key(t) { ret cx.enum_sizes.get(t); }
+    if cx.enum_sizes.contains_key(t) { return cx.enum_sizes.get(t); }
     alt ty::get(t).struct {
       ty::ty_enum(tid, substs) {
         // Compute max(variant sizes).
@@ -695,7 +695,7 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
             if max_size < this_size { max_size = this_size; }
         }
         cx.enum_sizes.insert(t, max_size);
-        ret max_size;
+        return max_size;
       }
       _ { cx.sess.bug(~"static_size_of_enum called on non-enum"); }
     }

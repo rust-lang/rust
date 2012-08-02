@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-fn f() -> int { ret 42; }
+fn f() -> int { return 42; }
 
 fn main() {
     let g: extern fn() -> int = f;

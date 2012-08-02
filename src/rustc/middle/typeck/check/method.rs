@@ -160,7 +160,7 @@ class lookup {
             }
         }
 
-        if self.candidates.len() == 0u { ret none; }
+        if self.candidates.len() == 0u { return none; }
 
         if self.candidates.len() > 1u {
             self.tcx().sess.span_err(
@@ -359,7 +359,7 @@ class lookup {
         // multiple-methods-in-scope errors.
 
         if self.fcx.ccx.trait_map.contains_key(self.expr.id) {
-            ret;
+            return;
         }
 
         let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
@@ -376,7 +376,7 @@ class lookup {
 
             // we want to find the innermost scope that has any
             // matches and then ignore outer scopes
-            if added_any {ret;}
+            if added_any {return;}
         }
     }
 
@@ -428,7 +428,7 @@ class lookup {
             }
         }
 
-        ret added_any;
+        return added_any;
     }
 
     fn add_candidates_from_m(self_substs: ty::substs,
@@ -563,7 +563,7 @@ class lookup {
 
          self.fcx.write_ty_substs(self.node_id, cand.fty, all_substs);
 
-        ret cand.entry;
+        return cand.entry;
     }
 }
 

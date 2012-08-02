@@ -11,5 +11,5 @@ fn f() -> [int]/3 {
 
 
 
-    ret enterprise;
+    return enterprise;
 }

@@ -130,7 +130,7 @@ enum debug_metadata {
 
 fn cast_safely<T: copy, U>(val: T) -> U unsafe {
     let val2 = val;
-    ret unsafe::transmute(val2);
+    return unsafe::transmute(val2);
 }
 
 fn md_from_metadata<T>(val: debug_metadata) -> T unsafe {
@@ -153,11 +153,11 @@ fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
         for items.each |item| {
             let md: T = md_from_metadata::<T>(item);
             if eq(md) {
-                ret option::some(md);
+                return option::some(md);
             }
         }
     }
-    ret option::none;
+    return option::none;
 }
 
 fn create_compile_unit(cx: @crate_ctxt)
@@ -167,7 +167,7 @@ fn create_compile_unit(cx: @crate_ctxt)
     let tg = CompileUnitTag;
     alt cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
                         |md| md.data.name == crate_name) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }
 
@@ -189,7 +189,7 @@ fn create_compile_unit(cx: @crate_ctxt)
     let mdval = @{node: unit_node, data: {name: crate_name}};
     update_cache(cache, tg, compile_unit_metadata(mdval));
 
-    ret mdval;
+    return mdval;
 }
 
 fn get_cache(cx: @crate_ctxt) -> metadata_cache {
@@ -210,7 +210,7 @@ fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     let tg = FileDescriptorTag;
     alt cached_metadata::<@metadata<file_md>>(
         cache, tg, |md| md.data.path == full_path) {
-        option::some(md) { ret md; }
+        option::some(md) { return md; }
         option::none {}
     }
 
@@ -224,7 +224,7 @@ fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     let val = llmdnode(file_md);
     let mdval = @{node: val, data: {path: full_path}};
     update_cache(cache, tg, file_metadata(mdval));
-    ret mdval;
+    return mdval;
 }
 
 fn line_from_span(cm: codemap::codemap, sp: span) -> uint {
@@ -249,7 +249,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
     /*alt cached_metadata::<@metadata<block_md>>(
         cache, tg,
         {|md| start == md.data.start && end == md.data.end}) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }*/
 
@@ -272,7 +272,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
     let val = llmdnode(lldata);
     let mdval = @{node: val, data: {start: start, end: end}};
     //update_cache(cache, tg, block_metadata(mdval));
-    ret mdval;
+    return mdval;
 }
 
 fn size_and_align_of(cx: @crate_ctxt, t: ty::t) -> (int, int) {
@@ -287,7 +287,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     let tg = BasicTypeDescriptorTag;
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, |md| ty::type_id(t) == md.data.hash) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }
 
@@ -333,7 +333,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     let mdval = @{node: llnode, data: {hash: ty::type_id(t)}};
     update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, ~"llvm.dbg.ty", llnode);
-    ret mdval;
+    return mdval;
 }
 
 fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
@@ -343,7 +343,7 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
     /*let cache = cx.llmetadata;
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(t) == ty::hash_ty(md.data.hash)}) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }*/
     let (size, align) = size_and_align_of(cx, t);
@@ -355,7 +355,7 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
     let mdval = @{node: llnode, data: {hash: ty::type_id(t)}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, ~"llvm.dbg.ty", llnode);
-    ret mdval;
+    return mdval;
 }
 
 type struct_ctxt = {
@@ -368,7 +368,7 @@ type struct_ctxt = {
 };
 
 fn finish_structure(cx: @struct_ctxt) -> ValueRef {
-    ret create_composite_type(StructureTypeTag, cx.name, cx.file, cx.line,
+    return create_composite_type(StructureTypeTag, cx.name, cx.file, cx.line,
                               cx.total_size, cx.align, 0, option::none,
                               option::some(cx.members));
 }
@@ -382,7 +382,7 @@ fn create_structure(file: @metadata<file_md>, name: ~str, line: int)
                mut total_size: 0,
                align: 64 //XXX different alignment per arch?
               };
-    ret cx;
+    return cx;
 }
 
 fn create_derived_type(type_tag: int, file: ValueRef, name: ~str, line: int,
@@ -398,7 +398,7 @@ fn create_derived_type(type_tag: int, file: ValueRef, name: ~str, line: int,
                   lli64(offset),
                   lli32(0),
                   ty];
-    ret llmdnode(lldata);
+    return llmdnode(lldata);
 }
 
 fn add_member(cx: @struct_ctxt, name: ~str, line: int, size: int, align: int,
@@ -426,7 +426,7 @@ fn create_record(cx: @crate_ctxt, t: ty::t, fields: ~[ast::ty_field],
                    size as int, align as int, ty_md.node);
     }
     let mdval = @{node: finish_structure(scx), data:{hash: ty::type_id(t)}};
-    ret mdval;
+    return mdval;
 }
 
 fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
@@ -436,7 +436,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     /*let cache = cx.llmetadata;
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(outer) == ty::hash_ty(md.data.hash)}) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }*/
     let fname = filename_from_span(cx, span);
@@ -455,7 +455,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     let mdval = @{node: llnode, data: {hash: ty::type_id(outer)}};
     //update_cache(cache, tg, tydesc_metadata(mdval));
     add_named_metadata(cx, ~"llvm.dbg.ty", llnode);
-    ret mdval;
+    return mdval;
 }
 
 fn create_composite_type(type_tag: int, name: ~str, file: ValueRef, line: int,
@@ -485,7 +485,7 @@ fn create_composite_type(type_tag: int, name: ~str, file: ValueRef, line: int,
                   lli32(0),  // runtime language
                   llnull()
                  ];
-    ret llmdnode(lldata);
+    return llmdnode(lldata);
 }
 
 fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
@@ -510,7 +510,7 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     add_member(scx, ~"data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
-    ret @{node: llnode, data: {hash: ty::type_id(vec_t)}};
+    return @{node: llnode, data: {hash: ty::type_id(vec_t)}};
 }
 
 fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
@@ -518,7 +518,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
     /*let cache = get_cache(cx);
     alt cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| t == md.data.hash}) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }*/
 
@@ -563,7 +563,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
             cx.sess.span_bug(span, "t_to_ty: Can't handle this type");
           }
         };
-        ret @{node: ty, span: span};
+        return @{node: ty, span: span};
     }
 
     alt ty.node {
@@ -574,7 +574,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
         };
         let md = create_ty(cx, inner_t, mt.ty);
         let box = create_boxed_type(cx, t, inner_t, ty.span, md);
-        ret create_pointer_type(cx, t, ty.span, box);
+        return create_pointer_type(cx, t, ty.span, box);
       }
 
       ast::ty_uniq(mt) {
@@ -584,29 +584,29 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
           _ { cx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
         };
         let md = create_ty(cx, inner_t, mt.ty);
-        ret create_pointer_type(cx, t, ty.span, md);
+        return create_pointer_type(cx, t, ty.span, md);
       }
 
       ast::ty_infer {
         let inferred = t_to_ty(cx, t, ty.span);
-        ret create_ty(cx, t, inferred);
+        return create_ty(cx, t, inferred);
       }
 
       ast::ty_rec(fields) {
-        ret create_record(cx, t, fields, ty.span);
+        return create_record(cx, t, fields, ty.span);
       }
 
       ast::ty_vec(mt) {
         let inner_t = ty::sequence_element_type(cx.tcx, t);
         let inner_ast_t = t_to_ty(cx, inner_t, mt.ty.span);
         let v = create_vec(cx, t, inner_t, ty.span, inner_ast_t);
-        ret create_pointer_type(cx, t, ty.span, v);
+        return create_pointer_type(cx, t, ty.span, v);
       }
 
       ast::ty_path(_, id) {
         alt cx.tcx.def_map.get(id) {
           ast::def_prim_ty(pty) {
-            ret create_basic_type(cx, t, pty, ty.span);
+            return create_basic_type(cx, t, pty, ty.span);
           }
           _ {}
         }
@@ -631,7 +631,7 @@ fn create_var(type_tag: int, context: ValueRef, name: ~str, file: ValueRef,
                   ret_ty,
                   lli32(0)
                  ];
-    ret llmdnode(lldata);
+    return llmdnode(lldata);
 }
 
 fn create_local_var(bcx: block, local: @ast::local)
@@ -641,7 +641,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     let tg = AutoVariableTag;
     alt cached_metadata::<@metadata<local_var_md>>(
         cache, tg, |md| md.data.id == local.node.id) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }
 
@@ -681,7 +681,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     let declargs = ~[llmdnode(~[llptr]), mdnode];
     trans::build::Call(bcx, cx.intrinsics.get(~"llvm.dbg.declare"),
                        declargs);
-    ret mdval;
+    return mdval;
 }
 
 fn create_arg(bcx: block, arg: ast::arg, sp: span)
@@ -691,7 +691,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let tg = ArgVariableTag;
     alt cached_metadata::<@metadata<argument_md>>(
         cache, ArgVariableTag, |md| md.data.id == arg.id) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }
 
@@ -712,12 +712,12 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let declargs = ~[llmdnode(~[llptr]), mdnode];
     trans::build::Call(bcx, cx.intrinsics.get(~"llvm.dbg.declare"),
                        declargs);
-    ret mdval;
+    return mdval;
 }
 
 fn update_source_pos(cx: block, s: span) {
     if !cx.sess().opts.debuginfo {
-        ret;
+        return;
     }
     let cm = cx.sess().codemap;
     let blockmd = create_block(cx);
@@ -779,7 +779,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let cache = get_cache(cx);
     alt cached_metadata::<@metadata<subprogram_md>>(
         cache, SubprogramTag, |md| md.data.id == id) {
-      option::some(md) { ret md; }
+      option::some(md) { return md; }
       option::none {}
     }
 
@@ -824,5 +824,5 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let mdval = @{node: val, data: {id: id}};
     update_cache(cache, SubprogramTag, subprogram_metadata(mdval));
 
-    ret mdval;
+    return mdval;
 }

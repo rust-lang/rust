@@ -167,7 +167,7 @@ mod map_reduce {
             vec::push(tasks, spawn_joinable(|| map_task(map, ctrl, i) ));
             vec::push(ctrls, ctrl_server);
         }
-        ret tasks;
+        return tasks;
     }
 
     fn map_task<K1: copy send, K2: const copy send hash_key, V: copy send>(
@@ -226,7 +226,7 @@ mod map_reduce {
                 alt recv(p) {
                   emit_val(v) {
                     // error!{"received %d", v};
-                    ret some(v);
+                    return some(v);
                   }
                   done {
                     // error!{"all done"};
@@ -236,7 +236,7 @@ mod map_reduce {
                   release { ref_count -= 1; }
                 }
             }
-            ret none;
+            return none;
         }
 
         reduce(key, || get(p, ref_count, is_done) );
@@ -303,7 +303,7 @@ fn main(argv: ~[~str]) {
 
         out.write_line(fmt!{"Usage: %s <filename> ...", argv[0]});
 
-        ret;
+        return;
     }
 
     let readers: ~[fn~() -> word_reader]  = if argv.len() >= 2 {
@@ -339,9 +339,9 @@ fn read_word(r: io::reader) -> option<~str> {
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != ~"" { ret some(w); } }
+        } else { if w != ~"" { return some(w); } }
     }
-    ret none;
+    return none;
 }
 
 fn is_word_char(c: char) -> bool {

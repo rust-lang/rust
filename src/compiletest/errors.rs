@@ -17,14 +17,14 @@ fn load_errors(testfile: ~str) -> ~[expected_error] {
         error_patterns += parse_expected(line_num, ln);
         line_num += 1u;
     }
-    ret error_patterns;
+    return error_patterns;
 }
 
 fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] unsafe {
     let error_tag = ~"//~";
     let mut idx;
     alt str::find_str(line, error_tag) {
-         option::none { ret ~[]; }
+         option::none { return ~[]; }
          option::some(nn) { idx = (nn as uint) + str::len(error_tag); }
     }
 
@@ -49,5 +49,5 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] unsafe {
 
     debug!{"line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg};
 
-    ret ~[{line: line_num - adjust_line, kind: kind, msg: msg}];
+    return ~[{line: line_num - adjust_line, kind: kind, msg: msg}];
 }

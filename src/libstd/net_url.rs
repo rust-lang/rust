@@ -31,9 +31,9 @@ fn userinfo(-user: ~str, -pass: option<~str>) -> userinfo {
 fn split_char_first(s: ~str, c: char) -> (~str, ~str) {
     let mut v = str::splitn_char(s, c, 1);
     if v.len() == 1 {
-        ret (s, ~"");
+        return (s, ~"");
     } else {
-        ret (vec::shift(v), vec::pop(v));
+        return (vec::shift(v), vec::pop(v));
     }
 }
 
@@ -44,16 +44,16 @@ fn userinfo_from_str(uinfo: ~str) -> userinfo {
     } else {
         option::some(p)
     };
-    ret userinfo(user, pass);
+    return userinfo(user, pass);
 }
 
 fn userinfo_to_str(-userinfo: userinfo) -> ~str {
     if option::is_some(userinfo.pass) {
-        ret str::concat(~[copy userinfo.user, ~":",
+        return str::concat(~[copy userinfo.user, ~":",
                           option::unwrap(copy userinfo.pass),
                           ~"@"]);
     } else {
-        ret str::concat(~[copy userinfo.user, ~"@"]);
+        return str::concat(~[copy userinfo.user, ~"@"]);
     }
 }
 
@@ -65,7 +65,7 @@ fn query_from_str(rawquery: ~str) -> query {
             vec::push(query, (k, v));
         };
     }
-    ret query;
+    return query;
 }
 
 fn query_to_str(query: query) -> ~str {
@@ -74,7 +74,7 @@ fn query_to_str(query: query) -> ~str {
         let (k, v) = kv;
         strvec += ~[fmt!{"%s=%s", k, v}];
     };
-    ret str::connect(strvec, ~"&");
+    return str::connect(strvec, ~"&");
 }
 
 fn get_scheme(rawurl: ~str) -> option::option<(~str, ~str)> {
@@ -82,13 +82,13 @@ fn get_scheme(rawurl: ~str) -> option::option<(~str, ~str)> {
         if char::is_alphabetic(c) {
             again;
         } else if c == ':' && i != 0 {
-            ret option::some((rawurl.slice(0,i),
+            return option::some((rawurl.slice(0,i),
                               rawurl.slice(i+3,str::len(rawurl))));
         } else {
-            ret option::none;
+            return option::none;
         }
     };
-    ret option::none;
+    return option::none;
 }
 
 /**
@@ -107,7 +107,7 @@ fn get_scheme(rawurl: ~str) -> option::option<(~str, ~str)> {
 fn from_str(rawurl: ~str) -> result::result<url, ~str> {
     let mut schm = get_scheme(rawurl);
     if option::is_none(schm) {
-        ret result::err(~"invalid scheme");
+        return result::err(~"invalid scheme");
     }
     let (scheme, rest) = option::unwrap(schm);
     let (u, rest) = split_char_first(rest, '@');
@@ -135,7 +135,7 @@ fn from_str(rawurl: ~str) -> result::result<url, ~str> {
         str::unshift_char(path, '/');
     }
 
-    ret result::ok(url(scheme, user, host, path, query, fragment));
+    return result::ok(url(scheme, user, host, path, query, fragment));
 }
 
 /**
@@ -170,7 +170,7 @@ fn to_str(url: url) -> ~str {
         ~""
     };
 
-    ret str::concat(~[copy url.scheme,
+    return str::concat(~[copy url.scheme,
                       ~"://",
                       user,
                       copy url.host,

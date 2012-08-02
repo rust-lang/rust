@@ -31,13 +31,13 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
        let pat_ty = node_id_to_type(tcx, scrut.id);
        if type_is_empty(tcx, pat_ty) && arms.is_empty() {
                // Vacuously exhaustive
-               ret;
+               return;
            }
        alt ty::get(pat_ty).struct {
           ty_enum(did, _) {
               if (*enum_variants(tcx, did)).is_empty() && arms.is_empty() {
 
-               ret;
+               return;
             }
           }
           _ { /* We assume only enum types can be uninhabited */ }
@@ -79,7 +79,7 @@ fn raw_pat(p: @pat) -> @pat {
 fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
     assert(pats.is_not_empty());
     let ext = alt is_useful(tcx, vec::map(pats, |p| ~[p]), ~[wild()]) {
-      not_useful { ret; } // This is good, wildcard pattern isn't reachable
+      not_useful { return; } // This is good, wildcard pattern isn't reachable
       useful_ { none }
       useful(ty, ctor) {
         alt ty::get(ty).struct {
@@ -132,8 +132,8 @@ enum ctor {
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
 fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
-    if m.len() == 0u { ret useful_; }
-    if m[0].len() == 0u { ret not_useful; }
+    if m.len() == 0u { return useful_; }
+    if m[0].len() == 0u { return not_useful; }
     let real_pat = alt vec::find(m, |r| r[0].id != 0) {
       some(r) { r[0] } none { v[0] }
     };
@@ -160,7 +160,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
                     alt is_useful_specialized(tcx, m, v, variant(va.id),
                                               va.args.len(), left_ty) {
                       not_useful {}
-                      u { ret u; }
+                      u { return u; }
                     }
                 }
                 not_useful
@@ -234,9 +234,9 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
     alt ty::get(left_ty).struct {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_tup(_) | ty::ty_rec(_) {
         for m.each |r| {
-            if !is_wild(tcx, r[0]) { ret none; }
+            if !is_wild(tcx, r[0]) { return none; }
         }
-        ret some(single);
+        return some(single);
       }
       ty::ty_enum(eid, _) {
         let mut found = ~[];
@@ -249,7 +249,7 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
         if found.len() != (*variants).len() {
             for vec::each(*variants) |v| {
                 if !found.contains(variant(v.id)) {
-                    ret some(variant(v.id));
+                    return some(variant(v.id));
                 }
             }
             fail;
@@ -346,7 +346,7 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         let (c_lo, c_hi) = alt check ctor_id {
           val(v) { (v, v) }
           range(lo, hi) { (lo, hi) }
-          single { ret some(vec::tail(r)); }
+          single { return some(vec::tail(r)); }
         };
         let v_lo = eval_const_expr(tcx, lo),
             v_hi = eval_const_expr(tcx, hi);
@@ -373,7 +373,7 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
 fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     alt tcx.def_map.find(pat.id) {
       some(def_variant(enum_id, var_id)) {
-        if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u { ret true; }
+        if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u { return true; }
       }
       _ {}
     }
@@ -386,16 +386,16 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       pat_lit(_) | pat_range(_, _) => { true }
       pat_rec(fields, _) => {
         for fields.each |it| {
-            if is_refutable(tcx, it.pat) { ret true; }
+            if is_refutable(tcx, it.pat) { return true; }
         }
         false
       }
       pat_tup(elts) => {
-        for elts.each |elt| { if is_refutable(tcx, elt) { ret true; } }
+        for elts.each |elt| { if is_refutable(tcx, elt) { return true; } }
         false
       }
       pat_enum(_, some(args)) => {
-        for args.each |p| { if is_refutable(tcx, p) { ret true; } };
+        for args.each |p| { if is_refutable(tcx, p) { return true; } };
         false
       }
       pat_enum(_,_) => { false }

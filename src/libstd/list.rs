@@ -45,10 +45,10 @@ fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
     loop {
         ls = alt *ls {
           cons(hd, tl) {
-            if f(hd) { ret some(hd); }
+            if f(hd) { return some(hd); }
             tl
           }
-          nil { ret none; }
+          nil { return none; }
         }
     };
 }
@@ -56,9 +56,9 @@ fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
 /// Returns true if a list contains an element with the given value
 fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
     for each(ls) |e| {
-        if e == elt { ret true; }
+        if e == elt { return true; }
     }
-    ret false;
+    return false;
 }
 
 /// Returns true if the list is empty
@@ -71,7 +71,7 @@ pure fn is_empty<T: copy>(ls: @list<T>) -> bool {
 
 /// Returns true if the list is not empty
 pure fn is_not_empty<T: copy>(ls: @list<T>) -> bool {
-    ret !is_empty(ls);
+    return !is_empty(ls);
 }
 
 /// Returns the length of a list
@@ -84,7 +84,7 @@ fn len<T>(ls: @list<T>) -> uint {
 /// Returns all but the first element of a list
 pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
     alt *ls {
-        cons(_, tl) { ret tl; }
+        cons(_, tl) { return tl; }
         nil { fail ~"list empty" }
     }
 }
@@ -97,8 +97,8 @@ pure fn head<T: copy>(ls: @list<T>) -> T {
 /// Appends one list to another
 pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
     alt *l {
-      nil { ret m; }
-      cons(x, xs) { let rest = append(xs, m); ret @cons(x, rest); }
+      nil { return m; }
+      cons(x, xs) { let rest = append(xs, m); return @cons(x, rest); }
     }
 }
 
@@ -127,7 +127,7 @@ fn each<T>(l: @list<T>, f: fn(T) -> bool) {
     loop {
         cur = alt *cur {
           cons(hd, tl) {
-            if !f(hd) { ret; }
+            if !f(hd) { return; }
             tl
           }
           nil { break; }
@@ -174,7 +174,7 @@ mod tests {
 
     #[test]
     fn test_foldl() {
-        fn add(&&a: uint, &&b: int) -> uint { ret a + (b as uint); }
+        fn add(&&a: uint, &&b: int) -> uint { return a + (b as uint); }
         let l = from_vec(~[0, 1, 2, 3, 4]);
         let empty = @list::nil::<int>;
         assert (list::foldl(0u, l, add) == 10u);
@@ -192,14 +192,14 @@ mod tests {
 
     #[test]
     fn test_find_success() {
-        fn match_(&&i: int) -> bool { ret i == 2; }
+        fn match_(&&i: int) -> bool { return i == 2; }
         let l = from_vec(~[0, 1, 2]);
         assert (list::find(l, match_) == option::some(2));
     }
 
     #[test]
     fn test_find_fail() {
-        fn match_(&&_i: int) -> bool { ret false; }
+        fn match_(&&_i: int) -> bool { return false; }
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::nil::<int>;
         assert (list::find(l, match_) == option::none::<int>);

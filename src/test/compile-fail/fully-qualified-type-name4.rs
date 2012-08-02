@@ -3,7 +3,7 @@
 import core::task::task;
 
 fn bar(x: uint) -> task {
-    ret x;
+    return x;
     //~^ ERROR mismatched types: expected `core::task::task`
 }
 

@@ -833,7 +833,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
     //         if parent_group {
     //             if !enlist_in_group(parent_group) {
     //                 leave_group(child_group); // Roll back
-    //                 ret; // Parent group failed. Don't run child's f().
+    //                 return; // Parent group failed. Don't run child's f().
     //             }
     //         }
     //         stash_taskgroup_data_in_TLS(child_group, parent_group);
@@ -1024,7 +1024,7 @@ unsafe fn local_get_helper<T: owned>(
     do_pop: bool) -> option<@T> {
 
     let map = get_task_local_map(task);
-    // Interpret our findings from the map
+    // Interpreturn our findings from the map
     do local_data_lookup(map, key).map |result| {
         // A reference count magically appears on 'data' out of thin air. It
         // was referenced in the local_data box, though, not here, so before
@@ -1743,7 +1743,7 @@ fn test_child_doesnt_ref_parent() {
     // climbing the task tree to dereference each ancestor. (See #1789)
     const generations: uint = 128;
     fn child_no(x: uint) -> fn~() {
-        ret || {
+        return || {
             if x < generations {
                 task::spawn(child_no(x+1));
             }

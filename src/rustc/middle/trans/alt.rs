@@ -54,17 +54,19 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
             let cell = empty_dest_cell();
             bcx = tvec::trans_estr(bcx, s, ast::vstore_uniq, by_val(cell));
             add_clean_temp(bcx, *cell, strty);
-            ret single_result(rslt(bcx, *cell));
+            return single_result(rslt(bcx, *cell));
           }
           _ {
-            ret single_result(
+            return single_result(
                 rslt(bcx, consts::const_expr(ccx, l)));
           }
         }
       }
-      var(disr_val, _) { ret single_result(rslt(bcx, C_int(ccx, disr_val))); }
+      var(disr_val, _) {
+        return single_result(rslt(bcx, C_int(ccx, disr_val)));
+      }
       range(l1, l2) {
-        ret range_result(rslt(bcx, consts::const_expr(ccx, l1)),
+        return range_result(rslt(bcx, consts::const_expr(ccx, l1)),
                          rslt(bcx, consts::const_expr(ccx, l2)));
       }
     }
@@ -74,7 +76,7 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> opt {
     let vdef = ast_util::variant_def_ids(tcx.def_map.get(pat_id));
     let variants = ty::enum_variants(tcx, vdef.enm);
     for vec::each(*variants) |v| {
-        if vdef.var == v.id { ret var(v.disr_val, vdef); }
+        if vdef.var == v.id { return var(v.disr_val, vdef); }
     }
     core::unreachable();
 }
@@ -110,11 +112,11 @@ type match_ = ~[match_branch];
 fn has_nested_bindings(m: match_, col: uint) -> bool {
     for vec::each(m) |br| {
         alt br.pats[col].node {
-          ast::pat_ident(_, _, some(_)) { ret true; }
+          ast::pat_ident(_, _, some(_)) { return true; }
           _ {}
         }
     }
-    ret false;
+    return false;
 }
 
 fn expand_nested_bindings(bcx: block, m: match_, col: uint, val: ValueRef)
@@ -175,7 +177,7 @@ fn enter_match(bcx: block, dm: DefMap, m: match_, col: uint, val: ValueRef,
           none { }
         }
     }
-    ret result;
+    return result;
 }
 
 fn enter_default(bcx: block, dm: DefMap, m: match_, col: uint, val: ValueRef)
@@ -275,7 +277,7 @@ fn enter_uniq(bcx: block, dm: DefMap, m: match_, col: uint, val: ValueRef)
 
 fn get_options(ccx: @crate_ctxt, m: match_, col: uint) -> ~[opt] {
     fn add_to_set(tcx: ty::ctxt, &&set: dvec<opt>, val: opt) {
-        if set.any(|l| opt_eq(tcx, l, val)) {ret;}
+        if set.any(|l| opt_eq(tcx, l, val)) {return;}
         set.push(val);
     }
 
@@ -294,7 +296,7 @@ fn get_options(ccx: @crate_ctxt, m: match_, col: uint) -> ~[opt] {
             }
         }
     }
-    ret vec::from_mut(dvec::unwrap(found));
+    return vec::from_mut(dvec::unwrap(found));
 }
 
 fn extract_variant_args(bcx: block, pat_id: ast::node_id,
@@ -320,7 +322,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
         GEP_enum(bcx, blobptr, vdefs_tg, vdefs_var,
                  enum_ty_substs, i)
     };
-    ret {vals: args, bcx: bcx};
+    return {vals: args, bcx: bcx};
 }
 
 fn collect_record_fields(m: match_, col: uint) -> ~[ast::ident] {
@@ -337,7 +339,7 @@ fn collect_record_fields(m: match_, col: uint) -> ~[ast::ident] {
           _ { }
         }
     }
-    ret fields;
+    return fields;
 }
 
 fn root_pats_as_necessary(bcx: block, m: match_, col: uint, val: ValueRef) {
@@ -354,7 +356,7 @@ fn root_pats_as_necessary(bcx: block, m: match_, col: uint, val: ValueRef) {
             let ty = node_id_type(bcx, pat_id);
             let val = load_if_immediate(bcx, val, ty);
             root_value(bcx, val, ty, scope_id);
-            ret; // if we kept going, we'd only be rooting same value again
+            return; // if we kept going, we'd only be rooting same value again
           }
         }
     }
@@ -362,23 +364,23 @@ fn root_pats_as_necessary(bcx: block, m: match_, col: uint, val: ValueRef) {
 
 fn any_box_pat(m: match_, col: uint) -> bool {
     for vec::each(m) |br| {
-        alt br.pats[col].node { ast::pat_box(_) { ret true; } _ { } }
+        alt br.pats[col].node { ast::pat_box(_) { return true; } _ { } }
     }
-    ret false;
+    return false;
 }
 
 fn any_uniq_pat(m: match_, col: uint) -> bool {
     for vec::each(m) |br| {
-        alt br.pats[col].node { ast::pat_uniq(_) { ret true; } _ { } }
+        alt br.pats[col].node { ast::pat_uniq(_) { return true; } _ { } }
     }
-    ret false;
+    return false;
 }
 
 fn any_tup_pat(m: match_, col: uint) -> bool {
     for vec::each(m) |br| {
-        alt br.pats[col].node { ast::pat_tup(_) { ret true; } _ { } }
+        alt br.pats[col].node { ast::pat_tup(_) { return true; } _ { } }
     }
-    ret false;
+    return false;
 }
 
 type exit_node = {bound: bind_map, from: BasicBlockRef, to: BasicBlockRef};
@@ -403,13 +405,13 @@ fn pick_col(m: match_) -> uint {
     for vec::each(scores) |score| {
         // Irrefutable columns always go first, they'd only be duplicated in
         // the branches.
-        if score == 0u { ret i; }
+        if score == 0u { return i; }
         // If no irrefutable ones are found, we pick the one with the biggest
         // branching factor.
         if score > max_score { max_score = score; best_col = i; }
         i += 1u;
     }
-    ret best_col;
+    return best_col;
 }
 
 fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
@@ -421,7 +423,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
     let _icx = bcx.insn_ctxt(~"alt::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
-    if m.len() == 0u { Br(bcx, option::get(chk)()); ret; }
+    if m.len() == 0u { Br(bcx, option::get(chk)()); return; }
     if m[0].pats.len() == 0u {
         let data = m[0].data;
         alt data.guard {
@@ -464,7 +466,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
                        to: data.bodycx.llbb});
         }
         Br(bcx, data.bodycx.llbb);
-        ret;
+        return;
     }
 
     let col = pick_col(m);
@@ -496,7 +498,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
         }
         compile_submatch(bcx, enter_rec(bcx, dm, m, col, rec_fields, val),
                          vec::append(rec_vals, vals_left), chk, exits);
-        ret;
+        return;
     }
 
     if any_tup_pat(m, col) {
@@ -512,7 +514,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
         }
         compile_submatch(bcx, enter_tup(bcx, dm, m, col, val, n_tup_elts),
                          vec::append(tup_vals, vals_left), chk, exits);
-        ret;
+        return;
     }
 
     // Unbox in case of a box field
@@ -523,7 +525,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
             GEPi(bcx, box_no_addrspace, ~[0u, abi::box_field_body]);
         compile_submatch(bcx, enter_box(bcx, dm, m, col, val),
                          vec::append(~[unboxed], vals_left), chk, exits);
-        ret;
+        return;
     }
 
     if any_uniq_pat(m, col) {
@@ -533,7 +535,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
             GEPi(bcx, box_no_addrspace, ~[0u, abi::box_field_body]);
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),
                          vec::append(~[unboxed], vals_left), chk, exits);
-        ret;
+        return;
     }
 
     // Decide what kind of branch we need
@@ -676,7 +678,7 @@ fn make_phi_bindings(bcx: block, map: ~[exit_node],
     if !success {
         Unreachable(bcx);
     }
-    ret success;
+    return success;
 }
 
 // Copies by-value bindings into their homes.
@@ -746,7 +748,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
     let mut bodies = ~[], matches = ~[];
 
     let {bcx, val, _} = trans_temp_expr(bcx, expr);
-    if bcx.unreachable { ret bcx; }
+    if bcx.unreachable { return bcx; }
 
     for vec::each(arms) |a| {
         let body = scope_block(bcx, a.body.info(), ~"case_body");
@@ -762,11 +764,11 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
 
     fn mk_fail(bcx: block, sp: span, msg: ~str,
                    done: @mut option<BasicBlockRef>) -> BasicBlockRef {
-            alt *done { some(bb) { ret bb; } _ { } }
+            alt *done { some(bb) { return bb; } _ { } }
             let fail_cx = sub_block(bcx, ~"case_fallthrough");
             trans_fail(fail_cx, some(sp), msg);
             *done = some(fail_cx.llbb);
-            ret fail_cx.llbb;
+            return fail_cx.llbb;
     }
     let t = node_id_type(bcx, expr.id);
     let mk_fail = alt mode {
@@ -819,7 +821,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
     // Necessary since bind_irrefutable_pat is called outside trans_alt
     alt pat.node {
       ast::pat_ident(_, _,inner) {
-        if pat_is_variant(bcx.tcx().def_map, pat) { ret bcx; }
+        if pat_is_variant(bcx.tcx().def_map, pat) { return bcx; }
         if make_copy {
             let ty = node_id_type(bcx, pat.id);
             let llty = type_of::type_of(ccx, ty);
@@ -873,7 +875,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
       }
       ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) { }
     }
-    ret bcx;
+    return bcx;
 }
 
 // Local Variables:

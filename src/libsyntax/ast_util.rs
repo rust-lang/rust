@@ -19,7 +19,7 @@ pure fn mk_sp(lo: uint, hi: uint) -> span {
 }
 
 // make this a const, once the compiler supports it
-pure fn dummy_sp() -> span { ret mk_sp(0u, 0u); }
+pure fn dummy_sp() -> span { return mk_sp(0u, 0u); }
 
 pure fn path_name(p: @path) -> ~str { path_name_i(p.idents) }
 
@@ -44,7 +44,7 @@ pure fn stmt_id(s: stmt) -> node_id {
 
 fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
     alt d { def_variant(enum_id, var_id) {
-            ret {enm: enum_id, var: var_id}; }
+            return {enm: enum_id, var: var_id}; }
         _ { fail ~"non-variant in variant_def_ids"; } }
 }
 
@@ -66,40 +66,40 @@ pure fn def_id_of_def(d: def) -> def_id {
 
 pure fn binop_to_str(op: binop) -> ~str {
     alt op {
-      add { ret ~"+"; }
-      subtract { ret ~"-"; }
-      mul { ret ~"*"; }
-      div { ret ~"/"; }
-      rem { ret ~"%"; }
-      and { ret ~"&&"; }
-      or { ret ~"||"; }
-      bitxor { ret ~"^"; }
-      bitand { ret ~"&"; }
-      bitor { ret ~"|"; }
-      shl { ret ~"<<"; }
-      shr { ret ~">>"; }
-      eq { ret ~"=="; }
-      lt { ret ~"<"; }
-      le { ret ~"<="; }
-      ne { ret ~"!="; }
-      ge { ret ~">="; }
-      gt { ret ~">"; }
+      add { return ~"+"; }
+      subtract { return ~"-"; }
+      mul { return ~"*"; }
+      div { return ~"/"; }
+      rem { return ~"%"; }
+      and { return ~"&&"; }
+      or { return ~"||"; }
+      bitxor { return ~"^"; }
+      bitand { return ~"&"; }
+      bitor { return ~"|"; }
+      shl { return ~"<<"; }
+      shr { return ~">>"; }
+      eq { return ~"=="; }
+      lt { return ~"<"; }
+      le { return ~"<="; }
+      ne { return ~"!="; }
+      ge { return ~">="; }
+      gt { return ~">"; }
     }
 }
 
 pure fn binop_to_method_name(op: binop) -> option<~str> {
     alt op {
-      add { ret some(~"add"); }
-      subtract { ret some(~"sub"); }
-      mul { ret some(~"mul"); }
-      div { ret some(~"div"); }
-      rem { ret some(~"modulo"); }
-      bitxor { ret some(~"bitxor"); }
-      bitand { ret some(~"bitand"); }
-      bitor { ret some(~"bitor"); }
-      shl { ret some(~"shl"); }
-      shr { ret some(~"shr"); }
-      and | or | eq | lt | le | ne | ge | gt { ret none; }
+      add { return some(~"add"); }
+      subtract { return some(~"sub"); }
+      mul { return some(~"mul"); }
+      div { return some(~"div"); }
+      rem { return some(~"modulo"); }
+      bitxor { return some(~"bitxor"); }
+      bitand { return some(~"bitand"); }
+      bitor { return some(~"bitor"); }
+      shl { return some(~"shl"); }
+      shr { return some(~"shr"); }
+      and | or | eq | lt | le | ne | ge | gt { return none; }
     }
 }
 
@@ -117,16 +117,16 @@ pure fn is_shift_binop(b: binop) -> bool {
 
 pure fn unop_to_str(op: unop) -> ~str {
     alt op {
-      box(mt) { if mt == m_mutbl { ret ~"@mut "; } ret ~"@"; }
-      uniq(mt) { if mt == m_mutbl { ret ~"~mut "; } ret ~"~"; }
-      deref { ret ~"*"; }
-      not { ret ~"!"; }
-      neg { ret ~"-"; }
+      box(mt) { if mt == m_mutbl { ~"@mut " } else { ~"@" } }
+      uniq(mt) { if mt == m_mutbl { ~"~mut " } else { ~"~" } }
+      deref { ~"*" }
+      not { ~"!" }
+      neg { ~"-" }
     }
 }
 
 pure fn is_path(e: @expr) -> bool {
-    ret alt e.node { expr_path(_) { true } _ { false } };
+    return alt e.node { expr_path(_) { true } _ { false } };
 }
 
 pure fn int_ty_to_str(t: int_ty) -> ~str {
@@ -192,10 +192,10 @@ fn is_exported(i: ident, m: _mod) -> bool {
             for vps.each |vp| {
                 alt vp.node {
                   ast::view_path_simple(id, _, _) {
-                    if id == i { ret true; }
+                    if id == i { return true; }
                     alt parent_enum {
                       some(parent_enum_id) {
-                        if id == parent_enum_id { ret true; }
+                        if id == parent_enum_id { return true; }
                       }
                       _ {}
                     }
@@ -203,9 +203,9 @@ fn is_exported(i: ident, m: _mod) -> bool {
 
                   ast::view_path_list(path, ids, _) {
                     if vec::len(path.idents) == 1u {
-                        if i == path.idents[0] { ret true; }
+                        if i == path.idents[0] { return true; }
                         for ids.each |id| {
-                            if id.node.name == i { ret true; }
+                            if id.node.name == i { return true; }
                         }
                     } else {
                         fail ~"export of path-qualified list";
@@ -223,40 +223,40 @@ fn is_exported(i: ident, m: _mod) -> bool {
     // If there are no declared exports then
     // everything not imported is exported
     // even if it's local (since it's explicit)
-    ret !has_explicit_exports && local;
+    return !has_explicit_exports && local;
 }
 
 pure fn is_call_expr(e: @expr) -> bool {
     alt e.node { expr_call(_, _, _) { true } _ { false } }
 }
 
-fn eq_ty(&&a: @ty, &&b: @ty) -> bool { ret box::ptr_eq(a, b); }
+fn eq_ty(&&a: @ty, &&b: @ty) -> bool { return box::ptr_eq(a, b); }
 
 fn hash_ty(&&t: @ty) -> uint {
     let res = (t.span.lo << 16u) + t.span.hi;
-    ret res;
+    return res;
 }
 
 fn def_eq(a: ast::def_id, b: ast::def_id) -> bool {
-    ret a.crate == b.crate && a.node == b.node;
+    return a.crate == b.crate && a.node == b.node;
 }
 
 fn hash_def(d: ast::def_id) -> uint {
     let mut h = 5381u;
     h = (h << 5u) + h ^ (d.crate as uint);
     h = (h << 5u) + h ^ (d.node as uint);
-    ret h;
+    return h;
 }
 
 fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
     let hasher: std::map::hashfn<ast::def_id> = hash_def;
     let eqer: std::map::eqfn<ast::def_id> = def_eq;
-    ret std::map::hashmap::<ast::def_id, V>(hasher, eqer);
+    return std::map::hashmap::<ast::def_id, V>(hasher, eqer);
 }
 
 fn block_from_expr(e: @expr) -> blk {
     let blk_ = default_block(~[], option::some::<@expr>(e), e.id);
-    ret {node: blk_, span: e.span};
+    return {node: blk_, span: e.span};
 }
 
 fn default_block(+stmts1: ~[@stmt], expr1: option<@expr>, id1: node_id) ->
@@ -551,7 +551,7 @@ fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
         *min = int::min(*min, id);
         *max = int::max(*max, id + 1);
     }
-    ret {min:*min, max:*max};
+    return {min:*min, max:*max};
 }
 
 fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {

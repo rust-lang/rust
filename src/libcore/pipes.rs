@@ -390,11 +390,11 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
             let mut payload = none;
             payload <-> p.payload;
             p.header.state = empty;
-            ret some(option::unwrap(payload))
+            return some(option::unwrap(payload))
           }
           terminated {
             assert old_state == terminated;
-            ret none;
+            return none;
           }
         }
         first = false;
@@ -906,7 +906,7 @@ struct port_set<T: send> : recv<T> {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
         for vec::each(self.ports) |p| {
-            if p.peek() { ret true }
+            if p.peek() { return true }
         }
         false
     }

@@ -57,27 +57,27 @@ const neg_infinity: f64 = -1.0_f64/0.0_f64;
 
 pure fn is_NaN(f: f64) -> bool { f != f }
 
-pure fn add(x: f64, y: f64) -> f64 { ret x + y; }
+pure fn add(x: f64, y: f64) -> f64 { return x + y; }
 
-pure fn sub(x: f64, y: f64) -> f64 { ret x - y; }
+pure fn sub(x: f64, y: f64) -> f64 { return x - y; }
 
-pure fn mul(x: f64, y: f64) -> f64 { ret x * y; }
+pure fn mul(x: f64, y: f64) -> f64 { return x * y; }
 
-pure fn div(x: f64, y: f64) -> f64 { ret x / y; }
+pure fn div(x: f64, y: f64) -> f64 { return x / y; }
 
-pure fn rem(x: f64, y: f64) -> f64 { ret x % y; }
+pure fn rem(x: f64, y: f64) -> f64 { return x % y; }
 
-pure fn lt(x: f64, y: f64) -> bool { ret x < y; }
+pure fn lt(x: f64, y: f64) -> bool { return x < y; }
 
-pure fn le(x: f64, y: f64) -> bool { ret x <= y; }
+pure fn le(x: f64, y: f64) -> bool { return x <= y; }
 
-pure fn eq(x: f64, y: f64) -> bool { ret x == y; }
+pure fn eq(x: f64, y: f64) -> bool { return x == y; }
 
-pure fn ne(x: f64, y: f64) -> bool { ret x != y; }
+pure fn ne(x: f64, y: f64) -> bool { return x != y; }
 
-pure fn ge(x: f64, y: f64) -> bool { ret x >= y; }
+pure fn ge(x: f64, y: f64) -> bool { return x >= y; }
 
-pure fn gt(x: f64, y: f64) -> bool { ret x > y; }
+pure fn gt(x: f64, y: f64) -> bool { return x > y; }
 
 pure fn sqrt(x: f64) -> f64 {
     cmath::c_double::sqrt(x as libc::c_double) as f64
@@ -85,11 +85,11 @@ pure fn sqrt(x: f64) -> f64 {
 
 /// Returns true if `x` is a positive number, including +0.0f640 and +Infinity
 pure fn is_positive(x: f64) -> bool
-    { ret x > 0.0f64 || (1.0f64/x) == infinity; }
+    { return x > 0.0f64 || (1.0f64/x) == infinity; }
 
 /// Returns true if `x` is a negative number, including -0.0f640 and -Infinity
 pure fn is_negative(x: f64) -> bool
-    { ret x < 0.0f64 || (1.0f64/x) == neg_infinity; }
+    { return x < 0.0f64 || (1.0f64/x) == neg_infinity; }
 
 /**
  * Returns true if `x` is a negative number, including -0.0f640 and -Infinity
@@ -97,7 +97,7 @@ pure fn is_negative(x: f64) -> bool
  * This is the same as `f64::is_negative`.
  */
 pure fn is_nonpositive(x: f64) -> bool {
-  ret x < 0.0f64 || (1.0f64/x) == neg_infinity;
+  return x < 0.0f64 || (1.0f64/x) == neg_infinity;
 }
 
 /**
@@ -106,22 +106,22 @@ pure fn is_nonpositive(x: f64) -> bool {
  * This is the same as `f64::positive`.
  */
 pure fn is_nonnegative(x: f64) -> bool {
-  ret x > 0.0f64 || (1.0f64/x) == infinity;
+  return x > 0.0f64 || (1.0f64/x) == infinity;
 }
 
 /// Returns true if `x` is a zero number (positive or negative zero)
 pure fn is_zero(x: f64) -> bool {
-    ret x == 0.0f64 || x == -0.0f64;
+    return x == 0.0f64 || x == -0.0f64;
 }
 
 /// Returns true if `x`is an infinite number
 pure fn is_infinite(x: f64) -> bool {
-    ret x == infinity || x == neg_infinity;
+    return x == infinity || x == neg_infinity;
 }
 
 /// Returns true if `x`is a finite number
 pure fn is_finite(x: f64) -> bool {
-    ret !(is_NaN(x) || is_infinite(x));
+    return !(is_NaN(x) || is_infinite(x));
 }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify
@@ -172,38 +172,38 @@ mod consts {
 }
 
 pure fn signbit(x: f64) -> int {
-    if is_negative(x) { ret 1; } else { ret 0; }
+    if is_negative(x) { return 1; } else { return 0; }
 }
 
 #[cfg(target_os="linux")]
 #[cfg(target_os="macos")]
 #[cfg(target_os="win32")]
 pure fn logarithm(n: f64, b: f64) -> f64 {
-    ret log2(n) / log2(b);
+    return log2(n) / log2(b);
 }
 
 #[cfg(target_os="freebsd")]
 pure fn logarithm(n: f64, b: f64) -> f64 {
     // FIXME (#2000): check if it is good to use log2 instead of ln here; in
     // theory should be faster since the radix is 2
-    ret ln(n) / ln(b);
+    return ln(n) / ln(b);
 }
 
 #[cfg(target_os="freebsd")]
 pure fn log2(n: f64) -> f64 {
-    ret ln(n) / consts::ln_2;
+    return ln(n) / consts::ln_2;
 }
 
 impl num of num::num for f64 {
-    pure fn add(&&other: f64)    -> f64 { ret self + other; }
-    pure fn sub(&&other: f64)    -> f64 { ret self - other; }
-    pure fn mul(&&other: f64)    -> f64 { ret self * other; }
-    pure fn div(&&other: f64)    -> f64 { ret self / other; }
-    pure fn modulo(&&other: f64) -> f64 { ret self % other; }
-    pure fn neg()                -> f64 { ret -self;        }
+    pure fn add(&&other: f64)    -> f64 { return self + other; }
+    pure fn sub(&&other: f64)    -> f64 { return self - other; }
+    pure fn mul(&&other: f64)    -> f64 { return self * other; }
+    pure fn div(&&other: f64)    -> f64 { return self / other; }
+    pure fn modulo(&&other: f64) -> f64 { return self % other; }
+    pure fn neg()                -> f64 { return -self;        }
 
-    pure fn to_int()         -> int { ret self as int; }
-    pure fn from_int(n: int) -> f64 { ret n as f64;    }
+    pure fn to_int()         -> int { return self as int; }
+    pure fn from_int(n: int) -> f64 { return n as f64;    }
 }
 
 //

@@ -169,7 +169,7 @@ fn run_program(prog: ~str, args: ~[~str]) -> int {
     let pid = spawn_process(prog, args, none, none,
                             0i32, 0i32, 0i32);
     if pid == -1 as pid_t { fail; }
-    ret waitpid(pid);
+    return waitpid(pid);
 }
 
 /**
@@ -216,10 +216,10 @@ fn start_program(prog: ~str, args: ~[~str]) -> program {
         }
     }
     fn finish_repr(r: prog_repr) -> int {
-        if r.finished { ret 0; }
+        if r.finished { return 0; }
         r.finished = true;
         close_repr_input(r);
-        ret waitpid(r.pid);
+        return waitpid(r.pid);
     }
     fn destroy_repr(r: prog_repr) {
         finish_repr(r);
@@ -233,7 +233,7 @@ fn start_program(prog: ~str, args: ~[~str]) -> program {
     }
 
     impl of program for prog_res {
-        fn get_id() -> pid_t { ret self.r.pid; }
+        fn get_id() -> pid_t { return self.r.pid; }
         fn input() -> io::writer { io::fd_writer(self.r.in_fd, false) }
         fn output() -> io::reader { io::FILE_reader(self.r.out_file, false) }
         fn err() -> io::reader { io::FILE_reader(self.r.err_file, false) }
@@ -246,7 +246,7 @@ fn start_program(prog: ~str, args: ~[~str]) -> program {
                 out_file: os::fdopen(pipe_output.in),
                 err_file: os::fdopen(pipe_err.in),
                 mut finished: false};
-    ret prog_res(repr) as program;
+    return prog_res(repr) as program;
 }
 
 fn read_all(rd: io::reader) -> ~str {
@@ -255,7 +255,7 @@ fn read_all(rd: io::reader) -> ~str {
         let bytes = rd.read_bytes(4096u);
         buf += str::from_bytes(bytes);
     }
-    ret buf;
+    return buf;
 }
 
 /**
@@ -323,7 +323,7 @@ fn program_output(prog: ~str, args: ~[~str]) ->
         };
         count -= 1;
     };
-    ret {status: status, out: outs, err: errs};
+    return {status: status, out: outs, err: errs};
 }
 
 fn writeclose(fd: c_int, s: ~str) {
@@ -345,12 +345,12 @@ fn readclose(fd: c_int) -> ~str {
         buf += str::from_bytes(bytes);
     }
     os::fclose(file);
-    ret buf;
+    return buf;
 }
 
 /// Waits for a process to exit and returns the exit code
 fn waitpid(pid: pid_t) -> int {
-    ret waitpid_os(pid);
+    return waitpid_os(pid);
 
     #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
@@ -382,7 +382,7 @@ fn waitpid(pid: pid_t) -> int {
         }
 
         let status = os::waitpid(pid);
-        ret if WIFEXITED(status) {
+        return if WIFEXITED(status) {
             WEXITSTATUS(status) as int
         } else {
             1

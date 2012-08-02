@@ -10,7 +10,7 @@ fn alist_add<A: copy, B: copy>(lst: alist<A,B>, k: A, v: B) {
 fn alist_get<A: copy, B: copy>(lst: alist<A,B>, k: A) -> B {
     let eq_fn = lst.eq_fn;
     for lst.data.each |entry| {
-        if eq_fn(entry.key, k) { ret entry.value; }
+        if eq_fn(entry.key, k) { return entry.value; }
     }
     fail;
 }
@@ -18,12 +18,12 @@ fn alist_get<A: copy, B: copy>(lst: alist<A,B>, k: A) -> B {
 #[inline]
 fn new_int_alist<B: copy>() -> alist<int, B> {
     fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-    ret {eq_fn: eq_int, data: dvec()};
+    return {eq_fn: eq_int, data: dvec()};
 }
 
 #[inline]
 fn new_int_alist_2<B: copy>() -> alist<int, B> {
     #[inline]
     fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-    ret {eq_fn: eq_int, data: dvec()};
+    return {eq_fn: eq_int, data: dvec()};
 }
