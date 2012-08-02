@@ -23,7 +23,7 @@ pure fn get<T: copy>(opt: option<T>) -> T {
      * Fails if the value equals `none`
      */
 
-    alt opt { some(x) { return x; } none { fail ~"option none"; } }
+    alt opt { some(x) { return x; } none { fail ~"option::get none"; } }
 }
 
 pure fn expect<T: copy>(opt: option<T>, reason: ~str) -> T {
@@ -112,12 +112,19 @@ pure fn unwrap<T>(-opt: option<T>) -> T {
     unsafe {
         let addr = alt opt {
           some(x) { ptr::addr_of(x) }
-          none { fail ~"option none" }
+          none { fail ~"option::unwrap none" }
         };
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(opt);
         return liberated_value;
     }
+}
+
+/// The ubiquitous option dance.
+#[inline(always)]
+fn swap_unwrap<T>(opt: &mut option<T>) -> T {
+    if opt.is_none() { fail ~"option::swap_unwrap none" }
+    unwrap(util::replace(opt, none))
 }
 
 pure fn unwrap_expect<T>(-opt: option<T>, reason: ~str) -> T {
@@ -202,6 +209,24 @@ fn test_unwrap_resource() {
         let _y = unwrap(opt);
     }
     assert *i == 1;
+}
+
+#[test]
+fn test_option_dance() {
+    let x = some(());
+    let mut y = some(5);
+    let mut y2 = 0;
+    do x.iter |_x| {
+        y2 = swap_unwrap(&mut y);
+    }
+    assert y2 == 5;
+    assert y.is_none();
+}
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_option_too_much_dance() {
+    let mut y = some(util::noncopyable());
+    let _y2 = swap_unwrap(&mut y);
+    let _y3 = swap_unwrap(&mut y);
 }
 
 #[test]
