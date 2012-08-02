@@ -525,7 +525,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
       expr_path(p) {
         alt tcx.def_map.find(e.id) {
           some(def_local(nid, _)) | some(def_arg(nid, _)) |
-          some(def_binding(nid)) | some(def_upvar(nid, _, _)) {
+          some(def_binding(nid, _)) | some(def_upvar(nid, _, _)) {
             return @respan(p.span,
                         carg_ident({ident: p.idents[0], node: nid}));
           }
@@ -762,7 +762,7 @@ fn local_node_id_to_def(fcx: fn_ctxt, i: node_id) -> option<def> {
 fn local_node_id_to_def_id(fcx: fn_ctxt, i: node_id) -> option<def_id> {
     alt local_node_id_to_def(fcx, i) {
       some(def_local(nid, _)) | some(def_arg(nid, _)) |
-      some(def_binding(nid)) | some(def_upvar(nid, _, _)) {
+      some(def_binding(nid, _)) | some(def_upvar(nid, _, _)) {
         some(local_def(nid))
       }
       _ { none }

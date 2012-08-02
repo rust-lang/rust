@@ -228,9 +228,6 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_log(_, _, val) {
         node_type_needs(cx, use_tydesc, val.id);
       }
-      expr_new(_, _, v) {
-        node_type_needs(cx, use_repr, v.id);
-      }
       expr_call(f, _, _) {
         vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)), |a| {
             alt a.mode {

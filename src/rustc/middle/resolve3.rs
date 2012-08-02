@@ -15,11 +15,11 @@ import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param,
                      def_typaram_binder};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
-import syntax::ast::{expr_fn_block, expr_index, expr_new, expr_path};
+import syntax::ast::{expr_fn_block, expr_index, expr_path};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 import syntax::ast::{def_upvar, def_use, def_variant, div, eq, expr};
 import syntax::ast::{expr_assign_op, expr_binary, expr_cast, expr_field};
-import syntax::ast::{expr_fn, expr_fn_block, expr_index, expr_new, expr_path};
+import syntax::ast::{expr_fn, expr_fn_block, expr_index, expr_path};
 import syntax::ast::{expr_struct, expr_unary, fn_decl, foreign_item};
 import syntax::ast::{foreign_item_fn, ge, gt, ident, trait_ref, impure_fn};
 import syntax::ast::{instance_var, item, item_class, item_const, item_enum};
@@ -3734,7 +3734,7 @@ class Resolver {
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
             alt pattern.node {
-                pat_ident(_, path, _)
+                pat_ident(binding_mode, path, _)
                         if !path.global && path.idents.len() == 1u => {
 
                     // The meaning of pat_ident with no type parameters
@@ -3781,7 +3781,7 @@ class Resolver {
                                     // For pattern arms, we must use
                                     // `def_binding` definitions.
 
-                                    def_binding(pattern.id)
+                                    def_binding(pattern.id, binding_mode)
                                 }
                                 IrrefutableMode {
                                     // But for locals, we use `def_local`.
@@ -4313,10 +4313,6 @@ class Resolver {
             expr_field(*) | expr_path(*) | expr_cast(*) | expr_binary(*) |
             expr_unary(*) | expr_assign_op(*) | expr_index(*) {
                 self.impl_map.insert(expr.id,
-                                     self.current_module.impl_scopes);
-            }
-            expr_new(container, _, _) {
-                self.impl_map.insert(container.id,
                                      self.current_module.impl_scopes);
             }
             _ {

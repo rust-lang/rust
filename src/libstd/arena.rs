@@ -4,6 +4,7 @@ export arena, arena_with_size;
 
 import list;
 import list::{list, cons, nil};
+import unsafe::reinterpret_cast;
 
 type chunk = {data: ~[u8], mut fill: uint};
 
@@ -27,7 +28,12 @@ fn arena() -> arena {
     arena_with_size(32u)
 }
 
-impl arena for arena {
+#[abi = "rust-intrinsic"]
+extern mod rusti {
+    fn move_val_init<T>(&dst: T, -src: T);
+}
+
+impl &arena {
     fn alloc_grow(n_bytes: uint, align: uint) -> *() {
         // Allocate a new chunk.
         let mut head = list::head(self.chunks);
@@ -59,10 +65,13 @@ impl arena for arena {
     }
 
     #[inline(always)]
-    fn alloc(tydesc: *()) -> *() {
+    fn alloc<T>(op: fn() -> T) -> &self/T {
         unsafe {
-            let tydesc = tydesc as *sys::type_desc;
-            self.alloc_inner((*tydesc).size, (*tydesc).align)
+            let tydesc = sys::get_type_desc::<T>();
+            let ptr = self.alloc_inner((*tydesc).size, (*tydesc).align);
+            let ptr: *mut T = reinterpret_cast(ptr);
+            rusti::move_val_init(*ptr, op());
+            return reinterpret_cast(ptr);
         }
     }
 }

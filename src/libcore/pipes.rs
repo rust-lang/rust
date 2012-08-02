@@ -887,7 +887,7 @@ struct port_set<T: send> : recv<T> {
         while result == none && ports.len() > 0 {
             let i = wait_many(ports.map(|p| p.header()));
             alt move ports[i].try_recv() {
-                some(m) {
+                some(copy m) {
                     result = some(move m);
                 }
                 none {
@@ -907,7 +907,7 @@ struct port_set<T: send> : recv<T> {
 
     fn recv() -> T {
         match move self.try_recv() {
-            some(x) { move x }
+            some(copy x) { move x }
             none { fail ~"port_set: endpoints closed" }
         }
     }

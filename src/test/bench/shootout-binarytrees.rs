@@ -15,11 +15,12 @@ fn item_check(t: &tree) -> int {
 
 fn bottom_up_tree(arena: &arena::arena, item: int, depth: int) -> &tree {
     if depth > 0 {
-        return new(*arena) node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
-                             bottom_up_tree(arena, 2 * item, depth - 1),
-                             item);
+        return arena.alloc(
+            || node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+                    bottom_up_tree(arena, 2 * item, depth - 1),
+                    item));
     }
-    return new(*arena) nil;
+    return arena.alloc(|| nil);
 }
 
 fn main(args: ~[~str]) {

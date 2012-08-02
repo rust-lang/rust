@@ -27,7 +27,7 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              expr_call, expr_cast, expr_copy, expr_do_body,
              expr_fail, expr_field, expr_fn, expr_fn_block, expr_if,
              expr_index, expr_lit, expr_log, expr_loop,
-             expr_loop_body, expr_mac, expr_move, expr_new, expr_path,
+             expr_loop_body, expr_mac, expr_move, expr_path,
              expr_rec, expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
              expr_unary_move, expr_vec, expr_vstore, expr_while, extern_fn,
              field, fn_decl, foreign_item, foreign_item_fn, foreign_mod,
@@ -783,13 +783,6 @@ class parser {
             }
         } else if token::is_bar(self.token) {
             return pexpr(self.parse_lambda_expr());
-        } else if self.eat_keyword(~"new") {
-            self.expect(token::LPAREN);
-            let r = self.parse_expr();
-            self.expect(token::RPAREN);
-            let v = self.parse_expr();
-            return self.mk_pexpr(lo, self.span.hi,
-                              expr_new(r, self.get_id(), v));
         } else if self.eat_keyword(~"if") {
             return pexpr(self.parse_if_expr());
         } else if self.eat_keyword(~"for") {
