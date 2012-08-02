@@ -18,6 +18,15 @@ fn mk<T: const copy>(+hasher: hashfn<T>, +eqer: eqfn<T>) -> interner<T> {
     return hi as interner::<T>;
 }
 
+fn mk_prefill<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>,
+                             init: ~[T]) -> interner<T> {
+
+    let rv = mk(hasher, eqer);
+    for init.each() |v| { rv.intern(v); }
+    return rv;
+}
+
+
 /* when traits can extend traits, we should extend index<uint,T> to get [] */
 trait interner<T: const copy> {
     fn intern(T) -> uint;

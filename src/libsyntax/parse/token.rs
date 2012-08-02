@@ -279,9 +279,18 @@ pure fn is_bar(t: token) -> bool {
 
 type ident_interner = util::interner::interner<@~str>;
 
+mod special_idents {
+    const underscore : uint = 0u;
+    const anon : uint = 1u;
+    const destr : uint = 2u; // 'drop', but that's reserved
+}
+
 fn mk_ident_interner() -> ident_interner {
-    let rv = @interner::mk::<@~str>(|x| str::hash(*x),
-                                    |x,y| str::eq(*x, *y));
+    /* the indices here must correspond to the numbers in special_idents */
+    let init_vec = ~[@~"_", @~"anon", @~"drop"];
+
+    let rv = @interner::mk_prefill::<@~str>(|x| str::hash(*x),
+                                            |x,y| str::eq(*x, *y), init_vec);
     rv
 }
 
