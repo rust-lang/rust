@@ -282,7 +282,10 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
       'u' => dl_def(ast::def_fn(did, ast::unsafe_fn)),
       'f' => dl_def(ast::def_fn(did, ast::impure_fn)),
       'p' => dl_def(ast::def_fn(did, ast::pure_fn)),
-      'F' => dl_def(ast::def_fn(did, ast::extern_fn)),
+      'e' => dl_def(ast::def_fn(did, ast::extern_fn)),
+      'U' => dl_def(ast::def_static_method(did, ast::unsafe_fn)),
+      'F' => dl_def(ast::def_static_method(did, ast::impure_fn)),
+      'P' => dl_def(ast::def_static_method(did, ast::pure_fn)),
       'y' => dl_def(ast::def_ty(did)),
       't' => dl_def(ast::def_ty(did)),
       'm' => dl_def(ast::def_mod(did)),
@@ -592,6 +595,7 @@ fn get_self_ty(item: ebml::doc) -> ast::self_ty_ {
 
     let self_ty_kind = string[0];
     match self_ty_kind as char {
+        's' => { return ast::sty_static; }
         'r' => { return ast::sty_by_ref; }
         'v' => { return ast::sty_value; }
         '@' => { return ast::sty_box(get_mutability(string[1])); }
@@ -693,21 +697,23 @@ fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
     @result
 }
 
-// If the item in question is a trait, returns its set of methods. Otherwise,
-// returns none.
+// If the item in question is a trait, returns its set of methods and
+// their self types. Otherwise, returns none. This overlaps in an
+// annoying way with get_trait_methods.
 fn get_method_names_if_trait(cdata: cmd, node_id: ast::node_id)
-                          -> option<@dvec<@~str>> {
+                          -> option<@dvec<(@~str, ast::self_ty_)>> {
 
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != 'I' {
         return none;
     }
 
-    let resulting_method_names = @dvec();
+    let resulting_methods = @dvec();
     for ebml::tagged_docs(item, tag_item_trait_method) |method| {
-        (*resulting_method_names).push(item_name(method));
+        resulting_methods.push(
+            (item_name(method), get_self_ty(method)));
     }
-    return some(resulting_method_names);
+    return some(resulting_methods);
 }
 
 fn get_item_attrs(cdata: cmd,
@@ -757,7 +763,7 @@ fn get_class_fields(cdata: cmd, id: ast::node_id) -> ~[ty::field_ty] {
 
 fn family_has_type_params(fam_ch: char) -> bool {
     match check fam_ch {
-      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' => false,
+      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' | 'e' => false,
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
           | 'a' | 'S'
           => true
@@ -791,9 +797,10 @@ fn item_family_to_str(fam: char) -> ~str {
       'f' => return ~"fn",
       'u' => return ~"unsafe fn",
       'p' => return ~"pure fn",
-      'F' => return ~"foreign fn",
-      'U' => return ~"unsafe foreign fn",
-      'P' => return ~"pure foreign fn",
+      'F' => return ~"static method",
+      'U' => return ~"unsafe static method",
+      'P' => return ~"pure static method",
+      'e' => return ~"foreign fn",
       'y' => return ~"type",
       'T' => return ~"foreign type",
       't' => return ~"type",

@@ -191,7 +191,7 @@ impl public_methods for borrowck_ctxt {
                expr_ty: ty::t,
                def: ast::def) -> cmt {
         match def {
-          ast::def_fn(*) | ast::def_mod(_) |
+          ast::def_fn(*) | ast::def_static_method(*) | ast::def_mod(_) |
           ast::def_foreign_mod(_) | ast::def_const(_) |
           ast::def_use(_) | ast::def_variant(*) |
           ast::def_ty(_) | ast::def_prim_ty(_) |

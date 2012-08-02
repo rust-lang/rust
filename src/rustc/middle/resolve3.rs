@@ -16,7 +16,7 @@ import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
-import syntax::ast::{def_typaram_binder};
+import syntax::ast::{def_typaram_binder, def_static_method};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_path};
@@ -30,17 +30,18 @@ import syntax::ast::{instance_var, item, item_class, item_const, item_enum};
 import syntax::ast::{item_fn, item_mac, item_foreign_mod, item_impl};
 import syntax::ast::{item_mod, item_trait, item_ty, le, local, local_crate};
 import syntax::ast::{lt, method, mul, ne, neg, node_id, pat, pat_enum};
-import syntax::ast::{pat_ident, pat_struct, path, prim_ty, pat_box, pat_uniq};
-import syntax::ast::{pat_lit, pat_range, pat_rec, pat_tup, pat_wild};
+import syntax::ast::{pat_ident, path, prim_ty, pat_box, pat_uniq, pat_lit};
+import syntax::ast::{pat_range, pat_rec, pat_struct, pat_tup, pat_wild};
 import syntax::ast::{provided, required, rem, self_ty_, shl, stmt_decl};
-import syntax::ast::{subtract, ty, ty_bool, ty_char, ty_f, ty_f32, ty_f64};
-import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
-import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
-import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
+import syntax::ast::{sty_static, subtract, ty};
+import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
+import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
+import syntax::ast::{ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8};
+import syntax::ast::{ty_uint, variant, view_item, view_item_export};
 import syntax::ast::{view_item_import, view_item_use, view_path_glob};
 import syntax::ast::{view_path_list, view_path_simple};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
-import syntax::ast_util::{walk_pat, path_to_ident};
+import syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 import syntax::attr::{attr_metas, contains_name};
 import syntax::print::pprust::{pat_to_str, path_to_str};
 import syntax::codemap::span;
@@ -1079,18 +1080,25 @@ class Resolver {
                 // Add the names of all the methods to the trait info.
                 let method_names = @atom_hashmap();
                 for methods.each |method| {
-                    let atom;
-                    match method {
-                        required(required_method) => {
-                            atom = (*self.atom_table).intern
-                                (required_method.ident);
-                        }
-                        provided(provided_method) => {
-                            atom = (*self.atom_table).intern
-                                (provided_method.ident);
-                        }
+                    let ty_m = trait_method_to_ty_method(method);
+
+                    let atom = (*self.atom_table).intern(ty_m.ident);
+                    // Add it to the trait info if not static,
+                    // add it as a name in the enclosing module otherwise.
+                    match ty_m.self_ty.node {
+                      sty_static => {
+                        // which parent to use??
+                        let (method_name_bindings, _) =
+                            self.add_child(atom, new_parent, ~[ValueNS],
+                                           ty_m.span);
+                        let def = def_static_method(local_def(ty_m.id),
+                                                    ty_m.decl.purity);
+                        (*method_name_bindings).define_value(def, ty_m.span);
+                      }
+                      _ => {
+                        (*method_names).insert(atom, ());
+                      }
                     }
-                    (*method_names).insert(atom, ());
                 }
 
                 let def_id = local_def(item.id);
@@ -1338,6 +1346,124 @@ class Resolver {
         visit_block(block, new_parent, visitor);
     }
 
+    fn handle_external_def(def: def, modules: hashmap<def_id, @Module>,
+                           child_name_bindings: @NameBindings,
+                           final_ident: ~str,
+                           atom: Atom, new_parent: ReducedGraphParent) {
+        match def {
+          def_mod(def_id) | def_foreign_mod(def_id) => {
+            match copy child_name_bindings.module_def {
+              NoModuleDef => {
+                debug!("(building reduced graph for \
+                        external crate) building module \
+                        %s", final_ident);
+                let parent_link = self.get_parent_link(new_parent, atom);
+
+                match modules.find(def_id) {
+                  none => {
+                    child_name_bindings.define_module(parent_link,
+                                                      some(def_id),
+                                                      dummy_sp());
+                    modules.insert(def_id,
+                                   child_name_bindings.get_module());
+                  }
+                  some(existing_module) => {
+                    // Create an import resolution to
+                    // avoid creating cycles in the
+                    // module graph.
+
+                    let resolution = @ImportResolution(dummy_sp());
+                    resolution.outstanding_references = 0;
+
+                    match existing_module.parent_link {
+                      NoParentLink |
+                      BlockParentLink(*) => {
+                        fail ~"can't happen";
+                      }
+                      ModuleParentLink(parent_module, atom) => {
+
+                        let name_bindings = parent_module.children.get(atom);
+
+                        resolution.module_target =
+                            some(Target(parent_module, name_bindings));
+                      }
+                    }
+
+                    debug!("(building reduced graph for external crate) \
+                            ... creating import resolution");
+
+                    new_parent.import_resolutions.insert(atom, resolution);
+                  }
+                }
+              }
+              ModuleDef(module_) => {
+                debug!("(building reduced graph for \
+                        external crate) already created \
+                        module");
+                module_.def_id = some(def_id);
+                modules.insert(def_id, module_);
+              }
+            }
+          }
+          def_fn(def_id, _) | def_static_method(def_id, _) |
+          def_const(def_id) | def_variant(_, def_id) => {
+            debug!("(building reduced graph for external \
+                    crate) building value %s", final_ident);
+            (*child_name_bindings).define_value(def, dummy_sp());
+          }
+          def_ty(def_id) => {
+            debug!("(building reduced graph for external \
+                    crate) building type %s", final_ident);
+
+            // If this is a trait, add all the method names
+            // to the trait info.
+
+            match get_method_names_if_trait(self.session.cstore,
+                                          def_id) {
+              none => {
+                // Nothing to do.
+              }
+              some(method_names) => {
+                let interned_method_names = @atom_hashmap();
+                for method_names.each |method_data| {
+                    let (method_name, self_ty) = method_data;
+                    debug!("(building reduced graph for \
+                            external crate) ... adding \
+                            trait method '%?'", method_name);
+
+                    let m_atom = self.atom_table.intern(method_name);
+
+                    // Add it to the trait info if not static.
+                    if self_ty != sty_static {
+                        interned_method_names.insert(m_atom, ());
+                    }
+                }
+                self.trait_info.insert(def_id, interned_method_names);
+              }
+            }
+
+            child_name_bindings.define_type(def, dummy_sp());
+          }
+          def_class(def_id, has_constructor) => {
+            debug!("(building reduced graph for external \
+                    crate) building type %s (value? %d)",
+                   final_ident,
+                   if has_constructor { 1 } else { 0 });
+            child_name_bindings.define_type(def, dummy_sp());
+
+            if has_constructor {
+                child_name_bindings.define_value(def, dummy_sp());
+            }
+          }
+          def_self(*) | def_arg(*) | def_local(*) |
+          def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
+          def_use(*) | def_upvar(*) | def_region(*) |
+          def_typaram_binder(*) => {
+            fail fmt!("didn't expect `%?`", def);
+          }
+        }
+    }
+
     /**
      * Builds the reduced graph rooted at the 'use' directive for an external
      * crate.
@@ -1395,145 +1521,9 @@ class Resolver {
 
             match path_entry.def_like {
                 dl_def(def) => {
-                    match def {
-                        def_mod(def_id) | def_foreign_mod(def_id) => {
-                            match copy child_name_bindings.module_def {
-                                NoModuleDef => {
-                                    debug!{"(building reduced graph for \
-                                            external crate) building module \
-                                            %s", final_ident};
-                                    let parent_link =
-                                        self.get_parent_link(new_parent,
-                                                             atom);
-
-                                    match modules.find(def_id) {
-                                        none => {
-                                            (*child_name_bindings).
-                                                define_module(parent_link,
-                                                              some(def_id),
-                                                             dummy_sp());
-                                            modules.insert(def_id,
-                                                (*child_name_bindings).
-                                                    get_module());
-                                        }
-                                        some(existing_module) => {
-                                            // Create an import resolution to
-                                            // avoid creating cycles in the
-                                            // module graph.
-
-                                            let resolution =
-                                                @ImportResolution(dummy_sp());
-                                            resolution.
-                                                outstanding_references = 0;
-
-                                            match existing_module
-                                                .parent_link {
-
-                                                NoParentLink |
-                                                BlockParentLink(*) => {
-                                                    fail ~"can't happen";
-                                                }
-                                                ModuleParentLink
-                                                        (parent_module,
-                                                         atom) => {
-
-                                                    let name_bindings =
-                                                        parent_module.
-                                                            children.get
-                                                                (atom);
-
-                                                    resolution.module_target =
-                                                        some(Target
-                                                            (parent_module,
-                                                             name_bindings));
-                                                }
-                                            }
-
-                                            debug!{"(building reduced graph \
-                                                     for external crate) \
-                                                     ... creating import \
-                                                     resolution"};
-
-                                            new_parent.import_resolutions.
-                                                insert(atom, resolution);
-                                        }
-                                    }
-                                }
-                                ModuleDef(module_) => {
-                                    debug!{"(building reduced graph for \
-                                            external crate) already created \
-                                            module"};
-                                    module_.def_id = some(def_id);
-                                    modules.insert(def_id, module_);
-                                }
-                            }
-                        }
-                        def_fn(def_id, _) | def_const(def_id) |
-                        def_variant(_, def_id) => {
-                            debug!{"(building reduced graph for external \
-                                    crate) building value %s", final_ident};
-                            // Might want a better span
-                            (*child_name_bindings).define_value(def,
-                                                                dummy_sp());
-                        }
-                        def_ty(def_id) => {
-                            debug!{"(building reduced graph for external \
-                                    crate) building type %s", final_ident};
-
-                            // If this is a trait, add all the method names
-                            // to the trait info.
-
-                            match get_method_names_if_trait(
-                                self.session.cstore, def_id) {
-
-                                none => {
-                                    // Nothing to do.
-                                }
-                                some(method_names) => {
-                                    let interned_method_names =
-                                        @atom_hashmap();
-                                    for method_names.each |method_name| {
-                                        debug!{"(building reduced graph for \
-                                                 external crate) ... adding \
-                                                 trait method '%?'",
-                                               method_name};
-                                        let atom =
-                                            (*self.atom_table).intern
-                                                (method_name);
-                                        (*interned_method_names).insert(atom,
-                                                                        ());
-                                    }
-                                    self.trait_info.insert
-                                        (def_id, interned_method_names);
-                                }
-                            }
-
-                            // Might want a better span
-                            (*child_name_bindings).define_type(def,
-                                                               dummy_sp());
-                        }
-                        def_class(def_id, has_constructor) => {
-                            debug!{"(building reduced graph for external \
-                                    crate) building type %s (value? %d)",
-                                    final_ident,
-                                    if has_constructor { 1 } else { 0 }};
-                            // Might want a better span
-                            (*child_name_bindings).define_type(def,
-                                                               dummy_sp());
-
-                            // Might want a better span
-                            if has_constructor {
-                                (*child_name_bindings).define_value(def,
-                                                              dummy_sp());
-                            }
-                        }
-                        def_self(*) | def_arg(*) | def_local(*) |
-                        def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
-                        def_use(*) | def_upvar(*) | def_region(*) |
-                          def_typaram_binder(*) => {
-                            fail fmt!{"didn't expect `%?`", def};
-                        }
-                    }
+                    self.handle_external_def(def, modules,
+                                             child_name_bindings,
+                                             final_ident, atom, new_parent);
                 }
                 dl_impl(_) => {
                     // Because of the infelicitous way the metadata is
@@ -3589,11 +3579,17 @@ class Resolver {
                               method.id,
                               outer_type_parameter_count,
                               rib_kind);
+        // we only have self ty if it is a non static method
+        let self_binding = match method.self_ty.node {
+          sty_static => { NoSelfBinding }
+          _ => { HasSelfBinding(method.self_id) }
+        };
+
         self.resolve_function(rib_kind,
                               some(@method.decl),
                               type_parameters,
                               method.body,
-                              HasSelfBinding(method.self_id),
+                              self_binding,
                               NoCaptureClause,
                               visitor);
     }
@@ -3647,7 +3643,11 @@ class Resolver {
             for methods.each |method| {
                 // We also need a new scope for the method-specific
                 // type parameters.
-
+                self.resolve_method(MethodRibKind(id, Provided(method.id)),
+                                    method,
+                                    outer_type_parameter_count,
+                                    visitor);
+/*
                 let borrowed_type_parameters = &method.tps;
                 self.resolve_function(MethodRibKind(id, Provided(method.id)),
                                       some(@method.decl),
@@ -3660,6 +3660,7 @@ class Resolver {
                                       HasSelfBinding(method.self_id),
                                       NoCaptureClause,
                                       visitor);
+*/
             }
 
             // Restore the original trait references.

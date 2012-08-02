@@ -4,7 +4,8 @@ import coherence::get_base_type_def_id;
 import middle::resolve3::{Impl, MethodInfo};
 import middle::ty::{mk_box, mk_rptr, mk_uniq};
 import middle::typeck::infer::methods; // next_ty_vars
-import syntax::ast::{def_id, sty_box, sty_by_ref, sty_region, sty_uniq};
+import syntax::ast::{def_id,
+                     sty_static, sty_box, sty_by_ref, sty_region, sty_uniq};
 import syntax::ast::{sty_value};
 import syntax::ast_map;
 import syntax::ast_map::node_id_to_str;
@@ -25,6 +26,10 @@ fn transform_self_type_for_method(fcx: @fn_ctxt,
                                   method_info: MethodInfo)
                                -> ty::t {
     match method_info.self_type {
+      sty_static => {
+        fcx.tcx().sess.bug(~"calling transform_self_type_for_method on \
+                             static method");
+      }
       sty_by_ref | sty_value => {
         impl_ty
       }

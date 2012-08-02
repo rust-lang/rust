@@ -71,6 +71,7 @@ type ty_param = {ident: ident, id: node_id, bounds: @~[ty_param_bound]};
 #[auto_serialize]
 enum def {
     def_fn(def_id, purity),
+    def_static_method(def_id, purity),
     def_self(node_id),
     def_mod(def_id),
     def_foreign_mod(def_id),
@@ -596,6 +597,7 @@ enum ret_style {
 
 #[auto_serialize]
 enum self_ty_ {
+    sty_static,                         // no self: static method
     sty_by_ref,                         // old by-reference self: ``
     sty_value,                          // by-value self: `self`
     sty_region(@region, mutability),    // by-region self: `&self`
