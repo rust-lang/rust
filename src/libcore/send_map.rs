@@ -61,7 +61,7 @@ mod linear {
     // FIXME(#2979) would allow us to use region type for k
     unsafe fn borrow<K>(&&k: K) -> &K {
         let p: *K = ptr::addr_of(k);
-        p as &K
+        unsafe::reinterpret_cast(p)
     }
 
     impl private_methods<K,V> for &const linear_map<K,V> {

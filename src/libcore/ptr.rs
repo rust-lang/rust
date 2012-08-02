@@ -1,6 +1,7 @@
 //! Unsafe pointer utility functions
 
 export addr_of;
+export assimilate;
 export mut_addr_of;
 export offset;
 export const_offset;
@@ -11,6 +12,7 @@ export is_not_null;
 export memcpy;
 export memmove;
 export memset;
+export to_uint;
 export buf_len;
 export position;
 export extensions;
@@ -122,6 +124,30 @@ unsafe fn memmove<T>(dst: *T, src: *T, count: uint)  {
 unsafe fn memset<T>(dst: *mut T, c: int, count: uint)  {
     let n = count * sys::size_of::<T>();
     libc_::memset(dst as *c_void, c as libc::c_int, n as size_t);
+}
+
+
+/**
+  Transform a region pointer - &T - to an unsafe pointer - *T.
+  This is safe, but is implemented with an unsafe block due to
+  reinterpret_cast.
+
+  ("assimilate" because it makes the pointer forget its region.)
+*/
+#[inline(always)]
+fn assimilate<T>(thing: &T) -> *T unsafe {
+    unsafe::reinterpret_cast(thing)
+}
+/**
+  Cast a region pointer - &T - to a uint.
+  This is safe, but is implemented with an unsafe block due to
+  reinterpret_cast.
+
+  (I couldn't think of a cutesy name for this one.)
+*/
+#[inline(always)]
+fn to_uint<T>(thing: &T) -> uint unsafe {
+    unsafe::reinterpret_cast(thing)
 }
 
 trait ptr {
