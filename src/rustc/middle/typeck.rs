@@ -43,7 +43,8 @@ import syntax::{ast, ast_util, ast_map};
 import ast::spanned;
 import ast::{required, provided};
 import syntax::ast_map::node_id_to_str;
-import syntax::ast_util::{local_def, respan, split_class_items};
+import syntax::ast_util::{local_def, respan, split_class_items,
+                          split_trait_methods};
 import syntax::visit;
 import metadata::csearch;
 import driver::session::session;

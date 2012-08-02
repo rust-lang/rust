@@ -339,12 +339,22 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
         }
       }
-      ast::item_trait(*) {
+      ast::item_trait(tps, trait_methods) {
         let tpt = ty_of_item(ccx, it);
         debug!{"item_trait(it.id=%d, tpt.ty=%s)",
                it.id, ty_to_str(tcx, tpt.ty)};
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         ensure_trait_methods(ccx, it.id);
+
+        let (_, provided_methods) = split_trait_methods(trait_methods);
+        let selfty = ty::mk_self(tcx);
+        let {bounds, _} = mk_substs(ccx, tps, rp);
+        let _cms = convert_methods(ccx, provided_methods, rp, bounds, selfty);
+        // FIXME (#2616): something like this, when we start having
+        // trait inheritance?
+        // for trt.each |t| {
+        // check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
+        // }
       }
       ast::item_class(tps, traits, members, m_ctor, m_dtor) {
         // Write the class type

@@ -329,6 +329,18 @@ fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     }
 }
 
+fn split_trait_methods(trait_methods: ~[trait_method])
+    -> (~[ty_method], ~[@method]) {
+    let mut reqd = ~[], provd = ~[];
+    for trait_methods.each |trt_method| {
+        alt trt_method {
+          required(tm) { vec::push(reqd, tm); }
+          provided(m) { vec::push(provd, m); }
+        }
+    };
+    (reqd, provd)
+}
+
 pure fn class_member_visibility(ci: @class_member) -> visibility {
   alt ci.node {
      instance_var(_, _, _, _, vis) { vis }
