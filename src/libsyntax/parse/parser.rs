@@ -839,7 +839,7 @@ class parser {
             let e = self.parse_expr();
             ex = expr_assert(e);
             hi = e.span.hi;
-        } else if self.eat_keyword(~"ret") || self.eat_keyword(~"return") {
+        } else if self.eat_keyword(~"return") {
             if can_begin_expr(self.token) {
                 let e = self.parse_expr();
                 hi = e.span.hi;
