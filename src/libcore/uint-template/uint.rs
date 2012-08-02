@@ -13,9 +13,9 @@ type T = uint;
  * The smallest integer `q` such that `x/y <= q`.
  */
 pure fn div_ceil(x: uint, y: uint) -> uint {
-    let div = div(x, y);
-    if x % y == 0u { return div;}
-    else { return div + 1u; }
+    let div = x / y;
+    if x % y == 0u { div }
+    else { div + 1u }
 }
 
 /**
@@ -31,9 +31,9 @@ pure fn div_ceil(x: uint, y: uint) -> uint {
  * The integer `q` closest to `x/y`.
  */
 pure fn div_round(x: uint, y: uint) -> uint {
-    let div = div(x, y);
-    if x % y * 2u  < y { return div;}
-    else { return div + 1u; }
+    let div = x / y;
+    if x % y * 2u  < y { div }
+    else { div + 1u }
 }
 
 /**
@@ -54,7 +54,7 @@ pure fn div_round(x: uint, y: uint) -> uint {
 pure fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
 /// Produce a uint suitable for use in a hash table
-pure fn hash(&&x: uint) -> uint { return x; }
+pure fn hash(x: &uint) -> uint { *x }
 
 /**
  * Iterate over the range [`lo`..`hi`), or stop when requested

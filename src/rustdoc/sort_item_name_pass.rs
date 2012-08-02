@@ -4,9 +4,10 @@ import doc::item_utils;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    sort_pass::mk_pass(~"sort_item_name", |item1, item2| {
-        str::le(item1.name(), item2.name())
-    })
+    pure fn by_item_name(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
+        (*item1).name() <= (*item2).name()
+    }
+    sort_pass::mk_pass(~"sort_item_name", by_item_name)
 }
 
 #[test]

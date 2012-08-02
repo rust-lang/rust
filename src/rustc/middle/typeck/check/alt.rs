@@ -197,7 +197,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
                                 ex_f_count, f_count});
         }
         fn matches(name: ast::ident, f: ty::field) -> bool {
-            return str::eq(*name, *f.ident);
+            str::eq(name, f.ident)
         }
         for fields.each |f| {
             alt vec::find(ex_fields, |a| matches(f.ident, a)) {

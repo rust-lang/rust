@@ -588,18 +588,24 @@ impl of to_json for @~str {
     fn to_json() -> json { string(self) }
 }
 
-impl <A: to_json copy, B: to_json copy> of to_json for (A, B) {
+impl <A: to_json, B: to_json> of to_json for (A, B) {
     fn to_json() -> json {
-        let (a, b) = self;
-        list(@~[a.to_json(), b.to_json()])
+        alt self {
+          (a, b) => {
+            list(@~[a.to_json(), b.to_json()])
+          }
+        }
     }
 }
 
-impl <A: to_json copy, B: to_json copy, C: to_json copy>
+impl <A: to_json, B: to_json, C: to_json>
   of to_json for (A, B, C) {
     fn to_json() -> json {
-        let (a, b, c) = self;
-        list(@~[a.to_json(), b.to_json(), c.to_json()])
+        alt self {
+          (a, b, c) => {
+            list(@~[a.to_json(), b.to_json(), c.to_json()])
+          }
+        }
     }
 }
 

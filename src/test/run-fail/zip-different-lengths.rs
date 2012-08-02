@@ -24,9 +24,6 @@ fn enum_uints(start: uint, end: uint) -> ~[uint] {
 
 fn main() {
     let a = 'a' as u8, j = 'j' as u8, k = 1u, l = 9u;
-    // Silly, but necessary
-    assert (u8::le(a, j));
-    assert (uint::le(k, l));
     let chars = enum_chars(a, j);
     let ints = enum_uints(k, l);
 

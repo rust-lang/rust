@@ -17,15 +17,17 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
       return (xx as float) * 100f / (yy as float);
    }
 
-   fn le_by_val<TT: copy, UU: copy>(kv0: (TT,UU), kv1: (TT,UU)) -> bool {
-      let (_, v0) = kv0;
-      let (_, v1) = kv1;
+   pure fn le_by_val<TT: copy, UU: copy>(kv0: &(TT,UU),
+                                         kv1: &(TT,UU)) -> bool {
+      let (_, v0) = *kv0;
+      let (_, v1) = *kv1;
       return v0 >= v1;
    }
 
-   fn le_by_key<TT: copy, UU: copy>(kv0: (TT,UU), kv1: (TT,UU)) -> bool {
-      let (k0, _) = kv0;
-      let (k1, _) = kv1;
+   pure fn le_by_key<TT: copy, UU: copy>(kv0: &(TT,UU),
+                                         kv1: &(TT,UU)) -> bool {
+      let (k0, _) = *kv0;
+      let (k1, _) = *kv1;
       return k0 <= k1;
    }
 

@@ -8,6 +8,7 @@ export pref_align_of;
 export refcount;
 export log_str;
 export lock_and_signal, condition, methods;
+export shape_eq, shape_lt, shape_le;
 
 import task::atomically;
 
@@ -37,6 +38,20 @@ extern mod rusti {
     fn size_of<T>() -> uint;
     fn pref_align_of<T>() -> uint;
     fn min_align_of<T>() -> uint;
+}
+
+/// Compares contents of two pointers using the default method.
+/// Equivalent to `*x1 == *x2`.  Useful for hashtables.
+pure fn shape_eq<T>(x1: &T, x2: &T) -> bool {
+    *x1 == *x2
+}
+
+pure fn shape_lt<T>(x1: &T, x2: &T) -> bool {
+    *x1 < *x2
+}
+
+pure fn shape_le<T>(x1: &T, x2: &T) -> bool {
+    *x1 < *x2
 }
 
 /**

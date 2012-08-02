@@ -4,7 +4,7 @@ import str;
 fn test(actual: ~str, expected: ~str) {
     log(debug, actual);
     log(debug, expected);
-    assert (str::eq(actual, expected));
+    assert (actual == expected);
 }
 
 fn main() {

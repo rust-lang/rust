@@ -96,13 +96,13 @@ mod ct {
         while i < lim {
             let size = str::utf8_char_width(s[i]);
             let curr = str::slice(s, i, i+size);
-            if str::eq(curr, ~"%") {
+            if curr == ~"%" {
                 i += 1u;
                 if i >= lim {
                     error(~"unterminated conversion at end of string");
                 }
                 let curr2 = str::slice(s, i, i+1u);
-                if str::eq(curr2, ~"%") {
+                if curr2 == ~"%" {
                     buf += curr2;
                     i += 1u;
                 } else {
@@ -232,27 +232,27 @@ mod ct {
         // FIXME (#2249): Do we really want two signed types here?
         // How important is it to be printf compatible?
         let t =
-            if str::eq(tstr, ~"b") {
+            if tstr == ~"b" {
                 ty_bool
-            } else if str::eq(tstr, ~"s") {
+            } else if tstr == ~"s" {
                 ty_str
-            } else if str::eq(tstr, ~"c") {
+            } else if tstr == ~"c" {
                 ty_char
-            } else if str::eq(tstr, ~"d") || str::eq(tstr, ~"i") {
+            } else if tstr == ~"d" || tstr == ~"i" {
                 ty_int(signed)
-            } else if str::eq(tstr, ~"u") {
+            } else if tstr == ~"u" {
                 ty_int(unsigned)
-            } else if str::eq(tstr, ~"x") {
+            } else if tstr == ~"x" {
                 ty_hex(case_lower)
-            } else if str::eq(tstr, ~"X") {
+            } else if tstr == ~"X" {
                 ty_hex(case_upper)
-            } else if str::eq(tstr, ~"t") {
+            } else if tstr == ~"t" {
                 ty_bits
-            } else if str::eq(tstr, ~"o") {
+            } else if tstr == ~"o" {
                 ty_octal
-            } else if str::eq(tstr, ~"f") {
+            } else if tstr == ~"f" {
                 ty_float
-            } else if str::eq(tstr, ~"?") {
+            } else if tstr == ~"?" {
                 ty_poly
             } else { error(~"unknown type in conversion: " + tstr) };
         return {ty: t, next: i + 1u};

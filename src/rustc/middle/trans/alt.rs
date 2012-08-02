@@ -94,7 +94,7 @@ type bind_map = ~[{
 
 fn assoc(key: ast::ident, list: bind_map) -> option<binding> {
     for vec::each(list) |elt| {
-        if str::eq(*elt.ident, *key) {
+        if str::eq(elt.ident, key) {
             return some(elt.binding);
         }
     }
@@ -231,7 +231,7 @@ fn enter_rec(bcx: block, dm: DefMap, m: match_, col: uint,
             for vec::each(fields) |fname| {
                 let mut pat = dummy;
                 for vec::each(fpats) |fpat| {
-                    if str::eq(*fpat.ident, *fname) { pat = fpat.pat; break; }
+                    if str::eq(fpat.ident, fname) { pat = fpat.pat; break; }
                 }
                 vec::push(pats, pat);
             }
@@ -331,7 +331,7 @@ fn collect_record_fields(m: match_, col: uint) -> ~[ast::ident] {
         alt br.pats[col].node {
           ast::pat_rec(fs, _) {
             for vec::each(fs) |f| {
-                if !vec::any(fields, |x| str::eq(*f.ident, *x)) {
+                if !vec::any(fields, |x| str::eq(f.ident, x)) {
                     vec::push(fields, f.ident);
                 }
             }

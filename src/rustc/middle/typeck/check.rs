@@ -1670,7 +1670,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             for fields_t.each |f| {
                 let mut found = false;
                 for base_fields.each |bf| {
-                    if str::eq(*f.node.ident, *bf.ident) {
+                    if str::eq(f.node.ident, bf.ident) {
                         demand::suptype(fcx, f.span, bf.mt.ty, f.node.mt.ty);
                         found = true;
                     }

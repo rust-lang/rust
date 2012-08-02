@@ -33,7 +33,7 @@ fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
     @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 
-fn hash_nominal_id(&&ri: nominal_id) -> uint {
+pure fn hash_nominal_id(ri: &nominal_id) -> uint {
     let mut h = 5381u;
     h *= 33u;
     h += ri.did.crate as uint;
@@ -46,7 +46,7 @@ fn hash_nominal_id(&&ri: nominal_id) -> uint {
     return h;
 }
 
-fn eq_nominal_id(&&mi: nominal_id, &&ni: nominal_id) -> bool {
+pure fn eq_nominal_id(mi: &nominal_id, ni: &nominal_id) -> bool {
     if mi.did != ni.did {
         false
     } else {

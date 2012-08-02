@@ -10,7 +10,7 @@ fn main() {
     assert (str::len(s) == 10u);
     assert (str::char_len(s) == 4u);
     assert (vec::len(str::chars(s)) == 4u);
-    assert (str::eq(str::from_chars(str::chars(s)), s));
+    assert (str::from_chars(str::chars(s)) == s);
     assert (str::char_at(s, 0u) == 'e');
     assert (str::char_at(s, 1u) == 'é');
 
@@ -23,9 +23,9 @@ fn main() {
     assert (str::pop_char(stack) == '€');
     assert (str::pop_char(stack) == 'c');
     str::push_char(stack, 'u');
-    assert (str::eq(stack, ~"a×u"));
+    assert (stack == ~"a×u");
     assert (str::shift_char(stack) == 'a');
     assert (str::shift_char(stack) == '×');
     str::unshift_char(stack, 'ß');
-    assert (str::eq(stack, ~"ßu"));
+    assert (stack == ~"ßu");
 }

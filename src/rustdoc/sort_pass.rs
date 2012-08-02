@@ -5,7 +5,7 @@ import std::sort;
 
 export item_lteq, mk_pass;
 
-type item_lteq = fn~(doc::itemtag, doc::itemtag) -> bool;
+type item_lteq = pure fn~(v1: &doc::itemtag, v2:  &doc::itemtag) -> bool;
 
 fn mk_pass(name: ~str, +lteq: item_lteq) -> pass {
     {
@@ -43,8 +43,8 @@ fn fold_mod(
 
 #[test]
 fn test() {
-    fn name_lteq(item1: doc::itemtag, item2: doc::itemtag) -> bool {
-        str::le(item1.name(), item2.name())
+    pure fn name_lteq(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
+        (*item1).name() <= (*item2).name()
     }
 
     let source = ~"mod z { mod y { } fn x() { } } mod w { }";
@@ -60,7 +60,7 @@ fn test() {
 
 #[test]
 fn should_be_stable() {
-    fn always_eq(_item1: doc::itemtag, _item2: doc::itemtag) -> bool {
+    pure fn always_eq(_item1: &doc::itemtag, _item2: &doc::itemtag) -> bool {
         true
     }
 

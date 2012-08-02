@@ -1089,7 +1089,9 @@ fn encode_crate_deps(ebml_w: ebml::writer, cstore: cstore::cstore) {
         };
 
         // Sort by cnum
-        fn lteq(kv1: numdep, kv2: numdep) -> bool { kv1.cnum <= kv2.cnum }
+        pure fn lteq(kv1: &numdep, kv2: &numdep) -> bool {
+            kv1.cnum <= kv2.cnum
+        }
         std::sort::quick_sort(lteq, deps);
 
         // Sanity-check the crate numbers

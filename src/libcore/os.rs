@@ -579,7 +579,7 @@ fn list_dir(p: path) -> ~[~str] {
     }
 
     do rustrt::rust_list_files(star(p)).filter |filename| {
-        !str::eq(filename, ~".") && !str::eq(filename, ~"..")
+        filename != ~"." && filename != ~".."
     }
 }
 

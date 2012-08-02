@@ -2066,7 +2066,7 @@ class parser {
 
     fn is_self_ident() -> bool {
         alt self.token {
-            token::IDENT(sid, false) if str::eq(~"self", *self.get_str(sid)) {
+            token::IDENT(sid, false) if ~"self" == *self.get_str(sid) {
                 true
             }
             _ => {

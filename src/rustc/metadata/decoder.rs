@@ -603,7 +603,7 @@ fn get_self_ty(item: ebml::doc) -> ast::self_ty_ {
                 ebml::get_doc(self_type_doc,
                               tag_item_trait_method_self_ty_region);
             let region_string = str::from_bytes(ebml::doc_data(region_doc));
-            if str::eq(region_string, ~"") {
+            if region_string == ~"" {
                 region = ast::re_anon;
             } else {
                 region = ast::re_named(@region_string);

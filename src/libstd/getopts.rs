@@ -201,7 +201,7 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
         let curlen = str::len(cur);
         if !is_arg(cur) {
             vec::push(free, cur);
-        } else if str::eq(cur, ~"--") {
+        } else if cur == ~"--" {
             let mut j = i + 1u;
             while j < l { vec::push(free, args[j]); j += 1u; }
             break;

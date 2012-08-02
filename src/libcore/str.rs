@@ -637,8 +637,8 @@ pure fn replace(s: &str, from: &str, to: &str) -> ~str {
 Section: Comparing strings
 */
 
-/// Bytewise string equality
-pure fn eq(&&a: ~str, &&b: ~str) -> bool {
+/// Bytewise slice equality
+pure fn eq_slice(a: &str, b: &str) -> bool {
     // FIXME (#2627): This should just be "a == b" but that calls into the
     // shape code.
     let a_len = a.len();
@@ -655,12 +655,17 @@ pure fn eq(&&a: ~str, &&b: ~str) -> bool {
     return true;
 }
 
+/// Bytewise string equality
+pure fn eq(a: &~str, b: &~str) -> bool {
+    eq_slice(*a, *b)
+}
+
 /// Bytewise less than or equal
-pure fn le(&&a: ~str, &&b: ~str) -> bool { a <= b }
+pure fn le(a: &~str, b: &~str) -> bool { *a <= *b }
 
 /// String hash function
-pure fn hash(&&s: ~str) -> uint {
-    let x = do as_bytes(s) |bytes| {
+pure fn hash(s: &~str) -> uint {
+    let x = do as_bytes(*s) |bytes| {
         hash::hash_bytes(bytes)
     };
     return x as uint;
@@ -2070,17 +2075,17 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        assert (eq(~"", ~""));
-        assert (eq(~"foo", ~"foo"));
-        assert (!eq(~"foo", ~"bar"));
+        assert (eq(&~"", &~""));
+        assert (eq(&~"foo", &~"foo"));
+        assert (!eq(&~"foo", &~"bar"));
     }
 
     #[test]
     fn test_le() {
-        assert (le(~"", ~""));
-        assert (le(~"", ~"foo"));
-        assert (le(~"foo", ~"foo"));
-        assert (!eq(~"foo", ~"bar"));
+        assert (le(&~"", &~""));
+        assert (le(&~"", &~"foo"));
+        assert (le(&~"foo", &~"foo"));
+        assert (!eq(&~"foo", &~"bar"));
     }
 
     #[test]
@@ -2220,7 +2225,7 @@ mod tests {
     fn test_split_str() {
         fn t(s: ~str, sep: &a/str, i: int, k: ~str) {
             let v = split_str(s, sep);
-            assert eq(v[i], k);
+            assert v[i] == k;
         }
 
         t(~"--1233345--", ~"12345", 0, ~"--1233345--");
@@ -2348,7 +2353,7 @@ mod tests {
     #[test]
     fn test_substr() {
         fn t(a: ~str, b: ~str, start: int) {
-            assert (eq(substr(a, start as uint, len(b)), b));
+            assert substr(a, start as uint, len(b)) == b;
         }
         t(~"hello", ~"llo", 2);
         t(~"hello", ~"el", 1);
@@ -2357,7 +2362,7 @@ mod tests {
 
     #[test]
     fn test_concat() {
-        fn t(v: ~[~str], s: ~str) { assert (eq(concat(v), s)); }
+        fn t(v: ~[~str], s: ~str) { assert concat(v) == s; }
         t(~[~"you", ~"know", ~"I'm", ~"no", ~"good"], ~"youknowI'mnogood");
         let v: ~[~str] = ~[];
         t(v, ~"");
@@ -2367,7 +2372,7 @@ mod tests {
     #[test]
     fn test_connect() {
         fn t(v: ~[~str], sep: ~str, s: ~str) {
-            assert (eq(connect(v, sep), s));
+            assert connect(v, sep) == s;
         }
         t(~[~"you", ~"know", ~"I'm", ~"no", ~"good"],
           ~" ", ~"you know I'm no good");
@@ -2385,7 +2390,7 @@ mod tests {
         let input = ~"abcDEF" + unicode + ~"xyz:.;";
         let expected = ~"ABCDEF" + unicode + ~"XYZ:.;";
         let actual = to_upper(input);
-        assert (eq(expected, actual));
+        assert expected == actual;
     }
 
     #[test]
@@ -2398,9 +2403,9 @@ mod tests {
     #[test]
     fn test_unsafe_slice() {
         unsafe {
-            assert (eq(~"ab", unsafe::slice_bytes(~"abc", 0u, 2u)));
-            assert (eq(~"bc", unsafe::slice_bytes(~"abc", 1u, 3u)));
-            assert (eq(~"", unsafe::slice_bytes(~"abc", 1u, 1u)));
+            assert ~"ab" == unsafe::slice_bytes(~"abc", 0u, 2u);
+            assert ~"bc" == unsafe::slice_bytes(~"abc", 1u, 3u);
+            assert ~"" == unsafe::slice_bytes(~"abc", 1u, 1u);
             fn a_million_letter_a() -> ~str {
                 let mut i = 0;
                 let mut rs = ~"";
@@ -2413,9 +2418,8 @@ mod tests {
                 while i < 100000 { push_str(rs, ~"aaaaa"); i += 1; }
                 return rs;
             }
-            assert eq(half_a_million_letter_a(),
-                      unsafe::slice_bytes(a_million_letter_a(),
-                                          0u, 500000u));
+            assert half_a_million_letter_a() ==
+                unsafe::slice_bytes(a_million_letter_a(), 0u, 500000u);
         }
     }
 
@@ -2501,10 +2505,10 @@ mod tests {
 
     #[test]
     fn test_slice() {
-        assert (eq(~"ab", slice(~"abc", 0u, 2u)));
-        assert (eq(~"bc", slice(~"abc", 1u, 3u)));
-        assert (eq(~"", slice(~"abc", 1u, 1u)));
-        assert (eq(~"\u65e5", slice(~"\u65e5\u672c", 0u, 3u)));
+        assert ~"ab" == slice(~"abc", 0u, 2u);
+        assert ~"bc" == slice(~"abc", 1u, 3u);
+        assert ~"" == slice(~"abc", 1u, 1u);
+        assert ~"\u65e5" == slice(~"\u65e5\u672c", 0u, 3u);
 
         let data = ~"ประเทศไทย中华";
         assert ~"ป" == slice(data, 0u, 3u);
@@ -2524,8 +2528,8 @@ mod tests {
             while i < 100000 { push_str(rs, ~"华华华华华"); i += 1; }
             return rs;
         }
-        assert eq(half_a_million_letter_X(),
-                  slice(a_million_letter_X(), 0u, 3u * 500000u));
+        assert half_a_million_letter_X() ==
+            slice(a_million_letter_X(), 0u, 3u * 500000u);
     }
 
     #[test]
@@ -2709,7 +2713,7 @@ mod tests {
             let s = ~"hello";
             let sb = as_buf(s, |b, _l| b);
             let s_cstr = unsafe::from_buf(sb);
-            assert (eq(s_cstr, s));
+            assert s_cstr == s;
         }
     }
 

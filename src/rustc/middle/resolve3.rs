@@ -293,7 +293,7 @@ class AtomTable {
 
 /// Creates a hash table of atoms.
 fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
-    return hashmap::<Atom,V>(|a| a, |a, b| a == b);
+    hashmap::<Atom,V>(uint::hash, uint::eq)
 }
 
 /**
@@ -3168,7 +3168,7 @@ class Resolver {
 
                 if !self.session.building_library &&
                         is_none(self.session.main_fn) &&
-                        str::eq(*item.ident, ~"main") {
+                        *item.ident == ~"main" {
 
                     self.session.main_fn = some((item.id, item.span));
                 }

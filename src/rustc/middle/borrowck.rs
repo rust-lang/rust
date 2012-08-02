@@ -417,11 +417,11 @@ fn save_and_restore<T:copy,U>(&save_and_restore_t: T, f: fn() -> U) -> U {
 fn root_map() -> root_map {
     return hashmap(root_map_key_hash, root_map_key_eq);
 
-    fn root_map_key_eq(k1: root_map_key, k2: root_map_key) -> bool {
+    pure fn root_map_key_eq(k1: &root_map_key, k2: &root_map_key) -> bool {
         k1.id == k2.id && k1.derefs == k2.derefs
     }
 
-    fn root_map_key_hash(k: root_map_key) -> uint {
+    pure fn root_map_key_hash(k: &root_map_key) -> uint {
         (k.id << 4) as uint | k.derefs
     }
 }

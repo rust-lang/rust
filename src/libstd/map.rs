@@ -1,5 +1,7 @@
 //! A map type
 
+#[warn(deprecated_mode)];
+
 import chained::hashmap;
 import io::writer_util;
 import to_str::to_str;
@@ -15,16 +17,16 @@ export vec_from_set;
  *
  * The hash should concentrate entropy in the lower bits.
  */
-type hashfn<K> = fn@(K) -> uint;
+type hashfn<K> = fn~(key: &K) -> uint;
 
-type eqfn<K> = fn@(K, K) -> bool;
+type eqfn<K> = fn~(key1: &K, key2: &K) -> bool;
 
 /// A convenience type to treat a hashmap as a set
 type set<K> = hashmap<K, ()>;
 
 type hashmap<K, V> = chained::t<K, V>;
 
-trait map<K, V: copy> {
+trait map<K: copy, V: copy> {
     /// Return the number of elements in the map
     fn size() -> uint;
 
@@ -39,40 +41,50 @@ trait map<K, V: copy> {
     fn insert(+K, +V) -> bool;
 
     /// Returns true if the map contains a value for the specified key
-    fn contains_key(K) -> bool;
+    fn contains_key(+key: K) -> bool;
+
+    /// Returns true if the map contains a value for the specified
+    /// key, taking the key by reference.
+    fn contains_key_ref(key: &K) -> bool;
 
     /**
      * Get the value for the specified key. Fails if the key does not exist in
      * the map.
      */
-    fn get(K) -> V;
-
-    /// Like get, but as an operator.
-    fn [](K) -> V;
+    fn get(+key: K) -> V;
 
     /**
      * Get the value for the specified key. If the key does not exist in
      * the map then returns none.
      */
-    fn find(K) -> option<V>;
+    fn find(+key: K) -> option<V>;
 
     /**
      * Remove and return a value from the map. If the key does not exist
      * in the map then returns none.
      */
-    fn remove(K) -> option<V>;
+    fn remove(+key: K) -> option<V>;
 
     /// Clear the map, removing all key/value pairs.
     fn clear();
 
-    /// Iterate over all the key/value pairs in the map
-    fn each(fn(K, V) -> bool);
+    /// Iterate over all the key/value pairs in the map by value
+    fn each(fn(+key: K, +value: V) -> bool);
 
-    /// Iterate over all the keys in the map
-    fn each_key(fn(K) -> bool);
+    /// Iterate over all the keys in the map by value
+    fn each_key(fn(+key: K) -> bool);
 
-    /// Iterate over all the values in the map
-    fn each_value(fn(V) -> bool);
+    /// Iterate over all the values in the map by value
+    fn each_value(fn(+value: V) -> bool);
+
+    /// Iterate over all the key/value pairs in the map by reference
+    fn each_ref(fn(key: &K, value: &V) -> bool);
+
+    /// Iterate over all the keys in the map by reference
+    fn each_key_ref(fn(key: &K) -> bool);
+
+    /// Iterate over all the values in the map by reference
+    fn each_value_ref(fn(value: &V) -> bool);
 }
 
 mod util {
@@ -93,31 +105,21 @@ mod chained {
 
     const initial_capacity: uint = 32u; // 2^5
 
-    type entry<K, V> = {
-        hash: uint,
-        key: K,
-        mut value: V,
-        mut next: chain<K, V>
-    };
-
-    enum chain<K, V> {
-        present(@entry<K, V>),
-        absent
+    struct entry<K, V> {
+        hash: uint;
+        key: K;
+        value: V;
+        mut next: option<@entry<K, V>>;
     }
 
-    type hashmap__<K, V> = {
-        mut count: uint,
-        mut chains: ~[mut chain<K,V>],
-        hasher: hashfn<K>,
-        eqer: eqfn<K>
-    };
+    struct hashmap_<K, V> {
+        mut count: uint;
+        mut chains: ~[mut option<@entry<K,V>>];
+        hasher: hashfn<K>;
+        eqer: eqfn<K>;
+    }
+
     type t<K, V> = @hashmap_<K, V>;
-
-    enum hashmap_<K, V> {
-        hashmap_(@hashmap__<K, V>)
-    }
-
-    type t<K, V> = hashmap_<K, V>;
 
     enum search_result<K, V> {
         not_found,
@@ -125,21 +127,21 @@ mod chained {
         found_after(@entry<K,V>, @entry<K,V>)
     }
 
-    impl private_methods<K, V: copy> for hashmap_<K, V> {
-        fn search_rem(k: K, h: uint, idx: uint,
+    impl private_methods<K, V: copy> for t<K, V> {
+        fn search_rem(k: &K, h: uint, idx: uint,
                       e_root: @entry<K,V>) -> search_result<K,V> {
             let mut e0 = e_root;
             let mut comp = 1u;   // for logging
             loop {
                 alt copy e0.next {
-                  absent {
+                  none {
                     debug!{"search_tbl: absent, comp %u, hash %u, idx %u",
                            comp, h, idx};
                     return not_found;
                   }
-                  present(e1) {
+                  some(e1) {
                     comp += 1u;
-                    if e1.hash == h && self.eqer(e1.key, k) {
+                    if e1.hash == h && self.eqer(&e1.key, k) {
                         debug!{"search_tbl: present, comp %u, \
                                 hash %u, idx %u",
                                comp, h, idx};
@@ -152,16 +154,16 @@ mod chained {
             };
         }
 
-        fn search_tbl(k: K, h: uint) -> search_result<K,V> {
+        fn search_tbl(k: &K, h: uint) -> search_result<K,V> {
             let idx = h % vec::len(self.chains);
             alt copy self.chains[idx] {
-              absent {
-                debug!{"search_tbl: absent, comp %u, hash %u, idx %u",
+              none {
+                debug!{"search_tbl: none, comp %u, hash %u, idx %u",
                        0u, h, idx};
                 return not_found;
               }
-              present(e) {
-                if e.hash == h && self.eqer(e.key, k) {
+              some(e) {
+                if e.hash == h && self.eqer(&e.key, k) {
                     debug!{"search_tbl: present, comp %u, hash %u, idx %u",
                            1u, h, idx};
                     return found_first(idx, e);
@@ -173,25 +175,27 @@ mod chained {
         }
 
         fn rehash() {
-            let n_old_chains = vec::len(self.chains);
+            let n_old_chains = self.chains.len();
             let n_new_chains: uint = uint::next_power_of_two(n_old_chains+1u);
             let new_chains = chains(n_new_chains);
             for self.each_entry |entry| {
                 let idx = entry.hash % n_new_chains;
                 entry.next = new_chains[idx];
-                new_chains[idx] = present(entry);
+                new_chains[idx] = some(entry);
             }
             self.chains = new_chains;
         }
 
         fn each_entry(blk: fn(@entry<K,V>) -> bool) {
-            let mut i = 0u, n = vec::len(self.chains);
+            // n.b. we can't use vec::iter() here because self.chains
+            // is stored in a mutable location.
+            let mut i = 0u, n = self.chains.len();
             while i < n {
                 let mut chain = self.chains[i];
                 loop {
                     chain = alt chain {
-                      absent { break; }
-                      present(entry) {
+                      none { break; }
+                      some(entry) {
                         let next = entry.next;
                         if !blk(entry) { return; }
                         next
@@ -203,10 +207,14 @@ mod chained {
         }
     }
 
-    impl hashmap<K, V: copy> of map<K, V> for t<K, V> {
+    impl hashmap<K: copy, V: copy> of map<K, V> for t<K, V> {
         fn size() -> uint { self.count }
 
-        fn contains_key(k: K) -> bool {
+        fn contains_key(+k: K) -> bool {
+            self.contains_key_ref(&k)
+        }
+
+        fn contains_key_ref(k: &K) -> bool {
             let hash = self.hasher(k);
             alt self.search_tbl(k, hash) {
               not_found {false}
@@ -215,17 +223,17 @@ mod chained {
         }
 
         fn insert(+k: K, +v: V) -> bool {
-            let hash = self.hasher(k);
-            alt self.search_tbl(k, hash) {
+            let hash = self.hasher(&k);
+            alt self.search_tbl(&k, hash) {
               not_found {
                 self.count += 1u;
                 let idx = hash % vec::len(self.chains);
                 let old_chain = self.chains[idx];
-                self.chains[idx] = present(@{
+                self.chains[idx] = some(@entry {
                     hash: hash,
                     key: k,
-                    mut value: v,
-                    mut next: old_chain});
+                    value: v,
+                    next: old_chain});
 
                 // consider rehashing if more 3/4 full
                 let nchains = vec::len(self.chains);
@@ -237,38 +245,43 @@ mod chained {
 
                 return true;
               }
-              found_first(_, entry) {
-                entry.value = v;
+              found_first(idx, entry) {
+                self.chains[idx] = some(@entry {
+                    hash: hash,
+                    key: k,
+                    value: v,
+                    next: entry.next});
                 return false;
               }
-              found_after(_, entry) {
-                entry.value = v;
-                return false
+              found_after(prev, entry) {
+                prev.next = some(@entry {
+                    hash: hash,
+                    key: k,
+                    value: v,
+                    next: entry.next});
+                return false;
               }
             }
         }
 
-        fn find(k: K) -> option<V> {
-            alt self.search_tbl(k, self.hasher(k)) {
+        fn find(+k: K) -> option<V> {
+            alt self.search_tbl(&k, self.hasher(&k)) {
               not_found {none}
               found_first(_, entry) {some(entry.value)}
               found_after(_, entry) {some(entry.value)}
             }
         }
 
-        fn get(k: K) -> V {
-            alt self.find(k) {
-              some(v) => {v}
-              none => {fail fmt!{"Key not found in table: %?", k}}
+        fn get(+k: K) -> V {
+            let opt_v = self.find(k);
+            if opt_v.is_none() {
+                fail fmt!{"Key not found in table: %?", k};
             }
+            option::unwrap(opt_v)
         }
 
-        fn [](k: K) -> V {
-            self.get(k)
-        }
-
-        fn remove(k: K) -> option<V> {
-            alt self.search_tbl(k, self.hasher(k)) {
+        fn remove(+k: K) -> option<V> {
+            alt self.search_tbl(&k, self.hasher(&k)) {
               not_found {none}
               found_first(idx, entry) {
                 self.count -= 1u;
@@ -288,18 +301,34 @@ mod chained {
             self.chains = chains(initial_capacity);
         }
 
-        fn each(blk: fn(K,V) -> bool) {
+        fn each(blk: fn(+key: K, +value: V) -> bool) {
+            self.each_ref(|k, v| blk(*k, *v))
+        }
+
+        fn each_key(blk: fn(+key: K) -> bool) {
+            self.each_key_ref(|p| blk(*p))
+        }
+
+        fn each_value(blk: fn(+value: V) -> bool) {
+            self.each_value_ref(|p| blk(*p))
+        }
+
+        fn each_ref(blk: fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
-                if !blk(entry.key, copy entry.value) { break; }
+                if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        fn each_key(blk: fn(K) -> bool) { self.each(|k, _v| blk(k)) }
+        fn each_key_ref(blk: fn(key: &K) -> bool) {
+            self.each_ref(|k, _v| blk(k))
+        }
 
-        fn each_value(blk: fn(V) -> bool) { self.each(|_k, v| blk(v)) }
+        fn each_value_ref(blk: fn(value: &V) -> bool) {
+            self.each_ref(|_k, v| blk(v))
+        }
     }
 
-    impl hashmap<K: to_str, V: to_str copy> of to_str for hashmap_<K, V> {
+    impl hashmap<K: copy to_str, V: to_str copy> of to_str for t<K, V> {
         fn to_writer(wr: io::writer) {
             if self.count == 0u {
                 wr.write_str("{}");
@@ -325,24 +354,23 @@ mod chained {
         }
     }
 
-    impl hashmap<K, V: copy> of ops::index<K, V> for t<K, V> {
-        pure fn index(k: K) -> V {
+    impl hashmap<K: copy, V: copy> of ops::index<K, V> for t<K, V> {
+        pure fn index(&&k: K) -> V {
             unchecked {
                 self.get(k)
             }
         }
     }
 
-
-    fn chains<K,V>(nchains: uint) -> ~[mut chain<K,V>] {
-        return vec::to_mut(vec::from_elem(nchains, absent));
+    fn chains<K,V>(nchains: uint) -> ~[mut option<@entry<K,V>>] {
+        vec::to_mut(vec::from_elem(nchains, none))
     }
 
-    fn mk<K, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
-        let slf: t<K, V> = hashmap_(@{mut count: 0u,
-                                      mut chains: chains(initial_capacity),
+    fn mk<K, V: copy>(+hasher: hashfn<K>, +eqer: eqfn<K>) -> t<K,V> {
+        let slf: t<K, V> = @hashmap_ {count: 0u,
+                                      chains: chains(initial_capacity),
                                       hasher: hasher,
-                                      eqer: eqer});
+                                      eqer: eqer};
         slf
     }
 }
@@ -357,7 +385,7 @@ Parameters:
 hasher - The hash function for key type K
 eqer - The equality function for key type K
 */
-fn hashmap<K: const, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
+fn hashmap<K: const, V: copy>(+hasher: hashfn<K>, +eqer: eqfn<K>)
         -> hashmap<K, V> {
     chained::mk(hasher, eqer)
 }
@@ -369,7 +397,8 @@ fn str_hash<V: copy>() -> hashmap<~str, V> {
 
 /// Construct a hashmap for boxed string keys
 fn box_str_hash<V: copy>() -> hashmap<@~str, V> {
-    return hashmap(|x: @~str| str::hash(*x), |x,y| str::eq(*x,*y));
+    hashmap(|x: &@~str| str::hash(&**x),
+            |x: &@~str, y: &@~str| str::eq(&**x, &**y))
 }
 
 /// Construct a hashmap for byte string keys
@@ -388,13 +417,14 @@ fn uint_hash<V: copy>() -> hashmap<uint, V> {
 }
 
 /// Convenience function for adding keys to a hashmap with nil type keys
-fn set_add<K: const copy>(set: set<K>, key: K) -> bool {
-    return set.insert(key, ());
+fn set_add<K: const copy>(set: set<K>, +key: K) -> bool {
+    set.insert(key, ())
 }
 
 /// Convert a set into a vector.
 fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
     let mut v = ~[];
+    vec::reserve(v, s.size());
     do s.each_key() |k| {
         vec::push(v, k);
         true
@@ -403,8 +433,8 @@ fn vec_from_set<T: copy>(s: set<T>) -> ~[T] {
 }
 
 /// Construct a hashmap from a vector
-fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
-                                         items: ~[(K, V)]) -> hashmap<K, V> {
+fn hash_from_vec<K: const copy, V: copy>(+hasher: hashfn<K>, +eqer: eqfn<K>,
+                                         items: &[(K, V)]) -> hashmap<K, V> {
     let map = hashmap(hasher, eqer);
     do vec::iter(items) |item| {
         let (key, value) = item;
@@ -414,22 +444,22 @@ fn hash_from_vec<K: const copy, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>,
 }
 
 /// Construct a hashmap from a vector with string keys
-fn hash_from_strs<V: copy>(items: ~[(~str, V)]) -> hashmap<~str, V> {
+fn hash_from_strs<V: copy>(items: &[(~str, V)]) -> hashmap<~str, V> {
     hash_from_vec(str::hash, str::eq, items)
 }
 
 /// Construct a hashmap from a vector with byte keys
-fn hash_from_bytes<V: copy>(items: ~[(~[u8], V)]) -> hashmap<~[u8], V> {
+fn hash_from_bytes<V: copy>(items: &[(~[u8], V)]) -> hashmap<~[u8], V> {
     hash_from_vec(vec::u8::hash, vec::u8::eq, items)
 }
 
 /// Construct a hashmap from a vector with int keys
-fn hash_from_ints<V: copy>(items: ~[(int, V)]) -> hashmap<int, V> {
+fn hash_from_ints<V: copy>(items: &[(int, V)]) -> hashmap<int, V> {
     hash_from_vec(int::hash, int::eq, items)
 }
 
 /// Construct a hashmap from a vector with uint keys
-fn hash_from_uints<V: copy>(items: ~[(uint, V)]) -> hashmap<uint, V> {
+fn hash_from_uints<V: copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
     hash_from_vec(uint::hash, uint::eq, items)
 }
 
@@ -439,15 +469,15 @@ mod tests {
     #[test]
     fn test_simple() {
         debug!{"*** starting test_simple"};
-        fn eq_uint(&&x: uint, &&y: uint) -> bool { return x == y; }
-        fn uint_id(&&x: uint) -> uint { x }
+        pure fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
+        pure fn uint_id(x: &uint) -> uint { *x }
         let hasher_uint: map::hashfn<uint> = uint_id;
         let eqer_uint: map::eqfn<uint> = eq_uint;
         let hasher_str: map::hashfn<~str> = str::hash;
         let eqer_str: map::eqfn<~str> = str::eq;
         debug!{"uint -> uint"};
         let hm_uu: map::hashmap<uint, uint> =
-            map::hashmap::<uint, uint>(hasher_uint, eqer_uint);
+            map::hashmap::<uint, uint>(copy hasher_uint, copy eqer_uint);
         assert (hm_uu.insert(10u, 12u));
         assert (hm_uu.insert(11u, 13u));
         assert (hm_uu.insert(12u, 14u));
@@ -463,7 +493,7 @@ mod tests {
         let twelve: ~str = ~"twelve";
         debug!{"str -> uint"};
         let hm_su: map::hashmap<~str, uint> =
-            map::hashmap::<~str, uint>(hasher_str, eqer_str);
+            map::hashmap::<~str, uint>(copy hasher_str, copy eqer_str);
         assert (hm_su.insert(~"ten", 12u));
         assert (hm_su.insert(eleven, 13u));
         assert (hm_su.insert(~"twelve", 14u));
@@ -477,30 +507,30 @@ mod tests {
         assert (hm_su.get(~"twelve") == 12u);
         debug!{"uint -> str"};
         let hm_us: map::hashmap<uint, ~str> =
-            map::hashmap::<uint, ~str>(hasher_uint, eqer_uint);
+            map::hashmap::<uint, ~str>(copy hasher_uint, copy eqer_uint);
         assert (hm_us.insert(10u, ~"twelve"));
         assert (hm_us.insert(11u, ~"thirteen"));
         assert (hm_us.insert(12u, ~"fourteen"));
-        assert (str::eq(hm_us.get(11u), ~"thirteen"));
-        assert (str::eq(hm_us.get(12u), ~"fourteen"));
-        assert (str::eq(hm_us.get(10u), ~"twelve"));
+        assert hm_us.get(11u) == ~"thirteen";
+        assert hm_us.get(12u) == ~"fourteen";
+        assert hm_us.get(10u) == ~"twelve";
         assert (!hm_us.insert(12u, ~"fourteen"));
-        assert (str::eq(hm_us.get(12u), ~"fourteen"));
+        assert hm_us.get(12u) == ~"fourteen";
         assert (!hm_us.insert(12u, ~"twelve"));
-        assert (str::eq(hm_us.get(12u), ~"twelve"));
+        assert hm_us.get(12u) == ~"twelve";
         debug!{"str -> str"};
         let hm_ss: map::hashmap<~str, ~str> =
-            map::hashmap::<~str, ~str>(hasher_str, eqer_str);
+            map::hashmap::<~str, ~str>(copy hasher_str, copy eqer_str);
         assert (hm_ss.insert(ten, ~"twelve"));
         assert (hm_ss.insert(eleven, ~"thirteen"));
         assert (hm_ss.insert(twelve, ~"fourteen"));
-        assert (str::eq(hm_ss.get(~"eleven"), ~"thirteen"));
-        assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
-        assert (str::eq(hm_ss.get(~"ten"), ~"twelve"));
+        assert hm_ss.get(~"eleven") == ~"thirteen";
+        assert hm_ss.get(~"twelve") == ~"fourteen";
+        assert hm_ss.get(~"ten") == ~"twelve";
         assert (!hm_ss.insert(~"twelve", ~"fourteen"));
-        assert (str::eq(hm_ss.get(~"twelve"), ~"fourteen"));
+        assert hm_ss.get(~"twelve") == ~"fourteen";
         assert (!hm_ss.insert(~"twelve", ~"twelve"));
-        assert (str::eq(hm_ss.get(~"twelve"), ~"twelve"));
+        assert hm_ss.get(~"twelve") == ~"twelve";
         debug!{"*** finished test_simple"};
     }
 
@@ -512,8 +542,8 @@ mod tests {
     fn test_growth() {
         debug!{"*** starting test_growth"};
         let num_to_insert: uint = 64u;
-        fn eq_uint(&&x: uint, &&y: uint) -> bool { return x == y; }
-        fn uint_id(&&x: uint) -> uint { x }
+        pure fn eq_uint(x: &uint, y: &uint) -> bool { *x == *y }
+        pure fn uint_id(x: &uint) -> uint { *x }
         debug!{"uint -> uint"};
         let hasher_uint: map::hashfn<uint> = uint_id;
         let eqer_uint: map::eqfn<uint> = eq_uint;
@@ -560,22 +590,20 @@ mod tests {
             debug!{"get(\"%s\") = \"%s\"",
                    uint::to_str(i, 2u),
                    hm_ss.get(uint::to_str(i, 2u))};
-            assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
-                            uint::to_str(i * i, 2u)));
+            assert hm_ss.get(uint::to_str(i, 2u)) == uint::to_str(i * i, 2u);
             i += 1u;
         }
         assert (hm_ss.insert(uint::to_str(num_to_insert, 2u),
                              uint::to_str(17u, 2u)));
-        assert (str::eq(hm_ss.get(uint::to_str(num_to_insert, 2u)),
-                        uint::to_str(17u, 2u)));
+        assert hm_ss.get(uint::to_str(num_to_insert, 2u)) ==
+            uint::to_str(17u, 2u);
         debug!{"-----"};
         i = 0u;
         while i < num_to_insert {
             debug!{"get(\"%s\") = \"%s\"",
                    uint::to_str(i, 2u),
                    hm_ss.get(uint::to_str(i, 2u))};
-            assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
-                            uint::to_str(i * i, 2u)));
+            assert hm_ss.get(uint::to_str(i, 2u)) == uint::to_str(i * i, 2u);
             i += 1u;
         }
         debug!{"*** finished test_growth"};
@@ -585,16 +613,15 @@ mod tests {
     fn test_removal() {
         debug!{"*** starting test_removal"};
         let num_to_insert: uint = 64u;
-        fn eq(&&x: uint, &&y: uint) -> bool { return x == y; }
-        fn hash(&&u: uint) -> uint {
+        fn eq(x: &uint, y: &uint) -> bool { *x == *y }
+        fn hash(u: &uint) -> uint {
             // This hash function intentionally causes collisions between
             // consecutive integer pairs.
-
-            return u / 2u * 2u;
+            *u / 2u * 2u
         }
-        assert (hash(0u) == hash(1u));
-        assert (hash(2u) == hash(3u));
-        assert (hash(0u) != hash(2u));
+        assert (hash(&0u) == hash(&1u));
+        assert (hash(&2u) == hash(&3u));
+        assert (hash(&0u) != hash(&2u));
         let hasher: map::hashfn<uint> = hash;
         let eqer: map::eqfn<uint> = eq;
         let hm: map::hashmap<uint, uint> =

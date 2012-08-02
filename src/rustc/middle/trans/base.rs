@@ -3352,7 +3352,7 @@ fn trans_rec(bcx: block, fields: ~[ast::field],
     let mut temp_cleanups = ~[];
     for fields.each |fld| {
         let ix = option::get(vec::position(ty_fields, |ft| {
-            str::eq(*fld.node.ident, *ft.ident)
+            str::eq(fld.node.ident, ft.ident)
         }));
         let dst = GEPi(bcx, addr, ~[0u, ix]);
         bcx = trans_expr_save_in(bcx, fld.node.expr, dst);
@@ -3365,7 +3365,7 @@ fn trans_rec(bcx: block, fields: ~[ast::field],
         bcx = cx;
         // Copy over inherited fields
         for ty_fields.eachi |i, tf| {
-            if !vec::any(fields, |f| str::eq(*f.node.ident, *tf.ident)) {
+            if !vec::any(fields, |f| str::eq(f.node.ident, tf.ident)) {
                 let dst = GEPi(bcx, addr, ~[0u, i]);
                 let base = GEPi(bcx, base_val, ~[0u, i]);
                 let val = load_if_immediate(bcx, base, tf.mt.ty);
@@ -3429,7 +3429,7 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
     for fields.each |field| {
         let mut found = none;
         for class_fields.eachi |i, class_field| {
-            if str::eq(*class_field.ident, *field.node.ident) {
+            if str::eq(class_field.ident, field.node.ident) {
                 found = some((i, class_field.id));
                 break;
             }
@@ -5554,10 +5554,10 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           discrim_symbols: int_hash::<~str>(),
           tydescs: ty::new_ty_hash(),
           external: ast_util::new_def_hash(),
-          monomorphized: map::hashmap(hash_mono_id, |a, b| a == b),
+          monomorphized: map::hashmap(hash_mono_id, sys::shape_eq),
           monomorphizing: ast_util::new_def_hash(),
           type_use_cache: ast_util::new_def_hash(),
-          vtables: map::hashmap(hash_mono_id, |a, b| a == b),
+          vtables: map::hashmap(hash_mono_id, sys::shape_eq),
           const_cstr_cache: map::str_hash(),
           module_data: str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
