@@ -391,8 +391,7 @@ class bitv {
  * Each uint in the resulting vector has either value 0u or 1u.
  */
     fn to_vec() -> ~[uint] {
-      let sub = |x| self.init_to_vec(x);
-      return vec::from_fn::<uint>(self.nbits, sub);
+        vec::from_fn(self.nbits, |x| self.init_to_vec(x))
     }
 
 /**

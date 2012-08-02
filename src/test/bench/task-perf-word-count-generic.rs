@@ -42,19 +42,20 @@ trait word_reader {
 }
 
 trait hash_key {
-    fn hash() -> uint;
-    fn eq(self) -> bool;
+    pure fn hash() -> uint;
+    pure fn eq(&&k: self) -> bool;
 }
 
 fn mk_hash<K: const hash_key, V: copy>() -> map::hashmap<K, V> {
-    fn hashfn<K: const hash_key>(k: K) -> uint { k.hash() }
+    pure fn hashfn<K: const hash_key>(k: &K) -> uint { k.hash() }
+    pure fn hasheq<K: const hash_key>(k1: &K, k2: &K) -> bool { k1.eq(*k2) }
 
-    map::hashmap(hashfn::<K>, |x, y| x.eq(y))
+    map::hashmap(hashfn, hasheq)
 }
 
 impl of hash_key for ~str {
-    fn hash() -> uint { str::hash(self) }
-    fn eq(&&x: ~str) -> bool { str::eq(self, x) }
+    pure fn hash() -> uint { str::hash(&self) }
+    pure fn eq(&&x: ~str) -> bool { self == x }
 }
 
 // These used to be in task, but they disappeard.

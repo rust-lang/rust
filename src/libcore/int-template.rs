@@ -19,18 +19,18 @@ const max_value: T = min_value - 1 as T;
 pure fn min(&&x: T, &&y: T) -> T { if x < y { x } else { y } }
 pure fn max(&&x: T, &&y: T) -> T { if x > y { x } else { y } }
 
-pure fn add(&&x: T, &&y: T) -> T { x + y }
-pure fn sub(&&x: T, &&y: T) -> T { x - y }
-pure fn mul(&&x: T, &&y: T) -> T { x * y }
-pure fn div(&&x: T, &&y: T) -> T { x / y }
-pure fn rem(&&x: T, &&y: T) -> T { x % y }
+pure fn add(x: &T, y: &T) -> T { *x + *y }
+pure fn sub(x: &T, y: &T) -> T { *x - *y }
+pure fn mul(x: &T, y: &T) -> T { *x * *y }
+pure fn div(x: &T, y: &T) -> T { *x / *y }
+pure fn rem(x: &T, y: &T) -> T { *x % *y }
 
-pure fn lt(&&x: T, &&y: T) -> bool { x < y }
-pure fn le(&&x: T, &&y: T) -> bool { x <= y }
-pure fn eq(&&x: T, &&y: T) -> bool { x == y }
-pure fn ne(&&x: T, &&y: T) -> bool { x != y }
-pure fn ge(&&x: T, &&y: T) -> bool { x >= y }
-pure fn gt(&&x: T, &&y: T) -> bool { x > y }
+pure fn lt(x: &T, y: &T) -> bool { *x < *y }
+pure fn le(x: &T, y: &T) -> bool { *x <= *y }
+pure fn eq(x: &T, y: &T) -> bool { *x == *y }
+pure fn ne(x: &T, y: &T) -> bool { *x != *y }
+pure fn ge(x: &T, y: &T) -> bool { *x >= *y }
+pure fn gt(x: &T, y: &T) -> bool { *x > *y }
 
 pure fn is_positive(x: T) -> bool { x > 0 as T }
 pure fn is_negative(x: T) -> bool { x < 0 as T }
@@ -221,12 +221,11 @@ fn test_parse_buf() {
 
 #[test]
 fn test_to_str() {
-    import str::eq;
-    assert (eq(to_str(0 as T, 10u), ~"0"));
-    assert (eq(to_str(1 as T, 10u), ~"1"));
-    assert (eq(to_str(-1 as T, 10u), ~"-1"));
-    assert (eq(to_str(127 as T, 16u), ~"7f"));
-    assert (eq(to_str(100 as T, 10u), ~"100"));
+    assert (to_str(0 as T, 10u) == ~"0");
+    assert (to_str(1 as T, 10u) == ~"1");
+    assert (to_str(-1 as T, 10u) == ~"-1");
+    assert (to_str(127 as T, 16u) == ~"7f");
+    assert (to_str(100 as T, 10u) == ~"100");
 }
 
 #[test]

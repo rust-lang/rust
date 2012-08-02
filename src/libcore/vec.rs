@@ -1654,13 +1654,13 @@ mod u8 {
     export memcpy, memmove;
 
     /// Bytewise string comparison
-    pure fn cmp(&&a: ~[u8], &&b: ~[u8]) -> int {
-        let a_len = len(a);
-        let b_len = len(b);
+    pure fn cmp(a: &~[u8], b: &~[u8]) -> int {
+        let a_len = len(*a);
+        let b_len = len(*b);
         let n = uint::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
-            libc::memcmp(unsafe::to_ptr(a) as *libc::c_void,
-                         unsafe::to_ptr(b) as *libc::c_void, n) as int
+            libc::memcmp(unsafe::to_ptr(*a) as *libc::c_void,
+                         unsafe::to_ptr(*b) as *libc::c_void, n) as int
         };
 
         if r != 0 { r } else {
@@ -1675,26 +1675,26 @@ mod u8 {
     }
 
     /// Bytewise less than or equal
-    pure fn lt(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) < 0 }
+    pure fn lt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) < 0 }
 
     /// Bytewise less than or equal
-    pure fn le(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) <= 0 }
+    pure fn le(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) <= 0 }
 
     /// Bytewise equality
-    pure fn eq(&&a: ~[u8], &&b: ~[u8]) -> bool { unsafe { cmp(a, b) == 0 } }
+    pure fn eq(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) == 0 }
 
     /// Bytewise inequality
-    pure fn ne(&&a: ~[u8], &&b: ~[u8]) -> bool { unsafe { cmp(a, b) != 0 } }
+    pure fn ne(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) != 0 }
 
     /// Bytewise greater than or equal
-    pure fn ge(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) >= 0 }
+    pure fn ge(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) >= 0 }
 
     /// Bytewise greater than
-    pure fn gt(&&a: ~[u8], &&b: ~[u8]) -> bool { cmp(a, b) > 0 }
+    pure fn gt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) > 0 }
 
     /// Byte-vec hash function
-    fn hash(&&s: ~[u8]) -> uint {
-        hash::hash_bytes(s) as uint
+    fn hash(s: &~[u8]) -> uint {
+        hash::hash_bytes(*s) as uint
     }
 
     /**

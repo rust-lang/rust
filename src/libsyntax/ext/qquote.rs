@@ -13,10 +13,14 @@ import io::*;
 
 import codemap::span;
 
-type aq_ctxt = @{lo: uint,
-                 gather: dvec<{lo: uint, hi: uint,
-                               e: @ast::expr,
-                               constr: ~str}>};
+struct gather_item {
+    lo: uint;
+    hi: uint;
+    e: @ast::expr;
+    constr: ~str;
+}
+
+type aq_ctxt = @{lo: uint, gather: dvec<gather_item>};
 enum fragment {
     from_expr(@ast::expr),
     from_ty(@ast::ty)
@@ -110,7 +114,10 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
     // FIXME (#2250): Maybe this is an overkill (merge_sort), it might
     // be better to just keep the gather array in sorted order.
     do cx.gather.swap |v| {
-        vec::to_mut(std::sort::merge_sort(|a,b| a.lo < b.lo, v))
+        pure fn by_lo(a: &gather_item, b: &gather_item) -> bool {
+            a.lo < b.lo
+        }
+        vec::to_mut(std::sort::merge_sort(by_lo, v))
     };
     return cx;
 }
@@ -119,8 +126,11 @@ fn visit_aq<T:qq_helper>(node: T, constr: ~str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
 {
     alt (node.extract_mac()) {
       some(mac_aq(sp, e)) {
-        cx.gather.push({lo: sp.lo - cx.lo, hi: sp.hi - cx.lo,
-                        e: e, constr: constr});
+        cx.gather.push(gather_item {
+            lo: sp.lo - cx.lo,
+            hi: sp.hi - cx.lo,
+            e: e,
+            constr: constr});
       }
       _ {node.visit(cx, v);}
     }

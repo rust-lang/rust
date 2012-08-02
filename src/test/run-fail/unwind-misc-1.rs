@@ -7,12 +7,12 @@ import uint;
 
 fn main() {
     let count = @mut 0u;
-    fn hash(&&s: ~[@~str]) -> uint {
-        if (vec::len(s) > 0u && str::eq(*s[0], ~"boom")) { fail; }
+    pure fn hash(s: &~[@~str]) -> uint {
+        if vec::len(*s) > 0u && *s[0] == ~"boom" { fail; }
         return 10u;
     }
-    fn eq(&&s: ~[@~str], &&t: ~[@~str]) -> bool {
-        return s == t;
+    pure fn eq(s: &~[@~str], t: &~[@~str]) -> bool {
+        return *s == *t;
     }
 
     let map = map::hashmap(hash, eq);

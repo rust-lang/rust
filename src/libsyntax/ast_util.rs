@@ -230,18 +230,18 @@ pure fn is_call_expr(e: @expr) -> bool {
     alt e.node { expr_call(_, _, _) { true } _ { false } }
 }
 
-fn eq_ty(&&a: @ty, &&b: @ty) -> bool { return box::ptr_eq(a, b); }
+pure fn eq_ty(a: &@ty, b: &@ty) -> bool { box::ptr_eq(*a, *b) }
 
-fn hash_ty(&&t: @ty) -> uint {
+pure fn hash_ty(t: &@ty) -> uint {
     let res = (t.span.lo << 16u) + t.span.hi;
     return res;
 }
 
-fn def_eq(a: ast::def_id, b: ast::def_id) -> bool {
-    return a.crate == b.crate && a.node == b.node;
+pure fn def_eq(a: &ast::def_id, b: &ast::def_id) -> bool {
+    a.crate == b.crate && a.node == b.node
 }
 
-fn hash_def(d: ast::def_id) -> uint {
+pure fn hash_def(d: &ast::def_id) -> uint {
     let mut h = 5381u;
     h = (h << 5u) + h ^ (d.crate as uint);
     h = (h << 5u) + h ^ (d.node as uint);

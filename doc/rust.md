@@ -734,7 +734,7 @@ An example of imports:
 ~~~~
 import foo = core::info;
 import core::float::sin;
-import core::str::{slice, hash};
+import core::str::{slice, to_upper};
 import core::option::some;
 
 fn main() {
@@ -745,8 +745,8 @@ fn main() {
     log(info, some(1.0));
 
     // Equivalent to 'log(core::info,
-    //                    core::str::hash(core::str::slice(~"foo", 0u, 1u)));'
-    log(info, hash(slice(~"foo", 0u, 1u)));
+    //                    core::str::to_upper(core::str::slice(~"foo", 0u, 1u)));'
+    log(info, to_upper(slice(~"foo", 0u, 1u)));
 }
 ~~~~
 

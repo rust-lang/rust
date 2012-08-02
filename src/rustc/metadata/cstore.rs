@@ -163,8 +163,8 @@ fn get_dep_hashes(cstore: cstore) -> ~[@~str] {
         debug!{"Add hash[%s]: %s", cdata.name, *hash};
         vec::push(result, {name: @cdata.name, hash: hash});
     };
-    fn lteq(a: crate_hash, b: crate_hash) -> bool {
-        return *a.name <= *b.name;
+    pure fn lteq(a: &crate_hash, b: &crate_hash) -> bool {
+        *a.name <= *b.name
     }
     let sorted = std::sort::merge_sort(lteq, result);
     debug!{"sorted:"};

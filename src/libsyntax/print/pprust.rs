@@ -467,12 +467,13 @@ fn print_item(s: ps, &&item: @ast::item) {
       ast::item_enum(variants, params) {
         let newtype =
             vec::len(variants) == 1u &&
-                str::eq(*item.ident, *variants[0].node.name) &&
+                str::eq(item.ident, variants[0].node.name) &&
                 vec::len(variants[0].node.args) == 1u;
         if newtype {
             ibox(s, indent_unit);
             word_space(s, ~"enum");
         } else { head(s, ~"enum"); }
+
         word(s.s, *item.ident);
         print_type_params(s, params);
         space(s.s);
@@ -1789,12 +1790,12 @@ fn opt_proto_to_str(opt_p: option<ast::proto>) -> ~str {
     }
 }
 
-fn purity_to_str(p: ast::purity) -> ~str {
+pure fn purity_to_str(p: ast::purity) -> ~str {
     alt p {
-      ast::impure_fn {~"impure"}
-      ast::unsafe_fn {~"unsafe"}
-      ast::pure_fn {~"pure"}
-      ast::extern_fn {~"extern"}
+      ast::impure_fn => ~"impure",
+      ast::unsafe_fn => ~"unsafe",
+      ast::pure_fn => ~"pure",
+      ast::extern_fn => ~"extern"
     }
 }
 

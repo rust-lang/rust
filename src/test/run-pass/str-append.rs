@@ -19,8 +19,8 @@ fn test2() {
     let b: ~str = ~"ABC" + ff + ~"ABC";
     log(debug, a);
     log(debug, b);
-    assert (str::eq(a, ~"abcABCabc"));
-    assert (str::eq(b, ~"ABCabcABC"));
+    assert (a == ~"abcABCabc");
+    assert (b == ~"ABCabcABC");
 }
 
 fn main() { test1(); test2(); }

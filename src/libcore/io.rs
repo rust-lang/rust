@@ -811,7 +811,7 @@ mod tests {
         let inp: io::reader = result::get(io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
         log(debug, frood2);
-        assert (str::eq(frood, frood2));
+        assert frood == frood2;
     }
 
     #[test]

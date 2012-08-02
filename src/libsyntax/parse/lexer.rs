@@ -456,7 +456,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             bump(rdr);
             c = rdr.curr;
         }
-        if str::eq(accum_str, ~"_") { return token::UNDERSCORE; }
+        if accum_str == ~"_" { return token::UNDERSCORE; }
         let is_mod_name = c == ':' && nextch(rdr) == ':';
 
         // FIXME: perform NFKC normalization here. (Issue #2253)

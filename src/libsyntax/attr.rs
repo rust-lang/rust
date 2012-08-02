@@ -289,15 +289,15 @@ fn last_meta_item_list_by_name(
 // FIXME (#607): This needs to sort by meta_item variant in addition to
 // the item name (See [Fixme-sorting])
 fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
-    fn lteq(&&ma: @ast::meta_item, &&mb: @ast::meta_item) -> bool {
-        fn key(m: @ast::meta_item) -> ast::ident {
+    pure fn lteq(ma: &@ast::meta_item, mb: &@ast::meta_item) -> bool {
+        pure fn key(m: &ast::meta_item) -> ast::ident {
             alt m.node {
               ast::meta_word(name) { /* FIXME (#2543) */ copy name }
               ast::meta_name_value(name, _) { /* FIXME (#2543) */ copy name }
               ast::meta_list(name, _) { /* FIXME (#2543) */ copy name }
             }
         }
-        return key(ma) <= key(mb);
+        key(*ma) <= key(*mb)
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back

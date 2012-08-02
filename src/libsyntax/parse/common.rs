@@ -112,14 +112,14 @@ impl parser_common of parser_common for parser {
 
     // A sanity check that the word we are asking for is a known keyword
     fn require_keyword(word: ~str) {
-        if !self.keywords.contains_key(word) {
+        if !self.keywords.contains_key_ref(&word) {
             self.bug(fmt!{"unknown keyword: %s", word});
         }
     }
 
     fn token_is_word(word: ~str, ++tok: token::token) -> bool {
         alt tok {
-          token::IDENT(sid, false) => { str::eq(word, *self.get_str(sid)) }
+          token::IDENT(sid, false) => { word == *self.get_str(sid) }
           _ => { false }
         }
     }
@@ -136,7 +136,7 @@ impl parser_common of parser_common for parser {
     fn is_any_keyword(tok: token::token) -> bool {
         alt tok {
           token::IDENT(sid, false) {
-            self.keywords.contains_key(*self.get_str(sid))
+            self.keywords.contains_key_ref(self.get_str(sid))
           }
           _ { false }
         }
@@ -148,7 +148,7 @@ impl parser_common of parser_common for parser {
         let mut bump = false;
         let val = alt self.token {
           token::IDENT(sid, false) {
-            if str::eq(word, *self.get_str(sid)) {
+            if word == *self.get_str(sid) {
                 bump = true;
                 true
             } else { false }
@@ -169,7 +169,7 @@ impl parser_common of parser_common for parser {
     }
 
     fn is_restricted_keyword(word: ~str) -> bool {
-        self.restricted_keywords.contains_key(word)
+        self.restricted_keywords.contains_key_ref(&word)
     }
 
     fn check_restricted_keywords() {

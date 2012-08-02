@@ -45,21 +45,22 @@ class cat<T: copy> : map<int, T> {
     self.meows += k;
     true
   }
-  fn contains_key(&&k: int) -> bool { k <= self.meows }
-  
-  fn get(&&k:int) -> T { alt self.find(k) {
+  fn contains_key(+k: int) -> bool { k <= self.meows }
+  fn contains_key_ref(k: &int) -> bool { self.contains_key(*k) }
+
+  fn get(+k:int) -> T { alt self.find(k) {
       some(v) { v }
       none    { fail ~"epic fail"; }
     }
   }
   fn [](&&k:int) -> T { self.get(k) }
-  fn find(&&k:int) -> option<T> { if k <= self.meows {
+  fn find(+k:int) -> option<T> { if k <= self.meows {
         some(self.name)
      }
      else { none }
   }
 
-  fn remove(&&k:int) -> option<T> {
+  fn remove(+k:int) -> option<T> {
     alt self.find(k) {
       some(x) {
         self.meows -= k; some(x)
@@ -68,7 +69,7 @@ class cat<T: copy> : map<int, T> {
     }
   }
 
-  fn each(f: fn(&&int, &&T) -> bool) {
+  fn each(f: fn(+int, +T) -> bool) {
     let mut n = int::abs(self.meows);
     while n > 0 {
         if !f(n, self.name) { break; }
@@ -76,12 +77,17 @@ class cat<T: copy> : map<int, T> {
     }
   }
 
-  fn each_key(&&f: fn(&&int) -> bool) {
+  fn each_key(&&f: fn(+int) -> bool) {
     for self.each |k, _v| { if !f(k) { break; } again;};
   }
-  fn each_value(&&f: fn(&&T) -> bool) {
+  fn each_value(&&f: fn(+T) -> bool) {
     for self.each |_k, v| { if !f(v) { break; } again;};
   }
+
+  fn each_ref(f: fn(k: &int, v: &T) -> bool) {}
+  fn each_key_ref(f: fn(k: &int) -> bool) {}
+  fn each_value_ref(f: fn(k: &T) -> bool) {}
+
   fn clear() { }
 }
 

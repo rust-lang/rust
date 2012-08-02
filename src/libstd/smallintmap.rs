@@ -74,8 +74,10 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         insert(self, key, value);
         return !exists;
     }
-    fn remove(&&key: uint) -> option<V> {
-        if key >= self.v.len() { return none; }
+    fn remove(+key: uint) -> option<V> {
+        if key >= self.v.len() {
+            return none;
+        }
         let old = self.v.get_elt(key);
         self.v.set_elt(key, none);
         old
@@ -83,14 +85,16 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn clear() {
         self.v.set(~[mut]);
     }
-    fn contains_key(&&key: uint) -> bool {
+    fn contains_key(+key: uint) -> bool {
         contains_key(self, key)
     }
-    fn get(&&key: uint) -> V { get(self, key) }
-    fn [](&&key: uint) -> V { get(self, key) }
-    fn find(&&key: uint) -> option<V> { find(self, key) }
+    fn contains_key_ref(key: &uint) -> bool {
+        contains_key(self, *key)
+    }
+    fn get(+key: uint) -> V { get(self, key) }
+    fn find(+key: uint) -> option<V> { find(self, key) }
     fn rehash() { fail }
-    fn each(it: fn(&&uint, V) -> bool) {
+    fn each(it: fn(+key: uint, +value: V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             alt self.v.get_elt(idx) {
@@ -102,15 +106,29 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
             idx += 1u;
         }
     }
-    fn each_key(it: fn(&&uint) -> bool) {
+    fn each_key(it: fn(+key: uint) -> bool) {
+        self.each(|k, _v| it(k))
+    }
+    fn each_value(it: fn(+value: V) -> bool) {
+        self.each(|_k, v| it(v))
+    }
+    fn each_ref(it: fn(key: &uint, value: &V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
-            if self.v.get_elt(idx) != none && !it(idx) { return; }
+            alt self.v.get_elt(idx) {
+              some(elt) {
+                if !it(&idx, &elt) { break; }
+              }
+              none { }
+            }
             idx += 1u;
         }
     }
-    fn each_value(it: fn(V) -> bool) {
-        self.each(|_i, v| it(v));
+    fn each_key_ref(blk: fn(key: &uint) -> bool) {
+        self.each_ref(|k, _v| blk(k))
+    }
+    fn each_value_ref(blk: fn(value: &V) -> bool) {
+        self.each_ref(|_k, v| blk(v))
     }
 }
 

@@ -5,9 +5,9 @@ import doc::item_utils;
 export mk_pass;
 
 fn mk_pass() -> pass {
-    do sort_pass::mk_pass(~"sort_item_type") |item1, item2| {
-        fn score(item: doc::itemtag) -> int {
-            alt item {
+    pure fn by_score(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
+        pure fn score(item: &doc::itemtag) -> int {
+            alt *item {
               doc::consttag(_) { 0 }
               doc::tytag(_) { 1 }
               doc::enumtag(_) { 2 }
@@ -21,6 +21,8 @@ fn mk_pass() -> pass {
 
         score(item1) <= score(item2)
     }
+
+    sort_pass::mk_pass(~"sort_item_type", by_score)
 }
 
 #[test]

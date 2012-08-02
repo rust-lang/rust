@@ -7,7 +7,7 @@ const bits: T = 32 as T;
 const bits: T = 64 as T;
 
 /// Produce a uint suitable for use in a hash table
-pure fn hash(&&x: int) -> uint { return x as uint; }
+pure fn hash(x: &int) -> uint { *x as uint }
 
 /// Returns `base` raised to the power of `exponent`
 fn pow(base: int, exponent: uint) -> int {

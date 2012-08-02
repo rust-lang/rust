@@ -316,11 +316,11 @@ impl util of page_utils for ~[page] {
 }
 
 trait item {
-    fn item() -> itemdoc;
+    pure fn item() -> itemdoc;
 }
 
 impl of item for itemtag {
-    fn item() -> itemdoc {
+    pure fn item() -> itemdoc {
         alt self {
           doc::modtag(doc) { doc.item }
           doc::nmodtag(doc) { doc.item }
@@ -335,60 +335,60 @@ impl of item for itemtag {
 }
 
 impl of item for simpleitemdoc {
-    fn item() -> itemdoc { self.item }
+    pure fn item() -> itemdoc { self.item }
 }
 
 impl of item for moddoc {
-    fn item() -> itemdoc { self.item }
+    pure fn item() -> itemdoc { self.item }
 }
 
 impl of item for nmoddoc {
-    fn item() -> itemdoc { self.item }
+    pure fn item() -> itemdoc { self.item }
 }
 
 impl of item for enumdoc {
-    fn item() -> itemdoc { self.item }
+    pure fn item() -> itemdoc { self.item }
 }
 
 impl of item for traitdoc {
-    fn item() -> itemdoc { self.item }
+    pure fn item() -> itemdoc { self.item }
 }
 
 impl of item for impldoc {
-    fn item() -> itemdoc { self.item }
+    pure fn item() -> itemdoc { self.item }
 }
 
 trait item_utils {
-    fn id() -> ast_id;
-    fn name() -> ~str;
-    fn path() -> ~[~str];
-    fn brief() -> option<~str>;
-    fn desc() -> option<~str>;
-    fn sections() -> ~[section];
+    pure fn id() -> ast_id;
+    pure fn name() -> ~str;
+    pure fn path() -> ~[~str];
+    pure fn brief() -> option<~str>;
+    pure fn desc() -> option<~str>;
+    pure fn sections() -> ~[section];
 }
 
 impl util<A:item> of item_utils for A {
-    fn id() -> ast_id {
+    pure fn id() -> ast_id {
         self.item().id
     }
 
-    fn name() -> ~str {
+    pure fn name() -> ~str {
         self.item().name
     }
 
-    fn path() -> ~[~str] {
+    pure fn path() -> ~[~str] {
         self.item().path
     }
 
-    fn brief() -> option<~str> {
+    pure fn brief() -> option<~str> {
         self.item().brief
     }
 
-    fn desc() -> option<~str> {
+    pure fn desc() -> option<~str> {
         self.item().desc
     }
 
-    fn sections() -> ~[section] {
+    pure fn sections() -> ~[section] {
         self.item().sections
     }
 }

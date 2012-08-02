@@ -295,16 +295,18 @@ pure fn get(t: t) -> t_box unsafe {
     t3
 }
 
-fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
+pure fn tbox_has_flag(tb: t_box, flag: tbox_flag) -> bool {
     (tb.flags & (flag as uint)) != 0u
 }
-fn type_has_params(t: t) -> bool { tbox_has_flag(get(t), has_params) }
-fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
-fn type_needs_infer(t: t) -> bool { tbox_has_flag(get(t), needs_infer) }
-fn type_has_regions(t: t) -> bool { tbox_has_flag(get(t), has_regions) }
-fn type_has_resources(t: t) -> bool { tbox_has_flag(get(t), has_resources) }
-fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
-fn type_id(t: t) -> uint { get(t).id }
+pure fn type_has_params(t: t) -> bool { tbox_has_flag(get(t), has_params) }
+pure fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
+pure fn type_needs_infer(t: t) -> bool { tbox_has_flag(get(t), needs_infer) }
+pure fn type_has_regions(t: t) -> bool { tbox_has_flag(get(t), has_regions) }
+pure fn type_has_resources(t: t) -> bool {
+    tbox_has_flag(get(t), has_resources)
+}
+pure fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
+pure fn type_id(t: t) -> uint { get(t).id }
 
 enum closure_kind {
     ck_block,
@@ -478,31 +480,31 @@ enum tvi_vid = uint;
 enum region_vid = uint;
 
 trait vid {
-    fn to_uint() -> uint;
-    fn to_str() -> ~str;
+    pure fn to_uint() -> uint;
+    pure fn to_str() -> ~str;
 }
 
 impl of vid for tv_vid {
-    fn to_uint() -> uint { *self }
-    fn to_str() -> ~str { fmt!{"<V%u>", self.to_uint()} }
+    pure fn to_uint() -> uint { *self }
+    pure fn to_str() -> ~str { fmt!{"<V%u>", self.to_uint()} }
 }
 
 impl of vid for tvi_vid {
-    fn to_uint() -> uint { *self }
-    fn to_str() -> ~str { fmt!{"<VI%u>", self.to_uint()} }
+    pure fn to_uint() -> uint { *self }
+    pure fn to_str() -> ~str { fmt!{"<VI%u>", self.to_uint()} }
 }
 
 impl of vid for region_vid {
-    fn to_uint() -> uint { *self }
-    fn to_str() -> ~str { fmt!{"<R%u>", self.to_uint()} }
+    pure fn to_uint() -> uint { *self }
+    pure fn to_str() -> ~str { fmt!{"<R%u>", self.to_uint()} }
 }
 
 trait purity_to_str {
-    fn to_str() -> ~str;
+    pure fn to_str() -> ~str;
 }
 
 impl of purity_to_str for purity {
-    fn to_str() -> ~str {
+    pure fn to_str() -> ~str {
         purity_to_str(self)
     }
 }
@@ -541,18 +543,18 @@ type node_type_table = @smallintmap::smallintmap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
-    fn hash_cache_entry(k: val) -> uint {
-        return (k.cnum as uint) + k.pos + k.len;
+    pure fn hash_cache_entry(k: &val) -> uint {
+        (k.cnum as uint) + k.pos + k.len
     }
-    fn eq_cache_entries(a: val, b: val) -> bool {
-        return a.cnum == b.cnum && a.pos == b.pos && a.len == b.len;
+    pure fn eq_cache_entries(a: &val, b: &val) -> bool {
+        a.cnum == b.cnum && a.pos == b.pos && a.len == b.len
     }
     return map::hashmap(hash_cache_entry, eq_cache_entries);
 }
 
 fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
-    map::hashmap(|&&t: t| type_id(t),
-                 |&&a: t, &&b: t| type_id(a) == type_id(b))
+    map::hashmap(|t: &t| type_id(*t),
+                 |a: &t, b: &t| type_id(*a) == type_id(*b))
 }
 
 fn mk_ctxt(s: session::session,
@@ -561,10 +563,11 @@ fn mk_ctxt(s: session::session,
            freevars: freevars::freevar_map,
            region_map: middle::region::region_map,
            region_paramd_items: middle::region::region_paramd_items) -> ctxt {
-    let interner = map::hashmap(|&&k: intern_key| {
+    pure fn hash_intern_key(k: &intern_key) -> uint {
         hash_type_structure(k.struct) +
-            option::map_default(k.o_def_id, 0u, ast_util::hash_def)
-    }, |&&a, &&b| a == b);
+            option::map_default(k.o_def_id, 0u, |d| ast_util::hash_def(&d))
+    }
+    let interner = map::hashmap(hash_intern_key, sys::shape_eq);
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
@@ -2131,46 +2134,47 @@ fn index_sty(cx: ctxt, sty: sty) -> option<mt> {
     }
 }
 
-fn hash_bound_region(br: bound_region) -> uint {
-    alt br { // no idea if this is any good
+pure fn hash_bound_region(br: &bound_region) -> uint {
+    alt *br { // no idea if this is any good
       ty::br_self { 0u }
       ty::br_anon { 1u }
-      ty::br_named(str) { str::hash(*str) }
-      ty::br_cap_avoid(id, br) { id as uint | hash_bound_region(*br) }
+      ty::br_named(str) { str::hash(str) }
+      ty::br_cap_avoid(id, br) { id as uint | hash_bound_region(br) }
     }
 }
 
 fn br_hashmap<V:copy>() -> hashmap<bound_region, V> {
-    map::hashmap(hash_bound_region,
-                 |&&a: bound_region, &&b: bound_region| a == b)
+    map::hashmap(hash_bound_region, sys::shape_eq)
 }
 
 // Type hashing.
-fn hash_type_structure(st: sty) -> uint {
-    fn hash_uint(id: uint, n: uint) -> uint { (id << 2u) + n }
-    fn hash_def(id: uint, did: ast::def_id) -> uint {
+pure fn hash_type_structure(st: sty) -> uint {
+    pure fn hash_uint(id: uint, n: uint) -> uint { (id << 2u) + n }
+    pure fn hash_def(id: uint, did: ast::def_id) -> uint {
         let h = (id << 2u) + (did.crate as uint);
         (h << 2u) + (did.node as uint)
     }
-    fn hash_subty(id: uint, subty: t) -> uint { (id << 2u) + type_id(subty) }
-    fn hash_subtys(id: uint, subtys: ~[t]) -> uint {
+    pure fn hash_subty(id: uint, subty: t) -> uint {
+        (id << 2u) + type_id(subty)
+    }
+    pure fn hash_subtys(id: uint, subtys: ~[t]) -> uint {
         let mut h = id;
-        for subtys.each |s| { h = (h << 2u) + type_id(s) }
+        for vec::each(subtys) |s| { h = (h << 2u) + type_id(s) }
         h
     }
-    fn hash_region(r: region) -> uint {
-        alt r { // no idea if this is any good
-          re_bound(br) { (hash_bound_region(br)) << 2u | 0u }
+    pure fn hash_region(r: &region) -> uint {
+        alt *r { // no idea if this is any good
+          re_bound(br) { (hash_bound_region(&br)) << 2u | 0u }
           re_free(id, br) { ((id as uint) << 4u) |
-                               (hash_bound_region(br)) << 2u | 1u }
+                               (hash_bound_region(&br)) << 2u | 1u }
           re_scope(id)  { ((id as uint) << 2u) | 2u }
           re_var(id)    { (id.to_uint() << 2u) | 3u }
           re_bot        { 4u }
         }
     }
-    fn hash_substs(h: uint, substs: substs) -> uint {
+    pure fn hash_substs(h: uint, substs: substs) -> uint {
         let h = hash_subtys(h, substs.tps);
-        h + substs.self_r.map_default(0u, hash_region)
+        h + substs.self_r.map_default(0u, |r| hash_region(&r))
     }
     alt st {
       ty_nil { 0u } ty_bool { 1u }
@@ -2200,12 +2204,12 @@ fn hash_type_structure(st: sty) -> uint {
       ty_tup(ts) { hash_subtys(25u, ts) }
       ty_rec(fields) {
         let mut h = 26u;
-        for fields.each |f| { h = hash_subty(h, f.mt.ty); }
+        for vec::each(fields) |f| { h = hash_subty(h, f.mt.ty); }
         h
       }
       ty_fn(f) {
         let mut h = 27u;
-        for f.inputs.each |a| { h = hash_subty(h, a.ty); }
+        for vec::each(f.inputs) |a| { h = hash_subty(h, a.ty); }
         hash_subty(h, f.output)
       }
       ty_self { 28u }
@@ -2229,7 +2233,7 @@ fn hash_type_structure(st: sty) -> uint {
         hash_substs(h, substs)
       }
       ty_rptr(region, mt) {
-        let mut h = (46u << 2u) + hash_region(region);
+        let mut h = (46u << 2u) + hash_region(&region);
         hash_subty(h, mt.ty)
       }
     }
@@ -2375,7 +2379,7 @@ fn field_idx(id: ast::ident, fields: ~[field]) -> option<uint> {
 }
 
 fn get_field(rec_ty: t, id: ast::ident) -> field {
-    alt check vec::find(get_fields(rec_ty), |f| str::eq(*f.ident, *id)) {
+    alt check vec::find(get_fields(rec_ty), |f| str::eq(f.ident, id)) {
       some(f) { f }
     }
 }
@@ -2848,7 +2852,7 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
     let mut i = 0u;
     while i < vec::len::<variant_info>(*variants) {
         let variant = variants[i];
-        if ast_util::def_eq(variant.id, variant_id) { return variant; }
+        if ast_util::def_eq(&variant.id, &variant_id) { return variant; }
         i += 1u;
     }
     cx.sess.bug(~"enum_variant_with_id(): no variant exists with that ID");

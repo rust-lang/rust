@@ -1003,8 +1003,8 @@ fn name_has_type(tn: type_names, s: ~str) -> option<TypeRef> {
 }
 
 fn mk_type_names() -> type_names {
-    fn hash(&&t: TypeRef) -> uint { return t as uint; }
-    fn eq(&&a: TypeRef, &&b: TypeRef) -> bool { a as uint == b as uint }
+    pure fn hash(t: &TypeRef) -> uint { *t as uint }
+    pure fn eq(a: &TypeRef, b: &TypeRef) -> bool { *a == *b }
     @{type_names: std::map::hashmap(hash, eq),
       named_types: std::map::str_hash()}
 }

@@ -11,8 +11,8 @@ type hash_interner<T: const> =
      hasher: hashfn<T>,
      eqer: eqfn<T>};
 
-fn mk<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
-    let m = map::hashmap::<T, uint>(hasher, eqer);
+fn mk<T: const copy>(+hasher: hashfn<T>, +eqer: eqfn<T>) -> interner<T> {
+    let m = map::hashmap::<T, uint>(copy hasher, copy eqer);
     let hi: hash_interner<T> =
         {map: m, vect: dvec(), hasher: hasher, eqer: eqer};
     return hi as interner::<T>;

@@ -26,9 +26,9 @@ fn run(
     +writer_factory: writer_factory
 ) -> doc::doc {
 
-    fn mods_last(item1: doc::itemtag, item2: doc::itemtag) -> bool {
-        fn is_mod(item: doc::itemtag) -> bool {
-            alt item {
+    pure fn mods_last(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
+        pure fn is_mod(item: &doc::itemtag) -> bool {
+            alt *item {
               doc::modtag(_) { true }
               _ { false }
             }

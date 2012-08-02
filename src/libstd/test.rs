@@ -372,13 +372,12 @@ fn filter_tests(opts: test_opts,
     };
 
     // Sort the tests alphabetically
-    filtered =
-        {
-            fn lteq(t1: test_desc, t2: test_desc) -> bool {
-                str::le(t1.name, t2.name)
-            }
-        sort::merge_sort(|x,y| lteq(x, y), filtered)
-        };
+    filtered = {
+        pure fn lteq(t1: &test_desc, t2: &test_desc) -> bool {
+            str::le(&t1.name, &t2.name)
+        }
+        sort::merge_sort(lteq, filtered)
+    };
 
     return filtered;
 }
@@ -486,7 +485,7 @@ mod tests {
         let args = ~[~"progname", ~"filter"];
         let opts = alt parse_opts(args) { either::left(o) { o }
           _ { fail ~"Malformed arg in first_free_arg_should_be_a_filter"; } };
-        assert (str::eq(~"filter", option::get(opts.filter)));
+        assert ~"filter" == option::get(opts.filter);
     }
 
     #[test]

@@ -573,19 +573,17 @@ fn build_session_(sopts: @session::options,
 }
 
 fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
-    if str::eq(name, ~"normal") {
-        return ppm_normal;
-    } else if str::eq(name, ~"expanded") {
-        return ppm_expanded;
-    } else if str::eq(name, ~"typed") {
-        return ppm_typed;
-    } else if str::eq(name, ~"expanded,identified") {
-        return ppm_expanded_identified;
-    } else if str::eq(name, ~"identified") {
-        return ppm_identified;
+    alt name {
+      ~"normal" => ppm_normal,
+      ~"expanded" => ppm_expanded,
+      ~"typed" => ppm_typed,
+      ~"expanded,identified" => ppm_expanded_identified,
+      ~"identified" => ppm_identified,
+      _ => {
+        sess.fatal(~"argument to `pretty` must be one of `normal`, `typed`, \
+                     or `identified`");
+      }
     }
-    sess.fatal(~"argument to `pretty` must be one of `normal`, `typed`, or " +
-                   ~"`identified`");
 }
 
 fn opts() -> ~[getopts::opt] {
