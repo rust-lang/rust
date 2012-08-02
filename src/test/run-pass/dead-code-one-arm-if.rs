@@ -2,4 +2,4 @@
 
 
 // -*- rust -*-
-fn main() { if 1 == 1 { ret; } debug!{"Paul is dead"}; }
+fn main() { if 1 == 1 { return; } debug!{"Paul is dead"}; }

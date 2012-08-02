@@ -1,7 +1,7 @@
 type point = {x: int, y: int};
 
 fn x_coord(p: &point) -> &int {
-    ret &p.x;
+    return &p.x;
 }
 
 fn main() {

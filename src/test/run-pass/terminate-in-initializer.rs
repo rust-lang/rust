@@ -8,7 +8,7 @@ fn test_break() { loop { let x: @int = break; } }
 
 fn test_cont() { let mut i = 0; while i < 1 { i += 1; let x: @int = again; } }
 
-fn test_ret() { let x: @int = ret; }
+fn test_ret() { let x: @int = return; }
 
 fn test_fail() {
     fn f() { let x: @int = fail; }

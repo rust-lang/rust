@@ -8,7 +8,7 @@ fn main() { test05(); }
 type pair<A,B> = { a: A, b: B };
 
 fn make_generic_record<A: copy, B: copy>(a: A, b: B) -> pair<A,B> {
-    ret {a: a, b: b};
+    return {a: a, b: b};
 }
 
 fn test05_start(&&f: fn~(&&float, &&~str) -> pair<float, ~str>) {
@@ -25,7 +25,7 @@ fn test05_start(&&f: fn~(&&float, &&~str) -> pair<float, ~str>) {
 
 fn spawn<A: copy, B: copy>(f: extern fn(fn~(A,B)->pair<A,B>)) {
     let arg = fn~(a: A, b: B) -> pair<A,B> {
-        ret make_generic_record(a, b);
+        return make_generic_record(a, b);
     };
     task::spawn(|| f(arg) );
 }

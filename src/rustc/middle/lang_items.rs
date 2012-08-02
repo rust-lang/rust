@@ -119,7 +119,7 @@ class LanguageItemCollector {
 
     fn match_and_collect_item(item_def_id: def_id, key: ~str, value: ~str) {
         if !str_eq(key, ~"lang") {
-            ret;    // Didn't match.
+            return;    // Didn't match.
         }
 
         alt self.item_refs.find(value) {

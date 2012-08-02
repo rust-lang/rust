@@ -89,11 +89,11 @@ mod pipes {
               full {
                 let mut payload = none;
                 payload <-> (*p).payload;
-                ret some(option::unwrap(payload))
+                return some(option::unwrap(payload))
               }
               terminated {
                 assert old_state == terminated;
-                ret none;
+                return none;
               }
             }
         }

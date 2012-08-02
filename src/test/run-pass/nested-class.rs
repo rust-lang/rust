@@ -2,7 +2,7 @@ fn main() {
   
   class b {
     let i: int;
-    fn do_stuff() -> int { ret 37; }
+    fn do_stuff() -> int { return 37; }
     new(i:int) { self.i = i; }
   }
 

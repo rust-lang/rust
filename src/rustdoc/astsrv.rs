@@ -64,7 +64,7 @@ fn run<T>(owner: srv_owner<T>, source: ~str, +parse: parser) -> T {
 
     let res = owner(srv_);
     comm::send(srv_.ch, exit);
-    ret res;
+    return res;
 }
 
 fn act(po: comm::port<msg>, source: ~str, parse: parser) {

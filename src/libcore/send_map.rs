@@ -80,7 +80,7 @@ mod linear {
             unsafe{ // argh. log not considered pure.
                 debug!{"next_bucket(%?, %?) = %?", idx, len_buckets, n};
             }
-            ret n;
+            return n;
         }
 
         #[inline(always)]
@@ -90,11 +90,11 @@ mod linear {
             let mut idx = start_idx;
             loop {
                 if !op(idx) {
-                    ret idx;
+                    return idx;
                 }
                 idx = self.next_bucket(idx, len_buckets);
                 if idx == start_idx {
-                    ret start_idx;
+                    return start_idx;
                 }
             }
         }
@@ -118,15 +118,15 @@ mod linear {
                 alt buckets[i] {
                   some(bkt) {
                     if bkt.hash == hash && self.eqfn(k, &bkt.key) {
-                        ret found_entry(i);
+                        return found_entry(i);
                     }
                   }
                   none => {
-                    ret found_hole(i);
+                    return found_hole(i);
                   }
                 }
             };
-            ret table_full;
+            return table_full;
         }
     }
 
@@ -167,13 +167,13 @@ mod linear {
                        k, v, idx, hash};
                 self.buckets[idx] = some({hash: hash, key: k, value: v});
                 self.size += 1;
-                ret true;
+                return true;
               }
               found_entry(idx) => {
                 debug!{"insert overwrite (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash};
                 self.buckets[idx] = some({hash: hash, key: k, value: v});
-                ret false;
+                return false;
               }
             }
         }
@@ -213,7 +213,7 @@ mod linear {
 
             let mut idx = alt self.bucket_for_key(self.buckets, k) {
               table_full | found_hole(_) => {
-                ret false;
+                return false;
               }
               found_entry(idx) => {
                 idx
@@ -230,7 +230,7 @@ mod linear {
                 idx = self.next_bucket(idx, len_buckets);
             }
             self.size -= 1;
-            ret true;
+            return true;
         }
     }
 
@@ -339,7 +339,7 @@ mod test {
     pure fn uint_eq(x: &uint, y: &uint) -> bool { *x == *y }
 
     fn int_linear_map<V>() -> linear_map<uint,V> {
-        ret linear_map(uint_hash, uint_eq);
+        return linear_map(uint_hash, uint_eq);
     }
 
     #[test]

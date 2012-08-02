@@ -18,7 +18,7 @@ fn pat_id_map(dm: resolve3::DefMap, pat: @pat) -> pat_id_map {
     do pat_bindings(dm, pat) |p_id, _s, n| {
       map.insert(path_to_ident(n), p_id);
     };
-    ret map;
+    return map;
 }
 
 fn pat_is_variant(dm: resolve3::DefMap, pat: @pat) -> bool {
@@ -49,5 +49,5 @@ fn pat_bindings(dm: resolve3::DefMap, pat: @pat,
 fn pat_binding_ids(dm: resolve3::DefMap, pat: @pat) -> ~[node_id] {
     let mut found = ~[];
     pat_bindings(dm, pat, |b_id, _sp, _pt| vec::push(found, b_id) );
-    ret found;
+    return found;
 }

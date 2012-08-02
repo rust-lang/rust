@@ -38,7 +38,7 @@ type ctxt = {
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     alt find_library_crate(cx) {
-      some(t) { ret t; }
+      some(t) { return t; }
       none {
         cx.diag.span_fatal(
             cx.span, fmt!{"can't find crate for `%s`", *cx.ident});
@@ -52,12 +52,12 @@ fn find_library_crate(cx: ctxt) -> option<{ident: ~str, data: @~[u8]}> {
 }
 
 fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
-    if cx.static { ret {prefix: ~"lib", suffix: ~".rlib"}; }
+    if cx.static { return {prefix: ~"lib", suffix: ~".rlib"}; }
     alt cx.os {
-      os_win32 { ret {prefix: ~"", suffix: ~".dll"}; }
-      os_macos { ret {prefix: ~"lib", suffix: ~".dylib"}; }
-      os_linux { ret {prefix: ~"lib", suffix: ~".so"}; }
-      os_freebsd { ret {prefix: ~"lib", suffix: ~".so"}; }
+      os_win32 { return {prefix: ~"", suffix: ~".dll"}; }
+      os_macos { return {prefix: ~"lib", suffix: ~".dylib"}; }
+      os_linux { return {prefix: ~"lib", suffix: ~".so"}; }
+      os_freebsd { return {prefix: ~"lib", suffix: ~".so"}; }
     }
 }
 
@@ -143,7 +143,7 @@ fn crate_matches(crate_data: @~[u8], metas: ~[@ast::meta_item],
     let linkage_metas = attr::find_linkage_metas(attrs);
     if hash.is_not_empty() {
         let chash = decoder::get_crate_hash(crate_data);
-        if *chash != hash { ret false; }
+        if *chash != hash { return false; }
     }
     metadata_matches(linkage_metas, metas)
 }
@@ -163,10 +163,10 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
         debug!{"looking for %s", pprust::meta_item_to_str(*needed)};
         if !attr::contains(extern_metas, needed) {
             debug!{"missing %s", pprust::meta_item_to_str(*needed)};
-            ret false;
+            return false;
         }
     }
-    ret true;
+    return true;
 }
 
 fn get_metadata_section(os: os,
@@ -174,10 +174,10 @@ fn get_metadata_section(os: os,
     let mb = str::as_c_str(filename, |buf| {
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
-    if mb as int == 0 { ret option::none::<@~[u8]>; }
+    if mb as int == 0 { return option::none::<@~[u8]>; }
     let of = alt mk_object_file(mb) {
         option::some(of) { of }
-        _ { ret option::none::<@~[u8]>; }
+        _ { return option::none::<@~[u8]>; }
     };
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
@@ -188,12 +188,12 @@ fn get_metadata_section(os: os,
             let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
             unsafe {
                 let cvbuf: *u8 = unsafe::reinterpret_cast(cbuf);
-                ret some(@vec::unsafe::from_buf(cvbuf, csz));
+                return some(@vec::unsafe::from_buf(cvbuf, csz));
             }
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }
-    ret option::none::<@~[u8]>;
+    return option::none::<@~[u8]>;
 }
 
 fn meta_section_name(os: os) -> ~str {

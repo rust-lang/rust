@@ -9,7 +9,7 @@ fn f(x: int) -> int {
     if x == 1 {
         // debug!{"bottoming out"};
 
-        ret 1;
+        return 1;
     } else {
         // debug!{"recurring"};
 
@@ -17,7 +17,7 @@ fn f(x: int) -> int {
         // debug!{"returned"};
 
         log(debug, y);
-        ret y;
+        return y;
     }
 }
 

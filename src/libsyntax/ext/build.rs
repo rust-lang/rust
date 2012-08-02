@@ -3,7 +3,7 @@ import base::ext_ctxt;
 
 fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
     @ast::expr {
-    ret @{id: cx.next_id(), callee_id: cx.next_id(),
+    return @{id: cx.next_id(), callee_id: cx.next_id(),
           node: expr, span: sp};
 }
 
@@ -13,15 +13,15 @@ fn mk_lit(cx: ext_ctxt, sp: span, lit: ast::lit_) -> @ast::expr {
 }
 fn mk_int(cx: ext_ctxt, sp: span, i: int) -> @ast::expr {
     let lit = ast::lit_int(i as i64, ast::ty_i);
-    ret mk_lit(cx, sp, lit);
+    return mk_lit(cx, sp, lit);
 }
 fn mk_uint(cx: ext_ctxt, sp: span, u: uint) -> @ast::expr {
     let lit = ast::lit_uint(u as u64, ast::ty_u);
-    ret mk_lit(cx, sp, lit);
+    return mk_lit(cx, sp, lit);
 }
 fn mk_u8(cx: ext_ctxt, sp: span, u: u8) -> @ast::expr {
     let lit = ast::lit_uint(u as u64, ast::ty_u8);
-    ret mk_lit(cx, sp, lit);
+    return mk_lit(cx, sp, lit);
 }
 fn mk_binary(cx: ext_ctxt, sp: span, op: ast::binop,
              lhs: @ast::expr, rhs: @ast::expr)
@@ -48,7 +48,7 @@ fn mk_access_(cx: ext_ctxt, sp: span, p: @ast::expr, m: ast::ident)
 fn mk_access(cx: ext_ctxt, sp: span, p: ~[ast::ident], m: ast::ident)
     -> @ast::expr {
     let pathexpr = mk_path(cx, sp, p);
-    ret mk_access_(cx, sp, pathexpr, m);
+    return mk_access_(cx, sp, pathexpr, m);
 }
 fn mk_call_(cx: ext_ctxt, sp: span, fn_expr: @ast::expr,
             args: ~[@ast::expr]) -> @ast::expr {
@@ -57,7 +57,7 @@ fn mk_call_(cx: ext_ctxt, sp: span, fn_expr: @ast::expr,
 fn mk_call(cx: ext_ctxt, sp: span, fn_path: ~[ast::ident],
              args: ~[@ast::expr]) -> @ast::expr {
     let pathexpr = mk_path(cx, sp, fn_path);
-    ret mk_call_(cx, sp, pathexpr, args);
+    return mk_call_(cx, sp, pathexpr, args);
 }
 // e = expr, t = type
 fn mk_base_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
@@ -79,7 +79,7 @@ fn mk_fixed_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
 }
 fn mk_base_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
     let lit = ast::lit_str(@s);
-    ret mk_lit(cx, sp, lit);
+    return mk_lit(cx, sp, lit);
 }
 fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
     mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::vstore_uniq)

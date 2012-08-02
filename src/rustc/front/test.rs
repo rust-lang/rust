@@ -51,7 +51,7 @@ fn generate_test_harness(sess: session::session,
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
-    ret res;
+    return res;
 }
 
 fn strip_test_functions(crate: @ast::crate) -> @ast::crate {
@@ -82,7 +82,7 @@ fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
 
     let mod_nomain =
         {view_items: m.view_items, items: vec::filter_map(m.items, nomain)};
-    ret fold::noop_fold_mod(mod_nomain, fld);
+    return fold::noop_fold_mod(mod_nomain, fld);
 }
 
 fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
@@ -91,7 +91,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 
     // Add a special __test module to the crate that will contain code
     // generated for the test harness
-    ret {module: add_test_module(cx, folded.module) with folded};
+    return {module: add_test_module(cx, folded.module) with folded};
 }
 
 
@@ -121,7 +121,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 
     let res = fold::noop_fold_item(i, fld);
     vec::pop(cx.path);
-    ret res;
+    return res;
 }
 
 fn is_test_fn(i: @ast::item) -> bool {
@@ -140,7 +140,7 @@ fn is_test_fn(i: @ast::item) -> bool {
         }
     }
 
-    ret has_test_attr && has_test_signature(i);
+    return has_test_attr && has_test_signature(i);
 }
 
 fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
@@ -148,7 +148,7 @@ fn is_ignored(cx: test_ctxt, i: @ast::item) -> bool {
     let ignoreitems = attr::attr_metas(ignoreattrs);
     let cfg_metas = vec::concat(vec::filter_map(ignoreitems,
         |&&i| attr::get_meta_item_list(i) ));
-    ret if vec::is_not_empty(ignoreitems) {
+    return if vec::is_not_empty(ignoreitems) {
         config::metas_in_cfg(cx.crate.node.config, cfg_metas)
     } else {
         false
@@ -161,7 +161,7 @@ fn should_fail(i: @ast::item) -> bool {
 
 fn add_test_module(cx: test_ctxt, m: ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
-    ret {items: vec::append_one(m.items, testmod) with m};
+    return {items: vec::append_one(m.items, testmod) with m};
 }
 
 /*
@@ -203,11 +203,11 @@ fn mk_test_module(cx: test_ctxt) -> @ast::item {
 
     debug!{"Synthetic test module:\n%s\n", pprust::item_to_str(@item)};
 
-    ret @item;
+    return @item;
 }
 
 fn nospan<T: copy>(t: T) -> ast::spanned<T> {
-    ret {node: t, span: dummy_sp()};
+    return {node: t, span: dummy_sp()};
 }
 
 fn path_node(ids: ~[ast::ident]) -> @ast::path {
@@ -238,7 +238,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
          node: item_,
          vis: ast::public,
          span: dummy_sp()};
-    ret @item;
+    return @item;
 }
 
 fn mk_path(cx: test_ctxt, path: ~[ast::ident]) -> ~[ast::ident] {
@@ -270,7 +270,7 @@ fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
     let inner_ty = @{id: cx.sess.next_node_id(),
                      node: ast::ty_vec(vec_mt),
                      span: dummy_sp()};
-    ret @{id: cx.sess.next_node_id(),
+    return @{id: cx.sess.next_node_id(),
           node: ast::ty_uniq({ty: inner_ty, mutbl: ast::m_imm}),
           span: dummy_sp()};
 }
@@ -286,7 +286,7 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
                        callee_id: cx.sess.next_node_id(),
                        node: ast::expr_vec(descs, ast::m_imm),
                        span: dummy_sp()};
-    ret @{id: cx.sess.next_node_id(),
+    return @{id: cx.sess.next_node_id(),
           callee_id: cx.sess.next_node_id(),
           node: ast::expr_vstore(inner_expr, ast::vstore_uniq),
           span: dummy_sp()};
@@ -358,7 +358,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let desc_rec: ast::expr =
         {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
          node: desc_rec_, span: span};
-    ret @desc_rec;
+    return @desc_rec;
 }
 
 // Produces a bare function that wraps the test function
@@ -400,7 +400,7 @@ fn mk_test_wrapper(cx: test_ctxt,
         span: span
     };
 
-    ret @wrapper_expr;
+    return @wrapper_expr;
 }
 
 fn mk_main(cx: test_ctxt) -> @ast::item {
@@ -451,7 +451,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
          node: item_,
          vis: ast::public,
          span: dummy_sp()};
-    ret @item;
+    return @item;
 }
 
 fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
@@ -497,7 +497,7 @@ fn mk_test_main_call(cx: test_ctxt) -> @ast::expr {
         {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
          node: test_main_call_expr_, span: dummy_sp()};
 
-    ret @test_main_call_expr;
+    return @test_main_call_expr;
 }
 
 // Local Variables:

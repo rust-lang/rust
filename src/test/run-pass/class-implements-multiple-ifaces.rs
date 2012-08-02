@@ -21,8 +21,8 @@ trait bitey {
 }
 
 fn vec_includes<T>(xs: ~[T], x: T) -> bool {
-  for each(xs) |y| { if y == x { ret true; }}
-  ret false;
+  for each(xs) |y| { if y == x { return true; }}
+  return false;
 }
 
 // vtables other than the 1st one don't seem to work
@@ -68,7 +68,7 @@ class cat : noisy, scratchy, bitey {
     let mut rslt = none;
     for each(all) |thing| { if !self.scratched.contains(thing) {
           self.scratched.push(thing);
-          ret some(thing); }}
+          return some(thing); }}
     rslt
   }
   fn bite() -> body_part {
@@ -102,7 +102,7 @@ fn bite_everything<T: bitey>(critter: T) -> bool {
         left = vec::filter(left, |p| p != part );
     }
     else {
-      ret false;
+      return false;
     }
   }
   true

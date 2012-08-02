@@ -39,7 +39,7 @@ type pointy = {
 // To add: objects; traits; anything type-parameterized?
 
 fn empty_pointy() -> @pointy {
-    ret @{
+    return @{
         mut a : none,
         mut b : ~none,
         mut c : @none,

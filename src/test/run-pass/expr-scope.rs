@@ -2,4 +2,4 @@
 // xfail-fast
 
 fn f() { }
-fn main() { ret ::f(); }
+fn main() { return ::f(); }

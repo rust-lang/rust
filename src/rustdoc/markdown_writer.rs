@@ -142,7 +142,7 @@ fn readclose(fd: libc::c_int) -> ~str {
         buf += str::from_bytes(bytes);
     }
     os::fclose(file);
-    ret buf;
+    return buf;
 }
 
 fn generic_writer(+process: fn~(markdown: ~str)) -> writer {

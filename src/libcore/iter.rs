@@ -39,16 +39,16 @@ fn eachi<A,IA:base_iter<A>>(self: IA, blk: fn(uint, A) -> bool) {
 
 fn all<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
-        if !blk(a) { ret false; }
+        if !blk(a) { return false; }
     }
-    ret true;
+    return true;
 }
 
 fn any<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
-        if blk(a) { ret true; }
+        if blk(a) { return true; }
     }
-    ret false;
+    return false;
 }
 
 fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
@@ -58,7 +58,7 @@ fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
     for self.each |a| {
         if prd(a) { vec::push(result, a); }
     }
-    ret result;
+    return result;
 }
 
 fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
@@ -67,7 +67,7 @@ fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
     for self.each |a| {
         vec::push(result, op(a));
     }
-    ret result;
+    return result;
 }
 
 fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
@@ -79,7 +79,7 @@ fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
             vec::push(result, b);
         }
     }
-    ret result;
+    return result;
 }
 
 fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
@@ -87,7 +87,7 @@ fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     for self.each |a| {
         b = blk(b, a);
     }
-    ret b;
+    return b;
 }
 
 fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> ~[A] {
@@ -96,9 +96,9 @@ fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> ~[A] {
 
 fn contains<A,IA:base_iter<A>>(self: IA, x: A) -> bool {
     for self.each |a| {
-        if a == x { ret true; }
+        if a == x { return true; }
     }
-    ret false;
+    return false;
 }
 
 fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
@@ -115,10 +115,10 @@ fn position<A,IA:base_iter<A>>(self: IA, f: fn(A) -> bool)
         -> option<uint> {
     let mut i = 0;
     for self.each |a| {
-        if f(a) { ret some(i); }
+        if f(a) { return some(i); }
         i += 1;
     }
-    ret none;
+    return none;
 }
 
 // note: 'rposition' would only make sense to provide with a bidirectional
@@ -191,7 +191,7 @@ fn test_map_directly_on_vec() {
 #[test]
 fn test_filter_on_int_range() {
     fn is_even(&&i: int) -> bool {
-        ret (i % 2) == 0;
+        return (i % 2) == 0;
     }
 
     let l = to_vec(bind filter(bind int::range(0, 10, _), is_even, _));
@@ -201,7 +201,7 @@ fn test_filter_on_int_range() {
 #[test]
 fn test_filter_on_uint_range() {
     fn is_even(&&i: uint) -> bool {
-        ret (i % 2u) == 0u;
+        return (i % 2u) == 0u;
     }
 
     let l = to_vec(bind filter(bind uint::range(0u, 10u, _), is_even, _));

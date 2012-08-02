@@ -5,5 +5,5 @@
 
 fn f(caller: str) { log(debug, caller); }
 
-fn main() { ret f("main"); debug!{"Paul is dead"}; }
+fn main() { return f("main"); debug!{"Paul is dead"}; }
 

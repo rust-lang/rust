@@ -7,7 +7,7 @@ fn call_id() {
     id(c); //~ WARNING unreachable statement
 }
 
-fn call_id_3() { id(ret) && id(ret); }
+fn call_id_3() { id(return) && id(return); }
 
 fn main() {
 }

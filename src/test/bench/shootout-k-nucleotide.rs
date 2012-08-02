@@ -12,24 +12,24 @@ import std::sort;
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str { 
    fn pct(xx: uint, yy: uint) -> float {
-      ret (xx as float) * 100f / (yy as float);
+      return (xx as float) * 100f / (yy as float);
    }
 
    fn le_by_val<TT: copy, UU: copy>(kv0: (TT,UU), kv1: (TT,UU)) -> bool {
       let (_, v0) = kv0;
       let (_, v1) = kv1;
-      ret v0 >= v1;
+      return v0 >= v1;
    }
 
    fn le_by_key<TT: copy, UU: copy>(kv0: (TT,UU), kv1: (TT,UU)) -> bool {
       let (k0, _) = kv0;
       let (k1, _) = kv1;
-      ret k0 <= k1;
+      return k0 <= k1;
    }
 
    // sort by key, then by value
    fn sortKV<TT: copy, UU: copy>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
-      ret sort::merge_sort(le_by_val, sort::merge_sort(le_by_key, orig));
+      return sort::merge_sort(le_by_val, sort::merge_sort(le_by_key, orig));
    }
 
    let mut pairs = ~[];
@@ -37,7 +37,7 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
    // map -> [(k,%)]
    mm.each(fn&(key: ~[u8], val: uint) -> bool {
       vec::push(pairs, (key, pct(val, total)));
-      ret true;
+      return true;
    });
 
    let pairs_sorted = sortKV(pairs);
@@ -47,17 +47,17 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
    pairs_sorted.each(fn&(kv: (~[u8], float)) -> bool unsafe {
       let (k,v) = kv;
       buffer += (fmt!{"%s %0.3f\n", str::to_upper(str::unsafe::from_bytes(k)), v});
-      ret true;
+      return true;
    });
 
-   ret buffer;
+   return buffer;
 }
 
 // given a map, search for the frequency of a pattern
 fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
    alt mm.find(str::bytes(str::to_lower(key))) {
-      option::none      { ret 0u; }
-      option::some(num) { ret num; }
+      option::none      { return 0u; }
+      option::some(num) { return num; }
    }
 }
 
@@ -83,7 +83,7 @@ fn windows_with_carry(bb: &[u8], nn: uint,
       ii += 1u;
    }
 
-   ret vec::slice(bb, len - (nn - 1u), len); 
+   return vec::slice(bb, len - (nn - 1u), len); 
 }
 
 fn make_sequence_processor(sz: uint, from_parent: comm::port<~[u8]>,
@@ -142,7 +142,7 @@ fn main(args: ~[~str]) {
    let from_child = vec::map (sizes, |_sz| comm::port() );
    let to_parent  = vec::mapi(sizes, |ii, _sz| comm::chan(from_child[ii]) );
    let to_child   = vec::mapi(sizes, fn@(ii: uint, sz: uint) -> comm::chan<~[u8]> {
-       ret do task::spawn_listener |from_parent| {
+       return do task::spawn_listener |from_parent| {
          make_sequence_processor(sz, from_parent, to_parent[ii]);
       };
    });

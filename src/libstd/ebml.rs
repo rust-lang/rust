@@ -63,19 +63,19 @@ impl extensions of ops::index<uint,doc> for doc {
 fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     let a = data[start];
     if a & 0x80u8 != 0u8 {
-        ret {val: (a & 0x7fu8) as uint, next: start + 1u};
+        return {val: (a & 0x7fu8) as uint, next: start + 1u};
     }
     if a & 0x40u8 != 0u8 {
-        ret {val: ((a & 0x3fu8) as uint) << 8u |
+        return {val: ((a & 0x3fu8) as uint) << 8u |
                  (data[start + 1u] as uint),
              next: start + 2u};
     } else if a & 0x20u8 != 0u8 {
-        ret {val: ((a & 0x1fu8) as uint) << 16u |
+        return {val: ((a & 0x1fu8) as uint) << 16u |
                  (data[start + 1u] as uint) << 8u |
                  (data[start + 2u] as uint),
              next: start + 3u};
     } else if a & 0x10u8 != 0u8 {
-        ret {val: ((a & 0x0fu8) as uint) << 24u |
+        return {val: ((a & 0x0fu8) as uint) << 24u |
                  (data[start + 1u] as uint) << 16u |
                  (data[start + 2u] as uint) << 8u |
                  (data[start + 3u] as uint),
@@ -84,14 +84,14 @@ fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
 }
 
 fn doc(data: @~[u8]) -> doc {
-    ret {data: data, start: 0u, end: vec::len::<u8>(*data)};
+    return {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
 fn doc_at(data: @~[u8], start: uint) -> tagged_doc {
     let elt_tag = vuint_at(*data, start);
     let elt_size = vuint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
-    ret {tag: elt_tag.val,
+    return {tag: elt_tag.val,
          doc: {data: data, start: elt_size.next, end: end}};
 }
 
@@ -102,15 +102,19 @@ fn maybe_get_doc(d: doc, tg: uint) -> option<doc> {
         let elt_size = vuint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
-            ret some::<doc>({data: d.data, start: elt_size.next, end: pos});
+            return some::<doc>({
+                data: d.data,
+                start: elt_size.next,
+                end: pos
+            });
         }
     }
-    ret none::<doc>;
+    return none::<doc>;
 }
 
 fn get_doc(d: doc, tg: uint) -> doc {
     alt maybe_get_doc(d, tg) {
-      some(d) { ret d; }
+      some(d) { return d; }
       none {
         error!{"failed to find block with tag %u", tg};
         fail;
@@ -147,29 +151,29 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc) -> bool) {
 fn doc_data(d: doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
 
 fn with_doc_data<T>(d: doc, f: fn(x: &[u8]) -> T) -> T {
-    ret f(vec::view(*d.data, d.start, d.end));
+    return f(vec::view(*d.data, d.start, d.end));
 }
 
-fn doc_as_str(d: doc) -> ~str { ret str::from_bytes(doc_data(d)); }
+fn doc_as_str(d: doc) -> ~str { return str::from_bytes(doc_data(d)); }
 
 fn doc_as_u8(d: doc) -> u8 {
     assert d.end == d.start + 1u;
-    ret (*d.data)[d.start];
+    return (*d.data)[d.start];
 }
 
 fn doc_as_u16(d: doc) -> u16 {
     assert d.end == d.start + 2u;
-    ret io::u64_from_be_bytes(*d.data, d.start, 2u) as u16;
+    return io::u64_from_be_bytes(*d.data, d.start, 2u) as u16;
 }
 
 fn doc_as_u32(d: doc) -> u32 {
     assert d.end == d.start + 4u;
-    ret io::u64_from_be_bytes(*d.data, d.start, 4u) as u32;
+    return io::u64_from_be_bytes(*d.data, d.start, 4u) as u32;
 }
 
 fn doc_as_u64(d: doc) -> u64 {
     assert d.end == d.start + 8u;
-    ret io::u64_from_be_bytes(*d.data, d.start, 8u);
+    return io::u64_from_be_bytes(*d.data, d.start, 8u);
 }
 
 fn doc_as_i8(d: doc) -> i8 { doc_as_u8(d) as i8 }
@@ -205,16 +209,16 @@ fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
 }
 
 fn write_vuint(w: io::writer, n: uint) {
-    if n < 0x7f_u { write_sized_vuint(w, n, 1u); ret; }
-    if n < 0x4000_u { write_sized_vuint(w, n, 2u); ret; }
-    if n < 0x200000_u { write_sized_vuint(w, n, 3u); ret; }
-    if n < 0x10000000_u { write_sized_vuint(w, n, 4u); ret; }
+    if n < 0x7f_u { write_sized_vuint(w, n, 1u); return; }
+    if n < 0x4000_u { write_sized_vuint(w, n, 2u); return; }
+    if n < 0x200000_u { write_sized_vuint(w, n, 3u); return; }
+    if n < 0x10000000_u { write_sized_vuint(w, n, 4u); return; }
     fail fmt!{"vint to write too big: %?", n};
 }
 
 fn writer(w: io::writer) -> writer {
     let size_positions: ~[uint] = ~[];
-    ret writer_({writer: w, mut size_positions: size_positions});
+    return writer_({writer: w, mut size_positions: size_positions});
 }
 
 // FIXME (#2741): Provide a function to write the standard ebml header.
@@ -462,7 +466,7 @@ impl deserializer_priv for ebml_deserializer {
                       r_doc.end, self.parent.end};
         }
         self.pos = r_doc.end;
-        ret r_doc;
+        return r_doc;
     }
 
     fn push_doc<T: copy>(d: ebml::doc, f: fn() -> T) -> T{
@@ -473,13 +477,13 @@ impl deserializer_priv for ebml_deserializer {
         let r = f();
         self.parent = old_parent;
         self.pos = old_pos;
-        ret r;
+        return r;
     }
 
     fn _next_uint(exp_tag: ebml_serializer_tag) -> uint {
         let r = ebml::doc_as_u32(self.next_doc(exp_tag));
         debug!{"_next_uint exp_tag=%? result=%?", exp_tag, r};
-        ret r as uint;
+        return r as uint;
     }
 }
 
@@ -495,7 +499,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
         if v > (core::uint::max_value as u64) {
             fail fmt!{"uint %? too large for this architecture", v};
         }
-        ret v as uint;
+        return v as uint;
     }
 
     fn read_i64() -> i64 { ebml::doc_as_u64(self.next_doc(es_i64)) as i64 }
@@ -507,7 +511,7 @@ impl deserializer of serialization::deserializer for ebml_deserializer {
         if v > (int::max_value as i64) || v < (int::min_value as i64) {
             fail fmt!{"int %? out of range for this architecture", v};
         }
-        ret v as int;
+        return v as int;
     }
 
     fn read_bool() -> bool { ebml::doc_as_u8(self.next_doc(es_bool)) as bool }

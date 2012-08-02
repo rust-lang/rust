@@ -54,26 +54,26 @@ pure fn compl(i: T) -> T {
 
 impl ord of ord for T {
     pure fn lt(&&other: T) -> bool {
-        ret self < other;
+        return self < other;
     }
 }
 
 impl eq of eq for T {
     pure fn eq(&&other: T) -> bool {
-        ret self == other;
+        return self == other;
     }
 }
 
 impl num of num::num for T {
-    pure fn add(&&other: T)    -> T { ret self + other; }
-    pure fn sub(&&other: T)    -> T { ret self - other; }
-    pure fn mul(&&other: T)    -> T { ret self * other; }
-    pure fn div(&&other: T)    -> T { ret self / other; }
-    pure fn modulo(&&other: T) -> T { ret self % other; }
-    pure fn neg()              -> T { ret -self;        }
+    pure fn add(&&other: T)    -> T { return self + other; }
+    pure fn sub(&&other: T)    -> T { return self - other; }
+    pure fn mul(&&other: T)    -> T { return self * other; }
+    pure fn div(&&other: T)    -> T { return self / other; }
+    pure fn modulo(&&other: T) -> T { return self % other; }
+    pure fn neg()              -> T { return -self;        }
 
-    pure fn to_int()         -> int { ret self as int; }
-    pure fn from_int(n: int) -> T   { ret n as T;      }
+    pure fn to_int()         -> int { return self as int; }
+    pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
 /**
@@ -89,17 +89,17 @@ impl num of num::num for T {
  * `buf` must not be empty
  */
 fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
-    if vec::len(buf) == 0u { ret none; }
+    if vec::len(buf) == 0u { return none; }
     let mut i = vec::len(buf) - 1u;
     let mut power = 1u as T;
     let mut n = 0u as T;
     loop {
         alt char::to_digit(buf[i] as char, radix) {
           some(d) { n += d as T * power; }
-          none { ret none; }
+          none { return none; }
         }
         power *= radix as T;
-        if i == 0u { ret some(n); }
+        if i == 0u { return some(n); }
         i -= 1u;
     };
 }
@@ -138,16 +138,16 @@ fn from_str(s: ~str) -> option<T> { parse_buf(str::bytes(s), 10u) }
 
 /// Parse a string as an unsigned integer.
 fn from_str_radix(buf: ~str, radix: u64) -> option<u64> {
-    if str::len(buf) == 0u { ret none; }
+    if str::len(buf) == 0u { return none; }
     let mut i = str::len(buf) - 1u;
     let mut power = 1u64, n = 0u64;
     loop {
         alt char::to_digit(buf[i] as char, radix as uint) {
           some(d) { n += d as u64 * power; }
-          none { ret none; }
+          none { return none; }
         }
         power *= radix;
-        if i == 0u { ret some(n); }
+        if i == 0u { return some(n); }
         i -= 1u;
     };
 }
@@ -233,7 +233,7 @@ pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
 }
 
 /// Convert to a string
-fn str(i: T) -> ~str { ret to_str(i, 10u); }
+fn str(i: T) -> ~str { return to_str(i, 10u); }
 
 #[test]
 fn test_to_str() {

@@ -47,7 +47,7 @@ fn run(
 
     write_markdown(sorted_doc, writer_factory);
 
-    ret doc;
+    return doc;
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn make_title(page: doc::page) -> ~str {
     };
     let title = markdown_pass::header_text(item);
     let title = str::replace(title, ~"`", ~"");
-    ret title;
+    return title;
 }
 
 #[test]
@@ -378,7 +378,7 @@ fn should_write_crate_description() {
 
 fn write_index(ctxt: ctxt, index: doc::index) {
     if vec::is_empty(index.entries) {
-        ret;
+        return;
     }
 
     for index.entries.each |entry| {
@@ -589,7 +589,7 @@ fn write_variants(
     docs: ~[doc::variantdoc]
 ) {
     if vec::is_empty(docs) {
-        ret;
+        return;
     }
 
     write_header_(ctxt, h4, ~"Variants");
@@ -805,7 +805,7 @@ mod test {
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         write_markdown(doc, writer_factory);
-        ret comm::recv(po).second();
+        return comm::recv(po).second();
     }
 
     fn write_markdown_str_srv(
@@ -815,7 +815,7 @@ mod test {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         let pass = mk_pass(writer_factory);
         pass.f(srv, doc);
-        ret comm::recv(po).second();
+        return comm::recv(po).second();
     }
 
     #[test]

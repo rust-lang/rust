@@ -91,7 +91,7 @@ fn vec_to_str(v: ~[int]) -> str {
         if i + 1u < len(v) { s += ", "; }
         i += 1u;
     }
-    ret s + "]";
+    return s + "]";
 }
 
 fn show_edits(a: ~[int], xs: ~[int]) {

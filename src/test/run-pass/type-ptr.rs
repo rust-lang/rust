@@ -1,5 +1,5 @@
-fn f(a: *int) -> *int { ret a; }
+fn f(a: *int) -> *int { return a; }
 
-fn g(a: *int) -> *int { let b = f(a); ret b; }
+fn g(a: *int) -> *int { let b = f(a); return b; }
 
-fn main(args: ~[~str]) { ret; }
+fn main(args: ~[~str]) { return; }

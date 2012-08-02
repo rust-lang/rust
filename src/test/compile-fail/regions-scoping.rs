@@ -9,18 +9,18 @@ fn nested(x: &x/int) {  // (1)
                   z: &z/int) -> &z/int) // A fresh region `z` (3)
             -> &x/int {
 
-            if false { ret z(x, x, x); } //~ ERROR mismatched types: expected `&y/int` but found `&x/int`
-            if false { ret z(x, x, y); } //~ ERROR mismatched types: expected `&y/int` but found `&x/int`
+            if false { return z(x, x, x); } //~ ERROR mismatched types: expected `&y/int` but found `&x/int`
+            if false { return z(x, x, y); } //~ ERROR mismatched types: expected `&y/int` but found `&x/int`
                                         //~^ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            if false { ret z(x, y, x); }
-            if false { ret z(x, y, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            if false { ret z(y, x, x); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
+            if false { return z(x, y, x); }
+            if false { return z(x, y, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
+            if false { return z(y, x, x); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
                                         //~^ ERROR mismatched types: expected `&y/int` but found `&x/int`
-            if false { ret z(y, x, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
+            if false { return z(y, x, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
                                         //~^ ERROR mismatched types: expected `&y/int` but found `&x/int`
                                        //~^^ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            if false { ret z(y, y, x); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            if false { ret z(y, y, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
+            if false { return z(y, y, x); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
+            if false { return z(y, y, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
                                         //~^ ERROR mismatched types: expected `&x/int` but found `&y/int`
             fail;
         }

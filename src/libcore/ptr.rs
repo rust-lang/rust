@@ -79,7 +79,7 @@ unsafe fn buf_len<T>(buf: **T) -> uint {
 unsafe fn position<T>(buf: *T, f: fn(T) -> bool) -> uint {
     let mut i = 0u;
     loop {
-        if f(*offset(buf, i)) { ret i; }
+        if f(*offset(buf, i)) { return i; }
         else { i += 1u; }
     }
 }

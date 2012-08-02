@@ -172,7 +172,7 @@ fn config_from_opts(
             })
         }
     };
-    ret result;
+    return result;
 }
 
 fn parse_output_format(output_format: ~str) -> result<output_format, ~str> {
@@ -197,7 +197,7 @@ fn maybe_find_pandoc(
     program_output: program_output
 ) -> result<option<~str>, ~str> {
     if config.output_format != pandoc_html {
-        ret result::ok(maybe_pandoc_cmd);
+        return result::ok(maybe_pandoc_cmd);
     }
 
     let possible_pandocs = alt maybe_pandoc_cmd {

@@ -3,7 +3,7 @@ fn main() {
     // the right type for f, as we unified
     // bot and u32 here
     let f = alt uint::from_str(~"1234") {
-        none { ret () }
+        none { return () }
         some(num) { num as u32 }
     };
     assert f == 1234u32;

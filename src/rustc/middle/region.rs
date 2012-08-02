@@ -89,11 +89,11 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
     let mut subscope = subscope;
     while superscope != subscope {
         alt region_map.find(subscope) {
-            none { ret false; }
+            none { return false; }
             some(scope) { subscope = scope; }
         }
     }
-    ret true;
+    return true;
 }
 
 /// Determines whether one region is a subregion of another.  This is
@@ -129,7 +129,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
         let mut scope = scope;
         loop {
             alt region_map.find(scope) {
-                none { ret result; }
+                none { return result; }
                 some(superscope) {
                     vec::push(result, superscope);
                     scope = superscope;
@@ -138,7 +138,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
         }
     }
 
-    if scope_a == scope_b { ret some(scope_a); }
+    if scope_a == scope_b { return some(scope_a); }
 
     let a_ancestors = ancestors_of(region_map, scope_a);
     let b_ancestors = ancestors_of(region_map, scope_b);
@@ -154,18 +154,18 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
     // then the corresponding scope is a superscope of the other.
 
     if a_ancestors[a_index] != b_ancestors[b_index] {
-        ret none;
+        return none;
     }
 
     loop {
         // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
         // for all indices between a_index and the end of the array
-        if a_index == 0u { ret some(scope_a); }
-        if b_index == 0u { ret some(scope_b); }
+        if a_index == 0u { return some(scope_a); }
+        if b_index == 0u { return some(scope_b); }
         a_index -= 1u;
         b_index -= 1u;
         if a_ancestors[a_index] != b_ancestors[b_index] {
-            ret some(a_ancestors[a_index + 1u]);
+            return some(a_ancestors[a_index + 1u]);
         }
     }
 }
@@ -318,7 +318,7 @@ fn resolve_crate(sess: session, def_map: resolve3::DefMap,
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
-    ret cx.region_map;
+    return cx.region_map;
 }
 
 // ___________________________________________________________________________
@@ -480,7 +480,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // be region-parameterized.  if cx.item_id is zero, then this type
     // is not a member of a type defn nor is it a constitutent of an
     // impl etc.  So we can ignore it and its components.
-    if cx.item_id == 0 { ret; }
+    if cx.item_id == 0 { return; }
 
     // if this type directly references a region, either via a
     // region pointer like &r.ty or a region-parameterized path
@@ -572,5 +572,5 @@ fn determine_rp_in_crate(sess: session,
     }
 
     // return final set
-    ret cx.region_paramd_items;
+    return cx.region_paramd_items;
 }

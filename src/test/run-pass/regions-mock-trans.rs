@@ -16,12 +16,12 @@ type ccx = {
 };
 
 fn alloc(_bcx : &arena) -> &bcx unsafe {
-    ret unsafe::reinterpret_cast(
+    return unsafe::reinterpret_cast(
         libc::malloc(sys::size_of::<bcx/&blk>() as libc::size_t));
 }
 
 fn h(bcx : &bcx) -> &bcx {
-    ret alloc(bcx.fcx.arena);
+    return alloc(bcx.fcx.arena);
 }
 
 fn g(fcx : &fcx) {
@@ -35,7 +35,7 @@ fn g(fcx : &fcx) {
 fn f(ccx : &ccx) {
     let a = arena(());
     let fcx = { arena: &a, ccx: ccx };
-    ret g(&fcx);
+    return g(&fcx);
 }
 
 fn main() {

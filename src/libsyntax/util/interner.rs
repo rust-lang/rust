@@ -15,7 +15,7 @@ fn mk<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>) -> interner<T> {
     let m = map::hashmap::<T, uint>(hasher, eqer);
     let hi: hash_interner<T> =
         {map: m, vect: dvec(), hasher: hasher, eqer: eqer};
-    ret hi as interner::<T>;
+    return hi as interner::<T>;
 }
 
 /* when traits can extend traits, we should extend index<uint,T> to get [] */
@@ -28,12 +28,12 @@ trait interner<T: const copy> {
 impl <T: const copy> of interner<T> for hash_interner<T> {
     fn intern(val: T) -> uint {
         alt self.map.find(val) {
-          some(idx) { ret idx; }
+          some(idx) { return idx; }
           none {
             let new_idx = self.vect.len();
             self.map.insert(val, new_idx);
             self.vect.push(val);
-            ret new_idx;
+            return new_idx;
           }
         }
     }
@@ -43,5 +43,5 @@ impl <T: const copy> of interner<T> for hash_interner<T> {
     // where we first check a pred and then rely on it, ceasing to fail is ok.
     pure fn get(idx: uint) -> T { self.vect.get_elt(idx) }
 
-    fn len() -> uint { ret self.vect.len(); }
+    fn len() -> uint { return self.vect.len(); }
 }

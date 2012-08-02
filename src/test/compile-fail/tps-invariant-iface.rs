@@ -8,7 +8,7 @@ enum box_impl<T> = {
 };
 
 impl<T:copy> of box_trait<T> for box_impl<T> {
-    fn get() -> T { ret self.f; }
+    fn get() -> T { return self.f; }
     fn set(t: T) { self.f = t; }
 }
 

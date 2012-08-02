@@ -244,8 +244,8 @@ impl extensions<T:copy, E:copy> for result<T,E> {
  * checking for overflow:
  *
  *     fn inc_conditionally(x: uint) -> result<uint,str> {
- *         if x == uint::max_value { ret err("overflow"); }
- *         else { ret ok(x+1u); }
+ *         if x == uint::max_value { return err("overflow"); }
+ *         else { return ok(x+1u); }
  *     }
  *     map(~[1u, 2u, 3u], inc_conditionally).chain {|incd|
  *         assert incd == ~[2u, 3u, 4u];
@@ -259,10 +259,10 @@ fn map_vec<T,U:copy,V:copy>(
     for vec::each(ts) |t| {
         alt op(t) {
           ok(v) { vec::push(vs, v); }
-          err(u) { ret err(u); }
+          err(u) { return err(u); }
         }
     }
-    ret ok(vs);
+    return ok(vs);
 }
 
 fn map_opt<T,U:copy,V:copy>(
@@ -299,11 +299,11 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: ~[S], ts: ~[T],
     while i < n {
         alt op(ss[i],ts[i]) {
           ok(v) { vec::push(vs, v); }
-          err(u) { ret err(u); }
+          err(u) { return err(u); }
         }
         i += 1u;
     }
-    ret ok(vs);
+    return ok(vs);
 }
 
 /**
@@ -320,11 +320,11 @@ fn iter_vec2<S,T,U:copy>(ss: ~[S], ts: ~[T],
     while i < n {
         alt op(ss[i],ts[i]) {
           ok(()) { }
-          err(u) { ret err(u); }
+          err(u) { return err(u); }
         }
         i += 1u;
     }
-    ret ok(());
+    return ok(());
 }
 
 /// Unwraps a result, assuming it is an `ok(T)`
@@ -336,7 +336,7 @@ fn unwrap<T, U>(-res: result<T, U>) -> T {
         };
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(res);
-        ret liberated_value;
+        return liberated_value;
     }
 }
 

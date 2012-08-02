@@ -94,7 +94,7 @@ class t {
 
     fn doesntcare() -> bool {
         for uint::range(0, self.nbits) |i| {
-           if self.get(i) != dont_care { ret false; }
+           if self.get(i) != dont_care { return false; }
         }
         true
     }
@@ -134,7 +134,7 @@ class t {
         changed = change(changed, old, newv);
         self.set(i, newv);
        }
-      ret changed;
+      return changed;
     }
 
     fn become(source: t) -> bool {
@@ -155,7 +155,7 @@ class t {
            changed = change(changed, old, newv);
            self.set(i, newv);
         }
-        ret changed;
+        return changed;
     }
 
     new(len: uint) {

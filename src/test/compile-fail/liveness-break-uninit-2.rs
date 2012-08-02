@@ -8,7 +8,7 @@ fn foo() -> int {
 
     log(debug, x); //~ ERROR use of possibly uninitialized variable: `x`
 
-    ret 17;
+    return 17;
 }
 
 fn main() { log(debug, foo()); }

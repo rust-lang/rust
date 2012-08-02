@@ -27,7 +27,7 @@ fn main() {
 
     #macro[[#lambda[x, #<t>, body, #<s>],
             {
-                fn result(x: t) -> s { ret body }
+                fn result(x: t) -> s { return body }
                 result
             }]];
 

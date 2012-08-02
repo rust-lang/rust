@@ -2,9 +2,9 @@ use std;
 
 fn fib(n: int) -> int {
     if n < 2 {
-        ret 1;
+        return 1;
     } else {
-        ret fib(n - 1) + fib(n - 2);
+        return fib(n - 1) + fib(n - 2);
     }
 }
 

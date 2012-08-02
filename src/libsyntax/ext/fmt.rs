@@ -27,7 +27,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
         parse_fmt_err_(cx, fmtspan, s)
     };
     let pieces = parse_fmt_string(fmt, parse_fmt_err);
-    ret pieces_to_expr(cx, sp, pieces, args);
+    return pieces_to_expr(cx, sp, pieces, args);
 }
 
 // FIXME (#2249): A lot of these functions for producing expressions can
@@ -38,12 +38,12 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   pieces: ~[piece], args: ~[@ast::expr])
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> ~[ast::ident] {
-        ret ~[@~"extfmt", @~"rt", ident];
+        return ~[@~"extfmt", @~"rt", ident];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span,
                          ident: ast::ident) -> @ast::expr {
         let path = make_path_vec(cx, ident);
-        ret mk_path(cx, sp, path);
+        return mk_path(cx, sp, path);
     }
     // Produces an AST expression that represents a RT::conv record,
     // which tells the RT::conv* functions how to perform the conversion
@@ -62,18 +62,18 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                 tmp_expr = mk_binary(cx, sp, ast::bitor, tmp_expr,
                                      make_rt_path_expr(cx, sp, @fstr));
             }
-            ret tmp_expr;
+            return tmp_expr;
         }
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
             alt cnt {
               count_implied {
-                ret make_rt_path_expr(cx, sp, @~"count_implied");
+                return make_rt_path_expr(cx, sp, @~"count_implied");
               }
               count_is(c) {
                 let count_lit = mk_int(cx, sp, c);
                 let count_is_path = make_path_vec(cx, @~"count_is");
                 let count_is_args = ~[count_lit];
-                ret mk_call(cx, sp, count_is_path, count_is_args);
+                return mk_call(cx, sp, count_is_path, count_is_args);
               }
               _ { cx.span_unimpl(sp, ~"unimplemented #fmt conversion"); }
             }
@@ -91,12 +91,12 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               ty_octal { rt_type = ~"ty_octal"; }
               _ { rt_type = ~"ty_default"; }
             }
-            ret make_rt_path_expr(cx, sp, @rt_type);
+            return make_rt_path_expr(cx, sp, @rt_type);
         }
         fn make_conv_rec(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
-            ret mk_rec_e(cx, sp,
+            return mk_rec_e(cx, sp,
                          ~[{ident: @~"flags", ex: flags_expr},
                           {ident: @~"width", ex: width_expr},
                           {ident: @~"precision", ex: precision_expr},
@@ -106,7 +106,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         let rt_conv_width = make_count(cx, sp, cnv.width);
         let rt_conv_precision = make_count(cx, sp, cnv.precision);
         let rt_conv_ty = make_ty(cx, sp, cnv.ty);
-        ret make_conv_rec(cx, sp, rt_conv_flags, rt_conv_width,
+        return make_conv_rec(cx, sp, rt_conv_flags, rt_conv_width,
                           rt_conv_precision, rt_conv_ty);
     }
     fn make_conv_call(cx: ext_ctxt, sp: span, conv_type: ~str, cnv: conv,
@@ -115,7 +115,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         let path = make_path_vec(cx, @fname);
         let cnv_expr = make_rt_conv_expr(cx, sp, cnv);
         let args = ~[cnv_expr, arg];
-        ret mk_call(cx, arg.span, path, args);
+        return mk_call(cx, arg.span, path, args);
     }
 
     fn make_new_conv(cx: ext_ctxt, sp: span, cnv: conv, arg: @ast::expr) ->
@@ -125,10 +125,10 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         fn is_signed_type(cnv: conv) -> bool {
             alt cnv.ty {
               ty_int(s) {
-                alt s { signed { ret true; } unsigned { ret false; } }
+                alt s { signed { return true; } unsigned { return false; } }
               }
-              ty_float { ret true; }
-              _ { ret false; }
+              ty_float { return true; }
+              _ { return false; }
             }
         }
         let unsupported = ~"conversion not supported in #fmt string";
@@ -168,22 +168,28 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           _ { cx.span_unimpl(sp, unsupported); }
         }
         alt cnv.ty {
-          ty_str { ret make_conv_call(cx, arg.span, ~"str", cnv, arg); }
+          ty_str { return make_conv_call(cx, arg.span, ~"str", cnv, arg); }
           ty_int(sign) {
             alt sign {
-              signed { ret make_conv_call(cx, arg.span, ~"int", cnv, arg); }
+              signed {
+                return make_conv_call(cx, arg.span, ~"int", cnv, arg);
+              }
               unsigned {
-                ret make_conv_call(cx, arg.span, ~"uint", cnv, arg);
+                return make_conv_call(cx, arg.span, ~"uint", cnv, arg);
               }
             }
           }
-          ty_bool { ret make_conv_call(cx, arg.span, ~"bool", cnv, arg); }
-          ty_char { ret make_conv_call(cx, arg.span, ~"char", cnv, arg); }
-          ty_hex(_) { ret make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
-          ty_bits { ret make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
-          ty_octal { ret make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
-          ty_float { ret make_conv_call(cx, arg.span, ~"float", cnv, arg); }
-          ty_poly { ret make_conv_call(cx, arg.span, ~"poly", cnv, arg); }
+          ty_bool { return make_conv_call(cx, arg.span, ~"bool", cnv, arg); }
+          ty_char { return make_conv_call(cx, arg.span, ~"char", cnv, arg); }
+          ty_hex(_) {
+            return make_conv_call(cx, arg.span, ~"uint", cnv, arg);
+          }
+          ty_bits { return make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
+          ty_octal { return make_conv_call(cx, arg.span, ~"uint", cnv, arg); }
+          ty_float {
+            return make_conv_call(cx, arg.span, ~"float", cnv, arg);
+          }
+          ty_poly { return make_conv_call(cx, arg.span, ~"poly", cnv, arg); }
         }
     }
     fn log_conv(c: conv) {
@@ -275,7 +281,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
 
     let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
-    ret mk_call(cx, fmt_sp, ~[@~"str", @~"concat"], ~[arg_vec]);
+    return mk_call(cx, fmt_sp, ~[@~"str", @~"concat"], ~[arg_vec]);
 }
 //
 // Local Variables:

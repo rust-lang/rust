@@ -38,7 +38,7 @@ fn create<T: copy>() -> t<T> {
             i += 1u;
         }
 
-        ret rv;
+        return rv;
     }
     fn get<T: copy>(elts: dvec<cell<T>>, i: uint) -> T {
         alt elts.get_elt(i) { some(t) { t } _ { fail } }
@@ -50,7 +50,7 @@ fn create<T: copy>() -> t<T> {
                     elts: dvec<cell<T>>};
 
     impl <T: copy> of t<T> for repr<T> {
-        fn size() -> uint { ret self.nelts; }
+        fn size() -> uint { return self.nelts; }
         fn add_front(t: T) {
             let oldlo: uint = self.lo;
             if self.lo == 0u {
@@ -83,7 +83,7 @@ fn create<T: copy>() -> t<T> {
             self.elts.set_elt(self.lo, none);
             self.lo = (self.lo + 1u) % self.elts.len();
             self.nelts -= 1u;
-            ret t;
+            return t;
         }
         fn pop_back() -> T {
             if self.hi == 0u {
@@ -92,13 +92,13 @@ fn create<T: copy>() -> t<T> {
             let t: T = get(self.elts, self.hi);
             self.elts.set_elt(self.hi, none);
             self.nelts -= 1u;
-            ret t;
+            return t;
         }
-        fn peek_front() -> T { ret get(self.elts, self.lo); }
-        fn peek_back() -> T { ret get(self.elts, self.hi - 1u); }
+        fn peek_front() -> T { return get(self.elts, self.lo); }
+        fn peek_back() -> T { return get(self.elts, self.hi - 1u); }
         fn get(i: int) -> T {
             let idx = (self.lo + (i as uint)) % self.elts.len();
-            ret get(self.elts, idx);
+            return get(self.elts, idx);
         }
     }
 
@@ -235,21 +235,25 @@ mod tests {
 
     #[test]
     fn test() {
-        fn inteq(&&a: int, &&b: int) -> bool { ret a == b; }
-        fn intboxeq(&&a: @int, &&b: @int) -> bool { ret a == b; }
+        fn inteq(&&a: int, &&b: int) -> bool { return a == b; }
+        fn intboxeq(&&a: @int, &&b: @int) -> bool { return a == b; }
         fn taggyeq(a: taggy, b: taggy) -> bool {
             alt a {
-              one(a1) { alt b { one(b1) { ret a1 == b1; } _ { ret false; } } }
+              one(a1) {
+                alt b { one(b1) {return a1 == b1; } _ { return false; } }
+              }
               two(a1, a2) {
                 alt b {
-                  two(b1, b2) { ret a1 == b1 && a2 == b2; }
-                  _ { ret false; }
+                  two(b1, b2) { return a1 == b1 && a2 == b2; }
+                  _ { return false; }
                 }
               }
               three(a1, a2, a3) {
                 alt b {
-                  three(b1, b2, b3) { ret a1 == b1 && a2 == b2 && a3 == b3; }
-                  _ { ret false; }
+                  three(b1, b2, b3) {
+                    return a1 == b1 && a2 == b2 && a3 == b3;
+                  }
+                  _ { return false; }
                 }
               }
             }
@@ -257,26 +261,28 @@ mod tests {
         fn taggypareq<T>(a: taggypar<T>, b: taggypar<T>) -> bool {
             alt a {
               onepar::<T>(a1) {
-                alt b { onepar::<T>(b1) { ret a1 == b1; } _ { ret false; } }
+                alt b {
+                  onepar::<T>(b1) { return a1 == b1; } _ { return false; }
+                }
               }
               twopar::<T>(a1, a2) {
                 alt b {
-                  twopar::<T>(b1, b2) { ret a1 == b1 && a2 == b2; }
-                  _ { ret false; }
+                  twopar::<T>(b1, b2) { return a1 == b1 && a2 == b2; }
+                  _ { return false; }
                 }
               }
               threepar::<T>(a1, a2, a3) {
                 alt b {
                   threepar::<T>(b1, b2, b3) {
-                    ret a1 == b1 && a2 == b2 && a3 == b3;
+                    return a1 == b1 && a2 == b2 && a3 == b3;
                   }
-                  _ { ret false; }
+                  _ { return false; }
                 }
               }
             }
         }
         fn reccyeq(a: reccy, b: reccy) -> bool {
-            ret a.x == b.x && a.y == b.y && taggyeq(a.t, b.t);
+            return a.x == b.x && a.y == b.y && taggyeq(a.t, b.t);
         }
         debug!{"*** test boxes"};
         test_boxes(@5, @72, @64, @175);

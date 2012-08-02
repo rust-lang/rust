@@ -17,8 +17,8 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     let var = expr_to_str(cx, args[0], ~"#env requires a string");
     alt os::getenv(var) {
-      option::none { ret mk_uniq_str(cx, sp, ~""); }
-      option::some(s) { ret mk_uniq_str(cx, sp, s); }
+      option::none { return mk_uniq_str(cx, sp, ~""); }
+      option::some(s) { return mk_uniq_str(cx, sp, s); }
     }
 }
 

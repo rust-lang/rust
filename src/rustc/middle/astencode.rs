@@ -147,12 +147,12 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
 fn reserve_id_range(sess: session,
                     from_id_range: ast_util::id_range) -> ast_util::id_range {
     // Handle the case of an empty range:
-    if ast_util::empty(from_id_range) { ret from_id_range; }
+    if ast_util::empty(from_id_range) { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.parse_sess.next_id;
     let to_id_max = sess.parse_sess.next_id + cnt;
     sess.parse_sess.next_id = to_id_max;
-    ret {min: to_id_min, max: to_id_min};
+    return {min: to_id_min, max: to_id_min};
 }
 
 impl translation_routines for extended_decode_ctxt {
@@ -972,7 +972,7 @@ fn test_more() {
     roundtrip(#ast[item]{
         fn foo(x: uint, y: uint) -> uint {
             let z = x + y;
-            ret z;
+            return z;
         }
     });
 }
@@ -983,13 +983,13 @@ fn test_simplification() {
     let item_in = ast::ii_item(#ast[item] {
         fn new_int_alist<B: copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-            ret {eq_fn: eq_int, mut data: ~[]};
+            return {eq_fn: eq_int, mut data: ~[]};
         }
     });
     let item_out = simplify_ast(item_in);
     let item_exp = ast::ii_item(#ast[item] {
         fn new_int_alist<B: copy>() -> alist<int, B> {
-            ret {eq_fn: eq_int, mut data: ~[]};
+            return {eq_fn: eq_int, mut data: ~[]};
         }
     });
     alt (item_out, item_exp) {

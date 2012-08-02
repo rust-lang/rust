@@ -5,17 +5,17 @@ fn vec_equal<T>(v: ~[T], u: ~[T],
                 element_equality_test: fn@(&&T, &&T) -> bool) ->
    bool {
     let Lv = vec::len(v);
-    if Lv != vec::len(u) { ret false; }
+    if Lv != vec::len(u) { return false; }
     let i = 0u;
     while i < Lv {
-        if !element_equality_test(v[i], u[i]) { ret false; }
+        if !element_equality_test(v[i], u[i]) { return false; }
         i += 1u;
     }
-    ret true;
+    return true;
 }
 
-pure fn builtin_equal<T>(&&a: T, &&b: T) -> bool { ret a == b; }
-pure fn builtin_equal_int(&&a: int, &&b: int) -> bool { ret a == b; }
+pure fn builtin_equal<T>(&&a: T, &&b: T) -> bool { return a == b; }
+pure fn builtin_equal_int(&&a: int, &&b: int) -> bool { return a == b; }
 
 fn main() {
     assert (builtin_equal(5, 5));

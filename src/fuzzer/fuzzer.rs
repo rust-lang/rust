@@ -450,7 +450,7 @@ fn has_raw_pointers(c: ast::crate) -> bool {
         visit::mk_simple_visitor(@{visit_ty: |a| visit_ty(has_rp, a)
                                       with *visit::default_simple_visitor()});
     visit::visit_crate(c, (), v);
-    ret *has_rp;
+    return *has_rp;
 }
 
 fn content_is_dangerous_to_run(code: ~str) -> bool {
@@ -461,16 +461,16 @@ fn content_is_dangerous_to_run(code: ~str) -> bool {
          ~"unsafe",
          ~"log"];    // python --> rust pipe deadlock?
 
-    for dangerous_patterns.each |p| { if contains(code, p) { ret true; } }
-    ret false;
+    for dangerous_patterns.each |p| { if contains(code, p) { return true; } }
+    return false;
 }
 
 fn content_is_dangerous_to_compile(code: ~str) -> bool {
     let dangerous_patterns =
         ~[~"xfail-test"];
 
-    for dangerous_patterns.each |p| { if contains(code, p) { ret true; } }
-    ret false;
+    for dangerous_patterns.each |p| { if contains(code, p) { return true; } }
+    return false;
 }
 
 fn content_might_not_converge(code: ~str) -> bool {
@@ -485,8 +485,8 @@ fn content_might_not_converge(code: ~str) -> bool {
          ~"\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
         ];
 
-    for confusing_patterns.each |p| { if contains(code, p) { ret true; } }
-    ret false;
+    for confusing_patterns.each |p| { if contains(code, p) { return true; } }
+    return false;
 }
 
 fn file_might_not_converge(filename: ~str) -> bool {
@@ -499,9 +499,9 @@ fn file_might_not_converge(filename: ~str) -> bool {
     ];
 
 
-    for confusing_files.each |f| { if contains(filename, f) { ret true; } }
+    for confusing_files.each |f| { if contains(filename, f) { return true; } }
 
-    ret false;
+    return false;
 }
 
 fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
@@ -512,7 +512,7 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
 
     while i < maxIters {
         oldv = newv;
-        if content_might_not_converge(*oldv) { ret; }
+        if content_might_not_converge(*oldv) { return; }
         newv = @parse_and_print(oldv);
         if oldv == newv { break; }
         i += 1u;
@@ -592,7 +592,7 @@ fn check_variants(files: ~[~str], cx: context) {
 fn main(args: ~[~str]) {
     if vec::len(args) != 2u {
         error!{"usage: %s <testdir>", args[0]};
-        ret;
+        return;
     }
     let mut files = ~[];
     let root = args[1];

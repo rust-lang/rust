@@ -33,7 +33,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
         run_test = argv.contains(~"all") || argv.contains(name)
     }
 
-    if !run_test { ret }
+    if !run_test { return }
 
     let start = precise_time_s();
     test();

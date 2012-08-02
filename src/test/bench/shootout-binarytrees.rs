@@ -6,20 +6,20 @@ enum tree/& { nil, node(&tree, &tree, int), }
 
 fn item_check(t: &tree) -> int {
     alt *t {
-      nil { ret 0; }
+      nil { return 0; }
       node(left, right, item) {
-        ret item + item_check(left) - item_check(right);
+        return item + item_check(left) - item_check(right);
       }
     }
 }
 
 fn bottom_up_tree(arena: &arena::arena, item: int, depth: int) -> &tree {
     if depth > 0 {
-        ret new(*arena) node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+        return new(*arena) node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
                              bottom_up_tree(arena, 2 * item, depth - 1),
                              item);
     }
-    ret new(*arena) nil;
+    return new(*arena) nil;
 }
 
 fn main(args: ~[~str]) {

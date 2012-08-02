@@ -4,7 +4,7 @@ type T1 = uint;
 type T2 = int;
 
 fn bar(x: T1) -> T2 {
-    ret x;
+    return x;
     //~^ ERROR mismatched types: expected `T2` but found `T1`
 }
 

@@ -47,7 +47,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
         while j > i && lines[j - 1u].trim().is_empty() {
             j -= 1u;
         }
-        ret lines.slice(i, j);
+        return lines.slice(i, j);
     }
 
     // drop leftmost columns that contain only values in chars
@@ -69,7 +69,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
             }
         }
 
-        ret do lines.map |line| {
+        return do lines.map |line| {
             let chars = str::chars(line);
             if i > chars.len() {
                 ~""
@@ -80,7 +80,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
     }
 
     if comment.starts_with(~"//") {
-        ret comment.slice(3u, comment.len()).trim();
+        return comment.slice(3u, comment.len()).trim();
     }
 
     if comment.starts_with(~"/*") {
@@ -89,7 +89,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
         let lines = block_trim(lines, ~"\t ", none);
         let lines = block_trim(lines, ~"*", some(1u));
         let lines = block_trim(lines, ~"\t ", none);
-        ret str::connect(lines, ~"\n");
+        return str::connect(lines, ~"\n");
     }
 
     fail ~"not a doc-comment: " + comment;
@@ -102,14 +102,14 @@ fn read_to_eol(rdr: string_reader) -> ~str {
         bump(rdr);
     }
     if rdr.curr == '\n' { bump(rdr); }
-    ret val;
+    return val;
 }
 
 fn read_one_line_comment(rdr: string_reader) -> ~str {
     let val = read_to_eol(rdr);
     assert ((val[0] == '/' as u8 && val[1] == '/' as u8) ||
             (val[0] == '#' as u8 && val[1] == '!' as u8));
-    ret val;
+    return val;
 }
 
 fn consume_non_eol_whitespace(rdr: string_reader) {
@@ -173,8 +173,10 @@ fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
 
 fn all_whitespace(s: ~str, begin: uint, end: uint) -> bool {
     let mut i: uint = begin;
-    while i != end { if !is_whitespace(s[i] as char) { ret false; } i += 1u; }
-    ret true;
+    while i != end {
+        if !is_whitespace(s[i] as char) { return false; } i += 1u;
+    }
+    return true;
 }
 
 fn trim_whitespace_prefix_and_push_line(&lines: ~[~str],
@@ -208,7 +210,7 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
             bump(rdr);
             bump(rdr);
         }
-        ret;
+        return;
     }
 
     let mut curr_line = ~"/*";
@@ -250,7 +252,7 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
 }
 
 fn peeking_at_comment(rdr: string_reader) -> bool {
-    ret ((rdr.curr == '/' && nextch(rdr) == '/') ||
+    return ((rdr.curr == '/' && nextch(rdr) == '/') ||
          (rdr.curr == '/' && nextch(rdr) == '*')) ||
          (rdr.curr == '#' && nextch(rdr) == '!');
 }
@@ -314,5 +316,5 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
         }
         first_read = false;
     }
-    ret {cmnts: comments, lits: literals};
+    return {cmnts: comments, lits: literals};
 }

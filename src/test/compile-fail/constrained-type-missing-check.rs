@@ -2,7 +2,7 @@
 // xfail-test
 // error-pattern:Unsatisfied precondition
 
-pure fn less_than(x: int, y: int) -> bool { ret x < y; }
+pure fn less_than(x: int, y: int) -> bool { return x < y; }
 
 type ordered_range = {low: int, high: int} : less_than(*.low, *.high);
 

@@ -18,7 +18,7 @@ fn shouldnotignore() {
 
 #[test]
 fn checktests() {
-    // Pull the tests out of the secret test module
+    // Pull the tests out of the secreturn test module
     let tests = __test::tests();
 
     let shouldignore = option::get(

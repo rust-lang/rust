@@ -18,7 +18,7 @@ import std::map::hashmap;
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: ~[@ast::method], tps: ~[ast::ty_param]) {
     let _icx = ccx.insn_ctxt(~"impl::trans_impl");
-    if tps.len() > 0u { ret; }
+    if tps.len() > 0u { return; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |m| {
         if m.tps.len() == 0u {
@@ -45,7 +45,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
     // other arguments failing:
     assert temp_cleanups == ~[];
 
-    ret result;
+    return result;
 }
 
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,
@@ -285,7 +285,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     -> block {
     let _icx = bcx.insn_ctxt(~"impl::trans_cast");
-    if dest == ignore { ret trans_expr(bcx, val, ignore); }
+    if dest == ignore { return trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
     let {bcx: bcx, box: llbox, body: body} = malloc_boxed(bcx, v_ty);

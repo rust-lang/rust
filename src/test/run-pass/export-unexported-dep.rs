@@ -8,7 +8,7 @@ mod foo {
     // not exported
     enum t { t1, t2, }
 
-    fn f() -> t { ret t1; }
+    fn f() -> t { return t1; }
 
     fn g(v: t) { assert (v == t1); }
 }

@@ -36,7 +36,7 @@ type ctx = {ccx: @crate_ctxt,
 fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     -> ~[type_uses] {
     alt ccx.type_use_cache.find(fn_id) {
-      some(uses) { ret uses; }
+      some(uses) { return uses; }
       none {}
     }
     let fn_id_loc = if fn_id.crate == local_crate { fn_id }
@@ -57,7 +57,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     if fn_id_loc.crate != local_crate {
         let uses = vec::from_mut(copy cx.uses);
         ccx.type_use_cache.insert(fn_id, uses);
-        ret uses;
+        return uses;
     }
     let map_node = alt ccx.tcx.items.find(fn_id_loc.node) {
         some(x) { x }

@@ -995,28 +995,28 @@ fn associate_type(tn: type_names, s: ~str, t: TypeRef) {
 }
 
 fn type_has_name(tn: type_names, t: TypeRef) -> option<~str> {
-    ret tn.type_names.find(t);
+    return tn.type_names.find(t);
 }
 
 fn name_has_type(tn: type_names, s: ~str) -> option<TypeRef> {
-    ret tn.named_types.find(s);
+    return tn.named_types.find(s);
 }
 
 fn mk_type_names() -> type_names {
-    fn hash(&&t: TypeRef) -> uint { ret t as uint; }
-    fn eq(&&a: TypeRef, &&b: TypeRef) -> bool { ret a as uint == b as uint; }
+    fn hash(&&t: TypeRef) -> uint { return t as uint; }
+    fn eq(&&a: TypeRef, &&b: TypeRef) -> bool { a as uint == b as uint }
     @{type_names: std::map::hashmap(hash, eq),
       named_types: std::map::str_hash()}
 }
 
 fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
-    ret type_to_str_inner(names, ~[], ty);
+    return type_to_str_inner(names, ~[], ty);
 }
 
 fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
    ~str {
     alt type_has_name(names, ty) {
-      option::some(n) { ret n; }
+      option::some(n) { return n; }
       _ {}
     }
 
@@ -1032,20 +1032,20 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
             if first { first = false; } else { s += ~", "; }
             s += type_to_str_inner(names, outer, t);
         }
-        ret s;
+        return s;
     }
 
     alt kind {
-      Void { ret ~"Void"; }
-      Half { ret ~"Half"; }
-      Float { ret ~"Float"; }
-      Double { ret ~"Double"; }
-      X86_FP80 { ret ~"X86_FP80"; }
-      FP128 { ret ~"FP128"; }
-      PPC_FP128 { ret ~"PPC_FP128"; }
-      Label { ret ~"Label"; }
+      Void { return ~"Void"; }
+      Half { return ~"Half"; }
+      Float { return ~"Float"; }
+      Double { return ~"Double"; }
+      X86_FP80 { return ~"X86_FP80"; }
+      FP128 { return ~"FP128"; }
+      PPC_FP128 { return ~"PPC_FP128"; }
+      Label { return ~"Label"; }
       Integer {
-        ret ~"i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
+        return ~"i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
       Function {
         let mut s = ~"fn(";
@@ -1058,7 +1058,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         s += tys_str(names, outer, args);
         s += ~") -> ";
         s += type_to_str_inner(names, outer, out_ty);
-        ret s;
+        return s;
       }
       Struct {
         let mut s: ~str = ~"{";
@@ -1069,11 +1069,11 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         }
         s += tys_str(names, outer, elts);
         s += ~"}";
-        ret s;
+        return s;
       }
       Array {
         let el_ty = llvm::LLVMGetElementType(ty);
-        ret ~"[" + type_to_str_inner(names, outer, el_ty) + ~" x " +
+        return ~"[" + type_to_str_inner(names, outer, el_ty) + ~" x " +
             uint::str(llvm::LLVMGetArrayLength(ty) as uint) + ~"]";
       }
       Pointer {
@@ -1082,7 +1082,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
             i += 1u;
             if tout as int == ty as int {
                 let n: uint = vec::len::<TypeRef>(outer0) - i;
-                ret ~"*\\" + int::str(n as int);
+                return ~"*\\" + int::str(n as int);
             }
         }
         let addrstr = {
@@ -1093,17 +1093,17 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
                 fmt!{"addrspace(%u)", addrspace}
             }
         };
-        ret addrstr + ~"*" +
+        return addrstr + ~"*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
-      Vector { ret ~"Vector"; }
-      Metadata { ret ~"Metadata"; }
-      X86_MMX { ret ~"X86_MMAX"; }
+      Vector { return ~"Vector"; }
+      Metadata { return ~"Metadata"; }
+      X86_MMX { return ~"X86_MMAX"; }
     }
 }
 
 fn float_width(llt: TypeRef) -> uint {
-    ret alt llvm::LLVMGetTypeKind(llt) as int {
+    return alt llvm::LLVMGetTypeKind(llt) as int {
           1 { 32u }
           2 { 64u }
           3 { 80u }
@@ -1116,7 +1116,7 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] unsafe {
     let args = vec::from_elem(llvm::LLVMCountParamTypes(fn_ty) as uint,
                              0 as TypeRef);
     llvm::LLVMGetParamTypes(fn_ty, vec::unsafe::to_ptr(args));
-    ret args;
+    return args;
 }
 
 
@@ -1133,7 +1133,7 @@ type target_data = {lltd: TargetDataRef, dtor: @target_data_res};
 fn mk_target_data(string_rep: ~str) -> target_data {
     let lltd =
         str::as_c_str(string_rep, |buf| llvm::LLVMCreateTargetData(buf) );
-    ret {lltd: lltd, dtor: @target_data_res(lltd)};
+    return {lltd: lltd, dtor: @target_data_res(lltd)};
 }
 
 /* Memory-managed interface to pass managers. */
@@ -1148,7 +1148,7 @@ type pass_manager = {llpm: PassManagerRef, dtor: @pass_manager_res};
 
 fn mk_pass_manager() -> pass_manager {
     let llpm = llvm::LLVMCreatePassManager();
-    ret {llpm: llpm, dtor: @pass_manager_res(llpm)};
+    return {llpm: llpm, dtor: @pass_manager_res(llpm)};
 }
 
 /* Memory-managed interface to object files. */
@@ -1163,8 +1163,8 @@ type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
 
 fn mk_object_file(llmb: MemoryBufferRef) -> option<object_file> {
     let llof = llvm::LLVMCreateObjectFile(llmb);
-    if llof as int == 0 { ret option::none::<object_file>; }
-    ret option::some({llof: llof, dtor: @object_file_res(llof)});
+    if llof as int == 0 { return option::none::<object_file>; }
+    return option::some({llof: llof, dtor: @object_file_res(llof)});
 }
 
 /* Memory-managed interface to section iterators. */
@@ -1179,7 +1179,7 @@ type section_iter = {llsi: SectionIteratorRef, dtor: @section_iter_res};
 
 fn mk_section_iter(llof: ObjectFileRef) -> section_iter {
     let llsi = llvm::LLVMGetSections(llof);
-    ret {llsi: llsi, dtor: @section_iter_res(llsi)};
+    return {llsi: llsi, dtor: @section_iter_res(llsi)};
 }
 
 //

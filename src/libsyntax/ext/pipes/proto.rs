@@ -149,7 +149,7 @@ class protocol_ {
     fn has_ty_params() -> bool {
         for self.states.each |s| {
             if s.ty_params.len() > 0 {
-                ret true;
+                return true;
             }
         }
         false

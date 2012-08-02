@@ -143,7 +143,7 @@ class big_bitv {
     fn equals(b: &big_bitv) -> bool {
         let len = b.storage.len();
         for uint::iterate(0, len) |i| {
-            if self.storage[i] != b.storage[i] { ret false; }
+            if self.storage[i] != b.storage[i] { return false; }
         }
     }
 }
@@ -287,7 +287,7 @@ class bitv {
  */
     #[inline(always)]
     fn equal(v1: bitv) -> bool {
-      if self.nbits != v1.nbits { ret false; }
+      if self.nbits != v1.nbits { return false; }
       alt self.rep {
         small(b) {
           alt v1.rep {
@@ -300,7 +300,7 @@ class bitv {
             big(s1) {
               s.equals(s1)
             }
-            small(_) { ret false; }
+            small(_) { return false; }
           }
         }
       }
@@ -354,7 +354,7 @@ class bitv {
       alt self.rep {
         small(b) { b.is_true() }
         _ {
-          for self.each() |i| { if !i { ret false; } }
+          for self.each() |i| { if !i { return false; } }
           true
         }
       }
@@ -375,14 +375,14 @@ class bitv {
       alt self.rep {
         small(b) { b.is_false() }
         big(_) {
-          for self.each() |i| { if i { ret false; } }
+          for self.each() |i| { if i { return false; } }
           true
         }
       }
     }
 
     fn init_to_vec(i: uint) -> uint {
-      ret if self.get(i) { 1 } else { 0 };
+      return if self.get(i) { 1 } else { 0 };
     }
 
 /**
@@ -392,7 +392,7 @@ class bitv {
  */
     fn to_vec() -> ~[uint] {
       let sub = |x| self.init_to_vec(x);
-      ret vec::from_fn::<uint>(self.nbits, sub);
+      return vec::from_fn::<uint>(self.nbits, sub);
     }
 
 /**
@@ -420,7 +420,7 @@ class bitv {
        while i < self.nbits {
            let w0 = self.get(i);
            let w1 = v[i];
-           if !w0 && w1 != 0u || w0 && w1 == 0u { ret false; }
+           if !w0 && w1 != 0u || w0 && w1 == 0u { return false; }
            i = i + 1;
        }
        true
@@ -438,11 +438,11 @@ class bitv {
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);
 
-pure fn lor(w0: uint, w1: uint) -> uint { ret w0 | w1; }
+pure fn lor(w0: uint, w1: uint) -> uint { return w0 | w1; }
 
-pure fn land(w0: uint, w1: uint) -> uint { ret w0 & w1; }
+pure fn land(w0: uint, w1: uint) -> uint { return w0 & w1; }
 
-pure fn right(_w0: uint, w1: uint) -> uint { ret w1; }
+pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
 impl extensions of ops::index<uint,bool> for bitv {
     pure fn index(&&i: uint) -> bool {

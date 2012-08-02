@@ -77,7 +77,7 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
     let v = visit::mk_vt(@{visit_item: ignore_item, visit_expr: walk_expr
                            with *visit::default_visitor()});
     v.visit_block(blk, 1, v);
-    ret @*refs;
+    return @*refs;
 }
 
 // Build a map from every function and for-each body to a set of the
@@ -100,17 +100,17 @@ fn annotate_freevars(def_map: resolve3::DefMap, crate: @ast::crate) ->
                                    with *visit::default_simple_visitor()});
     visit::visit_crate(*crate, (), visitor);
 
-    ret freevars;
+    return freevars;
 }
 
 fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     alt tcx.freevars.find(fid) {
       none { fail ~"get_freevars: " + int::str(fid) + ~" has no freevars"; }
-      some(d) { ret d; }
+      some(d) { return d; }
     }
 }
 fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {
-    ret vec::len(*get_freevars(tcx, fid)) != 0u;
+    return vec::len(*get_freevars(tcx, fid)) != 0u;
 }
 
 // Local Variables:

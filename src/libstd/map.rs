@@ -124,7 +124,7 @@ mod chained {
                   absent {
                     debug!{"search_tbl: absent, comp %u, hash %u, idx %u",
                            comp, h, idx};
-                    ret not_found;
+                    return not_found;
                   }
                   present(e1) {
                     comp += 1u;
@@ -132,7 +132,7 @@ mod chained {
                         debug!{"search_tbl: present, comp %u, \
                                 hash %u, idx %u",
                                comp, h, idx};
-                        ret found_after(e0, e1);
+                        return found_after(e0, e1);
                     } else {
                         e0 = e1;
                     }
@@ -147,15 +147,15 @@ mod chained {
               absent {
                 debug!{"search_tbl: absent, comp %u, hash %u, idx %u",
                        0u, h, idx};
-                ret not_found;
+                return not_found;
               }
               present(e) {
                 if e.hash == h && self.eqer(e.key, k) {
                     debug!{"search_tbl: present, comp %u, hash %u, idx %u",
                            1u, h, idx};
-                    ret found_first(idx, e);
+                    return found_first(idx, e);
                 } else {
-                    ret self.search_rem(k, h, idx, e);
+                    return self.search_rem(k, h, idx, e);
                 }
               }
             }
@@ -182,7 +182,7 @@ mod chained {
                       absent { break; }
                       present(entry) {
                         let next = entry.next;
-                        if !blk(entry) { ret; }
+                        if !blk(entry) { return; }
                         next
                       }
                     }
@@ -224,15 +224,15 @@ mod chained {
                     self.rehash();
                 }
 
-                ret true;
+                return true;
               }
               found_first(_, entry) {
                 entry.value = v;
-                ret false;
+                return false;
               }
               found_after(_, entry) {
                 entry.value = v;
-                ret false
+                return false
               }
             }
         }
@@ -292,7 +292,7 @@ mod chained {
         fn to_writer(wr: io::writer) {
             if self.count == 0u {
                 wr.write_str("{}");
-                ret;
+                return;
             }
 
             wr.write_str("{ ");
@@ -324,7 +324,7 @@ mod chained {
 
 
     fn chains<K,V>(nchains: uint) -> ~[mut chain<K,V>] {
-        ret vec::to_mut(vec::from_elem(nchains, absent));
+        return vec::to_mut(vec::from_elem(nchains, absent));
     }
 
     fn mk<K, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>) -> t<K,V> {
@@ -353,32 +353,32 @@ fn hashmap<K: const, V: copy>(hasher: hashfn<K>, eqer: eqfn<K>)
 
 /// Construct a hashmap for string keys
 fn str_hash<V: copy>() -> hashmap<~str, V> {
-    ret hashmap(str::hash, str::eq);
+    return hashmap(str::hash, str::eq);
 }
 
 /// Construct a hashmap for boxed string keys
 fn box_str_hash<V: copy>() -> hashmap<@~str, V> {
-    ret hashmap(|x: @~str| str::hash(*x), |x,y| str::eq(*x,*y));
+    return hashmap(|x: @~str| str::hash(*x), |x,y| str::eq(*x,*y));
 }
 
 /// Construct a hashmap for byte string keys
 fn bytes_hash<V: copy>() -> hashmap<~[u8], V> {
-    ret hashmap(vec::u8::hash, vec::u8::eq);
+    return hashmap(vec::u8::hash, vec::u8::eq);
 }
 
 /// Construct a hashmap for int keys
 fn int_hash<V: copy>() -> hashmap<int, V> {
-    ret hashmap(int::hash, int::eq);
+    return hashmap(int::hash, int::eq);
 }
 
 /// Construct a hashmap for uint keys
 fn uint_hash<V: copy>() -> hashmap<uint, V> {
-    ret hashmap(uint::hash, uint::eq);
+    return hashmap(uint::hash, uint::eq);
 }
 
 /// Convenience function for adding keys to a hashmap with nil type keys
 fn set_add<K: const copy>(set: set<K>, key: K) -> bool {
-    ret set.insert(key, ());
+    return set.insert(key, ());
 }
 
 /// Convert a set into a vector.
@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn test_simple() {
         debug!{"*** starting test_simple"};
-        fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
+        fn eq_uint(&&x: uint, &&y: uint) -> bool { return x == y; }
         fn uint_id(&&x: uint) -> uint { x }
         let hasher_uint: map::hashfn<uint> = uint_id;
         let eqer_uint: map::eqfn<uint> = eq_uint;
@@ -501,7 +501,7 @@ mod tests {
     fn test_growth() {
         debug!{"*** starting test_growth"};
         let num_to_insert: uint = 64u;
-        fn eq_uint(&&x: uint, &&y: uint) -> bool { ret x == y; }
+        fn eq_uint(&&x: uint, &&y: uint) -> bool { return x == y; }
         fn uint_id(&&x: uint) -> uint { x }
         debug!{"uint -> uint"};
         let hasher_uint: map::hashfn<uint> = uint_id;
@@ -574,12 +574,12 @@ mod tests {
     fn test_removal() {
         debug!{"*** starting test_removal"};
         let num_to_insert: uint = 64u;
-        fn eq(&&x: uint, &&y: uint) -> bool { ret x == y; }
+        fn eq(&&x: uint, &&y: uint) -> bool { return x == y; }
         fn hash(&&u: uint) -> uint {
             // This hash function intentionally causes collisions between
             // consecutive integer pairs.
 
-            ret u / 2u * 2u;
+            return u / 2u * 2u;
         }
         assert (hash(0u) == hash(1u));
         assert (hash(2u) == hash(3u));

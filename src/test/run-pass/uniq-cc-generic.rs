@@ -13,7 +13,7 @@ fn make_uniq_closure<A:send copy>(a: A) -> fn~() -> uint {
 }
 
 fn empty_pointy() -> @pointy {
-    ret @{
+    return @{
         mut a : none,
         d : make_uniq_closure(~"hi")
     }

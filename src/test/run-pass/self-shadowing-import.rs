@@ -1,7 +1,7 @@
 mod a {
     mod b {
         mod a {
-            fn foo() -> int { ret 1; }
+            fn foo() -> int { return 1; }
         }
     }
 }

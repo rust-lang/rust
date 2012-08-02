@@ -44,7 +44,7 @@ unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
 unsafe fn transmute<L, G>(-thing: L) -> G {
     let newthing = reinterpret_cast(thing);
     forget(thing);
-    ret newthing;
+    return newthing;
 }
 
 #[cfg(test)]

@@ -15,7 +15,7 @@ fn siphash(k0 : u64, k1 : u64) -> siphash {
 
         let v0 = st.v0,
             v1 = st.v1;
-        ret v0 ^ v1;
+        return v0 ^ v1;
     }
 
    impl of siphash for sipstate {
@@ -25,7 +25,7 @@ fn siphash(k0 : u64, k1 : u64) -> siphash {
             self.v1 = k1 ^ 0x646f72616e646f6d;   //~ ERROR attempted dynamic environment-capture
             //~^ ERROR unresolved name: k1
         }
-        fn result() -> u64 { ret mk_result(self); }
+        fn result() -> u64 { return mk_result(self); }
     }
 }
 

@@ -23,7 +23,7 @@ fn inject_libcore_ref(sess: session,
                       crate: @ast::crate) -> @ast::crate {
 
     fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
-        ret @{node: x,
+        return @{node: x,
             span: dummy_sp()};
     }
 
@@ -43,6 +43,6 @@ fn inject_libcore_ref(sess: session,
 
     let vis = vec::append(~[vi1, vi2], crate.node.module.view_items);
 
-    ret @{node: {module: { view_items: vis with crate.node.module }
+    return @{node: {module: { view_items: vis with crate.node.module }
                  with crate.node} with *crate }
 }

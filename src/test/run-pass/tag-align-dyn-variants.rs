@@ -13,12 +13,12 @@ type t_rec<A,B> = {
 };
 
 fn mk_rec<A:copy,B:copy>(a: A, b: B) -> t_rec<A,B> {
-    ret { chA:0u8, tA:varA(a), chB:1u8, tB:varB(b) };
+    return { chA:0u8, tA:varA(a), chB:1u8, tB:varB(b) };
 }
 
 fn is_aligned<A>(amnt: uint, &&u: A) -> bool {
     let p = ptr::addr_of(u) as uint;
-    ret (p & (amnt-1u)) == 0u;
+    return (p & (amnt-1u)) == 0u;
 }
 
 fn variant_data_is_aligned<A,B>(amnt: uint, &&u: a_tag<A,B>) -> bool {

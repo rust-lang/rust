@@ -5,7 +5,7 @@ fn get_x(x: &character) -> &int {
     // interesting case because the scope of this
     // borrow of the unique pointer is in fact
     // larger than the fn itself
-    ret &x.pos.x;
+    return &x.pos.x;
 }
 
 fn main() {

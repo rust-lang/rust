@@ -52,25 +52,25 @@ export require_unique_names;
 fn mk_name_value_item_str(+name: ast::ident, +value: ~str) ->
     @ast::meta_item {
     let value_lit = dummy_spanned(ast::lit_str(@value));
-    ret mk_name_value_item(name, value_lit);
+    return mk_name_value_item(name, value_lit);
 }
 
 fn mk_name_value_item(+name: ast::ident, +value: ast::lit)
         -> @ast::meta_item {
-    ret @dummy_spanned(ast::meta_name_value(name, value));
+    return @dummy_spanned(ast::meta_name_value(name, value));
 }
 
 fn mk_list_item(+name: ast::ident, +items: ~[@ast::meta_item]) ->
    @ast::meta_item {
-    ret @dummy_spanned(ast::meta_list(name, items));
+    return @dummy_spanned(ast::meta_list(name, items));
 }
 
 fn mk_word_item(+name: ast::ident) -> @ast::meta_item {
-    ret @dummy_spanned(ast::meta_word(name));
+    return @dummy_spanned(ast::meta_word(name));
 }
 
 fn mk_attr(item: @ast::meta_item) -> ast::attribute {
-    ret dummy_spanned({style: ast::attr_inner, value: *item,
+    return dummy_spanned({style: ast::attr_inner, value: *item,
                        is_sugared_doc: false});
 }
 
@@ -81,7 +81,7 @@ fn mk_sugared_doc_attr(text: ~str, lo: uint, hi: uint) -> ast::attribute {
         value: spanned(lo, hi, ast::meta_name_value(@~"doc", lit)),
         is_sugared_doc: true
     };
-    ret spanned(lo, hi, attr);
+    return spanned(lo, hi, attr);
 }
 
 /* Conversion */
@@ -92,7 +92,7 @@ fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     let mut mitems = ~[];
     for attrs.each |a| { vec::push(mitems, attr_meta(a)); }
-    ret mitems;
+    return mitems;
 }
 
 fn desugar_doc_attr(attr: ast::attribute) -> ast::attribute {
@@ -100,7 +100,7 @@ fn desugar_doc_attr(attr: ast::attribute) -> ast::attribute {
         let comment = get_meta_item_value_str(@attr.node.value).get();
         let meta = mk_name_value_item_str(@~"doc",
                                      strip_doc_comment_decoration(*comment));
-        ret mk_attr(meta);
+        return mk_attr(meta);
     } else {
         attr
     }
@@ -178,7 +178,7 @@ fn find_attrs_by_name(attrs: ~[ast::attribute], +name: ~str) ->
             } else { option::none }
         }
     );
-    ret vec::filter_map(attrs, filter);
+    return vec::filter_map(attrs, filter);
 }
 
 /// Searcha list of meta items and return only those with a specific name
@@ -189,7 +189,7 @@ fn find_meta_items_by_name(metas: ~[@ast::meta_item], +name: ~str) ->
             option::some(m)
         } else { option::none }
     };
-    ret vec::filter_map(metas, filter);
+    return vec::filter_map(metas, filter);
 }
 
 /**
@@ -202,14 +202,14 @@ fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item) -> bool {
     for haystack.each |item| {
         debug!{"looking in %s",
                print::pprust::meta_item_to_str(*item)};
-        if eq(item, needle) { debug!{"found it!"}; ret true; }
+        if eq(item, needle) { debug!{"found it!"}; return true; }
     }
     #debug("found it not :(");
-    ret false;
+    return false;
 }
 
 fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
-    ret alt a.node {
+    return alt a.node {
           ast::meta_word(na) {
             alt b.node { ast::meta_word(nb) { na == nb } _ { false } }
           }
@@ -232,7 +232,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
 
 fn contains_name(metas: ~[@ast::meta_item], +name: ~str) -> bool {
     let matches = find_meta_items_by_name(metas, name);
-    ret vec::len(matches) > 0u;
+    return vec::len(matches) > 0u;
 }
 
 fn attrs_contains_name(attrs: ~[ast::attribute], +name: ~str) -> bool {
@@ -243,9 +243,9 @@ fn first_attr_value_str_by_name(attrs: ~[ast::attribute], +name: ~str)
     -> option<@~str> {
     let mattrs = find_attrs_by_name(attrs, name);
     if vec::len(mattrs) > 0u {
-        ret get_meta_item_value_str(attr_meta(mattrs[0]));
+        return get_meta_item_value_str(attr_meta(mattrs[0]));
     }
-    ret option::none;
+    return option::none;
 }
 
 fn last_meta_item_by_name(
@@ -297,19 +297,19 @@ fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
               ast::meta_list(name, _) { /* FIXME (#2543) */ copy name }
             }
         }
-        ret key(ma) <= key(mb);
+        return key(ma) <= key(mb);
     }
 
     // This is sort of stupid here, converting to a vec of mutables and back
     let v: ~[mut @ast::meta_item] = vec::to_mut(items);
     std::sort::quick_sort(lteq, v);
-    ret vec::from_mut(v);
+    return vec::from_mut(v);
 }
 
 fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ast::ident) ->
    ~[@ast::meta_item] {
 
-    ret vec::filter_map(items, |item| {
+    return vec::filter_map(items, |item| {
         if get_meta_item_name(item) != name {
             option::some(/* FIXME (#2543) */ copy item)
         } else {
@@ -326,7 +326,7 @@ fn find_linkage_attrs(attrs: ~[ast::attribute]) -> ~[ast::attribute] {
           _ { debug!{"ignoring link attribute that has incorrect type"}; }
         }
     }
-    ret found;
+    return found;
 }
 
 /**
@@ -342,7 +342,7 @@ fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
 }
 
 fn foreign_abi(attrs: ~[ast::attribute]) -> either<~str, ast::foreign_abi> {
-    ret alt attr::first_attr_value_str_by_name(attrs, ~"abi") {
+    return alt attr::first_attr_value_str_by_name(attrs, ~"abi") {
       option::none {
         either::right(ast::foreign_abi_cdecl)
       }

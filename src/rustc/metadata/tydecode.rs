@@ -26,18 +26,18 @@ fn peek(st: @pstate) -> char {
 fn next(st: @pstate) -> char {
     let ch = st.data[st.pos] as char;
     st.pos = st.pos + 1u;
-    ret ch;
+    return ch;
 }
 
 fn next_byte(st: @pstate) -> u8 {
     let b = st.data[st.pos];
     st.pos = st.pos + 1u;
-    ret b;
+    return b;
 }
 
 fn parse_ident(st: @pstate, last: char) -> ast::ident {
-    fn is_last(b: char, c: char) -> bool { ret c == b; }
-    ret parse_ident_(st, |a| is_last(last, a) );
+    fn is_last(b: char, c: char) -> bool { return c == b; }
+    return parse_ident_(st, |a| is_last(last, a) );
 }
 
 fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
@@ -46,7 +46,7 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
     while !is_last(peek(st)) {
         rslt += str::from_byte(next_byte(st));
     }
-    ret @rslt;
+    return @rslt;
 }
 
 
@@ -65,14 +65,14 @@ fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
 
 fn parse_path(st: @pstate) -> @ast::path {
     let mut idents: ~[ast::ident] = ~[];
-    fn is_last(c: char) -> bool { ret c == '(' || c == ':'; }
+    fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
     vec::push(idents, parse_ident_(st, is_last));
     loop {
         alt peek(st) {
           ':' { next(st); next(st); }
           c {
             if c == '(' {
-                ret @{span: ast_util::dummy_sp(),
+                return @{span: ast_util::dummy_sp(),
                       global: false, idents: idents,
                       rp: none, types: ~[]};
             } else { vec::push(idents, parse_ident_(st, is_last)); }
@@ -82,7 +82,7 @@ fn parse_path(st: @pstate) -> @ast::path {
 }
 
 fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
-    ret ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
+    return ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
 }
 
 fn parse_proto(c: char) -> ast::proto {
@@ -103,7 +103,7 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
     if '0' <= c && c <= '9' {
         let n = parse_int(st) as uint;
         assert next(st) == '|';
-        ret ty::vstore_fixed(n);
+        return ty::vstore_fixed(n);
     }
 
     alt check next(st) {
@@ -123,7 +123,7 @@ fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
     while peek(st) != ']' { vec::push(params, parse_ty(st, conv)); }
     st.pos = st.pos + 1u;
 
-    ret {self_r: self_r,
+    return {self_r: self_r,
          self_ty: self_ty,
          tps: params};
 }
@@ -178,70 +178,70 @@ fn parse_str(st: @pstate, term: char) -> ~str {
         result += str::from_byte(next_byte(st));
     }
     next(st);
-    ret result;
+    return result;
 }
 
 fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
     alt check next(st) {
-      'n' { ret ty::mk_nil(st.tcx); }
-      'z' { ret ty::mk_bot(st.tcx); }
-      'b' { ret ty::mk_bool(st.tcx); }
-      'i' { ret ty::mk_int(st.tcx); }
-      'u' { ret ty::mk_uint(st.tcx); }
-      'l' { ret ty::mk_float(st.tcx); }
+      'n' { return ty::mk_nil(st.tcx); }
+      'z' { return ty::mk_bot(st.tcx); }
+      'b' { return ty::mk_bool(st.tcx); }
+      'i' { return ty::mk_int(st.tcx); }
+      'u' { return ty::mk_uint(st.tcx); }
+      'l' { return ty::mk_float(st.tcx); }
       'M' {
         alt check next(st) {
-          'b' { ret ty::mk_mach_uint(st.tcx, ast::ty_u8); }
-          'w' { ret ty::mk_mach_uint(st.tcx, ast::ty_u16); }
-          'l' { ret ty::mk_mach_uint(st.tcx, ast::ty_u32); }
-          'd' { ret ty::mk_mach_uint(st.tcx, ast::ty_u64); }
-          'B' { ret ty::mk_mach_int(st.tcx, ast::ty_i8); }
-          'W' { ret ty::mk_mach_int(st.tcx, ast::ty_i16); }
-          'L' { ret ty::mk_mach_int(st.tcx, ast::ty_i32); }
-          'D' { ret ty::mk_mach_int(st.tcx, ast::ty_i64); }
-          'f' { ret ty::mk_mach_float(st.tcx, ast::ty_f32); }
-          'F' { ret ty::mk_mach_float(st.tcx, ast::ty_f64); }
+          'b' { return ty::mk_mach_uint(st.tcx, ast::ty_u8); }
+          'w' { return ty::mk_mach_uint(st.tcx, ast::ty_u16); }
+          'l' { return ty::mk_mach_uint(st.tcx, ast::ty_u32); }
+          'd' { return ty::mk_mach_uint(st.tcx, ast::ty_u64); }
+          'B' { return ty::mk_mach_int(st.tcx, ast::ty_i8); }
+          'W' { return ty::mk_mach_int(st.tcx, ast::ty_i16); }
+          'L' { return ty::mk_mach_int(st.tcx, ast::ty_i32); }
+          'D' { return ty::mk_mach_int(st.tcx, ast::ty_i64); }
+          'f' { return ty::mk_mach_float(st.tcx, ast::ty_f32); }
+          'F' { return ty::mk_mach_float(st.tcx, ast::ty_f64); }
         }
       }
-      'c' { ret ty::mk_char(st.tcx); }
+      'c' { return ty::mk_char(st.tcx); }
       't' {
         assert (next(st) == '[');
         let def = parse_def(st, conv);
         let substs = parse_substs(st, conv);
         assert next(st) == ']';
-        ret ty::mk_enum(st.tcx, def, substs);
+        return ty::mk_enum(st.tcx, def, substs);
       }
       'x' {
         assert next(st) == '[';
         let def = parse_def(st, conv);
         let substs = parse_substs(st, conv);
         assert next(st) == ']';
-        ret ty::mk_trait(st.tcx, def, substs);
+        return ty::mk_trait(st.tcx, def, substs);
       }
       'p' {
         let did = parse_def(st, conv);
-        ret ty::mk_param(st.tcx, parse_int(st) as uint, did);
+        return ty::mk_param(st.tcx, parse_int(st) as uint, did);
       }
       's' {
-        ret ty::mk_self(st.tcx);
+        return ty::mk_self(st.tcx);
       }
-      '@' { ret ty::mk_box(st.tcx, parse_mt(st, conv)); }
-      '~' { ret ty::mk_uniq(st.tcx, parse_mt(st, conv)); }
-      '*' { ret ty::mk_ptr(st.tcx, parse_mt(st, conv)); }
+      '@' { return ty::mk_box(st.tcx, parse_mt(st, conv)); }
+      '~' { return ty::mk_uniq(st.tcx, parse_mt(st, conv)); }
+      '*' { return ty::mk_ptr(st.tcx, parse_mt(st, conv)); }
       '&' {
         let r = parse_region(st);
         let mt = parse_mt(st, conv);
-        ret ty::mk_rptr(st.tcx, r, mt);
+        return ty::mk_rptr(st.tcx, r, mt);
       }
-      'U' { ret ty::mk_unboxed_vec(st.tcx, parse_mt(st, conv)); }
+      'U' { return ty::mk_unboxed_vec(st.tcx, parse_mt(st, conv)); }
       'V' {
         let mt = parse_mt(st, conv);
         let v = parse_vstore(st);
-        ret ty::mk_evec(st.tcx, mt, v);
+        return ty::mk_evec(st.tcx, mt, v);
       }
       'v' {
         let v = parse_vstore(st);
-        ret ty::mk_estr(st.tcx, v);
+        return ty::mk_estr(st.tcx, v);
       }
       'R' {
         assert (next(st) == '[');
@@ -251,29 +251,29 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
             vec::push(fields, {ident: name, mt: parse_mt(st, conv)});
         }
         st.pos = st.pos + 1u;
-        ret ty::mk_rec(st.tcx, fields);
+        return ty::mk_rec(st.tcx, fields);
       }
       'T' {
         assert (next(st) == '[');
         let mut params = ~[];
         while peek(st) != ']' { vec::push(params, parse_ty(st, conv)); }
         st.pos = st.pos + 1u;
-        ret ty::mk_tup(st.tcx, params);
+        return ty::mk_tup(st.tcx, params);
       }
       'f' {
         parse_ty_rust_fn(st, conv)
       }
       'X' {
-        ret ty::mk_var(st.tcx, ty::tv_vid(parse_int(st) as uint));
+        return ty::mk_var(st.tcx, ty::tv_vid(parse_int(st) as uint));
       }
-      'Y' { ret ty::mk_type(st.tcx); }
+      'Y' { return ty::mk_type(st.tcx); }
       'C' {
         let ck = alt check next(st) {
           '&' { ty::ck_block }
           '@' { ty::ck_box }
           '~' { ty::ck_uniq }
         };
-        ret ty::mk_opaque_closure_ptr(st.tcx, ck);
+        return ty::mk_opaque_closure_ptr(st.tcx, ck);
       }
       '#' {
         let pos = parse_hex(st);
@@ -281,12 +281,12 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let len = parse_hex(st);
         assert (next(st) == '#');
         alt st.tcx.rcache.find({cnum: st.crate, pos: pos, len: len}) {
-          some(tt) { ret tt; }
+          some(tt) { return tt; }
           none {
             let ps = @{pos: pos with *st};
             let tt = parse_ty(ps, conv);
             st.tcx.rcache.insert({cnum: st.crate, pos: pos, len: len}, tt);
-            ret tt;
+            return tt;
           }
         }
       }
@@ -304,7 +304,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
           debug!{"parsed a def_id %?", did};
           let substs = parse_substs(st, conv);
           assert (next(st) == ']');
-          ret ty::mk_class(st.tcx, did, substs);
+          return ty::mk_class(st.tcx, did, substs);
       }
       c { error!{"unexpected char in type string: %c", c}; fail;}
     }
@@ -317,21 +317,21 @@ fn parse_mt(st: @pstate, conv: conv_did) -> ty::mt {
       '?' { next(st); m = ast::m_const; }
       _ { m = ast::m_imm; }
     }
-    ret {ty: parse_ty(st, conv), mutbl: m};
+    return {ty: parse_ty(st, conv), mutbl: m};
 }
 
 fn parse_def(st: @pstate, conv: conv_did) -> ast::def_id {
     let mut def = ~[];
     while peek(st) != '|' { vec::push(def, next_byte(st)); }
     st.pos = st.pos + 1u;
-    ret conv(parse_def_id(def));
+    return conv(parse_def_id(def));
 }
 
 fn parse_int(st: @pstate) -> int {
     let mut n = 0;
     loop {
         let cur = peek(st);
-        if cur < '0' || cur > '9' { ret n; }
+        if cur < '0' || cur > '9' { return n; }
         st.pos = st.pos + 1u;
         n *= 10;
         n += (cur as int) - ('0' as int);
@@ -342,7 +342,7 @@ fn parse_hex(st: @pstate) -> uint {
     let mut n = 0u;
     loop {
         let cur = peek(st);
-        if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { ret n; }
+        if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { return n; }
         st.pos = st.pos + 1u;
         n *= 16u;
         if '0' <= cur && cur <= '9' {
@@ -378,7 +378,7 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     }
     st.pos += 1u; // eat the ']'
     let (ret_style, ret_ty) = parse_ret_ty(st, conv);
-    ret {purity: purity, proto: proto, inputs: inputs, output: ret_ty,
+    return {purity: purity, proto: proto, inputs: inputs, output: ret_ty,
          ret_style: ret_style};
 }
 
@@ -405,7 +405,7 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
        none { fail (fmt!{"internal error: parse_def_id: id expected, but \
          found %?", def_part}); }
     };
-    ret {crate: crate_num, node: def_num};
+    return {crate: crate_num, node: def_num};
 }
 
 fn parse_bounds_data(data: @~[u8], start: uint,

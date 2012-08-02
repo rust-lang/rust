@@ -128,7 +128,7 @@ Section: Creating a string
  */
 pure fn from_bytes(vv: &[const u8]) -> ~str {
     assert is_utf8(vv);
-    ret unsafe { unsafe::from_bytes(vv) };
+    return unsafe { unsafe::from_bytes(vv) };
 }
 
 /// Copy a slice into a new unique str
@@ -229,7 +229,7 @@ fn push_char(&s: ~str, ch: char) {
 pure fn from_char(ch: char) -> ~str {
     let mut buf = ~"";
     unchecked { push_char(buf, ch); }
-    ret buf;
+    return buf;
 }
 
 /// Convert a vector of chars to a string
@@ -239,7 +239,7 @@ pure fn from_chars(chs: &[char]) -> ~str {
         reserve(buf, chs.len());
         for vec::each(chs) |ch| { push_char(buf, ch); }
     }
-    ret buf;
+    return buf;
 }
 
 /// Appends a string slice to the back of a string, without overallocating
@@ -282,7 +282,7 @@ pure fn append(+lhs: ~str, rhs: &str) -> ~str {
     unchecked {
         push_str_no_overallocate(v, rhs);
     }
-    ret v;
+    return v;
 }
 
 
@@ -290,7 +290,7 @@ pure fn append(+lhs: ~str, rhs: &str) -> ~str {
 pure fn concat(v: &[~str]) -> ~str {
     let mut s: ~str = ~"";
     for vec::each(v) |ss| { unchecked { push_str(s, ss) }; }
-    ret s;
+    return s;
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
@@ -300,7 +300,7 @@ pure fn connect(v: &[~str], sep: &str) -> ~str {
         if first { first = false; } else { unchecked { push_str(s, sep); } }
         unchecked { push_str(s, ss) };
     }
-    ret s;
+    return s;
 }
 
 /*
@@ -319,7 +319,7 @@ fn pop_char(&s: ~str) -> char {
     assert end > 0u;
     let {ch, prev} = char_range_at_reverse(s, end);
     unsafe { unsafe::set_len(s, prev); }
-    ret ch;
+    return ch;
 }
 
 /**
@@ -332,7 +332,7 @@ fn pop_char(&s: ~str) -> char {
 fn shift_char(&s: ~str) -> char {
     let {ch, next} = char_range_at(s, 0u);
     s = unsafe { unsafe::slice_bytes(s, next, len(s)) };
-    ret ch;
+    return ch;
 }
 
 /// Prepend a char to a string
@@ -376,7 +376,7 @@ pure fn bytes(s: &str) -> ~[u8] {
         let mut s_copy = from_slice(s);
         let mut v: ~[u8] = ::unsafe::transmute(s_copy);
         vec::unsafe::set_len(v, len(s));
-        ret v;
+        return v;
     }
 }
 
@@ -397,7 +397,7 @@ pure fn chars(s: &str) -> ~[char] {
         unchecked { vec::push(buf, ch); }
         i = next;
     }
-    ret buf;
+    return buf;
 }
 
 /**
@@ -643,16 +643,16 @@ pure fn eq(&&a: ~str, &&b: ~str) -> bool {
     // shape code.
     let a_len = a.len();
     let b_len = b.len();
-    if a_len != b_len { ret false; }
+    if a_len != b_len { return false; }
     let mut end = uint::min(a_len, b_len);
 
     let mut i = 0u;
     while i < end {
-        if a[i] != b[i] { ret false; }
+        if a[i] != b[i] { return false; }
         i += 1u;
     }
 
-    ret true;
+    return true;
 }
 
 /// Bytewise less than or equal
@@ -663,7 +663,7 @@ pure fn hash(&&s: ~str) -> uint {
     let x = do as_bytes(s) |bytes| {
         hash::hash_bytes(bytes)
     };
-    ret x as uint;
+    return x as uint;
 }
 
 /*
@@ -855,10 +855,10 @@ pure fn find_char_between(s: &str, c: char, start: uint, end: uint)
         let mut i = start;
         let b = c as u8;
         while i < end {
-            if s[i] == b { ret some(i); }
+            if s[i] == b { return some(i); }
             i += 1u;
         }
-        ret none;
+        return none;
     } else {
         find_between(s, start, end, |x| x == c)
     }
@@ -935,9 +935,9 @@ pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
         let b = c as u8;
         while i > end {
             i -= 1u;
-            if s[i] == b { ret some(i); }
+            if s[i] == b { return some(i); }
         }
-        ret none;
+        return none;
     } else {
         rfind_between(s, start, end, |x| x == c)
     }
@@ -1016,10 +1016,10 @@ pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
     let mut i = start;
     while i < end {
         let {ch, next} = char_range_at(s, i);
-        if f(ch) { ret some(i); }
+        if f(ch) { return some(i); }
         i = next;
     }
-    ret none;
+    return none;
 }
 
 /**
@@ -1095,17 +1095,17 @@ pure fn rfind_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
     let mut i = start;
     while i > end {
         let {ch, prev} = char_range_at_reverse(s, i);
-        if f(ch) { ret some(prev); }
+        if f(ch) { return some(prev); }
         i = prev;
     }
-    ret none;
+    return none;
 }
 
 // Utility used by various searching functions
 pure fn match_at(haystack: &a/str, needle: &b/str, at: uint) -> bool {
     let mut i = at;
-    for each(needle) |c| { if haystack[i] != c { ret false; } i += 1u; }
-    ret true;
+    for each(needle) |c| { if haystack[i] != c { return false; } i += 1u; }
+    return true;
 }
 
 /**
@@ -1175,16 +1175,16 @@ pure fn find_str_between(haystack: &a/str, needle: &b/str, start: uint,
     // See Issue #1932 for why this is a naive search
     assert end <= len(haystack);
     let needle_len = len(needle);
-    if needle_len == 0u { ret some(start); }
-    if needle_len > end { ret none; }
+    if needle_len == 0u { return some(start); }
+    if needle_len > end { return none; }
 
     let mut i = start;
     let e = end - needle_len;
     while i <= e {
-        if match_at(haystack, needle, i) { ret some(i); }
+        if match_at(haystack, needle, i) { return some(i); }
         i += 1u;
     }
-    ret none;
+    return none;
 }
 
 /**
@@ -1248,8 +1248,8 @@ Section: String properties
 /// Determines if a string contains only ASCII characters
 pure fn is_ascii(s: &str) -> bool {
     let mut i: uint = len(s);
-    while i > 0u { i -= 1u; if !u8::is_ascii(s[i]) { ret false; } }
-    ret true;
+    while i > 0u { i -= 1u; if !u8::is_ascii(s[i]) { return false; } }
+    return true;
 }
 
 /// Returns true if the string has length 0
@@ -1264,7 +1264,7 @@ pure fn is_not_empty(s: &str) -> bool { !is_empty(s) }
  * Whitespace characters are determined by `char::is_whitespace`
  */
 pure fn is_whitespace(s: &str) -> bool {
-    ret all(s, char::is_whitespace);
+    return all(s, char::is_whitespace);
 }
 
 /**
@@ -1273,7 +1273,7 @@ pure fn is_whitespace(s: &str) -> bool {
  * Alphanumeric characters are determined by `char::is_alphanumeric`
  */
 fn is_alphanumeric(s: &str) -> bool {
-    ret all(s, char::is_alphanumeric);
+    return all(s, char::is_alphanumeric);
 }
 
 /// Returns the string length/size in bytes not counting the null terminator
@@ -1294,16 +1294,16 @@ pure fn is_utf8(v: &[const u8]) -> bool {
     let total = vec::len::<u8>(v);
     while i < total {
         let mut chsize = utf8_char_width(v[i]);
-        if chsize == 0u { ret false; }
-        if i + chsize > total { ret false; }
+        if chsize == 0u { return false; }
+        if i + chsize > total { return false; }
         i += 1u;
         while chsize > 1u {
-            if v[i] & 192u8 != tag_cont_u8 { ret false; }
+            if v[i] & 192u8 != tag_cont_u8 { return false; }
             i += 1u;
             chsize -= 1u;
         }
     }
-    ret true;
+    return true;
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
@@ -1317,14 +1317,14 @@ pure fn is_utf16(v: &[u16]) -> bool {
             i += 1u;
 
         } else {
-            if i+1u < len { ret false; }
+            if i+1u < len { return false; }
             let u2 = v[i+1u];
-            if u < 0xD7FF_u16 || u > 0xDBFF_u16 { ret false; }
-            if u2 < 0xDC00_u16 || u2 > 0xDFFF_u16 { ret false; }
+            if u < 0xD7FF_u16 || u > 0xDBFF_u16 { return false; }
+            if u2 < 0xDC00_u16 || u2 > 0xDFFF_u16 { return false; }
             i += 2u;
         }
     }
-    ret true;
+    return true;
 }
 
 /// Converts to a vector of `u16` encoded as UTF-16
@@ -1347,7 +1347,7 @@ pure fn to_utf16(s: &str) -> ~[u16] {
             vec::push_all(u, ~[w1, w2])
         }
     }
-    ret u;
+    return u;
 }
 
 pure fn utf16_chars(v: &[u16], f: fn(char)) {
@@ -1381,7 +1381,7 @@ pure fn from_utf16(v: &[u16]) -> ~str {
         reserve(buf, vec::len(v));
         utf16_chars(v, |ch| push_char(buf, ch));
     }
-    ret buf;
+    return buf;
 }
 
 
@@ -1407,7 +1407,7 @@ pure fn count_chars(s: &str, start: uint, end: uint) -> uint {
         len += 1u;
         i = next;
     }
-    ret len;
+    return len;
 }
 
 /// Counts the number of bytes taken by the `n` in `s` starting from `start`.
@@ -1427,14 +1427,14 @@ pure fn count_bytes(s: &b/str, start: uint, n: uint) -> uint {
 /// Given a first byte, determine how many bytes are in this UTF-8 character
 pure fn utf8_char_width(b: u8) -> uint {
     let byte: uint = b as uint;
-    if byte < 128u { ret 1u; }
+    if byte < 128u { return 1u; }
     // Not a valid start byte
-    if byte < 192u { ret 0u; }
-    if byte < 224u { ret 2u; }
-    if byte < 240u { ret 3u; }
-    if byte < 248u { ret 4u; }
-    if byte < 252u { ret 5u; }
-    ret 6u;
+    if byte < 192u { return 0u; }
+    if byte < 224u { return 2u; }
+    if byte < 240u { return 3u; }
+    if byte < 248u { return 4u; }
+    if byte < 252u { return 5u; }
+    return 6u;
 }
 
 /**
@@ -1442,9 +1442,9 @@ pure fn utf8_char_width(b: u8) -> uint {
  * character sequence.
  */
 pure fn is_char_boundary(s: &str, index: uint) -> bool {
-    if index == len(s) { ret true; }
+    if index == len(s) { return true; }
     let b = s[index];
-    ret b < 128u8 || b >= 192u8;
+    return b < 128u8 || b >= 192u8;
 }
 
 /**
@@ -1500,7 +1500,7 @@ pure fn char_range_at(s: &str, i: uint) -> {ch: char, next: uint} {
     let b0 = s[i];
     let w = utf8_char_width(b0);
     assert (w != 0u);
-    if w == 1u { ret {ch: b0 as char, next: i + 1u}; }
+    if w == 1u { return {ch: b0 as char, next: i + 1u}; }
     let mut val = 0u;
     let end = i + w;
     let mut i = i + 1u;
@@ -1515,11 +1515,11 @@ pure fn char_range_at(s: &str, i: uint) -> {ch: char, next: uint} {
     // the first to clip off the marker bits at the left of the byte, and then
     // a second (as uint) to get it to the right position.
     val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
-    ret {ch: val as char, next: i};
+    return {ch: val as char, next: i};
 }
 
 /// Pluck a character out of a string
-pure fn char_at(s: &str, i: uint) -> char { ret char_range_at(s, i).ch; }
+pure fn char_at(s: &str, i: uint) -> char { return char_range_at(s, i).ch; }
 
 /**
  * Given a byte position and a str, return the previous char and its position
@@ -1540,7 +1540,7 @@ pure fn char_range_at_reverse(ss: &str, start: uint)
     prev -= 1u;
 
     let ch = char_at(ss, prev);
-    ret {ch:ch, prev:prev};
+    return {ch:ch, prev:prev};
 }
 
 /**
@@ -1571,10 +1571,10 @@ pure fn all_between(s: &str, start: uint, end: uint,
     let mut i = start;
     while i < end {
         let {ch, next} = char_range_at(s, i);
-        if !it(ch) { ret false; }
+        if !it(ch) { return false; }
         i = next;
     }
-    ret true;
+    return true;
 }
 
 /**
@@ -1747,7 +1747,7 @@ pure fn escape_default(s: &str) -> ~str {
         reserve_at_least(out, str::len(s));
         chars_iter(s, |c| push_str(out, char::escape_default(c)));
     }
-    ret out;
+    return out;
 }
 
 /// Escape each char in `s` with char::escape_unicode.
@@ -1757,7 +1757,7 @@ pure fn escape_unicode(s: &str) -> ~str {
         reserve_at_least(out, str::len(s));
         chars_iter(s, |c| push_str(out, char::escape_unicode(c)));
     }
-    ret out;
+    return out;
 }
 
 /// Unsafe operations
@@ -1781,7 +1781,7 @@ mod unsafe {
             i += 1u;
             curr = ptr::offset(buf, i);
         }
-        ret from_buf_len(buf, i);
+        return from_buf_len(buf, i);
     }
 
     /// Create a Rust string from a *u8 buffer of the given length
@@ -1793,7 +1793,7 @@ mod unsafe {
         vec::push(v, 0u8);
 
         assert is_utf8(v);
-        ret ::unsafe::transmute(v);
+        return ::unsafe::transmute(v);
     }
 
     /// Create a Rust string from a null-terminated C string
@@ -1861,7 +1861,7 @@ mod unsafe {
        assert (len > 0u);
        let b = s[len - 1u];
        unsafe { set_len(s, len - 1u) };
-       ret b;
+       return b;
    }
 
    /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
@@ -1870,7 +1870,7 @@ mod unsafe {
        assert (len > 0u);
        let b = s[0];
        s = unsafe { unsafe::slice_bytes(s, 1u, len) };
-       ret b;
+       return b;
    }
 
     /// Sets the length of the string and adds the null terminator
@@ -2405,13 +2405,13 @@ mod tests {
                 let mut i = 0;
                 let mut rs = ~"";
                 while i < 100000 { push_str(rs, ~"aaaaaaaaaa"); i += 1; }
-                ret rs;
+                return rs;
             }
             fn half_a_million_letter_a() -> ~str {
                 let mut i = 0;
                 let mut rs = ~"";
                 while i < 100000 { push_str(rs, ~"aaaaa"); i += 1; }
-                ret rs;
+                return rs;
             }
             assert eq(half_a_million_letter_a(),
                       unsafe::slice_bytes(a_million_letter_a(),
@@ -2516,13 +2516,13 @@ mod tests {
             let mut i = 0;
             let mut rs = ~"";
             while i < 100000 { push_str(rs, ~"华华华华华华华华华华"); i += 1; }
-            ret rs;
+            return rs;
         }
         fn half_a_million_letter_X() -> ~str {
             let mut i = 0;
             let mut rs = ~"";
             while i < 100000 { push_str(rs, ~"华华华华华"); i += 1; }
-            ret rs;
+            return rs;
         }
         assert eq(half_a_million_letter_X(),
                   slice(a_million_letter_X(), 0u, 3u * 500000u));

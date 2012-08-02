@@ -35,8 +35,8 @@ enum abbrev_ctxt { ac_no_abbrevs, ac_use_abbrevs(hashmap<ty::t, ty_abbrev>), }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     alt cx.abbrevs {
-      ac_no_abbrevs { ret false; }
-      ac_use_abbrevs(_) { ret true; }
+      ac_no_abbrevs { return false; }
+      ac_use_abbrevs(_) { return true; }
     }
 }
 
@@ -56,7 +56,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
       }
       ac_use_abbrevs(abbrevs) {
         alt abbrevs.find(t) {
-          some(a) { w.write_str(*a.s); ret; }
+          some(a) { w.write_str(*a.s); return; }
           none {
             let pos = w.tell();
             alt ty::type_def_id(t) {
@@ -79,7 +79,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
                 let mut n = u;
                 let mut len = 0u;
                 while n != 0u { len += 1u; n = n >> 4u; }
-                ret len;
+                return len;
             }
             let abbrev_len = 3u + estimate_sz(pos) + estimate_sz(len);
             if abbrev_len < len {
@@ -89,7 +89,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
                 let a = {pos: pos, len: len, s: @s};
                 abbrevs.insert(t, a);
             }
-            ret;
+            return;
           }
         }
       }

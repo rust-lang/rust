@@ -75,7 +75,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
     for ebml::tagged_docs(bucket, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
         if eq_fn(vec::slice(*elt.data, elt.start + 4u, elt.end)) {
-            ret some(ebml::doc_at(d.data, pos).doc);
+            return some(ebml::doc_at(d.data, pos).doc);
         }
     };
     none
@@ -83,7 +83,7 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
 
 fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
-        ret io::u64_from_be_bytes(vec::slice(bytes, 0u, 4u), 0u, 4u) as int
+        return io::u64_from_be_bytes(vec::slice(bytes, 0u, 4u), 0u, 4u) as int
             == item_id;
     }
     lookup_hash(items,
@@ -92,7 +92,7 @@ fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
 }
 
 fn find_item(item_id: int, items: ebml::doc) -> ebml::doc {
-    ret option::get(maybe_find_item(item_id, items));
+    return option::get(maybe_find_item(item_id, items));
 }
 
 // Looks up an item in the given metadata and returns an ebml doc pointing
@@ -112,12 +112,12 @@ fn item_family(item: ebml::doc) -> char {
 
 fn item_symbol(item: ebml::doc) -> ~str {
     let sym = ebml::get_doc(item, tag_items_data_item_symbol);
-    ret str::from_bytes(ebml::doc_data(sym));
+    return str::from_bytes(ebml::doc_data(sym));
 }
 
 fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
     for ebml::tagged_docs(d, tag_items_data_parent_item) |did| {
-        ret some(ebml::with_doc_data(did, |d| parse_def_id(d)));
+        return some(ebml::with_doc_data(did, |d| parse_def_id(d)));
     }
     none
 }
@@ -125,7 +125,7 @@ fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
 // XXX: This has nothing to do with classes.
 fn class_member_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
     let tagdoc = ebml::get_doc(d, tag_def_id);
-    ret translate_def_id(cdata, ebml::with_doc_data(tagdoc,
+    return translate_def_id(cdata, ebml::with_doc_data(tagdoc,
                                                     |d| parse_def_id(d)));
 }
 
@@ -204,7 +204,7 @@ fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> ~[ast::def_id] {
         let ext = ebml::with_doc_data(p, |d| parse_def_id(d));
         vec::push(ids, {crate: cdata.cnum, node: ext.node});
     };
-    ret ids;
+    return ids;
 }
 
 // Given a path and serialized crate metadata, returns the IDs of the
@@ -215,16 +215,16 @@ fn resolve_path(path: ~[ast::ident], data: @~[u8]) -> ~[ast::def_id] {
         let data_len = data.len();
         let s_len = s.len();
         if data_len != s_len {
-            ret false;
+            return false;
         }
         let mut i = 0;
         while i < data_len {
             if data[i] != s[i] {
-                ret false;
+                return false;
             }
             i += 1;
         }
-        ret true;
+        return true;
     }
     let s = ast_util::path_name_i(path);
     let md = ebml::doc(data);
@@ -236,7 +236,7 @@ fn resolve_path(path: ~[ast::ident], data: @~[u8]) -> ~[ast::def_id] {
         let did_doc = ebml::get_doc(doc, tag_def_id);
         vec::push(result, ebml::with_doc_data(did_doc, |d| parse_def_id(d)));
     }
-    ret result;
+    return result;
 }
 
 fn item_path(item_doc: ebml::doc) -> ast_map::path {
@@ -260,7 +260,7 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
         }
     }
 
-    ret result;
+    return result;
 }
 
 fn item_name(item: ebml::doc) -> ast::ident {
@@ -304,7 +304,7 @@ fn lookup_def(cnum: ast::crate_num, data: @~[u8], did_: ast::def_id) ->
     let item = lookup_item(did_.node, data);
     let did = {crate: cnum, node: did_.node};
     // We treat references to enums as references to types.
-    ret def_like_to_def(item_to_def_like(item, did, cnum));
+    return def_like_to_def(item_to_def_like(item, did, cnum));
 }
 
 fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
@@ -316,12 +316,12 @@ fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         item_ty_param_bounds(item, tcx, cdata)
     } else { @~[] };
     let rp = item_ty_region_param(item);
-    ret {bounds: tp_bounds, rp: rp, ty: t};
+    return {bounds: tp_bounds, rp: rp, ty: t};
 }
 
 fn get_region_param(cdata: cmd, id: ast::node_id) -> bool {
     let item = lookup_item(id, cdata.data);
-    ret item_ty_region_param(item);
+    return item_ty_region_param(item);
 }
 
 fn get_type_param_count(data: @~[u8], id: ast::node_id) -> uint {
@@ -382,7 +382,7 @@ fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
 }
 
 fn get_symbol(data: @~[u8], id: ast::node_id) -> ~str {
-    ret item_symbol(lookup_item(id, data));
+    return item_symbol(lookup_item(id, data));
 }
 
 // Something that a name can resolve to.
@@ -394,7 +394,7 @@ enum def_like {
 
 fn def_like_to_def(def_like: def_like) -> ast::def {
     alt def_like {
-        dl_def(def) { ret def; }
+        dl_def(def) { return def; }
         dl_impl(*) { fail ~"found impl in def_like_to_def"; }
         dl_field { fail ~"found field in def_like_to_def"; }
     }
@@ -445,7 +445,7 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
 
     // If broken, stop here.
     if broken {
-        ret;
+        return;
     }
 
     // Next, go through all the paths. We will find items that we didn't know
@@ -561,7 +561,7 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
                            id: did, disr_val: disr_val});
         disr_val += 1;
     }
-    ret infos;
+    return infos;
 }
 
 // NB: These types are duplicated in resolve.rs
@@ -591,10 +591,10 @@ fn get_self_ty(item: ebml::doc) -> ast::self_ty_ {
 
     let self_ty_kind = string[0];
     alt self_ty_kind as char {
-        'r' => { ret ast::sty_by_ref; }
-        'v' => { ret ast::sty_value; }
-        '@' => { ret ast::sty_box(get_mutability(string[1])); }
-        '~' => { ret ast::sty_uniq(get_mutability(string[1])); }
+        'r' => { return ast::sty_by_ref; }
+        'v' => { return ast::sty_value; }
+        '@' => { return ast::sty_box(get_mutability(string[1])); }
+        '~' => { return ast::sty_uniq(get_mutability(string[1])); }
         '&' => {
             let mutability = get_mutability(string[1]);
 
@@ -609,7 +609,7 @@ fn get_self_ty(item: ebml::doc) -> ast::self_ty_ {
                 region = ast::re_named(@region_string);
             }
 
-            ret ast::sty_region(@{ id: 0, node: region }, mutability);
+            return ast::sty_region(@{ id: 0, node: region }, mutability);
         }
         _ => {
             fail fmt!{"unknown self type code: `%c`", self_ty_kind as char};
@@ -698,14 +698,14 @@ fn get_method_names_if_trait(cdata: cmd, node_id: ast::node_id)
 
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != 'I' {
-        ret none;
+        return none;
     }
 
     let resulting_method_names = @dvec();
     for ebml::tagged_docs(item, tag_item_trait_method) |method| {
         (*resulting_method_names).push(item_name(method));
     }
-    ret some(resulting_method_names);
+    return some(resulting_method_names);
 }
 
 fn get_item_attrs(cdata: cmd,
@@ -769,39 +769,39 @@ fn read_path(d: ebml::doc) -> {path: ~str, pos: uint} {
     let pos = io::u64_from_be_bytes(desc, 0u, 4u) as uint;
     let pathbytes = vec::slice::<u8>(desc, 4u, vec::len::<u8>(desc));
     let path = str::from_bytes(pathbytes);
-    ret {path: path, pos: pos};
+    return {path: path, pos: pos};
 }
 
 fn describe_def(items: ebml::doc, id: ast::def_id) -> ~str {
-    if id.crate != ast::local_crate { ret ~"external"; }
+    if id.crate != ast::local_crate { return ~"external"; }
     let it = alt maybe_find_item(id.node, items) {
         some(it) { it }
         none { fail (fmt!{"describe_def: item not found %?", id}); }
     };
-    ret item_family_to_str(item_family(it));
+    return item_family_to_str(item_family(it));
 }
 
 fn item_family_to_str(fam: char) -> ~str {
     alt check fam {
-      'c' { ret ~"const"; }
-      'f' { ret ~"fn"; }
-      'u' { ret ~"unsafe fn"; }
-      'p' { ret ~"pure fn"; }
-      'F' { ret ~"foreign fn"; }
-      'U' { ret ~"unsafe foreign fn"; }
-      'P' { ret ~"pure foreign fn"; }
-      'y' { ret ~"type"; }
-      'T' { ret ~"foreign type"; }
-      't' { ret ~"type"; }
-      'm' { ret ~"mod"; }
-      'n' { ret ~"foreign mod"; }
-      'v' { ret ~"enum"; }
-      'i' { ret ~"impl"; }
-      'I' { ret ~"trait"; }
-      'C' { ret ~"class"; }
-      'S' { ret ~"struct"; }
-      'g' { ret ~"public field"; }
-      'j' { ret ~"private field"; }
+      'c' { return ~"const"; }
+      'f' { return ~"fn"; }
+      'u' { return ~"unsafe fn"; }
+      'p' { return ~"pure fn"; }
+      'F' { return ~"foreign fn"; }
+      'U' { return ~"unsafe foreign fn"; }
+      'P' { return ~"pure foreign fn"; }
+      'y' { return ~"type"; }
+      'T' { return ~"foreign type"; }
+      't' { return ~"type"; }
+      'm' { return ~"mod"; }
+      'n' { return ~"foreign mod"; }
+      'v' { return ~"enum"; }
+      'i' { return ~"impl"; }
+      'I' { return ~"trait"; }
+      'C' { return ~"class"; }
+      'S' { return ~"struct"; }
+      'g' { return ~"public field"; }
+      'j' { return ~"private field"; }
     }
 }
 
@@ -827,7 +827,7 @@ fn get_meta_items(md: ebml::doc) -> ~[@ast::meta_item] {
         let subitems = get_meta_items(meta_item_doc);
         vec::push(items, attr::mk_list_item(@n, subitems));
     };
-    ret items;
+    return items;
 }
 
 fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
@@ -848,7 +848,7 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
       }
       option::none { }
     }
-    ret attrs;
+    return attrs;
 }
 
 fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
@@ -868,7 +868,7 @@ fn list_crate_attributes(md: ebml::doc, hash: @~str, out: io::writer) {
 }
 
 fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
-    ret get_attributes(ebml::doc(data));
+    return get_attributes(ebml::doc(data));
 }
 
 type crate_dep = {cnum: ast::crate_num, name: ast::ident,
@@ -889,7 +889,7 @@ fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
                   hash: @docstr(depdoc, tag_crate_dep_hash)});
         crate_num += 1;
     };
-    ret deps;
+    return deps;
 }
 
 fn list_crate_deps(data: @~[u8], out: io::writer) {
@@ -906,12 +906,12 @@ fn list_crate_deps(data: @~[u8], out: io::writer) {
 fn get_crate_hash(data: @~[u8]) -> @~str {
     let cratedoc = ebml::doc(data);
     let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
-    ret @str::from_bytes(ebml::doc_data(hashdoc));
+    return @str::from_bytes(ebml::doc_data(hashdoc));
 }
 
 fn get_crate_vers(data: @~[u8]) -> @~str {
     let attrs = decoder::get_crate_attributes(data);
-    ret alt attr::last_meta_item_value_str_by_name(
+    return alt attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
       some(ver) { ver }
       none { @~"0.0" }
@@ -968,7 +968,7 @@ fn get_crate_module_paths(bytes: @~[u8]) -> ~[(ast::def_id, ~str)] {
         // unified later by using the mods map
         vec::push(res, (did, path));
     }
-    ret do vec::filter(res) |x| {
+    return do vec::filter(res) |x| {
         let (_, xp) = x;
         mods.contains_key(xp)
     }
@@ -989,11 +989,11 @@ fn list_crate_metadata(bytes: @~[u8], out: io::writer) {
 // crate to the correct local crate number.
 fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
     if did.crate == ast::local_crate {
-        ret {crate: cdata.cnum, node: did.node};
+        return {crate: cdata.cnum, node: did.node};
     }
 
     alt cdata.cnum_map.find(did.crate) {
-      option::some(n) { ret {crate: n, node: did.node}; }
+      option::some(n) { return {crate: n, node: did.node}; }
       option::none { fail ~"didn't find a crate in the cnum_map"; }
     }
 }

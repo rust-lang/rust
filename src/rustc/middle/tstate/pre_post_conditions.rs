@@ -48,7 +48,7 @@ fn find_pre_post_item(ccx: crate_ctxt, i: item) {
       }
       item_mod(m) { find_pre_post_mod(m); }
       item_foreign_mod(nm) { find_pre_post_foreign_mod(nm); }
-      item_ty(*) | item_enum(*) | item_trait(*) { ret; }
+      item_ty(*) | item_enum(*) | item_trait(*) { return; }
       item_class(*) {
           fail ~"find_pre_post_item: shouldn't be called on item_class";
       }
@@ -72,7 +72,7 @@ fn find_pre_post_exprs(fcx: fn_ctxt, args: ~[@expr], id: node_id) {
     for args.each |e| { do_one(fcx, e); }
 
     fn get_pp(ccx: crate_ctxt, &&e: @expr) -> pre_and_post {
-        ret expr_pp(ccx, e);
+        return expr_pp(ccx, e);
     }
     let pps = vec::map(args, |a| get_pp(fcx.ccx, a) );
 
@@ -396,7 +396,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
               _ {}
             }
             find_pre_post_block(fcx, an_alt.body);
-            ret block_pp(fcx.ccx, an_alt.body);
+            return block_pp(fcx.ccx, an_alt.body);
         }
         let mut alt_pps = ~[];
         for alts.each |a| { vec::push(alt_pps, do_an_alt(fcx, a)); }
@@ -404,7 +404,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
                       &&next: pre_and_post) -> pre_and_post {
             union(pp.precondition, seq_preconds(fcx, ~[antec, next]));
             intersect(pp.postcondition, next.postcondition);
-            ret pp;
+            return pp;
         }
         let antec_pp = pp_clone(expr_pp(fcx.ccx, ex));
         let e_pp =

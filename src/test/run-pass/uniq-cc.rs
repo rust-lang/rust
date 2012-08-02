@@ -10,7 +10,7 @@ type pointy = {
 };
 
 fn empty_pointy() -> @pointy {
-    ret @{
+    return @{
         mut a : none,
         c : ~22,
         d : fn~()->(){},

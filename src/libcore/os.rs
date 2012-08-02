@@ -100,7 +100,7 @@ mod win32 {
                 }
             }
         }
-        ret res;
+        return res;
     }
 
     fn as_utf16_p<T>(s: ~str, f: fn(*u16) -> T) -> T {
@@ -209,14 +209,14 @@ mod global_env {
                 assert vec::len(vs) == 2u;
                 vec::push(pairs, (vs[0], vs[1]));
             }
-            ret pairs;
+            return pairs;
         }
 
         #[cfg(unix)]
         fn getenv(n: ~str) -> option<~str> {
             unsafe {
                 let s = str::as_c_str(n, libc::getenv);
-                ret if unsafe::reinterpret_cast(s) == 0 {
+                return if unsafe::reinterpret_cast(s) == 0 {
                     option::none::<~str>
                 } else {
                     let s = unsafe::reinterpret_cast(s);
@@ -267,7 +267,7 @@ mod global_env {
 }
 
 fn fdopen(fd: c_int) -> *FILE {
-    ret do as_c_charp(~"r") |modebuf| {
+    return do as_c_charp(~"r") |modebuf| {
         libc::fdopen(fd, modebuf)
     };
 }
@@ -278,7 +278,7 @@ fn fdopen(fd: c_int) -> *FILE {
 #[cfg(windows)]
 fn fsync_fd(fd: c_int, _level: io::fsync::level) -> c_int {
     import libc::funcs::extra::msvcrt::*;
-    ret commit(fd);
+    return commit(fd);
 }
 
 #[cfg(target_os = "linux")]
@@ -286,8 +286,8 @@ fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::funcs::posix01::unistd::*;
     alt level {
       io::fsync::fsync
-      | io::fsync::fullfsync { ret fsync(fd); }
-      io::fsync::fdatasync { ret fdatasync(fd); }
+      | io::fsync::fullfsync { return fsync(fd); }
+      io::fsync::fdatasync { return fdatasync(fd); }
     }
 }
 
@@ -297,13 +297,13 @@ fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::funcs::posix88::fcntl::*;
     import libc::funcs::posix01::unistd::*;
     alt level {
-      io::fsync::fsync { ret fsync(fd); }
+      io::fsync::fsync { return fsync(fd); }
       _ {
         // According to man fnctl, the ok retval is only specified to be !=-1
         if (fcntl(F_FULLFSYNC as c_int, fd) == -1 as c_int)
-            { ret -1 as c_int; }
+            { return -1 as c_int; }
         else
-            { ret 0 as c_int; }
+            { return 0 as c_int; }
       }
     }
 }
@@ -311,13 +311,13 @@ fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
 #[cfg(target_os = "freebsd")]
 fn fsync_fd(fd: c_int, _l: io::fsync::level) -> c_int {
     import libc::funcs::posix01::unistd::*;
-    ret fsync(fd);
+    return fsync(fd);
 }
 
 
 #[cfg(windows)]
 fn waitpid(pid: pid_t) -> c_int {
-    ret rustrt::rust_process_wait(pid);
+    return rustrt::rust_process_wait(pid);
 }
 
 #[cfg(unix)]
@@ -327,7 +327,7 @@ fn waitpid(pid: pid_t) -> c_int {
 
     assert (waitpid(pid, ptr::mut_addr_of(status),
                     0 as c_int) != (-1 as c_int));
-    ret status;
+    return status;
 }
 
 
@@ -336,7 +336,7 @@ fn pipe() -> {in: c_int, out: c_int} {
     let fds = {mut in: 0 as c_int,
                mut out: 0 as c_int };
     assert (libc::pipe(ptr::mut_addr_of(fds.in)) == (0 as c_int));
-    ret {in: fds.in, out: fds.out};
+    return {in: fds.in, out: fds.out};
 }
 
 
@@ -358,12 +358,12 @@ fn pipe() -> {in: c_int, out: c_int} {
     assert (res == 0 as c_int);
     assert (fds.in != -1 as c_int && fds.in != 0 as c_int);
     assert (fds.out != -1 as c_int && fds.in != 0 as c_int);
-    ret {in: fds.in, out: fds.out};
+    return {in: fds.in, out: fds.out};
 }
 
 
 fn dll_filename(base: ~str) -> ~str {
-    ret pre() + base + dll_suffix();
+    return pre() + base + dll_suffix();
 
     #[cfg(unix)]
     fn pre() -> ~str { ~"lib" }
@@ -442,7 +442,7 @@ fn self_exe_path() -> option<path> {
  * Otherwise, homedir returns option::none.
  */
 fn homedir() -> option<path> {
-    ret alt getenv(~"HOME") {
+    return alt getenv(~"HOME") {
         some(p) {
             if !str::is_empty(p) {
                 some(p)
@@ -497,7 +497,7 @@ fn walk_dir(p: path, f: fn(path) -> bool) {
                 }
             }
         }
-        ret keepgoing;
+        return keepgoing;
     }
 }
 
@@ -538,7 +538,7 @@ fn make_absolute(p: path) -> path {
 
 /// Creates a directory at the specified path
 fn make_dir(p: path, mode: c_int) -> bool {
-    ret mkdir(p, mode);
+    return mkdir(p, mode);
 
     #[cfg(windows)]
     fn mkdir(p: path, _mode: c_int) -> bool {
@@ -600,7 +600,7 @@ fn list_dir_path(p: path) -> ~[~str] {
 
 /// Removes a directory at the specified path
 fn remove_dir(p: path) -> bool {
-   ret rmdir(p);
+   return rmdir(p);
 
     #[cfg(windows)]
     fn rmdir(p: path) -> bool {
@@ -608,21 +608,21 @@ fn remove_dir(p: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(p) |buf| {
+        return do as_utf16_p(p) |buf| {
             RemoveDirectoryW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
     fn rmdir(p: path) -> bool {
-        ret do as_c_charp(p) |buf| {
+        return do as_c_charp(p) |buf| {
             libc::rmdir(buf) == (0 as c_int)
         };
     }
 }
 
 fn change_dir(p: path) -> bool {
-    ret chdir(p);
+    return chdir(p);
 
     #[cfg(windows)]
     fn chdir(p: path) -> bool {
@@ -630,14 +630,14 @@ fn change_dir(p: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(p) |buf| {
+        return do as_utf16_p(p) |buf| {
             SetCurrentDirectoryW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
     fn chdir(p: path) -> bool {
-        ret do as_c_charp(p) |buf| {
+        return do as_c_charp(p) |buf| {
             libc::chdir(buf) == (0 as c_int)
         };
     }
@@ -645,7 +645,7 @@ fn change_dir(p: path) -> bool {
 
 /// Copies a file from one location to another
 fn copy_file(from: path, to: path) -> bool {
-    ret do_copy_file(from, to);
+    return do_copy_file(from, to);
 
     #[cfg(windows)]
     fn do_copy_file(from: path, to: path) -> bool {
@@ -653,7 +653,7 @@ fn copy_file(from: path, to: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(from) |fromp| {
+        return do as_utf16_p(from) |fromp| {
             do as_utf16_p(to) |top| {
                 CopyFileW(fromp, top, (0 as BOOL)) != (0 as BOOL)
             }
@@ -668,7 +668,7 @@ fn copy_file(from: path, to: path) -> bool {
             }
         };
         if istream as uint == 0u {
-            ret false;
+            return false;
         }
         let ostream = do as_c_charp(to) |top| {
             do as_c_charp(~"w+b") |modebuf| {
@@ -677,7 +677,7 @@ fn copy_file(from: path, to: path) -> bool {
         };
         if ostream as uint == 0u {
             fclose(istream);
-            ret false;
+            return false;
         }
         let mut buf : ~[mut u8] = ~[mut];
         let bufsize = 8192u;
@@ -702,13 +702,13 @@ fn copy_file(from: path, to: path) -> bool {
         }
         fclose(istream);
         fclose(ostream);
-        ret ok;
+        return ok;
     }
 }
 
 /// Deletes an existing file
 fn remove_file(p: path) -> bool {
-    ret unlink(p);
+    return unlink(p);
 
     #[cfg(windows)]
     fn unlink(p: path) -> bool {
@@ -717,14 +717,14 @@ fn remove_file(p: path) -> bool {
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        ret do as_utf16_p(p) |buf| {
+        return do as_utf16_p(p) |buf| {
             DeleteFileW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
     fn unlink(p: path) -> bool {
-        ret do as_c_charp(p) |buf| {
+        return do as_c_charp(p) |buf| {
             libc::unlink(buf) == (0 as c_int)
         };
     }

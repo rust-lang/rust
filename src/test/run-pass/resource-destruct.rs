@@ -1,6 +1,6 @@
 class shrinky_pointer {
   let i: @@mut int;
-  fn look_at() -> int { ret **(self.i); }
+  fn look_at() -> int { return **(self.i); }
   new(i: @@mut int) { self.i = i; }
   drop { log(error, ~"Hello!"); **(self.i) -= 1; }
 }

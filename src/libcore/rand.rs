@@ -110,7 +110,7 @@ impl extensions for rng {
         let u2 = self.next() as f64;
         let u3 = self.next() as f64;
         const scale : f64 = (u32::max_value as f64) + 1.0f64;
-        ret ((u1 / scale + u2) / scale + u3) / scale;
+        return ((u1 / scale + u2) / scale + u3) / scale;
     }
 
     /// Return a random char
@@ -195,14 +195,14 @@ impl extensions for rng {
             total += item.weight;
         }
         if total == 0u {
-            ret none;
+            return none;
         }
         let chosen = self.gen_uint_range(0u, total);
         let mut so_far = 0u;
         for v.each |item| {
             so_far += item.weight;
             if so_far > chosen {
-                ret some(item.item);
+                return some(item.item);
             }
         }
         unreachable();
@@ -226,7 +226,7 @@ impl extensions for rng {
     fn shuffle<T:copy>(values: ~[T]) -> ~[T] {
         let mut m = vec::to_mut(values);
         self.shuffle_mut(m);
-        ret vec::from_mut(m);
+        return vec::from_mut(m);
     }
 
     /// Shuffle a mutable vec in place
@@ -249,7 +249,7 @@ class rand_res {
 }
 
 impl of rng for @rand_res {
-    fn next() -> u32 { ret rustrt::rand_next((*self).c); }
+    fn next() -> u32 { return rustrt::rand_next((*self).c); }
 }
 
 /// Create a new random seed for seeded_rng

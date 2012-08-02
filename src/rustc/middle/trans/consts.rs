@@ -51,7 +51,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         let ty = ty::expr_ty(cx.tcx, e1);
         let is_float = ty::type_is_fp(ty);
         let signed = ty::type_is_signed(ty);
-        ret alt b {
+        return alt b {
           ast::add    {
             if is_float { llvm::LLVMConstFAdd(te1, te2) }
             else        { llvm::LLVMConstAdd(te1, te2) }
@@ -96,7 +96,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         let te = const_expr(cx, e);
         let ty = ty::expr_ty(cx.tcx, e);
         let is_float = ty::type_is_fp(ty);
-        ret alt u {
+        return alt u {
           ast::box(_)  |
           ast::uniq(_) |
           ast::deref   { cx.sess.span_bug(e.span,

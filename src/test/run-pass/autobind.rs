@@ -1,6 +1,6 @@
-fn f<T: copy>(x: ~[T]) -> T { ret x[0]; }
+fn f<T: copy>(x: ~[T]) -> T { return x[0]; }
 
-fn g(act: fn(~[int]) -> int) -> int { ret act(~[1, 2, 3]); }
+fn g(act: fn(~[int]) -> int) -> int { return act(~[1, 2, 3]); }
 
 fn main() {
     assert (g(f) == 1);

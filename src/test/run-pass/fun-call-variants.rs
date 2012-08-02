@@ -1,7 +1,7 @@
 // -*- rust -*-
-fn ho(f: fn@(int) -> int) -> int { let n: int = f(3); ret n; }
+fn ho(f: fn@(int) -> int) -> int { let n: int = f(3); return n; }
 
-fn direct(x: int) -> int { ret x + 1; }
+fn direct(x: int) -> int { return x + 1; }
 
 fn main() {
     let a: int = direct(3); // direct

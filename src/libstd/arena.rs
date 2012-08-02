@@ -20,7 +20,7 @@ fn chunk(size: uint) -> @chunk {
 }
 
 fn arena_with_size(initial_size: uint) -> arena {
-    ret arena_({mut chunks: @cons(chunk(initial_size), @nil)});
+    return arena_({mut chunks: @cons(chunk(initial_size), @nil)});
 }
 
 fn arena() -> arena {
@@ -36,7 +36,7 @@ impl arena for arena {
         head = chunk(uint::next_power_of_two(new_min_chunk_size + 1u));
         self.chunks = @cons(head, self.chunks);
 
-        ret self.alloc_inner(n_bytes, align);
+        return self.alloc_inner(n_bytes, align);
     }
 
     #[inline(always)]
@@ -48,13 +48,13 @@ impl arena for arena {
         start = (start + alignm1) & !alignm1;
         let end = start + n_bytes;
         if end > vec::capacity(head.data) {
-            ret self.alloc_grow(n_bytes, align);
+            return self.alloc_grow(n_bytes, align);
         }
 
         unsafe {
             let p = ptr::offset(vec::unsafe::to_ptr(head.data), start);
             head.fill = end;
-            ret unsafe::reinterpret_cast(p);
+            return unsafe::reinterpret_cast(p);
         }
     }
 

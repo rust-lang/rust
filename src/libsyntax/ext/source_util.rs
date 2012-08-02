@@ -18,7 +18,7 @@ fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"line");
     let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret mk_uint(cx, sp, loc.line);
+    return mk_uint(cx, sp, loc.line);
 }
 
 /* col!{}: expands to the current column number */
@@ -26,7 +26,7 @@ fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"col");
     let loc = codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret mk_uint(cx, sp, loc.col);
+    return mk_uint(cx, sp, loc.col);
 }
 
 /* file!{}: expands to the current filename */
@@ -37,19 +37,19 @@ fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"file");
     let { file: @{ name: filename, _ }, _ } =
         codemap::lookup_char_pos(cx.codemap(), sp.lo);
-    ret mk_uniq_str(cx, sp, filename);
+    return mk_uniq_str(cx, sp, filename);
 }
 
 fn expand_stringify(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                     _body: ast::mac_body) -> @ast::expr {
     let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), ~"stringify");
-    ret mk_uniq_str(cx, sp, pprust::expr_to_str(args[0]));
+    return mk_uniq_str(cx, sp, pprust::expr_to_str(args[0]));
 }
 
 fn expand_mod(cx: ext_ctxt, sp: span, arg: ast::mac_arg, _body: ast::mac_body)
     -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"file");
-    ret mk_uniq_str(cx, sp,
+    return mk_uniq_str(cx, sp,
                     str::connect(cx.mod_path().map(|x|*x), ~"::"));
 }
 
@@ -60,7 +60,7 @@ fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(),
                                         res_rel_file(cx, sp, file),
                                         parse::parser::SOURCE_FILE);
-    ret p.parse_expr();
+    return p.parse_expr();
 }
 
 fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
@@ -77,7 +77,7 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
       }
     }
 
-    ret mk_uniq_str(cx, sp, result::unwrap(res));
+    return mk_uniq_str(cx, sp, result::unwrap(res));
 }
 
 fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
@@ -91,7 +91,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
         let u8_exprs = vec::map(src, |char: u8| {
             mk_u8(cx, sp, char)
         });
-        ret mk_uniq_vec_e(cx, sp, u8_exprs);
+        return mk_uniq_vec_e(cx, sp, u8_exprs);
       }
       result::err(e) {
         cx.parse_sess().span_diagnostic.handler().fatal(e)
@@ -104,9 +104,9 @@ fn res_rel_file(cx: ext_ctxt, sp: codemap::span, +arg: path) -> path {
     if !path::path_is_absolute(arg) {
         let cu = codemap::span_to_filename(sp, cx.codemap());
         let dir = path::dirname(cu);
-        ret path::connect(dir, arg);
+        return path::connect(dir, arg);
     } else {
-        ret arg;
+        return arg;
     }
 }
 

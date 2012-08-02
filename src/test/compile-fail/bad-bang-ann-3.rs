@@ -2,7 +2,7 @@
 // Tests that a function with a ! annotation always actually fails
 
 fn bad_bang(i: uint) -> ! {
-    ret 7u;
+    return 7u;
     //~^ ERROR expected `_|_` but found `uint`
 }
 

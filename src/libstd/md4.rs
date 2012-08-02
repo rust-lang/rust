@@ -79,7 +79,7 @@ fn md4(msg: ~[u8]) -> {a: u32, b: u32, c: u32, d: u32} {
         a += aa; b += bb; c += cc; d += dd;
         i += 64u;
     }
-    ret {a: a, b: b, c: c, d: d};
+    return {a: a, b: b, c: c, d: d};
 }
 
 fn md4_str(msg: ~[u8]) -> ~str {

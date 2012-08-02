@@ -56,7 +56,7 @@ fn new_tt_reader(sp_diag: span_handler, itr: @interner<@~str>,
               mut cur_span: ast_util::mk_sp(0u,0u)
              };
     tt_next_token(r); /* get cur_tok and cur_span set up */
-    ret r;
+    return r;
 }
 
 pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
@@ -145,7 +145,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             alt r.cur.up {
               tt_frame_up(none) {
                 r.cur_tok = EOF;
-                ret ret_val;
+                return ret_val;
               }
               tt_frame_up(some(tt_f)) {
                 if r.cur.dotdotdoted {
@@ -163,7 +163,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             alt r.cur.sep {
               some(tk) {
                 r.cur_tok = tk; /* repeat same span, I guess */
-                ret ret_val;
+                return ret_val;
               }
               none {}
             }
@@ -180,7 +180,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
           tt_tok(sp, tok) {
             r.cur_span = sp; r.cur_tok = tok;
             r.cur.idx += 1u;
-            ret ret_val;
+            return ret_val;
           }
           tt_seq(sp, tts, sep, zerok) {
             alt lockstep_iter_size(tt_seq(sp, tts, sep, zerok), r) {
@@ -204,7 +204,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                     }
 
                     r.cur.idx += 1u;
-                    ret tt_next_token(r);
+                    return tt_next_token(r);
                 } else {
                     vec::push(r.repeat_len, len);
                     vec::push(r.repeat_idx, 0u);
@@ -223,12 +223,12 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
               matched_nonterminal(nt_ident(sn,b)) {
                 r.cur_span = sp; r.cur_tok = IDENT(sn,b);
                 r.cur.idx += 1u;
-                ret ret_val;
+                return ret_val;
               }
               matched_nonterminal(other_whole_nt) {
                 r.cur_span = sp; r.cur_tok = INTERPOLATED(other_whole_nt);
                 r.cur.idx += 1u;
-                ret ret_val;
+                return ret_val;
               }
               matched_seq(*) {
                 r.sp_diag.span_fatal(

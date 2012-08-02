@@ -5,7 +5,7 @@ fn f2(x: fn()) { x(); }
 
 fn main() {
     let i = 0;
-    let ctr = fn@ () -> int { f2(|| i = i + 1 ); ret i; };
+    let ctr = fn@ () -> int { f2(|| i = i + 1 ); return i; };
     log(error, ctr());
     log(error, ctr());
     log(error, ctr());

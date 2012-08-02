@@ -1,5 +1,5 @@
 fn f(x : &a/int) -> &a/int {
-    ret &*x;
+    return &*x;
 }
 
 fn main() {

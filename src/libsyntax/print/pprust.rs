@@ -22,7 +22,7 @@ type pp_ann = {pre: fn@(ann_node), post: fn@(ann_node)};
 
 fn no_ann() -> pp_ann {
     fn ignore(_node: ann_node) { }
-    ret {pre: ignore, post: ignore};
+    return {pre: ignore, post: ignore};
 }
 
 type ps =
@@ -47,7 +47,7 @@ fn end(s: ps) {
 }
 
 fn rust_printer(writer: io::writer) -> ps {
-    ret @{s: pp::mk_printer(writer, default_columns),
+    return @{s: pp::mk_printer(writer, default_columns),
           cm: none::<codemap>,
           intr: @interner::mk::<@~str>(|x| str::hash(*x),
                                        |x,y| str::eq(*x, *y)),
@@ -95,24 +95,26 @@ fn print_crate_(s: ps, &&crate: @ast::crate) {
     eof(s.s);
 }
 
-fn ty_to_str(ty: @ast::ty) -> ~str { ret to_str(ty, print_type); }
+fn ty_to_str(ty: @ast::ty) -> ~str { return to_str(ty, print_type); }
 
-fn pat_to_str(pat: @ast::pat) -> ~str { ret to_str(pat, print_pat); }
+fn pat_to_str(pat: @ast::pat) -> ~str { return to_str(pat, print_pat); }
 
-fn expr_to_str(e: @ast::expr) -> ~str { ret to_str(e, print_expr); }
+fn expr_to_str(e: @ast::expr) -> ~str { return to_str(e, print_expr); }
 
-fn stmt_to_str(s: ast::stmt) -> ~str { ret to_str(s, print_stmt); }
+fn stmt_to_str(s: ast::stmt) -> ~str { return to_str(s, print_stmt); }
 
-fn item_to_str(i: @ast::item) -> ~str { ret to_str(i, print_item); }
+fn item_to_str(i: @ast::item) -> ~str { return to_str(i, print_item); }
 
-fn attr_to_str(i: ast::attribute) -> ~str { ret to_str(i, print_attribute); }
+fn attr_to_str(i: ast::attribute) -> ~str {
+    return to_str(i, print_attribute);
+}
 
 fn typarams_to_str(tps: ~[ast::ty_param]) -> ~str {
-    ret to_str(tps, print_type_params)
+    return to_str(tps, print_type_params)
 }
 
 fn path_to_str(&&p: @ast::path) -> ~str {
-    ret to_str(p, |a,b| print_path(a, b, false));
+    return to_str(p, |a,b| print_path(a, b, false));
 }
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
@@ -152,15 +154,15 @@ fn block_to_str(blk: ast::blk) -> ~str {
 }
 
 fn meta_item_to_str(mi: ast::meta_item) -> ~str {
-    ret to_str(@mi, print_meta_item);
+    return to_str(@mi, print_meta_item);
 }
 
 fn attribute_to_str(attr: ast::attribute) -> ~str {
-    ret to_str(attr, print_attribute);
+    return to_str(attr, print_attribute);
 }
 
 fn variant_to_str(var: ast::variant) -> ~str {
-    ret to_str(var, print_variant);
+    return to_str(var, print_variant);
 }
 
 #[test]
@@ -228,14 +230,14 @@ fn is_end(s: ps) -> bool {
 }
 
 fn is_bol(s: ps) -> bool {
-    ret s.s.last_token() == pp::EOF ||
+    return s.s.last_token() == pp::EOF ||
             s.s.last_token() == pp::hardbreak_tok();
 }
 
 fn in_cbox(s: ps) -> bool {
     let len = s.boxes.len();
-    if len == 0u { ret false; }
-    ret s.boxes[len - 1u] == pp::consistent;
+    if len == 0u { return false; }
+    return s.boxes[len - 1u] == pp::consistent;
 }
 
 fn hardbreak_if_not_bol(s: ps) { if !is_bol(s) { hardbreak(s.s); } }
@@ -294,7 +296,7 @@ fn commasep_cmnt<IN>(s: ps, b: breaks, elts: ~[IN], op: fn(ps, IN),
 }
 
 fn commasep_exprs(s: ps, b: breaks, exprs: ~[@ast::expr]) {
-    fn expr_span(&&expr: @ast::expr) -> codemap::span { ret expr.span; }
+    fn expr_span(&&expr: @ast::expr) -> codemap::span { return expr.span; }
     commasep_cmnt(s, b, exprs, print_expr, expr_span);
 }
 
@@ -365,7 +367,7 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
             print_type(s, f.node.mt.ty);
             end(s);
         }
-        fn get_span(f: ast::ty_field) -> codemap::span { ret f.span; }
+        fn get_span(f: ast::ty_field) -> codemap::span { return f.span; }
         commasep_cmnt(s, consistent, fields, print_field, get_span);
         word(s.s, ~",}");
       }
@@ -805,7 +807,7 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
     s.ann.post(ann_node);
 }
 
-// ret and fail, without arguments cannot appear is the discriminant of if,
+// return and fail, without arguments cannot appear is the discriminant of if,
 // alt, do, & while unambiguously without being parenthesized
 fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
     let disambig = alt e.node {
@@ -909,7 +911,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_expr(s, field.node.expr);
         end(s);
     }
-    fn get_span(field: ast::field) -> codemap::span { ret field.span; }
+    fn get_span(field: ast::field) -> codemap::span { return field.span; }
 
     maybe_print_comment(s, expr.span.lo);
     ibox(s, indent_unit);
@@ -1162,7 +1164,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
       ast::expr_break { word(s.s, ~"break"); }
       ast::expr_again { word(s.s, ~"again"); }
       ast::expr_ret(result) {
-        word(s.s, ~"ret");
+        word(s.s, ~"return");
         alt result {
           some(expr) { word(s.s, ~" "); print_expr(s, expr); }
           _ { }
@@ -1339,7 +1341,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
             print_pat(s, f.pat);
             end(s);
         }
-        fn get_span(f: ast::field_pat) -> codemap::span { ret f.pat.span; }
+        fn get_span(f: ast::field_pat) -> codemap::span { return f.pat.span; }
         commasep_cmnt(s, consistent, fields, print_field, get_span);
         if etc {
             if vec::len(fields) != 0u { word_space(s, ~","); }
@@ -1603,10 +1605,10 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
 fn maybe_print_trailing_comment(s: ps, span: codemap::span,
                                 next_pos: option<uint>) {
     let mut cm;
-    alt s.cm { some(ccm) { cm = ccm; } _ { ret; } }
+    alt s.cm { some(ccm) { cm = ccm; } _ { return; } }
     alt next_comment(s) {
       some(cmnt) {
-        if cmnt.style != comments::trailing { ret; }
+        if cmnt.style != comments::trailing { return; }
         let span_line = codemap::lookup_char_pos(cm, span.hi);
         let comment_line = codemap::lookup_char_pos(cm, cmnt.pos);
         let mut next = cmnt.pos + 1u;
@@ -1638,7 +1640,7 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
     alt next_lit(s, lit.span.lo) {
       some(ltrl) {
         word(s.s, ltrl.lit);
-        ret;
+        return;
       }
       _ {}
     }
@@ -1680,20 +1682,20 @@ fn print_literal(s: ps, &&lit: @ast::lit) {
     }
 }
 
-fn lit_to_str(l: @ast::lit) -> ~str { ret to_str(l, print_literal); }
+fn lit_to_str(l: @ast::lit) -> ~str { return to_str(l, print_literal); }
 
 fn next_lit(s: ps, pos: uint) -> option<comments::lit> {
     alt s.literals {
       some(lits) {
         while s.cur_lit < vec::len(lits) {
             let ltrl = lits[s.cur_lit];
-            if ltrl.pos > pos { ret none; }
+            if ltrl.pos > pos { return none; }
             s.cur_lit += 1u;
-            if ltrl.pos == pos { ret some(ltrl); }
+            if ltrl.pos == pos { return some(ltrl); }
         }
-        ret none;
+        return none;
       }
-      _ { ret none; }
+      _ { return none; }
     }
 }
 
@@ -1773,10 +1775,10 @@ fn next_comment(s: ps) -> option<comments::cmnt> {
     alt s.comments {
       some(cmnts) {
         if s.cur_cmnt < vec::len(cmnts) {
-            ret some(cmnts[s.cur_cmnt]);
-        } else { ret none::<comments::cmnt>; }
+            return some(cmnts[s.cur_cmnt]);
+        } else { return none::<comments::cmnt>; }
       }
-      _ { ret none::<comments::cmnt>; }
+      _ { return none::<comments::cmnt>; }
     }
 }
 
@@ -1804,7 +1806,7 @@ fn print_purity(s: ps, p: ast::purity) {
 }
 
 fn proto_to_str(p: ast::proto) -> ~str {
-    ret alt p {
+    return alt p {
       ast::proto_bare { ~"extern fn" }
       ast::proto_any { ~"fn" }
       ast::proto_block { ~"fn&" }

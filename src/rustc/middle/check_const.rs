@@ -64,7 +64,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           expr_unary(deref, _){
             sess.span_err(e.span,
                           ~"disallowed operator in constant expression");
-            ret;
+            return;
           }
           expr_lit(@{node: lit_str(_), _}) {
             sess.span_err(e.span,
@@ -106,7 +106,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           _ {
             sess.span_err(e.span,
                           ~"constant contains unimplemented expression type");
-            ret;
+            return;
           }
         }
     }

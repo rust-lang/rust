@@ -51,7 +51,7 @@ import is_XID_continue = unicode::derived_property::XID_Continue;
  * in terms of the Unicode General Category 'Ll'
  */
 pure fn is_lowercase(c: char) -> bool {
-    ret unicode::general_category::Ll(c);
+    return unicode::general_category::Ll(c);
 }
 
 /**
@@ -59,7 +59,7 @@ pure fn is_lowercase(c: char) -> bool {
  * in terms of the Unicode General Category 'Lu'.
  */
 pure fn is_uppercase(c: char) -> bool {
-    ret unicode::general_category::Lu(c);
+    return unicode::general_category::Lu(c);
 }
 
 /**
@@ -68,7 +68,7 @@ pure fn is_uppercase(c: char) -> bool {
  * additional 'Cc'-category control codes in the range [0x09, 0x0d]
  */
 pure fn is_whitespace(c: char) -> bool {
-    ret ('\x09' <= c && c <= '\x0d')
+    return ('\x09' <= c && c <= '\x0d')
         || unicode::general_category::Zs(c)
         || unicode::general_category::Zl(c)
         || unicode::general_category::Zp(c);
@@ -80,7 +80,7 @@ pure fn is_whitespace(c: char) -> bool {
  * 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
  */
 pure fn is_alphanumeric(c: char) -> bool {
-    ret unicode::derived_property::Alphabetic(c) ||
+    return unicode::derived_property::Alphabetic(c) ||
         unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
         unicode::general_category::No(c);
@@ -93,7 +93,7 @@ pure fn is_ascii(c: char) -> bool {
 
 /// Indicates whether the character is numeric (Nd, Nl, or No)
 pure fn is_digit(c: char) -> bool {
-    ret unicode::general_category::Nd(c) ||
+    return unicode::general_category::Nd(c) ||
         unicode::general_category::Nl(c) ||
         unicode::general_category::No(c);
 }
@@ -117,7 +117,7 @@ pure fn to_digit(c: char, radix: uint) -> option<uint> {
       '0' to '9' { c as uint - ('0' as uint) }
       'a' to 'z' { c as uint + 10u - ('a' as uint) }
       'A' to 'Z' { c as uint + 10u - ('A' as uint) }
-      _ { ret none; }
+      _ { return none; }
     };
     if val < radix { some(val) }
     else { none }
@@ -142,7 +142,7 @@ fn escape_unicode(c: char) -> ~str {
     str::push_str(out, str::from_char(c));
     for uint::range(str::len(s), pad) |_i| { str::push_str(out, ~"0"); }
     str::push_str(out, s);
-    ret out;
+    return out;
 }
 
 /**
@@ -178,7 +178,7 @@ fn escape_default(c: char) -> ~str {
  * -1 if a < b, 0 if a == b, +1 if a > b
  */
 pure fn cmp(a: char, b: char) -> int {
-    ret  if b > a { -1 }
+    return  if b > a { -1 }
     else if b < a { 1 }
     else { 0 }
 }

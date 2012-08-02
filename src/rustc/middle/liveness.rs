@@ -149,7 +149,7 @@ fn check_crate(tcx: ty::ctxt,
                                 last_use_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
-    ret last_use_map;
+    return last_use_map;
 }
 
 impl of to_str::to_str for live_node {
@@ -291,7 +291,7 @@ class ir_maps {
           vk_local(_, name) | vk_arg(_, name, _) {name}
           vk_field(name) {@(~"self." + *name)}
           vk_self {@~"self"}
-          vk_implicit_ret {@~"<implicit-ret>"}
+          vk_implicit_return {@~"<implicit-ret>"}
         }
     }
 
@@ -367,7 +367,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     }
 
     // Special nodes and variables:
-    // - exit_ln represents the end of the fn, either by ret or fail
+    // - exit_ln represents the end of the fn, either by return or fail
     // - implicit_ret_var is a pseudo-variable that represents
     //   an implicit return
     let specials = {
@@ -701,7 +701,7 @@ class liveness {
 
     fn merge_from_succ(ln: live_node, succ_ln: live_node,
                        first_merge: bool) -> bool {
-        if ln == succ_ln { ret false; }
+        if ln == succ_ln { return false; }
 
         let mut changed = false;
         do self.indices2(ln, succ_ln) |idx, succ_idx| {
@@ -717,16 +717,16 @@ class liveness {
 
         debug!{"merge_from_succ(ln=%s, succ=%s, first_merge=%b, changed=%b)",
                ln.to_str(), self.ln_str(succ_ln), first_merge, changed};
-        ret changed;
+        return changed;
 
         fn copy_if_invalid(src: live_node, &dst: live_node) -> bool {
             if src.is_valid() {
                 if !dst.is_valid() {
                     dst = src;
-                    ret true;
+                    return true;
                 }
             }
-            ret false;
+            return false;
         }
     }
 
@@ -837,11 +837,11 @@ class liveness {
     fn propagate_through_stmt(stmt: @stmt, succ: live_node) -> live_node {
         alt stmt.node {
           stmt_decl(decl, _) {
-            ret self.propagate_through_decl(decl, succ);
+            return self.propagate_through_decl(decl, succ);
           }
 
           stmt_expr(expr, _) | stmt_semi(expr, _) {
-            ret self.propagate_through_expr(expr, succ);
+            return self.propagate_through_expr(expr, succ);
           }
         }
     }
@@ -1275,15 +1275,15 @@ class liveness {
             alt def {
               def_self(_) {
                 // Note: the field_map is empty unless we are in a ctor
-                ret self.ir.field_map.find(fld).map(|var| {
+                return self.ir.field_map.find(fld).map(|var| {
                     let ln = self.live_node(expr.id, expr.span);
                     (ln, var)
                 });
               }
-              _ { ret none; }
+              _ { return none; }
             }
           }
-          _ { ret none; }
+          _ { return none; }
         }
     }
 
@@ -1347,7 +1347,7 @@ class liveness {
         let r <- f();
         self.break_ln = bl;
         self.cont_ln = cl;
-        ret r;
+        return r;
     }
 }
 
@@ -1558,7 +1558,7 @@ impl check_methods for @liveness {
 
         if self.ir.method_map.contains_key(expr.id) {
             // actually an rvalue, since this calls a method
-            ret vt.visit_expr(expr, self, vt);
+            return vt.visit_expr(expr, self, vt);
         }
 
         alt expr.node {
@@ -1671,20 +1671,20 @@ impl check_methods for @liveness {
                     move_span,
                     fmt!{"illegal move from argument `%s`, which is not \
                           copy or move mode", *name});
-                ret;
+                return;
               }
               vk_field(name) {
                 self.tcx.sess.span_err(
                     move_span,
                     fmt!{"illegal move from field `%s`", *name});
-                ret;
+                return;
               }
               vk_self {
                 self.tcx.sess.span_err(
                     move_span,
                     ~"illegal move from self (cannot move out of a field of \
                        self)");
-                ret;
+                return;
               }
               vk_local(*) | vk_implicit_ret {
                 self.tcx.sess.span_bug(
@@ -1790,9 +1790,9 @@ impl check_methods for @liveness {
                         sp, fmt!{"unused variable: `%s`", *name});
                 }
             }
-            ret true;
+            return true;
         }
-        ret false;
+        return false;
     }
 
     fn warn_about_dead_assign(sp: span, ln: live_node, var: variable) {

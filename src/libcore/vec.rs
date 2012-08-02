@@ -191,7 +191,7 @@ pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> ~[T] {
     let mut i: uint = 0u;
     while i < n_elts unsafe { unsafe::set(v, i, op(i)); i += 1u; }
     unsafe { unsafe::set_len(v, n_elts); }
-    ret v;
+    return v;
 }
 
 /**
@@ -208,7 +208,7 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
         while i < n_elts { unsafe::set(v, i, t); i += 1u; }
         unsafe { unsafe::set_len(v, n_elts); }
     }
-    ret v;
+    return v;
 }
 
 /**
@@ -234,7 +234,7 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
             <fn(push: pure fn(+A)), fn(push: fn(+A))>
             (builder)(|+x| push(vec, x));
     }
-    ret vec;
+    return vec;
 }
 
 /**
@@ -269,7 +269,7 @@ pure fn head<T: copy>(v: &[const T]) -> T { v[0] }
 
 /// Returns a vector containing all but the first element of a slice
 pure fn tail<T: copy>(v: &[const T]) -> ~[T] {
-    ret slice(v, 1u, len(v));
+    return slice(v, 1u, len(v));
 }
 
 /**
@@ -297,7 +297,7 @@ pure fn last<T: copy>(v: &[const T]) -> T {
  * or `none` if the vector is empty.
  */
 pure fn last_opt<T: copy>(v: &[const T]) -> option<T> {
-    if len(v) == 0u { ret none; }
+    if len(v) == 0u { return none; }
     some(v[len(v) - 1u])
 }
 
@@ -309,7 +309,7 @@ pure fn slice<T: copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     unchecked {
         for uint::range(start, end) |i| { vec::push(result, v[i]) }
     }
-    ret result;
+    return result;
 }
 
 /// Return a slice that points into another slice.
@@ -351,7 +351,7 @@ pure fn const_view<T>(v: &[const T], start: uint, end: uint) -> &[const T] {
 /// Split the vector `v` by applying each element against the predicate `f`.
 fn split<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
-    if (ln == 0u) { ret ~[] }
+    if (ln == 0u) { return ~[] }
 
     let mut start = 0u;
     let mut result = ~[];
@@ -374,7 +374,7 @@ fn split<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
  */
 fn splitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
-    if (ln == 0u) { ret ~[] }
+    if (ln == 0u) { return ~[] }
 
     let mut start = 0u;
     let mut count = n;
@@ -400,7 +400,7 @@ fn splitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
  */
 fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
-    if (ln == 0u) { ret ~[] }
+    if (ln == 0u) { return ~[] }
 
     let mut end = ln;
     let mut result = ~[];
@@ -423,7 +423,7 @@ fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
  */
 fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let ln = len(v);
-    if (ln == 0u) { ret ~[] }
+    if (ln == 0u) { return ~[] }
 
     let mut end = ln;
     let mut count = n;
@@ -564,7 +564,7 @@ pure fn append<T: copy>(+lhs: ~[T], rhs: &[const T]) -> ~[T] {
     unchecked {
         push_all(v, rhs);
     }
-    ret v;
+    return v;
 }
 
 #[inline(always)]
@@ -591,7 +591,7 @@ pure fn append_mut<T: copy>(lhs: &[mut T], rhs: &[const T]) -> ~[mut T] {
         }
         i += 1u;
     }
-    ret v;
+    return v;
 }
 
 /**
@@ -649,7 +649,7 @@ pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> ~[U] {
     let mut result = ~[];
     unchecked{reserve(result, len(v));}
     for each(v) |elem| { unsafe { push(result, f(elem)); } }
-    ret result;
+    return result;
 }
 
 fn map_consume<T, U>(+v: ~[T], f: fn(+T) -> U) -> ~[U] {
@@ -665,7 +665,7 @@ pure fn mapi<T, U>(v: &[T], f: fn(uint, T) -> U) -> ~[U] {
     let mut result = ~[];
     unchecked{reserve(result, len(v));}
     for eachi(v) |i, elem| { unsafe { push(result, f(i, elem)); } }
-    ret result;
+    return result;
 }
 
 /**
@@ -675,7 +675,7 @@ pure fn mapi<T, U>(v: &[T], f: fn(uint, T) -> U) -> ~[U] {
 pure fn flat_map<T, U>(v: &[T], f: fn(T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
     for each(v) |elem| { unchecked{ push_all_move(result, f(elem)); } }
-    ret result;
+    return result;
 }
 
 /// Apply a function to each pair of elements and return the results
@@ -689,7 +689,7 @@ pure fn map2<T: copy, U: copy, V>(v0: &[T], v1: &[U],
         unsafe { push(u, f(copy v0[i], copy v1[i])) };
         i += 1u;
     }
-    ret u;
+    return u;
 }
 
 /**
@@ -707,7 +707,7 @@ pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> option<U>)
           some(result_elem) { unsafe { push(result, result_elem); } }
         }
     }
-    ret result;
+    return result;
 }
 
 /**
@@ -722,7 +722,7 @@ pure fn filter<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[T] {
     for each(v) |elem| {
         if f(elem) { unsafe { push(result, elem); } }
     }
-    ret result;
+    return result;
 }
 
 /**
@@ -733,7 +733,7 @@ pure fn filter<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[T] {
 pure fn concat<T: copy>(v: &[~[T]]) -> ~[T] {
     let mut r = ~[];
     for each(v) |inner| { unsafe { push_all(r, inner); } }
-    ret r;
+    return r;
 }
 
 /// Concatenate a vector of vectors, placing a given separator between each
@@ -744,7 +744,7 @@ pure fn connect<T: copy>(v: &[~[T]], sep: T) -> ~[T] {
         if first { first = false; } else { unsafe { push(r, sep); } }
         unchecked { push_all(r, inner) };
     }
-    ret r;
+    return r;
 }
 
 /// Reduce a vector from left to right
@@ -753,7 +753,7 @@ pure fn foldl<T: copy, U>(z: T, v: &[U], p: fn(T, U) -> T) -> T {
     do iter(v) |elt| {
         accum = p(accum, elt);
     }
-    ret accum;
+    return accum;
 }
 
 /// Reduce a vector from right to left
@@ -762,7 +762,7 @@ pure fn foldr<T, U: copy>(v: &[T], z: U, p: fn(T, U) -> U) -> U {
     do riter(v) |elt| {
         accum = p(elt, accum);
     }
-    ret accum;
+    return accum;
 }
 
 /**
@@ -771,8 +771,8 @@ pure fn foldr<T, U: copy>(v: &[T], z: U, p: fn(T, U) -> U) -> U {
  * If the vector contains no elements then false is returned.
  */
 pure fn any<T>(v: &[T], f: fn(T) -> bool) -> bool {
-    for each(v) |elem| { if f(elem) { ret true; } }
-    ret false;
+    for each(v) |elem| { if f(elem) { return true; } }
+    return false;
 }
 
 /**
@@ -786,10 +786,10 @@ pure fn any2<T, U>(v0: &[T], v1: &[U],
     let v1_len = len(v1);
     let mut i = 0u;
     while i < v0_len && i < v1_len {
-        if f(v0[i], v1[i]) { ret true; };
+        if f(v0[i], v1[i]) { return true; };
         i += 1u;
     }
-    ret false;
+    return false;
 }
 
 /**
@@ -798,8 +798,8 @@ pure fn any2<T, U>(v0: &[T], v1: &[U],
  * If the vector contains no elements then true is returned.
  */
 pure fn all<T>(v: &[T], f: fn(T) -> bool) -> bool {
-    for each(v) |elem| { if !f(elem) { ret false; } }
-    ret true;
+    for each(v) |elem| { if !f(elem) { return false; } }
+    return true;
 }
 
 /**
@@ -808,8 +808,8 @@ pure fn all<T>(v: &[T], f: fn(T) -> bool) -> bool {
  * If the vector contains no elements then true is returned.
  */
 pure fn alli<T>(v: &[T], f: fn(uint, T) -> bool) -> bool {
-    for eachi(v) |i, elem| { if !f(i, elem) { ret false; } }
-    ret true;
+    for eachi(v) |i, elem| { if !f(i, elem) { return false; } }
+    return true;
 }
 
 /**
@@ -820,23 +820,23 @@ pure fn alli<T>(v: &[T], f: fn(uint, T) -> bool) -> bool {
 pure fn all2<T, U>(v0: &[T], v1: &[U],
                    f: fn(T, U) -> bool) -> bool {
     let v0_len = len(v0);
-    if v0_len != len(v1) { ret false; }
+    if v0_len != len(v1) { return false; }
     let mut i = 0u;
-    while i < v0_len { if !f(v0[i], v1[i]) { ret false; }; i += 1u; }
-    ret true;
+    while i < v0_len { if !f(v0[i], v1[i]) { return false; }; i += 1u; }
+    return true;
 }
 
 /// Return true if a vector contains an element with the given value
 pure fn contains<T>(v: &[T], x: T) -> bool {
-    for each(v) |elt| { if x == elt { ret true; } }
-    ret false;
+    for each(v) |elt| { if x == elt { return true; } }
+    return false;
 }
 
 /// Returns the number of elements that are equal to a given value
 pure fn count<T>(v: &[T], x: T) -> uint {
     let mut cnt = 0u;
     for each(v) |elt| { if x == elt { cnt += 1u; } }
-    ret cnt;
+    return cnt;
 }
 
 /**
@@ -913,8 +913,8 @@ pure fn position_between<T>(v: &[T], start: uint, end: uint,
     assert start <= end;
     assert end <= len(v);
     let mut i = start;
-    while i < end { if f(v[i]) { ret some::<uint>(i); } i += 1u; }
-    ret none;
+    while i < end { if f(v[i]) { return some::<uint>(i); } i += 1u; }
+    return none;
 }
 
 /// Find the last index containing a matching value
@@ -947,10 +947,10 @@ pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
     assert end <= len(v);
     let mut i = end;
     while i > start {
-        if f(v[i - 1u]) { ret some::<uint>(i - 1u); }
+        if f(v[i - 1u]) { return some::<uint>(i - 1u); }
         i -= 1u;
     }
-    ret none;
+    return none;
 }
 
 // FIXME: if issue #586 gets implemented, could have a postcondition
@@ -974,7 +974,7 @@ pure fn unzip<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
             vec::push(bs, b);
         }
     }
-    ret (as, bs);
+    return (as, bs);
 }
 
 /**
@@ -989,7 +989,7 @@ pure fn zip<T: copy, U: copy>(v: &[const T], u: &[const U]) -> ~[(T, U)] {
     let mut i = 0u;
     assert sz == len(u);
     while i < sz unchecked { vec::push(zipped, (v[i], u[i])); i += 1u; }
-    ret zipped;
+    return zipped;
 }
 
 /**
@@ -1017,12 +1017,12 @@ fn reverse<T>(v: ~[mut T]) {
 pure fn reversed<T: copy>(v: &[const T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
-    if i == 0u { ret rs; } else { i -= 1u; }
+    if i == 0u { return rs; } else { i -= 1u; }
     unchecked {
         while i != 0u { vec::push(rs, v[i]); i -= 1u; }
         vec::push(rs, v[0]);
     }
-    ret rs;
+    return rs;
 }
 
 /**
@@ -1229,7 +1229,7 @@ pure fn windowed<TT: copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
             vec::push(ww, vec::slice(xx, ii, ii+nn));
         }
     });
-    ret ww;
+    return ww;
 }
 
 /**
@@ -1541,7 +1541,7 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
-        ret ::unsafe::reinterpret_cast(
+        return ::unsafe::reinterpret_cast(
             rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
                                         ptr as *(),
                                         elts as size_t));
@@ -1572,14 +1572,14 @@ mod unsafe {
     #[inline(always)]
     unsafe fn to_ptr<T>(v: ~[const T]) -> *T {
         let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
-        ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
+        return ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
 
 
     #[inline(always)]
     unsafe fn to_ptr_slice<T>(v: &[const T]) -> *T {
         let repr: **slice_repr = ::unsafe::reinterpret_cast(addr_of(v));
-        ret ::unsafe::reinterpret_cast(addr_of((**repr).data));
+        return ::unsafe::reinterpret_cast(addr_of((**repr).data));
     }
 
 
@@ -1775,21 +1775,21 @@ impl extensions/&<A:copy> of iter_trait_extensions<A> for &[A] {
 #[cfg(test)]
 mod tests {
 
-    fn square(n: uint) -> uint { ret n * n; }
+    fn square(n: uint) -> uint { return n * n; }
 
-    fn square_ref(&&n: uint) -> uint { ret n * n; }
+    fn square_ref(&&n: uint) -> uint { return n * n; }
 
-    pure fn is_three(&&n: uint) -> bool { ret n == 3u; }
+    pure fn is_three(&&n: uint) -> bool { return n == 3u; }
 
-    pure fn is_odd(&&n: uint) -> bool { ret n % 2u == 1u; }
+    pure fn is_odd(&&n: uint) -> bool { return n % 2u == 1u; }
 
-    pure fn is_equal(&&x: uint, &&y:uint) -> bool { ret x == y; }
+    pure fn is_equal(&&x: uint, &&y:uint) -> bool { return x == y; }
 
     fn square_if_odd(&&n: uint) -> option<uint> {
-        ret if n % 2u == 1u { some(n * n) } else { none };
+        return if n % 2u == 1u { some(n * n) } else { none };
     }
 
-    fn add(&&x: uint, &&y: uint) -> uint { ret x + y; }
+    fn add(&&x: uint, &&y: uint) -> uint { return x + y; }
 
     #[test]
     fn test_unsafe_ptrs() {
@@ -2015,7 +2015,7 @@ mod tests {
 
     #[test]
     fn test_map2() {
-        fn times(&&x: int, &&y: int) -> int { ret x * y; }
+        fn times(&&x: int, &&y: int) -> int { return x * y; }
         let f = times;
         let v0 = ~[1, 2, 3, 4, 5];
         let v1 = ~[5, 4, 3, 2, 1];
@@ -2043,10 +2043,10 @@ mod tests {
 
         fn halve(&&i: int) -> option<int> {
             if i % 2 == 0 {
-                ret option::some::<int>(i / 2);
-            } else { ret option::none::<int>; }
+                return option::some::<int>(i / 2);
+            } else { return option::none::<int>; }
         }
-        fn halve_for_sure(&&i: int) -> int { ret i / 2; }
+        fn halve_for_sure(&&i: int) -> int { return i / 2; }
         let all_even: ~[int] = ~[0, 2, 8, 6];
         let all_odd1: ~[int] = ~[1, 7, 3];
         let all_odd2: ~[int] = ~[];
@@ -2230,8 +2230,8 @@ mod tests {
 
     #[test]
     fn test_position() {
-        fn less_than_three(&&i: int) -> bool { ret i < 3; }
-        fn is_eighteen(&&i: int) -> bool { ret i == 18; }
+        fn less_than_three(&&i: int) -> bool { return i < 3; }
+        fn is_eighteen(&&i: int) -> bool { return i == 18; }
 
         assert position(~[], less_than_three) == none;
 

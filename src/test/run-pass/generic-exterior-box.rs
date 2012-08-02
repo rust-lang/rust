@@ -2,7 +2,7 @@
 
 type recbox<T: copy> = {x: @T};
 
-fn reclift<T: copy>(t: T) -> recbox<T> { ret {x: @t}; }
+fn reclift<T: copy>(t: T) -> recbox<T> { return {x: @t}; }
 
 fn main() {
     let foo: int = 17;

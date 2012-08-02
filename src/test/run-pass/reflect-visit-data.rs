@@ -54,147 +54,147 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
 
     fn visit_bot() -> bool {
         self.align_to::<()>();
-        if ! self.inner.visit_bot() { ret false; }
+        if ! self.inner.visit_bot() { return false; }
         self.bump_past::<()>();
         true
     }
 
     fn visit_nil() -> bool {
         self.align_to::<()>();
-        if ! self.inner.visit_nil() { ret false; }
+        if ! self.inner.visit_nil() { return false; }
         self.bump_past::<()>();
         true
     }
 
     fn visit_bool() -> bool {
         self.align_to::<bool>();
-        if ! self.inner.visit_bool() { ret false; }
+        if ! self.inner.visit_bool() { return false; }
         self.bump_past::<bool>();
         true
     }
 
     fn visit_int() -> bool {
         self.align_to::<int>();
-        if ! self.inner.visit_int() { ret false; }
+        if ! self.inner.visit_int() { return false; }
         self.bump_past::<int>();
         true
     }
 
     fn visit_i8() -> bool {
         self.align_to::<i8>();
-        if ! self.inner.visit_i8() { ret false; }
+        if ! self.inner.visit_i8() { return false; }
         self.bump_past::<i8>();
         true
     }
 
     fn visit_i16() -> bool {
         self.align_to::<i16>();
-        if ! self.inner.visit_i16() { ret false; }
+        if ! self.inner.visit_i16() { return false; }
         self.bump_past::<i16>();
         true
     }
 
     fn visit_i32() -> bool {
         self.align_to::<i32>();
-        if ! self.inner.visit_i32() { ret false; }
+        if ! self.inner.visit_i32() { return false; }
         self.bump_past::<i32>();
         true
     }
 
     fn visit_i64() -> bool {
         self.align_to::<i64>();
-        if ! self.inner.visit_i64() { ret false; }
+        if ! self.inner.visit_i64() { return false; }
         self.bump_past::<i64>();
         true
     }
 
     fn visit_uint() -> bool {
         self.align_to::<uint>();
-        if ! self.inner.visit_uint() { ret false; }
+        if ! self.inner.visit_uint() { return false; }
         self.bump_past::<uint>();
         true
     }
 
     fn visit_u8() -> bool {
         self.align_to::<u8>();
-        if ! self.inner.visit_u8() { ret false; }
+        if ! self.inner.visit_u8() { return false; }
         self.bump_past::<u8>();
         true
     }
 
     fn visit_u16() -> bool {
         self.align_to::<u16>();
-        if ! self.inner.visit_u16() { ret false; }
+        if ! self.inner.visit_u16() { return false; }
         self.bump_past::<u16>();
         true
     }
 
     fn visit_u32() -> bool {
         self.align_to::<u32>();
-        if ! self.inner.visit_u32() { ret false; }
+        if ! self.inner.visit_u32() { return false; }
         self.bump_past::<u32>();
         true
     }
 
     fn visit_u64() -> bool {
         self.align_to::<u64>();
-        if ! self.inner.visit_u64() { ret false; }
+        if ! self.inner.visit_u64() { return false; }
         self.bump_past::<u64>();
         true
     }
 
     fn visit_float() -> bool {
         self.align_to::<float>();
-        if ! self.inner.visit_float() { ret false; }
+        if ! self.inner.visit_float() { return false; }
         self.bump_past::<float>();
         true
     }
 
     fn visit_f32() -> bool {
         self.align_to::<f32>();
-        if ! self.inner.visit_f32() { ret false; }
+        if ! self.inner.visit_f32() { return false; }
         self.bump_past::<f32>();
         true
     }
 
     fn visit_f64() -> bool {
         self.align_to::<f64>();
-        if ! self.inner.visit_f64() { ret false; }
+        if ! self.inner.visit_f64() { return false; }
         self.bump_past::<f64>();
         true
     }
 
     fn visit_char() -> bool {
         self.align_to::<char>();
-        if ! self.inner.visit_char() { ret false; }
+        if ! self.inner.visit_char() { return false; }
         self.bump_past::<char>();
         true
     }
 
     fn visit_str() -> bool {
         self.align_to::<~str>();
-        if ! self.inner.visit_str() { ret false; }
+        if ! self.inner.visit_str() { return false; }
         self.bump_past::<~str>();
         true
     }
 
     fn visit_estr_box() -> bool {
         self.align_to::<@str>();
-        if ! self.inner.visit_estr_box() { ret false; }
+        if ! self.inner.visit_estr_box() { return false; }
         self.bump_past::<@str>();
         true
     }
 
     fn visit_estr_uniq() -> bool {
         self.align_to::<~str>();
-        if ! self.inner.visit_estr_uniq() { ret false; }
+        if ! self.inner.visit_estr_uniq() { return false; }
         self.bump_past::<~str>();
         true
     }
 
     fn visit_estr_slice() -> bool {
         self.align_to::<&static/str>();
-        if ! self.inner.visit_estr_slice() { ret false; }
+        if ! self.inner.visit_estr_slice() { return false; }
         self.bump_past::<&static/str>();
         true
     }
@@ -203,35 +203,35 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
                         sz: uint,
                         align: uint) -> bool {
         self.align(align);
-        if ! self.inner.visit_estr_fixed(n, sz, align) { ret false; }
+        if ! self.inner.visit_estr_fixed(n, sz, align) { return false; }
         self.bump(sz);
         true
     }
 
     fn visit_box(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<@u8>();
-        if ! self.inner.visit_box(mtbl, inner) { ret false; }
+        if ! self.inner.visit_box(mtbl, inner) { return false; }
         self.bump_past::<@u8>();
         true
     }
 
     fn visit_uniq(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<~u8>();
-        if ! self.inner.visit_uniq(mtbl, inner) { ret false; }
+        if ! self.inner.visit_uniq(mtbl, inner) { return false; }
         self.bump_past::<~u8>();
         true
     }
 
     fn visit_ptr(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<*u8>();
-        if ! self.inner.visit_ptr(mtbl, inner) { ret false; }
+        if ! self.inner.visit_ptr(mtbl, inner) { return false; }
         self.bump_past::<*u8>();
         true
     }
 
     fn visit_rptr(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<&static/u8>();
-        if ! self.inner.visit_rptr(mtbl, inner) { ret false; }
+        if ! self.inner.visit_rptr(mtbl, inner) { return false; }
         self.bump_past::<&static/u8>();
         true
     }
@@ -242,34 +242,34 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
         // or else possibly we could have some weird interface wherein we
         // read-off a word from inner's pointers, but the read-word has to
         // always be the same in all sub-pointers? Dubious.
-        if ! self.inner.visit_vec(mtbl, inner) { ret false; }
+        if ! self.inner.visit_vec(mtbl, inner) { return false; }
         true
     }
 
     fn visit_vec(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<~[u8]>();
-        if ! self.inner.visit_vec(mtbl, inner) { ret false; }
+        if ! self.inner.visit_vec(mtbl, inner) { return false; }
         self.bump_past::<~[u8]>();
         true
     }
 
     fn visit_evec_box(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<@[u8]>();
-        if ! self.inner.visit_evec_box(mtbl, inner) { ret false; }
+        if ! self.inner.visit_evec_box(mtbl, inner) { return false; }
         self.bump_past::<@[u8]>();
         true
     }
 
     fn visit_evec_uniq(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<~[u8]>();
-        if ! self.inner.visit_evec_uniq(mtbl, inner) { ret false; }
+        if ! self.inner.visit_evec_uniq(mtbl, inner) { return false; }
         self.bump_past::<~[u8]>();
         true
     }
 
     fn visit_evec_slice(mtbl: uint, inner: *tydesc) -> bool {
         self.align_to::<&static/[u8]>();
-        if ! self.inner.visit_evec_slice(mtbl, inner) { ret false; }
+        if ! self.inner.visit_evec_slice(mtbl, inner) { return false; }
         self.bump_past::<&static/[u8]>();
         true
     }
@@ -278,7 +278,7 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
                         mtbl: uint, inner: *tydesc) -> bool {
         self.align(align);
         if ! self.inner.visit_evec_fixed(n, sz, align, mtbl, inner) {
-            ret false;
+            return false;
         }
         self.bump(sz);
         true
@@ -286,25 +286,25 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
 
     fn visit_enter_rec(n_fields: uint, sz: uint, align: uint) -> bool {
         self.align(align);
-        if ! self.inner.visit_enter_rec(n_fields, sz, align) { ret false; }
+        if ! self.inner.visit_enter_rec(n_fields, sz, align) { return false; }
         true
     }
 
     fn visit_rec_field(i: uint, name: &str,
                        mtbl: uint, inner: *tydesc) -> bool {
-        if ! self.inner.visit_rec_field(i, name, mtbl, inner) { ret false; }
+        if ! self.inner.visit_rec_field(i, name, mtbl, inner) { return false; }
         true
     }
 
     fn visit_leave_rec(n_fields: uint, sz: uint, align: uint) -> bool {
-        if ! self.inner.visit_leave_rec(n_fields, sz, align) { ret false; }
+        if ! self.inner.visit_leave_rec(n_fields, sz, align) { return false; }
         true
     }
 
     fn visit_enter_class(n_fields: uint, sz: uint, align: uint) -> bool {
         self.align(align);
         if ! self.inner.visit_enter_class(n_fields, sz, align) {
-            ret false;
+            return false;
         }
         true
     }
@@ -312,63 +312,63 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
     fn visit_class_field(i: uint, name: &str,
                          mtbl: uint, inner: *tydesc) -> bool {
         if ! self.inner.visit_class_field(i, name, mtbl, inner) {
-            ret false;
+            return false;
         }
         true
     }
 
     fn visit_leave_class(n_fields: uint, sz: uint, align: uint) -> bool {
         if ! self.inner.visit_leave_class(n_fields, sz, align) {
-            ret false;
+            return false;
         }
         true
     }
 
     fn visit_enter_tup(n_fields: uint, sz: uint, align: uint) -> bool {
         self.align(align);
-        if ! self.inner.visit_enter_tup(n_fields, sz, align) { ret false; }
+        if ! self.inner.visit_enter_tup(n_fields, sz, align) { return false; }
         true
     }
 
     fn visit_tup_field(i: uint, inner: *tydesc) -> bool {
-        if ! self.inner.visit_tup_field(i, inner) { ret false; }
+        if ! self.inner.visit_tup_field(i, inner) { return false; }
         true
     }
 
     fn visit_leave_tup(n_fields: uint, sz: uint, align: uint) -> bool {
-        if ! self.inner.visit_leave_tup(n_fields, sz, align) { ret false; }
+        if ! self.inner.visit_leave_tup(n_fields, sz, align) { return false; }
         true
     }
 
     fn visit_enter_fn(purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool {
         if ! self.inner.visit_enter_fn(purity, proto, n_inputs, retstyle) {
-            ret false
+            return false
         }
         true
     }
 
     fn visit_fn_input(i: uint, mode: uint, inner: *tydesc) -> bool {
-        if ! self.inner.visit_fn_input(i, mode, inner) { ret false; }
+        if ! self.inner.visit_fn_input(i, mode, inner) { return false; }
         true
     }
 
     fn visit_fn_output(retstyle: uint, inner: *tydesc) -> bool {
-        if ! self.inner.visit_fn_output(retstyle, inner) { ret false; }
+        if ! self.inner.visit_fn_output(retstyle, inner) { return false; }
         true
     }
 
     fn visit_leave_fn(purity: uint, proto: uint,
                       n_inputs: uint, retstyle: uint) -> bool {
         if ! self.inner.visit_leave_fn(purity, proto, n_inputs, retstyle) {
-            ret false;
+            return false;
         }
         true
     }
 
     fn visit_enter_enum(n_variants: uint, sz: uint, align: uint) -> bool {
         self.align(align);
-        if ! self.inner.visit_enter_enum(n_variants, sz, align) { ret false; }
+        if ! self.inner.visit_enter_enum(n_variants, sz, align) { return false; }
         true
     }
 
@@ -378,13 +378,13 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
                                 name: &str) -> bool {
         if ! self.inner.visit_enter_enum_variant(variant, disr_val,
                                                  n_fields, name) {
-            ret false;
+            return false;
         }
         true
     }
 
     fn visit_enum_variant_field(i: uint, inner: *tydesc) -> bool {
-        if ! self.inner.visit_enum_variant_field(i, inner) { ret false; }
+        if ! self.inner.visit_enum_variant_field(i, inner) { return false; }
         true
     }
 
@@ -394,65 +394,65 @@ impl ptr_visitor<V: ty_visitor movable_ptr>
                                 name: &str) -> bool {
         if ! self.inner.visit_leave_enum_variant(variant, disr_val,
                                                  n_fields, name) {
-            ret false;
+            return false;
         }
         true
     }
 
     fn visit_leave_enum(n_variants: uint, sz: uint, align: uint) -> bool {
-        if ! self.inner.visit_leave_enum(n_variants, sz, align) { ret false; }
+        if ! self.inner.visit_leave_enum(n_variants, sz, align) { return false; }
         true
     }
 
     fn visit_trait() -> bool {
         self.align_to::<ty_visitor>();
-        if ! self.inner.visit_trait() { ret false; }
+        if ! self.inner.visit_trait() { return false; }
         self.bump_past::<ty_visitor>();
         true
     }
 
     fn visit_var() -> bool {
-        if ! self.inner.visit_var() { ret false; }
+        if ! self.inner.visit_var() { return false; }
         true
     }
 
     fn visit_var_integral() -> bool {
-        if ! self.inner.visit_var_integral() { ret false; }
+        if ! self.inner.visit_var_integral() { return false; }
         true
     }
 
     fn visit_param(i: uint) -> bool {
-        if ! self.inner.visit_param(i) { ret false; }
+        if ! self.inner.visit_param(i) { return false; }
         true
     }
 
     fn visit_self() -> bool {
         self.align_to::<&static/u8>();
-        if ! self.inner.visit_self() { ret false; }
+        if ! self.inner.visit_self() { return false; }
         self.align_to::<&static/u8>();
         true
     }
 
     fn visit_type() -> bool {
-        if ! self.inner.visit_type() { ret false; }
+        if ! self.inner.visit_type() { return false; }
         true
     }
 
     fn visit_opaque_box() -> bool {
         self.align_to::<@u8>();
-        if ! self.inner.visit_opaque_box() { ret false; }
+        if ! self.inner.visit_opaque_box() { return false; }
         self.bump_past::<@u8>();
         true
     }
 
     fn visit_constr(inner: *tydesc) -> bool {
-        if ! self.inner.visit_constr(inner) { ret false; }
+        if ! self.inner.visit_constr(inner) { return false; }
         true
     }
 
     fn visit_closure_ptr(ck: uint) -> bool {
         self.align_to::<fn@()>();
-        if ! self.inner.visit_closure_ptr(ck) { ret false; }
+        if ! self.inner.visit_closure_ptr(ck) { return false; }
         self.bump_past::<fn@()>();
         true
     }

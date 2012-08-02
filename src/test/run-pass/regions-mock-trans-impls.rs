@@ -17,7 +17,7 @@ type ccx = {
 
 impl arena for arena {
     fn alloc_inner(sz: uint, _align: uint) -> *() unsafe {
-        ret unsafe::reinterpret_cast(libc::malloc(sz as libc::size_t));
+        return unsafe::reinterpret_cast(libc::malloc(sz as libc::size_t));
     }
     fn alloc(tydesc: *()) -> *() {
         unsafe {
@@ -28,7 +28,7 @@ impl arena for arena {
 }
 
 fn h(bcx : &bcx) -> &bcx {
-    ret new(*bcx.fcx.arena) { fcx: bcx.fcx };
+    return new(*bcx.fcx.arena) { fcx: bcx.fcx };
 }
 
 fn g(fcx : &fcx) {
@@ -42,7 +42,7 @@ fn g(fcx : &fcx) {
 fn f(ccx : &ccx) {
     let a = arena(());
     let fcx = { arena: &a, ccx: ccx };
-    ret g(&fcx);
+    return g(&fcx);
 }
 
 fn main() {

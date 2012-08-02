@@ -94,7 +94,7 @@ mod test {
 
 fn extract(desc: option<~str>) -> option<~str> {
     if option::is_none(desc) {
-        ret none
+        return none
     }
 
     parse_desc(option::get(desc))

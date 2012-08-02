@@ -19,7 +19,7 @@ impl proto_parser of proto_parser for parser {
                                      {sep: none, trailing_sep_allowed: false},
                                      |self| self.parse_state(proto));
 
-        ret proto;
+        return proto;
     }
 
     fn parse_state(proto: protocol) {

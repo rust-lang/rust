@@ -36,7 +36,7 @@ fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
                               mut value: v,
                               mut left: none,
                               mut right: none}));
-        ret;
+        return;
       }
       some(node) {
         if k == node.key {

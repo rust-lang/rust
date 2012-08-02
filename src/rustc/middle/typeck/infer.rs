@@ -233,17 +233,17 @@ fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
     option<ty::t> {
     debug!{"single_type_contained_in(a=%s)", uint::to_str(*a, 10u)};
 
-    if *a == INT_TY_SET_i8    { ret some(ty::mk_i8(tcx)); }
-    if *a == INT_TY_SET_u8    { ret some(ty::mk_u8(tcx)); }
-    if *a == INT_TY_SET_i16   { ret some(ty::mk_i16(tcx)); }
-    if *a == INT_TY_SET_u16   { ret some(ty::mk_u16(tcx)); }
-    if *a == INT_TY_SET_i32   { ret some(ty::mk_i32(tcx)); }
-    if *a == INT_TY_SET_u32   { ret some(ty::mk_u32(tcx)); }
-    if *a == INT_TY_SET_i64   { ret some(ty::mk_i64(tcx)); }
-    if *a == INT_TY_SET_u64   { ret some(ty::mk_u64(tcx)); }
-    if *a == INT_TY_SET_i     { ret some(ty::mk_int(tcx)); }
-    if *a == INT_TY_SET_u     { ret some(ty::mk_uint(tcx)); }
-    ret none;
+    if *a == INT_TY_SET_i8    { return some(ty::mk_i8(tcx)); }
+    if *a == INT_TY_SET_u8    { return some(ty::mk_u8(tcx)); }
+    if *a == INT_TY_SET_i16   { return some(ty::mk_i16(tcx)); }
+    if *a == INT_TY_SET_u16   { return some(ty::mk_u16(tcx)); }
+    if *a == INT_TY_SET_i32   { return some(ty::mk_i32(tcx)); }
+    if *a == INT_TY_SET_u32   { return some(ty::mk_u32(tcx)); }
+    if *a == INT_TY_SET_i64   { return some(ty::mk_i64(tcx)); }
+    if *a == INT_TY_SET_u64   { return some(ty::mk_u64(tcx)); }
+    if *a == INT_TY_SET_i     { return some(ty::mk_int(tcx)); }
+    if *a == INT_TY_SET_u     { return some(ty::mk_uint(tcx)); }
+    return none;
 }
 
 fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
@@ -594,7 +594,7 @@ impl transaction_methods for infer_ctxt {
         self.tvb.bindings = ~[];
         self.rb.bindings = ~[];
 
-        ret r;
+        return r;
     }
 
     /// Execute `f`, unroll bindings on failure
@@ -615,7 +615,7 @@ impl transaction_methods for infer_ctxt {
             while self.borrowings.len() != bl { self.borrowings.pop(); }
           }
         }
-        ret r;
+        return r;
     }
 
     /// Execute `f` then unroll any bindings it creates
@@ -625,7 +625,7 @@ impl transaction_methods for infer_ctxt {
         let r <- f();
         rollback_to(self.tvb, 0u);
         rollback_to(self.rb, 0u);
-        ret r;
+        return r;
     }
 }
 
@@ -635,7 +635,7 @@ impl methods for infer_ctxt {
         *self.ty_var_counter += 1u;
         self.tvb.vals.insert(id,
                              root({lb: none, ub: none}, 0u));
-        ret tv_vid(id);
+        return tv_vid(id);
     }
 
     fn next_ty_var() -> ty::t {
@@ -652,7 +652,7 @@ impl methods for infer_ctxt {
 
         self.tvib.vals.insert(id,
                               root(int_ty_set_all(), 0u));
-        ret tvi_vid(id);
+        return tvi_vid(id);
     }
 
     fn next_ty_var_integral() -> ty::t {
@@ -663,7 +663,7 @@ impl methods for infer_ctxt {
         let id = *self.region_var_counter;
         *self.region_var_counter += 1u;
         self.rb.vals.insert(id, root(bnds, 0));
-        ret region_vid(id);
+        return region_vid(id);
     }
 
     fn next_region_var_with_scope_lb(scope_id: ast::node_id) -> ty::region {
@@ -686,15 +686,15 @@ impl methods for infer_ctxt {
 
     fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
         alt resolve_type(self, typ, resolve_all) {
-          result::ok(new_type) { ret new_type; }
-          result::err(_) { ret typ; }
+          result::ok(new_type) { return new_type; }
+          result::err(_) { return typ; }
         }
     }
 
     fn resolve_region_if_possible(oldr: ty::region) -> ty::region {
         alt resolve_region(self, oldr, resolve_all) {
-          result::ok(newr) { ret newr; }
-          result::err(_) { ret oldr; }
+          result::ok(newr) { return newr; }
+          result::err(_) { return oldr; }
         }
     }
 }
@@ -859,7 +859,7 @@ impl unify_methods for infer_ctxt {
                a_id.to_str(), a_bounds.to_str(self),
                b_id.to_str(), b_bounds.to_str(self)};
 
-        if a_id == b_id { ret uok(); }
+        if a_id == b_id { return uok(); }
 
         // If both A's UB and B's LB have already been bound to types,
         // see if we can make those types subtypes.
@@ -867,7 +867,7 @@ impl unify_methods for infer_ctxt {
           (some(a_ub), some(b_lb)) {
             let r = self.try(|| a_ub.sub(self, b_lb));
             alt r {
-              ok(()) { ret result::ok(()); }
+              ok(()) { return result::ok(()); }
               err(_) { /*fallthrough */ }
             }
           }
@@ -921,13 +921,13 @@ impl unify_methods for infer_ctxt {
 
         // If we're already dealing with the same two variables,
         // there's nothing to do.
-        if a_id == b_id { ret uok(); }
+        if a_id == b_id { return uok(); }
 
         // Otherwise, take the intersection of the two sets of
         // possible types.
         let intersection = intersection(a_pt, b_pt);
         if *intersection == INT_TY_SET_EMPTY {
-            ret err(ty::terr_no_integral_type);
+            return err(ty::terr_no_integral_type);
         }
 
         // Rank optimization
@@ -985,7 +985,7 @@ impl unify_methods for infer_ctxt {
             intersection(a_pt, convert_integral_ty_to_int_ty_set(
                 self.tcx, b));
         if *intersection == INT_TY_SET_EMPTY {
-            ret err(ty::terr_no_integral_type);
+            return err(ty::terr_no_integral_type);
         }
         self.set(vb, a_id, root(intersection, nde_a.rank));
         uok()
@@ -1021,7 +1021,7 @@ impl unify_methods for infer_ctxt {
             intersection(b_pt, convert_integral_ty_to_int_ty_set(
                 self.tcx, a));
         if *intersection == INT_TY_SET_EMPTY {
-            ret err(ty::terr_no_integral_type);
+            return err(ty::terr_no_integral_type);
         }
         self.set(vb, b_id, root(intersection, nde_b.rank));
         uok()
@@ -1156,9 +1156,9 @@ impl methods for resolve_state {
             debug!{"Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
                    self.modes};
-            ret ok(rty);
+            return ok(rty);
           }
-          some(e) { ret err(e); }
+          some(e) { return err(e); }
         }
     }
 
@@ -1174,7 +1174,7 @@ impl methods for resolve_state {
     fn resolve_type(typ: ty::t) -> ty::t {
         debug!{"resolve_type(%s)", typ.to_str(self.infcx)};
         indent(fn&() -> ty::t {
-            if !ty::type_needs_infer(typ) { ret typ; }
+            if !ty::type_needs_infer(typ) { return typ; }
 
             alt ty::get(typ).struct {
               ty::ty_var(vid) {
@@ -1219,7 +1219,7 @@ impl methods for resolve_state {
 
     fn resolve_region_var(rid: region_vid) -> ty::region {
         if !self.should(resolve_rvar) {
-            ret ty::re_var(rid)
+            return ty::re_var(rid)
         }
         let nde = self.infcx.get(self.infcx.rb, rid);
         let bounds = nde.possible_types;
@@ -1247,7 +1247,7 @@ impl methods for resolve_state {
     fn resolve_ty_var(vid: tv_vid) -> ty::t {
         if vec::contains(self.v_seen, vid) {
             self.err = some(cyclic_ty(vid));
-            ret ty::mk_var(self.infcx.tcx, vid);
+            return ty::mk_var(self.infcx.tcx, vid);
         } else {
             vec::push(self.v_seen, vid);
             let tcx = self.infcx.tcx;
@@ -1273,13 +1273,13 @@ impl methods for resolve_state {
               }
             };
             vec::pop(self.v_seen);
-            ret t1;
+            return t1;
         }
     }
 
     fn resolve_ty_var_integral(vid: tvi_vid) -> ty::t {
         if !self.should(resolve_ivar) {
-            ret ty::mk_var_integral(self.infcx.tcx, vid);
+            return ty::mk_var_integral(self.infcx.tcx, vid);
         }
 
         let nde = self.infcx.get(self.infcx.tvib, vid);
@@ -1938,7 +1938,7 @@ impl of combine for sub {
         debug!{"mts(%s <: %s)", a.to_str(*self), b.to_str(*self)};
 
         if a.mutbl != b.mutbl && b.mutbl != m_const {
-            ret err(ty::terr_mutability);
+            return err(ty::terr_mutability);
         }
 
         alt b.mutbl {
@@ -1975,7 +1975,7 @@ impl of combine for sub {
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         debug!{"%s.tys(%s, %s)", self.tag(),
                a.to_str(*self), b.to_str(*self)};
-        if a == b { ret ok(a); }
+        if a == b { return ok(a); }
         do indent {
             alt (ty::get(a).struct, ty::get(b).struct) {
               (ty::ty_bot, _) {
@@ -2146,7 +2146,7 @@ impl of combine for lub {
     }
 
     fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region> {
-        ret glb(self.infcx()).regions(a, b);
+        return glb(self.infcx()).regions(a, b);
     }
 
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
@@ -2489,7 +2489,7 @@ fn lattice_tys<L:lattice_ops combine>(
     debug!{"%s.lattice_tys(%s, %s)", self.tag(),
            a.to_str(self.infcx()),
            b.to_str(self.infcx())};
-    if a == b { ret ok(a); }
+    if a == b { return ok(a); }
     do indent {
         alt (ty::get(a).struct, ty::get(b).struct) {
           (ty::ty_bot, _) { self.ty_bot(b) }
@@ -2568,7 +2568,7 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
            b_vid.to_str(), b_bounds.to_str(self.infcx())};
 
     if a_vid == b_vid {
-        ret ok(a_t);
+        return ok(a_t);
     }
 
     // If both A and B have an UB type, then we can just compute the
@@ -2577,7 +2577,7 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     alt (a_bnd, b_bnd) {
       (some(a_ty), some(b_ty)) {
         alt self.infcx().try(|| c_ts(a_ty, b_ty) ) {
-            ok(t) { ret ok(t); }
+            ok(t) { return ok(t); }
             err(_) { /*fallthrough */ }
         }
       }
@@ -2610,7 +2610,7 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
       some(a_bnd) {
         // If a has an upper bound, return the LUB(a.ub, b)
         debug!{"bnd=some(%s)", a_bnd.to_str(self.infcx())};
-        ret c_ts(a_bnd, b);
+        return c_ts(a_bnd, b);
       }
       none {
         // If a does not have an upper bound, make b the upper bound of a

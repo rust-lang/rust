@@ -27,7 +27,7 @@ fn new_cx() -> ctx {
     let t = task::spawn(|| request_task(ch) );
     let mut cx: ctx;
     cx = recv(p);
-    ret cx;
+    return cx;
 }
 
 fn main() {

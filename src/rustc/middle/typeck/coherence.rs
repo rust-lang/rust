@@ -90,14 +90,14 @@ fn get_base_type_def_id(inference_context: infer_ctxt,
 
     alt get_base_type(inference_context, span, original_type) {
         none {
-            ret none;
+            return none;
         }
         some(base_type) {
             alt get(base_type).struct {
                 ty_enum(def_id, _) |
                 ty_class(def_id, _) |
                 ty_trait(def_id, _) {
-                    ret some(def_id);
+                    return some(def_id);
                 }
                 _ {
                     fail ~"get_base_type() returned a type that wasn't an \
@@ -319,7 +319,8 @@ class CoherenceChecker {
 
         let monotype_a = self.universally_quantify_polytype(polytype_a);
         let monotype_b = self.universally_quantify_polytype(polytype_b);
-        ret mk_subty(self.inference_context, monotype_a, monotype_b).is_ok()
+        return
+            mk_subty(self.inference_context, monotype_a, monotype_b).is_ok()
          || mk_subty(self.inference_context, monotype_b, monotype_a).is_ok();
     }
 
@@ -341,13 +342,13 @@ class CoherenceChecker {
             tps: type_parameters
         };
 
-        ret subst(self.crate_context.tcx, substitutions, polytype.ty);
+        return subst(self.crate_context.tcx, substitutions, polytype.ty);
     }
 
     fn get_self_type_for_implementation(implementation: @Impl)
                                      -> ty_param_bounds_and_ty {
 
-        ret self.crate_context.tcx.tcache.get(implementation.did);
+        return self.crate_context.tcx.tcache.get(implementation.did);
     }
 
     // Privileged scope checking
@@ -480,7 +481,7 @@ class CoherenceChecker {
             }
         }
 
-        ret results;
+        return results;
     }
 
     // Converts an implementation in the AST to an Impl structure.
@@ -497,7 +498,7 @@ class CoherenceChecker {
                     });
                 }
 
-                ret @{
+                return @{
                     did: local_def(item.id),
                     ident: item.ident,
                     methods: methods
@@ -521,7 +522,7 @@ class CoherenceChecker {
                     }
                 }
 
-                ret @{
+                return @{
                     did: local_def(item.id),
                     ident: item.ident,
                     methods: methods
@@ -539,7 +540,7 @@ class CoherenceChecker {
         assert implementation.did.crate == local_crate;
         alt self.crate_context.tcx.items.find(implementation.did.node) {
             some(node_item(item, _)) {
-                ret item.span;
+                return item.span;
             }
             _ {
                 self.crate_context.tcx.sess.bug(~"span_of_impl() called on \

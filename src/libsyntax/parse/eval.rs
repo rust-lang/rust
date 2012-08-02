@@ -28,7 +28,7 @@ fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
     let mut view_items: ~[@ast::view_item] = ~[];
     let mut items: ~[@ast::item] = ~[];
     eval_crate_directives(cx, cdirs, prefix, view_items, items);
-    ret ({view_items: vec::append(view_items, cview_items),
+    return ({view_items: vec::append(view_items, cview_items),
           items: vec::append(items, citems)},
          cattrs);
 }
@@ -47,7 +47,7 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
     -> (~[@ast::view_item], ~[@ast::item], ~[ast::attribute]) {
 
     fn companion_file(+prefix: ~str, suffix: option<~str>) -> ~str {
-        ret alt suffix {
+        return alt suffix {
           option::some(s) { path::connect(prefix, s) }
           option::none { prefix }
         } + ~".rs";
@@ -72,18 +72,18 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
         let m0 = p0.parse_mod_items(token::EOF, inner_attrs.next);
         cx.sess.chpos = r0.chpos;
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
-        ret (m0.view_items, m0.items, inner_attrs.inner);
+        return (m0.view_items, m0.items, inner_attrs.inner);
     } else {
-        ret (~[], ~[], ~[]);
+        return (~[], ~[], ~[]);
     }
 }
 
 fn cdir_path_opt(id: ast::ident, attrs: ~[ast::attribute]) -> @~str {
     alt ::attr::first_attr_value_str_by_name(attrs, ~"path") {
       some(d) {
-        ret d;
+        return d;
       }
-      none { ret id; }
+      none { return id; }
     }
 }
 
