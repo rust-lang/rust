@@ -1,6 +1,6 @@
+use std;
 import libc, sys, unsafe;
-
-enum arena = ();
+import std::arena::arena;
 
 type bcx = {
     fcx: &fcx
@@ -15,34 +15,19 @@ type ccx = {
     x: int
 };
 
-impl arena for arena {
-    fn alloc_inner(sz: uint, _align: uint) -> *() unsafe {
-        return unsafe::reinterpret_cast(libc::malloc(sz as libc::size_t));
-    }
-    fn alloc(tydesc: *()) -> *() {
-        unsafe {
-            let tydesc = tydesc as *sys::type_desc;
-            self.alloc_inner((*tydesc).size, (*tydesc).align)
-        }
-    }
-}
-
 fn h(bcx : &bcx) -> &bcx {
-    return new(*bcx.fcx.arena) { fcx: bcx.fcx };
+    return bcx.fcx.arena.alloc(|| { fcx: bcx.fcx });
 }
 
 fn g(fcx : &fcx) {
     let bcx = { fcx: fcx };
-    let bcx2 = h(&bcx);
-    unsafe {
-        libc::free(unsafe::reinterpret_cast(bcx2));
-    }
+    h(&bcx);
 }
 
 fn f(ccx : &ccx) {
-    let a = arena(());
-    let fcx = { arena: &a, ccx: ccx };
-    return g(&fcx);
+    let a = arena();
+    let fcx = &{ arena: &a, ccx: ccx };
+    return g(fcx);
 }
 
 fn main() {

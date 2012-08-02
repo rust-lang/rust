@@ -366,7 +366,7 @@ impl of tr for ast::def {
           ast::def_ty(did) { ast::def_ty(did.tr(xcx)) }
           ast::def_prim_ty(p) { ast::def_prim_ty(p) }
           ast::def_ty_param(did, v) { ast::def_ty_param(did.tr(xcx), v) }
-          ast::def_binding(nid) { ast::def_binding(xcx.tr_id(nid)) }
+          ast::def_binding(nid, bm) { ast::def_binding(xcx.tr_id(nid), bm) }
           ast::def_use(did) { ast::def_use(did.tr(xcx)) }
           ast::def_upvar(nid1, def, nid2) {
             ast::def_upvar(xcx.tr_id(nid1), @(*def).tr(xcx), xcx.tr_id(nid2))

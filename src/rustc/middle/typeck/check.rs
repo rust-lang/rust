@@ -70,7 +70,7 @@ import astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
 import astconv::{ast_region_to_region};
 import collect::{methods}; // ccx.to_ty()
 import middle::ty::{tv_vid, vid};
-import regionmanip::{replace_bound_regions_in_fn_ty, region_of};
+import regionmanip::{replace_bound_regions_in_fn_ty};
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
 import syntax::ast::ty_i;
@@ -1846,51 +1846,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         }
       }
-      ast::expr_new(p, alloc_id, v) {
-        bot |= check_expr(fcx, p, none);
-        bot |= check_expr(fcx, v, none);
-
-        let p_ty = fcx.expr_ty(p);
-
-        let lkup = method::lookup(fcx, p, p, expr.id, alloc_id,
-                                  @~"alloc", p_ty, ~[], false);
-        alt lkup.method() {
-          some(entry) {
-            fcx.ccx.method_map.insert(alloc_id, entry);
-
-            // Check that the alloc() method has the expected
-            // type, which should be fn(tydesc: *()) -> *().
-            let expected_ty = {
-                let ty_nilp = ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx),
-                                              mutbl: ast::m_imm});
-                let m = ast::expl(ty::default_arg_mode_for_ty(ty_nilp));
-                ty::mk_fn(tcx, {purity: ast::impure_fn,
-                                proto: ast::proto_any,
-                                inputs: ~[{mode: m, ty: ty_nilp}],
-                                output: ty_nilp,
-                                ret_style: ast::return_val})
-            };
-
-            demand::suptype(fcx, expr.span,
-                           expected_ty, fcx.node_ty(alloc_id));
-          }
-
-          none {
-            let t_err = fcx.infcx.resolve_type_vars_if_possible(p_ty);
-            let msg = fmt!{"no `alloc()` method found for type `%s`",
-                           fcx.infcx.ty_to_str(t_err)};
-            tcx.sess.span_err(expr.span, msg);
-          }
-        }
-
-        // The region value must have a type like &r.T.  The resulting
-        // memory will be allocated into the region `r`.
-        let pool_region = region_of(fcx, p);
-        let v_ty = fcx.expr_ty(v);
-        let res_ty = ty::mk_rptr(tcx, pool_region, {ty: v_ty,
-                                                    mutbl: ast::m_imm});
-        fcx.write_ty(expr.id, res_ty);
-      }
     }
     if bot { fcx.write_bot(expr.id); }
 
@@ -2204,7 +2159,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_variant(_, id) | ast::def_class(id, _) {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
-      ast::def_binding(nid) {
+      ast::def_binding(nid, _) {
         assert (fcx.locals.contains_key(nid));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         return no_params(typ);

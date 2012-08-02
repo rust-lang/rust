@@ -465,7 +465,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       // otherwise, live nodes are not required:
       expr_index(*) | expr_field(*) | expr_vstore(*) |
       expr_vec(*) | expr_rec(*) | expr_call(*) | expr_tup(*) |
-      expr_new(*) | expr_log(*) | expr_binary(*) |
+      expr_log(*) | expr_binary(*) |
       expr_assert(*) | expr_addr_of(*) | expr_copy(*) |
       expr_loop_body(*) | expr_do_body(*) | expr_cast(*) |
       expr_unary(*) | expr_fail(*) |
@@ -1094,7 +1094,6 @@ class liveness {
             self.propagate_through_expr(l, ln)
           }
 
-          expr_new(l, _, r) |
           expr_log(_, l, r) |
           expr_index(l, r) |
           expr_binary(_, l, r) {
@@ -1463,7 +1462,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_while(*) | expr_loop(*) |
       expr_index(*) | expr_field(*) | expr_vstore(*) |
       expr_vec(*) | expr_rec(*) | expr_tup(*) |
-      expr_new(*) | expr_log(*) | expr_binary(*) |
+      expr_log(*) | expr_binary(*) |
       expr_assert(*) | expr_copy(*) |
       expr_loop_body(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_fail(*) |

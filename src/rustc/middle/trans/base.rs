@@ -2411,7 +2411,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         assert (cx.fcx.llargs.contains_key(nid));
         return take_local(cx.fcx.llargs, nid);
       }
-      ast::def_local(nid, _) | ast::def_binding(nid) {
+      ast::def_local(nid, _) | ast::def_binding(nid, _) {
         assert (cx.fcx.lllocals.contains_key(nid));
         return take_local(cx.fcx.lllocals, nid);
       }
@@ -3770,43 +3770,6 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_assign_op(op, dst, src) {
             assert dest == ignore;
             return trans_assign_op(bcx, e, op, dst, src);
-          }
-          ast::expr_new(pool, alloc_id, val) {
-            // First, call pool->alloc(tydesc) to get back a void*.
-            // Then, cast this memory to the required type and evaluate value
-            // into it.
-            let ccx = bcx.ccx();
-
-            // Allocate space for the ptr that will be returned from
-            // `pool.alloc()`:
-            let ptr_ty = expr_ty(bcx, e);
-            let ptr_ptr_val = alloc_ty(bcx, ptr_ty);
-
-            debug!{"ptr_ty = %s", ppaux::ty_to_str(tcx, ptr_ty)};
-            debug!{"ptr_ptr_val = %s", val_str(ccx.tn, ptr_ptr_val)};
-
-            let void_ty = ty::mk_nil_ptr(tcx);
-            let llvoid_ty = type_of(ccx, void_ty);
-            let voidval = PointerCast(bcx, ptr_ptr_val, T_ptr(llvoid_ty));
-            debug!{"voidval = %s", val_str(ccx.tn, voidval)};
-
-            let static_ti = get_tydesc(ccx, expr_ty(bcx, val));
-            lazily_emit_all_tydesc_glue(ccx, static_ti);
-            let lltydesc = PointerCast(bcx, static_ti.tydesc, llvoid_ty);
-
-            let origin = bcx.ccx().maps.method_map.get(alloc_id);
-            let bcx = trans_call_inner(
-                bcx, e.info(), node_id_type(bcx, alloc_id), void_ty,
-                |bcx| impl::trans_method_callee(bcx, alloc_id,
-                                                 pool, origin),
-                arg_vals(~[lltydesc]),
-                save_in(voidval));
-
-            debug!{"dest = %s", dest_str(ccx, dest)};
-            let ptr_val = Load(bcx, ptr_ptr_val);
-            debug!{"ptr_val = %s", val_str(ccx.tn, ptr_val)};
-            let bcx = trans_expr(bcx, val, save_in(ptr_val));
-            store_in_dest(bcx, ptr_val, dest)
           }
           _ {
             bcx.tcx().sess.span_bug(e.span, ~"trans_expr reached \

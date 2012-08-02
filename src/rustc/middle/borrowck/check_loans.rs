@@ -579,6 +579,9 @@ fn check_loans_in_expr(expr: @ast::expr,
         self.check_assignment(at_straight_up, dest);
         self.check_move_out(src);
       }
+      ast::expr_unary_move(src) {
+        self.check_move_out(src);
+      }
       ast::expr_assign(dest, _) |
       ast::expr_assign_op(_, dest, _) {
         self.check_assignment(at_straight_up, dest);

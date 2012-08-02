@@ -178,7 +178,7 @@ impl public_methods for borrowck_ctxt {
           ast::expr_copy(*) | ast::expr_cast(*) | ast::expr_fail(*) |
           ast::expr_vstore(*) | ast::expr_vec(*) | ast::expr_tup(*) |
           ast::expr_if(*) | ast::expr_log(*) |
-          ast::expr_new(*) | ast::expr_binary(*) | ast::expr_while(*) |
+          ast::expr_binary(*) | ast::expr_while(*) |
           ast::expr_block(*) | ast::expr_loop(*) | ast::expr_alt(*) |
           ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
           ast::expr_again | ast::expr_rec(*) | ast::expr_struct(*) |
@@ -266,7 +266,14 @@ impl public_methods for borrowck_ctxt {
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_binding(pid) {
+          ast::def_binding(vid, ast::bind_by_value) {
+            // by-value bindings are basically local variables
+            @{id:id, span:span,
+              cat:cat_local(vid), lp:some(@lp_local(vid)),
+              mutbl:m_imm, ty:expr_ty}
+          }
+
+          ast::def_binding(pid, ast::bind_by_ref) {
             // bindings are "special" since they are implicit pointers.
 
             // lookup the mutability for this binding that we found in

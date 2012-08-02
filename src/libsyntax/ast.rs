@@ -81,7 +81,7 @@ enum def {
     def_ty(def_id),
     def_prim_ty(prim_ty),
     def_ty_param(def_id, uint),
-    def_binding(node_id),
+    def_binding(node_id, binding_mode),
     def_use(def_id),
     def_upvar(node_id /* local id of closed over var */,
               @def    /* closed over def */,
@@ -341,10 +341,6 @@ enum expr_ {
     expr_again,
     expr_ret(option<@expr>),
     expr_log(int, @expr, @expr),
-
-    expr_new(/* arena */ @expr,
-             /* id for the alloc() call */ node_id,
-             /* value */ @expr),
 
     /* just an assert */
     expr_assert(@expr),
