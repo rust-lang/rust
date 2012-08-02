@@ -585,10 +585,66 @@ unsafe fn atomically<U>(f: fn() -> U) -> U {
 }
 
 /****************************************************************************
- * Internal
+ * Spawning & linked failure
+ *
+ * Several data structures are involved in task management to allow properly
+ * propagating failure across linked/supervised tasks.
+ *
+ * (1) The "taskgroup_arc" is an arc::exclusive which contains a hashset of
+ *     all tasks that are part of the group. Some tasks are 'members', which
+ *     means if they fail, they will kill everybody else in the taskgroup.
+ *     Other tasks are 'descendants', which means they will not kill tasks
+ *     from this group, but can be killed by failing members.
+ *
+ *     A new one of these is created each spawn_linked or spawn_supervised.
+ *
+ * (2) The "taskgroup" is a per-task control structure that tracks a task's
+ *     spawn configuration. It contains a reference to its taskgroup_arc,
+ *     a reference to its node in the ancestor list (below), a flag for
+ *     whether it's part of the 'main'/'root' taskgroup, and an optionally
+ *     configured notification port. These are stored in TLS.
+ *
+ * (3) The "ancestor_list" is a cons-style list of arc::exclusives which
+ *     tracks 'generations' of taskgroups -- a group's ancestors are groups
+ *     which (directly or transitively) spawn_supervised-ed them. Each task
+ *     recorded in the 'descendants' of each of its ancestor groups.
+ *
+ *     Spawning a supervised task is O(n) in the number of generations still
+ *     alive, and exiting (by success or failure) that task is also O(n).
+ *
+ * This diagram depicts the references between these data structures:
+ *
+ *          linked_________________________________
+ *        ___/                   _________         \___
+ *       /   \                  | group X |        /   \
+ *      (  A  ) - - - - - - - > | {A,B} {}|< - - -(  B  )
+ *       \___/                  |_________|        \___/
+ *      unlinked
+ *         |      __ (nil)
+ *         |      //|                         The following code causes this:
+ *         |__   //   /\         _________
+ *        /   \ //    ||        | group Y |     fn taskA() {
+ *       (  C  )- - - ||- - - > |{C} {D,E}|         spawn(taskB);
+ *        \___/      /  \=====> |_________|         spawn_unlinked(taskC);
+ *      supervise   /gen \                          ...
+ *         |    __  \ 00 /                      }
+ *         |    //|  \__/                       fn taskB() { ... }
+ *         |__ //     /\         _________      fn taskC() {
+ *        /   \/      ||        | group Z |         spawn_supervised(taskD);
+ *       (  D  )- - - ||- - - > | {D} {E} |         ...
+ *        \___/      /  \=====> |_________|     }
+ *      supervise   /gen \                      fn taskD() {
+ *         |    __  \ 01 /                          spawn_supervised(taskE);
+ *         |    //|  \__/                           ...
+ *         |__ //                _________      }
+ *        /   \/                | group W |     fn taskE() { ... }
+ *       (  E  )- - - - - - - > | {E}  {} |
+ *        \___/                 |_________|
+ *
+ *     "taskgroup"            "taskgroup_arc"
+ *              "ancestor_list"
+ *
  ****************************************************************************/
-
-/* spawning */
 
 type sched_id = int;
 type task_id = int;
@@ -597,8 +653,6 @@ type task_id = int;
 // structure of and should only deal with via unsafe pointer
 type rust_task = libc::c_void;
 type rust_closure = libc::c_void;
-
-/* linked failure */
 
 type taskset = send_map::linear::linear_map<*rust_task,()>;
 
