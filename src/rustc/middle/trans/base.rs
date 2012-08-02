@@ -2111,6 +2111,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       }
       ast_map::node_ctor(nm, _, ct, _, pt) { (pt, nm, ct.span) }
       ast_map::node_dtor(_, dtor, _, pt) {(pt, @~"drop", dtor.span)}
+      ast_map::node_trait_method(*) {
+        ccx.tcx.sess.bug(~"Can't monomorphize a trait method")
+      }
       ast_map::node_expr(*) {
         ccx.tcx.sess.bug(~"Can't monomorphize an expr")
       }
@@ -2206,6 +2209,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       // Ugh -- but this ensures any new variants won't be forgotten
       ast_map::node_expr(*) {
         ccx.tcx.sess.bug(~"Can't monomorphize an expr")
+      }
+      ast_map::node_trait_method(*) {
+        ccx.tcx.sess.bug(~"Can't monomorphize a trait method")
       }
       ast_map::node_export(*) {
           ccx.tcx.sess.bug(~"Can't monomorphize an export")
@@ -2418,7 +2424,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         return {val: slf, kind: lv_owned};
       }
       _ {
-        cx.sess().unimpl(fmt!{"unsupported def type in trans_local_def: %?",
+        cx.sess().unimpl(fmt!{"unsupported def type in trans_local_var: %?",
                               def});
       }
     }
