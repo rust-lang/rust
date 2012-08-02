@@ -260,8 +260,7 @@ fn check_variants_T<T: copy>(
                     @as_str(|a|pprust::print_crate(
                         codemap,
                         // Assuming we're not generating any token_trees
-                        syntax::util::interner::mk::<@~str>(
-                            |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                        syntax::parse::token::mk_ident_interner(),
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
@@ -423,8 +422,7 @@ fn parse_and_print(code: @~str) -> ~str {
                pprust::print_crate(
                    sess.cm,
                    // Assuming there are no token_trees
-                   syntax::util::interner::mk::<@~str>(
-                       |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                   syntax::parse::token::mk_ident_interner(),
                    sess.span_diagnostic,
                    crate,
                    filename,
@@ -572,8 +570,7 @@ fn check_variants(files: ~[~str], cx: context) {
                    as_str(|a| pprust::print_crate(
                        sess.cm,
                        // Assuming no token_trees
-                       syntax::util::interner::mk::<@~str>(
-                            |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                       syntax::parse::token::mk_ident_interner(),
                        sess.span_diagnostic,
                        crate,
                        file,

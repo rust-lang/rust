@@ -19,12 +19,13 @@ import ast::node_id;
 import util::interner;
 import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 import lexer::{reader, string_reader};
+import parse::token::{ident_interner, mk_ident_interner};
 
 type parse_sess = @{
     cm: codemap::codemap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
-    interner: interner::interner<@~str>,
+    interner: ident_interner,
     // these two must be kept up to date
     mut chpos: uint,
     mut byte_pos: uint
@@ -33,21 +34,19 @@ type parse_sess = @{
 fn new_parse_sess(demitter: option<emitter>) -> parse_sess {
     let cm = codemap::new_codemap();
     return @{cm: cm,
-          mut next_id: 1,
-          span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-          interner: interner::mk::<@~str>(|x| str::hash(*x),
-                                          |x,y| str::eq(*x, *y)),
-          mut chpos: 0u, mut byte_pos: 0u};
+             mut next_id: 1,
+             span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+             interner: mk_ident_interner(),
+             mut chpos: 0u, mut byte_pos: 0u};
 }
 
 fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
     -> parse_sess {
     return @{cm: cm,
-          mut next_id: 1,
-          span_diagnostic: sh,
-          interner: interner::mk::<@~str>(|x| str::hash(*x),
-                                          |x,y| str::eq(*x, *y)),
-          mut chpos: 0u, mut byte_pos: 0u};
+             mut next_id: 1,
+             span_diagnostic: sh,
+             interner: mk_ident_interner(),
+             mut chpos: 0u, mut byte_pos: 0u};
 }
 
 fn parse_crate_from_file(input: ~str, cfg: ast::crate_cfg,

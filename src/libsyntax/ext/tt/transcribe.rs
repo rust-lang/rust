@@ -1,9 +1,9 @@
-import util::interner::interner;
 import diagnostic::span_handler;
 import ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
 import earley_parser::{named_match, matched_seq, matched_nonterminal};
 import codemap::span;
-import parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident};
+import parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
+                      ident_interner};
 import std::map::{hashmap, box_str_hash};
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
@@ -25,7 +25,7 @@ type tt_frame = @{
 
 type tt_reader = @{
     sp_diag: span_handler,
-    interner: interner<@~str>,
+    interner: ident_interner,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
     interpolations: std::map::hashmap<ident, @named_match>,
@@ -39,7 +39,7 @@ type tt_reader = @{
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
-fn new_tt_reader(sp_diag: span_handler, itr: interner<@~str>,
+fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
                  interp: option<std::map::hashmap<ident,@named_match>>,
                  src: ~[ast::token_tree])
     -> tt_reader {

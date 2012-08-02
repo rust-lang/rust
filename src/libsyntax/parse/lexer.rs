@@ -1,4 +1,3 @@
-import util::interner::interner;
 import diagnostic::span_handler;
 import codemap::span;
 import ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
@@ -14,7 +13,7 @@ trait reader {
     fn next_token() -> {tok: token::token, sp: span};
     fn fatal(~str) -> !;
     fn span_diag() -> span_handler;
-    pure fn interner() -> interner<@~str>;
+    pure fn interner() -> token::ident_interner;
     fn peek() -> {tok: token::token, sp: span};
     fn dup() -> reader;
 }
@@ -27,7 +26,7 @@ type string_reader = @{
     mut curr: char,
     mut chpos: uint,
     filemap: codemap::filemap,
-    interner: interner<@~str>,
+    interner: token::ident_interner,
     /* cached: */
     mut peek_tok: token::token,
     mut peek_span: span
@@ -35,7 +34,7 @@ type string_reader = @{
 
 fn new_string_reader(span_diagnostic: span_handler,
                      filemap: codemap::filemap,
-                     itr: interner<@~str>) -> string_reader {
+                     itr: token::ident_interner) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
     string_advance_token(r); /* fill in peek_* */
     return r;
@@ -44,7 +43,7 @@ fn new_string_reader(span_diagnostic: span_handler,
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
 fn new_low_level_string_reader(span_diagnostic: span_handler,
                                filemap: codemap::filemap,
-                               itr: interner<@~str>)
+                               itr: token::ident_interner)
     -> string_reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
@@ -79,7 +78,7 @@ impl string_reader: reader {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
     fn span_diag() -> span_handler { self.span_diagnostic }
-    pure fn interner() -> interner<@~str> { self.interner }
+    pure fn interner() -> token::ident_interner { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         {tok: self.peek_tok, sp: self.peek_span}
     }
@@ -101,7 +100,7 @@ impl tt_reader: reader {
         self.sp_diag.span_fatal(copy self.cur_span, m);
     }
     fn span_diag() -> span_handler { self.sp_diag }
-    pure fn interner() -> interner<@~str> { self.interner }
+    pure fn interner() -> token::ident_interner { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         { tok: self.cur_tok, sp: self.cur_span }
     }
