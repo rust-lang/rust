@@ -134,7 +134,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
         fatal_procres(~"pretty-printed source does not typecheck", procres);
     }
 
-    ret;
+    return;
 
     fn print_source(config: config, testfile: ~str, src: ~str) -> procres {
         compose_and_run(config, testfile, make_pp_args(config, testfile),
@@ -144,7 +144,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
     fn make_pp_args(config: config, _testfile: ~str) -> procargs {
         let prog = config.rustc_path;
         let args = ~[~"-", ~"--pretty", ~"normal"];
-        ret {prog: prog, args: args};
+        return {prog: prog, args: args};
     }
 
     fn compare_source(expected: ~str, actual: ~str) {
@@ -181,7 +181,7 @@ actual:\n\
                          ~"--no-trans", ~"--lib", ~"-L", config.build_base,
                          ~"-L", aux_output_dir_name(config, testfile)];
         args += split_maybe_args(config.rustcflags);
-        ret {prog: prog, args: args};
+        return {prog: prog, args: args};
     }
 }
 
@@ -211,7 +211,7 @@ fn check_error_patterns(props: test_props,
             next_err_pat = props.error_patterns[next_err_idx];
         }
     }
-    if done { ret; }
+    if done { return; }
 
     let missing_patterns =
         vec::slice(props.error_patterns, next_err_idx,
@@ -340,7 +340,7 @@ fn compose_and_run_compiler(
 }
 
 fn ensure_dir(path: path) {
-    if os::path_is_dir(path) { ret; }
+    if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
         fail fmt!{"can't make dir %s", path};
     }
@@ -351,7 +351,7 @@ fn compose_and_run(config: config, testfile: ~str,
                    procenv: ~[(~str, ~str)],
                    lib_path: ~str,
                    input: option<~str>) -> procres {
-    ret program_output(config, testfile, lib_path,
+    return program_output(config, testfile, lib_path,
                        procargs.prog, procargs.args, procenv, input);
 }
 
@@ -363,7 +363,7 @@ fn make_compile_args(config: config, props: test_props, extras: ~[~str],
                     ~"-L", config.build_base] + extras;
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
-    ret {prog: prog, args: args};
+    return {prog: prog, args: args};
 }
 
 fn make_lib_name(config: config, auxfile: ~str, testfile: ~str) -> ~str {
@@ -391,7 +391,7 @@ fn make_run_args(config: config, _props: test_props, testfile: ~str) ->
         };
 
     let args = toolargs + ~[make_exe_name(config, testfile)];
-    ret {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
+    return {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
 }
 
 fn split_maybe_args(argstr: option<~str>) -> ~[~str] {
@@ -419,7 +419,7 @@ fn program_output(config: config, testfile: ~str, lib_path: ~str, prog: ~str,
         };
     let res = procsrv::run(lib_path, prog, args, env, input);
     dump_output(config, testfile, res.out, res.err);
-    ret {status: res.status,
+    return {status: res.status,
          stdout: res.out,
          stderr: res.err,
          cmdline: cmdline};

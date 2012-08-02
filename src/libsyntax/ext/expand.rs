@@ -15,7 +15,7 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                orig: fn@(expr_, span, ast_fold) -> (expr_, span))
     -> (expr_, span)
 {
-    ret alt e {
+    return alt e {
       // expr_mac should really be expr_ext or something; it's the
       // entry-point for all syntax extensions.
           expr_mac(mac) {
@@ -159,7 +159,7 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
         }
     };
 
-    ret {items: new_items with module_};
+    return {items: new_items with module_};
 }
 
 
@@ -185,9 +185,9 @@ fn expand_item(exts: hashmap<~str, syntax_extension>,
         if is_mod { cx.mod_push(it.ident); }
         let ret_val = orig(it, fld);
         if is_mod { cx.mod_pop(); }
-        ret ret_val;
+        return ret_val;
       }
-      none { ret none; }
+      none { return none; }
     }
 }
 
@@ -221,7 +221,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
               }
             };
             cx.bt_pop();
-            ret maybe_it
+            return maybe_it
           }
           _ { cx.span_fatal(it.span,
                             fmt!{"%s is not a legal here", *extname}) }
@@ -235,7 +235,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
 
 fn new_span(cx: ext_ctxt, sp: span) -> span {
     /* this discards information in the case of macro-defining macros */
-    ret {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
+    return {lo: sp.lo, hi: sp.hi, expn_info: cx.backtrace()};
 }
 
 // FIXME (#2247): this is a terrible kludge to inject some macros into
@@ -244,7 +244,7 @@ fn new_span(cx: ext_ctxt, sp: span) -> span {
 // compiled part of libcore at very least.
 
 fn core_macros() -> ~str {
-    ret
+    return
 ~"{
     #macro[[#error[f, ...], log(core::error, #fmt[f, ...])]];
     #macro[[#warn[f, ...], log(core::warn, #fmt[f, ...])]];
@@ -275,7 +275,7 @@ fn expand_crate(parse_sess: parse::parse_sess,
     f.fold_expr(cm);
 
     let res = @f.fold_crate(*c);
-    ret res;
+    return res;
 }
 // Local Variables:
 // mode: rust

@@ -85,7 +85,7 @@ fn sectionalize(desc: option<~str>) -> (option<~str>, ~[doc::section]) {
      */
 
     if option::is_none(desc) {
-        ret (none, ~[]);
+        return (none, ~[]);
     }
 
     let lines = str::lines(option::get(desc));

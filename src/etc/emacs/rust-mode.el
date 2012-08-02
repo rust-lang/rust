@@ -58,15 +58,15 @@
       (puthash word 'def table))
     (dolist (word '("again" "assert"
                     "break"
-                    "check" "claim" "copy"
+                    "copy"
                     "do" "drop"
                     "else" "export" "extern"
                     "fail" "for"
                     "if" "import"
                     "let" "log" "loop"
-                    "new"
+                    "move" "new"
                     "pure"
-                    "ret"
+                    "return"
                     "unchecked" "unsafe"
                     "while"))
       (puthash word t table))

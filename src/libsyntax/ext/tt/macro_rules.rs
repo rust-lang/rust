@@ -24,7 +24,10 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
             ms(match_nonterminal(@~"lhs",@~"matchers", 0u)),
             ms(match_tok(FAT_ARROW)),
             ms(match_nonterminal(@~"rhs",@~"tt", 1u)),
-        ], some(SEMI), false, 0u, 2u))];
+        ], some(SEMI), false, 0u, 2u)),
+        //to phase into semicolon-termination instead of
+        //semicolon-separation
+        ms(match_seq(~[ms(match_tok(SEMI))], none, true, 2u, 2u))];
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
@@ -70,7 +73,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                                                ~[rhs]);
                     let p = parser(cx.parse_sess(), cx.cfg(),
                                    trncbr as reader, SOURCE_FILE);
-                    ret mr_expr(p.parse_expr());
+                    return mr_expr(p.parse_expr());
                   }
                   failure(sp, msg) {
                     if sp.lo >= best_fail_spot.lo {
@@ -87,5 +90,8 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     let exp = |cx, sp, arg| generic_extension(cx, sp, arg, lhses, rhses);
 
-    ret mr_def({ident: name, ext: expr_tt({expander: exp, span: some(sp)})});
+    return mr_def({
+        ident: name,
+        ext: expr_tt({expander: exp, span: some(sp)})
+    });
 }

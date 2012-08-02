@@ -28,7 +28,7 @@ fn content_ty(t: ty::t) -> ty::t {
 fn autoderef(bcx: block, v: ValueRef, t: ty::t) -> {v: ValueRef, t: ty::t} {
     let content_ty = content_ty(t);
     let v = opaque_box_body(bcx, content_ty, v);
-    ret {v: v, t: content_ty};
+    return {v: v, t: content_ty};
 }
 
 fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
@@ -52,5 +52,5 @@ fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let td = Load(bcx, src_tydesc_ptr);
     Store(bcx, td, dst_tydesc_ptr);
 
-    ret rslt(bcx, dst_box);
+    return rslt(bcx, dst_box);
 }

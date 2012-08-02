@@ -50,7 +50,7 @@ fn default_configuration(sess: session, argv0: ~str, input: input) ->
       session::arch_arm { ~"arm" }
     };
 
-    ret ~[ // Target bindings.
+    return ~[ // Target bindings.
          attr::mk_word_item(@os::family()),
          mk(@~"target_os", os::sysname()),
          mk(@~"target_family", os::family()),
@@ -76,7 +76,7 @@ fn build_configuration(sess: session, argv0: ~str, input: input) ->
                 ~[attr::mk_word_item(@~"notest")]
             }
         };
-    ret vec::append(vec::append(user_cfg, gen_cfg), default_cfg);
+    return vec::append(vec::append(user_cfg, gen_cfg), default_cfg);
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
@@ -86,7 +86,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // meta_word variant.
     let mut words = ~[];
     for cfgspecs.each |s| { vec::push(words, attr::mk_word_item(@s)); }
-    ret words;
+    return words;
 }
 
 enum input {
@@ -111,13 +111,13 @@ fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
 }
 
 fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
-    if !do_it { ret thunk(); }
+    if !do_it { return thunk(); }
     let start = std::time::precise_time_s();
     let rv = thunk();
     let end = std::time::precise_time_s();
     io::stdout().write_str(fmt!{"time: %3.3f s\t%s\n",
                                 end - start, what});
-    ret rv;
+    return rv;
 }
 
 enum compile_upto {
@@ -135,7 +135,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, ~"parsing",
                          ||parse_input(sess, cfg, input) );
-    if upto == cu_parse { ret {crate: crate, tcx: none}; }
+    if upto == cu_parse { return {crate: crate, tcx: none}; }
 
     sess.building_library = session::building_library(
         sess.opts.crate_type, crate, sess.opts.test);
@@ -150,7 +150,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         syntax::ext::expand::expand_crate(sess.parse_sess, sess.opts.cfg,
                                           crate));
 
-    if upto == cu_expand { ret {crate: crate, tcx: none}; }
+    if upto == cu_expand { return {crate: crate, tcx: none}; }
 
     crate = time(time_passes, ~"intrinsic injection", ||
         front::intrinsic_inject::inject_intrinsic(sess, crate));
@@ -205,7 +205,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         middle::check_const::check_crate(sess, crate, ast_map, def_map,
                                          method_map, ty_cx));
 
-    if upto == cu_typeck { ret {crate: crate, tcx: some(ty_cx)}; }
+    if upto == cu_typeck { return {crate: crate, tcx: some(ty_cx)}; }
 
     time(time_passes, ~"block-use checking", ||
         middle::block_use::check_crate(ty_cx, crate));
@@ -228,7 +228,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     time(time_passes, ~"lint checking", || lint::check_crate(ty_cx, crate));
 
-    if upto == cu_no_trans { ret {crate: crate, tcx: some(ty_cx)}; }
+    if upto == cu_no_trans { return {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
 
     let maps = {mutbl_map: mutbl_map, root_map: root_map,
@@ -247,13 +247,13 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         sess.opts.output_type != link::output_type_exe ||
             sess.opts.static && sess.building_library;
 
-    if stop_after_codegen { ret {crate: crate, tcx: some(ty_cx)}; }
+    if stop_after_codegen { return {crate: crate, tcx: some(ty_cx)}; }
 
     time(time_passes, ~"linking", ||
          link::link_binary(sess, outputs.obj_filename,
                            outputs.out_filename, link_meta));
 
-    ret {crate: crate, tcx: some(ty_cx)};
+    return {crate: crate, tcx: some(ty_cx)};
 }
 
 fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
@@ -338,7 +338,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
 }
 
 fn get_os(triple: ~str) -> option<session::os> {
-    ret if str::contains(triple, ~"win32") ||
+    if str::contains(triple, ~"win32") ||
                str::contains(triple, ~"mingw32") {
             some(session::os_win32)
         } else if str::contains(triple, ~"darwin") {
@@ -347,11 +347,12 @@ fn get_os(triple: ~str) -> option<session::os> {
             some(session::os_linux)
         } else if str::contains(triple, ~"freebsd") {
             some(session::os_freebsd)
-        } else { none };
+        } else { none }
 }
 
 fn get_arch(triple: ~str) -> option<session::arch> {
-    ret if str::contains(triple, ~"i386") || str::contains(triple, ~"i486") ||
+    if str::contains(triple, ~"i386") ||
+        str::contains(triple, ~"i486") ||
                str::contains(triple, ~"i586") ||
                str::contains(triple, ~"i686") ||
                str::contains(triple, ~"i786") {
@@ -361,7 +362,7 @@ fn get_arch(triple: ~str) -> option<session::arch> {
         } else if str::contains(triple, ~"arm") ||
                       str::contains(triple, ~"xscale") {
             some(session::arch_arm)
-        } else { none };
+        } else { none }
 }
 
 fn build_target_config(sopts: @session::options,
@@ -388,7 +389,7 @@ fn build_target_config(sopts: @session::options,
     let target_cfg: @session::config =
         @{os: os, arch: arch, target_strs: target_strs, int_type: int_type,
           uint_type: uint_type, float_type: float_type};
-    ret target_cfg;
+    return target_cfg;
 }
 
 fn host_triple() -> ~str {
@@ -401,7 +402,7 @@ fn host_triple() -> ~str {
     // be grabbing (at compile time) the target triple that this rustc is
     // built with and calling that (at runtime) the host triple.
     let ht = env!{"CFG_HOST_TRIPLE"};
-    ret if ht != ~"" {
+    return if ht != ~"" {
             ht
         } else {
             fail ~"rustc built without CFG_HOST_TRIPLE"
@@ -530,7 +531,7 @@ fn build_session_options(matches: getopts::matches,
           parse_only: parse_only,
           no_trans: no_trans,
           debugging_opts: debugging_opts};
-    ret sopts;
+    return sopts;
 }
 
 fn build_session(sopts: @session::options,
@@ -573,22 +574,23 @@ fn build_session_(sopts: @session::options,
 
 fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
     if str::eq(name, ~"normal") {
-        ret ppm_normal;
+        return ppm_normal;
     } else if str::eq(name, ~"expanded") {
-        ret ppm_expanded;
+        return ppm_expanded;
     } else if str::eq(name, ~"typed") {
-        ret ppm_typed;
+        return ppm_typed;
     } else if str::eq(name, ~"expanded,identified") {
-        ret ppm_expanded_identified;
+        return ppm_expanded_identified;
     } else if str::eq(name, ~"identified") {
-        ret ppm_identified;
+        return ppm_identified;
     }
     sess.fatal(~"argument to `pretty` must be one of `normal`, `typed`, or " +
                    ~"`identified`");
 }
 
 fn opts() -> ~[getopts::opt] {
-    ret ~[optflag(~"h"), optflag(~"help"), optflag(~"v"), optflag(~"version"),
+    return ~[optflag(~"h"), optflag(~"help"),
+             optflag(~"v"), optflag(~"version"),
           optflag(~"emit-llvm"), optflagopt(~"pretty"),
           optflag(~"ls"), optflag(~"parse-only"), optflag(~"no-trans"),
           optflag(~"O"), optopt(~"opt-level"), optmulti(~"L"), optflag(~"S"),
@@ -699,7 +701,7 @@ fn build_output_filenames(input: input,
         }
       }
     }
-    ret @{out_filename: out_path,
+    return @{out_filename: out_path,
           obj_filename: obj_path};
 }
 

@@ -1,8 +1,8 @@
 enum myvec<X> = ~[X];
 
-fn myvec_deref<X: copy>(mv: myvec<X>) -> ~[X] { ret *mv; }
+fn myvec_deref<X: copy>(mv: myvec<X>) -> ~[X] { return *mv; }
 
-fn myvec_elt<X: copy>(mv: myvec<X>) -> X { ret mv[0]; }
+fn myvec_elt<X: copy>(mv: myvec<X>) -> X { return mv[0]; }
 
 fn main() {
     let mv = myvec(~[1, 2, 3]);

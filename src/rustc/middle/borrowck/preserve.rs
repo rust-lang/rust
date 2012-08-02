@@ -310,7 +310,7 @@ impl private_methods for &preserve_ctxt {
             // would be sort of pointless to avoid rooting the inner
             // box by rooting an outer box, as it would just keep more
             // memory live than necessary, so we set root_ub to none.
-            ret err({cmt:cmt, code:err_root_not_permitted});
+            return err({cmt:cmt, code:err_root_not_permitted});
         }
 
         let root_region = ty::re_scope(self.root_ub);
@@ -327,10 +327,10 @@ impl private_methods for &preserve_ctxt {
                 #debug["Elected to root"];
                 let rk = {id: base.id, derefs: derefs};
                 self.bccx.root_map.insert(rk, scope_id);
-                ret ok(pc_ok);
+                return ok(pc_ok);
             } else {
                 #debug["Unable to root"];
-                ret err({cmt:cmt,
+                return err({cmt:cmt,
                          code:err_out_of_root_scope(root_region,
                                                     self.scope_region)});
             }
@@ -338,7 +338,7 @@ impl private_methods for &preserve_ctxt {
 
           // we won't be able to root long enough
           _ => {
-              ret err({cmt:cmt,
+              return err({cmt:cmt,
                        code:err_out_of_root_scope(root_region,
                                                   self.scope_region)});
           }

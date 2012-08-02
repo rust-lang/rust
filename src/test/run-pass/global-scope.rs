@@ -1,11 +1,11 @@
 // xfail-fast
 
-fn f() -> int { ret 1; }
+fn f() -> int { return 1; }
 
 mod foo {
-    fn f() -> int { ret 2; }
+    fn f() -> int { return 2; }
     fn g() { assert (f() == 2); assert (::f() == 1); }
 }
 
-fn main() { ret foo::g(); }
+fn main() { return foo::g(); }
 

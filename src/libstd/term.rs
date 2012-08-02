@@ -35,10 +35,10 @@ fn reset(writer: io::writer) {
 fn color_supported() -> bool {
     let supported_terms = ~[~"xterm-color", ~"xterm",
                            ~"screen-bce", ~"xterm-256color"];
-    ret alt os::getenv(~"TERM") {
+    return alt os::getenv(~"TERM") {
           option::some(env) {
             for vec::each(supported_terms) |term| {
-                if str::eq(term, env) { ret true; }
+                if str::eq(term, env) { return true; }
             }
             false
           }
@@ -56,12 +56,12 @@ fn set_color(writer: io::writer, first_char: u8, color: u8) {
 
 /// Set the foreground color
 fn fg(writer: io::writer, color: u8) {
-    ret set_color(writer, '3' as u8, color);
+    return set_color(writer, '3' as u8, color);
 }
 
 /// Set the background color
 fn bg(writer: io::writer, color: u8) {
-    ret set_color(writer, '4' as u8, color);
+    return set_color(writer, '4' as u8, color);
 }
 
 // Local Variables:

@@ -88,7 +88,7 @@ impl codemap_handler of handler for handler_t {
     fn abort_if_errors() {
         let s;
         alt self.err_count {
-          0u { ret; }
+          0u { return; }
           1u { s = ~"aborting due to previous error"; }
           _  { s = fmt!{"aborting due to %u previous errors",
                         self.err_count}; }

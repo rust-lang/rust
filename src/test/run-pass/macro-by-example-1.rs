@@ -6,7 +6,7 @@ fn main() {
         {$f:expr, ($($x:expr),*)} => {$f($($x),*)}
     }
 
-    fn add(a: int, b: int) -> int { ret a + b; }
+    fn add(a: int, b: int) -> int { return a + b; }
 
     assert(apply!{add, [1, 15]} == 16);
     assert(apply!{add, [1, 15]} == 16);

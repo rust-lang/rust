@@ -1,14 +1,14 @@
 // Just a grab bag of stuff that you wouldn't want to actually write.
 
-fn strange() -> bool { let _x: bool = ret true; }
+fn strange() -> bool { let _x: bool = return true; }
 
 fn funny() {
     fn f(_x: ()) { }
-    f(ret);
+    f(return);
 }
 
 fn what() {
-    fn the(x: @mut bool) { ret while !*x { *x = true; }; }
+    fn the(x: @mut bool) { return while !*x { *x = true; }; }
     let i = @mut false;
     let dont = {||the(i)};
     dont();
@@ -17,23 +17,23 @@ fn what() {
 
 fn zombiejesus() {
     loop {
-        while (ret) {
-            if (ret) {
-                alt (ret) {
+        while (return) {
+            if (return) {
+                alt (return) {
                     1 {
-                        if (ret) {
-                            ret
+                        if (return) {
+                            return
                         } else {
-                            ret
+                            return
                         }
                     }
-                    _ { ret }
+                    _ { return }
                 };
-            } else if (ret) {
-                ret;
+            } else if (return) {
+                return;
             }
         }
-        if (ret) { break; }
+        if (return) { break; }
     }
 }
 
@@ -46,14 +46,14 @@ fn notsure() {
 }
 
 fn hammertime() -> int {
-    let _x = log(debug, true == (ret 0));
+    let _x = log(debug, true == (return 0));
 }
 
 fn canttouchthis() -> uint {
     pure fn p() -> bool { true }
     let _a = (assert (true)) == (assert (p()));
     let _c = (assert (p())) == ();
-    let _b: bool = (log(debug, 0) == (ret 0u));
+    let _b: bool = (log(debug, 0) == (return 0u));
 }
 
 fn angrydome() {

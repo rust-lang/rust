@@ -31,38 +31,38 @@ const neg_infinity: f32 = -1.0_f32/0.0_f32;
 
 pure fn is_NaN(f: f32) -> bool { f != f }
 
-pure fn add(x: f32, y: f32) -> f32 { ret x + y; }
+pure fn add(x: f32, y: f32) -> f32 { return x + y; }
 
-pure fn sub(x: f32, y: f32) -> f32 { ret x - y; }
+pure fn sub(x: f32, y: f32) -> f32 { return x - y; }
 
-pure fn mul(x: f32, y: f32) -> f32 { ret x * y; }
+pure fn mul(x: f32, y: f32) -> f32 { return x * y; }
 
-pure fn div(x: f32, y: f32) -> f32 { ret x / y; }
+pure fn div(x: f32, y: f32) -> f32 { return x / y; }
 
-pure fn rem(x: f32, y: f32) -> f32 { ret x % y; }
+pure fn rem(x: f32, y: f32) -> f32 { return x % y; }
 
-pure fn lt(x: f32, y: f32) -> bool { ret x < y; }
+pure fn lt(x: f32, y: f32) -> bool { return x < y; }
 
-pure fn le(x: f32, y: f32) -> bool { ret x <= y; }
+pure fn le(x: f32, y: f32) -> bool { return x <= y; }
 
-pure fn eq(x: f32, y: f32) -> bool { ret x == y; }
+pure fn eq(x: f32, y: f32) -> bool { return x == y; }
 
-pure fn ne(x: f32, y: f32) -> bool { ret x != y; }
+pure fn ne(x: f32, y: f32) -> bool { return x != y; }
 
-pure fn ge(x: f32, y: f32) -> bool { ret x >= y; }
+pure fn ge(x: f32, y: f32) -> bool { return x >= y; }
 
-pure fn gt(x: f32, y: f32) -> bool { ret x > y; }
+pure fn gt(x: f32, y: f32) -> bool { return x > y; }
 
 // FIXME (#1999): replace the predicates below with llvm intrinsics or
 // calls to the libmath macros in the rust runtime for performance.
 
 /// Returns true if `x` is a positive number, including +0.0f320 and +Infinity
 pure fn is_positive(x: f32) -> bool
-    { ret x > 0.0f32 || (1.0f32/x) == infinity; }
+    { return x > 0.0f32 || (1.0f32/x) == infinity; }
 
 /// Returns true if `x` is a negative number, including -0.0f320 and -Infinity
 pure fn is_negative(x: f32) -> bool
-    { ret x < 0.0f32 || (1.0f32/x) == neg_infinity; }
+    { return x < 0.0f32 || (1.0f32/x) == neg_infinity; }
 
 /**
  * Returns true if `x` is a negative number, including -0.0f320 and -Infinity
@@ -70,7 +70,7 @@ pure fn is_negative(x: f32) -> bool
  * This is the same as `f32::is_negative`.
  */
 pure fn is_nonpositive(x: f32) -> bool {
-  ret x < 0.0f32 || (1.0f32/x) == neg_infinity;
+  return x < 0.0f32 || (1.0f32/x) == neg_infinity;
 }
 
 /**
@@ -79,22 +79,22 @@ pure fn is_nonpositive(x: f32) -> bool {
  * This is the same as `f32::is_positive`.)
  */
 pure fn is_nonnegative(x: f32) -> bool {
-  ret x > 0.0f32 || (1.0f32/x) == infinity;
+  return x > 0.0f32 || (1.0f32/x) == infinity;
 }
 
 /// Returns true if `x` is a zero number (positive or negative zero)
 pure fn is_zero(x: f32) -> bool {
-    ret x == 0.0f32 || x == -0.0f32;
+    return x == 0.0f32 || x == -0.0f32;
 }
 
 /// Returns true if `x`is an infinite number
 pure fn is_infinite(x: f32) -> bool {
-    ret x == infinity || x == neg_infinity;
+    return x == infinity || x == neg_infinity;
 }
 
 /// Returns true if `x`is a finite number
 pure fn is_finite(x: f32) -> bool {
-    ret !(is_NaN(x) || is_infinite(x));
+    return !(is_NaN(x) || is_infinite(x));
 }
 
 // FIXME (#1999): add is_normal, is_subnormal, and fpclassify.
@@ -145,38 +145,38 @@ mod consts {
 }
 
 pure fn signbit(x: f32) -> int {
-    if is_negative(x) { ret 1; } else { ret 0; }
+    if is_negative(x) { return 1; } else { return 0; }
 }
 
 #[cfg(target_os="linux")]
 #[cfg(target_os="macos")]
 #[cfg(target_os="win32")]
 pure fn logarithm(n: f32, b: f32) -> f32 {
-    ret log2(n) / log2(b);
+    return log2(n) / log2(b);
 }
 
 #[cfg(target_os="freebsd")]
 pure fn logarithm(n: f32, b: f32) -> f32 {
     // FIXME (#2000): check if it is good to use log2 instead of ln here;
     // in theory should be faster since the radix is 2
-    ret ln(n) / ln(b);
+    return ln(n) / ln(b);
 }
 
 #[cfg(target_os="freebsd")]
 pure fn log2(n: f32) -> f32 {
-    ret ln(n) / consts::ln_2;
+    return ln(n) / consts::ln_2;
 }
 
 impl num of num::num for f32 {
-    pure fn add(&&other: f32)    -> f32 { ret self + other; }
-    pure fn sub(&&other: f32)    -> f32 { ret self - other; }
-    pure fn mul(&&other: f32)    -> f32 { ret self * other; }
-    pure fn div(&&other: f32)    -> f32 { ret self / other; }
-    pure fn modulo(&&other: f32) -> f32 { ret self % other; }
-    pure fn neg()                -> f32 { ret -self;        }
+    pure fn add(&&other: f32)    -> f32 { return self + other; }
+    pure fn sub(&&other: f32)    -> f32 { return self - other; }
+    pure fn mul(&&other: f32)    -> f32 { return self * other; }
+    pure fn div(&&other: f32)    -> f32 { return self / other; }
+    pure fn modulo(&&other: f32) -> f32 { return self % other; }
+    pure fn neg()                -> f32 { return -self;        }
 
-    pure fn to_int()         -> int { ret self as int; }
-    pure fn from_int(n: int) -> f32 { ret n as f32;    }
+    pure fn to_int()         -> int { return self as int; }
+    pure fn from_int(n: int) -> f32 { return n as f32;    }
 }
 
 //

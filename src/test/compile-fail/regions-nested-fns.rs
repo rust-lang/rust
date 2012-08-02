@@ -11,9 +11,9 @@ fn nested(x: &x/int) {
     });
 
     ignore(fn&(z: &z/int) -> &z/int {
-        if false { ret x; }  //~ ERROR mismatched types
-        if false { ret ay; } //~ ERROR mismatched types
-        ret z;
+        if false { return x; }  //~ ERROR mismatched types
+        if false { return ay; } //~ ERROR mismatched types
+        return z;
     });
 }
 

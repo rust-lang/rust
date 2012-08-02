@@ -18,7 +18,7 @@ fn get_rpath_flags(sess: session::session, out_filename: ~str) -> ~[~str] {
 
     // No rpath on windows
     if os == session::os_win32 {
-        ret ~[];
+        return ~[];
     }
 
     debug!{"preparing the RPATH!"};
@@ -89,7 +89,7 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
 
     // Remove duplicates
     let rpaths = minimize_rpaths(rpaths);
-    ret rpaths;
+    return rpaths;
 }
 
 fn get_rpaths_relative_to_output(os: session::os,
@@ -148,9 +148,9 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     vec::push_all(path, vec::view(split2, start_idx, len2 - 1u));
 
     if vec::is_not_empty(path) {
-        ret path::connect_many(path);
+        return path::connect_many(path);
     } else {
-        ret ~".";
+        return ~".";
     }
 }
 
@@ -192,7 +192,7 @@ fn minimize_rpaths(rpaths: ~[~str]) -> ~[~str] {
             set.insert(rpath, ());
         }
     }
-    ret minimized;
+    return minimized;
 }
 
 #[cfg(unix)]

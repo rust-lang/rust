@@ -10,7 +10,7 @@
  */
 
 pure fn hash_bytes(buf: &[const u8]) -> u64 {
-    ret hash_bytes_keyed(buf, 0u64, 0u64);
+    return hash_bytes_keyed(buf, 0u64, 0u64);
 }
 
 pure fn hash_u64(val: u64) -> u64 {
@@ -113,7 +113,7 @@ pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
     compress!{v0,v1,v2,v3};
     compress!{v0,v1,v2,v3};
 
-    ret v0 ^ v1 ^ v2 ^ v3;
+    return v0 ^ v1 ^ v2 ^ v3;
 }
 
 
@@ -156,7 +156,7 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
                 }
                 st.ntail += length;
 
-                ret;
+                return;
             }
 
             let mut t = 0;
@@ -229,7 +229,7 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
 
         let h = v0 ^ v1 ^ v2 ^ v3;
 
-        ret ~[
+        return ~[
             (h >> 0) as u8,
             (h >> 8) as u8,
             (h >> 16) as u8,
@@ -252,12 +252,12 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
         }
         fn input(msg: ~[u8]) { add_input(self, msg); }
         fn input_str(msg: ~str) { add_input(self, str::bytes(msg)); }
-        fn result() -> ~[u8] { ret mk_result(self); }
+        fn result() -> ~[u8] { return mk_result(self); }
         fn result_str() -> ~str {
             let r = mk_result(self);
             let mut s = ~"";
             for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
-            ret s;
+            return s;
         }
     }
 
@@ -275,7 +275,7 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
 
     let sh = st as streaming;
     sh.reset();
-    ret sh;
+    return sh;
 }
 
 #[test]
@@ -357,7 +357,7 @@ fn test_siphash() {
     fn to_hex_str(r:[u8]/8) -> ~str {
         let mut s = ~"";
         for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
-        ret s;
+        return s;
     }
 
     while t < 64 {

@@ -28,7 +28,7 @@ extern mod rustrt {
  * loop.
  */
 fn get() -> iotask {
-    ret get_monitor_task_gl();
+    return get_monitor_task_gl();
 }
 
 #[doc(hidden)]

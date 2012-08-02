@@ -1,7 +1,7 @@
-// error-pattern: `ret;` in function returning non-nil
+// error-pattern: `return;` in function returning non-nil
 
-fn f() { ret; }
+fn f() { return; }
 
-fn g() -> int { ret; }
+fn g() -> int { return; }
 
 fn main() { f(); g(); }

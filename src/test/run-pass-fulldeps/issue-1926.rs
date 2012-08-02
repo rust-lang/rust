@@ -18,7 +18,7 @@ fn new_parse_sess() -> parser::parse_sess {
         mut chpos: 0u,
         mut byte_pos: 0u
     };
-    ret sess;
+    return sess;
 }
 
 trait fake_ext_ctxt {

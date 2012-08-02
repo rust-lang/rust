@@ -100,11 +100,11 @@ impl of from_base64 for ~[u8] {
                       1u {
                         vec::push(r, ((n >> 16u) & 0xFFu) as u8);
                         vec::push(r, ((n >> 8u ) & 0xFFu) as u8);
-                        ret copy r;
+                        return copy r;
                       }
                       2u {
                         vec::push(r, ((n >> 10u) & 0xFFu) as u8);
-                        ret copy r;
+                        return copy r;
                       }
                       _ {
                         fail ~"invalid base64 padding";

@@ -31,7 +31,7 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
-    ret res;
+    return res;
 }
 
 fn filter_item(cx: ctxt, &&item: @ast::item) ->
@@ -54,8 +54,10 @@ fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
     let filtered_items = vec::filter_map(m.items, item_filter);
     let view_item_filter = |a| filter_view_item(cx, a);
     let filtered_view_items = vec::filter_map(m.view_items, view_item_filter);
-    ret {view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(x)),
-         items: vec::filter_map(filtered_items, |x| fld.fold_item(x))};
+    return {
+        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(x)),
+        items: vec::filter_map(filtered_items, |x| fld.fold_item(x))
+    };
 }
 
 fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
@@ -72,8 +74,10 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
     let view_item_filter = |a| filter_view_item(cx, a);
     let filtered_view_items = vec::filter_map(
         nm.view_items, view_item_filter);
-    ret {view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(x)),
-         items: filtered_items};
+    return {
+        view_items: vec::map(filtered_view_items, |x| fld.fold_view_item(x)),
+        items: filtered_items
+    };
 }
 
 fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
@@ -97,7 +101,7 @@ fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
    ast::blk_ {
     let filter = |a| filter_stmt(cx, a);
     let filtered_stmts = vec::filter_map(b.stmts, filter);
-    ret {view_items: b.view_items,
+    return {view_items: b.view_items,
          stmts: vec::map(filtered_stmts, |x| fld.fold_stmt(x)),
          expr: option::map(b.expr, |x| fld.fold_expr(x)),
          id: b.id,
@@ -105,15 +109,15 @@ fn fold_block(cx: ctxt, b: ast::blk_, fld: fold::ast_fold) ->
 }
 
 fn item_in_cfg(cx: ctxt, item: @ast::item) -> bool {
-    ret cx.in_cfg(item.attrs);
+    return cx.in_cfg(item.attrs);
 }
 
 fn foreign_item_in_cfg(cx: ctxt, item: @ast::foreign_item) -> bool {
-    ret cx.in_cfg(item.attrs);
+    return cx.in_cfg(item.attrs);
 }
 
 fn view_item_in_cfg(cx: ctxt, item: @ast::view_item) -> bool {
-    ret cx.in_cfg(item.attrs);
+    return cx.in_cfg(item.attrs);
 }
 
 // Determine if an item should be translated in the current crate
@@ -134,13 +138,13 @@ fn metas_in_cfg(cfg: ast::crate_cfg, metas: ~[@ast::meta_item]) -> bool {
         |&&i| attr::get_meta_item_list(i) ));
 
     let has_cfg_metas = vec::len(cfg_metas) > 0u;
-    if !has_cfg_metas { ret true; }
+    if !has_cfg_metas { return true; }
 
     for cfg_metas.each |cfg_mi| {
-        if attr::contains(cfg, cfg_mi) { ret true; }
+        if attr::contains(cfg, cfg_mi) { return true; }
     }
 
-    ret false;
+    return false;
 }
 
 

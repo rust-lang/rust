@@ -9,7 +9,7 @@ fn mk_counter<A:copy>() -> fn~(A) -> (A,uint) {
     // The only reason that the counter is generic is so that it closes
     // over both a type descriptor and some data.
     let v = ~[mut 0u];
-    ret fn~(a: A) -> (A,uint) {
+    return fn~(a: A) -> (A,uint) {
         let n = v[0];
         v[0] = n + 1u;
         (a, n)

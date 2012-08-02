@@ -9,9 +9,9 @@ export resolve_type_vars_in_expr;
 
 fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
     option<ty::t> {
-    if !ty::type_needs_infer(typ) { ret some(typ); }
+    if !ty::type_needs_infer(typ) { return some(typ); }
     alt resolve_type(fcx.infcx, typ, resolve_all | force_all) {
-      result::ok(new_type) { ret some(new_type); }
+      result::ok(new_type) { return some(new_type); }
       result::err(e) {
         if !fcx.ccx.tcx.sess.has_errors() {
             fcx.ccx.tcx.sess.span_err(
@@ -20,7 +20,7 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
                       for this expression: %s",
                      infer::fixup_err_to_str(e)})
         }
-        ret none;
+        return none;
       }
     }
 }
@@ -31,7 +31,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
     alt resolve_type_vars_in_type(fcx, sp, n_ty) {
       none {
         wbcx.success = false;
-        ret none;
+        return none;
       }
 
       some(t) {
@@ -44,14 +44,14 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
             for substs.tps.each |subst| {
                 alt resolve_type_vars_in_type(fcx, sp, subst) {
                   some(t) { vec::push(new_tps, t); }
-                  none { wbcx.success = false; ret none; }
+                  none { wbcx.success = false; return none; }
                 }
             }
             write_substs_to_tcx(tcx, id, new_tps);
           }
           none {}
         }
-        ret some(t);
+        return some(t);
       }
     }
 }
@@ -73,12 +73,12 @@ type wb_ctxt =
 type wb_vt = visit::vt<wb_ctxt>;
 
 fn visit_stmt(s: @ast::stmt, wbcx: wb_ctxt, v: wb_vt) {
-    if !wbcx.success { ret; }
+    if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     visit::visit_stmt(s, wbcx, v);
 }
 fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
-    if !wbcx.success { ret; }
+    if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     alt e.node {
       ast::expr_fn(_, decl, _, _) |
@@ -113,12 +113,12 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     visit::visit_expr(e, wbcx, v);
 }
 fn visit_block(b: ast::blk, wbcx: wb_ctxt, v: wb_vt) {
-    if !wbcx.success { ret; }
+    if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, b.span, b.node.id);
     visit::visit_block(b, wbcx, v);
 }
 fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
-    if !wbcx.success { ret; }
+    if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, p.span, p.id);
     debug!{"Type for pattern binding %s (id %d) resolved to %s",
            pat_to_str(p), p.id,
@@ -128,7 +128,7 @@ fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
     visit::visit_pat(p, wbcx, v);
 }
 fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
-    if !wbcx.success { ret; }
+    if !wbcx.success { return; }
     let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
     let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
     alt resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
@@ -170,7 +170,7 @@ fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     if wbcx.success {
         infer::resolve_borrowings(fcx.infcx);
     }
-    ret wbcx.success;
+    return wbcx.success;
 }
 
 fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
@@ -185,5 +185,5 @@ fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
     if wbcx.success {
         infer::resolve_borrowings(fcx.infcx);
     }
-    ret wbcx.success;
+    return wbcx.success;
 }

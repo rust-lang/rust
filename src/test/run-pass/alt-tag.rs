@@ -15,7 +15,7 @@ fn process(c: color) -> int {
       rgba(_, _, _, a) { debug!{"rgba"}; log(debug, a); x = a; }
       hsl(_, s, _) { debug!{"hsl"}; log(debug, s); x = s; }
     }
-    ret x;
+    return x;
 }
 
 fn main() {

@@ -47,7 +47,7 @@ fn parse_config(args: ~[~str]) -> config {
           err(f) { fail getopts::fail_str(f) }
         };
 
-    ret {compile_lib_path: getopts::opt_str(matches, ~"compile-lib-path"),
+    return {compile_lib_path: getopts::opt_str(matches, ~"compile-lib-path"),
          run_lib_path: getopts::opt_str(matches, ~"run-lib-path"),
          rustc_path: getopts::opt_str(matches, ~"rustc-path"),
          src_base: getopts::opt_str(matches, ~"src-base"),
@@ -143,7 +143,7 @@ fn make_tests(config: config) -> ~[test::test_desc] {
             vec::push(tests, make_test(config, file))
         }
     }
-    ret tests;
+    return tests;
 }
 
 fn is_test(config: config, testfile: ~str) -> bool {
@@ -163,7 +163,7 @@ fn is_test(config: config, testfile: ~str) -> bool {
         if str::starts_with(name, pre) { valid = false; }
     }
 
-    ret valid;
+    return valid;
 }
 
 fn make_test(config: config, testfile: ~str) ->

@@ -5,7 +5,7 @@
 fn len(v: ~[const int]) -> uint {
     let mut i = 0u;
     while i < vec::len(v) { i += 1u; }
-    ret i;
+    return i;
 }
 
 fn main() {

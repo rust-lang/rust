@@ -29,11 +29,11 @@ class cat : map<int, bool> {
     if self.how_hungry > 0 {
         error!{"OM NOM NOM"};
         self.how_hungry -= 2;
-        ret true;
+        return true;
     }
     else {
         error!{"Not hungry!"};
-        ret false;
+        return false;
     }
   }
 

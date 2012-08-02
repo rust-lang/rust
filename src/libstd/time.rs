@@ -40,7 +40,7 @@ fn get_time() -> timespec {
     let mut sec = 0i64;
     let mut nsec = 0i32;
     rustrt::get_time(sec, nsec);
-    ret {sec: sec, nsec: nsec};
+    return {sec: sec, nsec: nsec};
 }
 
 /**
@@ -58,7 +58,7 @@ fn precise_time_ns() -> u64 {
  * in seconds since an unspecified epoch.
  */
 fn precise_time_s() -> float {
-    ret (precise_time_ns() as float) / 1000000000.;
+    return (precise_time_ns() as float) / 1000000000.;
 }
 
 fn tzset() {
@@ -148,11 +148,11 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         let mut i = pos;
         for str::each(needle) |ch| {
             if s[i] != ch {
-                ret false;
+                return false;
             }
             i += 1u;
         }
-        ret true;
+        return true;
     }
 
     fn match_strs(s: ~str, pos: uint, strs: ~[(~str, i32)])
@@ -163,7 +163,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
             let (needle, value) = strs[i];
 
             if match_str(s, pos, needle) {
-                ret some((value, pos + str::len(needle)));
+                return some((value, pos + str::len(needle)));
             }
             i += 1u;
         }
@@ -186,7 +186,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                 value = value * 10_i32 + (ch as i32 - '0' as i32);
               }
               ' ' if ws { }
-              _ { ret none; }
+              _ { return none; }
             }
             i += 1u;
         }

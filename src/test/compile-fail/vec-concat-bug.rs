@@ -7,7 +7,7 @@ fn concat<T: copy>(v: ~[const ~[const T]]) -> ~[T] {
         r += inner;
     });
 
-    ret r;
+    return r;
 }
 
 fn main() {}

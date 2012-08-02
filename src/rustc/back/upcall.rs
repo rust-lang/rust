@@ -36,7 +36,7 @@ fn declare_upcalls(targ_cfg: @session::config,
         let mut arg_tys: ~[TypeRef] = ~[];
         for tys.each |t| { vec::push(arg_tys, t); }
         let fn_ty = T_fn(arg_tys, rv);
-        ret base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
+        return base::decl_cdecl_fn(llmod, prefix + name, fn_ty);
     }
     fn nothrow(f: ValueRef) -> ValueRef {
         base::set_no_unwind(f); f
@@ -47,7 +47,7 @@ fn declare_upcalls(targ_cfg: @session::config,
     let int_t = T_int(targ_cfg);
     let size_t = T_size_t(targ_cfg);
 
-    ret @{_fail: dv(~"fail", ~[T_ptr(T_i8()),
+    return @{_fail: dv(~"fail", ~[T_ptr(T_i8()),
                              T_ptr(T_i8()),
                              size_t]),
           trace: dv(~"trace", ~[T_ptr(T_i8()),

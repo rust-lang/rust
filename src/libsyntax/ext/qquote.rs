@@ -112,7 +112,7 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
     do cx.gather.swap |v| {
         vec::to_mut(std::sort::merge_sort(|a,b| a.lo < b.lo, v))
     };
-    ret cx;
+    return cx;
 }
 
 fn visit_aq<T:qq_helper>(node: T, constr: ~str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
@@ -155,7 +155,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     }
     let body = get_mac_body(ecx,_sp,body);
 
-    ret alt what {
+    return alt what {
       ~"crate" {finish(ecx, body, parse_crate)}
       ~"expr" {finish(ecx, body, parse_expr)}
       ~"ty" {finish(ecx, body, parse_ty)}
@@ -268,7 +268,7 @@ fn finish<T: qq_helper>
                                  ~[@~"syntax", @~"ext", @~"qquote",
                                   @node.get_fold_fn()])]);
     }
-    ret rcall;
+    return rcall;
 }
 
 fn replace<T>(node: T, repls: ~[fragment], ff: fn (ast_fold, T) -> T)
@@ -280,7 +280,7 @@ fn replace<T>(node: T, repls: ~[fragment], ff: fn (ast_fold, T) -> T)
                   fold_ty: |a,b,c|replace_ty(repls, a, b, c,
                                               aft.fold_ty)
                   with *aft};
-    ret ff(make_fold(f_pre), node);
+    return ff(make_fold(f_pre), node);
 }
 fn fold_crate(f: ast_fold, &&n: @ast::crate) -> @ast::crate {
     @f.fold_crate(*n)

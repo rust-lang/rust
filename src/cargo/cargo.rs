@@ -125,7 +125,7 @@ fn is_uuid(id: ~str) -> bool {
             }
 
             if !part.all(is_hex_digit) {
-                ret false;
+                return false;
             }
 
             alt i {
@@ -148,10 +148,10 @@ fn is_uuid(id: ~str) -> bool {
             }
         }
         if correct >= 5u {
-            ret true;
+            return true;
         }
     }
-    ret false;
+    return false;
 }
 
 #[test]
@@ -207,10 +207,10 @@ fn is_git_url(url: ~str) -> bool {
 
 fn assume_source_method(url: ~str) -> ~str {
     if is_git_url(url) {
-        ret ~"git";
+        return ~"git";
     }
     if str::starts_with(url, ~"file://") || os::path_exists(url) {
-        ret ~"file";
+        return ~"file";
     }
 
     ~"curl"
@@ -350,7 +350,7 @@ fn load_crate(filename: ~str) -> option<crate> {
                 crate_type: crate_type,
                 deps: deps })
         }
-        _ { ret none; }
+        _ { return none; }
     }
 }
 
@@ -367,7 +367,7 @@ fn rest(s: ~str, start: uint) -> ~str {
 }
 
 fn need_dir(s: ~str) {
-    if os::path_is_dir(s) { ret; }
+    if os::path_is_dir(s) { return; }
     if !os::make_dir(s, 493_i32 /* oct: 755 */) {
         fail fmt!{"can't make_dir %s", s};
     }
@@ -419,7 +419,7 @@ fn parse_source(name: ~str, j: json::json) -> source {
             if method == ~"file" {
                 url = os::make_absolute(url);
             }
-            ret @{
+            return @{
                 name: name,
                 mut url: url,
                 mut method: method,
@@ -432,7 +432,7 @@ fn parse_source(name: ~str, j: json::json) -> source {
 }
 
 fn try_parse_sources(filename: ~str, sources: map::hashmap<~str, source>) {
-    if !os::path_exists(filename)  { ret; }
+    if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
     alt json::from_str(result::get(c)) {
         ok(json::dict(j)) {
@@ -454,13 +454,13 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
                      + src.name + ~", '" + *n + ~"'"+
                      ~" is an invalid name (alphanumeric, underscores and" +
                      ~" dashes only)");
-                ret;
+                return;
             }
             *n
         }
         _ {
             warn(~"malformed source json: " + src.name + ~" (missing name)");
-            ret;
+            return;
         }
     };
 
@@ -470,13 +470,13 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
                 warn(~"malformed source json: "
                      + src.name + ~", '" + *n + ~"'"+
                      ~" is an invalid uuid");
-                ret;
+                return;
             }
             *n
         }
         _ {
             warn(~"malformed source json: " + src.name + ~" (missing uuid)");
-            ret;
+            return;
         }
     };
 
@@ -484,7 +484,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
         some(json::string(n)) { *n }
         _ {
             warn(~"malformed source json: " + src.name + ~" (missing url)");
-            ret;
+            return;
         }
     };
 
@@ -493,7 +493,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
         _ {
             warn(~"malformed source json: "
                  + src.name + ~" (missing method)");
-            ret;
+            return;
         }
     };
 
@@ -520,7 +520,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
         _ {
             warn(~"malformed source json: " + src.name
                  + ~" (missing description)");
-            ret;
+            return;
         }
     };
 
@@ -551,7 +551,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
 fn load_source_info(c: cargo, src: source) {
     let dir = path::connect(c.sourcedir, src.name);
     let srcfile = path::connect(dir, ~"source.json");
-    if !os::path_exists(srcfile) { ret; }
+    if !os::path_exists(srcfile) { return; }
     let srcstr = io::read_whole_file_str(srcfile);
     alt json::from_str(result::get(srcstr)) {
         ok(json::dict(s)) {
@@ -573,7 +573,7 @@ fn load_source_packages(c: cargo, src: source) {
     log(debug, ~"loading source: " + src.name);
     let dir = path::connect(c.sourcedir, src.name);
     let pkgfile = path::connect(dir, ~"packages.json");
-    if !os::path_exists(pkgfile) { ret; }
+    if !os::path_exists(pkgfile) { return; }
     let pkgstr = io::read_whole_file_str(pkgfile);
     alt json::from_str(result::get(pkgstr)) {
         ok(json::list(js)) {
@@ -718,7 +718,7 @@ fn run_in_buildpath(what: ~str, path: ~str, subdir: ~str, cf: ~str,
                                 ~[~"--out-dir", buildpath, cf] + extra_flags);
     if p.status != 0 {
         error(fmt!{"rustc failed: %d\n%s\n%s", p.status, p.err, p.out});
-        ret none;
+        return none;
     }
     some(buildpath)
 }
@@ -726,7 +726,7 @@ fn run_in_buildpath(what: ~str, path: ~str, subdir: ~str, cf: ~str,
 fn test_one_crate(_c: cargo, path: ~str, cf: ~str) {
   let buildpath = alt run_in_buildpath(~"testing", path, ~"/test", cf,
                                        ~[ ~"--test"]) {
-      none { ret; }
+      none { return; }
       some(bp) { bp }
   };
   run_programs(buildpath);
@@ -735,7 +735,7 @@ fn test_one_crate(_c: cargo, path: ~str, cf: ~str) {
 fn install_one_crate(c: cargo, path: ~str, cf: ~str) {
     let buildpath = alt run_in_buildpath(~"installing", path,
                                          ~"/build", cf, ~[]) {
-      none { ret; }
+      none { return; }
       some(bp) { bp }
     };
     let newv = os::list_dir_path(buildpath);
@@ -867,7 +867,7 @@ fn cargo_suggestion(c: cargo, fallback: fn())
     if c.sources.size() == 0u {
         error(~"no sources defined - you may wish to run " +
               ~"`cargo init`");
-        ret;
+        return;
     }
     fallback();
 }
@@ -882,12 +882,12 @@ fn install_uuid(c: cargo, wd: ~str, uuid: ~str) {
     if vec::len(ps) == 1u {
         let (sname, p) = copy ps[0];
         install_package(c, sname, wd, p);
-        ret;
+        return;
     } else if vec::len(ps) == 0u {
         cargo_suggestion(c, || {
             error(~"can't find package: " + uuid);
         });
-        ret;
+        return;
     }
     error(~"found multiple packages:");
     for ps.each |elt| {
@@ -906,12 +906,12 @@ fn install_named(c: cargo, wd: ~str, name: ~str) {
     if vec::len(ps) == 1u {
         let (sname, p) = copy ps[0];
         install_package(c, sname, wd, p);
-        ret;
+        return;
     } else if vec::len(ps) == 0u {
         cargo_suggestion(c, || {
             error(~"can't find package: " + name);
         });
-        ret;
+        return;
     }
     error(~"found multiple packages:");
     for ps.each |elt| {
@@ -929,7 +929,7 @@ fn install_uuid_specific(c: cargo, wd: ~str, src: ~str, uuid: ~str) {
                 install_package(c, src, wd, p);
                 true
             } else { false }
-        }) { ret; }
+        }) { return; }
       }
       _ { }
     }
@@ -945,7 +945,7 @@ fn install_named_specific(c: cargo, wd: ~str, src: ~str, name: ~str) {
                     install_package(c, src, wd, p);
                     true
                 } else { false }
-            }) { ret; }
+            }) { return; }
         }
         _ { }
     }
@@ -955,7 +955,7 @@ fn install_named_specific(c: cargo, wd: ~str, src: ~str, name: ~str) {
 fn cmd_uninstall(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
-        ret;
+        return;
     }
 
     let lib = c.libdir;
@@ -976,7 +976,7 @@ fn cmd_uninstall(c: cargo) {
                     } else {
                         error(~"could not uninstall: '" + full + ~"'");
                     }
-                    ret;
+                    return;
                 }
                 none { again; }
             }
@@ -994,7 +994,7 @@ fn cmd_uninstall(c: cargo) {
                     } else {
                         error(~"could not uninstall: '" + full + ~"'");
                     }
-                    ret;
+                    return;
                 }
                 none { again; }
             }
@@ -1008,7 +1008,7 @@ fn cmd_uninstall(c: cargo) {
                     } else {
                         error(~"could not uninstall: '" + full + ~"'");
                     }
-                    ret;
+                    return;
                 }
                 none { again; }
             }
@@ -1022,7 +1022,7 @@ fn install_query(c: cargo, wd: ~str, target: ~str) {
     alt c.dep_cache.find(target) {
         some(inst) {
             if inst {
-                ret;
+                return;
             }
         }
         none {}
@@ -1032,7 +1032,7 @@ fn install_query(c: cargo, wd: ~str, target: ~str) {
 
     if is_archive_path(target) {
         install_file(c, wd, target);
-        ret;
+        return;
     } else if is_git_url(target) {
         let reference = if c.opts.free.len() >= 4u {
             some(c.opts.free[3u])
@@ -1042,7 +1042,7 @@ fn install_query(c: cargo, wd: ~str, target: ~str) {
         install_git(c, wd, target, reference);
     } else if !valid_pkg_name(target) && has_archive_extension(target) {
         install_curl(c, wd, target);
-        ret;
+        return;
     } else {
         let mut ps = copy target;
 
@@ -1094,7 +1094,7 @@ fn cmd_install(c: cargo) unsafe {
         }
 
         install_source(c, wd);
-        ret;
+        return;
     }
 
     sync(c);
@@ -1127,7 +1127,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
 
     if !os::copy_file(path::connect(url, ~"packages.json"), pkgfile) {
         error(fmt!{"fetch for source %s (url %s) failed", name, url});
-        ret false;
+        return false;
     }
 
     if os::copy_file(path::connect(url, ~"source.json"), srcfile) {
@@ -1143,7 +1143,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
                                         ~[~"-f", ~"-s", ~"-o", keyfile, u]);
             if p.status != 0 {
                 error(fmt!{"fetch for source %s (key %s) failed", name, u});
-                ret false;
+                return false;
             }
             pgp::add(c.root, keyfile);
         }
@@ -1156,7 +1156,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
             if !r {
                 error(fmt!{"signature verification failed for source %s",
                           name});
-                ret false;
+                return false;
             }
 
             if has_src_file {
@@ -1165,7 +1165,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
                 if !e {
                     error(fmt!{"signature verification failed for source %s",
                               name});
-                    ret false;
+                    return false;
                 }
             }
         }
@@ -1186,7 +1186,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
 
     info(fmt!{"synced source: %s", name});
 
-    ret true;
+    return true;
 }
 
 fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
@@ -1227,20 +1227,20 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
 
         if p.status != 0 {
             error(fmt!{"fetch for source %s (url %s) failed", name, url});
-            ret false;
+            return false;
         }
     }
     else {
         if !os::change_dir(dir) {
             error(fmt!{"fetch for source %s (url %s) failed", name, url});
-            ret false;
+            return false;
         }
 
         let p = run::program_output(~"git", ~[~"pull"]);
 
         if p.status != 0 {
             error(fmt!{"fetch for source %s (url %s) failed", name, url});
-            ret false;
+            return false;
         }
     }
 
@@ -1253,7 +1253,7 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
             if p.status != 0 {
                 error(fmt!{"fetch for source %s (key %s) failed", name, u});
                 rollback(name, dir, false);
-                ret false;
+                return false;
             }
             pgp::add(c.root, keyfile);
         }
@@ -1267,7 +1267,7 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
                 error(fmt!{"signature verification failed for source %s",
                           name});
                 rollback(name, dir, false);
-                ret false;
+                return false;
             }
 
             if has_src_file {
@@ -1277,7 +1277,7 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
                     error(fmt!{"signature verification failed for source %s",
                               name});
                     rollback(name, dir, false);
-                    ret false;
+                    return false;
                 }
             }
         }
@@ -1288,7 +1288,7 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
 
     info(fmt!{"synced source: %s", name});
 
-    ret true;
+    return true;
 }
 
 fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
@@ -1313,7 +1313,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
 
     if p.status != 0 {
         error(fmt!{"fetch for source %s (url %s) failed", name, url});
-        ret false;
+        return false;
     }
     if smart {
         url = src.url + ~"/source.json";
@@ -1332,7 +1332,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
                                         ~[~"-f", ~"-s", ~"-o", keyfile, u]);
             if p.status != 0 {
                 error(fmt!{"fetch for source %s (key %s) failed", name, u});
-                ret false;
+                return false;
             }
             pgp::add(c.root, keyfile);
         }
@@ -1351,7 +1351,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
                         sigfile, url]);
             if p.status != 0 {
                 error(fmt!{"fetch for source %s (sig %s) failed", name, url});
-                ret false;
+                return false;
             }
 
             let r = pgp::verify(c.root, pkgfile, sigfile, f);
@@ -1359,7 +1359,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
             if !r {
                 error(fmt!{"signature verification failed for source %s",
                           name});
-                ret false;
+                return false;
             }
 
             if smart && has_src_file {
@@ -1371,7 +1371,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
                 if p.status != 0 {
                     error(fmt!{"fetch for source %s (sig %s) failed",
                           name, url});
-                    ret false;
+                    return false;
                 }
 
                 let e = pgp::verify(c.root, srcfile, srcsigfile, f);
@@ -1379,7 +1379,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
                 if !e {
                     error(~"signature verification failed for " +
                           ~"source " + name);
-                    ret false;
+                    return false;
                 }
             }
         }
@@ -1400,7 +1400,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
 
     info(fmt!{"synced source: %s", name});
 
-    ret true;
+    return true;
 }
 
 fn sync_one(c: cargo, src: source) {
@@ -1435,20 +1435,20 @@ fn cmd_init(c: cargo) {
         run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o", srcfile, srcurl]);
     if p.status != 0 {
         error(fmt!{"fetch of sources.json failed: %s", p.out});
-        ret;
+        return;
     }
 
     let p =
         run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o", sigfile, sigurl]);
     if p.status != 0 {
         error(fmt!{"fetch of sources.json.sig failed: %s", p.out});
-        ret;
+        return;
     }
 
     let r = pgp::verify(c.root, srcfile, sigfile, pgp::signing_key_fp());
     if !r {
         error(fmt!{"signature verification failed for '%s'", srcfile});
-        ret;
+        return;
     }
 
     copy_warn(srcfile, destsrcfile);
@@ -1518,7 +1518,7 @@ fn cmd_list(c: cargo) {
 fn cmd_search(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         cmd_usage();
-        ret;
+        return;
     }
 
     sync(c);
@@ -1559,7 +1559,7 @@ fn dump_cache(c: cargo) {
 }
 fn dump_sources(c: cargo) {
     if c.sources.size() < 1u {
-        ret;
+        return;
     }
 
     need_dir(c.root);
@@ -1618,7 +1618,7 @@ fn cmd_sources(c: cargo) {
             info(fmt!{"%s (%s) via %s",
                       v.name, v.url, v.method});
         }
-        ret;
+        return;
     }
 
     let action = c.opts.free[2u];
@@ -1634,7 +1634,7 @@ fn cmd_sources(c: cargo) {
         ~"add" {
             if vec::len(c.opts.free) < 5u {
                 cmd_usage();
-                ret;
+                return;
             }
 
             let name = c.opts.free[3u];
@@ -1642,7 +1642,7 @@ fn cmd_sources(c: cargo) {
 
             if !valid_pkg_name(name) {
                 error(fmt!{"'%s' is an invalid source name", name});
-                ret;
+                return;
             }
 
             alt c.sources.find(name) {
@@ -1665,14 +1665,14 @@ fn cmd_sources(c: cargo) {
         ~"remove" {
             if vec::len(c.opts.free) < 4u {
                 cmd_usage();
-                ret;
+                return;
             }
 
             let name = c.opts.free[3u];
 
             if !valid_pkg_name(name) {
                 error(fmt!{"'%s' is an invalid source name", name});
-                ret;
+                return;
             }
 
             alt c.sources.find(name) {
@@ -1688,7 +1688,7 @@ fn cmd_sources(c: cargo) {
         ~"set-url" {
             if vec::len(c.opts.free) < 5u {
                 cmd_usage();
-                ret;
+                return;
             }
 
             let name = c.opts.free[3u];
@@ -1696,7 +1696,7 @@ fn cmd_sources(c: cargo) {
 
             if !valid_pkg_name(name) {
                 error(fmt!{"'%s' is an invalid source name", name});
-                ret;
+                return;
             }
 
             alt c.sources.find(name) {
@@ -1719,7 +1719,7 @@ fn cmd_sources(c: cargo) {
         ~"set-method" {
             if vec::len(c.opts.free) < 5u {
                 cmd_usage();
-                ret;
+                return;
             }
 
             let name = c.opts.free[3u];
@@ -1727,7 +1727,7 @@ fn cmd_sources(c: cargo) {
 
             if !valid_pkg_name(name) {
                 error(fmt!{"'%s' is an invalid source name", name});
-                ret;
+                return;
             }
 
             alt c.sources.find(name) {
@@ -1753,7 +1753,7 @@ fn cmd_sources(c: cargo) {
         ~"rename" {
             if vec::len(c.opts.free) < 5u {
                 cmd_usage();
-                ret;
+                return;
             }
 
             let name = c.opts.free[3u];
@@ -1761,11 +1761,11 @@ fn cmd_sources(c: cargo) {
 
             if !valid_pkg_name(name) {
                 error(fmt!{"'%s' is an invalid source name", name});
-                ret;
+                return;
             }
             if !valid_pkg_name(newn) {
                 error(fmt!{"'%s' is an invalid source name", newn});
-                ret;
+                return;
             }
 
             alt c.sources.find(name) {
@@ -1879,7 +1879,7 @@ fn main(argv: ~[~str]) {
 
     if vec::len(o.free) < 2u {
         cmd_usage();
-        ret;
+        return;
     }
     if o.help {
         alt o.free[1] {
@@ -1891,11 +1891,11 @@ fn main(argv: ~[~str]) {
             ~"sources" { cmd_usage_sources(); }
             _ { cmd_usage(); }
         }
-        ret;
+        return;
     }
     if o.free[1] == ~"usage" {
         cmd_usage();
-        ret;
+        return;
     }
 
     let mut c = configure(o);

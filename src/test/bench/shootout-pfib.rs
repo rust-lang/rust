@@ -41,7 +41,7 @@ fn fib(n: int) -> int {
     let p = port();
     let ch = chan(p);
     let t = task::spawn(|| pfib(ch, n) );
-    ret recv(p);
+    return recv(p);
 }
 
 type config = {stress: bool};
@@ -53,7 +53,7 @@ fn parse_opts(argv: ~[~str]) -> config {
 
 
     alt getopts::getopts(opt_args, opts) {
-      ok(m) { ret {stress: getopts::opt_present(m, ~"stress")} }
+      ok(m) { return {stress: getopts::opt_present(m, ~"stress")} }
       err(_) { fail; }
     }
 }

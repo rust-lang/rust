@@ -9,7 +9,7 @@ fn test_generic<T: copy>(expected: ~T, eq: compare<T>) {
 }
 
 fn test_box() {
-    fn compare_box(b1: ~bool, b2: ~bool) -> bool { ret *b1 == *b2; }
+    fn compare_box(b1: ~bool, b2: ~bool) -> bool { return *b1 == *b2; }
     test_generic::<bool>(~true, compare_box);
 }
 

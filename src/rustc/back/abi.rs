@@ -66,13 +66,13 @@ const worst_case_glue_call_args: uint = 7u;
 
 const abi_version: uint = 1u;
 
-fn memcpy_glue_name() -> ~str { ret ~"rust_memcpy_glue"; }
+fn memcpy_glue_name() -> ~str { return ~"rust_memcpy_glue"; }
 
-fn bzero_glue_name() -> ~str { ret ~"rust_bzero_glue"; }
+fn bzero_glue_name() -> ~str { return ~"rust_bzero_glue"; }
 
-fn yield_glue_name() -> ~str { ret ~"rust_yield_glue"; }
+fn yield_glue_name() -> ~str { return ~"rust_yield_glue"; }
 
-fn no_op_type_glue_name() -> ~str { ret ~"rust_no_op_type_glue"; }
+fn no_op_type_glue_name() -> ~str { return ~"rust_no_op_type_glue"; }
 //
 // Local Variables:
 // mode: rust

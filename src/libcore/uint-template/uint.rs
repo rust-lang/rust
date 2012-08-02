@@ -14,8 +14,8 @@ type T = uint;
  */
 pure fn div_ceil(x: uint, y: uint) -> uint {
     let div = div(x, y);
-    if x % y == 0u { ret div;}
-    else { ret div + 1u; }
+    if x % y == 0u { return div;}
+    else { return div + 1u; }
 }
 
 /**
@@ -32,8 +32,8 @@ pure fn div_ceil(x: uint, y: uint) -> uint {
  */
 pure fn div_round(x: uint, y: uint) -> uint {
     let div = div(x, y);
-    if x % y * 2u  < y { ret div;}
-    else { ret div + 1u; }
+    if x % y * 2u  < y { return div;}
+    else { return div + 1u; }
 }
 
 /**
@@ -51,10 +51,10 @@ pure fn div_round(x: uint, y: uint) -> uint {
  * The smallest integer `q` such that `x/y <= q`. This
  * is either `x/y` or `x/y + 1`.
  */
-pure fn div_floor(x: uint, y: uint) -> uint { ret x / y; }
+pure fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
 /// Produce a uint suitable for use in a hash table
-pure fn hash(&&x: uint) -> uint { ret x; }
+pure fn hash(&&x: uint) -> uint { return x; }
 
 /**
  * Iterate over the range [`lo`..`hi`), or stop when requested
@@ -74,10 +74,10 @@ pure fn hash(&&x: uint) -> uint { ret x; }
 pure fn iterate(lo: uint, hi: uint, it: fn(uint) -> bool) -> bool {
     let mut i = lo;
     while i < hi {
-        if (!it(i)) { ret false; }
+        if (!it(i)) { return false; }
         i += 1u;
     }
-    ret true;
+    return true;
 }
 
 /// Returns the smallest power of 2 greater than or equal to `n`
@@ -87,7 +87,7 @@ fn next_power_of_two(n: uint) -> uint {
     let mut tmp: uint = n - 1u;
     let mut shift: uint = 1u;
     while shift <= halfbits { tmp |= tmp >> shift; shift <<= 1u; }
-    ret tmp + 1u;
+    return tmp + 1u;
 }
 
 #[test]

@@ -3,9 +3,9 @@
 
 fn coerce(b: fn()) -> extern fn() {
     fn lol(f: extern fn(fn()) -> extern fn(),
-           g: fn()) -> extern fn() { ret f(g); }
-    fn fn_id(f: extern fn()) -> extern fn() { ret f }
-    ret lol(fn_id, b);
+           g: fn()) -> extern fn() { return f(g); }
+    fn fn_id(f: extern fn()) -> extern fn() { return f }
+    return lol(fn_id, b);
     //~^ ERROR mismatched types: expected `extern fn(fn()) -> extern fn()`
 }
 

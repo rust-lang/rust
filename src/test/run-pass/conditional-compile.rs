@@ -39,7 +39,7 @@ class r {
 mod m {
     // This needs to parse but would fail in typeck. Since it's not in
     // the current config it should not be typechecked.
-    fn bogus() { ret 0; }
+    fn bogus() { return 0; }
 }
 
 mod m {

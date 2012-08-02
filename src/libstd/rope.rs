@@ -33,7 +33,7 @@ type rope = node::root;
 
 /// Create an empty rope
 fn empty() -> rope {
-   ret node::empty;
+   return node::empty;
 }
 
 /**
@@ -54,7 +54,7 @@ fn empty() -> rope {
  * * the function runs in linear time.
  */
 fn of_str(str: @~str) -> rope {
-    ret of_substr(str, 0u, str::len(*str));
+    return of_substr(str, 0u, str::len(*str));
 }
 
 /**
@@ -80,9 +80,9 @@ fn of_str(str: @~str) -> rope {
  * * this function fails if `byte_offset` or `byte_len` do not match `str`.
  */
 fn of_substr(str: @~str, byte_offset: uint, byte_len: uint) -> rope {
-    if byte_len == 0u { ret node::empty; }
+    if byte_len == 0u { return node::empty; }
     if byte_offset + byte_len  > str::len(*str) { fail; }
-    ret node::content(node::of_substr(str, byte_offset, byte_len));
+    return node::content(node::of_substr(str, byte_offset, byte_len));
 }
 
 /*
@@ -97,7 +97,7 @@ Section: Adding things to a rope
  * * this function executes in near-constant time
  */
 fn append_char(rope: rope, char: char) -> rope {
-    ret append_str(rope, @str::from_chars(~[char]));
+    return append_str(rope, @str::from_chars(~[char]));
 }
 
 /**
@@ -108,7 +108,7 @@ fn append_char(rope: rope, char: char) -> rope {
  * * this function executes in near-linear time
  */
 fn append_str(rope: rope, str: @~str) -> rope {
-    ret append_rope(rope, of_str(str))
+    return append_rope(rope, of_str(str))
 }
 
 /**
@@ -118,7 +118,7 @@ fn append_str(rope: rope, str: @~str) -> rope {
  * * this function executes in near-constant time
  */
 fn prepend_char(rope: rope, char: char) -> rope {
-    ret prepend_str(rope, @str::from_chars(~[char]));
+    return prepend_str(rope, @str::from_chars(~[char]));
 }
 
 /**
@@ -128,18 +128,18 @@ fn prepend_char(rope: rope, char: char) -> rope {
  * * this function executes in near-linear time
  */
 fn prepend_str(rope: rope, str: @~str) -> rope {
-    ret append_rope(of_str(str), rope)
+    return append_rope(of_str(str), rope)
 }
 
 /// Concatenate two ropes
 fn append_rope(left: rope, right: rope) -> rope {
    alt(left) {
-     node::empty { ret right; }
+     node::empty { return right; }
      node::content(left_content) {
        alt(right) {
-         node::empty { ret left; }
+         node::empty { return left; }
      node::content(right_content) {
-           ret node::content(node::concat2(left_content, right_content));
+           return node::content(node::concat2(left_content, right_content));
      }
        }
      }
@@ -156,7 +156,7 @@ fn append_rope(left: rope, right: rope) -> rope {
 fn concat(v: ~[rope]) -> rope {
     //Copy `v` into a mut vector
     let mut len = vec::len(v);
-    if len == 0u { ret node::empty; }
+    if len == 0u { return node::empty; }
     let ropes = vec::to_mut(vec::from_elem(len, v[0]));
     for uint::range(1u, len) |i| {
        ropes[i] = v[i];
@@ -176,7 +176,7 @@ fn concat(v: ~[rope]) -> rope {
     }
 
     //Return final rope
-    ret ropes[0];
+    return ropes[0];
 }
 
 
@@ -198,7 +198,7 @@ Section: Keeping ropes healthy
  */
 fn bal(rope:rope) -> rope {
     alt(rope) {
-      node::empty { ret rope }
+      node::empty { return rope }
       node::content(x) {
         alt(node::bal(x)) {
           option::none   { rope }
@@ -227,13 +227,13 @@ Section: Transforming ropes
  *   valid positions in rope
  */
 fn sub_chars(rope: rope, char_offset: uint, char_len: uint) -> rope {
-    if char_len == 0u { ret node::empty; }
+    if char_len == 0u { return node::empty; }
     alt(rope) {
       node::empty { fail }
       node::content(node) {
         if char_len > node::char_len(node) { fail }
         else {
-            ret node::content(node::sub_chars(node, char_offset, char_len))
+            return node::content(node::sub_chars(node, char_offset, char_len))
         }
       }
     }
@@ -253,13 +253,13 @@ fn sub_chars(rope: rope, char_offset: uint, char_len: uint) -> rope {
  *   valid positions in rope
  */
 fn sub_bytes(rope: rope, byte_offset: uint, byte_len: uint) -> rope {
-    if byte_len == 0u { ret node::empty; }
+    if byte_len == 0u { return node::empty; }
     alt(rope) {
       node::empty { fail }
       node::content(node) {
         if byte_len > node::byte_len(node) { fail }
         else {
-            ret node::content(node::sub_bytes(node, byte_offset, byte_len))
+            return node::content(node::sub_bytes(node, byte_offset, byte_len))
         }
       }
     }
@@ -281,11 +281,11 @@ Section: Comparing ropes
  */
 fn cmp(left: rope, right: rope) -> int {
     alt((left, right)) {
-      (node::empty, node::empty) { ret 0; }
-      (node::empty, _)     { ret -1;}
-      (_, node::empty)     { ret  1;}
+      (node::empty, node::empty) { return 0; }
+      (node::empty, _)     { return -1;}
+      (_, node::empty)     { return  1;}
       (node::content(a), node::content(b)) {
-        ret node::cmp(a, b);
+        return node::cmp(a, b);
       }
     }
 }
@@ -295,7 +295,7 @@ fn cmp(left: rope, right: rope) -> int {
  * their structure), `false` otherwise
  */
 fn eq(left: rope, right: rope) -> bool {
-    ret cmp(left, right) == 0;
+    return cmp(left, right) == 0;
 }
 
 /**
@@ -310,7 +310,7 @@ fn eq(left: rope, right: rope) -> bool {
  * structure), `false` otherwise
  */
 fn le(left: rope, right: rope) -> bool {
-    ret cmp(left, right) <= 0;
+    return cmp(left, right) <= 0;
 }
 
 /**
@@ -325,7 +325,7 @@ fn le(left: rope, right: rope) -> bool {
  * structure), `false` otherwise
  */
 fn lt(left: rope, right: rope) -> bool {
-    ret cmp(left, right) < 0;
+    return cmp(left, right) < 0;
 }
 
 /**
@@ -340,7 +340,7 @@ fn lt(left: rope, right: rope) -> bool {
  * structure), `false` otherwise
  */
 fn ge(left: rope, right: rope) -> bool {
-    ret cmp(left, right) >= 0;
+    return cmp(left, right) >= 0;
 }
 
 /**
@@ -355,7 +355,7 @@ fn ge(left: rope, right: rope) -> bool {
  * structure), `false` otherwise
  */
 fn gt(left: rope, right: rope) -> bool {
-    ret cmp(left, right) > 0;
+    return cmp(left, right) > 0;
 }
 
 /*
@@ -384,8 +384,8 @@ Section: Iterating
  */
 fn loop_chars(rope: rope, it: fn(char) -> bool) -> bool {
    alt(rope) {
-      node::empty { ret true }
-      node::content(x) { ret node::loop_chars(x, it) }
+      node::empty { return true }
+      node::content(x) { return node::loop_chars(x, it) }
    }
 }
 
@@ -427,8 +427,8 @@ fn iter_chars(rope: rope, it: fn(char)) {
  */
 fn loop_leaves(rope: rope, it: fn(node::leaf) -> bool) -> bool{
    alt(rope) {
-      node::empty { ret true }
-      node::content(x) {ret node::loop_leaves(x, it)}
+      node::empty { return true }
+      node::content(x) {return node::loop_leaves(x, it)}
    }
 }
 
@@ -436,23 +436,23 @@ mod iterator {
     mod leaf {
         fn start(rope: rope) -> node::leaf_iterator::t {
             alt(rope) {
-              node::empty     { ret node::leaf_iterator::empty() }
-              node::content(x) { ret node::leaf_iterator::start(x) }
+              node::empty     { return node::leaf_iterator::empty() }
+              node::content(x) { return node::leaf_iterator::start(x) }
             }
         }
         fn next(it: node::leaf_iterator::t) -> option<node::leaf> {
-            ret node::leaf_iterator::next(it);
+            return node::leaf_iterator::next(it);
         }
     }
     mod char {
         fn start(rope: rope) -> node::char_iterator::t {
             alt(rope) {
-              node::empty   { ret node::char_iterator::empty() }
-              node::content(x) { ret node::char_iterator::start(x) }
+              node::empty   { return node::char_iterator::empty() }
+              node::content(x) { return node::char_iterator::start(x) }
             }
         }
         fn next(it: node::char_iterator::t) -> option<char> {
-            ret node::char_iterator::next(it)
+            return node::char_iterator::next(it)
         }
     }
 }
@@ -474,8 +474,8 @@ mod iterator {
  */
 fn height(rope: rope) -> uint {
    alt(rope) {
-      node::empty    { ret 0u; }
-      node::content(x) { ret node::height(x); }
+      node::empty    { return 0u; }
+      node::content(x) { return node::height(x); }
    }
 }
 
@@ -490,8 +490,8 @@ fn height(rope: rope) -> uint {
  */
 pure fn char_len(rope: rope) -> uint {
    alt(rope) {
-     node::empty           { ret 0u; }
-     node::content(x)       { ret node::char_len(x) }
+     node::empty           { return 0u; }
+     node::content(x)       { return node::char_len(x) }
    }
 }
 
@@ -504,8 +504,8 @@ pure fn char_len(rope: rope) -> uint {
  */
 pure fn byte_len(rope: rope) -> uint {
    alt(rope) {
-     node::empty           { ret 0u; }
-     node::content(x)       { ret node::byte_len(x) }
+     node::empty           { return 0u; }
+     node::content(x)       { return node::byte_len(x) }
    }
 }
 
@@ -528,7 +528,7 @@ pure fn byte_len(rope: rope) -> uint {
 fn char_at(rope: rope, pos: uint) -> char {
    alt(rope) {
       node::empty { fail }
-      node::content(x) { ret node::char_at(x, pos) }
+      node::content(x) { return node::char_at(x, pos) }
    }
 }
 
@@ -628,7 +628,7 @@ mod node {
      * the length of `str`.
      */
     fn of_str(str: @~str) -> @node {
-        ret of_substr(str, 0u, str::len(*str));
+        return of_substr(str, 0u, str::len(*str));
     }
 
     /**
@@ -649,7 +649,7 @@ mod node {
      * valid positions in `str`
      */
     fn of_substr(str: @~str, byte_start: uint, byte_len: uint) -> @node {
-        ret of_substr_unsafer(str, byte_start, byte_len,
+        return of_substr_unsafer(str, byte_start, byte_len,
                               str::count_chars(*str, byte_start, byte_len));
     }
 
@@ -683,7 +683,7 @@ mod node {
                 char_len:    char_len,
                 content:     str});
         if char_len <= hint_max_leaf_char_len {
-            ret candidate;
+            return candidate;
         } else {
             //Firstly, split `str` in slices of hint_max_leaf_char_len
             let mut leaves = uint::div_ceil(char_len, hint_max_leaf_char_len);
@@ -728,22 +728,22 @@ mod node {
                 }
                 leaves = uint::div_ceil(leaves, 2u);
             }
-            ret nodes[0u];
+            return nodes[0u];
         }
     }
 
     pure fn byte_len(node: @node) -> uint {
         //FIXME (#2744): Could we do this without the pattern-matching?
         alt(*node) {
-          leaf(y)  { ret y.byte_len; }
-          concat(y){ ret y.byte_len; }
+          leaf(y)  { return y.byte_len; }
+          concat(y){ return y.byte_len; }
         }
     }
 
     pure fn char_len(node: @node) -> uint {
         alt(*node) {
-          leaf(y)   { ret y.char_len; }
-          concat(y) { ret y.char_len; }
+          leaf(y)   { return y.char_len; }
+          concat(y) { return y.char_len; }
         }
     }
 
@@ -796,7 +796,7 @@ mod node {
             }
             len = uint::div_ceil(len, 2u);
         }
-        ret forest[0];
+        return forest[0];
     }
 
     fn serialize_node(node: @node) -> ~str unsafe {
@@ -820,7 +820,7 @@ mod node {
               }
             }
         }
-        ret unsafe::transmute(buf);
+        return unsafe::transmute(buf);
     }
 
     /**
@@ -832,9 +832,9 @@ mod node {
      */
     fn flatten(node: @node) -> @node unsafe {
         alt(*node) {
-          leaf(_) { ret node }
+          leaf(_) { return node }
           concat(x) {
-            ret @leaf({
+            return @leaf({
                 byte_offset: 0u,
                 byte_len:    x.byte_len,
                 char_len:    x.char_len,
@@ -860,7 +860,7 @@ mod node {
      *    as `node` bot lower height and/or fragmentation.
      */
     fn bal(node: @node) -> option<@node> {
-        if height(node) < hint_max_node_height { ret option::none; }
+        if height(node) < hint_max_node_height { return option::none; }
         //1. Gather all leaves as a forest
         let mut forest = ~[mut];
         let it = leaf_iterator::start(node);
@@ -872,7 +872,7 @@ mod node {
         }
         //2. Rebuild tree from forest
         let root = @*tree_from_forest_destructive(forest);
-        ret option::some(root);
+        return option::some(root);
 
     }
 
@@ -900,13 +900,13 @@ mod node {
         let mut byte_offset = byte_offset;
         loop {
             if byte_offset == 0u && byte_len == node::byte_len(node) {
-                ret node;
+                return node;
             }
             alt(*node) {
               node::leaf(x) {
                 let char_len =
                     str::count_chars(*x.content, byte_offset, byte_len);
-                ret @leaf({byte_offset: byte_offset,
+                return @leaf({byte_offset: byte_offset,
                                 byte_len:    byte_len,
                                 char_len:    char_len,
                                 content:     x.content});
@@ -925,7 +925,7 @@ mod node {
                             sub_bytes(x.left, byte_offset, left_len);
                         let right_result =
                             sub_bytes(x.right, 0u, left_len - byte_offset);
-                        ret concat2(left_result, right_result);
+                        return concat2(left_result, right_result);
                     }
                 } else {
                     //Case 3: Everything fits in x.right
@@ -963,19 +963,19 @@ mod node {
             alt(*node) {
               node::leaf(x) {
                 if char_offset == 0u && char_len == x.char_len {
-                    ret node;
+                    return node;
                 }
                 let byte_offset =
                     str::count_bytes(*x.content, 0u, char_offset);
                 let byte_len    =
                     str::count_bytes(*x.content, byte_offset, char_len);
-                ret @leaf({byte_offset: byte_offset,
+                return @leaf({byte_offset: byte_offset,
                            byte_len:    byte_len,
                            char_len:    char_len,
                            content:     x.content});
               }
               node::concat(x) {
-                if char_offset == 0u && char_len == x.char_len {ret node;}
+                if char_offset == 0u && char_len == x.char_len {return node;}
                 let left_len : uint = node::char_len(x.left);
                 if char_offset <= left_len {
                     if char_offset + char_len <= left_len {
@@ -989,7 +989,7 @@ mod node {
                             sub_chars(x.left, char_offset, left_len);
                         let right_result =
                             sub_chars(x.right, 0u, left_len - char_offset);
-                        ret concat2(left_result, right_result);
+                        return concat2(left_result, right_result);
                     }
                 } else {
                     //Case 3: Everything fits in x.right, tail call
@@ -1002,7 +1002,7 @@ mod node {
     }
 
     fn concat2(left: @node, right: @node) -> @node {
-        ret @concat({left    : left,
+        return @concat({left    : left,
                      right   : right,
              char_len: char_len(left) + char_len(right),
                      byte_len: byte_len(left) + byte_len(right),
@@ -1012,8 +1012,8 @@ mod node {
 
     fn height(node: @node) -> uint {
         alt(*node) {
-          leaf(_)   { ret 0u; }
-          concat(x) { ret x.height; }
+          leaf(_)   { return 0u; }
+          concat(x) { return x.height; }
         }
     }
 
@@ -1037,11 +1037,11 @@ mod node {
               }
             }
         }
-        ret result;
+        return result;
     }
 
     fn loop_chars(node: @node, it: fn(char) -> bool) -> bool {
-        ret loop_leaves(node,|leaf| {
+        return loop_leaves(node,|leaf| {
             str::all_between(*leaf.content,
                              leaf.byte_offset,
                              leaf.byte_len, it)
@@ -1067,13 +1067,13 @@ mod node {
         loop {
             alt(*current) {
               leaf(x) {
-                ret it(x);
+                return it(x);
               }
               concat(x) {
                 if loop_leaves(x.left, it) { //non tail call
                     current = x.right;       //tail call
                 } else {
-                    ret false;
+                    return false;
                 }
               }
             }
@@ -1103,7 +1103,7 @@ mod node {
         loop {
             alt *node {
               leaf(x) {
-                ret str::char_at(*x.content, pos);
+                return str::char_at(*x.content, pos);
               }
               concat({left, right, _}) {
                 let left_len = char_len(left);
@@ -1122,19 +1122,19 @@ mod node {
 
         fn empty() -> t {
             let stack : ~[mut @node] = ~[mut];
-            ret {stack: stack, mut stackpos: -1}
+            return {stack: stack, mut stackpos: -1}
         }
 
         fn start(node: @node) -> t {
             let stack = vec::to_mut(vec::from_elem(height(node)+1u, node));
-            ret {
+            return {
                 stack:             stack,
                 mut stackpos:  0
             }
         }
 
         fn next(it: t) -> option<leaf> {
-            if it.stackpos < 0 { ret option::none; }
+            if it.stackpos < 0 { return option::none; }
             loop {
                 let current = it.stack[it.stackpos];
                 it.stackpos -= 1;
@@ -1146,7 +1146,7 @@ mod node {
                     it.stack[it.stackpos] = x.left;
                   }
                   leaf(x) {
-                    ret option::some(x);
+                    return option::some(x);
                   }
                 }
             };
@@ -1161,7 +1161,7 @@ mod node {
         };
 
         fn start(node: @node) -> t {
-            ret {
+            return {
                 leaf_iterator: leaf_iterator::start(node),
                 mut leaf:          option::none,
                 mut leaf_byte_pos: 0u
@@ -1169,7 +1169,7 @@ mod node {
         }
 
         fn empty() -> t {
-            ret {
+            return {
                 leaf_iterator: leaf_iterator::empty(),
                 mut leaf:  option::none,
                 mut leaf_byte_pos: 0u
@@ -1179,7 +1179,7 @@ mod node {
         fn next(it: t) -> option<char> {
             loop {
                 alt(get_current_or_next_leaf(it)) {
-                  option::none { ret option::none; }
+                  option::none { return option::none; }
                   option::some(_) {
                     let next_char = get_next_char_in_leaf(it);
                     alt(next_char) {
@@ -1187,7 +1187,7 @@ mod node {
                         again;
                       }
                       option::some(_) {
-                        ret next_char;
+                        return next_char;
                       }
                     }
                   }
@@ -1197,15 +1197,15 @@ mod node {
 
         fn get_current_or_next_leaf(it: t) -> option<leaf> {
             alt(it.leaf) {
-              option::some(_) { ret it.leaf }
+              option::some(_) { return it.leaf }
               option::none {
                 let next = leaf_iterator::next(it.leaf_iterator);
                 alt(next) {
-                  option::none { ret option::none }
+                  option::none { return option::none }
                   option::some(_) {
                     it.leaf          = next;
                     it.leaf_byte_pos = 0u;
-                    ret next;
+                    return next;
                   }
                 }
               }
@@ -1214,18 +1214,18 @@ mod node {
 
         fn get_next_char_in_leaf(it: t) -> option<char> {
             alt copy it.leaf {
-              option::none { ret option::none }
+              option::none { return option::none }
               option::some(aleaf) {
                 if it.leaf_byte_pos >= aleaf.byte_len {
                     //We are actually past the end of the leaf
                     it.leaf = option::none;
-                    ret option::none
+                    return option::none
                 } else {
                     let {ch, next} =
                         str::char_range_at(*aleaf.content,
                                      it.leaf_byte_pos + aleaf.byte_offset);
                     it.leaf_byte_pos = next - aleaf.byte_offset;
-                    ret option::some(ch)
+                    return option::some(ch)
                 }
               }
             }
@@ -1239,7 +1239,7 @@ mod tests {
     //Utility function, used for sanity check
     fn rope_to_string(r: rope) -> ~str {
         alt(r) {
-          node::empty { ret ~"" }
+          node::empty { return ~"" }
           node::content(x) {
             let str = @mut ~"";
             fn aux(str: @mut ~str, node: @node::node) unsafe {
@@ -1256,7 +1256,7 @@ mod tests {
                 }
             }
             aux(str, x);
-            ret *str
+            return *str
           }
         }
     }

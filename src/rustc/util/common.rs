@@ -11,7 +11,7 @@ fn indent<R>(op: fn() -> R) -> R {
     debug!{">>"};
     let r <- op();
     debug!{"<< (Result = %?)", r};
-    ret r;
+    return r;
 }
 
 class _indenter {
@@ -27,12 +27,12 @@ fn indenter() -> _indenter {
 
 type flag = hashmap<~str, ()>;
 
-fn field_expr(f: ast::field) -> @ast::expr { ret f.node.expr; }
+fn field_expr(f: ast::field) -> @ast::expr { return f.node.expr; }
 
 fn field_exprs(fields: ~[ast::field]) -> ~[@ast::expr] {
     let mut es = ~[];
     for fields.each |f| { vec::push(es, f.node.expr); }
-    ret es;
+    return es;
 }
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
@@ -52,7 +52,7 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
     let v = visit::mk_vt(@{visit_expr: visit_expr
                            with *visit::default_visitor()});
     visit::visit_block(b, rs, v);
-    ret *rs;
+    return *rs;
 }
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {
@@ -68,7 +68,7 @@ fn may_break(b: ast::blk) -> bool {
 }
 
 fn local_rhs_span(l: @ast::local, def: span) -> span {
-    alt l.node.init { some(i) { ret i.expr.span; } _ { ret def; } }
+    alt l.node.init { some(i) { return i.expr.span; } _ { return def; } }
 }
 
 fn is_main_name(path: syntax::ast_map::path) -> bool {

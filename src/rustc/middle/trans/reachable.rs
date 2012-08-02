@@ -59,9 +59,9 @@ fn traverse_export(cx: ctx, exp_id: node_id) {
 }
 
 fn traverse_def_id(cx: ctx, did: def_id) {
-    if did.crate != local_crate { ret; }
+    if did.crate != local_crate { return; }
     let n = alt cx.tcx.items.find(did.node) {
-        none { ret; } // This can happen for self, for example
+        none { return; } // This can happen for self, for example
         some(n) { n }
     };
     alt n {
@@ -85,7 +85,7 @@ fn traverse_public_mod(cx: ctx, m: _mod) {
 }
 
 fn traverse_public_item(cx: ctx, item: @item) {
-    if cx.rmap.contains_key(item.id) { ret; }
+    if cx.rmap.contains_key(item.id) { return; }
     cx.rmap.insert(item.id, ());
     alt item.node {
       item_mod(m) { traverse_public_mod(cx, m); }
@@ -151,7 +151,7 @@ fn mk_ty_visitor() -> visit::vt<ctx> {
 }
 
 fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
-    if cx.rmap.contains_key(ty.id) { ret; }
+    if cx.rmap.contains_key(ty.id) { return; }
     cx.rmap.insert(ty.id, ());
 
     alt ty.node {

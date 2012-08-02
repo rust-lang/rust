@@ -779,7 +779,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
                     debug!{"ERROR sock_buf as io::reader.read err %? %?",
                            err_data.err_name, err_data.err_msg};
 
-                    ret 0;
+                    return 0;
                 }
             }
             else {
@@ -1581,7 +1581,7 @@ mod test {
             }
         }
         let ret_val = server_ch.recv();
-        log(debug, fmt!{"SERVER: exited and got ret val: '%s'", ret_val});
+        log(debug, fmt!{"SERVER: exited and got return val: '%s'", ret_val});
         ret_val
     }
 

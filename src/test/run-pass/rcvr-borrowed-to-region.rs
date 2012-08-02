@@ -5,7 +5,7 @@ trait get {
 // Note: impl on a slice
 impl foo of get for &int {
     fn get() -> int {
-        ret *self;
+        return *self;
     }
 }
 

@@ -37,7 +37,7 @@ impl methods for reflector {
         let tr = type_of::type_of(self.bcx.ccx(), t);
         let s = shape::llsize_of_real(self.bcx.ccx(), tr);
         let a = shape::llalign_of_min(self.bcx.ccx(), tr);
-        ret ~[self.c_uint(s),
+        return ~[self.c_uint(s),
              self.c_uint(a)];
     }
 
@@ -306,5 +306,5 @@ fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
     });
     r.visit_ty(t);
     Br(r.bcx, final.llbb);
-    ret final;
+    return final;
 }

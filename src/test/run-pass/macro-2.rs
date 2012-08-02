@@ -3,7 +3,7 @@
 fn main() {
     #macro[[#mylambda[x, body],
             {
-                fn f(x: int) -> int { ret body; }
+                fn f(x: int) -> int { return body; }
                 f
             }]];
 
@@ -11,7 +11,7 @@ fn main() {
 
     macro_rules! mylambda_tt{
         {$x:ident, $body:expr} => {
-            fn f($x: int) -> int { ret $body; };
+            fn f($x: int) -> int { return $body; };
             f
         }
     }

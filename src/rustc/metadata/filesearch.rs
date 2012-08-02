@@ -85,7 +85,7 @@ fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
         }
         if option::is_some(rslt) { break; }
     }
-    ret rslt;
+    return rslt;
 }
 
 fn relative_target_lib_path(target_triple: ~str) -> ~[path] {
@@ -97,7 +97,7 @@ fn make_target_lib_path(sysroot: path,
     let path = vec::append(~[sysroot],
                            relative_target_lib_path(target_triple));
     let path = path::connect_many(path);
-    ret path;
+    return path;
 }
 
 fn get_default_sysroot() -> path {

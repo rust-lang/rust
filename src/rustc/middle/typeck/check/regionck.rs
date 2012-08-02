@@ -93,7 +93,7 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
     let e = rcx.errors_reported;
     v.visit_pat(l.node.pat, rcx, v);
     if e != rcx.errors_reported {
-        ret; // if decl has errors, skip initializer expr
+        return; // if decl has errors, skip initializer expr
     }
 
     v.visit_ty(l.node.ty, rcx, v);
@@ -131,7 +131,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         // uses will also be enclosed (and otherwise, an error will
         // have been reported at the def'n site).
         alt lookup_def(rcx.fcx, e.span, e.id) {
-          ast::def_local(*) | ast::def_arg(*) | ast::def_upvar(*) { ret; }
+          ast::def_local(*) | ast::def_arg(*) | ast::def_upvar(*) { return; }
           _ { }
         }
       }
@@ -151,7 +151,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         // check_cast_for_escaping_regions() in kind.rs explaining how
         // it goes about doing that.
         alt rcx.resolve_node_type(e.id) {
-          result::err(_) => { ret; /* typeck will fail anyhow */ }
+          result::err(_) => { return; /* typeck will fail anyhow */ }
           result::ok(target_ty) => {
             alt ty::get(target_ty).struct {
               ty::ty_trait(_, substs) {
@@ -173,7 +173,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
       _ { }
     }
 
-    if !visit_node(e.id, e.span, rcx) { ret; }
+    if !visit_node(e.id, e.span, rcx) { return; }
     visit::visit_expr(e, rcx, v);
 }
 
@@ -192,7 +192,7 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty = alt rcx.resolve_node_type(id) {
-      result::err(_) { ret true; }
+      result::err(_) { return true; }
       result::ok(ty) { ty }
     };
 
@@ -206,7 +206,7 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
            ppaux::region_to_str(tcx, encl_region)};
 
     // Otherwise, look at the type and see if it is a region pointer.
-    ret constrain_regions_in_type(rcx, encl_region, span, ty);
+    return constrain_regions_in_type(rcx, encl_region, span, ty);
 }
 
 fn constrain_regions_in_type(
@@ -220,7 +220,7 @@ fn constrain_regions_in_type(
         rcx.fcx.ccx.tcx, ty,
         |r| constrain_region(rcx, encl_region, span, r),
         |t| ty::type_has_regions(t));
-    ret (e == rcx.errors_reported);
+    return (e == rcx.errors_reported);
 
     fn constrain_region(rcx: @rcx,
                         encl_region: ty::region,
@@ -238,7 +238,7 @@ fn constrain_regions_in_type(
             // (e.g., the `&` in `fn(&T)`).  Such regions need not be
             // constrained by `encl_region` as they are placeholders
             // for regions that are as-yet-unknown.
-            ret;
+            return;
           }
           _ {}
         }

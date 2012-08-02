@@ -25,7 +25,7 @@ fn foldl<A,B,IA:iterable<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     do self.iter |a| {
         b <- blk(b, a);
     }
-    ret b;
+    return b;
 }
 
 fn range(lo: uint, hi: uint, it: fn(uint)) {

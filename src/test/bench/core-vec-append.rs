@@ -9,7 +9,7 @@ fn collect_raw(num: uint) -> ~[uint] {
     for uint::range(0u, num) |i| {
         vec::push(result, i);
     }
-    ret result;
+    return result;
 }
 
 fn collect_dvec(num: uint) -> ~[mut uint] {
@@ -17,7 +17,7 @@ fn collect_dvec(num: uint) -> ~[mut uint] {
     for uint::range(0u, num) |i| {
         result.push(i);
     }
-    ret dvec::unwrap(result);
+    return dvec::unwrap(result);
 }
 
 fn main(args: ~[~str]) {

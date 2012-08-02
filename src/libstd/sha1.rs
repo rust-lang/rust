@@ -155,7 +155,7 @@ fn sha1() -> sha1 {
         st.msg_block_idx = 0u;
     }
     fn circular_shift(bits: u32, word: u32) -> u32 {
-        ret word << bits | word >> 32u32 - bits;
+        return word << bits | word >> 32u32 - bits;
     }
     fn mk_result(st: sha1state) -> ~[u8] {
         if !st.computed { pad_msg(st); st.computed = true; }
@@ -167,7 +167,7 @@ fn sha1() -> sha1 {
             let d = (hpart & 0xFFu32) as u8;
             rs = vec::append(rs, ~[a, b, c, d]);
         }
-        ret rs;
+        return rs;
     }
 
     /*
@@ -233,12 +233,12 @@ fn sha1() -> sha1 {
         }
         fn input(msg: ~[u8]) { add_input(self, msg); }
         fn input_str(msg: ~str) { add_input(self, str::bytes(msg)); }
-        fn result() -> ~[u8] { ret mk_result(self); }
+        fn result() -> ~[u8] { return mk_result(self); }
         fn result_str() -> ~str {
             let r = mk_result(self);
             let mut s = ~"";
             for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
-            ret s;
+            return s;
         }
     }
     let st = {
@@ -252,7 +252,7 @@ fn sha1() -> sha1 {
     };
     let sh = st as sha1;
     sh.reset();
-    ret sh;
+    return sh;
 }
 
 #[cfg(test)]
@@ -266,7 +266,7 @@ mod tests {
             let mut i = 0;
             let mut rs = ~"";
             while i < 100000 { str::push_str(rs, ~"aaaaaaaaaa"); i += 1; }
-            ret rs;
+            return rs;
         }
         // Test messages from FIPS 180-1
 

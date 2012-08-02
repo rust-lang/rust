@@ -14,7 +14,7 @@ fn w_paren2(v: ~[int]) -> int {
 }
 
 fn w_ret(v: ~[int]) -> int {
-    ret do vec::foldl(0, v) |x,y| { x+y } - 10;
+    return do vec::foldl(0, v) |x,y| { x+y } - 10;
 }
 
 fn main() {

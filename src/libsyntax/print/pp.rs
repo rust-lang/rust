@@ -63,11 +63,11 @@ enum token { STRING(@~str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
 
 fn tok_str(++t: token) -> ~str {
     alt t {
-      STRING(s, len) { ret fmt!{"STR(%s,%d)", *s, len}; }
-      BREAK(_) { ret ~"BREAK"; }
-      BEGIN(_) { ret ~"BEGIN"; }
-      END { ret ~"END"; }
-      EOF { ret ~"EOF"; }
+      STRING(s, len) { return fmt!{"STR(%s,%d)", *s, len}; }
+      BREAK(_) { return ~"BREAK"; }
+      BEGIN(_) { return ~"BEGIN"; }
+      END { return ~"END"; }
+      EOF { return ~"EOF"; }
     }
 }
 
@@ -86,7 +86,7 @@ fn buf_str(toks: ~[mut token], szs: ~[mut int], left: uint, right: uint,
         i %= n;
     }
     s += ~"]";
-    ret s;
+    return s;
 }
 
 enum print_stack_break { fits, broken(breaks), }
@@ -333,11 +333,11 @@ impl printer for printer {
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else { self.top += self.buf_len - 1u; self.top %= self.buf_len; }
-        ret x;
+        return x;
     }
     fn scan_top() -> uint {
         assert (!self.scan_stack_empty);
-        ret self.scan_stack[self.top];
+        return self.scan_stack[self.top];
     }
     fn scan_pop_bottom() -> uint {
         assert (!self.scan_stack_empty);
@@ -345,7 +345,7 @@ impl printer for printer {
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else { self.bottom += 1u; self.bottom %= self.buf_len; }
-        ret x;
+        return x;
     }
     fn advance_right() {
         self.right += 1u;
@@ -517,10 +517,10 @@ fn space(p: printer) { spaces(p, 1u); }
 fn hardbreak(p: printer) { spaces(p, size_infinity as uint); }
 
 fn hardbreak_tok_offset(off: int) -> token {
-    ret BREAK({offset: off, blank_space: size_infinity});
+    return BREAK({offset: off, blank_space: size_infinity});
 }
 
-fn hardbreak_tok() -> token { ret hardbreak_tok_offset(0); }
+fn hardbreak_tok() -> token { return hardbreak_tok_offset(0); }
 
 
 //

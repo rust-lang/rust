@@ -1,9 +1,9 @@
 fn to_lambda1(f: fn@(uint) -> uint) -> fn@(uint) -> uint {
-    ret f;
+    return f;
 }
 
 fn to_lambda2(b: fn(uint) -> uint) -> fn@(uint) -> uint {
-    ret to_lambda1({|x| b(x)}); //~ ERROR value may contain borrowed pointers
+    return to_lambda1({|x| b(x)}); //~ ERROR value may contain borrowed pointers
 }
 
 fn main() {

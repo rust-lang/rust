@@ -1,19 +1,19 @@
 use std;
 
 fn asSendfn( f : fn~()->uint ) -> uint {
-   ret f();
+   return f();
 }
 
 fn asLambda( f : fn@()->uint ) -> uint {
-   ret f();
+   return f();
 }
 
 fn asBlock( f : fn&()->uint ) -> uint {
-   ret f();
+   return f();
 }
 
 fn asAny( f : fn()->uint ) -> uint {
-   ret f();
+   return f();
 }
 
 fn main() {

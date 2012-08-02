@@ -481,7 +481,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
     // don't complain about blocks, since they tend to get their modes
     // specified from the outside
     alt fk {
-      visit::fk_fn_block(*) => { ret; }
+      visit::fk_fn_block(*) => { return; }
       _ => {}
     }
 

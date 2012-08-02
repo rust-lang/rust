@@ -12,7 +12,7 @@ pure fn nonempty_list<T: copy>(ls: @list<T>) -> bool { pure_length(ls) > 0u }
 
 fn safe_head<T: copy>(ls: @list<T>) -> T {
     assert is_not_empty(ls);
-    ret head(ls);
+    return head(ls);
 }
 
 fn main() {

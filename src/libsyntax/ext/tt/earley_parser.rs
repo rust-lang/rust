@@ -129,7 +129,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
     }
     let ret_val = box_str_hash::<@named_match>();
     for ms.each() |m| { n_rec(p_s, m, res, ret_val) }
-    ret ret_val;
+    return ret_val;
 }
 
 enum parse_result {
@@ -260,13 +260,13 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
         /* error messages here could be improved with links to orig. rules */
         if tok == EOF {
             if eof_eis.len() == 1u {
-                ret success(
+                return success(
                     nameize(sess, ms,
                             vec::map(eof_eis[0u].matches, |dv| dv.pop())));
             } else if eof_eis.len() > 1u {
-                ret failure(sp, ~"Ambiguity: multiple successful parses");
+                return failure(sp, ~"Ambiguity: multiple successful parses");
             } else {
-                ret failure(sp, ~"Unexpected end of macro invocation");
+                return failure(sp, ~"Unexpected end of macro invocation");
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
@@ -277,12 +277,12 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                         fmt!{"%s ('%s')", *name, *bind}
                       }
                       _ { fail; } } }), ~" or ");
-                ret failure(sp, fmt!{
+                return failure(sp, fmt!{
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
                     nts, next_eis.len()});
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
-                ret failure(sp, ~"No rules expected the token "
+                return failure(sp, ~"No rules expected the token "
                             + to_str(*rdr.interner(), tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */

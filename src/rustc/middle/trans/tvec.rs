@@ -57,7 +57,7 @@ fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt(~"tvec::pointer_add");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, T_ptr(T_i8()));
-    ret PointerCast(bcx, InBoundsGEP(bcx, bptr, ~[bytes]), old_ty);
+    return PointerCast(bcx, InBoundsGEP(bcx, bptr, ~[bytes]), old_ty);
 }
 
 fn alloc_raw(bcx: block, unit_ty: ty::t,
@@ -72,7 +72,7 @@ fn alloc_raw(bcx: block, unit_ty: ty::t,
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
     Store(bcx, fill, GEPi(bcx, body, ~[0u, abi::vec_elt_fill]));
     Store(bcx, alloc, GEPi(bcx, body, ~[0u, abi::vec_elt_alloc]));
-    ret {bcx: bcx, val: box};
+    return {bcx: bcx, val: box};
 }
 fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
                   fill: ValueRef, alloc: ValueRef) -> result {
@@ -89,7 +89,7 @@ fn alloc_vec(bcx: block, unit_ty: ty::t, elts: uint, heap: heap) -> result {
     let alloc = if elts < 4u { Mul(bcx, C_int(ccx, 4), unit_sz) }
                 else { fill };
     let {bcx: bcx, val: vptr} = alloc_raw(bcx, unit_ty, fill, alloc, heap);
-    ret {bcx: bcx, val: vptr};
+    return {bcx: bcx, val: vptr};
 }
 
 fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
@@ -106,7 +106,7 @@ fn duplicate_uniq(bcx: block, vptr: ValueRef, vec_ty: ty::t) -> result {
     let bcx = if ty::type_needs_drop(bcx.tcx(), unit_ty) {
         iter_vec_raw(bcx, new_data_ptr, vec_ty, fill, base::take_ty)
     } else { bcx };
-    ret rslt(bcx, newptr);
+    return rslt(bcx, newptr);
 }
 
 fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
@@ -127,7 +127,7 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
         for vec::each(args) |arg| {
             bcx = base::trans_expr(bcx, arg, base::ignore);
         }
-        ret bcx;
+        return bcx;
     }
 
     let vec_ty = node_id_type(bcx, id);
@@ -205,13 +205,13 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
     alt vst {
       ast::vstore_fixed(_) {
         // We wrote into the destination in the fixed case.
-        ret bcx;
+        return bcx;
       }
       ast::vstore_slice(_) {
-        ret base::store_in_dest(bcx, Load(bcx, val), dest);
+        return base::store_in_dest(bcx, Load(bcx, val), dest);
       }
       _ {
-        ret base::store_in_dest(bcx, val, dest);
+        return base::store_in_dest(bcx, val, dest);
       }
     }
 }
@@ -220,10 +220,10 @@ fn trans_vstore(bcx: block, e: @ast::expr,
                 v: ast::vstore, dest: dest) -> block {
     alt e.node {
       ast::expr_lit(@{node: ast::lit_str(s), span: _}) {
-        ret trans_estr(bcx, s, v, dest);
+        return trans_estr(bcx, s, v, dest);
       }
       ast::expr_vec(es, mutbl) {
-        ret trans_evec(bcx, es, v, e.id, dest);
+        return trans_evec(bcx, es, v, e.id, dest);
       }
       _ {
         bcx.sess().span_bug(e.span, ~"vstore on non-sequence type");
@@ -269,7 +269,7 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
 fn trans_estr(bcx: block, s: @~str, vstore: ast::vstore,
               dest: dest) -> block {
     let _icx = bcx.insn_ctxt(~"tvec::trans_estr");
-    if dest == base::ignore { ret bcx; }
+    if dest == base::ignore { return bcx; }
     let ccx = bcx.ccx();
 
     let c = alt vstore {
@@ -338,7 +338,7 @@ fn iter_vec_raw(bcx: block, data_ptr: ValueRef, vec_ty: ty::t,
                                            ~[C_int(bcx.ccx(), 1)]),
                      body_cx.llbb);
     Br(body_cx, header_cx.llbb);
-    ret next_cx;
+    return next_cx;
 
 }
 
@@ -354,7 +354,7 @@ fn iter_vec_unboxed(bcx: block, body_ptr: ValueRef, vec_ty: ty::t,
     let _icx = bcx.insn_ctxt(~"tvec::iter_vec_unboxed");
     let fill = get_fill(bcx, body_ptr);
     let dataptr = get_dataptr(bcx, body_ptr);
-    ret iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
+    return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
 
 //

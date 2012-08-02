@@ -1,6 +1,6 @@
-fn force(f: fn() -> int) -> int { ret f(); }
+fn force(f: fn() -> int) -> int { return f(); }
 fn main() {
-    fn f() -> int { ret 7; }
+    fn f() -> int { return 7; }
     assert (force(f) == 7);
     let g = {||force(f)};
     assert (g() == 7);

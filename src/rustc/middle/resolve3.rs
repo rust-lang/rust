@@ -231,7 +231,7 @@ enum EnumVariantOrConstResolution {
 type Atom = uint;
 
 fn Atom(n: uint) -> Atom {
-    ret n;
+    return n;
 }
 
 class AtomTable {
@@ -249,7 +249,7 @@ class AtomTable {
     fn intern(string: @~str) -> Atom {
         alt self.atoms.find(string) {
             none { /* fall through */ }
-            some(atom) { ret atom; }
+            some(atom) { return atom; }
         }
 
         let atom = Atom(self.atom_count);
@@ -257,17 +257,17 @@ class AtomTable {
         self.atoms.insert(string, atom);
         self.strings.push(string);
 
-        ret atom;
+        return atom;
     }
 
     fn atom_to_str(atom: Atom) -> @~str {
-        ret self.strings.get_elt(atom);
+        return self.strings.get_elt(atom);
     }
 
     fn atoms_to_strs(atoms: ~[Atom], f: fn(@~str) -> bool) {
         for atoms.each |atom| {
             if !f(self.atom_to_str(atom)) {
-                ret;
+                return;
             }
         }
     }
@@ -287,13 +287,13 @@ class AtomTable {
         }
 
         // XXX: Shouldn't copy here. We need string builder functionality.
-        ret @result;
+        return @result;
     }
 }
 
 /// Creates a hash table of atoms.
 fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
-    ret hashmap::<Atom,V>(|a| a, |a, b| a == b);
+    return hashmap::<Atom,V>(|a| a, |a, b| a == b);
 }
 
 /**
@@ -368,15 +368,15 @@ class ImportResolution {
 
     fn target_for_namespace(namespace: Namespace) -> option<Target> {
         alt namespace {
-            ModuleNS    { ret copy self.module_target; }
-            TypeNS      { ret copy self.type_target;   }
-            ValueNS     { ret copy self.value_target;  }
+            ModuleNS    { return copy self.module_target; }
+            TypeNS      { return copy self.type_target;   }
+            ValueNS     { return copy self.value_target;  }
 
             ImplNS {
                 if (*self.impl_target).len() > 0u {
-                    ret some(copy *(*self.impl_target).get_elt(0u));
+                    return some(copy *(*self.impl_target).get_elt(0u));
                 }
-                ret none;
+                return none;
             }
         }
     }
@@ -453,7 +453,7 @@ class Module {
     }
 
     fn all_imports_resolved() -> bool {
-        ret self.imports.len() == self.resolved_import_count;
+        return self.imports.len() == self.resolved_import_count;
     }
 }
 
@@ -462,8 +462,8 @@ class Module {
 
 pure fn is_none<T>(x: option<T>) -> bool {
     alt x {
-        none { ret true; }
-        some(_) { ret false; }
+        none { return true; }
+        some(_) { return false; }
     }
 }
 
@@ -471,10 +471,10 @@ fn unused_import_lint_level(session: session) -> level {
     for session.opts.lint_opts.each |lint_option_pair| {
         let (lint_type, lint_level) = lint_option_pair;
         if lint_type == unused_imports {
-            ret lint_level;
+            return lint_level;
         }
     }
-    ret allow;
+    return allow;
 }
 
 // Records the definitions (at most one for each namespace) that a name is
@@ -518,8 +518,8 @@ class NameBindings {
     /// Returns the module node if applicable.
     fn get_module_if_available() -> option<@Module> {
         alt self.module_def {
-            NoModuleDef         { ret none;         }
-            ModuleDef(module_)   { ret some(module_); }
+            NoModuleDef         { return none;         }
+            ModuleDef(module_)   { return some(module_); }
         }
     }
 
@@ -534,40 +534,40 @@ class NameBindings {
                     ~"get_module called on a node with no module definition!";
             }
             ModuleDef(module_) {
-                ret module_;
+                return module_;
             }
         }
     }
 
     fn defined_in_namespace(namespace: Namespace) -> bool {
         alt namespace {
-            ModuleNS    { ret self.module_def != NoModuleDef; }
-            TypeNS      { ret self.type_def != none;          }
-            ValueNS     { ret self.value_def != none;         }
-            ImplNS      { ret self.impl_defs.len() >= 1u;     }
+            ModuleNS    { return self.module_def != NoModuleDef; }
+            TypeNS      { return self.type_def != none;          }
+            ValueNS     { return self.value_def != none;         }
+            ImplNS      { return self.impl_defs.len() >= 1u;     }
         }
     }
 
     fn def_for_namespace(namespace: Namespace) -> option<def> {
         alt namespace {
             TypeNS {
-                ret self.type_def;
+                return self.type_def;
             }
             ValueNS {
-                ret self.value_def;
+                return self.value_def;
             }
             ModuleNS {
                 alt self.module_def {
                     NoModuleDef {
-                        ret none;
+                        return none;
                     }
                     ModuleDef(module_) {
                         alt module_.def_id {
                             none {
-                                ret none;
+                                return none;
                             }
                             some(def_id) {
-                                ret some(def_mod(def_id));
+                                return some(def_mod(def_id));
                             }
                         }
                     }
@@ -578,9 +578,9 @@ class NameBindings {
                 // necessarily the right def.
 
                 if self.impl_defs.len() == 0u {
-                    ret none;
+                    return none;
                 }
-                ret some(def_ty(self.impl_defs[0].did));
+                return some(def_ty(self.impl_defs[0].did));
             }
         }
     }
@@ -766,7 +766,7 @@ class Resolver {
                            -> @Module {
         alt reduced_graph_parent {
             ModuleReducedGraphParent(module_) {
-                ret module_;
+                return module_;
             }
         }
     }
@@ -802,10 +802,10 @@ class Resolver {
             none {
                 let child = @NameBindings();
                 module_.children.insert(name, child);
-                ret (child, new_parent);
+                return (child, new_parent);
             }
             some(child) {
-                ret (child, new_parent);
+                return (child, new_parent);
             }
         }
     }
@@ -813,7 +813,7 @@ class Resolver {
     fn block_needs_anonymous_module(block: blk) -> bool {
         // If the block has view items, we need an anonymous module.
         if block.node.view_items.len() > 0u {
-            ret true;
+            return true;
         }
 
         // Check each statement.
@@ -822,7 +822,7 @@ class Resolver {
                 stmt_decl(declaration, _) {
                     alt declaration.node {
                         decl_item(_) {
-                            ret true;
+                            return true;
                         }
                         _ {
                             // Keep searching.
@@ -838,13 +838,13 @@ class Resolver {
         // If we found neither view items nor items, we don't need to create
         // an anonymous module.
 
-        ret false;
+        return false;
     }
 
     fn get_parent_link(parent: ReducedGraphParent, name: Atom) -> ParentLink {
         alt parent {
             ModuleReducedGraphParent(module_) {
-                ret ModuleParentLink(module_, name);
+                return ModuleParentLink(module_, name);
             }
         }
     }
@@ -1483,7 +1483,7 @@ class Resolver {
                 debug!{"(building reduced graph for impls in external \
                         module) no def ID for `%s`, skipping",
                        self.module_to_str(module_)};
-                ret;
+                return;
             }
             some(_) {
                 // Continue.
@@ -1623,7 +1623,7 @@ class Resolver {
             debug!{"(resolving imports for module) all imports resolved for \
                    %s",
                    self.module_to_str(module_)};
-            ret;
+            return;
         }
 
         let import_count = module_.imports.len();
@@ -1740,7 +1740,7 @@ class Resolver {
             }
         }
 
-        ret resolution_result;
+        return resolution_result;
     }
 
     fn resolve_single_import(module_: @Module, containing_module: @Module,
@@ -1757,7 +1757,7 @@ class Resolver {
         if !self.name_is_exported(containing_module, source) {
             debug!{"(resolving single import) name `%s` is unexported",
                    *(*self.atom_table).atom_to_str(source)};
-            ret Failed;
+            return Failed;
         }
 
         // We need to resolve all four namespaces for this to succeed.
@@ -1813,7 +1813,7 @@ class Resolver {
                 if containing_module.glob_count > 0u {
                     debug!{"(resolving single import) unresolved glob; \
                             bailing out"};
-                    ret Indeterminate;
+                    return Indeterminate;
                 }
 
                 // Now search the exported imports within the containing
@@ -1850,11 +1850,11 @@ class Resolver {
                             alt (*import_resolution).
                                     target_for_namespace(namespace) {
                                 none {
-                                    ret UnboundResult;
+                                    return UnboundResult;
                                 }
                                 some(target) {
                                     import_resolution.used = true;
-                                    ret BoundResult(target.target_module,
+                                    return BoundResult(target.target_module,
                                                     target.bindings);
                                 }
                             }
@@ -1865,9 +1865,9 @@ class Resolver {
                                            -> ImplNamespaceResult {
 
                             if (*import_resolution.impl_target).len() == 0u {
-                                ret UnboundImplResult;
+                                return UnboundImplResult;
                             }
-                            ret BoundImplResult(import_resolution.
+                            return BoundImplResult(import_resolution.
                                                 impl_target);
                         }
 
@@ -1896,7 +1896,7 @@ class Resolver {
                         // The import is unresolved. Bail out.
                         debug!{"(resolving single import) unresolved import; \
                                 bailing out"};
-                        ret Indeterminate;
+                        return Indeterminate;
                     }
                 }
             }
@@ -1958,7 +1958,7 @@ class Resolver {
             If this name wasn't found in any of the four namespaces, it's
             definitely unresolved
            */
-          (none, none, none, v) if v.len() == 0 { ret Failed; }
+          (none, none, none, v) if v.len() == 0 { return Failed; }
           _ {}
         }
 
@@ -1966,7 +1966,7 @@ class Resolver {
         import_resolution.outstanding_references -= 1u;
 
         debug!{"(resolving single import) successfully resolved import"};
-        ret Success(());
+        return Success(());
     }
 
     /**
@@ -1989,7 +1989,7 @@ class Resolver {
         if !(*containing_module).all_imports_resolved() {
             debug!{"(resolving glob import) target module has unresolved \
                     imports; bailing out"};
-            ret Indeterminate;
+            return Indeterminate;
         }
 
         assert containing_module.glob_count == 0u;
@@ -2125,7 +2125,7 @@ class Resolver {
         }
 
         debug!{"(resolving glob import) successfully resolved import"};
-        ret Success(());
+        return Success(());
     }
 
     fn resolve_module_path_from_root(module_: @Module,
@@ -2150,13 +2150,13 @@ class Resolver {
 
                 Failed {
                     self.session.span_err(span, ~"unresolved name");
-                    ret Failed;
+                    return Failed;
                 }
                 Indeterminate {
                     debug!{"(resolving module path for import) module \
                             resolution is indeterminate: %s",
                             *(*self.atom_table).atom_to_str(name)};
-                    ret Indeterminate;
+                    return Indeterminate;
                 }
                 Success(target) {
                     alt target.bindings.module_def {
@@ -2166,7 +2166,7 @@ class Resolver {
                                                   fmt!{"not a module: %s",
                                                        *(*self.atom_table).
                                                          atom_to_str(name)});
-                            ret Failed;
+                            return Failed;
                         }
                         ModuleDef(module_) {
                             search_module = module_;
@@ -2178,7 +2178,7 @@ class Resolver {
             index += 1u;
         }
 
-        ret Success(search_module);
+        return Success(search_module);
     }
 
     /**
@@ -2207,19 +2207,19 @@ class Resolver {
         alt self.resolve_module_in_lexical_scope(module_, first_element) {
             Failed {
                 self.session.span_err(span, ~"unresolved name");
-                ret Failed;
+                return Failed;
             }
             Indeterminate {
                 debug!{"(resolving module path for import) indeterminate; \
                         bailing"};
-                ret Indeterminate;
+                return Indeterminate;
             }
             Success(resulting_module) {
                 search_module = resulting_module;
             }
         }
 
-        ret self.resolve_module_path_from_root(search_module,
+        return self.resolve_module_path_from_root(search_module,
                                                module_path,
                                                1u,
                                                xray,
@@ -2244,7 +2244,7 @@ class Resolver {
             some(name_bindings)
                     if (*name_bindings).defined_in_namespace(namespace) {
 
-                ret Success(Target(module_, name_bindings));
+                return Success(Target(module_, name_bindings));
             }
             some(_) | none { /* Not found; continue. */ }
         }
@@ -2268,7 +2268,7 @@ class Resolver {
                     }
                     some(target) {
                         import_resolution.used = true;
-                        ret Success(copy target);
+                        return Success(copy target);
                     }
                 }
             }
@@ -2283,7 +2283,7 @@ class Resolver {
                     // No more parents. This module was unresolved.
                     debug!{"(resolving item in lexical scope) unresolved \
                             module"};
-                    ret Failed;
+                    return Failed;
                 }
                 ModuleParentLink(parent_module_node, _) |
                 BlockParentLink(parent_module_node, _) {
@@ -2303,11 +2303,11 @@ class Resolver {
 
                     debug!{"(resolving item in lexical scope) indeterminate \
                             higher scope; bailing"};
-                    ret Indeterminate;
+                    return Indeterminate;
                 }
                 Success(target) {
                     // We found the module.
-                    ret Success(copy target);
+                    return Success(copy target);
                 }
             }
         }
@@ -2322,28 +2322,28 @@ class Resolver {
                     NoModuleDef {
                         error!{"!!! (resolving module in lexical scope) module
                                 wasn't actually a module!"};
-                        ret Failed;
+                        return Failed;
                     }
                     ModuleDef(module_) {
-                        ret Success(module_);
+                        return Success(module_);
                     }
                 }
             }
             Indeterminate {
                 debug!{"(resolving module in lexical scope) indeterminate; \
                         bailing"};
-                ret Indeterminate;
+                return Indeterminate;
             }
             Failed {
                 debug!{"(resolving module in lexical scope) failed to \
                         resolve"};
-                ret Failed;
+                return Failed;
             }
         }
     }
 
     fn name_is_exported(module_: @Module, name: Atom) -> bool {
-        ret module_.exported_names.size() == 0u ||
+        return module_.exported_names.size() == 0u ||
                 module_.exported_names.contains_key(name);
     }
 
@@ -2365,7 +2365,7 @@ class Resolver {
         if xray == NoXray && !self.name_is_exported(module_, name) {
             debug!{"(resolving name in module) name `%s` is unexported",
                    *(*self.atom_table).atom_to_str(name)};
-            ret Failed;
+            return Failed;
         }
 
         // First, check the direct children of the module.
@@ -2374,7 +2374,7 @@ class Resolver {
                     if (*name_bindings).defined_in_namespace(namespace) {
 
                 debug!{"(resolving name in module) found node as child"};
-                ret Success(Target(module_, name_bindings));
+                return Success(Target(module_, name_bindings));
             }
             some(_) | none {
                 // Continue.
@@ -2386,7 +2386,7 @@ class Resolver {
 
         if module_.glob_count > 0u {
             debug!{"(resolving name in module) module has glob; bailing out"};
-            ret Indeterminate;
+            return Indeterminate;
         }
 
         // Otherwise, we check the list of resolved imports.
@@ -2395,7 +2395,7 @@ class Resolver {
                 if import_resolution.outstanding_references != 0u {
                     debug!{"(resolving name in module) import unresolved; \
                             bailing out"};
-                    ret Indeterminate;
+                    return Indeterminate;
                 }
 
                 alt (*import_resolution).target_for_namespace(namespace) {
@@ -2408,7 +2408,7 @@ class Resolver {
                         debug!{"(resolving name in module) resolved to \
                                 import"};
                         import_resolution.used = true;
-                        ret Success(copy target);
+                        return Success(copy target);
                     }
                 }
             }
@@ -2420,7 +2420,7 @@ class Resolver {
         // We're out of luck.
         debug!{"(resolving name in module) failed to resolve %s",
                *(*self.atom_table).atom_to_str(name)};
-        ret Failed;
+        return Failed;
     }
 
     /**
@@ -2468,7 +2468,7 @@ class Resolver {
             Indeterminate {
                 debug!{"(resolving one-level renaming import) module result \
                         is indeterminate; bailing"};
-                ret Indeterminate;
+                return Indeterminate;
             }
             Success(name_bindings) {
                 debug!{"(resolving one-level renaming import) module result \
@@ -2491,7 +2491,7 @@ class Resolver {
             Indeterminate {
                 debug!{"(resolving one-level renaming import) value result \
                         is indeterminate; bailing"};
-                ret Indeterminate;
+                return Indeterminate;
             }
             Success(name_bindings) {
                 debug!{"(resolving one-level renaming import) value result \
@@ -2514,7 +2514,7 @@ class Resolver {
             Indeterminate {
                 debug!{"(resolving one-level renaming import) type result is \
                         indeterminate; bailing"};
-                ret Indeterminate;
+                return Indeterminate;
             }
             Success(name_bindings) {
                 debug!{"(resolving one-level renaming import) type result \
@@ -2554,7 +2554,7 @@ class Resolver {
             Indeterminate {
                 debug!{"(resolving one-level renaming import) impl result is \
                         indeterminate; bailing"};
-                ret Indeterminate;
+                return Indeterminate;
             }
             Success(name_bindings) {
                 debug!{"(resolving one-level renaming import) impl result \
@@ -2569,7 +2569,7 @@ class Resolver {
 
             self.session.span_err(import_directive.span,
                                   ~"unresolved import");
-            ret Failed;
+            return Failed;
         }
 
         // Otherwise, proceed and write in the bindings.
@@ -2605,7 +2605,7 @@ class Resolver {
         }
 
         debug!{"(resolving one-level renaming import) successfully resolved"};
-        ret Success(());
+        return Success(());
     }
 
     fn report_unresolved_imports(module_: @Module) {
@@ -2663,7 +2663,7 @@ class Resolver {
                 debug!{"(recording exports for module subtree) not recording \
                         exports for `%s`",
                        self.module_to_str(module_)};
-                ret;
+                return;
             }
         }
 
@@ -2749,7 +2749,7 @@ class Resolver {
                 debug!{"(building impl scopes for module subtree) not \
                         resolving implementations for `%s`",
                        self.module_to_str(module_)};
-                ret;
+                return;
             }
         }
 
@@ -2903,7 +2903,7 @@ class Resolver {
                 is_ty_param = false;
             }
             _ {
-                ret some(def_like);
+                return some(def_like);
             }
         }
 
@@ -2947,7 +2947,7 @@ class Resolver {
                                                argument out of scope");
                     }
 
-                    ret none;
+                    return none;
                     }
                   }
                 }
@@ -2969,14 +2969,14 @@ class Resolver {
                                                argument out of scope");
                     }
 
-                    ret none;
+                    return none;
                 }
             }
 
             rib_index += 1u;
         }
 
-        ret some(dl_def(def));
+        return some(dl_def(def));
     }
 
     fn search_ribs(ribs: @dvec<@Rib>, name: Atom, span: span,
@@ -2992,7 +2992,7 @@ class Resolver {
             let rib = (*ribs).get_elt(i);
             alt rib.bindings.find(name) {
                 some(def_like) {
-                    ret self.upvarify(ribs, i, def_like, span,
+                    return self.upvarify(ribs, i, def_like, span,
                                       allow_capturing_self);
                 }
                 none {
@@ -3001,7 +3001,7 @@ class Resolver {
             }
         }
 
-        ret none;
+        return none;
     }
 
     // XXX: This shouldn't be unsafe!
@@ -3595,7 +3595,7 @@ class Resolver {
       };
     }
     fn check_consistent_bindings(arm: arm) {
-      if arm.pats.len() == 0 { ret; }
+      if arm.pats.len() == 0 { return; }
       let good = self.num_bindings(arm.pats[0]);
       for arm.pats.each() |p: @pat| {
         if self.num_bindings(p) != good {
@@ -3890,13 +3890,13 @@ class Resolver {
                               of name bindings with no def?!";
                     }
                     some(def @ def_variant(*)) {
-                        ret FoundEnumVariant(def);
+                        return FoundEnumVariant(def);
                     }
                     some(def_const(*)) {
-                        ret FoundConst;
+                        return FoundConst;
                     }
                     some(_) {
-                        ret EnumVariantOrConstNotFound;
+                        return EnumVariantOrConstNotFound;
                     }
                 }
             }
@@ -3906,7 +3906,7 @@ class Resolver {
             }
 
             Failed {
-                ret EnumVariantOrConstNotFound;
+                return EnumVariantOrConstNotFound;
             }
         }
     }
@@ -3925,18 +3925,18 @@ class Resolver {
         }
 
         if path.global {
-            ret self.resolve_crate_relative_path(path,
+            return self.resolve_crate_relative_path(path,
                                                  self.xray_context,
                                                  namespace);
         }
 
         if path.idents.len() > 1u {
-            ret self.resolve_module_relative_path(path,
+            return self.resolve_module_relative_path(path,
                                                   self.xray_context,
                                                   namespace);
         }
 
-        ret self.resolve_identifier(path.idents.last(),
+        return self.resolve_identifier(path.idents.last(),
                                     namespace,
                                     check_ribs,
                                     path.span);
@@ -3953,7 +3953,7 @@ class Resolver {
                                                       namespace,
                                                       span) {
                 some(def) {
-                    ret some(def);
+                    return some(def);
                 }
                 none {
                     // Continue.
@@ -3961,7 +3961,7 @@ class Resolver {
             }
         }
 
-        ret self.resolve_item_by_identifier_in_lexical_scope(identifier,
+        return self.resolve_item_by_identifier_in_lexical_scope(identifier,
                                                              namespace);
     }
 
@@ -3976,7 +3976,7 @@ class Resolver {
             debug!{"(resolving definition of name in module) name `%s` is \
                     unexported",
                    *(*self.atom_table).atom_to_str(name)};
-            ret NoNameDefinition;
+            return NoNameDefinition;
         }
 
         // First, search children.
@@ -3985,7 +3985,7 @@ class Resolver {
                 alt (*child_name_bindings).def_for_namespace(namespace) {
                     some(def) {
                         // Found it. Stop the search here.
-                        ret ChildNameDefinition(def);
+                        return ChildNameDefinition(def);
                     }
                     none {
                         // Continue.
@@ -4006,23 +4006,23 @@ class Resolver {
                             some(def) {
                                 // Found it.
                                 import_resolution.used = true;
-                                ret ImportNameDefinition(def);
+                                return ImportNameDefinition(def);
                             }
                             none {
                                 // This can happen with external impls, due to
                                 // the imperfect way we read the metadata.
 
-                                ret NoNameDefinition;
+                                return NoNameDefinition;
                             }
                         }
                     }
                     none {
-                        ret NoNameDefinition;
+                        return NoNameDefinition;
                     }
                 }
             }
             none {
-                ret NoNameDefinition;
+                return NoNameDefinition;
             }
         }
     }
@@ -4037,7 +4037,7 @@ class Resolver {
             (*module_path_atoms).push((*self.atom_table).intern(ident));
         }
 
-        ret module_path_atoms;
+        return module_path_atoms;
     }
 
     fn resolve_module_relative_path(path: @path,
@@ -4058,7 +4058,7 @@ class Resolver {
                                       fmt!{"use of undeclared module `%s`",
                                             *(*self.atom_table).atoms_to_str
                                               ((*module_path_atoms).get())});
-                ret none;
+                return none;
             }
 
             Indeterminate {
@@ -4083,10 +4083,10 @@ class Resolver {
                                                ((*module_path_atoms).get()),
                                            *(*self.atom_table).atom_to_str
                                                (name)});
-                ret none;
+                return none;
             }
             ChildNameDefinition(def) | ImportNameDefinition(def) {
-                ret some(def);
+                return some(def);
             }
         }
     }
@@ -4112,7 +4112,7 @@ class Resolver {
                                       fmt!{"use of undeclared module `::%s`",
                                             *(*self.atom_table).atoms_to_str
                                               ((*module_path_atoms).get())});
-                ret none;
+                return none;
             }
 
             Indeterminate {
@@ -4137,10 +4137,10 @@ class Resolver {
                                                ((*module_path_atoms).get()),
                                            *(*self.atom_table).atom_to_str
                                                (name)});
-                ret none;
+                return none;
             }
             ChildNameDefinition(def) | ImportNameDefinition(def) {
-                ret some(def);
+                return some(def);
             }
         }
     }
@@ -4174,10 +4174,10 @@ class Resolver {
                         local: %?",
                        *(*self.atom_table).atom_to_str(name),
                        def};
-                ret some(def);
+                return some(def);
             }
             some(dl_field) | some(dl_impl(_)) | none {
-                ret none;
+                return none;
             }
         }
     }
@@ -4203,7 +4203,7 @@ class Resolver {
                         debug!{"(resolving item path in lexical scope) \
                                 resolved `%s` to item",
                                *(*self.atom_table).atom_to_str(name)};
-                        ret some(def);
+                        return some(def);
                     }
                 }
             }
@@ -4211,7 +4211,7 @@ class Resolver {
                 fail ~"unexpected indeterminate result";
             }
             Failed {
-                ret none;
+                return none;
             }
         }
     }
@@ -4452,7 +4452,7 @@ class Resolver {
             }
         }
 
-        ret found_traits;
+        return found_traits;
     }
 
     fn add_trait_info_if_containing_method(found_traits: @dvec<def_id>,
@@ -4494,7 +4494,7 @@ class Resolver {
 
     fn check_for_unused_imports_if_necessary() {
         if self.unused_import_lint_level == allow {
-            ret;
+            return;
         }
 
         let root_module = (*self.graph_root).get_module();
@@ -4517,7 +4517,7 @@ class Resolver {
                 debug!{"(checking for unused imports in module subtree) not \
                         checking for unused imports for `%s`",
                        self.module_to_str(module_)};
-                ret;
+                return;
             }
         }
 
@@ -4590,7 +4590,7 @@ class Resolver {
         }
 
         if atoms.len() == 0u {
-            ret ~"???";
+            return ~"???";
         }
 
         let mut string = ~"";
@@ -4607,7 +4607,7 @@ class Resolver {
             i -= 1u;
         }
 
-        ret string;
+        return string;
     }
 
     fn dump_module(module_: @Module) {
@@ -4696,7 +4696,7 @@ fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
 
     let resolver = @Resolver(session, lang_items, crate);
     (*resolver).resolve(resolver);
-    ret {
+    return {
         def_map: resolver.def_map,
         exp_map: resolver.export_map,
         impl_map: resolver.impl_map,

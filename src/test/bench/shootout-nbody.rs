@@ -52,7 +52,7 @@ mod NBodySystem {
         // side-effecting
         Body::offset_momentum(bodies[0], px, py, pz);
 
-        ret bodies;
+        return bodies;
     }
 
     fn advance(bodies: ~[Body::props], dt: float) {
@@ -122,7 +122,7 @@ mod NBodySystem {
 
             i += 1;
         }
-        ret e;
+        return e;
 
     }
 }
@@ -144,7 +144,7 @@ mod Body {
          mass: float};
 
     fn jupiter() -> Body::props {
-        ret {mut x: 4.84143144246472090e+00,
+        return {mut x: 4.84143144246472090e+00,
              mut y: -1.16032004402742839e+00,
              mut z: -1.03622044471123109e-01,
              mut vx: 1.66007664274403694e-03 * DAYS_PER_YEAR,
@@ -154,7 +154,7 @@ mod Body {
     }
 
     fn saturn() -> Body::props {
-        ret {mut x: 8.34336671824457987e+00,
+        return {mut x: 8.34336671824457987e+00,
              mut y: 4.12479856412430479e+00,
              mut z: -4.03523417114321381e-01,
              mut vx: -2.76742510726862411e-03 * DAYS_PER_YEAR,
@@ -164,7 +164,7 @@ mod Body {
     }
 
     fn uranus() -> Body::props {
-        ret {mut x: 1.28943695621391310e+01,
+        return {mut x: 1.28943695621391310e+01,
              mut y: -1.51111514016986312e+01,
              mut z: -2.23307578892655734e-01,
              mut vx: 2.96460137564761618e-03 * DAYS_PER_YEAR,
@@ -174,7 +174,7 @@ mod Body {
     }
 
     fn neptune() -> Body::props {
-        ret {mut x: 1.53796971148509165e+01,
+        return {mut x: 1.53796971148509165e+01,
              mut y: -2.59193146099879641e+01,
              mut z: 1.79258772950371181e-01,
              mut vx: 2.68067772490389322e-03 * DAYS_PER_YEAR,
@@ -184,7 +184,7 @@ mod Body {
     }
 
     fn sun() -> Body::props {
-        ret {mut x: 0.0,
+        return {mut x: 0.0,
              mut y: 0.0,
              mut z: 0.0,
              mut vx: 0.0,

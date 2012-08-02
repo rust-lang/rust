@@ -21,7 +21,7 @@ fn target_env(lib_path: ~str, prog: ~str) -> ~[(~str,~str)] {
     if str::ends_with(prog, ~"rustc.exe") {
         vec::push(env, (~"RUST_THREADS", ~"1"));
     }
-    ret env;
+    return env;
 }
 
 #[cfg(target_os = "linux")]
@@ -84,7 +84,7 @@ fn run(lib_path: ~str,
         };
         count -= 1;
     };
-    ret {status: status, out: outs, err: errs};
+    return {status: status, out: outs, err: errs};
 }
 
 fn writeclose(fd: c_int, s: option<~str>) {
@@ -106,5 +106,5 @@ fn readclose(fd: c_int) -> ~str {
         buf += str::from_bytes(bytes);
     }
     os::fclose(file);
-    ret buf;
+    return buf;
 }

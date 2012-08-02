@@ -11,7 +11,7 @@ fn run(i: int) {
     log(debug, i);
 
     if i == 0 {
-        ret;
+        return;
     }
 
     do task::task().sched_mode(task::osmain).unlinked().spawn {

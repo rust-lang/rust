@@ -35,7 +35,7 @@ fn show_color_list(set: ~[color]) -> ~str {
         out += ~" ";
         out += show_color(col);
     }
-    ret out;
+    return out;
 }
 
 fn show_digit(nn: uint) -> ~str {
@@ -67,7 +67,7 @@ fn show_number(nn: uint) -> ~str {
         out = show_digit(dig) + ~" " + out;
     }
 
-    ret out;
+    return out;
 }
 
 fn transform(aa: color, bb: color) -> color {
@@ -137,7 +137,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
             fn@(ii: uint, col: color) -> comm::chan<option<creature_info>> {
                 // create each creature as a listener with a port, and
                 // give us a channel to talk to each
-                ret do task::spawn_listener |from_rendezvous| {
+                return do task::spawn_listener |from_rendezvous| {
                     creature(ii, col, from_rendezvous, to_rendezvous,
                              to_rendezvous_log);
                 };

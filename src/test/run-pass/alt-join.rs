@@ -10,7 +10,7 @@ fn foo<T>(y: option<T>) {
 
     if true {
     } else { alt y { none::<T> { x = 17; } _ { x = 42; } } rs += ~[x]; }
-    ret;
+    return;
 }
 
 fn main() { debug!{"hello"}; foo::<int>(some::<int>(5)); }

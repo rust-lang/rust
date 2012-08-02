@@ -33,7 +33,7 @@ fn getbig(a0: int,
                        a9 - 1);
         assert j == a0 - 1;
     }
-    ret a0;
+    return a0;
 }
 
 fn main() {

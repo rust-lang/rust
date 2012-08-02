@@ -228,13 +228,13 @@ fn require_same_types(
 fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
     alt ty::get(a.ty).struct {
       ty::ty_evec(mt, vstore_uniq) {
-        if mt.mutbl != ast::m_imm { ret false; }
+        if mt.mutbl != ast::m_imm { return false; }
         alt ty::get(mt.ty).struct {
-          ty::ty_estr(vstore_uniq) { ret true; }
-          _ { ret false; }
+          ty::ty_estr(vstore_uniq) { return true; }
+          _ { return false; }
         }
       }
-      _ { ret false; }
+      _ { return false; }
     }
 }
 
@@ -253,7 +253,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
                ast::item_fn(_,ps,_) if vec::is_not_empty(ps) {
                   tcx.sess.span_err(main_span,
                     ~"main function is not allowed to have type parameters");
-                  ret;
+                  return;
                }
                _ {}
              }

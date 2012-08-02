@@ -1,6 +1,6 @@
 mod general_category {
     pure fn Cc(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x00' to '\x1f'
             | '\x7f' to '\x9f'
               { true }
@@ -9,7 +9,7 @@ mod general_category {
     }
 
     pure fn Cf(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\xad'
             | '\u0600' to '\u0603'
             | '\u06dd'
@@ -29,7 +29,7 @@ mod general_category {
     }
 
     pure fn Co(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\ue000' to '\uf8ff'
               { true }
             _ { false }
@@ -37,7 +37,7 @@ mod general_category {
     }
 
     pure fn Cs(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\ud800' to '\udfff'
               { true }
             _ { false }
@@ -45,7 +45,7 @@ mod general_category {
     }
 
     pure fn Ll(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x61' to '\x7a'
             | '\xaa'
             | '\xb5'
@@ -650,7 +650,7 @@ mod general_category {
     }
 
     pure fn Lm(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u02b0' to '\u02c1'
             | '\u02c6' to '\u02d1'
             | '\u02e0' to '\u02e4'
@@ -706,7 +706,7 @@ mod general_category {
     }
 
     pure fn Lo(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u01bb'
             | '\u01c0' to '\u01c3'
             | '\u0294'
@@ -892,7 +892,7 @@ mod general_category {
     }
 
     pure fn Lt(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u01c5'
             | '\u01c8'
             | '\u01cb'
@@ -909,7 +909,7 @@ mod general_category {
     }
 
     pure fn Lu(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x41' to '\x5a'
             | '\xc0' to '\xd6'
             | '\xd8' to '\xde'
@@ -1501,7 +1501,7 @@ mod general_category {
     }
 
     pure fn Mc(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u0903'
             | '\u093b'
             | '\u093e' to '\u0940'
@@ -1612,7 +1612,7 @@ mod general_category {
     }
 
     pure fn Me(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u0488' to '\u0489'
             | '\u20dd' to '\u20e0'
             | '\u20e2' to '\u20e4'
@@ -1623,7 +1623,7 @@ mod general_category {
     }
 
     pure fn Mn(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u0300' to '\u036f'
             | '\u0483' to '\u0487'
             | '\u0591' to '\u05bd'
@@ -1816,7 +1816,7 @@ mod general_category {
     }
 
     pure fn Nd(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x30' to '\x39'
             | '\u0660' to '\u0669'
             | '\u06f0' to '\u06f9'
@@ -1860,7 +1860,7 @@ mod general_category {
     }
 
     pure fn Nl(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u16ee' to '\u16f0'
             | '\u2160' to '\u2182'
             | '\u2185' to '\u2188'
@@ -1879,7 +1879,7 @@ mod general_category {
     }
 
     pure fn No(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\xb2' to '\xb3'
             | '\xb9'
             | '\xbc' to '\xbe'
@@ -1927,7 +1927,7 @@ mod general_category {
     }
 
     pure fn Pc(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x5f'
             | '\u203f' to '\u2040'
             | '\u2054'
@@ -1940,7 +1940,7 @@ mod general_category {
     }
 
     pure fn Pd(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x2d'
             | '\u058a'
             | '\u05be'
@@ -1962,7 +1962,7 @@ mod general_category {
     }
 
     pure fn Pe(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x29'
             | '\x5d'
             | '\x7d'
@@ -2039,7 +2039,7 @@ mod general_category {
     }
 
     pure fn Pf(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\xbb'
             | '\u2019'
             | '\u201d'
@@ -2056,7 +2056,7 @@ mod general_category {
     }
 
     pure fn Pi(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\xab'
             | '\u2018'
             | '\u201b' to '\u201c'
@@ -2074,7 +2074,7 @@ mod general_category {
     }
 
     pure fn Po(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x21' to '\x23'
             | '\x25' to '\x27'
             | '\x2a'
@@ -2207,7 +2207,7 @@ mod general_category {
     }
 
     pure fn Ps(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x28'
             | '\x5b'
             | '\x7b'
@@ -2286,7 +2286,7 @@ mod general_category {
     }
 
     pure fn Sc(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x24'
             | '\xa2' to '\xa5'
             | '\u060b'
@@ -2309,7 +2309,7 @@ mod general_category {
     }
 
     pure fn Sk(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x5e'
             | '\x60'
             | '\xa8'
@@ -2343,7 +2343,7 @@ mod general_category {
     }
 
     pure fn Sm(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x2b'
             | '\x3c' to '\x3e'
             | '\x7c'
@@ -2414,7 +2414,7 @@ mod general_category {
     }
 
     pure fn So(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\xa6' to '\xa7'
             | '\xa9'
             | '\xae'
@@ -2533,7 +2533,7 @@ mod general_category {
     }
 
     pure fn Zl(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u2028'
               { true }
             _ { false }
@@ -2541,7 +2541,7 @@ mod general_category {
     }
 
     pure fn Zp(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\u2029'
               { true }
             _ { false }
@@ -2549,7 +2549,7 @@ mod general_category {
     }
 
     pure fn Zs(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x20'
             | '\xa0'
             | '\u1680'
@@ -2567,7 +2567,7 @@ mod general_category {
 mod derived_property {
     /// Check if a character has the alphabetic unicode property
     pure fn Alphabetic(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x41' to '\x5a'
             | '\x61' to '\x7a'
             | '\xaa'
@@ -3305,7 +3305,7 @@ mod derived_property {
     }
 
     pure fn XID_Continue(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x30' to '\x39'
             | '\x41' to '\x5a'
             | '\x5f'
@@ -4176,7 +4176,7 @@ mod derived_property {
     }
 
     pure fn XID_Start(c: char) -> bool {
-        ret alt c {
+        return alt c {
               '\x41' to '\x5a'
             | '\x61' to '\x7a'
             | '\xaa'

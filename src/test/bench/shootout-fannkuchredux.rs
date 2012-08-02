@@ -4,7 +4,7 @@ import int;
 import vec;
 
 fn fannkuch(n: int) -> int {
-    fn perm1init(i: uint) -> int { ret i as int; }
+    fn perm1init(i: uint) -> int { return i as int; }
 
     let perm = vec::to_mut(vec::from_elem(n as uint, 0));
     let perm1 = vec::to_mut(vec::from_fn(n as uint, perm1init));
@@ -44,7 +44,7 @@ fn fannkuch(n: int) -> int {
         while go {
             if r == n {
                 io::println(fmt!{"%d", checksum});
-                ret flips;
+                return flips;
             }
             let p0 = perm1[0];
             i = 0;
@@ -55,7 +55,7 @@ fn fannkuch(n: int) -> int {
         }
         nperm += 1;
     }
-    ret flips;
+    return flips;
 }
 
 fn main(args: ~[~str]) {

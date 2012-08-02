@@ -60,7 +60,7 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
             <fn(push: pure fn(+A)), fn(push: fn(+A))>
             (builder)(|+x| unsafe::push(vec, x));
     }
-    ret vec;
+    return vec;
 }
 
 /**

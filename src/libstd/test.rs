@@ -71,7 +71,7 @@ fn parse_opts(args: ~[~str]) -> opt_res {
     let matches =
         alt getopts::getopts(args_, opts) {
           ok(m) { m }
-          err(f) { ret either::right(getopts::fail_str(f)) }
+          err(f) { return either::right(getopts::fail_str(f)) }
         };
 
     let filter =
@@ -85,7 +85,7 @@ fn parse_opts(args: ~[~str]) -> opt_res {
     let test_opts = {filter: filter, run_ignored: run_ignored,
                      logfile: logfile};
 
-    ret either::left(test_opts);
+    return either::left(test_opts);
 }
 
 enum test_result { tr_ok, tr_failed, tr_ignored, }
@@ -180,7 +180,7 @@ fn run_tests_console(opts: test_opts,
     st.out.write_str(fmt!{". %u passed; %u failed; %u ignored\n\n", st.passed,
                           st.failed, st.ignored});
 
-    ret success;
+    return success;
 
     fn write_log(out: io::writer, result: test_result, test: test_desc) {
         out.write_line(fmt!{"%s %s",
@@ -262,7 +262,7 @@ fn should_sort_failures_before_printing_them() {
     assert apos < bpos;
 }
 
-fn use_color() -> bool { ret get_concurrency() == 1u; }
+fn use_color() -> bool { return get_concurrency() == 1u; }
 
 enum testevent {
     te_filtered(~[test_desc]),
@@ -346,8 +346,8 @@ fn filter_tests(opts: test_opts,
         fn filter_fn(test: test_desc, filter_str: ~str) ->
             option<test_desc> {
             if str::contains(test.name, filter_str) {
-                ret option::some(copy test);
-            } else { ret option::none; }
+                return option::some(copy test);
+            } else { return option::none; }
         }
 
         let filter = |x| filter_fn(x, filter_str);
@@ -361,11 +361,11 @@ fn filter_tests(opts: test_opts,
     } else {
         fn filter(test: test_desc) -> option<test_desc> {
             if test.ignore {
-                ret option::some({name: test.name,
+                return option::some({name: test.name,
                                   fn: copy test.fn,
                                   ignore: false,
                                   should_fail: test.should_fail});
-            } else { ret option::none; }
+            } else { return option::none; }
         };
 
         vec::filter_map(filtered, |x| filter(x))
@@ -380,7 +380,7 @@ fn filter_tests(opts: test_opts,
         sort::merge_sort(|x,y| lteq(x, y), filtered)
         };
 
-    ret filtered;
+    return filtered;
 }
 
 type test_future = {test: test_desc, wait: fn@() -> test_result};
@@ -388,7 +388,7 @@ type test_future = {test: test_desc, wait: fn@() -> test_result};
 fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     if test.ignore {
         comm::send(monitor_ch, (copy test, tr_ignored));
-        ret;
+        return;
     }
 
     do task::spawn {

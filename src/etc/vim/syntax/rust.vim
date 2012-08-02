@@ -103,19 +103,6 @@ syn region    rustComment     start="//" skip="\\$" end="$" contains=rustTodo ke
 
 syn keyword   rustTodo        TODO FIXME XXX NB
 
-" For those who don't want to see `::`...
-syn match   rustModPathSep  "::" conceal cchar=ㆍ
-
-syn match rustArrowHead contained ">" conceal cchar= 
-syn match rustArrowTail contained "-" conceal cchar=⟶
-syn match rustArrowFull "->" contains=rustArrowHead,rustArrowTail
-
-syn match rustFatArrowHead contained ">" conceal cchar= 
-syn match rustFatArrowTail contained "=" conceal cchar=⟹
-syn match rustFatArrowFull "=>" contains=rustFatArrowHead,rustFatArrowTail
-
-syn match rustIdentifierPrime /\<\@!_\(_*\>\)\@=/ conceal cchar=′
-
 hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
 hi def link rustIdentifierPrime rustIdentifier
@@ -136,7 +123,7 @@ hi def link rustMacro         Macro
 hi def link rustType          Type
 hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
-hi def link rustModPathSep    Conceal
+
 " Other Suggestions:
 " hi rustAssert ctermfg=yellow
 " hi rustMacro ctermfg=magenta

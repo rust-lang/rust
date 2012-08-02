@@ -36,7 +36,7 @@ fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
 
     // ... then explicit args.
     vec::push_all(atys, type_of_explicit_args(cx, inputs));
-    ret T_fn(atys, llvm::LLVMVoidType());
+    return T_fn(atys, llvm::LLVMVoidType());
 }
 
 // Given a function type and a count of ty params, construct an llvm type
@@ -69,7 +69,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     debug!{"type_of %?: %?", t, ty::get(t)};
 
     // Check the cache.
-    if cx.lltypes.contains_key(t) { ret cx.lltypes.get(t); }
+    if cx.lltypes.contains_key(t) { return cx.lltypes.get(t); }
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain
@@ -188,7 +188,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         }
     };
 
-    ret llty;
+    return llty;
 }
 
 // This should only be called from type_of, above, because it
@@ -221,7 +221,7 @@ fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
     };
 
     common::set_struct_body(named_llty, lltys);
-    ret named_llty;
+    return named_llty;
 }
 
 fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
@@ -233,7 +233,7 @@ fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
         (~"class", did, substs.tps)
       }
     };
-    ret fmt!{
+    return fmt!{
         "%s %s[#%d]",
         name,
         util::ppaux::parameterized(

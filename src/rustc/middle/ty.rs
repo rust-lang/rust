@@ -542,12 +542,12 @@ type node_type_table = @smallintmap::smallintmap<t>;
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
     fn hash_cache_entry(k: val) -> uint {
-        ret (k.cnum as uint) + k.pos + k.len;
+        return (k.cnum as uint) + k.pos + k.len;
     }
     fn eq_cache_entries(a: val, b: val) -> bool {
-        ret a.cnum == b.cnum && a.pos == b.pos && a.len == b.len;
+        return a.cnum == b.cnum && a.pos == b.pos && a.len == b.len;
     }
-    ret map::hashmap(hash_cache_entry, eq_cache_entries);
+    return map::hashmap(hash_cache_entry, eq_cache_entries);
 }
 
 fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
@@ -608,7 +608,7 @@ fn mk_t(cx: ctxt, st: sty) -> t { mk_t_with_id(cx, st, none) }
 fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
     let key = {struct: st, o_def_id: o_def_id};
     alt cx.interner.find(key) {
-      some(t) { unsafe { ret unsafe::reinterpret_cast(t); } }
+      some(t) { unsafe { return unsafe::reinterpret_cast(t); } }
       _ {}
     }
     let mut flags = 0u;
@@ -624,7 +624,7 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         let mut f = 0u;
         for substs.tps.each |tt| { f |= get(tt).flags; }
         substs.self_r.iter(|r| f |= rflags(r));
-        ret f;
+        return f;
     }
     alt st {
       ty_estr(vstore_slice(r)) {
@@ -816,7 +816,7 @@ fn walk_ty(ty: t, f: fn(t)) {
 }
 
 fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
-    if !f(ty) { ret; }
+    if !f(ty) { return; }
     alt get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
@@ -991,7 +991,7 @@ fn fold_regions(
 
     fn do_fold(cx: ctxt, ty: t, in_fn: bool,
                fldr: fn(region, bool) -> region) -> t {
-        if !type_has_regions(ty) { ret ty; }
+        if !type_has_regions(ty) { return ty; }
         fold_regions_and_ty(
             cx, ty,
             |r| fldr(r, in_fn),
@@ -1005,7 +1005,7 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
     fn do_fold(cx: ctxt, t0: t, under_r: bool,
                fldop: fn(region, bool) -> region) -> t {
         let tb = get(t0);
-        if !tbox_has_flag(tb, has_regions) { ret t0; }
+        if !tbox_has_flag(tb, has_regions) { return t0; }
         alt tb.struct {
           ty_rptr(r, {ty: t1, mutbl: m}) {
             let m_r = fldop(r, under_r);
@@ -1038,9 +1038,9 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
 
 // Substitute *only* type parameters.  Used in trans where regions are erased.
 fn subst_tps(cx: ctxt, tps: ~[t], typ: t) -> t {
-    if tps.len() == 0u { ret typ; }
+    if tps.len() == 0u { return typ; }
     let tb = ty::get(typ);
-    if !tbox_has_flag(tb, has_params) { ret typ; }
+    if !tbox_has_flag(tb, has_params) { return typ; }
     alt tb.struct {
       ty_param(p) { tps[p.idx] }
       sty { fold_sty_to_ty(cx, sty, |t| subst_tps(cx, tps, t)) }
@@ -1068,16 +1068,16 @@ fn subst(cx: ctxt,
            substs_to_str(cx, substs),
            ty_to_str(cx, typ)};
 
-    if substs_is_noop(substs) { ret typ; }
+    if substs_is_noop(substs) { return typ; }
     let r = do_subst(cx, substs, typ);
     debug!{"  r = %s", ty_to_str(cx, r)};
-    ret r;
+    return r;
 
     fn do_subst(cx: ctxt,
                 substs: substs,
                 typ: t) -> t {
         let tb = get(typ);
-        if !tbox_has_flag(tb, needs_subst) { ret typ; }
+        if !tbox_has_flag(tb, needs_subst) { return typ; }
         alt tb.struct {
           ty_param(p) {substs.tps[p.idx]}
           ty_self {substs.self_ty.get()}
@@ -1129,7 +1129,7 @@ fn type_is_structural(ty: t) -> bool {
 }
 
 fn type_is_copyable(cx: ctxt, ty: t) -> bool {
-    ret kind_can_be_copied(type_kind(cx, ty));
+    return kind_can_be_copied(type_kind(cx, ty));
 }
 
 fn type_is_sequence(ty: t) -> bool {
@@ -1148,8 +1148,8 @@ fn type_is_str(ty: t) -> bool {
 
 fn sequence_element_type(cx: ctxt, ty: t) -> t {
     alt get(ty).struct {
-      ty_estr(_) { ret mk_mach_uint(cx, ast::ty_u8); }
-      ty_evec(mt, _) | ty_unboxed_vec(mt) { ret mt.ty; }
+      ty_estr(_) { return mk_mach_uint(cx, ast::ty_u8); }
+      ty_evec(mt, _) | ty_unboxed_vec(mt) { return mt.ty; }
       _ { cx.sess.bug(
           ~"sequence_element_type called on non-sequence value");
         }
@@ -1158,16 +1158,16 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
 
 fn get_element_type(ty: t, i: uint) -> t {
     alt get(ty).struct {
-      ty_rec(flds) { ret flds[i].mt.ty; }
-      ty_tup(ts) { ret ts[i]; }
+      ty_rec(flds) { return flds[i].mt.ty; }
+      ty_tup(ts) { return ts[i]; }
       _ { fail ~"get_element_type called on invalid type"; }
     }
 }
 
 pure fn type_is_box(ty: t) -> bool {
     alt get(ty).struct {
-      ty_box(_) { ret true; }
-      _ { ret false; }
+      ty_box(_) { return true; }
+      _ { return false; }
     }
 }
 
@@ -1189,26 +1189,26 @@ pure fn type_is_region_ptr(ty: t) -> bool {
 pure fn type_is_slice(ty: t) -> bool {
     alt get(ty).struct {
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_)) { true }
-      _ { ret false; }
+      _ { return false; }
     }
 }
 
 pure fn type_is_unique_box(ty: t) -> bool {
     alt get(ty).struct {
-      ty_uniq(_) { ret true; }
-      _ { ret false; }
+      ty_uniq(_) { return true; }
+      _ { return false; }
     }
 }
 
 pure fn type_is_unsafe_ptr(ty: t) -> bool {
     alt get(ty).struct {
-      ty_ptr(_) { ret true; }
-      _ { ret false; }
+      ty_ptr(_) { return true; }
+      _ { return false; }
     }
 }
 
 pure fn type_is_vec(ty: t) -> bool {
-    ret alt get(ty).struct {
+    return alt get(ty).struct {
           ty_evec(_, _) | ty_unboxed_vec(_) { true }
           ty_estr(_) { true }
           _ { false }
@@ -1217,10 +1217,10 @@ pure fn type_is_vec(ty: t) -> bool {
 
 pure fn type_is_unique(ty: t) -> bool {
     alt get(ty).struct {
-      ty_uniq(_) { ret true; }
+      ty_uniq(_) { return true; }
       ty_evec(_, vstore_uniq) { true }
       ty_estr(vstore_uniq) { true }
-      _ { ret false; }
+      _ { return false; }
     }
 }
 
@@ -1233,13 +1233,13 @@ pure fn type_is_scalar(ty: t) -> bool {
 }
 
 fn type_is_immediate(ty: t) -> bool {
-    ret type_is_scalar(ty) || type_is_boxed(ty) ||
+    return type_is_scalar(ty) || type_is_boxed(ty) ||
         type_is_unique(ty) || type_is_region_ptr(ty);
 }
 
 fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     alt cx.needs_drop_cache.find(ty) {
-      some(result) { ret result; }
+      some(result) { return result; }
       none {/* fall through */ }
     }
 
@@ -1293,7 +1293,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     };
 
     cx.needs_drop_cache.insert(ty, result);
-    ret result;
+    return result;
 }
 
 // Some things don't need cleanups during unwinding because the
@@ -1302,7 +1302,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 // cleanups.
 fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
     alt cx.needs_unwind_cleanup_cache.find(ty) {
-      some(result) { ret result; }
+      some(result) { return result; }
       none { }
     }
 
@@ -1310,7 +1310,7 @@ fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
     let needs_unwind_cleanup =
         type_needs_unwind_cleanup_(cx, ty, tycache, false);
     cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
-    ret needs_unwind_cleanup;
+    return needs_unwind_cleanup;
 }
 
 fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
@@ -1319,7 +1319,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
     // Prevent infinite recursion
     alt tycache.find(ty) {
-      some(_) { ret false; }
+      some(_) { return false; }
       none { tycache.insert(ty, ()); }
     }
 
@@ -1373,7 +1373,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
         result
     }
 
-    ret needs_unwind_cleanup;
+    return needs_unwind_cleanup;
 }
 
 enum kind { kind_(u32) }
@@ -1583,7 +1583,7 @@ fn mutable_type_kind(cx: ctxt, ty: mt) -> kind {
 
 fn type_kind(cx: ctxt, ty: t) -> kind {
     alt cx.kind_cache.find(ty) {
-      some(result) { ret result; }
+      some(result) { return result; }
       none {/* fall through */ }
     }
 
@@ -1735,7 +1735,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     }
 
     cx.kind_cache.insert(ty, result);
-    ret result;
+    return result;
 }
 
 /// gives a rough estimate of how much space it takes to represent
@@ -1816,7 +1816,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ty_to_str(cx, r_ty),
                ty_to_str(cx, ty),
                r};
-        ret r;
+        return r;
     }
 
     fn subtypes_require(cx: ctxt, seen: @mut ~[def_id],
@@ -1848,7 +1848,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_box(mt) |
           ty_uniq(mt) |
           ty_rptr(_, mt) {
-            ret type_requires(cx, seen, r_ty, mt.ty);
+            return type_requires(cx, seen, r_ty, mt.ty);
           }
 
           ty_ptr(mt) {
@@ -1904,7 +1904,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ty_to_str(cx, ty),
                r};
 
-        ret r;
+        return r;
     }
 
     let seen = @mut ~[];
@@ -1915,46 +1915,48 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(sty) -> bool) ->
    bool {
     let sty = get(ty).struct;
     debug!{"type_structurally_contains: %s", ty_to_str(cx, ty)};
-    if test(sty) { ret true; }
+    if test(sty) { return true; }
     alt sty {
       ty_enum(did, substs) {
         for vec::each(*enum_variants(cx, did)) |variant| {
             for variant.args.each |aty| {
                 let sty = subst(cx, substs, aty);
-                if type_structurally_contains(cx, sty, test) { ret true; }
+                if type_structurally_contains(cx, sty, test) { return true; }
             }
         }
-        ret false;
+        return false;
       }
       ty_rec(fields) {
         for fields.each |field| {
-            if type_structurally_contains(cx, field.mt.ty, test) { ret true; }
+            if type_structurally_contains(cx, field.mt.ty, test) {
+                return true;
+            }
         }
-        ret false;
+        return false;
       }
       ty_class(did, substs) {
         for lookup_class_fields(cx, did).each |field| {
             let ft = lookup_field_type(cx, did, field.id, substs);
-            if type_structurally_contains(cx, ft, test) { ret true; }
+            if type_structurally_contains(cx, ft, test) { return true; }
         }
-        ret false;
+        return false;
       }
 
       ty_tup(ts) {
         for ts.each |tt| {
-            if type_structurally_contains(cx, tt, test) { ret true; }
+            if type_structurally_contains(cx, tt, test) { return true; }
         }
-        ret false;
+        return false;
       }
       ty_evec(mt, vstore_fixed(_)) {
-        ret type_structurally_contains(cx, mt.ty, test);
+        return type_structurally_contains(cx, mt.ty, test);
       }
-      _ { ret false; }
+      _ { return false; }
     }
 }
 
 fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
-    ret type_structurally_contains(cx, ty, |sty| {
+    return type_structurally_contains(cx, ty, |sty| {
         alt sty {
           ty_uniq(_) |
           ty_evec(_, vstore_uniq) |
@@ -1979,7 +1981,7 @@ fn type_is_fp(ty: t) -> bool {
 }
 
 fn type_is_numeric(ty: t) -> bool {
-    ret type_is_integral(ty) || type_is_fp(ty);
+    return type_is_integral(ty) || type_is_fp(ty);
 }
 
 fn type_is_signed(ty: t) -> bool {
@@ -2044,13 +2046,13 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       }
     }
 
-    ret result;
+    return result;
 }
 
 fn type_is_enum(ty: t) -> bool {
     alt get(ty).struct {
-      ty_enum(_, _) { ret true; }
-      _ { ret false;}
+      ty_enum(_, _) { return true; }
+      _ { return false;}
     }
 }
 
@@ -2061,18 +2063,18 @@ fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
       ty_enum(did, substs) {
         let variants = enum_variants(cx, did);
         let some_n_ary = vec::any(*variants, |v| vec::len(v.args) > 0u);
-        ret !some_n_ary;
+        return !some_n_ary;
       }
-      _ { ret false;}
+      _ { return false;}
     }
 }
 
 fn type_param(ty: t) -> option<uint> {
     alt get(ty).struct {
-      ty_param(p) { ret some(p.idx); }
+      ty_param(p) { return some(p.idx); }
       _ {/* fall through */ }
     }
-    ret none;
+    return none;
 }
 
 // Returns the type and mutability of *t.
@@ -2110,7 +2112,7 @@ fn type_autoderef(cx: ctxt, t: t) -> t {
     let mut t = t;
     loop {
         alt deref(cx, t, false) {
-          none { ret t; }
+          none { return t; }
           some(mt) { t = mt.ty; }
         }
     }
@@ -2243,13 +2245,13 @@ fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
 
 fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
     alt cx.node_type_substs.find(id) {
-      none { ret ~[]; }
-      some(ts) { ret ts; }
+      none { return ~[]; }
+      some(ts) { return ts; }
     }
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
-    ret cx.node_type_substs.contains_key(id);
+    return cx.node_type_substs.contains_key(id);
 }
 
 // Type accessors for substructures of types
@@ -2283,8 +2285,8 @@ fn ty_fn_ret_style(fty: t) -> ast::ret_style {
 
 fn is_fn_ty(fty: t) -> bool {
     alt get(fty).struct {
-      ty_fn(_) { ret true; }
-      _ { ret false; }
+      ty_fn(_) { return true; }
+      _ { return false; }
     }
 }
 
@@ -2301,14 +2303,14 @@ fn is_pred_ty(fty: t) -> bool {
 
 fn ty_var_id(typ: t) -> tv_vid {
     alt get(typ).struct {
-      ty_var(vid) { ret vid; }
+      ty_var(vid) { return vid; }
       _ { error!{"ty_var_id called on non-var ty"}; fail; }
     }
 }
 
 fn ty_var_integral_id(typ: t) -> tvi_vid {
     alt get(typ).struct {
-      ty_var_integral(vid) { ret vid; }
+      ty_var_integral(vid) { return vid; }
       _ { error!{"ty_var_integral_id called on ty other than \
                   ty_var_integral"};
          fail; }
@@ -2317,14 +2319,14 @@ fn ty_var_integral_id(typ: t) -> tvi_vid {
 
 // Type accessors for AST nodes
 fn block_ty(cx: ctxt, b: ast::blk) -> t {
-    ret node_id_to_type(cx, b.node.id);
+    return node_id_to_type(cx, b.node.id);
 }
 
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
 fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
-    ret node_id_to_type(cx, pat.id);
+    return node_id_to_type(cx, pat.id);
 }
 
 
@@ -2335,17 +2337,17 @@ fn pat_ty(cx: ctxt, pat: @ast::pat) -> t {
 // instead of "fn(t) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
 fn expr_ty(cx: ctxt, expr: @ast::expr) -> t {
-    ret node_id_to_type(cx, expr.id);
+    return node_id_to_type(cx, expr.id);
 }
 
 fn expr_ty_params_and_ty(cx: ctxt,
                          expr: @ast::expr) -> {params: ~[t], ty: t} {
-    ret {params: node_id_to_type_params(cx, expr.id),
+    return {params: node_id_to_type_params(cx, expr.id),
          ty: node_id_to_type(cx, expr.id)};
 }
 
 fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
-    ret node_id_has_type_params(cx, expr.id);
+    return node_id_has_type_params(cx, expr.id);
 }
 
 fn expr_is_lval(method_map: typeck::method_map, e: @ast::expr) -> bool {
@@ -2361,15 +2363,15 @@ fn expr_is_lval(method_map: typeck::method_map, e: @ast::expr) -> bool {
 fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     alt s.node {
       ast::stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
-        ret id;
+        return id;
       }
     }
 }
 
 fn field_idx(id: ast::ident, fields: ~[field]) -> option<uint> {
     let mut i = 0u;
-    for fields.each |f| { if f.ident == id { ret some(i); } i += 1u; }
-    ret none;
+    for fields.each |f| { if f.ident == id { return some(i); } i += 1u; }
+    return none;
 }
 
 fn get_field(rec_ty: t, id: ast::ident) -> field {
@@ -2386,8 +2388,8 @@ fn get_fields(rec_ty:t) -> ~[field] {
 
 fn method_idx(id: ast::ident, meths: ~[method]) -> option<uint> {
     let mut i = 0u;
-    for meths.each |m| { if m.ident == id { ret some(i); } i += 1u; }
-    ret none;
+    for meths.each |m| { if m.ident == id { return some(i); } i += 1u; }
+    return none;
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
@@ -2419,7 +2421,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
     }
 
     // Fast path
-    if !type_needs_infer(rt) { ret; }
+    if !type_needs_infer(rt) { return; }
 
     // Occurs check!
     if vec::contains(vars_in_type(rt), vid) {
@@ -2539,7 +2541,7 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
     }
 
     alt err {
-      terr_mismatch { ret ~"types differ"; }
+      terr_mismatch { return ~"types differ"; }
       terr_ret_style_mismatch(expect, actual) {
         fn to_str(s: ast::ret_style) -> ~str {
             alt s {
@@ -2547,69 +2549,71 @@ fn type_err_to_str(cx: ctxt, err: type_err) -> ~str {
               ast::return_val { ~"return-by-value" }
             }
         }
-        ret to_str(actual) + ~" function found where " + to_str(expect) +
+        return to_str(actual) + ~" function found where " + to_str(expect) +
             ~" function was expected";
       }
       terr_purity_mismatch(f1, f2) {
-        ret fmt!{"expected %s fn but found %s fn",
+        return fmt!{"expected %s fn but found %s fn",
                  purity_to_str(f1), purity_to_str(f2)};
       }
       terr_proto_mismatch(e, a) {
-        ret fmt!{"closure protocol mismatch (%s vs %s)",
+        return fmt!{"closure protocol mismatch (%s vs %s)",
                  proto_to_str(e), proto_to_str(a)};
       }
-      terr_mutability { ret ~"values differ in mutability"; }
-      terr_box_mutability { ret ~"boxed values differ in mutability"; }
-      terr_vec_mutability { ret ~"vectors differ in mutability"; }
-      terr_ptr_mutability { ret ~"pointers differ in mutability"; }
-      terr_ref_mutability { ret ~"references differ in mutability"; }
+      terr_mutability { return ~"values differ in mutability"; }
+      terr_box_mutability { return ~"boxed values differ in mutability"; }
+      terr_vec_mutability { return ~"vectors differ in mutability"; }
+      terr_ptr_mutability { return ~"pointers differ in mutability"; }
+      terr_ref_mutability { return ~"references differ in mutability"; }
       terr_ty_param_size(e_sz, a_sz) {
-        ret ~"expected a type with " + uint::to_str(e_sz, 10u) +
+        return ~"expected a type with " + uint::to_str(e_sz, 10u) +
             ~" type params but found one with " + uint::to_str(a_sz, 10u) +
             ~" type params";
       }
       terr_tuple_size(e_sz, a_sz) {
-        ret ~"expected a tuple with " + uint::to_str(e_sz, 10u) +
+        return ~"expected a tuple with " + uint::to_str(e_sz, 10u) +
                 ~" elements but found one with " + uint::to_str(a_sz, 10u) +
                 ~" elements";
       }
       terr_record_size(e_sz, a_sz) {
-        ret ~"expected a record with " + uint::to_str(e_sz, 10u) +
+        return ~"expected a record with " + uint::to_str(e_sz, 10u) +
                 ~" fields but found one with " + uint::to_str(a_sz, 10u) +
                 ~" fields";
       }
-      terr_record_mutability { ret ~"record elements differ in mutability"; }
+      terr_record_mutability {
+        return ~"record elements differ in mutability";
+      }
       terr_record_fields(e_fld, a_fld) {
-        ret ~"expected a record with field `" + *e_fld +
+        return ~"expected a record with field `" + *e_fld +
             ~"` but found one with field `" + *a_fld + ~"`";
       }
-      terr_arg_count { ret ~"incorrect number of function parameters"; }
+      terr_arg_count { return ~"incorrect number of function parameters"; }
       terr_mode_mismatch(e_mode, a_mode) {
-        ret ~"expected argument mode " + mode_to_str(e_mode) +
+        return ~"expected argument mode " + mode_to_str(e_mode) +
             ~" but found " + mode_to_str(a_mode);
       }
       terr_regions_differ(subregion, superregion) {
-        ret fmt!{"%s does not necessarily outlive %s",
+        return fmt!{"%s does not necessarily outlive %s",
                  explain_region(cx, subregion),
                  explain_region(cx, superregion)};
       }
       terr_vstores_differ(k, e_vs, a_vs) {
-        ret fmt!{"%s storage differs: expected %s but found %s",
+        return fmt!{"%s storage differs: expected %s but found %s",
                  terr_vstore_kind_to_str(k),
                  vstore_to_str(cx, e_vs),
                  vstore_to_str(cx, a_vs)};
       }
       terr_in_field(err, fname) {
-        ret fmt!{"in field `%s`, %s", *fname, type_err_to_str(cx, *err)};
+        return fmt!{"in field `%s`, %s", *fname, type_err_to_str(cx, *err)};
       }
       terr_sorts(exp, act) {
-        ret fmt!{"%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act)};
+        return fmt!{"%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act)};
       }
       terr_self_substs {
-        ret ~"inconsistent self substitution"; // XXX this is more of a bug
+        return ~"inconsistent self substitution"; // XXX this is more of a bug
       }
       terr_no_integral_type {
-        ret ~"couldn't determine an appropriate integral type for integer \
+        return ~"couldn't determine an appropriate integral type for integer \
              literal";
       }
     }
@@ -2629,7 +2633,7 @@ fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 
 fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     alt cx.trait_method_cache.find(id) {
-      some(ms) { ret ms; }
+      some(ms) { return ms; }
       _ {}
     }
     // Local traits are supposed to have been added explicitly.
@@ -2789,7 +2793,7 @@ fn type_is_empty(cx: ctxt, t: t) -> bool {
 
 fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
     alt cx.enum_var_cache.find(id) {
-      some(variants) { ret variants; }
+      some(variants) { return variants; }
       _ { /* fallthrough */ }
     }
 
@@ -2844,7 +2848,7 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
     let mut i = 0u;
     while i < vec::len::<variant_info>(*variants) {
         let variant = variants[i];
-        if ast_util::def_eq(variant.id, variant_id) { ret variant; }
+        if ast_util::def_eq(variant.id, variant_id) { return variant; }
         i += 1u;
     }
     cx.sess.bug(~"enum_variant_with_id(): no variant exists with that ID");
@@ -2855,14 +2859,14 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     alt cx.tcache.find(did) {
-      some(tpt) { ret tpt; }
+      some(tpt) { return tpt; }
       none {
         // The item is in this crate. The caller should have added it to the
         // type cache already
         assert did.crate != ast::local_crate;
         let tyt = csearch::get_type(cx, did);
         cx.tcache.insert(did, tyt);
-        ret tyt;
+        return tyt;
       }
     }
 }
@@ -2908,7 +2912,7 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
     }
         }
   else {
-        ret csearch::get_class_fields(cx, did);
+        return csearch::get_class_fields(cx, did);
     }
 }
 
@@ -2962,7 +2966,7 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
        let ms = lookup_class_method_ids(cx, did);
         for ms.each |m| {
          if m.name == name {
-             ret ast_util::local_def(m.id);
+             return ast_util::local_def(m.id);
          }
        }
        cx.sess.span_fatal(sp, fmt!{"Class doesn't have a method \
@@ -3087,7 +3091,7 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     /*bot*/     ~[f, f, f, f, t, t, f, f],
     /*struct*/  ~[t, t, t, t, t, t, t, t]];
 
-    ret tbl[tycat(ty)][opcat(op)];
+    return tbl[tycat(ty)][opcat(op)];
 }
 
 fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {
@@ -3099,7 +3103,7 @@ fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {
 /// Returns an equivalent type with all the typedefs and self regions removed.
 fn normalize_ty(cx: ctxt, t: t) -> t {
     alt cx.normalized_cache.find(t) {
-      some(t) { ret t; }
+      some(t) { return t; }
       none { }
     }
 
@@ -3136,7 +3140,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
     let sty = fold_sty(get(t).struct, |t| { normalize_ty(cx, t) });
     let t_norm = mk_t(cx, sty);
     cx.normalized_cache.insert(t, t_norm);
-    ret t_norm;
+    return t_norm;
 }
 
 // Local Variables:

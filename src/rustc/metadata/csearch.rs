@@ -35,12 +35,12 @@ export maybe_get_item_ast, found_ast, found, found_parent, not_found;
 
 fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> ~str {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    ret decoder::get_symbol(cdata, def.node);
+    return decoder::get_symbol(cdata, def.node);
 }
 
 fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
-    ret decoder::get_type_param_count(cdata, def.node);
+    return decoder::get_type_param_count(cdata, def.node);
 }
 
 fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
@@ -51,7 +51,7 @@ fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
         let (c, data, def) = elt;
         vec::push(result, decoder::lookup_def(c, data, def));
     }
-    ret result;
+    return result;
 }
 
 fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
@@ -83,7 +83,7 @@ fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
             }
         }
     }
-    ret result;
+    return result;
 }
 
 /// Iterates over all the paths in the given crate.
@@ -125,7 +125,7 @@ fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
     -> ~[ty::variant_info] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    ret decoder::get_enum_variants(cdata, def.node, tcx)
+    return decoder::get_enum_variants(cdata, def.node, tcx)
 }
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
@@ -147,7 +147,7 @@ fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
                           -> option<@dvec<@~str>> {
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    ret decoder::get_method_names_if_trait(cdata, def.node);
+    return decoder::get_method_names_if_trait(cdata, def.node);
 }
 
 fn get_item_attrs(cstore: cstore::cstore,
@@ -173,7 +173,7 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
 fn get_region_param(cstore: metadata::cstore::cstore,
                     def: ast::def_id) -> bool {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    ret decoder::get_region_param(cdata, def.node);
+    return decoder::get_region_param(cdata, def.node);
 }
 
 fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
@@ -193,7 +193,7 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                  class_id, def} );
     debug!{"got field data %?", the_field};
     let ty = decoder::item_type(def, the_field, tcx, cdata);
-    ret {bounds: @~[], rp: false, ty: ty};
+    return {bounds: @~[], rp: false, ty: ty};
 }
 
 // Given a def_id for an impl or class, return the traits it implements,

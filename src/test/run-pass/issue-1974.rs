@@ -3,6 +3,6 @@
 fn main() {
     let s = ~"hej";
     while s != ~"" {
-        ret;
+        return;
     }
 }

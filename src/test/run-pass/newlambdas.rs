@@ -5,7 +5,7 @@ fn f(i: int, f: fn(int) -> int) -> int { f(i) }
 fn g(g: fn()) { }
 
 fn ff() -> fn@(int) -> int {
-    ret |x| x + 1;
+    return |x| x + 1;
 }
 
 fn main() {

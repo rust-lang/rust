@@ -11,19 +11,19 @@ impl extensions <T:copy, U:copy> of tuple_ops<T,U> for (T, U) {
     /// Return the first element of self
     pure fn first() -> T {
         let (t, _) = self;
-        ret t;
+        return t;
     }
 
     /// Return the second element of self
     pure fn second() -> U {
         let (_, u) = self;
-        ret u;
+        return u;
     }
 
     /// Return the results of swapping the two elements of self
     pure fn swap() -> (U, T) {
         let (t, u) = self;
-        ret (u, t);
+        return (u, t);
     }
 
 }

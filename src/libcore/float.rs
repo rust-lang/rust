@@ -103,9 +103,9 @@ mod consts {
  * * exact - Whether to enforce the exact number of significant digits
  */
 fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
-    if is_NaN(num) { ret ~"NaN"; }
-    if num == infinity { ret ~"inf"; }
-    if num == neg_infinity { ret ~"-inf"; }
+    if is_NaN(num) { return ~"NaN"; }
+    if num == infinity { return ~"inf"; }
+    if num == neg_infinity { return ~"-inf"; }
 
     let mut (num, sign) = if num < 0.0 { (-num, ~"-") } else { (num, ~"") };
 
@@ -122,7 +122,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
     // This used to return right away without rounding, as "~[-]num",
     // but given epsilon like in f64.rs, I don't see how the comparison
     // to epsilon did much when only used there.
-    //    if (frac < epsilon && !exact) || digits == 0u { ret accum; }
+    //    if (frac < epsilon && !exact) || digits == 0u { return accum; }
     //
     // With something better, possibly weird results like this can be avoided:
     //     assert "3.14158999999999988262" == my_to_str_exact(3.14159, 20u);
@@ -176,7 +176,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
         acc = sign + ones + ~"." + racc;
     }
 
-    ret acc;
+    return acc;
 }
 
 /**
@@ -240,25 +240,25 @@ fn to_str(num: float, digits: uint) -> ~str {
  */
 fn from_str(num: ~str) -> option<float> {
    if num == ~"inf" {
-       ret some(infinity as float);
+       return some(infinity as float);
    } else if num == ~"-inf" {
-       ret some(neg_infinity as float);
+       return some(neg_infinity as float);
    } else if num == ~"NaN" {
-       ret some(NaN as float);
+       return some(NaN as float);
    }
 
    let mut pos = 0u;               //Current byte position in the string.
                                    //Used to walk the string in O(n).
    let len = str::len(num);        //Length of the string, in bytes.
 
-   if len == 0u { ret none; }
+   if len == 0u { return none; }
    let mut total = 0f;             //Accumulated result
    let mut c     = 'z';            //Latest char.
 
    //The string must start with one of the following characters.
    alt str::char_at(num, 0u) {
       '-' | '+' | '0' to '9' | '.' {}
-      _ { ret none; }
+      _ { return none; }
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
@@ -288,7 +288,7 @@ fn from_str(num: ~str) -> option<float> {
            break;
          }
          _ {
-           ret none;
+           return none;
          }
        }
    }
@@ -308,7 +308,7 @@ fn from_str(num: ~str) -> option<float> {
                  break;
              }
              _ {
-                 ret none;
+                 return none;
              }
          }
       }
@@ -353,17 +353,17 @@ fn from_str(num: ~str) -> option<float> {
              total = total * multiplier;
           }
       } else {
-         ret none;
+         return none;
       }
    }
 
    if(pos < len) {
-     ret none;
+     return none;
    } else {
      if(neg) {
         total *= -1f;
      }
-     ret some(total);
+     return some(total);
    }
 }
 
@@ -386,9 +386,9 @@ fn from_str(num: ~str) -> option<float> {
 fn pow_with_uint(base: uint, pow: uint) -> float {
     if base == 0u {
         if pow == 0u {
-            ret NaN as float;
+            return NaN as float;
         }
-        ret 0.;
+        return 0.;
     }
     let mut my_pow     = pow;
     let mut total      = 1f;
@@ -400,7 +400,7 @@ fn pow_with_uint(base: uint, pow: uint) -> float {
         my_pow     /= 2u;
         multiplier *= multiplier;
     }
-    ret total;
+    return total;
 }
 
 pure fn is_positive(x: float) -> bool { f64::is_positive(x as f64) }
@@ -420,15 +420,15 @@ pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
 impl num of num::num for float {
-    pure fn add(&&other: float)    -> float { ret self + other; }
-    pure fn sub(&&other: float)    -> float { ret self - other; }
-    pure fn mul(&&other: float)    -> float { ret self * other; }
-    pure fn div(&&other: float)    -> float { ret self / other; }
-    pure fn modulo(&&other: float) -> float { ret self % other; }
-    pure fn neg()                  -> float { ret -self;        }
+    pure fn add(&&other: float)    -> float { return self + other; }
+    pure fn sub(&&other: float)    -> float { return self - other; }
+    pure fn mul(&&other: float)    -> float { return self * other; }
+    pure fn div(&&other: float)    -> float { return self / other; }
+    pure fn modulo(&&other: float) -> float { return self % other; }
+    pure fn neg()                  -> float { return -self;        }
 
-    pure fn to_int()         -> int   { ret self as int; }
-    pure fn from_int(n: int) -> float { ret n as float;  }
+    pure fn to_int()         -> int   { return self as int; }
+    pure fn from_int(n: int) -> float { return n as float;  }
 }
 
 #[test]

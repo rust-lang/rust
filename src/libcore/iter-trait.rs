@@ -41,8 +41,8 @@ impl extensions<A:copy> of iter::copyable_iter<A> for IMPL_T<A> {
 
     fn find(p: fn(A) -> bool) -> option<A> {
         for self.each |i| {
-            if p(i) { ret some(i) }
+            if p(i) { return some(i) }
         }
-        ret none;
+        return none;
     }
 }

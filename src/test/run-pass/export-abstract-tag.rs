@@ -7,7 +7,7 @@ mod foo {
 
     enum t { t1, }
 
-    fn f() -> t { ret t1; }
+    fn f() -> t { return t1; }
 }
 
 fn main() { let v: foo::t = foo::f(); }

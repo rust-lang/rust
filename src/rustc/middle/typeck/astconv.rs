@@ -142,7 +142,7 @@ fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy owned>(
         ast_path_to_substs_and_ty(self, rscope, did, path);
     write_ty_to_tcx(tcx, path_id, ty);
     write_substs_to_tcx(tcx, path_id, substs.tps);
-    ret {substs: substs, ty: ty};
+    return {substs: substs, ty: ty};
 }
 
 const NO_REGIONS: uint = 1u;
@@ -157,7 +157,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     fn ast_mt_to_mt<AC: ast_conv, RS: region_scope copy owned>(
         self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
-        ret {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
+        return {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
     }
 
     // Handle @, ~, and & being able to mean estrs and evecs.
@@ -172,13 +172,13 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
           // to convert to an e{vec,str}, there can't be a mutability argument
           _ if a_seq_ty.mutbl != ast::m_imm {}
           ast::ty_vec(mt) {
-            ret ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
+            return ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
           }
           ast::ty_path(path, id) {
             alt tcx.def_map.find(id) {
               some(ast::def_prim_ty(ast::ty_str)) {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                ret ty::mk_estr(tcx, vst);
+                return ty::mk_estr(tcx, vst);
               }
               _ {}
             }
@@ -187,7 +187,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
         }
 
         let seq_ty = ast_mt_to_mt(self, rscope, a_seq_ty);
-        ret constr(seq_ty);
+        return constr(seq_ty);
     }
 
     fn check_path_args(tcx: ty::ctxt,
@@ -213,7 +213,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     let tcx = self.tcx();
 
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
-      some(ty::atttce_resolved(ty)) { ret ty; }
+      some(ty::atttce_resolved(ty)) { return ty; }
       some(ty::atttce_unresolved) {
         tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
                                           insert an enum in the cycle, \
@@ -348,7 +348,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     };
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_resolved(typ));
-    ret typ;
+    return typ;
 }
 
 fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(

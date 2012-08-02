@@ -7,12 +7,12 @@ const bits: T = 32 as T;
 const bits: T = 64 as T;
 
 /// Produce a uint suitable for use in a hash table
-pure fn hash(&&x: int) -> uint { ret x as uint; }
+pure fn hash(&&x: int) -> uint { return x as uint; }
 
 /// Returns `base` raised to the power of `exponent`
 fn pow(base: int, exponent: uint) -> int {
-    if exponent == 0u { ret 1; } //Not mathemtically true if ~[base == 0]
-    if base     == 0  { ret 0; }
+    if exponent == 0u { return 1; } //Not mathemtically true if ~[base == 0]
+    if base     == 0  { return 0; }
     let mut my_pow  = exponent;
     let mut acc     = 1;
     let mut multiplier = base;
@@ -23,7 +23,7 @@ fn pow(base: int, exponent: uint) -> int {
       my_pow     /= 2u;
       multiplier *= multiplier;
     }
-    ret acc;
+    return acc;
 }
 
 #[test]

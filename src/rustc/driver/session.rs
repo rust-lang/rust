@@ -168,7 +168,7 @@ impl session for session {
         self.span_lint_level(level, span, msg);
     }
     fn next_node_id() -> ast::node_id {
-        ret syntax::parse::next_node_id(self.parse_sess);
+        return syntax::parse::next_node_id(self.parse_sess);
     }
     fn diagnostic() -> diagnostic::span_handler {
         self.span_diagnostic

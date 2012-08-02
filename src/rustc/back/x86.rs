@@ -3,7 +3,7 @@ import session::sess_os_to_meta_os;
 import metadata::loader::meta_section_name;
 
 fn get_target_strs(target_os: session::os) -> target_strs::t {
-    ret {
+    return {
         module_asm: ~"",
 
         meta_sect_name: meta_section_name(sess_os_to_meta_os(target_os)),

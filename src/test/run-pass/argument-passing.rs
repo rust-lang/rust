@@ -2,10 +2,10 @@ fn f1(a: {mut x: int}, &b: int, -c: int) -> int {
     let r = a.x + b + c;
     a.x = 0;
     b = 10;
-    ret r;
+    return r;
 }
 
-fn f2(a: int, f: fn(int)) -> int { f(1); ret a; }
+fn f2(a: int, f: fn(int)) -> int { f(1); return a; }
 
 fn main() {
     let mut a = {mut x: 1}, b = 2, c = 3;

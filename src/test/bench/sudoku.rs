@@ -42,7 +42,7 @@ fn read_grid(f: io::reader) -> grid_t {
             g[row][col] = option::get(uint::from_str(comps[2])) as u8;
         }
     }
-    ret grid_ctor(g);
+    return grid_ctor(g);
 }
 
 // solve sudoku grid
@@ -62,12 +62,12 @@ fn solve_grid(g: grid_t) {
             for uint::range(1u, 10u) |i| {
                 if avail.get(i) {
                     g[row][col] = i as u8;
-                    ret true;
+                    return true;
                 }
             };
         }
         g[row][col] = 0u8;
-        ret false;
+        return false;
     }
 
     // find colors available in neighbourhood of (row, col)

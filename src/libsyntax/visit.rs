@@ -64,7 +64,7 @@ type visitor<E> =
       visit_class_item: fn@(@class_member, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
-    ret @{visit_mod: |a,b,c,d,e|visit_mod::<E>(a, b, c, d, e),
+    return @{visit_mod: |a,b,c,d,e|visit_mod::<E>(a, b, c, d, e),
           visit_view_item: |a,b,c|visit_view_item::<E>(a, b, c),
           visit_foreign_item: |a,b,c|visit_foreign_item::<E>(a, b, c),
           visit_item: |a,b,c|visit_item::<E>(a, b, c),
@@ -466,7 +466,7 @@ type simple_visitor =
 fn simple_ignore_ty(_t: @ty) {}
 
 fn default_simple_visitor() -> simple_visitor {
-    ret @{visit_mod: fn@(_m: _mod, _sp: span, _id: node_id) { },
+    return @{visit_mod: fn@(_m: _mod, _sp: span, _id: node_id) { },
           visit_view_item: fn@(_vi: @view_item) { },
           visit_foreign_item: fn@(_ni: @foreign_item) { },
           visit_item: fn@(_i: @item) { },
@@ -574,7 +574,7 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(cm);
         visit_class_item(cm, e, v);
     }
-    ret mk_vt(@{visit_mod: |a,b,c,d,e|v_mod(v.visit_mod, a, b, c, d, e),
+    return mk_vt(@{visit_mod: |a,b,c,d,e|v_mod(v.visit_mod, a, b, c, d, e),
                 visit_view_item: |a,b,c|
                     v_view_item(v.visit_view_item, a, b, c),
                 visit_foreign_item:

@@ -31,7 +31,7 @@ enum oper_type {
 
 /* logging funs */
 fn def_id_to_str(d: def_id) -> ~str {
-    ret int::str(d.crate) + ~"," + int::str(d.node);
+    return int::str(d.crate) + ~"," + int::str(d.node);
 }
 
 fn comma_str(args: ~[@constr_arg_use]) -> ~str {
@@ -45,11 +45,11 @@ fn comma_str(args: ~[@constr_arg_use]) -> ~str {
           carg_lit(l) { rslt += lit_to_str(l); }
         }
     }
-    ret rslt;
+    return rslt;
 }
 
 fn constraint_to_str(tcx: ty::ctxt, c: sp_constr) -> ~str {
-    ret fmt!{"%s(%s) - arising from %s",
+    return fmt!{"%s(%s) - arising from %s",
              path_to_str(c.node.path),
              comma_str(c.node.args),
              codemap::span_to_str(c.span, tcx.sess.codemap)};
@@ -69,7 +69,7 @@ fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> ~str {
           }
         }
     }
-    ret s;
+    return s;
 }
 
 fn log_tritv(fcx: fn_ctxt, v: tritv::t) {
@@ -86,7 +86,7 @@ fn first_difference_string(fcx: fn_ctxt, expected: tritv::t, actual: tritv::t)
             break;
         }
     }
-    ret s;
+    return s;
 }
 
 fn log_tritv_err(fcx: fn_ctxt, v: tritv::t) {
@@ -100,7 +100,7 @@ fn tos(v: ~[uint]) -> ~str {
             rslt += ~"0";
         } else if i == 1u { rslt += ~"1"; } else { rslt += ~"?"; }
     }
-    ret rslt;
+    return rslt;
 }
 
 fn log_cond(v: ~[uint]) { log(debug, tos(v)); }
@@ -146,7 +146,7 @@ fn log_states_err(pp: pre_and_post_state) {
 fn print_ident(i: ident) { log(debug, ~" " + *i + ~" "); }
 
 fn print_idents(&idents: ~[ident]) {
-    if vec::len::<ident>(idents) == 0u { ret; }
+    if vec::len::<ident>(idents) == 0u { return; }
     log(debug, ~"an ident: " + *vec::pop::<ident>(idents));
     print_idents(idents);
 }
@@ -241,7 +241,7 @@ type crate_ctxt = {tcx: ty::ctxt, node_anns: node_ann_table, fm: fn_info_map};
 
 fn get_fn_info(ccx: crate_ctxt, id: node_id) -> fn_info {
     assert (ccx.fm.contains_key(id));
-    ret ccx.fm.get(id);
+    return ccx.fm.get(id);
 }
 
 fn add_node(ccx: crate_ctxt, i: node_id, a: ts_ann) {
@@ -254,8 +254,8 @@ fn add_node(ccx: crate_ctxt, i: node_id, a: ts_ann) {
 
 fn get_ts_ann(ccx: crate_ctxt, i: node_id) -> option<ts_ann> {
     if i as uint < vec::len(*ccx.node_anns) {
-        ret some::<ts_ann>(ccx.node_anns[i]);
-    } else { ret none::<ts_ann>; }
+        return some::<ts_ann>(ccx.node_anns[i]);
+    } else { return none::<ts_ann>; }
 }
 
 
@@ -266,20 +266,20 @@ fn node_id_to_ts_ann(ccx: crate_ctxt, id: node_id) -> ts_ann {
         error!{"node_id_to_ts_ann: no ts_ann for node_id %d", id};
         fail;
       }
-      some(tt) { ret tt; }
+      some(tt) { return tt; }
     }
 }
 
 fn node_id_to_poststate(ccx: crate_ctxt, id: node_id) -> poststate {
     debug!{"node_id_to_poststate"};
-    ret node_id_to_ts_ann(ccx, id).states.poststate;
+    return node_id_to_ts_ann(ccx, id).states.poststate;
 }
 
 fn stmt_to_ann(ccx: crate_ctxt, s: stmt) -> ts_ann {
     debug!{"stmt_to_ann"};
     alt s.node {
       stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
-        ret node_id_to_ts_ann(ccx, id);
+        return node_id_to_ts_ann(ccx, id);
       }
     }
 }
@@ -288,25 +288,25 @@ fn stmt_to_ann(ccx: crate_ctxt, s: stmt) -> ts_ann {
 /* fails if e has no annotation */
 fn expr_states(ccx: crate_ctxt, e: @expr) -> pre_and_post_state {
     debug!{"expr_states"};
-    ret node_id_to_ts_ann(ccx, e.id).states;
+    return node_id_to_ts_ann(ccx, e.id).states;
 }
 
 
 /* fails if e has no annotation */
 fn expr_pp(ccx: crate_ctxt, e: @expr) -> pre_and_post {
     debug!{"expr_pp"};
-    ret node_id_to_ts_ann(ccx, e.id).conditions;
+    return node_id_to_ts_ann(ccx, e.id).conditions;
 }
 
 fn stmt_pp(ccx: crate_ctxt, s: stmt) -> pre_and_post {
-    ret stmt_to_ann(ccx, s).conditions;
+    return stmt_to_ann(ccx, s).conditions;
 }
 
 
 /* fails if b has no annotation */
 fn block_pp(ccx: crate_ctxt, b: blk) -> pre_and_post {
     debug!{"block_pp"};
-    ret node_id_to_ts_ann(ccx, b.node.id).conditions;
+    return node_id_to_ts_ann(ccx, b.node.id).conditions;
 }
 
 fn clear_pp(pp: pre_and_post) {
@@ -321,84 +321,85 @@ fn clear_precond(ccx: crate_ctxt, id: node_id) {
 
 fn block_states(ccx: crate_ctxt, b: blk) -> pre_and_post_state {
     debug!{"block_states"};
-    ret node_id_to_ts_ann(ccx, b.node.id).states;
+    return node_id_to_ts_ann(ccx, b.node.id).states;
 }
 
 fn stmt_states(ccx: crate_ctxt, s: stmt) -> pre_and_post_state {
-    ret stmt_to_ann(ccx, s).states;
+    return stmt_to_ann(ccx, s).states;
 }
 
 fn expr_precond(ccx: crate_ctxt, e: @expr) -> precond {
-    ret expr_pp(ccx, e).precondition;
+    return expr_pp(ccx, e).precondition;
 }
 
 fn expr_postcond(ccx: crate_ctxt, e: @expr) -> postcond {
-    ret expr_pp(ccx, e).postcondition;
+    return expr_pp(ccx, e).postcondition;
 }
 
 fn expr_prestate(ccx: crate_ctxt, e: @expr) -> prestate {
-    ret expr_states(ccx, e).prestate;
+    return expr_states(ccx, e).prestate;
 }
 
 fn expr_poststate(ccx: crate_ctxt, e: @expr) -> poststate {
-    ret expr_states(ccx, e).poststate;
+    return expr_states(ccx, e).poststate;
 }
 
 fn stmt_precond(ccx: crate_ctxt, s: stmt) -> precond {
-    ret stmt_pp(ccx, s).precondition;
+    return stmt_pp(ccx, s).precondition;
 }
 
 fn stmt_postcond(ccx: crate_ctxt, s: stmt) -> postcond {
-    ret stmt_pp(ccx, s).postcondition;
+    return stmt_pp(ccx, s).postcondition;
 }
 
 fn states_to_poststate(ss: pre_and_post_state) -> poststate {
-    ret ss.poststate;
+    return ss.poststate;
 }
 
 fn stmt_prestate(ccx: crate_ctxt, s: stmt) -> prestate {
-    ret stmt_states(ccx, s).prestate;
+    return stmt_states(ccx, s).prestate;
 }
 
 fn stmt_poststate(ccx: crate_ctxt, s: stmt) -> poststate {
-    ret stmt_states(ccx, s).poststate;
+    return stmt_states(ccx, s).poststate;
 }
 
 fn block_precond(ccx: crate_ctxt, b: blk) -> precond {
-    ret block_pp(ccx, b).precondition;
+    return block_pp(ccx, b).precondition;
 }
 
 fn block_postcond(ccx: crate_ctxt, b: blk) -> postcond {
-    ret block_pp(ccx, b).postcondition;
+    return block_pp(ccx, b).postcondition;
 }
 
 fn block_prestate(ccx: crate_ctxt, b: blk) -> prestate {
-    ret block_states(ccx, b).prestate;
+    return block_states(ccx, b).prestate;
 }
 
 fn block_poststate(ccx: crate_ctxt, b: blk) -> poststate {
-    ret block_states(ccx, b).poststate;
+    return block_states(ccx, b).poststate;
 }
 
 fn set_prestate_ann(ccx: crate_ctxt, id: node_id, pre: prestate) -> bool {
     debug!{"set_prestate_ann"};
-    ret set_prestate(node_id_to_ts_ann(ccx, id), pre);
+    return set_prestate(node_id_to_ts_ann(ccx, id), pre);
 }
 
 fn extend_prestate_ann(ccx: crate_ctxt, id: node_id, pre: prestate) -> bool {
     debug!{"extend_prestate_ann"};
-    ret extend_prestate(node_id_to_ts_ann(ccx, id).states.prestate, pre);
+    return extend_prestate(node_id_to_ts_ann(ccx, id).states.prestate, pre);
 }
 
 fn set_poststate_ann(ccx: crate_ctxt, id: node_id, post: poststate) -> bool {
     debug!{"set_poststate_ann"};
-    ret set_poststate(node_id_to_ts_ann(ccx, id), post);
+    return set_poststate(node_id_to_ts_ann(ccx, id), post);
 }
 
 fn extend_poststate_ann(ccx: crate_ctxt, id: node_id, post: poststate) ->
    bool {
     debug!{"extend_poststate_ann"};
-    ret extend_poststate(node_id_to_ts_ann(ccx, id).states.poststate, post);
+    return extend_poststate(
+        node_id_to_ts_ann(ccx, id).states.poststate, post);
 }
 
 fn set_pre_and_post(ccx: crate_ctxt, id: node_id, pre: precond,
@@ -430,14 +431,14 @@ fn set_postcond_false(ccx: crate_ctxt, id: node_id) {
 }
 
 fn pure_exp(ccx: crate_ctxt, id: node_id, p: prestate) -> bool {
-    ret set_prestate_ann(ccx, id, p) | set_poststate_ann(ccx, id, p);
+    return set_prestate_ann(ccx, id, p) | set_poststate_ann(ccx, id, p);
 }
 
-fn num_constraints(m: fn_info) -> uint { ret m.num_constraints; }
+fn num_constraints(m: fn_info) -> uint { return m.num_constraints; }
 
 fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
     let na: ~[mut ts_ann] = ~[mut];
-    ret {tcx: cx, node_anns: @mut na, fm: int_hash::<fn_info>()};
+    return {tcx: cx, node_anns: @mut na, fm: int_hash::<fn_info>()};
 }
 
 /* Use e's type to determine whether it returns.
@@ -445,15 +446,15 @@ fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
 the answer is noreturn. */
 fn controlflow_expr(ccx: crate_ctxt, e: @expr) -> ret_style {
     alt ty::get(ty::node_id_to_type(ccx.tcx, e.id)).struct {
-      ty::ty_fn(f) { ret f.ret_style; }
-      _ { ret return_val; }
+      ty::ty_fn(f) { return f.ret_style; }
+      _ { return return_val; }
     }
 }
 
 fn constraints_expr(cx: ty::ctxt, e: @expr) -> ~[@ty::constr] {
     alt ty::get(ty::node_id_to_type(cx, e.id)).struct {
-      ty::ty_fn(f) { ret f.constraints; }
-      _ { ret ~[]; }
+      ty::ty_fn(f) { return f.constraints; }
+      _ { return ~[]; }
     }
 }
 
@@ -463,12 +464,12 @@ fn node_id_to_def_strict(cx: ty::ctxt, id: node_id) -> def {
         error!{"node_id_to_def: node_id %d has no def", id};
         fail;
       }
-      some(d) { ret d; }
+      some(d) { return d; }
     }
 }
 
 fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> option<def> {
-    ret ccx.tcx.def_map.find(id);
+    return ccx.tcx.def_map.find(id);
 }
 
 fn norm_a_constraint(id: def_id, c: constraint) -> ~[norm_constraint] {
@@ -480,7 +481,7 @@ fn norm_a_constraint(id: def_id, c: constraint) -> ~[norm_constraint] {
                                        def_id: id,
                                        args: pd.node.args})});
     }
-    ret rslt;
+    return rslt;
 }
 
 
@@ -491,7 +492,7 @@ fn constraints(fcx: fn_ctxt) -> ~[norm_constraint] {
     for fcx.enclosing.constrs.each |key, val| {
         vec::push_all(rslt, norm_a_constraint(key, val));
     };
-    ret rslt;
+    return rslt;
 }
 
 // FIXME (#2539): Would rather take an immutable vec as an argument,
@@ -499,12 +500,12 @@ fn constraints(fcx: fn_ctxt) -> ~[norm_constraint] {
 fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
               occ: ~[@constr_arg_use]) -> uint {
     debug!{"match_args: looking at %s",
-           constr_args_to_str(fn@(i: inst) -> ~str { ret *i.ident; }, occ)};
+           constr_args_to_str(fn@(i: inst) -> ~str { *i.ident }, occ)};
     for (*occs).each |pd| {
         log(debug,
                  ~"match_args: candidate " + pred_args_to_str(pd));
-        fn eq(p: inst, q: inst) -> bool { ret p.node == q.node; }
-        if ty::args_eq(eq, pd.node.args, occ) { ret pd.node.bit_num; }
+        fn eq(p: inst, q: inst) -> bool { return p.node == q.node; }
+        if ty::args_eq(eq, pd.node.args, occ) { return pd.node.bit_num; }
     }
     fcx.ccx.tcx.sess.bug(~"match_args: no match for occurring args");
 }
@@ -514,7 +515,7 @@ fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
       none {
         tcx.sess.bug(~"node_id_for_constr: bad node_id " + int::str(t));
       }
-      some(def_fn(i, _)) { ret i; }
+      some(def_fn(i, _)) { return i; }
       _ { tcx.sess.bug(~"node_id_for_constr: pred is not a function"); }
     }
 }
@@ -525,7 +526,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
         alt tcx.def_map.find(e.id) {
           some(def_local(nid, _)) | some(def_arg(nid, _)) |
           some(def_binding(nid)) | some(def_upvar(nid, _, _)) {
-            ret @respan(p.span,
+            return @respan(p.span,
                         carg_ident({ident: p.idents[0], node: nid}));
           }
           some(what) {
@@ -540,7 +541,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
           }
         }
       }
-      expr_lit(l) { ret @respan(e.span, carg_lit(l)); }
+      expr_lit(l) { return @respan(e.span, carg_lit(l)); }
       _ {
         tcx.sess.span_fatal(e.span,
                             ~"arguments to constrained functions must be " +
@@ -562,7 +563,7 @@ fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
       expr_call(operator, args, _) {
         alt operator.node {
           expr_path(p) {
-            ret respan(e.span,
+            return respan(e.span,
                        {path: p,
                         def_id: def_id_for_constr(tcx, operator.id),
                         args: exprs_to_constr_args(tcx, args)});
@@ -581,7 +582,7 @@ fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
 
 fn pred_args_to_str(p: pred_args) -> ~str {
     ~"<" + uint::str(p.node.bit_num) + ~", " +
-        constr_args_to_str(fn@(i: inst) -> ~str {ret *i.ident; },
+        constr_args_to_str(fn@(i: inst) -> ~str {return *i.ident; },
                            p.node.args)
         + ~">"
 }
@@ -592,7 +593,7 @@ fn substitute_constr_args(cx: ty::ctxt, actuals: ~[@expr], c: @ty::constr) ->
     for c.node.args.each |a| {
         vec::push(rslt, substitute_arg(cx, actuals, a));
     }
-    ret {path: c.node.path,
+    return {path: c.node.path,
          def_id: c.node.id,
          args: rslt};
 }
@@ -603,13 +604,13 @@ fn substitute_arg(cx: ty::ctxt, actuals: ~[@expr], a: @constr_arg) ->
     alt a.node {
       carg_ident(i) {
         if i < num_actuals {
-            ret expr_to_constr_arg(cx, actuals[i]);
+            return expr_to_constr_arg(cx, actuals[i]);
         } else {
             cx.sess.span_fatal(a.span, ~"constraint argument out of bounds");
         }
       }
-      carg_base { ret @respan(a.span, carg_base); }
-      carg_lit(l) { ret @respan(a.span, carg_lit(l)); }
+      carg_base { return @respan(a.span, carg_base); }
+      carg_lit(l) { return @respan(a.span, carg_lit(l)); }
     }
 }
 
@@ -622,30 +623,30 @@ fn pred_args_matches(pattern: ~[constr_arg_general_<inst>],
         alt c.node {
           carg_ident(p) {
             alt n {
-              carg_ident(q) { if p.node != q.node { ret false; } }
-              _ { ret false; }
+              carg_ident(q) { if p.node != q.node { return false; } }
+              _ { return false; }
             }
           }
-          carg_base { if n != carg_base { ret false; } }
+          carg_base { if n != carg_base { return false; } }
           carg_lit(l) {
             alt n {
-              carg_lit(m) { if !const_eval::lit_eq(l, m) { ret false; } }
-              _ { ret false; }
+              carg_lit(m) { if !const_eval::lit_eq(l, m) { return false; } }
+              _ { return false; }
             }
           }
         }
         i += 1u;
     }
-    ret true;
+    return true;
 }
 
 fn find_instance_(pattern: ~[constr_arg_general_<inst>],
                   descs: ~[pred_args]) ->
    option<uint> {
     for descs.each |d| {
-        if pred_args_matches(pattern, d) { ret some(d.node.bit_num); }
+        if pred_args_matches(pattern, d) { return some(d.node.bit_num); }
     }
-    ret none;
+    return none;
 }
 
 type inst = {ident: ident, node: node_id};
@@ -660,7 +661,7 @@ type subst = ~[{from: inst, to: inst}];
 fn find_instances(_fcx: fn_ctxt, subst: subst,
                   c: constraint) -> ~[{from: uint, to: uint}] {
 
-    if vec::len(subst) == 0u { ret ~[]; }
+    if vec::len(subst) == 0u { return ~[]; }
     let mut res = ~[];
     do (*c.descs).swap |v| {
         let v <- vec::from_mut(v);
@@ -676,14 +677,14 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
         }
         vec::to_mut(v)
     }
-    ret res;
+    return res;
 }
 
 fn find_in_subst(id: node_id, s: subst) -> option<inst> {
     for s.each |p| {
-        if id == p.from.node { ret some(p.to); }
+        if id == p.from.node { return some(p.to); }
     }
-    ret none;
+    return none;
 }
 
 fn find_in_subst_bool(s: subst, id: node_id) -> bool {
@@ -721,7 +722,7 @@ fn replace(subst: subst, d: pred_args) -> ~[constr_arg_general_<inst>] {
         }
     }
 
-    ret rslt;
+    return rslt;
 }
 
 enum if_ty { if_check, plain_if, }
@@ -738,7 +739,7 @@ fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
     alt local_node_id_to_def(fcx, i) {
       some(def_local(nid, _)) | some(def_arg(nid, _)) |
       some(def_upvar(nid, _, _)) {
-        ret local_def(nid);
+        return local_def(nid);
       }
       some(_) {
         fcx.ccx.tcx.sess.span_fatal(sp,
@@ -800,7 +801,7 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
     alt ty {
       oper_swap { subst = ~[{from: dest, to: src}, {from: src, to: dest}]; }
       oper_assign_op {
-        ret; // Don't do any propagation
+        return; // Don't do any propagation
       }
       _ { subst = ~[{from: src, to: dest}]; }
     }
@@ -844,17 +845,17 @@ fn forget_in_poststate(fcx: fn_ctxt, p: poststate, dead_v: node_id) -> bool {
                 changed |= clear_in_poststate_(c.bit_num, p);
         }
     }
-    ret changed;
+    return changed;
 }
 
 fn any_eq(v: ~[node_id], d: node_id) -> bool {
-    for v.each |i| { if i == d { ret true; } }
+    for v.each |i| { if i == d { return true; } }
     false
 }
 
 fn constraint_mentions(_fcx: fn_ctxt, c: norm_constraint, v: node_id) ->
    bool {
-    ret args_mention(c.c.node.args, any_eq, ~[v]);
+    return args_mention(c.c.node.args, any_eq, ~[v]);
 }
 
 fn args_mention<T>(args: ~[@constr_arg_use],
@@ -862,9 +863,11 @@ fn args_mention<T>(args: ~[@constr_arg_use],
                    s: ~[T]) -> bool {
 
     for args.each |a| {
-        alt a.node { carg_ident(p1) { if q(s, p1.node) { ret true; } } _ { } }
+        alt a.node {
+          carg_ident(p1) { if q(s, p1.node) { return true; } } _ { }
+        }
     }
-    ret false;
+    return false;
 }
 
 fn use_var(fcx: fn_ctxt, v: node_id) {
@@ -906,13 +909,13 @@ fn args_to_constr_args(tcx: ty::ctxt, args: ~[arg],
                         carg_lit(l) { carg_lit(l) }
                     }));
     }
-    ret actuals;
+    return actuals;
 }
 
 fn ast_constr_to_ts_constr(tcx: ty::ctxt, args: ~[arg], c: @constr) ->
    tsconstr {
     let tconstr = ty::ast_constr_to_constr(tcx, c);
-    ret {path: tconstr.node.path,
+    return {path: tconstr.node.path,
          def_id: tconstr.node.id,
          args: args_to_constr_args(tcx, args, tconstr.node.args)};
 }
@@ -920,7 +923,7 @@ fn ast_constr_to_ts_constr(tcx: ty::ctxt, args: ~[arg], c: @constr) ->
 fn ast_constr_to_sp_constr(tcx: ty::ctxt, args: ~[arg], c: @constr) ->
    sp_constr {
     let tconstr = ast_constr_to_ts_constr(tcx, args, c);
-    ret respan(c.span, tconstr);
+    return respan(c.span, tconstr);
 }
 
 type binding = {lhs: ~[dest], rhs: option<initializer>};
@@ -936,7 +939,7 @@ fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
 fn locals_to_bindings(tcx: ty::ctxt, locals: ~[@local]) -> ~[binding] {
     let mut rslt = ~[];
     for locals.each |loc| { vec::push(rslt, local_to_bindings(tcx, loc)); }
-    ret rslt;
+    return rslt;
 }
 
 fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
@@ -946,7 +949,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
       ty::ty_fn({inputs: args, _}) {
         let mut modes = ~[];
         for args.each |arg| { vec::push(modes, arg.mode); }
-        ret modes;
+        return modes;
       }
       _ {
         // Shouldn't happen; callee should be ty_fn.
@@ -973,7 +976,7 @@ fn arg_bindings(ops: ~[init_op], es: ~[@expr]) -> ~[binding] {
                   {lhs: ~[call], rhs: some({op: op, expr: es[i]})});
         i += 1u;
     }
-    ret bindings;
+    return bindings;
 }
 
 //

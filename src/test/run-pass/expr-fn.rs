@@ -30,7 +30,7 @@ fn test_block() {
 
 fn test_ret() {
     fn f() -> int {
-        ret 10 // no semi
+        return 10 // no semi
 
     }
     assert (f() == 10);

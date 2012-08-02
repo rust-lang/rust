@@ -116,7 +116,7 @@ fn visit_item(e: env, i: @ast::item) {
         alt attr::foreign_abi(i.attrs) {
           either::right(abi) {
             if abi != ast::foreign_abi_cdecl &&
-               abi != ast::foreign_abi_stdcall { ret; }
+               abi != ast::foreign_abi_stdcall { return; }
           }
           either::left(msg) { e.diag.span_fatal(i.span, msg); }
         }
@@ -177,10 +177,10 @@ fn existing_match(e: env, metas: ~[@ast::meta_item], hash: ~str) ->
     for e.crate_cache.each |c| {
         if loader::metadata_matches(*c.metas, metas)
             && (hash.is_empty() || *c.hash == hash) {
-            ret some(c.cnum);
+            return some(c.cnum);
         }
     }
-    ret none;
+    return none;
 }
 
 fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
@@ -228,10 +228,10 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
         let cstore = e.cstore;
         cstore::set_crate_data(cstore, cnum, cmeta);
         cstore::add_used_crate_file(cstore, cfilename);
-        ret cnum;
+        return cnum;
       }
       some(cnum) {
-        ret cnum;
+        return cnum;
       }
     }
 }
@@ -266,7 +266,7 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
           }
         }
     }
-    ret cnum_map;
+    return cnum_map;
 }
 
 // Local Variables:

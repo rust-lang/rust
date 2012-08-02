@@ -38,7 +38,7 @@ enum x86_64_reg_class {
 }
 
 fn is_sse(++c: x86_64_reg_class) -> bool {
-    ret alt c {
+    return alt c {
         sse_fs_class | sse_fv_class |
         sse_ds_class | sse_dv_class { true }
         _ { false }
@@ -47,7 +47,7 @@ fn is_sse(++c: x86_64_reg_class) -> bool {
 
 fn is_ymm(cls: ~[x86_64_reg_class]) -> bool {
     let len = vec::len(cls);
-    ret (len > 2u &&
+    return (len > 2u &&
          is_sse(cls[0]) &&
          cls[1] == sseup_class &&
          cls[2] == sseup_class) ||
@@ -60,7 +60,7 @@ fn is_ymm(cls: ~[x86_64_reg_class]) -> bool {
 fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     fn align(off: uint, ty: TypeRef) -> uint {
         let a = ty_align(ty);
-        ret (off + a - 1u) / a * a;
+        return (off + a - 1u) / a * a;
     }
 
     fn struct_tys(ty: TypeRef) -> ~[TypeRef] {
@@ -69,11 +69,11 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         do vec::as_buf(elts) |buf, _len| {
             llvm::LLVMGetStructElementTypes(ty, buf);
         }
-        ret elts;
+        return elts;
     }
 
     fn ty_align(ty: TypeRef) -> uint {
-        ret alt llvm::LLVMGetTypeKind(ty) as int {
+        return alt llvm::LLVMGetTypeKind(ty) as int {
             8 /* integer */ {
                 ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7u) / 8u
             }
@@ -96,7 +96,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn ty_size(ty: TypeRef) -> uint {
-        ret alt llvm::LLVMGetTypeKind(ty) as int {
+        return alt llvm::LLVMGetTypeKind(ty) as int {
             8 /* integer */ {
                 ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7u) / 8u
             }
@@ -130,11 +130,11 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
              i: uint,
              newv: x86_64_reg_class) {
         if cls[i] == newv {
-            ret;
+            return;
         } else if cls[i] == no_class {
             cls[i] = newv;
         } else if newv == no_class {
-            ret;
+            return;
         } else if cls[i] == memory_class || newv == memory_class {
             cls[i] = memory_class;
         } else if cls[i] == integer_class || newv == integer_class {
@@ -180,7 +180,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 unify(cls, ix + i, memory_class);
                 i += 1u;
             }
-            ret;
+            return;
         }
 
         alt llvm::LLVMGetTypeKind(ty) as int {
@@ -229,25 +229,25 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 while i < e {
                     if cls[i] != sseup_class {
                         all_mem(cls);
-                        ret;
+                        return;
                     }
                     i += 1u;
                 }
             } else {
                 all_mem(cls);
-                ret
+                return
             }
         } else {
             while i < e {
                 if cls[i] == memory_class {
                     all_mem(cls);
-                    ret;
+                    return;
                 }
                 if cls[i] == x87up_class {
                     // for darwin
                     // cls[i] = sse_ds_class;
                     all_mem(cls);
-                    ret;
+                    return;
                 }
                 if cls[i] == sseup_class {
                     cls[i] = sse_int_class;
@@ -268,11 +268,11 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     let cls = vec::to_mut(vec::from_elem(words, no_class));
     if words > 4u {
         all_mem(cls);
-        ret vec::from_mut(cls);
+        return vec::from_mut(cls);
     }
     classify(ty, cls, 0u, 0u);
     fixup(ty, cls);
-    ret vec::from_mut(cls);
+    return vec::from_mut(cls);
 }
 
 fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
@@ -284,7 +284,7 @@ fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
             }
             len += 1u;
         }
-        ret len;
+        return len;
     }
 
     let mut tys = ~[];
@@ -315,7 +315,7 @@ fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
         }
         i += 1u;
     }
-    ret T_struct(tys);
+    return T_struct(tys);
 }
 
 type x86_64_llty = {
@@ -334,7 +334,7 @@ fn x86_64_tys(atys: ~[TypeRef],
               rty: TypeRef,
               ret_def: bool) -> x86_64_tys {
     fn is_reg_ty(ty: TypeRef) -> bool {
-        ret alt llvm::LLVMGetTypeKind(ty) as int {
+        return alt llvm::LLVMGetTypeKind(ty) as int {
             8 /* integer */ |
             12 /* pointer */ |
             2 /* float */ |
@@ -344,13 +344,13 @@ fn x86_64_tys(atys: ~[TypeRef],
     }
 
     fn is_pass_byval(cls: ~[x86_64_reg_class]) -> bool {
-        ret cls[0] == memory_class ||
+        return cls[0] == memory_class ||
             cls[0] == x87_class ||
             cls[0] == complex_x87_class;
     }
 
     fn is_ret_bysret(cls: ~[x86_64_reg_class]) -> bool {
-        ret cls[0] == memory_class;
+        return cls[0] == memory_class;
     }
 
     fn x86_64_ty(ty: TypeRef,
@@ -369,7 +369,7 @@ fn x86_64_tys(atys: ~[TypeRef],
                 llty = llreg_ty(cls);
             }
         }
-        ret ({ cast: cast, ty: llty }, ty_attr);
+        return ({ cast: cast, ty: llty }, ty_attr);
     }
 
     let mut arg_tys = ~[];
@@ -393,7 +393,7 @@ fn x86_64_tys(atys: ~[TypeRef],
                    ty: T_void()
                  };
     }
-    ret {
+    return {
         arg_tys: arg_tys,
         ret_ty: ret_ty,
         attrs: attrs,
@@ -417,13 +417,13 @@ fn decl_x86_64_fn(tys: x86_64_tys,
             _ {}
         }
     }
-    ret llfn;
+    return llfn;
 }
 
 fn link_name(i: @ast::foreign_item) -> ~str {
     alt attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
-      none { ret *i.ident; }
-      option::some(ln) { ret *ln; }
+      none { return *i.ident; }
+      option::some(ln) { return *ln; }
     }
 }
 
@@ -458,7 +458,7 @@ fn c_stack_tys(ccx: @crate_ctxt,
     } else {
         option::none
     };
-    ret @{
+    return @{
         arg_tys: llargtys,
         ret_ty: llretty,
         ret_def: ret_def,
@@ -501,7 +501,7 @@ fn build_shim_fn_(ccx: @crate_ctxt,
     build_return(bcx);
     finish_fn(fcx, lltop);
 
-    ret llshimfn;
+    return llshimfn;
 }
 
 type wrap_arg_builder = fn(bcx: block, tys: @c_stack_tys,
@@ -631,7 +631,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                     }
                 }
             }
-            ret llargvals;
+            return llargvals;
         }
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
@@ -650,7 +650,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                         }
                     }
                     if x86_64.sret || !tys.ret_def {
-                        ret;
+                        return;
                     }
                     let n = vec::len(tys.arg_tys);
                     let llretptr = GEPi(bcx, llargbundle, ~[0u, n]);
@@ -681,7 +681,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
         let llbasefn = base_fn(ccx, lname, tys, cc);
         // Name the shim function
         let shim_name = lname + ~"__c_stack_shim";
-        ret build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
+        return build_shim_fn_(ccx, shim_name, llbasefn, tys, cc,
                            build_args, build_ret);
     }
 
@@ -734,7 +734,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
             let _icx = bcx.insn_ctxt(~"foreign::wrap::build_args");
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
-            let implicit_args = first_real_arg; // ret + env
+            let implicit_args = first_real_arg; // return + env
             while i < n {
                 let llargval = get_param(llwrapfn, i + implicit_args);
                 store_inbounds(bcx, llargval, llargbundle, ~[0u, i]);
@@ -1005,7 +1005,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let llty = type_of_fn_from_ty(ccx, t);
         let llfndecl = decl_internal_cdecl_fn(ccx.llmod, ps, llty);
         trans_fn(ccx, path, decl, body, llfndecl, no_self, none, id);
-        ret llfndecl;
+        return llfndecl;
     }
 
     fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
@@ -1028,7 +1028,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                 vec::push(llargvals, llargval);
                 i += 1u;
             }
-            ret llargvals;
+            return llargvals;
         }
 
         fn build_ret(_bcx: block, _tys: @c_stack_tys,
@@ -1040,7 +1040,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         let shim_name = link::mangle_internal_name_by_path(
             ccx, vec::append_one(path,
                                  ast_map::path_name(@~"__rust_stack_shim")));
-        ret build_shim_fn_(ccx, shim_name, llrustfn, tys,
+        return build_shim_fn_(ccx, shim_name, llrustfn, tys,
                            lib::llvm::CCallConv,
                            build_args, build_ret);
     }
@@ -1111,7 +1111,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                 option::some(x86_64) {
                     if x86_64.sret || !tys.ret_def {
                         RetVoid(bcx);
-                        ret;
+                        return;
                     }
                     let n = vec::len(tys.arg_tys);
                     let llretval = load_inbounds(bcx, llargbundle, ~[0u, n]);
@@ -1153,7 +1153,7 @@ fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
     let _icx = ccx.insn_ctxt(~"foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);
-    ret if ccx.sess.targ_cfg.arch == arch_x86_64 {
+    return if ccx.sess.targ_cfg.arch == arch_x86_64 {
         let ret_def = !ty::type_is_bot(ret_ty) && !ty::type_is_nil(ret_ty);
         let x86_64 = x86_64_tys(llargtys, llretty, ret_def);
         do decl_x86_64_fn(x86_64) |fnty| {

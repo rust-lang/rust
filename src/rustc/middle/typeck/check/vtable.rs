@@ -81,7 +81,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                         debug!{"(checking vtable) @0 relating ty to trait ty
                                 with did %?", idid};
                         relate_trait_tys(fcx, sp, trait_ty, ity);
-                        ret vtable_param(n, n_bound);
+                        return vtable_param(n, n_bound);
                     }
                   }
                 }
@@ -110,7 +110,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                 }
             }
         }
-        ret vtable_trait(did, substs.tps);
+        return vtable_trait(did, substs.tps);
       }
 
       _ {
@@ -178,11 +178,11 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
 
         alt found.len() {
           0u { /* fallthrough */ }
-          1u { ret found[0]; }
+          1u { return found[0]; }
           _ {
             fcx.ccx.tcx.sess.span_err(
                 sp, ~"multiple applicable methods in scope");
-            ret found[0];
+            return found[0];
           }
         }
       }

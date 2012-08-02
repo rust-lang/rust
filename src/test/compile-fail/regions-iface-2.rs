@@ -13,7 +13,7 @@ impl of get_ctxt for has_ctxt {
 fn make_gc() -> get_ctxt  {
     let ctxt = { v: 22u };
     let hc = { c: &ctxt };
-    ret hc as get_ctxt; //~ ERROR mismatched types: expected `get_ctxt/&`
+    return hc as get_ctxt; //~ ERROR mismatched types: expected `get_ctxt/&`
 }
 
 fn main() {

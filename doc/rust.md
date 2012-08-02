@@ -219,7 +219,7 @@ if impl import
 let log loop
 mod mut
 pure
-ret
+return
 true trait type
 unchecked unsafe
 while
@@ -841,17 +841,17 @@ value has the corresponding [*function type*](#function-types), and can be
 used otherwise exactly as a function item (with a minor additional cost of
 calling the function indirectly).
 
-Every control path in a function logically ends with a `ret` expression or a
+Every control path in a function logically ends with a `return` expression or a
 diverging expression. If the outermost block of a function has a
 value-producing expression in its final-expression position, that expression
-is interpreted as an implicit `ret` expression applied to the
+is interpreted as an implicit `return` expression applied to the
 final-expression.
 
 An example of a function:
 
 ~~~~
 fn add(x: int, y: int) -> int {
-    ret x + y;
+    return x + y;
 }
 ~~~~
 
@@ -876,7 +876,7 @@ unifies with any type. Rust has no syntax for $\bot$.
 
 It might be necessary to declare a diverging function because as mentioned
 previously, the typechecker checks that every control path in a function ends
-with a [`ret`](#return-expressions) or diverging expression. So, if `my_err`
+with a [`return`](#return-expressions) or diverging expression. So, if `my_err`
 were declared without the `!` annotation, the following code would not
 typecheck:
 
@@ -885,7 +885,7 @@ typecheck:
 
 fn f(i: int) -> int {
    if i == 42 {
-     ret 42;
+     return 42;
    }
    else {
      my_err(~"Bad number!");
@@ -895,7 +895,7 @@ fn f(i: int) -> int {
 
 The typechecker would complain that `f` doesn't return a value in the
 `else` branch. Adding the `!` annotation on `my_err` would
-express that `f` requires no explicit `ret`, as if it returns
+express that `f` requires no explicit `return`, as if it returns
 control to the caller, it returns a value (true because it never returns
 control).
 
@@ -915,7 +915,7 @@ An example of a predicate:
 
 ~~~~
 pure fn lt_42(x: int) -> bool {
-    ret (x < 42);
+    return (x < 42);
 }
 ~~~~
 
@@ -1845,7 +1845,7 @@ An example of an `as` expression:
 fn avg(v: ~[float]) -> float {
   let sum: float = sum(v);
   let sz: float = len(v) as float;
-  ret sum / sz;
+  return sum / sz;
 }
 ~~~~
 
@@ -2079,21 +2079,21 @@ For a block `b`, the expression `loop b` is semantically equivalent to
 typestate analysis pass takes into account that `loop`s are infinite.
 
 For example, the following (contrived) function uses a `loop` with a
-`ret` expression:
+`return` expression:
 
 ~~~~
 fn count() -> bool {
   let mut i = 0;
   loop {
     i += 1;
-    if i == 20 { ret true; }
+    if i == 20 { return true; }
   }
 }
 ~~~~
 
 This function compiles, because typestate recognizes that the `loop`
-never terminates (except non-locally, with `ret`), thus there is no
-need to insert a spurious `fail` or `ret` after the `loop`. If `loop`
+never terminates (except non-locally, with `return`), thus there is no
+need to insert a spurious `fail` or `return` after the `loop`. If `loop`
 were replaced with `while true`, the function would be rejected
 because from the compiler's perspective, there would be a control path
 along which `count` does not return a value (that is, if the loop
@@ -2200,7 +2200,7 @@ let x: list<int> = cons(10, @cons(11, @nil));
 
 alt x {
     cons(_, @nil) { fail ~"singleton list"; }
-    cons(*)       { ret; }
+    cons(*)       { return; }
     nil           { fail ~"empty list"; }
 }
 ~~~~
@@ -2235,7 +2235,7 @@ alt x {
         process_ten();
     }
     nil {
-        ret;
+        return;
     }
     _ {
         fail;
@@ -2353,7 +2353,7 @@ fn read_file_lines(path: ~str) -> ~[~str] {
     lines(f) |s| {
         r += ~[s];
     }
-    ret r;
+    return r;
 }
 ~~~~
 
@@ -2372,23 +2372,23 @@ expression.
 ### Return expressions
 
 ~~~~~~~~{.ebnf .gram}
-ret_expr : "ret" expr ? ;
+return_expr : "return" expr ? ;
 ~~~~~~~~
 
-Return expressions are denoted with the keyword `ret`. Evaluating a `ret`
-expression^[A `ret` expression is analogous to a `return` expression
+Return expressions are denoted with the keyword `return`. Evaluating a `return`
+expression^[A `return` expression is analogous to a `return` expression
 in the C family.] moves its argument into the output slot of the current
 function, destroys the current function activation frame, and transfers
 control to the caller frame.
 
-An example of a `ret` expression:
+An example of a `return` expression:
 
 ~~~~
 fn max(a: int, b: int) -> int {
    if a > b {
-      ret a;
+      return a;
    }
-   ret b;
+   return b;
 }
 ~~~~
 
@@ -2738,7 +2738,7 @@ An example of a `fn` type:
 
 ~~~~~~~~
 fn add(x: int, y: int) -> int {
-  ret x + y;
+  return x + y;
 }
 
 let mut x = add(5,7);
@@ -2784,10 +2784,10 @@ Within the body of an item that has type parameter declarations, the names of it
 
 ~~~~~~~
 fn map<A: copy, B: copy>(f: fn(A) -> B, xs: ~[A]) -> ~[B] {
-   if xs.len() == 0 { ret ~[]; }
+   if xs.len() == 0 { return ~[]; }
    let first: B = f(xs[0]);
    let rest: ~[B] = map(f, xs.slice(1, xs.len()));
-   ret ~[first] + rest;
+   return ~[first] + rest;
 }
 ~~~~~~~
 

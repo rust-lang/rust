@@ -9,13 +9,13 @@ type seq_sep = {
 };
 
 fn seq_sep_trailing_disallowed(t: token::token) -> seq_sep {
-    ret {sep: option::some(t), trailing_sep_allowed: false};
+    return {sep: option::some(t), trailing_sep_allowed: false};
 }
 fn seq_sep_trailing_allowed(t: token::token) -> seq_sep {
-    ret {sep: option::some(t), trailing_sep_allowed: true};
+    return {sep: option::some(t), trailing_sep_allowed: true};
 }
 fn seq_sep_none() -> seq_sep {
-    ret {sep: option::none, trailing_sep_allowed: false};
+    return {sep: option::none, trailing_sep_allowed: false};
 }
 
 fn token_to_str(reader: reader, ++token: token::token) -> ~str {
@@ -85,7 +85,7 @@ impl parser_common of parser_common for parser {
 
     fn parse_ident() -> ast::ident {
         alt copy self.token {
-          token::IDENT(i, _) { self.bump(); ret self.get_str(i); }
+          token::IDENT(i, _) { self.bump(); return self.get_str(i); }
           token::INTERPOLATED(token::nt_ident(*)) { self.bug(
               ~"ident interpolation not converted to real token"); }
           _ { self.fatal(~"expected ident, found `"
@@ -98,16 +98,16 @@ impl parser_common of parser_common for parser {
         let lo = self.span.lo;
         let ident = self.parse_ident();
         let hi = self.span.hi;
-        ret spanned(lo, hi, {name: ident, id: self.get_id()});
+        return spanned(lo, hi, {name: ident, id: self.get_id()});
     }
 
     fn parse_value_ident() -> ast::ident {
         self.check_restricted_keywords();
-        ret self.parse_ident();
+        return self.parse_ident();
     }
 
     fn eat(tok: token::token) -> bool {
-        ret if self.token == tok { self.bump(); true } else { false };
+        return if self.token == tok { self.bump(); true } else { false };
     }
 
     // A sanity check that the word we are asking for is a known keyword
@@ -217,7 +217,7 @@ impl parser_common of parser_common for parser {
             vec::push(v, f(self));
         }
 
-        ret v;
+        return v;
     }
 
     fn parse_seq_to_gt<T: copy>(sep: option<token::token>,
@@ -225,7 +225,7 @@ impl parser_common of parser_common for parser {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
 
-        ret v;
+        return v;
     }
 
     fn parse_seq_lt_gt<T: copy>(sep: option<token::token>,
@@ -235,14 +235,14 @@ impl parser_common of parser_common for parser {
         let result = self.parse_seq_to_before_gt::<T>(sep, f);
         let hi = self.span.hi;
         self.expect_gt();
-        ret spanned(lo, hi, result);
+        return spanned(lo, hi, result);
     }
 
     fn parse_seq_to_end<T: copy>(ket: token::token, sep: seq_sep,
                                  f: fn(parser) -> T) -> ~[T] {
         let val = self.parse_seq_to_before_end(ket, sep, f);
         self.bump();
-        ret val;
+        return val;
     }
 
 
@@ -259,7 +259,7 @@ impl parser_common of parser_common for parser {
             if sep.trailing_sep_allowed && self.token == ket { break; }
             vec::push(v, f(self));
         }
-        ret v;
+        return v;
     }
 
     fn parse_unspanned_seq<T: copy>(bra: token::token,
@@ -269,7 +269,7 @@ impl parser_common of parser_common for parser {
         self.expect(bra);
         let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
         self.bump();
-        ret result;
+        return result;
     }
 
     // NB: Do not use this function unless you actually plan to place the
@@ -281,6 +281,6 @@ impl parser_common of parser_common for parser {
         let result = self.parse_seq_to_before_end::<T>(ket, sep, f);
         let hi = self.span.hi;
         self.bump();
-        ret spanned(lo, hi, result);
+        return spanned(lo, hi, result);
     }
 }

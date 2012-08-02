@@ -267,7 +267,7 @@ fn check_crate(tcx: ty::ctxt,
                          make_stat(bccx, bccx.req_pure_paths)});
     }
 
-    ret (bccx.root_map, bccx.mutbl_map);
+    return (bccx.root_map, bccx.mutbl_map);
 
     fn make_stat(bccx: borrowck_ctxt, stat: uint) -> ~str {
         let stat_f = stat as float;
@@ -410,12 +410,12 @@ fn save_and_restore<T:copy,U>(&save_and_restore_t: T, f: fn() -> U) -> U {
     let old_save_and_restore_t = save_and_restore_t;
     let u <- f();
     save_and_restore_t = old_save_and_restore_t;
-    ret u;
+    return u;
 }
 
 /// Creates and returns a new root_map
 fn root_map() -> root_map {
-    ret hashmap(root_map_key_hash, root_map_key_eq);
+    return hashmap(root_map_key_hash, root_map_key_eq);
 
     fn root_map_key_eq(k1: root_map_key, k2: root_map_key) -> bool {
         k1.id == k2.id && k1.derefs == k2.derefs

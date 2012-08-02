@@ -1,5 +1,5 @@
 fn call_any(f: fn() -> uint) -> uint {
-    ret f();
+    return f();
 }
 
 fn main() {

@@ -2,7 +2,7 @@ fn test(x: bool, foo: @{x: int, y: int, z: int}) -> int {
     let bar = foo;
     let mut y: @{x: int, y: int, z: int};
     if x { y <- bar; } else { y = @{x: 4, y: 5, z: 6}; }
-    ret y.y;
+    return y.y;
 }
 
 fn main() {

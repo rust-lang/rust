@@ -1,3 +1,3 @@
-fn foo() { if (ret) { } }
+fn foo() { if (return) { } }
 
 fn main() { foo(); }

@@ -106,7 +106,7 @@ fn pandoc_header_id(header: ~str) -> ~str {
     let header = convert_to_lowercase(header);
     let header = remove_up_to_first_letter(header);
     let header = maybe_use_section_id(header);
-    ret header;
+    return header;
 
     fn remove_formatting(s: ~str) -> ~str {
         str::replace(s, ~"`", ~"")
@@ -124,7 +124,7 @@ fn pandoc_header_id(header: ~str) -> ~str {
         let s = str::replace(s, ~":", ~"");
         let s = str::replace(s, ~"&", ~"");
         let s = str::replace(s, ~"^", ~"");
-        ret s;
+        return s;
     }
     fn replace_with_hyphens(s: ~str) -> ~str {
         str::replace(s, ~" ", ~"-")

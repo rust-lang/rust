@@ -2,7 +2,7 @@
 //
 // See also: compile-fail/unsafe-fn-called-from-safe.rs
 
-unsafe fn f() { ret; }
+unsafe fn f() { return; }
 
 fn g() {
     unsafe {

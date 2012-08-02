@@ -6,7 +6,7 @@ pure fn sums_to(v: ~[int], sum: int) -> bool {
         sum0 += v[i];
         i += 1u;
     }
-    ret sum0 == sum;
+    return sum0 == sum;
 }
 
 pure fn sums_to_using_uniq(v: ~[int], sum: int) -> bool {
@@ -15,7 +15,7 @@ pure fn sums_to_using_uniq(v: ~[int], sum: int) -> bool {
         *sum0 += v[i];
         i += 1u;
     }
-    ret *sum0 == sum;
+    return *sum0 == sum;
 }
 
 pure fn sums_to_using_rec(v: ~[int], sum: int) -> bool {
@@ -24,7 +24,7 @@ pure fn sums_to_using_rec(v: ~[int], sum: int) -> bool {
         sum0.f += v[i];
         i += 1u;
     }
-    ret sum0.f == sum;
+    return sum0.f == sum;
 }
 
 pure fn sums_to_using_uniq_rec(v: ~[int], sum: int) -> bool {
@@ -33,7 +33,7 @@ pure fn sums_to_using_uniq_rec(v: ~[int], sum: int) -> bool {
         *sum0.f += v[i];
         i += 1u;
     }
-    ret *sum0.f == sum;
+    return *sum0.f == sum;
 }
 
 fn main() {

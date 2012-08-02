@@ -7,8 +7,8 @@ mod foo {
 
     fn bar(v: t) -> bool {
         alt v {
-            a { ret true; }
-            b { ret false; }
+            a { return true; }
+            b { return false; }
         }
     }
 }
