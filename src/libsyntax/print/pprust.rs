@@ -1,5 +1,4 @@
-import parse::comments;
-import parse::lexer;
+import parse::{comments, lexer, token};
 import codemap::codemap;
 import pp::{break_offset, word, printer,
             space, zerobreak, hardbreak, breaks, consistent,
@@ -30,7 +29,7 @@ fn no_ann() -> pp_ann {
 type ps =
     @{s: pp::printer,
       cm: option<codemap>,
-      intr: interner::interner<@~str>,
+      intr: token::ident_interner,
       comments: option<~[comments::cmnt]>,
       literals: option<~[comments::lit]>,
       mut cur_cmnt: uint,
@@ -51,8 +50,7 @@ fn end(s: ps) {
 fn rust_printer(writer: io::Writer) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
              cm: none::<codemap>,
-             intr: interner::mk::<@~str>(|x| str::hash(*x),
-                                         |x,y| str::eq(*x, *y)),
+             intr: token::mk_ident_interner(),
              comments: none::<~[comments::cmnt]>,
              literals: none::<~[comments::lit]>,
              mut cur_cmnt: 0u,

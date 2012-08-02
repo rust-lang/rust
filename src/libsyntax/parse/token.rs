@@ -277,6 +277,14 @@ pure fn is_bar(t: token) -> bool {
     match t { BINOP(OR) | OROR => true, _ => false }
 }
 
+type ident_interner = util::interner::interner<@~str>;
+
+fn mk_ident_interner() -> ident_interner {
+    let rv = @interner::mk::<@~str>(|x| str::hash(*x),
+                                    |x,y| str::eq(*x, *y));
+    rv
+}
+
 /**
  * All the valid words that have meaning in the Rust language.
  *
