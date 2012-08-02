@@ -185,13 +185,12 @@ type task_opts = {
 // when you try to reuse the builder to spawn a new task. We'll just
 // sidestep that whole issue by making builders uncopyable and making
 // the run function move them in.
-class dummy { let x: (); new() { self.x = (); } drop { } }
 
 // FIXME (#2585): Replace the 'consumed' bit with move mode on self
 enum task_builder = {
     opts: task_opts,
     gen_body: fn@(+fn~()) -> fn~(),
-    can_not_copy: option<dummy>,
+    can_not_copy: option<util::noncopyable>,
     mut consumed: bool,
 };
 
@@ -598,8 +597,8 @@ unsafe fn atomically<U>(f: fn() -> U) -> U {
  *
  *     A new one of these is created each spawn_linked or spawn_supervised.
  *
- * (2) The "taskgroup" is a per-task control structure that tracks a task's
- *     spawn configuration. It contains a reference to its taskgroup_arc,
+ * (2) The "tcb" is a per-task control structure that tracks a task's spawn
+ *     configuration. It contains a reference to its taskgroup_arc, a
  *     a reference to its node in the ancestor list (below), a flag for
  *     whether it's part of the 'main'/'root' taskgroup, and an optionally
  *     configured notification port. These are stored in TLS.
@@ -641,8 +640,8 @@ unsafe fn atomically<U>(f: fn() -> U) -> U {
  *       (  E  )- - - - - - - > | {E}  {} |
  *        \___/                 |_________|
  *
- *     "taskgroup"            "taskgroup_arc"
- *              "ancestor_list"
+ *        "tcb"               "taskgroup_arc"
+ *             "ancestor_list"
  *
  ****************************************************************************/
 
@@ -694,6 +693,7 @@ type taskgroup_arc = arc::exclusive<option<taskgroup_data>>;
 
 type taskgroup_inner = &mut option<taskgroup_data>;
 
+// A taskgroup is 'dead' when nothing can cause it to fail; only members can.
 fn taskgroup_is_dead(tg: taskgroup_data) -> bool {
     (&mut tg.members).is_empty()
 }
@@ -705,7 +705,7 @@ fn taskgroup_is_dead(tg: taskgroup_data) -> bool {
 // taskgroup which was spawned-unlinked. Tasks from intermediate generations
 // have references to the middle of the list; when intermediate generations
 // die, their node in the list will be collected at a descendant's spawn-time.
-enum ancestor_list = option<arc::exclusive<{
+type ancestor_node = {
     // Since the ancestor list is recursive, we end up with references to
     // exclusives within other exclusives. This is dangerous business (if
     // circular references arise, deadlock and memory leaks are imminent).
@@ -717,7 +717,19 @@ enum ancestor_list = option<arc::exclusive<{
     mut parent_group: option<taskgroup_arc>,
     // Recursive rest of the list.
     mut ancestors:    ancestor_list,
-}>>;
+};
+enum ancestor_list = option<arc::exclusive<ancestor_node>>;
+
+// Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
+#[inline(always)]
+fn access_group<U>(x: taskgroup_arc, blk: fn(taskgroup_inner) -> U) -> U {
+    unsafe { x.with(|_c, tg| blk(tg)) }
+}
+#[inline(always)]
+fn access_ancestors<U>(x: arc::exclusive<ancestor_node>,
+                       blk: fn(x: &mut ancestor_node) -> U) -> U {
+    unsafe { x.with(|_c, nobe| blk(nobe)) }
+}
 
 // Iterates over an ancestor list.
 // (1) Runs forward_blk on each ancestral taskgroup in the list
@@ -782,7 +794,7 @@ fn each_ancestor(list:        &mut ancestor_list,
         // the end of the list, which doesn't make sense to coalesce.
         return do (*ancestors).map_default((none,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
-            do ancestor_arc.with |_c, nobe| {
+            do access_ancestors(ancestor_arc) |nobe| {
                 // Check monotonicity
                 assert last_generation > nobe.generation;
                 /*##########################################################*
@@ -847,7 +859,7 @@ fn each_ancestor(list:        &mut ancestor_list,
             // If this trips, more likely the problem is 'blk' failed inside.
             assert tmp.is_some();
             let tmp_arc = option::unwrap(tmp);
-            let result = do tmp_arc.with |_c, tg_opt| { blk(tg_opt) };
+            let result = do access_group(tmp_arc) |tg_opt| { blk(tg_opt) };
             *parent_group <- some(tmp_arc);
             result
         }
@@ -855,7 +867,7 @@ fn each_ancestor(list:        &mut ancestor_list,
 }
 
 // One of these per task.
-class taskgroup {
+class tcb {
     let me:            *rust_task;
     // List of tasks with whose fates this one's is intertwined.
     let tasks:         taskgroup_arc; // 'none' means the group has failed.
@@ -878,12 +890,12 @@ class taskgroup {
         if rustrt::rust_task_is_unwinding(self.me) {
             self.notifier.iter(|x| { x.failed = true; });
             // Take everybody down with us.
-            do self.tasks.with |_c, tg| {
+            do access_group(self.tasks) |tg| {
                 kill_taskgroup(tg, self.me, self.is_main);
             }
         } else {
             // Remove ourselves from the group(s).
-            do self.tasks.with |_c, tg| {
+            do access_group(self.tasks) |tg| {
                 leave_taskgroup(tg, self.me, true);
             }
         }
@@ -977,7 +989,7 @@ fn kill_taskgroup(state: taskgroup_inner, me: *rust_task, is_main: bool) {
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
 // a proper closure because the #[test]s won't understand. Have to fake it.
-unsafe fn taskgroup_key() -> local_data_key<taskgroup> {
+unsafe fn taskgroup_key() -> local_data_key<tcb> {
     // Use a "code pointer" value that will never be a real code pointer.
     unsafe::transmute((-2 as uint, 0u))
 }
@@ -998,13 +1010,12 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                                       mut descendants: new_taskset() }));
             // Main task/group has no ancestors, no notifier, etc.
             let group =
-                @taskgroup(spawner, tasks, ancestor_list(none), true, none);
+                @tcb(spawner, tasks, ancestor_list(none), true, none);
             unsafe { local_set(spawner, taskgroup_key(), group); }
             group
         }
         some(group) { group }
     };
-    //for each_ancestor(&mut spawner_group.ancestors, none) |_a| { };
     /*######################################################################*
      * Step 2. Process spawn options for child.
      *######################################################################*/
@@ -1027,7 +1038,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // it should be enabled only in debug builds.
             let new_generation =
                 alt *old_ancestors {
-                    some(arc) { do arc.with |_c,nobe| { nobe.generation+1 } }
+                    some(arc) { access_ancestors(arc, |a| a.generation+1) }
                     none      { 0 } // the actual value doesn't really matter.
                 };
             assert new_generation < uint::max_value;
@@ -1118,8 +1129,8 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             let notifier = notify_chan.map(|c| auto_notify(c));
 
             if enlist_many(child, child_arc, &mut ancestors) {
-                let group = @taskgroup(child, child_arc, ancestors,
-                                       is_main, notifier);
+                let group = @tcb(child, child_arc, ancestors,
+                                 is_main, notifier);
                 unsafe { local_set(child, taskgroup_key(), group); }
                 // Run the child's body.
                 f();
@@ -1134,7 +1145,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
                        ancestors: &mut ancestor_list) -> bool {
             // Join this taskgroup.
             let mut result =
-                do child_arc.with |_c, child_tg| {
+                do access_group(child_arc) |child_tg| {
                     enlist_in_taskgroup(child_tg, child, true) // member
                 };
             if result {
@@ -1151,7 +1162,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
                     };
                 // If any ancestor group fails, need to exit this group too.
                 if !result {
-                    do child_arc.with |_c, child_tg| {
+                    do access_group(child_arc) |child_tg| {
                         leave_taskgroup(child_tg, child, true); // member
                     }
                 }
@@ -1485,7 +1496,7 @@ fn test_spawn_unlinked_unsup_no_fail_down() { // grandchild sends on a port
     do spawn_unlinked {
         do spawn_unlinked {
             // Give middle task a chance to fail-but-not-kill-us.
-            for iter::repeat(128) { task::yield(); }
+            for iter::repeat(16) { task::yield(); }
             comm::send(ch, ()); // If killed first, grandparent hangs.
         }
         fail; // Shouldn't kill either (grand)parent or (grand)child.
@@ -1500,7 +1511,7 @@ fn test_spawn_unlinked_unsup_no_fail_up() { // child unlinked fails
 fn test_spawn_unlinked_sup_no_fail_up() { // child unlinked fails
     do spawn_supervised { fail; }
     // Give child a chance to fail-but-not-kill-us.
-    for iter::repeat(128) { task::yield(); }
+    for iter::repeat(16) { task::yield(); }
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_spawn_unlinked_sup_fail_down() {
@@ -1569,7 +1580,7 @@ fn test_spawn_failure_propagate_grandchild() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(128) { task::yield(); }
+    for iter::repeat(16) { task::yield(); }
     fail;
 }
 
@@ -1581,7 +1592,7 @@ fn test_spawn_failure_propagate_secondborn() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(128) { task::yield(); }
+    for iter::repeat(16) { task::yield(); }
     fail;
 }
 
@@ -1593,7 +1604,7 @@ fn test_spawn_failure_propagate_nephew_or_niece() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(128) { task::yield(); }
+    for iter::repeat(16) { task::yield(); }
     fail;
 }
 
@@ -1605,7 +1616,7 @@ fn test_spawn_linked_sup_propagate_sibling() {
             loop { task::yield(); }
         }
     }
-    for iter::repeat(128) { task::yield(); }
+    for iter::repeat(16) { task::yield(); }
     fail;
 }
 
@@ -2006,7 +2017,9 @@ fn test_atomically_nested() {
 fn test_child_doesnt_ref_parent() {
     // If the child refcounts the parent task, this will stack overflow when
     // climbing the task tree to dereference each ancestor. (See #1789)
-    const generations: uint = 128;
+    // (well, it would if the constant were 8000+ - I lowered it to be more
+    // valgrind-friendly. try this at home, instead..!)
+    const generations: uint = 16;
     fn child_no(x: uint) -> fn~() {
         return || {
             if x < generations {
