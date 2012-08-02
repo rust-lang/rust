@@ -9,6 +9,7 @@ pure fn id<T>(+x: T) -> T { x }
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
  */
+#[inline(always)]
 fn swap<T>(x: &mut T, y: &mut T) {
     *x <-> *y;
 }
@@ -17,6 +18,7 @@ fn swap<T>(x: &mut T, y: &mut T) {
  * Replace the value at a mutable location with a new one, returning the old
  * value, without deinitialising or copying either one.
  */
+#[inline(always)]
 fn replace<T>(dest: &mut T, +src: T) -> T {
     let mut tmp = src;
     swap(dest, &mut tmp);
