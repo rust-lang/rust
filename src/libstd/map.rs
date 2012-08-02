@@ -75,6 +75,17 @@ trait map<K, V: copy> {
     fn each_value(fn(V) -> bool);
 }
 
+mod util {
+    type rational = {num: int, den: int}; // : int::positive(*.den);
+
+    pure fn rational_leq(x: rational, y: rational) -> bool {
+        // NB: Uses the fact that rationals have positive denominators WLOG:
+
+        x.num * y.den <= y.num * x.den
+    }
+}
+
+
 // FIXME (#2344): package this up and export it as a datatype usable for
 // external code that doesn't want to pay the cost of a box.
 mod chained {

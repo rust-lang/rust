@@ -2,6 +2,9 @@
  * Miscellaneous helpers for common patterns.
  */
 
+/// The identity function.
+pure fn id<T>(+x: T) -> T { x }
+
 /**
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
@@ -28,6 +31,12 @@ class noncopyable {
 }
 
 mod tests {
+    #[test]
+    fn identity_crisis() {
+        // Writing a test for the identity function. How did it come to this?
+        let x = ~[{mut a: 5, b: false}];
+        assert x == id(copy x);
+    }
     #[test]
     fn test_swap() {
         let mut x = 31337;
