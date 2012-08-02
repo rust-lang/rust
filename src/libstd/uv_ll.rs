@@ -21,6 +21,7 @@
  */
 
 import libc::size_t;
+import ptr::assimilate;
 
 // libuv struct mappings
 type uv_ip4_addr = {
@@ -822,7 +823,7 @@ unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
     let dst: ~[u8] = ~[0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                      0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8];
     do vec::as_buf(dst) |dst_buf, size| {
-        rustrt::rust_uv_ip4_name(src as *sockaddr_in,
+        rustrt::rust_uv_ip4_name(assimilate(src),
                                  dst_buf, size as libc::size_t);
         // seems that checking the result of uv_ip4_name
         // doesn't work too well..
@@ -842,7 +843,7 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
                        0u8,0u8,0u8,0u8,0u8,0u8,0u8,0u8,
                        0u8,0u8,0u8,0u8,0u8,0u8];
     do vec::as_buf(dst) |dst_buf, size| {
-        let src_unsafe_ptr = src as *sockaddr_in6;
+        let src_unsafe_ptr = assimilate(src);
         log(debug, fmt!{"val of src *sockaddr_in6: %? sockaddr_in6: %?",
                         src_unsafe_ptr, src});
         let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,

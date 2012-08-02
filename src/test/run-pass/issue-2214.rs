@@ -1,8 +1,12 @@
 import libc::{c_double, c_int};
 import f64::*;
 
+fn to_c_int(v: &mut int) -> &mut c_int unsafe {
+    unsafe::reinterpret_cast(v)
+}
+
 fn lgamma(n: c_double, value: &mut int) -> c_double {
-  return m::lgamma(n, value as &mut c_int);
+  return m::lgamma(n, to_c_uint(value));
 }
 
 #[link_name = "m"]
