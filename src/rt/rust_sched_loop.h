@@ -130,6 +130,8 @@ public:
     // Called by tasks when they need a stack on which to run C code
     stk_seg *borrow_c_stack();
     void return_c_stack(stk_seg *stack);
+
+    int get_id() { return this->id; }
 };
 
 inline rust_log &
