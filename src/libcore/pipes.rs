@@ -899,7 +899,10 @@ struct port_set<T: send> : recv<T> {
     }
 
     fn recv() -> T {
-        option::unwrap(self.try_recv())
+        match move self.try_recv() {
+            some(x) { move x }
+            none { fail ~"port_set: endpoints closed" }
+        }
     }
 
     pure fn peek() -> bool {
