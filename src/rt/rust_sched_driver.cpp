@@ -22,6 +22,18 @@ void
 rust_sched_driver::start_main_loop() {
     assert(sched_loop != NULL);
 
+#ifdef __APPLE__
+    {
+        char buf[64];
+        snprintf(buf, sizeof(buf), "scheduler loop %d", sched_loop->get_id());
+        // pthread_setname_np seems to have a different signature and
+        // different behavior on different platforms. Thus, this is
+        // only for Mac at the moment. There are equivalent versions
+        // for Linux that we can add if needed.
+        pthread_setname_np(buf);
+    }
+#endif
+
     rust_sched_loop_state state = sched_loop_state_keep_going;
     while (state != sched_loop_state_exit) {
         DLOG(sched_loop, dom, "pumping scheduler");
