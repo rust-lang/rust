@@ -144,12 +144,12 @@ type sched_opts = {
  *
  * # Fields
  *
- * * linked - Do not propagate failure to the parent task
+ * * linked - Propagate failure bidirectionally between child and parent.
+ *            True by default. If both this and 'supervised' are false, then
+ *            either task's failure will not affect the other ("unlinked").
  *
- *     All tasks are linked together via a tree, from parents to children. By
- *     default children are 'supervised' by their parent and when they fail
- *     so too will their parents. Settings this flag to false disables that
- *     behavior.
+ * * supervised - Propagate failure unidirectionally from parent to child,
+ *                but not from child to parent. False by default.
  *
  * * notify_chan - Enable lifecycle notifications on the given channel
  *
@@ -168,7 +168,7 @@ type sched_opts = {
  */
 type task_opts = {
     linked: bool,
-    parented: bool,
+    supervised: bool,
     notify_chan: option<comm::chan<notification>>,
     sched: option<sched_opts>,
 };
@@ -237,7 +237,7 @@ impl task_builder for task_builder {
      */
     fn supervised() -> task_builder {
         task_builder({
-            opts: { linked: false, parented: true with self.opts },
+            opts: { linked: false, supervised: true with self.opts },
             can_not_copy: none,
             with *self.consume()
         })
@@ -248,7 +248,7 @@ impl task_builder for task_builder {
      */
     fn linked() -> task_builder {
         task_builder({
-            opts: { linked: true, parented: false with self.opts },
+            opts: { linked: true, supervised: false with self.opts },
             can_not_copy: none,
             with *self.consume()
         })
@@ -342,9 +342,7 @@ impl task_builder for task_builder {
     fn spawn_with<A: send>(+arg: A, +f: fn~(+A)) {
         let arg = ~mut some(arg);
         do self.spawn {
-            let mut my_arg = none;
-            my_arg <-> *arg;
-            f(option::unwrap(my_arg))
+            f(option::swap_unwrap(arg))
         }
     }
 
@@ -385,7 +383,7 @@ fn default_task_opts() -> task_opts {
 
     {
         linked: true,
-        parented: false,
+        supervised: false,
         notify_chan: none,
         sched: none
     }
@@ -599,14 +597,14 @@ unsafe fn atomically<U>(f: fn() -> U) -> U {
  *
  * (2) The "tcb" is a per-task control structure that tracks a task's spawn
  *     configuration. It contains a reference to its taskgroup_arc, a
- *     a reference to its node in the ancestor list (below), a flag for
+ *     reference to its node in the ancestor list (below), a flag for
  *     whether it's part of the 'main'/'root' taskgroup, and an optionally
  *     configured notification port. These are stored in TLS.
  *
  * (3) The "ancestor_list" is a cons-style list of arc::exclusives which
  *     tracks 'generations' of taskgroups -- a group's ancestors are groups
  *     which (directly or transitively) spawn_supervised-ed them. Each task
- *     recorded in the 'descendants' of each of its ancestor groups.
+ *     is recorded in the 'descendants' of each of its ancestor groups.
  *
  *     Spawning a supervised task is O(n) in the number of generations still
  *     alive, and exiting (by success or failure) that task is also O(n).
@@ -753,8 +751,7 @@ fn each_ancestor(list:        &mut ancestor_list,
                 forward_blk:     fn(taskgroup_inner) -> bool,
                 last_generation: uint) -> bool {
         // Need to swap the list out to use it, to appease borrowck.
-        let mut tmp_list = ancestor_list(none);
-        *list <-> tmp_list;
+        let tmp_list = util::replace(list, ancestor_list(none));
         let (coalesce_this, early_break) =
             iterate(tmp_list, bail_opt, forward_blk, last_generation);
         // What should our next ancestor end up being?
@@ -841,9 +838,9 @@ fn each_ancestor(list:        &mut ancestor_list,
                 need_unwind = need_unwind || !do_continue;
                 // Tell caller whether or not to coalesce and/or unwind
                 if nobe_is_dead {
-                    let mut rest = ancestor_list(none);
                     // Swap the list out here; the caller replaces us with it.
-                    nobe.ancestors <-> rest;
+                    let rest = util::replace(&mut nobe.ancestors,
+                                             ancestor_list(none));
                     (some(rest), need_unwind)
                 } else {
                     (none, need_unwind)
@@ -854,11 +851,8 @@ fn each_ancestor(list:        &mut ancestor_list,
         // Wrapper around exclusive::with that appeases borrowck.
         fn with_parent_tg<U>(parent_group: &mut option<taskgroup_arc>,
                              blk: fn(taskgroup_inner) -> U) -> U {
-            let mut tmp = none;
-            *parent_group <-> tmp;
             // If this trips, more likely the problem is 'blk' failed inside.
-            assert tmp.is_some();
-            let tmp_arc = option::unwrap(tmp);
+            let tmp_arc = option::swap_unwrap(parent_group);
             let result = do access_group(tmp_arc) |tg_opt| { blk(tg_opt) };
             *parent_group <- some(tmp_arc);
             result
@@ -923,8 +917,7 @@ class auto_notify {
 
 fn enlist_in_taskgroup(state: taskgroup_inner, me: *rust_task,
                        is_member: bool) -> bool {
-    let mut newstate = none;
-    *state <-> newstate;
+    let newstate = util::replace(state, none);
     // If 'none', the group was failing. Can't enlist.
     if newstate.is_some() {
         let group = option::unwrap(newstate);
@@ -939,8 +932,7 @@ fn enlist_in_taskgroup(state: taskgroup_inner, me: *rust_task,
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
 fn leave_taskgroup(state: taskgroup_inner, me: *rust_task, is_member: bool) {
-    let mut newstate = none;
-    *state <-> newstate;
+    let newstate = util::replace(state, none);
     // If 'none', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
         let group = option::unwrap(newstate);
@@ -960,8 +952,7 @@ fn kill_taskgroup(state: taskgroup_inner, me: *rust_task, is_main: bool) {
     // so if we're failing, all concurrently exiting tasks must wait for us.
     // To do it differently, we'd have to use the runtime's task refcounting,
     // but that could leave task structs around long after their task exited.
-    let mut newstate = none;
-    *state <-> newstate;
+    let newstate = util::replace(state, none);
     // Might already be none, if somebody is failing simultaneously.
     // That's ok; only one task needs to do the dirty work. (Might also
     // see 'none' if somebody already failed and we got a kill signal.)
@@ -1059,8 +1050,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         // alt ancestors
         //    some(ancestor_arc) { ancestor_list(some(ancestor_arc.clone())) }
         //    none               { ancestor_list(none) }
-        let mut tmp = none;
-        **ancestors <-> tmp;
+        let tmp = util::replace(&mut **ancestors, none);
         if tmp.is_some() {
             let ancestor_arc = option::unwrap(tmp);
             let result = ancestor_arc.clone();
@@ -1074,16 +1064,14 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
 
 fn spawn_raw(opts: task_opts, +f: fn~()) {
     let (child_tg, ancestors, is_main) =
-        gen_child_taskgroup(opts.linked, opts.parented);
+        gen_child_taskgroup(opts.linked, opts.supervised);
 
     unsafe {
-        let child_data_ptr = ~mut some((child_tg, ancestors, f));
+        let child_data = ~mut some((child_tg, ancestors, f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut child_data = none;
-            *child_data_ptr <-> child_data;
-            let (child_tg, ancestors, f) = option::unwrap(child_data);
+            let (child_tg, ancestors, f) = option::swap_unwrap(child_data);
             // Create child task.
             let new_task = alt opts.sched {
               none             { rustrt::new_task() }
@@ -1116,12 +1104,10 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
                           -ancestors: ancestor_list, is_main: bool,
                           notify_chan: option<comm::chan<notification>>,
                           -f: fn~()) -> fn~() {
-        let child_tg_ptr = ~mut some((child_arc, ancestors));
+        let child_data = ~mut some((child_arc, ancestors));
         return fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
-            let mut tg_data_opt = none;
-            *child_tg_ptr <-> tg_data_opt;
-            let mut (child_arc, ancestors) = option::unwrap(tg_data_opt);
+            let mut (child_arc, ancestors) = option::swap_unwrap(child_data);
             // Child task runs this code.
 
             // Even if the below code fails to kick the child off, we must
@@ -1528,7 +1514,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     // they don't make sense (redundant with task().supervised()).
     let b0 = task();
     let b1 = task_builder({
-        opts: { linked: true, parented: true with b0.opts },
+        opts: { linked: true, supervised: true with b0.opts },
         can_not_copy: none,
         with *b0
     });
@@ -1541,7 +1527,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     // they don't make sense (redundant with task().supervised()).
     let b0 = task();
     let b1 = task_builder({
-        opts: { linked: true, parented: true with b0.opts },
+        opts: { linked: true, supervised: true with b0.opts },
         can_not_copy: none,
         with *b0
     });
