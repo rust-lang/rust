@@ -291,7 +291,7 @@ class parser {
                 required({ident: ident, attrs: attrs,
                           decl: {purity: pur with d}, tps: tps,
                           self_ty: self_ty,
-                          span: mk_sp(lo, hi)})
+                          id: p.get_id(), span: mk_sp(lo, hi)})
               }
               token::LBRACE {
                 debug!{"parse_trait_methods(): parsing provided method"};

@@ -185,6 +185,8 @@ fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
     @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, d))
 }
 
+// Apply the typaram substitutions in the fn_ctxt to a vtable. This should
+// eliminate any vtable_params.
 fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     -> typeck::vtable_origin {
     alt vt {

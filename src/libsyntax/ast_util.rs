@@ -316,6 +316,19 @@ fn split_class_items(cs: ~[@class_member]) -> (~[ivar], ~[@method]) {
     (vs, ms)
 }
 
+// extract a ty_method from a trait_method. if the trait_method is
+// a default, pull out the useful fields to make a ty_method
+fn trait_method_to_ty_method(method: trait_method) -> ty_method {
+    alt method {
+      required(m) { m }
+      provided(m) {
+        {ident: m.ident, attrs: m.attrs,
+         decl: m.decl, tps: m.tps, self_ty: m.self_ty,
+         id: m.id, span: m.span}
+      }
+    }
+}
+
 pure fn class_member_visibility(ci: @class_member) -> visibility {
   alt ci.node {
      instance_var(_, _, _, _, vis) { vis }

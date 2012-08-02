@@ -511,7 +511,7 @@ type ty_field = spanned<ty_field_>;
 #[auto_serialize]
 type ty_method = {ident: ident, attrs: ~[attribute],
                   decl: fn_decl, tps: ~[ty_param], self_ty: self_ty,
-                  span: span};
+                  id: node_id, span: span};
 
 #[auto_serialize]
 // A trait method is either required (meaning it doesn't have an

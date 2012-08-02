@@ -35,6 +35,8 @@ fn path_to_str(p: path) -> ~str {
 enum ast_node {
     node_item(@item, @path),
     node_foreign_item(@foreign_item, foreign_abi, @path),
+    node_trait_method(@trait_method, def_id /* trait did */,
+                      @path /* path to the trait */),
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
     node_variant(variant, @item, @path),
     node_expr(@expr),
@@ -218,18 +220,23 @@ fn map_item(i: @item, cx: ctx, v: vt) {
           let (_, ms) = ast_util::split_class_items(items);
           // Map trait refs to their parent classes. This is
           // so we can find the self_ty
-          do vec::iter(traits) |p| { cx.map.insert(p.ref_id,
-                                  node_item(i, item_path));
-                            // This is so we can look up the right things when
-                            // encoding/decoding
-                            cx.map.insert(p.impl_id,
-                                          node_item(i, item_path));
-
-                           };
+          for traits.each |p| {
+              cx.map.insert(p.ref_id, node_item(i, item_path));
+              // This is so we can look up the right things when
+              // encoding/decoding
+              cx.map.insert(p.impl_id, node_item(i, item_path));
+          }
           let d_id = ast_util::local_def(i.id);
           let p = extend(cx, i.ident);
            // only need to handle methods
           do vec::iter(ms) |m| { map_method(d_id, p, m, cx); }
+      }
+      item_trait(tps, methods) {
+        for methods.each |tm| {
+            let id = ast_util::trait_method_to_ty_method(tm).id;
+            let d_id = ast_util::local_def(i.id);
+            cx.map.insert(id, node_trait_method(@tm, d_id, item_path));
+        }
       }
       _ { }
     }
@@ -280,6 +287,11 @@ fn node_id_to_str(map: map, id: node_id) -> ~str {
              path_ident_to_str(*path, item.ident), abi, id}
       }
       some(node_method(m, impl_did, path)) {
+        fmt!{"method %s in %s (id=%?)",
+             *m.ident, path_to_str(*path), id}
+      }
+      some(node_trait_method(tm, impl_did, path)) {
+        let m = ast_util::trait_method_to_ty_method(*tm);
         fmt!{"method %s in %s (id=%?)",
              *m.ident, path_to_str(*path), id}
       }
