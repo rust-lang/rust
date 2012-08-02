@@ -2179,14 +2179,16 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         };
       }
 
-      ast::def_fn(id, ast::unsafe_fn) => {
+      ast::def_fn(id, ast::unsafe_fn) |
+      ast::def_static_method(id, ast::unsafe_fn) => {
         // Unsafe functions can only be touched in an unsafe context
         fcx.require_unsafe(sp, ~"access to unsafe function");
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
 
-      ast::def_fn(id, _) | ast::def_const(id) |
-      ast::def_variant(_, id) | ast::def_class(id, _) => {
+      ast::def_fn(id, _) | ast::def_static_method(id, _) |
+      ast::def_const(id) | ast::def_variant(_, id) |
+      ast::def_class(id, _) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
       ast::def_binding(nid, _) => {

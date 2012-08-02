@@ -43,20 +43,24 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
              mutability, neg, noreturn, not, pat, pat_box, pat_enum,
              pat_ident, pat_lit, pat_range, pat_rec, pat_struct, pat_tup,
-             pat_uniq, pat_wild, path, private, proto, proto_bare,
-             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
-             purity, re_anon, re_named, region, rem, required, ret_style,
-             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
-             stmt_semi, subtract, sty_box, sty_by_ref, sty_region, sty_uniq,
-             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
-             tt_tok, tt_nonterminal, tuple_variant_kind, ty, ty_, ty_bot,
-             ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
-             ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr,
-             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk,
-             uniq, unsafe_blk, unsafe_fn, variant, view_item, view_item_,
-             view_item_export, view_item_import, view_item_use, view_path,
-             view_path_glob, view_path_list, view_path_simple, visibility,
-             vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
+             pat_uniq,
+             pat_wild, path, private, proto, proto_bare, proto_block,
+             proto_box, proto_uniq, provided, public, pure_fn, purity,
+             re_anon, re_named, region, rem, required, ret_style, return_val,
+             self_ty, shl, shr, stmt, stmt_decl, stmt_expr, stmt_semi,
+             subtract, sty_box, sty_by_ref, sty_region, sty_static,
+             sty_uniq, sty_value,
+             token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
+             tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
+             ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound,
+             ty_path, ty_ptr,
+             ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec,
+             ty_fixed_length, tuple_variant_kind,
+             unchecked_blk, uniq, unsafe_blk, unsafe_fn,
+             variant, view_item, view_item_, view_item_export,
+             view_item_import, view_item_use, view_path, view_path_glob,
+             view_path_list, view_path_simple, visibility, vstore, vstore_box,
+             vstore_fixed, vstore_slice, vstore_uniq};
 
 export file_type;
 export parser;
@@ -279,6 +283,9 @@ class parser {
                                     seq_sep_none()) |p| {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
+            let is_static = p.parse_staticness();
+            let static_sty = spanned(lo, p.span.hi, sty_static);
+
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
             // could change.
@@ -287,7 +294,8 @@ class parser {
             let tps = p.parse_ty_params();
             let d = p.parse_ty_fn_decl(pur);
             let hi = p.last_span.hi;
-            let self_ty = spanned(lo, hi, sty_by_ref);  // XXX: Wrong.
+            let self_ty = if is_static { static_sty } else
+                { spanned(lo, hi, sty_by_ref) }; // XXX: Wrong.
             debug!{"parse_trait_methods(): trait method signature ends in \
                     `%s`",
                    token_to_str(p.reader, p.token)};
@@ -2379,15 +2387,24 @@ class parser {
 
     fn parse_method(pr: visibility) -> @method {
         let attrs = self.parse_outer_attributes();
-        let lo = self.span.lo, pur = self.parse_fn_purity();
+        let lo = self.span.lo;
+
+        let is_static = self.parse_staticness();
+        let static_sty = spanned(lo, self.span.hi, sty_static);
+
+        let pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
         let (self_ty, decl, _) = do self.parse_fn_decl_with_self(pur) |p| {
             p.parse_arg()
         };
+        // XXX: interaction between staticness, self_ty is broken now
+        let self_ty = if is_static { static_sty} else { self_ty };
+
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let attrs = vec::append(attrs, inner_attrs);
-        @{ident: ident, attrs: attrs, tps: tps, self_ty: self_ty, decl: decl,
+        @{ident: ident, attrs: attrs,
+          tps: tps, self_ty: self_ty, decl: decl,
           body: body, id: self.get_id(), span: mk_sp(lo, body.span.hi),
           self_id: self.get_id(), vis: pr}
     }
@@ -2688,6 +2705,9 @@ class parser {
         if self.eat_keyword(~"pub") { public }
         else if self.eat_keyword(~"priv") { private }
         else { inherited }
+    }
+    fn parse_staticness() -> bool {
+        self.eat_keyword(~"static")
     }
 
     fn parse_mod_items(term: token::token,

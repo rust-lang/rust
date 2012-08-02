@@ -122,6 +122,21 @@ fn encode_enum_variant_paths(ebml_w: ebml::writer, variants: ~[variant],
     }
 }
 
+fn encode_trait_static_method_paths(ebml_w: ebml::writer,
+                                    methods: ~[trait_method],
+                                    path: ~[ident],
+                                    &index: ~[entry<~str>]) {
+    for methods.each |method| {
+        let ty_m = trait_method_to_ty_method(method);
+        if ty_m.self_ty.node != sty_static { again; }
+        add_to_index(ebml_w, path, index, ty_m.ident);
+        do ebml_w.wr_tag(tag_paths_data_item) {
+            encode_name(ebml_w, ty_m.ident);
+            encode_def_id(ebml_w, local_def(ty_m.id));
+        }
+    }
+}
+
 fn add_to_index(ebml_w: ebml::writer, path: &[ident], &index: ~[entry<~str>],
                 name: ident) {
     let mut full_path = ~[];
@@ -214,10 +229,11 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
               }
               encode_enum_variant_paths(ebml_w, variants, path, index);
           }
-          item_trait(*) => {
+          item_trait(_, _, methods) => {
             do ebml_w.wr_tag(tag_paths_data_item) {
-                  encode_name_and_def_id(ebml_w, it.ident, it.id);
-              }
+                encode_name_and_def_id(ebml_w, it.ident, it.id);
+            }
+            encode_trait_static_method_paths(ebml_w, methods, path, index);
           }
           item_impl(*) => {}
           item_mac(*) => fail ~"item macros unimplemented"
@@ -286,8 +302,8 @@ fn encode_family(ebml_w: ebml::writer, c: char) {
 
 fn def_to_str(did: def_id) -> ~str { fmt!{"%d:%d", did.crate, did.node} }
 
-fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
-                            params: ~[ty_param]) {
+fn encode_ty_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
+                               params: @~[ty::param_bounds]) {
     let ty_str_ctxt = @{diag: ecx.diag,
                         ds: def_to_str,
                         tcx: ecx.tcx,
@@ -295,11 +311,18 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for params.each |param| {
         ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
-        let bs = ecx.tcx.ty_param_bounds.get(param.id);
-        tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, bs);
+        tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, param);
         ebml_w.end_tag();
     }
 }
+
+fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
+                            params: ~[ty_param]) {
+    let ty_param_bounds =
+        @params.map(|param| ecx.tcx.ty_param_bounds.get(param.id));
+    encode_ty_type_param_bounds(ebml_w, ecx, ty_param_bounds);
+}
+
 
 fn encode_variant_id(ebml_w: ebml::writer, vid: def_id) {
     ebml_w.start_tag(tag_items_data_item_variant);
@@ -472,6 +495,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
     // Encode the base self type.
     let ch;
     match self_type {
+        sty_static =>       { ch = 's' as u8; }
         sty_by_ref =>       { ch = 'r' as u8; }
         sty_value =>        { ch = 'v' as u8; }
         sty_region(_, _) => { ch = '&' as u8; }
@@ -482,7 +506,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
 
     // Encode mutability.
     match self_type {
-        sty_by_ref | sty_value => { /* No-op. */ }
+        sty_static | sty_by_ref | sty_value => { /* No-op. */ }
         sty_region(_, m_imm) | sty_box(m_imm) | sty_uniq(m_imm) => {
             ebml_w.writer.write(&[ 'i' as u8 ]);
         }
@@ -499,7 +523,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
         sty_region(region, _) => {
             encode_region(ebml_w, *region);
         }
-        sty_by_ref | sty_value | sty_box(*) | sty_uniq(*) => {
+        sty_static | sty_by_ref | sty_value | sty_box(*) | sty_uniq(*) => {
             // Nothing to do.
         }
     }
@@ -608,7 +632,15 @@ fn purity_fn_family(p: purity) -> char {
       unsafe_fn => 'u',
       pure_fn => 'p',
       impure_fn => 'f',
-      extern_fn => 'F'
+      extern_fn => 'e'
+    }
+}
+fn purity_static_method_family(p: purity) -> char {
+    match p {
+      unsafe_fn => 'U',
+      pure_fn => 'P',
+      impure_fn => 'F',
+      extern_fn => 'E'
     }
 }
 
@@ -853,6 +885,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             match ms[i] {
               required(ty_m) => {
                 ebml_w.start_tag(tag_item_trait_method);
+                encode_def_id(ebml_w, local_def(ty_m.id));
                 encode_name(ebml_w, mty.ident);
                 encode_type_param_bounds(ebml_w, ecx, ty_m.tps);
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
@@ -873,6 +906,30 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
            encode_trait_ref(ebml_w, ecx, associated_trait)
         }
         ebml_w.end_tag();
+
+        // Now, output all of the static methods as items.  Note that for the
+        // method info, we output static methods with type signatures as
+        // written. Here, we output the *real* type signatures. I feel like
+        // maybe we should only ever handle the real type signatures.
+        for vec::each(ms) |m| {
+            let ty_m = ast_util::trait_method_to_ty_method(m);
+            if ty_m.self_ty.node != ast::sty_static { again; }
+
+            vec::push(*index, {val: ty_m.id, pos: ebml_w.writer.tell()});
+
+            ebml_w.start_tag(tag_items_data_item);
+            encode_def_id(ebml_w, local_def(ty_m.id));
+            encode_name(ebml_w, ty_m.ident);
+            encode_family(ebml_w,
+                          purity_static_method_family(ty_m.decl.purity));
+            let polyty = ecx.tcx.tcache.get(local_def(ty_m.id));
+            encode_ty_type_param_bounds(ebml_w, ecx, polyty.bounds);
+            encode_type(ecx, ebml_w, polyty.ty);
+            encode_path(ebml_w, path, ast_map::path_name(ty_m.ident));
+            ebml_w.end_tag();
+        }
+
+
       }
       item_mac(*) => fail ~"item macros unimplemented"
     }

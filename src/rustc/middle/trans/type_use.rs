@@ -69,6 +69,12 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_method(@{body, _}, _, _) => {
         handle_body(cx, body);
       }
+      ast_map::node_trait_method(*) => {
+        // This will be a static trait method. For now, we just assume
+        // it fully depends on all of the type information. (Doing
+        // otherwise would require finding the actual implementation).
+        for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr|use_tydesc;}
+      }
       ast_map::node_variant(_, _, _) => {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
       }

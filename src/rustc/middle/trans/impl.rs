@@ -26,10 +26,15 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     for vec::each(methods) |m| {
         if m.tps.len() == 0u {
             let llfn = get_item_val(ccx, m.id);
+            let self_arg = match m.self_ty.node {
+              ast::sty_static => { no_self }
+              _ => { impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)) }
+            };
+
             trans_fn(ccx,
                      vec::append_one(sub_path, path_name(m.ident)),
                      m.decl, m.body,
-                     llfn, impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)),
+                     llfn, self_arg,
                      none, m.id);
         }
     }
@@ -65,8 +70,9 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                             param_num:p, bound_num:b}) => {
         match check bcx.fcx.param_substs {
           some(substs) => {
+            let vtbl = find_vtable_in_fn_ctxt(substs, p, b);
             trans_monomorphized_callee(bcx, callee_id, self, mentry.derefs,
-                                       iid, off, p, b, substs)
+                                       iid, off, vtbl)
           }
         }
       }
@@ -77,6 +83,54 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         let {bcx, val, _} = autoderef(bcx, self.id, val, self_ty,
                                       uint::max_value);
         trans_trait_callee(bcx, val, fty, off)
+      }
+    }
+}
+
+fn trans_static_method_callee(bcx: block, method_id: ast::def_id,
+                              callee_id: ast::node_id) -> lval_maybe_callee {
+    let _icx = bcx.insn_ctxt(~"impl::trans_static_method_callee");
+    let ccx = bcx.ccx();
+
+    let mname = if method_id.crate == ast::local_crate {
+        match check bcx.tcx().items.get(method_id.node) {
+          ast_map::node_trait_method(trait_method, _, _) => {
+            ast_util::trait_method_to_ty_method(*trait_method).ident
+          }
+        }
+    } else {
+        let path = csearch::get_item_path(bcx.tcx(), method_id);
+        match path[path.len()-1] {
+          path_name(s) => { s }
+          path_mod(_) => { fail ~"path doesn't have a name?" }
+        }
+    };
+    debug!("trans_static_method_callee: method_id=%?, callee_id=%?, \
+            name=%s", method_id, callee_id, *mname);
+
+    let vtbls = resolve_vtables_in_fn_ctxt(
+        bcx.fcx, ccx.maps.vtable_map.get(callee_id));
+
+    match vtbls[0] { // is index 0 always the one we want?
+      typeck::vtable_static(impl_did, impl_substs, sub_origins) => {
+
+        let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
+        let n_m_tps = method_ty_param_count(ccx, mth_id, impl_did);
+        let node_substs = node_id_type_params(bcx, callee_id);
+        let ty_substs
+            = vec::append(impl_substs,
+                          vec::tailn(node_substs,
+                                     node_substs.len() - n_m_tps));
+
+        let lval = lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
+                                        some(sub_origins));
+        {env: null_env,
+         val: PointerCast(bcx, lval.val, T_ptr(type_of_fn_from_ty(
+             ccx, node_id_type(bcx, callee_id))))
+         with lval}
+      }
+      _ => {
+        fail ~"vtable_param left in monomorphized function's vtable substs";
       }
     }
 }
@@ -119,10 +173,10 @@ fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
 fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               base: @ast::expr, derefs: uint,
                               trait_id: ast::def_id, n_method: uint,
-                              n_param: uint, n_bound: uint,
-                              substs: param_substs) -> lval_maybe_callee {
+                              vtbl: typeck::vtable_origin)
+    -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt(~"impl::trans_monomorphized_callee");
-    match find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
+    match vtbl {
       typeck::vtable_static(impl_did, impl_substs, sub_origins) => {
         let ccx = bcx.ccx();
         let mname = ty::trait_methods(ccx.tcx, trait_id)[n_method].ident;

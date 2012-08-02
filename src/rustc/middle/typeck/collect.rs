@@ -21,6 +21,7 @@ are represented as `ty_param()` instances.
 */
 
 import astconv::{ast_conv, ty_of_fn_decl, ty_of_arg, ast_ty_to_ty};
+import ast_util::trait_method_to_ty_method;
 import rscope::*;
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
@@ -147,19 +148,54 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
         ty::store_trait_methods(ccx.tcx, id, @vec::map(stuff, f));
     }
 
+    fn make_static_method_ty(ccx: @crate_ctxt, id: ast::node_id,
+                             am: ast::ty_method,
+                             rp: bool, m: ty::method,
+                             trait_bounds: @~[ty::param_bounds]) {
+        // We need to create a typaram that replaces self. This param goes
+        // *in between* the typarams from the trait and those from the
+        // method (since its bound can depend on the trait? or
+        // something like that).
+
+        // build up a subst that shifts all of the parameters over
+        // by one and substitute in a new type param for self
+
+        let dummy_defid = {crate: 0, node: 0};
+
+        let non_shifted_trait_tps = do vec::from_fn(trait_bounds.len()) |i| {
+            ty::mk_param(ccx.tcx, i, dummy_defid)
+        };
+        let self_param = ty::mk_param(ccx.tcx, trait_bounds.len(),
+                                      dummy_defid);
+        let shifted_method_tps = do vec::from_fn(m.tps.len()) |i| {
+            ty::mk_param(ccx.tcx, i + 1, dummy_defid)
+        };
+
+        let substs = { self_r: none, self_ty: some(self_param),
+                       tps: non_shifted_trait_tps + shifted_method_tps };
+
+        let ty = ty::subst(ccx.tcx, substs, ty::mk_fn(ccx.tcx, m.fty));
+        let trait_ty = ty::node_id_to_type(ccx.tcx, id);
+        let bounds = @(*trait_bounds + ~[@~[ty::bound_trait(trait_ty)]]
+                       + *m.tps);
+        ccx.tcx.tcache.insert(local_def(am.id),
+                              {bounds: bounds, rp: rp, ty: ty});
+    }
+
+
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.contains_key(id);
     match check tcx.items.get(id) {
-      ast_map::node_item(@{node: ast::item_trait(_, _, ms), _}, _) => {
+      ast_map::node_item(@{node: ast::item_trait(params, _, ms), _}, _) => {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
-            match m {
-              required(ty_m) => {
-                ty_of_ty_method(ccx, ty_m, rp)
-              }
-              provided(m) => {
-                ty_of_method(ccx, m, rp)
-              }
+            let trait_bounds = ty_param_bounds(ccx, params);
+            let ty_m = trait_method_to_ty_method(m);
+            let method_ty = ty_of_ty_method(ccx, ty_m, rp);
+            if ty_m.self_ty.node == ast::sty_static {
+                make_static_method_ty(ccx, id, ty_m, rp,
+                                      method_ty, trait_bounds);
             }
+            method_ty
         });
       }
       ast_map::node_item(@{node: ast::item_class(struct_def, _), _}, _) => {
@@ -189,6 +225,21 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                        impl_m: ty::method, impl_tps: uint,
                        trait_m: ty::method, trait_substs: ty::substs,
                        self_ty: ty::t) {
+
+    if impl_m.purity != trait_m.purity {
+        tcx.sess.span_err(
+            sp, fmt!{"method `%s`'s purity does \
+                          not match the trait method's \
+                          purity", *impl_m.ident});
+    }
+
+    // is this check right?
+    if impl_m.self_ty != trait_m.self_ty {
+        tcx.sess.span_err(
+            sp, fmt!{"method `%s`'s self type does \
+                          not match the trait method's \
+                          self type", *impl_m.ident});
+    }
 
     if impl_m.tps != trait_m.tps {
         tcx.sess.span_err(sp, ~"method `" + *trait_m.ident +
@@ -259,12 +310,6 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
         match vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
           some({mty: impl_m, id, span}) => {
-            if impl_m.purity != trait_m.purity {
-                ccx.tcx.sess.span_err(
-                    span, fmt!{"method `%s`'s purity does \
-                                not match the trait method's \
-                                purity", *impl_m.ident});
-            }
             compare_impl_method(
                 ccx.tcx, span, impl_m, vec::len(tps),
                 trait_m, tpt.substs, selfty);

@@ -144,7 +144,7 @@ fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
 }
 
 fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
-                          -> option<@dvec<@~str>> {
+    -> option<@dvec<(@~str, ast::self_ty_)>> {
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_method_names_if_trait(cdata, def.node);

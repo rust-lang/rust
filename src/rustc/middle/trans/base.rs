@@ -2454,6 +2454,9 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id)-> lval_maybe_callee {
       ast::def_fn(did, _) => {
         return lval_static_fn(cx, did, id);
       }
+      ast::def_static_method(did, _) => {
+        return impl::trans_static_method_callee(cx, did, id);
+      }
       ast::def_variant(tid, vid) => {
         if ty::enum_variant_with_id(ccx.tcx, tid, vid).args.len() > 0u {
             // N-ary variant.
