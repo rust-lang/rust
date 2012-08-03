@@ -127,9 +127,9 @@ fn swap_unwrap<T>(opt: &mut option<T>) -> T {
     unwrap(util::replace(opt, none))
 }
 
-pure fn unwrap_expect<T>(-opt: option<T>, reason: ~str) -> T {
+pure fn unwrap_expect<T>(-opt: option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
-    if opt.is_none() { fail reason; }
+    if opt.is_none() { fail reason.to_unique(); }
     unwrap(opt)
 }
 

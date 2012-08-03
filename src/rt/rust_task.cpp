@@ -680,6 +680,9 @@ void
 rust_task::signal_event(void *event) {
     scoped_lock with(lifecycle_lock);
 
+    assert(task_state_blocked == state ||
+           task_state_running == state);
+
     this->event = event;
     event_reject = true;
     if(task_state_blocked == state) {
