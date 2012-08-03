@@ -3110,35 +3110,50 @@ fn ty_params_to_tys(tcx: ty::ctxt, tps: ~[ast::ty_param]) -> ~[t] {
 
 /// Returns an equivalent type with all the typedefs and self regions removed.
 fn normalize_ty(cx: ctxt, t: t) -> t {
+    fn normalize_mt(cx: ctxt, mt: mt) -> mt {
+        { ty: normalize_ty(cx, mt.ty), mutbl: mt.mutbl }
+    }
+    fn normalize_vstore(vstore: vstore) -> vstore {
+        match vstore {
+            vstore_fixed(*) | vstore_uniq | vstore_box => vstore,
+            vstore_slice(_) => vstore_slice(re_static)
+        }
+    }
+
     alt cx.normalized_cache.find(t) {
       some(t) { return t; }
       none { }
     }
 
-    let t = alt get(t).struct {
-        ty_rptr(region, mt) {
+    let t = match get(t).struct {
+        ty_evec(mt, vstore) =>
+            // This type has a vstore. Get rid of it
+            mk_evec(cx, normalize_mt(cx, mt), normalize_vstore(vstore)),
+
+        ty_rptr(region, mt) =>
             // This type has a region. Get rid of it
-            mk_rptr(cx, re_static, mt)
-        }
-        ty_enum(did, r) {
-            alt r.self_r {
-              some(_) {
-                // This enum has a self region. Get rid of it
-                mk_enum(cx, did, {self_r: none, self_ty: none, tps: r.tps})
-              }
-              none { t }
-            }
-        }
-        ty_class(did, r) {
-            alt r.self_r {
-              some(_) {
+            mk_rptr(cx, re_static, normalize_mt(cx, mt)),
+
+        ty_enum(did, r) =>
+            match r.self_r {
+                some(_) =>
+                    // This enum has a self region. Get rid of it
+                    mk_enum(cx, did, {self_r: none, self_ty: none, tps: r.tps}),
+                none =>
+                    t
+            },
+
+        ty_class(did, r) =>
+            match r.self_r {
+              some(_) =>
                 // Ditto.
-                mk_class(cx, did, {self_r: none, self_ty: none, tps: r.tps})
-              }
-              none { t }
-            }
-        }
-        _ { t }
+                mk_class(cx, did, {self_r: none, self_ty: none, tps: r.tps}),
+              none =>
+                t
+            },
+
+        _ =>
+            t
     };
 
     // FIXME #2187: This also reduced int types to their compatible machine
