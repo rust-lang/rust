@@ -33,7 +33,7 @@ fn test_vec() {
 
 fn test_str() {
     let (ch, po) = pipes::stream();
-    let s0 = "test";
+    let s0 = ~"test";
     ch.send(s0);
     let s1 = po.recv();
     assert (s1[0] == 't' as u8);
