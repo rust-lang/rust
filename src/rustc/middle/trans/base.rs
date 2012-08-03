@@ -3452,7 +3452,17 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
             }
         }
 
-        let dest = GEPi(block_context, dest_address, ~[0, index]);
+        // If the class has a destructor, our GEP is a little more
+        // complicated.
+        let dest;
+        if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
+            dest = GEPi(block_context,
+                        GEPi(block_context, dest_address, ~[0, 1]),
+                        ~[0, index]);
+        } else {
+            dest = GEPi(block_context, dest_address, ~[0, index]);
+        }
+
         block_context = trans_expr_save_in(block_context,
                                            field.node.expr,
                                            dest);
