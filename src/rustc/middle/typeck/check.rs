@@ -1316,7 +1316,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                   _ { none }
                 }
               }
-              ast::not | ast::neg { some(expected.get()) }
+              ast::not | ast::neg { expected }
               ast::deref { none }
             }
         };
@@ -1475,10 +1475,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(decl, body, cap_clause) {
+          let proto = unpack_expected(fcx, expected, |sty|
+              alt sty { ty::ty_fn({proto, _}) { some(proto) } _ { none } }
+          ).get_default(ast::proto_box);
         // Take the prototype from the expected type, but default to block:
-        let proto = unpack_expected(fcx, expected, |sty|
-            alt sty { ty::ty_fn({proto, _}) { some(proto) } _ { none } }
-        ).get_default(ast::proto_box);
+          let proto = proto_1.get_default(ast::proto_box);
         check_expr_fn(fcx, expr, proto, decl, body, false, expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
@@ -1489,9 +1490,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // parameter. The catch here is that we need to validate two things:
         // 1. a closure that returns a bool is expected
         // 2. the cloure that was given returns unit
-        let expected_sty = unpack_expected(fcx, expected, |x| some(x)).get();
+        let expected_sty = unpack_expected(fcx, expected, |x| some(x));
         let (inner_ty, proto) = alt expected_sty {
-          ty::ty_fn(fty) {
+          some(ty::ty_fn(fty)) {
             alt infer::mk_subty(fcx.infcx, fty.output, ty::mk_bool(tcx)) {
               result::ok(_) {}
               result::err(err) {
@@ -1526,14 +1527,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
       }
       ast::expr_do_body(b) {
-        let expected_sty = unpack_expected(fcx, expected, |x| some(x)).get();
+        let expected_sty = unpack_expected(fcx, expected, |x| some(x));
         let (inner_ty, proto) = alt expected_sty {
-          ty::ty_fn(fty) {
+          some(ty::ty_fn(fty)) {
             (ty::mk_fn(tcx, fty), fty.proto)
           }
           _ {
-            tcx.sess.span_fatal(expr.span, ~"a `do` function's last argument \
-                                            should be of function type");
+            tcx.sess.span_fatal(expr.span, ~"Non-function passed to a `do` \
+              function as its last argument, or wrong number of arguments \
+              passed to a `do` function");
           }
         };
         alt check b.node {
