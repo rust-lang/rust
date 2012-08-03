@@ -9,172 +9,178 @@
  * CPRNG like rand::rng.
  */
 
-pure fn hash_bytes(buf: &[const u8]) -> u64 {
-    return hash_bytes_keyed(buf, 0u64, 0u64);
-}
+import io::writer;
+import io::writer_util;
 
-pure fn hash_u64(val: u64) -> u64 {
-    let bytes: [u8]/8 = // Explicitly say 8 bytes to be mistaken-change-proof.
-        [(val >> 00) as u8,
-         (val >> 08) as u8,
-         (val >> 16) as u8,
-         (val >> 24) as u8,
-         (val >> 32) as u8,
-         (val >> 40) as u8,
-         (val >> 48) as u8,
-         (val >> 56) as u8];
-    hash_bytes(bytes)
-}
+export Streaming, State;
+export default_state;
+export hash_bytes_keyed;
+export hash_str_keyed;
+export hash_u64_keyed;
+export hash_u32_keyed;
+export hash_u16_keyed;
+export hash_u8_keyed;
+export hash_uint_keyed;
+export hash_bytes;
+export hash_str;
+export hash_u64;
+export hash_u32;
+export hash_u16;
+export hash_u8;
+export hash_uint;
 
-pure fn hash_u32(val: u32) -> u64 {
-    let bytes: [u8]/4 = // Explicitly say 4 bytes to be mistaken-change-proof.
-        [(val >> 00) as u8,
-         (val >> 08) as u8,
-         (val >> 16) as u8,
-         (val >> 24) as u8];
-    hash_bytes(bytes)
-}
-
-#[cfg(target_arch = "arm")]
-pure fn hash_uint(val: uint) -> u64 {
-    assert sys::size_of::<uint>() == sys::size_of::<u32>();
-    hash_u32(val as u32)
-}
-#[cfg(target_arch = "x86_64")]
-pure fn hash_uint(val: uint) -> u64 {
-    assert sys::size_of::<uint>() == sys::size_of::<u64>();
-    hash_u64(val as u64)
-}
-#[cfg(target_arch = "x86")]
-pure fn hash_uint(val: uint) -> u64 {
-    assert sys::size_of::<uint>() == sys::size_of::<u32>();
-    hash_u32(val as u32)
-}
-
-pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
-
-    let mut v0 : u64 = k0 ^ 0x736f_6d65_7073_6575;
-    let mut v1 : u64 = k1 ^ 0x646f_7261_6e64_6f6d;
-    let mut v2 : u64 = k0 ^ 0x6c79_6765_6e65_7261;
-    let mut v3 : u64 = k1 ^ 0x7465_6462_7974_6573;
-
-    #macro[[#u8to64_le(buf,i),
-            (buf[0+i] as u64 |
-             buf[1+i] as u64 << 8 |
-             buf[2+i] as u64 << 16 |
-             buf[3+i] as u64 << 24 |
-             buf[4+i] as u64 << 32 |
-             buf[5+i] as u64 << 40 |
-             buf[6+i] as u64 << 48 |
-             buf[7+i] as u64 << 56)]];
-
-    #macro[[#rotl(x,b), (x << b) | (x >> (64 - b))]];
-
-    #macro[[#compress(v0,v1,v2,v3), {
-        v0 += v1; v1 = #rotl(v1, 13); v1 ^= v0; v0 = #rotl(v0, 32);
-        v2 += v3; v3 = #rotl(v3, 16); v3 ^= v2;
-        v0 += v3; v3 = #rotl(v3, 21); v3 ^= v0;
-        v2 += v1; v1 = #rotl(v1, 17); v1 ^= v2; v2 = #rotl(v2, 32);
-    }]];
-
-    let len = vec::len(buf);
-    let end = len & (!0x7);
-    let left = len & 0x7;
-
-    let mut i = 0;
-    while i < end {
-        let m = u8to64_le!{buf, i};
-        v3 ^= m;
-        compress!{v0,v1,v2,v3};
-        compress!{v0,v1,v2,v3};
-        v0 ^= m;
-        i += 8;
-    }
-
-    let mut b : u64 = (len as u64 & 0xff) << 56;
-
-    if left > 0 { b |= buf[i] as u64; }
-    if left > 1 { b |= buf[i + 1] as u64 << 8; }
-    if left > 2 { b |= buf[i + 2] as u64 << 16; }
-    if left > 3 { b |= buf[i + 3] as u64 << 24; }
-    if left > 4 { b |= buf[i + 4] as u64 << 32; }
-    if left > 5 { b |= buf[i + 5] as u64 << 40; }
-    if left > 6 { b |= buf[i + 6] as u64 << 48; }
-
-    v3 ^= b;
-    compress!{v0,v1,v2,v3};
-    compress!{v0,v1,v2,v3};
-    v0 ^= b;
-
-    v2 ^= 0xff;
-
-    compress!{v0,v1,v2,v3};
-    compress!{v0,v1,v2,v3};
-    compress!{v0,v1,v2,v3};
-    compress!{v0,v1,v2,v3};
-
-    return v0 ^ v1 ^ v2 ^ v3;
-}
-
-
-trait streaming {
-    fn input(~[u8]);
-    fn input_str(~str);
-    fn result() -> ~[u8];
+/// Streaming hash-functions should implement this.
+trait Streaming {
+    fn input((&[const u8]));
+    // These can be refactored some when we have default methods.
+    fn result_bytes() -> ~[u8];
     fn result_str() -> ~str;
+    fn result_u64() -> u64;
     fn reset();
 }
 
-fn siphash(key0 : u64, key1 : u64) -> streaming {
-    type sipstate = {
-        k0 : u64,
-        k1 : u64,
-        mut length : uint, // how many bytes we've processed
-        mut v0 : u64,      // hash state
-        mut v1 : u64,
-        mut v2 : u64,
-        mut v3 : u64,
-        tail : ~[mut u8]/8, // unprocessed bytes
-        mut ntail : uint,   //  how many bytes in tail are valid
-    };
+fn keyed(k0: u64, k1: u64, f: fn(s: &State)) -> u64 {
+    let s = &State(k0, k1);
+    f(s);
+    s.result_u64()
+}
 
-    fn add_input(st : sipstate, msg : ~[u8]) {
-        let length = vec::len(msg);
-        st.length += length;
+pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
+    unchecked { keyed(k0, k1, |s| s.input(buf)) }
+}
+pure fn hash_str_keyed(s: &str, k0: u64, k1: u64) -> u64 {
+    unsafe {
+        do str::as_buf(s) |buf, len| {
+            do vec::unsafe::form_slice(buf, len) |slice| {
+                hash_bytes_keyed(slice, k0, k1)
+            }
+        }
+    }
+}
+pure fn hash_u64_keyed(val: u64, k0: u64, k1: u64) -> u64 {
+    unchecked { keyed(k0, k1, |s| s.write_le_u64(val)) }
+}
+pure fn hash_u32_keyed(val: u32, k0: u64, k1: u64) -> u64 {
+    unchecked { keyed(k0, k1, |s| s.write_le_u32(val)) }
+}
+pure fn hash_u16_keyed(val: u16, k0: u64, k1: u64) -> u64 {
+    unchecked { keyed(k0, k1, |s| s.write_le_u16(val)) }
+}
+pure fn hash_u8_keyed(val: u8, k0: u64, k1: u64) -> u64 {
+    unchecked { keyed(k0, k1, |s| s.write_u8(val)) }
+}
+pure fn hash_uint_keyed(val: uint, k0: u64, k1: u64) -> u64 {
+    unchecked { keyed(k0, k1, |s| s.write_le_uint(val)) }
+}
+
+pure fn hash_bytes(val: &[const u8]) -> u64 { hash_bytes_keyed(val, 0, 0) }
+pure fn hash_str(val: &str) -> u64 { hash_str_keyed(val, 0, 0) }
+pure fn hash_u64(val: u64) -> u64 { hash_u64_keyed(val, 0, 0) }
+pure fn hash_u32(val: u32) -> u64 { hash_u32_keyed(val, 0, 0) }
+pure fn hash_u16(val: u16) -> u64 { hash_u16_keyed(val, 0, 0) }
+pure fn hash_u8(val: u8) -> u64 { hash_u8_keyed(val, 0, 0) }
+pure fn hash_uint(val: uint) -> u64 { hash_uint_keyed(val, 0, 0) }
+
+
+// Implement State as SipState
+
+type State = SipState;
+fn State(k0: u64, k1: u64) -> State {
+    SipState(k0, k1)
+}
+
+fn default_state() -> State {
+    State(0,0)
+}
+
+struct SipState {
+    k0: u64;
+    k1: u64;
+    mut length: uint; // how many bytes we've processed
+    mut v0: u64;      // hash state
+    mut v1: u64;
+    mut v2: u64;
+    mut v3: u64;
+    tail: [mut u8]/8; // unprocessed bytes
+    mut ntail: uint;  // how many bytes in tail are valid
+}
+
+fn SipState(key0: u64, key1: u64) -> SipState {
+    let state = SipState {
+        k0 : key0,
+        k1 : key1,
+        mut length : 0u,
+        mut v0 : 0u64,
+        mut v1 : 0u64,
+        mut v2 : 0u64,
+        mut v3 : 0u64,
+        tail : [mut 0u8,0,0,0,0,0,0,0],
+        mut ntail : 0u,
+    };
+    (&state).reset();
+    return state;
+}
+
+
+impl &SipState : io::writer {
+
+    // Methods for io::writer
+    fn write(msg: &[const u8]) {
+
+        #macro[[#u8to64_le(buf,i),
+                (buf[0+i] as u64 |
+                 buf[1+i] as u64 << 8 |
+                 buf[2+i] as u64 << 16 |
+                 buf[3+i] as u64 << 24 |
+                 buf[4+i] as u64 << 32 |
+                 buf[5+i] as u64 << 40 |
+                 buf[6+i] as u64 << 48 |
+                 buf[7+i] as u64 << 56)]];
+
+        #macro[[#rotl(x,b), (x << b) | (x >> (64 - b))]];
+
+        #macro[[#compress(v0,v1,v2,v3), {
+            v0 += v1; v1 = #rotl(v1, 13); v1 ^= v0; v0 = #rotl(v0, 32);
+            v2 += v3; v3 = #rotl(v3, 16); v3 ^= v2;
+            v0 += v3; v3 = #rotl(v3, 21); v3 ^= v0;
+            v2 += v1; v1 = #rotl(v1, 17); v1 ^= v2; v2 = #rotl(v2, 32);
+        }]];
+
+        let length = msg.len();
+        self.length += length;
 
         let mut needed = 0u;
 
-        if st.ntail != 0 {
-            needed = 8 - st.ntail;
+        if self.ntail != 0 {
+            needed = 8 - self.ntail;
 
             if length < needed {
-
                 let mut t = 0;
                 while t < length {
-                    st.tail[st.ntail+t] = msg[t];
+                    self.tail[self.ntail+t] = msg[t];
                     t += 1;
                 }
-                st.ntail += length;
-
+                self.ntail += length;
                 return;
             }
 
             let mut t = 0;
             while t < needed {
-                st.tail[st.ntail+t] = msg[t];
+                self.tail[self.ntail+t] = msg[t];
                 t += 1;
             }
 
-            let m = u8to64_le!{st.tail, 0};
+            let m = u8to64_le!{self.tail, 0};
 
-            st.v3 ^= m;
-            compress!{st.v0, st.v1, st.v2, st.v3};
-            compress!{st.v0, st.v1, st.v2, st.v3};
-            st.v0 ^= m;
+            self.v3 ^= m;
+            compress!{self.v0, self.v1, self.v2, self.v3};
+            compress!{self.v0, self.v1, self.v2, self.v3};
+            self.v0 ^= m;
 
-            st.ntail = 0;
+            self.ntail = 0;
         }
 
+        // Buffered tail is now flushed, process new input.
         let len = length - needed;
         let end = len & (!0x7);
         let left = len & 0x7;
@@ -183,38 +189,57 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
         while i < end {
             let mi = u8to64_le!{msg, i};
 
-            st.v3 ^= mi;
-            compress!{st.v0, st.v1, st.v2, st.v3};
-            compress!{st.v0, st.v1, st.v2, st.v3};
-            st.v0 ^= mi;
+            self.v3 ^= mi;
+            compress!{self.v0, self.v1, self.v2, self.v3};
+            compress!{self.v0, self.v1, self.v2, self.v3};
+            self.v0 ^= mi;
 
             i += 8;
         }
 
         let mut t = 0u;
         while t < left {
-            st.tail[t] = msg[i+t];
+            self.tail[t] = msg[i+t];
             t += 1
         }
-        st.ntail = left;
+        self.ntail = left;
     }
 
-    fn mk_result(st : sipstate) -> ~[u8] {
+    fn seek(_x: int, _s: io::seek_style) {
+        fail;
+    }
+    fn tell() -> uint {
+        self.length
+    }
+    fn flush() -> int {
+        0
+    }
+    fn get_type() -> io::writer_type {
+        io::file
+    }
+}
 
-        let mut v0 = st.v0;
-        let mut v1 = st.v1;
-        let mut v2 = st.v2;
-        let mut v3 = st.v3;
+impl &SipState : Streaming {
 
-        let mut b : u64 = (st.length as u64 & 0xff) << 56;
+    fn input(buf: &[const u8]) {
+        self.write(buf);
+    }
 
-        if st.ntail > 0 { b |= st.tail[0] as u64 <<  0; }
-        if st.ntail > 1 { b |= st.tail[1] as u64 <<  8; }
-        if st.ntail > 2 { b |= st.tail[2] as u64 << 16; }
-        if st.ntail > 3 { b |= st.tail[3] as u64 << 24; }
-        if st.ntail > 4 { b |= st.tail[4] as u64 << 32; }
-        if st.ntail > 5 { b |= st.tail[5] as u64 << 40; }
-        if st.ntail > 6 { b |= st.tail[6] as u64 << 48; }
+    fn result_u64() -> u64 {
+        let mut v0 = self.v0;
+        let mut v1 = self.v1;
+        let mut v2 = self.v2;
+        let mut v3 = self.v3;
+
+        let mut b : u64 = (self.length as u64 & 0xff) << 56;
+
+        if self.ntail > 0 { b |= self.tail[0] as u64 <<  0; }
+        if self.ntail > 1 { b |= self.tail[1] as u64 <<  8; }
+        if self.ntail > 2 { b |= self.tail[2] as u64 << 16; }
+        if self.ntail > 3 { b |= self.tail[3] as u64 << 24; }
+        if self.ntail > 4 { b |= self.tail[4] as u64 << 32; }
+        if self.ntail > 5 { b |= self.tail[5] as u64 << 40; }
+        if self.ntail > 6 { b |= self.tail[6] as u64 << 48; }
 
         v3 ^= b;
         compress!{v0, v1, v2, v3};
@@ -227,55 +252,38 @@ fn siphash(key0 : u64, key1 : u64) -> streaming {
         compress!{v0, v1, v2, v3};
         compress!{v0, v1, v2, v3};
 
-        let h = v0 ^ v1 ^ v2 ^ v3;
-
-        return ~[
-            (h >> 0) as u8,
-            (h >> 8) as u8,
-            (h >> 16) as u8,
-            (h >> 24) as u8,
-            (h >> 32) as u8,
-            (h >> 40) as u8,
-            (h >> 48) as u8,
-            (h >> 56) as u8,
-        ];
+        return (v0 ^ v1 ^ v2 ^ v3);
     }
 
-   impl of streaming for sipstate {
-        fn reset() {
-            self.length = 0;
-            self.v0 = self.k0 ^ 0x736f6d6570736575;
-            self.v1 = self.k1 ^ 0x646f72616e646f6d;
-            self.v2 = self.k0 ^ 0x6c7967656e657261;
-            self.v3 = self.k1 ^ 0x7465646279746573;
-            self.ntail = 0;
-        }
-        fn input(msg: ~[u8]) { add_input(self, msg); }
-        fn input_str(msg: ~str) { add_input(self, str::bytes(msg)); }
-        fn result() -> ~[u8] { return mk_result(self); }
-        fn result_str() -> ~str {
-            let r = mk_result(self);
-            let mut s = ~"";
-            for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
-            return s;
-        }
+
+    fn result_bytes() -> ~[u8] {
+        let h = self.result_u64();
+        ~[(h >> 0) as u8,
+          (h >> 8) as u8,
+          (h >> 16) as u8,
+          (h >> 24) as u8,
+          (h >> 32) as u8,
+          (h >> 40) as u8,
+          (h >> 48) as u8,
+          (h >> 56) as u8,
+        ]
     }
 
-    let st = {
-        k0 : key0,
-        k1 : key1,
-        mut length : 0u,
-        mut v0 : 0u64,
-        mut v1 : 0u64,
-        mut v2 : 0u64,
-        mut v3 : 0u64,
-        tail : ~[mut 0u8,0,0,0,0,0,0,0]/8,
-        mut ntail : 0u,
-    };
+    fn result_str() -> ~str {
+        let r = self.result_bytes();
+        let mut s = ~"";
+        for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
+        return s;
+    }
 
-    let sh = st as streaming;
-    sh.reset();
-    return sh;
+    fn reset() {
+        self.length = 0;
+        self.v0 = self.k0 ^ 0x736f6d6570736575;
+        self.v1 = self.k1 ^ 0x646f72616e646f6d;
+        self.v2 = self.k0 ^ 0x6c7967656e657261;
+        self.v3 = self.k1 ^ 0x7465646279746573;
+        self.ntail = 0;
+    }
 }
 
 #[test]
@@ -351,8 +359,8 @@ fn test_siphash() {
     let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08_u64;
     let mut buf : ~[u8] = ~[];
     let mut t = 0;
-    let stream_inc = siphash(k0,k1);
-    let stream_full = siphash(k0,k1);
+    let stream_inc = &State(k0,k1);
+    let stream_full = &State(k0,k1);
 
     fn to_hex_str(r:[u8]/8) -> ~str {
         let mut s = ~"";

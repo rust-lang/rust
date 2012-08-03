@@ -5493,7 +5493,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
                output: ~str, emap: resolve3::ExportMap,
                maps: astencode::maps)
     -> (ModuleRef, link_meta) {
-    let symbol_hasher = hash::siphash(0,0);
+    let symbol_hasher = @hash::default_state();
     let link_meta =
         link::build_link_meta(sess, *crate, output, symbol_hasher);
     let reachable = reachable::find_reachable(crate.node.module, emap, tcx,
