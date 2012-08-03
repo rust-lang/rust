@@ -8,6 +8,7 @@
  */
 
 import libc::size_t;
+import io::writer_util;
 
 export
    // Creating a string
@@ -665,10 +666,7 @@ pure fn le(a: &~str, b: &~str) -> bool { *a <= *b }
 
 /// String hash function
 pure fn hash(s: &~str) -> uint {
-    let x = do as_bytes(*s) |bytes| {
-        hash::hash_bytes(bytes)
-    };
-    return x as uint;
+    hash::hash_str(*s) as uint
 }
 
 /*

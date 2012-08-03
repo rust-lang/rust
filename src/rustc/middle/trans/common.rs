@@ -110,7 +110,7 @@ type crate_ctxt = {
      module_data: hashmap<~str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
-     symbol_hasher: hash::streaming,
+     symbol_hasher: @hash::State,
      type_hashcodes: hashmap<ty::t, ~str>,
      type_short_names: hashmap<ty::t, ~str>,
      all_llvm_symbols: set<~str>,

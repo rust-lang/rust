@@ -15,6 +15,7 @@ import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
         FileType};
 import metadata::filesearch;
 import syntax::ast_map::{path, path_mod, path_name};
+import io::{writer, writer_util};
 
 enum output_type {
     output_type_none,
@@ -307,7 +308,7 @@ mod write {
  */
 
 fn build_link_meta(sess: session, c: ast::crate, output: ~str,
-                   symbol_hasher: hash::streaming) -> link_meta {
+                   symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
         {name: option<@~str>,
@@ -338,7 +339,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     }
 
     // This calculates CMH as defined above
-    fn crate_meta_extras_hash(symbol_hasher: hash::streaming,
+    fn crate_meta_extras_hash(symbol_hasher: &hash::State,
                               _crate: ast::crate,
                               metas: provided_metas,
                               dep_hashes: ~[@~str]) -> ~str {
@@ -357,11 +358,11 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
             let m = m_;
             alt m.node {
               ast::meta_name_value(key, value) {
-                symbol_hasher.input_str(len_and_str(*key));
-                symbol_hasher.input_str(len_and_str_lit(value));
+                symbol_hasher.write_str(len_and_str(*key));
+                symbol_hasher.write_str(len_and_str_lit(value));
               }
               ast::meta_word(name) {
-                symbol_hasher.input_str(len_and_str(*name));
+                symbol_hasher.write_str(len_and_str(*name));
               }
               ast::meta_list(_, _) {
                 // FIXME (#607): Implement this
@@ -371,7 +372,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
         }
 
         for dep_hashes.each |dh| {
-            symbol_hasher.input_str(len_and_str(*dh));
+            symbol_hasher.write_str(len_and_str(*dh));
         }
 
         return truncated_hash_result(symbol_hasher);
@@ -427,23 +428,23 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     return {name: name, vers: vers, extras_hash: extras_hash};
 }
 
-fn truncated_hash_result(symbol_hasher: hash::streaming) -> ~str unsafe {
+fn truncated_hash_result(symbol_hasher: &hash::State) -> ~str unsafe {
     symbol_hasher.result_str()
 }
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash(tcx: ty::ctxt, symbol_hasher: hash::streaming, t: ty::t,
+fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
                link_meta: link_meta) -> ~str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.input_str(*link_meta.name);
-    symbol_hasher.input_str(~"-");
-    symbol_hasher.input_str(link_meta.extras_hash);
-    symbol_hasher.input_str(~"-");
-    symbol_hasher.input_str(encoder::encoded_ty(tcx, t));
+    symbol_hasher.write_str(*link_meta.name);
+    symbol_hasher.write_str(~"-");
+    symbol_hasher.write_str(link_meta.extras_hash);
+    symbol_hasher.write_str(~"-");
+    symbol_hasher.write_str(encoder::encoded_ty(tcx, t));
     let hash = truncated_hash_result(symbol_hasher);
     // Prefix with _ so that it never blends into adjacent digits
 
