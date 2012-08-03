@@ -279,8 +279,9 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                         fld.fold_ty(ty),
                         vec::map(methods, |x| fld.fold_method(x)))
           }
-          item_trait(tps, methods) {
+          item_trait(tps, traits, methods) {
             item_trait(fold_ty_params(tps, fld),
+                       vec::map(traits, |p| fold_trait_ref(p, fld)),
                        /* FIXME (#2543) */ copy methods)
           }
       item_mac(m) {

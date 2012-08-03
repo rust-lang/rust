@@ -724,7 +724,7 @@ enum item_ {
                /* dtor is optional */
                option<class_dtor>
                ),
-    item_trait(~[ty_param], ~[trait_method]),
+    item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],
               ~[@trait_ref], /* traits this impl implements */
               @ty, /* self */

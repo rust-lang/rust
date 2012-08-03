@@ -813,7 +813,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                                    vec::append(tps, m.tps));
         }
       }
-      item_trait(tps, ms) {
+      item_trait(tps, traits, ms) {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -844,6 +844,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             i += 1u;
         }
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
+        for traits.each |associated_trait| {
+           encode_trait_ref(ebml_w, ecx, associated_trait)
+        }
         ebml_w.end_tag();
       }
       item_mac(*) { fail ~"item macros unimplemented" }

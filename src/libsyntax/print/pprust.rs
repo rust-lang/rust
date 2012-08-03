@@ -590,10 +590,15 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         bclose(s, item.span);
       }
-      ast::item_trait(tps, methods) {
+      ast::item_trait(tps, traits, methods) {
         head(s, ~"trait");
         word(s.s, *item.ident);
         print_type_params(s, tps);
+        if vec::len(traits) != 0u {
+            word_space(s, ~":");
+            commasep(s, inconsistent, traits, |s, p|
+                print_path(s, p.path, false));
+        }
         word(s.s, ~" ");
         bopen(s);
         for methods.each |meth| { print_trait_method(s, meth); }

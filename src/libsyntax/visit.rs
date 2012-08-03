@@ -162,8 +162,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
                                     ast_util::local_def(i.id), e, v)
           };
       }
-      item_trait(tps, methods) {
+      item_trait(tps, traits, methods) {
         v.visit_ty_params(tps, e, v);
+        for traits.each |p| { visit_path(p.path, e, v); }
         for methods.each |m| {
             v.visit_trait_method(m, e, v);
         }
