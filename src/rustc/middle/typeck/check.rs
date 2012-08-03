@@ -701,10 +701,7 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     alt lit.node {
-      ast::lit_str(s) {
-        tcx.sess.span_warn(lit.span, ~"fixed length string");
-        ty::mk_estr(tcx, ty::vstore_slice(ty::re_static))
-      }
+      ast::lit_str(s) => { ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)) }
       ast::lit_int(_, t) { ty::mk_mach_int(tcx, t) }
       ast::lit_uint(_, t) { ty::mk_mach_uint(tcx, t) }
       ast::lit_int_unsuffixed(_) {
