@@ -6,7 +6,7 @@ import libc::size_t;
 
 export append;
 export append_one;
-export consume;
+export consume, consume_mut;
 export init_op;
 export is_empty;
 export is_not_empty;
@@ -480,6 +480,17 @@ fn unshift<T>(&v: ~[T], +x: T) {
 }
 
 fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
+    do as_buf(v) |p, ln| {
+        for uint::range(0, ln) |i| {
+            let x <- *ptr::offset(p, i);
+            f(i, x);
+        }
+    }
+
+    unsafe::set_len(v, 0);
+}
+
+fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +T)) unsafe {
     do as_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
             let x <- *ptr::offset(p, i);

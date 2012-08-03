@@ -117,6 +117,8 @@ struct packet_header {
     }
 
     unsafe fn unblock() {
+        assert self.state != blocked || self.blocked_task != none;
+        self.blocked_task = none;
         alt swap_state_acq(self.state, empty) {
           empty | blocked { }
           terminated { self.state = terminated; }
@@ -322,7 +324,7 @@ fn send<T: send, Tbuffer: send>(-p: send_packet_buffered<T, Tbuffer>,
             rustrt::task_signal_event(
                 task, ptr::addr_of(p.header) as *libc::c_void);
           }
-          none { fail ~"blocked packet has no task" }
+          none { debug!{"just kidding!"} }
         }
 
         // The receiver will eventually clean this up.
@@ -878,23 +880,28 @@ struct port_set<T: send> : recv<T> {
 
     fn try_recv() -> option<T> {
         let mut result = none;
-        while result == none && self.ports.len() > 0 {
-            let i = wait_many(self.ports.map(|p| p.header()));
-            // dereferencing an unsafe pointer nonsense to appease the
-            // borrowchecker.
-            alt move unsafe {(*ptr::addr_of(self.ports[i])).try_recv()} {
-              some(m) {
-                  result = some(move_it!{m});
-              }
-              none {
-                // Remove this port.
-                let mut ports = ~[];
-                self.ports <-> ports;
-                vec::consume(ports,
-                             |j, x| if i != j { vec::push(self.ports, x) });
-              }
+        // we have to swap the ports array so we aren't borrowing
+        // aliasable mutable memory.
+        let mut ports = ~[];
+        ports <-> self.ports;
+        while result == none && ports.len() > 0 {
+            let i = wait_many(ports.map(|p| p.header()));
+            alt move ports[i].try_recv() {
+                some(m) {
+                    result = some(move m);
+                }
+                none {
+                    // Remove this port.
+                    let mut ports_ = ~[];
+                    ports <-> ports_;
+                    vec::consume(ports_,
+                                 |j, x| if i != j {
+                                     vec::push(ports, x)
+                                 });
+                }
             }
         }
+        ports <-> self.ports;
         result
     }
 
