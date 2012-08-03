@@ -144,7 +144,7 @@ fn encode_class_item_paths(ebml_w: ebml::writer,
     for items.each |it| {
      alt ast_util::class_member_visibility(it) {
           private { again; }
-          public {
+          public | inherited {
               let (id, ident) = alt it.node {
                  instance_var(v, _, _, vid, _) { (vid, v) }
                  class_method(it) { (it.id, it.ident) }
@@ -434,7 +434,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
 
 fn encode_visibility(ebml_w: ebml::writer, visibility: visibility) {
     encode_family(ebml_w, alt visibility {
-        public { 'g' } private { 'j' }
+        public { 'g' } private { 'j' } inherited { 'N' }
     });
 }
 
@@ -519,7 +519,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
         }
         class_method(m) {
            alt m.vis {
-              public {
+              public | inherited {
                 vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
                 vec::push(*global_index,
                           {val: m.id, pos: ebml_w.writer.tell()});
@@ -756,7 +756,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         for ms.each |m| {
            alt m.vis {
               private { /* do nothing */ }
-              public {
+              public | inherited {
                 /* Write the info that's needed when viewing this class
                    as a trait */
                 ebml_w.start_tag(tag_item_trait_method);

@@ -183,7 +183,7 @@ fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
 fn parse_pat(p: parser) -> @ast::pat { p.parse_pat(true) }
 
 fn parse_item(p: parser) -> @ast::item {
-    alt p.parse_item(~[], ast::public) {
+    alt p.parse_item(~[]) {
       some(item) { item }
       none       { fail ~"parse_item: parsing an item failed"; }
     }

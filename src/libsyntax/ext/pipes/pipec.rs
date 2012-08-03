@@ -437,7 +437,6 @@ impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
             @(copy s),
             self.cfg(),
             ~[],
-            ast::public,
             self.parse_sess());
         alt res {
           some(ast) { ast }

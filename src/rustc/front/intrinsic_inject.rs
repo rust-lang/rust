@@ -12,7 +12,7 @@ fn inject_intrinsic(sess: session,
     let item = parse::parse_item_from_source_str(~"<intrinsic>",
                                                  intrinsic_module,
                                                  sess.opts.cfg,
-                                                 ~[], ast::public,
+                                                 ~[],
                                                  sess.parse_sess);
     let item =
         alt item {
