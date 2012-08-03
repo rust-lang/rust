@@ -955,7 +955,8 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
         ebml_w.start_tag(tag_index_buckets_bucket);
         for vec::each(*bucket) |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
-            writer.write_be_uint(elt.pos, 4u);
+            assert elt.pos < (u32::max_value as uint);
+            writer.write_be_u32(elt.pos as u32);
             write_fn(writer, elt.val);
             ebml_w.end_tag();
         }
@@ -963,7 +964,10 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
     }
     ebml_w.end_tag();
     ebml_w.start_tag(tag_index_table);
-    for bucket_locs.each |pos| { writer.write_be_uint(pos, 4u); }
+    for bucket_locs.each |pos| {
+        assert pos < (u32::max_value as uint);
+        writer.write_be_u32(pos as u32);
+    }
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
@@ -971,7 +975,8 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
 fn write_str(writer: io::writer, &&s: ~str) { writer.write_str(s); }
 
 fn write_int(writer: io::writer, &&n: int) {
-    writer.write_be_uint(n as uint, 4u);
+    assert n < (u32::max_value as int);
+    writer.write_be_u32(n as u32);
 }
 
 fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
