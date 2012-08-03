@@ -231,7 +231,15 @@ fn map_item(i: @item, cx: ctx, v: vt) {
            // only need to handle methods
           do vec::iter(ms) |m| { map_method(d_id, p, m, cx); }
       }
-      item_trait(tps, methods) {
+      item_trait(tps, traits, methods) {
+        // Map trait refs to their parent classes. This is
+        // so we can find the self_ty
+        for traits.each |p| {
+            cx.map.insert(p.ref_id, node_item(i, item_path));
+            // This is so we can look up the right things when
+            // encoding/decoding
+            cx.map.insert(p.impl_id, node_item(i, item_path));
+        }
         for methods.each |tm| {
             let id = ast_util::trait_method_to_ty_method(tm).id;
             let d_id = ast_util::local_def(i.id);

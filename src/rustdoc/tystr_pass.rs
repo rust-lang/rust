@@ -169,7 +169,7 @@ fn get_method_sig(
     do astsrv::exec(srv) |ctxt| {
         alt check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_trait(_, methods), _
+            node: ast::item_trait(_, _, methods), _
           }, _) {
             alt check vec::find(methods, |method| {
                 alt method {

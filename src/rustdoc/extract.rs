@@ -84,7 +84,7 @@ fn moddoc_from_mod(
                     enumdoc_from_enum(itemdoc, variants)
                 ))
               }
-              ast::item_trait(_, methods) {
+              ast::item_trait(_, _, methods) {
                 some(doc::traittag(
                     traitdoc_from_trait(itemdoc, methods)
                 ))

@@ -205,7 +205,7 @@ fn merge_method_attrs(
     let attrs: ~[(~str, option<~str>)] = do astsrv::exec(srv) |ctxt| {
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
-            node: ast::item_trait(_, methods), _
+            node: ast::item_trait(_, _, methods), _
           }, _) {
             vec::map(methods, |method| {
                 alt method {

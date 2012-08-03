@@ -38,20 +38,19 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
                     let substs = {self_r: none, self_ty: none, tps: ~[]};
 
                     alt intrinsic_item.node {
-
-                      ast::item_trait(_, _) {
+                      ast::item_trait(*) => {
                         let ty = ty::mk_trait(ccx.tcx, def_id, substs);
                         ccx.tcx.intrinsic_defs.insert
                             (intrinsic_item.ident, (def_id, ty));
                       }
 
-                      ast::item_enum(_, _) {
+                      ast::item_enum(*) => {
                         let ty = ty::mk_enum(ccx.tcx, def_id, substs);
                         ccx.tcx.intrinsic_defs.insert
                             (intrinsic_item.ident, (def_id, ty));
                       }
 
-                     _ { }
+                      _ => {}
                     }
                 }
               }
@@ -147,7 +146,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.contains_key(id);
     alt check tcx.items.get(id) {
-      ast_map::node_item(@{node: ast::item_trait(_, ms), _}, _) {
+      ast_map::node_item(@{node: ast::item_trait(_, _, ms), _}, _) {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
             alt m {
               required(ty_m) {
@@ -339,7 +338,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
         }
       }
-      ast::item_trait(tps, trait_methods) {
+      ast::item_trait(tps, _, trait_methods) {
         let tpt = ty_of_item(ccx, it);
         debug!{"item_trait(it.id=%d, tpt.ty=%s)",
                it.id, ty_to_str(tcx, tpt.ty)};
@@ -550,7 +549,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_trait(tps, ms) {
+      ast::item_trait(tps, _, ms) {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let t = ty::mk_trait(tcx, local_def(it.id), substs);
         let tpt = {bounds: bounds, rp: rp, ty: t};

@@ -988,7 +988,7 @@ class Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_trait(_, methods) {
+            item_trait(_, _, methods) {
                 // Add the names of all the methods to the trait info.
                 let method_names = @atom_hashmap();
                 for methods.each |method| {
@@ -3063,7 +3063,7 @@ class Resolver {
                                             self_type, methods, visitor);
             }
 
-            item_trait(type_parameters, methods) {
+            item_trait(type_parameters, traits, methods) {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib(NormalRibKind);
                 (*self.type_ribs).push(self_type_rib);
@@ -3076,6 +3076,27 @@ class Resolver {
                                            NormalRibKind)) {
 
                     self.resolve_type_parameters(type_parameters, visitor);
+
+                    // Resolve derived traits.
+                    for traits.each |trt| {
+                        match self.resolve_path(trt.path, TypeNS, true,
+                                                visitor) {
+                            none =>
+                                self.session.span_err(trt.path.span,
+                                                      ~"attempt to derive a \
+                                                       nonexistent trait"),
+                            some(def) => {
+                                // Write a mapping from the trait ID to the
+                                // definition of the trait into the definition
+                                // map.
+
+                                debug!{"(resolving trait) found trait def: \
+                                       %?", def};
+
+                                self.record_def(trt.ref_id, def);
+                            }
+                        }
+                    }
 
                     for methods.each |method| {
                         // Create a new rib for the method-specific type

@@ -2278,8 +2278,18 @@ class parser {
         let ident = self.parse_ident();
         self.parse_region_param();
         let tps = self.parse_ty_params();
+        
+        // Parse traits, if necessary.
+        let traits;
+        if self.token == token::COLON {
+            self.bump();
+            traits = self.parse_trait_ref_list(token::LBRACE);
+        } else {
+            traits = ~[];
+        }
+
         let meths = self.parse_trait_methods();
-        (ident, item_trait(tps, meths), none)
+        (ident, item_trait(tps, traits, meths), none)
     }
 
     // Parses four variants (with the region/type params always optional):
