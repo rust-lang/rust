@@ -29,7 +29,7 @@ syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%
 " Reserved words
 syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128
 
-syn keyword   rustType        any int uint float char bool u8 u16 u32 u64 f32
+syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str
 syn keyword   rustType        option either
 
