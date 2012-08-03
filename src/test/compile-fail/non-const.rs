@@ -25,6 +25,5 @@ fn main() {
     foo(@mut 1); //~ ERROR missing `const`
     foo(r(1)); // this is okay now.
     foo(r2(@mut 1)); //~ ERROR missing `const`
-    foo("123");
     foo({f: {mut f: 1}}); //~ ERROR missing `const`
 }
