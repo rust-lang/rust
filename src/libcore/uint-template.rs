@@ -12,6 +12,10 @@ export compl;
 export to_str, to_str_bytes;
 export from_str, from_str_radix, str, parse_buf;
 export num, ord, eq, times, timesi;
+export bits, bytes;
+
+const bits : uint = inst::bits;
+const bytes : uint = (inst::bits / 8);
 
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
@@ -76,34 +80,6 @@ impl num of num::num for T {
     pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
-/**
- * Parse a buffer of bytes
- *
- * # Arguments
- *
- * * buf - A byte buffer
- * * radix - The base of the number
- *
- * # Failure
- *
- * `buf` must not be empty
- */
-fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
-    if vec::len(buf) == 0u { return none; }
-    let mut i = vec::len(buf) - 1u;
-    let mut power = 1u as T;
-    let mut n = 0u as T;
-    loop {
-        alt char::to_digit(buf[i] as char, radix) {
-          some(d) { n += d as T * power; }
-          none { return none; }
-        }
-        power *= radix as T;
-        if i == 0u { return some(n); }
-        i -= 1u;
-    };
-}
-
 impl times of iter::times for T {
     #[inline(always)]
     #[doc = "A convenience form for basic iteration. Given a variable `x` \
@@ -131,6 +107,34 @@ impl timesi of iter::timesi for T {
             i += 1u;
         }
     }
+}
+
+/**
+ * Parse a buffer of bytes
+ *
+ * # Arguments
+ *
+ * * buf - A byte buffer
+ * * radix - The base of the number
+ *
+ * # Failure
+ *
+ * `buf` must not be empty
+ */
+fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
+    if vec::len(buf) == 0u { return none; }
+    let mut i = vec::len(buf) - 1u;
+    let mut power = 1u as T;
+    let mut n = 0u as T;
+    loop {
+        alt char::to_digit(buf[i] as char, radix) {
+          some(d) { n += d as T * power; }
+          none { return none; }
+        }
+        power *= radix as T;
+        if i == 0u { return some(n); }
+        i -= 1u;
+    };
 }
 
 /// Parse a string to an int

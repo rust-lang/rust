@@ -12,8 +12,12 @@ export compl;
 export abs;
 export parse_buf, from_str, to_str, to_str_bytes, str;
 export num, ord, eq, times, timesi;
+export bits, bytes;
 
-const min_value: T = -1 as T << (inst::bits - 1 as T);
+const bits : uint = inst::bits;
+const bytes : uint = (inst::bits / 8);
+
+const min_value: T = (-1 as T) << (bits - 1);
 const max_value: T = min_value - 1 as T;
 
 pure fn min(&&x: T, &&y: T) -> T { if x < y { x } else { y } }
@@ -56,6 +60,68 @@ pure fn compl(i: T) -> T {
 // FIXME: abs should return an unsigned int (#2353)
 pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
+}
+
+impl ord of ord for T {
+    pure fn lt(&&other: T) -> bool {
+        return self < other;
+    }
+}
+
+impl eq of eq for T {
+    pure fn eq(&&other: T) -> bool {
+        return self == other;
+    }
+}
+
+
+impl num of num::num for T {
+    pure fn add(&&other: T)    -> T { return self + other; }
+    pure fn sub(&&other: T)    -> T { return self - other; }
+    pure fn mul(&&other: T)    -> T { return self * other; }
+    pure fn div(&&other: T)    -> T { return self / other; }
+    pure fn modulo(&&other: T) -> T { return self % other; }
+    pure fn neg()              -> T { return -self;        }
+
+    pure fn to_int()         -> int { return self as int; }
+    pure fn from_int(n: int) -> T   { return n as T;      }
+}
+
+impl times of iter::times for T {
+    #[inline(always)]
+    #[doc = "A convenience form for basic iteration. Given a variable `x` \
+        of any numeric type, the expression `for x.times { /* anything */ }` \
+        will execute the given function exactly x times. If we assume that \
+        `x` is an int, this is functionally equivalent to \
+        `for int::range(0, x) |_i| { /* anything */ }`."]
+    fn times(it: fn() -> bool) {
+        if self < 0 {
+            fail fmt!{"The .times method expects a nonnegative number, \
+                       but found %?", self};
+        }
+        let mut i = self;
+        while i > 0 {
+            if !it() { break }
+            i -= 1;
+        }
+    }
+}
+
+impl timesi of iter::timesi for T {
+    #[inline(always)]
+    /// Like `times`, but provides an index
+    fn timesi(it: fn(uint) -> bool) {
+        let slf = self as uint;
+        if slf < 0u {
+            fail fmt!{"The .timesi method expects a nonnegative number, \
+                       but found %?", self};
+        }
+        let mut i = 0u;
+        while i < slf {
+            if !it(i) { break }
+            i += 1u;
+        }
+    }
 }
 
 /**
@@ -110,67 +176,6 @@ fn to_str_bytes<U>(n: T, radix: uint, f: fn(v: &[u8]) -> U) -> U {
 
 /// Convert to a string
 fn str(i: T) -> ~str { return to_str(i, 10u); }
-
-impl ord of ord for T {
-    pure fn lt(&&other: T) -> bool {
-        return self < other;
-    }
-}
-
-impl eq of eq for T {
-    pure fn eq(&&other: T) -> bool {
-        return self == other;
-    }
-}
-
-impl num of num::num for T {
-    pure fn add(&&other: T)    -> T { return self + other; }
-    pure fn sub(&&other: T)    -> T { return self - other; }
-    pure fn mul(&&other: T)    -> T { return self * other; }
-    pure fn div(&&other: T)    -> T { return self / other; }
-    pure fn modulo(&&other: T) -> T { return self % other; }
-    pure fn neg()              -> T { return -self;        }
-
-    pure fn to_int()         -> int { return self as int; }
-    pure fn from_int(n: int) -> T   { return n as T;      }
-}
-
-impl times of iter::times for T {
-    #[inline(always)]
-    #[doc = "A convenience form for basic iteration. Given a variable `x` \
-        of any numeric type, the expression `for x.times { /* anything */ }` \
-        will execute the given function exactly x times. If we assume that \
-        `x` is an int, this is functionally equivalent to \
-        `for int::range(0, x) |_i| { /* anything */ }`."]
-    fn times(it: fn() -> bool) {
-        if self < 0 {
-            fail fmt!{"The .times method expects a nonnegative number, \
-                       but found %?", self};
-        }
-        let mut i = self;
-        while i > 0 {
-            if !it() { break }
-            i -= 1;
-        }
-    }
-}
-
-impl timesi of iter::timesi for T {
-    #[inline(always)]
-    /// Like `times`, but provides an index
-    fn timesi(it: fn(uint) -> bool) {
-        let slf = self as uint;
-        if slf < 0u {
-            fail fmt!{"The .timesi method expects a nonnegative number, \
-                       but found %?", self};
-        }
-        let mut i = 0u;
-        while i < slf {
-            if !it(i) { break }
-            i += 1u;
-        }
-    }
-}
 
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]

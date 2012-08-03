@@ -1,3 +1,2 @@
 type T = i8;
-
-const bits: T = 8 as T;
+const bits: uint = u8::bits;

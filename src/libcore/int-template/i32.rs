@@ -1,3 +1,2 @@
 type T = i32;
-
-const bits: T = 32 as T;
+const bits: uint = u32::bits;

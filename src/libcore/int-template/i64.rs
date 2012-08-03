@@ -1,3 +1,2 @@
 type T = i64;
-
-const bits: T = 64 as T;
+const bits: uint = u64::bits;

@@ -1,13 +1,11 @@
 type T = int;
-
-#[cfg(target_arch = "x86")]
-const bits: T = 32 as T;
-
-#[cfg(target_arch = "x86_64")]
-const bits: T = 64 as T;
+const bits: uint = uint::bits;
 
 /// Produce a uint suitable for use in a hash table
-pure fn hash(x: &int) -> uint { *x as uint }
+pure fn hash(x: &int) -> uint {
+    let u : uint = *x as uint;
+    uint::hash(&u)
+}
 
 /// Returns `base` raised to the power of `exponent`
 fn pow(base: int, exponent: uint) -> int {
