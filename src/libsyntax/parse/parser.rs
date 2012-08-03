@@ -2278,7 +2278,7 @@ class parser {
         let ident = self.parse_ident();
         self.parse_region_param();
         let tps = self.parse_ty_params();
-        
+
         // Parse traits, if necessary.
         let traits;
         if self.token == token::COLON {
