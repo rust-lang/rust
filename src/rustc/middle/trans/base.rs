@@ -1424,12 +1424,9 @@ fn store_temp_expr(cx: block, action: copy_action, dst: ValueRef,
 fn trans_lit(cx: block, e: @ast::expr, lit: ast::lit, dest: dest) -> block {
     let _icx = cx.insn_ctxt(~"trans_lit");
     if dest == ignore { return cx; }
-    alt lit.node {
-      ast::lit_str(s) { tvec::trans_estr(cx, s,
-                                         ast::vstore_fixed(none), dest) }
-      _ {
-        store_in_dest(cx, consts::const_lit(cx.ccx(), e, lit), dest)
-      }
+    match lit.node {
+        ast::lit_str(s) => tvec::trans_estr(cx, s, none, dest),
+        _ => store_in_dest(cx, consts::const_lit(cx.ccx(), e, lit), dest)
     }
 }
 
