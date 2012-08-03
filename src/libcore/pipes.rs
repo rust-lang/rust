@@ -996,7 +996,7 @@ mod test {
         let (c1, p1) = pipes::stream();
         let (c2, p2) = pipes::stream();
 
-        c1.send("abc");
+        c1.send(~"abc");
 
         alt (p1, p2).select() {
           right(_) { fail }
