@@ -41,6 +41,21 @@ buffer that is carried along in the endpoint data structures.
 
 FIXME (#3072) - This is still incomplete
 
+
+
+## Invariants
+
+This section attempts to document the invariants that must hold to
+avoid races. These primarily deal with the state and blocked_task
+fields on packet_headers.
+
+1. If the sender reads a some(task) out of blocked_task, then the task
+that is pointed there will remain live for any events that the sender
+might signal.
+
+2. The sender may only read the blocked_task field if it first ensures
+that the packet's state field is blocked.
+
 */
 
 import unsafe::{forget, reinterpret_cast, transmute};
