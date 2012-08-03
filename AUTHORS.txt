@@ -24,6 +24,7 @@ Damian Gryski <damian@gryski.com>
 Damien Grassart <damien@grassart.com>
 Daniel Brooks <db48x@db48x.net>
 Daniel Luz <dev@mernen.com>
+Daniel Patterson <dbp@riseup.net>
 Dave Herman <dherman@mozilla.com>
 David Rajchenbach-Teller <dteller@mozilla.com>
 Donovan Preston <donovanpreston@gmail.com>
