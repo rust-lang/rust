@@ -6,7 +6,7 @@ fn to_c_int(v: &mut int) -> &mut c_int unsafe {
 }
 
 fn lgamma(n: c_double, value: &mut int) -> c_double {
-  return m::lgamma(n, to_c_uint(value));
+  return m::lgamma(n, to_c_int(value));
 }
 
 #[link_name = "m"]
