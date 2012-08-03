@@ -423,7 +423,8 @@ fn get_authority(rawurl: ~str) ->
               pass_host_port {
                 // multiple colons means ipv6 address.
                 if in == unreserved {
-                    return result::err(@~"Illegal characters in IPv6 address.");
+                    return result::err(
+                        @~"Illegal characters in IPv6 address.");
                 }
                 st = ip6_host;
               }
