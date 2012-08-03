@@ -1475,11 +1475,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(decl, body, cap_clause) {
+         // Take the prototype from the expected type, but default to block:
           let proto = unpack_expected(fcx, expected, |sty|
               alt sty { ty::ty_fn({proto, _}) { some(proto) } _ { none } }
           ).get_default(ast::proto_box);
-        // Take the prototype from the expected type, but default to block:
-          let proto = proto_1.get_default(ast::proto_box);
         check_expr_fn(fcx, expr, proto, decl, body, false, expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
