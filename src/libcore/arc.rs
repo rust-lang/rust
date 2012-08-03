@@ -97,6 +97,7 @@ fn exclusive<T:send >(-data: T) -> exclusive<T> {
 }
 
 impl methods<T: send> for exclusive<T> {
+    /// Duplicate an exclusive ARC. See arc::clone.
     fn clone() -> exclusive<T> {
         unsafe {
             // this makes me nervous...
@@ -109,6 +110,22 @@ impl methods<T: send> for exclusive<T> {
         arc_destruct(self.data)
     }
 
+    /**
+     * Access the underlying mutable data with mutual exclusion from other
+     * tasks. The argument closure will be run with the mutex locked; all
+     * other tasks wishing to access the data will block until the closure
+     * finishes running.
+     *
+     * Currently, scheduling operations (i.e., yielding, receiving on a pipe,
+     * accessing the provided condition variable) are prohibited while inside
+     * the exclusive. Supporting that is a work in progress.
+     *
+     * The reason this function is 'unsafe' is because it is possible to
+     * construct a circular reference among multiple ARCs by mutating the
+     * underlying data. This creates potential for deadlock, but worse, this
+     * will guarantee a memory leak of all involved ARCs. Using exclusive
+     * ARCs inside of other ARCs is safe in absence of circular references.
+     */
     unsafe fn with<U>(f: fn(sys::condition, x: &mut T) -> U) -> U {
         let ptr: ~arc_data<ex_data<T>> =
             unsafe::reinterpret_cast(self.data);
