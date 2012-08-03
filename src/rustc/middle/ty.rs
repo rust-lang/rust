@@ -2940,10 +2940,11 @@ fn lookup_public_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
 }
 
 pure fn is_public(f: field_ty) -> bool {
-  alt f.vis {
-    public { true }
-    private { false }
-  }
+    // XXX: This is wrong.
+    match f.vis {
+        public | inherited => true,
+        private => false
+    }
 }
 
 /* Given a class def_id and a method name, return the method's

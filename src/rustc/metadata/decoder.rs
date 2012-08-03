@@ -294,7 +294,7 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
       }
       'I' { dl_def(ast::def_ty(did)) }
       'i' { dl_impl(did) }
-      'g' | 'j' { dl_field }
+      'g' | 'j' | 'N' => { dl_field }
       ch { fail fmt!{"unexpected family code: '%c'", ch} }
     }
 }
@@ -741,14 +741,16 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
 
 pure fn family_to_visibility(family: char) -> ast::visibility {
     alt family {
-      'g' { ast::public }
-      _   { ast::private }
+      'g' => ast::public,
+      'j' => ast::private,
+      'N' => ast::inherited,
+      _ => fail
     }
 }
 
-/* 'g' for public field, 'j' for private field */
+/* 'g' for public field, 'j' for private field, 'N' for inherited field */
 fn get_class_fields(cdata: cmd, id: ast::node_id) -> ~[ty::field_ty] {
-    get_class_members(cdata, id, |f| f == 'g' || f == 'j')
+    get_class_members(cdata, id, |f| f == 'g' || f == 'j' || f == 'N')
 }
 
 fn family_has_type_params(fam_ch: char) -> bool {
@@ -802,6 +804,7 @@ fn item_family_to_str(fam: char) -> ~str {
       'S' { return ~"struct"; }
       'g' { return ~"public field"; }
       'j' { return ~"private field"; }
+      'N' { return ~"inherited field"; }
     }
 }
 

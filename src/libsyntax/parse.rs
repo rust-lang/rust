@@ -120,11 +120,10 @@ fn parse_expr_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
 
 fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                               +attrs: ~[ast::attribute],
-                              vis: ast::visibility,
                               sess: parse_sess) -> option<@ast::item> {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
-    let r = p.parse_item(attrs, vis);
+    let r = p.parse_item(attrs);
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     return r;

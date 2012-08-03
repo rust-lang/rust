@@ -31,25 +31,25 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              expr_rec, expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
              expr_unary_move, expr_vec, expr_vstore, expr_while, extern_fn,
              field, fn_decl, foreign_item, foreign_item_fn, foreign_mod,
-             ident, impure_fn, infer, init_assign, init_move, initializer,
-             instance_var, item, item_, item_class, item_const, item_enum,
-             item_fn, item_foreign_mod, item_impl, item_mac, item_mod,
-             item_trait, item_ty, lit, lit_, lit_bool, lit_float, lit_int,
-             lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const,
-             m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis,
-             mac_invoc, mac_invoc_tt, mac_var, matcher, match_nonterminal,
-             match_seq, match_tok, method, mode, mt, mul, mutability, neg,
-             noreturn, not, pat, pat_box, pat_enum, pat_ident, pat_lit,
-             pat_range, pat_rec, pat_tup, pat_uniq, pat_wild, path, private,
-             proto, proto_any, proto_bare, proto_block, proto_box, proto_uniq,
-             provided, public, pure_fn, purity, re_anon, re_named, region,
-             rem, required, ret_style, return_val, self_ty, shl, shr, stmt,
-             stmt_decl, stmt_expr, stmt_semi, subtract, sty_box, sty_by_ref,
-             sty_region, sty_uniq, sty_value, token_tree, trait_method,
-             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty, ty_,
-             ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method,
-             ty_nil, ty_param, ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup,
-             ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk, uniq,
+             ident, impure_fn, infer, inherited, init_assign, init_move,
+             initializer, instance_var, item, item_, item_class, item_const,
+             item_enum, item_fn, item_foreign_mod, item_impl, item_mac,
+             item_mod, item_trait, item_ty, lit, lit_, lit_bool, lit_float,
+             lit_int, lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local,
+             m_const, m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis, mac_invoc,
+             mac_invoc_tt, mac_var, matcher, match_nonterminal, match_seq,
+             match_tok, method, mode, mt, mul, mutability, neg, noreturn, not,
+             pat, pat_box, pat_enum, pat_ident, pat_lit, pat_range, pat_rec,
+             pat_tup, pat_uniq, pat_wild, path, private, proto, proto_any,
+             proto_bare, proto_block, proto_box, proto_uniq, provided, public,
+             pure_fn, purity, re_anon, re_named, region, rem, required,
+             ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl,
+             stmt_expr, stmt_semi, subtract, sty_box, sty_by_ref, sty_region,
+             sty_uniq, sty_value, token_tree, trait_method, trait_ref,
+             tt_delim, tt_seq, tt_tok, tt_nonterminal, ty, ty_, ty_bot,
+             ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
+             ty_param, ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32,
+             ty_uniq, ty_vec, ty_fixed_length, unchecked_blk, uniq,
              unsafe_blk, unsafe_fn, variant, view_item, view_item_,
              view_item_export, view_item_import, view_item_use, view_path,
              view_path_glob, view_path_list, view_path_simple, visibility,
@@ -273,7 +273,7 @@ class parser {
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
             // could change.
-            let vis = p.parse_visibility(public);
+            let vis = p.parse_visibility();
             let ident = p.parse_method_name();
             let tps = p.parse_ty_params();
             let d = p.parse_ty_fn_decl(pur);
@@ -1873,7 +1873,7 @@ class parser {
 
             let item_attrs = vec::append(first_item_attrs, item_attrs);
 
-            alt self.parse_item(item_attrs, public) {
+            alt self.parse_item(item_attrs) {
               some(i) {
                 let mut hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -2459,8 +2459,7 @@ class parser {
         }
     }
 
-    fn parse_single_class_item(vis: visibility)
-        -> @class_member {
+    fn parse_single_class_item(vis: visibility) -> @class_member {
         if (self.eat_keyword(~"let") ||
                 self.token_is_keyword(~"mut", copy self.token) ||
                 !self.is_any_keyword(copy self.token)) &&
@@ -2491,17 +2490,27 @@ class parser {
         dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
     }
 
-    fn parse_class_item(class_name_with_tps: @path)
-        -> class_contents {
-
+    fn parse_class_item(class_name_with_tps: @path) -> class_contents {
         if self.eat_keyword(~"priv") {
-            self.expect(token::LBRACE);
-            let mut results = ~[];
-            while self.token != token::RBRACE {
-                vec::push(results, self.parse_single_class_item(private));
+            // XXX: Remove after snapshot.
+            match self.token {
+                token::LBRACE => {
+                    self.bump();
+                    let mut results = ~[];
+                    while self.token != token::RBRACE {
+                        vec::push(results,
+                                  self.parse_single_class_item(private));
+                    }
+                    self.bump();
+                    return members(results);
+                }
+                _ =>
+                   return members(~[self.parse_single_class_item(private)])
             }
-            self.bump();
-            return members(results);
+        }
+
+        if self.eat_keyword(~"pub") {
+           return members(~[self.parse_single_class_item(public)]);
         }
 
         let attrs = self.parse_outer_attributes();
@@ -2515,14 +2524,14 @@ class parser {
            return self.parse_dtor(attrs);
         }
         else {
-           return members(~[self.parse_single_class_item(public)]);
+           return members(~[self.parse_single_class_item(inherited)]);
         }
     }
 
-    fn parse_visibility(def: visibility) -> visibility {
+    fn parse_visibility() -> visibility {
         if self.eat_keyword(~"pub") { public }
         else if self.eat_keyword(~"priv") { private }
-        else { def }
+        else { inherited }
     }
 
     fn parse_mod_items(term: token::token,
@@ -2539,8 +2548,7 @@ class parser {
                 first = false;
             }
             debug!{"parse_mod_items: parse_item(attrs=%?)", attrs};
-            let vis = self.parse_visibility(private);
-            alt self.parse_item(attrs, vis) {
+            alt self.parse_item(attrs) {
               some(i) { vec::push(items, i); }
               _ {
                 self.fatal(~"expected item but found `" +
@@ -2661,7 +2669,7 @@ class parser {
         }
     }
 
-    fn parse_item_enum(default_vis: visibility) -> item_info {
+    fn parse_item_enum() -> item_info {
         let id = self.parse_ident();
         self.parse_region_param();
         let ty_params = self.parse_ty_params();
@@ -2689,7 +2697,7 @@ class parser {
         while self.token != token::RBRACE {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
-            let vis = self.parse_visibility(default_vis);
+            let vis = self.parse_visibility();
             let ident = self.parse_value_ident();
             let mut args = ~[], disr_expr = none;
             if self.token == token::LPAREN {
@@ -2752,11 +2760,19 @@ class parser {
         }
     }
 
-    fn parse_item(+attrs: ~[attribute], vis: visibility)
-        -> option<@item> {
-
+    fn parse_item(+attrs: ~[attribute]) -> option<@item> {
         maybe_whole!{some self,nt_item};
         let lo = self.span.lo;
+
+        let visibility;
+        if self.eat_keyword(~"pub") {
+            visibility = public;
+        } else if self.eat_keyword(~"priv") {
+            visibility = private;
+        } else {
+            visibility = inherited;
+        }
+
         let (ident, item_, extra_attrs) = if self.eat_keyword(~"const") {
             self.parse_item_const()
         } else if self.is_keyword(~"fn") &&
@@ -2782,7 +2798,7 @@ class parser {
         } else if self.eat_keyword(~"type") {
             self.parse_item_type()
         } else if self.eat_keyword(~"enum") {
-            self.parse_item_enum(vis)
+            self.parse_item_enum()
         } else if self.eat_keyword(~"iface") {
             self.warn(~"`iface` is deprecated; use `trait`");
             self.parse_item_trait()
@@ -2816,7 +2832,7 @@ class parser {
                                       expn_info: none}};
             (id, item_mac(m), none)
         } else { return none; };
-        some(self.mk_item(lo, self.last_span.hi, ident, item_, vis,
+        some(self.mk_item(lo, self.last_span.hi, ident, item_, visibility,
                           alt extra_attrs {
                               some(as) { vec::append(attrs, as) }
                               none { attrs }
@@ -2917,7 +2933,7 @@ class parser {
     }
 
     fn parse_view_item(+attrs: ~[attribute]) -> @view_item {
-        let lo = self.span.lo, vis = self.parse_visibility(private);
+        let lo = self.span.lo, vis = self.parse_visibility();
         let node = if self.eat_keyword(~"use") {
             self.parse_use()
         } else if self.eat_keyword(~"import") {

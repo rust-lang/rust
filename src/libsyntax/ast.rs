@@ -700,7 +700,7 @@ type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
 type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
 
 #[auto_serialize]
-enum visibility { public, private }
+enum visibility { public, private, inherited }
 
 #[auto_serialize]
 type item = {ident: ident, attrs: ~[attribute],

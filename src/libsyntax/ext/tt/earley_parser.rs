@@ -320,7 +320,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
 fn parse_nt(p: parser, name: ~str) -> nonterminal {
     alt name {
-      ~"item" { alt p.parse_item(~[], ast::public) {
+      ~"item" { alt p.parse_item(~[]) {
         some(i) { token::nt_item(i) }
         none { p.fatal(~"expected an item keyword") }
       }}
