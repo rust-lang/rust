@@ -167,8 +167,8 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
       }
       LIT_FLOAT(s, t) {
         let mut body = *in.get(s);
-        if body.ends_with(".") {
-            body = body + "0";  // `10.f` is not a float literal
+        if body.ends_with(~".") {
+            body = body + ~"0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }

@@ -2164,7 +2164,7 @@ class parser {
                 }
                 _ => {
                     self.fatal(~"expected `,` or `)`, found `" +
-                               token_to_str(self.reader, self.token) + "`");
+                               token_to_str(self.reader, self.token) + ~"`");
                 }
             }
         } else {

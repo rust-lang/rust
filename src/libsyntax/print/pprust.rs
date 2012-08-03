@@ -600,7 +600,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         bclose(s, item.span);
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) {
-        head(s, path_to_str(pth) + "! " + *item.ident);
+        head(s, path_to_str(pth) + ~"! " + *item.ident);
         bopen(s);
         for tts.each |tt| { print_tt(s, tt);  }
         bclose(s, item.span);
@@ -873,7 +873,7 @@ fn print_mac(s: ps, m: ast::mac) {
         // FIXME: extension 'body' (#2339)
       }
       ast::mac_invoc_tt(pth, tts) {
-        head(s, path_to_str(pth) + "!");
+        head(s, path_to_str(pth) + ~"!");
         bopen(s);
         for tts.each() |tt| { print_tt(s, tt); }
         bclose(s, m.span);
