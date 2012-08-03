@@ -177,33 +177,33 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
  *
  * - impl_m: the method in the impl
  * - impl_tps: the type params declared on the impl itself (not the method!)
- * - if_m: the method in the trait
- * - if_substs: the substitutions used on the type of the trait
+ * - trait_m: the method in the trait
+ * - trait_substs: the substitutions used on the type of the trait
  * - self_ty: the self type of the impl
  */
 fn compare_impl_method(tcx: ty::ctxt, sp: span,
                        impl_m: ty::method, impl_tps: uint,
-                       if_m: ty::method, if_substs: ty::substs,
+                       trait_m: ty::method, trait_substs: ty::substs,
                        self_ty: ty::t) {
 
-    if impl_m.tps != if_m.tps {
-        tcx.sess.span_err(sp, ~"method `" + *if_m.ident +
+    if impl_m.tps != trait_m.tps {
+        tcx.sess.span_err(sp, ~"method `" + *trait_m.ident +
                           ~"` has an incompatible set of type parameters");
         return;
     }
 
-    if vec::len(impl_m.fty.inputs) != vec::len(if_m.fty.inputs) {
+    if vec::len(impl_m.fty.inputs) != vec::len(trait_m.fty.inputs) {
         tcx.sess.span_err(sp,fmt!{"method `%s` has %u parameters \
                                    but the trait has %u",
-                                  *if_m.ident,
+                                  *trait_m.ident,
                                   vec::len(impl_m.fty.inputs),
-                                  vec::len(if_m.fty.inputs)});
+                                  vec::len(trait_m.fty.inputs)});
         return;
     }
 
     // Perform substitutions so that the trait/impl methods are expressed
     // in terms of the same set of type/region parameters:
-    // - replace trait type parameters with those from `if_substs`
+    // - replace trait type parameters with those from `trait_substs`
     // - replace method parameters on the trait with fresh, dummy parameters
     //   that correspond to the parameters we will find on the impl
     // - replace self region with a fresh, dummy region
@@ -212,8 +212,8 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         let impl_fty = ty::mk_fn(tcx, impl_m.fty);
         replace_bound_self(tcx, impl_fty, dummy_self_r)
     };
-    let if_fty = {
-        let dummy_tps = do vec::from_fn((*if_m.tps).len()) |i| {
+    let trait_fty = {
+        let dummy_tps = do vec::from_fn((*trait_m.tps).len()) |i| {
             // hack: we don't know the def id of the impl tp, but it
             // is not important for unification
             ty::mk_param(tcx, i + impl_tps, {crate: 0, node: 0})
@@ -221,14 +221,14 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         let substs = {
             self_r: some(dummy_self_r),
             self_ty: some(self_ty),
-            tps: vec::append(if_substs.tps, dummy_tps)
+            tps: vec::append(trait_substs.tps, dummy_tps)
         };
-        let if_fty = ty::mk_fn(tcx, if_m.fty);
-        ty::subst(tcx, substs, if_fty)
+        let trait_fty = ty::mk_fn(tcx, trait_m.fty);
+        ty::subst(tcx, substs, trait_fty)
     };
     require_same_types(
-        tcx, none, sp, impl_fty, if_fty,
-        || ~"method `" + *if_m.ident + ~"` has an incompatible type");
+        tcx, none, sp, impl_fty, trait_fty,
+        || ~"method `" + *trait_m.ident + ~"` has an incompatible type");
     return;
 
     // Replaces bound references to the self region with `with_r`.
@@ -245,36 +245,59 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
                                rp: bool,
                                selfty: ty::t,
                                a_trait_ty: @ast::trait_ref,
-                               ms: ~[converted_method]) {
+                               impl_ms: ~[converted_method]) {
 
     let tcx = ccx.tcx;
     let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp);
     if did.crate == ast::local_crate {
         ensure_trait_methods(ccx, did.node);
     }
-    for vec::each(*ty::trait_methods(tcx, did)) |if_m| {
-        alt vec::find(ms, |m| if_m.ident == m.mty.ident) {
-          some({mty: m, id, span}) {
-            if m.purity != if_m.purity {
+    for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
+        alt vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
+          some({mty: impl_m, id, span}) {
+            if impl_m.purity != trait_m.purity {
                 ccx.tcx.sess.span_err(
                     span, fmt!{"method `%s`'s purity does \
                                 not match the trait method's \
-                                purity", *m.ident});
+                                purity", *impl_m.ident});
             }
             compare_impl_method(
-                ccx.tcx, span, m, vec::len(tps),
-                if_m, tpt.substs, selfty);
+                ccx.tcx, span, impl_m, vec::len(tps),
+                trait_m, tpt.substs, selfty);
           }
           none {
-            // FIXME (#2794): if there's a default impl in the trait,
-            // use that.
+              // If we couldn't find an implementation for trait_m in
+              // the impl, then see if there was a default
+              // implementation in the trait itself.  If not, raise a
+              // "missing method" error.
 
-            tcx.sess.span_err(
-                a_trait_ty.path.span,
-                fmt!{"missing method `%s`", *if_m.ident});
+              alt tcx.items.get(did.node) {
+                ast_map::node_item(
+                    @{node: ast::item_trait(_, _, trait_methods), _}, _) {
+                  let (_, provided_methods) =
+                      split_trait_methods(trait_methods);
+
+                  alt vec::find(provided_methods, |provided_method|
+                                provided_method.ident == trait_m.ident) {
+                    some(m) {
+                      // If there's a provided method with the name we
+                      // want, then we're fine; nothing else to do.
+                    }
+                    none {
+                      tcx.sess.span_err(
+                          a_trait_ty.path.span,
+                          fmt!{"missing method `%s`", *trait_m.ident});
+                    }
+                  }
+                }
+                _ {
+                    tcx.sess.bug(~"check_methods_against_trait(): trait_ref \
+                                   didn't refer to a trait");
+                }
+              }
           }
         } // alt
-    } // |if_m|
+    } // |trait_m|
 } // fn
 
 fn convert_field(ccx: @crate_ctxt,
@@ -324,7 +347,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         get_enum_variant_types(ccx, tpt.ty, variants, ty_params, rp);
       }
-      ast::item_impl(tps, trt, selfty, ms) {
+      ast::item_impl(tps, trait_ref, selfty, ms) {
         let i_bounds = ty_param_bounds(ccx, tps);
         let selfty = ccx.to_ty(type_rscope(rp), selfty);
         write_ty_to_tcx(tcx, it.id, selfty);
@@ -334,7 +357,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                            ty: selfty});
 
         let cms = convert_methods(ccx, ms, rp, i_bounds, selfty);
-        for trt.each |t| {
+        for trait_ref.each |t| {
             check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
         }
       }
@@ -351,11 +374,11 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let _cms = convert_methods(ccx, provided_methods, rp, bounds, selfty);
         // FIXME (#2616): something like this, when we start having
         // trait inheritance?
-        // for trt.each |t| {
+        // for trait_ref.each |t| {
         // check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
         // }
       }
-      ast::item_class(tps, traits, members, m_ctor, m_dtor) {
+      ast::item_class(tps, trait_refs, members, m_ctor, m_dtor) {
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
@@ -405,11 +428,11 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let selfty = ty::mk_class(tcx, local_def(it.id), substs);
         let cms = convert_methods(ccx, methods, rp, bounds, selfty);
-        for traits.each |trt| {
-            check_methods_against_trait(ccx, tps, rp, selfty, trt, cms);
-            // trt.impl_id represents (class, trait) pair
-            write_ty_to_tcx(tcx, trt.impl_id, tpt.ty);
-            tcx.tcache.insert(local_def(trt.impl_id), tpt);
+        for trait_refs.each |trait_ref| {
+            check_methods_against_trait(ccx, tps, rp, selfty, trait_ref, cms);
+            // trait_ref.impl_id represents (class, trait) pair
+            write_ty_to_tcx(tcx, trait_ref.impl_id, tpt.ty);
+            tcx.tcache.insert(local_def(trait_ref.impl_id), tpt);
         }
       }
       _ {
