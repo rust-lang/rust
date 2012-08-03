@@ -1,7 +1,7 @@
 // xfail-fast
-// aux-build:cci_class_iface.rs
-use cci_class_iface;
-import cci_class_iface::animals::*;
+// aux-build:cci_class_trait.rs
+use cci_class_trait;
+import cci_class_trait::animals::*;
 
 class cat : noisy {
   priv {
