@@ -411,7 +411,7 @@ impl printer for printer {
             {offset: 0, pbreak: broken(inconsistent)}
         }
     }
-    fn write_str(s: ~str) {
+    fn print_str(s: ~str) {
         while self.pending_indentation > 0 {
             self.out.write_str(~" ");
             self.pending_indentation -= 1;
@@ -471,7 +471,7 @@ impl printer for printer {
             assert (L == len);
             // assert L <= space;
             self.space -= len;
-            self.write_str(*s);
+            self.print_str(*s);
           }
           EOF {
             // EOF should never get here.

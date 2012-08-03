@@ -533,7 +533,34 @@ fn u64_from_be_bytes(data: ~[u8], start: uint, size: uint) -> u64 {
     return val;
 }
 
-impl writer_util for writer {
+// FIXME: #3048 combine trait+impl (or just move these to
+// default methods on writer)
+trait writer_util {
+    fn write_char(ch: char);
+    fn write_str(s: &str);
+    fn write_line(s: &str);
+    fn write_int(n: int);
+    fn write_uint(n: uint);
+    fn write_le_uint(n: uint);
+    fn write_le_int(n: int);
+    fn write_be_uint(n: uint);
+    fn write_be_int(n: int);
+    fn write_be_u64(n: u64);
+    fn write_be_u32(n: u32);
+    fn write_be_u16(n: u16);
+    fn write_be_i64(n: i64);
+    fn write_be_i32(n: i32);
+    fn write_be_i16(n: i16);
+    fn write_le_u64(n: u64);
+    fn write_le_u32(n: u32);
+    fn write_le_u16(n: u16);
+    fn write_le_i64(n: i64);
+    fn write_le_i32(n: i32);
+    fn write_le_i16(n: i16);
+    fn write_u8(n: u8);
+}
+
+impl<T:writer> T : writer_util {
     fn write_char(ch: char) {
         if ch as uint < 128u {
             self.write(&[ch as u8]);
@@ -552,17 +579,17 @@ impl writer_util for writer {
     fn write_uint(n: uint) {
         uint::to_str_bytes(false, n, 10u, |buf| self.write(buf))
     }
-    fn write_le_uint(n: uint, size: uint) {
-        u64_to_le_bytes(n as u64, size, |v| self.write(v))
+    fn write_le_uint(n: uint) {
+        u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
     }
-    fn write_le_int(n: int, size: uint) {
-        u64_to_le_bytes(n as u64, size, |v| self.write(v))
+    fn write_le_int(n: int) {
+        u64_to_le_bytes(n as u64, int::bytes, |v| self.write(v))
     }
-    fn write_be_uint(n: uint, size: uint) {
-        u64_to_be_bytes(n as u64, size, |v| self.write(v))
+    fn write_be_uint(n: uint) {
+        u64_to_be_bytes(n as u64, uint::bytes, |v| self.write(v))
     }
-    fn write_be_int(n: int, size: uint) {
-        u64_to_be_bytes(n as u64, size, |v| self.write(v))
+    fn write_be_int(n: int) {
+        u64_to_be_bytes(n as u64, int::bytes, |v| self.write(v))
     }
     fn write_be_u64(n: u64) {
         u64_to_be_bytes(n, 8u, |v| self.write(v))
