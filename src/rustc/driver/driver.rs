@@ -44,10 +44,10 @@ fn default_configuration(sess: session, argv0: ~str, input: input) ->
 
     let mk = attr::mk_name_value_item_str;
 
-    let arch = alt sess.targ_cfg.arch {
-      session::arch_x86 { ~"x86" }
-      session::arch_x86_64 { ~"x86_64" }
-      session::arch_arm { ~"arm" }
+    let (arch,wordsz) = alt sess.targ_cfg.arch {
+      session::arch_x86 { (~"x86",~"32") }
+      session::arch_x86_64 { (~"x86_64",~"64") }
+      session::arch_arm { (~"arm",~"32") }
     };
 
     return ~[ // Target bindings.
@@ -55,6 +55,7 @@ fn default_configuration(sess: session, argv0: ~str, input: input) ->
          mk(@~"target_os", os::sysname()),
          mk(@~"target_family", os::family()),
          mk(@~"target_arch", arch),
+         mk(@~"target_word_size", wordsz),
          mk(@~"target_libc", libc),
          // Build bindings.
          mk(@~"build_compiler", argv0),
