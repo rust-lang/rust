@@ -402,7 +402,7 @@ class bitv {
  */
      fn to_str() -> ~str {
        let mut rs = ~"";
-       for self.each() |i| { if i { rs += "1"; } else { rs += "0"; } };
+       for self.each() |i| { if i { rs += ~"1"; } else { rs += ~"0"; } };
        rs
      }
 

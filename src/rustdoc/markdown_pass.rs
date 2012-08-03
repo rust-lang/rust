@@ -229,7 +229,7 @@ fn header_name(doc: doc::itemtag) -> ~str {
             if i == 0 {
                 trait_part += ~" of ";
             } else {
-                trait_part += ", ";
+                trait_part += ~", ";
             }
             trait_part += trait_type;
         }

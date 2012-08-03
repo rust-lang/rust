@@ -331,22 +331,22 @@ mod chained {
     impl hashmap<K: copy to_str, V: to_str copy> of to_str for t<K, V> {
         fn to_writer(wr: io::writer) {
             if self.count == 0u {
-                wr.write_str("{}");
+                wr.write_str(~"{}");
                 return;
             }
 
-            wr.write_str("{ ");
+            wr.write_str(~"{ ");
             let mut first = true;
             for self.each_entry |entry| {
                 if !first {
-                    wr.write_str(", ");
+                    wr.write_str(~", ");
                 }
                 first = false;
                 wr.write_str(entry.key.to_str());
-                wr.write_str(": ");
+                wr.write_str(~": ");
                 wr.write_str((copy entry.value).to_str());
             };
-            wr.write_str(" }");
+            wr.write_str(~" }");
         }
 
         fn to_str() -> ~str {

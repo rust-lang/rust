@@ -71,13 +71,13 @@ impl compile of gen_send for message {
 
             if this.proto.is_bounded() {
                 let (sp, rp) = alt (this.dir, next.dir) {
-                  (send, send) { ("c", "s") }
-                  (send, recv) { ("s", "c") }
-                  (recv, send) { ("s", "c") }
-                  (recv, recv) { ("c", "s") }
+                  (send, send) { (~"c", ~"s") }
+                  (send, recv) { (~"s", ~"c") }
+                  (recv, send) { (~"s", ~"c") }
+                  (recv, recv) { (~"c", ~"s") }
                 };
 
-                body += "let b = pipe.reuse_buffer();\n";
+                body += ~"let b = pipe.reuse_buffer();\n";
                 body += fmt!{"let %s = pipes::send_packet_buffered(\
                               ptr::addr_of(b.buffer.data.%s));\n",
                              sp, *next.name};

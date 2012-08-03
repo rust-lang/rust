@@ -5292,7 +5292,7 @@ fn gather_external_rtcalls(ccx: @crate_ctxt) {
                     // like gather_local_rtcalls, but we'll need to
                     // export attributes in metadata/encoder before we can do
                     // that.
-                    let sentinel = "rt::rt_";
+                    let sentinel = ~"rt::rt_";
                     let slen = str::len(sentinel);
                     if str::starts_with(pathname, sentinel) {
                         let name = str::substr(pathname,
