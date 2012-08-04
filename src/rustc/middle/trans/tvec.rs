@@ -5,7 +5,7 @@ import back::abi;
 import base::{call_memmove,
               INIT, copy_val, load_if_immediate, get_tydesc,
               sub_block, do_spill_noroot,
-              dest, bcx_icx, non_gc_box_cast};
+              dest, bcx_icx, non_gc_box_cast, move_val, lval_owned};
 import syntax::codemap::span;
 import shape::llsize_of;
 import build::*;
@@ -118,16 +118,37 @@ fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
     } else { bcx }
 }
 
-fn trans_evec(bcx: block, args: ~[@ast::expr],
+enum evec_elements {
+    individual_evec(~[@ast::expr]),
+    repeating_evec(@ast::expr, uint)
+}
+
+fn trans_evec(bcx: block, elements: evec_elements,
               vst: ast::vstore, id: ast::node_id, dest: dest) -> block {
     let _icx = bcx.insn_ctxt(~"tvec::trans_evec");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
+
+    // Handle the ignored case.
     if dest == base::ignore {
-        for vec::each(args) |arg| {
-            bcx = base::trans_expr(bcx, arg, base::ignore);
+        match elements {
+            individual_evec(args) => {
+                for vec::each(args) |arg| {
+                    bcx = base::trans_expr(bcx, arg, base::ignore);
+                }
+            }
+            repeating_evec(element, _) => {
+                bcx = base::trans_expr(bcx, element, base::ignore);
+            }
         }
         return bcx;
+    }
+
+    // Figure out the number of elements we need.
+    let count;
+    match elements {
+        individual_evec(args) => count = args.len(),
+        repeating_evec(_, len) => count = len
     }
 
     let vec_ty = node_id_type(bcx, id);
@@ -151,13 +172,12 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
             {bcx: bcx, val: v, dataptr: v}
           }
           ast::vstore_slice(_) {
-            let n = vec::len(args);
             // Make a fake type to use for the cleanup
             let ty = ty::mk_evec(bcx.tcx(),
                                  {ty: unit_ty, mutbl: ast::m_mutbl},
-                                 ty::vstore_fixed(n));
+                                 ty::vstore_fixed(count));
 
-            let n = C_uint(ccx, n);
+            let n = C_uint(ccx, count);
             let vp = base::arrayalloca(bcx, llunitty, n);
             add_clean(bcx, vp, ty);
 
@@ -171,15 +191,13 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
             {bcx: bcx, val: p, dataptr: vp}
           }
           ast::vstore_uniq {
-            let {bcx, val} = alloc_vec(bcx, unit_ty, args.len(),
-                                       heap_exchange);
+            let {bcx, val} = alloc_vec(bcx, unit_ty, count, heap_exchange);
             add_clean_free(bcx, val, heap_exchange);
             let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
             {bcx: bcx, val: val, dataptr: dataptr}
           }
           ast::vstore_box {
-            let {bcx, val} = alloc_vec(bcx, unit_ty, args.len(),
-                                       heap_shared);
+            let {bcx, val} = alloc_vec(bcx, unit_ty, count, heap_shared);
             add_clean_free(bcx, val, heap_shared);
             let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
             {bcx: bcx, val: val, dataptr: dataptr}
@@ -192,12 +210,38 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
     debug!{"trans_evec: v: %s, dataptr: %s",
            val_str(ccx.tn, val),
            val_str(ccx.tn, dataptr)};
-    for vec::each(args) |e| {
-        let lleltptr = InBoundsGEP(bcx, dataptr, ~[C_uint(ccx, i)]);
-        bcx = base::trans_expr_save_in(bcx, e, lleltptr);
-        add_clean_temp_mem(bcx, lleltptr, unit_ty);
-        vec::push(temp_cleanups, lleltptr);
-        i += 1u;
+    match elements {
+        individual_evec(args) => {
+            for vec::each(args) |e| {
+                let lleltptr = InBoundsGEP(bcx, dataptr, ~[C_uint(ccx, i)]);
+                bcx = base::trans_expr_save_in(bcx, e, lleltptr);
+                add_clean_temp_mem(bcx, lleltptr, unit_ty);
+                vec::push(temp_cleanups, lleltptr);
+                i += 1u;
+            }
+        }
+        repeating_evec(e, len) => {
+            // We make temporary space in the hope that this will be
+            // friendlier to LLVM alias analysis.
+            let lltmpspace = base::alloca(bcx, llunitty);
+            bcx = base::trans_expr_save_in(bcx, e, lltmpspace);
+            add_clean_temp_mem(bcx, lltmpspace, unit_ty);
+            vec::push(temp_cleanups, lltmpspace);
+            for len.timesi |i| {
+                let lleltptr = InBoundsGEP(bcx, dataptr, ~[C_uint(ccx, i)]);
+                if i == len - 1 {
+                    // Move the last one in.
+                    bcx = move_val(bcx, INIT, lleltptr,
+                                   lval_owned(bcx, lltmpspace), unit_ty);
+                } else {
+                    // Copy all but the last one in.
+                    let llval = load_if_immediate(bcx, lltmpspace, unit_ty);
+                    bcx = copy_val(bcx, INIT, lleltptr, llval, unit_ty);
+                }
+                add_clean_temp_mem(bcx, lleltptr, unit_ty);
+                vec::push(temp_cleanups, lleltptr);
+            }
+        }
     }
 
     for vec::each(temp_cleanups) |cln| { revoke_clean(bcx, cln); }
@@ -219,13 +263,17 @@ fn trans_evec(bcx: block, args: ~[@ast::expr],
 fn trans_vstore(bcx: block, e: @ast::expr,
                 v: ast::vstore, dest: dest) -> block {
     alt e.node {
-      ast::expr_lit(@{node: ast::lit_str(s), span: _}) {
+      ast::expr_lit(@{node: ast::lit_str(s), span: _}) => {
         return trans_estr(bcx, s, some(v), dest);
       }
-      ast::expr_vec(es, mutbl) {
-        return trans_evec(bcx, es, v, e.id, dest);
+      ast::expr_vec(es, mutbl) => {
+        return trans_evec(bcx, individual_evec(es), v, e.id, dest);
       }
-      _ {
+      ast::expr_repeat(element, count_expr, mutbl) => {
+        let count = ty::eval_repeat_count(bcx.tcx(), count_expr, e.span);
+        return trans_evec(bcx, repeating_evec(element, count), v, e.id, dest);
+      }
+      _ => {
         bcx.sess().span_bug(e.span, ~"vstore on non-sequence type");
       }
     }

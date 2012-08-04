@@ -3636,8 +3636,13 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
           ast::expr_lit(lit) { return trans_lit(bcx, e, *lit, dest); }
           ast::expr_vec(args, _) {
-            return tvec::trans_evec(bcx, args, ast::vstore_fixed(none),
-                                 e.id, dest);
+            return tvec::trans_evec(bcx, tvec::individual_evec(args),
+                                    ast::vstore_fixed(none), e.id, dest);
+          }
+          ast::expr_repeat(element, count_expr, _) {
+            let count = ty::eval_repeat_count(bcx.tcx(), count_expr, e.span);
+            return tvec::trans_evec(bcx, tvec::repeating_evec(element, count),
+                                    ast::vstore_fixed(none), e.id, dest);
           }
           ast::expr_binary(op, lhs, rhs) {
             return trans_binary(bcx, op, lhs, rhs, dest, e);

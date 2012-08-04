@@ -1150,26 +1150,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                  is_loop_body, some(fcx));
     }
 
-    fn eval_repeat_count(fcx: @fn_ctxt, count_expr: @ast::expr, span: span)
-                      -> uint {
-        let tcx = fcx.ccx.tcx;
-        match const_eval::eval_const_expr(tcx, count_expr) {
-            const_eval::const_int(count) => return count as uint,
-            const_eval::const_uint(count) => return count as uint,
-            const_eval::const_float(count) => {
-                tcx.sess.span_err(span,
-                                  ~"expected signed or unsigned integer for \
-                                    repeat count but found float");
-                return count as uint;
-            }
-            const_eval::const_str(_) => {
-                tcx.sess.span_err(span,
-                                  ~"expected signed or unsigned integer for \
-                                    repeat count but found string");
-                return 0;
-            }
-        }
-    }
 
     // Check field access expressions
     fn check_field(fcx: @fn_ctxt, expr: @ast::expr, is_callee: bool,
@@ -1284,7 +1264,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
-            let count = eval_repeat_count(fcx, count_expr, expr.span);
+            let count = ty::eval_repeat_count(tcx, count_expr, expr.span);
             fcx.write_ty(count_expr.id, ty::mk_uint(tcx));
             let tt = ast_expr_vstore_to_vstore(fcx, ev, count, vst);
             let t: ty::t = fcx.infcx.next_ty_var();
@@ -1642,7 +1622,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, typ);
       }
       ast::expr_repeat(element, count_expr, mutbl) {
-        let count = eval_repeat_count(fcx, count_expr, expr.span);
+        let count = ty::eval_repeat_count(tcx, count_expr, expr.span);
         fcx.write_ty(count_expr.id, ty::mk_uint(tcx));
         let t: ty::t = fcx.infcx.next_ty_var();
         bot |= check_expr_with(fcx, element, t);
