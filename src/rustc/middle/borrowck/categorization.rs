@@ -244,7 +244,7 @@ impl public_methods for borrowck_ctxt {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
             let proto = ty::ty_fn_proto(ty);
             alt proto {
-              ast::proto_any | ast::proto_block {
+              ast::proto_block {
                 let upcmt = self.cat_def(id, span, expr_ty, *inner);
                 @{id:id, span:span,
                   cat:cat_stack_upvar(upcmt), lp:upcmt.lp,

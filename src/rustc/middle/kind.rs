@@ -148,7 +148,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
       proto_uniq { b(check_for_uniq) }
       proto_box { b(check_for_box) }
       proto_bare { b(check_for_bare) }
-      proto_any | proto_block { b(check_for_block) }
+      proto_block { b(check_for_block) }
     }
 }
 

@@ -2120,7 +2120,7 @@ impl of combine for lub {
         } else if p1 == p2 {
             ok(p1)
         } else {
-            ok(ast::proto_any)
+            ok(ast::proto_block)
         }
     }
 
@@ -2314,9 +2314,9 @@ impl of combine for glb {
     }
 
     fn protos(p1: ast::proto, p2: ast::proto) -> cres<ast::proto> {
-        if p1 == ast::proto_any {
+        if p1 == ast::proto_block {
             ok(p2)
-        } else if p2 == ast::proto_any {
+        } else if p2 == ast::proto_block {
             ok(p1)
         } else if p1 == p2 {
             ok(p1)

@@ -102,7 +102,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
     // named and add that
 
     let implicit_mode = alt fn_proto {
-      ast::proto_any | ast::proto_block { cap_ref }
+      ast::proto_block { cap_ref }
       ast::proto_bare | ast::proto_box | ast::proto_uniq { cap_copy }
     };
 

@@ -220,7 +220,7 @@ impl methods for check_loan_ctxt {
         let fn_ty = ty::node_id_to_type(self.tcx(), id);
         let proto = ty::ty_fn_proto(fn_ty);
         alt proto {
-          ast::proto_block | ast::proto_any {true}
+          ast::proto_block {true}
           ast::proto_bare | ast::proto_uniq | ast::proto_box {false}
         }
     }
