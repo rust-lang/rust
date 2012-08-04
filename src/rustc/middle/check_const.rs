@@ -101,8 +101,15 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
               }
             }
           }
+          expr_addr_of(m_imm, _) |
           expr_tup(*) |
           expr_rec(*) { }
+          expr_addr_of(*) {
+                sess.span_err(
+                    e.span,
+                    ~"borrowed pointers in constants may only refer to \
+                      immutable values");
+          }
           _ {
             sess.span_err(e.span,
                           ~"constant contains unimplemented expression type");

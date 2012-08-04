@@ -8,7 +8,7 @@ trait region_scope {
 enum empty_rscope { empty_rscope }
 impl of region_scope for empty_rscope {
     fn anon_region() -> result<ty::region, ~str> {
-        result::err(~"region types are not allowed here")
+        result::ok(ty::re_static)
     }
     fn named_region(id: ast::ident) -> result<ty::region, ~str> {
         if *id == ~"static" { result::ok(ty::re_static) }

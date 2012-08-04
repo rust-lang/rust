@@ -74,8 +74,16 @@ impl private_methods for &preserve_ctxt {
             // when we borrow an rvalue, we can keep it rooted but only
             // up to the root_ub point
 
+            // When we're in a 'const &x = ...' context, self.root_ub is
+            // zero and the rvalue is static, not bound to a scope.
+            let scope_region = if self.root_ub == 0 {
+                ty::re_static
+            } else {
+                ty::re_scope(self.root_ub)
+            };
+
             // FIXME(#2977)--need to update trans!
-            self.compare_scope(cmt, ty::re_scope(self.root_ub))
+            self.compare_scope(cmt, scope_region)
           }
           cat_stack_upvar(cmt) {
             self.preserve(cmt)
