@@ -125,16 +125,16 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
 {
     let loc = lookup_char_pos(map, pos);
     alt (loc.file.substr) {
-      fss_none {
+      fss_none => {
         {filename: /* FIXME (#2543) */ copy loc.file.name,
          line: loc.line,
          col: loc.col,
          file: some(loc.file)}
       }
-      fss_internal(sp) {
+      fss_internal(sp) => {
         lookup_char_pos_adj(map, sp.lo + (pos - loc.file.start_pos.ch))
       }
-      fss_external(eloc) {
+      fss_external(eloc) => {
         {filename: /* FIXME (#2543) */ copy eloc.filename,
          line: eloc.line + loc.line - 1u,
          col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
@@ -147,12 +147,12 @@ fn adjust_span(map: codemap, sp: span) -> span {
     pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
     let line = lookup_line(map, sp.lo, lookup);
     alt (line.fm.substr) {
-      fss_none {sp}
-      fss_internal(s) {
+      fss_none => sp,
+      fss_internal(s) => {
         adjust_span(map, {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
                           hi: s.lo + (sp.hi - line.fm.start_pos.ch),
                           expn_info: sp.expn_info})}
-      fss_external(_) {sp}
+      fss_external(_) => sp
     }
 }
 
@@ -197,8 +197,8 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 fn get_line(fm: filemap, line: int) -> ~str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end = alt str::find_char_from(*fm.src, '\n', begin) {
-      some(e) { e }
-      none { str::len(*fm.src) }
+      some(e) => e,
+      none => str::len(*fm.src)
     };
     str::slice(*fm.src, begin, end)
 }

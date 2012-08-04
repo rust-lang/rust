@@ -27,30 +27,22 @@ enum dlist<T> = @{
 impl private_methods<T> for dlist_node<T> {
     pure fn assert_links() {
         alt self.next {
-            some(neighbour) {
-                alt neighbour.prev {
-                    some(me) {
-                        if !box::ptr_eq(*self, *me) {
-                            fail ~"Asymmetric next-link in dlist node."
-                        }
-                    }
-                    none { fail ~"One-way next-link in dlist node." }
-                }
+            some(neighbour) => alt neighbour.prev {
+              some(me) => if !box::ptr_eq(*self, *me) {
+                  fail ~"Asymmetric next-link in dlist node."
+              }
+              none => fail ~"One-way next-link in dlist node."
             }
-            none { }
+            none => ()
         }
         alt self.prev {
-            some(neighbour) {
-                alt neighbour.next {
-                    some(me) {
-                        if !box::ptr_eq(*me, *self) {
-                            fail ~"Asymmetric prev-link in dlist node."
-                        }
-                    }
-                    none { fail ~"One-way prev-link in dlist node." }
-                }
+            some(neighbour) => alt neighbour.next {
+              some(me) => if !box::ptr_eq(*me, *self) {
+                  fail ~"Asymmetric prev-link in dlist node."
+              }
+              none => fail ~"One-way prev-link in dlist node."
             }
-            none { }
+            none => ()
         }
     }
 }
@@ -64,8 +56,8 @@ impl extensions<T> for dlist_node<T> {
     /// Get the next node in the list, failing if there isn't one.
     pure fn next_node() -> dlist_node<T> {
         alt self.next_link() {
-            some(nobe) { nobe }
-            none       { fail ~"This dlist node has no next neighbour." }
+            some(nobe) => nobe,
+            none       => fail ~"This dlist node has no next neighbour."
         }
     }
     /// Get the previous node in the list, if there is one.
@@ -76,8 +68,8 @@ impl extensions<T> for dlist_node<T> {
     /// Get the previous node in the list, failing if there isn't one.
     pure fn prev_node() -> dlist_node<T> {
         alt self.prev_link() {
-            some(nobe) { nobe }
-            none       { fail ~"This dlist node has no previous neighbour." }
+            some(nobe) => nobe,
+            none       => fail ~"This dlist node has no previous neighbour."
         }
     }
 }
@@ -147,12 +139,12 @@ impl private_methods<T> for dlist<T> {
     #[inline(always)]
     fn link(+before: dlist_link<T>, +after: dlist_link<T>) {
         alt before {
-            some(neighbour) { neighbour.next = after; }
-            none            { self.hd        = after; }
+            some(neighbour) => neighbour.next = after,
+            none            => self.hd        = after
         }
         alt after {
-            some(neighbour) { neighbour.prev = before; }
-            none            { self.tl        = before; }
+            some(neighbour) => neighbour.prev = before,
+            none            => self.tl        = before
         }
     }
     // Remove a node from the list.
@@ -295,19 +287,15 @@ impl extensions<T> for dlist<T> {
     /// Get the node at the list's head, failing if empty. O(1).
     pure fn head_n() -> dlist_node<T> {
         alt self.hd {
-            some(nobe) { nobe }
-            none       {
-              fail ~"Attempted to get the head of an empty dlist."
-            }
+            some(nobe) => nobe,
+            none       => fail ~"Attempted to get the head of an empty dlist."
         }
     }
     /// Get the node at the list's tail, failing if empty. O(1).
     pure fn tail_n() -> dlist_node<T> {
         alt self.tl {
-            some(nobe) { nobe }
-            none       {
-              fail ~"Attempted to get the tail of an empty dlist."
-            }
+            some(nobe) => nobe,
+            none       => fail ~"Attempted to get the tail of an empty dlist."
         }
     }
 

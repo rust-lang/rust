@@ -49,8 +49,11 @@ pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
  */
 pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     alt find(self, key) {
-      none { error!{"smallintmap::get(): key not present"}; fail; }
-      some(v) { return v; }
+      none => {
+        error!{"smallintmap::get(): key not present"};
+        fail;
+      }
+      some(v) => return v
     }
 }
 
@@ -64,7 +67,10 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
-            alt item { some(_) { sz += 1u; } _ {} }
+            alt item {
+              some(_) => sz += 1u,
+              _ => ()
+            }
         }
         sz
     }
@@ -98,10 +104,8 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             alt self.v.get_elt(idx) {
-              some(elt) {
-                if !it(idx, elt) { break; }
-              }
-              none { }
+              some(elt) => if !it(idx, elt) { break }
+              none => ()
             }
             idx += 1u;
         }
@@ -116,10 +120,8 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             alt self.v.get_elt(idx) {
-              some(elt) {
-                if !it(&idx, &elt) { break; }
-              }
-              none { }
+              some(elt) => if !it(&idx, &elt) { break }
+              none => ()
             }
             idx += 1u;
         }

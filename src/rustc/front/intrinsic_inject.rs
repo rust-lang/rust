@@ -16,8 +16,8 @@ fn inject_intrinsic(sess: session,
                                                  sess.parse_sess);
     let item =
         alt item {
-          some(i) { i }
-          none {
+          some(i) => i,
+          none => {
             sess.fatal(~"no item found in intrinsic module");
           }
         };

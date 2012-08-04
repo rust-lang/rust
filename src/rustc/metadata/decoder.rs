@@ -100,8 +100,8 @@ fn find_item(item_id: int, items: ebml::doc) -> ebml::doc {
 fn lookup_item(item_id: int, data: @~[u8]) -> ebml::doc {
     let items = ebml::get_doc(ebml::doc(data), tag_items);
     alt maybe_find_item(item_id, items) {
-       none { fail(fmt!{"lookup_item: id not found: %d", item_id}); }
-       some(d) { d }
+       none => fail(fmt!{"lookup_item: id not found: %d", item_id}),
+       some(d) => d
     }
 }
 
@@ -136,8 +136,8 @@ fn field_mutability(d: ebml::doc) -> ast::class_mutability {
         ast::class_immutable,
         |d| {
             alt ebml::doc_as_u8(d) as char {
-              'm' { ast::class_mutable }
-              _   { ast::class_immutable }
+              'm' => ast::class_mutable,
+              _   => ast::class_immutable
             }
         })
 }
@@ -185,8 +185,8 @@ fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
 
 fn item_ty_region_param(item: ebml::doc) -> bool {
     alt ebml::maybe_get_doc(item, tag_region_param) {
-      some(_) { true }
-      none { false }
+      some(_) => true,
+      none => false
     }
 }
 
@@ -276,26 +276,26 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
         -> def_like {
     let fam_ch = item_family(item);
     alt fam_ch {
-      'c' { dl_def(ast::def_const(did)) }
-      'C' { dl_def(ast::def_class(did, true)) }
-      'S' { dl_def(ast::def_class(did, false)) }
-      'u' { dl_def(ast::def_fn(did, ast::unsafe_fn)) }
-      'f' { dl_def(ast::def_fn(did, ast::impure_fn)) }
-      'p' { dl_def(ast::def_fn(did, ast::pure_fn)) }
-      'F' { dl_def(ast::def_fn(did, ast::extern_fn)) }
-      'y' { dl_def(ast::def_ty(did)) }
-      't' { dl_def(ast::def_ty(did)) }
-      'm' { dl_def(ast::def_mod(did)) }
-      'n' { dl_def(ast::def_foreign_mod(did)) }
-      'v' {
+      'c' => dl_def(ast::def_const(did)),
+      'C' => dl_def(ast::def_class(did, true)),
+      'S' => dl_def(ast::def_class(did, false)),
+      'u' => dl_def(ast::def_fn(did, ast::unsafe_fn)),
+      'f' => dl_def(ast::def_fn(did, ast::impure_fn)),
+      'p' => dl_def(ast::def_fn(did, ast::pure_fn)),
+      'F' => dl_def(ast::def_fn(did, ast::extern_fn)),
+      'y' => dl_def(ast::def_ty(did)),
+      't' => dl_def(ast::def_ty(did)),
+      'm' => dl_def(ast::def_mod(did)),
+      'n' => dl_def(ast::def_foreign_mod(did)),
+      'v' => {
         let mut tid = option::get(item_parent_item(item));
         tid = {crate: cnum, node: tid.node};
         dl_def(ast::def_variant(tid, did))
       }
-      'I' { dl_def(ast::def_ty(did)) }
-      'i' { dl_impl(did) }
-      'g' | 'j' | 'N' => { dl_field }
-      ch { fail fmt!{"unexpected family code: '%c'", ch} }
+      'I' => dl_def(ast::def_ty(did)),
+      'i' => dl_impl(did),
+      'g' | 'j' | 'N' => dl_field,
+      ch => fail fmt!{"unexpected family code: '%c'", ch}
     }
 }
 
@@ -350,9 +350,10 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
     let cls_items = alt maybe_find_item(id, items) {
-            some(it) { it }
-            none { fail (fmt!{"get_class_method: class id not found \
-             when looking up method %s", *name}) }};
+      some(it) => it,
+      none => fail (fmt!{"get_class_method: class id not found \
+                              when looking up method %s", *name})
+    };
     for ebml::tagged_docs(cls_items, tag_item_trait_method) |mid| {
         let m_did = class_member_id(mid, cdata);
         if item_name(mid) == name {
@@ -360,8 +361,8 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
         }
     }
     alt found {
-      some(found) { found }
-      none { fail (fmt!{"get_class_method: no method named %s", *name}) }
+      some(found) => found,
+      none => fail (fmt!{"get_class_method: no method named %s", *name})
     }
 }
 
@@ -369,9 +370,9 @@ fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
     let mut found = none;
     let cls_items = alt maybe_find_item(id, items) {
-            some(it) { it }
-            none     { fail (fmt!{"class_dtor: class id not found \
-              when looking up dtor for %d", id}); }
+            some(it) => it,
+            none     => fail (fmt!{"class_dtor: class id not found \
+              when looking up dtor for %d", id})
     };
     for ebml::tagged_docs(cls_items, tag_item_dtor) |doc| {
          let doc1 = ebml::get_doc(doc, tag_def_id);
@@ -394,9 +395,9 @@ enum def_like {
 
 fn def_like_to_def(def_like: def_like) -> ast::def {
     alt def_like {
-        dl_def(def) { return def; }
-        dl_impl(*) { fail ~"found impl in def_like_to_def"; }
-        dl_field { fail ~"found field in def_like_to_def"; }
+        dl_def(def) => return def,
+        dl_impl(*) => fail ~"found impl in def_like_to_def",
+        dl_field => fail ~"found field in def_like_to_def"
     }
 }
 
@@ -467,11 +468,11 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
 
             // Get the item.
             alt maybe_find_item(def_id.node, items) {
-                none {
+                none => {
                     debug!{"(each_path) ignoring implicit item: %s",
                             *path};
                 }
-                some(item_doc) {
+                some(item_doc) => {
                     // Construct the def for this item.
                     let def_like = item_to_def_like(item_doc, def_id,
                                                     cdata.cnum);
@@ -515,19 +516,19 @@ fn maybe_get_item_ast(cdata: cmd, tcx: ty::ctxt,
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(item_doc));
     alt decode_inlined_item(cdata, tcx, path, item_doc) {
-      some(ii) { csearch::found(ii) }
-      none {
+      some(ii) => csearch::found(ii),
+      none => {
         alt item_parent_item(item_doc) {
-          some(did) {
+          some(did) => {
             let did = translate_def_id(cdata, did);
             let parent_item = lookup_item(did.node, cdata.data);
             alt decode_inlined_item(cdata, tcx, path,
                                                parent_item) {
-              some(ii) { csearch::found_parent(did, ii) }
-              none { csearch::not_found }
+              some(ii) => csearch::found_parent(did, ii),
+              none => csearch::not_found
             }
           }
-          none { csearch::not_found }
+          none => csearch::not_found
         }
       }
     }
@@ -548,14 +549,14 @@ fn get_enum_variants(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let name = item_name(item);
         let mut arg_tys: ~[ty::t] = ~[];
         alt ty::get(ctor_ty).struct {
-          ty::ty_fn(f) {
+          ty::ty_fn(f) => {
             for f.inputs.each |a| { vec::push(arg_tys, a.ty); }
           }
-          _ { /* Nullary enum variant. */ }
+          _ => { /* Nullary enum variant. */ }
         }
         alt variant_disr_val(item) {
-          some(val) { disr_val = val; }
-          _         { /* empty */ }
+          some(val) => { disr_val = val; }
+          _         => { /* empty */ }
         }
         vec::push(infos, @{args: arg_tys, ctor_ty: ctor_ty, name: name,
                            id: did, disr_val: disr_val});
@@ -653,7 +654,7 @@ fn get_impls_for_mod(cdata: cmd,
         let impl_data = impl_cdata.data;
         let item = lookup_item(local_did.node, impl_data);
         let nm = item_name(item);
-        if alt name { some(n) { n == nm } none { true } } {
+        if alt name { some(n) => { n == nm } none => { true } } {
            let base_tps = item_ty_param_count(item);
            vec::push(result, @{
                 did: local_did, ident: nm,
@@ -674,8 +675,9 @@ fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(mth);
         let ty = doc_type(mth, tcx, cdata);
-        let fty = alt ty::get(ty).struct { ty::ty_fn(f) { f }
-          _ {
+        let fty = alt ty::get(ty).struct {
+          ty::ty_fn(f) => f,
+          _ => {
             tcx.diag.handler().bug(
                 ~"get_trait_methods: id has non-function type");
         } };
@@ -683,9 +685,9 @@ fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         vec::push(result, {ident: name, tps: bounds, fty: fty,
                     self_ty: self_ty,
                     purity: alt check item_family(mth) {
-                      'u' { ast::unsafe_fn }
-                      'f' { ast::impure_fn }
-                      'p' { ast::pure_fn }
+                      'u' => ast::unsafe_fn,
+                      'f' => ast::impure_fn,
+                      'p' => ast::pure_fn
                     }, vis: ast::public});
     }
     @result
@@ -755,15 +757,15 @@ fn get_class_fields(cdata: cmd, id: ast::node_id) -> ~[ty::field_ty] {
 
 fn family_has_type_params(fam_ch: char) -> bool {
     alt check fam_ch {
-      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' { false }
+      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' => false,
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
           | 'a' | 'S'
-          { true }
+          => true
     }
 }
 
 fn family_names_type(fam_ch: char) -> bool {
-    alt fam_ch { 'y' | 't' | 'I' { true } _ { false } }
+    alt fam_ch { 'y' | 't' | 'I' => true, _ => false }
 }
 
 fn read_path(d: ebml::doc) -> {path: ~str, pos: uint} {
@@ -777,34 +779,34 @@ fn read_path(d: ebml::doc) -> {path: ~str, pos: uint} {
 fn describe_def(items: ebml::doc, id: ast::def_id) -> ~str {
     if id.crate != ast::local_crate { return ~"external"; }
     let it = alt maybe_find_item(id.node, items) {
-        some(it) { it }
-        none { fail (fmt!{"describe_def: item not found %?", id}); }
+        some(it) => it,
+        none => fail (fmt!{"describe_def: item not found %?", id})
     };
     return item_family_to_str(item_family(it));
 }
 
 fn item_family_to_str(fam: char) -> ~str {
     alt check fam {
-      'c' { return ~"const"; }
-      'f' { return ~"fn"; }
-      'u' { return ~"unsafe fn"; }
-      'p' { return ~"pure fn"; }
-      'F' { return ~"foreign fn"; }
-      'U' { return ~"unsafe foreign fn"; }
-      'P' { return ~"pure foreign fn"; }
-      'y' { return ~"type"; }
-      'T' { return ~"foreign type"; }
-      't' { return ~"type"; }
-      'm' { return ~"mod"; }
-      'n' { return ~"foreign mod"; }
-      'v' { return ~"enum"; }
-      'i' { return ~"impl"; }
-      'I' { return ~"trait"; }
-      'C' { return ~"class"; }
-      'S' { return ~"struct"; }
-      'g' { return ~"public field"; }
-      'j' { return ~"private field"; }
-      'N' { return ~"inherited field"; }
+      'c' => return ~"const",
+      'f' => return ~"fn",
+      'u' => return ~"unsafe fn",
+      'p' => return ~"pure fn",
+      'F' => return ~"foreign fn",
+      'U' => return ~"unsafe foreign fn",
+      'P' => return ~"pure foreign fn",
+      'y' => return ~"type",
+      'T' => return ~"foreign type",
+      't' => return ~"type",
+      'm' => return ~"mod",
+      'n' => return ~"foreign mod",
+      'v' => return ~"enum",
+      'i' => return ~"impl",
+      'I' => return ~"trait",
+      'C' => return ~"class",
+      'S' => return ~"struct",
+      'g' => return ~"public field",
+      'j' => return ~"private field",
+      'N' => return ~"inherited field"
     }
 }
 
@@ -836,7 +838,7 @@ fn get_meta_items(md: ebml::doc) -> ~[@ast::meta_item] {
 fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
     let mut attrs: ~[ast::attribute] = ~[];
     alt ebml::maybe_get_doc(md, tag_attributes) {
-      option::some(attrs_d) {
+      option::some(attrs_d) => {
         for ebml::tagged_docs(attrs_d, tag_attribute) |attr_doc| {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
@@ -849,7 +851,7 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
                        span: ast_util::dummy_sp()});
         };
       }
-      option::none { }
+      option::none => ()
     }
     return attrs;
 }
@@ -916,8 +918,8 @@ fn get_crate_vers(data: @~[u8]) -> @~str {
     let attrs = decoder::get_crate_attributes(data);
     return alt attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
-      some(ver) { ver }
-      none { @~"0.0" }
+      some(ver) => ver,
+      none => @~"0.0"
     };
 }
 
@@ -996,8 +998,8 @@ fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
     }
 
     alt cdata.cnum_map.find(did.crate) {
-      option::some(n) { return {crate: n, node: did.node}; }
-      option::none { fail ~"didn't find a crate in the cnum_map"; }
+      option::some(n) => return {crate: n, node: did.node},
+      option::none => fail ~"didn't find a crate in the cnum_map"
     }
 }
 

@@ -54,7 +54,7 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<~str> {
           ast_map::node_foreign_item(@{
             ident: ident,
             node: ast::foreign_item_fn(decl, tys), _
-          }, _, _) {
+          }, _, _) => {
             some(pprust::fun_to_str(decl, ident, tys))
           }
         }
@@ -84,7 +84,7 @@ fn fold_const(
             alt check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
-              }, _) {
+              }, _) => {
                 pprust::ty_to_str(ty)
               }
             }
@@ -112,7 +112,7 @@ fn fold_enum(
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
-                  }, _) {
+                  }, _) => {
                     let ast_variant = option::get(
                         do vec::find(ast_variants) |v| {
                             *v.node.name == variant.name
@@ -170,23 +170,23 @@ fn get_method_sig(
         alt check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_trait(_, _, methods), _
-          }, _) {
+          }, _) => {
             alt check vec::find(methods, |method| {
                 alt method {
-                  ast::required(ty_m) { *ty_m.ident == method_name }
-                  ast::provided(m) { *m.ident == method_name }
+                  ast::required(ty_m) => *ty_m.ident == method_name,
+                  ast::provided(m) => *m.ident == method_name,
                 }
             }) {
-                some(method) {
+                some(method) => {
                   alt method {
-                    ast::required(ty_m) {
+                    ast::required(ty_m) => {
                       some(pprust::fun_to_str(
                           ty_m.decl,
                           ty_m.ident,
                           ty_m.tps
                       ))
                     }
-                    ast::provided(m) {
+                    ast::provided(m) => {
                       some(pprust::fun_to_str(
                           m.decl,
                           m.ident,
@@ -199,11 +199,11 @@ fn get_method_sig(
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
-          }, _) {
+          }, _) => {
             alt check vec::find(methods, |method| {
                 *method.ident == method_name
             }) {
-                some(method) {
+                some(method) => {
                     some(pprust::fun_to_str(
                         method.decl,
                         method.ident,
@@ -234,13 +234,13 @@ fn fold_impl(
         alt ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
             node: ast::item_impl(_, trait_types, self_ty, _), _
-          }, _) {
+          }, _) => {
             let trait_types = vec::map(trait_types, |p| {
                 pprust::path_to_str(p.path)
             });
             (trait_types, some(pprust::ty_to_str(self_ty)))
           }
-          _ { fail ~"expected impl" }
+          _ => fail ~"expected impl"
         }
     };
 
@@ -290,7 +290,7 @@ fn fold_type(
               ast_map::node_item(@{
                 ident: ident,
                 node: ast::item_ty(ty, params), _
-              }, _) {
+              }, _) => {
                 some(fmt!{
                     "type %s%s = %s",
                     *ident,
@@ -298,7 +298,7 @@ fn fold_type(
                     pprust::ty_to_str(ty)
                 })
               }
-              _ { fail ~"expected type" }
+              _ => fail ~"expected type"
             }
         }
         with doc

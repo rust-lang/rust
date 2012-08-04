@@ -39,10 +39,10 @@ impl writer_util of writer_utils for writer {
 
 fn make_writer_factory(config: config::config) -> writer_factory {
     alt config.output_format {
-      config::markdown {
+      config::markdown => {
         markdown_writer_factory(config)
       }
-      config::pandoc_html {
+      config::pandoc_html => {
         pandoc_writer_factory(config)
       }
     }
@@ -151,8 +151,8 @@ fn generic_writer(+process: fn~(markdown: ~str)) -> writer {
         let mut keep_going = true;
         while keep_going {
             alt comm::recv(po) {
-              write(s) { markdown += s; }
-              done { keep_going = false; }
+              write(s) => markdown += s,
+              done => keep_going = false
             }
         }
         process(markdown);
@@ -177,7 +177,7 @@ fn make_filename(
 ) -> ~str {
     let filename = {
         alt page {
-          doc::cratepage(doc) {
+          doc::cratepage(doc) => {
             if config.output_format == config::pandoc_html &&
                 config.output_style == config::doc_per_mod {
                 ~"index"
@@ -186,14 +186,14 @@ fn make_filename(
                 doc.topmod.name()
             }
           }
-          doc::itempage(doc) {
+          doc::itempage(doc) => {
             str::connect(doc.path() + ~[doc.name()], ~"_")
           }
         }
     };
     let ext = alt config.output_format {
-      config::markdown { ~"md" }
-      config::pandoc_html { ~"html" }
+      config::markdown => ~"md",
+      config::pandoc_html => ~"html"
     };
 
     filename + ~"." + ext
@@ -257,10 +257,10 @@ fn write_file(path: ~str, s: ~str) {
     import io::writer_util;
 
     alt io::file_writer(path, ~[io::create, io::truncate]) {
-      result::ok(writer) {
+      result::ok(writer) => {
         writer.write_str(s);
       }
-      result::err(e) { fail e }
+      result::err(e) => fail e
     }
 }
 
@@ -293,8 +293,8 @@ fn future_writer() -> (writer, future::future<~str>) {
         let mut res = ~"";
         loop {
             alt comm::recv(port) {
-              write(s) { res += s }
-              done { break; }
+              write(s) => res += s,
+              done => break
             }
         }
         res

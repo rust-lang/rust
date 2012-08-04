@@ -1,7 +1,7 @@
 fn simple() {
     alt ~true {
-      ~true { }
-      _ { fail; }
+      ~true => { }
+      _ => { fail; }
     }
 }
 

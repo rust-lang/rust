@@ -151,7 +151,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn mod_path() -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(ei: codemap::expn_info_) {
             alt ei {
-              expanded_from({call_site: cs, callie: callie}) {
+              expanded_from({call_site: cs, callie: callie}) => {
                 self.backtrace =
                     some(@expanded_from({
                         call_site: {lo: cs.lo, hi: cs.hi,
@@ -162,10 +162,10 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         }
         fn bt_pop() {
             alt self.backtrace {
-              some(@expanded_from({call_site: {expn_info: prev, _}, _})) {
+              some(@expanded_from({call_site: {expn_info: prev, _}, _})) => {
                 self.backtrace = prev
               }
-              _ { self.bug(~"tried to pop without a push"); }
+              _ => self.bug(~"tried to pop without a push")
             }
         }
         fn span_fatal(sp: span, msg: ~str) -> ! {
@@ -207,24 +207,22 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
     alt expr.node {
-      ast::expr_lit(l) {
-        alt l.node {
-          ast::lit_str(s) { return *s; }
-          _ { cx.span_fatal(l.span, error); }
-        }
+      ast::expr_lit(l) => alt l.node {
+        ast::lit_str(s) => return *s,
+        _ => cx.span_fatal(l.span, error)
       }
-      _ { cx.span_fatal(expr.span, error); }
+      _ => cx.span_fatal(expr.span, error)
     }
 }
 
 fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ast::ident {
     alt expr.node {
-      ast::expr_path(p) {
+      ast::expr_path(p) => {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
             cx.span_fatal(expr.span, error);
         } else { return p.idents[0]; }
       }
-      _ { cx.span_fatal(expr.span, error); }
+      _ => cx.span_fatal(expr.span, error)
     }
 }
 
@@ -236,29 +234,27 @@ fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                 min: uint, max: option<uint>, name: ~str) -> ~[@ast::expr] {
     alt arg {
-      some(expr) {
-        alt expr.node {
-          ast::expr_vec(elts, _) {
+      some(expr) => alt expr.node {
+        ast::expr_vec(elts, _) => {
             let elts_len = vec::len(elts);
-            alt max {
-              some(max) if ! (min <= elts_len && elts_len <= max) {
-                cx.span_fatal(sp,
-                              fmt!{"#%s takes between %u and %u arguments.",
-                                   name, min, max});
+              alt max {
+                some(max) if ! (min <= elts_len && elts_len <= max) => {
+                  cx.span_fatal(sp,
+                                fmt!{"#%s takes between %u and %u arguments.",
+                                     name, min, max});
+                }
+                none if ! (min <= elts_len) => {
+                  cx.span_fatal(sp, fmt!{"#%s needs at least %u arguments.",
+                                         name, min});
+                }
+                _ => return elts /* we're good */
               }
-              none if ! (min <= elts_len) {
-                cx.span_fatal(sp, fmt!{"#%s needs at least %u arguments.",
-                                       name, min});
-              }
-              _ { return elts; /* we're good */}
-            }
           }
-          _ {
+        _ => {
             cx.span_fatal(sp, fmt!{"#%s: malformed invocation", name})
           }
-        }
       }
-      none {cx.span_fatal(sp, fmt!{"#%s: missing arguments", name})}
+      none => cx.span_fatal(sp, fmt!{"#%s: missing arguments", name})
     }
 }
 
@@ -266,8 +262,8 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
     -> ast::mac_body_
 {
     alt (args) {
-      some(body) {body}
-      none {cx.span_fatal(sp, ~"missing macro body")}
+      some(body) => body,
+      none => cx.span_fatal(sp, ~"missing macro body")
     }
 }
 
@@ -295,17 +291,15 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     let args =
         alt parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
                           argument_gram).get(@~"arg") {
-          @matched_seq(s, _) {
-            do s.map() |lf| {
-                alt lf {
-                  @matched_nonterminal(parse::token::nt_expr(arg)) {
-                    arg /* whew! list of exprs, here we come! */
-                  }
-                  _ { fail ~"badly-structured parse result"; }
-                }
+          @matched_seq(s, _) => do s.map() |lf| {
+            alt lf {
+              @matched_nonterminal(parse::token::nt_expr(arg)) => {
+                arg /* whew! list of exprs, here we come! */
+              }
+              _ => fail ~"badly-structured parse result"
             }
           }
-          _ { fail ~"badly-structured parse result"; }
+          _ => fail ~"badly-structured parse result"
         };
 
     return some(@{id: parse::next_node_id(cx.parse_sess()),

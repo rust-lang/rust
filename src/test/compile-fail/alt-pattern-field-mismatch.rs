@@ -7,10 +7,10 @@ fn main() {
 
     fn foo(c: color) {
         alt c {
-          rgb(_, _) { }
+          rgb(_, _) => { }
           //~^ ERROR this pattern has 2 fields, but the corresponding variant has 3 fields
-          cmyk(_, _, _, _) { }
-          no_color { }
+          cmyk(_, _, _, _) => { }
+          no_color => { }
         }
     }
 }

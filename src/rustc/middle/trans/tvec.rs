@@ -20,15 +20,14 @@ fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     alt ty::get(t).struct {
-      ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) {
+      ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
         ty::mk_imm_uniq(tcx, unboxed_vec_ty)
       }
-      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) {
+      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         ty::mk_imm_box(tcx, unboxed_vec_ty)
       }
-      _ { tcx.sess.bug(~"non boxed-vec type \
-                        in tvec::expand_boxed_vec_ty");
-      }
+      _ => tcx.sess.bug(~"non boxed-vec type \
+                          in tvec::expand_boxed_vec_ty")
     }
 }
 
@@ -158,20 +157,20 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
     let mut {bcx, val, dataptr} =
         alt vst {
-          ast::vstore_fixed(_) {
+          ast::vstore_fixed(_) => {
             // Destination should be pre-allocated for us.
             let v = alt dest {
-              base::save_in(v) {
+              base::save_in(v) => {
                 PointerCast(bcx, v, T_ptr(llunitty))
               }
-              _ {
+              _ => {
                 bcx.ccx().sess.bug(~"bad dest for vstore_fixed \
                                     in tvec::trans_evec");
               }
             };
             {bcx: bcx, val: v, dataptr: v}
           }
-          ast::vstore_slice(_) {
+          ast::vstore_slice(_) => {
             // Make a fake type to use for the cleanup
             let ty = ty::mk_evec(bcx.tcx(),
                                  {ty: unit_ty, mutbl: ast::m_mutbl},
@@ -190,13 +189,13 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
             {bcx: bcx, val: p, dataptr: vp}
           }
-          ast::vstore_uniq {
+          ast::vstore_uniq => {
             let {bcx, val} = alloc_vec(bcx, unit_ty, count, heap_exchange);
             add_clean_free(bcx, val, heap_exchange);
             let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
             {bcx: bcx, val: val, dataptr: dataptr}
           }
-          ast::vstore_box {
+          ast::vstore_box => {
             let {bcx, val} = alloc_vec(bcx, unit_ty, count, heap_shared);
             add_clean_free(bcx, val, heap_shared);
             let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val));
@@ -247,14 +246,14 @@ fn trans_evec(bcx: block, elements: evec_elements,
     for vec::each(temp_cleanups) |cln| { revoke_clean(bcx, cln); }
 
     alt vst {
-      ast::vstore_fixed(_) {
+      ast::vstore_fixed(_) => {
         // We wrote into the destination in the fixed case.
         return bcx;
       }
-      ast::vstore_slice(_) {
+      ast::vstore_slice(_) => {
         return base::store_in_dest(bcx, Load(bcx, val), dest);
       }
-      _ {
+      _ => {
         return base::store_in_dest(bcx, val, dest);
       }
     }
@@ -290,23 +289,23 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
     let unit_sz = llsize_of(ccx, llunitty);
 
     let vstore = alt ty::get(vec_ty).struct {
-      ty::ty_estr(vst) | ty::ty_evec(_, vst) { vst }
-      _ { ty::vstore_uniq }
+      ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
+      _ => ty::vstore_uniq
     };
 
     alt vstore {
-      ty::vstore_fixed(n) {
+      ty::vstore_fixed(n) => {
         let base = GEPi(cx, v, ~[0u, 0u]);
         let n = if ty::type_is_str(e_ty) { n + 1u } else { n };
         let len = Mul(cx, C_uint(ccx, n), unit_sz);
         (base, len)
       }
-      ty::vstore_slice(_) {
+      ty::vstore_slice(_) => {
         let base = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_base]));
         let len = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_len]));
         (base, len)
       }
-      ty::vstore_uniq | ty::vstore_box {
+      ty::vstore_uniq | ty::vstore_box => {
         debug!{"get_base_and_len: %s", val_str(ccx.tn, v)};
         let body = tvec::get_bodyptr(cx, v);
         (tvec::get_dataptr(cx, body), tvec::get_fill(cx, body))

@@ -111,7 +111,7 @@ class LanguageItemCollector {
                     }
                 }
             }
-            meta_word(*) | meta_list(*) {
+            meta_word(*) | meta_list(*) => {
                 // Skip.
             }
         }
@@ -172,7 +172,7 @@ class LanguageItemCollector {
                     dl_def(def_ty(did)) => {
                         def_id = did;
                     }
-                    dl_def(_) | dl_impl(_) | dl_field {
+                    dl_def(_) | dl_impl(_) | dl_field => {
                         // Skip this.
                         again;
                     }

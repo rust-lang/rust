@@ -24,8 +24,8 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] unsafe {
     let error_tag = ~"//~";
     let mut idx;
     alt str::find_str(line, error_tag) {
-         option::none { return ~[]; }
-         option::some(nn) { idx = (nn as uint) + str::len(error_tag); }
+      option::none => return ~[],
+      option::some(nn) => { idx = (nn as uint) + str::len(error_tag); }
     }
 
     // "//~^^^ kind msg" denotes a message expected

@@ -92,14 +92,14 @@ impl methods for reflector {
                              vstore: ty::vstore,
                              f: fn(~str,~[ValueRef])) {
         alt vstore {
-          ty::vstore_fixed(n) {
+          ty::vstore_fixed(n) => {
             let extra = vec::append(~[self.c_uint(n)],
                                     self.c_size_and_align(t));
             f(~"fixed", extra)
           }
-          ty::vstore_slice(_) { f(~"slice", ~[]) }
-          ty::vstore_uniq { f(~"uniq", ~[]);}
-          ty::vstore_box { f(~"box", ~[]); }
+          ty::vstore_slice(_) => f(~"slice", ~[]),
+          ty::vstore_uniq => f(~"uniq", ~[]),
+          ty::vstore_box => f(~"box", ~[])
         }
     }
 
@@ -115,42 +115,42 @@ impl methods for reflector {
                ty_to_str(bcx.ccx().tcx, t)};
 
         alt ty::get(t).struct {
-          ty::ty_bot { self.leaf(~"bot") }
-          ty::ty_nil { self.leaf(~"nil") }
-          ty::ty_bool { self.leaf(~"bool") }
-          ty::ty_int(ast::ty_i) { self.leaf(~"int") }
-          ty::ty_int(ast::ty_char) { self.leaf(~"char") }
-          ty::ty_int(ast::ty_i8) { self.leaf(~"i8") }
-          ty::ty_int(ast::ty_i16) { self.leaf(~"i16") }
-          ty::ty_int(ast::ty_i32) { self.leaf(~"i32") }
-          ty::ty_int(ast::ty_i64) { self.leaf(~"i64") }
-          ty::ty_uint(ast::ty_u) { self.leaf(~"uint") }
-          ty::ty_uint(ast::ty_u8) { self.leaf(~"u8") }
-          ty::ty_uint(ast::ty_u16) { self.leaf(~"u16") }
-          ty::ty_uint(ast::ty_u32) { self.leaf(~"u32") }
-          ty::ty_uint(ast::ty_u64) { self.leaf(~"u64") }
-          ty::ty_float(ast::ty_f) { self.leaf(~"float") }
-          ty::ty_float(ast::ty_f32) { self.leaf(~"f32") }
-          ty::ty_float(ast::ty_f64) { self.leaf(~"f64") }
+          ty::ty_bot => self.leaf(~"bot"),
+          ty::ty_nil => self.leaf(~"nil"),
+          ty::ty_bool => self.leaf(~"bool"),
+          ty::ty_int(ast::ty_i) => self.leaf(~"int"),
+          ty::ty_int(ast::ty_char) => self.leaf(~"char"),
+          ty::ty_int(ast::ty_i8) => self.leaf(~"i8"),
+          ty::ty_int(ast::ty_i16) => self.leaf(~"i16"),
+          ty::ty_int(ast::ty_i32) => self.leaf(~"i32"),
+          ty::ty_int(ast::ty_i64) => self.leaf(~"i64"),
+          ty::ty_uint(ast::ty_u) => self.leaf(~"uint"),
+          ty::ty_uint(ast::ty_u8) => self.leaf(~"u8"),
+          ty::ty_uint(ast::ty_u16) => self.leaf(~"u16"),
+          ty::ty_uint(ast::ty_u32) => self.leaf(~"u32"),
+          ty::ty_uint(ast::ty_u64) => self.leaf(~"u64"),
+          ty::ty_float(ast::ty_f) => self.leaf(~"float"),
+          ty::ty_float(ast::ty_f32) => self.leaf(~"f32"),
+          ty::ty_float(ast::ty_f64) => self.leaf(~"f64"),
 
-          ty::ty_unboxed_vec(mt) { self.visit(~"vec", self.c_mt(mt)) }
-          ty::ty_estr(vst) {
+          ty::ty_unboxed_vec(mt) => self.visit(~"vec", self.c_mt(mt)),
+          ty::ty_estr(vst) => {
             do self.vstore_name_and_extra(t, vst) |name, extra| {
                 self.visit(~"estr_" + name, extra)
             }
           }
-          ty::ty_evec(mt, vst) {
+          ty::ty_evec(mt, vst) => {
             do self.vstore_name_and_extra(t, vst) |name, extra| {
                 self.visit(~"evec_" + name, extra +
                            self.c_mt(mt))
             }
           }
-          ty::ty_box(mt) { self.visit(~"box", self.c_mt(mt)) }
-          ty::ty_uniq(mt) { self.visit(~"uniq", self.c_mt(mt)) }
-          ty::ty_ptr(mt) { self.visit(~"ptr", self.c_mt(mt)) }
-          ty::ty_rptr(_, mt) { self.visit(~"rptr", self.c_mt(mt)) }
+          ty::ty_box(mt) => self.visit(~"box", self.c_mt(mt)),
+          ty::ty_uniq(mt) => self.visit(~"uniq", self.c_mt(mt)),
+          ty::ty_ptr(mt) => self.visit(~"ptr", self.c_mt(mt)),
+          ty::ty_rptr(_, mt) => self.visit(~"rptr", self.c_mt(mt)),
 
-          ty::ty_rec(fields) {
+          ty::ty_rec(fields) => {
             do self.bracketed(~"rec",
                               ~[self.c_uint(vec::len(fields))]
                               + self.c_size_and_align(t)) {
@@ -163,7 +163,7 @@ impl methods for reflector {
             }
           }
 
-          ty::ty_tup(tys) {
+          ty::ty_tup(tys) => {
             do self.bracketed(~"tup",
                               ~[self.c_uint(vec::len(tys))]
                               + self.c_size_and_align(t)) {
@@ -177,22 +177,22 @@ impl methods for reflector {
 
           // FIXME (#2594): fetch constants out of intrinsic:: for the
           // numbers.
-          ty::ty_fn(fty) {
+          ty::ty_fn(fty) => {
             let pureval = alt fty.purity {
-              ast::pure_fn { 0u }
-              ast::unsafe_fn { 1u }
-              ast::impure_fn { 2u }
-              ast::extern_fn { 3u }
+              ast::pure_fn => 0u,
+              ast::unsafe_fn => 1u,
+              ast::impure_fn => 2u,
+              ast::extern_fn => 3u
             };
             let protoval = alt fty.proto {
-              ast::proto_bare { 0u }
-              ast::proto_uniq { 2u }
-              ast::proto_box { 3u }
-              ast::proto_block { 4u }
+              ast::proto_bare => 0u,
+              ast::proto_uniq => 2u,
+              ast::proto_box => 3u,
+              ast::proto_block => 4u
             };
             let retval = alt fty.ret_style {
-              ast::noreturn { 0u }
-              ast::return_val { 1u }
+              ast::noreturn => 0u,
+              ast::return_val => 1u
             };
             let extra = ~[self.c_uint(pureval),
                          self.c_uint(protoval),
@@ -201,15 +201,13 @@ impl methods for reflector {
             self.visit(~"enter_fn", extra);
             for fty.inputs.eachi |i, arg| {
                 let modeval = alt arg.mode {
-                  ast::infer(_) { 0u }
-                  ast::expl(e) {
-                    alt e {
-                      ast::by_ref { 1u }
-                      ast::by_val { 2u }
-                      ast::by_mutbl_ref { 3u }
-                      ast::by_move { 4u }
-                      ast::by_copy { 5u }
-                    }
+                  ast::infer(_) => 0u,
+                  ast::expl(e) => alt e {
+                    ast::by_ref => 1u,
+                    ast::by_val => 2u,
+                    ast::by_mutbl_ref => 3u,
+                    ast::by_move => 4u,
+                    ast::by_copy => 5u
                   }
                 };
                 self.visit(~"fn_input",
@@ -223,7 +221,7 @@ impl methods for reflector {
             self.visit(~"leave_fn", extra);
           }
 
-          ty::ty_class(did, substs) {
+          ty::ty_class(did, substs) => {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let fields = ty::class_items_as_fields(tcx, did, substs);
@@ -243,7 +241,7 @@ impl methods for reflector {
           // not ideal. It'll work but will get costly on big enums. Maybe
           // let the visitor tell us if it wants to visit only a particular
           // variant?
-          ty::ty_enum(did, substs) {
+          ty::ty_enum(did, substs) => {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let variants = ty::substd_enum_variants(tcx, did, substs);
@@ -268,18 +266,18 @@ impl methods for reflector {
           }
 
           // Miscallaneous extra types
-          ty::ty_trait(_, _) { self.leaf(~"trait") }
-          ty::ty_var(_) { self.leaf(~"var") }
-          ty::ty_var_integral(_) { self.leaf(~"var_integral") }
-          ty::ty_param(p) { self.visit(~"param", ~[self.c_uint(p.idx)]) }
-          ty::ty_self { self.leaf(~"self") }
-          ty::ty_type { self.leaf(~"type") }
-          ty::ty_opaque_box { self.leaf(~"opaque_box") }
-          ty::ty_opaque_closure_ptr(ck) {
+          ty::ty_trait(_, _) => self.leaf(~"trait"),
+          ty::ty_var(_) => self.leaf(~"var"),
+          ty::ty_var_integral(_) => self.leaf(~"var_integral"),
+          ty::ty_param(p) => self.visit(~"param", ~[self.c_uint(p.idx)]),
+          ty::ty_self => self.leaf(~"self"),
+          ty::ty_type => self.leaf(~"type"),
+          ty::ty_opaque_box => self.leaf(~"opaque_box"),
+          ty::ty_opaque_closure_ptr(ck) => {
             let ckval = alt ck {
-              ty::ck_block { 0u }
-              ty::ck_box { 1u }
-              ty::ck_uniq { 2u }
+              ty::ck_block => 0u,
+              ty::ck_box => 1u,
+              ty::ck_uniq => 2u
             };
             self.visit(~"closure_ptr", ~[self.c_uint(ckval)])
           }

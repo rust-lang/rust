@@ -75,10 +75,10 @@ fn run(lib_path: ~str,
     while count > 0 {
         let stream = comm::recv(p);
         alt check stream {
-            (1, s) {
+            (1, s) => {
                 outs = s;
             }
-            (2, s) {
+            (2, s) => {
                 errs = s;
             }
         };

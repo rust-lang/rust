@@ -43,10 +43,10 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
     alt resolve_type(inference_context,
                      original_type,
                      resolve_ivar) {
-        ok(resulting_type) if !type_is_var(resulting_type) {
+        ok(resulting_type) if !type_is_var(resulting_type) => {
             resolved_type = resulting_type;
         }
-        _ {
+        _ => {
             inference_context.tcx.sess.span_fatal(span,
                                                   ~"the type of this value \
                                                     must be known in order \
@@ -59,13 +59,13 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_box(base_mutability_and_type) |
         ty_uniq(base_mutability_and_type) |
         ty_ptr(base_mutability_and_type) |
-        ty_rptr(_, base_mutability_and_type) {
+        ty_rptr(_, base_mutability_and_type) => {
             debug!{"(getting base type) recurring"};
             get_base_type(inference_context, span,
                           base_mutability_and_type.ty)
         }
 
-        ty_enum(*) | ty_trait(*) | ty_class(*) {
+        ty_enum(*) | ty_trait(*) | ty_class(*) => {
             debug!{"(getting base type) found base type"};
             some(resolved_type)
         }
@@ -74,7 +74,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_estr(*) | ty_evec(*) | ty_rec(*) |
         ty_fn(*) | ty_tup(*) | ty_var(*) | ty_var_integral(*) |
         ty_param(*) | ty_self | ty_type | ty_opaque_box |
-        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) {
+        ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) => {
             debug!{"(getting base type) no base type; found %?",
                    get(original_type).struct};
             none
@@ -89,17 +89,17 @@ fn get_base_type_def_id(inference_context: infer_ctxt,
                      -> option<def_id> {
 
     alt get_base_type(inference_context, span, original_type) {
-        none {
+        none => {
             return none;
         }
-        some(base_type) {
+        some(base_type) => {
             alt get(base_type).struct {
                 ty_enum(def_id, _) |
                 ty_class(def_id, _) |
-                ty_trait(def_id, _) {
+                ty_trait(def_id, _) => {
                     return some(def_id);
                 }
-                _ {
+                _ => {
                     fail ~"get_base_type() returned a type that wasn't an \
                            enum, class, or trait";
                 }
@@ -161,13 +161,13 @@ class CoherenceChecker {
                 debug!{"(checking coherence) item '%s'", *item.ident};
 
                 alt item.node {
-                    item_impl(_, associated_traits, _, _) {
+                    item_impl(_, associated_traits, _, _) => {
                         self.check_implementation(item, associated_traits);
                     }
-                    item_class(_, associated_traits, _, _, _) {
+                    item_class(_, associated_traits, _, _, _) => {
                         self.check_implementation(item, associated_traits);
                     }
-                    _ {
+                    _ => {
                         // Nothing to do.
                     }
                 };
@@ -206,14 +206,14 @@ class CoherenceChecker {
             alt get_base_type_def_id(self.inference_context,
                                      item.span,
                                      self_type.ty) {
-                none {
+                none => {
                     let session = self.crate_context.tcx.sess;
                     session.span_err(item.span,
                                      ~"no base type found for inherent \
                                        implementation; implement a \
                                        trait instead");
                 }
-                some(_) {
+                some(_) => {
                     // Nothing to do.
                 }
             }
@@ -238,10 +238,10 @@ class CoherenceChecker {
         alt get_base_type_def_id(self.inference_context,
                                  item.span,
                                  self_type.ty) {
-            none {
+            none => {
                 // Nothing to do.
             }
-            some(base_type_def_id) {
+            some(base_type_def_id) => {
                 let implementation = self.create_impl_from_item(item);
                 self.add_inherent_method(base_type_def_id, implementation);
 
@@ -256,12 +256,12 @@ class CoherenceChecker {
         alt self.crate_context.coherence_info.inherent_methods
             .find(base_def_id) {
 
-            none {
+            none => {
                 implementation_list = @dvec();
                 self.crate_context.coherence_info.inherent_methods
                     .insert(base_def_id, implementation_list);
             }
-            some(existing_implementation_list) {
+            some(existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
             }
         }
@@ -274,12 +274,12 @@ class CoherenceChecker {
         alt self.crate_context.coherence_info.extension_methods
                 .find(trait_id) {
 
-            none {
+            none => {
                 implementation_list = @dvec();
                 self.crate_context.coherence_info.extension_methods
                     .insert(trait_id, implementation_list);
             }
-            some(existing_implementation_list) {
+            some(existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
             }
         }
@@ -364,7 +364,7 @@ class CoherenceChecker {
         visit_crate(*crate, (), mk_vt(@{
             visit_item: |item, _context, visitor| {
                 alt item.node {
-                    item_mod(module_) {
+                    item_mod(module_) => {
                         // First, gather up all privileged types.
                         let privileged_types =
                             self.gather_privileged_types(module_.items);
@@ -385,12 +385,12 @@ class CoherenceChecker {
                             self.privileged_types.remove(privileged_type);
                         }
                     }
-                    item_impl(_, associated_traits, _, _) {
+                    item_impl(_, associated_traits, _, _) => {
                         alt self.base_type_def_ids.find(local_def(item.id)) {
-                            none {
+                            none => {
                                 // Nothing to do.
                             }
-                            some(base_type_def_id) {
+                            some(base_type_def_id) => {
                                 // Check to see whether the implementation is
                                 // in the scope of its base type.
 
@@ -456,7 +456,7 @@ class CoherenceChecker {
 
                         visit_item(item, (), visitor);
                     }
-                    _ {
+                    _ => {
                         visit_item(item, (), visitor);
                     }
                 }
@@ -469,13 +469,13 @@ class CoherenceChecker {
         let results = @dvec();
         for items.each |item| {
             alt item.node {
-                item_class(*) | item_enum(*) | item_trait(*) {
+                item_class(*) | item_enum(*) | item_trait(*) => {
                     results.push(local_def(item.id));
                 }
 
                 item_const(*) | item_fn(*) | item_mod(*) |
                 item_foreign_mod(*) | item_ty(*) | item_impl(*) |
-                item_mac(*) {
+                item_mac(*) => {
                     // Nothing to do.
                 }
             }
@@ -487,7 +487,7 @@ class CoherenceChecker {
     // Converts an implementation in the AST to an Impl structure.
     fn create_impl_from_item(item: @item) -> @Impl {
         alt item.node {
-            item_impl(ty_params, _, _, ast_methods) {
+            item_impl(ty_params, _, _, ast_methods) => {
                 let mut methods = ~[];
                 for ast_methods.each |ast_method| {
                     push(methods, @{
@@ -504,14 +504,14 @@ class CoherenceChecker {
                     methods: methods
                 };
             }
-            item_class(ty_params, _, class_members, _, _) {
+            item_class(ty_params, _, class_members, _, _) => {
                 let mut methods = ~[];
                 for class_members.each |class_member| {
                     alt class_member.node {
-                        instance_var(*) {
+                        instance_var(*) => {
                             // Nothing to do.
                         }
-                        class_method(ast_method) {
+                        class_method(ast_method) => {
                             push(methods, @{
                                 did: local_def(ast_method.id),
                                 n_tps: ast_method.tps.len(),
@@ -528,7 +528,7 @@ class CoherenceChecker {
                     methods: methods
                 };
             }
-            _ {
+            _ => {
                 self.crate_context.tcx.sess.span_bug(item.span,
                                                      ~"can't convert a \
                                                        non-impl to an impl");
@@ -539,10 +539,10 @@ class CoherenceChecker {
     fn span_of_impl(implementation: @Impl) -> span {
         assert implementation.did.crate == local_crate;
         alt self.crate_context.tcx.items.find(implementation.did.node) {
-            some(node_item(item, _)) {
+            some(node_item(item, _)) => {
                 return item.span;
             }
-            _ {
+            _ => {
                 self.crate_context.tcx.sess.bug(~"span_of_impl() called on \
                                                   something that wasn't an \
                                                   impl!");
@@ -563,11 +563,11 @@ class CoherenceChecker {
             // Make sure we don't visit the same implementation
             // multiple times.
             alt impls_seen.find(implementation.did) {
-                none {
+                none => {
                     // Good. Continue.
                     impls_seen.insert(implementation.did, ());
                 }
-                some(_) {
+                some(_) => {
                     // Skip this one.
                     again;
                 }
@@ -585,7 +585,7 @@ class CoherenceChecker {
                 alt get_base_type_def_id(self.inference_context,
                                          dummy_sp(),
                                          self_type.ty) {
-                    none {
+                    none => {
                         let session = self.crate_context.tcx.sess;
                         session.bug(fmt!{"no base type for external impl \
                                           with no trait: %s (type %s)!",
@@ -593,7 +593,7 @@ class CoherenceChecker {
                                          ty_to_str(self.crate_context.tcx,
                                                    self_type.ty)});
                     }
-                    some(_) {
+                    some(_) => {
                         // Nothing to do.
                     }
                 }
@@ -602,10 +602,10 @@ class CoherenceChecker {
             // Record all the trait methods.
             for associated_traits.each |trait_type| {
                 alt get(trait_type).struct {
-                    ty_trait(trait_id, _) {
+                    ty_trait(trait_id, _) => {
                         self.add_trait_method(trait_id, implementation);
                     }
-                    _ {
+                    _ => {
                         self.crate_context.tcx.sess.bug(~"trait type \
                                                           returned is not a \
                                                           trait");
@@ -620,10 +620,10 @@ class CoherenceChecker {
             alt get_base_type_def_id(self.inference_context,
                                      dummy_sp(),
                                      self_type.ty) {
-                none {
+                none => {
                     // Nothing to do.
                 }
-                some(base_type_def_id) {
+                some(base_type_def_id) => {
                     self.add_inherent_method(base_type_def_id,
                                              implementation);
 
@@ -646,10 +646,10 @@ class CoherenceChecker {
             for each_path(crate_store, crate_number) |path_entry| {
                 let module_def_id;
                 alt path_entry.def_like {
-                    dl_def(def_mod(def_id)) {
+                    dl_def(def_mod(def_id)) => {
                         module_def_id = def_id;
                     }
-                    dl_def(_) | dl_impl(_) | dl_field {
+                    dl_def(_) | dl_impl(_) | dl_field => {
                         // Skip this.
                         again;
                     }

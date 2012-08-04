@@ -145,10 +145,10 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
 
     let fty = ty::node_id_to_type(cx.tcx, id);
     alt ty::ty_fn_proto(fty) {
-      proto_uniq { b(check_for_uniq) }
-      proto_box { b(check_for_box) }
-      proto_bare { b(check_for_bare) }
-      proto_block { b(check_for_block) }
+      proto_uniq => b(check_for_uniq),
+      proto_box => b(check_for_box),
+      proto_bare => b(check_for_bare),
+      proto_block => b(check_for_block)
     }
 }
 
@@ -167,9 +167,9 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
         // variables.  This list is used below to avoid checking and reporting
         // on a given variable twice.
         let cap_clause = alt fk {
-          visit::fk_anon(_, cc) | visit::fk_fn_block(cc) { cc }
+          visit::fk_anon(_, cc) | visit::fk_fn_block(cc) => cc,
           visit::fk_item_fn(*) | visit::fk_method(*) |
-          visit::fk_ctor(*) | visit::fk_dtor(*) { @~[] }
+          visit::fk_ctor(*) | visit::fk_dtor(*) => @~[]
         };
         let captured_vars = do (*cap_clause).map |cap_item| {
             let cap_def = cx.tcx.def_map.get(cap_item.id);
@@ -191,8 +191,8 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             // a move and not a copy
             let is_move = {
                 alt check cx.last_use_map.find(fn_id) {
-                  some(vars) {(*vars).contains(id)}
-                  none {false}
+                  some(vars) => (*vars).contains(id),
+                  none => false
                 }
             };
 
@@ -206,8 +206,8 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
 
 fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
     alt b.node.expr {
-      some(ex) { maybe_copy(cx, ex); }
-      _ {}
+      some(ex) => maybe_copy(cx, ex),
+      _ => ()
     }
     visit::visit_block(b, cx, v);
 }
@@ -217,29 +217,29 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     alt e.node {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
-      expr_ret(some(ex)) {
+      expr_ret(some(ex)) => {
         maybe_copy(cx, ex);
       }
-      expr_cast(source, _) {
+      expr_cast(source, _) => {
         maybe_copy(cx, source);
         check_cast_for_escaping_regions(cx, source, e);
       }
-      expr_copy(expr) { check_copy_ex(cx, expr, false); }
+      expr_copy(expr) => check_copy_ex(cx, expr, false),
       // Vector add copies, but not "implicitly"
-      expr_assign_op(_, _, ex) { check_copy_ex(cx, ex, false) }
-      expr_binary(add, ls, rs) {
+      expr_assign_op(_, _, ex) => check_copy_ex(cx, ex, false),
+      expr_binary(add, ls, rs) => {
         check_copy_ex(cx, ls, false);
         check_copy_ex(cx, rs, false);
       }
-      expr_rec(fields, def) {
+      expr_rec(fields, def) => {
         for fields.each |field| { maybe_copy(cx, field.node.expr); }
         alt def {
-          some(ex) {
+          some(ex) => {
             // All noncopyable fields must be overridden
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = alt ty::get(t).struct {
-              ty::ty_rec(f) { f }
-              _ { cx.tcx.sess.span_bug(ex.span, ~"bad expr type in record"); }
+              ty::ty_rec(f) => f,
+              _ => cx.tcx.sess.span_bug(ex.span, ~"bad expr type in record")
             };
             for ty_fields.each |tf| {
                 if !vec::any(fields, |f| f.node.ident == tf.ident ) &&
@@ -249,32 +249,32 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                 }
             }
           }
-          _ {}
+          _ => {}
         }
       }
-      expr_tup(exprs) | expr_vec(exprs, _) {
+      expr_tup(exprs) | expr_vec(exprs, _) => {
         for exprs.each |expr| { maybe_copy(cx, expr); }
       }
-      expr_call(f, args, _) {
+      expr_call(f, args, _) => {
         let mut i = 0u;
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each |arg_t| {
             alt ty::arg_mode(cx.tcx, arg_t) {
-              by_copy { maybe_copy(cx, args[i]); }
-              by_ref | by_val | by_mutbl_ref | by_move { }
+              by_copy => maybe_copy(cx, args[i]),
+              by_ref | by_val | by_mutbl_ref | by_move => ()
             }
             i += 1u;
         }
       }
-      expr_path(_) | expr_field(_, _, _) {
+      expr_path(_) | expr_field(_, _, _) => {
         do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {
             let bounds = alt check e.node {
-              expr_path(_) {
+              expr_path(_) => {
                 let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
                 ty::lookup_item_type(cx.tcx, did).bounds
               }
-              expr_field(base, _, _) {
+              expr_field(base, _, _) => {
                 alt cx.method_map.get(e.id).origin {
-                  typeck::method_static(did) {
+                  typeck::method_static(did) => {
                     // n.b.: When we encode class/impl methods, the bounds
                     // that we encode include both the class/impl bounds
                     // and then the method bounds themselves...
@@ -282,7 +282,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                   }
                   typeck::method_param({trait_id:trt_id,
                                         method_num:n_mth, _}) |
-                  typeck::method_trait(trt_id, n_mth) {
+                  typeck::method_trait(trt_id, n_mth) => {
                     // ...trait methods bounds, in contrast, include only the
                     // method bounds, so we must preprend the tps from the
                     // trait itself.  This ought to be harmonized.
@@ -306,29 +306,29 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             }
         }
       }
-      _ { }
+      _ => { }
     }
     visit::visit_expr(e, cx, v);
 }
 
 fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
     alt stmt.node {
-      stmt_decl(@{node: decl_local(locals), _}, _) {
+      stmt_decl(@{node: decl_local(locals), _}, _) => {
         for locals.each |local| {
             alt local.node.init {
-              some({op: init_assign, expr}) { maybe_copy(cx, expr); }
-              _ {}
+              some({op: init_assign, expr}) => maybe_copy(cx, expr),
+              _ => {}
             }
         }
       }
-      _ {}
+      _ => {}
     }
     visit::visit_stmt(stmt, cx, v);
 }
 
 fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
     alt aty.node {
-      ty_path(_, id) {
+      ty_path(_, id) => {
         do option::iter(cx.tcx.node_type_substs.find(id)) |ts| {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(id));
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
@@ -337,7 +337,7 @@ fn check_ty(aty: @ty, cx: ctx, v: visit::vt<ctx>) {
             }
         }
       }
-      _ {}
+      _ => {}
     }
     visit::visit_ty(aty, cx, v);
 }
@@ -374,15 +374,15 @@ fn maybe_copy(cx: ctx, ex: @expr) {
 
 fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
     alt ex.node {
-      expr_path(_) {
+      expr_path(_) => {
         alt cx.tcx.def_map.get(ex.id) {
-          def_variant(edid, vdid) {
+          def_variant(edid, vdid) => {
             vec::len(ty::enum_variant_with_id(cx.tcx, edid, vdid).args) == 0u
           }
-          _ { false }
+          _ => false
         }
       }
-      _ { false }
+      _ => false
     }
 }
 
@@ -399,24 +399,24 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
     let msg = ~"mutable variables cannot be implicitly captured; \
                use a capture clause";
     alt def {
-      def_local(_, is_mutbl) {
+      def_local(_, is_mutbl) => {
         if is_mutbl {
             cx.tcx.sess.span_err(sp, msg);
         }
       }
-      def_arg(_, mode) {
+      def_arg(_, mode) => {
         alt ty::resolved_mode(cx.tcx, mode) {
-          by_ref | by_val | by_move | by_copy { /* ok */ }
-          by_mutbl_ref {
+          by_ref | by_val | by_move | by_copy => { /* ok */ }
+          by_mutbl_ref => {
             cx.tcx.sess.span_err(sp, msg);
           }
         }
       }
-      def_upvar(_, def1, _) {
+      def_upvar(_, def1, _) => {
         check_imm_free_var(cx, *def1, sp);
       }
-      def_binding(*) | def_self(*) { /*ok*/ }
-      _ {
+      def_binding(*) | def_self(*) => { /*ok*/ }
+      _ => {
         cx.tcx.sess.span_bug(
             sp,
             fmt!{"unknown def for free variable: %?", def});
@@ -450,11 +450,11 @@ fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
 fn check_owned(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
     if !ty::kind_is_owned(ty::type_kind(tcx, ty)) {
         alt ty::get(ty).struct {
-          ty::ty_param(*) {
+          ty::ty_param(*) => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
                                     pointers; use `owned` bound");
           }
-          _ {
+          _ => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
                                     pointers");
           }

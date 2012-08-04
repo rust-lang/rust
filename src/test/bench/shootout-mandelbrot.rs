@@ -104,13 +104,13 @@ fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
     let ch = comm::chan(p);
     comm::send(writech, ch);
     let cout: io::writer = alt path {
-        ~"" {
+        ~"" => {
             {dn: 0} as io::writer
         }
-        ~"-" {
+        ~"-" => {
             io::stdout()
         }
-        _ {
+        _ => {
             result::get(
                 io::file_writer(path,
                 ~[io::create, io::truncate]))

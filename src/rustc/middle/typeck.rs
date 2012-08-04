@@ -181,8 +181,8 @@ fn write_substs_to_tcx(tcx: ty::ctxt,
 
 fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     alt tcx.def_map.find(id) {
-      some(x) { x }
-      _ {
+      some(x) => x,
+      _ => {
         tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
       }
     }
@@ -206,19 +206,19 @@ fn require_same_types(
 
     let l_tcx, l_infcx;
     alt maybe_infcx {
-      none {
+      none => {
         l_tcx = tcx;
         l_infcx = infer::new_infer_ctxt(tcx);
       }
-      some(i) {
+      some(i) => {
         l_tcx = i.tcx;
         l_infcx = i;
       }
     }
 
     alt infer::mk_eqty(l_infcx, t1, t2) {
-      result::ok(()) { true }
-      result::err(terr) {
+      result::ok(()) => true,
+      result::err(terr) => {
         l_tcx.sess.span_err(span, msg() + ~": " +
             ty::type_err_to_str(l_tcx, terr));
         false
@@ -228,14 +228,14 @@ fn require_same_types(
 
 fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
     alt ty::get(a.ty).struct {
-      ty::ty_evec(mt, vstore_uniq) {
+      ty::ty_evec(mt, vstore_uniq) => {
         if mt.mutbl != ast::m_imm { return false; }
         alt ty::get(mt.ty).struct {
-          ty::ty_estr(vstore_uniq) { return true; }
-          _ { return false; }
+          ty::ty_estr(vstore_uniq) => return true,
+          _ => return false
         }
       }
-      _ { return false; }
+      _ => return false
     }
 }
 
@@ -247,19 +247,19 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let main_t = ty::node_id_to_type(tcx, main_id);
     alt ty::get(main_t).struct {
       ty::ty_fn({purity: ast::impure_fn, proto: ast::proto_bare,
-                 inputs, output, ret_style: ast::return_val}) {
+                 inputs, output, ret_style: ast::return_val}) => {
         alt tcx.items.find(main_id) {
-         some(ast_map::node_item(it,_)) {
+         some(ast_map::node_item(it,_)) => {
              alt it.node {
-               ast::item_fn(_,ps,_) if vec::is_not_empty(ps) {
+               ast::item_fn(_,ps,_) if vec::is_not_empty(ps) => {
                   tcx.sess.span_err(main_span,
                     ~"main function is not allowed to have type parameters");
                   return;
                }
-               _ {}
+               _ => ()
              }
          }
-         _ {}
+         _ => ()
         }
         let mut ok = ty::type_is_nil(output);
         let num_args = vec::len(inputs);
@@ -273,7 +273,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
                          ty_to_str(tcx, main_t)});
          }
       }
-      _ {
+      _ => {
         tcx.sess.span_bug(main_span,
                           ~"main has a non-function type: found `" +
                               ty_to_str(tcx, main_t) + ~"`");
@@ -285,8 +285,8 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
     let tcx = ccx.tcx;
     if !tcx.sess.building_library {
         alt copy tcx.sess.main_fn {
-          some((id, sp)) { check_main_fn_ty(ccx, id, sp); }
-          none { tcx.sess.err(~"main function not found"); }
+          some((id, sp)) => check_main_fn_ty(ccx, id, sp),
+          none => tcx.sess.err(~"main function not found")
         }
     }
 }

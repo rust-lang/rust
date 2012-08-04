@@ -31,15 +31,15 @@ impl of to_base64 for ~[u8] {
         }
 
         alt check len % 3u {
-          0u { }
-          1u {
+          0u => (),
+          1u => {
             let n = (self[i] as uint) << 16u;
             str::push_char(s, chars[(n >> 18u) & 63u]);
             str::push_char(s, chars[(n >> 12u) & 63u]);
             str::push_char(s, '=');
             str::push_char(s, '=');
           }
-          2u {
+          2u => {
             let n = (self[i] as uint) << 16u | (self[i + 1u] as uint) << 8u;
             str::push_char(s, chars[(n >> 18u) & 63u]);
             str::push_char(s, chars[(n >> 12u) & 63u]);
@@ -97,18 +97,16 @@ impl of from_base64 for ~[u8] {
                     n |= 0x3Fu;
                 } else if ch == '=' {
                     alt len - i {
-                      1u {
+                      1u => {
                         vec::push(r, ((n >> 16u) & 0xFFu) as u8);
                         vec::push(r, ((n >> 8u ) & 0xFFu) as u8);
                         return copy r;
                       }
-                      2u {
+                      2u => {
                         vec::push(r, ((n >> 10u) & 0xFFu) as u8);
                         return copy r;
                       }
-                      _ {
-                        fail ~"invalid base64 padding";
-                      }
+                      _ => fail ~"invalid base64 padding"
                     }
                 } else {
                     fail ~"invalid base64 character";

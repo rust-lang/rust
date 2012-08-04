@@ -136,32 +136,32 @@ fn repeat(times: uint, blk: fn() -> bool) {
 fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
     alt do foldl::<A,option<A>,IA>(self, none) |a, b| {
         alt a {
-          some(a_) if a_ < b {
+          some(a_) if a_ < b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move
             a
           }
-          _ { some(b) }
+          _ => some(b)
         }
     } {
-        some(val) { val }
-        none { fail ~"min called on empty iterator" }
+        some(val) => val,
+        none => fail ~"min called on empty iterator"
     }
 }
 
 fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
     alt do foldl::<A,option<A>,IA>(self, none) |a, b| {
         alt a {
-          some(a_) if a_ > b {
+          some(a_) if a_ > b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move.
             a
           }
-          _ { some(b) }
+          _ => some(b)
         }
     } {
-        some(val) { val }
-        none { fail ~"max called on empty iterator" }
+        some(val) => val,
+        none => fail ~"max called on empty iterator"
     }
 }
 

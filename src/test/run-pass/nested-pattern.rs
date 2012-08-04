@@ -10,8 +10,8 @@ enum t { foo(int, uint), bar(int, option<int>), }
 
 fn nested(o: t) {
     alt o {
-      bar(i, some::<int>(_)) { error!{"wrong pattern matched"}; fail; }
-      _ { error!{"succeeded"}; }
+      bar(i, some::<int>(_)) => { error!{"wrong pattern matched"}; fail; }
+      _ => { error!{"succeeded"}; }
     }
 }
 

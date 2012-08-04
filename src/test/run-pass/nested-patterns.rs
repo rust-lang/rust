@@ -1,7 +1,7 @@
 fn main() {
     alt {a: 10, b: @20} {
-        x@{a, b: @20} { assert x.a == 10; assert a == 10; }
-        {b, _} { fail; }
+        x@{a, b: @20} => { assert x.a == 10; assert a == 10; }
+        {b, _} => { fail; }
     }
     let x@{b, _} = {a: 10, b: {mut c: 20}};
     x.b.c = 30;

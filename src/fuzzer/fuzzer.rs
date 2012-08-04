@@ -63,39 +63,39 @@ pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
 
 pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
     alt tm {
-      tm_converge {
+      tm_converge => {
         alt e.node {
           // If the fuzzer moves a block-ending-in-semicolon into callee
           // position, the pretty-printer can't preserve this even by
           // parenthesizing!!  See email to marijn.
-          ast::expr_if(_, _, _) { false }
-          ast::expr_block(_) { false }
-          ast::expr_alt(_, _, _) { false }
-          ast::expr_while(_, _) { false }
+          ast::expr_if(_, _, _) => { false }
+          ast::expr_block(_) => { false }
+          ast::expr_alt(_, _, _) => { false }
+          ast::expr_while(_, _) => { false }
 
           // https://github.com/mozilla/rust/issues/929
-          ast::expr_cast(_, _) { false }
-          ast::expr_assert(_) { false }
-          ast::expr_binary(_, _, _) { false }
-          ast::expr_assign(_, _) { false }
-          ast::expr_assign_op(_, _, _) { false }
+          ast::expr_cast(_, _) => { false }
+          ast::expr_assert(_) => { false }
+          ast::expr_binary(_, _, _) => { false }
+          ast::expr_assign(_, _) => { false }
+          ast::expr_assign_op(_, _, _) => { false }
 
-          ast::expr_fail(option::none) { false }
-          ast::expr_ret(option::none) { false }
+          ast::expr_fail(option::none) => { false }
+          ast::expr_ret(option::none) => { false }
 
           // https://github.com/mozilla/rust/issues/953
-          ast::expr_fail(option::some(_)) { false }
+          ast::expr_fail(option::some(_)) => { false }
 
           // https://github.com/mozilla/rust/issues/928
           //ast::expr_cast(_, _) { false }
 
           // https://github.com/mozilla/rust/issues/1458
-          ast::expr_call(_, _, _) { false }
+          ast::expr_call(_, _, _) => { false }
 
-          _ { true }
+          _ => { true }
         }
       }
-      tm_run { true }
+      tm_run => { true }
     }
 }
 
@@ -141,23 +141,23 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
 fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
     alt e {
       // https://github.com/mozilla/rust/issues/652
-      ast::expr_if(*) { false }
-      ast::expr_block(_) { false }
+      ast::expr_if(*) => { false }
+      ast::expr_block(_) => { false }
 
       // expr_call is also missing a constraint
-      ast::expr_fn_block(*) { false }
+      ast::expr_fn_block(*) => { false }
 
-      _ { true }
+      _ => { true }
     }
 }
 
 fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
     alt t {
-      ast::ty_infer { false } // always implicit, always top level
-      ast::ty_bot { false }   // in source, can only appear
+      ast::ty_infer => { false } // always implicit, always top level
+      ast::ty_bot => { false }   // in source, can only appear
                               // as the out type of a function
-      ast::ty_mac(_) { false }
-      _ { true }
+      ast::ty_mac(_) => { false }
+      _ => { true }
     }
 }
 
@@ -273,10 +273,10 @@ fn check_variants_T<T: copy>(
                         pprust::no_ann(),
                         false));
                 alt cx.mode {
-                  tm_converge {
+                  tm_converge => {
                     check_roundtrip_convergence(str3, 1u);
                   }
-                  tm_run {
+                  tm_run => {
                     let file_label = fmt!{"rusttmp/%s_%s_%u_%u",
                                           last_part(filename),
                                           thing_label, i, j};
@@ -315,17 +315,17 @@ fn check_whole_compiler(code: ~str, suggested_filename_prefix: ~str,
     let compile_result = check_compiling(filename);
 
     let run_result = alt (compile_result, allow_running) {
-      (passed, true) { check_running(suggested_filename_prefix) }
-      (h, _) { h }
+      (passed, true) => { check_running(suggested_filename_prefix) }
+      (h, _) => { h }
     };
 
     alt run_result {
-      passed | cleanly_rejected(_) | known_bug(_) {
+      passed | cleanly_rejected(_) | known_bug(_) => {
         removeIfExists(suggested_filename_prefix);
         removeIfExists(suggested_filename_prefix + ~".rs");
         removeDirIfExists(suggested_filename_prefix + ~".dSYM");
       }
-      failed(s) {
+      failed(s) => {
         log(error, ~"check_whole_compiler failure: " + s);
         log(error, ~"Saved as: " + filename);
       }
@@ -365,17 +365,17 @@ fn check_running(exe_filename: ~str) -> happiness {
         failed(~"Mentioned malloc")
     } else {
         alt p.status {
-            0         { passed }
-            100       { cleanly_rejected(~"running: explicit fail") }
-            101 | 247 { cleanly_rejected(~"running: timed out") }
-            245 | 246 | 138 | 252 {
+            0         => { passed }
+            100       => { cleanly_rejected(~"running: explicit fail") }
+            101 | 247 => { cleanly_rejected(~"running: timed out") }
+            245 | 246 | 138 | 252 => {
               known_bug(~"https://github.com/mozilla/rust/issues/1466")
             }
-            136 | 248 {
+            136 | 248 => {
               known_bug(
                   ~"SIGFPE - https://github.com/mozilla/rust/issues/944")
             }
-            rc {
+            rc => {
               failed(~"Rust program ran but exited with status " +
                      int::str(rc))
             }
@@ -442,8 +442,8 @@ fn has_raw_pointers(c: ast::crate) -> bool {
     let has_rp = @mut false;
     fn visit_ty(flag: @mut bool, t: @ast::ty) {
         alt t.node {
-          ast::ty_ptr(_) { *flag = true; }
-          _ { }
+          ast::ty_ptr(_) => { *flag = true; }
+          _ => { }
         }
     }
     let v =

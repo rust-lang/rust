@@ -59,49 +59,47 @@ fn moddoc_from_mod(
         items: do vec::filter_map(module_.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
-              ast::item_mod(m) {
+              ast::item_mod(m) => {
                 some(doc::modtag(
                     moddoc_from_mod(itemdoc, m)
                 ))
               }
-              ast::item_foreign_mod(nm) {
+              ast::item_foreign_mod(nm) => {
                 some(doc::nmodtag(
                     nmoddoc_from_mod(itemdoc, nm)
                 ))
               }
-              ast::item_fn(_, _, _) {
+              ast::item_fn(_, _, _) => {
                 some(doc::fntag(
                     fndoc_from_fn(itemdoc)
                 ))
               }
-              ast::item_const(_, _) {
+              ast::item_const(_, _) => {
                 some(doc::consttag(
                     constdoc_from_const(itemdoc)
                 ))
               }
-              ast::item_enum(variants, _) {
+              ast::item_enum(variants, _) => {
                 some(doc::enumtag(
                     enumdoc_from_enum(itemdoc, variants)
                 ))
               }
-              ast::item_trait(_, _, methods) {
+              ast::item_trait(_, _, methods) => {
                 some(doc::traittag(
                     traitdoc_from_trait(itemdoc, methods)
                 ))
               }
-              ast::item_impl(_, _, _, methods) {
+              ast::item_impl(_, _, _, methods) => {
                 some(doc::impltag(
                     impldoc_from_impl(itemdoc, methods)
                 ))
               }
-              ast::item_ty(_, _) {
+              ast::item_ty(_, _) => {
                 some(doc::tytag(
                     tydoc_from_ty(itemdoc)
                 ))
               }
-              _ {
-                none
-              }
+              _ => none
             }
         },
         index: none
@@ -117,7 +115,7 @@ fn nmoddoc_from_mod(
         fns: do vec::map(module_.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
             alt item.node {
-              ast::foreign_item_fn(_, _) {
+              ast::foreign_item_fn(_, _) => {
                 fndoc_from_fn(itemdoc)
               }
             }
@@ -192,7 +190,7 @@ fn traitdoc_from_trait(
         item: itemdoc,
         methods: do vec::map(methods) |method| {
             alt method {
-              ast::required(ty_m) {
+              ast::required(ty_m) => {
                 {
                     name: *ty_m.ident,
                     brief: none,
@@ -202,7 +200,7 @@ fn traitdoc_from_trait(
                     implementation: doc::required,
                 }
               }
-              ast::provided(m) {
+              ast::provided(m) => {
                 {
                     name: *m.ident,
                     brief: none,

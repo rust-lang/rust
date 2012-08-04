@@ -342,18 +342,16 @@ fn unshift_char(&s: ~str, ch: char) { s = from_char(ch) + s; }
 /// Returns a string with leading whitespace removed
 pure fn trim_left(s: &str) -> ~str {
     alt find(s, |c| !char::is_whitespace(c)) {
-      none { ~"" }
-      some(first) {
-        unsafe { unsafe::slice_bytes(s, first, len(s)) }
-      }
+      none => ~"",
+      some(first) => unsafe { unsafe::slice_bytes(s, first, len(s)) }
     }
 }
 
 /// Returns a string with trailing whitespace removed
 pure fn trim_right(s: &str) -> ~str {
     alt rfind(s, |c| !char::is_whitespace(c)) {
-      none { ~"" }
-      some(last) {
+      none => ~"",
+      some(last) => {
         let {next, _} = char_range_at(s, last);
         unsafe { unsafe::slice_bytes(s, 0u, next) }
       }
@@ -2779,9 +2777,9 @@ mod tests {
         let mut i = 0;
         do chars_iter(~"x\u03c0y") |ch| {
             alt check i {
-              0 { assert ch == 'x'; }
-              1 { assert ch == '\u03c0'; }
-              2 { assert ch == 'y'; }
+              0 => assert ch == 'x',
+              1 => assert ch == '\u03c0',
+              2 => assert ch == 'y'
             }
             i += 1;
         }
@@ -2795,9 +2793,9 @@ mod tests {
 
         do bytes_iter(~"xyz") |bb| {
             alt check i {
-              0 { assert bb == 'x' as u8; }
-              1 { assert bb == 'y' as u8; }
-              2 { assert bb == 'z' as u8; }
+              0 => assert bb == 'x' as u8,
+              1 => assert bb == 'y' as u8,
+              2 => assert bb == 'z' as u8
             }
             i += 1;
         }
@@ -2813,11 +2811,11 @@ mod tests {
 
         do split_char_iter(data, ' ') |xx| {
             alt ii {
-              0 { assert ~"\nMary" == xx; }
-              1 { assert ~"had"    == xx; }
-              2 { assert ~"a"      == xx; }
-              3 { assert ~"little" == xx; }
-              _ { () }
+              0 => assert ~"\nMary" == xx,
+              1 => assert ~"had"    == xx,
+              2 => assert ~"a"      == xx,
+              3 => assert ~"little" == xx,
+              _ => ()
             }
             ii += 1;
         }
@@ -2831,10 +2829,10 @@ mod tests {
 
         do splitn_char_iter(data, ' ', 2u) |xx| {
             alt ii {
-              0 { assert ~"\nMary" == xx; }
-              1 { assert ~"had"    == xx; }
-              2 { assert ~"a little lamb\nLittle lamb\n" == xx; }
-              _ { () }
+              0 => assert ~"\nMary" == xx,
+              1 => assert ~"had"    == xx,
+              2 => assert ~"a little lamb\nLittle lamb\n" == xx,
+              _ => ()
             }
             ii += 1;
         }
@@ -2848,11 +2846,11 @@ mod tests {
 
         do words_iter(data) |ww| {
             alt ii {
-              0 { assert ~"Mary"   == ww; }
-              1 { assert ~"had"    == ww; }
-              2 { assert ~"a"      == ww; }
-              3 { assert ~"little" == ww; }
-              _ { () }
+              0 => assert ~"Mary"   == ww,
+              1 => assert ~"had"    == ww,
+              2 => assert ~"a"      == ww,
+              3 => assert ~"little" == ww,
+              _ => ()
             }
             ii += 1;
         }
@@ -2868,11 +2866,11 @@ mod tests {
 
         do lines_iter(lf) |x| {
             alt ii {
-                0 { assert ~"" == x; }
-                1 { assert ~"Mary had a little lamb" == x; }
-                2 { assert ~"Little lamb" == x; }
-                3 { assert ~"" == x; }
-                _ { () }
+                0 => assert ~"" == x,
+                1 => assert ~"Mary had a little lamb" == x,
+                2 => assert ~"Little lamb" == x,
+                3 => assert ~"" == x,
+                _ => ()
             }
             ii += 1;
         }

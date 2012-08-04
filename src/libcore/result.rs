@@ -19,9 +19,9 @@ enum result<T, U> {
  */
 pure fn get<T: copy, U>(res: result<T, U>) -> T {
     alt res {
-      ok(t) { t }
-      err(the_err) {
-        unchecked{ fail fmt!{"get called on error result: %?", the_err}; }
+      ok(t) => t,
+      err(the_err) => unchecked {
+        fail fmt!{"get called on error result: %?", the_err}
       }
     }
 }
@@ -35,18 +35,16 @@ pure fn get<T: copy, U>(res: result<T, U>) -> T {
  */
 pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
     alt res {
-      err(u) { u }
-      ok(_) {
-        fail ~"get_error called on ok result";
-      }
+      err(u) => u,
+      ok(_) => fail ~"get_error called on ok result"
     }
 }
 
 /// Returns true if the result is `ok`
 pure fn is_ok<T, U>(res: result<T, U>) -> bool {
     alt res {
-      ok(_) { true }
-      err(_) { false }
+      ok(_) => true,
+      err(_) => false
     }
 }
 
@@ -63,8 +61,8 @@ pure fn is_err<T, U>(res: result<T, U>) -> bool {
  */
 pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> either<T, U> {
     alt res {
-      ok(res) { either::right(res) }
-      err(fail_) { either::left(fail_) }
+      ok(res) => either::right(res),
+      err(fail_) => either::left(fail_)
     }
 }
 
@@ -85,8 +83,8 @@ pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> either<T, U> {
 fn chain<T, U: copy, V: copy>(res: result<T, V>, op: fn(T) -> result<U, V>)
     -> result<U, V> {
     alt res {
-      ok(t) { op(t) }
-      err(e) { err(e) }
+      ok(t) => op(t),
+      err(e) => err(e)
     }
 }
 
@@ -103,8 +101,8 @@ fn chain_err<T: copy, U: copy, V: copy>(
     op: fn(V) -> result<T, U>)
     -> result<T, U> {
     alt res {
-      ok(t) { ok(t) }
-      err(v) { op(v) }
+      ok(t) => ok(t),
+      err(v) => op(v)
     }
 }
 
@@ -124,8 +122,8 @@ fn chain_err<T: copy, U: copy, V: copy>(
  */
 fn iter<T, E>(res: result<T, E>, f: fn(T)) {
     alt res {
-      ok(t) { f(t) }
-      err(_) { }
+      ok(t) => f(t),
+      err(_) => ()
     }
 }
 
@@ -139,8 +137,8 @@ fn iter<T, E>(res: result<T, E>, f: fn(T)) {
  */
 fn iter_err<T, E>(res: result<T, E>, f: fn(E)) {
     alt res {
-      ok(_) { }
-      err(e) { f(e) }
+      ok(_) => (),
+      err(e) => f(e)
     }
 }
 
@@ -161,8 +159,8 @@ fn iter_err<T, E>(res: result<T, E>, f: fn(E)) {
 fn map<T, E: copy, U: copy>(res: result<T, E>, op: fn(T) -> U)
   -> result<U, E> {
     alt res {
-      ok(t) { ok(op(t)) }
-      err(e) { err(e) }
+      ok(t) => ok(op(t)),
+      err(e) => err(e)
     }
 }
 
@@ -177,8 +175,8 @@ fn map<T, E: copy, U: copy>(res: result<T, E>, op: fn(T) -> U)
 fn map_err<T: copy, E, F: copy>(res: result<T, E>, op: fn(E) -> F)
   -> result<T, F> {
     alt res {
-      ok(t) { ok(t) }
-      err(e) { err(op(e)) }
+      ok(t) => ok(t),
+      err(e) => err(op(e))
     }
 }
 
@@ -189,15 +187,15 @@ impl extensions<T, E> for result<T, E> {
 
     fn iter(f: fn(T)) {
         alt self {
-          ok(t) { f(t) }
-          err(_) { }
+          ok(t) => f(t),
+          err(_) => ()
         }
     }
 
     fn iter_err(f: fn(E)) {
         alt self {
-          ok(_) { }
-          err(e) { f(e) }
+          ok(_) => (),
+          err(e) => f(e)
         }
     }
 }
@@ -207,8 +205,8 @@ impl extensions<T:copy, E> for result<T, E> {
 
     fn map_err<F:copy>(op: fn(E) -> F) -> result<T,F> {
         alt self {
-          ok(t) { ok(t) }
-          err(e) { err(op(e)) }
+          ok(t) => ok(t),
+          err(e) => err(op(e))
         }
     }
 }
@@ -218,8 +216,8 @@ impl extensions<T, E:copy> for result<T, E> {
 
     fn map<U:copy>(op: fn(T) -> U) -> result<U,E> {
         alt self {
-          ok(t) { ok(op(t)) }
-          err(e) { err(e) }
+          ok(t) => ok(op(t)),
+          err(e) => err(e)
         }
     }
 }
@@ -258,8 +256,8 @@ fn map_vec<T,U:copy,V:copy>(
     vec::reserve(vs, vec::len(ts));
     for vec::each(ts) |t| {
         alt op(t) {
-          ok(v) { vec::push(vs, v); }
-          err(u) { return err(u); }
+          ok(v) => vec::push(vs, v),
+          err(u) => return err(u)
         }
     }
     return ok(vs);
@@ -269,12 +267,10 @@ fn map_opt<T,U:copy,V:copy>(
     o_t: option<T>, op: fn(T) -> result<V,U>) -> result<option<V>,U> {
 
     alt o_t {
-      none { ok(none) }
-      some(t) {
-        alt op(t) {
-          ok(v) { ok(some(v)) }
-          err(e) { err(e) }
-        }
+      none => ok(none),
+      some(t) => alt op(t) {
+        ok(v) => ok(some(v)),
+        err(e) => err(e)
       }
     }
 }
@@ -298,8 +294,8 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: ~[S], ts: ~[T],
     let mut i = 0u;
     while i < n {
         alt op(ss[i],ts[i]) {
-          ok(v) { vec::push(vs, v); }
-          err(u) { return err(u); }
+          ok(v) => vec::push(vs, v),
+          err(u) => return err(u)
         }
         i += 1u;
     }
@@ -319,8 +315,8 @@ fn iter_vec2<S,T,U:copy>(ss: ~[S], ts: ~[T],
     let mut i = 0u;
     while i < n {
         alt op(ss[i],ts[i]) {
-          ok(()) { }
-          err(u) { return err(u); }
+          ok(()) => (),
+          err(u) => return err(u)
         }
         i += 1u;
     }
@@ -331,8 +327,8 @@ fn iter_vec2<S,T,U:copy>(ss: ~[S], ts: ~[T],
 fn unwrap<T, U>(-res: result<T, U>) -> T {
     unsafe {
         let addr = alt res {
-          ok(x) { ptr::addr_of(x) }
-          err(_) { fail ~"error result" }
+          ok(x) => ptr::addr_of(x),
+          err(_) => fail ~"error result"
         };
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(res);

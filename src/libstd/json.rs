@@ -46,14 +46,10 @@ type error = {
 /// Serializes a json value into a io::writer
 fn to_writer(wr: io::writer, j: json) {
     alt j {
-      num(n) { wr.write_str(float::to_str(n, 6u)); }
-      string(s) {
-        wr.write_str(escape_str(*s));
-      }
-      boolean(b) {
-        wr.write_str(if b { ~"true" } else { ~"false" });
-      }
-      list(v) {
+      num(n) => wr.write_str(float::to_str(n, 6u)),
+      string(s) => wr.write_str(escape_str(*s)),
+      boolean(b) => wr.write_str(if b { ~"true" } else { ~"false" }),
+      list(v) => {
         wr.write_char('[');
         let mut first = true;
         for (*v).each |item| {
@@ -65,7 +61,7 @@ fn to_writer(wr: io::writer, j: json) {
         };
         wr.write_char(']');
       }
-      dict(d) {
+      dict(d) => {
         if d.size() == 0u {
             wr.write_str(~"{}");
             return;
@@ -84,9 +80,7 @@ fn to_writer(wr: io::writer, j: json) {
         };
         wr.write_str(~" }");
       }
-      null {
-        wr.write_str(~"null");
-      }
+      null => wr.write_str(~"null")
     }
 }
 
@@ -94,14 +88,14 @@ fn escape_str(s: ~str) -> ~str {
     let mut escaped = ~"\"";
     do str::chars_iter(s) |c| {
         alt c {
-          '"' { escaped += ~"\\\""; }
-          '\\' { escaped += ~"\\\\"; }
-          '\x08' { escaped += ~"\\b"; }
-          '\x0c' { escaped += ~"\\f"; }
-          '\n' { escaped += ~"\\n"; }
-          '\r' { escaped += ~"\\r"; }
-          '\t' { escaped += ~"\\t"; }
-          _ { escaped += str::from_char(c); }
+          '"' => escaped += ~"\\\"",
+          '\\' => escaped += ~"\\\\",
+          '\x08' => escaped += ~"\\b",
+          '\x0c' => escaped += ~"\\f",
+          '\n' => escaped += ~"\\n",
+          '\r' => escaped += ~"\\r",
+          '\t' => escaped += ~"\\t",
+          _ => escaped += str::from_char(c)
         }
     };
 
@@ -151,7 +145,7 @@ impl parser for parser {
 
     fn parse() -> result<json, error> {
         alt self.parse_value() {
-          ok(value) {
+          ok(value) => {
             // Skip trailing whitespaces.
             self.parse_whitespace();
             // Make sure there is no trailing characters.
@@ -161,7 +155,7 @@ impl parser for parser {
                 self.error(~"trailing characters")
             }
           }
-          e { e }
+          e => e
         }
     }
 
@@ -171,19 +165,17 @@ impl parser for parser {
         if self.eof() { return self.error(~"EOF while parsing value"); }
 
         alt self.ch {
-          'n' { self.parse_ident(~"ull", null) }
-          't' { self.parse_ident(~"rue", boolean(true)) }
-          'f' { self.parse_ident(~"alse", boolean(false)) }
-          '0' to '9' | '-' { self.parse_number() }
-          '"' {
-              alt self.parse_str() {
-                ok(s) { ok(string(s)) }
-                err(e) { err(e) }
-              }
+          'n' => self.parse_ident(~"ull", null),
+          't' => self.parse_ident(~"rue", boolean(true)),
+          'f' => self.parse_ident(~"alse", boolean(false)),
+          '0' to '9' | '-' => self.parse_number(),
+          '"' => alt self.parse_str() {
+            ok(s) => ok(string(s)),
+            err(e) => err(e)
           }
-          '[' { self.parse_list() }
-          '{' { self.parse_object() }
-          _ { self.error(~"invalid syntax") }
+          '[' => self.parse_list(),
+          '{' => self.parse_object(),
+          _ => self.error(~"invalid syntax")
         }
     }
 
@@ -209,21 +201,21 @@ impl parser for parser {
         }
 
         let mut res = alt self.parse_integer() {
-          ok(res) { res }
-          err(e) { return err(e); }
+          ok(res) => res,
+          err(e) => return err(e)
         };
 
         if self.ch == '.' {
             alt self.parse_decimal(res) {
-              ok(r) { res = r; }
-              err(e) { return err(e); }
+              ok(r) => res = r,
+              err(e) => return err(e)
             }
         }
 
         if self.ch == 'e' || self.ch == 'E' {
             alt self.parse_exponent(res) {
-              ok(r) { res = r; }
-              err(e) { return err(e); }
+              ok(r) => res = r,
+              err(e) => return err(e)
             }
         }
 
@@ -234,29 +226,29 @@ impl parser for parser {
         let mut res = 0f;
 
         alt self.ch {
-          '0' {
+          '0' => {
             self.bump();
 
             // There can be only one leading '0'.
             alt self.ch {
-              '0' to '9' { return self.error(~"invalid number"); }
-              _ {}
+              '0' to '9' => return self.error(~"invalid number"),
+              _ => ()
             }
           }
-          '1' to '9' {
+          '1' to '9' => {
             while !self.eof() {
                 alt self.ch {
-                  '0' to '9' {
+                  '0' to '9' => {
                     res *= 10f;
                     res += ((self.ch as int) - ('0' as int)) as float;
 
                     self.bump();
                   }
-                  _ { break; }
+                  _ => break
                 }
             }
           }
-          _ { return self.error(~"invalid number"); }
+          _ => return self.error(~"invalid number")
         }
 
         ok(res)
@@ -267,21 +259,21 @@ impl parser for parser {
 
         // Make sure a digit follows the decimal place.
         alt self.ch {
-          '0' to '9' {}
-          _ { return self.error(~"invalid number"); }
+          '0' to '9' => (),
+          _ => return self.error(~"invalid number")
         }
 
         let mut res = res;
         let mut dec = 1f;
         while !self.eof() {
             alt self.ch {
-              '0' to '9' {
+              '0' to '9' => {
                 dec /= 10f;
                 res += (((self.ch as int) - ('0' as int)) as float) * dec;
 
                 self.bump();
               }
-              _ { break; }
+              _ => break
             }
         }
 
@@ -296,26 +288,26 @@ impl parser for parser {
         let mut neg_exp = false;
 
         alt self.ch {
-          '+' { self.bump(); }
-          '-' { self.bump(); neg_exp = true; }
-          _ {}
+          '+' => self.bump(),
+          '-' => { self.bump(); neg_exp = true; }
+          _ => ()
         }
 
         // Make sure a digit follows the exponent place.
         alt self.ch {
-          '0' to '9' {}
-          _ { return self.error(~"invalid number"); }
+          '0' to '9' => (),
+          _ => return self.error(~"invalid number")
         }
 
         while !self.eof() {
             alt self.ch {
-              '0' to '9' {
+              '0' to '9' => {
                 exp *= 10u;
                 exp += (self.ch as uint) - ('0' as uint);
 
                 self.bump();
               }
-              _ { break; }
+              _ => break
             }
         }
 
@@ -338,25 +330,25 @@ impl parser for parser {
 
             if (escape) {
                 alt self.ch {
-                  '"' { str::push_char(res, '"'); }
-                  '\\' { str::push_char(res, '\\'); }
-                  '/' { str::push_char(res, '/'); }
-                  'b' { str::push_char(res, '\x08'); }
-                  'f' { str::push_char(res, '\x0c'); }
-                  'n' { str::push_char(res, '\n'); }
-                  'r' { str::push_char(res, '\r'); }
-                  't' { str::push_char(res, '\t'); }
-                  'u' {
+                  '"' => str::push_char(res, '"'),
+                  '\\' => str::push_char(res, '\\'),
+                  '/' => str::push_char(res, '/'),
+                  'b' => str::push_char(res, '\x08'),
+                  'f' => str::push_char(res, '\x0c'),
+                  'n' => str::push_char(res, '\n'),
+                  'r' => str::push_char(res, '\r'),
+                  't' => str::push_char(res, '\t'),
+                  'u' => {
                       // Parse \u1234.
                       let mut i = 0u;
                       let mut n = 0u;
                       while i < 4u {
                           alt self.next_char() {
-                            '0' to '9' {
+                            '0' to '9' => {
                               n = n * 10u +
                                   (self.ch as uint) - ('0' as uint);
                             }
-                            _ { return self.error(~"invalid \\u escape"); }
+                            _ => return self.error(~"invalid \\u escape")
                           }
                           i += 1u;
                       }
@@ -368,7 +360,7 @@ impl parser for parser {
 
                       str::push_char(res, n as char);
                   }
-                  _ { return self.error(~"invalid escape"); }
+                  _ => return self.error(~"invalid escape")
                 }
                 escape = false;
             } else if self.ch == '\\' {
@@ -398,8 +390,8 @@ impl parser for parser {
 
         loop {
             alt self.parse_value() {
-              ok(v) { vec::push(values, v); }
-              e { return e; }
+              ok(v) => vec::push(values, v),
+              e => return e
             }
 
             self.parse_whitespace();
@@ -408,9 +400,9 @@ impl parser for parser {
             }
 
             alt self.ch {
-              ',' { self.bump(); }
-              ']' { self.bump(); return ok(list(@values)); }
-              _ { return self.error(~"expected `,` or `]`"); }
+              ',' => self.bump(),
+              ']' => { self.bump(); return ok(list(@values)); }
+              _ => return self.error(~"expected `,` or `]`")
             }
         };
     }
@@ -434,8 +426,8 @@ impl parser for parser {
             }
 
             let key = alt self.parse_str() {
-              ok(key) { key }
-              err(e) { return err(e); }
+              ok(key) => key,
+              err(e) => return err(e)
             };
 
             self.parse_whitespace();
@@ -447,15 +439,15 @@ impl parser for parser {
             self.bump();
 
             alt self.parse_value() {
-              ok(value) { values.insert(copy *key, value); }
-              e { return e; }
+              ok(value) => { values.insert(copy *key, value); }
+              e => return e
             }
             self.parse_whitespace();
 
             alt self.ch {
-              ',' { self.bump(); }
-              '}' { self.bump(); return ok(dict(values)); }
-              _ {
+              ',' => self.bump(),
+              '}' => { self.bump(); return ok(dict(values)); }
+              _ => {
                   if self.eof() { break; }
                   return self.error(~"expected `,` or `}`");
               }
@@ -486,18 +478,17 @@ fn from_str(s: ~str) -> result<json, error> {
 /// Test if two json values are equal
 fn eq(value0: json, value1: json) -> bool {
     alt (value0, value1) {
-      (num(f0), num(f1)) { f0 == f1 }
-      (string(s0), string(s1)) { s0 == s1 }
-      (boolean(b0), boolean(b1)) { b0 == b1 }
-      (list(l0), list(l1)) { vec::all2(*l0, *l1, eq) }
-      (dict(d0), dict(d1)) {
+      (num(f0), num(f1)) => f0 == f1,
+      (string(s0), string(s1)) => s0 == s1,
+      (boolean(b0), boolean(b1)) => b0 == b1,
+      (list(l0), list(l1)) => vec::all2(*l0, *l1, eq),
+      (dict(d0), dict(d1)) => {
           if d0.size() == d1.size() {
               let mut equal = true;
               for d0.each |k, v0| {
                   alt d1.find(k) {
-                    some(v1) {
-                        if !eq(v0, v1) { equal = false; } }
-                    none { equal = false; }
+                    some(v1) => if !eq(v0, v1) { equal = false },
+                    none => equal = false
                   }
               };
               equal
@@ -505,8 +496,8 @@ fn eq(value0: json, value1: json) -> bool {
               false
           }
       }
-      (null, null) { true }
-      _ { false }
+      (null, null) => true,
+      _ => false
     }
 }
 
@@ -626,8 +617,8 @@ impl <A: to_json copy> of to_json for hashmap<~str, A> {
 impl <A: to_json> of to_json for option<A> {
     fn to_json() -> json {
         alt self {
-          none { null }
-          some(value) { value.to_json() }
+          none => null,
+          some(value) => value.to_json()
         }
     }
 }

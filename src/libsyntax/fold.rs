@@ -81,13 +81,13 @@ type ast_fold_precursor = @{
 fn fold_meta_item_(&&mi: @meta_item, fld: ast_fold) -> @meta_item {
     return @{node:
               alt mi.node {
-                meta_word(id) { meta_word(fld.fold_ident(id)) }
-                meta_list(id, mis) {
+                meta_word(id) => meta_word(fld.fold_ident(id)),
+                meta_list(id, mis) => {
                   let fold_meta_item = |x|fold_meta_item_(x, fld);
                   meta_list(/* FIXME: (#2543) */ copy id,
                             vec::map(mis, fold_meta_item))
                 }
-                meta_name_value(id, s) {
+                meta_name_value(id, s) => {
                   meta_name_value(fld.fold_ident(id),
                                   /* FIXME (#2543) */ copy s)
                 }
@@ -113,14 +113,14 @@ fn fold_arg_(a: arg, fld: ast_fold) -> arg {
 fn fold_mac_(m: mac, fld: ast_fold) -> mac {
     return {node:
              alt m.node {
-               mac_invoc(pth, arg, body) {
+               mac_invoc(pth, arg, body) => {
                  mac_invoc(fld.fold_path(pth),
                            option::map(arg, |x| fld.fold_expr(x)), body)
                }
-               mac_invoc_tt(pth, tt) { m.node }
-               mac_ellipsis { mac_ellipsis }
-               mac_aq(_,_) { /* FIXME (#2543) */ copy m.node }
-               mac_var(_) { /* FIXME (#2543) */ copy m.node }
+               mac_invoc_tt(pth, tt) => m.node,
+               mac_ellipsis => mac_ellipsis,
+               mac_aq(_,_) => /* FIXME (#2543) */ copy m.node,
+               mac_var(_) => /* FIXME (#2543) */ copy m.node,
              },
          span: fld.new_span(m.span)};
 }
@@ -134,8 +134,8 @@ fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
 
 fn fold_ty_param_bound(tpb: ty_param_bound, fld: ast_fold) -> ty_param_bound {
     alt tpb {
-      bound_copy | bound_send | bound_const | bound_owned { tpb }
-      bound_trait(ty) { bound_trait(fld.fold_ty(ty)) }
+      bound_copy | bound_send | bound_const | bound_owned => tpb,
+      bound_trait(ty) => bound_trait(fld.fold_ty(ty))
     }
 }
 
@@ -164,16 +164,16 @@ fn noop_fold_crate(c: crate_, fld: ast_fold) -> crate_ {
 fn noop_fold_crate_directive(cd: crate_directive_, fld: ast_fold) ->
    crate_directive_ {
     return alt cd {
-          cdir_src_mod(id, attrs) {
+          cdir_src_mod(id, attrs) => {
             cdir_src_mod(fld.fold_ident(id), /* FIXME (#2543) */ copy attrs)
           }
-          cdir_dir_mod(id, cds, attrs) {
+          cdir_dir_mod(id, cds, attrs) => {
             cdir_dir_mod(fld.fold_ident(id),
                          vec::map(cds, |x| fld.fold_crate_directive(x)),
                          /* FIXME (#2543) */ copy attrs)
           }
-          cdir_view_item(vi) { cdir_view_item(fld.fold_view_item(vi)) }
-          cdir_syntax(_) { copy cd }
+          cdir_view_item(vi) => cdir_view_item(fld.fold_view_item(vi)),
+          cdir_syntax(_) => copy cd
         }
 }
 
@@ -191,7 +191,7 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
           attrs: vec::map(ni.attrs, fold_attribute),
           node:
               alt ni.node {
-                foreign_item_fn(fdec, typms) {
+                foreign_item_fn(fdec, typms) => {
                   foreign_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
                                   output: fld.fold_ty(fdec.output),
                                   purity: fdec.purity,
@@ -217,32 +217,32 @@ fn noop_fold_item(&&i: @item, fld: ast_fold) -> option<@item> {
 fn noop_fold_class_item(&&ci: @class_member, fld: ast_fold)
     -> @class_member {
     @{node: alt ci.node {
-        instance_var(ident, t, cm, id, p) {
+        instance_var(ident, t, cm, id, p) => {
            instance_var(/* FIXME (#2543) */ copy ident,
                         fld.fold_ty(t), cm, id, p)
         }
-        class_method(m) { class_method(fld.fold_method(m)) }
+        class_method(m) => class_method(fld.fold_method(m))
       },
       span: ci.span}
 }
 
 fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
     return alt i {
-          item_const(t, e) { item_const(fld.fold_ty(t), fld.fold_expr(e)) }
-          item_fn(decl, typms, body) {
+          item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
+          item_fn(decl, typms, body) => {
               item_fn(fold_fn_decl(decl, fld),
                       fold_ty_params(typms, fld),
                       fld.fold_block(body))
           }
-          item_mod(m) { item_mod(fld.fold_mod(m)) }
-          item_foreign_mod(nm) { item_foreign_mod(fld.fold_foreign_mod(nm)) }
-          item_ty(t, typms) { item_ty(fld.fold_ty(t),
-                                      fold_ty_params(typms, fld)) }
-          item_enum(variants, typms) {
+          item_mod(m) => item_mod(fld.fold_mod(m)),
+          item_foreign_mod(nm) => item_foreign_mod(fld.fold_foreign_mod(nm)),
+          item_ty(t, typms) => item_ty(fld.fold_ty(t),
+                                       fold_ty_params(typms, fld)),
+          item_enum(variants, typms) => {
             item_enum(vec::map(variants, |x| fld.fold_variant(x)),
                       fold_ty_params(typms, fld))
           }
-          item_class(typms, traits, items, m_ctor, m_dtor) {
+          item_class(typms, traits, items, m_ctor, m_dtor) => {
             let resulting_optional_constructor;
             alt m_ctor {
                 none => {
@@ -273,18 +273,18 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                   resulting_optional_constructor,
                   dtor)
           }
-          item_impl(tps, ifce, ty, methods) {
+          item_impl(tps, ifce, ty, methods) => {
               item_impl(fold_ty_params(tps, fld),
                         ifce.map(|p| fold_trait_ref(p, fld)),
                         fld.fold_ty(ty),
                         vec::map(methods, |x| fld.fold_method(x)))
           }
-          item_trait(tps, traits, methods) {
+          item_trait(tps, traits, methods) => {
             item_trait(fold_ty_params(tps, fld),
                        vec::map(traits, |p| fold_trait_ref(p, fld)),
                        /* FIXME (#2543) */ copy methods)
           }
-      item_mac(m) {
+      item_mac(m) => {
         // FIXME #2888: we might actually want to do something here.
         item_mac(m)
       }
@@ -320,9 +320,9 @@ fn noop_fold_block(b: blk_, fld: ast_fold) -> blk_ {
 
 fn noop_fold_stmt(s: stmt_, fld: ast_fold) -> stmt_ {
     return alt s {
-      stmt_decl(d, nid) { stmt_decl(fld.fold_decl(d), fld.new_id(nid)) }
-      stmt_expr(e, nid) { stmt_expr(fld.fold_expr(e), fld.new_id(nid)) }
-      stmt_semi(e, nid) { stmt_semi(fld.fold_expr(e), fld.new_id(nid)) }
+      stmt_decl(d, nid) => stmt_decl(fld.fold_decl(d), fld.new_id(nid)),
+      stmt_expr(e, nid) => stmt_expr(fld.fold_expr(e), fld.new_id(nid)),
+      stmt_semi(e, nid) => stmt_semi(fld.fold_expr(e), fld.new_id(nid))
     };
 }
 
@@ -334,18 +334,18 @@ fn noop_fold_arm(a: arm, fld: ast_fold) -> arm {
 
 fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
     return alt p {
-          pat_wild { pat_wild }
-          pat_ident(binding_mode, pth, sub) {
+          pat_wild => pat_wild,
+          pat_ident(binding_mode, pth, sub) => {
             pat_ident(binding_mode,
                       fld.fold_path(pth),
                       option::map(sub, |x| fld.fold_pat(x)))
           }
-          pat_lit(e) { pat_lit(fld.fold_expr(e)) }
-          pat_enum(pth, pats) {
+          pat_lit(e) => pat_lit(fld.fold_expr(e)),
+          pat_enum(pth, pats) => {
               pat_enum(fld.fold_path(pth), option::map(pats,
                        |pats| vec::map(pats, |x| fld.fold_pat(x))))
           }
-          pat_rec(fields, etc) {
+          pat_rec(fields, etc) => {
             let mut fs = ~[];
             for fields.each |f| {
                 vec::push(fs,
@@ -354,10 +354,10 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
             }
             pat_rec(fs, etc)
           }
-          pat_tup(elts) { pat_tup(vec::map(elts, |x| fld.fold_pat(x))) }
-          pat_box(inner) { pat_box(fld.fold_pat(inner)) }
-          pat_uniq(inner) { pat_uniq(fld.fold_pat(inner)) }
-          pat_range(e1, e2) {
+          pat_tup(elts) => pat_tup(vec::map(elts, |x| fld.fold_pat(x))),
+          pat_box(inner) => pat_box(fld.fold_pat(inner)),
+          pat_uniq(inner) => pat_uniq(fld.fold_pat(inner)),
+          pat_range(e1, e2) => {
             pat_range(fld.fold_expr(e1), fld.fold_expr(e2))
           }
         };
@@ -365,12 +365,10 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
 
 fn noop_fold_decl(d: decl_, fld: ast_fold) -> decl_ {
     alt d {
-      decl_local(ls) { decl_local(vec::map(ls, |x| fld.fold_local(x))) }
-      decl_item(it) {
-        alt fld.fold_item(it) {
-          some(it_folded) { decl_item(it_folded) }
-          none { decl_local(~[]) }
-        }
+      decl_local(ls) => decl_local(vec::map(ls, |x| fld.fold_local(x))),
+      decl_item(it) => alt fld.fold_item(it) {
+        some(it_folded) => decl_item(it_folded),
+        none => decl_local(~[])
       }
     }
 }
@@ -396,91 +394,91 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
     let fold_mac = |x| fold_mac_(x, fld);
 
     return alt e {
-          expr_vstore(e, v) {
+          expr_vstore(e, v) => {
             expr_vstore(fld.fold_expr(e), v)
           }
-          expr_vec(exprs, mutt) {
+          expr_vec(exprs, mutt) => {
             expr_vec(fld.map_exprs(|x| fld.fold_expr(x), exprs), mutt)
           }
           expr_repeat(expr, count, mutt) =>
             expr_repeat(fld.fold_expr(expr), fld.fold_expr(count), mutt),
-          expr_rec(fields, maybe_expr) {
+          expr_rec(fields, maybe_expr) => {
             expr_rec(vec::map(fields, fold_field),
                      option::map(maybe_expr, |x| fld.fold_expr(x)))
           }
-          expr_tup(elts) { expr_tup(vec::map(elts, |x| fld.fold_expr(x))) }
-          expr_call(f, args, blk) {
+          expr_tup(elts) => expr_tup(vec::map(elts, |x| fld.fold_expr(x))),
+          expr_call(f, args, blk) => {
             expr_call(fld.fold_expr(f),
                       fld.map_exprs(|x| fld.fold_expr(x), args),
                       blk)
           }
-          expr_binary(binop, lhs, rhs) {
+          expr_binary(binop, lhs, rhs) => {
             expr_binary(binop, fld.fold_expr(lhs), fld.fold_expr(rhs))
           }
-          expr_unary(binop, ohs) { expr_unary(binop, fld.fold_expr(ohs)) }
-          expr_loop_body(f) { expr_loop_body(fld.fold_expr(f)) }
-          expr_do_body(f) { expr_do_body(fld.fold_expr(f)) }
-          expr_lit(_) { copy e }
-          expr_cast(expr, ty) { expr_cast(fld.fold_expr(expr), ty) }
-          expr_addr_of(m, ohs) { expr_addr_of(m, fld.fold_expr(ohs)) }
-          expr_if(cond, tr, fl) {
+          expr_unary(binop, ohs) => expr_unary(binop, fld.fold_expr(ohs)),
+          expr_loop_body(f) => expr_loop_body(fld.fold_expr(f)),
+          expr_do_body(f) => expr_do_body(fld.fold_expr(f)),
+          expr_lit(_) => copy e,
+          expr_cast(expr, ty) => expr_cast(fld.fold_expr(expr), ty),
+          expr_addr_of(m, ohs) => expr_addr_of(m, fld.fold_expr(ohs)),
+          expr_if(cond, tr, fl) => {
             expr_if(fld.fold_expr(cond), fld.fold_block(tr),
                     option::map(fl, |x| fld.fold_expr(x)))
           }
-          expr_while(cond, body) {
+          expr_while(cond, body) => {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
           }
-          expr_loop(body) {
+          expr_loop(body) => {
               expr_loop(fld.fold_block(body))
           }
-          expr_alt(expr, arms, mode) {
+          expr_alt(expr, arms, mode) => {
             expr_alt(fld.fold_expr(expr),
                      vec::map(arms, |x| fld.fold_arm(x)), mode)
           }
-          expr_fn(proto, decl, body, captures) {
+          expr_fn(proto, decl, body, captures) => {
             expr_fn(proto, fold_fn_decl(decl, fld),
                     fld.fold_block(body),
                     @((*captures).map(|cap_item| {
                         @({id: fld.new_id((*cap_item).id)
                            with *cap_item})})))
           }
-          expr_fn_block(decl, body, captures) {
+          expr_fn_block(decl, body, captures) => {
             expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block(body),
                           @((*captures).map(|cap_item| {
                               @({id: fld.new_id((*cap_item).id)
                                  with *cap_item})})))
           }
-          expr_block(blk) { expr_block(fld.fold_block(blk)) }
-          expr_move(el, er) {
+          expr_block(blk) => expr_block(fld.fold_block(blk)),
+          expr_move(el, er) => {
             expr_move(fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_copy(e) { expr_copy(fld.fold_expr(e)) }
-          expr_unary_move(e) { expr_unary_move(fld.fold_expr(e)) }
-          expr_assign(el, er) {
+          expr_copy(e) => expr_copy(fld.fold_expr(e)),
+          expr_unary_move(e) => expr_unary_move(fld.fold_expr(e)),
+          expr_assign(el, er) => {
             expr_assign(fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_swap(el, er) {
+          expr_swap(el, er) => {
             expr_swap(fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_assign_op(op, el, er) {
+          expr_assign_op(op, el, er) => {
             expr_assign_op(op, fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_field(el, id, tys) {
+          expr_field(el, id, tys) => {
             expr_field(fld.fold_expr(el), fld.fold_ident(id),
                        vec::map(tys, |x| fld.fold_ty(x)))
           }
-          expr_index(el, er) {
+          expr_index(el, er) => {
             expr_index(fld.fold_expr(el), fld.fold_expr(er))
           }
-          expr_path(pth) { expr_path(fld.fold_path(pth)) }
-          expr_fail(e) { expr_fail(option::map(e, |x| fld.fold_expr(x))) }
-          expr_break | expr_again { copy e }
-          expr_ret(e) { expr_ret(option::map(e, |x| fld.fold_expr(x))) }
-          expr_log(i, lv, e) { expr_log(i, fld.fold_expr(lv),
-                                        fld.fold_expr(e)) }
-          expr_assert(e) { expr_assert(fld.fold_expr(e)) }
-          expr_mac(mac) { expr_mac(fold_mac(mac)) }
-          expr_struct(path, fields) {
+          expr_path(pth) => expr_path(fld.fold_path(pth)),
+          expr_fail(e) => expr_fail(option::map(e, |x| fld.fold_expr(x))),
+          expr_break | expr_again => copy e,
+          expr_ret(e) => expr_ret(option::map(e, |x| fld.fold_expr(x))),
+          expr_log(i, lv, e) => expr_log(i, fld.fold_expr(lv),
+                                         fld.fold_expr(e)),
+          expr_assert(e) => expr_assert(fld.fold_expr(e)),
+          expr_mac(mac) => expr_mac(fold_mac(mac)),
+          expr_struct(path, fields) => {
             expr_struct(fld.fold_path(path), vec::map(fields, fold_field))
           }
         }
@@ -497,18 +495,18 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
          span: fld.new_span(f.span)}
     }
     alt t {
-      ty_nil | ty_bot | ty_infer {copy t}
-      ty_box(mt) {ty_box(fold_mt(mt, fld))}
-      ty_uniq(mt) {ty_uniq(fold_mt(mt, fld))}
-      ty_vec(mt) {ty_vec(fold_mt(mt, fld))}
-      ty_ptr(mt) {ty_ptr(fold_mt(mt, fld))}
-      ty_rptr(region, mt) {ty_rptr(region, fold_mt(mt, fld))}
-      ty_rec(fields) {ty_rec(vec::map(fields, |f| fold_field(f, fld)))}
-      ty_fn(proto, decl) {ty_fn(proto, fold_fn_decl(decl, fld))}
-      ty_tup(tys) {ty_tup(vec::map(tys, |ty| fld.fold_ty(ty)))}
-      ty_path(path, id) {ty_path(fld.fold_path(path), fld.new_id(id))}
-      ty_fixed_length(t, vs) {ty_fixed_length(fld.fold_ty(t), vs)}
-      ty_mac(mac) {ty_mac(fold_mac(mac))}
+      ty_nil | ty_bot | ty_infer => copy t,
+      ty_box(mt) => ty_box(fold_mt(mt, fld)),
+      ty_uniq(mt) => ty_uniq(fold_mt(mt, fld)),
+      ty_vec(mt) => ty_vec(fold_mt(mt, fld)),
+      ty_ptr(mt) => ty_ptr(fold_mt(mt, fld)),
+      ty_rptr(region, mt) => ty_rptr(region, fold_mt(mt, fld)),
+      ty_rec(fields) => ty_rec(vec::map(fields, |f| fold_field(f, fld))),
+      ty_fn(proto, decl) => ty_fn(proto, fold_fn_decl(decl, fld)),
+      ty_tup(tys) => ty_tup(vec::map(tys, |ty| fld.fold_ty(ty))),
+      ty_path(path, id) => ty_path(fld.fold_path(path), fld.new_id(id)),
+      ty_fixed_length(t, vs) => ty_fixed_length(fld.fold_ty(t), vs),
+      ty_mac(mac) => ty_mac(fold_mac(mac))
     }
 }
 
@@ -534,8 +532,8 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     let attrs = vec::map(v.attrs, fold_attribute);
 
     let de = alt v.disr_expr {
-      some(e) {some(fld.fold_expr(e))}
-      none {none}
+      some(e) => some(fld.fold_expr(e)),
+      none => none
     };
     return {name: /* FIXME (#2543) */ copy v.name,
          attrs: attrs,
@@ -561,8 +559,8 @@ fn noop_fold_local(l: local_, fld: ast_fold) -> local_ {
          pat: fld.fold_pat(l.pat),
          init:
              alt l.init {
-               option::none::<initializer> { l.init }
-               option::some::<initializer>(init) {
+               option::none::<initializer> => l.init,
+               option::some::<initializer>(init) => {
                  option::some::<initializer>({op: init.op,
                                               expr: fld.fold_expr(init.expr)})
                }
@@ -636,11 +634,11 @@ impl of ast_fold for ast_fold_precursor {
     }
     fn fold_class_item(&&ci: @class_member) -> @class_member {
         @{node: alt ci.node {
-           instance_var(nm, t, mt, id, p) {
+           instance_var(nm, t, mt, id, p) => {
                instance_var(/* FIXME (#2543) */ copy nm,
                             (self as ast_fold).fold_ty(t), mt, id, p)
            }
-           class_method(m) {
+           class_method(m) => {
                class_method(self.fold_method(m, self as ast_fold))
            }
           }, span: self.new_span(ci.span)}

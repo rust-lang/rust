@@ -158,8 +158,8 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 
     fn is_gray(c: color) -> bool {
         alt c {
-          gray(_) { true }
-          _ { false }
+          gray(_) => { true }
+          _ => { false }
         }
     }
 
@@ -171,7 +171,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         colors = do colors.mapi() |i, c| {
             let c : color = c;
             alt c {
-              white {
+              white => {
                 let i = i as node_id;
                 
                 let neighbors = graph[i];
@@ -188,8 +188,8 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 
                 color
               }
-              gray(parent) { black(parent) }
-              black(parent) { black(parent) }
+              gray(parent) => { black(parent) }
+              black(parent) => { black(parent) }
             }
         }
     }
@@ -197,9 +197,9 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     // Convert the results.
     do vec::map(colors) |c| {
         alt c {
-          white { -1i64 }
-          black(parent) { parent }
-          _ { fail ~"Found remaining gray nodes in BFS" }
+          white => { -1i64 }
+          black(parent) => { parent }
+          _ => { fail ~"Found remaining gray nodes in BFS" }
         }
     }
 }
@@ -228,8 +228,8 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
     #[inline(always)]
     fn is_gray(c: color) -> bool {
         alt c {
-          gray(_) { true }
-          _ { false }
+          gray(_) => { true }
+          _ => { false }
         }
     }
 
@@ -250,7 +250,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
                 let colors = arc::get(&colors);
                 let graph = arc::get(&graph);
                 alt c {
-                  white {
+                  white => {
                     let i = i as node_id;
                     
                     let neighbors = graph[i];
@@ -266,8 +266,8 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
                     };
                     color
                   }
-                  gray(parent) { black(parent) }
-                  black(parent) { black(parent) }
+                  gray(parent) => { black(parent) }
+                  black(parent) => { black(parent) }
                 }
             }
         };
@@ -277,9 +277,9 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
     // Convert the results.
     do par::map(colors) |c| {
         alt c {
-          white { -1i64 }
-          black(parent) { parent }
-          _ { fail ~"Found remaining gray nodes in BFS" }
+          white => { -1i64 }
+          black(parent) => { parent }
+          _ => { fail ~"Found remaining gray nodes in BFS" }
         }
     }
 }

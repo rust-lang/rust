@@ -110,23 +110,23 @@ fn bank_client(+bank: bank::client::login) {
 
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = alt try_recv(bank) {
-      some(ok(connected)) {
+      some(ok(connected)) => {
         move_it!{connected}
       }
-      some(invalid(_)) { fail ~"login unsuccessful" }
-      none { fail ~"bank closed the connection" }
+      some(invalid(_)) => { fail ~"login unsuccessful" }
+      none => { fail ~"bank closed the connection" }
     };
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
     alt try_recv(bank) {
-      some(money(m, _)) {
+      some(money(m, _)) => {
         io::println(~"Yay! I got money!");
       }
-      some(insufficient_funds(_)) {
+      some(insufficient_funds(_)) => {
         fail ~"someone stole my money"
       }
-      none {
+      none => {
         fail ~"bank closed the connection"
       }
     }

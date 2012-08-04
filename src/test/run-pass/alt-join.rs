@@ -9,7 +9,13 @@ fn foo<T>(y: option<T>) {
        entire if expression */
 
     if true {
-    } else { alt y { none::<T> { x = 17; } _ { x = 42; } } rs += ~[x]; }
+    } else {
+        alt y {
+          none::<T> => x = 17,
+          _ => x = 42
+        }
+        rs += ~[x];
+    }
     return;
 }
 

@@ -3,25 +3,25 @@ fn impure(_i: int) {}
 // check that unchecked alone does not override borrowck:
 fn foo(v: &const option<int>) {
     alt *v {
-      some(i) {
+      some(i) => {
         //~^ ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
         unchecked {
             impure(i); //~ NOTE impure due to access to impure function
         }
       }
-      none {
+      none => {
       }
     }
 }
 
 fn bar(v: &const option<int>) {
     alt *v {
-      some(i) {
+      some(i) => {
         unsafe {
             impure(i);
         }
       }
-      none {
+      none => {
       }
     }
 }

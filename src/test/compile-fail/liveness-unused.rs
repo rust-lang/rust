@@ -28,9 +28,9 @@ fn f3b() {
 
 fn f4() {
     alt some(3) {
-      some(i) {
+      some(i) => {
       }
-      none {}
+      none => {}
     }
 }
 

@@ -116,14 +116,10 @@ mod linear {
 
             let _ = for self.bucket_sequence(hash) |i| {
                 alt buckets[i] {
-                  some(bkt) {
-                    if bkt.hash == hash && self.eqfn(k, &bkt.key) {
-                        return found_entry(i);
-                    }
+                  some(bkt) => if bkt.hash == hash && self.eqfn(k, &bkt.key) {
+                    return found_entry(i);
                   }
-                  none => {
-                    return found_hole(i);
-                  }
+                  none => return found_hole(i)
                 }
             };
             return table_full;
@@ -162,7 +158,7 @@ mod linear {
             alt self.bucket_for_key_with_hash(self.buckets, hash,
                                               unsafe{borrow(k)}) {
               table_full => {fail ~"Internal logic error";}
-              found_hole(idx) {
+              found_hole(idx) => {
                 debug!{"insert fresh (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash};
                 self.buckets[idx] = some({hash: hash, key: k, value: v});

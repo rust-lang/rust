@@ -22,10 +22,10 @@ fn mkdtemp(prefix: ~str, suffix: ~str) -> option<~str> {
 fn test_mkdtemp() {
     let r = mkdtemp(~"./", ~"foobar");
     alt r {
-        some(p) {
+        some(p) => {
             os::remove_dir(p);
             assert(str::ends_with(p, ~"foobar"));
         }
-        _ { assert(false); }
+        _ => assert(false)
     }
 }

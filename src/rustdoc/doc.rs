@@ -142,8 +142,8 @@ impl util for doc {
     fn cratedoc() -> cratedoc {
         option::get(vec::foldl(none, self.pages, |_m, page| {
             alt page {
-              doc::cratepage(doc) { some(doc) }
-              _ { none }
+              doc::cratepage(doc) => some(doc),
+              _ => none
             }
         }))
     }
@@ -159,8 +159,8 @@ impl util for moddoc {
     fn mods() -> ~[moddoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              modtag(moddoc) { some(moddoc) }
-              _ { none }
+              modtag(moddoc) => some(moddoc),
+              _ => none
             }
         }
     }
@@ -168,8 +168,8 @@ impl util for moddoc {
     fn nmods() -> ~[nmoddoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              nmodtag(nmoddoc) { some(nmoddoc) }
-              _ { none }
+              nmodtag(nmoddoc) => some(nmoddoc),
+              _ => none
             }
         }
     }
@@ -177,8 +177,8 @@ impl util for moddoc {
     fn fns() -> ~[fndoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              fntag(fndoc) { some(fndoc) }
-              _ { none }
+              fntag(fndoc) => some(fndoc),
+              _ => none
             }
         }
     }
@@ -186,8 +186,8 @@ impl util for moddoc {
     fn consts() -> ~[constdoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              consttag(constdoc) { some(constdoc) }
-              _ { none }
+              consttag(constdoc) => some(constdoc),
+              _ => none
             }
         }
     }
@@ -195,8 +195,8 @@ impl util for moddoc {
     fn enums() -> ~[enumdoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              enumtag(enumdoc) { some(enumdoc) }
-              _ { none }
+              enumtag(enumdoc) => some(enumdoc),
+              _ => none
             }
         }
     }
@@ -204,8 +204,8 @@ impl util for moddoc {
     fn traits() -> ~[traitdoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              traittag(traitdoc) { some(traitdoc) }
-              _ { none }
+              traittag(traitdoc) => some(traitdoc),
+              _ => none
             }
         }
     }
@@ -213,8 +213,8 @@ impl util for moddoc {
     fn impls() -> ~[impldoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              impltag(impldoc) { some(impldoc) }
-              _ { none }
+              impltag(impldoc) => some(impldoc),
+              _ => none
             }
         }
     }
@@ -222,8 +222,8 @@ impl util for moddoc {
     fn types() -> ~[tydoc] {
         do vec::filter_map(self.items) |itemtag| {
             alt itemtag {
-              tytag(tydoc) { some(tydoc) }
-              _ { none }
+              tytag(tydoc) => some(tydoc),
+              _ => none
             }
         }
     }
@@ -245,8 +245,8 @@ impl util of page_utils for ~[page] {
     fn mods() -> ~[moddoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(modtag(moddoc)) { some(moddoc) }
-              _ { none }
+              itempage(modtag(moddoc)) => some(moddoc),
+              _ => none
             }
         }
     }
@@ -254,8 +254,8 @@ impl util of page_utils for ~[page] {
     fn nmods() -> ~[nmoddoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(nmodtag(nmoddoc)) { some(nmoddoc) }
-              _ { none }
+              itempage(nmodtag(nmoddoc)) => some(nmoddoc),
+              _ => none
             }
         }
     }
@@ -263,8 +263,8 @@ impl util of page_utils for ~[page] {
     fn fns() -> ~[fndoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(fntag(fndoc)) { some(fndoc) }
-              _ { none }
+              itempage(fntag(fndoc)) => some(fndoc),
+              _ => none
             }
         }
     }
@@ -272,8 +272,8 @@ impl util of page_utils for ~[page] {
     fn consts() -> ~[constdoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(consttag(constdoc)) { some(constdoc) }
-              _ { none }
+              itempage(consttag(constdoc)) => some(constdoc),
+              _ => none
             }
         }
     }
@@ -281,8 +281,8 @@ impl util of page_utils for ~[page] {
     fn enums() -> ~[enumdoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(enumtag(enumdoc)) { some(enumdoc) }
-              _ { none }
+              itempage(enumtag(enumdoc)) => some(enumdoc),
+              _ => none
             }
         }
     }
@@ -290,8 +290,8 @@ impl util of page_utils for ~[page] {
     fn traits() -> ~[traitdoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(traittag(traitdoc)) { some(traitdoc) }
-              _ { none }
+              itempage(traittag(traitdoc)) => some(traitdoc),
+              _ => none
             }
         }
     }
@@ -299,8 +299,8 @@ impl util of page_utils for ~[page] {
     fn impls() -> ~[impldoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(impltag(impldoc)) { some(impldoc) }
-              _ { none }
+              itempage(impltag(impldoc)) => some(impldoc),
+              _ => none
             }
         }
     }
@@ -308,8 +308,8 @@ impl util of page_utils for ~[page] {
     fn types() -> ~[tydoc] {
         do vec::filter_map(self) |page| {
             alt page {
-              itempage(tytag(tydoc)) { some(tydoc) }
-              _ { none }
+              itempage(tytag(tydoc)) => some(tydoc),
+              _ => none
             }
         }
     }
@@ -322,14 +322,14 @@ trait item {
 impl of item for itemtag {
     pure fn item() -> itemdoc {
         alt self {
-          doc::modtag(doc) { doc.item }
-          doc::nmodtag(doc) { doc.item }
-          doc::fntag(doc) { doc.item }
-          doc::consttag(doc) { doc.item }
-          doc::enumtag(doc) { doc.item }
-          doc::traittag(doc) { doc.item }
-          doc::impltag(doc) { doc.item }
-          doc::tytag(doc) { doc.item }
+          doc::modtag(doc) => doc.item,
+          doc::nmodtag(doc) => doc.item,
+          doc::fntag(doc) => doc.item,
+          doc::consttag(doc) => doc.item,
+          doc::enumtag(doc) => doc.item,
+          doc::traittag(doc) => doc.item,
+          doc::impltag(doc) => doc.item,
+          doc::tytag(doc) => doc.item
         }
     }
 }

@@ -49,7 +49,10 @@ fn count_insn(cx: block, category: ~str) {
         s += ~"/";
         s += category;
 
-        let n = alt h.find(s) { some(n) { n } _ { 0u } };
+        let n = alt h.find(s) {
+          some(n) => n,
+          _ => 0u
+        };
         h.insert(s, n+1u);
     }
 }

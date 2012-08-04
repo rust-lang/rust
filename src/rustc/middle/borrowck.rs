@@ -457,8 +457,8 @@ impl methods of get_type_for_node for ty::ctxt {
 impl error_methods for borrowck_ctxt {
     fn report_if_err(bres: bckres<()>) {
         alt bres {
-          ok(()) { }
-          err(e) { self.report(e); }
+          ok(()) => (),
+          err(e) => self.report(e)
         }
     }
 
@@ -479,13 +479,13 @@ impl error_methods for borrowck_ctxt {
 
     fn add_to_mutbl_map(cmt: cmt) {
         alt cmt.cat {
-          cat_local(id) | cat_arg(id) {
+          cat_local(id) | cat_arg(id) => {
             self.mutbl_map.insert(id, ());
           }
-          cat_stack_upvar(cmt) {
+          cat_stack_upvar(cmt) => {
             self.add_to_mutbl_map(cmt);
           }
-          _ {}
+          _ => ()
         }
     }
 }
@@ -493,65 +493,65 @@ impl error_methods for borrowck_ctxt {
 impl to_str_methods for borrowck_ctxt {
     fn cat_to_repr(cat: categorization) -> ~str {
         alt cat {
-          cat_special(sk_method) { ~"method" }
-          cat_special(sk_static_item) { ~"static_item" }
-          cat_special(sk_self) { ~"self" }
-          cat_special(sk_heap_upvar) { ~"heap-upvar" }
-          cat_stack_upvar(_) { ~"stack-upvar" }
-          cat_rvalue { ~"rvalue" }
-          cat_local(node_id) { fmt!{"local(%d)", node_id} }
-          cat_binding(node_id) { fmt!{"binding(%d)", node_id} }
-          cat_arg(node_id) { fmt!{"arg(%d)", node_id} }
-          cat_deref(cmt, derefs, ptr) {
+          cat_special(sk_method) => ~"method",
+          cat_special(sk_static_item) => ~"static_item",
+          cat_special(sk_self) => ~"self",
+          cat_special(sk_heap_upvar) => ~"heap-upvar",
+          cat_stack_upvar(_) => ~"stack-upvar",
+          cat_rvalue => ~"rvalue",
+          cat_local(node_id) => fmt!{"local(%d)", node_id},
+          cat_binding(node_id) => fmt!{"binding(%d)", node_id},
+          cat_arg(node_id) => fmt!{"arg(%d)", node_id},
+          cat_deref(cmt, derefs, ptr) => {
             fmt!{"%s->(%s, %u)", self.cat_to_repr(cmt.cat),
                  self.ptr_sigil(ptr), derefs}
           }
-          cat_comp(cmt, comp) {
+          cat_comp(cmt, comp) => {
             fmt!{"%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)}
           }
-          cat_discr(cmt, _) { self.cat_to_repr(cmt.cat) }
+          cat_discr(cmt, _) => self.cat_to_repr(cmt.cat)
         }
     }
 
     fn mut_to_str(mutbl: ast::mutability) -> ~str {
         alt mutbl {
-          m_mutbl { ~"mutable" }
-          m_const { ~"const" }
-          m_imm { ~"immutable" }
+          m_mutbl => ~"mutable",
+          m_const => ~"const",
+          m_imm => ~"immutable"
         }
     }
 
     fn ptr_sigil(ptr: ptr_kind) -> ~str {
         alt ptr {
-          uniq_ptr { ~"~" }
-          gc_ptr { ~"@" }
-          region_ptr(_) { ~"&" }
-          unsafe_ptr { ~"*" }
+          uniq_ptr => ~"~",
+          gc_ptr => ~"@",
+          region_ptr(_) => ~"&",
+          unsafe_ptr => ~"*"
         }
     }
 
     fn comp_to_repr(comp: comp_kind) -> ~str {
         alt comp {
-          comp_field(fld, _) { *fld }
-          comp_index(*) { ~"[]" }
-          comp_tuple { ~"()" }
-          comp_variant(_) { ~"<enum>" }
+          comp_field(fld, _) => *fld,
+          comp_index(*) => ~"[]",
+          comp_tuple => ~"()",
+          comp_variant(_) => ~"<enum>"
         }
     }
 
     fn lp_to_str(lp: @loan_path) -> ~str {
         alt *lp {
-          lp_local(node_id) {
+          lp_local(node_id) => {
             fmt!{"local(%d)", node_id}
           }
-          lp_arg(node_id) {
+          lp_arg(node_id) => {
             fmt!{"arg(%d)", node_id}
           }
-          lp_deref(lp, ptr) {
+          lp_deref(lp, ptr) => {
             fmt!{"%s->(%s)", self.lp_to_str(lp),
                  self.ptr_sigil(ptr)}
           }
-          lp_comp(lp, comp) {
+          lp_comp(lp, comp) => {
             fmt!{"%s.%s", self.lp_to_str(lp),
                  self.comp_to_repr(comp)}
           }
@@ -570,38 +570,32 @@ impl to_str_methods for borrowck_ctxt {
     fn cmt_to_str(cmt: cmt) -> ~str {
         let mut_str = self.mut_to_str(cmt.mutbl);
         alt cmt.cat {
-          cat_special(sk_method) { ~"method" }
-          cat_special(sk_static_item) { ~"static item" }
-          cat_special(sk_self) { ~"self reference" }
-          cat_special(sk_heap_upvar) {
+          cat_special(sk_method) => ~"method",
+          cat_special(sk_static_item) => ~"static item",
+          cat_special(sk_self) => ~"self reference",
+          cat_special(sk_heap_upvar) => {
               ~"captured outer variable in a heap closure"
           }
-          cat_rvalue { ~"non-lvalue" }
-          cat_local(_) { mut_str + ~" local variable" }
-          cat_binding(_) { ~"pattern binding" }
-          cat_arg(_) { ~"argument" }
-          cat_deref(_, _, pk) { fmt!{"dereference of %s %s pointer",
-                                     mut_str, self.ptr_sigil(pk)} }
-          cat_stack_upvar(_) {
+          cat_rvalue => ~"non-lvalue",
+          cat_local(_) => mut_str + ~" local variable",
+          cat_binding(_) => ~"pattern binding",
+          cat_arg(_) => ~"argument",
+          cat_deref(_, _, pk) => fmt!{"dereference of %s %s pointer",
+                                      mut_str, self.ptr_sigil(pk)},
+          cat_stack_upvar(_) => {
             ~"captured outer " + mut_str + ~" variable in a stack closure"
           }
-          cat_comp(_, comp_field(*)) { mut_str + ~" field" }
-          cat_comp(_, comp_tuple) { ~"tuple content" }
-          cat_comp(_, comp_variant(_)) { ~"enum content" }
-          cat_comp(_, comp_index(t, _)) {
+          cat_comp(_, comp_field(*)) => mut_str + ~" field",
+          cat_comp(_, comp_tuple) => ~"tuple content",
+          cat_comp(_, comp_variant(_)) => ~"enum content",
+          cat_comp(_, comp_index(t, _)) => {
             alt ty::get(t).struct {
-              ty::ty_evec(*) {
-                mut_str + ~" vec content"
-              }
-
-              ty::ty_estr(*) {
-                mut_str + ~" str content"
-              }
-
-              _ { mut_str + ~" indexed content" }
+              ty::ty_evec(*) => mut_str + ~" vec content",
+              ty::ty_estr(*) => mut_str + ~" str content",
+              _ => mut_str + ~" indexed content"
             }
           }
-          cat_discr(cmt, _) {
+          cat_discr(cmt, _) => {
             self.cmt_to_str(cmt)
           }
         }
@@ -609,29 +603,29 @@ impl to_str_methods for borrowck_ctxt {
 
     fn bckerr_code_to_str(code: bckerr_code) -> ~str {
         alt code {
-          err_mutbl(req, act) {
+          err_mutbl(req, act) => {
             fmt!{"creating %s alias to aliasable, %s memory",
                  self.mut_to_str(req), self.mut_to_str(act)}
           }
-          err_mut_uniq {
+          err_mut_uniq => {
             ~"unique value in aliasable, mutable location"
           }
-          err_mut_variant {
+          err_mut_variant => {
             ~"enum variant in aliasable, mutable location"
           }
-          err_root_not_permitted {
+          err_root_not_permitted => {
             // note: I don't expect users to ever see this error
             // message, reasons are discussed in attempt_root() in
             // preserve.rs.
             ~"rooting is not permitted"
           }
-          err_out_of_root_scope(super_scope, sub_scope) {
+          err_out_of_root_scope(super_scope, sub_scope) => {
             fmt!{"managed value would have to be rooted for lifetime %s, \
                   but can only be rooted for lifetime %s",
                  self.region_to_str(sub_scope),
                  self.region_to_str(super_scope)}
           }
-          err_out_of_scope(super_scope, sub_scope) {
+          err_out_of_scope(super_scope, sub_scope) => {
             fmt!{"borrowed pointer has lifetime %s, \
                   but the borrowed value only has lifetime %s",
                  self.region_to_str(sub_scope),
@@ -651,7 +645,7 @@ impl to_str_methods for borrowck_ctxt {
 // mutable structure.
 fn inherent_mutability(ck: comp_kind) -> mutability {
     alt ck {
-      comp_tuple | comp_variant(_)        {m_imm}
-      comp_field(_, m) | comp_index(_, m) {m}
+      comp_tuple | comp_variant(_)        => m_imm,
+      comp_field(_, m) | comp_index(_, m) => m
     }
 }

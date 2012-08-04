@@ -22,11 +22,11 @@ fn start(+token: int) {
 fn roundtrip(id: int, p: comm::port<int>, ch: comm::chan<int>) {
     while (true) {
         alt comm::recv(p) {
-          1 {
+          1 => {
             io::println(fmt!{"%d\n", id});
             return;
           }
-          token {
+          token => {
             debug!{"%d %d", id, token};
             comm::send(ch, token - 1);
             if token <= n_threads {

@@ -46,8 +46,8 @@ mod map_reduce {
                 val: ~str) {
             let mut c;
             alt im.find(key) {
-              some(_c) { c = _c }
-              none {
+              some(_c) => { c = _c }
+              none => {
                 let p = port();
                 error!{"sending find_reducer"};
                 send(ctrl, find_reducer(str::bytes(key), chan(p)));
@@ -79,12 +79,12 @@ mod map_reduce {
 
         while num_mappers > 0 {
             alt recv(ctrl) {
-              mapper_done { num_mappers -= 1; }
-              find_reducer(k, cc) {
+              mapper_done => { num_mappers -= 1; }
+              find_reducer(k, cc) => {
                 let mut c;
                 alt reducers.find(str::from_bytes(k)) {
-                  some(_c) { c = _c; }
-                  none { c = 0; }
+                  some(_c) => { c = _c; }
+                  none => { c = 0; }
                 }
                 send(cc, c);
               }

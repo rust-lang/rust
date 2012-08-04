@@ -179,18 +179,16 @@ mod global_env {
             do priv::weaken_task |weak_po| {
                 loop {
                     alt comm::select2(msg_po, weak_po) {
-                      either::left(msg_getenv(n, resp_ch)) {
+                      either::left(msg_getenv(n, resp_ch)) => {
                         comm::send(resp_ch, impl::getenv(n))
                       }
-                      either::left(msg_setenv(n, v, resp_ch)) {
+                      either::left(msg_setenv(n, v, resp_ch)) => {
                         comm::send(resp_ch, impl::setenv(n, v))
                       }
-                      either::left(msg_env(resp_ch)) {
+                      either::left(msg_env(resp_ch)) => {
                         comm::send(resp_ch, impl::env())
                       }
-                      either::right(_) {
-                        break;
-                      }
+                      either::right(_) => break
                     }
                 }
             }
@@ -286,8 +284,8 @@ fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::funcs::posix01::unistd::*;
     alt level {
       io::fsync::fsync
-      | io::fsync::fullfsync { return fsync(fd); }
-      io::fsync::fdatasync { return fdatasync(fd); }
+      | io::fsync::fullfsync => return fsync(fd),
+      io::fsync::fdatasync => return fdatasync(fd)
     }
 }
 
@@ -297,8 +295,8 @@ fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::funcs::posix88::fcntl::*;
     import libc::funcs::posix01::unistd::*;
     alt level {
-      io::fsync::fsync { return fsync(fd); }
-      _ {
+      io::fsync::fsync => return fsync(fd),
+      _ => {
         // According to man fnctl, the ok retval is only specified to be !=-1
         if (fcntl(F_FULLFSYNC as c_int, fd) == -1 as c_int)
             { return -1 as c_int; }
@@ -443,16 +441,12 @@ fn self_exe_path() -> option<path> {
  */
 fn homedir() -> option<path> {
     return alt getenv(~"HOME") {
-        some(p) {
-            if !str::is_empty(p) {
-                some(p)
-            } else {
-                secondary()
-            }
+        some(p) => if !str::is_empty(p) {
+          some(p)
+        } else {
+          secondary()
         }
-        none {
-            secondary()
-        }
+        none => secondary()
     };
 
     #[cfg(unix)]

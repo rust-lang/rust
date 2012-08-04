@@ -250,28 +250,24 @@ fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
     -> int_ty_set {
 
     alt get(t).struct {
-      ty_int(int_ty) {
-        alt int_ty {
-          ast::ty_i8   { int_ty_set(INT_TY_SET_i8)  }
-          ast::ty_i16  { int_ty_set(INT_TY_SET_i16) }
-          ast::ty_i32  { int_ty_set(INT_TY_SET_i32) }
-          ast::ty_i64  { int_ty_set(INT_TY_SET_i64) }
-          ast::ty_i    { int_ty_set(INT_TY_SET_i)   }
-          ast::ty_char { tcx.sess.bug(
-              ~"char type passed to convert_integral_ty_to_int_ty_set()"); }
-        }
+      ty_int(int_ty) => alt int_ty {
+        ast::ty_i8   => int_ty_set(INT_TY_SET_i8),
+        ast::ty_i16  => int_ty_set(INT_TY_SET_i16),
+        ast::ty_i32  => int_ty_set(INT_TY_SET_i32),
+        ast::ty_i64  => int_ty_set(INT_TY_SET_i64),
+        ast::ty_i    => int_ty_set(INT_TY_SET_i),
+        ast::ty_char => tcx.sess.bug(
+            ~"char type passed to convert_integral_ty_to_int_ty_set()")
       }
-      ty_uint(uint_ty) {
-        alt uint_ty {
-          ast::ty_u8  { int_ty_set(INT_TY_SET_u8)  }
-          ast::ty_u16 { int_ty_set(INT_TY_SET_u16) }
-          ast::ty_u32 { int_ty_set(INT_TY_SET_u32) }
-          ast::ty_u64 { int_ty_set(INT_TY_SET_u64) }
-          ast::ty_u   { int_ty_set(INT_TY_SET_u)   }
-        }
+      ty_uint(uint_ty) => alt uint_ty {
+        ast::ty_u8  => int_ty_set(INT_TY_SET_u8),
+        ast::ty_u16 => int_ty_set(INT_TY_SET_u16),
+        ast::ty_u32 => int_ty_set(INT_TY_SET_u32),
+        ast::ty_u64 => int_ty_set(INT_TY_SET_u64),
+        ast::ty_u   => int_ty_set(INT_TY_SET_u)
       }
-      _ { tcx.sess.bug(~"non-integral type passed to \
-                        convert_integral_ty_to_int_ty_set()"); }
+      _ => tcx.sess.bug(~"non-integral type passed to \
+                          convert_integral_ty_to_int_ty_set()")
     }
 }
 
@@ -340,11 +336,11 @@ enum fixup_err {
 
 fn fixup_err_to_str(f: fixup_err) -> ~str {
     alt f {
-      unresolved_int_ty(_) { ~"unconstrained integral type" }
-      unresolved_ty(_) { ~"unconstrained type" }
-      cyclic_ty(_) { ~"cyclic type of infinite size" }
-      unresolved_region(_) { ~"unconstrained region" }
-      region_var_bound_by_region_var(r1, r2) {
+      unresolved_int_ty(_) => ~"unconstrained integral type",
+      unresolved_ty(_) => ~"unconstrained type",
+      cyclic_ty(_) => ~"cyclic type of infinite size",
+      unresolved_region(_) => ~"unconstrained region",
+      region_var_bound_by_region_var(r1, r2) => {
         fmt!{"region var %? bound by another region var %?; this is \
               a bug in rustc", r1, r2}
       }
@@ -460,8 +456,8 @@ trait cres_helpers<T> {
 impl methods<T:copy> of cres_helpers<T> for cres<T> {
     fn to_ures() -> ures {
         alt self {
-          ok(_v) { ok(()) }
-          err(e) { err(e) }
+          ok(_v) => ok(()),
+          err(e) => err(e)
         }
     }
 
@@ -501,8 +497,8 @@ impl of to_str for ty::region {
 impl<V:copy to_str> of to_str for bound<V> {
     fn to_str(cx: infer_ctxt) -> ~str {
         alt self {
-          some(v) { v.to_str(cx) }
-          none { ~"none" }
+          some(v) => v.to_str(cx),
+          none => ~"none"
         }
     }
 }
@@ -518,7 +514,7 @@ impl<T:copy to_str> of to_str for bounds<T> {
 impl of to_str for int_ty_set {
     fn to_str(_cx: infer_ctxt) -> ~str {
         alt self {
-          int_ty_set(v) { uint::to_str(v, 10u) }
+          int_ty_set(v) => uint::to_str(v, 10u)
         }
     }
 }
@@ -526,9 +522,9 @@ impl of to_str for int_ty_set {
 impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
     fn to_str(cx: infer_ctxt) -> ~str {
         alt self {
-          redirect(vid) { fmt!{"redirect(%s)", vid.to_str()} }
-          root(pt, rk) { fmt!{"root(%s, %s)", pt.to_str(cx),
-                              uint::to_str(rk, 10u)} }
+          redirect(vid) => fmt!{"redirect(%s)", vid.to_str()},
+          root(pt, rk) => fmt!{"root(%s, %s)", pt.to_str(cx),
+                               uint::to_str(rk, 10u)}
         }
     }
 }
@@ -607,8 +603,8 @@ impl transaction_methods for infer_ctxt {
         debug!{"try(tvbl=%u, rbl=%u)", tvbl, rbl};
         let r <- f();
         alt r {
-          result::ok(_) { debug!{"try--ok"}; }
-          result::err(_) {
+          result::ok(_) => debug!{"try--ok"},
+          result::err(_) => {
             debug!{"try--rollback"};
             rollback_to(self.tvb, tvbl);
             rollback_to(self.rb, rbl);
@@ -686,15 +682,15 @@ impl methods for infer_ctxt {
 
     fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
         alt resolve_type(self, typ, resolve_all) {
-          result::ok(new_type) { return new_type; }
-          result::err(_) { return typ; }
+          result::ok(new_type) => return new_type,
+          result::err(_) => return typ
         }
     }
 
     fn resolve_region_if_possible(oldr: ty::region) -> ty::region {
         alt resolve_region(self, oldr, resolve_all) {
-          result::ok(newr) { return newr; }
-          result::err(_) { return oldr; }
+          result::ok(newr) => return newr,
+          result::err(_) => return oldr
         }
     }
 }
@@ -719,12 +715,12 @@ impl unify_methods for infer_ctxt {
 
         let vid_u = vid.to_uint();
         alt vb.vals.find(vid_u) {
-          none {
+          none => {
             self.tcx.sess.bug(fmt!{"failed lookup of vid `%u`", vid_u});
           }
-          some(var_val) {
+          some(var_val) => {
             alt var_val {
-              redirect(vid) {
+              redirect(vid) => {
                 let nde = self.get(vb, vid);
                 if nde.root != vid {
                     // Path compression
@@ -732,7 +728,7 @@ impl unify_methods for infer_ctxt {
                 }
                 nde
               }
-              root(pt, rk) {
+              root(pt, rk) => {
                 node({root: vid, possible_types: pt, rank: rk})
               }
             }
@@ -749,16 +745,10 @@ impl unify_methods for infer_ctxt {
         let _r = indenter();
 
         alt (a, b) {
-          (none, none) {
-            ok(none)
-          }
-          (some(_), none) {
-            ok(a)
-          }
-          (none, some(_)) {
-            ok(b)
-          }
-          (some(v_a), some(v_b)) {
+          (none, none) => ok(none),
+          (some(_), none) => ok(a),
+          (none, some(_)) => ok(b),
+          (some(v_a), some(v_b)) => {
             do merge_op(v_a, v_b).chain |v| {
                 ok(some(v))
             }
@@ -864,14 +854,14 @@ impl unify_methods for infer_ctxt {
         // If both A's UB and B's LB have already been bound to types,
         // see if we can make those types subtypes.
         alt (a_bounds.ub, b_bounds.lb) {
-          (some(a_ub), some(b_lb)) {
+          (some(a_ub), some(b_lb)) => {
             let r = self.try(|| a_ub.sub(self, b_lb));
             alt r {
-              ok(()) { return result::ok(()); }
-              err(_) { /*fallthrough */ }
+              ok(()) => return result::ok(()),
+              err(_) => { /*fallthrough */ }
             }
           }
-          _ { /*fallthrough*/ }
+          _ => { /*fallthrough*/ }
         }
 
         // Otherwise, we need to merge A and B so as to guarantee that
@@ -1035,10 +1025,10 @@ impl unify_methods for infer_ctxt {
             alt (a, b) {
               (none, none) |
               (some(_), none) |
-              (none, some(_)) {
+              (none, some(_)) => {
                 uok()
               }
-              (some(t_a), some(t_b)) {
+              (some(t_a), some(t_b)) => {
                 t_a.sub(self, t_b)
               }
             }
@@ -1152,13 +1142,13 @@ impl methods for resolve_state {
         let rty = indent(|| self.resolve_type(typ) );
         assert vec::is_empty(self.v_seen);
         alt self.err {
-          none {
+          none => {
             debug!{"Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
                    self.modes};
             return ok(rty);
           }
-          some(e) { return err(e); }
+          some(e) => return err(e)
         }
     }
 
@@ -1166,8 +1156,8 @@ impl methods for resolve_state {
         self.err = none;
         let resolved = indent(|| self.resolve_region(orig) );
         alt self.err {
-          none {ok(resolved)}
-          some(e) {err(e)}
+          none => ok(resolved),
+          some(e) => err(e)
         }
     }
 
@@ -1177,13 +1167,13 @@ impl methods for resolve_state {
             if !ty::type_needs_infer(typ) { return typ; }
 
             alt ty::get(typ).struct {
-              ty::ty_var(vid) {
+              ty::ty_var(vid) => {
                 self.resolve_ty_var(vid)
               }
-              ty::ty_var_integral(vid) {
+              ty::ty_var_integral(vid) => {
                 self.resolve_ty_var_integral(vid)
               }
-              _ {
+              _ => {
                 if !self.should(resolve_rvar) &&
                     !self.should(resolve_nested_tvar) {
                     // shortcircuit for efficiency
@@ -1212,8 +1202,8 @@ impl methods for resolve_state {
     fn resolve_region(orig: ty::region) -> ty::region {
         debug!{"Resolve_region(%s)", orig.to_str(self.infcx)};
         alt orig {
-          ty::re_var(rid) { self.resolve_region_var(rid) }
-          _ { orig }
+          ty::re_var(rid) => self.resolve_region_var(rid),
+          _ => orig
         }
     }
 
@@ -1262,10 +1252,10 @@ impl methods for resolve_state {
             let bounds = nde.possible_types;
 
             let t1 = alt bounds {
-              { ub:_, lb:some(t) } if !type_is_bot(t) { self.resolve_type(t) }
-              { ub:some(t), lb:_ } { self.resolve_type(t) }
-              { ub:_, lb:some(t) } { self.resolve_type(t) }
-              { ub:none, lb:none } {
+              { ub:_, lb:some(t) } if !type_is_bot(t) => self.resolve_type(t),
+              { ub:some(t), lb:_ } => self.resolve_type(t),
+              { ub:_, lb:some(t) } => self.resolve_type(t),
+              { ub:none, lb:none } => {
                 if self.should(force_tvar) {
                     self.err = some(unresolved_ty(vid));
                 }
@@ -1288,8 +1278,8 @@ impl methods for resolve_state {
         // If there's only one type in the set of possible types, then
         // that's the answer.
         alt single_type_contained_in(self.infcx.tcx, pt) {
-          some(t) { t }
-          none {
+          some(t) => t,
+          none => {
             if self.should(force_ivar) {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
@@ -1362,12 +1352,10 @@ impl assignment for infer_ctxt {
 
         fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
             alt fst {
-              some(t) { some(t) }
-              none {
-                alt snd {
-                  some(t) { some(t) }
-                  none { none }
-                }
+              some(t) => some(t),
+              none => alt snd {
+                some(t) => some(t),
+                none => none
               }
             }
         }
@@ -1377,11 +1365,11 @@ impl assignment for infer_ctxt {
         let _r = indenter();
 
         alt (ty::get(a).struct, ty::get(b).struct) {
-          (ty::ty_bot, _) {
+          (ty::ty_bot, _) => {
             uok()
           }
 
-          (ty::ty_var(a_id), ty::ty_var(b_id)) {
+          (ty::ty_var(a_id), ty::ty_var(b_id)) => {
             let nde_a = self.get(self.tvb, a_id);
             let nde_b = self.get(self.tvb, b_id);
             let a_bounds = nde_a.possible_types;
@@ -1392,7 +1380,7 @@ impl assignment for infer_ctxt {
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, b_bnd)
           }
 
-          (ty::ty_var(a_id), _) {
+          (ty::ty_var(a_id), _) => {
             let nde_a = self.get(self.tvb, a_id);
             let a_bounds = nde_a.possible_types;
 
@@ -1400,7 +1388,7 @@ impl assignment for infer_ctxt {
             self.assign_tys_or_sub(anmnt, a, b, a_bnd, some(b))
           }
 
-          (_, ty::ty_var(b_id)) {
+          (_, ty::ty_var(b_id)) => {
             let nde_b = self.get(self.tvb, b_id);
             let b_bounds = nde_b.possible_types;
 
@@ -1408,7 +1396,7 @@ impl assignment for infer_ctxt {
             self.assign_tys_or_sub(anmnt, a, b, some(a), b_bnd)
           }
 
-          (_, _) {
+          (_, _) => {
             self.assign_tys_or_sub(anmnt, a, b, some(a), some(b))
           }
         }
@@ -1426,44 +1414,44 @@ impl assignment for infer_ctxt {
 
         fn is_borrowable(v: ty::vstore) -> bool {
             alt v {
-              ty::vstore_fixed(_) | ty::vstore_uniq | ty::vstore_box { true }
-              ty::vstore_slice(_) { false }
+              ty::vstore_fixed(_) | ty::vstore_uniq | ty::vstore_box => true,
+              ty::vstore_slice(_) => false
             }
         }
 
         alt (a_bnd, b_bnd) {
-          (some(a_bnd), some(b_bnd)) {
+          (some(a_bnd), some(b_bnd)) => {
             alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
-              (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) {
+              (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) => {
                 let nr_b = ty::mk_box(self.tcx, {ty: mt_b.ty,
                                                  mutbl: m_const});
                 self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
-              (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) {
+              (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) => {
                 let nr_b = ty::mk_uniq(self.tcx, {ty: mt_b.ty,
                                                   mutbl: m_const});
                 self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
               (ty::ty_estr(vs_a),
                ty::ty_estr(ty::vstore_slice(r_b)))
-              if is_borrowable(vs_a) {
+              if is_borrowable(vs_a) => {
                 let nr_b = ty::mk_estr(self.tcx, vs_a);
                 self.crosspollinate(anmnt, a, nr_b, m_imm, r_b)
               }
 
               (ty::ty_evec(mt_a, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
-              if is_borrowable(vs_a) {
+              if is_borrowable(vs_a) => {
                 let nr_b = ty::mk_evec(self.tcx, {ty: mt_b.ty,
                                                   mutbl: m_const}, vs_a);
                 self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
-              _ {
+              _ => {
                 self.sub_tys(a, b)
               }
             }
           }
-          _ {
+          _ => {
             self.sub_tys(a, b)
           }
         }
@@ -1582,15 +1570,15 @@ fn super_substs<C:combine>(
                       a: option<ty::region>,
                       b: option<ty::region>) -> cres<option<ty::region>> {
         alt (a, b) {
-          (none, none) {
+          (none, none) => {
             ok(none)
           }
-          (some(a), some(b)) {
+          (some(a), some(b)) => {
             do infcx.eq_regions(a, b).then {
                 ok(some(a))
             }
           }
-          (_, _) {
+          (_, _) => {
             // If these two substitutions are for the same type (and
             // they should be), then the type should either
             // consistently have a region parameter or not have a
@@ -1638,14 +1626,14 @@ fn super_self_tys<C:combine>(
     // *invariant* (otherwise the type system would be unsound).
 
     alt (a, b) {
-      (none, none) {
+      (none, none) => {
         ok(none)
       }
-      (some(a), some(b)) {
+      (some(a), some(b)) => {
         self.infcx().eq_tys(a, b).then(|| ok(some(a)) )
       }
       (none, some(_)) |
-      (some(_), none) {
+      (some(_), none) => {
         // I think it should never happen that we unify two substs and
         // one of them has a self_ty and one doesn't...? I could be
         // wrong about this.
@@ -1690,17 +1678,17 @@ fn super_vstores<C:combine>(
     a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
 
     alt (a, b) {
-      (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) {
+      (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
         do self.contraregions(a_r, b_r).chain |r| {
             ok(ty::vstore_slice(r))
         }
       }
 
-      _ if a == b {
+      _ if a == b => {
         ok(a)
       }
 
-      _ {
+      _ => {
         err(ty::terr_vstores_differ(vk, b, a))
       }
     }
@@ -1749,7 +1737,7 @@ fn super_tys<C:combine>(
       (ty::ty_bot, _) |
       (_, ty::ty_bot) |
       (ty::ty_var(_), _) |
-      (_, ty::ty_var(_)) {
+      (_, ty::ty_var(_)) => {
         tcx.sess.bug(
             fmt!{"%s: bot and var types should have been handled (%s,%s)",
                  self.tag(),
@@ -1758,24 +1746,24 @@ fn super_tys<C:combine>(
       }
 
       // Have to handle these first
-      (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) {
+      (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) => {
         self.infcx().vars_integral(self.infcx().tvib, a_id, b_id)
             .then(|| ok(a) )
       }
       (ty::ty_var_integral(a_id), ty::ty_int(_)) |
-      (ty::ty_var_integral(a_id), ty::ty_uint(_)) {
+      (ty::ty_var_integral(a_id), ty::ty_uint(_)) => {
         self.infcx().vart_integral(self.infcx().tvib, a_id, b)
             .then(|| ok(a) )
       }
       (ty::ty_int(_), ty::ty_var_integral(b_id)) |
-      (ty::ty_uint(_), ty::ty_var_integral(b_id)) {
+      (ty::ty_uint(_), ty::ty_var_integral(b_id)) => {
         self.infcx().tvar_integral(self.infcx().tvib, a, b_id)
             .then(|| ok(a) )
       }
 
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
-      (ty::ty_float(_), _) {
+      (ty::ty_float(_), _) => {
         let as = ty::get(a).struct;
         let bs = ty::get(b).struct;
         if as == bs {
@@ -1786,7 +1774,7 @@ fn super_tys<C:combine>(
       }
 
       (ty::ty_nil, _) |
-      (ty::ty_bool, _) {
+      (ty::ty_bool, _) => {
         let cfg = tcx.sess.targ_cfg;
         if ty::mach_sty(cfg, a) == ty::mach_sty(cfg, b) {
             ok(a)
@@ -1795,50 +1783,50 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_param(a_p), ty::ty_param(b_p)) if a_p.idx == b_p.idx {
+      (ty::ty_param(a_p), ty::ty_param(b_p)) if a_p.idx == b_p.idx => {
         ok(a)
       }
 
       (ty::ty_enum(a_id, a_substs), ty::ty_enum(b_id, b_substs))
-      if a_id == b_id {
+      if a_id == b_id => {
         do self.substs(a_substs, b_substs).chain |tps| {
             ok(ty::mk_enum(tcx, a_id, tps))
         }
       }
 
       (ty::ty_trait(a_id, a_substs), ty::ty_trait(b_id, b_substs))
-      if a_id == b_id {
+      if a_id == b_id => {
         do self.substs(a_substs, b_substs).chain |substs| {
             ok(ty::mk_trait(tcx, a_id, substs))
         }
       }
 
       (ty::ty_class(a_id, a_substs), ty::ty_class(b_id, b_substs))
-      if a_id == b_id {
+      if a_id == b_id => {
         do self.substs(a_substs, b_substs).chain |substs| {
             ok(ty::mk_class(tcx, a_id, substs))
         }
       }
 
-      (ty::ty_box(a_mt), ty::ty_box(b_mt)) {
+      (ty::ty_box(a_mt), ty::ty_box(b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             ok(ty::mk_box(tcx, mt))
         }
       }
 
-      (ty::ty_uniq(a_mt), ty::ty_uniq(b_mt)) {
+      (ty::ty_uniq(a_mt), ty::ty_uniq(b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             ok(ty::mk_uniq(tcx, mt))
         }
       }
 
-      (ty::ty_ptr(a_mt), ty::ty_ptr(b_mt)) {
+      (ty::ty_ptr(a_mt), ty::ty_ptr(b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             ok(ty::mk_ptr(tcx, mt))
         }
       }
 
-      (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) {
+      (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) => {
         do self.contraregions(a_r, b_r).chain |r| {
             do self.mts(a_mt, b_mt).chain |mt| {
                 ok(ty::mk_rptr(tcx, r, mt))
@@ -1846,7 +1834,7 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_evec(a_mt, vs_a), ty::ty_evec(b_mt, vs_b)) {
+      (ty::ty_evec(a_mt, vs_a), ty::ty_evec(b_mt, vs_b)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             do self.vstores(ty::terr_vec, vs_a, vs_b).chain |vs| {
                 ok(ty::mk_evec(tcx, mt, vs))
@@ -1854,13 +1842,13 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_estr(vs_a), ty::ty_estr(vs_b)) {
+      (ty::ty_estr(vs_a), ty::ty_estr(vs_b)) => {
         do self.vstores(ty::terr_str, vs_a, vs_b).chain |vs| {
             ok(ty::mk_estr(tcx,vs))
         }
       }
 
-      (ty::ty_rec(as), ty::ty_rec(bs)) {
+      (ty::ty_rec(as), ty::ty_rec(bs)) => {
         if vec::same_length(as, bs) {
             map_vec2(as, bs, |a,b| {
                 self.flds(a, b)
@@ -1870,7 +1858,7 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_tup(as), ty::ty_tup(bs)) {
+      (ty::ty_tup(as), ty::ty_tup(bs)) => {
         if vec::same_length(as, bs) {
             map_vec2(as, bs, |a, b| self.tys(a, b) )
                 .chain(|ts| ok(ty::mk_tup(tcx, ts)) )
@@ -1879,13 +1867,13 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_fn(a_fty), ty::ty_fn(b_fty)) {
+      (ty::ty_fn(a_fty), ty::ty_fn(b_fty)) => {
         do self.fns(a_fty, b_fty).chain |fty| {
             ok(ty::mk_fn(tcx, fty))
         }
       }
 
-      _ { err(ty::terr_sorts(b, a)) }
+      _ => err(ty::terr_sorts(b, a))
     }
 }
 
@@ -1910,22 +1898,22 @@ impl of combine for sub {
                b.to_str(self.infcx())};
         do indent {
             alt (a, b) {
-              (ty::re_var(a_id), ty::re_var(b_id)) {
+              (ty::re_var(a_id), ty::re_var(b_id)) => {
                 do self.infcx().vars(self.rb, a_id, b_id).then {
                     ok(a)
                 }
               }
-              (ty::re_var(a_id), _) {
+              (ty::re_var(a_id), _) => {
                 do self.infcx().vart(self.rb, a_id, b).then {
                       ok(a)
                   }
               }
-              (_, ty::re_var(b_id)) {
+              (_, ty::re_var(b_id)) => {
                   do self.infcx().tvar(self.rb, a, b_id).then {
                       ok(a)
                   }
               }
-              _ {
+              _ => {
                   do self.lub().regions(a, b).compare(b) {
                     ty::terr_regions_differ(b, a)
                 }
@@ -1942,12 +1930,12 @@ impl of combine for sub {
         }
 
         alt b.mutbl {
-          m_mutbl {
+          m_mutbl => {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
             self.infcx().eq_tys(a.ty, b.ty).then(|| ok(a) )
           }
-          m_imm | m_const {
+          m_imm | m_const => {
             // Otherwise we can be covariant:
             self.tys(a.ty, b.ty).chain(|_t| ok(a) )
           }
@@ -1978,22 +1966,22 @@ impl of combine for sub {
         if a == b { return ok(a); }
         do indent {
             alt (ty::get(a).struct, ty::get(b).struct) {
-              (ty::ty_bot, _) {
+              (ty::ty_bot, _) => {
                 ok(a)
               }
-              (ty::ty_var(a_id), ty::ty_var(b_id)) {
+              (ty::ty_var(a_id), ty::ty_var(b_id)) => {
                 self.infcx().vars(self.tvb, a_id, b_id).then(|| ok(a) )
               }
-              (ty::ty_var(a_id), _) {
+              (ty::ty_var(a_id), _) => {
                 self.infcx().vart(self.tvb, a_id, b).then(|| ok(a) )
               }
-              (_, ty::ty_var(b_id)) {
+              (_, ty::ty_var(b_id)) => {
                 self.infcx().tvar(self.tvb, a, b_id).then(|| ok(a) )
               }
-              (_, ty::ty_bot) {
+              (_, ty::ty_bot) => {
                 err(ty::terr_sorts(b, a))
               }
-              _ {
+              _ => {
                 super_tys(self, a, b)
               }
             }
@@ -2090,11 +2078,11 @@ impl of combine for lub {
         };
 
         alt m {
-          m_imm | m_const {
+          m_imm | m_const => {
             self.tys(a.ty, b.ty).chain(|t| ok({ty: t, mutbl: m}) )
           }
 
-          m_mutbl {
+          m_mutbl => {
             self.infcx().try(|| {
                 self.infcx().eq_tys(a.ty, b.ty).then(|| {
                     ok({ty: a.ty, mutbl: m})
@@ -2126,22 +2114,18 @@ impl of combine for lub {
 
     fn purities(f1: purity, f2: purity) -> cres<purity> {
         alt (f1, f2) {
-          (unsafe_fn, _) | (_, unsafe_fn) {ok(unsafe_fn)}
-          (impure_fn, _) | (_, impure_fn) {ok(impure_fn)}
-          (extern_fn, _) | (_, extern_fn) {ok(extern_fn)}
-          (pure_fn, pure_fn) {ok(pure_fn)}
+          (unsafe_fn, _) | (_, unsafe_fn) => ok(unsafe_fn),
+          (impure_fn, _) | (_, impure_fn) => ok(impure_fn),
+          (extern_fn, _) | (_, extern_fn) => ok(extern_fn),
+          (pure_fn, pure_fn) => ok(pure_fn)
         }
     }
 
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
         alt (r1, r2) {
           (ast::return_val, _) |
-          (_, ast::return_val) {
-            ok(ast::return_val)
-          }
-          (ast::noreturn, ast::noreturn) {
-            ok(ast::noreturn)
-          }
+          (_, ast::return_val) => ok(ast::return_val),
+          (ast::noreturn, ast::noreturn) => ok(ast::noreturn)
         }
     }
 
@@ -2157,16 +2141,16 @@ impl of combine for lub {
 
         do indent {
             alt (a, b) {
-              (ty::re_static, _) | (_, ty::re_static) {
+              (ty::re_static, _) | (_, ty::re_static) => {
                 ok(ty::re_static) // nothing lives longer than static
               }
 
-              (ty::re_var(_), _) | (_, ty::re_var(_)) {
+              (ty::re_var(_), _) | (_, ty::re_var(_)) => {
                 lattice_rvars(self, a, b)
               }
 
               (f @ ty::re_free(f_id, _), ty::re_scope(s_id)) |
-              (ty::re_scope(s_id), f @ ty::re_free(f_id, _)) {
+              (ty::re_scope(s_id), f @ ty::re_free(f_id, _)) => {
                 // A "free" region can be interpreted as "some region
                 // at least as big as the block f_id".  So, we can
                 // reasonably compare free regions and scopes:
@@ -2175,22 +2159,22 @@ impl of combine for lub {
                   // if the free region's scope `f_id` is bigger than
                   // the scope region `s_id`, then the LUB is the free
                   // region itself:
-                  some(r_id) if r_id == f_id { ok(f) }
+                  some(r_id) if r_id == f_id => ok(f),
 
                   // otherwise, we don't know what the free region is,
                   // so we must conservatively say the LUB is static:
-                  _ { ok(ty::re_static) }
+                  _ => ok(ty::re_static)
                 }
               }
 
-              (ty::re_scope(a_id), ty::re_scope(b_id)) {
+              (ty::re_scope(a_id), ty::re_scope(b_id)) => {
                 // The region corresponding to an outer block is a
                 // subtype of the region corresponding to an inner
                 // block.
                 let rm = self.infcx().tcx.region_map;
                 alt region::nearest_common_ancestor(rm, a_id, b_id) {
-                  some(r_id) { ok(ty::re_scope(r_id)) }
-                  _ { ok(ty::re_static) }
+                  some(r_id) => ok(ty::re_scope(r_id)),
+                  _ => ok(ty::re_static)
                 }
               }
 
@@ -2201,7 +2185,7 @@ impl of combine for lub {
               (ty::re_bound(_), ty::re_free(_, _)) |
               (ty::re_bound(_), ty::re_scope(_)) |
               (ty::re_free(_, _), ty::re_bound(_)) |
-              (ty::re_scope(_), ty::re_bound(_)) {
+              (ty::re_scope(_), ty::re_bound(_)) => {
                 if a == b {
                     ok(a)
                 } else {
@@ -2267,17 +2251,17 @@ impl of combine for glb {
         alt (a.mutbl, b.mutbl) {
           // If one side or both is mut, then the GLB must use
           // the precise type from the mut side.
-          (m_mutbl, m_const) {
+          (m_mutbl, m_const) => {
             sub(*self).tys(a.ty, b.ty).chain(|_t| {
                 ok({ty: a.ty, mutbl: m_mutbl})
             })
           }
-          (m_const, m_mutbl) {
+          (m_const, m_mutbl) => {
             sub(*self).tys(b.ty, a.ty).chain(|_t| {
                 ok({ty: b.ty, mutbl: m_mutbl})
             })
           }
-          (m_mutbl, m_mutbl) {
+          (m_mutbl, m_mutbl) => {
             self.infcx().eq_tys(a.ty, b.ty).then(|| {
                 ok({ty: a.ty, mutbl: m_mutbl})
             })
@@ -2287,7 +2271,7 @@ impl of combine for glb {
           // both sides but mutbl must be `m_imm`.
           (m_imm, m_const) |
           (m_const, m_imm) |
-          (m_imm, m_imm) {
+          (m_imm, m_imm) => {
             self.tys(a.ty, b.ty).chain(|t| {
                 ok({ty: t, mutbl: m_imm})
             })
@@ -2295,7 +2279,7 @@ impl of combine for glb {
 
           // If both sides are const, then we can use GLB of both
           // sides and mutbl of only `m_const`.
-          (m_const, m_const) {
+          (m_const, m_const) => {
             self.tys(a.ty, b.ty).chain(|t| {
                 ok({ty: t, mutbl: m_const})
             })
@@ -2303,7 +2287,7 @@ impl of combine for glb {
 
           // There is no mutual subtype of these combinations.
           (m_mutbl, m_imm) |
-          (m_imm, m_mutbl) {
+          (m_imm, m_mutbl) => {
               err(ty::terr_mutability)
           }
         }
@@ -2327,20 +2311,20 @@ impl of combine for glb {
 
     fn purities(f1: purity, f2: purity) -> cres<purity> {
         alt (f1, f2) {
-          (pure_fn, _) | (_, pure_fn) {ok(pure_fn)}
-          (extern_fn, _) | (_, extern_fn) {ok(extern_fn)}
-          (impure_fn, _) | (_, impure_fn) {ok(impure_fn)}
-          (unsafe_fn, unsafe_fn) {ok(unsafe_fn)}
+          (pure_fn, _) | (_, pure_fn) => ok(pure_fn),
+          (extern_fn, _) | (_, extern_fn) => ok(extern_fn),
+          (impure_fn, _) | (_, impure_fn) => ok(impure_fn),
+          (unsafe_fn, unsafe_fn) => ok(unsafe_fn)
         }
     }
 
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
         alt (r1, r2) {
-          (ast::return_val, ast::return_val) {
+          (ast::return_val, ast::return_val) => {
             ok(ast::return_val)
           }
           (ast::noreturn, _) |
-          (_, ast::noreturn) {
+          (_, ast::noreturn) => {
             ok(ast::noreturn)
           }
         }
@@ -2354,17 +2338,17 @@ impl of combine for glb {
 
         do indent {
             alt (a, b) {
-              (ty::re_static, r) | (r, ty::re_static) {
+              (ty::re_static, r) | (r, ty::re_static) => {
                 // static lives longer than everything else
                 ok(r)
               }
 
-              (ty::re_var(_), _) | (_, ty::re_var(_)) {
+              (ty::re_var(_), _) | (_, ty::re_var(_)) => {
                 lattice_rvars(self, a, b)
               }
 
               (ty::re_free(f_id, _), s @ ty::re_scope(s_id)) |
-              (s @ ty::re_scope(s_id), ty::re_free(f_id, _)) {
+              (s @ ty::re_scope(s_id), ty::re_free(f_id, _)) => {
                 // Free region is something "at least as big as
                 // `f_id`."  If we find that the scope `f_id` is bigger
                 // than the scope `s_id`, then we can say that the GLB
@@ -2372,21 +2356,21 @@ impl of combine for glb {
                 // big the free region is precisely, the GLB is undefined.
                 let rm = self.infcx().tcx.region_map;
                 alt region::nearest_common_ancestor(rm, f_id, s_id) {
-                  some(r_id) if r_id == f_id { ok(s) }
-                  _ { err(ty::terr_regions_differ(b, a)) }
+                  some(r_id) if r_id == f_id => ok(s),
+                  _ => err(ty::terr_regions_differ(b, a))
                 }
               }
 
               (ty::re_scope(a_id), ty::re_scope(b_id)) |
-              (ty::re_free(a_id, _), ty::re_free(b_id, _)) {
+              (ty::re_free(a_id, _), ty::re_free(b_id, _)) => {
                 // We want to generate a region that is contained by both of
                 // these: so, if one of these scopes is a subscope of the
                 // other, return it.  Otherwise fail.
                 let rm = self.infcx().tcx.region_map;
                 alt region::nearest_common_ancestor(rm, a_id, b_id) {
-                  some(r_id) if a_id == r_id { ok(b) }
-                  some(r_id) if b_id == r_id { ok(a) }
-                  _ { err(ty::terr_regions_differ(b, a)) }
+                  some(r_id) if a_id == r_id => ok(b),
+                  some(r_id) if b_id == r_id => ok(a),
+                  _ => err(ty::terr_regions_differ(b, a))
                 }
               }
 
@@ -2396,7 +2380,7 @@ impl of combine for glb {
               (ty::re_bound(_), ty::re_free(_, _)) |
               (ty::re_bound(_), ty::re_scope(_)) |
               (ty::re_free(_, _), ty::re_bound(_)) |
-              (ty::re_scope(_), ty::re_bound(_)) {
+              (ty::re_scope(_), ty::re_bound(_)) => {
                 if a == b {
                     ok(a)
                 } else {
@@ -2492,25 +2476,25 @@ fn lattice_tys<L:lattice_ops combine>(
     if a == b { return ok(a); }
     do indent {
         alt (ty::get(a).struct, ty::get(b).struct) {
-          (ty::ty_bot, _) { self.ty_bot(b) }
-          (_, ty::ty_bot) { self.ty_bot(a) }
+          (ty::ty_bot, _) => self.ty_bot(b),
+          (_, ty::ty_bot) => self.ty_bot(a),
 
-          (ty::ty_var(a_id), ty::ty_var(b_id)) {
+          (ty::ty_var(a_id), ty::ty_var(b_id)) => {
             lattice_vars(self, self.infcx().tvb,
                          a, a_id, b_id,
                          |x, y| self.tys(x, y) )
           }
 
-          (ty::ty_var(a_id), _) {
+          (ty::ty_var(a_id), _) => {
             lattice_var_t(self, self.infcx().tvb, a_id, b,
                           |x, y| self.tys(x, y) )
           }
 
-          (_, ty::ty_var(b_id)) {
+          (_, ty::ty_var(b_id)) => {
             lattice_var_t(self, self.infcx().tvb, b_id, a,
                           |x, y| self.tys(x, y) )
           }
-          _ {
+          _ => {
             super_tys(self, a, b)
           }
         }
@@ -2522,19 +2506,19 @@ fn lattice_rvars<L:lattice_ops combine>(
     self: L, a: ty::region, b: ty::region) -> cres<ty::region> {
 
     alt (a, b) {
-      (ty::re_var(a_id), ty::re_var(b_id)) {
+      (ty::re_var(a_id), ty::re_var(b_id)) => {
         lattice_vars(self, self.infcx().rb,
                      a, a_id, b_id,
                      |x, y| self.regions(x, y) )
       }
 
-      (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) {
+      (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) => {
         lattice_var_t(self, self.infcx().rb,
                       v_id, r,
                       |x, y| self.regions(x, y) )
       }
 
-      _ {
+      _ => {
         self.infcx().tcx.sess.bug(
             fmt!{"%s: lattice_rvars invoked with a=%s and b=%s, \
                   neither of which are region variables",
@@ -2575,13 +2559,13 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     // LUB of those types:
     let a_bnd = self.bnd(a_bounds), b_bnd = self.bnd(b_bounds);
     alt (a_bnd, b_bnd) {
-      (some(a_ty), some(b_ty)) {
+      (some(a_ty), some(b_ty)) => {
         alt self.infcx().try(|| c_ts(a_ty, b_ty) ) {
-            ok(t) { return ok(t); }
-            err(_) { /*fallthrough */ }
+            ok(t) => return ok(t),
+            err(_) => { /*fallthrough */ }
         }
       }
-      _ {/*fallthrough*/}
+      _ => {/*fallthrough*/}
     }
 
     // Otherwise, we need to merge A and B into one variable.  We can
@@ -2607,12 +2591,12 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
            b.to_str(self.infcx())};
 
     alt self.bnd(a_bounds) {
-      some(a_bnd) {
+      some(a_bnd) => {
         // If a has an upper bound, return the LUB(a.ub, b)
         debug!{"bnd=some(%s)", a_bnd.to_str(self.infcx())};
         return c_ts(a_bnd, b);
       }
-      none {
+      none => {
         // If a does not have an upper bound, make b the upper bound of a
         // and then return b.
         debug!{"bnd=none"};

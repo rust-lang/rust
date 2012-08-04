@@ -6,7 +6,7 @@ import dvec::extensions;
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
         vec::any(*bs, |b| {
-            alt b { ty::bound_trait(_) { true } _ { false } }
+            alt b { ty::bound_trait(_) => true, _ => false }
         })
     })
 }
@@ -19,12 +19,12 @@ fn lookup_vtables(fcx: @fn_ctxt, sp: span,
     for substs.tps.each |ty| {
         for vec::each(*bounds[i]) |bound| {
             alt bound {
-              ty::bound_trait(i_ty) {
+              ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
                 vec::push(result, lookup_vtable(fcx, sp, ty, i_ty,
                                                 allow_unsafe));
               }
-              _ {}
+              _ => ()
             }
         }
         i += 1u;
@@ -39,7 +39,7 @@ fn fixup_substs(fcx: @fn_ctxt, sp: span,
     let t = ty::mk_trait(tcx, id, substs);
     let t_f = fixup_ty(fcx, sp, t);
     alt check ty::get(t_f).struct {
-      ty::ty_trait(_, substs_f) { substs_f }
+      ty::ty_trait(_, substs_f) => substs_f,
     }
 }
 
@@ -62,21 +62,21 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
 
     let tcx = fcx.ccx.tcx;
     let (trait_id, trait_substs) = alt check ty::get(trait_ty).struct {
-      ty::ty_trait(did, substs) { (did, substs) }
+      ty::ty_trait(did, substs) => (did, substs)
     };
     let ty = fixup_ty(fcx, sp, ty);
     alt ty::get(ty).struct {
-      ty::ty_param({idx: n, def_id: did}) {
+      ty::ty_param({idx: n, def_id: did}) => {
         let mut n_bound = 0u;
         for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
             alt bound {
               ty::bound_send | ty::bound_copy | ty::bound_const |
-              ty::bound_owned {
+              ty::bound_owned => {
                 /* ignore */
               }
-              ty::bound_trait(ity) {
+              ty::bound_trait(ity) => {
                 alt check ty::get(ity).struct {
-                  ty::ty_trait(idid, substs) {
+                  ty::ty_trait(idid, substs) => {
                     if trait_id == idid {
                         debug!{"(checking vtable) @0 relating ty to trait ty
                                 with did %?", idid};
@@ -91,7 +91,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
         }
       }
 
-      ty::ty_trait(did, substs) if trait_id == did {
+      ty::ty_trait(did, substs) if trait_id == did => {
         debug!{"(checking vtable) @1 relating ty to trait ty with did %?",
                did};
 
@@ -113,16 +113,16 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
         return vtable_trait(did, substs.tps);
       }
 
-      _ {
+      _ => {
         let mut found = ~[];
 
         let mut impls_seen = new_def_hash();
 
         alt fcx.ccx.coherence_info.extension_methods.find(trait_id) {
-            none {
+            none => {
                 // Nothing found. Continue.
             }
-            some(implementations) {
+            some(implementations) => {
                 for uint::range(0, implementations.len()) |i| {
                     let im = implementations[i];
 
@@ -138,8 +138,8 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                     for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
                         // it must have the same id as the expected one
                         alt ty::get(of_ty).struct {
-                          ty::ty_trait(id, _) if id != trait_id { again; }
-                          _ { /* ok */ }
+                          ty::ty_trait(id, _) if id != trait_id => again,
+                          _ => { /* ok */ }
                         }
 
                         // check whether the type unifies with the type
@@ -148,8 +148,8 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                             impl_self_ty(fcx, im.did);
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                         alt fcx.mk_subty(ty, for_ty) {
-                          result::err(_) { again; }
-                          result::ok(()) { }
+                          result::err(_) => again,
+                          result::ok(()) => ()
                         }
 
                         // check that desired trait type unifies
@@ -177,9 +177,9 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
         }
 
         alt found.len() {
-          0u { /* fallthrough */ }
-          1u { return found[0]; }
-          _ {
+          0u => { /* fallthrough */ }
+          1u => { return found[0]; }
+          _ => {
             fcx.ccx.tcx.sess.span_err(
                 sp, ~"multiple applicable methods in scope");
             return found[0];
@@ -197,8 +197,8 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
 fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
     let tcx = fcx.ccx.tcx;
     alt resolve_type(fcx.infcx, ty, resolve_all | force_all) {
-      result::ok(new_type) { new_type }
-      result::err(e) {
+      result::ok(new_type) => new_type,
+      result::err(e) => {
         tcx.sess.span_fatal(
             sp,
             fmt!{"cannot determine a type \
@@ -218,7 +218,7 @@ fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
     debug!{"(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).struct, impl_did};
     alt check ty::get(trait_ty).struct {
-      ty::ty_trait(_, substs) {
+      ty::ty_trait(_, substs) => {
         vec::iter2(substs.tps, trait_tys,
                    |a, b| demand::suptype(fcx, sp, a, b));
       }
@@ -228,9 +228,9 @@ fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
 fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
     let cx = fcx.ccx;
     alt ex.node {
-      ast::expr_path(*) {
+      ast::expr_path(*) => {
         alt fcx.opt_node_ty_substs(ex.id) {
-          some(substs) {
+          some(substs) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             if has_trait_bounds(*item_ty.bounds) {
@@ -241,20 +241,20 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
                                                            false));
             }
           }
-          _ {}
+          _ => ()
         }
       }
       // Must resolve bounds on methods with bounded params
       ast::expr_field(*) | ast::expr_binary(*) |
       ast::expr_unary(*) | ast::expr_assign_op(*) |
-      ast::expr_index(*) {
+      ast::expr_index(*) => {
         alt cx.method_map.find(ex.id) {
-          some({origin: method_static(did), _}) {
+          some({origin: method_static(did), _}) => {
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             if has_trait_bounds(*bounds) {
                 let callee_id = alt ex.node {
-                  ast::expr_field(_, _, _) { ex.id }
-                  _ { ex.callee_id }
+                  ast::expr_field(_, _, _) => ex.id,
+                  _ => ex.callee_id
                 };
                 let substs = fcx.node_ty_substs(callee_id);
                 cx.vtable_map.insert(callee_id, lookup_vtables(fcx,
@@ -264,13 +264,13 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
                                                                false));
             }
           }
-          _ {}
+          _ => ()
         }
       }
-      ast::expr_cast(src, _) {
+      ast::expr_cast(src, _) => {
         let target_ty = fcx.expr_ty(ex);
         alt ty::get(target_ty).struct {
-          ty::ty_trait(*) {
+          ty::ty_trait(*) => {
             /*
             Look up vtables for the type we're casting to,
             passing in the source and target type
@@ -283,10 +283,10 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
             */
             cx.vtable_map.insert(ex.id, @~[vtable]);
           }
-          _ {}
+          _ => ()
         }
       }
-      _ {}
+      _ => ()
     }
     visit::visit_expr(ex, fcx, v);
 }

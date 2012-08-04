@@ -96,17 +96,17 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
 
 fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     alt cx.items.find(node_id) {
-      some(ast_map::node_block(blk)) {
+      some(ast_map::node_block(blk)) => {
         fmt!{"<block at %s>",
              codemap::span_to_str(blk.span, cx.sess.codemap)}
       }
-      some(ast_map::node_expr(expr)) {
+      some(ast_map::node_expr(expr)) => {
         alt expr.node {
-          ast::expr_call(*) {
+          ast::expr_call(*) => {
             fmt!{"<call at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
-          ast::expr_alt(*) {
+          ast::expr_alt(*) => {
             fmt!{"<alt at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
@@ -114,20 +114,20 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
           ast::expr_field(*) |
           ast::expr_unary(*) |
           ast::expr_binary(*) |
-          ast::expr_index(*) {
+          ast::expr_index(*) => {
             fmt!{"<method at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
-          _ {
+          _ => {
             fmt!{"<expression at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
         }
       }
-      none {
+      none => {
         fmt!{"<unknown-%d>", node_id}
       }
-      _ { cx.sess.bug(
+      _ => { cx.sess.bug(
           fmt!{"re_scope refers to %s",
                ast_map::node_id_to_str(cx.items, node_id)}) }
     }
@@ -135,17 +135,17 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 
 fn region_to_str(cx: ctxt, region: region) -> ~str {
     alt region {
-      re_scope(node_id) {
+      re_scope(node_id) => {
         if cx.sess.ppregions() {
             fmt!{"&%s", re_scope_id_to_str(cx, node_id)}
         } else {
             ~"&"
         }
       }
-      re_bound(br) {
+      re_bound(br) => {
           bound_region_to_str(cx, br)
       }
-      re_free(id, br) {
+      re_free(id, br) => {
         if cx.sess.ppregions() {
             // For debugging, this version is sometimes helpful:
             fmt!{"{%d} %s", id, bound_region_to_str(cx, br)}
@@ -156,35 +156,35 @@ fn region_to_str(cx: ctxt, region: region) -> ~str {
       }
 
       // These two should not be seen by end-users (very often, anyhow):
-      re_var(id)    { fmt!{"&%s", id.to_str()} }
-      re_static     { ~"&static" }
+      re_var(id)    => fmt!{"&%s", id.to_str()},
+      re_static     => ~"&static"
     }
 }
 
 fn mt_to_str(cx: ctxt, m: mt) -> ~str {
     let mstr = alt m.mutbl {
-      ast::m_mutbl { ~"mut " }
-      ast::m_imm { ~"" }
-      ast::m_const { ~"const " }
+      ast::m_mutbl => ~"mut ",
+      ast::m_imm => ~"",
+      ast::m_const => ~"const "
     };
     return mstr + ty_to_str(cx, m.ty);
 }
 
 fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
     alt vs {
-      ty::vstore_fixed(n) { fmt!{"%u", n} }
-      ty::vstore_uniq { ~"~" }
-      ty::vstore_box { ~"@" }
-      ty::vstore_slice(r) { region_to_str(cx, r) }
+      ty::vstore_fixed(n) => fmt!{"%u", n},
+      ty::vstore_uniq => ~"~",
+      ty::vstore_box => ~"@",
+      ty::vstore_slice(r) => region_to_str(cx, r)
     }
 }
 
 fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     alt vs {
-      ty::vstore_fixed(_) {
+      ty::vstore_fixed(_) => {
         fmt!{"%s/%s", ty, vstore_to_str(cx, vs)}
       }
-      _ { fmt!{"%s%s", vstore_to_str(cx, vs), ty} }
+      _ => fmt!{"%s%s", vstore_to_str(cx, vs), ty}
     }
 }
 
@@ -199,8 +199,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
        ~str {
         let {mode, ty} = input;
         let modestr = alt canon_mode(cx, mode) {
-          ast::infer(_) { ~"" }
-          ast::expl(m) {
+          ast::infer(_) => ~"",
+          ast::expl(m) => {
             if !ty::type_needs_infer(ty) &&
                 m == ty::default_arg_mode_for_ty(ty) {
                 ~""
@@ -217,11 +217,14 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         let mut s;
 
         s = alt purity {
-          ast::impure_fn {~""}
-          _ {purity_to_str(purity) + ~" "}
+          ast::impure_fn => ~"",
+          _ => purity_to_str(purity) + ~" "
         };
         s += proto_to_str(proto);
-        alt ident { some(i) { s += ~" "; s += *i; } _ { } }
+        alt ident {
+          some(i) => { s += ~" "; s += *i; }
+          _ => { }
+        }
         s += ~"(";
         let mut strs = ~[];
         for inputs.each |a| { vec::push(strs, fn_input_to_str(cx, a)); }
@@ -230,8 +233,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         if ty::get(output).struct != ty_nil {
             s += ~" -> ";
             alt cf {
-              ast::noreturn { s += ~"!"; }
-              ast::return_val { s += ty_to_str(cx, output); }
+              ast::noreturn => { s += ~"!"; }
+              ast::return_val => { s += ty_to_str(cx, output); }
             }
         }
         return s;
@@ -253,20 +256,20 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 
     // pretty print the structural type representation:
     return alt ty::get(typ).struct {
-      ty_nil { ~"()" }
-      ty_bot { ~"_|_" }
-      ty_bool { ~"bool" }
-      ty_int(ast::ty_i) { ~"int" }
-      ty_int(ast::ty_char) { ~"char" }
-      ty_int(t) { ast_util::int_ty_to_str(t) }
-      ty_uint(ast::ty_u) { ~"uint" }
-      ty_uint(t) { ast_util::uint_ty_to_str(t) }
-      ty_float(ast::ty_f) { ~"float" }
-      ty_float(t) { ast_util::float_ty_to_str(t) }
-      ty_box(tm) { ~"@" + mt_to_str(cx, tm) }
-      ty_uniq(tm) { ~"~" + mt_to_str(cx, tm) }
-      ty_ptr(tm) { ~"*" + mt_to_str(cx, tm) }
-      ty_rptr(r, tm) {
+      ty_nil => ~"()",
+      ty_bot => ~"_|_",
+      ty_bool => ~"bool",
+      ty_int(ast::ty_i) => ~"int",
+      ty_int(ast::ty_char) => ~"char",
+      ty_int(t) => ast_util::int_ty_to_str(t),
+      ty_uint(ast::ty_u) => ~"uint",
+      ty_uint(t) => ast_util::uint_ty_to_str(t),
+      ty_float(ast::ty_f) => ~"float",
+      ty_float(t) => ast_util::float_ty_to_str(t),
+      ty_box(tm) => ~"@" + mt_to_str(cx, tm),
+      ty_uniq(tm) => ~"~" + mt_to_str(cx, tm),
+      ty_ptr(tm) => ~"*" + mt_to_str(cx, tm),
+      ty_rptr(r, tm) => {
         let rs = region_to_str(cx, r);
         if rs == ~"&" {
             rs + mt_to_str(cx, tm)
@@ -274,46 +277,46 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
             rs + ~"/" + mt_to_str(cx, tm)
         }
       }
-      ty_unboxed_vec(tm) { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
-      ty_type { ~"type" }
-      ty_rec(elems) {
+      ty_unboxed_vec(tm) => { ~"unboxed_vec<" + mt_to_str(cx, tm) + ~">" }
+      ty_type => ~"type",
+      ty_rec(elems) => {
         let mut strs: ~[~str] = ~[];
         for elems.each |fld| { vec::push(strs, field_to_str(cx, fld)); }
         ~"{" + str::connect(strs, ~",") + ~"}"
       }
-      ty_tup(elems) {
+      ty_tup(elems) => {
         let mut strs = ~[];
         for elems.each |elem| { vec::push(strs, ty_to_str(cx, elem)); }
         ~"(" + str::connect(strs, ~",") + ~")"
       }
-      ty_fn(f) {
+      ty_fn(f) => {
         fn_to_str(cx, f.purity, f.proto, none, f.inputs,
                   f.output, f.ret_style)
       }
-      ty_var(v) { v.to_str() }
-      ty_var_integral(v) { v.to_str() }
-      ty_param({idx: id, _}) {
+      ty_var(v) => v.to_str(),
+      ty_var_integral(v) => v.to_str(),
+      ty_param({idx: id, _}) => {
         ~"'" + str::from_bytes(~[('a' as u8) + (id as u8)])
       }
-      ty_self { ~"self" }
-      ty_enum(did, substs) | ty_class(did, substs) {
+      ty_self => ~"self",
+      ty_enum(did, substs) | ty_class(did, substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
         parameterized(cx, base, substs.self_r, substs.tps)
       }
-      ty_trait(did, substs) {
+      ty_trait(did, substs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
         parameterized(cx, base, substs.self_r, substs.tps)
       }
-      ty_evec(mt, vs) {
+      ty_evec(mt, vs) => {
         vstore_ty_to_str(cx, fmt!{"[%s]", mt_to_str(cx, mt)}, vs)
       }
-      ty_estr(vs) { vstore_ty_to_str(cx, ~"str", vs) }
-      ty_opaque_box { ~"@?" }
-      ty_opaque_closure_ptr(ck_block) { ~"closure&" }
-      ty_opaque_closure_ptr(ck_box) { ~"closure@" }
-      ty_opaque_closure_ptr(ck_uniq) { ~"closure~" }
+      ty_estr(vs) => vstore_ty_to_str(cx, ~"str", vs),
+      ty_opaque_box => ~"@?",
+      ty_opaque_closure_ptr(ck_block) => ~"closure&",
+      ty_opaque_closure_ptr(ck_box) => ~"closure@",
+      ty_opaque_closure_ptr(ck_uniq) => ~"closure~"
     }
 }
 
@@ -323,8 +326,8 @@ fn parameterized(cx: ctxt,
                  tps: ~[ty::t]) -> ~str {
 
     let r_str = alt self_r {
-      none { ~"" }
-      some(r) {
+      none => ~"",
+      some(r) => {
         fmt!{"/%s", region_to_str(cx, r)}
       }
     };

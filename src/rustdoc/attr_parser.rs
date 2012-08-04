@@ -94,10 +94,10 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
 
 fn parse_desc(attrs: ~[ast::attribute]) -> option<~str> {
     alt doc_meta(attrs) {
-      some(meta) {
+      some(meta) => {
         attr::get_meta_item_value_str(meta).map(|x| *x )
       }
-      none { none }
+      none => none
     }
 }
 
@@ -119,16 +119,16 @@ fn parse_desc_should_parse_simple_doc_attributes() {
 
 fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
     alt doc_meta(attrs) {
-      some(meta) {
+      some(meta) => {
         alt attr::get_meta_item_list(meta) {
-          some(metas) {
+          some(metas) => {
             let hiddens = attr::find_meta_items_by_name(metas, ~"hidden");
             vec::is_not_empty(hiddens)
           }
-          none { false }
+          none => false
         }
       }
-      none { false }
+      none => false
     }
 }
 

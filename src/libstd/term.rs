@@ -36,13 +36,13 @@ fn color_supported() -> bool {
     let supported_terms = ~[~"xterm-color", ~"xterm",
                            ~"screen-bce", ~"xterm-256color"];
     return alt os::getenv(~"TERM") {
-          option::some(env) {
+          option::some(env) => {
             for vec::each(supported_terms) |term| {
                 if term == env { return true; }
             }
             false
           }
-          option::none { false }
+          option::none => false
         };
 }
 

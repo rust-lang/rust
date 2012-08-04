@@ -47,8 +47,8 @@ fn new_tt_reader(sp_diag: span_handler, itr: @interner<@~str>,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: none, up: tt_frame_up(option::none)},
               interpolations: alt interp { /* just a convienience */
-                none { std::map::box_str_hash::<@named_match>() }
-                some(x) { x }
+                none => std::map::box_str_hash::<@named_match>(),
+                some(x) => x
               },
               mut repeat_idx: ~[mut], mut repeat_len: ~[],
               /* dummy values, never read: */
@@ -62,10 +62,10 @@ fn new_tt_reader(sp_diag: span_handler, itr: @interner<@~str>,
 pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
     @{readme: f.readme, mut idx: f.idx, dotdotdoted: f.dotdotdoted,
       sep: f.sep, up: alt f.up {
-        tt_frame_up(some(up_frame)) {
+        tt_frame_up(some(up_frame)) => {
           tt_frame_up(some(dup_tt_frame(up_frame)))
         }
-        tt_frame_up(none) { tt_frame_up(none) }
+        tt_frame_up(none) => tt_frame_up(none)
       }
      }
 }
@@ -83,11 +83,11 @@ pure fn lookup_cur_matched_by_matched(r: tt_reader,
                                       start: @named_match) -> @named_match {
     pure fn red(&&ad: @named_match, &&idx: uint) -> @named_match {
         alt *ad {
-          matched_nonterminal(_) {
+          matched_nonterminal(_) => {
             // end of the line; duplicate henceforth
             ad
           }
-          matched_seq(ads, _) { ads[idx] }
+          matched_seq(ads, _) => ads[idx]
         }
     }
     vec::foldl(start, r.repeat_idx, red)
@@ -103,33 +103,29 @@ enum lis {
 fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
     fn lis_merge(lhs: lis, rhs: lis) -> lis {
         alt lhs {
-          lis_unconstrained { rhs }
-          lis_contradiction(_) { lhs }
-          lis_constraint(l_len, l_id) {
-            alt rhs {
-              lis_unconstrained { lhs }
-              lis_contradiction(_) { rhs }
-              lis_constraint(r_len, _) if l_len == r_len { lhs }
-              lis_constraint(r_len, r_id) {
+          lis_unconstrained => rhs,
+          lis_contradiction(_) => lhs,
+          lis_constraint(l_len, l_id) => alt rhs {
+            lis_unconstrained => lhs,
+            lis_contradiction(_) => rhs,
+            lis_constraint(r_len, _) if l_len == r_len => lhs,
+            lis_constraint(r_len, r_id) => {
                 lis_contradiction(fmt!{"Inconsistent lockstep iteration: \
-                                        '%s' has %u items, but '%s' has %u",
-                                       *l_id, l_len, *r_id, r_len})
-              }
+                                       '%s' has %u items, but '%s' has %u",
+                                        *l_id, l_len, *r_id, r_len})
             }
           }
         }
     }
     alt t {
-      tt_delim(tts) | tt_seq(_, tts, _, _) {
+      tt_delim(tts) | tt_seq(_, tts, _, _) => {
         vec::foldl(lis_unconstrained, tts, {|lis, tt|
             lis_merge(lis, lockstep_iter_size(tt, r)) })
       }
-      tt_tok(*) { lis_unconstrained }
-      tt_nonterminal(_, name) {
-        alt *lookup_cur_matched(r, name) {
-          matched_nonterminal(_) { lis_unconstrained }
-          matched_seq(ads, _) { lis_constraint(ads.len(), name) }
-        }
+      tt_tok(*) => lis_unconstrained,
+      tt_nonterminal(_, name) => alt *lookup_cur_matched(r, name) {
+        matched_nonterminal(_) => lis_unconstrained,
+        matched_seq(ads, _) => lis_constraint(ads.len(), name)
       }
     }
 }
@@ -143,11 +139,11 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             || r.repeat_idx.last() == r.repeat_len.last() - 1 {
 
             alt r.cur.up {
-              tt_frame_up(none) {
+              tt_frame_up(none) => {
                 r.cur_tok = EOF;
                 return ret_val;
               }
-              tt_frame_up(some(tt_f)) {
+              tt_frame_up(some(tt_f)) => {
                 if r.cur.dotdotdoted {
                     vec::pop(r.repeat_idx); vec::pop(r.repeat_len);
                 }
@@ -161,40 +157,40 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             r.cur.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
             alt r.cur.sep {
-              some(tk) {
+              some(tk) => {
                 r.cur_tok = tk; /* repeat same span, I guess */
                 return ret_val;
               }
-              none {}
+              none => ()
             }
         }
     }
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
         alt r.cur.readme[r.cur.idx] {
-          tt_delim(tts) {
+          tt_delim(tts) => {
             r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: false,
                       sep: none, up: tt_frame_up(option::some(r.cur)) };
             // if this could be 0-length, we'd need to potentially recur here
           }
-          tt_tok(sp, tok) {
+          tt_tok(sp, tok) => {
             r.cur_span = sp; r.cur_tok = tok;
             r.cur.idx += 1u;
             return ret_val;
           }
-          tt_seq(sp, tts, sep, zerok) {
+          tt_seq(sp, tts, sep, zerok) => {
             alt lockstep_iter_size(tt_seq(sp, tts, sep, zerok), r) {
-              lis_unconstrained {
+              lis_unconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
                     ~"attempted to repeat an expression containing no syntax \
                      variables matched as repeating at this depth");
               }
-              lis_contradiction(msg) { /* FIXME #2887 blame macro invoker
+              lis_contradiction(msg) => { /* FIXME #2887 blame macro invoker
                                           instead*/
                 r.sp_diag.span_fatal(sp, msg);
               }
-              lis_constraint(len, _) {
+              lis_constraint(len, _) => {
                 if len == 0 {
                     if !zerok {
                         r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
@@ -215,22 +211,22 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             }
           }
           // FIXME #2887: think about span stuff here
-          tt_nonterminal(sp, ident) {
+          tt_nonterminal(sp, ident) => {
             alt *lookup_cur_matched(r, ident) {
               /* sidestep the interpolation tricks for ident because
               (a) idents can be in lots of places, so it'd be a pain
               (b) we actually can, since it's a token. */
-              matched_nonterminal(nt_ident(sn,b)) {
+              matched_nonterminal(nt_ident(sn,b)) => {
                 r.cur_span = sp; r.cur_tok = IDENT(sn,b);
                 r.cur.idx += 1u;
                 return ret_val;
               }
-              matched_nonterminal(other_whole_nt) {
+              matched_nonterminal(other_whole_nt) => {
                 r.cur_span = sp; r.cur_tok = INTERPOLATED(other_whole_nt);
                 r.cur.idx += 1u;
                 return ret_val;
               }
-              matched_seq(*) {
+              matched_seq(*) => {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
                     fmt!{"variable '%s' is still repeating at this depth",

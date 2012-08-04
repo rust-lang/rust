@@ -30,8 +30,8 @@ fn check_alt(fcx: @fn_ctxt,
     let mut arm_non_bot = false;
     for arms.each |arm| {
         alt arm.guard {
-          some(e) { check_expr_with(fcx, e, ty::mk_bool(tcx)); }
-          none { }
+          some(e) => { check_expr_with(fcx, e, ty::mk_bool(tcx)); },
+          none => ()
         }
         if !check_block(fcx, arm.body) { arm_non_bot = true; }
         let bty = fcx.node_ty(arm.body.node.id);
@@ -69,7 +69,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 
     // Take the enum type params out of `expected`.
     alt structure_of(pcx.fcx, pat.span, expected) {
-      ty::ty_enum(_, expected_substs) {
+      ty::ty_enum(_, expected_substs) => {
         // check that the type of the value being matched is a subtype
         // of the type of the pattern:
         let pat_ty = fcx.node_ty(pat.id);
@@ -83,8 +83,9 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             vinfo.args.map(|t| { ty::subst(tcx, expected_substs, t) })
         };
         let arg_len = arg_types.len(), subpats_len = alt subpats {
-            none { arg_len }
-            some(ps) { ps.len() }};
+            none => arg_len,
+            some(ps) => ps.len()
+        };
         if arg_len > 0u {
             // N-ary variant.
             if arg_len != subpats_len {
@@ -111,7 +112,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                                 else { ~"s" }});
         }
       }
-      _ {
+      _ => {
         tcx.sess.span_fatal
             (pat.span,
              fmt!{"mismatched types: expected enum but found `%s`",
@@ -127,14 +128,14 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let tcx = pcx.fcx.ccx.tcx;
 
     alt pat.node {
-      ast::pat_wild {
+      ast::pat_wild => {
         fcx.write_ty(pat.id, expected);
       }
-      ast::pat_lit(lt) {
+      ast::pat_lit(lt) => {
         check_expr_with(fcx, lt, expected);
         fcx.write_ty(pat.id, fcx.expr_ty(lt));
       }
-      ast::pat_range(begin, end) {
+      ast::pat_range(begin, end) => {
         check_expr_with(fcx, begin, expected);
         check_expr_with(fcx, end, expected);
         let b_ty =
@@ -155,7 +156,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, b_ty);
       }
-      ast::pat_ident(_, name, sub) if !pat_is_variant(tcx.def_map, pat) {
+      ast::pat_ident(_, name, sub) if !pat_is_variant(tcx.def_map, pat) => {
         let vid = lookup_local(fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
         demand::suptype(fcx, pat.span, expected, typ);
@@ -167,20 +168,20 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, typ);
         alt sub {
-          some(p) { check_pat(pcx, p, expected); }
-          _ {}
+          some(p) => check_pat(pcx, p, expected),
+          _ => ()
         }
       }
-      ast::pat_ident(_, path, c) {
+      ast::pat_ident(_, path, c) => {
         check_pat_variant(pcx, pat, path, some(~[]), expected);
       }
-      ast::pat_enum(path, subpats) {
+      ast::pat_enum(path, subpats) => {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
-      ast::pat_rec(fields, etc) {
+      ast::pat_rec(fields, etc) => {
         let ex_fields = alt structure_of(fcx, pat.span, expected) {
-          ty::ty_rec(fields) { fields }
-          _ {
+          ty::ty_rec(fields) => fields,
+          _ => {
             tcx.sess.span_fatal
                 (pat.span,
                 fmt!{"mismatched types: expected `%s` but found record",
@@ -201,10 +202,10 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         for fields.each |f| {
             alt vec::find(ex_fields, |a| matches(f.ident, a)) {
-              some(field) {
+              some(field) => {
                 check_pat(pcx, f.pat, field.mt.ty);
               }
-              none {
+              none => {
                 tcx.sess.span_fatal(pat.span,
                                     fmt!{"mismatched types: did not \
                                           expect a record with a field `%s`",
@@ -214,10 +215,10 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, expected);
       }
-      ast::pat_tup(elts) {
+      ast::pat_tup(elts) => {
         let ex_elts = alt structure_of(fcx, pat.span, expected) {
-          ty::ty_tup(elts) { elts }
-          _ {
+          ty::ty_tup(elts) => elts,
+          _ => {
             tcx.sess.span_fatal
                 (pat.span,
                  fmt!{"mismatched types: expected `%s`, found tuple",
@@ -239,13 +240,13 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
 
         fcx.write_ty(pat.id, expected);
       }
-      ast::pat_box(inner) {
+      ast::pat_box(inner) => {
         alt structure_of(fcx, pat.span, expected) {
-          ty::ty_box(e_inner) {
+          ty::ty_box(e_inner) => {
             check_pat(pcx, inner, e_inner.ty);
             fcx.write_ty(pat.id, expected);
           }
-          _ {
+          _ => {
             tcx.sess.span_fatal(
                 pat.span,
                 ~"mismatched types: expected `" +
@@ -254,13 +255,13 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
       }
-      ast::pat_uniq(inner) {
+      ast::pat_uniq(inner) => {
         alt structure_of(fcx, pat.span, expected) {
-          ty::ty_uniq(e_inner) {
+          ty::ty_uniq(e_inner) => {
             check_pat(pcx, inner, e_inner.ty);
             fcx.write_ty(pat.id, expected);
           }
-          _ {
+          _ => {
             tcx.sess.span_fatal(
                 pat.span,
                 ~"mismatched types: expected `" +

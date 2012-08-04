@@ -23,9 +23,9 @@ type creature_info = { name: uint, color: color };
 
 fn show_color(cc: color) -> ~str {
     alt (cc) {
-        Red    {~"red"}
-        Yellow {~"yellow"}
-        Blue   {~"blue"}
+        Red    => {~"red"}
+        Yellow => {~"yellow"}
+        Blue   => {~"blue"}
     }
 }
 
@@ -40,17 +40,17 @@ fn show_color_list(set: ~[color]) -> ~str {
 
 fn show_digit(nn: uint) -> ~str {
     alt (nn) {
-        0 {~"zero"}
-        1 {~"one"}
-        2 {~"two"}
-        3 {~"three"}
-        4 {~"four"}
-        5 {~"five"}
-        6 {~"six"}
-        7 {~"seven"}
-        8 {~"eight"}
-        9 {~"nine"}
-        _ {fail ~"expected digits from 0 to 9..."}
+        0 => {~"zero"}
+        1 => {~"one"}
+        2 => {~"two"}
+        3 => {~"three"}
+        4 => {~"four"}
+        5 => {~"five"}
+        6 => {~"six"}
+        7 => {~"seven"}
+        8 => {~"eight"}
+        9 => {~"nine"}
+        _ => {fail ~"expected digits from 0 to 9..."}
     }
 }
 
@@ -72,15 +72,15 @@ fn show_number(nn: uint) -> ~str {
 
 fn transform(aa: color, bb: color) -> color {
     alt (aa, bb) {
-        (Red,    Red   ) { Red    }
-        (Red,    Yellow) { Blue   }
-        (Red,    Blue  ) { Yellow }
-        (Yellow, Red   ) { Blue   }
-        (Yellow, Yellow) { Yellow }
-        (Yellow, Blue  ) { Red    }
-        (Blue,   Red   ) { Yellow }
-        (Blue,   Yellow) { Red    }
-        (Blue,   Blue  ) { Blue   }
+        (Red,    Red   ) => { Red    }
+        (Red,    Yellow) => { Blue   }
+        (Red,    Blue  ) => { Yellow }
+        (Yellow, Red   ) => { Blue   }
+        (Yellow, Yellow) => { Yellow }
+        (Yellow, Blue  ) => { Red    }
+        (Blue,   Red   ) => { Yellow }
+        (Blue,   Yellow) => { Red    }
+        (Blue,   Blue  ) => { Blue   }
     }
 }
 
@@ -102,7 +102,7 @@ fn creature(
 
         // log and change, or print and quit
         alt resp {
-            option::some(other_creature) {
+            option::some(other_creature) => {
                 color = transform(color, other_creature.color);
 
                 // track some statistics
@@ -111,7 +111,7 @@ fn creature(
                    evil_clones_met += 1;
                 }
             }
-            option::none {
+            option::none => {
                 // log creatures met and evil clones of self
                 let report = fmt!{"%u", creatures_met} + ~" " +
                              show_number(evil_clones_met);

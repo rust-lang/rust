@@ -48,23 +48,19 @@ type parse_addr_err = {
  */
 fn format_addr(ip: ip_addr) -> ~str {
     alt ip {
-      ipv4(addr) {
-        unsafe {
-            let result = uv_ip4_name(&addr);
-            if result == ~"" {
-                fail ~"failed to convert inner sockaddr_in address to str"
-            }
-            result
+      ipv4(addr) =>  unsafe {
+        let result = uv_ip4_name(&addr);
+        if result == ~"" {
+            fail ~"failed to convert inner sockaddr_in address to str"
         }
+        result
       }
-      ipv6(addr) {
-        unsafe {
-            let result = uv_ip6_name(&addr);
-            if result == ~"" {
-                fail ~"failed to convert inner sockaddr_in address to str"
-            }
-            result
+      ipv6(addr) => unsafe {
+        let result = uv_ip6_name(&addr);
+        if result == ~"" {
+            fail ~"failed to convert inner sockaddr_in address to str"
         }
+        result
       }
     }
 }
@@ -108,10 +104,10 @@ fn get_addr(++node: ~str, iotask: iotask)
                     ptr::null(),
                     ptr::null());
                 alt result {
-                  0i32 {
+                  0i32 => {
                     set_data_for_req(handle_ptr, handle_data_ptr);
                   }
-                  _ {
+                  _ => {
                     output_ch.send(result::err(get_addr_unknown_error));
                   }
                 }
@@ -139,10 +135,8 @@ mod v4 {
      */
     fn parse_addr(ip: ~str) -> ip_addr {
         alt try_parse_addr(ip) {
-          result::ok(addr) { copy(addr) }
-          result::err(err_data) {
-            fail err_data.err_msg
-          }
+          result::ok(addr) => copy(addr),
+          result::err(err_data) => fail err_data.err_msg
         }
     }
     // the simple, old style numberic representation of
@@ -162,8 +156,8 @@ mod v4 {
     fn parse_to_ipv4_rep(ip: ~str) -> result::result<ipv4_rep, ~str> {
         let parts = vec::map(str::split_char(ip, '.'), |s| {
             alt uint::from_str(s) {
-              some(n) if n <= 255u { n }
-              _ { 256u }
+              some(n) if n <= 255u => n,
+              _ => 256u
             }
         });
         if vec::len(parts) != 4u {
@@ -227,10 +221,8 @@ mod v6 {
      */
     fn parse_addr(ip: ~str) -> ip_addr {
         alt try_parse_addr(ip) {
-          result::ok(addr) { copy(addr) }
-          result::err(err_data) {
-            fail err_data.err_msg
-          }
+          result::ok(addr) => copy(addr),
+          result::err(err_data) => fail err_data.err_msg
         }
     }
     fn try_parse_addr(ip: ~str) -> result::result<ip_addr,parse_addr_err> {
@@ -335,11 +327,11 @@ mod test {
     #[test]
     fn test_ip_ipv4_bad_parse() {
         alt v4::try_parse_addr(~"b4df00d") {
-          result::err(err_info) {
+          result::err(err_info) => {
             log(debug, fmt!{"got error as expected %?", err_info});
             assert true;
           }
-          result::ok(addr) {
+          result::ok(addr) => {
             fail fmt!{"Expected failure, but got addr %?", addr};
           }
         }
@@ -348,11 +340,11 @@ mod test {
     #[ignore(target_os="win32")]
     fn test_ip_ipv6_bad_parse() {
         alt v6::try_parse_addr(~"::,~2234k;") {
-          result::err(err_info) {
+          result::err(err_info) => {
             log(debug, fmt!{"got error as expected %?", err_info});
             assert true;
           }
-          result::ok(addr) {
+          result::ok(addr) => {
             fail fmt!{"Expected failure, but got addr %?", addr};
           }
         }
@@ -373,12 +365,8 @@ mod test {
                         localhost_name, vec::len(results)});
         for vec::each(results) |r| {
             let ipv_prefix = alt r {
-              ipv4(_) {
-                ~"IPv4"
-              }
-              ipv6(_) {
-                ~"IPv6"
-              }
+              ipv4(_) => ~"IPv4",
+              ipv6(_) => ~"IPv6"
             };
             log(debug, fmt!{"test_get_addr: result %s: '%s'",
                             ipv_prefix, format_addr(r)});

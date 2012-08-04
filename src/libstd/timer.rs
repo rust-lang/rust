@@ -216,8 +216,11 @@ mod test {
             };
 
             alt recv_timeout(hl_loop, 10u, test_po) {
-              some(val) { assert val == expected; successes += 1; }
-              _ { failures += 1; }
+              some(val) => {
+                assert val == expected;
+                successes += 1;
+              }
+              _ => failures += 1
             };
         }
 
@@ -241,8 +244,8 @@ mod test {
             };
 
             alt recv_timeout(hl_loop, 1u, test_po) {
-              none { successes += 1; }
-              _ { failures += 1; }
+              none => successes += 1,
+              _ => failures += 1
             };
         }
 

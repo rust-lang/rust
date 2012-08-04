@@ -31,14 +31,14 @@ fn treemap<K, V>() -> treemap<K, V> { @mut none }
 /// Insert a value into the map
 fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
     alt copy *m {
-      none {
+      none => {
         *m = some(@tree_node({key: k,
                               mut value: v,
                               mut left: none,
                               mut right: none}));
         return;
       }
-      some(node) {
+      some(node) => {
         if k == node.key {
             node.value = v;
         } else if k < node.key {
@@ -53,10 +53,10 @@ fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
 /// Find a value based on the key
 fn find<K: copy, V: copy>(m: &const tree_edge<K, V>, k: K) -> option<V> {
     alt copy *m {
-      none { none }
+      none => none,
 
       // FIXME (#2808): was that an optimization?
-      some(node) {
+      some(node) => {
         if k == node.key {
             some(node.value)
         } else if k < node.key {
@@ -71,8 +71,8 @@ fn find<K: copy, V: copy>(m: &const tree_edge<K, V>, k: K) -> option<V> {
 /// Visit all pairs in the map in order.
 fn traverse<K, V: copy>(m: &const tree_edge<K, V>, f: fn(K, V)) {
     alt copy *m {
-      none { }
-      some(node) {
+      none => (),
+      some(node) => {
         traverse(&const node.left, f);
         // copy of value is req'd as f() requires an immutable ptr
         f(node.key, copy node.value);

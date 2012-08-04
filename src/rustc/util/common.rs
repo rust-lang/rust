@@ -45,8 +45,9 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
         alt e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
-          ast::expr_loop(*) | ast::expr_while(*) | ast::expr_loop_body(*) {}
-          _ { visit::visit_expr(e, flag, v); }
+          ast::expr_loop(*) | ast::expr_while(*)
+          | ast::expr_loop_body(*) => {}
+          _ => visit::visit_expr(e, flag, v)
         }
     };
     let v = visit::mk_vt(@{visit_expr: visit_expr
@@ -56,19 +57,28 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
 }
 
 fn has_nonlocal_exits(b: ast::blk) -> bool {
-    do loop_query(b) |e| { alt e {
-      ast::expr_break | ast::expr_again { true }
-      _ { false }}}
+    do loop_query(b) |e| {
+        alt e {
+          ast::expr_break | ast::expr_again => true,
+          _ => false
+        }
+    }
 }
 
 fn may_break(b: ast::blk) -> bool {
-    do loop_query(b) |e| { alt e {
-      ast::expr_break { true }
-      _ { false }}}
+    do loop_query(b) |e| {
+        alt e {
+          ast::expr_break => true,
+          _ => false
+        }
+    }
 }
 
 fn local_rhs_span(l: @ast::local, def: span) -> span {
-    alt l.node.init { some(i) { return i.expr.span; } _ { return def; } }
+    alt l.node.init {
+      some(i) => return i.expr.span,
+      _ => return def
+    }
 }
 
 fn is_main_name(path: syntax::ast_map::path) -> bool {

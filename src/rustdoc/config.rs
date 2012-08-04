@@ -101,7 +101,7 @@ fn parse_config_(
     let args = vec::tail(args);
     let opts = vec::unzip(opts()).first();
     alt getopts::getopts(args, opts) {
-        result::ok(matches) {
+        result::ok(matches) => {
             if vec::len(matches.free) == 1u {
                 let input_crate = vec::head(matches.free);
                 config_from_opts(input_crate, matches, program_output)
@@ -111,7 +111,7 @@ fn parse_config_(
                 result::err(~"multiple crates specified")
             }
         }
-        result::err(f) {
+        result::err(f) => {
             result::err(getopts::fail_str(f))
         }
     }
@@ -177,17 +177,17 @@ fn config_from_opts(
 
 fn parse_output_format(output_format: ~str) -> result<output_format, ~str> {
     alt output_format {
-      ~"markdown" { result::ok(markdown) }
-      ~"html" { result::ok(pandoc_html) }
-      _ { result::err(fmt!{"unknown output format '%s'", output_format}) }
+      ~"markdown" => result::ok(markdown),
+      ~"html" => result::ok(pandoc_html),
+      _ => result::err(fmt!{"unknown output format '%s'", output_format})
     }
 }
 
 fn parse_output_style(output_style: ~str) -> result<output_style, ~str> {
     alt output_style {
-      ~"doc-per-crate" { result::ok(doc_per_crate) }
-      ~"doc-per-mod" { result::ok(doc_per_mod) }
-      _ { result::err(fmt!{"unknown output style '%s'", output_style}) }
+      ~"doc-per-crate" => result::ok(doc_per_crate),
+      ~"doc-per-mod" => result::ok(doc_per_mod),
+      _ => result::err(fmt!{"unknown output style '%s'", output_style})
     }
 }
 
@@ -201,13 +201,13 @@ fn maybe_find_pandoc(
     }
 
     let possible_pandocs = alt maybe_pandoc_cmd {
-      some(pandoc_cmd) { ~[pandoc_cmd] }
-      none {
+      some(pandoc_cmd) => ~[pandoc_cmd],
+      none => {
         ~[~"pandoc"] + alt os::homedir() {
-          some(dir) {
+          some(dir) => {
             ~[path::connect(dir, ~".cabal/bin/pandoc")]
           }
-          none { ~[] }
+          none => ~[]
         }
       }
     };

@@ -78,10 +78,10 @@ fn act(po: comm::port<msg>, source: ~str, parse: parser) {
     let mut keep_going = true;
     while keep_going {
         alt comm::recv(po) {
-          handle_request(f) {
+          handle_request(f) => {
             f(ctxt);
           }
-          exit {
+          exit => {
             keep_going = false;
           }
         }

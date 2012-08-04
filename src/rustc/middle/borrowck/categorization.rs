@@ -46,48 +46,46 @@ fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
     alt ty::get(t).struct {
       ty::ty_uniq(*) |
       ty::ty_evec(_, ty::vstore_uniq) |
-      ty::ty_estr(ty::vstore_uniq) {
+      ty::ty_estr(ty::vstore_uniq) => {
         some(deref_ptr(uniq_ptr))
       }
 
       ty::ty_rptr(r, _) |
       ty::ty_evec(_, ty::vstore_slice(r)) |
-      ty::ty_estr(ty::vstore_slice(r)) {
+      ty::ty_estr(ty::vstore_slice(r)) => {
         some(deref_ptr(region_ptr(r)))
       }
 
       ty::ty_box(*) |
       ty::ty_evec(_, ty::vstore_box) |
-      ty::ty_estr(ty::vstore_box) {
+      ty::ty_estr(ty::vstore_box) => {
         some(deref_ptr(gc_ptr))
       }
 
-      ty::ty_ptr(*) {
+      ty::ty_ptr(*) => {
         some(deref_ptr(unsafe_ptr))
       }
 
-      ty::ty_enum(did, _) {
+      ty::ty_enum(did, _) => {
         some(deref_comp(comp_variant(did)))
       }
 
-      ty::ty_evec(mt, ty::vstore_fixed(_)) {
+      ty::ty_evec(mt, ty::vstore_fixed(_)) => {
         some(deref_comp(comp_index(t, mt.mutbl)))
       }
 
-      ty::ty_estr(ty::vstore_fixed(_)) {
+      ty::ty_estr(ty::vstore_fixed(_)) => {
         some(deref_comp(comp_index(t, m_imm)))
       }
 
-      _ {
-        none
-      }
+      _ => none
     }
 }
 
 fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
     alt opt_deref_kind(t) {
-      some(k) {k}
-      none {
+      some(k) => k,
+      none => {
         tcx.sess.bug(
             fmt!{"deref_cat() invoked on non-derefable type %s",
                  ty_to_str(tcx, t)});
@@ -100,11 +98,11 @@ impl public_methods for borrowck_ctxt {
         // a borrowed expression must be either an @, ~, or a @vec, ~vec
         let expr_ty = ty::expr_ty(self.tcx, expr);
         alt ty::get(expr_ty).struct {
-          ty::ty_evec(*) | ty::ty_estr(*) {
+          ty::ty_evec(*) | ty::ty_estr(*) => {
             self.cat_index(expr, expr)
           }
 
-          ty::ty_uniq(*) | ty::ty_box(*) | ty::ty_rptr(*) {
+          ty::ty_uniq(*) | ty::ty_box(*) | ty::ty_rptr(*) => {
             let cmt = self.cat_expr(expr);
             self.cat_deref(expr, cmt, 0u, true).get()
           }
@@ -115,7 +113,7 @@ impl public_methods for borrowck_ctxt {
           }
           */
 
-          _ {
+          _ => {
             self.tcx.sess.span_bug(
                 expr.span,
                 fmt!{"Borrowing of non-derefable type `%s`",
@@ -131,15 +129,15 @@ impl public_methods for borrowck_ctxt {
         let tcx = self.tcx;
         let expr_ty = tcx.ty(expr);
         alt expr.node {
-          ast::expr_unary(ast::deref, e_base) {
+          ast::expr_unary(ast::deref, e_base) => {
             if self.method_map.contains_key(expr.id) {
                 return self.cat_rvalue(expr, expr_ty);
             }
 
             let base_cmt = self.cat_expr(e_base);
             alt self.cat_deref(expr, base_cmt, 0u, true) {
-              some(cmt) { return cmt; }
-              none {
+              some(cmt) => return cmt,
+              none => {
                 tcx.sess.span_bug(
                     e_base.span,
                     fmt!{"Explicit deref of non-derefable type `%s`",
@@ -148,7 +146,7 @@ impl public_methods for borrowck_ctxt {
             }
           }
 
-          ast::expr_field(base, f_name, _) {
+          ast::expr_field(base, f_name, _) => {
             if self.method_map.contains_key(expr.id) {
                 return self.cat_method_ref(expr, expr_ty);
             }
@@ -157,7 +155,7 @@ impl public_methods for borrowck_ctxt {
             self.cat_field(expr, base_cmt, f_name)
           }
 
-          ast::expr_index(base, _) {
+          ast::expr_index(base, _) => {
             if self.method_map.contains_key(expr.id) {
                 return self.cat_rvalue(expr, expr_ty);
             }
@@ -165,7 +163,7 @@ impl public_methods for borrowck_ctxt {
             self.cat_index(expr, base)
           }
 
-          ast::expr_path(_) {
+          ast::expr_path(_) => {
             let def = self.tcx.def_map.get(expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
@@ -182,7 +180,7 @@ impl public_methods for borrowck_ctxt {
           ast::expr_block(*) | ast::expr_loop(*) | ast::expr_alt(*) |
           ast::expr_lit(*) | ast::expr_break | ast::expr_mac(*) |
           ast::expr_again | ast::expr_rec(*) | ast::expr_struct(*) |
-          ast::expr_unary_move(*) | ast::expr_repeat(*) {
+          ast::expr_unary_move(*) | ast::expr_repeat(*) => {
             return self.cat_rvalue(expr, expr_ty);
           }
         }
@@ -198,29 +196,29 @@ impl public_methods for borrowck_ctxt {
           ast::def_use(_) | ast::def_variant(*) |
           ast::def_ty(_) | ast::def_prim_ty(_) |
           ast::def_ty_param(*) | ast::def_class(*) |
-          ast::def_typaram_binder(*) | ast::def_region(_) {
+          ast::def_typaram_binder(*) | ast::def_region(_) => {
             @{id:id, span:span,
               cat:cat_special(sk_static_item), lp:none,
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_arg(vid, mode) {
+          ast::def_arg(vid, mode) => {
             // Idea: make this could be rewritten to model by-ref
             // stuff as `&const` and `&mut`?
 
             // m: mutability of the argument
             // lp: loan path, must be none for aliasable things
             let {m,lp} = alt ty::resolved_mode(self.tcx, mode) {
-              ast::by_mutbl_ref {
+              ast::by_mutbl_ref => {
                 {m: m_mutbl, lp: none}
               }
-              ast::by_move | ast::by_copy {
+              ast::by_move | ast::by_copy => {
                 {m: m_imm, lp: some(@lp_arg(vid))}
               }
-              ast::by_ref {
+              ast::by_ref => {
                 {m: m_imm, lp: none}
               }
-              ast::by_val {
+              ast::by_val => {
                 // by-value is this hybrid mode where we have a
                 // pointer but we do not own it.  This is not
                 // considered loanable because, for example, a by-ref
@@ -234,23 +232,23 @@ impl public_methods for borrowck_ctxt {
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_self(_) {
+          ast::def_self(_) => {
             @{id:id, span:span,
               cat:cat_special(sk_self), lp:none,
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_upvar(upvid, inner, fn_node_id) {
+          ast::def_upvar(upvid, inner, fn_node_id) => {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
             let proto = ty::ty_fn_proto(ty);
             alt proto {
-              ast::proto_block {
+              ast::proto_block => {
                 let upcmt = self.cat_def(id, span, expr_ty, *inner);
                 @{id:id, span:span,
                   cat:cat_stack_upvar(upcmt), lp:upcmt.lp,
                   mutbl:upcmt.mutbl, ty:upcmt.ty}
               }
-              ast::proto_bare | ast::proto_uniq | ast::proto_box {
+              ast::proto_bare | ast::proto_uniq | ast::proto_box => {
                 // FIXME #2152 allow mutation of moved upvars
                 @{id:id, span:span,
                   cat:cat_special(sk_heap_upvar), lp:none,
@@ -259,21 +257,21 @@ impl public_methods for borrowck_ctxt {
             }
           }
 
-          ast::def_local(vid, mutbl) {
+          ast::def_local(vid, mutbl) => {
             let m = if mutbl {m_mutbl} else {m_imm};
             @{id:id, span:span,
               cat:cat_local(vid), lp:some(@lp_local(vid)),
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_binding(vid, ast::bind_by_value) {
+          ast::def_binding(vid, ast::bind_by_value) => {
             // by-value bindings are basically local variables
             @{id:id, span:span,
               cat:cat_local(vid), lp:some(@lp_local(vid)),
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_binding(pid, ast::bind_by_ref) {
+          ast::def_binding(pid, ast::bind_by_ref) => {
             // bindings are "special" since they are implicit pointers.
 
             // lookup the mutability for this binding that we found in
@@ -322,8 +320,8 @@ impl public_methods for borrowck_ctxt {
     fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
                              f_name: ast::ident) -> cmt {
         let f_mutbl = alt field_mutbl(self.tcx, base_cmt.ty, f_name) {
-          some(f_mutbl) { f_mutbl }
-          none {
+          some(f_mutbl) => f_mutbl,
+          none => {
             self.tcx.sess.span_bug(
                 node.span(),
                 fmt!{"Cannot find field `%s` in type `%s`",
@@ -342,7 +340,7 @@ impl public_methods for borrowck_ctxt {
                              expl: bool) -> option<cmt> {
         do ty::deref(self.tcx, base_cmt.ty, expl).map |mt| {
             alt deref_kind(self.tcx, base_cmt.ty) {
-              deref_ptr(ptr) {
+              deref_ptr(ptr) => {
                 let lp = do base_cmt.lp.chain |l| {
                     // Given that the ptr itself is loanable, we can
                     // loan out deref'd uniq ptrs as the data they are
@@ -371,7 +369,7 @@ impl public_methods for borrowck_ctxt {
                   mutbl:m, ty:mt.ty}
               }
 
-              deref_comp(comp) {
+              deref_comp(comp) => {
                 let lp = base_cmt.lp.map(|l| @lp_comp(l, comp) );
                 let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
                 @{id:node.id(), span:node.span(),
@@ -386,8 +384,8 @@ impl public_methods for borrowck_ctxt {
         let base_cmt = self.cat_autoderef(base);
 
         let mt = alt ty::index(self.tcx, base_cmt.ty) {
-          some(mt) { mt }
-          none {
+          some(mt) => mt,
+          none => {
             self.tcx.sess.span_bug(
                 expr.span,
                 fmt!{"Explicit index of non-index type `%s`",
@@ -396,7 +394,7 @@ impl public_methods for borrowck_ctxt {
         };
 
         return alt deref_kind(self.tcx, base_cmt.ty) {
-          deref_ptr(ptr) {
+          deref_ptr(ptr) => {
             // (a) the contents are loanable if the base is loanable
             // and this is a *unique* vector
             let deref_lp = alt ptr {
@@ -423,7 +421,7 @@ impl public_methods for borrowck_ctxt {
             comp(expr, deref_cmt, base_cmt.ty, m, mt.ty)
           }
 
-          deref_comp(_) {
+          deref_comp(_) => {
             // fixed-length vectors have no deref
             comp(expr, base_cmt, base_cmt.ty, mt.mutbl, mt.ty)
           }
@@ -468,8 +466,8 @@ impl private_methods for borrowck_ctxt {
         loop {
             ctr += 1u;
             alt self.cat_deref(base, cmt, ctr, false) {
-              none { return cmt; }
-              some(cmt1) { cmt = cmt1; }
+              none => return cmt,
+              some(cmt1) => cmt = cmt1
             }
         }
     }
@@ -480,25 +478,25 @@ fn field_mutbl(tcx: ty::ctxt,
                f_name: ast::ident) -> option<ast::mutability> {
     // Need to refactor so that records/class fields can be treated uniformly.
     alt ty::get(base_ty).struct {
-      ty::ty_rec(fields) {
+      ty::ty_rec(fields) => {
         for fields.each |f| {
             if f.ident == f_name {
                 return some(f.mt.mutbl);
             }
         }
       }
-      ty::ty_class(did, substs) {
+      ty::ty_class(did, substs) => {
         for ty::lookup_class_fields(tcx, did).each |fld| {
             if fld.ident == f_name {
                 let m = alt fld.mutability {
-                  ast::class_mutable { ast::m_mutbl }
-                  ast::class_immutable { ast::m_imm }
+                  ast::class_mutable => ast::m_mutbl,
+                  ast::class_immutable => ast::m_imm
                 };
                 return some(m);
             }
         }
       }
-      _ { }
+      _ => { }
     }
 
     return none;

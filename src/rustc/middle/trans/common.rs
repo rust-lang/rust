@@ -293,8 +293,8 @@ fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
     let free_fn = alt heap {
-      heap_shared { |a| base::trans_free(a, ptr) }
-      heap_exchange { |a| base::trans_unique_free(a, ptr) }
+      heap_shared => |a| base::trans_free(a, ptr),
+      heap_exchange => |a| base::trans_unique_free(a, ptr)
     };
     do in_scope_cx(cx) |info| {
         vec::push(info.cleanups, clean_temp(ptr, free_fn,
@@ -310,7 +310,10 @@ fn add_clean_free(cx: block, ptr: ValueRef, heap: heap) {
 fn revoke_clean(cx: block, val: ValueRef) {
     do in_scope_cx(cx) |info| {
         do option::iter(vec::position(info.cleanups, |cu| {
-            alt cu { clean_temp(v, _, _) if v == val { true } _ { false } }
+            alt cu {
+              clean_temp(v, _, _) if v == val => true,
+              _ => false
+            }
         })) |i| {
             info.cleanups =
                 vec::append(vec::slice(info.cleanups, 0u, i),
@@ -451,8 +454,8 @@ fn in_scope_cx(cx: block, f: fn(scope_info)) {
     let mut cur = cx;
     loop {
         alt cur.kind {
-          block_scope(inf) { f(inf); return; }
-          _ {}
+          block_scope(inf) => { f(inf); return; }
+          _ => ()
         }
         cur = block_parent(cur);
     }
@@ -460,9 +463,9 @@ fn in_scope_cx(cx: block, f: fn(scope_info)) {
 
 fn block_parent(cx: block) -> block {
     alt cx.parent {
-      some(b) { b }
-      none    { cx.sess().bug(fmt!{"block_parent called on root block %?",
-                                   cx}); }
+      some(b) => b,
+      none    => cx.sess().bug(fmt!{"block_parent called on root block %?",
+                                   cx})
     }
 }
 
@@ -481,10 +484,10 @@ impl bcx_cxs for block {
     }
     fn to_str() -> ~str {
         alt self.node_info {
-          some(node_info) {
+          some(node_info) => {
             fmt!{"[block %d]", node_info.id}
           }
-          none {
+          none => {
             fmt!{"[block %x]", ptr::addr_of(*self) as uint}
           }
         }
@@ -533,46 +536,46 @@ fn T_bool() -> TypeRef { return T_i1(); }
 
 fn T_int(targ_cfg: @session::config) -> TypeRef {
     return alt targ_cfg.arch {
-      session::arch_x86 { T_i32() }
-      session::arch_x86_64 { T_i64() }
-      session::arch_arm { T_i32() }
+      session::arch_x86 => T_i32(),
+      session::arch_x86_64 => T_i64(),
+      session::arch_arm => T_i32()
     };
 }
 
 fn T_int_ty(cx: @crate_ctxt, t: ast::int_ty) -> TypeRef {
     alt t {
-      ast::ty_i { cx.int_type }
-      ast::ty_char { T_char() }
-      ast::ty_i8 { T_i8() }
-      ast::ty_i16 { T_i16() }
-      ast::ty_i32 { T_i32() }
-      ast::ty_i64 { T_i64() }
+      ast::ty_i => cx.int_type,
+      ast::ty_char => T_char(),
+      ast::ty_i8 => T_i8(),
+      ast::ty_i16 => T_i16(),
+      ast::ty_i32 => T_i32(),
+      ast::ty_i64 => T_i64()
     }
 }
 
 fn T_uint_ty(cx: @crate_ctxt, t: ast::uint_ty) -> TypeRef {
     alt t {
-      ast::ty_u { cx.int_type }
-      ast::ty_u8 { T_i8() }
-      ast::ty_u16 { T_i16() }
-      ast::ty_u32 { T_i32() }
-      ast::ty_u64 { T_i64() }
+      ast::ty_u => cx.int_type,
+      ast::ty_u8 => T_i8(),
+      ast::ty_u16 => T_i16(),
+      ast::ty_u32 => T_i32(),
+      ast::ty_u64 => T_i64()
     }
 }
 
 fn T_float_ty(cx: @crate_ctxt, t: ast::float_ty) -> TypeRef {
     alt t {
-      ast::ty_f { cx.float_type }
-      ast::ty_f32 { T_f32() }
-      ast::ty_f64 { T_f64() }
+      ast::ty_f => cx.float_type,
+      ast::ty_f32 => T_f32(),
+      ast::ty_f64 => T_f64()
     }
 }
 
 fn T_float(targ_cfg: @session::config) -> TypeRef {
     return alt targ_cfg.arch {
-      session::arch_x86 { T_f64() }
-      session::arch_x86_64 { T_f64() }
-      session::arch_arm { T_f64() }
+      session::arch_x86 => T_f64(),
+      session::arch_x86_64 => T_f64(),
+      session::arch_arm => T_f64()
     };
 }
 
@@ -654,7 +657,10 @@ fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
 
 fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
     let s = ~"glue_fn";
-    alt name_has_type(cx.tn, s) { some(t) { return t; } _ {} }
+    alt name_has_type(cx.tn, s) {
+      some(t) => return t,
+      _ => ()
+    }
     let t = T_tydesc_field(cx, abi::tydesc_field_drop_glue);
     associate_type(cx.tn, s, t);
     return t;
@@ -758,7 +764,10 @@ fn T_taskptr(cx: @crate_ctxt) -> TypeRef { return T_ptr(cx.task_type); }
 // This type must never be used directly; it must always be cast away.
 fn T_typaram(tn: type_names) -> TypeRef {
     let s = ~"typaram";
-    alt name_has_type(tn, s) { some(t) { return t; } _ {} }
+    alt name_has_type(tn, s) {
+      some(t) => return t,
+      _ => ()
+    }
     let t = T_i8();
     associate_type(tn, s, t);
     return t;
@@ -778,7 +787,10 @@ fn T_enum_discrim(cx: @crate_ctxt) -> TypeRef {
 
 fn T_opaque_enum(cx: @crate_ctxt) -> TypeRef {
     let s = ~"opaque_enum";
-    alt name_has_type(cx.tn, s) { some(t) { return t; } _ {} }
+    alt name_has_type(cx.tn, s) {
+      some(t) => return t,
+      _ => ()
+    }
     let t = T_struct(~[T_enum_discrim(cx), T_i8()]);
     associate_type(cx.tn, s, t);
     return t;
@@ -845,8 +857,8 @@ fn C_u8(i: uint) -> ValueRef { return C_integral(T_i8(), i as u64, False); }
 // our boxed-and-length-annotated strings.
 fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
     alt cx.const_cstr_cache.find(s) {
-      some(llval) { return llval; }
-      none { }
+      some(llval) => return llval,
+      none => ()
     }
 
     let sc = do str::as_c_str(s) |buf| {
@@ -931,7 +943,7 @@ pure fn hash_mono_id(mi: &mono_id) -> uint {
     let mut h = syntax::ast_util::hash_def(&mi.def);
     for vec::each(mi.params) |param| {
         h = h * alt param {
-          mono_precise(ty, vts) {
+          mono_precise(ty, vts) => {
             let mut h = ty::type_id(ty);
             do option::iter(vts) |vts| {
                 for vec::each(vts) |vt| {
@@ -940,8 +952,8 @@ pure fn hash_mono_id(mi: &mono_id) -> uint {
             }
             h
           }
-          mono_any { 1u }
-          mono_repr(sz, align) { sz * (align + 2u) }
+          mono_any => 1u,
+          mono_repr(sz, align) => sz * (align + 2u)
         }
     }
     h
@@ -966,7 +978,7 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 fn path_str(p: path) -> ~str {
     let mut r = ~"", first = true;
     for vec::each(p) |e| {
-        alt e { ast_map::path_name(s) | ast_map::path_mod(s) {
+        alt e { ast_map::path_name(s) | ast_map::path_mod(s) => {
           if first { first = false; }
           else { r += ~"::"; }
           r += *s;
@@ -979,8 +991,8 @@ fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     alt bcx.fcx.param_substs {
-      some(substs) { ty::subst_tps(tcx, substs.tys, t) }
-      _ { assert !ty::type_has_params(t); t }
+      some(substs) => ty::subst_tps(tcx, substs.tys, t),
+      _ => { assert !ty::type_has_params(t); t }
     }
 }
 fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {
@@ -990,10 +1002,10 @@ fn node_id_type_params(bcx: block, id: ast::node_id) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
     alt bcx.fcx.param_substs {
-      some(substs) {
+      some(substs) => {
         vec::map(params, |t| ty::subst_tps(tcx, substs.tys, t))
       }
-      _ { params }
+      _ => params
     }
 }
 
@@ -1001,9 +1013,10 @@ fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
                     fields: ~[ty::field])
     -> uint {
     alt ty::field_idx(ident, fields) {
-       none { cx.sess.span_bug(sp, fmt!{"base expr doesn't appear to \
-                 have a field named %s", *ident}); }
-       some(i) { i }
+       none => cx.sess.span_bug(
+           sp, fmt!{"base expr doesn't appear to \
+                         have a field named %s", *ident}),
+       some(i) => i
     }
 }
 

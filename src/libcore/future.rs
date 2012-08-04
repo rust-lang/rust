@@ -78,7 +78,7 @@ fn from_port<A:send>(-port: future_pipe::client::waiting<A>) -> future<A> {
         port_ <-> *port;
         let port = option::unwrap(port_);
         alt recv(port) {
-          future_pipe::completed(data) { move_it!{data} }
+          future_pipe::completed(data) => move_it!{data}
         }
     }
 }
@@ -120,8 +120,8 @@ fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
     //! Work with the value without copying it
 
     let v = alt copy future.v {
-      either::left(v) { v }
-      either::right(f) {
+      either::left(v) => v,
+      either::right(f) => {
         let v = @f();
         future.v = either::left(v);
         v

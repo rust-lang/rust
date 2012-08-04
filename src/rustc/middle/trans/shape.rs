@@ -150,25 +150,25 @@ fn enum_kind(ccx: @crate_ctxt, did: ast::def_id) -> enum_kind {
 // Returns the code corresponding to the pointer size on this architecture.
 fn s_int(tcx: ty_ctxt) -> u8 {
     return alt tcx.sess.targ_cfg.arch {
-        session::arch_x86 { shape_i32 }
-        session::arch_x86_64 { shape_i64 }
-        session::arch_arm { shape_i32 }
+        session::arch_x86 => shape_i32,
+        session::arch_x86_64 => shape_i64,
+        session::arch_arm => shape_i32
     };
 }
 
 fn s_uint(tcx: ty_ctxt) -> u8 {
     return alt tcx.sess.targ_cfg.arch {
-        session::arch_x86 { shape_u32 }
-        session::arch_x86_64 { shape_u64 }
-        session::arch_arm { shape_u32 }
+        session::arch_x86 => shape_u32,
+        session::arch_x86_64 => shape_u64,
+        session::arch_arm => shape_u32
     };
 }
 
 fn s_float(tcx: ty_ctxt) -> u8 {
     return alt tcx.sess.targ_cfg.arch {
-        session::arch_x86 { shape_f64 }
-        session::arch_x86_64 { shape_f64 }
-        session::arch_arm { shape_f64 }
+        session::arch_x86 => shape_f64,
+        session::arch_x86_64 => shape_f64,
+        session::arch_arm => shape_f64
     };
 }
 
@@ -215,38 +215,38 @@ fn add_substr(&dest: ~[u8], src: ~[u8]) {
 fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
     alt ty::get(t).struct {
       ty::ty_nil | ty::ty_bool | ty::ty_uint(ast::ty_u8) |
-      ty::ty_bot { ~[shape_u8] }
-      ty::ty_int(ast::ty_i) { ~[s_int(ccx.tcx)] }
-      ty::ty_float(ast::ty_f) { ~[s_float(ccx.tcx)] }
-      ty::ty_uint(ast::ty_u) | ty::ty_ptr(_) { ~[s_uint(ccx.tcx)] }
-      ty::ty_type { ~[s_tydesc(ccx.tcx)] }
-      ty::ty_int(ast::ty_i8) { ~[shape_i8] }
-      ty::ty_uint(ast::ty_u16) { ~[shape_u16] }
-      ty::ty_int(ast::ty_i16) { ~[shape_i16] }
-      ty::ty_uint(ast::ty_u32) { ~[shape_u32] }
-      ty::ty_int(ast::ty_i32) | ty::ty_int(ast::ty_char) { ~[shape_i32] }
-      ty::ty_uint(ast::ty_u64) { ~[shape_u64] }
-      ty::ty_int(ast::ty_i64) { ~[shape_i64] }
-      ty::ty_float(ast::ty_f32) { ~[shape_f32] }
-      ty::ty_float(ast::ty_f64) { ~[shape_f64] }
-      ty::ty_estr(ty::vstore_uniq) {
+      ty::ty_bot => ~[shape_u8],
+      ty::ty_int(ast::ty_i) => ~[s_int(ccx.tcx)],
+      ty::ty_float(ast::ty_f) => ~[s_float(ccx.tcx)],
+      ty::ty_uint(ast::ty_u) | ty::ty_ptr(_) => ~[s_uint(ccx.tcx)],
+      ty::ty_type => ~[s_tydesc(ccx.tcx)],
+      ty::ty_int(ast::ty_i8) => ~[shape_i8],
+      ty::ty_uint(ast::ty_u16) => ~[shape_u16],
+      ty::ty_int(ast::ty_i16) => ~[shape_i16],
+      ty::ty_uint(ast::ty_u32) => ~[shape_u32],
+      ty::ty_int(ast::ty_i32) | ty::ty_int(ast::ty_char) => ~[shape_i32],
+      ty::ty_uint(ast::ty_u64) => ~[shape_u64],
+      ty::ty_int(ast::ty_i64) => ~[shape_i64],
+      ty::ty_float(ast::ty_f32) => ~[shape_f32],
+      ty::ty_float(ast::ty_f64) => ~[shape_f64],
+      ty::ty_estr(ty::vstore_uniq) => {
         shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
-      ty::ty_enum(did, substs) {
+      ty::ty_enum(did, substs) => {
         alt enum_kind(ccx, did) {
-          tk_unit { ~[s_variant_enum_t(ccx.tcx)] }
-          tk_enum { ~[s_variant_enum_t(ccx.tcx)] }
-          tk_newtype | tk_complex {
+          tk_unit => ~[s_variant_enum_t(ccx.tcx)],
+          tk_enum => ~[s_variant_enum_t(ccx.tcx)],
+          tk_newtype | tk_complex => {
             let mut s = ~[shape_enum], id;
             let nom_id = mk_nominal_id(ccx.tcx, did, none, substs.tps);
             alt ccx.shape_cx.tag_id_to_index.find(nom_id) {
-              none {
+              none => {
                 id = ccx.shape_cx.next_tag_id;
                 ccx.shape_cx.tag_id_to_index.insert(nom_id, id);
                 ccx.shape_cx.tag_order.push({did: did, substs: substs});
                 ccx.shape_cx.next_tag_id += 1u16;
               }
-              some(existing_id) { id = existing_id; }
+              some(existing_id) => id = existing_id,
             }
             add_u16(s, id as u16);
 
@@ -256,23 +256,23 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
       }
       ty::ty_estr(ty::vstore_box) |
       ty::ty_evec(_, ty::vstore_box) |
-      ty::ty_box(_) | ty::ty_opaque_box { ~[shape_box] }
-      ty::ty_uniq(mt) {
+      ty::ty_box(_) | ty::ty_opaque_box => ~[shape_box],
+      ty::ty_uniq(mt) => {
         let mut s = ~[shape_uniq];
         add_substr(s, shape_of(ccx, mt.ty));
         s
       }
-      ty::ty_unboxed_vec(mt) {
+      ty::ty_unboxed_vec(mt) => {
         let mut s = ~[shape_unboxed_vec];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_substr(s, shape_of(ccx, mt.ty));
         s
       }
-      ty::ty_evec(mt, ty::vstore_uniq) {
+      ty::ty_evec(mt, ty::vstore_uniq) => {
         shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
 
-      ty::ty_estr(ty::vstore_fixed(n)) {
+      ty::ty_estr(ty::vstore_fixed(n)) => {
         let mut s = ~[shape_fixedvec];
         let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         assert (n + 1u) <= 0xffffu;
@@ -282,7 +282,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_evec(mt, ty::vstore_fixed(n)) {
+      ty::ty_evec(mt, ty::vstore_fixed(n)) => {
         let mut s = ~[shape_fixedvec];
         assert n <= 0xffffu;
         add_u16(s, n as u16);
@@ -291,7 +291,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_estr(ty::vstore_slice(r)) {
+      ty::ty_estr(ty::vstore_slice(r)) => {
         let mut s = ~[shape_slice];
         let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         add_bool(s, true); // is_pod
@@ -300,7 +300,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_evec(mt, ty::vstore_slice(r)) {
+      ty::ty_evec(mt, ty::vstore_slice(r)) => {
         let mut s = ~[shape_slice];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_bool(s, false); // is_str
@@ -308,7 +308,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_rec(fields) {
+      ty::ty_rec(fields) => {
         let mut s = ~[shape_struct], sub = ~[];
         for vec::each(fields) |f| {
             sub += shape_of(ccx, f.mt.ty);
@@ -316,7 +316,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         add_substr(s, sub);
         s
       }
-      ty::ty_tup(elts) {
+      ty::ty_tup(elts) => {
         let mut s = ~[shape_struct], sub = ~[];
         for vec::each(elts) |elt| {
             sub += shape_of(ccx, elt);
@@ -324,8 +324,8 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         add_substr(s, sub);
         s
       }
-      ty::ty_trait(_, _) { ~[shape_box_fn] }
-      ty::ty_class(did, substs) {
+      ty::ty_trait(_, _) => ~[shape_box_fn],
+      ty::ty_class(did, substs) => {
         // same as records, unless there's a dtor
         let tps = substs.tps;
         let m_dtor_did = ty::ty_dtor(ccx.tcx, did);
@@ -344,20 +344,20 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         add_substr(s, sub);
         s
       }
-      ty::ty_rptr(_, mt) {
+      ty::ty_rptr(_, mt) => {
         let mut s = ~[shape_rptr];
         add_substr(s, shape_of(ccx, mt.ty));
         s
       }
-      ty::ty_param(*) {
+      ty::ty_param(*) => {
         ccx.tcx.sess.bug(~"non-monomorphized type parameter");
       }
-      ty::ty_fn({proto: ast::proto_box, _}) { ~[shape_box_fn] }
-      ty::ty_fn({proto: ast::proto_uniq, _}) { ~[shape_uniq_fn] }
-      ty::ty_fn({proto: ast::proto_block, _}) { ~[shape_stack_fn] }
-      ty::ty_fn({proto: ast::proto_bare, _}) { ~[shape_bare_fn] }
-      ty::ty_opaque_closure_ptr(_) { ~[shape_opaque_closure_ptr] }
-      ty::ty_var(_) | ty::ty_var_integral(_) | ty::ty_self {
+      ty::ty_fn({proto: ast::proto_box, _}) => ~[shape_box_fn],
+      ty::ty_fn({proto: ast::proto_uniq, _}) => ~[shape_uniq_fn],
+      ty::ty_fn({proto: ast::proto_block, _}) => ~[shape_stack_fn],
+      ty::ty_fn({proto: ast::proto_bare, _}) => ~[shape_bare_fn],
+      ty::ty_opaque_closure_ptr(_) => ~[shape_opaque_closure_ptr],
+      ty::ty_var(_) | ty::ty_var_integral(_) | ty::ty_self => {
         ccx.sess.bug(~"shape_of: unexpected type struct found");
       }
     }
@@ -679,7 +679,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(t) { return cx.enum_sizes.get(t); }
     alt ty::get(t).struct {
-      ty::ty_enum(tid, substs) {
+      ty::ty_enum(tid, substs) => {
         // Compute max(variant sizes).
         let mut max_size = 0u;
         let variants = ty::enum_variants(cx.tcx, tid);
@@ -696,7 +696,7 @@ fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
         cx.enum_sizes.insert(t, max_size);
         return max_size;
       }
-      _ { cx.sess.bug(~"static_size_of_enum called on non-enum"); }
+      _ => cx.sess.bug(~"static_size_of_enum called on non-enum")
     }
 }
 
@@ -716,15 +716,15 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) |
           ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
           ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |
-          ty::ty_ptr(_) | ty::ty_rptr(_,_) { nilptr(tcx) }
-          ty::ty_fn(_) { ty::mk_tup(tcx, ~[nilptr(tcx), nilptr(tcx)]) }
+          ty::ty_ptr(_) | ty::ty_rptr(_,_) => nilptr(tcx),
+          ty::ty_fn(_) => ty::mk_tup(tcx, ~[nilptr(tcx), nilptr(tcx)]),
           ty::ty_evec(_, ty::vstore_slice(_)) |
-          ty::ty_estr(ty::vstore_slice(_)) {
+          ty::ty_estr(ty::vstore_slice(_)) => {
             ty::mk_tup(tcx, ~[nilptr(tcx), ty::mk_int(tcx)])
           }
           // Reduce a class type to a record type in which all the fields are
           // simplified
-          ty::ty_class(did, substs) {
+          ty::ty_class(did, substs) => {
             let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
                 // remember the drop flag
                   ~[{ident: @~"drop", mt: {ty:
@@ -738,7 +738,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
             };
             ty::mk_rec(tcx, simpl_fields)
           }
-          _ { typ }
+          _ => typ
         }
     }
     ty::fold_ty(tcx, typ, |t| simplifier(tcx, t))

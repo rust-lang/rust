@@ -20,8 +20,8 @@ fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
 
 fn content_ty(t: ty::t) -> ty::t {
     alt ty::get(t).struct {
-      ty::ty_uniq({ty: ct, _}) { ct }
-      _ { core::unreachable(); }
+      ty::ty_uniq({ty: ct, _}) => ct,
+      _ => core::unreachable()
     }
 }
 

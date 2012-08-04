@@ -190,8 +190,8 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
    (parser, string_reader) {
     let res = io::read_whole_file_str(path);
     alt res {
-      result::ok(_) { /* Continue. */ }
-      result::err(e) { sess.span_diagnostic.handler().fatal(e); }
+      result::ok(_) => { /* Continue. */ }
+      result::err(e) => sess.span_diagnostic.handler().fatal(e)
     }
     let src = @result::unwrap(res);
     let filemap = codemap::new_filemap(path, src, sess.chpos, sess.byte_pos);

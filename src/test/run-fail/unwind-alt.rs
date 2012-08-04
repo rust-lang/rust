@@ -4,7 +4,7 @@ fn test_box() {
     @0;
 }
 fn test_str() {
-    let res = alt check false { true { ~"happy" } };
+    let res = alt check false { true => { ~"happy" } };
     assert res == ~"happy";
 }
 fn main() {

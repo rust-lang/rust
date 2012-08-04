@@ -29,8 +29,8 @@ fn run(
     pure fn mods_last(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
         pure fn is_mod(item: &doc::itemtag) -> bool {
             alt *item {
-              doc::modtag(_) { true }
-              _ { false }
+              doc::modtag(_) => true,
+              _ => false
             }
         }
 
@@ -95,10 +95,10 @@ fn write_markdown(
 fn write_page(ctxt: ctxt, page: doc::page) {
     write_title(ctxt, page);
     alt page {
-      doc::cratepage(doc) {
+      doc::cratepage(doc) => {
         write_crate(ctxt, doc);
       }
-      doc::itempage(doc) {
+      doc::itempage(doc) => {
         // We don't write a header for item's pages because their
         // header in the html output is created by the page title
         write_item_no_header(ctxt, doc);
@@ -129,10 +129,10 @@ fn write_title(ctxt: ctxt, page: doc::page) {
 
 fn make_title(page: doc::page) -> ~str {
     let item = alt page {
-      doc::cratepage(cratedoc) {
+      doc::cratepage(cratedoc) => {
         doc::modtag(cratedoc.topmod)
       }
-      doc::itempage(itemtag) {
+      doc::itempage(itemtag) => {
         itemtag
       }
     };
@@ -151,10 +151,10 @@ fn should_write_title_for_each_page() {
     for iter::repeat(2u) {
         let (page, markdown) = comm::recv(po);
         alt page {
-          doc::cratepage(_) {
+          doc::cratepage(_) => {
             assert str::contains(markdown, ~"% Crate core");
           }
-          doc::itempage(_) {
+          doc::itempage(_) => {
             assert str::contains(markdown, ~"% Module a");
           }
         }
@@ -181,32 +181,32 @@ fn write_header_(ctxt: ctxt, lvl: hlvl, title: ~str) {
 
 fn header_kind(doc: doc::itemtag) -> ~str {
     alt doc {
-      doc::modtag(_) {
+      doc::modtag(_) => {
         if doc.id() == syntax::ast::crate_node_id {
             ~"Crate"
         } else {
             ~"Module"
         }
       }
-      doc::nmodtag(_) {
+      doc::nmodtag(_) => {
         ~"Foreign module"
       }
-      doc::fntag(_) {
+      doc::fntag(_) => {
         ~"Function"
       }
-      doc::consttag(_) {
+      doc::consttag(_) => {
         ~"Const"
       }
-      doc::enumtag(_) {
+      doc::enumtag(_) => {
         ~"Enum"
       }
-      doc::traittag(_) {
+      doc::traittag(_) => {
         ~"Interface"
       }
-      doc::impltag(doc) {
+      doc::impltag(doc) => {
         ~"Implementation"
       }
-      doc::tytag(_) {
+      doc::tytag(_) => {
         ~"Type"
       }
     }
@@ -215,13 +215,13 @@ fn header_kind(doc: doc::itemtag) -> ~str {
 fn header_name(doc: doc::itemtag) -> ~str {
     let fullpath = str::connect(doc.path() + ~[doc.name()], ~"::");
     alt doc {
-      doc::modtag(_) if doc.id() != syntax::ast::crate_node_id {
+      doc::modtag(_) if doc.id() != syntax::ast::crate_node_id => {
         fullpath
       }
-      doc::nmodtag(_) {
+      doc::nmodtag(_) => {
         fullpath
       }
-      doc::impltag(doc) {
+      doc::impltag(doc) => {
         assert option::is_some(doc.self_ty);
         let self_ty = option::get(doc.self_ty);
         let mut trait_part = ~"";
@@ -235,7 +235,7 @@ fn header_name(doc: doc::itemtag) -> ~str {
         }
         fmt!{"%s%s for %s", doc.name(), trait_part, self_ty}
       }
-      _ {
+      _ => {
         doc.name()
       }
     }
@@ -290,11 +290,11 @@ fn write_desc(
     desc: option<~str>
 ) {
     alt desc {
-        some(desc) {
+        some(desc) => {
             ctxt.w.write_line(desc);
             ctxt.w.write_line(~"");
         }
-        none { }
+        none => ()
     }
 }
 
@@ -348,14 +348,14 @@ fn write_item_(ctxt: ctxt, doc: doc::itemtag, write_header: bool) {
     }
 
     alt doc {
-      doc::modtag(moddoc) { write_mod(ctxt, moddoc) }
-      doc::nmodtag(nmoddoc) { write_nmod(ctxt, nmoddoc) }
-      doc::fntag(fndoc) { write_fn(ctxt, fndoc) }
-      doc::consttag(constdoc) { write_const(ctxt, constdoc) }
-      doc::enumtag(enumdoc) { write_enum(ctxt, enumdoc) }
-      doc::traittag(traitdoc) { write_trait(ctxt, traitdoc) }
-      doc::impltag(impldoc) { write_impl(ctxt, impldoc) }
-      doc::tytag(tydoc) { write_type(ctxt, tydoc) }
+      doc::modtag(moddoc) => write_mod(ctxt, moddoc),
+      doc::nmodtag(nmoddoc) => write_nmod(ctxt, nmoddoc),
+      doc::fntag(fndoc) => write_fn(ctxt, fndoc),
+      doc::consttag(constdoc) => write_const(ctxt, constdoc),
+      doc::enumtag(enumdoc) => write_enum(ctxt, enumdoc),
+      doc::traittag(traitdoc) => write_trait(ctxt, traitdoc),
+      doc::impltag(impldoc) => write_impl(ctxt, impldoc),
+      doc::tytag(tydoc) => write_type(ctxt, tydoc)
     }
 }
 
@@ -365,8 +365,8 @@ fn write_item_header(ctxt: ctxt, doc: doc::itemtag) {
 
 fn item_header_lvl(doc: doc::itemtag) -> hlvl {
     alt doc {
-      doc::modtag(_) | doc::nmodtag(_) { h1 }
-      _ { h2 }
+      doc::modtag(_) | doc::nmodtag(_) => h1,
+      _ => h2
     }
 }
 
@@ -482,11 +482,11 @@ fn write_fnlike(
 
 fn write_sig(ctxt: ctxt, sig: option<~str>) {
     alt sig {
-      some(sig) {
+      some(sig) => {
         ctxt.w.write_line(code_block_indent(sig));
         ctxt.w.write_line(~"");
       }
-      none { fail ~"unimplemented" }
+      none => fail ~"unimplemented"
     }
 }
 
@@ -603,10 +603,10 @@ fn write_variant(ctxt: ctxt, doc: doc::variantdoc) {
     assert option::is_some(doc.sig);
     let sig = option::get(doc.sig);
     alt doc.desc {
-      some(desc) {
+      some(desc) => {
         ctxt.w.write_line(fmt!{"* `%s` - %s", sig, desc});
       }
-      none {
+      none => {
         ctxt.w.write_line(fmt!{"* `%s`", sig});
       }
     }

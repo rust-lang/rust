@@ -36,16 +36,19 @@ pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
 pure fn stmt_id(s: stmt) -> node_id {
     alt s.node {
-      stmt_decl(_, id) { id }
-      stmt_expr(_, id) { id }
-      stmt_semi(_, id) { id }
+      stmt_decl(_, id) => id,
+      stmt_expr(_, id) => id,
+      stmt_semi(_, id) => id
     }
 }
 
 fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
-    alt d { def_variant(enum_id, var_id) {
-            return {enm: enum_id, var: var_id}; }
-        _ { fail ~"non-variant in variant_def_ids"; } }
+    alt d {
+      def_variant(enum_id, var_id) => {
+        return {enm: enum_id, var: var_id}
+      }
+      _ => fail ~"non-variant in variant_def_ids"
+    }
 }
 
 pure fn def_id_of_def(d: def) -> def_id {
@@ -53,117 +56,129 @@ pure fn def_id_of_def(d: def) -> def_id {
       def_fn(id, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
-      def_use(id) | def_class(id, _) { id }
+      def_use(id) | def_class(id, _) => {
+        id
+      }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
       def_upvar(id, _, _) | def_binding(id, _) | def_region(id)
-      | def_typaram_binder(id) {
+      | def_typaram_binder(id) => {
         local_def(id)
       }
 
-      def_prim_ty(_) { fail; }
+      def_prim_ty(_) => fail
     }
 }
 
 pure fn binop_to_str(op: binop) -> ~str {
     alt op {
-      add { return ~"+"; }
-      subtract { return ~"-"; }
-      mul { return ~"*"; }
-      div { return ~"/"; }
-      rem { return ~"%"; }
-      and { return ~"&&"; }
-      or { return ~"||"; }
-      bitxor { return ~"^"; }
-      bitand { return ~"&"; }
-      bitor { return ~"|"; }
-      shl { return ~"<<"; }
-      shr { return ~">>"; }
-      eq { return ~"=="; }
-      lt { return ~"<"; }
-      le { return ~"<="; }
-      ne { return ~"!="; }
-      ge { return ~">="; }
-      gt { return ~">"; }
+      add => return ~"+",
+      subtract => return ~"-",
+      mul => return ~"*",
+      div => return ~"/",
+      rem => return ~"%",
+      and => return ~"&&",
+      or => return ~"||",
+      bitxor => return ~"^",
+      bitand => return ~"&",
+      bitor => return ~"|",
+      shl => return ~"<<",
+      shr => return ~">>",
+      eq => return ~"==",
+      lt => return ~"<",
+      le => return ~"<=",
+      ne => return ~"!=",
+      ge => return ~">=",
+      gt => return ~">"
     }
 }
 
 pure fn binop_to_method_name(op: binop) -> option<~str> {
     alt op {
-      add { return some(~"add"); }
-      subtract { return some(~"sub"); }
-      mul { return some(~"mul"); }
-      div { return some(~"div"); }
-      rem { return some(~"modulo"); }
-      bitxor { return some(~"bitxor"); }
-      bitand { return some(~"bitand"); }
-      bitor { return some(~"bitor"); }
-      shl { return some(~"shl"); }
-      shr { return some(~"shr"); }
-      and | or | eq | lt | le | ne | ge | gt { return none; }
+      add => return some(~"add"),
+      subtract => return some(~"sub"),
+      mul => return some(~"mul"),
+      div => return some(~"div"),
+      rem => return some(~"modulo"),
+      bitxor => return some(~"bitxor"),
+      bitand => return some(~"bitand"),
+      bitor => return some(~"bitor"),
+      shl => return some(~"shl"),
+      shr => return some(~"shr"),
+      and | or | eq | lt | le | ne | ge | gt => return none
     }
 }
 
 pure fn lazy_binop(b: binop) -> bool {
-    alt b { and { true } or { true } _ { false } }
+    alt b {
+      and => true,
+      or => true,
+      _ => false
+    }
 }
 
 pure fn is_shift_binop(b: binop) -> bool {
     alt b {
-      shl { true }
-      shr { true }
-      _ { false }
+      shl => true,
+      shr => true,
+      _ => false
     }
 }
 
 pure fn unop_to_str(op: unop) -> ~str {
     alt op {
-      box(mt) { if mt == m_mutbl { ~"@mut " } else { ~"@" } }
-      uniq(mt) { if mt == m_mutbl { ~"~mut " } else { ~"~" } }
-      deref { ~"*" }
-      not { ~"!" }
-      neg { ~"-" }
+      box(mt) => if mt == m_mutbl { ~"@mut " } else { ~"@" },
+      uniq(mt) => if mt == m_mutbl { ~"~mut " } else { ~"~" },
+      deref => ~"*",
+      not => ~"!",
+      neg => ~"-"
     }
 }
 
 pure fn is_path(e: @expr) -> bool {
-    return alt e.node { expr_path(_) { true } _ { false } };
+    return alt e.node { expr_path(_) => true, _ => false };
 }
 
 pure fn int_ty_to_str(t: int_ty) -> ~str {
     alt t {
-      ty_char { ~"u8" } // ???
-      ty_i { ~"" } ty_i8 { ~"i8" } ty_i16 { ~"i16" }
-      ty_i32 { ~"i32" } ty_i64 { ~"i64" }
+      ty_char => ~"u8", // ???
+      ty_i => ~"",
+      ty_i8 => ~"i8",
+      ty_i16 => ~"i16",
+      ty_i32 => ~"i32",
+      ty_i64 => ~"i64"
     }
 }
 
 pure fn int_ty_max(t: int_ty) -> u64 {
     alt t {
-      ty_i8 { 0x80u64 }
-      ty_i16 { 0x8000u64 }
-      ty_i | ty_char | ty_i32 { 0x80000000u64 } // actually ni about ty_i
-      ty_i64 { 0x8000000000000000u64 }
+      ty_i8 => 0x80u64,
+      ty_i16 => 0x8000u64,
+      ty_i | ty_char | ty_i32 => 0x80000000u64, // actually ni about ty_i
+      ty_i64 => 0x8000000000000000u64
     }
 }
 
 pure fn uint_ty_to_str(t: uint_ty) -> ~str {
     alt t {
-      ty_u { ~"u" } ty_u8 { ~"u8" } ty_u16 { ~"u16" }
-      ty_u32 { ~"u32" } ty_u64 { ~"u64" }
+      ty_u => ~"u",
+      ty_u8 => ~"u8",
+      ty_u16 => ~"u16",
+      ty_u32 => ~"u32",
+      ty_u64 => ~"u64"
     }
 }
 
 pure fn uint_ty_max(t: uint_ty) -> u64 {
     alt t {
-      ty_u8 { 0xffu64 }
-      ty_u16 { 0xffffu64 }
-      ty_u | ty_u32 { 0xffffffffu64 } // actually ni about ty_u
-      ty_u64 { 0xffffffffffffffffu64 }
+      ty_u8 => 0xffu64,
+      ty_u16 => 0xffffu64,
+      ty_u | ty_u32 => 0xffffffffu64, // actually ni about ty_u
+      ty_u64 => 0xffffffffffffffffu64
     }
 }
 
 pure fn float_ty_to_str(t: float_ty) -> ~str {
-    alt t { ty_f { ~"f" } ty_f32 { ~"f32" } ty_f64 { ~"f64" } }
+    alt t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
@@ -172,36 +187,34 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for m.items.each |it| {
         if it.ident == i { local = true; }
         alt it.node {
-          item_enum(variants, _) {
-            for variants.each |v| {
-                if v.node.name == i {
-                   local = true;
-                   parent_enum = some(/* FIXME (#2543) */ copy it.ident);
-                }
+          item_enum(variants, _) => for variants.each |v| {
+            if v.node.name == i {
+                local = true;
+                parent_enum = some(/* FIXME (#2543) */ copy it.ident);
             }
           }
-          _ { }
+          _ => ()
         }
         if local { break; }
     }
     let mut has_explicit_exports = false;
     for m.view_items.each |vi| {
         alt vi.node {
-          view_item_export(vps) {
+          view_item_export(vps) => {
             has_explicit_exports = true;
             for vps.each |vp| {
                 alt vp.node {
-                  ast::view_path_simple(id, _, _) {
+                  ast::view_path_simple(id, _, _) => {
                     if id == i { return true; }
                     alt parent_enum {
-                      some(parent_enum_id) {
+                      some(parent_enum_id) => {
                         if id == parent_enum_id { return true; }
                       }
-                      _ {}
+                      _ => ()
                     }
                   }
 
-                  ast::view_path_list(path, ids, _) {
+                  ast::view_path_list(path, ids, _) => {
                     if vec::len(path.idents) == 1u {
                         if i == path.idents[0] { return true; }
                         for ids.each |id| {
@@ -213,11 +226,11 @@ fn is_exported(i: ident, m: _mod) -> bool {
                   }
 
                   // FIXME: glob-exports aren't supported yet. (#2006)
-                  _ {}
+                  _ => ()
                 }
             }
           }
-          _ {}
+          _ => ()
         }
     }
     // If there are no declared exports then
@@ -227,7 +240,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
 }
 
 pure fn is_call_expr(e: @expr) -> bool {
-    alt e.node { expr_call(_, _, _) { true } _ { false } }
+    alt e.node { expr_call(_, _, _) => true, _ => false }
 }
 
 pure fn eq_ty(a: &@ty, b: &@ty) -> bool { box::ptr_eq(*a, *b) }
@@ -272,8 +285,8 @@ fn ident_to_path(s: span, +i: ident) -> @path {
 
 pure fn is_unguarded(&&a: arm) -> bool {
     alt a.guard {
-      none { true }
-      _    { false }
+      none => true,
+      _    => false
     }
 }
 
@@ -283,8 +296,8 @@ pure fn unguarded_pat(a: arm) -> option<~[@pat]> {
 
 pure fn class_item_ident(ci: @class_member) -> ident {
     alt ci.node {
-      instance_var(i,_,_,_,_) { /* FIXME (#2543) */ copy i }
-      class_method(it) { /* FIXME (#2543) */ copy it.ident }
+      instance_var(i,_,_,_,_) => /* FIXME (#2543) */ copy i,
+      class_method(it) => /* FIXME (#2543) */ copy it.ident
     }
 }
 
@@ -294,8 +307,8 @@ type ivar = {ident: ident, ty: @ty, cm: class_mutability,
 fn public_methods(ms: ~[@method]) -> ~[@method] {
     vec::filter(ms,
                 |m| alt m.vis {
-                    public { true }
-                    _   { false }
+                    public => true,
+                    _   => false
                 })
 }
 
@@ -303,14 +316,14 @@ fn split_class_items(cs: ~[@class_member]) -> (~[ivar], ~[@method]) {
     let mut vs = ~[], ms = ~[];
     for cs.each |c| {
       alt c.node {
-        instance_var(i, t, cm, id, vis) {
+        instance_var(i, t, cm, id, vis) => {
           vec::push(vs, {ident: /* FIXME (#2543) */ copy i,
                          ty: t,
                          cm: cm,
                          id: id,
                          vis: vis});
         }
-        class_method(m) { vec::push(ms, m); }
+        class_method(m) => vec::push(ms, m)
       }
     };
     (vs, ms)
@@ -320,8 +333,8 @@ fn split_class_items(cs: ~[@class_member]) -> (~[ivar], ~[@method]) {
 // a default, pull out the useful fields to make a ty_method
 fn trait_method_to_ty_method(method: trait_method) -> ty_method {
     alt method {
-      required(m) { m }
-      provided(m) {
+      required(m) => m,
+      provided(m) => {
         {ident: m.ident, attrs: m.attrs,
          decl: m.decl, tps: m.tps, self_ty: m.self_ty,
          id: m.id, span: m.span}
@@ -334,8 +347,8 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
         alt trt_method {
-          required(tm) { vec::push(reqd, tm); }
-          provided(m) { vec::push(provd, m); }
+          required(tm) => vec::push(reqd, tm),
+          provided(m) => vec::push(provd, m)
         }
     };
     (reqd, provd)
@@ -343,8 +356,8 @@ fn split_trait_methods(trait_methods: ~[trait_method])
 
 pure fn class_member_visibility(ci: @class_member) -> visibility {
   alt ci.node {
-     instance_var(_, _, _, _, vis) { vis }
-     class_method(m) { m.vis }
+     instance_var(_, _, _, _, vis) => vis,
+     class_method(m) => m.vis
   }
 }
 
@@ -357,33 +370,33 @@ trait inlined_item_utils {
 impl inlined_item_methods of inlined_item_utils for inlined_item {
     fn ident() -> ident {
         alt self {
-          ii_item(i) { /* FIXME (#2543) */ copy i.ident }
-          ii_foreign(i) { /* FIXME (#2543) */ copy i.ident }
-          ii_method(_, m) { /* FIXME (#2543) */ copy m.ident }
-          ii_ctor(_, nm, _, _) { /* FIXME (#2543) */ copy nm }
-          ii_dtor(_, nm, _, _) { /* FIXME (#2543) */ copy nm }
+          ii_item(i) => /* FIXME (#2543) */ copy i.ident,
+          ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
+          ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
+          ii_ctor(_, nm, _, _) => /* FIXME (#2543) */ copy nm,
+          ii_dtor(_, nm, _, _) => /* FIXME (#2543) */ copy nm
         }
     }
 
     fn id() -> ast::node_id {
         alt self {
-          ii_item(i) { i.id }
-          ii_foreign(i) { i.id }
-          ii_method(_, m) { m.id }
-          ii_ctor(ctor, _, _, _) { ctor.node.id }
-          ii_dtor(dtor, _, _, _) { dtor.node.id }
+          ii_item(i) => i.id,
+          ii_foreign(i) => i.id,
+          ii_method(_, m) => m.id,
+          ii_ctor(ctor, _, _, _) => ctor.node.id,
+          ii_dtor(dtor, _, _, _) => dtor.node.id
         }
     }
 
     fn accept<E>(e: E, v: visit::vt<E>) {
         alt self {
-          ii_item(i) { v.visit_item(i, e, v) }
-          ii_foreign(i) { v.visit_foreign_item(i, e, v) }
-          ii_method(_, m) { visit::visit_method_helper(m, e, v) }
-          ii_ctor(ctor, nm, tps, parent_id) {
+          ii_item(i) => v.visit_item(i, e, v),
+          ii_foreign(i) => v.visit_foreign_item(i, e, v),
+          ii_method(_, m) => visit::visit_method_helper(m, e, v),
+          ii_ctor(ctor, nm, tps, parent_id) => {
               visit::visit_class_ctor_helper(ctor, nm, tps, parent_id, e, v);
           }
-          ii_dtor(dtor, nm, tps, parent_id) {
+          ii_dtor(dtor, nm, tps, parent_id) => {
               visit::visit_class_dtor_helper(dtor, tps, parent_id, e, v);
           }
         }
@@ -394,26 +407,26 @@ impl inlined_item_methods of inlined_item_utils for inlined_item {
  referring to a def_self */
 fn is_self(d: ast::def) -> bool {
   alt d {
-    def_self(_)        { true }
-    def_upvar(_, d, _) { is_self(*d) }
-    _                  { false }
+    def_self(_)        => true,
+    def_upvar(_, d, _) => is_self(*d),
+    _                  => false
   }
 }
 
 /// Maps a binary operator to its precedence
 fn operator_prec(op: ast::binop) -> uint {
   alt op {
-      mul | div | rem   { 12u }
+      mul | div | rem   => 12u,
       // 'as' sits between here with 11
-      add | subtract    { 10u }
-      shl | shr         {  9u }
-      bitand            {  8u }
-      bitxor            {  7u }
-      bitor             {  6u }
-      lt | le | ge | gt {  4u }
-      eq | ne           {  3u }
-      and               {  2u }
-      or                {  1u }
+      add | subtract    => 10u,
+      shl | shr         =>  9u,
+      bitand            =>  8u,
+      bitxor            =>  7u,
+      bitor             =>  6u,
+      lt | le | ge | gt =>  4u,
+      eq | ne           =>  3u,
+      and               =>  2u,
+      or                =>  1u
   }
 }
 
@@ -443,13 +456,13 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_view_item: fn@(vi: @view_item) {
             alt vi.node {
-              view_item_use(_, _, id) { vfn(id) }
-              view_item_import(vps) | view_item_export(vps) {
+              view_item_use(_, _, id) => vfn(id),
+              view_item_import(vps) | view_item_export(vps) => {
                 do vec::iter(vps) |vp| {
                     alt vp.node {
-                      view_path_simple(_, _, id) { vfn(id) }
-                      view_path_glob(_, id) { vfn(id) }
-                      view_path_list(_, _, id) { vfn(id) }
+                      view_path_simple(_, _, id) => vfn(id),
+                      view_path_glob(_, id) => vfn(id),
+                      view_path_list(_, _, id) => vfn(id)
                     }
                 }
               }
@@ -463,8 +476,8 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_item: fn@(i: @item) {
             vfn(i.id);
             alt i.node {
-              item_enum(vs, _) { for vs.each |v| { vfn(v.node.id); } }
-              _ {}
+              item_enum(vs, _) => for vs.each |v| { vfn(v.node.id); }
+              _ => ()
             }
         },
 
@@ -499,10 +512,8 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_ty: fn@(t: @ty) {
             alt t.node {
-              ty_path(_, id) {
-                vfn(id)
-              }
-              _ { /* fall through */ }
+              ty_path(_, id) => vfn(id),
+              _ => { /* fall through */ }
             }
         },
 
@@ -515,27 +526,27 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(id);
 
             alt fk {
-              visit::fk_ctor(nm, _, tps, self_id, parent_id) {
+              visit::fk_ctor(nm, _, tps, self_id, parent_id) => {
                 vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);
                 vfn(parent_id.node);
               }
-              visit::fk_dtor(tps, _, self_id, parent_id) {
+              visit::fk_dtor(tps, _, self_id, parent_id) => {
                 vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);
                 vfn(parent_id.node);
               }
-              visit::fk_item_fn(_, tps) {
+              visit::fk_item_fn(_, tps) => {
                 vec::iter(tps, |tp| vfn(tp.id));
               }
-              visit::fk_method(_, tps, m) {
+              visit::fk_method(_, tps, m) => {
                 vfn(m.self_id);
                 vec::iter(tps, |tp| vfn(tp.id));
               }
               visit::fk_anon(_, capture_clause)
-              | visit::fk_fn_block(capture_clause) {
+              | visit::fk_fn_block(capture_clause) => {
                 for vec::each(*capture_clause) |clause| {
                     vfn(clause.id);
                 }
@@ -555,11 +566,8 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_class_item: fn@(c: @class_member) {
             alt c.node {
-              instance_var(_, _, _, id,_) {
-                vfn(id)
-              }
-              class_method(_) {
-              }
+              instance_var(_, _, _, id,_) => vfn(id),
+              class_method(_) => ()
             }
         }
     })
@@ -585,31 +593,29 @@ fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
 
 pure fn is_item_impl(item: @ast::item) -> bool {
     alt item.node {
-       item_impl(*) { true }
-       _            { false }
+       item_impl(*) => true,
+       _            => false
     }
 }
 
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     alt pat.node {
-      pat_ident(_, pth, some(p)) { walk_pat(p, it); }
-      pat_rec(fields, _) {
-        for fields.each |f| { walk_pat(f.pat, it); }
+      pat_ident(_, pth, some(p)) => walk_pat(p, it),
+      pat_rec(fields, _) => for fields.each |f| { walk_pat(f.pat, it) }
+      pat_enum(_, some(s)) | pat_tup(s) => for s.each |p| {
+        walk_pat(p, it)
       }
-      pat_enum(_, some(s)) | pat_tup(s) {
-        for s.each |p| { walk_pat(p, it); }
-      }
-      pat_box(s) | pat_uniq(s) { walk_pat(s, it); }
+      pat_box(s) | pat_uniq(s) => walk_pat(s, it),
       pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _)
-        | pat_enum(_, _) {}
+        | pat_enum(_, _) => ()
     }
 }
 
 fn view_path_id(p: @view_path) -> node_id {
     alt p.node {
       view_path_simple(_, _, id) | view_path_glob(_, id) |
-      view_path_list(_, _, id) { id }
+      view_path_list(_, _, id) => id
     }
 }
 

@@ -3,8 +3,8 @@
 fn switcher(x: option<@int>) {
     let mut x = x;
     alt x {
-      some(@y) { copy y; x = none; }
-      none { }
+      some(@y) => { copy y; x = none; }
+      none => { }
     }
 }
 

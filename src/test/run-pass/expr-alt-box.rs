@@ -5,12 +5,12 @@
 
 // Tests for alt as expressions resulting in boxed types
 fn test_box() {
-    let res = alt check true { true { @100 } };
+    let res = alt check true { true => { @100 } };
     assert (*res == 100);
 }
 
 fn test_str() {
-    let res = alt check true { true { ~"happy" } };
+    let res = alt check true { true => { ~"happy" } };
     assert (res == ~"happy");
 }
 

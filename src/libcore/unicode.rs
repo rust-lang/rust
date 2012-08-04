@@ -2,9 +2,8 @@ mod general_category {
     pure fn Cc(c: char) -> bool {
         return alt c {
               '\x00' to '\x1f'
-            | '\x7f' to '\x9f'
-              { true }
-            _ { false }
+            | '\x7f' to '\x9f' => true,
+            _ => false
         };
     }
 
@@ -22,25 +21,22 @@ mod general_category {
             | '\ufff9' to '\ufffb'
             | '\U000110bd'
             | '\U0001d173' to '\U0001d17a'
-            | '\U000e0001' to '\U000e007f'
-              { true }
-            _ { false }
+            | '\U000e0001' to '\U000e007f' => true,
+            _ => false
         };
     }
 
     pure fn Co(c: char) -> bool {
         return alt c {
-              '\ue000' to '\uf8ff'
-              { true }
-            _ { false }
+          '\ue000' to '\uf8ff' => true,
+          _ => false
         };
     }
 
     pure fn Cs(c: char) -> bool {
         return alt c {
-              '\ud800' to '\udfff'
-              { true }
-            _ { false }
+              '\ud800' to '\udfff' => true,
+            _ => false
         };
     }
 
@@ -644,8 +640,8 @@ mod general_category {
             | '\U0001d7aa' to '\U0001d7c2'
             | '\U0001d7c4' to '\U0001d7c9'
             | '\U0001d7cb'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -700,8 +696,8 @@ mod general_category {
             | '\uaadd'
             | '\uff70'
             | '\uff9e' to '\uff9f'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -886,8 +882,8 @@ mod general_category {
             | '\U00012000' to '\U0001236e'
             | '\U00013000' to '\U0001b001'
             | '\U00020000' to '\U0002fa1d'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -903,8 +899,8 @@ mod general_category {
             | '\u1fbc'
             | '\u1fcc'
             | '\u1ffc'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1495,8 +1491,8 @@ mod general_category {
             | '\U0001d756' to '\U0001d76e'
             | '\U0001d790' to '\U0001d7a8'
             | '\U0001d7ca'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1606,8 +1602,8 @@ mod general_category {
             | '\U000110b7' to '\U000110b8'
             | '\U0001d165' to '\U0001d166'
             | '\U0001d16d' to '\U0001d172'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1617,8 +1613,8 @@ mod general_category {
             | '\u20dd' to '\u20e0'
             | '\u20e2' to '\u20e4'
             | '\ua670' to '\ua672'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1810,8 +1806,8 @@ mod general_category {
             | '\U0001d1aa' to '\U0001d1ad'
             | '\U0001d242' to '\U0001d244'
             | '\U000e0100' to '\U000e01ef'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1854,8 +1850,8 @@ mod general_category {
             | '\U000104a0' to '\U000104a9'
             | '\U00011066' to '\U0001106f'
             | '\U0001d7ce' to '\U0001d7ff'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1873,8 +1869,8 @@ mod general_category {
             | '\U0001034a'
             | '\U000103d1' to '\U000103d5'
             | '\U00012400' to '\U00012462'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1921,8 +1917,8 @@ mod general_category {
             | '\U00011052' to '\U00011065'
             | '\U0001d360' to '\U0001d371'
             | '\U0001f100' to '\U0001f10a'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1934,8 +1930,8 @@ mod general_category {
             | '\ufe33' to '\ufe34'
             | '\ufe4d' to '\ufe4f'
             | '\uff3f'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -1956,8 +1952,8 @@ mod general_category {
             | '\ufe58'
             | '\ufe63'
             | '\uff0d'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2033,8 +2029,8 @@ mod general_category {
             | '\uff5d'
             | '\uff60'
             | '\uff63'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2050,8 +2046,8 @@ mod general_category {
             | '\u2e0d'
             | '\u2e1d'
             | '\u2e21'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2068,8 +2064,8 @@ mod general_category {
             | '\u2e0c'
             | '\u2e1c'
             | '\u2e20'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2201,8 +2197,8 @@ mod general_category {
             | '\U000110bb' to '\U000110bc'
             | '\U000110be' to '\U000110c1'
             | '\U00012470' to '\U00012473'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2280,8 +2276,8 @@ mod general_category {
             | '\uff5b'
             | '\uff5f'
             | '\uff62'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2303,8 +2299,8 @@ mod general_category {
             | '\uff04'
             | '\uffe0' to '\uffe1'
             | '\uffe5' to '\uffe6'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2337,8 +2333,8 @@ mod general_category {
             | '\uff3e'
             | '\uff40'
             | '\uffe3'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2408,8 +2404,8 @@ mod general_category {
             | '\U0001d789'
             | '\U0001d7a9'
             | '\U0001d7c3'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -2527,24 +2523,22 @@ mod general_category {
             | '\U0001d245' to '\U0001d356'
             | '\U0001f000' to '\U0001f0df'
             | '\U0001f110' to '\U0001f773'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
     pure fn Zl(c: char) -> bool {
         return alt c {
-              '\u2028'
-              { true }
-            _ { false }
+          '\u2028' => true,
+          _ => false
         };
     }
 
     pure fn Zp(c: char) -> bool {
         return alt c {
-              '\u2029'
-              { true }
-            _ { false }
+          '\u2029' => true,
+          _ => false
         };
     }
 
@@ -2558,8 +2552,8 @@ mod general_category {
             | '\u202f'
             | '\u205f'
             | '\u3000'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -3299,8 +3293,8 @@ mod derived_property {
             | '\U0002a700' to '\U0002b734'
             | '\U0002b740' to '\U0002b81d'
             | '\U0002f800' to '\U0002fa1d'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -4170,8 +4164,8 @@ mod derived_property {
             | '\U0002b740' to '\U0002b81d'
             | '\U0002f800' to '\U0002fa1d'
             | '\U000e0100' to '\U000e01ef'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 
@@ -4676,8 +4670,8 @@ mod derived_property {
             | '\U0002a700' to '\U0002b734'
             | '\U0002b740' to '\U0002b81d'
             | '\U0002f800' to '\U0002fa1d'
-              { true }
-            _ { false }
+          => true,
+          _ => false
         };
     }
 

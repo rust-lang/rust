@@ -35,17 +35,17 @@ enum abbrev_ctxt { ac_no_abbrevs, ac_use_abbrevs(hashmap<ty::t, ty_abbrev>), }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     alt cx.abbrevs {
-      ac_no_abbrevs { return false; }
-      ac_use_abbrevs(_) { return true; }
+      ac_no_abbrevs => return false,
+      ac_use_abbrevs(_) => return true
     }
 }
 
 fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
     alt cx.abbrevs {
-      ac_no_abbrevs {
+      ac_no_abbrevs => {
         let result_str = alt cx.tcx.short_names_cache.find(t) {
-          some(s) { *s }
-          none {
+          some(s) => *s,
+          none => {
             let buf = io::mem_buffer();
             enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).struct);
             cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
@@ -54,13 +54,13 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
         };
         w.write_str(result_str);
       }
-      ac_use_abbrevs(abbrevs) {
+      ac_use_abbrevs(abbrevs) => {
         alt abbrevs.find(t) {
-          some(a) { w.write_str(*a.s); return; }
-          none {
+          some(a) => { w.write_str(*a.s); return; }
+          none => {
             let pos = w.tell();
             alt ty::type_def_id(t) {
-              some(def_id) {
+              some(def_id) => {
                 // Do not emit node ids that map to unexported names.  Those
                 // are not helpful.
                 if def_id.crate != local_crate ||
@@ -70,7 +70,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
                     w.write_char('|');
                 }
               }
-              _ {}
+              _ => {}
             }
             enc_sty(w, cx, ty::get(t).struct);
             let end = w.tell();
@@ -97,17 +97,17 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
 }
 fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
     alt mt.mutbl {
-      m_imm { }
-      m_mutbl { w.write_char('m'); }
-      m_const { w.write_char('?'); }
+      m_imm => (),
+      m_mutbl => w.write_char('m'),
+      m_const => w.write_char('?')
     }
     enc_ty(w, cx, mt.ty);
 }
 
 fn enc_opt<T>(w: io::writer, t: option<T>, enc_f: fn(T)) {
     alt t {
-      none { w.write_char('n') }
-      some(v) {
+      none => w.write_char('n'),
+      some(v) => {
         w.write_char('s');
         enc_f(v);
       }
@@ -124,11 +124,11 @@ fn enc_substs(w: io::writer, cx: @ctxt, substs: ty::substs) {
 
 fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
     alt r {
-      ty::re_bound(br) {
+      ty::re_bound(br) => {
         w.write_char('b');
         enc_bound_region(w, br);
       }
-      ty::re_free(id, br) {
+      ty::re_free(id, br) => {
         w.write_char('f');
         w.write_char('[');
         w.write_int(id);
@@ -136,15 +136,15 @@ fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
         enc_bound_region(w, br);
         w.write_char(']');
       }
-      ty::re_scope(nid) {
+      ty::re_scope(nid) => {
         w.write_char('s');
         w.write_int(nid);
         w.write_char('|');
       }
-      ty::re_static {
+      ty::re_static => {
         w.write_char('t');
       }
-      ty::re_var(_) {
+      ty::re_var(_) => {
         // these should not crop up after typeck
         cx.diag.handler().bug(~"Cannot encode region variables");
       }
@@ -153,14 +153,14 @@ fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
 
 fn enc_bound_region(w: io::writer, br: ty::bound_region) {
     alt br {
-      ty::br_self { w.write_char('s') }
-      ty::br_anon { w.write_char('a') }
-      ty::br_named(s) {
+      ty::br_self => w.write_char('s'),
+      ty::br_anon => w.write_char('a'),
+      ty::br_named(s) => {
         w.write_char('[');
         w.write_str(*s);
         w.write_char(']')
       }
-      ty::br_cap_avoid(id, br) {
+      ty::br_cap_avoid(id, br) => {
         w.write_char('c');
         w.write_int(id);
         w.write_char('|');
@@ -172,17 +172,17 @@ fn enc_bound_region(w: io::writer, br: ty::bound_region) {
 fn enc_vstore(w: io::writer, cx: @ctxt, v: ty::vstore) {
     w.write_char('/');
     alt v {
-      ty::vstore_fixed(u)  {
+      ty::vstore_fixed(u) => {
         w.write_uint(u);
         w.write_char('|');
       }
-      ty::vstore_uniq {
+      ty::vstore_uniq => {
         w.write_char('~');
       }
-      ty::vstore_box {
+      ty::vstore_box => {
         w.write_char('@');
       }
-      ty::vstore_slice(r) {
+      ty::vstore_slice(r) => {
         w.write_char('&');
         enc_region(w, cx, r);
       }
@@ -191,73 +191,73 @@ fn enc_vstore(w: io::writer, cx: @ctxt, v: ty::vstore) {
 
 fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
     alt st {
-      ty::ty_nil { w.write_char('n'); }
-      ty::ty_bot { w.write_char('z'); }
-      ty::ty_bool { w.write_char('b'); }
-      ty::ty_int(t) {
+      ty::ty_nil => w.write_char('n'),
+      ty::ty_bot => w.write_char('z'),
+      ty::ty_bool => w.write_char('b'),
+      ty::ty_int(t) => {
         alt t {
-          ty_i { w.write_char('i'); }
-          ty_char { w.write_char('c'); }
-          ty_i8 { w.write_str(&"MB"); }
-          ty_i16 { w.write_str(&"MW"); }
-          ty_i32 { w.write_str(&"ML"); }
-          ty_i64 { w.write_str(&"MD"); }
+          ty_i => w.write_char('i'),
+          ty_char => w.write_char('c'),
+          ty_i8 => w.write_str(&"MB"),
+          ty_i16 => w.write_str(&"MW"),
+          ty_i32 => w.write_str(&"ML"),
+          ty_i64 => w.write_str(&"MD")
         }
       }
-      ty::ty_uint(t) {
+      ty::ty_uint(t) => {
         alt t {
-          ty_u { w.write_char('u'); }
-          ty_u8 { w.write_str(&"Mb"); }
-          ty_u16 { w.write_str(&"Mw"); }
-          ty_u32 { w.write_str(&"Ml"); }
-          ty_u64 { w.write_str(&"Md"); }
+          ty_u => w.write_char('u'),
+          ty_u8 => w.write_str(&"Mb"),
+          ty_u16 => w.write_str(&"Mw"),
+          ty_u32 => w.write_str(&"Ml"),
+          ty_u64 => w.write_str(&"Md")
         }
       }
-      ty::ty_float(t) {
+      ty::ty_float(t) => {
         alt t {
-          ty_f { w.write_char('l'); }
-          ty_f32 { w.write_str(&"Mf"); }
-          ty_f64 { w.write_str(&"MF"); }
+          ty_f => w.write_char('l'),
+          ty_f32 => w.write_str(&"Mf"),
+          ty_f64 => w.write_str(&"MF"),
         }
       }
-      ty::ty_enum(def, substs) {
+      ty::ty_enum(def, substs) => {
         w.write_str(&"t[");
         w.write_str(cx.ds(def));
         w.write_char('|');
         enc_substs(w, cx, substs);
         w.write_char(']');
       }
-      ty::ty_trait(def, substs) {
+      ty::ty_trait(def, substs) => {
         w.write_str(&"x[");
         w.write_str(cx.ds(def));
         w.write_char('|');
         enc_substs(w, cx, substs);
         w.write_char(']');
       }
-      ty::ty_tup(ts) {
+      ty::ty_tup(ts) => {
         w.write_str(&"T[");
         for ts.each |t| { enc_ty(w, cx, t); }
         w.write_char(']');
       }
-      ty::ty_box(mt) { w.write_char('@'); enc_mt(w, cx, mt); }
-      ty::ty_uniq(mt) { w.write_char('~'); enc_mt(w, cx, mt); }
-      ty::ty_ptr(mt) { w.write_char('*'); enc_mt(w, cx, mt); }
-      ty::ty_rptr(r, mt) {
+      ty::ty_box(mt) => { w.write_char('@'); enc_mt(w, cx, mt); }
+      ty::ty_uniq(mt) => { w.write_char('~'); enc_mt(w, cx, mt); }
+      ty::ty_ptr(mt) => { w.write_char('*'); enc_mt(w, cx, mt); }
+      ty::ty_rptr(r, mt) => {
         w.write_char('&');
         enc_region(w, cx, r);
         enc_mt(w, cx, mt);
       }
-      ty::ty_evec(mt, v) {
+      ty::ty_evec(mt, v) => {
         w.write_char('V');
         enc_mt(w, cx, mt);
         enc_vstore(w, cx, v);
       }
-      ty::ty_estr(v) {
+      ty::ty_estr(v) => {
         w.write_char('v');
         enc_vstore(w, cx, v);
       }
-      ty::ty_unboxed_vec(mt) { w.write_char('U'); enc_mt(w, cx, mt); }
-      ty::ty_rec(fields) {
+      ty::ty_unboxed_vec(mt) => { w.write_char('U'); enc_mt(w, cx, mt); }
+      ty::ty_rec(fields) => {
         w.write_str(&"R[");
         for fields.each |field| {
             w.write_str(*field.ident);
@@ -266,33 +266,33 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
         }
         w.write_char(']');
       }
-      ty::ty_fn(f) {
+      ty::ty_fn(f) => {
         enc_ty_fn(w, cx, f);
       }
-      ty::ty_var(id) {
+      ty::ty_var(id) => {
         w.write_char('X');
         w.write_uint(id.to_uint());
       }
-      ty::ty_var_integral(id) {
+      ty::ty_var_integral(id) => {
         w.write_char('X');
         w.write_char('I');
         w.write_uint(id.to_uint());
       }
-      ty::ty_param({idx: id, def_id: did}) {
+      ty::ty_param({idx: id, def_id: did}) => {
         w.write_char('p');
         w.write_str(cx.ds(did));
         w.write_char('|');
         w.write_str(uint::str(id));
       }
-      ty::ty_self {
+      ty::ty_self => {
         w.write_char('s');
       }
-      ty::ty_type { w.write_char('Y'); }
-      ty::ty_opaque_closure_ptr(ty::ck_block) { w.write_str(&"C&"); }
-      ty::ty_opaque_closure_ptr(ty::ck_box) { w.write_str(&"C@"); }
-      ty::ty_opaque_closure_ptr(ty::ck_uniq) { w.write_str(&"C~"); }
-      ty::ty_opaque_box { w.write_char('B'); }
-      ty::ty_class(def, substs) {
+      ty::ty_type => w.write_char('Y'),
+      ty::ty_opaque_closure_ptr(ty::ck_block) => w.write_str(&"C&"),
+      ty::ty_opaque_closure_ptr(ty::ck_box) => w.write_str(&"C@"),
+      ty::ty_opaque_closure_ptr(ty::ck_uniq) => w.write_str(&"C~"),
+      ty::ty_opaque_box => w.write_char('B'),
+      ty::ty_class(def, substs) => {
           debug!{"~~~~ %s", ~"a["};
           w.write_str(&"a[");
           let s = cx.ds(def);
@@ -308,29 +308,29 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
 }
 fn enc_proto(w: io::writer, proto: proto) {
     alt proto {
-      proto_uniq { w.write_str(&"f~"); }
-      proto_box { w.write_str(&"f@"); }
-      proto_block { w.write_str(~"f&"); }
-      proto_bare { w.write_str(&"fn"); }
+      proto_uniq => w.write_str(&"f~"),
+      proto_box => w.write_str(&"f@"),
+      proto_block => w.write_str(~"f&"),
+      proto_bare => w.write_str(&"fn")
     }
 }
 
 fn enc_mode(w: io::writer, cx: @ctxt, m: mode) {
     alt ty::resolved_mode(cx.tcx, m) {
-      by_mutbl_ref { w.write_char('&'); }
-      by_move { w.write_char('-'); }
-      by_copy { w.write_char('+'); }
-      by_ref { w.write_char('='); }
-      by_val { w.write_char('#'); }
+      by_mutbl_ref => w.write_char('&'),
+      by_move => w.write_char('-'),
+      by_copy => w.write_char('+'),
+      by_ref => w.write_char('='),
+      by_val => w.write_char('#')
     }
 }
 
 fn enc_purity(w: io::writer, p: purity) {
     alt p {
-      pure_fn { w.write_char('p'); }
-      impure_fn { w.write_char('i'); }
-      unsafe_fn { w.write_char('u'); }
-      extern_fn { w.write_char('c'); }
+      pure_fn => w.write_char('p'),
+      impure_fn => w.write_char('i'),
+      unsafe_fn => w.write_char('u'),
+      extern_fn => w.write_char('c')
     }
 }
 
@@ -344,19 +344,19 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     }
     w.write_char(']');
     alt ft.ret_style {
-      noreturn { w.write_char('!'); }
-      _ { enc_ty(w, cx, ft.output); }
+      noreturn => w.write_char('!'),
+      _ => enc_ty(w, cx, ft.output)
     }
 }
 
 fn enc_bounds(w: io::writer, cx: @ctxt, bs: @~[ty::param_bound]) {
     for vec::each(*bs) |bound| {
         alt bound {
-          ty::bound_send { w.write_char('S'); }
-          ty::bound_copy { w.write_char('C'); }
-          ty::bound_const { w.write_char('K'); }
-          ty::bound_owned { w.write_char('O'); }
-          ty::bound_trait(tp) {
+          ty::bound_send => w.write_char('S'),
+          ty::bound_copy => w.write_char('C'),
+          ty::bound_const => w.write_char('K'),
+          ty::bound_owned => w.write_char('O'),
+          ty::bound_trait(tp) => {
             w.write_char('I');
             enc_ty(w, cx, tp);
           }

@@ -38,12 +38,12 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     // Extract the arguments:
     let lhses:~[@named_match] = alt argument_map.get(@~"lhs") {
-      @matched_seq(s, sp) { s }
-      _ { cx.span_bug(sp, ~"wrong-structured lhs") }
+      @matched_seq(s, sp) => s,
+      _ => cx.span_bug(sp, ~"wrong-structured lhs")
     };
     let rhses:~[@named_match] = alt argument_map.get(@~"rhs") {
-      @matched_seq(s, sp) { s }
-      _ { cx.span_bug(sp, ~"wrong-structured rhs") }
+      @matched_seq(s, sp) => s,
+      _ => cx.span_bug(sp, ~"wrong-structured rhs")
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
@@ -59,14 +59,14 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
         for lhses.eachi() |i, lhs| { // try each arm's matchers
             alt lhs {
-              @matched_nonterminal(nt_matchers(mtcs)) {
+              @matched_nonterminal(nt_matchers(mtcs)) => {
                 // `none` is because we're not interpolating
                 let arg_rdr = new_tt_reader(s_d, itr, none, arg) as reader;
                 alt parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtcs) {
-                  success(named_matches) {
+                  success(named_matches) => {
                     let rhs = alt rhses[i] { // okay, what's your transcriber?
-                      @matched_nonterminal(nt_tt(@tt)) { tt }
-                      _ { cx.span_bug(sp, ~"bad thing in rhs") }
+                      @matched_nonterminal(nt_tt(@tt)) => tt,
+                      _ => cx.span_bug(sp, ~"bad thing in rhs")
                     };
                     // rhs has holes ( `$id` and `$(...)` that need filled)
                     let trncbr = new_tt_reader(s_d, itr, some(named_matches),
@@ -75,14 +75,13 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                                    trncbr as reader, SOURCE_FILE);
                     return mr_expr(p.parse_expr());
                   }
-                  failure(sp, msg) {
-                    if sp.lo >= best_fail_spot.lo {
-                        best_fail_spot = sp; best_fail_msg = msg;
-                    }
+                  failure(sp, msg) => if sp.lo >= best_fail_spot.lo {
+                    best_fail_spot = sp;
+                    best_fail_msg = msg;
                   }
                 }
               }
-              _ { cx.bug(~"non-matcher found in parsed lhses"); }
+              _ => cx.bug(~"non-matcher found in parsed lhses")
             }
         }
         cx.span_fatal(best_fail_spot, best_fail_msg);

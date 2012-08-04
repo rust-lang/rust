@@ -6,8 +6,8 @@ enum tree/& { nil, node(&tree, &tree, int), }
 
 fn item_check(t: &tree) -> int {
     alt *t {
-      nil { return 0; }
-      node(left, right, item) {
+      nil => { return 0; }
+      node(left, right, item) => {
         return item + item_check(left) - item_check(right);
       }
     }

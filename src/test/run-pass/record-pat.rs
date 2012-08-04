@@ -4,8 +4,8 @@ enum t3 { c(t2, uint), }
 
 fn m(in: t3) -> int {
     alt in {
-      c({x: a(m), _}, _) { return m; }
-      c({x: b(m), y: y}, z) { return ((m + z) as int) + y; }
+      c({x: a(m), _}, _) => { return m; }
+      c({x: b(m), y: y}, z) => { return ((m + z) as int) + y; }
     }
 }
 

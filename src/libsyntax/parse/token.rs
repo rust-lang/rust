@@ -103,95 +103,100 @@ enum nonterminal {
 
 fn binop_to_str(o: binop) -> ~str {
     alt o {
-      PLUS { ~"+" }
-      MINUS { ~"-" }
-      STAR { ~"*" }
-      SLASH { ~"/" }
-      PERCENT { ~"%" }
-      CARET { ~"^" }
-      AND { ~"&" }
-      OR { ~"|" }
-      SHL { ~"<<" }
-      SHR { ~">>" }
+      PLUS => ~"+",
+      MINUS => ~"-",
+      STAR => ~"*",
+      SLASH => ~"/",
+      PERCENT => ~"%",
+      CARET => ~"^",
+      AND => ~"&",
+      OR => ~"|",
+      SHL => ~"<<",
+      SHR => ~">>"
     }
 }
 
 fn to_str(in: interner<@~str>, t: token) -> ~str {
     alt t {
-      EQ { ~"=" }
-      LT { ~"<" }
-      LE { ~"<=" }
-      EQEQ { ~"==" }
-      NE { ~"!=" }
-      GE { ~">=" }
-      GT { ~">" }
-      NOT { ~"!" }
-      TILDE { ~"~" }
-      OROR { ~"||" }
-      ANDAND { ~"&&" }
-      BINOP(op) { binop_to_str(op) }
-      BINOPEQ(op) { binop_to_str(op) + ~"=" }
+      EQ => ~"=",
+      LT => ~"<",
+      LE => ~"<=",
+      EQEQ => ~"==",
+      NE => ~"!=",
+      GE => ~">=",
+      GT => ~">",
+      NOT => ~"!",
+      TILDE => ~"~",
+      OROR => ~"||",
+      ANDAND => ~"&&",
+      BINOP(op) => binop_to_str(op),
+      BINOPEQ(op) => binop_to_str(op) + ~"=",
 
       /* Structural symbols */
-      AT { ~"@" }
-      DOT { ~"." }
-      DOTDOT { ~".." }
-      ELLIPSIS { ~"..." }
-      COMMA { ~"," }
-      SEMI { ~";" }
-      COLON { ~":" }
-      MOD_SEP { ~"::" }
-      RARROW { ~"->" }
-      LARROW { ~"<-" }
-      DARROW { ~"<->" }
-      FAT_ARROW { ~"=>" }
-      LPAREN { ~"(" }
-      RPAREN { ~")" }
-      LBRACKET { ~"[" }
-      RBRACKET { ~"]" }
-      LBRACE { ~"{" }
-      RBRACE { ~"}" }
-      POUND { ~"#" }
-      DOLLAR { ~"$" }
+      AT => ~"@",
+      DOT => ~".",
+      DOTDOT => ~"..",
+      ELLIPSIS => ~"...",
+      COMMA => ~",",
+      SEMI => ~";",
+      COLON => ~":",
+      MOD_SEP => ~"::",
+      RARROW => ~"->",
+      LARROW => ~"<-",
+      DARROW => ~"<->",
+      FAT_ARROW => ~"=>",
+      LPAREN => ~"(",
+      RPAREN => ~")",
+      LBRACKET => ~"[",
+      RBRACKET => ~"]",
+      LBRACE => ~"{",
+      RBRACE => ~"}",
+      POUND => ~"#",
+      DOLLAR => ~"$",
 
       /* Literals */
-      LIT_INT(c, ast::ty_char) {
+      LIT_INT(c, ast::ty_char) => {
         ~"'" + char::escape_default(c as char) + ~"'"
       }
-      LIT_INT(i, t) {
+      LIT_INT(i, t) => {
         int::to_str(i as int, 10u) + ast_util::int_ty_to_str(t)
       }
-      LIT_UINT(u, t) {
+      LIT_UINT(u, t) => {
         uint::to_str(u as uint, 10u) + ast_util::uint_ty_to_str(t)
       }
-      LIT_INT_UNSUFFIXED(i) {
+      LIT_INT_UNSUFFIXED(i) => {
         int::to_str(i as int, 10u)
       }
-      LIT_FLOAT(s, t) {
+      LIT_FLOAT(s, t) => {
         let mut body = *in.get(s);
         if body.ends_with(~".") {
             body = body + ~"0";  // `10.f` is not a float literal
         }
         body + ast_util::float_ty_to_str(t)
       }
-      LIT_STR(s) { ~"\"" + str::escape_default( *in.get(s)) + ~"\"" }
+      LIT_STR(s) => { ~"\"" + str::escape_default( *in.get(s)) + ~"\"" }
 
       /* Name components */
-      IDENT(s, _) { *in.get(s) }
+      IDENT(s, _) => *in.get(s),
 
-      UNDERSCORE { ~"_" }
+      UNDERSCORE => ~"_",
 
       /* Other */
-      DOC_COMMENT(s) { *in.get(s) }
-      EOF { ~"<eof>" }
-      INTERPOLATED(nt) {
+      DOC_COMMENT(s) => *in.get(s),
+      EOF => ~"<eof>",
+      INTERPOLATED(nt) => {
         ~"an interpolated " +
             alt nt {
-              nt_item(*) { ~"item" } nt_block(*) { ~"block" }
-              nt_stmt(*) { ~"statement" } nt_pat(*) { ~"pattern" }
-              nt_expr(*) { ~"expression" } nt_ty(*) { ~"type" }
-              nt_ident(*) { ~"identifier" } nt_path(*) { ~"path" }
-              nt_tt(*) { ~"tt" } nt_matchers(*) { ~"matcher sequence" }
+              nt_item(*) => ~"item",
+              nt_block(*) => ~"block",
+              nt_stmt(*) => ~"statement",
+              nt_pat(*) => ~"pattern",
+              nt_expr(*) => ~"expression",
+              nt_ty(*) => ~"type",
+              nt_ident(*) => ~"identifier",
+              nt_path(*) => ~"path",
+              nt_tt(*) => ~"tt",
+              nt_matchers(*) => ~"matcher sequence"
             }
       }
     }
@@ -199,44 +204,44 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
 
 pure fn can_begin_expr(t: token) -> bool {
     alt t {
-      LPAREN { true }
-      LBRACE { true }
-      LBRACKET { true }
-      IDENT(_, _) { true }
-      UNDERSCORE { true }
-      TILDE { true }
-      LIT_INT(_, _) { true }
-      LIT_UINT(_, _) { true }
-      LIT_INT_UNSUFFIXED(_) { true }
-      LIT_FLOAT(_, _) { true }
-      LIT_STR(_) { true }
-      POUND { true }
-      AT { true }
-      NOT { true }
-      BINOP(MINUS) { true }
-      BINOP(STAR) { true }
-      BINOP(AND) { true }
-      BINOP(OR) { true } // in lambda syntax
-      OROR { true } // in lambda syntax
-      MOD_SEP { true }
+      LPAREN => true,
+      LBRACE => true,
+      LBRACKET => true,
+      IDENT(_, _) => true,
+      UNDERSCORE => true,
+      TILDE => true,
+      LIT_INT(_, _) => true,
+      LIT_UINT(_, _) => true,
+      LIT_INT_UNSUFFIXED(_) => true,
+      LIT_FLOAT(_, _) => true,
+      LIT_STR(_) => true,
+      POUND => true,
+      AT => true,
+      NOT => true,
+      BINOP(MINUS) => true,
+      BINOP(STAR) => true,
+      BINOP(AND) => true,
+      BINOP(OR) => true, // in lambda syntax
+      OROR => true, // in lambda syntax
+      MOD_SEP => true,
       INTERPOLATED(nt_expr(*))
       | INTERPOLATED(nt_ident(*))
       | INTERPOLATED(nt_block(*))
-      | INTERPOLATED(nt_path(*)) { true }
-      _ { false }
+      | INTERPOLATED(nt_path(*)) => true,
+      _ => false
     }
 }
 
 /// what's the opposite delimiter?
 fn flip_delimiter(&t: token::token) -> token::token {
     alt t {
-      token::LPAREN { token::RPAREN }
-      token::LBRACE { token::RBRACE }
-      token::LBRACKET { token::RBRACKET }
-      token::RPAREN { token::LPAREN }
-      token::RBRACE { token::LBRACE }
-      token::RBRACKET { token::LBRACKET }
-      _ { fail }
+      token::LPAREN => token::RPAREN,
+      token::LBRACE => token::RBRACE,
+      token::LBRACKET => token::RBRACKET,
+      token::RPAREN => token::LPAREN,
+      token::RBRACE => token::LBRACE,
+      token::RBRACKET => token::LBRACKET,
+      _ => fail
     }
 }
 
@@ -244,25 +249,25 @@ fn flip_delimiter(&t: token::token) -> token::token {
 
 fn is_lit(t: token) -> bool {
     alt t {
-      LIT_INT(_, _) { true }
-      LIT_UINT(_, _) { true }
-      LIT_INT_UNSUFFIXED(_) { true }
-      LIT_FLOAT(_, _) { true }
-      LIT_STR(_) { true }
-      _ { false }
+      LIT_INT(_, _) => true,
+      LIT_UINT(_, _) => true,
+      LIT_INT_UNSUFFIXED(_) => true,
+      LIT_FLOAT(_, _) => true,
+      LIT_STR(_) => true,
+      _ => false
     }
 }
 
 pure fn is_ident(t: token) -> bool {
-    alt t { IDENT(_, _) { true } _ { false } }
+    alt t { IDENT(_, _) => true, _ => false }
 }
 
 pure fn is_plain_ident(t: token) -> bool {
-    alt t { IDENT(_, false) { true } _ { false } }
+    alt t { IDENT(_, false) => true, _ => false }
 }
 
 pure fn is_bar(t: token) -> bool {
-    alt t { BINOP(OR) | OROR { true } _ { false } }
+    alt t { BINOP(OR) | OROR => true, _ => false }
 }
 
 /**

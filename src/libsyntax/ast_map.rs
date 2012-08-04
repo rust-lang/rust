@@ -13,8 +13,8 @@ type path = ~[path_elt];
 fn path_to_str_with_sep(p: path, sep: ~str) -> ~str {
     let strs = do vec::map(p) |e| {
         alt e {
-          path_mod(s) { /* FIXME (#2543) */ copy *s }
-          path_name(s) { /* FIXME (#2543) */ copy *s }
+          path_mod(s) => /* FIXME (#2543) */ copy *s,
+          path_name(s) => /* FIXME (#2543) */ copy *s
         }
     };
     str::connect(strs, sep)
@@ -105,12 +105,12 @@ fn map_decoded_item(diag: span_handler,
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now:
     alt ii {
-      ii_item(*) | ii_ctor(*) | ii_dtor(*) { /* fallthrough */ }
-      ii_foreign(i) {
+      ii_item(*) | ii_ctor(*) | ii_dtor(*) => { /* fallthrough */ }
+      ii_foreign(i) => {
         cx.map.insert(i.id, node_foreign_item(i, foreign_abi_rust_intrinsic,
                                              @path));
       }
-      ii_method(impl_did, m) {
+      ii_method(impl_did, m) => {
         map_method(impl_did, @path, m, cx);
       }
     }
@@ -128,7 +128,7 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         cx.local_id += 1u;
     }
     alt fk {
-      visit::fk_ctor(nm, attrs, tps, self_id, parent_id) {
+      visit::fk_ctor(nm, attrs, tps, self_id, parent_id) => {
           let ct = @{node: {id: id,
                             attrs: attrs,
                             self_id: self_id,
@@ -140,14 +140,14 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
                                       ct, parent_id,
                                       @/* FIXME (#2543) */ copy cx.path));
       }
-      visit::fk_dtor(tps, attrs, self_id, parent_id) {
+      visit::fk_dtor(tps, attrs, self_id, parent_id) => {
           let dt = @{node: {id: id, attrs: attrs, self_id: self_id,
                      body: /* FIXME (#2543) */ copy body}, span: sp};
           cx.map.insert(id, node_dtor(/* FIXME (#2543) */ copy tps, dt,
                                       parent_id,
                                       @/* FIXME (#2543) */ copy cx.path));
       }
-      _ {}
+      _ => ()
     }
     visit::visit_fn(fk, decl, body, sp, id, cx, v);
 }
@@ -160,11 +160,11 @@ fn map_block(b: blk, cx: ctx, v: vt) {
 fn number_pat(cx: ctx, pat: @pat) {
     do ast_util::walk_pat(pat) |p| {
         alt p.node {
-          pat_ident(*) {
+          pat_ident(*) => {
             cx.map.insert(p.id, node_local(cx.local_id));
             cx.local_id += 1u;
           }
-          _ {}
+          _ => ()
         }
     };
 }
@@ -190,24 +190,24 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     alt i.node {
-      item_impl(_, opt_ir, _, ms) {
+      item_impl(_, opt_ir, _, ms) => {
         let impl_did = ast_util::local_def(i.id);
         for ms.each |m| {
             map_method(impl_did, extend(cx, i.ident), m,
                        cx);
         }
       }
-      item_enum(vs, _) {
+      item_enum(vs, _) => {
         for vs.each |v| {
             cx.map.insert(v.node.id, node_variant(
                 /* FIXME (#2543) */ copy v, i,
                 extend(cx, i.ident)));
         }
       }
-      item_foreign_mod(nm) {
+      item_foreign_mod(nm) => {
         let abi = alt attr::foreign_abi(i.attrs) {
-          either::left(msg) { cx.diag.span_fatal(i.span, msg); }
-          either::right(abi) { abi }
+          either::left(msg) => cx.diag.span_fatal(i.span, msg),
+          either::right(abi) => abi
         };
         for nm.items.each |nitem| {
             cx.map.insert(nitem.id,
@@ -216,7 +216,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
                                            extend(cx, i.ident)));
         }
       }
-      item_class(tps, traits, items, ctor, dtor) {
+      item_class(tps, traits, items, ctor, dtor) => {
           let (_, ms) = ast_util::split_class_items(items);
           // Map trait refs to their parent classes. This is
           // so we can find the self_ty
@@ -231,7 +231,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
            // only need to handle methods
           do vec::iter(ms) |m| { map_method(d_id, p, m, cx); }
       }
-      item_trait(tps, traits, methods) {
+      item_trait(tps, traits, methods) => {
         // Map trait refs to their parent classes. This is
         // so we can find the self_ty
         for traits.each |p| {
@@ -246,13 +246,13 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(id, node_trait_method(@tm, d_id, item_path));
         }
       }
-      _ { }
+      _ => ()
     }
     alt i.node {
-      item_mod(_) | item_foreign_mod(_) {
+      item_mod(_) | item_foreign_mod(_) => {
         vec::push(cx.path, path_mod(i.ident));
       }
-      _ { vec::push(cx.path, path_name(i.ident)); }
+      _ => vec::push(cx.path, path_name(i.ident))
     }
     visit::visit_item(i, cx, v);
     vec::pop(cx.path);
@@ -260,20 +260,18 @@ fn map_item(i: @item, cx: ctx, v: vt) {
 
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
     alt vi.node {
-      view_item_export(vps) {
-        for vps.each |vp| {
-            let (id, name) = alt vp.node {
-              view_path_simple(nm, _, id) {
-                (id, /* FIXME (#2543) */ copy nm)
-              }
-              view_path_glob(pth, id) | view_path_list(pth, _, id) {
-                (id, path_to_ident(pth))
-              }
-            };
-            cx.map.insert(id, node_export(vp, extend(cx, name)));
-        }
+      view_item_export(vps) => for vps.each |vp| {
+        let (id, name) = alt vp.node {
+          view_path_simple(nm, _, id) => {
+            (id, /* FIXME (#2543) */ copy nm)
+          }
+          view_path_glob(pth, id) | view_path_list(pth, _, id) => {
+            (id, path_to_ident(pth))
+          }
+        };
+        cx.map.insert(id, node_export(vp, extend(cx, name)));
       }
-      _ {}
+      _ => ()
     }
 }
 
@@ -284,51 +282,51 @@ fn map_expr(ex: @expr, cx: ctx, v: vt) {
 
 fn node_id_to_str(map: map, id: node_id) -> ~str {
     alt map.find(id) {
-      none {
+      none => {
         fmt!{"unknown node (id=%d)", id}
       }
-      some(node_item(item, path)) {
+      some(node_item(item, path)) => {
         fmt!{"item %s (id=%?)", path_ident_to_str(*path, item.ident), id}
       }
-      some(node_foreign_item(item, abi, path)) {
+      some(node_foreign_item(item, abi, path)) => {
         fmt!{"foreign item %s with abi %? (id=%?)",
              path_ident_to_str(*path, item.ident), abi, id}
       }
-      some(node_method(m, impl_did, path)) {
+      some(node_method(m, impl_did, path)) => {
         fmt!{"method %s in %s (id=%?)",
              *m.ident, path_to_str(*path), id}
       }
-      some(node_trait_method(tm, impl_did, path)) {
+      some(node_trait_method(tm, impl_did, path)) => {
         let m = ast_util::trait_method_to_ty_method(*tm);
         fmt!{"method %s in %s (id=%?)",
              *m.ident, path_to_str(*path), id}
       }
-      some(node_variant(variant, def_id, path)) {
+      some(node_variant(variant, def_id, path)) => {
         fmt!{"variant %s in %s (id=%?)",
              *variant.node.name, path_to_str(*path), id}
       }
-      some(node_expr(expr)) {
+      some(node_expr(expr)) => {
         fmt!{"expr %s (id=%?)",
              pprust::expr_to_str(expr), id}
       }
       // FIXMEs are as per #2410
-      some(node_export(_, path)) {
+      some(node_export(_, path)) => {
         fmt!{"export %s (id=%?)", // add more info here
              path_to_str(*path), id}
       }
-      some(node_arg(_, _)) { // add more info here
+      some(node_arg(_, _)) => { // add more info here
         fmt!{"arg (id=%?)", id}
       }
-      some(node_local(_)) { // add more info here
+      some(node_local(_)) => { // add more info here
         fmt!{"local (id=%?)", id}
       }
-      some(node_ctor(*)) { // add more info here
+      some(node_ctor(*)) => { // add more info here
         fmt!{"node_ctor (id=%?)", id}
       }
-      some(node_dtor(*)) { // add more info here
+      some(node_dtor(*)) => { // add more info here
         fmt!{"node_dtor (id=%?)", id}
       }
-      some(node_block(_)) {
+      some(node_block(_)) => {
         fmt!{"block"}
       }
     }

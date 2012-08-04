@@ -96,10 +96,10 @@ fn describe_warnings() {
         io::println(fmt!{"    %s  %7.7s  %s",
                          padded(max_key, k),
                          alt v.default {
-                             lint::allow { ~"allow" }
-                             lint::warn { ~"warn" }
-                             lint::deny { ~"deny" }
-                             lint::forbid { ~"forbid" }
+                             lint::allow => ~"allow",
+                             lint::warn => ~"warn",
+                             lint::deny => ~"deny",
+                             lint::forbid => ~"forbid"
                          },
                          v.desc});
     }
@@ -125,8 +125,8 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
 
     let matches =
         alt getopts::getopts(args, opts()) {
-          ok(m) { m }
-          err(f) {
+          ok(m) => m,
+          err(f) => {
             early_error(demitter, getopts::fail_str(f))
           }
         };
@@ -153,8 +153,8 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
         return;
     }
     let input = alt vec::len(matches.free) {
-      0u { early_error(demitter, ~"no input filename given") }
-      1u {
+      0u => early_error(demitter, ~"no input filename given"),
+      1u => {
         let ifile = matches.free[0];
         if ifile == ~"-" {
             let src = str::from_bytes(io::stdin().read_whole_stream());
@@ -163,7 +163,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
             file_input(ifile)
         }
       }
-      _ { early_error(demitter, ~"multiple input filenames provided") }
+      _ => early_error(demitter, ~"multiple input filenames provided")
     };
 
     let sopts = build_session_options(matches, demitter);
@@ -176,19 +176,19 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
                                          ~"normal"),
                     |a| parse_pretty(sess, a) );
     alt pretty {
-      some::<pp_mode>(ppm) {
+      some::<pp_mode>(ppm) => {
         pretty_print_input(sess, cfg, input, ppm);
         return;
       }
-      none::<pp_mode> {/* continue */ }
+      none::<pp_mode> => {/* continue */ }
     }
     let ls = opt_present(matches, ~"ls");
     if ls {
         alt input {
-          file_input(ifile) {
+          file_input(ifile) => {
             list_metadata(sess, ifile, io::stdout());
           }
-          str_input(_) {
+          str_input(_) => {
             early_error(demitter, ~"can not list metadata for stdin");
           }
         }
@@ -241,8 +241,8 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 
         f(demitter)
     } {
-        result::ok(_) { /* fallthrough */ }
-        result::err(_) {
+        result::ok(_) => { /* fallthrough */ }
+        result::err(_) => {
             // Task failed without emitting a fatal diagnostic
             if comm::recv(p) == done {
                 diagnostic::emit(

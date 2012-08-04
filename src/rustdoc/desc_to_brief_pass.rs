@@ -105,14 +105,14 @@ fn parse_desc(desc: ~str) -> option<~str> {
     const max_brief_len: uint = 120u;
 
     alt first_sentence(desc) {
-      some(first_sentence) {
+      some(first_sentence) => {
         if str::len(first_sentence) <= max_brief_len {
             some(first_sentence)
         } else {
             none
         }
       }
-      none { none }
+      none => none
     }
 }
 
@@ -144,10 +144,10 @@ fn first_sentence_(s: ~str) -> ~str {
         }
     };
     alt idx {
-      some(idx) if idx > 2u {
+      some(idx) if idx > 2u => {
         str::slice(s, 0u, idx - 1u)
       }
-      _ {
+      _ => {
         if str::ends_with(s, ~".") {
             str::slice(s, 0u, str::len(s))
         } else {

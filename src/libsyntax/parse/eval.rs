@@ -48,8 +48,8 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
 
     fn companion_file(+prefix: ~str, suffix: option<~str>) -> ~str {
         return alt suffix {
-          option::some(s) { path::connect(prefix, s) }
-          option::none { prefix }
+          option::some(s) => path::connect(prefix, s),
+          option::none => prefix
         } + ~".rs";
     }
 
@@ -57,8 +57,8 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
         // Crude, but there's no lib function for this and I'm not
         // up to writing it just now
         alt io::file_reader(path) {
-          result::ok(_) { true }
-          result::err(_) { false }
+          result::ok(_) => true,
+          result::err(_) => false
         }
     }
 
@@ -80,10 +80,8 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
 
 fn cdir_path_opt(id: ast::ident, attrs: ~[ast::attribute]) -> @~str {
     alt ::attr::first_attr_value_str_by_name(attrs, ~"path") {
-      some(d) {
-        return d;
-      }
-      none { return id; }
+      some(d) => return d,
+      none => return id
     }
 }
 
@@ -91,7 +89,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
                         &view_items: ~[@ast::view_item],
                         &items: ~[@ast::item]) {
     alt cdir.node {
-      ast::cdir_src_mod(id, attrs) {
+      ast::cdir_src_mod(id, attrs) => {
         let file_path = cdir_path_opt(@(*id + ~".rs"), attrs);
         let full_path =
             if path::path_is_absolute(*file_path) {
@@ -112,7 +110,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
         cx.sess.byte_pos = cx.sess.byte_pos + r0.pos;
         vec::push(items, i);
       }
-      ast::cdir_dir_mod(id, cdirs, attrs) {
+      ast::cdir_dir_mod(id, cdirs, attrs) => {
         let path = cdir_path_opt(id, attrs);
         let full_path =
             if path::path_is_absolute(*path) {
@@ -130,8 +128,8 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
         cx.sess.next_id += 1;
         vec::push(items, i);
       }
-      ast::cdir_view_item(vi) { vec::push(view_items, vi); }
-      ast::cdir_syntax(pth) { }
+      ast::cdir_view_item(vi) => vec::push(view_items, vi),
+      ast::cdir_syntax(pth) => ()
     }
 }
 //

@@ -134,12 +134,12 @@ mod chained {
             let mut comp = 1u;   // for logging
             loop {
                 alt copy e0.next {
-                  none {
+                  none => {
                     debug!{"search_tbl: absent, comp %u, hash %u, idx %u",
                            comp, h, idx};
                     return not_found;
                   }
-                  some(e1) {
+                  some(e1) => {
                     comp += 1u;
                     if e1.hash == h && self.eqer(&e1.key, k) {
                         debug!{"search_tbl: present, comp %u, \
@@ -157,12 +157,12 @@ mod chained {
         fn search_tbl(k: &K, h: uint) -> search_result<K,V> {
             let idx = h % vec::len(self.chains);
             alt copy self.chains[idx] {
-              none {
+              none => {
                 debug!{"search_tbl: none, comp %u, hash %u, idx %u",
                        0u, h, idx};
                 return not_found;
               }
-              some(e) {
+              some(e) => {
                 if e.hash == h && self.eqer(&e.key, k) {
                     debug!{"search_tbl: present, comp %u, hash %u, idx %u",
                            1u, h, idx};
@@ -194,8 +194,8 @@ mod chained {
                 let mut chain = self.chains[i];
                 loop {
                     chain = alt chain {
-                      none { break; }
-                      some(entry) {
+                      none => break,
+                      some(entry) => {
                         let next = entry.next;
                         if !blk(entry) { return; }
                         next
@@ -217,15 +217,15 @@ mod chained {
         fn contains_key_ref(k: &K) -> bool {
             let hash = self.hasher(k);
             alt self.search_tbl(k, hash) {
-              not_found {false}
-              found_first(*) | found_after(*) {true}
+              not_found => false,
+              found_first(*) | found_after(*) => true
             }
         }
 
         fn insert(+k: K, +v: V) -> bool {
             let hash = self.hasher(&k);
             alt self.search_tbl(&k, hash) {
-              not_found {
+              not_found => {
                 self.count += 1u;
                 let idx = hash % vec::len(self.chains);
                 let old_chain = self.chains[idx];
@@ -245,7 +245,7 @@ mod chained {
 
                 return true;
               }
-              found_first(idx, entry) {
+              found_first(idx, entry) => {
                 self.chains[idx] = some(@entry {
                     hash: hash,
                     key: k,
@@ -253,7 +253,7 @@ mod chained {
                     next: entry.next});
                 return false;
               }
-              found_after(prev, entry) {
+              found_after(prev, entry) => {
                 prev.next = some(@entry {
                     hash: hash,
                     key: k,
@@ -266,9 +266,9 @@ mod chained {
 
         fn find(+k: K) -> option<V> {
             alt self.search_tbl(&k, self.hasher(&k)) {
-              not_found {none}
-              found_first(_, entry) {some(entry.value)}
-              found_after(_, entry) {some(entry.value)}
+              not_found => none,
+              found_first(_, entry) => some(entry.value),
+              found_after(_, entry) => some(entry.value)
             }
         }
 
@@ -282,13 +282,13 @@ mod chained {
 
         fn remove(+k: K) -> option<V> {
             alt self.search_tbl(&k, self.hasher(&k)) {
-              not_found {none}
-              found_first(idx, entry) {
+              not_found => none,
+              found_first(idx, entry) => {
                 self.count -= 1u;
                 self.chains[idx] = entry.next;
                 some(entry.value)
               }
-              found_after(eprev, entry) {
+              found_after(eprev, entry) => {
                 self.count -= 1u;
                 eprev.next = entry.next;
                 some(entry.value)
@@ -639,8 +639,8 @@ mod tests {
         while i < num_to_insert {
             let v = hm.remove(i);
             alt v {
-              option::some(u) { assert (u == i * i); }
-              option::none { fail; }
+              option::some(u) => assert (u == i * i),
+              option::none => fail
             }
             i += 2u;
         }

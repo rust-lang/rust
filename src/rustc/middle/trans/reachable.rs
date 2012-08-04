@@ -35,18 +35,18 @@ fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
     let mut found_export = false;
     for vec::each(vis) |vi| {
         alt vi.node {
-          view_item_export(vps) {
+          view_item_export(vps) => {
             found_export = true;
             for vec::each(vps) |vp| {
                 alt vp.node {
                   view_path_simple(_, _, id) | view_path_glob(_, id) |
-                  view_path_list(_, _, id) {
+                  view_path_list(_, _, id) => {
                     traverse_export(cx, id);
                   }
                 }
             }
           }
-          _ {}
+          _ => ()
         }
     }
     found_export
@@ -61,19 +61,21 @@ fn traverse_export(cx: ctx, exp_id: node_id) {
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
     let n = alt cx.tcx.items.find(did.node) {
-        none { return; } // This can happen for self, for example
-        some(n) { n }
+        none => return, // This can happen for self, for example
+        some(n) => n
     };
     alt n {
-      ast_map::node_item(item, _) { traverse_public_item(cx, item); }
-      ast_map::node_method(_, impl_id, _) { traverse_def_id(cx, impl_id); }
-      ast_map::node_foreign_item(item, _, _) { cx.rmap.insert(item.id, ()); }
-      ast_map::node_variant(v, _, _) { cx.rmap.insert(v.node.id, ()); }
+      ast_map::node_item(item, _) => traverse_public_item(cx, item),
+      ast_map::node_method(_, impl_id, _) => traverse_def_id(cx, impl_id),
+      ast_map::node_foreign_item(item, _, _) => {
+        cx.rmap.insert(item.id, ());
+      }
+      ast_map::node_variant(v, _, _) => { cx.rmap.insert(v.node.id, ()); }
       // If it's a ctor, consider the parent reachable
-      ast_map::node_ctor(_, _, _, parent_id, _) {
+      ast_map::node_ctor(_, _, _, parent_id, _) => {
         traverse_def_id(cx, parent_id);
       }
-      _ {}
+      _ => ()
     }
 }
 
@@ -88,19 +90,19 @@ fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(item.id) { return; }
     cx.rmap.insert(item.id, ());
     alt item.node {
-      item_mod(m) { traverse_public_mod(cx, m); }
-      item_foreign_mod(nm) {
+      item_mod(m) => traverse_public_mod(cx, m),
+      item_foreign_mod(nm) => {
           if !traverse_exports(cx, nm.view_items) {
               for vec::each(nm.items) |item| { cx.rmap.insert(item.id, ()); }
           }
       }
-      item_fn(_, tps, blk) {
+      item_fn(_, tps, blk) => {
         if tps.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
             traverse_inline_body(cx, blk);
         }
       }
-      item_impl(tps, _, _, ms) {
+      item_impl(tps, _, _, ms) => {
         for vec::each(ms) |m| {
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
@@ -109,7 +111,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, _traits, items, m_ctor, m_dtor) {
+      item_class(tps, _traits, items, m_ctor, m_dtor) => {
         do option::iter(m_ctor) |ctor| {
             cx.rmap.insert(ctor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(ctor.node.attrs)
@@ -126,23 +128,23 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
         for vec::each(items) |item| {
             alt item.node {
-              class_method(m) {
+              class_method(m) => {
                 cx.rmap.insert(m.id, ());
                 if tps.len() > 0u ||
                    attr::find_inline_attr(m.attrs) != attr::ia_none {
                     traverse_inline_body(cx, m.body);
                 }
               }
-              _ {}
+              _ => ()
             }
         }
       }
-      item_ty(t, _) {
+      item_ty(t, _) => {
         traverse_ty(t, cx, mk_ty_visitor());
       }
       item_const(*) |
-      item_enum(*) | item_trait(*) {}
-      item_mac(*) { fail ~"item macros unimplemented" }
+      item_enum(*) | item_trait(*) => (),
+      item_mac(*) => fail ~"item macros unimplemented"
     }
 }
 
@@ -155,41 +157,41 @@ fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
     cx.rmap.insert(ty.id, ());
 
     alt ty.node {
-      ty_path(p, p_id) {
+      ty_path(p, p_id) => {
         alt cx.tcx.def_map.find(p_id) {
           // Kind of a hack to check this here, but I'm not sure what else
           // to do
-          some(def_prim_ty(_)) { /* do nothing */ }
-          some(d) { traverse_def_id(cx, def_id_of_def(d)); }
-          none    { /* do nothing -- but should we fail here? */ }
+          some(def_prim_ty(_)) => { /* do nothing */ }
+          some(d) => traverse_def_id(cx, def_id_of_def(d)),
+          none    => { /* do nothing -- but should we fail here? */ }
         }
         for p.types.each |t| { v.visit_ty(t, cx, v); };
       }
-      _ { visit::visit_ty(ty, cx, v); }
+      _ => visit::visit_ty(ty, cx, v)
     }
 }
 
 fn traverse_inline_body(cx: ctx, body: blk) {
     fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         alt e.node {
-          expr_path(_) {
+          expr_path(_) => {
             alt cx.tcx.def_map.find(e.id) {
-                some(d) {
+                some(d) => {
                   traverse_def_id(cx, def_id_of_def(d));
                 }
-                none      { cx.tcx.sess.span_bug(e.span, fmt!{"Unbound node \
-                  id %? while traversing %s", e.id, expr_to_str(e)}); }
+                none      => cx.tcx.sess.span_bug(e.span, fmt!{"Unbound node \
+                  id %? while traversing %s", e.id, expr_to_str(e)})
             }
           }
-          expr_field(_, _, _) {
+          expr_field(_, _, _) => {
             alt cx.method_map.find(e.id) {
-              some({origin: typeck::method_static(did), _}) {
+              some({origin: typeck::method_static(did), _}) => {
                 traverse_def_id(cx, did);
               }
-              _ {}
+              _ => ()
             }
           }
-          _ {}
+          _ => ()
         }
         visit::visit_expr(e, cx, v);
     }
@@ -212,13 +214,13 @@ fn traverse_all_resources_and_impls(cx: ctx, crate_mod: _mod) {
         visit_item: |i, cx, v| {
             visit::visit_item(i, cx, v);
             alt i.node {
-              item_class(_, _, _, _, some(_)) {
+              item_class(_, _, _, _, some(_)) => {
                 traverse_public_item(cx, i);
               }
-              item_impl(*) {
+              item_impl(*) => {
                 traverse_public_item(cx, i);
               }
-              _ {}
+              _ => ()
             }
         }
         with *visit::default_visitor()
