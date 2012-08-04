@@ -113,7 +113,7 @@ type buffer<T: send> = {
 
 struct packet_header {
     let mut state: state;
-    let mut blocked_task: option<*rust_task>;
+    let mut blocked_task: *rust_task;
 
     // This is a reinterpret_cast of a ~buffer, that can also be cast
     // to a buffer_header if need be.
@@ -121,19 +121,21 @@ struct packet_header {
 
     new() {
         self.state = empty;
-        self.blocked_task = none;
+        self.blocked_task = ptr::null();
         self.buffer = ptr::null();
     }
 
     // Returns the old state.
     unsafe fn mark_blocked(this: *rust_task) -> state {
-        self.blocked_task = some(this);
+        rustrt::rust_task_ref(this);
+        let old_task = swap_task(self.blocked_task, this);
+        assert old_task.is_null();
         swap_state_acq(self.state, blocked)
     }
 
     unsafe fn unblock() {
-        assert self.state != blocked || self.blocked_task != none;
-        self.blocked_task = none;
+        let old_task = swap_task(self.blocked_task, ptr::null());
+        if !old_task.is_null() { rustrt::rust_task_deref(old_task) }
         alt swap_state_acq(self.state, empty) {
           empty | blocked => (),
           terminated => self.state = terminated,
@@ -241,11 +243,25 @@ fn atomic_sub_rel(&dst: int, src: int) -> int {
 }
 
 #[doc(hidden)]
+fn swap_task(&dst: *rust_task, src: *rust_task) -> *rust_task {
+    // It might be worth making both acquire and release versions of
+    // this.
+    unsafe {
+        reinterpret_cast(rusti::atomic_xchng(
+            *(ptr::mut_addr_of(dst) as *mut int),
+            src as int))
+    }
+}
+
+#[doc(hidden)]
 type rust_task = libc::c_void;
 
 extern mod rustrt {
     #[rust_stack]
     fn rust_get_task() -> *rust_task;
+    #[rust_stack]
+    fn rust_task_ref(task: *rust_task);
+    fn rust_task_deref(task: *rust_task);
 
     #[rust_stack]
     fn task_clear_event_reject(task: *rust_task);
@@ -334,10 +350,11 @@ fn send<T: send, Tbuffer: send>(-p: send_packet_buffered<T, Tbuffer>,
       full => fail ~"duplicate send",
       blocked => {
         debug!{"waking up task for %?", p_};
-        alt p.header.blocked_task {
-          some(task) => rustrt::task_signal_event(
-              task, ptr::addr_of(p.header) as *libc::c_void),
-          none => debug!{"just kidding!"}
+        let old_task = swap_task(p.header.blocked_task, ptr::null());
+        if !old_task.is_null() {
+            rustrt::task_signal_event(
+                old_task, ptr::addr_of(p.header) as *libc::c_void);
+            rustrt::rust_task_deref(old_task);
         }
 
         // The receiver will eventually clean this up.
@@ -372,7 +389,9 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
     let p = unsafe { &*p_ };
     let this = rustrt::rust_get_task();
     rustrt::task_clear_event_reject(this);
-    p.header.blocked_task = some(this);
+    rustrt::rust_task_ref(this);
+    let old_task = swap_task(p.header.blocked_task, this);
+    assert old_task.is_null();
     let mut first = true;
     let mut count = SPIN_COUNT;
     loop {
@@ -402,7 +421,10 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
           full => {
             let mut payload = none;
             payload <-> p.payload;
-            p.header.blocked_task = none;
+            let old_task = swap_task(p.header.blocked_task, ptr::null());
+            if !old_task.is_null() {
+                rustrt::rust_task_deref(old_task);
+            }
             p.header.state = empty;
             return some(option::unwrap(payload))
           }
@@ -410,6 +432,11 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
             // This assert detects when we've accidentally unsafely
             // casted too big of a number to a state.
             assert old_state == terminated;
+
+            let old_task = swap_task(p.header.blocked_task, ptr::null());
+            if !old_task.is_null() {
+                rustrt::rust_task_deref(old_task);
+            }
             return none;
           }
         }
@@ -437,17 +464,18 @@ fn sender_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { &*p };
     alt swap_state_rel(p.header.state, terminated) {
       empty => {
+        assert p.header.blocked_task.is_null();
         // The receiver will eventually clean up.
         //unsafe { forget(p) }
       }
       blocked => {
         // wake up the target
-        alt p.header.blocked_task {
-          some(target) =>
+        let old_task = swap_task(p.header.blocked_task, ptr::null());
+        if !old_task.is_null() {
             rustrt::task_signal_event(
-                target,
-                ptr::addr_of(p.header) as *libc::c_void),
-          none => { debug!{"receiver is already shutting down"} }
+                old_task,
+                ptr::addr_of(p.header) as *libc::c_void);
+            rustrt::rust_task_deref(old_task);
         }
         // The receiver will eventually clean up.
         //unsafe { forget(p) }
@@ -457,6 +485,7 @@ fn sender_terminate<T: send>(p: *packet<T>) {
         fail ~"you dun goofed"
       }
       terminated => {
+        assert p.header.blocked_task.is_null();
         // I have to clean up, use drop_glue
       }
     }
@@ -465,7 +494,7 @@ fn sender_terminate<T: send>(p: *packet<T>) {
 #[doc(hidden)]
 fn receiver_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { &*p };
-    assert p.header.blocked_task == none;
+    assert p.header.blocked_task.is_null();
     alt swap_state_rel(p.header.state, terminated) {
       empty => {
         // the sender will clean up
