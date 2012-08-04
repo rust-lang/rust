@@ -1,5 +1,5 @@
-const x : (int,int) = (0xfeedf00dd,0xca11ab1e);
-const y : { x: (int, int),
+const x : (i32,i32) = (0xfeedf00dd,0xca11ab1e);
+const y : { x: (i64, i64),
             y: { a: float,
                  b: float } } = { x: (0xf0f0f0f0_f0f0f0f0,
                                       0xabababab_abababab),
