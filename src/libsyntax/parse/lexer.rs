@@ -483,6 +483,10 @@ fn next_token_inner(rdr: string_reader) -> token::token {
       ',' { bump(rdr); return token::COMMA; }
       '.' {
         bump(rdr);
+        if rdr.curr == '.' && nextch(rdr) != '.' {
+            bump(rdr);
+            return token::DOTDOT;
+        }
         if rdr.curr == '.' && nextch(rdr) == '.' {
             bump(rdr);
             bump(rdr);

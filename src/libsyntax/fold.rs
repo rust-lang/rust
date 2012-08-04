@@ -402,6 +402,8 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_vec(exprs, mutt) {
             expr_vec(fld.map_exprs(|x| fld.fold_expr(x), exprs), mutt)
           }
+          expr_repeat(expr, count, mutt) =>
+            expr_repeat(fld.fold_expr(expr), fld.fold_expr(count), mutt),
           expr_rec(fields, maybe_expr) {
             expr_rec(vec::map(fields, fold_field),
                      option::map(maybe_expr, |x| fld.fold_expr(x)))

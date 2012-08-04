@@ -49,6 +49,7 @@ enum token {
     /* Structural symbols */
     AT,
     DOT,
+    DOTDOT,
     ELLIPSIS,
     COMMA,
     SEMI,
@@ -134,6 +135,7 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
       /* Structural symbols */
       AT { ~"@" }
       DOT { ~"." }
+      DOTDOT { ~".." }
       ELLIPSIS { ~"..." }
       COMMA { ~"," }
       SEMI { ~";" }
