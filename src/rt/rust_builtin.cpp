@@ -968,6 +968,18 @@ task_signal_event(rust_task *target, void *event) {
     target->signal_event(event);
 }
 
+// Can safely run on the rust stack.
+extern "C" void
+rust_task_ref(rust_task *task) {
+    task->ref();
+}
+
+// Don't run on the rust stack!
+extern "C" void
+rust_task_deref(rust_task *task) {
+    task->deref();
+}
+
 //
 // Local Variables:
 // mode: C++
