@@ -89,7 +89,6 @@ fn parse_proto(c: char) -> ast::proto {
     alt c {
       '~' { ast::proto_uniq }
       '@' { ast::proto_box }
-      '*' { ast::proto_any }
       '&' { ast::proto_block }
       'n' { ast::proto_bare }
       _ { fail ~"illegal fn type kind " + str::from_char(c); }

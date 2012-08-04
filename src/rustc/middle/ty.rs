@@ -1291,7 +1291,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       }
       ty_fn(fty) {
         alt fty.proto {
-          proto_bare | proto_any | proto_block { false }
+          proto_bare | proto_block { false }
           _ { true }
         }
       }
@@ -1533,7 +1533,6 @@ pure fn kind_is_owned(k: kind) -> bool {
 
 fn proto_kind(p: proto) -> kind {
     alt p {
-      ast::proto_any { kind_noncopyable() }
       ast::proto_block { kind_noncopyable() }
       ast::proto_box { kind_safe_for_default_mode() | kind_owned() }
       ast::proto_uniq { kind_send_copy() | kind_owned() }

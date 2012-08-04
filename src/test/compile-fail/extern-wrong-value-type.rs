@@ -1,4 +1,4 @@
-// error-pattern:expected `fn()` but found `*u8`
+// error-pattern:expected `fn&()` but found `*u8`
 extern fn f() {
 }
 

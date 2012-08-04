@@ -192,7 +192,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       }
       expr_fn(*) | expr_fn_block(*) {
         alt ty::ty_fn_proto(ty::expr_ty(cx.ccx.tcx, e)) {
-          proto_bare | proto_any | proto_uniq {}
+          proto_bare | proto_uniq {}
           proto_box | proto_block {
             for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) |fv| {
                 let node_id = ast_util::def_id_of_def(fv.def).node;

@@ -968,7 +968,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         let frameaddress_val = Call(bcx, frameaddress, ~[C_i32(0i32)]);
         let fty = ty::mk_fn(bcx.tcx(), {
             purity: ast::impure_fn,
-            proto: ast::proto_any,
+            proto: ast::proto_block,
             inputs: ~[{
                 mode: ast::expl(ast::by_val),
                 ty: ty::mk_imm_ptr(

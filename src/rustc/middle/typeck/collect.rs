@@ -395,7 +395,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                  tps: ty::ty_params_to_tys(tcx, tps)});
             let t_ctor = ty::mk_fn(
                 tcx, {purity: ast::impure_fn,
-                      proto: ast::proto_any,
+                      proto: ast::proto_block,
                       inputs: t_args,
                       output: t_res,
                       ret_style: ast::return_val});
@@ -410,7 +410,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             // Write the dtor type
             let t_dtor = ty::mk_fn(
                 tcx,
-                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_any,
+                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_block,
                               ast_util::dtor_dec(), none));
             write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
             tcx.tcache.insert(local_def(dtor.node.id),

@@ -311,7 +311,6 @@ fn enc_proto(w: io::writer, proto: proto) {
       proto_uniq { w.write_str(&"f~"); }
       proto_box { w.write_str(&"f@"); }
       proto_block { w.write_str(~"f&"); }
-      proto_any { w.write_str(&"f*"); }
       proto_bare { w.write_str(&"fn"); }
     }
 }

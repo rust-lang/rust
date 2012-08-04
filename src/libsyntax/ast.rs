@@ -178,7 +178,6 @@ enum mutability { m_mutbl, m_imm, m_const, }
 #[auto_serialize]
 enum proto {
     proto_bare,    // foreign fn
-    proto_any,     // fn
     proto_uniq,    // fn~
     proto_box,     // fn@
     proto_block,   // fn&
@@ -195,7 +194,7 @@ enum vstore {
 
 pure fn is_blockish(p: ast::proto) -> bool {
     alt p {
-      proto_any | proto_block { true }
+      proto_block { true }
       proto_bare | proto_uniq | proto_box { false }
     }
 }

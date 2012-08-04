@@ -186,10 +186,10 @@ impl helpers of ext_ctxt_helpers for ext_ctxt {
         };
 
         @{id: self.next_id(),
-          node: ast::ty_fn(ast::proto_any, {inputs: args,
-                                            output: output,
-                                            purity: ast::impure_fn,
-                                            cf: ast::return_val}),
+          node: ast::ty_fn(ast::proto_block, {inputs: args,
+                                              output: output,
+                                              purity: ast::impure_fn,
+                                              cf: ast::return_val}),
           span: span}
     }
 

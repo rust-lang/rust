@@ -41,13 +41,13 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
              mutability, neg, noreturn, not, pat, pat_box, pat_enum,
              pat_ident, pat_lit, pat_range, pat_rec, pat_tup, pat_uniq,
-             pat_wild, path, private, proto, proto_any, proto_bare,
-             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
-             purity, re_anon, re_named, region, rem, required, ret_style,
-             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
-             stmt_semi, subtract, sty_box, sty_by_ref, sty_region, sty_uniq,
-             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
-             tt_tok, tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
+             pat_wild, path, private, proto, proto_bare, proto_block,
+             proto_box, proto_uniq, provided, public, pure_fn, purity,
+             re_anon, re_named, region, rem, required, ret_style, return_val,
+             self_ty, shl, shr, stmt, stmt_decl, stmt_expr, stmt_semi,
+             subtract, sty_box, sty_by_ref, sty_region, sty_uniq, sty_value,
+             token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
+             tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
              ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_path, ty_ptr,
              ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec,
              ty_fixed_length, unchecked_blk, uniq, unsafe_blk, unsafe_fn,
@@ -801,9 +801,6 @@ class parser {
             let proto = self.parse_fn_ty_proto();
             alt proto {
               proto_bare { self.fatal(~"fn expr are deprecated, use fn@"); }
-              proto_any {
-                self.fatal(~"fn* cannot be used in an expression");
-              }
               _ { /* fallthrough */ }
             }
             return pexpr(self.parse_fn_expr(proto));
@@ -2781,7 +2778,7 @@ class parser {
             proto_block
           }
           _ {
-            proto_any
+            proto_block
           }
         }
     }

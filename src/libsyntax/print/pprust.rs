@@ -1823,7 +1823,6 @@ fn print_purity(s: ps, p: ast::purity) {
 fn proto_to_str(p: ast::proto) -> ~str {
     return alt p {
       ast::proto_bare { ~"extern fn" }
-      ast::proto_any { ~"fn" }
       ast::proto_block { ~"fn&" }
       ast::proto_uniq { ~"fn~" }
       ast::proto_box { ~"fn@" }

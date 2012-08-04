@@ -186,7 +186,6 @@ impl methods for reflector {
             };
             let protoval = alt fty.proto {
               ast::proto_bare { 0u }
-              ast::proto_any { 1u }
               ast::proto_uniq { 2u }
               ast::proto_box { 3u }
               ast::proto_block { 4u }
