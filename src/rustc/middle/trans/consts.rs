@@ -25,21 +25,29 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
       ast::lit_float(fs, t) { C_floating(*fs, T_float_ty(cx, t)) }
       ast::lit_bool(b) { C_bool(b) }
       ast::lit_nil { C_nil() }
-      ast::lit_str(s) {
-        cx.sess.span_unimpl(lit.span, ~"unique string in this context");
-      }
+      ast::lit_str(s) { C_estr_slice(cx, *s) }
     }
 }
 
 // FIXME (#2530): this should do some structural hash-consing to avoid
 // duplicate constants. I think. Maybe LLVM has a magical mode that does so
 // later on?
+
+fn const_vec_and_sz(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
+    -> (ValueRef, ValueRef) {
+    let vec_ty = ty::expr_ty(cx.tcx, e);
+    let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
+    let llunitty = type_of::type_of(cx, unit_ty);
+    let v = C_array(llunitty, es.map(|e| const_expr(cx, e)));
+    let unit_sz = shape::llsize_of(cx, llunitty);
+    let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
+    return (v, sz);
+}
+
 fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt(~"const_expr");
     alt e.node {
       ast::expr_lit(lit) { consts::const_lit(cx, e, *lit) }
-      // If we have a vstore, just keep going; it has to be a string
-      ast::expr_vstore(e, _) { const_expr(cx, e) }
       ast::expr_binary(b, e1, e2) {
         let te1 = const_expr(cx, e1);
         let te2 = const_expr(cx, e2);
@@ -146,6 +154,37 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       }
       ast::expr_rec(fs, none) {
         C_struct(fs.map(|f| const_expr(cx, f.node.expr)))
+      }
+      ast::expr_vec(es, m_imm) {
+        let (v, _) = const_vec_and_sz(cx, e, es);
+        v
+      }
+      ast::expr_vstore(e, ast::vstore_fixed(_)) {
+        const_expr(cx, e)
+      }
+      ast::expr_vstore(sub, ast::vstore_slice(_)) {
+        alt sub.node {
+          ast::expr_lit(lit) {
+            alt lit.node {
+              ast::lit_str(*) => { const_expr(cx, sub) }
+              _ => { cx.sess.span_bug(e.span,
+                                      ~"bad const-slice lit") }
+            }
+          }
+          ast::expr_vec(es, m_imm) => {
+            let (cv, sz) = const_vec_and_sz(cx, e, es);
+            let subty = ty::expr_ty(cx.tcx, sub),
+            llty = type_of::type_of(cx, subty);
+            let gv = do str::as_c_str("const") |name| {
+                llvm::LLVMAddGlobal(cx.llmod, llty, name)
+            };
+            llvm::LLVMSetInitializer(gv, cv);
+            llvm::LLVMSetGlobalConstant(gv, True);
+            C_struct(~[gv, sz])
+          }
+          _ => cx.sess.span_bug(e.span,
+                                ~"bad const-slice expr")
+        }
       }
       ast::expr_path(path) {
         alt cx.tcx.def_map.find(e.id) {
