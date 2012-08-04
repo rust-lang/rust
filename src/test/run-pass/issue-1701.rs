@@ -6,10 +6,10 @@ enum animal { cat(pattern), dog(breed), rabbit(name, ear_kind), tiger }
 
 fn noise(a: animal) -> option<~str> {
     alt a {
-      cat(*)    { some(~"meow") }
-      dog(*)    { some(~"woof") }
-      rabbit(*) { none }
-      tiger(*)  { some(~"roar") }
+      cat(*)    => { some(~"meow") }
+      dog(*)    => { some(~"woof") }
+      rabbit(*) => { none }
+      tiger(*)  => { some(~"roar") }
     }
 }
 

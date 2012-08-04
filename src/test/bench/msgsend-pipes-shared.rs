@@ -32,13 +32,13 @@ fn server(requests: port<request>, responses: pipes::chan<uint>) {
     let mut done = false;
     while !done {
         alt requests.try_recv() {
-          some(get_count) { responses.send(copy count); }
-          some(bytes(b)) {
+          some(get_count) => { responses.send(copy count); }
+          some(bytes(b)) => {
             //error!{"server: received %? bytes", b};
             count += b;
           }
-          none { done = true; }
-          _ { }
+          none => { done = true; }
+          _ => { }
         }
     }
     responses.send(count);

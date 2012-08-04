@@ -60,8 +60,8 @@ fn get_region_reporting_err(tcx: ty::ctxt,
                             res: result<ty::region, ~str>) -> ty::region {
 
     alt res {
-      result::ok(r) { r }
-      result::err(e) {
+      result::ok(r) => r,
+      result::err(e) => {
         tcx.sess.span_err(span, e);
         ty::re_static
       }
@@ -72,8 +72,8 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
 
     let res = alt a_r.node {
-      ast::re_anon { rscope.anon_region() }
-      ast::re_named(id) { rscope.named_region(id) }
+      ast::re_anon => rscope.anon_region(),
+      ast::re_named(id) => rscope.named_region(id)
     };
 
     get_region_reporting_err(self.tcx(), span, res)
@@ -94,10 +94,10 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
     let self_r = alt (decl_rp, path.rp) {
-      (false, none) {
+      (false, none) => {
         none
       }
-      (false, some(_)) {
+      (false, some(_)) => {
         tcx.sess.span_err(
             path.span,
             fmt!{"no region bound is allowed on `%s`, \
@@ -105,12 +105,12 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
                  ty::item_path_str(tcx, did)});
         none
       }
-      (true, none) {
+      (true, none) => {
         let res = rscope.anon_region();
         let r = get_region_reporting_err(self.tcx(), path.span, res);
         some(r)
       }
-      (true, some(r)) {
+      (true, some(r)) => {
         some(ast_region_to_region(self, rscope, path.span, r))
       }
     };
@@ -170,20 +170,20 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
 
         alt a_seq_ty.ty.node {
           // to convert to an e{vec,str}, there can't be a mutability argument
-          _ if a_seq_ty.mutbl != ast::m_imm {}
-          ast::ty_vec(mt) {
+          _ if a_seq_ty.mutbl != ast::m_imm => (),
+          ast::ty_vec(mt) => {
             return ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
           }
-          ast::ty_path(path, id) {
+          ast::ty_path(path, id) => {
             alt tcx.def_map.find(id) {
-              some(ast::def_prim_ty(ast::ty_str)) {
+              some(ast::def_prim_ty(ast::ty_str)) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 return ty::mk_estr(tcx, vst);
               }
-              _ {}
+              _ => ()
             }
           }
-          _ {}
+          _ => ()
         }
 
         let seq_ty = ast_mt_to_mt(self, rscope, a_seq_ty);
@@ -213,85 +213,86 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     let tcx = self.tcx();
 
     alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
-      some(ty::atttce_resolved(ty)) { return ty; }
-      some(ty::atttce_unresolved) {
+      some(ty::atttce_resolved(ty)) => return ty,
+      some(ty::atttce_unresolved) => {
         tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
                                           insert an enum in the cycle, \
                                           if this is desired");
       }
-      none { /* go on */ }
+      none => { /* go on */ }
     }
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
     let typ = alt ast_ty.node {
-      ast::ty_nil { ty::mk_nil(tcx) }
-      ast::ty_bot { ty::mk_bot(tcx) }
-      ast::ty_box(mt) {
+      ast::ty_nil => ty::mk_nil(tcx),
+      ast::ty_bot => ty::mk_bot(tcx),
+      ast::ty_box(mt) => {
         mk_maybe_vstore(self, rscope, mt, ty::vstore_box,
                         |tmt| ty::mk_box(tcx, tmt))
       }
-      ast::ty_uniq(mt) {
+      ast::ty_uniq(mt) => {
         mk_maybe_vstore(self, rscope, mt, ty::vstore_uniq,
                         |tmt| ty::mk_uniq(tcx, tmt))
       }
-      ast::ty_vec(mt) {
+      ast::ty_vec(mt) => {
         tcx.sess.span_err(ast_ty.span,
                           ~"bare `[]` is not a type");
         // return /something/ so they can at least get more errors
         ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt),
                     ty::vstore_uniq)
       }
-      ast::ty_ptr(mt) {
+      ast::ty_ptr(mt) => {
         ty::mk_ptr(tcx, ast_mt_to_mt(self, rscope, mt))
       }
-      ast::ty_rptr(region, mt) {
+      ast::ty_rptr(region, mt) => {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
         mk_maybe_vstore(self, in_anon_rscope(rscope, r), mt,
                         ty::vstore_slice(r),
                         |tmt| ty::mk_rptr(tcx, r, tmt))
       }
-      ast::ty_tup(fields) {
+      ast::ty_tup(fields) => {
         let flds = vec::map(fields, |t| ast_ty_to_ty(self, rscope, t));
         ty::mk_tup(tcx, flds)
       }
-      ast::ty_rec(fields) {
+      ast::ty_rec(fields) => {
         let flds = do fields.map |f| {
             let tm = ast_mt_to_mt(self, rscope, f.node.mt);
             {ident: f.node.ident, mt: tm}
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_fn(proto, decl) {
+      ast::ty_fn(proto, decl) => {
         ty::mk_fn(tcx, ty_of_fn_decl(self, rscope, proto, decl, none))
       }
-      ast::ty_path(path, id) {
+      ast::ty_path(path, id) => {
         let a_def = alt tcx.def_map.find(id) {
-          none { tcx.sess.span_fatal(ast_ty.span, fmt!{"unbound path %s",
-                                                       path_to_str(path)}); }
-          some(d) { d }};
+          none => tcx.sess.span_fatal(ast_ty.span, fmt!{"unbound path %s",
+                                                        path_to_str(path)}),
+          some(d) => d
+        };
         alt a_def {
-          ast::def_ty(did) | ast::def_class(did, _) {
+          ast::def_ty(did) | ast::def_class(did, _) => {
             ast_path_to_ty(self, rscope, did, path, id).ty
           }
-          ast::def_prim_ty(nty) {
+          ast::def_prim_ty(nty) => {
             alt nty {
-              ast::ty_bool {
+              ast::ty_bool => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 ty::mk_bool(tcx)
               }
-              ast::ty_int(it) {
+              ast::ty_int(it) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 ty::mk_mach_int(tcx, it)
               }
-              ast::ty_uint(uit) {
+              ast::ty_uint(uit) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 ty::mk_mach_uint(tcx, uit)
               }
-              ast::ty_float(ft) {
+              ast::ty_float(ft) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 ty::mk_mach_float(tcx, ft)
               }
-              ast::ty_str {
+              ast::ty_str => {
                 tcx.sess.span_err(ast_ty.span,
                                   ~"bare `str` is not a type");
                 // return /something/ so they can at least get more errors
@@ -299,24 +300,24 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
               }
             }
           }
-          ast::def_ty_param(id, n) {
+          ast::def_ty_param(id, n) => {
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             ty::mk_param(tcx, n, id)
           }
-          ast::def_self(_) {
+          ast::def_self(_) => {
             // n.b.: resolve guarantees that the self type only appears in a
             // trait, which we rely upon in various places when creating
             // substs
             check_path_args(tcx, path, NO_TPS | NO_REGIONS);
             ty::mk_self(tcx)
           }
-          _ {
+          _ => {
             tcx.sess.span_fatal(ast_ty.span,
                                 ~"found type name used as a variable");
           }
         }
       }
-      ast::ty_fixed_length(a_t, some(u)) {
+      ast::ty_fixed_length(a_t, some(u)) => {
         mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
                         ty::vstore_fixed(u),
                         |ty| {
@@ -327,12 +328,12 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
                             ty.ty
                         })
       }
-      ast::ty_fixed_length(_, none) {
+      ast::ty_fixed_length(_, none) => {
         tcx.sess.span_bug(
             ast_ty.span,
             ~"implied fixed length for bound");
       }
-      ast::ty_infer {
+      ast::ty_infer => {
         // ty_infer should only appear as the type of arguments or return
         // values in a fn_expr, or as the type of local variables.  Both of
         // these cases are handled specially and should not descend into this
@@ -341,7 +342,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
             ast_ty.span,
             ~"found `ty_infer` in unexpected place");
       }
-      ast::ty_mac(_) {
+      ast::ty_mac(_) => {
         tcx.sess.span_bug(ast_ty.span,
                           ~"found `ty_mac` in unexpected place");
       }
@@ -356,35 +357,35 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     expected_ty: option<ty::arg>) -> ty::arg {
 
     let ty = alt a.ty.node {
-      ast::ty_infer if expected_ty.is_some() {expected_ty.get().ty}
-      ast::ty_infer {self.ty_infer(a.ty.span)}
-      _ {ast_ty_to_ty(self, rscope, a.ty)}
+      ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
+      ast::ty_infer => self.ty_infer(a.ty.span),
+      _ => ast_ty_to_ty(self, rscope, a.ty)
     };
 
     let mode = {
         alt a.mode {
-          ast::infer(_) if expected_ty.is_some() {
+          ast::infer(_) if expected_ty.is_some() => {
             result::get(ty::unify_mode(self.tcx(), a.mode,
                                        expected_ty.get().mode))
           }
-          ast::infer(_) {
+          ast::infer(_) => {
             alt ty::get(ty).struct {
               // If the type is not specified, then this must be a fn expr.
               // Leave the mode as infer(_), it will get inferred based
               // on constraints elsewhere.
-              ty::ty_var(_) {a.mode}
+              ty::ty_var(_) => a.mode,
 
               // If the type is known, then use the default for that type.
               // Here we unify m and the default.  This should update the
               // tables in tcx but should never fail, because nothing else
               // will have been unified with m yet:
-              _ {
+              _ => {
                 let m1 = ast::expl(ty::default_arg_mode_for_ty(ty));
                 result::get(ty::unify_mode(self.tcx(), a.mode, m1))
               }
             }
           }
-          ast::expl(_) {a.mode}
+          ast::expl(_) => a.mode
         }
     };
 
@@ -417,9 +418,9 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
 
         let expected_ret_ty = expected_tys.map(|e| e.output);
         let output_ty = alt decl.output.node {
-          ast::ty_infer if expected_ret_ty.is_some() {expected_ret_ty.get()}
-          ast::ty_infer {self.ty_infer(decl.output.span)}
-          _ {ast_ty_to_ty(self, rb, decl.output)}
+          ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
+          ast::ty_infer => self.ty_infer(decl.output.span),
+          _ => ast_ty_to_ty(self, rb, decl.output)
         };
 
         {purity: decl.purity, proto: proto, inputs: input_tys,

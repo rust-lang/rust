@@ -21,25 +21,25 @@ const as_prec: uint = 11u;
  */
 fn token_to_binop(tok: token) -> option<ast::binop> {
   alt tok {
-      BINOP(STAR)    { some(mul) }
-      BINOP(SLASH)   { some(div) }
-      BINOP(PERCENT) { some(rem) }
+      BINOP(STAR)    => some(mul),
+      BINOP(SLASH)   => some(div),
+      BINOP(PERCENT) => some(rem),
       // 'as' sits between here with 11
-      BINOP(PLUS)    { some(add) }
-      BINOP(MINUS)   { some(subtract) }
-      BINOP(SHL)     { some(shl) }
-      BINOP(SHR)     { some(shr) }
-      BINOP(AND)     { some(bitand) }
-      BINOP(CARET)   { some(bitxor) }
-      BINOP(OR)      { some(bitor) }
-      LT             { some(lt) }
-      LE             { some(le) }
-      GE             { some(ge) }
-      GT             { some(gt) }
-      EQEQ           { some(eq) }
-      NE             { some(ne) }
-      ANDAND         { some(and) }
-      OROR           { some(or) }
-      _              { none }
+      BINOP(PLUS)    => some(add),
+      BINOP(MINUS)   => some(subtract),
+      BINOP(SHL)     => some(shl),
+      BINOP(SHR)     => some(shr),
+      BINOP(AND)     => some(bitand),
+      BINOP(CARET)   => some(bitxor),
+      BINOP(OR)      => some(bitor),
+      LT             => some(lt),
+      LE             => some(le),
+      GE             => some(ge),
+      GT             => some(gt),
+      EQEQ           => some(eq),
+      NE             => some(ne),
+      ANDAND         => some(and),
+      OROR           => some(or),
+      _              => none
   }
 }

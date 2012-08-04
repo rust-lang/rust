@@ -44,7 +44,7 @@ fn thread_ring(i: uint,
         num_chan = some(ring::client::num(option::unwrap(num_chan2), i * j));
         let port = option::unwrap(num_port2);
         alt recv(port) {
-          ring::num(_n, p) {
+          ring::num(_n, p) => {
             //log(error, _n);
             num_port = some(move_out!{p});
           }

@@ -8,7 +8,7 @@ enum cat {
 fn animal() -> ~str { ~"cat" }
 fn talk(c: cat) -> ~str {
     alt c {
-      howlycat { ~"howl" }
-      meowlycat { ~"meow" }
+      howlycat =>  { ~"howl" }
+      meowlycat => { ~"meow" }
     }
 }

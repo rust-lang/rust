@@ -145,12 +145,8 @@ extern fn wake_up_cb(async_handle: *ll::uv_async_t,
 
     while msg_po.peek() {
         alt msg_po.recv() {
-          interaction(cb) {
-            cb(loop_ptr);
-          }
-          teardown_loop {
-            begin_teardown(data);
-          }
+          interaction(cb) => cb(loop_ptr),
+          teardown_loop => begin_teardown(data)
         }
     }
 }

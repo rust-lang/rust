@@ -94,11 +94,9 @@ fn parse_item_attrs<T:send>(
     +parse_attrs: fn~(~[ast::attribute]) -> T) -> T {
     do astsrv::exec(srv) |ctxt| {
         let attrs = alt ctxt.ast_map.get(id) {
-          ast_map::node_item(item, _) { item.attrs }
-          ast_map::node_foreign_item(item, _, _) { item.attrs }
-          _ {
-            fail ~"parse_item_attrs: not an item";
-          }
+          ast_map::node_item(item, _) => item.attrs,
+          ast_map::node_foreign_item(item, _, _) => item.attrs,
+          _ => fail ~"parse_item_attrs: not an item"
         };
         parse_attrs(attrs)
     }
@@ -149,7 +147,7 @@ fn fold_enum(
                 alt check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
-                  }, _) {
+                  }, _) => {
                     let ast_variant = option::get(
                         vec::find(ast_variants, |v| {
                             *v.node.name == variant.name
@@ -206,13 +204,13 @@ fn merge_method_attrs(
         alt ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_trait(_, _, methods), _
-          }, _) {
+          }, _) => {
             vec::map(methods, |method| {
                 alt method {
-                  ast::required(ty_m) {
+                  ast::required(ty_m) => {
                     (*ty_m.ident, attr_parser::parse_desc(ty_m.attrs))
                   }
-                  ast::provided(m) {
+                  ast::provided(m) => {
                     (*m.ident, attr_parser::parse_desc(m.attrs))
                   }
                 }
@@ -220,12 +218,12 @@ fn merge_method_attrs(
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
-          }, _) {
+          }, _) => {
             vec::map(methods, |method| {
                 (*method.ident, attr_parser::parse_desc(method.attrs))
             })
           }
-          _ { fail ~"unexpected item" }
+          _ => fail ~"unexpected item"
         }
     };
 

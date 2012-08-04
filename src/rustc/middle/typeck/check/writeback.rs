@@ -11,8 +11,8 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
     option<ty::t> {
     if !ty::type_needs_infer(typ) { return some(typ); }
     alt resolve_type(fcx.infcx, typ, resolve_all | force_all) {
-      result::ok(new_type) { return some(new_type); }
-      result::err(e) {
+      result::ok(new_type) => return some(new_type),
+      result::err(e) => {
         if !fcx.ccx.tcx.sess.has_errors() {
             fcx.ccx.tcx.sess.span_err(
                 sp,
@@ -29,27 +29,27 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
     let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
     let n_ty = fcx.node_ty(id);
     alt resolve_type_vars_in_type(fcx, sp, n_ty) {
-      none {
+      none => {
         wbcx.success = false;
         return none;
       }
 
-      some(t) {
+      some(t) => {
         debug!{"resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
                id, ty_to_str(tcx, n_ty), ty_to_str(tcx, t)};
         write_ty_to_tcx(tcx, id, t);
         alt fcx.opt_node_ty_substs(id) {
-          some(substs) {
+          some(substs) => {
             let mut new_tps = ~[];
             for substs.tps.each |subst| {
                 alt resolve_type_vars_in_type(fcx, sp, subst) {
-                  some(t) { vec::push(new_tps, t); }
-                  none { wbcx.success = false; return none; }
+                  some(t) => vec::push(new_tps, t),
+                  none => { wbcx.success = false; return none; }
                 }
             }
             write_substs_to_tcx(tcx, id, new_tps);
           }
-          none {}
+          none => ()
         }
         return some(t);
       }
@@ -82,29 +82,29 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     resolve_type_vars_for_node(wbcx, e.span, e.id);
     alt e.node {
       ast::expr_fn(_, decl, _, _) |
-      ast::expr_fn_block(decl, _, _) {
+      ast::expr_fn_block(decl, _, _) => {
         do vec::iter(decl.inputs) |input| {
             let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 
             // Just in case we never constrained the mode to anything,
             // constrain it to the default for the type in question.
             alt (r_ty, input.mode) {
-              (some(t), ast::infer(_)) {
+              (some(t), ast::infer(_)) => {
                 let tcx = wbcx.fcx.ccx.tcx;
                 let m_def = ty::default_arg_mode_for_ty(t);
                 ty::set_default_mode(tcx, input.mode, m_def);
               }
-              _ {}
+              _ => ()
             }
         }
       }
 
       ast::expr_binary(*) | ast::expr_unary(*) | ast::expr_assign_op(*)
-        | ast::expr_index(*) {
+        | ast::expr_index(*) => {
         maybe_resolve_type_vars_for_node(wbcx, e.span, e.callee_id);
       }
 
-      _ { }
+      _ => ()
     }
     visit::visit_expr(e, wbcx, v);
 }
@@ -128,13 +128,13 @@ fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
     let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
     alt resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
-      result::ok(lty) {
+      result::ok(lty) => {
         debug!{"Type for local %s (id %d) resolved to %s",
                pat_to_str(l.node.pat), l.node.id,
                wbcx.fcx.infcx.ty_to_str(lty)};
         write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.node.id, lty);
       }
-      result::err(e) {
+      result::err(e) => {
         wbcx.fcx.ccx.tcx.sess.span_err(
             l.span,
             fmt!{"cannot determine a type \

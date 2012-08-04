@@ -1,6 +1,6 @@
 fn main() {
     alt ~100 {
-      ~x {
+      ~x => {
         debug!{"%?", x};
         assert x == 100;
       }

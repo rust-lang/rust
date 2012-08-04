@@ -207,7 +207,7 @@ fn consume_any_line_comment(rdr: string_reader)
                                 -> option<{tok: token::token, sp: span}> {
     if rdr.curr == '/' {
         alt nextch(rdr) {
-          '/' {
+          '/' => {
             bump(rdr);
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
@@ -228,8 +228,8 @@ fn consume_any_line_comment(rdr: string_reader)
                 return consume_whitespace_and_comments(rdr);
             }
           }
-          '*' { bump(rdr); bump(rdr); return consume_block_comment(rdr); }
-          _ {}
+          '*' => { bump(rdr); bump(rdr); return consume_block_comment(rdr); }
+          _ => ()
         }
     } else if rdr.curr == '#' {
         if nextch(rdr) == '!' {
@@ -314,11 +314,11 @@ fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
         let c = rdr.curr;
         if c == '_' { bump(rdr); again; }
         alt char::to_digit(c, radix) {
-          some(d) {
+          some(d) => {
             str::push_char(rslt, c);
             bump(rdr);
           }
-          _ { return rslt; }
+          _ => return rslt
         }
     };
 }
@@ -372,8 +372,8 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
         alt tp {
-          either::left(t) { return token::LIT_INT(parsed as i64, t); }
-          either::right(t) { return token::LIT_UINT(parsed, t); }
+          either::left(t) => return token::LIT_INT(parsed as i64, t),
+          either::right(t) => return token::LIT_UINT(parsed, t)
         }
     }
     let mut is_float = false;
@@ -384,11 +384,11 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         num_str += ~"." + dec_part;
     }
     alt scan_exponent(rdr) {
-      some(s) {
+      some(s) => {
         is_float = true;
         num_str += s;
       }
-      none {}
+      none => ()
     }
     if rdr.curr == 'f' {
         bump(rdr);
@@ -479,9 +479,9 @@ fn next_token_inner(rdr: string_reader) -> token::token {
 
 
       // One-byte tokens.
-      ';' { bump(rdr); return token::SEMI; }
-      ',' { bump(rdr); return token::COMMA; }
-      '.' {
+      ';' => { bump(rdr); return token::SEMI; }
+      ',' => { bump(rdr); return token::COMMA; }
+      '.' => {
         bump(rdr);
         if rdr.curr == '.' && nextch(rdr) != '.' {
             bump(rdr);
@@ -494,16 +494,16 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         }
         return token::DOT;
       }
-      '(' { bump(rdr); return token::LPAREN; }
-      ')' { bump(rdr); return token::RPAREN; }
-      '{' { bump(rdr); return token::LBRACE; }
-      '}' { bump(rdr); return token::RBRACE; }
-      '[' { bump(rdr); return token::LBRACKET; }
-      ']' { bump(rdr); return token::RBRACKET; }
-      '@' { bump(rdr); return token::AT; }
-      '#' { bump(rdr); return token::POUND; }
-      '~' { bump(rdr); return token::TILDE; }
-      ':' {
+      '(' => { bump(rdr); return token::LPAREN; }
+      ')' => { bump(rdr); return token::RPAREN; }
+      '{' => { bump(rdr); return token::LBRACE; }
+      '}' => { bump(rdr); return token::RBRACE; }
+      '[' => { bump(rdr); return token::LBRACKET; }
+      ']' => { bump(rdr); return token::RBRACKET; }
+      '@' => { bump(rdr); return token::AT; }
+      '#' => { bump(rdr); return token::POUND; }
+      '~' => { bump(rdr); return token::TILDE; }
+      ':' => {
         bump(rdr);
         if rdr.curr == ':' {
             bump(rdr);
@@ -511,14 +511,14 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         } else { return token::COLON; }
       }
 
-      '$' { bump(rdr); return token::DOLLAR; }
+      '$' => { bump(rdr); return token::DOLLAR; }
 
 
 
 
 
       // Multi-byte tokens.
-      '=' {
+      '=' => {
         bump(rdr);
         if rdr.curr == '=' {
             bump(rdr);
@@ -530,37 +530,37 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             return token::EQ;
         }
       }
-      '!' {
+      '!' => {
         bump(rdr);
         if rdr.curr == '=' {
             bump(rdr);
             return token::NE;
         } else { return token::NOT; }
       }
-      '<' {
+      '<' => {
         bump(rdr);
         alt rdr.curr {
-          '=' { bump(rdr); return token::LE; }
-          '<' { return binop(rdr, token::SHL); }
-          '-' {
+          '=' => { bump(rdr); return token::LE; }
+          '<' => { return binop(rdr, token::SHL); }
+          '-' => {
             bump(rdr);
             alt rdr.curr {
-              '>' { bump(rdr); return token::DARROW; }
-              _ { return token::LARROW; }
+              '>' => { bump(rdr); return token::DARROW; }
+              _ => { return token::LARROW; }
             }
           }
-          _ { return token::LT; }
+          _ => { return token::LT; }
         }
       }
-      '>' {
+      '>' => {
         bump(rdr);
         alt rdr.curr {
-          '=' { bump(rdr); return token::GE; }
-          '>' { return binop(rdr, token::SHR); }
-          _ { return token::GT; }
+          '=' => { bump(rdr); return token::GE; }
+          '>' => { return binop(rdr, token::SHR); }
+          _ => { return token::GT; }
         }
       }
-      '\'' {
+      '\'' => {
         bump(rdr);
         let mut c2 = rdr.curr;
         bump(rdr);
@@ -568,16 +568,16 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             let escaped = rdr.curr;
             bump(rdr);
             alt escaped {
-              'n' { c2 = '\n'; }
-              'r' { c2 = '\r'; }
-              't' { c2 = '\t'; }
-              '\\' { c2 = '\\'; }
-              '\'' { c2 = '\''; }
-              '"' { c2 = '"'; }
-              'x' { c2 = scan_numeric_escape(rdr, 2u); }
-              'u' { c2 = scan_numeric_escape(rdr, 4u); }
-              'U' { c2 = scan_numeric_escape(rdr, 8u); }
-              c2 {
+              'n' => { c2 = '\n'; }
+              'r' => { c2 = '\r'; }
+              't' => { c2 = '\t'; }
+              '\\' => { c2 = '\\'; }
+              '\'' => { c2 = '\''; }
+              '"' => { c2 = '"'; }
+              'x' => { c2 = scan_numeric_escape(rdr, 2u); }
+              'u' => { c2 = scan_numeric_escape(rdr, 4u); }
+              'U' => { c2 = scan_numeric_escape(rdr, 8u); }
+              c2 => {
                 rdr.fatal(fmt!{"unknown character escape: %d", c2 as int});
               }
             }
@@ -588,7 +588,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         bump(rdr); // advance curr past token
         return token::LIT_INT(c2 as i64, ast::ty_char);
       }
-      '"' {
+      '"' => {
         let n = rdr.chpos;
         bump(rdr);
         while rdr.curr != '"' {
@@ -600,63 +600,63 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             let ch = rdr.curr;
             bump(rdr);
             alt ch {
-              '\\' {
+              '\\' => {
                 let escaped = rdr.curr;
                 bump(rdr);
                 alt escaped {
-                  'n' { str::push_char(accum_str, '\n'); }
-                  'r' { str::push_char(accum_str, '\r'); }
-                  't' { str::push_char(accum_str, '\t'); }
-                  '\\' { str::push_char(accum_str, '\\'); }
-                  '\'' { str::push_char(accum_str, '\''); }
-                  '"' { str::push_char(accum_str, '"'); }
-                  '\n' { consume_whitespace(rdr); }
-                  'x' {
+                  'n' => str::push_char(accum_str, '\n'),
+                  'r' => str::push_char(accum_str, '\r'),
+                  't' => str::push_char(accum_str, '\t'),
+                  '\\' => str::push_char(accum_str, '\\'),
+                  '\'' => str::push_char(accum_str, '\''),
+                  '"' => str::push_char(accum_str, '"'),
+                  '\n' => consume_whitespace(rdr),
+                  'x' => {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 2u));
                   }
-                  'u' {
+                  'u' => {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 4u));
                   }
-                  'U' {
+                  'U' => {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 8u));
                   }
-                  c2 {
+                  c2 => {
                     rdr.fatal(fmt!{"unknown string escape: %d", c2 as int});
                   }
                 }
               }
-              _ { str::push_char(accum_str, ch); }
+              _ => str::push_char(accum_str, ch)
             }
         }
         bump(rdr);
         return token::LIT_STR((*rdr.interner).intern(@accum_str));
       }
-      '-' {
+      '-' => {
         if nextch(rdr) == '>' {
             bump(rdr);
             bump(rdr);
             return token::RARROW;
         } else { return binop(rdr, token::MINUS); }
       }
-      '&' {
+      '&' => {
         if nextch(rdr) == '&' {
             bump(rdr);
             bump(rdr);
             return token::ANDAND;
         } else { return binop(rdr, token::AND); }
       }
-      '|' {
+      '|' => {
         alt nextch(rdr) {
-          '|' { bump(rdr); bump(rdr); return token::OROR; }
-          _ { return binop(rdr, token::OR); }
+          '|' => { bump(rdr); bump(rdr); return token::OROR; }
+          _ => { return binop(rdr, token::OR); }
         }
       }
-      '+' { return binop(rdr, token::PLUS); }
-      '*' { return binop(rdr, token::STAR); }
-      '/' { return binop(rdr, token::SLASH); }
-      '^' { return binop(rdr, token::CARET); }
-      '%' { return binop(rdr, token::PERCENT); }
-      c { rdr.fatal(fmt!{"unknown start of token: %d", c as int}); }
+      '+' => { return binop(rdr, token::PLUS); }
+      '*' => { return binop(rdr, token::STAR); }
+      '/' => { return binop(rdr, token::SLASH); }
+      '^' => { return binop(rdr, token::CARET); }
+      '%' => { return binop(rdr, token::PERCENT); }
+      c => { rdr.fatal(fmt!{"unknown start of token: %d", c as int}); }
     }
 }
 

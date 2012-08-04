@@ -31,8 +31,8 @@ fn init<K, V>() -> treemap<K, V> { @empty }
 /// Insert a value into the map
 fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
     @alt m {
-       @empty { node(@k, @v, @empty, @empty) }
-       @node(@kk, vv, left, right) {
+       @empty => node(@k, @v, @empty, @empty),
+       @node(@kk, vv, left, right) => {
          if k < kk {
              node(@kk, vv, insert(left, k, v), right)
          } else if k == kk {
@@ -45,8 +45,8 @@ fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
 /// Find a value based on the key
 fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
     alt *m {
-      empty { none }
-      node(@kk, @v, left, right) {
+      empty => none,
+      node(@kk, @v, left, right) => {
         if k == kk {
             some(v)
         } else if k < kk { find(left, k) } else { find(right, k) }
@@ -57,13 +57,13 @@ fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
 /// Visit all pairs in the map in order.
 fn traverse<K, V: copy>(m: treemap<K, V>, f: fn(K, V)) {
     alt *m {
-      empty { }
+      empty => (),
       /*
         Previously, this had what looked like redundant
         matches to me, so I changed it. but that may be a
         de-optimization -- tjc
        */
-      node(@k, @v, left, right) {
+      node(@k, @v, left, right) => {
         // copy v to make aliases work out
         let v1 = v;
         traverse(left, f);

@@ -182,11 +182,11 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
             pos = next;
 
             alt ch {
-              '0' to '9' {
+              '0' to '9' => {
                 value = value * 10_i32 + (ch as i32 - '0' as i32);
               }
-              ' ' if ws { }
-              _ { return none; }
+              ' ' if ws => (),
+              _ => return none
             }
             i += 1u;
         }
@@ -209,83 +209,73 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
     fn parse_type(s: ~str, pos: uint, ch: char, tm: tm_mut)
       -> result<uint, ~str> {
         alt ch {
-          'A' {
-            alt match_strs(s, pos, ~[
-                (~"Sunday", 0_i32),
-                (~"Monday", 1_i32),
-                (~"Tuesday", 2_i32),
-                (~"Wednesday", 3_i32),
-                (~"Thursday", 4_i32),
-                (~"Friday", 5_i32),
-                (~"Saturday", 6_i32)
-            ]) {
-              some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
-              none { err(~"Invalid day") }
-            }
+          'A' => alt match_strs(s, pos, ~[
+              (~"Sunday", 0_i32),
+              (~"Monday", 1_i32),
+              (~"Tuesday", 2_i32),
+              (~"Wednesday", 3_i32),
+              (~"Thursday", 4_i32),
+              (~"Friday", 5_i32),
+              (~"Saturday", 6_i32)
+          ]) {
+            some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
+            none => err(~"Invalid day")
           }
-          'a' {
-            alt match_strs(s, pos, ~[
-                (~"Sun", 0_i32),
-                (~"Mon", 1_i32),
-                (~"Tue", 2_i32),
-                (~"Wed", 3_i32),
-                (~"Thu", 4_i32),
-                (~"Fri", 5_i32),
-                (~"Sat", 6_i32)
-            ]) {
-              some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
-              none { err(~"Invalid day") }
-            }
+          'a' => alt match_strs(s, pos, ~[
+              (~"Sun", 0_i32),
+              (~"Mon", 1_i32),
+              (~"Tue", 2_i32),
+              (~"Wed", 3_i32),
+              (~"Thu", 4_i32),
+              (~"Fri", 5_i32),
+              (~"Sat", 6_i32)
+          ]) {
+            some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
+            none => err(~"Invalid day")
           }
-          'B' {
-            alt match_strs(s, pos, ~[
-                (~"January", 0_i32),
-                (~"February", 1_i32),
-                (~"March", 2_i32),
-                (~"April", 3_i32),
-                (~"May", 4_i32),
-                (~"June", 5_i32),
-                (~"July", 6_i32),
-                (~"August", 7_i32),
-                (~"September", 8_i32),
-                (~"October", 9_i32),
-                (~"November", 10_i32),
-                (~"December", 11_i32)
-            ]) {
-              some(item) { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
-              none { err(~"Invalid month") }
-            }
+          'B' => alt match_strs(s, pos, ~[
+              (~"January", 0_i32),
+              (~"February", 1_i32),
+              (~"March", 2_i32),
+              (~"April", 3_i32),
+              (~"May", 4_i32),
+              (~"June", 5_i32),
+              (~"July", 6_i32),
+              (~"August", 7_i32),
+              (~"September", 8_i32),
+              (~"October", 9_i32),
+              (~"November", 10_i32),
+              (~"December", 11_i32)
+          ]) {
+            some(item) => { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
+            none => err(~"Invalid month")
           }
-          'b' | 'h' {
-            alt match_strs(s, pos, ~[
-                (~"Jan", 0_i32),
-                (~"Feb", 1_i32),
-                (~"Mar", 2_i32),
-                (~"Apr", 3_i32),
-                (~"May", 4_i32),
-                (~"Jun", 5_i32),
-                (~"Jul", 6_i32),
-                (~"Aug", 7_i32),
-                (~"Sep", 8_i32),
-                (~"Oct", 9_i32),
-                (~"Nov", 10_i32),
-                (~"Dec", 11_i32)
-            ]) {
-              some(item) { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
-              none { err(~"Invalid month") }
-            }
+          'b' | 'h' => alt match_strs(s, pos, ~[
+              (~"Jan", 0_i32),
+              (~"Feb", 1_i32),
+              (~"Mar", 2_i32),
+              (~"Apr", 3_i32),
+              (~"May", 4_i32),
+              (~"Jun", 5_i32),
+              (~"Jul", 6_i32),
+              (~"Aug", 7_i32),
+              (~"Sep", 8_i32),
+              (~"Oct", 9_i32),
+              (~"Nov", 10_i32),
+              (~"Dec", 11_i32)
+          ]) {
+            some(item) => { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
+            none => err(~"Invalid month")
           }
-          'C' {
-            alt match_digits(s, pos, 2u, false) {
-              some(item) {
+          'C' => alt match_digits(s, pos, 2u, false) {
+            some(item) => {
                 let (v, pos) = item;
-                tm.tm_year += (v * 100_i32) - 1900_i32;
-                ok(pos)
+                  tm.tm_year += (v * 100_i32) - 1900_i32;
+                  ok(pos)
               }
-              none { err(~"Invalid year") }
-            }
+            none => err(~"Invalid year")
           }
-          'c' {
+          'c' => {
             parse_type(s, pos, 'a', tm)
                 .chain(|pos| parse_char(s, pos, ' '))
                 .chain(|pos| parse_type(s, pos, 'b', tm))
@@ -296,116 +286,108 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                 .chain(|pos| parse_char(s, pos, ' '))
                 .chain(|pos| parse_type(s, pos, 'Y', tm))
           }
-          'D' | 'x' {
+          'D' | 'x' => {
             parse_type(s, pos, 'm', tm)
                 .chain(|pos| parse_char(s, pos, '/'))
                 .chain(|pos| parse_type(s, pos, 'd', tm))
                 .chain(|pos| parse_char(s, pos, '/'))
                 .chain(|pos| parse_type(s, pos, 'y', tm))
           }
-          'd' {
-            alt match_digits(s, pos, 2u, false) {
-              some(item) { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
-              none { err(~"Invalid day of the month") }
-            }
+          'd' => alt match_digits(s, pos, 2u, false) {
+            some(item) => { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
+            none => err(~"Invalid day of the month")
           }
-          'e' {
-            alt match_digits(s, pos, 2u, true) {
-              some(item) { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
-              none { err(~"Invalid day of the month") }
-            }
+          'e' => alt match_digits(s, pos, 2u, true) {
+            some(item) => { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
+            none => err(~"Invalid day of the month")
           }
-          'F' {
+          'F' => {
             parse_type(s, pos, 'Y', tm)
                 .chain(|pos| parse_char(s, pos, '-'))
                 .chain(|pos| parse_type(s, pos, 'm', tm))
                 .chain(|pos| parse_char(s, pos, '-'))
                 .chain(|pos| parse_type(s, pos, 'd', tm))
           }
-          'H' {
+          'H' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
-              some(item) { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
-              none { err(~"Invalid hour") }
+              some(item) => { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
+              none => err(~"Invalid hour")
             }
           }
-          'I' {
+          'I' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
-              some(item) {
+              some(item) => {
                   let (v, pos) = item;
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
                   ok(pos)
               }
-              none { err(~"Invalid hour") }
+              none => err(~"Invalid hour")
             }
           }
-          'j' {
+          'j' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 3u, false) {
-              some(item) {
+              some(item) => {
                 let (v, pos) = item;
                 tm.tm_yday = v - 1_i32;
                 ok(pos)
               }
-              none { err(~"Invalid year") }
+              none => err(~"Invalid year")
             }
           }
-          'k' {
+          'k' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, true) {
-              some(item) { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
-              none { err(~"Invalid hour") }
+              some(item) => { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
+              none => err(~"Invalid hour")
             }
           }
-          'l' {
+          'l' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, true) {
-              some(item) {
+              some(item) => {
                   let (v, pos) = item;
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
                   ok(pos)
               }
-              none { err(~"Invalid hour") }
+              none => err(~"Invalid hour")
             }
           }
-          'M' {
+          'M' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
-              some(item) { let (v, pos) = item; tm.tm_min = v; ok(pos) }
-              none { err(~"Invalid minute") }
+              some(item) => { let (v, pos) = item; tm.tm_min = v; ok(pos) }
+              none => err(~"Invalid minute")
             }
           }
-          'm' {
+          'm' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
-              some(item) {
+              some(item) => {
                 let (v, pos) = item;
                 tm.tm_mon = v - 1_i32;
                 ok(pos)
               }
-              none { err(~"Invalid month") }
+              none => err(~"Invalid month")
             }
           }
-          'n' { parse_char(s, pos, '\n') }
-          'P' {
-            alt match_strs(s, pos, ~[(~"am", 0_i32), (~"pm", 12_i32)]) {
-              some(item) { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
-              none { err(~"Invalid hour") }
-            }
+          'n' => parse_char(s, pos, '\n'),
+          'P' => alt match_strs(s, pos, ~[(~"am", 0_i32), (~"pm", 12_i32)]) {
+            some(item) => { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
+            none => err(~"Invalid hour")
           }
-          'p' {
-            alt match_strs(s, pos, ~[(~"AM", 0_i32), (~"PM", 12_i32)]) {
-              some(item) { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
-              none { err(~"Invalid hour") }
-            }
+          'p' => alt match_strs(s, pos, ~[(~"AM", 0_i32), (~"PM", 12_i32)]) {
+            some(item) => { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
+            none => err(~"Invalid hour")
           }
-          'R' {
+          'R' => {
             parse_type(s, pos, 'H', tm)
                 .chain(|pos| parse_char(s, pos, ':'))
                 .chain(|pos| parse_type(s, pos, 'M', tm))
           }
-          'r' {
+          'r' => {
             parse_type(s, pos, 'I', tm)
                 .chain(|pos| parse_char(s, pos, ':'))
                 .chain(|pos| parse_type(s, pos, 'M', tm))
@@ -414,38 +396,38 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                 .chain(|pos| parse_char(s, pos, ' '))
                 .chain(|pos| parse_type(s, pos, 'p', tm))
           }
-          'S' {
+          'S' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
-              some(item) {
+              some(item) => {
                 let (v, pos) = item;
                 tm.tm_sec = v;
                 ok(pos)
               }
-              none { err(~"Invalid second") }
+              none => err(~"Invalid second")
             }
           }
           //'s' {}
-          'T' | 'X' {
+          'T' | 'X' => {
             parse_type(s, pos, 'H', tm)
                 .chain(|pos| parse_char(s, pos, ':'))
                 .chain(|pos| parse_type(s, pos, 'M', tm))
                 .chain(|pos| parse_char(s, pos, ':'))
                 .chain(|pos| parse_type(s, pos, 'S', tm))
           }
-          't' { parse_char(s, pos, '\t') }
-          'u' {
+          't' => parse_char(s, pos, '\t'),
+          'u' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 1u, false) {
-              some(item) {
+              some(item) => {
                 let (v, pos) = item;
                 tm.tm_wday = v;
                 ok(pos)
               }
-              none { err(~"Invalid weekday") }
+              none => err(~"Invalid weekday")
             }
           }
-          'v' {
+          'v' => {
             parse_type(s, pos, 'e', tm)
                 .chain(|pos| parse_char(s, pos, '-'))
                 .chain(|pos| parse_type(s, pos, 'b', tm))
@@ -453,38 +435,38 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                 .chain(|pos| parse_type(s, pos, 'Y', tm))
           }
           //'W' {}
-          'w' {
+          'w' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 1u, false) {
-              some(item) { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
-              none { err(~"Invalid weekday") }
+              some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
+              none => err(~"Invalid weekday")
             }
           }
           //'X' {}
           //'x' {}
-          'Y' {
+          'Y' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 4u, false) {
-              some(item) {
+              some(item) => {
                 let (v, pos) = item;
                 tm.tm_year = v - 1900_i32;
                 ok(pos)
               }
-              none { err(~"Invalid weekday") }
+              none => err(~"Invalid weekday")
             }
           }
-          'y' {
+          'y' => {
             // FIXME (#2350): range check.
             alt match_digits(s, pos, 2u, false) {
-              some(item) {
+              some(item) => {
                 let (v, pos) = item;
                 tm.tm_year = v - 1900_i32;
                 ok(pos)
               }
-              none { err(~"Invalid weekday") }
+              none => err(~"Invalid weekday")
             }
           }
-          'Z' {
+          'Z' => {
             if match_str(s, pos, ~"UTC") || match_str(s, pos, ~"GMT") {
                 tm.tm_gmtoff = 0_i32;
                 tm.tm_zone = ~"UTC";
@@ -503,12 +485,12 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                 ok(pos)
             }
           }
-          'z' {
+          'z' => {
             let {ch, next} = str::char_range_at(s, pos);
 
             if ch == '+' || ch == '-' {
                 alt match_digits(s, next, 4u, false) {
-                  some(item) {
+                  some(item) => {
                     let (v, pos) = item;
                     if v == 0_i32 {
                         tm.tm_gmtoff = 0_i32;
@@ -517,14 +499,14 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
 
                     ok(pos)
                   }
-                  none { err(~"Invalid zone offset") }
+                  none => err(~"Invalid zone offset")
                 }
             } else {
                 err(~"Invalid zone offset")
             }
           }
-          '%' { parse_char(s, pos, '%') }
-          ch {
+          '%' => parse_char(s, pos, '%'),
+          ch => {
             err(fmt!{"unknown formatting type: %?", str::from_char(ch)})
           }
         }
@@ -553,13 +535,11 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
             let {ch, next} = str::char_range_at(s, pos);
 
             alt rdr.read_char() {
-              '%' {
-                alt parse_type(s, pos, rdr.read_char(), tm) {
-                  ok(next) { pos = next; }
-                  err(e) { result = err(e); break; }
-                }
+              '%' => alt parse_type(s, pos, rdr.read_char(), tm) {
+                ok(next) => pos = next,
+                  err(e) => { result = err(e); break; }
               }
-              c {
+              c => {
                 if c != ch { break }
                 pos = next;
               }
@@ -589,62 +569,54 @@ fn strftime(format: ~str, tm: tm) -> ~str {
     fn parse_type(ch: char, tm: tm) -> ~str {
         //FIXME (#2350): Implement missing types.
         alt check ch {
-          'A' {
-            alt check tm.tm_wday as int {
-              0 { ~"Sunday" }
-              1 { ~"Monday" }
-              2 { ~"Tuesday" }
-              3 { ~"Wednesday" }
-              4 { ~"Thursday" }
-              5 { ~"Friday" }
-              6 { ~"Saturday" }
-            }
+          'A' => alt check tm.tm_wday as int {
+            0 => ~"Sunday",
+            1 => ~"Monday",
+            2 => ~"Tuesday",
+            3 => ~"Wednesday",
+            4 => ~"Thursday",
+            5 => ~"Friday",
+            6 => ~"Saturday"
           }
-          'a' {
-            alt check tm.tm_wday as int {
-              0 { ~"Sun" }
-              1 { ~"Mon" }
-              2 { ~"Tue" }
-              3 { ~"Wed" }
-              4 { ~"Thu" }
-              5 { ~"Fri" }
-              6 { ~"Sat" }
-            }
+          'a' => alt check tm.tm_wday as int {
+            0 => ~"Sun",
+            1 => ~"Mon",
+            2 => ~"Tue",
+            3 => ~"Wed",
+            4 => ~"Thu",
+            5 => ~"Fri",
+            6 => ~"Sat"
           }
-          'B' {
-            alt check tm.tm_mon as int {
-              0 { ~"January" }
-              1 { ~"February" }
-              2 { ~"March" }
-              3 { ~"April" }
-              4 { ~"May" }
-              5 { ~"June" }
-              6 { ~"July" }
-              7 { ~"August" }
-              8 { ~"September" }
-              9 { ~"October" }
-              10 { ~"November" }
-              11 { ~"December" }
-            }
+          'B' => alt check tm.tm_mon as int {
+            0 => ~"January",
+            1 => ~"February",
+            2 => ~"March",
+            3 => ~"April",
+            4 => ~"May",
+            5 => ~"June",
+            6 => ~"July",
+            7 => ~"August",
+            8 => ~"September",
+            9 => ~"October",
+            10 => ~"November",
+            11 => ~"December"
           }
-          'b' | 'h' {
-            alt check tm.tm_mon as int {
-              0 { ~"Jan" }
-              1 { ~"Feb" }
-              2 { ~"Mar" }
-              3 { ~"Apr" }
-              4 { ~"May" }
-              5 { ~"Jun" }
-              6 { ~"Jul" }
-              7 { ~"Aug" }
-              8 { ~"Sep" }
-              9 { ~"Oct" }
-              10 { ~"Nov" }
-              11 { ~"Dec" }
-            }
+          'b' | 'h' => alt check tm.tm_mon as int {
+            0 => ~"Jan",
+            1 => ~"Feb",
+            2 => ~"Mar",
+            3 => ~"Apr",
+            4 => ~"May",
+            5 => ~"Jun",
+            6 => ~"Jul",
+            7 => ~"Aug",
+            8 => ~"Sep",
+            9 => ~"Oct",
+            10 => ~"Nov",
+            11 => ~"Dec",
           }
-          'C' { fmt!{"%02d", (tm.tm_year as int + 1900) / 100} }
-          'c' {
+          'C' => fmt!{"%02d", (tm.tm_year as int + 1900) / 100},
+          'c' => {
             fmt!{"%s %s %s %s %s",
                 parse_type('a', tm),
                 parse_type('b', tm),
@@ -652,15 +624,15 @@ fn strftime(format: ~str, tm: tm) -> ~str {
                 parse_type('T', tm),
                 parse_type('Y', tm)}
           }
-          'D' | 'x' {
+          'D' | 'x' => {
             fmt!{"%s/%s/%s",
                 parse_type('m', tm),
                 parse_type('d', tm),
                 parse_type('y', tm)}
           }
-          'd' { fmt!{"%02d", tm.tm_mday as int} }
-          'e' { fmt!{"%2d", tm.tm_mday as int} }
-          'F' {
+          'd' => fmt!{"%02d", tm.tm_mday as int},
+          'e' => fmt!{"%2d", tm.tm_mday as int},
+          'F' => {
             fmt!{"%s-%s-%s",
                 parse_type('Y', tm),
                 parse_type('m', tm),
@@ -668,67 +640,67 @@ fn strftime(format: ~str, tm: tm) -> ~str {
           }
           //'G' {}
           //'g' {}
-          'H' { fmt!{"%02d", tm.tm_hour as int} }
-          'I' {
+          'H' => fmt!{"%02d", tm.tm_hour as int},
+          'I' => {
             let mut h = tm.tm_hour as int;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
             fmt!{"%02d", h}
           }
-          'j' { fmt!{"%03d", tm.tm_yday as int + 1} }
-          'k' { fmt!{"%2d", tm.tm_hour as int} }
-          'l' {
+          'j' => fmt!{"%03d", tm.tm_yday as int + 1},
+          'k' => fmt!{"%2d", tm.tm_hour as int},
+          'l' => {
             let mut h = tm.tm_hour as int;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
             fmt!{"%2d", h}
           }
-          'M' { fmt!{"%02d", tm.tm_min as int} }
-          'm' { fmt!{"%02d", tm.tm_mon as int + 1} }
-          'n' { ~"\n" }
-          'P' { if tm.tm_hour as int < 12 { ~"am" } else { ~"pm" } }
-          'p' { if tm.tm_hour as int < 12 { ~"AM" } else { ~"PM" } }
-          'R' {
+          'M' => fmt!{"%02d", tm.tm_min as int},
+          'm' => fmt!{"%02d", tm.tm_mon as int + 1},
+          'n' => ~"\n",
+          'P' => if tm.tm_hour as int < 12 { ~"am" } else { ~"pm" }
+          'p' => if tm.tm_hour as int < 12 { ~"AM" } else { ~"PM" }
+          'R' => {
             fmt!{"%s:%s",
                 parse_type('H', tm),
                 parse_type('M', tm)}
           }
-          'r' {
+          'r' => {
             fmt!{"%s:%s:%s %s",
                 parse_type('I', tm),
                 parse_type('M', tm),
                 parse_type('S', tm),
                 parse_type('p', tm)}
           }
-          'S' { fmt!{"%02d", tm.tm_sec as int} }
-          's' { fmt!{"%d", tm.to_timespec().sec as int} }
-          'T' | 'X' {
+          'S' => fmt!{"%02d", tm.tm_sec as int},
+          's' => fmt!{"%d", tm.to_timespec().sec as int},
+          'T' | 'X' => {
             fmt!{"%s:%s:%s",
                 parse_type('H', tm),
                 parse_type('M', tm),
                 parse_type('S', tm)}
           }
-          't' { ~"\t" }
+          't' => ~"\t",
           //'U' {}
-          'u' {
+          'u' => {
             let i = tm.tm_wday as int;
             int::str(if i == 0 { 7 } else { i })
           }
           //'V' {}
-          'v' {
+          'v' => {
             fmt!{"%s-%s-%s",
                 parse_type('e', tm),
                 parse_type('b', tm),
                 parse_type('Y', tm)}
           }
           //'W' {}
-          'w' { int::str(tm.tm_wday as int) }
+          'w' => int::str(tm.tm_wday as int),
           //'X' {}
           //'x' {}
-          'Y' { int::str(tm.tm_year as int + 1900) }
-          'y' { fmt!{"%02d", (tm.tm_year as int + 1900) % 100} }
-          'Z' { tm.tm_zone }
-          'z' {
+          'Y' => int::str(tm.tm_year as int + 1900),
+          'y' => fmt!{"%02d", (tm.tm_year as int + 1900) % 100},
+          'Z' => tm.tm_zone,
+          'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = i32::abs(tm.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
@@ -736,7 +708,7 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             fmt!{"%c%02d%02d", sign, h as int, m as int}
           }
           //'+' {}
-          '%' { ~"%" }
+          '%' => ~"%"
         }
     }
 
@@ -745,8 +717,8 @@ fn strftime(format: ~str, tm: tm) -> ~str {
     do io::with_str_reader(format) |rdr| {
         while !rdr.eof() {
             alt rdr.read_char() {
-                '%' { buf += parse_type(rdr.read_char(), tm); }
-                ch { str::push_char(buf, ch); }
+                '%' => buf += parse_type(rdr.read_char(), tm),
+                ch => str::push_char(buf, ch)
             }
         }
     }
@@ -961,7 +933,7 @@ mod tests {
         tzset();
 
         alt strptime(~"", ~"") {
-          ok(tm) {
+          ok(tm) => {
             assert tm.tm_sec == 0_i32;
             assert tm.tm_min == 0_i32;
             assert tm.tm_hour == 0_i32;
@@ -974,7 +946,7 @@ mod tests {
             assert tm.tm_zone == ~"";
             assert tm.tm_nsec == 0_i32;
           }
-          err(_) {}
+          err(_) => ()
         }
 
         let format = ~"%a %b %e %T %Y";
@@ -983,8 +955,8 @@ mod tests {
             == err(~"Invalid time");
 
         alt strptime(~"Fri Feb 13 15:31:30 2009", format) {
-          err(e) { fail e }
-          ok(tm) {
+          err(e) => fail e,
+          ok(tm) => {
             assert tm.tm_sec == 30_i32;
             assert tm.tm_min == 31_i32;
             assert tm.tm_hour == 15_i32;
@@ -1002,8 +974,8 @@ mod tests {
 
         fn test(s: ~str, format: ~str) -> bool {
             alt strptime(s, format) {
-              ok(tm) { tm.strftime(format) == s }
-              err(e) { fail e }
+              ok(tm) => tm.strftime(format) == s,
+              err(e) => fail e
             }
         }
 

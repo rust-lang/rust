@@ -71,8 +71,8 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     let res = io::read_whole_file_str(res_rel_file(cx, sp, file));
     alt res {
-      result::ok(_) { /* Continue. */ }
-      result::err(e) {
+      result::ok(_) => { /* Continue. */ }
+      result::err(e) => {
         cx.parse_sess().span_diagnostic.handler().fatal(e);
       }
     }
@@ -87,13 +87,13 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     let file = expr_to_str(cx, args[0], ~"#include_bin requires a string");
 
     alt io::read_whole_file(res_rel_file(cx, sp, file)) {
-      result::ok(src) {
+      result::ok(src) => {
         let u8_exprs = vec::map(src, |char: u8| {
             mk_u8(cx, sp, char)
         });
         return mk_uniq_vec_e(cx, sp, u8_exprs);
       }
-      result::err(e) {
+      result::err(e) => {
         cx.parse_sess().span_diagnostic.handler().fatal(e)
       }
     }

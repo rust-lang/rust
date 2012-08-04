@@ -14,17 +14,17 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     if !cx.allow_block {
         alt ty::get(ty::expr_ty(cx.tcx, ex)).struct {
-          ty::ty_fn({proto: p, _}) if is_blockish(p) {
+          ty::ty_fn({proto: p, _}) if is_blockish(p) => {
             cx.tcx.sess.span_err(ex.span,
                ~"expressions with stack closure type \
                 can only appear in callee or (by-ref) argument position");
           }
-          _ {}
+          _ => {}
         }
     }
     let outer = cx.allow_block;
     alt ex.node {
-      expr_call(f, args, _) {
+      expr_call(f, args, _) => {
         cx.allow_block = true;
         v.visit_expr(f, cx, v);
         let mut i = 0u;
@@ -34,11 +34,11 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
             i += 1u;
         }
       }
-      expr_loop_body(body) | expr_do_body(body) {
+      expr_loop_body(body) | expr_do_body(body) => {
         cx.allow_block = true;
         v.visit_expr(body, cx, v);
       }
-      _ {
+      _ => {
         cx.allow_block = false;
         visit::visit_expr(ex, cx, v);
       }

@@ -58,8 +58,8 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
 // given a map, search for the frequency of a pattern
 fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
    alt mm.find(str::bytes(str::to_lower(key))) {
-      option::none      { return 0u; }
-      option::some(num) { return num; }
+      option::none      => { return 0u; }
+      option::some(num) => { return num; }
    }
 }
 
@@ -67,8 +67,8 @@ fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
 fn update_freq(mm: hashmap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len());
     alt mm.find(key) {
-      option::none      { mm.insert(key, 1u      ); }
-      option::some(val) { mm.insert(key, 1u + val); }
+      option::none      => { mm.insert(key, 1u      ); }
+      option::some(val) => { mm.insert(key, 1u + val); }
     }
 }
 
@@ -109,14 +109,14 @@ fn make_sequence_processor(sz: uint, from_parent: comm::port<~[u8]>,
    }
 
    let buffer = alt sz { 
-       1u { sort_and_fmt(freqs, total) }
-       2u { sort_and_fmt(freqs, total) }
-       3u { fmt!{"%u\t%s", find(freqs, ~"GGT"), ~"GGT"} }
-       4u { fmt!{"%u\t%s", find(freqs, ~"GGTA"), ~"GGTA"} }
-       6u { fmt!{"%u\t%s", find(freqs, ~"GGTATT"), ~"GGTATT"} }
-      12u { fmt!{"%u\t%s", find(freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT"} }
-      18u { fmt!{"%u\t%s", find(freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT"} }
-        _ { ~"" }
+       1u => { sort_and_fmt(freqs, total) }
+       2u => { sort_and_fmt(freqs, total) }
+       3u => { fmt!{"%u\t%s", find(freqs, ~"GGT"), ~"GGT"} }
+       4u => { fmt!{"%u\t%s", find(freqs, ~"GGTA"), ~"GGTA"} }
+       6u => { fmt!{"%u\t%s", find(freqs, ~"GGTATT"), ~"GGTATT"} }
+      12u => { fmt!{"%u\t%s", find(freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT"} }
+      18u => { fmt!{"%u\t%s", find(freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT"} }
+        _ => { ~"" }
    };
 
    //comm::send(to_parent, fmt!{"yay{%u}", sz});
@@ -162,18 +162,18 @@ fn main(args: ~[~str]) {
       alt (line[0], proc_mode) {
 
          // start processing if this is the one
-         ('>' as u8, false) {
+         ('>' as u8, false) => {
             alt str::find_str_from(line, ~"THREE", 1u) {
-               option::some(_) { proc_mode = true; }
-               option::none    { }
+               option::some(_) => proc_mode = true,
+               option::none    => ()
             }
          }
 
          // break our processing
-         ('>' as u8, true) { break; }
+         ('>' as u8, true) => { break; }
 
          // process the sequence for k-mers
-         (_, true) {
+         (_, true) => {
             let line_bytes = str::bytes(line);
 
            for sizes.eachi |ii, _sz| {
@@ -183,7 +183,7 @@ fn main(args: ~[~str]) {
          }
 
          // whatever
-         _ { }
+         _ => { }
       }
    }
 

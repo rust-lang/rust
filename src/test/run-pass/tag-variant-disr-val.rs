@@ -30,14 +30,14 @@ fn test_color(color: color, val: int, name: ~str) unsafe {
 
 fn get_color_alt(color: color) -> ~str {
     alt color {
-      red {~"red"}
-      green {~"green"}
-      blue {~"blue"}
-      black {~"black"}
-      white {~"white"}
-      imaginary {~"imaginary"}
-      purple {~"purple"}
-      orange {~"orange"}
+      red => {~"red"}
+      green => {~"green"}
+      blue => {~"blue"}
+      black => {~"black"}
+      white => {~"white"}
+      imaginary => {~"imaginary"}
+      purple => {~"purple"}
+      orange => {~"orange"}
     }
 }
 

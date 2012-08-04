@@ -21,18 +21,18 @@ fn check_item(sess: session, ast_map: ast_map::map,
               def_map: resolve3::DefMap,
               it: @item, &&_is_const: bool, v: visit::vt<bool>) {
     alt it.node {
-      item_const(_, ex) {
+      item_const(_, ex) => {
         v.visit_expr(ex, true, v);
         check_item_recursion(sess, ast_map, def_map, it);
       }
-      item_enum(vs, _) {
+      item_enum(vs, _) => {
         for vs.each |var| {
             do option::iter(var.node.disr_expr) |ex| {
                 v.visit_expr(ex, true, v);
             }
         }
       }
-      _ { visit::visit_item(it, false, v); }
+      _ => visit::visit_item(it, false, v)
     }
 }
 
@@ -40,18 +40,18 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         alt e.node {
           expr_vstore(@{node: expr_lit(@{node: lit_str(_), _}), _},
-                      vstore_uniq) { true }
-          _ { false }
+                      vstore_uniq) => true,
+          _ => false
         }
     }
     alt p.node {
       // Let through plain ~-string literals here
-      pat_lit(a) { if !is_str(a) { v.visit_expr(a, true, v); } }
-      pat_range(a, b) {
+      pat_lit(a) => if !is_str(a) { v.visit_expr(a, true, v); }
+      pat_range(a, b) => {
         if !is_str(a) { v.visit_expr(a, true, v); }
         if !is_str(b) { v.visit_expr(b, true, v); }
       }
-      _ { visit::visit_pat(p, false, v); }
+      _ => visit::visit_pat(p, false, v)
     }
 }
 
@@ -61,20 +61,20 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
     if is_const {
         alt e.node {
           expr_unary(box(_), _) | expr_unary(uniq(_), _) |
-          expr_unary(deref, _){
+          expr_unary(deref, _) => {
             sess.span_err(e.span,
                           ~"disallowed operator in constant expression");
             return;
           }
-          expr_lit(@{node: lit_str(_), _}) { }
-          expr_binary(_, _, _) | expr_unary(_, _) {
+          expr_lit(@{node: lit_str(_), _}) => { }
+          expr_binary(_, _, _) | expr_unary(_, _) => {
             if method_map.contains_key(e.id) {
                 sess.span_err(e.span, ~"user-defined operators are not \
                                        allowed in constant expressions");
             }
           }
-          expr_lit(_) {}
-          expr_cast(_, _) {
+          expr_lit(_) => (),
+          expr_cast(_, _) => {
             let ety = ty::expr_ty(tcx, e);
             if !ty::type_is_numeric(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +
@@ -82,16 +82,16 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
                               ~"` in a constant expression");
             }
           }
-          expr_path(_) {
+          expr_path(_) => {
             alt def_map.find(e.id) {
-              some(def_const(def_id)) {
+              some(def_const(def_id)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
                                  crate-local constants");
                 }
               }
-              _ {
+              _ => {
                 sess.span_err(
                     e.span,
                     ~"paths in constants may only refer to constants");
@@ -103,14 +103,14 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           expr_vec(_, m_imm) |
           expr_addr_of(m_imm, _) |
           expr_tup(*) |
-          expr_rec(*) { }
-          expr_addr_of(*) {
+          expr_rec(*) => { }
+          expr_addr_of(*) => {
                 sess.span_err(
                     e.span,
                     ~"borrowed pointers in constants may only refer to \
                       immutable values");
           }
-          _ {
+          _ => {
             sess.span_err(e.span,
                           ~"constant contains unimplemented expression type");
             return;
@@ -118,7 +118,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
         }
     }
     alt e.node {
-      expr_lit(@{node: lit_int(v, t), _}) {
+      expr_lit(@{node: lit_int(v, t), _}) => {
         if t != ty_char {
             if (v as u64) > ast_util::int_ty_max(
                 if t == ty_i { sess.targ_cfg.int_type } else { t }) {
@@ -126,13 +126,13 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
             }
         }
       }
-      expr_lit(@{node: lit_uint(v, t), _}) {
+      expr_lit(@{node: lit_uint(v, t), _}) => {
         if v > ast_util::uint_ty_max(
             if t == ty_u { sess.targ_cfg.uint_type } else { t }) {
             sess.span_err(e.span, ~"literal out of range for its type");
         }
       }
-      _ {}
+      _ => ()
     }
     visit::visit_expr(e, is_const, v);
 }
@@ -176,19 +176,19 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
 
     fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
         alt e.node {
-          expr_path(path) {
+          expr_path(path) => {
             alt env.def_map.find(e.id) {
-              some(def_const(def_id)) {
+              some(def_const(def_id)) => {
                 alt check env.ast_map.get(def_id.node) {
-                  ast_map::node_item(it, _) {
+                  ast_map::node_item(it, _) => {
                     v.visit_item(it, env, v);
                   }
                 }
               }
-              _ { }
+              _ => ()
             }
           }
-          _ { }
+          _ => ()
         }
         visit::visit_expr(e, env, v);
     }

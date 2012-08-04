@@ -30,7 +30,7 @@ impl parser_attr of parser_attr for parser {
     {
         let expect_item_next = vec::is_not_empty(first_item_attrs);
         alt self.token {
-          token::POUND {
+          token::POUND => {
             let lo = self.span.lo;
             if self.look_ahead(1u) == token::LBRACKET {
                 self.bump();
@@ -46,12 +46,10 @@ impl parser_attr of parser_attr for parser {
                 return some(right(self.parse_syntax_ext_naked(lo)));
             } else { return none; }
         }
-        token::DOC_COMMENT(_) {
+        token::DOC_COMMENT(_) => {
           return some(left(self.parse_outer_attributes()));
         }
-        _ {
-          return none;
-        }
+        _ => return none
       }
     }
 
@@ -60,13 +58,13 @@ impl parser_attr of parser_attr for parser {
         let mut attrs: ~[ast::attribute] = ~[];
         loop {
             alt copy self.token {
-              token::POUND {
+              token::POUND => {
                 if self.look_ahead(1u) != token::LBRACKET {
                     break;
                 }
                 attrs += ~[self.parse_attribute(ast::attr_outer)];
               }
-              token::DOC_COMMENT(s) {
+              token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
                         *self.get_str(s), self.span.lo, self.span.hi);
                 if attr.node.style != ast::attr_outer {
@@ -75,9 +73,7 @@ impl parser_attr of parser_attr for parser {
                 attrs += ~[attr];
                 self.bump();
               }
-              _ {
-                break;
-              }
+              _ => break
             }
         }
         return attrs;
@@ -111,7 +107,7 @@ impl parser_attr of parser_attr for parser {
         let mut next_outer_attrs: ~[ast::attribute] = ~[];
         loop {
             alt copy self.token {
-              token::POUND {
+              token::POUND => {
                 if self.look_ahead(1u) != token::LBRACKET {
                     // This is an extension
                     break;
@@ -130,7 +126,7 @@ impl parser_attr of parser_attr for parser {
                     break;
                 }
               }
-              token::DOC_COMMENT(s) {
+              token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
                         *self.get_str(s), self.span.lo, self.span.hi);
                 self.bump();
@@ -141,9 +137,7 @@ impl parser_attr of parser_attr for parser {
                   break;
                 }
               }
-              _ {
-                break;
-              }
+              _ => break
             }
         }
         return {inner: inner_attrs, next: next_outer_attrs};
@@ -153,18 +147,18 @@ impl parser_attr of parser_attr for parser {
         let lo = self.span.lo;
         let ident = self.parse_ident();
         alt self.token {
-          token::EQ {
+          token::EQ => {
             self.bump();
             let lit = self.parse_lit();
             let mut hi = self.span.hi;
             return @spanned(lo, hi, ast::meta_name_value(ident, lit));
           }
-          token::LPAREN {
+          token::LPAREN => {
             let inner_items = self.parse_meta_seq();
             let mut hi = self.span.hi;
             return @spanned(lo, hi, ast::meta_list(ident, inner_items));
           }
-          _ {
+          _ => {
             let mut hi = self.span.hi;
             return @spanned(lo, hi, ast::meta_word(ident));
           }
@@ -178,8 +172,10 @@ impl parser_attr of parser_attr for parser {
     }
 
     fn parse_optional_meta() -> ~[@ast::meta_item] {
-        alt self.token { token::LPAREN { return self.parse_meta_seq(); }
-                         _ { return ~[]; } }
+        alt self.token {
+          token::LPAREN => return self.parse_meta_seq(),
+          _ => return ~[]
+        }
     }
 }
 

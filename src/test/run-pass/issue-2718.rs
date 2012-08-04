@@ -59,19 +59,19 @@ mod pipes {
         (*p).payload <- some(payload);
         let old_state = swap_state_rel((*p).state, full);
         alt old_state {
-          empty {
+          empty => {
             // Yay, fastpath.
 
             // The receiver will eventually clean this up.
             unsafe { forget(p); }
           }
-          full { fail ~"duplicate send" }
-          blocked {
+          full => { fail ~"duplicate send" }
+          blocked => {
 
             // The receiver will eventually clean this up.
             unsafe { forget(p); }
           }
-          terminated {
+          terminated => {
             // The receiver will never receive this. Rely on drop_glue
             // to clean everything up.
           }
@@ -85,13 +85,13 @@ mod pipes {
             let old_state = swap_state_acq((*p).state,
                                            blocked);
             alt old_state {
-              empty | blocked { task::yield(); }
-              full {
+              empty | blocked => { task::yield(); }
+              full => {
                 let mut payload = none;
                 payload <-> (*p).payload;
                 return some(option::unwrap(payload))
               }
-              terminated {
+              terminated => {
                 assert old_state == terminated;
                 return none;
               }
@@ -102,15 +102,15 @@ mod pipes {
     fn sender_terminate<T: send>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
         alt swap_state_rel((*p).state, terminated) {
-          empty | blocked {
+          empty | blocked => {
             // The receiver will eventually clean up.
             unsafe { forget(p) }
           }
-          full {
+          full => {
             // This is impossible
             fail ~"you dun goofed"
           }
-          terminated {
+          terminated => {
             // I have to clean up, use drop_glue
           }
         }
@@ -119,15 +119,15 @@ mod pipes {
     fn receiver_terminate<T: send>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
         alt swap_state_rel((*p).state, terminated) {
-          empty {
+          empty => {
             // the sender will clean up
             unsafe { forget(p) }
           }
-          blocked {
+          blocked => {
             // this shouldn't happen.
             fail ~"terminating a blocked packet"
           }
-          terminated | full {
+          terminated | full => {
             // I have to clean up, use drop_glue
           }
         }
@@ -179,7 +179,7 @@ mod pingpong {
 
     fn liberate_ping(-p: ping) -> pipes::send_packet<pong> unsafe {
         let addr : *pipes::send_packet<pong> = alt p {
-          ping(x) { unsafe::reinterpret_cast(ptr::addr_of(x)) }
+          ping(x) => { unsafe::reinterpret_cast(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;
         unsafe::forget(p);
@@ -188,7 +188,7 @@ mod pingpong {
 
     fn liberate_pong(-p: pong) -> pipes::send_packet<ping> unsafe {
         let addr : *pipes::send_packet<ping> = alt p {
-          pong(x) { unsafe::reinterpret_cast(ptr::addr_of(x)) }
+          pong(x) => { unsafe::reinterpret_cast(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;
         unsafe::forget(p);

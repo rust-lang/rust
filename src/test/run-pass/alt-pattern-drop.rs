@@ -10,11 +10,11 @@ fn foo(s: @int) {
     let x: t = make_t(s); // ref up
 
     alt x {
-      make_t(y) {
+      make_t(y) => {
         log(debug, y); // ref up then down
 
       }
-      _ { debug!{"?"}; fail; }
+      _ => { debug!{"?"}; fail; }
     }
     log(debug, sys::refcount(s));
     assert (sys::refcount(s) == count + 1u);

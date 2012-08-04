@@ -42,11 +42,11 @@ enum constness {
 
 fn join(a: constness, b: constness) -> constness {
     alt (a,b) {
-      (integral_const, integral_const) { integral_const }
+      (integral_const, integral_const) => integral_const,
       (integral_const, general_const)
       | (general_const, integral_const)
-      | (general_const, general_const) { general_const }
-      _ { non_const }
+      | (general_const, general_const) => general_const,
+      _ => non_const
     }
 }
 
@@ -59,43 +59,43 @@ fn classify(e: @expr,
             tcx: ty::ctxt) -> constness {
     let did = ast_util::local_def(e.id);
     alt tcx.ccache.find(did) {
-      some(x) { x }
-      none {
+      some(x) => x,
+      none => {
         let cn =
             alt e.node {
-              ast::expr_lit(lit) {
+              ast::expr_lit(lit) => {
                 alt lit.node {
                   ast::lit_str(*) |
-                  ast::lit_float(*) { general_const }
-                  _ { integral_const }
+                  ast::lit_float(*) => general_const,
+                  _ => integral_const
                 }
               }
 
               ast::expr_copy(inner) |
-              ast::expr_unary(_, inner) {
+              ast::expr_unary(_, inner) => {
                 classify(inner, def_map, tcx)
               }
 
-              ast::expr_binary(_, a, b) {
+              ast::expr_binary(_, a, b) => {
                 join(classify(a, def_map, tcx),
                      classify(b, def_map, tcx))
               }
 
               ast::expr_tup(es) |
-              ast::expr_vec(es, ast::m_imm) {
+              ast::expr_vec(es, ast::m_imm) => {
                 join_all(vec::map(es, |e| classify(e, def_map, tcx)))
               }
 
-              ast::expr_vstore(e, vstore) {
+              ast::expr_vstore(e, vstore) => {
                 alt vstore {
                   ast::vstore_fixed(_) |
-                  ast::vstore_slice(_) { classify(e, def_map, tcx) }
+                  ast::vstore_slice(_) => classify(e, def_map, tcx),
                   ast::vstore_uniq |
-                  ast::vstore_box { non_const }
+                  ast::vstore_box => non_const
                 }
               }
 
-              ast::expr_rec(fs, none) {
+              ast::expr_rec(fs, none) => {
                 let cs = do vec::map(fs) |f| {
                     if f.node.mutbl == ast::m_imm {
                         classify(f.node.expr, def_map, tcx)
@@ -106,7 +106,7 @@ fn classify(e: @expr,
                 join_all(cs)
               }
 
-              ast::expr_cast(base, _) {
+              ast::expr_cast(base, _) => {
                 let ty = ty::expr_ty(tcx, e);
                 let base = classify(base, def_map, tcx);
                 if ty::type_is_integral(ty) {
@@ -118,24 +118,24 @@ fn classify(e: @expr,
                 }
               }
 
-              ast::expr_field(base, _, _) {
+              ast::expr_field(base, _, _) => {
                 classify(base, def_map, tcx)
               }
 
-              ast::expr_index(base, idx) {
+              ast::expr_index(base, idx) => {
                 join(classify(base, def_map, tcx),
                      classify(idx, def_map, tcx))
               }
 
-              ast::expr_addr_of(ast::m_imm, base) {
+              ast::expr_addr_of(ast::m_imm, base) => {
                 classify(base, def_map, tcx)
               }
 
               // FIXME: #1272, we can probably do something CCI-ish
               // surrounding nonlocal constants. But we don't yet.
-              ast::expr_path(_) {
+              ast::expr_path(_) => {
                 alt def_map.find(e.id) {
-                  some(ast::def_const(def_id)) {
+                  some(ast::def_const(def_id)) => {
                     if ast_util::is_local(def_id) {
                         let ty = ty::expr_ty(tcx, e);
                         if ty::type_is_integral(ty) {
@@ -147,10 +147,10 @@ fn classify(e: @expr,
                         non_const
                     }
                   }
-                  some(_) {
+                  some(_) => {
                     non_const
                   }
-                  none {
+                  none => {
                     tcx.sess.span_bug(e.span,
                                       ~"unknown path when \
                                         classifying constants");
@@ -158,7 +158,7 @@ fn classify(e: @expr,
                 }
               }
 
-              _ { non_const }
+              _ => non_const
             };
         tcx.ccache.insert(did, cn);
         cn
@@ -192,115 +192,139 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     import middle::ty;
     fn fromb(b: bool) -> const_val { const_int(b as i64) }
     alt check e.node {
-      expr_unary(neg, inner) {
+      expr_unary(neg, inner) => {
         alt check eval_const_expr(tcx, inner) {
-          const_float(f) { const_float(-f) }
-          const_int(i) { const_int(-i) }
-          const_uint(i) { const_uint(-i) }
+          const_float(f) => const_float(-f),
+          const_int(i) => const_int(-i),
+          const_uint(i) => const_uint(-i)
         }
       }
-      expr_unary(not, inner) {
+      expr_unary(not, inner) => {
         alt check eval_const_expr(tcx, inner) {
-          const_int(i) { const_int(!i) }
-          const_uint(i) { const_uint(!i) }
+          const_int(i) => const_int(!i),
+          const_uint(i) => const_uint(!i)
         }
       }
-      expr_binary(op, a, b) {
+      expr_binary(op, a, b) => {
         alt check (eval_const_expr(tcx, a), eval_const_expr(tcx, b)) {
-          (const_float(a), const_float(b)) {
+          (const_float(a), const_float(b)) => {
             alt check op {
-              add { const_float(a + b) } subtract { const_float(a - b) }
-              mul { const_float(a * b) } div { const_float(a / b) }
-              rem { const_float(a % b) } eq { fromb(a == b) }
-              lt { fromb(a < b) } le { fromb(a <= b) } ne { fromb(a != b) }
-              ge { fromb(a >= b) } gt { fromb(a > b) }
+              add => const_float(a + b),
+              subtract => const_float(a - b),
+              mul => const_float(a * b),
+              div => const_float(a / b),
+              rem => const_float(a % b),
+              eq => fromb(a == b),
+              lt => fromb(a < b),
+              le => fromb(a <= b),
+              ne => fromb(a != b),
+              ge => fromb(a >= b),
+              gt => fromb(a > b)
             }
           }
-          (const_int(a), const_int(b)) {
+          (const_int(a), const_int(b)) => {
             alt check op {
-              add { const_int(a + b) } subtract { const_int(a - b) }
-              mul { const_int(a * b) } div { const_int(a / b) }
-              rem { const_int(a % b) } and | bitand { const_int(a & b) }
-              or | bitor { const_int(a | b) } bitxor { const_int(a ^ b) }
-              shl { const_int(a << b) } shr { const_int(a >> b) }
-              eq { fromb(a == b) } lt { fromb(a < b) }
-              le { fromb(a <= b) } ne { fromb(a != b) }
-              ge { fromb(a >= b) } gt { fromb(a > b) }
+              add => const_int(a + b),
+              subtract => const_int(a - b),
+              mul => const_int(a * b),
+              div => const_int(a / b),
+              rem => const_int(a % b),
+              and | bitand => const_int(a & b),
+              or | bitor => const_int(a | b),
+              bitxor => const_int(a ^ b),
+              shl => const_int(a << b),
+              shr => const_int(a >> b),
+              eq => fromb(a == b),
+              lt => fromb(a < b),
+              le => fromb(a <= b),
+              ne => fromb(a != b),
+              ge => fromb(a >= b),
+              gt => fromb(a > b)
             }
           }
-          (const_uint(a), const_uint(b)) {
+          (const_uint(a), const_uint(b)) => {
             alt check op {
-              add { const_uint(a + b) } subtract { const_uint(a - b) }
-              mul { const_uint(a * b) } div { const_uint(a / b) }
-              rem { const_uint(a % b) } and | bitand { const_uint(a & b) }
-              or | bitor { const_uint(a | b) } bitxor { const_uint(a ^ b) }
-              shl { const_uint(a << b) } shr { const_uint(a >> b) }
-              eq { fromb(a == b) } lt { fromb(a < b) }
-              le { fromb(a <= b) } ne { fromb(a != b) }
-              ge { fromb(a >= b) } gt { fromb(a > b) }
+              add => const_uint(a + b),
+              subtract => const_uint(a - b),
+              mul => const_uint(a * b),
+              div => const_uint(a / b),
+              rem => const_uint(a % b),
+              and | bitand => const_uint(a & b),
+              or | bitor => const_uint(a | b),
+              bitxor => const_uint(a ^ b),
+              shl => const_uint(a << b),
+              shr => const_uint(a >> b),
+              eq => fromb(a == b),
+              lt => fromb(a < b),
+              le => fromb(a <= b),
+              ne => fromb(a != b),
+              ge => fromb(a >= b),
+              gt => fromb(a > b)
             }
           }
           // shifts can have any integral type as their rhs
-          (const_int(a), const_uint(b)) {
+          (const_int(a), const_uint(b)) => {
             alt check op {
-              shl { const_int(a << b) } shr { const_int(a >> b) }
+              shl => const_int(a << b),
+              shr => const_int(a >> b)
             }
           }
-          (const_uint(a), const_int(b)) {
+          (const_uint(a), const_int(b)) => {
             alt check op {
-              shl { const_uint(a << b) } shr { const_uint(a >> b) }
+              shl => const_uint(a << b),
+              shr => const_uint(a >> b)
             }
           }
         }
       }
-      expr_cast(base, _) {
+      expr_cast(base, _) => {
         let ety = ty::expr_ty(tcx, e);
         let base = eval_const_expr(tcx, base);
         alt check ty::get(ety).struct {
-          ty::ty_float(_) {
+          ty::ty_float(_) => {
             alt check base {
-              const_uint(u) { const_float(u as f64) }
-              const_int(i) { const_float(i as f64) }
-              const_float(_) { base }
+              const_uint(u) => const_float(u as f64),
+              const_int(i) => const_float(i as f64),
+              const_float(_) => base
             }
           }
-          ty::ty_uint(_) {
+          ty::ty_uint(_) => {
             alt check base {
-              const_uint(_) { base }
-              const_int(i) { const_uint(i as u64) }
-              const_float(f) { const_uint(f as u64) }
+              const_uint(_) => base,
+              const_int(i) => const_uint(i as u64),
+              const_float(f) => const_uint(f as u64)
             }
           }
-          ty::ty_int(_) | ty::ty_bool {
+          ty::ty_int(_) | ty::ty_bool => {
             alt check base {
-              const_uint(u) { const_int(u as i64) }
-              const_int(_) { base }
-              const_float(f) { const_int(f as i64) }
+              const_uint(u) => const_int(u as i64),
+              const_int(_) => base,
+              const_float(f) => const_int(f as i64)
             }
           }
         }
       }
-      expr_lit(lit) { lit_to_const(lit) }
+      expr_lit(lit) => lit_to_const(lit),
       // If we have a vstore, just keep going; it has to be a string
-      expr_vstore(e, _) { eval_const_expr(tcx, e) }
+      expr_vstore(e, _) => eval_const_expr(tcx, e)
     }
 }
 
 fn lit_to_const(lit: @lit) -> const_val {
     alt lit.node {
-      lit_str(s) { const_str(*s) }
-      lit_int(n, _) { const_int(n) }
-      lit_uint(n, _) { const_uint(n) }
-      lit_int_unsuffixed(n) { const_int(n) }
-      lit_float(n, _) { const_float(option::get(float::from_str(*n)) as f64) }
-      lit_nil { const_int(0i64) }
-      lit_bool(b) { const_int(b as i64) }
+      lit_str(s) => const_str(*s),
+      lit_int(n, _) => const_int(n),
+      lit_uint(n, _) => const_uint(n),
+      lit_int_unsuffixed(n) => const_int(n),
+      lit_float(n, _) => const_float(option::get(float::from_str(*n)) as f64),
+      lit_nil => const_int(0i64),
+      lit_bool(b) => const_int(b as i64)
     }
 }
 
 fn compare_const_vals(a: const_val, b: const_val) -> int {
   alt (a, b) {
-    (const_int(a), const_int(b)) {
+    (const_int(a), const_int(b)) => {
         if a == b {
             0
         } else if a < b {
@@ -309,7 +333,7 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_uint(a), const_uint(b)) {
+    (const_uint(a), const_uint(b)) => {
         if a == b {
             0
         } else if a < b {
@@ -318,7 +342,7 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_float(a), const_float(b)) {
+    (const_float(a), const_float(b)) => {
         if a == b {
             0
         } else if a < b {
@@ -327,7 +351,7 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    (const_str(a), const_str(b)) {
+    (const_str(a), const_str(b)) => {
         if a == b {
             0
         } else if a < b {
@@ -336,9 +360,7 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
             1
         }
     }
-    _ {
-        fail ~"compare_const_vals: ill-typed comparison";
-    }
+    _ => fail ~"compare_const_vals: ill-typed comparison"
   }
 }
 

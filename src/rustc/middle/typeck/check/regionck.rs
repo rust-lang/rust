@@ -106,11 +106,11 @@ fn visit_pat(p: @ast::pat, &&rcx: @rcx, v: rvt) {
     let fcx = rcx.fcx;
     alt p.node {
       ast::pat_ident(_, path, _)
-      if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) {
+      if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) => {
         debug!{"visit_pat binding=%s", *path.idents[0]};
         visit_node(p.id, p.span, rcx);
       }
-      _ {}
+      _ => ()
     }
 
     visit::visit_pat(p, rcx, v);
@@ -124,19 +124,19 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!{"visit_expr(e=%s)", pprust::expr_to_str(e)};
 
     alt e.node {
-      ast::expr_path(*) {
+      ast::expr_path(*) => {
         // Avoid checking the use of local variables, as we already
         // check their definitions.  The def'n always encloses the
         // use.  So if the def'n is enclosed by the region, then the
         // uses will also be enclosed (and otherwise, an error will
         // have been reported at the def'n site).
         alt lookup_def(rcx.fcx, e.span, e.id) {
-          ast::def_local(*) | ast::def_arg(*) | ast::def_upvar(*) { return; }
-          _ { }
+          ast::def_local(*) | ast::def_arg(*) | ast::def_upvar(*) => return,
+          _ => ()
         }
       }
 
-      ast::expr_cast(source, _) {
+      ast::expr_cast(source, _) => {
         // Determine if we are casting `source` to an trait instance.
         // If so, we have to be sure that the type of the source obeys
         // the trait's region bound.
@@ -154,7 +154,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
           result::err(_) => { return; /* typeck will fail anyhow */ }
           result::ok(target_ty) => {
             alt ty::get(target_ty).struct {
-              ty::ty_trait(_, substs) {
+              ty::ty_trait(_, substs) => {
                 let trait_region = alt substs.self_r {
                   some(r) => {r}
                   none => {ty::re_static}
@@ -163,14 +163,14 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
                 constrain_regions_in_type(rcx, trait_region,
                                           e.span, source_ty);
               }
-              _ { }
+              _ => ()
             }
           }
         };
 
       }
 
-      _ { }
+      _ => ()
     }
 
     if !visit_node(e.id, e.span, rcx) { return; }
@@ -192,8 +192,8 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty = alt rcx.resolve_node_type(id) {
-      result::err(_) { return true; }
-      result::ok(ty) { ty }
+      result::err(_) => return true,
+      result::ok(ty) => ty
     };
 
     // find the region where this expr evaluation is taking place
@@ -233,18 +233,18 @@ fn constrain_regions_in_type(
                ppaux::region_to_str(tcx, region)};
 
         alt region {
-          ty::re_bound(_) {
+          ty::re_bound(_) => {
             // a bound region is one which appears inside an fn type.
             // (e.g., the `&` in `fn(&T)`).  Such regions need not be
             // constrained by `encl_region` as they are placeholders
             // for regions that are as-yet-unknown.
             return;
           }
-          _ {}
+          _ => ()
         }
 
         alt rcx.fcx.mk_subr(encl_region, region) {
-          result::err(_) {
+          result::err(_) => {
             let region1 = rcx.fcx.infcx.resolve_region_if_possible(region);
             tcx.sess.span_err(
                 span,
@@ -253,7 +253,7 @@ fn constrain_regions_in_type(
                      ppaux::region_to_str(tcx, region1)});
             rcx.errors_reported += 1u;
           }
-          result::ok(()) {
+          result::ok(()) => {
           }
         }
     }

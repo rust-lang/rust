@@ -123,8 +123,8 @@ mod ct {
         if !('0' as u8 <= c && c <= '9' as u8) { return option::none; }
         let n = (c - ('0' as u8)) as uint;
         return alt peek_num(s, i + 1u, lim) {
-              none { some({num: n, next: i + 1u}) }
-              some(next) {
+              none => some({num: n, next: i + 1u}),
+              some(next) => {
                 let m = next.num;
                 let j = next.next;
                 some({num: n * 10u + m, next: j})
@@ -151,8 +151,8 @@ mod ct {
         if i >= lim { return {param: none, next: i}; }
         let num = peek_num(s, i, lim);
         return alt num {
-              none { {param: none, next: i} }
-              some(t) {
+              none => {param: none, next: i},
+              some(t) => {
                 let n = t.num;
                 let j = t.next;
                 if j < lim && s[j] == '$' as u8 {
@@ -196,15 +196,16 @@ mod ct {
                 let param = parse_parameter(s, i + 1u, lim);
                 let j = param.next;
                 alt param.param {
-                  none { {count: count_is_next_param, next: j} }
-                  some(n) { {count: count_is_param(n), next: j} }
+                  none => {count: count_is_next_param, next: j},
+                  some(n) => {count: count_is_param(n), next: j}
                 }
             } else {
                 let num = peek_num(s, i, lim);
                 alt num {
-                  none { {count: count_implied, next: i} }
-                  some(num) {
-                    {count: count_is(num.num as int), next: num.next}
+                  none => {count: count_implied, next: i},
+                  some(num) => {
+                    count: count_is(num.num as int),
+                    next: num.next
                   }
                 }
             };
@@ -220,8 +221,8 @@ mod ct {
                 // If there were no digits specified, i.e. the precision
                 // was ".", then the precision is 0
                 alt count.count {
-                  count_implied { {count: count_is(0), next: count.next} }
-                  _ { count }
+                  count_implied => {count: count_is(0), next: count.next},
+                  _ => count
                 }
             } else { {count: count_implied, next: i} };
     }
@@ -294,11 +295,11 @@ mod rt {
         let prec = get_int_precision(cv);
         let mut rs =
             alt cv.ty {
-              ty_default { uint_to_str_prec(u, 10u, prec) }
-              ty_hex_lower { uint_to_str_prec(u, 16u, prec) }
-              ty_hex_upper { str::to_upper(uint_to_str_prec(u, 16u, prec)) }
-              ty_bits { uint_to_str_prec(u, 2u, prec) }
-              ty_octal { uint_to_str_prec(u, 8u, prec) }
+              ty_default => uint_to_str_prec(u, 10u, prec),
+              ty_hex_lower => uint_to_str_prec(u, 16u, prec),
+              ty_hex_upper => str::to_upper(uint_to_str_prec(u, 16u, prec)),
+              ty_bits => uint_to_str_prec(u, 2u, prec),
+              ty_octal => uint_to_str_prec(u, 8u, prec)
             };
         return unchecked { pad(cv, rs, pad_unsigned) };
     }
@@ -316,19 +317,19 @@ mod rt {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = alt cv.precision {
-          count_implied { s.to_unique() }
-          count_is(max) {
-            if max as uint < str::char_len(s) {
-                str::substr(s, 0u, max as uint)
-            } else { s.to_unique() }
+          count_implied => s.to_unique(),
+          count_is(max) => if max as uint < str::char_len(s) {
+            str::substr(s, 0u, max as uint)
+          } else {
+            s.to_unique()
           }
         };
         return unchecked { pad(cv, unpadded, pad_nozero) };
     }
     pure fn conv_float(cv: conv, f: float) -> ~str {
         let (to_str, digits) = alt cv.precision {
-              count_is(c) { (float::to_str_exact, c as uint) }
-              count_implied { (float::to_str, 6u) }
+              count_is(c) => (float::to_str_exact, c as uint),
+              count_implied => (float::to_str, 6u)
         };
         let mut s = unchecked { to_str(f, digits) };
         if 0.0 <= f {
@@ -371,15 +372,15 @@ mod rt {
     }
     pure fn get_int_precision(cv: conv) -> uint {
         return alt cv.precision {
-              count_is(c) { c as uint }
-              count_implied { 1u }
+              count_is(c) => c as uint,
+              count_implied => 1u
             };
     }
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, pad_float }
     fn pad(cv: conv, &s: ~str, mode: pad_mode) -> ~str {
         let uwidth : uint = alt cv.width {
-          count_implied { return s; }
-          count_is(width) {
+          count_implied => return s,
+          count_is(width) => {
               // FIXME: width should probably be uint (see Issue #1996)
               width as uint
           }
@@ -393,13 +394,13 @@ mod rt {
             return s + padstr;
         }
         let {might_zero_pad, signed} = alt mode {
-          pad_nozero {   {might_zero_pad:false, signed:false} }
-          pad_signed {   {might_zero_pad:true,  signed:true } }
-          pad_float {   {might_zero_pad:true,  signed:true } }
-          pad_unsigned { {might_zero_pad:true,  signed:false} }
+          pad_nozero => {might_zero_pad:false, signed:false},
+          pad_signed => {might_zero_pad:true,  signed:true },
+          pad_float => {might_zero_pad:true,  signed:true},
+          pad_unsigned => {might_zero_pad:true,  signed:false}
         };
         pure fn have_precision(cv: conv) -> bool {
-            return alt cv.precision { count_implied { false } _ { true } };
+            return alt cv.precision { count_implied => false, _ => true };
         }
         let zero_padding = {
             if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&

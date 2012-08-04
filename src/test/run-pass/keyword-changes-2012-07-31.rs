@@ -10,6 +10,6 @@ mod foo {
 
 fn bar() -> int {
     match 0 {
-      _ { 0 }
+      _ => { 0 }
     }
 }

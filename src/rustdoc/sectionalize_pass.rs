@@ -96,7 +96,7 @@ fn sectionalize(desc: option<~str>) -> (option<~str>, ~[doc::section]) {
 
     for lines.each |line| {
         alt parse_header(line) {
-          some(header) {
+          some(header) => {
             if option::is_some(current_section) {
                 sections += ~[option::get(current_section)];
             }
@@ -105,20 +105,20 @@ fn sectionalize(desc: option<~str>) -> (option<~str>, ~[doc::section]) {
                 body: ~""
             });
           }
-          none {
+          none => {
             alt copy current_section {
-              some(section) {
+              some(section) => {
                 current_section = some({
                     body: section.body + ~"\n" + line
                     with section
                 });
               }
-              none {
+              none => {
                 new_desc = alt new_desc {
-                  some(desc) {
+                  some(desc) => {
                     some(desc + ~"\n" + line)
                   }
-                  none {
+                  none => {
                     some(line)
                   }
                 };

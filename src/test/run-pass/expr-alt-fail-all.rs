@@ -6,7 +6,7 @@
 fn main() {
     let x =
         alt true {
-          true { 10 }
-          false { alt true { true { fail } false { fail } } }
+          true => { 10 }
+          false => { alt true { true => { fail } false => { fail } } }
         };
 }

@@ -49,8 +49,8 @@ fn main() {
     loop {
         let msg = recv(p);
         alt msg {
-          closed { debug!{"Got close message"}; break; }
-          received(data) {
+          closed => { debug!{"Got close message"}; break; }
+          received(data) => {
             debug!{"Got data. Length is:"};
             log(debug, vec::len::<u8>(data));
           }

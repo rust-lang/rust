@@ -357,8 +357,8 @@ fn split<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln {
         alt position_between(v, start, ln, f) {
-          none { break }
-          some(i) {
+          none => break,
+          some(i) => {
             push(result, slice(v, start, i));
             start = i + 1u;
           }
@@ -381,8 +381,8 @@ fn splitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln && count > 0u {
         alt position_between(v, start, ln, f) {
-          none { break }
-          some(i) {
+          none => break,
+          some(i) => {
             push(result, slice(v, start, i));
             // Make sure to skip the separator.
             start = i + 1u;
@@ -406,8 +406,8 @@ fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u {
         alt rposition_between(v, 0u, end, f) {
-          none { break }
-          some(i) {
+          none => break,
+          some(i) => {
             push(result, slice(v, i + 1u, end));
             end = i;
           }
@@ -430,8 +430,8 @@ fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u && count > 0u {
         alt rposition_between(v, 0u, end, f) {
-          none { break }
-          some(i) {
+          none => break,
+          some(i) => {
             push(result, slice(v, i + 1u, end));
             // Make sure to skip the separator.
             end = i;
@@ -714,8 +714,8 @@ pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> option<U>)
     let mut result = ~[];
     for each(v) |elem| {
         alt f(elem) {
-          none {/* no-op */ }
-          some(result_elem) { unsafe { push(result, result_elem); } }
+          none => {/* no-op */ }
+          some(result_elem) => unsafe { push(result, result_elem); }
         }
     }
     return result;

@@ -49,8 +49,8 @@ impl of qq_helper for @ast::expr {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_expr(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {
         alt (self.node) {
-          ast::expr_mac({node: mac, _}) {some(mac)}
-          _ {none}
+          ast::expr_mac({node: mac, _}) => some(mac),
+          _ => none
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
@@ -64,8 +64,8 @@ impl of qq_helper for @ast::ty {
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_ty(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {
         alt (self.node) {
-          ast::ty_mac({node: mac, _}) {some(mac)}
-          _ {none}
+          ast::ty_mac({node: mac, _}) => some(mac),
+          _ => none
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
@@ -125,14 +125,14 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
 fn visit_aq<T:qq_helper>(node: T, constr: ~str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
 {
     alt (node.extract_mac()) {
-      some(mac_aq(sp, e)) {
+      some(mac_aq(sp, e)) => {
         cx.gather.push(gather_item {
             lo: sp.lo - cx.lo,
             hi: sp.hi - cx.lo,
             e: e,
             constr: constr});
       }
-      _ {node.visit(cx, v);}
+      _ => node.visit(cx, v)
     }
 }
 
@@ -148,8 +148,8 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     do option::iter(arg) |arg| {
         let args: ~[@ast::expr] =
             alt arg.node {
-              ast::expr_vec(elts, _) { elts }
-              _ {
+              ast::expr_vec(elts, _) => elts,
+              _ => {
                 ecx.span_fatal
                     (_sp, ~"#ast requires arguments of the form `~[...]`.")
               }
@@ -159,20 +159,20 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
         }
         alt (args[0].node) {
           ast::expr_path(@{idents: id, _}) if vec::len(id) == 1u
-              {what = *id[0]}
-          _ {ecx.span_fatal(args[0].span, ~"expected an identifier");}
+          => what = *id[0],
+          _ => ecx.span_fatal(args[0].span, ~"expected an identifier")
         }
     }
     let body = get_mac_body(ecx,_sp,body);
 
     return alt what {
-      ~"crate" {finish(ecx, body, parse_crate)}
-      ~"expr" {finish(ecx, body, parse_expr)}
-      ~"ty" {finish(ecx, body, parse_ty)}
-      ~"item" {finish(ecx, body, parse_item)}
-      ~"stmt" {finish(ecx, body, parse_stmt)}
-      ~"pat" {finish(ecx, body, parse_pat)}
-      _ {ecx.span_fatal(_sp, ~"unsupported ast type")}
+      ~"crate" => finish(ecx, body, parse_crate),
+      ~"expr" => finish(ecx, body, parse_expr),
+      ~"ty" => finish(ecx, body, parse_ty),
+      ~"item" => finish(ecx, body, parse_item),
+      ~"stmt" => finish(ecx, body, parse_stmt),
+      ~"pat" => finish(ecx, body, parse_pat),
+      _ => ecx.span_fatal(_sp, ~"unsupported ast type")
     };
 }
 
@@ -184,8 +184,8 @@ fn parse_pat(p: parser) -> @ast::pat { p.parse_pat(true) }
 
 fn parse_item(p: parser) -> @ast::item {
     alt p.parse_item(~[]) {
-      some(item) { item }
-      none       { fail ~"parse_item: parsing an item failed"; }
+      some(item) => item,
+      none       => fail ~"parse_item: parsing an item failed"
     }
 }
 
@@ -226,11 +226,11 @@ fn finish<T: qq_helper>
             str2 += repl;
         }
         alt copy state {
-          active {str::push_char(str2, ch);}
-          skip(1u) {state = blank;}
-          skip(sk) {state = skip (sk-1u);}
-          blank if is_space(ch) {str::push_char(str2, ch);}
-          blank {str::push_char(str2, ' ');}
+          active => str::push_char(str2, ch),
+          skip(1u) => state = blank,
+          skip(sk) => state = skip (sk-1u),
+          blank if is_space(ch) => str::push_char(str2, ch),
+          blank => str::push_char(str2, ' ')
         }
         i += 1u;
         if (j < g_len && i == cx.gather[j].hi) {
@@ -309,11 +309,11 @@ fn replace_expr(repls: ~[fragment],
     -> (ast::expr_, span)
 {
     alt e {
-      ast::expr_mac({node: mac_var(i), _}) {
-        alt (repls[i]) {
-          from_expr(r) {(r.node, r.span)}
-          _ {fail /* fixme error message */}}}
-      _ {orig(e,s,fld)}
+      ast::expr_mac({node: mac_var(i), _}) => alt (repls[i]) {
+        from_expr(r) => (r.node, r.span),
+        _ => fail /* fixme error message */
+      }
+      _ => orig(e,s,fld)
     }
 }
 
@@ -323,11 +323,11 @@ fn replace_ty(repls: ~[fragment],
     -> (ast::ty_, span)
 {
     alt e {
-      ast::ty_mac({node: mac_var(i), _}) {
-        alt (repls[i]) {
-          from_ty(r) {(r.node, r.span)}
-          _ {fail /* fixme error message */}}}
-      _ {orig(e,s,fld)}
+      ast::ty_mac({node: mac_var(i), _}) => alt (repls[i]) {
+        from_ty(r) => (r.node, r.span),
+        _ => fail /* fixme error message */
+      }
+      _ => orig(e,s,fld)
     }
 }
 

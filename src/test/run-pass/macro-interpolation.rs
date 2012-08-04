@@ -4,10 +4,10 @@ macro_rules! overly_complicated {
     {
         fn $fnname($arg: $ty) -> option<$ty> $body
         alt $fnname($val) {
-          some($pat) {
+          some($pat) => {
             $res
           }
-          _ { fail; }
+          _ => { fail; }
         }
     }
 

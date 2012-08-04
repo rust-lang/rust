@@ -62,8 +62,8 @@ mod write {
     fn mk_intermediate_name(output_path: ~str, extension: ~str) ->
         ~str unsafe {
         let stem = alt str::find_char(output_path, '.') {
-          some(dot_pos) { str::slice(output_path, 0u, dot_pos) }
-          none { output_path }
+          some(dot_pos) => str::slice(output_path, 0u, dot_pos),
+          none => output_path
         };
         return stem + ~"." + extension;
     }
@@ -83,7 +83,7 @@ mod write {
 
         if opts.save_temps {
             alt opts.output_type {
-              output_type_bitcode {
+              output_type_bitcode => {
                 if opts.optimize != 0u {
                     let filename = mk_intermediate_name(output, ~"no-opt.bc");
                     str::as_c_str(filename, |buf| {
@@ -91,7 +91,7 @@ mod write {
                     });
                 }
               }
-              _ {
+              _ => {
                 let filename = mk_intermediate_name(output, ~"bc");
                 str::as_c_str(filename, |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
@@ -146,13 +146,12 @@ mod write {
             let LLVMOptDefault    = 2 as c_int; // -O2, -Os
             let LLVMOptAggressive = 3 as c_int; // -O3
 
-            let mut CodeGenOptLevel;
-            alt check opts.optimize {
-              0u { CodeGenOptLevel = LLVMOptNone; }
-              1u { CodeGenOptLevel = LLVMOptLess; }
-              2u { CodeGenOptLevel = LLVMOptDefault; }
-              3u { CodeGenOptLevel = LLVMOptAggressive; }
-            }
+            let mut CodeGenOptLevel = alt check opts.optimize {
+              0u => LLVMOptNone,
+              1u => LLVMOptLess,
+              2u => LLVMOptDefault,
+              3u => LLVMOptAggressive
+            };
 
             let mut FileType;
             if opts.output_type == output_type_object ||
@@ -325,13 +324,13 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
         for linkage_metas.each |meta| {
             if *attr::get_meta_item_name(meta) == ~"name" {
                 alt attr::get_meta_item_value_str(meta) {
-                  some(v) { name = some(v); }
-                  none { vec::push(cmh_items, meta); }
+                  some(v) => { name = some(v); }
+                  none => vec::push(cmh_items, meta)
                 }
             } else if *attr::get_meta_item_name(meta) == ~"vers" {
                 alt attr::get_meta_item_value_str(meta) {
-                  some(v) { vers = some(v); }
-                  none { vec::push(cmh_items, meta); }
+                  some(v) => { vers = some(v); }
+                  none => vec::push(cmh_items, meta)
                 }
             } else { vec::push(cmh_items, meta); }
         }
@@ -357,14 +356,14 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
         for cmh_items.each |m_| {
             let m = m_;
             alt m.node {
-              ast::meta_name_value(key, value) {
+              ast::meta_name_value(key, value) => {
                 symbol_hasher.write_str(len_and_str(*key));
                 symbol_hasher.write_str(len_and_str_lit(value));
               }
-              ast::meta_word(name) {
+              ast::meta_word(name) => {
                 symbol_hasher.write_str(len_and_str(*name));
               }
-              ast::meta_list(_, _) {
+              ast::meta_list(_, _) => {
                 // FIXME (#607): Implement this
                 fail ~"unimplemented meta_item variant";
               }
@@ -387,8 +386,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     fn crate_meta_name(sess: session, _crate: ast::crate,
                        output: ~str, metas: provided_metas) -> @~str {
         return alt metas.name {
-              some(v) { v }
-              none {
+              some(v) => v,
+              none => {
                 let name =
                     {
                         let mut os =
@@ -409,8 +408,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     fn crate_meta_vers(sess: session, _crate: ast::crate,
                        metas: provided_metas) -> @~str {
         return alt metas.vers {
-              some(v) { v }
-              none {
+              some(v) => v,
+              none => {
                 let vers = ~"0.0";
                 warn_missing(sess, ~"vers", vers);
                 @vers
@@ -453,8 +452,8 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
     alt ccx.type_hashcodes.find(t) {
-      some(h) { return h; }
-      none {
+      some(h) => return h,
+      none => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);
         return hash;
@@ -469,18 +468,18 @@ fn sanitize(s: ~str) -> ~str {
     let mut result = ~"";
     do str::chars_iter(s) |c| {
         alt c {
-          '@' { result += ~"_sbox_"; }
-          '~' { result += ~"_ubox_"; }
-          '*' { result += ~"_ptr_"; }
-          '&' { result += ~"_ref_"; }
-          ',' { result += ~"_"; }
+          '@' => result += ~"_sbox_",
+          '~' => result += ~"_ubox_",
+          '*' => result += ~"_ptr_",
+          '&' => result += ~"_ref_",
+          ',' => result += ~"_",
 
-          '{' | '(' { result += ~"_of_"; }
+          '{' | '(' => result += ~"_of_",
           'a' to 'z'
           | 'A' to 'Z'
           | '0' to '9'
-          | '_' { str::push_char(result,c); }
-          _ {
+          | '_' => str::push_char(result,c),
+          _ => {
             if c > 'z' && char::is_XID_continue(c) {
                 str::push_char(result,c);
             }
@@ -504,7 +503,7 @@ fn mangle(ss: path) -> ~str {
     let mut n = ~"_ZN"; // Begin name-sequence.
 
     for ss.each |s| {
-        alt s { path_name(s) | path_mod(s) {
+        alt s { path_name(s) | path_mod(s) => {
           let sani = sanitize(*s);
           n += fmt!{"%u%s", str::len(sani), sani};
         } }
@@ -568,10 +567,10 @@ fn link_binary(sess: session,
             return str::connect(parts, ~".");
         }
         return alt config.os {
-              session::os_macos { rmext(rmlib(filename)) }
-              session::os_linux { rmext(rmlib(filename)) }
-              session::os_freebsd { rmext(rmlib(filename)) }
-              _ { rmext(filename) }
+              session::os_macos => rmext(rmlib(filename)),
+              session::os_linux => rmext(rmlib(filename)),
+              session::os_freebsd => rmext(rmlib(filename)),
+              _ => rmext(filename)
             };
     }
 

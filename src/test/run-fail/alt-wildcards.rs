@@ -1,8 +1,8 @@
 // error-pattern:squirrelcupcake
 fn cmp() -> int {
     alt check (option::some('a'), option::none::<char>) {
-        (option::some(_), _) { fail ~"squirrelcupcake"; }
-        (_, option::some(_)) { fail; }
+        (option::some(_), _) => { fail ~"squirrelcupcake"; }
+        (_, option::some(_)) => { fail; }
     }
 }
 

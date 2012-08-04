@@ -107,9 +107,9 @@ fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
     doc::moddoc_({
         items: do vec::filter(doc.items) |item| {
             alt item {
-              doc::modtag(_) { false }
-              doc::nmodtag(_) { false }
-              _ { true }
+              doc::modtag(_) => false,
+              doc::nmodtag(_) => false,
+              _ => true
             }
         }
         with *doc

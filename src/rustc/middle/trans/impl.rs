@@ -53,21 +53,21 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
     -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt(~"impl::trans_method_callee");
     alt mentry.origin {
-      typeck::method_static(did) {
+      typeck::method_static(did) => {
         let {bcx, val} = trans_self_arg(bcx, self, mentry.derefs);
         {env: self_env(val, node_id_type(bcx, self.id), none)
          with lval_static_fn(bcx, did, callee_id)}
       }
       typeck::method_param({trait_id:iid, method_num:off,
-                            param_num:p, bound_num:b}) {
+                            param_num:p, bound_num:b}) => {
         alt check bcx.fcx.param_substs {
-          some(substs) {
+          some(substs) => {
             trans_monomorphized_callee(bcx, callee_id, self, mentry.derefs,
                                        iid, off, p, b, substs)
           }
         }
       }
-      typeck::method_trait(_, off) {
+      typeck::method_trait(_, off) => {
         let {bcx, val} = trans_temp_expr(bcx, self);
         let fty = node_id_type(bcx, callee_id);
         trans_trait_callee(bcx, val, fty, off)
@@ -84,11 +84,11 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                     name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
         alt check ccx.tcx.items.get(impl_id.node) {
-          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) {
+          ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) => {
             method_from_methods(ms, name)
           }
           ast_map::node_item(@{node:
-              ast::item_class(_, _, items, _, _), _}, _) {
+              ast::item_class(_, _, items, _, _), _}, _) => {
             let (_,ms) = split_class_items(items);
             method_from_methods(ms, name)
           }
@@ -102,7 +102,7 @@ fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
                          i_id: ast::def_id) -> uint {
     if m_id.crate == ast::local_crate {
         alt check ccx.tcx.items.get(m_id.node) {
-          ast_map::node_method(m, _, _) { vec::len(m.tps) }
+          ast_map::node_method(m, _, _) => vec::len(m.tps),
         }
     } else {
         csearch::get_type_param_count(ccx.sess.cstore, m_id) -
@@ -117,7 +117,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               substs: param_substs) -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt(~"impl::trans_monomorphized_callee");
     alt find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
-      typeck::vtable_static(impl_did, impl_substs, sub_origins) {
+      typeck::vtable_static(impl_did, impl_substs, sub_origins) => {
         let ccx = bcx.ccx();
         let mname = ty::trait_methods(ccx.tcx, trait_id)[n_method].ident;
         let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
@@ -135,12 +135,12 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
              ccx, node_id_type(bcx, callee_id))))
          with lval}
       }
-      typeck::vtable_trait(iid, tps) {
+      typeck::vtable_trait(iid, tps) => {
         let {bcx, val} = trans_temp_expr(bcx, base);
         let fty = node_id_type(bcx, callee_id);
         trans_trait_callee(bcx, val, fty, n_method)
       }
-      typeck::vtable_param(n_param, n_bound) {
+      typeck::vtable_param(n_param, n_bound) => {
         fail ~"vtable_param left in monomorphized function's vtable substs";
       }
     }
@@ -173,7 +173,7 @@ fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
     for vec::each(*ps.bounds) |bounds| {
         if i >= n_param { break; }
         for vec::each(*bounds) |bound| {
-            alt bound { ty::bound_trait(_) { vtable_off += 1u; } _ {} }
+            alt bound { ty::bound_trait(_) => vtable_off += 1u, _ => () }
         }
         i += 1u;
     }
@@ -190,34 +190,34 @@ fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
 fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     -> typeck::vtable_origin {
     alt vt {
-      typeck::vtable_static(iid, tys, sub) {
+      typeck::vtable_static(iid, tys, sub) => {
         let tys = alt fcx.param_substs {
-          some(substs) {
+          some(substs) => {
             vec::map(tys, |t| ty::subst_tps(fcx.ccx.tcx, substs.tys, t))
           }
-          _ { tys }
+          _ => tys
         };
         typeck::vtable_static(iid, tys, resolve_vtables_in_fn_ctxt(fcx, sub))
       }
-      typeck::vtable_param(n_param, n_bound) {
+      typeck::vtable_param(n_param, n_bound) => {
         alt check fcx.param_substs {
-          some(substs) {
+          some(substs) => {
             find_vtable_in_fn_ctxt(substs, n_param, n_bound)
           }
         }
       }
-      _ { vt }
+      _ => vt
     }
 }
 
 fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
     alt check origin {
-      typeck::vtable_static(impl_id, substs, sub_vtables) {
+      typeck::vtable_static(impl_id, substs, sub_vtables) => {
         make_mono_id(ccx, impl_id, substs,
                      if (*sub_vtables).len() == 0u { none }
                      else { some(sub_vtables) }, none)
       }
-      typeck::vtable_trait(trait_id, substs) {
+      typeck::vtable_trait(trait_id, substs) => {
         @{def: trait_id,
           params: vec::map(substs, |t| mono_precise(t, none))}
       }
@@ -228,12 +228,10 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
     -> ValueRef {
     let hash_id = vtable_id(ccx, origin);
     alt ccx.vtables.find(hash_id) {
-      some(val) { val }
-      none {
-        alt check origin {
-          typeck::vtable_static(id, substs, sub_vtables) {
+      some(val) => val,
+      none => alt check origin {
+        typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)
-          }
         }
       }
     }

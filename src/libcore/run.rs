@@ -97,7 +97,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     alt env {
-      some(es) if !vec::is_empty(es) {
+      some(es) if !vec::is_empty(es) => {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
@@ -112,9 +112,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
             unsafe { cb(::unsafe::reinterpret_cast(p)) }
         )
       }
-      _ {
-        cb(ptr::null())
-      }
+      _ => cb(ptr::null())
     }
 }
 
@@ -126,7 +124,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
     // \0 to terminate.
     unsafe {
         alt env {
-          some(es) if !vec::is_empty(es) {
+          some(es) if !vec::is_empty(es) => {
             let mut blk : ~[u8] = ~[];
             for vec::each(es) |e| {
                 let (k,v) = e;
@@ -138,9 +136,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
             blk += ~[0_u8];
             vec::as_buf(blk, |p, _len| cb(::unsafe::reinterpret_cast(p)))
           }
-          _ {
-            cb(ptr::null())
-          }
+          _ => cb(ptr::null())
         }
     }
 }
@@ -148,8 +144,8 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
 fn with_dirp<T>(d: option<~str>,
                 cb: fn(*libc::c_char) -> T) -> T {
     alt d {
-      some(dir) { str::as_c_str(dir, cb) }
-      none { cb(ptr::null()) }
+      some(dir) => str::as_c_str(dir, cb),
+      none => cb(ptr::null())
     }
 }
 
@@ -314,10 +310,10 @@ fn program_output(prog: ~str, args: ~[~str]) ->
     while count > 0 {
         let stream = comm::recv(p);
         alt check stream {
-            (1, s) {
+            (1, s) => {
                 outs = s;
             }
-            (2, s) {
+            (2, s) => {
                 errs = s;
             }
         };

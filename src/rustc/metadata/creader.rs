@@ -101,30 +101,30 @@ type env = @{diag: span_handler,
 
 fn visit_view_item(e: env, i: @ast::view_item) {
     alt i.node {
-      ast::view_item_use(ident, meta_items, id) {
+      ast::view_item_use(ident, meta_items, id) => {
         debug!{"resolving use stmt. ident: %?, meta: %?", ident, meta_items};
         let cnum = resolve_crate(e, ident, meta_items, ~"", i.span);
         cstore::add_use_stmt_cnum(e.cstore, id, cnum);
       }
-      _ { }
+      _ => ()
     }
 }
 
 fn visit_item(e: env, i: @ast::item) {
     alt i.node {
-      ast::item_foreign_mod(m) {
+      ast::item_foreign_mod(m) => {
         alt attr::foreign_abi(i.attrs) {
-          either::right(abi) {
+          either::right(abi) => {
             if abi != ast::foreign_abi_cdecl &&
                abi != ast::foreign_abi_stdcall { return; }
           }
-          either::left(msg) { e.diag.span_fatal(i.span, msg); }
+          either::left(msg) => e.diag.span_fatal(i.span, msg)
         }
 
         let cstore = e.cstore;
         let foreign_name =
             alt attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
-              some(nn) {
+              some(nn) => {
                 if *nn == ~"" {
                     e.diag.span_fatal(
                         i.span,
@@ -132,7 +132,7 @@ fn visit_item(e: env, i: @ast::item) {
                 }
                 nn
               }
-              none { i.ident }
+              none => i.ident
             };
         let mut already_added = false;
         if vec::len(attr::find_attrs_by_name(i.attrs, ~"nolink")) == 0u {
@@ -145,14 +145,14 @@ fn visit_item(e: env, i: @ast::item) {
         }
         for link_args.each |a| {
             alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
-              some(linkarg) {
+              some(linkarg) => {
                 cstore::add_used_link_args(cstore, *linkarg);
               }
-              none {/* fallthrough */ }
+              none => {/* fallthrough */ }
             }
         }
       }
-      _ { }
+      _ => { }
     }
 }
 
@@ -188,7 +188,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
     let metas = metas_with_ident(ident, metas);
 
     alt existing_match(e, metas, hash) {
-      none {
+      none => {
         let load_ctxt: loader::ctxt = {
             diag: e.diag,
             filesearch: e.filesearch,
@@ -219,8 +219,8 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
 
         let cname =
             alt attr::last_meta_item_value_str_by_name(metas, ~"name") {
-              option::some(v) { v }
-              option::none { ident }
+              option::some(v) => v,
+              option::none => ident
             };
         let cmeta = @{name: *cname, data: cdata,
                       cnum_map: cnum_map, cnum: cnum};
@@ -230,7 +230,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
         cstore::add_used_crate_file(cstore, cfilename);
         return cnum;
       }
-      some(cnum) {
+      some(cnum) => {
         return cnum;
       }
     }
@@ -249,12 +249,12 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
         debug!{"resolving dep crate %s ver: %s hash: %s",
                *dep.name, *dep.vers, *dep.hash};
         alt existing_match(e, metas_with_ident(cname, cmetas), *dep.hash) {
-          some(local_cnum) {
+          some(local_cnum) => {
             debug!{"already have it"};
             // We've already seen this crate
             cnum_map.insert(extrn_cnum, local_cnum);
           }
-          none {
+          none => {
             debug!{"need to load it"};
             // This is a new one so we've got to load it
             // FIXME (#2404): Need better error reporting than just a bogus

@@ -8,14 +8,14 @@ fn mk_pass() -> pass {
     pure fn by_score(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
         pure fn score(item: &doc::itemtag) -> int {
             alt *item {
-              doc::consttag(_) { 0 }
-              doc::tytag(_) { 1 }
-              doc::enumtag(_) { 2 }
-              doc::traittag(_) { 3 }
-              doc::impltag(_) { 4 }
-              doc::fntag(_) { 5 }
-              doc::modtag(_) { 6 }
-              doc::nmodtag(_) { 7 }
+              doc::consttag(_) => 0,
+              doc::tytag(_) => 1,
+              doc::enumtag(_) => 2,
+              doc::traittag(_) => 3,
+              doc::impltag(_) => 4,
+              doc::fntag(_) => 5,
+              doc::modtag(_) => 6,
+              doc::nmodtag(_) => 7
             }
         }
 

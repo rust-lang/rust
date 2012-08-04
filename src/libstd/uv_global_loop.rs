@@ -57,14 +57,14 @@ fn get_monitor_task_gl() -> iotask unsafe {
             loop {
                 debug!{"in outer_loop..."};
                 alt select2(weak_exit_po, msg_po) {
-                  left(weak_exit) {
+                  left(weak_exit) => {
                     // all normal tasks have ended, tell the
                     // libuv loop to tear_down, then exit
                     debug!{"weak_exit_po recv'd msg: %?", weak_exit};
                     iotask::exit(hl_loop);
                     break;
                   }
-                  right(fetch_ch) {
+                  right(fetch_ch) => {
                     debug!{"hl_loop req recv'd: %?", fetch_ch};
                     fetch_ch.send(hl_loop);
                   }

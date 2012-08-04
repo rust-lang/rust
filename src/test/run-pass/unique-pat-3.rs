@@ -3,10 +3,10 @@ enum bar { u(~int), w(int), }
 
 fn main() {
     assert alt u(~10) {
-      u(a) {
+      u(a) => {
         log(error, a);
         *a
       }
-      _ { 66 }
+      _ => { 66 }
     } == 10;
 }

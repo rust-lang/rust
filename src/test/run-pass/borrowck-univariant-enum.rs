@@ -10,7 +10,7 @@ fn main() {
     let x = @mut 5;
     let y = @mut newtype(3);
     let z = alt *y {
-      newtype(b) {
+      newtype(b) => {
         *x += 1;
         *x * b
       }

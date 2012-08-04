@@ -3,11 +3,11 @@ fn test1() {
 
     let x = u(~10);
     assert alt x {
-      u(a) {
+      u(a) => {
         log(error, a);
         *a
       }
-      _ { 66 }
+      _ => { 66 }
     } == 10;
 }
 

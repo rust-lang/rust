@@ -180,35 +180,25 @@ class bitv {
                 self.die();
             }
             alt self.rep {
-              small(s) {
-                alt other.rep {
-                  small(s1) {
-                    alt op {
-                      union      { s.union(s1) }
-                      intersect  { s.intersect(s1) }
-                      assign     { s.become(s1) }
-                      difference { s.difference(s1) }
-                    }
-                  }
-                 big(s1) {
-                     self.die();
-                 }
+              small(s) => alt other.rep {
+                small(s1) => alt op {
+                  union      => s.union(s1),
+                  intersect  => s.intersect(s1),
+                  assign     => s.become(s1),
+                  difference => s.difference(s1)
+                }
+                big(s1) => self.die()
+              }
+              big(s) => alt other.rep {
+                small(_) => self.die(),
+                big(s1) => alt op {
+                  union      => s.union(s1),
+                  intersect  => s.intersect(s1),
+                  assign     => s.become(s1),
+                  difference => s.difference(s1)
+                }
               }
             }
-            big(s) {
-                alt other.rep {
-                  small(_) { self.die(); }
-                  big(s1) {
-                    alt op {
-                      union      { s.union(s1) }
-                      intersect  { s.intersect(s1) }
-                      assign     { s.become(s1) }
-                      difference { s.difference(s1) }
-                    }
-                  }
-                }
-            }
-          }
         }
     }
 
@@ -243,10 +233,10 @@ class bitv {
     #[inline(always)]
     fn clone() -> ~bitv {
         ~alt self.rep {
-          small(b) {
+          small(b) => {
             bitv{nbits: self.nbits, rep: small(~small_bitv{bits: b.bits})}
           }
-          big(b) {
+          big(b) => {
             let st = to_mut(from_elem(self.nbits / uint_bits + 1, 0));
             let len = st.len();
             for uint::range(0, len) |i| { st[i] = b.storage[i]; };
@@ -260,8 +250,8 @@ class bitv {
     pure fn get(i: uint) -> bool {
        assert (i < self.nbits);
        alt self.rep {
-         big(b)   { b.get(i) }
-         small(s) { s.get(i) }
+         big(b)   => b.get(i),
+         small(s) => s.get(i)
        }
     }
 
@@ -274,8 +264,8 @@ class bitv {
     fn set(i: uint, x: bool) {
       assert (i < self.nbits);
       alt self.rep {
-        big(b) { b.set(i, x); }
-        small(s) { s.set(i, x); }
+        big(b)   => b.set(i, x),
+        small(s) => s.set(i, x)
       }
     }
 
@@ -289,19 +279,13 @@ class bitv {
     fn equal(v1: bitv) -> bool {
       if self.nbits != v1.nbits { return false; }
       alt self.rep {
-        small(b) {
-          alt v1.rep {
-            small(b1) { b.equals(b1) }
-            _ { false }
-          }
+        small(b) => alt v1.rep {
+          small(b1) => b.equals(b1),
+          _ => false
         }
-        big(s) {
-          alt v1.rep {
-            big(s1) {
-              s.equals(s1)
-            }
-            small(_) { return false; }
-          }
+        big(s) => alt v1.rep {
+          big(s1) => s.equals(s1),
+          small(_) => return false
         }
       }
     }
@@ -310,10 +294,8 @@ class bitv {
     #[inline(always)]
     fn clear() {
         alt self.rep {
-          small(b) { b.clear(); }
-          big(s) {
-            for s.each_storage() |w| { w = 0u }
-          }
+          small(b) => b.clear(),
+          big(s) => for s.each_storage() |w| { w = 0u }
         }
     }
 
@@ -321,20 +303,16 @@ class bitv {
     #[inline(always)]
     fn set_all() {
       alt self.rep {
-        small(b) { b.set_all(); }
-        big(s) {
-          for s.each_storage() |w| { w = !0u } }
-      }
+        small(b) => b.set_all(),
+        big(s) => for s.each_storage() |w| { w = !0u } }
     }
 
     /// Invert all bits
     #[inline(always)]
     fn invert() {
       alt self.rep {
-        small(b) { b.invert(); }
-        big(s) {
-          for s.each_storage() |w| { w = !w } }
-      }
+        small(b) => b.invert(),
+        big(s) => for s.each_storage() |w| { w = !w } }
     }
 
 /**
@@ -352,8 +330,8 @@ class bitv {
     #[inline(always)]
     fn is_true() -> bool {
       alt self.rep {
-        small(b) { b.is_true() }
-        _ {
+        small(b) => b.is_true(),
+        _ => {
           for self.each() |i| { if !i { return false; } }
           true
         }
@@ -373,8 +351,8 @@ class bitv {
 
     fn is_false() -> bool {
       alt self.rep {
-        small(b) { b.is_false() }
-        big(_) {
+        small(b) => b.is_false(),
+        big(_) => {
           for self.each() |i| { if i { return false; } }
           true
         }

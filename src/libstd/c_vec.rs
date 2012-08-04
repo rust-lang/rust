@@ -47,8 +47,8 @@ class dtor_res {
   new(dtor: option<fn@()>) { self.dtor = dtor; }
   drop {
     alt self.dtor {
-      option::none { }
-      option::some(f) { f(); }
+      option::none => (),
+      option::some(f) => f()
     }
   }
 }

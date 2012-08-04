@@ -54,7 +54,7 @@ fn recurse_or_fail(depth: int, st: option<st>) {
         let depth = depth - 1;
 
         let st = alt st {
-          none {
+          none => {
             st_({
                 box: @nil,
                 unique: ~nil,
@@ -65,7 +65,7 @@ fn recurse_or_fail(depth: int, st: option<st>) {
                 res: r(@nil)
             })
           }
-          some(st) {
+          some(st) => {
             let fn_box = st.fn_box;
             let fn_unique = st.fn_unique;
 

@@ -145,8 +145,8 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     let mut n = 0 as T;
     loop {
         alt char::to_digit(buf[i] as char, radix) {
-          some(d) { n += (d as T) * power; }
-          none { return none; }
+          some(d) => n += (d as T) * power,
+          none => return none
         }
         power *= radix as T;
         if i <= start { return some(n); }

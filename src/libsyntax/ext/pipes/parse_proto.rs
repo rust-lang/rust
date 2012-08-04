@@ -26,16 +26,14 @@ impl proto_parser of proto_parser for parser {
         let id = self.parse_ident();
         self.expect(token::COLON);
         let dir = alt copy self.token {
-          token::IDENT(n, _) {
-            self.get_str(n)
-          }
-          _ { fail }
+          token::IDENT(n, _) => self.get_str(n),
+          _ => fail
         };
         self.bump();
         let dir = alt dir {
-          @~"send" { send }
-          @~"recv" { recv }
-          _ { fail }
+          @~"send" => send,
+          @~"recv" => recv,
+          _ => fail
         };
 
         let typarms = if self.token == token::LT {
@@ -67,7 +65,7 @@ impl proto_parser of proto_parser for parser {
         self.expect(token::RARROW);
 
         let next = alt copy self.token {
-          token::IDENT(_, _) {
+          token::IDENT(_, _) => {
             let name = self.parse_ident();
             let ntys = if self.token == token::LT {
                 self.parse_unspanned_seq(token::LT,
@@ -79,12 +77,12 @@ impl proto_parser of proto_parser for parser {
             else { ~[] };
             some({state: name, tys: ntys})
           }
-          token::NOT {
+          token::NOT => {
             // -> !
             self.bump();
             none
           }
-          _ { self.fatal(~"invalid next state") }
+          _ => self.fatal(~"invalid next state")
         };
 
         state.add_message(mname, copy self.span, args, next);

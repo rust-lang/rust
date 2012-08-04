@@ -102,18 +102,18 @@ fn expand(cx: ext_ctxt,
 
     do vec::flat_map(in_items) |in_item| {
         alt in_item.node {
-          ast::item_ty(ty, tps) {
+          ast::item_ty(ty, tps) => {
             vec::append(~[filter_attrs(in_item)],
                         ty_fns(cx, in_item.ident, ty, tps))
           }
 
-          ast::item_enum(variants, tps) {
+          ast::item_enum(variants, tps) => {
             vec::append(~[filter_attrs(in_item)],
                         enum_fns(cx, in_item.ident,
                                  in_item.span, variants, tps))
           }
 
-          _ {
+          _ => {
             cx.span_err(span, ~"#[auto_serialize] can only be \
                                applied to type and enum \
                                definitions");
@@ -376,12 +376,12 @@ fn ser_lambda(cx: ext_ctxt, tps: ser_tps_map, ty: @ast::ty,
 
 fn is_vec_or_str(ty: @ast::ty) -> bool {
     alt ty.node {
-      ast::ty_vec(_) { true }
+      ast::ty_vec(_) => true,
       // This may be wrong if the user has shadowed (!) str
       ast::ty_path(@{span: _, global: _, idents: ids,
                              rp: none, types: _}, _)
-      if ids == ~[@~"str"] { true }
-      _ { false }
+      if ids == ~[@~"str"] => true,
+      _ => false
     }
 }
 
@@ -392,37 +392,37 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
     let ext_cx = cx; // required for #ast{}
 
     alt ty.node {
-      ast::ty_nil {
+      ast::ty_nil => {
         ~[#ast[stmt]{$(s).emit_nil()}]
       }
 
-      ast::ty_bot {
+      ast::ty_bot => {
         cx.span_err(
             ty.span, fmt!{"Cannot serialize bottom type"});
         ~[]
       }
 
-      ast::ty_box(mt) {
+      ast::ty_box(mt) => {
         let l = ser_lambda(cx, tps, mt.ty, cx.clone(s), #ast{ *$(v) });
         ~[#ast[stmt]{$(s).emit_box($(l));}]
       }
 
       // For unique evecs/estrs, just pass through to underlying vec or str
-      ast::ty_uniq(mt) if is_vec_or_str(mt.ty) {
+      ast::ty_uniq(mt) if is_vec_or_str(mt.ty) => {
         ser_ty(cx, tps, mt.ty, s, v)
       }
 
-      ast::ty_uniq(mt) {
+      ast::ty_uniq(mt) => {
         let l = ser_lambda(cx, tps, mt.ty, cx.clone(s), #ast{ *$(v) });
         ~[#ast[stmt]{$(s).emit_uniq($(l));}]
       }
 
-      ast::ty_ptr(_) | ast::ty_rptr(_, _) {
+      ast::ty_ptr(_) | ast::ty_rptr(_, _) => {
         cx.span_err(ty.span, ~"cannot serialize pointer types");
         ~[]
       }
 
-      ast::ty_rec(flds) {
+      ast::ty_rec(flds) => {
         let fld_stmts = do vec::from_fn(vec::len(flds)) |fidx| {
             let fld = flds[fidx];
             let vf = cx.expr(fld.span,
@@ -439,12 +439,12 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         ~[#ast[stmt]{$(s).emit_rec($(fld_lambda));}]
       }
 
-      ast::ty_fn(_, _) {
+      ast::ty_fn(_, _) => {
         cx.span_err(ty.span, ~"cannot serialize function types");
         ~[]
       }
 
-      ast::ty_tup(tys) {
+      ast::ty_tup(tys) => {
         // Generate code like
         //
         // alt v {
@@ -478,31 +478,31 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         ~[cx.alt_stmt(arms, ty.span, v)]
       }
 
-      ast::ty_path(path, _) {
+      ast::ty_path(path, _) => {
         if vec::len(path.idents) == 1u &&
             vec::is_empty(path.types) {
             let ident = path.idents[0];
 
             alt tps.find(*ident) {
-              some(f) { f(v) }
-              none { ser_path(cx, tps, path, s, v) }
+              some(f) => f(v),
+              none => ser_path(cx, tps, path, s, v)
             }
         } else {
             ser_path(cx, tps, path, s, v)
         }
       }
 
-      ast::ty_mac(_) {
+      ast::ty_mac(_) => {
         cx.span_err(ty.span, ~"cannot serialize macro types");
         ~[]
       }
 
-      ast::ty_infer {
+      ast::ty_infer => {
         cx.span_err(ty.span, ~"cannot serialize inferred types");
         ~[]
       }
 
-      ast::ty_vec(mt) {
+      ast::ty_vec(mt) => {
         let ser_e =
             cx.expr(
                 ty.span,
@@ -519,7 +519,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         }]
       }
 
-      ast::ty_fixed_length(_, _) {
+      ast::ty_fixed_length(_, _) => {
         cx.span_unimpl(ty.span, ~"serialization for fixed length types");
       }
     }
@@ -635,34 +635,34 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
     let ext_cx = cx; // required for #ast{}
 
     alt ty.node {
-      ast::ty_nil {
+      ast::ty_nil => {
         #ast{ $(d).read_nil() }
       }
 
-      ast::ty_bot {
+      ast::ty_bot => {
         #ast{ fail }
       }
 
-      ast::ty_box(mt) {
+      ast::ty_box(mt) => {
         let l = deser_lambda(cx, tps, mt.ty, cx.clone(d));
         #ast{ @$(d).read_box($(l)) }
       }
 
       // For unique evecs/estrs, just pass through to underlying vec or str
-      ast::ty_uniq(mt) if is_vec_or_str(mt.ty) {
+      ast::ty_uniq(mt) if is_vec_or_str(mt.ty) => {
         deser_ty(cx, tps, mt.ty, d)
       }
 
-      ast::ty_uniq(mt) {
+      ast::ty_uniq(mt) => {
         let l = deser_lambda(cx, tps, mt.ty, cx.clone(d));
         #ast{ ~$(d).read_uniq($(l)) }
       }
 
-      ast::ty_ptr(_) | ast::ty_rptr(_, _) {
+      ast::ty_ptr(_) | ast::ty_rptr(_, _) => {
         #ast{ fail }
       }
 
-      ast::ty_rec(flds) {
+      ast::ty_rec(flds) => {
         let fields = do vec::from_fn(vec::len(flds)) |fidx| {
             let fld = flds[fidx];
             let d = cx.clone(d);
@@ -679,11 +679,11 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         #ast{ $(d).read_rec($(fld_lambda)) }
       }
 
-      ast::ty_fn(_, _) {
+      ast::ty_fn(_, _) => {
         #ast{ fail }
       }
 
-      ast::ty_tup(tys) {
+      ast::ty_tup(tys) => {
         // Generate code like
         //
         // d.read_tup(3u) {||
@@ -704,34 +704,34 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         #ast{ $(d).read_tup($(sz), $(body)) }
       }
 
-      ast::ty_path(path, _) {
+      ast::ty_path(path, _) => {
         if vec::len(path.idents) == 1u &&
             vec::is_empty(path.types) {
             let ident = path.idents[0];
 
             alt tps.find(*ident) {
-              some(f) { f() }
-              none { deser_path(cx, tps, path, d) }
+              some(f) => f(),
+              none => deser_path(cx, tps, path, d)
             }
         } else {
             deser_path(cx, tps, path, d)
         }
       }
 
-      ast::ty_mac(_) {
+      ast::ty_mac(_) => {
         #ast{ fail }
       }
 
-      ast::ty_infer {
+      ast::ty_infer => {
         #ast{ fail }
       }
 
-      ast::ty_vec(mt) {
+      ast::ty_vec(mt) => {
         let l = deser_lambda(cx, tps, mt.ty, cx.clone(d));
         #ast{ std::serialization::read_to_vec($(d), $(l)) }
       }
 
-      ast::ty_fixed_length(_, _) {
+      ast::ty_fixed_length(_, _) => {
         cx.span_unimpl(ty.span, ~"deserialization for fixed length types");
       }
     }

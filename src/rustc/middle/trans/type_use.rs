@@ -36,8 +36,8 @@ type ctx = {ccx: @crate_ctxt,
 fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     -> ~[type_uses] {
     alt ccx.type_use_cache.find(fn_id) {
-      some(uses) { return uses; }
-      none {}
+      some(uses) => return uses,
+      none => ()
     }
     let fn_id_loc = if fn_id.crate == local_crate { fn_id }
                     else { base::maybe_instantiate_inline(ccx, fn_id) };
@@ -46,12 +46,12 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
     let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
     alt ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).struct {
-      ty::ty_fn({inputs, _}) {
+      ty::ty_fn({inputs, _}) => {
         for vec::each(inputs) |arg| {
             if arg.mode == expl(by_val) { type_needs(cx, use_repr, arg.ty); }
         }
       }
-      _ {}
+      _ => ()
     }
 
     if fn_id_loc.crate != local_crate {
@@ -60,42 +60,46 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         return uses;
     }
     let map_node = alt ccx.tcx.items.find(fn_id_loc.node) {
-        some(x) { x }
-        none    { ccx.sess.bug(fmt!{"type_uses_for: unbound item ID %?",
-                                    fn_id_loc}); }
+        some(x) => x,
+        none    => ccx.sess.bug(fmt!{"type_uses_for: unbound item ID %?",
+                                     fn_id_loc})
     };
     alt check map_node {
       ast_map::node_item(@{node: item_fn(_, _, body), _}, _) |
-      ast_map::node_method(@{body, _}, _, _) {
+      ast_map::node_method(@{body, _}, _, _) => {
         handle_body(cx, body);
       }
-      ast_map::node_variant(_, _, _) {
+      ast_map::node_variant(_, _, _) => {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
       }
       ast_map::node_foreign_item(i@@{node: foreign_item_fn(_, _), _},
-                                 abi, _) {
+                                 abi, _) => {
         if abi == foreign_abi_rust_intrinsic {
             let flags = alt check *i.ident {
               ~"size_of" |  ~"pref_align_of" | ~"min_align_of" |
               ~"init" |  ~"reinterpret_cast" |
-              ~"move_val" | ~"move_val_init" {
+              ~"move_val" | ~"move_val_init" => {
                 use_repr
               }
-              ~"get_tydesc" | ~"needs_drop" { use_tydesc }
+              ~"get_tydesc" | ~"needs_drop" => {
+                use_tydesc
+              }
               ~"atomic_xchng" | ~"atomic_add" | ~"atomic_sub" |
               ~"atomic_xchng_acq" | ~"atomic_add_acq" | ~"atomic_sub_acq" |
-              ~"atomic_xchng_rel" | ~"atomic_add_rel" | ~"atomic_sub_rel" {
+              ~"atomic_xchng_rel" | ~"atomic_add_rel" | ~"atomic_sub_rel" => {
                 0u
               }
-              ~"visit_tydesc" | ~"forget" | ~"addr_of" { 0u }
+              ~"visit_tydesc" | ~"forget" | ~"addr_of" => {
+                0u
+              }
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
       }
-      ast_map::node_ctor(_, _, ctor, _, _){
+      ast_map::node_ctor(_, _, ctor, _, _) => {
         handle_body(cx, ctor.node.body);
       }
-      ast_map::node_dtor(_, dtor, _, _){
+      ast_map::node_dtor(_, dtor, _, _) => {
         handle_body(cx, dtor.node.body);
       }
 
@@ -124,8 +128,8 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                  right tydesc into the result)
                  */
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
-               | ty::ty_trait(_, _) { false }
-              ty::ty_enum(did, substs) {
+               | ty::ty_trait(_, _) => false,
+              ty::ty_enum(did, substs) => {
                 if option::is_none(list::find(enums_seen, |id| id == did)) {
                     let seen = @cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
@@ -137,11 +141,11 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                 }
                 false
               }
-              ty::ty_param(p) {
+              ty::ty_param(p) => {
                 cx.uses[p.idx] |= use;
                 false
               }
-              _ { true }
+              _ => true
             }
         } else { false }
     }
@@ -162,26 +166,26 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_repeat(*) => {
         node_type_needs(cx, use_repr, e.id);
       }
-      expr_cast(base, _) {
+      expr_cast(base, _) => {
         let result_t = ty::node_id_to_type(cx.ccx.tcx, e.id);
         alt ty::get(result_t).struct {
-            ty::ty_trait(*) {
+            ty::ty_trait(*) => {
               // When we're casting to an trait, we need the
               // tydesc for the expr that's being cast.
               node_type_needs(cx, use_tydesc, base.id);
             }
-            _ {}
+            _ => ()
         }
       }
-      expr_binary(op, lhs, _) {
+      expr_binary(op, lhs, _) => {
         alt op {
-          eq | lt | le | ne | ge | gt {
+          eq | lt | le | ne | ge | gt => {
             node_type_needs(cx, use_tydesc, lhs.id)
           }
-          _ {}
+          _ => ()
         }
       }
-      expr_path(_) {
+      expr_path(_) => {
         do cx.ccx.tcx.node_type_substs.find(e.id).iter |ts| {
             let id = ast_util::def_id_of_def(cx.ccx.tcx.def_map.get(e.id));
             vec::iter2(type_uses_for(cx.ccx, id, ts.len()), ts,
@@ -190,10 +194,10 @@ fn mark_for_expr(cx: ctx, e: @expr) {
                        })
         }
       }
-      expr_fn(*) | expr_fn_block(*) {
+      expr_fn(*) | expr_fn_block(*) => {
         alt ty::ty_fn_proto(ty::expr_ty(cx.ccx.tcx, e)) {
-          proto_bare | proto_uniq {}
-          proto_box | proto_block {
+          proto_bare | proto_uniq => {}
+          proto_box | proto_block => {
             for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) |fv| {
                 let node_id = ast_util::def_id_of_def(fv.def).node;
                 node_type_needs(cx, use_repr, node_id);
@@ -202,10 +206,10 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_assign(val, _) | expr_swap(val, _) | expr_assign_op(_, val, _) |
-      expr_ret(some(val)) {
+      expr_ret(some(val)) => {
         node_type_needs(cx, use_repr, val.id);
       }
-      expr_index(base, _) | expr_field(base, _, _) {
+      expr_index(base, _) | expr_field(base, _, _) => {
         // FIXME (#2537): could be more careful and not count fields after
         // the chosen field.
         let base_ty = ty::node_id_to_type(cx.ccx.tcx, base.id);
@@ -213,29 +217,29 @@ fn mark_for_expr(cx: ctx, e: @expr) {
 
         do option::iter(cx.ccx.maps.method_map.find(e.id)) |mth| {
             alt mth.origin {
-              typeck::method_static(did) {
+              typeck::method_static(did) => {
                 do option::iter(cx.ccx.tcx.node_type_substs.find(e.id)) |ts| {
                     do vec::iter2(type_uses_for(cx.ccx, did, ts.len()), ts)
                         |uses, subst| { type_needs(cx, uses, subst)}
                 }
               }
-              typeck::method_param({param_num: param, _}) {
+              typeck::method_param({param_num: param, _}) => {
                 cx.uses[param] |= use_tydesc;
               }
-              typeck::method_trait(_, _) {}
+              typeck::method_trait(_, _) => (),
             }
         }
       }
-      expr_log(_, _, val) {
+      expr_log(_, _, val) => {
         node_type_needs(cx, use_tydesc, val.id);
       }
-      expr_call(f, _, _) {
+      expr_call(f, _, _) => {
         vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)), |a| {
             alt a.mode {
-              expl(by_move) | expl(by_copy) | expl(by_val) {
+              expl(by_move) | expl(by_copy) | expl(by_val) => {
                 type_needs(cx, use_repr, a.ty);
               }
-              _ {}
+              _ => ()
             }
         })
       }
@@ -244,7 +248,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       expr_unary(_, _) | expr_lit(_) | expr_assert(_) |
       expr_mac(_) | expr_addr_of(_, _) |
       expr_ret(_) | expr_loop(_) |
-      expr_loop_body(_) | expr_do_body(_) {}
+      expr_loop_body(_) | expr_do_body(_) => ()
     }
 }
 

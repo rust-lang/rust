@@ -53,8 +53,8 @@ type test_desc = {
 fn test_main(args: ~[~str], tests: ~[test_desc]) {
     let opts =
         alt parse_opts(args) {
-          either::left(o) { o }
-          either::right(m) { fail m }
+          either::left(o) => o,
+          either::right(m) => fail m
         };
     if !run_tests_console(opts, tests) { fail ~"Some tests failed"; }
 }
@@ -70,8 +70,8 @@ fn parse_opts(args: ~[~str]) -> opt_res {
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
         alt getopts::getopts(args_, opts) {
-          ok(m) { m }
-          err(f) { return either::right(getopts::fail_str(f)) }
+          ok(m) => m,
+          err(f) => return either::right(getopts::fail_str(f))
         };
 
     let filter =
@@ -106,32 +106,30 @@ fn run_tests_console(opts: test_opts,
 
     fn callback(event: testevent, st: console_test_state) {
         alt event {
-          te_filtered(filtered_tests) {
+          te_filtered(filtered_tests) => {
             st.total = vec::len(filtered_tests);
             let noun = if st.total != 1u { ~"tests" } else { ~"test" };
             st.out.write_line(fmt!{"\nrunning %u %s", st.total, noun});
           }
-          te_wait(test) { st.out.write_str(fmt!{"test %s ... ", test.name}); }
-          te_result(test, result) {
+          te_wait(test) => st.out.write_str(fmt!{"test %s ... ", test.name}),
+          te_result(test, result) => {
             alt st.log_out {
-                some(f) {
-                    write_log(f, result, test);
-                }
-                none {}
+                some(f) => write_log(f, result, test),
+                none => ()
             }
             alt result {
-              tr_ok {
+              tr_ok => {
                 st.passed += 1u;
                 write_ok(st.out, st.use_color);
                 st.out.write_line(~"");
               }
-              tr_failed {
+              tr_failed => {
                 st.failed += 1u;
                 write_failed(st.out, st.use_color);
                 st.out.write_line(~"");
                 vec::push(st.failures, copy test);
               }
-              tr_ignored {
+              tr_ignored => {
                 st.ignored += 1u;
                 write_ignored(st.out, st.use_color);
                 st.out.write_line(~"");
@@ -142,15 +140,13 @@ fn run_tests_console(opts: test_opts,
     }
 
     let log_out = alt opts.logfile {
-        some(path) {
-            alt io::file_writer(path, ~[io::create, io::truncate]) {
-                result::ok(w) { some(w) }
-                result::err(s) {
-                    fail(fmt!{"can't open output file: %s", s})
-                }
-            }
+        some(path) => alt io::file_writer(path, ~[io::create, io::truncate]) {
+          result::ok(w) => some(w),
+          result::err(s) => {
+              fail(fmt!{"can't open output file: %s", s})
+          }
         }
-        none { none }
+        none => none
     };
 
     let st =
@@ -185,9 +181,9 @@ fn run_tests_console(opts: test_opts,
     fn write_log(out: io::writer, result: test_result, test: test_desc) {
         out.write_line(fmt!{"%s %s",
                     alt result {
-                        tr_ok { ~"ok" }
-                        tr_failed { ~"failed" }
-                        tr_ignored { ~"ignored" }
+                        tr_ok => ~"ok",
+                        tr_failed => ~"failed",
+                        tr_ignored => ~"ignored"
                     }, test.name});
     }
 
@@ -339,8 +335,8 @@ fn filter_tests(opts: test_opts,
     } else {
         let filter_str =
             alt opts.filter {
-          option::some(f) { f }
-          option::none { ~"" }
+          option::some(f) => f,
+          option::none => ~""
         };
 
         fn filter_fn(test: test_desc, filter_str: ~str) ->
@@ -483,16 +479,20 @@ mod tests {
     #[test]
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
-        let opts = alt parse_opts(args) { either::left(o) { o }
-          _ { fail ~"Malformed arg in first_free_arg_should_be_a_filter"; } };
+        let opts = alt parse_opts(args) {
+          either::left(o) => o,
+          _ => fail ~"Malformed arg in first_free_arg_should_be_a_filter"
+        };
         assert ~"filter" == option::get(opts.filter);
     }
 
     #[test]
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
-        let opts = alt parse_opts(args) { either::left(o) { o }
-          _ { fail ~"Malformed arg in parse_ignored_flag"; } };
+        let opts = alt parse_opts(args) {
+          either::left(o) => o,
+          _ => fail ~"Malformed arg in parse_ignored_flag"
+        };
         assert (opts.run_ignored);
     }
 

@@ -64,11 +64,11 @@ fn split_dirname_basename (pp: path) -> {dirname: ~str, basename: ~str} {
     alt str::rfind(pp, |ch|
         ch == consts::path_sep || ch == consts::alt_path_sep
     ) {
-      some(i) {
-        {dirname: str::slice(pp, 0u, i),
-         basename: str::slice(pp, i + 1u, str::len(pp))}
-      }
-      none { {dirname: ~".", basename: pp} }
+      some(i) => {
+        dirname: str::slice(pp, 0u, i),
+        basename: str::slice(pp, i + 1u, str::len(pp))
+      },
+      none => {dirname: ~".", basename: pp}
     }
 }
 

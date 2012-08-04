@@ -112,8 +112,8 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                        par_doc: ebml::doc) -> option<ast::inlined_item> {
     let dcx = @{cdata: cdata, tcx: tcx, maps: maps};
     alt par_doc.opt_child(c::tag_ast) {
-      none { none }
-      some(ast_doc) {
+      none => none,
+      some(ast_doc) => {
         debug!{"> Decoding inlined fn: %s::?", ast_map::path_to_str(path)};
         let ast_dsr = ebml::ebml_deserializer(ast_doc);
         let from_id_range = ast_util::deserialize_id_range(ast_dsr);
@@ -130,11 +130,11 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         debug!{"< Decoded inlined fn: %s::%s",
                ast_map::path_to_str(path), *ii.ident()};
         alt ii {
-          ast::ii_item(i) {
+          ast::ii_item(i) => {
             debug!{">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
                    syntax::print::pprust::item_to_str(i)};
           }
-          _ { }
+          _ => { }
         }
         some(ii)
       }
@@ -247,8 +247,8 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         let stmts_sans_items = do vec::filter(blk.stmts) |stmt| {
             alt stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
-              ast::stmt_decl(@{node: ast::decl_local(_), span: _}, _) { true }
-              ast::stmt_decl(@{node: ast::decl_item(_), span: _}, _) { false }
+              ast::stmt_decl(@{node: ast::decl_local(_), span: _}, _) => true,
+              ast::stmt_decl(@{node: ast::decl_item(_), span: _}, _) => false
             }
         };
         let blk_sans_items = { stmts: stmts_sans_items with blk };
@@ -261,23 +261,23 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
     });
 
     alt ii {
-      ast::ii_item(i) {
+      ast::ii_item(i) => {
         ast::ii_item(fld.fold_item(i).get()) //hack: we're not dropping items
       }
-      ast::ii_method(d, m) {
+      ast::ii_method(d, m) => {
         ast::ii_method(d, fld.fold_method(m))
       }
-      ast::ii_foreign(i) {
+      ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_ctor(ctor, nm, tps, parent_id) {
+      ast::ii_ctor(ctor, nm, tps, parent_id) => {
         let ctor_body = fld.fold_block(ctor.node.body);
         let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
         ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl
                               with ctor.node}
             with ctor}, nm, tps, parent_id)
       }
-      ast::ii_dtor(dtor, nm, tps, parent_id) {
+      ast::ii_dtor(dtor, nm, tps, parent_id) => {
         let dtor_body = fld.fold_block(dtor.node.body);
         ast::ii_dtor({node: {body: dtor_body
                               with dtor.node}
@@ -301,16 +301,16 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
     });
 
     alt ii {
-      ast::ii_item(i) {
+      ast::ii_item(i) => {
         ast::ii_item(fld.fold_item(i).get())
       }
-      ast::ii_method(d, m) {
+      ast::ii_method(d, m) => {
         ast::ii_method(xcx.tr_def_id(d), fld.fold_method(m))
       }
-      ast::ii_foreign(i) {
+      ast::ii_foreign(i) => {
         ast::ii_foreign(fld.fold_foreign_item(i))
       }
-      ast::ii_ctor(ctor, nm, tps, parent_id) {
+      ast::ii_ctor(ctor, nm, tps, parent_id) => {
         let ctor_body = fld.fold_block(ctor.node.body);
         let ctor_attrs = fld.fold_attributes(ctor.node.attrs);
         let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
@@ -322,7 +322,7 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
                               with ctor.node}
             with ctor}, nm, new_params, new_parent)
       }
-      ast::ii_dtor(dtor, nm, tps, parent_id) {
+      ast::ii_dtor(dtor, nm, tps, parent_id) => {
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_attrs = fld.fold_attributes(dtor.node.attrs);
         let new_params = fold::fold_ty_params(tps, fld);
@@ -353,29 +353,29 @@ fn decode_def(xcx: extended_decode_ctxt, doc: ebml::doc) -> ast::def {
 impl of tr for ast::def {
     fn tr(xcx: extended_decode_ctxt) -> ast::def {
         alt self {
-          ast::def_fn(did, p) { ast::def_fn(did.tr(xcx), p) }
-          ast::def_self(nid) { ast::def_self(xcx.tr_id(nid)) }
-          ast::def_mod(did) { ast::def_mod(did.tr(xcx)) }
-          ast::def_foreign_mod(did) { ast::def_foreign_mod(did.tr(xcx)) }
-          ast::def_const(did) { ast::def_const(did.tr(xcx)) }
-          ast::def_arg(nid, m) { ast::def_arg(xcx.tr_id(nid), m) }
-          ast::def_local(nid, b) { ast::def_local(xcx.tr_id(nid), b) }
-          ast::def_variant(e_did, v_did) {
+          ast::def_fn(did, p) => ast::def_fn(did.tr(xcx), p),
+          ast::def_self(nid) => ast::def_self(xcx.tr_id(nid)),
+          ast::def_mod(did) => ast::def_mod(did.tr(xcx)),
+          ast::def_foreign_mod(did) => ast::def_foreign_mod(did.tr(xcx)),
+          ast::def_const(did) => ast::def_const(did.tr(xcx)),
+          ast::def_arg(nid, m) => ast::def_arg(xcx.tr_id(nid), m),
+          ast::def_local(nid, b) => ast::def_local(xcx.tr_id(nid), b),
+          ast::def_variant(e_did, v_did) => {
             ast::def_variant(e_did.tr(xcx), v_did.tr(xcx))
           }
-          ast::def_ty(did) { ast::def_ty(did.tr(xcx)) }
-          ast::def_prim_ty(p) { ast::def_prim_ty(p) }
-          ast::def_ty_param(did, v) { ast::def_ty_param(did.tr(xcx), v) }
-          ast::def_binding(nid, bm) { ast::def_binding(xcx.tr_id(nid), bm) }
-          ast::def_use(did) { ast::def_use(did.tr(xcx)) }
-          ast::def_upvar(nid1, def, nid2) {
+          ast::def_ty(did) => ast::def_ty(did.tr(xcx)),
+          ast::def_prim_ty(p) => ast::def_prim_ty(p),
+          ast::def_ty_param(did, v) => ast::def_ty_param(did.tr(xcx), v),
+          ast::def_binding(nid, bm) => ast::def_binding(xcx.tr_id(nid), bm),
+          ast::def_use(did) => ast::def_use(did.tr(xcx)),
+          ast::def_upvar(nid1, def, nid2) => {
             ast::def_upvar(xcx.tr_id(nid1), @(*def).tr(xcx), xcx.tr_id(nid2))
           }
-          ast::def_class(did, has_constructor) {
+          ast::def_class(did, has_constructor) => {
             ast::def_class(did.tr(xcx), has_constructor)
           }
-          ast::def_region(nid) { ast::def_region(xcx.tr_id(nid)) }
-          ast::def_typaram_binder(nid) {
+          ast::def_region(nid) => ast::def_region(xcx.tr_id(nid)),
+          ast::def_typaram_binder(nid) => {
             ast::def_typaram_binder(xcx.tr_id(nid))
           }
         }
@@ -423,13 +423,13 @@ impl helper of read_method_map_entry_helper for ebml::ebml_deserializer {
 impl of tr for method_origin {
     fn tr(xcx: extended_decode_ctxt) -> method_origin {
         alt self {
-          typeck::method_static(did) {
+          typeck::method_static(did) => {
             typeck::method_static(did.tr(xcx))
           }
-          typeck::method_param(mp) {
+          typeck::method_param(mp) => {
             typeck::method_param({trait_id:mp.trait_id.tr(xcx) with mp})
           }
-          typeck::method_trait(did, m) {
+          typeck::method_trait(did, m) => {
             typeck::method_trait(did.tr(xcx), m)
           }
         }
@@ -456,7 +456,7 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
                       vtable_origin: typeck::vtable_origin) {
     do ebml_w.emit_enum(~"vtable_origin") {
         alt vtable_origin {
-          typeck::vtable_static(def_id, tys, vtable_res) {
+          typeck::vtable_static(def_id, tys, vtable_res) => {
             do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
@@ -469,7 +469,7 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
                 }
             }
           }
-          typeck::vtable_param(pn, bn) {
+          typeck::vtable_param(pn, bn) => {
             do ebml_w.emit_enum_variant(~"vtable_param", 1u, 2u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_uint(pn);
@@ -479,7 +479,7 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
                 }
             }
           }
-          typeck::vtable_trait(def_id, tys) {
+          typeck::vtable_trait(def_id, tys) => {
             do ebml_w.emit_enum_variant(~"vtable_trait", 1u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
                     ebml_w.emit_def_id(def_id)
@@ -509,7 +509,7 @@ impl helpers of vtable_deserialization_helpers for ebml::ebml_deserializer {
         do self.read_enum(~"vtable_origin") {
             do self.read_enum_variant |i| {
                 alt check i {
-                  0u {
+                  0u => {
                     typeck::vtable_static(
                         do self.read_enum_variant_arg(0u) {
                             self.read_def_id(xcx)
@@ -522,7 +522,7 @@ impl helpers of vtable_deserialization_helpers for ebml::ebml_deserializer {
                         }
                     )
                   }
-                  1u {
+                  1u => {
                     typeck::vtable_param(
                         do self.read_enum_variant_arg(0u) {
                             self.read_uint()
@@ -532,7 +532,7 @@ impl helpers of vtable_deserialization_helpers for ebml::ebml_deserializer {
                         }
                     )
                   }
-                  2u {
+                  2u => {
                     typeck::vtable_trait(
                         do self.read_enum_variant_arg(0u) {
                             self.read_def_id(xcx)
@@ -993,9 +993,9 @@ fn test_simplification() {
         }
     });
     alt (item_out, item_exp) {
-      (ast::ii_item(item_out), ast::ii_item(item_exp)) {
+      (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
         assert pprust::item_to_str(item_out) == pprust::item_to_str(item_exp);
       }
-      _ { fail; }
+      _ => fail
     }
 }

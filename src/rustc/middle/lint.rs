@@ -56,25 +56,25 @@ enum lint {
 // type of thing.
 fn int_to_lint(i: int) -> lint {
     alt check i {
-      0 { ctypes }
-      1 { unused_imports }
-      2 { while_true }
-      3 { path_statement }
-      4 { implicit_copies }
-      5 { unrecognized_lint }
-      6 { non_implicitly_copyable_typarams }
-      7 { vecs_implicitly_copyable }
-      8 { deprecated_mode }
-      9 { non_camel_case_types }
+      0 => ctypes,
+      1 => unused_imports,
+      2 => while_true,
+      3 => path_statement,
+      4 => implicit_copies,
+      5 => unrecognized_lint,
+      6 => non_implicitly_copyable_typarams,
+      7 => vecs_implicitly_copyable,
+      8 => deprecated_mode,
+      9 => non_camel_case_types
     }
 }
 
 fn level_to_str(lv: level) -> ~str {
     alt lv {
-      allow { ~"allow" }
-      warn { ~"warn" }
-      deny { ~"deny" }
-      forbid { ~"forbid" }
+      allow => ~"allow",
+      warn => ~"warn",
+      deny => ~"deny",
+      forbid => ~"forbid"
     }
 }
 
@@ -167,8 +167,8 @@ fn mk_lint_settings() -> lint_settings {
 
 fn get_lint_level(modes: lint_modes, lint: lint) -> level {
     alt modes.find(lint as uint) {
-      some(c) { c }
-      none { allow }
+      some(c) => c,
+      none => allow
     }
 }
 
@@ -177,8 +177,8 @@ fn get_lint_settings_level(settings: lint_settings,
                               _expr_id: ast::node_id,
                               item_id: ast::node_id) -> level {
     alt settings.settings_map.find(item_id) {
-      some(modes) { get_lint_level(modes, lint_mode) }
-      none { get_lint_level(settings.default_settings, lint_mode) }
+      some(modes) => get_lint_level(modes, lint_mode),
+      none => get_lint_level(settings.default_settings, lint_mode)
     }
 }
 
@@ -231,13 +231,13 @@ impl methods for ctxt {
                                                           level_name));
             for metas.each |meta| {
                 alt meta.node {
-                  ast::meta_list(_, metas) {
+                  ast::meta_list(_, metas) => {
                     for metas.each |meta| {
                         alt meta.node {
-                          ast::meta_word(lintname) {
+                          ast::meta_word(lintname) => {
                             vec::push(triples, (meta, level, lintname));
                           }
-                          _ {
+                          _ => {
                             self.sess.span_err(
                                 meta.span,
                                 ~"malformed lint attribute");
@@ -245,7 +245,7 @@ impl methods for ctxt {
                         }
                     }
                   }
-                  _  {
+                  _  => {
                     self.sess.span_err(meta.span,
                                        ~"malformed lint attribute");
                   }
@@ -256,14 +256,14 @@ impl methods for ctxt {
         for triples.each |pair| {
             let (meta, level, lintname) = pair;
             alt self.dict.find(*lintname) {
-              none {
+              none => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
                     meta.span,
                     fmt!{"unknown `%s` attribute: `%s`",
                          level_to_str(level), *lintname});
               }
-              some(lint) {
+              some(lint) => {
 
                 if new_ctxt.get_level(lint.lint) == forbid &&
                     level != forbid {
@@ -355,18 +355,18 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_expr: fn@(e: @ast::expr) {
            alt e.node {
-             ast::expr_while(cond, _) {
+             ast::expr_while(cond, _) => {
                 alt cond.node {
-                    ast::expr_lit(@{node: ast::lit_bool(true),_}) {
+                    ast::expr_lit(@{node: ast::lit_bool(true),_}) => {
                             cx.sess.span_lint(
                                 while_true, e.id, it.id,
                                 e.span,
                                 ~"denote infinite loops with loop { ... }");
                     }
-                    _ {}
+                    _ => ()
                 }
              }
-             _ {}
+             _ => ()
           }
         }
         with *visit::default_simple_visitor()
@@ -381,42 +381,42 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
             alt ty.node {
-              ast::ty_path(_, id) {
+              ast::ty_path(_, id) => {
                 alt cx.def_map.get(id) {
-                  ast::def_prim_ty(ast::ty_int(ast::ty_i)) {
+                  ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
                         ~"found rust type `int` in foreign module, while \
                          libc::c_int or libc::c_long should be used");
                   }
-                  ast::def_prim_ty(ast::ty_uint(ast::ty_u)) {
+                  ast::def_prim_ty(ast::ty_uint(ast::ty_u)) => {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
                         ty.span,
                         ~"found rust type `uint` in foreign module, while \
                          libc::c_uint or libc::c_ulong should be used");
                   }
-                  _ { }
+                  _ => ()
                 }
               }
-              _ { }
+              _ => ()
             }
         }
     }
 
     alt it.node {
       ast::item_foreign_mod(nmod) if attr::foreign_abi(it.attrs) !=
-      either::right(ast::foreign_abi_rust_intrinsic) {
+      either::right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
             alt ni.node {
-              ast::foreign_item_fn(decl, tps) {
+              ast::foreign_item_fn(decl, tps) => {
                 check_foreign_fn(cx, it.id, decl);
               }
             }
         }
       }
-      _ {/* nothing to do */ }
+      _ => {/* nothing to do */ }
     }
 }
 
@@ -427,13 +427,13 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
               ast::stmt_semi(@{id: id,
                                callee_id: _,
                                node: ast::expr_path(@path),
-                               span: _}, _) {
+                               span: _}, _) => {
                 cx.sess.span_lint(
                     path_statement, id, it.id,
                     s.span,
                     ~"path statement with no effect");
               }
-              _ {}
+              _ => ()
             }
         }
         with *visit::default_simple_visitor()
@@ -460,17 +460,17 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
 
     alt it.node {
       ast::item_ty(*) | ast::item_class(*) |
-      ast::item_trait(*) | ast::item_impl(*) {
+      ast::item_trait(*) | ast::item_impl(*) => {
         check_case(cx, it.ident, it.id, it.id, it.span)
       }
-      ast::item_enum(variants, _) {
+      ast::item_enum(variants, _) => {
         check_case(cx, it.ident, it.id, it.id, it.span);
         for variants.each |variant| {
             check_case(cx, variant.node.name,
                        variant.node.id, it.id, variant.span);
         }
       }
-      _ { }
+      _ => ()
     }
 }
 
@@ -487,7 +487,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
 
     let fn_ty = ty::node_id_to_type(tcx, id);
     alt check ty::get(fn_ty).struct {
-      ty::ty_fn(fn_ty) {
+      ty::ty_fn(fn_ty) => {
         let mut counter = 0;
         do vec::iter2(fn_ty.inputs, decl.inputs) |arg_ty, arg_ast| {
             counter += 1;
@@ -507,7 +507,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
                     fmt!{"argument %d uses an explicit mode", counter});
               }
 
-              ast::infer(_) {
+              ast::infer(_) => {
                 let kind = ty::type_kind(tcx, arg_ty.ty);
                 if !ty::kind_is_safe_for_default_mode(kind) {
                     tcx.sess.span_lint(

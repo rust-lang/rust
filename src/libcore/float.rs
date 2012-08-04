@@ -257,21 +257,21 @@ fn from_str(num: ~str) -> option<float> {
 
    //The string must start with one of the following characters.
    alt str::char_at(num, 0u) {
-      '-' | '+' | '0' to '9' | '.' {}
-      _ { return none; }
+      '-' | '+' | '0' to '9' | '.' => (),
+      _ => return none
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
    let mut neg = false;               //Sign of the result
    alt str::char_at(num, 0u) {
-      '-' {
+      '-' => {
           neg = true;
           pos = 1u;
       }
-      '+' {
+      '+' => {
           pos = 1u;
       }
-      _ {}
+      _ => ()
    }
 
    //Examine the following chars until '.', 'e', 'E'
@@ -280,16 +280,12 @@ fn from_str(num: ~str) -> option<float> {
        c   = char_range.ch;
        pos = char_range.next;
        alt c {
-         '0' to '9' {
+         '0' to '9' => {
            total = total * 10f;
            total += ((c as int) - ('0' as int)) as float;
          }
-         '.' | 'e' | 'E' {
-           break;
-         }
-         _ {
-           return none;
-         }
+         '.' | 'e' | 'E' => break,
+         _ => return none
        }
    }
 
@@ -300,16 +296,12 @@ fn from_str(num: ~str) -> option<float> {
          c = char_range.ch;
          pos = char_range.next;
          alt c {
-            '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9'  {
+            '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9'  => {
                  decimal /= 10f;
                  total += (((c as int) - ('0' as int)) as float)*decimal;
              }
-             'e' | 'E' {
-                 break;
-             }
-             _ {
-                 return none;
-             }
+             'e' | 'E' => break,
+             _ => return none
          }
       }
    }
@@ -321,26 +313,24 @@ fn from_str(num: ~str) -> option<float> {
           let char_range = str::char_range_at(num, pos);
           c   = char_range.ch;
           alt c  {
-             '+' {
+             '+' => {
                 pos = char_range.next;
              }
-             '-' {
+             '-' => {
                 pos = char_range.next;
                 neg_exponent = true;
              }
-             _ {}
+             _ => ()
           }
           while(pos < len) {
              let char_range = str::char_range_at(num, pos);
              c = char_range.ch;
              alt c {
-                 '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9' {
+                 '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9' => {
                      exponent *= 10u;
                      exponent += ((c as uint) - ('0' as uint));
                  }
-                 _ {
-                     break;
-                 }
+                 _ => break
              }
              pos = char_range.next;
           }
@@ -458,8 +448,8 @@ fn test_from_str() {
    assert from_str(~"-inf") == some(neg_infinity);
    // note: NaN != NaN, hence this slightly complex test
    alt from_str(~"NaN") {
-       some(f) { assert is_NaN(f); }
-       none { fail; }
+       some(f) => assert is_NaN(f),
+       none => fail
    }
 
    assert from_str(~"") == none;

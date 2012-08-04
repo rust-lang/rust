@@ -85,10 +85,10 @@ impl parser_common of parser_common for parser {
 
     fn parse_ident() -> ast::ident {
         alt copy self.token {
-          token::IDENT(i, _) { self.bump(); return self.get_str(i); }
-          token::INTERPOLATED(token::nt_ident(*)) { self.bug(
+          token::IDENT(i, _) => { self.bump(); return self.get_str(i); }
+          token::INTERPOLATED(token::nt_ident(*)) => { self.bug(
               ~"ident interpolation not converted to real token"); }
-          _ { self.fatal(~"expected ident, found `"
+          _ => { self.fatal(~"expected ident, found `"
                          + token_to_str(self.reader, self.token)
                          + ~"`"); }
         }
@@ -135,10 +135,10 @@ impl parser_common of parser_common for parser {
 
     fn is_any_keyword(tok: token::token) -> bool {
         alt tok {
-          token::IDENT(sid, false) {
+          token::IDENT(sid, false) => {
             self.keywords.contains_key_ref(self.get_str(sid))
           }
-          _ { false }
+          _ => false
         }
     }
 
@@ -147,13 +147,13 @@ impl parser_common of parser_common for parser {
 
         let mut bump = false;
         let val = alt self.token {
-          token::IDENT(sid, false) {
+          token::IDENT(sid, false) => {
             if word == *self.get_str(sid) {
                 bump = true;
                 true
             } else { false }
           }
-          _ { false }
+          _ => false
         };
         if bump { self.bump() }
         val
@@ -174,11 +174,11 @@ impl parser_common of parser_common for parser {
 
     fn check_restricted_keywords() {
         alt self.token {
-          token::IDENT(_, false) {
+          token::IDENT(_, false) => {
             let w = token_to_str(self.reader, self.token);
             self.check_restricted_keywords_(w);
           }
-          _ { }
+          _ => ()
         }
     }
 
@@ -210,9 +210,11 @@ impl parser_common of parser_common for parser {
         while self.token != token::GT
             && self.token != token::BINOP(token::SHR) {
             alt sep {
-              some(t) { if first { first = false; }
-                       else { self.expect(t); } }
-              _ { }
+              some(t) => {
+                if first { first = false; }
+                else { self.expect(t); }
+              }
+              _ => ()
             }
             vec::push(v, f(self));
         }
@@ -252,9 +254,11 @@ impl parser_common of parser_common for parser {
         let mut v: ~[T] = ~[];
         while self.token != ket {
             alt sep.sep {
-              some(t) { if first { first = false; }
-                        else { self.expect(t); } }
-              _ { }
+              some(t) => {
+                if first { first = false; }
+                else { self.expect(t); }
+              }
+              _ => ()
             }
             if sep.trailing_sep_allowed && self.token == ket { break; }
             vec::push(v, f(self));

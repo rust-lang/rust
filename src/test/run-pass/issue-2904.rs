@@ -18,29 +18,29 @@ enum square {
 impl of to_str::to_str for square {
     fn to_str() -> ~str {
         alt self {
-          bot { ~"R" }
-          wall { ~"#" }
-          rock { ~"*" }
-          lambda { ~"\\" }
-          closed_lift { ~"L" }
-          open_lift { ~"O" }
-          earth { ~"." }
-          empty { ~" " } 
+          bot => { ~"R" }
+          wall => { ~"#" }
+          rock => { ~"*" }
+          lambda => { ~"\\" }
+          closed_lift => { ~"L" }
+          open_lift => { ~"O" }
+          earth => { ~"." }
+          empty => { ~" " } 
         }
     }
 }
 
 fn square_from_char(c: char) -> square {
     alt c  {
-      'R'  { bot }
-      '#'  { wall }
-      '*'  { rock }
-      '\\' { lambda }
-      'L'  { closed_lift }
-      'O'  { open_lift }
-      '.'  { earth }
-      ' '  { empty }
-      _ {
+      'R'  => { bot }
+      '#'  => { wall }
+      '*'  => { rock }
+      '\\' => { lambda }
+      'L'  => { closed_lift }
+      'O'  => { open_lift }
+      '.'  => { earth }
+      ' '  => { empty }
+      _ => {
         #error("invalid square: %?", c);
         fail
       }

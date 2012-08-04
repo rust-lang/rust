@@ -71,9 +71,9 @@ fn req_loans_in_fn(fk: visit::fn_kind,
     self.root_ub = body.node.id;
 
     alt fk {
-      visit::fk_anon(*) | visit::fk_fn_block(*) {}
+      visit::fk_anon(*) | visit::fk_fn_block(*) => {}
       visit::fk_item_fn(*) | visit::fk_method(*) |
-      visit::fk_ctor(*) | visit::fk_dtor(*) {
+      visit::fk_ctor(*) | visit::fk_dtor(*) => {
         self.item_ub = body.node.id;
       }
     }
@@ -100,33 +100,33 @@ fn req_loans_in_expr(ex: @ast::expr,
 
     // Special checks for various kinds of expressions:
     alt ex.node {
-      ast::expr_addr_of(mutbl, base) {
+      ast::expr_addr_of(mutbl, base) => {
         let base_cmt = self.bccx.cat_expr(base);
 
         // make sure that the thing we are pointing out stays valid
         // for the lifetime `scope_r` of the resulting ptr:
         let scope_r =
             alt check ty::get(tcx.ty(ex)).struct {
-              ty::ty_rptr(r, _) { r }
+              ty::ty_rptr(r, _) => r
             };
         self.guarantee_valid(base_cmt, mutbl, scope_r);
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_call(f, args, _) {
+      ast::expr_call(f, args, _) => {
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         let scope_r = ty::re_scope(ex.id);
         do vec::iter2(args, arg_tys) |arg, arg_ty| {
             alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
-              ast::by_mutbl_ref {
+              ast::by_mutbl_ref => {
                 let arg_cmt = self.bccx.cat_expr(arg);
                 self.guarantee_valid(arg_cmt, m_mutbl, scope_r);
               }
-              ast::by_ref {
+              ast::by_ref => {
                 let arg_cmt = self.bccx.cat_expr(arg);
                 self.guarantee_valid(arg_cmt, m_imm,  scope_r);
               }
-              ast::by_val {
+              ast::by_val => {
                 // Rust's by-val does not actually give ownership to
                 // the callee.  This means that if a pointer type is
                 // passed, it is effectively a borrow, and so the
@@ -153,27 +153,27 @@ fn req_loans_in_expr(ex: @ast::expr,
                 //
                 alt opt_deref_kind(arg_ty.ty) {
                   some(deref_ptr(region_ptr(_))) |
-                  some(deref_ptr(unsafe_ptr)) {
+                  some(deref_ptr(unsafe_ptr)) => {
                     /* region pointers are (by induction) guaranteed */
                     /* unsafe pointers are the user's problem */
                   }
                   some(deref_comp(_)) |
-                  none {
+                  none => {
                     /* not a pointer, no worries */
                   }
-                  some(deref_ptr(_)) {
+                  some(deref_ptr(_)) => {
                     let arg_cmt = self.bccx.cat_borrow_of_expr(arg);
                     self.guarantee_valid(arg_cmt, m_const, scope_r);
                   }
                 }
               }
-              ast::by_move | ast::by_copy {}
+              ast::by_move | ast::by_copy => {}
             }
         }
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_alt(ex_v, arms, _) {
+      ast::expr_alt(ex_v, arms, _) => {
         let cmt = self.bccx.cat_expr(ex_v);
         for arms.each |arm| {
             for arm.pats.each |pat| {
@@ -185,7 +185,8 @@ fn req_loans_in_expr(ex: @ast::expr,
 
       ast::expr_index(rcvr, _) |
       ast::expr_binary(_, rcvr, _) |
-      ast::expr_unary(_, rcvr) if self.bccx.method_map.contains_key(ex.id) {
+      ast::expr_unary(_, rcvr)
+      if self.bccx.method_map.contains_key(ex.id) => {
         // Receivers in method calls are always passed by ref.
         //
         // Here, in an overloaded operator, the call is this expression,
@@ -202,7 +203,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       }
 
       ast::expr_field(rcvr, _, _)
-      if self.bccx.method_map.contains_key(ex.id) {
+      if self.bccx.method_map.contains_key(ex.id) => {
         // Receivers in method calls are always passed by ref.
         //
         // Here, the field a.b is in fact a closure.  Eventually, this
@@ -218,7 +219,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::expr_while(cond, body) {
+      ast::expr_while(cond, body) => {
         // during the condition, can only root for the condition
         self.root_ub = cond.id;
         vt.visit_expr(cond, self, vt);
@@ -229,7 +230,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::expr_loop(body) {
+      ast::expr_loop(body) => {
         self.root_ub = body.node.id;
         visit::visit_expr(ex, self, vt);
       }
@@ -275,7 +276,7 @@ impl methods for gather_loan_ctxt {
           // duration of the reference: if there is an attempt to move
           // it within that scope, the loan will be detected and an
           // error will be reported.
-          some(_) {
+          some(_) => {
             alt self.bccx.loan(cmt, scope_r, req_mutbl) {
               err(e) => { self.bccx.report(e); }
               ok(loans) if loans.len() == 0 => {}
@@ -313,7 +314,7 @@ impl methods for gather_loan_ctxt {
           // also check that the mutability of the desired pointer
           // matches with the actual mutability (but if an immutable
           // pointer is desired, that is ok as long as we are pure)
-          none {
+          none => {
             let result: bckres<preserve_condition> = {
                 do self.check_mutbl(req_mutbl, cmt).chain |pc1| {
                     do self.bccx.preserve(cmt, scope_r,
@@ -325,13 +326,13 @@ impl methods for gather_loan_ctxt {
             };
 
             alt result {
-              ok(pc_ok) {
+              ok(pc_ok) => {
                 // we were able guarantee the validity of the ptr,
                 // perhaps by rooting or because it is immutably
                 // rooted.  good.
                 self.bccx.stable_paths += 1;
               }
-              ok(pc_if_pure(e)) {
+              ok(pc_if_pure(e)) => {
                 // we are only able to guarantee the validity if
                 // the scope is pure
                 alt scope_r {
@@ -397,10 +398,10 @@ impl methods for gather_loan_ctxt {
 
     fn add_loans(scope_id: ast::node_id, loans: @dvec<loan>) {
         alt self.req_maps.req_loan_map.find(scope_id) {
-          some(l) {
+          some(l) => {
             (*l).push(loans);
           }
-          none {
+          none => {
             self.req_maps.req_loan_map.insert(
                 scope_id, @dvec::from_vec(~[mut loans]));
           }
@@ -450,21 +451,21 @@ impl methods for gather_loan_ctxt {
 
         let tcx = self.tcx();
         alt pat.node {
-          ast::pat_wild {
+          ast::pat_wild => {
             // _
           }
 
-          ast::pat_enum(_, none) {
+          ast::pat_enum(_, none) => {
             // variant(*)
           }
-          ast::pat_enum(_, some(subpats)) {
+          ast::pat_enum(_, some(subpats)) => {
             // variant(x, y, z)
             let enum_did = alt self.bccx.tcx.def_map
 .find(pat.id) {
-              some(ast::def_variant(enum_did, _)) {enum_did}
-              e {tcx.sess.span_bug(pat.span,
-                                   fmt!{"resolved to %?, \
-                                         not variant", e})}
+              some(ast::def_variant(enum_did, _)) => enum_did,
+              e => tcx.sess.span_bug(pat.span,
+                                     fmt!{"resolved to %?, \
+                                               not variant", e})
             };
 
             for subpats.each |subpat| {
@@ -473,11 +474,11 @@ impl methods for gather_loan_ctxt {
             }
           }
 
-          ast::pat_ident(_, _, none) if self.pat_is_variant(pat) {
+          ast::pat_ident(_, _, none) if self.pat_is_variant(pat) => {
             // nullary variant
             debug!{"nullary variant"};
           }
-          ast::pat_ident(_, id, o_pat) {
+          ast::pat_ident(_, id, o_pat) => {
             // XXX: Needs to take by-ref/by-val into account.
 
             // x or x @ p --- `x` must remain valid for the scope of the alt
@@ -504,7 +505,7 @@ impl methods for gather_loan_ctxt {
             }
           }
 
-          ast::pat_rec(field_pats, _) {
+          ast::pat_rec(field_pats, _) => {
             // {f1: p1, ..., fN: pN}
             for field_pats.each |fp| {
                 let cmt_field = self.bccx.cat_field(fp.pat, cmt, fp.ident);
@@ -512,7 +513,7 @@ impl methods for gather_loan_ctxt {
             }
           }
 
-          ast::pat_tup(subpats) {
+          ast::pat_tup(subpats) => {
             // (p1, ..., pN)
             for subpats.each |subpat| {
                 let subcmt = self.bccx.cat_tuple_elt(subpat, cmt);
@@ -520,19 +521,19 @@ impl methods for gather_loan_ctxt {
             }
           }
 
-          ast::pat_box(subpat) | ast::pat_uniq(subpat) {
+          ast::pat_box(subpat) | ast::pat_uniq(subpat) => {
             // @p1, ~p1
             alt self.bccx.cat_deref(subpat, cmt, 0u, true) {
-              some(subcmt) {
+              some(subcmt) => {
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
               }
-              none {
+              none => {
                 tcx.sess.span_bug(pat.span, ~"Non derefable type");
               }
             }
           }
 
-          ast::pat_lit(_) | ast::pat_range(_, _) { /*always ok*/ }
+          ast::pat_lit(_) | ast::pat_range(_, _) => { /*always ok*/ }
         }
     }
 

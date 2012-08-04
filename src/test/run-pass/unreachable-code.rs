@@ -23,8 +23,8 @@ fn ret_ret() -> int { return (return 2) + 3; }
 
 fn ret_guard() {
     alt 2 {
-      x if (return) { x; }
-      _ {}
+      x if (return) => { x; }
+      _ => {}
     }
 }
 

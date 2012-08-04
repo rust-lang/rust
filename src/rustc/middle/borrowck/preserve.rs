@@ -64,13 +64,13 @@ impl private_methods for &preserve_ctxt {
         let _i = indenter();
 
         alt cmt.cat {
-          cat_special(sk_self) | cat_special(sk_heap_upvar) {
+          cat_special(sk_self) | cat_special(sk_heap_upvar) => {
             self.compare_scope(cmt, ty::re_scope(self.item_ub))
           }
-          cat_special(sk_static_item) | cat_special(sk_method) {
+          cat_special(sk_static_item) | cat_special(sk_method) => {
             ok(pc_ok)
           }
-          cat_rvalue {
+          cat_rvalue => {
             // when we borrow an rvalue, we can keep it rooted but only
             // up to the root_ub point
 
@@ -85,10 +85,10 @@ impl private_methods for &preserve_ctxt {
             // FIXME(#2977)--need to update trans!
             self.compare_scope(cmt, scope_region)
           }
-          cat_stack_upvar(cmt) {
+          cat_stack_upvar(cmt) => {
             self.preserve(cmt)
           }
-          cat_local(local_id) {
+          cat_local(local_id) => {
             // Normally, local variables are lendable, and so this
             // case should never trigger.  However, if we are
             // preserving an expression like a.b where the field `b`
@@ -103,14 +103,14 @@ impl private_methods for &preserve_ctxt {
             let local_scope_id = self.tcx().region_map.get(local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
-          cat_binding(local_id) {
+          cat_binding(local_id) => {
             // Bindings are these kind of weird implicit pointers (cc
             // #2329).  We require (in gather_loans) that they be
             // rooted in an immutable location.
             let local_scope_id = self.tcx().region_map.get(local_id);
             self.compare_scope(cmt, ty::re_scope(local_scope_id))
           }
-          cat_arg(local_id) {
+          cat_arg(local_id) => {
             // This can happen as not all args are lendable (e.g., &&
             // modes).  In that case, the caller guarantees stability
             // for at least the scope of the fn.  This is basically a
@@ -120,12 +120,12 @@ impl private_methods for &preserve_ctxt {
           }
           cat_comp(cmt_base, comp_field(*)) |
           cat_comp(cmt_base, comp_index(*)) |
-          cat_comp(cmt_base, comp_tuple) {
+          cat_comp(cmt_base, comp_tuple) => {
             // Most embedded components: if the base is stable, the
             // type never changes.
             self.preserve(cmt_base)
           }
-          cat_comp(cmt_base, comp_variant(enum_did)) {
+          cat_comp(cmt_base, comp_variant(enum_did)) => {
             if ty::enum_is_univariant(self.tcx(), enum_did) {
                 self.preserve(cmt_base)
             } else {
@@ -135,22 +135,22 @@ impl private_methods for &preserve_ctxt {
                 self.require_imm(cmt, cmt_base, err_mut_variant)
             }
           }
-          cat_deref(cmt_base, _, uniq_ptr) {
+          cat_deref(cmt_base, _, uniq_ptr) => {
             // Overwriting the base could cause this memory to be
             // freed, so require imm.
             self.require_imm(cmt, cmt_base, err_mut_uniq)
           }
-          cat_deref(_, _, region_ptr(region)) {
+          cat_deref(_, _, region_ptr(region)) => {
             // References are always "stable" for lifetime `region` by
             // induction (when the reference of type &MT was created,
             // the memory must have been stable).
             self.compare_scope(cmt, region)
           }
-          cat_deref(_, _, unsafe_ptr) {
+          cat_deref(_, _, unsafe_ptr) => {
             // Unsafe pointers are the user's problem
             ok(pc_ok)
           }
-          cat_deref(base, derefs, gc_ptr) {
+          cat_deref(base, derefs, gc_ptr) => {
             // GC'd pointers of type @MT: if this pointer lives in
             // immutable, stable memory, then everything is fine.  But
             // otherwise we have no guarantee the pointer will stay
@@ -164,7 +164,7 @@ impl private_methods for &preserve_ctxt {
                   ok(pc_ok) => {
                     ok(pc_ok)
                   }
-                  ok(pc_if_pure(_)) {
+                  ok(pc_if_pure(_)) => {
                     debug!{"must root @T, otherwise purity req'd"};
                     self.attempt_root(cmt, base, derefs)
                   }
@@ -178,7 +178,7 @@ impl private_methods for &preserve_ctxt {
                 self.attempt_root(cmt, base, derefs)
             }
           }
-          cat_discr(base, alt_id) {
+          cat_discr(base, alt_id) => {
             // Subtle: in an alt, we must ensure that each binding
             // variable remains valid for the duration of the arm in
             // which it appears, presuming that this arm is taken.

@@ -114,10 +114,10 @@ pure fn is_digit(c: char) -> bool {
  */
 pure fn to_digit(c: char, radix: uint) -> option<uint> {
     let val = alt c {
-      '0' to '9' { c as uint - ('0' as uint) }
-      'a' to 'z' { c as uint + 10u - ('a' as uint) }
-      'A' to 'Z' { c as uint + 10u - ('A' as uint) }
-      _ { return none; }
+      '0' to '9' => c as uint - ('0' as uint),
+      'a' to 'z' => c as uint + 10u - ('a' as uint),
+      'A' to 'Z' => c as uint + 10u - ('A' as uint),
+      _ => return none
     };
     if val < radix { some(val) }
     else { none }
@@ -159,14 +159,14 @@ fn escape_unicode(c: char) -> ~str {
  */
 fn escape_default(c: char) -> ~str {
     alt c {
-      '\t' { ~"\\t" }
-      '\r' { ~"\\r" }
-      '\n' { ~"\\n" }
-      '\\' { ~"\\\\" }
-      '\'' { ~"\\'" }
-      '"' { ~"\\\"" }
-      '\x20' to '\x7e' { str::from_char(c) }
-      _ { escape_unicode(c) }
+      '\t' => ~"\\t",
+      '\r' => ~"\\r",
+      '\n' => ~"\\n",
+      '\\' => ~"\\\\",
+      '\'' => ~"\\'",
+      '"'  => ~"\\\"",
+      '\x20' to '\x7e' => str::from_char(c),
+      _ => escape_unicode(c)
     }
 }
 

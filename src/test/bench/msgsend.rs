@@ -19,9 +19,9 @@ fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
     let mut done = false;
     while !done {
         alt comm::recv(requests) {
-          get_count { comm::send(responses, copy count); }
-          bytes(b) { count += b; }
-          stop { done = true; }
+          get_count => { comm::send(responses, copy count); }
+          bytes(b) => { count += b; }
+          stop => { done = true; }
         }
     }
     comm::send(responses, count);

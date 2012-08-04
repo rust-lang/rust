@@ -71,25 +71,25 @@ impl loan_methods for loan_ctxt {
         }
 
         alt cmt.cat {
-          cat_binding(_) | cat_rvalue | cat_special(_) {
+          cat_binding(_) | cat_rvalue | cat_special(_) => {
             // should never be loanable
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
                 ~"rvalue with a non-none lp");
           }
-          cat_local(local_id) | cat_arg(local_id) {
+          cat_local(local_id) | cat_arg(local_id) => {
             let local_scope_id = self.tcx().region_map.get(local_id);
             self.ok_with_loan_of(cmt, ty::re_scope(local_scope_id), req_mutbl)
           }
-          cat_stack_upvar(cmt) {
+          cat_stack_upvar(cmt) => {
             self.loan(cmt, req_mutbl) // NDM correct?
           }
-          cat_discr(base, _) {
+          cat_discr(base, _) => {
             self.loan(base, req_mutbl)
           }
           cat_comp(cmt_base, comp_field(*)) |
           cat_comp(cmt_base, comp_index(*)) |
-          cat_comp(cmt_base, comp_tuple) {
+          cat_comp(cmt_base, comp_tuple) => {
             // For most components, the type of the embedded data is
             // stable.  Therefore, the base structure need only be
             // const---unless the component must be immutable.  In
@@ -98,7 +98,7 @@ impl loan_methods for loan_ctxt {
             // overwritten and the component along with it.
             self.loan_stable_comp(cmt, cmt_base, req_mutbl)
           }
-          cat_comp(cmt_base, comp_variant(enum_did)) {
+          cat_comp(cmt_base, comp_variant(enum_did)) => {
             // For enums, the memory is unstable if there are multiple
             // variants, because if the enum value is overwritten then
             // the memory changes type.
@@ -108,7 +108,7 @@ impl loan_methods for loan_ctxt {
                 self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
             }
           }
-          cat_deref(cmt_base, _, uniq_ptr) {
+          cat_deref(cmt_base, _, uniq_ptr) => {
             // For unique pointers, the memory being pointed out is
             // unstable because if the unique pointer is overwritten
             // then the memory is freed.
@@ -116,7 +116,7 @@ impl loan_methods for loan_ctxt {
           }
           cat_deref(cmt1, _, unsafe_ptr) |
           cat_deref(cmt1, _, gc_ptr) |
-          cat_deref(cmt1, _, region_ptr(_)) {
+          cat_deref(cmt1, _, region_ptr(_)) => {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
@@ -132,8 +132,8 @@ impl loan_methods for loan_ctxt {
                         cmt_base: cmt,
                         req_mutbl: ast::mutability) -> bckres<()> {
         let base_mutbl = alt req_mutbl {
-          m_imm { m_imm }
-          m_const | m_mutbl { m_const }
+          m_imm => m_imm,
+          m_const | m_mutbl => m_const
         };
 
         do self.loan(cmt_base, base_mutbl).chain |_ok| {

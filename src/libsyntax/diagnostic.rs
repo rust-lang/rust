@@ -88,10 +88,12 @@ impl codemap_handler of handler for handler_t {
     fn abort_if_errors() {
         let s;
         alt self.err_count {
-          0u { return; }
-          1u { s = ~"aborting due to previous error"; }
-          _  { s = fmt!{"aborting due to %u previous errors",
-                        self.err_count}; }
+          0u => return,
+          1u => s = ~"aborting due to previous error",
+          _  => {
+            s = fmt!{"aborting due to %u previous errors",
+                     self.err_count};
+          }
         }
         self.fatal(s);
     }
@@ -121,8 +123,8 @@ fn mk_span_handler(handler: handler, cm: codemap::codemap) -> span_handler {
 fn mk_handler(emitter: option<emitter>) -> handler {
 
     let emit = alt emitter {
-      some(e) { e }
-      none {
+      some(e) => e,
+      none => {
         let f = fn@(cmsp: option<(codemap::codemap, span)>,
             msg: ~str, t: level) {
             emit(cmsp, msg, t);
@@ -146,19 +148,19 @@ enum level {
 
 fn diagnosticstr(lvl: level) -> ~str {
     alt lvl {
-      fatal { ~"error" }
-      error { ~"error" }
-      warning { ~"warning" }
-      note { ~"note" }
+      fatal => ~"error",
+      error => ~"error",
+      warning => ~"warning",
+      note => ~"note"
     }
 }
 
 fn diagnosticcolor(lvl: level) -> u8 {
     alt lvl {
-      fatal { term::color_bright_red }
-      error { term::color_bright_red }
-      warning { term::color_bright_yellow }
-      note { term::color_bright_green }
+      fatal => term::color_bright_red,
+      error => term::color_bright_red,
+      warning => term::color_bright_yellow,
+      note => term::color_bright_green
     }
 }
 
@@ -181,7 +183,7 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
 fn emit(cmsp: option<(codemap::codemap, span)>,
         msg: ~str, lvl: level) {
     alt cmsp {
-      some((cm, sp)) {
+      some((cm, sp)) => {
         let sp = codemap::adjust_span(cm,sp);
         let ss = codemap::span_to_str(sp, cm);
         let lines = codemap::span_to_lines(sp, cm);
@@ -189,7 +191,7 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
         highlight_lines(cm, sp, lines);
         print_macro_backtrace(cm, sp);
       }
-      none {
+      none => {
         print_diagnostic(~"", lvl, msg);
       }
     }
@@ -265,7 +267,7 @@ fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
 fn expect<T: copy>(diag: span_handler,
                    opt: option<T>, msg: fn() -> ~str) -> T {
     alt opt {
-       some(t) { t }
-       none { diag.handler().bug(msg()); }
+       some(t) => t,
+       none => diag.handler().bug(msg())
     }
 }

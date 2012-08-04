@@ -71,12 +71,12 @@ fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // indicate to the translation pass which function we want to be main.
     fn nomain(&&item: @ast::item) -> option<@ast::item> {
         alt item.node {
-          ast::item_fn(_, _, _) {
+          ast::item_fn(_, _, _) => {
             if *item.ident == ~"main" {
                 option::none
             } else { option::some(item) }
           }
-          _ { option::some(item) }
+          _ => option::some(item)
         }
     }
 
@@ -103,12 +103,12 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 
     if is_test_fn(i) {
         alt i.node {
-          ast::item_fn(decl, _, _) if decl.purity == ast::unsafe_fn {
+          ast::item_fn(decl, _, _) if decl.purity == ast::unsafe_fn => {
             cx.sess.span_fatal(
                 i.span,
                 ~"unsafe functions cannot be used for tests");
           }
-          _ {
+          _ => {
             debug!{"this is a test function"};
             let test = {span: i.span,
                         path: cx.path, ignore: is_ignored(cx, i),
@@ -130,13 +130,13 @@ fn is_test_fn(i: @ast::item) -> bool {
 
     fn has_test_signature(i: @ast::item) -> bool {
         alt i.node {
-          ast::item_fn(decl, tps, _) {
+          ast::item_fn(decl, tps, _) => {
             let input_cnt = vec::len(decl.inputs);
             let no_output = decl.output.node == ast::ty_nil;
             let tparm_cnt = vec::len(tps);
             input_cnt == 0u && no_output && tparm_cnt == 0u
           }
-          _ { false }
+          _ => false
         }
     }
 
@@ -247,8 +247,8 @@ fn mk_path(cx: test_ctxt, path: ~[ast::ident]) -> ~[ast::ident] {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
         alt attr::last_meta_item_value_str_by_name(items, ~"name") {
-          some(@~"std") { true }
-          _ { false }
+          some(@~"std") => true,
+          _ => false
         }
     };
     if is_std { path }

@@ -280,7 +280,7 @@ impl task_builder for task_builder {
 
         blk(do future::from_fn {
             alt comm::recv(po) {
-              exit(_, result) { result }
+              exit(_, result) => result
             }
         });
 
@@ -503,8 +503,8 @@ fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
         comm::send(ch, f());
     }
     alt future::get(option::unwrap(result)) {
-      success { result::ok(comm::recv(po)) }
-      failure { result::err(()) }
+      success => result::ok(comm::recv(po)),
+      failure => result::err(())
     }
 }
 
@@ -992,7 +992,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
      * Step 1. Get spawner's taskgroup info.
      *######################################################################*/
     let spawner_group = alt unsafe { local_get(spawner, taskgroup_key()) } {
-        none {
+        none => {
             // Main task, doing first spawn ever. Lazily initialise here.
             let mut members = new_taskset();
             taskset_insert(&mut members, spawner);
@@ -1005,7 +1005,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             unsafe { local_set(spawner, taskgroup_key(), group); }
             group
         }
-        some(group) { group }
+        some(group) => group
     };
     /*######################################################################*
      * Step 2. Process spawn options for child.
@@ -1029,8 +1029,8 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // it should be enabled only in debug builds.
             let new_generation =
                 alt *old_ancestors {
-                    some(arc) { access_ancestors(arc, |a| a.generation+1) }
-                    none      { 0 } // the actual value doesn't really matter.
+                    some(arc) => access_ancestors(arc, |a| a.generation+1),
+                    none      => 0 // the actual value doesn't really matter.
                 };
             assert new_generation < uint::max_value;
             // Build a new node in the ancestor list.
@@ -1074,8 +1074,8 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             let (child_tg, ancestors, f) = option::swap_unwrap(child_data);
             // Create child task.
             let new_task = alt opts.sched {
-              none             { rustrt::new_task() }
-              some(sched_opts) { new_task_in_new_sched(sched_opts) }
+              none             => rustrt::new_task(),
+              some(sched_opts) => new_task_in_new_sched(sched_opts)
             };
             assert !new_task.is_null();
             // Getting killed after here would leak the task.
@@ -1163,20 +1163,20 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
         }
 
         let num_threads = alt opts.mode {
-          single_threaded { 1u }
-          thread_per_core {
+          single_threaded => 1u,
+          thread_per_core => {
             fail ~"thread_per_core scheduling mode unimplemented"
           }
-          thread_per_task {
+          thread_per_task => {
             fail ~"thread_per_task scheduling mode unimplemented"
           }
-          manual_threads(threads) {
+          manual_threads(threads) => {
             if threads == 0u {
                 fail ~"can not create a scheduler with no threads";
             }
             threads
           }
-          osmain { 0u /* Won't be used */ }
+          osmain => 0u /* Won't be used */
         };
 
         let sched_id = if opts.mode != osmain {
@@ -1273,7 +1273,10 @@ unsafe fn local_data_lookup<T: owned>(
 
     let key_value = key_to_key_value(key);
     let map_pos = (*map).position(|entry|
-        alt entry { some((k,_,_)) { k == key_value } none { false } }
+        alt entry {
+            some((k,_,_)) => k == key_value,
+            none => false
+        }
     );
     do map_pos.map |index| {
         // .get() is guaranteed because of "none { false }" above.
@@ -1334,20 +1337,16 @@ unsafe fn local_set<T: owned>(
     let new_entry = some((keyval, data_ptr, data_box));
     // Find a place to put it.
     alt local_data_lookup(map, key) {
-        some((index, _old_data_ptr)) {
+        some((index, _old_data_ptr)) => {
             // Key already had a value set, _old_data_ptr, whose reference
             // will get dropped when the local_data box is overwritten.
             (*map).set_elt(index, new_entry);
         }
-        none {
+        none => {
             // Find an empty slot. If not, grow the vector.
             alt (*map).position(|x| x == none) {
-                some(empty_index) {
-                    (*map).set_elt(empty_index, new_entry);
-                }
-                none {
-                    (*map).push(new_entry);
-                }
+                some(empty_index) => (*map).set_elt(empty_index, new_entry),
+                none => (*map).push(new_entry)
             }
         }
     }
@@ -1698,8 +1697,8 @@ fn test_try_success() {
     alt do try {
         ~"Success!"
     } {
-        result::ok(~"Success!") { }
-        _ { fail; }
+        result::ok(~"Success!") => (),
+        _ => fail
     }
 }
 
@@ -1709,8 +1708,8 @@ fn test_try_fail() {
     alt do try {
         fail
     } {
-        result::err(()) { }
-        result::ok(()) { fail; }
+        result::err(()) => (),
+        result::ok(()) => fail
     }
 }
 
@@ -2054,15 +2053,15 @@ fn test_tls_modify() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_modify(my_key, |data| {
         alt data {
-            some(@val) { fail ~"unwelcome value: " + val }
-            none       { some(@~"first data") }
+            some(@val) => fail ~"unwelcome value: " + val,
+            none       => some(@~"first data")
         }
     });
     local_data_modify(my_key, |data| {
         alt data {
-            some(@~"first data") { some(@~"next data") }
-            some(@val)          { fail ~"wrong value: " + val }
-            none                { fail ~"missing value" }
+            some(@~"first data") => some(@~"next data"),
+            some(@val)           => fail ~"wrong value: " + val,
+            none                 => fail ~"missing value"
         }
     });
     assert *(local_data_pop(my_key).get()) == ~"next data";

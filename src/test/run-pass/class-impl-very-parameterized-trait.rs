@@ -49,8 +49,8 @@ class cat<T: copy> : map<int, T> {
   fn contains_key_ref(k: &int) -> bool { self.contains_key(*k) }
 
   fn get(+k:int) -> T { alt self.find(k) {
-      some(v) { v }
-      none    { fail ~"epic fail"; }
+      some(v) => { v }
+      none    => { fail ~"epic fail"; }
     }
   }
   fn [](&&k:int) -> T { self.get(k) }
@@ -62,10 +62,10 @@ class cat<T: copy> : map<int, T> {
 
   fn remove(+k:int) -> option<T> {
     alt self.find(k) {
-      some(x) {
+      some(x) => {
         self.meows -= k; some(x)
       }
-      none { none }
+      none => { none }
     }
   }
 

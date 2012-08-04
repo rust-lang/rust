@@ -23,14 +23,12 @@ fn pat_id_map(dm: resolve3::DefMap, pat: @pat) -> pat_id_map {
 
 fn pat_is_variant(dm: resolve3::DefMap, pat: @pat) -> bool {
     alt pat.node {
-      pat_enum(_, _) { true }
-      pat_ident(_, _, none) {
-        alt dm.find(pat.id) {
-          some(def_variant(_, _)) { true }
-          _ { false }
-        }
+      pat_enum(_, _) => true,
+      pat_ident(_, _, none) => alt dm.find(pat.id) {
+        some(def_variant(_, _)) => true,
+        _ => false
       }
-      _ { false }
+      _ => false
     }
 }
 
@@ -38,10 +36,10 @@ fn pat_bindings(dm: resolve3::DefMap, pat: @pat,
                 it: fn(node_id, span, @path)) {
     do walk_pat(pat) |p| {
         alt p.node {
-          pat_ident(_, pth, _) if !pat_is_variant(dm, p) {
+          pat_ident(_, pth, _) if !pat_is_variant(dm, p) => {
             it(p.id, p.span, pth);
           }
-          _ {}
+          _ => {}
         }
     }
 }

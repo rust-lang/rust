@@ -41,7 +41,7 @@ fn create<T: copy>() -> t<T> {
         return rv;
     }
     fn get<T: copy>(elts: dvec<cell<T>>, i: uint) -> T {
-        alt elts.get_elt(i) { some(t) { t } _ { fail } }
+        alt elts.get_elt(i) { some(t) => t, _ => fail }
     }
 
     type repr<T> = {mut nelts: uint,
@@ -239,45 +239,35 @@ mod tests {
         fn intboxeq(&&a: @int, &&b: @int) -> bool { return a == b; }
         fn taggyeq(a: taggy, b: taggy) -> bool {
             alt a {
-              one(a1) {
-                alt b { one(b1) {return a1 == b1; } _ { return false; } }
+              one(a1) => alt b {
+                one(b1) => return a1 == b1,
+                _ => return false
               }
-              two(a1, a2) {
-                alt b {
-                  two(b1, b2) { return a1 == b1 && a2 == b2; }
-                  _ { return false; }
-                }
+              two(a1, a2) => alt b {
+                two(b1, b2) => return a1 == b1 && a2 == b2,
+                _ => return false
               }
-              three(a1, a2, a3) {
-                alt b {
-                  three(b1, b2, b3) {
-                    return a1 == b1 && a2 == b2 && a3 == b3;
-                  }
-                  _ { return false; }
-                }
+              three(a1, a2, a3) => alt b {
+                three(b1, b2, b3) => return a1 == b1 && a2 == b2 && a3 == b3,
+                _ => return false
               }
             }
         }
         fn taggypareq<T>(a: taggypar<T>, b: taggypar<T>) -> bool {
             alt a {
-              onepar::<T>(a1) {
-                alt b {
-                  onepar::<T>(b1) { return a1 == b1; } _ { return false; }
-                }
+              onepar::<T>(a1) => alt b {
+                onepar::<T>(b1) => return a1 == b1,
+                _ => return false
               }
-              twopar::<T>(a1, a2) {
-                alt b {
-                  twopar::<T>(b1, b2) { return a1 == b1 && a2 == b2; }
-                  _ { return false; }
-                }
+              twopar::<T>(a1, a2) => alt b {
+                twopar::<T>(b1, b2) => return a1 == b1 && a2 == b2,
+                _ => return false
               }
-              threepar::<T>(a1, a2, a3) {
-                alt b {
-                  threepar::<T>(b1, b2, b3) {
-                    return a1 == b1 && a2 == b2 && a3 == b3;
-                  }
-                  _ { return false; }
+              threepar::<T>(a1, a2, a3) => alt b {
+                threepar::<T>(b1, b2, b3) => {
+                    return a1 == b1 && a2 == b2 && a3 == b3
                 }
+                _ => return false
               }
             }
         }

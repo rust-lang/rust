@@ -91,10 +91,10 @@ class lookup {
         alt get_base_type_def_id(self.fcx.infcx,
                                  self.self_expr.span,
                                  self.self_ty) {
-            none {
+            none => {
                 optional_inherent_methods = none;
             }
-            some(base_type_def_id) {
+            some(base_type_def_id) => {
                 debug!{"(checking method) found base type"};
                 optional_inherent_methods =
                     self.fcx.ccx.coherence_info.inherent_methods.find
@@ -111,16 +111,16 @@ class lookup {
         loop {
             // First, see whether this is a bounded parameter.
             alt ty::get(self.self_ty).struct {
-              ty::ty_param(p) {
+              ty::ty_param(p) => {
                 self.add_candidates_from_param(p.idx, p.def_id);
               }
-              ty::ty_trait(did, substs) {
+              ty::ty_trait(did, substs) => {
                 self.add_candidates_from_trait(did, substs);
               }
-              ty::ty_class(did, substs) {
+              ty::ty_class(did, substs) => {
                 self.add_candidates_from_class(did, substs);
               }
-              _ { }
+              _ => ()
             }
 
             // if we found anything, stop now.  otherwise continue to
@@ -152,8 +152,8 @@ class lookup {
 
             // check whether we can autoderef and if so loop around again.
             alt ty::deref(self.tcx(), self.self_ty, false) {
-              none { break; }
-              some(mt) {
+              none => break,
+              some(mt) => {
                 self.self_ty = mt.ty;
                 self.derefs += 1u;
               }
@@ -169,13 +169,13 @@ class lookup {
 
             for self.candidates.eachi |i, candidate| {
                 alt candidate.entry.origin {
-                  method_static(did) {
+                  method_static(did) => {
                     self.report_static_candidate(i, did);
                   }
-                  method_param(p) {
+                  method_param(p) => {
                     self.report_param_candidate(i, p.trait_id);
                   }
-                  method_trait(did, _) {
+                  method_trait(did, _) => {
                     self.report_trait_candidate(i, did);
                   }
                 }
@@ -190,7 +190,7 @@ class lookup {
     fn report_static_candidate(idx: uint, did: ast::def_id) {
         let span = if did.crate == ast::local_crate {
             alt check self.tcx().items.get(did.node) {
-              ast_map::node_method(m, _, _) { m.span }
+              ast_map::node_method(m, _, _) => m.span,
             }
         } else {
             self.expr.span
@@ -228,24 +228,24 @@ class lookup {
         for vec::each(*bounds) |bound| {
             let (iid, bound_substs) = alt bound {
               ty::bound_copy | ty::bound_send | ty::bound_const |
-              ty::bound_owned {
+              ty::bound_owned => {
                 again; /* ok */
               }
-              ty::bound_trait(bound_t) {
+              ty::bound_trait(bound_t) => {
                 alt check ty::get(bound_t).struct {
-                  ty::ty_trait(i, substs) { (i, substs) }
+                  ty::ty_trait(i, substs) => (i, substs)
                 }
               }
             };
 
             let trt_methods = ty::trait_methods(tcx, iid);
             alt vec::position(*trt_methods, |m| m.ident == self.m_name) {
-              none {
+              none => {
                 /* check next bound */
                 trait_bnd_idx += 1u;
               }
 
-              some(pos) {
+              some(pos) => {
                 // Replace any appearance of `self` with the type of the
                 // generic parameter itself.  Note that this is the only case
                 // where this replacement is necessary: in all other cases, we
@@ -330,7 +330,7 @@ class lookup {
 
     fn ty_from_did(did: ast::def_id) -> ty::t {
         alt check ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
-          ty::ty_fn(fty) {
+          ty::ty_fn(fty) => {
             ty::mk_fn(self.tcx(), {proto: ast::proto_box with fty})
           }
         }
@@ -409,8 +409,8 @@ class lookup {
             };
             debug!{"matches = %?", matches};
             alt matches {
-              result::err(_) { /* keep looking */ }
-              result::ok(_) {
+              result::err(_) => { /* keep looking */ }
+              result::ok(_) => {
                 if !self.candidate_impls.contains_key(im.did) {
                     let fty = self.ty_from_did(m.did);
                     self.candidates.push(
@@ -455,10 +455,10 @@ class lookup {
 
         // Add inherent methods.
         alt optional_inherent_methods {
-            none {
+            none => {
                 // Continue.
             }
-            some(inherent_methods) {
+            some(inherent_methods) => {
                 debug!{"(adding inherent and extension candidates) adding \
                         inherent candidates"};
                 for inherent_methods.each |implementation| {
@@ -474,10 +474,10 @@ class lookup {
 
         // Add trait methods.
         alt self.fcx.ccx.trait_map.find(self.expr.id) {
-            none {
+            none => {
                 // Should only happen for placement new right now.
             }
-            some(trait_ids) {
+            some(trait_ids) => {
                 for (*trait_ids).each |trait_id| {
                     debug!{"(adding inherent and extension candidates) \
                             trying trait: %s",
@@ -485,10 +485,10 @@ class lookup {
 
                     let coherence_info = self.fcx.ccx.coherence_info;
                     alt coherence_info.extension_methods.find(trait_id) {
-                        none {
+                        none => {
                             // Do nothing.
                         }
-                        some(extension_methods) {
+                        some(extension_methods) => {
                             for extension_methods.each |implementation| {
                                 debug!{"(adding inherent and extension \
                                          candidates) adding impl %s",
@@ -525,8 +525,8 @@ class lookup {
         // from an impl, this'll basically be a no-nop.
         alt self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
                                  cand.self_ty, cand.rcvr_ty) {
-          result::ok(_) {}
-          result::err(_) {
+          result::ok(_) => (),
+          result::err(_) => {
             self.tcx().sess.span_bug(
                 self.expr.span,
                 fmt!{"%s was assignable to %s but now is not?",

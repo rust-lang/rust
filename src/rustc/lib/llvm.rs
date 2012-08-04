@@ -1016,8 +1016,8 @@ fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
 fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
    ~str {
     alt type_has_name(names, ty) {
-      option::some(n) { return n; }
-      _ {}
+      option::some(n) => return n,
+      _ => {}
     }
 
     let outer = vec::append_one(outer0, ty);
@@ -1036,18 +1036,18 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
     }
 
     alt kind {
-      Void { return ~"Void"; }
-      Half { return ~"Half"; }
-      Float { return ~"Float"; }
-      Double { return ~"Double"; }
-      X86_FP80 { return ~"X86_FP80"; }
-      FP128 { return ~"FP128"; }
-      PPC_FP128 { return ~"PPC_FP128"; }
-      Label { return ~"Label"; }
-      Integer {
+      Void => return ~"Void",
+      Half => return ~"Half",
+      Float => return ~"Float",
+      Double => return ~"Double",
+      X86_FP80 => return ~"X86_FP80",
+      FP128 => return ~"FP128",
+      PPC_FP128 => return ~"PPC_FP128",
+      Label => return ~"Label",
+      Integer => {
         return ~"i" + int::str(llvm::LLVMGetIntTypeWidth(ty) as int);
       }
-      Function {
+      Function => {
         let mut s = ~"fn(";
         let out_ty: TypeRef = llvm::LLVMGetReturnType(ty);
         let n_args = llvm::LLVMCountParamTypes(ty) as uint;
@@ -1060,7 +1060,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         s += type_to_str_inner(names, outer, out_ty);
         return s;
       }
-      Struct {
+      Struct => {
         let mut s: ~str = ~"{";
         let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
         let elts = vec::from_elem(n_elts, 0 as TypeRef);
@@ -1071,12 +1071,12 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         s += ~"}";
         return s;
       }
-      Array {
+      Array => {
         let el_ty = llvm::LLVMGetElementType(ty);
         return ~"[" + type_to_str_inner(names, outer, el_ty) + ~" x " +
             uint::str(llvm::LLVMGetArrayLength(ty) as uint) + ~"]";
       }
-      Pointer {
+      Pointer => {
         let mut i: uint = 0u;
         for outer0.each |tout| {
             i += 1u;
@@ -1096,19 +1096,19 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         return addrstr + ~"*" +
                 type_to_str_inner(names, outer, llvm::LLVMGetElementType(ty));
       }
-      Vector { return ~"Vector"; }
-      Metadata { return ~"Metadata"; }
-      X86_MMX { return ~"X86_MMAX"; }
+      Vector => return ~"Vector",
+      Metadata => return ~"Metadata",
+      X86_MMX => return ~"X86_MMAX"
     }
 }
 
 fn float_width(llt: TypeRef) -> uint {
     return alt llvm::LLVMGetTypeKind(llt) as int {
-          1 { 32u }
-          2 { 64u }
-          3 { 80u }
-          4 | 5 { 128u }
-          _ { fail ~"llvm_float_width called on a non-float type" }
+          1 => 32u,
+          2 => 64u,
+          3 => 80u,
+          4 | 5 => 128u,
+          _ => fail ~"llvm_float_width called on a non-float type"
         };
 }
 

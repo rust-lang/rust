@@ -8,8 +8,8 @@ export get_rpath_flags;
 
 pure fn not_win32(os: session::os) -> bool {
   alt os {
-      session::os_win32 { false }
-      _ { true }
+      session::os_win32 => false,
+      _ => true
   }
 }
 
@@ -109,10 +109,10 @@ fn get_rpath_relative_to_output(os: session::os,
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = alt os {
-        session::os_linux { ~"$ORIGIN" + path::path_sep() }
-        session::os_freebsd { ~"$ORIGIN" + path::path_sep() }
-        session::os_macos { ~"@executable_path" + path::path_sep() }
-        session::os_win32 { core::unreachable(); }
+        session::os_linux => ~"$ORIGIN" + path::path_sep(),
+        session::os_freebsd => ~"$ORIGIN" + path::path_sep(),
+        session::os_macos => ~"@executable_path" + path::path_sep(),
+        session::os_win32 => core::unreachable()
     };
 
     prefix + get_relative_to(

@@ -44,11 +44,11 @@ fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
     let mut ls = ls;
     loop {
         ls = alt *ls {
-          cons(hd, tl) {
+          cons(hd, tl) => {
             if f(hd) { return some(hd); }
             tl
           }
-          nil { return none; }
+          nil => return none
         }
     };
 }
@@ -64,8 +64,8 @@ fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
 /// Returns true if the list is empty
 pure fn is_empty<T: copy>(ls: @list<T>) -> bool {
     alt *ls {
-        nil { true }
-        _ { false }
+        nil => true,
+        _ => false
     }
 }
 
@@ -84,21 +84,24 @@ fn len<T>(ls: @list<T>) -> uint {
 /// Returns all but the first element of a list
 pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
     alt *ls {
-        cons(_, tl) { return tl; }
-        nil { fail ~"list empty" }
+        cons(_, tl) => return tl,
+        nil => fail ~"list empty"
     }
 }
 
 /// Returns the first element of a list
 pure fn head<T: copy>(ls: @list<T>) -> T {
-    alt check *ls { cons(hd, _) { hd } }
+    alt check *ls { cons(hd, _) => hd }
 }
 
 /// Appends one list to another
 pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
     alt *l {
-      nil { return m; }
-      cons(x, xs) { let rest = append(xs, m); return @cons(x, rest); }
+      nil => return m,
+      cons(x, xs) => {
+        let rest = append(xs, m);
+        return @cons(x, rest);
+      }
     }
 }
 
@@ -112,11 +115,11 @@ fn iter<T>(l: @list<T>, f: fn(T)) {
     let mut cur = l;
     loop {
         cur = alt *cur {
-          cons(hd, tl) {
+          cons(hd, tl) => {
             f(hd);
             tl
           }
-          nil { break; }
+          nil => break
         }
     }
 }
@@ -126,11 +129,11 @@ fn each<T>(l: @list<T>, f: fn(T) -> bool) {
     let mut cur = l;
     loop {
         cur = alt *cur {
-          cons(hd, tl) {
+          cons(hd, tl) => {
             if !f(hd) { return; }
             tl
           }
-          nil { break; }
+          nil => break
         }
     }
 }

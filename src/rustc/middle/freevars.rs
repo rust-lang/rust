@@ -39,24 +39,24 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
 
     let walk_expr = fn@(expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
             alt expr.node {
-              ast::expr_fn(proto, decl, _, _) {
+              ast::expr_fn(proto, decl, _, _) => {
                 if proto != ast::proto_bare {
                     visit::visit_expr(expr, depth + 1, v);
                 }
               }
-              ast::expr_fn_block(_, _, _) {
+              ast::expr_fn_block(_, _, _) => {
                 visit::visit_expr(expr, depth + 1, v);
               }
-              ast::expr_path(path) {
+              ast::expr_path(path) => {
                   let mut i = 0;
                   alt def_map.find(expr.id) {
-                    none { fail (~"Not found: " + path_to_str(path)) }
-                    some(df) {
+                    none => fail (~"Not found: " + path_to_str(path)),
+                    some(df) => {
                       let mut def = df;
                       while i < depth {
                         alt copy def {
-                          ast::def_upvar(_, inner, _) { def = *inner; }
-                          _ { break; }
+                          ast::def_upvar(_, inner, _) => { def = *inner; }
+                          _ => break
                         }
                         i += 1;
                       }
@@ -70,7 +70,7 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
                     }
                   }
               }
-              _ { visit::visit_expr(expr, depth, v); }
+              _ => visit::visit_expr(expr, depth, v)
             }
         };
 
@@ -105,8 +105,8 @@ fn annotate_freevars(def_map: resolve3::DefMap, crate: @ast::crate) ->
 
 fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     alt tcx.freevars.find(fid) {
-      none { fail ~"get_freevars: " + int::str(fid) + ~" has no freevars"; }
-      some(d) { return d; }
+      none => fail ~"get_freevars: " + int::str(fid) + ~" has no freevars",
+      some(d) => return d
     }
 }
 fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {

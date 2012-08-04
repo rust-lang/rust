@@ -18,25 +18,25 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     return alt e {
       // expr_mac should really be expr_ext or something; it's the
       // entry-point for all syntax extensions.
-          expr_mac(mac) {
+          expr_mac(mac) => {
 
             // Old-style macros, for compatibility, will erase this whole
             // block once we've transitioned.
             alt mac.node {
-              mac_invoc(pth, args, body) {
+              mac_invoc(pth, args, body) => {
                 assert (vec::len(pth.idents) > 0u);
                 let extname = pth.idents[0];
                 alt exts.find(*extname) {
-                  none {
+                  none => {
                     cx.span_fatal(pth.span,
                                   fmt!{"macro undefined: '%s'", *extname})
                   }
-                  some(item_decorator(_)) {
+                  some(item_decorator(_)) => {
                     cx.span_fatal(
                         pth.span,
                         fmt!{"%s can only be used as a decorator", *extname});
                   }
-                  some(normal({expander: exp, span: exp_sp})) {
+                  some(normal({expander: exp, span: exp_sp})) => {
                     let expanded = exp(cx, mac.span, args, body);
 
                     cx.bt_push(expanded_from({call_site: s,
@@ -47,17 +47,17 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 
                     (fully_expanded, s)
                   }
-                  some(macro_defining(ext)) {
+                  some(macro_defining(ext)) => {
                     let named_extension = ext(cx, mac.span, args, body);
                     exts.insert(*named_extension.ident, named_extension.ext);
                     (ast::expr_rec(~[], none), s)
                   }
-                  some(expr_tt(_)) {
+                  some(expr_tt(_)) => {
                     cx.span_fatal(pth.span,
                                   fmt!{"this tt-style macro should be \
                                         invoked '%s!{...}'", *extname})
                   }
-                  some(item_tt(*)) {
+                  some(item_tt(*)) => {
                     cx.span_fatal(pth.span,
                                   ~"cannot use item macros in this context");
                   }
@@ -66,20 +66,20 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 
               // Token-tree macros, these will be the only case when we're
               // finished transitioning.
-              mac_invoc_tt(pth, tts) {
+              mac_invoc_tt(pth, tts) => {
                 assert (vec::len(pth.idents) == 1u);
                 let extname = pth.idents[0];
                 alt exts.find(*extname) {
-                  none {
+                  none => {
                     cx.span_fatal(pth.span,
                                   fmt!{"macro undefined: '%s'", *extname})
                   }
-                  some(expr_tt({expander: exp, span: exp_sp})) {
+                  some(expr_tt({expander: exp, span: exp_sp})) => {
                     let expanded = alt exp(cx, mac.span, tts) {
-                      mr_expr(e) { e }
-                      _ { cx.span_fatal(
+                      mr_expr(e) => e,
+                      _ => cx.span_fatal(
                           pth.span, fmt!{"non-expr macro in expr pos: %s",
-                                         *extname}) }
+                                         *extname})
                     };
 
                     cx.bt_push(expanded_from({call_site: s,
@@ -90,7 +90,7 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 
                     (fully_expanded, s)
                   }
-                  some(normal({expander: exp, span: exp_sp})) {
+                  some(normal({expander: exp, span: exp_sp})) => {
                     //convert the new-style invoc for the old-style macro
                     let arg = base::tt_args_to_original_flavor(cx, pth.span,
                                                                tts);
@@ -104,7 +104,7 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 
                     (fully_expanded, s)
                   }
-                  _ {
+                  _ => {
                     cx.span_fatal(pth.span,
                                   fmt!{"'%s' is not a tt-style macro",
                                        *extname})
@@ -112,10 +112,10 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 
                 }
               }
-              _ { cx.span_bug(mac.span, ~"naked syntactic bit") }
+              _ => cx.span_bug(mac.span, ~"naked syntactic bit")
             }
           }
-          _ { orig(e, s, fld) }
+          _ => orig(e, s, fld)
         };
 }
 
@@ -142,17 +142,14 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     let new_items = do vec::flat_map(module_.items) |item| {
         do vec::foldr(item.attrs, ~[item]) |attr, items| {
             let mname = alt attr.node.value.node {
-              ast::meta_word(n) { n }
-              ast::meta_name_value(n, _) { n }
-              ast::meta_list(n, _) { n }
+              ast::meta_word(n) => n,
+              ast::meta_name_value(n, _) => n,
+              ast::meta_list(n, _) => n
             };
             alt exts.find(*mname) {
               none | some(normal(_)) | some(macro_defining(_))
-              | some(expr_tt(_)) | some(item_tt(*)) {
-                items
-              }
-
-              some(item_decorator(dec_fn)) {
+              | some(expr_tt(_)) | some(item_tt(*)) => items,
+              some(item_decorator(dec_fn)) => {
                 dec_fn(cx, attr.span, attr.node.value, items)
               }
             }
@@ -170,24 +167,22 @@ fn expand_item(exts: hashmap<~str, syntax_extension>,
     -> option<@ast::item>
 {
     let is_mod = alt it.node {
-      ast::item_mod(_) | ast::item_foreign_mod(_) {true}
-      _ {false}
+      ast::item_mod(_) | ast::item_foreign_mod(_) => true,
+      _ => false
     };
     let maybe_it = alt it.node {
-      ast::item_mac(*) {
-        expand_item_mac(exts, cx, it, fld)
-      }
-      _ { some(it) }
+      ast::item_mac(*) => expand_item_mac(exts, cx, it, fld),
+      _ => some(it)
     };
 
     alt maybe_it {
-      some(it) {
+      some(it) => {
         if is_mod { cx.mod_push(it.ident); }
         let ret_val = orig(it, fld);
         if is_mod { cx.mod_pop(); }
         return ret_val;
       }
-      none { return none; }
+      none => return none
     }
 }
 
@@ -198,24 +193,24 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                    cx: ext_ctxt, &&it: @ast::item,
                    fld: ast_fold) -> option<@ast::item> {
     alt it.node {
-      item_mac({node: mac_invoc_tt(pth, tts), span}) {
+      item_mac({node: mac_invoc_tt(pth, tts), span}) => {
         let extname = pth.idents[0];
         alt exts.find(*extname) {
-          none {
+          none => {
             cx.span_fatal(pth.span,
                           fmt!{"macro undefined: '%s'", *extname})
           }
-          some(item_tt(expand)) {
+          some(item_tt(expand)) => {
             let expanded = expand.expander(cx, it.span, it.ident, tts);
             cx.bt_push(expanded_from({call_site: it.span,
                                       callie: {name: *extname,
                                                span: expand.span}}));
             let maybe_it = alt expanded {
-              mr_item(it) { fld.fold_item(it) }
-              mr_expr(e) { cx.span_fatal(pth.span,
+              mr_item(it) => fld.fold_item(it),
+              mr_expr(e) => cx.span_fatal(pth.span,
                                          ~"expr macro in item position: " +
-                                         *extname) }
-              mr_def(mdef) {
+                                         *extname),
+              mr_def(mdef) => {
                 exts.insert(*mdef.ident, mdef.ext);
                 none
               }
@@ -223,13 +218,11 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
             cx.bt_pop();
             return maybe_it
           }
-          _ { cx.span_fatal(it.span,
-                            fmt!{"%s is not a legal here", *extname}) }
+          _ => cx.span_fatal(it.span,
+                            fmt!{"%s is not a legal here", *extname})
         }
       }
-      _ {
-        cx.span_bug(it.span, ~"invalid item macro invocation");
-      }
+      _ => cx.span_bug(it.span, ~"invalid item macro invocation")
     }
 }
 

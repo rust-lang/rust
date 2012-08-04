@@ -20,8 +20,8 @@ fn main() {
     
     pipes::spawn_service(oneshot::init, |p| { 
         alt try_recv(p) {
-          some(*) { fail }
-          none { }
+          some(*) => { fail }
+          none => { }
         }
     });
 

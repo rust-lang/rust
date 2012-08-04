@@ -12,8 +12,8 @@ enum direction {
 impl of to_str for direction {
     fn to_str() -> ~str {
         alt self {
-          send { ~"send" }
-          recv { ~"recv" }
+          send => ~"send",
+          recv => ~"recv"
         }
     }
 }
@@ -21,8 +21,8 @@ impl of to_str for direction {
 impl methods for direction {
     fn reverse() -> direction {
         alt self {
-          send { recv }
-          recv { send }
+          send => recv,
+          recv => send
         }
     }
 }
@@ -37,26 +37,20 @@ enum message {
 impl methods for message {
     fn name() -> ident {
         alt self {
-          message(id, _, _, _, _) {
-            id
-          }
+          message(id, _, _, _, _) => id
         }
     }
 
     fn span() -> span {
         alt self {
-          message(_, span, _, _, _) {
-            span
-          }
+          message(_, span, _, _, _) => span
         }
     }
 
     /// Return the type parameters actually used by this message
     fn get_params() -> ~[ast::ty_param] {
         alt self {
-          message(_, _, _, this, _) {
-            this.ty_params
-          }
+          message(_, _, _, this, _) => this.ty_params
         }
     }
 }
@@ -99,11 +93,11 @@ impl methods for state {
     fn reachable(f: fn(state) -> bool) {
         for self.messages.each |m| {
             alt m {
-              message(_, _, _, _, some({state: id, _})) {
+              message(_, _, _, _, some({state: id, _})) => {
                 let state = self.proto.get_state(id);
                 if !f(state) { break }
               }
-              _ { }
+              _ => ()
             }
         }
     }

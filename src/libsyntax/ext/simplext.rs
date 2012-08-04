@@ -37,27 +37,17 @@ enum matchable {
 /* for when given an incompatible bit of AST */
 fn match_error(cx: ext_ctxt, m: matchable, expected: ~str) -> ! {
     alt m {
-      match_expr(x) {
-        cx.span_fatal(x.span,
-                      ~"this argument is an expr, expected " + expected);
-      }
-      match_path(x) {
-        cx.span_fatal(x.span,
-                      ~"this argument is a path, expected " + expected);
-      }
-      match_ident(x) {
-        cx.span_fatal(x.span,
-                      ~"this argument is an ident, expected " + expected);
-      }
-      match_ty(x) {
-        cx.span_fatal(x.span,
-                      ~"this argument is a type, expected " + expected);
-      }
-      match_block(x) {
-        cx.span_fatal(x.span,
-                      ~"this argument is a block, expected " + expected);
-      }
-      match_exact { cx.bug(~"what is a match_exact doing in a bindings?"); }
+      match_expr(x) => cx.span_fatal(
+          x.span, ~"this argument is an expr, expected " + expected),
+      match_path(x) => cx.span_fatal(
+          x.span, ~"this argument is a path, expected " + expected),
+      match_ident(x) => cx.span_fatal(
+          x.span, ~"this argument is an ident, expected " + expected),
+      match_ty(x) => cx.span_fatal(
+          x.span, ~"this argument is a type, expected " + expected),
+      match_block(x) => cx.span_fatal(
+          x.span, ~"this argument is a block, expected " + expected),
+      match_exact => cx.bug(~"what is a match_exact doing in a bindings?")
     }
 }
 
@@ -76,9 +66,8 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
     let mut res = none;
     for elts.each |elt| {
         alt elt.node {
-          expr_mac(m) {
-            alt m.node {
-              ast::mac_ellipsis {
+          expr_mac(m) => alt m.node {
+            ast::mac_ellipsis => {
                 if res != none {
                     cx.span_fatal(m.span, ~"only one ellipsis allowed");
                 }
@@ -86,37 +75,37 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
                     some({pre: vec::slice(elts, 0u, idx - 1u),
                           rep: some(elts[idx - 1u]),
                           post: vec::slice(elts, idx + 1u, vec::len(elts))});
-              }
-              _ { }
             }
+            _ => ()
           }
-          _ { }
+          _ => ()
         }
         idx += 1u;
     }
     return alt res {
-          some(val) { val }
-          none { {pre: elts, rep: none, post: ~[]} }
-        }
+          some(val) => val,
+          none => {pre: elts, rep: none, post: ~[]}
+    }
 }
 
 fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> option<U>, v: ~[T]) ->
    option<~[U]> {
     let mut res = ~[];
     for v.each |elem| {
-        alt f(elem) { none { return none; } some(fv) { vec::push(res, fv); } }
+        alt f(elem) {
+          none => return none,
+          some(fv) => vec::push(res, fv)
+        }
     }
     return some(res);
 }
 
 fn a_d_map(ad: arb_depth<matchable>, f: selector) -> match_result {
     alt ad {
-      leaf(x) { return f(x); }
-      seq(ads, span) {
-        alt option_flatten_map(|x| a_d_map(x, f), *ads) {
-          none { return none; }
-          some(ts) { return some(seq(@ts, span)); }
-        }
+      leaf(x) => return f(x),
+      seq(ads, span) => alt option_flatten_map(|x| a_d_map(x, f), *ads) {
+        none => return none,
+        some(ts) => return some(seq(@ts, span))
       }
     }
 }
@@ -124,8 +113,8 @@ fn a_d_map(ad: arb_depth<matchable>, f: selector) -> match_result {
 fn compose_sels(s1: selector, s2: selector) -> selector {
     fn scomp(s1: selector, s2: selector, m: matchable) -> match_result {
         return alt s1(m) {
-              none { none }
-              some(matches) { a_d_map(matches, s2) }
+              none => none,
+              some(matches) => a_d_map(matches, s2)
             }
     }
     return { |x| scomp(s1, s2, x) };
@@ -167,13 +156,13 @@ fn use_selectors_to_bind(b: binders, e: @expr) -> option<bindings> {
     let res = box_str_hash::<arb_depth<matchable>>();
     //need to do this first, to check vec lengths.
     for b.literal_ast_matchers.each |sel| {
-        alt sel(match_expr(e)) { none { return none; } _ { } }
+        alt sel(match_expr(e)) { none => return none, _ => () }
     }
     let mut never_mind: bool = false;
     for b.real_binders.each |key, val| {
         alt val(match_expr(e)) {
-          none { never_mind = true; }
-          some(mtc) { res.insert(key, mtc); }
+          none => never_mind = true,
+          some(mtc) => { res.insert(key, mtc); }
         }
     };
     //HACK: `ret` doesn't work in `for each`
@@ -221,8 +210,8 @@ fn follow(m: arb_depth<matchable>, idx_path: @mut ~[uint]) ->
     let mut res: arb_depth<matchable> = m;
     for vec::each(*idx_path) |idx| {
         res = alt res {
-          leaf(_) { return res;/* end of the line */ }
-          seq(new_ms, _) { new_ms[idx] }
+          leaf(_) => return res,/* end of the line */
+          seq(new_ms, _) => new_ms[idx]
         }
     }
     return res;
@@ -231,15 +220,15 @@ fn follow(m: arb_depth<matchable>, idx_path: @mut ~[uint]) ->
 fn follow_for_trans(cx: ext_ctxt, mmaybe: option<arb_depth<matchable>>,
                     idx_path: @mut ~[uint]) -> option<matchable> {
     alt mmaybe {
-      none { return none }
-      some(m) {
+      none => return none,
+      some(m) => {
         return alt follow(m, idx_path) {
-              seq(_, sp) {
+              seq(_, sp) => {
                 cx.span_fatal(sp,
                               ~"syntax matched under ... but not " +
                                   ~"used that way.")
               }
-              leaf(m) { return some(m) }
+              leaf(m) => return some(m)
             }
       }
     }
@@ -270,24 +259,24 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
                     recur: fn@(&&@expr) -> @expr,
                     exprs: ~[@expr]) -> ~[@expr] {
     alt elts_to_ell(cx, exprs) {
-      {pre: pre, rep: repeat_me_maybe, post: post} {
+      {pre: pre, rep: repeat_me_maybe, post: post} => {
         let mut res = vec::map(pre, recur);
         alt repeat_me_maybe {
-          none { }
-          some(repeat_me) {
+          none => (),
+          some(repeat_me) => {
             let mut repeat: option<{rep_count: uint, name: ident}> = none;
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
             do free_vars(b, repeat_me) |fv| {
                 let cur_pos = follow(b.get(fv), idx_path);
                 alt cur_pos {
-                  leaf(_) { }
-                  seq(ms, _) {
+                  leaf(_) => (),
+                  seq(ms, _) => {
                     alt repeat {
-                      none {
+                      none => {
                         repeat = some({rep_count: vec::len(*ms), name: fv});
                       }
-                      some({rep_count: old_len, name: old_name}) {
+                      some({rep_count: old_len, name: old_name}) => {
                         let len = vec::len(*ms);
                         if old_len != len {
                             let msg =
@@ -302,12 +291,12 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
                 }
             };
             alt repeat {
-              none {
+              none => {
                 cx.span_fatal(repeat_me.span,
                               ~"'...' surrounds an expression without any" +
                                   ~" repeating syntax variables");
               }
-              some({rep_count: rc, _}) {
+              some({rep_count: rc, _}) => {
                 /* Whew, we now know how how many times to repeat */
                 let mut idx: uint = 0u;
                 while idx < rc {
@@ -332,9 +321,9 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
 fn transcribe_ident(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
                     &&i: ident, _fld: ast_fold) -> ident {
     return alt follow_for_trans(cx, b.find(i), idx_path) {
-          some(match_ident(a_id)) { a_id.node }
-          some(m) { match_error(cx, m, ~"an identifier") }
-          none { i }
+          some(match_ident(a_id)) => a_id.node,
+          some(m) => match_error(cx, m, ~"an identifier"),
+          none => i
         }
 }
 
@@ -344,13 +333,13 @@ fn transcribe_path(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
     // Don't substitute into qualified names.
     if vec::len(p.types) > 0u || vec::len(p.idents) != 1u { return p; }
     alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
-      some(match_ident(id)) {
+      some(match_ident(id)) => {
         {span: id.span, global: false, idents: ~[id.node],
          rp: none, types: ~[]}
       }
-      some(match_path(a_pth)) { *a_pth }
-      some(m) { match_error(cx, m, ~"a path") }
-      none { p }
+      some(match_path(a_pth)) => *a_pth,
+      some(m) => match_error(cx, m, ~"a path"),
+      none => p
     }
 }
 
@@ -361,26 +350,26 @@ fn transcribe_expr(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
     -> (ast::expr_, span)
 {
     return alt e {
-          expr_path(p) {
+          expr_path(p) => {
             // Don't substitute into qualified names.
             if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
                 (e, s);
             }
             alt follow_for_trans(cx, b.find(p.idents[0]), idx_path) {
-              some(match_ident(id)) {
+              some(match_ident(id)) => {
                 (expr_path(@{span: id.span,
                              global: false,
                              idents: ~[id.node],
                              rp: none,
                              types: ~[]}), id.span)
               }
-              some(match_path(a_pth)) { (expr_path(a_pth), s) }
-              some(match_expr(a_exp)) { (a_exp.node, a_exp.span) }
-              some(m) { match_error(cx, m, ~"an expression") }
-              none { orig(e, s, fld) }
+              some(match_path(a_pth)) => (expr_path(a_pth), s),
+              some(match_expr(a_exp)) => (a_exp.node, a_exp.span),
+              some(m) => match_error(cx, m, ~"an expression"),
+              none => orig(e, s, fld)
             }
           }
-          _ { orig(e, s, fld) }
+          _ => orig(e, s, fld)
         }
 }
 
@@ -390,19 +379,19 @@ fn transcribe_type(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
     -> (ast::ty_, span)
 {
     return alt t {
-          ast::ty_path(pth, _) {
+          ast::ty_path(pth, _) => {
             alt path_to_ident(pth) {
-              some(id) {
+              some(id) => {
                 alt follow_for_trans(cx, b.find(id), idx_path) {
-                  some(match_ty(ty)) { (ty.node, ty.span) }
-                  some(m) { match_error(cx, m, ~"a type") }
-                  none { orig(t, s, fld) }
+                  some(match_ty(ty)) => (ty.node, ty.span),
+                  some(m) => match_error(cx, m, ~"a type"),
+                  none => orig(t, s, fld)
                 }
               }
-              none { orig(t, s, fld) }
+              none => orig(t, s, fld)
             }
           }
-          _ { orig(t, s, fld) }
+          _ => orig(t, s, fld)
         }
 }
 
@@ -416,22 +405,16 @@ fn transcribe_block(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
     -> (blk_, span)
 {
     return alt block_to_ident(blk) {
-          some(id) {
+          some(id) => {
             alt follow_for_trans(cx, b.find(id), idx_path) {
-              some(match_block(new_blk)) { (new_blk.node, new_blk.span) }
-
-
-
-
+              some(match_block(new_blk)) => (new_blk.node, new_blk.span),
 
               // possibly allow promotion of ident/path/expr to blocks?
-              some(m) {
-                match_error(cx, m, ~"a block")
-              }
-              none { orig(blk, s, fld) }
+              some(m) => match_error(cx, m, ~"a block"),
+              none => orig(blk, s, fld)
             }
           }
-          none { orig(blk, s, fld) }
+          none => orig(blk, s, fld)
         }
 }
 
@@ -442,12 +425,12 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
 
     //it might be possible to traverse only exprs, not matchables
     alt m {
-      match_expr(e) {
+      match_expr(e) => {
         alt e.node {
-          expr_path(p_pth) { p_t_s_r_path(cx, p_pth, s, b); }
-          expr_vec(p_elts, _) {
+          expr_path(p_pth) => p_t_s_r_path(cx, p_pth, s, b),
+          expr_vec(p_elts, _) => {
             alt elts_to_ell(cx, p_elts) {
-              {pre: pre, rep: some(repeat_me), post: post} {
+              {pre: pre, rep: some(repeat_me), post: post} => {
                 p_t_s_r_length(cx, vec::len(pre) + vec::len(post), true, s,
                                b);
                 if vec::len(pre) > 0u {
@@ -460,7 +443,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                                    ~"matching after `...` not yet supported");
                 }
               }
-              {pre: pre, rep: none, post: post} {
+              {pre: pre, rep: none, post: post} => {
                 if post != ~[] {
                     cx.bug(~"elts_to_ell provided an invalid result");
                 }
@@ -470,26 +453,24 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
             }
           }
           /* FIXME (#2251): handle embedded types and blocks, at least */
-          expr_mac(mac) {
+          expr_mac(mac) => {
             p_t_s_r_mac(cx, mac, s, b);
           }
-          _ {
+          _ => {
             fn select(cx: ext_ctxt, m: matchable, pat: @expr) ->
                match_result {
                 return alt m {
-                      match_expr(e) {
+                      match_expr(e) => {
                         if e == pat { some(leaf(match_exact)) } else { none }
                       }
-                      _ { cx.bug(~"broken traversal in p_t_s_r") }
+                      _ => cx.bug(~"broken traversal in p_t_s_r")
                     }
             }
             b.literal_ast_matchers.push(|x| select(cx, x, e));
           }
         }
       }
-      _ {
-          cx.bug(~"undocumented invariant in p_t_s_rec");
-      }
+      _ => cx.bug(~"undocumented invariant in p_t_s_rec")
     }
 }
 
@@ -497,29 +478,29 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
 /* make a match more precise */
 fn specialize_match(m: matchable) -> matchable {
     return alt m {
-          match_expr(e) {
+          match_expr(e) => {
             alt e.node {
-              expr_path(pth) {
+              expr_path(pth) => {
                 alt path_to_ident(pth) {
-                  some(id) { match_ident(respan(pth.span, id)) }
-                  none { match_path(pth) }
+                  some(id) => match_ident(respan(pth.span, id)),
+                  none => match_path(pth)
                 }
               }
-              _ { m }
+              _ => m
             }
           }
-          _ { m }
+          _ => m
         }
 }
 
 /* pattern_to_selectors helper functions */
 fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
     alt path_to_ident(p) {
-      some(p_id) {
+      some(p_id) => {
         fn select(cx: ext_ctxt, m: matchable) -> match_result {
             return alt m {
-                  match_expr(e) { some(leaf(specialize_match(m))) }
-                  _ { cx.bug(~"broken traversal in p_t_s_r") }
+                  match_expr(e) => some(leaf(specialize_match(m))),
+                  _ => cx.bug(~"broken traversal in p_t_s_r")
                 }
         }
         if b.real_binders.contains_key(p_id) {
@@ -527,17 +508,18 @@ fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
         }
         b.real_binders.insert(p_id, compose_sels(s, |x| select(cx, x)));
       }
-      none { }
+      none => ()
     }
 }
 
 fn block_to_ident(blk: blk_) -> option<ident> {
     if vec::len(blk.stmts) != 0u { return none; }
     return alt blk.expr {
-          some(expr) {
-            alt expr.node { expr_path(pth) { path_to_ident(pth) } _ { none } }
+          some(expr) => alt expr.node {
+            expr_path(pth) => path_to_ident(pth),
+            _ => none
           }
-          none { none }
+          none => none
         }
 }
 
@@ -545,21 +527,22 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, _s: selector, _b: binders) {
     fn select_pt_1(cx: ext_ctxt, m: matchable,
                    fn_m: fn(ast::mac) -> match_result) -> match_result {
         return alt m {
-              match_expr(e) {
-                alt e.node { expr_mac(mac) { fn_m(mac) } _ { none } }
+              match_expr(e) => alt e.node {
+                expr_mac(mac) => fn_m(mac),
+                _ => none
               }
-              _ { cx.bug(~"broken traversal in p_t_s_r") }
+              _ => cx.bug(~"broken traversal in p_t_s_r")
             }
     }
     fn no_des(cx: ext_ctxt, sp: span, syn: ~str) -> ! {
         cx.span_fatal(sp, ~"destructuring " + syn + ~" is not yet supported");
     }
     alt mac.node {
-      ast::mac_ellipsis { cx.span_fatal(mac.span, ~"misused `...`"); }
-      ast::mac_invoc(_, _, _) { no_des(cx, mac.span, ~"macro calls"); }
-      ast::mac_invoc_tt(_, _) { no_des(cx, mac.span, ~"macro calls"); }
-      ast::mac_aq(_,_) { no_des(cx, mac.span, ~"antiquotes"); }
-      ast::mac_var(_) { no_des(cx, mac.span, ~"antiquote variables"); }
+      ast::mac_ellipsis => cx.span_fatal(mac.span, ~"misused `...`"),
+      ast::mac_invoc(_, _, _) => no_des(cx, mac.span, ~"macro calls"),
+      ast::mac_invoc_tt(_, _) => no_des(cx, mac.span, ~"macro calls"),
+      ast::mac_aq(_,_) => no_des(cx, mac.span, ~"antiquotes"),
+      ast::mac_var(_) => no_des(cx, mac.span, ~"antiquote variables")
     }
 }
 
@@ -568,9 +551,9 @@ fn p_t_s_r_ellipses(cx: ext_ctxt, repeat_me: @expr, offset: uint, s: selector,
     fn select(cx: ext_ctxt, repeat_me: @expr, offset: uint, m: matchable) ->
        match_result {
         return alt m {
-              match_expr(e) {
+              match_expr(e) => {
                 alt e.node {
-                  expr_vec(arg_elts, _) {
+                  expr_vec(arg_elts, _) => {
                     let mut elts = ~[];
                     let mut idx = offset;
                     while idx < vec::len(arg_elts) {
@@ -582,10 +565,10 @@ fn p_t_s_r_ellipses(cx: ext_ctxt, repeat_me: @expr, offset: uint, s: selector,
                     // error we want to report is one in the macro def
                     some(seq(@elts, repeat_me.span))
                   }
-                  _ { none }
+                  _ => none
                 }
               }
-              _ { cx.bug(~"broken traversal in p_t_s_r") }
+              _ => cx.bug(~"broken traversal in p_t_s_r")
             }
     }
     p_t_s_rec(cx, match_expr(repeat_me),
@@ -598,18 +581,18 @@ fn p_t_s_r_length(cx: ext_ctxt, len: uint, at_least: bool, s: selector,
     fn len_select(_cx: ext_ctxt, m: matchable, at_least: bool, len: uint) ->
        match_result {
         return alt m {
-              match_expr(e) {
+              match_expr(e) => {
                 alt e.node {
-                  expr_vec(arg_elts, _) {
+                  expr_vec(arg_elts, _) => {
                     let actual_len = vec::len(arg_elts);
                     if at_least && actual_len >= len || actual_len == len {
                         some(leaf(match_exact))
                     } else { none }
                   }
-                  _ { none }
+                  _ => none
                 }
               }
-              _ { none }
+              _ => none
             }
     }
     b.literal_ast_matchers.push(
@@ -622,15 +605,15 @@ fn p_t_s_r_actual_vector(cx: ext_ctxt, elts: ~[@expr], _repeat_after: bool,
     while idx < vec::len(elts) {
         fn select(cx: ext_ctxt, m: matchable, idx: uint) -> match_result {
             return alt m {
-                  match_expr(e) {
+                  match_expr(e) => {
                     alt e.node {
-                      expr_vec(arg_elts, _) {
+                      expr_vec(arg_elts, _) => {
                         some(leaf(match_expr(arg_elts[idx])))
                       }
-                      _ { none }
+                      _ => none
                     }
                   }
-                  _ { cx.bug(~"broken traversal in p_t_s_r") }
+                  _ => cx.bug(~"broken traversal in p_t_s_r")
                 }
         }
         p_t_s_rec(cx, match_expr(elts[idx]),
@@ -647,7 +630,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let mut clauses: ~[@clause] = ~[];
     for args.each |arg| {
         alt arg.node {
-          expr_vec(elts, mutbl) {
+          expr_vec(elts, mutbl) => {
             if vec::len(elts) != 2u {
                 cx.span_fatal((*arg).span,
                               ~"extension clause must consist of ~[" +
@@ -656,31 +639,25 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 
 
             alt elts[0u].node {
-              expr_mac(mac) {
+              expr_mac(mac) => {
                 alt mac.node {
-                  mac_invoc(pth, invoc_arg, body) {
+                  mac_invoc(pth, invoc_arg, body) => {
                     alt path_to_ident(pth) {
-                      some(id) {
-                        alt macro_name {
-                          none { macro_name = some(id); }
-                          some(other_id) {
-                            if id != other_id {
-                                cx.span_fatal(pth.span,
-                                              ~"macro name must be " +
-                                                  ~"consistent");
-                            }
-                          }
+                      some(id) => alt macro_name {
+                        none => macro_name = some(id),
+                        some(other_id) => if id != other_id {
+                            cx.span_fatal(pth.span,
+                                          ~"macro name must be " +
+                                          ~"consistent");
                         }
                       }
-                      none {
-                        cx.span_fatal(pth.span,
-                                      ~"macro name must not be a path");
-                      }
+                      none => cx.span_fatal(pth.span,
+                                            ~"macro name must not be a path")
                     }
                     let arg = alt invoc_arg {
-                      some(arg) { arg }
-                      none { cx.span_fatal(mac.span,
-                                           ~"macro must have arguments")}
+                      some(arg) => arg,
+                      none => cx.span_fatal(mac.span,
+                                           ~"macro must have arguments")
                     };
                     vec::push(clauses,
                               @{params: pattern_to_selectors(cx, arg),
@@ -689,20 +666,20 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                     // FIXME (#2251): check duplicates (or just simplify
                     // the macro arg situation)
                   }
-                  _ {
+                  _ => {
                       cx.span_bug(mac.span, ~"undocumented invariant in \
                          add_extension");
                   }
                 }
               }
-              _ {
+              _ => {
                 cx.span_fatal(elts[0u].span,
                               ~"extension clause must" +
                                   ~" start with a macro invocation.");
               }
             }
           }
-          _ {
+          _ => {
             cx.span_fatal((*arg).span,
                           ~"extension must be ~[clause, " + ~" ...]");
           }
@@ -713,11 +690,9 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 
     return {ident:
              alt macro_name {
-               some(id) { id }
-               none {
-                 cx.span_fatal(sp, ~"macro definition must have " +
-                               ~"at least one clause")
-               }
+               some(id) => id,
+               none => cx.span_fatal(sp, ~"macro definition must have " +
+                                     ~"at least one clause")
              },
          ext: normal({expander: ext, span: some(option::get(arg).span)})};
 
@@ -725,13 +700,13 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                          _body: ast::mac_body,
                          clauses: ~[@clause]) -> @expr {
         let arg = alt arg {
-          some(arg) { arg }
-          none { cx.span_fatal(sp, ~"macro must have arguments")}
+          some(arg) => arg,
+          none => cx.span_fatal(sp, ~"macro must have arguments")
         };
         for clauses.each |c| {
             alt use_selectors_to_bind(c.params, arg) {
-              some(bindings) { return transcribe(cx, bindings, c.body); }
-              none { again; }
+              some(bindings) => return transcribe(cx, bindings, c.body),
+              none => again
             }
         }
         cx.span_fatal(sp, ~"no clauses match macro invocation");

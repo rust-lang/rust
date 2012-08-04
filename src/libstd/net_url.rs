@@ -52,22 +52,22 @@ fn encode_inner(s: ~str, full_url: bool) -> ~str {
               'A' to 'Z' |
               'a' to 'z' |
               '0' to '9' |
-              '-' | '.' | '_' | '~' {
+              '-' | '.' | '_' | '~' => {
                 str::push_char(out, ch);
               }
-              _ {
-                if full_url {
+              _ => {
+                  if full_url {
                     match ch {
                       // gen-delims:
                       ':' | '/' | '?' | '#' | '[' | ']' | '@' |
 
                       // sub-delims:
                       '!' | '$' | '&' | '"' | '(' | ')' | '*' |
-                      '+' | ',' | ';' | '=' {
+                      '+' | ',' | ';' | '=' => {
                         str::push_char(out, ch);
                       }
 
-                      _ { out += #fmt("%%%X", ch as uint); }
+                      _ => out += #fmt("%%%X", ch as uint)
                     }
                 } else {
                     out += #fmt("%%%X", ch as uint);
@@ -106,7 +106,7 @@ fn decode_inner(s: ~str, full_url: bool) -> ~str {
 
         while !rdr.eof() {
             match rdr.read_char() {
-              '%' {
+              '%' => {
                 let bytes = rdr.read_bytes(2u);
                 let ch = uint::parse_buf(bytes, 16u).get() as char;
 
@@ -118,19 +118,19 @@ fn decode_inner(s: ~str, full_url: bool) -> ~str {
 
                       // sub-delims:
                       '!' | '$' | '&' | '"' | '(' | ')' | '*' |
-                      '+' | ',' | ';' | '=' {
+                      '+' | ',' | ';' | '=' => {
                         str::push_char(out, '%');
                         str::push_char(out, bytes[0u] as char);
                         str::push_char(out, bytes[1u] as char);
                       }
 
-                      ch { str::push_char(out, ch); }
+                      ch => str::push_char(out, ch)
                     }
                 } else {
                       str::push_char(out, ch);
                 }
               }
-              ch { str::push_char(out, ch); }
+              ch => str::push_char(out, ch)
             }
         }
 
@@ -161,11 +161,11 @@ fn encode_plus(s: ~str) -> ~str {
         while !rdr.eof() {
             let ch = rdr.read_byte() as char;
             match ch {
-              'A' to 'Z' | 'a' to 'z' | '0' to '9' | '_' | '.' | '-' {
+              'A' to 'Z' | 'a' to 'z' | '0' to '9' | '_' | '.' | '-' => {
                 str::push_char(out, ch);
               }
-              ' ' { str::push_char(out, '+'); }
-              _ { out += #fmt("%%%X", ch as uint); }
+              ' ' => str::push_char(out, '+'),
+              _ => out += #fmt("%%%X", ch as uint)
             }
         }
 
@@ -212,11 +212,11 @@ fn decode_form_urlencoded(s: ~[u8]) ->
 
         while !rdr.eof() {
             match rdr.read_char() {
-              '&' | ';' {
+              '&' | ';' => {
                 if key != ~"" && value != ~"" {
                     let values = match m.find(key) {
-                      some(values) { values }
-                      none {
+                      some(values) => values,
+                      none => {
                         let values = @dvec();
                         m.insert(key, values);
                         values
@@ -229,14 +229,14 @@ fn decode_form_urlencoded(s: ~[u8]) ->
                 key = ~"";
                 value = ~"";
               }
-              '=' { parsing_key = false; }
-              ch {
+              '=' => parsing_key = false,
+              ch => {
                 let ch = match ch {
-                  '%' {
+                  '%' => {
                     uint::parse_buf(rdr.read_bytes(2u), 16u).get() as char
                   }
-                  '+' { ' ' }
-                  ch { ch }
+                  '+' => ' ',
+                  ch => ch
                 };
 
                 if parsing_key {
@@ -250,8 +250,8 @@ fn decode_form_urlencoded(s: ~[u8]) ->
 
         if key != ~"" && value != ~"" {
             let values = match m.find(key) {
-              some(values) { values }
-              none {
+              some(values) => values,
+              none => {
                 let values = @dvec();
                 m.insert(key, values);
                 values
@@ -333,14 +333,14 @@ fn query_to_str(query: query) -> ~str {
 fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
         match c {
-          'A' to 'Z' | 'a' to 'z' { again; }
-          '0' to '9' | '+' | '-' | '.' {
+          'A' to 'Z' | 'a' to 'z' => again,
+          '0' to '9' | '+' | '-' | '.' => {
             if i == 0 {
                 return result::err(@~"url: Scheme must begin with a letter.");
             }
             again;
           }
-          ':' {
+          ':' => {
             if i == 0 {
                 return result::err(@~"url: Scheme cannot be empty.");
             } else {
@@ -348,7 +348,7 @@ fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
                                 rawurl.slice(i+1,str::len(rawurl))));
             }
           }
-          _  {
+          _ => {
             return result::err(@~"url: Invalid character in scheme.");
           }
         }
@@ -393,34 +393,34 @@ fn get_authority(rawurl: ~str) ->
 
         // deal with input class first
         match c {
-          '0' to '9' { }
-          'A' to 'F' | 'a' to 'f' {
+          '0' to '9' => (),
+          'A' to 'F' | 'a' to 'f' => {
             if in == digit {
                 in = hex;
             }
           }
           'G' to 'Z' | 'g' to 'z' | '-' | '.' | '_' | '~' | '%' |
-          '&' |'\'' | '(' | ')' | '+' | '!' | '*' | ',' | ';' | '=' {
+          '&' |'\'' | '(' | ')' | '+' | '!' | '*' | ',' | ';' | '=' => {
             in = unreserved;
           }
-          ':' | '@' | '?' | '#' | '/' {
+          ':' | '@' | '?' | '#' | '/' => {
             // separators, don't change anything
           }
-          _ {
+          _ => {
             return result::err(@~"Illegal character in authority");
           }
         }
 
         // now process states
         match c {
-          ':' {
+          ':' => {
             colon_count += 1;
             match st {
-              start {
+              start => {
                 pos = i;
                 st = pass_host_port;
               }
-              pass_host_port {
+              pass_host_port => {
                 // multiple colons means ipv6 address.
                 if in == unreserved {
                     return result::err(
@@ -428,7 +428,7 @@ fn get_authority(rawurl: ~str) ->
                 }
                 st = ip6_host;
               }
-              in_host {
+              in_host => {
                 pos = i;
                 // can't be sure whether this is an ipv6 address or a port
                 if in == unreserved {
@@ -436,55 +436,55 @@ fn get_authority(rawurl: ~str) ->
                 }
                 st = ip6_port;
               }
-              ip6_port {
+              ip6_port => {
                 if in == unreserved {
                     return result::err(@~"Illegal characters in authority.");
                 }
                 st = ip6_host;
               }
-              ip6_host {
+              ip6_host => {
                 if colon_count > 7 {
                     host = str::slice(rawurl, begin, i);
                     pos = i;
                     st = in_port;
                 }
               }
-              _ {
+              _ => {
                 return result::err(@~"Invalid ':' in authority.");
               }
             }
             in = digit; // reset input class
           }
 
-          '@' {
+          '@' => {
             in = digit; // reset input class
             colon_count = 0; // reset count
             match st {
-              start {
+              start => {
                 let user = str::slice(rawurl, begin, i);
                 userinfo = option::some({user : user,
                                          pass: option::none});
                 st = in_host;
               }
-              pass_host_port {
+              pass_host_port => {
                 let user = str::slice(rawurl, begin, pos);
                 let pass = str::slice(rawurl, pos+1, i);
                 userinfo = option::some({user: user,
                                          pass: option::some(pass)});
                 st = in_host;
               }
-              _ {
+              _ => {
                 return result::err(@~"Invalid '@' in authority.");
               }
             }
             begin = i+1;
           }
 
-          '?' | '#' | '/' {
+          '?' | '#' | '/' => {
             end = i;
             break;
           }
-          _ { }
+          _ => ()
         }
         end = i;
     }
@@ -498,24 +498,24 @@ fn get_authority(rawurl: ~str) ->
 
     // finish up
     match st {
-      start {
+      start => {
         if host_is_end_plus_one() {
             host = str::slice(rawurl, begin, end+1);
         } else {
             host = str::slice(rawurl, begin, end);
         }
       }
-      pass_host_port | ip6_port {
+      pass_host_port | ip6_port => {
         if in != digit {
             return result::err(@~"Non-digit characters in port.");
         }
         host = str::slice(rawurl, begin, pos);
         port = option::some(str::slice(rawurl, pos+1, end));
       }
-      ip6_host | in_host {
+      ip6_host | in_host => {
         host = str::slice(rawurl, begin, end);
       }
-      in_port {
+      in_port => {
         if in != digit {
             return result::err(@~"Non-digit characters in port.");
         }
@@ -537,14 +537,14 @@ fn get_path(rawurl: ~str, authority : bool) ->
     for str::each_chari(rawurl) |i,c| {
         match c {
           'A' to 'Z' | 'a' to 'z' | '0' to '9' | '&' |'\'' | '(' | ')' | '.'
-          | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '=' {
+          | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '=' => {
             again;
           }
-          '?' | '#' {
+          '?' | '#' => {
             end = i;
             break;
           }
-          _ { return result::err(@~"Invalid character in path.") }
+          _ => return result::err(@~"Invalid character in path.")
         }
     }
 

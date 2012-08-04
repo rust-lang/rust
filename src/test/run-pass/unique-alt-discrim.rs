@@ -2,7 +2,7 @@
 
 fn altsimple() {
     alt ~true {
-      _ { }
+      _ => { }
     }
 }
 fn main() { }
