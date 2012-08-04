@@ -3133,6 +3133,10 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             // This type has a vstore. Get rid of it
             mk_evec(cx, normalize_mt(cx, mt), normalize_vstore(vstore)),
 
+        ty_estr(vstore) =>
+            // This type has a vstore. Get rid of it
+            mk_estr(cx, normalize_vstore(vstore)),
+
         ty_rptr(region, mt) =>
             // This type has a region. Get rid of it
             mk_rptr(cx, re_static, normalize_mt(cx, mt)),
