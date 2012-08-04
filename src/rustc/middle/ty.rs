@@ -169,6 +169,7 @@ export terr_proto_mismatch;
 export terr_ret_style_mismatch;
 export purity_to_str;
 export param_tys_in_type;
+export eval_repeat_count;
 
 // Data types
 
@@ -3168,6 +3169,26 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
     let t_norm = mk_t(cx, sty);
     cx.normalized_cache.insert(t, t_norm);
     return t_norm;
+}
+
+// Returns the repeat count for a repeating vector expression.
+fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr, span: span) -> uint {
+    match const_eval::eval_const_expr(tcx, count_expr) {
+        const_eval::const_int(count) => return count as uint,
+        const_eval::const_uint(count) => return count as uint,
+        const_eval::const_float(count) => {
+            tcx.sess.span_err(span,
+                              ~"expected signed or unsigned integer for \
+                                repeat count but found float");
+            return count as uint;
+        }
+        const_eval::const_str(_) => {
+            tcx.sess.span_err(span,
+                              ~"expected signed or unsigned integer for \
+                                repeat count but found string");
+            return 0;
+        }
+    }
 }
 
 // Local Variables:
