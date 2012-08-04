@@ -678,9 +678,6 @@ MUST_CHECK bool rust_task::wait_event(void **result) {
 
 void
 rust_task::signal_event(void *event) {
-    assert(task_state_blocked == state ||
-           task_state_running == state);
-
     scoped_lock with(lifecycle_lock);
 
     this->event = event;
