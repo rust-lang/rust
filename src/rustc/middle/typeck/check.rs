@@ -1150,6 +1150,27 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                  is_loop_body, some(fcx));
     }
 
+    fn eval_repeat_count(fcx: @fn_ctxt, count_expr: @ast::expr, span: span)
+                      -> uint {
+        let tcx = fcx.ccx.tcx;
+        match const_eval::eval_const_expr(tcx, count_expr) {
+            const_eval::const_int(count) => return count as uint,
+            const_eval::const_uint(count) => return count as uint,
+            const_eval::const_float(count) => {
+                tcx.sess.span_err(span,
+                                  ~"expected signed or unsigned integer for \
+                                    repeat count but found float");
+                return count as uint;
+            }
+            const_eval::const_str(_) => {
+                tcx.sess.span_err(span,
+                                  ~"expected signed or unsigned integer for \
+                                    repeat count but found string");
+                return 0;
+            }
+        }
+    }
+
     // Check field access expressions
     fn check_field(fcx: @fn_ctxt, expr: @ast::expr, is_callee: bool,
                    base: @ast::expr, field: ast::ident, tys: ~[@ast::ty])
@@ -1252,19 +1273,26 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     alt expr.node {
       ast::expr_vstore(ev, vst) {
         let typ = alt ev.node {
-          ast::expr_lit(@{node: ast::lit_str(s), span:_}) {
+          ast::expr_lit(@{node: ast::lit_str(s), span:_}) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, str::len(*s), vst);
             ty::mk_estr(tcx, tt)
           }
-          ast::expr_vec(args, mutbl) {
+          ast::expr_vec(args, mutbl) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vec::len(args), vst);
             let t: ty::t = fcx.infcx.next_ty_var();
             for args.each |e| { bot |= check_expr_with(fcx, e, t); }
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
-          _ {
-            tcx.sess.span_bug(expr.span, ~"vstore modifier on non-sequence")
+          ast::expr_repeat(element, count_expr, mutbl) => {
+            let count = eval_repeat_count(fcx, count_expr, expr.span);
+            fcx.write_ty(count_expr.id, ty::mk_uint(tcx));
+            let tt = ast_expr_vstore_to_vstore(fcx, ev, count, vst);
+            let t: ty::t = fcx.infcx.next_ty_var();
+            bot |= check_expr_with(fcx, element, t);
+            ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
+          _ =>
+            tcx.sess.span_bug(expr.span, ~"vstore modifier on non-sequence")
         };
         fcx.write_ty(ev.id, typ);
         fcx.write_ty(id, typ);
@@ -1612,6 +1640,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let typ = ty::mk_evec(tcx, {ty: t, mutbl: mutbl},
                               ty::vstore_fixed(args.len()));
         fcx.write_ty(id, typ);
+      }
+      ast::expr_repeat(element, count_expr, mutbl) {
+        let count = eval_repeat_count(fcx, count_expr, expr.span);
+        fcx.write_ty(count_expr.id, ty::mk_uint(tcx));
+        let t: ty::t = fcx.infcx.next_ty_var();
+        bot |= check_expr_with(fcx, element, t);
+        let t = ty::mk_evec(tcx, {ty: t, mutbl: mutbl},
+                            ty::vstore_fixed(count));
+        fcx.write_ty(id, t);
       }
       ast::expr_tup(elts) {
         let mut elt_ts = ~[];

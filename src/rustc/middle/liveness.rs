@@ -471,7 +471,8 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       expr_unary(*) | expr_fail(*) |
       expr_break | expr_again | expr_lit(_) | expr_ret(*) |
       expr_block(*) | expr_move(*) | expr_unary_move(*) | expr_assign(*) |
-      expr_swap(*) | expr_assign_op(*) | expr_mac(*) | expr_struct(*) => {
+      expr_swap(*) | expr_assign_op(*) | expr_mac(*) | expr_struct(*) |
+      expr_repeat(*) => {
           visit::visit_expr(expr, self, vt);
       }
     }
@@ -1057,6 +1058,11 @@ class liveness {
             self.propagate_through_exprs(exprs, succ)
           }
 
+          expr_repeat(element, count, _) => {
+            let succ = self.propagate_through_expr(count, succ);
+            self.propagate_through_expr(element, succ)
+          }
+
           expr_rec(fields, with_expr) {
             let succ = self.propagate_through_opt_expr(with_expr, succ);
             do fields.foldr(succ) |field, succ| {
@@ -1468,7 +1474,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_cast(*) | expr_unary(*) | expr_fail(*) |
       expr_ret(*) | expr_break | expr_again | expr_lit(_) |
       expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) |
-      expr_struct(*) {
+      expr_struct(*) | expr_repeat(*) {
         visit::visit_expr(expr, self, vt);
       }
     }

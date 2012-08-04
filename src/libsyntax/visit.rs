@@ -364,6 +364,10 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
     alt ex.node {
       expr_vstore(x, _) { v.visit_expr(x, e, v); }
       expr_vec(es, _) { visit_exprs(es, e, v); }
+      expr_repeat(element, count, _) => {
+        v.visit_expr(element, e, v);
+        v.visit_expr(count, e, v);
+      }
       expr_rec(flds, base) {
         for flds.each |f| { v.visit_expr(f.node.expr, e, v); }
         visit_expr_opt(base, e, v);

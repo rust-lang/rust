@@ -350,7 +350,10 @@ enum expr_ {
     // A struct literal expression.
     //
     // XXX: Add functional record update.
-    expr_struct(@path, ~[field])
+    expr_struct(@path, ~[field]),
+
+    // A vector literal constructed from one repeated element.
+    expr_repeat(@expr /* element */, @expr /* count */, mutability)
 }
 
 #[auto_serialize]

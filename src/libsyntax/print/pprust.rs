@@ -948,6 +948,22 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         word(s.s, ~"]");
         end(s);
       }
+
+      ast::expr_repeat(element, count, mutbl) => {
+        ibox(s, indent_unit);
+        word(s.s, ~"[");
+        if mutbl == ast::m_mutbl {
+            word(s.s, ~"mut");
+            nbsp(s);
+        }
+        print_expr(s, element);
+        word(s.s, ~",");
+        word(s.s, ~"..");
+        print_expr(s, count);
+        word(s.s, ~"]");
+        end(s);
+      }
+
       ast::expr_rec(fields, wth) {
         word(s.s, ~"{");
         commasep_cmnt(s, consistent, fields, print_field, get_span);

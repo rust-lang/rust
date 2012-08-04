@@ -27,33 +27,34 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              expr_call, expr_cast, expr_copy, expr_do_body,
              expr_fail, expr_field, expr_fn, expr_fn_block, expr_if,
              expr_index, expr_lit, expr_log, expr_loop,
-             expr_loop_body, expr_mac, expr_move, expr_path,
-             expr_rec, expr_ret, expr_swap, expr_struct, expr_tup, expr_unary,
-             expr_unary_move, expr_vec, expr_vstore, expr_while, extern_fn,
-             field, fn_decl, foreign_item, foreign_item_fn, foreign_mod,
-             ident, impure_fn, infer, inherited, init_assign, init_move,
-             initializer, instance_var, item, item_, item_class, item_const,
-             item_enum, item_fn, item_foreign_mod, item_impl, item_mac,
-             item_mod, item_trait, item_ty, lit, lit_, lit_bool, lit_float,
-             lit_int, lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local,
-             m_const, m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis, mac_invoc,
-             mac_invoc_tt, mac_var, matcher, match_nonterminal, match_seq,
-             match_tok, method, mode, mt, mul, mutability, neg, noreturn, not,
-             pat, pat_box, pat_enum, pat_ident, pat_lit, pat_range, pat_rec,
-             pat_tup, pat_uniq, pat_wild, path, private, proto, proto_any,
-             proto_bare, proto_block, proto_box, proto_uniq, provided, public,
-             pure_fn, purity, re_anon, re_named, region, rem, required,
-             ret_style, return_val, self_ty, shl, shr, stmt, stmt_decl,
-             stmt_expr, stmt_semi, subtract, sty_box, sty_by_ref, sty_region,
-             sty_uniq, sty_value, token_tree, trait_method, trait_ref,
-             tt_delim, tt_seq, tt_tok, tt_nonterminal, ty, ty_, ty_bot,
-             ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
-             ty_param, ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32,
-             ty_uniq, ty_vec, ty_fixed_length, unchecked_blk, uniq,
-             unsafe_blk, unsafe_fn, variant, view_item, view_item_,
-             view_item_export, view_item_import, view_item_use, view_path,
-             view_path_glob, view_path_list, view_path_simple, visibility,
-             vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
+             expr_loop_body, expr_mac, expr_move, expr_path, expr_rec,
+             expr_repeat, expr_ret, expr_swap, expr_struct, expr_tup,
+             expr_unary, expr_unary_move, expr_vec, expr_vstore, expr_while,
+             extern_fn, field, fn_decl, foreign_item, foreign_item_fn,
+             foreign_mod, ident, impure_fn, infer, inherited, init_assign,
+             init_move, initializer, instance_var, item, item_, item_class,
+             item_const, item_enum, item_fn, item_foreign_mod, item_impl,
+             item_mac, item_mod, item_trait, item_ty, lit, lit_, lit_bool,
+             lit_float, lit_int, lit_int_unsuffixed, lit_nil, lit_str,
+             lit_uint, local, m_const, m_imm, m_mutbl, mac_, mac_aq,
+             mac_ellipsis, mac_invoc, mac_invoc_tt, mac_var, matcher,
+             match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
+             mutability, neg, noreturn, not, pat, pat_box, pat_enum,
+             pat_ident, pat_lit, pat_range, pat_rec, pat_tup, pat_uniq,
+             pat_wild, path, private, proto, proto_any, proto_bare,
+             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
+             purity, re_anon, re_named, region, rem, required, ret_style,
+             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
+             stmt_semi, subtract, sty_box, sty_by_ref, sty_region, sty_uniq,
+             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
+             tt_tok, tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
+             ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_path, ty_ptr,
+             ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec,
+             ty_fixed_length, unchecked_blk, uniq, unsafe_blk, unsafe_fn,
+             variant, view_item, view_item_, view_item_export,
+             view_item_import, view_item_use, view_path, view_path_glob,
+             view_path_list, view_path_simple, visibility, vstore, vstore_box,
+             vstore_fixed, vstore_slice, vstore_uniq};
 
 export file_type;
 export parser;
@@ -365,6 +366,7 @@ class parser {
     // Parses something like "&x"
     fn parse_region() -> @region {
         self.expect(token::BINOP(token::AND));
+
         alt copy self.token {
           token::IDENT(sid, _) {
             self.bump();
@@ -812,11 +814,36 @@ class parser {
         } else if self.token == token::LBRACKET {
             self.bump();
             let mutbl = self.parse_mutability();
-            let es = self.parse_seq_to_end(
-                token::RBRACKET, seq_sep_trailing_allowed(token::COMMA),
-                |p| p.parse_expr());
+            if self.token == token::RBRACKET {
+                // Empty vector.
+                self.bump();
+                ex = expr_vec(~[], mutbl);
+            } else {
+                // Nonempty vector.
+                let first_expr = self.parse_expr();
+                if self.token == token::COMMA &&
+                        self.look_ahead(1) == token::DOTDOT {
+                    // Repeating vector syntax: [ 0, ..512 ]
+                    self.bump();
+                    self.bump();
+                    let count = self.parse_expr();
+                    self.expect(token::RBRACKET);
+                    ex = expr_repeat(first_expr, count, mutbl);
+                } else if self.token == token::COMMA {
+                    // Vector with two or more elements.
+                    self.bump();
+                    let remaining_exprs =
+                        self.parse_seq_to_end(token::RBRACKET,
+                            seq_sep_trailing_allowed(token::COMMA),
+                            |p| p.parse_expr());
+                    ex = expr_vec(~[first_expr] + remaining_exprs, mutbl);
+                } else {
+                    // Vector with one element.
+                    self.expect(token::RBRACKET);
+                    ex = expr_vec(~[first_expr], mutbl);
+                }
+            }
             hi = self.span.hi;
-            ex = expr_vec(es, mutbl);
         } else if self.token == token::ELLIPSIS {
             self.bump();
             return pexpr(self.mk_mac_expr(lo, self.span.hi, mac_ellipsis));
