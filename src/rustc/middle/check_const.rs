@@ -66,10 +66,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
                           ~"disallowed operator in constant expression");
             return;
           }
-          expr_lit(@{node: lit_str(_), _}) {
-            sess.span_err(e.span,
-                          ~"string constants are not supported");
-          }
+          expr_lit(@{node: lit_str(_), _}) { }
           expr_binary(_, _, _) | expr_unary(_, _) {
             if method_map.contains_key(e.id) {
                 sess.span_err(e.span, ~"user-defined operators are not \
@@ -101,6 +98,9 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
               }
             }
           }
+          expr_vstore(_, vstore_slice(_)) |
+          expr_vstore(_, vstore_fixed(_)) |
+          expr_vec(_, m_imm) |
           expr_addr_of(m_imm, _) |
           expr_tup(*) |
           expr_rec(*) { }
