@@ -489,10 +489,17 @@ fn get_authority(rawurl: ~str) ->
         end = i;
     }
 
+    let end = end; // make end immutable so it can be captured
+
+    let host_is_end_plus_one = || {
+        end+1 == len
+            && !['?', '#', '/'].contains(rawurl[end] as char)
+    };
+
     // finish up
     match st {
       start {
-        if end+1 == len {
+        if host_is_end_plus_one() {
             host = str::slice(rawurl, begin, end+1);
         } else {
             host = str::slice(rawurl, begin, end);
@@ -516,7 +523,7 @@ fn get_authority(rawurl: ~str) ->
       }
     }
 
-    let rest = if end+1 == len { ~"" }
+    let rest = if host_is_end_plus_one() { ~"" }
     else { str::slice(rawurl, end, len) };
     return result::ok((userinfo, host, port, rest));
 }
@@ -777,6 +784,15 @@ mod tests {
         assert u.path == ~"/doc";
         assert u.query.find(|kv| kv.first() == ~"s").get().second() == ~"v";
         assert option::unwrap(copy u.fragment) == ~"something";
+    }
+
+    #[test]
+    fn test_url_parse_host_slash() {
+        let urlstr = ~"http://0.42.42.42/";
+        let url = from_str(urlstr).get();
+        #debug("url: %?", url);
+        assert url.host == ~"0.42.42.42";
+        assert url.path == ~"/";
     }
 
     #[test]
