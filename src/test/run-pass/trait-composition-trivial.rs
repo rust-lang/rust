@@ -1,3 +1,4 @@
+// xfail-fast - ICE
 trait Foo {
     fn foo();
 }
