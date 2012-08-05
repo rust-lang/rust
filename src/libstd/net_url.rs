@@ -353,7 +353,7 @@ fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
           }
         }
     };
-    return result::ok((copy rawurl, ~""));
+    return result::err(@~"url: Scheme must be terminated with a colon.");
 }
 
 // returns userinfo, host, port, and unparsed part, or an error
@@ -777,6 +777,11 @@ mod tests {
         assert u.path == ~"/doc";
         assert u.query.find(|kv| kv.first() == ~"s").get().second() == ~"v";
         assert option::unwrap(copy u.fragment) == ~"something";
+    }
+
+    #[test]
+    fn test_no_scheme() {
+        assert result::is_err(get_scheme(~"noschemehere.html"));
     }
 
     #[test]
