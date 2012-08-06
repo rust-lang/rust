@@ -1558,12 +1558,8 @@ class parser {
             let pats = self.parse_pats();
             let mut guard = none;
             if self.eat_keyword(~"if") { guard = some(self.parse_expr()); }
-            let expr = if self.token != token::FAT_ARROW {
-                self.parse_block_expr(self.last_span.lo, default_blk)
-            } else {
-                self.bump();
-                self.parse_expr_res(RESTRICT_STMT_EXPR)
-            };
+            self.expect(token::FAT_ARROW);
+            let expr = self.parse_expr_res(RESTRICT_STMT_EXPR);
 
             let require_comma =
                 classify::expr_requires_semi_to_be_stmt(expr)
