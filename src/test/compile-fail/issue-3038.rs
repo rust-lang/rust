@@ -8,17 +8,17 @@ enum k { m(int, int) }
 fn main()
 {
 
-    let _z = alt g(1, 2) {
+    let _z = match g(1, 2) {
       g(x, x) => { log(debug, x + x); }
       //~^ ERROR Identifier x is bound more than once in the same pattern
     };
 
-    let _z = alt i(l(1, 2), m(3, 4)) {
+    let _z = match i(l(1, 2), m(3, 4)) {
       i(l(x, _), m(_, x))  //~ ERROR Identifier x is bound more than once in the same pattern
         => { log(error, x + x); }
     };
 
-    let _z = alt (1, 2) {
+    let _z = match (1, 2) {
         (x, x) => { x } //~ ERROR Identifier x is bound more than once in the same pattern
     };
 

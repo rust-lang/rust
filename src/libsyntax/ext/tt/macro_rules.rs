@@ -37,11 +37,11 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                                      arg_reader as reader, argument_gram);
 
     // Extract the arguments:
-    let lhses:~[@named_match] = alt argument_map.get(@~"lhs") {
+    let lhses:~[@named_match] = match argument_map.get(@~"lhs") {
       @matched_seq(s, sp) => s,
       _ => cx.span_bug(sp, ~"wrong-structured lhs")
     };
-    let rhses:~[@named_match] = alt argument_map.get(@~"rhs") {
+    let rhses:~[@named_match] = match argument_map.get(@~"rhs") {
       @matched_seq(s, sp) => s,
       _ => cx.span_bug(sp, ~"wrong-structured rhs")
     };
@@ -58,13 +58,14 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         let itr = cx.parse_sess().interner;
 
         for lhses.eachi() |i, lhs| { // try each arm's matchers
-            alt lhs {
+            match lhs {
               @matched_nonterminal(nt_matchers(mtcs)) => {
                 // `none` is because we're not interpolating
                 let arg_rdr = new_tt_reader(s_d, itr, none, arg) as reader;
-                alt parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtcs) {
+                match parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtcs) {
                   success(named_matches) => {
-                    let rhs = alt rhses[i] { // okay, what's your transcriber?
+                    let rhs = match rhses[i] {
+                        // okay, what's your transcriber?
                       @matched_nonterminal(nt_tt(@tt)) => tt,
                       _ => cx.span_bug(sp, ~"bad thing in rhs")
                     };

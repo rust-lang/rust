@@ -240,7 +240,7 @@ fn implies(a: t, b: t) -> bool {
 }
 
 fn trit_str(t: trit) -> ~str {
-    alt t { dont_care { ~"?" } ttrue { ~"1" } tfalse { ~"0" } }
+    match t { dont_care { ~"?" } ttrue { ~"1" } tfalse { ~"0" } }
 }
 
 // FIXME (#2538): Would be nice to have unit tests for some of these

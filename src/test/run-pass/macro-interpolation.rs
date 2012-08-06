@@ -3,7 +3,7 @@ macro_rules! overly_complicated {
     {$fnname:ident, $arg:ident, $ty:ty, $body:block, $val:expr, $pat:pat, $res:path} =>
     {
         fn $fnname($arg: $ty) -> option<$ty> $body
-        alt $fnname($val) {
+        match $fnname($val) {
           some($pat) => {
             $res
           }

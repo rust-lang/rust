@@ -4,7 +4,7 @@ fn foo(c: ~[int]) {
     let mut b: ~[int] = ~[];
 
 
-    alt none::<int> {
+    match none::<int> {
       some::<int>(_) => {
         for c.each |i| {
             log(debug, a);

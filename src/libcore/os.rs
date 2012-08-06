@@ -178,7 +178,7 @@ mod global_env {
         unsafe {
             do priv::weaken_task |weak_po| {
                 loop {
-                    alt comm::select2(msg_po, weak_po) {
+                    match comm::select2(msg_po, weak_po) {
                       either::left(msg_getenv(n, resp_ch)) => {
                         comm::send(resp_ch, impl::getenv(n))
                       }
@@ -282,7 +282,7 @@ fn fsync_fd(fd: c_int, _level: io::fsync::level) -> c_int {
 #[cfg(target_os = "linux")]
 fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::funcs::posix01::unistd::*;
-    alt level {
+    match level {
       io::fsync::fsync
       | io::fsync::fullfsync => return fsync(fd),
       io::fsync::fdatasync => return fdatasync(fd)
@@ -294,7 +294,7 @@ fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
     import libc::consts::os::extra::*;
     import libc::funcs::posix88::fcntl::*;
     import libc::funcs::posix01::unistd::*;
-    alt level {
+    match level {
       io::fsync::fsync => return fsync(fd),
       _ => {
         // According to man fnctl, the ok retval is only specified to be !=-1
@@ -440,7 +440,7 @@ fn self_exe_path() -> option<path> {
  * Otherwise, homedir returns option::none.
  */
 fn homedir() -> option<path> {
-    return alt getenv(~"HOME") {
+    return match getenv(~"HOME") {
         some(p) => if !str::is_empty(p) {
           some(p)
         } else {

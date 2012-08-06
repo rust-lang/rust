@@ -29,7 +29,7 @@ fn test_color(color: color, val: int, name: ~str) unsafe {
 }
 
 fn get_color_alt(color: color) -> ~str {
-    alt color {
+    match color {
       red => {~"red"}
       green => {~"green"}
       blue => {~"blue"}

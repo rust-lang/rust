@@ -58,7 +58,7 @@ fn moddoc_from_mod(
         item: itemdoc,
         items: do vec::filter_map(module_.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
-            alt item.node {
+            match item.node {
               ast::item_mod(m) => {
                 some(doc::modtag(
                     moddoc_from_mod(itemdoc, m)
@@ -114,7 +114,7 @@ fn nmoddoc_from_mod(
         item: itemdoc,
         fns: do vec::map(module_.items) |item| {
             let itemdoc = mk_itemdoc(item.id, item.ident);
-            alt item.node {
+            match item.node {
               ast::foreign_item_fn(_, _) => {
                 fndoc_from_fn(itemdoc)
               }
@@ -189,7 +189,7 @@ fn traitdoc_from_trait(
     {
         item: itemdoc,
         methods: do vec::map(methods) |method| {
-            alt method {
+            match method {
               ast::required(ty_m) => {
                 {
                     name: *ty_m.ident,

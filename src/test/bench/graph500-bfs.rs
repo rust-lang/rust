@@ -157,7 +157,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
     };
 
     fn is_gray(c: color) -> bool {
-        alt c {
+        match c {
           gray(_) => { true }
           _ => { false }
         }
@@ -170,7 +170,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
         i += 1u;
         colors = do colors.mapi() |i, c| {
             let c : color = c;
-            alt c {
+            match c {
               white => {
                 let i = i as node_id;
                 
@@ -196,7 +196,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 
     // Convert the results.
     do vec::map(colors) |c| {
-        alt c {
+        match c {
           white => { -1i64 }
           black(parent) => { parent }
           _ => { fail ~"Found remaining gray nodes in BFS" }
@@ -227,7 +227,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
 
     #[inline(always)]
     fn is_gray(c: color) -> bool {
-        alt c {
+        match c {
           gray(_) => { true }
           _ => { false }
         }
@@ -249,7 +249,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
                 let c : color = c;
                 let colors = arc::get(&colors);
                 let graph = arc::get(&graph);
-                alt c {
+                match c {
                   white => {
                     let i = i as node_id;
                     
@@ -276,7 +276,7 @@ fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
 
     // Convert the results.
     do par::map(colors) |c| {
-        alt c {
+        match c {
           white => { -1i64 }
           black(parent) => { parent }
           _ => { fail ~"Found remaining gray nodes in BFS" }

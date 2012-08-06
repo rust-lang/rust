@@ -18,7 +18,7 @@ fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {
-        alt comm::recv(requests) {
+        match comm::recv(requests) {
           get_count => { comm::send(responses, copy count); }
           bytes(b) => { count += b; }
           stop => { done = true; }

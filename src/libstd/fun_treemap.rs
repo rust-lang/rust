@@ -30,7 +30,7 @@ fn init<K, V>() -> treemap<K, V> { @empty }
 
 /// Insert a value into the map
 fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
-    @alt m {
+    @match m {
        @empty => node(@k, @v, @empty, @empty),
        @node(@kk, vv, left, right) => {
          if k < kk {
@@ -44,7 +44,7 @@ fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
 
 /// Find a value based on the key
 fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
-    alt *m {
+    match *m {
       empty => none,
       node(@kk, @v, left, right) => {
         if k == kk {
@@ -56,7 +56,7 @@ fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
 
 /// Visit all pairs in the map in order.
 fn traverse<K, V: copy>(m: treemap<K, V>, f: fn(K, V)) {
-    alt *m {
+    match *m {
       empty => (),
       /*
         Previously, this had what looked like redundant

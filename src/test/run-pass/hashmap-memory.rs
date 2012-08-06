@@ -45,7 +45,7 @@ mod map_reduce {
         fn emit(im: map::hashmap<~str, int>, ctrl: chan<ctrl_proto>, key: ~str,
                 val: ~str) {
             let mut c;
-            alt im.find(key) {
+            match im.find(key) {
               some(_c) => { c = _c }
               none => {
                 let p = port();
@@ -78,11 +78,11 @@ mod map_reduce {
         let mut num_mappers = vec::len(inputs) as int;
 
         while num_mappers > 0 {
-            alt recv(ctrl) {
+            match recv(ctrl) {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;
-                alt reducers.find(str::from_bytes(k)) {
+                match reducers.find(str::from_bytes(k)) {
                   some(_c) => { c = _c; }
                   none => { c = 0; }
                 }

@@ -78,7 +78,7 @@ fn test_select2() {
 
     stream::client::send(ac, 42);
 
-    alt pipes::select2(ap, bp) {
+    match pipes::select2(ap, bp) {
       either::left(*) => { }
       either::right(*) => { fail }
     }
@@ -92,7 +92,7 @@ fn test_select2() {
 
     stream::client::send(bc, ~"abc");
 
-    alt pipes::select2(ap, bp) {
+    match pipes::select2(ap, bp) {
       either::left(*) => { fail }
       either::right(*) => { }
     }

@@ -134,7 +134,7 @@ fn default_par_fold<T:send copy>(ctxt: T) -> fold<T> {
 fn default_seq_fold_doc<T>(fold: fold<T>, doc: doc::doc) -> doc::doc {
     doc::doc_({
         pages: do vec::map(doc.pages) |page| {
-            alt page {
+            match page {
               doc::cratepage(doc) => {
                 doc::cratepage(fold.fold_crate(fold, doc))
               }
@@ -242,7 +242,7 @@ fn default_par_fold_nmod<T:send copy>(
 }
 
 fn fold_itemtag<T>(fold: fold<T>, doc: doc::itemtag) -> doc::itemtag {
-    alt doc {
+    match doc {
       doc::modtag(moddoc) => {
         doc::modtag(fold.fold_mod(fold, moddoc))
       }

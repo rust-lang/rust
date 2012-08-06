@@ -30,7 +30,7 @@ impl of to_base64 for ~[u8] {
             i += 3u;
         }
 
-        alt check len % 3u {
+        match check len % 3u {
           0u => (),
           1u => {
             let n = (self[i] as uint) << 16u;
@@ -96,7 +96,7 @@ impl of from_base64 for ~[u8] {
                 } else if ch == '/' {
                     n |= 0x3Fu;
                 } else if ch == '=' {
-                    alt len - i {
+                    match len - i {
                       1u => {
                         vec::push(r, ((n >> 16u) & 0xFFu) as u8);
                         vec::push(r, ((n >> 8u ) & 0xFFu) as u8);

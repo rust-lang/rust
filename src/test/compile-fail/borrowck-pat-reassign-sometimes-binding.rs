@@ -2,7 +2,7 @@
 
 fn main() {
     let mut x = none;
-    alt x { //~ NOTE loan of mutable local variable granted here
+    match x { //~ NOTE loan of mutable local variable granted here
       none => {
         // It is ok to reassign x here, because there is in
         // fact no outstanding loan of x!

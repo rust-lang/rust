@@ -8,7 +8,7 @@ enum color {
 }
 
 fn main() {
-    log(error, alt red {
+    log(error, match red {
         red => { 1 }
         green => { 2 }
         blue => { 3 }

@@ -116,7 +116,7 @@ fn main() {
         let pick = || (~[rock, paper, scissors])[rng.gen_uint() % 3];
 
         // Pick two gestures and decide the result
-        alt (pick(), pick()) {
+        match (pick(), pick()) {
             (rock, scissors) | (paper, rock) | (scissors, paper) => copy player1,
             (scissors, rock) | (rock, paper) | (paper, scissors) => copy player2,
             _ => ~"tie"
@@ -707,14 +707,14 @@ have type `int`, because control doesn't reach the end of that arm
 
 ## Pattern matching
 
-Rust's `alt` construct is a generalized, cleaned-up version of C's
+Rust's `match` construct is a generalized, cleaned-up version of C's
 `switch` construct. You provide it with a value and a number of arms,
 each labelled with a pattern, and it will execute the arm that matches
 the value.
 
 ~~~~
 # let my_number = 1;
-alt my_number {
+match my_number {
   0       => io::println(~"zero"),
   1 | 2   => io::println(~"one or two"),
   3 to 10 => io::println(~"three to ten"),
@@ -732,14 +732,14 @@ valid patterns, and will match only their own value. The pipe operator
 of numeric literal patterns can be expressed with `to`. The underscore
 (`_`) is a wildcard pattern that matches everything.
 
-The patterns in an alt arm are followed by a fat arrow, `=>`, then an
+The patterns in an match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
 convenient to use a block expression for a case, in which case the
 commas are optional.
 
 ~~~
 # let my_number = 1;
-alt my_number {
+match my_number {
   0 => {
     io::println(~"zero")
   }
@@ -750,9 +750,9 @@ alt my_number {
 ~~~
 
 If the arm with the wildcard pattern was left off in the above
-example, the typechecker would reject it at compile time. `alt`
+example, the typechecker would reject it at compile time. `match`
 constructs must be exhaustive: they must have an arm covering every
-possible case. (You may use the `alt check` construct to write a
+possible case. (You may use the `match check` construct to write a
 non-exhaustive match, but it's highly undesirable to do so. You may
 reason that the missing cases will never occur, but the typechecker
 provides you with no assurance that your reasoning is correct.)
@@ -763,7 +763,7 @@ that `(float, float)` is a tuple of two floats:
 
 ~~~~
 fn angle(vec: (float, float)) -> float {
-    alt vec {
+    match vec {
       (0f, y) if y < 0f => 1.5 * float::consts::pi,
       (0f, y) => 0.5 * float::consts::pi,
       (x, y) => float::atan(y / x)
@@ -777,7 +777,7 @@ y)` matches any tuple whose first element is zero, and binds `y` to
 the second element. `(x, y)` matches any tuple, and binds both
 elements to a variable.
 
-Any `alt` arm can have a guard clause (written `if EXPR`), which is
+Any `match` arm can have a guard clause (written `if EXPR`), which is
 an expression of type `bool` that determines, after the pattern is
 found to match, whether the arm is taken or not. The variables bound
 by the pattern are available in this guard expression.
@@ -851,7 +851,7 @@ task failure:
 
 * Accessing an out-of-bounds element of a vector.
 
-* Having no clauses match when evaluating an `alt check` expression.
+* Having no clauses match when evaluating an `match check` expression.
 
 * An assertion failure.
 
@@ -1044,14 +1044,14 @@ not an actual new type.)
 
 ## Record patterns
 
-Records can be destructured in `alt` patterns. The basic syntax is
+Records can be destructured in `match` patterns. The basic syntax is
 `{fieldname: pattern, ...}`, but the pattern for a field can be
 omitted as a shorthand for simply binding the variable with the same
 name as the field.
 
 ~~~~
 # let mypoint = {x: 0f, y: 0f};
-alt mypoint {
+match mypoint {
     {x: 0f, y: y_name} => { /* Provide sub-patterns for fields */ }
     {x, y}             => { /* Simply bind the fields */ }
 }
@@ -1157,7 +1157,7 @@ patterns, as in this definition of `area`:
 # type point = {x: float, y: float};
 # enum shape { circle(point, float), rectangle(point, point) }
 fn area(sh: shape) -> float {
-    alt sh {
+    match sh {
         circle(_, size) => float::consts::pi * size * size,
         rectangle({x, y}, {x: x2, y: y2}) => (x2 - x) * (y2 - y)
     }
@@ -1170,7 +1170,7 @@ Another example, matching nullary enum variants:
 # type point = {x: float, y: float};
 # enum direction { north, east, south, west }
 fn point_from_direction(dir: direction) -> point {
-    alt dir {
+    match dir {
         north => {x:  0f, y:  1f},
         east  => {x:  1f, y:  0f},
         south => {x:  0f, y: -1f},
@@ -1188,7 +1188,7 @@ nil, `()`, as the empty tuple if you like).
 
 ~~~~
 let mytup: (int, int, float) = (10, 20, 30.0);
-alt mytup {
+match mytup {
   (a, b, c) => log(info, a + b + (c as int))
 }
 ~~~~
@@ -1922,7 +1922,7 @@ gets access to them.
 ## Other uses of safe references
 
 Safe references are not only used for argument passing. When you
-destructure on a value in an `alt` expression, or loop over a vector
+destructure on a value in a `match` expression, or loop over a vector
 with `for`, variables bound to the inside of the given data structure
 will use safe references, not copies. This means such references are
 very cheap, but you'll occasionally have to copy them to ensure
@@ -1930,7 +1930,7 @@ safety.
 
 ~~~~
 let mut my_rec = {a: 4, b: ~[1, 2, 3]};
-alt my_rec {
+match my_rec {
   {a, b} => {
     log(info, b); // This is okay
     my_rec = {a: a + 1, b: b + ~[a]};

@@ -2,7 +2,7 @@
 
 fn main() {
     let mut x: option<int> = none;
-    alt x { //~ NOTE loan of mutable local variable granted here
+    match x { //~ NOTE loan of mutable local variable granted here
       none => {}
       some(i) => {
         // Not ok: i is an outstanding ptr into x.

@@ -35,7 +35,7 @@ pure fn local_def(id: node_id) -> def_id { {crate: local_crate, node: id} }
 pure fn is_local(did: ast::def_id) -> bool { did.crate == local_crate }
 
 pure fn stmt_id(s: stmt) -> node_id {
-    alt s.node {
+    match s.node {
       stmt_decl(_, id) => id,
       stmt_expr(_, id) => id,
       stmt_semi(_, id) => id
@@ -43,7 +43,7 @@ pure fn stmt_id(s: stmt) -> node_id {
 }
 
 fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
-    alt d {
+    match d {
       def_variant(enum_id, var_id) => {
         return {enm: enum_id, var: var_id}
       }
@@ -52,7 +52,7 @@ fn variant_def_ids(d: def) -> {enm: def_id, var: def_id} {
 }
 
 pure fn def_id_of_def(d: def) -> def_id {
-    alt d {
+    match d {
       def_fn(id, _) | def_mod(id) |
       def_foreign_mod(id) | def_const(id) |
       def_variant(_, id) | def_ty(id) | def_ty_param(id, _) |
@@ -70,7 +70,7 @@ pure fn def_id_of_def(d: def) -> def_id {
 }
 
 pure fn binop_to_str(op: binop) -> ~str {
-    alt op {
+    match op {
       add => return ~"+",
       subtract => return ~"-",
       mul => return ~"*",
@@ -93,7 +93,7 @@ pure fn binop_to_str(op: binop) -> ~str {
 }
 
 pure fn binop_to_method_name(op: binop) -> option<~str> {
-    alt op {
+    match op {
       add => return some(~"add"),
       subtract => return some(~"sub"),
       mul => return some(~"mul"),
@@ -109,7 +109,7 @@ pure fn binop_to_method_name(op: binop) -> option<~str> {
 }
 
 pure fn lazy_binop(b: binop) -> bool {
-    alt b {
+    match b {
       and => true,
       or => true,
       _ => false
@@ -117,7 +117,7 @@ pure fn lazy_binop(b: binop) -> bool {
 }
 
 pure fn is_shift_binop(b: binop) -> bool {
-    alt b {
+    match b {
       shl => true,
       shr => true,
       _ => false
@@ -125,7 +125,7 @@ pure fn is_shift_binop(b: binop) -> bool {
 }
 
 pure fn unop_to_str(op: unop) -> ~str {
-    alt op {
+    match op {
       box(mt) => if mt == m_mutbl { ~"@mut " } else { ~"@" },
       uniq(mt) => if mt == m_mutbl { ~"~mut " } else { ~"~" },
       deref => ~"*",
@@ -135,11 +135,11 @@ pure fn unop_to_str(op: unop) -> ~str {
 }
 
 pure fn is_path(e: @expr) -> bool {
-    return alt e.node { expr_path(_) => true, _ => false };
+    return match e.node { expr_path(_) => true, _ => false };
 }
 
 pure fn int_ty_to_str(t: int_ty) -> ~str {
-    alt t {
+    match t {
       ty_char => ~"u8", // ???
       ty_i => ~"",
       ty_i8 => ~"i8",
@@ -150,7 +150,7 @@ pure fn int_ty_to_str(t: int_ty) -> ~str {
 }
 
 pure fn int_ty_max(t: int_ty) -> u64 {
-    alt t {
+    match t {
       ty_i8 => 0x80u64,
       ty_i16 => 0x8000u64,
       ty_i | ty_char | ty_i32 => 0x80000000u64, // actually ni about ty_i
@@ -159,7 +159,7 @@ pure fn int_ty_max(t: int_ty) -> u64 {
 }
 
 pure fn uint_ty_to_str(t: uint_ty) -> ~str {
-    alt t {
+    match t {
       ty_u => ~"u",
       ty_u8 => ~"u8",
       ty_u16 => ~"u16",
@@ -169,7 +169,7 @@ pure fn uint_ty_to_str(t: uint_ty) -> ~str {
 }
 
 pure fn uint_ty_max(t: uint_ty) -> u64 {
-    alt t {
+    match t {
       ty_u8 => 0xffu64,
       ty_u16 => 0xffffu64,
       ty_u | ty_u32 => 0xffffffffu64, // actually ni about ty_u
@@ -178,7 +178,7 @@ pure fn uint_ty_max(t: uint_ty) -> u64 {
 }
 
 pure fn float_ty_to_str(t: float_ty) -> ~str {
-    alt t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
+    match t { ty_f => ~"f", ty_f32 => ~"f32", ty_f64 => ~"f64" }
 }
 
 fn is_exported(i: ident, m: _mod) -> bool {
@@ -186,7 +186,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
     let mut parent_enum : option<ident> = none;
     for m.items.each |it| {
         if it.ident == i { local = true; }
-        alt it.node {
+        match it.node {
           item_enum(variants, _) => for variants.each |v| {
             if v.node.name == i {
                 local = true;
@@ -199,14 +199,14 @@ fn is_exported(i: ident, m: _mod) -> bool {
     }
     let mut has_explicit_exports = false;
     for m.view_items.each |vi| {
-        alt vi.node {
+        match vi.node {
           view_item_export(vps) => {
             has_explicit_exports = true;
             for vps.each |vp| {
-                alt vp.node {
+                match vp.node {
                   ast::view_path_simple(id, _, _) => {
                     if id == i { return true; }
-                    alt parent_enum {
+                    match parent_enum {
                       some(parent_enum_id) => {
                         if id == parent_enum_id { return true; }
                       }
@@ -240,7 +240,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
 }
 
 pure fn is_call_expr(e: @expr) -> bool {
-    alt e.node { expr_call(_, _, _) => true, _ => false }
+    match e.node { expr_call(_, _, _) => true, _ => false }
 }
 
 pure fn eq_ty(a: &@ty, b: &@ty) -> bool { box::ptr_eq(*a, *b) }
@@ -284,7 +284,7 @@ fn ident_to_path(s: span, +i: ident) -> @path {
 }
 
 pure fn is_unguarded(&&a: arm) -> bool {
-    alt a.guard {
+    match a.guard {
       none => true,
       _    => false
     }
@@ -295,7 +295,7 @@ pure fn unguarded_pat(a: arm) -> option<~[@pat]> {
 }
 
 pure fn class_item_ident(ci: @class_member) -> ident {
-    alt ci.node {
+    match ci.node {
       instance_var(i,_,_,_,_) => /* FIXME (#2543) */ copy i,
       class_method(it) => /* FIXME (#2543) */ copy it.ident
     }
@@ -306,7 +306,7 @@ type ivar = {ident: ident, ty: @ty, cm: class_mutability,
 
 fn public_methods(ms: ~[@method]) -> ~[@method] {
     vec::filter(ms,
-                |m| alt m.vis {
+                |m| match m.vis {
                     public => true,
                     _   => false
                 })
@@ -315,7 +315,7 @@ fn public_methods(ms: ~[@method]) -> ~[@method] {
 fn split_class_items(cs: ~[@class_member]) -> (~[ivar], ~[@method]) {
     let mut vs = ~[], ms = ~[];
     for cs.each |c| {
-      alt c.node {
+      match c.node {
         instance_var(i, t, cm, id, vis) => {
           vec::push(vs, {ident: /* FIXME (#2543) */ copy i,
                          ty: t,
@@ -332,7 +332,7 @@ fn split_class_items(cs: ~[@class_member]) -> (~[ivar], ~[@method]) {
 // extract a ty_method from a trait_method. if the trait_method is
 // a default, pull out the useful fields to make a ty_method
 fn trait_method_to_ty_method(method: trait_method) -> ty_method {
-    alt method {
+    match method {
       required(m) => m,
       provided(m) => {
         {ident: m.ident, attrs: m.attrs,
@@ -346,7 +346,7 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     -> (~[ty_method], ~[@method]) {
     let mut reqd = ~[], provd = ~[];
     for trait_methods.each |trt_method| {
-        alt trt_method {
+        match trt_method {
           required(tm) => vec::push(reqd, tm),
           provided(m) => vec::push(provd, m)
         }
@@ -355,7 +355,7 @@ fn split_trait_methods(trait_methods: ~[trait_method])
 }
 
 pure fn class_member_visibility(ci: @class_member) -> visibility {
-  alt ci.node {
+  match ci.node {
      instance_var(_, _, _, _, vis) => vis,
      class_method(m) => m.vis
   }
@@ -369,7 +369,7 @@ trait inlined_item_utils {
 
 impl inlined_item_methods of inlined_item_utils for inlined_item {
     fn ident() -> ident {
-        alt self {
+        match self {
           ii_item(i) => /* FIXME (#2543) */ copy i.ident,
           ii_foreign(i) => /* FIXME (#2543) */ copy i.ident,
           ii_method(_, m) => /* FIXME (#2543) */ copy m.ident,
@@ -379,7 +379,7 @@ impl inlined_item_methods of inlined_item_utils for inlined_item {
     }
 
     fn id() -> ast::node_id {
-        alt self {
+        match self {
           ii_item(i) => i.id,
           ii_foreign(i) => i.id,
           ii_method(_, m) => m.id,
@@ -389,7 +389,7 @@ impl inlined_item_methods of inlined_item_utils for inlined_item {
     }
 
     fn accept<E>(e: E, v: visit::vt<E>) {
-        alt self {
+        match self {
           ii_item(i) => v.visit_item(i, e, v),
           ii_foreign(i) => v.visit_foreign_item(i, e, v),
           ii_method(_, m) => visit::visit_method_helper(m, e, v),
@@ -406,7 +406,7 @@ impl inlined_item_methods of inlined_item_utils for inlined_item {
 /* True if d is either a def_self, or a chain of def_upvars
  referring to a def_self */
 fn is_self(d: ast::def) -> bool {
-  alt d {
+  match d {
     def_self(_)        => true,
     def_upvar(_, d, _) => is_self(*d),
     _                  => false
@@ -415,7 +415,7 @@ fn is_self(d: ast::def) -> bool {
 
 /// Maps a binary operator to its precedence
 fn operator_prec(op: ast::binop) -> uint {
-  alt op {
+  match op {
       mul | div | rem   => 12u,
       // 'as' sits between here with 11
       add | subtract    => 10u,
@@ -455,11 +455,11 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_view_item: fn@(vi: @view_item) {
-            alt vi.node {
+            match vi.node {
               view_item_use(_, _, id) => vfn(id),
               view_item_import(vps) | view_item_export(vps) => {
                 do vec::iter(vps) |vp| {
-                    alt vp.node {
+                    match vp.node {
                       view_path_simple(_, _, id) => vfn(id),
                       view_path_glob(_, id) => vfn(id),
                       view_path_list(_, _, id) => vfn(id)
@@ -475,7 +475,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
 
         visit_item: fn@(i: @item) {
             vfn(i.id);
-            alt i.node {
+            match i.node {
               item_enum(vs, _) => for vs.each |v| { vfn(v.node.id); }
               _ => ()
             }
@@ -511,7 +511,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_ty: fn@(t: @ty) {
-            alt t.node {
+            match t.node {
               ty_path(_, id) => vfn(id),
               _ => { /* fall through */ }
             }
@@ -525,7 +525,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
                       _b: ast::blk, _sp: span, id: ast::node_id) {
             vfn(id);
 
-            alt fk {
+            match fk {
               visit::fk_ctor(nm, _, tps, self_id, parent_id) => {
                 vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
@@ -565,7 +565,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_class_item: fn@(c: @class_member) {
-            alt c.node {
+            match c.node {
               instance_var(_, _, _, id,_) => vfn(id),
               class_method(_) => ()
             }
@@ -592,7 +592,7 @@ fn compute_id_range_for_inlined_item(item: inlined_item) -> id_range {
 }
 
 pure fn is_item_impl(item: @ast::item) -> bool {
-    alt item.node {
+    match item.node {
        item_impl(*) => true,
        _            => false
     }
@@ -600,7 +600,7 @@ pure fn is_item_impl(item: @ast::item) -> bool {
 
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
-    alt pat.node {
+    match pat.node {
       pat_ident(_, pth, some(p)) => walk_pat(p, it),
       pat_rec(fields, _) => for fields.each |f| { walk_pat(f.pat, it) }
       pat_enum(_, some(s)) | pat_tup(s) => for s.each |p| {
@@ -613,7 +613,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
 }
 
 fn view_path_id(p: @view_path) -> node_id {
-    alt p.node {
+    match p.node {
       view_path_simple(_, _, id) | view_path_glob(_, id) |
       view_path_list(_, _, id) => id
     }

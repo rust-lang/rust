@@ -133,7 +133,7 @@ mod chained {
             let mut e0 = e_root;
             let mut comp = 1u;   // for logging
             loop {
-                alt copy e0.next {
+                match copy e0.next {
                   none => {
                     debug!{"search_tbl: absent, comp %u, hash %u, idx %u",
                            comp, h, idx};
@@ -156,7 +156,7 @@ mod chained {
 
         fn search_tbl(k: &K, h: uint) -> search_result<K,V> {
             let idx = h % vec::len(self.chains);
-            alt copy self.chains[idx] {
+            match copy self.chains[idx] {
               none => {
                 debug!{"search_tbl: none, comp %u, hash %u, idx %u",
                        0u, h, idx};
@@ -193,7 +193,7 @@ mod chained {
             while i < n {
                 let mut chain = self.chains[i];
                 loop {
-                    chain = alt chain {
+                    chain = match chain {
                       none => break,
                       some(entry) => {
                         let next = entry.next;
@@ -216,7 +216,7 @@ mod chained {
 
         fn contains_key_ref(k: &K) -> bool {
             let hash = self.hasher(k);
-            alt self.search_tbl(k, hash) {
+            match self.search_tbl(k, hash) {
               not_found => false,
               found_first(*) | found_after(*) => true
             }
@@ -224,7 +224,7 @@ mod chained {
 
         fn insert(+k: K, +v: V) -> bool {
             let hash = self.hasher(&k);
-            alt self.search_tbl(&k, hash) {
+            match self.search_tbl(&k, hash) {
               not_found => {
                 self.count += 1u;
                 let idx = hash % vec::len(self.chains);
@@ -265,7 +265,7 @@ mod chained {
         }
 
         fn find(+k: K) -> option<V> {
-            alt self.search_tbl(&k, self.hasher(&k)) {
+            match self.search_tbl(&k, self.hasher(&k)) {
               not_found => none,
               found_first(_, entry) => some(entry.value),
               found_after(_, entry) => some(entry.value)
@@ -281,7 +281,7 @@ mod chained {
         }
 
         fn remove(+k: K) -> option<V> {
-            alt self.search_tbl(&k, self.hasher(&k)) {
+            match self.search_tbl(&k, self.hasher(&k)) {
               not_found => none,
               found_first(idx, entry) => {
                 self.count -= 1u;
@@ -638,7 +638,7 @@ mod tests {
         i = 0u;
         while i < num_to_insert {
             let v = hm.remove(i);
-            alt v {
+            match v {
               option::some(u) => assert (u == i * i),
               option::none => fail
             }

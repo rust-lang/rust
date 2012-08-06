@@ -114,7 +114,7 @@ fn get_attr_name(attr: ast::attribute) -> ast::ident {
 
 // All "bad" FIXME copies are as per #2543
 fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
-    alt meta.node {
+    match meta.node {
       ast::meta_word(n) => /* FIXME (#2543) */ copy n,
       ast::meta_name_value(n, _) => /* FIXME (#2543) */ copy n,
       ast::meta_list(n, _) => /* FIXME (#2543) */ copy n
@@ -126,8 +126,8 @@ fn get_meta_item_name(meta: @ast::meta_item) -> ast::ident {
  * containing a string, otherwise none
  */
 fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@~str> {
-    alt meta.node {
-      ast::meta_name_value(_, v) => alt v.node {
+    match meta.node {
+      ast::meta_name_value(_, v) => match v.node {
         ast::lit_str(s) => option::some(s),
         _ => option::none
       }
@@ -137,7 +137,7 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@~str> {
 
 /// Gets a list of inner meta items from a list meta_item type
 fn get_meta_item_list(meta: @ast::meta_item) -> option<~[@ast::meta_item]> {
-    alt meta.node {
+    match meta.node {
       ast::meta_list(_, l) => option::some(/* FIXME (#2543) */ copy l),
       _ => option::none
     }
@@ -150,7 +150,7 @@ fn get_meta_item_list(meta: @ast::meta_item) -> option<~[@ast::meta_item]> {
 fn get_name_value_str_pair(
     item: @ast::meta_item
 ) -> option<(ast::ident, @~str)> {
-    alt attr::get_meta_item_value_str(item) {
+    match attr::get_meta_item_value_str(item) {
       some(value) => {
         let name = attr::get_meta_item_name(item);
         some((name, value))
@@ -203,12 +203,12 @@ fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item) -> bool {
 }
 
 fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
-    return alt a.node {
-          ast::meta_word(na) => alt b.node {
+    return match a.node {
+          ast::meta_word(na) => match b.node {
             ast::meta_word(nb) => na == nb,
             _ => false
           }
-          ast::meta_name_value(na, va) => alt b.node {
+          ast::meta_name_value(na, va) => match b.node {
             ast::meta_name_value(nb, vb) => na == nb && va.node == vb.node,
             _ => false
           }
@@ -253,8 +253,8 @@ fn last_meta_item_value_str_by_name(
     items: ~[@ast::meta_item],
     +name: ~str
 ) -> option<@~str> {
-    alt last_meta_item_by_name(items, name) {
-      some(item) => alt attr::get_meta_item_value_str(item) {
+    match last_meta_item_by_name(items, name) {
+      some(item) => match attr::get_meta_item_value_str(item) {
         some(value) => some(value),
         none => none
       }
@@ -266,7 +266,7 @@ fn last_meta_item_list_by_name(
     items: ~[@ast::meta_item],
     +name: ~str
 ) -> option<~[@ast::meta_item]> {
-    alt last_meta_item_by_name(items, name) {
+    match last_meta_item_by_name(items, name) {
       some(item) => attr::get_meta_item_list(item),
       none => none
     }
@@ -280,7 +280,7 @@ fn last_meta_item_list_by_name(
 fn sort_meta_items(+items: ~[@ast::meta_item]) -> ~[@ast::meta_item] {
     pure fn lteq(ma: &@ast::meta_item, mb: &@ast::meta_item) -> bool {
         pure fn key(m: &ast::meta_item) -> ast::ident {
-            alt m.node {
+            match m.node {
               ast::meta_word(name) => /* FIXME (#2543) */ copy name,
               ast::meta_name_value(name, _) => /* FIXME (#2543) */ copy name,
               ast::meta_list(name, _) => /* FIXME (#2543) */ copy name
@@ -310,7 +310,7 @@ fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ast::ident) ->
 fn find_linkage_attrs(attrs: ~[ast::attribute]) -> ~[ast::attribute] {
     let mut found = ~[];
     for find_attrs_by_name(attrs, ~"link").each |attr| {
-        alt attr.node.value.node {
+        match attr.node.value.node {
           ast::meta_list(_, _) => vec::push(found, attr),
           _ => debug!{"ignoring link attribute that has incorrect type"}
         }
@@ -324,14 +324,14 @@ fn find_linkage_attrs(attrs: ~[ast::attribute]) -> ~[ast::attribute] {
  */
 fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     do find_linkage_attrs(attrs).flat_map |attr| {
-        alt check attr.node.value.node {
+        match check attr.node.value.node {
           ast::meta_list(_, items) => /* FIXME (#2543) */ copy items
         }
     }
 }
 
 fn foreign_abi(attrs: ~[ast::attribute]) -> either<~str, ast::foreign_abi> {
-    return alt attr::first_attr_value_str_by_name(attrs, ~"abi") {
+    return match attr::first_attr_value_str_by_name(attrs, ~"abi") {
       option::none => {
         either::right(ast::foreign_abi_cdecl)
       }
@@ -361,7 +361,7 @@ enum inline_attr {
 fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline(always)]
     do vec::foldl(ia_none, attrs) |ia,attr| {
-        alt attr.node.value.node {
+        match attr.node.value.node {
           ast::meta_word(@~"inline") => ia_hint,
           ast::meta_list(@~"inline", items) => {
             if !vec::is_empty(find_meta_items_by_name(items, ~"always")) {

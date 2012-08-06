@@ -2,10 +2,10 @@
 fn baz() -> ! { fail; }
 
 fn foo() {
-    alt some::<int>(5) {
+    match some::<int>(5) {
       some::<int>(x) => {
         let mut bar;
-        alt none::<int> { none::<int> => { bar = 5; } _ => { baz(); } }
+        match none::<int> { none::<int> => { bar = 5; } _ => { baz(); } }
         log(debug, bar);
       }
       none::<int> => { debug!{"hello"}; }

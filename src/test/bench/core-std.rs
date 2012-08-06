@@ -76,7 +76,7 @@ fn str_set() {
     
     let mut found = 0;
     for int::range(0, 1000) |_i| {
-        alt s.find(r.gen_str(10)) {
+        match s.find(r.gen_str(10)) {
           some(_) => { found += 1; }
           none => { }
         }

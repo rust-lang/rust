@@ -111,7 +111,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                        path: ast_map::path,
                        par_doc: ebml::doc) -> option<ast::inlined_item> {
     let dcx = @{cdata: cdata, tcx: tcx, maps: maps};
-    alt par_doc.opt_child(c::tag_ast) {
+    match par_doc.opt_child(c::tag_ast) {
       none => none,
       some(ast_doc) => {
         debug!{"> Decoding inlined fn: %s::?", ast_map::path_to_str(path)};
@@ -129,7 +129,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         decode_side_tables(xcx, ast_doc);
         debug!{"< Decoded inlined fn: %s::%s",
                ast_map::path_to_str(path), *ii.ident()};
-        alt ii {
+        match ii {
           ast::ii_item(i) => {
             debug!{">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
                    syntax::print::pprust::item_to_str(i)};
@@ -245,7 +245,7 @@ fn encode_ast(ebml_w: ebml::writer, item: ast::inlined_item) {
 fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
     fn drop_nested_items(blk: ast::blk_, fld: fold::ast_fold) -> ast::blk_ {
         let stmts_sans_items = do vec::filter(blk.stmts) |stmt| {
-            alt stmt.node {
+            match stmt.node {
               ast::stmt_expr(_, _) | ast::stmt_semi(_, _) |
               ast::stmt_decl(@{node: ast::decl_local(_), span: _}, _) => true,
               ast::stmt_decl(@{node: ast::decl_item(_), span: _}, _) => false
@@ -260,7 +260,7 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
         with *fold::default_ast_fold()
     });
 
-    alt ii {
+    match ii {
       ast::ii_item(i) => {
         ast::ii_item(fld.fold_item(i).get()) //hack: we're not dropping items
       }
@@ -300,7 +300,7 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         with *fold::default_ast_fold()
     });
 
-    alt ii {
+    match ii {
       ast::ii_item(i) => {
         ast::ii_item(fld.fold_item(i).get())
       }
@@ -352,7 +352,7 @@ fn decode_def(xcx: extended_decode_ctxt, doc: ebml::doc) -> ast::def {
 
 impl of tr for ast::def {
     fn tr(xcx: extended_decode_ctxt) -> ast::def {
-        alt self {
+        match self {
           ast::def_fn(did, p) => ast::def_fn(did.tr(xcx), p),
           ast::def_self(nid) => ast::def_self(xcx.tr_id(nid)),
           ast::def_mod(did) => ast::def_mod(did.tr(xcx)),
@@ -422,7 +422,7 @@ impl helper of read_method_map_entry_helper for ebml::ebml_deserializer {
 
 impl of tr for method_origin {
     fn tr(xcx: extended_decode_ctxt) -> method_origin {
-        alt self {
+        match self {
           typeck::method_static(did) => {
             typeck::method_static(did.tr(xcx))
           }
@@ -455,7 +455,7 @@ fn encode_vtable_origin(ecx: @e::encode_ctxt,
                       ebml_w: ebml::writer,
                       vtable_origin: typeck::vtable_origin) {
     do ebml_w.emit_enum(~"vtable_origin") {
-        alt vtable_origin {
+        match vtable_origin {
           typeck::vtable_static(def_id, tys, vtable_res) => {
             do ebml_w.emit_enum_variant(~"vtable_static", 0u, 3u) {
                 do ebml_w.emit_enum_variant_arg(0u) {
@@ -508,7 +508,7 @@ impl helpers of vtable_deserialization_helpers for ebml::ebml_deserializer {
         -> typeck::vtable_origin {
         do self.read_enum(~"vtable_origin") {
             do self.read_enum_variant |i| {
-                alt check i {
+                match check i {
                   0u => {
                     typeck::vtable_static(
                         do self.read_enum_variant_arg(0u) {
@@ -992,7 +992,7 @@ fn test_simplification() {
             return {eq_fn: eq_int, mut data: ~[]};
         }
     });
-    alt (item_out, item_exp) {
+    match (item_out, item_exp) {
       (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
         assert pprust::item_to_str(item_out) == pprust::item_to_str(item_exp);
       }

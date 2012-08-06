@@ -2,7 +2,7 @@
 enum bar { u(~int), w(int), }
 
 fn main() {
-    assert alt u(~10) {
+    assert match u(~10) {
       u(a) => {
         log(error, a);
         *a

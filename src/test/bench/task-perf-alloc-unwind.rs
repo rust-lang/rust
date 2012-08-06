@@ -53,7 +53,7 @@ fn recurse_or_fail(depth: int, st: option<st>) {
     } else {
         let depth = depth - 1;
 
-        let st = alt st {
+        let st = match st {
           none => {
             st_({
                 box: @nil,

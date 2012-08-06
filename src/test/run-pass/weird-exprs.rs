@@ -19,7 +19,7 @@ fn zombiejesus() {
     loop {
         while (return) {
             if (return) {
-                alt (return) {
+                match (return) {
                     1 => {
                         if (return) {
                             return
@@ -59,7 +59,7 @@ fn canttouchthis() -> uint {
 fn angrydome() {
     loop { if break { } }
     let mut i = 0;
-    loop { i += 1; if i == 1 { alt check again { 1 => { } } } break; }
+    loop { i += 1; if i == 1 { match check again { 1 => { } } } break; }
 }
 
 fn evil_lincoln() { let evil <- debug!{"lincoln"}; }

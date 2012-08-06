@@ -62,7 +62,7 @@ type begin_t = {offset: int, breaks: breaks};
 enum token { STRING(@~str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
 
 fn tok_str(++t: token) -> ~str {
-    alt t {
+    match t {
       STRING(s, len) => return fmt!{"STR(%s,%d)", *s, len},
       BREAK(_) => return ~"BREAK",
       BEGIN(_) => return ~"BEGIN",
@@ -238,7 +238,7 @@ impl printer for printer {
     fn replace_last_token(t: token) { self.token[self.right] = t; }
     fn pretty_print(t: token) {
         debug!{"pp ~[%u,%u]", self.left, self.right};
-        alt t {
+        match t {
           EOF => {
             if !self.scan_stack_empty {
                 self.check_stack(0);
@@ -357,7 +357,7 @@ impl printer for printer {
                self.left, L};
         if L >= 0 {
             self.print(x, L);
-            alt x {
+            match x {
               BREAK(b) => self.left_total += b.blank_space,
               STRING(_, len) => { assert (len == L); self.left_total += len; }
               _ => ()
@@ -373,7 +373,7 @@ impl printer for printer {
     fn check_stack(k: int) {
         if !self.scan_stack_empty {
             let x = self.scan_top();
-            alt copy self.token[x] {
+            match copy self.token[x] {
               BEGIN(b) => {
                 if k > 0 {
                     self.size[self.scan_pop()] = self.size[x] +
@@ -422,7 +422,7 @@ impl printer for printer {
         debug!{"print %s %d (remaining line space=%d)", tok_str(x), L,
                self.space};
         log(debug, buf_str(self.token, self.size, self.left, self.right, 6u));
-        alt x {
+        match x {
           BEGIN(b) => {
             if L > self.space {
                 let col = self.margin - self.space + b.offset;
@@ -442,7 +442,7 @@ impl printer for printer {
           }
           BREAK(b) => {
             let top = self.get_top();
-            alt top.pbreak {
+            match top.pbreak {
               fits => {
                 debug!{"print BREAK in fitting block"};
                 self.space -= b.blank_space;

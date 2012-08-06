@@ -17,7 +17,7 @@ fn type_of_explicit_args(cx: @crate_ctxt,
     do vec::map(inputs) |arg| {
         let arg_ty = arg.ty;
         let llty = type_of(cx, arg_ty);
-        alt ty::resolved_mode(cx.tcx, arg.mode) {
+        match ty::resolved_mode(cx.tcx, arg.mode) {
           ast::by_val => llty,
           _ => T_ptr(llty)
         }
@@ -51,7 +51,7 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     if t != t_norm {
         type_of_non_gc_box(cx, t_norm)
     } else {
-        alt ty::get(t).struct {
+        match ty::get(t).struct {
           ty::ty_box(mt) => {
             T_ptr(T_box(cx, type_of(cx, mt.ty)))
           }
@@ -83,7 +83,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         llty = type_of(cx, t_norm);
         cx.lltypes.insert(t, llty);
     } else {
-        llty = alt ty::get(t).struct {
+        llty = match ty::get(t).struct {
           ty::ty_nil | ty::ty_bot => T_nil(),
           ty::ty_bool => T_bool(),
           ty::ty_int(t) => T_int_ty(cx, t),
@@ -166,7 +166,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         cx.lltypes.insert(t, llty);
 
         // If this was a class, fill in the type now.
-        alt ty::get(t).struct {
+        match ty::get(t).struct {
           ty::ty_class(did, ts) => {
             // Only instance vars are record fields at runtime.
             let fields = ty::lookup_class_fields(cx.tcx, did);
@@ -225,7 +225,7 @@ fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
 }
 
 fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
-    let (name, did, tps) = alt check ty::get(t).struct {
+    let (name, did, tps) = match check ty::get(t).struct {
       ty::ty_enum(did, substs) => (~"enum", did, substs.tps),
       ty::ty_class(did, substs) => (~"class", did, substs.tps)
     };

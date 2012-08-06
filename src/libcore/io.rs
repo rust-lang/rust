@@ -196,7 +196,7 @@ impl reader_util for reader {
 // Reader implementations
 
 fn convert_whence(whence: seek_style) -> i32 {
-    return alt whence {
+    return match whence {
       seek_set => 0i32,
       seek_cur => 1i32,
       seek_end => 2i32
@@ -440,7 +440,7 @@ fn mk_file_writer(path: ~str, flags: ~[fileflag])
 
     let mut fflags: c_int = wb();
     for vec::each(flags) |f| {
-        alt f {
+        match f {
           append => fflags |= O_APPEND as c_int,
           create => fflags |= O_CREAT as c_int,
           truncate => fflags |= O_TRUNC as c_int,
@@ -460,7 +460,7 @@ fn mk_file_writer(path: ~str, flags: ~[fileflag])
 
 fn u64_to_le_bytes<T>(n: u64, size: uint, f: fn(v: &[u8]) -> T) -> T {
     assert size <= 8u;
-    alt size {
+    match size {
       1u => f(&[n as u8]),
       2u => f(&[n as u8,
               (n >> 8) as u8]),
@@ -491,7 +491,7 @@ fn u64_to_le_bytes<T>(n: u64, size: uint, f: fn(v: &[u8]) -> T) -> T {
 
 fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn(v: &[u8]) -> T) -> T {
     assert size <= 8u;
-    alt size {
+    match size {
       1u => f(&[n as u8]),
       2u => f(&[(n >> 8) as u8,
               n as u8]),
@@ -717,7 +717,7 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
    uint {
     let mut bpos = pos as int;
     let blen = len as int;
-    alt whence {
+    match whence {
       seek_set => bpos = offset,
       seek_cur => bpos += offset,
       seek_end => bpos = blen + offset
@@ -767,7 +767,7 @@ mod fsync {
         let arg: arg<t>;
         new(-arg: arg<t>) { self.arg <- arg; }
         drop {
-          alt self.arg.opt_level {
+          match self.arg.opt_level {
             option::none => (),
             option::some(level) => {
               // fail hard if not succesful
@@ -891,7 +891,7 @@ mod tests {
 
     #[test]
     fn file_reader_not_exist() {
-        alt io::file_reader(~"not a file") {
+        match io::file_reader(~"not a file") {
           result::err(e) => {
             assert e == ~"error opening not a file";
           }
@@ -901,7 +901,7 @@ mod tests {
 
     #[test]
     fn file_writer_bad_name() {
-        alt io::file_writer(~"?/?", ~[]) {
+        match io::file_writer(~"?/?", ~[]) {
           result::err(e) => {
             assert str::starts_with(e, ~"error opening ?/?");
           }
@@ -911,7 +911,7 @@ mod tests {
 
     #[test]
     fn buffered_file_writer_bad_name() {
-        alt io::buffered_file_writer(~"?/?") {
+        match io::buffered_file_writer(~"?/?") {
           result::err(e) => {
             assert e == ~"error opening ?/?";
           }

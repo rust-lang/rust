@@ -17,7 +17,7 @@ enum square {
 
 impl of to_str::to_str for square {
     fn to_str() -> ~str {
-        alt self {
+        match self {
           bot => { ~"R" }
           wall => { ~"#" }
           rock => { ~"*" }
@@ -31,7 +31,7 @@ impl of to_str::to_str for square {
 }
 
 fn square_from_char(c: char) -> square {
-    alt c  {
+    match c  {
       'R'  => { bot }
       '#'  => { wall }
       '*'  => { rock }

@@ -23,7 +23,7 @@ pure fn get<T: copy>(opt: option<T>) -> T {
      * Fails if the value equals `none`
      */
 
-    alt opt {
+    match opt {
       some(x) => return x,
       none => fail ~"option::get none"
     }
@@ -37,13 +37,13 @@ pure fn expect<T: copy>(opt: option<T>, reason: ~str) -> T {
 
     Fails if the value equals `none`
     "];
-    alt opt { some(x) => x, none => fail reason }
+    match opt { some(x) => x, none => fail reason }
 }
 
 pure fn map<T, U>(opt: option<T>, f: fn(T) -> U) -> option<U> {
     //! Maps a `some` value from one type to another
 
-    alt opt { some(x) => some(f(x)), none => none }
+    match opt { some(x) => some(f(x)), none => none }
 }
 
 pure fn map_consume<T, U>(-opt: option<T>, f: fn(-T) -> U) -> option<U> {
@@ -60,7 +60,7 @@ pure fn chain<T, U>(opt: option<T>, f: fn(T) -> option<U>) -> option<U> {
      * function that returns an option.
      */
 
-    alt opt { some(x) => f(x), none => none }
+    match opt { some(x) => f(x), none => none }
 }
 
 #[inline(always)]
@@ -76,7 +76,7 @@ pure fn while_some<T>(+x: option<T>, blk: fn(+T) -> option<T>) {
 pure fn is_none<T>(opt: option<T>) -> bool {
     //! Returns true if the option equals `none`
 
-    alt opt { none => true, some(_) => false }
+    match opt { none => true, some(_) => false }
 }
 
 pure fn is_some<T>(opt: option<T>) -> bool {
@@ -88,19 +88,19 @@ pure fn is_some<T>(opt: option<T>) -> bool {
 pure fn get_default<T: copy>(opt: option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
-    alt opt { some(x) => x, none => def }
+    match opt { some(x) => x, none => def }
 }
 
 pure fn map_default<T, U>(opt: option<T>, +def: U, f: fn(T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
-    alt opt { none => def, some(t) => f(t) }
+    match opt { none => def, some(t) => f(t) }
 }
 
 pure fn iter<T>(opt: option<T>, f: fn(T)) {
     //! Performs an operation on the contained value or does nothing
 
-    alt opt { none => (), some(t) => f(t) }
+    match opt { none => (), some(t) => f(t) }
 }
 
 #[inline(always)]
@@ -113,7 +113,7 @@ pure fn unwrap<T>(-opt: option<T>) -> T {
      */
 
     unsafe {
-        let addr = alt opt {
+        let addr = match opt {
           some(x) => ptr::addr_of(x),
           none => fail ~"option::unwrap none"
         };

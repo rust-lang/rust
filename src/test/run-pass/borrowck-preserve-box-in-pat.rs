@@ -2,7 +2,7 @@
 
 fn main() {
     let mut x = @mut @{f: ~3};
-    alt x {
+    match x {
       @@{f: b_x} => {
         assert *b_x == 3;
         assert ptr::addr_of(x.f) == ptr::addr_of(b_x);

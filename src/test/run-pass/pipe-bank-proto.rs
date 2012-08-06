@@ -47,7 +47,7 @@ macro_rules! follow {
     { 
         $($message:path($($x: ident),+) => $next:ident $e:expr)+
     } => (
-        |m| alt move_it(m) {
+        |m| match move_it(m) {
           $(some($message($($x,)* next)) {
             let $next = move_it!{next};
             $e })+
@@ -58,7 +58,7 @@ macro_rules! follow {
     { 
         $($message:path => $next:ident $e:expr)+
     } => (
-        |m| alt move_it(m) {
+        |m| match move_it(m) {
             $(some($message(next)) {
                 let $next = move_it!{next};
                 $e })+
@@ -91,7 +91,7 @@ fn client_follow(+bank: bank::client::login) {
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
-    alt try_recv(bank) {
+    match try_recv(bank) {
       some(money(m, _)) {
         io::println(~"Yay! I got money!");
       }
@@ -109,7 +109,7 @@ fn bank_client(+bank: bank::client::login) {
     import bank::*;
 
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
-    let bank = alt try_recv(bank) {
+    let bank = match try_recv(bank) {
       some(ok(connected)) => {
         move_it!{connected}
       }
@@ -119,7 +119,7 @@ fn bank_client(+bank: bank::client::login) {
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
-    alt try_recv(bank) {
+    match try_recv(bank) {
       some(money(m, _)) => {
         io::println(~"Yay! I got money!");
       }

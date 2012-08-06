@@ -22,7 +22,7 @@ fn is_aligned<A>(amnt: uint, &&u: A) -> bool {
 }
 
 fn variant_data_is_aligned<A,B>(amnt: uint, &&u: a_tag<A,B>) -> bool {
-    alt u {
+    match u {
       varA(a) { is_aligned(amnt, a) }
       varB(b) { is_aligned(amnt, b) }
     }

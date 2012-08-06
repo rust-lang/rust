@@ -20,7 +20,7 @@ const as_prec: uint = 11u;
  * operator and its precedence
  */
 fn token_to_binop(tok: token) -> option<ast::binop> {
-  alt tok {
+  match tok {
       BINOP(STAR)    => some(mul),
       BINOP(SLASH)   => some(div),
       BINOP(PERCENT) => some(rem),

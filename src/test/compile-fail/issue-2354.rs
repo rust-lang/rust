@@ -5,7 +5,7 @@
   xfailed for now (see Issue #2354)
  */
 fn foo() { //~ ERROR this open brace is not closed
-  alt some(x) {
+  match some(x) {
       some(y) { fail; }
       none    { fail; }
 }

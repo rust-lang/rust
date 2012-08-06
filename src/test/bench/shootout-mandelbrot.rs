@@ -103,7 +103,7 @@ fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
     let p: comm::port<line> = comm::port();
     let ch = comm::chan(p);
     comm::send(writech, ch);
-    let cout: io::writer = alt path {
+    let cout: io::writer = match path {
         ~"" => {
             {dn: 0} as io::writer
         }

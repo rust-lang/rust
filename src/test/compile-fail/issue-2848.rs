@@ -8,7 +8,7 @@ mod bar {
 
 fn main() {
     import bar::{alpha, charlie};
-    alt alpha {
+    match alpha {
       alpha | beta => {} //~ ERROR: inconsistent number of bindings
       charlie => {}
     }

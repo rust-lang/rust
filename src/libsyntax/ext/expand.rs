@@ -15,18 +15,18 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                orig: fn@(expr_, span, ast_fold) -> (expr_, span))
     -> (expr_, span)
 {
-    return alt e {
+    return match e {
       // expr_mac should really be expr_ext or something; it's the
       // entry-point for all syntax extensions.
           expr_mac(mac) => {
 
             // Old-style macros, for compatibility, will erase this whole
             // block once we've transitioned.
-            alt mac.node {
+            match mac.node {
               mac_invoc(pth, args, body) => {
                 assert (vec::len(pth.idents) > 0u);
                 let extname = pth.idents[0];
-                alt exts.find(*extname) {
+                match exts.find(*extname) {
                   none => {
                     cx.span_fatal(pth.span,
                                   fmt!{"macro undefined: '%s'", *extname})
@@ -69,13 +69,13 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
               mac_invoc_tt(pth, tts) => {
                 assert (vec::len(pth.idents) == 1u);
                 let extname = pth.idents[0];
-                alt exts.find(*extname) {
+                match exts.find(*extname) {
                   none => {
                     cx.span_fatal(pth.span,
                                   fmt!{"macro undefined: '%s'", *extname})
                   }
                   some(expr_tt({expander: exp, span: exp_sp})) => {
-                    let expanded = alt exp(cx, mac.span, tts) {
+                    let expanded = match exp(cx, mac.span, tts) {
                       mr_expr(e) => e,
                       _ => cx.span_fatal(
                           pth.span, fmt!{"non-expr macro in expr pos: %s",
@@ -141,12 +141,12 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
     // the item into a new set of items.
     let new_items = do vec::flat_map(module_.items) |item| {
         do vec::foldr(item.attrs, ~[item]) |attr, items| {
-            let mname = alt attr.node.value.node {
+            let mname = match attr.node.value.node {
               ast::meta_word(n) => n,
               ast::meta_name_value(n, _) => n,
               ast::meta_list(n, _) => n
             };
-            alt exts.find(*mname) {
+            match exts.find(*mname) {
               none | some(normal(_)) | some(macro_defining(_))
               | some(expr_tt(_)) | some(item_tt(*)) => items,
               some(item_decorator(dec_fn)) => {
@@ -166,16 +166,16 @@ fn expand_item(exts: hashmap<~str, syntax_extension>,
                orig: fn@(&&@ast::item, ast_fold) -> option<@ast::item>)
     -> option<@ast::item>
 {
-    let is_mod = alt it.node {
+    let is_mod = match it.node {
       ast::item_mod(_) | ast::item_foreign_mod(_) => true,
       _ => false
     };
-    let maybe_it = alt it.node {
+    let maybe_it = match it.node {
       ast::item_mac(*) => expand_item_mac(exts, cx, it, fld),
       _ => some(it)
     };
 
-    alt maybe_it {
+    match maybe_it {
       some(it) => {
         if is_mod { cx.mod_push(it.ident); }
         let ret_val = orig(it, fld);
@@ -192,10 +192,10 @@ fn expand_item(exts: hashmap<~str, syntax_extension>,
 fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                    cx: ext_ctxt, &&it: @ast::item,
                    fld: ast_fold) -> option<@ast::item> {
-    alt it.node {
+    match it.node {
       item_mac({node: mac_invoc_tt(pth, tts), span}) => {
         let extname = pth.idents[0];
-        alt exts.find(*extname) {
+        match exts.find(*extname) {
           none => {
             cx.span_fatal(pth.span,
                           fmt!{"macro undefined: '%s'", *extname})
@@ -205,7 +205,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
             cx.bt_push(expanded_from({call_site: it.span,
                                       callie: {name: *extname,
                                                span: expand.span}}));
-            let maybe_it = alt expanded {
+            let maybe_it = match expanded {
               mr_item(it) => fld.fold_item(it),
               mr_expr(e) => cx.span_fatal(pth.span,
                                          ~"expr macro in item position: " +

@@ -1,1 +1,1 @@
-fn main() { let x = (); alt x { () => { } } }
+fn main() { let x = (); match x { () => { } } }

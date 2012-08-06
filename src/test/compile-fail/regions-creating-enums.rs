@@ -11,14 +11,14 @@ fn build() {
 }
 
 fn compute(x: &ast) -> uint {
-    alt *x {
+    match *x {
       num(x) => { x }
       add(x, y) => { compute(x) + compute(y) }
     }
 }
 
 fn map_nums(x: &ast, f: fn(uint) -> uint) -> &ast {
-    alt *x {
+    match *x {
       num(x) => {
         return &num(f(x)); //~ ERROR illegal borrow
       }

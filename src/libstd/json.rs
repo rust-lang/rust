@@ -45,7 +45,7 @@ type error = {
 
 /// Serializes a json value into a io::writer
 fn to_writer(wr: io::writer, j: json) {
-    alt j {
+    match j {
       num(n) => wr.write_str(float::to_str(n, 6u)),
       string(s) => wr.write_str(escape_str(*s)),
       boolean(b) => wr.write_str(if b { ~"true" } else { ~"false" }),
@@ -87,7 +87,7 @@ fn to_writer(wr: io::writer, j: json) {
 fn escape_str(s: ~str) -> ~str {
     let mut escaped = ~"\"";
     do str::chars_iter(s) |c| {
-        alt c {
+        match c {
           '"' => escaped += ~"\\\"",
           '\\' => escaped += ~"\\\\",
           '\x08' => escaped += ~"\\b",
@@ -144,7 +144,7 @@ impl parser for parser {
     }
 
     fn parse() -> result<json, error> {
-        alt self.parse_value() {
+        match self.parse_value() {
           ok(value) => {
             // Skip trailing whitespaces.
             self.parse_whitespace();
@@ -164,12 +164,12 @@ impl parser for parser {
 
         if self.eof() { return self.error(~"EOF while parsing value"); }
 
-        alt self.ch {
+        match self.ch {
           'n' => self.parse_ident(~"ull", null),
           't' => self.parse_ident(~"rue", boolean(true)),
           'f' => self.parse_ident(~"alse", boolean(false)),
           '0' to '9' | '-' => self.parse_number(),
-          '"' => alt self.parse_str() {
+          '"' => match self.parse_str() {
             ok(s) => ok(string(s)),
             err(e) => err(e)
           }
@@ -200,20 +200,20 @@ impl parser for parser {
             neg = -1f;
         }
 
-        let mut res = alt self.parse_integer() {
+        let mut res = match self.parse_integer() {
           ok(res) => res,
           err(e) => return err(e)
         };
 
         if self.ch == '.' {
-            alt self.parse_decimal(res) {
+            match self.parse_decimal(res) {
               ok(r) => res = r,
               err(e) => return err(e)
             }
         }
 
         if self.ch == 'e' || self.ch == 'E' {
-            alt self.parse_exponent(res) {
+            match self.parse_exponent(res) {
               ok(r) => res = r,
               err(e) => return err(e)
             }
@@ -225,19 +225,19 @@ impl parser for parser {
     fn parse_integer() -> result<float, error> {
         let mut res = 0f;
 
-        alt self.ch {
+        match self.ch {
           '0' => {
             self.bump();
 
             // There can be only one leading '0'.
-            alt self.ch {
+            match self.ch {
               '0' to '9' => return self.error(~"invalid number"),
               _ => ()
             }
           }
           '1' to '9' => {
             while !self.eof() {
-                alt self.ch {
+                match self.ch {
                   '0' to '9' => {
                     res *= 10f;
                     res += ((self.ch as int) - ('0' as int)) as float;
@@ -258,7 +258,7 @@ impl parser for parser {
         self.bump();
 
         // Make sure a digit follows the decimal place.
-        alt self.ch {
+        match self.ch {
           '0' to '9' => (),
           _ => return self.error(~"invalid number")
         }
@@ -266,7 +266,7 @@ impl parser for parser {
         let mut res = res;
         let mut dec = 1f;
         while !self.eof() {
-            alt self.ch {
+            match self.ch {
               '0' to '9' => {
                 dec /= 10f;
                 res += (((self.ch as int) - ('0' as int)) as float) * dec;
@@ -287,20 +287,20 @@ impl parser for parser {
         let mut exp = 0u;
         let mut neg_exp = false;
 
-        alt self.ch {
+        match self.ch {
           '+' => self.bump(),
           '-' => { self.bump(); neg_exp = true; }
           _ => ()
         }
 
         // Make sure a digit follows the exponent place.
-        alt self.ch {
+        match self.ch {
           '0' to '9' => (),
           _ => return self.error(~"invalid number")
         }
 
         while !self.eof() {
-            alt self.ch {
+            match self.ch {
               '0' to '9' => {
                 exp *= 10u;
                 exp += (self.ch as uint) - ('0' as uint);
@@ -329,7 +329,7 @@ impl parser for parser {
             self.bump();
 
             if (escape) {
-                alt self.ch {
+                match self.ch {
                   '"' => str::push_char(res, '"'),
                   '\\' => str::push_char(res, '\\'),
                   '/' => str::push_char(res, '/'),
@@ -343,7 +343,7 @@ impl parser for parser {
                       let mut i = 0u;
                       let mut n = 0u;
                       while i < 4u {
-                          alt self.next_char() {
+                          match self.next_char() {
                             '0' to '9' => {
                               n = n * 10u +
                                   (self.ch as uint) - ('0' as uint);
@@ -389,7 +389,7 @@ impl parser for parser {
         }
 
         loop {
-            alt self.parse_value() {
+            match self.parse_value() {
               ok(v) => vec::push(values, v),
               e => return e
             }
@@ -399,7 +399,7 @@ impl parser for parser {
                 return self.error(~"EOF while parsing list");
             }
 
-            alt self.ch {
+            match self.ch {
               ',' => self.bump(),
               ']' => { self.bump(); return ok(list(@values)); }
               _ => return self.error(~"expected `,` or `]`")
@@ -425,7 +425,7 @@ impl parser for parser {
                 return self.error(~"key must be a string");
             }
 
-            let key = alt self.parse_str() {
+            let key = match self.parse_str() {
               ok(key) => key,
               err(e) => return err(e)
             };
@@ -438,13 +438,13 @@ impl parser for parser {
             }
             self.bump();
 
-            alt self.parse_value() {
+            match self.parse_value() {
               ok(value) => { values.insert(copy *key, value); }
               e => return e
             }
             self.parse_whitespace();
 
-            alt self.ch {
+            match self.ch {
               ',' => self.bump(),
               '}' => { self.bump(); return ok(dict(values)); }
               _ => {
@@ -477,7 +477,7 @@ fn from_str(s: ~str) -> result<json, error> {
 
 /// Test if two json values are equal
 fn eq(value0: json, value1: json) -> bool {
-    alt (value0, value1) {
+    match (value0, value1) {
       (num(f0), num(f1)) => f0 == f1,
       (string(s0), string(s1)) => s0 == s1,
       (boolean(b0), boolean(b1)) => b0 == b1,
@@ -486,7 +486,7 @@ fn eq(value0: json, value1: json) -> bool {
           if d0.size() == d1.size() {
               let mut equal = true;
               for d0.each |k, v0| {
-                  alt d1.find(k) {
+                  match d1.find(k) {
                     some(v1) => if !eq(v0, v1) { equal = false },
                     none => equal = false
                   }
@@ -581,7 +581,7 @@ impl of to_json for @~str {
 
 impl <A: to_json, B: to_json> of to_json for (A, B) {
     fn to_json() -> json {
-        alt self {
+        match self {
           (a, b) => {
             list(@~[a.to_json(), b.to_json()])
           }
@@ -592,7 +592,7 @@ impl <A: to_json, B: to_json> of to_json for (A, B) {
 impl <A: to_json, B: to_json, C: to_json>
   of to_json for (A, B, C) {
     fn to_json() -> json {
-        alt self {
+        match self {
           (a, b, c) => {
             list(@~[a.to_json(), b.to_json(), c.to_json()])
           }
@@ -616,7 +616,7 @@ impl <A: to_json copy> of to_json for hashmap<~str, A> {
 
 impl <A: to_json> of to_json for option<A> {
     fn to_json() -> json {
-        alt self {
+        match self {
           none => null,
           some(value) => value.to_json()
         }

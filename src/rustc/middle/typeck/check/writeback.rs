@@ -10,7 +10,7 @@ export resolve_type_vars_in_expr;
 fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
     option<ty::t> {
     if !ty::type_needs_infer(typ) { return some(typ); }
-    alt resolve_type(fcx.infcx, typ, resolve_all | force_all) {
+    match resolve_type(fcx.infcx, typ, resolve_all | force_all) {
       result::ok(new_type) => return some(new_type),
       result::err(e) => {
         if !fcx.ccx.tcx.sess.has_errors() {
@@ -28,7 +28,7 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
     -> option<ty::t> {
     let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
     let n_ty = fcx.node_ty(id);
-    alt resolve_type_vars_in_type(fcx, sp, n_ty) {
+    match resolve_type_vars_in_type(fcx, sp, n_ty) {
       none => {
         wbcx.success = false;
         return none;
@@ -38,11 +38,11 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
         debug!{"resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
                id, ty_to_str(tcx, n_ty), ty_to_str(tcx, t)};
         write_ty_to_tcx(tcx, id, t);
-        alt fcx.opt_node_ty_substs(id) {
+        match fcx.opt_node_ty_substs(id) {
           some(substs) => {
             let mut new_tps = ~[];
             for substs.tps.each |subst| {
-                alt resolve_type_vars_in_type(fcx, sp, subst) {
+                match resolve_type_vars_in_type(fcx, sp, subst) {
                   some(t) => vec::push(new_tps, t),
                   none => { wbcx.success = false; return none; }
                 }
@@ -80,7 +80,7 @@ fn visit_stmt(s: @ast::stmt, wbcx: wb_ctxt, v: wb_vt) {
 fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, e.span, e.id);
-    alt e.node {
+    match e.node {
       ast::expr_fn(_, decl, _, _) |
       ast::expr_fn_block(decl, _, _) => {
         do vec::iter(decl.inputs) |input| {
@@ -88,7 +88,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
 
             // Just in case we never constrained the mode to anything,
             // constrain it to the default for the type in question.
-            alt (r_ty, input.mode) {
+            match (r_ty, input.mode) {
               (some(t), ast::infer(_)) => {
                 let tcx = wbcx.fcx.ccx.tcx;
                 let m_def = ty::default_arg_mode_for_ty(t);
@@ -127,7 +127,7 @@ fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { return; }
     let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
     let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
-    alt resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
+    match resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
       result::ok(lty) => {
         debug!{"Type for local %s (id %d) resolved to %s",
                pat_to_str(l.node.pat), l.node.id,

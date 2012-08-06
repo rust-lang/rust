@@ -59,7 +59,7 @@ fn get_region_reporting_err(tcx: ty::ctxt,
                             span: span,
                             res: result<ty::region, ~str>) -> ty::region {
 
-    alt res {
+    match res {
       result::ok(r) => r,
       result::err(e) => {
         tcx.sess.span_err(span, e);
@@ -71,7 +71,7 @@ fn get_region_reporting_err(tcx: ty::ctxt,
 fn ast_region_to_region<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
 
-    let res = alt a_r.node {
+    let res = match a_r.node {
       ast::re_anon => rscope.anon_region(),
       ast::re_named(id) => rscope.named_region(id)
     };
@@ -93,7 +93,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     // If the type is parameterized by the self region, then replace self
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
-    let self_r = alt (decl_rp, path.rp) {
+    let self_r = match (decl_rp, path.rp) {
       (false, none) => {
         none
       }
@@ -168,14 +168,14 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
 
         let tcx = self.tcx();
 
-        alt a_seq_ty.ty.node {
+        match a_seq_ty.ty.node {
           // to convert to an e{vec,str}, there can't be a mutability argument
           _ if a_seq_ty.mutbl != ast::m_imm => (),
           ast::ty_vec(mt) => {
             return ty::mk_evec(tcx, ast_mt_to_mt(self, rscope, mt), vst);
           }
           ast::ty_path(path, id) => {
-            alt tcx.def_map.find(id) {
+            match tcx.def_map.find(id) {
               some(ast::def_prim_ty(ast::ty_str)) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 return ty::mk_estr(tcx, vst);
@@ -212,7 +212,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
 
     let tcx = self.tcx();
 
-    alt tcx.ast_ty_to_ty_cache.find(ast_ty) {
+    match tcx.ast_ty_to_ty_cache.find(ast_ty) {
       some(ty::atttce_resolved(ty)) => return ty,
       some(ty::atttce_unresolved) => {
         tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
@@ -223,7 +223,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     }
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
-    let typ = alt ast_ty.node {
+    let typ = match ast_ty.node {
       ast::ty_nil => ty::mk_nil(tcx),
       ast::ty_bot => ty::mk_bot(tcx),
       ast::ty_box(mt) => {
@@ -265,17 +265,17 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
         ty::mk_fn(tcx, ty_of_fn_decl(self, rscope, proto, decl, none))
       }
       ast::ty_path(path, id) => {
-        let a_def = alt tcx.def_map.find(id) {
+        let a_def = match tcx.def_map.find(id) {
           none => tcx.sess.span_fatal(ast_ty.span, fmt!{"unbound path %s",
                                                         path_to_str(path)}),
           some(d) => d
         };
-        alt a_def {
+        match a_def {
           ast::def_ty(did) | ast::def_class(did, _) => {
             ast_path_to_ty(self, rscope, did, path, id).ty
           }
           ast::def_prim_ty(nty) => {
-            alt nty {
+            match nty {
               ast::ty_bool => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 ty::mk_bool(tcx)
@@ -356,20 +356,20 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, a: ast::arg,
     expected_ty: option<ty::arg>) -> ty::arg {
 
-    let ty = alt a.ty.node {
+    let ty = match a.ty.node {
       ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
       ast::ty_infer => self.ty_infer(a.ty.span),
       _ => ast_ty_to_ty(self, rscope, a.ty)
     };
 
     let mode = {
-        alt a.mode {
+        match a.mode {
           ast::infer(_) if expected_ty.is_some() => {
             result::get(ty::unify_mode(self.tcx(), a.mode,
                                        expected_ty.get().mode))
           }
           ast::infer(_) => {
-            alt ty::get(ty).struct {
+            match ty::get(ty).struct {
               // If the type is not specified, then this must be a fn expr.
               // Leave the mode as infer(_), it will get inferred based
               // on constraints elsewhere.
@@ -417,7 +417,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
         };
 
         let expected_ret_ty = expected_tys.map(|e| e.output);
-        let output_ty = alt decl.output.node {
+        let output_ty = match decl.output.node {
           ast::ty_infer if expected_ret_ty.is_some() => expected_ret_ty.get(),
           ast::ty_infer => self.ty_infer(decl.output.span),
           _ => ast_ty_to_ty(self, rb, decl.output)

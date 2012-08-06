@@ -57,7 +57,7 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
-   alt mm.find(str::bytes(str::to_lower(key))) {
+   match mm.find(str::bytes(str::to_lower(key))) {
       option::none      => { return 0u; }
       option::some(num) => { return num; }
    }
@@ -66,7 +66,7 @@ fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
 // given a map, increment the counter for a key
 fn update_freq(mm: hashmap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len());
-    alt mm.find(key) {
+    match mm.find(key) {
       option::none      => { mm.insert(key, 1u      ); }
       option::some(val) => { mm.insert(key, 1u + val); }
     }
@@ -108,7 +108,7 @@ fn make_sequence_processor(sz: uint, from_parent: comm::port<~[u8]>,
       });
    }
 
-   let buffer = alt sz { 
+   let buffer = match sz { 
        1u => { sort_and_fmt(freqs, total) }
        2u => { sort_and_fmt(freqs, total) }
        3u => { fmt!{"%u\t%s", find(freqs, ~"GGT"), ~"GGT"} }
@@ -159,11 +159,11 @@ fn main(args: ~[~str]) {
 
       if str::len(line) == 0u { again; }
 
-      alt (line[0], proc_mode) {
+      match (line[0], proc_mode) {
 
          // start processing if this is the one
          ('>' as u8, false) => {
-            alt str::find_str_from(line, ~"THREE", 1u) {
+            match str::find_str_from(line, ~"THREE", 1u) {
                option::some(_) => proc_mode = true,
                option::none    => ()
             }

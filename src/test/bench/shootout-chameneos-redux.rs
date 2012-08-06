@@ -22,7 +22,7 @@ enum color { Red, Yellow, Blue }
 type creature_info = { name: uint, color: color };
 
 fn show_color(cc: color) -> ~str {
-    alt (cc) {
+    match (cc) {
         Red    => {~"red"}
         Yellow => {~"yellow"}
         Blue   => {~"blue"}
@@ -39,7 +39,7 @@ fn show_color_list(set: ~[color]) -> ~str {
 }
 
 fn show_digit(nn: uint) -> ~str {
-    alt (nn) {
+    match (nn) {
         0 => {~"zero"}
         1 => {~"one"}
         2 => {~"two"}
@@ -71,7 +71,7 @@ fn show_number(nn: uint) -> ~str {
 }
 
 fn transform(aa: color, bb: color) -> color {
-    alt (aa, bb) {
+    match (aa, bb) {
         (Red,    Red   ) => { Red    }
         (Red,    Yellow) => { Blue   }
         (Red,    Blue  ) => { Yellow }
@@ -101,7 +101,7 @@ fn creature(
         let resp = comm::recv(from_rendezvous);
 
         // log and change, or print and quit
-        alt resp {
+        match resp {
             option::some(other_creature) => {
                 color = transform(color, other_creature.color);
 

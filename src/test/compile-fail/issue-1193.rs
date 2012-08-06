@@ -6,7 +6,7 @@ mod foo {
     const b : t = 1u8;
 
     fn bar(v: t) -> bool {
-        alt v {
+        match v {
             a => { return true; }
             b => { return false; }
         }

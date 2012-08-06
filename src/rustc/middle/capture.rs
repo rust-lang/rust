@@ -101,14 +101,14 @@ fn compute_capture_vars(tcx: ty::ctxt,
     // now go through anything that is referenced but was not explicitly
     // named and add that
 
-    let implicit_mode = alt fn_proto {
+    let implicit_mode = match fn_proto {
       ast::proto_block => cap_ref,
       ast::proto_bare | ast::proto_box | ast::proto_uniq => cap_copy
     };
 
     do vec::iter(*freevars) |fvar| {
         let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
-        alt cap_map.find(fvar_def_id) {
+        match cap_map.find(fvar_def_id) {
           option::some(_) => { /* was explicitly named, do nothing */ }
           option::none => {
             cap_map.insert(fvar_def_id, {def:fvar.def,

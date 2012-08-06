@@ -215,7 +215,7 @@ mod test {
                 delayed_send(hl_loop, 1u, test_ch, expected);
             };
 
-            alt recv_timeout(hl_loop, 10u, test_po) {
+            match recv_timeout(hl_loop, 10u, test_po) {
               some(val) => {
                 assert val == expected;
                 successes += 1;
@@ -243,7 +243,7 @@ mod test {
                 delayed_send(hl_loop, 1000u, test_ch, expected);
             };
 
-            alt recv_timeout(hl_loop, 1u, test_po) {
+            match recv_timeout(hl_loop, 1u, test_po) {
               none => successes += 1,
               _ => failures += 1
             };

@@ -12,7 +12,7 @@ fn replace_bound_regions_in_fn_ty(
 
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
-    let self_ty = alt self_info {
+    let self_ty = match self_info {
       some(s) => some(s.self_ty),
       none => none
     };
@@ -44,8 +44,8 @@ fn replace_bound_regions_in_fn_ty(
 
 
     // Glue updated self_ty back together with its original node_id.
-    let new_self_info = alt self_info {
-        some(s) => alt check t_self {
+    let new_self_info = match self_info {
+        some(s) => match check t_self {
           some(t) => some({self_ty: t, node_id: s.node_id})
           // this 'none' case shouldn't happen
         }
@@ -54,7 +54,7 @@ fn replace_bound_regions_in_fn_ty(
 
     return {isr: isr,
          self_info: new_self_info,
-         fn_ty: alt check ty::get(t_fn).struct { ty::ty_fn(o) => o }};
+         fn_ty: match check ty::get(t_fn).struct { ty::ty_fn(o) => o }};
 
 
     // Takes `isr`, a (possibly empty) mapping from in-scope region
@@ -82,13 +82,13 @@ fn replace_bound_regions_in_fn_ty(
         fn append_isr(isr: isr_alist,
                       to_r: fn(ty::bound_region) -> ty::region,
                       r: ty::region) -> isr_alist {
-            alt r {
+            match r {
               ty::re_free(_, _) | ty::re_static | ty::re_scope(_) |
               ty::re_var(_) => {
                 isr
               }
               ty::re_bound(br) => {
-                alt isr.find(br) {
+                match isr.find(br) {
                   some(_) => isr,
                   none => @cons((br, to_r(br)), isr)
                 }
@@ -124,14 +124,14 @@ fn replace_bound_regions_in_fn_ty(
         ty: ty::t) -> ty::t {
 
         do ty::fold_regions(tcx, ty) |r, in_fn| {
-            alt r {
+            match r {
               // As long as we are not within a fn() type, `&T` is
               // mapped to the free region anon_r.  But within a fn
               // type, it remains bound.
               ty::re_bound(ty::br_anon) if in_fn => r,
 
               ty::re_bound(br) => {
-                alt isr.find(br) {
+                match isr.find(br) {
                   // In most cases, all named, bound regions will be
                   // mapped to some free region.
                   some(fr) => fr,

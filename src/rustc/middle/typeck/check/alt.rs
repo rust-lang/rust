@@ -29,7 +29,7 @@ fn check_alt(fcx: @fn_ctxt,
     let mut result_ty = fcx.infcx.next_ty_var();
     let mut arm_non_bot = false;
     for arms.each |arm| {
-        alt arm.guard {
+        match arm.guard {
           some(e) => { check_expr_with(fcx, e, ty::mk_bool(tcx)); },
           none => ()
         }
@@ -68,7 +68,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
     instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id);
 
     // Take the enum type params out of `expected`.
-    alt structure_of(pcx.fcx, pat.span, expected) {
+    match structure_of(pcx.fcx, pat.span, expected) {
       ty::ty_enum(_, expected_substs) => {
         // check that the type of the value being matched is a subtype
         // of the type of the pattern:
@@ -82,7 +82,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
                     tcx, v_def_ids.enm, v_def_ids.var);
             vinfo.args.map(|t| { ty::subst(tcx, expected_substs, t) })
         };
-        let arg_len = arg_types.len(), subpats_len = alt subpats {
+        let arg_len = arg_types.len(), subpats_len = match subpats {
             none => arg_len,
             some(ps) => ps.len()
         };
@@ -127,7 +127,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    alt pat.node {
+    match pat.node {
       ast::pat_wild => {
         fcx.write_ty(pat.id, expected);
       }
@@ -167,7 +167,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             demand::suptype(fcx, pat.span, ct, typ);
         }
         fcx.write_ty(pat.id, typ);
-        alt sub {
+        match sub {
           some(p) => check_pat(pcx, p, expected),
           _ => ()
         }
@@ -179,7 +179,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         check_pat_variant(pcx, pat, path, subpats, expected);
       }
       ast::pat_rec(fields, etc) => {
-        let ex_fields = alt structure_of(fcx, pat.span, expected) {
+        let ex_fields = match structure_of(fcx, pat.span, expected) {
           ty::ty_rec(fields) => fields,
           _ => {
             tcx.sess.span_fatal
@@ -201,7 +201,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             str::eq(name, f.ident)
         }
         for fields.each |f| {
-            alt vec::find(ex_fields, |a| matches(f.ident, a)) {
+            match vec::find(ex_fields, |a| matches(f.ident, a)) {
               some(field) => {
                 check_pat(pcx, f.pat, field.mt.ty);
               }
@@ -216,7 +216,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, expected);
       }
       ast::pat_tup(elts) => {
-        let ex_elts = alt structure_of(fcx, pat.span, expected) {
+        let ex_elts = match structure_of(fcx, pat.span, expected) {
           ty::ty_tup(elts) => elts,
           _ => {
             tcx.sess.span_fatal
@@ -241,7 +241,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         fcx.write_ty(pat.id, expected);
       }
       ast::pat_box(inner) => {
-        alt structure_of(fcx, pat.span, expected) {
+        match structure_of(fcx, pat.span, expected) {
           ty::ty_box(e_inner) => {
             check_pat(pcx, inner, e_inner.ty);
             fcx.write_ty(pat.id, expected);
@@ -256,7 +256,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
       }
       ast::pat_uniq(inner) => {
-        alt structure_of(fcx, pat.span, expected) {
+        match structure_of(fcx, pat.span, expected) {
           ty::ty_uniq(e_inner) => {
             check_pat(pcx, inner, e_inner.ty);
             fcx.write_ty(pat.id, expected);

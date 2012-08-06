@@ -31,7 +31,7 @@ enum matcher_pos_up { /* to break a circularity */
 }
 
 fn is_some(&&mpu: matcher_pos_up) -> bool {
-    alt mpu {
+    match mpu {
       matcher_pos_up(none) => false,
       _ => true
     }
@@ -48,7 +48,7 @@ type matcher_pos = ~{
 };
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
-    alt mpu {
+    match mpu {
       matcher_pos_up(some(mp)) => copy mp,
       _ => fail
     }
@@ -56,7 +56,7 @@ fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
 
 fn count_names(ms: &[matcher]) -> uint {
     vec::foldl(0u, ms, |ct, m| {
-        ct + alt m.node {
+        ct + match m.node {
           match_tok(_) => 0u,
           match_seq(more_ms, _, _, _, _) => count_names(more_ms),
           match_nonterminal(_,_,_) => 1u
@@ -68,7 +68,7 @@ fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
     -> matcher_pos {
     let mut match_idx_hi = 0u;
     for ms.each() |elt| {
-        alt elt.node {
+        match elt.node {
           match_tok(_) => (),
           match_seq(_,_,_,_,hi) => {
             match_idx_hi = hi;       // it is monotonic...
@@ -113,7 +113,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
     -> hashmap<ident,@named_match> {
     fn n_rec(p_s: parse_sess, m: matcher, res: ~[@named_match],
              ret_val: hashmap<ident, @named_match>) {
-        alt m {
+        match m {
           {node: match_tok(_), span: _} => (),
           {node: match_seq(more_ms, _, _, _, _), span: _} => {
             for more_ms.each() |next_m| { n_rec(p_s, next_m, res, ret_val) };
@@ -139,7 +139,7 @@ enum parse_result {
 
 fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
                  ms: ~[matcher]) -> hashmap<ident, @named_match> {
-    alt parse(sess, cfg, rdr, ms) {
+    match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
     }
@@ -202,7 +202,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     // can we go around again?
 
                     // the *_t vars are workarounds for the lack of unary move
-                    alt copy ei.sep {
+                    match copy ei.sep {
                       some(t) if idx == len => { // we need a separator
                         if tok == t { //pass the separator
                             let ei_t <- ei;
@@ -220,7 +220,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     vec::push(eof_eis, ei);
                 }
             } else {
-                alt copy ei.elts[idx].node {
+                match copy ei.elts[idx].node {
                   /* need to descend into sequence */
                   match_seq(matchers, sep, zero_ok,
                             match_idx_lo, match_idx_hi) => {
@@ -270,7 +270,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
                 || bb_eis.len() > 1u {
                 let nts = str::connect(vec::map(bb_eis, |ei| {
-                    alt ei.elts[ei.idx].node {
+                    match ei.elts[ei.idx].node {
                       match_nonterminal(bind,name,_) => {
                         fmt!{"%s ('%s')", *name, *bind}
                       }
@@ -293,7 +293,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 let rust_parser = parser(sess, cfg, rdr.dup(), SOURCE_FILE);
 
                 let ei = vec::pop(bb_eis);
-                alt ei.elts[ei.idx].node {
+                match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
                         parse_nt(rust_parser, *name)));
@@ -318,8 +318,8 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 }
 
 fn parse_nt(p: parser, name: ~str) -> nonterminal {
-    alt name {
-      ~"item" => alt p.parse_item(~[]) {
+    match name {
+      ~"item" => match p.parse_item(~[]) {
         some(i) => token::nt_item(i),
         none => p.fatal(~"expected an item keyword")
       }
@@ -329,7 +329,7 @@ fn parse_nt(p: parser, name: ~str) -> nonterminal {
       ~"expr" => token::nt_expr(p.parse_expr()),
       ~"ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
-      ~"ident" => alt copy p.token {
+      ~"ident" => match copy p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
                      + token::to_str(*p.reader.interner(), copy p.token))

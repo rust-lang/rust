@@ -1,5 +1,5 @@
 fn main() {
-    let x = alt 0 {
+    let x = match 0 {
       _ => {
         x: 0
       }.x

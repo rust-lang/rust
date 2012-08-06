@@ -1,5 +1,5 @@
 fn main() {
-    alt -5 {
+    match -5 {
       -5 => {}
       _ => { fail }
     }

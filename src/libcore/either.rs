@@ -18,7 +18,7 @@ fn either<T, U, V>(f_left: fn(T) -> V,
      * result is returned.
      */
 
-    alt value {
+    match value {
       left(l) => f_left(l),
       right(r) => f_right(r)
     }
@@ -29,7 +29,7 @@ fn lefts<T: copy, U>(eithers: ~[either<T, U>]) -> ~[T] {
 
     let mut result: ~[T] = ~[];
     for vec::each(eithers) |elt| {
-        alt elt {
+        match elt {
           left(l) => vec::push(result, l),
           _ => { /* fallthrough */ }
         }
@@ -42,7 +42,7 @@ fn rights<T, U: copy>(eithers: ~[either<T, U>]) -> ~[U] {
 
     let mut result: ~[U] = ~[];
     for vec::each(eithers) |elt| {
-        alt elt {
+        match elt {
           right(r) => vec::push(result, r),
           _ => { /* fallthrough */ }
         }
@@ -62,7 +62,7 @@ fn partition<T: copy, U: copy>(eithers: ~[either<T, U>])
     let mut lefts: ~[T] = ~[];
     let mut rights: ~[U] = ~[];
     for vec::each(eithers) |elt| {
-        alt elt {
+        match elt {
           left(l) => vec::push(lefts, l),
           right(r) => vec::push(rights, r)
         }
@@ -73,7 +73,7 @@ fn partition<T: copy, U: copy>(eithers: ~[either<T, U>])
 pure fn flip<T: copy, U: copy>(eith: either<T, U>) -> either<U, T> {
     //! Flips between left and right of a given either
 
-    alt eith {
+    match eith {
       right(r) => left(r),
       left(l) => right(l)
     }
@@ -88,7 +88,7 @@ pure fn to_result<T: copy, U: copy>(
      * an ok result, and the "left" choice a fail
      */
 
-    alt eith {
+    match eith {
       right(r) => result::ok(r),
       left(l) => result::err(l)
     }
@@ -97,13 +97,13 @@ pure fn to_result<T: copy, U: copy>(
 pure fn is_left<T, U>(eith: either<T, U>) -> bool {
     //! Checks whether the given value is a left
 
-    alt eith { left(_) => true, _ => false }
+    match eith { left(_) => true, _ => false }
 }
 
 pure fn is_right<T, U>(eith: either<T, U>) -> bool {
     //! Checks whether the given value is a right
 
-    alt eith { right(_) => true, _ => false }
+    match eith { right(_) => true, _ => false }
 }
 
 #[test]

@@ -341,7 +341,7 @@ fn unshift_char(&s: ~str, ch: char) { s = from_char(ch) + s; }
 
 /// Returns a string with leading whitespace removed
 pure fn trim_left(s: &str) -> ~str {
-    alt find(s, |c| !char::is_whitespace(c)) {
+    match find(s, |c| !char::is_whitespace(c)) {
       none => ~"",
       some(first) => unsafe { unsafe::slice_bytes(s, first, len(s)) }
     }
@@ -349,7 +349,7 @@ pure fn trim_left(s: &str) -> ~str {
 
 /// Returns a string with trailing whitespace removed
 pure fn trim_right(s: &str) -> ~str {
-    alt rfind(s, |c| !char::is_whitespace(c)) {
+    match rfind(s, |c| !char::is_whitespace(c)) {
       none => ~"",
       some(last) => {
         let {next, _} = char_range_at(s, last);
@@ -2776,7 +2776,7 @@ mod tests {
     fn test_chars_iter() {
         let mut i = 0;
         do chars_iter(~"x\u03c0y") |ch| {
-            alt check i {
+            match check i {
               0 => assert ch == 'x',
               1 => assert ch == '\u03c0',
               2 => assert ch == 'y'
@@ -2792,7 +2792,7 @@ mod tests {
         let mut i = 0;
 
         do bytes_iter(~"xyz") |bb| {
-            alt check i {
+            match check i {
               0 => assert bb == 'x' as u8,
               1 => assert bb == 'y' as u8,
               2 => assert bb == 'z' as u8
@@ -2810,7 +2810,7 @@ mod tests {
         let mut ii = 0;
 
         do split_char_iter(data, ' ') |xx| {
-            alt ii {
+            match ii {
               0 => assert ~"\nMary" == xx,
               1 => assert ~"had"    == xx,
               2 => assert ~"a"      == xx,
@@ -2828,7 +2828,7 @@ mod tests {
         let mut ii = 0;
 
         do splitn_char_iter(data, ' ', 2u) |xx| {
-            alt ii {
+            match ii {
               0 => assert ~"\nMary" == xx,
               1 => assert ~"had"    == xx,
               2 => assert ~"a little lamb\nLittle lamb\n" == xx,
@@ -2845,7 +2845,7 @@ mod tests {
         let mut ii = 0;
 
         do words_iter(data) |ww| {
-            alt ii {
+            match ii {
               0 => assert ~"Mary"   == ww,
               1 => assert ~"had"    == ww,
               2 => assert ~"a"      == ww,
@@ -2865,7 +2865,7 @@ mod tests {
         let mut ii = 0;
 
         do lines_iter(lf) |x| {
-            alt ii {
+            match ii {
                 0 => assert ~"" == x,
                 1 => assert ~"Mary had a little lamb" == x,
                 2 => assert ~"Little lamb" == x,

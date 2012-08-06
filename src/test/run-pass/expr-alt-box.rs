@@ -3,14 +3,14 @@
 
 // -*- rust -*-
 
-// Tests for alt as expressions resulting in boxed types
+// Tests for match as expressions resulting in boxed types
 fn test_box() {
-    let res = alt check true { true => { @100 } };
+    let res = match check true { true => { @100 } };
     assert (*res == 100);
 }
 
 fn test_str() {
-    let res = alt check true { true => { ~"happy" } };
+    let res = match check true { true => { ~"happy" } };
     assert (res == ~"happy");
 }
 

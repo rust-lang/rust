@@ -189,7 +189,7 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
                             +path: ~str, ftype: parser::file_type) ->
    (parser, string_reader) {
     let res = io::read_whole_file_str(path);
-    alt res {
+    match res {
       result::ok(_) => { /* Continue. */ }
       result::err(e) => sess.span_diagnostic.handler().fatal(e)
     }

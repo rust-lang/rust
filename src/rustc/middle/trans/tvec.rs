@@ -19,7 +19,7 @@ import util::ppaux::ty_to_str;
 fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
-    alt ty::get(t).struct {
+    match ty::get(t).struct {
       ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
         ty::mk_imm_uniq(tcx, unboxed_vec_ty)
       }
@@ -156,10 +156,10 @@ fn trans_evec(bcx: block, elements: evec_elements,
     let unit_sz = llsize_of(ccx, llunitty);
 
     let mut {bcx, val, dataptr} =
-        alt vst {
+        match vst {
           ast::vstore_fixed(_) => {
             // Destination should be pre-allocated for us.
-            let v = alt dest {
+            let v = match dest {
               base::save_in(v) => {
                 PointerCast(bcx, v, T_ptr(llunitty))
               }
@@ -245,7 +245,7 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
     for vec::each(temp_cleanups) |cln| { revoke_clean(bcx, cln); }
 
-    alt vst {
+    match vst {
       ast::vstore_fixed(_) => {
         // We wrote into the destination in the fixed case.
         return bcx;
@@ -261,7 +261,7 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
 fn trans_vstore(bcx: block, e: @ast::expr,
                 v: ast::vstore, dest: dest) -> block {
-    alt e.node {
+    match e.node {
       ast::expr_lit(@{node: ast::lit_str(s), span: _}) => {
         return trans_estr(bcx, s, some(v), dest);
       }
@@ -288,12 +288,12 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
     let llunitty = type_of::type_of(ccx, unit_ty);
     let unit_sz = llsize_of(ccx, llunitty);
 
-    let vstore = alt ty::get(vec_ty).struct {
+    let vstore = match ty::get(vec_ty).struct {
       ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
       _ => ty::vstore_uniq
     };
 
-    alt vstore {
+    match vstore {
       ty::vstore_fixed(n) => {
         let base = GEPi(cx, v, ~[0u, 0u]);
         let n = if ty::type_is_str(e_ty) { n + 1u } else { n };
@@ -319,7 +319,7 @@ fn trans_estr(bcx: block, s: @~str, vstore: option<ast::vstore>,
     if dest == base::ignore { return bcx; }
     let ccx = bcx.ccx();
 
-    let c = alt vstore {
+    let c = match vstore {
       some(ast::vstore_fixed(_)) => {
         // "hello"/_  =>  "hello"/5  =>  ~[i8 x 6] in llvm
         debug!{"trans_estr: fixed: %s", *s};

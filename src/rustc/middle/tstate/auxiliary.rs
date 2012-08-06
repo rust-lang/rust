@@ -39,7 +39,7 @@ fn comma_str(args: ~[@constr_arg_use]) -> ~str {
     let mut comma = false;
     for args.each |a| {
         if comma { rslt += ~", "; } else { comma = true; }
-        alt a.node {
+        match a.node {
           carg_base { rslt += ~"*"; }
           carg_ident(i) { rslt += *i.ident; }
           carg_lit(l) { rslt += lit_to_str(l); }
@@ -59,7 +59,7 @@ fn tritv_to_str(fcx: fn_ctxt, v: tritv::t) -> ~str {
     let mut s = ~"";
     let mut comma = false;
     for constraints(fcx).each |p| {
-        alt v.get(p.bit_num) {
+        match v.get(p.bit_num) {
           dont_care { }
           tt {
             s +=
@@ -261,7 +261,7 @@ fn get_ts_ann(ccx: crate_ctxt, i: node_id) -> option<ts_ann> {
 
 /********* utils ********/
 fn node_id_to_ts_ann(ccx: crate_ctxt, id: node_id) -> ts_ann {
-    alt get_ts_ann(ccx, id) {
+    match get_ts_ann(ccx, id) {
       none {
         error!{"node_id_to_ts_ann: no ts_ann for node_id %d", id};
         fail;
@@ -277,7 +277,7 @@ fn node_id_to_poststate(ccx: crate_ctxt, id: node_id) -> poststate {
 
 fn stmt_to_ann(ccx: crate_ctxt, s: stmt) -> ts_ann {
     debug!{"stmt_to_ann"};
-    alt s.node {
+    match s.node {
       stmt_decl(_, id) | stmt_expr(_, id) | stmt_semi(_, id) {
         return node_id_to_ts_ann(ccx, id);
       }
@@ -445,21 +445,21 @@ fn new_crate_ctxt(cx: ty::ctxt) -> crate_ctxt {
  If it has a function type with a ! annotation,
 the answer is noreturn. */
 fn controlflow_expr(ccx: crate_ctxt, e: @expr) -> ret_style {
-    alt ty::get(ty::node_id_to_type(ccx.tcx, e.id)).struct {
+    match ty::get(ty::node_id_to_type(ccx.tcx, e.id)).struct {
       ty::ty_fn(f) { return f.ret_style; }
       _ { return return_val; }
     }
 }
 
 fn constraints_expr(cx: ty::ctxt, e: @expr) -> ~[@ty::constr] {
-    alt ty::get(ty::node_id_to_type(cx, e.id)).struct {
+    match ty::get(ty::node_id_to_type(cx, e.id)).struct {
       ty::ty_fn(f) { return f.constraints; }
       _ { return ~[]; }
     }
 }
 
 fn node_id_to_def_strict(cx: ty::ctxt, id: node_id) -> def {
-    alt cx.def_map.find(id) {
+    match cx.def_map.find(id) {
       none {
         error!{"node_id_to_def: node_id %d has no def", id};
         fail;
@@ -511,7 +511,7 @@ fn match_args(fcx: fn_ctxt, occs: @dvec<pred_args>,
 }
 
 fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
-    alt tcx.def_map.find(t) {
+    match tcx.def_map.find(t) {
       none {
         tcx.sess.bug(~"node_id_for_constr: bad node_id " + int::str(t));
       }
@@ -521,9 +521,9 @@ fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
 }
 
 fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
-    alt e.node {
+    match e.node {
       expr_path(p) {
-        alt tcx.def_map.find(e.id) {
+        match tcx.def_map.find(e.id) {
           some(def_local(nid, _)) | some(def_arg(nid, _)) |
           some(def_binding(nid, _)) | some(def_upvar(nid, _, _)) {
             return @respan(p.span,
@@ -559,9 +559,9 @@ fn exprs_to_constr_args(tcx: ty::ctxt,
 }
 
 fn expr_to_constr(tcx: ty::ctxt, e: @expr) -> sp_constr {
-    alt e.node {
+    match e.node {
       expr_call(operator, args, _) {
-        alt operator.node {
+        match operator.node {
           expr_path(p) {
             return respan(e.span,
                        {path: p,
@@ -601,7 +601,7 @@ fn substitute_constr_args(cx: ty::ctxt, actuals: ~[@expr], c: @ty::constr) ->
 fn substitute_arg(cx: ty::ctxt, actuals: ~[@expr], a: @constr_arg) ->
    @constr_arg_use {
     let num_actuals = vec::len(actuals);
-    alt a.node {
+    match a.node {
       carg_ident(i) {
         if i < num_actuals {
             return expr_to_constr_arg(cx, actuals[i]);
@@ -620,16 +620,16 @@ fn pred_args_matches(pattern: ~[constr_arg_general_<inst>],
     let mut i = 0u;
     for desc.node.args.each |c| {
         let n = pattern[i];
-        alt c.node {
+        match c.node {
           carg_ident(p) {
-            alt n {
+            match n {
               carg_ident(q) { if p.node != q.node { return false; } }
               _ { return false; }
             }
           }
           carg_base { if n != carg_base { return false; } }
           carg_lit(l) {
-            alt n {
+            match n {
               carg_lit(m) { if !const_eval::lit_eq(l, m) { return false; } }
               _ { return false; }
             }
@@ -669,7 +669,7 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
             if args_mention(d.node.args, find_in_subst_bool, subst) {
                 let old_bit_num = d.node.bit_num;
                 let newv = replace(subst, d);
-                alt find_instance_(newv, v) {
+                match find_instance_(newv, v) {
                   some(d1) {vec::push(res, {from: old_bit_num, to: d1})}
                   _ {}
                 }
@@ -696,7 +696,7 @@ fn insts_to_str(stuff: ~[constr_arg_general_<inst>]) -> ~str {
     for stuff.each |i| {
         rslt +=
             ~" " +
-                alt i {
+                match i {
                   carg_ident(p) { *p.ident }
                   carg_base { ~"*" }
                   carg_lit(_) { ~"~[lit]" }
@@ -709,9 +709,9 @@ fn insts_to_str(stuff: ~[constr_arg_general_<inst>]) -> ~str {
 fn replace(subst: subst, d: pred_args) -> ~[constr_arg_general_<inst>] {
     let mut rslt: ~[constr_arg_general_<inst>] = ~[];
     for d.node.args.each |c| {
-        alt c.node {
+        match c.node {
           carg_ident(p) {
-            alt find_in_subst(p.node, subst) {
+            match find_in_subst(p.node, subst) {
               some(newv) { vec::push(rslt, carg_ident(newv)); }
               _ { vec::push(rslt, c.node); }
             }
@@ -736,7 +736,7 @@ fn for_constraints_mentioning(fcx: fn_ctxt, id: node_id,
 
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
    def_id {
-    alt local_node_id_to_def(fcx, i) {
+    match local_node_id_to_def(fcx, i) {
       some(def_local(nid, _)) | some(def_arg(nid, _)) |
       some(def_upvar(nid, _, _)) {
         return local_def(nid);
@@ -760,7 +760,7 @@ fn local_node_id_to_def(fcx: fn_ctxt, i: node_id) -> option<def> {
 }
 
 fn local_node_id_to_def_id(fcx: fn_ctxt, i: node_id) -> option<def_id> {
-    alt local_node_id_to_def(fcx, i) {
+    match local_node_id_to_def(fcx, i) {
       some(def_local(nid, _)) | some(def_arg(nid, _)) |
       some(def_binding(nid, _)) | some(def_upvar(nid, _, _)) {
         some(local_def(nid))
@@ -771,7 +771,7 @@ fn local_node_id_to_def_id(fcx: fn_ctxt, i: node_id) -> option<def_id> {
 
 fn local_node_id_to_local_def_id(fcx: fn_ctxt, i: node_id) ->
    option<node_id> {
-    alt local_node_id_to_def_id(fcx, i) {
+    match local_node_id_to_def_id(fcx, i) {
       some(did) { some(did.node) }
       _ { none }
     }
@@ -798,7 +798,7 @@ fn copy_in_poststate_two(fcx: fn_ctxt, src_post: poststate,
                          target_post: poststate, dest: inst, src: inst,
                          ty: oper_type) {
     let mut subst;
-    alt ty {
+    match ty {
       oper_swap { subst = ~[{from: dest, to: src}, {from: src, to: dest}]; }
       oper_assign_op {
         return; // Don't do any propagation
@@ -863,7 +863,7 @@ fn args_mention<T>(args: ~[@constr_arg_use],
                    s: ~[T]) -> bool {
 
     for args.each |a| {
-        alt a.node {
+        match a.node {
           carg_ident(p1) { if q(s, p1.node) { return true; } } _ { }
         }
     }
@@ -875,7 +875,7 @@ fn use_var(fcx: fn_ctxt, v: node_id) {
 }
 
 fn op_to_oper_ty(io: init_op) -> oper_type {
-    alt io { init_move { oper_move } _ { oper_assign } }
+    match io { init_move { oper_move } _ { oper_assign } }
 }
 
 // default function visitor
@@ -894,7 +894,7 @@ fn args_to_constr_args(tcx: ty::ctxt, args: ~[arg],
         vec::push(
             actuals,
             @respan(a.span,
-                    alt a.node {
+                    match a.node {
                         carg_base { carg_base }
                         carg_ident(i) {
                             if i < num_args {
@@ -945,7 +945,7 @@ fn locals_to_bindings(tcx: ty::ctxt, locals: ~[@local]) -> ~[binding] {
 fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
     let ty = ty::type_autoderef(fcx.ccx.tcx,
                                 ty::node_id_to_type(fcx.ccx.tcx, callee));
-    alt ty::get(ty).struct {
+    match ty::get(ty).struct {
       ty::ty_fn({inputs: args, _}) {
         let mut modes = ~[];
         for args.each |arg| { vec::push(modes, arg.mode); }
@@ -961,7 +961,7 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
 
 fn callee_arg_init_ops(fcx: fn_ctxt, callee: node_id) -> ~[init_op] {
     do vec::map(callee_modes(fcx, callee)) |m| {
-        alt ty::resolved_mode(fcx.ccx.tcx, m) {
+        match ty::resolved_mode(fcx.ccx.tcx, m) {
           by_move { init_move }
           by_copy | by_ref | by_val | by_mutbl_ref { init_assign }
         }

@@ -1,6 +1,6 @@
 fn main() {
     let mut x = none;
-    alt x {
+    match x {
       none => {
         // It is ok to reassign x here, because there is in
         // fact no outstanding loan of x!

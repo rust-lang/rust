@@ -84,7 +84,7 @@ impl parser_common of parser_common for parser {
     }
 
     fn parse_ident() -> ast::ident {
-        alt copy self.token {
+        match copy self.token {
           token::IDENT(i, _) => { self.bump(); return self.get_str(i); }
           token::INTERPOLATED(token::nt_ident(*)) => { self.bug(
               ~"ident interpolation not converted to real token"); }
@@ -118,7 +118,7 @@ impl parser_common of parser_common for parser {
     }
 
     fn token_is_word(word: ~str, ++tok: token::token) -> bool {
-        alt tok {
+        match tok {
           token::IDENT(sid, false) => { word == *self.get_str(sid) }
           _ => { false }
         }
@@ -134,7 +134,7 @@ impl parser_common of parser_common for parser {
     }
 
     fn is_any_keyword(tok: token::token) -> bool {
-        alt tok {
+        match tok {
           token::IDENT(sid, false) => {
             self.keywords.contains_key_ref(self.get_str(sid))
           }
@@ -146,7 +146,7 @@ impl parser_common of parser_common for parser {
         self.require_keyword(word);
 
         let mut bump = false;
-        let val = alt self.token {
+        let val = match self.token {
           token::IDENT(sid, false) => {
             if word == *self.get_str(sid) {
                 bump = true;
@@ -173,7 +173,7 @@ impl parser_common of parser_common for parser {
     }
 
     fn check_restricted_keywords() {
-        alt self.token {
+        match self.token {
           token::IDENT(_, false) => {
             let w = token_to_str(self.reader, self.token);
             self.check_restricted_keywords_(w);
@@ -209,7 +209,7 @@ impl parser_common of parser_common for parser {
         let mut v = ~[];
         while self.token != token::GT
             && self.token != token::BINOP(token::SHR) {
-            alt sep {
+            match sep {
               some(t) => {
                 if first { first = false; }
                 else { self.expect(t); }
@@ -253,7 +253,7 @@ impl parser_common of parser_common for parser {
         let mut first: bool = true;
         let mut v: ~[T] = ~[];
         while self.token != ket {
-            alt sep.sep {
+            match sep.sep {
               some(t) => {
                 if first { first = false; }
                 else { self.expect(t); }

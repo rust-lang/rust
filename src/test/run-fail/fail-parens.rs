@@ -5,7 +5,7 @@
 
 fn bigfail() {
     do { while (fail) { if (fail) {
-        alt (fail) { _ {
+        match (fail) { _ {
         }}
     }}} while fail;
 }

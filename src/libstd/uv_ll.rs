@@ -848,7 +848,7 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
                         src_unsafe_ptr, src});
         let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,
                                               dst_buf, size as libc::size_t);
-        alt result {
+        match result {
           0i32 => str::unsafe::from_buf(dst_buf),
           _ => ~""
         }

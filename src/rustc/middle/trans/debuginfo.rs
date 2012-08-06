@@ -134,7 +134,7 @@ fn cast_safely<T: copy, U>(val: T) -> U unsafe {
 }
 
 fn md_from_metadata<T>(val: debug_metadata) -> T unsafe {
-    alt val {
+    match val {
       file_metadata(md) => cast_safely(md),
       compile_unit_metadata(md) => cast_safely(md),
       subprogram_metadata(md) => cast_safely(md),
@@ -165,7 +165,7 @@ fn create_compile_unit(cx: @crate_ctxt)
     let cache = get_cache(cx);
     let crate_name = option::get(cx.dbg_cx).crate_file;
     let tg = CompileUnitTag;
-    alt cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
+    match cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
                         |md| md.data.name == crate_name) {
       option::some(md) => return md,
       option::none => ()
@@ -208,7 +208,7 @@ fn get_file_path_and_dir(work_dir: ~str, full_path: ~str) -> (~str, ~str) {
 fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     let cache = get_cache(cx);;
     let tg = FileDescriptorTag;
-    alt cached_metadata::<@metadata<file_md>>(
+    match cached_metadata::<@metadata<file_md>>(
         cache, tg, |md| md.data.path == full_path) {
         option::some(md) => return md,
         option::none => ()
@@ -235,7 +235,7 @@ fn create_block(cx: block) -> @metadata<block_md> {
     let cache = get_cache(cx.ccx());
     let mut cx = cx;
     while option::is_none(cx.node_info) {
-        alt cx.parent {
+        match cx.parent {
           some(b) => cx = b,
           none => fail
         }
@@ -253,12 +253,12 @@ fn create_block(cx: block) -> @metadata<block_md> {
       option::none {}
     }*/
 
-    let parent = alt cx.parent {
+    let parent = match cx.parent {
         none => create_function(cx.fcx).node,
         some(bcx) => create_block(bcx).node
     };
     let file_node = create_file(cx.ccx(), fname);
-    let unique_id = alt cache.find(LexicalBlockTag) {
+    let unique_id = match cache.find(LexicalBlockTag) {
       option::some(v) => vec::len(v) as int,
       option::none => 0
     };
@@ -285,15 +285,15 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
     -> @metadata<tydesc_md> {
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
-    alt cached_metadata::<@metadata<tydesc_md>>(
+    match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, |md| ty::type_id(t) == md.data.hash) {
       option::some(md) => return md,
       option::none => ()
     }
 
-    let (name, encoding) = alt check ty {
+    let (name, encoding) = match check ty {
       ast::ty_bool => (~"bool", DW_ATE_boolean),
-      ast::ty_int(m) => alt m {
+      ast::ty_int(m) => match m {
         ast::ty_char => (~"char", DW_ATE_unsigned),
         ast::ty_i => (~"int", DW_ATE_signed),
         ast::ty_i8 => (~"i8", DW_ATE_signed_char),
@@ -301,14 +301,14 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
         ast::ty_i32 => (~"i32", DW_ATE_signed),
         ast::ty_i64 => (~"i64", DW_ATE_signed)
       }
-      ast::ty_uint(m) => alt m {
+      ast::ty_uint(m) => match m {
         ast::ty_u => (~"uint", DW_ATE_unsigned),
         ast::ty_u8 => (~"u8", DW_ATE_unsigned_char),
         ast::ty_u16 => (~"u16", DW_ATE_unsigned),
         ast::ty_u32 => (~"u32", DW_ATE_unsigned),
         ast::ty_u64 => (~"u64", DW_ATE_unsigned)
       }
-      ast::ty_float(m) => alt m {
+      ast::ty_float(m) => match m {
         ast::ty_f => (~"float", DW_ATE_float),
         ast::ty_f32 => (~"f32", DW_ATE_float),
         ast::ty_f64 => (~"f64", DW_ATE_float)
@@ -341,7 +341,7 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
     -> @metadata<tydesc_md> {
     let tg = PointerTypeTag;
     /*let cache = cx.llmetadata;
-    alt cached_metadata::<@metadata<tydesc_md>>(
+    match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(t) == ty::hash_ty(md.data.hash)}) {
       option::some(md) { return md; }
       option::none {}
@@ -434,7 +434,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     -> @metadata<tydesc_md> {
     //let tg = StructureTypeTag;
     /*let cache = cx.llmetadata;
-    alt cached_metadata::<@metadata<tydesc_md>>(
+    match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(outer) == ty::hash_ty(md.data.hash)}) {
       option::some(md) { return md; }
       option::none {}
@@ -516,7 +516,7 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
 fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
     -> @metadata<tydesc_md> {
     /*let cache = get_cache(cx);
-    alt cached_metadata::<@metadata<tydesc_md>>(
+    match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| t == md.data.hash}) {
       option::some(md) { return md; }
       option::none {}
@@ -536,7 +536,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
     fail;
     /*
     fn t_to_ty(cx: crate_ctxt, t: ty::t, span: span) -> @ast::ty {
-        let ty = alt ty::get(t).struct {
+        let ty = match ty::get(t).struct {
           ty::ty_nil { ast::ty_nil }
           ty::ty_bot { ast::ty_bot }
           ty::ty_bool { ast::ty_bool }
@@ -566,9 +566,9 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
         return @{node: ty, span: span};
     }
 
-    alt ty.node {
+    match ty.node {
       ast::ty_box(mt) {
-        let inner_t = alt ty::get(t).struct {
+        let inner_t = match ty::get(t).struct {
           ty::ty_box(boxed) { boxed.ty }
           _ { cx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
         };
@@ -578,7 +578,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
       }
 
       ast::ty_uniq(mt) {
-        let inner_t = alt ty::get(t).struct {
+        let inner_t = match ty::get(t).struct {
           ty::ty_uniq(boxed) { boxed.ty }
           // Hoping we'll have a way to eliminate this check soon.
           _ { cx.sess.span_bug(ty.span, "t_to_ty was incoherent"); }
@@ -604,7 +604,7 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
       }
 
       ast::ty_path(_, id) {
-        alt cx.tcx.def_map.get(id) {
+        match cx.tcx.def_map.get(id) {
           ast::def_prim_ty(pty) {
             return create_basic_type(cx, t, pty, ty.span);
           }
@@ -639,13 +639,13 @@ fn create_local_var(bcx: block, local: @ast::local)
     let cx = bcx.ccx();
     let cache = get_cache(cx);
     let tg = AutoVariableTag;
-    alt cached_metadata::<@metadata<local_var_md>>(
+    match cached_metadata::<@metadata<local_var_md>>(
         cache, tg, |md| md.data.id == local.node.id) {
       option::some(md) => return md,
       option::none => ()
     }
 
-    let name = alt local.node.pat.node {
+    let name = match local.node.pat.node {
       ast::pat_ident(_, pth, _) => ast_util::path_to_ident(pth),
       // FIXME this should be handled (#2533)
       _ => fail ~"no single variable name for local"
@@ -655,7 +655,7 @@ fn create_local_var(bcx: block, local: @ast::local)
     let ty = node_id_type(bcx, local.node.id);
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.file.name);
-    let context = alt bcx.parent {
+    let context = match bcx.parent {
         none => create_function(bcx.fcx).node,
         some(_) => create_block(bcx).node
     };
@@ -664,14 +664,14 @@ fn create_local_var(bcx: block, local: @ast::local)
     let mdval = @{node: mdnode, data: {id: local.node.id}};
     update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
 
-    let llptr = alt bcx.fcx.lllocals.find(local.node.id) {
+    let llptr = match bcx.fcx.lllocals.find(local.node.id) {
       option::some(local_mem(v)) => v,
       option::some(_) => {
         bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
                 something weird");
       }
       option::none => {
-        alt bcx.fcx.lllocals.get(local.node.pat.id) {
+        match bcx.fcx.lllocals.get(local.node.pat.id) {
           local_imm(v) => v,
           _ => bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
                                                      something weird")
@@ -689,7 +689,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let fcx = bcx.fcx, cx = fcx.ccx;
     let cache = get_cache(cx);
     let tg = ArgVariableTag;
-    alt cached_metadata::<@metadata<argument_md>>(
+    match cached_metadata::<@metadata<argument_md>>(
         cache, ArgVariableTag, |md| md.data.id == arg.id) {
       option::some(md) => return md,
       option::none => ()
@@ -706,7 +706,7 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let mdval = @{node: mdnode, data: {id: arg.id}};
     update_cache(cache, tg, argument_metadata(mdval));
 
-    let llptr = alt fcx.llargs.get(arg.id) {
+    let llptr = match fcx.llargs.get(arg.id) {
       local_mem(v) | local_imm(v) => v,
     };
     let declargs = ~[llmdnode(~[llptr]), mdnode];
@@ -740,9 +740,9 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let sp = option::get(fcx.span);
     log(debug, codemap::span_to_str(sp, cx.sess.codemap));
 
-    let (ident, ret_ty, id) = alt cx.tcx.items.get(fcx.id) {
+    let (ident, ret_ty, id) = match cx.tcx.items.get(fcx.id) {
       ast_map::node_item(item, _) => {
-        alt item.node {
+        match item.node {
           ast::item_fn(decl, _, _) => {
             (item.ident, decl.output, item.id)
           }
@@ -758,7 +758,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
         (nm, ctor.node.dec.output, ctor.node.id)
       }
       ast_map::node_expr(expr) => {
-        alt expr.node {
+        match expr.node {
           ast::expr_fn(_, decl, _, _) => {
             (@dbg_cx.names(~"fn"), decl.output, expr.id)
           }
@@ -778,7 +778,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     log(debug, id);
 
     let cache = get_cache(cx);
-    alt cached_metadata::<@metadata<subprogram_md>>(
+    match cached_metadata::<@metadata<subprogram_md>>(
         cache, SubprogramTag, |md| md.data.id == id) {
       option::some(md) => return md,
       option::none => ()
@@ -788,7 +788,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
                                        sp.lo);
     let file_node = create_file(cx, loc.file.name).node;
     let ty_node = if cx.sess.opts.extra_debuginfo {
-        alt ret_ty.node {
+        match ret_ty.node {
           ast::ty_nil => llnull(),
           _ => create_ty(cx, ty::node_id_to_type(cx.tcx, id), ret_ty).node
         }

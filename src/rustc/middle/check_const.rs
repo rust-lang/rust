@@ -20,7 +20,7 @@ fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
 fn check_item(sess: session, ast_map: ast_map::map,
               def_map: resolve3::DefMap,
               it: @item, &&_is_const: bool, v: visit::vt<bool>) {
-    alt it.node {
+    match it.node {
       item_const(_, ex) => {
         v.visit_expr(ex, true, v);
         check_item_recursion(sess, ast_map, def_map, it);
@@ -38,13 +38,13 @@ fn check_item(sess: session, ast_map: ast_map::map,
 
 fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
-        alt e.node {
+        match e.node {
           expr_vstore(@{node: expr_lit(@{node: lit_str(_), _}), _},
                       vstore_uniq) => true,
           _ => false
         }
     }
-    alt p.node {
+    match p.node {
       // Let through plain ~-string literals here
       pat_lit(a) => if !is_str(a) { v.visit_expr(a, true, v); }
       pat_range(a, b) => {
@@ -59,7 +59,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
               method_map: typeck::method_map, tcx: ty::ctxt,
               e: @expr, &&is_const: bool, v: visit::vt<bool>) {
     if is_const {
-        alt e.node {
+        match e.node {
           expr_unary(box(_), _) | expr_unary(uniq(_), _) |
           expr_unary(deref, _) => {
             sess.span_err(e.span,
@@ -83,7 +83,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
             }
           }
           expr_path(_) => {
-            alt def_map.find(e.id) {
+            match def_map.find(e.id) {
               some(def_const(def_id)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
@@ -117,7 +117,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           }
         }
     }
-    alt e.node {
+    match e.node {
       expr_lit(@{node: lit_int(v, t), _}) => {
         if t != ty_char {
             if (v as u64) > ast_util::int_ty_max(
@@ -175,11 +175,11 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
     }
 
     fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
-        alt e.node {
+        match e.node {
           expr_path(path) => {
-            alt env.def_map.find(e.id) {
+            match env.def_map.find(e.id) {
               some(def_const(def_id)) => {
-                alt check env.ast_map.get(def_id.node) {
+                match check env.ast_map.get(def_id.node) {
                   ast_map::node_item(it, _) => {
                     v.visit_item(it, env, v);
                   }

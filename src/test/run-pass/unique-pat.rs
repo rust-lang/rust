@@ -1,5 +1,5 @@
 fn simple() {
-    alt ~true {
+    match ~true {
       ~true => { }
       _ => { fail; }
     }

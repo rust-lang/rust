@@ -1,7 +1,7 @@
 // Issue #961
 
 fn altsimple() {
-    alt ~true {
+    match ~true {
       _ => { }
     }
 }

@@ -209,7 +209,7 @@ import export use mod
 The keywords in [source files](#source-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-alt again assert
+again assert
 break
 check class const copy
 drop
@@ -217,7 +217,7 @@ else enum export extern
 fail false fn for
 if impl import
 let log loop
-mod mut
+match mod mut
 pure
 return
 true trait type
@@ -956,7 +956,7 @@ An example of a predicate that uses an unchecked block:
 # import std::list::*;
 
 fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
-    alt ls {
+    match ls {
       nil => u,
       cons(hd, tl) => f(hd, pure_foldl(*tl, f(hd, u), f))
     }
@@ -1156,7 +1156,7 @@ class file_descriptor {
       let mut name: option<~str>;
     }
     fn get_name() -> ~str {
-      alt self.name {
+      match self.name {
          none    => fail ~"File has no name!",
          some(n) => n
       }
@@ -2171,21 +2171,21 @@ evaluated. If all `if` and `else if` conditions evaluate to `false`
 then any `else` block is executed.
 
 
-### Alternative expressions
+### Match expressions
 
 ~~~~~~~~{.ebnf .gram}
-alt_expr : "alt" expr '{' alt_arm [ '|' alt_arm ] * '}' ;
+match_expr : "match" expr '{' match_arm [ '|' match_arm ] * '}' ;
 
-alt_arm : alt_pat '=>' expr_or_blockish ;
+match_arm : match_pat '=>' expr_or_blockish ;
 
-alt_pat : pat [ "to" pat ] ? [ "if" expr ] ;
+match_pat : pat [ "to" pat ] ? [ "if" expr ] ;
 ~~~~~~~~
 
 
-An `alt` expression branches on a *pattern*. The exact form of matching that
+A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
 literals, destructured enum constructors, records and tuples, variable binding
-specifications, wildcards (`*`), and placeholders (`_`). An `alt` expression has a *head
+specifications, wildcards (`*`), and placeholders (`_`). A `match` expression has a *head
 expression*, which is the value to compare to the patterns. The type of the
 patterns must equal the type of the head expression.
 
@@ -2198,7 +2198,7 @@ enum list<X> { nil, cons(X, @list<X>) }
 
 let x: list<int> = cons(10, @cons(11, @nil));
 
-alt x {
+match x {
     cons(_, @nil) => fail ~"singleton list",
     cons(*)       => return,
     nil           => fail ~"empty list"
@@ -2210,13 +2210,13 @@ tail value of `@nil`. The second pattern matches `any` list constructed with `co
 ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
 `C` has exactly one argument, while the pattern `C(*)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
-To execute an `alt` expression, first the head expression is evaluated, then
+To execute an `match` expression, first the head expression is evaluated, then
 its value is sequentially compared to the patterns in the arms until a match
 is found. The first arm with a matching pattern is chosen as the branch target
-of the `alt`, any variables bound by the pattern are assigned to local
+of the `match`, any variables bound by the pattern are assigned to local
 variables in the arm's block, and control enters the block.
 
-An example of an `alt` expression:
+An example of an `match` expression:
 
 
 ~~~~
@@ -2227,7 +2227,7 @@ enum list<X> { nil, cons(X, @list<X>) }
 
 let x: list<int> = cons(10, @cons(11, @nil));
 
-alt x {
+match x {
     cons(a, @cons(b, _)) => {
         process_pair(a,b);
     }
@@ -2264,7 +2264,7 @@ fn main() {
         }
     };
 
-    alt r {
+    match r {
       {options: {choose: true, _}, _} => {
         choose_player(r)
       }
@@ -2278,20 +2278,20 @@ fn main() {
 }
 ~~~~
 
-Multiple alternative patterns may be joined with the `|` operator.  A
+Multiple match patterns may be joined with the `|` operator.  A
 range of values may be specified with `to`. For example:
 
 ~~~~
 # let x = 2;
 
-let message = alt x {
+let message = match x {
   0 | 1  => ~"not many",
   2 to 9 => ~"a few",
   _      => ~"lots"
 };
 ~~~~
 
-Finally, alt patterns can accept *pattern guards* to further refine the
+Finally, match patterns can accept *pattern guards* to further refine the
 criteria for matching a case. Pattern guards appear after the pattern and
 consist of a bool-typed expression following the `if` keyword. A pattern
 guard may refer to the variables bound within the pattern they follow.
@@ -2301,7 +2301,7 @@ guard may refer to the variables bound within the pattern they follow.
 # fn process_digit(i: int) { }
 # fn process_other(i: int) { }
 
-let message = alt maybe_digit {
+let message = match maybe_digit {
   some(x) if x < 10 => process_digit(x),
   some(x) => process_other(x),
   none => fail

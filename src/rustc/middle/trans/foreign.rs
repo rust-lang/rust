@@ -38,7 +38,7 @@ enum x86_64_reg_class {
 }
 
 fn is_sse(++c: x86_64_reg_class) -> bool {
-    return alt c {
+    return match c {
         sse_fs_class | sse_fv_class |
         sse_ds_class | sse_dv_class => true,
         _ => false
@@ -73,7 +73,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn ty_align(ty: TypeRef) -> uint {
-        return alt llvm::LLVMGetTypeKind(ty) as int {
+        return match llvm::LLVMGetTypeKind(ty) as int {
             8 /* integer */ => {
                 ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7u) / 8u
             }
@@ -94,7 +94,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn ty_size(ty: TypeRef) -> uint {
-        return alt llvm::LLVMGetTypeKind(ty) as int {
+        return match llvm::LLVMGetTypeKind(ty) as int {
             8 /* integer */ => {
                 ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7u) / 8u
             }
@@ -179,7 +179,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             return;
         }
 
-        alt llvm::LLVMGetTypeKind(ty) as int {
+        match llvm::LLVMGetTypeKind(ty) as int {
             8 /* integer */ |
             12 /* pointer */ => {
                 unify(cls, ix + off / 8u, integer_class);
@@ -285,7 +285,7 @@ fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
     let mut i = 0u;
     let e = vec::len(cls);
     while i < e {
-        alt cls[i] {
+        match cls[i] {
             integer_class => {
                 vec::push(tys, T_i64());
             }
@@ -326,7 +326,7 @@ fn x86_64_tys(atys: ~[TypeRef],
               rty: TypeRef,
               ret_def: bool) -> x86_64_tys {
     fn is_reg_ty(ty: TypeRef) -> bool {
-        return alt llvm::LLVMGetTypeKind(ty) as int {
+        return match llvm::LLVMGetTypeKind(ty) as int {
             8 /* integer */ |
             12 /* pointer */ |
             2 /* float */ |
@@ -401,7 +401,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
     let llfn = decl(fnty);
 
     do vec::iteri(tys.attrs) |i, a| {
-        alt a {
+        match a {
             option::some(attr) => {
                 let llarg = get_param(llfn, i);
                 llvm::LLVMAddAttribute(llarg, attr as c_uint);
@@ -413,7 +413,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
 }
 
 fn link_name(i: @ast::foreign_item) -> ~str {
-    alt attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
+    match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
       none => return *i.ident,
       option::some(ln) => return *ln
     }
@@ -430,7 +430,7 @@ type c_stack_tys = {
 
 fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
                        id: ast::node_id) -> (~[TypeRef], TypeRef, ty::t) {
-    alt ty::get(ty::node_id_to_type(ccx.tcx, id)).struct {
+    match ty::get(ty::node_id_to_type(ccx.tcx, id)).struct {
       ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) => {
         let llargtys = type_of_explicit_args(ccx, arg_tys);
         let llretty = type_of::type_of(ccx, ret_ty);
@@ -587,7 +587,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
 
-            alt tys.x86_64_tys {
+            match tys.x86_64_tys {
                 some(x86_64) => {
                     let mut atys = x86_64.arg_tys;
                     let mut attrs = x86_64.attrs;
@@ -629,10 +629,10 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef, llretval: ValueRef)  {
             let _icx = bcx.insn_ctxt(~"foreign::shim::build_ret");
-            alt tys.x86_64_tys {
+            match tys.x86_64_tys {
                 some(x86_64) => {
                   do vec::iteri(x86_64.attrs) |i, a| {
-                        alt a {
+                        match a {
                             some(attr) => {
                                 llvm::LLVMAddInstrAttribute(
                                     llretval, (i + 1u) as c_uint,
@@ -680,7 +680,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
     fn base_fn(ccx: @crate_ctxt, lname: ~str, tys: @c_stack_tys,
                cc: lib::llvm::CallConv) -> ValueRef {
         // Declare the "prototype" for the base function F:
-        alt tys.x86_64_tys {
+        match tys.x86_64_tys {
           some(x86_64) => {
             do decl_x86_64_fn(x86_64) |fnty| {
                 decl_fn(ccx.llmod, lname, cc, fnty)
@@ -747,14 +747,14 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                        build_args, build_ret);
     }
 
-    let mut cc = alt abi {
+    let mut cc = match abi {
       ast::foreign_abi_rust_intrinsic |
       ast::foreign_abi_cdecl => lib::llvm::CCallConv,
       ast::foreign_abi_stdcall => lib::llvm::X86StdcallCallConv
     };
 
     for vec::each(foreign_mod.items) |foreign_item| {
-      alt foreign_item.node {
+      match foreign_item.node {
         ast::foreign_item_fn(fn_decl, typarams) => {
           let id = foreign_item.id;
           if abi != ast::foreign_abi_rust_intrinsic {
@@ -772,7 +772,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
               // monomorphic_fn, but ones without are emitted here
               if typarams.is_empty() {
                   let llwrapfn = get_item_val(ccx, id);
-                  let path = alt ccx.tcx.items.find(id) {
+                  let path = match ccx.tcx.items.find(id) {
                       some(ast_map::node_foreign_item(_, _, pt)) => pt,
                       _ => {
                           ccx.sess.span_bug(foreign_item.span,
@@ -799,7 +799,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
                                some(substs), some(item.span));
     let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
-    alt check *item.ident {
+    match check *item.ident {
       ~"atomic_xchng" => {
         let old = AtomicRMW(bcx, Xchg,
                   get_param(decl, first_real_arg),
@@ -925,7 +925,7 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
             out_sz = shape::llsize_of_real(ccx, llout_ty);
         if tp_sz != out_sz {
-            let sp = alt check ccx.tcx.items.get(option::get(ref_id)) {
+            let sp = match check ccx.tcx.items.get(option::get(ref_id)) {
               ast_map::node_expr(e) => e.span
             };
             ccx.sess.span_fatal(
@@ -1045,7 +1045,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt(~"foreign::foreign::wrap::build_args");
-            alt tys.x86_64_tys {
+            match tys.x86_64_tys {
                 option::some(x86_64) => {
                     let mut atys = x86_64.arg_tys;
                     let mut attrs = x86_64.attrs;
@@ -1099,7 +1099,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef) {
             let _icx = bcx.insn_ctxt(~"foreign::foreign::wrap::build_ret");
-            alt tys.x86_64_tys {
+            match tys.x86_64_tys {
                 option::some(x86_64) => {
                     if x86_64.sret || !tys.ret_def {
                         RetVoid(bcx);
@@ -1161,11 +1161,11 @@ fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
 
 fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
     -> ast::foreign_abi {
-    alt attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
-      none => alt check ccx.tcx.items.get(i.id) {
+    match attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
+      none => match check ccx.tcx.items.get(i.id) {
         ast_map::node_foreign_item(_, abi, _) => abi
       }
-      some(_) => alt attr::foreign_abi(i.attrs) {
+      some(_) => match attr::foreign_abi(i.attrs) {
         either::right(abi) => abi,
         either::left(msg) => ccx.sess.span_fatal(i.span, msg)
       }

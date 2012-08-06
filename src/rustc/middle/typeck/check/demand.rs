@@ -6,7 +6,7 @@ fn suptype(fcx: @fn_ctxt, sp: span,
            expected: ty::t, actual: ty::t) {
 
     // n.b.: order of actual, expected is reversed
-    alt infer::mk_subty(fcx.infcx, actual, expected) {
+    match infer::mk_subty(fcx.infcx, actual, expected) {
       result::ok(()) => { /* ok */ }
       result::err(err) => {
         fcx.report_mismatched_types(sp, expected, actual, err);
@@ -17,7 +17,7 @@ fn suptype(fcx: @fn_ctxt, sp: span,
 fn eqtype(fcx: @fn_ctxt, sp: span,
           expected: ty::t, actual: ty::t) {
 
-    alt infer::mk_eqty(fcx.infcx, actual, expected) {
+    match infer::mk_eqty(fcx.infcx, actual, expected) {
       result::ok(()) => { /* ok */ }
       result::err(err) => {
         fcx.report_mismatched_types(sp, expected, actual, err);
@@ -29,7 +29,7 @@ fn eqtype(fcx: @fn_ctxt, sp: span,
 fn assign(fcx: @fn_ctxt, sp: span, borrow_lb: ast::node_id,
           expected: ty::t, expr: @ast::expr) {
     let expr_ty = fcx.expr_ty(expr);
-    alt fcx.mk_assignty(expr, borrow_lb, expr_ty, expected) {
+    match fcx.mk_assignty(expr, borrow_lb, expr_ty, expected) {
       result::ok(()) => { /* ok */ }
       result::err(err) => {
         fcx.report_mismatched_types(sp, expected, expr_ty, err);

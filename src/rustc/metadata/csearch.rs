@@ -57,7 +57,7 @@ fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
 fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
     -> ast::purity {
     let cdata = cstore::get_crate_data(cstore, did.crate).data;
-    alt check decoder::lookup_def(did.crate, cdata, did) {
+    match check decoder::lookup_def(did.crate, cdata, did) {
       ast::def_fn(_, p) => p
     }
 }

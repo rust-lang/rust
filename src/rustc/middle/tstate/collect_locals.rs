@@ -13,7 +13,7 @@ import dvec::{dvec, extensions};
 type ctxt = {cs: @mut ~[sp_constr], tcx: ty::ctxt};
 
 fn collect_pred(e: @expr, cx: ctxt, v: visit::vt<ctxt>) {
-    alt e.node {
+    match e.node {
       expr_check(_, ch) { vec::push(*cx.cs, expr_to_constr(cx.tcx, ch)); }
       expr_if_check(ex, _, _) {
         vec::push(*cx.cs, expr_to_constr(cx.tcx, ex));
@@ -58,7 +58,7 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
              constraint_to_str(tcx, c) + ~" |-> " + uint::str(next));
 
     let {path: p, def_id: d_id, args: args} = c.node;
-    alt tbl.find(d_id) {
+    match tbl.find(d_id) {
       some(ct) {
         (*ct.descs).push(respan(c.span, {args: args, bit_num: next}));
       }

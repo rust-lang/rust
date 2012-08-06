@@ -1,6 +1,6 @@
 // no-reformat
 // Testing the presense or absense of commas separating block-structure
-// alt arm expressions
+// match arm expressions
 
 fn fun(_f: fn()) {
 }
@@ -10,13 +10,13 @@ fn it(_f: fn() -> bool) {
 
 fn main() {
 
-    alt 0 {
+    match 0 {
       00 => {
       }
       01 => if true {
       } else {
       }
-      03 => alt 0 {
+      03 => match 0 {
         _ => ()
       }
       04 => do fun {
@@ -36,7 +36,7 @@ fn main() {
       11 => if true {
       } else {
       },
-      13 => alt 0 {
+      13 => match 0 {
         _ => ()
       },
       14 => do fun {

@@ -1,7 +1,7 @@
 // error-pattern:found `let` in restricted position
 
 fn main() {
-    alt true {
+    match true {
       {let} { }
     }
 }

@@ -14,7 +14,7 @@ fn test_generic() {
 }
 
 fn test_alt() {
-    fn f() -> int { alt true { false => { 10 } true => { 20 } } }
+    fn f() -> int { match true { false => { 10 } true => { 20 } } }
     assert (f() == 20);
 }
 

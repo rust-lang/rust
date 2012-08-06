@@ -149,7 +149,7 @@ fn enum_kind(ccx: @crate_ctxt, did: ast::def_id) -> enum_kind {
 
 // Returns the code corresponding to the pointer size on this architecture.
 fn s_int(tcx: ty_ctxt) -> u8 {
-    return alt tcx.sess.targ_cfg.arch {
+    return match tcx.sess.targ_cfg.arch {
         session::arch_x86 => shape_i32,
         session::arch_x86_64 => shape_i64,
         session::arch_arm => shape_i32
@@ -157,7 +157,7 @@ fn s_int(tcx: ty_ctxt) -> u8 {
 }
 
 fn s_uint(tcx: ty_ctxt) -> u8 {
-    return alt tcx.sess.targ_cfg.arch {
+    return match tcx.sess.targ_cfg.arch {
         session::arch_x86 => shape_u32,
         session::arch_x86_64 => shape_u64,
         session::arch_arm => shape_u32
@@ -165,7 +165,7 @@ fn s_uint(tcx: ty_ctxt) -> u8 {
 }
 
 fn s_float(tcx: ty_ctxt) -> u8 {
-    return alt tcx.sess.targ_cfg.arch {
+    return match tcx.sess.targ_cfg.arch {
         session::arch_x86 => shape_f64,
         session::arch_x86_64 => shape_f64,
         session::arch_arm => shape_f64
@@ -213,7 +213,7 @@ fn add_substr(&dest: ~[u8], src: ~[u8]) {
 }
 
 fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
-    alt ty::get(t).struct {
+    match ty::get(t).struct {
       ty::ty_nil | ty::ty_bool | ty::ty_uint(ast::ty_u8) |
       ty::ty_bot => ~[shape_u8],
       ty::ty_int(ast::ty_i) => ~[s_int(ccx.tcx)],
@@ -233,13 +233,13 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
       ty::ty_enum(did, substs) => {
-        alt enum_kind(ccx, did) {
+        match enum_kind(ccx, did) {
           tk_unit => ~[s_variant_enum_t(ccx.tcx)],
           tk_enum => ~[s_variant_enum_t(ccx.tcx)],
           tk_newtype | tk_complex => {
             let mut s = ~[shape_enum], id;
             let nom_id = mk_nominal_id(ccx.tcx, did, none, substs.tps);
-            alt ccx.shape_cx.tag_id_to_index.find(nom_id) {
+            match ccx.shape_cx.tag_id_to_index.find(nom_id) {
               none => {
                 id = ccx.shape_cx.next_tag_id;
                 ccx.shape_cx.tag_id_to_index.insert(nom_id, id);
@@ -678,7 +678,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 // Computes the size of the data part of an enum.
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(t) { return cx.enum_sizes.get(t); }
-    alt ty::get(t).struct {
+    match ty::get(t).struct {
       ty::ty_enum(tid, substs) => {
         // Compute max(variant sizes).
         let mut max_size = 0u;
@@ -712,7 +712,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm})
     }
     fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
-        alt ty::get(typ).struct {
+        match ty::get(typ).struct {
           ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) |
           ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
           ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |

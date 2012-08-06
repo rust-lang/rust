@@ -2,7 +2,7 @@ fn impure(_i: int) {}
 
 // check that unchecked alone does not override borrowck:
 fn foo(v: &const option<int>) {
-    alt *v {
+    match *v {
       some(i) => {
         //~^ ERROR illegal borrow unless pure: enum variant in aliasable, mutable location
         unchecked {
@@ -15,7 +15,7 @@ fn foo(v: &const option<int>) {
 }
 
 fn bar(v: &const option<int>) {
-    alt *v {
+    match *v {
       some(i) => {
         unsafe {
             impure(i);

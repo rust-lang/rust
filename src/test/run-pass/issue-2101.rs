@@ -12,7 +12,7 @@ fn init(ar: &a.arena::arena, str: str) -> &a.hold {
 fn main(args: ~[str]) {
     let ar = arena::arena();
     let leak = init(&ar, args[0]);
-    alt *leak {
+    match *leak {
         s(astr) {
             io::println(fmt!{"%?", astr});
         }

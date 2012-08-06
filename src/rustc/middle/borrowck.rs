@@ -91,7 +91,7 @@ In other cases, like an enum on the stack, the memory cannot be freed
 but its type can change:
 
     let mut x = some(5);
-    alt x {
+    match x {
       some(ref y) => { ... }
       none => { ... }
     }
@@ -105,7 +105,7 @@ Finally, in some cases, both dangers can arise.  For example, something
 like the following:
 
     let mut x = ~some(5);
-    alt x {
+    match x {
       ~some(ref y) => { ... }
       ~none => { ... }
     }
@@ -343,7 +343,7 @@ enum categorization {
     cat_stack_upvar(cmt),           // upvar in stack closure
     cat_deref(cmt, uint, ptr_kind), // deref of a ptr
     cat_comp(cmt, comp_kind),       // adjust to locate an internal component
-    cat_discr(cmt, ast::node_id),   // alt discriminant (see preserve())
+    cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
 }
 
 // different kinds of pointers:
@@ -456,7 +456,7 @@ impl methods of get_type_for_node for ty::ctxt {
 
 impl error_methods for borrowck_ctxt {
     fn report_if_err(bres: bckres<()>) {
-        alt bres {
+        match bres {
           ok(()) => (),
           err(e) => self.report(e)
         }
@@ -478,7 +478,7 @@ impl error_methods for borrowck_ctxt {
     }
 
     fn add_to_mutbl_map(cmt: cmt) {
-        alt cmt.cat {
+        match cmt.cat {
           cat_local(id) | cat_arg(id) => {
             self.mutbl_map.insert(id, ());
           }
@@ -492,7 +492,7 @@ impl error_methods for borrowck_ctxt {
 
 impl to_str_methods for borrowck_ctxt {
     fn cat_to_repr(cat: categorization) -> ~str {
-        alt cat {
+        match cat {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static_item",
           cat_special(sk_self) => ~"self",
@@ -514,7 +514,7 @@ impl to_str_methods for borrowck_ctxt {
     }
 
     fn mut_to_str(mutbl: ast::mutability) -> ~str {
-        alt mutbl {
+        match mutbl {
           m_mutbl => ~"mutable",
           m_const => ~"const",
           m_imm => ~"immutable"
@@ -522,7 +522,7 @@ impl to_str_methods for borrowck_ctxt {
     }
 
     fn ptr_sigil(ptr: ptr_kind) -> ~str {
-        alt ptr {
+        match ptr {
           uniq_ptr => ~"~",
           gc_ptr => ~"@",
           region_ptr(_) => ~"&",
@@ -531,7 +531,7 @@ impl to_str_methods for borrowck_ctxt {
     }
 
     fn comp_to_repr(comp: comp_kind) -> ~str {
-        alt comp {
+        match comp {
           comp_field(fld, _) => *fld,
           comp_index(*) => ~"[]",
           comp_tuple => ~"()",
@@ -540,7 +540,7 @@ impl to_str_methods for borrowck_ctxt {
     }
 
     fn lp_to_str(lp: @loan_path) -> ~str {
-        alt *lp {
+        match *lp {
           lp_local(node_id) => {
             fmt!{"local(%d)", node_id}
           }
@@ -569,7 +569,7 @@ impl to_str_methods for borrowck_ctxt {
 
     fn cmt_to_str(cmt: cmt) -> ~str {
         let mut_str = self.mut_to_str(cmt.mutbl);
-        alt cmt.cat {
+        match cmt.cat {
           cat_special(sk_method) => ~"method",
           cat_special(sk_static_item) => ~"static item",
           cat_special(sk_self) => ~"self reference",
@@ -589,7 +589,7 @@ impl to_str_methods for borrowck_ctxt {
           cat_comp(_, comp_tuple) => ~"tuple content",
           cat_comp(_, comp_variant(_)) => ~"enum content",
           cat_comp(_, comp_index(t, _)) => {
-            alt ty::get(t).struct {
+            match ty::get(t).struct {
               ty::ty_evec(*) => mut_str + ~" vec content",
               ty::ty_estr(*) => mut_str + ~" str content",
               _ => mut_str + ~" indexed content"
@@ -602,7 +602,7 @@ impl to_str_methods for borrowck_ctxt {
     }
 
     fn bckerr_code_to_str(code: bckerr_code) -> ~str {
-        alt code {
+        match code {
           err_mutbl(req, act) => {
             fmt!{"creating %s alias to aliasable, %s memory",
                  self.mut_to_str(req), self.mut_to_str(act)}
@@ -644,7 +644,7 @@ impl to_str_methods for borrowck_ctxt {
 // mutability can be "overridden" if the component is embedded in a
 // mutable structure.
 fn inherent_mutability(ck: comp_kind) -> mutability {
-    alt ck {
+    match ck {
       comp_tuple | comp_variant(_)        => m_imm,
       comp_field(_, m) | comp_index(_, m) => m
     }

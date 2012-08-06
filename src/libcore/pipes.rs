@@ -136,7 +136,7 @@ struct packet_header {
     unsafe fn unblock() {
         let old_task = swap_task(self.blocked_task, ptr::null());
         if !old_task.is_null() { rustrt::rust_task_deref(old_task) }
-        alt swap_state_acq(self.state, empty) {
+        match swap_state_acq(self.state, empty) {
           empty | blocked => (),
           terminated => self.state = terminated,
           full => self.state = full
@@ -345,7 +345,7 @@ fn send<T: send, Tbuffer: send>(-p: send_packet_buffered<T, Tbuffer>,
     assert p.payload == none;
     p.payload <- some(payload);
     let old_state = swap_state_rel(p.header.state, full);
-    alt old_state {
+    match old_state {
       empty => {
         // Yay, fastpath.
 
@@ -403,7 +403,7 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
         rustrt::task_clear_event_reject(this);
         let old_state = swap_state_acq(p.header.state,
                                        blocked);
-        alt old_state {
+        match old_state {
           empty => {
             debug!{"no data available on %?, going to sleep.", p_};
             if count == 0 {
@@ -451,7 +451,7 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
 
 /// Returns true if messages are available.
 pure fn peek<T: send, Tb: send>(p: recv_packet_buffered<T, Tb>) -> bool {
-    alt unsafe {(*p.header()).state} {
+    match unsafe {(*p.header()).state} {
       empty => false,
       blocked => fail ~"peeking on blocked packet",
       full | terminated => true
@@ -467,7 +467,7 @@ impl peek<T: send, Tb: send> for recv_packet_buffered<T, Tb> {
 #[doc(hidden)]
 fn sender_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { &*p };
-    alt swap_state_rel(p.header.state, terminated) {
+    match swap_state_rel(p.header.state, terminated) {
       empty => {
         assert p.header.blocked_task.is_null();
         // The receiver will eventually clean up.
@@ -500,7 +500,7 @@ fn sender_terminate<T: send>(p: *packet<T>) {
 fn receiver_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { &*p };
     assert p.header.blocked_task.is_null();
-    alt swap_state_rel(p.header.state, terminated) {
+    match swap_state_rel(p.header.state, terminated) {
       empty => {
         // the sender will clean up
         //unsafe { forget(p) }
@@ -534,7 +534,7 @@ fn wait_many(pkts: &[*packet_header]) -> uint {
     for pkts.eachi |i, p| unsafe {
         let p = unsafe { &*p };
         let old = p.mark_blocked(this);
-        alt old {
+        match old {
           full | terminated => {
             data_avail = true;
             ready_packet = i;
@@ -551,7 +551,7 @@ fn wait_many(pkts: &[*packet_header]) -> uint {
         let event = wait_event(this) as *packet_header;
         let pos = vec::position(pkts, |p| p == event);
 
-        alt pos {
+        match pos {
           some(i) => {
             ready_packet = i;
             data_avail = true;
@@ -611,7 +611,7 @@ fn select2<A: send, Ab: send, B: send, Bb: send>(
     let i = wait_many([a.header(), b.header()]/_);
 
     unsafe {
-        alt i {
+        match i {
           0 => left((try_recv(a), b)),
           1 => right((a, try_recv(b))),
           _ => fail ~"select2 return an invalid packet"
@@ -631,7 +631,7 @@ fn selecti<T: selectable>(endpoints: &[T]) -> uint {
 
 /// Returns 0 or 1 depending on which endpoint is ready to receive
 fn select2i<A: selectable, B: selectable>(a: A, b: B) -> either<(), ()> {
-    alt wait_many([a.header(), b.header()]/_) {
+    match wait_many([a.header(), b.header()]/_) {
       0 => left(()),
       1 => right(()),
       _ => fail ~"wait returned unexpected index"
@@ -704,7 +704,7 @@ struct send_packet_buffered<T: send, Tbuffer: send> {
     }
 
     pure fn header() -> *packet_header {
-        alt self.p {
+        match self.p {
           some(packet) => unsafe {
             let packet = &*packet;
             let header = ptr::addr_of(packet.header);
@@ -765,7 +765,7 @@ struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     }
 
     pure fn header() -> *packet_header {
-        alt self.p {
+        match self.p {
           some(packet) => unsafe {
             let packet = &*packet;
             let header = ptr::addr_of(packet.header);
@@ -924,7 +924,7 @@ impl port<T: send> of recv<T> for port<T> {
     fn try_recv() -> option<T> {
         let mut endp = none;
         endp <-> self.endp;
-        alt move pipes::try_recv(unwrap(endp)) {
+        match move pipes::try_recv(unwrap(endp)) {
           some(streamp::data(x, endp)) => {
             self.endp = some(move_it!{endp});
             some(move_it!{x})
@@ -936,7 +936,7 @@ impl port<T: send> of recv<T> for port<T> {
     pure fn peek() -> bool unchecked {
         let mut endp = none;
         endp <-> self.endp;
-        let peek = alt endp {
+        let peek = match endp {
           some(endp) => pipes::peek(endp),
           none => fail ~"peeking empty stream"
         };
@@ -969,7 +969,7 @@ struct port_set<T: send> : recv<T> {
         ports <-> self.ports;
         while result == none && ports.len() > 0 {
             let i = wait_many(ports.map(|p| p.header()));
-            alt move ports[i].try_recv() {
+            match move ports[i].try_recv() {
                 some(copy m) => {
                     result = some(move m);
                 }
@@ -1007,7 +1007,7 @@ struct port_set<T: send> : recv<T> {
 
 impl<T: send> of selectable for port<T> {
     pure fn header() -> *packet_header unchecked {
-        alt self.endp {
+        match self.endp {
           some(endp) => endp.header(),
           none => fail ~"peeking empty stream"
         }
@@ -1045,8 +1045,8 @@ impl<T: send, U: send, Left: selectable recv<T>, Right: selectable recv<U>>
     of select2<T, U> for (Left, Right) {
 
     fn select() -> either<T, U> {
-        alt self {
-          (lp, rp) => alt select2i(lp, rp) {
+        match self {
+          (lp, rp) => match select2i(lp, rp) {
             left(()) => left (lp.recv()),
             right(()) => right(rp.recv())
           }
@@ -1054,8 +1054,8 @@ impl<T: send, U: send, Left: selectable recv<T>, Right: selectable recv<U>>
     }
 
     fn try_select() -> either<option<T>, option<U>> {
-        alt self {
-          (lp, rp) => alt select2i(lp, rp) {
+        match self {
+          (lp, rp) => match select2i(lp, rp) {
             left(()) => left (lp.try_recv()),
             right(()) => right(rp.try_recv())
           }
@@ -1072,7 +1072,7 @@ mod test {
 
         c1.send(~"abc");
 
-        alt (p1, p2).select() {
+        match (p1, p2).select() {
           right(_) => fail,
           _ => ()
         }

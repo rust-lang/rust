@@ -25,12 +25,12 @@ impl proto_parser of proto_parser for parser {
     fn parse_state(proto: protocol) {
         let id = self.parse_ident();
         self.expect(token::COLON);
-        let dir = alt copy self.token {
+        let dir = match copy self.token {
           token::IDENT(n, _) => self.get_str(n),
           _ => fail
         };
         self.bump();
-        let dir = alt dir {
+        let dir = match dir {
           @~"send" => send,
           @~"recv" => recv,
           _ => fail
@@ -64,7 +64,7 @@ impl proto_parser of proto_parser for parser {
 
         self.expect(token::RARROW);
 
-        let next = alt copy self.token {
+        let next = match copy self.token {
           token::IDENT(_, _) => {
             let name = self.parse_ident();
             let ntys = if self.token == token::LT {

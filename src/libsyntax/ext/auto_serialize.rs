@@ -101,7 +101,7 @@ fn expand(cx: ext_ctxt,
     }
 
     do vec::flat_map(in_items) |in_item| {
-        alt in_item.node {
+        match in_item.node {
           ast::item_ty(ty, tps) => {
             vec::append(~[filter_attrs(in_item)],
                         ty_fns(cx, in_item.ident, ty, tps))
@@ -375,7 +375,7 @@ fn ser_lambda(cx: ext_ctxt, tps: ser_tps_map, ty: @ast::ty,
 }
 
 fn is_vec_or_str(ty: @ast::ty) -> bool {
-    alt ty.node {
+    match ty.node {
       ast::ty_vec(_) => true,
       // This may be wrong if the user has shadowed (!) str
       ast::ty_path(@{span: _, global: _, idents: ids,
@@ -391,7 +391,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
 
     let ext_cx = cx; // required for #ast{}
 
-    alt ty.node {
+    match ty.node {
       ast::ty_nil => {
         ~[#ast[stmt]{$(s).emit_nil()}]
       }
@@ -447,7 +447,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
       ast::ty_tup(tys) => {
         // Generate code like
         //
-        // alt v {
+        // match v {
         //    (v1, v2, v3) {
         //       .. serialize v1, v2, v3 ..
         //    }
@@ -483,7 +483,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
             vec::is_empty(path.types) {
             let ident = path.idents[0];
 
-            alt tps.find(*ident) {
+            match tps.find(*ident) {
               some(f) => f(v),
               none => ser_path(cx, tps, path, s, v)
             }
@@ -634,7 +634,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
 
     let ext_cx = cx; // required for #ast{}
 
-    alt ty.node {
+    match ty.node {
       ast::ty_nil => {
         #ast{ $(d).read_nil() }
       }
@@ -709,7 +709,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
             vec::is_empty(path.types) {
             let ident = path.idents[0];
 
-            alt tps.find(*ident) {
+            match tps.find(*ident) {
               some(f) => f(),
               none => deser_path(cx, tps, path, d)
             }

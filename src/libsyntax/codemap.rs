@@ -124,7 +124,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
     -> {filename: ~str, line: uint, col: uint, file: option<filemap>}
 {
     let loc = lookup_char_pos(map, pos);
-    alt (loc.file.substr) {
+    match (loc.file.substr) {
       fss_none => {
         {filename: /* FIXME (#2543) */ copy loc.file.name,
          line: loc.line,
@@ -146,7 +146,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
 fn adjust_span(map: codemap, sp: span) -> span {
     pure fn lookup(pos: file_pos) -> uint { return pos.ch; }
     let line = lookup_line(map, sp.lo, lookup);
-    alt (line.fm.substr) {
+    match (line.fm.substr) {
       fss_none => sp,
       fss_internal(s) => {
         adjust_span(map, {lo: s.lo + (sp.lo - line.fm.start_pos.ch),
@@ -196,7 +196,7 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 
 fn get_line(fm: filemap, line: int) -> ~str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
-    let end = alt str::find_char_from(*fm.src, '\n', begin) {
+    let end = match str::find_char_from(*fm.src, '\n', begin) {
       some(e) => e,
       none => str::len(*fm.src)
     };

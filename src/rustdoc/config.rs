@@ -100,7 +100,7 @@ fn parse_config_(
 ) -> result<config, ~str> {
     let args = vec::tail(args);
     let opts = vec::unzip(opts()).first();
-    alt getopts::getopts(args, opts) {
+    match getopts::getopts(args, opts) {
         result::ok(matches) => {
             if vec::len(matches.free) == 1u {
                 let input_crate = vec::head(matches.free);
@@ -176,7 +176,7 @@ fn config_from_opts(
 }
 
 fn parse_output_format(output_format: ~str) -> result<output_format, ~str> {
-    alt output_format {
+    match output_format {
       ~"markdown" => result::ok(markdown),
       ~"html" => result::ok(pandoc_html),
       _ => result::err(fmt!{"unknown output format '%s'", output_format})
@@ -184,7 +184,7 @@ fn parse_output_format(output_format: ~str) -> result<output_format, ~str> {
 }
 
 fn parse_output_style(output_style: ~str) -> result<output_style, ~str> {
-    alt output_style {
+    match output_style {
       ~"doc-per-crate" => result::ok(doc_per_crate),
       ~"doc-per-mod" => result::ok(doc_per_mod),
       _ => result::err(fmt!{"unknown output style '%s'", output_style})
@@ -200,10 +200,10 @@ fn maybe_find_pandoc(
         return result::ok(maybe_pandoc_cmd);
     }
 
-    let possible_pandocs = alt maybe_pandoc_cmd {
+    let possible_pandocs = match maybe_pandoc_cmd {
       some(pandoc_cmd) => ~[pandoc_cmd],
       none => {
-        ~[~"pandoc"] + alt os::homedir() {
+        ~[~"pandoc"] + match os::homedir() {
           some(dir) => {
             ~[path::connect(dir, ~".cabal/bin/pandoc")]
           }

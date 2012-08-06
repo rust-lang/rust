@@ -46,7 +46,7 @@ class dtor_res {
   let dtor: option<fn@()>;
   new(dtor: option<fn@()>) { self.dtor = dtor; }
   drop {
-    alt self.dtor {
+    match self.dtor {
       option::none => (),
       option::some(f) => f()
     }

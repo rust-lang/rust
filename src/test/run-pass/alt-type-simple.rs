@@ -2,7 +2,7 @@
 // xfail-test
 
 fn altsimple(any x) {
-  alt type (f) {
+  match type (f) {
     case (int i) { print("int"); }
     case (str s) { print("str"); }
   }
