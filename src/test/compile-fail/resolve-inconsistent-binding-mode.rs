@@ -3,28 +3,28 @@ enum opts {
 }
 
 fn matcher1(x: opts) {
-    alt x {
+    match x {
       a(ref i) | b(copy i) => {} //~ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
       c(_) => {}
     }
 }
 
 fn matcher2(x: opts) {
-    alt x {
+    match x {
       a(ref i) | b(i) => {} //~ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
       c(_) => {}
     }
 }
 
 fn matcher3(x: opts) {
-    alt x {
+    match x {
       a(ref mut i) | b(ref const i) => {} //~ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
       c(_) => {}
     }
 }
 
 fn matcher4(x: opts) {
-    alt x {
+    match x {
       a(ref mut i) | b(ref i) => {} //~ ERROR variable `i` is bound with different mode in pattern #2 than in pattern #1
       c(_) => {}
     }
@@ -32,7 +32,7 @@ fn matcher4(x: opts) {
 
 
 fn matcher5(x: opts) {
-    alt x {
+    match x {
       a(ref i) | b(ref i) => {}
       c(_) => {}
     }
