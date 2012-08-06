@@ -777,6 +777,21 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         let bkts = create_index(idx, hash_node_id);
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
+
+        /* Encode the constructor */
+        for ctor.each |ctor| {
+            debug!{"encoding info for ctor %s %d", *item.ident,
+                   ctor.node.id};
+            vec::push(*index, {
+                val: ctor.node.id,
+                pos: ebml_w.writer.tell()
+            });
+            encode_info_for_fn(ecx, ebml_w, ctor.node.id, item.ident,
+                               path, if tps.len() > 0u {
+                                   some(ii_ctor(ctor, item.ident, tps,
+                                                local_def(item.id))) }
+                               else { none }, tps, ctor.node.dec);
+        }
       }
       item_impl(tps, traits, _, methods) => {
         add_to_index();
@@ -891,23 +906,6 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
             match check ecx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) => {
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
-                /* encode ctor, then encode items */
-                match i.node {
-                   item_class(tps, _, _, some(ctor), m_dtor) => {
-                       debug!{"encoding info for ctor %s %d", *i.ident,
-                              ctor.node.id};
-                       vec::push(*index, {
-                            val: ctor.node.id,
-                            pos: ebml_w.writer.tell()
-                       });
-                       encode_info_for_fn(ecx, ebml_w, ctor.node.id, i.ident,
-                          *pt, if tps.len() > 0u {
-                                 some(ii_ctor(ctor, i.ident, tps,
-                                              local_def(i.id))) }
-                          else { none }, tps, ctor.node.dec);
-                   }
-                   _ => {}
-                }
               }
             }
         },
