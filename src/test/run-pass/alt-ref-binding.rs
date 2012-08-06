@@ -1,5 +1,5 @@
 fn destructure(x: option<int>) -> int {
-    alt x {
+    match x {
       none => 0,
       some(ref v) => *v
     }

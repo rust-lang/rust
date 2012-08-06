@@ -3,7 +3,7 @@ type rec = {
 };
 
 fn destructure(x: &mut rec) {
-    alt *x {
+    match *x {
       {f: ref mut f} => *f += 1
     }
 }
