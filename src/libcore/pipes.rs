@@ -162,6 +162,7 @@ type packet<T: send> = {
     mut payload: option<T>,
 };
 
+#[doc(hidden)]
 trait has_buffer {
     fn set_buffer(b: *libc::c_void);
 }
@@ -172,6 +173,7 @@ impl methods<T: send> of has_buffer for packet<T> {
     }
 }
 
+#[doc(hidden)]
 fn mk_packet<T: send>() -> packet<T> {
     {
         header: packet_header(),
@@ -179,6 +181,7 @@ fn mk_packet<T: send>() -> packet<T> {
     }
 }
 
+#[doc(hidden)]
 fn unibuffer<T: send>() -> ~buffer<packet<T>> {
     let b = ~{
         header: buffer_header(),
@@ -216,6 +219,7 @@ fn entangle_buffer<T: send, Tstart: send>(
 }
 
 #[abi = "rust-intrinsic"]
+#[doc(hidden)]
 extern mod rusti {
     fn atomic_xchng(&dst: int, src: int) -> int;
     fn atomic_xchng_acq(&dst: int, src: int) -> int;
@@ -256,6 +260,7 @@ fn swap_task(&dst: *rust_task, src: *rust_task) -> *rust_task {
 #[doc(hidden)]
 type rust_task = libc::c_void;
 
+#[doc(hidden)]
 extern mod rustrt {
     #[rust_stack]
     fn rust_get_task() -> *rust_task;
@@ -614,14 +619,17 @@ fn select2<A: send, Ab: send, B: send, Bb: send>(
     }
 }
 
+#[doc(hidden)]
 trait selectable {
     pure fn header() -> *packet_header;
 }
 
+/// Returns the index of an endpoint that is ready to receive.
 fn selecti<T: selectable>(endpoints: &[T]) -> uint {
     wait_many(endpoints.map(|p| p.header()))
 }
 
+/// Returns 0 or 1 depending on which endpoint is ready to receive
 fn select2i<A: selectable, B: selectable>(a: A, b: B) -> either<(), ()> {
     alt wait_many([a.header(), b.header()]/_) {
       0 => left(()),
@@ -630,8 +638,10 @@ fn select2i<A: selectable, B: selectable>(a: A, b: B) -> either<(), ()> {
     }
 }
 
-#[doc = "Waits on a set of endpoints. Returns a message, its index,
- and a list of the remaining endpoints."]
+/** Waits on a set of endpoints. Returns a message, its index, and a
+ list of the remaining endpoints.
+
+*/
 fn select<T: send, Tb: send>(+endpoints: ~[recv_packet_buffered<T, Tb>])
     -> (uint, option<T>, ~[recv_packet_buffered<T, Tb>])
 {
@@ -650,8 +660,10 @@ fn select<T: send, Tb: send>(+endpoints: ~[recv_packet_buffered<T, Tb>])
     (ready, result, remaining)
 }
 
-/// The sending end of a pipe. It can be used to send exactly one
-/// message.
+/** The sending end of a pipe. It can be used to send exactly one
+message.
+
+*/
 type send_packet<T: send> = send_packet_buffered<T, packet<T>>;
 
 #[doc(hidden)]
@@ -778,6 +790,13 @@ fn entangle<T: send>() -> (send_packet<T>, recv_packet<T>) {
     (send_packet(p), recv_packet(p))
 }
 
+/** Spawn a task to provide a service.
+
+It takes an initialization function that produces a send and receive
+endpoint. The send endpoint is returned to the caller and the receive
+endpoint is passed to the new task.
+
+*/
 fn spawn_service<T: send, Tb: send>(
     init: extern fn() -> (send_packet_buffered<T, Tb>,
                           recv_packet_buffered<T, Tb>),
@@ -798,6 +817,10 @@ fn spawn_service<T: send, Tb: send>(
     client
 }
 
+/** Like `spawn_service_recv`, but for protocols that start in the
+receive state.
+
+*/
 fn spawn_service_recv<T: send, Tb: send>(
     init: extern fn() -> (recv_packet_buffered<T, Tb>,
                           send_packet_buffered<T, Tb>),
@@ -826,22 +849,37 @@ proto! streamp {
     }
 }
 
-// It'd be nice to call this send, but it'd conflict with the built in
-// send kind.
+/// A trait for things that can send multiple messages.
 trait channel<T: send> {
+    // It'd be nice to call this send, but it'd conflict with the
+    // built in send kind.
+
+    /// Sends a message.
     fn send(+x: T);
 }
 
+/// A trait for things that can receive multiple messages.
 trait recv<T: send> {
+    /// Receives a message, or fails if the connection closes.
     fn recv() -> T;
+
+    /** Receives a message if one is available, or returns `none` if
+    the connection is closed.
+
+    */
     fn try_recv() -> option<T>;
-    // This should perhaps be a new trait
+
+    /** Returns true if a message is available or the connection is
+    closed.
+
+    */
     pure fn peek() -> bool;
 }
 
 #[doc(hidden)]
 type chan_<T:send> = { mut endp: option<streamp::client::open<T>> };
 
+/// An endpoint that can send many messages.
 enum chan<T:send> {
     chan_(chan_<T>)
 }
@@ -849,10 +887,16 @@ enum chan<T:send> {
 #[doc(hidden)]
 type port_<T:send> = { mut endp: option<streamp::server::open<T>> };
 
+/// An endpoint that can receive many messages.
 enum port<T:send> {
     port_(port_<T>)
 }
 
+/** Creates a `(chan, port)` pair.
+
+These allow sending or receiving an unlimited number of messages.
+
+*/
 fn stream<T:send>() -> (chan<T>, port<T>) {
     let (c, s) = streamp::init();
 
@@ -970,7 +1014,7 @@ impl<T: send> of selectable for port<T> {
     }
 }
 
-
+/// A channel that can be shared between many senders.
 type shared_chan<T: send> = arc::exclusive<chan<T>>;
 
 impl chan<T: send> of channel<T> for shared_chan<T> {
@@ -984,12 +1028,16 @@ impl chan<T: send> of channel<T> for shared_chan<T> {
     }
 }
 
+/// Converts a `chan` into a `shared_chan`.
 fn shared_chan<T:send>(+c: chan<T>) -> shared_chan<T> {
     arc::exclusive(c)
 }
 
+/// Receive a message from one of two endpoints.
 trait select2<T: send, U: send> {
+    /// Receive a message or return `none` if a connection closes.
     fn try_select() -> either<option<T>, option<U>>;
+    /// Receive a message or fail if a connection closes.
     fn select() -> either<T, U>;
 }
 
