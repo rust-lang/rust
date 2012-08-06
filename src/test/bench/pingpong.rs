@@ -40,7 +40,7 @@ macro_rules! follow {
     { 
         $($message:path($($x: ident),+) -> $next:ident $e:expr)+
     } => (
-        |m| alt move m {
+        |m| match move m {
             $(some($message($($x,)* next)) => {
                 // FIXME (#2329) use regular move here once move out of
                 // enums is supported.
@@ -53,7 +53,7 @@ macro_rules! follow {
     { 
         $($message:path -> $next:ident $e:expr)+
     } => (
-        |m| alt move m {
+        |m| match move m {
             $(some($message(next)) => {
                 // FIXME (#2329) use regular move here once move out of
                 // enums is supported.

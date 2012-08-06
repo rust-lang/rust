@@ -113,7 +113,7 @@ fn maybe_get_doc(d: doc, tg: uint) -> option<doc> {
 }
 
 fn get_doc(d: doc, tg: uint) -> doc {
-    alt maybe_get_doc(d, tg) {
+    match maybe_get_doc(d, tg) {
       some(d) => return d,
       none => {
         error!{"failed to find block with tag %u", tg};
@@ -189,7 +189,7 @@ enum writer {
 }
 
 fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
-    alt size {
+    match size {
       1u => w.write(&[0x80u8 | (n as u8)]),
       2u => w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
       3u => w.write(&[0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
@@ -593,7 +593,7 @@ fn test_option_int() {
 
     fn serialize_0<S: serialization::serializer>(s: S, v: option<int>) {
         do s.emit_enum(~"core::option::t") {
-            alt v {
+            match v {
               none => s.emit_enum_variant(
                   ~"core::option::none", 0u, 0u, || { } ),
               some(v0) => {
@@ -612,7 +612,7 @@ fn test_option_int() {
     fn deserialize_0<S: serialization::deserializer>(s: S) -> option<int> {
         do s.read_enum(~"core::option::t") {
             do s.read_enum_variant |i| {
-                alt check i {
+                match check i {
                   0u => none,
                   1u => {
                     let v0 = do s.read_enum_variant_arg(0u) {

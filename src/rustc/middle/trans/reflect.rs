@@ -91,7 +91,7 @@ impl methods for reflector {
     fn vstore_name_and_extra(t: ty::t,
                              vstore: ty::vstore,
                              f: fn(~str,~[ValueRef])) {
-        alt vstore {
+        match vstore {
           ty::vstore_fixed(n) => {
             let extra = vec::append(~[self.c_uint(n)],
                                     self.c_size_and_align(t));
@@ -114,7 +114,7 @@ impl methods for reflector {
         debug!{"reflect::visit_ty %s",
                ty_to_str(bcx.ccx().tcx, t)};
 
-        alt ty::get(t).struct {
+        match ty::get(t).struct {
           ty::ty_bot => self.leaf(~"bot"),
           ty::ty_nil => self.leaf(~"nil"),
           ty::ty_bool => self.leaf(~"bool"),
@@ -178,19 +178,19 @@ impl methods for reflector {
           // FIXME (#2594): fetch constants out of intrinsic:: for the
           // numbers.
           ty::ty_fn(fty) => {
-            let pureval = alt fty.purity {
+            let pureval = match fty.purity {
               ast::pure_fn => 0u,
               ast::unsafe_fn => 1u,
               ast::impure_fn => 2u,
               ast::extern_fn => 3u
             };
-            let protoval = alt fty.proto {
+            let protoval = match fty.proto {
               ast::proto_bare => 0u,
               ast::proto_uniq => 2u,
               ast::proto_box => 3u,
               ast::proto_block => 4u
             };
-            let retval = alt fty.ret_style {
+            let retval = match fty.ret_style {
               ast::noreturn => 0u,
               ast::return_val => 1u
             };
@@ -200,9 +200,9 @@ impl methods for reflector {
                          self.c_uint(retval)];
             self.visit(~"enter_fn", extra);
             for fty.inputs.eachi |i, arg| {
-                let modeval = alt arg.mode {
+                let modeval = match arg.mode {
                   ast::infer(_) => 0u,
-                  ast::expl(e) => alt e {
+                  ast::expl(e) => match e {
                     ast::by_ref => 1u,
                     ast::by_val => 2u,
                     ast::by_mutbl_ref => 3u,
@@ -274,7 +274,7 @@ impl methods for reflector {
           ty::ty_type => self.leaf(~"type"),
           ty::ty_opaque_box => self.leaf(~"opaque_box"),
           ty::ty_opaque_closure_ptr(ck) => {
-            let ckval = alt ck {
+            let ckval = match ck {
               ty::ck_block => 0u,
               ty::ck_box => 1u,
               ty::ck_uniq => 2u

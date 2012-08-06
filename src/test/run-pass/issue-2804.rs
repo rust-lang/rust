@@ -11,7 +11,7 @@ enum object
 
 fn lookup(table: std::map::hashmap<~str, std::json::json>, key: ~str, default: ~str) -> ~str
 {
-    alt table.find(key)
+    match table.find(key)
     {
         option::some(std::json::string(s)) =>
         {
@@ -31,7 +31,7 @@ fn lookup(table: std::map::hashmap<~str, std::json::json>, key: ~str, default: ~
 
 fn add_interface(store: int, managed_ip: ~str, data: std::json::json) -> (~str, object)
 {
-    alt data
+    match data
     {
         std::json::dict(interface) =>
         {
@@ -50,7 +50,7 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::json) -> (~str, 
 
 fn add_interfaces(store: int, managed_ip: ~str, device: std::map::hashmap<~str, std::json::json>) -> ~[(~str, object)]
 {
-    alt device[~"interfaces"]
+    match device[~"interfaces"]
     {
         std::json::list(interfaces) =>
         {

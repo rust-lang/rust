@@ -93,7 +93,7 @@ fn parse_item_attrs<T:send>(
     id: doc::ast_id,
     +parse_attrs: fn~(~[ast::attribute]) -> T) -> T {
     do astsrv::exec(srv) |ctxt| {
-        let attrs = alt ctxt.ast_map.get(id) {
+        let attrs = match ctxt.ast_map.get(id) {
           ast_map::node_item(item, _) => item.attrs,
           ast_map::node_foreign_item(item, _, _) => item.attrs,
           _ => fail ~"parse_item_attrs: not an item"
@@ -144,7 +144,7 @@ fn fold_enum(
     {
         variants: do par::map(doc.variants) |variant| {
             let desc = do astsrv::exec(srv) |ctxt| {
-                alt check ctxt.ast_map.get(doc_id) {
+                match check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) => {
@@ -201,12 +201,12 @@ fn merge_method_attrs(
 
     // Create an assoc list from method name to attributes
     let attrs: ~[(~str, option<~str>)] = do astsrv::exec(srv) |ctxt| {
-        alt ctxt.ast_map.get(item_id) {
+        match ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_trait(_, _, methods), _
           }, _) => {
             vec::map(methods, |method| {
-                alt method {
+                match method {
                   ast::required(ty_m) => {
                     (*ty_m.ident, attr_parser::parse_desc(ty_m.attrs))
                   }

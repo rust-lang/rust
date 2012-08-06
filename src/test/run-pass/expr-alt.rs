@@ -3,16 +3,16 @@
 
 // -*- rust -*-
 
-// Tests for using alt as an expression
+// Tests for using match as an expression
 fn test_basic() {
-    let mut rs: bool = alt true { true => { true } false => { false } };
+    let mut rs: bool = match true { true => { true } false => { false } };
     assert (rs);
-    rs = alt false { true => { false } false => { true } };
+    rs = match false { true => { false } false => { true } };
     assert (rs);
 }
 
 fn test_inferrence() {
-    let mut rs = alt true { true => { true } false => { false } };
+    let mut rs = match true { true => { true } false => { false } };
     assert (rs);
 }
 
@@ -20,7 +20,7 @@ fn test_alt_as_alt_head() {
     // Yeah, this is kind of confusing ...
 
     let rs =
-        alt alt false { true => { true } false => { false } } {
+        match match false { true => { true } false => { false } } {
           true => { false }
           false => { true }
         };
@@ -29,9 +29,9 @@ fn test_alt_as_alt_head() {
 
 fn test_alt_as_block_result() {
     let rs =
-        alt false {
+        match false {
           true => { false }
-          false => { alt true { true => { true } false => { false } } }
+          false => { match true { true => { true } false => { false } } }
         };
     assert (rs);
 }

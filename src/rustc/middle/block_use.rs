@@ -13,7 +13,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     if !cx.allow_block {
-        alt ty::get(ty::expr_ty(cx.tcx, ex)).struct {
+        match ty::get(ty::expr_ty(cx.tcx, ex)).struct {
           ty::ty_fn({proto: p, _}) if is_blockish(p) => {
             cx.tcx.sess.span_err(ex.span,
                ~"expressions with stack closure type \
@@ -23,7 +23,7 @@ fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
     }
     let outer = cx.allow_block;
-    alt ex.node {
+    match ex.node {
       expr_call(f, args, _) => {
         cx.allow_block = true;
         v.visit_expr(f, cx, v);

@@ -40,7 +40,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
               -> option<t> {
 
     let resolved_type;
-    alt resolve_type(inference_context,
+    match resolve_type(inference_context,
                      original_type,
                      resolve_ivar) {
         ok(resulting_type) if !type_is_var(resulting_type) => {
@@ -55,7 +55,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         }
     }
 
-    alt get(resolved_type).struct {
+    match get(resolved_type).struct {
         ty_box(base_mutability_and_type) |
         ty_uniq(base_mutability_and_type) |
         ty_ptr(base_mutability_and_type) |
@@ -88,12 +88,12 @@ fn get_base_type_def_id(inference_context: infer_ctxt,
                         original_type: t)
                      -> option<def_id> {
 
-    alt get_base_type(inference_context, span, original_type) {
+    match get_base_type(inference_context, span, original_type) {
         none => {
             return none;
         }
         some(base_type) => {
-            alt get(base_type).struct {
+            match get(base_type).struct {
                 ty_enum(def_id, _) |
                 ty_class(def_id, _) |
                 ty_trait(def_id, _) => {
@@ -160,7 +160,7 @@ class CoherenceChecker {
             visit_item: |item| {
                 debug!{"(checking coherence) item '%s'", *item.ident};
 
-                alt item.node {
+                match item.node {
                     item_impl(_, associated_traits, _, _) => {
                         self.check_implementation(item, associated_traits);
                     }
@@ -203,7 +203,7 @@ class CoherenceChecker {
                     '%s'",
                    *item.ident};
 
-            alt get_base_type_def_id(self.inference_context,
+            match get_base_type_def_id(self.inference_context,
                                      item.span,
                                      self_type.ty) {
                 none => {
@@ -235,7 +235,7 @@ class CoherenceChecker {
         // Add the implementation to the mapping from implementation to base
         // type def ID, if there is a base type for this implementation.
 
-        alt get_base_type_def_id(self.inference_context,
+        match get_base_type_def_id(self.inference_context,
                                  item.span,
                                  self_type.ty) {
             none => {
@@ -253,7 +253,7 @@ class CoherenceChecker {
 
     fn add_inherent_method(base_def_id: def_id, implementation: @Impl) {
         let implementation_list;
-        alt self.crate_context.coherence_info.inherent_methods
+        match self.crate_context.coherence_info.inherent_methods
             .find(base_def_id) {
 
             none => {
@@ -271,7 +271,7 @@ class CoherenceChecker {
 
     fn add_trait_method(trait_id: def_id, implementation: @Impl) {
         let implementation_list;
-        alt self.crate_context.coherence_info.extension_methods
+        match self.crate_context.coherence_info.extension_methods
                 .find(trait_id) {
 
             none => {
@@ -363,7 +363,7 @@ class CoherenceChecker {
 
         visit_crate(*crate, (), mk_vt(@{
             visit_item: |item, _context, visitor| {
-                alt item.node {
+                match item.node {
                     item_mod(module_) => {
                         // First, gather up all privileged types.
                         let privileged_types =
@@ -386,7 +386,9 @@ class CoherenceChecker {
                         }
                     }
                     item_impl(_, associated_traits, _, _) => {
-                        alt self.base_type_def_ids.find(local_def(item.id)) {
+                        match self.base_type_def_ids.find(
+                            local_def(item.id)) {
+
                             none => {
                                 // Nothing to do.
                             }
@@ -468,7 +470,7 @@ class CoherenceChecker {
     fn gather_privileged_types(items: ~[@item]) -> @dvec<def_id> {
         let results = @dvec();
         for items.each |item| {
-            alt item.node {
+            match item.node {
                 item_class(*) | item_enum(*) | item_trait(*) => {
                     results.push(local_def(item.id));
                 }
@@ -486,7 +488,7 @@ class CoherenceChecker {
 
     // Converts an implementation in the AST to an Impl structure.
     fn create_impl_from_item(item: @item) -> @Impl {
-        alt item.node {
+        match item.node {
             item_impl(ty_params, _, _, ast_methods) => {
                 let mut methods = ~[];
                 for ast_methods.each |ast_method| {
@@ -507,7 +509,7 @@ class CoherenceChecker {
             item_class(ty_params, _, class_members, _, _) => {
                 let mut methods = ~[];
                 for class_members.each |class_member| {
-                    alt class_member.node {
+                    match class_member.node {
                         instance_var(*) => {
                             // Nothing to do.
                         }
@@ -538,7 +540,7 @@ class CoherenceChecker {
 
     fn span_of_impl(implementation: @Impl) -> span {
         assert implementation.did.crate == local_crate;
-        alt self.crate_context.tcx.items.find(implementation.did.node) {
+        match self.crate_context.tcx.items.find(implementation.did.node) {
             some(node_item(item, _)) => {
                 return item.span;
             }
@@ -562,7 +564,7 @@ class CoherenceChecker {
         for (*implementations).each |implementation| {
             // Make sure we don't visit the same implementation
             // multiple times.
-            alt impls_seen.find(implementation.did) {
+            match impls_seen.find(implementation.did) {
                 none => {
                     // Good. Continue.
                     impls_seen.insert(implementation.did, ());
@@ -582,7 +584,7 @@ class CoherenceChecker {
             // types.
 
             if associated_traits.len() == 0 {
-                alt get_base_type_def_id(self.inference_context,
+                match get_base_type_def_id(self.inference_context,
                                          dummy_sp(),
                                          self_type.ty) {
                     none => {
@@ -601,7 +603,7 @@ class CoherenceChecker {
 
             // Record all the trait methods.
             for associated_traits.each |trait_type| {
-                alt get(trait_type).struct {
+                match get(trait_type).struct {
                     ty_trait(trait_id, _) => {
                         self.add_trait_method(trait_id, implementation);
                     }
@@ -617,7 +619,7 @@ class CoherenceChecker {
             // implementation to base type def ID, if there is a base
             // type for this implementation.
 
-            alt get_base_type_def_id(self.inference_context,
+            match get_base_type_def_id(self.inference_context,
                                      dummy_sp(),
                                      self_type.ty) {
                 none => {
@@ -645,7 +647,7 @@ class CoherenceChecker {
 
             for each_path(crate_store, crate_number) |path_entry| {
                 let module_def_id;
-                alt path_entry.def_like {
+                match path_entry.def_like {
                     dl_def(def_mod(def_id)) => {
                         module_def_id = def_id;
                     }

@@ -95,7 +95,7 @@ fn describe_warnings() {
         let k = str::replace(k, ~"_", ~"-");
         io::println(fmt!{"    %s  %7.7s  %s",
                          padded(max_key, k),
-                         alt v.default {
+                         match v.default {
                              lint::allow => ~"allow",
                              lint::warn => ~"warn",
                              lint::deny => ~"deny",
@@ -124,7 +124,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     if vec::len(args) == 0u { usage(binary); return; }
 
     let matches =
-        alt getopts::getopts(args, opts()) {
+        match getopts::getopts(args, opts()) {
           ok(m) => m,
           err(f) => {
             early_error(demitter, getopts::fail_str(f))
@@ -152,7 +152,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
         version(binary);
         return;
     }
-    let input = alt vec::len(matches.free) {
+    let input = match vec::len(matches.free) {
       0u => early_error(demitter, ~"no input filename given"),
       1u => {
         let ifile = matches.free[0];
@@ -175,7 +175,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
         option::map(getopts::opt_default(matches, ~"pretty",
                                          ~"normal"),
                     |a| parse_pretty(sess, a) );
-    alt pretty {
+    match pretty {
       some::<pp_mode>(ppm) => {
         pretty_print_input(sess, cfg, input, ppm);
         return;
@@ -184,7 +184,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     }
     let ls = opt_present(matches, ~"ls");
     if ls {
-        alt input {
+        match input {
           file_input(ifile) => {
             list_metadata(sess, ifile, io::stdout());
           }
@@ -219,7 +219,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
     let p = comm::port();
     let ch = comm::chan(p);
 
-    alt do task::try  {
+    match do task::try  {
 
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.

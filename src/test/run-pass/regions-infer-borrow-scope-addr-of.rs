@@ -7,7 +7,7 @@ fn main() {
 	// below.  note that it would it you
 	// naively borrowed &x for the lifetime
 	// of the variable x, as we once did
-        alt i {
+        match i {
           i => {
             let y = &x;
             assert i < *y;

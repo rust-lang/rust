@@ -35,7 +35,7 @@ fn reset(writer: io::writer) {
 fn color_supported() -> bool {
     let supported_terms = ~[~"xterm-color", ~"xterm",
                            ~"screen-bce", ~"xterm-256color"];
-    return alt os::getenv(~"TERM") {
+    return match os::getenv(~"TERM") {
           option::some(env) => {
             for vec::each(supported_terms) |term| {
                 if term == env { return true; }

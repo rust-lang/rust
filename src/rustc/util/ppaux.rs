@@ -25,14 +25,14 @@ import driver::session::session;
 /// that attempts to explain a lifetime in a way it might plausibly be
 /// understood.
 fn explain_region(cx: ctxt, region: ty::region) -> ~str {
-    return alt region {
+    return match region {
       re_scope(node_id) => {
-        let scope_str = alt cx.items.find(node_id) {
+        let scope_str = match cx.items.find(node_id) {
           some(ast_map::node_block(blk)) => {
             explain_span(cx, ~"block", blk.span)
           }
           some(ast_map::node_expr(expr)) => {
-            alt expr.node {
+            match expr.node {
               ast::expr_call(*) => { explain_span(cx, ~"call", expr.span) }
               ast::expr_alt(*) => { explain_span(cx, ~"alt", expr.span) }
               _ => { explain_span(cx, ~"expression", expr.span) }
@@ -47,7 +47,7 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
       }
 
       re_free(id, br) => {
-        alt cx.items.find(id) {
+        match cx.items.find(id) {
           some(ast_map::node_block(blk)) => {
             fmt!{"reference with lifetime %s as defined on %s",
                  bound_region_to_str(cx, br),
@@ -76,7 +76,7 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
 }
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
-    alt br {
+    match br {
       br_anon                        => { ~"&" }
       br_named(str)                  => { fmt!{"&%s", *str} }
       br_self if cx.sess.ppregions() => { ~"&<self>" }
@@ -95,13 +95,13 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
 }
 
 fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
-    alt cx.items.find(node_id) {
+    match cx.items.find(node_id) {
       some(ast_map::node_block(blk)) => {
         fmt!{"<block at %s>",
              codemap::span_to_str(blk.span, cx.sess.codemap)}
       }
       some(ast_map::node_expr(expr)) => {
-        alt expr.node {
+        match expr.node {
           ast::expr_call(*) => {
             fmt!{"<call at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap)}
@@ -134,7 +134,7 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 }
 
 fn region_to_str(cx: ctxt, region: region) -> ~str {
-    alt region {
+    match region {
       re_scope(node_id) => {
         if cx.sess.ppregions() {
             fmt!{"&%s", re_scope_id_to_str(cx, node_id)}
@@ -162,7 +162,7 @@ fn region_to_str(cx: ctxt, region: region) -> ~str {
 }
 
 fn mt_to_str(cx: ctxt, m: mt) -> ~str {
-    let mstr = alt m.mutbl {
+    let mstr = match m.mutbl {
       ast::m_mutbl => ~"mut ",
       ast::m_imm => ~"",
       ast::m_const => ~"const "
@@ -171,7 +171,7 @@ fn mt_to_str(cx: ctxt, m: mt) -> ~str {
 }
 
 fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
-    alt vs {
+    match vs {
       ty::vstore_fixed(n) => fmt!{"%u", n},
       ty::vstore_uniq => ~"~",
       ty::vstore_box => ~"@",
@@ -180,7 +180,7 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
 }
 
 fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
-    alt vs {
+    match vs {
       ty::vstore_fixed(_) => {
         fmt!{"%s/%s", ty, vstore_to_str(cx, vs)}
       }
@@ -198,7 +198,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     fn fn_input_to_str(cx: ctxt, input: {mode: ast::mode, ty: t}) ->
        ~str {
         let {mode, ty} = input;
-        let modestr = alt canon_mode(cx, mode) {
+        let modestr = match canon_mode(cx, mode) {
           ast::infer(_) => ~"",
           ast::expl(m) => {
             if !ty::type_needs_infer(ty) &&
@@ -216,12 +216,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                  inputs: ~[arg], output: t, cf: ast::ret_style) -> ~str {
         let mut s;
 
-        s = alt purity {
+        s = match purity {
           ast::impure_fn => ~"",
           _ => purity_to_str(purity) + ~" "
         };
         s += proto_to_str(proto);
-        alt ident {
+        match ident {
           some(i) => { s += ~" "; s += *i; }
           _ => { }
         }
@@ -232,7 +232,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         s += ~")";
         if ty::get(output).struct != ty_nil {
             s += ~" -> ";
-            alt cf {
+            match cf {
               ast::noreturn => { s += ~"!"; }
               ast::return_val => { s += ty_to_str(cx, output); }
             }
@@ -255,7 +255,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
 
     // pretty print the structural type representation:
-    return alt ty::get(typ).struct {
+    return match ty::get(typ).struct {
       ty_nil => ~"()",
       ty_bot => ~"_|_",
       ty_bool => ~"bool",
@@ -325,7 +325,7 @@ fn parameterized(cx: ctxt,
                  self_r: option<ty::region>,
                  tps: ~[ty::t]) -> ~str {
 
-    let r_str = alt self_r {
+    let r_str = match self_r {
       none => ~"",
       some(r) => {
         fmt!{"/%s", region_to_str(cx, r)}

@@ -14,7 +14,7 @@ impl public_methods for preserve_condition {
     // combines two preservation conditions such that if either of
     // them requires purity, the result requires purity
     fn combine(pc: preserve_condition) -> preserve_condition {
-        alt self {
+        match self {
           pc_ok => {pc}
           pc_if_pure(e) => {self}
         }
@@ -63,7 +63,7 @@ impl private_methods for &preserve_ctxt {
                self.root_managed_data};
         let _i = indenter();
 
-        alt cmt.cat {
+        match cmt.cat {
           cat_special(sk_self) | cat_special(sk_heap_upvar) => {
             self.compare_scope(cmt, ty::re_scope(self.item_ub))
           }
@@ -160,7 +160,7 @@ impl private_methods for &preserve_ctxt {
             if base.mutbl == m_imm {
                 let non_rooting_ctxt =
                     preserve_ctxt({root_managed_data: false with **self});
-                alt (&non_rooting_ctxt).preserve(base) {
+                match (&non_rooting_ctxt).preserve(base) {
                   ok(pc_ok) => {
                     ok(pc_ok)
                   }
@@ -191,7 +191,7 @@ impl private_methods for &preserve_ctxt {
             // As an example, consider this scenario:
             //
             //    let mut x = @some(3);
-            //    alt *x { some(y) {...} none {...} }
+            //    match *x { some(y) {...} none {...} }
             //
             // Technically, the value `x` need only be rooted
             // in the `some` arm.  However, we evaluate `x` in trans
@@ -201,7 +201,7 @@ impl private_methods for &preserve_ctxt {
             // As a second example, consider *this* scenario:
             //
             //    let x = @mut @some(3);
-            //    alt x { @@some(y) {...} @@none {...} }
+            //    match x { @@some(y) {...} @@none {...} }
             //
             // Here again, `x` need only be rooted in the `some` arm.
             // In this case, the value which needs to be rooted is
@@ -220,7 +220,7 @@ impl private_methods for &preserve_ctxt {
             // also yielded suboptimal results for patterns like:
             //
             //    let x = @mut @...;
-            //    alt x { @@some_variant(y) | @@some_other_variant(y) {...} }
+            //    match x { @@some_variant(y) | @@some_other_variant(y) =>
             //
             // The reason is that we would root the value once for
             // each pattern and not once per arm.  This is also easily
@@ -234,7 +234,7 @@ impl private_methods for &preserve_ctxt {
 
             // current scope must be the arm, which is always a child of alt:
             assert {
-                alt check self.scope_region {
+                match check self.scope_region {
                   ty::re_scope(arm_id) => {
                     self.tcx().region_map.get(arm_id) == alt_id
                   }
@@ -259,11 +259,11 @@ impl private_methods for &preserve_ctxt {
                    code: bckerr_code) -> bckres<preserve_condition> {
         // Variant contents and unique pointers: must be immutably
         // rooted to a preserved address.
-        alt self.preserve(cmt_base) {
+        match self.preserve(cmt_base) {
           // the base is preserved, but if we are not mutable then
           // purity is required
           ok(pc_ok) => {
-            alt cmt_base.mutbl {
+            match cmt_base.mutbl {
               m_mutbl | m_const => {
                 ok(pc_if_pure({cmt:cmt, code:code}))
               }
@@ -322,7 +322,7 @@ impl private_methods for &preserve_ctxt {
         }
 
         let root_region = ty::re_scope(self.root_ub);
-        alt self.scope_region {
+        match self.scope_region {
           // we can only root values if the desired region is some concrete
           // scope within the fn body
           ty::re_scope(scope_id) => {

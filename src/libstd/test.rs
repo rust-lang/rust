@@ -52,7 +52,7 @@ type test_desc = {
 // arguments and a vector of test_descs (generated at compile time).
 fn test_main(args: ~[~str], tests: ~[test_desc]) {
     let opts =
-        alt parse_opts(args) {
+        match parse_opts(args) {
           either::left(o) => o,
           either::right(m) => fail m
         };
@@ -69,7 +69,7 @@ fn parse_opts(args: ~[~str]) -> opt_res {
     let args_ = vec::tail(args);
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
-        alt getopts::getopts(args_, opts) {
+        match getopts::getopts(args_, opts) {
           ok(m) => m,
           err(f) => return either::right(getopts::fail_str(f))
         };
@@ -105,7 +105,7 @@ fn run_tests_console(opts: test_opts,
                      tests: ~[test_desc]) -> bool {
 
     fn callback(event: testevent, st: console_test_state) {
-        alt event {
+        match event {
           te_filtered(filtered_tests) => {
             st.total = vec::len(filtered_tests);
             let noun = if st.total != 1u { ~"tests" } else { ~"test" };
@@ -113,11 +113,11 @@ fn run_tests_console(opts: test_opts,
           }
           te_wait(test) => st.out.write_str(fmt!{"test %s ... ", test.name}),
           te_result(test, result) => {
-            alt st.log_out {
+            match st.log_out {
                 some(f) => write_log(f, result, test),
                 none => ()
             }
-            alt result {
+            match result {
               tr_ok => {
                 st.passed += 1u;
                 write_ok(st.out, st.use_color);
@@ -139,8 +139,9 @@ fn run_tests_console(opts: test_opts,
         }
     }
 
-    let log_out = alt opts.logfile {
-        some(path) => alt io::file_writer(path, ~[io::create, io::truncate]) {
+    let log_out = match opts.logfile {
+        some(path) => match io::file_writer(path,
+                                            ~[io::create, io::truncate]) {
           result::ok(w) => some(w),
           result::err(s) => {
               fail(fmt!{"can't open output file: %s", s})
@@ -180,7 +181,7 @@ fn run_tests_console(opts: test_opts,
 
     fn write_log(out: io::writer, result: test_result, test: test_desc) {
         out.write_line(fmt!{"%s %s",
-                    alt result {
+                    match result {
                         tr_ok => ~"ok",
                         tr_failed => ~"failed",
                         tr_ignored => ~"ignored"
@@ -334,7 +335,7 @@ fn filter_tests(opts: test_opts,
         filtered
     } else {
         let filter_str =
-            alt opts.filter {
+            match opts.filter {
           option::some(f) => f,
           option::none => ~""
         };
@@ -479,7 +480,7 @@ mod tests {
     #[test]
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
-        let opts = alt parse_opts(args) {
+        let opts = match parse_opts(args) {
           either::left(o) => o,
           _ => fail ~"Malformed arg in first_free_arg_should_be_a_filter"
         };
@@ -489,7 +490,7 @@ mod tests {
     #[test]
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
-        let opts = alt parse_opts(args) {
+        let opts = match parse_opts(args) {
           either::left(o) => o,
           _ => fail ~"Malformed arg in parse_ignored_flag"
         };

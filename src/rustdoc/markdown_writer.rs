@@ -38,7 +38,7 @@ impl writer_util of writer_utils for writer {
 }
 
 fn make_writer_factory(config: config::config) -> writer_factory {
-    alt config.output_format {
+    match config.output_format {
       config::markdown => {
         markdown_writer_factory(config)
       }
@@ -150,7 +150,7 @@ fn generic_writer(+process: fn~(markdown: ~str)) -> writer {
         let mut markdown = ~"";
         let mut keep_going = true;
         while keep_going {
-            alt comm::recv(po) {
+            match comm::recv(po) {
               write(s) => markdown += s,
               done => keep_going = false
             }
@@ -176,7 +176,7 @@ fn make_filename(
     page: doc::page
 ) -> ~str {
     let filename = {
-        alt page {
+        match page {
           doc::cratepage(doc) => {
             if config.output_format == config::pandoc_html &&
                 config.output_style == config::doc_per_mod {
@@ -191,7 +191,7 @@ fn make_filename(
           }
         }
     };
-    let ext = alt config.output_format {
+    let ext = match config.output_format {
       config::markdown => ~"md",
       config::pandoc_html => ~"html"
     };
@@ -256,7 +256,7 @@ mod test {
 fn write_file(path: ~str, s: ~str) {
     import io::writer_util;
 
-    alt io::file_writer(path, ~[io::create, io::truncate]) {
+    match io::file_writer(path, ~[io::create, io::truncate]) {
       result::ok(writer) => {
         writer.write_str(s);
       }
@@ -292,7 +292,7 @@ fn future_writer() -> (writer, future::future<~str>) {
     let future = do future::from_fn {
         let mut res = ~"";
         loop {
-            alt comm::recv(port) {
+            match comm::recv(port) {
               write(s) => res += s,
               done => break
             }

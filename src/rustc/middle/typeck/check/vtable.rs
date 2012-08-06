@@ -6,7 +6,7 @@ import dvec::extensions;
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {
         vec::any(*bs, |b| {
-            alt b { ty::bound_trait(_) => true, _ => false }
+            match b { ty::bound_trait(_) => true, _ => false }
         })
     })
 }
@@ -18,7 +18,7 @@ fn lookup_vtables(fcx: @fn_ctxt, sp: span,
     let mut result = ~[], i = 0u;
     for substs.tps.each |ty| {
         for vec::each(*bounds[i]) |bound| {
-            alt bound {
+            match bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
                 vec::push(result, lookup_vtable(fcx, sp, ty, i_ty,
@@ -38,7 +38,7 @@ fn fixup_substs(fcx: @fn_ctxt, sp: span,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs);
     let t_f = fixup_ty(fcx, sp, t);
-    alt check ty::get(t_f).struct {
+    match check ty::get(t_f).struct {
       ty::ty_trait(_, substs_f) => substs_f,
     }
 }
@@ -61,21 +61,21 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;
-    let (trait_id, trait_substs) = alt check ty::get(trait_ty).struct {
+    let (trait_id, trait_substs) = match check ty::get(trait_ty).struct {
       ty::ty_trait(did, substs) => (did, substs)
     };
     let ty = fixup_ty(fcx, sp, ty);
-    alt ty::get(ty).struct {
+    match ty::get(ty).struct {
       ty::ty_param({idx: n, def_id: did}) => {
         let mut n_bound = 0u;
         for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
-            alt bound {
+            match bound {
               ty::bound_send | ty::bound_copy | ty::bound_const |
               ty::bound_owned => {
                 /* ignore */
               }
               ty::bound_trait(ity) => {
-                alt check ty::get(ity).struct {
+                match check ty::get(ity).struct {
                   ty::ty_trait(idid, substs) => {
                     if trait_id == idid {
                         debug!{"(checking vtable) @0 relating ty to trait ty
@@ -118,7 +118,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
 
         let mut impls_seen = new_def_hash();
 
-        alt fcx.ccx.coherence_info.extension_methods.find(trait_id) {
+        match fcx.ccx.coherence_info.extension_methods.find(trait_id) {
             none => {
                 // Nothing found. Continue.
             }
@@ -137,7 +137,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                     // find the trait that im implements (if any)
                     for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
                         // it must have the same id as the expected one
-                        alt ty::get(of_ty).struct {
+                        match ty::get(of_ty).struct {
                           ty::ty_trait(id, _) if id != trait_id => again,
                           _ => { /* ok */ }
                         }
@@ -147,7 +147,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                         let {substs: substs, ty: for_ty} =
                             impl_self_ty(fcx, im.did);
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                        alt fcx.mk_subty(ty, for_ty) {
+                        match fcx.mk_subty(ty, for_ty) {
                           result::err(_) => again,
                           result::ok(()) => ()
                         }
@@ -176,7 +176,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
             }
         }
 
-        alt found.len() {
+        match found.len() {
           0u => { /* fallthrough */ }
           1u => { return found[0]; }
           _ => {
@@ -196,7 +196,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
 
 fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t) -> ty::t {
     let tcx = fcx.ccx.tcx;
-    alt resolve_type(fcx.infcx, ty, resolve_all | force_all) {
+    match resolve_type(fcx.infcx, ty, resolve_all | force_all) {
       result::ok(new_type) => new_type,
       result::err(e) => {
         tcx.sess.span_fatal(
@@ -217,7 +217,7 @@ fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
     let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
     debug!{"(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).struct, impl_did};
-    alt check ty::get(trait_ty).struct {
+    match check ty::get(trait_ty).struct {
       ty::ty_trait(_, substs) => {
         vec::iter2(substs.tps, trait_tys,
                    |a, b| demand::suptype(fcx, sp, a, b));
@@ -227,9 +227,9 @@ fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
 
 fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
     let cx = fcx.ccx;
-    alt ex.node {
+    match ex.node {
       ast::expr_path(*) => {
-        alt fcx.opt_node_ty_substs(ex.id) {
+        match fcx.opt_node_ty_substs(ex.id) {
           some(substs) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
             let item_ty = ty::lookup_item_type(cx.tcx, did);
@@ -248,11 +248,11 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
       ast::expr_field(*) | ast::expr_binary(*) |
       ast::expr_unary(*) | ast::expr_assign_op(*) |
       ast::expr_index(*) => {
-        alt cx.method_map.find(ex.id) {
+        match cx.method_map.find(ex.id) {
           some({origin: method_static(did), _}) => {
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
             if has_trait_bounds(*bounds) {
-                let callee_id = alt ex.node {
+                let callee_id = match ex.node {
                   ast::expr_field(_, _, _) => ex.id,
                   _ => ex.callee_id
                 };
@@ -269,7 +269,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
       }
       ast::expr_cast(src, _) => {
         let target_ty = fcx.expr_ty(ex);
-        alt ty::get(target_ty).struct {
+        match ty::get(target_ty).struct {
           ty::ty_trait(*) => {
             /*
             Look up vtables for the type we're casting to,

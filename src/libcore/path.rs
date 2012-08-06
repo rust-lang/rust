@@ -61,7 +61,7 @@ fn path_is_absolute(p: ~str) -> bool {
 fn path_sep() -> ~str { return str::from_char(consts::path_sep); }
 
 fn split_dirname_basename (pp: path) -> {dirname: ~str, basename: ~str} {
-    alt str::rfind(pp, |ch|
+    match str::rfind(pp, |ch|
         ch == consts::path_sep || ch == consts::alt_path_sep
     ) {
       some(i) => {

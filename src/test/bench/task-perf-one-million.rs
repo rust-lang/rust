@@ -19,7 +19,7 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
     }
 
     for iter::repeat (children) {
-        alt check comm::recv(port) {
+        match check comm::recv(port) {
           ready(child_ch) => {
             vec::push(child_chs, child_ch);
           }
@@ -28,7 +28,7 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
 
     comm::send(parent_ch, ready(chan));
 
-    alt check comm::recv(port) {
+    match check comm::recv(port) {
         start => {
           do vec::iter (child_chs) |child_ch| {
               comm::send(child_ch, start);
@@ -37,7 +37,7 @@ fn calc(children: uint, parent_ch: comm::chan<msg>) {
     }
 
     for iter::repeat (children) {
-        alt check comm::recv(port) {
+        match check comm::recv(port) {
           done(child_sum) => { sum += child_sum; }
         }
     }
@@ -60,12 +60,12 @@ fn main(args: ~[~str]) {
     do task::spawn {
         calc(children, chan);
     };
-    alt check comm::recv(port) {
+    match check comm::recv(port) {
       ready(chan) => {
         comm::send(chan, start);
       }
     }
-    let sum = alt check comm::recv(port) {
+    let sum = match check comm::recv(port) {
       done(sum) => { sum }
     };
     error!{"How many tasks? %d tasks.", sum};

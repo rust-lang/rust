@@ -37,7 +37,7 @@ type ctxt = {
 };
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
-    alt find_library_crate(cx) {
+    match find_library_crate(cx) {
       some(t) => return t,
       none => {
         cx.diag.span_fatal(
@@ -53,7 +53,7 @@ fn find_library_crate(cx: ctxt) -> option<{ident: ~str, data: @~[u8]}> {
 
 fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
     if cx.static { return {prefix: ~"lib", suffix: ~".rlib"}; }
-    alt cx.os {
+    match cx.os {
       os_win32 => return {prefix: ~"", suffix: ~".dll"},
       os_macos => return {prefix: ~"lib", suffix: ~".dylib"},
       os_linux => return {prefix: ~"lib", suffix: ~".so"},
@@ -79,7 +79,7 @@ fn find_library_crate_aux(cx: ctxt,
             option::none::<()>
         } else {
             debug!{"%s is a candidate", path};
-            alt get_metadata_section(cx.os, path) {
+            match get_metadata_section(cx.os, path) {
               option::some(cvec) => {
                 if !crate_matches(cvec, cx.metas, cx.hash) {
                     debug!{"skipping %s, metadata doesn't match", path};
@@ -118,9 +118,9 @@ fn find_library_crate_aux(cx: ctxt,
 
 fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> @~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
-    alt vec::last_opt(name_items) {
+    match vec::last_opt(name_items) {
       some(i) => {
-        alt attr::get_meta_item_value_str(i) {
+        match attr::get_meta_item_value_str(i) {
           some(n) => n,
           // FIXME (#2406): Probably want a warning here since the user
           // is using the wrong type of meta item.
@@ -175,7 +175,7 @@ fn get_metadata_section(os: os,
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
                                    });
     if mb as int == 0 { return option::none::<@~[u8]>; }
-    let of = alt mk_object_file(mb) {
+    let of = match mk_object_file(mb) {
         option::some(of) => of,
         _ => return option::none::<@~[u8]>
     };
@@ -197,7 +197,7 @@ fn get_metadata_section(os: os,
 }
 
 fn meta_section_name(os: os) -> ~str {
-    alt os {
+    match os {
       os_macos => ~"__DATA,__note.rustc",
       os_win32 => ~".note.rustc",
       os_linux => ~".note.rustc",
@@ -207,7 +207,7 @@ fn meta_section_name(os: os) -> ~str {
 
 // A diagnostic function for dumping crate metadata to an output stream
 fn list_file_metadata(os: os, path: ~str, out: io::writer) {
-    alt get_metadata_section(os, path) {
+    match get_metadata_section(os, path) {
       option::some(bytes) => decoder::list_crate_metadata(bytes, out),
       option::none => {
         out.write_str(~"could not find metadata in " + path + ~".\n");

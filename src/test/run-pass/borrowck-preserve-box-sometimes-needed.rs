@@ -2,7 +2,7 @@
 
 fn switcher(x: option<@int>) {
     let mut x = x;
-    alt x {
+    match x {
       some(@y) => { copy y; x = none; }
       none => { }
     }

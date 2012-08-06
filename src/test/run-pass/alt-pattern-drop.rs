@@ -9,7 +9,7 @@ fn foo(s: @int) {
     let count = sys::refcount(s);
     let x: t = make_t(s); // ref up
 
-    alt x {
+    match x {
       make_t(y) => {
         log(debug, y); // ref up then down
 

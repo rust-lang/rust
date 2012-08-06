@@ -47,7 +47,7 @@ type parse_addr_err = {
  * * ip - a `std::net::ip::ip_addr`
  */
 fn format_addr(ip: ip_addr) -> ~str {
-    alt ip {
+    match ip {
       ipv4(addr) =>  unsafe {
         let result = uv_ip4_name(&addr);
         if result == ~"" {
@@ -103,7 +103,7 @@ fn get_addr(++node: ~str, iotask: iotask)
                     node_ptr,
                     ptr::null(),
                     ptr::null());
-                alt result {
+                match result {
                   0i32 => {
                     set_data_for_req(handle_ptr, handle_data_ptr);
                   }
@@ -134,7 +134,7 @@ mod v4 {
      * * an `ip_addr` of the `ipv4` variant
      */
     fn parse_addr(ip: ~str) -> ip_addr {
-        alt try_parse_addr(ip) {
+        match try_parse_addr(ip) {
           result::ok(addr) => copy(addr),
           result::err(err_data) => fail err_data.err_msg
         }
@@ -155,7 +155,7 @@ mod v4 {
     }
     fn parse_to_ipv4_rep(ip: ~str) -> result::result<ipv4_rep, ~str> {
         let parts = vec::map(str::split_char(ip, '.'), |s| {
-            alt uint::from_str(s) {
+            match uint::from_str(s) {
               some(n) if n <= 255u => n,
               _ => 256u
             }
@@ -220,7 +220,7 @@ mod v6 {
      * * an `ip_addr` of the `ipv6` variant
      */
     fn parse_addr(ip: ~str) -> ip_addr {
-        alt try_parse_addr(ip) {
+        match try_parse_addr(ip) {
           result::ok(addr) => copy(addr),
           result::err(err_data) => fail err_data.err_msg
         }
@@ -326,7 +326,7 @@ mod test {
     }
     #[test]
     fn test_ip_ipv4_bad_parse() {
-        alt v4::try_parse_addr(~"b4df00d") {
+        match v4::try_parse_addr(~"b4df00d") {
           result::err(err_info) => {
             log(debug, fmt!{"got error as expected %?", err_info});
             assert true;
@@ -339,7 +339,7 @@ mod test {
     #[test]
     #[ignore(target_os="win32")]
     fn test_ip_ipv6_bad_parse() {
-        alt v6::try_parse_addr(~"::,~2234k;") {
+        match v6::try_parse_addr(~"::,~2234k;") {
           result::err(err_info) => {
             log(debug, fmt!{"got error as expected %?", err_info});
             assert true;
@@ -364,7 +364,7 @@ mod test {
         log(debug, fmt!{"test_get_addr: Number of results for %s: %?",
                         localhost_name, vec::len(results)});
         for vec::each(results) |r| {
-            let ipv_prefix = alt r {
+            let ipv_prefix = match r {
               ipv4(_) => ~"IPv4",
               ipv6(_) => ~"IPv6"
             };

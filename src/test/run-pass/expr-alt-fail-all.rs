@@ -1,12 +1,12 @@
 
 
 
-// When all branches of an alt expression result in fail, the entire
-// alt expression results in fail.
+// When all branches of an match expression result in fail, the entire
+// match expression results in fail.
 fn main() {
     let x =
-        alt true {
+        match true {
           true => { 10 }
-          false => { alt true { true => { fail } false => { fail } } }
+          false => { match true { true => { fail } false => { fail } } }
         };
 }

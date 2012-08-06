@@ -247,7 +247,7 @@ class AtomTable {
     }
 
     fn intern(string: @~str) -> Atom {
-        alt self.atoms.find(string) {
+        match self.atoms.find(string) {
             none => { /* fall through */ }
             some(atom) => return atom
         }
@@ -367,7 +367,7 @@ class ImportResolution {
     }
 
     fn target_for_namespace(namespace: Namespace) -> option<Target> {
-        alt namespace {
+        match namespace {
             ModuleNS    => return copy self.module_target,
             TypeNS      => return copy self.type_target,
             ValueNS     => return copy self.value_target,
@@ -461,7 +461,7 @@ class Module {
 // requiring a T:copy.
 
 pure fn is_none<T>(x: option<T>) -> bool {
-    alt x {
+    match x {
         none => return true,
         some(_) => return false
     }
@@ -517,7 +517,7 @@ class NameBindings {
 
     /// Returns the module node if applicable.
     fn get_module_if_available() -> option<@Module> {
-        alt self.module_def {
+        match self.module_def {
             NoModuleDef         => return none,
             ModuleDef(module_)  => return some(module_)
         }
@@ -528,7 +528,7 @@ class NameBindings {
      * definition.
      */
     fn get_module() -> @Module {
-        alt self.module_def {
+        match self.module_def {
             NoModuleDef => {
                 fail
                     ~"get_module called on a node with no module definition!";
@@ -540,7 +540,7 @@ class NameBindings {
     }
 
     fn defined_in_namespace(namespace: Namespace) -> bool {
-        alt namespace {
+        match namespace {
             ModuleNS    => return self.module_def != NoModuleDef,
             TypeNS      => return self.type_def != none,
             ValueNS     => return self.value_def != none,
@@ -549,12 +549,12 @@ class NameBindings {
     }
 
     fn def_for_namespace(namespace: Namespace) -> option<def> {
-        alt namespace {
+        match namespace {
           TypeNS => return self.type_def,
           ValueNS => return self.value_def,
-          ModuleNS => alt self.module_def {
+          ModuleNS => match self.module_def {
             NoModuleDef => return none,
-            ModuleDef(module_) => alt module_.def_id {
+            ModuleDef(module_) => match module_.def_id {
               none => return none,
               some(def_id) => return some(def_mod(def_id))
             }
@@ -750,7 +750,7 @@ class Resolver {
     /// Returns the current module tracked by the reduced graph parent.
     fn get_module_from_parent(reduced_graph_parent: ReducedGraphParent)
                            -> @Module {
-        alt reduced_graph_parent {
+        match reduced_graph_parent {
             ModuleReducedGraphParent(module_) => {
                 return module_;
             }
@@ -776,7 +776,7 @@ class Resolver {
         // module and add the child to that.
 
         let mut module_;
-        alt reduced_graph_parent {
+        match reduced_graph_parent {
             ModuleReducedGraphParent(parent_module) => {
                 module_ = parent_module;
             }
@@ -784,7 +784,7 @@ class Resolver {
 
         // Add or reuse the child.
         let new_parent = ModuleReducedGraphParent(module_);
-        alt module_.children.find(name) {
+        match module_.children.find(name) {
             none => {
                 let child = @NameBindings();
                 module_.children.insert(name, child);
@@ -804,9 +804,9 @@ class Resolver {
 
         // Check each statement.
         for block.node.stmts.each |statement| {
-            alt statement.node {
+            match statement.node {
                 stmt_decl(declaration, _) => {
-                    alt declaration.node {
+                    match declaration.node {
                         decl_item(_) => {
                             return true;
                         }
@@ -828,7 +828,7 @@ class Resolver {
     }
 
     fn get_parent_link(parent: ReducedGraphParent, name: Atom) -> ParentLink {
-        alt parent {
+        match parent {
             ModuleReducedGraphParent(module_) => {
                 return ModuleParentLink(module_, name);
             }
@@ -843,7 +843,7 @@ class Resolver {
         let atom = (*self.atom_table).intern(item.ident);
         let (name_bindings, new_parent) = self.add_child(atom, parent);
 
-        alt item.node {
+        match item.node {
             item_mod(module_) => {
                 let parent_link = self.get_parent_link(new_parent, atom);
                 let def_id = { crate: 0, node: item.id };
@@ -894,7 +894,7 @@ class Resolver {
             item_class(_, _, class_members, optional_ctor, _) => {
                 (*name_bindings).define_type(def_ty(local_def(item.id)));
 
-                alt optional_ctor {
+                match optional_ctor {
                     none => {
                         // Nothing to do.
                     }
@@ -913,7 +913,7 @@ class Resolver {
 
                 let mut method_infos = ~[];
                 for class_members.each |class_member| {
-                    alt class_member.node {
+                    match class_member.node {
                         class_method(method) => {
                             // XXX: Combine with impl method code below.
                             method_infos += ~[
@@ -979,7 +979,7 @@ class Resolver {
                 let method_names = @atom_hashmap();
                 for methods.each |method| {
                     let atom;
-                    alt method {
+                    match method {
                         required(required_method) => {
                             atom = (*self.atom_table).intern
                                 (required_method.ident);
@@ -1028,7 +1028,7 @@ class Resolver {
     fn build_reduced_graph_for_view_item(view_item: @view_item,
                                          parent: ReducedGraphParent,
                                          &&_visitor: vt<ReducedGraphParent>) {
-        alt view_item.node {
+        match view_item.node {
             view_item_import(view_paths) => {
                 for view_paths.each |view_path| {
                     // Extract and intern the module part of the path. For
@@ -1036,7 +1036,7 @@ class Resolver {
                     // for simple paths we have to munge the path a little.
 
                     let module_path = @dvec();
-                    alt view_path.node {
+                    match view_path.node {
                         view_path_simple(_, full_path, _) => {
                             let path_len = full_path.idents.len();
                             assert path_len != 0u;
@@ -1061,7 +1061,7 @@ class Resolver {
 
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
-                    alt view_path.node {
+                    match view_path.node {
                         view_path_simple(binding, full_path, _) => {
                             let target_atom =
                                 (*self.atom_table).intern(binding);
@@ -1099,7 +1099,7 @@ class Resolver {
             view_item_export(view_paths) => {
                 let module_ = self.get_module_from_parent(parent);
                 for view_paths.each |view_path| {
-                    alt view_path.node {
+                    match view_path.node {
                         view_path_simple(ident, full_path, ident_id) => {
                             let last_ident = full_path.idents.last();
                             if last_ident != ident {
@@ -1157,7 +1157,7 @@ class Resolver {
             }
 
             view_item_use(name, _, node_id) => {
-                alt find_use_stmt_cnum(self.session.cstore, node_id) {
+                match find_use_stmt_cnum(self.session.cstore, node_id) {
                     some(crate_id) => {
                         let atom = (*self.atom_table).intern(name);
                         let (child_name_bindings, new_parent) =
@@ -1189,7 +1189,7 @@ class Resolver {
         let name = (*self.atom_table).intern(foreign_item.ident);
         let (name_bindings, new_parent) = self.add_child(name, parent);
 
-        alt foreign_item.node {
+        match foreign_item.node {
             foreign_item_fn(fn_decl, type_parameters) => {
                 let def = def_fn(local_def(foreign_item.id), fn_decl.purity);
                 (*name_bindings).define_value(def);
@@ -1262,7 +1262,7 @@ class Resolver {
                                    ModuleReducedGraphParent(current_module));
 
                 // Define or reuse the module node.
-                alt child_name_bindings.module_def {
+                match child_name_bindings.module_def {
                     NoModuleDef => {
                         debug!{"(building reduced graph for external crate) \
                                 autovivifying %s", ident};
@@ -1283,11 +1283,11 @@ class Resolver {
                 self.add_child(atom,
                                ModuleReducedGraphParent(current_module));
 
-            alt path_entry.def_like {
+            match path_entry.def_like {
                 dl_def(def) => {
-                    alt def {
+                    match def {
                         def_mod(def_id) | def_foreign_mod(def_id) => {
-                            alt copy child_name_bindings.module_def {
+                            match copy child_name_bindings.module_def {
                                 NoModuleDef => {
                                     debug!{"(building reduced graph for \
                                             external crate) building module \
@@ -1296,7 +1296,7 @@ class Resolver {
                                         self.get_parent_link(new_parent,
                                                              atom);
 
-                                    alt modules.find(def_id) {
+                                    match modules.find(def_id) {
                                         none => {
                                             (*child_name_bindings).
                                                 define_module(parent_link,
@@ -1315,7 +1315,9 @@ class Resolver {
                                             resolution.
                                                 outstanding_references = 0;
 
-                                            alt existing_module.parent_link {
+                                            match existing_module
+                                                .parent_link {
+
                                                 NoParentLink |
                                                 BlockParentLink(*) => {
                                                     fail ~"can't happen";
@@ -1368,8 +1370,9 @@ class Resolver {
                             // If this is a trait, add all the method names
                             // to the trait info.
 
-                            alt get_method_names_if_trait(self.session.cstore,
-                                                          def_id) {
+                            match get_method_names_if_trait(
+                                self.session.cstore, def_id) {
+
                                 none => {
                                     // Nothing to do.
                                 }
@@ -1437,7 +1440,7 @@ class Resolver {
         self.build_reduced_graph_for_impls_in_external_module(module_);
 
         for module_.children.each |_name, child_node| {
-            alt (*child_node).get_module_if_available() {
+            match (*child_node).get_module_if_available() {
                 none => {
                     // Nothing to do.
                 }
@@ -1464,7 +1467,7 @@ class Resolver {
                self.module_to_str(module_),
                copy module_.def_id};
 
-        alt module_.def_id {
+        match module_.def_id {
             none => {
                 debug!{"(building reduced graph for impls in external \
                         module) no def ID for `%s`, skipping",
@@ -1516,9 +1519,9 @@ class Resolver {
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
 
-        alt *subclass {
+        match *subclass {
             SingleImport(target, _) => {
-                alt module_.import_resolutions.find(target) {
+                match module_.import_resolutions.find(target) {
                     some(resolution) => {
                         resolution.outstanding_references += 1u;
                     }
@@ -1588,7 +1591,7 @@ class Resolver {
         self.resolve_imports_for_module(module_);
 
         for module_.children.each |_name, child_node| {
-            alt (*child_node).get_module_if_available() {
+            match (*child_node).get_module_if_available() {
                 none => {
                     // Nothing to do.
                 }
@@ -1616,7 +1619,7 @@ class Resolver {
         while module_.resolved_import_count < import_count {
             let import_index = module_.resolved_import_count;
             let import_directive = module_.imports.get_elt(import_index);
-            alt self.resolve_import_for_module(module_, import_directive) {
+            match self.resolve_import_for_module(module_, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
                     self.session.span_err(import_directive.span,
@@ -1663,7 +1666,7 @@ class Resolver {
                                                        import_directive);
         } else {
             // First, resolve the module path for the directive, if necessary.
-            alt self.resolve_module_path_for_import(module_,
+            match self.resolve_module_path_for_import(module_,
                                                     module_path,
                                                     NoXray,
                                                     import_directive.span) {
@@ -1678,7 +1681,7 @@ class Resolver {
                     // We found the module that the target is contained
                     // within. Attempt to resolve the import within it.
 
-                    alt *import_directive.subclass {
+                    match *import_directive.subclass {
                         SingleImport(target, source) => {
                             resolution_result =
                                 self.resolve_single_import(module_,
@@ -1699,7 +1702,7 @@ class Resolver {
         }
 
         // Decrement the count of unresolved imports.
-        alt resolution_result {
+        match resolution_result {
             Success(()) => {
                 assert self.unresolved_imports >= 1u;
                 self.unresolved_imports -= 1u;
@@ -1715,7 +1718,7 @@ class Resolver {
         // resolve_imports_for_module.)
 
         if resolution_result != Indeterminate {
-            alt *import_directive.subclass {
+            match *import_directive.subclass {
                 GlobImport => {
                     assert module_.glob_count >= 1u;
                     module_.glob_count -= 1u;
@@ -1757,7 +1760,7 @@ class Resolver {
         let mut impl_result = UnknownImplResult;
 
         // Search for direct children of the containing module.
-        alt containing_module.children.find(source) {
+        match containing_module.children.find(source) {
             none => {
                 // Continue.
             }
@@ -1786,7 +1789,7 @@ class Resolver {
         // Unless we managed to find a result in all four namespaces
         // (exceedingly unlikely), search imports as well.
 
-        alt (module_result, value_result, type_result, impl_result) {
+        match (module_result, value_result, type_result, impl_result) {
             (BoundResult(*), BoundResult(*), BoundResult(*),
              BoundImplResult(*)) => {
                 // Continue.
@@ -1805,7 +1808,7 @@ class Resolver {
                 // Now search the exported imports within the containing
                 // module.
 
-                alt containing_module.import_resolutions.find(source) {
+                match containing_module.import_resolutions.find(source) {
                     none => {
                         // The containing module definitely doesn't have an
                         // exported import with the name in question. We can
@@ -1833,7 +1836,7 @@ class Resolver {
                                        namespace: Namespace)
                                     -> NamespaceResult {
 
-                            alt (*import_resolution).
+                            match (*import_resolution).
                                     target_for_namespace(namespace) {
                                 none => {
                                     return UnboundResult;
@@ -1892,7 +1895,7 @@ class Resolver {
         assert module_.import_resolutions.contains_key(target);
         let import_resolution = module_.import_resolutions.get(target);
 
-        alt module_result {
+        match module_result {
             BoundResult(target_module, name_bindings) => {
                 debug!{"(resolving single import) found module binding"};
                 import_resolution.module_target =
@@ -1906,7 +1909,7 @@ class Resolver {
                 fail ~"module result should be known at this point";
             }
         }
-        alt value_result {
+        match value_result {
             BoundResult(target_module, name_bindings) => {
                 import_resolution.value_target =
                     some(Target(target_module, name_bindings));
@@ -1916,7 +1919,7 @@ class Resolver {
                 fail ~"value result should be known at this point";
             }
         }
-        alt type_result {
+        match type_result {
             BoundResult(target_module, name_bindings) => {
                 import_resolution.type_target =
                     some(Target(target_module, name_bindings));
@@ -1926,7 +1929,7 @@ class Resolver {
                 fail ~"type result should be known at this point";
             }
         }
-        alt impl_result {
+        match impl_result {
             BoundImplResult(targets) => {
                 for (*targets).each |target| {
                     (*import_resolution.impl_target).push(target);
@@ -1939,7 +1942,8 @@ class Resolver {
         }
 
         let i = import_resolution;
-        alt (i.module_target, i.value_target, i.type_target, i.impl_target) {
+        match (i.module_target, i.value_target,
+               i.type_target, i.impl_target) {
           /*
             If this name wasn't found in any of the four namespaces, it's
             definitely unresolved
@@ -1996,7 +2000,7 @@ class Resolver {
                    self.module_to_str(module_)};
 
             // Here we merge two import resolutions.
-            alt module_.import_resolutions.find(atom) {
+            match module_.import_resolutions.find(atom) {
                 none => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
@@ -2017,7 +2021,7 @@ class Resolver {
                     // Merge the two import resolutions at a finer-grained
                     // level.
 
-                    alt copy target_import_resolution.module_target {
+                    match copy target_import_resolution.module_target {
                         none => {
                             // Continue.
                         }
@@ -2026,7 +2030,7 @@ class Resolver {
                                 some(copy module_target);
                         }
                     }
-                    alt copy target_import_resolution.value_target {
+                    match copy target_import_resolution.value_target {
                         none => {
                             // Continue.
                         }
@@ -2035,7 +2039,7 @@ class Resolver {
                                 some(copy value_target);
                         }
                     }
-                    alt copy target_import_resolution.type_target {
+                    match copy target_import_resolution.type_target {
                         none => {
                             // Continue.
                         }
@@ -2068,7 +2072,7 @@ class Resolver {
             }
 
             let mut dest_import_resolution;
-            alt module_.import_resolutions.find(atom) {
+            match module_.import_resolutions.find(atom) {
                 none => {
                     // Create a new import resolution from this child.
                     dest_import_resolution = @ImportResolution(span);
@@ -2131,7 +2135,7 @@ class Resolver {
 
         while index < module_path_len {
             let name = (*module_path).get_elt(index);
-            alt self.resolve_name_in_module(search_module, name, ModuleNS,
+            match self.resolve_name_in_module(search_module, name, ModuleNS,
                                             xray) {
 
                 Failed => {
@@ -2145,7 +2149,7 @@ class Resolver {
                     return Indeterminate;
                 }
                 Success(target) => {
-                    alt target.bindings.module_def {
+                    match target.bindings.module_def {
                         NoModuleDef => {
                             // Not a module.
                             self.session.span_err(span,
@@ -2190,7 +2194,7 @@ class Resolver {
 
         let first_element = (*module_path).get_elt(0u);
         let mut search_module;
-        alt self.resolve_module_in_lexical_scope(module_, first_element) {
+        match self.resolve_module_in_lexical_scope(module_, first_element) {
             Failed => {
                 self.session.span_err(span, ~"unresolved name");
                 return Failed;
@@ -2226,7 +2230,7 @@ class Resolver {
         // The current module node is handled specially. First, check for
         // its immediate children.
 
-        alt module_.children.find(name) {
+        match module_.children.find(name) {
             some(name_bindings)
                     if (*name_bindings).defined_in_namespace(namespace) => {
 
@@ -2240,12 +2244,12 @@ class Resolver {
         // adjacent import statements are processed as though they mutated the
         // current scope.
 
-        alt module_.import_resolutions.find(name) {
+        match module_.import_resolutions.find(name) {
             none => {
                 // Not found; continue.
             }
             some(import_resolution) => {
-                alt (*import_resolution).target_for_namespace(namespace) {
+                match (*import_resolution).target_for_namespace(namespace) {
                     none => {
                         // Not found; continue.
                         debug!{"(resolving item in lexical scope) found \
@@ -2264,7 +2268,7 @@ class Resolver {
         let mut search_module = module_;
         loop {
             // Go to the next parent.
-            alt search_module.parent_link {
+            match search_module.parent_link {
                 NoParentLink => {
                     // No more parents. This module was unresolved.
                     debug!{"(resolving item in lexical scope) unresolved \
@@ -2278,7 +2282,7 @@ class Resolver {
             }
 
             // Resolve the name in the parent module.
-            alt self.resolve_name_in_module(search_module, name, namespace,
+            match self.resolve_name_in_module(search_module, name, namespace,
                                             Xray) {
                 Failed => {
                     // Continue up the search chain.
@@ -2302,9 +2306,9 @@ class Resolver {
     fn resolve_module_in_lexical_scope(module_: @Module, name: Atom)
                                     -> ResolveResult<@Module> {
 
-        alt self.resolve_item_in_lexical_scope(module_, name, ModuleNS) {
+        match self.resolve_item_in_lexical_scope(module_, name, ModuleNS) {
             Success(target) => {
-                alt target.bindings.module_def {
+                match target.bindings.module_def {
                     NoModuleDef => {
                         error!{"!!! (resolving module in lexical scope) module
                                 wasn't actually a module!"};
@@ -2355,7 +2359,7 @@ class Resolver {
         }
 
         // First, check the direct children of the module.
-        alt module_.children.find(name) {
+        match module_.children.find(name) {
             some(name_bindings)
                     if (*name_bindings).defined_in_namespace(namespace) => {
 
@@ -2376,7 +2380,7 @@ class Resolver {
         }
 
         // Otherwise, we check the list of resolved imports.
-        alt module_.import_resolutions.find(name) {
+        match module_.import_resolutions.find(name) {
             some(import_resolution) => {
                 if import_resolution.outstanding_references != 0u {
                     debug!{"(resolving name in module) import unresolved; \
@@ -2384,7 +2388,7 @@ class Resolver {
                     return Indeterminate;
                 }
 
-                alt (*import_resolution).target_for_namespace(namespace) {
+                match (*import_resolution).target_for_namespace(namespace) {
                     none => {
                         debug!{"(resolving name in module) name found, but \
                                 not in namespace %?",
@@ -2420,7 +2424,7 @@ class Resolver {
 
         let mut target_name;
         let mut source_name;
-        alt *import_directive.subclass {
+        match *import_directive.subclass {
             SingleImport(target, source) => {
                 target_name = target;
                 source_name = source;
@@ -2442,7 +2446,7 @@ class Resolver {
 
         let mut module_result;
         debug!{"(resolving one-level naming result) searching for module"};
-        alt self.resolve_item_in_lexical_scope(module_,
+        match self.resolve_item_in_lexical_scope(module_,
                                                source_name,
                                                ModuleNS) {
 
@@ -2465,7 +2469,7 @@ class Resolver {
 
         let mut value_result;
         debug!{"(resolving one-level naming result) searching for value"};
-        alt self.resolve_item_in_lexical_scope(module_,
+        match self.resolve_item_in_lexical_scope(module_,
                                                source_name,
                                                ValueNS) {
 
@@ -2488,7 +2492,7 @@ class Resolver {
 
         let mut type_result;
         debug!{"(resolving one-level naming result) searching for type"};
-        alt self.resolve_item_in_lexical_scope(module_,
+        match self.resolve_item_in_lexical_scope(module_,
                                                source_name,
                                                TypeNS) {
 
@@ -2528,7 +2532,7 @@ class Resolver {
 
         let mut impl_result;
         debug!{"(resolving one-level naming result) searching for impl"};
-        alt self.resolve_item_in_lexical_scope(module_,
+        match self.resolve_item_in_lexical_scope(module_,
                                                source_name,
                                                ImplNS) {
 
@@ -2559,7 +2563,7 @@ class Resolver {
         }
 
         // Otherwise, proceed and write in the bindings.
-        alt module_.import_resolutions.find(target_name) {
+        match module_.import_resolutions.find(target_name) {
             none => {
                 fail ~"(resolving one-level renaming import) reduced graph \
                       construction or glob importing should have created the \
@@ -2576,7 +2580,7 @@ class Resolver {
                 import_resolution.value_target = value_result;
                 import_resolution.type_target = type_result;
 
-                alt impl_result {
+                match impl_result {
                     none => {
                         // Nothing to do.
                     }
@@ -2604,7 +2608,7 @@ class Resolver {
 
         // Descend into children and anonymous children.
         for module_.children.each |_name, child_node| {
-            alt (*child_node).get_module_if_available() {
+            match (*child_node).get_module_if_available() {
                 none => {
                     // Continue.
                 }
@@ -2637,7 +2641,7 @@ class Resolver {
         // If this isn't a local crate, then bail out. We don't need to record
         // exports for local crates.
 
-        alt module_.def_id {
+        match module_.def_id {
             some(def_id) if def_id.crate == local_crate => {
                 // OK. Continue.
             }
@@ -2656,7 +2660,7 @@ class Resolver {
         self.record_exports_for_module(module_);
 
         for module_.children.each |_atom, child_name_bindings| {
-            alt (*child_name_bindings).get_module_if_available() {
+            match (*child_name_bindings).get_module_if_available() {
                 none => {
                     // Nothing to do.
                 }
@@ -2682,7 +2686,7 @@ class Resolver {
                     again;
                 }
 
-                alt self.resolve_definition_of_name_in_module(module_,
+                match self.resolve_definition_of_name_in_module(module_,
                                                               name,
                                                               namespace,
                                                               Xray) {
@@ -2723,7 +2727,7 @@ class Resolver {
         // If this isn't a local crate, then bail out. We don't need to
         // resolve implementations for external crates.
 
-        alt module_.def_id {
+        match module_.def_id {
             some(def_id) if def_id.crate == local_crate => {
                 // OK. Continue.
             }
@@ -2742,7 +2746,7 @@ class Resolver {
         self.build_impl_scope_for_module(module_);
 
         for module_.children.each |_atom, child_name_bindings| {
-            alt (*child_name_bindings).get_module_if_available() {
+            match (*child_name_bindings).get_module_if_available() {
                 none => {
                     // Nothing to do.
                 }
@@ -2788,7 +2792,7 @@ class Resolver {
 
         // Determine the parent's implementation scope.
         let mut parent_impl_scopes;
-        alt module_.parent_link {
+        match module_.parent_link {
             NoParentLink => {
                 parent_impl_scopes = @nil;
             }
@@ -2830,19 +2834,19 @@ class Resolver {
         let orig_module = self.current_module;
 
         // Move down in the graph.
-        alt name {
+        match name {
             none => {
                 // Nothing to do.
             }
             some(name) => {
-                alt orig_module.children.find(name) {
+                match orig_module.children.find(name) {
                     none => {
                         debug!{"!!! (with scope) didn't find `%s` in `%s`",
                                *(*self.atom_table).atom_to_str(name),
                                self.module_to_str(orig_module)};
                     }
                     some(name_bindings) => {
-                        alt (*name_bindings).get_module_if_available() {
+                        match (*name_bindings).get_module_if_available() {
                             none => {
                                 debug!{"!!! (with scope) didn't find module \
                                         for `%s` in `%s`",
@@ -2873,7 +2877,7 @@ class Resolver {
         let mut def;
         let mut is_ty_param;
 
-        alt def_like {
+        match def_like {
             dl_def(d @ def_local(*)) | dl_def(d @ def_upvar(*)) |
             dl_def(d @ def_arg(*)) | dl_def(d @ def_binding(*)) => {
                 def = d;
@@ -2896,7 +2900,7 @@ class Resolver {
         let mut rib_index = rib_index + 1u;
         while rib_index < (*ribs).len() {
             let rib = (*ribs).get_elt(rib_index);
-            alt rib.kind {
+            match rib.kind {
                 NormalRibKind => {
                     // Nothing to do. Continue.
                 }
@@ -2910,7 +2914,7 @@ class Resolver {
                 MethodRibKind(item_id, method_id) => {
                   // If the def is a ty param, and came from the parent
                   // item, it's ok
-                  alt def {
+                  match def {
                     def_ty_param(did, _) if self.def_map.find(copy(did.node))
                       == some(def_typaram_binder(item_id)) => {
                       // ok
@@ -2976,7 +2980,7 @@ class Resolver {
         while i != 0u {
             i -= 1u;
             let rib = (*ribs).get_elt(i);
-            alt rib.bindings.find(name) {
+            match rib.bindings.find(name) {
                 some(def_like) => {
                     return self.upvarify(ribs, i, def_like, span,
                                       allow_capturing_self);
@@ -3028,7 +3032,7 @@ class Resolver {
             self.xray_context = Xray;
         }
 
-        alt item.node {
+        match item.node {
             item_enum(_, type_parameters) |
             item_ty(_, type_parameters) => {
                 do self.with_type_parameter_rib
@@ -3090,7 +3094,7 @@ class Resolver {
                         //
                         // XXX: Do we need a node ID here?
 
-                        alt method {
+                        match method {
                           required(ty_m) => {
                             do self.with_type_parameter_rib
                                 (HasTypeParameters(&ty_m.tps,
@@ -3148,7 +3152,7 @@ class Resolver {
                 let atom = (*self.atom_table).intern(item.ident);
                 do self.with_scope(some(atom)) {
                     for foreign_module.items.each |foreign_item| {
-                        alt foreign_item.node {
+                        match foreign_item.node {
                             foreign_item_fn(_, type_parameters) => {
                                 do self.with_type_parameter_rib
                                     (HasTypeParameters(&type_parameters,
@@ -3206,7 +3210,7 @@ class Resolver {
     }
 
     fn with_type_parameter_rib(type_parameters: TypeParameters, f: fn()) {
-        alt type_parameters {
+        match type_parameters {
             HasTypeParameters(type_parameters, node_id, initial_index,
                               rib_kind) => {
 
@@ -3236,7 +3240,7 @@ class Resolver {
 
         f();
 
-        alt type_parameters {
+        match type_parameters {
             HasTypeParameters(type_parameters, _, _, _) => {
                 (*self.type_ribs).pop();
             }
@@ -3256,14 +3260,14 @@ class Resolver {
                         visitor: ResolveVisitor) {
 
         // Check each element of the capture clause.
-        alt capture_clause {
+        match capture_clause {
             NoCaptureClause => {
                 // Nothing to do.
             }
             HasCaptureClause(capture_clause) => {
                 // Resolve each captured item.
                 for (*capture_clause).each |capture_item| {
-                    alt self.resolve_identifier(capture_item.name,
+                    match self.resolve_identifier(capture_item.name,
                                                 ValueNS,
                                                 true,
                                                 capture_item.span) {
@@ -3287,7 +3291,7 @@ class Resolver {
         // If this function has type parameters, add them now.
         do self.with_type_parameter_rib(type_parameters) {
             // Resolve the type parameters.
-            alt type_parameters {
+            match type_parameters {
                 NoTypeParameters => {
                     // Continue.
                 }
@@ -3297,7 +3301,7 @@ class Resolver {
             }
 
             // Add self to the rib, if necessary.
-            alt self_binding {
+            match self_binding {
                 NoSelfBinding => {
                     // Nothing to do.
                 }
@@ -3309,7 +3313,7 @@ class Resolver {
             }
 
             // Add each argument to the rib.
-            alt optional_declaration {
+            match optional_declaration {
                 none => {
                     // Nothing to do.
                 }
@@ -3344,7 +3348,7 @@ class Resolver {
 
         for type_parameters.each |type_parameter| {
             for (*type_parameter.bounds).each |bound| {
-                alt bound {
+                match bound {
                     bound_copy | bound_send | bound_const | bound_owned => {
                         // Nothing to do.
                     }
@@ -3379,7 +3383,7 @@ class Resolver {
 
             // Resolve implemented traits.
             for traits.each |trt| {
-                alt self.resolve_path(trt.path, TypeNS, true, visitor) {
+                match self.resolve_path(trt.path, TypeNS, true, visitor) {
                     none => {
                         self.session.span_err(trt.path.span,
                                               ~"attempt to implement a \
@@ -3404,7 +3408,7 @@ class Resolver {
 
             // Resolve methods.
             for class_members.each |class_member| {
-                alt class_member.node {
+                match class_member.node {
                     class_method(method) => {
                       self.resolve_method(MethodRibKind(id,
                                                Provided(method.id)),
@@ -3419,7 +3423,7 @@ class Resolver {
             }
 
             // Resolve the constructor, if applicable.
-            alt optional_constructor {
+            match optional_constructor {
                 none => {
                     // Nothing to do.
                 }
@@ -3436,7 +3440,7 @@ class Resolver {
             }
 
             // Resolve the destructor, if applicable.
-            alt optional_destructor {
+            match optional_destructor {
                 none => {
                     // Nothing to do.
                 }
@@ -3498,8 +3502,8 @@ class Resolver {
             if trait_references.len() >= 1 {
                 let mut new_trait_refs = @dvec();
                 for trait_references.each |trait_reference| {
-                    alt self.resolve_path(trait_reference.path, TypeNS, true,
-                                          visitor) {
+                    match self.resolve_path(
+                        trait_reference.path, TypeNS, true, visitor) {
                         none => {
                             self.session.span_err(span,
                                                   ~"attempt to implement an \
@@ -3566,7 +3570,7 @@ class Resolver {
         self.resolve_type(local.node.ty, visitor);
 
         // Resolve the initializer, if necessary.
-        alt local.node.init {
+        match local.node.init {
             none => {
                 // Nothing to do.
             }
@@ -3639,7 +3643,7 @@ class Resolver {
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        alt self.current_module.anonymous_children.find(block.node.id) {
+        match self.current_module.anonymous_children.find(block.node.id) {
             none => { /* Nothing to do. */ }
             some(anonymous_module) => {
                 debug!{"(resolving block) found anonymous module, moving \
@@ -3659,7 +3663,7 @@ class Resolver {
     }
 
     fn resolve_type(ty: @ty, visitor: ResolveVisitor) {
-        alt ty.node {
+        match ty.node {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
 
@@ -3668,7 +3672,7 @@ class Resolver {
                 // scopes looking for it.
 
                 let mut result_def;
-                alt self.resolve_path(path, TypeNS, true, visitor) {
+                match self.resolve_path(path, TypeNS, true, visitor) {
                     some(def) => {
                         debug!{"(resolving type) resolved `%s` to type",
                                *path.idents.last()};
@@ -3679,7 +3683,7 @@ class Resolver {
                     }
                 }
 
-                alt result_def {
+                match result_def {
                     some(_) => {
                         // Continue.
                     }
@@ -3689,7 +3693,7 @@ class Resolver {
                             let name =
                                 (*self.atom_table).intern(path.idents.last());
 
-                            alt self.primitive_type_table
+                            match self.primitive_type_table
                                     .primitive_types
                                     .find(name) {
 
@@ -3705,7 +3709,7 @@ class Resolver {
                     }
                 }
 
-                alt copy result_def {
+                match copy result_def {
                     some(def) => {
                         // Write the result into the def map.
                         debug!{"(resolving type) writing resolution for `%s` \
@@ -3740,7 +3744,7 @@ class Resolver {
 
         let pat_id = pattern.id;
         do walk_pat(pattern) |pattern| {
-            alt pattern.node {
+            match pattern.node {
                 pat_ident(binding_mode, path, _)
                         if !path.global && path.idents.len() == 1u => {
 
@@ -3754,7 +3758,7 @@ class Resolver {
 
                     let atom = (*self.atom_table).intern(path.idents[0]);
 
-                    alt self.resolve_enum_variant_or_const(atom) {
+                    match self.resolve_enum_variant_or_const(atom) {
                         FoundEnumVariant(def) if mode == RefutableMode => {
                             debug!{"(resolving pattern) resolving `%s` to \
                                     enum variant",
@@ -3783,7 +3787,7 @@ class Resolver {
 
                             let is_mutable = mutability == Mutable;
 
-                            let def = alt mode {
+                            let def = match mode {
                                 RefutableMode => {
                                     // For pattern arms, we must use
                                     // `def_binding` definitions.
@@ -3808,7 +3812,7 @@ class Resolver {
                             // because that breaks the assumptions later
                             // passes make about or-patterns.)
 
-                            alt bindings_list {
+                            match bindings_list {
                                 some(bindings_list)
                                 if !bindings_list.contains_key(atom) => {
                                     let last_rib = (*self.value_ribs).last();
@@ -3845,7 +3849,7 @@ class Resolver {
 
                 pat_ident(_, path, _) | pat_enum(path, _) => {
                     // These two must be enum variants.
-                    alt self.resolve_path(path, ValueNS, false, visitor) {
+                    match self.resolve_path(path, ValueNS, false, visitor) {
                         some(def @ def_variant(*)) => {
                             self.record_def(pattern.id, def);
                         }
@@ -3886,12 +3890,12 @@ class Resolver {
     fn resolve_enum_variant_or_const(name: Atom)
                                   -> EnumVariantOrConstResolution {
 
-        alt self.resolve_item_in_lexical_scope(self.current_module,
+        match self.resolve_item_in_lexical_scope(self.current_module,
                                                name,
                                                ValueNS) {
 
             Success(target) => {
-                alt target.bindings.value_def {
+                match target.bindings.value_def {
                     none => {
                         fail ~"resolved name in the value namespace to a set \
                               of name bindings with no def?!";
@@ -3956,7 +3960,7 @@ class Resolver {
                        -> option<def> {
 
         if check_ribs {
-            alt self.resolve_identifier_in_local_ribs(identifier,
+            match self.resolve_identifier_in_local_ribs(identifier,
                                                       namespace,
                                                       span) {
                 some(def) => {
@@ -3987,9 +3991,9 @@ class Resolver {
         }
 
         // First, search children.
-        alt containing_module.children.find(name) {
+        match containing_module.children.find(name) {
             some(child_name_bindings) => {
-                alt (*child_name_bindings).def_for_namespace(namespace) {
+                match (*child_name_bindings).def_for_namespace(namespace) {
                     some(def) => {
                         // Found it. Stop the search here.
                         return ChildNameDefinition(def);
@@ -4005,11 +4009,12 @@ class Resolver {
         }
 
         // Next, search import resolutions.
-        alt containing_module.import_resolutions.find(name) {
+        match containing_module.import_resolutions.find(name) {
             some(import_resolution) => {
-                alt (*import_resolution).target_for_namespace(namespace) {
+                match (*import_resolution).target_for_namespace(namespace) {
                     some(target) => {
-                        alt (*target.bindings).def_for_namespace(namespace) {
+                        match (*target.bindings)
+                            .def_for_namespace(namespace) {
                             some(def) => {
                                 // Found it.
                                 import_resolution.used = true;
@@ -4055,7 +4060,7 @@ class Resolver {
         let module_path_atoms = self.intern_module_part_of_path(path);
 
         let mut containing_module;
-        alt self.resolve_module_path_for_import(self.current_module,
+        match self.resolve_module_path_for_import(self.current_module,
                                                 module_path_atoms,
                                                 xray,
                                                 path.span) {
@@ -4078,7 +4083,7 @@ class Resolver {
         }
 
         let name = (*self.atom_table).intern(path.idents.last());
-        alt self.resolve_definition_of_name_in_module(containing_module,
+        match self.resolve_definition_of_name_in_module(containing_module,
                                                       name,
                                                       namespace,
                                                       xray) {
@@ -4108,7 +4113,7 @@ class Resolver {
         let root_module = (*self.graph_root).get_module();
 
         let mut containing_module;
-        alt self.resolve_module_path_from_root(root_module,
+        match self.resolve_module_path_from_root(root_module,
                                                module_path_atoms,
                                                0u,
                                                xray,
@@ -4132,7 +4137,7 @@ class Resolver {
         }
 
         let name = (*self.atom_table).intern(path.idents.last());
-        alt self.resolve_definition_of_name_in_module(containing_module,
+        match self.resolve_definition_of_name_in_module(containing_module,
                                                       name,
                                                       namespace,
                                                       xray) {
@@ -4161,7 +4166,7 @@ class Resolver {
 
         // Check the local set of ribs.
         let mut search_result;
-        alt namespace {
+        match namespace {
             ValueNS => {
                 search_result = self.search_ribs(self.value_ribs, name, span,
                                                  DontAllowCapturingSelf);
@@ -4175,7 +4180,7 @@ class Resolver {
             }
         }
 
-        alt copy search_result {
+        match copy search_result {
             some(dl_def(def)) => {
                 debug!{"(resolving path in local ribs) resolved `%s` to \
                         local: %?",
@@ -4196,12 +4201,12 @@ class Resolver {
         let name = (*self.atom_table).intern(ident);
 
         // Check the items.
-        alt self.resolve_item_in_lexical_scope(self.current_module,
+        match self.resolve_item_in_lexical_scope(self.current_module,
                                                name,
                                                namespace) {
 
             Success(target) => {
-                alt (*target.bindings).def_for_namespace(namespace) {
+                match (*target.bindings).def_for_namespace(namespace) {
                     none => {
                         fail ~"resolved name in a namespace to a set of name \
                               bindings with no def for that namespace?!";
@@ -4235,7 +4240,7 @@ class Resolver {
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
         // Next, resolve the node.
-        alt expr.node {
+        match expr.node {
             // The interpretation of paths depends on whether the path has
             // multiple elements in it or not.
 
@@ -4243,7 +4248,7 @@ class Resolver {
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
 
-                alt self.resolve_path(path, ValueNS, true, visitor) {
+                match self.resolve_path(path, ValueNS, true, visitor) {
                     some(def) => {
                         // Write the result into the def map.
                         debug!{"(resolving expr) resolved `%s`",
@@ -4288,7 +4293,7 @@ class Resolver {
                 //    type Bar<A> = Foo<A>;
                 //    let bar = Bar { ... } // no type parameters
 
-                alt self.resolve_path(path, TypeNS, false, visitor) {
+                match self.resolve_path(path, TypeNS, false, visitor) {
                     some(definition @ def_ty(class_id))
                             if self.structs.contains_key(class_id) => {
 
@@ -4316,7 +4321,7 @@ class Resolver {
     }
 
     fn record_impls_for_expr_if_necessary(expr: @expr) {
-        alt expr.node {
+        match expr.node {
             expr_field(*) | expr_path(*) | expr_cast(*) | expr_binary(*) |
             expr_unary(*) | expr_assign_op(*) | expr_index(*) => {
                 self.impl_map.insert(expr.id,
@@ -4329,7 +4334,7 @@ class Resolver {
     }
 
     fn record_candidate_traits_for_expr_if_necessary(expr: @expr) {
-        alt expr.node {
+        match expr.node {
             expr_field(_, ident, _) => {
                 let atom = (*self.atom_table).intern(ident);
                 let traits = self.search_for_traits_containing_method(atom);
@@ -4394,7 +4399,7 @@ class Resolver {
         let mut search_module = self.current_module;
         loop {
             // Look for the current trait.
-            alt copy self.current_trait_refs {
+            match copy self.current_trait_refs {
                 some(trait_def_ids) => {
                     for trait_def_ids.each |trait_def_id| {
                         self.add_trait_info_if_containing_method
@@ -4408,7 +4413,7 @@ class Resolver {
 
             // Look for trait children.
             for search_module.children.each |_name, child_name_bindings| {
-                alt child_name_bindings.def_for_namespace(TypeNS) {
+                match child_name_bindings.def_for_namespace(TypeNS) {
                     some(def_ty(trait_def_id)) => {
                         self.add_trait_info_if_containing_method(found_traits,
                                                                  trait_def_id,
@@ -4424,12 +4429,12 @@ class Resolver {
             for search_module.import_resolutions.each
                     |_atom, import_resolution| {
 
-                alt import_resolution.target_for_namespace(TypeNS) {
+                match import_resolution.target_for_namespace(TypeNS) {
                     none => {
                         // Continue.
                     }
                     some(target) => {
-                        alt target.bindings.def_for_namespace(TypeNS) {
+                        match target.bindings.def_for_namespace(TypeNS) {
                             some(def_ty(trait_def_id)) => {
                                 self.add_trait_info_if_containing_method
                                     (found_traits, trait_def_id, name);
@@ -4443,7 +4448,7 @@ class Resolver {
             }
 
             // Move to the next parent.
-            alt search_module.parent_link {
+            match search_module.parent_link {
                 NoParentLink => {
                     // Done.
                     break;
@@ -4462,7 +4467,7 @@ class Resolver {
                                            trait_def_id: def_id,
                                            name: Atom) {
 
-        alt self.trait_info.find(trait_def_id) {
+        match self.trait_info.find(trait_def_id) {
             some(trait_info) if trait_info.contains_key(name) => {
                 debug!{"(adding trait info if containing method) found trait \
                         %d:%d for method '%s'",
@@ -4508,7 +4513,7 @@ class Resolver {
         // If this isn't a local crate, then bail out. We don't need to check
         // for unused imports in external crates.
 
-        alt module_.def_id {
+        match module_.def_id {
             some(def_id) if def_id.crate == local_crate => {
                 // OK. Continue.
             }
@@ -4527,7 +4532,7 @@ class Resolver {
         self.check_for_unused_imports_in_module(module_);
 
         for module_.children.each |_atom, child_name_bindings| {
-            alt (*child_name_bindings).get_module_if_available() {
+            match (*child_name_bindings).get_module_if_available() {
                 none => {
                     // Nothing to do.
                 }
@@ -4546,7 +4551,7 @@ class Resolver {
     fn check_for_unused_imports_in_module(module_: @Module) {
         for module_.import_resolutions.each |_impl_name, import_resolution| {
             if !import_resolution.used {
-                alt self.unused_import_lint_level {
+                match self.unused_import_lint_level {
                     warn => {
                         self.session.span_warn(import_resolution.span,
                                                ~"unused import");
@@ -4577,7 +4582,7 @@ class Resolver {
         let atoms = dvec();
         let mut current_module = module_;
         loop {
-            alt current_module.parent_link {
+            match current_module.parent_link {
                 NoParentLink => {
                     break;
                 }
@@ -4624,7 +4629,7 @@ class Resolver {
         debug!{"Import resolutions:"};
         for module_.import_resolutions.each |name, import_resolution| {
             let mut module_repr;
-            alt (*import_resolution).target_for_namespace(ModuleNS) {
+            match (*import_resolution).target_for_namespace(ModuleNS) {
                 none => { module_repr = ~""; }
                 some(target) => {
                     module_repr = ~" module:?";
@@ -4633,7 +4638,7 @@ class Resolver {
             }
 
             let mut value_repr;
-            alt (*import_resolution).target_for_namespace(ValueNS) {
+            match (*import_resolution).target_for_namespace(ValueNS) {
                 none => { value_repr = ~""; }
                 some(target) => {
                     value_repr = ~" value:?";
@@ -4642,7 +4647,7 @@ class Resolver {
             }
 
             let mut type_repr;
-            alt (*import_resolution).target_for_namespace(TypeNS) {
+            match (*import_resolution).target_for_namespace(TypeNS) {
                 none => { type_repr = ~""; }
                 some(target) => {
                     type_repr = ~" type:?";
@@ -4651,7 +4656,7 @@ class Resolver {
             }
 
             let mut impl_repr;
-            alt (*import_resolution).target_for_namespace(ImplNS) {
+            match (*import_resolution).target_for_namespace(ImplNS) {
                 none => { impl_repr = ~""; }
                 some(target) => {
                     impl_repr = ~" impl:?";
@@ -4671,7 +4676,7 @@ class Resolver {
         let mut i = 0u;
         let mut impl_scopes = impl_scopes;
         loop {
-            alt *impl_scopes {
+            match *impl_scopes {
                 cons(impl_scope, rest_impl_scopes) => {
                     debug!{"Impl scope %u:", i};
 

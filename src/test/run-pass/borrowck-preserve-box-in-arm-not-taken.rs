@@ -2,7 +2,7 @@
 
 fn main() {
     let x: @mut @option<~int> = @mut @none;
-    alt x {
+    match x {
       @@some(y) => {
         // here, the refcount of `*x` is bumped so
         // `y` remains valid even if `*x` is modified.

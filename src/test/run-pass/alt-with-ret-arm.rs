@@ -2,7 +2,7 @@ fn main() {
     // sometimes we have had trouble finding
     // the right type for f, as we unified
     // bot and u32 here
-    let f = alt uint::from_str(~"1234") {
+    let f = match uint::from_str(~"1234") {
         none => return (),
         some(num) => num as u32
     };

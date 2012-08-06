@@ -76,7 +76,7 @@ fn run(lib_path: ~str,
     let mut outs = ~"";
     let mut count = 2;
     while count > 0 {
-        alt p.recv() {
+        match p.recv() {
           (1, s) => {
             outs = s;
           }

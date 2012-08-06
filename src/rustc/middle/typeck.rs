@@ -180,7 +180,7 @@ fn write_substs_to_tcx(tcx: ty::ctxt,
 }
 
 fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
-    alt tcx.def_map.find(id) {
+    match tcx.def_map.find(id) {
       some(x) => x,
       _ => {
         tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
@@ -205,7 +205,7 @@ fn require_same_types(
     msg: fn() -> ~str) -> bool {
 
     let l_tcx, l_infcx;
-    alt maybe_infcx {
+    match maybe_infcx {
       none => {
         l_tcx = tcx;
         l_infcx = infer::new_infer_ctxt(tcx);
@@ -216,7 +216,7 @@ fn require_same_types(
       }
     }
 
-    alt infer::mk_eqty(l_infcx, t1, t2) {
+    match infer::mk_eqty(l_infcx, t1, t2) {
       result::ok(()) => true,
       result::err(terr) => {
         l_tcx.sess.span_err(span, msg() + ~": " +
@@ -227,10 +227,10 @@ fn require_same_types(
 }
 
 fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
-    alt ty::get(a.ty).struct {
+    match ty::get(a.ty).struct {
       ty::ty_evec(mt, vstore_uniq) => {
         if mt.mutbl != ast::m_imm { return false; }
-        alt ty::get(mt.ty).struct {
+        match ty::get(mt.ty).struct {
           ty::ty_estr(vstore_uniq) => return true,
           _ => return false
         }
@@ -245,12 +245,12 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
 
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
-    alt ty::get(main_t).struct {
+    match ty::get(main_t).struct {
       ty::ty_fn({purity: ast::impure_fn, proto: ast::proto_bare,
                  inputs, output, ret_style: ast::return_val}) => {
-        alt tcx.items.find(main_id) {
+        match tcx.items.find(main_id) {
          some(ast_map::node_item(it,_)) => {
-             alt it.node {
+             match it.node {
                ast::item_fn(_,ps,_) if vec::is_not_empty(ps) => {
                   tcx.sess.span_err(main_span,
                     ~"main function is not allowed to have type parameters");
@@ -284,7 +284,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
 fn check_for_main_fn(ccx: @crate_ctxt) {
     let tcx = ccx.tcx;
     if !tcx.sess.building_library {
-        alt copy tcx.sess.main_fn {
+        match copy tcx.sess.main_fn {
           some((id, sp)) => check_main_fn_ty(ccx, id, sp),
           none => tcx.sess.err(~"main function not found")
         }

@@ -4,7 +4,7 @@
 
 fn foo(src: uint) {
 
-    alt some(src) {
+    match some(src) {
       some(src_id) => {
         for uint::range(0u, 10u) |i| {
             let yyy = src_id;

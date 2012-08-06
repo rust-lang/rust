@@ -30,7 +30,7 @@ fn load_props(testfile: ~str) -> test_props {
     let mut compile_flags = option::none;
     let mut pp_exact = option::none;
     for iter_header(testfile) |ln| {
-        alt parse_error_pattern(ln) {
+        match parse_error_pattern(ln) {
           option::some(ep) => vec::push(error_patterns, ep),
           option::none => ()
         };
@@ -107,7 +107,7 @@ fn parse_exec_env(line: ~str) -> option<(~str, ~str)> {
     do parse_name_value_directive(line, ~"exec-env").map |nv| {
         // nv is either FOO or FOO=BAR
         let strs = str::splitn_char(nv, '=', 1u);
-        alt strs.len() {
+        match strs.len() {
           1u => (strs[0], ~""),
           2u => (strs[0], strs[1]),
           n => fail fmt!{"Expected 1 or 2 strings, not %u", n}
@@ -116,7 +116,7 @@ fn parse_exec_env(line: ~str) -> option<(~str, ~str)> {
 }
 
 fn parse_pp_exact(line: ~str, testfile: ~str) -> option<~str> {
-    alt parse_name_value_directive(line, ~"pp-exact") {
+    match parse_name_value_directive(line, ~"pp-exact") {
       option::some(s) => option::some(s),
       option::none => {
         if parse_name_directive(line, ~"pp-exact") {
@@ -135,7 +135,7 @@ fn parse_name_directive(line: ~str, directive: ~str) -> bool {
 fn parse_name_value_directive(line: ~str,
                               directive: ~str) -> option<~str> unsafe {
     let keycolon = directive + ~":";
-    alt str::find_str(line, keycolon) {
+    match str::find_str(line, keycolon) {
         option::some(colon) => {
             let value = str::slice(line, colon + str::len(keycolon),
                                    str::len(line));

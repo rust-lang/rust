@@ -21,7 +21,7 @@ fn start(+token: int) {
 
 fn roundtrip(id: int, p: comm::port<int>, ch: comm::chan<int>) {
     while (true) {
-        alt comm::recv(p) {
+        match comm::recv(p) {
           1 => {
             io::println(fmt!{"%d\n", id});
             return;

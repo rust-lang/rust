@@ -115,7 +115,7 @@ mod linear {
             k: &K) -> search_result {
 
             let _ = for self.bucket_sequence(hash) |i| {
-                alt buckets[i] {
+                match buckets[i] {
                   some(bkt) => if bkt.hash == hash && self.eqfn(k, &bkt.key) {
                     return found_entry(i);
                   }
@@ -155,7 +155,7 @@ mod linear {
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
         fn insert_internal(hash: uint, +k: K, +v: V) -> bool {
-            alt self.bucket_for_key_with_hash(self.buckets, hash,
+            match self.bucket_for_key_with_hash(self.buckets, hash,
                                               unsafe{borrow(k)}) {
               table_full => {fail ~"Internal logic error";}
               found_hole(idx) => {
@@ -207,7 +207,7 @@ mod linear {
             // I found this explanation elucidating:
             // http://www.maths.lse.ac.uk/Courses/MA407/del-hash.pdf
 
-            let mut idx = alt self.bucket_for_key(self.buckets, k) {
+            let mut idx = match self.bucket_for_key(self.buckets, k) {
               table_full | found_hole(_) => {
                 return false;
               }
@@ -246,7 +246,7 @@ mod linear {
         }
 
         fn contains_key(k: &K) -> bool {
-            alt self.bucket_for_key(self.buckets, k) {
+            match self.bucket_for_key(self.buckets, k) {
               found_entry(_) => {true}
               table_full | found_hole(_) => {false}
             }
@@ -255,9 +255,9 @@ mod linear {
 
     impl public_methods<K,V: copy> for &const linear_map<K,V> {
         fn find(k: &K) -> option<V> {
-            alt self.bucket_for_key(self.buckets, k) {
+            match self.bucket_for_key(self.buckets, k) {
               found_entry(idx) => {
-                alt check self.buckets[idx] {
+                match check self.buckets[idx] {
                   some(bkt) => {some(copy bkt.value)}
                 }
               }

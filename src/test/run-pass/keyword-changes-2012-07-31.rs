@@ -1,6 +1,6 @@
 // return -> return
 // mod -> module
-// alt -> match
+// match -> match
 
 fn main() {
 }

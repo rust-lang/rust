@@ -10,7 +10,7 @@ fn foo<T>(y: option<T>) {
 
     if true {
     } else {
-        alt y {
+        match y {
           none::<T> => x = 17,
           _ => x = 42
         }

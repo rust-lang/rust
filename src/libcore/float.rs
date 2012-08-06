@@ -256,14 +256,14 @@ fn from_str(num: ~str) -> option<float> {
    let mut c     = 'z';            //Latest char.
 
    //The string must start with one of the following characters.
-   alt str::char_at(num, 0u) {
+   match str::char_at(num, 0u) {
       '-' | '+' | '0' to '9' | '.' => (),
       _ => return none
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
    let mut neg = false;               //Sign of the result
-   alt str::char_at(num, 0u) {
+   match str::char_at(num, 0u) {
       '-' => {
           neg = true;
           pos = 1u;
@@ -279,7 +279,7 @@ fn from_str(num: ~str) -> option<float> {
        let char_range = str::char_range_at(num, pos);
        c   = char_range.ch;
        pos = char_range.next;
-       alt c {
+       match c {
          '0' to '9' => {
            total = total * 10f;
            total += ((c as int) - ('0' as int)) as float;
@@ -295,7 +295,7 @@ fn from_str(num: ~str) -> option<float> {
          let char_range = str::char_range_at(num, pos);
          c = char_range.ch;
          pos = char_range.next;
-         alt c {
+         match c {
             '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9'  => {
                  decimal /= 10f;
                  total += (((c as int) - ('0' as int)) as float)*decimal;
@@ -312,7 +312,7 @@ fn from_str(num: ~str) -> option<float> {
       if(pos < len) {
           let char_range = str::char_range_at(num, pos);
           c   = char_range.ch;
-          alt c  {
+          match c  {
              '+' => {
                 pos = char_range.next;
              }
@@ -325,7 +325,7 @@ fn from_str(num: ~str) -> option<float> {
           while(pos < len) {
              let char_range = str::char_range_at(num, pos);
              c = char_range.ch;
-             alt c {
+             match c {
                  '0' | '1' | '2' | '3' | '4' | '5' | '6'| '7' | '8' | '9' => {
                      exponent *= 10u;
                      exponent += ((c as uint) - ('0' as uint));
@@ -447,7 +447,7 @@ fn test_from_str() {
    assert from_str(~"inf") == some(infinity);
    assert from_str(~"-inf") == some(neg_infinity);
    // note: NaN != NaN, hence this slightly complex test
-   alt from_str(~"NaN") {
+   match from_str(~"NaN") {
        some(f) => assert is_NaN(f),
        none => fail
    }

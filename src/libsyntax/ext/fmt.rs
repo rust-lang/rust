@@ -52,7 +52,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         fn make_flags(cx: ext_ctxt, sp: span, flags: ~[flag]) -> @ast::expr {
             let mut tmp_expr = make_rt_path_expr(cx, sp, @~"flag_none");
             for flags.each |f| {
-                let fstr = alt f {
+                let fstr = match f {
                   flag_left_justify => ~"flag_left_justify",
                   flag_left_zero_pad => ~"flag_left_zero_pad",
                   flag_space_for_sign => ~"flag_space_for_sign",
@@ -65,7 +65,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             return tmp_expr;
         }
         fn make_count(cx: ext_ctxt, sp: span, cnt: count) -> @ast::expr {
-            alt cnt {
+            match cnt {
               count_implied => {
                 return make_rt_path_expr(cx, sp, @~"count_implied");
               }
@@ -80,8 +80,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         }
         fn make_ty(cx: ext_ctxt, sp: span, t: ty) -> @ast::expr {
             let mut rt_type;
-            alt t {
-              ty_hex(c) => alt c {
+            match t {
+              ty_hex(c) => match c {
                 case_upper => rt_type = ~"ty_hex_upper",
                 case_lower => rt_type = ~"ty_hex_lower"
               }
@@ -121,8 +121,8 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         // FIXME: Move validation code into core::extfmt (Issue #2249)
 
         fn is_signed_type(cnv: conv) -> bool {
-            alt cnv.ty {
-              ty_int(s) => alt s {
+            match cnv.ty {
+              ty_int(s) => match s {
                 signed => return true,
                 unsigned => return false
               }
@@ -131,12 +131,12 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             }
         }
         let unsupported = ~"conversion not supported in #fmt string";
-        alt cnv.param {
+        match cnv.param {
           option::none => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
         for cnv.flags.each |f| {
-            alt f {
+            match f {
               flag_left_justify => (),
               flag_sign_always => {
                 if !is_signed_type(cnv) {
@@ -156,19 +156,19 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               _ => cx.span_unimpl(sp, unsupported)
             }
         }
-        alt cnv.width {
+        match cnv.width {
           count_implied => (),
           count_is(_) => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
-        alt cnv.precision {
+        match cnv.precision {
           count_implied => (),
           count_is(_) => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
-        alt cnv.ty {
+        match cnv.ty {
           ty_str => return make_conv_call(cx, arg.span, ~"str", cnv, arg),
-          ty_int(sign) => alt sign {
+          ty_int(sign) => match sign {
             signed => return make_conv_call(cx, arg.span, ~"int", cnv, arg),
             unsigned => {
                 return make_conv_call(cx, arg.span, ~"uint", cnv, arg)
@@ -188,12 +188,12 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         }
     }
     fn log_conv(c: conv) {
-        alt c.param {
+        match c.param {
           some(p) => { log(debug, ~"param: " + int::to_str(p, 10u)); }
           _ => debug!{"param: none"}
         }
         for c.flags.each |f| {
-            alt f {
+            match f {
               flag_left_justify => debug!{"flag: left justify"},
               flag_left_zero_pad => debug!{"flag: left zero pad"},
               flag_space_for_sign => debug!{"flag: left space pad"},
@@ -201,7 +201,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               flag_alternate => debug!{"flag: alternate"}
             }
         }
-        alt c.width {
+        match c.width {
           count_is(i) => log(
               debug, ~"width: count is " + int::to_str(i, 10u)),
           count_is_param(i) => log(
@@ -209,7 +209,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           count_is_next_param => debug!{"width: count is next param"},
           count_implied => debug!{"width: count is implied"}
         }
-        alt c.precision {
+        match c.precision {
           count_is(i) => log(
               debug, ~"prec: count is " + int::to_str(i, 10u)),
           count_is_param(i) => log(
@@ -217,16 +217,16 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           count_is_next_param => debug!{"prec: count is next param"},
           count_implied => debug!{"prec: count is implied"}
         }
-        alt c.ty {
+        match c.ty {
           ty_bool => debug!{"type: bool"},
           ty_str => debug!{"type: str"},
           ty_char => debug!{"type: char"},
-          ty_int(s) => alt s {
+          ty_int(s) => match s {
             signed => debug!{"type: signed"},
             unsigned => debug!{"type: unsigned"}
           }
           ty_bits => debug!{"type: bits"},
-          ty_hex(cs) => alt cs {
+          ty_hex(cs) => match cs {
             case_upper => debug!{"type: uhex"},
             case_lower => debug!{"type: lhex"},
           }
@@ -240,7 +240,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     let mut piece_exprs = ~[];
     let nargs = args.len();
     for pieces.each |pc| {
-        alt pc {
+        match pc {
           piece_string(s) => {
             vec::push(piece_exprs, mk_uniq_str(cx, fmt_sp, s))
           }

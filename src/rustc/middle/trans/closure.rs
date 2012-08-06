@@ -101,7 +101,7 @@ enum environment_value {
 }
 
 fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> ~str {
-    alt ev {
+    match ev {
       env_copy(v, t, lk) => fmt!{"copy(%s,%s)", val_str(ccx.tn, v),
                                 ty_to_str(ccx.tcx, t)},
       env_move(v, t, lk) => fmt!{"move(%s,%s)", val_str(ccx.tn, v),
@@ -124,7 +124,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
 
     // Compute the closed over data
     for vec::each(bound_values) |bv| {
-        vec::push(bound_tys, alt bv {
+        vec::push(bound_tys, match bv {
             env_copy(_, t, _) => t,
             env_move(_, t, _) => t,
             env_ref(_, t, _) => t
@@ -153,7 +153,7 @@ fn allocate_cbox(bcx: block,
     }
 
     // Allocate and initialize the box:
-    let {bcx, val} = alt ck {
+    let {bcx, val} = match ck {
       ty::ck_box => malloc_raw(bcx, cdata_ty, heap_shared),
       ty::ck_uniq => malloc_raw(bcx, cdata_ty, heap_exchange),
       ty::ck_block => {
@@ -211,7 +211,7 @@ fn store_environment(bcx: block,
 
         let bound_data = GEPi(bcx, llbox,
              ~[0u, abi::box_field_body, i]);
-        alt bv {
+        match bv {
           env_copy(val, ty, lv_owned) => {
             let val1 = load_if_immediate(bcx, val, ty);
             bcx = base::copy_val(bcx, INIT, bound_data, val1, ty);
@@ -267,14 +267,14 @@ fn build_closure(bcx0: block,
         debug!{"Node id is %s",
                syntax::ast_map::node_id_to_str(bcx.ccx().tcx.items, nid)};
         let mut ty = node_id_type(bcx, nid);
-        alt cap_var.mode {
+        match cap_var.mode {
           capture::cap_ref => {
             assert ck == ty::ck_block;
             ty = ty::mk_mut_ptr(tcx, ty);
             vec::push(env_vals, env_ref(lv.val, ty, lv.kind));
           }
           capture::cap_copy => {
-            let mv = alt check ccx.maps.last_use_map.find(id) {
+            let mv = match check ccx.maps.last_use_map.find(id) {
               none => false,
               some(vars) => (*vars).contains(nid)
             };
@@ -292,7 +292,7 @@ fn build_closure(bcx0: block,
         }
     }
     do option::iter(include_ret_handle) |flagptr| {
-        let our_ret = alt bcx.fcx.loop_ret {
+        let our_ret = match bcx.fcx.loop_ret {
           some({retptr, _}) => retptr,
           none => bcx.fcx.llretptr
         };
@@ -323,12 +323,12 @@ fn load_environment(fcx: fn_ctxt,
     // Populate the upvars from the environment.
     let mut i = 0u;
     do vec::iter(cap_vars) |cap_var| {
-        alt cap_var.mode {
+        match cap_var.mode {
           capture::cap_drop => { /* ignore */ }
           _ => {
             let mut upvarptr =
                 GEPi(bcx, llcdata, ~[0u, i]);
-            alt ck {
+            match ck {
               ty::ck_block => { upvarptr = Load(bcx, upvarptr); }
               ty::ck_uniq | ty::ck_box => ()
             }
@@ -368,7 +368,7 @@ fn trans_expr_fn(bcx: block,
     let trans_closure_env = fn@(ck: ty::closure_kind) -> result {
         let cap_vars = capture::compute_capture_vars(
             ccx.tcx, id, proto, cap_clause);
-        let ret_handle = alt is_loop_body { some(x) => x, none => none };
+        let ret_handle = match is_loop_body { some(x) => x, none => none };
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
                                                    ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
@@ -383,7 +383,7 @@ fn trans_expr_fn(bcx: block,
         {bcx: bcx, val: llbox}
     };
 
-    let {bcx: bcx, val: closure} = alt proto {
+    let {bcx: bcx, val: closure} = match proto {
       ast::proto_block => trans_closure_env(ty::ck_block),
       ast::proto_box => trans_closure_env(ty::ck_box),
       ast::proto_uniq => trans_closure_env(ty::ck_uniq),
@@ -417,7 +417,7 @@ fn make_fn_glue(
         }
     };
 
-    return alt ty::get(t).struct {
+    return match ty::get(t).struct {
       ty::ty_fn({proto: ast::proto_bare, _}) |
       ty::ty_fn({proto: ast::proto_block, _}) => bcx,
       ty::ty_fn({proto: ast::proto_uniq, _}) => fn_env(ty::ck_uniq),
@@ -433,7 +433,7 @@ fn make_opaque_cbox_take_glue(
     -> block {
     // Easy cases:
     let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_take_glue");
-    alt ck {
+    match ck {
       ty::ck_block => return bcx,
       ty::ck_box => {
         incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
@@ -485,7 +485,7 @@ fn make_opaque_cbox_drop_glue(
     cboxptr: ValueRef)     // ptr to the opaque closure
     -> block {
     let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_drop_glue");
-    alt ck {
+    match ck {
       ty::ck_block => bcx,
       ty::ck_box => {
         decr_refcnt_maybe_free(bcx, Load(bcx, cboxptr),
@@ -504,7 +504,7 @@ fn make_opaque_cbox_free_glue(
     cbox: ValueRef)     // ptr to the opaque closure
     -> block {
     let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_free_glue");
-    alt ck {
+    match ck {
       ty::ck_block => return bcx,
       ty::ck_box | ty::ck_uniq => { /* hard cases: */ }
     }
@@ -524,7 +524,7 @@ fn make_opaque_cbox_free_glue(
                               abi::tydesc_field_drop_glue, none);
 
         // Free the ty descr (if necc) and the box itself
-        alt ck {
+        match ck {
           ty::ck_block => fail ~"Impossible",
           ty::ck_box => trans_free(bcx, cbox),
           ty::ck_uniq => trans_unique_free(bcx, cbox)

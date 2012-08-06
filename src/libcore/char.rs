@@ -113,7 +113,7 @@ pure fn is_digit(c: char) -> bool {
  * refer to a digit in the given radix.
  */
 pure fn to_digit(c: char, radix: uint) -> option<uint> {
-    let val = alt c {
+    let val = match c {
       '0' to '9' => c as uint - ('0' as uint),
       'a' to 'z' => c as uint + 10u - ('a' as uint),
       'A' to 'Z' => c as uint + 10u - ('A' as uint),
@@ -158,7 +158,7 @@ fn escape_unicode(c: char) -> ~str {
  *   - Any other chars are given hex unicode escapes; see `escape_unicode`.
  */
 fn escape_default(c: char) -> ~str {
-    alt c {
+    match c {
       '\t' => ~"\\t",
       '\r' => ~"\\r",
       '\n' => ~"\\n",

@@ -44,7 +44,7 @@ impl proto_check of proto::visitor<(), (), ()>  for ext_ctxt {
 
     fn visit_message(name: ident, _span: span, _tys: &[@ast::ty],
                      this: state, next: next_state) {
-        alt next {
+        match next {
           some({state: next, tys: next_tys}) => {
             let proto = this.proto;
             if !proto.has_state(next) {

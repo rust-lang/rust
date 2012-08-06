@@ -1,5 +1,5 @@
 
 
-fn altsimple(f: int) { alt f { x => () } }
+fn altsimple(f: int) { match f { x => () } }
 
 fn main() { }

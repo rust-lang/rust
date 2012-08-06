@@ -8,7 +8,7 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
 
         meta_sect_name: meta_section_name(sess_os_to_meta_os(target_os)),
 
-        data_layout: alt target_os {
+        data_layout: match target_os {
           session::os_macos => {
             ~"e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-"+
                 ~"f32:32:32-f64:64:64-v64:64:64-v128:128:128-a0:0:64-"+
@@ -35,7 +35,7 @@ fn get_target_strs(target_os: session::os) -> target_strs::t {
           }
         },
 
-        target_triple: alt target_os {
+        target_triple: match target_os {
           session::os_macos => ~"x86_64-apple-darwin",
           session::os_win32 => ~"x86_64-pc-mingw32",
           session::os_linux => ~"x86_64-unknown-linux-gnu",

@@ -70,7 +70,7 @@ fn fold_mod(_cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // FIXME (#2403): This is sloppy. Instead we should have some mechanism to
     // indicate to the translation pass which function we want to be main.
     fn nomain(&&item: @ast::item) -> option<@ast::item> {
-        alt item.node {
+        match item.node {
           ast::item_fn(_, _, _) => {
             if *item.ident == ~"main" {
                 option::none
@@ -102,7 +102,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
     debug!{"current path: %s", ast_util::path_name_i(cx.path)};
 
     if is_test_fn(i) {
-        alt i.node {
+        match i.node {
           ast::item_fn(decl, _, _) if decl.purity == ast::unsafe_fn => {
             cx.sess.span_fatal(
                 i.span,
@@ -129,7 +129,7 @@ fn is_test_fn(i: @ast::item) -> bool {
         vec::len(attr::find_attrs_by_name(i.attrs, ~"test")) > 0u;
 
     fn has_test_signature(i: @ast::item) -> bool {
-        alt i.node {
+        match i.node {
           ast::item_fn(decl, tps, _) => {
             let input_cnt = vec::len(decl.inputs);
             let no_output = decl.output.node == ast::ty_nil;
@@ -246,7 +246,7 @@ fn mk_path(cx: test_ctxt, path: ~[ast::ident]) -> ~[ast::ident] {
     // the paths with std::
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
-        alt attr::last_meta_item_value_str_by_name(items, ~"name") {
+        match attr::last_meta_item_value_str_by_name(items, ~"name") {
           some(@~"std") => true,
           _ => false
         }

@@ -46,7 +46,7 @@ fn fold_fn(
 
 fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<~str> {
     do astsrv::exec(srv) |ctxt| {
-        alt check ctxt.ast_map.get(fn_id) {
+        match check ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
             node: ast::item_fn(decl, tys, _), _
@@ -81,7 +81,7 @@ fn fold_const(
 
     {
         sig: some(do astsrv::exec(srv) |ctxt| {
-            alt check ctxt.ast_map.get(doc.id()) {
+            match check ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
               }, _) => {
@@ -109,7 +109,7 @@ fn fold_enum(
     {
         variants: do par::map(doc.variants) |variant| {
             let sig = do astsrv::exec(srv) |ctxt| {
-                alt check ctxt.ast_map.get(doc_id) {
+                match check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(ast_variants, _), _
                   }, _) => {
@@ -167,18 +167,18 @@ fn get_method_sig(
     method_name: ~str
 ) -> option<~str> {
     do astsrv::exec(srv) |ctxt| {
-        alt check ctxt.ast_map.get(item_id) {
+        match check ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_trait(_, _, methods), _
           }, _) => {
-            alt check vec::find(methods, |method| {
-                alt method {
+            match check vec::find(methods, |method| {
+                match method {
                   ast::required(ty_m) => *ty_m.ident == method_name,
                   ast::provided(m) => *m.ident == method_name,
                 }
             }) {
                 some(method) => {
-                  alt method {
+                  match method {
                     ast::required(ty_m) => {
                       some(pprust::fun_to_str(
                           ty_m.decl,
@@ -200,7 +200,7 @@ fn get_method_sig(
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) => {
-            alt check vec::find(methods, |method| {
+            match check vec::find(methods, |method| {
                 *method.ident == method_name
             }) {
                 some(method) => {
@@ -231,7 +231,7 @@ fn fold_impl(
     let srv = fold.ctxt;
 
     let (trait_types, self_ty) = do astsrv::exec(srv) |ctxt| {
-        alt ctxt.ast_map.get(doc.id()) {
+        match ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
             node: ast::item_impl(_, trait_types, self_ty, _), _
           }, _) => {
@@ -286,7 +286,7 @@ fn fold_type(
 
     {
         sig: do astsrv::exec(srv) |ctxt| {
-            alt ctxt.ast_map.get(doc.id()) {
+            match ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 ident: ident,
                 node: ast::item_ty(ty, params), _

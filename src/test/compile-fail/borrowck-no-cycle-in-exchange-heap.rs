@@ -5,7 +5,7 @@ enum cycle {
 fn main() {
     let x = ~node({mut a: ~empty});
     // Create a cycle!
-    alt check *x { //~ NOTE loan of immutable local variable granted here
+    match check *x { //~ NOTE loan of immutable local variable granted here
       node(y) => {
         y.a <- x; //~ ERROR moving out of immutable local variable prohibited due to outstanding loan
       }

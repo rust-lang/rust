@@ -28,7 +28,7 @@ fn run(
 
     pure fn mods_last(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
         pure fn is_mod(item: &doc::itemtag) -> bool {
-            alt *item {
+            match *item {
               doc::modtag(_) => true,
               _ => false
             }
@@ -94,7 +94,7 @@ fn write_markdown(
 
 fn write_page(ctxt: ctxt, page: doc::page) {
     write_title(ctxt, page);
-    alt page {
+    match page {
       doc::cratepage(doc) => {
         write_crate(ctxt, doc);
       }
@@ -128,7 +128,7 @@ fn write_title(ctxt: ctxt, page: doc::page) {
 }
 
 fn make_title(page: doc::page) -> ~str {
-    let item = alt page {
+    let item = match page {
       doc::cratepage(cratedoc) => {
         doc::modtag(cratedoc.topmod)
       }
@@ -150,7 +150,7 @@ fn should_write_title_for_each_page() {
     write_markdown(doc, writer_factory);
     for iter::repeat(2u) {
         let (page, markdown) = comm::recv(po);
-        alt page {
+        match page {
           doc::cratepage(_) => {
             assert str::contains(markdown, ~"% Crate core");
           }
@@ -180,7 +180,7 @@ fn write_header_(ctxt: ctxt, lvl: hlvl, title: ~str) {
 }
 
 fn header_kind(doc: doc::itemtag) -> ~str {
-    alt doc {
+    match doc {
       doc::modtag(_) => {
         if doc.id() == syntax::ast::crate_node_id {
             ~"Crate"
@@ -214,7 +214,7 @@ fn header_kind(doc: doc::itemtag) -> ~str {
 
 fn header_name(doc: doc::itemtag) -> ~str {
     let fullpath = str::connect(doc.path() + ~[doc.name()], ~"::");
-    alt doc {
+    match doc {
       doc::modtag(_) if doc.id() != syntax::ast::crate_node_id => {
         fullpath
       }
@@ -289,7 +289,7 @@ fn write_desc(
     ctxt: ctxt,
     desc: option<~str>
 ) {
-    alt desc {
+    match desc {
         some(desc) => {
             ctxt.w.write_line(desc);
             ctxt.w.write_line(~"");
@@ -347,7 +347,7 @@ fn write_item_(ctxt: ctxt, doc: doc::itemtag, write_header: bool) {
         write_item_header(ctxt, doc);
     }
 
-    alt doc {
+    match doc {
       doc::modtag(moddoc) => write_mod(ctxt, moddoc),
       doc::nmodtag(nmoddoc) => write_nmod(ctxt, nmoddoc),
       doc::fntag(fndoc) => write_fn(ctxt, fndoc),
@@ -364,7 +364,7 @@ fn write_item_header(ctxt: ctxt, doc: doc::itemtag) {
 }
 
 fn item_header_lvl(doc: doc::itemtag) -> hlvl {
-    alt doc {
+    match doc {
       doc::modtag(_) | doc::nmodtag(_) => h1,
       _ => h2
     }
@@ -481,7 +481,7 @@ fn write_fnlike(
 }
 
 fn write_sig(ctxt: ctxt, sig: option<~str>) {
-    alt sig {
+    match sig {
       some(sig) => {
         ctxt.w.write_line(code_block_indent(sig));
         ctxt.w.write_line(~"");
@@ -602,7 +602,7 @@ fn write_variants(
 fn write_variant(ctxt: ctxt, doc: doc::variantdoc) {
     assert option::is_some(doc.sig);
     let sig = option::get(doc.sig);
-    alt doc.desc {
+    match doc.desc {
       some(desc) => {
         ctxt.w.write_line(fmt!{"* `%s` - %s", sig, desc});
       }

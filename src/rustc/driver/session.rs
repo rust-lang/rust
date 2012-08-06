@@ -152,7 +152,7 @@ impl session for session {
     }
     fn span_lint_level(level: lint::level,
                        sp: span, msg: ~str) {
-        alt level {
+        match level {
           lint::allow => { },
           lint::warn => self.span_warn(sp, msg),
           lint::deny | lint::forbid => {
@@ -219,14 +219,14 @@ fn expect<T: copy>(sess: session, opt: option<T>, msg: fn() -> ~str) -> T {
 
 fn building_library(req_crate_type: crate_type, crate: @ast::crate,
                     testing: bool) -> bool {
-    alt req_crate_type {
+    match req_crate_type {
       bin_crate => false,
       lib_crate => true,
       unknown_crate => {
         if testing {
             false
         } else {
-            alt syntax::attr::first_attr_value_str_by_name(
+            match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 ~"crate_type") {
               option::some(@~"lib") => true,
@@ -240,7 +240,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
 fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
     import metadata::loader;
 
-    alt os {
+    match os {
       os_win32 => loader::os_win32,
       os_linux => loader::os_linux,
       os_macos => loader::os_macos,

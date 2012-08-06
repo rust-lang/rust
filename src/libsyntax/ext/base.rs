@@ -150,7 +150,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn mod_pop() { vec::pop(self.mod_path); }
         fn mod_path() -> ~[ast::ident] { return self.mod_path; }
         fn bt_push(ei: codemap::expn_info_) {
-            alt ei {
+            match ei {
               expanded_from({call_site: cs, callie: callie}) => {
                 self.backtrace =
                     some(@expanded_from({
@@ -161,7 +161,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
             }
         }
         fn bt_pop() {
-            alt self.backtrace {
+            match self.backtrace {
               some(@expanded_from({call_site: {expn_info: prev, _}, _})) => {
                 self.backtrace = prev
               }
@@ -206,8 +206,8 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
-    alt expr.node {
-      ast::expr_lit(l) => alt l.node {
+    match expr.node {
+      ast::expr_lit(l) => match l.node {
         ast::lit_str(s) => return *s,
         _ => cx.span_fatal(l.span, error)
       }
@@ -216,7 +216,7 @@ fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
 }
 
 fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ast::ident {
-    alt expr.node {
+    match expr.node {
       ast::expr_path(p) => {
         if vec::len(p.types) > 0u || vec::len(p.idents) != 1u {
             cx.span_fatal(expr.span, error);
@@ -233,11 +233,11 @@ fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 
 fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                 min: uint, max: option<uint>, name: ~str) -> ~[@ast::expr] {
-    alt arg {
-      some(expr) => alt expr.node {
+    match arg {
+      some(expr) => match expr.node {
         ast::expr_vec(elts, _) => {
             let elts_len = vec::len(elts);
-              alt max {
+              match max {
                 some(max) if ! (min <= elts_len && elts_len <= max) => {
                   cx.span_fatal(sp,
                                 fmt!{"#%s takes between %u and %u arguments.",
@@ -261,7 +261,7 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
     -> ast::mac_body_
 {
-    alt (args) {
+    match (args) {
       some(body) => body,
       none => cx.span_fatal(sp, ~"missing macro body")
     }
@@ -289,10 +289,10 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
                                    cx.parse_sess().interner, none, arg);
     let args =
-        alt parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
+        match parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
                           argument_gram).get(@~"arg") {
           @matched_seq(s, _) => do s.map() |lf| {
-            alt lf {
+            match lf {
               @matched_nonterminal(parse::token::nt_expr(arg)) => {
                 arg /* whew! list of exprs, here we come! */
               }

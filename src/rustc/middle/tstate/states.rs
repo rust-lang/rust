@@ -15,9 +15,9 @@ import driver::session::session;
 import std::map::hashmap;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
-    alt t {
+    match t {
       oper_move {
-        alt local_node_id_to_def(fcx, rhs_id) {
+        match local_node_id_to_def(fcx, rhs_id) {
           some(def_upvar(_, _, _)) {
             fcx.ccx.tcx.sess.span_err(sp,
                                       ~"tried to deinitialize a variable \
@@ -35,12 +35,12 @@ fn handle_move_or_copy(fcx: fn_ctxt, post: poststate, rhs_path: @path,
     forbid_upvar(fcx, rhs_id, rhs_path.span, op_to_oper_ty(init_op));
 
     let rhs_d_id = local_node_id_to_def_id(fcx, rhs_id);
-    alt rhs_d_id {
+    match rhs_d_id {
       some(rhsid) {
         // RHS is a local var
         let instrhs =
             {ident: path_to_ident(rhs_path), node: rhsid.node};
-        alt destlhs {
+        match destlhs {
           local_dest(instlhs) {
              copy_in_poststate(fcx, post, instlhs, instrhs,
                                op_to_oper_ty(init_op));
@@ -59,14 +59,14 @@ fn seq_states(fcx: fn_ctxt, pres: prestate, bindings: ~[binding]) ->
     let mut changed = false;
     let mut post = pres.clone();
     for bindings.each |b| {
-        alt b.rhs {
+        match b.rhs {
           some(an_init) {
             // an expression, with or without a destination
             changed |=
                 find_pre_post_state_expr(fcx, post, an_init.expr) || changed;
             post = expr_poststate(fcx.ccx, an_init.expr).clone();
             for b.lhs.each |d| {
-                alt an_init.expr.node {
+                match an_init.expr.node {
                   expr_path(p) {
                     handle_move_or_copy(fcx, post, p, an_init.expr.id, d,
                                         an_init.op);
@@ -94,7 +94,7 @@ fn find_pre_post_state_sub(fcx: fn_ctxt, pres: prestate, e: @expr,
     changed = set_prestate_ann(fcx.ccx, parent, pres) || changed;
 
     let post = expr_poststate(fcx.ccx, e).clone();
-    alt c {
+    match c {
       none { }
       some(c1) { set_in_poststate_(bit_num(fcx, c1), post); }
     }
@@ -115,7 +115,7 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
 
     let post = expr_poststate(fcx.ccx, rhs).clone();
 
-    alt lhs.node {
+    match lhs.node {
       expr_path(p) {
         // for termination, need to make sure intermediate changes don't set
         // changed flag
@@ -123,7 +123,7 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
         // for substitution purposes
         let tmp = post.clone();
 
-        alt ty {
+        match ty {
           oper_move {
             if is_path(rhs) { forget_in_poststate(fcx, post, rhs.id); }
             forget_in_poststate(fcx, post, lhs.id);
@@ -135,13 +135,13 @@ fn find_pre_post_state_two(fcx: fn_ctxt, pres: prestate, lhs: @expr,
           _ { forget_in_poststate(fcx, post, lhs.id); }
         }
 
-        alt rhs.node {
+        match rhs.node {
           expr_path(p1) {
             let d = local_node_id_to_local_def_id(fcx, lhs.id);
             let d1 = local_node_id_to_local_def_id(fcx, rhs.id);
-            alt d {
+            match d {
               some(id) {
-                alt d1 {
+                match d1 {
                   some(id1) {
                     let instlhs =
                         {ident: path_to_ident(p), node: id};
@@ -188,7 +188,7 @@ fn find_pre_post_state_exprs(fcx: fn_ctxt, pres: prestate, id: node_id,
     let rs = seq_states(fcx, pres, arg_bindings(ops, es));
     let mut changed = rs.changed | set_prestate_ann(fcx.ccx, id, pres);
     /* if this is a failing call, it sets everything as initialized */
-    alt cf {
+    match cf {
       noreturn {
         let post = false_postcond(num_constraints(fcx.enclosing));
         changed |= set_poststate_ann(fcx.ccx, id, post);
@@ -205,9 +205,9 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
         set_prestate_ann(fcx.ccx, id, pres) |
             find_pre_post_state_expr(fcx, pres, antec);
 
-    alt maybe_alt {
+    match maybe_alt {
       none {
-        alt chk {
+        match chk {
           if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
             let conseq_prestate = expr_poststate(fcx.ccx, antec).clone();
@@ -232,7 +232,7 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
                                      altern);
 
         let mut conseq_prestate = expr_poststate(fcx.ccx, antec);
-        alt chk {
+        match chk {
           if_check {
             let c: sp_constr = expr_to_constr(fcx.ccx.tcx, antec);
             conseq_prestate = conseq_prestate.clone();
@@ -282,7 +282,7 @@ fn find_pre_post_state_cap_clause(fcx: fn_ctxt, e_id: node_id,
 fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
     let num_constrs = num_constraints(fcx.enclosing);
 
-    alt e.node {
+    match e.node {
       expr_new(p, _, v) {
         return find_pre_post_state_two(fcx, pres, p, v, e.id, oper_pure);
       }
@@ -330,7 +330,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
                                                     init_assign),
                                       exs, return_val);
 
-        let base_pres = alt vec::last_opt(exs) { none { pres }
+        let base_pres = match vec::last_opt(exs) { none { pres }
                           some(f) { expr_poststate(fcx.ccx, f) }};
         option::iter(maybe_base, |base| {
             changed |= find_pre_post_state_expr(fcx, base_pres, base) |
@@ -366,7 +366,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
 
         set_poststate_ann(fcx.ccx, e.id, post);
 
-        alt maybe_ret_val {
+        match maybe_ret_val {
           none {/* do nothing */ }
           some(ret_val) {
             changed |= find_pre_post_state_expr(fcx, pres, ret_val);
@@ -452,7 +452,7 @@ fn find_pre_post_state_expr(fcx: fn_ctxt, pres: prestate, e: @expr) -> bool {
         if vec::len(alts) > 0u {
             a_post = false_postcond(num_constrs);
             for alts.each |an_alt| {
-                alt an_alt.guard {
+                match an_alt.guard {
                   some(e) {
                     changed |= find_pre_post_state_expr(fcx, e_post, e);
                   }
@@ -512,9 +512,9 @@ fn find_pre_post_state_stmt(fcx: fn_ctxt, pres: prestate, s: @stmt) -> bool {
     debug!{"*prestate = %s", stmt_ann.states.prestate.to_str()};
     debug!{"*poststate = %s", stmt_ann.states.prestate.to_str()};
 
-    alt s.node {
+    match s.node {
       stmt_decl(adecl, id) {
-        alt adecl.node {
+        match adecl.node {
           decl_local(alocals) {
             set_prestate(stmt_ann, pres);
             let c_and_p = seq_states(fcx, pres,
@@ -574,7 +574,7 @@ fn find_pre_post_state_block(fcx: fn_ctxt, pres0: prestate, b: blk) -> bool {
         pres = stmt_poststate(fcx.ccx, *s);
     }
     let mut post = pres;
-    alt b.node.expr {
+    match b.node.expr {
       none { }
       some(e) {
         changed |= find_pre_post_state_expr(fcx, pres, e);

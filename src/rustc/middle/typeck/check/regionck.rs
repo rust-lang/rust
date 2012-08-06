@@ -104,7 +104,7 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
 
 fn visit_pat(p: @ast::pat, &&rcx: @rcx, v: rvt) {
     let fcx = rcx.fcx;
-    alt p.node {
+    match p.node {
       ast::pat_ident(_, path, _)
       if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) => {
         debug!{"visit_pat binding=%s", *path.idents[0]};
@@ -123,14 +123,14 @@ fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
 fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!{"visit_expr(e=%s)", pprust::expr_to_str(e)};
 
-    alt e.node {
+    match e.node {
       ast::expr_path(*) => {
         // Avoid checking the use of local variables, as we already
         // check their definitions.  The def'n always encloses the
         // use.  So if the def'n is enclosed by the region, then the
         // uses will also be enclosed (and otherwise, an error will
         // have been reported at the def'n site).
-        alt lookup_def(rcx.fcx, e.span, e.id) {
+        match lookup_def(rcx.fcx, e.span, e.id) {
           ast::def_local(*) | ast::def_arg(*) | ast::def_upvar(*) => return,
           _ => ()
         }
@@ -150,12 +150,12 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         // is an extensive comment on the function
         // check_cast_for_escaping_regions() in kind.rs explaining how
         // it goes about doing that.
-        alt rcx.resolve_node_type(e.id) {
+        match rcx.resolve_node_type(e.id) {
           result::err(_) => { return; /* typeck will fail anyhow */ }
           result::ok(target_ty) => {
-            alt ty::get(target_ty).struct {
+            match ty::get(target_ty).struct {
               ty::ty_trait(_, substs) => {
-                let trait_region = alt substs.self_r {
+                let trait_region = match substs.self_r {
                   some(r) => {r}
                   none => {ty::re_static}
                 };
@@ -191,7 +191,7 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     // Try to resolve the type.  If we encounter an error, then typeck
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
-    let ty = alt rcx.resolve_node_type(id) {
+    let ty = match rcx.resolve_node_type(id) {
       result::err(_) => return true,
       result::ok(ty) => ty
     };
@@ -232,7 +232,7 @@ fn constrain_regions_in_type(
                ppaux::region_to_str(tcx, encl_region),
                ppaux::region_to_str(tcx, region)};
 
-        alt region {
+        match region {
           ty::re_bound(_) => {
             // a bound region is one which appears inside an fn type.
             // (e.g., the `&` in `fn(&T)`).  Such regions need not be
@@ -243,7 +243,7 @@ fn constrain_regions_in_type(
           _ => ()
         }
 
-        alt rcx.fcx.mk_subr(encl_region, region) {
+        match rcx.fcx.mk_subr(encl_region, region) {
           result::err(_) => {
             let region1 = rcx.fcx.infcx.resolve_region_if_possible(region);
             tcx.sess.span_err(

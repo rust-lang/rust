@@ -48,7 +48,7 @@ fn main() {
 
     loop {
         let msg = recv(p);
-        alt msg {
+        match msg {
           closed => { debug!{"Got close message"}; break; }
           received(data) => {
             debug!{"Got data. Length is:"};

@@ -6,7 +6,7 @@
 fn main() {
     let x = some(3);
     let y =
-        alt x {
+        match x {
           some(_) =>
           ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" +
               ~"very" + ~"very" + ~"very" + ~"long" + ~"string",

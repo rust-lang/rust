@@ -249,8 +249,8 @@ fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
 fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
     -> int_ty_set {
 
-    alt get(t).struct {
-      ty_int(int_ty) => alt int_ty {
+    match get(t).struct {
+      ty_int(int_ty) => match int_ty {
         ast::ty_i8   => int_ty_set(INT_TY_SET_i8),
         ast::ty_i16  => int_ty_set(INT_TY_SET_i16),
         ast::ty_i32  => int_ty_set(INT_TY_SET_i32),
@@ -259,7 +259,7 @@ fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
         ast::ty_char => tcx.sess.bug(
             ~"char type passed to convert_integral_ty_to_int_ty_set()")
       }
-      ty_uint(uint_ty) => alt uint_ty {
+      ty_uint(uint_ty) => match uint_ty {
         ast::ty_u8  => int_ty_set(INT_TY_SET_u8),
         ast::ty_u16 => int_ty_set(INT_TY_SET_u16),
         ast::ty_u32 => int_ty_set(INT_TY_SET_u32),
@@ -335,7 +335,7 @@ enum fixup_err {
 }
 
 fn fixup_err_to_str(f: fixup_err) -> ~str {
-    alt f {
+    match f {
       unresolved_int_ty(_) => ~"unconstrained integral type",
       unresolved_ty(_) => ~"unconstrained type",
       cyclic_ty(_) => ~"cyclic type of infinite size",
@@ -418,7 +418,7 @@ fn resolve_region(cx: infer_ctxt, r: ty::region, modes: uint)
 
 fn resolve_borrowings(cx: infer_ctxt) {
     for cx.borrowings.each |item| {
-        alt resolve_region(cx, item.scope, resolve_all|force_all) {
+        match resolve_region(cx, item.scope, resolve_all|force_all) {
           ok(region) => {
             debug!{"borrowing for expr %d resolved to region %?, mutbl %?",
                    item.expr_id, region, item.mutbl};
@@ -455,7 +455,7 @@ trait cres_helpers<T> {
 
 impl methods<T:copy> of cres_helpers<T> for cres<T> {
     fn to_ures() -> ures {
-        alt self {
+        match self {
           ok(_v) => ok(()),
           err(e) => err(e)
         }
@@ -496,7 +496,7 @@ impl of to_str for ty::region {
 
 impl<V:copy to_str> of to_str for bound<V> {
     fn to_str(cx: infer_ctxt) -> ~str {
-        alt self {
+        match self {
           some(v) => v.to_str(cx),
           none => ~"none"
         }
@@ -513,7 +513,7 @@ impl<T:copy to_str> of to_str for bounds<T> {
 
 impl of to_str for int_ty_set {
     fn to_str(_cx: infer_ctxt) -> ~str {
-        alt self {
+        match self {
           int_ty_set(v) => uint::to_str(v, 10u)
         }
     }
@@ -521,7 +521,7 @@ impl of to_str for int_ty_set {
 
 impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
     fn to_str(cx: infer_ctxt) -> ~str {
-        alt self {
+        match self {
           redirect(vid) => fmt!{"redirect(%s)", vid.to_str()},
           root(pt, rk) => fmt!{"root(%s, %s)", pt.to_str(cx),
                                uint::to_str(rk, 10u)}
@@ -602,7 +602,7 @@ impl transaction_methods for infer_ctxt {
 
         debug!{"try(tvbl=%u, rbl=%u)", tvbl, rbl};
         let r <- f();
-        alt r {
+        match r {
           result::ok(_) => debug!{"try--ok"},
           result::err(_) => {
             debug!{"try--rollback"};
@@ -681,14 +681,14 @@ impl methods for infer_ctxt {
     }
 
     fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
-        alt resolve_type(self, typ, resolve_all) {
+        match resolve_type(self, typ, resolve_all) {
           result::ok(new_type) => return new_type,
           result::err(_) => return typ
         }
     }
 
     fn resolve_region_if_possible(oldr: ty::region) -> ty::region {
-        alt resolve_region(self, oldr, resolve_all) {
+        match resolve_region(self, oldr, resolve_all) {
           result::ok(newr) => return newr,
           result::err(_) => return oldr
         }
@@ -714,12 +714,12 @@ impl unify_methods for infer_ctxt {
         -> node<V, T> {
 
         let vid_u = vid.to_uint();
-        alt vb.vals.find(vid_u) {
+        match vb.vals.find(vid_u) {
           none => {
             self.tcx.sess.bug(fmt!{"failed lookup of vid `%u`", vid_u});
           }
           some(var_val) => {
-            alt var_val {
+            match var_val {
               redirect(vid) => {
                 let nde = self.get(vb, vid);
                 if nde.root != vid {
@@ -744,7 +744,7 @@ impl unify_methods for infer_ctxt {
         debug!{"merge_bnd(%s,%s)", a.to_str(self), b.to_str(self)};
         let _r = indenter();
 
-        alt (a, b) {
+        match (a, b) {
           (none, none) => ok(none),
           (some(_), none) => ok(a),
           (none, some(_)) => ok(b),
@@ -853,10 +853,10 @@ impl unify_methods for infer_ctxt {
 
         // If both A's UB and B's LB have already been bound to types,
         // see if we can make those types subtypes.
-        alt (a_bounds.ub, b_bounds.lb) {
+        match (a_bounds.ub, b_bounds.lb) {
           (some(a_ub), some(b_lb)) => {
             let r = self.try(|| a_ub.sub(self, b_lb));
-            alt r {
+            match r {
               ok(()) => return result::ok(()),
               err(_) => { /*fallthrough */ }
             }
@@ -1022,7 +1022,7 @@ impl unify_methods for infer_ctxt {
 
         debug!{"bnds(%s <: %s)", a.to_str(self), b.to_str(self)};
         do indent {
-            alt (a, b) {
+            match (a, b) {
               (none, none) |
               (some(_), none) |
               (none, some(_)) => {
@@ -1141,7 +1141,7 @@ impl methods for resolve_state {
         assert vec::is_empty(self.v_seen);
         let rty = indent(|| self.resolve_type(typ) );
         assert vec::is_empty(self.v_seen);
-        alt self.err {
+        match self.err {
           none => {
             debug!{"Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
@@ -1155,7 +1155,7 @@ impl methods for resolve_state {
     fn resolve_region_chk(orig: ty::region) -> fres<ty::region> {
         self.err = none;
         let resolved = indent(|| self.resolve_region(orig) );
-        alt self.err {
+        match self.err {
           none => ok(resolved),
           some(e) => err(e)
         }
@@ -1166,7 +1166,7 @@ impl methods for resolve_state {
         indent(fn&() -> ty::t {
             if !ty::type_needs_infer(typ) { return typ; }
 
-            alt ty::get(typ).struct {
+            match ty::get(typ).struct {
               ty::ty_var(vid) => {
                 self.resolve_ty_var(vid)
               }
@@ -1201,7 +1201,7 @@ impl methods for resolve_state {
 
     fn resolve_region(orig: ty::region) -> ty::region {
         debug!{"Resolve_region(%s)", orig.to_str(self.infcx)};
-        alt orig {
+        match orig {
           ty::re_var(rid) => self.resolve_region_var(rid),
           _ => orig
         }
@@ -1213,7 +1213,7 @@ impl methods for resolve_state {
         }
         let nde = self.infcx.get(self.infcx.rb, rid);
         let bounds = nde.possible_types;
-        alt bounds {
+        match bounds {
           { ub:_, lb:some(r) } => { self.assert_not_rvar(rid, r); r }
           { ub:some(r), lb:_ } => { self.assert_not_rvar(rid, r); r }
           { ub:none, lb:none } => {
@@ -1226,7 +1226,7 @@ impl methods for resolve_state {
     }
 
     fn assert_not_rvar(rid: region_vid, r: ty::region) {
-        alt r {
+        match r {
           ty::re_var(rid2) => {
             self.err = some(region_var_bound_by_region_var(rid, rid2));
           }
@@ -1251,7 +1251,7 @@ impl methods for resolve_state {
             let nde = self.infcx.get(self.infcx.tvb, vid);
             let bounds = nde.possible_types;
 
-            let t1 = alt bounds {
+            let t1 = match bounds {
               { ub:_, lb:some(t) } if !type_is_bot(t) => self.resolve_type(t),
               { ub:some(t), lb:_ } => self.resolve_type(t),
               { ub:_, lb:some(t) } => self.resolve_type(t),
@@ -1277,7 +1277,7 @@ impl methods for resolve_state {
 
         // If there's only one type in the set of possible types, then
         // that's the answer.
-        alt single_type_contained_in(self.infcx.tcx, pt) {
+        match single_type_contained_in(self.infcx.tcx, pt) {
           some(t) => t,
           none => {
             if self.should(force_ivar) {
@@ -1351,9 +1351,9 @@ impl assignment for infer_ctxt {
     fn assign_tys(anmnt: assignment, a: ty::t, b: ty::t) -> ures {
 
         fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
-            alt fst {
+            match fst {
               some(t) => some(t),
-              none => alt snd {
+              none => match snd {
                 some(t) => some(t),
                 none => none
               }
@@ -1364,7 +1364,7 @@ impl assignment for infer_ctxt {
                anmnt, a.to_str(self), b.to_str(self)};
         let _r = indenter();
 
-        alt (ty::get(a).struct, ty::get(b).struct) {
+        match (ty::get(a).struct, ty::get(b).struct) {
           (ty::ty_bot, _) => {
             uok()
           }
@@ -1413,15 +1413,15 @@ impl assignment for infer_ctxt {
         let _r = indenter();
 
         fn is_borrowable(v: ty::vstore) -> bool {
-            alt v {
+            match v {
               ty::vstore_fixed(_) | ty::vstore_uniq | ty::vstore_box => true,
               ty::vstore_slice(_) => false
             }
         }
 
-        alt (a_bnd, b_bnd) {
+        match (a_bnd, b_bnd) {
           (some(a_bnd), some(b_bnd)) => {
-            alt (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
+            match (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
               (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) => {
                 let nr_b = ty::mk_box(self.tcx, {ty: mt_b.ty,
                                                  mutbl: m_const});
@@ -1569,7 +1569,7 @@ fn super_substs<C:combine>(
     fn eq_opt_regions(infcx: infer_ctxt,
                       a: option<ty::region>,
                       b: option<ty::region>) -> cres<option<ty::region>> {
-        alt (a, b) {
+        match (a, b) {
           (none, none) => {
             ok(none)
           }
@@ -1625,7 +1625,7 @@ fn super_self_tys<C:combine>(
     // Note: the self type parameter is (currently) always treated as
     // *invariant* (otherwise the type system would be unsound).
 
-    alt (a, b) {
+    match (a, b) {
       (none, none) => {
         ok(none)
       }
@@ -1677,7 +1677,7 @@ fn super_vstores<C:combine>(
     self: C, vk: ty::terr_vstore_kind,
     a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
 
-    alt (a, b) {
+    match (a, b) {
       (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
         do self.contraregions(a_r, b_r).chain |r| {
             ok(ty::vstore_slice(r))
@@ -1732,7 +1732,7 @@ fn super_tys<C:combine>(
     self: C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
     let tcx = self.infcx().tcx;
-    alt (ty::get(a).struct, ty::get(b).struct) {
+    match (ty::get(a).struct, ty::get(b).struct) {
       // The "subtype" ought to be handling cases involving bot or var:
       (ty::ty_bot, _) |
       (_, ty::ty_bot) |
@@ -1897,7 +1897,7 @@ impl of combine for sub {
                a.to_str(self.infcx()),
                b.to_str(self.infcx())};
         do indent {
-            alt (a, b) {
+            match (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) => {
                 do self.infcx().vars(self.rb, a_id, b_id).then {
                     ok(a)
@@ -1929,7 +1929,7 @@ impl of combine for sub {
             return err(ty::terr_mutability);
         }
 
-        alt b.mutbl {
+        match b.mutbl {
           m_mutbl => {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
@@ -1965,7 +1965,7 @@ impl of combine for sub {
                a.to_str(*self), b.to_str(*self)};
         if a == b { return ok(a); }
         do indent {
-            alt (ty::get(a).struct, ty::get(b).struct) {
+            match (ty::get(a).struct, ty::get(b).struct) {
               (ty::ty_bot, _) => {
                 ok(a)
               }
@@ -2077,7 +2077,7 @@ impl of combine for lub {
             m_const
         };
 
-        alt m {
+        match m {
           m_imm | m_const => {
             self.tys(a.ty, b.ty).chain(|t| ok({ty: t, mutbl: m}) )
           }
@@ -2113,7 +2113,7 @@ impl of combine for lub {
     }
 
     fn purities(f1: purity, f2: purity) -> cres<purity> {
-        alt (f1, f2) {
+        match (f1, f2) {
           (unsafe_fn, _) | (_, unsafe_fn) => ok(unsafe_fn),
           (impure_fn, _) | (_, impure_fn) => ok(impure_fn),
           (extern_fn, _) | (_, extern_fn) => ok(extern_fn),
@@ -2122,7 +2122,7 @@ impl of combine for lub {
     }
 
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
-        alt (r1, r2) {
+        match (r1, r2) {
           (ast::return_val, _) |
           (_, ast::return_val) => ok(ast::return_val),
           (ast::noreturn, ast::noreturn) => ok(ast::noreturn)
@@ -2140,7 +2140,7 @@ impl of combine for lub {
                b.to_str(self.infcx())};
 
         do indent {
-            alt (a, b) {
+            match (a, b) {
               (ty::re_static, _) | (_, ty::re_static) => {
                 ok(ty::re_static) // nothing lives longer than static
               }
@@ -2155,7 +2155,7 @@ impl of combine for lub {
                 // at least as big as the block f_id".  So, we can
                 // reasonably compare free regions and scopes:
                 let rm = self.infcx().tcx.region_map;
-                alt region::nearest_common_ancestor(rm, f_id, s_id) {
+                match region::nearest_common_ancestor(rm, f_id, s_id) {
                   // if the free region's scope `f_id` is bigger than
                   // the scope region `s_id`, then the LUB is the free
                   // region itself:
@@ -2172,7 +2172,7 @@ impl of combine for lub {
                 // subtype of the region corresponding to an inner
                 // block.
                 let rm = self.infcx().tcx.region_map;
-                alt region::nearest_common_ancestor(rm, a_id, b_id) {
+                match region::nearest_common_ancestor(rm, a_id, b_id) {
                   some(r_id) => ok(ty::re_scope(r_id)),
                   _ => ok(ty::re_static)
                 }
@@ -2248,7 +2248,7 @@ impl of combine for glb {
                mt_to_str(tcx, a),
                mt_to_str(tcx, b)};
 
-        alt (a.mutbl, b.mutbl) {
+        match (a.mutbl, b.mutbl) {
           // If one side or both is mut, then the GLB must use
           // the precise type from the mut side.
           (m_mutbl, m_const) => {
@@ -2310,7 +2310,7 @@ impl of combine for glb {
     }
 
     fn purities(f1: purity, f2: purity) -> cres<purity> {
-        alt (f1, f2) {
+        match (f1, f2) {
           (pure_fn, _) | (_, pure_fn) => ok(pure_fn),
           (extern_fn, _) | (_, extern_fn) => ok(extern_fn),
           (impure_fn, _) | (_, impure_fn) => ok(impure_fn),
@@ -2319,7 +2319,7 @@ impl of combine for glb {
     }
 
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
-        alt (r1, r2) {
+        match (r1, r2) {
           (ast::return_val, ast::return_val) => {
             ok(ast::return_val)
           }
@@ -2337,7 +2337,7 @@ impl of combine for glb {
                b.to_str(self.infcx())};
 
         do indent {
-            alt (a, b) {
+            match (a, b) {
               (ty::re_static, r) | (r, ty::re_static) => {
                 // static lives longer than everything else
                 ok(r)
@@ -2355,7 +2355,7 @@ impl of combine for glb {
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
                 let rm = self.infcx().tcx.region_map;
-                alt region::nearest_common_ancestor(rm, f_id, s_id) {
+                match region::nearest_common_ancestor(rm, f_id, s_id) {
                   some(r_id) if r_id == f_id => ok(s),
                   _ => err(ty::terr_regions_differ(b, a))
                 }
@@ -2367,7 +2367,7 @@ impl of combine for glb {
                 // these: so, if one of these scopes is a subscope of the
                 // other, return it.  Otherwise fail.
                 let rm = self.infcx().tcx.region_map;
-                alt region::nearest_common_ancestor(rm, a_id, b_id) {
+                match region::nearest_common_ancestor(rm, a_id, b_id) {
                   some(r_id) if a_id == r_id => ok(b),
                   some(r_id) if b_id == r_id => ok(a),
                   _ => err(ty::terr_regions_differ(b, a))
@@ -2475,7 +2475,7 @@ fn lattice_tys<L:lattice_ops combine>(
            b.to_str(self.infcx())};
     if a == b { return ok(a); }
     do indent {
-        alt (ty::get(a).struct, ty::get(b).struct) {
+        match (ty::get(a).struct, ty::get(b).struct) {
           (ty::ty_bot, _) => self.ty_bot(b),
           (_, ty::ty_bot) => self.ty_bot(a),
 
@@ -2505,7 +2505,7 @@ fn lattice_tys<L:lattice_ops combine>(
 fn lattice_rvars<L:lattice_ops combine>(
     self: L, a: ty::region, b: ty::region) -> cres<ty::region> {
 
-    alt (a, b) {
+    match (a, b) {
       (ty::re_var(a_id), ty::re_var(b_id)) => {
         lattice_vars(self, self.infcx().rb,
                      a, a_id, b_id,
@@ -2558,9 +2558,9 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     // If both A and B have an UB type, then we can just compute the
     // LUB of those types:
     let a_bnd = self.bnd(a_bounds), b_bnd = self.bnd(b_bounds);
-    alt (a_bnd, b_bnd) {
+    match (a_bnd, b_bnd) {
       (some(a_ty), some(b_ty)) => {
-        alt self.infcx().try(|| c_ts(a_ty, b_ty) ) {
+        match self.infcx().try(|| c_ts(a_ty, b_ty) ) {
             ok(t) => return ok(t),
             err(_) => { /*fallthrough */ }
         }
@@ -2590,7 +2590,7 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
            a_id.to_str(), a_bounds.to_str(self.infcx()),
            b.to_str(self.infcx())};
 
-    alt self.bnd(a_bounds) {
+    match self.bnd(a_bounds) {
       some(a_bnd) => {
         // If a has an upper bound, return the LUB(a.ub, b)
         debug!{"bnd=some(%s)", a_bnd.to_str(self.infcx())};

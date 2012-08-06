@@ -47,7 +47,7 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
     -> (~[@ast::view_item], ~[@ast::item], ~[ast::attribute]) {
 
     fn companion_file(+prefix: ~str, suffix: option<~str>) -> ~str {
-        return alt suffix {
+        return match suffix {
           option::some(s) => path::connect(prefix, s),
           option::none => prefix
         } + ~".rs";
@@ -56,7 +56,7 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
     fn file_exists(path: ~str) -> bool {
         // Crude, but there's no lib function for this and I'm not
         // up to writing it just now
-        alt io::file_reader(path) {
+        match io::file_reader(path) {
           result::ok(_) => true,
           result::err(_) => false
         }
@@ -79,7 +79,7 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
 }
 
 fn cdir_path_opt(id: ast::ident, attrs: ~[ast::attribute]) -> @~str {
-    alt ::attr::first_attr_value_str_by_name(attrs, ~"path") {
+    match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
       some(d) => return d,
       none => return id
     }
@@ -88,7 +88,7 @@ fn cdir_path_opt(id: ast::ident, attrs: ~[ast::attribute]) -> @~str {
 fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
                         &view_items: ~[@ast::view_item],
                         &items: ~[@ast::item]) {
-    alt cdir.node {
+    match cdir.node {
       ast::cdir_src_mod(id, attrs) => {
         let file_path = cdir_path_opt(@(*id + ~".rs"), attrs);
         let full_path =

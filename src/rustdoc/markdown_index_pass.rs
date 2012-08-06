@@ -78,7 +78,7 @@ fn item_to_entry(
     doc: doc::itemtag,
     config: config::config
 ) -> doc::index_entry {
-    let link = alt doc {
+    let link = match doc {
       doc::modtag(_) | doc::nmodtag(_)
       if config.output_style == config::doc_per_mod => {
         markdown_writer::make_filename(config, doc::itempage(doc))

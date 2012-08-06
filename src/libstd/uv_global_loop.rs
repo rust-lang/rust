@@ -56,7 +56,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
             let hl_loop = spawn_loop();
             loop {
                 debug!{"in outer_loop..."};
-                alt select2(weak_exit_po, msg_po) {
+                match select2(weak_exit_po, msg_po) {
                   left(weak_exit) => {
                     // all normal tasks have ended, tell the
                     // libuv loop to tear_down, then exit

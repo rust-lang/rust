@@ -22,7 +22,7 @@ fn log_again() { loop { log(error, again); } }
 fn ret_ret() -> int { return (return 2) + 3; }
 
 fn ret_guard() {
-    alt 2 {
+    match 2 {
       x if (return) => { x; }
       _ => {}
     }

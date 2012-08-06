@@ -206,7 +206,7 @@ fn consume_whitespace_and_comments(rdr: string_reader)
 fn consume_any_line_comment(rdr: string_reader)
                                 -> option<{tok: token::token, sp: span}> {
     if rdr.curr == '/' {
-        alt nextch(rdr) {
+        match nextch(rdr) {
           '/' => {
             bump(rdr);
             bump(rdr);
@@ -313,7 +313,7 @@ fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
     loop {
         let c = rdr.curr;
         if c == '_' { bump(rdr); again; }
-        alt char::to_digit(c, radix) {
+        match char::to_digit(c, radix) {
           some(d) => {
             str::push_char(rslt, c);
             bump(rdr);
@@ -371,7 +371,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
             rdr.fatal(~"no valid digits found for number");
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
-        alt tp {
+        match tp {
           either::left(t) => return token::LIT_INT(parsed as i64, t),
           either::right(t) => return token::LIT_UINT(parsed, t)
         }
@@ -383,7 +383,7 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         let dec_part = scan_digits(rdr, 10u);
         num_str += ~"." + dec_part;
     }
-    alt scan_exponent(rdr) {
+    match scan_exponent(rdr) {
       some(s) => {
         is_float = true;
         num_str += s;
@@ -472,7 +472,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
             return token::BINOPEQ(op);
         } else { return token::BINOP(op); }
     }
-    alt c {
+    match c {
 
 
 
@@ -539,12 +539,12 @@ fn next_token_inner(rdr: string_reader) -> token::token {
       }
       '<' => {
         bump(rdr);
-        alt rdr.curr {
+        match rdr.curr {
           '=' => { bump(rdr); return token::LE; }
           '<' => { return binop(rdr, token::SHL); }
           '-' => {
             bump(rdr);
-            alt rdr.curr {
+            match rdr.curr {
               '>' => { bump(rdr); return token::DARROW; }
               _ => { return token::LARROW; }
             }
@@ -554,7 +554,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
       }
       '>' => {
         bump(rdr);
-        alt rdr.curr {
+        match rdr.curr {
           '=' => { bump(rdr); return token::GE; }
           '>' => { return binop(rdr, token::SHR); }
           _ => { return token::GT; }
@@ -567,7 +567,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         if c2 == '\\' {
             let escaped = rdr.curr;
             bump(rdr);
-            alt escaped {
+            match escaped {
               'n' => { c2 = '\n'; }
               'r' => { c2 = '\r'; }
               't' => { c2 = '\t'; }
@@ -599,11 +599,11 @@ fn next_token_inner(rdr: string_reader) -> token::token {
 
             let ch = rdr.curr;
             bump(rdr);
-            alt ch {
+            match ch {
               '\\' => {
                 let escaped = rdr.curr;
                 bump(rdr);
-                alt escaped {
+                match escaped {
                   'n' => str::push_char(accum_str, '\n'),
                   'r' => str::push_char(accum_str, '\r'),
                   't' => str::push_char(accum_str, '\t'),
@@ -646,7 +646,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         } else { return binop(rdr, token::AND); }
       }
       '|' => {
-        alt nextch(rdr) {
+        match nextch(rdr) {
           '|' => { bump(rdr); bump(rdr); return token::OROR; }
           _ => { return binop(rdr, token::OR); }
         }

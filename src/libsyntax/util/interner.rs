@@ -27,7 +27,7 @@ trait interner<T: const copy> {
 
 impl <T: const copy> of interner<T> for hash_interner<T> {
     fn intern(val: T) -> uint {
-        alt self.map.find(val) {
+        match self.map.find(val) {
           some(idx) => return idx,
           none => {
             let new_idx = self.vect.len();

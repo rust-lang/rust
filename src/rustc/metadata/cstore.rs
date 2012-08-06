@@ -64,7 +64,7 @@ type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
 
 // Internal method to retrieve the data from the cstore
 pure fn p(cstore: cstore) -> cstore_private {
-    alt cstore { private(p) => p }
+    match cstore { private(p) => p }
 }
 
 fn mk_cstore() -> cstore {

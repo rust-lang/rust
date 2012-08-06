@@ -13,7 +13,7 @@ trait to_str {
 
 impl <T: to_str> of to_str for option<T> {
     fn to_str() -> ~str {
-        alt self {
+        match self {
           none => { ~"none" }
           some(t) => { ~"some(" + t.to_str() + ~")" }
         }

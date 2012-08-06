@@ -279,7 +279,7 @@ impl task_builder for task_builder {
         let ch = comm::chan(po);
 
         blk(do future::from_fn {
-            alt comm::recv(po) {
+            match comm::recv(po) {
               exit(_, result) => result
             }
         });
@@ -502,7 +502,7 @@ fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
     do task().unlinked().future_result(|-r| { result = some(r); }).spawn {
         comm::send(ch, f());
     }
-    alt future::get(option::unwrap(result)) {
+    match future::get(option::unwrap(result)) {
       success => result::ok(comm::recv(po)),
       failure => result::err(())
     }
@@ -991,7 +991,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     /*######################################################################*
      * Step 1. Get spawner's taskgroup info.
      *######################################################################*/
-    let spawner_group = alt unsafe { local_get(spawner, taskgroup_key()) } {
+    let spawner_group = match unsafe { local_get(spawner, taskgroup_key()) } {
         none => {
             // Main task, doing first spawn ever. Lazily initialise here.
             let mut members = new_taskset();
@@ -1028,7 +1028,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // assertion, but initialising it requires locking a mutex. Hence
             // it should be enabled only in debug builds.
             let new_generation =
-                alt *old_ancestors {
+                match *old_ancestors {
                     some(arc) => access_ancestors(arc, |a| a.generation+1),
                     none      => 0 // the actual value doesn't really matter.
                 };
@@ -1047,7 +1047,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
 
     fn share_ancestors(ancestors: &mut ancestor_list) -> ancestor_list {
         // Appease the borrow-checker. Really this wants to be written as:
-        // alt ancestors
+        // match ancestors
         //    some(ancestor_arc) { ancestor_list(some(ancestor_arc.clone())) }
         //    none               { ancestor_list(none) }
         let tmp = util::replace(&mut **ancestors, none);
@@ -1073,7 +1073,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let (child_tg, ancestors, f) = option::swap_unwrap(child_data);
             // Create child task.
-            let new_task = alt opts.sched {
+            let new_task = match opts.sched {
               none             => rustrt::new_task(),
               some(sched_opts) => new_task_in_new_sched(sched_opts)
             };
@@ -1162,7 +1162,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             fail ~"foreign_stack_size scheduler option unimplemented";
         }
 
-        let num_threads = alt opts.mode {
+        let num_threads = match opts.mode {
           single_threaded => 1u,
           thread_per_core => {
             fail ~"thread_per_core scheduling mode unimplemented"
@@ -1273,7 +1273,7 @@ unsafe fn local_data_lookup<T: owned>(
 
     let key_value = key_to_key_value(key);
     let map_pos = (*map).position(|entry|
-        alt entry {
+        match entry {
             some((k,_,_)) => k == key_value,
             none => false
         }
@@ -1336,7 +1336,7 @@ unsafe fn local_set<T: owned>(
     // Construct new entry to store in the map.
     let new_entry = some((keyval, data_ptr, data_box));
     // Find a place to put it.
-    alt local_data_lookup(map, key) {
+    match local_data_lookup(map, key) {
         some((index, _old_data_ptr)) => {
             // Key already had a value set, _old_data_ptr, whose reference
             // will get dropped when the local_data box is overwritten.
@@ -1344,7 +1344,7 @@ unsafe fn local_set<T: owned>(
         }
         none => {
             // Find an empty slot. If not, grow the vector.
-            alt (*map).position(|x| x == none) {
+            match (*map).position(|x| x == none) {
                 some(empty_index) => (*map).set_elt(empty_index, new_entry),
                 none => (*map).push(new_entry)
             }
@@ -1694,7 +1694,7 @@ fn test_spawn_listiner_bidi() {
 
 #[test]
 fn test_try_success() {
-    alt do try {
+    match do try {
         ~"Success!"
     } {
         result::ok(~"Success!") => (),
@@ -1705,7 +1705,7 @@ fn test_try_success() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_try_fail() {
-    alt do try {
+    match do try {
         fail
     } {
         result::err(()) => (),
@@ -2052,13 +2052,13 @@ fn test_tls_pop() unsafe {
 fn test_tls_modify() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_modify(my_key, |data| {
-        alt data {
+        match data {
             some(@val) => fail ~"unwelcome value: " + val,
             none       => some(@~"first data")
         }
     });
     local_data_modify(my_key, |data| {
-        alt data {
+        match data {
             some(@~"first data") => some(@~"next data"),
             some(@val)           => fail ~"wrong value: " + val,
             none                 => fail ~"missing value"

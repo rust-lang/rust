@@ -12,7 +12,7 @@ type path = ~[path_elt];
 /* FIXMEs that say "bad" are as per #2543 */
 fn path_to_str_with_sep(p: path, sep: ~str) -> ~str {
     let strs = do vec::map(p) |e| {
-        alt e {
+        match e {
           path_mod(s) => /* FIXME (#2543) */ copy *s,
           path_name(s) => /* FIXME (#2543) */ copy *s
         }
@@ -104,7 +104,7 @@ fn map_decoded_item(diag: span_handler,
     // methods get added to the AST map when their impl is visited.  Since we
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now:
-    alt ii {
+    match ii {
       ii_item(*) | ii_ctor(*) | ii_dtor(*) => { /* fallthrough */ }
       ii_foreign(i) => {
         cx.map.insert(i.id, node_foreign_item(i, foreign_abi_rust_intrinsic,
@@ -127,7 +127,7 @@ fn map_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
                           copy a, cx.local_id));
         cx.local_id += 1u;
     }
-    alt fk {
+    match fk {
       visit::fk_ctor(nm, attrs, tps, self_id, parent_id) => {
           let ct = @{node: {id: id,
                             attrs: attrs,
@@ -159,7 +159,7 @@ fn map_block(b: blk, cx: ctx, v: vt) {
 
 fn number_pat(cx: ctx, pat: @pat) {
     do ast_util::walk_pat(pat) |p| {
-        alt p.node {
+        match p.node {
           pat_ident(*) => {
             cx.map.insert(p.id, node_local(cx.local_id));
             cx.local_id += 1u;
@@ -189,7 +189,7 @@ fn map_method(impl_did: def_id, impl_path: @path,
 fn map_item(i: @item, cx: ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
-    alt i.node {
+    match i.node {
       item_impl(_, opt_ir, _, ms) => {
         let impl_did = ast_util::local_def(i.id);
         for ms.each |m| {
@@ -205,7 +205,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         }
       }
       item_foreign_mod(nm) => {
-        let abi = alt attr::foreign_abi(i.attrs) {
+        let abi = match attr::foreign_abi(i.attrs) {
           either::left(msg) => cx.diag.span_fatal(i.span, msg),
           either::right(abi) => abi
         };
@@ -248,7 +248,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       }
       _ => ()
     }
-    alt i.node {
+    match i.node {
       item_mod(_) | item_foreign_mod(_) => {
         vec::push(cx.path, path_mod(i.ident));
       }
@@ -259,9 +259,9 @@ fn map_item(i: @item, cx: ctx, v: vt) {
 }
 
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
-    alt vi.node {
+    match vi.node {
       view_item_export(vps) => for vps.each |vp| {
-        let (id, name) = alt vp.node {
+        let (id, name) = match vp.node {
           view_path_simple(nm, _, id) => {
             (id, /* FIXME (#2543) */ copy nm)
           }
@@ -281,7 +281,7 @@ fn map_expr(ex: @expr, cx: ctx, v: vt) {
 }
 
 fn node_id_to_str(map: map, id: node_id) -> ~str {
-    alt map.find(id) {
+    match map.find(id) {
       none => {
         fmt!{"unknown node (id=%d)", id}
       }

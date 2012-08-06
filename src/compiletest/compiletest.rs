@@ -37,7 +37,7 @@ fn parse_config(args: ~[~str]) -> config {
     assert (vec::is_not_empty(args));
     let args_ = vec::tail(args);
     let matches =
-        alt getopts::getopts(args_, opts) {
+        match getopts::getopts(args_, opts) {
           ok(m) => m,
           err(f) => fail getopts::fail_str(f)
         };
@@ -80,7 +80,7 @@ fn log_config(config: config) {
 }
 
 fn opt_str(maybestr: option<~str>) -> ~str {
-    alt maybestr { option::some(s) => s, option::none => ~"(none)" }
+    match maybestr { option::some(s) => s, option::none => ~"(none)" }
 }
 
 fn str_opt(maybestr: ~str) -> option<~str> {
@@ -88,7 +88,7 @@ fn str_opt(maybestr: ~str) -> option<~str> {
 }
 
 fn str_mode(s: ~str) -> mode {
-    alt s {
+    match s {
       ~"compile-fail" => mode_compile_fail,
       ~"run-fail" => mode_run_fail,
       ~"run-pass" => mode_run_pass,
@@ -98,7 +98,7 @@ fn str_mode(s: ~str) -> mode {
 }
 
 fn mode_str(mode: mode) -> ~str {
-    alt mode {
+    match mode {
       mode_compile_fail => ~"compile-fail",
       mode_run_fail => ~"run-fail",
       mode_run_pass => ~"run-pass",
@@ -115,13 +115,13 @@ fn run_tests(config: config) {
 
 fn test_opts(config: config) -> test::test_opts {
     {filter:
-         alt config.filter {
+         match config.filter {
            option::some(s) => option::some(s),
            option::none => option::none
          },
      run_ignored: config.run_ignored,
      logfile:
-         alt config.logfile {
+         match config.logfile {
            option::some(s) => option::some(s),
            option::none => option::none
          }
@@ -144,7 +144,7 @@ fn make_tests(config: config) -> ~[test::test_desc] {
 fn is_test(config: config, testfile: ~str) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
-        alt config.mode {
+        match config.mode {
           mode_pretty => ~[~".rs"],
           _ => ~[~".rc", ~".rs"]
         };

@@ -39,7 +39,7 @@ pure fn is_false(v: bool) -> bool { !v }
 
 /// Parse logic value from `s`
 pure fn from_str(s: ~str) -> option<bool> {
-    alt check s {
+    match check s {
       ~"true" => some(true),
       ~"false" => some(false),
       _ => none

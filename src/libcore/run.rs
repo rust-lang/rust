@@ -96,7 +96,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
-    alt env {
+    match env {
       some(es) if !vec::is_empty(es) => {
         let mut tmps = ~[];
         let mut ptrs = ~[];
@@ -123,7 +123,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
     unsafe {
-        alt env {
+        match env {
           some(es) if !vec::is_empty(es) => {
             let mut blk : ~[u8] = ~[];
             for vec::each(es) |e| {
@@ -143,7 +143,7 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
 
 fn with_dirp<T>(d: option<~str>,
                 cb: fn(*libc::c_char) -> T) -> T {
-    alt d {
+    match d {
       some(dir) => str::as_c_str(dir, cb),
       none => cb(ptr::null())
     }
@@ -309,7 +309,7 @@ fn program_output(prog: ~str, args: ~[~str]) ->
     let mut count = 2;
     while count > 0 {
         let stream = comm::recv(p);
-        alt check stream {
+        match check stream {
             (1, s) => {
                 outs = s;
             }

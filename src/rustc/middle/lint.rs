@@ -55,7 +55,7 @@ enum lint {
 // This is pretty unfortunate. We really want some sort of "deriving Enum"
 // type of thing.
 fn int_to_lint(i: int) -> lint {
-    alt check i {
+    match check i {
       0 => ctypes,
       1 => unused_imports,
       2 => while_true,
@@ -70,7 +70,7 @@ fn int_to_lint(i: int) -> lint {
 }
 
 fn level_to_str(lv: level) -> ~str {
-    alt lv {
+    match lv {
       allow => ~"allow",
       warn => ~"warn",
       deny => ~"deny",
@@ -166,7 +166,7 @@ fn mk_lint_settings() -> lint_settings {
 }
 
 fn get_lint_level(modes: lint_modes, lint: lint) -> level {
-    alt modes.find(lint as uint) {
+    match modes.find(lint as uint) {
       some(c) => c,
       none => allow
     }
@@ -176,7 +176,7 @@ fn get_lint_settings_level(settings: lint_settings,
                               lint_mode: lint,
                               _expr_id: ast::node_id,
                               item_id: ast::node_id) -> level {
-    alt settings.settings_map.find(item_id) {
+    match settings.settings_map.find(item_id) {
       some(modes) => get_lint_level(modes, lint_mode),
       none => get_lint_level(settings.default_settings, lint_mode)
     }
@@ -230,10 +230,10 @@ impl methods for ctxt {
                 attr::attr_metas(attr::find_attrs_by_name(attrs,
                                                           level_name));
             for metas.each |meta| {
-                alt meta.node {
+                match meta.node {
                   ast::meta_list(_, metas) => {
                     for metas.each |meta| {
-                        alt meta.node {
+                        match meta.node {
                           ast::meta_word(lintname) => {
                             vec::push(triples, (meta, level, lintname));
                           }
@@ -255,7 +255,7 @@ impl methods for ctxt {
 
         for triples.each |pair| {
             let (meta, level, lintname) = pair;
-            alt self.dict.find(*lintname) {
+            match self.dict.find(*lintname) {
               none => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
@@ -354,9 +354,9 @@ fn item_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
 fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_expr: fn@(e: @ast::expr) {
-           alt e.node {
+           match e.node {
              ast::expr_while(cond, _) => {
-                alt cond.node {
+                match cond.node {
                     ast::expr_lit(@{node: ast::lit_bool(true),_}) => {
                             cx.sess.span_lint(
                                 while_true, e.id, it.id,
@@ -380,9 +380,9 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
                        decl: ast::fn_decl) {
         let tys = vec::map(decl.inputs, |a| a.ty );
         for vec::each(vec::append_one(tys, decl.output)) |ty| {
-            alt ty.node {
+            match ty.node {
               ast::ty_path(_, id) => {
-                alt cx.def_map.get(id) {
+                match cx.def_map.get(id) {
                   ast::def_prim_ty(ast::ty_int(ast::ty_i)) => {
                     cx.sess.span_lint(
                         ctypes, id, fn_id,
@@ -405,11 +405,11 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
         }
     }
 
-    alt it.node {
+    match it.node {
       ast::item_foreign_mod(nmod) if attr::foreign_abi(it.attrs) !=
       either::right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
-            alt ni.node {
+            match ni.node {
               ast::foreign_item_fn(decl, tps) => {
                 check_foreign_fn(cx, it.id, decl);
               }
@@ -423,7 +423,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
     let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
         visit_stmt: fn@(s: @ast::stmt) {
-            alt s.node {
+            match s.node {
               ast::stmt_semi(@{id: id,
                                callee_id: _,
                                node: ast::expr_path(@path),
@@ -458,7 +458,7 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
         }
     }
 
-    alt it.node {
+    match it.node {
       ast::item_ty(*) | ast::item_class(*) |
       ast::item_trait(*) | ast::item_impl(*) => {
         check_case(cx, it.ident, it.id, it.id, it.span)
@@ -480,13 +480,13 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
 
     // don't complain about blocks, since they tend to get their modes
     // specified from the outside
-    alt fk {
+    match fk {
       visit::fk_fn_block(*) => { return; }
       _ => {}
     }
 
     let fn_ty = ty::node_id_to_type(tcx, id);
-    alt check ty::get(fn_ty).struct {
+    match check ty::get(fn_ty).struct {
       ty::ty_fn(fn_ty) => {
         let mut counter = 0;
         do vec::iter2(fn_ty.inputs, decl.inputs) |arg_ty, arg_ast| {
@@ -495,7 +495,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
                    counter,
                    ty_to_str(tcx, arg_ty.ty),
                    mode_to_str(arg_ast.mode)};
-            alt arg_ast.mode {
+            match arg_ast.mode {
               ast::expl(ast::by_copy) => {
                 /* always allow by-copy */
               }

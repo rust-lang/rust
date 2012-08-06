@@ -16,7 +16,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     // option<str> rather than just an maybe-empty string.
 
     let var = expr_to_str(cx, args[0], ~"#env requires a string");
-    alt os::getenv(var) {
+    match os::getenv(var) {
       option::none => return mk_uniq_str(cx, sp, ~""),
       option::some(s) => return mk_uniq_str(cx, sp, s)
     }

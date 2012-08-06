@@ -6,7 +6,7 @@ fn main() {
     }
 
     fn foo(c: color) {
-        alt c {
+        match c {
           rgb(_, _) => { }
           //~^ ERROR this pattern has 2 fields, but the corresponding variant has 3 fields
           cmyk(_, _, _, _) => { }

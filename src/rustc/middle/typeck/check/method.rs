@@ -24,7 +24,7 @@ fn transform_self_type_for_method(fcx: @fn_ctxt,
                                   impl_ty: ty::t,
                                   method_info: MethodInfo)
                                -> ty::t {
-    alt method_info.self_type {
+    match method_info.self_type {
         sty_by_ref | sty_value => {
             impl_ty
         }
@@ -88,7 +88,7 @@ class lookup {
 
         // Determine if there are any inherent methods we can call.
         let optional_inherent_methods;
-        alt get_base_type_def_id(self.fcx.infcx,
+        match get_base_type_def_id(self.fcx.infcx,
                                  self.self_expr.span,
                                  self.self_ty) {
             none => {
@@ -110,7 +110,7 @@ class lookup {
 
         loop {
             // First, see whether this is a bounded parameter.
-            alt ty::get(self.self_ty).struct {
+            match ty::get(self.self_ty).struct {
               ty::ty_param(p) => {
                 self.add_candidates_from_param(p.idx, p.def_id);
               }
@@ -151,7 +151,7 @@ class lookup {
             if self.candidates.len() > 0u { break; }
 
             // check whether we can autoderef and if so loop around again.
-            alt ty::deref(self.tcx(), self.self_ty, false) {
+            match ty::deref(self.tcx(), self.self_ty, false) {
               none => break,
               some(mt) => {
                 self.self_ty = mt.ty;
@@ -168,7 +168,7 @@ class lookup {
                 ~"multiple applicable methods in scope");
 
             for self.candidates.eachi |i, candidate| {
-                alt candidate.entry.origin {
+                match candidate.entry.origin {
                   method_static(did) => {
                     self.report_static_candidate(i, did);
                   }
@@ -189,7 +189,7 @@ class lookup {
 
     fn report_static_candidate(idx: uint, did: ast::def_id) {
         let span = if did.crate == ast::local_crate {
-            alt check self.tcx().items.get(did.node) {
+            match check self.tcx().items.get(did.node) {
               ast_map::node_method(m, _, _) => m.span,
             }
         } else {
@@ -226,20 +226,20 @@ class lookup {
         let mut trait_bnd_idx = 0u; // count only trait bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
         for vec::each(*bounds) |bound| {
-            let (iid, bound_substs) = alt bound {
+            let (iid, bound_substs) = match bound {
               ty::bound_copy | ty::bound_send | ty::bound_const |
               ty::bound_owned => {
                 again; /* ok */
               }
               ty::bound_trait(bound_t) => {
-                alt check ty::get(bound_t).struct {
+                match check ty::get(bound_t).struct {
                   ty::ty_trait(i, substs) => (i, substs)
                 }
               }
             };
 
             let trt_methods = ty::trait_methods(tcx, iid);
-            alt vec::position(*trt_methods, |m| m.ident == self.m_name) {
+            match vec::position(*trt_methods, |m| m.ident == self.m_name) {
               none => {
                 /* check next bound */
                 trait_bnd_idx += 1u;
@@ -329,14 +329,14 @@ class lookup {
     }
 
     fn ty_from_did(did: ast::def_id) -> ty::t {
-        alt check ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
+        match check ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
           ty::ty_fn(fty) => {
             ty::mk_fn(self.tcx(), {proto: ast::proto_box with fty})
           }
         }
         /*
         if did.crate == ast::local_crate {
-            alt check self.tcx().items.get(did.node) {
+            match check self.tcx().items.get(did.node) {
               ast_map::node_method(m, _, _) {
                 // NDM trait/impl regions
                 let mt = ty_of_method(self.fcx.ccx, m, ast::rp_none);
@@ -344,7 +344,9 @@ class lookup {
               }
             }
         } else {
-            alt check ty::get(csearch::get_type(self.tcx(), did).ty).struct {
+            match check ty::get(csearch::get_type(self.tcx(), did).ty)
+              .struct {
+
               ty::ty_fn(fty) {
                 ty::mk_fn(self.tcx(), {proto: ast::proto_box with fty})
               }
@@ -408,7 +410,7 @@ class lookup {
                 self.fcx.can_mk_subty(self.self_ty, impl_ty)
             };
             debug!{"matches = %?", matches};
-            alt matches {
+            match matches {
               result::err(_) => { /* keep looking */ }
               result::ok(_) => {
                 if !self.candidate_impls.contains_key(im.did) {
@@ -454,7 +456,7 @@ class lookup {
                                              use_assignability: bool) {
 
         // Add inherent methods.
-        alt optional_inherent_methods {
+        match optional_inherent_methods {
             none => {
                 // Continue.
             }
@@ -473,7 +475,7 @@ class lookup {
         }
 
         // Add trait methods.
-        alt self.fcx.ccx.trait_map.find(self.expr.id) {
+        match self.fcx.ccx.trait_map.find(self.expr.id) {
             none => {
                 // Should only happen for placement new right now.
             }
@@ -484,7 +486,7 @@ class lookup {
                            self.def_id_to_str(trait_id)};
 
                     let coherence_info = self.fcx.ccx.coherence_info;
-                    alt coherence_info.extension_methods.find(trait_id) {
+                    match coherence_info.extension_methods.find(trait_id) {
                         none => {
                             // Do nothing.
                         }
@@ -523,7 +525,7 @@ class lookup {
         // Make the actual receiver type (cand.self_ty) assignable to the
         // required receiver type (cand.rcvr_ty).  If this method is not
         // from an impl, this'll basically be a no-nop.
-        alt self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
+        match self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
                                  cand.self_ty, cand.rcvr_ty) {
           result::ok(_) => (),
           result::err(_) => {

@@ -70,7 +70,7 @@ fn req_loans_in_fn(fk: visit::fn_kind,
     let old_root_ub = self.root_ub;
     self.root_ub = body.node.id;
 
-    alt fk {
+    match fk {
       visit::fk_anon(*) | visit::fk_fn_block(*) => {}
       visit::fk_item_fn(*) | visit::fk_method(*) |
       visit::fk_ctor(*) | visit::fk_dtor(*) => {
@@ -99,14 +99,14 @@ fn req_loans_in_expr(ex: @ast::expr,
     }
 
     // Special checks for various kinds of expressions:
-    alt ex.node {
+    match ex.node {
       ast::expr_addr_of(mutbl, base) => {
         let base_cmt = self.bccx.cat_expr(base);
 
         // make sure that the thing we are pointing out stays valid
         // for the lifetime `scope_r` of the resulting ptr:
         let scope_r =
-            alt check ty::get(tcx.ty(ex)).struct {
+            match check ty::get(tcx.ty(ex)).struct {
               ty::ty_rptr(r, _) => r
             };
         self.guarantee_valid(base_cmt, mutbl, scope_r);
@@ -117,7 +117,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         let arg_tys = ty::ty_fn_args(ty::expr_ty(self.tcx(), f));
         let scope_r = ty::re_scope(ex.id);
         do vec::iter2(args, arg_tys) |arg, arg_ty| {
-            alt ty::resolved_mode(self.tcx(), arg_ty.mode) {
+            match ty::resolved_mode(self.tcx(), arg_ty.mode) {
               ast::by_mutbl_ref => {
                 let arg_cmt = self.bccx.cat_expr(arg);
                 self.guarantee_valid(arg_cmt, m_mutbl, scope_r);
@@ -151,7 +151,7 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // immutable (whereas something like {f:int} would be
                 // fine).
                 //
-                alt opt_deref_kind(arg_ty.ty) {
+                match opt_deref_kind(arg_ty.ty) {
                   some(deref_ptr(region_ptr(_))) |
                   some(deref_ptr(unsafe_ptr)) => {
                     /* region pointers are (by induction) guaranteed */
@@ -265,7 +265,7 @@ impl methods for gather_loan_ctxt {
                region_to_str(self.tcx(), scope_r)};
         let _i = indenter();
 
-        alt cmt.lp {
+        match cmt.lp {
           // If this expression is a loanable path, we MUST take out a
           // loan.  This is somewhat non-obvious.  You might think,
           // for example, that if we have an immutable local variable
@@ -277,11 +277,11 @@ impl methods for gather_loan_ctxt {
           // it within that scope, the loan will be detected and an
           // error will be reported.
           some(_) => {
-            alt self.bccx.loan(cmt, scope_r, req_mutbl) {
+            match self.bccx.loan(cmt, scope_r, req_mutbl) {
               err(e) => { self.bccx.report(e); }
               ok(loans) if loans.len() == 0 => {}
               ok(loans) => {
-                alt scope_r {
+                match scope_r {
                   ty::re_scope(scope_id) => {
                     self.add_loans(scope_id, loans);
 
@@ -325,7 +325,7 @@ impl methods for gather_loan_ctxt {
                 }
             };
 
-            alt result {
+            match result {
               ok(pc_ok) => {
                 // we were able guarantee the validity of the ptr,
                 // perhaps by rooting or because it is immutably
@@ -335,7 +335,7 @@ impl methods for gather_loan_ctxt {
               ok(pc_if_pure(e)) => {
                 // we are only able to guarantee the validity if
                 // the scope is pure
-                alt scope_r {
+                match scope_r {
                   ty::re_scope(pure_id) => {
                     // if the scope is some block/expr in the fn,
                     // then just require that this scope be pure
@@ -374,7 +374,7 @@ impl methods for gather_loan_ctxt {
     // mutable memory.
     fn check_mutbl(req_mutbl: ast::mutability,
                    cmt: cmt) -> bckres<preserve_condition> {
-        alt (req_mutbl, cmt.mutbl) {
+        match (req_mutbl, cmt.mutbl) {
           (m_const, _) |
           (m_imm, m_imm) |
           (m_mutbl, m_mutbl) => {
@@ -397,7 +397,7 @@ impl methods for gather_loan_ctxt {
     }
 
     fn add_loans(scope_id: ast::node_id, loans: @dvec<loan>) {
-        alt self.req_maps.req_loan_map.find(scope_id) {
+        match self.req_maps.req_loan_map.find(scope_id) {
           some(l) => {
             (*l).push(loans);
           }
@@ -432,7 +432,7 @@ impl methods for gather_loan_ctxt {
         // To see what I mean about ids etc, consider:
         //
         //     let x = @@3;
-        //     alt x {
+        //     match x {
         //       @@y { ... }
         //     }
         //
@@ -450,7 +450,7 @@ impl methods for gather_loan_ctxt {
         let _i = indenter();
 
         let tcx = self.tcx();
-        alt pat.node {
+        match pat.node {
           ast::pat_wild => {
             // _
           }
@@ -460,7 +460,7 @@ impl methods for gather_loan_ctxt {
           }
           ast::pat_enum(_, some(subpats)) => {
             // variant(x, y, z)
-            let enum_did = alt self.bccx.tcx.def_map
+            let enum_did = match self.bccx.tcx.def_map
 .find(pat.id) {
               some(ast::def_variant(enum_did, _)) => enum_did,
               e => tcx.sess.span_bug(pat.span,
@@ -523,7 +523,7 @@ impl methods for gather_loan_ctxt {
 
           ast::pat_box(subpat) | ast::pat_uniq(subpat) => {
             // @p1, ~p1
-            alt self.bccx.cat_deref(subpat, cmt, 0u, true) {
+            match self.bccx.cat_deref(subpat, cmt, 0u, true) {
               some(subcmt) => {
                 self.gather_pat(subcmt, subpat, arm_id, alt_id);
               }

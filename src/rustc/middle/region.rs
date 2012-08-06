@@ -88,7 +88,7 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
                   subscope: ast::node_id) -> bool {
     let mut subscope = subscope;
     while superscope != subscope {
-        alt region_map.find(subscope) {
+        match region_map.find(subscope) {
             none => return false,
             some(scope) => subscope = scope
         }
@@ -103,7 +103,7 @@ fn subregion(region_map: region_map,
              super_region: ty::region,
              sub_region: ty::region) -> bool {
     super_region == sub_region ||
-        alt (super_region, sub_region) {
+        match (super_region, sub_region) {
           (ty::re_static, _) => {true}
 
           (ty::re_scope(super_scope), ty::re_scope(sub_scope)) |
@@ -128,7 +128,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
         let mut result = ~[scope];
         let mut scope = scope;
         loop {
-            alt region_map.find(scope) {
+            match region_map.find(scope) {
                 none => return result,
                 some(superscope) => {
                     vec::push(result, superscope);
@@ -172,7 +172,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
 
 /// Extracts that current parent from cx, failing if there is none.
 fn parent_id(cx: ctxt, span: span) -> ast::node_id {
-    alt cx.parent {
+    match cx.parent {
       none => {
         cx.sess.span_bug(span, ~"crate should not be parent here");
       }
@@ -184,7 +184,7 @@ fn parent_id(cx: ctxt, span: span) -> ast::node_id {
 
 /// Records the current parent (if any) as the parent of `child_id`.
 fn record_parent(cx: ctxt, child_id: ast::node_id) {
-    alt cx.parent {
+    match cx.parent {
       none => { /* no-op */ }
       some(parent_id) => {
         debug!{"parent of node %d is node %d", child_id, parent_id};
@@ -207,10 +207,10 @@ fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
 }
 
 fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
-    alt pat.node {
+    match pat.node {
       ast::pat_ident(_, path, _) => {
         let defn_opt = cx.def_map.find(pat.id);
-        alt defn_opt {
+        match defn_opt {
           some(ast::def_variant(_,_)) => {
             /* Nothing to do; this names a variant. */
           }
@@ -230,7 +230,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, expr.id);
 
     let mut new_cx = cx;
-    alt expr.node {
+    match expr.node {
       ast::expr_call(*) => {
         debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr)};
         new_cx.parent = some(expr.id);
@@ -276,7 +276,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
               sp: span, id: ast::node_id, cx: ctxt,
               visitor: visit::vt<ctxt>) {
 
-    let fn_cx = alt fk {
+    let fn_cx = match fk {
       visit::fk_item_fn(*) | visit::fk_method(*) |
       visit::fk_ctor(*) | visit::fk_dtor(*) => {
         // Top-level functions are a root scope.
@@ -380,7 +380,7 @@ impl methods for determine_rp_ctxt {
                from, to,
                ast_map::node_id_to_str(self.ast_map, from),
                ast_map::node_id_to_str(self.ast_map, to)};
-        let vec = alt self.dep_map.find(from) {
+        let vec = match self.dep_map.find(from) {
             some(vec) => {vec}
             none => {
                 let vec = @dvec();
@@ -424,7 +424,7 @@ impl methods for determine_rp_ctxt {
     // (anon_implies_rp) to true when we enter an item and setting
     // that flag to false when we enter a method.
     fn region_is_relevant(r: @ast::region) -> bool {
-        alt r.node {
+        match r.node {
           ast::re_anon => self.anon_implies_rp,
           ast::re_named(@~"self") => true,
           ast::re_named(_) => false
@@ -485,7 +485,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // if this type directly references a region, either via a
     // region pointer like &r.ty or a region-parameterized path
     // like path/r, add to the worklist/set
-    alt ty.node {
+    match ty.node {
       ast::ty_rptr(r, _) |
       ast::ty_path(@{rp: some(r), _}, _) => {
         debug!{"referenced type with regions %s", pprust::ty_to_str(ty)};
@@ -501,9 +501,9 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // to the dep_map.  If the type is not defined in this crate,
     // then check whether it is region-parameterized and consider
     // that as a direct dependency.
-    alt ty.node {
+    match ty.node {
       ast::ty_path(_, id) => {
-        alt cx.def_map.get(id) {
+        match cx.def_map.get(id) {
           ast::def_ty(did) | ast::def_class(did, _) => {
             if did.crate == ast::local_crate {
                 cx.add_dep(did.node, cx.item_id);
@@ -522,7 +522,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
       _ => {}
     }
 
-    alt ty.node {
+    match ty.node {
       ast::ty_fn(*) => {
         do cx.with(cx.item_id, false) {
             visit::visit_ty(ty, cx, visitor);
@@ -561,7 +561,7 @@ fn determine_rp_in_crate(sess: session,
     while cx.worklist.len() != 0 {
         let id = cx.worklist.pop();
         debug!{"popped %d from worklist", id};
-        alt cx.dep_map.find(id) {
+        match cx.dep_map.find(id) {
           none => {}
           some(vec) => {
             for vec.each |to_id| {

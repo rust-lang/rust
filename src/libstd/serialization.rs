@@ -243,7 +243,7 @@ fn deserialize_bool<D: deserializer>(d: D) -> bool {
 
 fn serialize_option<S: serializer,T>(s: S, v: option<T>, st: fn(T)) {
     do s.emit_enum(~"option") {
-        alt v {
+        match v {
           none => do s.emit_enum_variant(~"none", 0u, 0u) {
           }
 
@@ -260,7 +260,7 @@ fn deserialize_option<D: deserializer,T: copy>(d: D, st: fn() -> T)
     -> option<T> {
     do d.read_enum(~"option") {
         do d.read_enum_variant |i| {
-            alt check i {
+            match check i {
               0u => none,
               1u => some(d.read_enum_variant_arg(0u, || st() ))
             }

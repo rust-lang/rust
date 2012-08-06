@@ -62,9 +62,9 @@ pure fn safe_to_steal_expr(e: @ast::expr, tm: test_mode) -> bool {
 }
 
 pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
-    alt tm {
+    match tm {
       tm_converge => {
-        alt e.node {
+        match e.node {
           // If the fuzzer moves a block-ending-in-semicolon into callee
           // position, the pretty-printer can't preserve this even by
           // parenthesizing!!  See email to marijn.
@@ -139,7 +139,7 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
 
 
 fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
-    alt e {
+    match e {
       // https://github.com/mozilla/rust/issues/652
       ast::expr_if(*) => { false }
       ast::expr_block(_) => { false }
@@ -152,7 +152,7 @@ fn safe_to_replace_expr(e: ast::expr_, _tm: test_mode) -> bool {
 }
 
 fn safe_to_replace_ty(t: ast::ty_, _tm: test_mode) -> bool {
-    alt t {
+    match t {
       ast::ty_infer => { false } // always implicit, always top level
       ast::ty_bot => { false }   // in source, can only appear
                               // as the out type of a function
@@ -272,7 +272,7 @@ fn check_variants_T<T: copy>(
                         io::str_reader(~""), a,
                         pprust::no_ann(),
                         false));
-                alt cx.mode {
+                match cx.mode {
                   tm_converge => {
                     check_roundtrip_convergence(str3, 1u);
                   }
@@ -314,12 +314,12 @@ fn check_whole_compiler(code: ~str, suggested_filename_prefix: ~str,
 
     let compile_result = check_compiling(filename);
 
-    let run_result = alt (compile_result, allow_running) {
+    let run_result = match (compile_result, allow_running) {
       (passed, true) => { check_running(suggested_filename_prefix) }
       (h, _) => { h }
     };
 
-    alt run_result {
+    match run_result {
       passed | cleanly_rejected(_) | known_bug(_) => {
         removeIfExists(suggested_filename_prefix);
         removeIfExists(suggested_filename_prefix + ~".rs");
@@ -364,7 +364,7 @@ fn check_running(exe_filename: ~str) -> happiness {
     } else if contains(comb, ~"malloc") {
         failed(~"Mentioned malloc")
     } else {
-        alt p.status {
+        match p.status {
             0         => { passed }
             100       => { cleanly_rejected(~"running: explicit fail") }
             101 | 247 => { cleanly_rejected(~"running: timed out") }
@@ -441,7 +441,7 @@ fn parse_and_print(code: @~str) -> ~str {
 fn has_raw_pointers(c: ast::crate) -> bool {
     let has_rp = @mut false;
     fn visit_ty(flag: @mut bool, t: @ast::ty) {
-        alt t.node {
+        match t.node {
           ast::ty_ptr(_) => { *flag = true; }
           _ => { }
         }

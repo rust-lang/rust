@@ -58,7 +58,7 @@ mod pipes {
         assert (*p).payload == none;
         (*p).payload <- some(payload);
         let old_state = swap_state_rel((*p).state, full);
-        alt old_state {
+        match old_state {
           empty => {
             // Yay, fastpath.
 
@@ -84,7 +84,7 @@ mod pipes {
         loop {
             let old_state = swap_state_acq((*p).state,
                                            blocked);
-            alt old_state {
+            match old_state {
               empty | blocked => { task::yield(); }
               full => {
                 let mut payload = none;
@@ -101,7 +101,7 @@ mod pipes {
 
     fn sender_terminate<T: send>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
-        alt swap_state_rel((*p).state, terminated) {
+        match swap_state_rel((*p).state, terminated) {
           empty | blocked => {
             // The receiver will eventually clean up.
             unsafe { forget(p) }
@@ -118,7 +118,7 @@ mod pipes {
 
     fn receiver_terminate<T: send>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
-        alt swap_state_rel((*p).state, terminated) {
+        match swap_state_rel((*p).state, terminated) {
           empty => {
             // the sender will clean up
             unsafe { forget(p) }
@@ -178,7 +178,7 @@ mod pingpong {
     enum pong = pipes::send_packet<ping>;
 
     fn liberate_ping(-p: ping) -> pipes::send_packet<pong> unsafe {
-        let addr : *pipes::send_packet<pong> = alt p {
+        let addr : *pipes::send_packet<pong> = match p {
           ping(x) => { unsafe::reinterpret_cast(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;
@@ -187,7 +187,7 @@ mod pingpong {
     }
 
     fn liberate_pong(-p: pong) -> pipes::send_packet<ping> unsafe {
-        let addr : *pipes::send_packet<ping> = alt p {
+        let addr : *pipes::send_packet<ping> = match p {
           pong(x) => { unsafe::reinterpret_cast(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;

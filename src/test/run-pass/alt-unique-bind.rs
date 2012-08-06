@@ -1,5 +1,5 @@
 fn main() {
-    alt ~100 {
+    match ~100 {
       ~x => {
         debug!{"%?", x};
         assert x == 100;

@@ -47,7 +47,7 @@ trait gen_init {
 impl compile of gen_send for message {
     fn gen_send(cx: ext_ctxt) -> @ast::item {
         debug!{"pipec: gen_send"};
-        alt self {
+        match self {
           message(id, span, tys, this,
                   some({state: next, tys: next_tys})) => {
             debug!{"pipec: next state exists"};
@@ -71,7 +71,7 @@ impl compile of gen_send for message {
             let mut body = ~"{\n";
 
             if this.proto.is_bounded() {
-                let (sp, rp) = alt (this.dir, next.dir) {
+                let (sp, rp) = match (this.dir, next.dir) {
                   (send, send) => (~"c", ~"s"),
                   (send, recv) => (~"s", ~"c"),
                   (recv, send) => (~"s", ~"c"),
@@ -87,7 +87,7 @@ impl compile of gen_send for message {
                              rp, *next.name};
             }
             else {
-                let pat = alt (this.dir, next.dir) {
+                let pat = match (this.dir, next.dir) {
                   (send, send) => ~"(c, s)",
                   (send, recv) => ~"(s, c)",
                   (recv, send) => ~"(s, c)",
@@ -181,12 +181,12 @@ impl compile of to_type_decls for state {
         for self.messages.each |m| {
             let message(name, _span, tys, this, next) = m;
 
-            let tys = alt next {
+            let tys = match next {
               some({state: next, tys: next_tys}) => {
                 let next = this.proto.get_state(next);
                 let next_name = next.data_name();
 
-                let dir = alt this.dir {
+                let dir = match this.dir {
                   send => @~"server",
                   recv => @~"client"
                 };
@@ -208,7 +208,7 @@ impl compile of to_type_decls for state {
 
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {
         debug!{"pipec: to_endpoint_decls"};
-        let dir = alt dir {
+        let dir = match dir {
           send => (*self).dir,
           recv => (*self).dir.reverse()
         };
@@ -255,7 +255,7 @@ impl compile of gen_init for protocol {
         let start_state = self.states[0];
 
         let body = if !self.is_bounded() {
-            alt start_state.dir {
+            match start_state.dir {
               send => #ast { pipes::entangle() },
               recv => {
                 #ast {{
@@ -267,7 +267,7 @@ impl compile of gen_init for protocol {
         }
         else {
             let body = self.gen_init_bounded(ext_cx);
-            alt start_state.dir {
+            match start_state.dir {
               send => body,
               recv => {
                 #ast {{
@@ -322,7 +322,7 @@ impl compile of gen_init for protocol {
         let mut params: ~[ast::ty_param] = ~[];
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
-                alt params.find(|tpp| *tp.ident == *tpp.ident) {
+                match params.find(|tpp| *tp.ident == *tpp.ident) {
                   none => vec::push(params, tp),
                   _ => ()
                 }
@@ -338,7 +338,7 @@ impl compile of gen_init for protocol {
         let mut params: ~[ast::ty_param] = ~[];
         let fields = do (copy self.states).map_to_vec |s| {
             for s.ty_params.each |tp| {
-                alt params.find(|tpp| *tp.ident == *tpp.ident) {
+                match params.find(|tpp| *tp.ident == *tpp.ident) {
                   none => vec::push(params, tp),
                   _ => ()
                 }
@@ -439,7 +439,7 @@ impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
             self.cfg(),
             ~[],
             self.parse_sess());
-        alt res {
+        match res {
           some(ast) => ast,
           none => {
             error!{"Parse error with ```\n%s\n```", s};

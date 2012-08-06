@@ -222,7 +222,7 @@ impl extensions<A:copy> for dvec<A> {
      */
     fn append_iter<A, I:iter::base_iter<A>>(ts: I) {
         do self.swap |v| {
-           let mut v = alt ts.size_hint() {
+           let mut v = match ts.size_hint() {
              none { v }
              some(h) {
                let len = v.len() + h;

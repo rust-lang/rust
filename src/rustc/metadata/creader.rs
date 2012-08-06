@@ -100,7 +100,7 @@ type env = @{diag: span_handler,
              mut next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
-    alt i.node {
+    match i.node {
       ast::view_item_use(ident, meta_items, id) => {
         debug!{"resolving use stmt. ident: %?, meta: %?", ident, meta_items};
         let cnum = resolve_crate(e, ident, meta_items, ~"", i.span);
@@ -111,9 +111,9 @@ fn visit_view_item(e: env, i: @ast::view_item) {
 }
 
 fn visit_item(e: env, i: @ast::item) {
-    alt i.node {
+    match i.node {
       ast::item_foreign_mod(m) => {
-        alt attr::foreign_abi(i.attrs) {
+        match attr::foreign_abi(i.attrs) {
           either::right(abi) => {
             if abi != ast::foreign_abi_cdecl &&
                abi != ast::foreign_abi_stdcall { return; }
@@ -123,7 +123,7 @@ fn visit_item(e: env, i: @ast::item) {
 
         let cstore = e.cstore;
         let foreign_name =
-            alt attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
+            match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
               some(nn) => {
                 if *nn == ~"" {
                     e.diag.span_fatal(
@@ -144,7 +144,7 @@ fn visit_item(e: env, i: @ast::item) {
                               ~"' already added: can't specify link_args.");
         }
         for link_args.each |a| {
-            alt attr::get_meta_item_value_str(attr::attr_meta(a)) {
+            match attr::get_meta_item_value_str(attr::attr_meta(a)) {
               some(linkarg) => {
                 cstore::add_used_link_args(cstore, *linkarg);
               }
@@ -187,7 +187,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
                  hash: ~str, span: span) -> ast::crate_num {
     let metas = metas_with_ident(ident, metas);
 
-    alt existing_match(e, metas, hash) {
+    match existing_match(e, metas, hash) {
       none => {
         let load_ctxt: loader::ctxt = {
             diag: e.diag,
@@ -218,7 +218,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
         let cnum_map = resolve_crate_deps(e, cdata);
 
         let cname =
-            alt attr::last_meta_item_value_str_by_name(metas, ~"name") {
+            match attr::last_meta_item_value_str_by_name(metas, ~"name") {
               option::some(v) => v,
               option::none => ident
             };
@@ -248,7 +248,7 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
         let cmetas = metas_with(dep.vers, @~"vers", ~[]);
         debug!{"resolving dep crate %s ver: %s hash: %s",
                *dep.name, *dep.vers, *dep.hash};
-        alt existing_match(e, metas_with_ident(cname, cmetas), *dep.hash) {
+        match existing_match(e, metas_with_ident(cname, cmetas), *dep.hash) {
           some(local_cnum) => {
             debug!{"already have it"};
             // We've already seen this crate

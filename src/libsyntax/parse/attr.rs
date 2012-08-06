@@ -29,7 +29,7 @@ impl parser_attr of parser_attr for parser {
         -> attr_or_ext
     {
         let expect_item_next = vec::is_not_empty(first_item_attrs);
-        alt self.token {
+        match self.token {
           token::POUND => {
             let lo = self.span.lo;
             if self.look_ahead(1u) == token::LBRACKET {
@@ -57,7 +57,7 @@ impl parser_attr of parser_attr for parser {
     fn parse_outer_attributes() -> ~[ast::attribute] {
         let mut attrs: ~[ast::attribute] = ~[];
         loop {
-            alt copy self.token {
+            match copy self.token {
               token::POUND => {
                 if self.look_ahead(1u) != token::LBRACKET {
                     break;
@@ -106,7 +106,7 @@ impl parser_attr of parser_attr for parser {
         let mut inner_attrs: ~[ast::attribute] = ~[];
         let mut next_outer_attrs: ~[ast::attribute] = ~[];
         loop {
-            alt copy self.token {
+            match copy self.token {
               token::POUND => {
                 if self.look_ahead(1u) != token::LBRACKET {
                     // This is an extension
@@ -146,7 +146,7 @@ impl parser_attr of parser_attr for parser {
     fn parse_meta_item() -> @ast::meta_item {
         let lo = self.span.lo;
         let ident = self.parse_ident();
-        alt self.token {
+        match self.token {
           token::EQ => {
             self.bump();
             let lit = self.parse_lit();
@@ -172,7 +172,7 @@ impl parser_attr of parser_attr for parser {
     }
 
     fn parse_optional_meta() -> ~[@ast::meta_item] {
-        alt self.token {
+        match self.token {
           token::LPAREN => return self.parse_meta_seq(),
           _ => return ~[]
         }

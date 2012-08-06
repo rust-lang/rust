@@ -5,12 +5,12 @@ import base::get_insn_ctxt;
 fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
     let _icx = cx.insn_ctxt(~"trans_lit");
-    alt lit.node {
+    match lit.node {
       ast::lit_int(i, t) => C_integral(T_int_ty(cx, t), i as u64, True),
       ast::lit_uint(u, t) => C_integral(T_uint_ty(cx, t), u, False),
       ast::lit_int_unsuffixed(i) => {
         let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
-        alt ty::get(lit_int_ty).struct {
+        match ty::get(lit_int_ty).struct {
           ty::ty_int(t) => {
             C_integral(T_int_ty(cx, t), i as u64, True)
           }
@@ -45,7 +45,7 @@ fn const_vec_and_sz(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
 
 fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt(~"const_expr");
-    alt e.node {
+    match e.node {
       ast::expr_lit(lit) => consts::const_lit(cx, e, *lit),
       ast::expr_binary(b, e1, e2) => {
         let te1 = const_expr(cx, e1);
@@ -58,7 +58,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         let ty = ty::expr_ty(cx.tcx, e1);
         let is_float = ty::type_is_fp(ty);
         let signed = ty::type_is_signed(ty);
-        return alt b {
+        return match b {
           ast::add   => {
             if is_float { llvm::LLVMConstFAdd(te1, te2) }
             else        { llvm::LLVMConstAdd(te1, te2) }
@@ -103,7 +103,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         let te = const_expr(cx, e);
         let ty = ty::expr_ty(cx.tcx, e);
         let is_float = ty::type_is_fp(ty);
-        return alt u {
+        return match u {
           ast::box(_)  |
           ast::uniq(_) |
           ast::deref   => cx.sess.span_bug(e.span,
@@ -119,7 +119,9 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         let ety = ty::expr_ty(cx.tcx, e), llty = type_of::type_of(cx, ety);
         let basety = ty::expr_ty(cx.tcx, base);
         let v = const_expr(cx, base);
-        alt check (base::cast_type_kind(basety), base::cast_type_kind(ety)) {
+        match check (base::cast_type_kind(basety),
+                     base::cast_type_kind(ety)) {
+
           (base::cast_integral, base::cast_integral) => {
             let s = if ty::type_is_signed(basety) { True } else { False };
             llvm::LLVMConstIntCast(v, llty, s)
@@ -162,9 +164,9 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         const_expr(cx, e)
       }
       ast::expr_vstore(sub, ast::vstore_slice(_)) => {
-        alt sub.node {
+        match sub.node {
           ast::expr_lit(lit) => {
-            alt lit.node {
+            match lit.node {
               ast::lit_str(*) => { const_expr(cx, sub) }
               _ => { cx.sess.span_bug(e.span,
                                       ~"bad const-slice lit") }
@@ -186,11 +188,11 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         }
       }
       ast::expr_path(path) => {
-        alt cx.tcx.def_map.find(e.id) {
+        match cx.tcx.def_map.find(e.id) {
           some(ast::def_const(def_id)) => {
             // Don't know how to handle external consts
             assert ast_util::is_local(def_id);
-            alt cx.tcx.items.get(def_id.node) {
+            match cx.tcx.items.get(def_id.node) {
               ast_map::node_item(@{
                 node: ast::item_const(_, subexpr), _
               }, _) => {

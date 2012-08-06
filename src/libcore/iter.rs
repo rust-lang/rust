@@ -134,8 +134,8 @@ fn repeat(times: uint, blk: fn() -> bool) {
 }
 
 fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
-    alt do foldl::<A,option<A>,IA>(self, none) |a, b| {
-        alt a {
+    match do foldl::<A,option<A>,IA>(self, none) |a, b| {
+        match a {
           some(a_) if a_ < b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move
@@ -150,8 +150,8 @@ fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
 }
 
 fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
-    alt do foldl::<A,option<A>,IA>(self, none) |a, b| {
-        alt a {
+    match do foldl::<A,option<A>,IA>(self, none) |a, b| {
+        match a {
           some(a_) if a_ > b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move.

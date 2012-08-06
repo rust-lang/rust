@@ -107,7 +107,7 @@ type item_info = (ident, item_, option<~[attribute]>);
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr {
-    {$p:expr} => { alt copy $p.token {
+    {$p:expr} => { match copy $p.token {
       INTERPOLATED(token::nt_expr(e)) => {
         $p.bump();
         return pexpr(e);
@@ -122,19 +122,19 @@ macro_rules! maybe_whole_expr {
 }
 
 macro_rules! maybe_whole {
-    {$p:expr, $constructor:ident} => { alt copy $p.token {
+    {$p:expr, $constructor:ident} => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return x; }
       _ => ()
     }} ;
-    {deref $p:expr, $constructor:ident} => { alt copy $p.token {
+    {deref $p:expr, $constructor:ident} => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return *x; }
       _ => ()
     }} ;
-    {some $p:expr, $constructor:ident} => { alt copy $p.token {
+    {some $p:expr, $constructor:ident} => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return some(x); }
       _ => ()
     }} ;
-    {pair_empty $p:expr, $constructor:ident} => { alt copy $p.token {
+    {pair_empty $p:expr, $constructor:ident} => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return (~[], x); }
       _ => ()
     }}
@@ -284,7 +284,7 @@ class parser {
             debug!{"parse_trait_methods(): trait method signature ends in \
                     `%s`",
                    token_to_str(p.reader, p.token)};
-            alt p.token {
+            match p.token {
               token::SEMI => {
                 p.bump();
                 debug!{"parse_trait_methods(): parsing required method"};
@@ -356,7 +356,7 @@ class parser {
     }
 
     fn region_from_name(s: option<@~str>) -> @region {
-        let r = alt s {
+        let r = match s {
           some (string) => re_named(string),
           none => re_anon
         };
@@ -368,7 +368,7 @@ class parser {
     fn parse_region() -> @region {
         self.expect(token::BINOP(token::AND));
 
-        alt copy self.token {
+        match copy self.token {
           token::IDENT(sid, _) => {
             self.bump();
             let n = self.get_str(sid);
@@ -383,7 +383,7 @@ class parser {
     // Parses something like "&x/" (note the trailing slash)
     fn parse_region_with_sep() -> @region {
         let name =
-            alt copy self.token {
+            match copy self.token {
               token::IDENT(sid, _) => {
                 if self.look_ahead(1u) == token::BINOP(token::SLASH) {
                     self.bump(); self.bump();
@@ -402,7 +402,7 @@ class parser {
 
         let lo = self.span.lo;
 
-        alt self.maybe_parse_dollar_mac() {
+        match self.maybe_parse_dollar_mac() {
           some(e) => {
             return @{id: self.get_id(),
                   node: ty_mac(spanned(lo, self.span.hi, e)),
@@ -471,7 +471,7 @@ class parser {
 
         let sp = mk_sp(lo, self.last_span.hi);
         return @{id: self.get_id(),
-              node: alt self.maybe_parse_fixed_vstore() {
+              node: match self.maybe_parse_fixed_vstore() {
                 // Consider a fixed vstore suffix (/N or /_)
                 none => t,
                 some(v) => {
@@ -542,11 +542,11 @@ class parser {
     }
 
     fn maybe_parse_dollar_mac() -> option<mac_> {
-        alt copy self.token {
+        match copy self.token {
           token::DOLLAR => {
             let lo = self.span.lo;
             self.bump();
-            alt copy self.token {
+            match copy self.token {
               token::LIT_INT_UNSUFFIXED(num) => {
                 self.bump();
                 some(mac_var(num as uint))
@@ -570,7 +570,7 @@ class parser {
     fn maybe_parse_fixed_vstore() -> option<option<uint>> {
         if self.token == token::BINOP(token::SLASH) {
             self.bump();
-            alt copy self.token {
+            match copy self.token {
               token::UNDERSCORE => {
                 self.bump(); some(none)
               }
@@ -585,7 +585,7 @@ class parser {
     }
 
     fn lit_from_token(tok: token::token) -> lit_ {
-        alt tok {
+        match tok {
           token::LIT_INT(i, it) => lit_int(i, it),
           token::LIT_UINT(u, ut) => lit_uint(u, ut),
           token::LIT_INT_UNSUFFIXED(i) => lit_int_unsuffixed(i),
@@ -733,7 +733,7 @@ class parser {
     }
 
     fn to_expr(e: pexpr) -> @expr {
-        alt e.node {
+        match e.node {
           expr_tup(es) if vec::len(es) == 1u => es[0u],
           _ => *e
         }
@@ -746,7 +746,7 @@ class parser {
 
         let mut ex: expr_;
 
-        alt self.maybe_parse_dollar_mac() {
+        match self.maybe_parse_dollar_mac() {
           some(x) => return pexpr(self.mk_mac_expr(lo, self.span.hi, x)),
           _ => ()
         }
@@ -794,11 +794,11 @@ class parser {
             return pexpr(self.parse_while_expr());
         } else if self.eat_keyword(~"loop") {
             return pexpr(self.parse_loop_expr());
-        } else if self.eat_keyword(~"alt") || self.eat_keyword(~"match") {
+        } else if self.eat_keyword(~"match") {
             return pexpr(self.parse_alt_expr());
         } else if self.eat_keyword(~"fn") {
             let proto = self.parse_fn_ty_proto();
-            alt proto {
+            match proto {
               proto_bare => self.fatal(~"fn expr are deprecated, use fn@"),
               _ => { /* fallthrough */ }
             }
@@ -893,7 +893,7 @@ class parser {
             /* `!`, as an operator, is prefix, so we know this isn't that */
             if self.token == token::NOT {
                 self.bump();
-                let tts = alt self.token {
+                let tts = match self.token {
                   token::LPAREN | token::LBRACE | token::LBRACKET => {
                     let ket = token::flip_delimiter(self.token);
                     self.parse_unspanned_seq(copy self.token, ket,
@@ -948,9 +948,9 @@ class parser {
 
         // Vstore is legal following expr_lit(lit_str(...)) and expr_vec(...)
         // only.
-        alt ex {
+        match ex {
           expr_lit(@{node: lit_str(_), span: _}) |
-          expr_vec(_, _)  => alt self.maybe_parse_fixed_vstore() {
+          expr_vec(_, _)  => match self.maybe_parse_fixed_vstore() {
             none => (),
             some(v) => {
                 hi = self.span.hi;
@@ -976,7 +976,7 @@ class parser {
     }
 
     fn parse_syntax_ext_naked(lo: uint) -> @expr {
-        alt self.token {
+        match self.token {
           token::IDENT(_, _) => (),
           _ => self.fatal(~"expected a syntax expander name")
         }
@@ -1003,7 +1003,7 @@ class parser {
             let lo = self.span.lo;
             let mut depth = 1u;
             while (depth > 0u) {
-                alt (self.token) {
+                match (self.token) {
                   token::LBRACE => depth += 1u,
                   token::RBRACE => depth -= 1u,
                   token::EOF => self.fatal(~"unexpected EOF in macro body"),
@@ -1033,7 +1033,7 @@ class parser {
         loop {
             // expr.f
             if self.eat(token::DOT) {
-                alt copy self.token {
+                match copy self.token {
                   token::IDENT(i, _) => {
                     hi = self.span.hi;
                     self.bump();
@@ -1051,7 +1051,7 @@ class parser {
                 again;
             }
             if self.expr_is_complete(e) { break; }
-            alt copy self.token {
+            match copy self.token {
               // expr(...)
               token::LPAREN if self.permits_call() => {
                 let es = self.parse_unspanned_seq(
@@ -1103,7 +1103,7 @@ class parser {
         maybe_whole!{deref self, nt_tt};
 
         fn parse_tt_tok(p: parser, delim_ok: bool) -> token_tree {
-            alt p.token {
+            match p.token {
               token::RPAREN | token::RBRACE | token::RBRACKET
               if !delim_ok => {
                 p.fatal(~"incorrect close delimiter: `"
@@ -1134,7 +1134,7 @@ class parser {
             return res;
         }
 
-        return alt self.token {
+        return match self.token {
           token::LPAREN | token::LBRACE | token::LBRACKET => {
             let ket = token::flip_delimiter(self.token);
             tt_delim(vec::append(
@@ -1154,7 +1154,7 @@ class parser {
         // the interpolation of matchers
         maybe_whole!{self, nt_matchers};
         let name_idx = @mut 0u;
-        return alt self.token {
+        return match self.token {
           token::LBRACE | token::LPAREN | token::LBRACKET => {
             self.parse_matcher_subseq(name_idx, copy self.token,
                                       token::flip_delimiter(self.token))
@@ -1222,7 +1222,7 @@ class parser {
         let mut hi;
 
         let mut ex;
-        alt copy self.token {
+        match copy self.token {
           token::NOT => {
             self.bump();
             let e = self.to_expr(self.parse_prefix_expr());
@@ -1231,7 +1231,7 @@ class parser {
             ex = expr_unary(not, e);
           }
           token::BINOP(b) => {
-            alt b {
+            match b {
               token::MINUS => {
                 self.bump();
                 let e = self.to_expr(self.parse_prefix_expr());
@@ -1251,7 +1251,7 @@ class parser {
                 let e = self.to_expr(self.parse_prefix_expr());
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-evec
-                ex = alt e.node {
+                ex = match e.node {
                   expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
                   if m == m_imm => {
                     expr_vstore(e, vstore_slice(self.region_from_name(none)))
@@ -1268,7 +1268,7 @@ class parser {
             let e = self.to_expr(self.parse_prefix_expr());
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
-            ex = alt e.node {
+            ex = match e.node {
               expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
               if m == m_imm => expr_vstore(e, vstore_box),
               _ => expr_unary(box(m), e)
@@ -1280,7 +1280,7 @@ class parser {
             let e = self.to_expr(self.parse_prefix_expr());
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-evec
-            ex = alt e.node {
+            ex = match e.node {
               expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
               if m == m_imm => expr_vstore(e, vstore_uniq),
               _ => expr_unary(uniq(m), e)
@@ -1311,7 +1311,7 @@ class parser {
             return lhs;
         }
         let cur_opt   = token_to_binop(peeked);
-        alt cur_opt {
+        match cur_opt {
           some(cur_op) => {
             let cur_prec = operator_prec(cur_op);
             if cur_prec > min_prec {
@@ -1338,7 +1338,7 @@ class parser {
     fn parse_assign_expr() -> @expr {
         let lo = self.span.lo;
         let lhs = self.parse_binops();
-        alt copy self.token {
+        match copy self.token {
           token::EQ => {
             self.bump();
             let rhs = self.parse_expr();
@@ -1348,7 +1348,7 @@ class parser {
             self.bump();
             let rhs = self.parse_expr();
             let mut aop;
-            alt op {
+            match op {
               token::PLUS => aop = add,
               token::MINUS => aop = subtract,
               token::STAR => aop = mul,
@@ -1412,7 +1412,7 @@ class parser {
     fn parse_lambda_block_expr() -> @expr {
         self.parse_lambda_expr_(
             || {
-                alt self.token {
+                match self.token {
                   token::BINOP(token::OR) | token::OROR => {
                     self.parse_fn_block_decl()
                   }
@@ -1481,7 +1481,7 @@ class parser {
         // Turn on the restriction to stop at | or || so we can parse
         // them as the lambda arguments
         let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
-        alt e.node {
+        match e.node {
           expr_call(f, args, false) => {
             let block = self.parse_lambda_block_expr();
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
@@ -1608,7 +1608,7 @@ class parser {
     }
 
     fn parse_initializer() -> option<initializer> {
-        alt self.token {
+        match self.token {
           token::EQ => {
             self.bump();
             return some({op: init_assign, expr: self.parse_expr()});
@@ -1645,14 +1645,14 @@ class parser {
         let lo = self.span.lo;
         let mut hi = self.span.hi;
         let mut pat;
-        alt self.token {
+        match self.token {
           token::UNDERSCORE => { self.bump(); pat = pat_wild; }
           token::AT => {
             self.bump();
             let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
             // HACK: parse @"..." as a literal of a vstore @str
-            pat = alt sub.node {
+            pat = match sub.node {
               pat_lit(e@@{
                 node: expr_lit(@{node: lit_str(_), span: _}), _
               }) => {
@@ -1669,7 +1669,7 @@ class parser {
             let sub = self.parse_pat(refutable);
             hi = sub.span.hi;
             // HACK: parse ~"..." as a literal of a vstore ~str
-            pat = alt sub.node {
+            pat = match sub.node {
               pat_lit(e@@{
                 node: expr_lit(@{node: lit_str(_), span: _}), _
               }) => {
@@ -1775,7 +1775,7 @@ class parser {
                 }
 
                 if is_plain_ident(self.token) &&
-                    alt self.look_ahead(1) {
+                    match self.look_ahead(1) {
                       token::LPAREN | token::LBRACKET | token::LT => {
                         false
                       }
@@ -1794,8 +1794,8 @@ class parser {
                     hi = enum_path.span.hi;
                     let mut args: ~[@pat] = ~[];
                     let mut star_pat = false;
-                    alt self.token {
-                      token::LPAREN => alt self.look_ahead(1u) {
+                    match self.token {
+                      token::LPAREN => match self.look_ahead(1u) {
                         token::BINOP(token::STAR) => {
                             // This is a "top constructor only" pat
                               self.bump(); self.bump();
@@ -1890,7 +1890,7 @@ class parser {
             return @spanned(lo, decl.span.hi, stmt_decl(decl, self.get_id()));
         } else {
             let mut item_attrs;
-            alt self.parse_outer_attrs_or_ext(first_item_attrs) {
+            match self.parse_outer_attrs_or_ext(first_item_attrs) {
               none => item_attrs = ~[],
               some(left(attrs)) => item_attrs = attrs,
               some(right(ext)) => {
@@ -1901,7 +1901,7 @@ class parser {
 
             let item_attrs = vec::append(first_item_attrs, item_attrs);
 
-            alt self.parse_item(item_attrs) {
+            match self.parse_item(item_attrs) {
               some(i) => {
                 let mut hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -1993,16 +1993,16 @@ class parser {
         }
 
         while self.token != token::RBRACE {
-            alt self.token {
+            match self.token {
               token::SEMI => {
                 self.bump(); // empty
               }
               _ => {
                 let stmt = self.parse_stmt(initial_attrs);
                 initial_attrs = ~[];
-                alt stmt.node {
+                match stmt.node {
                   stmt_expr(e, stmt_id) => { // Expression without semicolon:
-                    alt self.token {
+                    match self.token {
                       token::SEMI => {
                         self.bump();
                         push(stmts,
@@ -2086,7 +2086,7 @@ class parser {
     }
 
     fn is_self_ident() -> bool {
-        alt self.token {
+        match self.token {
             token::IDENT(sid, false) if ~"self" == *self.get_str(sid) => true,
             _ => false
         }
@@ -2111,7 +2111,7 @@ class parser {
         // backwards compatible.
         let lo = self.span.lo;
         let self_ty;
-        alt copy self.token {
+        match copy self.token {
             token::BINOP(token::AND) => {
                 // We need to make sure it isn't a mode.
                 self.bump();
@@ -2126,10 +2126,10 @@ class parser {
 
                     // Parse an explicit region, if possible.
                     let region_name;
-                    alt copy self.token {
+                    match copy self.token {
                         token::BINOP(token::SLASH) => {
                             self.bump();
-                            alt copy self.token {
+                            match copy self.token {
                                 token::IDENT(sid, false) => {
                                     self.bump();
                                     region_name = some(self.get_str(sid));
@@ -2174,7 +2174,7 @@ class parser {
         // If we parsed a self type, expect a comma before the argument list.
         let args_or_capture_items;
         if self_ty != sty_by_ref {
-            alt copy self.token {
+            match copy self.token {
                 token::COMMA => {
                     self.bump();
                     let sep = seq_sep_trailing_disallowed(token::COMMA);
@@ -2265,7 +2265,7 @@ class parser {
     }
 
     fn parse_method_name() -> ident {
-        alt copy self.token {
+        match copy self.token {
           token::BINOP(op) => { self.bump(); @token::binop_to_str(op) }
           token::NOT => { self.bump(); @~"!" }
           token::LBRACKET => {
@@ -2387,7 +2387,7 @@ class parser {
             } else {
                 traits = ~[];
             };
-            ident = alt ident_old {
+            ident = match ident_old {
               some(name) => name,
               none => { self.expect_keyword(~"of"); fail; }
             };
@@ -2445,7 +2445,7 @@ class parser {
                                    codemap::span)> = none;
         let mut the_dtor : option<(blk, ~[attribute], codemap::span)> = none;
         while self.token != token::RBRACE {
-            alt self.parse_class_item(class_path) {
+            match self.parse_class_item(class_path) {
               ctor_decl(a_fn_decl, attrs, blk, s) => {
                 the_ctor = some((a_fn_decl, attrs, blk, s));
               }
@@ -2463,7 +2463,7 @@ class parser {
                     body: d_body},
              span: d_s}};
         self.bump();
-        alt the_ctor {
+        match the_ctor {
           some((ct_d, ct_attrs, ct_b, ct_s)) => {
             (class_name,
              item_class(ty_params, traits, ms, some({
@@ -2487,7 +2487,7 @@ class parser {
     }
 
     fn token_is_pound_or_doc_comment(++tok: token::token) -> bool {
-        alt tok {
+        match tok {
             token::POUND | token::DOC_COMMENT(_) => true,
             _ => false
         }
@@ -2582,7 +2582,7 @@ class parser {
                 first = false;
             }
             debug!{"parse_mod_items: parse_item(attrs=%?)", attrs};
-            alt self.parse_item(attrs) {
+            match self.parse_item(attrs) {
               some(i) => vec::push(items, i),
               _ => {
                 self.fatal(~"expected item but found `" +
@@ -2764,7 +2764,7 @@ class parser {
     }
 
     fn parse_fn_ty_proto() -> proto {
-        alt self.token {
+        match self.token {
           token::AT => {
             self.bump();
             proto_box
@@ -2784,7 +2784,7 @@ class parser {
     }
 
     fn fn_expr_lookahead(tok: token::token) -> bool {
-        alt tok {
+        match tok {
           token::LPAREN | token::AT | token::TILDE | token::BINOP(_) => true,
           _ => false
         }
@@ -2846,7 +2846,7 @@ class parser {
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
             let id = self.parse_ident();
-            let tts = alt self.token {
+            let tts = match self.token {
               token::LPAREN | token::LBRACE | token::LBRACKET => {
                 let ket = token::flip_delimiter(self.token);
                 self.parse_unspanned_seq(copy self.token, ket,
@@ -2863,7 +2863,7 @@ class parser {
             (id, item_mac(m), none)
         } else { return none; };
         some(self.mk_item(lo, self.last_span.hi, ident, item_, visibility,
-                          alt extra_attrs {
+                          match extra_attrs {
                               some(as) => vec::append(attrs, as),
                               none => attrs
                           }))
@@ -2880,7 +2880,7 @@ class parser {
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
         debug!{"parsed view_path: %s", *first_ident};
-        alt self.token {
+        match self.token {
           token::EQ => {
             // x = foo::bar
             self.bump();
@@ -2901,7 +2901,7 @@ class parser {
             while self.token == token::MOD_SEP {
                 self.bump();
 
-                alt copy self.token {
+                match copy self.token {
 
                   token::IDENT(i, _) => {
                     self.bump();
@@ -3004,7 +3004,7 @@ class parser {
     }
 
     fn parse_str() -> @~str {
-        alt copy self.token {
+        match copy self.token {
           token::LIT_STR(s) => { self.bump(); self.get_str(s) }
           _ => self.fatal(~"expected string literal")
         }
@@ -3035,7 +3035,7 @@ class parser {
                 self.expect_keyword(~"module");
             }
             let id = self.parse_ident();
-            alt self.token {
+            match self.token {
               // mod x = "foo.rs";
               token::SEMI => {
                 let mut hi = self.span.hi;

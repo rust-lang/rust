@@ -16,7 +16,7 @@ trait option_monad<A> {
 
 impl monad<A> of option_monad<A> for option<A> {
     fn bind<B>(f: fn(A) -> option<B>) -> option<B> {
-        alt self {
+        match self {
           some(a) => { f(a) }
           none => { none }
         }

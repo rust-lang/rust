@@ -19,7 +19,7 @@ fn main() {
     let iotask = uv::global_loop::get();
     
     pipes::spawn_service(oneshot::init, |p| { 
-        alt try_recv(p) {
+        match try_recv(p) {
           some(*) => { fail }
           none => { }
         }

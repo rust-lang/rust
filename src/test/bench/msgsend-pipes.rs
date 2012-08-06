@@ -26,7 +26,7 @@ fn server(requests: port_set<request>, responses: pipes::chan<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {
-        alt requests.try_recv() {
+        match requests.try_recv() {
           some(get_count) => { responses.send(copy count); }
           some(bytes(b)) => {
             //error!{"server: received %? bytes", b};

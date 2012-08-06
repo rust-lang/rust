@@ -12,7 +12,7 @@ impl public_methods for borrowck_ctxt {
         let lc = loan_ctxt_(@{bccx: self,
                               scope_region: scope_region,
                               loans: @dvec()});
-        alt lc.loan(cmt, mutbl) {
+        match lc.loan(cmt, mutbl) {
           ok(()) => {ok(lc.loans)}
           err(e) => {err(e)}
         }
@@ -70,7 +70,7 @@ impl loan_methods for loan_ctxt {
                 ~"loan() called with non-lendable value");
         }
 
-        alt cmt.cat {
+        match cmt.cat {
           cat_binding(_) | cat_rvalue | cat_special(_) => {
             // should never be loanable
             self.bccx.tcx.sess.span_bug(
@@ -131,7 +131,7 @@ impl loan_methods for loan_ctxt {
     fn loan_stable_comp(cmt: cmt,
                         cmt_base: cmt,
                         req_mutbl: ast::mutability) -> bckres<()> {
-        let base_mutbl = alt req_mutbl {
+        let base_mutbl = match req_mutbl {
           m_imm => m_imm,
           m_const | m_mutbl => m_const
         };

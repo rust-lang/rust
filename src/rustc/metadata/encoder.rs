@@ -101,7 +101,7 @@ fn encode_named_def_id(ebml_w: ebml::writer, name: ident, id: def_id) {
 
 fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
     do ebml_w.wr_tag(tag_class_mut) {
-        let val = alt mt {
+        let val = match mt {
           class_immutable => 'i',
           class_mutable => 'm'
         };
@@ -145,10 +145,10 @@ fn encode_foreign_module_item_paths(ebml_w: ebml::writer, nmod: foreign_mod,
 fn encode_class_item_paths(ebml_w: ebml::writer,
      items: ~[@class_member], path: ~[ident], &index: ~[entry<~str>]) {
     for items.each |it| {
-     alt ast_util::class_member_visibility(it) {
+     match ast_util::class_member_visibility(it) {
           private => again,
           public | inherited => {
-              let (id, ident) = alt it.node {
+              let (id, ident) = match it.node {
                  instance_var(v, _, _, vid, _) => (vid, v),
                  class_method(it) => (it.id, it.ident)
               };
@@ -168,7 +168,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
         if !ast_util::is_item_impl(it) {
             add_to_index(ebml_w, path, index, it.ident);
         }
-        alt it.node {
+        match it.node {
           item_const(_, _) => {
             encode_named_def_id(ebml_w, it.ident, local_def(it.id));
           }
@@ -205,7 +205,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 // class and for its ctor
                 add_to_index(ebml_w, path, index, it.ident);
 
-                alt m_ctor {
+                match m_ctor {
                     none => {
                         // Nothing to do.
                     }
@@ -317,7 +317,7 @@ fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
 
 fn encode_symbol(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    let sym = alt ecx.item_symbols.find(id) {
+    let sym = match ecx.item_symbols.find(id) {
       some(x) => x,
       none => {
         ecx.diag.handler().bug(
@@ -382,7 +382,7 @@ fn encode_path(ebml_w: ebml::writer,
                path: ast_map::path,
                name: ast_map::path_elt) {
     fn encode_path_elt(ebml_w: ebml::writer, elt: ast_map::path_elt) {
-        let (tag, name) = alt elt {
+        let (tag, name) = match elt {
           ast_map::path_mod(name) => (tag_path_elt_mod, name),
           ast_map::path_name(name) => (tag_path_elt_name, name)
         };
@@ -416,7 +416,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
                ast_util::is_exported(ident, md)};
 
         ebml_w.start_tag(tag_mod_impl);
-        alt ecx.tcx.items.find(did.node) {
+        match ecx.tcx.items.find(did.node) {
           some(ast_map::node_item(it@@{node: cl@item_class(*),_},_)) => {
         /* If did stands for a trait
         ref, we need to map it to its parent class */
@@ -436,7 +436,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
 }
 
 fn encode_visibility(ebml_w: ebml::writer, visibility: visibility) {
-    encode_family(ebml_w, alt visibility {
+    encode_family(ebml_w, match visibility {
         public => 'g',
         private => 'j',
         inherited => 'N'
@@ -444,7 +444,7 @@ fn encode_visibility(ebml_w: ebml::writer, visibility: visibility) {
 }
 
 fn encode_region(ebml_w: ebml::writer, region: region) {
-    alt region.node {
+    match region.node {
         re_anon => {
             ebml_w.wr_tagged_str(tag_item_trait_method_self_ty, ~"");
         }
@@ -459,7 +459,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
 
     // Encode the base self type.
     let ch;
-    alt self_type {
+    match self_type {
         sty_by_ref =>       { ch = 'r' as u8; }
         sty_value =>        { ch = 'v' as u8; }
         sty_region(_, _) => { ch = '&' as u8; }
@@ -469,7 +469,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
     ebml_w.writer.write(&[ ch ]);
 
     // Encode mutability.
-    alt self_type {
+    match self_type {
         sty_by_ref | sty_value => { /* No-op. */ }
         sty_region(_, m_imm) | sty_box(m_imm) | sty_uniq(m_imm) => {
             ebml_w.writer.write(&[ 'i' as u8 ]);
@@ -483,7 +483,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
     }
 
     // Encode the region.
-    alt self_type {
+    match self_type {
         sty_region(region, _) => {
             encode_region(ebml_w, *region);
         }
@@ -508,7 +508,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
     for items.each |ci| {
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
-      alt ci.node {
+      match ci.node {
         instance_var(nm, _, mt, id, vis) => {
           vec::push(*index, {val: id, pos: ebml_w.writer.tell()});
           vec::push(*global_index, {val: id, pos: ebml_w.writer.tell()});
@@ -523,7 +523,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
           ebml_w.end_tag();
         }
         class_method(m) => {
-           alt m.vis {
+           match m.vis {
               public | inherited => {
                 vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
                 vec::push(*global_index,
@@ -557,7 +557,7 @@ fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
                util::ppaux::ty_to_str(ecx.tcx, its_ty), id};
         encode_type(ecx, ebml_w, its_ty);
         encode_path(ebml_w, path, ast_map::path_name(ident));
-        alt item {
+        match item {
            some(it) => {
              ecx.encode_inlined_item(ecx, ebml_w, path, it);
            }
@@ -592,7 +592,7 @@ fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: ebml::writer,
 }
 
 fn purity_fn_family(p: purity) -> char {
-    alt p {
+    match p {
       unsafe_fn => 'u',
       pure_fn => 'p',
       impure_fn => 'f',
@@ -602,7 +602,7 @@ fn purity_fn_family(p: purity) -> char {
 
 
 fn should_inline(attrs: ~[attribute]) -> bool {
-    alt attr::find_inline_attr(attrs) {
+    match attr::find_inline_attr(attrs) {
         attr::ia_none | attr::ia_never  => false,
         attr::ia_hint | attr::ia_always => true
     }
@@ -614,7 +614,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
 
     let tcx = ecx.tcx;
     let must_write =
-        alt item.node {
+        match item.node {
           item_enum(_, _) | item_impl(*)
           | item_trait(*) | item_class(*) => true,
           _ => false
@@ -627,7 +627,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
     }
     let add_to_index = |copy ebml_w| add_to_index_(item, ebml_w, index);
 
-    alt item.node {
+    match item.node {
       item_const(_, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
@@ -719,7 +719,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
 
-        alt ctor {
+        match ctor {
             none => encode_family(ebml_w, 'S'),
             some(_) => encode_family(ebml_w, 'C')
         }
@@ -752,7 +752,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
            ebml_w.end_tag();
         }
         for ms.each |m| {
-           alt m.vis {
+           match m.vis {
               private => { /* do nothing */ }
               public | inherited => {
                 /* Write the info that's needed when viewing this class
@@ -823,7 +823,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_attributes(ebml_w, item.attrs);
         let mut i = 0u;
         for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
-            alt ms[i] {
+            match ms[i] {
               required(ty_m) => {
                 ebml_w.start_tag(tag_item_trait_method);
                 encode_name(ebml_w, mty.ident);
@@ -859,7 +859,7 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
     vec::push(*index, {val: nitem.id, pos: ebml_w.writer.tell()});
 
     ebml_w.start_tag(tag_items_data_item);
-    alt nitem.node {
+    match nitem.node {
       foreign_item_fn(fn_decl, tps) => {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, purity_fn_family(fn_decl.purity));
@@ -888,11 +888,11 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
         visit_expr: |_e, _cx, _v| { },
         visit_item: |i, cx, v, copy ebml_w| {
             visit::visit_item(i, cx, v);
-            alt check ecx.tcx.items.get(i.id) {
+            match check ecx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) => {
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
                 /* encode ctor, then encode items */
-                alt i.node {
+                match i.node {
                    item_class(tps, _, _, some(ctor), m_dtor) => {
                        debug!{"encoding info for ctor %s %d", *i.ident,
                               ctor.node.id};
@@ -913,7 +913,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
         },
         visit_foreign_item: |ni, cx, v, copy ebml_w| {
             visit::visit_foreign_item(ni, cx, v);
-            alt check ecx.tcx.items.get(ni.id) {
+            match check ecx.tcx.items.get(ni.id) {
               ast_map::node_foreign_item(_, abi, pt) => {
                 encode_info_for_foreign_item(ecx, ebml_w, ni,
                                              index, *pt, abi);
@@ -981,7 +981,7 @@ fn write_int(writer: io::writer, &&n: int) {
 }
 
 fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
-    alt mi.node {
+    match mi.node {
       meta_word(name) => {
         ebml_w.start_tag(tag_meta_item_word);
         ebml_w.start_tag(tag_meta_item_name);
@@ -990,7 +990,7 @@ fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
         ebml_w.end_tag();
       }
       meta_name_value(name, value) => {
-        alt value.node {
+        match value.node {
           lit_str(value) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
@@ -1064,7 +1064,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
             if *attr::get_attr_name(attr) != ~"link" {
                 attr
             } else {
-                alt attr.node.value.node {
+                match attr.node.value.node {
                   meta_list(n, l) => {
                     found_link_attr = true;;
                     synthesize_link_attr(ecx, l)

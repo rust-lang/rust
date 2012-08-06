@@ -7,7 +7,7 @@ export mk_pass;
 fn mk_pass() -> pass {
     pure fn by_score(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
         pure fn score(item: &doc::itemtag) -> int {
-            alt *item {
+            match *item {
               doc::consttag(_) => 0,
               doc::tytag(_) => 1,
               doc::enumtag(_) => 2,

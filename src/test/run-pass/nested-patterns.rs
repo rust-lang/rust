@@ -1,5 +1,5 @@
 fn main() {
-    alt {a: 10, b: @20} {
+    match {a: 10, b: @20} {
         x@{a, b: @20} => { assert x.a == 10; assert a == 10; }
         {b, _} => { fail; }
     }

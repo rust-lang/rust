@@ -30,14 +30,14 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
     for crate.node.module.items.each |crate_item| {
         if *crate_item.ident == ~"intrinsic" {
-            alt crate_item.node {
+            match crate_item.node {
               ast::item_mod(m) => {
                 for m.items.each |intrinsic_item| {
                     let def_id = { crate: ast::local_crate,
                                   node: intrinsic_item.id };
                     let substs = {self_r: none, self_ty: none, tps: ~[]};
 
-                    alt intrinsic_item.node {
+                    match intrinsic_item.node {
                       ast::item_trait(*) => {
                         let ty = ty::mk_trait(ccx.tcx, def_id, substs);
                         ccx.tcx.intrinsic_defs.insert
@@ -83,7 +83,7 @@ impl of ast_conv for @crate_ctxt {
         if id.crate != ast::local_crate {
             csearch::get_type(self.tcx, id)
         } else {
-            alt self.tcx.items.find(id.node) {
+            match self.tcx.items.find(id.node) {
               some(ast_map::node_item(item, _)) => {
                 ty_of_item(self, item)
               }
@@ -145,10 +145,10 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
 
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.contains_key(id);
-    alt check tcx.items.get(id) {
+    match check tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_trait(_, _, ms), _}, _) => {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
-            alt m {
+            match m {
               required(ty_m) => {
                 ty_of_ty_method(ccx, ty_m, rp)
               }
@@ -253,7 +253,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
         ensure_trait_methods(ccx, did.node);
     }
     for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
-        alt vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
+        match vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
           some({mty: impl_m, id, span}) => {
             if impl_m.purity != trait_m.purity {
                 ccx.tcx.sess.span_err(
@@ -271,13 +271,13 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
               // implementation in the trait itself.  If not, raise a
               // "missing method" error.
 
-              alt tcx.items.get(did.node) {
+              match tcx.items.get(did.node) {
                 ast_map::node_item(
                     @{node: ast::item_trait(_, _, trait_methods), _}, _) => {
                   let (_, provided_methods) =
                       split_trait_methods(trait_methods);
 
-                  alt vec::find(provided_methods, |provided_method|
+                  match vec::find(provided_methods, |provided_method|
                                 provided_method.ident == trait_m.ident) {
                     some(m) => {
                       // If there's a provided method with the name we
@@ -339,7 +339,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.contains_key(it.id);
     debug!{"convert: item %s with id %d rp %b", *it.ident, it.id, rp};
-    alt it.node {
+    match it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
       ast::item_enum(variants, ty_params) => {
@@ -449,7 +449,7 @@ fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
     // type of the foreign item. We simply write it into the node type
     // table.
     let tpt = ty_of_foreign_item(ccx, i);
-    alt i.node {
+    match i.node {
       ast::foreign_item_fn(_, _) => {
         write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
         ccx.tcx.tcache.insert(local_def(i.id), tpt);
@@ -494,11 +494,11 @@ fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref, rp: bool)
 
     let rscope = type_rscope(rp);
 
-    alt lookup_def_tcx(ccx.tcx, t.path.span, t.ref_id) {
+    match lookup_def_tcx(ccx.tcx, t.path.span, t.ref_id) {
       ast::def_ty(t_id) => {
         let tpt = astconv::ast_path_to_ty(ccx, rscope, t_id, t.path,
                                           t.ref_id);
-        alt ty::get(tpt.ty).struct {
+        match ty::get(tpt.ty).struct {
            ty::ty_trait(*) => {
               (t_id, tpt)
            }
@@ -514,12 +514,12 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
 
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
-    alt tcx.tcache.find(def_id) {
+    match tcx.tcache.find(def_id) {
       some(tpt) => return tpt,
       _ => {}
     }
     let rp = tcx.region_paramd_items.contains_key(it.id);
-    alt it.node {
+    match it.node {
       ast::item_const(t, _) => {
         let typ = ccx.to_ty(empty_rscope, t);
         let tpt = no_params(typ);
@@ -539,7 +539,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         return tpt;
       }
       ast::item_ty(t, tps) => {
-        alt tcx.tcache.find(local_def(it.id)) {
+        match tcx.tcache.find(local_def(it.id)) {
           some(tpt) => return tpt,
           none => { }
         }
@@ -592,7 +592,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
 
 fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
     -> ty::ty_param_bounds_and_ty {
-    alt it.node {
+    match it.node {
       ast::foreign_item_fn(fn_decl, params) => {
         return ty_of_foreign_fn_decl(ccx, fn_decl, params,
                                   local_def(it.id));
@@ -605,14 +605,14 @@ fn ty_param_bounds(ccx: @crate_ctxt,
     fn compute_bounds(ccx: @crate_ctxt,
                       param: ast::ty_param) -> ty::param_bounds {
         @do vec::flat_map(*param.bounds) |b| {
-            alt b {
+            match b {
               ast::bound_send => ~[ty::bound_send],
               ast::bound_copy => ~[ty::bound_copy],
               ast::bound_const => ~[ty::bound_const],
               ast::bound_owned => ~[ty::bound_owned],
               ast::bound_trait(t) => {
                 let ity = ast_ty_to_ty(ccx, empty_rscope, t);
-                alt ty::get(ity).struct {
+                match ty::get(ity).struct {
                   ty::ty_trait(*) => {
                     ~[ty::bound_trait(ity)]
                   }
@@ -629,7 +629,7 @@ fn ty_param_bounds(ccx: @crate_ctxt,
     }
 
     @do params.map |param| {
-        alt ccx.tcx.ty_param_bounds.find(param.id) {
+        match ccx.tcx.ty_param_bounds.find(param.id) {
           some(bs) => bs,
           none => {
             let bounds = compute_bounds(ccx, param);

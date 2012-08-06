@@ -98,9 +98,9 @@ class LanguageItemCollector {
     fn match_and_collect_meta_item(item_def_id: def_id,
                                    meta_item: meta_item) {
 
-        alt meta_item.node {
+        match meta_item.node {
             meta_name_value(key, literal) => {
-                alt literal.node {
+                match literal.node {
                     lit_str(value) => {
                         self.match_and_collect_item(item_def_id,
                                                     *key,
@@ -122,13 +122,13 @@ class LanguageItemCollector {
             return;    // Didn't match.
         }
 
-        alt self.item_refs.find(value) {
+        match self.item_refs.find(value) {
             none => {
                 // Didn't match.
             }
             some(item_ref) => {
                 // Check for duplicates.
-                alt copy *item_ref {
+                match copy *item_ref {
                     some(original_def_id)
                             if original_def_id != item_def_id => {
 
@@ -168,7 +168,7 @@ class LanguageItemCollector {
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {
             for each_path(crate_store, crate_number) |path_entry| {
                 let def_id;
-                alt path_entry.def_like {
+                match path_entry.def_like {
                     dl_def(def_ty(did)) => {
                         def_id = did;
                     }
@@ -189,7 +189,7 @@ class LanguageItemCollector {
 
     fn check_completeness() {
         for self.item_refs.each |key, item_ref| {
-            alt copy *item_ref {
+            match copy *item_ref {
                 none => {
                     self.session.err(fmt!{"no item found for `%s`", key});
                 }

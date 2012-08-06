@@ -26,7 +26,7 @@ enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
 fn anon_src() -> ~str { ~"<anon>" }
 
 fn source_name(input: input) -> ~str {
-    alt input {
+    match input {
       file_input(ifile) => ifile,
       str_input(_) => anon_src()
     }
@@ -34,7 +34,7 @@ fn source_name(input: input) -> ~str {
 
 fn default_configuration(sess: session, argv0: ~str, input: input) ->
    ast::crate_cfg {
-    let libc = alt sess.targ_cfg.os {
+    let libc = match sess.targ_cfg.os {
       session::os_win32 => ~"msvcrt.dll",
       session::os_macos => ~"libc.dylib",
       session::os_linux => ~"libc.so.6",
@@ -44,7 +44,7 @@ fn default_configuration(sess: session, argv0: ~str, input: input) ->
 
     let mk = attr::mk_name_value_item_str;
 
-    let (arch,wordsz) = alt sess.targ_cfg.arch {
+    let (arch,wordsz) = match sess.targ_cfg.arch {
       session::arch_x86 => (~"x86",~"32"),
       session::arch_x86_64 => (~"x86_64",~"64"),
       session::arch_arm => (~"arm",~"32")
@@ -99,7 +99,7 @@ enum input {
 
 fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
-    alt input {
+    match input {
       file_input(file) => {
         parse::parse_crate_from_file(file, cfg, sess.parse_sess)
       }
@@ -270,13 +270,13 @@ fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
 fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
-        alt node {
+        match node {
           pprust::node_expr(s, expr) => pprust::popen(s),
           _ => ()
         }
     }
     fn ann_typed_post(tcx: ty::ctxt, node: pprust::ann_node) {
-        alt node {
+        match node {
           pprust::node_expr(s, expr) => {
             pp::space(s.s);
             pp::word(s.s, ~"as");
@@ -288,7 +288,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
         }
     }
     fn ann_identified_post(node: pprust::ann_node) {
-        alt node {
+        match node {
           pprust::node_item(s, item) => {
             pp::space(s.s);
             pprust::synth_comment(s, int::to_str(item.id, 10u));
@@ -314,14 +314,14 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     // to collect comments and literals, and we need to support reading
     // from stdin, we're going to just suck the source into a string
     // so both the parser and pretty-printer can use it.
-    let upto = alt ppm {
+    let upto = match ppm {
       ppm_expanded | ppm_expanded_identified => cu_expand,
       ppm_typed => cu_typeck,
       _ => cu_parse
     };
     let {crate, tcx} = compile_upto(sess, cfg, input, upto, none);
 
-    let ann = alt ppm {
+    let ann = match ppm {
       ppm_typed => {
         {pre: ann_paren_for_expr,
          post: |a| ann_typed_post(option::get(tcx), a) }
@@ -371,21 +371,21 @@ fn get_arch(triple: ~str) -> option<session::arch> {
 
 fn build_target_config(sopts: @session::options,
                        demitter: diagnostic::emitter) -> @session::config {
-    let os = alt get_os(sopts.target_triple) {
+    let os = match get_os(sopts.target_triple) {
       some(os) => os,
       none => early_error(demitter, ~"unknown operating system")
     };
-    let arch = alt get_arch(sopts.target_triple) {
+    let arch = match get_arch(sopts.target_triple) {
       some(arch) => arch,
       none => early_error(demitter,
                           ~"unknown architecture: " + sopts.target_triple)
     };
-    let (int_type, uint_type, float_type) = alt arch {
+    let (int_type, uint_type, float_type) = match arch {
       session::arch_x86 => (ast::ty_i32, ast::ty_u32, ast::ty_f64),
       session::arch_x86_64 => (ast::ty_i64, ast::ty_u64, ast::ty_f64),
       session::arch_arm => (ast::ty_i32, ast::ty_u32, ast::ty_f64)
     };
-    let target_strs = alt arch {
+    let target_strs = match arch {
       session::arch_x86 => x86::get_target_strs(os),
       session::arch_x86_64 => x86_64::get_target_strs(os),
       session::arch_arm => x86::get_target_strs(os)
@@ -438,7 +438,7 @@ fn build_session_options(matches: getopts::matches,
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
             let lint_name = str::replace(lint_name, ~"-", ~"_");
-            alt lint_dict.find(lint_name) {
+            match lint_dict.find(lint_name) {
               none => {
                 early_error(demitter, fmt!{"unknown %s flag: %s",
                                            level_name, lint_name});
@@ -486,7 +486,7 @@ fn build_session_options(matches: getopts::matches,
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
     let save_temps = getopts::opt_present(matches, ~"save-temps");
-    alt output_type {
+    match output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
       link::output_type_llvm_assembly | link::output_type_assembly => (),
       _ => debugging_opts |= session::no_asm_comments
@@ -498,7 +498,7 @@ fn build_session_options(matches: getopts::matches,
             }
             2u
         } else if opt_present(matches, ~"opt-level") {
-            alt getopts::opt_str(matches, ~"opt-level") {
+            match getopts::opt_str(matches, ~"opt-level") {
               ~"0" => 0u,
               ~"1" => 1u,
               ~"2" => 2u,
@@ -510,7 +510,7 @@ fn build_session_options(matches: getopts::matches,
             }
         } else { 0u };
     let target =
-        alt target_opt {
+        match target_opt {
             none => host_triple(),
             some(s) => s
         };
@@ -577,7 +577,7 @@ fn build_session_(sopts: @session::options,
 }
 
 fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
-    alt name {
+    match name {
       ~"normal" => ppm_normal,
       ~"expanded" => ppm_expanded,
       ~"typed" => ppm_typed,
@@ -628,7 +628,7 @@ fn build_output_filenames(input: input,
 
 
     let obj_suffix =
-        alt sopts.output_type {
+        match sopts.output_type {
           link::output_type_none => ~"none",
           link::output_type_bitcode => ~"bc",
           link::output_type_assembly => ~"s",
@@ -637,20 +637,20 @@ fn build_output_filenames(input: input,
           link::output_type_object | link::output_type_exe => ~"o"
         };
 
-    alt ofile {
+    match ofile {
       none => {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
         // We want to toss everything after the final '.'
-        let dirname = alt odir {
+        let dirname = match odir {
           some(d) => d,
-          none => alt input {
+          none => match input {
             str_input(_) => os::getcwd(),
             file_input(ifile) => path::dirname(ifile)
           }
         };
 
-        let base_filename = alt input {
+        let base_filename = match input {
           file_input(ifile) => {
             let (path, _) = path::splitext(ifile);
             path::basename(path)
@@ -714,7 +714,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test() {
         let matches =
-            alt getopts::getopts(~[~"--test"], opts()) {
+            match getopts::getopts(~[~"--test"], opts()) {
               ok(m) => m,
               err(f) => fail ~"test_switch_implies_cfg_test: " +
                              getopts::fail_str(f)
@@ -730,7 +730,7 @@ mod test {
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
-            alt getopts::getopts(~[~"--test", ~"--cfg=test"], opts()) {
+            match getopts::getopts(~[~"--test", ~"--cfg=test"], opts()) {
               ok(m) => m,
               err(f) => {
                 fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +

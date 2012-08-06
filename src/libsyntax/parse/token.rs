@@ -102,7 +102,7 @@ enum nonterminal {
 }
 
 fn binop_to_str(o: binop) -> ~str {
-    alt o {
+    match o {
       PLUS => ~"+",
       MINUS => ~"-",
       STAR => ~"*",
@@ -117,7 +117,7 @@ fn binop_to_str(o: binop) -> ~str {
 }
 
 fn to_str(in: interner<@~str>, t: token) -> ~str {
-    alt t {
+    match t {
       EQ => ~"=",
       LT => ~"<",
       LE => ~"<=",
@@ -186,7 +186,7 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
       EOF => ~"<eof>",
       INTERPOLATED(nt) => {
         ~"an interpolated " +
-            alt nt {
+            match nt {
               nt_item(*) => ~"item",
               nt_block(*) => ~"block",
               nt_stmt(*) => ~"statement",
@@ -203,7 +203,7 @@ fn to_str(in: interner<@~str>, t: token) -> ~str {
 }
 
 pure fn can_begin_expr(t: token) -> bool {
-    alt t {
+    match t {
       LPAREN => true,
       LBRACE => true,
       LBRACKET => true,
@@ -234,7 +234,7 @@ pure fn can_begin_expr(t: token) -> bool {
 
 /// what's the opposite delimiter?
 fn flip_delimiter(&t: token::token) -> token::token {
-    alt t {
+    match t {
       token::LPAREN => token::RPAREN,
       token::LBRACE => token::RBRACE,
       token::LBRACKET => token::RBRACKET,
@@ -248,7 +248,7 @@ fn flip_delimiter(&t: token::token) -> token::token {
 
 
 fn is_lit(t: token) -> bool {
-    alt t {
+    match t {
       LIT_INT(_, _) => true,
       LIT_UINT(_, _) => true,
       LIT_INT_UNSUFFIXED(_) => true,
@@ -259,22 +259,22 @@ fn is_lit(t: token) -> bool {
 }
 
 pure fn is_ident(t: token) -> bool {
-    alt t { IDENT(_, _) => true, _ => false }
+    match t { IDENT(_, _) => true, _ => false }
 }
 
 pure fn is_ident_or_path(t: token) -> bool {
-    alt t {
+    match t {
       IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
       _ => false
     }
 }
 
 pure fn is_plain_ident(t: token) -> bool {
-    alt t { IDENT(_, false) => true, _ => false }
+    match t { IDENT(_, false) => true, _ => false }
 }
 
 pure fn is_bar(t: token) -> bool {
-    alt t { BINOP(OR) | OROR => true, _ => false }
+    match t { BINOP(OR) | OROR => true, _ => false }
 }
 
 /**
@@ -333,7 +333,7 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
 fn restricted_keyword_table() -> hashmap<~str, ()> {
     let words = str_hash();
     let keys = ~[
-        ~"alt", ~"again", ~"assert",
+        ~"again", ~"assert",
         ~"break",
         ~"check", ~"class", ~"const", ~"copy",
         ~"do", ~"drop",

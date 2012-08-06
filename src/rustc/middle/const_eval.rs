@@ -41,7 +41,7 @@ enum constness {
 }
 
 fn join(a: constness, b: constness) -> constness {
-    alt (a,b) {
+    match (a,b) {
       (integral_const, integral_const) => integral_const,
       (integral_const, general_const)
       | (general_const, integral_const)
@@ -58,13 +58,13 @@ fn classify(e: @expr,
             def_map: resolve3::DefMap,
             tcx: ty::ctxt) -> constness {
     let did = ast_util::local_def(e.id);
-    alt tcx.ccache.find(did) {
+    match tcx.ccache.find(did) {
       some(x) => x,
       none => {
         let cn =
-            alt e.node {
+            match e.node {
               ast::expr_lit(lit) => {
-                alt lit.node {
+                match lit.node {
                   ast::lit_str(*) |
                   ast::lit_float(*) => general_const,
                   _ => integral_const
@@ -87,7 +87,7 @@ fn classify(e: @expr,
               }
 
               ast::expr_vstore(e, vstore) => {
-                alt vstore {
+                match vstore {
                   ast::vstore_fixed(_) |
                   ast::vstore_slice(_) => classify(e, def_map, tcx),
                   ast::vstore_uniq |
@@ -134,7 +134,7 @@ fn classify(e: @expr,
               // FIXME: #1272, we can probably do something CCI-ish
               // surrounding nonlocal constants. But we don't yet.
               ast::expr_path(_) => {
-                alt def_map.find(e.id) {
+                match def_map.find(e.id) {
                   some(ast::def_const(def_id)) => {
                     if ast_util::is_local(def_id) {
                         let ty = ty::expr_ty(tcx, e);
@@ -191,24 +191,24 @@ enum const_val {
 fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     import middle::ty;
     fn fromb(b: bool) -> const_val { const_int(b as i64) }
-    alt check e.node {
+    match check e.node {
       expr_unary(neg, inner) => {
-        alt check eval_const_expr(tcx, inner) {
+        match check eval_const_expr(tcx, inner) {
           const_float(f) => const_float(-f),
           const_int(i) => const_int(-i),
           const_uint(i) => const_uint(-i)
         }
       }
       expr_unary(not, inner) => {
-        alt check eval_const_expr(tcx, inner) {
+        match check eval_const_expr(tcx, inner) {
           const_int(i) => const_int(!i),
           const_uint(i) => const_uint(!i)
         }
       }
       expr_binary(op, a, b) => {
-        alt check (eval_const_expr(tcx, a), eval_const_expr(tcx, b)) {
+        match check (eval_const_expr(tcx, a), eval_const_expr(tcx, b)) {
           (const_float(a), const_float(b)) => {
-            alt check op {
+            match check op {
               add => const_float(a + b),
               subtract => const_float(a - b),
               mul => const_float(a * b),
@@ -223,7 +223,7 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
             }
           }
           (const_int(a), const_int(b)) => {
-            alt check op {
+            match check op {
               add => const_int(a + b),
               subtract => const_int(a - b),
               mul => const_int(a * b),
@@ -243,7 +243,7 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
             }
           }
           (const_uint(a), const_uint(b)) => {
-            alt check op {
+            match check op {
               add => const_uint(a + b),
               subtract => const_uint(a - b),
               mul => const_uint(a * b),
@@ -264,13 +264,13 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
           }
           // shifts can have any integral type as their rhs
           (const_int(a), const_uint(b)) => {
-            alt check op {
+            match check op {
               shl => const_int(a << b),
               shr => const_int(a >> b)
             }
           }
           (const_uint(a), const_int(b)) => {
-            alt check op {
+            match check op {
               shl => const_uint(a << b),
               shr => const_uint(a >> b)
             }
@@ -280,23 +280,23 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
       expr_cast(base, _) => {
         let ety = ty::expr_ty(tcx, e);
         let base = eval_const_expr(tcx, base);
-        alt check ty::get(ety).struct {
+        match check ty::get(ety).struct {
           ty::ty_float(_) => {
-            alt check base {
+            match check base {
               const_uint(u) => const_float(u as f64),
               const_int(i) => const_float(i as f64),
               const_float(_) => base
             }
           }
           ty::ty_uint(_) => {
-            alt check base {
+            match check base {
               const_uint(_) => base,
               const_int(i) => const_uint(i as u64),
               const_float(f) => const_uint(f as u64)
             }
           }
           ty::ty_int(_) | ty::ty_bool => {
-            alt check base {
+            match check base {
               const_uint(u) => const_int(u as i64),
               const_int(_) => base,
               const_float(f) => const_int(f as i64)
@@ -311,7 +311,7 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
 }
 
 fn lit_to_const(lit: @lit) -> const_val {
-    alt lit.node {
+    match lit.node {
       lit_str(s) => const_str(*s),
       lit_int(n, _) => const_int(n),
       lit_uint(n, _) => const_uint(n),
@@ -323,7 +323,7 @@ fn lit_to_const(lit: @lit) -> const_val {
 }
 
 fn compare_const_vals(a: const_val, b: const_val) -> int {
-  alt (a, b) {
+  match (a, b) {
     (const_int(a), const_int(b)) => {
         if a == b {
             0

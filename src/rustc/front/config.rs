@@ -82,9 +82,9 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
 
 fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
    option<@ast::stmt> {
-    alt stmt.node {
+    match stmt.node {
       ast::stmt_decl(decl, _) => {
-        alt decl.node {
+        match decl.node {
           ast::decl_item(item) => {
             if item_in_cfg(cx, item) {
                 option::some(stmt)

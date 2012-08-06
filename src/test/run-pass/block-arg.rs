@@ -24,11 +24,11 @@ fn main() {
     if !do vec::any(v) |e| { float::is_positive(e) } {
         assert false;
     }
-    alt do vec::all(v) |e| { float::is_negative(e) } {
+    match do vec::all(v) |e| { float::is_negative(e) } {
         true => { fail ~"incorrect answer."; }
         false => { }
     }
-    alt 3 {
+    match 3 {
       _ if do vec::any(v) |e| { float::is_negative(e) } => {
       }
       _ => {

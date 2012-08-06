@@ -52,7 +52,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                        self: @ast::expr, mentry: typeck::method_map_entry)
     -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt(~"impl::trans_method_callee");
-    alt mentry.origin {
+    match mentry.origin {
       typeck::method_static(did) => {
         let {bcx, val} = trans_self_arg(bcx, self, mentry.derefs);
         {env: self_env(val, node_id_type(bcx, self.id), none)
@@ -60,7 +60,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
       }
       typeck::method_param({trait_id:iid, method_num:off,
                             param_num:p, bound_num:b}) => {
-        alt check bcx.fcx.param_substs {
+        match check bcx.fcx.param_substs {
           some(substs) => {
             trans_monomorphized_callee(bcx, callee_id, self, mentry.derefs,
                                        iid, off, p, b, substs)
@@ -83,7 +83,7 @@ fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                     name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        alt check ccx.tcx.items.get(impl_id.node) {
+        match check ccx.tcx.items.get(impl_id.node) {
           ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) => {
             method_from_methods(ms, name)
           }
@@ -101,7 +101,7 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
 fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
                          i_id: ast::def_id) -> uint {
     if m_id.crate == ast::local_crate {
-        alt check ccx.tcx.items.get(m_id.node) {
+        match check ccx.tcx.items.get(m_id.node) {
           ast_map::node_method(m, _, _) => vec::len(m.tps),
         }
     } else {
@@ -116,7 +116,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               n_param: uint, n_bound: uint,
                               substs: param_substs) -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt(~"impl::trans_monomorphized_callee");
-    alt find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
+    match find_vtable_in_fn_ctxt(substs, n_param, n_bound) {
       typeck::vtable_static(impl_did, impl_substs, sub_origins) => {
         let ccx = bcx.ccx();
         let mname = ty::trait_methods(ccx.tcx, trait_id)[n_method].ident;
@@ -173,7 +173,7 @@ fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
     for vec::each(*ps.bounds) |bounds| {
         if i >= n_param { break; }
         for vec::each(*bounds) |bound| {
-            alt bound { ty::bound_trait(_) => vtable_off += 1u, _ => () }
+            match bound { ty::bound_trait(_) => vtable_off += 1u, _ => () }
         }
         i += 1u;
     }
@@ -189,9 +189,9 @@ fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
 // eliminate any vtable_params.
 fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     -> typeck::vtable_origin {
-    alt vt {
+    match vt {
       typeck::vtable_static(iid, tys, sub) => {
-        let tys = alt fcx.param_substs {
+        let tys = match fcx.param_substs {
           some(substs) => {
             vec::map(tys, |t| ty::subst_tps(fcx.ccx.tcx, substs.tys, t))
           }
@@ -200,7 +200,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
         typeck::vtable_static(iid, tys, resolve_vtables_in_fn_ctxt(fcx, sub))
       }
       typeck::vtable_param(n_param, n_bound) => {
-        alt check fcx.param_substs {
+        match check fcx.param_substs {
           some(substs) => {
             find_vtable_in_fn_ctxt(substs, n_param, n_bound)
           }
@@ -211,7 +211,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
 }
 
 fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
-    alt check origin {
+    match check origin {
       typeck::vtable_static(impl_id, substs, sub_vtables) => {
         make_mono_id(ccx, impl_id, substs,
                      if (*sub_vtables).len() == 0u { none }
@@ -227,9 +227,9 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
 fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
     -> ValueRef {
     let hash_id = vtable_id(ccx, origin);
-    alt ccx.vtables.find(hash_id) {
+    match ccx.vtables.find(hash_id) {
       some(val) => val,
-      none => alt check origin {
+      none => match check origin {
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)
         }

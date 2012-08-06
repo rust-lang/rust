@@ -1015,7 +1015,7 @@ fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
 
 fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
    ~str {
-    alt type_has_name(names, ty) {
+    match type_has_name(names, ty) {
       option::some(n) => return n,
       _ => {}
     }
@@ -1035,7 +1035,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         return s;
     }
 
-    alt kind {
+    match kind {
       Void => return ~"Void",
       Half => return ~"Half",
       Float => return ~"Float",
@@ -1103,7 +1103,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
 }
 
 fn float_width(llt: TypeRef) -> uint {
-    return alt llvm::LLVMGetTypeKind(llt) as int {
+    return match llvm::LLVMGetTypeKind(llt) as int {
           1 => 32u,
           2 => 64u,
           3 => 80u,

@@ -79,7 +79,7 @@ impl of word_reader for io::reader {
 }
 
 fn file_word_reader(filename: ~str) -> word_reader {
-    alt io::file_reader(filename) {
+    match io::file_reader(filename) {
       result::ok(f) => { f as word_reader }
       result::err(e) => { fail fmt!{"%?", e} }
     }
@@ -88,7 +88,7 @@ fn file_word_reader(filename: ~str) -> word_reader {
 fn map(f: fn~() -> word_reader, emit: map_reduce::putter<~str, int>) {
     let f = f();
     loop {
-        alt f.read_word() {
+        match f.read_word() {
           some(w) => { emit(w, 1); }
           none => { break; }
         }
@@ -98,7 +98,7 @@ fn map(f: fn~() -> word_reader, emit: map_reduce::putter<~str, int>) {
 fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
     let mut count = 0;
 
-    loop { alt get() { some(_) => { count += 1; } none => { break; } } }
+    loop { match get() { some(_) => { count += 1; } none => { break; } } }
     
     io::println(fmt!{"%s\t%?", word, count});
 }
@@ -181,12 +181,12 @@ mod map_reduce {
 
         do map(input) |key, val| {
             let mut c = none;
-            alt intermediates.find(key) {
+            match intermediates.find(key) {
               some(_c) => { c = some(_c); }
               none => {
                 do ctrl.swap |ctrl| {
                     let ctrl = ctrl_proto::client::find_reducer(ctrl, key);
-                    alt pipes::recv(ctrl) {
+                    match pipes::recv(ctrl) {
                       ctrl_proto::reducer(c_, ctrl) => {
                         c = some(c_);
                         move_out!{ctrl}
@@ -224,7 +224,7 @@ mod map_reduce {
                              &ref_count: int, &is_done: bool)
            -> option<V> {
             while !is_done || ref_count > 0 {
-                alt recv(p) {
+                match recv(p) {
                   emit_val(v) => {
                     // error!{"received %d", v};
                     return some(v);
@@ -259,7 +259,7 @@ mod map_reduce {
 
         while num_mappers > 0 {
             let (_ready, message, ctrls) = pipes::select(ctrl);
-            alt option::unwrap(message) {
+            match option::unwrap(message) {
               ctrl_proto::mapper_done => {
                 // error!{"received mapper terminated."};
                 num_mappers -= 1;
@@ -268,7 +268,7 @@ mod map_reduce {
               ctrl_proto::find_reducer(k, cc) => {
                 let c;
                 // log(error, "finding reducer for " + k);
-                alt reducers.find(k) {
+                match reducers.find(k) {
                   some(_c) => {
                     // log(error,
                     // "reusing existing reducer for " + k);

@@ -43,11 +43,11 @@ fn mk_filesearch(maybe_sysroot: option<path>,
 
             vec::push(paths,
                       make_target_lib_path(self.sysroot, self.target_triple));
-            alt get_cargo_lib_path_nearest() {
+            match get_cargo_lib_path_nearest() {
               result::ok(p) => vec::push(paths, p),
               result::err(p) => ()
             }
-            alt get_cargo_lib_path() {
+            match get_cargo_lib_path() {
               result::ok(p) => vec::push(paths, p),
               result::err(p) => ()
             }
@@ -101,14 +101,14 @@ fn make_target_lib_path(sysroot: path,
 }
 
 fn get_default_sysroot() -> path {
-    alt os::self_exe_path() {
+    match os::self_exe_path() {
       option::some(p) => path::normalize(path::connect(p, ~"..")),
       option::none => fail ~"can't determine value for sysroot"
     }
 }
 
 fn get_sysroot(maybe_sysroot: option<path>) -> path {
-    alt maybe_sysroot {
+    match maybe_sysroot {
       option::some(sr) => sr,
       option::none => get_default_sysroot()
     }
@@ -120,9 +120,9 @@ fn get_cargo_sysroot() -> result<path, ~str> {
 }
 
 fn get_cargo_root() -> result<path, ~str> {
-    alt os::getenv(~"CARGO_ROOT") {
+    match os::getenv(~"CARGO_ROOT") {
         some(_p) => result::ok(_p),
-        none => alt os::homedir() {
+        none => match os::homedir() {
           some(_q) => result::ok(path::connect(_q, ~".cargo")),
           none => result::err(~"no CARGO_ROOT or home directory")
         }

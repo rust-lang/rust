@@ -5,7 +5,7 @@ import methods = std::arena::arena;
 enum tree/& { nil, node(&tree, &tree, int), }
 
 fn item_check(t: &tree) -> int {
-    alt *t {
+    match *t {
       nil => { return 0; }
       node(left, right, item) => {
         return item + item_check(left) - item_check(right);

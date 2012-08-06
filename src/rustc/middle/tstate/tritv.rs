@@ -57,7 +57,7 @@ class t {
     }
     pure fn set(i: uint, t: trit) -> bool {
         let old = self.get(i);
-        alt t {
+        match t {
           dont_care {
             self.uncertain.set(i, true);
             self.val.set(i, false);
@@ -103,7 +103,7 @@ class t {
       let mut rslt: ~[uint] = ~[];
       for uint::range(0, self.nbits) |i| {
         vec::push(rslt,
-                  alt self.get(i) {
+                  match self.get(i) {
                       dont_care { 2 }
                       ttrue     { 1 }
                       tfalse    { 0 }
@@ -116,7 +116,7 @@ class t {
        let mut rs: str = "";
        for uint::range(0, self.nbits) |i| {
         rs +=
-            alt self.get(i) {
+            match self.get(i) {
               dont_care { "?" }
               ttrue { "1" }
               tfalse { "0" }
@@ -177,10 +177,10 @@ fn minus(a: trit, b: trit) -> trit {
          0 - 1 is an error
          0 - anything else - 0
      */
-    alt a {
+    match a {
       dont_care { dont_care }
       ttrue {
-        alt b {
+        match b {
           ttrue { dont_care }
           tfalse { ttrue }
           /* internally contradictory, but
@@ -191,7 +191,7 @@ fn minus(a: trit, b: trit) -> trit {
         }
       }
       tfalse {
-        alt b {
+        match b {
           ttrue { tfalse }
           /* see above comment */
           _ {
@@ -203,11 +203,11 @@ fn minus(a: trit, b: trit) -> trit {
     }
 
 fn trit_or(a: trit, b: trit) -> trit {
-    alt a {
+    match a {
       dont_care { b }
       ttrue { ttrue }
       tfalse {
-        alt b {
+        match b {
           ttrue { dont_care }
           /* FIXME (#2538): ??????
              Again, unit tests would help here
@@ -226,11 +226,11 @@ fn trit_or(a: trit, b: trit) -> trit {
 // to make it so that all constraints start out in a 0 state
 // (we consider a constraint false until proven true), too.
 fn trit_and(a: trit, b: trit) -> trit {
-    alt a {
+    match a {
       dont_care { b }
       // also seems wrong for case b = ttrue
       ttrue {
-        alt b {
+        match b {
           dont_care { ttrue }
           // ??? Seems wrong
           ttrue {

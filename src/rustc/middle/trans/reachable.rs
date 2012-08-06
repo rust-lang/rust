@@ -34,11 +34,11 @@ fn find_reachable(crate_mod: _mod, exp_map: resolve3::ExportMap,
 fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
     let mut found_export = false;
     for vec::each(vis) |vi| {
-        alt vi.node {
+        match vi.node {
           view_item_export(vps) => {
             found_export = true;
             for vec::each(vps) |vp| {
-                alt vp.node {
+                match vp.node {
                   view_path_simple(_, _, id) | view_path_glob(_, id) |
                   view_path_list(_, _, id) => {
                     traverse_export(cx, id);
@@ -60,11 +60,11 @@ fn traverse_export(cx: ctx, exp_id: node_id) {
 
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
-    let n = alt cx.tcx.items.find(did.node) {
+    let n = match cx.tcx.items.find(did.node) {
         none => return, // This can happen for self, for example
         some(n) => n
     };
-    alt n {
+    match n {
       ast_map::node_item(item, _) => traverse_public_item(cx, item),
       ast_map::node_method(_, impl_id, _) => traverse_def_id(cx, impl_id),
       ast_map::node_foreign_item(item, _, _) => {
@@ -89,7 +89,7 @@ fn traverse_public_mod(cx: ctx, m: _mod) {
 fn traverse_public_item(cx: ctx, item: @item) {
     if cx.rmap.contains_key(item.id) { return; }
     cx.rmap.insert(item.id, ());
-    alt item.node {
+    match item.node {
       item_mod(m) => traverse_public_mod(cx, m),
       item_foreign_mod(nm) => {
           if !traverse_exports(cx, nm.view_items) {
@@ -127,7 +127,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
         for vec::each(items) |item| {
-            alt item.node {
+            match item.node {
               class_method(m) => {
                 cx.rmap.insert(m.id, ());
                 if tps.len() > 0u ||
@@ -156,9 +156,9 @@ fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
     if cx.rmap.contains_key(ty.id) { return; }
     cx.rmap.insert(ty.id, ());
 
-    alt ty.node {
+    match ty.node {
       ty_path(p, p_id) => {
-        alt cx.tcx.def_map.find(p_id) {
+        match cx.tcx.def_map.find(p_id) {
           // Kind of a hack to check this here, but I'm not sure what else
           // to do
           some(def_prim_ty(_)) => { /* do nothing */ }
@@ -173,9 +173,9 @@ fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
 
 fn traverse_inline_body(cx: ctx, body: blk) {
     fn traverse_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
-        alt e.node {
+        match e.node {
           expr_path(_) => {
-            alt cx.tcx.def_map.find(e.id) {
+            match cx.tcx.def_map.find(e.id) {
                 some(d) => {
                   traverse_def_id(cx, def_id_of_def(d));
                 }
@@ -184,7 +184,7 @@ fn traverse_inline_body(cx: ctx, body: blk) {
             }
           }
           expr_field(_, _, _) => {
-            alt cx.method_map.find(e.id) {
+            match cx.method_map.find(e.id) {
               some({origin: typeck::method_static(did), _}) => {
                 traverse_def_id(cx, did);
               }
@@ -213,7 +213,7 @@ fn traverse_all_resources_and_impls(cx: ctx, crate_mod: _mod) {
         visit_expr: |_e, _cx, _v| { },
         visit_item: |i, cx, v| {
             visit::visit_item(i, cx, v);
-            alt i.node {
+            match i.node {
               item_class(_, _, _, _, some(_)) => {
                 traverse_public_item(cx, i);
               }

@@ -49,7 +49,7 @@ unsafe fn chan_from_global_ptr<T: send>(
 
             // Wait to hear if we are the official instance of
             // this global task
-            alt comm::recv::<msg>(setup_po) {
+            match comm::recv::<msg>(setup_po) {
               proceed => f(po),
               abort => ()
             }

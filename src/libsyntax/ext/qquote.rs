@@ -48,7 +48,7 @@ impl of qq_helper for @ast::expr {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_expr(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {
-        alt (self.node) {
+        match (self.node) {
           ast::expr_mac({node: mac, _}) => some(mac),
           _ => none
         }
@@ -63,7 +63,7 @@ impl of qq_helper for @ast::ty {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_ty(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {
-        alt (self.node) {
+        match (self.node) {
           ast::ty_mac({node: mac, _}) => some(mac),
           _ => none
         }
@@ -124,7 +124,7 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
 
 fn visit_aq<T:qq_helper>(node: T, constr: ~str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
 {
-    alt (node.extract_mac()) {
+    match (node.extract_mac()) {
       some(mac_aq(sp, e)) => {
         cx.gather.push(gather_item {
             lo: sp.lo - cx.lo,
@@ -147,7 +147,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     let mut what = ~"expr";
     do option::iter(arg) |arg| {
         let args: ~[@ast::expr] =
-            alt arg.node {
+            match arg.node {
               ast::expr_vec(elts, _) => elts,
               _ => {
                 ecx.span_fatal
@@ -157,7 +157,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
         if vec::len::<@ast::expr>(args) != 1u {
             ecx.span_fatal(_sp, ~"#ast requires exactly one arg");
         }
-        alt (args[0].node) {
+        match (args[0].node) {
           ast::expr_path(@{idents: id, _}) if vec::len(id) == 1u
           => what = *id[0],
           _ => ecx.span_fatal(args[0].span, ~"expected an identifier")
@@ -165,7 +165,7 @@ fn expand_ast(ecx: ext_ctxt, _sp: span,
     }
     let body = get_mac_body(ecx,_sp,body);
 
-    return alt what {
+    return match what {
       ~"crate" => finish(ecx, body, parse_crate),
       ~"expr" => finish(ecx, body, parse_expr),
       ~"ty" => finish(ecx, body, parse_ty),
@@ -183,7 +183,7 @@ fn parse_expr(p: parser) -> @ast::expr { p.parse_expr() }
 fn parse_pat(p: parser) -> @ast::pat { p.parse_pat(true) }
 
 fn parse_item(p: parser) -> @ast::item {
-    alt p.parse_item(~[]) {
+    match p.parse_item(~[]) {
       some(item) => item,
       none       => fail ~"parse_item: parsing an item failed"
     }
@@ -225,7 +225,7 @@ fn finish<T: qq_helper>
             state = skip(str::char_len(repl));
             str2 += repl;
         }
-        alt copy state {
+        match copy state {
           active => str::push_char(str2, ch),
           skip(1u) => state = blank,
           skip(sk) => state = skip (sk-1u),
@@ -308,8 +308,8 @@ fn replace_expr(repls: ~[fragment],
                 orig: fn@(ast::expr_, span, ast_fold)->(ast::expr_, span))
     -> (ast::expr_, span)
 {
-    alt e {
-      ast::expr_mac({node: mac_var(i), _}) => alt (repls[i]) {
+    match e {
+      ast::expr_mac({node: mac_var(i), _}) => match (repls[i]) {
         from_expr(r) => (r.node, r.span),
         _ => fail /* fixme error message */
       }
@@ -322,8 +322,8 @@ fn replace_ty(repls: ~[fragment],
                 orig: fn@(ast::ty_, span, ast_fold)->(ast::ty_, span))
     -> (ast::ty_, span)
 {
-    alt e {
-      ast::ty_mac({node: mac_var(i), _}) => alt (repls[i]) {
+    match e {
+      ast::ty_mac({node: mac_var(i), _}) => match (repls[i]) {
         from_ty(r) => (r.node, r.span),
         _ => fail /* fixme error message */
       }

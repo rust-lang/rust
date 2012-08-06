@@ -6,7 +6,7 @@ fn main() {
     }
 
     fn foo(c: color) {
-        alt c {
+        match c {
           rgb(_, _, _) => { }
           cmyk(_, _, _, _) => { }
           no_color(_) => { }

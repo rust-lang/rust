@@ -43,7 +43,7 @@
  *             optflag("h"),
  *             optflag("help")
  *         ];
- *         let matches = alt getopts(vec::tail(args), opts) {
+ *         let matches = match getopts(vec::tail(args), opts) {
  *             result::ok(m) { m }
  *             result::err(f) { fail fail_str(f) }
  *         };
@@ -140,7 +140,7 @@ fn is_arg(arg: ~str) -> bool {
 }
 
 fn name_str(nm: name) -> ~str {
-    return alt nm {
+    return match nm {
       short(ch) => str::from_char(ch),
       long(s) => s
     };
@@ -164,7 +164,7 @@ enum fail_ {
 
 /// Convert a `fail_` enum into an error string
 fn fail_str(f: fail_) -> ~str {
-    return alt f {
+    return match f {
       argument_missing(nm) => ~"Argument to option '" + nm + ~"' missing.",
       unrecognized_option(nm) => ~"Unrecognized option: '" + nm + ~"'.",
       option_missing(nm) => ~"Required option '" + nm + ~"' missing.",
@@ -233,12 +233,14 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
                        correctly
                     */
 
-                    alt find_opt(opts, opt) {
+                    match find_opt(opts, opt) {
                       some(id) => last_valid_opt_id = option::some(id),
                       none => {
                         let arg_follows =
                             option::is_some(last_valid_opt_id) &&
-                            alt opts[option::get(last_valid_opt_id)].hasarg {
+                            match opts[option::get(last_valid_opt_id)]
+                              .hasarg {
+
                               yes | maybe => true,
                               no => false
                             };
@@ -257,11 +259,11 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
             let mut name_pos = 0u;
             for vec::each(names) |nm| {
                 name_pos += 1u;
-                let optid = alt find_opt(opts, nm) {
+                let optid = match find_opt(opts, nm) {
                   some(id) => id,
                   none => return err(unrecognized_option(name_str(nm)))
                 };
-                alt opts[optid].hasarg {
+                match opts[optid].hasarg {
                   no => {
                     if !option::is_none::<~str>(i_arg) {
                         return err(unexpected_argument(name_str(nm)));
@@ -309,7 +311,7 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
 }
 
 fn opt_vals(m: matches, nm: ~str) -> ~[optval] {
-    return alt find_opt(m.opts, mkname(nm)) {
+    return match find_opt(m.opts, mkname(nm)) {
       some(id) => m.vals[id],
       none => {
         error!{"No option '%s' defined", nm};
@@ -328,7 +330,7 @@ fn opt_present(m: matches, nm: ~str) -> bool {
 /// Returns true if any of several options were matched
 fn opts_present(m: matches, names: ~[~str]) -> bool {
     for vec::each(names) |nm| {
-        alt find_opt(m.opts, mkname(nm)) {
+        match find_opt(m.opts, mkname(nm)) {
           some(_) => return true,
           _ => ()
         }
@@ -344,7 +346,7 @@ fn opts_present(m: matches, names: ~[~str]) -> bool {
  * argument
  */
 fn opt_str(m: matches, nm: ~str) -> ~str {
-    return alt opt_val(m, nm) { val(s) => s, _ => fail };
+    return match opt_val(m, nm) { val(s) => s, _ => fail };
 }
 
 /**
@@ -355,7 +357,7 @@ fn opt_str(m: matches, nm: ~str) -> ~str {
  */
 fn opts_str(m: matches, names: ~[~str]) -> ~str {
     for vec::each(names) |nm| {
-        alt opt_val(m, nm) {
+        match opt_val(m, nm) {
           val(s) => return s,
           _ => ()
         }
@@ -373,7 +375,7 @@ fn opts_str(m: matches, names: ~[~str]) -> ~str {
 fn opt_strs(m: matches, nm: ~str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
     for vec::each(opt_vals(m, nm)) |v| {
-        alt v { val(s) => vec::push(acc, s), _ => () }
+        match v { val(s) => vec::push(acc, s), _ => () }
     }
     return acc;
 }
@@ -382,7 +384,7 @@ fn opt_strs(m: matches, nm: ~str) -> ~[~str] {
 fn opt_maybe_str(m: matches, nm: ~str) -> option<~str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { return none::<~str>; }
-    return alt vals[0] { val(s) => some::<~str>(s), _ => none::<~str> };
+    return match vals[0] { val(s) => some::<~str>(s), _ => none::<~str> };
 }
 
 
@@ -396,7 +398,7 @@ fn opt_maybe_str(m: matches, nm: ~str) -> option<~str> {
 fn opt_default(m: matches, nm: ~str, def: ~str) -> option<~str> {
     let vals = opt_vals(m, nm);
     if vec::len::<optval>(vals) == 0u { return none::<~str>; }
-    return alt vals[0] { val(s) => some::<~str>(s), _ => some::<~str>(def) }
+    return match vals[0] { val(s) => some::<~str>(s), _ => some::<~str>(def) }
 }
 
 #[cfg(test)]
@@ -413,7 +415,7 @@ mod tests {
     }
 
     fn check_fail_type(f: fail_, ft: fail_type) {
-        alt f {
+        match f {
           argument_missing(_) => assert ft == argument_missing_,
           unrecognized_option(_) => assert ft == unrecognized_option_,
           option_missing(_) => assert ft == option_missing_,
@@ -429,7 +431,7 @@ mod tests {
         let args = ~[~"--test=20"];
         let opts = ~[reqopt(~"test")];
         let rs = getopts(args, opts);
-        alt check rs {
+        match check rs {
           ok(m) => {
             assert (opt_present(m, ~"test"));
             assert (opt_str(m, ~"test") == ~"20");
@@ -442,7 +444,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[reqopt(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_missing_),
           _ => fail
         }
@@ -453,7 +455,7 @@ mod tests {
         let args = ~[~"--test"];
         let opts = ~[reqopt(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, argument_missing_),
           _ => fail
         }
@@ -464,7 +466,7 @@ mod tests {
         let args = ~[~"--test=20", ~"--test=30"];
         let opts = ~[reqopt(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_duplicated_),
           _ => fail
         }
@@ -475,7 +477,7 @@ mod tests {
         let args = ~[~"-t", ~"20"];
         let opts = ~[reqopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"t"));
             assert (opt_str(m, ~"t") == ~"20");
@@ -489,7 +491,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[reqopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_missing_),
           _ => fail
         }
@@ -500,7 +502,7 @@ mod tests {
         let args = ~[~"-t"];
         let opts = ~[reqopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, argument_missing_),
           _ => fail
         }
@@ -511,7 +513,7 @@ mod tests {
         let args = ~[~"-t", ~"20", ~"-t", ~"30"];
         let opts = ~[reqopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_duplicated_),
           _ => fail
         }
@@ -524,7 +526,7 @@ mod tests {
         let args = ~[~"--test=20"];
         let opts = ~[optopt(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"test"));
             assert (opt_str(m, ~"test") == ~"20");
@@ -538,7 +540,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[optopt(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (!opt_present(m, ~"test")),
           _ => fail
         }
@@ -549,7 +551,7 @@ mod tests {
         let args = ~[~"--test"];
         let opts = ~[optopt(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, argument_missing_),
           _ => fail
         }
@@ -560,7 +562,7 @@ mod tests {
         let args = ~[~"--test=20", ~"--test=30"];
         let opts = ~[optopt(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_duplicated_),
           _ => fail
         }
@@ -571,7 +573,7 @@ mod tests {
         let args = ~[~"-t", ~"20"];
         let opts = ~[optopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"t"));
             assert (opt_str(m, ~"t") == ~"20");
@@ -585,7 +587,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[optopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (!opt_present(m, ~"t")),
           _ => fail
         }
@@ -596,7 +598,7 @@ mod tests {
         let args = ~[~"-t"];
         let opts = ~[optopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, argument_missing_),
           _ => fail
         }
@@ -607,7 +609,7 @@ mod tests {
         let args = ~[~"-t", ~"20", ~"-t", ~"30"];
         let opts = ~[optopt(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_duplicated_),
           _ => fail
         }
@@ -620,7 +622,7 @@ mod tests {
         let args = ~[~"--test"];
         let opts = ~[optflag(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (opt_present(m, ~"test")),
           _ => fail
         }
@@ -631,7 +633,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[optflag(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (!opt_present(m, ~"test")),
           _ => fail
         }
@@ -642,7 +644,7 @@ mod tests {
         let args = ~[~"--test=20"];
         let opts = ~[optflag(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => {
             log(error, fail_str(f));
             check_fail_type(f, unexpected_argument_);
@@ -656,7 +658,7 @@ mod tests {
         let args = ~[~"--test", ~"--test"];
         let opts = ~[optflag(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_duplicated_),
           _ => fail
         }
@@ -667,7 +669,7 @@ mod tests {
         let args = ~[~"-t"];
         let opts = ~[optflag(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (opt_present(m, ~"t")),
           _ => fail
         }
@@ -678,7 +680,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[optflag(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (!opt_present(m, ~"t")),
           _ => fail
         }
@@ -689,7 +691,7 @@ mod tests {
         let args = ~[~"-t", ~"20"];
         let opts = ~[optflag(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             // The next variable after the flag is just a free argument
 
@@ -704,7 +706,7 @@ mod tests {
         let args = ~[~"-t", ~"-t"];
         let opts = ~[optflag(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, option_duplicated_),
           _ => fail
         }
@@ -717,7 +719,7 @@ mod tests {
         let args = ~[~"--test=20"];
         let opts = ~[optmulti(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"test"));
             assert (opt_str(m, ~"test") == ~"20");
@@ -731,7 +733,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[optmulti(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (!opt_present(m, ~"test")),
           _ => fail
         }
@@ -742,7 +744,7 @@ mod tests {
         let args = ~[~"--test"];
         let opts = ~[optmulti(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, argument_missing_),
           _ => fail
         }
@@ -753,7 +755,7 @@ mod tests {
         let args = ~[~"--test=20", ~"--test=30"];
         let opts = ~[optmulti(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"test"));
             assert (opt_str(m, ~"test") == ~"20");
@@ -769,7 +771,7 @@ mod tests {
         let args = ~[~"-t", ~"20"];
         let opts = ~[optmulti(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"t"));
             assert (opt_str(m, ~"t") == ~"20");
@@ -783,7 +785,7 @@ mod tests {
         let args = ~[~"blah"];
         let opts = ~[optmulti(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => assert (!opt_present(m, ~"t")),
           _ => fail
         }
@@ -794,7 +796,7 @@ mod tests {
         let args = ~[~"-t"];
         let opts = ~[optmulti(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, argument_missing_),
           _ => fail
         }
@@ -805,7 +807,7 @@ mod tests {
         let args = ~[~"-t", ~"20", ~"-t", ~"30"];
         let opts = ~[optmulti(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"t"));
             assert (opt_str(m, ~"t") == ~"20");
@@ -821,7 +823,7 @@ mod tests {
         let args = ~[~"--untest"];
         let opts = ~[optmulti(~"t")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, unrecognized_option_),
           _ => fail
         }
@@ -832,7 +834,7 @@ mod tests {
         let args = ~[~"-t"];
         let opts = ~[optmulti(~"test")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           err(f) => check_fail_type(f, unrecognized_option_),
           _ => fail
         }
@@ -849,7 +851,7 @@ mod tests {
              optflag(~"f"), optmulti(~"m"), optmulti(~"n"),
              optopt(~"notpresent")];
         let rs = getopts(args, opts);
-        alt rs {
+        match rs {
           ok(m) => {
             assert (m.free[0] == ~"prog");
             assert (m.free[1] == ~"free1");
@@ -872,7 +874,7 @@ mod tests {
     fn test_multi() {
         let args = ~[~"-e", ~"foo", ~"--encrypt", ~"foo"];
         let opts = ~[optopt(~"e"), optopt(~"encrypt")];
-        let matches = alt getopts(args, opts) {
+        let matches = match getopts(args, opts) {
           result::ok(m) => m,
           result::err(f) => fail
         };
@@ -893,7 +895,7 @@ mod tests {
     fn test_nospace() {
         let args = ~[~"-Lfoo"];
         let opts = ~[optmulti(~"L")];
-        let matches = alt getopts(args, opts) {
+        let matches = match getopts(args, opts) {
           result::ok(m) => m,
           result::err(f) => fail
         };
