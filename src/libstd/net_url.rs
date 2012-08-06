@@ -537,7 +537,8 @@ fn get_path(rawurl: ~str, authority : bool) ->
     for str::each_chari(rawurl) |i,c| {
         match c {
           'A' to 'Z' | 'a' to 'z' | '0' to '9' | '&' |'\'' | '(' | ')' | '.'
-          | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '=' => {
+          | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
+          | '_' => {
             again;
           }
           '?' | '#' => {
@@ -793,6 +794,14 @@ mod tests {
         #debug("url: %?", url);
         assert url.host == ~"0.42.42.42";
         assert url.path == ~"/";
+    }
+
+    #[test]
+    fn test_url_with_underscores() {
+        let urlstr = ~"http://dotcom.com/file_name.html";
+        let url = from_str(urlstr).get();
+        #debug("url: %?", url);
+        assert url.path == ~"/file_name.html";
     }
 
     #[test]
