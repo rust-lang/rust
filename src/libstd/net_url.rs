@@ -538,7 +538,7 @@ fn get_path(rawurl: ~str, authority : bool) ->
         match c {
           'A' to 'Z' | 'a' to 'z' | '0' to '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
-          | '_' => {
+          | '_' | '-' => {
             again;
           }
           '?' | '#' => {
@@ -802,6 +802,14 @@ mod tests {
         let url = from_str(urlstr).get();
         #debug("url: %?", url);
         assert url.path == ~"/file_name.html";
+    }
+
+    #[test]
+    fn test_url_with_dashes() {
+        let urlstr = ~"http://dotcom.com/file-name.html";
+        let url = from_str(urlstr).get();
+        #debug("url: %?", url);
+        assert url.path == ~"/file-name.html";
     }
 
     #[test]
