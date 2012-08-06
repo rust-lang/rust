@@ -5,16 +5,20 @@
 //
 // The filename is a song reference; google it in quotes.
 
-fn child_generation(gens_left: uint) {
+fn child_generation(gens_left: uint, -c: pipes::chan<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
+    let c = ~mut some(c);
     do task::spawn_supervised {
+        let c = option::swap_unwrap(c);
         if gens_left & 1 == 1 {
             task::yield(); // shake things up a bit
         }
         if gens_left > 0 {
-            child_generation(gens_left - 1); // recurse
+            child_generation(gens_left - 1, c); // recurse
+        } else {
+            c.send(())
         }
     }
 }
@@ -28,5 +32,9 @@ fn main(args: ~[~str]) {
         copy args
     };
 
-    child_generation(uint::from_str(args[1]).get());
+    let (c,p) = pipes::stream();
+    child_generation(uint::from_str(args[1]).get(), c);
+    if p.try_recv().is_none() {
+        fail ~"it happened when we slumbered";
+    }
 }
