@@ -957,8 +957,8 @@ An example of a predicate that uses an unchecked block:
 
 fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
     alt ls {
-      nil { u }
-      cons(hd, tl) { f(hd, pure_foldl(*tl, f(hd, u), f)) }
+      nil => u,
+      cons(hd, tl) => f(hd, pure_foldl(*tl, f(hd, u), f))
     }
 }
 
@@ -1157,8 +1157,8 @@ class file_descriptor {
     }
     fn get_name() -> ~str {
       alt self.name {
-         none    { fail ~"File has no name!"; }
-         some(n) { n }
+         none    => fail ~"File has no name!",
+         some(n) => n
       }
     }
 }
@@ -2176,7 +2176,7 @@ then any `else` block is executed.
 ~~~~~~~~{.ebnf .gram}
 alt_expr : "alt" expr '{' alt_arm [ '|' alt_arm ] * '}' ;
 
-alt_arm : alt_pat '{' block '}' ;
+alt_arm : alt_pat '=>' expr_or_blockish ;
 
 alt_pat : pat [ "to" pat ] ? [ "if" expr ] ;
 ~~~~~~~~
@@ -2199,9 +2199,9 @@ enum list<X> { nil, cons(X, @list<X>) }
 let x: list<int> = cons(10, @cons(11, @nil));
 
 alt x {
-    cons(_, @nil) { fail ~"singleton list"; }
-    cons(*)       { return; }
-    nil           { fail ~"empty list"; }
+    cons(_, @nil) => fail ~"singleton list",
+    cons(*)       => return,
+    nil           => fail ~"empty list"
 }
 ~~~~
 
@@ -2228,16 +2228,16 @@ enum list<X> { nil, cons(X, @list<X>) }
 let x: list<int> = cons(10, @cons(11, @nil));
 
 alt x {
-    cons(a, @cons(b, _)) {
+    cons(a, @cons(b, _)) => {
         process_pair(a,b);
     }
-    cons(10, _) {
+    cons(10, _) => {
         process_ten();
     }
-    nil {
+    nil => {
         return;
     }
-    _ {
+    _ => {
         fail;
     }
 }
@@ -2265,13 +2265,13 @@ fn main() {
     };
 
     alt r {
-      {options: {choose: true, _}, _} {
+      {options: {choose: true, _}, _} => {
         choose_player(r)
       }
-      {player: p, options: {size: ~"small", _}, _} {
+      {player: p, options: {size: ~"small", _}, _} => {
         log(info, p + ~" is small");
       }
-      _ {
+      _ => {
         next_player();
       }
     }
@@ -2285,9 +2285,9 @@ range of values may be specified with `to`. For example:
 # let x = 2;
 
 let message = alt x {
-  0 | 1  { ~"not many" }
-  2 to 9 { ~"a few" }
-  _      { ~"lots" }
+  0 | 1  => ~"not many",
+  2 to 9 => ~"a few",
+  _      => ~"lots"
 };
 ~~~~
 
@@ -2302,9 +2302,9 @@ guard may refer to the variables bound within the pattern they follow.
 # fn process_other(i: int) { }
 
 let message = alt maybe_digit {
-  some(x) if x < 10 { process_digit(x) }
-  some(x) { process_other(x) }
-  none { fail }
+  some(x) if x < 10 => process_digit(x),
+  some(x) => process_other(x),
+  none => fail
 };
 ~~~~
 

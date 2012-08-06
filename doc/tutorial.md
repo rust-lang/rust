@@ -117,9 +117,9 @@ fn main() {
 
         // Pick two gestures and decide the result
         alt (pick(), pick()) {
-            (rock, scissors) | (paper, rock) | (scissors, paper) { copy player1 }
-            (scissors, rock) | (rock, paper) | (paper, scissors) { copy player2 }
-            _ { ~"tie" }
+            (rock, scissors) | (paper, rock) | (scissors, paper) => copy player1,
+            (scissors, rock) | (rock, paper) | (paper, scissors) => copy player2,
+            _ => ~"tie"
         }
     }
 }
@@ -715,10 +715,10 @@ the value.
 ~~~~
 # let my_number = 1;
 alt my_number {
-  0       { io::println(~"zero"); }
-  1 | 2   { io::println(~"one or two"); }
-  3 to 10 { io::println(~"three to ten"); }
-  _       { io::println(~"something else"); }
+  0       => io::println(~"zero"),
+  1 | 2   => io::println(~"one or two"),
+  3 to 10 => io::println(~"three to ten"),
+  _       => io::println(~"something else")
 }
 ~~~~
 
@@ -731,6 +731,23 @@ valid patterns, and will match only their own value. The pipe operator
 (`|`) can be used to assign multiple patterns to a single arm. Ranges
 of numeric literal patterns can be expressed with `to`. The underscore
 (`_`) is a wildcard pattern that matches everything.
+
+The patterns in an alt arm are followed by a fat arrow, `=>`, then an
+expression to evaluate. Each case is separated by commas. It's often
+convenient to use a block expression for a case, in which case the
+commas are optional.
+
+~~~
+# let my_number = 1;
+alt my_number {
+  0 => {
+    io::println(~"zero")
+  }
+  _ => {
+    io::println(~"something else")
+  }
+}
+~~~
 
 If the arm with the wildcard pattern was left off in the above
 example, the typechecker would reject it at compile time. `alt`
@@ -747,9 +764,9 @@ that `(float, float)` is a tuple of two floats:
 ~~~~
 fn angle(vec: (float, float)) -> float {
     alt vec {
-      (0f, y) if y < 0f { 1.5 * float::consts::pi }
-      (0f, y) { 0.5 * float::consts::pi }
-      (x, y) { float::atan(y / x) }
+      (0f, y) if y < 0f => 1.5 * float::consts::pi,
+      (0f, y) => 0.5 * float::consts::pi,
+      (x, y) => float::atan(y / x)
     }
 }
 ~~~~
@@ -1035,8 +1052,8 @@ name as the field.
 ~~~~
 # let mypoint = {x: 0f, y: 0f};
 alt mypoint {
-    {x: 0f, y: y_name} { /* Provide sub-patterns for fields */ }
-    {x, y}             { /* Simply bind the fields */ }
+    {x: 0f, y: y_name} => { /* Provide sub-patterns for fields */ }
+    {x, y}             => { /* Simply bind the fields */ }
 }
 ~~~~
 
@@ -1141,8 +1158,8 @@ patterns, as in this definition of `area`:
 # enum shape { circle(point, float), rectangle(point, point) }
 fn area(sh: shape) -> float {
     alt sh {
-        circle(_, size) { float::consts::pi * size * size }
-        rectangle({x, y}, {x: x2, y: y2}) { (x2 - x) * (y2 - y) }
+        circle(_, size) => float::consts::pi * size * size,
+        rectangle({x, y}, {x: x2, y: y2}) => (x2 - x) * (y2 - y)
     }
 }
 ~~~~
@@ -1154,10 +1171,10 @@ Another example, matching nullary enum variants:
 # enum direction { north, east, south, west }
 fn point_from_direction(dir: direction) -> point {
     alt dir {
-        north { {x:  0f, y:  1f} }
-        east  { {x:  1f, y:  0f} }
-        south { {x:  0f, y: -1f} }
-        west  { {x: -1f, y:  0f} }
+        north => {x:  0f, y:  1f},
+        east  => {x:  1f, y:  0f},
+        south => {x:  0f, y: -1f},
+        west  => {x: -1f, y:  0f}
     }
 }
 ~~~~
@@ -1172,7 +1189,7 @@ nil, `()`, as the empty tuple if you like).
 ~~~~
 let mytup: (int, int, float) = (10, 20, 30.0);
 alt mytup {
-  (a, b, c) { log(info, a + b + (c as int)); }
+  (a, b, c) => log(info, a + b + (c as int))
 }
 ~~~~
 
@@ -1914,7 +1931,7 @@ safety.
 ~~~~
 let mut my_rec = {a: 4, b: ~[1, 2, 3]};
 alt my_rec {
-  {a, b} {
+  {a, b} => {
     log(info, b); // This is okay
     my_rec = {a: a + 1, b: b + ~[a]};
     log(info, b); // Here reference b has become invalid
