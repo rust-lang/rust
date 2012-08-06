@@ -14,7 +14,7 @@ fn run(i: int) {
         return;
     }
 
-    do task::task().sched_mode(task::osmain).unlinked().spawn {
+    do task::task().sched_mode(task::platform_thread).unlinked().spawn {
         task::yield();
         do task::task().sched_mode(task::single_threaded).unlinked().spawn {
             task::yield();
