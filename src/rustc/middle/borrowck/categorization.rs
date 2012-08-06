@@ -264,15 +264,17 @@ impl public_methods for borrowck_ctxt {
               mutbl:m, ty:expr_ty}
           }
 
-          ast::def_binding(vid, ast::bind_by_value) => {
-            // by-value bindings are basically local variables
+          ast::def_binding(vid, ast::bind_by_value) |
+          ast::def_binding(vid, ast::bind_by_ref(_)) => {
+            // by-value/by-ref bindings are local variables
             @{id:id, span:span,
               cat:cat_local(vid), lp:some(@lp_local(vid)),
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_binding(pid, ast::bind_by_ref) => {
-            // bindings are "special" since they are implicit pointers.
+          ast::def_binding(pid, ast::bind_by_implicit_ref) => {
+            // implicit-by-ref bindings are "special" since they are
+            // implicit pointers.
 
             // lookup the mutability for this binding that we found in
             // gather_loans when we categorized it

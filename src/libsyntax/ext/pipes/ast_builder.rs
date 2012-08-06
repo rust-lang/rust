@@ -116,7 +116,7 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
             @{node: {is_mutbl: false,
                      ty: self.ty_infer(),
                      pat: @{id: self.next_id(),
-                            node: ast::pat_ident(ast::bind_by_ref,
+                            node: ast::pat_ident(ast::bind_by_implicit_ref,
                                                  path(ident,
                                                       self.empty_span()),
                                                  none),

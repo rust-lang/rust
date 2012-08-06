@@ -1332,8 +1332,12 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
       ast::pat_wild => word(s.s, ~"_"),
       ast::pat_ident(binding_mode, path, sub) => {
         match binding_mode {
-          ast::bind_by_ref => word_space(s, ~"ref"),
-          ast::bind_by_value => ()
+          ast::bind_by_ref(mutbl) => {
+            word_nbsp(s, ~"ref");
+            print_mutability(s, mutbl);
+          }
+          ast::bind_by_implicit_ref |
+          ast::bind_by_value => {}
         }
         print_path(s, path, true);
         match sub {

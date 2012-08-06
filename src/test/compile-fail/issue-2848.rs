@@ -9,7 +9,7 @@ mod bar {
 fn main() {
     import bar::{alpha, charlie};
     match alpha {
-      alpha | beta => {} //~ ERROR: inconsistent number of bindings
+      alpha | beta => {} //~ ERROR variable `beta` from pattern #2 is not bound in pattern #1
       charlie => {}
     }
 }
