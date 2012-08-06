@@ -364,9 +364,10 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         for flds.each |f| { v.visit_expr(f.node.expr, e, v); }
         visit_expr_opt(base, e, v);
       }
-      expr_struct(p, flds) => {
+      expr_struct(p, flds, base) => {
         visit_path(p, e, v);
         for flds.each |f| { v.visit_expr(f.node.expr, e, v); }
+        visit_expr_opt(base, e, v);
       }
       expr_tup(elts) => for elts.each |el| { v.visit_expr(el, e, v); }
       expr_call(callee, args, _) => {

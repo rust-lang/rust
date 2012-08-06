@@ -3392,7 +3392,8 @@ fn trans_rec(bcx: block, fields: ~[ast::field],
 }
 
 fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
-                id: ast::node_id, dest: dest) -> block {
+                base: option<@ast::expr>, id: ast::node_id, dest: dest)
+             -> block {
 
     let _instruction_context = block_context.insn_ctxt(~"trans_struct");
     let mut block_context = block_context;
@@ -3433,6 +3434,18 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
         }
     }
 
+    // If the class has a destructor, our GEP is a little more
+    // complicated.
+    fn get_field(block_context: block, dest_address: ValueRef,
+                 class_id: ast::def_id, index: uint) -> ValueRef {
+        if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
+            return GEPi(block_context,
+                        GEPi(block_context, dest_address, ~[0, 1]),
+                        ~[0, index]);
+        }
+        return GEPi(block_context, dest_address, ~[0, index]);
+    }
+
     // Now translate each field.
     let mut temp_cleanups = ~[];
     for fields.each |field| {
@@ -3455,16 +3468,7 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
             }
         }
 
-        // If the class has a destructor, our GEP is a little more
-        // complicated.
-        let dest;
-        if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
-            dest = GEPi(block_context,
-                        GEPi(block_context, dest_address, ~[0, 1]),
-                        ~[0, index]);
-        } else {
-            dest = GEPi(block_context, dest_address, ~[0, index]);
-        }
+        let dest = get_field(block_context, dest_address, class_id, index);
 
         block_context = trans_expr_save_in(block_context,
                                            field.node.expr,
@@ -3474,6 +3478,42 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
                                                field_id, substitutions);
         add_clean_temp_mem(block_context, dest, field_type);
         vec::push(temp_cleanups, dest);
+    }
+
+    match base {
+        some(base_expr) => {
+            let { bcx: bcx, val: llbasevalue } =
+                trans_temp_expr(block_context, base_expr);
+            block_context = bcx;
+
+            // Copy over inherited fields.
+            for class_fields.eachi |i, class_field| {
+                let exists = do vec::any(fields) |provided_field| {
+                    str::eq(provided_field.node.ident, class_field.ident)
+                };
+                if exists {
+                    again;
+                }
+                let lldestfieldvalue = get_field(block_context,
+                                                 dest_address,
+                                                 class_id,
+                                                 i);
+                let llbasefieldvalue = GEPi(block_context,
+                                            llbasevalue,
+                                            ~[0, i]);
+                let field_type = ty::lookup_field_type(block_context.tcx(),
+                                                       class_id,
+                                                       class_field.id,
+                                                       substitutions);
+                let llbasefieldvalue = load_if_immediate(block_context,
+                                                         llbasefieldvalue,
+                                                         field_type);
+                block_context = copy_val(block_context, INIT,
+                                         lldestfieldvalue, llbasefieldvalue,
+                                         field_type);
+            }
+        }
+        none => ()
     }
 
     // Now revoke the cleanups, as we pass responsibility for the data
@@ -3633,8 +3673,8 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_rec(args, base) => {
             return trans_rec(bcx, args, base, e.id, dest);
           }
-          ast::expr_struct(_, fields) => {
-            return trans_struct(bcx, e.span, fields, e.id, dest);
+          ast::expr_struct(_, fields, base) => {
+            return trans_struct(bcx, e.span, fields, base, e.id, dest);
           }
           ast::expr_tup(args) => { return trans_tup(bcx, args, dest); }
           ast::expr_vstore(e, v) => {

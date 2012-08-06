@@ -1071,7 +1071,8 @@ class liveness {
             }
           }
 
-          expr_struct(_, fields) => {
+          expr_struct(_, fields, with_expr) => {
+            let succ = self.propagate_through_opt_expr(with_expr, succ);
             do fields.foldr(succ) |field, succ| {
                 self.propagate_through_expr(field.node.expr, succ)
             }

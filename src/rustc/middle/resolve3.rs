@@ -4272,7 +4272,7 @@ class Resolver {
                                       visitor);
             }
 
-            expr_struct(path, _) => {
+            expr_struct(path, _, _) => {
                 // Resolve the path to the structure it goes to.
                 //
                 // XXX: We might want to support explicit type parameters in

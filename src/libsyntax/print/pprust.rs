@@ -973,11 +973,20 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         word(s.s, ~"}");
       }
-      ast::expr_struct(path, fields) => {
+      ast::expr_struct(path, fields, wth) => {
         print_path(s, path, true);
         word(s.s, ~"{");
         commasep_cmnt(s, consistent, fields, print_field, get_span);
-        word(s.s, ~",");
+        alt wth {
+            some(expr) => {
+                if vec::len(fields) > 0u { space(s.s); }
+                ibox(s, indent_unit);
+                word_space(s, ~"with");
+                print_expr(s, expr);
+                end(s);
+            }
+            _ => word(s.s, ~",")
+        }
         word(s.s, ~"}");
       }
       ast::expr_tup(exprs) => {
