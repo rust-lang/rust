@@ -262,6 +262,13 @@ pure fn is_ident(t: token) -> bool {
     alt t { IDENT(_, _) => true, _ => false }
 }
 
+pure fn is_ident_or_path(t: token) -> bool {
+    alt t {
+      IDENT(_, _) | INTERPOLATED(nt_path(*)) => true,
+      _ => false
+    }
+}
+
 pure fn is_plain_ident(t: token) -> bool {
     alt t { IDENT(_, false) => true, _ => false }
 }
