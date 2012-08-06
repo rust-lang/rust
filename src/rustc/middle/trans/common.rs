@@ -30,11 +30,28 @@ fn new_namegen(intr: ident_interner) -> namegen {
     };
 }
 
+type addrspace = c_uint;
+
+// Address spaces communicate to LLVM which destructors need to run for
+// specifc types.
+//    0 is ignored by the GC, and is used for all non-GC'd pointers.
+//    1 is for opaque GC'd boxes.
+//    >= 2 are for specific types (e.g. resources).
+const default_addrspace: addrspace = 0;
+const gc_box_addrspace: addrspace = 1;
+
+type addrspace_gen = fn@() -> addrspace;
+fn new_addrspace_gen() -> addrspace_gen {
+    let i = @mut 1;
+    return fn@() -> addrspace { *i += 1; *i };
+}
+
 type tydesc_info =
     {ty: ty::t,
      tydesc: ValueRef,
      size: ValueRef,
      align: ValueRef,
+     addrspace: addrspace,
      mut take_glue: option<ValueRef>,
      mut drop_glue: option<ValueRef>,
      mut free_glue: option<ValueRef>,
@@ -118,6 +135,7 @@ type crate_ctxt = {
      module_data: hashmap<~str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,
+     next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
      type_hashcodes: hashmap<ty::t, ~str>,
      type_short_names: hashmap<ty::t, ~str>,
@@ -254,47 +272,64 @@ fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
     }
 }
 
-fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(cx.tcx(), ty) { return; }
+// This is not the same as base::root_value, which appears to be the vestigial
+// remains of the previous GC regime. In the new GC, we can identify
+// immediates on the stack without difficulty, but have trouble knowing where
+// non-immediates are on the stack. For non-immediates, we must add an
+// additional level of indirection, which allows us to alloca a pointer with
+// the right addrspace.
+fn root_for_cleanup(bcx: block, v: ValueRef, t: ty::t)
+    -> {root: ValueRef, rooted: bool} {
+    let ccx = bcx.ccx();
+
+    let addrspace = base::get_tydesc(ccx, t).addrspace;
+    if addrspace > gc_box_addrspace {
+        let llty = type_of::type_of_rooted(ccx, t);
+        let root = base::alloca(bcx, llty);
+        build::Store(bcx, build::PointerCast(bcx, v, llty), root);
+        {root: root, rooted: true}
+    } else {
+        {root: v, rooted: false}
+    }
+}
+
+fn add_clean(bcx: block, val: ValueRef, t: ty::t) {
+    if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean(%s, %s, %s)",
-           cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty));
-    let cleanup_type = cleanup_type(cx.tcx(), ty);
-    do in_scope_cx(cx) |info| {
-        vec::push(info.cleanups, clean(|a| base::drop_ty(a, val, ty),
-                                cleanup_type));
+           bcx.to_str(), val_str(bcx.ccx().tn, val),
+           ty_to_str(bcx.ccx().tcx, t));
+    let {root, rooted} = root_for_cleanup(bcx, val, t);
+    let cleanup_type = cleanup_type(bcx.tcx(), t);
+    do in_scope_cx(bcx) |info| {
+        vec::push(info.cleanups,
+                  clean(|a| base::drop_ty_root(a, root, rooted, t),
+                        cleanup_type));
         scope_clean_changed(info);
     }
 }
-fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
+fn add_clean_temp_immediate(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
-    debug!("add_clean_temp(%s, %s, %s)",
-           cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty));
-    let cleanup_type = cleanup_type(cx.tcx(), ty);
-    fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
-       block {
-        if ty::type_is_immediate(ty) {
-            return base::drop_ty_immediate(bcx, val, ty);
-        } else {
-            return base::drop_ty(bcx, val, ty);
-        }
-    }
-    do in_scope_cx(cx) |info| {
-        vec::push(info.cleanups, clean_temp(val, |a| do_drop(a, val, ty),
-                                     cleanup_type));
-        scope_clean_changed(info);
-    }
-}
-fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(cx.tcx(), ty) { return; }
-    debug!("add_clean_temp_mem(%s, %s, %s)",
+    debug!("add_clean_temp_immediate(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
            ty_to_str(cx.ccx().tcx, ty));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |info| {
         vec::push(info.cleanups,
-                  clean_temp(val, |a| base::drop_ty(a, val, ty),
+                  clean_temp(val, |a| base::drop_ty_immediate(a, val, ty),
+                             cleanup_type));
+        scope_clean_changed(info);
+    }
+}
+fn add_clean_temp_mem(bcx: block, val: ValueRef, t: ty::t) {
+    if !ty::type_needs_drop(bcx.tcx(), t) { return; }
+    debug!("add_clean_temp_mem(%s, %s, %s)",
+           bcx.to_str(), val_str(bcx.ccx().tn, val),
+           ty_to_str(bcx.ccx().tcx, t));
+    let {root, rooted} = root_for_cleanup(bcx, val, t);
+    let cleanup_type = cleanup_type(bcx.tcx(), t);
+    do in_scope_cx(bcx) |info| {
+        vec::push(info.cleanups,
+                  clean_temp(val, |a| base::drop_ty_root(a, root, rooted, t),
                              cleanup_type));
         scope_clean_changed(info);
     }
@@ -607,7 +642,11 @@ fn T_fn_pair(cx: @crate_ctxt, tfn: TypeRef) -> TypeRef {
 }
 
 fn T_ptr(t: TypeRef) -> TypeRef {
-    return llvm::LLVMPointerType(t, 0u as c_uint);
+    return llvm::LLVMPointerType(t, default_addrspace);
+}
+
+fn T_root(t: TypeRef, addrspace: addrspace) -> TypeRef {
+    return llvm::LLVMPointerType(t, addrspace);
 }
 
 fn T_struct(elts: ~[TypeRef]) -> TypeRef unsafe {
@@ -738,8 +777,7 @@ fn T_box(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
 }
 
 fn T_box_ptr(t: TypeRef) -> TypeRef {
-    const box_addrspace: uint = 1u;
-    return llvm::LLVMPointerType(t, box_addrspace as c_uint);
+    return llvm::LLVMPointerType(t, gc_box_addrspace);
 }
 
 fn T_opaque_box(cx: @crate_ctxt) -> TypeRef {
@@ -755,8 +793,7 @@ fn T_unique(cx: @crate_ctxt, t: TypeRef) -> TypeRef {
 }
 
 fn T_unique_ptr(t: TypeRef) -> TypeRef {
-    const unique_addrspace: uint = 1u;
-    return llvm::LLVMPointerType(t, unique_addrspace as c_uint);
+    return llvm::LLVMPointerType(t, gc_box_addrspace);
 }
 
 fn T_port(cx: @crate_ctxt, _t: TypeRef) -> TypeRef {

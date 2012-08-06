@@ -54,7 +54,7 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
             let cell = empty_dest_cell();
             bcx = tvec::trans_estr(bcx, s, some(ast::vstore_uniq),
                                    by_val(cell));
-            add_clean_temp(bcx, *cell, strty);
+            add_clean_temp_immediate(bcx, *cell, strty);
             return single_result(rslt(bcx, *cell));
           }
           _ => {

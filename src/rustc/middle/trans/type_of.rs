@@ -12,6 +12,7 @@ export type_of_fn_from_ty;
 export type_of_fn;
 export type_of_glue_fn;
 export type_of_non_gc_box;
+export type_of_rooted;
 
 fn type_of_explicit_args(cx: @crate_ctxt,
                          inputs: ~[ty::arg]) -> ~[TypeRef] {
@@ -243,6 +244,13 @@ fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
     T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))),
           T_ptr(type_of(ccx, self_ty))],
          llvm::LLVMVoidType())
+}
+
+fn type_of_rooted(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
+    let addrspace = base::get_tydesc(ccx, t).addrspace;
+    debug!{"type_of_rooted %s in addrspace %u",
+           ty_to_str(ccx.tcx, t), addrspace as uint};
+    return T_root(type_of(ccx, t), addrspace);
 }
 
 fn type_of_glue_fn(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
