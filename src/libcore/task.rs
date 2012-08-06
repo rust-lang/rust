@@ -1872,7 +1872,7 @@ fn test_avoid_copying_the_body_task_spawn() {
 }
 
 #[test]
-fn test_avoid_copying_the_body_spawn_listener() {
+fn test_avoid_copying_the_body_spawn_listener_1() {
     do avoid_copying_the_body |f| {
         task().spawn_listener(fn~(move f, _po: comm::port<int>) {
             f();

@@ -497,29 +497,41 @@ class NameBindings {
     let mut value_def: option<def>;     //< Meaning in the value namespace.
     let mut impl_defs: ~[@Impl];        //< Meaning in the impl namespace.
 
+    // For error reporting
+    let mut module_span: option<span>;
+    let mut type_span: option<span>;
+    let mut value_span: option<span>;
+
     new() {
         self.module_def = NoModuleDef;
         self.type_def = none;
         self.value_def = none;
         self.impl_defs = ~[];
+        self.module_span = none;
+        self.type_span = none;
+        self.value_span = none;
     }
 
     /// Creates a new module in this set of name bindings.
-    fn define_module(parent_link: ParentLink, def_id: option<def_id>) {
+    fn define_module(parent_link: ParentLink, def_id: option<def_id>,
+                     sp: span) {
         if self.module_def == NoModuleDef {
             let module_ = @Module(parent_link, def_id);
             self.module_def = ModuleDef(module_);
+            self.module_span = some(sp);
         }
     }
 
     /// Records a type definition.
-    fn define_type(def: def) {
+    fn define_type(def: def, sp: span) {
         self.type_def = some(def);
+        self.type_span = some(sp);
     }
 
     /// Records a value definition.
-    fn define_value(def: def) {
+    fn define_value(def: def, sp: span) {
         self.value_def = some(def);
+        self.value_span = some(sp);
     }
 
     /// Records an impl definition.
@@ -582,6 +594,20 @@ class NameBindings {
           }
         }
     }
+
+    fn span_for_namespace(namespace: Namespace) -> option<span> {
+        match self.def_for_namespace(namespace) {
+          some(d) => {
+            match namespace {
+              TypeNS   => self.type_span,
+              ValueNS  => self.value_span,
+              ModuleNS => self.module_span,
+              _        => none
+            }
+          }
+          none => none
+        }
+    }
 }
 
 /// Interns the names of the primitive types.
@@ -613,6 +639,15 @@ class PrimitiveTypeTable {
               primitive_type: prim_ty) {
         let atom = (*atom_table).intern(string);
         self.primitive_types.insert(atom, primitive_type);
+    }
+}
+
+fn namespace_to_str(ns: Namespace) -> ~str {
+    match ns {
+      TypeNS   => ~"type",
+      ValueNS  => ~"value",
+      ModuleNS => ~"module",
+      ImplNS   => ~"implementation"
     }
 }
 
@@ -678,7 +713,8 @@ class Resolver {
 
         self.graph_root = @NameBindings();
         (*self.graph_root).define_module(NoParentLink,
-                                         some({ crate: 0, node: 0 }));
+                                         some({ crate: 0, node: 0 }),
+                                         crate.span);
 
         self.unused_import_lint_level = unused_import_lint_level(session);
 
@@ -780,7 +816,12 @@ class Resolver {
      * a block, fails.
      */
     fn add_child(name: Atom,
-                 reduced_graph_parent: ReducedGraphParent)
+                 reduced_graph_parent: ReducedGraphParent,
+                 // Pass in the namespaces for the child item so that we can
+                 // check for duplicate items in the same namespace
+                 ns: ~[Namespace],
+                 // For printing errors
+                 sp: span)
               -> (@NameBindings, ReducedGraphParent) {
 
         // If this is the immediate descendant of a module, then we add the
@@ -798,12 +839,30 @@ class Resolver {
         let new_parent = ModuleReducedGraphParent(module_);
         match module_.children.find(name) {
             none => {
-                let child = @NameBindings();
-                module_.children.insert(name, child);
-                return (child, new_parent);
+              let child = @NameBindings();
+              module_.children.insert(name, child);
+              return (child, new_parent);
             }
             some(child) => {
-                return (child, new_parent);
+              // We don't want to complain if the multiple definitions
+              // are in different namespaces. (unless it's the impl namespace,
+              // since impls can share a name)
+              match ns.find(|n| n != ImplNS && child.defined_in_namespace(n)) {
+                some(ns) => {
+                  self.session.span_err(sp,
+                       #fmt("Duplicate definition of %s %s",
+                            namespace_to_str(ns),
+                            *(*self.atom_table).atom_to_str(name)));
+                  do child.span_for_namespace(ns).iter() |sp| {
+                      self.session.span_note(sp,
+                           #fmt("First definition of %s %s here:",
+                            namespace_to_str(ns),
+                            *(*self.atom_table).atom_to_str(name)));
+                  }
+                }
+                _ => {}
+              }
+              return (child, new_parent);
             }
         }
     }
@@ -853,23 +912,31 @@ class Resolver {
                                     &&visitor: vt<ReducedGraphParent>) {
 
         let atom = (*self.atom_table).intern(item.ident);
-        let (name_bindings, new_parent) = self.add_child(atom, parent);
+        let sp = item.span;
 
         match item.node {
             item_mod(module_) => {
+              let (name_bindings, new_parent) = self.add_child(atom, parent,
+                                                       ~[ModuleNS], sp);
+
                 let parent_link = self.get_parent_link(new_parent, atom);
                 let def_id = { crate: 0, node: item.id };
-                (*name_bindings).define_module(parent_link, some(def_id));
+              (*name_bindings).define_module(parent_link, some(def_id),
+                                             sp);
 
                 let new_parent =
                     ModuleReducedGraphParent((*name_bindings).get_module());
 
-                visit_mod(module_, item.span, item.id, new_parent, visitor);
+                visit_mod(module_, sp, item.id, new_parent, visitor);
             }
             item_foreign_mod(foreign_module) => {
+              let (name_bindings, new_parent) = self.add_child(atom, parent,
+                                                           ~[ModuleNS], sp);
+
                 let parent_link = self.get_parent_link(new_parent, atom);
                 let def_id = { crate: 0, node: item.id };
-                (*name_bindings).define_module(parent_link, some(def_id));
+                (*name_bindings).define_module(parent_link, some(def_id),
+                                               sp);
 
                 let new_parent =
                     ModuleReducedGraphParent((*name_bindings).get_module());
@@ -879,22 +946,35 @@ class Resolver {
 
             // These items live in the value namespace.
             item_const(*) => {
-                (*name_bindings).define_value(def_const(local_def(item.id)));
+              let (name_bindings, _) = self.add_child(atom, parent,
+                                                      ~[ValueNS], sp);
+
+                (*name_bindings).define_value(def_const(local_def(item.id)),
+                                              sp);
             }
             item_fn(decl, _, _) => {
+              let (name_bindings, new_parent) = self.add_child(atom, parent,
+                                                        ~[ValueNS], sp);
+
                 let def = def_fn(local_def(item.id), decl.purity);
-                (*name_bindings).define_value(def);
+                (*name_bindings).define_value(def, sp);
                 visit_item(item, new_parent, visitor);
             }
 
             // These items live in the type namespace.
             item_ty(*) => {
-                (*name_bindings).define_type(def_ty(local_def(item.id)));
+              let (name_bindings, _) = self.add_child(atom, parent,
+                                                      ~[TypeNS], sp);
+
+                (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
             }
 
             // These items live in both the type and value namespaces.
             item_enum(variants, _) => {
-                (*name_bindings).define_type(def_ty(local_def(item.id)));
+              let (name_bindings, new_parent) = self.add_child(atom, parent,
+                                                     ~[ValueNS, TypeNS], sp);
+
+                (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
 
                 for variants.each |variant| {
                     self.build_reduced_graph_for_variant(variant,
@@ -904,7 +984,10 @@ class Resolver {
                 }
             }
             item_class(_, _, class_members, optional_ctor, _) => {
-                (*name_bindings).define_type(def_ty(local_def(item.id)));
+              let (name_bindings, new_parent) = self.add_child(atom, parent,
+                                              ~[ValueNS, TypeNS], sp);
+
+                (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
 
                 match optional_ctor {
                     none => {
@@ -914,7 +997,7 @@ class Resolver {
                         let purity = ctor.node.dec.purity;
                         let ctor_def = def_fn(local_def(ctor.node.id),
                                               purity);
-                        (*name_bindings).define_value(ctor_def);
+                        (*name_bindings).define_value(ctor_def, sp);
                     }
                 }
 
@@ -963,6 +1046,8 @@ class Resolver {
                 // implementation scopes (ImplScopes) need and write it into
                 // the implementation definition list for this set of name
                 // bindings.
+              let (name_bindings, new_parent) = self.add_child(atom, parent,
+                                                               ~[ImplNS], sp);
 
                 let mut method_infos = ~[];
                 for methods.each |method| {
@@ -986,7 +1071,10 @@ class Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_trait(_, _, methods) => {
+          item_trait(_, _, methods) => {
+              let (name_bindings, new_parent) = self.add_child(atom, parent,
+                                                               ~[TypeNS], sp);
+
                 // Add the names of all the methods to the trait info.
                 let method_names = @atom_hashmap();
                 for methods.each |method| {
@@ -1007,7 +1095,7 @@ class Resolver {
                 let def_id = local_def(item.id);
                 self.trait_info.insert(def_id, method_names);
 
-                (*name_bindings).define_type(def_ty(def_id));
+                (*name_bindings).define_type(def_ty(def_id), sp);
                 visit_item(item, new_parent, visitor);
             }
 
@@ -1027,10 +1115,11 @@ class Resolver {
                                        &&_visitor: vt<ReducedGraphParent>) {
 
         let atom = (*self.atom_table).intern(variant.node.name);
-        let (child, _) = self.add_child(atom, parent);
+        let (child, _) = self.add_child(atom, parent, ~[ValueNS],
+                                        variant.span);
 
         (*child).define_value(def_variant(item_id,
-                                          local_def(variant.node.id)));
+                                local_def(variant.node.id)), variant.span);
     }
 
     /**
@@ -1173,14 +1262,17 @@ class Resolver {
                     some(crate_id) => {
                         let atom = (*self.atom_table).intern(name);
                         let (child_name_bindings, new_parent) =
-                            self.add_child(atom, parent);
+                            // should this be in ModuleNS? --tjc
+                            self.add_child(atom, parent, ~[ModuleNS],
+                                           view_item.span);
 
                         let def_id = { crate: crate_id, node: 0 };
                         let parent_link = ModuleParentLink
                             (self.get_module_from_parent(new_parent), atom);
 
                         (*child_name_bindings).define_module(parent_link,
-                                                             some(def_id));
+                                                             some(def_id),
+                                                             view_item.span);
                         self.build_reduced_graph_for_external_crate
                             ((*child_name_bindings).get_module());
                     }
@@ -1199,12 +1291,14 @@ class Resolver {
                                                 vt<ReducedGraphParent>) {
 
         let name = (*self.atom_table).intern(foreign_item.ident);
-        let (name_bindings, new_parent) = self.add_child(name, parent);
 
         match foreign_item.node {
             foreign_item_fn(fn_decl, type_parameters) => {
+              let (name_bindings, new_parent) = self.add_child(name, parent,
+                                              ~[ValueNS], foreign_item.span);
+
                 let def = def_fn(local_def(foreign_item.id), fn_decl.purity);
-                (*name_bindings).define_value(def);
+                (*name_bindings).define_value(def, foreign_item.span);
 
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters,
@@ -1271,7 +1365,9 @@ class Resolver {
                 let atom = (*self.atom_table).intern(@copy ident);
                 let (child_name_bindings, new_parent) =
                     self.add_child(atom,
-                                   ModuleReducedGraphParent(current_module));
+                                   ModuleReducedGraphParent(current_module),
+                                   // May want a better span
+                                   ~[], dummy_sp());
 
                 // Define or reuse the module node.
                 match child_name_bindings.module_def {
@@ -1281,7 +1377,7 @@ class Resolver {
                         let parent_link = self.get_parent_link(new_parent,
                                                                atom);
                         (*child_name_bindings).define_module(parent_link,
-                                                             none);
+                                                       none, dummy_sp());
                     }
                     ModuleDef(_) => { /* Fall through. */ }
                 }
@@ -1293,7 +1389,8 @@ class Resolver {
             let atom = (*self.atom_table).intern(@copy final_ident);
             let (child_name_bindings, new_parent) =
                 self.add_child(atom,
-                               ModuleReducedGraphParent(current_module));
+                               ModuleReducedGraphParent(current_module),
+                              ~[], dummy_sp());
 
             match path_entry.def_like {
                 dl_def(def) => {
@@ -1312,7 +1409,8 @@ class Resolver {
                                         none => {
                                             (*child_name_bindings).
                                                 define_module(parent_link,
-                                                              some(def_id));
+                                                              some(def_id),
+                                                             dummy_sp());
                                             modules.insert(def_id,
                                                 (*child_name_bindings).
                                                     get_module());
@@ -1373,7 +1471,9 @@ class Resolver {
                         def_variant(_, def_id) => {
                             debug!{"(building reduced graph for external \
                                     crate) building value %s", final_ident};
-                            (*child_name_bindings).define_value(def);
+                            // Might want a better span
+                            (*child_name_bindings).define_value(def,
+                                                                dummy_sp());
                         }
                         def_ty(def_id) => {
                             debug!{"(building reduced graph for external \
@@ -1407,17 +1507,23 @@ class Resolver {
                                 }
                             }
 
-                            (*child_name_bindings).define_type(def);
+                            // Might want a better span
+                            (*child_name_bindings).define_type(def,
+                                                               dummy_sp());
                         }
                         def_class(def_id, has_constructor) => {
                             debug!{"(building reduced graph for external \
                                     crate) building type %s (value? %d)",
                                     final_ident,
                                     if has_constructor { 1 } else { 0 }};
-                            (*child_name_bindings).define_type(def);
+                            // Might want a better span
+                            (*child_name_bindings).define_type(def,
+                                                               dummy_sp());
 
+                            // Might want a better span
                             if has_constructor {
-                                (*child_name_bindings).define_value(def);
+                                (*child_name_bindings).define_value(def,
+                                                              dummy_sp());
                             }
                         }
                         def_self(*) | def_arg(*) | def_local(*) |
@@ -1513,7 +1619,9 @@ class Resolver {
             let name = (*self.atom_table).intern(implementation.ident);
 
             let (name_bindings, _) =
-                self.add_child(name, ModuleReducedGraphParent(module_));
+                    // Might want a better span
+                self.add_child(name, ModuleReducedGraphParent(module_),
+                              ~[ImplNS], dummy_sp());
 
             name_bindings.impl_defs += ~[implementation];
         }
@@ -3779,7 +3887,7 @@ class Resolver {
                     // The meaning of pat_ident with no type parameters
                     // depends on whether an enum variant with that name is in
                     // scope. The probing lookup has to be careful not to emit
-                    // spurious errors. Only matching patterns (alt) can match
+                    // spurious errors. Only matching patterns (match) can match
                     // nullary variants. For binding patterns (let), matching
                     // such a variant is simply disallowed (since it's rarely
                     // what you want).
