@@ -148,7 +148,8 @@ type field_pat = {ident: ident, pat: @pat};
 #[auto_serialize]
 enum binding_mode {
     bind_by_value,
-    bind_by_ref
+    bind_by_ref(ast::mutability),
+    bind_by_implicit_ref
 }
 
 #[auto_serialize]

@@ -156,15 +156,32 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, b_ty);
       }
-      ast::pat_ident(_, name, sub) if !pat_is_variant(tcx.def_map, pat) => {
+      ast::pat_ident(bm, name, sub) if !pat_is_variant(tcx.def_map, pat) => {
         let vid = lookup_local(fcx, pat.span, pat.id);
         let mut typ = ty::mk_var(tcx, vid);
-        demand::suptype(fcx, pat.span, expected, typ);
+
+        match bm {
+          ast::bind_by_ref(mutbl) => {
+            // if the binding is like
+            //    ref x | ref const x | ref mut x
+            // then the type of x is &M T where M is the mutability
+            // and T is the expected type
+            let region_var = fcx.infcx.next_region_var_nb();
+            let mt = {ty: expected, mutbl: mutbl};
+            let region_ty = ty::mk_rptr(tcx, region_var, mt);
+            demand::eqtype(fcx, pat.span, region_ty, typ);
+          }
+          ast::bind_by_value | ast::bind_by_implicit_ref => {
+            // otherwise the type of x is the expected type T
+            demand::eqtype(fcx, pat.span, expected, typ);
+          }
+        }
+
         let canon_id = pcx.map.get(ast_util::path_to_ident(name));
         if canon_id != pat.id {
             let tv_id = lookup_local(fcx, pat.span, canon_id);
             let ct = ty::mk_var(tcx, tv_id);
-            demand::suptype(fcx, pat.span, ct, typ);
+            demand::eqtype(fcx, pat.span, ct, typ);
         }
         fcx.write_ty(pat.id, typ);
         match sub {

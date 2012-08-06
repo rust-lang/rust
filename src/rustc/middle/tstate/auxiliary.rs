@@ -930,7 +930,7 @@ type binding = {lhs: ~[dest], rhs: option<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let mut lhs = ~[];
-    do pat_bindings(tcx.def_map, loc.node.pat) |p_id, _s, name| {
+    do pat_bindings(tcx.def_map, loc.node.pat) |_bm, p_id, _s, name| {
       vec::push(lhs, local_dest({ident: path_to_ident(name), node: p_id}));
     };
     {lhs: lhs, rhs: loc.node.init}

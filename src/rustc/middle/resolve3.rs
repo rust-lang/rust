@@ -5,9 +5,13 @@ import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 import middle::lang_items::LanguageItems;
 import middle::lint::{deny, allow, forbid, level, unused_imports, warn};
-import syntax::ast::{_mod, add, arm, bind_by_value, bitand, bitor, bitxor};
+import middle::pat_util::{pat_bindings};
+import syntax::ast::{_mod, add, arm};
+import syntax::ast::{bind_by_ref, bind_by_implicit_ref, bind_by_value};
+import syntax::ast::{bitand, bitor, bitxor};
 import syntax::ast::{blk, bound_const, bound_copy, bound_owned, bound_send};
-import syntax::ast::{bound_trait, capture_clause, class_ctor, class_dtor};
+import syntax::ast::{bound_trait, binding_mode,
+                     capture_clause, class_ctor, class_dtor};
 import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
@@ -36,7 +40,7 @@ import syntax::ast::{ty_uint, variant, view_item, view_item_export};
 import syntax::ast::{view_item_import, view_item_use, view_path_glob};
 import syntax::ast::{view_path_list, view_path_simple};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
-import syntax::ast_util::{walk_pat};
+import syntax::ast_util::{walk_pat, path_to_ident};
 import syntax::attr::{attr_metas, contains_name};
 import syntax::print::pprust::{pat_to_str, path_to_str};
 import syntax::codemap::span;
@@ -52,11 +56,19 @@ import str::{connect, split_str};
 import vec::pop;
 
 import std::list::{cons, list, nil};
-import std::map::{hashmap, int_hash, str_hash};
+import std::map::{hashmap, int_hash, box_str_hash};
 import str_eq = str::eq;
 
 // Definition mapping
 type DefMap = hashmap<node_id,def>;
+
+struct binding_info {
+    span: span;
+    binding_mode: binding_mode;
+}
+
+// Map from the name in a pattern to its binding mode.
+type BindingMap = hashmap<ident,binding_info>;
 
 // Implementation resolution
 
@@ -3584,38 +3596,54 @@ class Resolver {
                              none, visitor);
     }
 
-    fn num_bindings(pat: @pat) -> uint {
-      pat_util::pat_binding_ids(self.def_map, pat).len()
+    fn binding_mode_map(pat: @pat) -> BindingMap {
+        let result = box_str_hash();
+        do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
+            let ident = path_to_ident(path);
+            result.insert(ident,
+                          binding_info {span: sp,
+                                        binding_mode: binding_mode});
+        }
+        return result;
     }
 
-    fn warn_var_patterns(arm: arm) {
-      /*
-        The idea here is that an arm like:
-           alpha | beta
-        where alpha is a variant and beta is an identifier that
-        might refer to a variant that's not in scope will result
-        in a confusing error message. Showing that beta actually binds a
-        new variable might help.
-       */
-      for arm.pats.each |p| {
-         do pat_util::pat_bindings(self.def_map, p) |_id, sp, pth| {
-             self.session.span_note(sp, fmt!{"Treating %s as a variable \
-               binding, because it does not denote any variant in scope",
-                                             path_to_str(pth)});
-         }
-      };
-    }
     fn check_consistent_bindings(arm: arm) {
-      if arm.pats.len() == 0 { return; }
-      let good = self.num_bindings(arm.pats[0]);
-      for arm.pats.each() |p: @pat| {
-        if self.num_bindings(p) != good {
-          self.session.span_err(p.span,
-             ~"inconsistent number of bindings");
-          self.warn_var_patterns(arm);
-          break;
-        };
-      };
+        if arm.pats.len() == 0 { return; }
+        let map_0 = self.binding_mode_map(arm.pats[0]);
+        for arm.pats.eachi() |i, p: @pat| {
+            let map_i = self.binding_mode_map(p);
+
+            for map_0.each |key, binding_0| {
+                match map_i.find(key) {
+                  none => {
+                    self.session.span_err(
+                        p.span,
+                        fmt!{"variable `%s` from pattern #1 is \
+                                  not bound in pattern #%u",
+                             *key, i + 1});
+                  }
+                  some(binding_i) => {
+                    if binding_0.binding_mode != binding_i.binding_mode {
+                        self.session.span_err(
+                            binding_i.span,
+                            fmt!{"variable `%s` is bound with different \
+                                      mode in pattern #%u than in pattern #1",
+                                 *key, i + 1});
+                    }
+                  }
+                }
+            }
+
+            for map_i.each |key, binding| {
+                if !map_0.contains_key(key) {
+                    self.session.span_err(
+                        binding.span,
+                        fmt!{"variable `%s` from pattern #%u is \
+                                  not bound in pattern #1",
+                             *key, i + 1});
+                }
+            }
+        }
     }
 
     fn resolve_arm(arm: arm, visitor: ResolveVisitor) {

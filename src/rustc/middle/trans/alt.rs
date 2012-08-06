@@ -662,77 +662,86 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
     }
 }
 
+struct phi_binding {
+    pat_id: ast::node_id;
+    phi_val: ValueRef;
+    mode: ast::binding_mode;
+    ty: ty::t;
+}
+
+type phi_bindings_list = ~[phi_binding];
+
 // Returns false for unreachable blocks
-fn make_phi_bindings(bcx: block, map: ~[exit_node],
-                     ids: pat_util::pat_id_map) -> bool {
+fn make_phi_bindings(bcx: block,
+                     map: ~[exit_node],
+                     ids: pat_util::pat_id_map)
+    -> option<phi_bindings_list> {
     let _icx = bcx.insn_ctxt(~"alt::make_phi_bindings");
     let our_block = bcx.llbb as uint;
-    let mut success = true, bcx = bcx;
+    let mut phi_bindings = ~[];
     for ids.each |name, node_id| {
         let mut llbbs = ~[];
         let mut vals = ~[];
+        let mut binding = none;
         for vec::each(map) |ex| {
             if ex.to as uint == our_block {
                 match assoc(name, ex.bound) {
-                  some(binding) => {
+                  some(b) => {
                     vec::push(llbbs, ex.from);
-                    vec::push(vals, binding.val);
+                    vec::push(vals, b.val);
+                    binding = some(b);
                   }
                   none => ()
                 }
             }
         }
-        if vals.len() > 0u {
-            let local = Phi(bcx, val_ty(vals[0]), vals, llbbs);
-            bcx.fcx.lllocals.insert(node_id, local_mem(local));
-        } else { success = false; }
-    };
-    if !success {
-        Unreachable(bcx);
+
+        let binding = match binding {
+          some(binding) => binding,
+          none => {
+            Unreachable(bcx);
+            return none;
+          }
+        };
+
+        let phi_val = Phi(bcx, val_ty(vals[0]), vals, llbbs);
+        vec::push(phi_bindings, phi_binding {
+            pat_id: node_id,
+            phi_val: phi_val,
+            mode: binding.mode,
+            ty: binding.ty
+        });
     }
-    return success;
+    return some(move phi_bindings);
 }
 
 // Copies by-value bindings into their homes.
-fn copy_by_value_bindings(bcx: block,
-                          exit_node_map: &[exit_node],
-                          pat_ids: pat_util::pat_id_map)
-                       -> block {
+fn make_pattern_bindings(bcx: block, phi_bindings: phi_bindings_list)
+    -> block {
     let mut bcx = bcx;
-    let our_block = bcx.llbb as uint;
-    for pat_ids.each |name, node_id| {
-        let bindings = dvec::dvec();
-        for exit_node_map.each |exit_node| {
-            if exit_node.to as uint == our_block {
-                match assoc(name, exit_node.bound) {
-                    none => {}
-                    some(binding) => bindings.push(binding)
-                }
-            }
-        }
 
-        if bindings.len() == 0 {
-            again;
-        }
-
-        let binding = bindings[0];
+    for phi_bindings.each |binding| {
+        let phi_val = binding.phi_val;
         match binding.mode {
-            ast::bind_by_ref => {}
+            ast::bind_by_implicit_ref => {
+                // use local: phi is a ptr to the value
+                bcx.fcx.lllocals.insert(binding.pat_id,
+                                        local_mem(phi_val));
+            }
+            ast::bind_by_ref(_) => {
+                // use local_imm: ptr is the value
+                bcx.fcx.lllocals.insert(binding.pat_id,
+                                        local_imm(phi_val));
+            }
             ast::bind_by_value => {
-                let llvalue;
-                match bcx.fcx.lllocals.get(node_id) {
-                    local_mem(llval) =>
-                        llvalue = llval,
-                    local_imm(_) =>
-                        bcx.sess().bug(~"local_imm unexpected here")
-                }
-
+                // by value: make a new temporary and copy the value out
                 let lltype = type_of::type_of(bcx.fcx.ccx, binding.ty);
                 let allocation = alloca(bcx, lltype);
                 let ty = binding.ty;
                 bcx = copy_val(bcx, INIT, allocation,
-                               load_if_immediate(bcx, llvalue, ty), ty);
-                bcx.fcx.lllocals.insert(node_id, local_mem(allocation));
+                               load_if_immediate(bcx, phi_val, ty), ty);
+                bcx.fcx.lllocals.insert(binding.pat_id,
+                                        local_mem(allocation));
                 add_clean(bcx, allocation, ty);
             }
         }
@@ -810,13 +819,16 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
     for vec::each(arms) |a| {
         let body_cx = bodies[i];
         let id_map = pat_util::pat_id_map(tcx.def_map, a.pats[0]);
-        if make_phi_bindings(body_cx, exit_map, id_map) {
-            let body_cx = copy_by_value_bindings(body_cx, exit_map, id_map);
-            let arm_dest = dup_for_join(dest);
-            vec::push(arm_dests, arm_dest);
-            let mut arm_cx = trans_block(body_cx, a.body, arm_dest);
-            arm_cx = trans_block_cleanups(arm_cx, body_cx);
-            vec::push(arm_cxs, arm_cx);
+        match make_phi_bindings(body_cx, exit_map, id_map) {
+            none => {}
+            some(phi_bindings) => {
+                let body_cx = make_pattern_bindings(body_cx, phi_bindings);
+                let arm_dest = dup_for_join(dest);
+                vec::push(arm_dests, arm_dest);
+                let mut arm_cx = trans_block(body_cx, a.body, arm_dest);
+                arm_cx = trans_block_cleanups(arm_cx, body_cx);
+                vec::push(arm_cxs, arm_cx);
+            }
         }
         i += 1u;
     }

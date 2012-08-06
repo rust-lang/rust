@@ -404,7 +404,7 @@ fn add_class_fields(self: @ir_maps, did: def_id) {
 
 fn visit_local(local: @local, &&self: @ir_maps, vt: vt<@ir_maps>) {
     let def_map = self.tcx.def_map;
-    do pat_util::pat_bindings(def_map, local.node.pat) |p_id, sp, path| {
+    do pat_util::pat_bindings(def_map, local.node.pat) |_bm, p_id, sp, path| {
         debug!{"adding local variable %d", p_id};
         let name = ast_util::path_to_ident(path);
         (*self).add_live_node_for_node(p_id, lnk_vdef(sp));
@@ -587,7 +587,7 @@ class liveness {
 
     fn pat_bindings(pat: @pat, f: fn(live_node, variable, span)) {
         let def_map = self.tcx.def_map;
-        do pat_util::pat_bindings(def_map, pat) |p_id, sp, _n| {
+        do pat_util::pat_bindings(def_map, pat) |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
             let var = self.variable(p_id, sp);
             f(ln, var, sp);

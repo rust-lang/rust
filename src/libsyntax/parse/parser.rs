@@ -16,7 +16,8 @@ import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
 import dvec::{dvec, extensions};
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
-             bind_by_ref, bind_by_value, bitand, bitor, bitxor, blk,
+             bind_by_ref, bind_by_implicit_ref, bind_by_value,
+             bitand, bitor, bitxor, blk,
              blk_check_mode, bound_const, bound_copy, bound_send, bound_trait,
              bound_owned, box, by_copy, by_move, by_mutbl_ref, by_ref, by_val,
              capture_clause, capture_item, cdir_dir_mod, cdir_src_mod,
@@ -1718,7 +1719,9 @@ class parser {
                 } else {
                     subpat = @{
                         id: self.get_id(),
-                        node: pat_ident(bind_by_ref, fieldpath, none),
+                        node: pat_ident(bind_by_implicit_ref,
+                                        fieldpath,
+                                        none),
                         span: mk_sp(lo, hi)
                     };
                 }
@@ -1749,86 +1752,99 @@ class parser {
             }
           }
           tok => {
-            if !is_ident_or_path(tok) ||
-                    self.is_keyword(~"true") || self.is_keyword(~"false") {
+            if !is_ident_or_path(tok)
+                || self.is_keyword(~"true")
+                || self.is_keyword(~"false")
+            {
                 let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 if self.eat_keyword(~"to") {
                     let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
-                    hi = end.span.hi;
                     pat = pat_range(val, end);
                 } else {
-                    hi = val.span.hi;
                     pat = pat_lit(val);
                 }
+            } else if self.eat_keyword(~"ref") {
+                let mutbl = self.parse_mutability();
+                pat = self.parse_pat_ident(refutable, bind_by_ref(mutbl));
+            } else if self.eat_keyword(~"copy") {
+                pat = self.parse_pat_ident(refutable, bind_by_value);
+            } else if !is_plain_ident(self.token) {
+                pat = self.parse_enum_variant(refutable);
             } else {
-                let binding_mode;
-                if self.eat_keyword(~"ref") {
-                    binding_mode = bind_by_ref;
-                } else if self.eat_keyword(~"copy") {
-                    binding_mode = bind_by_value;
-                } else if refutable {
-                    // XXX: Should be bind_by_value, but that's not
-                    // backward compatible.
-                    binding_mode = bind_by_ref;
-                } else {
-                    binding_mode = bind_by_value;
-                }
-
-                if is_plain_ident(self.token) &&
-                    match self.look_ahead(1) {
-                      token::LPAREN | token::LBRACKET | token::LT => {
-                        false
-                      }
-                      _ => {
-                        true
-                      }
-                    } {
-                    let name = self.parse_value_path();
-                    let sub = if self.eat(token::AT) {
-                        some(self.parse_pat(refutable))
-                    }
-                    else { none };
-                    pat = pat_ident(binding_mode, name, sub);
-                } else {
-                    let enum_path = self.parse_path_with_tps(true);
-                    hi = enum_path.span.hi;
-                    let mut args: ~[@pat] = ~[];
-                    let mut star_pat = false;
-                    match self.token {
-                      token::LPAREN => match self.look_ahead(1u) {
-                        token::BINOP(token::STAR) => {
-                            // This is a "top constructor only" pat
-                              self.bump(); self.bump();
-                              star_pat = true;
-                              self.expect(token::RPAREN);
-                          }
-                        _ => {
-                            args = self.parse_unspanned_seq(
-                                token::LPAREN, token::RPAREN,
-                                seq_sep_trailing_disallowed(token::COMMA),
-                                |p| p.parse_pat(refutable));
-                              hi = self.span.hi;
-                          }
-                      }
-                      _ => ()
-                    }
-                    // at this point, we're not sure whether it's a enum or a
-                    // bind
-                    if star_pat {
-                        pat = pat_enum(enum_path, none);
-                    }
-                    else if vec::is_empty(args) &&
-                        vec::len(enum_path.idents) == 1u {
-                        pat = pat_ident(binding_mode, enum_path, none);
-                    }
-                    else {
-                        pat = pat_enum(enum_path, some(args));
-                    }
+                // this is a plain identifier, like `x` or `x(...)`
+                match self.look_ahead(1) {
+                  token::LPAREN | token::LBRACKET | token::LT => {
+                    pat = self.parse_enum_variant(refutable);
+                  }
+                  _ => {
+                    let binding_mode = if refutable {
+                        // XXX: Should be bind_by_value, but that's not
+                        // backward compatible.
+                        bind_by_implicit_ref
+                    } else {
+                        bind_by_value
+                    };
+                    pat = self.parse_pat_ident(refutable, binding_mode);
+                  }
                 }
             }
+            hi = self.span.hi;
           }
         }
         return @{id: self.get_id(), node: pat, span: mk_sp(lo, hi)};
+    }
+
+    fn parse_pat_ident(refutable: bool,
+                       binding_mode: ast::binding_mode) -> ast::pat_ {
+        if !is_plain_ident(self.token) {
+            self.span_fatal(
+                copy self.last_span,
+                ~"expected identifier, found path");
+        }
+        let name = self.parse_value_path();
+        let sub = if self.eat(token::AT) {
+            some(self.parse_pat(refutable))
+        } else { none };
+
+        // just to be friendly, if they write something like
+        //   ref some(i)
+        // we end up here with ( as the current token.  This shortly
+        // leads to a parse error.  Note that if there is no explicit
+        // binding mode then we do not end up here, because the lookahead
+        // will direct us over to parse_enum_variant()
+        if self.token == token::LPAREN {
+            self.span_fatal(
+                copy self.last_span,
+                ~"expected identifier, found enum pattern");
+        }
+
+        pat_ident(binding_mode, name, sub)
+    }
+
+    fn parse_enum_variant(refutable: bool) -> ast::pat_ {
+        let enum_path = self.parse_path_with_tps(true);
+        match self.token {
+          token::LPAREN => {
+            match self.look_ahead(1u) {
+              token::BINOP(token::STAR) => { // foo(*)
+                self.expect(token::LPAREN);
+                self.expect(token::BINOP(token::STAR));
+                self.expect(token::RPAREN);
+                pat_enum(enum_path, none)
+              }
+              _ => { // foo(a, ..., z)
+                let args = self.parse_unspanned_seq(
+                    token::LPAREN, token::RPAREN,
+                    seq_sep_trailing_disallowed(token::COMMA),
+                    |p| p.parse_pat(refutable));
+                pat_enum(enum_path, some(args))
+              }
+            }
+          }
+          _ => { // option::none
+            pat_enum(enum_path, some(~[]))
+          }
+        }
     }
 
     fn parse_local(is_mutbl: bool,

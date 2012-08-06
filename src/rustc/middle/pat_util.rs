@@ -15,7 +15,7 @@ type pat_id_map = std::map::hashmap<ident, node_id>;
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(dm: resolve3::DefMap, pat: @pat) -> pat_id_map {
     let map = std::map::box_str_hash();
-    do pat_bindings(dm, pat) |p_id, _s, n| {
+    do pat_bindings(dm, pat) |_bm, p_id, _s, n| {
       map.insert(path_to_ident(n), p_id);
     };
     return map;
@@ -33,11 +33,11 @@ fn pat_is_variant(dm: resolve3::DefMap, pat: @pat) -> bool {
 }
 
 fn pat_bindings(dm: resolve3::DefMap, pat: @pat,
-                it: fn(node_id, span, @path)) {
+                it: fn(binding_mode, node_id, span, @path)) {
     do walk_pat(pat) |p| {
         match p.node {
-          pat_ident(_, pth, _) if !pat_is_variant(dm, p) => {
-            it(p.id, p.span, pth);
+          pat_ident(binding_mode, pth, _) if !pat_is_variant(dm, p) => {
+            it(binding_mode, p.id, p.span, pth);
           }
           _ => {}
         }
@@ -46,6 +46,6 @@ fn pat_bindings(dm: resolve3::DefMap, pat: @pat,
 
 fn pat_binding_ids(dm: resolve3::DefMap, pat: @pat) -> ~[node_id] {
     let mut found = ~[];
-    pat_bindings(dm, pat, |b_id, _sp, _pt| vec::push(found, b_id) );
+    pat_bindings(dm, pat, |_bm, b_id, _sp, _pt| vec::push(found, b_id) );
     return found;
 }
