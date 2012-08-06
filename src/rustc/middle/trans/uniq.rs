@@ -7,9 +7,10 @@ import shape::llsize_of;
 
 export make_free_glue, autoderef, duplicate;
 
-fn make_free_glue(bcx: block, vptr: ValueRef, t: ty::t)
+fn make_free_glue(bcx: block, vptrptr: ValueRef, t: ty::t)
     -> block {
     let _icx = bcx.insn_ctxt(~"uniq::make_free_glue");
+    let vptr = Load(bcx, vptrptr);
     do with_cond(bcx, IsNotNull(bcx, vptr)) |bcx| {
         let content_ty = content_ty(t);
         let body_ptr = opaque_box_body(bcx, content_ty, vptr);
