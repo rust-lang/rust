@@ -486,6 +486,20 @@ fn note_unique_llvm_symbol(ccx: @crate_ctxt, sym: ~str) {
     ccx.all_llvm_symbols.insert(sym, ());
 }
 
+// Chooses the addrspace for newly declared types.
+fn declare_tydesc_addrspace(ccx: @crate_ctxt, t: ty::t) -> addrspace {
+    if !ty::type_needs_drop(ccx.tcx, t) {
+        return default_addrspace;
+    } else if ty::type_is_immediate(t) {
+        // For immediate types, we don't actually need an addrspace, because
+        // e.g. boxed types include pointers to their contents which are
+        // already correctly tagged with addrspaces.
+        return default_addrspace;
+    } else {
+        return ccx.next_addrspace();
+    }
+}
+
 // Generates the declaration for (but doesn't emit) a type descriptor.
 fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let _icx = ccx.insn_ctxt("declare_tydesc");
@@ -499,6 +513,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
 
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
+    let addrspace = declare_tydesc_addrspace(ccx, t);
     //XXX this triggers duplicate LLVM symbols
     let name = if false /*ccx.sess.opts.debuginfo*/ {
         mangle_internal_name_by_type_only(ccx, t, ~"tydesc")
@@ -513,6 +528,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
           tydesc: gvar,
           size: llsize,
           align: llalign,
+          addrspace: addrspace,
           mut take_glue: none,
           mut drop_glue: none,
           mut free_glue: none,
@@ -1273,6 +1289,16 @@ fn drop_ty(cx: block, v: ValueRef, t: ty::t) -> block {
         return call_tydesc_glue(cx, v, t, abi::tydesc_field_drop_glue);
     }
     return cx;
+}
+
+fn drop_ty_root(bcx: block, v: ValueRef, rooted: bool, t: ty::t) -> block {
+    if rooted {
+        // NB: v is a raw ptr to an addrspace'd ptr to the value.
+        let v = PointerCast(bcx, Load(bcx, v), T_ptr(type_of(bcx.ccx(), t)));
+        drop_ty(bcx, v, t)
+    } else {
+        drop_ty(bcx, v, t)
+    }
 }
 
 fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
@@ -2751,7 +2777,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
 fn non_gc_box_cast(cx: block, val: ValueRef) -> ValueRef {
     debug!("non_gc_box_cast");
     add_comment(cx, ~"non_gc_box_cast");
-    assert(llvm::LLVMGetPointerAddressSpace(val_ty(val)) as uint == 1u);
+    assert(llvm::LLVMGetPointerAddressSpace(val_ty(val)) == gc_box_addrspace);
     let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
     PointerCast(cx, val, non_gc_t)
 }
@@ -3639,12 +3665,12 @@ fn trans_temp_lval(bcx: block, e: @ast::expr) -> lval_result {
         } else if ty::type_is_immediate(ty) {
             let cell = empty_dest_cell();
             bcx = trans_expr(bcx, e, by_val(cell));
-            add_clean_temp(bcx, *cell, ty);
+            add_clean_temp_immediate(bcx, *cell, ty);
             return {bcx: bcx, val: *cell, kind: lv_temporary};
         } else {
             let scratch = alloc_ty(bcx, ty);
             let bcx = trans_expr_save_in(bcx, e, scratch);
-            add_clean_temp(bcx, scratch, ty);
+            add_clean_temp_mem(bcx, scratch, ty);
             return {bcx: bcx, val: scratch, kind: lv_temporary};
         }
     }
@@ -5815,6 +5841,7 @@ fn trans_crate(sess: session::session,
           module_data: str_hash::<ValueRef>(),
           lltypes: ty::new_ty_hash(),
           names: new_namegen(sess.parse_sess.interner),
+          next_addrspace: new_addrspace_gen(),
           symbol_hasher: symbol_hasher,
           type_hashcodes: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),
