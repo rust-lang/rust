@@ -912,18 +912,27 @@ class parser {
                     self.bump();
                     let mut fields = ~[];
                     vec::push(fields, self.parse_field(token::COLON));
-                    while self.token != token::RBRACE {
+                    while self.token != token::RBRACE &&
+                            !self.is_keyword(~"with") {
                         self.expect(token::COMMA);
-                        if self.token == token::RBRACE {
+                        if self.token == token::RBRACE ||
+                                self.is_keyword(~"with") {
                             // Accept an optional trailing comma.
                             break;
                         }
                         vec::push(fields, self.parse_field(token::COLON));
                     }
 
+                    let base;
+                    if self.eat_keyword(~"with") {
+                        base = some(self.parse_expr());
+                    } else {
+                        base = none;
+                    }
+
                     hi = pth.span.hi;
                     self.expect(token::RBRACE);
-                    ex = expr_struct(pth, fields);
+                    ex = expr_struct(pth, fields, base);
                     return self.mk_pexpr(lo, hi, ex);
                 }
             }

@@ -1699,7 +1699,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           }
         }
       }
-      ast::expr_struct(path, fields) => {
+      ast::expr_struct(path, fields, base_expr) => {
         // Resolve the path.
         let class_id;
         alt tcx.def_map.find(id) {
@@ -1804,27 +1804,36 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
         }
 
-        // Make sure the programmer specified all the fields.
-        assert fields_found <= class_fields.len();
-        if fields_found < class_fields.len() {
-            let mut missing_fields = ~[];
-            for class_fields.each |class_field| {
-                let name = *class_field.ident;
-                let (_, seen) = class_field_map.get(name);
-                if !seen {
-                    vec::push(missing_fields,
-                              ~"`" + name + ~"`");
+        match base_expr {
+            none => {
+                // Make sure the programmer specified all the fields.
+                assert fields_found <= class_fields.len();
+                if fields_found < class_fields.len() {
+                    let mut missing_fields = ~[];
+                    for class_fields.each |class_field| {
+                        let name = *class_field.ident;
+                        let (_, seen) = class_field_map.get(name);
+                        if !seen {
+                            vec::push(missing_fields,
+                                      ~"`" + name + ~"`");
+                        }
+                    }
+
+                    tcx.sess.span_err(expr.span,
+                                      fmt!{"missing field%s: %s",
+                                           if missing_fields.len() == 1 {
+                                               ~""
+                                           } else {
+                                               ~"s"
+                                           },
+                                           str::connect(missing_fields,
+                                                        ~", ")});
                 }
             }
-
-            tcx.sess.span_err(expr.span,
-                              fmt!{"missing field%s: %s",
-                                   if missing_fields.len() == 1 {
-                                       ~""
-                                   } else {
-                                       ~"s"
-                                   },
-                                   str::connect(missing_fields, ~", ")});
+            some(base_expr) => {
+                // Just check the base expression.
+                check_expr(fcx, base_expr, some(struct_type));
+            }
         }
 
         // Write in the resulting type.
