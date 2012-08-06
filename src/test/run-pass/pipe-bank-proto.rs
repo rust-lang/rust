@@ -45,65 +45,37 @@ fn move_it<T>(-x: T) -> T { x }
 
 macro_rules! follow {
     { 
-        $($message:path($($x: ident),+) => $next:ident $e:expr)+
+        $($message:path$(($($x: ident),+))||* -> $next:ident $e:expr)+
     } => (
-        |m| match move_it(m) {
-          $(some($message($($x,)* next)) {
+        |m| match move m {
+          $(some($message($($($x,)+)* next)) => {
             let $next = move_it!{next};
             $e })+
-          _ { fail }
+          _ => { fail }
         }
     );
-
-    { 
-        $($message:path => $next:ident $e:expr)+
-    } => (
-        |m| match move_it(m) {
-            $(some($message(next)) {
-                let $next = move_it!{next};
-                $e })+
-                _ { fail }
-        } 
-    )
 }
 
-/*
 fn client_follow(+bank: bank::client::login) {
     import bank::*;
 
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = switch(bank, follow! {
-        ok => connected { connected }
-        invalid => _next { fail ~"bank closed the connected" }
+        ok -> connected { connected }
+        invalid -> _next { fail ~"bank closed the connected" }
     });
-
-    /* // potential alternate syntax
-    let bank = recv_alt! {
-        bank => {
-            | ok -> connected { connected }
-            | invalid -> _next { fail }
-        }
-        bank2 => {
-            | foo -> _n { fail }
-        }
-    }
-    */
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
-    match try_recv(bank) {
-      some(money(m, _)) {
-        io::println(~"Yay! I got money!");
-      }
-      some(insufficient_funds(_)) {
-        fail ~"someone stole my money"
-      }
-      none {
-        fail ~"bank closed the connection"
-      }
-    }    
+    switch(bank, follow! {
+        money(m) -> _next {
+            io::println(~"Yay! I got money!");
+        }
+        insufficient_funds -> _next {
+            fail ~"someone stole my money"
+        }
+    });
 }
-*/
 
 fn bank_client(+bank: bank::client::login) {
     import bank::*;
