@@ -71,7 +71,7 @@ export single_threaded;
 export thread_per_core;
 export thread_per_task;
 export manual_threads;
-export osmain;
+export platform_thread;
 
 /* Data types */
 
@@ -116,7 +116,7 @@ enum sched_mode {
      * The main OS thread is the thread used to launch the runtime which,
      * in most cases, is the process's initial thread as created by the OS.
      */
-    osmain
+    platform_thread
 }
 
 /**
@@ -1176,10 +1176,10 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
             }
             threads
           }
-          osmain => 0u /* Won't be used */
+          platform_thread => 0u /* Won't be used */
         };
 
-        let sched_id = if opts.mode != osmain {
+        let sched_id = if opts.mode != platform_thread {
             rustrt::rust_new_sched(num_threads)
         } else {
             rustrt::rust_osmain_sched_id()
@@ -1899,10 +1899,10 @@ fn test_avoid_copying_the_body_unlinked() {
 }
 
 #[test]
-fn test_osmain() {
+fn test_platform_thread() {
     let po = comm::port();
     let ch = comm::chan(po);
-    do task().sched_mode(osmain).spawn {
+    do task().sched_mode(platform_thread).spawn {
         comm::send(ch, ());
     }
     comm::recv(po);
