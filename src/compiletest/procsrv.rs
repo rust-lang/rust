@@ -83,7 +83,7 @@ fn run(lib_path: ~str,
           (2, s) => {
             errs = s;
           }
-          _ { fail }
+          _ => { fail }
         };
         count -= 1;
     };
