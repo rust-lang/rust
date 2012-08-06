@@ -655,7 +655,7 @@ fn T_tydesc_field(cx: @crate_ctxt, field: uint) -> TypeRef unsafe {
     return t;
 }
 
-fn T_glue_fn(cx: @crate_ctxt) -> TypeRef {
+fn T_generic_glue_fn(cx: @crate_ctxt) -> TypeRef {
     let s = ~"glue_fn";
     match name_has_type(cx.tn, s) {
       some(t) => return t,
