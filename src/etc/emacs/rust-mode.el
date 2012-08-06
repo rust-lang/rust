@@ -70,7 +70,7 @@
                     "unchecked" "unsafe"
                     "while"))
       (puthash word t table))
-    (puthash "alt" 'alt table)
+    (puthash "match" 'alt table)
     (dolist (word '("true" "false")) (puthash word 'atom table))
     table))
 ;; FIXME type-context keywords
