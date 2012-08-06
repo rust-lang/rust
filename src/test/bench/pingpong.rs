@@ -1,6 +1,5 @@
 // Compare bounded and unbounded protocol performance.
 
-// xfail-test
 // xfail-pretty
 
 use std;
@@ -33,31 +32,35 @@ proto! pingpong_unbounded {
 }
 
 // This stuff should go in libcore::pipes
-macro_rules! move {
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+macro_rules! move_it {
+    { $x:expr } => { let t <- *ptr::addr_of($x); t }
 }
 
 macro_rules! follow {
     { 
         $($message:path($($x: ident),+) -> $next:ident $e:expr)+
     } => (
-        |m| alt move(m) {
-          $(some($message($($x,)* next)) {
-            let $next = move!{next};
-            $e })+
-          _ { fail }
+        |m| alt move m {
+            $(some($message($($x,)* next)) => {
+                // FIXME (#2329) use regular move here once move out of
+                // enums is supported.
+                let $next = unsafe { move_it!(next) };
+                $e })+
+                _ => { fail }
         }
     );
 
     { 
         $($message:path -> $next:ident $e:expr)+
     } => (
-        |m| alt move(m) {
-            $(some($message(next)) {
-                let $next = move!{next};
+        |m| alt move m {
+            $(some($message(next)) => {
+                // FIXME (#2329) use regular move here once move out of
+                // enums is supported.
+                let $next = unsafe { move_it!(next) };
                 $e })+
-                _ { fail }
-        } 
+                _ => { fail }
+        }
     )
 }
 
@@ -65,8 +68,6 @@ fn switch<T: send, Tb: send, U>(+endp: pipes::recv_packet_buffered<T, Tb>,
                       f: fn(+option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
-
-fn move<T>(-x: T) -> T { x }
 
 // Here's the benchmark
 
@@ -132,7 +133,11 @@ fn timeit(f: fn()) -> float {
 }
 
 fn main() {
-    let count = 1000000;
+    let count = if os::getenv(~"RUST_BENCH").is_some() {
+        250000
+    } else {
+        100
+    };
     let bounded = do timeit { bounded(count) };
     let unbounded = do timeit { unbounded(count) };
 
