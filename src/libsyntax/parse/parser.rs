@@ -3,7 +3,8 @@ import print::pprust::expr_to_str;
 import result::result;
 import either::{either, left, right};
 import std::map::{hashmap, str_hash};
-import token::{can_begin_expr, is_ident, is_plain_ident, INTERPOLATED};
+import token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
+               INTERPOLATED};
 import codemap::{span,fss_none};
 import util::interner;
 import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
@@ -1748,7 +1749,7 @@ class parser {
             }
           }
           tok => {
-            if !is_ident(tok) ||
+            if !is_ident_or_path(tok) ||
                     self.is_keyword(~"true") || self.is_keyword(~"false") {
                 let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                 if self.eat_keyword(~"to") {

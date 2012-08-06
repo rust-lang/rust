@@ -73,7 +73,8 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                                                ~[rhs]);
                     let p = parser(cx.parse_sess(), cx.cfg(),
                                    trncbr as reader, SOURCE_FILE);
-                    return mr_expr(p.parse_expr());
+                    let e = p.parse_expr();
+                    return mr_expr(e);
                   }
                   failure(sp, msg) => if sp.lo >= best_fail_spot.lo {
                     best_fail_spot = sp;
