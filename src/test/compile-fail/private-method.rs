@@ -1,4 +1,4 @@
-// error-pattern:Call to private method not allowed
+// error-pattern:call to private method not allowed
 class cat {
   priv {
     let mut meows : uint;
