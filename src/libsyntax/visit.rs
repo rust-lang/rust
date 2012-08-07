@@ -195,8 +195,9 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_tup(ts) => for ts.each |tt| {
         v.visit_ty(tt, e, v);
       }
-      ty_fn(_, decl) => {
+      ty_fn(_, bounds, decl) => {
         for decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
+        visit_ty_param_bounds(bounds, e, v);
         v.visit_ty(decl.output, e, v);
       }
       ty_path(p, _) => visit_path(p, e, v),
@@ -251,14 +252,18 @@ fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     }
 }
 
+fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
+    for vec::each(*bounds) |bound| {
+        match bound {
+          bound_trait(t) => v.visit_ty(t, e, v),
+          bound_copy | bound_send | bound_const | bound_owned => ()
+        }
+    }
+}
+
 fn visit_ty_params<E>(tps: ~[ty_param], e: E, v: vt<E>) {
     for tps.each |tp| {
-        for vec::each(*tp.bounds) |bound| {
-            match bound {
-              bound_trait(t) => v.visit_ty(t, e, v),
-              bound_copy | bound_send | bound_const | bound_owned => ()
-            }
-        }
+        visit_ty_param_bounds(tp.bounds, e, v);
     }
 }
 

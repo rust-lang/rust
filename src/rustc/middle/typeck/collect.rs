@@ -125,6 +125,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
             });
             ty::mk_fn(tcx, {purity: ast::pure_fn,
                             proto: ast::proto_box,
+                            bounds: @~[],
                             inputs: args,
                             output: enum_ty,
                             ret_style: ast::return_val})
@@ -396,6 +397,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             let t_ctor = ty::mk_fn(
                 tcx, {purity: ast::impure_fn,
                       proto: ast::proto_block,
+                      bounds: @~[],
                       inputs: t_args,
                       output: t_res,
                       ret_style: ast::return_val});
@@ -410,7 +412,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
             // Write the dtor type
             let t_dtor = ty::mk_fn(
                 tcx,
-                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_block,
+                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_block, @~[],
                               ast_util::dtor_dec(), none));
             write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
             tcx.tcache.insert(local_def(dtor.node.id),
@@ -460,9 +462,10 @@ fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
 fn ty_of_method(ccx: @crate_ctxt,
                 m: @ast::method,
                 rp: bool) -> ty::method {
+    // XXX: Are the bounds correct here?
     {ident: m.ident,
      tps: ty_param_bounds(ccx, m.tps),
-     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare,
+     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare, @~[],
                         m.decl, none),
      self_ty: m.self_ty.node,
      purity: m.decl.purity,
@@ -474,8 +477,8 @@ fn ty_of_ty_method(self: @crate_ctxt,
                    rp: bool) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
-     fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare,
-                                 m.decl, none),
+     fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, @~[], m.decl,
+                        none),
      // assume public, because this is only invoked on trait methods
      self_ty: m.self_ty.node,
      purity: m.decl.purity, vis: ast::public}
@@ -528,8 +531,8 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_fn(decl, tps, _) => {
         let bounds = ty_param_bounds(ccx, tps);
-        let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare,
-                                          decl, none);
+        let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare, @~[],
+                                 decl, none);
         let tpt = {bounds: bounds,
                    rp: false, // functions do not have a self
                    ty: ty::mk_fn(ccx.tcx, tofd)};
@@ -599,40 +602,42 @@ fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
       }
     }
 }
+
+fn compute_bounds(ccx: @crate_ctxt,
+                  ast_bounds: @~[ast::ty_param_bound]) -> ty::param_bounds {
+    @do vec::flat_map(*ast_bounds) |b| {
+        match b {
+          ast::bound_send => ~[ty::bound_send],
+          ast::bound_copy => ~[ty::bound_copy],
+          ast::bound_const => ~[ty::bound_const],
+          ast::bound_owned => ~[ty::bound_owned],
+          ast::bound_trait(t) => {
+            let ity = ast_ty_to_ty(ccx, empty_rscope, t);
+            match ty::get(ity).struct {
+              ty::ty_trait(*) => {
+                ~[ty::bound_trait(ity)]
+              }
+              _ => {
+                ccx.tcx.sess.span_err(
+                    t.span, ~"type parameter bounds must be \
+                              trait types");
+                ~[]
+              }
+            }
+          }
+        }
+    }
+}
+
 fn ty_param_bounds(ccx: @crate_ctxt,
                    params: ~[ast::ty_param]) -> @~[ty::param_bounds] {
 
-    fn compute_bounds(ccx: @crate_ctxt,
-                      param: ast::ty_param) -> ty::param_bounds {
-        @do vec::flat_map(*param.bounds) |b| {
-            match b {
-              ast::bound_send => ~[ty::bound_send],
-              ast::bound_copy => ~[ty::bound_copy],
-              ast::bound_const => ~[ty::bound_const],
-              ast::bound_owned => ~[ty::bound_owned],
-              ast::bound_trait(t) => {
-                let ity = ast_ty_to_ty(ccx, empty_rscope, t);
-                match ty::get(ity).struct {
-                  ty::ty_trait(*) => {
-                    ~[ty::bound_trait(ity)]
-                  }
-                  _ => {
-                    ccx.tcx.sess.span_err(
-                        t.span, ~"type parameter bounds must be \
-                                  trait types");
-                    ~[]
-                  }
-                }
-              }
-            }
-        }
-    }
 
     @do params.map |param| {
         match ccx.tcx.ty_param_bounds.find(param.id) {
           some(bs) => bs,
           none => {
-            let bounds = compute_bounds(ccx, param);
+            let bounds = compute_bounds(ccx, param.bounds);
             ccx.tcx.ty_param_bounds.insert(param.id, bounds);
             bounds
           }
@@ -652,6 +657,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
 
     let t_fn = ty::mk_fn(ccx.tcx, {purity: decl.purity,
                                    proto: ast::proto_bare,
+                                   bounds: @~[],
                                    inputs: input_tys,
                                    output: output_ty,
                                    ret_style: ast::return_val});

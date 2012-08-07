@@ -1982,6 +1982,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
       ty::ty_fn(fty) => {
         some(ty::mk_fn(tcx, {purity: ast::impure_fn,
                              proto: fty.proto,
+                             bounds: @~[],
                              inputs: ~[],
                              output: ty::mk_nil(tcx),
                              ret_style: ast::return_val}))
@@ -1989,6 +1990,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
       ty::ty_trait(_, _) => {
         some(ty::mk_fn(tcx, {purity: ast::impure_fn,
                              proto: ast::proto_box,
+                             bounds: @~[],
                              inputs: ~[],
                              output: ty::mk_nil(tcx),
                              ret_style: ast::return_val}))

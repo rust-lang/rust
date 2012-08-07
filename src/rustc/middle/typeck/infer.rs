@@ -1717,6 +1717,7 @@ fn super_fns<C:combine>(
                     //                         b_f.constraints).then {||
                         ok({purity: purity,
                             proto: p,
+                            bounds: a_f.bounds, // XXX: This is wrong!
                             inputs: inputs,
                             output: output,
                             ret_style: rs})
