@@ -68,6 +68,9 @@ enum syntax_extension {
 fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
         {normal({expander: f, span: none})}
+    fn builtin_expr_tt(f: syntax_expander_tt_) -> syntax_extension {
+        expr_tt({expander: f, span: none})
+    }
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
         item_tt({expander: f, span: none})
     }
@@ -86,7 +89,8 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
     syntax_expanders.insert(~"ident_to_str",
                             builtin(ext::ident_to_str::expand_syntax_ext));
     syntax_expanders.insert(~"log_syntax",
-                            builtin(ext::log_syntax::expand_syntax_ext));
+                            builtin_expr_tt(
+                                ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(~"ast",
                             builtin(ext::qquote::expand_ast));
     syntax_expanders.insert(~"line",
