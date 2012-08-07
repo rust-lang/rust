@@ -565,6 +565,10 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_trait_method: fn@(_ty_m: trait_method) {
         },
 
+        visit_struct_def: fn@(_sd: struct_def, _id: ident, _tps: ~[ty_param],
+                              _id: node_id) {
+        },
+
         visit_class_item: fn@(c: @class_member) {
             match c.node {
               instance_var(_, _, _, id,_) => vfn(id),
