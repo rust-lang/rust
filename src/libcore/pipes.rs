@@ -624,6 +624,10 @@ trait selectable {
     pure fn header() -> *packet_header;
 }
 
+impl of selectable for *packet_header {
+    pure fn header() -> *packet_header { self }
+}
+
 /// Returns the index of an endpoint that is ready to receive.
 fn selecti<T: selectable>(endpoints: &[T]) -> uint {
     wait_many(endpoints.map(|p| p.header()))
