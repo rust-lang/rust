@@ -8,7 +8,7 @@ fn start(&&task_number: int) { debug!{"Started / Finished task."}; }
 fn test00() {
     let i: int = 0;
     let mut result = none;
-    do task::task().future_result(|-r| { result = some(r); }).spawn {
+    do task::task().future_result(|+r| { result = some(r); }).spawn {
         start(i)
     }
 

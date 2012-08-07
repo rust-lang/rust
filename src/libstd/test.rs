@@ -390,7 +390,7 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
     do task::spawn {
         let testfn = copy test.fn;
         let mut result_future = none; // task::future_result(builder);
-        task::task().unlinked().future_result(|-r| {
+        task::task().unlinked().future_result(|+r| {
             result_future = some(r);
         }).spawn(testfn);
         let task_result = future::get(option::unwrap(result_future));
