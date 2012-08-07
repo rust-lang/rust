@@ -24,7 +24,7 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              cdir_view_item, class_immutable, class_member, class_method,
              class_mutable, crate, crate_cfg, crate_directive, decl,
              decl_item, decl_local, default_blk, deref, div, expl, expr,
-             expr_, expr_addr_of, expr_alt, expr_again, expr_assert,
+             expr_, expr_addr_of, expr_match, expr_again, expr_assert,
              expr_assign, expr_assign_op, expr_binary, expr_block, expr_break,
              expr_call, expr_cast, expr_copy, expr_do_body,
              expr_fail, expr_field, expr_fn, expr_fn_block, expr_if,
@@ -1599,7 +1599,7 @@ class parser {
         }
         let mut hi = self.span.hi;
         self.bump();
-        return self.mk_expr(lo, hi, expr_alt(discriminant, arms, mode));
+        return self.mk_expr(lo, hi, expr_match(discriminant, arms, mode));
     }
 
     fn parse_expr() -> @expr {

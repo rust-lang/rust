@@ -70,7 +70,7 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           // parenthesizing!!  See email to marijn.
           ast::expr_if(_, _, _) => { false }
           ast::expr_block(_) => { false }
-          ast::expr_alt(_, _, _) => { false }
+          ast::expr_match(_, _, _) => { false }
           ast::expr_while(_, _) => { false }
 
           // https://github.com/mozilla/rust/issues/929

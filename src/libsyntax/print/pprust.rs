@@ -1076,7 +1076,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         space(s.s);
         print_block(s, blk);
       }
-      ast::expr_alt(expr, arms, mode) => {
+      ast::expr_match(expr, arms, mode) => {
         cbox(s, alt_indent_unit);
         ibox(s, 4u);
         word_nbsp(s, ~"match");

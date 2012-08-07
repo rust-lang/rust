@@ -453,7 +453,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       }
 
       // live nodes required for interesting control flow:
-      expr_if(*) | expr_alt(*) | expr_while(*) | expr_loop(*) => {
+      expr_if(*) | expr_match(*) | expr_while(*) | expr_loop(*) => {
         (*self).add_live_node_for_node(expr.id, lnk_expr(expr.span));
         visit::visit_expr(expr, self, vt);
       }
@@ -966,7 +966,7 @@ class liveness {
             self.propagate_through_loop(expr, none, blk, succ)
           }
 
-          expr_alt(e, arms, _) => {
+          expr_match(e, arms, _) => {
             //
             //      (e)
             //       |
@@ -1449,7 +1449,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       }
 
       // no correctness conditions related to liveness
-      expr_if(*) | expr_alt(*) |
+      expr_if(*) | expr_match(*) |
       expr_while(*) | expr_loop(*) |
       expr_index(*) | expr_field(*) | expr_vstore(*) |
       expr_vec(*) | expr_rec(*) | expr_tup(*) |

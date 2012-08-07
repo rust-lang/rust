@@ -237,7 +237,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
         debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr)};
         new_cx.parent = some(expr.id);
       }
-      ast::expr_alt(subexpr, _, _) => {
+      ast::expr_match(subexpr, _, _) => {
         debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr)};
         new_cx.parent = some(expr.id);
       }

@@ -3665,7 +3665,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_if(cond, thn, els) => {
             return trans_if(bcx, cond, thn, els, dest);
           }
-          ast::expr_alt(expr, arms, mode) => {
+          ast::expr_match(expr, arms, mode) => {
             return alt::trans_alt(bcx, e, expr, arms, mode, dest);
           }
           ast::expr_block(blk) => {
