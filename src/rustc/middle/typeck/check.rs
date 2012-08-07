@@ -1472,7 +1472,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, ty::mk_nil(tcx));
         bot = !may_break(body);
       }
-      ast::expr_alt(discrim, arms, _) => {
+      ast::expr_match(discrim, arms, _) => {
         bot = alt::check_alt(fcx, expr, discrim, arms);
       }
       ast::expr_fn(proto, decl, body, cap_clause) => {

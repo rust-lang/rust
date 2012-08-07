@@ -23,7 +23,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     match ex.node {
-      expr_alt(scrut, arms, mode) => {
+      expr_match(scrut, arms, mode) => {
         check_arms(tcx, arms);
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited

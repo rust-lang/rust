@@ -246,7 +246,7 @@ impl helpers of ext_ctxt_helpers for ext_ctxt {
         self.stmt(
             self.expr(
                 span,
-                ast::expr_alt(v, arms, ast::alt_exhaustive)))
+                ast::expr_match(v, arms, ast::alt_exhaustive)))
     }
 
     fn lit_str(span: span, s: @~str) -> @ast::expr {
@@ -910,7 +910,7 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
     // Generate code like:
     let e_name = cx.lit_str(e_span, e_name);
     let alt_expr = cx.expr(e_span,
-                           ast::expr_alt(#ast{__i}, arms, ast::alt_check));
+                           ast::expr_match(#ast{__i}, arms, ast::alt_check));
     let var_lambda = #ast{ |__i| $(alt_expr) };
     let read_var = #ast{ $(cx.clone(d)).read_enum_variant($(var_lambda)) };
     let read_lambda = cx.lambda(cx.expr_blk(read_var));

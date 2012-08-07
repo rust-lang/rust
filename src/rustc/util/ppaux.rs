@@ -34,7 +34,7 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
           some(ast_map::node_expr(expr)) => {
             match expr.node {
               ast::expr_call(*) => { explain_span(cx, ~"call", expr.span) }
-              ast::expr_alt(*) => { explain_span(cx, ~"alt", expr.span) }
+              ast::expr_match(*) => { explain_span(cx, ~"alt", expr.span) }
               _ => { explain_span(cx, ~"expression", expr.span) }
             }
           }
@@ -106,7 +106,7 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
             fmt!{"<call at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
-          ast::expr_alt(*) => {
+          ast::expr_match(*) => {
             fmt!{"<alt at %s>",
                  codemap::span_to_str(expr.span, cx.sess.codemap)}
           }
