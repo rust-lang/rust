@@ -197,7 +197,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
 
     let tcx = ccx.tcx;
     let rp = tcx.region_paramd_items.contains_key(id);
-    match check tcx.items.get(id) {
+    match tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_trait(params, _, ms), _}, _) => {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
             let trait_bounds = ty_param_bounds(ccx, params);
@@ -218,6 +218,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
             ty_of_method(ccx, m, rp)
         });
       }
+      _ => { /* Ignore things that aren't traits or classes */ }
     }
 }
 
