@@ -187,7 +187,8 @@ fn enter_default(bcx: block, dm: DefMap, m: match_, col: uint, val: ValueRef)
 
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-          ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) => some(~[]),
+          ast::pat_wild | ast::pat_rec(_, _) | ast::pat_tup(_) |
+          ast::pat_struct(*) => some(~[]),
           ast::pat_ident(_, _, none) if !pat_is_variant(dm, p) => some(~[]),
           _ => none
         }
@@ -221,12 +222,12 @@ fn enter_opt(bcx: block, m: match_, opt: opt, col: uint,
     }
 }
 
-fn enter_rec(bcx: block, dm: DefMap, m: match_, col: uint,
-             fields: ~[ast::ident], val: ValueRef) -> match_ {
+fn enter_rec_or_struct(bcx: block, dm: DefMap, m: match_, col: uint,
+                       fields: ~[ast::ident], val: ValueRef) -> match_ {
     let dummy = @{id: 0, node: ast::pat_wild, span: dummy_sp()};
     do enter_match(bcx, dm, m, col, val) |p| {
         match p.node {
-          ast::pat_rec(fpats, _) => {
+          ast::pat_rec(fpats, _) | ast::pat_struct(_, fpats, _) => {
             let mut pats = ~[];
             for vec::each(fields) |fname| {
                 let mut pat = dummy;
@@ -332,6 +333,23 @@ fn collect_record_fields(m: match_, col: uint) -> ~[ast::ident] {
     for vec::each(m) |br| {
         match br.pats[col].node {
           ast::pat_rec(fs, _) => {
+            for vec::each(fs) |f| {
+                if !vec::any(fields, |x| str::eq(f.ident, x)) {
+                    vec::push(fields, f.ident);
+                }
+            }
+          }
+          _ => ()
+        }
+    }
+    return fields;
+}
+
+fn collect_struct_fields(m: match_, col: uint) -> ~[ast::ident] {
+    let mut fields: ~[ast::ident] = ~[];
+    for vec::each(m) |br| {
+        match br.pats[col].node {
+          ast::pat_struct(_, fs, _) => {
             for vec::each(fs) |f| {
                 if !vec::any(fields, |x| str::eq(f.ident, x)) {
                     vec::push(fields, f.ident);
@@ -500,15 +518,56 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
 
     let rec_fields = collect_record_fields(m, col);
     // Separate path for extracting and binding record fields
-    if rec_fields.len() > 0u {
+    if rec_fields.len() > 0 {
         let fields = ty::get_fields(node_id_type(bcx, pat_id));
         let mut rec_vals = ~[];
         for vec::each(rec_fields) |field_name| {
             let ix = option::get(ty::field_idx(field_name, fields));
             vec::push(rec_vals, GEPi(bcx, val, ~[0u, ix]));
         }
-        compile_submatch(bcx, enter_rec(bcx, dm, m, col, rec_fields, val),
-                         vec::append(rec_vals, vals_left), chk, exits);
+        compile_submatch(bcx,
+                         enter_rec_or_struct(bcx, dm, m, col, rec_fields,
+                                             val),
+                         vec::append(rec_vals, vals_left),
+                         chk,
+                         exits);
+        return;
+    }
+
+    // Separate path for extracting and binding struct fields.
+    let struct_fields = collect_struct_fields(m, col);
+    if struct_fields.len() > 0 {
+        let class_id, class_fields;
+        match ty::get(node_id_type(bcx, pat_id)).struct {
+            ty::ty_class(cid, _) => {
+                class_id = cid;
+                class_fields = ty::lookup_class_fields(ccx.tcx, class_id);
+            }
+            _ => {
+                ccx.tcx.sess.bug(~"struct pattern didn't resolve to a \
+                                   struct");
+            }
+        }
+
+        // Index the class fields.
+        let field_map = std::map::box_str_hash();
+        for class_fields.eachi |i, class_field| {
+            field_map.insert(class_field.ident, i);
+        }
+
+        // Fetch each field.
+        let mut struct_vals = ~[];
+        for struct_fields.each |field_name| {
+            let index = field_map.get(field_name);
+            let fldptr = base::get_struct_field(bcx, val, class_id, index);
+            vec::push(struct_vals, fldptr);
+        }
+        compile_submatch(bcx,
+                         enter_rec_or_struct(bcx, dm, m, col, struct_fields,
+                                             val),
+                         vec::append(struct_vals, vals_left),
+                         chk,
+                         exits);
         return;
     }
 
@@ -875,6 +934,34 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
             let fldptr = GEPi(bcx, val, ~[0u, ix]);
             bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
+        }
+      }
+      ast::pat_struct(_, fields, _) => {
+        // Grab the class data that we care about.
+        let class_fields, class_id;
+        match ty::get(node_id_type(bcx, pat.id)).struct {
+            ty::ty_class(cid, substs) => {
+                class_id = cid;
+                class_fields = ty::lookup_class_fields(ccx.tcx, class_id);
+            }
+            _ => {
+                ccx.tcx.sess.span_bug(pat.span, ~"struct pattern didn't \
+                                                  resolve to a struct");
+            }
+        }
+
+        // Index the class fields.
+        let field_map = std::map::box_str_hash();
+        for class_fields.eachi |i, class_field| {
+            field_map.insert(class_field.ident, i);
+        }
+
+        // Fetch each field.
+        for fields.each |supplied_field| {
+            let index = field_map.get(supplied_field.ident);
+            let fldptr = base::get_struct_field(bcx, val, class_id, index);
+            bcx = bind_irrefutable_pat(bcx, supplied_field.pat, fldptr,
+                                       make_copy);
         }
       }
       ast::pat_tup(elems) => {

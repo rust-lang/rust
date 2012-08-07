@@ -513,6 +513,14 @@ impl methods for gather_loan_ctxt {
             }
           }
 
+          ast::pat_struct(_, field_pats, _) => {
+            // {f1: p1, ..., fN: pN}
+            for field_pats.each |fp| {
+                let cmt_field = self.bccx.cat_field(fp.pat, cmt, fp.ident);
+                self.gather_pat(cmt_field, fp.pat, arm_id, alt_id);
+            }
+          }
+
           ast::pat_tup(subpats) => {
             // (p1, ..., pN)
             for subpats.each |subpat| {

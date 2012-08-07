@@ -354,6 +354,16 @@ fn noop_fold_pat(p: pat_, fld: ast_fold) -> pat_ {
             }
             pat_rec(fs, etc)
           }
+          pat_struct(pth, fields, etc) => {
+            let pth_ = fld.fold_path(pth);
+            let mut fs = ~[];
+            for fields.each |f| {
+                vec::push(fs,
+                          {ident: /* FIXME (#2543) */ copy f.ident,
+                           pat: fld.fold_pat(f.pat)});
+            }
+            pat_struct(pth_, fs, etc)
+          }
           pat_tup(elts) => pat_tup(vec::map(elts, |x| fld.fold_pat(x))),
           pat_box(inner) => pat_box(fld.fold_pat(inner)),
           pat_uniq(inner) => pat_uniq(fld.fold_pat(inner)),

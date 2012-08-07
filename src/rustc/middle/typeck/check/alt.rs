@@ -232,6 +232,86 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         fcx.write_ty(pat.id, expected);
       }
+      ast::pat_struct(path, fields, etc) => {
+        // Grab the class data that we care about.
+        let class_fields, class_id, substitutions;
+        match structure_of(fcx, pat.span, expected) {
+            ty::ty_class(cid, substs) => {
+                class_id = cid;
+                substitutions = substs;
+                class_fields = ty::lookup_class_fields(tcx, class_id);
+            }
+            _ => {
+                // XXX: This should not be fatal.
+                tcx.sess.span_fatal(pat.span,
+                                    fmt!("mismatched types: expected `%s` \
+                                          but found struct",
+                                         fcx.infcx.ty_to_str(expected)));
+            }
+        }
+
+        // Check to ensure that the struct is the one specified.
+        match tcx.def_map.get(pat.id) {
+            ast::def_class(supplied_def_id, _)
+                    if supplied_def_id == class_id => {
+                // OK.
+            }
+            ast::def_class(*) => {
+                let name = syntax::print::pprust::path_to_str(path);
+                tcx.sess.span_err(pat.span,
+                                  fmt!("mismatched types: expected `%s` but \
+                                        found `%s`",
+                                       fcx.infcx.ty_to_str(expected),
+                                       name));
+            }
+            _ => {
+                tcx.sess.span_bug(pat.span, ~"resolve didn't write in class");
+            }
+        }
+
+        // Index the class fields.
+        let field_map = std::map::box_str_hash();
+        for class_fields.eachi |i, class_field| {
+            field_map.insert(class_field.ident, i);
+        }
+
+        // Typecheck each field.
+        let found_fields = std::map::uint_hash();
+        for fields.each |field| {
+            match field_map.find(field.ident) {
+                some(index) => {
+                    let class_field = class_fields[index];
+                    let field_type = ty::lookup_field_type(tcx,
+                                                           class_id,
+                                                           class_field.id,
+                                                           substitutions);
+                    check_pat(pcx, field.pat, field_type);
+                    found_fields.insert(index, ());
+                }
+                none => {
+                    let name = syntax::print::pprust::path_to_str(path);
+                    tcx.sess.span_err(pat.span,
+                                      fmt!("struct `%s` does not have a field
+                                            named `%s`", name, *field.ident));
+                }
+            }
+        }
+
+        // Report an error if not all the fields were specified.
+        if !etc {
+            for class_fields.eachi |i, field| {
+                if found_fields.contains_key(i) {
+                    again;
+                }
+                tcx.sess.span_err(pat.span,
+                                  fmt!("pattern does not mention field `%s`",
+                                       *field.ident));
+            }
+        }
+
+        // Finally, write in the type.
+        fcx.write_ty(pat.id, expected);
+      }
       ast::pat_tup(elts) => {
         let ex_elts = match structure_of(fcx, pat.span, expected) {
           ty::ty_tup(elts) => elts,

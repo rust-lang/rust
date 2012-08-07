@@ -3391,6 +3391,18 @@ fn trans_rec(bcx: block, fields: ~[ast::field],
     return bcx;
 }
 
+// If the class has a destructor, our GEP is a little more
+// complicated.
+fn get_struct_field(block_context: block, dest_address: ValueRef,
+                    class_id: ast::def_id, index: uint) -> ValueRef {
+    if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
+        return GEPi(block_context,
+                    GEPi(block_context, dest_address, ~[0, 1]),
+                    ~[0, index]);
+    }
+    return GEPi(block_context, dest_address, ~[0, index]);
+}
+
 fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
                 base: option<@ast::expr>, id: ast::node_id, dest: dest)
              -> block {
@@ -3434,18 +3446,6 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
         }
     }
 
-    // If the class has a destructor, our GEP is a little more
-    // complicated.
-    fn get_field(block_context: block, dest_address: ValueRef,
-                 class_id: ast::def_id, index: uint) -> ValueRef {
-        if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
-            return GEPi(block_context,
-                        GEPi(block_context, dest_address, ~[0, 1]),
-                        ~[0, index]);
-        }
-        return GEPi(block_context, dest_address, ~[0, index]);
-    }
-
     // Now translate each field.
     let mut temp_cleanups = ~[];
     for fields.each |field| {
@@ -3468,7 +3468,8 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
             }
         }
 
-        let dest = get_field(block_context, dest_address, class_id, index);
+        let dest = get_struct_field(block_context, dest_address, class_id,
+                                    index);
 
         block_context = trans_expr_save_in(block_context,
                                            field.node.expr,
@@ -3494,10 +3495,10 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
                 if exists {
                     again;
                 }
-                let lldestfieldvalue = get_field(block_context,
-                                                 dest_address,
-                                                 class_id,
-                                                 i);
+                let lldestfieldvalue = get_struct_field(block_context,
+                                                        dest_address,
+                                                        class_id,
+                                                        i);
                 let llbasefieldvalue = GEPi(block_context,
                                             llbasevalue,
                                             ~[0, i]);

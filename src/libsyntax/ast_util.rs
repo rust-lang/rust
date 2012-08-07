@@ -602,7 +602,8 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
       pat_ident(_, pth, some(p)) => walk_pat(p, it),
-      pat_rec(fields, _) => for fields.each |f| { walk_pat(f.pat, it) }
+      pat_rec(fields, _) | pat_struct(_, fields, _) =>
+        for fields.each |f| { walk_pat(f.pat, it) }
       pat_enum(_, some(s)) | pat_tup(s) => for s.each |p| {
         walk_pat(p, it)
       }

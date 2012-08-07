@@ -1375,6 +1375,24 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
         }
         word(s.s, ~"}");
       }
+      ast::pat_struct(path, fields, etc) => {
+        print_path(s, path, true);
+        word(s.s, ~"{");
+        fn print_field(s: ps, f: ast::field_pat) {
+            cbox(s, indent_unit);
+            word(s.s, *f.ident);
+            word_space(s, ~":");
+            print_pat(s, f.pat);
+            end(s);
+        }
+        fn get_span(f: ast::field_pat) -> codemap::span { return f.pat.span; }
+        commasep_cmnt(s, consistent, fields, print_field, get_span);
+        if etc {
+            if vec::len(fields) != 0u { word_space(s, ~","); }
+            word(s.s, ~"_");
+        }
+        word(s.s, ~"}");
+      }
       ast::pat_tup(elts) => {
         popen(s);
         commasep(s, inconsistent, elts, print_pat);

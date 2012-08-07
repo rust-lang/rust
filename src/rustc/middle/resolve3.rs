@@ -15,8 +15,8 @@ import syntax::ast::{bound_trait, binding_mode,
 import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
-import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param,
-                     def_typaram_binder};
+import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
+import syntax::ast::{def_typaram_binder};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_path};
@@ -30,13 +30,13 @@ import syntax::ast::{instance_var, item, item_class, item_const, item_enum};
 import syntax::ast::{item_fn, item_mac, item_foreign_mod, item_impl};
 import syntax::ast::{item_mod, item_trait, item_ty, le, local, local_crate};
 import syntax::ast::{lt, method, mul, ne, neg, node_id, pat, pat_enum};
-import syntax::ast::{pat_ident, path, prim_ty, pat_box, pat_uniq, pat_lit};
-import syntax::ast::{pat_range, pat_rec, pat_tup, pat_wild, provided};
-import syntax::ast::{required, rem, self_ty_, shl, stmt_decl, subtract, ty};
-import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
-import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
-import syntax::ast::{ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8};
-import syntax::ast::{ty_uint, variant, view_item, view_item_export};
+import syntax::ast::{pat_ident, pat_struct, path, prim_ty, pat_box, pat_uniq};
+import syntax::ast::{pat_lit, pat_range, pat_rec, pat_tup, pat_wild};
+import syntax::ast::{provided, required, rem, self_ty_, shl, stmt_decl};
+import syntax::ast::{subtract, ty, ty_bool, ty_char, ty_f, ty_f32, ty_f64};
+import syntax::ast::{ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8, ty_int};
+import syntax::ast::{ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64};
+import syntax::ast::{ty_u8, ty_uint, variant, view_item, view_item_export};
 import syntax::ast::{view_item_import, view_item_use, view_path_glob};
 import syntax::ast::{view_path_list, view_path_simple};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
@@ -4015,6 +4015,26 @@ class Resolver {
                 pat_range(first_expr, last_expr) => {
                     self.resolve_expr(first_expr, visitor);
                     self.resolve_expr(last_expr, visitor);
+                }
+
+                pat_struct(path, _, _) => {
+                    match self.resolve_path(path, TypeNS, false, visitor) {
+                        some(definition @ def_ty(class_id))
+                                if self.structs.contains_key(class_id) => {
+                            let has_constructor = self.structs.get(class_id);
+                            let class_def = def_class(class_id,
+                                                      has_constructor);
+                            self.record_def(pattern.id, class_def);
+                        }
+                        _ => {
+                            self.session.span_err(path.span,
+                                                  fmt!("`%s` does not name a \
+                                                        structure",
+                                                       connect(path.idents.map
+                                                               (|x| *x),
+                                                               ~"::")));
+                        }
+                    }
                 }
 
                 _ => {
