@@ -395,6 +395,20 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
 {
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
+
+    // optimistic path
+    match p.header.state {
+      full => {
+        let mut payload = none;
+        payload <-> p.payload;
+        p.header.state = empty;
+        return some(option::unwrap(payload))
+      },
+      terminated => return none,
+      _ => {}
+    }
+
+    // regular path
     let this = rustrt::rust_get_task();
     rustrt::task_clear_event_reject(this);
     rustrt::rust_task_ref(this);
