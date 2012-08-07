@@ -83,11 +83,11 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
 }
 
 // An arc over mutable data that is protected by a lock.
-type ex_data<T: send> = {lock: sys::lock_and_signal, mut data: T};
+type ex_data<T: send> = {lock: sys::little_lock, mut data: T};
 type exclusive<T: send> = arc_destruct<ex_data<T>>;
 
 fn exclusive<T:send >(-data: T) -> exclusive<T> {
-    let data = ~{mut count: 1, data: {lock: sys::lock_and_signal(),
+    let data = ~{mut count: 1, data: {lock: sys::little_lock(),
                                       data: data}};
     unsafe {
         let ptr = unsafe::reinterpret_cast(data);
@@ -126,13 +126,13 @@ impl methods<T: send> for exclusive<T> {
      * will guarantee a memory leak of all involved ARCs. Using exclusive
      * ARCs inside of other ARCs is safe in absence of circular references.
      */
-    unsafe fn with<U>(f: fn(sys::condition, x: &mut T) -> U) -> U {
+    unsafe fn with<U>(f: fn(x: &mut T) -> U) -> U {
         let ptr: ~arc_data<ex_data<T>> =
             unsafe::reinterpret_cast(self.data);
         assert ptr.count > 0;
         let r = {
             let rec: &ex_data<T> = &(*ptr).data;
-            rec.lock.lock_cond(|c| f(c, &mut rec.data))
+            do rec.lock.lock { f(&mut rec.data) }
         };
         unsafe::forget(ptr);
         r
@@ -184,7 +184,7 @@ mod tests {
             let total = total.clone();
             futures += ~[future::spawn(|| {
                 for uint::range(0u, count) |_i| {
-                    do total.with |_cond, count| {
+                    do total.with |count| {
                         **count += 1u;
                     }
                 }
@@ -193,7 +193,7 @@ mod tests {
 
         for futures.each |f| { f.get() }
 
-        do total.with |_cond, total| {
+        do total.with |total| {
             assert **total == num_tasks * count
         };
     }

@@ -185,12 +185,10 @@ rust_task_inhibit_yield
 rust_task_allow_yield
 rust_task_kill_other
 rust_task_kill_all
-rust_create_cond_lock
-rust_destroy_cond_lock
-rust_lock_cond_lock
-rust_unlock_cond_lock
-rust_wait_cond_lock
-rust_signal_cond_lock
+rust_create_little_lock
+rust_destroy_little_lock
+rust_lock_little_lock
+rust_unlock_little_lock
 rust_get_task_local_data
 rust_set_task_local_data
 rust_task_local_data_atexit

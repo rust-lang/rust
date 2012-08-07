@@ -1027,7 +1027,7 @@ type shared_chan<T: send> = arc::exclusive<chan<T>>;
 impl chan<T: send> of channel<T> for shared_chan<T> {
     fn send(+x: T) {
         let mut xx = some(x);
-        do self.with |_c, chan| {
+        do self.with |chan| {
             let mut x = none;
             x <-> xx;
             chan.send(option::unwrap(x))
