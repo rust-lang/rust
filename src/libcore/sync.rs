@@ -126,7 +126,7 @@ mod tests {
         for 10.times { task::yield(); }
         s.signal();
         let _ = p.recv();
-        
+
         /* Parent waits and child signals */
         let (c,p) = pipes::stream();
         let s = ~new_semaphore(0);
