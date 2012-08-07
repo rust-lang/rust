@@ -488,21 +488,31 @@ fn print_item(s: ps, &&item: @ast::item) {
         end(s); // end the outer ibox
       }
       ast::item_enum(variants, params) => {
-        let newtype =
+        let mut newtype =
             vec::len(variants) == 1u &&
-                str::eq(item.ident, variants[0].node.name) &&
-                vec::len(variants[0].node.args) == 1u;
+                str::eq(item.ident, variants[0].node.name);
+        if newtype {
+            match variants[0].node.kind {
+                ast::tuple_variant_kind(args) if args.len() == 1 => {}
+                _ => newtype = false
+            }
+        }
         if newtype {
             ibox(s, indent_unit);
             word_space(s, ~"enum");
-        } else { head(s, ~"enum"); }
+        } else {
+            head(s, ~"enum");
+        }
 
         word(s.s, *item.ident);
         print_type_params(s, params);
         space(s.s);
         if newtype {
             word_space(s, ~"=");
-            print_type(s, variants[0].node.args[0].ty);
+            match variants[0].node.kind {
+                ast::tuple_variant_kind(args) => print_type(s, args[0].ty),
+                _ => fail ~"newtype syntax with struct?"
+            }
             word(s.s, ~";");
             end(s);
         } else {
@@ -680,13 +690,18 @@ fn print_tt(s: ps, tt: ast::token_tree) {
 
 fn print_variant(s: ps, v: ast::variant) {
     word(s.s, *v.node.name);
-    if vec::len(v.node.args) > 0u {
-        popen(s);
-        fn print_variant_arg(s: ps, arg: ast::variant_arg) {
-            print_type(s, arg.ty);
+    match v.node.kind {
+        ast::tuple_variant_kind(args) => {
+            if vec::len(args) > 0u {
+                popen(s);
+                fn print_variant_arg(s: ps, arg: ast::variant_arg) {
+                    print_type(s, arg.ty);
+                }
+                commasep(s, consistent, args, print_variant_arg);
+                pclose(s);
+            }
         }
-        commasep(s, consistent, v.node.args, print_variant_arg);
-        pclose(s);
+        ast::struct_variant_kind => {}
     }
     match v.node.disr_expr {
       some(d) => {

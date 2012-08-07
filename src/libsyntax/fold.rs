@@ -541,7 +541,15 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
         return {ty: fld.fold_ty(va.ty), id: fld.new_id(va.id)};
     }
     let fold_variant_arg = |x| fold_variant_arg_(x, fld);
-    let args = vec::map(v.args, fold_variant_arg);
+
+    let kind;
+    match v.kind {
+        tuple_variant_kind(variant_args) =>
+            kind = tuple_variant_kind(vec::map(variant_args,
+                                               fold_variant_arg)),
+        struct_variant_kind =>
+            kind = struct_variant_kind
+    }
 
     let fold_attribute = |x| fold_attribute_(x, fld);
     let attrs = vec::map(v.attrs, fold_attribute);
@@ -552,7 +560,8 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
     };
     return {name: /* FIXME (#2543) */ copy v.name,
          attrs: attrs,
-         args: args, id: fld.new_id(v.id),
+         kind: kind,
+         id: fld.new_id(v.id),
          disr_expr: de,
          vis: v.vis};
 }

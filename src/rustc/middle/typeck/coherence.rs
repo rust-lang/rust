@@ -111,7 +111,6 @@ fn get_base_type_def_id(inference_context: infer_ctxt,
 class CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-
     let inherent_methods: hashmap<def_id,@dvec<@Impl>>;
 
     // Contains implementations of methods associated with a trait. For these,

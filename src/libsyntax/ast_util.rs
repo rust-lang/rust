@@ -187,12 +187,13 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for m.items.each |it| {
         if it.ident == i { local = true; }
         match it.node {
-          item_enum(variants, _) => for variants.each |v| {
-            if v.node.name == i {
-                local = true;
-                parent_enum = some(/* FIXME (#2543) */ copy it.ident);
+          item_enum(variants, _) =>
+            for variants.each |v| {
+                if v.node.name == i {
+                    local = true;
+                    parent_enum = some(/* FIXME (#2543) */ copy it.ident);
+                }
             }
-          },
           _ => ()
         }
         if local { break; }

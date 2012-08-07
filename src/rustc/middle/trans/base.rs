@@ -2173,8 +2173,14 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
             tv.id.node == fn_id.node}));
         let d = mk_lldecl();
         set_inline_hint(d);
-        trans_enum_variant(ccx, enum_item.id, v, this_tv.disr_val,
-                           (*tvs).len() == 1u, psubsts, d);
+        match v.node.kind {
+            ast::tuple_variant_kind(args) => {
+                trans_enum_variant(ccx, enum_item.id, v, args,
+                                   this_tv.disr_val, (*tvs).len() == 1u,
+                                   psubsts, d);
+            }
+            ast::struct_variant_kind => {}
+        }
         d
       }
       ast_map::node_method(mth, impl_def_id, _) => {
@@ -4671,13 +4677,16 @@ fn trans_fn(ccx: @crate_ctxt,
     }
 }
 
-fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
-                      variant: ast::variant, disr: int, is_degen: bool,
+fn trans_enum_variant(ccx: @crate_ctxt,
+                      enum_id: ast::node_id,
+                      variant: ast::variant,
+                      args: ~[ast::variant_arg],
+                      disr: int, is_degen: bool,
                       param_substs: option<param_substs>,
                       llfndecl: ValueRef) {
     let _icx = ccx.insn_ctxt(~"trans_enum_variant");
     // Translate variant arguments to function arguments.
-    let fn_args = vec::map(variant.node.args, |varg|
+    let fn_args = vec::map(args, |varg|
         {mode: ast::expl(ast::by_copy),
          ty: varg.ty,
          ident: @~"arg",
@@ -4705,7 +4714,7 @@ fn trans_enum_variant(ccx: @crate_ctxt, enum_id: ast::node_id,
     };
     let t_id = local_def(enum_id);
     let v_id = local_def(variant.node.id);
-    for vec::eachi(variant.node.args) |i, va| {
+    for vec::eachi(args) |i, va| {
         let lldestptr = GEP_enum(bcx, llblobptr, t_id, v_id,
                                  ty_param_substs, i);
         // If this argument to this function is a enum, it'll have come in to
@@ -4867,11 +4876,16 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
             for vec::each(variants) |variant| {
-                if variant.node.args.len() > 0u {
-                    let llfn = get_item_val(ccx, variant.node.id);
-                    trans_enum_variant(ccx, item.id, variant,
-                                       vi[i].disr_val, degen,
-                                       none, llfn);
+                match variant.node.kind {
+                    ast::tuple_variant_kind(args) if args.len() > 0 => {
+                        let llfn = get_item_val(ccx, variant.node.id);
+                        trans_enum_variant(ccx, item.id, variant, args,
+                                           vi[i].disr_val, degen,
+                                           none, llfn);
+                    }
+                    ast::tuple_variant_kind(_) | ast::struct_variant_kind => {
+                        // Nothing to do.
+                    }
                 }
                 i += 1;
             }
@@ -5166,15 +5180,23 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
           }
 
           ast_map::node_variant(v, enm, pth) => {
-            assert v.node.args.len() != 0u;
-            let pth = vec::append(*pth,
-                                  ~[path_name(enm.ident),
-                                   path_name(v.node.name)]);
-            let llfn = match check enm.node {
-              ast::item_enum(_, _) => {
-                register_fn(ccx, v.span, pth, id)
-              }
-            };
+            let llfn;
+            match v.node.kind {
+                ast::tuple_variant_kind(args) => {
+                    assert args.len() != 0u;
+                    let pth = vec::append(*pth,
+                                          ~[path_name(enm.ident),
+                                           path_name(v.node.name)]);
+                    llfn = match check enm.node {
+                      ast::item_enum(_, _) => {
+                        register_fn(ccx, v.span, pth, id)
+                      }
+                    };
+                }
+                ast::struct_variant_kind => {
+                    fail ~"struct unexpected in get_item_val"
+                }
+            }
             set_inline_hint(llfn);
             llfn
           }

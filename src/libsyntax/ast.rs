@@ -632,7 +632,13 @@ type foreign_mod =
 type variant_arg = {ty: @ty, id: node_id};
 
 #[auto_serialize]
-type variant_ = {name: ident, attrs: ~[attribute], args: ~[variant_arg],
+enum variant_kind {
+    tuple_variant_kind(~[variant_arg]),
+    struct_variant_kind
+}
+
+#[auto_serialize]
+type variant_ = {name: ident, attrs: ~[attribute], kind: variant_kind,
                  id: node_id, disr_expr: option<@expr>, vis: visibility};
 
 #[auto_serialize]

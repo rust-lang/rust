@@ -2073,9 +2073,13 @@ fn check_enum_variants(ccx: @crate_ctxt,
         }
         vec::push(disr_vals, disr_val);
         let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
-        let arg_tys = if v.node.args.len() > 0u {
-            ty::ty_fn_args(ctor_ty).map(|a| a.ty)
-          } else { ~[] };
+        let arg_tys;
+        match v.node.kind {
+            ast::tuple_variant_kind(args) if args.len() > 0u =>
+                arg_tys = ty::ty_fn_args(ctor_ty).map(|a| a.ty),
+            ast::tuple_variant_kind(_) | ast::struct_variant_kind =>
+                arg_tys = ~[]
+        };
         vec::push(variants, @{args: arg_tys, ctor_ty: ctor_ty,
               name: v.node.name, id: local_def(v.node.id),
               disr_val: disr_val});

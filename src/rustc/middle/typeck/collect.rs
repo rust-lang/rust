@@ -115,20 +115,23 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
     for variants.each |variant| {
         // Nullary enum constructors get turned into constants; n-ary enum
         // constructors get turned into functions.
-        let result_ty = if vec::len(variant.node.args) == 0u {
-            enum_ty
-        } else {
-            let rs = type_rscope(rp);
-            let args = variant.node.args.map(|va| {
-                let arg_ty = ccx.to_ty(rs, va.ty);
-                {mode: ast::expl(ast::by_copy), ty: arg_ty}
-            });
-            ty::mk_fn(tcx, {purity: ast::pure_fn,
-                            proto: ast::proto_box,
-                            bounds: @~[],
-                            inputs: args,
-                            output: enum_ty,
-                            ret_style: ast::return_val})
+        let result_ty;
+        match variant.node.kind {
+            ast::tuple_variant_kind(args) if args.len() > 0 => {
+                let rs = type_rscope(rp);
+                let args = args.map(|va| {
+                    let arg_ty = ccx.to_ty(rs, va.ty);
+                    {mode: ast::expl(ast::by_copy), ty: arg_ty}
+                });
+                result_ty = ty::mk_fn(tcx, {purity: ast::pure_fn,
+                                            proto: ast::proto_box,
+                                            bounds: @~[],
+                                            inputs: args,
+                                            output: enum_ty,
+                                            ret_style: ast::return_val});
+            }
+            ast::tuple_variant_kind(_) | ast::struct_variant_kind =>
+                result_ty = enum_ty
         };
         let tpt = {bounds: ty_param_bounds(ccx, ty_params),
                    rp: rp,

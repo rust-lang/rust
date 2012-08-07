@@ -49,14 +49,14 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
              stmt_semi, subtract, sty_box, sty_by_ref, sty_region, sty_uniq,
              sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
-             tt_tok, tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
-             ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound,
-             ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq,
-             ty_vec, ty_fixed_length, unchecked_blk, uniq, unsafe_blk,
-             unsafe_fn, variant, view_item, view_item_, view_item_export,
-             view_item_import, view_item_use, view_path, view_path_glob,
-             view_path_list, view_path_simple, visibility, vstore, vstore_box,
-             vstore_fixed, vstore_slice, vstore_uniq};
+             tt_tok, tt_nonterminal, tuple_variant_kind, ty, ty_, ty_bot,
+             ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
+             ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr,
+             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length, unchecked_blk,
+             uniq, unsafe_blk, unsafe_fn, variant, view_item, view_item_,
+             view_item_export, view_item_import, view_item_use, view_path,
+             view_path_glob, view_path_list, view_path_simple, visibility,
+             vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
 
 export file_type;
 export parser;
@@ -2830,7 +2830,8 @@ class parser {
                 spanned(ty.span.lo, ty.span.hi,
                         {name: id,
                          attrs: ~[],
-                         args: ~[{ty: ty, id: self.get_id()}],
+                         kind: tuple_variant_kind
+                            (~[{ty: ty, id: self.get_id()}]),
                          id: self.get_id(),
                          disr_expr: none,
                          vis: public});
@@ -2861,7 +2862,7 @@ class parser {
             }
 
             let vr = {name: ident, attrs: variant_attrs,
-                      args: args, id: self.get_id(),
+                      kind: tuple_variant_kind(args), id: self.get_id(),
                       disr_expr: disr_expr, vis: vis};
             vec::push(variants, spanned(vlo, self.last_span.hi, vr));
 

@@ -254,7 +254,7 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
 
         {node: {name: name,
                 attrs: ~[],
-                args: args,
+                kind: ast::tuple_variant_kind(args),
                 id: self.next_id(),
                 disr_expr: none,
                 vis: ast::public},
