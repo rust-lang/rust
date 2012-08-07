@@ -78,125 +78,123 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     // type than `option<myrec>`.
     let t_norm = ty::normalize_ty(cx.tcx, t);
 
-    let mut llty;
     if t != t_norm {
-        llty = type_of(cx, t_norm);
+        let llty = type_of(cx, t_norm);
         cx.lltypes.insert(t, llty);
-    } else {
-        llty = match ty::get(t).struct {
-          ty::ty_nil | ty::ty_bot => T_nil(),
-          ty::ty_bool => T_bool(),
-          ty::ty_int(t) => T_int_ty(cx, t),
-          ty::ty_uint(t) => T_uint_ty(cx, t),
-          ty::ty_float(t) => T_float_ty(cx, t),
-          ty::ty_estr(ty::vstore_uniq) => {
-            T_unique_ptr(T_unique(cx, T_vec(cx, T_i8())))
-          }
-          ty::ty_enum(did, _) => {
-            // Only create the named struct, but don't fill it in. We
-            // fill it in *after* placing it into the type cache. This
-            // avoids creating more than one copy of the enum when one
-            // of the enum's variants refers to the enum itself.
+        return llty;
+    }
 
-            common::T_named_struct(llvm_type_name(cx, t))
-          }
-          ty::ty_estr(ty::vstore_box) => {
-            T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
-          }
-          ty::ty_evec(mt, ty::vstore_box) => {
-            T_box_ptr(T_box(cx, T_vec(cx, type_of(cx, mt.ty))))
-          }
-          ty::ty_box(mt) => T_box_ptr(T_box(cx, type_of(cx, mt.ty))),
-          ty::ty_opaque_box => T_box_ptr(T_box(cx, T_i8())),
-          ty::ty_uniq(mt) => T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))),
-          ty::ty_evec(mt, ty::vstore_uniq) => {
-            T_unique_ptr(T_unique(cx, T_vec(cx, type_of(cx, mt.ty))))
-          }
-          ty::ty_unboxed_vec(mt) => {
-            T_vec(cx, type_of(cx, mt.ty))
-          }
-          ty::ty_ptr(mt) => T_ptr(type_of(cx, mt.ty)),
-          ty::ty_rptr(_, mt) => T_ptr(type_of(cx, mt.ty)),
+    let llty = match ty::get(t).struct {
+      ty::ty_nil | ty::ty_bot => T_nil(),
+      ty::ty_bool => T_bool(),
+      ty::ty_int(t) => T_int_ty(cx, t),
+      ty::ty_uint(t) => T_uint_ty(cx, t),
+      ty::ty_float(t) => T_float_ty(cx, t),
+      ty::ty_estr(ty::vstore_uniq) => {
+        T_unique_ptr(T_unique(cx, T_vec(cx, T_i8())))
+      }
+      ty::ty_enum(did, _) => {
+        // Only create the named struct, but don't fill it in. We
+        // fill it in *after* placing it into the type cache. This
+        // avoids creating more than one copy of the enum when one
+        // of the enum's variants refers to the enum itself.
 
-          ty::ty_evec(mt, ty::vstore_slice(_)) => {
-            T_struct(~[T_ptr(type_of(cx, mt.ty)),
-                      T_uint_ty(cx, ast::ty_u)])
-          }
+        common::T_named_struct(llvm_type_name(cx, t))
+      }
+      ty::ty_estr(ty::vstore_box) => {
+        T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
+      }
+      ty::ty_evec(mt, ty::vstore_box) => {
+        T_box_ptr(T_box(cx, T_vec(cx, type_of(cx, mt.ty))))
+      }
+      ty::ty_box(mt) => T_box_ptr(T_box(cx, type_of(cx, mt.ty))),
+      ty::ty_opaque_box => T_box_ptr(T_box(cx, T_i8())),
+      ty::ty_uniq(mt) => T_unique_ptr(T_unique(cx, type_of(cx, mt.ty))),
+      ty::ty_evec(mt, ty::vstore_uniq) => {
+        T_unique_ptr(T_unique(cx, T_vec(cx, type_of(cx, mt.ty))))
+      }
+      ty::ty_unboxed_vec(mt) => {
+        T_vec(cx, type_of(cx, mt.ty))
+      }
+      ty::ty_ptr(mt) => T_ptr(type_of(cx, mt.ty)),
+      ty::ty_rptr(_, mt) => T_ptr(type_of(cx, mt.ty)),
 
-          ty::ty_estr(ty::vstore_slice(_)) => {
-            T_struct(~[T_ptr(T_i8()),
-                      T_uint_ty(cx, ast::ty_u)])
-          }
+      ty::ty_evec(mt, ty::vstore_slice(_)) => {
+        T_struct(~[T_ptr(type_of(cx, mt.ty)),
+                   T_uint_ty(cx, ast::ty_u)])
+      }
 
-          ty::ty_estr(ty::vstore_fixed(n)) => {
-            T_array(T_i8(), n + 1u /* +1 for trailing null */)
-          }
+      ty::ty_estr(ty::vstore_slice(_)) => {
+        T_struct(~[T_ptr(T_i8()),
+                   T_uint_ty(cx, ast::ty_u)])
+      }
 
-          ty::ty_evec(mt, ty::vstore_fixed(n)) => {
-            T_array(type_of(cx, mt.ty), n)
-          }
+      ty::ty_estr(ty::vstore_fixed(n)) => {
+        T_array(T_i8(), n + 1u /* +1 for trailing null */)
+      }
 
-          ty::ty_rec(fields) => {
-            let mut tys: ~[TypeRef] = ~[];
-            for vec::each(fields) |f| {
-                let mt_ty = f.mt.ty;
-                vec::push(tys, type_of(cx, mt_ty));
-            }
-            T_struct(tys)
-          }
-          ty::ty_fn(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
-          ty::ty_trait(_, _) => T_opaque_trait(cx),
-          ty::ty_type => T_ptr(cx.tydesc_type),
-          ty::ty_tup(elts) => {
-            let mut tys = ~[];
-            for vec::each(elts) |elt| {
-                vec::push(tys, type_of(cx, elt));
-            }
-            T_struct(tys)
-          }
-          ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
-          ty::ty_class(*) => {
-            // Only create the named struct, but don't fill it in. We fill it
-            // in *after* placing it into the type cache. This prevents
-            // infinite recursion with recursive class types.
+      ty::ty_evec(mt, ty::vstore_fixed(n)) => {
+        T_array(type_of(cx, mt.ty), n)
+      }
 
-            common::T_named_struct(llvm_type_name(cx, t))
-          }
-          ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
-          ty::ty_var(_) => cx.tcx.sess.bug(~"type_of with ty_var"),
-          ty::ty_param(*) => cx.tcx.sess.bug(~"type_of with ty_param"),
-          ty::ty_var_integral(_) => {
-            cx.tcx.sess.bug(~"type_of shouldn't see a ty_var_integral");
-          }
+      ty::ty_rec(fields) => {
+        let mut tys: ~[TypeRef] = ~[];
+        for vec::each(fields) |f| {
+            let mt_ty = f.mt.ty;
+            vec::push(tys, type_of(cx, mt_ty));
+        }
+        T_struct(tys)
+      }
+      ty::ty_fn(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
+      ty::ty_trait(_, _) => T_opaque_trait(cx),
+      ty::ty_type => T_ptr(cx.tydesc_type),
+      ty::ty_tup(elts) => {
+        let mut tys = ~[];
+        for vec::each(elts) |elt| {
+            vec::push(tys, type_of(cx, elt));
+        }
+        T_struct(tys)
+      }
+      ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
+      ty::ty_class(*) => {
+        // Only create the named struct, but don't fill it in. We fill it
+        // in *after* placing it into the type cache. This prevents
+        // infinite recursion with recursive class types.
+
+        common::T_named_struct(llvm_type_name(cx, t))
+      }
+      ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
+      ty::ty_var(_) => cx.tcx.sess.bug(~"type_of with ty_var"),
+      ty::ty_param(*) => cx.tcx.sess.bug(~"type_of with ty_param"),
+      ty::ty_var_integral(_) => {
+        cx.tcx.sess.bug(~"type_of shouldn't see a ty_var_integral");
+      }
+    };
+
+    cx.lltypes.insert(t, llty);
+
+    // If this was an enum or class, fill in the type now.
+    match ty::get(t).struct {
+      ty::ty_enum(did, _) => {
+        fill_type_of_enum(cx, did, t, llty);
+      }
+      ty::ty_class(did, ts) => {
+        // Only instance vars are record fields at runtime.
+        let fields = ty::lookup_class_fields(cx.tcx, did);
+        let mut tys = do vec::map(fields) |f| {
+            let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
+            type_of(cx, t)
         };
 
-        cx.lltypes.insert(t, llty);
-
-        // If this was an enum or class, fill in the type now.
-        match ty::get(t).struct {
-          ty::ty_enum(did, _) => {
-              fill_type_of_enum(cx, did, t, llty);
-          }
-          ty::ty_class(did, ts) => {
-            // Only instance vars are record fields at runtime.
-            let fields = ty::lookup_class_fields(cx.tcx, did);
-            let mut tys = do vec::map(fields) |f| {
-                let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
-                type_of(cx, t)
-            };
-
-            if ty::ty_dtor(cx.tcx, did) != none {
-              // resource type
-              tys = ~[T_i8(), T_struct(tys)];
-            }
-
-            common::set_struct_body(llty, tys);
-          }
-          _ => {
-            // Nothing more to do.
-          }
+        if ty::ty_dtor(cx.tcx, did) != none {
+            // resource type
+            tys = ~[T_i8(), T_struct(tys)];
         }
-    };
+
+        common::set_struct_body(llty, tys);
+      }
+      _ => ()
+    }
 
     return llty;
 }
