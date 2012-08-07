@@ -39,7 +39,7 @@ export float, f32, f64;
 export box, char, str, ptr, vec, at_vec, bool;
 export either, option, result, iter;
 export libc, os, io, run, rand, sys, unsafe, logging;
-export arc, comm, task, future, pipes;
+export arc, comm, task, future, pipes, sync;
 export extfmt;
 // The test harness links against core, so don't include runtime in tests.
 // FIXME (#2861): Uncomment this after snapshot gets updated.
@@ -204,6 +204,7 @@ mod comm;
 mod task;
 mod future;
 mod pipes;
+mod sync;
 
 // Runtime and language-primitive support
 
