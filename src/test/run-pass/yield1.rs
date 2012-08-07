@@ -5,7 +5,7 @@ import task::*;
 
 fn main() {
     let mut result = none;
-    task::task().future_result(|-r| { result = some(r); }).spawn(child);
+    task::task().future_result(|+r| { result = some(r); }).spawn(child);
     error!{"1"};
     yield();
     future::get(option::unwrap(result));

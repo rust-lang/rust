@@ -41,7 +41,7 @@ fn test00() {
     let mut results = ~[];
     while i < number_of_tasks {
         i = i + 1;
-        do task::task().future_result(|-r| {
+        do task::task().future_result(|+r| {
             results += ~[r];
         }).spawn |copy i| {
             test00_start(ch, i, number_of_messages);
@@ -128,7 +128,7 @@ fn test06() {
     let mut results = ~[];
     while i < number_of_tasks {
         i = i + 1;
-        do task::task().future_result(|-r| {
+        do task::task().future_result(|+r| {
             results += ~[r];
         }).spawn |copy i| {
             test06_start(i);

@@ -271,7 +271,7 @@ impl task_builder for task_builder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn future_result(blk: fn(-future::future<task_result>)) -> task_builder {
+    fn future_result(blk: fn(+future::future<task_result>)) -> task_builder {
         // FIXME (#1087, #1857): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
@@ -394,7 +394,7 @@ impl task_builder for task_builder {
         let ch = comm::chan(po);
         let mut result = none;
 
-        do self.future_result(|-r| { result = some(r); }).spawn {
+        do self.future_result(|+r| { result = some(r); }).spawn {
             comm::send(ch, f());
         }
         match future::get(option::unwrap(result)) {
@@ -1684,11 +1684,11 @@ fn test_add_wrapper() {
 #[ignore(cfg(windows))]
 fn test_future_result() {
     let mut result = none;
-    do task().future_result(|-r| { result = some(r); }).spawn { }
+    do task().future_result(|+r| { result = some(r); }).spawn { }
     assert future::get(option::unwrap(result)) == success;
 
     result = none;
-    do task().future_result(|-r| { result = some(r); }).unlinked().spawn {
+    do task().future_result(|+r| { result = some(r); }).unlinked().spawn {
         fail;
     }
     assert future::get(option::unwrap(result)) == failure;
@@ -1696,7 +1696,7 @@ fn test_future_result() {
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_back_to_the_future_result() {
-    let _ = task().future_result(|-r| ()).future_result(|-r| ());
+    let _ = task().future_result(util::ignore).future_result(util::ignore);
 }
 
 #[test]

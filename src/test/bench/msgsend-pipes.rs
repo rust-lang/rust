@@ -54,7 +54,7 @@ fn run(args: &[~str]) {
     for uint::range(0u, workers) |i| {
         let (to_child, from_parent_) = pipes::stream();
         from_parent.add(from_parent_);
-        do task::task().future_result(|-r| {
+        do task::task().future_result(|+r| {
             vec::push(worker_results, r);
         }).spawn {
             for uint::range(0u, size / workers) |_i| {

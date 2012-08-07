@@ -70,7 +70,7 @@ fn stress_task(&&id: int) {
 fn stress(num_tasks: int) {
     let mut results = ~[];
     for range(0, num_tasks) |i| {
-        do task::task().future_result(|-r| {
+        do task::task().future_result(|+r| {
             results += ~[r];
         }).spawn {
             stress_task(i);

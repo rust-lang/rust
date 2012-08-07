@@ -39,7 +39,7 @@ fn run(args: ~[~str]) {
     let to_child = to_child;
     let mut worker_results = ~[];
     for uint::range(0u, workers) |_i| {
-        do task::task().future_result(|-r| {
+        do task::task().future_result(|+r| {
             vec::push(worker_results, r);
         }).spawn {
             for uint::range(0u, size / workers) |_i| {
