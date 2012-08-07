@@ -400,6 +400,42 @@ fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
 
 }
 
+fn check_struct(ccx: @crate_ctxt, struct_def: ast::struct_def,
+                id: ast::node_id, span: span) {
+    let tcx = ccx.tcx;
+    let class_t = {self_ty: ty::node_id_to_type(tcx, id), node_id: id};
+
+    do option::iter(struct_def.ctor) |ctor| {
+        // typecheck the ctor
+        check_bare_fn(ccx, ctor.node.dec,
+                      ctor.node.body, ctor.node.id,
+                      some(class_t));
+        // Write the ctor's self's type
+        write_ty_to_tcx(tcx, ctor.node.self_id, class_t.self_ty);
+    }
+
+    do option::iter(struct_def.dtor) |dtor| {
+        // typecheck the dtor
+        check_bare_fn(ccx, ast_util::dtor_dec(),
+                      dtor.node.body, dtor.node.id,
+                      some(class_t));
+        // Write the dtor's self's type
+        write_ty_to_tcx(tcx, dtor.node.self_id, class_t.self_ty);
+    };
+
+    // typecheck the members
+    for struct_def.members.each |m| {
+        check_class_member(ccx, class_t, m);
+    }
+    // Check that there's at least one field
+    let (fields,_) = split_class_items(struct_def.members);
+    if fields.len() < 1u {
+        ccx.tcx.sess.span_err(span, ~"a class must have at least one field");
+    }
+    // Check that the class is instantiable
+    check_instantiable(ccx.tcx, span, id);
+}
+
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     match it.node {
       ast::item_const(_, e) => check_const(ccx, it.span, e, it.id),
@@ -433,41 +469,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         }
       }
       ast::item_class(struct_def, _) => {
-        let tcx = ccx.tcx;
-        let class_t = {self_ty: ty::node_id_to_type(tcx, it.id),
-                       node_id: it.id};
-
-        do option::iter(struct_def.ctor) |ctor| {
-            // typecheck the ctor
-            check_bare_fn(ccx, ctor.node.dec,
-                          ctor.node.body, ctor.node.id,
-                          some(class_t));
-            // Write the ctor's self's type
-            write_ty_to_tcx(tcx, ctor.node.self_id, class_t.self_ty);
-        }
-
-        do option::iter(struct_def.dtor) |dtor| {
-            // typecheck the dtor
-            check_bare_fn(ccx, ast_util::dtor_dec(),
-                          dtor.node.body, dtor.node.id,
-                          some(class_t));
-            // Write the dtor's self's type
-            write_ty_to_tcx(tcx, dtor.node.self_id, class_t.self_ty);
-        };
-
-        // typecheck the members
-        for struct_def.members.each |m| {
-            check_class_member(ccx, class_t, m);
-        }
-        // Check that there's at least one field
-        let (fields,_) = split_class_items(struct_def.members);
-        if fields.len() < 1u {
-            ccx.tcx.sess.span_err(
-                it.span,
-                ~"a class must have at least one field");
-        }
-        // Check that the class is instantiable
-        check_instantiable(ccx.tcx, it.span, it.id);
+        check_struct(ccx, struct_def, it.id, it.span);
       }
       ast::item_ty(t, tps) => {
         let tpt_ty = ty::node_id_to_type(ccx.tcx, it.id);

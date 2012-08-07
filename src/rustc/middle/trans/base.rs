@@ -4900,28 +4900,34 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }
       ast::item_class(struct_def, tps) => {
-        if tps.len() == 0u {
-          let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
-                         vtables: none,
-                         bounds: @~[]};
-          do option::iter(struct_def.ctor) |ctor| {
-            trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
-                             get_item_val(ccx, ctor.node.id), psubsts,
-                             ctor.node.id, local_def(item.id), ctor.span);
-          }
-          do option::iter(struct_def.dtor) |dtor| {
-             trans_class_dtor(ccx, *path, dtor.node.body,
-               dtor.node.id, none, none, local_def(item.id));
-          };
-        }
-        // If there are ty params, the ctor will get monomorphized
-
-        // Translate methods
-        let (_, ms) = ast_util::split_class_items(struct_def.members);
-        impl::trans_impl(ccx, *path, item.ident, ms, tps);
+        trans_struct_def(ccx, struct_def, tps, path, item.ident, item.id);
       }
       _ => {/* fall through */ }
     }
+}
+
+fn trans_struct_def(ccx: @crate_ctxt, struct_def: ast::struct_def,
+                    tps: ~[ast::ty_param], path: @ast_map::path,
+                    ident: ast::ident, id: ast::node_id) {
+    if tps.len() == 0u {
+      let psubsts = {tys: ty::ty_params_to_tys(ccx.tcx, tps),
+                     vtables: none,
+                     bounds: @~[]};
+      do option::iter(struct_def.ctor) |ctor| {
+        trans_class_ctor(ccx, *path, ctor.node.dec, ctor.node.body,
+                         get_item_val(ccx, ctor.node.id), psubsts,
+                         ctor.node.id, local_def(id), ctor.span);
+      }
+      do option::iter(struct_def.dtor) |dtor| {
+         trans_class_dtor(ccx, *path, dtor.node.body,
+           dtor.node.id, none, none, local_def(id));
+      };
+    }
+    // If there are ty params, the ctor will get monomorphized
+
+    // Translate methods
+    let (_, ms) = ast_util::split_class_items(struct_def.members);
+    impl::trans_impl(ccx, *path, ident, ms, tps);
 }
 
 // Translate a module. Doing this amounts to translating the items in the

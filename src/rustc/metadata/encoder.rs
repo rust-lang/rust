@@ -205,20 +205,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 // class and for its ctor
                 add_to_index(ebml_w, path, index, it.ident);
 
-                match struct_def.ctor {
-                    none => {
-                        // Nothing to do.
-                    }
-                    some(ctor) => {
-                        encode_named_def_id(ebml_w, it.ident,
-                                            local_def(ctor.node.id));
-                    }
-                }
-
-                encode_class_item_paths(ebml_w,
-                                        struct_def.members,
-                                        vec::append_one(path, it.ident),
-                                        index);
+                encode_struct_def(ebml_w, struct_def, path, it.ident, index);
             }
           }
           item_enum(variants, _) => {
@@ -236,6 +223,26 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
           item_mac(*) => fail ~"item macros unimplemented"
         }
     }
+}
+
+fn encode_struct_def(ebml_w: ebml::writer,
+                     struct_def: ast::struct_def,
+                     path: ~[ast::ident],
+                     ident: ast::ident,
+                     &index: ~[entry<~str>]) {
+    match struct_def.ctor {
+        none => {
+            // Nothing to do.
+        }
+        some(ctor) => {
+            encode_named_def_id(ebml_w, ident, local_def(ctor.node.id));
+        }
+    }
+
+    encode_class_item_paths(ebml_w,
+                            struct_def.members,
+                            vec::append_one(path, ident),
+                            index);
 }
 
 fn encode_trait_ref(ebml_w: ebml::writer, ecx: @encode_ctxt, t: @trait_ref) {
