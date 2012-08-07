@@ -337,7 +337,7 @@ struct buffer_resource<T: send> {
 
 #[doc(hidden)]
 fn send<T: send, Tbuffer: send>(-p: send_packet_buffered<T, Tbuffer>,
-                                -payload: T) {
+                                -payload: T) -> bool {
     let header = p.header();
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
@@ -346,29 +346,32 @@ fn send<T: send, Tbuffer: send>(-p: send_packet_buffered<T, Tbuffer>,
     p.payload <- some(payload);
     let old_state = swap_state_rel(p.header.state, full);
     match old_state {
-      empty => {
-        // Yay, fastpath.
+        empty => {
+            // Yay, fastpath.
 
-        // The receiver will eventually clean this up.
-        //unsafe { forget(p); }
-      }
-      full => fail ~"duplicate send",
-      blocked => {
-        debug!{"waking up task for %?", p_};
-        let old_task = swap_task(p.header.blocked_task, ptr::null());
-        if !old_task.is_null() {
-            rustrt::task_signal_event(
-                old_task, ptr::addr_of(p.header) as *libc::c_void);
-            rustrt::rust_task_deref(old_task);
+            // The receiver will eventually clean this up.
+            //unsafe { forget(p); }
+            return true;
         }
+        full => fail ~"duplicate send",
+        blocked => {
+            debug!{"waking up task for %?", p_};
+            let old_task = swap_task(p.header.blocked_task, ptr::null());
+            if !old_task.is_null() {
+                rustrt::task_signal_event(
+                    old_task, ptr::addr_of(p.header) as *libc::c_void);
+                rustrt::rust_task_deref(old_task);
+            }
 
-        // The receiver will eventually clean this up.
-        //unsafe { forget(p); }
-      }
-      terminated => {
-        // The receiver will never receive this. Rely on drop_glue
-        // to clean everything up.
-      }
+            // The receiver will eventually clean this up.
+            //unsafe { forget(p); }
+            return true;
+        }
+        terminated => {
+            // The receiver will never receive this. Rely on drop_glue
+            // to clean everything up.
+            return false;
+        }
     }
 }
 
