@@ -232,16 +232,6 @@ impl private_methods for &preserve_ctxt {
             // node appears to draw the line between what will be rooted
             // in the *arm* vs the *alt*.
 
-            // current scope must be the arm, which is always a child of alt:
-            assert {
-                match check self.scope_region {
-                  ty::re_scope(arm_id) => {
-                    self.tcx().region_map.get(arm_id) == alt_id
-                  }
-                  _ => {false}
-                }
-            };
-
             let alt_rooting_ctxt =
                 preserve_ctxt({scope_region: ty::re_scope(alt_id)
                                with **self});
@@ -289,8 +279,7 @@ impl private_methods for &preserve_ctxt {
     /// is a subscope of `scope_ub`; if so, success.
     fn compare_scope(cmt: cmt,
                      scope_ub: ty::region) -> bckres<preserve_condition> {
-        let region_map = self.tcx().region_map;
-        if region::subregion(region_map, scope_ub, self.scope_region) {
+        if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             ok(pc_ok)
         } else {
             err({cmt:cmt, code:err_out_of_scope(scope_ub,
@@ -326,12 +315,11 @@ impl private_methods for &preserve_ctxt {
           // we can only root values if the desired region is some concrete
           // scope within the fn body
           ty::re_scope(scope_id) => {
-            let region_map = self.tcx().region_map;
             #debug["Considering root map entry for %s: \
                     node %d:%u -> scope_id %?, root_ub %?",
                    self.bccx.cmt_to_repr(cmt), base.id,
                    derefs, scope_id, self.root_ub];
-            if region::subregion(region_map, root_region, self.scope_region) {
+            if self.bccx.is_subregion_of(self.scope_region, root_region) {
                 #debug["Elected to root"];
                 let rk = {id: base.id, derefs: derefs};
                 self.bccx.root_map.insert(rk, scope_id);
