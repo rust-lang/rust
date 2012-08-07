@@ -2315,8 +2315,7 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
       ast::vstore_box => ty::vstore_box,
       ast::vstore_slice(a_r) =>  match fcx.block_region() {
         result::ok(b_r) => {
-            let rscope = in_anon_rscope(fcx, b_r);
-            let r = astconv::ast_region_to_region(fcx, rscope, e.span, a_r);
+            let r = fcx.infcx.next_region_var_with_scope_lb(e.id);
             ty::vstore_slice(r)
         }
         result::err(msg) => {
