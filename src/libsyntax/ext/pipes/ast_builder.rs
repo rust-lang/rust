@@ -15,8 +15,8 @@ mod syntax {
     export parse;
 }
 
-fn ident(s: ~str) -> ast::ident {
-    @(copy s)
+fn ident(s: &str) -> ast::ident {
+    @(s.to_unique())
 }
 
 fn path(id: ident, span: span) -> @ast::path {
@@ -86,9 +86,15 @@ trait ext_ctxt_ast_builder {
     fn stmt_expr(e: @ast::expr) -> @ast::stmt;
     fn block_expr(b: ast::blk) -> @ast::expr;
     fn empty_span() -> span;
+    fn ty_option(ty: @ast::ty) -> @ast::ty;
 }
 
 impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
+    fn ty_option(ty: @ast::ty) -> @ast::ty {
+        self.ty_path_ast_builder(path(@~"option", self.empty_span())
+                                 .add_ty(ty))
+    }
+
     fn empty_span() -> span {
         {lo: 0, hi: 0, expn_info: self.backtrace()}
     }
