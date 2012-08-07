@@ -740,12 +740,12 @@ enum ancestor_list = option<arc::exclusive<ancestor_node>>;
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
 fn access_group<U>(x: taskgroup_arc, blk: fn(taskgroup_inner) -> U) -> U {
-    unsafe { x.with(|_c, tg| blk(tg)) }
+    unsafe { x.with(blk) }
 }
 #[inline(always)]
 fn access_ancestors<U>(x: arc::exclusive<ancestor_node>,
                        blk: fn(x: &mut ancestor_node) -> U) -> U {
-    unsafe { x.with(|_c, nobe| blk(nobe)) }
+    unsafe { x.with(blk) }
 }
 
 // Iterates over an ancestor list.

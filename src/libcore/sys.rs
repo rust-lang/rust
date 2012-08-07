@@ -7,7 +7,7 @@ export min_align_of;
 export pref_align_of;
 export refcount;
 export log_str;
-export lock_and_signal, condition, methods;
+export little_lock, methods;
 export shape_eq, shape_lt, shape_le;
 
 import task::atomically;
@@ -18,18 +18,16 @@ enum type_desc = {
     // Remaining fields not listed
 };
 
-type rust_cond_lock = *libc::c_void;
+type rust_little_lock = *libc::c_void;
 
 #[abi = "cdecl"]
 extern mod rustrt {
     pure fn shape_log_str(t: *sys::type_desc, data: *()) -> ~str;
 
-    fn rust_create_cond_lock() -> rust_cond_lock;
-    fn rust_destroy_cond_lock(lock: rust_cond_lock);
-    fn rust_lock_cond_lock(lock: rust_cond_lock);
-    fn rust_unlock_cond_lock(lock: rust_cond_lock);
-    fn rust_wait_cond_lock(lock: rust_cond_lock);
-    fn rust_signal_cond_lock(lock: rust_cond_lock) -> bool;
+    fn rust_create_little_lock() -> rust_little_lock;
+    fn rust_destroy_little_lock(lock: rust_little_lock);
+    fn rust_lock_little_lock(lock: rust_little_lock);
+    fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
 #[abi = "rust-intrinsic"]
@@ -100,49 +98,27 @@ pure fn log_str<T>(t: T) -> ~str {
     }
 }
 
-class lock_and_signal {
-    let lock: rust_cond_lock;
+class little_lock {
+    let l: rust_little_lock;
     new() {
-        self.lock = rustrt::rust_create_cond_lock();
+        self.l = rustrt::rust_create_little_lock();
     }
-    drop { rustrt::rust_destroy_cond_lock(self.lock); }
+    drop { rustrt::rust_destroy_little_lock(self.l); }
 }
 
-enum condition {
-    condition_(rust_cond_lock)
-}
-
-class unlock {
-    let lock: rust_cond_lock;
-    new(lock: rust_cond_lock) { self.lock = lock; }
-    drop { rustrt::rust_unlock_cond_lock(self.lock); }
-}
-
-impl methods for lock_and_signal {
+impl methods for little_lock {
     unsafe fn lock<T>(f: fn() -> T) -> T {
+        class unlock {
+            let l: rust_little_lock;
+            new(l: rust_little_lock) { self.l = l; }
+            drop { rustrt::rust_unlock_little_lock(self.l); }
+        }
+
         do atomically {
-            rustrt::rust_lock_cond_lock(self.lock);
-            let _r = unlock(self.lock);
+            rustrt::rust_lock_little_lock(self.l);
+            let _r = unlock(self.l);
             f()
         }
-    }
-
-    unsafe fn lock_cond<T>(f: fn(condition) -> T) -> T {
-        do atomically {
-            rustrt::rust_lock_cond_lock(self.lock);
-            let _r = unlock(self.lock);
-            f(condition_(self.lock))
-        }
-    }
-}
-
-impl methods for condition {
-    fn wait() {
-        rustrt::rust_wait_cond_lock(*self);
-    }
-
-    fn signal() -> bool {
-        rustrt::rust_signal_cond_lock(*self)
     }
 }
 
@@ -192,27 +168,6 @@ mod tests {
     fn align_of_64() {
         assert pref_align_of::<uint>() == 8u;
         assert pref_align_of::<*uint>() == 8u;
-    }
-
-    #[test]
-    #[ignore] // this can go into infinite loops
-    fn condition_variable() {
-        let lock = arc::arc(lock_and_signal());
-        let lock2 = arc::clone(&lock);
-
-        do task::spawn |move lock2| {
-            let lock = arc::get(&lock2);
-            do (*lock).lock_cond |c| {
-                c.wait();
-            }
-        }
-
-        let mut signaled = false;
-        while !signaled {
-            do (*arc::get(&lock)).lock_cond |c| {
-                signaled = c.signal()
-            }
-        }
     }
 }
 

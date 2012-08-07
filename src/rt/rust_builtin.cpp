@@ -7,7 +7,6 @@
 #include "sync/timer.h"
 #include "rust_abi.h"
 #include "rust_port.h"
-#include "rust_cond_lock.h"
 
 #include <time.h>
 
@@ -882,56 +881,24 @@ bool rust_task_is_unwinding(rust_task *rt) {
     return rt->unwinding;
 }
 
-extern "C" rust_cond_lock*
-rust_create_cond_lock() {
-    return new rust_cond_lock();
+extern "C" lock_and_signal*
+rust_create_little_lock() {
+    return new lock_and_signal();
 }
 
 extern "C" void
-rust_destroy_cond_lock(rust_cond_lock *lock) {
+rust_destroy_little_lock(lock_and_signal *lock) {
     delete lock;
 }
 
 extern "C" void
-rust_lock_cond_lock(rust_cond_lock *lock) {
-    lock->lock.lock();
+rust_lock_little_lock(lock_and_signal *lock) {
+    lock->lock();
 }
 
 extern "C" void
-rust_unlock_cond_lock(rust_cond_lock *lock) {
-    lock->lock.unlock();
-}
-
-// The next two functions do not use the built in condition variable features
-// because the Rust schedule is not aware of them, and they can block the
-// scheduler thread.
-
-extern "C" void
-rust_wait_cond_lock(rust_cond_lock *lock) {
-    assert(false && "condition->wait() is totally broken! Don't use it!");
-    rust_task *task = rust_get_current_task();
-    lock->lock.must_have_lock();
-    assert(NULL == lock->waiting);
-    lock->waiting = task;
-    task->block(lock, "waiting for signal");
-    lock->lock.unlock();
-    bool killed = task->yield();
-    assert(!killed && "unimplemented");
-    lock->lock.lock();
-}
-
-extern "C" bool
-rust_signal_cond_lock(rust_cond_lock *lock) {
-    assert(false && "condition->signal() is totally broken! Don't use it!");
-    lock->lock.must_have_lock();
-    if(NULL == lock->waiting) {
-        return false;
-    }
-    else {
-        lock->waiting->wakeup(lock);
-        lock->waiting = NULL;
-        return true;
-    }
+rust_unlock_little_lock(lock_and_signal *lock) {
+    lock->unlock();
 }
 
 // set/get/atexit task_local_data can run on the rust stack for speed.
