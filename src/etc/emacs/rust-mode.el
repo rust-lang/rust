@@ -66,7 +66,7 @@
                     "let" "log" "loop"
                     "move" "new"
                     "pure"
-                    "return"
+                    "return" "static"
                     "unchecked" "unsafe"
                     "while"))
       (puthash word t table))
