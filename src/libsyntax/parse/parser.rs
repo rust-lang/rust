@@ -225,6 +225,9 @@ class parser {
     fn span_fatal(sp: span, m: ~str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
+    fn span_note(sp: span, m: ~str) {
+        self.sess.span_diagnostic.span_note(sp, m)
+    }
     fn bug(m: ~str) -> ! {
         self.sess.span_diagnostic.span_bug(copy self.span, m)
     }
@@ -2529,10 +2532,30 @@ class parser {
         while self.token != token::RBRACE {
             match self.parse_class_item(class_path) {
               ctor_decl(a_fn_decl, attrs, blk, s) => {
-                the_ctor = some((a_fn_decl, attrs, blk, s));
+                  match the_ctor {
+                    some((_, _, _, s_first)) => {
+                      self.span_note(s, #fmt("Duplicate constructor \
+                                   declaration for class %s", *class_name));
+                       self.span_fatal(copy s_first, ~"First constructor \
+                                                      declared here");
+                    }
+                    none    => {
+                      the_ctor = some((a_fn_decl, attrs, blk, s));
+                    }
+                  }
               }
               dtor_decl(blk, attrs, s) => {
-                the_dtor = some((blk, attrs, s));
+                  match the_dtor {
+                    some((_, _, s_first)) => {
+                      self.span_note(s, #fmt("Duplicate destructor \
+                                    declaration for class %s", *class_name));
+                      self.span_fatal(copy s_first, ~"First destructor \
+                                                      declared here");
+                    }
+                    none => {
+                      the_dtor = some((blk, attrs, s));
+                    }
+                  }
               }
               members(mms) => { ms = vec::append(ms, mms); }
             }
@@ -2557,9 +2580,6 @@ class parser {
                  span: ct_s}), actual_dtor),
              none)
           }
-          /*
-          Is it strange for the parser to check this?
-          */
           none => {
             (class_name,
              item_class(ty_params, traits, ms, none, actual_dtor),
