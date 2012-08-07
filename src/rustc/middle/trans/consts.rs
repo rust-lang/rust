@@ -32,15 +32,15 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
 // duplicate constants. I think. Maybe LLVM has a magical mode that does so
 // later on?
 
-fn const_vec_and_sz(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
-    -> (ValueRef, ValueRef) {
+fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
+    -> (ValueRef, ValueRef, TypeRef) {
     let vec_ty = ty::expr_ty(cx.tcx, e);
     let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
     let v = C_array(llunitty, es.map(|e| const_expr(cx, e)));
     let unit_sz = shape::llsize_of(cx, llunitty);
     let sz = llvm::LLVMConstMul(C_uint(cx, es.len()), unit_sz);
-    return (v, sz);
+    return (v, sz, llunitty);
 }
 
 fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
@@ -157,7 +157,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         C_struct(fs.map(|f| const_expr(cx, f.node.expr)))
       }
       ast::expr_vec(es, m_imm) => {
-        let (v, _) = const_vec_and_sz(cx, e, es);
+        let (v, _, _) = const_vec(cx, e, es);
         v
       }
       ast::expr_vstore(e, ast::vstore_fixed(_)) => {
@@ -173,15 +173,16 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
             }
           }
           ast::expr_vec(es, m_imm) => {
-            let (cv, sz) = const_vec_and_sz(cx, e, es);
-            let subty = ty::expr_ty(cx.tcx, sub),
-            llty = type_of::type_of(cx, subty);
+            let (cv, sz, llunitty) = const_vec(cx, e, es);
+            let llty = val_ty(cv);
             let gv = do str::as_c_str("const") |name| {
                 llvm::LLVMAddGlobal(cx.llmod, llty, name)
             };
             llvm::LLVMSetInitializer(gv, cv);
             llvm::LLVMSetGlobalConstant(gv, True);
-            C_struct(~[gv, sz])
+            let p = llvm::LLVMConstPointerCast(gv, T_ptr(llunitty));
+
+            C_struct(~[p, sz])
           }
           _ => cx.sess.span_bug(e.span,
                                 ~"bad const-slice expr")
