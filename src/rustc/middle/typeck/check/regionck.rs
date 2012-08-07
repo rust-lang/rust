@@ -22,6 +22,7 @@ import syntax::print::pprust;
 import infer::{resolve_type, resolve_all, force_all,
                resolve_rvar, force_rvar, fres};
 import middle::kind::check_owned;
+import middle::pat_util::pat_bindings;
 
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;
@@ -80,7 +81,6 @@ fn regionck_visitor() -> rvt {
                    visit_stmt: visit_stmt,
                    visit_expr: visit_expr,
                    visit_block: visit_block,
-                   visit_pat: visit_pat,
                    visit_local: visit_local
                    with *visit::default_visitor()})
 }
@@ -90,8 +90,26 @@ fn visit_item(_item: @ast::item, &&_rcx: @rcx, _v: rvt) {
 }
 
 fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
+    // Check to make sure that the regions in all local variables are
+    // within scope.
+    //
+    // Note: we do this here rather than in visit_pat because we do
+    // not wish to constrain the regions in *patterns* in quite the
+    // same way.  `visit_node()` guarantees that the region encloses
+    // the node in question, which ultimately constraints the regions
+    // in patterns to enclose the match expression as a whole.  But we
+    // want them to enclose the *arm*.  However, regions in patterns
+    // must either derive from the discriminant or a ref pattern: in
+    // the case of the discriminant, the regions will be constrained
+    // when the type of the discriminant is checked.  In the case of a
+    // ref pattern, the variable is created with a suitable lower
+    // bound.
     let e = rcx.errors_reported;
     v.visit_pat(l.node.pat, rcx, v);
+    let def_map = rcx.fcx.ccx.tcx.def_map;
+    do pat_bindings(def_map, l.node.pat) |_bm, id, sp, _path| {
+        visit_node(id, sp, rcx);
+    }
     if e != rcx.errors_reported {
         return; // if decl has errors, skip initializer expr
     }
@@ -100,20 +118,6 @@ fn visit_local(l: @ast::local, &&rcx: @rcx, v: rvt) {
     for l.node.init.each |i| {
         v.visit_expr(i.expr, rcx, v);
     }
-}
-
-fn visit_pat(p: @ast::pat, &&rcx: @rcx, v: rvt) {
-    let fcx = rcx.fcx;
-    match p.node {
-      ast::pat_ident(_, path, _)
-      if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) => {
-        debug!{"visit_pat binding=%s", *path.idents[0]};
-        visit_node(p.id, p.span, rcx);
-      }
-      _ => ()
-    }
-
-    visit::visit_pat(p, rcx, v);
 }
 
 fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {

@@ -166,7 +166,9 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             //    ref x | ref const x | ref mut x
             // then the type of x is &M T where M is the mutability
             // and T is the expected type
-            let region_var = fcx.infcx.next_region_var_nb();
+            let region_var =
+                fcx.infcx.next_region_var({lb: some(pcx.block_region),
+                                           ub: none});
             let mt = {ty: expected, mutbl: mutbl};
             let region_ty = ty::mk_rptr(tcx, region_var, mt);
             demand::eqtype(fcx, pat.span, region_ty, typ);
