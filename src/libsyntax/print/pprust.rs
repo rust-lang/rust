@@ -11,6 +11,8 @@ import dvec::{dvec, extensions};
 import parse::classify::*;
 import util::interner;
 
+type ident_interner = @interner::interner<@~str>;
+
 // The ps is stored here to prevent recursive type.
 enum ann_node {
     node_block(ps, ast::blk),
@@ -48,15 +50,27 @@ fn end(s: ps) {
 
 fn rust_printer(writer: io::writer) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
-          cm: none::<codemap>,
-          intr: @interner::mk::<@~str>(|x| str::hash(*x),
-                                       |x,y| str::eq(*x, *y)),
-          comments: none::<~[comments::cmnt]>,
-          literals: none::<~[comments::lit]>,
-          mut cur_cmnt: 0u,
-          mut cur_lit: 0u,
-          boxes: dvec(),
-          ann: no_ann()};
+             cm: none::<codemap>,
+             intr: @interner::mk::<@~str>(|x| str::hash(*x),
+                                          |x,y| str::eq(*x, *y)),
+             comments: none::<~[comments::cmnt]>,
+             literals: none::<~[comments::lit]>,
+             mut cur_cmnt: 0u,
+             mut cur_lit: 0u,
+             boxes: dvec(),
+             ann: no_ann()};
+}
+
+fn unexpanded_rust_printer(writer: io::writer, intr: ident_interner) -> ps {
+    return @{s: pp::mk_printer(writer, default_columns),
+             cm: none::<codemap>,
+             intr: intr,
+             comments: none::<~[comments::cmnt]>,
+             literals: none::<~[comments::lit]>,
+             mut cur_cmnt: 0u,
+             mut cur_lit: 0u,
+             boxes: dvec(),
+             ann: no_ann()};
 }
 
 const indent_unit: uint = 4u;
@@ -100,6 +114,15 @@ fn ty_to_str(ty: @ast::ty) -> ~str { return to_str(ty, print_type); }
 fn pat_to_str(pat: @ast::pat) -> ~str { return to_str(pat, print_pat); }
 
 fn expr_to_str(e: @ast::expr) -> ~str { return to_str(e, print_expr); }
+
+fn unexpanded_tt_to_str(tt: ast::token_tree, intr: ident_interner)
+    -> ~str {
+    let buffer = io::mem_buffer();
+    let s = unexpanded_rust_printer(io::mem_buffer_writer(buffer), intr);
+    print_tt(s, tt);
+    eof(s.s);
+    io::mem_buffer_str(buffer)
+}
 
 fn stmt_to_str(s: ast::stmt) -> ~str { return to_str(s, print_stmt); }
 
