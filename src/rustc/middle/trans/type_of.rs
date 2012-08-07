@@ -92,7 +92,14 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
           ty::ty_estr(ty::vstore_uniq) => {
             T_unique_ptr(T_unique(cx, T_vec(cx, T_i8())))
           }
-          ty::ty_enum(did, _) => type_of_enum(cx, did, t),
+          ty::ty_enum(did, _) => {
+            // Only create the named struct, but don't fill it in. We
+            // fill it in *after* placing it into the type cache. This
+            // avoids creating more than one copy of the enum when one
+            // of the enum's variants refers to the enum itself.
+
+            common::T_named_struct(llvm_type_name(cx, t))
+          }
           ty::ty_estr(ty::vstore_box) => {
             T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
           }
@@ -165,8 +172,11 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 
         cx.lltypes.insert(t, llty);
 
-        // If this was a class, fill in the type now.
+        // If this was an enum or class, fill in the type now.
         match ty::get(t).struct {
+          ty::ty_enum(did, _) => {
+              fill_type_of_enum(cx, did, t, llty);
+          }
           ty::ty_class(did, ts) => {
             // Only instance vars are record fields at runtime.
             let fields = ty::lookup_class_fields(cx.tcx, did);
@@ -191,20 +201,10 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
     return llty;
 }
 
-// This should only be called from type_of, above, because it
-// creates new llvm named struct types lazily that are then
-// cached by type_of
-fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
-    -> TypeRef {
+fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
+                     llty: TypeRef) {
 
     debug!{"type_of_enum %?: %?", t, ty::get(t)};
-
-    // Every enum type has a unique name. When we find our roots
-    // for GC and unwinding we will use this name to rediscover
-    // the Rust type
-    let name = llvm_type_name(cx, t);
-
-    let named_llty = common::T_named_struct(name);
 
     let lltys = {
         let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
@@ -220,8 +220,7 @@ fn type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t)
         }
     };
 
-    common::set_struct_body(named_llty, lltys);
-    return named_llty;
+    common::set_struct_body(llty, lltys);
 }
 
 fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
