@@ -267,12 +267,19 @@ impl task_builder for task_builder {
      * builder. If additional tasks are spawned with the same builder
      * then a new result future must be obtained prior to spawning each
      * task.
+     *
+     * # Failure
+     * Fails if a future_result was already set for this task.
      */
     fn future_result(blk: fn(-future::future<task_result>)) -> task_builder {
         // FIXME (#1087, #1857): Once linked failure and notification are
         // handled in the library, I can imagine implementing this by just
         // registering an arbitrary number of task::on_exit handlers and
         // sending out messages.
+
+        if self.opts.notify_chan.is_some() {
+            fail ~"Can't set multiple future_results for one task!";
+        }
 
         // Construct the future and give it to the caller.
         let po = comm::port::<notification>();
@@ -367,6 +374,33 @@ impl task_builder for task_builder {
             f(po);
         }
         comm::recv(setup_po)
+    }
+
+    /**
+     * Execute a function in another task and return either the return value
+     * of the function or result::err.
+     *
+     * # Return value
+     *
+     * If the function executed successfully then try returns result::ok
+     * containing the value returned by the function. If the function fails
+     * then try returns result::err containing nil.
+     *
+     * # Failure
+     * Fails if a future_result was already set for this task.
+     */
+    fn try<T: send>(+f: fn~() -> T) -> result<T,()> {
+        let po = comm::port();
+        let ch = comm::chan(po);
+        let mut result = none;
+
+        do self.future_result(|-r| { result = some(r); }).spawn {
+            comm::send(ch, f());
+        }
+        match future::get(option::unwrap(result)) {
+            success => result::ok(comm::recv(po)),
+            failure => result::err(())
+        }
     }
 }
 
@@ -487,25 +521,10 @@ fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
      * Execute a function in another task and return either the return value
      * of the function or result::err.
      *
-     * # Return value
-     *
-     * If the function executed successfully then try returns result::ok
-     * containing the value returned by the function. If the function fails
-     * then try returns result::err containing nil.
+     * This is equivalent to task().supervised().try.
      */
 
-    let po = comm::port();
-    let ch = comm::chan(po);
-
-    let mut result = none;
-
-    do task().unlinked().future_result(|-r| { result = some(r); }).spawn {
-        comm::send(ch, f());
-    }
-    match future::get(option::unwrap(result)) {
-      success => result::ok(comm::recv(po)),
-      failure => result::err(())
-    }
+    task().supervised().try(f)
 }
 
 
@@ -1673,6 +1692,11 @@ fn test_future_result() {
         fail;
     }
     assert future::get(option::unwrap(result)) == failure;
+}
+
+#[test] #[should_fail] #[ignore(cfg(windows))]
+fn test_back_to_the_future_result() {
+    let _ = task().future_result(|-r| ()).future_result(|-r| ());
 }
 
 #[test]
