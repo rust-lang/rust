@@ -14,6 +14,9 @@ import lib::llvm::llvm;
 import lib::llvm::{ValueRef, TypeRef};
 import lib::llvm::llvm::LLVMGetParam;
 import std::map::hashmap;
+import util::ppaux::{ty_to_str, tys_to_str};
+
+import syntax::print::pprust::expr_to_str;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: ~[@ast::method], tps: ~[ast::ty_param]) {
@@ -70,6 +73,9 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
       typeck::method_trait(_, off) => {
         let {bcx, val} = trans_temp_expr(bcx, self);
         let fty = node_id_type(bcx, callee_id);
+        let self_ty = node_id_type(bcx, self.id);
+        let {bcx, val, _} = autoderef(bcx, self.id, val, self_ty,
+                                      uint::max_value);
         trans_trait_callee(bcx, val, fty, off)
       }
     }
