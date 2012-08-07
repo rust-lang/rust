@@ -2436,7 +2436,8 @@ class parser {
                 !self.token_is_keyword(~"of", self.look_ahead(1)) &&
                 !self.token_is_keyword(~"for", self.look_ahead(1)) &&
                 self.look_ahead(1) != token::BINOP(token::SLASH) &&
-                self.look_ahead(1) != token::LT {
+                (self.look_ahead(1) != token::LT
+                 || (self.look_ahead(1) == token::LT && tps.is_not_empty())) {
 
             // This is a new-style impl declaration.
             ident = @~"__extensions__";     // XXX: clownshoes
