@@ -366,10 +366,10 @@ class lookup {
     }
 
     fn add_candidates_from_scope(use_assignability: bool) {
+
         // If we're using coherence and this is one of the method invocation
         // forms it supports, don't use this method; it'll result in lots of
         // multiple-methods-in-scope errors.
-
         if self.fcx.ccx.trait_map.contains_key(self.expr.id) {
             return;
         }
