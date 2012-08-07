@@ -445,7 +445,7 @@ fn homedir() -> option<path> {
           some(p)
         } else {
           secondary()
-        }
+        },
         none => secondary()
     };
 

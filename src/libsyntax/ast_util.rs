@@ -192,7 +192,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
                 local = true;
                 parent_enum = some(/* FIXME (#2543) */ copy it.ident);
             }
-          }
+          },
           _ => ()
         }
         if local { break; }
@@ -476,7 +476,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_item: fn@(i: @item) {
             vfn(i.id);
             match i.node {
-              item_enum(vs, _) => for vs.each |v| { vfn(v.node.id); }
+              item_enum(vs, _) => for vs.each |v| { vfn(v.node.id); },
               _ => ()
             }
         },
@@ -603,10 +603,10 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
     match pat.node {
       pat_ident(_, pth, some(p)) => walk_pat(p, it),
       pat_rec(fields, _) | pat_struct(_, fields, _) =>
-        for fields.each |f| { walk_pat(f.pat, it) }
+        for fields.each |f| { walk_pat(f.pat, it) },
       pat_enum(_, some(s)) | pat_tup(s) => for s.each |p| {
         walk_pat(p, it)
-      }
+      },
       pat_box(s) | pat_uniq(s) => walk_pat(s, it),
       pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _)
         | pat_enum(_, _) => ()

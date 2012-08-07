@@ -46,7 +46,7 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
     match p.node {
       // Let through plain ~-string literals here
-      pat_lit(a) => if !is_str(a) { v.visit_expr(a, true, v); }
+      pat_lit(a) => if !is_str(a) { v.visit_expr(a, true, v); },
       pat_range(a, b) => {
         if !is_str(a) { v.visit_expr(a, true, v); }
         if !is_str(b) { v.visit_expr(b, true, v); }

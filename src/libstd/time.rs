@@ -220,7 +220,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           ]) {
             some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
             none => err(~"Invalid day")
-          }
+          },
           'a' => match match_strs(s, pos, ~[
               (~"Sun", 0_i32),
               (~"Mon", 1_i32),
@@ -232,7 +232,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           ]) {
             some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
             none => err(~"Invalid day")
-          }
+          },
           'B' => match match_strs(s, pos, ~[
               (~"January", 0_i32),
               (~"February", 1_i32),
@@ -249,7 +249,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           ]) {
             some(item) => { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
             none => err(~"Invalid month")
-          }
+          },
           'b' | 'h' => match match_strs(s, pos, ~[
               (~"Jan", 0_i32),
               (~"Feb", 1_i32),
@@ -266,7 +266,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           ]) {
             some(item) => { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
             none => err(~"Invalid month")
-          }
+          },
           'C' => match match_digits(s, pos, 2u, false) {
             some(item) => {
                 let (v, pos) = item;
@@ -274,7 +274,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                   ok(pos)
               }
             none => err(~"Invalid year")
-          }
+          },
           'c' => {
             parse_type(s, pos, 'a', tm)
                 .chain(|pos| parse_char(s, pos, ' '))
@@ -296,11 +296,11 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           'd' => match match_digits(s, pos, 2u, false) {
             some(item) => { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
             none => err(~"Invalid day of the month")
-          }
+          },
           'e' => match match_digits(s, pos, 2u, true) {
             some(item) => { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
             none => err(~"Invalid day of the month")
-          }
+          },
           'F' => {
             parse_type(s, pos, 'Y', tm)
                 .chain(|pos| parse_char(s, pos, '-'))
@@ -379,13 +379,13 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
 
             some(item) => { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
             none => err(~"Invalid hour")
-          }
+          },
           'p' => match match_strs(s, pos,
                                   ~[(~"AM", 0_i32), (~"PM", 12_i32)]) {
 
             some(item) => { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
             none => err(~"Invalid hour")
-          }
+          },
           'R' => {
             parse_type(s, pos, 'H', tm)
                 .chain(|pos| parse_char(s, pos, ':'))
@@ -542,7 +542,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
               '%' => match parse_type(s, pos, rdr.read_char(), tm) {
                 ok(next) => pos = next,
                   err(e) => { result = err(e); break; }
-              }
+              },
               c => {
                 if c != ch { break }
                 pos = next;
@@ -581,7 +581,7 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             4 => ~"Thursday",
             5 => ~"Friday",
             6 => ~"Saturday"
-          }
+          },
           'a' => match check tm.tm_wday as int {
             0 => ~"Sun",
             1 => ~"Mon",
@@ -590,7 +590,7 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             4 => ~"Thu",
             5 => ~"Fri",
             6 => ~"Sat"
-          }
+          },
           'B' => match check tm.tm_mon as int {
             0 => ~"January",
             1 => ~"February",
@@ -604,7 +604,7 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             9 => ~"October",
             10 => ~"November",
             11 => ~"December"
-          }
+          },
           'b' | 'h' => match check tm.tm_mon as int {
             0 => ~"Jan",
             1 => ~"Feb",
@@ -618,7 +618,7 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             9 => ~"Oct",
             10 => ~"Nov",
             11 => ~"Dec",
-          }
+          },
           'C' => fmt!{"%02d", (tm.tm_year as int + 1900) / 100},
           'c' => {
             fmt!{"%s %s %s %s %s",
@@ -662,8 +662,8 @@ fn strftime(format: ~str, tm: tm) -> ~str {
           'M' => fmt!{"%02d", tm.tm_min as int},
           'm' => fmt!{"%02d", tm.tm_mon as int + 1},
           'n' => ~"\n",
-          'P' => if tm.tm_hour as int < 12 { ~"am" } else { ~"pm" }
-          'p' => if tm.tm_hour as int < 12 { ~"AM" } else { ~"PM" }
+          'P' => if tm.tm_hour as int < 12 { ~"am" } else { ~"pm" },
+          'p' => if tm.tm_hour as int < 12 { ~"AM" } else { ~"PM" },
           'R' => {
             fmt!{"%s:%s",
                 parse_type('H', tm),

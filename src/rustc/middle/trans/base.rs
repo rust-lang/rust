@@ -2851,7 +2851,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
             let bcx = trans_loop_body(cx, e, ret_flag, save_in(scratch));
             {bcx: bcx, val: scratch, kind: lv_temporary}
         }
-      }
+      },
       none => {
         trans_temp_lval(cx, e)
       }

@@ -118,7 +118,7 @@ mod linear {
                 match buckets[i] {
                   some(bkt) => if bkt.hash == hash && self.eqfn(k, &bkt.key) {
                     return found_entry(i);
-                  }
+                  },
                   none => return found_hole(i)
                 }
             };

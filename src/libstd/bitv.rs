@@ -186,9 +186,9 @@ class bitv {
                   intersect  => s.intersect(s1),
                   assign     => s.become(s1),
                   difference => s.difference(s1)
-                }
+                },
                 big(s1) => self.die()
-              }
+              },
               big(s) => match other.rep {
                 small(_) => self.die(),
                 big(s1) => match op {
@@ -282,7 +282,7 @@ class bitv {
         small(b) => match v1.rep {
           small(b1) => b.equals(b1),
           _ => false
-        }
+        },
         big(s) => match v1.rep {
           big(s1) => s.equals(s1),
           small(_) => return false

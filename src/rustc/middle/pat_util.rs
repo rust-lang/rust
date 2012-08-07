@@ -27,7 +27,7 @@ fn pat_is_variant(dm: resolve3::DefMap, pat: @pat) -> bool {
       pat_ident(_, _, none) => match dm.find(pat.id) {
         some(def_variant(_, _)) => true,
         _ => false
-      }
+      },
       _ => false
     }
 }

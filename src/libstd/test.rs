@@ -146,7 +146,7 @@ fn run_tests_console(opts: test_opts,
           result::err(s) => {
               fail(fmt!{"can't open output file: %s", s})
           }
-        }
+        },
         none => none
     };
 

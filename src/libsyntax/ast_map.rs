@@ -270,7 +270,7 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
           }
         };
         cx.map.insert(id, node_export(vp, extend(cx, name)));
-      }
+      },
       _ => ()
     }
 }

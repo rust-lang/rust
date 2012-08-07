@@ -77,7 +77,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
                           post: vec::slice(elts, idx + 1u, vec::len(elts))});
             }
             _ => ()
-          }
+          },
           _ => ()
         }
         idx += 1u;
@@ -518,7 +518,7 @@ fn block_to_ident(blk: blk_) -> option<ident> {
           some(expr) => match expr.node {
             expr_path(pth) => path_to_ident(pth),
             _ => none
-          }
+          },
           none => none
         }
 }
@@ -530,7 +530,7 @@ fn p_t_s_r_mac(cx: ext_ctxt, mac: ast::mac, _s: selector, _b: binders) {
               match_expr(e) => match e.node {
                 expr_mac(mac) => fn_m(mac),
                 _ => none
-              }
+              },
               _ => cx.bug(~"broken traversal in p_t_s_r")
             }
     }
@@ -650,7 +650,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                                           ~"macro name must be " +
                                           ~"consistent");
                         }
-                      }
+                      },
                       none => cx.span_fatal(pth.span,
                                             ~"macro name must not be a path")
                     }

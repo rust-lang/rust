@@ -1190,7 +1190,7 @@ class liveness {
           expr_field(e, nm, _) => match self.as_self_field(e, nm) {
             some(_) => succ,
             none => self.propagate_through_expr(e, succ)
-          }
+          },
           _ => self.propagate_through_expr(expr, succ)
         }
     }
@@ -1208,7 +1208,7 @@ class liveness {
                 ln
             }
             none => succ
-          }
+          },
 
           // We do not track other lvalues, so just propagate through
           // to their subcomponents.  Also, it may happen that

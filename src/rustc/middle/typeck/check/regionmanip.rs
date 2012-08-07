@@ -48,7 +48,7 @@ fn replace_bound_regions_in_fn_ty(
         some(s) => match check t_self {
           some(t) => some({self_ty: t, node_id: s.node_id})
           // this 'none' case shouldn't happen
-        }
+        },
         none => none
     };
 

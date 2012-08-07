@@ -93,7 +93,7 @@ fn visit_crate_directive<E>(cd: @crate_directive, e: E, v: vt<E>) {
       cdir_src_mod(_, _) => (),
       cdir_dir_mod(_, cdirs, _) => for cdirs.each |cdir| {
         visit_crate_directive(cdir, e, v);
-      }
+      },
       cdir_view_item(vi) => v.visit_view_item(vi, e, v),
       cdir_syntax(_) => ()
     }
@@ -191,10 +191,10 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       }
       ty_rec(flds) => for flds.each |f| {
         v.visit_ty(f.node.mt.ty, e, v);
-      }
+      },
       ty_tup(ts) => for ts.each |tt| {
         v.visit_ty(tt, e, v);
-      }
+      },
       ty_fn(_, bounds, decl) => {
         for decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
         visit_ty_param_bounds(bounds, e, v);
@@ -222,7 +222,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       }
       pat_rec(fields, _) => for fields.each |f| {
         v.visit_pat(f.pat, e, v)
-      }
+      },
       pat_struct(path, fields, _) => {
         visit_path(path, e, v);
         for fields.each |f| {
@@ -231,7 +231,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       }
       pat_tup(elts) => for elts.each |elt| {
         v.visit_pat(elt, e, v)
-      }
+      },
       pat_box(inner) | pat_uniq(inner) => v.visit_pat(inner, e, v),
       pat_ident(_, path, inner) => {
           visit_path(path, e, v);
@@ -339,7 +339,7 @@ fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     match d.node {
       decl_local(locs) => for locs.each |loc| {
         v.visit_local(loc, e, v)
-      }
+      },
       decl_item(it) => v.visit_item(it, e, v)
     }
 }
@@ -380,7 +380,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         for flds.each |f| { v.visit_expr(f.node.expr, e, v); }
         visit_expr_opt(base, e, v);
       }
-      expr_tup(elts) => for elts.each |el| { v.visit_expr(el, e, v); }
+      expr_tup(elts) => for elts.each |el| { v.visit_expr(el, e, v); },
       expr_call(callee, args, _) => {
         visit_exprs(args, e, v);
         v.visit_expr(callee, e, v);

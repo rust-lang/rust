@@ -582,7 +582,7 @@ class NameBindings {
               none => return none,
               some(def_id) => return some(def_mod(def_id))
             }
-          }
+          },
           ImplNS => {
             // Danger: Be careful what you use this for! def_ty is not
             // necessarily the right def.

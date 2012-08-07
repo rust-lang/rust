@@ -1165,7 +1165,7 @@ fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
     match attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
       none => match check ccx.tcx.items.get(i.id) {
         ast_map::node_foreign_item(_, abi, _) => abi
-      }
+      },
       some(_) => match attr::foreign_abi(i.attrs) {
         either::right(abi) => abi,
         either::left(msg) => ccx.sess.span_fatal(i.span, msg)

@@ -258,14 +258,14 @@ fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
         ast::ty_i    => int_ty_set(INT_TY_SET_i),
         ast::ty_char => tcx.sess.bug(
             ~"char type passed to convert_integral_ty_to_int_ty_set()")
-      }
+      },
       ty_uint(uint_ty) => match uint_ty {
         ast::ty_u8  => int_ty_set(INT_TY_SET_u8),
         ast::ty_u16 => int_ty_set(INT_TY_SET_u16),
         ast::ty_u32 => int_ty_set(INT_TY_SET_u32),
         ast::ty_u64 => int_ty_set(INT_TY_SET_u64),
         ast::ty_u   => int_ty_set(INT_TY_SET_u)
-      }
+      },
       _ => tcx.sess.bug(~"non-integral type passed to \
                           convert_integral_ty_to_int_ty_set()")
     }

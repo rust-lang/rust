@@ -612,7 +612,7 @@ fn mk_t(cx: ctxt, st: sty) -> t { mk_t_with_id(cx, st, none) }
 fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
     let key = {struct: st, o_def_id: o_def_id};
     match cx.interner.find(key) {
-      some(t) => unsafe { return unsafe::reinterpret_cast(t); }
+      some(t) => unsafe { return unsafe::reinterpret_cast(t); },
       _ => ()
     }
     let mut flags = 0u;
@@ -655,8 +655,8 @@ fn mk_t_with_id(cx: ctxt, st: sty, o_def_id: option<ast::def_id>) -> t {
         flags |= rflags(r);
         flags |= get(m.ty).flags;
       }
-      ty_rec(flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; }
-      ty_tup(ts) => for ts.each |tt| { flags |= get(tt).flags; }
+      ty_rec(flds) => for flds.each |f| { flags |= get(f.mt.ty).flags; },
+      ty_tup(ts) => for ts.each |tt| { flags |= get(tt).flags; },
       ty_fn(f) => {
         for f.inputs.each |a| { flags |= get(a.ty).flags; }
         flags |= get(f.output).flags;
@@ -2189,19 +2189,19 @@ pure fn hash_type_structure(st: sty) -> uint {
         ast::ty_i16 => 5u,
         ast::ty_i32 => 6u,
         ast::ty_i64 => 7u
-      }
+      },
       ty_uint(t) => match t {
         ast::ty_u => 8u,
         ast::ty_u8 => 9u,
         ast::ty_u16 => 10u,
         ast::ty_u32 => 11u,
         ast::ty_u64 => 12u
-      }
+      },
       ty_float(t) => match t {
         ast::ty_f => 13u,
         ast::ty_f32 => 14u,
         ast::ty_f64 => 15u
-      }
+      },
       ty_estr(_) => 16u,
       ty_enum(did, substs) => {
         let mut h = hash_def(18u, did);
@@ -2473,7 +2473,7 @@ fn canon<T:copy>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
             if cm1 != m1 { tbl.insert(id, cm1); }
             cm1
         }
-      }
+      },
       _ => m0
     }
 }

@@ -54,7 +54,7 @@ fn format_addr(ip: ip_addr) -> ~str {
             fail ~"failed to convert inner sockaddr_in address to str"
         }
         result
-      }
+      },
       ipv6(addr) => unsafe {
         let result = uv_ip6_name(&addr);
         if result == ~"" {

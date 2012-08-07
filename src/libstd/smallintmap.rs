@@ -104,7 +104,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
-              some(elt) => if !it(idx, elt) { break }
+              some(elt) => if !it(idx, elt) { break },
               none => ()
             }
             idx += 1u;
@@ -120,7 +120,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
-              some(elt) => if !it(&idx, &elt) { break }
+              some(elt) => if !it(&idx, &elt) { break },
               none => ()
             }
             idx += 1u;
