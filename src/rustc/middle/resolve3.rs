@@ -847,7 +847,8 @@ class Resolver {
               // We don't want to complain if the multiple definitions
               // are in different namespaces. (unless it's the impl namespace,
               // since impls can share a name)
-              match ns.find(|n| n != ImplNS && child.defined_in_namespace(n)) {
+              match ns.find(|n| n != ImplNS
+                            && child.defined_in_namespace(n)) {
                 some(ns) => {
                   self.session.span_err(sp,
                        #fmt("Duplicate definition of %s %s",
@@ -3887,10 +3888,10 @@ class Resolver {
                     // The meaning of pat_ident with no type parameters
                     // depends on whether an enum variant with that name is in
                     // scope. The probing lookup has to be careful not to emit
-                    // spurious errors. Only matching patterns (match) can match
-                    // nullary variants. For binding patterns (let), matching
-                    // such a variant is simply disallowed (since it's rarely
-                    // what you want).
+                    // spurious errors. Only matching patterns (match) can
+                    // match nullary variants. For binding patterns (let),
+                    // matching such a variant is simply disallowed (since
+                    // it's rarely what you want).
 
                     let atom = (*self.atom_table).intern(path.idents[0]);
 
