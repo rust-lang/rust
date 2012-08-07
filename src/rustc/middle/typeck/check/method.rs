@@ -57,13 +57,16 @@ class lookup {
     let include_private: bool;
 
     new(fcx: @fn_ctxt,
-        expr: @ast::expr,           //expr for a.b in a.b()
-        self_expr: @ast::expr,      //a in a.b(...)
-        borrow_lb: ast::node_id, //scope to borrow the expr for
-        node_id: ast::node_id,      //node id where to store type of fn
-        m_name: ast::ident,         //b in a.b(...)
-        self_ty: ty::t,             //type of a in a.b(...)
-        supplied_tps: ~[ty::t],      //Xs in a.b::<Xs>(...)
+
+        // In a call `a.b::<X, Y, ...>(...)`:
+        expr: @ast::expr,        // The expression `a.b`.
+        self_expr: @ast::expr,   // The expression `a`.
+        borrow_lb: ast::node_id, // Scope to borrow the expression `a` for.
+        node_id: ast::node_id,   // The node_id in which to store the type of
+                                 // `a.b`.
+        m_name: ast::ident,      // The ident `b`.
+        self_ty: ty::t,          // The type of `a`.
+        supplied_tps: ~[ty::t],  // The list of types X, Y, ... .
         include_private: bool) {
 
         self.fcx = fcx;
@@ -87,6 +90,8 @@ class lookup {
                ty::get(self.self_ty).struct};
 
         // Determine if there are any inherent methods we can call.
+        // (An inherent method is one that belongs to no trait, but is
+        // inherent to a class or impl.)
         let optional_inherent_methods;
         match get_base_type_def_id(self.fcx.infcx,
                                  self.self_expr.span,
@@ -281,14 +286,14 @@ class lookup {
             if ty::type_has_self(m_fty) {
                 self.tcx().sess.span_err(
                     self.expr.span,
-                    ~"can not call a method that contains a \
-                     self type through a boxed trait");
+                    ~"cannot call a method whose type contains a \
+                     self-type through a boxed trait");
             }
 
             if (*m.tps).len() > 0u {
                 self.tcx().sess.span_err(
                     self.expr.span,
-                    ~"can not call a generic method through a \
+                    ~"cannot call a generic method through a \
                      boxed trait");
             }
 
@@ -315,7 +320,7 @@ class lookup {
             if m.vis == ast::private && !self.include_private {
                 self.tcx().sess.span_fatal(
                     self.expr.span,
-                    ~"Call to private method not allowed outside \
+                    ~"call to private method not allowed outside \
                      its defining class");
             }
 

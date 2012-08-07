@@ -2654,14 +2654,21 @@ fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 
 fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     match cx.trait_method_cache.find(id) {
-      some(ms) => return ms,
-      _ => ()
+      // Local traits are supposed to have been added explicitly.
+      some(ms) => ms,
+      _ => {
+        // If the lookup in trait_method_cache fails, assume that the trait
+        // method we're trying to look up is in a different crate, and look
+        // for it there.
+        assert id.crate != ast::local_crate;
+        let result = csearch::get_trait_methods(cx, id);
+
+        // Store the trait method in the local trait_method_cache so that
+        // future lookups succeed.
+        cx.trait_method_cache.insert(id, result);
+        result
+      }
     }
-    // Local traits are supposed to have been added explicitly.
-    assert id.crate != ast::local_crate;
-    let result = csearch::get_trait_methods(cx, id);
-    cx.trait_method_cache.insert(id, result);
-    result
 }
 
 fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
