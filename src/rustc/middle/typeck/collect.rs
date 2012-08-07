@@ -388,57 +388,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
 
-        do option::iter(struct_def.ctor) |ctor| {
-            // Write the ctor type
-            let t_args = ctor.node.dec.inputs.map(
-                |a| ty_of_arg(ccx, type_rscope(rp), a, none) );
-            let t_res = ty::mk_class(
-                tcx, local_def(it.id),
-                {self_r: if rp {some(ty::re_bound(ty::br_self))} else {none},
-                 self_ty: none,
-                 tps: ty::ty_params_to_tys(tcx, tps)});
-            let t_ctor = ty::mk_fn(
-                tcx, {purity: ast::impure_fn,
-                      proto: ast::proto_block,
-                      bounds: @~[],
-                      inputs: t_args,
-                      output: t_res,
-                      ret_style: ast::return_val});
-            write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
-            tcx.tcache.insert(local_def(ctor.node.id),
-                              {bounds: tpt.bounds,
-                               rp: rp,
-                               ty: t_ctor});
-        }
-
-        do option::iter(struct_def.dtor) |dtor| {
-            // Write the dtor type
-            let t_dtor = ty::mk_fn(
-                tcx,
-                ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_block, @~[],
-                              ast_util::dtor_dec(), none));
-            write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
-            tcx.tcache.insert(local_def(dtor.node.id),
-                              {bounds: tpt.bounds,
-                               rp: rp,
-                               ty: t_dtor});
-        };
-        ensure_trait_methods(ccx, it.id);
-
-        // Write the type of each of the members
-        let (fields, methods) = split_class_items(struct_def.members);
-        for fields.each |f| {
-           convert_field(ccx, rp, tpt.bounds, f);
-        }
-        let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let selfty = ty::mk_class(tcx, local_def(it.id), substs);
-        let cms = convert_methods(ccx, methods, rp, bounds, selfty);
-        for struct_def.traits.each |trait_ref| {
-            check_methods_against_trait(ccx, tps, rp, selfty, trait_ref, cms);
-            // trait_ref.impl_id represents (class, trait) pair
-            write_ty_to_tcx(tcx, trait_ref.impl_id, tpt.ty);
-            tcx.tcache.insert(local_def(trait_ref.impl_id), tpt);
-        }
+        convert_struct(ccx, rp, struct_def, tps, tpt, it.id);
       }
       _ => {
         // This call populates the type cache with the converted type
@@ -449,6 +399,64 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
       }
     }
 }
+
+fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: ast::struct_def,
+                  tps: ~[ast::ty_param], tpt: ty::ty_param_bounds_and_ty,
+                  id: ast::node_id) {
+    let tcx = ccx.tcx;
+    do option::iter(struct_def.ctor) |ctor| {
+        // Write the ctor type
+        let t_args = ctor.node.dec.inputs.map(
+            |a| ty_of_arg(ccx, type_rscope(rp), a, none) );
+        let t_res = ty::mk_class(
+            tcx, local_def(id),
+            {self_r: if rp {some(ty::re_bound(ty::br_self))} else {none},
+             self_ty: none,
+             tps: ty::ty_params_to_tys(tcx, tps)});
+        let t_ctor = ty::mk_fn(
+            tcx, {purity: ast::impure_fn,
+                  proto: ast::proto_block,
+                  bounds: @~[],
+                  inputs: t_args,
+                  output: t_res,
+                  ret_style: ast::return_val});
+        write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
+        tcx.tcache.insert(local_def(ctor.node.id),
+                          {bounds: tpt.bounds,
+                           rp: rp,
+                           ty: t_ctor});
+    }
+
+    do option::iter(struct_def.dtor) |dtor| {
+        // Write the dtor type
+        let t_dtor = ty::mk_fn(
+            tcx,
+            ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_block, @~[],
+                          ast_util::dtor_dec(), none));
+        write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
+        tcx.tcache.insert(local_def(dtor.node.id),
+                          {bounds: tpt.bounds,
+                           rp: rp,
+                           ty: t_dtor});
+    };
+    ensure_trait_methods(ccx, id);
+
+    // Write the type of each of the members
+    let (fields, methods) = split_class_items(struct_def.members);
+    for fields.each |f| {
+       convert_field(ccx, rp, tpt.bounds, f);
+    }
+    let {bounds, substs} = mk_substs(ccx, tps, rp);
+    let selfty = ty::mk_class(tcx, local_def(id), substs);
+    let cms = convert_methods(ccx, methods, rp, bounds, selfty);
+    for struct_def.traits.each |trait_ref| {
+        check_methods_against_trait(ccx, tps, rp, selfty, trait_ref, cms);
+        // trait_ref.impl_id represents (class, trait) pair
+        write_ty_to_tcx(tcx, trait_ref.impl_id, tpt.ty);
+        tcx.tcache.insert(local_def(trait_ref.impl_id), tpt);
+    }
+}
+
 fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
     // As above, this call populates the type table with the converted
     // type of the foreign item. We simply write it into the node type

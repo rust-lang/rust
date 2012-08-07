@@ -505,29 +505,9 @@ class CoherenceChecker {
                     methods: methods
                 };
             }
-            item_class(struct_def, ty_params) => {
-                let mut methods = ~[];
-                for struct_def.members.each |class_member| {
-                    match class_member.node {
-                        instance_var(*) => {
-                            // Nothing to do.
-                        }
-                        class_method(ast_method) => {
-                            push(methods, @{
-                                did: local_def(ast_method.id),
-                                n_tps: ast_method.tps.len(),
-                                ident: ast_method.ident,
-                                self_type: ast_method.self_ty.node
-                            });
-                        }
-                    }
-                }
-
-                return @{
-                    did: local_def(item.id),
-                    ident: item.ident,
-                    methods: methods
-                };
+            item_class(struct_def, _) => {
+                return self.create_impl_from_struct(struct_def, item.ident,
+                                                    item.id);
             }
             _ => {
                 self.crate_context.tcx.sess.span_bug(item.span,
@@ -535,6 +515,30 @@ class CoherenceChecker {
                                                        non-impl to an impl");
             }
         }
+    }
+
+    fn create_impl_from_struct(struct_def: ast::struct_def,
+                               ident: ast::ident,
+                               id: node_id)
+                            -> @Impl {
+        let mut methods = ~[];
+        for struct_def.members.each |class_member| {
+            match class_member.node {
+                instance_var(*) => {
+                    // Nothing to do.
+                }
+                class_method(ast_method) => {
+                    push(methods, @{
+                        did: local_def(ast_method.id),
+                        n_tps: ast_method.tps.len(),
+                        ident: ast_method.ident,
+                        self_type: ast_method.self_ty.node
+                    });
+                }
+            }
+        }
+
+        return @{ did: local_def(id), ident: ident, methods: methods };
     }
 
     fn span_of_impl(implementation: @Impl) -> span {
