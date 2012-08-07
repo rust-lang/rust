@@ -2,9 +2,9 @@
 #[crate_type = "lib"];
 
 trait to_str {
-    fn to_str() -> str;
+    fn to_str() -> ~str;
 }
 
-impl of to_str for str {
-    fn to_str() -> str { self }
+impl of to_str for ~str {
+    fn to_str() -> ~str { self }
 }
