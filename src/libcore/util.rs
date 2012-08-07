@@ -5,6 +5,9 @@
 /// The identity function.
 pure fn id<T>(+x: T) -> T { x }
 
+/// Ignores a value.
+pure fn ignore<T>(+_x: T) { }
+
 /**
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
