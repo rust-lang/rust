@@ -337,6 +337,7 @@ fn enc_purity(w: io::writer, p: purity) {
 fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     enc_proto(w, ft.proto);
     enc_purity(w, ft.purity);
+    enc_bounds(w, cx, ft.bounds);
     w.write_char('[');
     for ft.inputs.each |arg| {
         enc_mode(w, cx, arg.mode);

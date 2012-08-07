@@ -186,10 +186,12 @@ impl helpers of ext_ctxt_helpers for ext_ctxt {
         };
 
         @{id: self.next_id(),
-          node: ast::ty_fn(ast::proto_block, {inputs: args,
-                                              output: output,
-                                              purity: ast::impure_fn,
-                                              cf: ast::return_val}),
+          node: ast::ty_fn(ast::proto_block,
+                           @~[],
+                           {inputs: args,
+                            output: output,
+                            purity: ast::impure_fn,
+                            cf: ast::return_val}),
           span: span}
     }
 
@@ -441,7 +443,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         ~[#ast[stmt]{$(s).emit_rec($(fld_lambda));}]
       }
 
-      ast::ty_fn(_, _) => {
+      ast::ty_fn(*) => {
         cx.span_err(ty.span, ~"cannot serialize function types");
         ~[]
       }
@@ -681,7 +683,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
         #ast{ $(d).read_rec($(fld_lambda)) }
       }
 
-      ast::ty_fn(_, _) => {
+      ast::ty_fn(*) => {
         #ast{ fail }
       }
 

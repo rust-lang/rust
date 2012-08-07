@@ -399,8 +399,8 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
         commasep(s, inconsistent, elts, print_type);
         pclose(s);
       }
-      ast::ty_fn(proto, d) => {
-        print_ty_fn(s, some(proto), d, none, none);
+      ast::ty_fn(proto, bounds, d) => {
+        print_ty_fn(s, some(proto), bounds, d, none, none);
       }
       ast::ty_path(path, _) => print_path(s, path, print_colons),
       ast::ty_fixed_length(t, v) => {
@@ -702,7 +702,7 @@ fn print_ty_method(s: ps, m: ast::ty_method) {
     hardbreak_if_not_bol(s);
     maybe_print_comment(s, m.span.lo);
     print_outer_attributes(s, m.attrs);
-    print_ty_fn(s, none, m.decl, some(m.ident), some(m.tps));
+    print_ty_fn(s, none, @~[], m.decl, some(m.ident), some(m.tps));
     word(s.s, ~";");
 }
 
@@ -1645,10 +1645,12 @@ fn print_arg(s: ps, input: ast::arg) {
 }
 
 fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
+               bounds: @~[ast::ty_param_bound],
                decl: ast::fn_decl, id: option<ast::ident>,
                tps: option<~[ast::ty_param]>) {
     ibox(s, indent_unit);
     word(s.s, opt_proto_to_str(opt_proto));
+    print_bounds(s, bounds);
     match id { some(id) => { word(s.s, ~" "); word(s.s, *id); } _ => () }
     match tps { some(tps) => print_type_params(s, tps), _ => () }
     zerobreak(s.s);

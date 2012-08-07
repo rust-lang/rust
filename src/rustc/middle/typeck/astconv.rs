@@ -261,8 +261,10 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_fn(proto, decl) => {
-        ty::mk_fn(tcx, ty_of_fn_decl(self, rscope, proto, decl, none))
+      ast::ty_fn(proto, ast_bounds, decl) => {
+        let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
+        let fn_decl = ty_of_fn_decl(self, rscope, proto, bounds, decl, none);
+        ty::mk_fn(tcx, fn_decl)
       }
       ast::ty_path(path, id) => {
         let a_def = match tcx.def_map.find(id) {
@@ -398,6 +400,7 @@ type expected_tys = option<{inputs: ~[ty::arg],
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS,
     proto: ast::proto,
+    bounds: @~[ty::param_bound],
     decl: ast::fn_decl,
     expected_tys: expected_tys) -> ty::fn_ty {
 
@@ -423,7 +426,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
           _ => ast_ty_to_ty(self, rb, decl.output)
         };
 
-        {purity: decl.purity, proto: proto, inputs: input_tys,
+        {purity: decl.purity, proto: proto, bounds: bounds, inputs: input_tys,
          output: output_ty, ret_style: decl.cf}
     }
 }

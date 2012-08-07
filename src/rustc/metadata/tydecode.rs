@@ -362,6 +362,7 @@ fn parse_purity(c: char) -> purity {
 fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     let proto = parse_proto(next(st));
     let purity = parse_purity(next(st));
+    let bounds = parse_bounds(st, conv);
     assert (next(st) == '[');
     let mut inputs: ~[ty::arg] = ~[];
     while peek(st) != ']' {
@@ -377,8 +378,8 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     }
     st.pos += 1u; // eat the ']'
     let (ret_style, ret_ty) = parse_ret_ty(st, conv);
-    return {purity: purity, proto: proto, inputs: inputs, output: ret_ty,
-         ret_style: ret_style};
+    return {purity: purity, proto: proto, bounds: bounds, inputs: inputs,
+            output: ret_ty, ret_style: ret_style};
 }
 
 

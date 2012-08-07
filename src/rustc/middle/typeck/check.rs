@@ -1135,7 +1135,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
 
         // construct the function type
-        let fn_ty = astconv::ty_of_fn_decl(fcx, fcx, proto,
+        let fn_ty = astconv::ty_of_fn_decl(fcx, fcx, proto, @~[],
                                            decl, expected_tys);
         let fty = ty::mk_fn(tcx, fn_ty);
 
@@ -2401,6 +2401,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         let fty = ty::mk_fn(ccx.tcx, {
             purity: ast::impure_fn,
             proto: ast::proto_block,
+            bounds: @~[],
             inputs: ~[{
                 mode: ast::expl(ast::by_val),
                 ty: ty::mk_imm_ptr(
@@ -2420,6 +2421,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
     };
     let fty = ty::mk_fn(tcx, {purity: ast::impure_fn,
                               proto: ast::proto_bare,
+                              bounds: @~[],
                               inputs: inputs, output: output,
                               ret_style: ast::return_val});
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));

@@ -558,7 +558,7 @@ enum ty_ {
     ty_ptr(mt),
     ty_rptr(@region, mt),
     ty_rec(~[ty_field]),
-    ty_fn(proto, fn_decl),
+    ty_fn(proto, @~[ty_param_bound], fn_decl),
     ty_tup(~[@ty]),
     ty_path(@path, node_id),
     ty_fixed_length(@ty, option<uint>),

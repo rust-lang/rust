@@ -316,11 +316,13 @@ enum closure_kind {
 ///
 /// - `purity` is the function's effect (pure, impure, unsafe).
 /// - `proto` is the protocol (fn@, fn~, etc).
+/// - `bound` is the parameter bounds on the function's upvars.
 /// - `inputs` is the list of arguments and their modes.
 /// - `output` is the return type.
-/// - `ret_style`indicates whether the function returns a value or fails.
+/// - `ret_style` indicates whether the function returns a value or fails.
 type fn_ty = {purity: ast::purity,
               proto: ast::proto,
+              bounds: @~[param_bound],
               inputs: ~[arg],
               output: t,
               ret_style: ret_style};

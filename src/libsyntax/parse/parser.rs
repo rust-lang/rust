@@ -50,10 +50,10 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              stmt_semi, subtract, sty_box, sty_by_ref, sty_region, sty_uniq,
              sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
              tt_tok, tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
-             ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_path, ty_ptr,
-             ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec,
-             ty_fixed_length, unchecked_blk, uniq, unsafe_blk, unsafe_fn,
-             variant, view_item, view_item_, view_item_export,
+             ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound,
+             ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq,
+             ty_vec, ty_fixed_length, unchecked_blk, uniq, unsafe_blk,
+             unsafe_fn, variant, view_item, view_item_, view_item_export,
              view_item_import, view_item_use, view_path, view_path_glob,
              view_path_list, view_path_simple, visibility, vstore, vstore_box,
              vstore_fixed, vstore_slice, vstore_uniq};
@@ -240,14 +240,17 @@ class parser {
     fn get_id() -> node_id { next_node_id(self.sess) }
 
     fn parse_ty_fn(purity: ast::purity) -> ty_ {
-        let proto = if self.eat_keyword(~"extern") {
+        let proto, bounds;
+        if self.eat_keyword(~"extern") {
             self.expect_keyword(~"fn");
-            ast::proto_bare
+            proto = ast::proto_bare;
+            bounds = @~[];
         } else {
             self.expect_keyword(~"fn");
-            self.parse_fn_ty_proto()
+            proto = self.parse_fn_ty_proto();
+            bounds = self.parse_optional_ty_param_bounds();
         };
-        ty_fn(proto, self.parse_ty_fn_decl(purity))
+        ty_fn(proto, bounds, self.parse_ty_fn_decl(purity))
     }
 
     fn parse_ty_fn_decl(purity: ast::purity) -> fn_decl {
@@ -467,7 +470,7 @@ class parser {
             self.parse_ty_fn(ast::impure_fn)
         } else if self.eat_keyword(~"extern") {
             self.expect_keyword(~"fn");
-            ty_fn(proto_bare, self.parse_ty_fn_decl(ast::impure_fn))
+            ty_fn(proto_bare, @~[], self.parse_ty_fn_decl(ast::impure_fn))
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())
@@ -2125,11 +2128,10 @@ class parser {
         return spanned(lo, hi, bloc);
     }
 
-    fn parse_ty_param() -> ty_param {
+    fn parse_optional_ty_param_bounds() -> @~[ty_param_bound] {
         let mut bounds = ~[];
-        let ident = self.parse_ident();
         if self.eat(token::COLON) {
-            while self.token != token::COMMA && self.token != token::GT {
+            while is_ident(self.token) {
                 if self.eat_keyword(~"send") {
                     push(bounds, bound_send); }
                 else if self.eat_keyword(~"copy") {
@@ -2139,10 +2141,17 @@ class parser {
                 } else if self.eat_keyword(~"owned") {
                     push(bounds, bound_owned);
                 } else {
-                    push(bounds, bound_trait(self.parse_ty(false))); }
+                    push(bounds, bound_trait(self.parse_ty(false)));
+                }
             }
         }
-        return {ident: ident, id: self.get_id(), bounds: @bounds};
+        return @move bounds;
+    }
+
+    fn parse_ty_param() -> ty_param {
+        let ident = self.parse_ident();
+        let bounds = self.parse_optional_ty_param_bounds();
+        return {ident: ident, id: self.get_id(), bounds: bounds};
     }
 
     fn parse_ty_params() -> ~[ty_param] {
