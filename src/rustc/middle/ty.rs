@@ -2741,10 +2741,13 @@ fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
 fn ty_dtor(cx: ctxt, class_id: def_id) -> option<def_id> {
     if is_local(class_id) {
        match cx.items.find(class_id.node) {
-         some(ast_map::node_item(@{node: ast::item_class(_, _, _, _,
-                                     some(dtor)), _}, _))
-             => some(local_def(dtor.node.id)),
-         _  => none
+           some(ast_map::node_item(@{
+               node: ast::item_class({ dtor: some(dtor), _ }, _),
+               _
+           }, _)) =>
+               some(local_def(dtor.node.id)),
+           _ =>
+               none
        }
     }
     else {
@@ -2936,8 +2939,8 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
     match cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) => {
          match i.node {
-                 ast::item_class(_, _, items, _, _) => {
-               class_field_tys(items)
+                 ast::item_class(struct_def, _) => {
+               class_field_tys(struct_def.members)
            }
            _ => cx.sess.bug(~"class ID bound to non-class")
          }
@@ -2990,9 +2993,9 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
         assert is_local(did);
         match cx.items.find(did.node) {
           some(ast_map::node_item(@{
-            node: item_class(_,_,items,_,_), _
+            node: item_class(struct_def, _), _
           }, _)) => {
-            let (_,ms) = split_class_items(items);
+            let (_,ms) = split_class_items(struct_def.members);
             vec::map(ms, |m| {name: m.ident, id: m.id,
                               vis: m.vis})
           }

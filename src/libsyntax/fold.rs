@@ -242,9 +242,9 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_enum(vec::map(variants, |x| fld.fold_variant(x)),
                       fold_ty_params(typms, fld))
           }
-          item_class(typms, traits, items, m_ctor, m_dtor) => {
+          item_class(struct_def, typms) => {
             let resulting_optional_constructor;
-            match m_ctor {
+            match struct_def.ctor {
                 none => {
                     resulting_optional_constructor = none;
                 }
@@ -260,18 +260,20 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                     });
                 }
             }
-            let dtor = do option::map(m_dtor) |dtor| {
+            let dtor = do option::map(struct_def.dtor) |dtor| {
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
                 {node: {body: dtor_body,
                         id: dtor_id with dtor.node}
                     with dtor}};
-              item_class(
-                  /* FIXME (#2543) */ copy typms,
-                  vec::map(traits, |p| fold_trait_ref(p, fld)),
-                  vec::map(items, |x| fld.fold_class_item(x)),
-                  resulting_optional_constructor,
-                  dtor)
+              item_class({
+                  traits: vec::map(struct_def.traits,
+                                   |p| fold_trait_ref(p, fld)),
+                  members: vec::map(struct_def.members,
+                                    |x| fld.fold_class_item(x)),
+                  ctor: resulting_optional_constructor,
+                  dtor: dtor},
+                  /* FIXME (#2543) */ copy typms)
           }
           item_impl(tps, ifce, ty, methods) => {
               item_impl(fold_ty_params(tps, fld),

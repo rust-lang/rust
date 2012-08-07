@@ -163,8 +163,8 @@ class CoherenceChecker {
                     item_impl(_, associated_traits, _, _) => {
                         self.check_implementation(item, associated_traits);
                     }
-                    item_class(_, associated_traits, _, _, _) => {
-                        self.check_implementation(item, associated_traits);
+                    item_class(struct_def, _) => {
+                        self.check_implementation(item, struct_def.traits);
                     }
                     _ => {
                         // Nothing to do.
@@ -505,9 +505,9 @@ class CoherenceChecker {
                     methods: methods
                 };
             }
-            item_class(ty_params, _, class_members, _, _) => {
+            item_class(struct_def, ty_params) => {
                 let mut methods = ~[];
-                for class_members.each |class_member| {
+                for struct_def.members.each |class_member| {
                     match class_member.node {
                         instance_var(*) => {
                             // Nothing to do.

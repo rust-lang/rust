@@ -432,12 +432,12 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
             }
         }
       }
-      ast::item_class(tps, _, members, m_ctor, m_dtor) => {
+      ast::item_class(struct_def, _) => {
         let tcx = ccx.tcx;
         let class_t = {self_ty: ty::node_id_to_type(tcx, it.id),
                        node_id: it.id};
 
-        do option::iter(m_ctor) |ctor| {
+        do option::iter(struct_def.ctor) |ctor| {
             // typecheck the ctor
             check_bare_fn(ccx, ctor.node.dec,
                           ctor.node.body, ctor.node.id,
@@ -446,7 +446,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
             write_ty_to_tcx(tcx, ctor.node.self_id, class_t.self_ty);
         }
 
-        do option::iter(m_dtor) |dtor| {
+        do option::iter(struct_def.dtor) |dtor| {
             // typecheck the dtor
             check_bare_fn(ccx, ast_util::dtor_dec(),
                           dtor.node.body, dtor.node.id,
@@ -456,9 +456,11 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         };
 
         // typecheck the members
-        for members.each |m| { check_class_member(ccx, class_t, m); }
+        for struct_def.members.each |m| {
+            check_class_member(ccx, class_t, m);
+        }
         // Check that there's at least one field
-        let (fields,_) = split_class_items(members);
+        let (fields,_) = split_class_items(struct_def.members);
         if fields.len() < 1u {
             ccx.tcx.sess.span_err(
                 it.span,
@@ -747,8 +749,8 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
              rp: rp,
              raw_ty: fcx.ccx.to_ty(rscope::type_rscope(rp), st)}
           }
-          some(ast_map::node_item(@{node: ast::item_class(ts,
-                                 _,_,_,_), id: class_id, _},_)) => {
+          some(ast_map::node_item(@{node: ast::item_class(_, ts),
+                                    id: class_id, _},_)) => {
               /* If the impl is a class, the self ty is just the class ty
                  (doing a no-op subst for the ty params; in the next step,
                  we substitute in fresh vars for them)
@@ -1720,7 +1722,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 tcx.region_paramd_items.contains_key(class_id.node);
             match tcx.items.find(class_id.node) {
                 some(ast_map::node_item(@{
-                        node: ast::item_class(type_parameters, _, _, _, _),
+                        node: ast::item_class(_, type_parameters),
                         _
                     }, _)) => {
 

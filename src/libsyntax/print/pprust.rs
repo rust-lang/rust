@@ -530,18 +530,18 @@ fn print_item(s: ps, &&item: @ast::item) {
             bclose(s, item.span);
         }
       }
-      ast::item_class(tps, traits, items, m_ctor, m_dtor) => {
+      ast::item_class(struct_def, tps) => {
           head(s, ~"class");
           word_nbsp(s, *item.ident);
           print_type_params(s, tps);
-          if vec::len(traits) != 0u {
+          if vec::len(struct_def.traits) != 0u {
               word_space(s, ~":");
-              commasep(s, inconsistent, traits, |s, p|
+              commasep(s, inconsistent, struct_def.traits, |s, p|
                   print_path(s, p.path, false));
           }
           bopen(s);
           hardbreak_if_not_bol(s);
-          do option::iter(m_ctor) |ctor| {
+          do option::iter(struct_def.ctor) |ctor| {
             maybe_print_comment(s, ctor.span.lo);
             print_outer_attributes(s, ctor.node.attrs);
             // Doesn't call head because there shouldn't be a space after new.
@@ -553,14 +553,14 @@ fn print_item(s: ps, &&item: @ast::item) {
             space(s.s);
             print_block(s, ctor.node.body);
           }
-          do option::iter(m_dtor) |dtor| {
+          do option::iter(struct_def.dtor) |dtor| {
             hardbreak_if_not_bol(s);
             maybe_print_comment(s, dtor.span.lo);
             print_outer_attributes(s, dtor.node.attrs);
             head(s, ~"drop");
             print_block(s, dtor.node.body);
           }
-          for items.each |ci| {
+          for struct_def.members.each |ci| {
                   /*
                      FIXME (#1893): collect all private items and print
                      them in a single "priv" section

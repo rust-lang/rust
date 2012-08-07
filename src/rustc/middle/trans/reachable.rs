@@ -111,22 +111,22 @@ fn traverse_public_item(cx: ctx, item: @item) {
             }
         }
       }
-      item_class(tps, _traits, items, m_ctor, m_dtor) => {
-        do option::iter(m_ctor) |ctor| {
+      item_class(struct_def, tps) => {
+        do option::iter(struct_def.ctor) |ctor| {
             cx.rmap.insert(ctor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(ctor.node.attrs)
                      != attr::ia_none {
                 traverse_inline_body(cx, ctor.node.body);
             }
         }
-        do option::iter(m_dtor) |dtor| {
+        do option::iter(struct_def.dtor) |dtor| {
             cx.rmap.insert(dtor.node.id, ());
             if tps.len() > 0u || attr::find_inline_attr(dtor.node.attrs)
                      != attr::ia_none {
                 traverse_inline_body(cx, dtor.node.body);
             }
         }
-        for vec::each(items) |item| {
+        for vec::each(struct_def.members) |item| {
             match item.node {
               class_method(m) => {
                 cx.rmap.insert(m.id, ());
@@ -214,7 +214,7 @@ fn traverse_all_resources_and_impls(cx: ctx, crate_mod: _mod) {
         visit_item: |i, cx, v| {
             visit::visit_item(i, cx, v);
             match i.node {
-              item_class(_, _, _, _, some(_)) => {
+              item_class(struct_def, _) if struct_def.dtor.is_some() => {
                 traverse_public_item(cx, i);
               }
               item_impl(*) => {

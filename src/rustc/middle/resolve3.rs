@@ -984,13 +984,13 @@ class Resolver {
                                                          visitor);
                 }
             }
-            item_class(_, _, class_members, optional_ctor, _) => {
+            item_class(struct_definition, _) => {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                               ~[ValueNS, TypeNS], sp);
 
                 (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
 
-                match optional_ctor {
+                match struct_definition.ctor {
                     none => {
                         // Nothing to do.
                     }
@@ -1008,7 +1008,7 @@ class Resolver {
                 // bindings.
 
                 let mut method_infos = ~[];
-                for class_members.each |class_member| {
+                for struct_definition.members.each |class_member| {
                     match class_member.node {
                         class_method(method) => {
                             // XXX: Combine with impl method code below.
@@ -1037,7 +1037,7 @@ class Resolver {
 
                 // Record the def ID of this struct.
                 self.structs.insert(local_def(item.id),
-                                    is_some(optional_ctor));
+                                    is_some(struct_definition.ctor));
 
                 visit_item(item, new_parent, visitor);
             }
@@ -3249,15 +3249,13 @@ class Resolver {
                 (*self.type_ribs).pop();
             }
 
-            item_class(ty_params, traits, class_members,
-                       optional_constructor, optional_destructor) => {
-
+            item_class(struct_def, ty_params) => {
                 self.resolve_class(item.id,
                                    @copy ty_params,
-                                   traits,
-                                   class_members,
-                                   optional_constructor,
-                                   optional_destructor,
+                                   struct_def.traits,
+                                   struct_def.members,
+                                   struct_def.ctor,
+                                   struct_def.dtor,
                                    visitor);
             }
 

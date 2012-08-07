@@ -162,8 +162,8 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
             }
         });
       }
-      ast_map::node_item(@{node: ast::item_class(_,_,its,_,_), _}, _) => {
-        let (_,ms) = split_class_items(its);
+      ast_map::node_item(@{node: ast::item_class(struct_def, _), _}, _) => {
+        let (_,ms) = split_class_items(struct_def.members);
         // All methods need to be stored, since lookup_method
         // relies on the same method cache for self-calls
         store_methods::<@ast::method>(ccx, id, ms, |m| {
@@ -382,13 +382,13 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         // check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
         // }
       }
-      ast::item_class(tps, trait_refs, members, m_ctor, m_dtor) => {
+      ast::item_class(struct_def, tps) => {
         // Write the class type
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
         tcx.tcache.insert(local_def(it.id), tpt);
 
-        do option::iter(m_ctor) |ctor| {
+        do option::iter(struct_def.ctor) |ctor| {
             // Write the ctor type
             let t_args = ctor.node.dec.inputs.map(
                 |a| ty_of_arg(ccx, type_rscope(rp), a, none) );
@@ -411,7 +411,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                                ty: t_ctor});
         }
 
-        do option::iter(m_dtor) |dtor| {
+        do option::iter(struct_def.dtor) |dtor| {
             // Write the dtor type
             let t_dtor = ty::mk_fn(
                 tcx,
@@ -426,14 +426,14 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         ensure_trait_methods(ccx, it.id);
 
         // Write the type of each of the members
-        let (fields, methods) = split_class_items(members);
+        let (fields, methods) = split_class_items(struct_def.members);
         for fields.each |f| {
            convert_field(ccx, rp, tpt.bounds, f);
         }
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let selfty = ty::mk_class(tcx, local_def(it.id), substs);
         let cms = convert_methods(ccx, methods, rp, bounds, selfty);
-        for trait_refs.each |trait_ref| {
+        for struct_def.traits.each |trait_ref| {
             check_methods_against_trait(ccx, tps, rp, selfty, trait_ref, cms);
             // trait_ref.impl_id represents (class, trait) pair
             write_ty_to_tcx(tcx, trait_ref.impl_id, tpt.ty);
@@ -583,7 +583,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_class(tps, _, _, _, _) => {
+      ast::item_class(_, tps) => {
           let {bounds,substs} = mk_substs(ccx, tps, rp);
           let t = ty::mk_class(tcx, local_def(it.id), substs);
           let tpt = {bounds: bounds, rp: rp, ty: t};
