@@ -152,17 +152,17 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
             visit_method_helper(m, e, v)
         }
       }
-      item_class(tps, traits, members, m_ctor, m_dtor) => {
+      item_class(struct_def, tps) => {
           v.visit_ty_params(tps, e, v);
-          for members.each |m| {
+          for struct_def.members.each |m| {
              v.visit_class_item(m, e, v);
           }
-          for traits.each |p| { visit_path(p.path, e, v); }
-          do option::iter(m_ctor) |ctor| {
+          for struct_def.traits.each |p| { visit_path(p.path, e, v); }
+          do option::iter(struct_def.ctor) |ctor| {
             visit_class_ctor_helper(ctor, i.ident, tps,
                                     ast_util::local_def(i.id), e, v);
           };
-          do option::iter(m_dtor) |dtor| {
+          do option::iter(struct_def.dtor) |dtor| {
             visit_class_dtor_helper(dtor, tps,
                                     ast_util::local_def(i.id), e, v)
           };

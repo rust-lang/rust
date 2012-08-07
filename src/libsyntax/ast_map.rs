@@ -216,11 +216,11 @@ fn map_item(i: @item, cx: ctx, v: vt) {
                                            extend(cx, i.ident)));
         }
       }
-      item_class(tps, traits, items, ctor, dtor) => {
-          let (_, ms) = ast_util::split_class_items(items);
+      item_class(struct_def, _) => {
+          let (_, ms) = ast_util::split_class_items(struct_def.members);
           // Map trait refs to their parent classes. This is
           // so we can find the self_ty
-          for traits.each |p| {
+          for struct_def.traits.each |p| {
               cx.map.insert(p.ref_id, node_item(i, item_path));
               // This is so we can look up the right things when
               // encoding/decoding

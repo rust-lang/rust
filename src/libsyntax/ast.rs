@@ -711,6 +711,17 @@ type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
 enum visibility { public, private, inherited }
 
 #[auto_serialize]
+type struct_def = {
+    traits: ~[@trait_ref],   /* traits this class implements */
+    members: ~[@class_member], /* methods, etc. */
+    /* (not including ctor or dtor) */
+    /* ctor is optional, and will soon go away */
+    ctor: option<class_ctor>,
+    /* dtor is optional */
+    dtor: option<class_dtor>
+};
+
+#[auto_serialize]
 type item = {ident: ident, attrs: ~[attribute],
              id: node_id, node: item_,
              vis: visibility, span: span};
@@ -723,15 +734,7 @@ enum item_ {
     item_foreign_mod(foreign_mod),
     item_ty(@ty, ~[ty_param]),
     item_enum(~[variant], ~[ty_param]),
-    item_class(~[ty_param], /* ty params for class */
-               ~[@trait_ref],   /* traits this class implements */
-               ~[@class_member], /* methods, etc. */
-                               /* (not including ctor or dtor) */
-               /* ctor is optional, and will soon go away */
-               option<class_ctor>,
-               /* dtor is optional */
-               option<class_dtor>
-               ),
+    item_class(struct_def, ~[ty_param]),
     item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],
               ~[@trait_ref], /* traits this impl implements */

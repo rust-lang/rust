@@ -196,7 +196,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
               encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
           }
-          item_class(_, _, items, m_ctor, m_dtor) => {
+          item_class(struct_def, _) => {
             do ebml_w.wr_tag(tag_paths_data_item) {
                 encode_name_and_def_id(ebml_w, it.ident, it.id);
             }
@@ -205,7 +205,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 // class and for its ctor
                 add_to_index(ebml_w, path, index, it.ident);
 
-                match m_ctor {
+                match struct_def.ctor {
                     none => {
                         // Nothing to do.
                     }
@@ -215,7 +215,8 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                     }
                 }
 
-                encode_class_item_paths(ebml_w, items,
+                encode_class_item_paths(ebml_w,
+                                        struct_def.members,
                                         vec::append_one(path, it.ident),
                                         index);
             }
@@ -700,15 +701,15 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_enum_variant_info(ecx, ebml_w, item.id, variants,
                                  path, index, tps);
       }
-      item_class(tps, traits, items, ctor, m_dtor) => {
+      item_class(struct_def, tps) => {
         /* First, encode the fields and methods
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
            class itself */
         let idx = encode_info_for_class(ecx, ebml_w, item.id, path, tps,
-                                          items, index);
+                                        struct_def.members, index);
         /* Encode the dtor */
-        do option::iter(m_dtor) |dtor| {
+        do option::iter(struct_def.dtor) |dtor| {
             vec::push(*index, {val: dtor.node.id, pos: ebml_w.writer.tell()});
           encode_info_for_fn(ecx, ebml_w, dtor.node.id, @(*item.ident
                              + ~"_dtor"), path, if tps.len() > 0u {
@@ -723,7 +724,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
 
-        match ctor {
+        match struct_def.ctor {
             none => encode_family(ebml_w, 'S'),
             some(_) => encode_family(ebml_w, 'C')
         }
@@ -733,12 +734,12 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_name(ebml_w, item.ident);
         encode_path(ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
-        for traits.each |t| {
+        for struct_def.traits.each |t| {
            encode_trait_ref(ebml_w, ecx, t);
         }
         /* Encode the dtor */
         /* Encode id for dtor */
-        do option::iter(m_dtor) |dtor| {
+        do option::iter(struct_def.dtor) |dtor| {
             do ebml_w.wr_tag(tag_item_dtor) {
                 encode_def_id(ebml_w, local_def(dtor.node.id));
             }
@@ -747,7 +748,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        let (fs,ms) = ast_util::split_class_items(items);
+        let (fs,ms) = ast_util::split_class_items(struct_def.members);
         for fs.each |f| {
            ebml_w.start_tag(tag_item_field);
            encode_visibility(ebml_w, f.vis);
@@ -783,7 +784,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         ebml_w.end_tag();
 
         /* Encode the constructor */
-        for ctor.each |ctor| {
+        for struct_def.ctor.each |ctor| {
             debug!{"encoding info for ctor %s %d", *item.ident,
                    ctor.node.id};
             vec::push(*index, {

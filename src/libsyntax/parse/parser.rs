@@ -2581,18 +2581,28 @@ class parser {
         match the_ctor {
           some((ct_d, ct_attrs, ct_b, ct_s)) => {
             (class_name,
-             item_class(ty_params, traits, ms, some({
+             item_class({
+                traits: traits,
+                members: ms,
+                ctor: some({
                  node: {id: ctor_id,
                         attrs: ct_attrs,
                         self_id: self.get_id(),
                         dec: ct_d,
                         body: ct_b},
-                 span: ct_s}), actual_dtor),
+                 span: ct_s}),
+                dtor: actual_dtor
+             }, ty_params),
              none)
           }
           none => {
             (class_name,
-             item_class(ty_params, traits, ms, none, actual_dtor),
+             item_class({
+                    traits: traits,
+                    members: ms,
+                    ctor: none,
+                    dtor: actual_dtor
+             }, ty_params),
              none)
           }
         }
