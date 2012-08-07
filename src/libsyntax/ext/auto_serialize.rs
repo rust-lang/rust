@@ -830,43 +830,51 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: ast::ident,
         let variant = variants[vidx];
         let v_span = variant.span;
         let v_name = variant.node.name;
-        let variant_tys = vec::map(variant.node.args, |a| a.ty);
 
-        ser_variant(
-            cx, tps, variant_tys, v_span, cx.clone(s),
+        match variant.node.kind {
+            ast::tuple_variant_kind(args) => {
+                let variant_tys = vec::map(args, |a| a.ty);
 
-            // Generate pattern var(v1, v2, v3)
-            |pats| {
-                if vec::is_empty(pats) {
-                    ast::pat_ident(ast::bind_by_implicit_ref,
-                                   cx.path(v_span, ~[v_name]),
-                                   none)
-                } else {
-                    ast::pat_enum(cx.path(v_span, ~[v_name]), some(pats))
-                }
-            },
+                ser_variant(
+                    cx, tps, variant_tys, v_span, cx.clone(s),
 
-            // Generate body s.emit_enum_variant("foo", 0u,
-            //                                   3u, {|| blk })
-            |-s, blk| {
-                let v_name = cx.lit_str(v_span, v_name);
-                let v_id = cx.lit_uint(v_span, vidx);
-                let sz = cx.lit_uint(v_span, vec::len(variant_tys));
-                let body = cx.lambda(blk);
-                #ast[expr]{
-                    $(s).emit_enum_variant($(v_name), $(v_id),
-                                           $(sz), $(body))
-                }
-            },
+                    // Generate pattern var(v1, v2, v3)
+                    |pats| {
+                        if vec::is_empty(pats) {
+                            ast::pat_ident(ast::bind_by_implicit_ref,
+                                           cx.path(v_span, ~[v_name]),
+                                           none)
+                        } else {
+                            ast::pat_enum(cx.path(v_span, ~[v_name]),
+                                                  some(pats))
+                        }
+                    },
 
-            // Generate s.emit_enum_variant_arg(i, {|| blk })
-            |-s, i, blk| {
-                let idx = cx.lit_uint(v_span, i);
-                let body = cx.lambda(blk);
-                #ast[expr]{
-                    $(s).emit_enum_variant_arg($(idx), $(body))
-                }
-            })
+                    // Generate body s.emit_enum_variant("foo", 0u,
+                    //                                   3u, {|| blk })
+                    |-s, blk| {
+                        let v_name = cx.lit_str(v_span, v_name);
+                        let v_id = cx.lit_uint(v_span, vidx);
+                        let sz = cx.lit_uint(v_span, vec::len(variant_tys));
+                        let body = cx.lambda(blk);
+                        #ast[expr]{
+                            $(s).emit_enum_variant($(v_name), $(v_id),
+                                                   $(sz), $(body))
+                        }
+                    },
+
+                    // Generate s.emit_enum_variant_arg(i, {|| blk })
+                    |-s, i, blk| {
+                        let idx = cx.lit_uint(v_span, i);
+                        let body = cx.lambda(blk);
+                        #ast[expr]{
+                            $(s).emit_enum_variant_arg($(idx), $(body))
+                        }
+                    })
+            }
+            _ =>
+                fail ~"struct variants unimplemented for auto serialize"
+        }
     };
     let lam = cx.lambda(cx.blk(e_span, ~[cx.alt_stmt(arms, e_span, v)]));
     let e_name = cx.lit_str(e_span, e_name);
@@ -881,24 +889,32 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
         let variant = variants[vidx];
         let v_span = variant.span;
         let v_name = variant.node.name;
-        let tys = vec::map(variant.node.args, |a| a.ty);
 
-        let arg_exprs = do vec::from_fn(vec::len(tys)) |i| {
-            let idx = cx.lit_uint(v_span, i);
-            let body = deser_lambda(cx, tps, tys[i], cx.clone(d));
-            #ast{ $(d).read_enum_variant_arg($(idx), $(body)) }
-        };
+        let body;
+        match variant.node.kind {
+            ast::tuple_variant_kind(args) => {
+                let tys = vec::map(args, |a| a.ty);
 
-        let body = {
-            if vec::is_empty(tys) {
-                // for a nullary variant v, do "v"
-                cx.var_ref(v_span, v_name)
-            } else {
-                // for an n-ary variant v, do "v(a_1, ..., a_n)"
-                cx.expr(v_span, ast::expr_call(
-                    cx.var_ref(v_span, v_name), arg_exprs, false))
+                let arg_exprs = do vec::from_fn(vec::len(tys)) |i| {
+                    let idx = cx.lit_uint(v_span, i);
+                    let body = deser_lambda(cx, tps, tys[i], cx.clone(d));
+                    #ast{ $(d).read_enum_variant_arg($(idx), $(body)) }
+                };
+
+                body = {
+                    if vec::is_empty(tys) {
+                        // for a nullary variant v, do "v"
+                        cx.var_ref(v_span, v_name)
+                    } else {
+                        // for an n-ary variant v, do "v(a_1, ..., a_n)"
+                        cx.expr(v_span, ast::expr_call(
+                            cx.var_ref(v_span, v_name), arg_exprs, false))
+                    }
+                };
             }
-        };
+            ast::struct_variant_kind =>
+                fail ~"struct variants unimplemented"
+        }
 
         {pats: ~[@{id: cx.next_id(),
                   node: ast::pat_lit(cx.lit_uint(v_span, vidx)),

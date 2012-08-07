@@ -135,7 +135,11 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
       item_enum(variants, tps) => {
         v.visit_ty_params(tps, e, v);
         for variants.each |vr| {
-            for vr.node.args.each |va| { v.visit_ty(va.ty, e, v); }
+            match vr.node.kind {
+                tuple_variant_kind(variant_args) =>
+                    for variant_args.each |va| { v.visit_ty(va.ty, e, v); },
+                struct_variant_kind => {}
+            }
         }
       }
       item_impl(tps, traits, ty, methods) => {

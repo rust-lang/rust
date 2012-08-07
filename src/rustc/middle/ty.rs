@@ -2837,28 +2837,37 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
           ast_map::node_item(@{node: ast::item_enum(variants, _), _}, _) => {
             let mut disr_val = -1;
             @vec::map(variants, |variant| {
-                let ctor_ty = node_id_to_type(cx, variant.node.id);
-                let arg_tys = {
-                    if vec::len(variant.node.args) > 0u {
-                        ty_fn_args(ctor_ty).map(|a| a.ty)
-                    } else { ~[] }
-                };
-                match variant.node.disr_expr {
-                  some (ex) => {
-                    // FIXME: issue #1417
-                    disr_val = match const_eval::eval_const_expr(cx, ex) {
-                      const_eval::const_int(val) =>val as int,
-                      _ => cx.sess.bug(~"tag_variants: bad disr expr")
+                match variant.node.kind {
+                    ast::tuple_variant_kind(args) => {
+                        let ctor_ty = node_id_to_type(cx, variant.node.id);
+                        let arg_tys = {
+                            if vec::len(args) > 0u {
+                                ty_fn_args(ctor_ty).map(|a| a.ty)
+                            } else {
+                                ~[]
+                            }
+                        };
+                        match variant.node.disr_expr {
+                          some (ex) => {
+                            // FIXME: issue #1417
+                            disr_val = match const_eval::eval_const_expr(cx,
+                                                                         ex) {
+                              const_eval::const_int(val) => val as int,
+                              _ => cx.sess.bug(~"tag_variants: bad disr expr")
+                            }
+                          }
+                          _ => disr_val += 1
+                        }
+                        @{args: arg_tys,
+                          ctor_ty: ctor_ty,
+                          name: variant.node.name,
+                          id: ast_util::local_def(variant.node.id),
+                          disr_val: disr_val
+                         }
                     }
-                  }
-                  _ => disr_val += 1
+                    ast::struct_variant_kind =>
+                        fail ~"struct variant kinds unimpl in enum_variants"
                 }
-                @{args: arg_tys,
-                  ctor_ty: ctor_ty,
-                  name: variant.node.name,
-                  id: ast_util::local_def(variant.node.id),
-                  disr_val: disr_val
-                 }
             })
           }
           _ => cx.sess.bug(~"tag_variants: id not bound to an enum")
