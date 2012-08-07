@@ -99,15 +99,17 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
 /// Determines whether one region is a subregion of another.  This is
 /// intended to run *after inference* and sadly the logic is somewhat
 /// duplicated with the code in infer.rs.
-fn subregion(region_map: region_map,
-             super_region: ty::region,
-             sub_region: ty::region) -> bool {
-    super_region == sub_region ||
-        match (super_region, sub_region) {
-          (ty::re_static, _) => {true}
+fn is_subregion_of(region_map: region_map,
+                   sub_region: ty::region,
+                   super_region: ty::region) -> bool {
+    sub_region == super_region ||
+        match (sub_region, super_region) {
+          (_, ty::re_static) => {
+            true
+          }
 
-          (ty::re_scope(super_scope), ty::re_scope(sub_scope)) |
-          (ty::re_free(super_scope, _), ty::re_scope(sub_scope)) => {
+          (ty::re_scope(sub_scope), ty::re_scope(super_scope)) |
+          (ty::re_scope(sub_scope), ty::re_free(super_scope, _)) => {
             scope_contains(region_map, super_scope, sub_scope)
           }
 

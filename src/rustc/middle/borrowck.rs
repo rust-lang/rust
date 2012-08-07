@@ -454,6 +454,12 @@ impl methods of get_type_for_node for ty::ctxt {
     }
 }
 
+impl borrowck_ctxt {
+    fn is_subregion_of(r_sub: ty::region, r_sup: ty::region) -> bool {
+        region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
+    }
+}
+
 impl error_methods for borrowck_ctxt {
     fn report_if_err(bres: bckres<()>) {
         match bres {

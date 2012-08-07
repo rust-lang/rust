@@ -107,6 +107,7 @@ export tbox_has_flag;
 export ty_var_id;
 export ty_to_def_id;
 export ty_fn_args;
+export ty_region;
 export kind, kind_implicitly_copyable, kind_send_copy, kind_copyable;
 export kind_noncopyable, kind_const;
 export kind_can_be_copied, kind_can_be_sent, kind_can_be_implicitly_copied;
@@ -2297,8 +2298,15 @@ fn ty_fn_ret_style(fty: t) -> ast::ret_style {
 
 fn is_fn_ty(fty: t) -> bool {
     match get(fty).struct {
-      ty_fn(_) => return true,
-      _ => return false
+      ty_fn(_) => true,
+      _ => false
+    }
+}
+
+fn ty_region(ty: t) -> region {
+    match get(ty).struct {
+      ty_rptr(r, _) => r,
+      s => fail fmt!{"ty_region() invoked on non-rptr: %?", s}
     }
 }
 

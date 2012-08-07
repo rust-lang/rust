@@ -39,8 +39,7 @@ impl loan_methods for loan_ctxt {
     fn ok_with_loan_of(cmt: cmt,
                        scope_ub: ty::region,
                        mutbl: ast::mutability) -> bckres<()> {
-        let region_map = self.tcx().region_map;
-        if region::subregion(region_map, scope_ub, self.scope_region) {
+        if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
             // Note: all cmt's that we deal with will have a non-none
             // lp, because the entry point into this routine,
             // `borrowck_ctxt::loan()`, rejects any cmt with a

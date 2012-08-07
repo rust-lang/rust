@@ -9,6 +9,7 @@
 import categorization::{public_methods, opt_deref_kind};
 import loan::public_methods;
 import preserve::{public_methods, preserve_condition, pc_ok, pc_if_pure};
+import ty::ty_region;
 
 export gather_loans;
 
@@ -105,10 +106,7 @@ fn req_loans_in_expr(ex: @ast::expr,
 
         // make sure that the thing we are pointing out stays valid
         // for the lifetime `scope_r` of the resulting ptr:
-        let scope_r =
-            match check ty::get(tcx.ty(ex)).struct {
-              ty::ty_rptr(r, _) => r
-            };
+        let scope_r = ty_region(tcx.ty(ex));
         self.guarantee_valid(base_cmt, mutbl, scope_r);
         visit::visit_expr(ex, self, vt);
       }
@@ -474,35 +472,58 @@ impl methods for gather_loan_ctxt {
             }
           }
 
-          ast::pat_ident(_, _, none) if self.pat_is_variant(pat) => {
-            // nullary variant
-            debug!{"nullary variant"};
-          }
-          ast::pat_ident(_, id, o_pat) => {
-            // XXX: Needs to take by-ref/by-val into account.
+          ast::pat_ident(bm, id, o_pat) if !self.pat_is_variant(pat) => {
+            match bm {
+              ast::bind_by_value => {
+                // copying does not borrow anything, so no check is required
+              }
+              ast::bind_by_ref(mutbl) => {
+                // ref x or ref x @ p --- creates a ptr which must
+                // remain valid for the scope of the alt
 
-            // x or x @ p --- `x` must remain valid for the scope of the alt
-            debug!{"defines identifier %s", pprust::path_to_str(id)};
+                // find the region of the resulting pointer (note that
+                // the type of such a pattern will *always* be a
+                // region pointer)
+                let scope_r = ty_region(tcx.ty(pat));
 
-            // Note: there is a discussion of the function of
-            // cat_discr in the method preserve():
-            let cmt1 = self.bccx.cat_discr(cmt, alt_id);
-            let arm_scope = ty::re_scope(arm_id);
+                // if the scope of the region ptr turns out to be
+                // specific to this arm, wrap the categorization with
+                // a cat_discr() node.  There is a detailed discussion
+                // of the function of this node in method preserve():
+                let arm_scope = ty::re_scope(arm_id);
+                if self.bccx.is_subregion_of(scope_r, arm_scope) {
+                    let cmt_discr = self.bccx.cat_discr(cmt, alt_id);
+                    self.guarantee_valid(cmt_discr, mutbl, scope_r);
+                } else {
+                    self.guarantee_valid(cmt, mutbl, scope_r);
+                }
+              }
+              ast::bind_by_implicit_ref => {
+                // Note: there is a discussion of the function of
+                // cat_discr in the method preserve():
+                let cmt1 = self.bccx.cat_discr(cmt, alt_id);
+                let arm_scope = ty::re_scope(arm_id);
 
-            // Remember the mutability of the location that this
-            // binding refers to.  This will be used later when
-            // categorizing the binding.  This is a bit of a hack that
-            // would be better fixed by #2329; in that case we could
-            // allow the user to specify if they want an imm, const,
-            // or mut binding, or else just reflect the mutability
-            // through the type of the region pointer.
-            self.bccx.binding_map.insert(pat.id, cmt1.mutbl);
+                // Remember the mutability of the location that this
+                // binding refers to.  This will be used later when
+                // categorizing the binding.  This is a bit of a hack that
+                // would be better fixed by #2329; in that case we could
+                // allow the user to specify if they want an imm, const,
+                // or mut binding, or else just reflect the mutability
+                // through the type of the region pointer.
+                self.bccx.binding_map.insert(pat.id, cmt1.mutbl);
 
-            self.guarantee_valid(cmt1, m_const, arm_scope);
-
+                self.guarantee_valid(cmt1, m_const, arm_scope);
+              }
+            }
             for o_pat.each |p| {
                 self.gather_pat(cmt, p, arm_id, alt_id);
             }
+          }
+
+          ast::pat_ident(*) => {
+              // nullary variant: ignore.
+              assert self.pat_is_variant(pat);
           }
 
           ast::pat_rec(field_pats, _) => {
