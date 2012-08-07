@@ -1,3 +1,4 @@
+// xfail-fast (aux-build)
 // aux-build:issue_2242_a.rs
 // aux-build:issue_2242_b.rs
 // aux-build:issue_2242_c.rs
