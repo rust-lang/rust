@@ -30,18 +30,18 @@ impl private_methods<T> for dlist_node<T> {
             some(neighbour) => match neighbour.prev {
               some(me) => if !box::ptr_eq(*self, *me) {
                   fail ~"Asymmetric next-link in dlist node."
-              }
+              },
               none => fail ~"One-way next-link in dlist node."
-            }
+            },
             none => ()
         }
         match self.prev {
             some(neighbour) => match neighbour.next {
               some(me) => if !box::ptr_eq(*me, *self) {
                   fail ~"Asymmetric prev-link in dlist node."
-              }
+              },
               none => fail ~"One-way prev-link in dlist node."
-            }
+            },
             none => ()
         }
     }

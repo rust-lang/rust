@@ -13,6 +13,13 @@ fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     }
 }
 
+fn expr_is_simple_block(e: @ast::expr) -> bool {
+    match e.node {
+      ast::expr_block({node: {rules: ast::default_blk, _}, _}) => true,
+      _ => false
+    }
+}
+
 fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
     match stmt.node {
       ast::stmt_decl(d, _) => {
@@ -52,7 +59,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
         @{node: ast::lit_int(_, ast::ty_i), _}
         | @{node: ast::lit_int_unsuffixed(_), _} => true,
         _ => false
-      }
+      },
       ast::expr_binary(_, _, sub) | ast::expr_unary(_, sub) |
       ast::expr_move(_, sub) | ast::expr_copy(sub) |
       ast::expr_assign(_, sub) |
@@ -63,7 +70,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
       ast::expr_fail(osub) | ast::expr_ret(osub) => match osub {
         some(ex) => ends_in_lit_int(ex),
         _ => false
-      }
+      },
       _ => false
     }
 }

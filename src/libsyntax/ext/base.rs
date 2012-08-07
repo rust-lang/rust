@@ -214,7 +214,7 @@ fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {
       ast::expr_lit(l) => match l.node {
         ast::lit_str(s) => return *s,
         _ => cx.span_fatal(l.span, error)
-      }
+      },
       _ => cx.span_fatal(expr.span, error)
     }
 }
@@ -257,7 +257,7 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
         _ => {
             cx.span_fatal(sp, fmt!{"#%s: malformed invocation", name})
           }
-      }
+      },
       none => cx.span_fatal(sp, fmt!{"#%s: missing arguments", name})
     }
 }
@@ -302,7 +302,7 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
               }
               _ => fail ~"badly-structured parse result"
             }
-          }
+          },
           _ => fail ~"badly-structured parse result"
         };
 

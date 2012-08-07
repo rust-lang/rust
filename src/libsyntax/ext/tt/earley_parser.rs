@@ -322,7 +322,7 @@ fn parse_nt(p: parser, name: ~str) -> nonterminal {
       ~"item" => match p.parse_item(~[]) {
         some(i) => token::nt_item(i),
         none => p.fatal(~"expected an item keyword")
-      }
+      },
       ~"block" => token::nt_block(p.parse_block()),
       ~"stmt" => token::nt_stmt(p.parse_stmt(~[])),
       ~"pat" => token::nt_pat(p.parse_pat(true)),
@@ -333,7 +333,7 @@ fn parse_nt(p: parser, name: ~str) -> nonterminal {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
                      + token::to_str(*p.reader.interner(), copy p.token))
-      }
+      },
       ~"path" => token::nt_path(p.parse_path_with_tps(false)),
       ~"tt" => {
         p.quote_depth += 1u; //but in theory, non-quoted tts might be useful

@@ -84,7 +84,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               ty_hex(c) => match c {
                 case_upper => rt_type = ~"ty_hex_upper",
                 case_lower => rt_type = ~"ty_hex_lower"
-              }
+              },
               ty_bits => rt_type = ~"ty_bits",
               ty_octal => rt_type = ~"ty_octal",
               _ => rt_type = ~"ty_default"
@@ -125,7 +125,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               ty_int(s) => match s {
                 signed => return true,
                 unsigned => return false
-              }
+              },
               ty_float => return true,
               _ => return false
             }
@@ -173,7 +173,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
             unsigned => {
                 return make_conv_call(cx, arg.span, ~"uint", cnv, arg)
             }
-          }
+          },
           ty_bool => return make_conv_call(cx, arg.span, ~"bool", cnv, arg),
           ty_char => return make_conv_call(cx, arg.span, ~"char", cnv, arg),
           ty_hex(_) => {
@@ -224,12 +224,12 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
           ty_int(s) => match s {
             signed => debug!{"type: signed"},
             unsigned => debug!{"type: unsigned"}
-          }
+          },
           ty_bits => debug!{"type: bits"},
           ty_hex(cs) => match cs {
             case_upper => debug!{"type: uhex"},
             case_lower => debug!{"type: lhex"},
-          }
+          },
           ty_octal => debug!{"type: octal"},
           ty_float => debug!{"type: float"},
           ty_poly => debug!{"type: poly"}

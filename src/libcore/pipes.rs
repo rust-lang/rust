@@ -425,7 +425,7 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
           }
           blocked => if first {
             fail ~"blocking on already blocked packet"
-          }
+          },
           full => {
             let mut payload = none;
             payload <-> p.payload;
@@ -717,7 +717,7 @@ struct send_packet_buffered<T: send, Tbuffer: send> {
             let header = ptr::addr_of(packet.header);
             //forget(packet);
             header
-          }
+          },
           none => fail ~"packet already consumed"
         }
     }
@@ -778,7 +778,7 @@ struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
             let header = ptr::addr_of(packet.header);
             //forget(packet);
             header
-          }
+          },
           none => fail ~"packet already consumed"
         }
     }

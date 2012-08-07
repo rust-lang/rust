@@ -242,11 +242,11 @@ mod tests {
               one(a1) => match b {
                 one(b1) => return a1 == b1,
                 _ => return false
-              }
+              },
               two(a1, a2) => match b {
                 two(b1, b2) => return a1 == b1 && a2 == b2,
                 _ => return false
-              }
+              },
               three(a1, a2, a3) => match b {
                 three(b1, b2, b3) => return a1 == b1 && a2 == b2 && a3 == b3,
                 _ => return false
@@ -258,11 +258,11 @@ mod tests {
               onepar::<T>(a1) => match b {
                 onepar::<T>(b1) => return a1 == b1,
                 _ => return false
-              }
+              },
               twopar::<T>(a1, a2) => match b {
                 twopar::<T>(b1, b2) => return a1 == b1 && a2 == b2,
                 _ => return false
-              }
+              },
               threepar::<T>(a1, a2, a3) => match b {
                 threepar::<T>(b1, b2, b3) => {
                     return a1 == b1 && a2 == b2 && a3 == b3

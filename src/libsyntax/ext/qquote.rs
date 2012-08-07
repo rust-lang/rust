@@ -312,7 +312,7 @@ fn replace_expr(repls: ~[fragment],
       ast::expr_mac({node: mac_var(i), _}) => match (repls[i]) {
         from_expr(r) => (r.node, r.span),
         _ => fail /* fixme error message */
-      }
+      },
       _ => orig(e,s,fld)
     }
 }
@@ -326,7 +326,7 @@ fn replace_ty(repls: ~[fragment],
       ast::ty_mac({node: mac_var(i), _}) => match (repls[i]) {
         from_ty(r) => (r.node, r.span),
         _ => fail /* fixme error message */
-      }
+      },
       _ => orig(e,s,fld)
     }
 }

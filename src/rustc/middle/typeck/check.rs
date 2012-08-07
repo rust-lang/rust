@@ -1319,7 +1319,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               ast::box(_) | ast::uniq(_) => match sty {
                 ty::ty_box(mt) | ty::ty_uniq(mt) => some(mt.ty),
                 _ => none
-              }
+              },
               ast::not | ast::neg => expected,
               ast::deref => none
             }
@@ -1430,7 +1430,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     expr.span,
                     ~"`return;` in function returning non-nil");
             }
-          }
+          },
           some(e) => { check_expr_with(fcx, e, ret_ty); }
         }
         fcx.write_bot(id);
@@ -1933,7 +1933,7 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
         match decl.node {
           ast::decl_local(ls) => for ls.each |l| {
             bot |= check_decl_local(fcx, l);
-          }
+          },
           ast::decl_item(_) => {/* ignore for now */ }
         }
       }

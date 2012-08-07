@@ -172,7 +172,7 @@ impl parser for parser {
           '"' => match self.parse_str() {
             ok(s) => ok(string(s)),
             err(e) => err(e)
-          }
+          },
           '[' => self.parse_list(),
           '{' => self.parse_object(),
           _ => self.error(~"invalid syntax")

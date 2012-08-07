@@ -300,14 +300,14 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
         ast::ty_i16 => (~"i16", DW_ATE_signed),
         ast::ty_i32 => (~"i32", DW_ATE_signed),
         ast::ty_i64 => (~"i64", DW_ATE_signed)
-      }
+      },
       ast::ty_uint(m) => match m {
         ast::ty_u => (~"uint", DW_ATE_unsigned),
         ast::ty_u8 => (~"u8", DW_ATE_unsigned_char),
         ast::ty_u16 => (~"u16", DW_ATE_unsigned),
         ast::ty_u32 => (~"u32", DW_ATE_unsigned),
         ast::ty_u64 => (~"u64", DW_ATE_unsigned)
-      }
+      },
       ast::ty_float(m) => match m {
         ast::ty_f => (~"float", DW_ATE_float),
         ast::ty_f32 => (~"f32", DW_ATE_float),

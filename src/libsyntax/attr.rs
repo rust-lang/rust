@@ -130,7 +130,7 @@ fn get_meta_item_value_str(meta: @ast::meta_item) -> option<@~str> {
       ast::meta_name_value(_, v) => match v.node {
         ast::lit_str(s) => option::some(s),
         _ => option::none
-      }
+      },
       _ => option::none
     }
 }
@@ -207,11 +207,11 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
           ast::meta_word(na) => match b.node {
             ast::meta_word(nb) => na == nb,
             _ => false
-          }
+          },
           ast::meta_name_value(na, va) => match b.node {
             ast::meta_name_value(nb, vb) => na == nb && va.node == vb.node,
             _ => false
-          }
+          },
           ast::meta_list(na, la) => {
 
             // ~[Fixme-sorting]
@@ -257,7 +257,7 @@ fn last_meta_item_value_str_by_name(
       some(item) => match attr::get_meta_item_value_str(item) {
         some(value) => some(value),
         none => none
-      }
+      },
       none => none
     }
 }
