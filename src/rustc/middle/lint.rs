@@ -8,7 +8,9 @@ import std::map::{map,hashmap,int_hash,hash_from_strs};
 import std::smallintmap::{map,smallintmap};
 import io::writer_util;
 import util::ppaux::{ty_to_str};
-import syntax::print::pprust::{expr_to_str, mode_to_str};
+import middle::pat_util::{pat_bindings};
+import syntax::ast_util::{path_to_ident};
+import syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
 export lint, ctypes, unused_imports, while_true, path_statement, old_vecs;
 export unrecognized_lint, non_implicitly_copyable_typarams;
 export vecs_implicitly_copyable, implicit_copies;
@@ -49,6 +51,7 @@ enum lint {
     non_implicitly_copyable_typarams,
     vecs_implicitly_copyable,
     deprecated_mode,
+    deprecated_pattern,
     non_camel_case_types
 }
 
@@ -138,6 +141,11 @@ fn get_lint_dict() -> lint_dict {
         (~"deprecated_mode",
          @{lint: deprecated_mode,
            desc: ~"warn about deprecated uses of modes",
+           default: allow}),
+
+        (~"deprecated_pattern",
+         @{lint: deprecated_pattern,
+           desc: ~"warn about deprecated uses of pattern bindings",
            default: allow}),
 
         (~"non_camel_case_types",
@@ -474,6 +482,27 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     }
 }
 
+fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
+    debug!{"lint check_pat pat=%s", pat_to_str(pat)};
+
+    do pat_bindings(tcx.def_map, pat) |binding_mode, id, span, path| {
+        match binding_mode {
+          ast::bind_by_ref(_) | ast::bind_by_value => {}
+          ast::bind_by_implicit_ref => {
+            let pat_ty = ty::node_id_to_type(tcx, id);
+            let kind = ty::type_kind(tcx, pat_ty);
+            if !ty::kind_is_safe_for_default_mode(kind) {
+                tcx.sess.span_lint(
+                    deprecated_pattern, id, id,
+                    span,
+                    fmt!{"binding `%s` should use ref or copy mode",
+                         *path_to_ident(path)});
+            }
+          }
+        }
+    }
+}
+
 fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
             _body: ast::blk, span: span, id: ast::node_id) {
     debug!{"lint check_fn fk=%? id=%?", fk, id};
@@ -527,11 +556,12 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
 fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
 
     let v = visit::mk_simple_visitor(@{
-        visit_item:
-            |it| check_item(it, tcx),
-        visit_fn:
-            |fk, decl, body, span, id| check_fn(tcx, fk, decl, body,
-                                                span, id),
+        visit_item: |it|
+            check_item(it, tcx),
+        visit_fn: |fk, decl, body, span, id|
+            check_fn(tcx, fk, decl, body, span, id),
+        visit_pat: |pat|
+            check_pat(tcx, pat),
         with *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), v);
