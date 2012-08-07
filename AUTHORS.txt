@@ -6,6 +6,7 @@ Other authors:
 
 Adam Bozanich <adam.boz@gmail.com>
 Aleksander Balicki <balicki.aleksander@gmail.com>
+Alex Rønne Petersen <alex@lycus.org>
 Alexander Stavonin <a.stavonin@gmail.com>
 Andreas Gal <gal@mozilla.com>
 Arkaitz Jimenez <arkaitzj@gmail.com>
