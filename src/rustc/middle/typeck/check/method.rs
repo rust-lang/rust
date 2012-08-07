@@ -25,20 +25,20 @@ fn transform_self_type_for_method(fcx: @fn_ctxt,
                                   method_info: MethodInfo)
                                -> ty::t {
     match method_info.self_type {
-        sty_by_ref | sty_value => {
-            impl_ty
-        }
-        sty_region(r, mutability) => {
-            // XXX: dummy_sp is unfortunate here.
-            let region = ast_region_to_region(fcx, fcx, dummy_sp(), r);
-            mk_rptr(fcx.ccx.tcx, region, { ty: impl_ty, mutbl: mutability })
-        }
-        sty_box(mutability) => {
-            mk_box(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
-        }
-        sty_uniq(mutability) => {
-            mk_uniq(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
-        }
+      sty_by_ref | sty_value => {
+        impl_ty
+      }
+      sty_region(r, mutability) => {
+        // XXX: dummy_sp is unfortunate here.
+        let region = ast_region_to_region(fcx, fcx, dummy_sp(), r);
+        mk_rptr(fcx.ccx.tcx, region, { ty: impl_ty, mutbl: mutability })
+      }
+      sty_box(mutability) => {
+        mk_box(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+      }
+      sty_uniq(mutability) => {
+        mk_uniq(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+      }
     }
 }
 
@@ -96,21 +96,21 @@ class lookup {
         match get_base_type_def_id(self.fcx.infcx,
                                  self.self_expr.span,
                                  self.self_ty) {
-            none => {
-                optional_inherent_methods = none;
-            }
-            some(base_type_def_id) => {
-                debug!{"(checking method) found base type"};
-                optional_inherent_methods =
-                    self.fcx.ccx.coherence_info.inherent_methods.find
-                        (base_type_def_id);
+          none => {
+            optional_inherent_methods = none;
+          }
+          some(base_type_def_id) => {
+            debug!{"(checking method) found base type"};
+            optional_inherent_methods =
+                self.fcx.ccx.coherence_info.inherent_methods.find
+                (base_type_def_id);
 
-                if optional_inherent_methods.is_none() {
-                    debug!{"(checking method) ... no inherent methods found"};
-                } else {
-                    debug!{"(checking method) ... inherent methods found"};
-                }
+            if optional_inherent_methods.is_none() {
+                debug!{"(checking method) ... no inherent methods found"};
+            } else {
+                debug!{"(checking method) ... inherent methods found"};
             }
+          }
         }
 
         loop {
@@ -462,52 +462,52 @@ class lookup {
 
         // Add inherent methods.
         match optional_inherent_methods {
-            none => {
-                // Continue.
+          none => {
+            // Continue.
+          }
+          some(inherent_methods) => {
+            debug!{"(adding inherent and extension candidates) adding \
+                    inherent candidates"};
+            for inherent_methods.each |implementation| {
+                debug!{"(adding inherent and extension candidates) \
+                        adding candidates from impl: %s",
+                        node_id_to_str(self.tcx().items,
+                                       implementation.did.node)};
+                self.add_candidates_from_impl(implementation,
+                                              use_assignability);
             }
-            some(inherent_methods) => {
-                debug!{"(adding inherent and extension candidates) adding \
-                        inherent candidates"};
-                for inherent_methods.each |implementation| {
-                    debug!{"(adding inherent and extension candidates) \
-                            adding candidates from impl: %s",
-                           node_id_to_str(self.tcx().items,
-                                          implementation.did.node)};
-                    self.add_candidates_from_impl(implementation,
-                                                  use_assignability);
-                }
-            }
+          }
         }
 
         // Add trait methods.
         match self.fcx.ccx.trait_map.find(self.expr.id) {
-            none => {
-                // Should only happen for placement new right now.
-            }
-            some(trait_ids) => {
-                for (*trait_ids).each |trait_id| {
-                    debug!{"(adding inherent and extension candidates) \
-                            trying trait: %s",
-                           self.def_id_to_str(trait_id)};
+          none => {
+            // Should only happen for placement new right now.
+          }
+          some(trait_ids) => {
+            for (*trait_ids).each |trait_id| {
+                debug!{"(adding inherent and extension candidates) \
+                        trying trait: %s",
+                        self.def_id_to_str(trait_id)};
 
-                    let coherence_info = self.fcx.ccx.coherence_info;
-                    match coherence_info.extension_methods.find(trait_id) {
-                        none => {
-                            // Do nothing.
-                        }
-                        some(extension_methods) => {
-                            for extension_methods.each |implementation| {
-                                debug!{"(adding inherent and extension \
-                                         candidates) adding impl %s",
-                                       self.def_id_to_str
-                                        (implementation.did)};
-                                self.add_candidates_from_impl
-                                    (implementation, use_assignability);
-                            }
-                        }
+                let coherence_info = self.fcx.ccx.coherence_info;
+                match coherence_info.extension_methods.find(trait_id) {
+                  none => {
+                    // Do nothing.
+                  }
+                  some(extension_methods) => {
+                    for extension_methods.each |implementation| {
+                        debug!{"(adding inherent and extension \
+                                candidates) adding impl %s",
+                                self.def_id_to_str
+                                (implementation.did)};
+                        self.add_candidates_from_impl
+                            (implementation, use_assignability);
                     }
+                  }
                 }
             }
+          }
         }
     }
 
@@ -531,7 +531,7 @@ class lookup {
         // required receiver type (cand.rcvr_ty).  If this method is not
         // from an impl, this'll basically be a no-nop.
         match self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
-                                 cand.self_ty, cand.rcvr_ty) {
+                                   cand.self_ty, cand.rcvr_ty) {
           result::ok(_) => (),
           result::err(_) => {
             self.tcx().sess.span_bug(
