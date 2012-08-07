@@ -193,7 +193,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
                     local = true;
                     parent_enum = some(/* FIXME (#2543) */ copy it.ident);
                 }
-            }
+            },
           _ => ()
         }
         if local { break; }
