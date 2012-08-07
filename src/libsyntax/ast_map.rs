@@ -217,19 +217,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         }
       }
       item_class(struct_def, _) => {
-          let (_, ms) = ast_util::split_class_items(struct_def.members);
-          // Map trait refs to their parent classes. This is
-          // so we can find the self_ty
-          for struct_def.traits.each |p| {
-              cx.map.insert(p.ref_id, node_item(i, item_path));
-              // This is so we can look up the right things when
-              // encoding/decoding
-              cx.map.insert(p.impl_id, node_item(i, item_path));
-          }
-          let d_id = ast_util::local_def(i.id);
-          let p = extend(cx, i.ident);
-           // only need to handle methods
-          do vec::iter(ms) |m| { map_method(d_id, p, m, cx); }
+        map_struct_def(struct_def, node_item(i, item_path), i.ident, i.id, cx,
+                       v);
       }
       item_trait(tps, traits, methods) => {
         // Map trait refs to their parent classes. This is
@@ -256,6 +245,23 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     }
     visit::visit_item(i, cx, v);
     vec::pop(cx.path);
+}
+
+fn map_struct_def(struct_def: ast::struct_def, parent_node: ast_node,
+                  ident: ast::ident, id: ast::node_id, cx: ctx, _v: vt) {
+    let (_, ms) = ast_util::split_class_items(struct_def.members);
+    // Map trait refs to their parent classes. This is
+    // so we can find the self_ty
+    for struct_def.traits.each |p| {
+        cx.map.insert(p.ref_id, parent_node);
+        // This is so we can look up the right things when
+        // encoding/decoding
+        cx.map.insert(p.impl_id, parent_node);
+    }
+    let d_id = ast_util::local_def(id);
+    let p = extend(cx, ident);
+     // only need to handle methods
+    do vec::iter(ms) |m| { map_method(d_id, p, m, cx); }
 }
 
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {

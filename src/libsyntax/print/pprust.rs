@@ -532,76 +532,8 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_class(struct_def, tps) => {
           head(s, ~"class");
-          word_nbsp(s, *item.ident);
-          print_type_params(s, tps);
-          if vec::len(struct_def.traits) != 0u {
-              word_space(s, ~":");
-              commasep(s, inconsistent, struct_def.traits, |s, p|
-                  print_path(s, p.path, false));
-          }
-          bopen(s);
-          hardbreak_if_not_bol(s);
-          do option::iter(struct_def.ctor) |ctor| {
-            maybe_print_comment(s, ctor.span.lo);
-            print_outer_attributes(s, ctor.node.attrs);
-            // Doesn't call head because there shouldn't be a space after new.
-            cbox(s, indent_unit);
-            ibox(s, 4);
-            word(s.s, ~"new(");
-            print_fn_args(s, ctor.node.dec, ~[]);
-            word(s.s, ~")");
-            space(s.s);
-            print_block(s, ctor.node.body);
-          }
-          do option::iter(struct_def.dtor) |dtor| {
-            hardbreak_if_not_bol(s);
-            maybe_print_comment(s, dtor.span.lo);
-            print_outer_attributes(s, dtor.node.attrs);
-            head(s, ~"drop");
-            print_block(s, dtor.node.body);
-          }
-          for struct_def.members.each |ci| {
-                  /*
-                     FIXME (#1893): collect all private items and print
-                     them in a single "priv" section
-
-                     tjc: I'm not going to fix this yet b/c we might
-                     change how exports work, including for class items
-                   */
-             hardbreak_if_not_bol(s);
-             maybe_print_comment(s, ci.span.lo);
-             let pr = ast_util::class_member_visibility(ci);
-             match pr {
-                ast::private => {
-                    head(s, ~"priv");
-                    bopen(s);
-                    hardbreak_if_not_bol(s);
-                }
-                _ => ()
-             }
-             match ci.node {
-                ast::instance_var(nm, t, mt, _,_) => {
-                    word_nbsp(s, ~"let");
-                    match mt {
-                      ast::class_mutable => word_nbsp(s, ~"mut"),
-                      _ => ()
-                    }
-                    word(s.s, *nm);
-                    word_nbsp(s, ~":");
-                    print_type(s, t);
-                    word(s.s, ~";");
-                }
-                ast::class_method(m) => {
-                    print_method(s, m);
-                }
-             }
-             match pr {
-                 ast::private => bclose(s, ci.span),
-                 _ => ()
-             }
-          }
-          bclose(s, item.span);
-       }
+          print_struct(s, struct_def, tps, item.ident, item.span);
+      }
       ast::item_impl(tps, traits, ty, methods) => {
         head(s, ~"impl");
         word(s.s, *item.ident);
@@ -648,6 +580,79 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
     }
     s.ann.post(ann_node);
+}
+
+fn print_struct(s: ps, struct_def: ast::struct_def, tps: ~[ast::ty_param],
+                ident: ast::ident, span: ast::span) {
+    word_nbsp(s, *ident);
+    print_type_params(s, tps);
+    if vec::len(struct_def.traits) != 0u {
+        word_space(s, ~":");
+        commasep(s, inconsistent, struct_def.traits, |s, p|
+            print_path(s, p.path, false));
+    }
+    bopen(s);
+    hardbreak_if_not_bol(s);
+    do option::iter(struct_def.ctor) |ctor| {
+      maybe_print_comment(s, ctor.span.lo);
+      print_outer_attributes(s, ctor.node.attrs);
+      // Doesn't call head because there shouldn't be a space after new.
+      cbox(s, indent_unit);
+      ibox(s, 4);
+      word(s.s, ~"new(");
+      print_fn_args(s, ctor.node.dec, ~[]);
+      word(s.s, ~")");
+      space(s.s);
+      print_block(s, ctor.node.body);
+    }
+    do option::iter(struct_def.dtor) |dtor| {
+      hardbreak_if_not_bol(s);
+      maybe_print_comment(s, dtor.span.lo);
+      print_outer_attributes(s, dtor.node.attrs);
+      head(s, ~"drop");
+      print_block(s, dtor.node.body);
+    }
+    for struct_def.members.each |ci| {
+            /*
+               FIXME (#1893): collect all private items and print
+               them in a single "priv" section
+
+               tjc: I'm not going to fix this yet b/c we might
+               change how exports work, including for class items
+             */
+       hardbreak_if_not_bol(s);
+       maybe_print_comment(s, ci.span.lo);
+       let pr = ast_util::class_member_visibility(ci);
+       match pr {
+          ast::private => {
+              head(s, ~"priv");
+              bopen(s);
+              hardbreak_if_not_bol(s);
+          }
+          _ => ()
+       }
+       match ci.node {
+          ast::instance_var(nm, t, mt, _,_) => {
+              word_nbsp(s, ~"let");
+              match mt {
+                ast::class_mutable => word_nbsp(s, ~"mut"),
+                _ => ()
+              }
+              word(s.s, *nm);
+              word_nbsp(s, ~":");
+              print_type(s, t);
+              word(s.s, ~";");
+          }
+          ast::class_method(m) => {
+              print_method(s, m);
+          }
+       }
+       match pr {
+           ast::private => bclose(s, ci.span),
+           _ => ()
+       }
+    }
+    bclose(s, span);
 }
 
 /// This doesn't deserve to be called "pretty" printing, but it should be
