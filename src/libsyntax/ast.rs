@@ -166,6 +166,7 @@ enum pat_ {
     pat_enum(@path, option<~[@pat]>), // "none" means a * pattern where
                                   // we don't bind the fields to names
     pat_rec(~[field_pat], bool),
+    pat_struct(@path, ~[field_pat], bool),
     pat_tup(~[@pat]),
     pat_box(@pat),
     pat_uniq(@pat),

@@ -222,6 +222,12 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
       pat_rec(fields, _) => for fields.each |f| {
         v.visit_pat(f.pat, e, v)
       }
+      pat_struct(path, fields, _) => {
+        visit_path(path, e, v);
+        for fields.each |f| {
+            v.visit_pat(f.pat, e, v);
+        }
+      }
       pat_tup(elts) => for elts.each |elt| {
         v.visit_pat(elt, e, v)
       }

@@ -42,14 +42,14 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              mac_ellipsis, mac_invoc, mac_invoc_tt, mac_var, matcher,
              match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
              mutability, neg, noreturn, not, pat, pat_box, pat_enum,
-             pat_ident, pat_lit, pat_range, pat_rec, pat_tup, pat_uniq,
-             pat_wild, path, private, proto, proto_bare, proto_block,
-             proto_box, proto_uniq, provided, public, pure_fn, purity,
-             re_anon, re_named, region, rem, required, ret_style, return_val,
-             self_ty, shl, shr, stmt, stmt_decl, stmt_expr, stmt_semi,
-             subtract, sty_box, sty_by_ref, sty_region, sty_uniq, sty_value,
-             token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
-             tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
+             pat_ident, pat_lit, pat_range, pat_rec, pat_struct, pat_tup,
+             pat_uniq, pat_wild, path, private, proto, proto_bare,
+             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
+             purity, re_anon, re_named, region, rem, required, ret_style,
+             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
+             stmt_semi, subtract, sty_box, sty_by_ref, sty_region, sty_uniq,
+             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
+             tt_tok, tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
              ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_path, ty_ptr,
              ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec,
              ty_fixed_length, unchecked_blk, uniq, unsafe_blk, unsafe_fn,
@@ -1640,6 +1640,52 @@ class parser {
         };
     }
 
+    fn parse_pat_fields(refutable: bool) -> (~[ast::field_pat], bool) {
+        let mut fields = ~[];
+        let mut etc = false;
+        let mut first = true;
+        while self.token != token::RBRACE {
+            if first { first = false; }
+            else { self.expect(token::COMMA); }
+
+            if self.token == token::UNDERSCORE {
+                self.bump();
+                if self.token != token::RBRACE {
+                    self.fatal(~"expected `}`, found `" +
+                               token_to_str(self.reader, self.token) +
+                               ~"`");
+                }
+                etc = true;
+                break;
+            }
+
+            let lo1 = self.last_span.lo;
+            let fieldname = if self.look_ahead(1u) == token::COLON {
+                self.parse_ident()
+            } else {
+                self.parse_value_ident()
+            };
+            let hi1 = self.last_span.lo;
+            let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
+                                                    fieldname);
+            let mut subpat;
+            if self.token == token::COLON {
+                self.bump();
+                subpat = self.parse_pat(refutable);
+            } else {
+                subpat = @{
+                    id: self.get_id(),
+                    node: pat_ident(bind_by_implicit_ref,
+                                    fieldpath,
+                                    none),
+                    span: self.last_span
+                };
+            }
+            vec::push(fields, {ident: fieldname, pat: subpat});
+        }
+        return (fields, etc);
+    }
+
     fn parse_pat(refutable: bool) -> @pat {
         maybe_whole!{self, nt_pat};
 
@@ -1685,48 +1731,7 @@ class parser {
           }
           token::LBRACE => {
             self.bump();
-            let mut fields = ~[];
-            let mut etc = false;
-            let mut first = true;
-            while self.token != token::RBRACE {
-                if first { first = false; }
-                else { self.expect(token::COMMA); }
-
-                if self.token == token::UNDERSCORE {
-                    self.bump();
-                    if self.token != token::RBRACE {
-                        self.fatal(~"expected `}`, found `" +
-                                   token_to_str(self.reader, self.token) +
-                                   ~"`");
-                    }
-                    etc = true;
-                    break;
-                }
-
-                let lo1 = self.last_span.lo;
-                let fieldname = if self.look_ahead(1u) == token::COLON {
-                    self.parse_ident()
-                } else {
-                    self.parse_value_ident()
-                };
-                let hi1 = self.last_span.lo;
-                let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
-                                                        fieldname);
-                let mut subpat;
-                if self.token == token::COLON {
-                    self.bump();
-                    subpat = self.parse_pat(refutable);
-                } else {
-                    subpat = @{
-                        id: self.get_id(),
-                        node: pat_ident(bind_by_implicit_ref,
-                                        fieldpath,
-                                        none),
-                        span: mk_sp(lo, hi)
-                    };
-                }
-                vec::push(fields, {ident: fieldname, pat: subpat});
-            }
+            let (fields, etc) = self.parse_pat_fields(refutable);
             hi = self.span.hi;
             self.bump();
             pat = pat_rec(fields, etc);
@@ -1771,21 +1776,82 @@ class parser {
             } else if !is_plain_ident(self.token) {
                 pat = self.parse_enum_variant(refutable);
             } else {
-                // this is a plain identifier, like `x` or `x(...)`
+                let binding_mode;
+                if self.eat_keyword(~"copy") {
+                    binding_mode = bind_by_value;
+                } else if refutable {
+                    // XXX: Should be bind_by_value, but that's not
+                    // backward compatible.
+                    binding_mode = bind_by_implicit_ref;
+                } else {
+                    binding_mode = bind_by_value;
+                }
+
+                let cannot_be_enum_or_struct;
                 match self.look_ahead(1) {
-                  token::LPAREN | token::LBRACKET | token::LT => {
-                    pat = self.parse_enum_variant(refutable);
-                  }
-                  _ => {
-                    let binding_mode = if refutable {
-                        // XXX: Should be bind_by_value, but that's not
-                        // backward compatible.
-                        bind_by_implicit_ref
+                    token::LPAREN | token::LBRACKET | token::LT |
+                    token::LBRACE =>
+                        cannot_be_enum_or_struct = false,
+                    _ =>
+                        cannot_be_enum_or_struct = true
+                }
+
+                if is_plain_ident(self.token) && cannot_be_enum_or_struct {
+                    let name = self.parse_value_path();
+                    let sub;
+                    if self.eat(token::AT) {
+                        sub = some(self.parse_pat(refutable));
                     } else {
-                        bind_by_value
+                        sub = none;
                     };
-                    pat = self.parse_pat_ident(refutable, binding_mode);
-                  }
+                    pat = pat_ident(binding_mode, name, sub);
+                } else {
+                    let enum_path = self.parse_path_with_tps(true);
+                    match self.token {
+                        token::LBRACE => {
+                            self.bump();
+                            let (fields, etc) =
+                                self.parse_pat_fields(refutable);
+                            self.bump();
+                            pat = pat_struct(enum_path, fields, etc);
+                        }
+                        _ => {
+                            let mut args: ~[@pat] = ~[];
+                            let mut star_pat = false;
+                            match self.token {
+                              token::LPAREN => match self.look_ahead(1u) {
+                                token::BINOP(token::STAR) => {
+                                    // This is a "top constructor only" pat
+                                      self.bump(); self.bump();
+                                      star_pat = true;
+                                      self.expect(token::RPAREN);
+                                  }
+                                _ => {
+                                    args = self.parse_unspanned_seq(
+                                        token::LPAREN, token::RPAREN,
+                                        seq_sep_trailing_disallowed
+                                            (token::COMMA),
+                                        |p| p.parse_pat(refutable));
+                                  }
+                              }
+                              _ => ()
+                            }
+                            // at this point, we're not sure whether it's a
+                            // enum or a bind
+                            if star_pat {
+                                pat = pat_enum(enum_path, none);
+                            }
+                            else if vec::is_empty(args) &&
+                                vec::len(enum_path.idents) == 1u {
+                                pat = pat_ident(binding_mode,
+                                                enum_path,
+                                                none);
+                            }
+                            else {
+                                pat = pat_enum(enum_path, some(args));
+                            }
+                        }
+                    }
                 }
             }
             hi = self.span.hi;

@@ -212,7 +212,8 @@ fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> option<ctor> {
       pat_range(lo, hi) => {
         some(range(eval_const_expr(tcx, lo), eval_const_expr(tcx, hi)))
       }
-      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) => {
+      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) |
+      pat_struct(*) => {
         some(single)
       }
     }
@@ -234,7 +235,8 @@ fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
 
 fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
     match ty::get(left_ty).struct {
-      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_tup(_) | ty::ty_rec(_) => {
+      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_tup(_) | ty::ty_rec(_) |
+      ty::ty_class(*) => {
         for m.each |r| {
             if !is_wild(tcx, r[0]) { return none; }
         }
@@ -286,6 +288,7 @@ fn ctor_arity(tcx: ty::ctxt, ctor: ctor, ty: ty::t) -> uint {
           some(v) => v.args.len()
         }
       }
+      ty::ty_class(cid, _) => ty::lookup_class_fields(tcx, cid).len(),
       _ => 0u
     }
 }
@@ -327,7 +330,29 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         };
         let args = vec::map(ty_flds, |ty_f| {
             match vec::find(flds, |f| f.ident == ty_f.ident ) {
-              some(f) => f.pat, _ => wild()
+              some(f) => f.pat,
+              _ => wild()
+            }
+        });
+        some(vec::append(args, vec::tail(r)))
+      }
+      pat_struct(_, flds, _) => {
+        // Grab the class data that we care about.
+        let class_fields, class_id;
+        match ty::get(left_ty).struct {
+            ty::ty_class(cid, substs) => {
+                class_id = cid;
+                class_fields = ty::lookup_class_fields(tcx, class_id);
+            }
+            _ => {
+                tcx.sess.span_bug(r0.span, ~"struct pattern didn't resolve \
+                                             to a struct");
+            }
+        }
+        let args = vec::map(class_fields, |class_field| {
+            match vec::find(flds, |f| f.ident == class_field.ident ) {
+              some(f) => f.pat,
+              _ => wild()
             }
         });
         some(vec::append(args, vec::tail(r)))
@@ -377,7 +402,9 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
 fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     match tcx.def_map.find(pat.id) {
       some(def_variant(enum_id, var_id)) => {
-        if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u { return true; }
+        if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u {
+            return true;
+        }
       }
       _ => ()
     }
@@ -389,6 +416,12 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
       pat_wild | pat_ident(_, _, none) => { false }
       pat_lit(_) | pat_range(_, _) => { true }
       pat_rec(fields, _) => {
+        for fields.each |it| {
+            if is_refutable(tcx, it.pat) { return true; }
+        }
+        false
+      }
+      pat_struct(_, fields, _) => {
         for fields.each |it| {
             if is_refutable(tcx, it.pat) { return true; }
         }
