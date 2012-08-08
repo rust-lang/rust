@@ -490,6 +490,13 @@ fn note_unique_llvm_symbol(ccx: @crate_ctxt, sym: ~str) {
 fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let _icx = ccx.insn_ctxt(~"declare_tydesc");
     let llty = type_of(ccx, t);
+
+    if ccx.sess.count_type_sizes() {
+        io::println(fmt!("%u\t%s",
+                         llsize_of_real(ccx, llty),
+                         ty_to_str(ccx.tcx, t)));
+    }
+
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
     //XXX this triggers duplicate LLVM symbols
@@ -576,6 +583,7 @@ fn emit_tydescs(ccx: @crate_ctxt) {
     for ccx.tydescs.each |key, val| {
         let glue_fn_ty = T_ptr(T_glue_fn(ccx));
         let ti = val;
+
         let take_glue =
             match copy ti.take_glue {
               none => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }

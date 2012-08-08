@@ -41,6 +41,7 @@ const borrowck_note_pure: uint = 2048;
 const borrowck_note_loan: uint = 4096;
 const no_landing_pads: uint = 8192;
 const debug_llvm: uint = 16384;
+const count_type_sizes: uint = 32768;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"ppregions", ~"prettyprint regions with \
@@ -63,7 +64,9 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       borrowck_note_loan),
      (~"no-landing-pads", ~"omit landing pads for unwinding",
       no_landing_pads),
-     (~"debug-llvm", ~"enable debug output from LLVM", debug_llvm)
+     (~"debug-llvm", ~"enable debug output from LLVM", debug_llvm),
+     (~"count-type-sizes", ~"count the sizes of aggregate types",
+      count_type_sizes)
     ]
 }
 
@@ -179,6 +182,7 @@ impl session for session {
     fn ppregions() -> bool { self.debugging_opt(ppregions) }
     fn time_passes() -> bool { self.debugging_opt(time_passes) }
     fn count_llvm_insns() -> bool { self.debugging_opt(count_llvm_insns) }
+    fn count_type_sizes() -> bool { self.debugging_opt(count_type_sizes) }
     fn time_llvm_passes() -> bool { self.debugging_opt(time_llvm_passes) }
     fn trans_stats() -> bool { self.debugging_opt(trans_stats) }
     fn no_asm_comments() -> bool { self.debugging_opt(no_asm_comments) }
