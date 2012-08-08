@@ -517,7 +517,7 @@ class CoherenceChecker {
         }
     }
 
-    fn create_impl_from_struct(struct_def: ast::struct_def,
+    fn create_impl_from_struct(struct_def: @ast::struct_def,
                                ident: ast::ident,
                                id: node_id)
                             -> @Impl {

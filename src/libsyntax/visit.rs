@@ -61,7 +61,7 @@ type visitor<E> =
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id, E, vt<E>),
       visit_ty_method: fn@(ty_method, E, vt<E>),
       visit_trait_method: fn@(trait_method, E, vt<E>),
-      visit_struct_def: fn@(struct_def, ident, ~[ty_param], node_id, E,
+      visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id, E,
                             vt<E>),
       visit_class_item: fn@(@class_member, E, vt<E>)};
 
@@ -83,8 +83,8 @@ fn default_visitor<E>() -> visitor<E> {
           visit_fn: |a,b,c,d,e,f,g|visit_fn::<E>(a, b, c, d, e, f, g),
           visit_ty_method: |a,b,c|visit_ty_method::<E>(a, b, c),
           visit_trait_method: |a,b,c|visit_trait_method::<E>(a, b, c),
-          visit_struct_def:
-            |a,b,c,d,e,f|visit_struct_def::<E>(a, b, c, d, e, f),
+          visit_struct_def: |a,b,c,d,e,f|visit_struct_def::<E>(a, b, c,
+                                                               d, e, f),
           visit_class_item: |a,b,c|visit_class_item::<E>(a, b, c)};
 }
 
@@ -318,7 +318,7 @@ fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
     }
 }
 
-fn visit_struct_def<E>(sd: struct_def, nm: ast::ident, tps: ~[ty_param],
+fn visit_struct_def<E>(sd: @struct_def, nm: ast::ident, tps: ~[ty_param],
                        id: node_id, e: E, v: vt<E>) {
     for sd.members.each |m| {
        v.visit_class_item(m, e, v);
@@ -479,7 +479,7 @@ type simple_visitor =
       visit_fn: fn@(fn_kind, fn_decl, blk, span, node_id),
       visit_ty_method: fn@(ty_method),
       visit_trait_method: fn@(trait_method),
-      visit_struct_def: fn@(struct_def, ident, ~[ty_param], node_id),
+      visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id),
       visit_class_item: fn@(@class_member)};
 
 fn simple_ignore_ty(_t: @ty) {}
@@ -503,7 +503,7 @@ fn default_simple_visitor() -> simple_visitor {
                         _id: node_id) { },
           visit_ty_method: fn@(_m: ty_method) { },
           visit_trait_method: fn@(_m: trait_method) { },
-          visit_struct_def: fn@(_sd: struct_def, _nm: ident,
+          visit_struct_def: fn@(_sd: @struct_def, _nm: ident,
                                 _tps: ~[ty_param], _id: node_id) { },
           visit_class_item: fn@(_c: @class_member) {}
          };
@@ -572,8 +572,8 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(m);
         visit_trait_method(m, e, v);
     }
-    fn v_struct_def(f: fn@(struct_def, ident, ~[ty_param], node_id),
-                    sd: struct_def, nm: ident, tps: ~[ty_param], id: node_id,
+    fn v_struct_def(f: fn@(@struct_def, ident, ~[ty_param], node_id),
+                    sd: @struct_def, nm: ident, tps: ~[ty_param], id: node_id,
                     &&e: (), v: vt<()>) {
         f(sd, nm, tps, id);
         visit_struct_def(sd, nm, tps, id, e, v);

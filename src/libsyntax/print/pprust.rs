@@ -582,7 +582,7 @@ fn print_item(s: ps, &&item: @ast::item) {
     s.ann.post(ann_node);
 }
 
-fn print_struct(s: ps, struct_def: ast::struct_def, tps: ~[ast::ty_param],
+fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
                 ident: ast::ident, span: ast::span) {
     word_nbsp(s, *ident);
     print_type_params(s, tps);
