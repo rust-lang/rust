@@ -885,7 +885,7 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
               e_span: span, variants: ~[ast::variant],
               -d: @ast::expr) -> @ast::expr {
     let ext_cx = cx;
-    let arms: ~[ast::arm] = do vec::from_fn(vec::len(variants)) |vidx| {
+    let mut arms: ~[ast::arm] = do vec::from_fn(vec::len(variants)) |vidx| {
         let variant = variants[vidx];
         let v_span = variant.span;
         let v_name = variant.node.name;
@@ -925,10 +925,19 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
          body: cx.expr_blk(body)}
     };
 
+    let impossible_case = {pats: ~[@{id: cx.next_id(),
+                                     node: ast::pat_wild,
+                                     span: e_span}],
+                        guard: none,
+                        // FIXME #3198: proper error message
+                           body: cx.expr_blk(cx.expr(e_span,
+                                                     ast::expr_fail(none)))};
+    arms += ~[impossible_case];
+
     // Generate code like:
     let e_name = cx.lit_str(e_span, e_name);
     let alt_expr = cx.expr(e_span,
-                           ast::expr_match(#ast{__i}, arms, ast::alt_check));
+                   ast::expr_match(#ast{__i}, arms, ast::alt_exhaustive));
     let var_lambda = #ast{ |__i| $(alt_expr) };
     let read_var = #ast{ $(cx.clone(d)).read_enum_variant($(var_lambda)) };
     let read_lambda = cx.lambda(cx.expr_blk(read_var));
