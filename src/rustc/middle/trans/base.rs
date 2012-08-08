@@ -2187,7 +2187,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
                                    this_tv.disr_val, (*tvs).len() == 1u,
                                    psubsts, d);
             }
-            ast::struct_variant_kind => {}
+            ast::struct_variant_kind(_) =>
+                ccx.tcx.sess.bug(~"can't monomorphize struct variants")
         }
         d
       }
@@ -4894,8 +4895,12 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                                            vi[i].disr_val, degen,
                                            none, llfn);
                     }
-                    ast::tuple_variant_kind(_) | ast::struct_variant_kind => {
+                    ast::tuple_variant_kind(_) => {
                         // Nothing to do.
+                    }
+                    ast::struct_variant_kind(struct_def) => {
+                        trans_struct_def(ccx, struct_def, tps, path,
+                                         variant.node.name, variant.node.id);
                     }
                 }
                 i += 1;
@@ -5210,7 +5215,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                       }
                     };
                 }
-                ast::struct_variant_kind => {
+                ast::struct_variant_kind(_) => {
                     fail ~"struct unexpected in get_item_val"
                 }
             }

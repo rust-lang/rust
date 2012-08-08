@@ -2868,7 +2868,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
                           disr_val: disr_val
                          }
                     }
-                    ast::struct_variant_kind =>
+                    ast::struct_variant_kind(_) =>
                         fail ~"struct variant kinds unimpl in enum_variants"
                 }
             })

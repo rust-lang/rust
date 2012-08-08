@@ -2081,7 +2081,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
         match v.node.kind {
             ast::tuple_variant_kind(args) if args.len() > 0u =>
                 arg_tys = ty::ty_fn_args(ctor_ty).map(|a| a.ty),
-            ast::tuple_variant_kind(_) | ast::struct_variant_kind =>
+            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) =>
                 arg_tys = ~[]
         };
         vec::push(variants, @{args: arg_tys, ctor_ty: ctor_ty,
