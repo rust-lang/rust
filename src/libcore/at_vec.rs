@@ -78,6 +78,16 @@ pure fn build<A>(builder: fn(push: pure fn(+A))) -> @[A] {
     build_sized(4, builder)
 }
 
+// Appending
+#[inline(always)]
+pure fn append<T: copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
+    do build_sized(lhs.len() + rhs.len()) |push| {
+        for vec::each(lhs) |x| { push(x); }
+        for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
+    }
+}
+
+
 /// Apply a function to each element of a vector and return the results
 pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
@@ -110,6 +120,21 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(t); i += 1u; }
+    }
+}
+
+impl extensions<T: copy> of vec_concat<T> for @[T] {
+    #[inline(always)]
+    pure fn +(rhs: &[const T]) -> @[T] {
+        append(self, rhs)
+    }
+}
+
+#[cfg(notest)]
+impl extensions<T: copy> of add<&[const T],@[T]> for @[T] {
+    #[inline(always)]
+    pure fn add(rhs: &[const T]) -> @[T] {
+        append(self, rhs)
     }
 }
 
@@ -214,3 +239,9 @@ fn test() {
     assert from_fn(5, |x| x+1) == @[1, 2, 3, 4, 5];
     assert from_elem(5, 3.14) == @[3.14, 3.14, 3.14, 3.14, 3.14];
 }
+
+#[test]
+fn append_test() {
+    assert @[1,2,3] + @[4,5,6] == @[1,2,3,4,5,6];
+}
+
