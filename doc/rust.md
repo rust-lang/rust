@@ -1129,8 +1129,8 @@ looks like:
 
 The only exception is that the body of the class constructor begins
 with all the class's fields uninitialized, and is allowed to -- in
-fact, must -- initialize all the fields. A special case in the
-typestate pass enforces this invariant.
+fact, must -- initialize all the fields. The compiler enforces this
+invariant.
 
 Usually, the class constructor stores its argument or arguments in the
 class's named fields. In this case, the `file_descriptor`'s data field
@@ -2067,31 +2067,6 @@ A `loop` expression denotes an infinite loop:
 loop_expr : "loop" '{' block '}';
 ~~~~~~~~
 
-For a block `b`, the expression `loop b` is semantically equivalent to
-`while true b`. However, `loop`s differ from `while` loops in that the
-typestate analysis pass takes into account that `loop`s are infinite.
-
-For example, the following (contrived) function uses a `loop` with a
-`return` expression:
-
-~~~~
-fn count() -> bool {
-  let mut i = 0;
-  loop {
-    i += 1;
-    if i == 20 { return true; }
-  }
-}
-~~~~
-
-This function compiles, because typestate recognizes that the `loop`
-never terminates (except non-locally, with `return`), thus there is no
-need to insert a spurious `fail` or `return` after the `loop`. If `loop`
-were replaced with `while true`, the function would be rejected
-because from the compiler's perspective, there would be a control path
-along which `count` does not return a value (that is, if the loop
-condition is always false).
-
 ### Break expressions
 
 ~~~~~~~~{.ebnf .gram}
@@ -2533,7 +2508,7 @@ macro-generated and user-written code can cause unintentional capture.
 Future versions of Rust will address these issues.
 
 
-# Types and typestates
+# Type system
 
 ## Types
 
@@ -2959,7 +2934,7 @@ Local variables are not initialized when allocated; the entire frame worth of
 local variables are allocated at once, on frame-entry, in an uninitialized
 state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
-initialized; this condition is guaranteed by the typestate system.
+initialized; this is enforced by the compiler.
 
 References are created for function arguments. If the compiler can not prove
 that the referred-to value will outlive the reference, it will try to set
