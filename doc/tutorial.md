@@ -74,7 +74,7 @@ Here's a parallel game of rock, paper, scissors to whet your appetite.
 ~~~~
 use std;
 
-import comm::{listen, methods};
+import comm::listen;
 import task::spawn;
 import iter::repeat;
 import rand::{seeded_rng, seed};
@@ -2440,10 +2440,10 @@ is used. This defines implementations of `to_str` for the `int` and
 
 ~~~~
 # trait to_str { fn to_str() -> ~str; }
-impl of to_str for int {
+impl int: to_str {
     fn to_str() -> ~str { int::to_str(self, 10u) }
 }
-impl of to_str for ~str {
+impl ~str: to_str {
     fn to_str() -> ~str { self }
 }
 ~~~~
@@ -2453,22 +2453,6 @@ Given these, we may call `1.to_str()` to get `~"1"`, or
 static overloading—when the Rust compiler sees the `to_str` method
 call, it looks for an implementation that matches the type with a
 method that matches the name, and simply calls that.
-
-## Scoping
-
-Implementations are not globally visible. Resolving a method to an
-implementation requires that implementation to be in scope. You can
-import and export implementations using the name of the trait they
-implement (multiple implementations with the same name can be in scope
-without problems). Or you can give them an explicit name if you
-prefer, using this syntax:
-
-~~~~
-# trait to_str { fn to_str() -> ~str; }
-impl nil_to_str of to_str for () {
-    fn to_str() -> ~str { ~"()" }
-}
-~~~~
 
 ## Bounded type parameters
 
@@ -2510,7 +2494,7 @@ trait seq<T> {
     fn len() -> uint;
     fn iter(fn(T));
 }
-impl <T> of seq<T> for ~[T] {
+impl<T> ~[T]: seq<T> {
     fn len() -> uint { vec::len(self) }
     fn iter(b: fn(T)) {
         for self.each |elt| { b(elt); }
@@ -2541,7 +2525,7 @@ trait eq {
   fn equals(&&other: self) -> bool;
 }
 
-impl of eq for int {
+impl int: eq {
   fn equals(&&other: int) -> bool { other == self }
 }
 ~~~~
@@ -2558,7 +2542,7 @@ However, consider this function:
 ~~~~
 # type circle = int; type rectangle = int;
 # trait drawable { fn draw(); }
-# impl of drawable for int { fn draw() {} }
+# impl int: drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
 fn draw_all<T: drawable>(shapes: ~[T]) {
     for shapes.each |shape| { shape.draw(); }
@@ -2595,7 +2579,7 @@ to a trait type:
 ~~~~
 # type circle = int; type rectangle = int;
 # trait drawable { fn draw(); }
-# impl of drawable for int { fn draw() {} }
+# impl int: drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
 # fn draw_all(shapes: ~[drawable]) {}
@@ -2909,7 +2893,7 @@ in parallel.  We might write something like:
 
 ~~~~
 import task::spawn;
-import comm::{port, chan, methods};
+import comm::{port, chan};
 
 let port = port();
 let chan = port.chan();
@@ -2939,7 +2923,7 @@ once it is complete.  The second line creates a channel for sending
 integers to the port `port`:
 
 ~~~~
-# import comm::{port, chan, methods};
+# import comm::{port, chan};
 # let port = port::<int>();
 let chan = port.chan();
 ~~~~
@@ -2949,7 +2933,7 @@ The next statement actually spawns the child:
 
 ~~~~
 # import task::{spawn};
-# import comm::{port, chan, methods};
+# import comm::{port, chan};
 # fn some_expensive_computation() -> int { 42 }
 # let port = port();
 # let chan = port.chan();
@@ -2969,7 +2953,7 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
-# import comm::{port, chan, methods};
+# import comm::{port, chan};
 # fn some_other_expensive_computation() {}
 # let port = port::<int>();
 # let chan = chan::<int>(port);
@@ -2991,7 +2975,7 @@ the string in response.  The child terminates when `0` is received.
 Here is the function that implements the child task:
 
 ~~~~
-# import comm::{port, chan, methods};
+# import comm::{port, chan};
 fn stringifier(from_parent: port<uint>,
                to_parent: chan<~str>) {
     let mut value: uint;
@@ -3015,7 +2999,7 @@ Here is the code for the parent task:
 
 ~~~~
 # import task::{spawn_conversation};
-# import comm::{chan, port, methods};
+# import comm::{chan, port};
 # fn stringifier(from_parent: comm::port<uint>,
 #                to_parent: comm::chan<~str>) {
 #     comm::send(to_parent, ~"22");

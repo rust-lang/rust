@@ -1299,7 +1299,7 @@ type.
 
 ~~~~
 # trait shape { }
-# impl of shape for int { }
+# impl int: shape { }
 # let mycircle = 0;
 
 let myshape: shape = mycircle as shape;
@@ -1325,7 +1325,7 @@ An _implementation item_ provides an implementation of a
 
 type circle = {radius: float, center: point};
 
-impl circle_shape of shape for circle {
+impl circle: shape {
     fn draw(s: surface) { do_draw_circle(s, self); }
     fn bounding_box() -> bounding_box {
         let r = self.radius;
@@ -1363,10 +1363,10 @@ specified, after the `impl` keyword.
 ~~~~
 # trait seq<T> { }
 
-impl <T> of seq<T> for ~[T] {
+impl<T> ~[T]: seq<T> {
     /* ... */
 }
-impl of seq<bool> for u32 {
+impl u32: seq<bool> {
    /* Treat the integer as a sequence of bits */
 }
 ~~~~
@@ -2728,7 +2728,7 @@ trait printable {
   fn to_str() -> ~str;
 }
 
-impl of printable for ~str {
+impl ~str: printable {
   fn to_str() -> ~str { self }
 }
 
@@ -2775,7 +2775,7 @@ trait printable {
   fn to_str() -> ~str;
 }
 
-impl of printable for ~str {
+impl ~str: printable {
   fn to_str() -> ~str { self }
 }
 ~~~~~~
