@@ -10,6 +10,7 @@ export type_of_dtor;
 export type_of_explicit_args;
 export type_of_fn_from_ty;
 export type_of_fn;
+export type_of_glue_fn;
 export type_of_non_gc_box;
 
 fn type_of_explicit_args(cx: @crate_ctxt,
@@ -244,3 +245,9 @@ fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
          llvm::LLVMVoidType())
 }
 
+fn type_of_glue_fn(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
+    let tydescpp = T_ptr(T_ptr(ccx.tydesc_type));
+    let llty = T_ptr(type_of(ccx, t));
+    return T_fn(~[T_ptr(T_nil()), T_ptr(T_nil()), tydescpp, llty],
+                T_void());
+}

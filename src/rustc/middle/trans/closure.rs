@@ -492,7 +492,7 @@ fn make_opaque_cbox_drop_glue(
                                ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
       }
       ty::ck_uniq => {
-        free_ty(bcx, Load(bcx, cboxptr),
+        free_ty(bcx, cboxptr,
                 ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
       }
     }
@@ -501,7 +501,7 @@ fn make_opaque_cbox_drop_glue(
 fn make_opaque_cbox_free_glue(
     bcx: block,
     ck: ty::closure_kind,
-    cbox: ValueRef)     // ptr to the opaque closure
+    cbox: ValueRef)     // ptr to ptr to the opaque closure
     -> block {
     let _icx = bcx.insn_ctxt(~"closure::make_opaque_cbox_free_glue");
     match ck {
@@ -513,7 +513,7 @@ fn make_opaque_cbox_free_glue(
     do with_cond(bcx, IsNotNull(bcx, cbox)) |bcx| {
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
-        let cbox = PointerCast(bcx, cbox, T_opaque_cbox_ptr(ccx));
+        let cbox = Load(bcx, cbox);
         let tydescptr = GEPi(bcx, cbox, ~[0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);
         let tydesc = PointerCast(bcx, tydesc, lltydescty);

@@ -175,10 +175,13 @@ fn trans_evec(bcx: block, elements: evec_elements,
             let ty = ty::mk_evec(bcx.tcx(),
                                  {ty: unit_ty, mutbl: ast::m_mutbl},
                                  ty::vstore_fixed(count));
+            let llty = T_ptr(type_of::type_of(bcx.ccx(), ty));
 
             let n = C_uint(ccx, count);
             let vp = base::arrayalloca(bcx, llunitty, n);
-            add_clean(bcx, vp, ty);
+            // Cast to the fake type we told cleanup to expect.
+            let vp0 = BitCast(bcx, vp, llty);
+            add_clean(bcx, vp0, ty);
 
             let len = Mul(bcx, n, unit_sz);
 
