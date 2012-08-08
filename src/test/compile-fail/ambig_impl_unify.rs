@@ -2,12 +2,12 @@ trait foo {
     fn foo() -> int;
 }
 
-impl methods of foo for ~[uint] {
-    fn foo() -> int {1} //~ NOTE candidate #1 is `methods::foo`
+impl ~[uint]: foo {
+    fn foo() -> int {1} //~ NOTE candidate #1 is `__extensions__::foo`
 }
 
-impl methods of foo for ~[int] {
-    fn foo() -> int {2} //~ NOTE candidate #2 is `methods::foo`
+impl ~[int]: foo {
+    fn foo() -> int {2} //~ NOTE candidate #2 is `__extensions__::foo`
 }
 
 fn main() {

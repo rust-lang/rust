@@ -7,7 +7,6 @@
 use cci_capture_clause;
 
 import comm::recv;
-import comm::methods;
 
 fn main() {
     cci_capture_clause::foo(()).recv()

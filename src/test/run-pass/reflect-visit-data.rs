@@ -25,8 +25,7 @@ fn align(size: uint, align: uint) -> uint {
 enum ptr_visit_adaptor<V: ty_visitor movable_ptr> = {
     inner: V
 };
-impl ptr_visitor<V: ty_visitor movable_ptr>
-    of ty_visitor for ptr_visit_adaptor<V> {
+impl<V: ty_visitor movable_ptr> ptr_visit_adaptor<V>: ty_visitor {
 
     #[inline(always)]
     fn bump(sz: uint) {
@@ -464,7 +463,7 @@ enum my_visitor = @{
     mut vals: ~[~str]
 };
 
-impl extra_methods for my_visitor {
+impl my_visitor {
     fn get<T>(f: fn(T)) {
         unsafe {
             f(*(self.ptr1 as *T));
@@ -479,14 +478,14 @@ impl extra_methods for my_visitor {
     }
 }
 
-impl of movable_ptr for my_visitor {
+impl my_visitor: movable_ptr {
     fn move_ptr(adjustment: fn(*c_void) -> *c_void) {
         self.ptr1 = adjustment(self.ptr1);
         self.ptr2 = adjustment(self.ptr2);
     }
 }
 
-impl of ty_visitor for my_visitor {
+impl my_visitor: ty_visitor {
 
     fn visit_bot() -> bool { true }
     fn visit_nil() -> bool { true }

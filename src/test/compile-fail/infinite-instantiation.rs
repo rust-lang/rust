@@ -5,13 +5,13 @@ trait to_opt {
     fn to_option() -> option<self>;
 }
 
-impl of to_opt for uint {
+impl uint: to_opt {
     fn to_option() -> option<uint> {
         some(self)
     }
 }
 
-impl<T:copy> of to_opt for option<T> {
+impl<T:copy> option<T>: to_opt {
     fn to_option() -> option<option<T>> {
         some(self)
     }

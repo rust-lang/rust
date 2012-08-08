@@ -2,7 +2,7 @@ trait add {
     fn plus(++x: self) -> self;
 }
 
-impl of add for int {
+impl int: add {
     fn plus(++x: int) -> int { self + x }
 }
 

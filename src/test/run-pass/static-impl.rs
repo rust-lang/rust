@@ -1,16 +1,15 @@
 import a::*;
-import b::baz;
 
 trait plus {
     fn plus() -> int;
 }
 
 mod a {
-    impl foo of plus for uint { fn plus() -> int { self as int + 20 } }
+    impl uint: plus { fn plus() -> int { self as int + 20 } }
 }
 
 mod b {
-    impl baz of plus for ~str { fn plus() -> int { 200 } }
+    impl ~str: plus { fn plus() -> int { 200 } }
 }
 
 trait uint_utils {
@@ -18,7 +17,7 @@ trait uint_utils {
     fn multi(f: fn(uint));
 }
 
-impl util of uint_utils for uint {
+impl uint: uint_utils {
     fn str() -> ~str { uint::str(self) }
     fn multi(f: fn(uint)) {
         let mut c = 0u;
@@ -32,7 +31,7 @@ trait vec_utils<T> {
     fn map_<U>(f: fn(T) -> U) -> ~[U];
 }
 
-impl util<T> of vec_utils<T> for ~[T] {
+impl<T> ~[T]: vec_utils<T> {
     fn length_() -> uint { vec::len(self) }
     fn iter_(f: fn(T)) { for self.each |x| { f(x); } }
     fn map_<U>(f: fn(T) -> U) -> ~[U] {

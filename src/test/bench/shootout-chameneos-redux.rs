@@ -1,7 +1,5 @@
 // chameneos
 
-import io::reader_util;
-
 use std;
 import std::map;
 import std::map::hashmap;

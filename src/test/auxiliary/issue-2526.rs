@@ -31,6 +31,6 @@ class context_res {
 
 type context = arc_destruct<context_res>;
 
-impl context for context {
+impl context {
     fn socket() { }
 }

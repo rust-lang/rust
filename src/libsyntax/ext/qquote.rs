@@ -2,7 +2,7 @@ import ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
 import parse::parser;
 import parse::parser::parse_from_source_str;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 import fold::*;
 import visit::*;
@@ -34,7 +34,7 @@ trait qq_helper {
     fn get_fold_fn() -> ~str;
 }
 
-impl of qq_helper for @ast::crate {
+impl @ast::crate: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_crate(*self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
@@ -44,7 +44,7 @@ impl of qq_helper for @ast::crate {
     }
     fn get_fold_fn() -> ~str {~"fold_crate"}
 }
-impl of qq_helper for @ast::expr {
+impl @ast::expr: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_expr(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {
@@ -59,7 +59,7 @@ impl of qq_helper for @ast::expr {
     }
     fn get_fold_fn() -> ~str {~"fold_expr"}
 }
-impl of qq_helper for @ast::ty {
+impl @ast::ty: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_ty(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {
@@ -74,7 +74,7 @@ impl of qq_helper for @ast::ty {
     }
     fn get_fold_fn() -> ~str {~"fold_ty"}
 }
-impl of qq_helper for @ast::item {
+impl @ast::item: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_item(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
@@ -84,7 +84,7 @@ impl of qq_helper for @ast::item {
     }
     fn get_fold_fn() -> ~str {~"fold_item"}
 }
-impl of qq_helper for @ast::stmt {
+impl @ast::stmt: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_stmt(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}
@@ -94,7 +94,7 @@ impl of qq_helper for @ast::stmt {
     }
     fn get_fold_fn() -> ~str {~"fold_stmt"}
 }
-impl of qq_helper for @ast::pat {
+impl @ast::pat: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_pat(self, cx, v);}
     fn extract_mac() -> option<ast::mac_> {fail}

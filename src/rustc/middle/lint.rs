@@ -205,7 +205,7 @@ enum ctxt {
     ctxt_(ctxt_)
 }
 
-impl methods for ctxt {
+impl ctxt {
     fn get_level(lint: lint) -> level {
         get_lint_level(self.curr, lint)
     }

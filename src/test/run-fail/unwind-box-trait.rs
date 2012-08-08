@@ -8,7 +8,7 @@ trait i {
     fn foo();
 }
 
-impl of i for ~int {
+impl ~int: i {
     fn foo() { }
 }
 

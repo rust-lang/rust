@@ -144,7 +144,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
                       mut backtrace: expn_info,
                       mut mod_path: ~[ast::ident]};
-    impl of ext_ctxt for ctxt_repr {
+    impl ctxt_repr: ext_ctxt {
         fn codemap() -> codemap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
         fn cfg() -> ast::crate_cfg { self.cfg }
@@ -277,7 +277,7 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
 fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     -> ast::mac_arg {
     import ast::{matcher, matcher_, match_tok, match_seq, match_nonterminal};
-    import parse::lexer::{new_tt_reader, tt_reader_as_reader, reader};
+    import parse::lexer::{new_tt_reader, reader};
     import tt::earley_parser::{parse_or_else, matched_seq,
                                matched_nonterminal};
 

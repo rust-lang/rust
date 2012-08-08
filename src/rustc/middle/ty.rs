@@ -485,17 +485,17 @@ trait vid {
     pure fn to_str() -> ~str;
 }
 
-impl of vid for tv_vid {
+impl tv_vid: vid {
     pure fn to_uint() -> uint { *self }
     pure fn to_str() -> ~str { fmt!{"<V%u>", self.to_uint()} }
 }
 
-impl of vid for tvi_vid {
+impl tvi_vid: vid {
     pure fn to_uint() -> uint { *self }
     pure fn to_str() -> ~str { fmt!{"<VI%u>", self.to_uint()} }
 }
 
-impl of vid for region_vid {
+impl region_vid: vid {
     pure fn to_uint() -> uint { *self }
     pure fn to_str() -> ~str { fmt!{"<R%u>", self.to_uint()} }
 }
@@ -504,7 +504,7 @@ trait purity_to_str {
     pure fn to_str() -> ~str;
 }
 
-impl of purity_to_str for purity {
+impl purity: purity_to_str {
     pure fn to_str() -> ~str {
         purity_to_str(self)
     }
@@ -1469,7 +1469,7 @@ fn remove_copyable(k: kind) -> kind {
     k - kind_(KIND_MASK_COPY)
 }
 
-impl operators for kind {
+impl kind {
     fn &(other: kind) -> kind {
         lower_kind(self, other)
     }
@@ -1483,7 +1483,7 @@ impl operators for kind {
     }
 }
 
-impl operators of ops::bitand<kind,kind> for kind {
+impl kind: ops::bitand<kind,kind> {
     pure fn bitand(other: kind) -> kind {
         unchecked {
             lower_kind(self, other)
@@ -1491,7 +1491,7 @@ impl operators of ops::bitand<kind,kind> for kind {
     }
 }
 
-impl operators of ops::bitor<kind,kind> for kind {
+impl kind: ops::bitor<kind,kind> {
     pure fn bitor(other: kind) -> kind {
         unchecked {
             raise_kind(self, other)
@@ -1499,7 +1499,7 @@ impl operators of ops::bitor<kind,kind> for kind {
     }
 }
 
-impl operators of ops::sub<kind,kind> for kind {
+impl kind: ops::sub<kind,kind> {
     pure fn sub(other: kind) -> kind {
         unchecked {
             kind_(*self & !*other)

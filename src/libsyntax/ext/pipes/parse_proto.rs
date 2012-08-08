@@ -11,7 +11,7 @@ trait proto_parser {
     fn parse_state(proto: protocol);
 }
 
-impl proto_parser of proto_parser for parser {
+impl parser: proto_parser {
     fn parse_proto(id: ident) -> protocol {
         let proto = protocol(id, self.span);
 

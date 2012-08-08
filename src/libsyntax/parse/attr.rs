@@ -23,7 +23,7 @@ trait parser_attr {
     fn parse_optional_meta() -> ~[@ast::meta_item];
 }
 
-impl parser_attr of parser_attr for parser {
+impl parser: parser_attr {
 
     fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
         -> attr_or_ext

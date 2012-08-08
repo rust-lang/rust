@@ -5,6 +5,6 @@ trait to_str {
     fn to_str() -> ~str;
 }
 
-impl of to_str for ~str {
+impl ~str: to_str {
     fn to_str() -> ~str { self }
 }

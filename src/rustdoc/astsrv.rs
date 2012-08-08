@@ -144,7 +144,7 @@ fn build_error_handlers(
         inner: diagnostic::handler,
     };
 
-    impl of diagnostic::handler for diagnostic_handler {
+    impl diagnostic_handler: diagnostic::handler {
         fn fatal(msg: ~str) -> ! { self.inner.fatal(msg) }
         fn err(msg: ~str) { self.inner.err(msg) }
         fn bump_err_count() {

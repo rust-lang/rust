@@ -180,7 +180,7 @@ fn map_err<T: copy, E, F: copy>(res: result<T, E>, op: fn(E) -> F)
     }
 }
 
-impl extensions<T, E> for result<T, E> {
+impl<T, E> result<T, E> {
     fn is_ok() -> bool { is_ok(self) }
 
     fn is_err() -> bool { is_err(self) }
@@ -200,7 +200,7 @@ impl extensions<T, E> for result<T, E> {
     }
 }
 
-impl extensions<T:copy, E> for result<T, E> {
+impl<T: copy, E> result<T, E> {
     fn get() -> T { get(self) }
 
     fn map_err<F:copy>(op: fn(E) -> F) -> result<T,F> {
@@ -211,7 +211,7 @@ impl extensions<T:copy, E> for result<T, E> {
     }
 }
 
-impl extensions<T, E:copy> for result<T, E> {
+impl<T, E: copy> result<T, E> {
     fn get_err() -> E { get_err(self) }
 
     fn map<U:copy>(op: fn(T) -> U) -> result<U,E> {
@@ -222,7 +222,7 @@ impl extensions<T, E:copy> for result<T, E> {
     }
 }
 
-impl extensions<T:copy, E:copy> for result<T,E> {
+impl<T: copy, E: copy> result<T, E> {
     fn chain<U:copy>(op: fn(T) -> result<U,E>) -> result<U,E> {
         chain(self, op)
     }

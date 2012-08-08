@@ -1,7 +1,7 @@
 use std;
 
 import std::bitv;
-import io::{writer_util, reader_util};
+import io::writer_util;
 
 // Computes a single solution to a given 9x9 sudoku
 //

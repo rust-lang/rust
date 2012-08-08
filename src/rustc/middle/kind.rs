@@ -1,13 +1,12 @@
 import syntax::{visit, ast_util};
 import syntax::ast::*;
 import syntax::codemap::span;
-import ty::{kind, kind_copyable, kind_noncopyable, kind_const, operators};
+import ty::{kind, kind_copyable, kind_noncopyable, kind_const};
 import driver::session::session;
 import std::map::hashmap;
 import util::ppaux::{ty_to_str, tys_to_str};
 import syntax::print::pprust::expr_to_str;
 import freevars::freevar_entry;
-import dvec::extensions;
 import lint::{non_implicitly_copyable_typarams,implicit_copies};
 
 // Kind analysis pass.

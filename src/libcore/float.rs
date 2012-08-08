@@ -409,7 +409,7 @@ pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
 pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
-impl num of num::num for float {
+impl float: num::num {
     pure fn add(&&other: float)    -> float { return self + other; }
     pure fn sub(&&other: float)    -> float { return self - other; }
     pure fn mul(&&other: float)    -> float { return self * other; }

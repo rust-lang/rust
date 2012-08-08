@@ -652,7 +652,7 @@ fn default_ast_fold() -> ast_fold_precursor {
           new_span: noop_span};
 }
 
-impl of ast_fold for ast_fold_precursor {
+impl ast_fold_precursor: ast_fold {
     /* naturally, a macro to write these would be nice */
     fn fold_crate(c: crate) -> crate {
         let (n, s) = self.fold_crate(c.node, c.span, self as ast_fold);
@@ -763,7 +763,7 @@ impl of ast_fold for ast_fold_precursor {
     }
 }
 
-impl extensions for ast_fold {
+impl ast_fold {
     fn fold_attributes(attrs: ~[attribute]) -> ~[attribute] {
         attrs.map(|x| fold_attribute_(x, self))
     }

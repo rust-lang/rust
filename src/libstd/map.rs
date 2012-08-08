@@ -2,7 +2,6 @@
 
 #[warn(deprecated_mode)];
 
-import chained::hashmap;
 import io::writer_util;
 import to_str::to_str;
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
@@ -127,7 +126,7 @@ mod chained {
         found_after(@entry<K,V>, @entry<K,V>)
     }
 
-    impl private_methods<K, V: copy> for t<K, V> {
+    priv impl<K, V: copy> t<K, V> {
         fn search_rem(k: &K, h: uint, idx: uint,
                       e_root: @entry<K,V>) -> search_result<K,V> {
             let mut e0 = e_root;
@@ -207,7 +206,7 @@ mod chained {
         }
     }
 
-    impl hashmap<K: copy, V: copy> of map<K, V> for t<K, V> {
+    impl<K: copy, V: copy> t<K, V>: map<K, V> {
         fn size() -> uint { self.count }
 
         fn contains_key(+k: K) -> bool {
@@ -328,7 +327,7 @@ mod chained {
         }
     }
 
-    impl hashmap<K: copy to_str, V: to_str copy> of to_str for t<K, V> {
+    impl<K: copy to_str, V: to_str copy> t<K, V>: to_str {
         fn to_writer(wr: io::writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");
@@ -354,7 +353,7 @@ mod chained {
         }
     }
 
-    impl hashmap<K: copy, V: copy> of ops::index<K, V> for t<K, V> {
+    impl<K: copy, V: copy> t<K, V>: ops::index<K, V> {
         pure fn index(&&k: K) -> V {
             unchecked {
                 self.get(k)

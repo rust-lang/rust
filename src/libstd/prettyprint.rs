@@ -2,7 +2,7 @@ import io::writer;
 import io::writer_util;
 import serialization::serializer;
 
-impl of serializer for writer {
+impl writer: serializer {
     fn emit_nil() {
         self.write_str(~"()")
     }

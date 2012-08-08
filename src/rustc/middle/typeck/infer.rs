@@ -166,7 +166,6 @@ section on "Type Combining" below for details.
 
 import std::smallintmap;
 import std::smallintmap::smallintmap;
-import std::smallintmap::map;
 import std::map::hashmap;
 import middle::ty;
 import middle::ty::{tv_vid, tvi_vid, region_vid, vid,
@@ -174,14 +173,14 @@ import middle::ty::{tv_vid, tvi_vid, region_vid, vid,
 import syntax::{ast, ast_util};
 import syntax::ast::{ret_style, purity};
 import util::ppaux::{ty_to_str, mt_to_str};
-import result::{result, extensions, ok, err, map_vec, map_vec2, iter_vec2};
+import result::{result, ok, err, map_vec, map_vec2, iter_vec2};
 import ty::{mk_fn, type_is_bot};
 import check::regionmanip::{replace_bound_regions_in_fn_ty};
 import driver::session::session;
 import util::common::{indent, indenter};
 import ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 import ast::{m_const, m_imm, m_mutbl};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 export infer_ctxt;
 export new_infer_ctxt;
@@ -441,7 +440,7 @@ trait then {
         -> result<T,ty::type_err>;
 }
 
-impl methods of then for ures {
+impl ures: then {
     fn then<T:copy>(f: fn() -> result<T,ty::type_err>)
         -> result<T,ty::type_err> {
         self.chain(|_i| f())
@@ -453,7 +452,7 @@ trait cres_helpers<T> {
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T>;
 }
 
-impl methods<T:copy> of cres_helpers<T> for cres<T> {
+impl<T:copy> cres<T>: cres_helpers<T> {
     fn to_ures() -> ures {
         match self {
           ok(_v) => ok(()),
@@ -476,25 +475,25 @@ trait to_str {
     fn to_str(cx: infer_ctxt) -> ~str;
 }
 
-impl of to_str for ty::t {
+impl ty::t: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         ty_to_str(cx.tcx, self)
     }
 }
 
-impl of to_str for ty::mt {
+impl ty::mt: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         mt_to_str(cx.tcx, self)
     }
 }
 
-impl of to_str for ty::region {
+impl ty::region: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         util::ppaux::region_to_str(cx.tcx, self)
     }
 }
 
-impl<V:copy to_str> of to_str for bound<V> {
+impl<V:copy to_str> bound<V>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
           some(v) => v.to_str(cx),
@@ -503,7 +502,7 @@ impl<V:copy to_str> of to_str for bound<V> {
     }
 }
 
-impl<T:copy to_str> of to_str for bounds<T> {
+impl<T:copy to_str> bounds<T>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         fmt!{"{%s <: %s}",
              self.lb.to_str(cx),
@@ -511,7 +510,7 @@ impl<T:copy to_str> of to_str for bounds<T> {
     }
 }
 
-impl of to_str for int_ty_set {
+impl int_ty_set: to_str {
     fn to_str(_cx: infer_ctxt) -> ~str {
         match self {
           int_ty_set(v) => uint::to_str(v, 10u)
@@ -519,7 +518,7 @@ impl of to_str for int_ty_set {
     }
 }
 
-impl<V:copy vid, T:copy to_str> of to_str for var_value<V,T> {
+impl<V:copy vid, T:copy to_str> var_value<V, T>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
           redirect(vid) => fmt!{"redirect(%s)", vid.to_str()},
@@ -535,7 +534,7 @@ trait st {
     fn glb(infcx: infer_ctxt, b: self) -> cres<self>;
 }
 
-impl of st for ty::t {
+impl ty::t: st {
     fn sub(infcx: infer_ctxt, &&b: ty::t) -> ures {
         sub(infcx).tys(self, b).to_ures()
     }
@@ -549,7 +548,7 @@ impl of st for ty::t {
     }
 }
 
-impl of st for ty::region {
+impl ty::region: st {
     fn sub(infcx: infer_ctxt, &&b: ty::region) -> ures {
         sub(infcx).regions(self, b).chain(|_r| ok(()))
     }
@@ -576,7 +575,7 @@ fn rollback_to<V:copy vid, T:copy>(
     }
 }
 
-impl transaction_methods for infer_ctxt {
+impl infer_ctxt {
     /// Execute `f` and commit the bindings if successful
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
@@ -625,7 +624,7 @@ impl transaction_methods for infer_ctxt {
     }
 }
 
-impl methods for infer_ctxt {
+impl infer_ctxt {
     fn next_ty_var_id() -> tv_vid {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;
@@ -695,7 +694,7 @@ impl methods for infer_ctxt {
     }
 }
 
-impl unify_methods for infer_ctxt {
+impl infer_ctxt {
 
     fn set<V:copy vid, T:copy to_str>(
         vb: vals_and_bindings<V, T>, vid: V,
@@ -1123,7 +1122,7 @@ fn resolver(infcx: infer_ctxt, modes: uint) -> resolve_state {
                      mut v_seen: ~[]})
 }
 
-impl methods for resolve_state {
+impl resolve_state {
     fn should(mode: uint) -> bool {
         (self.modes & mode) == mode
     }
@@ -1347,7 +1346,7 @@ impl methods for resolve_state {
 // A.  But this upper-bound might be stricter than what is truly
 // needed.
 
-impl assignment for infer_ctxt {
+impl infer_ctxt {
     fn assign_tys(anmnt: assignment, a: ty::t, b: ty::t) -> ures {
 
         fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
@@ -1878,7 +1877,7 @@ fn super_tys<C:combine>(
     }
 }
 
-impl of combine for sub {
+impl sub: combine {
     fn infcx() -> infer_ctxt { *self }
     fn tag() -> ~str { ~"sub" }
 
@@ -2057,7 +2056,7 @@ impl of combine for sub {
     }
 }
 
-impl of combine for lub {
+impl lub: combine {
     fn infcx() -> infer_ctxt { *self }
     fn tag() -> ~str { ~"lub" }
 
@@ -2237,7 +2236,7 @@ impl of combine for lub {
     }
 }
 
-impl of combine for glb {
+impl glb: combine {
     fn infcx() -> infer_ctxt { *self }
     fn tag() -> ~str { ~"glb" }
 
@@ -2448,7 +2447,7 @@ trait lattice_ops {
     fn ty_bot(t: ty::t) -> cres<ty::t>;
 }
 
-impl of lattice_ops for lub {
+impl lub: lattice_ops {
     fn bnd<T:copy>(b: bounds<T>) -> option<T> { b.ub }
     fn with_bnd<T:copy>(b: bounds<T>, t: T) -> bounds<T> {
         {ub: some(t) with b}
@@ -2458,7 +2457,7 @@ impl of lattice_ops for lub {
     }
 }
 
-impl of lattice_ops for glb {
+impl glb: lattice_ops {
     fn bnd<T:copy>(b: bounds<T>) -> option<T> { b.lb }
     fn with_bnd<T:copy>(b: bounds<T>, t: T) -> bounds<T> {
         {lb: some(t) with b}

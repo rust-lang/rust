@@ -2,8 +2,8 @@
 
 import map;
 import map::{hashmap, str_hash};
-import io::{reader, reader_util};
-import dvec::{dvec, extensions};
+import io::reader;
+import dvec::dvec;
 
 export url, userinfo, query;
 export from_str, to_str;
@@ -673,7 +673,7 @@ fn to_str(url: url) -> ~str {
                       fragment]);
 }
 
-impl of to_str::to_str for url {
+impl url: to_str::to_str {
     fn to_str() -> ~str {
         to_str(self)
     }

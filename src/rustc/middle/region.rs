@@ -14,7 +14,7 @@ import syntax::codemap::span;
 import syntax::print::pprust;
 import syntax::ast_util::new_def_hash;
 import syntax::ast_map;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import metadata::csearch;
 
 import std::list;
@@ -365,7 +365,7 @@ enum determine_rp_ctxt {
     determine_rp_ctxt_(@determine_rp_ctxt_)
 }
 
-impl methods for determine_rp_ctxt {
+impl determine_rp_ctxt {
     fn add_rp(id: ast::node_id) {
         assert id != 0;
         if self.region_paramd_items.insert(id, ()) {

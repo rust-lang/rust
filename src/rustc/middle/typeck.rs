@@ -38,7 +38,7 @@ independently:
 
 */
 
-import result::{result, extensions};
+import result::result;
 import syntax::{ast, ast_util, ast_map};
 import ast::spanned;
 import ast::{required, provided};
@@ -54,9 +54,7 @@ import pat_util::{pat_is_variant, pat_id_map};
 import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
                     ty_param_bounds_and_ty, lookup_public_fields};
-import middle::typeck::infer::methods;
 import std::smallintmap;
-import std::smallintmap::map;
 import std::map;
 import std::map::{hashmap, int_hash};
 import std::serialization::{serialize_uint, deserialize_uint};

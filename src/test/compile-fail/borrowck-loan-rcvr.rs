@@ -6,7 +6,7 @@ trait methods {
     pure fn purem();
 }
 
-impl foo of methods for point {
+impl point: methods {
     fn impurem() {
     }
 

@@ -24,7 +24,7 @@ trait rng {
 type weighted<T> = { weight: uint, item: T };
 
 /// Extension methods for random number generators
-impl extensions for rng {
+impl rng {
 
     /// Return a random int
     fn gen_int() -> int {
@@ -248,7 +248,7 @@ class rand_res {
     drop { rustrt::rand_free(self.c); }
 }
 
-impl of rng for @rand_res {
+impl @rand_res: rng {
     fn next() -> u32 { return rustrt::rand_next((*self).c); }
 }
 
@@ -279,7 +279,7 @@ type xorshift_state = {
     mut w: u32
 };
 
-impl of rng for xorshift_state {
+impl xorshift_state: rng {
     fn next() -> u32 {
         let x = self.x;
         let mut t = x ^ (x << 11);

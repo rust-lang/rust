@@ -1,19 +1,14 @@
 import util::ppaux::ty_to_str;
 
-import dvec::extensions;
 import syntax::ast;
 import syntax::fold;
 import syntax::fold::*;
 import syntax::visit;
 import syntax::ast_map;
 import syntax::ast_util;
-import syntax::ast_util::inlined_item_methods;
 import syntax::codemap::span;
 import std::ebml;
 import std::ebml::writer;
-import std::ebml::serializer;
-import std::ebml::deserializer;
-import std::ebml::extensions;
 import std::ebml::get_doc;
 import std::map::hashmap;
 import std::serialization::serializer;
@@ -21,7 +16,6 @@ import std::serialization::deserializer;
 import std::serialization::serializer_helpers;
 import std::serialization::deserializer_helpers;
 import std::prettyprint::serializer;
-import std::smallintmap::map;
 import middle::{ty, typeck};
 import middle::typeck::{method_origin, method_map_entry,
                         serialize_method_map_entry,
@@ -155,7 +149,7 @@ fn reserve_id_range(sess: session,
     return {min: to_id_min, max: to_id_min};
 }
 
-impl translation_routines for extended_decode_ctxt {
+impl extended_decode_ctxt {
     fn tr_id(id: ast::node_id) -> ast::node_id {
         // from_id_range should be non-empty
         assert !ast_util::empty(self.from_id_range);
@@ -173,7 +167,7 @@ impl translation_routines for extended_decode_ctxt {
     }
 }
 
-impl of tr for ast::def_id {
+impl ast::def_id: tr {
     fn tr(xcx: extended_decode_ctxt) -> ast::def_id {
         xcx.tr_def_id(self)
     }
@@ -182,7 +176,7 @@ impl of tr for ast::def_id {
     }
 }
 
-impl of tr for span {
+impl span: tr {
     fn tr(xcx: extended_decode_ctxt) -> span {
         xcx.tr_span(self)
     }
@@ -192,7 +186,7 @@ trait def_id_serializer_helpers {
     fn emit_def_id(did: ast::def_id);
 }
 
-impl serializer_helpers<S: serializer> of def_id_serializer_helpers for S {
+impl<S: serializer> S: def_id_serializer_helpers {
     fn emit_def_id(did: ast::def_id) {
         ast::serialize_def_id(self, did)
     }
@@ -202,8 +196,7 @@ trait def_id_deserializer_helpers {
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id;
 }
 
-impl deserializer_helpers<D: deserializer> of def_id_deserializer_helpers
-        for D {
+impl<D: deserializer> D: def_id_deserializer_helpers {
 
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id {
         let did = ast::deserialize_def_id(self);
@@ -350,7 +343,7 @@ fn decode_def(xcx: extended_decode_ctxt, doc: ebml::doc) -> ast::def {
     def.tr(xcx)
 }
 
-impl of tr for ast::def {
+impl ast::def: tr {
     fn tr(xcx: extended_decode_ctxt) -> ast::def {
         match self {
           ast::def_fn(did, p) => { ast::def_fn(did.tr(xcx), p) }
@@ -396,14 +389,14 @@ trait ebml_deserializer_helper {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry;
 }
 
-impl helper of ebml_deserializer_helper for ebml::ebml_deserializer {
+impl ebml::ebml_deserializer: ebml_deserializer_helper {
     fn read_freevar_entry(xcx: extended_decode_ctxt) -> freevar_entry {
         let fv = deserialize_freevar_entry(self);
         fv.tr(xcx)
     }
 }
 
-impl of tr for freevar_entry {
+impl freevar_entry: tr {
     fn tr(xcx: extended_decode_ctxt) -> freevar_entry {
         {def: self.def.tr(xcx), span: self.span.tr(xcx)}
     }
@@ -416,14 +409,14 @@ trait read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry;
 }
 
-impl helper of read_method_map_entry_helper for ebml::ebml_deserializer {
+impl ebml::ebml_deserializer: read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry {
         let mme = deserialize_method_map_entry(self);
         {derefs: mme.derefs, origin: mme.origin.tr(xcx)}
     }
 }
 
-impl of tr for method_origin {
+impl method_origin: tr {
     fn tr(xcx: extended_decode_ctxt) -> method_origin {
         match self {
           typeck::method_static(did) => {
@@ -502,7 +495,7 @@ trait vtable_deserialization_helpers {
     fn read_vtable_origin(xcx: extended_decode_ctxt) -> typeck::vtable_origin;
 }
 
-impl helpers of vtable_deserialization_helpers for ebml::ebml_deserializer {
+impl ebml::ebml_deserializer: vtable_deserialization_helpers {
     fn read_vtable_res(xcx: extended_decode_ctxt) -> typeck::vtable_res {
         @self.read_to_vec(|| self.read_vtable_origin(xcx) )
     }
@@ -558,7 +551,7 @@ trait get_ty_str_ctxt {
     fn ty_str_ctxt() -> @tyencode::ctxt;
 }
 
-impl helpers of get_ty_str_ctxt for @e::encode_ctxt {
+impl @e::encode_ctxt: get_ty_str_ctxt {
     fn ty_str_ctxt() -> @tyencode::ctxt {
         @{diag: self.tcx.sess.diagnostic(),
           ds: e::def_to_str,
@@ -575,7 +568,7 @@ trait ebml_writer_helpers {
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty);
 }
 
-impl helpers of ebml_writer_helpers for ebml::writer {
+impl ebml::writer: ebml_writer_helpers {
     fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t) {
         e::write_type(ecx, self, ty)
     }
@@ -612,7 +605,7 @@ trait write_tag_and_id {
     fn id(id: ast::node_id);
 }
 
-impl writer of write_tag_and_id for ebml::writer {
+impl ebml::writer: write_tag_and_id {
     fn tag(tag_id: c::astencode_tag, f: fn()) {
         do self.wr_tag(tag_id as uint) { f() }
     }
@@ -771,7 +764,7 @@ trait doc_decoder_helpers {
     fn opt_child(tag: c::astencode_tag) -> option<ebml::doc>;
 }
 
-impl decoder of doc_decoder_helpers for ebml::doc {
+impl ebml::doc: doc_decoder_helpers {
     fn as_int() -> int { ebml::doc_as_u64(self) as int }
     fn opt_child(tag: c::astencode_tag) -> option<ebml::doc> {
         ebml::maybe_get_doc(self, tag as uint)
@@ -786,8 +779,7 @@ trait ebml_deserializer_decoder_helpers {
                                 -> ty::ty_param_bounds_and_ty;
 }
 
-impl decoder of ebml_deserializer_decoder_helpers
-        for ebml::ebml_deserializer {
+impl ebml::ebml_deserializer: ebml_deserializer_decoder_helpers {
 
     fn read_ty(xcx: extended_decode_ctxt) -> ty::t {
         // Note: regions types embed local node ids.  In principle, we
@@ -922,7 +914,7 @@ trait fake_ext_ctxt {
 type fake_session = ();
 
 #[cfg(test)]
-impl of fake_ext_ctxt for fake_session {
+impl fake_session: fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg { ~[] }
     fn parse_sess() -> parse::parse_sess { parse::new_parse_sess(none) }
 }

@@ -6,19 +6,19 @@ trait fuzzy_eq {
     pure fn fuzzy_eq(&&other: self) -> bool;
 }
 
-impl fuzzy_eq of fuzzy_eq for float {
+impl float: fuzzy_eq {
     pure fn fuzzy_eq(&&other: float) -> bool {
         return float::abs(self - other) < fuzzy_epsilon;
     }
 }
 
-impl fuzzy_eq of fuzzy_eq for f32 {
+impl f32: fuzzy_eq {
     pure fn fuzzy_eq(&&other: f32) -> bool {
         return f32::abs(self - other) < (fuzzy_epsilon as f32);
     }
 }
 
-impl fuzzy_eq of fuzzy_eq for f64 {
+impl f64: fuzzy_eq {
     pure fn fuzzy_eq(&&other: f64) -> bool {
         return f64::abs(self - other) < (fuzzy_epsilon as f64);
     }

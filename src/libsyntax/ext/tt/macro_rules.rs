@@ -2,7 +2,7 @@ import base::{ext_ctxt, mac_result, mr_expr, mr_def, expr_tt};
 import codemap::span;
 import ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
-import parse::lexer::{new_tt_reader, tt_reader_as_reader, reader};
+import parse::lexer::{new_tt_reader, reader};
 import parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 import parse::parser::{parser, SOURCE_FILE};
 import earley_parser::{parse, parse_or_else, success, failure, named_match,

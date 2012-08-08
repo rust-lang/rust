@@ -5,12 +5,12 @@
 import inst::{IMPL_T, EACH, SIZE_HINT};
 export extensions;
 
-impl extensions<A> of iter::base_iter<A> for IMPL_T<A> {
+impl<A> IMPL_T<A>: iter::base_iter<A> {
     fn each(blk: fn(A) -> bool) { EACH(self, blk) }
     fn size_hint() -> option<uint> { SIZE_HINT(self) }
 }
 
-impl extensions<A> of iter::extended_iter<A> for IMPL_T<A> {
+impl<A> IMPL_T<A>: iter::extended_iter<A> {
     fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
     fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
@@ -24,7 +24,7 @@ impl extensions<A> of iter::extended_iter<A> for IMPL_T<A> {
     }
 }
 
-impl extensions<A:copy> of iter::copyable_iter<A> for IMPL_T<A> {
+impl<A: copy> IMPL_T<A>: iter::copyable_iter<A> {
     fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }

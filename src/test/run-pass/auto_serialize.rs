@@ -5,9 +5,6 @@ use std;
 
 import std::ebml;
 import io::writer;
-import std::prettyprint::serializer;
-import std::ebml::serializer;
-import std::ebml::deserializer;
 import std::serialization::{serialize_uint, deserialize_uint};
 
 fn test_ser_and_deser<A>(a1: A,

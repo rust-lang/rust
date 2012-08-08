@@ -123,7 +123,7 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> @[T] {
     }
 }
 
-impl extensions<T: copy> of vec_concat<T> for @[T] {
+impl<T: copy> @[T]: vec_concat<T> {
     #[inline(always)]
     pure fn +(rhs: &[const T]) -> @[T] {
         append(self, rhs)
@@ -131,7 +131,7 @@ impl extensions<T: copy> of vec_concat<T> for @[T] {
 }
 
 #[cfg(notest)]
-impl extensions<T: copy> of add<&[const T],@[T]> for @[T] {
+impl<T: copy> @[T]: add<&[const T],@[T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> @[T] {
         append(self, rhs)

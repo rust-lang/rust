@@ -10,7 +10,7 @@ trait ty_ops {
     fn mk() -> uint;
 }
 
-impl of ty_ops for () {
+impl (): ty_ops {
     fn mk() -> uint { 22u }
 }
 

@@ -6,7 +6,7 @@ trait frob {
     fn frob();
 }
 
-impl quuux of frob for foo {
+impl foo: frob {
     fn frob() {
         really_impure(self.bar);
     }

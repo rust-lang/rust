@@ -6,13 +6,13 @@ trait iterable<A> {
     fn iterate(blk: fn(A) -> bool);
 }
 
-impl vec<A> of iterable<A> for &[A] {
+impl<A> &[A]: iterable<A> {
     fn iterate(f: fn(A) -> bool) {
         vec::each(self, f);
     }
 }
 
-impl vec<A> of iterable<A> for ~[A] {
+impl<A> ~[A]: iterable<A> {
     fn iterate(f: fn(A) -> bool) {
         vec::each(self, f);
     }

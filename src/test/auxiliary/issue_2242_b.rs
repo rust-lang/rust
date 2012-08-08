@@ -4,6 +4,6 @@
 use a;
 import a::to_str;
 
-impl of to_str for int {
+impl int: to_str {
     fn to_str() -> ~str { fmt!{"%?", self} }
 }

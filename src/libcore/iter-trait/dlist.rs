@@ -8,8 +8,6 @@ type IMPL_T<A> = dlist::dlist<A>;
  * node is forbidden.
  */
 pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
-    import dlist::extensions;
-
     let mut link = self.peek_n();
     while option::is_some(link) {
         let nobe = option::get(link);
@@ -31,6 +29,5 @@ pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
 }
 
 fn SIZE_HINT<A>(self: IMPL_T<A>) -> option<uint> {
-    import dlist::extensions;
     some(self.len())
 }

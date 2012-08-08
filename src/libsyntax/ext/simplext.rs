@@ -1,6 +1,6 @@
 import codemap::span;
 import std::map::{hashmap, str_hash, box_str_hash};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 import base::*;
 

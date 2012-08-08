@@ -27,11 +27,8 @@ updating the states using rule (2) until there are no changes.
 
 */
 
-import dvec::extensions;
-
 import std::bitv::{bitv};
 
-import proto::methods;
 import ast_builder::empty_span;
 
 fn analyze(proto: protocol, _cx: ext_ctxt) {

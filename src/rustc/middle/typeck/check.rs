@@ -68,13 +68,11 @@ type parameter).
 
 import astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
 import astconv::{ast_region_to_region};
-import collect::{methods}; // ccx.to_ty()
 import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty};
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 import rscope::{in_binding_rscope, region_scope, type_rscope};
 import syntax::ast::ty_i;
-import typeck::infer::{unify_methods}; // infcx.set()
 import typeck::infer::{resolve_type, force_tvar};
 
 import std::map::str_hash;
@@ -149,7 +147,7 @@ trait get_and_find_region {
     fn find(br: ty::bound_region) -> option<ty::region>;
 }
 
-impl methods of get_and_find_region for isr_alist {
+impl isr_alist: get_and_find_region {
     fn get(br: ty::bound_region) -> ty::region {
         option::get(self.find(br))
     }
@@ -504,7 +502,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     }
 }
 
-impl of ast_conv for @fn_ctxt {
+impl @fn_ctxt: ast_conv {
     fn tcx() -> ty::ctxt { self.ccx.tcx }
     fn ccx() -> @crate_ctxt { self.ccx }
 
@@ -517,7 +515,7 @@ impl of ast_conv for @fn_ctxt {
     }
 }
 
-impl of region_scope for @fn_ctxt {
+impl @fn_ctxt: region_scope {
     fn anon_region() -> result<ty::region, ~str> {
         result::ok(self.infcx.next_region_var_nb())
     }
@@ -534,7 +532,7 @@ impl of region_scope for @fn_ctxt {
     }
 }
 
-impl methods for @fn_ctxt {
+impl @fn_ctxt {
     fn tag() -> ~str { fmt!{"%x", ptr::addr_of(*self) as uint} }
     fn block_region() -> result<ty::region, ~str> {
         result::ok(ty::re_scope(self.region_lb))

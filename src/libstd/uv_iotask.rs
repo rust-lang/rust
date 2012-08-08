@@ -12,7 +12,7 @@ export exit;
 
 import libc::c_void;
 import ptr::addr_of;
-import comm::{port, chan, methods, listen};
+import comm::{port, chan, listen};
 import task::task_builder;
 import ll = uv_ll;
 

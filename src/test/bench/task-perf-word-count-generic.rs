@@ -20,7 +20,7 @@ import std::map;
 import std::map::hashmap;
 import vec;
 import io;
-import io::{reader_util, writer_util};
+import io::writer_util;
 
 import std::time;
 import u64;
@@ -31,7 +31,6 @@ import comm::chan;
 import comm::port;
 import comm::recv;
 import comm::send;
-import comm::methods;
 
 macro_rules! move_out {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
@@ -53,7 +52,7 @@ fn mk_hash<K: const hash_key, V: copy>() -> map::hashmap<K, V> {
     map::hashmap(hashfn, hasheq)
 }
 
-impl of hash_key for ~str {
+impl ~str: hash_key {
     pure fn hash() -> uint { str::hash(&self) }
     pure fn eq(&&x: ~str) -> bool { self == x }
 }
@@ -74,7 +73,7 @@ fn join(t: joinable_task) {
     t.recv()
 }
 
-impl of word_reader for io::reader {
+impl io::reader: word_reader {
     fn read_word() -> option<~str> { read_word(self) }
 }
 

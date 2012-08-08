@@ -70,7 +70,7 @@ fn port<T: send>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
 
-impl methods<T: send> for port<T> {
+impl<T: send> port<T> {
 
     fn chan() -> chan<T> { chan(self) }
     fn send(+v: T) { self.chan().send(v) }
@@ -79,7 +79,7 @@ impl methods<T: send> for port<T> {
 
 }
 
-impl methods<T: send> for chan<T> {
+impl<T: send> chan<T> {
 
     fn chan() -> chan<T> { self }
     fn send(+v: T) { send(self, v) }

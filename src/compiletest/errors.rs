@@ -1,5 +1,3 @@
-import io::reader_util;
-
 import common::config;
 
 export load_errors;

@@ -3,14 +3,13 @@
 import coherence::get_base_type_def_id;
 import middle::resolve3::{Impl, MethodInfo};
 import middle::ty::{mk_box, mk_rptr, mk_uniq};
-import middle::typeck::infer::methods; // next_ty_vars
 import syntax::ast::{def_id,
                      sty_static, sty_box, sty_by_ref, sty_region, sty_uniq};
 import syntax::ast::{sty_value};
 import syntax::ast_map;
 import syntax::ast_map::node_id_to_str;
 import syntax::ast_util::{dummy_sp, new_def_hash};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 type candidate = {
     self_ty: ty::t,          // type of a in a.b()

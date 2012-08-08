@@ -4,8 +4,6 @@
  * Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
  */
 
-import dlist_iter::extensions;
-
 export dlist, dlist_node;
 export new_dlist, from_elem, from_vec, extensions;
 
@@ -24,7 +22,7 @@ enum dlist<T> = @{
     mut tl:   dlist_link<T>,
 };
 
-impl private_methods<T> for dlist_node<T> {
+priv impl<T> dlist_node<T> {
     pure fn assert_links() {
         match self.next {
             some(neighbour) => match neighbour.prev {
@@ -47,7 +45,7 @@ impl private_methods<T> for dlist_node<T> {
     }
 }
 
-impl extensions<T> for dlist_node<T> {
+impl<T> dlist_node<T> {
     /// Get the next node in the list, if there is one.
     pure fn next_link() -> option<dlist_node<T>> {
         self.assert_links();
@@ -109,7 +107,7 @@ fn concat<T>(lists: dlist<dlist<T>>) -> dlist<T> {
     result
 }
 
-impl private_methods<T> for dlist<T> {
+priv impl<T> dlist<T> {
     pure fn new_link(-data: T) -> dlist_link<T> {
         some(dlist_node(@{data: data, mut linked: true,
                           mut prev: none, mut next: none}))
@@ -184,7 +182,7 @@ impl private_methods<T> for dlist<T> {
     }
 }
 
-impl extensions<T> for dlist<T> {
+impl<T> dlist<T> {
     /// Get the size of the list. O(1).
     pure fn len()          -> uint { self.size }
     /// Returns true if the list is empty. O(1).
@@ -413,7 +411,7 @@ impl extensions<T> for dlist<T> {
     }
 }
 
-impl extensions<T: copy> for dlist<T> {
+impl<T: copy> dlist<T> {
     /// Remove data from the head of the list. O(1).
     fn pop()       -> option<T> { self.pop_n().map       (|nobe| nobe.data) }
     /// Remove data from the tail of the list. O(1).

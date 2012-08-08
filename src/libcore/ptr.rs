@@ -156,7 +156,7 @@ trait ptr {
 }
 
 /// Extension methods for pointers
-impl extensions<T> of ptr for *T {
+impl<T> *T: ptr {
     /// Returns true if the pointer is equal to the null pointer.
     pure fn is_null() -> bool { is_null(self) }
 

@@ -1,7 +1,7 @@
 // A raw test of vector appending performance.
 
 use std;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import io::writer_util;
 
 fn collect_raw(num: uint) -> ~[uint] {

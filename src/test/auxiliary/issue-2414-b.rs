@@ -5,5 +5,3 @@
 
 use a;
 
-import a::t2;
-export t2;

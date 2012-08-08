@@ -1,4 +1,4 @@
-import check::{fn_ctxt, methods};
+import check::fn_ctxt;
 
 // Requires that the two types unify, and prints an error message if they
 // don't.

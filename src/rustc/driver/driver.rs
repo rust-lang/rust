@@ -10,7 +10,7 @@ import util::ppaux;
 import back::link;
 import result::{ok, err};
 import std::getopts;
-import io::{reader_util, writer_util};
+import io::writer_util;
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 import std::map::hashmap;

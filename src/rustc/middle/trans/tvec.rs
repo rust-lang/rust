@@ -5,7 +5,7 @@ import back::abi;
 import base::{call_memmove,
               INIT, copy_val, load_if_immediate, get_tydesc,
               sub_block, do_spill_noroot,
-              dest, bcx_icx, non_gc_box_cast, move_val, lval_owned};
+              dest, non_gc_box_cast, move_val, lval_owned};
 import syntax::codemap::span;
 import shape::llsize_of;
 import build::*;

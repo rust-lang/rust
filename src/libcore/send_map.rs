@@ -64,7 +64,7 @@ mod linear {
         unsafe::reinterpret_cast(p)
     }
 
-    impl private_methods<K,V> for &const linear_map<K,V> {
+    priv impl<K, V> &const linear_map<K,V> {
         #[inline(always)]
         pure fn to_bucket(h: uint) -> uint {
             // FIXME(#3041) borrow a more sophisticated technique here from
@@ -126,7 +126,7 @@ mod linear {
         }
     }
 
-    impl private_methods<K,V> for &mut linear_map<K,V> {
+    priv impl<K,V> &mut linear_map<K,V> {
         /// Expands the capacity of the array and re-inserts each
         /// of the existing buckets.
         fn expand() {
@@ -175,7 +175,7 @@ mod linear {
         }
     }
 
-    impl public_methods<K,V> for &mut linear_map<K,V> {
+    impl<K,V> &mut linear_map<K,V> {
         fn insert(+k: K, +v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
@@ -230,13 +230,13 @@ mod linear {
         }
     }
 
-    impl private_methods<K,V> for &linear_map<K,V> {
+    priv impl<K,V> &linear_map<K,V> {
         fn search(hash: uint, op: fn(x: &option<bucket<K,V>>) -> bool) {
             let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
         }
     }
 
-    impl public_methods<K,V> for &const linear_map<K,V> {
+    impl<K,V> &const linear_map<K,V> {
         fn len() -> uint {
             self.size
         }
@@ -253,7 +253,7 @@ mod linear {
         }
     }
 
-    impl public_methods<K,V: copy> for &const linear_map<K,V> {
+    impl<K,V: copy> &const linear_map<K,V> {
         fn find(k: &K) -> option<V> {
             match self.bucket_for_key(self.buckets, k) {
               found_entry(idx) => {
@@ -280,7 +280,7 @@ mod linear {
         }
     }
 
-    impl imm_methods<K,V> for &linear_map<K,V> {
+    impl<K,V> &linear_map<K,V> {
         /*
         FIXME --- #2979 must be fixed to typecheck this
         fn find_ptr(k: K) -> option<&V> {
@@ -309,17 +309,17 @@ mod linear {
         }
     }
 
-    impl public_methods<K: copy, V: copy> for &linear_map<K,V> {
+    impl<K: copy, V: copy> &linear_map<K,V> {
         fn each(blk: fn(+K,+V) -> bool) {
             self.each_ref(|k,v| blk(copy *k, copy *v));
         }
     }
-    impl public_methods<K: copy, V> for &linear_map<K,V> {
+    impl<K: copy, V> &linear_map<K,V> {
         fn each_key(blk: fn(+K) -> bool) {
             self.each_key_ref(|k| blk(copy *k));
         }
     }
-    impl public_methods<K, V: copy> for &linear_map<K,V> {
+    impl<K, V: copy> &linear_map<K,V> {
         fn each_value(blk: fn(+V) -> bool) {
             self.each_value_ref(|v| blk(copy *v));
         }

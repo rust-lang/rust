@@ -90,7 +90,7 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 
 type devnull = {dn: int};
 
-impl of io::writer for devnull {
+impl devnull: io::writer {
     fn write(_b: &[const u8]) {}
     fn seek(_i: int, _s: io::seek_style) {}
     fn tell() -> uint {0_u}

@@ -8,12 +8,12 @@ import token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
 import codemap::{span,fss_none};
 import util::interner;
 import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
-import lexer::{reader, tt_reader_as_reader};
+import lexer::reader;
 import prec::{as_prec, token_to_binop};
 import attr::parser_attr;
 import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
                 seq_sep_none, token_to_str};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value,
@@ -2424,9 +2424,6 @@ class parser {
     }
 
     // Parses four variants (with the region/type params always optional):
-    //    impl /&<T: copy> of to_str for ~[T] { ... }
-    //    impl name/&<T> of to_str for ~[T] { ... }
-    //    impl name/&<T> for ~[T] { ... }
     //    impl<T> ~[T] : to_str { ... }
     fn parse_item_impl() -> item_info {
         fn wrap_path(p: parser, pt: @path) -> @ty {
@@ -2466,6 +2463,7 @@ class parser {
                 traits = ~[];
             }
         } else {
+            self.warn(~"old-style named impl?");
             let mut ident_old;
             if self.token == token::BINOP(token::SLASH) {
                 self.parse_region_param();

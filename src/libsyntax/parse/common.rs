@@ -59,7 +59,7 @@ trait parser_common {
                           f: fn(parser) -> T) -> spanned<~[T]>;
 }
 
-impl parser_common of parser_common for parser {
+impl parser: parser_common {
     fn unexpected_last(t: token::token) -> ! {
         self.span_fatal(
             copy self.last_span,

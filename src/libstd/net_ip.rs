@@ -4,7 +4,6 @@ import vec;
 import uint;
 import iotask = uv::iotask::iotask;
 import interact = uv::iotask::interact;
-import comm::methods;
 
 import sockaddr_in = uv::ll::sockaddr_in;
 import sockaddr_in6 = uv::ll::sockaddr_in6;
@@ -147,7 +146,7 @@ mod v4 {
         unsafe fn as_u32() -> u32;
     }
 
-    impl x of as_unsafe_u32 for ipv4_rep {
+    impl ipv4_rep: as_unsafe_u32 {
         // this is pretty dastardly, i know
         unsafe fn as_u32() -> u32 {
             *((ptr::addr_of(self)) as *u32)

@@ -9,7 +9,7 @@ import syntax::codemap::span;
 import driver::session;
 import session::session;
 import syntax::attr;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 export modify_for_testing;
 

@@ -5,6 +5,6 @@ use a;
 
 import a::to_str;
 
-impl of to_str for bool {
+impl bool: to_str {
     fn to_str() -> ~str { fmt!{"%b", self} }
 }

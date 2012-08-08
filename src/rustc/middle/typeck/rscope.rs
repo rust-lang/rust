@@ -6,7 +6,7 @@ trait region_scope {
 }
 
 enum empty_rscope { empty_rscope }
-impl of region_scope for empty_rscope {
+impl empty_rscope: region_scope {
     fn anon_region() -> result<ty::region, ~str> {
         result::ok(ty::re_static)
     }
@@ -17,7 +17,7 @@ impl of region_scope for empty_rscope {
 }
 
 enum type_rscope = bool;
-impl of region_scope for type_rscope {
+impl type_rscope: region_scope {
     fn anon_region() -> result<ty::region, ~str> {
         if *self {
             result::ok(ty::re_bound(ty::br_self))
@@ -42,7 +42,7 @@ fn in_anon_rscope<RS: region_scope copy owned>(self: RS, r: ty::region)
     -> @anon_rscope {
     @anon_rscope({anon: r, base: self as region_scope})
 }
-impl of region_scope for @anon_rscope {
+impl @anon_rscope: region_scope {
     fn anon_region() -> result<ty::region, ~str> {
         result::ok(self.anon)
     }
@@ -57,7 +57,7 @@ fn in_binding_rscope<RS: region_scope copy owned>(self: RS)
     let base = self as region_scope;
     @binding_rscope({base: base})
 }
-impl of region_scope for @binding_rscope {
+impl @binding_rscope: region_scope {
     fn anon_region() -> result<ty::region, ~str> {
         result::ok(ty::re_bound(ty::br_anon))
     }

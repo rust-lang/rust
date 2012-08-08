@@ -15,8 +15,7 @@ import syntax::ast_util::{dummy_sp, new_def_hash};
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import syntax::codemap::span;
-import dvec::{dvec, extensions};
-import vec::extensions;
+import dvec::dvec;
 
 import std::map::hashmap;
 import option::is_some;

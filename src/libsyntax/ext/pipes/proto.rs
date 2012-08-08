@@ -1,15 +1,15 @@
 import to_str::to_str;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 import ast::{ident};
 
-import ast_builder::{path, methods, ast_builder, append_types};
+import ast_builder::{path, append_types};
 
 enum direction {
     send, recv
 }
 
-impl of to_str for direction {
+impl direction: to_str {
     fn to_str() -> ~str {
         match self {
           send => ~"send",
@@ -18,7 +18,7 @@ impl of to_str for direction {
     }
 }
 
-impl methods for direction {
+impl direction {
     fn reverse() -> direction {
         match self {
           send => recv,
@@ -34,7 +34,7 @@ enum message {
     message(ident, span, ~[@ast::ty], state, next_state)
 }
 
-impl methods for message {
+impl message {
     fn name() -> ident {
         match self {
           message(id, _, _, _, _) => id
@@ -67,7 +67,7 @@ enum state {
     }),
 }
 
-impl methods for state {
+impl state {
     fn add_message(name: ident, span: span,
                    +data: ~[@ast::ty], next: next_state) {
         self.messages.push(message(name, span, data, self,
@@ -161,7 +161,7 @@ class protocol_ {
     }
 }
 
-impl methods for protocol {
+impl protocol {
     fn add_state(name: ident, dir: direction) -> state {
         self.add_state_poly(name, dir, ~[])
     }

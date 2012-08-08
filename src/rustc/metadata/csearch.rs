@@ -10,7 +10,7 @@ import syntax::diagnostic::span_handler;
 import syntax::diagnostic::expect;
 import common::*;
 import std::map::hashmap;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 export class_dtor;
 export get_symbol;

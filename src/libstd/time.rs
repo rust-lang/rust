@@ -1,6 +1,6 @@
 import libc::{c_char, c_int, c_long, size_t, time_t};
-import io::{reader, reader_util};
-import result::{result, ok, err, extensions};
+import io::reader;
+import result::{result, ok, err};
 
 export
     timespec,
@@ -730,7 +730,7 @@ fn strftime(format: ~str, tm: tm) -> ~str {
     buf
 }
 
-impl tm for tm {
+impl tm {
     /// Convert time to the seconds from January 1, 1970
     fn to_timespec() -> timespec {
         let mut sec = 0i64;

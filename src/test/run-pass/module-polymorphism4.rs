@@ -3,8 +3,6 @@
 // xfail-test
 
 fn main() {
-    import cat::trait::talky;
-    import dog::trait::talky;
     let cat1 = cat::inst::meowlycat;
     let cat2 = cat::inst::howlycat;
     let dog = dog::inst::dog;

@@ -2,8 +2,6 @@
 
 use std;
 
-import io::reader_util;
-
 enum square {
     bot,
     wall,
@@ -15,7 +13,7 @@ enum square {
     empty
 }
 
-impl of to_str::to_str for square {
+impl square: to_str::to_str {
     fn to_str() -> ~str {
         match self {
           bot => { ~"R" }

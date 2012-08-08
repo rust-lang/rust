@@ -68,7 +68,7 @@ fn dup_string_reader(&&r: string_reader) -> string_reader {
       mut peek_tok: r.peek_tok, mut peek_span: r.peek_span}
 }
 
-impl string_reader_as_reader of reader for string_reader {
+impl string_reader: reader {
     fn is_eof() -> bool { is_eof(self) }
     fn next_token() -> {tok: token::token, sp: span} {
         let ret_val = {tok: self.peek_tok, sp: self.peek_span};
@@ -86,7 +86,7 @@ impl string_reader_as_reader of reader for string_reader {
     fn dup() -> reader { dup_string_reader(self) as reader }
 }
 
-impl tt_reader_as_reader of reader for tt_reader {
+impl tt_reader: reader {
     fn is_eof() -> bool { self.cur_tok == token::EOF }
     fn next_token() -> {tok: token::token, sp: span} {
         /* weird resolve bug: if the following `if`, or any of its

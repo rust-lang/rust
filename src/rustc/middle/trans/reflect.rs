@@ -18,7 +18,7 @@ enum reflector = {
     mut bcx: block
 };
 
-impl methods for reflector {
+impl reflector {
 
     fn c_uint(u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)

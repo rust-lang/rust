@@ -1,6 +1,6 @@
 trait bar { fn dup() -> self; fn blah<X>(); }
-impl of bar for int { fn dup() -> int { self } fn blah<X>() {} }
-impl of bar for uint { fn dup() -> uint { self } fn blah<X>() {} }
+impl int: bar { fn dup() -> int { self } fn blah<X>() {} }
+impl uint: bar { fn dup() -> uint { self } fn blah<X>() {} }
 
 fn main() {
     10.dup::<int>(); //~ ERROR does not take type parameters

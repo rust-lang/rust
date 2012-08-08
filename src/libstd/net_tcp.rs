@@ -3,15 +3,12 @@
 import ip = net_ip;
 import uv::iotask;
 import uv::iotask::iotask;
-import comm::methods;
 import future_spawn = future::spawn;
-import future::extensions;
 // FIXME #1935
 // should be able to, but can't atm, replace w/ result::{result, extensions};
 import result::*;
 import libc::size_t;
-import str::extensions;
-import io::{reader, reader_util, writer};
+import io::{reader, writer};
 
 // tcp interfaces
 export tcp_socket;
@@ -726,7 +723,7 @@ fn socket_buf(-sock: tcp_socket) -> tcp_socket_buf {
 }
 
 /// Convenience methods extending `net::tcp::tcp_socket`
-impl tcp_socket for tcp_socket {
+impl tcp_socket {
     fn read_start() -> result::result<comm::port<
         result::result<~[u8], tcp_err_data>>, tcp_err_data> {
         read_start(self)
@@ -755,7 +752,7 @@ impl tcp_socket for tcp_socket {
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
-impl tcp_socket_buf of io::reader for @tcp_socket_buf {
+impl @tcp_socket_buf: io::reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
         while self.data.buf.len() < len {
@@ -808,7 +805,7 @@ impl tcp_socket_buf of io::reader for @tcp_socket_buf {
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
-impl tcp_socket_buf of io::writer for @tcp_socket_buf {
+impl @tcp_socket_buf: io::writer {
     fn write(data: &[const u8]) unsafe {
         let socket_data_ptr =
             ptr::addr_of(*((*(self.data)).sock).socket_data);
@@ -1067,7 +1064,7 @@ trait to_tcp_err {
     fn to_tcp_err() -> tcp_err_data;
 }
 
-impl of to_tcp_err for uv::ll::uv_err_data {
+impl uv::ll::uv_err_data: to_tcp_err {
     fn to_tcp_err() -> tcp_err_data {
         { err_name: self.err_name, err_msg: self.err_msg }
     }

@@ -2,7 +2,7 @@
 
 use std;
 import std::smallintmap;
-import std::smallintmap::{smallintmap, map};
+import std::smallintmap::smallintmap;
 import io::writer_util;
 
 fn append_sequential(min: uint, max: uint, map: smallintmap<uint>) {

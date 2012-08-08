@@ -1901,7 +1901,7 @@ trait unique_str {
 }
 
 /// Extension methods for strings
-impl extensions of unique_str for ~str {
+impl ~str: unique_str {
     /// Returns a string with leading and trailing whitespace removed
     #[inline]
     fn trim() -> ~str { trim(self) }
@@ -1920,7 +1920,7 @@ impl extensions of unique_str for ~str {
 }
 
 #[cfg(notest)]
-impl extensions of add<&str,~str> for ~str {
+impl ~str: add<&str,~str> {
     #[inline(always)]
     pure fn add(rhs: &str) -> ~str {
         append(self, rhs)
@@ -1956,7 +1956,7 @@ trait str_slice {
 }
 
 /// Extension methods for strings
-impl extensions/& of str_slice for &str {
+impl &str: str_slice {
     /**
      * Return true if a predicate matches all characters or if the string
      * contains no characters

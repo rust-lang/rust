@@ -24,7 +24,7 @@ type fake_options = {cfg: ast::crate_cfg};
 type fake_session = {opts: @fake_options,
                      parse_sess: parser::parse_sess};
 
-impl of fake_ext_ctxt for fake_session {
+impl fake_session: fake_ext_ctxt {
     fn session() -> fake_session {self}
 }
 

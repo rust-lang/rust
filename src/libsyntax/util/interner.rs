@@ -3,7 +3,7 @@
 // type, and vice versa.
 import std::map;
 import std::map::{hashmap, hashfn, eqfn};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 type hash_interner<T: const> =
     {map: hashmap<T, uint>,
@@ -25,7 +25,7 @@ trait interner<T: const copy> {
     fn len() -> uint;
 }
 
-impl <T: const copy> of interner<T> for hash_interner<T> {
+impl <T: const copy> hash_interner<T>: interner<T> {
     fn intern(val: T) -> uint {
         match self.map.find(val) {
           some(idx) => return idx,

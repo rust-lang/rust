@@ -7,7 +7,7 @@ import parse::parser::{parser,SOURCE_FILE};
 //import parse::common::parser_common;
 import parse::common::*; //resolve bug?
 import parse::parse_sess;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 import ast_util::mk_sp;
 import std::map::{hashmap, box_str_hash};

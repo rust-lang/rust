@@ -46,7 +46,7 @@ type codemap_t = @{
     cm: codemap::codemap
 };
 
-impl codemap_span_handler of span_handler for codemap_t {
+impl codemap_t: span_handler {
     fn span_fatal(sp: span, msg: ~str) -> ! {
         self.handler.emit(some((self.cm, sp)), msg, fatal);
         fail;
@@ -72,7 +72,7 @@ impl codemap_span_handler of span_handler for codemap_t {
     }
 }
 
-impl codemap_handler of handler for handler_t {
+impl handler_t: handler {
     fn fatal(msg: ~str) -> ! {
         self.emit(none, msg, fatal);
         fail;

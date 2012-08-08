@@ -136,7 +136,7 @@ pure fn unwrap_expect<T>(-opt: option<T>, reason: &str) -> T {
     unwrap(opt)
 }
 
-impl extensions<T> for option<T> {
+impl<T> option<T> {
     /**
      * Update an optional value by optionally running its content through a
      * function that returns an option.
@@ -155,7 +155,7 @@ impl extensions<T> for option<T> {
     pure fn map<U>(f: fn(T) -> U) -> option<U> { map(self, f) }
 }
 
-impl extensions<T: copy> for option<T> {
+impl<T: copy> option<T> {
     /**
      * Gets the value out of an option
      *

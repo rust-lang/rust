@@ -22,7 +22,7 @@ import session::session;
 import syntax::attr;
 import back::{link, abi, upcall};
 import syntax::{ast, ast_util, codemap, ast_map};
-import ast_util::{inlined_item_methods, local_def, path_to_ident};
+import ast_util::{local_def, path_to_ident};
 import syntax::visit;
 import syntax::codemap::span;
 import syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
@@ -98,7 +98,7 @@ trait get_insn_ctxt {
     fn insn_ctxt(s: ~str) -> icx_popper;
 }
 
-impl ccx_icx of get_insn_ctxt for @crate_ctxt {
+impl @crate_ctxt: get_insn_ctxt {
     fn insn_ctxt(s: ~str) -> icx_popper {
         debug!{"new insn_ctxt: %s", s};
         if self.sess.count_llvm_insns() {
@@ -108,13 +108,13 @@ impl ccx_icx of get_insn_ctxt for @crate_ctxt {
     }
 }
 
-impl bcx_icx of get_insn_ctxt for block {
+impl block: get_insn_ctxt {
     fn insn_ctxt(s: ~str) -> icx_popper {
         self.ccx().insn_ctxt(s)
     }
 }
 
-impl fcx_icx of get_insn_ctxt for fn_ctxt {
+impl fn_ctxt: get_insn_ctxt {
     fn insn_ctxt(s: ~str) -> icx_popper {
         self.ccx.insn_ctxt(s)
     }

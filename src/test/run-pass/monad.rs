@@ -2,7 +2,7 @@ trait vec_monad<A> {
     fn bind<B>(f: fn(A) -> ~[B]) -> ~[B];
 }
 
-impl monad<A> of vec_monad<A> for ~[A] {
+impl<A> ~[A]: vec_monad<A> {
     fn bind<B>(f: fn(A) -> ~[B]) -> ~[B] {
         let mut r = ~[];
         for self.each |elt| { r += f(elt); }
@@ -14,7 +14,7 @@ trait option_monad<A> {
     fn bind<B>(f: fn(A) -> option<B>) -> option<B>;
 }
 
-impl monad<A> of option_monad<A> for option<A> {
+impl<A> option<A>: option_monad<A> {
     fn bind<B>(f: fn(A) -> option<B>) -> option<B> {
         match self {
           some(a) => { f(a) }

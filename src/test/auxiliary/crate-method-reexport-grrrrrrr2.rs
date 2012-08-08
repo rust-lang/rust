@@ -3,7 +3,6 @@
 export rust;
 
 import name_pool::add;
-import name_pool::methods;
 
 mod name_pool {
 
@@ -13,7 +12,7 @@ mod name_pool {
         fn add(s: ~str);
     }
 
-    impl methods of add for name_pool {
+    impl name_pool: add {
         fn add(s: ~str) {
         }
     }
@@ -22,9 +21,10 @@ mod name_pool {
 mod rust {
 
     import name_pool::add;
+    // FIXME #3155: this is a hack
+    import name_pool::__extensions__;
     export add;
     export rt;
-    export methods;
     export cx;
 
     type rt = @();
@@ -33,7 +33,7 @@ mod rust {
         fn cx();
     }
 
-    impl methods of cx for rt {
+    impl rt: cx {
         fn cx() {
         }
     }
