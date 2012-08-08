@@ -27,7 +27,7 @@ import driver::session::session;
 fn explain_region(cx: ctxt, region: ty::region) -> ~str {
     return match region {
       re_scope(node_id) => {
-        let scope_str = match cx.items.find(node_id) {
+        match cx.items.find(node_id) {
           some(ast_map::node_block(blk)) => {
             explain_span(cx, ~"block", blk.span)
           }
@@ -42,36 +42,36 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
             // this really should not happen
             fmt!{"unknown scope: %d.  Please report a bug.", node_id}
           }
-        };
-        fmt!{"reference valid for the %s", scope_str}
+        }
       }
 
       re_free(id, br) => {
         match cx.items.find(id) {
           some(ast_map::node_block(blk)) => {
-            fmt!{"reference with lifetime %s as defined on %s",
+            fmt!{"the lifetime %s as defined on %s",
                  bound_region_to_str(cx, br),
                  explain_span(cx, ~"the block", blk.span)}
           }
           some(_) | none => {
             // this really should not happen
-            fmt!{"reference with lifetime %s as defined on node %d",
+            fmt!{"the lifetime %s as defined on node %d",
                  bound_region_to_str(cx, br), id}
           }
         }
       }
 
-      re_static => { ~"reference to static data" }
+      re_static => { ~"the static lifetime" }
 
-      // I believe these cases should not occur.
+      // I believe these cases should not occur (except when debugging,
+      // perhaps)
       re_var(_) | re_bound(_) => {
-        fmt!{"reference with lifetime %?", region}
+        fmt!{"lifetime %?", region}
       }
     };
 
     fn explain_span(cx: ctxt, heading: ~str, span: span) -> ~str {
         let lo = codemap::lookup_char_pos_adj(cx.sess.codemap, span.lo);
-        fmt!{"%s at %u:%u", heading, lo.line, lo.col}
+        fmt!{"the %s at %u:%u", heading, lo.line, lo.col}
     }
 }
 

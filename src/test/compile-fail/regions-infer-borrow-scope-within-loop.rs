@@ -7,7 +7,7 @@ fn foo(cond: fn() -> bool, box: fn() -> @int) {
 
 	// Here we complain because the resulting region
 	// of this borrow is the fn body as a whole.
-        y = borrow(x); //~ ERROR managed value would have to be rooted for lifetime 
+        y = borrow(x); //~ ERROR illegal borrow: managed value would have to be rooted
 
         assert *x == *y;
         if cond() { break; }

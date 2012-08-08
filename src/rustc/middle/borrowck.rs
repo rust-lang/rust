@@ -220,7 +220,7 @@ import syntax::visit;
 import syntax::ast_util;
 import syntax::ast_map;
 import syntax::codemap::span;
-import util::ppaux::{ty_to_str, region_to_str};
+import util::ppaux::{ty_to_str, region_to_str, explain_region};
 import std::map::{int_hash, hashmap, set};
 import std::list;
 import std::list::{list, cons, nil};
@@ -626,16 +626,16 @@ impl to_str_methods for borrowck_ctxt {
             ~"rooting is not permitted"
           }
           err_out_of_root_scope(super_scope, sub_scope) => {
-            fmt!{"managed value would have to be rooted for lifetime %s, \
-                  but can only be rooted for lifetime %s",
-                 self.region_to_str(sub_scope),
-                 self.region_to_str(super_scope)}
+            fmt!{"managed value would have to be rooted for %s, \
+                  but can only be rooted for %s",
+                  explain_region(self.tcx, sub_scope),
+                  explain_region(self.tcx, super_scope)}
           }
           err_out_of_scope(super_scope, sub_scope) => {
-            fmt!{"borrowed pointer has lifetime %s, \
-                  but the borrowed value only has lifetime %s",
-                 self.region_to_str(sub_scope),
-                 self.region_to_str(super_scope)}
+            fmt!{"borrowed pointer must be valid for %s, \
+                  but the borrowed value is only valid for %s",
+                  explain_region(self.tcx, sub_scope),
+                  explain_region(self.tcx, super_scope)}
           }
         }
     }

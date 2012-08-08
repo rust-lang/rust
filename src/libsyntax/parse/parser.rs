@@ -2917,7 +2917,7 @@ class parser {
                             body: d_body},
                      span: d_s}
                 };
-                
+
                 kind = struct_variant_kind(@{
                     traits: ~[],
                     members: ms,
