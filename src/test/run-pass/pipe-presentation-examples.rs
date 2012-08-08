@@ -3,6 +3,8 @@
 // Code is easier to write in emacs, and it's good to be sure all the
 // code samples compile (or not) as they should.
 
+// xfail-pretty
+
 import double_buffer::client::*;
 import double_buffer::give_buffer;
 
