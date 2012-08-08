@@ -175,13 +175,16 @@ fn check_bare_fn(ccx: @crate_ctxt,
                  id: ast::node_id,
                  self_info: option<self_info>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
-    let fn_ty = match check ty::get(fty).struct { ty::ty_fn(f) => f };
-    check_fn(ccx, self_info, fn_ty, decl, body, false, none);
+    match check ty::get(fty).struct {
+        ty::ty_fn(ref fn_ty) => {
+            check_fn(ccx, self_info, fn_ty, decl, body, false, none)
+        }
+    }
 }
 
 fn check_fn(ccx: @crate_ctxt,
             self_info: option<self_info>,
-            fn_ty: ty::fn_ty,
+            fn_ty: &ty::fn_ty,
             decl: ast::fn_decl,
             body: ast::blk,
             indirect_ret: bool,
@@ -620,13 +623,15 @@ impl @fn_ctxt {
 
     fn mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
                    sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, span: expr.span, borrow_lb: borrow_lb};
+        let anmnt = &{expr_id: expr.id, span: expr.span,
+                      borrow_lb: borrow_lb};
         infer::mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
     fn can_mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
                        sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        let anmnt = {expr_id: expr.id, span: expr.span, borrow_lb: borrow_lb};
+        let anmnt = &{expr_id: expr.id, span: expr.span,
+                      borrow_lb: borrow_lb};
         infer::can_mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
@@ -821,7 +826,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // functions.  Therefore, we match one level of structure.
         let fn_ty =
             match structure_of(fcx, sp, in_fty) {
-              sty @ ty::ty_fn(fn_ty) => {
+              sty @ ty::ty_fn(ref fn_ty) => {
                 replace_bound_regions_in_fn_ty(
                     fcx.ccx.tcx, @nil, none, fn_ty,
                     |_br| fcx.infcx.next_region_var_nb()).fn_ty
@@ -1124,7 +1129,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // what's going on here.
         let expected_tys = do unpack_expected(fcx, expected) |sty| {
             match sty {
-              ty::ty_fn(fn_ty) => {
+              ty::ty_fn(ref fn_ty) => {
                 let {fn_ty, _} =
                     replace_bound_regions_in_fn_ty(
                         tcx, @nil, none, fn_ty,
@@ -1146,7 +1151,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         fcx.write_ty(expr.id, fty);
 
-        check_fn(fcx.ccx, fcx.self_info, fn_ty, decl, body,
+        check_fn(fcx.ccx, fcx.self_info, &fn_ty, decl, body,
                  is_loop_body, some(fcx));
     }
 

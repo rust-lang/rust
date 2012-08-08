@@ -17,6 +17,7 @@ export capacity;
 export len;
 export from_fn;
 export from_elem;
+export from_slice;
 export build, build_sized;
 export to_mut;
 export from_mut;
@@ -209,6 +210,11 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> ~[T] {
         unsafe { unsafe::set_len(v, n_elts); }
     }
     return v;
+}
+
+/// Creates a new unique vector with the same contents as the slice
+pure fn from_slice<T: copy>(t: &[T]) -> ~[T] {
+    from_fn(t.len(), |i| t[i])
 }
 
 /**

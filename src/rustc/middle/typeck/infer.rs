@@ -164,6 +164,9 @@ section on "Type Combining" below for details.
 
 */
 
+#[warn(deprecated_mode)];
+#[warn(deprecated_pattern)];
+
 import std::smallintmap;
 import std::smallintmap::smallintmap;
 import std::map::hashmap;
@@ -361,17 +364,17 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
 
 fn mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     debug!{"mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
-    indent(|| cx.commit(|| sub(cx).tys(a, b) ) ).to_ures()
+    indent(|| cx.commit(|| (&sub(cx)).tys(a, b) ) ).to_ures()
 }
 
 fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     debug!{"can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
-    indent(|| cx.probe(|| sub(cx).tys(a, b) ) ).to_ures()
+    indent(|| cx.probe(|| (&sub(cx)).tys(a, b) ) ).to_ures()
 }
 
 fn mk_subr(cx: infer_ctxt, a: ty::region, b: ty::region) -> ures {
     debug!{"mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx)};
-    indent(|| cx.commit(|| sub(cx).regions(a, b) ) ).to_ures()
+    indent(|| cx.commit(|| (&sub(cx)).regions(a, b) ) ).to_ures()
 }
 
 fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
@@ -379,7 +382,7 @@ fn mk_eqty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     indent(|| cx.commit(|| cx.eq_tys(a, b) ) ).to_ures()
 }
 
-fn mk_assignty(cx: infer_ctxt, anmnt: assignment,
+fn mk_assignty(cx: infer_ctxt, anmnt: &assignment,
                a: ty::t, b: ty::t) -> ures {
     debug!{"mk_assignty(%? / %s <: %s)",
            anmnt, a.to_str(cx), b.to_str(cx)};
@@ -388,7 +391,7 @@ fn mk_assignty(cx: infer_ctxt, anmnt: assignment,
     ) ).to_ures()
 }
 
-fn can_mk_assignty(cx: infer_ctxt, anmnt: assignment,
+fn can_mk_assignty(cx: infer_ctxt, anmnt: &assignment,
                 a: ty::t, b: ty::t) -> ures {
     debug!{"can_mk_assignty(%? / %s <: %s)",
            anmnt, a.to_str(cx), b.to_str(cx)};
@@ -536,29 +539,29 @@ trait st {
 
 impl ty::t: st {
     fn sub(infcx: infer_ctxt, &&b: ty::t) -> ures {
-        sub(infcx).tys(self, b).to_ures()
+        (&sub(infcx)).tys(self, b).to_ures()
     }
 
     fn lub(infcx: infer_ctxt, &&b: ty::t) -> cres<ty::t> {
-        lub(infcx).tys(self, b)
+        (&lub(infcx)).tys(self, b)
     }
 
     fn glb(infcx: infer_ctxt, &&b: ty::t) -> cres<ty::t> {
-        glb(infcx).tys(self, b)
+        (&glb(infcx)).tys(self, b)
     }
 }
 
 impl ty::region: st {
     fn sub(infcx: infer_ctxt, &&b: ty::region) -> ures {
-        sub(infcx).regions(self, b).chain(|_r| ok(()))
+        (&sub(infcx)).regions(self, b).chain(|_r| ok(()))
     }
 
     fn lub(infcx: infer_ctxt, &&b: ty::region) -> cres<ty::region> {
-        lub(infcx).regions(self, b)
+        (&lub(infcx)).regions(self, b)
     }
 
     fn glb(infcx: infer_ctxt, &&b: ty::region) -> cres<ty::region> {
-        glb(infcx).regions(self, b)
+        (&glb(infcx)).regions(self, b)
     }
 }
 
@@ -567,7 +570,7 @@ fn uok() -> ures {
 }
 
 fn rollback_to<V:copy vid, T:copy>(
-    vb: vals_and_bindings<V, T>, len: uint) {
+    vb: &vals_and_bindings<V, T>, len: uint) {
 
     while vb.bindings.len() != len {
         let (vid, old_v) = vec::pop(vb.bindings);
@@ -605,8 +608,8 @@ impl infer_ctxt {
           result::ok(_) => debug!{"try--ok"},
           result::err(_) => {
             debug!{"try--rollback"};
-            rollback_to(self.tvb, tvbl);
-            rollback_to(self.rb, rbl);
+            rollback_to(&self.tvb, tvbl);
+            rollback_to(&self.rb, rbl);
             while self.borrowings.len() != bl { self.borrowings.pop(); }
           }
         }
@@ -618,8 +621,8 @@ impl infer_ctxt {
         assert self.tvb.bindings.len() == 0u;
         assert self.rb.bindings.len() == 0u;
         let r <- f();
-        rollback_to(self.tvb, 0u);
-        rollback_to(self.rb, 0u);
+        rollback_to(&self.tvb, 0u);
+        rollback_to(&self.rb, 0u);
         return r;
     }
 }
@@ -697,7 +700,7 @@ impl infer_ctxt {
 impl infer_ctxt {
 
     fn set<V:copy vid, T:copy to_str>(
-        vb: vals_and_bindings<V, T>, vid: V,
+        vb: &vals_and_bindings<V, T>, vid: V,
         +new_v: var_value<V, T>) {
 
         let old_v = vb.vals.get(vid.to_uint());
@@ -709,7 +712,7 @@ impl infer_ctxt {
     }
 
     fn get<V:copy vid, T:copy>(
-        vb: vals_and_bindings<V, T>, vid: V)
+        vb: &vals_and_bindings<V, T>, vid: V)
         -> node<V, T> {
 
         let vid_u = vid.to_uint();
@@ -784,7 +787,7 @@ impl infer_ctxt {
     // If this cannot be achieved, the result is failure.
 
     fn set_var_to_merged_bounds<V:copy vid, T:copy to_str st>(
-        vb: vals_and_bindings<V, bounds<T>>,
+        vb: &vals_and_bindings<V, bounds<T>>,
         v_id: V, a: bounds<T>, b: bounds<T>, rank: uint) -> ures {
 
         // Think of the two diamonds, we want to find the
@@ -833,7 +836,7 @@ impl infer_ctxt {
     }
 
     fn vars<V:copy vid, T:copy to_str st>(
-        vb: vals_and_bindings<V, bounds<T>>,
+        vb: &vals_and_bindings<V, bounds<T>>,
         a_id: V, b_id: V) -> ures {
 
         // Need to make sub_id a subtype of sup_id.
@@ -898,7 +901,7 @@ impl infer_ctxt {
     }
 
     fn vars_integral<V:copy vid>(
-        vb: vals_and_bindings<V, int_ty_set>,
+        vb: &vals_and_bindings<V, int_ty_set>,
         a_id: V, b_id: V) -> ures {
 
         let nde_a = self.get(vb, a_id);
@@ -945,7 +948,7 @@ impl infer_ctxt {
     }
 
     fn vart<V: copy vid, T: copy to_str st>(
-        vb: vals_and_bindings<V, bounds<T>>,
+        vb: &vals_and_bindings<V, bounds<T>>,
         a_id: V, b: T) -> ures {
 
         let nde_a = self.get(vb, a_id);
@@ -961,7 +964,7 @@ impl infer_ctxt {
     }
 
     fn vart_integral<V: copy vid>(
-        vb: vals_and_bindings<V, int_ty_set>,
+        vb: &vals_and_bindings<V, int_ty_set>,
         a_id: V, b: ty::t) -> ures {
 
         assert ty::type_is_integral(b);
@@ -981,7 +984,7 @@ impl infer_ctxt {
     }
 
     fn tvar<V: copy vid, T: copy to_str st>(
-        vb: vals_and_bindings<V, bounds<T>>,
+        vb: &vals_and_bindings<V, bounds<T>>,
         a: T, b_id: V) -> ures {
 
         let a_bounds = {lb: some(a), ub: none};
@@ -997,7 +1000,7 @@ impl infer_ctxt {
     }
 
     fn tvar_integral<V: copy vid>(
-        vb: vals_and_bindings<V, int_ty_set>,
+        vb: &vals_and_bindings<V, int_ty_set>,
         a: ty::t, b_id: V) -> ures {
 
         assert ty::type_is_integral(a);
@@ -1035,11 +1038,11 @@ impl infer_ctxt {
     }
 
     fn sub_tys(a: ty::t, b: ty::t) -> ures {
-        sub(self).tys(a, b).chain(|_t| ok(()) )
+        (&sub(self)).tys(a, b).chain(|_t| ok(()) )
     }
 
     fn sub_regions(a: ty::region, b: ty::region) -> ures {
-        sub(self).regions(a, b).chain(|_t| ok(()) )
+        (&sub(self)).regions(a, b).chain(|_t| ok(()) )
     }
 
     fn eq_tys(a: ty::t, b: ty::t) -> ures {
@@ -1210,7 +1213,7 @@ impl resolve_state {
         if !self.should(resolve_rvar) {
             return ty::re_var(rid)
         }
-        let nde = self.infcx.get(self.infcx.rb, rid);
+        let nde = self.infcx.get(&self.infcx.rb, rid);
         let bounds = nde.possible_types;
         match bounds {
           { ub:_, lb:some(r) } => { self.assert_not_rvar(rid, r); r }
@@ -1247,7 +1250,7 @@ impl resolve_state {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let nde = self.infcx.get(self.infcx.tvb, vid);
+            let nde = self.infcx.get(&self.infcx.tvb, vid);
             let bounds = nde.possible_types;
 
             let t1 = match bounds {
@@ -1271,7 +1274,7 @@ impl resolve_state {
             return ty::mk_var_integral(self.infcx.tcx, vid);
         }
 
-        let nde = self.infcx.get(self.infcx.tvib, vid);
+        let nde = self.infcx.get(&self.infcx.tvib, vid);
         let pt = nde.possible_types;
 
         // If there's only one type in the set of possible types, then
@@ -1283,7 +1286,7 @@ impl resolve_state {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
-                    self.infcx.tvib, vid,
+                    &self.infcx.tvib, vid,
                     root(convert_integral_ty_to_int_ty_set(self.infcx.tcx,
                                                            ty),
                         nde.rank));
@@ -1347,7 +1350,7 @@ impl resolve_state {
 // needed.
 
 impl infer_ctxt {
-    fn assign_tys(anmnt: assignment, a: ty::t, b: ty::t) -> ures {
+    fn assign_tys(anmnt: &assignment, a: ty::t, b: ty::t) -> ures {
 
         fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
             match fst {
@@ -1369,8 +1372,8 @@ impl infer_ctxt {
           }
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-            let nde_a = self.get(self.tvb, a_id);
-            let nde_b = self.get(self.tvb, b_id);
+            let nde_a = self.get(&self.tvb, a_id);
+            let nde_b = self.get(&self.tvb, b_id);
             let a_bounds = nde_a.possible_types;
             let b_bounds = nde_b.possible_types;
 
@@ -1380,7 +1383,7 @@ impl infer_ctxt {
           }
 
           (ty::ty_var(a_id), _) => {
-            let nde_a = self.get(self.tvb, a_id);
+            let nde_a = self.get(&self.tvb, a_id);
             let a_bounds = nde_a.possible_types;
 
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
@@ -1388,7 +1391,7 @@ impl infer_ctxt {
           }
 
           (_, ty::ty_var(b_id)) => {
-            let nde_b = self.get(self.tvb, b_id);
+            let nde_b = self.get(&self.tvb, b_id);
             let b_bounds = nde_b.possible_types;
 
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
@@ -1402,9 +1405,9 @@ impl infer_ctxt {
     }
 
     fn assign_tys_or_sub(
-        anmnt: assignment,
+        anmnt: &assignment,
         a: ty::t, b: ty::t,
-        a_bnd: option<ty::t>, b_bnd: option<ty::t>) -> ures {
+        +a_bnd: option<ty::t>, +b_bnd: option<ty::t>) -> ures {
 
         debug!{"assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
                anmnt, a.to_str(self), b.to_str(self),
@@ -1456,7 +1459,7 @@ impl infer_ctxt {
         }
     }
 
-    fn crosspollinate(anmnt: assignment,
+    fn crosspollinate(anmnt: &assignment,
                       a: ty::t,
                       nr_b: ty::t,
                       m: ast::mutability,
@@ -1473,7 +1476,7 @@ impl infer_ctxt {
                 let r_a = self.next_region_var_with_scope_lb(anmnt.borrow_lb);
 
                 debug!{"anmnt=%?", anmnt};
-                do sub(self).contraregions(r_a, r_b).chain |_r| {
+                do (&sub(self)).contraregions(r_a, r_b).chain |_r| {
                     // if successful, add an entry indicating that
                     // borrowing occurred
                     debug!{"borrowing expression #%?, scope=%?, m=%?",
@@ -1542,10 +1545,10 @@ trait combine {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
-    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]>;
+    fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>>;
-    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs>;
-    fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty>;
+    fn substs(as: &ty::substs, bs: &ty::substs) -> cres<ty::substs>;
+    fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty>;
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
@@ -1563,7 +1566,7 @@ enum lub = infer_ctxt;  // "least upper bound" (common supertype)
 enum glb = infer_ctxt;  // "greatest lower bound" (common subtype)
 
 fn super_substs<C:combine>(
-    self: C, a: ty::substs, b: ty::substs) -> cres<ty::substs> {
+    self: &C, a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
 
     fn eq_opt_regions(infcx: infer_ctxt,
                       a: option<ty::region>,
@@ -1602,7 +1605,7 @@ fn super_substs<C:combine>(
 }
 
 fn super_tps<C:combine>(
-    self: C, as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
+    self: &C, as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
 
     // Note: type parameters are always treated as *invariant*
     // (otherwise the type system would be unsound).  In the
@@ -1612,14 +1615,14 @@ fn super_tps<C:combine>(
     if vec::same_length(as, bs) {
         iter_vec2(as, bs, |a, b| {
             self.infcx().eq_tys(a, b)
-        }).then(|| ok(as) )
+        }).then(|| ok(as.to_vec()) )
     } else {
         err(ty::terr_ty_param_size(bs.len(), as.len()))
     }
 }
 
 fn super_self_tys<C:combine>(
-    self: C, a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+    self: &C, a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
 
     // Note: the self type parameter is (currently) always treated as
     // *invariant* (otherwise the type system would be unsound).
@@ -1642,7 +1645,7 @@ fn super_self_tys<C:combine>(
 }
 
 fn super_flds<C:combine>(
-    self: C, a: ty::field, b: ty::field) -> cres<ty::field> {
+    self: &C, a: ty::field, b: ty::field) -> cres<ty::field> {
 
     if a.ident == b.ident {
         self.mts(a.mt, b.mt)
@@ -1654,7 +1657,7 @@ fn super_flds<C:combine>(
 }
 
 fn super_modes<C:combine>(
-    self: C, a: ast::mode, b: ast::mode)
+    self: &C, a: ast::mode, b: ast::mode)
     -> cres<ast::mode> {
 
     let tcx = self.infcx().tcx;
@@ -1662,7 +1665,7 @@ fn super_modes<C:combine>(
 }
 
 fn super_args<C:combine>(
-    self: C, a: ty::arg, b: ty::arg)
+    self: &C, a: ty::arg, b: ty::arg)
     -> cres<ty::arg> {
 
     do self.modes(a.mode, b.mode).chain |m| {
@@ -1673,7 +1676,7 @@ fn super_args<C:combine>(
 }
 
 fn super_vstores<C:combine>(
-    self: C, vk: ty::terr_vstore_kind,
+    self: &C, vk: ty::terr_vstore_kind,
     a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
 
     match (a, b) {
@@ -1694,9 +1697,9 @@ fn super_vstores<C:combine>(
 }
 
 fn super_fns<C:combine>(
-    self: C, a_f: ty::fn_ty, b_f: ty::fn_ty) -> cres<ty::fn_ty> {
+    self: &C, a_f: &ty::fn_ty, b_f: &ty::fn_ty) -> cres<ty::fn_ty> {
 
-    fn argvecs<C:combine>(self: C, a_args: ~[ty::arg],
+    fn argvecs<C:combine>(self: &C, a_args: ~[ty::arg],
                           b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
 
         if vec::same_length(a_args, b_args) {
@@ -1729,7 +1732,7 @@ fn super_fns<C:combine>(
 }
 
 fn super_tys<C:combine>(
-    self: C, a: ty::t, b: ty::t) -> cres<ty::t> {
+    self: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
     let tcx = self.infcx().tcx;
     match (ty::get(a).struct, ty::get(b).struct) {
@@ -1747,17 +1750,17 @@ fn super_tys<C:combine>(
 
       // Have to handle these first
       (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) => {
-        self.infcx().vars_integral(self.infcx().tvib, a_id, b_id)
+        self.infcx().vars_integral(&self.infcx().tvib, a_id, b_id)
             .then(|| ok(a) )
       }
       (ty::ty_var_integral(a_id), ty::ty_int(_)) |
       (ty::ty_var_integral(a_id), ty::ty_uint(_)) => {
-        self.infcx().vart_integral(self.infcx().tvib, a_id, b)
+        self.infcx().vart_integral(&self.infcx().tvib, a_id, b)
             .then(|| ok(a) )
       }
       (ty::ty_int(_), ty::ty_var_integral(b_id)) |
       (ty::ty_uint(_), ty::ty_var_integral(b_id)) => {
-        self.infcx().tvar_integral(self.infcx().tvib, a, b_id)
+        self.infcx().tvar_integral(&self.infcx().tvib, a, b_id)
             .then(|| ok(a) )
       }
 
@@ -1787,21 +1790,21 @@ fn super_tys<C:combine>(
         ok(a)
       }
 
-      (ty::ty_enum(a_id, a_substs), ty::ty_enum(b_id, b_substs))
+      (ty::ty_enum(a_id, ref a_substs), ty::ty_enum(b_id, ref b_substs))
       if a_id == b_id => {
         do self.substs(a_substs, b_substs).chain |tps| {
             ok(ty::mk_enum(tcx, a_id, tps))
         }
       }
 
-      (ty::ty_trait(a_id, a_substs), ty::ty_trait(b_id, b_substs))
+      (ty::ty_trait(a_id, ref a_substs), ty::ty_trait(b_id, ref b_substs))
       if a_id == b_id => {
         do self.substs(a_substs, b_substs).chain |substs| {
             ok(ty::mk_trait(tcx, a_id, substs))
         }
       }
 
-      (ty::ty_class(a_id, a_substs), ty::ty_class(b_id, b_substs))
+      (ty::ty_class(a_id, ref a_substs), ty::ty_class(b_id, ref b_substs))
       if a_id == b_id => {
         do self.substs(a_substs, b_substs).chain |substs| {
             ok(ty::mk_class(tcx, a_id, substs))
@@ -1867,7 +1870,7 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_fn(a_fty), ty::ty_fn(b_fty)) => {
+      (ty::ty_fn(ref a_fty), ty::ty_fn(ref b_fty)) => {
         do self.fns(a_fty, b_fty).chain |fty| {
             ok(ty::mk_fn(tcx, fty))
         }
@@ -1881,7 +1884,7 @@ impl sub: combine {
     fn infcx() -> infer_ctxt { *self }
     fn tag() -> ~str { ~"sub" }
 
-    fn lub() -> lub { lub(*self) }
+    fn lub() -> lub { lub(self.infcx()) }
 
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t> {
         self.tys(b, a)
@@ -1899,22 +1902,22 @@ impl sub: combine {
         do indent {
             match (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) => {
-                do self.infcx().vars(self.rb, a_id, b_id).then {
+                do self.infcx().vars(&self.rb, a_id, b_id).then {
                     ok(a)
                 }
               }
               (ty::re_var(a_id), _) => {
-                do self.infcx().vart(self.rb, a_id, b).then {
+                do self.infcx().vart(&self.rb, a_id, b).then {
                       ok(a)
                   }
               }
               (_, ty::re_var(b_id)) => {
-                  do self.infcx().tvar(self.rb, a, b_id).then {
+                  do self.infcx().tvar(&self.rb, a, b_id).then {
                       ok(a)
                   }
               }
               _ => {
-                  do self.lub().regions(a, b).compare(b) {
+                  do (&self.lub()).regions(a, b).compare(b) {
                     ty::terr_regions_differ(b, a)
                 }
               }
@@ -1943,19 +1946,19 @@ impl sub: combine {
     }
 
     fn protos(a: ast::proto, b: ast::proto) -> cres<ast::proto> {
-        self.lub().protos(a, b).compare(b, || {
+        (&self.lub()).protos(a, b).compare(b, || {
             ty::terr_proto_mismatch(b, a)
         })
     }
 
     fn purities(f1: purity, f2: purity) -> cres<purity> {
-        self.lub().purities(f1, f2).compare(f2, || {
+        (&self.lub()).purities(f1, f2).compare(f2, || {
             ty::terr_purity_mismatch(f2, f1)
         })
     }
 
     fn ret_styles(a: ret_style, b: ret_style) -> cres<ret_style> {
-        self.lub().ret_styles(a, b).compare(b, || {
+        (&self.lub()).ret_styles(a, b).compare(b, || {
             ty::terr_ret_style_mismatch(b, a)
         })
     }
@@ -1970,25 +1973,25 @@ impl sub: combine {
                 ok(a)
               }
               (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-                self.infcx().vars(self.tvb, a_id, b_id).then(|| ok(a) )
+                self.infcx().vars(&self.tvb, a_id, b_id).then(|| ok(a) )
               }
               (ty::ty_var(a_id), _) => {
-                self.infcx().vart(self.tvb, a_id, b).then(|| ok(a) )
+                self.infcx().vart(&self.tvb, a_id, b).then(|| ok(a) )
               }
               (_, ty::ty_var(b_id)) => {
-                self.infcx().tvar(self.tvb, a, b_id).then(|| ok(a) )
+                self.infcx().tvar(&self.tvb, a, b_id).then(|| ok(a) )
               }
               (_, ty::ty_bot) => {
                 err(ty::terr_sorts(b, a))
               }
               _ => {
-                super_tys(self, a, b)
+                super_tys(&self, a, b)
               }
             }
         }
     }
 
-    fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
+    fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty> {
         // Rather than checking the subtype relationship between `a` and `b`
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
@@ -2021,38 +2024,38 @@ impl sub: combine {
 
         // Try to compare the supertype and subtype now that they've been
         // instantiated.
-        super_fns(self, a_fn_ty, b_fn_ty)
+        super_fns(&self, &a_fn_ty, &b_fn_ty)
     }
 
     // Traits please:
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
-        super_flds(self, a, b)
+        super_flds(&self, a, b)
     }
 
     fn vstores(vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
-        super_vstores(self, vk, a, b)
+        super_vstores(&self, vk, a, b)
     }
 
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode> {
-        super_modes(self, a, b)
+        super_modes(&self, a, b)
     }
 
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg> {
-        super_args(self, a, b)
+        super_args(&self, a, b)
     }
 
-    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs> {
-        super_substs(self, as, bs)
+    fn substs(as: &ty::substs, bs: &ty::substs) -> cres<ty::substs> {
+        super_substs(&self, as, bs)
     }
 
-    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
-        super_tps(self, as, bs)
+    fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
+        super_tps(&self, as, bs)
     }
 
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
-        super_self_tys(self, a, b)
+        super_self_tys(&self, a, b)
     }
 }
 
@@ -2146,7 +2149,7 @@ impl lub: combine {
               }
 
               (ty::re_var(_), _) | (_, ty::re_var(_)) => {
-                lattice_rvars(self, a, b)
+                lattice_rvars(&self, a, b)
               }
 
               (f @ ty::re_free(f_id, _), ty::re_scope(s_id)) |
@@ -2199,40 +2202,40 @@ impl lub: combine {
     // Traits please:
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        lattice_tys(self, a, b)
+        lattice_tys(&self, a, b)
     }
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
-        super_flds(self, a, b)
+        super_flds(&self, a, b)
     }
 
     fn vstores(vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
-        super_vstores(self, vk, a, b)
+        super_vstores(&self, vk, a, b)
     }
 
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode> {
-        super_modes(self, a, b)
+        super_modes(&self, a, b)
     }
 
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg> {
-        super_args(self, a, b)
+        super_args(&self, a, b)
     }
 
-    fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
-        super_fns(self, a, b)
+    fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty> {
+        super_fns(&self, a, b)
     }
 
-    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs> {
-        super_substs(self, as, bs)
+    fn substs(as: &ty::substs, bs: &ty::substs) -> cres<ty::substs> {
+        super_substs(&self, as, bs)
     }
 
-    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
-        super_tps(self, as, bs)
+    fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
+        super_tps(&self, as, bs)
     }
 
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
-        super_self_tys(self, a, b)
+        super_self_tys(&self, a, b)
     }
 }
 
@@ -2344,7 +2347,7 @@ impl glb: combine {
               }
 
               (ty::re_var(_), _) | (_, ty::re_var(_)) => {
-                lattice_rvars(self, a, b)
+                lattice_rvars(&self, a, b)
               }
 
               (ty::re_free(f_id, _), s @ ty::re_scope(s_id)) |
@@ -2396,42 +2399,42 @@ impl glb: combine {
     }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        lattice_tys(self, a, b)
+        lattice_tys(&self, a, b)
     }
 
     // Traits please:
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
-        super_flds(self, a, b)
+        super_flds(&self, a, b)
     }
 
     fn vstores(vk: ty::terr_vstore_kind,
                a: ty::vstore, b: ty::vstore) -> cres<ty::vstore> {
-        super_vstores(self, vk, a, b)
+        super_vstores(&self, vk, a, b)
     }
 
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode> {
-        super_modes(self, a, b)
+        super_modes(&self, a, b)
     }
 
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg> {
-        super_args(self, a, b)
+        super_args(&self, a, b)
     }
 
-    fn fns(a: ty::fn_ty, b: ty::fn_ty) -> cres<ty::fn_ty> {
-        super_fns(self, a, b)
+    fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty> {
+        super_fns(&self, a, b)
     }
 
-    fn substs(as: ty::substs, bs: ty::substs) -> cres<ty::substs> {
-        super_substs(self, as, bs)
+    fn substs(as: &ty::substs, bs: &ty::substs) -> cres<ty::substs> {
+        super_substs(&self, as, bs)
     }
 
-    fn tps(as: ~[ty::t], bs: ~[ty::t]) -> cres<~[ty::t]> {
-        super_tps(self, as, bs)
+    fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
+        super_tps(&self, as, bs)
     }
 
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
-        super_self_tys(self, a, b)
+        super_self_tys(&self, a, b)
     }
 }
 
@@ -2468,7 +2471,7 @@ impl glb: lattice_ops {
 }
 
 fn lattice_tys<L:lattice_ops combine>(
-    self: L, a: ty::t, b: ty::t) -> cres<ty::t> {
+    self: &L, a: ty::t, b: ty::t) -> cres<ty::t> {
 
     debug!{"%s.lattice_tys(%s, %s)", self.tag(),
            a.to_str(self.infcx()),
@@ -2480,18 +2483,18 @@ fn lattice_tys<L:lattice_ops combine>(
           (_, ty::ty_bot) => self.ty_bot(a),
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-            lattice_vars(self, self.infcx().tvb,
+            lattice_vars(self, &self.infcx().tvb,
                          a, a_id, b_id,
                          |x, y| self.tys(x, y) )
           }
 
           (ty::ty_var(a_id), _) => {
-            lattice_var_t(self, self.infcx().tvb, a_id, b,
+            lattice_var_t(self, &self.infcx().tvb, a_id, b,
                           |x, y| self.tys(x, y) )
           }
 
           (_, ty::ty_var(b_id)) => {
-            lattice_var_t(self, self.infcx().tvb, b_id, a,
+            lattice_var_t(self, &self.infcx().tvb, b_id, a,
                           |x, y| self.tys(x, y) )
           }
           _ => {
@@ -2503,17 +2506,17 @@ fn lattice_tys<L:lattice_ops combine>(
 
 // Pull out some common code from LUB/GLB for handling region vars:
 fn lattice_rvars<L:lattice_ops combine>(
-    self: L, a: ty::region, b: ty::region) -> cres<ty::region> {
+    self: &L, a: ty::region, b: ty::region) -> cres<ty::region> {
 
     match (a, b) {
       (ty::re_var(a_id), ty::re_var(b_id)) => {
-        lattice_vars(self, self.infcx().rb,
+        lattice_vars(self, &self.infcx().rb,
                      a, a_id, b_id,
                      |x, y| self.regions(x, y) )
       }
 
       (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) => {
-        lattice_var_t(self, self.infcx().rb,
+        lattice_var_t(self, &self.infcx().rb,
                       v_id, r,
                       |x, y| self.regions(x, y) )
       }
@@ -2530,8 +2533,8 @@ fn lattice_rvars<L:lattice_ops combine>(
 }
 
 fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
-    self: L, vb: vals_and_bindings<V, bounds<T>>,
-    a_t: T, a_vid: V, b_vid: V,
+    self: &L, vb: &vals_and_bindings<V, bounds<T>>,
+    +a_t: T, +a_vid: V, +b_vid: V,
     c_ts: fn(T, T) -> cres<T>) -> cres<T> {
 
     // The comments in this function are written for LUB and types,
@@ -2574,8 +2577,8 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
 }
 
 fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
-    self: L, vb: vals_and_bindings<V, bounds<T>>,
-    a_id: V, b: T,
+    self: &L, vb: &vals_and_bindings<V, bounds<T>>,
+    +a_id: V, +b: T,
     c_ts: fn(T, T) -> cres<T>) -> cres<T> {
 
     let nde_a = self.infcx().get(vb, a_id);

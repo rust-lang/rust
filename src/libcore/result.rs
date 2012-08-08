@@ -250,7 +250,7 @@ impl<T: copy, E: copy> result<T, E> {
  *     }
  */
 fn map_vec<T,U:copy,V:copy>(
-    ts: ~[T], op: fn(T) -> result<V,U>) -> result<~[V],U> {
+    ts: &[T], op: fn(T) -> result<V,U>) -> result<~[V],U> {
 
     let mut vs: ~[V] = ~[];
     vec::reserve(vs, vec::len(ts));
@@ -284,7 +284,7 @@ fn map_opt<T,U:copy,V:copy>(
  * used in 'careful' code contexts where it is both appropriate and easy
  * to accommodate an error like the vectors being of different lengths.
  */
-fn map_vec2<S,T,U:copy,V:copy>(ss: ~[S], ts: ~[T],
+fn map_vec2<S,T,U:copy,V:copy>(ss: &[S], ts: &[T],
                                op: fn(S,T) -> result<V,U>) -> result<~[V],U> {
 
     assert vec::same_length(ss, ts);
@@ -307,7 +307,7 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: ~[S], ts: ~[T],
  * error.  This could be implemented using `map2()` but it is more efficient
  * on its own as no result vector is built.
  */
-fn iter_vec2<S,T,U:copy>(ss: ~[S], ts: ~[T],
+fn iter_vec2<S,T,U:copy>(ss: &[S], ts: &[T],
                          op: fn(S,T) -> result<(),U>) -> result<(),U> {
 
     assert vec::same_length(ss, ts);
