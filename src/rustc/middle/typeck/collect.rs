@@ -131,7 +131,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                                             output: enum_ty,
                                             ret_style: ast::return_val});
             }
-            ast::tuple_variant_kind(_) | ast::struct_variant_kind =>
+            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) =>
                 result_ty = enum_ty
         };
         let tpt = {bounds: ty_param_bounds(ccx, ty_params),

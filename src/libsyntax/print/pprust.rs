@@ -694,9 +694,9 @@ fn print_tt(s: ps, tt: ast::token_tree) {
 }
 
 fn print_variant(s: ps, v: ast::variant) {
-    word(s.s, *v.node.name);
     match v.node.kind {
         ast::tuple_variant_kind(args) => {
+            word(s.s, *v.node.name);
             if vec::len(args) > 0u {
                 popen(s);
                 fn print_variant_arg(s: ps, arg: ast::variant_arg) {
@@ -706,7 +706,10 @@ fn print_variant(s: ps, v: ast::variant) {
                 pclose(s);
             }
         }
-        ast::struct_variant_kind => {}
+        ast::struct_variant_kind(struct_def) => {
+            head(s, ~"");
+            print_struct(s, struct_def, ~[], v.node.name, v.span);
+        }
     }
     match v.node.disr_expr {
       some(d) => {

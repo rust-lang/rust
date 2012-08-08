@@ -549,8 +549,21 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
         tuple_variant_kind(variant_args) =>
             kind = tuple_variant_kind(vec::map(variant_args,
                                                fold_variant_arg)),
-        struct_variant_kind =>
-            kind = struct_variant_kind
+        struct_variant_kind(struct_def) => {
+            let dtor = do option::map(struct_def.dtor) |dtor| {
+                let dtor_body = fld.fold_block(dtor.node.body);
+                let dtor_id   = fld.new_id(dtor.node.id);
+                {node: {body: dtor_body,
+                        id: dtor_id with dtor.node}
+                    with dtor}};
+            kind = struct_variant_kind(@{
+                traits: ~[],
+                members: vec::map(struct_def.members,
+                                  |x| fld.fold_class_item(x)),
+                ctor: none,
+                dtor: dtor
+            })
+        }
     }
 
     let fold_attribute = |x| fold_attribute_(x, fld);

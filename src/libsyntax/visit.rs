@@ -140,9 +140,13 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         v.visit_ty_params(tps, e, v);
         for variants.each |vr| {
             match vr.node.kind {
-                tuple_variant_kind(variant_args) =>
-                    for variant_args.each |va| { v.visit_ty(va.ty, e, v); },
-                struct_variant_kind => {}
+                tuple_variant_kind(variant_args) => {
+                    for variant_args.each |va| { v.visit_ty(va.ty, e, v); }
+                }
+                struct_variant_kind(struct_def) => {
+                    v.visit_struct_def(struct_def, vr.node.name, tps,
+                                       vr.node.id, e, v);
+                }
             }
         }
       }

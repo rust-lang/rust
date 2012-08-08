@@ -43,24 +43,21 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
              mutability, neg, noreturn, not, pat, pat_box, pat_enum,
              pat_ident, pat_lit, pat_range, pat_rec, pat_struct, pat_tup,
-             pat_uniq,
-             pat_wild, path, private, proto, proto_bare, proto_block,
-             proto_box, proto_uniq, provided, public, pure_fn, purity,
-             re_anon, re_named, region, rem, required, ret_style, return_val,
-             self_ty, shl, shr, stmt, stmt_decl, stmt_expr, stmt_semi,
-             subtract, sty_box, sty_by_ref, sty_region, sty_static,
-             sty_uniq, sty_value,
-             token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
+             pat_uniq, pat_wild, path, private, proto, proto_bare,
+             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
+             purity, re_anon, re_named, region, rem, required, ret_style,
+             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
+             stmt_semi, struct_variant_kind, subtract, sty_box, sty_by_ref,
+             sty_region, sty_static, sty_uniq, sty_value, token_tree,
+             trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
              tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
              ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound,
-             ty_path, ty_ptr,
-             ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec,
-             ty_fixed_length, tuple_variant_kind,
-             unchecked_blk, uniq, unsafe_blk, unsafe_fn,
-             variant, view_item, view_item_, view_item_export,
-             view_item_import, view_item_use, view_path, view_path_glob,
-             view_path_list, view_path_simple, visibility, vstore, vstore_box,
-             vstore_fixed, vstore_slice, vstore_uniq};
+             ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq,
+             ty_vec, ty_fixed_length, tuple_variant_kind, unchecked_blk, uniq,
+             unsafe_blk, unsafe_fn, variant, view_item, view_item_,
+             view_item_export, view_item_import, view_item_use, view_path,
+             view_path_glob, view_path_list, view_path_simple, visibility,
+             vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
 
 export file_type;
 export parser;
@@ -2877,7 +2874,57 @@ class parser {
             let vis = self.parse_visibility();
             let ident = self.parse_value_ident();
             let mut args = ~[], disr_expr = none;
-            if self.token == token::LPAREN {
+            let kind;
+            if self.eat(token::LBRACE) {
+                // Parse a struct variant.
+                all_nullary = false;
+                let path = self.ident_to_path_tys(ident, ty_params);
+                let mut the_dtor: option<(blk, ~[attribute], codemap::span)> =
+                    none;
+                let mut ms: ~[@class_member] = ~[];
+                while self.token != token::RBRACE {
+                    match self.parse_class_item(path) {
+                        ctor_decl(*) => {
+                            self.span_fatal(copy self.span,
+                                            ~"deprecated explicit \
+                                              constructors are not allowed \
+                                              here");
+                        }
+                        dtor_decl(blk, attrs, s) => {
+                            match the_dtor {
+                                some((_, _, s_first)) => {
+                                    self.span_note(s, ~"duplicate destructor \
+                                                        declaration");
+                                    self.span_fatal(copy s_first,
+                                                    ~"first destructor \
+                                                      declared here");
+                                }
+                                none => {
+                                    the_dtor = some((blk, attrs, s));
+                                }
+                            }
+                        }
+                        members(mms) =>
+                            ms = vec::append(ms, mms)
+                    }
+                }
+                self.bump();
+                let mut actual_dtor = do option::map(the_dtor) |dtor| {
+                    let (d_body, d_attrs, d_s) = dtor;
+                    {node: {id: self.get_id(),
+                            attrs: d_attrs,
+                            self_id: self.get_id(),
+                            body: d_body},
+                     span: d_s}
+                };
+                
+                kind = struct_variant_kind(@{
+                    traits: ~[],
+                    members: ms,
+                    ctor: none,
+                    dtor: actual_dtor
+                });
+            } else if self.token == token::LPAREN {
                 all_nullary = false;
                 let arg_tys = self.parse_unspanned_seq(
                     token::LPAREN, token::RPAREN,
@@ -2886,13 +2933,17 @@ class parser {
                 for arg_tys.each |ty| {
                     vec::push(args, {ty: ty, id: self.get_id()});
                 }
+                kind = tuple_variant_kind(args);
             } else if self.eat(token::EQ) {
                 have_disr = true;
                 disr_expr = some(self.parse_expr());
+                kind = tuple_variant_kind(args);
+            } else {
+                kind = tuple_variant_kind(~[]);
             }
 
             let vr = {name: ident, attrs: variant_attrs,
-                      kind: tuple_variant_kind(args), id: self.get_id(),
+                      kind: kind, id: self.get_id(),
                       disr_expr: disr_expr, vis: vis};
             vec::push(variants, spanned(vlo, self.last_span.hi, vr));
 
