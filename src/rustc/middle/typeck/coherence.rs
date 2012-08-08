@@ -257,7 +257,6 @@ class CoherenceChecker {
         // Bring in external crates. It's fine for this to happen after the
         // coherence checks, because we ensure by construction that no errors
         // can happen at link time.
-
         self.add_external_crates();
     }
 
@@ -273,8 +272,8 @@ class CoherenceChecker {
                    *item.ident};
 
             match get_base_type_def_id(self.inference_context,
-                                     item.span,
-                                     self_type.ty) {
+                                       item.span,
+                                       self_type.ty) {
                 none => {
                     let session = self.crate_context.tcx.sess;
                     session.span_err(item.span,
@@ -421,7 +420,6 @@ class CoherenceChecker {
     }
 
     // Privileged scope checking
-
     fn check_privileged_scopes(crate: @crate) {
         // Gather up all privileged types.
         let privileged_types =
@@ -717,8 +715,8 @@ class CoherenceChecker {
 
             if associated_traits.len() == 0 {
                 match get_base_type_def_id(self.inference_context,
-                                         dummy_sp(),
-                                         self_type.ty) {
+                                           dummy_sp(),
+                                           self_type.ty) {
                     none => {
                         let session = self.crate_context.tcx.sess;
                         session.bug(fmt!{"no base type for external impl \
