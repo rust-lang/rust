@@ -636,7 +636,8 @@ type variant_arg = {ty: @ty, id: node_id};
 #[auto_serialize]
 enum variant_kind {
     tuple_variant_kind(~[variant_arg]),
-    struct_variant_kind(@struct_def)
+    struct_variant_kind(@struct_def),
+    enum_variant_kind(~[variant])
 }
 
 #[auto_serialize]

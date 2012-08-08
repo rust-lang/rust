@@ -2235,7 +2235,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
                                    psubsts, d);
             }
             ast::struct_variant_kind(_) =>
-                ccx.tcx.sess.bug(~"can't monomorphize struct variants")
+                ccx.tcx.sess.bug(~"can't monomorphize struct variants"),
+            ast::enum_variant_kind(_) =>
+                ccx.tcx.sess.bug(~"can't monomorphize enum variants")
         }
         d
       }
@@ -4893,6 +4895,34 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   lldecl
 }
 
+fn trans_variants(ccx: @crate_ctxt, variants: ~[ast::variant],
+                  id: ast::node_id, tps: ~[ast::ty_param], degen: bool,
+                  path: @ast_map::path, vi: @~[ty::variant_info],
+                  i: &mut uint) {
+    for vec::each(variants) |variant| {
+        let disr_val = vi[*i].disr_val;
+        *i += 1;
+
+        match variant.node.kind {
+            ast::tuple_variant_kind(args) if args.len() > 0 => {
+                let llfn = get_item_val(ccx, variant.node.id);
+                trans_enum_variant(ccx, id, variant, args, disr_val,
+                                   degen, none, llfn);
+            }
+            ast::tuple_variant_kind(_) => {
+                // Nothing to do.
+            }
+            ast::struct_variant_kind(struct_def) => {
+                trans_struct_def(ccx, struct_def, tps, path,
+                                 variant.node.name, variant.node.id);
+            }
+            ast::enum_variant_kind(variants) => {
+                trans_variants(ccx, variants, id, tps, degen, path, vi, i);
+            }
+        }
+    }
+}
+
 fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let _icx = ccx.insn_ctxt(~"trans_item");
     let path = match check ccx.tcx.items.get(item.id) {
@@ -4934,24 +4964,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
             let degen = variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            for vec::each(variants) |variant| {
-                match variant.node.kind {
-                    ast::tuple_variant_kind(args) if args.len() > 0 => {
-                        let llfn = get_item_val(ccx, variant.node.id);
-                        trans_enum_variant(ccx, item.id, variant, args,
-                                           vi[i].disr_val, degen,
-                                           none, llfn);
-                    }
-                    ast::tuple_variant_kind(_) => {
-                        // Nothing to do.
-                    }
-                    ast::struct_variant_kind(struct_def) => {
-                        trans_struct_def(ccx, struct_def, tps, path,
-                                         variant.node.name, variant.node.id);
-                    }
-                }
-                i += 1;
-            }
+            trans_variants(ccx, variants, item.id, tps, degen, path, vi,
+                           &mut i);
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
@@ -5263,7 +5277,10 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                     };
                 }
                 ast::struct_variant_kind(_) => {
-                    fail ~"struct unexpected in get_item_val"
+                    fail ~"struct variant kind unexpected in get_item_val"
+                }
+                ast::enum_variant_kind(_) => {
+                    fail ~"enum variant kind unexpected in get_item_val"
                 }
             }
             set_inline_hint(llfn);

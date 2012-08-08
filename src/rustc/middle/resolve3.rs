@@ -21,19 +21,19 @@ import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
 import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_path};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
-import syntax::ast::{def_upvar, def_use, def_variant, div, eq, expr};
-import syntax::ast::{expr_assign_op, expr_binary, expr_cast, expr_field};
-import syntax::ast::{expr_fn, expr_fn_block, expr_index, expr_path};
-import syntax::ast::{expr_struct, expr_unary, fn_decl, foreign_item};
-import syntax::ast::{foreign_item_fn, ge, gt, ident, trait_ref, impure_fn};
-import syntax::ast::{instance_var, item, item_class, item_const, item_enum};
-import syntax::ast::{item_fn, item_mac, item_foreign_mod, item_impl};
-import syntax::ast::{item_mod, item_trait, item_ty, le, local, local_crate};
-import syntax::ast::{lt, method, mul, ne, neg, node_id, pat, pat_enum};
-import syntax::ast::{pat_ident, path, prim_ty, pat_box, pat_uniq, pat_lit};
-import syntax::ast::{pat_range, pat_rec, pat_struct, pat_tup, pat_wild};
-import syntax::ast::{provided, required, rem, self_ty_, shl, stmt_decl};
-import syntax::ast::{struct_variant_kind, sty_static, subtract};
+import syntax::ast::{def_upvar, def_use, def_variant, div, eq};
+import syntax::ast::{enum_variant_kind, expr, expr_assign_op, expr_binary};
+import syntax::ast::{expr_cast, expr_field, expr_fn, expr_fn_block};
+import syntax::ast::{expr_index, expr_path, expr_struct, expr_unary, fn_decl};
+import syntax::ast::{foreign_item, foreign_item_fn, ge, gt, ident, trait_ref};
+import syntax::ast::{impure_fn, instance_var, item, item_class, item_const};
+import syntax::ast::{item_enum, item_fn, item_mac, item_foreign_mod};
+import syntax::ast::{item_impl, item_mod, item_trait, item_ty, le, local};
+import syntax::ast::{local_crate, lt, method, mul, ne, neg, node_id, pat};
+import syntax::ast::{pat_enum, pat_ident, path, prim_ty, pat_box, pat_uniq};
+import syntax::ast::{pat_lit, pat_range, pat_rec, pat_struct, pat_tup};
+import syntax::ast::{pat_wild, provided, required, rem, self_ty_, shl};
+import syntax::ast::{stmt_decl, struct_variant_kind, sty_static, subtract};
 import syntax::ast::{tuple_variant_kind, ty};
 import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
@@ -1128,7 +1128,7 @@ class Resolver {
     fn build_reduced_graph_for_variant(variant: variant,
                                        item_id: def_id,
                                        parent: ReducedGraphParent,
-                                       &&_visitor: vt<ReducedGraphParent>) {
+                                       &&visitor: vt<ReducedGraphParent>) {
 
         let atom = (*self.atom_table).intern(variant.node.name);
         let (child, _) = self.add_child(atom, parent, ~[ValueNS],
@@ -1145,6 +1145,14 @@ class Resolver {
                                                  local_def(variant.node.id)),
                                      variant.span);
                 self.structs.insert(local_def(variant.node.id), false);
+            }
+            enum_variant_kind(variants) => {
+                (*child).define_type(def_ty(local_def(variant.node.id)),
+                                     variant.span);
+                for variants.each |variant| {
+                    self.build_reduced_graph_for_variant(variant, item_id,
+                                                         parent, visitor);
+                }
             }
         }
     }

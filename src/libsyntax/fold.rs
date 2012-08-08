@@ -564,6 +564,11 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                 dtor: dtor
             })
         }
+
+        enum_variant_kind(variants) => {
+            let variants = vec::map(variants, |x| fld.fold_variant(x));
+            kind = enum_variant_kind(variants);
+        }
     }
 
     let fold_attribute = |x| fold_attribute_(x, fld);
