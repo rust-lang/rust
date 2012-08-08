@@ -4206,9 +4206,26 @@ fn build_return(bcx: block) {
     Br(bcx, bcx.fcx.llreturn);
 }
 
+fn ignore_lhs(_bcx: block, local: @ast::local) -> bool {
+    match local.node.pat.node {
+        ast::pat_wild => true, _ => false
+    }
+}
+
 fn init_local(bcx: block, local: @ast::local) -> block {
     let _icx = bcx.insn_ctxt(~"init_local");
     let ty = node_id_type(bcx, local.node.id);
+
+    if ignore_lhs(bcx, local) {
+        // Handle let _ = e; just like e;
+        match local.node.init {
+            some(init) => {
+              return trans_expr(bcx, init.expr, ignore);
+            }
+            none => { return bcx; }
+        }
+    }
+
     let llptr = match bcx.fcx.lllocals.find(local.node.id) {
       some(local_mem(v)) => v,
       _ => { bcx.tcx().sess.span_bug(local.span,
