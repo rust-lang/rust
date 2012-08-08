@@ -79,6 +79,7 @@ export vtable_res;
 export vtable_origin;
 export method_static, method_param, method_trait;
 export vtable_static, vtable_param, vtable_trait;
+export provided_methods_map;
 
 #[auto_serialize]
 enum method_origin {
@@ -152,6 +153,11 @@ enum vtable_origin {
 type vtable_map = hashmap<ast::node_id, vtable_res>;
 
 type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};
+// Stores information about provided methods, aka "default methods" in traits.
+// Maps from a trait's def_id to a MethodInfo about
+// that method in that trait.
+type provided_methods_map = hashmap<ast::node_id,
+                                    ~[@resolve3::MethodInfo]>;
 
 type ty_table = hashmap<ast::def_id, ty::t>;
 
@@ -160,6 +166,7 @@ type crate_ctxt_ = {impl_map: resolve3::ImplMap,
                     method_map: method_map,
                     vtable_map: vtable_map,
                     coherence_info: @coherence::CoherenceInfo,
+                    provided_methods_map: provided_methods_map,
                     tcx: ty::ctxt};
 
 enum crate_ctxt {
@@ -302,6 +309,7 @@ fn check_crate(tcx: ty::ctxt,
                             method_map: std::map::int_hash(),
                             vtable_map: std::map::int_hash(),
                             coherence_info: @coherence::CoherenceInfo(),
+                            provided_methods_map: std::map::int_hash(),
                             tcx: tcx});
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);
