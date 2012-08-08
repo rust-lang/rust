@@ -2440,66 +2440,19 @@ class parser {
             tps = ~[];
         }
 
-        let mut ident;
-        let ty, traits;
-        if !self.is_keyword(~"of") &&
-                !self.token_is_keyword(~"of", self.look_ahead(1)) &&
-                !self.token_is_keyword(~"for", self.look_ahead(1)) &&
-                self.look_ahead(1) != token::BINOP(token::SLASH) &&
-                (self.look_ahead(1) != token::LT
-                 || (self.look_ahead(1) == token::LT && tps.is_not_empty())) {
+        // This is a new-style impl declaration.
+        let ident = @~"__extensions__";     // XXX: clownshoes
 
-            // This is a new-style impl declaration.
-            ident = @~"__extensions__";     // XXX: clownshoes
+        // Parse the type.
+        let ty = self.parse_ty(false);
 
-            // Parse the type.
-            ty = self.parse_ty(false);
-
-            // Parse traits, if necessary.
-            if self.token == token::COLON {
-                self.bump();
-                traits = self.parse_trait_ref_list(token::LBRACE);
-            } else {
-                traits = ~[];
-            }
+        // Parse traits, if necessary.
+        let traits = if self.token == token::COLON {
+            self.bump();
+            self.parse_trait_ref_list(token::LBRACE)
         } else {
-            self.warn(~"old-style named impl?");
-            let mut ident_old;
-            if self.token == token::BINOP(token::SLASH) {
-                self.parse_region_param();
-                ident_old = none;
-                tps = self.parse_ty_params();
-            } else if self.is_keyword(~"of") {
-                ident_old = none;
-            } else {
-                ident_old = some(self.parse_ident());
-                self.parse_region_param();
-                tps = self.parse_ty_params();
-            }
-
-            if self.eat_keyword(~"of") {
-                let for_atom = (*self.reader.interner()).intern(@~"for");
-                traits = self.parse_trait_ref_list
-                    (token::IDENT(for_atom, false));
-                if traits.len() >= 1 && option::is_none(ident_old) {
-                    ident_old = some(vec::last(traits[0].path.idents));
-                }
-                if traits.len() == 0 {
-                    self.fatal(~"BUG: 'of' but no trait");
-                }
-                if traits.len() > 1 {
-                    self.fatal(~"BUG: multiple traits");
-                }
-            } else {
-                traits = ~[];
-            };
-            ident = match ident_old {
-              some(name) => name,
-              none => { self.expect_keyword(~"of"); fail; }
-            };
-            self.expect_keyword(~"for");
-            ty = self.parse_ty(false);
-        }
+            ~[]
+        };
 
         let mut meths = ~[];
         self.expect(token::LBRACE);
