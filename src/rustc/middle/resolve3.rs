@@ -987,22 +987,30 @@ class Resolver {
                 }
             }
             item_class(struct_definition, _) => {
-              let (name_bindings, new_parent) = self.add_child(atom, parent,
-                                              ~[ValueNS, TypeNS], sp);
-
-                (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
-
-                match struct_definition.ctor {
+                let (name_bindings, new_parent) =
+                    match struct_definition.ctor {
                     none => {
-                        // Nothing to do.
+                        let (name_bindings, new_parent) = self.add_child(atom,
+                              parent, ~[TypeNS], sp);
+
+                        (*name_bindings).define_type(def_ty(
+                            local_def(item.id)), sp);
+                        (name_bindings, new_parent)
                     }
                     some(ctor) => {
+                        let (name_bindings, new_parent) = self.add_child(atom,
+                                 parent, ~[ValueNS, TypeNS], sp);
+
+                        (*name_bindings).define_type(def_ty(
+                            local_def(item.id)), sp);
+
                         let purity = ctor.node.dec.purity;
                         let ctor_def = def_fn(local_def(ctor.node.id),
                                               purity);
                         (*name_bindings).define_value(ctor_def, sp);
+                        (name_bindings, new_parent)
                     }
-                }
+                };
 
                 // Create the set of implementation information that the
                 // implementation scopes (ImplScopes) need and write it into
