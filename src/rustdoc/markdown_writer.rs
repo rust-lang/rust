@@ -23,7 +23,7 @@ trait writer_utils {
     fn write_done();
 }
 
-impl writer_util of writer_utils for writer {
+impl writer: writer_utils {
     fn write_str(str: ~str) {
         self(write(str));
     }

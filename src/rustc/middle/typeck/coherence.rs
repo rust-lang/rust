@@ -30,8 +30,8 @@ import syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
 import syntax::visit::{visit_mod};
 import util::ppaux::ty_to_str;
 
-import dvec::{dvec, extensions};
-import result::{extensions, ok};
+import dvec::dvec;
+import result::ok;
 import std::map::{hashmap, int_hash};
 import uint::range;
 import vec::{len, push};

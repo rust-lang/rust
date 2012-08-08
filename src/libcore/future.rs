@@ -32,7 +32,7 @@ enum future<A> = {
 };
 
 /// Methods on the `future` type
-impl extensions<A:copy send> for future<A> {
+impl<A:copy send> future<A> {
 
     fn get() -> A {
         //! Get the value of the future

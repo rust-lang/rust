@@ -2,7 +2,7 @@
 // unresolved type variables and replaces "ty_var" types with their
 // substitutions.
 
-import check::{fn_ctxt, lookup_local, methods};
+import check::{fn_ctxt, lookup_local};
 import infer::{resolve_type, resolve_all, force_all};
 export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;

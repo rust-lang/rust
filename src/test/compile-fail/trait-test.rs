@@ -1,5 +1,5 @@
 trait foo { fn foo(); }
 
-impl of int for uint { fn foo() {} } //~ ERROR trait
+impl uint: int { fn foo() {} } //~ ERROR trait
 
 fn main() {}

@@ -7,7 +7,7 @@ trait get_ctxt {
 
 type has_ctxt = { c: &ctxt };
 
-impl of get_ctxt for has_ctxt {
+impl has_ctxt: get_ctxt {
 
     // Here an error occurs because we used `&self` but
     // the definition used `&`:

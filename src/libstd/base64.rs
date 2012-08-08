@@ -1,10 +1,10 @@
-import io::{reader, reader_util};
+import io::reader;
 
 trait to_base64 {
     fn to_base64() -> ~str;
 }
 
-impl of to_base64 for ~[u8] {
+impl ~[u8]: to_base64 {
     fn to_base64() -> ~str {
         let chars = str::chars(
           ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -52,7 +52,7 @@ impl of to_base64 for ~[u8] {
     }
 }
 
-impl of to_base64 for ~str {
+impl ~str: to_base64 {
     fn to_base64() -> ~str {
         str::bytes(self).to_base64()
     }
@@ -62,7 +62,7 @@ trait from_base64 {
     fn from_base64() -> ~[u8];
 }
 
-impl of from_base64 for ~[u8] {
+impl ~[u8]: from_base64 {
     fn from_base64() -> ~[u8] {
         if self.len() % 4u != 0u { fail ~"invalid base64 length"; }
 
@@ -124,7 +124,7 @@ impl of from_base64 for ~[u8] {
     }
 }
 
-impl of from_base64 for ~str {
+impl ~str: from_base64 {
     fn from_base64() -> ~[u8] {
         str::bytes(self).from_base64()
     }

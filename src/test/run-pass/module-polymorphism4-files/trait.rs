@@ -2,7 +2,7 @@ trait says {
     fn says() -> ~str;
 }
 
-impl talky of says for T {
+impl T: says {
 
     // 'animal' and 'talk' functions are implemented by the module
     // instantiating the talky trait. They are 'abstract'

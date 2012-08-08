@@ -6,7 +6,7 @@ trait tuple_ops<T,U> {
     pure fn swap() -> (U, T);
 }
 
-impl extensions <T:copy, U:copy> of tuple_ops<T,U> for (T, U) {
+impl<T: copy, U: copy> (T, U): tuple_ops<T,U> {
 
     /// Return the first element of self
     pure fn first() -> T {
@@ -33,8 +33,7 @@ trait extended_tuple_ops<A,B> {
     fn map<C>(f: fn(A, B) -> C) -> ~[C];
 }
 
-impl extensions<A: copy, B: copy> of extended_tuple_ops<A,B>
-        for (&[A], &[B]) {
+impl<A: copy, B: copy> (&[A], &[B]): extended_tuple_ops<A,B> {
 
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;
@@ -47,8 +46,7 @@ impl extensions<A: copy, B: copy> of extended_tuple_ops<A,B>
     }
 }
 
-impl extensions<A: copy, B: copy> of extended_tuple_ops<A,B>
-        for (~[A], ~[B]) {
+impl<A: copy, B: copy> (~[A], ~[B]): extended_tuple_ops<A,B> {
 
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;

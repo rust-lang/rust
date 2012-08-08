@@ -32,7 +32,7 @@ enum sem<Q: send> = exclusive<{
     blocked:   Q,
 }>;
 
-impl sem<Q: send> for &sem<Q> {
+impl<Q: send> &sem<Q> {
     fn acquire() {
         let mut waiter_nobe = none;
         unsafe {
@@ -72,14 +72,14 @@ impl sem<Q: send> for &sem<Q> {
     }
 }
 // FIXME(#3154) move both copies of this into sem<Q>, and unify the 2 structs
-impl sem_access for &sem<()> {
+impl &sem<()> {
     fn access<U>(blk: fn() -> U) -> U {
         self.acquire();
         let _x = sem_release(self);
         blk()
     }
 }
-impl sem_access for &sem<waitqueue> {
+impl &sem<waitqueue> {
     fn access<U>(blk: fn() -> U) -> U {
         self.acquire();
         let _x = sem_and_signal_release(self);
@@ -102,7 +102,7 @@ struct sem_and_signal_release {
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
 enum condvar = &sem<waitqueue>;
 
-impl condvar for condvar {
+impl condvar {
     /// Atomically drop the associated lock, and block until a signal is sent.
     fn wait() {
         let (signal_end, wait_end) = pipes::stream();
@@ -158,7 +158,7 @@ impl condvar for condvar {
     }
 }
 
-impl sem_and_signal for &sem<waitqueue> {
+impl &sem<waitqueue> {
     fn access_cond<U>(blk: fn(condvar) -> U) -> U {
         do self.access { blk(condvar(self)) }
     }
@@ -179,7 +179,7 @@ fn new_semaphore(count: int) -> semaphore {
                               blocked: () })))
 }
 
-impl semaphore for &semaphore {
+impl &semaphore {
     /// Create a new handle to the semaphore.
     fn clone() -> semaphore { semaphore(sem((***self).clone())) }
 
@@ -218,7 +218,7 @@ fn new_mutex() -> mutex {
                           blocked: { head: block_head, tail: block_tail } })))
 }
 
-impl mutex for &mutex {
+impl &mutex {
     /// Create a new handle to the mutex.
     fn clone() -> mutex { mutex(sem((***self).clone())) }
 

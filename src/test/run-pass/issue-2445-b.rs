@@ -6,7 +6,7 @@ class c1<T: copy> {
     }
 }
 
-impl i1<T: copy> for c1<T> {
+impl<T: copy> c1<T> {
     fn f2(x: int) {
     }
 }

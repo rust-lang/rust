@@ -2,7 +2,7 @@ trait double {
     fn double() -> uint;
 }
 
-impl methods of double for @@uint {
+impl @@uint: double {
     fn double() -> uint { **self * 2u }
 }
 

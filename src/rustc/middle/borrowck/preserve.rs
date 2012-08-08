@@ -10,7 +10,7 @@ enum preserve_condition {
     pc_if_pure(bckerr)
 }
 
-impl public_methods for preserve_condition {
+impl preserve_condition {
     // combines two preservation conditions such that if either of
     // them requires purity, the result requires purity
     fn combine(pc: preserve_condition) -> preserve_condition {
@@ -21,7 +21,7 @@ impl public_methods for preserve_condition {
     }
 }
 
-impl public_methods for borrowck_ctxt {
+impl borrowck_ctxt {
     fn preserve(cmt: cmt,
                 scope_region: ty::region,
                 item_ub: ast::node_id,
@@ -54,7 +54,7 @@ enum preserve_ctxt = {
 };
 
 
-impl private_methods for &preserve_ctxt {
+priv impl &preserve_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
     fn preserve(cmt: cmt) -> bckres<preserve_condition> {

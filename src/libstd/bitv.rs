@@ -421,7 +421,7 @@ pure fn land(w0: uint, w1: uint) -> uint { return w0 & w1; }
 
 pure fn right(_w0: uint, w1: uint) -> uint { return w1; }
 
-impl extensions of ops::index<uint,bool> for bitv {
+impl bitv: ops::index<uint,bool> {
     pure fn index(&&i: uint) -> bool {
         self.get(i)
     }

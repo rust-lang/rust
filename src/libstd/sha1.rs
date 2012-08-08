@@ -217,7 +217,7 @@ fn sha1() -> sha1 {
         process_msg_block(st);
     }
 
-    impl of sha1 for sha1state {
+    impl sha1state: sha1 {
         fn reset() {
             // FIXME: Should be typestate precondition (#2345)
             assert (vec::len(self.h) == digest_buf_len);

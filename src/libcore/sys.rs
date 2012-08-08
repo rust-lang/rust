@@ -106,7 +106,7 @@ class little_lock {
     drop { rustrt::rust_destroy_little_lock(self.l); }
 }
 
-impl methods for little_lock {
+impl little_lock {
     unsafe fn lock<T>(f: fn() -> T) -> T {
         class unlock {
             let l: rust_little_lock;

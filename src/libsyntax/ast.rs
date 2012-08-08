@@ -827,20 +827,20 @@ trait path_concat {
 }
 
 // Remove after snapshot!
-impl methods of path_concat for ident {
+impl ident: path_concat {
     pure fn +(&&id: ident) -> @path {
         simple_path(self, empty_span()) + id
     }
 }
 
-impl methods of ops::add<ident,@path> for ident {
+impl ident: ops::add<ident,@path> {
     pure fn add(&&id: ident) -> @path {
         simple_path(self, empty_span()) + id
     }
 }
 
 // Remove after snapshot!
-impl methods of path_concat for @path {
+impl @path: path_concat {
     pure fn +(&&id: ident) -> @path {
         @{
             idents: vec::append_one(self.idents, id)
@@ -849,7 +849,7 @@ impl methods of path_concat for @path {
     }
 }
 
-impl methods of ops::add<ident,@path> for @path {
+impl @path: ops::add<ident,@path> {
     pure fn add(&&id: ident) -> @path {
         @{
             idents: vec::append_one(self.idents, id)

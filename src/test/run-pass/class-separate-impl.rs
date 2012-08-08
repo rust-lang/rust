@@ -35,7 +35,7 @@ class cat {
   }
 }
 
-impl of to_str for cat {
+impl cat: to_str {
   fn to_str() -> ~str { self.name }
 }
 

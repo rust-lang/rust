@@ -5,9 +5,8 @@
 //
 // Note that recursive use is not permitted.
 
-import dvec_iter::extensions;
 import unsafe::reinterpret_cast;
-import ptr::{null, extensions};
+import ptr::null;
 
 export dvec;
 export from_elem;
@@ -75,7 +74,7 @@ fn unwrap<A>(-d: dvec<A>) -> ~[mut A] {
     return v;
 }
 
-impl private_methods<A> for dvec<A> {
+priv impl<A> dvec<A> {
     pure fn check_not_borrowed() {
         unsafe {
             let data: *() = unsafe::reinterpret_cast(self.data);
@@ -107,7 +106,7 @@ impl private_methods<A> for dvec<A> {
 // In theory, most everything should work with any A, but in practice
 // almost nothing works without the copy bound due to limitations
 // around closures.
-impl extensions<A> for dvec<A> {
+impl<A> dvec<A> {
     /// Reserves space for N elements
     fn reserve(count: uint) {
         vec::reserve(self.data, count)
@@ -188,7 +187,7 @@ impl extensions<A> for dvec<A> {
     }
 }
 
-impl extensions<A:copy> for dvec<A> {
+impl<A: copy> dvec<A> {
     /**
      * Append all elements of a vector to the end of the list
      *
@@ -311,7 +310,7 @@ impl extensions<A:copy> for dvec<A> {
     }
 }
 
-impl extensions<A:copy> of index<uint,A> for dvec<A> {
+impl<A:copy> dvec<A>: index<uint,A> {
     pure fn index(&&idx: uint) -> A {
         self.get_elt(idx)
     }

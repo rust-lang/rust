@@ -52,7 +52,7 @@ import syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 import syntax::visit::{visit_mod, visit_ty, vt};
 
 import box::ptr_eq;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import option::{get, is_some};
 import str::{connect, split_str};
 import vec::pop;

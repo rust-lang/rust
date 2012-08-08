@@ -46,13 +46,13 @@ trait get_doc {
     fn [](tag: uint) -> doc;
 }
 
-impl extensions of get_doc for doc {
+impl doc: get_doc {
     fn [](tag: uint) -> doc {
         get_doc(self, tag)
     }
 }
 
-impl extensions of ops::index<uint,doc> for doc {
+impl doc: ops::index<uint,doc> {
     pure fn index(&&tag: uint) -> doc {
         unchecked {
             get_doc(self, tag)
@@ -214,7 +214,7 @@ fn writer(w: io::writer) -> writer {
 }
 
 // FIXME (#2741): Provide a function to write the standard ebml header.
-impl writer for writer {
+impl writer {
     fn start_tag(tag_id: uint) {
         debug!{"Start tag %u", tag_id};
 
@@ -339,7 +339,7 @@ trait serializer_priv {
     fn _emit_label(label: ~str);
 }
 
-impl serializer of serializer_priv for ebml::writer {
+impl ebml::writer: serializer_priv {
     // used internally to emit things like the vector length and so on
     fn _emit_tagged_uint(t: ebml_serializer_tag, v: uint) {
         assert v <= 0xFFFF_FFFF_u;
@@ -357,7 +357,7 @@ impl serializer of serializer_priv for ebml::writer {
     }
 }
 
-impl serializer of serialization::serializer for ebml::writer {
+impl ebml::writer: serialization::serializer {
     fn emit_nil() {}
 
     fn emit_uint(v: uint) { self.wr_tagged_u64(es_uint as uint, v as u64); }
@@ -424,7 +424,7 @@ fn ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
     ebml_deserializer_({mut parent: d, mut pos: d.start})
 }
 
-impl deserializer_priv for ebml_deserializer {
+priv impl ebml_deserializer {
     fn _check_label(lbl: ~str) {
         if self.pos < self.parent.end {
             let {tag: r_tag, doc: r_doc} =
@@ -479,7 +479,7 @@ impl deserializer_priv for ebml_deserializer {
     }
 }
 
-impl deserializer of serialization::deserializer for ebml_deserializer {
+impl ebml_deserializer: serialization::deserializer {
     fn read_nil() -> () { () }
 
     fn read_u64() -> u64 { ebml::doc_as_u64(self.next_doc(es_u64)) }

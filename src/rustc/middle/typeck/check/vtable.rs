@@ -1,7 +1,6 @@
-import check::{fn_ctxt, impl_self_ty, methods};
+import check::{fn_ctxt, impl_self_ty};
 import infer::{resolve_type, resolve_all, force_all, fixup_err_to_str};
 import ast_util::new_def_hash;
-import dvec::extensions;
 
 fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     vec::any(tps, |bs| {

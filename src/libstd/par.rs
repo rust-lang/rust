@@ -3,8 +3,6 @@ import comm::chan;
 import comm::send;
 import comm::recv;
 import future_spawn = future::spawn;
-import future::extensions;
-import core::vec::extensions;
 
 export map, mapi, alli, any, mapi_factory;
 

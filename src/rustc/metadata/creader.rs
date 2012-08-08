@@ -9,7 +9,7 @@ import std::map::{hashmap, int_hash};
 import syntax::print::pprust;
 import filesearch::filesearch;
 import common::*;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 export read_crates;
 

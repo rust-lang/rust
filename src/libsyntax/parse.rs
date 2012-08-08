@@ -1,5 +1,4 @@
 //! The main parser interface
-import dvec::extensions;
 
 export parse_sess;
 export new_parse_sess, new_parse_sess_special_handler;
@@ -19,8 +18,7 @@ import common::parser_common;
 import ast::node_id;
 import util::interner;
 import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
-import lexer::{reader, string_reader, string_reader_as_reader};
-import lexer::{tt_reader_as_reader};
+import lexer::{reader, string_reader};
 
 type parse_sess = @{
     cm: codemap::codemap,

@@ -5,11 +5,10 @@
 
 import result::{result, ok, err};
 import io;
-import io::{reader_util, writer_util};
+import io::writer_util;
 import map;
 import map::hashmap;
 import map::map;
-import core::vec::extensions;
 
 export json;
 export error;
@@ -120,7 +119,7 @@ enum parser {
     parser_(parser_)
 }
 
-impl parser for parser {
+impl parser {
     fn eof() -> bool { self.ch == -1 as char }
 
     fn bump() {
@@ -503,83 +502,83 @@ fn eq(value0: json, value1: json) -> bool {
 
 trait to_json { fn to_json() -> json; }
 
-impl of to_json for json {
+impl json: to_json {
     fn to_json() -> json { self }
 }
 
-impl of to_json for @json {
+impl @json: to_json {
     fn to_json() -> json { *self }
 }
 
-impl of to_json for int {
+impl int: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for i8 {
+impl i8: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for i16 {
+impl i16: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for i32 {
+impl i32: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for i64 {
+impl i64: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for uint {
+impl uint: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for u8 {
+impl u8: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for u16 {
+impl u16: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for u32 {
+impl u32: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for u64 {
+impl u64: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for float {
+impl float: to_json {
     fn to_json() -> json { num(self) }
 }
 
-impl of to_json for f32 {
+impl f32: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for f64 {
+impl f64: to_json {
     fn to_json() -> json { num(self as float) }
 }
 
-impl of to_json for () {
+impl (): to_json {
     fn to_json() -> json { null }
 }
 
-impl of to_json for bool {
+impl bool: to_json {
     fn to_json() -> json { boolean(self) }
 }
 
-impl of to_json for ~str {
+impl ~str: to_json {
     fn to_json() -> json { string(@copy self) }
 }
 
-impl of to_json for @~str {
+impl @~str: to_json {
     fn to_json() -> json { string(self) }
 }
 
-impl <A: to_json, B: to_json> of to_json for (A, B) {
+impl <A: to_json, B: to_json> (A, B): to_json {
     fn to_json() -> json {
         match self {
           (a, b) => {
@@ -589,8 +588,8 @@ impl <A: to_json, B: to_json> of to_json for (A, B) {
     }
 }
 
-impl <A: to_json, B: to_json, C: to_json>
-  of to_json for (A, B, C) {
+impl <A: to_json, B: to_json, C: to_json> (A, B, C): to_json {
+
     fn to_json() -> json {
         match self {
           (a, b, c) => {
@@ -600,11 +599,11 @@ impl <A: to_json, B: to_json, C: to_json>
     }
 }
 
-impl <A: to_json> of to_json for ~[A] {
+impl <A: to_json> ~[A]: to_json {
     fn to_json() -> json { list(@self.map(|elt| elt.to_json())) }
 }
 
-impl <A: to_json copy> of to_json for hashmap<~str, A> {
+impl <A: to_json copy> hashmap<~str, A>: to_json {
     fn to_json() -> json {
         let d = map::str_hash();
         for self.each() |key, value| {
@@ -614,7 +613,7 @@ impl <A: to_json copy> of to_json for hashmap<~str, A> {
     }
 }
 
-impl <A: to_json> of to_json for option<A> {
+impl <A: to_json> option<A>: to_json {
     fn to_json() -> json {
         match self {
           none => null,
@@ -623,11 +622,11 @@ impl <A: to_json> of to_json for option<A> {
     }
 }
 
-impl of to_str::to_str for json {
+impl json: to_str::to_str {
     fn to_str() -> ~str { to_str(self) }
 }
 
-impl of to_str::to_str for error {
+impl error: to_str::to_str {
     fn to_str() -> ~str {
         fmt!{"%u:%u: %s", self.line, self.col, *self.msg}
     }

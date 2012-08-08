@@ -4,7 +4,7 @@ trait get_chowder {
     fn get_chowder() -> &self/int;
 }
 
-impl clam of get_chowder for clam {
+impl clam: get_chowder {
     fn get_chowder() -> &self/int { return self.chowder; }
 }
 

@@ -18,7 +18,6 @@ import util::ppaux::ty_to_str;
 import syntax::ast_map::{path, path_mod, path_name};
 import driver::session::session;
 import std::map::hashmap;
-import dvec::extensions;
 
 // ___Good to know (tm)__________________________________________________
 //

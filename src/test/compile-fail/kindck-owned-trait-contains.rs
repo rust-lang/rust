@@ -1,6 +1,6 @@
 trait repeat<A> { fn get() -> A; }
 
-impl<A:copy> of repeat<A> for @A {
+impl<A:copy> @A: repeat<A> {
     fn get() -> A { *self }
 }
 

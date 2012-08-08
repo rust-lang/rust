@@ -110,7 +110,7 @@ enum session {
     session_(@session_)
 }
 
-impl session for session {
+impl session {
     fn span_fatal(sp: span, msg: ~str) -> ! {
         self.span_diagnostic.span_fatal(sp, msg)
     }

@@ -24,9 +24,6 @@
  */
 
 import result::result;
-import dvec::extensions;
-import dvec_iter::extensions;
-import arc::methods;
 
 export task;
 export task_result;
@@ -209,7 +206,7 @@ fn task() -> task_builder {
     })
 }
 
-impl private_methods for task_builder {
+priv impl task_builder {
     fn consume() -> task_builder {
         if self.consumed {
             fail ~"Cannot copy a task_builder"; // Fake move mode on self
@@ -219,7 +216,7 @@ impl private_methods for task_builder {
     }
 }
 
-impl task_builder for task_builder {
+impl task_builder {
     /**
      * Decouple the child task's failure from the parent's. If either fails,
      * the other will not be killed.
@@ -1246,7 +1243,7 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
 type local_data_key<T: owned> = fn@(+@T);
 
 trait local_data { }
-impl<T: owned> of local_data for @T { }
+impl<T: owned> @T: local_data { }
 
 // We use dvec because it's the best data structure in core. If TLS is used
 // heavily in future, this could be made more efficient with a proper map.
@@ -1955,7 +1952,6 @@ fn test_platform_thread() {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable() {
-    import comm::methods;
     let po = comm::port();
     let ch = po.chan();
 
@@ -1992,7 +1988,6 @@ fn test_unkillable() {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable_nested() {
-    import comm::methods;
     let po = comm::port();
     let ch = po.chan();
 

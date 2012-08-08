@@ -224,12 +224,12 @@ import util::ppaux::{ty_to_str, region_to_str, explain_region};
 import std::map::{int_hash, hashmap, set};
 import std::list;
 import std::list::{list, cons, nil};
-import result::{result, ok, err, extensions};
+import result::{result, ok, err};
 import syntax::print::pprust;
 import util::common::indenter;
 import ty::to_str;
 import driver::session::session;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import mem_categorization::*;
 
 export check_crate, root_map, mutbl_map;

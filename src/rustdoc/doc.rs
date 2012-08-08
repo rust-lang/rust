@@ -138,7 +138,7 @@ type index_entry = {
     link: ~str
 };
 
-impl util for doc {
+impl doc {
     fn cratedoc() -> cratedoc {
         option::get(vec::foldl(none, self.pages, |_m, page| {
             match page {
@@ -154,7 +154,7 @@ impl util for doc {
 }
 
 /// Some helper methods on moddoc, mostly for testing
-impl util for moddoc {
+impl moddoc {
 
     fn mods() -> ~[moddoc] {
         do vec::filter_map(self.items) |itemtag| {
@@ -240,7 +240,7 @@ trait page_utils {
     fn types() -> ~[tydoc];
 }
 
-impl util of page_utils for ~[page] {
+impl ~[page]: page_utils {
 
     fn mods() -> ~[moddoc] {
         do vec::filter_map(self) |page| {
@@ -319,7 +319,7 @@ trait item {
     pure fn item() -> itemdoc;
 }
 
-impl of item for itemtag {
+impl itemtag: item {
     pure fn item() -> itemdoc {
         match self {
           doc::modtag(doc) => doc.item,
@@ -334,27 +334,27 @@ impl of item for itemtag {
     }
 }
 
-impl of item for simpleitemdoc {
+impl simpleitemdoc: item {
     pure fn item() -> itemdoc { self.item }
 }
 
-impl of item for moddoc {
+impl moddoc: item {
     pure fn item() -> itemdoc { self.item }
 }
 
-impl of item for nmoddoc {
+impl nmoddoc: item {
     pure fn item() -> itemdoc { self.item }
 }
 
-impl of item for enumdoc {
+impl enumdoc: item {
     pure fn item() -> itemdoc { self.item }
 }
 
-impl of item for traitdoc {
+impl traitdoc: item {
     pure fn item() -> itemdoc { self.item }
 }
 
-impl of item for impldoc {
+impl impldoc: item {
     pure fn item() -> itemdoc { self.item }
 }
 
@@ -367,7 +367,7 @@ trait item_utils {
     pure fn sections() -> ~[section];
 }
 
-impl util<A:item> of item_utils for A {
+impl<A:item> A: item_utils {
     pure fn id() -> ast_id {
         self.item().id
     }

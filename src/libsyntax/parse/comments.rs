@@ -1,8 +1,7 @@
-import io::reader_util;
 import io::println;//XXXXXXXXxxx
 import util::interner;
 import lexer::{string_reader, bump, is_eof, nextch,
-               is_whitespace, get_str_from, string_reader_as_reader, reader};
+               is_whitespace, get_str_from, reader};
 
 export cmnt;
 export lit;

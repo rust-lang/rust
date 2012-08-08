@@ -1,5 +1,3 @@
-import middle::typeck::infer::methods; // next_ty_var,
-                                       // resolve_type_vars_if_possible
 import syntax::print::pprust;
 
 fn check_alt(fcx: @fn_ctxt,

@@ -7,7 +7,7 @@ trait foo {
     fn foo();
 }
 
-impl t2 of foo for ~str {
+impl ~str: foo {
     fn foo() {}
 }
 

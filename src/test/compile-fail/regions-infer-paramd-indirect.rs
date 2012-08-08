@@ -10,7 +10,7 @@ trait set_f {
     fn set_f_bad(b: @b);
 }
 
-impl methods of set_f for c {
+impl c: set_f {
     fn set_f_ok(b: @b/&self) {
         self.f = b;
     }

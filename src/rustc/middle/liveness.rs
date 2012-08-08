@@ -100,7 +100,7 @@
  * - `self_var`: a variable representing 'self'
  */
 
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import std::map::{hashmap, int_hash, str_hash, box_str_hash};
 import syntax::{visit, ast_util};
 import syntax::print::pprust::{expr_to_str};
@@ -152,11 +152,11 @@ fn check_crate(tcx: ty::ctxt,
     return last_use_map;
 }
 
-impl of to_str::to_str for live_node {
+impl live_node: to_str::to_str {
     fn to_str() -> ~str { fmt!{"ln(%u)", *self} }
 }
 
-impl of to_str::to_str for variable {
+impl variable: to_str::to_str {
     fn to_str() -> ~str { fmt!{"v(%u)", *self} }
 }
 
@@ -182,7 +182,7 @@ impl of to_str::to_str for variable {
 // variable must not be assigned if there is some successor
 // assignment.  And so forth.
 
-impl methods for live_node {
+impl live_node {
     pure fn is_valid() -> bool { *self != uint::max_value }
 }
 
@@ -1477,7 +1477,7 @@ enum read_kind {
     moved_variable
 }
 
-impl check_methods for @liveness {
+impl @liveness {
     fn check_fields(sp: span, entry_ln: live_node) {
         for self.ir.field_map.each |nm, var| {
             match (*self).live_on_entry(entry_ln, var) {

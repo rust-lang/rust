@@ -1,20 +1,20 @@
 trait to_str {
     fn to_str() -> ~str;
 }
-impl of to_str for int {
+impl int: to_str {
     fn to_str() -> ~str { int::str(self) }
 }
-impl of to_str for ~str {
+impl ~str: to_str {
     fn to_str() -> ~str { self }
 }
-impl of to_str for () {
+impl (): to_str {
     fn to_str() -> ~str { ~"()" }
 }
 
 trait map<T> {
     fn map<U>(f: fn(T) -> U) -> ~[U];
 }
-impl <T> of map<T> for ~[T] {
+impl<T> ~[T]: map<T> {
     fn map<U>(f: fn(T) -> U) -> ~[U] {
         let mut r = ~[];
         for self.each |x| { r += ~[f(x)]; }

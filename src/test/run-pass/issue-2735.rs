@@ -1,5 +1,5 @@
 trait hax { } 
-impl <A> of hax for A { } 
+impl <A> A: hax { } 
 
 fn perform_hax<T: owned>(x: @T) -> hax {
     x as hax 

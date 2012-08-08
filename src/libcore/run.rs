@@ -1,7 +1,6 @@
 //! Process spawning
 import option::{some, none};
 import libc::{pid_t, c_void, c_int};
-import io::reader_util;
 
 export program;
 export run_program;
@@ -228,7 +227,7 @@ fn start_program(prog: ~str, args: ~[~str]) -> program {
         drop { destroy_repr(self.r); }
     }
 
-    impl of program for prog_res {
+    impl prog_res: program {
         fn get_id() -> pid_t { return self.r.pid; }
         fn input() -> io::writer { io::fd_writer(self.r.in_fd, false) }
         fn output() -> io::reader { io::FILE_reader(self.r.out_file, false) }

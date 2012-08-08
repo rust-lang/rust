@@ -9,13 +9,13 @@ trait read {
     static fn readMaybe(s: ~str) -> option<self>;
 }
 
-impl of read for int {
+impl int: read {
     static fn readMaybe(s: ~str) -> option<int> {
         int::from_str(s)
     }
 }
 
-impl of read for bool {
+impl bool: read {
     static fn readMaybe(s: ~str) -> option<bool> {
         match s {
           ~"true" => some(true),

@@ -14,7 +14,6 @@ use std;
 import io::writer;
 import io::writer_util;
 
-import arc::methods;
 import pipes::{port, chan, shared_chan};
 
 macro_rules! move_out {

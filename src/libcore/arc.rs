@@ -3,8 +3,6 @@
  * share immutable data between tasks.
  */
 
-import sys::methods;
-
 export arc, get, clone;
 
 export exclusive, methods;
@@ -96,7 +94,7 @@ fn exclusive<T:send >(-data: T) -> exclusive<T> {
     }
 }
 
-impl methods<T: send> for exclusive<T> {
+impl<T: send> exclusive<T> {
     /// Duplicate an exclusive ARC. See arc::clone.
     fn clone() -> exclusive<T> {
         unsafe {
@@ -142,7 +140,6 @@ impl methods<T: send> for exclusive<T> {
 #[cfg(test)]
 mod tests {
     import comm::*;
-    import future::extensions;
 
     #[test]
     fn manually_share_arc() {

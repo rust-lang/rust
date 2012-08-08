@@ -368,7 +368,7 @@ trait inlined_item_utils {
     fn accept<E>(e: E, v: visit::vt<E>);
 }
 
-impl inlined_item_methods of inlined_item_utils for inlined_item {
+impl inlined_item: inlined_item_utils {
     fn ident() -> ident {
         match self {
           ii_item(i) => /* FIXME (#2543) */ copy i.ident,

@@ -36,7 +36,7 @@ trait append_types {
     fn add_tys(+tys: ~[@ast::ty]) -> @ast::path;
 }
 
-impl methods of append_types for @ast::path {
+impl @ast::path: append_types {
     fn add_ty(ty: @ast::ty) -> @ast::path {
         @{types: vec::append_one(self.types, ty)
           with *self}
@@ -89,7 +89,7 @@ trait ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::ty) -> @ast::ty;
 }
 
-impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
+impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::ty) -> @ast::ty {
         self.ty_path_ast_builder(path(@~"option", self.empty_span())
                                  .add_ty(ty))

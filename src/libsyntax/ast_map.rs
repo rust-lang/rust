@@ -3,7 +3,6 @@ import std::map::hashmap;
 import ast::*;
 import print::pprust;
 import ast_util::path_to_ident;
-import ast_util::inlined_item_methods;
 import diagnostic::span_handler;
 
 enum path_elt { path_mod(ident), path_name(ident) }

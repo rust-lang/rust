@@ -2,7 +2,6 @@
 // aux-build:cci_impl_lib.rs
 
 use cci_impl_lib;
-import cci_impl_lib::helpers;
 import cci_impl_lib::uint_helpers;
 
 fn main() {

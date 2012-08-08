@@ -2,10 +2,10 @@ use std;
 fn main() {
 trait seq { }
 
-impl <T> of seq<T> for ~[T] { //~ ERROR wrong number of type arguments
+impl<T> ~[T]: seq<T> { //~ ERROR wrong number of type arguments
     /* ... */
 }
-impl of seq<bool> for u32 {
+impl u32: seq<bool> {
    /* Treat the integer as a sequence of bits */
 }
 

@@ -1,5 +1,5 @@
 import io::writer_util;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
@@ -232,7 +232,7 @@ enum printer {
     printer_(@printer_)
 }
 
-impl printer for printer {
+impl printer {
     fn last_token() -> token { self.token[self.right] }
     // be very careful with this!
     fn replace_last_token(t: token) { self.token[self.right] = t; }

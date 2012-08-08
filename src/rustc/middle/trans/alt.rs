@@ -13,7 +13,7 @@ import syntax::print::pprust::pat_to_str;
 import middle::resolve3::DefMap;
 import back::abi;
 import std::map::hashmap;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 import common::*;
 

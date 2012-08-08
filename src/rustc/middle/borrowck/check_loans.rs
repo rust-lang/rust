@@ -7,7 +7,7 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves to dnot affect things loaned out in any way
 
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 export check_loans;
 
@@ -59,7 +59,7 @@ enum assignment_type {
     at_mutbl_ref,
 }
 
-impl methods for assignment_type {
+impl assignment_type {
     fn checked_by_liveness() -> bool {
         // the liveness pass guarantees that immutable local variables
         // are only assigned once; but it doesn't consider &mut
@@ -78,7 +78,7 @@ impl methods for assignment_type {
     }
 }
 
-impl methods for check_loan_ctxt {
+impl check_loan_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
     fn purity(scope_id: ast::node_id) -> option<purity_cause> {

@@ -3,9 +3,6 @@
 import to_str::to_str;
 
 import dvec::dvec;
-import dvec::extensions;
-
-import tuple::extensions;
 
 import ast::ident;
 import util::interner;
@@ -15,11 +12,8 @@ import ext::base::{mk_ctxt, ext_ctxt};
 import parse;
 import parse::*;
 import proto::*;
-import ast::methods;
 
 import ast_builder::append_types;
-import ast_builder::ast_builder;
-import ast_builder::methods;
 import ast_builder::path;
 
 // Transitional reexports so qquote can find the paths it is looking for
@@ -44,7 +38,7 @@ trait gen_init {
     fn compile(cx: ext_ctxt) -> @ast::item;
 }
 
-impl compile of gen_send for message {
+impl message: gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
         debug!{"pipec: gen_send"};
         match self {
@@ -199,7 +193,7 @@ impl compile of gen_send for message {
     }
 }
 
-impl compile of to_type_decls for state {
+impl state: to_type_decls {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
         debug!{"pipec: to_type_decls"};
         // This compiles into two different type declarations. Say the
@@ -283,7 +277,7 @@ impl compile of to_type_decls for state {
     }
 }
 
-impl compile of gen_init for protocol {
+impl protocol: gen_init {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 
@@ -425,37 +419,37 @@ trait to_source {
     fn to_source() -> ~str;
 }
 
-impl of to_source for @ast::item {
+impl @ast::item: to_source {
     fn to_source() -> ~str {
         item_to_str(self)
     }
 }
 
-impl of to_source for ~[@ast::item] {
+impl ~[@ast::item]: to_source {
     fn to_source() -> ~str {
         str::connect(self.map(|i| i.to_source()), ~"\n\n")
     }
 }
 
-impl of to_source for @ast::ty {
+impl @ast::ty: to_source {
     fn to_source() -> ~str {
         ty_to_str(self)
     }
 }
 
-impl of to_source for ~[@ast::ty] {
+impl ~[@ast::ty]: to_source {
     fn to_source() -> ~str {
         str::connect(self.map(|i| i.to_source()), ~", ")
     }
 }
 
-impl of to_source for ~[ast::ty_param] {
+impl ~[ast::ty_param]: to_source {
     fn to_source() -> ~str {
         pprust::typarams_to_str(self)
     }
 }
 
-impl of to_source for @ast::expr {
+impl @ast::expr: to_source {
     fn to_source() -> ~str {
         pprust::expr_to_str(self)
     }
@@ -467,7 +461,7 @@ trait ext_ctxt_parse_utils {
     fn parse_stmt(s: ~str) -> @ast::stmt;
 }
 
-impl parse_utils of ext_ctxt_parse_utils for ext_ctxt {
+impl ext_ctxt: ext_ctxt_parse_utils {
     fn parse_item(s: ~str) -> @ast::item {
         let res = parse::parse_item_from_source_str(
             ~"***protocol expansion***",

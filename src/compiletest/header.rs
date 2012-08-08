@@ -1,6 +1,5 @@
 import option;
 import str;
-import io::reader_util;
 
 import common::config;
 

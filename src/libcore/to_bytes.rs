@@ -2,18 +2,18 @@ trait to_bytes {
     fn to_bytes() -> ~[u8];
 }
 
-impl of to_bytes for ~[u8] {
+impl ~[u8]: to_bytes {
     fn to_bytes() -> ~[u8] { copy self }
 }
 
-impl of to_bytes for @~[u8] {
+impl @~[u8]: to_bytes {
     fn to_bytes() -> ~[u8] { copy *self }
 }
 
-impl of to_bytes for ~str {
+impl ~str: to_bytes {
     fn to_bytes() -> ~[u8] { str::bytes(self) }
 }
 
-impl of to_bytes for @(~str) {
+impl @(~str): to_bytes {
     fn to_bytes() -> ~[u8] { str::bytes(*self) }
 }

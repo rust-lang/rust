@@ -11,7 +11,7 @@ trait to_str {
     fn to_str() -> ~str;
 }
 
-impl <T: to_str> of to_str for option<T> {
+impl <T: to_str> option<T>: to_str {
     fn to_str() -> ~str {
         match self {
           none => { ~"none" }
@@ -20,11 +20,11 @@ impl <T: to_str> of to_str for option<T> {
     }
 }
 
-impl of to_str for int {
+impl int: to_str {
     fn to_str() -> ~str { int::str(self) }
 }
 
-impl of to_str for Tree {
+impl Tree: to_str {
     fn to_str() -> ~str {
         let l = self.left, r = self.right;
         fmt!{"[%s, %s, %s]", self.val.to_str(),

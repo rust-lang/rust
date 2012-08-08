@@ -1,62 +1,62 @@
 trait to_str { fn to_str() -> ~str; }
 
-impl of to_str for int {
+impl int: to_str {
     fn to_str() -> ~str { int::str(self) }
 }
-impl of to_str for i8 {
+impl i8: to_str {
     fn to_str() -> ~str { i8::str(self) }
 }
-impl of to_str for i16 {
+impl i16: to_str {
     fn to_str() -> ~str { i16::str(self) }
 }
-impl of to_str for i32 {
+impl i32: to_str {
     fn to_str() -> ~str { i32::str(self) }
 }
-impl of to_str for i64 {
+impl i64: to_str {
     fn to_str() -> ~str { i64::str(self) }
 }
-impl of to_str for uint {
+impl uint: to_str {
     fn to_str() -> ~str { uint::str(self) }
 }
-impl of to_str for u8 {
+impl u8: to_str {
     fn to_str() -> ~str { u8::str(self) }
 }
-impl of to_str for u16 {
+impl u16: to_str {
     fn to_str() -> ~str { u16::str(self) }
 }
-impl of to_str for u32 {
+impl u32: to_str {
     fn to_str() -> ~str { u32::str(self) }
 }
-impl of to_str for u64 {
+impl u64: to_str {
     fn to_str() -> ~str { u64::str(self) }
 }
-impl of to_str for float {
+impl float: to_str {
     fn to_str() -> ~str { float::to_str(self, 4u) }
 }
-impl of to_str for bool {
+impl bool: to_str {
     fn to_str() -> ~str { bool::to_str(self) }
 }
-impl of to_str for () {
+impl (): to_str {
     fn to_str() -> ~str { ~"()" }
 }
-impl of to_str for ~str {
+impl ~str: to_str {
     fn to_str() -> ~str { self }
 }
 
-impl <A: to_str copy, B: to_str copy> of to_str for (A, B) {
+impl<A: to_str copy, B: to_str copy> (A, B): to_str {
     fn to_str() -> ~str {
         let (a, b) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~")"
     }
 }
-impl <A: to_str copy, B: to_str copy, C: to_str copy> of to_str for (A, B, C){
+impl<A: to_str copy, B: to_str copy, C: to_str copy> (A, B, C): to_str {
     fn to_str() -> ~str {
         let (a, b, c) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~", " + c.to_str() + ~")"
     }
 }
 
-impl <A: to_str> of to_str for ~[A] {
+impl<A: to_str> ~[A]: to_str {
     fn to_str() -> ~str {
         let mut acc = ~"[", first = true;
         for vec::each(self) |elt| {
@@ -69,10 +69,10 @@ impl <A: to_str> of to_str for ~[A] {
     }
 }
 
-impl <A: to_str> of to_str for @A {
+impl<A: to_str> @A: to_str {
     fn to_str() -> ~str { ~"@" + (*self).to_str() }
 }
-impl <A: to_str> of to_str for ~A {
+impl<A: to_str> ~A: to_str {
     fn to_str() -> ~str { ~"~" + (*self).to_str() }
 }
 

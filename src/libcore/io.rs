@@ -6,7 +6,7 @@ Basic input/output
 
 import result::result;
 
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
 import libc::consts::os::extra::*;
@@ -42,7 +42,7 @@ trait reader {
 
 // Generic utility functions defined on readers
 
-impl reader_util for reader {
+impl reader {
     fn read_bytes(len: uint) -> ~[u8] {
         let mut buf = ~[mut];
         vec::reserve(buf, len);
@@ -203,7 +203,7 @@ fn convert_whence(whence: seek_style) -> i32 {
     };
 }
 
-impl of reader for *libc::FILE {
+impl *libc::FILE: reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         do vec::as_buf(buf) |buf_p, buf_len| {
             assert buf_len <= len;
@@ -227,7 +227,7 @@ impl of reader for *libc::FILE {
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
-impl <T: reader, C> of reader for {base: T, cleanup: C} {
+impl<T: reader, C> {base: T, cleanup: C}: reader {
     fn read(buf: &[mut u8], len: uint) -> uint { self.base.read(buf, len) }
     fn read_byte() -> int { self.base.read_byte() }
     fn unread_byte(byte: int) { self.base.unread_byte(byte); }
@@ -273,7 +273,7 @@ fn file_reader(path: ~str) -> result<reader, ~str> {
 
 type byte_buf = {buf: ~[const u8], mut pos: uint, len: uint};
 
-impl of reader for byte_buf {
+impl byte_buf: reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         let count = uint::min(len, self.len - self.pos);
 
@@ -343,7 +343,7 @@ trait writer {
     fn get_type() -> writer_type;
 }
 
-impl <T: writer, C> of writer for {base: T, cleanup: C} {
+impl<T: writer, C> {base: T, cleanup: C}: writer {
     fn write(bs: &[const u8]) { self.base.write(bs); }
     fn seek(off: int, style: seek_style) { self.base.seek(off, style); }
     fn tell() -> uint { self.base.tell() }
@@ -351,7 +351,7 @@ impl <T: writer, C> of writer for {base: T, cleanup: C} {
     fn get_type() -> writer_type { file }
 }
 
-impl of writer for *libc::FILE {
+impl *libc::FILE: writer {
     fn write(v: &[const u8]) {
         do vec::as_const_buf(v) |vbuf, len| {
             let nout = libc::fwrite(vbuf as *c_void, len as size_t,
@@ -384,7 +384,7 @@ fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
     }
 }
 
-impl of writer for fd_t {
+impl fd_t: writer {
     fn write(v: &[const u8]) {
         let mut count = 0u;
         do vec::as_const_buf(v) |vbuf, len| {
@@ -658,7 +658,7 @@ fn println(s: &str) { stdout().write_line(s); }
 
 type mem_buffer = @{buf: dvec<u8>, mut pos: uint};
 
-impl of writer for mem_buffer {
+impl mem_buffer: writer {
     fn write(v: &[const u8]) {
         // Fast path.
         let vlen = vec::len(v);

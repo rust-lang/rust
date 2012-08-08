@@ -7,7 +7,7 @@ import iotask = uv_iotask;
 import get_gl = get;
 import iotask::{iotask, spawn_iotask};
 import priv::{chan_from_global_ptr, weaken_task};
-import comm::{port, chan, methods, select2, listen};
+import comm::{port, chan, select2, listen};
 import task::task_builder;
 import either::{left, right};
 

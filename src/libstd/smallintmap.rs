@@ -4,7 +4,7 @@
  */
 import core::option;
 import core::option::{some, none};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import map::map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
@@ -63,7 +63,7 @@ fn contains_key<T: copy>(self: smallintmap<T>, key: uint) -> bool {
 }
 
 /// Implements the map::map interface for smallintmap
-impl <V: copy> of map::map<uint, V> for smallintmap<V> {
+impl<V: copy> smallintmap<V>: map::map<uint, V> {
     fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
@@ -134,7 +134,7 @@ impl <V: copy> of map::map<uint, V> for smallintmap<V> {
     }
 }
 
-impl extensions<V: copy> of ops::index<uint, V> for smallintmap<V> {
+impl<V: copy> smallintmap<V>: ops::index<uint, V> {
     pure fn index(&&key: uint) -> V {
         unchecked {
             get(self, key)

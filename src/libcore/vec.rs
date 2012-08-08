@@ -1287,7 +1287,7 @@ trait vec_concat<T> {
     pure fn +(rhs: &[const T]) -> self;
 }
 
-impl extensions<T: copy> of vec_concat<T> for ~[T] {
+impl<T: copy> ~[T]: vec_concat<T> {
     #[inline(always)]
     pure fn +(rhs: &[const T]) -> ~[T] {
         append(self, rhs)
@@ -1295,21 +1295,21 @@ impl extensions<T: copy> of vec_concat<T> for ~[T] {
 }
 
 #[cfg(notest)]
-impl extensions<T: copy> of add<&[const T],~[T]> for ~[T] {
+impl<T: copy> ~[T]: add<&[const T],~[T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[T] {
         append(self, rhs)
     }
 }
 
-impl extensions<T: copy> of vec_concat<T> for ~[mut T] {
+impl<T: copy> ~[mut T]: vec_concat<T> {
     #[inline(always)]
     pure fn +(rhs: &[const T]) -> ~[mut T] {
         append_mut(self, rhs)
     }
 }
 
-impl extensions<T: copy> of add<&[const T],~[mut T]> for ~[mut T] {
+impl<T: copy> ~[mut T]: add<&[const T],~[mut T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[mut T] {
         append_mut(self, rhs)
@@ -1323,7 +1323,7 @@ trait const_vector {
 }
 
 /// Extension methods for vectors
-impl extensions/&<T> of const_vector for &[const T] {
+impl<T> &[const T]: const_vector {
     /// Returns true if a vector contains no elements
     #[inline]
     pure fn is_empty() -> bool { is_empty(self) }
@@ -1344,7 +1344,7 @@ trait copyable_vector<T> {
 }
 
 /// Extension methods for vectors
-impl extensions/&<T: copy> of copyable_vector<T> for &[const T] {
+impl<T: copy> &[const T]: copyable_vector<T> {
     /// Returns the first element of a vector
     #[inline]
     pure fn head() -> T { head(self) }
@@ -1381,7 +1381,7 @@ trait immutable_vector<T> {
 }
 
 /// Extension methods for vectors
-impl extensions/&<T> of immutable_vector<T> for &[T] {
+impl<T> &[T]: immutable_vector<T> {
     /// Reduce a vector from right to left
     #[inline]
     pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
@@ -1496,7 +1496,7 @@ trait immutable_copyable_vector<T> {
 }
 
 /// Extension methods for vectors
-impl extensions/&<T: copy> of immutable_copyable_vector<T> for &[T] {
+impl<T: copy> &[T]: immutable_copyable_vector<T> {
     /**
      * Construct a new vector from the elements of a vector for which some
      * predicate holds.
@@ -1741,12 +1741,12 @@ mod u8 {
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
 
-impl extensions/&<A> of iter::base_iter<A> for &[A] {
+impl<A> &[A]: iter::base_iter<A> {
     fn each(blk: fn(A) -> bool) { each(self, blk) }
     fn size_hint() -> option<uint> { some(len(self)) }
 }
 
-impl extensions/&<A> of iter::extended_iter<A> for &[A] {
+impl<A> &[A]: iter::extended_iter<A> {
     fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
     fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
@@ -1766,7 +1766,7 @@ trait iter_trait_extensions<A> {
     fn max() -> A;
 }
 
-impl extensions/&<A:copy> of iter_trait_extensions<A> for &[A] {
+impl<A: copy> &[A]: iter_trait_extensions<A> {
     fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }

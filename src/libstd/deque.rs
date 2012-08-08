@@ -1,7 +1,7 @@
 //! A deque. Untested as of yet. Likely buggy
 
 import option::{some, none};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 trait t<T> {
     fn size() -> uint;
@@ -49,7 +49,7 @@ fn create<T: copy>() -> t<T> {
                     mut hi: uint,
                     elts: dvec<cell<T>>};
 
-    impl <T: copy> of t<T> for repr<T> {
+    impl <T: copy> repr<T>: t<T> {
         fn size() -> uint { return self.nelts; }
         fn add_front(t: T) {
             let oldlo: uint = self.lo;

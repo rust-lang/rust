@@ -7,7 +7,7 @@ import pp::{break_offset, word, printer,
 import diagnostic;
 import ast::{required, provided};
 import ast_util::{operator_prec};
-import dvec::{dvec, extensions};
+import dvec::dvec;
 import parse::classify::*;
 import util::interner;
 

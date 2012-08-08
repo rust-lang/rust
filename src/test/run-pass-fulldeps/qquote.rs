@@ -18,7 +18,7 @@ trait fake_ext_ctxt {
 
 type fake_session = ();
 
-impl of fake_ext_ctxt for fake_session {
+impl fake_session: fake_ext_ctxt {
     fn cfg() -> ast::crate_cfg { ~[] }
     fn parse_sess() -> parse::parse_sess { parse::new_parse_sess(none) }
 }

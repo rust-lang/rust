@@ -4,7 +4,7 @@
 trait i<T> { }
 
 fn f<T>() -> i<T> {
-    impl <T> of i<T> for () { }
+    impl<T> (): i<T> { }
 
     () as i::<T>
 }

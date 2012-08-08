@@ -27,7 +27,7 @@ import middle::pat_util::pat_bindings;
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;
 
-impl methods for @rcx {
+impl @rcx {
     /// Try to resolve the type for the given node.
     ///
     /// Note one important point: we do not attempt to resolve *region

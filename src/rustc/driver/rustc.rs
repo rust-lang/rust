@@ -18,7 +18,6 @@ import syntax::codemap;
 import syntax::diagnostic;
 import rustc::driver::session;
 import rustc::middle::lint;
-import io::reader_util;
 
 fn version(argv0: ~str) {
     let mut vers = ~"unknown version";

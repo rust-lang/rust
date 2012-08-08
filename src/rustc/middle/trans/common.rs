@@ -355,19 +355,22 @@ trait get_node_info {
     fn info() -> option<node_info>;
 }
 
-impl node_info of get_node_info for @ast::expr {
+impl @ast::expr: get_node_info {
     fn info() -> option<node_info> {
         some({id: self.id, span: self.span})
     }
 }
 
-impl node_info of get_node_info for ast::blk {
+impl ast::blk: get_node_info {
     fn info() -> option<node_info> {
         some({id: self.node.id, span: self.span})
     }
 }
 
-impl node_info of get_node_info for option<@ast::expr> {
+// XXX: Work around a trait parsing bug. remove after snapshot
+type optional_boxed_ast_expr = option<@ast::expr>;
+
+impl optional_boxed_ast_expr: get_node_info {
     fn info() -> option<node_info> {
         self.chain(|s| s.info())
     }
@@ -471,7 +474,7 @@ fn block_parent(cx: block) -> block {
 
 // Accessors
 
-impl bcx_cxs for block {
+impl block {
     pure fn ccx() -> @crate_ctxt { self.fcx.ccx }
     pure fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
     pure fn sess() -> session { self.fcx.ccx.sess }

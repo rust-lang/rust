@@ -19,16 +19,14 @@ that.
 
 */
 
-import dvec::extensions;
-
 import ext::base::ext_ctxt;
 
 import ast::{ident};
 
-import proto::{state, protocol, next_state, methods};
+import proto::{state, protocol, next_state};
 import ast_builder::empty_span;
 
-impl proto_check of proto::visitor<(), (), ()>  for ext_ctxt {
+impl ext_ctxt: proto::visitor<(), (), ()>  {
     fn visit_proto(_proto: protocol,
                    _states: &[()]) { }
 

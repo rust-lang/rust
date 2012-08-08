@@ -2,7 +2,7 @@ import syntax::ast::*;
 import syntax::{visit, ast_util, ast_map};
 import driver::session::session;
 import std::map::hashmap;
-import dvec::{dvec, extensions};
+import dvec::dvec;
 
 fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve3::DefMap,

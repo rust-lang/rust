@@ -150,7 +150,7 @@ trait ext_ctxt_helpers {
     fn at(span: span, expr: @ast::expr) -> @ast::expr;
 }
 
-impl helpers of ext_ctxt_helpers for ext_ctxt {
+impl ext_ctxt: ext_ctxt_helpers {
     fn helper_path(base_path: @ast::path,
                    helper_name: ~str) -> @ast::path {
         let head = vec::init(base_path.idents);

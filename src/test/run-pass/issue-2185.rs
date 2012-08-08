@@ -6,11 +6,11 @@ trait iterable<A> {
     fn iter(blk: fn(A));
 }
 
-impl<A> of iterable<A> for fn@(fn(A)) {
+impl<A> fn@(fn(A)): iterable<A> {
     fn iter(blk: fn(A)) { self(blk); }
 }
 
-impl of iterable<uint> for fn@(fn(uint)) {
+impl fn@(fn(uint)): iterable<uint> {
     fn iter(blk: fn(&&uint)) { self( |i| blk(i) ) }
 }
 

@@ -5,7 +5,7 @@
 export public_methods;
 import result::{result, ok, err};
 
-impl public_methods for borrowck_ctxt {
+impl borrowck_ctxt {
     fn loan(cmt: cmt,
             scope_region: ty::region,
             mutbl: ast::mutability) -> bckres<@dvec<loan>> {
@@ -33,7 +33,7 @@ enum loan_ctxt {
     loan_ctxt_(@loan_ctxt_)
 }
 
-impl loan_methods for loan_ctxt {
+impl loan_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
     fn ok_with_loan_of(cmt: cmt,
