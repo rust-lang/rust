@@ -153,6 +153,32 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       ast::expr_tup(es) => {
         C_struct(es.map(|e| const_expr(cx, e)))
       }
+      ast::expr_struct(_, fs, _) => {
+          let ety = ty::expr_ty(cx.tcx, e);
+          let llty = type_of::type_of(cx, ety);
+          let class_fields =
+              match ty::get(ety).struct {
+              ty::ty_class(clsid, _) =>
+                  ty::lookup_class_fields(cx.tcx, clsid),
+              _ =>
+                  cx.tcx.sess.span_bug(e.span,
+                                       ~"didn't resolve to a struct")
+          };
+          let mut cs = ~[];
+          for class_fields.each |class_field| {
+              let mut found = false;
+              for fs.each |field| {
+                  if class_field.ident == field.node.ident  {
+                      found = true;
+                      vec::push(cs, const_expr(cx, field.node.expr));
+                  }
+              }
+              if !found {
+                  cx.tcx.sess.span_bug(e.span, ~"missing struct field");
+              }
+          }
+          C_named_struct(llty, cs)
+      }
       ast::expr_rec(fs, none) => {
         C_struct(fs.map(|f| const_expr(cx, f.node.expr)))
       }
