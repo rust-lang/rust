@@ -913,7 +913,9 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
                 };
             }
             ast::struct_variant_kind(*) =>
-                fail ~"struct variants unimplemented"
+                fail ~"struct variants unimplemented",
+            ast::enum_variant_kind(*) =>
+                fail ~"enum variants unimplemented"
         }
 
         {pats: ~[@{id: cx.next_id(),

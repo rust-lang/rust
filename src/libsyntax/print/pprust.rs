@@ -516,18 +516,7 @@ fn print_item(s: ps, &&item: @ast::item) {
             word(s.s, ~";");
             end(s);
         } else {
-            bopen(s);
-            for variants.each |v| {
-                space_if_not_bol(s);
-                maybe_print_comment(s, v.span.lo);
-                print_outer_attributes(s, v.node.attrs);
-                ibox(s, indent_unit);
-                print_variant(s, v);
-                word(s.s, ~",");
-                end(s);
-                maybe_print_trailing_comment(s, v.span, none::<uint>);
-            }
-            bclose(s, item.span);
+            print_variants(s, variants, item.span);
         }
       }
       ast::item_class(struct_def, tps) => {
@@ -580,6 +569,21 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
     }
     s.ann.post(ann_node);
+}
+
+fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
+    bopen(s);
+    for variants.each |v| {
+        space_if_not_bol(s);
+        maybe_print_comment(s, v.span.lo);
+        print_outer_attributes(s, v.node.attrs);
+        ibox(s, indent_unit);
+        print_variant(s, v);
+        word(s.s, ~",");
+        end(s);
+        maybe_print_trailing_comment(s, v.span, none::<uint>);
+    }
+    bclose(s, span);
 }
 
 fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
@@ -709,6 +713,9 @@ fn print_variant(s: ps, v: ast::variant) {
         ast::struct_variant_kind(struct_def) => {
             head(s, ~"");
             print_struct(s, struct_def, ~[], v.node.name, v.span);
+        }
+        ast::enum_variant_kind(variants) => {
+            print_variants(s, variants, v.span);
         }
     }
     match v.node.disr_expr {

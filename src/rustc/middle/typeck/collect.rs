@@ -124,21 +124,33 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                     let arg_ty = ccx.to_ty(rs, va.ty);
                     {mode: ast::expl(ast::by_copy), ty: arg_ty}
                 });
-                result_ty = ty::mk_fn(tcx, {purity: ast::pure_fn,
+                result_ty = some(ty::mk_fn(tcx,
+                                           {purity: ast::pure_fn,
                                             proto: ast::proto_box,
                                             bounds: @~[],
                                             inputs: args,
                                             output: enum_ty,
-                                            ret_style: ast::return_val});
+                                            ret_style: ast::return_val}));
             }
-            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) =>
-                result_ty = enum_ty
+            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {
+                result_ty = some(enum_ty);
+            }
+            ast::enum_variant_kind(variants) => {
+                get_enum_variant_types(ccx, enum_ty, variants, ty_params, rp);
+                result_ty = none;
+            }
         };
-        let tpt = {bounds: ty_param_bounds(ccx, ty_params),
-                   rp: rp,
-                   ty: result_ty};
-        tcx.tcache.insert(local_def(variant.node.id), tpt);
-        write_ty_to_tcx(tcx, variant.node.id, result_ty);
+
+        match result_ty {
+            none => {}
+            some(result_ty) => {
+                let tpt = {bounds: ty_param_bounds(ccx, ty_params),
+                           rp: rp,
+                           ty: result_ty};
+                tcx.tcache.insert(local_def(variant.node.id), tpt);
+                write_ty_to_tcx(tcx, variant.node.id, result_ty);
+            }
+        }
     }
 }
 

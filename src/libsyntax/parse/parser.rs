@@ -17,28 +17,27 @@ import dvec::{dvec, extensions};
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value,
-             bitand, bitor, bitxor, blk,
-             blk_check_mode, bound_const, bound_copy, bound_send, bound_trait,
-             bound_owned, box, by_copy, by_move, by_mutbl_ref, by_ref, by_val,
-             capture_clause, capture_item, cdir_dir_mod, cdir_src_mod,
-             cdir_view_item, class_immutable, class_member, class_method,
-             class_mutable, crate, crate_cfg, crate_directive, decl,
-             decl_item, decl_local, default_blk, deref, div, expl, expr,
-             expr_, expr_addr_of, expr_match, expr_again, expr_assert,
-             expr_assign, expr_assign_op, expr_binary, expr_block, expr_break,
-             expr_call, expr_cast, expr_copy, expr_do_body,
-             expr_fail, expr_field, expr_fn, expr_fn_block, expr_if,
-             expr_index, expr_lit, expr_log, expr_loop,
-             expr_loop_body, expr_mac, expr_move, expr_path, expr_rec,
-             expr_repeat, expr_ret, expr_swap, expr_struct, expr_tup,
-             expr_unary, expr_unary_move, expr_vec, expr_vstore, expr_while,
-             extern_fn, field, fn_decl, foreign_item, foreign_item_fn,
-             foreign_mod, ident, impure_fn, infer, inherited, init_assign,
-             init_move, initializer, instance_var, item, item_, item_class,
-             item_const, item_enum, item_fn, item_foreign_mod, item_impl,
-             item_mac, item_mod, item_trait, item_ty, lit, lit_, lit_bool,
-             lit_float, lit_int, lit_int_unsuffixed, lit_nil, lit_str,
-             lit_uint, local, m_const, m_imm, m_mutbl, mac_, mac_aq,
+             bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
+             bound_copy, bound_send, bound_trait, bound_owned, box, by_copy,
+             by_move, by_mutbl_ref, by_ref, by_val, capture_clause,
+             capture_item, cdir_dir_mod, cdir_src_mod, cdir_view_item,
+             class_immutable, class_member, class_method, class_mutable,
+             crate, crate_cfg, crate_directive, decl, decl_item, decl_local,
+             default_blk, deref, div, enum_variant_kind, expl, expr, expr_,
+             expr_addr_of, expr_match, expr_again, expr_assert, expr_assign,
+             expr_assign_op, expr_binary, expr_block, expr_break, expr_call,
+             expr_cast, expr_copy, expr_do_body, expr_fail, expr_field,
+             expr_fn, expr_fn_block, expr_if, expr_index, expr_lit, expr_log,
+             expr_loop, expr_loop_body, expr_mac, expr_move, expr_path,
+             expr_rec, expr_repeat, expr_ret, expr_swap, expr_struct,
+             expr_tup, expr_unary, expr_unary_move, expr_vec, expr_vstore,
+             expr_while, extern_fn, field, fn_decl, foreign_item,
+             foreign_item_fn, foreign_mod, ident, impure_fn, infer, inherited,
+             init_assign, init_move, initializer, instance_var, item, item_,
+             item_class, item_const, item_enum, item_fn, item_foreign_mod,
+             item_impl, item_mac, item_mod, item_trait, item_ty, lit, lit_,
+             lit_bool, lit_float, lit_int, lit_int_unsuffixed, lit_nil,
+             lit_str, lit_uint, local, m_const, m_imm, m_mutbl, mac_, mac_aq,
              mac_ellipsis, mac_invoc, mac_invoc_tt, mac_var, matcher,
              match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
              mutability, neg, noreturn, not, pat, pat_box, pat_enum,
@@ -2842,30 +2841,8 @@ class parser {
         }
     }
 
-    fn parse_item_enum() -> item_info {
-        let id = self.parse_ident();
-        self.parse_region_param();
-        let ty_params = self.parse_ty_params();
+    fn parse_enum_body(ty_params: ~[ast::ty_param]) -> ~[ast::variant] {
         let mut variants: ~[variant] = ~[];
-        // Newtype syntax
-        if self.token == token::EQ {
-            self.check_restricted_keywords_(*id);
-            self.bump();
-            let ty = self.parse_ty(false);
-            self.expect(token::SEMI);
-            let variant =
-                spanned(ty.span.lo, ty.span.hi,
-                        {name: id,
-                         attrs: ~[],
-                         kind: tuple_variant_kind
-                            (~[{ty: ty, id: self.get_id()}]),
-                         id: self.get_id(),
-                         disr_expr: none,
-                         vis: public});
-            return (id, item_enum(~[variant], ty_params), none);
-        }
-        self.expect(token::LBRACE);
-
         let mut all_nullary = true, have_disr = false;
 
         while self.token != token::RBRACE {
@@ -2954,6 +2931,34 @@ class parser {
             self.fatal(~"discriminator values can only be used with a c-like \
                         enum");
         }
+
+        return variants;
+    }
+
+    fn parse_item_enum() -> item_info {
+        let id = self.parse_ident();
+        self.parse_region_param();
+        let ty_params = self.parse_ty_params();
+        // Newtype syntax
+        if self.token == token::EQ {
+            self.check_restricted_keywords_(*id);
+            self.bump();
+            let ty = self.parse_ty(false);
+            self.expect(token::SEMI);
+            let variant =
+                spanned(ty.span.lo, ty.span.hi,
+                        {name: id,
+                         attrs: ~[],
+                         kind: tuple_variant_kind
+                            (~[{ty: ty, id: self.get_id()}]),
+                         id: self.get_id(),
+                         disr_expr: none,
+                         vis: public});
+            return (id, item_enum(~[variant], ty_params), none);
+        }
+        self.expect(token::LBRACE);
+
+        let variants = self.parse_enum_body(ty_params);
         (id, item_enum(variants, ty_params), none)
     }
 

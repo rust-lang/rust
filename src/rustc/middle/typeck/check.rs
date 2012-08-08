@@ -2043,52 +2043,75 @@ fn check_enum_variants(ccx: @crate_ctxt,
                        sp: span,
                        vs: ~[ast::variant],
                        id: ast::node_id) {
+    fn do_check(ccx: @crate_ctxt, sp: span, vs: ~[ast::variant],
+                id: ast::node_id, disr_vals: &mut ~[int], disr_val: &mut int,
+                variants: &mut ~[ty::variant_info]) {
+        let rty = ty::node_id_to_type(ccx.tcx, id);
+        for vs.each |v| {
+            match v.node.disr_expr {
+              some(e) => {
+                let fcx = blank_fn_ctxt(ccx, rty, e.id);
+                check_expr(fcx, e, none);
+                let cty = fcx.expr_ty(e);
+                let declty = ty::mk_int(ccx.tcx);
+                demand::suptype(fcx, e.span, declty, cty);
+                // FIXME: issue #1417
+                // Also, check_expr (from check_const pass) doesn't guarantee
+                // that the expression is in an form that eval_const_expr can
+                // handle, so we may still get an internal compiler error
+                match const_eval::eval_const_expr(ccx.tcx, e) {
+                  const_eval::const_int(val) => {
+                    *disr_val = val as int;
+                  }
+                  _ => {
+                    ccx.tcx.sess.span_err(e.span, ~"expected signed integer \
+                                                    constant");
+                  }
+                }
+              }
+              _ => ()
+            }
+            if vec::contains(*disr_vals, *disr_val) {
+                ccx.tcx.sess.span_err(v.span,
+                                      ~"discriminator value already exists");
+            }
+            vec::push(*disr_vals, *disr_val);
+            let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
+            let arg_tys;
+
+            let this_disr_val = *disr_val;
+            *disr_val += 1;
+
+            match v.node.kind {
+                ast::tuple_variant_kind(args) if args.len() > 0u => {
+                    arg_tys = some(ty::ty_fn_args(ctor_ty).map(|a| a.ty));
+                }
+                ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {
+                    arg_tys = some(~[]);
+                }
+                ast::enum_variant_kind(subvariants) => {
+                    arg_tys = none;
+                    do_check(ccx, sp, vs, id, disr_vals, disr_val, variants);
+                }
+            }
+
+            match arg_tys {
+                none => {}
+                some(arg_tys) => {
+                    vec::push(*variants, @{args: arg_tys, ctor_ty: ctor_ty,
+                          name: v.node.name, id: local_def(v.node.id),
+                          disr_val: this_disr_val});
+                }
+            }
+        }
+    }
+
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let mut disr_vals: ~[int] = ~[];
     let mut disr_val = 0;
     let mut variants = ~[];
-    for vs.each |v| {
-        match v.node.disr_expr {
-          some(e) => {
-            let fcx = blank_fn_ctxt(ccx, rty, e.id);
-            check_expr(fcx, e, none);
-            let cty = fcx.expr_ty(e);
-            let declty = ty::mk_int(ccx.tcx);
-            demand::suptype(fcx, e.span, declty, cty);
-            // FIXME: issue #1417
-            // Also, check_expr (from check_const pass) doesn't guarantee that
-            // the expression in an form that eval_const_expr can handle, so
-            // we may still get an internal compiler error
-            match const_eval::eval_const_expr(ccx.tcx, e) {
-              const_eval::const_int(val) => {
-                disr_val = val as int;
-              }
-              _ => {
-                ccx.tcx.sess.span_err(e.span,
-                                      ~"expected signed integer constant");
-              }
-            }
-          }
-          _ => ()
-        }
-        if vec::contains(disr_vals, disr_val) {
-            ccx.tcx.sess.span_err(v.span,
-                                  ~"discriminator value already exists");
-        }
-        vec::push(disr_vals, disr_val);
-        let ctor_ty = ty::node_id_to_type(ccx.tcx, v.node.id);
-        let arg_tys;
-        match v.node.kind {
-            ast::tuple_variant_kind(args) if args.len() > 0u =>
-                arg_tys = ty::ty_fn_args(ctor_ty).map(|a| a.ty),
-            ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) =>
-                arg_tys = ~[]
-        };
-        vec::push(variants, @{args: arg_tys, ctor_ty: ctor_ty,
-              name: v.node.name, id: local_def(v.node.id),
-              disr_val: disr_val});
-        disr_val += 1;
-    }
+
+    do_check(ccx, sp, vs, id, &mut disr_vals, &mut disr_val, &mut variants);
 
     // cache so that ty::enum_variants won't repeat this work
     ccx.tcx.enum_var_cache.insert(local_def(id), @variants);
