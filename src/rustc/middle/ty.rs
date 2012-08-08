@@ -532,6 +532,16 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     kind
 }
 
+/// A polytype.
+///
+/// - `bounds`: The list of bounds for each type parameter.  The length of the
+///   list also tells you how many type parameters there are.
+///
+/// - `rp`: true if the type is region-parameterized.  Types can have at
+///   most one region parameter, always called `&self`.
+///
+/// - `ty`: the base type.  May have reference to the (unsubstituted) bound
+///   region `&self` or to (unsubstituted) ty_param types
 type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
                                rp: bool,
                                ty: t};
@@ -1532,7 +1542,7 @@ pure fn kind_is_owned(k: kind) -> bool {
 
 fn proto_kind(p: proto) -> kind {
     match p {
-      ast::proto_block => kind_noncopyable(),
+      ast::proto_block => kind_noncopyable() | kind_(KIND_MASK_DEFAULT_MODE),
       ast::proto_box => kind_safe_for_default_mode() | kind_owned(),
       ast::proto_uniq => kind_send_copy() | kind_owned(),
       ast::proto_bare => kind_safe_for_default_mode_send() | kind_const() |
