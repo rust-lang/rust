@@ -95,6 +95,7 @@ fn classify(e: @expr,
                 }
               }
 
+              ast::expr_struct(_, fs, none) |
               ast::expr_rec(fs, none) => {
                 let cs = do vec::map(fs) |f| {
                     if f.node.mutbl == ast::m_imm {

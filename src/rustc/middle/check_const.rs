@@ -103,6 +103,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           expr_vec(_, m_imm) |
           expr_addr_of(m_imm, _) |
           expr_tup(*) |
+          expr_struct(*) |
           expr_rec(*) => { }
           expr_addr_of(*) => {
                 sess.span_err(
