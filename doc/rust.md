@@ -899,19 +899,17 @@ express that `f` requires no explicit `return`, as if it returns
 control to the caller, it returns a value (true because it never returns
 control).
 
-#### Predicate functions
+#### Pure functions
 
-Any pure boolean function is called a *predicate function*, and may be used in
-a [constraint](#constraints), as part of the static [typestate
-system](#typestate-system). A predicate declaration is identical to a function
-declaration, except that it is declared with the additional keyword `pure`. In
-addition, the typechecker checks the body of a predicate with a restricted set
-of typechecking rules. A predicate
+A pure function declaration is identical to a function declaration, except that
+it is declared with the additional keyword `pure`. In addition, the typechecker
+checks the body of a pure function with a restricted set of typechecking rules.
+A pure function
 
 * may not contain an assignment or self-call expression; and
-* may only call other predicates, not general functions.
+* may only call other pure functions, not general functions.
 
-An example of a predicate:
+An example of a pure function:
 
 ~~~~
 pure fn lt_42(x: int) -> bool {
@@ -919,8 +917,7 @@ pure fn lt_42(x: int) -> bool {
 }
 ~~~~
 
-A non-boolean function may also be declared with `pure fn`. This allows
-predicates to call non-boolean functions as long as they are pure. For example:
+Pure functions may call other pure functions:
 
 ~~~~{.xfail-test}
 pure fn pure_length<T>(ls: list<T>) -> uint { /* ... */ }
@@ -928,17 +925,13 @@ pure fn pure_length<T>(ls: list<T>) -> uint { /* ... */ }
 pure fn nonempty_list<T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
 ~~~~
 
-In this example, `nonempty_list` is a predicate---it can be used in a
-typestate constraint---but the auxiliary function `pure_length` is
-not.
-
 *TODO:* should actually define referential transparency.
 
 The effect checking rules previously enumerated are a restricted set of
 typechecking rules meant to approximate the universe of observably
 referentially transparent Rust procedures conservatively. Sometimes, these
 rules are *too* restrictive. Rust allows programmers to violate these rules by
-writing predicates that the compiler cannot prove to be referentially
+writing pure functions that the compiler cannot prove to be referentially
 transparent, using an escape-hatch feature called "unchecked blocks". When
 writing code that uses unchecked blocks, programmers should always be aware
 that they have an obligation to show that the code *behaves* referentially
@@ -946,11 +939,11 @@ transparently at all times, even if the compiler cannot *prove* automatically
 that the code is referentially transparent. In the presence of unchecked
 blocks, the compiler provides no static guarantee that the code will behave as
 expected at runtime. Rather, the programmer has an independent obligation to
-verify the semantics of the predicates they write.
+verify the semantics of the pure functions they write.
 
 *TODO:* last two sentences are vague.
 
-An example of a predicate that uses an unchecked block:
+An example of a pure function that uses an unchecked block:
 
 ~~~~
 # import std::list::*;
@@ -972,7 +965,7 @@ pure fn pure_length<T>(ls: list<T>) -> uint {
 
 Despite its name, `pure_foldl` is a `fn`, not a `pure fn`, because there is no
 way in Rust to specify that the higher-order function argument `f` is a pure
-function. So, to use `foldl` in a pure list length function that a predicate
+function. So, to use `foldl` in a pure list length function that a pure function
 could then use, we must use an `unchecked` block wrapped around the call to
 `pure_foldl` in the definition of `pure_length`.
 
@@ -1136,8 +1129,8 @@ looks like:
 
 The only exception is that the body of the class constructor begins
 with all the class's fields uninitialized, and is allowed to -- in
-fact, must -- initialize all the fields. A special case in the
-typestate pass enforces this invariant.
+fact, must -- initialize all the fields. The compiler enforces this
+invariant.
 
 Usually, the class constructor stores its argument or arguments in the
 class's named fields. In this case, the `file_descriptor`'s data field
@@ -2074,31 +2067,6 @@ A `loop` expression denotes an infinite loop:
 loop_expr : "loop" '{' block '}';
 ~~~~~~~~
 
-For a block `b`, the expression `loop b` is semantically equivalent to
-`while true b`. However, `loop`s differ from `while` loops in that the
-typestate analysis pass takes into account that `loop`s are infinite.
-
-For example, the following (contrived) function uses a `loop` with a
-`return` expression:
-
-~~~~
-fn count() -> bool {
-  let mut i = 0;
-  loop {
-    i += 1;
-    if i == 20 { return true; }
-  }
-}
-~~~~
-
-This function compiles, because typestate recognizes that the `loop`
-never terminates (except non-locally, with `return`), thus there is no
-need to insert a spurious `fail` or `return` after the `loop`. If `loop`
-were replaced with `while true`, the function would be rejected
-because from the compiler's perspective, there would be a control path
-along which `count` does not return a value (that is, if the loop
-condition is always false).
-
 ### Break expressions
 
 ~~~~~~~~{.ebnf .gram}
@@ -2540,7 +2508,7 @@ macro-generated and user-written code can cause unintentional capture.
 Future versions of Rust will address these issues.
 
 
-# Types and typestates
+# Type system
 
 ## Types
 
@@ -2966,7 +2934,7 @@ Local variables are not initialized when allocated; the entire frame worth of
 local variables are allocated at once, on frame-entry, in an uninitialized
 state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
-initialized; this condition is guaranteed by the typestate system.
+initialized; this is enforced by the compiler.
 
 References are created for function arguments. If the compiler can not prove
 that the referred-to value will outlive the reference, it will try to set
