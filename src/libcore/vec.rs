@@ -1211,7 +1211,7 @@ pure fn riteri<T>(v: &[T], f: fn(uint, T)) {
  * The total number of permutations produced is `len(v)!`.  If `v` contains
  * repeated elements, then some permutations are repeated.
  */
-pure fn permute<T: copy>(v: &[T], put: fn(~[T])) {
+pure fn permute<T: copy>(v: &[const T], put: fn(~[T])) {
     let ln = len(v);
     if ln == 0u {
         put(~[]);
@@ -1221,7 +1221,7 @@ pure fn permute<T: copy>(v: &[T], put: fn(~[T])) {
             let elt = v[i];
             let mut rest = slice(v, 0u, i);
             unchecked {
-                push_all(rest, view(v, i+1u, ln));
+                push_all(rest, const_view(v, i+1u, ln));
                 permute(rest, |permutation| {
                     put(append(~[elt], permutation))
                 })
