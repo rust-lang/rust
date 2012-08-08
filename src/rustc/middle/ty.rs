@@ -2742,7 +2742,7 @@ fn ty_dtor(cx: ctxt, class_id: def_id) -> option<def_id> {
     if is_local(class_id) {
        match cx.items.find(class_id.node) {
            some(ast_map::node_item(@{
-               node: ast::item_class({ dtor: some(dtor), _ }, _),
+               node: ast::item_class(@{ dtor: some(dtor), _ }, _),
                _
            }, _)) =>
                some(local_def(dtor.node.id)),

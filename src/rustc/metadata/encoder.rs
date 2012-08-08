@@ -242,7 +242,7 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
 }
 
 fn encode_struct_def(ebml_w: ebml::writer,
-                     struct_def: ast::struct_def,
+                     struct_def: @ast::struct_def,
                      path: ~[ast::ident],
                      ident: ast::ident,
                      &index: ~[entry<~str>]) {

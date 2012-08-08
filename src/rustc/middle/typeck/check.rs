@@ -400,7 +400,7 @@ fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
 
 }
 
-fn check_struct(ccx: @crate_ctxt, struct_def: ast::struct_def,
+fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                 id: ast::node_id, span: span) {
     let tcx = ccx.tcx;
     let class_t = {self_ty: ty::node_id_to_type(tcx, id), node_id: id};

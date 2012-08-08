@@ -266,7 +266,7 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
                 {node: {body: dtor_body,
                         id: dtor_id with dtor.node}
                     with dtor}};
-              item_class({
+              item_class(@{
                   traits: vec::map(struct_def.traits,
                                    |p| fold_trait_ref(p, fld)),
                   members: vec::map(struct_def.members,

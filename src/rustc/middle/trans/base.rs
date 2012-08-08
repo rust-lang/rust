@@ -4909,7 +4909,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     }
 }
 
-fn trans_struct_def(ccx: @crate_ctxt, struct_def: ast::struct_def,
+fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                     tps: ~[ast::ty_param], path: @ast_map::path,
                     ident: ast::ident, id: ast::node_id) {
     if tps.len() == 0u {

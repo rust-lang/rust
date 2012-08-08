@@ -736,7 +736,7 @@ enum item_ {
     item_foreign_mod(foreign_mod),
     item_ty(@ty, ~[ty_param]),
     item_enum(~[variant], ~[ty_param]),
-    item_class(struct_def, ~[ty_param]),
+    item_class(@struct_def, ~[ty_param]),
     item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],
               ~[@trait_ref], /* traits this impl implements */

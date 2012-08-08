@@ -2598,7 +2598,7 @@ class parser {
         match the_ctor {
           some((ct_d, ct_attrs, ct_b, ct_s)) => {
             (class_name,
-             item_class({
+             item_class(@{
                 traits: traits,
                 members: ms,
                 ctor: some({
@@ -2614,7 +2614,7 @@ class parser {
           }
           none => {
             (class_name,
-             item_class({
+             item_class(@{
                     traits: traits,
                     members: ms,
                     ctor: none,

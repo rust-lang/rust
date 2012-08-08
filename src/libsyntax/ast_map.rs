@@ -247,7 +247,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     vec::pop(cx.path);
 }
 
-fn map_struct_def(struct_def: ast::struct_def, parent_node: ast_node,
+fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
                   ident: ast::ident, id: ast::node_id, cx: ctx, _v: vt) {
     let (_, ms) = ast_util::split_class_items(struct_def.members);
     // Map trait refs to their parent classes. This is

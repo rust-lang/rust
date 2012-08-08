@@ -445,7 +445,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
     }
 }
 
-fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: ast::struct_def,
+fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
                   tps: ~[ast::ty_param], tpt: ty::ty_param_bounds_and_ty,
                   id: ast::node_id) {
     let tcx = ccx.tcx;
