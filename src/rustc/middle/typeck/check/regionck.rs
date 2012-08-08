@@ -171,7 +171,12 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
             }
           }
         };
+      }
 
+      ast::expr_addr_of(_, operand) => {
+        // FIXME(#3148) -- in some cases, we need to capture a dependency
+        // between the regions found in operand the resulting region type.
+        // See #3148 for more details.
       }
 
       _ => ()
