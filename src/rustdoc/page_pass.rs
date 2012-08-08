@@ -29,9 +29,8 @@ fn run(
         return doc;
     }
 
-    let result_port = comm::port();
-    let result_chan = comm::chan(result_port);
-    let page_chan = do task::spawn_listener |page_port| {
+    let (result_port, page_chan) = do task::spawn_conversation
+        |page_port, result_chan| {
         comm::send(result_chan, make_doc_from_pages(page_port));
     };
 
