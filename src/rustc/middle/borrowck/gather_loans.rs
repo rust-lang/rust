@@ -6,7 +6,7 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-import categorization::{public_methods, opt_deref_kind};
+import mem_categorization::{opt_deref_kind};
 import loan::public_methods;
 import preserve::{public_methods, preserve_condition, pc_ok, pc_if_pure};
 import ty::ty_region;
@@ -406,163 +406,57 @@ impl methods for gather_loan_ctxt {
         }
     }
 
-    fn gather_pat(cmt: cmt, pat: @ast::pat,
+    fn gather_pat(discr_cmt: cmt, root_pat: @ast::pat,
                   arm_id: ast::node_id, alt_id: ast::node_id) {
+        do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
+            match pat.node {
+              ast::pat_ident(bm, id, o_pat) if !self.pat_is_variant(pat) => {
+                match bm {
+                  ast::bind_by_value => {
+                    // copying does not borrow anything, so no check
+                    // is required
+                  }
+                  ast::bind_by_ref(mutbl) => {
+                    // ref x or ref x @ p --- creates a ptr which must
+                    // remain valid for the scope of the alt
 
-        // Here, `cmt` is the categorization for the value being
-        // matched and pat is the pattern it is being matched against.
-        //
-        // In general, the way that this works is that we walk down
-        // the pattern, constructing a cmt that represents the path
-        // that will be taken to reach the value being matched.
-        //
-        // When we encounter named bindings, we take the cmt that has
-        // been built up and pass it off to guarantee_valid() so that
-        // we can be sure that the binding will remain valid for the
-        // duration of the arm.
-        //
-        // The correspondence between the id in the cmt and which
-        // pattern is being referred to is somewhat...subtle.  In
-        // general, the id of the cmt is the id of the node that
-        // produces the value.  For patterns, that's actually the
-        // *subpattern*, generally speaking.
-        //
-        // To see what I mean about ids etc, consider:
-        //
-        //     let x = @@3;
-        //     match x {
-        //       @@y { ... }
-        //     }
-        //
-        // Here the cmt for `y` would be something like
-        //
-        //     local(x)->@->@
-        //
-        // where the id of `local(x)` is the id of the `x` that appears
-        // in the alt, the id of `local(x)->@` is the `@y` pattern,
-        // and the id of `local(x)->@->@` is the id of the `y` pattern.
+                    // find the region of the resulting pointer (note that
+                    // the type of such a pattern will *always* be a
+                    // region pointer)
+                    let scope_r = ty_region(self.tcx().ty(pat));
 
-        debug!{"gather_pat: id=%d pat=%s cmt=%s arm_id=%d alt_id=%d",
-               pat.id, pprust::pat_to_str(pat),
-               self.bccx.cmt_to_repr(cmt), arm_id, alt_id};
-        let _i = indenter();
+                    // if the scope of the region ptr turns out to be
+                    // specific to this arm, wrap the categorization with
+                    // a cat_discr() node.  There is a detailed discussion
+                    // of the function of this node in method preserve():
+                    let arm_scope = ty::re_scope(arm_id);
+                    if self.bccx.is_subregion_of(scope_r, arm_scope) {
+                        let cmt_discr = self.bccx.cat_discr(cmt, alt_id);
+                        self.guarantee_valid(cmt_discr, mutbl, scope_r);
+                    } else {
+                        self.guarantee_valid(cmt, mutbl, scope_r);
+                    }
+                  }
+                  ast::bind_by_implicit_ref => {
+                    // Note: there is a discussion of the function of
+                    // cat_discr in the method preserve():
+                    let cmt1 = self.bccx.cat_discr(cmt, alt_id);
+                    let arm_scope = ty::re_scope(arm_id);
 
-        let tcx = self.tcx();
-        match pat.node {
-          ast::pat_wild => {
-            // _
-          }
+                    // We used to remember the mutability of the location
+                    // that this binding refers to and use it later when
+                    // categorizing the binding.  This hack is being
+                    // removed in favor of ref mode bindings.
+                    //
+                    // self.bccx.binding_map.insert(pat.id, cmt1.mutbl);
 
-          ast::pat_enum(_, none) => {
-            // variant(*)
-          }
-          ast::pat_enum(_, some(subpats)) => {
-            // variant(x, y, z)
-            let enum_did = match self.bccx.tcx.def_map
-.find(pat.id) {
-              some(ast::def_variant(enum_did, _)) => enum_did,
-              e => tcx.sess.span_bug(pat.span,
-                                     fmt!{"resolved to %?, \
-                                               not variant", e})
-            };
-
-            for subpats.each |subpat| {
-                let subcmt = self.bccx.cat_variant(subpat, enum_did, cmt);
-                self.gather_pat(subcmt, subpat, arm_id, alt_id);
-            }
-          }
-
-          ast::pat_ident(bm, id, o_pat) if !self.pat_is_variant(pat) => {
-            match bm {
-              ast::bind_by_value => {
-                // copying does not borrow anything, so no check is required
-              }
-              ast::bind_by_ref(mutbl) => {
-                // ref x or ref x @ p --- creates a ptr which must
-                // remain valid for the scope of the alt
-
-                // find the region of the resulting pointer (note that
-                // the type of such a pattern will *always* be a
-                // region pointer)
-                let scope_r = ty_region(tcx.ty(pat));
-
-                // if the scope of the region ptr turns out to be
-                // specific to this arm, wrap the categorization with
-                // a cat_discr() node.  There is a detailed discussion
-                // of the function of this node in method preserve():
-                let arm_scope = ty::re_scope(arm_id);
-                if self.bccx.is_subregion_of(scope_r, arm_scope) {
-                    let cmt_discr = self.bccx.cat_discr(cmt, alt_id);
-                    self.guarantee_valid(cmt_discr, mutbl, scope_r);
-                } else {
-                    self.guarantee_valid(cmt, mutbl, scope_r);
+                    self.guarantee_valid(cmt1, m_const, arm_scope);
+                  }
                 }
               }
-              ast::bind_by_implicit_ref => {
-                // Note: there is a discussion of the function of
-                // cat_discr in the method preserve():
-                let cmt1 = self.bccx.cat_discr(cmt, alt_id);
-                let arm_scope = ty::re_scope(arm_id);
 
-                // Remember the mutability of the location that this
-                // binding refers to.  This will be used later when
-                // categorizing the binding.  This is a bit of a hack that
-                // would be better fixed by #2329; in that case we could
-                // allow the user to specify if they want an imm, const,
-                // or mut binding, or else just reflect the mutability
-                // through the type of the region pointer.
-                self.bccx.binding_map.insert(pat.id, cmt1.mutbl);
-
-                self.guarantee_valid(cmt1, m_const, arm_scope);
-              }
+              _ => {}
             }
-            for o_pat.each |p| {
-                self.gather_pat(cmt, p, arm_id, alt_id);
-            }
-          }
-
-          ast::pat_ident(*) => {
-              // nullary variant: ignore.
-              assert self.pat_is_variant(pat);
-          }
-
-          ast::pat_rec(field_pats, _) => {
-            // {f1: p1, ..., fN: pN}
-            for field_pats.each |fp| {
-                let cmt_field = self.bccx.cat_field(fp.pat, cmt, fp.ident);
-                self.gather_pat(cmt_field, fp.pat, arm_id, alt_id);
-            }
-          }
-
-          ast::pat_struct(_, field_pats, _) => {
-            // {f1: p1, ..., fN: pN}
-            for field_pats.each |fp| {
-                let cmt_field = self.bccx.cat_field(fp.pat, cmt, fp.ident);
-                self.gather_pat(cmt_field, fp.pat, arm_id, alt_id);
-            }
-          }
-
-          ast::pat_tup(subpats) => {
-            // (p1, ..., pN)
-            for subpats.each |subpat| {
-                let subcmt = self.bccx.cat_tuple_elt(subpat, cmt);
-                self.gather_pat(subcmt, subpat, arm_id, alt_id);
-            }
-          }
-
-          ast::pat_box(subpat) | ast::pat_uniq(subpat) => {
-            // @p1, ~p1
-            match self.bccx.cat_deref(subpat, cmt, 0u, true) {
-              some(subcmt) => {
-                self.gather_pat(subcmt, subpat, arm_id, alt_id);
-              }
-              none => {
-                tcx.sess.span_bug(pat.span, ~"Non derefable type");
-              }
-            }
-          }
-
-          ast::pat_lit(_) | ast::pat_range(_, _) => { /*always ok*/ }
         }
     }
 

@@ -230,6 +230,7 @@ import util::common::indenter;
 import ty::to_str;
 import driver::session::session;
 import dvec::{dvec, extensions};
+import mem_categorization::*;
 
 export check_crate, root_map, mutbl_map;
 
@@ -241,7 +242,6 @@ fn check_crate(tcx: ty::ctxt,
     let bccx = borrowck_ctxt_(@{tcx: tcx,
                                 method_map: method_map,
                                 last_use_map: last_use_map,
-                                binding_map: int_hash(),
                                 root_map: root_map(),
                                 mutbl_map: int_hash(),
                                 mut loaned_paths_same: 0,
@@ -282,7 +282,6 @@ fn check_crate(tcx: ty::ctxt,
 type borrowck_ctxt_ = {tcx: ty::ctxt,
                        method_map: typeck::method_map,
                        last_use_map: liveness::last_use_map,
-                       binding_map: binding_map,
                        root_map: root_map,
                        mutbl_map: mutbl_map,
 
@@ -313,10 +312,6 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 // this is used in trans for optimization purposes.
 type mutbl_map = std::map::hashmap<ast::node_id, ()>;
 
-// maps from each binding's id to the mutability of the location it
-// points at.  See gather_loan.rs for more detail (search for binding_map)
-type binding_map = std::map::hashmap<ast::node_id, ast::mutability>;
-
 // Errors that can occur"]
 enum bckerr_code {
     err_mut_uniq,
@@ -333,64 +328,6 @@ type bckerr = {cmt: cmt, code: bckerr_code};
 
 // shorthand for something that fails with `bckerr` or succeeds with `T`
 type bckres<T> = result<T, bckerr>;
-
-enum categorization {
-    cat_rvalue,                     // result of eval'ing some misc expr
-    cat_special(special_kind),      //
-    cat_local(ast::node_id),        // local variable
-    cat_binding(ast::node_id),      // pattern binding
-    cat_arg(ast::node_id),          // formal argument
-    cat_stack_upvar(cmt),           // upvar in stack closure
-    cat_deref(cmt, uint, ptr_kind), // deref of a ptr
-    cat_comp(cmt, comp_kind),       // adjust to locate an internal component
-    cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
-}
-
-// different kinds of pointers:
-enum ptr_kind {uniq_ptr, gc_ptr, region_ptr(ty::region), unsafe_ptr}
-
-// I am coining the term "components" to mean "pieces of a data
-// structure accessible without a dereference":
-enum comp_kind {
-    comp_tuple,                  // elt in a tuple
-    comp_variant(ast::def_id),   // internals to a variant of given enum
-    comp_field(ast::ident,       // name of field
-               ast::mutability), // declared mutability of field
-    comp_index(ty::t,            // type of vec/str/etc being deref'd
-               ast::mutability)  // mutability of vec content
-}
-
-// We pun on *T to mean both actual deref of a ptr as well
-// as accessing of components:
-enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
-
-// different kinds of expressions we might evaluate
-enum special_kind {
-    sk_method,
-    sk_static_item,
-    sk_self,
-    sk_heap_upvar
-}
-
-// a complete categorization of a value indicating where it originated
-// and how it is located, as well as the mutability of the memory in
-// which the value is stored.
-type cmt = @{id: ast::node_id,        // id of expr/pat producing this value
-             span: span,              // span of same expr/pat
-             cat: categorization,     // categorization of expr
-             lp: option<@loan_path>,  // loan path for expr, if any
-             mutbl: ast::mutability,  // mutability of expr as lvalue
-             ty: ty::t};              // type of the expr
-
-// a loan path is like a category, but it exists only when the data is
-// interior to the stack frame.  loan paths are used as the key to a
-// map indicating what is borrowed at any point in time.
-enum loan_path {
-    lp_local(ast::node_id),
-    lp_arg(ast::node_id),
-    lp_deref(@loan_path, ptr_kind),
-    lp_comp(@loan_path, comp_kind)
-}
 
 /// a complete record of a loan that was granted
 type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
@@ -429,38 +366,42 @@ fn root_map() -> root_map {
 // ___________________________________________________________________________
 // Misc
 
-trait ast_node {
-    fn id() -> ast::node_id;
-    fn span() -> span;
-}
-
-impl of ast_node for @ast::expr {
-    fn id() -> ast::node_id { self.id }
-    fn span() -> span { self.span }
-}
-
-impl of ast_node for @ast::pat {
-    fn id() -> ast::node_id { self.id }
-    fn span() -> span { self.span }
-}
-
-trait get_type_for_node {
-    fn ty<N: ast_node>(node: N) -> ty::t;
-}
-
-impl methods of get_type_for_node for ty::ctxt {
-    fn ty<N: ast_node>(node: N) -> ty::t {
-        ty::node_id_to_type(self, node.id())
-    }
-}
-
 impl borrowck_ctxt {
     fn is_subregion_of(r_sub: ty::region, r_sup: ty::region) -> bool {
         region::is_subregion_of(self.tcx.region_map, r_sub, r_sup)
     }
-}
 
-impl error_methods for borrowck_ctxt {
+    fn cat_expr(expr: @ast::expr) -> cmt {
+        cat_expr(self.tcx, self.method_map, expr)
+    }
+
+    fn cat_borrow_of_expr(expr: @ast::expr) -> cmt {
+        cat_borrow_of_expr(self.tcx, self.method_map, expr)
+    }
+
+    fn cat_def(id: ast::node_id,
+               span: span,
+               ty: ty::t,
+               def: ast::def) -> cmt {
+        cat_def(self.tcx, self.method_map, id, span, ty, def)
+    }
+
+    fn cat_variant<N: ast_node>(arg: N,
+                                enum_did: ast::def_id,
+                                cmt: cmt) -> cmt {
+        cat_variant(self.tcx, self.method_map, arg, enum_did, cmt)
+    }
+
+    fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
+        return @{cat:cat_discr(cmt, alt_id) with *cmt};
+    }
+
+    fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
+        let mc = &mem_categorization_ctxt {tcx: self.tcx,
+                                           method_map: self.method_map};
+        mc.cat_pattern(cmt, pat, op);
+    }
+
     fn report_if_err(bres: bckres<()>) {
         match bres {
           ok(()) => (),
@@ -492,118 +433,6 @@ impl error_methods for borrowck_ctxt {
             self.add_to_mutbl_map(cmt);
           }
           _ => ()
-        }
-    }
-}
-
-impl to_str_methods for borrowck_ctxt {
-    fn cat_to_repr(cat: categorization) -> ~str {
-        match cat {
-          cat_special(sk_method) => ~"method",
-          cat_special(sk_static_item) => ~"static_item",
-          cat_special(sk_self) => ~"self",
-          cat_special(sk_heap_upvar) => ~"heap-upvar",
-          cat_stack_upvar(_) => ~"stack-upvar",
-          cat_rvalue => ~"rvalue",
-          cat_local(node_id) => fmt!{"local(%d)", node_id},
-          cat_binding(node_id) => fmt!{"binding(%d)", node_id},
-          cat_arg(node_id) => fmt!{"arg(%d)", node_id},
-          cat_deref(cmt, derefs, ptr) => {
-            fmt!{"%s->(%s, %u)", self.cat_to_repr(cmt.cat),
-                 self.ptr_sigil(ptr), derefs}
-          }
-          cat_comp(cmt, comp) => {
-            fmt!{"%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)}
-          }
-          cat_discr(cmt, _) => self.cat_to_repr(cmt.cat)
-        }
-    }
-
-    fn mut_to_str(mutbl: ast::mutability) -> ~str {
-        match mutbl {
-          m_mutbl => ~"mutable",
-          m_const => ~"const",
-          m_imm => ~"immutable"
-        }
-    }
-
-    fn ptr_sigil(ptr: ptr_kind) -> ~str {
-        match ptr {
-          uniq_ptr => ~"~",
-          gc_ptr => ~"@",
-          region_ptr(_) => ~"&",
-          unsafe_ptr => ~"*"
-        }
-    }
-
-    fn comp_to_repr(comp: comp_kind) -> ~str {
-        match comp {
-          comp_field(fld, _) => *fld,
-          comp_index(*) => ~"[]",
-          comp_tuple => ~"()",
-          comp_variant(_) => ~"<enum>"
-        }
-    }
-
-    fn lp_to_str(lp: @loan_path) -> ~str {
-        match *lp {
-          lp_local(node_id) => {
-            fmt!{"local(%d)", node_id}
-          }
-          lp_arg(node_id) => {
-            fmt!{"arg(%d)", node_id}
-          }
-          lp_deref(lp, ptr) => {
-            fmt!{"%s->(%s)", self.lp_to_str(lp),
-                 self.ptr_sigil(ptr)}
-          }
-          lp_comp(lp, comp) => {
-            fmt!{"%s.%s", self.lp_to_str(lp),
-                 self.comp_to_repr(comp)}
-          }
-        }
-    }
-
-    fn cmt_to_repr(cmt: cmt) -> ~str {
-        fmt!{"{%s id:%d m:%s lp:%s ty:%s}",
-             self.cat_to_repr(cmt.cat),
-             cmt.id,
-             self.mut_to_str(cmt.mutbl),
-             cmt.lp.map_default(~"none", |p| self.lp_to_str(p) ),
-             ty_to_str(self.tcx, cmt.ty)}
-    }
-
-    fn cmt_to_str(cmt: cmt) -> ~str {
-        let mut_str = self.mut_to_str(cmt.mutbl);
-        match cmt.cat {
-          cat_special(sk_method) => ~"method",
-          cat_special(sk_static_item) => ~"static item",
-          cat_special(sk_self) => ~"self reference",
-          cat_special(sk_heap_upvar) => {
-              ~"captured outer variable in a heap closure"
-          }
-          cat_rvalue => ~"non-lvalue",
-          cat_local(_) => mut_str + ~" local variable",
-          cat_binding(_) => ~"pattern binding",
-          cat_arg(_) => ~"argument",
-          cat_deref(_, _, pk) => fmt!{"dereference of %s %s pointer",
-                                      mut_str, self.ptr_sigil(pk)},
-          cat_stack_upvar(_) => {
-            ~"captured outer " + mut_str + ~" variable in a stack closure"
-          }
-          cat_comp(_, comp_field(*)) => mut_str + ~" field",
-          cat_comp(_, comp_tuple) => ~"tuple content",
-          cat_comp(_, comp_variant(_)) => ~"enum content",
-          cat_comp(_, comp_index(t, _)) => {
-            match ty::get(t).struct {
-              ty::ty_evec(*) => mut_str + ~" vec content",
-              ty::ty_estr(*) => mut_str + ~" str content",
-              _ => mut_str + ~" indexed content"
-            }
-          }
-          cat_discr(cmt, _) => {
-            self.cmt_to_str(cmt)
-          }
         }
     }
 
@@ -640,8 +469,22 @@ impl to_str_methods for borrowck_ctxt {
         }
     }
 
-    fn region_to_str(r: ty::region) -> ~str {
-        region_to_str(self.tcx, r)
+    fn cmt_to_str(cmt: cmt) -> ~str {
+        let mc = &mem_categorization_ctxt {tcx: self.tcx,
+                                           method_map: self.method_map};
+        mc.cmt_to_str(cmt)
+    }
+
+    fn cmt_to_repr(cmt: cmt) -> ~str {
+        let mc = &mem_categorization_ctxt {tcx: self.tcx,
+                                           method_map: self.method_map};
+        mc.cmt_to_repr(cmt)
+    }
+
+    fn mut_to_str(mutbl: ast::mutability) -> ~str {
+        let mc = &mem_categorization_ctxt {tcx: self.tcx,
+                                           method_map: self.method_map};
+        mc.mut_to_str(mutbl)
     }
 }
 

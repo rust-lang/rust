@@ -36,8 +36,70 @@
  * then an index to jump forward to the relevant item.
  */
 
-export public_methods;
-export opt_deref_kind;
+import syntax::ast;
+import syntax::ast::{m_imm, m_const, m_mutbl};
+import syntax::codemap::span;
+import syntax::print::pprust;
+import util::ppaux::{ty_to_str, region_to_str};
+import util::common::indenter;
+
+enum categorization {
+    cat_rvalue,                     // result of eval'ing some misc expr
+    cat_special(special_kind),      //
+    cat_local(ast::node_id),        // local variable
+    cat_binding(ast::node_id),      // pattern binding
+    cat_arg(ast::node_id),          // formal argument
+    cat_stack_upvar(cmt),           // upvar in stack closure
+    cat_deref(cmt, uint, ptr_kind), // deref of a ptr
+    cat_comp(cmt, comp_kind),       // adjust to locate an internal component
+    cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
+}
+
+// different kinds of pointers:
+enum ptr_kind {uniq_ptr, gc_ptr, region_ptr(ty::region), unsafe_ptr}
+
+// I am coining the term "components" to mean "pieces of a data
+// structure accessible without a dereference":
+enum comp_kind {
+    comp_tuple,                  // elt in a tuple
+    comp_variant(ast::def_id),   // internals to a variant of given enum
+    comp_field(ast::ident,       // name of field
+               ast::mutability), // declared mutability of field
+    comp_index(ty::t,            // type of vec/str/etc being deref'd
+               ast::mutability)  // mutability of vec content
+}
+
+// different kinds of expressions we might evaluate
+enum special_kind {
+    sk_method,
+    sk_static_item,
+    sk_self,
+    sk_heap_upvar
+}
+
+// a complete categorization of a value indicating where it originated
+// and how it is located, as well as the mutability of the memory in
+// which the value is stored.
+type cmt = @{id: ast::node_id,        // id of expr/pat producing this value
+             span: span,              // span of same expr/pat
+             cat: categorization,     // categorization of expr
+             lp: option<@loan_path>,  // loan path for expr, if any
+             mutbl: ast::mutability,  // mutability of expr as lvalue
+             ty: ty::t};              // type of the expr
+
+// a loan path is like a category, but it exists only when the data is
+// interior to the stack frame.  loan paths are used as the key to a
+// map indicating what is borrowed at any point in time.
+enum loan_path {
+    lp_local(ast::node_id),
+    lp_arg(ast::node_id),
+    lp_deref(@loan_path, ptr_kind),
+    lp_comp(@loan_path, comp_kind)
+}
+
+// We pun on *T to mean both actual deref of a ptr as well
+// as accessing of components:
+enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
 
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
@@ -93,7 +155,86 @@ fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
     }
 }
 
-impl public_methods for borrowck_ctxt {
+fn cat_borrow_of_expr(
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    expr: @ast::expr) -> cmt {
+
+    let mcx = &mem_categorization_ctxt {
+        tcx: tcx, method_map: method_map
+    };
+    return mcx.cat_borrow_of_expr(expr);
+}
+
+fn cat_expr(
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    expr: @ast::expr) -> cmt {
+
+    let mcx = &mem_categorization_ctxt {
+        tcx: tcx, method_map: method_map
+    };
+    return mcx.cat_expr(expr);
+}
+
+fn cat_def(
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    expr_id: ast::node_id,
+    expr_span: span,
+    expr_ty: ty::t,
+    def: ast::def) -> cmt {
+
+    let mcx = &mem_categorization_ctxt {
+        tcx: tcx, method_map: method_map
+    };
+    return mcx.cat_def(expr_id, expr_span, expr_ty, def);
+}
+
+fn cat_variant<N: ast_node>(
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    arg: N,
+    enum_did: ast::def_id,
+    cmt: cmt) -> cmt {
+
+    let mcx = &mem_categorization_ctxt {
+        tcx: tcx, method_map: method_map
+    };
+    return mcx.cat_variant(arg, enum_did, cmt);
+}
+
+trait ast_node {
+    fn id() -> ast::node_id;
+    fn span() -> span;
+}
+
+impl of ast_node for @ast::expr {
+    fn id() -> ast::node_id { self.id }
+    fn span() -> span { self.span }
+}
+
+impl of ast_node for @ast::pat {
+    fn id() -> ast::node_id { self.id }
+    fn span() -> span { self.span }
+}
+
+trait get_type_for_node {
+    fn ty<N: ast_node>(node: N) -> ty::t;
+}
+
+impl methods of get_type_for_node for ty::ctxt {
+    fn ty<N: ast_node>(node: N) -> ty::t {
+        ty::node_id_to_type(self, node.id())
+    }
+}
+
+struct mem_categorization_ctxt {
+    tcx: ty::ctxt;
+    method_map: typeck::method_map;
+}
+
+impl &mem_categorization_ctxt {
     fn cat_borrow_of_expr(expr: @ast::expr) -> cmt {
         // a borrowed expression must be either an @, ~, or a @vec, ~vec
         let expr_ty = ty::expr_ty(self.tcx, expr);
@@ -276,13 +417,14 @@ impl public_methods for borrowck_ctxt {
             // implicit-by-ref bindings are "special" since they are
             // implicit pointers.
 
-            // lookup the mutability for this binding that we found in
-            // gather_loans when we categorized it
-            let mutbl = self.binding_map.get(pid);
+            // Technically, the mutability is not always imm, but we
+            // (choose to be) unsound for the moment since these
+            // implicit refs are going away and it reduces external
+            // dependencies.
 
             @{id:id, span:span,
               cat:cat_binding(pid), lp:none,
-              mutbl:mutbl, ty:expr_ty}
+              mutbl:m_imm, ty:expr_ty}
           }
         }
     }
@@ -301,10 +443,6 @@ impl public_methods for borrowck_ctxt {
         @{id:expr.id, span:expr.span,
           cat:cat_rvalue, lp:none,
           mutbl:m_imm, ty:expr_ty}
-    }
-
-    fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
-        return @{cat:cat_discr(cmt, alt_id) with *cmt};
     }
 
     /// inherited mutability: used in cases where the mutability of a
@@ -446,9 +584,7 @@ impl public_methods for borrowck_ctxt {
           mutbl: cmt.mutbl, // imm iff in an immutable context
           ty: self.tcx.ty(elt)}
     }
-}
 
-impl private_methods for borrowck_ctxt {
     fn cat_method_ref(expr: @ast::expr, expr_ty: ty::t) -> cmt {
         @{id:expr.id, span:expr.span,
           cat:cat_special(sk_method), lp:none,
@@ -472,6 +608,233 @@ impl private_methods for borrowck_ctxt {
               some(cmt1) => cmt = cmt1
             }
         }
+    }
+
+    fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
+
+        op(cmt, pat);
+
+        // Here, `cmt` is the categorization for the value being
+        // matched and pat is the pattern it is being matched against.
+        //
+        // In general, the way that this works is that we walk down
+        // the pattern, constructing a cmt that represents the path
+        // that will be taken to reach the value being matched.
+        //
+        // When we encounter named bindings, we take the cmt that has
+        // been built up and pass it off to guarantee_valid() so that
+        // we can be sure that the binding will remain valid for the
+        // duration of the arm.
+        //
+        // The correspondence between the id in the cmt and which
+        // pattern is being referred to is somewhat...subtle.  In
+        // general, the id of the cmt is the id of the node that
+        // produces the value.  For patterns, that's actually the
+        // *subpattern*, generally speaking.
+        //
+        // To see what I mean about ids etc, consider:
+        //
+        //     let x = @@3;
+        //     match x {
+        //       @@y { ... }
+        //     }
+        //
+        // Here the cmt for `y` would be something like
+        //
+        //     local(x)->@->@
+        //
+        // where the id of `local(x)` is the id of the `x` that appears
+        // in the alt, the id of `local(x)->@` is the `@y` pattern,
+        // and the id of `local(x)->@->@` is the id of the `y` pattern.
+
+        debug!{"cat_pattern: id=%d pat=%s cmt=%s",
+               pat.id, pprust::pat_to_str(pat),
+               self.cmt_to_repr(cmt)};
+        let _i = indenter();
+
+        let tcx = self.tcx;
+        match pat.node {
+          ast::pat_wild => {
+            // _
+          }
+
+          ast::pat_enum(_, none) => {
+            // variant(*)
+          }
+          ast::pat_enum(_, some(subpats)) => {
+            // variant(x, y, z)
+            let enum_did = match self.tcx.def_map.find(pat.id) {
+              some(ast::def_variant(enum_did, _)) => enum_did,
+              e => tcx.sess.span_bug(pat.span,
+                                     fmt!{"resolved to %?, not variant", e})
+            };
+
+            for subpats.each |subpat| {
+                let subcmt = self.cat_variant(subpat, enum_did, cmt);
+                self.cat_pattern(subcmt, subpat, op);
+            }
+          }
+
+          ast::pat_ident(_, _, some(subpat)) => {
+              self.cat_pattern(cmt, subpat, op);
+          }
+
+          ast::pat_ident(_, _, none) => {
+              // nullary variant or identifier: ignore
+          }
+
+          ast::pat_rec(field_pats, _) => {
+            // {f1: p1, ..., fN: pN}
+            for field_pats.each |fp| {
+                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident);
+                self.cat_pattern(cmt_field, fp.pat, op);
+            }
+          }
+
+          ast::pat_struct(_, field_pats, _) => {
+            // {f1: p1, ..., fN: pN}
+            for field_pats.each |fp| {
+                let cmt_field = self.cat_field(fp.pat, cmt, fp.ident);
+                self.cat_pattern(cmt_field, fp.pat, op);
+            }
+          }
+
+          ast::pat_tup(subpats) => {
+            // (p1, ..., pN)
+            for subpats.each |subpat| {
+                let subcmt = self.cat_tuple_elt(subpat, cmt);
+                self.cat_pattern(subcmt, subpat, op);
+            }
+          }
+
+          ast::pat_box(subpat) | ast::pat_uniq(subpat) => {
+            // @p1, ~p1
+            match self.cat_deref(subpat, cmt, 0u, true) {
+              some(subcmt) => {
+                self.cat_pattern(subcmt, subpat, op);
+              }
+              none => {
+                tcx.sess.span_bug(pat.span, ~"Non derefable type");
+              }
+            }
+          }
+
+          ast::pat_lit(_) | ast::pat_range(_, _) => { /*always ok*/ }
+        }
+    }
+
+    fn cat_to_repr(cat: categorization) -> ~str {
+        match cat {
+          cat_special(sk_method) => ~"method",
+          cat_special(sk_static_item) => ~"static_item",
+          cat_special(sk_self) => ~"self",
+          cat_special(sk_heap_upvar) => ~"heap-upvar",
+          cat_stack_upvar(_) => ~"stack-upvar",
+          cat_rvalue => ~"rvalue",
+          cat_local(node_id) => fmt!{"local(%d)", node_id},
+          cat_binding(node_id) => fmt!{"binding(%d)", node_id},
+          cat_arg(node_id) => fmt!{"arg(%d)", node_id},
+          cat_deref(cmt, derefs, ptr) => {
+            fmt!{"%s->(%s, %u)", self.cat_to_repr(cmt.cat),
+                 self.ptr_sigil(ptr), derefs}
+          }
+          cat_comp(cmt, comp) => {
+            fmt!{"%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)}
+          }
+          cat_discr(cmt, _) => self.cat_to_repr(cmt.cat)
+        }
+    }
+
+    fn mut_to_str(mutbl: ast::mutability) -> ~str {
+        match mutbl {
+          m_mutbl => ~"mutable",
+          m_const => ~"const",
+          m_imm => ~"immutable"
+        }
+    }
+
+    fn ptr_sigil(ptr: ptr_kind) -> ~str {
+        match ptr {
+          uniq_ptr => ~"~",
+          gc_ptr => ~"@",
+          region_ptr(_) => ~"&",
+          unsafe_ptr => ~"*"
+        }
+    }
+
+    fn comp_to_repr(comp: comp_kind) -> ~str {
+        match comp {
+          comp_field(fld, _) => *fld,
+          comp_index(*) => ~"[]",
+          comp_tuple => ~"()",
+          comp_variant(_) => ~"<enum>"
+        }
+    }
+
+    fn lp_to_str(lp: @loan_path) -> ~str {
+        match *lp {
+          lp_local(node_id) => {
+            fmt!{"local(%d)", node_id}
+          }
+          lp_arg(node_id) => {
+            fmt!{"arg(%d)", node_id}
+          }
+          lp_deref(lp, ptr) => {
+            fmt!{"%s->(%s)", self.lp_to_str(lp),
+                 self.ptr_sigil(ptr)}
+          }
+          lp_comp(lp, comp) => {
+            fmt!{"%s.%s", self.lp_to_str(lp),
+                 self.comp_to_repr(comp)}
+          }
+        }
+    }
+
+    fn cmt_to_repr(cmt: cmt) -> ~str {
+        fmt!{"{%s id:%d m:%s lp:%s ty:%s}",
+             self.cat_to_repr(cmt.cat),
+             cmt.id,
+             self.mut_to_str(cmt.mutbl),
+             cmt.lp.map_default(~"none", |p| self.lp_to_str(p) ),
+             ty_to_str(self.tcx, cmt.ty)}
+    }
+
+    fn cmt_to_str(cmt: cmt) -> ~str {
+        let mut_str = self.mut_to_str(cmt.mutbl);
+        match cmt.cat {
+          cat_special(sk_method) => ~"method",
+          cat_special(sk_static_item) => ~"static item",
+          cat_special(sk_self) => ~"self reference",
+          cat_special(sk_heap_upvar) => {
+              ~"captured outer variable in a heap closure"
+          }
+          cat_rvalue => ~"non-lvalue",
+          cat_local(_) => mut_str + ~" local variable",
+          cat_binding(_) => ~"pattern binding",
+          cat_arg(_) => ~"argument",
+          cat_deref(_, _, pk) => fmt!{"dereference of %s %s pointer",
+                                      mut_str, self.ptr_sigil(pk)},
+          cat_stack_upvar(_) => {
+            ~"captured outer " + mut_str + ~" variable in a stack closure"
+          }
+          cat_comp(_, comp_field(*)) => mut_str + ~" field",
+          cat_comp(_, comp_tuple) => ~"tuple content",
+          cat_comp(_, comp_variant(_)) => ~"enum content",
+          cat_comp(_, comp_index(t, _)) => {
+            match ty::get(t).struct {
+              ty::ty_evec(*) => mut_str + ~" vec content",
+              ty::ty_estr(*) => mut_str + ~" str content",
+              _ => mut_str + ~" indexed content"
+            }
+          }
+          cat_discr(cmt, _) => {
+            self.cmt_to_str(cmt)
+          }
+        }
+    }
+
+    fn region_to_str(r: ty::region) -> ~str {
+        region_to_str(self.tcx, r)
     }
 }
 

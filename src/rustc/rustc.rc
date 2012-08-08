@@ -77,10 +77,10 @@ mod middle {
     mod borrowck {
         mod check_loans;
         mod gather_loans;
-        mod categorization;
         mod loan;
         mod preserve;
     }
+    mod mem_categorization;
     mod liveness;
     mod block_use;
     mod kind;

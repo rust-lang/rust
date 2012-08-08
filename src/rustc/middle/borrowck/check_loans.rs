@@ -8,7 +8,6 @@
 // 4. moves to dnot affect things loaned out in any way
 
 import dvec::{dvec, extensions};
-import categorization::public_methods;
 
 export check_loans;
 
