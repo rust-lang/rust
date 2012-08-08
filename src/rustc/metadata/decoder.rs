@@ -122,8 +122,7 @@ fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
     none
 }
 
-// XXX: This has nothing to do with classes.
-fn class_member_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
+fn item_def_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
     let tagdoc = ebml::get_doc(d, tag_def_id);
     return translate_def_id(cdata, ebml::with_doc_data(tagdoc,
                                                     |d| parse_def_id(d)));
@@ -358,7 +357,7 @@ fn get_class_method(cdata: cmd, id: ast::node_id,
                               when looking up method %s", *name})
     };
     for ebml::tagged_docs(cls_items, tag_item_trait_method) |mid| {
-        let m_did = class_member_id(mid, cdata);
+        let m_did = item_def_id(mid, cdata);
         if item_name(mid) == name {
             found = some(m_did);
         }
@@ -432,7 +431,7 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
                                                      ~"::");
             if name != ~"" {
                 // Extract the def ID.
-                let def_id = class_member_id(item_doc, cdata);
+                let def_id = item_def_id(item_doc, cdata);
 
                 // Construct the def for this item.
                 debug!{"(each_path) yielding explicit item: %s", name};
@@ -467,7 +466,7 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
             let path = item_name(path_doc);
 
             // Extract the def ID.
-            let def_id = class_member_id(path_doc, cdata);
+            let def_id = item_def_id(path_doc, cdata);
 
             // Get the item.
             match maybe_find_item(def_id.node, items) {
@@ -738,7 +737,7 @@ fn get_class_members(cdata: cmd, id: ast::node_id,
        let f = item_family(an_item);
        if p(f) {
           let name = item_name(an_item);
-          let did = class_member_id(an_item, cdata);
+          let did = item_def_id(an_item, cdata);
           let mt = field_mutability(an_item);
           vec::push(result, {ident: name, id: did, vis:
                   family_to_visibility(f), mutability: mt});
