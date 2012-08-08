@@ -33,7 +33,8 @@ import syntax::ast::{lt, method, mul, ne, neg, node_id, pat, pat_enum};
 import syntax::ast::{pat_ident, path, prim_ty, pat_box, pat_uniq, pat_lit};
 import syntax::ast::{pat_range, pat_rec, pat_struct, pat_tup, pat_wild};
 import syntax::ast::{provided, required, rem, self_ty_, shl, stmt_decl};
-import syntax::ast::{sty_static, subtract, ty};
+import syntax::ast::{struct_variant_kind, sty_static, subtract};
+import syntax::ast::{tuple_variant_kind, ty};
 import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
 import syntax::ast::{ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8};
@@ -1114,10 +1115,8 @@ class Resolver {
         }
     }
 
-    /**
-     * Constructs the reduced graph for one variant. Variants exist in the
-     * type namespace.
-     */
+    // Constructs the reduced graph for one variant. Variants exist in the
+    // type and/or value namespaces.
     fn build_reduced_graph_for_variant(variant: variant,
                                        item_id: def_id,
                                        parent: ReducedGraphParent,
@@ -1127,8 +1126,19 @@ class Resolver {
         let (child, _) = self.add_child(atom, parent, ~[ValueNS],
                                         variant.span);
 
-        (*child).define_value(def_variant(item_id,
-                                local_def(variant.node.id)), variant.span);
+        match variant.node.kind {
+            tuple_variant_kind(_) => {
+                (*child).define_value(def_variant(item_id,
+                                                  local_def(variant.node.id)),
+                                      variant.span);
+            }
+            struct_variant_kind(_) => {
+                (*child).define_type(def_variant(item_id,
+                                                 local_def(variant.node.id)),
+                                     variant.span);
+                self.structs.insert(local_def(variant.node.id), false);
+            }
+        }
     }
 
     /**
@@ -4018,12 +4028,16 @@ class Resolver {
 
                 pat_struct(path, _, _) => {
                     match self.resolve_path(path, TypeNS, false, visitor) {
-                        some(definition @ def_ty(class_id))
+                        some(def_ty(class_id))
                                 if self.structs.contains_key(class_id) => {
                             let has_constructor = self.structs.get(class_id);
                             let class_def = def_class(class_id,
                                                       has_constructor);
                             self.record_def(pattern.id, class_def);
+                        }
+                        some(definition @ def_variant(_, variant_id))
+                                if self.structs.contains_key(variant_id) => {
+                            self.record_def(pattern.id, definition);
                         }
                         _ => {
                             self.session.span_err(path.span,
@@ -4450,12 +4464,15 @@ class Resolver {
                 //    let bar = Bar { ... } // no type parameters
 
                 match self.resolve_path(path, TypeNS, false, visitor) {
-                    some(definition @ def_ty(class_id))
+                    some(def_ty(class_id))
                             if self.structs.contains_key(class_id) => {
-
                         let has_constructor = self.structs.get(class_id);
                         let class_def = def_class(class_id, has_constructor);
                         self.record_def(expr.id, class_def);
+                    }
+                    some(definition @ def_variant(_, class_id))
+                            if self.structs.contains_key(class_id) => {
+                        self.record_def(expr.id, definition);
                     }
                     _ => {
                         self.session.span_err(path.span,
