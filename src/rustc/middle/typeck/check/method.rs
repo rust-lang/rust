@@ -138,19 +138,12 @@ class lookup {
             // it.
             if self.candidates.len() > 0u { break; }
 
-            // now look for impls in scope, but don't look for impls that
-            // would require doing an implicit borrow of the lhs.
-            self.add_candidates_from_scope(false);
-
             // Look for inherent methods.
             self.add_inherent_and_extension_candidates
                 (optional_inherent_methods, false);
 
             // if we found anything, stop before trying borrows
             if self.candidates.len() > 0u { break; }
-
-            // now look for impls in scope that might require a borrow
-            self.add_candidates_from_scope(true);
 
             // Again, look for inherent methods.
             self.add_inherent_and_extension_candidates
@@ -362,33 +355,6 @@ class lookup {
             }
         }
         */
-    }
-
-    fn add_candidates_from_scope(use_assignability: bool) {
-
-        // If we're using coherence and this is one of the method invocation
-        // forms it supports, don't use this method; it'll result in lots of
-        // multiple-methods-in-scope errors.
-        if self.fcx.ccx.trait_map.contains_key(self.expr.id) {
-            return;
-        }
-
-        let impls_vecs = self.fcx.ccx.impl_map.get(self.expr.id);
-        let mut added_any = false;
-
-        debug!{"method_from_scope"};
-
-        for list::each(impls_vecs) |impls| {
-            for vec::each(*impls) |im| {
-                if self.add_candidates_from_impl(im, use_assignability) {
-                    added_any = true;
-                }
-            }
-
-            // we want to find the innermost scope that has any
-            // matches and then ignore outer scopes
-            if added_any {return;}
-        }
     }
 
     // Returns true if any were added and false otherwise.
