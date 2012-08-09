@@ -237,7 +237,8 @@ impl compile of to_type_decls for state {
             vec::push(items_msg, v);
         }
 
-        ~[cx.item_enum_poly(name, items_msg, self.ty_params)]
+        ~[cx.item_enum_poly(name, ast::enum_def({ variants: items_msg }),
+                            self.ty_params)]
     }
 
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {

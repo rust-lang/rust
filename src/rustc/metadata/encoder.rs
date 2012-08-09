@@ -223,11 +223,12 @@ fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
                 encode_struct_def(ebml_w, struct_def, path, it.ident, index);
             }
           }
-          item_enum(variants, _) => {
+          item_enum(enum_definition, _) => {
             do ebml_w.wr_tag(tag_paths_data_item) {
                   encode_name_and_def_id(ebml_w, it.ident, it.id);
               }
-              encode_enum_variant_paths(ebml_w, variants, path, index);
+              encode_enum_variant_paths(ebml_w, enum_definition.variants,
+                                        path, index);
           }
           item_trait(_, _, methods) => {
             do ebml_w.wr_tag(tag_paths_data_item) {
@@ -723,7 +724,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_region_param(ecx, ebml_w, item);
         ebml_w.end_tag();
       }
-      item_enum(variants, tps) => {
+      item_enum(enum_definition, tps) => {
         add_to_index();
         do ebml_w.wr_tag(tag_items_data_item) {
             encode_def_id(ebml_w, local_def(item.id));
@@ -731,15 +732,15 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_type_param_bounds(ebml_w, ecx, tps);
             encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
             encode_name(ebml_w, item.ident);
-            for variants.each |v| {
+            for enum_definition.variants.each |v| {
                 encode_variant_id(ebml_w, local_def(v.node.id));
             }
             ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
             encode_path(ebml_w, path, ast_map::path_name(item.ident));
             encode_region_param(ecx, ebml_w, item);
         }
-        encode_enum_variant_info(ecx, ebml_w, item.id, variants,
-                                 path, index, tps);
+        encode_enum_variant_info(ecx, ebml_w, item.id,
+                                 enum_definition.variants, path, index, tps);
       }
       item_class(struct_def, tps) => {
         /* First, encode the fields and methods

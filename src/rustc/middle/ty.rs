@@ -2837,7 +2837,9 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
           expr, since check_enum_variants also updates the enum_var_cache
          */
         match cx.items.get(id.node) {
-          ast_map::node_item(@{node: ast::item_enum(variants, _), _}, _) => {
+          ast_map::node_item(@{node: ast::item_enum(enum_definition, _), _},
+                             _) => {
+            let variants = enum_definition.variants;
             let mut disr_val = -1;
             @vec::map(variants, |variant| {
                 match variant.node.kind {

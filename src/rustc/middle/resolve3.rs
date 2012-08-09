@@ -973,13 +973,13 @@ class Resolver {
             }
 
             // These items live in both the type and value namespaces.
-            item_enum(variants, _) => {
+            item_enum(enum_definition, _) => {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                      ~[ValueNS, TypeNS], sp);
 
                 (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
 
-                for variants.each |variant| {
+                for enum_definition.variants.each |variant| {
                     self.build_reduced_graph_for_variant(variant,
                                                          local_def(item.id),
                                                          new_parent,
@@ -1146,10 +1146,10 @@ class Resolver {
                                      variant.span);
                 self.structs.insert(local_def(variant.node.id), false);
             }
-            enum_variant_kind(variants) => {
+            enum_variant_kind(enum_definition) => {
                 (*child).define_type(def_ty(local_def(variant.node.id)),
                                      variant.span);
-                for variants.each |variant| {
+                for enum_definition.variants.each |variant| {
                     self.build_reduced_graph_for_variant(variant, item_id,
                                                          parent, visitor);
                 }

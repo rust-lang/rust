@@ -187,8 +187,8 @@ fn is_exported(i: ident, m: _mod) -> bool {
     for m.items.each |it| {
         if it.ident == i { local = true; }
         match it.node {
-          item_enum(variants, _) =>
-            for variants.each |v| {
+          item_enum(enum_definition, _) =>
+            for enum_definition.variants.each |v| {
                 if v.node.name == i {
                     local = true;
                     parent_enum = some(/* FIXME (#2543) */ copy it.ident);
@@ -477,7 +477,8 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         visit_item: fn@(i: @item) {
             vfn(i.id);
             match i.node {
-              item_enum(vs, _) => for vs.each |v| { vfn(v.node.id); },
+              item_enum(enum_definition, _) =>
+                for enum_definition.variants.each |v| { vfn(v.node.id); },
               _ => ()
             }
         },

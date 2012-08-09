@@ -487,37 +487,8 @@ fn print_item(s: ps, &&item: @ast::item) {
         word(s.s, ~";");
         end(s); // end the outer ibox
       }
-      ast::item_enum(variants, params) => {
-        let mut newtype =
-            vec::len(variants) == 1u &&
-                str::eq(item.ident, variants[0].node.name);
-        if newtype {
-            match variants[0].node.kind {
-                ast::tuple_variant_kind(args) if args.len() == 1 => {}
-                _ => newtype = false
-            }
-        }
-        if newtype {
-            ibox(s, indent_unit);
-            word_space(s, ~"enum");
-        } else {
-            head(s, ~"enum");
-        }
-
-        word(s.s, *item.ident);
-        print_type_params(s, params);
-        space(s.s);
-        if newtype {
-            word_space(s, ~"=");
-            match variants[0].node.kind {
-                ast::tuple_variant_kind(args) => print_type(s, args[0].ty),
-                _ => fail ~"newtype syntax with struct?"
-            }
-            word(s.s, ~";");
-            end(s);
-        } else {
-            print_variants(s, variants, item.span);
-        }
+      ast::item_enum(enum_definition, params) => {
+        print_enum_def(s, enum_definition, params, item.ident, item.span);
       }
       ast::item_class(struct_def, tps) => {
           head(s, ~"class");
@@ -569,6 +540,41 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
     }
     s.ann.post(ann_node);
+}
+
+fn print_enum_def(s: ps, enum_definition: ast::enum_def,
+                  params: ~[ast::ty_param], ident: ast::ident,
+                  span: ast::span) {
+    let mut newtype =
+        vec::len(enum_definition.variants) == 1u &&
+            str::eq(ident, enum_definition.variants[0].node.name);
+    if newtype {
+        match enum_definition.variants[0].node.kind {
+            ast::tuple_variant_kind(args) if args.len() == 1 => {}
+            _ => newtype = false
+        }
+    }
+    if newtype {
+        ibox(s, indent_unit);
+        word_space(s, ~"enum");
+    } else {
+        head(s, ~"enum");
+    }
+
+    word(s.s, *ident);
+    print_type_params(s, params);
+    space(s.s);
+    if newtype {
+        word_space(s, ~"=");
+        match enum_definition.variants[0].node.kind {
+            ast::tuple_variant_kind(args) => print_type(s, args[0].ty),
+            _ => fail ~"newtype syntax with struct?"
+        }
+        word(s.s, ~";");
+        end(s);
+    } else {
+        print_variants(s, enum_definition.variants, span);
+    }
 }
 
 fn print_variants(s: ps, variants: ~[ast::variant], span: ast::span) {
@@ -714,8 +720,8 @@ fn print_variant(s: ps, v: ast::variant) {
             head(s, ~"");
             print_struct(s, struct_def, ~[], v.node.name, v.span);
         }
-        ast::enum_variant_kind(variants) => {
-            print_variants(s, variants, v.span);
+        ast::enum_variant_kind(enum_definition) => {
+            print_variants(s, enum_definition.variants, v.span);
         }
     }
     match v.node.disr_expr {

@@ -238,9 +238,11 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
           item_foreign_mod(nm) => item_foreign_mod(fld.fold_foreign_mod(nm)),
           item_ty(t, typms) => item_ty(fld.fold_ty(t),
                                        fold_ty_params(typms, fld)),
-          item_enum(variants, typms) => {
-            item_enum(vec::map(variants, |x| fld.fold_variant(x)),
-                      fold_ty_params(typms, fld))
+          item_enum(enum_definition, typms) => {
+            item_enum(ast::enum_def({
+                variants: vec::map(enum_definition.variants,
+                                   |x| fld.fold_variant(x)),
+            }), fold_ty_params(typms, fld))
           }
           item_class(struct_def, typms) => {
             let resulting_optional_constructor;
@@ -565,9 +567,10 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
             })
         }
 
-        enum_variant_kind(variants) => {
-            let variants = vec::map(variants, |x| fld.fold_variant(x));
-            kind = enum_variant_kind(variants);
+        enum_variant_kind(enum_definition) => {
+            let variants = vec::map(enum_definition.variants,
+                                    |x| fld.fold_variant(x));
+            kind = enum_variant_kind(ast::enum_def({ variants: variants }));
         }
     }
 

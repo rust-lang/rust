@@ -637,8 +637,11 @@ type variant_arg = {ty: @ty, id: node_id};
 enum variant_kind {
     tuple_variant_kind(~[variant_arg]),
     struct_variant_kind(@struct_def),
-    enum_variant_kind(~[variant])
+    enum_variant_kind(enum_def)
 }
+
+#[auto_serialize]
+enum enum_def = { variants: ~[variant] };
 
 #[auto_serialize]
 type variant_ = {name: ident, attrs: ~[attribute], kind: variant_kind,
@@ -736,7 +739,7 @@ enum item_ {
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
     item_ty(@ty, ~[ty_param]),
-    item_enum(~[variant], ~[ty_param]),
+    item_enum(enum_def, ~[ty_param]),
     item_class(@struct_def, ~[ty_param]),
     item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],

@@ -197,8 +197,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
                        cx);
         }
       }
-      item_enum(vs, _) => {
-        for vs.each |v| {
+      item_enum(enum_definition, _) => {
+        for enum_definition.variants.each |v| {
             cx.map.insert(v.node.id, node_variant(
                 /* FIXME (#2543) */ copy v, i,
                 extend(cx, i.ident)));

@@ -146,10 +146,10 @@ fn fold_enum(
             let desc = do astsrv::exec(srv) |ctxt| {
                 match check ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
-                    node: ast::item_enum(ast_variants, _), _
+                    node: ast::item_enum(enum_definition, _), _
                   }, _) => {
                     let ast_variant = option::get(
-                        vec::find(ast_variants, |v| {
+                        vec::find(enum_definition.variants, |v| {
                             *v.node.name == variant.name
                         }));
 
