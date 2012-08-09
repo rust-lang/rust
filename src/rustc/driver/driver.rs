@@ -195,7 +195,6 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let (method_map, vtable_map) = time(time_passes, ~"typechecking", ||
                                         typeck::check_crate(ty_cx,
-                                                            impl_map,
                                                             trait_map,
                                                             crate));
     // These next two const passes can probably be merged

@@ -1,5 +1,5 @@
 import driver::session::session;
-import metadata::csearch::{each_path, get_impls_for_mod};
+import metadata::csearch::{each_path};
 import metadata::csearch::{get_method_names_if_trait, lookup_defs};
 import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
@@ -1564,83 +1564,6 @@ class Resolver {
                             ignoring field %s", final_ident};
                 }
             }
-        }
-
-        // Create nodes for all the impls.
-        self.build_reduced_graph_for_impls_in_external_module_subtree(root);
-    }
-
-    fn build_reduced_graph_for_impls_in_external_module_subtree(module_:
-                                                                @Module) {
-        self.build_reduced_graph_for_impls_in_external_module(module_);
-
-        for module_.children.each |_name, child_node| {
-            match (*child_node).get_module_if_available() {
-                none => {
-                    // Nothing to do.
-                }
-                some(child_module) => {
-                    self.
-                    build_reduced_graph_for_impls_in_external_module_subtree
-                        (child_module);
-                }
-            }
-        }
-    }
-
-    fn build_reduced_graph_for_impls_in_external_module(module_: @Module) {
-        // XXX: This is really unfortunate. decoder::each_path can produce
-        // false positives, since, in the crate metadata, a trait named 'bar'
-        // in module 'foo' defining a method named 'baz' will result in the
-        // creation of a (bogus) path entry named 'foo::bar::baz', and we will
-        // create a module node for "bar". We can identify these fake modules
-        // by the fact that they have no def ID, which we do here in order to
-        // skip them.
-
-        debug!{"(building reduced graph for impls in external crate) looking \
-                for impls in `%s` (%?)",
-               self.module_to_str(module_),
-               copy module_.def_id};
-
-        match module_.def_id {
-            none => {
-                debug!{"(building reduced graph for impls in external \
-                        module) no def ID for `%s`, skipping",
-                       self.module_to_str(module_)};
-                return;
-            }
-            some(_) => {
-                // Continue.
-            }
-        }
-
-        let impls_in_module = get_impls_for_mod(self.session.cstore,
-                                                get(module_.def_id),
-                                                none);
-
-        // Intern def IDs to prevent duplicates.
-        let def_ids = new_def_hash();
-
-        for (*impls_in_module).each |implementation| {
-            if def_ids.contains_key(implementation.did) {
-                again;
-            }
-            def_ids.insert(implementation.did, ());
-
-            debug!{"(building reduced graph for impls in external module) \
-                    added impl `%s` (%?) to `%s`",
-                   *implementation.ident,
-                   implementation.did,
-                   self.module_to_str(module_)};
-
-            let name = (*self.atom_table).intern(implementation.ident);
-
-            let (name_bindings, _) =
-                    // Might want a better span
-                self.add_child(name, ModuleReducedGraphParent(module_),
-                              ~[ImplNS], dummy_sp());
-
-            name_bindings.impl_defs += ~[implementation];
         }
     }
 
