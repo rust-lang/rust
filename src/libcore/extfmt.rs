@@ -118,18 +118,25 @@ mod ct {
     }
     fn peek_num(s: ~str, i: uint, lim: uint) ->
        option<{num: uint, next: uint}> {
-        if i >= lim { return none; }
-        let c = s[i];
-        if !('0' as u8 <= c && c <= '9' as u8) { return option::none; }
-        let n = (c - ('0' as u8)) as uint;
-        return match peek_num(s, i + 1u, lim) {
-              none => some({num: n, next: i + 1u}),
-              some(next) => {
-                let m = next.num;
-                let j = next.next;
-                some({num: n * 10u + m, next: j})
-              }
-            };
+        let mut j = i;
+        let mut accum = 0u;
+        let mut found = false;
+        while j < lim {
+            match char::to_digit(s[j] as char, 10) {
+                some(x) => {
+                    found = true;
+                    accum *= 10;
+                    accum += x;
+                    j += 1;
+                },
+                none => break
+            }
+        }
+        if found {
+            some({num: accum, next: j})
+        } else {
+            none
+        }
     }
     fn parse_conversion(s: ~str, i: uint, lim: uint, error: error_fn) ->
        {piece: piece, next: uint} {
