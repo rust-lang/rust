@@ -102,6 +102,8 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           expr_vstore(_, vstore_fixed(_)) |
           expr_vec(_, m_imm) |
           expr_addr_of(m_imm, _) |
+          expr_field(*) |
+          expr_index(*) |
           expr_tup(*) |
           expr_struct(*) |
           expr_rec(*) => { }
