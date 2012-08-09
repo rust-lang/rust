@@ -2348,7 +2348,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
           }
           csearch::found(ast::ii_method(impl_did, mth)) => {
             ccx.external.insert(fn_id, some(mth.id));
-            let {bounds: impl_bnds, rp: _, ty: impl_ty} =
+            let {bounds: impl_bnds, region_param: _, ty: impl_ty} =
                 ty::lookup_item_type(ccx.tcx, impl_did);
             if (*impl_bnds).len() + mth.tps.len() == 0u {
                 let llfn = get_item_val(ccx, mth.id);

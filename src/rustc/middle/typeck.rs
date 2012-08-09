@@ -200,7 +200,7 @@ fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id) -> ast::def {
 }
 
 fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
-    {bounds: @~[], rp: false, ty: t}
+    {bounds: @~[], region_param: none, ty: t}
 }
 
 fn require_same_types(

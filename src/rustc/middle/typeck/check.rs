@@ -71,7 +71,8 @@ import astconv::{ast_region_to_region};
 import middle::ty::{tv_vid, vid};
 import regionmanip::{replace_bound_regions_in_fn_ty};
 import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
-import rscope::{in_binding_rscope, region_scope, type_rscope};
+import rscope::{in_binding_rscope, region_scope, type_rscope,
+                bound_self_region};
 import syntax::ast::ty_i;
 import typeck::infer::{resolve_type, force_tvar};
 
@@ -84,42 +85,39 @@ type self_info = {
     explicit_self: ast::self_ty
 };
 
-type fn_ctxt_ =
+struct fn_ctxt {
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
-    {self_impl_def_id: option<ast::def_id>,
-     ret_ty: ty::t,
-     // Used by loop bodies that return from the outer function
-     indirect_ret_ty: option<ty::t>,
-     purity: ast::purity,
-     infcx: infer::infer_ctxt,
-     locals: hashmap<ast::node_id, tv_vid>,
+    self_impl_def_id: option<ast::def_id>;
+    ret_ty: ty::t;
+    // Used by loop bodies that return from the outer function
+    indirect_ret_ty: option<ty::t>;
+    purity: ast::purity;
+    infcx: infer::infer_ctxt;
+    locals: hashmap<ast::node_id, tv_vid>;
 
-     // Sometimes we generate region pointers where the precise region
-     // to use is not known. For example, an expression like `&x.f`
-     // where `x` is of type `@T`: in this case, we will be rooting
-     // `x` onto the stack frame, and we could choose to root it until
-     // the end of (almost) any enclosing block or expression.  We
-     // want to pick the narrowest block that encompasses all uses.
-     //
-     // What we do in such cases is to generate a region variable with
-     // `region_lb` as a lower bound.  The regionck pass then adds
-     // other constriants based on how the variable is used and region
-     // inference selects the ultimate value.  Finally, borrowck is
-     // charged with guaranteeing that the value whose address was taken
-     // can actually be made to live as long as it needs to live.
-     mut region_lb: ast::node_id,
+    // Sometimes we generate region pointers where the precise region
+    // to use is not known. For example, an expression like `&x.f`
+    // where `x` is of type `@T`: in this case, we will be rooting
+    // `x` onto the stack frame, and we could choose to root it until
+    // the end of (almost) any enclosing block or expression.  We
+    // want to pick the narrowest block that encompasses all uses.
+    //
+    // What we do in such cases is to generate a region variable with
+    // `region_lb` as a lower bound.  The regionck pass then adds
+    // other constriants based on how the variable is used and region
+    // inference selects the ultimate value.  Finally, borrowck is
+    // charged with guaranteeing that the value whose address was taken
+    // can actually be made to live as long as it needs to live.
+    mut region_lb: ast::node_id;
 
-     in_scope_regions: isr_alist,
+    in_scope_regions: isr_alist;
 
-     node_types: hashmap<ast::node_id, ty::t>,
-     node_type_substs: hashmap<ast::node_id, ty::substs>,
+    node_types: hashmap<ast::node_id, ty::t>;
+    node_type_substs: hashmap<ast::node_id, ty::substs>;
 
-     ccx: @crate_ctxt};
-
-enum fn_ctxt {
-    fn_ctxt_(fn_ctxt_)
+    ccx: @crate_ctxt;
 }
 
 // Used by check_const and check_enum_variants
@@ -127,17 +125,19 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
                  region_bnd: ast::node_id) -> @fn_ctxt {
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
-    @fn_ctxt_({self_impl_def_id: none,
-               ret_ty: rty,
-               indirect_ret_ty: none,
-               purity: ast::pure_fn,
-               infcx: infer::new_infer_ctxt(ccx.tcx),
-               locals: int_hash(),
-               mut region_lb: region_bnd,
-               in_scope_regions: @nil,
-               node_types: map::int_hash(),
-               node_type_substs: map::int_hash(),
-               ccx: ccx})
+    @fn_ctxt {
+        self_impl_def_id: none,
+        ret_ty: rty,
+        indirect_ret_ty: none,
+        purity: ast::pure_fn,
+        infcx: infer::new_infer_ctxt(ccx.tcx),
+        locals: int_hash(),
+        mut region_lb: region_bnd,
+        in_scope_regions: @nil,
+        node_types: map::int_hash(),
+        node_type_substs: map::int_hash(),
+        ccx: ccx
+    }
 }
 
 // a list of mapping from in-scope-region-names ("isr") to the
@@ -245,17 +245,19 @@ fn check_fn(ccx: @crate_ctxt,
             }
         } else { none };
 
-        @fn_ctxt_({self_impl_def_id: self_info.map(|info| info.def_id),
-                   ret_ty: ret_ty,
-                   indirect_ret_ty: indirect_ret_ty,
-                   purity: purity,
-                   infcx: infcx,
-                   locals: locals,
-                   mut region_lb: body.node.id,
-                   in_scope_regions: isr,
-                   node_types: node_types,
-                   node_type_substs: node_type_substs,
-                   ccx: ccx})
+        @fn_ctxt {
+            self_impl_def_id: self_info.map(|info| info.def_id),
+            ret_ty: ret_ty,
+            indirect_ret_ty: indirect_ret_ty,
+            purity: purity,
+            infcx: infcx,
+            locals: locals,
+            mut region_lb: body.node.id,
+            in_scope_regions: isr,
+            node_types: node_types,
+            node_type_substs: node_type_substs,
+            ccx: ccx
+        }
     };
 
     // Update the self_info to contain an accurate self type (taking
@@ -478,9 +480,9 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         check_bare_fn(ccx, decl, body, it.id, none);
       }
       ast::item_impl(tps, _, ty, ms) => {
-        let rp = ccx.tcx.region_paramd_items.contains_key(it.id);
-        debug!{"item_impl %s with id %d rp %b",
-               ccx.tcx.sess.str_of(it.ident), it.id, rp};
+        let rp = ccx.tcx.region_paramd_items.find(it.id);
+        debug!("item_impl %s with id %d rp %?",
+               ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| {
             check_method(ccx, m, self_ty, local_def(it.id));
@@ -701,6 +703,15 @@ impl @fn_ctxt {
         self.region_lb = old_region_lb;
         return v;
     }
+
+    fn region_var_if_parameterized(rp: option<ty::region_variance>,
+                                   span: span)
+        -> option<ty::region> {
+        match rp {
+          some(_) => some(self.infcx.next_region_var_nb(span)),
+          none => none
+        }
+    }
 }
 
 fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
@@ -789,14 +800,14 @@ fn impl_self_ty(fcx: @fn_ctxt,
                 require_rp: bool) -> ty_param_substs_and_ty {
     let tcx = fcx.ccx.tcx;
 
-    let {n_tps, rp, raw_ty} = if did.crate == ast::local_crate {
-        let rp = fcx.tcx().region_paramd_items.contains_key(did.node);
+    let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
+        let region_param = fcx.tcx().region_paramd_items.find(did.node);
         match check tcx.items.find(did.node) {
           some(ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                   _}, _)) => {
             {n_tps: ts.len(),
-             rp: rp,
-             raw_ty: fcx.ccx.to_ty(rscope::type_rscope(rp), st)}
+             region_param: region_param,
+             raw_ty: fcx.ccx.to_ty(rscope::type_rscope(region_param), st)}
           }
           some(ast_map::node_item(@{node: ast::item_class(_, ts),
                                     id: class_id, _},_)) => {
@@ -805,10 +816,9 @@ fn impl_self_ty(fcx: @fn_ctxt,
                  we substitute in fresh vars for them)
                */
               {n_tps: ts.len(),
-               rp: rp,
+               region_param: region_param,
                raw_ty: ty::mk_class(tcx, local_def(class_id),
-                      {self_r: if rp {some(ty::re_bound(ty::br_self))}
-                               else {none},
+                      {self_r: rscope::bound_self_region(region_param),
                        self_ty: none,
                        tps: ty::ty_params_to_tys(tcx, ts)})}
           }
@@ -818,13 +828,15 @@ fn impl_self_ty(fcx: @fn_ctxt,
     } else {
         let ity = ty::lookup_item_type(tcx, did);
         {n_tps: vec::len(*ity.bounds),
-         rp: ity.rp,
+         region_param: ity.region_param,
          raw_ty: ity.ty}
     };
 
-    let rp = rp || require_rp;
-    let self_r = if rp {some(fcx.infcx.next_region_var(expr.span, expr.id))}
-                 else {none};
+    let self_r = if region_param.is_some() || require_rp {
+        some(fcx.infcx.next_region_var(expr.span, expr.id))
+    } else {
+        none
+    };
     let tps = fcx.infcx.next_ty_vars(n_tps);
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};
@@ -1832,7 +1844,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let type_parameter_count, region_parameterized, raw_type;
         if class_id.crate == ast::local_crate {
             region_parameterized =
-                tcx.region_paramd_items.contains_key(class_id.node);
+                tcx.region_paramd_items.find(class_id.node);
             match tcx.items.find(class_id.node) {
                 some(ast_map::node_item(@{
                         node: ast::item_class(_, type_parameters),
@@ -1841,12 +1853,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
                     type_parameter_count = type_parameters.len();
 
-                    let self_region;
-                    if region_parameterized {
-                        self_region = some(ty::re_bound(ty::br_self));
-                    } else {
-                        self_region = none;
-                    }
+                    let self_region =
+                        bound_self_region(region_parameterized);
 
                     raw_type = ty::mk_class(tcx, class_id, {
                         self_r: self_region,
@@ -1862,18 +1870,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         } else {
             let item_type = ty::lookup_item_type(tcx, class_id);
             type_parameter_count = (*item_type.bounds).len();
-            region_parameterized = item_type.rp;
+            region_parameterized = item_type.region_param;
             raw_type = item_type.ty;
         }
 
         // Generate the struct type.
-        let self_region;
-        if region_parameterized {
-            self_region = some(fcx.infcx.next_region_var(expr.span, expr.id));
-        } else {
-            self_region = none;
-        }
-
+        let self_region =
+            fcx.region_var_if_parameterized(region_parameterized,
+                                            expr.span);
         let type_parameters = fcx.infcx.next_ty_vars(type_parameter_count);
         let substitutions = {
             self_r: self_region,
@@ -2082,8 +2086,8 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
 
 fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
     let fcx = match blk.node.rules {
-      ast::unchecked_blk => @fn_ctxt_({purity: ast::impure_fn with **fcx0}),
-      ast::unsafe_blk => @fn_ctxt_({purity: ast::unsafe_fn with **fcx0}),
+      ast::unchecked_blk => @fn_ctxt {purity: ast::impure_fn with *fcx0},
+      ast::unsafe_blk => @fn_ctxt {purity: ast::unsafe_fn with *fcx0},
       ast::default_blk => fcx0
     };
     do fcx.with_region_lb(blk.node.id) {
@@ -2294,7 +2298,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         // extern functions are just u8 pointers
         return {
             bounds: @~[],
-            rp: false,
+            region_param: none,
             ty: ty::mk_ptr(
                 fcx.ccx.tcx,
                 {
@@ -2358,19 +2362,21 @@ fn instantiate_path(fcx: @fn_ctxt,
     // determine the region bound, using the value given by the user
     // (if any) and otherwise using a fresh region variable
     let self_r = match pth.rp {
-      some(r) if !tpt.rp => {
-        fcx.ccx.tcx.sess.span_err
-            (span, ~"this item is not region-parameterized");
-        none
-      }
       some(r) => {
-        some(ast_region_to_region(fcx, fcx, span, r))
-      }
-      none if tpt.rp => {
-        some(fcx.infcx.next_region_var_with_lb(span, region_lb))
+        match tpt.region_param {
+          none => {
+            fcx.ccx.tcx.sess.span_err
+                (span, ~"this item is not region-parameterized");
+            none
+          }
+          some(_) => {
+            some(ast_region_to_region(fcx, fcx, span, r))
+          }
+        }
       }
       none => {
-        none
+        fcx.region_var_if_parameterized(
+            tpt.region_param, span)
       }
     };
 

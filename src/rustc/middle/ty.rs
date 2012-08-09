@@ -17,6 +17,8 @@ import middle::lint::{get_lint_level, allow};
 import syntax::ast::*;
 import syntax::print::pprust::*;
 import util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+import std::serialization::{serialize_option,
+                            deserialize_option};
 
 export tv_vid, tvi_vid, region_vid, vid;
 export br_hashmap;
@@ -181,6 +183,10 @@ export ast_proto_to_proto;
 export is_blockish;
 export method_call_bounds;
 export hash_region;
+export region_variance, rv_covariant, rv_invariant, rv_contravariant;
+export serialize_region_variance, deserialize_region_variance;
+export opt_region_variance;
+export serialize_opt_region_variance, deserialize_opt_region_variance;
 
 // Data types
 
@@ -225,6 +231,12 @@ enum ast_ty_to_ty_cache_entry {
     atttce_unresolved,  /* not resolved yet */
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
 }
+
+#[auto_serialize]
+type opt_region_variance = option<region_variance>;
+
+#[auto_serialize]
+enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
 // N.B.: Borrows from inlined content are not accurately deserialized.  This
 // is because we don't need the details in trans, we only care if there is an
@@ -565,7 +577,7 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
 /// - `ty`: the base type.  May have reference to the (unsubstituted) bound
 ///   region `&self` or to (unsubstituted) ty_param types
 type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
-                               rp: bool,
+                               region_param: option<region_variance>,
                                ty: t};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;

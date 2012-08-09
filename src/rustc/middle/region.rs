@@ -16,6 +16,7 @@ import syntax::ast_util::new_def_hash;
 import syntax::ast_map;
 import dvec::{DVec, dvec};
 import metadata::csearch;
+import ty::{region_variance, rv_covariant, rv_invariant, rv_contravariant};
 
 import std::list;
 import std::list::list;
@@ -365,8 +366,9 @@ fn resolve_crate(sess: session, def_map: resolve3::DefMap,
 // a worklist.  We can then process the worklist, propagating indirect
 // dependencies until a fixed point is reached.
 
-type region_paramd_items = hashmap<ast::node_id, ()>;
-type dep_map = hashmap<ast::node_id, @DVec<ast::node_id>>;
+type region_paramd_items = hashmap<ast::node_id, region_variance>;
+type region_dep = {ambient_variance: region_variance, id: ast::node_id};
+type dep_map = hashmap<ast::node_id, @DVec<region_dep>>;
 
 type determine_rp_ctxt_ = {
     sess: session,
@@ -381,42 +383,98 @@ type determine_rp_ctxt_ = {
 
     // true when we are within an item but not within a method.
     // see long discussion on region_is_relevant()
-    mut anon_implies_rp: bool
+    mut anon_implies_rp: bool,
+
+    // encodes the context of the current type; invariant if
+    // mutable, covariant otherwise
+    mut ambient_variance: region_variance,
 };
 
 enum determine_rp_ctxt {
     determine_rp_ctxt_(@determine_rp_ctxt_)
 }
 
+fn join_variance(++variance1: region_variance,
+                 ++variance2: region_variance) -> region_variance{
+    match (variance1, variance2) {
+      (rv_invariant, _) => {rv_invariant}
+      (_, rv_invariant) => {rv_invariant}
+      (rv_covariant, rv_contravariant) => {rv_invariant}
+      (rv_contravariant, rv_covariant) => {rv_invariant}
+      (rv_covariant, rv_covariant) => {rv_covariant}
+      (rv_contravariant, rv_contravariant) => {rv_contravariant}
+    }
+}
+
+/// Combines the ambient variance with the variance of a
+/// particular site to yield the final variance of the reference.
+///
+/// Example: if we are checking function arguments then the ambient
+/// variance is contravariant.  If we then find a `&r/T` pointer, `r`
+/// appears in a co-variant position.  This implies that this
+/// occurrence of `r` is contra-variant with respect to the current
+/// item, and hence the function returns `rv_contravariant`.
+fn add_variance(+ambient_variance: region_variance,
+                +variance: region_variance) -> region_variance {
+    match (ambient_variance, variance) {
+      (rv_invariant, _) => rv_invariant,
+      (_, rv_invariant) => rv_invariant,
+      (rv_covariant, c) => c,
+      (c, rv_covariant) => c,
+      (rv_contravariant, rv_contravariant) => rv_covariant
+    }
+}
+
 impl determine_rp_ctxt {
-    fn add_rp(id: ast::node_id) {
+    fn add_variance(variance: region_variance) -> region_variance {
+        add_variance(self.ambient_variance, variance)
+    }
+
+    /// Records that item `id` is region-parameterized with the
+    /// variance `variance`.  If `id` was already parameterized, then
+    /// the new variance is joined with the old variance.
+    fn add_rp(id: ast::node_id, variance: region_variance) {
         assert id != 0;
-        if self.region_paramd_items.insert(id, ()) {
-            debug!{"add region-parameterized item: %d (%s)", id,
-                   ast_map::node_id_to_str(self.ast_map, id,
-                                           self.sess.parse_sess.interner)};
+        let old_variance = self.region_paramd_items.find(id);
+        let joined_variance = match old_variance {
+          none => variance,
+          some(v) => join_variance(v, variance)
+        };
+
+        debug!["add_rp() variance for %s: %? == %? ^ %?",
+               ast_map::node_id_to_str(self.ast_map, id,
+                                       self.sess.parse_sess.interner),
+               joined_variance, old_variance, variance];
+
+        if some(joined_variance) != old_variance {
+            self.region_paramd_items.insert(id, joined_variance);
             self.worklist.push(id);
-        } else {
-            debug!{"item %d already region-parameterized", id};
         }
     }
 
-    fn add_dep(from: ast::node_id, to: ast::node_id) {
-        debug!{"add dependency from %d -> %d (%s -> %s)",
-               from, to,
+    /// Indicates that the region-parameterization of the current item
+    /// is dependent on the region-parameterization of the item
+    /// `from`.  Put another way, it indicates that the current item
+    /// contains a value of type `from`, so if `from` is
+    /// region-parameterized, so is the current item.
+    fn add_dep(from: ast::node_id) {
+        debug!["add dependency from %d -> %d (%s -> %s) with variance %?",
+               from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
                                        self.sess.parse_sess.interner),
-               ast_map::node_id_to_str(self.ast_map, to,
-                                       self.sess.parse_sess.interner)};
+               ast_map::node_id_to_str(self.ast_map, self.item_id,
+                                       self.sess.parse_sess.interner),
+               copy self.ambient_variance];
         let vec = match self.dep_map.find(from) {
-            some(vec) => {vec}
+            some(vec) => vec,
             none => {
                 let vec = @dvec();
                 self.dep_map.insert(from, vec);
                 vec
             }
         };
-        if !vec.contains(to) { vec.push(to); }
+        let dep = {ambient_variance: self.ambient_variance, id: self.item_id};
+        if !vec.contains(dep) { vec.push(dep); }
     }
 
     // Determines whether a reference to a region that appears in the
@@ -460,7 +518,9 @@ impl determine_rp_ctxt {
         }
     }
 
-    fn with(item_id: ast::node_id, anon_implies_rp: bool, f: fn()) {
+    fn with(item_id: ast::node_id,
+            anon_implies_rp: bool,
+            f: fn()) {
         let old_item_id = self.item_id;
         let old_anon_implies_rp = self.anon_implies_rp;
         self.item_id = item_id;
@@ -470,6 +530,13 @@ impl determine_rp_ctxt {
         f();
         self.item_id = old_item_id;
         self.anon_implies_rp = old_anon_implies_rp;
+    }
+
+    fn with_ambient_variance(variance: region_variance, f: fn()) {
+        let old_ambient_variance = self.ambient_variance;
+        self.ambient_variance = self.add_variance(variance);
+        f();
+        self.ambient_variance = old_ambient_variance;
     }
 }
 
@@ -484,12 +551,17 @@ fn determine_rp_in_item(item: @ast::item,
 fn determine_rp_in_fn(fk: visit::fn_kind,
                       decl: ast::fn_decl,
                       body: ast::blk,
-                      sp: span,
-                      id: ast::node_id,
+                      _sp: span,
+                      _id: ast::node_id,
                       &&cx: determine_rp_ctxt,
                       visitor: visit::vt<determine_rp_ctxt>) {
     do cx.with(cx.item_id, false) {
-        visit::visit_fn(fk, decl, body, sp, id, cx, visitor);
+        do cx.with_ambient_variance(rv_contravariant) {
+            for decl.inputs.each |a| { visitor.visit_ty(a.ty, cx, visitor); }
+        }
+        visitor.visit_ty(decl.output, cx, visitor);
+        visitor.visit_ty_params(visit::tps_of_fn(fk), cx, visitor);
+        visitor.visit_block(body, cx, visitor);
     }
 }
 
@@ -511,16 +583,18 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // impl etc.  So we can ignore it and its components.
     if cx.item_id == 0 { return; }
 
-    // if this type directly references a region, either via a
-    // region pointer like &r.ty or a region-parameterized path
-    // like path/r, add to the worklist/set
+    // if this type directly references a region pointer like &r/ty,
+    // add to the worklist/set.  Note that &r/ty is contravariant with
+    // respect to &r, because &r/ty can be used whereever a *smaller*
+    // region is expected (and hence is a supertype of those
+    // locations)
     match ty.node {
-      ast::ty_rptr(r, _) |
-      ast::ty_path(@{rp: some(r), _}, _) => {
-        debug!{"referenced type with regions %s",
-               pprust::ty_to_str(ty, cx.sess.intr())};
+      ast::ty_rptr(r, _) => {
+        debug!["referenced rptr type %s",
+               pprust::ty_to_str(ty, cx.sess.intr())];
+
         if cx.region_is_relevant(r) {
-            cx.add_rp(cx.item_id);
+            cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant))
         }
       }
 
@@ -528,7 +602,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
       ast::ty_fn(ast::proto_block, _, _) if cx.anon_implies_rp => {
         debug!("referenced bare fn type with regions %s",
                pprust::ty_to_str(ty, cx.sess.intr()));
-        cx.add_rp(cx.item_id);
+        cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant));
       }
 
       _ => {}
@@ -543,13 +617,16 @@ fn determine_rp_in_ty(ty: @ast::ty,
         match cx.def_map.get(id) {
           ast::def_ty(did) | ast::def_class(did, _) => {
             if did.crate == ast::local_crate {
-                cx.add_dep(did.node, cx.item_id);
+                cx.add_dep(did.node);
             } else {
                 let cstore = cx.sess.cstore;
-                if csearch::get_region_param(cstore, did) {
-                    debug!{"reference to external, rp'd type %s",
-                           pprust::ty_to_str(ty, cx.sess.intr())};
-                    cx.add_rp(cx.item_id);
+                match csearch::get_region_param(cstore, did) {
+                  none => {}
+                  some(variance) => {
+                    debug!["reference to external, rp'd type %s",
+                           pprust::ty_to_str(ty, cx.sess.intr())];
+                    cx.add_rp(cx.item_id, cx.add_variance(variance))
+                  }
                 }
             }
           }
@@ -560,13 +637,71 @@ fn determine_rp_in_ty(ty: @ast::ty,
     }
 
     match ty.node {
-      ast::ty_fn(*) => {
-        do cx.with(cx.item_id, false) {
-            visit::visit_ty(ty, cx, visitor);
+      ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
+      ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
+        visit_mt(mt, cx, visitor);
+      }
+
+      ast::ty_rec(fields) => {
+        for fields.each |field| {
+            visit_mt(field.node.mt, cx, visitor);
         }
       }
+
+      ast::ty_path(path, _) => {
+        // type parameters are---for now, anyway---always invariant
+        do cx.with_ambient_variance(rv_invariant) {
+            for path.types.each |tp| {
+                visitor.visit_ty(tp, cx, visitor);
+            }
+        }
+      }
+
+      ast::ty_fn(_, bounds, decl) => {
+        // fn() binds the & region, so do not consider &T types that
+        // appear *inside* a fn() type to affect the enclosing item:
+        do cx.with(cx.item_id, false) {
+            // parameters are contravariant
+            do cx.with_ambient_variance(rv_contravariant) {
+                for decl.inputs.each |a| {
+                    visitor.visit_ty(a.ty, cx, visitor);
+                }
+            }
+            visit::visit_ty_param_bounds(bounds, cx, visitor);
+            visitor.visit_ty(decl.output, cx, visitor);
+        }
+      }
+
       _ => {
         visit::visit_ty(ty, cx, visitor);
+      }
+    }
+
+    fn visit_mt(mt: ast::mt, &&cx: determine_rp_ctxt,
+                visitor: visit::vt<determine_rp_ctxt>) {
+        // mutability is invariant
+        if mt.mutbl == ast::m_mutbl {
+            do cx.with_ambient_variance(rv_invariant) {
+                visitor.visit_ty(mt.ty, cx, visitor);
+            }
+        } else {
+            visitor.visit_ty(mt.ty, cx, visitor);
+        }
+    }
+}
+
+fn determine_rp_in_struct_field(cm: @ast::struct_field,
+                                &&cx: determine_rp_ctxt,
+                                visitor: visit::vt<determine_rp_ctxt>) {
+    match cm.node.kind {
+      ast::named_field(_, ast::class_mutable, _) => {
+        do cx.with_ambient_variance(rv_invariant) {
+            visit::visit_struct_field(cm, cx, visitor);
+        }
+      }
+      ast::named_field(_, ast::class_immutable, _) |
+      ast::unnamed_field => {
+        visit::visit_struct_field(cm, cx, visitor);
       }
     }
 }
@@ -582,31 +717,55 @@ fn determine_rp_in_crate(sess: session,
                                   dep_map: int_hash(),
                                   worklist: dvec(),
                                   mut item_id: 0,
-                                  mut anon_implies_rp: false});
+                                  mut anon_implies_rp: false,
+                                  mut ambient_variance: rv_covariant});
 
-    // gather up the base set, worklist and dep_map:
+    // Gather up the base set, worklist and dep_map
     let visitor = visit::mk_vt(@{
         visit_fn: determine_rp_in_fn,
         visit_item: determine_rp_in_item,
         visit_ty: determine_rp_in_ty,
         visit_ty_method: determine_rp_in_ty_method,
+        visit_struct_field: determine_rp_in_struct_field,
         with *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
 
-    // propagate indirect dependencies
+    // Propagate indirect dependencies
+    //
+    // Each entry in the worklist is the id of an item C whose region
+    // parameterization has been updated.  So we pull ids off of the
+    // worklist, find the current variance, and then iterate through
+    // all of the dependent items (that is, those items that reference
+    // C).  For each dependent item D, we combine the variance of C
+    // with the ambient variance where the reference occurred and then
+    // update the region-parameterization of D to reflect the result.
     while cx.worklist.len() != 0 {
-        let id = cx.worklist.pop();
-        debug!{"popped %d from worklist", id};
-        match cx.dep_map.find(id) {
+        let c_id = cx.worklist.pop();
+        let c_variance = cx.region_paramd_items.get(c_id);
+        debug!["popped %d from worklist", c_id];
+        match cx.dep_map.find(c_id) {
           none => {}
-          some(vec) => {
-            for vec.each |to_id| {
-                cx.add_rp(to_id);
+          some(deps) => {
+            for deps.each |dep| {
+                let v = add_variance(dep.ambient_variance, c_variance);
+                cx.add_rp(dep.id, v);
             }
           }
         }
     }
+
+    debug!("%s", {
+        debug!("Region variance results:");
+        for cx.region_paramd_items.each |key, value| {
+            debug!("item %? (%s) is parameterized with variance %?",
+                   key,
+                   ast_map::node_id_to_str(ast_map, key,
+                                           sess.parse_sess.interner),
+                   value);
+        }
+        "----"
+    });
 
     // return final set
     return cx.region_paramd_items;

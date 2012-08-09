@@ -299,7 +299,20 @@ fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
         fmt!{"unknown node (id=%d)", id}
       }
       some(node_item(item, path)) => {
-        fmt!{"item %s (id=%?)", path_ident_to_str(*path, item.ident, itr), id}
+        let path_str = path_ident_to_str(*path, item.ident, itr);
+        let item_str = match item.node {
+          item_const(*) => ~"const",
+          item_fn(*) => ~"fn",
+          item_mod(*) => ~"mod",
+          item_foreign_mod(*) => ~"foreign mod",
+          item_ty(*) => ~"ty",
+          item_enum(*) => ~"enum",
+          item_class(*) => ~"class",
+          item_trait(*) => ~"trait",
+          item_impl(*) => ~"impl",
+          item_mac(*) => ~"macro"
+        };
+        fmt!("%s %s (id=%?)", item_str, path_str, id)
       }
       some(node_foreign_item(item, abi, path)) => {
         fmt!{"foreign item %s with abi %? (id=%?)",
