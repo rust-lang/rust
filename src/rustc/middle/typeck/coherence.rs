@@ -279,7 +279,7 @@ class CoherenceChecker {
                     session.span_err(item.span,
                                      ~"no base type found for inherent \
                                        implementation; implement a \
-                                       trait instead");
+                                       trait or new type instead");
                 }
                 some(_) => {
                     // Nothing to do.
@@ -490,6 +490,7 @@ class CoherenceChecker {
                                                           was defined in; \
                                                           define and \
                                                           implement a trait \
+                                                          or new type \
                                                           instead");
                                     }
 
