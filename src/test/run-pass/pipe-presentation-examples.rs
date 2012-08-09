@@ -21,7 +21,6 @@ macro_rules! select_if {
               -> $nexts:ident $es:expr),+
         ], )*
     } => {
-        log_syntax!{select_if1};
         if $index == $count {
             match move pipes::try_recv($port) {
               $(some($message($($(copy $x,)+)* next)) => {
@@ -47,7 +46,6 @@ macro_rules! select_if {
         $index:expr,
         $count:expr,
     } => {
-        log_syntax!{select_if2};
         fail
     }
 }
@@ -60,12 +58,6 @@ macro_rules! select {
         } )+
     } => {
         let index = pipes::selecti([$(($port).header()),+]/_);
-        log_syntax!{select};
-        log_syntax!{
-        select_if!{index, 0, $( $port => [
-            $($message$(($($x),+))dont_type_this* -> $next $e),+
-        ], )+}
-        };
         select_if!{index, 0, $( $port => [
             $($message$(($($x),+))dont_type_this* -> $next $e),+
         ], )+}
@@ -134,11 +126,10 @@ fn draw_two_frames(+channel: double_buffer::client::acquire) {
 #[cfg(bad1)]
 fn draw_two_frames_bad1(+channel: double_buffer::client::acquire) {
     let channel = request(channel);
-    let channel = select! {
+    select! {
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                channel
             }
         }
     };
