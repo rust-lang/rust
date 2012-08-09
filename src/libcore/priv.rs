@@ -40,9 +40,8 @@ unsafe fn chan_from_global_ptr<T: send>(
         log(debug,~"is probably zero...");
         // There's no global channel. We must make it
 
-        let setup_po = comm::port();
-        let setup_ch = comm::chan(setup_po);
-        let setup_ch = do task_fn().spawn_listener |setup_po| {
+        let (setup_po, setup_ch) = do task_fn().spawn_conversation
+            |setup_po, setup_ch| {
             let po = comm::port::<T>();
             let ch = comm::chan(po);
             comm::send(setup_ch, ch);

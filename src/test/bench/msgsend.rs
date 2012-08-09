@@ -28,15 +28,12 @@ fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
 }
 
 fn run(args: ~[~str]) {
-    let from_child = comm::port();
-    let to_parent = comm::chan(from_child);
-    let to_child = do task::spawn_listener |po| {
-        server(po, to_parent);
+    let (from_child, to_child) = do task::spawn_conversation |po, ch| {
+        server(po, ch);
     };
     let size = option::get(uint::from_str(args[1]));
     let workers = option::get(uint::from_str(args[2]));
     let start = std::time::precise_time_s();
-    let to_child = to_child;
     let mut worker_results = ~[];
     for uint::range(0u, workers) |_i| {
         do task::task().future_result(|+r| {
@@ -65,7 +62,7 @@ fn main(args: ~[~str]) {
         ~[~"", ~"10000", ~"4"]
     } else {
         args
-    };        
+    };
 
     debug!{"%?", args};
     run(args);
