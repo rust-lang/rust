@@ -254,25 +254,25 @@ fn fold_impl(
 
 #[test]
 fn should_add_impl_trait_types() {
-    let doc = test::mk_doc(~"impl i of j for int { fn a<T>() { } }");
+    let doc = test::mk_doc(~"impl int: j { fn a<T>() { } }");
     assert doc.cratemod().impls()[0].trait_types[0] == ~"j";
 }
 
 #[test]
 fn should_not_add_impl_trait_types_if_none() {
-    let doc = test::mk_doc(~"impl i for int { fn a() { } }");
+    let doc = test::mk_doc(~"impl int { fn a() { } }");
     assert vec::len(doc.cratemod().impls()[0].trait_types) == 0;
 }
 
 #[test]
 fn should_add_impl_self_ty() {
-    let doc = test::mk_doc(~"impl i for int { fn a() { } }");
+    let doc = test::mk_doc(~"impl int { fn a() { } }");
     assert doc.cratemod().impls()[0].self_ty == some(~"int");
 }
 
 #[test]
 fn should_add_impl_method_sigs() {
-    let doc = test::mk_doc(~"impl i for int { fn a<T>() -> int { fail } }");
+    let doc = test::mk_doc(~"impl int { fn a<T>() -> int { fail } }");
     assert doc.cratemod().impls()[0].methods[0].sig
         == some(~"fn a<T>() -> int");
 }

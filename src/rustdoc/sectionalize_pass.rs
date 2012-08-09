@@ -217,7 +217,7 @@ fn should_sectionalize_trait_methods() {
 #[test]
 fn should_sectionalize_impl_methods() {
     let doc = test::mk_doc(
-        ~"impl i for bool {
+        ~"impl bool {
          #[doc = \"\
          # Header\n\
          Body\"]\

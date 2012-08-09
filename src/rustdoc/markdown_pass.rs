@@ -241,7 +241,21 @@ fn header_name(doc: doc::itemtag) -> ~str {
 }
 
 fn header_text(doc: doc::itemtag) -> ~str {
-    header_text_(header_kind(doc), header_name(doc))
+    match doc {
+      doc::impltag(impldoc) => {
+        let header_kind = header_kind(doc);
+        let desc = if impldoc.trait_types.is_empty() {
+            fmt!{"for `%s`", impldoc.self_ty.get()}
+        } else {
+            fmt!{"of `%s` for `%s`", impldoc.trait_types[0],
+                 impldoc.self_ty.get()}
+        };
+        fmt!{"%s %s", header_kind, desc}
+      }
+      _ => {
+        header_text_(header_kind(doc), header_name(doc))
+      }
+    }
 }
 
 fn header_text_(kind: ~str, name: ~str) -> ~str {
@@ -697,34 +711,34 @@ fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
 
 #[test]
 fn should_write_impl_header() {
-    let markdown = test::render(~"impl i for int { fn a() { } }");
-    assert str::contains(markdown, ~"## Implementation `i for int`");
+    let markdown = test::render(~"impl int { fn a() { } }");
+    assert str::contains(markdown, ~"## Implementation for `int`");
 }
 
 #[test]
 fn should_write_impl_header_with_trait() {
-    let markdown = test::render(~"impl i of j for int { fn a() { } }");
-    assert str::contains(markdown, ~"## Implementation `i of j for int`");
+    let markdown = test::render(~"impl int: j { fn a() { } }");
+    assert str::contains(markdown, ~"## Implementation of `j` for `int`");
 }
 
 #[test]
 fn should_write_impl_desc() {
     let markdown = test::render(
-        ~"#[doc = \"desc\"] impl i for int { fn a() { } }");
+        ~"#[doc = \"desc\"] impl int { fn a() { } }");
     assert str::contains(markdown, ~"desc");
 }
 
 #[test]
 fn should_write_impl_method_header() {
     let markdown = test::render(
-        ~"impl i for int { fn a() { } }");
+        ~"impl int { fn a() { } }");
     assert str::contains(markdown, ~"### Method `a`");
 }
 
 #[test]
 fn should_write_impl_method_signature() {
     let markdown = test::render(
-        ~"impl i for int { fn a() { } }");
+        ~"impl int { fn a() { } }");
     assert str::contains(markdown, ~"\n    fn a()");
 }
 

@@ -249,20 +249,8 @@ fn impldoc_from_impl(
 }
 
 #[test]
-fn should_extract_impls_with_names() {
-    let doc = test::mk_doc(~"impl i for int { fn a() { } }");
-    assert doc.cratemod().impls()[0].name() == ~"i";
-}
-
-#[test]
-fn should_extract_impls_without_names() {
-    let doc = test::mk_doc(~"impl of i for int { fn a() { } }");
-    assert doc.cratemod().impls()[0].name() == ~"i";
-}
-
-#[test]
 fn should_extract_impl_methods() {
-    let doc = test::mk_doc(~"impl i for int { fn f() { } }");
+    let doc = test::mk_doc(~"impl int { fn f() { } }");
     assert doc.cratemod().impls()[0].methods[0].name == ~"f";
 }
 
