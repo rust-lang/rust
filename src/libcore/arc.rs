@@ -81,11 +81,12 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
 }
 
 // An arc over mutable data that is protected by a lock.
-type ex_data<T: send> = {lock: sys::little_lock, mut data: T};
+type ex_data<T: send> =
+    {lock: sys::little_lock, mut failed: bool, mut data: T};
 type exclusive<T: send> = arc_destruct<ex_data<T>>;
 
 fn exclusive<T:send >(-data: T) -> exclusive<T> {
-    let data = ~{mut count: 1, data: {lock: sys::little_lock(),
+    let data = ~{mut count: 1, data: {lock: sys::little_lock(), failed: false,
                                       data: data}};
     unsafe {
         let ptr = unsafe::reinterpret_cast(data);
@@ -128,12 +129,18 @@ impl<T: send> exclusive<T> {
         let ptr: ~arc_data<ex_data<T>> =
             unsafe::reinterpret_cast(self.data);
         assert ptr.count > 0;
-        let r = {
-            let rec: &ex_data<T> = &(*ptr).data;
-            do rec.lock.lock { f(&mut rec.data) }
-        };
+        let ptr2: &arc_data<ex_data<T>> = unsafe::reinterpret_cast(&*ptr);
         unsafe::forget(ptr);
-        r
+        let rec: &ex_data<T> = &(*ptr2).data;
+        do rec.lock.lock {
+            if rec.failed {
+                fail ~"Poisoned arc::exclusive - another task failed inside!";
+            }
+            rec.failed = true;
+            let result = f(&mut rec.data);
+            rec.failed = false;
+            result
+        }
     }
 }
 
@@ -168,12 +175,11 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // this can probably infinite loop too.
     fn exclusive_arc() {
         let mut futures = ~[];
 
         let num_tasks = 10u;
-        let count = 1000u;
+        let count = 10u;
 
         let total = exclusive(~mut 0u);
 
@@ -193,5 +199,21 @@ mod tests {
         do total.with |total| {
             assert **total == num_tasks * count
         };
+    }
+
+    #[test] #[should_fail] #[ignore(cfg(windows))]
+    fn exclusive_poison() {
+        // Tests that if one task fails inside of an exclusive, subsequent
+        // accesses will also fail.
+        let x = arc::exclusive(1);
+        let x2 = x.clone();
+        do task::try {
+            do x2.with |one| {
+                assert *one == 2;
+            }
+        };
+        do x.with |one| {
+            assert *one == 1;
+        }
     }
 }
