@@ -242,40 +242,13 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
             item_enum(ast::enum_def({
                 variants: vec::map(enum_definition.variants,
                                    |x| fld.fold_variant(x)),
+                common: option::map(enum_definition.common,
+                                    |x| fold_struct_def(x, fld))
             }), fold_ty_params(typms, fld))
           }
           item_class(struct_def, typms) => {
-            let resulting_optional_constructor;
-            match struct_def.ctor {
-                none => {
-                    resulting_optional_constructor = none;
-                }
-                some(constructor) => {
-                    resulting_optional_constructor = some({
-                        node: {
-                            body: fld.fold_block(constructor.node.body),
-                            dec: fold_fn_decl(constructor.node.dec, fld),
-                            id: fld.new_id(constructor.node.id)
-                            with constructor.node
-                        }
-                        with constructor
-                    });
-                }
-            }
-            let dtor = do option::map(struct_def.dtor) |dtor| {
-                let dtor_body = fld.fold_block(dtor.node.body);
-                let dtor_id   = fld.new_id(dtor.node.id);
-                {node: {body: dtor_body,
-                        id: dtor_id with dtor.node}
-                    with dtor}};
-              item_class(@{
-                  traits: vec::map(struct_def.traits,
-                                   |p| fold_trait_ref(p, fld)),
-                  members: vec::map(struct_def.members,
-                                    |x| fld.fold_class_item(x)),
-                  ctor: resulting_optional_constructor,
-                  dtor: dtor},
-                  /* FIXME (#2543) */ copy typms)
+            let struct_def = fold_struct_def(struct_def, fld);
+              item_class(struct_def, /* FIXME (#2543) */ copy typms)
           }
           item_impl(tps, ifce, ty, methods) => {
               item_impl(fold_ty_params(tps, fld),
@@ -293,6 +266,39 @@ fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
         item_mac(m)
       }
         };
+}
+
+fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
+                -> @ast::struct_def {
+    let resulting_optional_constructor;
+    match struct_def.ctor {
+        none => {
+            resulting_optional_constructor = none;
+        }
+        some(constructor) => {
+            resulting_optional_constructor = some({
+                node: {
+                    body: fld.fold_block(constructor.node.body),
+                    dec: fold_fn_decl(constructor.node.dec, fld),
+                    id: fld.new_id(constructor.node.id)
+                    with constructor.node
+                }
+                with constructor
+            });
+        }
+    }
+    let dtor = do option::map(struct_def.dtor) |dtor| {
+        let dtor_body = fld.fold_block(dtor.node.body);
+        let dtor_id   = fld.new_id(dtor.node.id);
+        {node: {body: dtor_body,
+                id: dtor_id with dtor.node}
+            with dtor}};
+    return @{
+        traits: vec::map(struct_def.traits, |p| fold_trait_ref(p, fld)),
+        members: vec::map(struct_def.members, |x| fld.fold_class_item(x)),
+        ctor: resulting_optional_constructor,
+        dtor: dtor
+    };
 }
 
 fn fold_trait_ref(&&p: @trait_ref, fld: ast_fold) -> @trait_ref {
@@ -570,7 +576,10 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
         enum_variant_kind(enum_definition) => {
             let variants = vec::map(enum_definition.variants,
                                     |x| fld.fold_variant(x));
-            kind = enum_variant_kind(ast::enum_def({ variants: variants }));
+            let common = option::map(enum_definition.common,
+                                     |x| fold_struct_def(x, fld));
+            kind = enum_variant_kind(ast::enum_def({ variants: variants,
+                                                     common: common }));
         }
     }
 

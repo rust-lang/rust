@@ -641,7 +641,7 @@ enum variant_kind {
 }
 
 #[auto_serialize]
-enum enum_def = { variants: ~[variant] };
+enum enum_def = { variants: ~[variant], common: option<@struct_def> };
 
 #[auto_serialize]
 type variant_ = {name: ident, attrs: ~[attribute], kind: variant_kind,
