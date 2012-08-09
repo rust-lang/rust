@@ -877,6 +877,9 @@ trait channel<T: send> {
 
     /// Sends a message.
     fn send(+x: T);
+
+    /// Sends a message, or report if the receiver has closed the connection.
+    fn try_send(+x: T) -> bool;
 }
 
 /// A trait for things that can receive multiple messages.
@@ -930,6 +933,18 @@ impl chan<T: send> of channel<T> for chan<T> {
         endp <-> self.endp;
         self.endp = some(
             streamp::client::data(unwrap(endp), x))
+    }
+
+    fn try_send(+x: T) -> bool {
+        let mut endp = none;
+        endp <-> self.endp;
+        match move streamp::client::try_data(unwrap(endp), x) {
+            some(next) => {
+                self.endp = some(move_it!(next));
+                true
+            }
+            none => false
+        }
     }
 }
 
@@ -1045,6 +1060,15 @@ impl chan<T: send> of channel<T> for shared_chan<T> {
             let mut x = none;
             x <-> xx;
             chan.send(option::unwrap(x))
+        }
+    }
+
+    fn try_send(+x: T) -> bool {
+        let mut xx = some(x);
+        do self.with |chan| {
+            let mut x = none;
+            x <-> xx;
+            chan.try_send(option::unwrap(x))
         }
     }
 }
