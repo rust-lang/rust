@@ -237,10 +237,16 @@ fn bopen(s: ps) {
 }
 
 fn bclose_(s: ps, span: codemap::span, indented: uint) {
+    bclose_maybe_open(s, span, indented, true);
+}
+fn bclose_maybe_open (s: ps, span: codemap::span, indented: uint,
+                     close_box: bool) {
     maybe_print_comment(s, span.hi);
     break_offset_if_not_bol(s, 1u, -(indented as int));
     word(s.s, ~"}");
-    end(s); // close the outer-box
+    if close_box {
+        end(s); // close the outer-box
+    }
 }
 fn bclose(s: ps, span: codemap::span) { bclose_(s, span, indent_unit); }
 
@@ -827,8 +833,14 @@ fn print_block(s: ps, blk: ast::blk) {
     print_possibly_embedded_block(s, blk, block_normal, indent_unit);
 }
 
+fn print_block_unclosed(s: ps, blk: ast::blk) {
+    print_possibly_embedded_block_(s, blk, block_normal, indent_unit, ~[],
+                                 false);
+}
+
 fn print_block_with_attrs(s: ps, blk: ast::blk, attrs: ~[ast::attribute]) {
-    print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs);
+    print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs,
+                                  true);
 }
 
 enum embed_type { block_block_fn, block_normal, }
@@ -836,11 +848,12 @@ enum embed_type { block_block_fn, block_normal, }
 fn print_possibly_embedded_block(s: ps, blk: ast::blk, embedded: embed_type,
                                  indented: uint) {
     print_possibly_embedded_block_(
-        s, blk, embedded, indented, ~[]);
+        s, blk, embedded, indented, ~[], true);
 }
 
 fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
-                                  indented: uint, attrs: ~[ast::attribute]) {
+                                  indented: uint, attrs: ~[ast::attribute],
+                                  close_box: bool) {
     match blk.node.rules {
       ast::unchecked_blk => word(s.s, ~"unchecked"),
       ast::unsafe_blk => word(s.s, ~"unsafe"),
@@ -868,7 +881,7 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
       }
       _ => ()
     }
-    bclose_(s, blk.span, indented);
+    bclose_maybe_open(s, blk.span, indented, close_box);
     s.ann.post(ann_node);
 }
 
@@ -1060,9 +1073,9 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         let blk = if has_block {
             let blk_arg = vec::pop(base_args);
             match blk_arg.node {
-              ast::expr_loop_body(_) => word_nbsp(s, ~"for"),
-              ast::expr_do_body(_) => word_nbsp(s, ~"do"),
-              _ => ()
+              ast::expr_loop_body(_) => { head(s, ~"for"); }
+              ast::expr_do_body(_) => { head(s, ~"do"); }
+              _ => {}
             }
             some(blk_arg)
         } else { none };
@@ -1074,7 +1087,19 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
         if has_block {
             nbsp(s);
-            print_expr(s, option::get(blk));
+            match blk.get().node {
+              // need to handle closures specifically
+              ast::expr_do_body(e) | ast::expr_loop_body(e) => {
+                end(s); // we close our head box; closure
+                        // will create it's own.
+                print_expr(s, e);
+                end(s); // close outer box, as closures don't
+              }
+              _ => {
+                // not sure if this can happen.
+                print_expr(s, blk.get());
+              }
+            }
         }
       }
       ast::expr_binary(op, lhs, rhs) => {
@@ -1174,12 +1199,31 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         print_block(s, body);
       }
       ast::expr_fn_block(decl, body, cap_clause) => {
+        // in do/for blocks we don't want to show an empty
+        // argument list, but at this point we don't know which
+        // we are inside.
+        //
+        // if !decl.inputs.is_empty() {
         print_fn_block_args(s, decl, *cap_clause);
-        // The parser always adds an extra implicit block around lambdas
+        space(s.s);
+        // }
         assert body.node.stmts.is_empty();
         assert body.node.expr.is_some();
-        space(s.s);
-        print_expr(s, body.node.expr.get());
+        // we extract the block, so as not to create another set of boxes
+        match body.node.expr.get().node {
+            ast::expr_block(blk) => {
+                print_block_unclosed(s, blk);
+            }
+            _ => {
+                // this is a bare expression
+                print_expr(s, body.node.expr.get());
+                end(s); // need to close a box
+            }
+        }
+        // a box will be closed by print_expr, but we didn't want an overall
+        // wrapper so we closed the corresponding opening. so create an
+        // empty box to satisfy the close.
+        ibox(s, 0);
       }
       ast::expr_loop_body(body) => {
         print_expr(s, body);
