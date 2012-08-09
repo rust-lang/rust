@@ -138,6 +138,8 @@ fn part4() {
     test(fmt!{"%.5c", 'A'}, ~"A");
     test(fmt!{"%.5f", 5.82}, ~"5.82000");
     test(fmt!{"%.5f", 5.0}, ~"5.00000");
+    test(fmt!{"%.100f", 1.1}, ~"1.1000000000000000888178419700125232338905334472656250000000000000000000000000000000000000000000000000");
+
     // Bool precision. I'm not sure if it's good or bad to have bool
     // conversions support precision - it's not standard printf so we
     // can do whatever. For now I'm making it behave the same as string
