@@ -52,6 +52,7 @@ export spawn_unlinked;
 export spawn_supervised;
 export spawn_with;
 export spawn_listener;
+export spawn_conversation;
 export spawn_sched;
 export try;
 
@@ -377,6 +378,20 @@ impl task_builder for task_builder {
     }
 
     /**
+     * Runs a new task, setting up communication in both directions
+     */
+    fn spawn_conversation<A: send, B: send>
+        (+f: fn~(comm::port<A>, comm::chan<B>))
+        -> (comm::port<B>, comm::chan<A>) {
+        let from_child = comm::port();
+        let to_parent = comm::chan(from_child);
+        let to_child = do self.spawn_listener |from_parent| {
+            f(from_parent, to_parent)
+        };
+        (from_child, to_child)
+    }
+
+    /**
      * Execute a function in another task and return either the return value
      * of the function or result::err.
      *
@@ -474,29 +489,22 @@ fn spawn_listener<A:send>(+f: fn~(comm::port<A>)) -> comm::chan<A> {
     /*!
      * Runs a new task while providing a channel from the parent to the child
      *
-     * Sets up a communication channel from the current task to the new
-     * child task, passes the port to child's body, and returns a channel
-     * linked to the port to the parent.
-     *
-     * This encapsulates some boilerplate handshaking logic that would
-     * otherwise be required to establish communication from the parent
-     * to the child.
-     *
-     * The simplest way to establish bidirectional communication between
-     * a parent in child is as follows:
-     *
-     *     let po = comm::port();
-     *     let ch = comm::chan(po);
-     *     let ch = do spawn_listener |po| {
-     *         // Now the child has a port called 'po' to read from and
-     *         // an environment-captured channel called 'ch'.
-     *     };
-     *     // Likewise, the parent has both a 'po' and 'ch'
-     *
      * This function is equivalent to `task().spawn_listener(f)`.
      */
 
     task().spawn_listener(f)
+}
+
+fn spawn_conversation<A: send, B: send>
+    (+f: fn~(comm::port<A>, comm::chan<B>))
+    -> (comm::port<B>, comm::chan<A>) {
+    /*!
+     * Runs a new task, setting up communication in both directions
+     *
+     * This function is equivalent to `task().spawn_conversation(f)`.
+     */
+
+    task().spawn_conversation(f)
 }
 
 fn spawn_sched(mode: sched_mode, +f: fn~()) {
@@ -1714,6 +1722,17 @@ fn test_spawn_listiner_bidi() {
     comm::send(ch, ~"ping");
     let res = comm::recv(po);
     assert res == ~"pong";
+}
+
+#[test]
+fn test_spawn_conversation() {
+    let (recv_str, send_int) = do spawn_conversation |recv_int, send_str| {
+        let input = comm::recv(recv_int);
+        let output = int::str(input);
+        comm::send(send_str, output);
+    };
+    comm::send(send_int, 1);
+    assert comm::recv(recv_str) == ~"1";
 }
 
 #[test]
