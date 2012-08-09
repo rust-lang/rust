@@ -61,7 +61,6 @@ fn sha1() -> sha1 {
          work_buf: @~[mut u32]};
 
     fn add_input(st: sha1state, msg: ~[u8]) {
-        /* FIXME: Should be typestate precondition (#2345) */
         assert (!st.computed);
         for vec::each(msg) |element| {
             st.msg_block[st.msg_block_idx] = element;
@@ -78,7 +77,6 @@ fn sha1() -> sha1 {
         }
     }
     fn process_msg_block(st: sha1state) {
-        // FIXME: Make precondition (#2345)
         assert (vec::len(st.h) == digest_buf_len);
         assert (vec::len(*st.work_buf) == work_buf_len);
         let mut t: int; // Loop counter
@@ -180,7 +178,6 @@ fn sha1() -> sha1 {
      * can be assumed that the message digest has been computed.
      */
     fn pad_msg(st: sha1state) {
-        // FIXME: Should be a precondition (#2345)
         assert (vec::len(st.msg_block) == msg_block_len);
 
         /*
@@ -219,7 +216,6 @@ fn sha1() -> sha1 {
 
     impl sha1state: sha1 {
         fn reset() {
-            // FIXME: Should be typestate precondition (#2345)
             assert (vec::len(self.h) == digest_buf_len);
             self.len_low = 0u32;
             self.len_high = 0u32;
