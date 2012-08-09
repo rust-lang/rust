@@ -486,9 +486,7 @@ fn sender_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(p.header.state, terminated) {
       empty => {
-        assert p.header.blocked_task.is_null();
         // The receiver will eventually clean up.
-        //unsafe { forget(p) }
       }
       blocked => {
         // wake up the target
@@ -500,7 +498,6 @@ fn sender_terminate<T: send>(p: *packet<T>) {
             rustrt::rust_task_deref(old_task);
         }
         // The receiver will eventually clean up.
-        //unsafe { forget(p) }
       }
       full => {
         // This is impossible
@@ -520,7 +517,6 @@ fn receiver_terminate<T: send>(p: *packet<T>) {
     match swap_state_rel(p.header.state, terminated) {
       empty => {
         // the sender will clean up
-        //unsafe { forget(p) }
       }
       blocked => {
         // this shouldn't happen.
