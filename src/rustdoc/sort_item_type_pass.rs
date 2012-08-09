@@ -34,7 +34,7 @@ fn test() {
          fn ifn() { } \
          enum ienum { ivar } \
          trait itrait { fn a(); } \
-         impl iimpl for int { fn a() { } } \
+         impl int { fn a() { } } \
          type itype = int;";
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, ~"");
@@ -43,7 +43,7 @@ fn test() {
         assert doc.cratemod().items[1].name() == ~"itype";
         assert doc.cratemod().items[2].name() == ~"ienum";
         assert doc.cratemod().items[3].name() == ~"itrait";
-        assert doc.cratemod().items[4].name() == ~"iimpl";
+        assert doc.cratemod().items[4].name() == ~"__extensions__";
         assert doc.cratemod().items[5].name() == ~"ifn";
         assert doc.cratemod().items[6].name() == ~"imod";
         assert doc.cratemod().items[7].name() == ~"inmod";

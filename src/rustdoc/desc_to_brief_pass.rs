@@ -77,7 +77,7 @@ fn should_promote_trait_method_desc() {
 #[test]
 fn should_promote_impl_method_desc() {
     let doc = test::mk_doc(
-        ~"impl i for int { #[doc = \"desc\"] fn a() { } }");
+        ~"impl int { #[doc = \"desc\"] fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].brief == some(~"desc");
 }
 

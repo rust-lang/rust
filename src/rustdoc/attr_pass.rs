@@ -271,14 +271,14 @@ fn fold_impl(
 #[test]
 fn should_extract_impl_docs() {
     let doc = test::mk_doc(
-        ~"#[doc = \"whatever\"] impl i for int { fn a() { } }");
+        ~"#[doc = \"whatever\"] impl int { fn a() { } }");
     assert doc.cratemod().impls()[0].desc() == some(~"whatever");
 }
 
 #[test]
 fn should_extract_impl_method_docs() {
     let doc = test::mk_doc(
-        ~"impl i for int {\
+        ~"impl int {\
          #[doc = \"desc\"]\
          fn f(a: bool) -> bool { }\
          }");

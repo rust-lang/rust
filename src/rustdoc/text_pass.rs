@@ -145,28 +145,28 @@ fn should_execute_op_on_trait_method_desc() {
 #[test]
 fn should_execute_op_on_impl_brief() {
     let doc = test::mk_doc(
-        ~"#[doc = \" a \"] impl i for int { fn a() { } }");
+        ~"#[doc = \" a \"] impl int { fn a() { } }");
     assert doc.cratemod().impls()[0].brief() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_desc() {
     let doc = test::mk_doc(
-        ~"#[doc = \" a \"] impl i for int { fn a() { } }");
+        ~"#[doc = \" a \"] impl int { fn a() { } }");
     assert doc.cratemod().impls()[0].desc() == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_brief() {
     let doc = test::mk_doc(
-        ~"impl i for int { #[doc = \" a \"] fn a() { } }");
+        ~"impl int { #[doc = \" a \"] fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].brief == some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_desc() {
     let doc = test::mk_doc(
-        ~"impl i for int { #[doc = \" a \"] fn a() { } }");
+        ~"impl int { #[doc = \" a \"] fn a() { } }");
     assert doc.cratemod().impls()[0].methods[0].desc == some(~"a");
 }
 
@@ -230,7 +230,7 @@ fn should_execute_on_trait_method_section_bodies() {
 #[test]
 fn should_execute_on_impl_method_section_headers() {
     let doc = test::mk_doc(
-        ~"impl i for bool {
+        ~"impl bool {
          #[doc = \"\
          # Header   \n\
          Body\"]\
@@ -242,7 +242,7 @@ fn should_execute_on_impl_method_section_headers() {
 #[test]
 fn should_execute_on_impl_method_section_bodies() {
     let doc = test::mk_doc(
-        ~"impl i for bool {
+        ~"impl bool {
          #[doc = \"\
          # Header\n\
          Body    \"]\
