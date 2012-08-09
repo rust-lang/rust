@@ -322,10 +322,32 @@ impl check_loan_ctxt {
         // is not visible from the outside
         match self.purity(ex.id) {
           none => (),
-          some(pc) => {
-            if cmt.lp.is_none() {
+          some(pc @ pc_cmt(_)) => {
+            // Subtle: Issue #3162.  If we are enforcing purity
+            // because there is a reference to aliasable, mutable data
+            // that we require to be immutable, we can't allow writes
+            // even to data owned by the current stack frame.  This is
+            // because that aliasable data might have been located on
+            // the current stack frame, we don't know.
+            match cmt.lp {
+              some(@lp_local(*)) | some(@lp_arg(*)) => {
+                // it's ok to mutate a local variable, as it is either
+                // lent our or not.  The problem arises when you have
+                // some subcomponent that might have been lent out
+                // through an alias on the condition that you ensure
+                // purity.
+              }
+              none | some(@lp_comp(*)) | some(@lp_deref(*)) => {
                 self.report_purity_error(
                     pc, ex.span, at.ing_form(self.bccx.cmt_to_str(cmt)));
+              }
+            }
+          }
+          some(pc_pure_fn) => {
+            if cmt.lp.is_none() {
+                self.report_purity_error(
+                    pc_pure_fn, ex.span,
+                    at.ing_form(self.bccx.cmt_to_str(cmt)));
             }
           }
         }
