@@ -1,6 +1,5 @@
-// xfail-test After the closure syntax change this started failing with the wrong error message
-fn main(_s: ~[str]) {
+fn main() {
     let a: ~[int] = ~[];
-    do vec::each(a) |_x| { //~ ERROR not all control paths return a value
-    }
+    vec::each(a, fn@(_x: int) -> bool { //~ ERROR not all control paths return a value
+    });
 }
