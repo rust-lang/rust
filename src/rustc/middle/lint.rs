@@ -479,7 +479,7 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
 
     match it.node {
       ast::item_ty(*) | ast::item_class(*) |
-      ast::item_trait(*) | ast::item_impl(*) => {
+      ast::item_trait(*) => {
         check_case(cx, it.ident, it.id, it.id, it.span)
       }
       ast::item_enum(enum_definition, _) => {
