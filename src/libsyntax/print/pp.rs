@@ -254,7 +254,8 @@ impl printer {
                 self.left = 0u;
                 self.right = 0u;
             } else { self.advance_right(); }
-            debug!{"pp BEGIN/buffer ~[%u,%u]", self.left, self.right};
+            debug!{"pp BEGIN(%d)/buffer ~[%u,%u]",
+                   b.offset, self.left, self.right};
             self.token[self.right] = t;
             self.size[self.right] = -self.right_total;
             self.scan_push(self.right);
@@ -278,7 +279,8 @@ impl printer {
                 self.left = 0u;
                 self.right = 0u;
             } else { self.advance_right(); }
-            debug!{"pp BREAK/buffer ~[%u,%u]", self.left, self.right};
+            debug!{"pp BREAK(%d)/buffer ~[%u,%u]",
+                   b.offset, self.left, self.right};
             self.check_stack(0);
             self.scan_push(self.right);
             self.token[self.right] = t;
@@ -287,10 +289,12 @@ impl printer {
           }
           STRING(s, len) => {
             if self.scan_stack_empty {
-                debug!{"pp STRING/print ~[%u,%u]", self.left, self.right};
+                debug!{"pp STRING('%s')/print ~[%u,%u]",
+                       *s, self.left, self.right};
                 self.print(t, len);
             } else {
-                debug!{"pp STRING/buffer ~[%u,%u]", self.left, self.right};
+                debug!{"pp STRING('%s')/buffer ~[%u,%u]",
+                       *s, self.left, self.right};
                 self.advance_right();
                 self.token[self.right] = t;
                 self.size[self.right] = len;
@@ -444,22 +448,25 @@ impl printer {
             let top = self.get_top();
             match top.pbreak {
               fits => {
-                debug!{"print BREAK in fitting block"};
+                debug!{"print BREAK(%d) in fitting block", b.blank_space};
                 self.space -= b.blank_space;
                 self.indent(b.blank_space);
               }
               broken(consistent) => {
-                debug!{"print BREAK in consistent block"};
+                debug!{"print BREAK(%d+%d) in consistent block",
+                       top.offset, b.offset};
                 self.print_newline(top.offset + b.offset);
                 self.space = self.margin - (top.offset + b.offset);
               }
               broken(inconsistent) => {
                 if L > self.space {
-                    debug!{"print BREAK w/ newline in inconsistent"};
+                    debug!{"print BREAK(%d+%d) w/ newline in inconsistent",
+                           top.offset, b.offset};
                     self.print_newline(top.offset + b.offset);
                     self.space = self.margin - (top.offset + b.offset);
                 } else {
-                    debug!{"print BREAK w/o newline in inconsistent"};
+                    debug!{"print BREAK(%d) w/o newline in inconsistent",
+                           b.blank_space};
                     self.indent(b.blank_space);
                     self.space -= b.blank_space;
                 }
@@ -467,7 +474,7 @@ impl printer {
             }
           }
           STRING(s, len) => {
-            debug!{"print STRING"};
+            debug!{"print STRING(%s)", *s};
             assert (L == len);
             // assert L <= space;
             self.space -= len;
