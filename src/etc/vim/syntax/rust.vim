@@ -16,7 +16,7 @@ syn keyword   rustKeyword     alt again as break
 syn keyword   rustKeyword     check claim const copy do drop else export extern fail
 syn keyword   rustKeyword     for if impl import in let log
 syn keyword   rustKeyword     loop match mod module move mut new of owned priv pub pure
-syn keyword   rustKeyword     ret return self to unchecked
+syn keyword   rustKeyword     ret return to unchecked
 syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
 syn keyword   rustKeyword     use while with
 " FIXME: Scoped impl's name is also fallen in this category
@@ -42,6 +42,7 @@ syn keyword   rustType        size_t ptrdiff_t clock_t time_t
 syn keyword   rustType        c_longlong c_ulonglong intptr_t uintptr_t
 syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 
+syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
 
 syn keyword   rustConstant    some none       " option
@@ -112,6 +113,7 @@ hi def link rustCharacter     Character
 hi def link rustNumber        Number
 hi def link rustBoolean       Boolean
 hi def link rustConstant      Constant
+hi def link rustSelf          Constant
 hi def link rustFloat         Float
 hi def link rustAssert        Keyword
 hi def link rustKeyword       Keyword
