@@ -196,7 +196,7 @@ When complete, `make install` will place the following programs into
 `/usr/local/bin`:
 
   * `rustc`, the Rust compiler
-  * `rustdoc`, the API-documentation tool 
+  * `rustdoc`, the API-documentation tool
   * `cargo`, the Rust package manager
 
 [wiki-get-started]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
@@ -2960,7 +2960,11 @@ do spawn {
 ~~~~
 
 This child will perform the expensive computation send the result
-over the channel.  Finally, the parent continues by performing
+over the channel.  (Under the hood, `chan` was captured by the
+closure that forms the body of the child task.  This capture is
+allowed because channels are sendable.)
+
+Finally, the parent continues by performing
 some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
@@ -2978,10 +2982,10 @@ let result = port.recv();
 
 A very common thing to do is to spawn a child task where the parent
 and child both need to exchange messages with each
-other. The function `task::spawn_listener()` supports this pattern. We'll look
-briefly at how it is used.
+other. The function `task::spawn_conversation()` supports this pattern.
+We'll look briefly at how it is used.
 
-To see how `spawn_listener()` works, we will create a child task
+To see how `spawn_conversation()` works, we will create a child task
 that receives `uint` messages, converts them to a string, and sends
 the string in response.  The child terminates when `0` is received.
 Here is the function that implements the child task:
@@ -3006,11 +3010,11 @@ loops, reading from the `from_parent` port and then sending its
 response to the `to_parent` channel.  The actual response itself is
 simply the strified version of the received value,
 `uint::to_str(value)`.
- 
+
 Here is the code for the parent task:
 
 ~~~~
-# import task::{spawn_listener};
+# import task::{spawn_conversation};
 # import comm::{chan, port, methods};
 # fn stringifier(from_parent: comm::port<uint>,
 #                to_parent: comm::chan<~str>) {
@@ -3020,9 +3024,7 @@ Here is the code for the parent task:
 # }
 # fn main() {
 
-let from_child = port();
-let to_parent = from_child.chan();
-let to_child = do spawn_listener |from_parent| {
+let (from_child, to_child) = do spawn_conversation |from_parent, to_parent| {
     stringifier(from_parent, to_parent);
 };
 
@@ -3030,22 +3032,22 @@ to_child.send(22u);
 assert from_child.recv() == ~"22";
 
 to_child.send(23u);
-assert from_child.recv() == ~"23";
-
 to_child.send(0u);
+
+assert from_child.recv() == ~"23";
 assert from_child.recv() == ~"0";
 
 # }
 ~~~~
 
-The parent first sets up a port to receive data from and a channel
-that the child can use to send data to that port. The call to
-`spawn_listener()` will spawn the child task, providing it with a port
-on which to receive data from its parent, and returning to the parent
-the associated channel. Finally, the closure passed to
-`spawn_listener()` that forms the body of the child task captures the
-`to_parent` channel in its environment, so both parent and child
-can send and receive data to and from the other.
+The parent task calls `spawn_conversation` with a function that takes
+a `from_parent` port and a `to_parent` channel.  In return, it gets a
+`from_child` channel and a `to_child` port.  As a result, both parent
+and child can send and receive data to and from the other.
+
+`spawn_conversation`
+will create two port/channel pairs, passing one set to the child task
+and returning the other set to the caller.
 
 # Testing
 
