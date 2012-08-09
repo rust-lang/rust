@@ -231,7 +231,9 @@ impl state: to_type_decls {
             vec::push(items_msg, v);
         }
 
-        ~[cx.item_enum_poly(name, ast::enum_def({ variants: items_msg }),
+        ~[cx.item_enum_poly(name,
+                            ast::enum_def({ variants: items_msg,
+                                            common: none }),
                             self.ty_params)]
     }
 

@@ -46,9 +46,9 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              proto_block, proto_box, proto_uniq, provided, public, pure_fn,
              purity, re_anon, re_named, region, rem, required, ret_style,
              return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
-             stmt_semi, struct_variant_kind, subtract, sty_box, sty_by_ref,
-             sty_region, sty_static, sty_uniq, sty_value, token_tree,
-             trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
+             stmt_semi, struct_def, struct_variant_kind, subtract, sty_box,
+             sty_by_ref, sty_region, sty_static, sty_uniq, sty_value,
+             token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
              tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
              ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound,
              ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq,
@@ -2792,13 +2792,74 @@ class parser {
         }
     }
 
-    fn parse_enum_def(ty_params: ~[ast::ty_param]) -> enum_def {
+    fn parse_struct_def(path: @path) -> @struct_def {
+        let mut the_dtor: option<(blk, ~[attribute], codemap::span)> = none;
+        let mut ms: ~[@class_member] = ~[];
+        while self.token != token::RBRACE {
+            match self.parse_class_item(path) {
+                ctor_decl(*) => {
+                    self.span_fatal(copy self.span,
+                                    ~"deprecated explicit \
+                                      constructors are not allowed \
+                                      here");
+                }
+                dtor_decl(blk, attrs, s) => {
+                    match the_dtor {
+                        some((_, _, s_first)) => {
+                            self.span_note(s, ~"duplicate destructor \
+                                                declaration");
+                            self.span_fatal(copy s_first,
+                                            ~"first destructor \
+                                              declared here");
+                        }
+                        none => {
+                            the_dtor = some((blk, attrs, s));
+                        }
+                    }
+                }
+                members(mms) =>
+                    ms = vec::append(ms, mms)
+            }
+        }
+        self.bump();
+        let mut actual_dtor = do option::map(the_dtor) |dtor| {
+            let (d_body, d_attrs, d_s) = dtor;
+            {node: {id: self.get_id(),
+                    attrs: d_attrs,
+                    self_id: self.get_id(),
+                    body: d_body},
+             span: d_s}
+        };
+
+        return @{
+            traits: ~[],
+            members: ms,
+            ctor: none,
+            dtor: actual_dtor
+        };
+    }
+
+    fn parse_enum_def(ident: ast::ident, ty_params: ~[ast::ty_param])
+                   -> enum_def {
         let mut variants: ~[variant] = ~[];
         let mut all_nullary = true, have_disr = false;
+        let mut common_fields = none;
 
         while self.token != token::RBRACE {
             let variant_attrs = self.parse_outer_attributes();
             let vlo = self.span.lo;
+
+            // Is this a common field declaration?
+            if self.eat_keyword(~"struct") {
+                if common_fields.is_some() {
+                    self.fatal(~"duplicate declaration of shared fields");
+                }
+                self.expect(token::LBRACE);
+                let path = self.ident_to_path_tys(ident, ty_params);
+                common_fields = some(self.parse_struct_def(path));
+                again;
+            }
+
             let vis = self.parse_visibility();
             let ident = self.parse_value_ident();
             let mut args = ~[], disr_expr = none;
@@ -2807,51 +2868,7 @@ class parser {
                 // Parse a struct variant.
                 all_nullary = false;
                 let path = self.ident_to_path_tys(ident, ty_params);
-                let mut the_dtor: option<(blk, ~[attribute], codemap::span)> =
-                    none;
-                let mut ms: ~[@class_member] = ~[];
-                while self.token != token::RBRACE {
-                    match self.parse_class_item(path) {
-                        ctor_decl(*) => {
-                            self.span_fatal(copy self.span,
-                                            ~"deprecated explicit \
-                                              constructors are not allowed \
-                                              here");
-                        }
-                        dtor_decl(blk, attrs, s) => {
-                            match the_dtor {
-                                some((_, _, s_first)) => {
-                                    self.span_note(s, ~"duplicate destructor \
-                                                        declaration");
-                                    self.span_fatal(copy s_first,
-                                                    ~"first destructor \
-                                                      declared here");
-                                }
-                                none => {
-                                    the_dtor = some((blk, attrs, s));
-                                }
-                            }
-                        }
-                        members(mms) =>
-                            ms = vec::append(ms, mms)
-                    }
-                }
-                self.bump();
-                let mut actual_dtor = do option::map(the_dtor) |dtor| {
-                    let (d_body, d_attrs, d_s) = dtor;
-                    {node: {id: self.get_id(),
-                            attrs: d_attrs,
-                            self_id: self.get_id(),
-                            body: d_body},
-                     span: d_s}
-                };
-
-                kind = struct_variant_kind(@{
-                    traits: ~[],
-                    members: ms,
-                    ctor: none,
-                    dtor: actual_dtor
-                });
+                kind = struct_variant_kind(self.parse_struct_def(path));
             } else if self.token == token::LPAREN {
                 all_nullary = false;
                 let arg_tys = self.parse_unspanned_seq(
@@ -2883,7 +2900,7 @@ class parser {
                         enum");
         }
 
-        return enum_def({ variants: variants });
+        return enum_def({ variants: variants, common: common_fields });
     }
 
     fn parse_item_enum() -> item_info {
@@ -2905,12 +2922,13 @@ class parser {
                          id: self.get_id(),
                          disr_expr: none,
                          vis: public});
-            return (id, item_enum(enum_def({ variants: ~[variant] }),
+            return (id, item_enum(enum_def({ variants: ~[variant],
+                                             common: none }),
                                   ty_params), none);
         }
         self.expect(token::LBRACE);
 
-        let enum_definition = self.parse_enum_def(ty_params);
+        let enum_definition = self.parse_enum_def(id, ty_params);
         (id, item_enum(enum_definition, ty_params), none)
     }
 
