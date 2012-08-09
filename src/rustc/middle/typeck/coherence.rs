@@ -288,24 +288,24 @@ class CoherenceChecker {
         }
 
         for associated_traits.each |associated_trait| {
-            let def = self.crate_context.tcx.def_map.get
-                (associated_trait.ref_id);
+            let trait_did =
+                self.trait_ref_to_trait_def_id(associated_trait);
             debug!{"(checking implementation) adding impl for trait \
                     '%s', item '%s'",
                    ast_map::node_id_to_str(self.crate_context.tcx.items,
-                                           associated_trait.ref_id),
+                                           trait_did.node),
                    *item.ident};
 
             let implementation = self.create_impl_from_item(item);
-            self.add_trait_method(def_id_of_def(def), implementation);
+            self.add_trait_method(trait_did, implementation);
         }
 
         // Add the implementation to the mapping from implementation to base
         // type def ID, if there is a base type for this implementation.
 
         match get_base_type_def_id(self.inference_context,
-                                 item.span,
-                                 self_type.ty) {
+                                   item.span,
+                                   self_type.ty) {
             none => {
                 // Nothing to do.
             }
