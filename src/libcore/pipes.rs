@@ -76,6 +76,7 @@ export send_packet, recv_packet, send, recv, try_recv, peek;
 export select, select2, selecti, select2i, selectable;
 export spawn_service, spawn_service_recv;
 export stream, port, chan, shared_chan, port_set, channel;
+export oneshot, recv_one, try_recv_one;
 
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;
@@ -1103,6 +1104,32 @@ impl<T: send, U: send, Left: selectable recv<T>, Right: selectable recv<U>>
     }
 }
 
+proto! oneshot {
+    oneshot:send<T:send> {
+        send(T) -> !
+    }
+}
+
+/// Receive a message from a oneshot pipe.
+fn recv_one<T: send>(+port: oneshot::server::oneshot<T>) -> T {
+    let oneshot::send(message) = recv(port);
+    message
+}
+
+/** Receive a message from a oneshot pipe, or fail if the connection
+is closed.
+
+*/
+fn try_recv_one<T: send> (+port: oneshot::server::oneshot<T>) -> option<T> {
+    let message = try_recv(port);
+
+    if message == none { none }
+    else {
+        let oneshot::send(message) = option::unwrap(message);
+        some(message)
+    }
+}
+
 #[cfg(test)]
 mod test {
     #[test]
@@ -1118,5 +1145,14 @@ mod test {
         }
 
         c2.send(123);
+    }
+
+    #[test]
+    fn test_oneshot() {
+        let (c, p) = oneshot::init();
+
+        oneshot::client::send(c, ());
+
+        recv_one(p)
     }
 }
