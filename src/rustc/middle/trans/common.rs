@@ -107,6 +107,10 @@ type crate_ctxt = {
      vtables: hashmap<mono_id, ValueRef>,
      // Cache of constant strings,
      const_cstr_cache: hashmap<~str, ValueRef>,
+     // Reverse-direction for const ptrs cast from globals,
+     // since the ptr -> init association is lost any
+     // time a GlobalValue is cast.
+     const_globals: hashmap<int, ValueRef>,
      module_data: hashmap<~str, ValueRef>,
      lltypes: hashmap<ty::t, TypeRef>,
      names: namegen,

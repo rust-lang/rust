@@ -32,6 +32,12 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
 // duplicate constants. I think. Maybe LLVM has a magical mode that does so
 // later on?
 
+fn const_ptrcast(cx: @crate_ctxt, a: ValueRef, t: TypeRef) -> ValueRef {
+    let b = llvm::LLVMConstPointerCast(a, T_ptr(t));
+    assert cx.const_globals.insert(b as int, a);
+    b
+}
+
 fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
     -> (ValueRef, ValueRef, TypeRef) {
     let vec_ty = ty::expr_ty(cx.tcx, e);
@@ -43,9 +49,14 @@ fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
     return (v, sz, llunitty);
 }
 
-fn const_deref(v: ValueRef) -> ValueRef {
+fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
+    let v = match cx.const_globals.find(v as int) {
+        some(v) => v,
+        none => v
+    };
     assert llvm::LLVMIsGlobalConstant(v) == True;
-    llvm::LLVMGetInitializer(v)
+    let v = llvm::LLVMGetInitializer(v);
+    v
 }
 
 fn const_get_elt(v: ValueRef, u: uint) -> ValueRef {
@@ -53,7 +64,7 @@ fn const_get_elt(v: ValueRef, u: uint) -> ValueRef {
     llvm::LLVMConstExtractValue(v, ptr::addr_of(u), 1 as c_uint)
 }
 
-fn const_autoderef(ty: ty::t, v: ValueRef)
+fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
     -> (ty::t, ValueRef) {
     let mut t1 = ty;
     let mut v1 = v;
@@ -62,7 +73,7 @@ fn const_autoderef(ty: ty::t, v: ValueRef)
         match ty::get(ty).struct {
             ty::ty_rptr(_, mt) => {
                 t1 = mt.ty;
-                v1 = const_deref(v1);
+                v1 = const_deref(cx, v1);
             }
             _ => return (t1,v1)
         }
@@ -133,7 +144,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         return match u {
           ast::box(_)  |
           ast::uniq(_) |
-          ast::deref  => const_deref(te),
+          ast::deref  => const_deref(cx, te),
           ast::not    => llvm::LLVMConstNot(te),
           ast::neg    => {
             if is_float { llvm::LLVMConstFNeg(te) }
@@ -144,7 +155,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       ast::expr_field(base, field, _) => {
           let bt = ty::expr_ty(cx.tcx, base);
           let bv = const_expr(cx, base);
-          let (bt, bv) = const_autoderef(bt, bv);
+          let (bt, bv) = const_autoderef(cx, bt, bv);
           let fields = match ty::get(bt).struct {
               ty::ty_rec(fs) => fs,
               ty::ty_class(did, substs) =>
@@ -159,7 +170,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       ast::expr_index(base, index) => {
           let bt = ty::expr_ty(cx.tcx, base);
           let bv = const_expr(cx, base);
-          let (bt, bv) = const_autoderef(bt, bv);
+          let (bt, bv) = const_autoderef(cx, bt, bv);
           let iv = match const_eval::eval_const_expr(cx.tcx, index) {
               const_eval::const_int(i) => i as u64,
               const_eval::const_uint(u) => u,
@@ -167,7 +178,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                     ~"index is not an integer-constant \
                                       expression")
           };
-          let (arr,len) = match ty::get(bt).struct {
+          let (arr, _len) = match ty::get(bt).struct {
               ty::ty_evec(_, vstore) | ty::ty_estr(vstore) =>
                   match vstore {
                   ty::vstore_fixed(u) =>
@@ -177,9 +188,10 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                       let unit_ty = ty::sequence_element_type(cx.tcx, bt);
                       let llunitty = type_of::type_of(cx, unit_ty);
                       let unit_sz = shape::llsize_of(cx, llunitty);
-                      (const_deref(const_get_elt(bv, 0)),
+
+                      (const_deref(cx, const_get_elt(bv, 0)),
                        llvm::LLVMConstUDiv(const_get_elt(bv, 1),
-                                            unit_sz))
+                                           unit_sz))
                   },
                   _ => cx.sess.span_bug(base.span,
                                         ~"index-expr base must be \
@@ -189,13 +201,42 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                      ~"index-expr base must be \
                                        a vector or string type")
           };
-          let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
+
+          // FIXME #3169: This is a little odd but it arises due to a weird
+          // wrinkle in LLVM: it doesn't appear willing to let us call
+          // LLVMConstIntGetZExtValue on the size element of the slice, or
+          // seemingly any integer-const involving a sizeof() call. Despite
+          // that being "a const", it's not the kind of const you can ask
+          // for the integer-value of, evidently. This might be an LLVM
+          // bug, not sure. In any case, to work around this we drop down
+          // to the array-type level here and just ask how long the
+          // array-type itself is, ignoring the length we pulled out of the
+          // slice. This in turn only works because we picked out the
+          // original globalvar via const_deref and so can recover the
+          // array-size of the underlying array, and all this will hold
+          // together exactly as long as we _don't_ support const
+          // sub-slices (that is, slices that represent something other
+          // than a whole array).  At that point we'll have more and uglier
+          // work to do here, but for now this should work.
+          //
+          // In the future, what we should be doing here is the
+          // moral equivalent of:
+          //
+          // let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
+          //
+          // but we might have to do substantially more magic to
+          // make it work. Or figure out what is causing LLVM to
+          // not want to consider sizeof() a constant expression
+          // we can get the value (as a number) out of.
+
+          let len = llvm::LLVMGetArrayLength(val_ty(arr)) as u64;
           let len = match ty::get(bt).struct {
               ty::ty_estr(*) => {assert len > 0; len - 1},
               _ => len
           };
           if iv >= len {
-              // Better late than never for reporting this?
+              // FIXME #3170: report this earlier on in the const-eval
+              // pass. Reporting here is a bit late.
               cx.sess.span_err(e.span,
                                ~"const index-expr is out of bounds");
           }
@@ -292,8 +333,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
             };
             llvm::LLVMSetInitializer(gv, cv);
             llvm::LLVMSetGlobalConstant(gv, True);
-            let p = llvm::LLVMConstPointerCast(gv, T_ptr(llunitty));
-
+            let p = const_ptrcast(cx, gv, llunitty);
             C_struct(~[p, sz])
           }
           _ => cx.sess.span_bug(e.span,
