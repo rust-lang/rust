@@ -482,9 +482,9 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
       ast::item_trait(*) | ast::item_impl(*) => {
         check_case(cx, it.ident, it.id, it.id, it.span)
       }
-      ast::item_enum(variants, _) => {
+      ast::item_enum(enum_definition, _) => {
         check_case(cx, it.ident, it.id, it.id, it.span);
-        for variants.each |variant| {
+        for enum_definition.variants.each |variant| {
             check_case(cx, variant.node.name,
                        variant.node.id, it.id, variant.span);
         }

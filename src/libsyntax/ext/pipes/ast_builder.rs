@@ -66,9 +66,9 @@ trait ext_ctxt_ast_builder {
                output: @ast::ty,
                +body: ast::blk) -> @ast::item;
     fn item_enum_poly(name: ident,
-                      +variants: ~[ast::variant],
+                      +enum_definition: ast::enum_def,
                       +ty_params: ~[ast::ty_param]) -> @ast::item;
-    fn item_enum(name: ident, +variants: ~[ast::variant]) -> @ast::item;
+    fn item_enum(name: ident, +enum_definition: ast::enum_def) -> @ast::item;
     fn variant(name: ident, +tys: ~[@ast::ty]) -> ast::variant;
     fn item_mod(name: ident, +items: ~[@ast::item]) -> @ast::item;
     fn ty_path_ast_builder(path: @ast::path) -> @ast::ty;
@@ -236,16 +236,13 @@ impl ast_builder of ext_ctxt_ast_builder for ext_ctxt {
     }
 
     fn item_enum_poly(name: ident,
-                      +variants: ~[ast::variant],
+                      +enum_definition: ast::enum_def,
                       +ty_params: ~[ast::ty_param]) -> @ast::item {
-        self.item(name,
-                  ast::item_enum(variants,
-                                 ty_params))
+        self.item(name, ast::item_enum(enum_definition, ty_params))
     }
 
-    fn item_enum(name: ident,
-                 +variants: ~[ast::variant]) -> @ast::item {
-        self.item_enum_poly(name, variants, ~[])
+    fn item_enum(name: ident, +enum_definition: ast::enum_def) -> @ast::item {
+        self.item_enum_poly(name, enum_definition, ~[])
     }
 
     fn variant(name: ident,

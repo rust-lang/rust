@@ -79,9 +79,9 @@ fn moddoc_from_mod(
                     constdoc_from_const(itemdoc)
                 ))
               }
-              ast::item_enum(variants, _) => {
+              ast::item_enum(enum_definition, _) => {
                 some(doc::enumtag(
-                    enumdoc_from_enum(itemdoc, variants)
+                    enumdoc_from_enum(itemdoc, enum_definition.variants)
                 ))
               }
               ast::item_trait(_, _, methods) => {

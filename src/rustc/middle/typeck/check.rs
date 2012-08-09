@@ -439,8 +439,8 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
     match it.node {
       ast::item_const(_, e) => check_const(ccx, it.span, e, it.id),
-      ast::item_enum(vs, _) => {
-        check_enum_variants(ccx, it.span, vs, it.id);
+      ast::item_enum(enum_definition, _) => {
+        check_enum_variants(ccx, it.span, enum_definition.variants, it.id);
       }
       ast::item_fn(decl, tps, body) => {
         check_bare_fn(ccx, decl, body, it.id, none);

@@ -107,10 +107,10 @@ fn expand(cx: ext_ctxt,
                         ty_fns(cx, in_item.ident, ty, tps))
           }
 
-          ast::item_enum(variants, tps) => {
+          ast::item_enum(enum_definition, tps) => {
             vec::append(~[filter_attrs(in_item)],
                         enum_fns(cx, in_item.ident,
-                                 in_item.span, variants, tps))
+                                 in_item.span, enum_definition.variants, tps))
           }
 
           _ => {

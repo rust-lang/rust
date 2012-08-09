@@ -135,8 +135,9 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
             ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {
                 result_ty = some(enum_ty);
             }
-            ast::enum_variant_kind(variants) => {
-                get_enum_variant_types(ccx, enum_ty, variants, ty_params, rp);
+            ast::enum_variant_kind(enum_definition) => {
+                get_enum_variant_types(ccx, enum_ty, enum_definition.variants,
+                                       ty_params, rp);
                 result_ty = none;
             }
         };
@@ -404,10 +405,11 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
     match it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
-      ast::item_enum(variants, ty_params) => {
+      ast::item_enum(enum_definition, ty_params) => {
         let tpt = ty_of_item(ccx, it);
         write_ty_to_tcx(tcx, it.id, tpt.ty);
-        get_enum_variant_types(ccx, tpt.ty, variants, ty_params, rp);
+        get_enum_variant_types(ccx, tpt.ty, enum_definition.variants,
+                               ty_params, rp);
       }
       ast::item_impl(tps, trait_ref, selfty, ms) => {
         let i_bounds = ty_param_bounds(ccx, tps);

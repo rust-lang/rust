@@ -136,9 +136,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
         v.visit_ty(t, e, v);
         v.visit_ty_params(tps, e, v);
       }
-      item_enum(variants, tps) => {
+      item_enum(enum_definition, tps) => {
         v.visit_ty_params(tps, e, v);
-        visit_variants(variants, tps, e, v);
+        visit_enum_def(enum_definition, tps, e, v);
       }
       item_impl(tps, traits, ty, methods) => {
         v.visit_ty_params(tps, e, v);
@@ -165,9 +165,9 @@ fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     }
 }
 
-fn visit_variants<E>(variants: ~[ast::variant], tps: ~[ast::ty_param], e: E,
-                     v: vt<E>) {
-    for variants.each |vr| {
+fn visit_enum_def<E>(enum_definition: ast::enum_def, tps: ~[ast::ty_param],
+                     e: E, v: vt<E>) {
+    for enum_definition.variants.each |vr| {
         match vr.node.kind {
             tuple_variant_kind(variant_args) => {
                 for variant_args.each |va| { v.visit_ty(va.ty, e, v); }
@@ -176,8 +176,8 @@ fn visit_variants<E>(variants: ~[ast::variant], tps: ~[ast::ty_param], e: E,
                 v.visit_struct_def(struct_def, vr.node.name, tps,
                                    vr.node.id, e, v);
             }
-            enum_variant_kind(variants) => {
-                visit_variants(variants, tps, e, v);
+            enum_variant_kind(enum_definition) => {
+                visit_enum_def(enum_definition, tps, e, v);
             }
         }
     }

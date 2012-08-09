@@ -4912,11 +4912,11 @@ fn trans_class_dtor(ccx: @crate_ctxt, path: path,
   lldecl
 }
 
-fn trans_variants(ccx: @crate_ctxt, variants: ~[ast::variant],
+fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                   id: ast::node_id, tps: ~[ast::ty_param], degen: bool,
                   path: @ast_map::path, vi: @~[ty::variant_info],
                   i: &mut uint) {
-    for vec::each(variants) |variant| {
+    for vec::each(enum_definition.variants) |variant| {
         let disr_val = vi[*i].disr_val;
         *i += 1;
 
@@ -4933,8 +4933,9 @@ fn trans_variants(ccx: @crate_ctxt, variants: ~[ast::variant],
                 trans_struct_def(ccx, struct_def, tps, path,
                                  variant.node.name, variant.node.id);
             }
-            ast::enum_variant_kind(variants) => {
-                trans_variants(ccx, variants, id, tps, degen, path, vi, i);
+            ast::enum_variant_kind(enum_definition) => {
+                trans_enum_def(ccx, enum_definition, id, tps, degen, path, vi,
+                               i);
             }
         }
     }
@@ -4976,13 +4977,13 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_mod(m) => {
         trans_mod(ccx, m);
       }
-      ast::item_enum(variants, tps) => {
+      ast::item_enum(enum_definition, tps) => {
         if tps.len() == 0u {
-            let degen = variants.len() == 1u;
+            let degen = enum_definition.variants.len() == 1u;
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
-            trans_variants(ccx, variants, item.id, tps, degen, path, vi,
-                           &mut i);
+            trans_enum_def(ccx, enum_definition, item.id, tps, degen, path,
+                           vi, &mut i);
         }
       }
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
@@ -5317,12 +5318,12 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
 fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
     let _icx = ccx.insn_ctxt(~"trans_constant");
     match it.node {
-      ast::item_enum(variants, _) => {
+      ast::item_enum(enum_definition, _) => {
         let vi = ty::enum_variants(ccx.tcx, {crate: ast::local_crate,
                                              node: it.id});
         let mut i = 0;
         let path = item_path(ccx, it);
-        for vec::each(variants) |variant| {
+        for vec::each(enum_definition.variants) |variant| {
             let p = vec::append(path, ~[path_name(variant.node.name),
                                        path_name(@~"discrim")]);
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
