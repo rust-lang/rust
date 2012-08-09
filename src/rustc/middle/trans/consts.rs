@@ -43,6 +43,33 @@ fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
     return (v, sz, llunitty);
 }
 
+fn const_deref(v: ValueRef) -> ValueRef {
+    assert llvm::LLVMIsGlobalConstant(v) == True;
+    llvm::LLVMGetInitializer(v)
+}
+
+fn const_get_elt(v: ValueRef, u: uint) -> ValueRef {
+    let u = u;
+    llvm::LLVMConstExtractValue(v, ptr::addr_of(u), 1 as c_uint)
+}
+
+fn const_autoderef(ty: ty::t, v: ValueRef)
+    -> (ty::t, ValueRef) {
+    let mut t1 = ty;
+    let mut v1 = v;
+    loop {
+        // Only rptrs can be autoderef'ed in a const context.
+        match ty::get(ty).struct {
+            ty::ty_rptr(_, mt) => {
+                t1 = mt.ty;
+                v1 = const_deref(v1);
+            }
+            _ => return (t1,v1)
+        }
+    }
+}
+
+
 fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
     let _icx = cx.insn_ctxt(~"const_expr");
     match e.node {
@@ -106,14 +133,73 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         return match u {
           ast::box(_)  |
           ast::uniq(_) |
-          ast::deref   => cx.sess.span_bug(e.span,
-                                           ~"bad unop type in const_expr"),
+          ast::deref  => const_deref(te),
           ast::not    => llvm::LLVMConstNot(te),
           ast::neg    => {
             if is_float { llvm::LLVMConstFNeg(te) }
             else        { llvm::LLVMConstNeg(te) }
           }
         }
+      }
+      ast::expr_field(base, field, _) => {
+          let bt = ty::expr_ty(cx.tcx, base);
+          let bv = const_expr(cx, base);
+          let (bt, bv) = const_autoderef(bt, bv);
+          let fields = match ty::get(bt).struct {
+              ty::ty_rec(fs) => fs,
+              ty::ty_class(did, substs) =>
+                  ty::class_items_as_mutable_fields(cx.tcx, did, substs),
+              _ => cx.sess.span_bug(e.span,
+                                    ~"field access on unknown type in const"),
+          };
+          let ix = field_idx_strict(cx.tcx, e.span, field, fields);
+          const_get_elt(bv, ix)
+      }
+
+      ast::expr_index(base, index) => {
+          let bt = ty::expr_ty(cx.tcx, base);
+          let bv = const_expr(cx, base);
+          let (bt, bv) = const_autoderef(bt, bv);
+          let iv = match const_eval::eval_const_expr(cx.tcx, index) {
+              const_eval::const_int(i) => i as u64,
+              const_eval::const_uint(u) => u,
+              _ => cx.sess.span_bug(index.span,
+                                    ~"index is not an integer-constant \
+                                      expression")
+          };
+          let (arr,len) = match ty::get(bt).struct {
+              ty::ty_evec(_, vstore) | ty::ty_estr(vstore) =>
+                  match vstore {
+                  ty::vstore_fixed(u) =>
+                      (bv, C_uint(cx, u)),
+
+                  ty::vstore_slice(_) => {
+                      let unit_ty = ty::sequence_element_type(cx.tcx, bt);
+                      let llunitty = type_of::type_of(cx, unit_ty);
+                      let unit_sz = shape::llsize_of(cx, llunitty);
+                      (const_deref(const_get_elt(bv, 0)),
+                       llvm::LLVMConstUDiv(const_get_elt(bv, 1),
+                                            unit_sz))
+                  },
+                  _ => cx.sess.span_bug(base.span,
+                                        ~"index-expr base must be \
+                                          fixed-size or slice")
+              },
+              _ =>  cx.sess.span_bug(base.span,
+                                     ~"index-expr base must be \
+                                       a vector or string type")
+          };
+          let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
+          let len = match ty::get(bt).struct {
+              ty::ty_estr(*) => {assert len > 0; len - 1},
+              _ => len
+          };
+          if iv >= len {
+              // Better late than never for reporting this?
+              cx.sess.span_err(e.span,
+                               ~"const index-expr is out of bounds");
+          }
+          const_get_elt(arr, iv as uint)
       }
       ast::expr_cast(base, tp) => {
         let ety = ty::expr_ty(cx.tcx, e), llty = type_of::type_of(cx, ety);
