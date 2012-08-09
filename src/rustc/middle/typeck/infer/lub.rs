@@ -130,8 +130,10 @@ impl Lub: combine {
         super_fns(&self, a, b)
     }
 
-    fn substs(as: &ty::substs, bs: &ty::substs) -> cres<ty::substs> {
-        super_substs(&self, as, bs)
+    fn substs(did: ast::def_id,
+              as: &ty::substs,
+              bs: &ty::substs) -> cres<ty::substs> {
+        super_substs(&self, did, as, bs)
     }
 
     fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {

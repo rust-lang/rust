@@ -17,14 +17,13 @@ impl empty_rscope: region_scope {
     }
 }
 
-enum type_rscope = bool;
+enum type_rscope = option<ty::region_variance>;
 impl type_rscope: region_scope {
     fn anon_region(_span: span) -> result<ty::region, ~str> {
-        if *self {
-            result::ok(ty::re_bound(ty::br_self))
-        } else {
-            result::err(~"to use region types here, the containing type \
-                         must be declared with a region bound")
+        match *self {
+          some(_) => result::ok(ty::re_bound(ty::br_self)),
+          none => result::err(~"to use region types here, the containing \
+                                type must be declared with a region bound")
         }
     }
     fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
@@ -36,6 +35,13 @@ impl type_rscope: region_scope {
                              allowed as part of a type declaration")
             }
         }
+    }
+}
+
+fn bound_self_region(rp: option<ty::region_variance>) -> option<ty::region> {
+    match rp {
+      some(_) => some(ty::re_bound(ty::br_self)),
+      none => none
     }
 }
 

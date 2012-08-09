@@ -112,7 +112,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                           enum_ty: ty::t,
                           variants: ~[ast::variant],
                           ty_params: ~[ast::ty_param],
-                          rp: bool) {
+                          rp: option<ty::region_variance>) {
     let tcx = ccx.tcx;
 
     // Create a set of parameter types shared among all the variants.
@@ -150,7 +150,7 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
             none => {}
             some(result_ty) => {
                 let tpt = {bounds: ty_param_bounds(ccx, ty_params),
-                           rp: rp,
+                           region_param: rp,
                            ty: result_ty};
                 tcx.tcache.insert(local_def(variant.node.id), tpt);
                 write_ty_to_tcx(tcx, variant.node.id, result_ty);
@@ -167,7 +167,8 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
 
     fn make_static_method_ty(ccx: @crate_ctxt,
                              am: ast::ty_method,
-                             rp: bool, m: ty::method,
+                             rp: option<ty::region_variance>,
+                             m: ty::method,
                              // Take this as an argument b/c we may check
                              // the impl before the trait.
                              trait_ty: ty::t,
@@ -197,20 +198,22 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
         let bounds = @(*trait_bounds + ~[@~[ty::bound_trait(trait_ty)]]
                        + *m.tps);
         ccx.tcx.tcache.insert(local_def(am.id),
-                              {bounds: bounds, rp: rp, ty: ty});
+                              {bounds: bounds,
+                               region_param: rp,
+                               ty: ty});
     }
 
 
     let tcx = ccx.tcx;
-    let rp = tcx.region_paramd_items.contains_key(id);
+    let region_paramd = tcx.region_paramd_items.find(id);
     match tcx.items.get(id) {
       ast_map::node_item(@{node: ast::item_trait(params, _, ms), _}, _) => {
         store_methods::<ast::trait_method>(ccx, id, ms, |m| {
             let trait_bounds = ty_param_bounds(ccx, params);
             let ty_m = trait_method_to_ty_method(m);
-            let method_ty = ty_of_ty_method(ccx, ty_m, rp);
+            let method_ty = ty_of_ty_method(ccx, ty_m, region_paramd);
             if ty_m.self_ty.node == ast::sty_static {
-                make_static_method_ty(ccx, ty_m, rp,
+                make_static_method_ty(ccx, ty_m, region_paramd,
                                       method_ty, trait_ty, trait_bounds);
             }
             method_ty
@@ -220,7 +223,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
         // All methods need to be stored, since lookup_method
         // relies on the same method cache for self-calls
         store_methods::<@ast::method>(ccx, id, struct_def.methods, |m| {
-            ty_of_method(ccx, m, rp)
+            ty_of_method(ccx, m, region_paramd)
         });
       }
       _ => { /* Ignore things that aren't traits or classes */ }
@@ -316,7 +319,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
 
 fn check_methods_against_trait(ccx: @crate_ctxt,
                                tps: ~[ast::ty_param],
-                               rp: bool,
+                               rp: option<ty::region_variance>,
                                selfty: ty::t,
                                a_trait_ty: @ast::trait_ref,
                                impl_ms: ~[converted_method]) {
@@ -370,21 +373,23 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
 } // fn
 
 fn convert_field(ccx: @crate_ctxt,
-                 rp: bool,
+                 rp: option<ty::region_variance>,
                  bounds: @~[ty::param_bounds],
                  v: @ast::struct_field) {
     let tt = ccx.to_ty(type_rscope(rp), v.node.ty);
     write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
     ccx.tcx.tcache.insert(local_def(v.node.id),
-                          {bounds: bounds, rp: rp, ty: tt});
+                          {bounds: bounds,
+                           region_param: rp,
+                           ty: tt});
 }
 
 type converted_method = {mty: ty::method, id: ast::node_id, span: span};
 
 fn convert_methods(ccx: @crate_ctxt,
                    ms: ~[@ast::method],
-                   rp: bool,
+                   rp: option<ty::region_variance>,
                    rcvr_bounds: @~[ty::param_bounds]) -> ~[converted_method] {
 
     let tcx = ccx.tcx;
@@ -397,7 +402,9 @@ fn convert_methods(ccx: @crate_ctxt,
 
             // n.b.: the type of a method is parameterized by both
             // the tps on the receiver and those on the method itself
-            {bounds: @(vec::append(*rcvr_bounds, *bounds)), rp: rp, ty: fty});
+            {bounds: @(vec::append(*rcvr_bounds, *bounds)),
+             region_param: rp,
+             ty: fty});
         write_ty_to_tcx(tcx, m.id, fty);
         {mty: mty, id: m.id, span: m.span}
     }
@@ -405,9 +412,9 @@ fn convert_methods(ccx: @crate_ctxt,
 
 fn convert(ccx: @crate_ctxt, it: @ast::item) {
     let tcx = ccx.tcx;
-    let rp = tcx.region_paramd_items.contains_key(it.id);
-    debug!{"convert: item %s with id %d rp %b", tcx.sess.str_of(it.ident),
-           it.id, rp};
+    let rp = tcx.region_paramd_items.find(it.id);
+    #debug["convert: item %s with id %d rp %?",
+           tcx.sess.str_of(it.ident), it.id, rp];
     match it.node {
       // These don't define types.
       ast::item_foreign_mod(_) | ast::item_mod(_) => {}
@@ -423,7 +430,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         write_ty_to_tcx(tcx, it.id, selfty);
         tcx.tcache.insert(local_def(it.id),
                           {bounds: i_bounds,
-                           rp: rp,
+                           region_param: rp,
                            ty: selfty});
 
         let cms = convert_methods(ccx, ms, rp, i_bounds);
@@ -465,8 +472,11 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
     }
 }
 
-fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
-                  tps: ~[ast::ty_param], tpt: ty::ty_param_bounds_and_ty,
+fn convert_struct(ccx: @crate_ctxt,
+                  rp: option<ty::region_variance>,
+                  struct_def: @ast::struct_def,
+                  tps: ~[ast::ty_param],
+                  tpt: ty::ty_param_bounds_and_ty,
                   id: ast::node_id) {
     let tcx = ccx.tcx;
     do option::iter(struct_def.ctor) |ctor| {
@@ -475,7 +485,7 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
             |a| ty_of_arg(ccx, type_rscope(rp), a, none) );
         let t_res = ty::mk_class(
             tcx, local_def(id),
-            {self_r: if rp {some(ty::re_bound(ty::br_self))} else {none},
+            {self_r: rscope::bound_self_region(rp),
              self_ty: none,
              tps: ty::ty_params_to_tys(tcx, tps)});
         let t_ctor = ty::mk_fn(
@@ -488,7 +498,7 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
         write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
         tcx.tcache.insert(local_def(ctor.node.id),
                           {bounds: tpt.bounds,
-                           rp: rp,
+                           region_param: rp,
                            ty: t_ctor});
     }
 
@@ -501,7 +511,7 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
                           {bounds: tpt.bounds,
-                           rp: rp,
+                           region_param: rp,
                            ty: t_dtor});
     };
     ensure_trait_methods(ccx, id, tpt.ty);
@@ -536,8 +546,7 @@ fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
 
 fn ty_of_method(ccx: @crate_ctxt,
                 m: @ast::method,
-                rp: bool) -> ty::method {
-    // XXX: Are the bounds correct here?
+                rp: option<ty::region_variance>) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(ccx, m.tps),
      fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare, @~[],
@@ -549,7 +558,7 @@ fn ty_of_method(ccx: @crate_ctxt,
 
 fn ty_of_ty_method(self: @crate_ctxt,
                    m: ast::ty_method,
-                   rp: bool) -> ty::method {
+                   rp: option<ty::region_variance>) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
      fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, @~[], m.decl,
@@ -564,7 +573,8 @@ fn ty_of_ty_method(self: @crate_ctxt,
   it's bound to a valid trait type. Returns the def_id for the defining
   trait. Fails if the type is a type other than an trait type.
  */
-fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref, rp: bool)
+fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref,
+                         rp: option<ty::region_variance>)
     -> (ast::def_id, ty_param_substs_and_ty) {
 
     let sp = t.path.span, err = ~"can only implement trait types",
@@ -596,7 +606,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       some(tpt) => return tpt,
       _ => {}
     }
-    let rp = tcx.region_paramd_items.contains_key(it.id);
+    let rp = tcx.region_paramd_items.find(it.id);
     match it.node {
       ast::item_const(t, _) => {
         let typ = ccx.to_ty(empty_rscope, t);
@@ -609,7 +619,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare, @~[],
                                  decl, none, it.span);
         let tpt = {bounds: bounds,
-                   rp: false, // functions do not have a self
+                   region_param: none,
                    ty: ty::mk_fn(ccx.tcx, tofd)};
         debug!{"type of %s (id %d) is %s",
                tcx.sess.str_of(it.ident), it.id, ty_to_str(tcx, tpt.ty)};
@@ -622,7 +632,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
           none => { }
         }
 
-        let rp = tcx.region_paramd_items.contains_key(it.id);
+        let rp = tcx.region_paramd_items.find(it.id);
         let tpt = {
             let ty = {
                 let t0 = ccx.to_ty(type_rscope(rp), t);
@@ -634,7 +644,9 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
                     ty::mk_with_id(tcx, t0, def_id)
                 }
             };
-            {bounds: ty_param_bounds(ccx, tps), rp: rp, ty: ty}
+            {bounds: ty_param_bounds(ccx, tps),
+             region_param: rp,
+             ty: ty}
         };
 
         tcx.tcache.insert(local_def(it.id), tpt);
@@ -644,21 +656,27 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         // Create a new generic polytype.
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let t = ty::mk_enum(tcx, local_def(it.id), substs);
-        let tpt = {bounds: bounds, rp: rp, ty: t};
+        let tpt = {bounds: bounds,
+                   region_param: rp,
+                   ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
       ast::item_trait(tps, _, ms) => {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let t = ty::mk_trait(tcx, local_def(it.id), substs, ty::vstore_box);
-        let tpt = {bounds: bounds, rp: rp, ty: t};
+        let tpt = {bounds: bounds,
+                   region_param: rp,
+                   ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
       ast::item_class(_, tps) => {
           let {bounds,substs} = mk_substs(ccx, tps, rp);
           let t = ty::mk_class(tcx, local_def(it.id), substs);
-          let tpt = {bounds: bounds, rp: rp, ty: t};
+          let tpt = {bounds: bounds,
+                     region_param: rp,
+                     ty: t};
           tcx.tcache.insert(local_def(it.id), tpt);
           return tpt;
       }
@@ -736,7 +754,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
                                    inputs: input_tys,
                                    output: output_ty,
                                    ret_style: ast::return_val});
-    let tpt = {bounds: bounds, rp: false, ty: t_fn};
+    let tpt = {bounds: bounds, region_param: none, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
     return tpt;
 }
@@ -754,10 +772,11 @@ fn mk_ty_params(ccx: @crate_ctxt, atps: ~[ast::ty_param])
      })}
 }
 
-fn mk_substs(ccx: @crate_ctxt, atps: ~[ast::ty_param], rp: bool)
+fn mk_substs(ccx: @crate_ctxt, atps: ~[ast::ty_param],
+             rp: option<ty::region_variance>)
     -> {bounds: @~[ty::param_bounds], substs: ty::substs} {
 
     let {bounds, params} = mk_ty_params(ccx, atps);
-    let self_r = if rp {some(ty::re_bound(ty::br_self))} else {none};
+    let self_r = rscope::bound_self_region(rp);
     {bounds: bounds, substs: {self_r: self_r, self_ty: none, tps: params}}
 }

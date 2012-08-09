@@ -84,20 +84,20 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     path: @ast::path) -> ty_param_substs_and_ty {
 
     let tcx = self.tcx();
-    let {bounds: decl_bounds, rp: decl_rp, ty: decl_ty} =
+    let {bounds: decl_bounds, region_param: decl_rp, ty: decl_ty} =
         self.get_item_ty(did);
 
-    debug!{"ast_path_to_substs_and_ty: did=%? decl_rp=%b",
-           did, decl_rp};
+    debug!["ast_path_to_substs_and_ty: did=%? decl_rp=%?",
+           did, decl_rp];
 
     // If the type is parameterized by the self region, then replace self
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
     let self_r = match (decl_rp, path.rp) {
-      (false, none) => {
+      (none, none) => {
         none
       }
-      (false, some(_)) => {
+      (none, some(_)) => {
         tcx.sess.span_err(
             path.span,
             fmt!{"no region bound is allowed on `%s`, \
@@ -105,12 +105,12 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
                  ty::item_path_str(tcx, did)});
         none
       }
-      (true, none) => {
+      (some(_), none) => {
         let res = rscope.anon_region(path.span);
         let r = get_region_reporting_err(self.tcx(), path.span, res);
         some(r)
       }
-      (true, some(r)) => {
+      (some(_), some(r)) => {
         some(ast_region_to_region(self, rscope, path.span, r))
       }
     };

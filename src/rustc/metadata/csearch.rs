@@ -127,7 +127,7 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
 }
 
 fn get_region_param(cstore: metadata::cstore::cstore,
-                    def: ast::def_id) -> bool {
+                    def: ast::def_id) -> option<ty::region_variance> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_region_param(cdata, def.node);
 }
@@ -149,7 +149,9 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                  class_id, def} );
     debug!{"got field data %?", the_field};
     let ty = decoder::item_type(def, the_field, tcx, cdata);
-    return {bounds: @~[], rp: false, ty: ty};
+    return {bounds: @~[],
+            region_param: none,
+            ty: ty};
 }
 
 // Given a def_id for an impl or class, return the traits it implements,

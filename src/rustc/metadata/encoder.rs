@@ -81,8 +81,12 @@ fn encode_def_id(ebml_w: ebml::writer, id: def_id) {
 
 fn encode_region_param(ecx: @encode_ctxt, ebml_w: ebml::writer,
                        it: @ast::item) {
-    let rp = ecx.tcx.region_paramd_items.contains_key(it.id);
-    if rp { do ebml_w.wr_tag(tag_region_param) { } }
+    let opt_rp = ecx.tcx.region_paramd_items.find(it.id);
+    for opt_rp.each |rp| {
+        do ebml_w.wr_tag(tag_region_param) {
+            ty::serialize_region_variance(ebml_w, rp);
+        }
+    }
 }
 
 fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {

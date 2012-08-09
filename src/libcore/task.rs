@@ -770,6 +770,7 @@ enum AncestorList = option<unsafe::Exclusive<AncestorNode>>;
 fn access_group<U>(x: &TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
     unsafe { x.with(blk) }
 }
+
 #[inline(always)]
 fn access_ancestors<U>(x: &unsafe::Exclusive<AncestorNode>,
                        blk: fn(x: &mut AncestorNode) -> U) -> U {

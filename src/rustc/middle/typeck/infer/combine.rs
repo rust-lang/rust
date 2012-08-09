@@ -58,7 +58,8 @@ trait combine {
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
     fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>>;
-    fn substs(as: &ty::substs, bs: &ty::substs) -> cres<ty::substs>;
+    fn substs(did: ast::def_id, as: &ty::substs,
+              bs: &ty::substs) -> cres<ty::substs>;
     fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty>;
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
@@ -148,12 +149,57 @@ fn eq_opt_regions<C:combine>(
 }
 
 fn super_substs<C:combine>(
-    self: &C, a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
+    self: &C, did: ast::def_id,
+    a: &ty::substs, b: &ty::substs) -> cres<ty::substs> {
+
+    fn relate_region_param<C:combine>(
+        self: &C,
+        did: ast::def_id,
+        a: option<ty::region>,
+        b: option<ty::region>)
+        -> cres<option<ty::region>>
+    {
+        let polyty = ty::lookup_item_type(self.infcx().tcx, did);
+        match (polyty.region_param, a, b) {
+          (none, none, none) => {
+            ok(none)
+          }
+          (some(ty::rv_invariant), some(a), some(b)) => {
+            do eq_regions(self, a, b).then {
+                ok(some(a))
+            }
+          }
+          (some(ty::rv_covariant), some(a), some(b)) => {
+            do self.regions(a, b).chain |r| {
+                ok(some(r))
+            }
+          }
+          (some(ty::rv_contravariant), some(a), some(b)) => {
+            do self.contraregions(a, b).chain |r| {
+                ok(some(r))
+            }
+          }
+          (_, _, _) => {
+            // If these two substitutions are for the same type (and
+            // they should be), then the type should either
+            // consistently have a region parameter or not have a
+            // region parameter, and that should match with the
+            // polytype.
+            self.infcx().tcx.sess.bug(
+                fmt!("substitution a had opt_region %s and \
+                      b had opt_region %s with variance %?",
+                      a.to_str(self.infcx()),
+                      b.to_str(self.infcx()),
+                      polyty.region_param));
+          }
+        }
+    }
 
     do self.tps(a.tps, b.tps).chain |tps| {
         do self.self_tys(a.self_ty, b.self_ty).chain |self_ty| {
-            do eq_opt_regions(self, a.self_r, b.self_r).chain
-                |self_r| {
+            do relate_region_param(self, did,
+                                   a.self_r, b.self_r).chain |self_r|
+            {
                 ok({self_r: self_r, self_ty: self_ty, tps: tps})
             }
         }
@@ -348,7 +394,7 @@ fn super_tys<C:combine>(
       (ty::ty_enum(a_id, ref a_substs),
        ty::ty_enum(b_id, ref b_substs))
       if a_id == b_id => {
-        do self.substs(a_substs, b_substs).chain |substs| {
+        do self.substs(a_id, a_substs, b_substs).chain |substs| {
             ok(ty::mk_enum(tcx, a_id, substs))
         }
       }
@@ -356,7 +402,7 @@ fn super_tys<C:combine>(
       (ty::ty_trait(a_id, ref a_substs, a_vstore),
        ty::ty_trait(b_id, ref b_substs, b_vstore))
       if a_id == b_id => {
-        do self.substs(a_substs, b_substs).chain |substs| {
+        do self.substs(a_id, a_substs, b_substs).chain |substs| {
             do self.vstores(ty::terr_trait, a_vstore, b_vstore).chain |vs| {
                 ok(ty::mk_trait(tcx, a_id, substs, vs))
             }
@@ -365,7 +411,7 @@ fn super_tys<C:combine>(
 
       (ty::ty_class(a_id, ref a_substs), ty::ty_class(b_id, ref b_substs))
       if a_id == b_id => {
-        do self.substs(a_substs, b_substs).chain |substs| {
+        do self.substs(a_id, a_substs, b_substs).chain |substs| {
             ok(ty::mk_class(tcx, a_id, substs))
         }
       }

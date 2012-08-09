@@ -601,8 +601,10 @@ impl ebml::writer: ebml_writer_helpers {
                     self.emit_bounds(ecx, bs);
                 }
             }
-            do self.emit_rec_field(~"rp", 1u) {
-                self.emit_bool(tpbt.rp);
+            do self.emit_rec_field(~"region_param", 1u) {
+                ty::serialize_opt_region_variance(
+                    self,
+                    tpbt.region_param);
             }
             do self.emit_rec_field(~"ty", 2u) {
                 self.emit_ty(ecx, tpbt.ty);
@@ -817,8 +819,8 @@ impl ebml::ebml_deserializer: ebml_deserializer_decoder_helpers {
                 bounds: self.read_rec_field(~"bounds", 0u, || {
                     @self.read_to_vec(|| self.read_bounds(xcx) )
                 }),
-                rp: self.read_rec_field(~"rp", 1u, || {
-                    self.read_bool()
+                region_param: self.read_rec_field(~"region_param", 1u, || {
+                    ty::deserialize_opt_region_variance(self)
                 }),
                 ty: self.read_rec_field(~"ty", 2u, || {
                     self.read_ty(xcx)

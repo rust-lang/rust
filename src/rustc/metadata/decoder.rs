@@ -237,11 +237,11 @@ fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     @bounds
 }
 
-fn item_ty_region_param(item: ebml::doc) -> bool {
-    match ebml::maybe_get_doc(item, tag_region_param) {
-      some(_) => true,
-      none => false
-    }
+fn item_ty_region_param(item: ebml::doc) -> option<ty::region_variance> {
+    ebml::maybe_get_doc(item, tag_region_param).map(|doc| {
+        let d = ebml::ebml_deserializer(doc);
+        ty::deserialize_region_variance(d)
+    })
 }
 
 fn item_ty_param_count(item: ebml::doc) -> uint {
@@ -340,10 +340,14 @@ fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
         item_ty_param_bounds(item, tcx, cdata)
     } else { @~[] };
     let rp = item_ty_region_param(item);
-    return {bounds: tp_bounds, rp: rp, ty: t};
+    return {bounds: tp_bounds,
+            region_param: rp,
+            ty: t};
 }
 
-fn get_region_param(cdata: cmd, id: ast::node_id) -> bool {
+fn get_region_param(cdata: cmd, id: ast::node_id)
+    -> option<ty::region_variance> {
+
     let item = lookup_item(id, cdata.data);
     return item_ty_region_param(item);
 }
