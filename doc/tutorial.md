@@ -2434,7 +2434,7 @@ trait to_str {
 
 ## Implementation
 
-To actually implement an trait for a given type, the `impl` form
+To actually implement a trait for a given type, the `impl` form
 is used. This defines implementations of `to_str` for the `int` and
 `~str` types.
 
@@ -2533,7 +2533,7 @@ impl int: eq {
 Notice that `equals` takes an `int` argument, rather than a `self` argument, in
 an implementation for type `int`.
 
-## Casting to an trait type
+## Casting to a trait type
 
 The above allows us to define functions that polymorphically act on
 values of *an* unknown type that conforms to a given trait.
