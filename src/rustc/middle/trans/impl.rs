@@ -66,13 +66,13 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         {env: self_env(val, node_id_type(bcx, self.id), none)
          with lval_static_fn(bcx, did, callee_id)}
       }
-      typeck::method_param({trait_id:iid, method_num:off,
+      typeck::method_param({trait_id:trait_id, method_num:off,
                             param_num:p, bound_num:b}) => {
         match check bcx.fcx.param_substs {
           some(substs) => {
             let vtbl = find_vtable_in_fn_ctxt(substs, p, b);
             trans_monomorphized_callee(bcx, callee_id, self, mentry.derefs,
-                                       iid, off, vtbl)
+                                       trait_id, off, vtbl)
           }
         }
       }
@@ -195,7 +195,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
              ccx, node_id_type(bcx, callee_id))))
          with lval}
       }
-      typeck::vtable_trait(iid, tps) => {
+      typeck::vtable_trait(trait_id, tps) => {
         let {bcx, val} = trans_temp_expr(bcx, base);
         let fty = node_id_type(bcx, callee_id);
         trans_trait_callee(bcx, val, fty, n_method)
@@ -250,14 +250,15 @@ fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
 fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     -> typeck::vtable_origin {
     match vt {
-      typeck::vtable_static(iid, tys, sub) => {
+      typeck::vtable_static(trait_id, tys, sub) => {
         let tys = match fcx.param_substs {
           some(substs) => {
             vec::map(tys, |t| ty::subst_tps(fcx.ccx.tcx, substs.tys, t))
           }
           _ => tys
         };
-        typeck::vtable_static(iid, tys, resolve_vtables_in_fn_ctxt(fcx, sub))
+        typeck::vtable_static(trait_id, tys,
+                              resolve_vtables_in_fn_ctxt(fcx, sub))
       }
       typeck::vtable_param(n_param, n_bound) => {
         match check fcx.param_substs {

@@ -699,9 +699,9 @@ fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt(~"make_visit_glue");
     let mut bcx = bcx;
     assert bcx.ccx().tcx.intrinsic_defs.contains_key(@~"ty_visitor");
-    let (iid, ty) = bcx.ccx().tcx.intrinsic_defs.get(@~"ty_visitor");
+    let (trait_id, ty) = bcx.ccx().tcx.intrinsic_defs.get(@~"ty_visitor");
     let v = PointerCast(bcx, v, T_ptr(type_of::type_of(bcx.ccx(), ty)));
-    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, iid);
+    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, trait_id);
     build_return(bcx);
 }
 

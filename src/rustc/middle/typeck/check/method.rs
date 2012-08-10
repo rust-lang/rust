@@ -229,7 +229,7 @@ class lookup {
         let mut trait_bnd_idx = 0u; // count only trait bounds
         let bounds = tcx.ty_param_bounds.get(did.node);
         for vec::each(*bounds) |bound| {
-            let (iid, bound_substs) = match bound {
+            let (trait_id, bound_substs) = match bound {
               ty::bound_copy | ty::bound_send | ty::bound_const |
               ty::bound_owned => {
                 again; /* ok */
@@ -241,7 +241,7 @@ class lookup {
               }
             };
 
-            let trt_methods = ty::trait_methods(tcx, iid);
+            let trt_methods = ty::trait_methods(tcx, trait_id);
             match vec::position(*trt_methods, |m| m.ident == self.m_name) {
               none => {
                 /* check next bound */
@@ -261,7 +261,7 @@ class lookup {
 
                 self.add_candidates_from_m(
                     substs, trt_methods[pos],
-                    method_param({trait_id:iid,
+                    method_param({trait_id:trait_id,
                                   method_num:pos,
                                   param_num:n,
                                   bound_num:trait_bnd_idx}));

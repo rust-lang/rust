@@ -288,7 +288,7 @@ impl reflector {
 // Emit a sequence of calls to visit_ty::visit_foo
 fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
                                 visitor_val: ValueRef,
-                                visitor_iid: def_id) -> block {
+                                visitor_trait_id: def_id) -> block {
 
     let final = sub_block(bcx, ~"final");
     assert bcx.ccx().tcx.intrinsic_defs.contains_key(@~"tydesc");
@@ -296,7 +296,7 @@ fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
     let tydesc_ty = type_of::type_of(bcx.ccx(), tydesc_ty);
     let r = reflector({
         visitor_val: visitor_val,
-        visitor_methods: ty::trait_methods(bcx.tcx(), visitor_iid),
+        visitor_methods: ty::trait_methods(bcx.tcx(), visitor_trait_id),
         final_bcx: final,
         tydesc_ty: tydesc_ty,
         mut bcx: bcx
