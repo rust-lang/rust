@@ -291,16 +291,16 @@ enum var_value<V:copy, T:copy> {
     root(T, uint),
 }
 
-type vals_and_bindings<V:copy, T:copy> = {
-    vals: smallintmap<var_value<V, T>>,
-    mut bindings: ~[(V, var_value<V, T>)]
-};
+struct vals_and_bindings<V:copy, T:copy> {
+    vals: smallintmap<var_value<V, T>>;
+    mut bindings: ~[(V, var_value<V, T>)];
+}
 
-enum node<V:copy, T:copy> = {
-    root: V,
-    possible_types: T,
-    rank: uint,
-};
+struct node<V:copy, T:copy> {
+    root: V;
+    possible_types: T;
+    rank: uint;
+}
 
 enum infer_ctxt = @{
     tcx: ty::ctxt,
@@ -353,7 +353,10 @@ type ures = result::result<(), ty::type_err>;
 type fres<T> = result::result<T, fixup_err>;
 
 fn new_vals_and_bindings<V:copy, T:copy>() -> vals_and_bindings<V, T> {
-    {vals: smallintmap::mk(), mut bindings: ~[]}
+    vals_and_bindings {
+        vals: smallintmap::mk(),
+        mut bindings: ~[]
+    }
 }
 
 fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
@@ -727,15 +730,15 @@ impl infer_ctxt {
           some(var_val) => {
             match var_val {
               redirect(vid) => {
-                let nde = self.get(vb, vid);
-                if nde.root != vid {
+                let node = self.get(vb, vid);
+                if node.root != vid {
                     // Path compression
-                    vb.vals.insert(vid.to_uint(), redirect(nde.root));
+                    vb.vals.insert(vid.to_uint(), redirect(node.root));
                 }
-                nde
+                node
               }
               root(pt, rk) => {
-                node({root: vid, possible_types: pt, rank: rk})
+                node {root: vid, possible_types: pt, rank: rk}
               }
             }
           }
