@@ -40,7 +40,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
               }
               expr_ret(oe) => {
                 if !cx.can_ret {
-                    tcx.sess.span_err(e.span, ~"`ret` in block function");
+                    tcx.sess.span_err(e.span, ~"`return` in block function");
                 }
                 visit::visit_expr_opt(oe, cx, v);
               }
