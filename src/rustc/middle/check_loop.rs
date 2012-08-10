@@ -25,7 +25,8 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
                 v.visit_block(b, {in_loop: false, can_ret: false}, v);
               }
               expr_loop_body(@{node: expr_fn_block(_, b, _), _}) => {
-                let blk = is_blockish(ty::ty_fn_proto(ty::expr_ty(tcx, e)));
+                let blk = ty::is_blockish(ty::ty_fn_proto(ty::expr_ty(tcx,
+                                                                      e)));
                 v.visit_block(b, {in_loop: true, can_ret: blk}, v);
               }
               expr_break => {

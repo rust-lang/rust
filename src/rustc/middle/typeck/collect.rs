@@ -126,7 +126,8 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                 });
                 result_ty = some(ty::mk_fn(tcx,
                                            {purity: ast::pure_fn,
-                                            proto: ast::proto_box,
+                                            proto: ty::proto_vstore
+                                                (ty::vstore_box),
                                             bounds: @~[],
                                             inputs: args,
                                             output: enum_ty,
@@ -474,7 +475,7 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
              tps: ty::ty_params_to_tys(tcx, tps)});
         let t_ctor = ty::mk_fn(
             tcx, {purity: ast::impure_fn,
-                  proto: ast::proto_block,
+                  proto: ty::proto_vstore(ty::vstore_slice(ty::re_static)),
                   bounds: @~[],
                   inputs: t_args,
                   output: t_res,
@@ -726,7 +727,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
     let t_fn = ty::mk_fn(ccx.tcx, {purity: decl.purity,
-                                   proto: ast::proto_bare,
+                                   proto: ty::proto_bare,
                                    bounds: @~[],
                                    inputs: input_tys,
                                    output: output_ty,

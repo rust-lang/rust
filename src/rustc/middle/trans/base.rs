@@ -2043,7 +2043,8 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
       }
       ty::ty_trait(_, _) => {
         some(ty::mk_fn(tcx, {purity: ast::impure_fn,
-                             proto: ast::proto_box,
+                             proto: ty::proto_vstore(ty::vstore_slice
+                                                     (ty::re_static)),
                              bounds: @~[],
                              inputs: ~[],
                              output: ty::mk_nil(tcx),
@@ -3774,8 +3775,11 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
           ast::expr_addr_of(_, x) => { return trans_addr_of(bcx, x, dest); }
           ast::expr_fn(proto, decl, body, cap_clause) => {
-            return closure::trans_expr_fn(bcx, proto, decl, body, e.id,
-                                       cap_clause, none, dest);
+            // XXX: This syntax should be reworked a bit (in the parser I
+            // guess?); @fn() { ... } won't work.
+            return closure::trans_expr_fn(bcx, ty::ast_proto_to_proto(proto),
+                                          decl, body, e.id, cap_clause, none,
+                                          dest);
           }
           ast::expr_fn_block(decl, body, cap_clause) => {
             match check ty::get(expr_ty(bcx, e)).struct {

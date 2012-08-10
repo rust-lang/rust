@@ -188,6 +188,13 @@ fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     }
 }
 
+fn proto_ty_to_str(cx: ctxt, proto: ty::fn_proto) -> ~str {
+    match proto {
+      ty::proto_bare => ~"",
+      ty::proto_vstore(vstore) => vstore_to_str(cx, vstore)
+    }
+}
+
 fn tys_to_str(cx: ctxt, ts: ~[t]) -> ~str {
     let mut rs = ~"";
     for ts.each |t| { rs += ty_to_str(cx, t); }
@@ -211,7 +218,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         };
         modestr + ty_to_str(cx, ty)
     }
-    fn fn_to_str(cx: ctxt, purity: ast::purity, proto: ast::proto,
+    fn fn_to_str(cx: ctxt, purity: ast::purity, proto: ty::fn_proto,
                  ident: option<ast::ident>,
                  inputs: ~[arg], output: t, cf: ast::ret_style) -> ~str {
         let mut s;
@@ -220,7 +227,8 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
           ast::impure_fn => ~"",
           _ => purity_to_str(purity) + ~" "
         };
-        s += proto_to_str(proto);
+
+        s += proto_ty_to_str(cx, proto);
         match ident {
           some(i) => { s += ~" "; s += *i; }
           _ => { }
