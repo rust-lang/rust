@@ -1,42 +1,80 @@
 // A test of the macro system. Can we do HTML literals?
 
 // xfail-pretty
-// xfail-test
+
+/*
+
+This is an HTML parser written as a macro. It's all CPS, and we have
+to carry around a bunch of state. The arguments to macros all look like this:
+
+{ tag_stack* # expr* # tokens }
+
+The stack keeps track of where we are in the tree. The expr is a list
+of children of the current node. The tokens are everything that's
+left.
+
+*/
 
 macro_rules! html {
-    { $($body:tt)* } => {
-        let builder = HTMLBuilder();
-        build_html!{builder := $($body)*};
-        builder.getDoc()
-    }
+    { $($body:tt)* } => (
+        parse_node!( []; []; $($body)* )
+    )
 }
 
-macro_rules! build_html {
-    { $builder:expr := </$tag:ident> $($rest:tt)* } => {
-        $builder.endTag(stringify!($tag));
-        build_html!{ $builder := $($rest)* };
-    };
+macro_rules! parse_node {
+    {
+        [:$head:ident ($(:$head_nodes:expr),*)
+         $(:$tags:ident ($(:$tag_nodes:expr),*))*];
+        [$(:$nodes:expr),*];
+        </$tag:ident> $($rest:tt)*
+    } => (
+        parse_node!(
+            [$(: $tags ($(:$tag_nodes),*))*];
+            [$(:$head_nodes,)* :tag(stringify!($head), ~[$($nodes),*])];
+            $($rest)*
+        )
+    );
 
-    { $builder:expr := <$tag:ident> $($rest:tt)* } => {
-        $builder.beginTag(stringify!($tag));
-        build_html!{ $builder := $($rest)* };
-    };
+    {
+        [$(:$tags:ident ($(:$tag_nodes:expr),*) )*];
+        [$(:$nodes:expr),*];
+        <$tag:ident> $($rest:tt)*
+    } => (
+        parse_node!(
+            [:$tag ($(:$nodes)*) $(: $tags ($(:$tag_nodes),*) )*];
+            [];
+            $($rest)*
+        )
+    );
 
-    { $builder:expr := . $($rest:tt)* } => {
-        $builder.addText(~".");
-        build_html!{ $builder := $($rest)* };
-    };
+    {
+        [$(:$tags:ident ($(:$tag_nodes:expr),*) )*];
+        [$(:$nodes:expr),*];
+        . $($rest:tt)*
+    } => (
+        parse_node!(
+            [$(: $tags ($(:$tag_nodes),*))*];
+            [$(:$nodes,)* :text(~".")];
+            $($rest)*
+        )
+    );
 
-    { $builder:expr := $word:ident $($rest:tt)* } => {
-        $builder.addText(stringify!($word));
-        build_html!{ $builder := $($rest)* };
-    };
+    {
+        [$(:$tags:ident ($(:$tag_nodes:expr),*) )*];
+        [$(:$nodes:expr),*];
+        $word:ident $($rest:tt)*
+    } => (
+        parse_node!(
+            [$(: $tags ($(:$tag_nodes),*))*];
+            [$(:$nodes,)* :text(stringify!($word))];
+            $($rest)*
+        )
+    );
 
-    { $builder:expr := } => { }
+    { []; [:$e:expr]; } => ( $e );
 }
 
 fn main() {
-
     let page = html! {
         <html>
             <head><title>This is the title.</title></head>
@@ -45,24 +83,9 @@ fn main() {
             </body>
         </html>
     };
-
-    // When we can do this, we are successful:
-    //
-    //let page = tag(~"html", ~[tag(~"head", ~[...])])
-
 }
 
-enum HTMLFragment {    
-}
-
-struct HTMLBuilder {
-    bar: ();
-    fn getDoc() -> HTMLFragment { fail }
-    fn beginTag(tag: ~str) { }
-    fn endTag(tag: ~str) { }
-    fn addText(test: ~str) { }
-}
-
-fn HTMLBuilder() -> HTMLBuilder {
-    HTMLBuilder { bar: () }
+enum HTMLFragment {
+    tag(~str, ~[HTMLFragment]),
+    text(~str),
 }
