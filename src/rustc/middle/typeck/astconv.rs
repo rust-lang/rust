@@ -161,10 +161,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     }
 
     // Handle @, ~, and & being able to mean estrs and evecs.
-    // If a_seq_ty is a str or a vec, make it an estr/evec
+    // If a_seq_ty is a str or a vec, make it an estr/evec.
+    // Also handle function sigils.
     fn mk_maybe_vstore<AC: ast_conv, RS: region_scope copy owned>(
         self: AC, rscope: RS, a_seq_ty: ast::mt, vst: ty::vstore,
-        constr: fn(ty::mt) -> ty::t) -> ty::t {
+        span: span, constr: fn(ty::mt) -> ty::t) -> ty::t {
 
         let tcx = self.tcx();
 
@@ -182,6 +183,25 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
               }
               _ => ()
             }
+          }
+          ast::ty_fn(ast::proto_block, ast_bounds, ast_fn_decl) => {
+            let new_proto;
+            match vst {
+                ty::vstore_fixed(_) => {
+                    tcx.sess.span_err(span, ~"fixed-length functions are not \
+                                              allowed");
+                    new_proto = ast::proto_block;
+                }
+                ty::vstore_uniq => new_proto = ast::proto_uniq,
+                ty::vstore_box => new_proto = ast::proto_box,
+                ty::vstore_slice(_) => new_proto = ast::proto_block
+            }
+
+            // Run through the normal function type conversion process.
+            let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
+            let fn_decl = ty_of_fn_decl(self, rscope, new_proto, bounds,
+                                        ast_fn_decl, none);
+            return ty::mk_fn(tcx, fn_decl);
           }
           _ => ()
         }
@@ -227,11 +247,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
       ast::ty_nil => ty::mk_nil(tcx),
       ast::ty_bot => ty::mk_bot(tcx),
       ast::ty_box(mt) => {
-        mk_maybe_vstore(self, rscope, mt, ty::vstore_box,
+        mk_maybe_vstore(self, rscope, mt, ty::vstore_box, ast_ty.span,
                         |tmt| ty::mk_box(tcx, tmt))
       }
       ast::ty_uniq(mt) => {
-        mk_maybe_vstore(self, rscope, mt, ty::vstore_uniq,
+        mk_maybe_vstore(self, rscope, mt, ty::vstore_uniq, ast_ty.span,
                         |tmt| ty::mk_uniq(tcx, tmt))
       }
       ast::ty_vec(mt) => {
@@ -246,8 +266,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
       }
       ast::ty_rptr(region, mt) => {
         let r = ast_region_to_region(self, rscope, ast_ty.span, region);
-        mk_maybe_vstore(self, in_anon_rscope(rscope, r), mt,
+        mk_maybe_vstore(self,
+                        in_anon_rscope(rscope, r),
+                        mt,
                         ty::vstore_slice(r),
+                        ast_ty.span,
                         |tmt| ty::mk_rptr(tcx, r, tmt))
       }
       ast::ty_tup(fields) => {
@@ -322,6 +345,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
       ast::ty_fixed_length(a_t, some(u)) => {
         mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
                         ty::vstore_fixed(u),
+                        ast_ty.span,
                         |ty| {
                             tcx.sess.span_err(
                                 a_t.span,
