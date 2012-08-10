@@ -396,6 +396,23 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
 
+    struct drop_state {
+        p: &packet_header;
+
+        drop {
+            if task::failing() {
+                io::println("failing!");
+                self.p.state = terminated;
+                let old_task = swap_task(self.p.blocked_task, ptr::null());
+                if !old_task.is_null() {
+                    rustrt::rust_task_deref(old_task);
+                }
+            }
+        }
+    };
+
+    let _drop_state = drop_state { p: &p.header };
+
     // optimistic path
     match p.header.state {
       full => {
