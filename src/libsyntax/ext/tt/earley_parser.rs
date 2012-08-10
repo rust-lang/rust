@@ -134,14 +134,16 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
 
 enum parse_result {
     success(hashmap<ident, @named_match>),
-    failure(codemap::span, ~str)
+    failure(codemap::span, ~str),
+    error(codemap::span, ~str)
 }
 
 fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
                  ms: ~[matcher]) -> hashmap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
-      failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
+      failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
+      error(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
     }
 }
 
@@ -262,7 +264,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     nameize(sess, ms,
                             vec::map(eof_eis[0u].matches, |dv| dv.pop())));
             } else if eof_eis.len() > 1u {
-                return failure(sp, ~"Ambiguity: multiple successful parses");
+                return error(sp, ~"Ambiguity: multiple successful parses");
             } else {
                 return failure(sp, ~"Unexpected end of macro invocation");
             }
@@ -276,7 +278,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                       }
                       _ => fail
                     } }), ~" or ");
-                return failure(sp, fmt!{
+                return error(sp, fmt!{
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
                     nts, next_eis.len()});
