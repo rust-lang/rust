@@ -185,10 +185,12 @@ impl reflector {
               ast::extern_fn => 3u
             };
             let protoval = match fty.proto {
-              ast::proto_bare => 0u,
-              ast::proto_uniq => 2u,
-              ast::proto_box => 3u,
-              ast::proto_block => 4u
+              ty::proto_bare => 0u,
+              ty::proto_vstore(ty::vstore_uniq) => 2u,
+              ty::proto_vstore(ty::vstore_box) => 3u,
+              ty::proto_vstore(ty::vstore_slice(_)) => 4u,
+              ty::proto_vstore(ty::vstore_fixed(_)) =>
+                fail ~"fixed unexpected"
             };
             let retval = match fty.ret_style {
               ast::noreturn => 0u,

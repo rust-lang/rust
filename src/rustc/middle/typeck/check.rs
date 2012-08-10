@@ -1116,9 +1116,14 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
     }
 
+    enum fn_or_ast_proto {
+        foap_fn_proto(ty::fn_proto),
+        foap_ast_proto(ast::proto)
+    }
+
     fn check_expr_fn(fcx: @fn_ctxt,
                      expr: @ast::expr,
-                     proto: ast::proto,
+                     fn_or_ast_proto: fn_or_ast_proto,
                      decl: ast::fn_decl,
                      body: ast::blk,
                      is_loop_body: bool,
@@ -1143,9 +1148,29 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
         };
 
+        let ast_proto;
+        match fn_or_ast_proto {
+            foap_fn_proto(fn_proto) => {
+                // Generate a fake AST prototype. We'll fill in the type with
+                // the real one later.
+                // XXX: This is a hack.
+                ast_proto = ast::proto_box;
+            }
+            foap_ast_proto(existing_ast_proto) => {
+                ast_proto = existing_ast_proto;
+            }
+        }
+
         // construct the function type
-        let fn_ty = astconv::ty_of_fn_decl(fcx, fcx, proto, @~[],
-                                           decl, expected_tys);
+        let mut fn_ty = astconv::ty_of_fn_decl(fcx, fcx, ast_proto, @~[],
+                                               decl, expected_tys);
+
+        // Patch up the function declaration, if necessary.
+        match fn_or_ast_proto {
+            foap_fn_proto(fn_proto) => fn_ty.proto = fn_proto,
+            foap_ast_proto(_) => {}
+        }
+
         let fty = ty::mk_fn(tcx, fn_ty);
 
         debug!{"check_expr_fn_with_unifier %s fty=%s",
@@ -1485,15 +1510,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = alt::check_alt(fcx, expr, discrim, arms);
       }
       ast::expr_fn(proto, decl, body, cap_clause) => {
-        check_expr_fn(fcx, expr, proto, decl, body, false, expected);
+        check_expr_fn(fcx, expr, foap_ast_proto(proto), decl, body, false,
+                      expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(decl, body, cap_clause) => {
          // Take the prototype from the expected type, but default to block:
           let proto = unpack_expected(fcx, expected, |sty|
               match sty { ty::ty_fn({proto, _}) => some(proto), _ => none }
-          ).get_default(ast::proto_box);
-        check_expr_fn(fcx, expr, proto, decl, body, false, expected);
+          ).get_default(ty::proto_vstore(ty::vstore_box));
+        check_expr_fn(fcx, expr, foap_fn_proto(proto), decl, body, false,
+                      expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_loop_body(b) => {
@@ -1525,7 +1552,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         match check b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
-            check_expr_fn(fcx, b, proto, decl, body, true, some(inner_ty));
+            check_expr_fn(fcx, b, foap_fn_proto(proto), decl, body, true,
+                          some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
@@ -1553,7 +1581,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         match check b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
-            check_expr_fn(fcx, b, proto, decl, body, true, some(inner_ty));
+            check_expr_fn(fcx, b, foap_fn_proto(proto), decl, body, true,
+                          some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
@@ -2438,7 +2467,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       ~"frame_address" => {
         let fty = ty::mk_fn(ccx.tcx, {
             purity: ast::impure_fn,
-            proto: ast::proto_block,
+            proto: ty::proto_vstore(ty::vstore_slice(ty::re_static)),
             bounds: @~[],
             inputs: ~[{
                 mode: ast::expl(ast::by_val),
@@ -2458,7 +2487,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       }
     };
     let fty = ty::mk_fn(tcx, {purity: ast::impure_fn,
-                              proto: ast::proto_bare,
+                              proto: ty::proto_bare,
                               bounds: @~[],
                               inputs: inputs, output: output,
                               ret_style: ast::return_val});

@@ -383,18 +383,22 @@ impl &mem_categorization_ctxt {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
             let proto = ty::ty_fn_proto(ty);
             match proto {
-              ast::proto_block => {
+              ty::proto_vstore(ty::vstore_slice(_)) => {
                 let upcmt = self.cat_def(id, span, expr_ty, *inner);
                 @{id:id, span:span,
                   cat:cat_stack_upvar(upcmt), lp:upcmt.lp,
                   mutbl:upcmt.mutbl, ty:upcmt.ty}
               }
-              ast::proto_bare | ast::proto_uniq | ast::proto_box => {
+              ty::proto_bare |
+              ty::proto_vstore(ty::vstore_uniq) |
+              ty::proto_vstore(ty::vstore_box) => {
                 // FIXME #2152 allow mutation of moved upvars
                 @{id:id, span:span,
                   cat:cat_special(sk_heap_upvar), lp:none,
                   mutbl:m_imm, ty:expr_ty}
               }
+              ty::proto_vstore(ty::vstore_fixed(_)) =>
+                fail ~"fixed vstore not allowed here"
             }
           }
 
