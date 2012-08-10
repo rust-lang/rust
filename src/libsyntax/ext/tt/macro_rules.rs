@@ -6,7 +6,7 @@ import parse::lexer::{new_tt_reader, reader};
 import parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 import parse::parser::{parser, SOURCE_FILE};
 import earley_parser::{parse, parse_or_else, success, failure, named_match,
-                       matched_seq, matched_nonterminal};
+                       matched_seq, matched_nonterminal, error};
 import std::map::hashmap;
 
 fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
@@ -80,7 +80,8 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                   failure(sp, msg) => if sp.lo >= best_fail_spot.lo {
                     best_fail_spot = sp;
                     best_fail_msg = msg;
-                  }
+                  },
+                  error(sp, msg) => cx.span_fatal(sp, msg)
                 }
               }
               _ => cx.bug(~"non-matcher found in parsed lhses")
