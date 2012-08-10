@@ -8,7 +8,7 @@
 export condvar, semaphore, mutex, rwlock;
 
 // FIXME (#3119) This shouldn't be a thing exported from core.
-import arc::exclusive;
+import unsafe::exclusive;
 
 /****************************************************************************
  * Internals
@@ -292,14 +292,14 @@ struct rwlock_inner {
 struct rwlock {
     /* priv */ order_lock:  semaphore;
     /* priv */ access_lock: sem<waitqueue>;
-    /* priv */ state:       arc::exclusive<rwlock_inner>;
+    /* priv */ state:       exclusive<rwlock_inner>;
 }
 
 /// Create a new rwlock.
 fn rwlock() -> rwlock {
     rwlock { order_lock: semaphore(1), access_lock: new_sem_and_signal(1),
-             state: arc::exclusive(rwlock_inner { read_mode:  false,
-                                                  read_count: 0 }) }
+             state: exclusive(rwlock_inner { read_mode:  false,
+                                             read_count: 0 }) }
 }
 
 impl &rwlock {

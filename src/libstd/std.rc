@@ -45,6 +45,10 @@ mod uv_global_loop;
 mod c_vec;
 mod timer;
 
+// Concurrency
+
+mod sync;
+mod arc;
 
 // Collections
 

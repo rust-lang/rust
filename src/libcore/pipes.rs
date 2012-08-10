@@ -1064,7 +1064,7 @@ impl<T: send> port<T>: selectable {
 }
 
 /// A channel that can be shared between many senders.
-type shared_chan<T: send> = arc::exclusive<chan<T>>;
+type shared_chan<T: send> = unsafe::exclusive<chan<T>>;
 
 impl<T: send> shared_chan<T>: channel<T> {
     fn send(+x: T) {
@@ -1088,7 +1088,7 @@ impl<T: send> shared_chan<T>: channel<T> {
 
 /// Converts a `chan` into a `shared_chan`.
 fn shared_chan<T:send>(+c: chan<T>) -> shared_chan<T> {
-    arc::exclusive(c)
+    unsafe::exclusive(c)
 }
 
 /// Receive a message from one of two endpoints.

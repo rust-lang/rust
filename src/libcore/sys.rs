@@ -7,10 +7,7 @@ export min_align_of;
 export pref_align_of;
 export refcount;
 export log_str;
-export little_lock, methods;
 export shape_eq, shape_lt, shape_le;
-
-import task::atomically;
 
 enum type_desc = {
     size: uint,
@@ -18,16 +15,9 @@ enum type_desc = {
     // Remaining fields not listed
 };
 
-type rust_little_lock = *libc::c_void;
-
 #[abi = "cdecl"]
 extern mod rustrt {
     pure fn shape_log_str(t: *sys::type_desc, data: *()) -> ~str;
-
-    fn rust_create_little_lock() -> rust_little_lock;
-    fn rust_destroy_little_lock(lock: rust_little_lock);
-    fn rust_lock_little_lock(lock: rust_little_lock);
-    fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
 #[abi = "rust-intrinsic"]
@@ -95,30 +85,6 @@ pure fn log_str<T>(t: T) -> ~str {
     unsafe {
         let data_ptr: *() = unsafe::reinterpret_cast(ptr::addr_of(t));
         rustrt::shape_log_str(get_type_desc::<T>(), data_ptr)
-    }
-}
-
-class little_lock {
-    let l: rust_little_lock;
-    new() {
-        self.l = rustrt::rust_create_little_lock();
-    }
-    drop { rustrt::rust_destroy_little_lock(self.l); }
-}
-
-impl little_lock {
-    unsafe fn lock<T>(f: fn() -> T) -> T {
-        class unlock {
-            let l: rust_little_lock;
-            new(l: rust_little_lock) { self.l = l; }
-            drop { rustrt::rust_unlock_little_lock(self.l); }
-        }
-
-        do atomically {
-            rustrt::rust_lock_little_lock(self.l);
-            let _r = unlock(self.l);
-            f()
-        }
     }
 }
 
