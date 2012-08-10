@@ -158,7 +158,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           let (bt, bv) = const_autoderef(cx, bt, bv);
           let fields = match ty::get(bt).struct {
               ty::ty_rec(fs) => fs,
-              ty::ty_class(did, substs) =>
+              ty::ty_class(did, ref substs) =>
                   ty::class_items_as_mutable_fields(cx.tcx, did, substs),
               _ => cx.sess.span_bug(e.span,
                                     ~"field access on unknown type in const"),

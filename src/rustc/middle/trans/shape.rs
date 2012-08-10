@@ -324,7 +324,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
       ty::ty_trait(_, _) => ~[shape_box_fn],
-      ty::ty_class(did, substs) => {
+      ty::ty_class(did, ref substs) => {
         // same as records, unless there's a dtor
         let tps = substs.tps;
         let m_dtor_did = ty::ty_dtor(ccx.tcx, did);
@@ -378,7 +378,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut enum_variants = ~[];
     while i < ccx.shape_cx.tag_order.len() {
         let {did, substs} = ccx.shape_cx.tag_order[i];
-        let variants = @ty::substd_enum_variants(ccx.tcx, did, substs);
+        let variants = @ty::substd_enum_variants(ccx.tcx, did, &substs);
         do vec::iter(*variants) |v| {
             offsets += ~[vec::len(data) as u16];
 
@@ -678,7 +678,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(t) { return cx.enum_sizes.get(t); }
     match ty::get(t).struct {
-      ty::ty_enum(tid, substs) => {
+      ty::ty_enum(tid, ref substs) => {
         // Compute max(variant sizes).
         let mut max_size = 0u;
         let variants = ty::enum_variants(cx.tcx, tid);
@@ -723,7 +723,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           }
           // Reduce a class type to a record type in which all the fields are
           // simplified
-          ty::ty_class(did, substs) => {
+          ty::ty_class(did, ref substs) => {
             let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
                 // remember the drop flag
                   ~[{ident: @~"drop", mt: {ty:

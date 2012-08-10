@@ -67,7 +67,7 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 
     // Take the enum type params out of `expected`.
     match structure_of(pcx.fcx, pat.span, expected) {
-      ty::ty_enum(_, expected_substs) => {
+      ty::ty_enum(_, ref expected_substs) => {
         // check that the type of the value being matched is a subtype
         // of the type of the pattern:
         let pat_ty = fcx.node_ty(pat.id);
@@ -236,7 +236,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         // Grab the class data that we care about.
         let class_fields, class_id, substitutions;
         match structure_of(fcx, pat.span, expected) {
-            ty::ty_class(cid, substs) => {
+            ty::ty_class(cid, ref substs) => {
                 class_id = cid;
                 substitutions = substs;
                 class_fields = ty::lookup_class_fields(tcx, class_id);

@@ -140,7 +140,7 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                     let seen = @cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
-                            let t = ty::subst(cx.ccx.tcx, substs, aty);
+                            let t = ty::subst(cx.ccx.tcx, &substs, aty);
                             type_needs_inner(cx, use, t, seen);
                         }
                     }

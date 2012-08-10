@@ -186,8 +186,7 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
 
         let substs = { self_r: none, self_ty: some(self_param),
                        tps: non_shifted_trait_tps + shifted_method_tps };
-
-        let ty = ty::subst(ccx.tcx, substs, ty::mk_fn(ccx.tcx, m.fty));
+        let ty = ty::subst(ccx.tcx, &substs, ty::mk_fn(ccx.tcx, m.fty));
         let trait_ty = ty::node_id_to_type(ccx.tcx, id);
         let bounds = @(*trait_bounds + ~[@~[ty::bound_trait(trait_ty)]]
                        + *m.tps);
@@ -293,7 +292,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
             tps: vec::append(trait_substs.tps, dummy_tps)
         };
         let trait_fty = ty::mk_fn(tcx, trait_m.fty);
-        ty::subst(tcx, substs, trait_fty)
+        ty::subst(tcx, &substs, trait_fty)
     };
     require_same_types(
         tcx, none, sp, impl_fty, trait_fty,

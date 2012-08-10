@@ -20,7 +20,7 @@ fn replace_bound_regions_in_fn_ty(
       none => none
     };
 
-    let mut all_tys = ty::tys_in_fn_ty(*fn_ty);
+    let mut all_tys = ty::tys_in_fn_ty(fn_ty);
 
     for self_ty.each |t| { vec::push(all_tys, t) }
 
@@ -35,7 +35,8 @@ fn replace_bound_regions_in_fn_ty(
         debug!{"br=%?", br};
         mapf(br)
     };
-    let t_fn = ty::fold_sty_to_ty(tcx, ty::ty_fn(*fn_ty), |t| {
+    let ty_fn = ty::ty_fn(*fn_ty);
+    let t_fn = ty::fold_sty_to_ty(tcx, &ty_fn, |t| {
         replace_bound_regions(tcx, isr, t)
     });
     let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, t));

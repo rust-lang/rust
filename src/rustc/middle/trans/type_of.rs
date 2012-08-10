@@ -179,11 +179,11 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_enum(did, _) => {
         fill_type_of_enum(cx, did, t, llty);
       }
-      ty::ty_class(did, ts) => {
+      ty::ty_class(did, ref substs) => {
         // Only instance vars are record fields at runtime.
         let fields = ty::lookup_class_fields(cx.tcx, did);
         let mut tys = do vec::map(fields) |f| {
-            let t = ty::lookup_field_type(cx.tcx, did, f.id, ts);
+            let t = ty::lookup_field_type(cx.tcx, did, f.id, substs);
             type_of(cx, t)
         };
 
