@@ -62,22 +62,79 @@ to pump constraints along and reach a fixed point, but it does impose
 some heuristics in the case where the user is relating two type
 variables A <: B.
 
-The key point when relating type variables is that we do not know what
-type the variable represents, but we must make some change that will
-ensure that, whatever types A and B are resolved to, they are resolved
-to types which have a subtype relation.
+Combining two variables such that variable A will forever be a subtype
+of variable B is the trickiest part of the algorithm because there is
+often no right choice---that is, the right choice will depend on
+future constraints which we do not yet know. The problem comes about
+because both A and B have bounds that can be adjusted in the future.
+Let's look at some of the cases that can come up.
 
-There are basically two options here:
+Imagine, to start, the best case, where both A and B have an upper and
+lower bound (that is, the bounds are not top nor bot respectively). In
+that case, if we're lucky, A.ub <: B.lb, and so we know that whatever
+A and B should become, they will forever have the desired subtyping
+relation.  We can just leave things as they are.
 
-- we can merge A and B.  Basically we make them the same variable.
-  The lower bound of this new variable is LUB(LB(A), LB(B)) and
-  the upper bound is GLB(UB(A), UB(B)).
+### Option 1: Unify
 
-- we can adjust the bounds of A and B.  Because we do not allow
-  type variables to appear in each other's bounds, this only works if A
-  and B have appropriate bounds.  But if we can ensure that UB(A) <: LB(B),
-  then we know that whatever happens A and B will be resolved to types with
-  the appropriate relation.
+However, suppose that A.ub is *not* a subtype of B.lb.  In
+that case, we must make a decision.  One option is to unify A
+and B so that they are one variable whose bounds are:
+
+    UB = GLB(A.ub, B.ub)
+    LB = LUB(A.lb, B.lb)
+
+(Note that we will have to verify that LB <: UB; if it does not, the
+types are not intersecting and there is an error) In that case, A <: B
+holds trivially because A==B.  However, we have now lost some
+flexibility, because perhaps the user intended for A and B to end up
+as different types and not the same type.
+
+Pictorally, what this does is to take two distinct variables with
+(hopefully not completely) distinct type ranges and produce one with
+the intersection.
+
+                      B.ub                  B.ub
+                       /\                    /
+               A.ub   /  \           A.ub   /
+               /   \ /    \              \ /
+              /     X      \              UB
+             /     / \      \            / \
+            /     /   /      \          /   /
+            \     \  /       /          \  /
+             \      X       /             LB
+              \    / \     /             / \
+               \  /   \   /             /   \
+               A.lb    B.lb          A.lb    B.lb
+
+
+### Option 2: Relate UB/LB
+
+Another option is to keep A and B as distinct variables but set their
+bounds in such a way that, whatever happens, we know that A <: B will hold.
+This can be achieved by ensuring that A.ub <: B.lb.  In practice there
+are two ways to do that, depicted pictorally here:
+
+        Before                Option #1            Option #2
+
+                 B.ub                B.ub                B.ub
+                  /\                 /  \                /  \
+          A.ub   /  \        A.ub   /(B')\       A.ub   /(B')\
+          /   \ /    \           \ /     /           \ /     /
+         /     X      \         __UB____/             UB    /
+        /     / \      \       /  |                   |    /
+       /     /   /      \     /   |                   |   /
+       \     \  /       /    /(A')|                   |  /
+        \      X       /    /     LB            ______LB/
+         \    / \     /    /     / \           / (A')/ \
+          \  /   \   /     \    /   \          \    /   \
+          A.lb    B.lb       A.lb    B.lb        A.lb    B.lb
+
+In these diagrams, UB and LB are defined as before.  As you can see,
+the new ranges `A'` and `B'` are quite different from the range that
+would be produced by unifying the variables.
+
+### What we do now
 
 Our current technique is to *try* (transactionally) to relate the
 existing bounds of A and B, if there are any (i.e., if `UB(A) != top
@@ -104,6 +161,17 @@ In principle, the inferencer ought to find that the parameter `T` to
 because the type variable `T` is merged with the type variable for
 `X`, and thus inherits its UB/LB of `@mut int`.  This leaves no
 flexibility for `T` to later adjust to accommodate `@int`.
+
+### What to do when not all bounds are present
+
+In the prior discussion we assumed that A.ub was not top and B.lb was
+not bot.  Unfortunately this is rarely the case.  Often type variables
+have "lopsided" bounds.  For example, if a variable in the program has
+been initialized but has not been used, then its corresponding type
+variable will have a lower bound but no upper bound.  When that
+variable is then used, we would like to know its upper bound---but we
+don't have one!  In this case we'll do different things depending on
+how the variable is being used.
 
 ## Transactional support
 
@@ -155,6 +223,17 @@ in `A` and `B` being merged and the result being `A`.
 We have a notion of assignability which differs somewhat from
 subtyping; in particular it may cause region borrowing to occur.  See
 the big comment later in this file on Type Assignment for specifics.
+
+### In conclusion
+
+I showed you three ways to relate `A` and `B`.  There are also more,
+of course, though I'm not sure if there are any more sensible options.
+The main point is that there are various options, each of which
+produce a distinct range of types for `A` and `B`.  Depending on what
+the correct values for A and B are, one of these options will be the
+right choice: but of course we don't know the right values for A and B
+yet, that's what we're trying to find!  In our code, we opt to unify
+(Option #1).
 
 # Implementation details
 
@@ -842,7 +921,10 @@ impl infer_ctxt {
         }}}}}
     }
 
-    fn vars<V:copy vid, T:copy to_str st>(
+    /// Ensure that variable A is a subtype of variable B.  This is a
+    /// subtle and tricky process, as described in detail at the top
+    /// of this file.
+    fn var_sub_var<V:copy vid, T:copy to_str st>(
         vb: &vals_and_bindings<V, bounds<T>>,
         a_id: V, b_id: V) -> ures {
 
@@ -955,7 +1037,7 @@ impl infer_ctxt {
     }
 
     /// make variable a subtype of T
-    fn vart<V: copy vid, T: copy to_str st>(
+    fn var_sub_t<V: copy vid, T: copy to_str st>(
         vb: &vals_and_bindings<V, bounds<T>>,
         a_id: V, b: T) -> ures {
 
@@ -963,7 +1045,7 @@ impl infer_ctxt {
         let a_id = nde_a.root;
         let a_bounds = nde_a.possible_types;
 
-        debug!{"vart(%s=%s <: %s)",
+        debug!{"var_sub_t(%s=%s <: %s)",
                a_id.to_str(), a_bounds.to_str(self),
                b.to_str(self)};
         let b_bounds = {lb: none, ub: some(b)};
@@ -971,7 +1053,7 @@ impl infer_ctxt {
                                       nde_a.rank)
     }
 
-    fn vart_integral<V: copy vid>(
+    fn var_sub_t_integral<V: copy vid>(
         vb: &vals_and_bindings<V, int_ty_set>,
         a_id: V, b: ty::t) -> ures {
 
@@ -992,7 +1074,7 @@ impl infer_ctxt {
     }
 
     /// make T a subtype of variable
-    fn tvar<V: copy vid, T: copy to_str st>(
+    fn t_sub_var<V: copy vid, T: copy to_str st>(
         vb: &vals_and_bindings<V, bounds<T>>,
         a: T, b_id: V) -> ures {
 
@@ -1001,14 +1083,14 @@ impl infer_ctxt {
         let b_id = nde_b.root;
         let b_bounds = nde_b.possible_types;
 
-        debug!{"tvar(%s <: %s=%s)",
+        debug!{"t_sub_var(%s <: %s=%s)",
                a.to_str(self),
                b_id.to_str(), b_bounds.to_str(self)};
         self.set_var_to_merged_bounds(vb, b_id, a_bounds, b_bounds,
                                       nde_b.rank)
     }
 
-    fn tvar_integral<V: copy vid>(
+    fn t_sub_var_integral<V: copy vid>(
         vb: &vals_and_bindings<V, int_ty_set>,
         a: ty::t, b_id: V) -> ures {
 
@@ -1771,8 +1853,8 @@ fn super_tys<C:combine>(
       }
       (ty::ty_int(_), ty::ty_var_integral(b_id)) |
       (ty::ty_uint(_), ty::ty_var_integral(b_id)) => {
-        self.infcx().tvar_integral(&self.infcx().ty_var_integral_bindings,
-                                   a, b_id)
+        self.infcx().t_sub_var_integral(&self.infcx().ty_var_integral_bindings,
+                                        a, b_id)
             .then(|| ok(a) )
       }
 
@@ -1914,20 +1996,20 @@ impl sub: combine {
         do indent {
             match (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) => {
-                do self.infcx().vars(&self.region_var_bindings,
-                                     a_id, b_id).then {
+                do self.infcx().var_sub_var(&self.region_var_bindings,
+                                            a_id, b_id).then {
                     ok(a)
                 }
               }
               (ty::re_var(a_id), _) => {
-                do self.infcx().vart(&self.region_var_bindings,
-                                     a_id, b).then {
+                do self.infcx().var_sub_t(&self.region_var_bindings,
+                                          a_id, b).then {
                       ok(a)
                   }
               }
               (_, ty::re_var(b_id)) => {
-                  do self.infcx().tvar(&self.region_var_bindings,
-                                       a, b_id).then {
+                  do self.infcx().t_sub_var(&self.region_var_bindings,
+                                            a, b_id).then {
                       ok(a)
                   }
               }
@@ -1988,16 +2070,16 @@ impl sub: combine {
                 ok(a)
               }
               (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-                self.infcx().vars(&self.ty_var_bindings,
-                                  a_id, b_id).then(|| ok(a) )
+                self.infcx().var_sub_var(&self.ty_var_bindings,
+                                         a_id, b_id).then(|| ok(a) )
               }
               (ty::ty_var(a_id), _) => {
-                self.infcx().vart(&self.ty_var_bindings,
-                                  a_id, b).then(|| ok(a) )
+                self.infcx().var_sub_t(&self.ty_var_bindings,
+                                       a_id, b).then(|| ok(a) )
               }
               (_, ty::ty_var(b_id)) => {
-                self.infcx().tvar(&self.ty_var_bindings,
-                                  a, b_id).then(|| ok(a) )
+                self.infcx().t_sub_var(&self.ty_var_bindings,
+                                       a, b_id).then(|| ok(a) )
               }
               (_, ty::ty_bot) => {
                 err(ty::terr_sorts(b, a))
@@ -2591,10 +2673,10 @@ fn lattice_vars<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
 
     // Otherwise, we need to merge A and B into one variable.  We can
     // then use either variable as an upper bound:
-    self.infcx().vars(vb, a_vid, b_vid).then(|| ok(a_t) )
+    self.infcx().var_sub_var(vb, a_vid, b_vid).then(|| ok(a_t) )
 }
 
-fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
+fn lattice_var_and_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     self: &L, vb: &vals_and_bindings<V, bounds<T>>,
     +a_id: V, +b: T,
     c_ts: fn(T, T) -> cres<T>) -> cres<T> {
@@ -2606,7 +2688,7 @@ fn lattice_var_t<V:copy vid, T:copy to_str st, L:lattice_ops combine>(
     // The comments in this function are written for LUB, but they
     // apply equally well to GLB if you inverse upper/lower/sub/super/etc.
 
-    debug!{"%s.lattice_vart(%s=%s <: %s)",
+    debug!{"%s.lattice_var_and_t(%s=%s <: %s)",
            self.tag(),
            a_id.to_str(), a_bounds.to_str(self.infcx()),
            b.to_str(self.infcx())};
