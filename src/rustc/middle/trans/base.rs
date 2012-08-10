@@ -745,10 +745,10 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_opaque_closure_ptr(ck) => {
         closure::make_opaque_cbox_free_glue(bcx, ck, v)
       }
-      ty::ty_class(did,substs) => {
+      ty::ty_class(did, ref substs) => {
         // Call the dtor if there is one
         do option::map_default(ty::ty_dtor(bcx.tcx(), did), bcx) |dt_id| {
-          trans_class_drop(bcx, v, dt_id, did, substs)
+            trans_class_drop(bcx, v, dt_id, did, substs)
         }
       }
       _ => bcx
@@ -758,7 +758,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
 
 fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
                     class_did: ast::def_id,
-                    substs: ty::substs) -> block {
+                    substs: &ty::substs) -> block {
   let drop_flag = GEPi(bcx, v0, ~[0u, 0u]);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
     let mut bcx = cx;
@@ -805,7 +805,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_unboxed_vec(_) => {
         tvec::make_drop_glue_unboxed(bcx, v0, t)
       }
-      ty::ty_class(did, substs) => {
+      ty::ty_class(did, ref substs) => {
         let tcx = bcx.tcx();
         match ty::ty_dtor(tcx, did) {
           some(dtor) => {
@@ -1081,7 +1081,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         }
         return next_cx;
       }
-      ty::ty_class(did, substs) => {
+      ty::ty_class(did, ref substs) => {
           // Take the drop bit into account
           let classptr = if is_some(ty::ty_dtor(cx.tcx(), did)) {
                   GEPi(cx, av, ~[0u, 1u])
@@ -1821,7 +1821,7 @@ fn autoderef(cx: block, e_id: ast::node_id,
             t1 = mt.ty;
             v1 = v;
           }
-          ty::ty_enum(did, substs) => {
+          ty::ty_enum(did, ref substs) => {
             let variants = ty::enum_variants(ccx.tcx, did);
             if (*variants).len() != 1u || variants[0].args.len() != 1u {
                 break;
@@ -2034,7 +2034,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
       ty::ty_box(mt) => {
         some(ty::mk_opaque_box(tcx))
       }
-      ty::ty_fn(fty) => {
+      ty::ty_fn(ref fty) => {
         some(ty::mk_fn(tcx, {purity: ast::impure_fn,
                              proto: fty.proto,
                              bounds: @~[],
@@ -2562,7 +2562,7 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
     let mut llderef = false;
     let fields = match ty::get(ty).struct {
        ty::ty_rec(fs) => fs,
-       ty::ty_class(did, substs) => {
+       ty::ty_class(did, ref substs) => {
          if option::is_some(ty::ty_dtor(bcx.tcx(), did)) {
            llderef = true;
          }
@@ -3505,7 +3505,7 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
     // Get the class ID and its fields.
     let class_fields, class_id, substitutions;
     match ty::get(struct_type).struct {
-        ty::ty_class(existing_class_id, existing_substitutions) => {
+        ty::ty_class(existing_class_id, ref existing_substitutions) => {
             class_id = existing_class_id;
             substitutions = existing_substitutions;
             class_fields = ty::lookup_class_fields(type_context, class_id);
@@ -4858,8 +4858,9 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   else { selfptr };
 
   // initialize fields to zero
+  let dsubsts = dummy_substs(psubsts.tys);
   let fields = ty::class_items_as_mutable_fields(bcx_top.tcx(), parent_id,
-                                         dummy_substs(psubsts.tys));
+                                                 &dsubsts);
   let mut bcx = bcx_top;
   // Initialize fields to zero so init assignments can validly
   // drop their LHS

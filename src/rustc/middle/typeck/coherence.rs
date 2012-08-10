@@ -410,7 +410,7 @@ class CoherenceChecker {
             tps: type_parameters
         };
 
-        return subst(self.crate_context.tcx, substitutions, polytype.ty);
+        return subst(self.crate_context.tcx, &substitutions, polytype.ty);
     }
 
     fn get_self_type_for_implementation(implementation: @Impl)

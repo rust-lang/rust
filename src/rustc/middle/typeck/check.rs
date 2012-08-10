@@ -547,13 +547,13 @@ impl @fn_ctxt {
         self.node_types.insert(node_id, ty);
     }
     fn write_substs(node_id: ast::node_id, +substs: ty::substs) {
-        if !ty::substs_is_noop(substs) {
+        if !ty::substs_is_noop(&substs) {
             self.node_type_substs.insert(node_id, substs);
         }
     }
     fn write_ty_substs(node_id: ast::node_id, ty: ty::t,
                        +substs: ty::substs) {
-        let ty = ty::subst(self.tcx(), substs, ty);
+        let ty = ty::subst(self.tcx(), &substs, ty);
         self.write_ty(node_id, ty);
         self.write_substs(node_id, substs);
     }
@@ -604,7 +604,7 @@ impl @fn_ctxt {
     }
 
     fn report_mismatched_types(sp: span, e: ty::t, a: ty::t,
-                               err: ty::type_err) {
+                               err: &ty::type_err) {
         self.ccx.tcx.sess.span_err(
             sp,
             fmt!{"mismatched types: expected `%s` but found `%s` (%s)",
@@ -694,7 +694,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
         }
 
         // Otherwise, deref if type is derefable:
-        match ty::deref_sty(fcx.ccx.tcx, sty, false) {
+        match ty::deref_sty(fcx.ccx.tcx, &sty, false) {
           none => return t1,
           some(mt) => t1 = mt.ty
         }
@@ -782,15 +782,17 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
     let tps = fcx.infcx.next_ty_vars(n_tps);
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};
-    let substd_ty = ty::subst(tcx, substs, raw_ty);
+    let substd_ty = ty::subst(tcx, &substs, raw_ty);
     {substs: substs, ty: substd_ty}
 }
 
 // Only for fields! Returns <none> for methods>
 // Indifferent to privacy flags
-fn lookup_field_ty(tcx: ty::ctxt, class_id: ast::def_id,
-                   items:~[ty::field_ty], fieldname: ast::ident,
-                   substs: ty::substs) -> option<ty::t> {
+fn lookup_field_ty(tcx: ty::ctxt,
+                   class_id: ast::def_id,
+                   items: &[ty::field_ty],
+                   fieldname: ast::ident,
+                   substs: &ty::substs) -> option<ty::t> {
 
     let o_field = vec::find(items, |f| f.ident == fieldname);
     do option::map(o_field) |f| {
@@ -1201,7 +1203,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               else {
                   lookup_public_fields(tcx, base_id)
               };
-              match lookup_field_ty(tcx, base_id, cls_items, field, substs) {
+              match lookup_field_ty(tcx, base_id, cls_items, field, &substs) {
                  some(field_ty) => {
                     // (2) look up what field's type is, and return it
                      fcx.write_ty(expr.id, field_ty);
@@ -1354,7 +1356,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               _ => { /*ok*/ }
             }
 
-            match ty::deref_sty(tcx, sty, true) {
+            match ty::deref_sty(tcx, &sty, true) {
               some(mt) => { oprnd_t = mt.ty }
               none => {
                 match sty {
@@ -1773,7 +1775,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             tps: type_parameters
         };
 
-        let struct_type = ty::subst(tcx, substitutions, raw_type);
+        let struct_type = ty::subst(tcx, &substitutions, raw_type);
 
         // Look up the class fields and build up a map.
         let class_fields = ty::lookup_class_fields(tcx, class_id);
@@ -1802,7 +1804,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 some((field_id, false)) => {
                     let expected_field_type =
                         ty::lookup_field_type(tcx, class_id, field_id,
-                                              substitutions);
+                                              &substitutions);
                     bot |= check_expr(fcx,
                                       field.node.expr,
                                       some(expected_field_type));
@@ -1855,7 +1857,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let base_t = do_autoderef(fcx, expr.span, raw_base_t);
         bot |= check_expr(fcx, idx, none);
         let idx_t = fcx.expr_ty(idx);
-        match ty::index_sty(tcx, structure_of(fcx, expr.span, base_t)) {
+        let base_sty = structure_of(fcx, expr.span, base_t);
+        match ty::index_sty(tcx, &base_sty) {
           some(mt) => {
             require_integral(fcx, idx.span, idx_t);
             fcx.write_ty(id, mt.ty);
@@ -2122,7 +2125,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
     // Check that it is possible to represent this enum:
     let mut outer = true, did = local_def(id);
     if ty::type_structurally_contains(ccx.tcx, rty, |sty| {
-        match sty {
+        match *sty {
           ty::ty_enum(id, _) if id == did => {
             if outer { outer = false; false }
             else { true }

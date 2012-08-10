@@ -221,7 +221,7 @@ impl reflector {
             self.visit(~"leave_fn", extra);
           }
 
-          ty::ty_class(did, substs) => {
+          ty::ty_class(did, ref substs) => {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let fields = ty::class_items_as_fields(tcx, did, substs);
@@ -241,7 +241,7 @@ impl reflector {
           // not ideal. It'll work but will get costly on big enums. Maybe
           // let the visitor tell us if it wants to visit only a particular
           // variant?
-          ty::ty_enum(did, substs) => {
+          ty::ty_enum(did, ref substs) => {
             let bcx = self.bcx;
             let tcx = bcx.ccx().tcx;
             let variants = ty::substd_enum_variants(tcx, did, substs);

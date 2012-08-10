@@ -223,7 +223,7 @@ fn require_same_types(
 
     match infer::mk_eqty(l_infcx, t1, t2) {
       result::ok(()) => true,
-      result::err(terr) => {
+      result::err(ref terr) => {
         l_tcx.sess.span_err(span, msg() + ~": " +
             ty::type_err_to_str(l_tcx, terr));
         false

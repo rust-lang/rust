@@ -10,8 +10,10 @@ fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
     })
 }
 
-fn lookup_vtables(fcx: @fn_ctxt, sp: span,
-                  bounds: @~[ty::param_bounds], substs: ty::substs,
+fn lookup_vtables(fcx: @fn_ctxt,
+                  sp: span,
+                  bounds: @~[ty::param_bounds],
+                  substs: &ty::substs,
                   allow_unsafe: bool) -> vtable_res {
     let tcx = fcx.ccx.tcx;
     let mut result = ~[], i = 0u;
@@ -156,7 +158,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                                 of_ty %s",
                                fcx.infcx.ty_to_str(trait_ty),
                                fcx.infcx.ty_to_str(of_ty)};
-                        let of_ty = ty::subst(tcx, substs, of_ty);
+                        let of_ty = ty::subst(tcx, &substs, of_ty);
                         relate_trait_tys(fcx, sp, trait_ty, of_ty);
 
                         // recursively process the bounds
@@ -165,7 +167,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                                                     substs);
                         connect_trait_tps(fcx, sp, substs_f.tps,
                                           trait_tps, im.did);
-                        let subres = lookup_vtables(fcx, sp, im_bs, substs_f,
+                        let subres = lookup_vtables(fcx, sp, im_bs, &substs_f,
                                                     false);
                         vec::push(found,
                                   vtable_static(im.did, substs_f.tps,
@@ -229,7 +231,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
     match ex.node {
       ast::expr_path(*) => {
         match fcx.opt_node_ty_substs(ex.id) {
-          some(substs) => {
+          some(ref substs) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             if has_trait_bounds(*item_ty.bounds) {
@@ -259,7 +261,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
                 cx.vtable_map.insert(callee_id, lookup_vtables(fcx,
                                                                ex.span,
                                                                bounds,
-                                                               substs,
+                                                               &substs,
                                                                false));
             }
           }

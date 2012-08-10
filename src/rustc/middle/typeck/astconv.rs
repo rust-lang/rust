@@ -125,7 +125,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, a_t));
 
     let substs = {self_r:self_r, self_ty:none, tps:tps};
-    {substs: substs, ty: ty::subst(tcx, substs, decl_ty)}
+    {substs: substs, ty: ty::subst(tcx, &substs, decl_ty)}
 }
 
 fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy owned>(
