@@ -118,11 +118,12 @@ class lookup {
         }
 
         loop {
-            // First, see whether this is a bounded parameter.
             match ty::get(self.self_ty).struct {
+              // First, see whether this is a bounded parameter.
               ty::ty_param(p) => {
                 self.add_candidates_from_param(p.idx, p.def_id);
               }
+
               ty::ty_trait(did, substs) => {
                 self.add_candidates_from_trait(did, substs);
               }
