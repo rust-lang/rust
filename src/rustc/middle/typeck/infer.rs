@@ -308,14 +308,14 @@ enum infer_ctxt = @{
     // We instantiate vals_and_bindings with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    tvb: vals_and_bindings<ty::tv_vid, bounds<ty::t>>,
+    ty_var_bindings: vals_and_bindings<ty::tv_vid, bounds<ty::t>>,
 
     // The types that might instantiate an integral type variable are
     // represented by an int_ty_set.
-    tvib: vals_and_bindings<ty::tvi_vid, int_ty_set>,
+    ty_var_integral_bindings: vals_and_bindings<ty::tvi_vid, int_ty_set>,
 
     // For region variables.
-    rb: vals_and_bindings<ty::region_vid, bounds<ty::region>>,
+    region_var_bindings: vals_and_bindings<ty::region_vid, bounds<ty::region>>,
 
     // For keeping track of existing type and region variables.
     ty_var_counter: @mut uint,
@@ -352,11 +352,15 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
 type ures = result::result<(), ty::type_err>;
 type fres<T> = result::result<T, fixup_err>;
 
+fn new_vals_and_bindings<V:copy, T:copy>() -> vals_and_bindings<V, T> {
+    {vals: smallintmap::mk(), mut bindings: ~[]}
+}
+
 fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
     infer_ctxt(@{tcx: tcx,
-                 tvb: {vals: smallintmap::mk(), mut bindings: ~[]},
-                 tvib: {vals: smallintmap::mk(), mut bindings: ~[]},
-                 rb: {vals: smallintmap::mk(), mut bindings: ~[]},
+                 ty_var_bindings: new_vals_and_bindings(),
+                 ty_var_integral_bindings: new_vals_and_bindings(),
+                 region_var_bindings: new_vals_and_bindings(),
                  ty_var_counter: @mut 0u,
                  ty_var_integral_counter: @mut 0u,
                  region_var_counter: @mut 0u,
@@ -582,15 +586,15 @@ impl infer_ctxt {
     /// Execute `f` and commit the bindings if successful
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
-        assert self.tvb.bindings.len() == 0u;
-        assert self.rb.bindings.len() == 0u;
+        assert self.ty_var_bindings.bindings.len() == 0u;
+        assert self.region_var_bindings.bindings.len() == 0u;
 
         let r <- self.try(f);
 
         // FIXME (#2814)---could use a vec::clear() that ran destructors but
         // kept the vec at its currently allocated length
-        self.tvb.bindings = ~[];
-        self.rb.bindings = ~[];
+        self.ty_var_bindings.bindings = ~[];
+        self.region_var_bindings.bindings = ~[];
 
         return r;
     }
@@ -598,8 +602,8 @@ impl infer_ctxt {
     /// Execute `f`, unroll bindings on failure
     fn try<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
 
-        let tvbl = self.tvb.bindings.len();
-        let rbl = self.rb.bindings.len();
+        let tvbl = self.ty_var_bindings.bindings.len();
+        let rbl = self.region_var_bindings.bindings.len();
         let bl = self.borrowings.len();
 
         debug!{"try(tvbl=%u, rbl=%u)", tvbl, rbl};
@@ -608,8 +612,8 @@ impl infer_ctxt {
           result::ok(_) => debug!{"try--ok"},
           result::err(_) => {
             debug!{"try--rollback"};
-            rollback_to(&self.tvb, tvbl);
-            rollback_to(&self.rb, rbl);
+            rollback_to(&self.ty_var_bindings, tvbl);
+            rollback_to(&self.region_var_bindings, rbl);
             while self.borrowings.len() != bl { self.borrowings.pop(); }
           }
         }
@@ -618,11 +622,11 @@ impl infer_ctxt {
 
     /// Execute `f` then unroll any bindings it creates
     fn probe<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
-        assert self.tvb.bindings.len() == 0u;
-        assert self.rb.bindings.len() == 0u;
+        assert self.ty_var_bindings.bindings.len() == 0u;
+        assert self.region_var_bindings.bindings.len() == 0u;
         let r <- f();
-        rollback_to(&self.tvb, 0u);
-        rollback_to(&self.rb, 0u);
+        rollback_to(&self.ty_var_bindings, 0u);
+        rollback_to(&self.region_var_bindings, 0u);
         return r;
     }
 }
@@ -631,7 +635,7 @@ impl infer_ctxt {
     fn next_ty_var_id() -> tv_vid {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;
-        self.tvb.vals.insert(id,
+        self.ty_var_bindings.vals.insert(id,
                              root({lb: none, ub: none}, 0u));
         return tv_vid(id);
     }
@@ -648,7 +652,7 @@ impl infer_ctxt {
         let id = *self.ty_var_integral_counter;
         *self.ty_var_integral_counter += 1u;
 
-        self.tvib.vals.insert(id,
+        self.ty_var_integral_bindings.vals.insert(id,
                               root(int_ty_set_all(), 0u));
         return tvi_vid(id);
     }
@@ -660,7 +664,7 @@ impl infer_ctxt {
     fn next_region_var_id(bnds: bounds<ty::region>) -> region_vid {
         let id = *self.region_var_counter;
         *self.region_var_counter += 1u;
-        self.rb.vals.insert(id, root(bnds, 0));
+        self.region_var_bindings.vals.insert(id, root(bnds, 0));
         return region_vid(id);
     }
 
@@ -947,6 +951,7 @@ impl infer_ctxt {
         uok()
     }
 
+    /// make variable a subtype of T
     fn vart<V: copy vid, T: copy to_str st>(
         vb: &vals_and_bindings<V, bounds<T>>,
         a_id: V, b: T) -> ures {
@@ -983,6 +988,7 @@ impl infer_ctxt {
         uok()
     }
 
+    /// make T a subtype of variable
     fn tvar<V: copy vid, T: copy to_str st>(
         vb: &vals_and_bindings<V, bounds<T>>,
         a: T, b_id: V) -> ures {
@@ -1213,7 +1219,7 @@ impl resolve_state {
         if !self.should(resolve_rvar) {
             return ty::re_var(rid)
         }
-        let nde = self.infcx.get(&self.infcx.rb, rid);
+        let nde = self.infcx.get(&self.infcx.region_var_bindings, rid);
         let bounds = nde.possible_types;
         match bounds {
           { ub:_, lb:some(r) } => { self.assert_not_rvar(rid, r); r }
@@ -1250,7 +1256,7 @@ impl resolve_state {
             // tend to carry more restrictions or higher
             // perf. penalties, so it pays to know more.
 
-            let nde = self.infcx.get(&self.infcx.tvb, vid);
+            let nde = self.infcx.get(&self.infcx.ty_var_bindings, vid);
             let bounds = nde.possible_types;
 
             let t1 = match bounds {
@@ -1274,7 +1280,7 @@ impl resolve_state {
             return ty::mk_var_integral(self.infcx.tcx, vid);
         }
 
-        let nde = self.infcx.get(&self.infcx.tvib, vid);
+        let nde = self.infcx.get(&self.infcx.ty_var_integral_bindings, vid);
         let pt = nde.possible_types;
 
         // If there's only one type in the set of possible types, then
@@ -1286,7 +1292,7 @@ impl resolve_state {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
-                    &self.infcx.tvib, vid,
+                    &self.infcx.ty_var_integral_bindings, vid,
                     root(convert_integral_ty_to_int_ty_set(self.infcx.tcx,
                                                            ty),
                         nde.rank));
@@ -1372,8 +1378,8 @@ impl infer_ctxt {
           }
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-            let nde_a = self.get(&self.tvb, a_id);
-            let nde_b = self.get(&self.tvb, b_id);
+            let nde_a = self.get(&self.ty_var_bindings, a_id);
+            let nde_b = self.get(&self.ty_var_bindings, b_id);
             let a_bounds = nde_a.possible_types;
             let b_bounds = nde_b.possible_types;
 
@@ -1383,7 +1389,7 @@ impl infer_ctxt {
           }
 
           (ty::ty_var(a_id), _) => {
-            let nde_a = self.get(&self.tvb, a_id);
+            let nde_a = self.get(&self.ty_var_bindings, a_id);
             let a_bounds = nde_a.possible_types;
 
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
@@ -1391,7 +1397,7 @@ impl infer_ctxt {
           }
 
           (_, ty::ty_var(b_id)) => {
-            let nde_b = self.get(&self.tvb, b_id);
+            let nde_b = self.get(&self.ty_var_bindings, b_id);
             let b_bounds = nde_b.possible_types;
 
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
@@ -1750,17 +1756,20 @@ fn super_tys<C:combine>(
 
       // Have to handle these first
       (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) => {
-        self.infcx().vars_integral(&self.infcx().tvib, a_id, b_id)
+        self.infcx().vars_integral(&self.infcx().ty_var_integral_bindings,
+                                   a_id, b_id)
             .then(|| ok(a) )
       }
       (ty::ty_var_integral(a_id), ty::ty_int(_)) |
       (ty::ty_var_integral(a_id), ty::ty_uint(_)) => {
-        self.infcx().vart_integral(&self.infcx().tvib, a_id, b)
+        self.infcx().vart_integral(&self.infcx().ty_var_integral_bindings,
+                                   a_id, b)
             .then(|| ok(a) )
       }
       (ty::ty_int(_), ty::ty_var_integral(b_id)) |
       (ty::ty_uint(_), ty::ty_var_integral(b_id)) => {
-        self.infcx().tvar_integral(&self.infcx().tvib, a, b_id)
+        self.infcx().tvar_integral(&self.infcx().ty_var_integral_bindings,
+                                   a, b_id)
             .then(|| ok(a) )
       }
 
@@ -1902,17 +1911,20 @@ impl sub: combine {
         do indent {
             match (a, b) {
               (ty::re_var(a_id), ty::re_var(b_id)) => {
-                do self.infcx().vars(&self.rb, a_id, b_id).then {
+                do self.infcx().vars(&self.region_var_bindings,
+                                     a_id, b_id).then {
                     ok(a)
                 }
               }
               (ty::re_var(a_id), _) => {
-                do self.infcx().vart(&self.rb, a_id, b).then {
+                do self.infcx().vart(&self.region_var_bindings,
+                                     a_id, b).then {
                       ok(a)
                   }
               }
               (_, ty::re_var(b_id)) => {
-                  do self.infcx().tvar(&self.rb, a, b_id).then {
+                  do self.infcx().tvar(&self.region_var_bindings,
+                                       a, b_id).then {
                       ok(a)
                   }
               }
@@ -1973,13 +1985,16 @@ impl sub: combine {
                 ok(a)
               }
               (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-                self.infcx().vars(&self.tvb, a_id, b_id).then(|| ok(a) )
+                self.infcx().vars(&self.ty_var_bindings,
+                                  a_id, b_id).then(|| ok(a) )
               }
               (ty::ty_var(a_id), _) => {
-                self.infcx().vart(&self.tvb, a_id, b).then(|| ok(a) )
+                self.infcx().vart(&self.ty_var_bindings,
+                                  a_id, b).then(|| ok(a) )
               }
               (_, ty::ty_var(b_id)) => {
-                self.infcx().tvar(&self.tvb, a, b_id).then(|| ok(a) )
+                self.infcx().tvar(&self.ty_var_bindings,
+                                  a, b_id).then(|| ok(a) )
               }
               (_, ty::ty_bot) => {
                 err(ty::terr_sorts(b, a))
@@ -2483,18 +2498,18 @@ fn lattice_tys<L:lattice_ops combine>(
           (_, ty::ty_bot) => self.ty_bot(a),
 
           (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-            lattice_vars(self, &self.infcx().tvb,
+            lattice_vars(self, &self.infcx().ty_var_bindings,
                          a, a_id, b_id,
                          |x, y| self.tys(x, y) )
           }
 
           (ty::ty_var(a_id), _) => {
-            lattice_var_t(self, &self.infcx().tvb, a_id, b,
+            lattice_var_t(self, &self.infcx().ty_var_bindings, a_id, b,
                           |x, y| self.tys(x, y) )
           }
 
           (_, ty::ty_var(b_id)) => {
-            lattice_var_t(self, &self.infcx().tvb, b_id, a,
+            lattice_var_t(self, &self.infcx().ty_var_bindings, b_id, a,
                           |x, y| self.tys(x, y) )
           }
           _ => {
@@ -2510,13 +2525,13 @@ fn lattice_rvars<L:lattice_ops combine>(
 
     match (a, b) {
       (ty::re_var(a_id), ty::re_var(b_id)) => {
-        lattice_vars(self, &self.infcx().rb,
+        lattice_vars(self, &self.infcx().region_var_bindings,
                      a, a_id, b_id,
                      |x, y| self.regions(x, y) )
       }
 
       (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) => {
-        lattice_var_t(self, &self.infcx().rb,
+        lattice_var_t(self, &self.infcx().region_var_bindings,
                       v_id, r,
                       |x, y| self.regions(x, y) )
       }
