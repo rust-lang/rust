@@ -47,7 +47,6 @@ import build::*;
 import shape::*;
 import type_of::*;
 import common::*;
-import type_of::type_of; // Issue #1873
 import common::result;
 import syntax::ast_map::{path, path_mod, path_name};
 

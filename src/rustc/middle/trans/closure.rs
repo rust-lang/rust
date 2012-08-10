@@ -7,7 +7,6 @@ import common::*;
 import build::*;
 import base::*;
 import type_of::*;
-import type_of::type_of; // Issue #1873
 import back::abi;
 import syntax::codemap::span;
 import syntax::print::pprust::expr_to_str;
