@@ -1,5 +1,6 @@
 // error-pattern: copying a noncopyable value
 
+use std;
 import comm::*;
 
 fn main() {

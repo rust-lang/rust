@@ -625,7 +625,7 @@ unsafe fn atomically<U>(f: fn() -> U) -> U {
  * Several data structures are involved in task management to allow properly
  * propagating failure across linked/supervised tasks.
  *
- * (1) The "taskgroup_arc" is an arc::exclusive which contains a hashset of
+ * (1) The "taskgroup_arc" is an unsafe::exclusive which contains a hashset of
  *     all tasks that are part of the group. Some tasks are 'members', which
  *     means if they fail, they will kill everybody else in the taskgroup.
  *     Other tasks are 'descendants', which means they will not kill tasks
@@ -639,7 +639,7 @@ unsafe fn atomically<U>(f: fn() -> U) -> U {
  *     whether it's part of the 'main'/'root' taskgroup, and an optionally
  *     configured notification port. These are stored in TLS.
  *
- * (3) The "ancestor_list" is a cons-style list of arc::exclusives which
+ * (3) The "ancestor_list" is a cons-style list of unsafe::exclusives which
  *     tracks 'generations' of taskgroups -- a group's ancestors are groups
  *     which (directly or transitively) spawn_supervised-ed them. Each task
  *     is recorded in the 'descendants' of each of its ancestor groups.
@@ -725,7 +725,7 @@ type taskgroup_data = {
     // tasks in this group.
     mut descendants: taskset,
 };
-type taskgroup_arc = arc::exclusive<option<taskgroup_data>>;
+type taskgroup_arc = unsafe::exclusive<option<taskgroup_data>>;
 
 type taskgroup_inner = &mut option<taskgroup_data>;
 
@@ -754,7 +754,7 @@ type ancestor_node = {
     // Recursive rest of the list.
     mut ancestors:    ancestor_list,
 };
-enum ancestor_list = option<arc::exclusive<ancestor_node>>;
+enum ancestor_list = option<unsafe::exclusive<ancestor_node>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
@@ -762,7 +762,7 @@ fn access_group<U>(x: taskgroup_arc, blk: fn(taskgroup_inner) -> U) -> U {
     unsafe { x.with(blk) }
 }
 #[inline(always)]
-fn access_ancestors<U>(x: arc::exclusive<ancestor_node>,
+fn access_ancestors<U>(x: unsafe::exclusive<ancestor_node>,
                        blk: fn(x: &mut ancestor_node) -> U) -> U {
     unsafe { x.with(blk) }
 }
@@ -1035,8 +1035,8 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             let mut members = new_taskset();
             taskset_insert(&mut members, spawner);
             let tasks =
-                arc::exclusive(some({ mut members:     members,
-                                      mut descendants: new_taskset() }));
+                unsafe::exclusive(some({ mut members:     members,
+                                         mut descendants: new_taskset() }));
             // Main task/group has no ancestors, no notifier, etc.
             let group =
                 @tcb(spawner, tasks, ancestor_list(none), true, none);
@@ -1057,8 +1057,8 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         (g, a, spawner_group.is_main)
     } else {
         // Child is in a separate group from spawner.
-        let g = arc::exclusive(some({ mut members:     new_taskset(),
-                                      mut descendants: new_taskset() }));
+        let g = unsafe::exclusive(some({ mut members:     new_taskset(),
+                                         mut descendants: new_taskset() }));
         let a = if supervised {
             // Child's ancestors start with the spawner.
             let old_ancestors = share_ancestors(&mut spawner_group.ancestors);
@@ -1072,7 +1072,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 };
             assert new_generation < uint::max_value;
             // Build a new node in the ancestor list.
-            ancestor_list(some(arc::exclusive(
+            ancestor_list(some(unsafe::exclusive(
                 { generation:       new_generation,
                   mut parent_group: some(spawner_group.tasks.clone()),
                   mut ancestors:    old_ancestors })))

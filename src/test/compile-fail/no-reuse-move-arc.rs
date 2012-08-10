@@ -1,3 +1,4 @@
+use std;
 import comm::*;
 
 fn main() {
