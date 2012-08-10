@@ -3515,6 +3515,12 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
         }
     }
 
+    // Add the drop flag if necessary.
+    if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
+        let llflagptr = GEPi(block_context, dest_address, ~[0, 0]);
+        Store(block_context, C_u8(1), llflagptr);
+    }
+
     // Now translate each field.
     let mut temp_cleanups = ~[];
     for fields.each |field| {
