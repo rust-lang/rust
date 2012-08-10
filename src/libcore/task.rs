@@ -56,7 +56,7 @@ export try;
 export yield;
 export failing;
 export get_task;
-export unkillable;
+export unkillable, rekillable;
 export atomically;
 
 export local_data_key;
@@ -572,7 +572,7 @@ fn get_task() -> task {
  * }
  * ~~~
  */
-unsafe fn unkillable(f: fn()) {
+unsafe fn unkillable<U>(f: fn() -> U) -> U {
     class allow_failure {
         let t: *rust_task;
         new(t: *rust_task) { self.t = t; }
@@ -582,7 +582,21 @@ unsafe fn unkillable(f: fn()) {
     let t = rustrt::rust_get_task();
     let _allow_failure = allow_failure(t);
     rustrt::rust_task_inhibit_kill(t);
-    f();
+    f()
+}
+
+/// The inverse of unkillable. Only ever to be used nested in unkillable().
+unsafe fn rekillable<U>(f: fn() -> U) -> U {
+    class disallow_failure {
+        let t: *rust_task;
+        new(t: *rust_task) { self.t = t; }
+        drop { rustrt::rust_task_inhibit_kill(self.t); }
+    }
+
+    let t = rustrt::rust_get_task();
+    let _allow_failure = disallow_failure(t);
+    rustrt::rust_task_allow_kill(t);
+    f()
 }
 
 /**
