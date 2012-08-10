@@ -162,7 +162,6 @@ impl condvar {
                 // Release lock, 'atomically' enqueuing ourselves in so doing.
                 do (**self.sem).with |state| {
                     // Drop the lock.
-                    // FIXME(#3145) investigate why factoring doesn't compile.
                     state.count += 1;
                     if state.count <= 0 {
                         signal_waitqueue(&state.waiters);
@@ -343,34 +342,41 @@ impl &rwlock {
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
-                (&self.access_lock).acquire();
-                (&self.order_lock).release();
+                do (&self.access_lock).access {
+                    (&self.order_lock).release();
+                    task::rekillable(blk)
+                }
             }
         }
-        let _z = rwlock_release_write(self);
-        blk()
     }
 
     /**
      * As write(), but also with a handle to a condvar. Waiting on this
      * condvar will allow readers and writers alike to take the rwlock before
-     * the waiting task is signalled.
+     * the waiting task is signalled. (Note: a writer that waited and then
+     * was signalled might reacquire the lock before other waiting writers.)
      */
-    fn write_cond<U>(_blk: fn(condvar) -> U) -> U {
-        fail ~"Need implement lock order lock before access lock";
+    fn write_cond<U>(blk: fn(condvar) -> U) -> U {
+        // NB: You might think I should thread the order_lock into the cond
+        // wait call, so that it gets waited on before access_lock gets
+        // reacquired upon being woken up. However, (a) this would be not
+        // pleasant to implement (and would mandate a new 'rw_cond' type) and
+        // (b) I think violating no-starvation in that case is appropriate.
+        unsafe {
+            do task::unkillable {
+                (&self.order_lock).acquire();
+                do (&self.access_lock).access_cond |cond| {
+                    (&self.order_lock).release();
+                    do task::rekillable { blk(cond) }
+                }
+            }
+        }
     }
 
     // to-do implement downgrade
 }
 
-// FIXME(#3136) should go inside of write() and read() respectively
-struct rwlock_release_write {
-    lock: &rwlock;
-    new(lock: &rwlock) { self.lock = lock; }
-    drop unsafe {
-        do task::unkillable { (&self.lock.access_lock).release(); }
-    }
-}
+// FIXME(#3136) should go inside of read()
 struct rwlock_release_read {
     lock: &rwlock;
     new(lock: &rwlock) { self.lock = lock; }
@@ -707,6 +713,41 @@ mod tests {
             c2.send(());
             let _ = p1.recv();
         }
+    }
+    #[test]
+    fn test_rwlock_cond_wait() {
+        // As test_mutex_cond_wait above.
+        let x = ~rwlock();
+
+        // Child wakes up parent
+        do x.write_cond |cond| {
+            let x2 = ~x.clone();
+            do task::spawn {
+                do x2.write_cond |cond| {
+                    let woken = cond.signal();
+                    assert woken;
+                }
+            }
+            cond.wait();
+        }
+        // Parent wakes up child
+        let (chan,port) = pipes::stream();
+        let x3 = ~x.clone();
+        do task::spawn {
+            do x3.write_cond |cond| {
+                chan.send(());
+                cond.wait();
+                chan.send(());
+            }
+        }
+        let _ = port.recv(); // Wait until child gets in the rwlock
+        do x.read { } // Must be able to get in as a reader in the meantime
+        do x.write_cond |cond| { // Or as another writer
+            let woken = cond.signal();
+            assert woken;
+        }
+        let _ = port.recv(); // Wait until child wakes up
+        do x.read { } // Just for good measure
     }
     #[cfg(test)] #[ignore(cfg(windows))]
     fn rwlock_kill_helper(reader1: bool, reader2: bool) {
