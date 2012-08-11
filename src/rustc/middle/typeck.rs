@@ -251,7 +251,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).struct {
-      ty::ty_fn({purity: ast::impure_fn, proto: ty::proto_bare, bounds,
+      ty::ty_fn({purity: ast::impure_fn, proto: ast::proto_bare, bounds,
                  inputs, output, ret_style: ast::return_val}) => {
         match tcx.items.find(main_id) {
          some(ast_map::node_item(it,_)) => {

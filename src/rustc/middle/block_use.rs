@@ -14,7 +14,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn visit_expr(ex: @expr, cx: ctx, v: visit::vt<ctx>) {
     if !cx.allow_block {
         match ty::get(ty::expr_ty(cx.tcx, ex)).struct {
-          ty::ty_fn({proto: p, _}) if ty::is_blockish(p) => {
+          ty::ty_fn({proto: p, _}) if is_blockish(p) => {
             cx.tcx.sess.span_err(ex.span,
                ~"expressions with stack closure type \
                 can only appear in callee or (by-ref) argument position");
