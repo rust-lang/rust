@@ -421,7 +421,7 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(matches: getopts::matches,
+fn build_session_options(matches: getopts::Matches,
                          demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
@@ -605,7 +605,7 @@ fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
     }
 }
 
-fn opts() -> ~[getopts::opt] {
+fn opts() -> ~[getopts::Opt] {
     return ~[optflag(~"h"), optflag(~"help"),
              optflag(~"v"), optflag(~"version"),
           optflag(~"emit-llvm"), optflagopt(~"pretty"),

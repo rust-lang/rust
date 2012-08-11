@@ -41,7 +41,7 @@ fn opt_output_style() -> ~str { ~"output-style" }
 fn opt_pandoc_cmd() -> ~str { ~"pandoc-cmd" }
 fn opt_help() -> ~str { ~"h" }
 
-fn opts() -> ~[(getopts::opt, ~str)] {
+fn opts() -> ~[(getopts::Opt, ~str)] {
     ~[
         (getopts::optopt(opt_output_dir()),
          ~"--output-dir <val>     put documents here"),
@@ -119,7 +119,7 @@ fn parse_config_(
 
 fn config_from_opts(
     input_crate: &Path,
-    matches: getopts::matches,
+    matches: getopts::Matches,
     program_output: program_output
 ) -> Result<config, ~str> {
 

@@ -42,7 +42,7 @@ fn parse_config(args: ~[~str]) -> config {
           Err(f) => fail getopts::fail_str(f)
         };
 
-    fn opt_path(m: getopts::matches, nm: ~str) -> Path {
+    fn opt_path(m: getopts::Matches, nm: ~str) -> Path {
         Path(getopts::opt_str(m, nm))
     }
 

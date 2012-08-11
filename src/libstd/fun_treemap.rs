@@ -1,3 +1,5 @@
+#[deny(non_camel_case_types)];
+
 /*!
  * A functional key,value store that works on anything.
  *
@@ -12,41 +14,41 @@
 import option::{Some, None};
 import option = option;
 
-export treemap;
+export Treemap;
 export init;
 export insert;
 export find;
 export traverse;
 
-type treemap<K, V> = @tree_node<K, V>;
+type Treemap<K, V> = @TreeNode<K, V>;
 
-enum tree_node<K, V> {
-    empty,
-    node(@K, @V, @tree_node<K, V>, @tree_node<K, V>)
+enum TreeNode<K, V> {
+    Empty,
+    Node(@K, @V, @TreeNode<K, V>, @TreeNode<K, V>)
 }
 
 /// Create a treemap
-fn init<K, V>() -> treemap<K, V> { @empty }
+fn init<K, V>() -> Treemap<K, V> { @Empty }
 
 /// Insert a value into the map
-fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
+fn insert<K: copy, V: copy>(m: Treemap<K, V>, k: K, v: V) -> Treemap<K, V> {
     @match m {
-       @empty => node(@k, @v, @empty, @empty),
-       @node(@kk, vv, left, right) => {
+       @Empty => Node(@k, @v, @Empty, @Empty),
+       @Node(@kk, vv, left, right) => {
          if k < kk {
-             node(@kk, vv, insert(left, k, v), right)
+             Node(@kk, vv, insert(left, k, v), right)
          } else if k == kk {
-             node(@kk, @v, left, right)
-         } else { node(@kk, vv, left, insert(right, k, v)) }
+             Node(@kk, @v, left, right)
+         } else { Node(@kk, vv, left, insert(right, k, v)) }
        }
      }
 }
 
 /// Find a value based on the key
-fn find<K, V: copy>(m: treemap<K, V>, k: K) -> Option<V> {
+fn find<K, V: copy>(m: Treemap<K, V>, k: K) -> Option<V> {
     match *m {
-      empty => None,
-      node(@kk, @v, left, right) => {
+      Empty => None,
+      Node(@kk, @v, left, right) => {
         if k == kk {
             Some(v)
         } else if k < kk { find(left, k) } else { find(right, k) }
@@ -55,15 +57,15 @@ fn find<K, V: copy>(m: treemap<K, V>, k: K) -> Option<V> {
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: copy>(m: treemap<K, V>, f: fn(K, V)) {
+fn traverse<K, V: copy>(m: Treemap<K, V>, f: fn(K, V)) {
     match *m {
-      empty => (),
+      Empty => (),
       /*
         Previously, this had what looked like redundant
         matches to me, so I changed it. but that may be a
         de-optimization -- tjc
        */
-      node(@k, @v, left, right) => {
+      Node(@k, @v, left, right) => {
         // copy v to make aliases work out
         let v1 = v;
         traverse(left, f);

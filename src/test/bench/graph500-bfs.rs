@@ -11,7 +11,7 @@ import std::map;
 import std::map::map;
 import std::map::hashmap;
 import std::deque;
-import std::deque::t;
+import std::deque::Deque;
 import std::par;
 import io::WriterUtil;
 import comm::*;
