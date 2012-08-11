@@ -315,6 +315,7 @@ impl &rwlock {
      * tasks may run concurrently with this one.
      */
     fn read<U>(blk: fn() -> U) -> U {
+        let mut release = none;
         unsafe {
             do task::unkillable {
                 do (&self.order_lock).access {
@@ -328,9 +329,9 @@ impl &rwlock {
                         (&self.access_lock).acquire();
                     }
                 }
+                release = some(rwlock_release_read(self));
             }
         }
-        let _z = rwlock_release_read(self);
         blk()
     }
 
