@@ -1,3 +1,5 @@
+// xfail-fast
+
 import pipes::{select2, selectable};
 
 fn main() {

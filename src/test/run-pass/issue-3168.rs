@@ -1,3 +1,5 @@
+// xfail-fast
+
 fn main() {
     let (c,p) = pipes::stream();
     do task::try {
