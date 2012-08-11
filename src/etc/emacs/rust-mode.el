@@ -53,8 +53,8 @@
 (defvar rust-value-keywords
   (let ((table (make-hash-table :test 'equal)))
     (dolist (word '("mod" "const" "class" "type"
-					"trait" "struct", "fn" "enum"
-					"impl"))
+                    "trait" "struct" "fn" "enum"
+                    "impl"))
       (puthash word 'def table))
     (dolist (word '("again" "assert"
                     "break"
