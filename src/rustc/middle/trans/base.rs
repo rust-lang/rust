@@ -5217,12 +5217,13 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
 }
 
 fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
+    debug!{"get_item_val(id=`%?`)", id};
     let tcx = ccx.tcx;
     match ccx.item_vals.find(id) {
       some(v) => v,
       none => {
         let mut exprt = false;
-        let val = match check ccx.tcx.items.get(id) {
+        let val = match ccx.tcx.items.get(id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(*pth, ~[path_name(i.ident)]);
             match check i.node {
@@ -5246,11 +5247,33 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
               }
             }
           }
+          ast_map::node_trait_method(trait_method, _, pth) => {
+            debug!{"get_item_val(): processing a node_trait_method"};
+            match *trait_method {
+              ast::required(_) => {
+                ccx.sess.bug(~"unexpected variant: required trait method in \
+                               get_item_val()");
+              }
+              ast::provided(m) => {
+                // FIXME (#2794): Default methods currently compiling but not
+                // linking successfully; not sure if this is correct.  It's
+                // just copypasta from the node_method case.
+                exprt = true;
+                let mty = ty::node_id_to_type(ccx.tcx, id);
+                let pth =
+                    vec::append(*pth, ~[path_name(@ccx.names(~"meth")),
+                                        path_name(m.ident)]);
+                let llfn = register_fn_full(ccx, m.span, pth, id, mty);
+                set_inline_hint_if_appr(m.attrs, llfn);
+                llfn
+              }
+            }
+          }
           ast_map::node_method(m, impl_id, pth) => {
             exprt = true;
             let mty = ty::node_id_to_type(ccx.tcx, id);
             let pth = vec::append(*pth, ~[path_name(@ccx.names(~"meth")),
-                                         path_name(m.ident)]);
+                                          path_name(m.ident)]);
             let llfn = register_fn_full(ccx, m.span, pth, id, mty);
             set_inline_hint_if_appr(m.attrs, llfn);
             llfn
@@ -5309,6 +5332,9 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             }
             set_inline_hint(llfn);
             llfn
+          }
+          _ => {
+            ccx.sess.bug(~"get_item_val(): unexpected variant");
           }
         };
         if !(exprt || ccx.reachable.contains_key(id)) {
