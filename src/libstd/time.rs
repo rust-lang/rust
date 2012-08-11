@@ -29,12 +29,12 @@ extern mod rustrt {
     fn rust_mktime(&&tm: tm, &sec: i64);
 }
 
-/// A record specifying a time value in seconds and microseconds.
+/// A record specifying a time value in seconds and nanoseconds.
 type timespec = {sec: i64, nsec: i32};
 
 /**
  * Returns the current time as a `timespec` containing the seconds and
- * microseconds since 1970-01-01T00:00:00Z.
+ * nanoseconds since 1970-01-01T00:00:00Z.
  */
 fn get_time() -> timespec {
     let mut sec = 0i64;
