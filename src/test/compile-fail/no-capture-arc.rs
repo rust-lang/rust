@@ -1,6 +1,7 @@
 // error-pattern: copying a noncopyable value
 
 use std;
+import std::arc;
 import comm::*;
 
 fn main() {

@@ -1,4 +1,5 @@
 use std;
+import std::arc;
 import comm::*;
 
 fn main() {
