@@ -171,13 +171,9 @@ export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
 export terr_regions_differ, terr_mutability, terr_purity_mismatch;
 export terr_proto_mismatch;
 export terr_ret_style_mismatch;
-export terr_fn;
 export purity_to_str;
 export param_tys_in_type;
 export eval_repeat_count;
-export fn_proto, proto_bare, proto_vstore;
-export ast_proto_to_proto;
-export is_blockish;
 
 // Data types
 
@@ -320,11 +316,6 @@ enum closure_kind {
     ck_uniq,
 }
 
-enum fn_proto {
-    proto_bare,             // supertype of all other protocols
-    proto_vstore(vstore)
-}
-
 /// Innards of a function type:
 ///
 /// - `purity` is the function's effect (pure, impure, unsafe).
@@ -334,7 +325,7 @@ enum fn_proto {
 /// - `output` is the return type.
 /// - `ret_style` indicates whether the function returns a value or fails.
 type fn_ty = {purity: ast::purity,
-              proto: fn_proto,
+              proto: ast::proto,
               bounds: @~[param_bound],
               inputs: ~[arg],
               output: t,
@@ -451,7 +442,7 @@ enum sty {
 }
 
 enum terr_vstore_kind {
-    terr_vec, terr_str, terr_fn
+    terr_vec, terr_str
 }
 
 // Data structures used in type unification
@@ -460,7 +451,7 @@ enum type_err {
     terr_ret_style_mismatch(ast::ret_style, ast::ret_style),
     terr_purity_mismatch(purity, purity),
     terr_mutability,
-    terr_proto_mismatch(ty::fn_proto, ty::fn_proto),
+    terr_proto_mismatch(ast::proto, ast::proto),
     terr_box_mutability,
     terr_ptr_mutability,
     terr_ref_mutability,
@@ -1317,7 +1308,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       }
       ty_fn(ref fty) => {
         match fty.proto {
-          proto_bare | proto_vstore(vstore_slice(_)) => false,
+          proto_bare | proto_block => false,
           _ => true
         }
       }
@@ -1557,18 +1548,13 @@ pure fn kind_is_owned(k: kind) -> bool {
     *k & KIND_MASK_OWNED == KIND_MASK_OWNED
 }
 
-fn proto_kind(p: fn_proto) -> kind {
+fn proto_kind(p: proto) -> kind {
     match p {
-      proto_vstore(vstore_slice(_)) =>
-        kind_noncopyable() | kind_(KIND_MASK_DEFAULT_MODE),
-      proto_vstore(vstore_box) =>
-        kind_safe_for_default_mode() | kind_owned(),
-      proto_vstore(vstore_uniq) =>
-        kind_send_copy() | kind_owned(),
-      proto_vstore(vstore_fixed(_)) =>
-        fail ~"fixed vstore protos are not allowed",
-      proto_bare =>
-        kind_safe_for_default_mode_send() | kind_const() | kind_owned()
+      ast::proto_block => kind_noncopyable() | kind_(KIND_MASK_DEFAULT_MODE),
+      ast::proto_box => kind_safe_for_default_mode() | kind_owned(),
+      ast::proto_uniq => kind_send_copy() | kind_owned(),
+      ast::proto_bare => kind_safe_for_default_mode_send() | kind_const() |
+                           kind_owned()
     }
 }
 
@@ -2307,7 +2293,7 @@ fn ty_fn_args(fty: t) -> ~[arg] {
     }
 }
 
-fn ty_fn_proto(fty: t) -> fn_proto {
+fn ty_fn_proto(fty: t) -> ast::proto {
     match get(fty).struct {
       ty_fn(ref f) => f.proto,
       _ => fail ~"ty_fn_proto() called on non-fn type"
@@ -2590,11 +2576,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
 
 fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
     fn terr_vstore_kind_to_str(k: terr_vstore_kind) -> ~str {
-        match k {
-            terr_vec => ~"[]",
-            terr_str => ~"str",
-            terr_fn => ~"fn"
-        }
+        match k { terr_vec => ~"[]", terr_str => ~"str" }
     }
 
     match *err {
@@ -2615,8 +2597,7 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
       }
       terr_proto_mismatch(e, a) => {
         return fmt!{"closure protocol mismatch (%s vs %s)",
-                    util::ppaux::proto_ty_to_str(cx, e),
-                    util::ppaux::proto_ty_to_str(cx, a)};
+                 proto_to_str(e), proto_to_str(a)};
       }
       terr_mutability => return ~"values differ in mutability",
       terr_box_mutability => return ~"boxed values differ in mutability",
@@ -3270,26 +3251,6 @@ fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr, span: span) -> uint {
                                 repeat count but found string");
             return 0;
         }
-    }
-}
-
-fn ast_proto_to_proto(ast_proto: ast::proto) -> ty::fn_proto {
-    match ast_proto {
-        ast::proto_bare => ty::proto_bare,
-        ast::proto_uniq => ty::proto_vstore(ty::vstore_uniq),
-        ast::proto_box => ty::proto_vstore(ty::vstore_box),
-        ast::proto_block => ty::proto_vstore(ty::vstore_slice(ty::re_static))
-    }
-}
-
-pure fn is_blockish(proto: fn_proto) -> bool {
-    match proto {
-        proto_vstore(vstore_slice(_)) =>
-            true,
-        proto_vstore(vstore_box) | proto_vstore(vstore_uniq) | proto_bare =>
-            false,
-        proto_vstore(vstore_fixed(_)) =>
-            fail ~"fixed vstore not allowed here"
     }
 }
 

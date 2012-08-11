@@ -423,7 +423,7 @@ type expected_tys = option<{inputs: ~[ty::arg],
 
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS,
-    ast_proto: ast::proto,
+    proto: ast::proto,
     bounds: @~[ty::param_bound],
     decl: ast::fn_decl,
     expected_tys: expected_tys) -> ty::fn_ty {
@@ -449,8 +449,6 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
           ast::ty_infer => self.ty_infer(decl.output.span),
           _ => ast_ty_to_ty(self, rb, decl.output)
         };
-
-        let proto = ty::ast_proto_to_proto(ast_proto);
 
         {purity: decl.purity, proto: proto, bounds: bounds, inputs: input_tys,
          output: output_ty, ret_style: decl.cf}
