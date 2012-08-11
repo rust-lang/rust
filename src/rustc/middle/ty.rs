@@ -168,7 +168,8 @@ export bound_const;
 export terr_no_integral_type, terr_ty_param_size, terr_self_substs;
 export terr_in_field, terr_record_fields, terr_vstores_differ, terr_arg_count;
 export terr_sorts, terr_vec, terr_str, terr_record_size, terr_tuple_size;
-export terr_regions_differ, terr_mutability, terr_purity_mismatch;
+export terr_regions_does_not_outlive, terr_mutability, terr_purity_mismatch;
+export terr_regions_not_same, terr_regions_no_overlap;
 export terr_proto_mismatch;
 export terr_ret_style_mismatch;
 export purity_to_str;
@@ -463,7 +464,9 @@ enum type_err {
     terr_record_fields(ast::ident, ast::ident),
     terr_arg_count,
     terr_mode_mismatch(mode, mode),
-    terr_regions_differ(region, region),
+    terr_regions_does_not_outlive(region, region),
+    terr_regions_not_same(region, region),
+    terr_regions_no_overlap(region, region),
     terr_vstores_differ(terr_vstore_kind, vstore, vstore),
     terr_in_field(@type_err, ast::ident),
     terr_sorts(t, t),
@@ -2631,10 +2634,20 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         return ~"expected argument mode " + mode_to_str(e_mode) +
             ~" but found " + mode_to_str(a_mode);
       }
-      terr_regions_differ(subregion, superregion) => {
+      terr_regions_does_not_outlive(subregion, superregion) => {
         return fmt!{"%s does not necessarily outlive %s",
                  explain_region(cx, subregion),
                  explain_region(cx, superregion)};
+      }
+      terr_regions_not_same(region1, region2) => {
+        return fmt!{"%s is not the same as %s",
+                 explain_region(cx, region1),
+                 explain_region(cx, region2)};
+      }
+      terr_regions_no_overlap(region1, region2) => {
+        return fmt!{"%s does not intersect %s",
+                 explain_region(cx, region1),
+                 explain_region(cx, region2)};
       }
       terr_vstores_differ(k, e_vs, a_vs) => {
         return fmt!{"%s storage differs: expected %s but found %s",
