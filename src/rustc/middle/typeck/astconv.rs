@@ -200,7 +200,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
             // Run through the normal function type conversion process.
             let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
             let fn_decl = ty_of_fn_decl(self, rscope, new_proto, bounds,
-                                        ast_fn_decl, none);
+                                        ast_fn_decl, none, span);
             return ty::mk_fn(tcx, fn_decl);
           }
           _ => ()
@@ -286,7 +286,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
       }
       ast::ty_fn(proto, ast_bounds, decl) => {
         let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-        let fn_decl = ty_of_fn_decl(self, rscope, proto, bounds, decl, none);
+        let fn_decl = ty_of_fn_decl(self, rscope, proto, bounds, decl, none,
+                                    ast_ty.span);
         ty::mk_fn(tcx, fn_decl)
       }
       ast::ty_path(path, id) => {
@@ -418,15 +419,33 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     {mode: mode, ty: ty}
 }
 
+fn ast_proto_to_proto<AC: ast_conv, RS: region_scope copy owned>(
+    self: AC, rscope: RS, span: span, ast_proto: ast::proto) -> ty::fn_proto {
+    match ast_proto {
+        ast::proto_bare =>
+            ty::proto_bare,
+        ast::proto_uniq =>
+            ty::proto_vstore(ty::vstore_uniq),
+        ast::proto_box =>
+            ty::proto_vstore(ty::vstore_box),
+        ast::proto_block => {
+            let result = rscope.anon_region();
+            let region = get_region_reporting_err(self.tcx(), span, result);
+            ty::proto_vstore(ty::vstore_slice(region))
+        }
+    }
+}
+
 type expected_tys = option<{inputs: ~[ty::arg],
                             output: ty::t}>;
 
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS,
-    proto: ast::proto,
+    ast_proto: ast::proto,
     bounds: @~[ty::param_bound],
     decl: ast::fn_decl,
-    expected_tys: expected_tys) -> ty::fn_ty {
+    expected_tys: expected_tys,
+    span: span) -> ty::fn_ty {
 
     debug!{"ty_of_fn_decl"};
     do indent {
@@ -449,6 +468,8 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
           ast::ty_infer => self.ty_infer(decl.output.span),
           _ => ast_ty_to_ty(self, rb, decl.output)
         };
+
+        let proto = ast_proto_to_proto(self, rscope, span, ast_proto);
 
         {purity: decl.purity, proto: proto, bounds: bounds, inputs: input_tys,
          output: output_ty, ret_style: decl.cf}

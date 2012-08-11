@@ -163,14 +163,12 @@ mod global_env {
 
     fn get_global_env_chan() -> comm::chan<msg> {
         let global_ptr = rustrt::rust_global_env_chan_ptr();
-        let task_build_fn = || {
-            // FIXME (#2621): This would be a good place to use a very small
-            // foreign stack
-            task::task().sched_mode(task::single_threaded).unlinked()
-        };
         unsafe {
-            priv::chan_from_global_ptr(
-                global_ptr, task_build_fn, global_env_task)
+            priv::chan_from_global_ptr(global_ptr, || {
+                // FIXME (#2621): This would be a good place to use a very
+                // small foreign stack
+                task::task().sched_mode(task::single_threaded).unlinked()
+            }, global_env_task)
         }
     }
 

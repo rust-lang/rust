@@ -109,7 +109,7 @@ extern mod rusti {
 }
 
 /// A function used to initialize the elements of a vector
-type init_op<T> = fn(uint) -> T;
+type init_op/&<T> = fn(uint) -> T;
 
 /// Returns true if a vector contains no elements
 pure fn is_empty<T>(v: &[const T]) -> bool {

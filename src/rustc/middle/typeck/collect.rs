@@ -126,7 +126,8 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                 });
                 result_ty = some(ty::mk_fn(tcx,
                                            {purity: ast::pure_fn,
-                                            proto: ast::proto_box,
+                                            proto: ty::proto_vstore
+                                                (ty::vstore_box),
                                             bounds: @~[],
                                             inputs: args,
                                             output: enum_ty,
@@ -474,7 +475,7 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
              tps: ty::ty_params_to_tys(tcx, tps)});
         let t_ctor = ty::mk_fn(
             tcx, {purity: ast::impure_fn,
-                  proto: ast::proto_block,
+                  proto: ty::proto_vstore(ty::vstore_slice(ty::re_static)),
                   bounds: @~[],
                   inputs: t_args,
                   output: t_res,
@@ -490,8 +491,8 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
         // Write the dtor type
         let t_dtor = ty::mk_fn(
             tcx,
-            ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_block, @~[],
-                          ast_util::dtor_dec(), none));
+            ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare, @~[],
+                          ast_util::dtor_dec(), none, dtor.span));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
                           {bounds: tpt.bounds,
@@ -536,7 +537,7 @@ fn ty_of_method(ccx: @crate_ctxt,
     {ident: m.ident,
      tps: ty_param_bounds(ccx, m.tps),
      fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare, @~[],
-                        m.decl, none),
+                        m.decl, none, m.span),
      self_ty: m.self_ty.node,
      purity: m.decl.purity,
      vis: m.vis}
@@ -548,7 +549,7 @@ fn ty_of_ty_method(self: @crate_ctxt,
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
      fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, @~[], m.decl,
-                        none),
+                        none, m.span),
      // assume public, because this is only invoked on trait methods
      self_ty: m.self_ty.node,
      purity: m.decl.purity, vis: ast::public}
@@ -602,7 +603,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       ast::item_fn(decl, tps, _) => {
         let bounds = ty_param_bounds(ccx, tps);
         let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare, @~[],
-                                 decl, none);
+                                 decl, none, it.span);
         let tpt = {bounds: bounds,
                    rp: false, // functions do not have a self
                    ty: ty::mk_fn(ccx.tcx, tofd)};
@@ -726,7 +727,7 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
     let t_fn = ty::mk_fn(ccx.tcx, {purity: decl.purity,
-                                   proto: ast::proto_bare,
+                                   proto: ty::proto_bare,
                                    bounds: @~[],
                                    inputs: input_tys,
                                    output: output_ty,

@@ -2043,7 +2043,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
       }
       ty::ty_trait(_, _) => {
         some(ty::mk_fn(tcx, {purity: ast::impure_fn,
-                             proto: ast::proto_box,
+                             proto: ty::proto_vstore(ty::vstore_box),
                              bounds: @~[],
                              inputs: ~[],
                              output: ty::mk_nil(tcx),
@@ -3774,8 +3774,28 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
           ast::expr_addr_of(_, x) => { return trans_addr_of(bcx, x, dest); }
           ast::expr_fn(proto, decl, body, cap_clause) => {
-            return closure::trans_expr_fn(bcx, proto, decl, body, e.id,
-                                       cap_clause, none, dest);
+            // Don't use this function for anything real. Use the one in
+            // astconv instead.
+            fn ast_proto_to_proto_simple(ast_proto: ast::proto)
+                                      -> ty::fn_proto {
+                match ast_proto {
+                    ast::proto_bare =>
+                        ty::proto_bare,
+                    ast::proto_uniq =>
+                        ty::proto_vstore(ty::vstore_uniq),
+                    ast::proto_box =>
+                        ty::proto_vstore(ty::vstore_box),
+                    ast::proto_block =>
+                        ty::proto_vstore(ty::vstore_slice(ty::re_static))
+                }
+            }
+
+            // XXX: This syntax should be reworked a bit (in the parser I
+            // guess?); @fn() { ... } won't work.
+            return closure::trans_expr_fn(bcx,
+                                          ast_proto_to_proto_simple(proto),
+                                          decl, body, e.id, cap_clause, none,
+                                          dest);
           }
           ast::expr_fn_block(decl, body, cap_clause) => {
             match check ty::get(expr_ty(bcx, e)).struct {

@@ -347,7 +347,7 @@ fn load_environment(fcx: fn_ctxt,
 }
 
 fn trans_expr_fn(bcx: block,
-                 proto: ast::proto,
+                 proto: ty::fn_proto,
                  decl: ast::fn_decl,
                  body: ast::blk,
                  id: ast::node_id,
@@ -364,8 +364,8 @@ fn trans_expr_fn(bcx: block,
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     let trans_closure_env = fn@(ck: ty::closure_kind) -> result {
-        let cap_vars = capture::compute_capture_vars(
-            ccx.tcx, id, proto, cap_clause);
+        let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
+                                                     cap_clause);
         let ret_handle = match is_loop_body { some(x) => x, none => none };
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
                                                    ret_handle);
@@ -382,14 +382,19 @@ fn trans_expr_fn(bcx: block,
     };
 
     let {bcx: bcx, val: closure} = match proto {
-      ast::proto_block => trans_closure_env(ty::ck_block),
-      ast::proto_box => trans_closure_env(ty::ck_box),
-      ast::proto_uniq => trans_closure_env(ty::ck_uniq),
-      ast::proto_bare => {
+      ty::proto_vstore(ty::vstore_slice(_)) =>
+        trans_closure_env(ty::ck_block),
+      ty::proto_vstore(ty::vstore_box) =>
+        trans_closure_env(ty::ck_box),
+      ty::proto_vstore(ty::vstore_uniq) =>
+        trans_closure_env(ty::ck_uniq),
+      ty::proto_bare => {
         trans_closure(ccx, sub_path, decl, body, llfn, no_self, none,
                       id, |_fcx| { }, |_bcx| { });
         {bcx: bcx, val: C_null(T_opaque_box_ptr(ccx))}
       }
+      ty::proto_vstore(ty::vstore_fixed(_)) =>
+        fail ~"vstore_fixed unexpected"
     };
     fill_fn_pair(bcx, get_dest_addr(dest), llfn, closure);
 
@@ -416,11 +421,15 @@ fn make_fn_glue(
     };
 
     return match ty::get(t).struct {
-      ty::ty_fn({proto: ast::proto_bare, _}) |
-      ty::ty_fn({proto: ast::proto_block, _}) => bcx,
-      ty::ty_fn({proto: ast::proto_uniq, _}) => fn_env(ty::ck_uniq),
-      ty::ty_fn({proto: ast::proto_box, _}) => fn_env(ty::ck_box),
-      _ => fail ~"make_fn_glue invoked on non-function type"
+      ty::ty_fn({proto: ty::proto_bare, _}) |
+      ty::ty_fn({proto: ty::proto_vstore(ty::vstore_slice(_)), _}) =>
+        bcx,
+      ty::ty_fn({proto: ty::proto_vstore(ty::vstore_uniq), _}) =>
+        fn_env(ty::ck_uniq),
+      ty::ty_fn({proto: ty::proto_vstore(ty::vstore_box), _}) =>
+        fn_env(ty::ck_box),
+      _ =>
+        fail ~"make_fn_glue invoked on non-function type"
     };
 }
 

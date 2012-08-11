@@ -81,7 +81,7 @@ fn map_slices<A: copy send, B: copy send>(
 fn map<A: copy send, B: copy send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
-            vec::map(slice, f)
+            vec::map(slice, |x| f(x))
         }
     }))
 }
@@ -139,7 +139,7 @@ fn alli<A: copy send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
 fn any<A: copy send>(xs: ~[A], f: fn~(A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         fn~(_base : uint, slice: &[A], copy f) -> bool {
-            vec::any(slice, f)
+            vec::any(slice, |x| f(x))
         }
     })) |x| { x }
 }
