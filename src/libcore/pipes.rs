@@ -401,7 +401,6 @@ fn try_recv<T: send, Tbuffer: send>(-p: recv_packet_buffered<T, Tbuffer>)
 
         drop {
             if task::failing() {
-                io::println("failing!");
                 self.p.state = terminated;
                 let old_task = swap_task(self.p.blocked_task, ptr::null());
                 if !old_task.is_null() {
