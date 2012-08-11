@@ -530,16 +530,20 @@ fn sender_terminate<T: send>(p: *packet<T>) {
 #[doc(hidden)]
 fn receiver_terminate<T: send>(p: *packet<T>) {
     let p = unsafe { &*p };
-    assert p.header.blocked_task.is_null();
     match swap_state_rel(p.header.state, terminated) {
       empty => {
+        assert p.header.blocked_task.is_null();
         // the sender will clean up
       }
       blocked => {
-        // this shouldn't happen.
-        fail ~"terminating a blocked packet"
+        let old_task = swap_task(p.header.blocked_task, ptr::null());
+        if !old_task.is_null() {
+            rustrt::rust_task_deref(old_task);
+            assert old_task == rustrt::rust_get_task();
+        }
       }
       terminated | full => {
+        assert p.header.blocked_task.is_null();
         // I have to clean up, use drop_glue
       }
     }
