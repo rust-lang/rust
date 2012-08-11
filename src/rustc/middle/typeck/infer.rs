@@ -394,7 +394,8 @@ enum infer_ctxt = @{
     ty_var_integral_bindings: vals_and_bindings<ty::tvi_vid, int_ty_set>,
 
     // For region variables.
-    region_var_bindings: vals_and_bindings<ty::region_vid, bounds<ty::region>>,
+    region_var_bindings: vals_and_bindings<ty::region_vid,
+                                           bounds<ty::region>>,
 
     // For keeping track of existing type and region variables.
     ty_var_counter: @mut uint,
@@ -1053,7 +1054,7 @@ impl infer_ctxt {
                                       nde_a.rank)
     }
 
-    fn var_sub_t_integral<V: copy vid>(
+    fn var_integral_sub_t<V: copy vid>(
         vb: &vals_and_bindings<V, int_ty_set>,
         a_id: V, b: ty::t) -> ures {
 
@@ -1146,9 +1147,19 @@ impl infer_ctxt {
         debug!{"eq_regions(%s, %s)",
                a.to_str(self), b.to_str(self)};
         do indent {
-            do self.sub_regions(a, b).then {
-                self.sub_regions(b, a)
-            }
+            self.try(|| {
+                do self.sub_regions(a, b).then {
+                    self.sub_regions(b, a)
+                }
+            }).chain_err(|e| {
+                // substitute a better error, but use the regions
+                // found in the original error
+                match e {
+                  ty::terr_regions_does_not_outlive(a1, b1) =>
+                    err(ty::terr_regions_not_same(a1, b1)),
+                  _ => err(e)
+                }
+            })
         }
     }
 }
@@ -1847,15 +1858,15 @@ fn super_tys<C:combine>(
       }
       (ty::ty_var_integral(a_id), ty::ty_int(_)) |
       (ty::ty_var_integral(a_id), ty::ty_uint(_)) => {
-        self.infcx().vart_integral(&self.infcx().ty_var_integral_bindings,
-                                   a_id, b)
-            .then(|| ok(a) )
+        self.infcx().var_integral_sub_t(
+            &self.infcx().ty_var_integral_bindings,
+            a_id, b).then(|| ok(a) )
       }
       (ty::ty_int(_), ty::ty_var_integral(b_id)) |
       (ty::ty_uint(_), ty::ty_var_integral(b_id)) => {
-        self.infcx().t_sub_var_integral(&self.infcx().ty_var_integral_bindings,
-                                        a, b_id)
-            .then(|| ok(a) )
+        self.infcx().t_sub_var_integral(
+            &self.infcx().ty_var_integral_bindings,
+            a, b_id).then(|| ok(a) )
       }
 
       (ty::ty_int(_), _) |
@@ -2015,8 +2026,8 @@ impl sub: combine {
               }
               _ => {
                   do (&self.lub()).regions(a, b).compare(b) {
-                    ty::terr_regions_differ(b, a)
-                }
+                    ty::terr_regions_does_not_outlive(b, a)
+                  }
               }
             }
         }
@@ -2460,20 +2471,26 @@ impl glb: combine {
                 let rm = self.infcx().tcx.region_map;
                 match region::nearest_common_ancestor(rm, f_id, s_id) {
                   some(r_id) if r_id == f_id => ok(s),
-                  _ => err(ty::terr_regions_differ(b, a))
+                  _ => err(ty::terr_regions_no_overlap(b, a))
                 }
               }
 
               (ty::re_scope(a_id), ty::re_scope(b_id)) |
               (ty::re_free(a_id, _), ty::re_free(b_id, _)) => {
-                // We want to generate a region that is contained by both of
-                // these: so, if one of these scopes is a subscope of the
-                // other, return it.  Otherwise fail.
-                let rm = self.infcx().tcx.region_map;
-                match region::nearest_common_ancestor(rm, a_id, b_id) {
-                  some(r_id) if a_id == r_id => ok(b),
-                  some(r_id) if b_id == r_id => ok(a),
-                  _ => err(ty::terr_regions_differ(b, a))
+                if a == b {
+                    // Same scope or same free identifier, easy case.
+                    ok(a)
+                } else {
+                    // We want to generate the intersection of two
+                    // scopes or two free regions.  So, if one of
+                    // these scopes is a subscope of the other, return
+                    // it.  Otherwise fail.
+                    let rm = self.infcx().tcx.region_map;
+                    match region::nearest_common_ancestor(rm, a_id, b_id) {
+                      some(r_id) if a_id == r_id => ok(ty::re_scope(b_id)),
+                      some(r_id) if b_id == r_id => ok(ty::re_scope(a_id)),
+                      _ => err(ty::terr_regions_no_overlap(b, a))
+                    }
                 }
               }
 
@@ -2487,7 +2504,7 @@ impl glb: combine {
                 if a == b {
                     ok(a)
                 } else {
-                    err(ty::terr_regions_differ(b, a))
+                    err(ty::terr_regions_no_overlap(b, a))
                 }
               }
             }
@@ -2589,13 +2606,13 @@ fn lattice_tys<L:lattice_ops combine>(
           }
 
           (ty::ty_var(a_id), _) => {
-            lattice_var_t(self, &self.infcx().ty_var_bindings, a_id, b,
-                          |x, y| self.tys(x, y) )
+            lattice_var_and_t(self, &self.infcx().ty_var_bindings, a_id, b,
+                              |x, y| self.tys(x, y) )
           }
 
           (_, ty::ty_var(b_id)) => {
-            lattice_var_t(self, &self.infcx().ty_var_bindings, b_id, a,
-                          |x, y| self.tys(x, y) )
+            lattice_var_and_t(self, &self.infcx().ty_var_bindings, b_id, a,
+                              |x, y| self.tys(x, y) )
           }
           _ => {
             super_tys(self, a, b)
@@ -2616,9 +2633,9 @@ fn lattice_rvars<L:lattice_ops combine>(
       }
 
       (ty::re_var(v_id), r) | (r, ty::re_var(v_id)) => {
-        lattice_var_t(self, &self.infcx().region_var_bindings,
-                      v_id, r,
-                      |x, y| self.regions(x, y) )
+        lattice_var_and_t(self, &self.infcx().region_var_bindings,
+                          v_id, r,
+                          |x, y| self.regions(x, y) )
       }
 
       _ => {
