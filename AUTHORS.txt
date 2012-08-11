@@ -71,6 +71,7 @@ Michael Sullivan <sully@msully.net>
 Niko Matsakis <niko@alum.mit.edu>
 Or Brostovski <tohava@gmail.com>
 Patrick Walton <pwalton@mozilla.com>
+Patrik Kårlin <patrik.karlin@gmail.com>
 Paul Stansifer <paul.stansifer@gmail.com>
 Peter Hull <peterhull90@gmail.com>
 Rafael Ávila de Espíndola <respindola@mozilla.com>
