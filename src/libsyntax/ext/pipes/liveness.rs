@@ -27,7 +27,7 @@ updating the states using rule (2) until there are no changes.
 
 */
 
-import std::bitv::{bitv};
+import std::bitv::{Bitv};
 
 import ast_builder::empty_span;
 
@@ -35,7 +35,7 @@ fn analyze(proto: protocol, _cx: ext_ctxt) {
     debug!("initializing colive analysis");
     let num_states = proto.num_states();
     let colive = do (copy proto.states).map_to_vec |state| {
-        let bv = ~bitv(num_states, false);
+        let bv = ~Bitv(num_states, false);
         for state.reachable |s| {
             bv.set(s.id, true);
         }

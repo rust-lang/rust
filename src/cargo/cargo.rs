@@ -74,7 +74,7 @@ type options = {
 
 enum mode { system_mode, user_mode, local_mode }
 
-fn opts() -> ~[getopts::opt] {
+fn opts() -> ~[getopts::Opt] {
     ~[optflag(~"g"), optflag(~"G"), optflag(~"test"),
      optflag(~"h"), optflag(~"help")]
 }
@@ -387,27 +387,27 @@ fn valid_pkg_name(s: ~str) -> bool {
     s.all(is_valid_digit)
 }
 
-fn parse_source(name: ~str, j: json::json) -> source {
+fn parse_source(name: ~str, j: json::Json) -> source {
     if !valid_pkg_name(name) {
         fail fmt!("'%s' is an invalid source name", name);
     }
 
     match j {
-        json::dict(j) => {
+        json::Dict(j) => {
             let mut url = match j.find(~"url") {
-                Some(json::string(u)) => *u,
+                Some(json::String(u)) => *u,
                 _ => fail ~"needed 'url' field in source"
             };
             let method = match j.find(~"method") {
-                Some(json::string(u)) => *u,
+                Some(json::String(u)) => *u,
                 _ => assume_source_method(url)
             };
             let key = match j.find(~"key") {
-                Some(json::string(u)) => Some(*u),
+                Some(json::String(u)) => Some(*u),
                 _ => None
             };
             let keyfp = match j.find(~"keyfp") {
-                Some(json::string(u)) => Some(*u),
+                Some(json::String(u)) => Some(*u),
                 _ => None
             };
             if method == ~"file" {
@@ -429,7 +429,7 @@ fn try_parse_sources(filename: &Path, sources: map::hashmap<~str, source>) {
     if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
     match json::from_str(result::get(c)) {
-        Ok(json::dict(j)) => {
+        Ok(json::Dict(j)) => {
           for j.each |k, v| {
                 sources.insert(k, parse_source(k, v));
                 debug!("source: %s", k);
@@ -440,9 +440,9 @@ fn try_parse_sources(filename: &Path, sources: map::hashmap<~str, source>) {
     }
 }
 
-fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
+fn load_one_source_package(src: source, p: map::hashmap<~str, json::Json>) {
     let name = match p.find(~"name") {
-        Some(json::string(n)) => {
+        Some(json::String(n)) => {
             if !valid_pkg_name(*n) {
                 warn(~"malformed source json: "
                      + src.name + ~", '" + *n + ~"'"+
@@ -459,7 +459,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let uuid = match p.find(~"uuid") {
-        Some(json::string(n)) => {
+        Some(json::String(n)) => {
             if !is_uuid(*n) {
                 warn(~"malformed source json: "
                      + src.name + ~", '" + *n + ~"'"+
@@ -475,7 +475,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let url = match p.find(~"url") {
-        Some(json::string(n)) => *n,
+        Some(json::String(n)) => *n,
         _ => {
             warn(~"malformed source json: " + src.name + ~" (missing url)");
             return;
@@ -483,7 +483,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let method = match p.find(~"method") {
-        Some(json::string(n)) => *n,
+        Some(json::String(n)) => *n,
         _ => {
             warn(~"malformed source json: "
                  + src.name + ~" (missing method)");
@@ -492,16 +492,16 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let reference = match p.find(~"ref") {
-        Some(json::string(n)) => Some(*n),
+        Some(json::String(n)) => Some(*n),
         _ => None
     };
 
     let mut tags = ~[];
     match p.find(~"tags") {
-        Some(json::list(js)) => {
+        Some(json::List(js)) => {
           for (*js).each |j| {
                 match j {
-                    json::string(j) => vec::grow(tags, 1u, *j),
+                    json::String(j) => vec::grow(tags, 1u, *j),
                     _ => ()
                 }
             }
@@ -510,7 +510,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     }
 
     let description = match p.find(~"description") {
-        Some(json::string(n)) => *n,
+        Some(json::String(n)) => *n,
         _ => {
             warn(~"malformed source json: " + src.name
                  + ~" (missing description)");
@@ -548,8 +548,8 @@ fn load_source_info(c: cargo, src: source) {
     if !os::path_exists(&srcfile) { return; }
     let srcstr = io::read_whole_file_str(&srcfile);
     match json::from_str(result::get(srcstr)) {
-        Ok(json::dict(s)) => {
-            let o = parse_source(src.name, json::dict(s));
+        Ok(json::Dict(s)) => {
+            let o = parse_source(src.name, json::Dict(s));
 
             src.key = o.key;
             src.keyfp = o.keyfp;
@@ -570,10 +570,10 @@ fn load_source_packages(c: cargo, src: source) {
     if !os::path_exists(&pkgfile) { return; }
     let pkgstr = io::read_whole_file_str(&pkgfile);
     match json::from_str(result::get(pkgstr)) {
-        Ok(json::list(js)) => {
+        Ok(json::List(js)) => {
           for (*js).each |j| {
                 match j {
-                    json::dict(p) => {
+                    json::Dict(p) => {
                         load_one_source_package(src, p);
                     }
                     _ => {
@@ -1551,7 +1551,7 @@ fn dump_cache(c: cargo) {
     need_dir(&c.root);
 
     let out = c.root.push("cache.json");
-    let _root = json::dict(map::str_hash());
+    let _root = json::Dict(map::str_hash());
 
     if os::path_exists(&out) {
         copy_warn(&out, &c.root.push("cache.json.old"));
@@ -1573,24 +1573,24 @@ fn dump_sources(c: cargo) {
     match io::buffered_file_writer(&out) {
         result::Ok(writer) => {
             let hash = map::str_hash();
-            let root = json::dict(hash);
+            let root = json::Dict(hash);
 
           for c.sources.each |k, v| {
                 let chash = map::str_hash();
-                let child = json::dict(chash);
+                let child = json::Dict(chash);
 
-                chash.insert(~"url", json::string(@v.url));
-                chash.insert(~"method", json::string(@v.method));
+                chash.insert(~"url", json::String(@v.url));
+                chash.insert(~"method", json::String(@v.method));
 
                 match copy v.key {
                     Some(key) => {
-                        chash.insert(~"key", json::string(@key));
+                        chash.insert(~"key", json::String(@key));
                     }
                     _ => ()
                 }
                 match copy v.keyfp {
                     Some(keyfp) => {
-                        chash.insert(~"keyfp", json::string(@keyfp));
+                        chash.insert(~"keyfp", json::String(@keyfp));
                     }
                     _ => ()
                 }

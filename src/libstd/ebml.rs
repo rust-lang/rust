@@ -1,4 +1,4 @@
-
+#[deny(non_camel_case_types)];
 
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
@@ -7,6 +7,7 @@ import core::Option;
 import option::{Some, None};
 
 export doc;
+export Doc;
 export doc_at;
 export maybe_get_doc;
 export get_doc;
@@ -22,28 +23,29 @@ export doc_as_i8;
 export doc_as_i16;
 export doc_as_i32;
 export doc_as_i64;
-export writer;
+export Writer;
 export serializer;
 export ebml_deserializer;
+export EbmlDeserializer;
 export deserializer;
 export with_doc_data;
 export get_doc;
 export extensions;
 
-type ebml_tag = {id: uint, size: uint};
+type EbmlTag = {id: uint, size: uint};
 
-type ebml_state = {ebml_tag: ebml_tag, tag_pos: uint, data_pos: uint};
+type EbmlState = {ebml_tag: EbmlTag, tag_pos: uint, data_pos: uint};
 
 // FIXME (#2739): When we have module renaming, make "reader" and "writer"
 // separate modules within this file.
 
 // ebml reading
-type doc = {data: @~[u8], start: uint, end: uint};
+type Doc = {data: @~[u8], start: uint, end: uint};
 
-type tagged_doc = {tag: uint, doc: doc};
+type TaggedDoc = {tag: uint, doc: Doc};
 
-impl doc: ops::index<uint,doc> {
-    pure fn index(&&tag: uint) -> doc {
+impl Doc: ops::index<uint,Doc> {
+    pure fn index(&&tag: uint) -> Doc {
         unchecked {
             get_doc(self, tag)
         }
@@ -73,11 +75,11 @@ fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     } else { error!("vint too big"); fail; }
 }
 
-fn doc(data: @~[u8]) -> doc {
+fn doc(data: @~[u8]) -> Doc {
     return {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
-fn doc_at(data: @~[u8], start: uint) -> tagged_doc {
+fn doc_at(data: @~[u8], start: uint) -> TaggedDoc {
     let elt_tag = vuint_at(*data, start);
     let elt_size = vuint_at(*data, elt_tag.next);
     let end = elt_size.next + elt_size.val;
@@ -85,24 +87,24 @@ fn doc_at(data: @~[u8], start: uint) -> tagged_doc {
          doc: {data: data, start: elt_size.next, end: end}};
 }
 
-fn maybe_get_doc(d: doc, tg: uint) -> Option<doc> {
+fn maybe_get_doc(d: Doc, tg: uint) -> Option<Doc> {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
         let elt_size = vuint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
-            return Some::<doc>({
+            return Some::<Doc>({
                 data: d.data,
                 start: elt_size.next,
                 end: pos
             });
         }
     }
-    return None::<doc>;
+    return None::<Doc>;
 }
 
-fn get_doc(d: doc, tg: uint) -> doc {
+fn get_doc(d: Doc, tg: uint) -> Doc {
     match maybe_get_doc(d, tg) {
       Some(d) => return d,
       None => {
@@ -112,7 +114,7 @@ fn get_doc(d: doc, tg: uint) -> doc {
     }
 }
 
-fn docs(d: doc, it: fn(uint, doc) -> bool) {
+fn docs(d: Doc, it: fn(uint, Doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -124,7 +126,7 @@ fn docs(d: doc, it: fn(uint, doc) -> bool) {
     }
 }
 
-fn tagged_docs(d: doc, tg: uint, it: fn(doc) -> bool) {
+fn tagged_docs(d: Doc, tg: uint, it: fn(Doc) -> bool) {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
@@ -138,44 +140,44 @@ fn tagged_docs(d: doc, tg: uint, it: fn(doc) -> bool) {
     }
 }
 
-fn doc_data(d: doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
+fn doc_data(d: Doc) -> ~[u8] { vec::slice::<u8>(*d.data, d.start, d.end) }
 
-fn with_doc_data<T>(d: doc, f: fn(x: &[u8]) -> T) -> T {
+fn with_doc_data<T>(d: Doc, f: fn(x: &[u8]) -> T) -> T {
     return f(vec::view(*d.data, d.start, d.end));
 }
 
-fn doc_as_str(d: doc) -> ~str { return str::from_bytes(doc_data(d)); }
+fn doc_as_str(d: Doc) -> ~str { return str::from_bytes(doc_data(d)); }
 
-fn doc_as_u8(d: doc) -> u8 {
+fn doc_as_u8(d: Doc) -> u8 {
     assert d.end == d.start + 1u;
     return (*d.data)[d.start];
 }
 
-fn doc_as_u16(d: doc) -> u16 {
+fn doc_as_u16(d: Doc) -> u16 {
     assert d.end == d.start + 2u;
     return io::u64_from_be_bytes(*d.data, d.start, 2u) as u16;
 }
 
-fn doc_as_u32(d: doc) -> u32 {
+fn doc_as_u32(d: Doc) -> u32 {
     assert d.end == d.start + 4u;
     return io::u64_from_be_bytes(*d.data, d.start, 4u) as u32;
 }
 
-fn doc_as_u64(d: doc) -> u64 {
+fn doc_as_u64(d: Doc) -> u64 {
     assert d.end == d.start + 8u;
     return io::u64_from_be_bytes(*d.data, d.start, 8u);
 }
 
-fn doc_as_i8(d: doc) -> i8 { doc_as_u8(d) as i8 }
-fn doc_as_i16(d: doc) -> i16 { doc_as_u16(d) as i16 }
-fn doc_as_i32(d: doc) -> i32 { doc_as_u32(d) as i32 }
-fn doc_as_i64(d: doc) -> i64 { doc_as_u64(d) as i64 }
+fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
+fn doc_as_i16(d: Doc) -> i16 { doc_as_u16(d) as i16 }
+fn doc_as_i32(d: Doc) -> i32 { doc_as_u32(d) as i32 }
+fn doc_as_i64(d: Doc) -> i64 { doc_as_u64(d) as i64 }
 
 // ebml writing
-type writer_ = {writer: io::Writer, mut size_positions: ~[uint]};
+type Writer_ = {writer: io::Writer, mut size_positions: ~[uint]};
 
-enum writer {
-    writer_(writer_)
+enum Writer {
+    Writer_(Writer_)
 }
 
 fn write_sized_vuint(w: io::Writer, n: uint, size: uint) {
@@ -198,13 +200,13 @@ fn write_vuint(w: io::Writer, n: uint) {
     fail fmt!("vint to write too big: %?", n);
 }
 
-fn writer(w: io::Writer) -> writer {
+fn Writer(w: io::Writer) -> Writer {
     let size_positions: ~[uint] = ~[];
-    return writer_({writer: w, mut size_positions: size_positions});
+    return Writer_({writer: w, mut size_positions: size_positions});
 }
 
 // FIXME (#2741): Provide a function to write the standard ebml header.
-impl writer {
+impl Writer {
     fn start_tag(tag_id: uint) {
         debug!("Start tag %u", tag_id);
 
@@ -306,26 +308,26 @@ impl writer {
 // Totally lame approach.
 const debug: bool = false;
 
-enum ebml_serializer_tag {
-    es_uint, es_u64, es_u32, es_u16, es_u8,
-    es_int, es_i64, es_i32, es_i16, es_i8,
-    es_bool,
-    es_str,
-    es_f64, es_f32, es_float,
-    es_enum, es_enum_vid, es_enum_body,
-    es_vec, es_vec_len, es_vec_elt,
+enum EbmlSerializerTag {
+    EsUint, EsU64, EsU32, EsU16, EsU8,
+    EsInt, EsI64, EsI32, EsI16, EsI8,
+    EsBool,
+    EsStr,
+    EsF64, EsF32, EsFloat,
+    EsEnum, EsEnumVid, EsEnumBody,
+    EsVec, EsVecLen, EsVecElt,
 
-    es_label // Used only when debugging
+    EsLabel // Used only when debugging
 }
 
-trait serializer_priv {
-    fn _emit_tagged_uint(t: ebml_serializer_tag, v: uint);
+trait SerializerPriv {
+    fn _emit_tagged_uint(t: EbmlSerializerTag, v: uint);
     fn _emit_label(label: &str);
 }
 
-impl ebml::writer: serializer_priv {
+impl ebml::Writer: SerializerPriv {
     // used internally to emit things like the vector length and so on
-    fn _emit_tagged_uint(t: ebml_serializer_tag, v: uint) {
+    fn _emit_tagged_uint(t: EbmlSerializerTag, v: uint) {
         assert v <= 0xFFFF_FFFF_u;
         self.wr_tagged_u32(t as uint, v as u32);
     }
@@ -337,53 +339,53 @@ impl ebml::writer: serializer_priv {
         // efficiency.  When debugging, though, we can emit such
         // labels and then they will be checked by deserializer to
         // try and check failures more quickly.
-        if debug { self.wr_tagged_str(es_label as uint, label) }
+        if debug { self.wr_tagged_str(EsLabel as uint, label) }
     }
 }
 
-impl ebml::writer: serialization::serializer {
+impl ebml::Writer: serialization::serializer {
     fn emit_nil() {}
 
-    fn emit_uint(v: uint) { self.wr_tagged_u64(es_uint as uint, v as u64); }
-    fn emit_u64(v: u64) { self.wr_tagged_u64(es_u64 as uint, v); }
-    fn emit_u32(v: u32) { self.wr_tagged_u32(es_u32 as uint, v); }
-    fn emit_u16(v: u16) { self.wr_tagged_u16(es_u16 as uint, v); }
-    fn emit_u8(v: u8)   { self.wr_tagged_u8 (es_u8  as uint, v); }
+    fn emit_uint(v: uint) { self.wr_tagged_u64(EsUint as uint, v as u64); }
+    fn emit_u64(v: u64) { self.wr_tagged_u64(EsU64 as uint, v); }
+    fn emit_u32(v: u32) { self.wr_tagged_u32(EsU32 as uint, v); }
+    fn emit_u16(v: u16) { self.wr_tagged_u16(EsU16 as uint, v); }
+    fn emit_u8(v: u8)   { self.wr_tagged_u8 (EsU8  as uint, v); }
 
-    fn emit_int(v: int) { self.wr_tagged_i64(es_int as uint, v as i64); }
-    fn emit_i64(v: i64) { self.wr_tagged_i64(es_i64 as uint, v); }
-    fn emit_i32(v: i32) { self.wr_tagged_i32(es_i32 as uint, v); }
-    fn emit_i16(v: i16) { self.wr_tagged_i16(es_i16 as uint, v); }
-    fn emit_i8(v: i8)   { self.wr_tagged_i8 (es_i8  as uint, v); }
+    fn emit_int(v: int) { self.wr_tagged_i64(EsInt as uint, v as i64); }
+    fn emit_i64(v: i64) { self.wr_tagged_i64(EsI64 as uint, v); }
+    fn emit_i32(v: i32) { self.wr_tagged_i32(EsI32 as uint, v); }
+    fn emit_i16(v: i16) { self.wr_tagged_i16(EsI16 as uint, v); }
+    fn emit_i8(v: i8)   { self.wr_tagged_i8 (EsI8  as uint, v); }
 
-    fn emit_bool(v: bool) { self.wr_tagged_u8(es_bool as uint, v as u8) }
+    fn emit_bool(v: bool) { self.wr_tagged_u8(EsBool as uint, v as u8) }
 
     // FIXME (#2742): implement these
     fn emit_f64(_v: f64) { fail ~"Unimplemented: serializing an f64"; }
     fn emit_f32(_v: f32) { fail ~"Unimplemented: serializing an f32"; }
     fn emit_float(_v: float) { fail ~"Unimplemented: serializing a float"; }
 
-    fn emit_str(v: &str) { self.wr_tagged_str(es_str as uint, v) }
+    fn emit_str(v: &str) { self.wr_tagged_str(EsStr as uint, v) }
 
     fn emit_enum(name: &str, f: fn()) {
         self._emit_label(name);
-        self.wr_tag(es_enum as uint, f)
+        self.wr_tag(EsEnum as uint, f)
     }
     fn emit_enum_variant(_v_name: &str, v_id: uint, _cnt: uint, f: fn()) {
-        self._emit_tagged_uint(es_enum_vid, v_id);
-        self.wr_tag(es_enum_body as uint, f)
+        self._emit_tagged_uint(EsEnumVid, v_id);
+        self.wr_tag(EsEnumBody as uint, f)
     }
     fn emit_enum_variant_arg(_idx: uint, f: fn()) { f() }
 
     fn emit_vec(len: uint, f: fn()) {
-        do self.wr_tag(es_vec as uint) {
-            self._emit_tagged_uint(es_vec_len, len);
+        do self.wr_tag(EsVec as uint) {
+            self._emit_tagged_uint(EsVecLen, len);
             f()
         }
     }
 
     fn emit_vec_elt(_idx: uint, f: fn()) {
-        self.wr_tag(es_vec_elt as uint, f)
+        self.wr_tag(EsVecElt as uint, f)
     }
 
     fn emit_box(f: fn()) { f() }
@@ -397,23 +399,23 @@ impl ebml::writer: serialization::serializer {
     fn emit_tup_elt(_idx: uint, f: fn()) { f() }
 }
 
-type ebml_deserializer_ = {mut parent: ebml::doc,
+type EbmlDeserializer_ = {mut parent: ebml::Doc,
                            mut pos: uint};
 
-enum ebml_deserializer {
-    ebml_deserializer_(ebml_deserializer_)
+enum EbmlDeserializer {
+    EbmlDeserializer_(EbmlDeserializer_)
 }
 
-fn ebml_deserializer(d: ebml::doc) -> ebml_deserializer {
-    ebml_deserializer_({mut parent: d, mut pos: d.start})
+fn ebml_deserializer(d: ebml::Doc) -> EbmlDeserializer {
+    EbmlDeserializer_({mut parent: d, mut pos: d.start})
 }
 
-priv impl ebml_deserializer {
+priv impl EbmlDeserializer {
     fn _check_label(lbl: ~str) {
         if self.pos < self.parent.end {
             let {tag: r_tag, doc: r_doc} =
                 ebml::doc_at(self.parent.data, self.pos);
-            if r_tag == (es_label as uint) {
+            if r_tag == (EsLabel as uint) {
                 self.pos = r_doc.end;
                 let str = ebml::doc_as_str(r_doc);
                 if lbl != str {
@@ -423,7 +425,7 @@ priv impl ebml_deserializer {
         }
     }
 
-    fn next_doc(exp_tag: ebml_serializer_tag) -> ebml::doc {
+    fn next_doc(exp_tag: EbmlSerializerTag) -> ebml::Doc {
         debug!(". next_doc(exp_tag=%?)", exp_tag);
         if self.pos >= self.parent.end {
             fail ~"no more documents in current node!";
@@ -445,7 +447,7 @@ priv impl ebml_deserializer {
         return r_doc;
     }
 
-    fn push_doc<T>(d: ebml::doc, f: fn() -> T) -> T{
+    fn push_doc<T>(d: ebml::Doc, f: fn() -> T) -> T{
         let old_parent = self.parent;
         let old_pos = self.pos;
         self.parent = d;
@@ -456,60 +458,60 @@ priv impl ebml_deserializer {
         return r;
     }
 
-    fn _next_uint(exp_tag: ebml_serializer_tag) -> uint {
+    fn _next_uint(exp_tag: EbmlSerializerTag) -> uint {
         let r = ebml::doc_as_u32(self.next_doc(exp_tag));
         debug!("_next_uint exp_tag=%? result=%?", exp_tag, r);
         return r as uint;
     }
 }
 
-impl ebml_deserializer: serialization::deserializer {
+impl EbmlDeserializer: serialization::deserializer {
     fn read_nil() -> () { () }
 
-    fn read_u64() -> u64 { ebml::doc_as_u64(self.next_doc(es_u64)) }
-    fn read_u32() -> u32 { ebml::doc_as_u32(self.next_doc(es_u32)) }
-    fn read_u16() -> u16 { ebml::doc_as_u16(self.next_doc(es_u16)) }
-    fn read_u8 () -> u8  { ebml::doc_as_u8 (self.next_doc(es_u8 )) }
+    fn read_u64() -> u64 { ebml::doc_as_u64(self.next_doc(EsU64)) }
+    fn read_u32() -> u32 { ebml::doc_as_u32(self.next_doc(EsU32)) }
+    fn read_u16() -> u16 { ebml::doc_as_u16(self.next_doc(EsU16)) }
+    fn read_u8 () -> u8  { ebml::doc_as_u8 (self.next_doc(EsU8 )) }
     fn read_uint() -> uint {
-        let v = ebml::doc_as_u64(self.next_doc(es_uint));
+        let v = ebml::doc_as_u64(self.next_doc(EsUint));
         if v > (core::uint::max_value as u64) {
             fail fmt!("uint %? too large for this architecture", v);
         }
         return v as uint;
     }
 
-    fn read_i64() -> i64 { ebml::doc_as_u64(self.next_doc(es_i64)) as i64 }
-    fn read_i32() -> i32 { ebml::doc_as_u32(self.next_doc(es_i32)) as i32 }
-    fn read_i16() -> i16 { ebml::doc_as_u16(self.next_doc(es_i16)) as i16 }
-    fn read_i8 () -> i8  { ebml::doc_as_u8 (self.next_doc(es_i8 )) as i8  }
+    fn read_i64() -> i64 { ebml::doc_as_u64(self.next_doc(EsI64)) as i64 }
+    fn read_i32() -> i32 { ebml::doc_as_u32(self.next_doc(EsI32)) as i32 }
+    fn read_i16() -> i16 { ebml::doc_as_u16(self.next_doc(EsI16)) as i16 }
+    fn read_i8 () -> i8  { ebml::doc_as_u8 (self.next_doc(EsI8 )) as i8  }
     fn read_int() -> int {
-        let v = ebml::doc_as_u64(self.next_doc(es_int)) as i64;
+        let v = ebml::doc_as_u64(self.next_doc(EsInt)) as i64;
         if v > (int::max_value as i64) || v < (int::min_value as i64) {
             fail fmt!("int %? out of range for this architecture", v);
         }
         return v as int;
     }
 
-    fn read_bool() -> bool { ebml::doc_as_u8(self.next_doc(es_bool)) as bool }
+    fn read_bool() -> bool { ebml::doc_as_u8(self.next_doc(EsBool)) as bool }
 
     fn read_f64() -> f64 { fail ~"read_f64()"; }
     fn read_f32() -> f32 { fail ~"read_f32()"; }
     fn read_float() -> float { fail ~"read_float()"; }
 
-    fn read_str() -> ~str { ebml::doc_as_str(self.next_doc(es_str)) }
+    fn read_str() -> ~str { ebml::doc_as_str(self.next_doc(EsStr)) }
 
     // Compound types:
     fn read_enum<T>(name: ~str, f: fn() -> T) -> T {
         debug!("read_enum(%s)", name);
         self._check_label(name);
-        self.push_doc(self.next_doc(es_enum), f)
+        self.push_doc(self.next_doc(EsEnum), f)
     }
 
     fn read_enum_variant<T>(f: fn(uint) -> T) -> T {
         debug!("read_enum_variant()");
-        let idx = self._next_uint(es_enum_vid);
+        let idx = self._next_uint(EsEnumVid);
         debug!("  idx=%u", idx);
-        do self.push_doc(self.next_doc(es_enum_body)) {
+        do self.push_doc(self.next_doc(EsEnumBody)) {
             f(idx)
         }
     }
@@ -521,8 +523,8 @@ impl ebml_deserializer: serialization::deserializer {
 
     fn read_vec<T>(f: fn(uint) -> T) -> T {
         debug!("read_vec()");
-        do self.push_doc(self.next_doc(es_vec)) {
-            let len = self._next_uint(es_vec_len);
+        do self.push_doc(self.next_doc(EsVec)) {
+            let len = self._next_uint(EsVecLen);
             debug!("  len=%u", len);
             f(len)
         }
@@ -530,7 +532,7 @@ impl ebml_deserializer: serialization::deserializer {
 
     fn read_vec_elt<T>(idx: uint, f: fn() -> T) -> T {
         debug!("read_vec_elt(idx=%u)", idx);
-        self.push_doc(self.next_doc(es_vec_elt), f)
+        self.push_doc(self.next_doc(EsVecElt), f)
     }
 
     fn read_box<T>(f: fn() -> T) -> T {
@@ -615,7 +617,7 @@ fn test_option_int() {
     fn test_v(v: Option<int>) {
         debug!("v == %?", v);
         let mbuf = io::mem_buffer();
-        let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
+        let ebml_w = ebml::Writer(io::mem_buffer_writer(mbuf));
         serialize_0(ebml_w, v);
         let ebml_doc = ebml::doc(@io::mem_buffer_buf(mbuf));
         let deser = ebml_deserializer(ebml_doc);

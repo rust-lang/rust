@@ -1,3 +1,4 @@
+#[deny(non_camel_case_types)];
 //! Unsafe debugging functions for inspecting values.
 
 import unsafe::reinterpret_cast;

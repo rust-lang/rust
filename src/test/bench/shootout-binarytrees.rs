@@ -1,6 +1,6 @@
 use std;
 import std::arena;
-import methods = std::arena::arena;
+import methods = std::arena::Arena;
 
 enum tree/& { nil, node(&tree, &tree, int), }
 
@@ -13,7 +13,7 @@ fn item_check(t: &tree) -> int {
     }
 }
 
-fn bottom_up_tree(arena: &r/arena::arena,
+fn bottom_up_tree(arena: &r/arena::Arena,
                   item: int,
                   depth: int) -> &r/tree {
     if depth > 0 {
@@ -43,7 +43,7 @@ fn main(args: ~[~str]) {
         max_depth = n;
     }
 
-    let stretch_arena = arena::arena();
+    let stretch_arena = arena::Arena();
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
 
@@ -51,7 +51,7 @@ fn main(args: ~[~str]) {
                           stretch_depth,
                           item_check(stretch_tree)));
 
-    let long_lived_arena = arena::arena();
+    let long_lived_arena = arena::Arena();
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
     let mut depth = min_depth;
     while depth <= max_depth {

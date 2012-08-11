@@ -1,4 +1,5 @@
 // Dynamic arenas.
+#[warn(non_camel_case_types)];
 
 // Arenas are used to quickly allocate objects that share a
 // lifetime. The arena uses ~[u8] vectors as a backing store to
@@ -22,7 +23,7 @@
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
 
-export arena, arena_with_size;
+export Arena, arena_with_size;
 
 import list;
 import list::{list, cons, nil};
@@ -46,15 +47,15 @@ const tydesc_drop_glue_index: size_t = 3 as size_t;
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
-type chunk = {data: @[u8], mut fill: uint, is_pod: bool};
+type Chunk = {data: @[u8], mut fill: uint, is_pod: bool};
 
-struct arena {
+struct Arena {
     // The head is seperated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
-    priv mut head: chunk;
-    priv mut pod_head: chunk;
-    priv mut chunks: @list<chunk>;
+    priv mut head: Chunk;
+    priv mut pod_head: Chunk;
+    priv mut chunks: @list<Chunk>;
     drop {
         unsafe {
             destroy_chunk(self.head);
@@ -65,19 +66,19 @@ struct arena {
     }
 }
 
-fn chunk(size: uint, is_pod: bool) -> chunk {
+fn chunk(size: uint, is_pod: bool) -> Chunk {
     let mut v = @[];
     unsafe { at_vec::unsafe::reserve(v, size); }
     { data: v, mut fill: 0u, is_pod: is_pod }
 }
 
-fn arena_with_size(initial_size: uint) -> arena {
-    return arena {mut head: chunk(initial_size, false),
+fn arena_with_size(initial_size: uint) -> Arena {
+    return Arena {mut head: chunk(initial_size, false),
                   mut pod_head: chunk(initial_size, true),
                   mut chunks: @nil};
 }
 
-fn arena() -> arena {
+fn Arena() -> Arena {
     arena_with_size(32u)
 }
 
@@ -88,7 +89,7 @@ fn round_up_to(base: uint, align: uint) -> uint {
 
 // Walk down a chunk, running the destructors for any objects stored
 // in it.
-unsafe fn destroy_chunk(chunk: chunk) {
+unsafe fn destroy_chunk(chunk: Chunk) {
     let mut idx = 0;
     let buf = vec::unsafe::to_ptr_slice(chunk.data);
     let fill = chunk.fill;
@@ -129,7 +130,7 @@ unsafe fn un_bitpack_tydesc_ptr(p: uint) -> (*TypeDesc, bool) {
 }
 
 // The duplication between the POD and non-POD functions is annoying.
-impl &arena {
+impl &Arena {
     // Functions for the POD part of the arena
     fn alloc_pod_grow(n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
@@ -238,7 +239,7 @@ impl &arena {
 
 #[test]
 fn test_arena_destructors() {
-    let arena = arena::arena();
+    let arena = arena::Arena();
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it
         // doesn't leak.
@@ -251,7 +252,7 @@ fn test_arena_destructors() {
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_arena_destructors_fail() {
-    let arena = arena::arena();
+    let arena = arena::Arena();
     // Put some stuff in the arena.
     for uint::range(0, 10) |i| {
         // Arena allocate something with drop glue to make sure it

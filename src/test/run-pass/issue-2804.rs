@@ -9,11 +9,11 @@ enum object
     int_value(i64),
 }
 
-fn lookup(table: std::map::hashmap<~str, std::json::json>, key: ~str, default: ~str) -> ~str
+fn lookup(table: std::map::hashmap<~str, std::json::Json>, key: ~str, default: ~str) -> ~str
 {
     match table.find(key)
     {
-        option::Some(std::json::string(s)) =>
+        option::Some(std::json::String(s)) =>
         {
             *s
         }
@@ -29,11 +29,11 @@ fn lookup(table: std::map::hashmap<~str, std::json::json>, key: ~str, default: ~
     }
 }
 
-fn add_interface(store: int, managed_ip: ~str, data: std::json::json) -> (~str, object)
+fn add_interface(store: int, managed_ip: ~str, data: std::json::Json) -> (~str, object)
 {
     match data
     {
-        std::json::dict(interface) =>
+        std::json::Dict(interface) =>
         {
             let name = lookup(interface, ~"ifDescr", ~"");
             let label = fmt!("%s-%s", managed_ip, name);
@@ -48,11 +48,11 @@ fn add_interface(store: int, managed_ip: ~str, data: std::json::json) -> (~str, 
     }
 }
 
-fn add_interfaces(store: int, managed_ip: ~str, device: std::map::hashmap<~str, std::json::json>) -> ~[(~str, object)]
+fn add_interfaces(store: int, managed_ip: ~str, device: std::map::hashmap<~str, std::json::Json>) -> ~[(~str, object)]
 {
     match device[~"interfaces"]
     {
-        std::json::list(interfaces) =>
+        std::json::List(interfaces) =>
         {
           do vec::map(*interfaces) |interface| {
                 add_interface(store, managed_ip, interface)

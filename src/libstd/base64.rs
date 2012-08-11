@@ -1,10 +1,11 @@
+#[deny(non_camel_case_types)];
 import io::Reader;
 
-trait to_base64 {
+trait ToBase64 {
     fn to_base64() -> ~str;
 }
 
-impl ~[u8]: to_base64 {
+impl ~[u8]: ToBase64 {
     fn to_base64() -> ~str {
         let chars = str::chars(
           ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -55,17 +56,17 @@ impl ~[u8]: to_base64 {
     }
 }
 
-impl ~str: to_base64 {
+impl ~str: ToBase64 {
     fn to_base64() -> ~str {
         str::to_bytes(self).to_base64()
     }
 }
 
-trait from_base64 {
+trait FromBase64 {
     fn from_base64() -> ~[u8];
 }
 
-impl ~[u8]: from_base64 {
+impl ~[u8]: FromBase64 {
     fn from_base64() -> ~[u8] {
         if self.len() % 4u != 0u { fail ~"invalid base64 length"; }
 
@@ -127,7 +128,7 @@ impl ~[u8]: from_base64 {
     }
 }
 
-impl ~str: from_base64 {
+impl ~str: FromBase64 {
     fn from_base64() -> ~[u8] {
         str::to_bytes(self).from_base64()
     }
