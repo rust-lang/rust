@@ -13,9 +13,9 @@ export memcpy;
 export memmove;
 export memset;
 export to_uint;
+export ref_eq;
 export buf_len;
 export position;
-export extensions;
 export ptr;
 
 import libc::{c_void, size_t};
@@ -148,6 +148,12 @@ fn assimilate<T>(thing: &T) -> *T unsafe {
 #[inline(always)]
 fn to_uint<T>(thing: &T) -> uint unsafe {
     unsafe::reinterpret_cast(thing)
+}
+
+/// Determine if two borrowed pointers point to the same thing.
+#[inline(always)]
+fn ref_eq<T>(thing: &T, other: &T) -> bool {
+    to_uint(thing) == to_uint(other)
 }
 
 trait ptr {
