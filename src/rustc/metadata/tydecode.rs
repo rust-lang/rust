@@ -85,13 +85,11 @@ fn parse_ty_rust_fn(st: @pstate, conv: conv_did) -> ty::t {
     return ty::mk_fn(st.tcx, parse_ty_fn(st, conv));
 }
 
-fn parse_proto(c: char) -> ast::proto {
-    match c {
-      '~' => ast::proto_uniq,
-      '@' => ast::proto_box,
-      '&' => ast::proto_block,
-      'n' => ast::proto_bare,
-      _ => fail ~"illegal fn type kind " + str::from_char(c)
+fn parse_proto(st: @pstate) -> ty::fn_proto {
+    match next(st) {
+        'n' => ty::proto_bare,
+        'v' => ty::proto_vstore(parse_vstore(st)),
+        c => fail ~"illegal proto type kind " + str::from_char(c)
     }
 }
 
@@ -360,7 +358,7 @@ fn parse_purity(c: char) -> purity {
 }
 
 fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
-    let proto = parse_proto(next(st));
+    let proto = parse_proto(st);
     let purity = parse_purity(next(st));
     let bounds = parse_bounds(st, conv);
     assert (next(st) == '[');

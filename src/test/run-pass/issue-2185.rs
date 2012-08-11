@@ -37,8 +37,8 @@ fn range(lo: uint, hi: uint, it: fn(uint)) {
 }
 
 fn main() {
-    let range = |a| range(0u, 1000u, a);
-    let filt = |a| filter(
+    let range: fn@(fn&(uint)) = |a| range(0u, 1000u, a);
+    let filt: fn@(fn&(&&uint)) = |a| filter(
         range,
         |&&n: uint| n % 3u != 0u && n % 5u != 0u,
         a);

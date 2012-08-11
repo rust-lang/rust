@@ -230,6 +230,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
     let cx = fcx.ccx;
     match ex.node {
       ast::expr_path(*) => {
+        debug!("(vtable - resolving expr) resolving path expr");
         match fcx.opt_node_ty_substs(ex.id) {
           some(ref substs) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
@@ -249,6 +250,8 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
       ast::expr_field(*) | ast::expr_binary(*) |
       ast::expr_unary(*) | ast::expr_assign_op(*) |
       ast::expr_index(*) => {
+        debug!("(vtable - resolving expr) resolving field/binary/unary/\
+                assign/index expr");
         match cx.method_map.find(ex.id) {
           some({origin: method_static(did), _}) => {
             let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
@@ -269,6 +272,7 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
         }
       }
       ast::expr_cast(src, _) => {
+        debug!("(vtable - resolving expr) resolving cast expr");
         let target_ty = fcx.expr_ty(ex);
         match ty::get(target_ty).struct {
           ty::ty_trait(*) => {

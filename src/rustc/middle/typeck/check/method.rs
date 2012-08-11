@@ -334,7 +334,8 @@ class lookup {
     fn ty_from_did(did: ast::def_id) -> ty::t {
         match check ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
           ty::ty_fn(fty) => {
-            ty::mk_fn(self.tcx(), {proto: ast::proto_box with fty})
+            ty::mk_fn(self.tcx(),
+                      {proto: ty::proto_vstore(ty::vstore_box) with fty})
           }
         }
         /*
@@ -416,7 +417,8 @@ class lookup {
 
         // a bit hokey, but the method unbound has a bare protocol, whereas
         // a.b has a protocol like fn@() (perhaps eventually fn&()):
-        let fty = ty::mk_fn(tcx, {proto: ast::proto_box with m.fty});
+        let fty = ty::mk_fn(tcx, {proto: ty::proto_vstore(ty::vstore_box)
+                                  with m.fty});
 
         self.candidates.push(
             {self_ty: self.self_ty,

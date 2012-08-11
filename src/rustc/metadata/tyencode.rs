@@ -306,12 +306,15 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
       }
     }
 }
-fn enc_proto(w: io::writer, proto: proto) {
+
+fn enc_proto(w: io::writer, cx: @ctxt, proto: ty::fn_proto) {
+    w.write_str(&"f");
     match proto {
-      proto_uniq => w.write_str(&"f~"),
-      proto_box => w.write_str(&"f@"),
-      proto_block => w.write_str(~"f&"),
-      proto_bare => w.write_str(&"fn")
+        ty::proto_bare => w.write_str(&"n"),
+        ty::proto_vstore(vstore) => {
+            w.write_str(&"v");
+            enc_vstore(w, cx, vstore);
+        }
     }
 }
 
@@ -335,7 +338,7 @@ fn enc_purity(w: io::writer, p: purity) {
 }
 
 fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
-    enc_proto(w, ft.proto);
+    enc_proto(w, cx, ft.proto);
     enc_purity(w, ft.purity);
     enc_bounds(w, cx, ft.bounds);
     w.write_char('[');

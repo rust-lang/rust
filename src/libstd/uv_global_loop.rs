@@ -39,15 +39,16 @@ fn get_monitor_task_gl() -> iotask unsafe {
     debug!{"ENTERING global_loop::get() loop chan: %?",
            monitor_loop_chan_ptr};
 
-    let builder_fn = || {
-        task::task().sched_mode(task::single_threaded).unlinked()
-    };
-
     debug!{"before priv::chan_from_global_ptr"};
     type monchan = chan<iotask>;
 
-    let monitor_ch = do chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
-                                                        builder_fn) |msg_po| {
+    let monitor_ch =
+        do chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
+                                           || {
+                                                task::task().sched_mode
+                                                (task::single_threaded)
+                                                .unlinked()
+                                           }) |msg_po| {
         debug!{"global monitor task starting"};
 
         // As a weak task the runtime will notify us when to exit

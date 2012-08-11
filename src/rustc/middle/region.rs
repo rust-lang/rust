@@ -496,6 +496,13 @@ fn determine_rp_in_ty(ty: @ast::ty,
         }
       }
 
+      ast::ty_fn(ast::proto_bare, _, _) |
+      ast::ty_fn(ast::proto_block, _, _) if cx.anon_implies_rp => {
+        debug!("referenced bare fn type with regions %s",
+               pprust::ty_to_str(ty));
+        cx.add_rp(cx.item_id);
+      }
+
       _ => {}
     }
 

@@ -251,7 +251,7 @@ import std::smallintmap::smallintmap;
 import std::map::hashmap;
 import middle::ty;
 import middle::ty::{tv_vid, tvi_vid, region_vid, vid,
-                    ty_int, ty_uint, get};
+                    ty_int, ty_uint, get, terr_fn};
 import syntax::{ast, ast_util};
 import syntax::ast::{ret_style, purity};
 import util::ppaux::{ty_to_str, mt_to_str};
@@ -1654,7 +1654,7 @@ trait combine {
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
-    fn protos(p1: ast::proto, p2: ast::proto) -> cres<ast::proto>;
+    fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto>;
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style>;
     fn purities(f1: purity, f2: purity) -> cres<purity>;
     fn contraregions(a: ty::region, b: ty::region) -> cres<ty::region>;
@@ -2053,10 +2053,25 @@ impl sub: combine {
         }
     }
 
-    fn protos(a: ast::proto, b: ast::proto) -> cres<ast::proto> {
-        (&self.lub()).protos(a, b).compare(b, || {
-            ty::terr_proto_mismatch(b, a)
-        })
+    fn protos(a: ty::fn_proto, b: ty::fn_proto) -> cres<ty::fn_proto> {
+        match (a, b) {
+            (ty::proto_bare, _) => ok(ty::proto_bare),
+
+            (ty::proto_vstore(ty::vstore_box),
+             ty::proto_vstore(ty::vstore_slice(_))) =>
+                ok(ty::proto_vstore(ty::vstore_box)),
+
+            (ty::proto_vstore(ty::vstore_uniq),
+             ty::proto_vstore(ty::vstore_slice(_))) =>
+                ok(ty::proto_vstore(ty::vstore_uniq)),
+
+            (_, ty::proto_bare) => err(ty::terr_proto_mismatch(b, a)),
+            (ty::proto_vstore(vs_a), ty::proto_vstore(vs_b)) => {
+                do self.vstores(ty::terr_fn, vs_a, vs_b).chain |vs_c| {
+                    ok(ty::proto_vstore(vs_c))
+                }
+            }
+        }
     }
 
     fn purities(f1: purity, f2: purity) -> cres<purity> {
@@ -2214,15 +2229,21 @@ impl lub: combine {
         glb(self.infcx()).tys(a, b)
     }
 
-    fn protos(p1: ast::proto, p2: ast::proto) -> cres<ast::proto> {
-        if p1 == ast::proto_bare {
-            ok(p2)
-        } else if p2 == ast::proto_bare {
-            ok(p1)
-        } else if p1 == p2 {
-            ok(p1)
-        } else {
-            ok(ast::proto_block)
+    // XXX: Wrong.
+    fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto> {
+        match (p1, p2) {
+            (ty::proto_bare, _) => ok(p2),
+            (_, ty::proto_bare) => ok(p1),
+            (ty::proto_vstore(v1), ty::proto_vstore(v2)) => {
+                self.infcx().try(|| {
+                    do self.vstores(terr_fn, v1, v2).chain |vs| {
+                        ok(ty::proto_vstore(vs))
+                    }
+                }).chain_err(|_err| {
+                    // XXX: Totally unsound, but fixed up later.
+                    ok(ty::proto_vstore(ty::vstore_slice(ty::re_static)))
+                })
+            }
         }
     }
 
@@ -2411,15 +2432,21 @@ impl glb: combine {
         lub(self.infcx()).tys(a, b)
     }
 
-    fn protos(p1: ast::proto, p2: ast::proto) -> cres<ast::proto> {
-        if p1 == ast::proto_block {
-            ok(p2)
-        } else if p2 == ast::proto_block {
-            ok(p1)
-        } else if p1 == p2 {
-            ok(p1)
-        } else {
-            ok(ast::proto_bare)
+    fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto> {
+        match (p1, p2) {
+            (ty::proto_vstore(ty::vstore_slice(_)), _) => ok(p2),
+            (_, ty::proto_vstore(ty::vstore_slice(_))) => ok(p1),
+            (ty::proto_vstore(v1), ty::proto_vstore(v2)) => {
+                self.infcx().try(|| {
+                    do self.vstores(terr_fn, v1, v2).chain |vs| {
+                        ok(ty::proto_vstore(vs))
+                    }
+                }).chain_err(|_err| {
+                    // XXX: Totally unsound, but fixed up later.
+                    ok(ty::proto_bare)
+                })
+            }
+            _ => ok(ty::proto_bare)
         }
     }
 
