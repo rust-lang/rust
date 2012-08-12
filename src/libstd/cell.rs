@@ -18,10 +18,10 @@ fn empty_cell<T>() -> Cell<T> {
 impl<T> Cell<T> {
     /// Yields the value, failing if the cell is empty.
     fn take() -> T {
-        let value = none;
+        let mut value = none;
         value <-> self.value;
         if value.is_none() {
-            fail "attempt to take an empty cell";
+            fail ~"attempt to take an empty cell";
         }
         return option::unwrap(value);
     }
@@ -29,7 +29,7 @@ impl<T> Cell<T> {
     /// Returns the value, failing if the cell is full.
     fn put_back(+value: T) {
         if self.value.is_none() {
-            fail "attempt to put a value back into a full cell";
+            fail ~"attempt to put a value back into a full cell";
         }
         self.value = some(move value);
     }
@@ -39,4 +39,3 @@ impl<T> Cell<T> {
         self.value.is_none()
     }
 }
-
