@@ -26,6 +26,7 @@ export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
 export test, tempfile, serialization;
 export cmp;
 export base64;
+export cell;
 
 // General io and system-services modules
 
@@ -45,6 +46,7 @@ mod uv_global_loop;
 
 mod c_vec;
 mod timer;
+mod cell;
 
 // Concurrency
 
