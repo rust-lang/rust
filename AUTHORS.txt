@@ -66,6 +66,7 @@ Margaret Meyerhofer <mmeyerho@andrew.cmu.edu>
 Marijn Haverbeke <marijnh@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Matthew O'Connor <thegreendragon@gmail.com>
+Max Penet <max.penet@gmail.com>
 Michael Bebenita <mbebenita@mozilla.com>
 Michael Sullivan <sully@msully.net>
 Niko Matsakis <niko@alum.mit.edu>
