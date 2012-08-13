@@ -1,8 +1,12 @@
-;; Wrapper for CodeMirror-style emacs modes. Highlighting is done by
-;; running a stateful parser (with first-class state object) over the
-;; buffer, line by line, using the output to add 'face properties, and
-;; storing the parser state at the end of each line. Indentation is
-;; done based on the parser state at the start of the line.
+;;; cm-mode.el --- Wrapper for CodeMirror-style emacs modes
+
+;; Version: 0.1.0
+
+;; Highlighting is done by running a stateful parser (with first-class
+;; state object) over the buffer, line by line, using the output to
+;; add 'face properties, and storing the parser state at the end of
+;; each line. Indentation is done based on the parser state at the
+;; start of the line.
 
 (eval-when-compile (require 'cl))
 
@@ -163,7 +167,7 @@
         (cm-schedule-work 0.05)))))
 
 (defun cm-do-some-work ()
-  (save-excursion 
+  (save-excursion
     (condition-case cnd (cm-do-some-work-inner)
       (error (print cnd) (error cnd)))))
 
@@ -174,6 +178,7 @@
 
 ;; Entry function
 
+;;;###autoload
 (defun cm-mode (mode)
   (set (make-local-variable 'cm-cur-mode) mode)
   (set (make-local-variable 'cm-worklist) (list (copy-marker 1)))
@@ -184,3 +189,5 @@
   (cm-schedule-work 0.05))
 
 (provide 'cm-mode)
+
+;;; <name>.el ends here
