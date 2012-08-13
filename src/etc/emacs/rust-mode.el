@@ -1,3 +1,9 @@
+;;; rust-mode.el --- A major emacs mode for editing Rust source code
+
+;; Version: 0.1.0
+;; Package-Requires: ((cm-mode "0.1.0"))
+;; Url: https://github.com/mozilla/rust
+
 (require 'cm-mode)
 (require 'cc-mode)
 
@@ -277,6 +283,7 @@
             ((eq (rust-context-align cx) t) (+ (rust-context-column cx) (if closing -1 0)))
             (t (+ base (if closing 0 unit)))))))
 
+;;;###autoload
 (define-derived-mode rust-mode fundamental-mode "Rust"
   "Major mode for editing Rust source files."
   (set-syntax-table rust-syntax-table)
@@ -293,3 +300,5 @@
 (define-key rust-mode-map "{" 'rust-electric-brace)
 
 (provide 'rust-mode)
+
+;;; rust-mode.el ends here
