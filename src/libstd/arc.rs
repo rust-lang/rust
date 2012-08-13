@@ -5,10 +5,34 @@
 
 import unsafe::{shared_mutable_state, clone_shared_mutable_state,
                 get_shared_mutable_state, get_shared_immutable_state};
-import sync::{condvar, mutex, rwlock};
+import sync;
+import sync::{mutex, rwlock};
 
 export arc, clone, get;
-export mutex_arc, rw_arc;
+export condvar, mutex_arc, rw_arc;
+
+/// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
+struct condvar { is_mutex: bool; failed: &mut bool; cond: &sync::condvar; }
+
+impl &condvar {
+    /// Atomically exit the associated ARC and block until a signal is sent.
+    fn wait() {
+        assert !*self.failed;
+        self.cond.wait();
+        // This is why we need to wrap sync::condvar.
+        check_poison(self.is_mutex, *self.failed);
+    }
+    /// Wake up a blocked task. Returns false if there was no blocked task.
+    fn signal() -> bool {
+        assert !*self.failed;
+        self.cond.signal()
+    }
+    /// Wake up all blocked tasks. Returns the number of tasks woken.
+    fn broadcast() -> uint {
+        assert !*self.failed;
+        self.cond.broadcast()
+    }
+}
 
 /****************************************************************************
  * Immutable ARC
@@ -95,26 +119,28 @@ impl<T: send> &mutex_arc<T> {
         // unsafe. See borrow_rwlock, far below.
         do (&state.lock).lock {
             check_poison(true, state.failed);
-            state.failed = true;
-            let result = blk(&mut state.data);
-            state.failed = false;
-            result
+            let _z = poison_on_fail(&mut state.failed);
+            blk(&mut state.data)
         }
     }
-/* FIXME(#3145): Make this compile; borrowck doesn't like it..?
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline(always)]
-    unsafe fn access_cond<U>(blk: fn(x: &mut T, condvar) -> U) -> U {
+    unsafe fn access_cond<U>(blk: fn(x: &x/mut T, c: &c/condvar) -> U) -> U {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do (&state.lock).lock_cond |cond| {
             check_poison(true, state.failed);
-            state.failed = true;
-            let result = blk(&mut state.data, cond);
-            state.failed = false;
-            result
+            let _z = poison_on_fail(&mut state.failed);
+            /*
+            blk(&mut state.data,
+                &condvar { is_mutex: true, failed: &mut state.failed,
+                           cond: cond })
+            */
+            // XXX: Working around two seeming region bugs here
+            let fref = unsafe { unsafe::reinterpret_cast(&mut state.failed) };
+            let cvar = condvar { is_mutex: true, failed: fref, cond: cond };
+            blk(&mut state.data, unsafe { unsafe::reinterpret_cast(&cvar) } )
         }
     }
-*/
 }
 
 // Common code for {mutex.access,rwlock.write}{,_cond}.
@@ -126,6 +152,15 @@ fn check_poison(is_mutex: bool, failed: bool) {
         } else {
             fail ~"Poisoned rw_arc - another task failed inside!";
         }
+    }
+}
+
+struct poison_on_fail {
+    failed: &mut bool;
+    new(failed: &mut bool) { self.failed = failed; }
+    drop {
+        /* assert !*self.failed; -- might be false in case of cond.wait() */
+        if task::failing() { *self.failed = true; }
     }
 }
 
@@ -175,26 +210,28 @@ impl<T: const send> &rw_arc<T> {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write {
             check_poison(false, state.failed);
-            state.failed = true;
-            let result = blk(&mut state.data);
-            state.failed = false;
-            result
+            let _z = poison_on_fail(&mut state.failed);
+            blk(&mut state.data)
         }
     }
-/* FIXME(#3145): Make this compile; borrowck doesn't like it..?
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
-    fn write_cond<U>(blk: fn(x: &mut T, condvar) -> U) -> U {
+    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/condvar) -> U) -> U {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write_cond |cond| {
             check_poison(false, state.failed);
-            state.failed = true;
-            let result = blk(&mut state.data, cond);
-            state.failed = false;
-            result
+            let _z = poison_on_fail(&mut state.failed);
+            /*
+            blk(&mut state.data,
+                &condvar { is_mutex: false, failed: &mut state.failed,
+                           cond: cond })
+            */
+            // XXX: Working around two seeming region bugs here
+            let fref = unsafe { unsafe::reinterpret_cast(&mut state.failed) };
+            let cvar = condvar { is_mutex: false, failed: fref, cond: cond };
+            blk(&mut state.data, unsafe { unsafe::reinterpret_cast(&cvar) } )
         }
     }
-*/
     /**
      * Access the underlying data immutably. May run concurrently with other
      * reading tasks.
@@ -254,6 +291,49 @@ mod tests {
         log(info, arc_v);
     }
 
+    #[test]
+    fn test_mutex_arc_condvar() {
+        let arc = ~mutex_arc(false);
+        let arc2 = ~arc.clone();
+        let (c,p) = pipes::oneshot();
+        let (c,p) = (~mut some(c), ~mut some(p));
+        do task::spawn {
+            // wait until parent gets in
+            pipes::recv_one(option::swap_unwrap(p));
+            do arc2.access_cond |state, cond| {
+                *state = true;
+                cond.signal();
+            }
+        }
+        do arc.access_cond |state, cond| {
+            pipes::send_one(option::swap_unwrap(c), ());
+            assert !*state;
+            while !*state {
+                cond.wait();
+            }
+        }
+    }
+    #[test] #[should_fail] #[ignore(cfg(windows))]
+    fn test_arc_condvar_poison() {
+        let arc = ~mutex_arc(1);
+        let arc2 = ~arc.clone();
+        let (c,p) = pipes::stream();
+
+        do task::spawn_unlinked {
+            let _ = p.recv();
+            do arc2.access_cond |one, cond| {
+                cond.signal();
+                assert *one == 0; // Parent should fail when it wakes up.
+            }
+        }
+
+        do arc.access_cond |one, cond| {
+            c.send(());
+            while *one == 1 {
+                cond.wait();
+            }
+        }
+    }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_mutex_arc_poison() {
         let arc = ~mutex_arc(1);
