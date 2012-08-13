@@ -90,7 +90,7 @@ export send_packet, recv_packet, send, recv, try_recv, peek;
 export select, select2, selecti, select2i, selectable;
 export spawn_service, spawn_service_recv;
 export stream, port, chan, shared_chan, port_set, channel;
-export oneshot, recv_one, try_recv_one;
+export oneshot, recv_one, try_recv_one, send_one, try_send_one;
 
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;
