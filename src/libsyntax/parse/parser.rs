@@ -928,7 +928,8 @@ class parser {
                             !self.is_keyword(~"with") {
                         self.expect(token::COMMA);
                         if self.token == token::RBRACE ||
-                                self.is_keyword(~"with") {
+                                self.is_keyword(~"with") ||
+                                self.token == token::DOTDOT {
                             // Accept an optional trailing comma.
                             break;
                         }
@@ -936,7 +937,7 @@ class parser {
                     }
 
                     let base;
-                    if self.eat_keyword(~"with") {
+                    if self.eat_keyword(~"with") || self.eat(token::DOTDOT) {
                         base = some(self.parse_expr());
                     } else {
                         base = none;
@@ -1548,6 +1549,16 @@ class parser {
         let mut fields = ~[self.parse_field(token::COLON)];
         let mut base = none;
         while self.token != token::RBRACE {
+            if self.token == token::COMMA
+                && self.look_ahead(1) == token::DOTDOT {
+                self.bump();
+                self.bump();
+                base = some(self.parse_expr()); break;
+            }
+
+            // XXX: Remove "with" after all code is converted over and there's
+            // a snapshot.
+
             // optional comma before "with"
             if self.token == token::COMMA
                 && self.token_is_keyword(~"with",

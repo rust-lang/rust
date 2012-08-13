@@ -1039,7 +1039,9 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           some(expr) => {
             if vec::len(fields) > 0u { space(s.s); }
             ibox(s, indent_unit);
-            word_space(s, ~"with");
+            word(s.s, ~",");
+            space(s.s);
+            word(s.s, ~"..");
             print_expr(s, expr);
             end(s);
           }
@@ -1055,7 +1057,9 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             some(expr) => {
                 if vec::len(fields) > 0u { space(s.s); }
                 ibox(s, indent_unit);
-                word_space(s, ~"with");
+                word(s.s, ~",");
+                space(s.s);
+                word(s.s, ~"..");
                 print_expr(s, expr);
                 end(s);
             }
