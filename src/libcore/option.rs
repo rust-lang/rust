@@ -227,7 +227,7 @@ fn test_option_dance() {
 }
 #[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_option_too_much_dance() {
-    let mut y = some(util::noncopyable());
+    let mut y = some(util::NonCopyable());
     let _y2 = swap_unwrap(&mut y);
     let _y3 = swap_unwrap(&mut y);
 }

@@ -1,9 +1,9 @@
 import to_str::*;
-import to_str::to_str;
+import to_str::ToStr;
 
 mod kitty {
 
-class cat : to_str {
+class cat : ToStr {
   priv {
     let mut meows : uint;
     fn meow() {

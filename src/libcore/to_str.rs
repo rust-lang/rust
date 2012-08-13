@@ -1,62 +1,62 @@
-trait to_str { fn to_str() -> ~str; }
+trait ToStr { fn to_str() -> ~str; }
 
-impl int: to_str {
+impl int: ToStr {
     fn to_str() -> ~str { int::str(self) }
 }
-impl i8: to_str {
+impl i8: ToStr {
     fn to_str() -> ~str { i8::str(self) }
 }
-impl i16: to_str {
+impl i16: ToStr {
     fn to_str() -> ~str { i16::str(self) }
 }
-impl i32: to_str {
+impl i32: ToStr {
     fn to_str() -> ~str { i32::str(self) }
 }
-impl i64: to_str {
+impl i64: ToStr {
     fn to_str() -> ~str { i64::str(self) }
 }
-impl uint: to_str {
+impl uint: ToStr {
     fn to_str() -> ~str { uint::str(self) }
 }
-impl u8: to_str {
+impl u8: ToStr {
     fn to_str() -> ~str { u8::str(self) }
 }
-impl u16: to_str {
+impl u16: ToStr {
     fn to_str() -> ~str { u16::str(self) }
 }
-impl u32: to_str {
+impl u32: ToStr {
     fn to_str() -> ~str { u32::str(self) }
 }
-impl u64: to_str {
+impl u64: ToStr {
     fn to_str() -> ~str { u64::str(self) }
 }
-impl float: to_str {
+impl float: ToStr {
     fn to_str() -> ~str { float::to_str(self, 4u) }
 }
-impl bool: to_str {
+impl bool: ToStr {
     fn to_str() -> ~str { bool::to_str(self) }
 }
-impl (): to_str {
+impl (): ToStr {
     fn to_str() -> ~str { ~"()" }
 }
-impl ~str: to_str {
+impl ~str: ToStr {
     fn to_str() -> ~str { self }
 }
 
-impl<A: to_str copy, B: to_str copy> (A, B): to_str {
+impl<A: ToStr copy, B: ToStr copy> (A, B): ToStr {
     fn to_str() -> ~str {
         let (a, b) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~")"
     }
 }
-impl<A: to_str copy, B: to_str copy, C: to_str copy> (A, B, C): to_str {
+impl<A: ToStr copy, B: ToStr copy, C: ToStr copy> (A, B, C): ToStr {
     fn to_str() -> ~str {
         let (a, b, c) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~", " + c.to_str() + ~")"
     }
 }
 
-impl<A: to_str> ~[A]: to_str {
+impl<A: ToStr> ~[A]: ToStr {
     fn to_str() -> ~str {
         let mut acc = ~"[", first = true;
         for vec::each(self) |elt| {
@@ -69,10 +69,10 @@ impl<A: to_str> ~[A]: to_str {
     }
 }
 
-impl<A: to_str> @A: to_str {
+impl<A: ToStr> @A: ToStr {
     fn to_str() -> ~str { ~"@" + (*self).to_str() }
 }
-impl<A: to_str> ~A: to_str {
+impl<A: ToStr> ~A: ToStr {
     fn to_str() -> ~str { ~"~" + (*self).to_str() }
 }
 

@@ -1,6 +1,6 @@
 /// An interface for numbers.
 
-trait num {
+trait Num {
     // FIXME: Cross-crate overloading doesn't work yet. (#2615)
     // FIXME: Trait composition. (#2616)
     pure fn add(&&other: self) -> self;

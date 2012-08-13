@@ -7,10 +7,10 @@ use a;
 use b;
 use c;
 
-import a::to_str;
+import a::to_strz;
 
 fn main() {
-    io::println((~"foo").to_str());
-    io::println(1.to_str());
-    io::println(true.to_str());
+    io::println((~"foo").to_strz());
+    io::println(1.to_strz());
+    io::println(true.to_strz());
 }

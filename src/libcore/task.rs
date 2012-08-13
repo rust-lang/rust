@@ -188,7 +188,7 @@ type task_opts = {
 enum task_builder = {
     opts: task_opts,
     gen_body: fn@(+fn~()) -> fn~(),
-    can_not_copy: option<util::noncopyable>,
+    can_not_copy: option<util::NonCopyable>,
     mut consumed: bool,
 };
 
@@ -725,7 +725,7 @@ type taskgroup_data = {
     // tasks in this group.
     mut descendants: taskset,
 };
-type taskgroup_arc = unsafe::exclusive<option<taskgroup_data>>;
+type taskgroup_arc = unsafe::Exclusive<option<taskgroup_data>>;
 
 type taskgroup_inner = &mut option<taskgroup_data>;
 
@@ -754,7 +754,7 @@ type ancestor_node = {
     // Recursive rest of the list.
     mut ancestors:    ancestor_list,
 };
-enum ancestor_list = option<unsafe::exclusive<ancestor_node>>;
+enum ancestor_list = option<unsafe::Exclusive<ancestor_node>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
@@ -762,7 +762,7 @@ fn access_group<U>(x: taskgroup_arc, blk: fn(taskgroup_inner) -> U) -> U {
     unsafe { x.with(blk) }
 }
 #[inline(always)]
-fn access_ancestors<U>(x: unsafe::exclusive<ancestor_node>,
+fn access_ancestors<U>(x: unsafe::Exclusive<ancestor_node>,
                        blk: fn(x: &mut ancestor_node) -> U) -> U {
     unsafe { x.with(blk) }
 }

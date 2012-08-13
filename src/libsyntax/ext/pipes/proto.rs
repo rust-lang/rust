@@ -1,4 +1,4 @@
-import to_str::to_str;
+import to_str::ToStr;
 import dvec::dvec;
 
 import ast::{ident};
@@ -9,7 +9,7 @@ enum direction {
     send, recv
 }
 
-impl direction: to_str {
+impl direction: ToStr {
     fn to_str() -> ~str {
         match self {
           send => ~"send",

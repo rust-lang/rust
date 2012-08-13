@@ -1,12 +1,12 @@
 //! Operations on tuples
 
-trait tuple_ops<T,U> {
+trait TupleOps<T,U> {
     pure fn first() -> T;
     pure fn second() -> U;
     pure fn swap() -> (U, T);
 }
 
-impl<T: copy, U: copy> (T, U): tuple_ops<T,U> {
+impl<T: copy, U: copy> (T, U): TupleOps<T,U> {
 
     /// Return the first element of self
     pure fn first() -> T {
@@ -28,12 +28,12 @@ impl<T: copy, U: copy> (T, U): tuple_ops<T,U> {
 
 }
 
-trait extended_tuple_ops<A,B> {
+trait ExtendedTupleOps<A,B> {
     fn zip() -> ~[(A, B)];
     fn map<C>(f: fn(A, B) -> C) -> ~[C];
 }
 
-impl<A: copy, B: copy> (&[A], &[B]): extended_tuple_ops<A,B> {
+impl<A: copy, B: copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
 
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;
@@ -46,7 +46,7 @@ impl<A: copy, B: copy> (&[A], &[B]): extended_tuple_ops<A,B> {
     }
 }
 
-impl<A: copy, B: copy> (~[A], ~[B]): extended_tuple_ops<A,B> {
+impl<A: copy, B: copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;

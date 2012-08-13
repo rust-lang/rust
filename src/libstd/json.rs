@@ -622,11 +622,11 @@ impl <A: to_json> option<A>: to_json {
     }
 }
 
-impl json: to_str::to_str {
+impl json: to_str::ToStr {
     fn to_str() -> ~str { to_str(self) }
 }
 
-impl error: to_str::to_str {
+impl error: to_str::ToStr {
     fn to_str() -> ~str {
         fmt!{"%u:%u: %s", self.line, self.col, *self.msg}
     }

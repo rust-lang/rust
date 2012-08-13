@@ -95,10 +95,10 @@ export vec_concat;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn vec_reserve_shared(++t: *sys::type_desc,
+    fn vec_reserve_shared(++t: *sys::TypeDesc,
                           ++v: **unsafe::vec_repr,
                           ++n: libc::size_t);
-    fn vec_from_buf_shared(++t: *sys::type_desc,
+    fn vec_from_buf_shared(++t: *sys::TypeDesc,
                            ++ptr: *(),
                            ++count: libc::size_t) -> *unsafe::vec_repr;
 }

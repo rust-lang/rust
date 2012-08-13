@@ -1,6 +1,6 @@
 // A protocol compiler for Rust.
 
-import to_str::to_str;
+import to_str::ToStr;
 
 import dvec::dvec;
 
