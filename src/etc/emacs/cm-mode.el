@@ -190,4 +190,4 @@
 
 (provide 'cm-mode)
 
-;;; <name>.el ends here
+;;; cm-mode.el ends here
