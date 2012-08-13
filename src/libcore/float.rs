@@ -4,7 +4,7 @@
 // because it contains re-exports, we also have to explicitly
 // export locally defined things. That's a bit annoying.
 export to_str_common, to_str_exact, to_str, from_str;
-export add, sub, mul, div, rem, lt, le, gt, eq, ne;
+export add, sub, mul, div, rem, lt, le, eq, ne, ge, gt;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;
@@ -28,7 +28,7 @@ export j0, j1, jn, y0, y1, yn;
 
 import m_float = f64;
 
-import f64::{add, sub, mul, div, rem, lt, le, gt, eq, ne};
+import f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
 import f64::logarithm;
 import f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
 import f64::{erf, erfc, exp, expm1, exp2, abs_sub};
