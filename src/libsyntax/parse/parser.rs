@@ -2212,7 +2212,6 @@ class parser {
         match copy self.token {
             token::BINOP(token::AND) => {
                 // We need to make sure it isn't a mode.
-                self.bump();
                 if self.token_is_keyword(~"self", self.look_ahead(1)) ||
                     ((self.token_is_keyword(~"const", self.look_ahead(1)) ||
                       self.token_is_keyword(~"mut", self.look_ahead(1))) &&
