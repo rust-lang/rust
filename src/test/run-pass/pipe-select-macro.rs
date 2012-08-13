@@ -1,4 +1,3 @@
-// xfail-test
 
 // Protocols
 proto! foo {
@@ -25,21 +24,28 @@ proto! bar {
 
 // select!
 macro_rules! select_if {
+
+    {
+        $index:expr,
+        $count:expr
+    } => {
+        fail
+    };
+
     {
         $index:expr,
         $count:expr,
         $port:path => [
-            $($message:path$(($($x: ident),+))dont_type_this*
-              -> $next:ident $e:expr),+
-        ],
-        $( $ports:path => [
-            $($messages:path$(($($xs: ident),+))dont_type_this*
-              -> $nexts:ident $es:expr),+
-        ], )*
+            $(type_this $message:path$(($(x $x: ident),+))dont_type_this*
+              -> $next:ident => { $e:expr }),+
+        ]
+        $(, $ports:path => [
+            $(type_this $messages:path$(($(x $xs: ident),+))dont_type_this*
+              -> $nexts:ident => { $es:expr }),+
+        ] )*
     } => {
-        log_syntax!{select_if1};
         if $index == $count {
-            alt move pipes::try_recv($port) {
+            match move pipes::try_recv($port) {
               $(some($message($($($x,)+)* next)) => {
                 // FIXME (#2329) we really want move out of enum here.
                 let $next = unsafe { let x <- *ptr::addr_of(next); x };
@@ -50,22 +56,14 @@ macro_rules! select_if {
         } else {
             select_if!{
                 $index,
-                $count + 1,
-                $( $ports => [
-                    $($messages$(($($xs),+))dont_type_this*
-                      -> $nexts $es),+
-                ], )*
+                $count + 1
+                $(, $ports => [
+                    $(type_this $messages$(($(x $xs),+))dont_type_this*
+                      -> $nexts => { $es }),+
+                ])*
             }
         }
     };
-
-    {
-        $index:expr,
-        $count:expr,
-    } => {
-        log_syntax!{select_if2};
-        fail
-    }
 }
 
 macro_rules! select {
@@ -76,20 +74,16 @@ macro_rules! select {
         } )+
     } => {
         let index = pipes::selecti([$(($port).header()),+]/_);
-        log_syntax!{select};
-        log_syntax!{
-        select_if!{index, 0, $( $port => [
-            $($message$(($($x),+))dont_type_this* -> $next $e),+
-        ], )+}
-        };
-        select_if!{index, 0, $( $port => [
-            $($message$(($($x),+))dont_type_this* -> $next $e),+
-        ], )+}
+        select_if!{index, 0 $(, $port => [
+            $(type_this $message$(($(x $x),+))dont_type_this* -> $next => { $e }),+
+        ])+}
     }
 }
 
 // Code
 fn test(+foo: foo::client::foo, +bar: bar::client::bar) {
+    import bar::do_baz;
+
     select! {
         foo => {
             foo::do_foo -> _next {
@@ -98,11 +92,11 @@ fn test(+foo: foo::client::foo, +bar: bar::client::bar) {
 
         bar => {
             bar::do_bar(x) -> _next {
-                //debug!("%?", x)
+                debug!("%?", x)
             },
 
             do_baz(b) -> _next {
-                //if b { debug!("true") } else { debug!("false") }
+                if b { debug!("true") } else { debug!("false") }
             }
         }
     }
