@@ -3,7 +3,8 @@
  * between tasks.
  */
 
-import unsafe::{shared_mutable_state, clone_shared_mutable_state,
+import unsafe::{SharedMutableState,
+                shared_mutable_state, clone_shared_mutable_state,
                 get_shared_mutable_state, get_shared_immutable_state};
 import sync;
 import sync::{mutex, rwlock};
@@ -39,7 +40,7 @@ impl &condvar {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-struct arc<T: const send> { x: shared_mutable_state<T>; }
+struct arc<T: const send> { x: SharedMutableState<T>; }
 
 /// Create an atomically reference counted wrapper.
 fn arc<T: const send>(+data: T) -> arc<T> {
@@ -71,7 +72,7 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
 
 struct mutex_arc_inner<T: send> { lock: mutex; failed: bool; data: T; }
 /// An ARC with mutable data protected by a blocking mutex.
-struct mutex_arc<T: send> { x: shared_mutable_state<mutex_arc_inner<T>>; }
+struct mutex_arc<T: send> { x: SharedMutableState<mutex_arc_inner<T>>; }
 
 /// Create a mutex-protected ARC with the supplied data.
 fn mutex_arc<T: send>(+user_data: T) -> mutex_arc<T> {
@@ -176,7 +177,7 @@ struct rw_arc_inner<T: const send> { lock: rwlock; failed: bool; data: T; }
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
 struct rw_arc<T: const send> {
-    x: shared_mutable_state<rw_arc_inner<T>>;
+    x: SharedMutableState<rw_arc_inner<T>>;
     mut cant_nest: ();
 }
 

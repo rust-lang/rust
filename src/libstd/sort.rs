@@ -1,6 +1,6 @@
 //! Sorting methods
 import vec::{len, push};
-import core::cmp::{eq, ord};
+import core::cmp::{Eq, Ord};
 
 export le;
 export merge_sort;
@@ -153,7 +153,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
  *
  * This is an unstable sort.
  */
-fn quick_sort3<T: copy ord eq>(arr: ~[mut T]) {
+fn quick_sort3<T: copy Ord Eq>(arr: ~[mut T]) {
     if arr.len() <= 1 { return; }
     qsort3(core::cmp::lt, core::cmp::eq, arr, 0, (arr.len() - 1) as int);
 }

@@ -167,7 +167,7 @@ pure fn log2(n: f32) -> f32 {
     return ln(n) / consts::ln_2;
 }
 
-impl f32: num::num {
+impl f32: num::Num {
     pure fn add(&&other: f32)    -> f32 { return self + other; }
     pure fn sub(&&other: f32)    -> f32 { return self - other; }
     pure fn mul(&&other: f32)    -> f32 { return self * other; }

@@ -12,12 +12,12 @@ export breakpoint;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn debug_tydesc(td: *sys::type_desc);
-    fn debug_opaque(td: *sys::type_desc, x: *());
-    fn debug_box(td: *sys::type_desc, x: *());
-    fn debug_tag(td: *sys::type_desc, x: *());
-    fn debug_fn(td: *sys::type_desc, x: *());
-    fn debug_ptrcast(td: *sys::type_desc, x: *()) -> *();
+    fn debug_tydesc(td: *sys::TypeDesc);
+    fn debug_opaque(td: *sys::TypeDesc, x: *());
+    fn debug_box(td: *sys::TypeDesc, x: *());
+    fn debug_tag(td: *sys::TypeDesc, x: *());
+    fn debug_fn(td: *sys::TypeDesc, x: *());
+    fn debug_ptrcast(td: *sys::TypeDesc, x: *()) -> *();
     fn rust_dbg_breakpoint();
 }
 

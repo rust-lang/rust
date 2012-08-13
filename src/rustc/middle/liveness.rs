@@ -152,11 +152,11 @@ fn check_crate(tcx: ty::ctxt,
     return last_use_map;
 }
 
-impl live_node: to_str::to_str {
+impl live_node: to_str::ToStr {
     fn to_str() -> ~str { fmt!{"ln(%u)", *self} }
 }
 
-impl variable: to_str::to_str {
+impl variable: to_str::ToStr {
     fn to_str() -> ~str { fmt!{"v(%u)", *self} }
 }
 

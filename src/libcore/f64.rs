@@ -194,7 +194,7 @@ pure fn log2(n: f64) -> f64 {
     return ln(n) / consts::ln_2;
 }
 
-impl f64: num::num {
+impl f64: num::Num {
     pure fn add(&&other: f64)    -> f64 { return self + other; }
     pure fn sub(&&other: f64)    -> f64 { return self - other; }
     pure fn mul(&&other: f64)    -> f64 { return self * other; }

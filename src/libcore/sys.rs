@@ -1,6 +1,6 @@
 //! Misc low level stuff
 
-export type_desc;
+export TypeDesc;
 export get_type_desc;
 export size_of;
 export min_align_of;
@@ -9,7 +9,8 @@ export refcount;
 export log_str;
 export shape_eq, shape_lt, shape_le;
 
-enum type_desc = {
+// Corresponds to runtime type_desc type
+enum TypeDesc = {
     size: uint,
     align: uint
     // Remaining fields not listed
@@ -17,7 +18,7 @@ enum type_desc = {
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    pure fn shape_log_str(t: *sys::type_desc, data: *()) -> ~str;
+    pure fn shape_log_str(t: *sys::TypeDesc, data: *()) -> ~str;
 }
 
 #[abi = "rust-intrinsic"]
@@ -48,8 +49,8 @@ pure fn shape_le<T>(x1: &T, x2: &T) -> bool {
  * Useful for calling certain function in the Rust runtime or otherwise
  * performing dark magick.
  */
-pure fn get_type_desc<T>() -> *type_desc {
-    unchecked { rusti::get_tydesc::<T>() as *type_desc }
+pure fn get_type_desc<T>() -> *TypeDesc {
+    unchecked { rusti::get_tydesc::<T>() as *TypeDesc }
 }
 
 /// Returns the size of a type

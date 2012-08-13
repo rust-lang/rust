@@ -13,7 +13,7 @@ enum square {
     empty
 }
 
-impl square: to_str::to_str {
+impl square: to_str::ToStr {
     fn to_str() -> ~str {
         match self {
           bot => { ~"R" }

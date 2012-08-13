@@ -3,7 +3,7 @@
 #[warn(deprecated_mode)];
 
 import io::writer_util;
-import to_str::to_str;
+import to_str::ToStr;
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
 export box_str_hash;
 export bytes_hash, int_hash, uint_hash, set_add;
@@ -327,7 +327,7 @@ mod chained {
         }
     }
 
-    impl<K: copy to_str, V: to_str copy> t<K, V>: to_str {
+    impl<K: copy ToStr, V: ToStr copy> t<K, V>: ToStr {
         fn to_writer(wr: io::writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");

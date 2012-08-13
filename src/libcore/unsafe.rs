@@ -2,9 +2,9 @@
 
 export reinterpret_cast, forget, bump_box_refcount, transmute;
 
-export shared_mutable_state, clone_shared_mutable_state;
+export SharedMutableState, shared_mutable_state, clone_shared_mutable_state;
 export get_shared_mutable_state, get_shared_immutable_state;
-export exclusive;
+export Exclusive, exclusive;
 
 import task::atomically;
 
@@ -57,16 +57,16 @@ unsafe fn transmute<L, G>(-thing: L) -> G {
  * Shared state & exclusive ARC
  ****************************************************************************/
 
-type arc_data<T> = {
+type ArcData<T> = {
     mut count: libc::intptr_t,
     data: T
 };
 
-class arc_destruct<T> {
+class ArcDestruct<T> {
    let data: *libc::c_void;
    new(data: *libc::c_void) { self.data = data; }
    drop unsafe {
-      let data: ~arc_data<T> = unsafe::reinterpret_cast(self.data);
+      let data: ~ArcData<T> = unsafe::reinterpret_cast(self.data);
       let new_count = rustrt::rust_atomic_decrement(&mut data.count);
       assert new_count >= 0;
       if new_count == 0 {
@@ -83,20 +83,20 @@ class arc_destruct<T> {
  * Data races between tasks can result in crashes and, with sufficient
  * cleverness, arbitrary type coercion.
  */
-type shared_mutable_state<T: send> = arc_destruct<T>;
+type SharedMutableState<T: send> = ArcDestruct<T>;
 
-unsafe fn shared_mutable_state<T: send>(+data: T) -> shared_mutable_state<T> {
+unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
     let data = ~{mut count: 1, data: data};
     unsafe {
         let ptr = unsafe::transmute(data);
-        arc_destruct(ptr)
+        ArcDestruct(ptr)
     }
 }
 
-unsafe fn get_shared_mutable_state<T: send>(rc: &shared_mutable_state<T>)
+unsafe fn get_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
         -> &mut T {
     unsafe {
-        let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
         let r = unsafe::reinterpret_cast(&ptr.data);
@@ -104,10 +104,10 @@ unsafe fn get_shared_mutable_state<T: send>(rc: &shared_mutable_state<T>)
         return r;
     }
 }
-unsafe fn get_shared_immutable_state<T: send>(rc: &shared_mutable_state<T>)
+unsafe fn get_shared_immutable_state<T: send>(rc: &SharedMutableState<T>)
         -> &T {
     unsafe {
-        let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
         let r = unsafe::reinterpret_cast(&ptr.data);
@@ -116,19 +116,20 @@ unsafe fn get_shared_immutable_state<T: send>(rc: &shared_mutable_state<T>)
     }
 }
 
-unsafe fn clone_shared_mutable_state<T: send>(rc: &shared_mutable_state<T>)
-        -> shared_mutable_state<T> {
+unsafe fn clone_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
+        -> SharedMutableState<T> {
     unsafe {
-        let ptr: ~arc_data<T> = unsafe::reinterpret_cast((*rc).data);
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
         let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
         assert new_count >= 2;
         unsafe::forget(ptr);
     }
-    arc_destruct((*rc).data)
+    ArcDestruct((*rc).data)
 }
 
 /****************************************************************************/
 
+#[allow(non_camel_case_types)] // runtime type
 type rust_little_lock = *libc::c_void;
 
 #[abi = "cdecl"]
@@ -147,7 +148,7 @@ extern mod rustrt {
     fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
-class little_lock {
+class LittleLock {
     let l: rust_little_lock;
     new() {
         self.l = rustrt::rust_create_little_lock();
@@ -155,9 +156,9 @@ class little_lock {
     drop { rustrt::rust_destroy_little_lock(self.l); }
 }
 
-impl little_lock {
+impl LittleLock {
     unsafe fn lock<T>(f: fn() -> T) -> T {
-        class unlock {
+        class Unlock {
             let l: rust_little_lock;
             new(l: rust_little_lock) { self.l = l; }
             drop { rustrt::rust_unlock_little_lock(self.l); }
@@ -165,29 +166,29 @@ impl little_lock {
 
         do atomically {
             rustrt::rust_lock_little_lock(self.l);
-            let _r = unlock(self.l);
+            let _r = Unlock(self.l);
             f()
         }
     }
 }
 
-struct ex_data<T: send> { lock: little_lock; mut failed: bool; mut data: T; }
+struct ExData<T: send> { lock: LittleLock; mut failed: bool; mut data: T; }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
-struct exclusive<T: send> { x: shared_mutable_state<ex_data<T>>; }
+struct Exclusive<T: send> { x: SharedMutableState<ExData<T>>; }
 
-fn exclusive<T:send >(+user_data: T) -> exclusive<T> {
-    let data = ex_data {
-        lock: little_lock(), mut failed: false, mut data: user_data
+fn exclusive<T:send >(+user_data: T) -> Exclusive<T> {
+    let data = ExData {
+        lock: LittleLock(), mut failed: false, mut data: user_data
     };
-    exclusive { x: unsafe { shared_mutable_state(data) } }
+    Exclusive { x: unsafe { shared_mutable_state(data) } }
 }
 
-impl<T: send> exclusive<T> {
+impl<T: send> Exclusive<T> {
     // Duplicate an exclusive ARC, as std::arc::clone.
-    fn clone() -> exclusive<T> {
-        exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }
+    fn clone() -> Exclusive<T> {
+        Exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }
     }
 
     // Exactly like std::arc::mutex_arc,access(), but with the little_lock

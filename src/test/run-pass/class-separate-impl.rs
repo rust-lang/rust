@@ -1,6 +1,6 @@
 // xfail-fast
 import to_str::*;
-import to_str::to_str;
+import to_str::ToStr;
 
 class cat {
   priv {
@@ -35,17 +35,17 @@ class cat {
   }
 }
 
-impl cat: to_str {
+impl cat: ToStr {
   fn to_str() -> ~str { self.name }
 }
 
-fn print_out<T: to_str>(thing: T, expected: ~str) {
+fn print_out<T: ToStr>(thing: T, expected: ~str) {
   let actual = thing.to_str();
   debug!{"%s", actual};
   assert(actual == expected);
 }
 
 fn main() {
-  let nyan : to_str  = cat(0u, 2, ~"nyan") as to_str;
+  let nyan : ToStr = cat(0u, 2, ~"nyan") as ToStr;
   print_out(nyan, ~"nyan");
 }

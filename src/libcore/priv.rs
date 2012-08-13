@@ -5,6 +5,7 @@ export chan_from_global_ptr, weaken_task;
 import compare_and_swap = rustrt::rust_compare_and_swap_ptr;
 import task::task_builder;
 
+#[allow(non_camel_case_types)] // runtime type
 type rust_port_id = uint;
 
 extern mod rustrt {
@@ -15,7 +16,7 @@ extern mod rustrt {
     fn rust_task_unweaken(ch: rust_port_id);
 }
 
-type global_ptr = *libc::uintptr_t;
+type GlobalPtr = *libc::uintptr_t;
 
 /**
  * Atomically gets a channel from a pointer to a pointer-sized memory location
@@ -23,14 +24,14 @@ type global_ptr = *libc::uintptr_t;
  * new task to receive from it.
  */
 unsafe fn chan_from_global_ptr<T: send>(
-    global: global_ptr,
+    global: GlobalPtr,
     task_fn: fn() -> task::task_builder,
     +f: fn~(comm::port<T>)
 ) -> comm::chan<T> {
 
-    enum msg {
-        proceed,
-        abort
+    enum Msg {
+        Proceed,
+        Abort
     }
 
     log(debug,~"ENTERING chan_from_global_ptr, before is_prob_zero check");
@@ -48,9 +49,9 @@ unsafe fn chan_from_global_ptr<T: send>(
 
             // Wait to hear if we are the official instance of
             // this global task
-            match comm::recv::<msg>(setup_po) {
-              proceed => f(po),
-              abort => ()
+            match comm::recv::<Msg>(setup_po) {
+              Proceed => f(po),
+              Abort => ()
             }
         };
 
@@ -68,11 +69,11 @@ unsafe fn chan_from_global_ptr<T: send>(
 
         if swapped {
             // Success!
-            comm::send(setup_ch, proceed);
+            comm::send(setup_ch, Proceed);
             ch
         } else {
             // Somebody else got in before we did
-            comm::send(setup_ch, abort);
+            comm::send(setup_ch, Abort);
             unsafe::reinterpret_cast(*global)
         }
     } else {
@@ -186,10 +187,10 @@ unsafe fn weaken_task(f: fn(comm::port<()>)) {
     unsafe {
         rustrt::rust_task_weaken(unsafe::reinterpret_cast(ch));
     }
-    let _unweaken = unweaken(ch);
+    let _unweaken = Unweaken(ch);
     f(po);
 
-    class unweaken {
+    class Unweaken {
       let ch: comm::chan<()>;
       new(ch: comm::chan<()>) { self.ch = ch; }
       drop unsafe {

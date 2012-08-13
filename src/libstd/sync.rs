@@ -8,7 +8,7 @@
 export condvar, semaphore, mutex, rwlock;
 
 // FIXME (#3119) This shouldn't be a thing exported from core.
-import unsafe::exclusive;
+import unsafe::{Exclusive, exclusive};
 
 /****************************************************************************
  * Internals
@@ -55,7 +55,7 @@ struct sem_inner<Q> {
     // a condition variable attached, others should.
     blocked:   Q;
 }
-enum sem<Q: send> = exclusive<sem_inner<Q>>;
+enum sem<Q: send> = Exclusive<sem_inner<Q>>;
 
 fn new_sem<Q: send>(count: int, +q: Q) -> sem<Q> {
     let (wait_tail, wait_head)  = pipes::stream();
@@ -293,7 +293,7 @@ struct rwlock_inner {
 struct rwlock {
     /* priv */ order_lock:  semaphore;
     /* priv */ access_lock: sem<waitqueue>;
-    /* priv */ state:       exclusive<rwlock_inner>;
+    /* priv */ state:       Exclusive<rwlock_inner>;
 }
 
 /// Create a new rwlock.

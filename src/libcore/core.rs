@@ -5,27 +5,27 @@
 import option::{some, none};
 import option = option::option;
 import path = path::path;
-import tuple::{tuple_ops, extended_tuple_ops};
+import tuple::{TupleOps, ExtendedTupleOps};
 import str::{str_slice, unique_str};
 import vec::{const_vector, copyable_vector, immutable_vector};
 import vec::{immutable_copyable_vector, iter_trait_extensions};
 import iter::{base_iter, extended_iter, copyable_iter, times, timesi};
-import num::num;
+import num::Num;
 import ptr::ptr;
-import to_str::to_str;
+import to_str::ToStr;
 
 export path, option, some, none, unreachable;
 export extensions;
 // The following exports are the extension impls for numeric types
-export num, times, timesi;
+export Num, times, timesi;
 // The following exports are the common traits
 export str_slice, unique_str;
 export const_vector, copyable_vector, immutable_vector;
 export immutable_copyable_vector, iter_trait_extensions;
 export base_iter, copyable_iter, extended_iter;
-export tuple_ops, extended_tuple_ops;
+export TupleOps, ExtendedTupleOps;
 export ptr;
-export to_str;
+export ToStr;
 
 // The following exports are the core operators and kinds
 // The compiler has special knowlege of these so we must not duplicate them

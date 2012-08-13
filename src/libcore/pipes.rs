@@ -1081,7 +1081,7 @@ impl<T: send> port<T>: selectable {
 }
 
 /// A channel that can be shared between many senders.
-type shared_chan<T: send> = unsafe::exclusive<chan<T>>;
+type shared_chan<T: send> = unsafe::Exclusive<chan<T>>;
 
 impl<T: send> shared_chan<T>: channel<T> {
     fn send(+x: T) {

@@ -409,7 +409,7 @@ pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
 pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
 
-impl float: num::num {
+impl float: num::Num {
     pure fn add(&&other: float)    -> float { return self + other; }
     pure fn sub(&&other: float)    -> float { return self - other; }
     pure fn mul(&&other: float)    -> float { return self * other; }
@@ -516,7 +516,7 @@ fn test_to_str_inf() {
 
 #[test]
 fn test_traits() {
-    fn test<U:num::num>(ten: U) {
+    fn test<U:num::Num>(ten: U) {
         assert (ten.to_int() == 10);
 
         let two = ten.from_int(2);

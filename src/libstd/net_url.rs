@@ -673,7 +673,7 @@ fn to_str(url: url) -> ~str {
                       fragment]);
 }
 
-impl url: to_str::to_str {
+impl url: to_str::ToStr {
     fn to_str() -> ~str {
         to_str(self)
     }

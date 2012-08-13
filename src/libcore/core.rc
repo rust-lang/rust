@@ -159,17 +159,22 @@ mod ptr;
 mod vec;
 mod at_vec;
 mod bool;
+#[warn(non_camel_case_types)]
 mod tuple;
 
 // Ubiquitous-utility-type modules
 
 #[cfg(notest)]
 mod ops;
+#[warn(non_camel_case_types)]
 mod cmp;
+#[warn(non_camel_case_types)]
 mod num;
+#[warn(non_camel_case_types)]
 mod hash;
 mod either;
 mod iter;
+#[warn(non_camel_case_types)]
 mod logging;
 mod option;
 #[path="iter-trait"]
@@ -178,8 +183,11 @@ mod option_iter {
     mod inst;
 }
 mod result;
+#[warn(non_camel_case_types)]
 mod to_str;
+#[warn(non_camel_case_types)]
 mod to_bytes;
+#[warn(non_camel_case_types)]
 mod util;
 
 // Data structure modules
@@ -212,7 +220,9 @@ mod os;
 mod path;
 mod rand;
 mod run;
+#[warn(non_camel_case_types)]
 mod sys;
+#[warn(non_camel_case_types)]
 mod unsafe;
 
 
@@ -227,9 +237,13 @@ mod rt;
 
 // For internal use, not exported
 
+#[warn(non_camel_case_types)]
 mod unicode;
+#[warn(non_camel_case_types)]
 mod priv;
+#[warn(non_camel_case_types)]
 mod cmath;
+#[warn(non_camel_case_types)]
 mod stackwalk;
 
 // Local Variables:

@@ -14,7 +14,7 @@ export unsafe;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn vec_reserve_shared_actual(++t: *sys::type_desc,
+    fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
                                  ++v: **vec::unsafe::vec_repr,
                                  ++n: libc::size_t);
 }
