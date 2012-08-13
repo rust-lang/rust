@@ -26,9 +26,23 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     for vec::each(methods) |m| {
         if m.tps.len() == 0u {
             let llfn = get_item_val(ccx, m.id);
+            let self_ty = ty::node_id_to_type(ccx.tcx, m.self_id);
             let self_arg = match m.self_ty.node {
               ast::sty_static => { no_self }
-              _ => { impl_self(ty::node_id_to_type(ccx.tcx, m.self_id)) }
+              ast::sty_box(_) => {
+                impl_self(ty::mk_imm_box(ccx.tcx, self_ty))
+              }
+              ast::sty_uniq(_) => {
+                impl_self(ty::mk_imm_uniq(ccx.tcx, self_ty))
+              }
+              // XXX: Is this right at all?
+              ast::sty_region(*) => {
+                impl_self(ty::mk_imm_ptr(ccx.tcx, self_ty))
+              }
+              ast::sty_value => {
+                ccx.sess.unimpl(~"by value self type not implemented");
+              }
+              ast::sty_by_ref => { impl_self(self_ty) }
             };
 
             trans_fn(ccx,

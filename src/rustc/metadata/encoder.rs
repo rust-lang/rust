@@ -500,7 +500,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
         sty_static =>       { ch = 's' as u8; }
         sty_by_ref =>       { ch = 'r' as u8; }
         sty_value =>        { ch = 'v' as u8; }
-        sty_region(_, _) => { ch = '&' as u8; }
+        sty_region(_) =>    { ch = '&' as u8; }
         sty_box(_) =>       { ch = '@' as u8; }
         sty_uniq(_) =>      { ch = '~' as u8; }
     }
@@ -509,24 +509,14 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
     // Encode mutability.
     match self_type {
         sty_static | sty_by_ref | sty_value => { /* No-op. */ }
-        sty_region(_, m_imm) | sty_box(m_imm) | sty_uniq(m_imm) => {
+        sty_region(m_imm) | sty_box(m_imm) | sty_uniq(m_imm) => {
             ebml_w.writer.write(&[ 'i' as u8 ]);
         }
-        sty_region(_, m_mutbl) | sty_box(m_mutbl) | sty_uniq(m_mutbl) => {
+        sty_region(m_mutbl) | sty_box(m_mutbl) | sty_uniq(m_mutbl) => {
             ebml_w.writer.write(&[ 'm' as u8 ]);
         }
-        sty_region(_, m_const) | sty_box(m_const) | sty_uniq(m_const) => {
+        sty_region(m_const) | sty_box(m_const) | sty_uniq(m_const) => {
             ebml_w.writer.write(&[ 'c' as u8 ]);
-        }
-    }
-
-    // Encode the region.
-    match self_type {
-        sty_region(region, _) => {
-            encode_region(ebml_w, *region);
-        }
-        sty_static | sty_by_ref | sty_value | sty_box(*) | sty_uniq(*) => {
-            // Nothing to do.
         }
     }
 
