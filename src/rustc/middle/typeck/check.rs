@@ -80,6 +80,7 @@ import std::map::str_hash;
 type self_info = {
     self_ty: ty::t,
     node_id: ast::node_id,
+    explicit_self: ast::self_ty_
 };
 
 type fn_ctxt_ =
@@ -367,14 +368,20 @@ fn check_fn(ccx: @crate_ctxt,
 
 fn check_method(ccx: @crate_ctxt, method: @ast::method,
                 self_info: self_info) {
+
     check_bare_fn(ccx, method.decl, method.body, method.id, some(self_info));
 }
 
-fn check_class_member(ccx: @crate_ctxt, class_t: self_info,
+fn check_class_member(ccx: @crate_ctxt, self_ty: ty::t,
+                      node_id: ast::node_id,
                       cm: @ast::class_member) {
     match cm.node {
       ast::instance_var(_,t,_,_,_) => (),
-      ast::class_method(m) => check_method(ccx, m, class_t)
+      ast::class_method(m) => {
+        let class_t = {self_ty: self_ty, node_id: node_id,
+                       explicit_self: m.self_ty.node};
+        check_method(ccx, m, class_t)
+      }
     }
 }
 
@@ -404,9 +411,11 @@ fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
 fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
                 id: ast::node_id, span: span) {
     let tcx = ccx.tcx;
-    let class_t = {self_ty: ty::node_id_to_type(tcx, id), node_id: id};
+    let self_ty = ty::node_id_to_type(tcx, id);
 
     do option::iter(struct_def.ctor) |ctor| {
+        let class_t = {self_ty: self_ty, node_id: id,
+                       explicit_self: ast::sty_by_ref};
         // typecheck the ctor
         check_bare_fn(ccx, ctor.node.dec,
                       ctor.node.body, ctor.node.id,
@@ -416,6 +425,8 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     }
 
     do option::iter(struct_def.dtor) |dtor| {
+        let class_t = {self_ty: self_ty, node_id: id,
+                       explicit_self: ast::sty_by_ref};
         // typecheck the dtor
         check_bare_fn(ccx, ast_util::dtor_dec(),
                       dtor.node.body, dtor.node.id,
@@ -426,7 +437,7 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 
     // typecheck the members
     for struct_def.members.each |m| {
-        check_class_member(ccx, class_t, m);
+        check_class_member(ccx, self_ty, id, m);
     }
     // Check that there's at least one field
     let (fields,_) = split_class_items(struct_def.members);
@@ -450,9 +461,12 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         let rp = ccx.tcx.region_paramd_items.contains_key(it.id);
         debug!{"item_impl %s with id %d rp %b",
                *it.ident, it.id, rp};
-        let self_info = {self_ty: ccx.to_ty(rscope::type_rscope(rp), ty),
-                         node_id: it.id };
-        for ms.each |m| { check_method(ccx, m, self_info);}
+        let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
+        for ms.each |m| {
+            let self_info = {self_ty: self_ty, node_id: it.id,
+                             explicit_self: m.self_ty.node };
+            check_method(ccx, m, self_info)
+        }
       }
       ast::item_trait(_, _, trait_methods) => {
         for trait_methods.each |trait_method| {
@@ -463,7 +477,8 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
               }
               provided(m) => {
                 let self_info = {self_ty: ty::mk_self(ccx.tcx),
-                                 node_id: it.id};
+                                 node_id: it.id,
+                                 explicit_self: m.self_ty.node};
                 check_method(ccx, m, self_info);
               }
             }
@@ -742,7 +757,8 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
 // declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
-fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
+fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id, require_rp: bool)
+                                        -> ty_param_substs_and_ty {
     let tcx = fcx.ccx.tcx;
 
     let {n_tps, rp, raw_ty} = if did.crate == ast::local_crate {
@@ -778,6 +794,7 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id) -> ty_param_substs_and_ty {
          raw_ty: ity.ty}
     };
 
+    let rp = rp || require_rp;
     let self_r = if rp {some(fcx.infcx.next_region_var_nb())} else {none};
     let tps = fcx.infcx.next_ty_vars(n_tps);
 
@@ -2216,7 +2233,10 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_self(_) => {
         match fcx.self_info {
           some(self_info) => {
-            return no_params(self_info.self_ty);
+            let self_region = fcx.in_scope_regions.find(ty::br_self);
+            return no_params(method::transform_self_type_for_method(
+                fcx.tcx(), self_region,
+                self_info.self_ty, self_info.explicit_self));
           }
           none => {
               fcx.ccx.tcx.sess.span_bug(sp, ~"def_self with no self_info");

@@ -146,7 +146,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                         // check whether the type unifies with the type
                         // that the impl is for, and continue if not
                         let {substs: substs, ty: for_ty} =
-                            impl_self_ty(fcx, im.did);
+                            impl_self_ty(fcx, im.did, false);
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                         match fcx.mk_subty(ty, for_ty) {
                           result::err(_) => again,

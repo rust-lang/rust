@@ -22,6 +22,17 @@ fn replace_bound_regions_in_fn_ty(
 
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
 
+    match self_info {
+      some({explicit_self: ast::sty_region(m), _}) => {
+        let region = ty::re_bound(ty::br_self);
+        let ty = ty::mk_rptr(tcx, region,
+                             { ty: ty::mk_self(tcx), mutbl: m });
+        vec::push(all_tys, ty);
+      }
+      _ => {}
+    }
+
+
     for self_ty.each |t| { vec::push(all_tys, t) }
 
     debug!{"replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
@@ -50,7 +61,7 @@ fn replace_bound_regions_in_fn_ty(
     // Glue updated self_ty back together with its original node_id.
     let new_self_info = match self_info {
         some(s) => match check t_self {
-          some(t) => some({self_ty: t, node_id: s.node_id})
+          some(t) => some({self_ty: t with s})
           // this 'none' case shouldn't happen
         },
         none => none

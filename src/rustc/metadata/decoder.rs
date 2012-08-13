@@ -598,22 +598,7 @@ fn get_self_ty(item: ebml::doc) -> ast::self_ty_ {
         'v' => { return ast::sty_value; }
         '@' => { return ast::sty_box(get_mutability(string[1])); }
         '~' => { return ast::sty_uniq(get_mutability(string[1])); }
-        '&' => {
-            let mutability = get_mutability(string[1]);
-
-            let region;
-            let region_doc =
-                ebml::get_doc(self_type_doc,
-                              tag_item_trait_method_self_ty_region);
-            let region_string = str::from_bytes(ebml::doc_data(region_doc));
-            if region_string == ~"" {
-                region = ast::re_anon;
-            } else {
-                region = ast::re_named(@region_string);
-            }
-
-            return ast::sty_region(@{ id: 0, node: region }, mutability);
-        }
+        '&' => { return ast::sty_region(get_mutability(string[1])); }
         _ => {
             fail fmt!{"unknown self type code: `%c`", self_ty_kind as char};
         }

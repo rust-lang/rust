@@ -20,28 +20,30 @@ type candidate = {
     entry: method_map_entry
 };
 
-fn transform_self_type_for_method(fcx: @fn_ctxt,
-                                  impl_ty: ty::t,
-                                  method_info: MethodInfo)
+fn transform_self_type_for_method
+    (tcx: ty::ctxt,
+     self_region: option<ty::region>,
+     impl_ty: ty::t,
+     self_type: ast::self_ty_)
                                -> ty::t {
-    match method_info.self_type {
+    match self_type {
       sty_static => {
-        fcx.tcx().sess.bug(~"calling transform_self_type_for_method on \
-                             static method");
+        tcx.sess.bug(~"calling transform_self_type_for_method on \
+                       static method");
       }
       sty_by_ref | sty_value => {
         impl_ty
       }
-      sty_region(r, mutability) => {
-        // XXX: dummy_sp is unfortunate here.
-        let region = ast_region_to_region(fcx, fcx, dummy_sp(), r);
-        mk_rptr(fcx.ccx.tcx, region, { ty: impl_ty, mutbl: mutability })
+      sty_region(mutability) => {
+        mk_rptr(tcx,
+                self_region.expect(~"self region missing for &self param"),
+                { ty: impl_ty, mutbl: mutability })
       }
       sty_box(mutability) => {
-        mk_box(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+        mk_box(tcx, { ty: impl_ty, mutbl: mutability })
       }
       sty_uniq(mutability) => {
-        mk_uniq(fcx.ccx.tcx, { ty: impl_ty, mutbl: mutability })
+        mk_uniq(tcx, { ty: impl_ty, mutbl: mutability })
       }
     }
 }
@@ -368,14 +370,17 @@ class lookup {
         // Check whether this impl has a method with the right name.
         for im.methods.find(|m| m.ident == self.m_name).each |m| {
 
+            let need_rp = match m.self_type { ast::sty_region(_) => true,
+                                              _ => false };
+
             // determine the `self` of the impl with fresh
             // variables for each parameter:
             let {substs: impl_substs, ty: impl_ty} =
-                impl_self_ty(self.fcx, im.did);
+                impl_self_ty(self.fcx, im.did, need_rp);
 
-            let impl_ty = transform_self_type_for_method(self.fcx,
-                                                         impl_ty,
-                                                         *m);
+            let impl_ty = transform_self_type_for_method(
+                self.tcx(), impl_substs.self_r,
+                impl_ty, m.self_type);
 
             // Depending on our argument, we find potential
             // matches either by checking subtypability or

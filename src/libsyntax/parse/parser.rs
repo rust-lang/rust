@@ -2300,29 +2300,7 @@ class parser {
                     self.bump();
                     let mutability = self.parse_mutability();
                     self.expect_self_ident();
-
-                    // Parse an explicit region, if possible.
-                    let region_name;
-                    match copy self.token {
-                        token::BINOP(token::SLASH) => {
-                            self.bump();
-                            match copy self.token {
-                                token::IDENT(sid, false) => {
-                                    self.bump();
-                                    region_name = some(self.get_str(sid));
-                                }
-                                _ => {
-                                    region_name = none;
-                                }
-                            }
-                        }
-                        _ => {
-                            region_name = none;
-                        }
-                    }
-
-                    let region = self.region_from_name(region_name);
-                    self_ty = sty_region(region, mutability);
+                    self_ty = sty_region(mutability);
                 } else {
                     self_ty = sty_by_ref;
                 }
