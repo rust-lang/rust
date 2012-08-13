@@ -1,3 +1,5 @@
+// xfail-fast
+
 #[no_core];
 
 use core;
