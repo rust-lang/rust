@@ -1144,16 +1144,22 @@ proto! oneshot {
     }
 }
 
-/// Receive a message from a oneshot pipe.
+/// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
+fn oneshot<T: send>() -> (oneshot::client::oneshot<T>,
+                          oneshot::server::oneshot<T>) {
+    oneshot::init()
+}
+
+/**
+ * Receive a message from a oneshot pipe, failing if the connection was
+ * closed.
+ */
 fn recv_one<T: send>(+port: oneshot::server::oneshot<T>) -> T {
     let oneshot::send(message) = recv(port);
     message
 }
 
-/** Receive a message from a oneshot pipe, or fail if the connection
-is closed.
-
-*/
+/// Receive a message from a oneshot pipe unless the connection was closed.
 fn try_recv_one<T: send> (+port: oneshot::server::oneshot<T>) -> option<T> {
     let message = try_recv(port);
 
@@ -1162,6 +1168,20 @@ fn try_recv_one<T: send> (+port: oneshot::server::oneshot<T>) -> option<T> {
         let oneshot::send(message) = option::unwrap(message);
         some(message)
     }
+}
+
+/// Send a message on a oneshot pipe, failing if the connection was closed.
+fn send_one<T: send>(+chan: oneshot::client::oneshot<T>, +data: T) {
+    oneshot::client::send(chan, data);
+}
+
+/**
+ * Send a message on a oneshot pipe, or return false if the connection was
+ * closed.
+ */
+fn try_send_one<T: send>(+chan: oneshot::client::oneshot<T>, +data: T)
+        -> bool {
+    oneshot::client::try_send(chan, data).is_some()
 }
 
 #[cfg(test)]
