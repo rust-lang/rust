@@ -5023,6 +5023,9 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_class(struct_def, tps) => {
         trans_struct_def(ccx, struct_def, tps, path, item.ident, item.id);
       }
+      ast::item_trait(tps, _, trait_methods) => {
+        trans_trait(ccx, tps, trait_methods, path, item.ident);
+      }
       _ => {/* fall through */ }
     }
 }
@@ -5049,6 +5052,14 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     // Translate methods
     let (_, ms) = ast_util::split_class_items(struct_def.members);
     impl::trans_impl(ccx, *path, ident, ms, tps);
+}
+
+fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],
+               trait_methods: ~[ast::trait_method],
+               path: @ast_map::path, ident: ast::ident) {
+    // Translate any methods that have provided implementations
+    let (_, provided_methods) = ast_util::split_trait_methods(trait_methods);
+    impl::trans_impl(ccx, *path, ident, provided_methods, tps);
 }
 
 // Translate a module. Doing this amounts to translating the items in the
@@ -5275,28 +5286,14 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                                get_item_val()");
               }
               ast::provided(m) => {
-                // FIXME (#2794): Default methods currently compiling but not
-                // linking successfully; not sure if this is correct.  It's
-                // just copypasta from the node_method case.
                 exprt = true;
-                let mty = ty::node_id_to_type(ccx.tcx, id);
-                let pth =
-                    vec::append(*pth, ~[path_name(@ccx.names(~"meth")),
-                                        path_name(m.ident)]);
-                let llfn = register_fn_full(ccx, m.span, pth, id, mty);
-                set_inline_hint_if_appr(m.attrs, llfn);
-                llfn
+                trans_method(ccx, id, pth, m)
               }
             }
           }
-          ast_map::node_method(m, impl_id, pth) => {
+          ast_map::node_method(m, _, pth) => {
             exprt = true;
-            let mty = ty::node_id_to_type(ccx.tcx, id);
-            let pth = vec::append(*pth, ~[path_name(@ccx.names(~"meth")),
-                                          path_name(m.ident)]);
-            let llfn = register_fn_full(ccx, m.span, pth, id, mty);
-            set_inline_hint_if_appr(m.attrs, llfn);
-            llfn
+            trans_method(ccx, id, pth, m)
           }
           ast_map::node_foreign_item(ni, _, pth) => {
             exprt = true;
@@ -5336,7 +5333,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                     assert args.len() != 0u;
                     let pth = vec::append(*pth,
                                           ~[path_name(enm.ident),
-                                           path_name(v.node.name)]);
+                                            path_name(v.node.name)]);
                     llfn = match check enm.node {
                       ast::item_enum(_, _) => {
                         register_fn(ccx, v.span, pth, id)
@@ -5364,6 +5361,16 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
         val
       }
     }
+}
+
+fn trans_method(ccx: @crate_ctxt, id: ast::node_id, pth: @ast_map::path,
+                m: @ast::method) -> ValueRef {
+    let mty = ty::node_id_to_type(ccx.tcx, id);
+    let pth = vec::append(*pth, ~[path_name(@ccx.names(~"meth")),
+                                  path_name(m.ident)]);
+    let llfn = register_fn_full(ccx, m.span, pth, id, mty);
+    set_inline_hint_if_appr(m.attrs, llfn);
+    llfn
 }
 
 // The constant translation pass.
