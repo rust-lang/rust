@@ -12,6 +12,7 @@ import vec::{immutable_copyable_vector, iter_trait_extensions, vec_concat};
 import iter::{base_iter, extended_iter, copyable_iter, times, timesi};
 import num::num;
 import ptr::ptr;
+import to_str::to_str;
 
 export path, option, some, none, unreachable;
 export extensions;
@@ -24,6 +25,7 @@ export immutable_copyable_vector, iter_trait_extensions, vec_concat;
 export base_iter, copyable_iter, extended_iter;
 export tuple_ops, extended_tuple_ops;
 export ptr;
+export to_str;
 
 // The following exports are the core operators and kinds
 // The compiler has special knowlege of these so we must not duplicate them
