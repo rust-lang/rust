@@ -5,7 +5,7 @@
 import cmath::c_float::*;
 import cmath::c_float_targ_consts::*;
 
-export add, sub, mul, div, rem, lt, le, gt, eq, ne;
+export add, sub, mul, div, rem, lt, le, eq, ne, ge, gt;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;

@@ -8,7 +8,7 @@ import cmath::c_double_targ_consts::*;
 // Even though this module exports everything defined in it,
 // because it contains re-exports, we also have to explicitly
 // export locally defined things. That's a bit annoying.
-export add, sub, mul, div, rem, lt, le, gt, eq, ne;
+export add, sub, mul, div, rem, lt, le, eq, ne, ge, gt;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;
 export is_zero, is_infinite, is_finite;
 export NaN, is_NaN, infinity, neg_infinity;
