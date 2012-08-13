@@ -63,7 +63,8 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
 
     // Assign the pattern the type of the *enum*, not the variant.
     let enum_tpt = ty::lookup_item_type(tcx, v_def_ids.enm);
-    instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id);
+    instantiate_path(pcx.fcx, path, enum_tpt, pat.span, pat.id,
+                     pcx.block_region);
 
     // Take the enum type params out of `expected`.
     match structure_of(pcx.fcx, pat.span, expected) {
@@ -143,7 +144,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         debug!{"pat_range beginning type: %?", b_ty};
         debug!{"pat_range ending type: %?", e_ty};
         if !require_same_types(
-            tcx, some(fcx.infcx), pat.span, b_ty, e_ty,
+            tcx, some(fcx.infcx), false, pat.span, b_ty, e_ty,
             || ~"mismatched types in range") {
             // no-op
         } else if !ty::type_is_numeric(b_ty) {
@@ -165,8 +166,8 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             // then the type of x is &M T where M is the mutability
             // and T is the expected type
             let region_var =
-                fcx.infcx.next_region_var({lb: some(pcx.block_region),
-                                           ub: none});
+                fcx.infcx.next_region_var_with_lb(
+                    pat.span, pcx.block_region);
             let mt = {ty: expected, mutbl: mutbl};
             let region_ty = ty::mk_rptr(tcx, region_var, mt);
             demand::eqtype(fcx, pat.span, region_ty, typ);

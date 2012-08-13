@@ -439,7 +439,7 @@ struct lookup {
             // determine the `self` of the impl with fresh
             // variables for each parameter:
             let {substs: impl_substs, ty: impl_ty} =
-                impl_self_ty(self.fcx, im.did, need_rp);
+                impl_self_ty(self.fcx, self.self_expr, im.did, need_rp);
 
             let impl_ty = transform_self_type_for_method(
                 self.tcx(), impl_substs.self_r,
@@ -458,15 +458,17 @@ struct lookup {
                                                        self.self_ty,
                                                        impl_ty),
                 immutable_reference_mode => {
-                    let region = self.fcx.infcx.next_region_var_with_scope_lb
-                        (self.self_expr.id);
+                    let region = self.fcx.infcx.next_region_var(
+                        self.self_expr.span,
+                        self.self_expr.id);
                     let tm = { ty: self.self_ty, mutbl: ast::m_imm };
                     let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
                     matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
                 }
                 mutable_reference_mode => {
-                    let region = self.fcx.infcx.next_region_var_with_scope_lb
-                        (self.self_expr.id);
+                    let region = self.fcx.infcx.next_region_var(
+                        self.self_expr.span,
+                        self.self_expr.id);
                     let tm = { ty: self.self_ty, mutbl: ast::m_mutbl };
                     let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
                     matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
@@ -609,8 +611,9 @@ struct lookup {
             }
             immutable_reference_mode => {
                 // Borrow as an immutable reference.
-                let region_var = self.fcx.infcx.next_region_var_with_scope_lb
-                    (self.self_expr.id);
+                let region_var = self.fcx.infcx.next_region_var(
+                    self.self_expr.span,
+                    self.self_expr.id);
                 self.fcx.infcx.borrowings.push({expr_id: self.self_expr.id,
                                                 span: self.self_expr.span,
                                                 scope: region_var,
@@ -618,8 +621,9 @@ struct lookup {
             }
             mutable_reference_mode => {
                 // Borrow as a mutable reference.
-                let region_var = self.fcx.infcx.next_region_var_with_scope_lb
-                    (self.self_expr.id);
+                let region_var = self.fcx.infcx.next_region_var(
+                    self.self_expr.span,
+                    self.self_expr.id);
                 self.fcx.infcx.borrowings.push({expr_id: self.self_expr.id,
                                                 span: self.self_expr.span,
                                                 scope: region_var,

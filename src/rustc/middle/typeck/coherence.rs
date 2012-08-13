@@ -15,7 +15,7 @@ import middle::ty::{ty_float, ty_estr, ty_evec, ty_rec};
 import middle::ty::{ty_fn, ty_trait, ty_tup, ty_var, ty_var_integral};
 import middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
 import middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_var};
-import middle::typeck::infer::{infer_ctxt, mk_subty};
+import middle::typeck::infer::{infer_ctxt, can_mk_subty};
 import middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 import syntax::ast::{crate, def_id, def_mod};
 import syntax::ast::{item, item_class, item_const, item_enum, item_fn};
@@ -387,18 +387,22 @@ struct CoherenceChecker {
 
         let monotype_a = self.universally_quantify_polytype(polytype_a);
         let monotype_b = self.universally_quantify_polytype(polytype_b);
-        return
-            mk_subty(self.inference_context, monotype_a, monotype_b).is_ok()
-         || mk_subty(self.inference_context, monotype_b, monotype_a).is_ok();
+        return can_mk_subty(self.inference_context,
+                            monotype_a, monotype_b).is_ok()
+            || can_mk_subty(self.inference_context,
+                            monotype_b, monotype_a).is_ok();
     }
 
     // Converts a polytype to a monotype by replacing all parameters with
     // type variables.
 
     fn universally_quantify_polytype(polytype: ty_param_bounds_and_ty) -> t {
-        let self_region =
-            if !polytype.rp {none}
-            else {some(self.inference_context.next_region_var_nb())};
+        // NDM--this span is bogus.
+        let self_region = if !polytype.rp {
+            none
+        } else {
+            some(self.inference_context.next_region_var_nb(dummy_sp()))
+        };
 
         let bounds_count = polytype.bounds.len();
         let type_parameters =

@@ -14,8 +14,9 @@ fn with<R: deref>(f: fn(x: &int) -> R) -> int {
 
 fn return_it() -> int {
     with(|o| o)
-    //~^ ERROR reference is not valid outside of its lifetime, &
-    //~^^ ERROR reference is not valid outside of its lifetime, &
+    //~^ ERROR reference is not valid outside of its lifetime
+    //~^^ ERROR reference is not valid outside of its lifetime
+    //~^^^ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {

@@ -298,7 +298,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         ty::subst(tcx, &substs, trait_fty)
     };
     require_same_types(
-        tcx, none, sp, impl_fty, trait_fty,
+        tcx, none, false, sp, impl_fty, trait_fty,
         || ~"method `" + *trait_m.ident + ~"` has an incompatible type");
     return;
 

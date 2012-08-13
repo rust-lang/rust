@@ -18,9 +18,9 @@ this point a bit better.
 */
 
 import util::ppaux;
+import ppaux::{note_and_explain_region, ty_to_str};
 import syntax::print::pprust;
-import infer::{resolve_type, resolve_all, force_all,
-               resolve_rvar, force_rvar, fres};
+import infer::{resolve_and_force_all_but_regions, fres};
 import middle::kind::check_owned;
 import middle::pat_util::pat_bindings;
 
@@ -52,8 +52,7 @@ impl @rcx {
     /// will effectively resolve `<R0>` to be the block B.
     fn resolve_type(unresolved_ty: ty::t) -> fres<ty::t> {
         resolve_type(self.fcx.infcx, unresolved_ty,
-                     (resolve_all | force_all) -
-                     (resolve_rvar | force_rvar))
+                     resolve_and_force_all_but_regions)
     }
 
     /// Try to resolve the type for the given node.
@@ -66,6 +65,7 @@ fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
     v.visit_expr(e, @rcx, v);
+    fcx.infcx.resolve_regions();
 }
 
 fn regionck_fn(fcx: @fn_ctxt,
@@ -74,6 +74,7 @@ fn regionck_fn(fcx: @fn_ctxt,
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
     v.visit_block(blk, @rcx, v);
+    fcx.infcx.resolve_regions();
 }
 
 fn regionck_visitor() -> rvt {
@@ -209,10 +210,8 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     let tcx = fcx.ccx.tcx;
     let encl_region = ty::encl_region(tcx, id);
 
-    debug!{"visit_node(ty=%s, id=%d, encl_region=%s)",
-           ppaux::ty_to_str(tcx, ty),
-           id,
-           ppaux::region_to_str(tcx, encl_region)};
+    debug!{"visit_node(ty=%s, id=%d, encl_region=%?)",
+           ty_to_str(tcx, ty), id, encl_region};
 
     // Otherwise, look at the type and see if it is a region pointer.
     return constrain_regions_in_type(rcx, encl_region, span, ty);
@@ -237,9 +236,8 @@ fn constrain_regions_in_type(
                         region: ty::region) {
         let tcx = rcx.fcx.ccx.tcx;
 
-        debug!{"constrain_region(encl_region=%s, region=%s)",
-               ppaux::region_to_str(tcx, encl_region),
-               ppaux::region_to_str(tcx, region)};
+        debug!{"constrain_region(encl_region=%?, region=%?)",
+               encl_region, region};
 
         match region {
           ty::re_bound(_) => {
@@ -252,14 +250,15 @@ fn constrain_regions_in_type(
           _ => ()
         }
 
-        match rcx.fcx.mk_subr(encl_region, region) {
+        match rcx.fcx.mk_subr(true, span, encl_region, region) {
           result::err(_) => {
-            let region1 = rcx.fcx.infcx.resolve_region_if_possible(region);
             tcx.sess.span_err(
                 span,
-                fmt!{"reference is not valid outside \
-                      of its lifetime, %s",
-                     ppaux::region_to_str(tcx, region1)});
+                fmt!("reference is not valid outside of its lifetime"));
+            note_and_explain_region(
+                tcx,
+                ~"the reference is only valid for",
+                region);
             rcx.errors_reported += 1u;
           }
           result::ok(()) => {

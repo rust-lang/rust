@@ -17,7 +17,7 @@ mod argparse {
 
     impl Flag {
         fn set_desc(self, s: &str) -> Flag {
-            Flag { //~ ERROR mismatched types
+            Flag { //~ ERROR cannot infer an appropriate lifetime
                 name: self.name,
                 desc: s,
                 max_count: self.max_count,

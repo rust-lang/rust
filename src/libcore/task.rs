@@ -1187,7 +1187,9 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
                 };
             if result {
                 // Unwinding function in case any ancestral enlisting fails
-                let bail = |tg| { leave_taskgroup(tg, child, false) };
+                let bail = |tg: TaskGroupInner| {
+                    leave_taskgroup(tg, child, false)
+                };
                 // Attempt to join every ancestor group.
                 result =
                     for each_ancestor(ancestors, some(bail)) |ancestor_tg| {

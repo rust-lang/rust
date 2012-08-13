@@ -41,10 +41,11 @@ impl<T> Cell<T> {
     }
 
     // Calls a closure with a reference to the value.
-    fn with_ref(f: fn(v: &T)) {
-        let val = move self.take();
-        f(&val);
-        self.put_back(move val);
+    fn with_ref<R>(op: fn(v: &T) -> R) -> R {
+        let v = self.take();
+        let r = op(&v);
+        self.put_back(v);
+        return move r;
     }
 }
 

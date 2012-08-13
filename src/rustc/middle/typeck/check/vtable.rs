@@ -1,6 +1,8 @@
 import check::{fn_ctxt, impl_self_ty};
-import infer::{resolve_type, resolve_all, force_all, fixup_err_to_str};
+import infer::{resolve_type, resolve_and_force_all_but_regions,
+               fixup_err_to_str};
 import ast_util::new_def_hash;
+import syntax::print::pprust;
 
 // vtable resolution looks for places where trait bounds are
 // subsituted in and figures out which vtable is used. There is some
@@ -27,7 +29,7 @@ fn has_trait_bounds(tps: ~[ty::param_bounds]) -> bool {
 }
 
 fn lookup_vtables(fcx: @fn_ctxt,
-                  sp: span,
+                  expr: @ast::expr,
                   bounds: @~[ty::param_bounds],
                   substs: &ty::substs,
                   allow_unsafe: bool,
@@ -39,7 +41,7 @@ fn lookup_vtables(fcx: @fn_ctxt,
             match bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
-                vec::push(result, lookup_vtable(fcx, sp, ty, i_ty,
+                vec::push(result, lookup_vtable(fcx, expr, ty, i_ty,
                                                 allow_unsafe, is_early));
               }
               _ => ()
@@ -50,31 +52,36 @@ fn lookup_vtables(fcx: @fn_ctxt,
     @result
 }
 
-fn fixup_substs(fcx: @fn_ctxt, sp: span,
+fn fixup_substs(fcx: @fn_ctxt, expr: @ast::expr,
                 id: ast::def_id, substs: ty::substs,
                 is_early: bool) -> option<ty::substs> {
     let tcx = fcx.ccx.tcx;
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
-    do fixup_ty(fcx, sp, t, is_early).map |t_f| {
+    do fixup_ty(fcx, expr, t, is_early).map |t_f| {
         match check ty::get(t_f).struct {
           ty::ty_trait(_, substs_f, _) => substs_f,
         }
     }
 }
 
-fn relate_trait_tys(fcx: @fn_ctxt, sp: span,
+fn relate_trait_tys(fcx: @fn_ctxt, expr: @ast::expr,
                     exp_trait_ty: ty::t, act_trait_ty: ty::t) {
-    demand::suptype(fcx, sp, exp_trait_ty, act_trait_ty)
+    demand::suptype(fcx, expr.span, exp_trait_ty, act_trait_ty)
 }
 
 /*
 Look up the vtable to use when treating an item of type <t>
 as if it has type <trait_ty>
 */
-fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
-                 allow_unsafe: bool, is_early: bool)
-              -> vtable_origin {
+fn lookup_vtable(fcx: @fn_ctxt,
+                 expr: @ast::expr,
+                 ty: ty::t,
+                 trait_ty: ty::t,
+                 allow_unsafe: bool,
+                 is_early: bool)
+    -> vtable_origin
+{
 
     debug!{"lookup_vtable(ty=%s, trait_ty=%s)",
            fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(trait_ty)};
@@ -84,7 +91,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
     let (trait_id, trait_substs) = match check ty::get(trait_ty).struct {
       ty::ty_trait(did, substs, _) => (did, substs)
     };
-    let ty = match fixup_ty(fcx, sp, ty, is_early) {
+    let ty = match fixup_ty(fcx, expr, ty, is_early) {
       some(ty) => ty,
       none => {
         // fixup_ty can only fail if this is early resolution
@@ -111,7 +118,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                     if trait_id == idid {
                         debug!{"(checking vtable) @0 relating ty to trait ty
                                 with did %?", idid};
-                        relate_trait_tys(fcx, sp, trait_ty, ity);
+                        relate_trait_tys(fcx, expr, trait_ty, ity);
                         return vtable_param(n, n_bound);
                     }
                   }
@@ -126,17 +133,19 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
         debug!{"(checking vtable) @1 relating ty to trait ty with did %?",
                did};
 
-        relate_trait_tys(fcx, sp, trait_ty, ty);
+        relate_trait_tys(fcx, expr, trait_ty, ty);
         if !allow_unsafe && !is_early {
             for vec::each(*ty::trait_methods(tcx, did)) |m| {
                 if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
                     tcx.sess.span_err(
-                        sp, ~"a boxed trait with self types may not be \
-                             passed as a bounded type");
+                        expr.span,
+                        ~"a boxed trait with self types may not be \
+                          passed as a bounded type");
                 } else if (*m.tps).len() > 0u {
                     tcx.sess.span_err(
-                        sp, ~"a boxed trait with generic methods may not \
-                             be passed as a bounded type");
+                        expr.span,
+                        ~"a boxed trait with generic methods may not \
+                          be passed as a bounded type");
 
                 }
             }
@@ -176,9 +185,9 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                         // check whether the type unifies with the type
                         // that the impl is for, and continue if not
                         let {substs: substs, ty: for_ty} =
-                            impl_self_ty(fcx, im.did, false);
+                            impl_self_ty(fcx, expr, im.did, false);
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                        match fcx.mk_subty(ty, for_ty) {
+                        match fcx.mk_subty(false, expr.span, ty, for_ty) {
                           result::err(_) => again,
                           result::ok(()) => ()
                         }
@@ -189,12 +198,12 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                                fcx.infcx.ty_to_str(trait_ty),
                                fcx.infcx.ty_to_str(of_ty));
                         let of_ty = ty::subst(tcx, &substs, of_ty);
-                        relate_trait_tys(fcx, sp, trait_ty, of_ty);
+                        relate_trait_tys(fcx, expr, trait_ty, of_ty);
 
                         // recursively process the bounds.
                         let trait_tps = trait_substs.tps;
                         // see comments around the earlier call to fixup_ty
-                        let substs_f = match fixup_substs(fcx, sp, trait_id,
+                        let substs_f = match fixup_substs(fcx, expr, trait_id,
                                                           substs, is_early) {
                             some(substs) => substs,
                             none => {
@@ -204,10 +213,11 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                             }
                         };
 
-                        connect_trait_tps(fcx, sp, substs_f.tps,
+                        connect_trait_tps(fcx, expr, substs_f.tps,
                                           trait_tps, im.did);
-                        let subres = lookup_vtables(fcx, sp, im_bs, &substs_f,
-                                                    false, is_early);
+                        let subres = lookup_vtables(
+                            fcx, expr, im_bs, &substs_f,
+                            false, is_early);
                         vec::push(found,
                                   vtable_static(im.did, substs_f.tps,
                                                 subres));
@@ -222,7 +232,8 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
           _ => {
             if !is_early {
                 fcx.ccx.tcx.sess.span_err(
-                    sp, ~"multiple applicable methods in scope");
+                    expr.span,
+                    ~"multiple applicable methods in scope");
             }
             return found[0];
           }
@@ -231,19 +242,22 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
     }
 
     tcx.sess.span_fatal(
-        sp, ~"failed to find an implementation of trait " +
-        ty_to_str(tcx, trait_ty) + ~" for " +
-        ty_to_str(tcx, ty));
+        expr.span,
+        fmt!("failed to find an implementation of trait %s for %s",
+             ty_to_str(tcx, trait_ty), ty_to_str(tcx, ty)));
 }
 
-fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t, is_early: bool)
-                                -> option<ty::t> {
+fn fixup_ty(fcx: @fn_ctxt,
+            expr: @ast::expr,
+            ty: ty::t,
+            is_early: bool) -> option<ty::t>
+{
     let tcx = fcx.ccx.tcx;
-    match resolve_type(fcx.infcx, ty, resolve_all | force_all) {
+    match resolve_type(fcx.infcx, ty, resolve_and_force_all_but_regions) {
       result::ok(new_type) => some(new_type),
       result::err(e) if !is_early => {
         tcx.sess.span_fatal(
-            sp,
+            expr.span,
             fmt!{"cannot determine a type \
                   for this bounded type parameter: %s",
                  fixup_err_to_str(e)})
@@ -254,7 +268,7 @@ fn fixup_ty(fcx: @fn_ctxt, sp: span, ty: ty::t, is_early: bool)
     }
 }
 
-fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
+fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
                      trait_tys: ~[ty::t], impl_did: ast::def_id) {
     let tcx = fcx.ccx.tcx;
 
@@ -266,22 +280,23 @@ fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
     match check ty::get(trait_ty).struct {
       ty::ty_trait(_, substs, _) => {
         vec::iter2(substs.tps, trait_tys,
-                   |a, b| demand::suptype(fcx, sp, a, b));
+                   |a, b| demand::suptype(fcx, expr.span, a, b));
       }
     }
 }
 
 fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
+    debug!("vtable: early_resolve_expr() ex with id %?: %s",
+           ex.id, expr_to_str(ex));
     let cx = fcx.ccx;
     match ex.node {
       ast::expr_path(*) => {
-        debug!("(vtable - resolving expr) resolving path expr");
         match fcx.opt_node_ty_substs(ex.id) {
           some(ref substs) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             if has_trait_bounds(*item_ty.bounds) {
-                let vtbls = lookup_vtables(fcx, ex.span, item_ty.bounds,
+                let vtbls = lookup_vtables(fcx, ex, item_ty.bounds,
                                            substs, false, is_early);
                 if !is_early { cx.vtable_map.insert(ex.id, vtbls); }
             }
@@ -293,8 +308,6 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
       ast::expr_field(*) | ast::expr_binary(*) |
       ast::expr_unary(*) | ast::expr_assign_op(*) |
       ast::expr_index(*) => {
-        debug!("(vtable - resolving expr) resolving field/binary/unary/\
-                assign/index expr");
         match ty::method_call_bounds(cx.tcx, cx.method_map, ex.id) {
           some(bounds) => {
             if has_trait_bounds(*bounds) {
@@ -303,7 +316,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                   _ => ex.callee_id
                 };
                 let substs = fcx.node_ty_substs(callee_id);
-                let vtbls = lookup_vtables(fcx, ex.span, bounds,
+                let vtbls = lookup_vtables(fcx, ex, bounds,
                                            &substs, false, is_early);
                 if !is_early { cx.vtable_map.insert(callee_id, vtbls); }
             }
@@ -312,7 +325,6 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
         }
       }
       ast::expr_cast(src, _) => {
-        debug!("(vtable - resolving expr) resolving cast expr");
         let target_ty = fcx.expr_ty(ex);
         match ty::get(target_ty).struct {
           ty::ty_trait(*) => {
@@ -320,7 +332,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
             Look up vtables for the type we're casting to,
             passing in the source and target type
             */
-            let vtable = lookup_vtable(fcx, ex.span, fcx.expr_ty(src),
+            let vtable = lookup_vtable(fcx, ex, fcx.expr_ty(src),
                                        target_ty, true, is_early);
             /*
             Map this expression to that vtable (that is: "ex has

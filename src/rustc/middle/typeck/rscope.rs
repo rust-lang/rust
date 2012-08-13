@@ -1,16 +1,16 @@
 import result::result;
 
 trait region_scope {
-    fn anon_region() -> result<ty::region, ~str>;
-    fn named_region(id: ast::ident) -> result<ty::region, ~str>;
+    fn anon_region(span: span) -> result<ty::region, ~str>;
+    fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str>;
 }
 
 enum empty_rscope { empty_rscope }
 impl empty_rscope: region_scope {
-    fn anon_region() -> result<ty::region, ~str> {
+    fn anon_region(_span: span) -> result<ty::region, ~str> {
         result::ok(ty::re_static)
     }
-    fn named_region(id: ast::ident) -> result<ty::region, ~str> {
+    fn named_region(_span: span, id: ast::ident) -> result<ty::region, ~str> {
         if *id == ~"static" { result::ok(ty::re_static) }
         else { result::err(~"only the static region is allowed here") }
     }
@@ -18,7 +18,7 @@ impl empty_rscope: region_scope {
 
 enum type_rscope = bool;
 impl type_rscope: region_scope {
-    fn anon_region() -> result<ty::region, ~str> {
+    fn anon_region(_span: span) -> result<ty::region, ~str> {
         if *self {
             result::ok(ty::re_bound(ty::br_self))
         } else {
@@ -26,10 +26,11 @@ impl type_rscope: region_scope {
                          must be declared with a region bound")
         }
     }
-    fn named_region(id: ast::ident) -> result<ty::region, ~str> {
-        do empty_rscope.named_region(id).chain_err |_e| {
-            if *id == ~"self" { self.anon_region() }
-            else {
+    fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
+        do empty_rscope.named_region(span, id).chain_err |_e| {
+            if *id == ~"self" {
+                self.anon_region(span)
+            } else {
                 result::err(~"named regions other than `self` are not \
                              allowed as part of a type declaration")
             }
@@ -43,11 +44,11 @@ fn in_anon_rscope<RS: region_scope copy owned>(self: RS, r: ty::region)
     @anon_rscope({anon: r, base: self as region_scope})
 }
 impl @anon_rscope: region_scope {
-    fn anon_region() -> result<ty::region, ~str> {
+    fn anon_region(_span: span) -> result<ty::region, ~str> {
         result::ok(self.anon)
     }
-    fn named_region(id: ast::ident) -> result<ty::region, ~str> {
-        self.base.named_region(id)
+    fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
+        self.base.named_region(span, id)
     }
 }
 
@@ -58,11 +59,11 @@ fn in_binding_rscope<RS: region_scope copy owned>(self: RS)
     @binding_rscope({base: base})
 }
 impl @binding_rscope: region_scope {
-    fn anon_region() -> result<ty::region, ~str> {
+    fn anon_region(_span: span) -> result<ty::region, ~str> {
         result::ok(ty::re_bound(ty::br_anon))
     }
-    fn named_region(id: ast::ident) -> result<ty::region, ~str> {
-        do self.base.named_region(id).chain_err |_e| {
+    fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
+        do self.base.named_region(span, id).chain_err |_e| {
             result::ok(ty::re_bound(ty::br_named(id)))
         }
     }

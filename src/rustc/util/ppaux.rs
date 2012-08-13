@@ -21,10 +21,31 @@ import syntax::{ast, ast_util};
 import syntax::ast_map;
 import driver::session::session;
 
-/// Returns a string like "reference valid for the block at 27:31 in foo.rs"
-/// that attempts to explain a lifetime in a way it might plausibly be
-/// understood.
+fn note_and_explain_region(cx: ctxt, prefix: ~str, region: ty::region) {
+    match explain_region_and_span(cx, region) {
+      (str, some(span)) => {
+        cx.sess.span_note(
+            span,
+            fmt!("%s %s", prefix, str));
+      }
+      (str, none) => {
+        cx.sess.note(
+            fmt!("%s %s", prefix, str));
+      }
+    }
+}
+
+/// Returns a string like "the block at 27:31" that attempts to explain a
+/// lifetime in a way it might plausibly be understood.
 fn explain_region(cx: ctxt, region: ty::region) -> ~str {
+  let (res, _) = explain_region_and_span(cx, region);
+  return res;
+}
+
+
+fn explain_region_and_span(cx: ctxt, region: ty::region)
+    -> (~str, option<span>)
+{
     return match region {
       re_scope(node_id) => {
         match cx.items.find(node_id) {
@@ -33,14 +54,15 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
           }
           some(ast_map::node_expr(expr)) => {
             match expr.node {
-              ast::expr_call(*) => { explain_span(cx, ~"call", expr.span) }
-              ast::expr_match(*) => { explain_span(cx, ~"alt", expr.span) }
-              _ => { explain_span(cx, ~"expression", expr.span) }
+              ast::expr_call(*) => explain_span(cx, ~"call", expr.span),
+              ast::expr_match(*) => explain_span(cx, ~"alt", expr.span),
+              _ => explain_span(cx, ~"expression", expr.span)
             }
           }
           some(_) | none => {
             // this really should not happen
-            fmt!{"unknown scope: %d.  Please report a bug.", node_id}
+            (fmt!("unknown scope: %d.  Please report a bug.", node_id),
+             none)
           }
         }
       }
@@ -48,30 +70,34 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
       re_free(id, br) => {
         match cx.items.find(id) {
           some(ast_map::node_block(blk)) => {
-            fmt!{"the lifetime %s as defined on %s",
-                 bound_region_to_str(cx, br),
-                 explain_span(cx, ~"block", blk.span)}
+            let (msg, opt_span) = explain_span(cx, ~"block", blk.span);
+            (fmt!("the lifetime %s as defined on %s",
+                  bound_region_to_str(cx, br), msg),
+             opt_span)
           }
           some(_) | none => {
             // this really should not happen
-            fmt!{"the lifetime %s as defined on node %d",
-                 bound_region_to_str(cx, br), id}
+            (fmt!("the lifetime %s as defined on node %d",
+                  bound_region_to_str(cx, br), id),
+             none)
           }
         }
       }
 
-      re_static => { ~"the static lifetime" }
+      re_static => { (~"the static lifetime", none) }
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
       re_var(_) | re_bound(_) => {
-        fmt!{"lifetime %?", region}
+        (fmt!("lifetime %?", region), none)
       }
     };
 
-    fn explain_span(cx: ctxt, heading: ~str, span: span) -> ~str {
+    fn explain_span(cx: ctxt, heading: ~str, span: span)
+        -> (~str, option<span>)
+    {
         let lo = codemap::lookup_char_pos_adj(cx.sess.codemap, span.lo);
-        fmt!{"the %s at %u:%u", heading, lo.line, lo.col}
+        (fmt!{"the %s at %u:%u", heading, lo.line, lo.col}, some(span))
     }
 }
 
@@ -133,30 +159,23 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     }
 }
 
+// In general, if you are giving a region error message,
+// you should use `explain_region()` or, better yet,
+// `note_and_explain_region()`
 fn region_to_str(cx: ctxt, region: region) -> ~str {
-    match region {
-      re_scope(node_id) => {
-        if cx.sess.ppregions() {
-            fmt!{"&%s", re_scope_id_to_str(cx, node_id)}
-        } else {
-            ~"&"
-        }
-      }
-      re_bound(br) => {
-          bound_region_to_str(cx, br)
-      }
-      re_free(id, br) => {
-        if cx.sess.ppregions() {
-            // For debugging, this version is sometimes helpful:
-            fmt!{"{%d} %s", id, bound_region_to_str(cx, br)}
-        } else {
-            // But this version is what the user expects to see:
-            bound_region_to_str(cx, br)
-        }
-      }
+    if cx.sess.ppregions() {
+        return fmt!("&%?", region);
+    }
 
-      // These two should not be seen by end-users (very often, anyhow):
-      re_var(id)    => fmt!{"&%s", id.to_str()},
+    // These printouts are concise.  They do not contain all the information
+    // the user might want to diagnose an error, but there is basically no way
+    // to fit that into a short string.  Hence the recommendation to use
+    // `explain_region()` or `note_and_explain_region()`.
+    match region {
+      re_scope(node_id) => ~"&",
+      re_bound(br) => bound_region_to_str(cx, br),
+      re_free(id, br) => bound_region_to_str(cx, br),
+      re_var(id)    => ~"&",
       re_static     => ~"&static"
     }
 }

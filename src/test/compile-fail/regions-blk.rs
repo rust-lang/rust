@@ -4,10 +4,10 @@ fn foo(cond: bool) {
 
     let mut z: &blk/int;
     if cond {
-        z = &x;
+        z = &x; //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
     } else {
         let w: &blk/int = &x;
-        z = w; //~ ERROR mismatched types
+        z = w;
     }
 }
 
