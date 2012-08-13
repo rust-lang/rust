@@ -1,5 +1,3 @@
-//xfail-test
-
 trait Cat {
     fn meow() -> bool;
     fn scratch() -> bool;
