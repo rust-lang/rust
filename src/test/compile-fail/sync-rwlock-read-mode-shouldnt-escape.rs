@@ -1,4 +1,4 @@
-// error-pattern: reference is not valid outside of its lifetime
+// error-pattern: cannot infer an appropriate lifetime
 use std;
 import std::sync;
 fn main() {

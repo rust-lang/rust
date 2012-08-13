@@ -72,8 +72,8 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
 
     let res = match a_r.node {
-      ast::re_anon => rscope.anon_region(),
-      ast::re_named(id) => rscope.named_region(id)
+      ast::re_anon => rscope.anon_region(span),
+      ast::re_named(id) => rscope.named_region(span, id)
     };
 
     get_region_reporting_err(self.tcx(), span, res)
@@ -106,7 +106,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
         none
       }
       (true, none) => {
-        let res = rscope.anon_region();
+        let res = rscope.anon_region(path.span);
         let r = get_region_reporting_err(self.tcx(), path.span, res);
         some(r)
       }
@@ -409,8 +409,10 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     let mode = {
         match a.mode {
           ast::infer(_) if expected_ty.is_some() => {
-            result::get(ty::unify_mode(self.tcx(), a.mode,
-                                       expected_ty.get().mode))
+            result::get(ty::unify_mode(
+                self.tcx(),
+                ty::expected_found {expected: expected_ty.get().mode,
+                                    found: a.mode}))
           }
           ast::infer(_) => {
             match ty::get(ty).struct {
@@ -425,7 +427,10 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
               // will have been unified with m yet:
               _ => {
                 let m1 = ast::expl(ty::default_arg_mode_for_ty(ty));
-                result::get(ty::unify_mode(self.tcx(), a.mode, m1))
+                result::get(ty::unify_mode(
+                    self.tcx(),
+                    ty::expected_found {expected: m1,
+                                        found: a.mode}))
               }
             }
           }
@@ -446,7 +451,7 @@ fn ast_proto_to_proto<AC: ast_conv, RS: region_scope copy owned>(
         ast::proto_box =>
             ty::proto_vstore(ty::vstore_box),
         ast::proto_block => {
-            let result = rscope.anon_region();
+            let result = rscope.anon_region(span);
             let region = get_region_reporting_err(self.tcx(), span, result);
             ty::proto_vstore(ty::vstore_slice(region))
         }

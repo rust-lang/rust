@@ -16,7 +16,7 @@ import middle::lint;
 import middle::lint::{get_lint_level, allow};
 import syntax::ast::*;
 import syntax::print::pprust::*;
-import util::ppaux::{ty_to_str, tys_to_str};
+import util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
 
 export tv_vid, tvi_vid, region_vid, vid;
 export br_hashmap;
@@ -119,6 +119,7 @@ export proto_kind, kind_lteq, type_kind;
 export operators;
 export type_err, terr_vstore_kind;
 export type_err_to_str;
+export expected_found;
 export type_needs_drop;
 export type_is_empty;
 export type_is_integral;
@@ -179,6 +180,7 @@ export fn_proto, proto_bare, proto_vstore;
 export ast_proto_to_proto;
 export is_blockish;
 export method_call_bounds;
+export hash_region;
 
 // Data types
 
@@ -368,7 +370,7 @@ enum region {
     re_static,
 
     /// A region variable.  Should not exist after typeck.
-    re_var(region_vid),
+    re_var(region_vid)
 }
 
 enum bound_region {
@@ -455,30 +457,35 @@ enum terr_vstore_kind {
     terr_vec, terr_str, terr_fn, terr_trait
 }
 
+struct expected_found<T> {
+    expected: T;
+    found: T;
+}
+
 // Data structures used in type unification
 enum type_err {
     terr_mismatch,
-    terr_ret_style_mismatch(ast::ret_style, ast::ret_style),
-    terr_purity_mismatch(purity, purity),
+    terr_ret_style_mismatch(expected_found<ast::ret_style>),
+    terr_purity_mismatch(expected_found<purity>),
     terr_mutability,
-    terr_proto_mismatch(ty::fn_proto, ty::fn_proto),
+    terr_proto_mismatch(expected_found<ty::fn_proto>),
     terr_box_mutability,
     terr_ptr_mutability,
     terr_ref_mutability,
     terr_vec_mutability,
-    terr_tuple_size(uint, uint),
-    terr_ty_param_size(uint, uint),
-    terr_record_size(uint, uint),
+    terr_tuple_size(expected_found<uint>),
+    terr_ty_param_size(expected_found<uint>),
+    terr_record_size(expected_found<uint>),
     terr_record_mutability,
-    terr_record_fields(ast::ident, ast::ident),
+    terr_record_fields(expected_found<ident>),
     terr_arg_count,
-    terr_mode_mismatch(mode, mode),
+    terr_mode_mismatch(expected_found<mode>),
     terr_regions_does_not_outlive(region, region),
     terr_regions_not_same(region, region),
     terr_regions_no_overlap(region, region),
-    terr_vstores_differ(terr_vstore_kind, vstore, vstore),
+    terr_vstores_differ(terr_vstore_kind, expected_found<vstore>),
     terr_in_field(@type_err, ast::ident),
-    terr_sorts(t, t),
+    terr_sorts(expected_found<t>),
     terr_self_substs,
     terr_no_integral_type,
 }
@@ -512,7 +519,7 @@ impl tvi_vid: vid {
 
 impl region_vid: vid {
     pure fn to_uint() -> uint { *self }
-    pure fn to_str() -> ~str { fmt!{"<R%u>", self.to_uint()} }
+    pure fn to_str() -> ~str { fmt!{"%?", self} }
 }
 
 trait purity_to_str {
@@ -2195,6 +2202,17 @@ fn br_hashmap<V:copy>() -> hashmap<bound_region, V> {
     map::hashmap(hash_bound_region, sys::shape_eq)
 }
 
+pure fn hash_region(r: &region) -> uint {
+    match *r { // no idea if this is any good
+      re_bound(br) => (hash_bound_region(&br)) << 2u | 0u,
+      re_free(id, br) => ((id as uint) << 4u) |
+      (hash_bound_region(&br)) << 2u | 1u,
+      re_scope(id)  => ((id as uint) << 2u) | 2u,
+      re_var(id)    => (id.to_uint() << 2u) | 3u,
+      re_bot        => 4u
+    }
+}
+
 // Type hashing.
 pure fn hash_type_structure(st: &sty) -> uint {
     pure fn hash_uint(id: uint, n: uint) -> uint { (id << 2u) + n }
@@ -2209,16 +2227,6 @@ pure fn hash_type_structure(st: &sty) -> uint {
         let mut h = id;
         for vec::each(subtys) |s| { h = (h << 2u) + type_id(s) }
         h
-    }
-    pure fn hash_region(r: &region) -> uint {
-        match *r { // no idea if this is any good
-          re_bound(br) => (hash_bound_region(&br)) << 2u | 0u,
-          re_free(id, br) => ((id as uint) << 4u) |
-                               (hash_bound_region(&br)) << 2u | 1u,
-          re_scope(id)  => ((id as uint) << 2u) | 2u,
-          re_var(id)    => (id.to_uint() << 2u) | 3u,
-          re_bot        => 4u
-        }
     }
     pure fn hash_substs(h: uint, substs: &substs) -> uint {
         let h = hash_subtys(h, substs.tps);
@@ -2569,8 +2577,11 @@ fn resolved_mode(cx: ctxt, m: ast::mode) -> ast::rmode {
 fn arg_mode(cx: ctxt, a: arg) -> ast::rmode { resolved_mode(cx, a.mode) }
 
 // Unifies `m1` and `m2`.  Returns unified value or failure code.
-fn unify_mode(cx: ctxt, m1: ast::mode, m2: ast::mode)
+fn unify_mode(cx: ctxt, modes: expected_found<ast::mode>)
     -> result<ast::mode, type_err> {
+
+    let m1 = modes.expected;
+    let m2 = modes.found;
     match (canon_mode(cx, m1), canon_mode(cx, m2)) {
       (m1, m2) if (m1 == m2) => {
         result::ok(m1)
@@ -2584,7 +2595,7 @@ fn unify_mode(cx: ctxt, m1: ast::mode, m2: ast::mode)
         result::ok(m1)
       }
       (m1, m2) => {
-        result::err(terr_mode_mismatch(m1, m2))
+        result::err(terr_mode_mismatch(modes))
       }
     }
 }
@@ -2638,91 +2649,96 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
     }
 
     match *err {
-      terr_mismatch => return ~"types differ",
-      terr_ret_style_mismatch(expect, actual) => {
+      terr_mismatch => ~"types differ",
+      terr_ret_style_mismatch(values) => {
         fn to_str(s: ast::ret_style) -> ~str {
             match s {
               ast::noreturn => ~"non-returning",
               ast::return_val => ~"return-by-value"
             }
         }
-        return to_str(actual) + ~" function found where " + to_str(expect) +
-            ~" function was expected";
+        fmt!("expected %s function, found %s function",
+                    to_str(values.expected),
+                    to_str(values.expected))
       }
-      terr_purity_mismatch(f1, f2) => {
-        return fmt!{"expected %s fn but found %s fn",
-                 purity_to_str(f1), purity_to_str(f2)};
+      terr_purity_mismatch(values) => {
+        fmt!{"expected %s fn but found %s fn",
+                    purity_to_str(values.expected),
+                    purity_to_str(values.found)}
       }
-      terr_proto_mismatch(e, a) => {
-        return fmt!{"closure protocol mismatch (%s vs %s)",
-                    util::ppaux::proto_ty_to_str(cx, e),
-                    util::ppaux::proto_ty_to_str(cx, a)};
+      terr_proto_mismatch(values) => {
+        fmt!{"expected %s closure, found %s closure",
+             proto_ty_to_str(cx, values.expected),
+             proto_ty_to_str(cx, values.found)}
       }
-      terr_mutability => return ~"values differ in mutability",
-      terr_box_mutability => return ~"boxed values differ in mutability",
-      terr_vec_mutability => return ~"vectors differ in mutability",
-      terr_ptr_mutability => return ~"pointers differ in mutability",
-      terr_ref_mutability => return ~"references differ in mutability",
-      terr_ty_param_size(e_sz, a_sz) => {
-        return ~"expected a type with " + uint::to_str(e_sz, 10u) +
-            ~" type params but found one with " + uint::to_str(a_sz, 10u) +
-            ~" type params";
+      terr_mutability => ~"values differ in mutability",
+      terr_box_mutability => ~"boxed values differ in mutability",
+      terr_vec_mutability => ~"vectors differ in mutability",
+      terr_ptr_mutability => ~"pointers differ in mutability",
+      terr_ref_mutability => ~"references differ in mutability",
+      terr_ty_param_size(values) => {
+        fmt!("expected a type with %? type params \
+              but found one with %? type params",
+             values.expected, values.found)
       }
-      terr_tuple_size(e_sz, a_sz) => {
-        return ~"expected a tuple with " + uint::to_str(e_sz, 10u) +
-                ~" elements but found one with " + uint::to_str(a_sz, 10u) +
-                ~" elements";
+      terr_tuple_size(values) => {
+        fmt!("expected a tuple with %? elements \
+              but found one with %? elements",
+             values.expected, values.found)
       }
-      terr_record_size(e_sz, a_sz) => {
-        return ~"expected a record with " + uint::to_str(e_sz, 10u) +
-                ~" fields but found one with " + uint::to_str(a_sz, 10u) +
-                ~" fields";
+      terr_record_size(values) => {
+        fmt!("expected a record with %? fields \
+              but found one with %? fields",
+             values.expected, values.found)
       }
       terr_record_mutability => {
-        return ~"record elements differ in mutability";
+        ~"record elements differ in mutability"
       }
-      terr_record_fields(e_fld, a_fld) => {
-        return ~"expected a record with field `" + *e_fld +
-            ~"` but found one with field `" + *a_fld + ~"`";
+      terr_record_fields(values) => {
+        fmt!("expected a record with field `%s` \
+              but found one with field `%s`",
+             *values.expected, *values.found)
       }
-      terr_arg_count => return ~"incorrect number of function parameters",
-      terr_mode_mismatch(e_mode, a_mode) => {
-        return ~"expected argument mode " + mode_to_str(e_mode) +
-            ~" but found " + mode_to_str(a_mode);
+      terr_arg_count => ~"incorrect number of function parameters",
+      terr_mode_mismatch(values) => {
+        fmt!("expected argument mode %s, but found %s",
+             mode_to_str(values.expected), mode_to_str(values.found))
       }
       terr_regions_does_not_outlive(subregion, superregion) => {
-        return fmt!{"%s does not necessarily outlive %s",
-                 explain_region(cx, subregion),
-                 explain_region(cx, superregion)};
+        fmt!{"%s does not necessarily outlive %s",
+                    explain_region(cx, superregion),
+                    explain_region(cx, subregion)}
       }
       terr_regions_not_same(region1, region2) => {
-        return fmt!{"%s is not the same as %s",
-                 explain_region(cx, region1),
-                 explain_region(cx, region2)};
+        fmt!{"%s is not the same as %s",
+                    explain_region(cx, region1),
+                    explain_region(cx, region2)}
       }
       terr_regions_no_overlap(region1, region2) => {
-        return fmt!{"%s does not intersect %s",
-                 explain_region(cx, region1),
-                 explain_region(cx, region2)};
+        fmt!("%s does not intersect %s",
+                    explain_region(cx, region1),
+                    explain_region(cx, region2))
       }
-      terr_vstores_differ(k, e_vs, a_vs) => {
-        return fmt!{"%s storage differs: expected %s but found %s",
-                 terr_vstore_kind_to_str(k),
-                 vstore_to_str(cx, e_vs),
-                 vstore_to_str(cx, a_vs)};
+      terr_vstores_differ(k, values) => {
+        fmt!("%s storage differs: expected %s but found %s",
+                    terr_vstore_kind_to_str(k),
+                    vstore_to_str(cx, values.expected),
+                    vstore_to_str(cx, values.found))
       }
       terr_in_field(err, fname) => {
-        return fmt!{"in field `%s`, %s", *fname, type_err_to_str(cx, err)};
+        fmt!{"in field `%s`, %s", *fname, type_err_to_str(cx, err)}
       }
-      terr_sorts(exp, act) => {
-        return fmt!{"%s vs %s", ty_sort_str(cx, exp), ty_sort_str(cx, act)};
+      terr_sorts(values) => {
+        fmt!{"expected %s but found %s",
+                    ty_sort_str(cx, values.expected),
+                    ty_sort_str(cx, values.found)}
       }
       terr_self_substs => {
-        return ~"inconsistent self substitution"; // XXX this is more of a bug
+        ~"inconsistent self substitution" // XXX this is more of a bug
       }
       terr_no_integral_type => {
-        return ~"couldn't determine an appropriate integral type for integer \
-             literal";
+        ~"couldn't determine an appropriate integral type for integer \
+          literal"
       }
     }
 }

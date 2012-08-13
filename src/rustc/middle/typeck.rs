@@ -206,6 +206,7 @@ fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
 fn require_same_types(
     tcx: ty::ctxt,
     maybe_infcx: option<infer::infer_ctxt>,
+    t1_is_expected: bool,
     span: span,
     t1: ty::t,
     t2: ty::t,
@@ -223,7 +224,7 @@ fn require_same_types(
       }
     }
 
-    match infer::mk_eqty(l_infcx, t1, t2) {
+    match infer::mk_eqty(l_infcx, t1_is_expected, span, t1, t2) {
       result::ok(()) => true,
       result::err(ref terr) => {
         l_tcx.sess.span_err(span, msg() + ~": " +

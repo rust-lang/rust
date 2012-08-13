@@ -6,7 +6,7 @@ fn with<T>(f: fn(x: &int) -> T) -> T {
 
 fn manip(x: &a/int) -> int {
     let z = do with |y| { select(x, y) };
-    //~^ ERROR reference is not valid outside of its lifetime
+    //~^ ERROR cannot infer an appropriate lifetime
     *z
 }
 

@@ -90,7 +90,7 @@ priv impl<A> DVec<A> {
     }
 
     #[inline(always)]
-    fn borrow<B>(f: fn(-~[mut A]) -> B) -> B {
+    fn check_out<B>(f: fn(-~[mut A]) -> B) -> B {
         unsafe {
             let mut data = unsafe::reinterpret_cast(null::<()>());
             data <-> self.data;
@@ -124,13 +124,13 @@ impl<A> DVec<A> {
      */
     #[inline(always)]
     fn swap(f: fn(-~[mut A]) -> ~[mut A]) {
-        self.borrow(|v| self.give_back(f(v)))
+        self.check_out(|v| self.give_back(f(v)))
     }
 
     /// Returns the number of elements currently in the dvec
     pure fn len() -> uint {
         unchecked {
-            do self.borrow |v| {
+            do self.check_out |v| {
                 let l = v.len();
                 self.give_back(v);
                 l
@@ -146,7 +146,7 @@ impl<A> DVec<A> {
 
     /// Remove and return the last element
     fn pop() -> A {
-        do self.borrow |v| {
+        do self.check_out |v| {
             let mut v <- v;
             let result = vec::pop(v);
             self.give_back(v);
@@ -176,7 +176,7 @@ impl<A> DVec<A> {
 
     /// Remove and return the first element
     fn shift() -> A {
-        do self.borrow |v| {
+        do self.check_out |v| {
             let mut v = vec::from_mut(v);
             let result = vec::shift(v);
             self.give_back(vec::to_mut(v));
@@ -184,10 +184,29 @@ impl<A> DVec<A> {
         }
     }
 
-    // Reverse the elements in the list, in place
+    /// Reverse the elements in the list, in place
     fn reverse() {
-        do self.borrow |v| {
+        do self.check_out |v| {
             vec::reverse(v);
+            self.give_back(v);
+        }
+    }
+
+    /// Gives access to the vector as a slice with immutable contents
+    fn borrow<R>(op: fn(x: &[A]) -> R) -> R {
+        do self.check_out |v| {
+            let result = op(v);
+            self.give_back(v);
+            result
+        }
+    }
+
+    /// Gives access to the vector as a slice with mutable contents
+    fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
+        do self.check_out |v| {
+            let result = op(v);
+            self.give_back(v);
+            result
         }
     }
 }
@@ -249,7 +268,7 @@ impl<A: copy> DVec<A> {
      */
     pure fn get() -> ~[A] {
         unchecked {
-            do self.borrow |v| {
+            do self.check_out |v| {
                 let w = vec::from_mut(copy v);
                 self.give_back(v);
                 w

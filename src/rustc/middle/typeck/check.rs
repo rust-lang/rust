@@ -102,12 +102,12 @@ type fn_ctxt_ =
      // the end of (almost) any enclosing block or expression.  We
      // want to pick the narrowest block that encompasses all uses.
      //
-     // What we do in such cases is to generate a region variable and
-     // assign it the following two fields as bounds.  The lower bound
-     // is always the innermost enclosing expression.  The upper bound
-     // is the outermost enclosing expression that we could legally
-     // use.  In practice, this is the innermost loop or function
-     // body.
+     // What we do in such cases is to generate a region variable with
+     // `region_lb` as a lower bound.  The regionck pass then adds
+     // other constriants based on how the variable is used and region
+     // inference selects the ultimate value.  Finally, borrowck is
+     // charged with guaranteeing that the value whose address was taken
+     // can actually be made to live as long as it needs to live.
      mut region_lb: ast::node_id,
 
      in_scope_regions: isr_alist,
@@ -292,20 +292,22 @@ fn check_fn(ccx: @crate_ctxt,
                      arg_tys: ~[ty::t]) {
         let tcx = fcx.ccx.tcx;
 
-        let assign = fn@(nid: ast::node_id, ty_opt: option<ty::t>) {
+        let assign = fn@(span: span, nid: ast::node_id,
+                         ty_opt: option<ty::t>) {
             let var_id = fcx.infcx.next_ty_var_id();
             fcx.locals.insert(nid, var_id);
             match ty_opt {
               none => {/* nothing to do */ }
               some(typ) => {
-                infer::mk_eqty(fcx.infcx, ty::mk_var(tcx, var_id), typ);
+                infer::mk_eqty(fcx.infcx, false, span,
+                               ty::mk_var(tcx, var_id), typ);
               }
             }
         };
 
         // Add formal parameters.
         do vec::iter2(arg_tys, decl.inputs) |arg_ty, input| {
-            assign(input.id, some(arg_ty));
+            assign(input.ty.span, input.id, some(arg_ty));
             debug!{"Argument %s is assigned to %s",
                    *input.ident, fcx.locals.get(input.id).to_str()};
         }
@@ -317,7 +319,7 @@ fn check_fn(ccx: @crate_ctxt,
               ast::ty_infer => none,
               _ => some(fcx.to_ty(local.node.ty))
             };
-            assign(local.node.id, o_ty);
+            assign(local.span, local.node.id, o_ty);
             debug!{"Local variable %s is assigned to %s",
                    pat_to_str(local.node.pat),
                    fcx.locals.get(local.node.id).to_str()};
@@ -329,7 +331,7 @@ fn check_fn(ccx: @crate_ctxt,
             match p.node {
               ast::pat_ident(_, path, _)
                   if !pat_util::pat_is_variant(fcx.ccx.tcx.def_map, p) => {
-                assign(p.id, none);
+                assign(p.span, p.id, none);
                 debug!{"Pattern binding %s is assigned to %s",
                        *path.idents[0],
                        fcx.locals.get(p.id).to_str()};
@@ -525,14 +527,14 @@ impl @fn_ctxt: ast_conv {
 }
 
 impl @fn_ctxt: region_scope {
-    fn anon_region() -> result<ty::region, ~str> {
-        result::ok(self.infcx.next_region_var_nb())
+    fn anon_region(span: span) -> result<ty::region, ~str> {
+        result::ok(self.infcx.next_region_var_nb(span))
     }
-    fn named_region(id: ast::ident) -> result<ty::region, ~str> {
-        do empty_rscope.named_region(id).chain_err |_e| {
+    fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
+        do empty_rscope.named_region(span, id).chain_err |_e| {
             match self.in_scope_regions.find(ty::br_named(id)) {
               some(r) => result::ok(r),
-              none if *id == ~"blk" => self.block_region(),
+              none if *id == ~"blk" => result::ok(self.block_region()),
               none => {
                 result::err(fmt!{"named region `%s` not in scope here", *id})
               }
@@ -543,8 +545,8 @@ impl @fn_ctxt: region_scope {
 
 impl @fn_ctxt {
     fn tag() -> ~str { fmt!{"%x", ptr::addr_of(*self) as uint} }
-    fn block_region() -> result<ty::region, ~str> {
-        result::ok(ty::re_scope(self.region_lb))
+    fn block_region() -> ty::region {
+        ty::re_scope(self.region_lb)
     }
     #[inline(always)]
     fn write_ty(node_id: ast::node_id, ty: ty::t) {
@@ -619,8 +621,9 @@ impl @fn_ctxt {
                  ty::type_err_to_str(self.ccx.tcx, err)});
     }
 
-    fn mk_subty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        infer::mk_subty(self.infcx, sub, sup)
+    fn mk_subty(a_is_expected: bool, span: span,
+                sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+        infer::mk_subty(self.infcx, a_is_expected, span, sub, sup)
     }
 
     fn can_mk_subty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
@@ -641,12 +644,14 @@ impl @fn_ctxt {
         infer::can_mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
-    fn mk_eqty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
-        infer::mk_eqty(self.infcx, sub, sup)
+    fn mk_eqty(a_is_expected: bool, span: span,
+               sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+        infer::mk_eqty(self.infcx, a_is_expected, span, sub, sup)
     }
 
-    fn mk_subr(sub: ty::region, sup: ty::region) -> result<(), ty::type_err> {
-        infer::mk_subr(self.infcx, sub, sup)
+    fn mk_subr(a_is_expected: bool, span: span,
+               sub: ty::region, sup: ty::region) -> result<(), ty::type_err> {
+        infer::mk_subr(self.infcx, a_is_expected, span, sub, sup)
     }
 
     fn require_unsafe(sp: span, op: ~str) {
@@ -748,8 +753,10 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
 // declared on the impl declaration e.g., `impl<A,B> for ~[(A,B)]`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
-fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id, require_rp: bool)
-                                        -> ty_param_substs_and_ty {
+fn impl_self_ty(fcx: @fn_ctxt,
+                expr: @ast::expr, // (potential) receiver for this impl
+                did: ast::def_id,
+                require_rp: bool) -> ty_param_substs_and_ty {
     let tcx = fcx.ccx.tcx;
 
     let {n_tps, rp, raw_ty} = if did.crate == ast::local_crate {
@@ -786,7 +793,8 @@ fn impl_self_ty(fcx: @fn_ctxt, did: ast::def_id, require_rp: bool)
     };
 
     let rp = rp || require_rp;
-    let self_r = if rp {some(fcx.infcx.next_region_var_nb())} else {none};
+    let self_r = if rp {some(fcx.infcx.next_region_var(expr.span, expr.id))}
+                 else {none};
     let tps = fcx.infcx.next_ty_vars(n_tps);
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};
@@ -840,7 +848,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               sty @ ty::ty_fn(ref fn_ty) => {
                 replace_bound_regions_in_fn_ty(
                     fcx.ccx.tcx, @nil, none, fn_ty,
-                    |_br| fcx.infcx.next_region_var_nb()).fn_ty
+                    |_br| fcx.infcx.next_region_var(sp,
+                                                    call_expr_id)).fn_ty
               }
               sty => {
                 // I would like to make this span_err, but it's
@@ -1442,8 +1451,23 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_expr(fcx, oprnd, unpack_expected(fcx, expected, |ty|
             match ty { ty::ty_rptr(_, mt) => some(mt.ty), _ => none }
         ));
-        //let region = region_of(fcx, oprnd);
-        let region = fcx.infcx.next_region_var_with_scope_lb(expr.id);
+
+        // Note: at this point, we cannot say what the best lifetime
+        // is to use for resulting pointer.  We want to use the
+        // shortest lifetime possible so as to avoid spurious borrowck
+        // errors.  Moreover, the longest lifetime will depend on the
+        // precise details of the value whose address is being taken
+        // (and how long it is valid), which we don't know yet until type
+        // inference is complete.
+        //
+        // Therefore, here we simply generate a region variable with
+        // the current expression as a lower bound.  The region
+        // inferencer will then select the ultimate value.  Finally,
+        // borrowck is charged with guaranteeing that the value whose
+        // address was taken can actually be made to live as long as
+        // it needs to live.
+        let region = fcx.infcx.next_region_var(expr.span, expr.id);
+
         let tm = { ty: fcx.expr_ty(oprnd), mutbl: mutbl };
         let oprnd_t = ty::mk_rptr(tcx, region, tm);
         fcx.write_ty(id, oprnd_t);
@@ -1452,7 +1476,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let defn = lookup_def(fcx, pth.span, id);
 
         let tpt = ty_param_bounds_and_ty_for_def(fcx, expr.span, defn);
-        instantiate_path(fcx, pth, tpt, expr.span, expr.id);
+        let region_lb = ty::re_scope(expr.id);
+        instantiate_path(fcx, pth, tpt, expr.span, expr.id, region_lb);
       }
       ast::expr_mac(_) => tcx.sess.bug(~"unexpanded macro"),
       ast::expr_fail(expr_opt) => {
@@ -1474,7 +1499,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           some(t) =>  t, none => fcx.ret_ty
         };
         match expr_opt {
-          none => match fcx.mk_eqty(ret_ty, ty::mk_nil(tcx)) {
+          none => match fcx.mk_eqty(false, expr.span,
+                                    ret_ty, ty::mk_nil(tcx)) {
             result::ok(_) => { /* fall through */ }
             result::err(_) => {
                 tcx.sess.span_err(
@@ -1550,7 +1576,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let expected_sty = unpack_expected(fcx, expected, |x| some(x));
         let (inner_ty, proto) = match expected_sty {
           some(ty::ty_fn(fty)) => {
-            match infer::mk_subty(fcx.infcx, fty.output, ty::mk_bool(tcx)) {
+            match fcx.mk_subty(false, expr.span,
+                               fty.output, ty::mk_bool(tcx)) {
               result::ok(_) => (),
               result::err(err) => {
                 tcx.sess.span_fatal(
@@ -1809,7 +1836,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Generate the struct type.
         let self_region;
         if region_parameterized {
-            self_region = some(fcx.infcx.next_region_var_nb());
+            self_region = some(fcx.infcx.next_region_var(expr.span, expr.id));
         } else {
             self_region = none;
         }
@@ -2307,8 +2334,9 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
 fn instantiate_path(fcx: @fn_ctxt,
                     pth: @ast::path,
                     tpt: ty_param_bounds_and_ty,
-                    sp: span,
-                    id: ast::node_id) {
+                    span: span,
+                    node_id: ast::node_id,
+                    region_lb: ty::region) {
     let ty_param_count = vec::len(*tpt.bounds);
     let ty_substs_len = vec::len(pth.types);
 
@@ -2317,14 +2345,14 @@ fn instantiate_path(fcx: @fn_ctxt,
     let self_r = match pth.rp {
       some(r) if !tpt.rp => {
         fcx.ccx.tcx.sess.span_err
-            (sp, ~"this item is not region-parameterized");
+            (span, ~"this item is not region-parameterized");
         none
       }
       some(r) => {
-        some(ast_region_to_region(fcx, fcx, sp, r))
+        some(ast_region_to_region(fcx, fcx, span, r))
       }
       none if tpt.rp => {
-        some(fcx.infcx.next_region_var_nb())
+        some(fcx.infcx.next_region_var_with_lb(span, region_lb))
       }
       none => {
         none
@@ -2337,22 +2365,22 @@ fn instantiate_path(fcx: @fn_ctxt,
         fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_param_count == 0u {
         fcx.ccx.tcx.sess.span_err
-            (sp, ~"this item does not take type parameters");
+            (span, ~"this item does not take type parameters");
         fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_substs_len > ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (sp, ~"too many type parameters provided for this item");
+            (span, ~"too many type parameters provided for this item");
         fcx.infcx.next_ty_vars(ty_param_count)
     } else if ty_substs_len < ty_param_count {
         fcx.ccx.tcx.sess.span_err
-            (sp, ~"not enough type parameters provided for this item");
+            (span, ~"not enough type parameters provided for this item");
         fcx.infcx.next_ty_vars(ty_param_count)
     } else {
         pth.types.map(|aty| fcx.to_ty(aty))
     };
 
     let substs = {self_r: self_r, self_ty: none, tps: tps};
-    fcx.write_ty_substs(id, tpt.ty, substs);
+    fcx.write_ty_substs(node_id, tpt.ty, substs);
 }
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
@@ -2400,15 +2428,9 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
       }
       ast::vstore_uniq => ty::vstore_uniq,
       ast::vstore_box => ty::vstore_box,
-      ast::vstore_slice(a_r) =>  match fcx.block_region() {
-        result::ok(b_r) => {
-            let r = fcx.infcx.next_region_var_with_scope_lb(e.id);
-            ty::vstore_slice(r)
-        }
-        result::err(msg) => {
-            fcx.ccx.tcx.sess.span_err(e.span, msg);
-            ty::vstore_slice(ty::re_static)
-        }
+      ast::vstore_slice(a_r) => {
+        let r = fcx.infcx.next_region_var(e.span, e.id);
+        ty::vstore_slice(r)
       }
     }
 }
@@ -2523,7 +2545,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
                                          expected %u", i_n_tps, n_tps});
     } else {
         require_same_types(
-            tcx, none, it.span, i_ty.ty, fty,
+            tcx, none, false, it.span, i_ty.ty, fty,
             || fmt!{"intrinsic has wrong type: \
                       expected `%s`",
                      ty_to_str(ccx.tcx, fty)});

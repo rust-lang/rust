@@ -7,7 +7,7 @@ fn make_gc1(gc: get_ctxt/&a) -> get_ctxt/&b  {
 }
 
 fn make_gc2(gc: get_ctxt/&a) -> get_ctxt/&b  {
-    return gc as get_ctxt; //~ ERROR mismatched types: expected `@get_ctxt/&b` but found `@get_ctxt/&a`
+    return gc as get_ctxt; //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() {
