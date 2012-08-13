@@ -23,13 +23,13 @@ fn assign_to_pure2(x: pure fn@(), y: fn@(), z: unsafe fn@()) {
     let b: pure fn() = y; //~ ERROR expected pure fn but found impure fn
     let c: pure fn() = z; //~ ERROR expected pure fn but found unsafe fn
 
-    let a: pure fn~() = x; //~ ERROR closure protocol mismatch (fn~ vs fn@)
-    let b: pure fn~() = y; //~ ERROR closure protocol mismatch (fn~ vs fn@)
-    let c: pure fn~() = z; //~ ERROR closure protocol mismatch (fn~ vs fn@)
+    let a: pure fn~() = x; //~ ERROR fn storage differs: expected ~ but found @
+    let b: pure fn~() = y; //~ ERROR fn storage differs: expected ~ but found @
+    let c: pure fn~() = z; //~ ERROR fn storage differs: expected ~ but found @
 
-    let a: unsafe fn~() = x; //~ ERROR closure protocol mismatch (fn~ vs fn@)
-    let b: unsafe fn~() = y; //~ ERROR closure protocol mismatch (fn~ vs fn@)
-    let c: unsafe fn~() = z; //~ ERROR closure protocol mismatch (fn~ vs fn@)
+    let a: unsafe fn~() = x; //~ ERROR fn storage differs: expected ~ but found @
+    let b: unsafe fn~() = y; //~ ERROR fn storage differs: expected ~ but found @
+    let c: unsafe fn~() = z; //~ ERROR fn storage differs: expected ~ but found @
 }
 
 fn main() {
