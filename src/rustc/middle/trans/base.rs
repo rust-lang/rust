@@ -657,6 +657,16 @@ fn emit_tydescs(ccx: @crate_ctxt) {
         llvm::LLVMSetInitializer(gvar, tydesc);
         llvm::LLVMSetGlobalConstant(gvar, True);
         lib::llvm::SetLinkage(gvar, lib::llvm::InternalLinkage);
+
+        // Index tydesc by addrspace.
+        let llty = T_ptr(ccx.tydesc_type);
+        let addrspace_name = #fmt("_gc_addrspace_metadata_%u",
+                                  ti.addrspace as uint);
+        let addrspace_gvar = str::as_c_str(addrspace_name, |buf| {
+            llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
+        });
+        lib::llvm::SetLinkage(addrspace_gvar, lib::llvm::InternalLinkage);
+        llvm::LLVMSetInitializer(addrspace_gvar, gvar);
     };
 }
 
