@@ -2,6 +2,7 @@
 
 ;; Version: 0.1.0
 ;; Package-Requires: ((cm-mode "0.1.0"))
+;; Url: https://github.com/mozilla/rust
 
 (require 'cm-mode)
 (require 'cc-mode)
