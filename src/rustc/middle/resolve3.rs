@@ -972,10 +972,10 @@ class Resolver {
                 (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
             }
 
-            // These items live in both the type and value namespaces.
             item_enum(enum_definition, _) => {
+
               let (name_bindings, new_parent) = self.add_child(atom, parent,
-                                                     ~[ValueNS, TypeNS], sp);
+                                                               ~[TypeNS], sp);
 
                 (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
 
@@ -986,6 +986,8 @@ class Resolver {
                                                          visitor);
                 }
             }
+
+            // These items live in both the type and value namespaces.
             item_class(struct_definition, _) => {
                 let (name_bindings, new_parent) =
                     match struct_definition.ctor {
