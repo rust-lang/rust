@@ -70,6 +70,8 @@ export SOURCE_FILE;
 import parse_from_source_str;
 export parse_from_source_str;
 
+export item_or_view_item, iovi_none, iovi_view_item, iovi_item;
+
 enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
@@ -103,6 +105,11 @@ enum class_contents { ctor_decl(fn_decl, ~[attribute], blk, codemap::span),
 type arg_or_capture_item = either<arg, capture_item>;
 type item_info = (ident, item_, option<~[attribute]>);
 
+enum item_or_view_item {
+    iovi_none,
+    iovi_item(@item),
+    iovi_view_item(@view_item)
+}
 
 /* The expr situation is not as complex as I thought it would be.
 The important thing is to make sure that lookahead doesn't balk
@@ -133,6 +140,13 @@ macro_rules! maybe_whole {
     }} ;
     {some $p:expr, $constructor:ident} => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return some(x); }
+      _ => ()
+    }} ;
+    {iovi $p:expr, $constructor:ident} => { match copy $p.token {
+      INTERPOLATED(token::$constructor(x)) => {
+        $p.bump();
+        return iovi_item(x);
+      }
       _ => ()
     }} ;
     {pair_empty $p:expr, $constructor:ident} => { match copy $p.token {
@@ -2004,13 +2018,17 @@ class parser {
 
             let item_attrs = vec::append(first_item_attrs, item_attrs);
 
-            match self.parse_item(item_attrs) {
-              some(i) => {
+            match self.parse_item_or_view_item(item_attrs) {
+              iovi_item(i) => {
                 let mut hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
                 return @spanned(lo, hi, stmt_decl(decl, self.get_id()));
               }
-              none() => { /* fallthrough */ }
+              iovi_view_item(vi) => {
+                self.span_fatal(vi.span, ~"view items must be declared at \
+                                           the top of the block");
+              }
+              iovi_none() => { /* fallthrough */ }
             }
 
             check_expected_item(self, item_attrs);
@@ -2680,9 +2698,15 @@ class parser {
                 attrs = vec::append(attrs_remaining, attrs);
                 first = false;
             }
-            debug!{"parse_mod_items: parse_item(attrs=%?)", attrs};
-            match self.parse_item(attrs) {
-              some(i) => vec::push(items, i),
+            debug!("parse_mod_items: parse_item_or_view_item(attrs=%?)",
+                   attrs);
+            match self.parse_item_or_view_item(attrs) {
+              iovi_item(item) => vec::push(items, item),
+              iovi_view_item(view_item) => {
+                self.span_fatal(view_item.span, ~"view items must be \
+                                                  declared at the top of the \
+                                                  module");
+              }
               _ => {
                 self.fatal(~"expected item but found `" +
                            token_to_str(self.reader, self.token) + ~"`");
@@ -2969,8 +2993,8 @@ class parser {
         }
     }
 
-    fn parse_item(+attrs: ~[attribute]) -> option<@item> {
-        maybe_whole!{some self,nt_item};
+    fn parse_item_or_view_item(+attrs: ~[attribute]) -> item_or_view_item {
+        maybe_whole!{iovi self,nt_item};
         let lo = self.span.lo;
 
         let visibility;
@@ -2982,41 +3006,90 @@ class parser {
             visibility = inherited;
         }
 
-        let (ident, item_, extra_attrs) = if self.eat_keyword(~"const") {
-            self.parse_item_const()
+        pure fn maybe_append(+lhs: ~[attribute], rhs: option<~[attribute]>)
+                          -> ~[attribute] {
+            match rhs {
+                none => lhs,
+                some(attrs) => vec::append(lhs, attrs)
+            }
+        }
+
+        if self.eat_keyword(~"const") {
+            let (ident, item_, extra_attrs) = self.parse_item_const();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.is_keyword(~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
             self.bump();
-            self.parse_item_fn(impure_fn)
+            let (ident, item_, extra_attrs) = self.parse_item_fn(impure_fn);
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"pure") {
             self.expect_keyword(~"fn");
-            self.parse_item_fn(pure_fn)
+            let (ident, item_, extra_attrs) = self.parse_item_fn(pure_fn);
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.is_keyword(~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
             self.bump();
             self.expect_keyword(~"fn");
-            self.parse_item_fn(unsafe_fn)
+            let (ident, item_, extra_attrs) = self.parse_item_fn(unsafe_fn);
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"extern") {
+            // XXX: "extern mod foo;" syntax as a "use" replacement.
             if self.eat_keyword(~"fn") {
-                self.parse_item_fn(extern_fn)
-            } else {
-                self.parse_item_foreign_mod()
+                let (ident, item_, extra_attrs) =
+                    self.parse_item_fn(extern_fn);
+                return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
+                                              item_, visibility,
+                                              maybe_append(attrs,
+                                                           extra_attrs)));
             }
+            let (ident, item_, extra_attrs) = self.parse_item_foreign_mod();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"mod") || self.eat_keyword(~"module") {
-            self.parse_item_mod()
+            let (ident, item_, extra_attrs) = self.parse_item_mod();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"type") {
-            self.parse_item_type()
+            let (ident, item_, extra_attrs) = self.parse_item_type();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"enum") {
-            self.parse_item_enum()
+            let (ident, item_, extra_attrs) = self.parse_item_enum();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"iface") {
             self.warn(~"`iface` is deprecated; use `trait`");
-            self.parse_item_trait()
+            let (ident, item_, extra_attrs) = self.parse_item_trait();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"trait") {
-            self.parse_item_trait()
+            let (ident, item_, extra_attrs) = self.parse_item_trait();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"impl") {
-            self.parse_item_impl()
+            let (ident, item_, extra_attrs) = self.parse_item_impl();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"class") || self.eat_keyword(~"struct") {
-            self.parse_item_class()
+            let (ident, item_, extra_attrs) = self.parse_item_class();
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
+                                          visibility,
+                                          maybe_append(attrs, extra_attrs)));
         } else if !self.is_any_keyword(copy self.token)
             && self.look_ahead(1) == token::NOT
             && is_plain_ident(self.look_ahead(2))
@@ -3039,13 +3112,23 @@ class parser {
                                span: {lo: self.span.lo,
                                       hi: self.span.hi,
                                       expn_info: none}};
-            (id, item_mac(m), none)
-        } else { return none; };
-        some(self.mk_item(lo, self.last_span.hi, ident, item_, visibility,
-                          match extra_attrs {
-                              some(as) => vec::append(attrs, as),
-                              none => attrs
-                          }))
+            let item_ = item_mac(m);
+            return iovi_item(self.mk_item(lo, self.last_span.hi, id, item_,
+                                          visibility, attrs));
+        } else {
+            return iovi_none;
+        };
+    }
+
+    fn parse_item(+attrs: ~[attribute]) -> option<@ast::item> {
+        match self.parse_item_or_view_item(attrs) {
+            iovi_none =>
+                none,
+            iovi_view_item(_) =>
+                self.fatal(~"view items are not allowed here"),
+            iovi_item(item) =>
+                some(item)
+        }
     }
 
     fn parse_use() -> view_item_ {
