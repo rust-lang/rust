@@ -284,7 +284,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     nts, next_eis.len()});
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 return failure(sp, ~"No rules expected the token "
-                            + to_str(*rdr.interner(), tok));
+                            + to_str(rdr.interner(), tok));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
@@ -334,7 +334,7 @@ fn parse_nt(p: parser, name: ~str) -> nonterminal {
       ~"ident" => match copy p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(sn,b) }
         _ => p.fatal(~"expected ident, found "
-                     + token::to_str(*p.reader.interner(), copy p.token))
+                     + token::to_str(p.reader.interner(), copy p.token))
       },
       ~"path" => token::nt_path(p.parse_path_with_tps(false)),
       ~"tt" => {

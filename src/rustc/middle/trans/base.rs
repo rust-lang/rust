@@ -668,7 +668,7 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
       ty::ty_fn(_) => {
         closure::make_fn_glue(bcx, v, t, take_ty)
       }
-      ty::ty_trait(_, _) => {
+      ty::ty_trait(_, _, _) => {
         let llbox = Load(bcx, GEPi(bcx, v, ~[0u, 1u]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
@@ -819,7 +819,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
       ty::ty_fn(_) => {
         closure::make_fn_glue(bcx, v0, t, drop_ty)
       }
-      ty::ty_trait(_, _) => {
+      ty::ty_trait(_, _, _) => {
         let llbox = Load(bcx, GEPi(bcx, v0, ~[0u, 1u]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
@@ -2041,7 +2041,7 @@ fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
                              output: ty::mk_nil(tcx),
                              ret_style: ast::return_val}))
       }
-      ty::ty_trait(_, _) => {
+      ty::ty_trait(_, _, _) => {
         some(ty::mk_fn(tcx, {purity: ast::impure_fn,
                              proto: ty::proto_vstore(ty::vstore_box),
                              bounds: @~[],
@@ -2819,7 +2819,7 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
     let ccx = cx.ccx();
     let t_out = node_id_type(cx, id);
     match ty::get(t_out).struct {
-      ty::ty_trait(_, _) => return impl::trans_cast(cx, e, id, dest),
+      ty::ty_trait(_, _, _) => return impl::trans_cast(cx, e, id, dest),
       _ => ()
     }
     let e_res = trans_temp_expr(cx, e);

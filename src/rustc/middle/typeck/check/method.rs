@@ -126,7 +126,7 @@ class lookup {
                 self.add_candidates_from_param(p.idx, p.def_id);
               }
 
-              ty::ty_trait(did, substs) => {
+              ty::ty_trait(did, substs, _) => {
                 self.add_candidates_from_trait(did, substs);
               }
               ty::ty_class(did, substs) => {
@@ -238,7 +238,7 @@ class lookup {
               }
               ty::bound_trait(bound_t) => {
                 match check ty::get(bound_t).struct {
-                  ty::ty_trait(i, substs) => (i, substs)
+                  ty::ty_trait(i, substs, _) => (i, substs)
                 }
               }
             };

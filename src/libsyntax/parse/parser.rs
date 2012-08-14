@@ -263,7 +263,7 @@ class parser {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
     }
     pure fn get_str(i: token::str_num) -> @~str {
-        (*self.reader.interner()).get(i)
+        self.reader.interner().get(i)
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 

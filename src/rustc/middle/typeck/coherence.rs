@@ -96,7 +96,7 @@ fn get_base_type_def_id(inference_context: infer_ctxt,
             match get(base_type).struct {
                 ty_enum(def_id, _) |
                 ty_class(def_id, _) |
-                ty_trait(def_id, _) => {
+                ty_trait(def_id, _, _) => {
                     return some(def_id);
                 }
                 _ => {
@@ -735,7 +735,7 @@ class CoherenceChecker {
             // Record all the trait methods.
             for associated_traits.each |trait_type| {
                 match get(trait_type).struct {
-                    ty_trait(trait_id, _) => {
+                    ty_trait(trait_id, _, _) => {
                         self.add_trait_method(trait_id, implementation);
                     }
                     _ => {

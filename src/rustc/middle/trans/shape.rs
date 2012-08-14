@@ -323,7 +323,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         add_substr(s, sub);
         s
       }
-      ty::ty_trait(_, _) => ~[shape_box_fn],
+      ty::ty_trait(_, _, _) => ~[shape_box_fn],
       ty::ty_class(did, ref substs) => {
         // same as records, unless there's a dtor
         let tps = substs.tps;

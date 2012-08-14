@@ -276,7 +276,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
                                 srdr: io::Reader) ->
    {cmnts: ~[cmnt], lits: ~[lit]} {
     let src = @str::from_bytes(srdr.read_whole_stream());
-    let itr = @interner::mk::<@~str>(
+    let itr = interner::mk::<@~str>(
         |x| str::hash(*x),
         |x,y| str::eq(*x, *y)
     );
@@ -311,7 +311,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
             vec::push(literals, {lit: s, pos: sp.lo});
             log(debug, ~"tok lit: " + s);
         } else {
-            log(debug, ~"tok: " + token::to_str(*rdr.interner, tok));
+            log(debug, ~"tok: " + token::to_str(rdr.interner, tok));
         }
         first_read = false;
     }

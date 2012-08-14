@@ -172,7 +172,7 @@ export terr_regions_does_not_outlive, terr_mutability, terr_purity_mismatch;
 export terr_regions_not_same, terr_regions_no_overlap;
 export terr_proto_mismatch;
 export terr_ret_style_mismatch;
-export terr_fn;
+export terr_fn, terr_trait;
 export purity_to_str;
 export param_tys_in_type;
 export eval_repeat_count;
@@ -434,7 +434,7 @@ enum sty {
     ty_rptr(region, mt),
     ty_rec(~[field]),
     ty_fn(fn_ty),
-    ty_trait(def_id, substs),
+    ty_trait(def_id, substs, vstore),
     ty_class(def_id, substs),
     ty_tup(~[t]),
 
@@ -452,7 +452,7 @@ enum sty {
 }
 
 enum terr_vstore_kind {
-    terr_vec, terr_str, terr_fn
+    terr_vec, terr_str, terr_fn, terr_trait
 }
 
 // Data structures used in type unification
@@ -670,7 +670,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: option<ast::def_id>) -> t {
       ty_var(_) | ty_var_integral(_) => flags |= needs_infer as uint,
       ty_self => flags |= has_self as uint,
       ty_enum(_, ref substs) | ty_class(_, ref substs)
-      | ty_trait(_, ref substs) => {
+      | ty_trait(_, ref substs, _) => {
         flags |= sflags(substs);
       }
       ty_box(m) | ty_uniq(m) | ty_evec(m, _) |
@@ -787,9 +787,10 @@ fn mk_tup(cx: ctxt, ts: ~[t]) -> t { mk_t(cx, ty_tup(ts)) }
 // take a copy because we want to own the various vectors inside
 fn mk_fn(cx: ctxt, +fty: fn_ty) -> t { mk_t(cx, ty_fn(fty)) }
 
-fn mk_trait(cx: ctxt, did: ast::def_id, +substs: substs) -> t {
+fn mk_trait(cx: ctxt, did: ast::def_id, +substs: substs, vstore: vstore)
+         -> t {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_trait(did, substs))
+    mk_t(cx, ty_trait(did, substs, vstore))
 }
 
 fn mk_class(cx: ctxt, class_id: ast::def_id, +substs: substs) -> t {
@@ -862,7 +863,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, substs) | ty_class(_, substs) |
-      ty_trait(_, substs) => {
+      ty_trait(_, substs, _) => {
         for substs.tps.each |subty| { maybe_walk_ty(subty, f); }
       }
       ty_rec(fields) => {
@@ -907,8 +908,8 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
       ty_enum(tid, ref substs) => {
         ty_enum(tid, fold_substs(substs, fldop))
       }
-      ty_trait(did, ref substs) => {
-        ty_trait(did, fold_substs(substs, fldop))
+      ty_trait(did, ref substs, vst) => {
+        ty_trait(did, fold_substs(substs, fldop), vst)
       }
       ty_rec(fields) => {
         let new_fields = do vec::map(fields) |fl| {
@@ -1005,8 +1006,8 @@ fn fold_regions_and_ty(
       ty_class(def_id, ref substs) => {
         ty::mk_class(cx, def_id, fold_substs(substs, fldr, fldt))
       }
-      ty_trait(def_id, ref substs) => {
-        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt))
+      ty_trait(def_id, ref substs, vst) => {
+        ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
       }
       ref sty @ ty_fn(f) => {
         let new_proto;
@@ -1664,7 +1665,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       }
 
       // Trait instances are (for now) like shared boxes, basically
-      ty_trait(_, _) => kind_safe_for_default_mode() | kind_owned(),
+      ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_owned(),
 
       // Region pointers are copyable but NOT owned nor sendable
       ty_rptr(_, _) => kind_safe_for_default_mode(),
@@ -1911,7 +1912,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             }
           }
 
-          ty_trait(_, _) => {
+          ty_trait(_, _, _) => {
             false
           }
 
@@ -2053,7 +2054,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_box(_) | ty_uniq(_) | ty_fn(_) |
       ty_estr(vstore_uniq) | ty_estr(vstore_box) |
       ty_evec(_, vstore_uniq) | ty_evec(_, vstore_box) |
-      ty_trait(_, _) | ty_rptr(_,_) | ty_opaque_box => result = false,
+      ty_trait(_, _, _) | ty_rptr(_,_) | ty_opaque_box => result = false,
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
@@ -2273,7 +2274,7 @@ pure fn hash_type_structure(st: &sty) -> uint {
       ty_bot => 34u,
       ty_ptr(mt) => hash_subty(35u, mt.ty),
       ty_uniq(mt) => hash_subty(37u, mt.ty),
-      ty_trait(did, ref substs) => {
+      ty_trait(did, ref substs, _) => {
         let mut h = hash_def(40u, did);
         hash_substs(h, substs)
       }
@@ -2590,7 +2591,7 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_rptr(_, _) => ~"&-ptr",
       ty_rec(_) => ~"record",
       ty_fn(_) => ~"fn",
-      ty_trait(id, _) => fmt!{"trait %s", item_path_str(cx, id)},
+      ty_trait(id, _, _) => fmt!{"trait %s", item_path_str(cx, id)},
       ty_class(id, _) => fmt!{"class %s", item_path_str(cx, id)},
       ty_tup(_) => ~"tuple",
       ty_var(_) => ~"variable",
@@ -2605,7 +2606,8 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         match k {
             terr_vec => ~"[]",
             terr_str => ~"str",
-            terr_fn => ~"fn"
+            terr_fn => ~"fn",
+            terr_trait => ~"trait"
         }
     }
 
@@ -2769,7 +2771,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
 
 fn ty_to_def_id(ty: t) -> option<ast::def_id> {
     match get(ty).struct {
-      ty_trait(id, _) | ty_class(id, _) | ty_enum(id, _) => some(id),
+      ty_trait(id, _, _) | ty_class(id, _) | ty_enum(id, _) => some(id),
       _ => none
     }
 }

@@ -37,10 +37,10 @@ fn fixup_substs(fcx: @fn_ctxt, sp: span,
                 id: ast::def_id, substs: ty::substs) -> ty::substs {
     let tcx = fcx.ccx.tcx;
     // use a dummy type just to package up the substs that need fixing up
-    let t = ty::mk_trait(tcx, id, substs);
+    let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
     let t_f = fixup_ty(fcx, sp, t);
     match check ty::get(t_f).struct {
-      ty::ty_trait(_, substs_f) => substs_f,
+      ty::ty_trait(_, substs_f, _) => substs_f,
     }
 }
 
@@ -63,7 +63,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
 
     let tcx = fcx.ccx.tcx;
     let (trait_id, trait_substs) = match check ty::get(trait_ty).struct {
-      ty::ty_trait(did, substs) => (did, substs)
+      ty::ty_trait(did, substs, _) => (did, substs)
     };
     let ty = fixup_ty(fcx, sp, ty);
     match ty::get(ty).struct {
@@ -77,7 +77,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
               }
               ty::bound_trait(ity) => {
                 match check ty::get(ity).struct {
-                  ty::ty_trait(idid, substs) => {
+                  ty::ty_trait(idid, substs, _) => {
                     if trait_id == idid {
                         debug!{"(checking vtable) @0 relating ty to trait ty
                                 with did %?", idid};
@@ -92,7 +92,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
         }
       }
 
-      ty::ty_trait(did, substs) if trait_id == did => {
+      ty::ty_trait(did, substs, _) if trait_id == did => {
         debug!{"(checking vtable) @1 relating ty to trait ty with did %?",
                did};
 
@@ -139,7 +139,7 @@ fn lookup_vtable(fcx: @fn_ctxt, sp: span, ty: ty::t, trait_ty: ty::t,
                     for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
                         // it must have the same id as the expected one
                         match ty::get(of_ty).struct {
-                          ty::ty_trait(id, _) if id != trait_id => again,
+                          ty::ty_trait(id, _, _) if id != trait_id => again,
                           _ => { /* ok */ }
                         }
 
@@ -219,7 +219,7 @@ fn connect_trait_tps(fcx: @fn_ctxt, sp: span, impl_tys: ~[ty::t],
     debug!{"(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).struct, impl_did};
     match check ty::get(trait_ty).struct {
-      ty::ty_trait(_, substs) => {
+      ty::ty_trait(_, substs, _) => {
         vec::iter2(substs.tps, trait_tys,
                    |a, b| demand::suptype(fcx, sp, a, b));
       }
