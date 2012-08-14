@@ -14,7 +14,7 @@ fn bar() {
     let mut i = 0;
     while i < 10 {
         do task::spawn {
-            use(i); //~ ERROR mutable variables cannot be implicitly captured
+            user(i); //~ ERROR mutable variables cannot be implicitly captured
         }
         i += 1;
     }
@@ -25,7 +25,7 @@ fn car() {
     let mut i = 0;
     while i < 10 {
         do task::spawn |copy i| {
-            use(i);
+            user(i);
         }
         i += 1;
     }
