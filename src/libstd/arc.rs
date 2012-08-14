@@ -420,12 +420,11 @@ mod tests {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = arc::arc(v);
 
-        let p = port();
-        let c = chan(p);
+        let (c, p) = pipes::stream();
 
         do task::spawn() {
-            let p = port();
-            c.send(chan(p));
+            let p = pipes::port_set();
+            c.send(p.chan());
 
             let arc_v = p.recv();
 

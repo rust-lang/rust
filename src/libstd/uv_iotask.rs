@@ -12,6 +12,7 @@ export exit;
 
 import libc::c_void;
 import ptr::addr_of;
+import comm = core::comm;
 import comm::{Port, port, Chan, chan, listen};
 import task::TaskBuilder;
 import ll = uv_ll;
@@ -171,7 +172,7 @@ mod test {
         log(debug, fmt!{"async_close_cb handle %?", handle});
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)
                         as *ah_data)).exit_ch;
-        comm::send(exit_ch, ());
+        core::comm::send(exit_ch, ());
     }
     extern fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int)
         unsafe {
@@ -185,8 +186,8 @@ mod test {
     fn impl_uv_iotask_async(iotask: iotask) unsafe {
         let async_handle = ll::async_t();
         let ah_ptr = ptr::addr_of(async_handle);
-        let exit_po = comm::port::<()>();
-        let exit_ch = comm::chan(exit_po);
+        let exit_po = core::comm::port::<()>();
+        let exit_ch = core::comm::chan(exit_po);
         let ah_data = {
             iotask: iotask,
             exit_ch: exit_ch
@@ -197,7 +198,7 @@ mod test {
             ll::set_data_for_uv_handle(ah_ptr, ah_data_ptr as *libc::c_void);
             ll::async_send(ah_ptr);
         };
-        comm::recv(exit_po);
+        core::comm::recv(exit_po);
     }
 
     // this fn documents the bear minimum neccesary to roll your own
@@ -209,7 +210,7 @@ mod test {
             run_loop(iotask_ch);
             exit_ch.send(());
         };
-        return comm::recv(iotask_port);
+        return core::comm::recv(iotask_port);
     }
 
     extern fn lifetime_handle_close(handle: *libc::c_void) unsafe {
@@ -224,8 +225,8 @@ mod test {
 
     #[test]
     fn test_uv_iotask_async() unsafe {
-        let exit_po = comm::port::<()>();
-        let exit_ch = comm::chan(exit_po);
+        let exit_po = core::comm::port::<()>();
+        let exit_ch = core::comm::chan(exit_po);
         let iotask = spawn_test_loop(exit_ch);
 
         // using this handle to manage the lifetime of the high_level_loop,
@@ -234,20 +235,20 @@ mod test {
         // under race-condition type situations.. this ensures that the loop
         // lives until, at least, all of the impl_uv_hl_async() runs have been
         // called, at least.
-        let work_exit_po = comm::port::<()>();
-        let work_exit_ch = comm::chan(work_exit_po);
+        let work_exit_po = core::comm::port::<()>();
+        let work_exit_ch = core::comm::chan(work_exit_po);
         for iter::repeat(7u) {
             do task::spawn_sched(task::ManualThreads(1u)) {
                 impl_uv_iotask_async(iotask);
-                comm::send(work_exit_ch, ());
+                core::comm::send(work_exit_ch, ());
             };
         };
         for iter::repeat(7u) {
-            comm::recv(work_exit_po);
+            core::comm::recv(work_exit_po);
         };
         log(debug, ~"sending teardown_loop msg..");
         exit(iotask);
-        comm::recv(exit_po);
+        core::comm::recv(exit_po);
         log(debug, ~"after recv on exit_po.. exiting..");
     }
 }

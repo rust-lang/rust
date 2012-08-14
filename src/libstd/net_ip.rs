@@ -19,6 +19,7 @@ import create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
 import set_data_for_req = uv::ll::set_data_for_req;
 import get_data_for_req = uv::ll::get_data_for_req;
 import ll = uv::ll;
+import comm = core::comm;
 
 export ip_addr, parse_addr_err;
 export format_addr;
@@ -85,7 +86,7 @@ enum ip_get_addr_err {
  */
 fn get_addr(++node: ~str, iotask: iotask)
         -> result::result<~[ip_addr], ip_get_addr_err> unsafe {
-    do comm::listen |output_ch| {
+    do core::comm::listen |output_ch| {
         do str::as_buf(node) |node_ptr, len| {
             log(debug, fmt!{"slice len %?", len});
             let handle = create_uv_getaddrinfo_t();

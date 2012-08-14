@@ -7,6 +7,7 @@ import iotask = uv_iotask;
 import get_gl = get;
 import iotask::{iotask, spawn_iotask};
 import priv::{chan_from_global_ptr, weaken_task};
+import comm = core::comm;
 import comm::{Port, Chan, port, chan, select2, listen};
 import task::TaskBuilder;
 import either::{Left, Right};
@@ -110,7 +111,7 @@ mod test {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
             timer_ptr as *libc::c_void) as *comm::Chan<bool>;
         let exit_ch = *exit_ch_ptr;
-        comm::send(exit_ch, true);
+        core::comm::send(exit_ch, true);
         log(debug, fmt!{"EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
                        exit_ch_ptr});
     }
@@ -129,8 +130,8 @@ mod test {
     }
 
     fn impl_uv_hl_simple_timer(iotask: iotask) unsafe {
-        let exit_po = comm::port::<bool>();
-        let exit_ch = comm::chan(exit_po);
+        let exit_po = core::comm::port::<bool>();
+        let exit_ch = core::comm::chan(exit_po);
         let exit_ch_ptr = ptr::addr_of(exit_ch);
         log(debug, fmt!{"EXIT_CH_PTR newly created exit_ch_ptr: %?",
                        exit_ch_ptr});
@@ -155,7 +156,7 @@ mod test {
                 fail ~"failure on ll::timer_init()";
             }
         };
-        comm::recv(exit_po);
+        core::comm::recv(exit_po);
         log(debug, ~"global_loop timer test: msg recv on exit_po, done..");
     }
 
@@ -166,10 +167,10 @@ mod test {
         let exit_ch = comm::chan(exit_po);
         task::spawn_sched(task::ManualThreads(1u), || {
             impl_uv_hl_simple_timer(hl_loop);
-            comm::send(exit_ch, ());
+            core::comm::send(exit_ch, ());
         });
         impl_uv_hl_simple_timer(hl_loop);
-        comm::recv(exit_po);
+        core::comm::recv(exit_po);
     }
 
     // keeping this test ignored until some kind of stress-test-harness
@@ -178,17 +179,17 @@ mod test {
     #[ignore]
     fn test_stress_gl_uv_global_loop_high_level_global_timer() unsafe {
         let hl_loop = get_gl();
-        let exit_po = comm::port::<()>();
-        let exit_ch = comm::chan(exit_po);
+        let exit_po = core::comm::port::<()>();
+        let exit_ch = core::comm::chan(exit_po);
         let cycles = 5000u;
         for iter::repeat(cycles) {
             task::spawn_sched(task::ManualThreads(1u), || {
                 impl_uv_hl_simple_timer(hl_loop);
-                comm::send(exit_ch, ());
+                core::comm::send(exit_ch, ());
             });
         };
         for iter::repeat(cycles) {
-            comm::recv(exit_po);
+            core::comm::recv(exit_po);
         };
         log(debug, ~"test_stress_gl_uv_global_loop_high_level_global_timer"+
             ~" exiting sucessfully!");

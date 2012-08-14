@@ -10,6 +10,7 @@ import result::{ok, err};
 import io::WriterUtil;
 import libc::size_t;
 import task::TaskBuilder;
+import comm = core::comm;
 
 export test_name;
 export test_fn;
@@ -285,8 +286,8 @@ fn run_tests(opts: test_opts, tests: ~[test_desc],
     let mut wait_idx = 0u;
     let mut done_idx = 0u;
 
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = core::comm::port();
+    let ch = core::comm::chan(p);
 
     while done_idx < total {
         while wait_idx < concurrency && run_idx < total {
@@ -302,7 +303,7 @@ fn run_tests(opts: test_opts, tests: ~[test_desc],
             run_idx += 1u;
         }
 
-        let (test, result) = comm::recv(p);
+        let (test, result) = core::comm::recv(p);
         if concurrency != 1u {
             callback(te_wait(copy test));
         }
@@ -381,7 +382,7 @@ type test_future = {test: test_desc, wait: fn@() -> test_result};
 
 fn run_test(+test: test_desc, monitor_ch: comm::Chan<monitor_msg>) {
     if test.ignore {
-        comm::send(monitor_ch, (copy test, tr_ignored));
+        core::comm::send(monitor_ch, (copy test, tr_ignored));
         return;
     }
 
@@ -419,10 +420,10 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let p = comm::port();
-        let ch = comm::chan(p);
+        let p = core::comm::port();
+        let ch = core::comm::chan(p);
         run_test(desc, ch);
-        let (_, res) = comm::recv(p);
+        let (_, res) = core::comm::recv(p);
         assert res != tr_ok;
     }
 
@@ -435,10 +436,10 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let p = comm::port();
-        let ch = comm::chan(p);
+        let p = core::comm::port();
+        let ch = core::comm::chan(p);
         run_test(desc, ch);
-        let (_, res) = comm::recv(p);
+        let (_, res) = core::comm::recv(p);
         assert res == tr_ignored;
     }
 
@@ -452,10 +453,10 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let p = comm::port();
-        let ch = comm::chan(p);
+        let p = core::comm::port();
+        let ch = core::comm::chan(p);
         run_test(desc, ch);
-        let (_, res) = comm::recv(p);
+        let (_, res) = core::comm::recv(p);
         assert res == tr_ok;
     }
 
@@ -468,10 +469,10 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let p = comm::port();
-        let ch = comm::chan(p);
+        let p = core::comm::port();
+        let ch = core::comm::chan(p);
         run_test(desc, ch);
-        let (_, res) = comm::recv(p);
+        let (_, res) = core::comm::recv(p);
         assert res == tr_failed;
     }
 

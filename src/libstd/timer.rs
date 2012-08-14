@@ -3,6 +3,8 @@
 import uv = uv;
 import uv::iotask;
 import iotask::iotask;
+import comm = core::comm;
+
 export delayed_send, sleep, recv_timeout;
 
 /**
@@ -24,8 +26,8 @@ export delayed_send, sleep, recv_timeout;
 fn delayed_send<T: copy send>(iotask: iotask,
                               msecs: uint, ch: comm::Chan<T>, val: T) {
         unsafe {
-            let timer_done_po = comm::port::<()>();
-            let timer_done_ch = comm::chan(timer_done_po);
+            let timer_done_po = core::comm::port::<()>();
+            let timer_done_ch = core::comm::chan(timer_done_po);
             let timer_done_ch_ptr = ptr::addr_of(timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(timer);
@@ -51,11 +53,11 @@ fn delayed_send<T: copy send>(iotask: iotask,
                 }
             };
             // delayed_send_cb has been processed by libuv
-            comm::recv(timer_done_po);
+            core::comm::recv(timer_done_po);
             // notify the caller immediately
-            comm::send(ch, copy(val));
+            core::comm::send(ch, copy(val));
             // uv_close for this timer has been processed
-            comm::recv(timer_done_po);
+            core::comm::recv(timer_done_po);
     };
 }
 
@@ -71,10 +73,10 @@ fn delayed_send<T: copy send>(iotask: iotask,
  * * msecs - an amount of time, in milliseconds, for the current task to block
  */
 fn sleep(iotask: iotask, msecs: uint) {
-    let exit_po = comm::port::<()>();
-    let exit_ch = comm::chan(exit_po);
+    let exit_po = core::comm::port::<()>();
+    let exit_ch = core::comm::chan(exit_po);
     delayed_send(iotask, msecs, exit_ch, ());
-    comm::recv(exit_po);
+    core::comm::recv(exit_po);
 }
 
 /**
@@ -89,7 +91,7 @@ fn sleep(iotask: iotask, msecs: uint) {
  *
  * * `iotask' - `uv::iotask` that the tcp request will run on
  * * msecs - an mount of time, in milliseconds, to wait to receive
- * * wait_port - a `comm::port<T>` to receive on
+ * * wait_port - a `core::comm::port<T>` to receive on
  *
  * # Returns
  *
@@ -111,7 +113,7 @@ fn recv_timeout<T: copy send>(iotask: iotask,
             none
         }, |right_val| {
             some(*right_val)
-        }, &comm::select2(timeout_po, wait_po)
+        }, &core::comm::select2(timeout_po, wait_po)
     )
 }
 
@@ -123,7 +125,7 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
         *(uv::ll::get_data_for_uv_handle(handle) as *comm::Chan<()>);
     let stop_result = uv::ll::timer_stop(handle);
     if (stop_result == 0i32) {
-        comm::send(timer_done_ch, ());
+        core::comm::send(timer_done_ch, ());
         uv::ll::close(handle, delayed_send_close_cb);
     }
     else {
@@ -158,8 +160,8 @@ mod test {
 
     #[test]
     fn test_gl_timer_sleep_stress2() {
-        let po = comm::port();
-        let ch = comm::chan(po);
+        let po = core::comm::port();
+        let ch = core::comm::chan(po);
         let hl_loop = uv::global_loop::get();
 
         let repeat = 20u;
@@ -181,13 +183,13 @@ mod test {
                     for iter::repeat(times) {
                         sleep(hl_loop, rng.next() as uint % maxms);
                     }
-                    comm::send(ch, ());
+                    core::comm::send(ch, ());
                 }
             }
         }
 
         for iter::repeat(repeat * spec.len()) {
-            comm::recv(po)
+            core::comm::recv(po)
         }
     }
 
@@ -208,8 +210,8 @@ mod test {
             task::yield();
 
             let expected = rand::rng().gen_str(16u);
-            let test_po = comm::port::<str>();
-            let test_ch = comm::chan(test_po);
+            let test_po = core::comm::port::<str>();
+            let test_ch = core::comm::chan(test_po);
 
             do task::spawn() {
                 delayed_send(hl_loop, 1u, test_ch, expected);
@@ -236,8 +238,8 @@ mod test {
 
         for iter::repeat(times as uint) {
             let expected = rand::rng().gen_str(16u);
-            let test_po = comm::port::<~str>();
-            let test_ch = comm::chan(test_po);
+            let test_po = core::comm::port::<~str>();
+            let test_ch = core::comm::chan(test_po);
 
             do task::spawn() {
                 delayed_send(hl_loop, 1000u, test_ch, expected);
