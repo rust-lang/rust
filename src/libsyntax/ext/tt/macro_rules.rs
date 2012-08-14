@@ -47,7 +47,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
-    fn generic_extension(cx: ext_ctxt, sp: span, name: ident,
+    fn generic_extension(cx: ext_ctxt, sp: span, _name: ident,
                          arg: ~[ast::token_tree],
                          lhses: ~[@named_match], rhses: ~[@named_match])
     -> mac_result {
