@@ -13,7 +13,7 @@
 use std;
 
 import std::{time, getopts};
-import io::writer_util;
+import io::WriterUtil;
 import int::range;
 import pipes::port;
 import pipes::chan;

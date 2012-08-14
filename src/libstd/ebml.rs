@@ -172,13 +172,13 @@ fn doc_as_i32(d: doc) -> i32 { doc_as_u32(d) as i32 }
 fn doc_as_i64(d: doc) -> i64 { doc_as_u64(d) as i64 }
 
 // ebml writing
-type writer_ = {writer: io::writer, mut size_positions: ~[uint]};
+type writer_ = {writer: io::Writer, mut size_positions: ~[uint]};
 
 enum writer {
     writer_(writer_)
 }
 
-fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
+fn write_sized_vuint(w: io::Writer, n: uint, size: uint) {
     match size {
       1u => w.write(&[0x80u8 | (n as u8)]),
       2u => w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
@@ -190,7 +190,7 @@ fn write_sized_vuint(w: io::writer, n: uint, size: uint) {
     };
 }
 
-fn write_vuint(w: io::writer, n: uint) {
+fn write_vuint(w: io::Writer, n: uint) {
     if n < 0x7f_u { write_sized_vuint(w, n, 1u); return; }
     if n < 0x4000_u { write_sized_vuint(w, n, 2u); return; }
     if n < 0x200000_u { write_sized_vuint(w, n, 3u); return; }
@@ -198,7 +198,7 @@ fn write_vuint(w: io::writer, n: uint) {
     fail fmt!{"vint to write too big: %?", n};
 }
 
-fn writer(w: io::writer) -> writer {
+fn writer(w: io::Writer) -> writer {
     let size_positions: ~[uint] = ~[];
     return writer_({writer: w, mut size_positions: size_positions});
 }
@@ -220,10 +220,10 @@ impl writer {
     fn end_tag() {
         let last_size_pos = vec::pop::<uint>(self.size_positions);
         let cur_pos = self.writer.tell();
-        self.writer.seek(last_size_pos as int, io::seek_set);
+        self.writer.seek(last_size_pos as int, io::SeekSet);
         let size = (cur_pos - last_size_pos - 4u);
         write_sized_vuint(self.writer, size, 4u);
-        self.writer.seek(cur_pos as int, io::seek_set);
+        self.writer.seek(cur_pos as int, io::SeekSet);
 
         debug!{"End tag (size = %u)", size};
     }

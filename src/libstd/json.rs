@@ -5,7 +5,7 @@
 
 import result::{result, ok, err};
 import io;
-import io::writer_util;
+import io::WriterUtil;
 import map;
 import map::hashmap;
 import map::map;
@@ -43,7 +43,7 @@ type error = {
 };
 
 /// Serializes a json value into a io::writer
-fn to_writer(wr: io::writer, j: json) {
+fn to_writer(wr: io::Writer, j: json) {
     match j {
       num(n) => wr.write_str(float::to_str(n, 6u)),
       string(s) => wr.write_str(escape_str(*s)),
@@ -109,7 +109,7 @@ fn to_str(j: json) -> ~str {
 }
 
 type parser_ = {
-    rdr: io::reader,
+    rdr: io::Reader,
     mut ch: char,
     mut line: uint,
     mut col: uint,
@@ -458,7 +458,7 @@ impl parser {
 }
 
 /// Deserializes a json value from an io::reader
-fn from_reader(rdr: io::reader) -> result<json, error> {
+fn from_reader(rdr: io::Reader) -> result<json, error> {
     let parser = parser_({
         rdr: rdr,
         mut ch: rdr.read_char(),

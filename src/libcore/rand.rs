@@ -1,8 +1,9 @@
 //! Random number generation
 
-export rng, seed, seeded_rng, weighted, extensions;
+export Rng, rng, seed, seeded_rng, Weighted, extensions;
 export xorshift, seeded_xorshift;
 
+#[allow(non_camel_case_types)] // runtime type
 enum rctx {}
 
 #[abi = "cdecl"]
@@ -15,16 +16,16 @@ extern mod rustrt {
 }
 
 /// A random number generator
-trait rng {
+trait Rng {
     /// Return the next random integer
     fn next() -> u32;
 }
 
 /// A value with a particular weight compared to other values
-type weighted<T> = { weight: uint, item: T };
+type Weighted<T> = { weight: uint, item: T };
 
 /// Extension methods for random number generators
-impl rng {
+impl Rng {
 
     /// Return a random int
     fn gen_int() -> int {
@@ -181,7 +182,7 @@ impl rng {
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T: copy>(v : ~[weighted<T>]) -> T {
+    fn choose_weighted<T: copy>(v : ~[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
@@ -189,7 +190,7 @@ impl rng {
      * Choose some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
      */
-    fn choose_weighted_option<T:copy>(v: ~[weighted<T>]) -> option<T> {
+    fn choose_weighted_option<T:copy>(v: ~[Weighted<T>]) -> option<T> {
         let mut total = 0u;
         for v.each |item| {
             total += item.weight;
@@ -212,7 +213,7 @@ impl rng {
      * Return a vec containing copies of the items, in order, where
      * the weight of the item determines how many copies there are
      */
-    fn weighted_vec<T:copy>(v: ~[weighted<T>]) -> ~[T] {
+    fn weighted_vec<T:copy>(v: ~[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
         for v.each |item| {
             for uint::range(0u, item.weight) |_i| {
@@ -242,13 +243,13 @@ impl rng {
 
 }
 
-class rand_res {
+class RandRes {
     let c: *rctx;
     new(c: *rctx) { self.c = c; }
     drop { rustrt::rand_free(self.c); }
 }
 
-impl @rand_res: rng {
+impl @RandRes: Rng {
     fn next() -> u32 { return rustrt::rand_next((*self).c); }
 }
 
@@ -258,8 +259,8 @@ fn seed() -> ~[u8] {
 }
 
 /// Create a random number generator with a system specified seed
-fn rng() -> rng {
-    @rand_res(rustrt::rand_new()) as rng
+fn rng() -> Rng {
+    @RandRes(rustrt::rand_new()) as Rng
 }
 
 /**
@@ -268,18 +269,18 @@ fn rng() -> rng {
  * all other generators constructed with the same seed. The seed may be any
  * length.
  */
-fn seeded_rng(seed: ~[u8]) -> rng {
-    @rand_res(rustrt::rand_new_seeded(seed)) as rng
+fn seeded_rng(seed: ~[u8]) -> Rng {
+    @RandRes(rustrt::rand_new_seeded(seed)) as Rng
 }
 
-type xorshift_state = {
+type XorShiftState = {
     mut x: u32,
     mut y: u32,
     mut z: u32,
     mut w: u32
 };
 
-impl xorshift_state: rng {
+impl XorShiftState: Rng {
     fn next() -> u32 {
         let x = self.x;
         let mut t = x ^ (x << 11);
@@ -292,13 +293,13 @@ impl xorshift_state: rng {
     }
 }
 
-fn xorshift() -> rng {
+fn xorshift() -> Rng {
     // constants taken from http://en.wikipedia.org/wiki/Xorshift
     seeded_xorshift(123456789u32, 362436069u32, 521288629u32, 88675123u32)
 }
 
-fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> rng {
-    {mut x: x, mut y: y, mut z: z, mut w: w} as rng
+fn seeded_xorshift(x: u32, y: u32, z: u32, w: u32) -> Rng {
+    {mut x: x, mut y: y, mut z: z, mut w: w} as Rng
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 use std;
 
 import std::bitv;
-import io::writer_util;
+import io::WriterUtil;
 
 // Computes a single solution to a given 9x9 sudoku
 //
@@ -28,7 +28,7 @@ type grid = ~[~[mut u8]];
 enum grid_t { grid_ctor(grid), }
 
 // read a sudoku problem from file f
-fn read_grid(f: io::reader) -> grid_t {
+fn read_grid(f: io::Reader) -> grid_t {
     assert f.read_line() == ~"9,9"; /* assert first line is exactly "9,9" */
 
     let g = vec::from_fn(10u, {|_i|
@@ -116,7 +116,7 @@ fn solve_grid(g: grid_t) {
     }
 }
 
-fn write_grid(f: io::writer, g: grid_t) {
+fn write_grid(f: io::Writer, g: grid_t) {
     for u8::range(0u8, 9u8) |row| {
         f.write_str(fmt!{"%u", (*g)[row][0] as uint});
         for u8::range(1u8, 9u8) |col| {

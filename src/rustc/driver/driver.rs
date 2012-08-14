@@ -10,7 +10,7 @@ import util::ppaux;
 import back::link;
 import result::{ok, err};
 import std::getopts;
-import io::writer_util;
+import io::WriterUtil;
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 import back::{x86, x86_64};
 import std::map::hashmap;
@@ -701,7 +701,7 @@ fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
     fail;
 }
 
-fn list_metadata(sess: session, path: ~str, out: io::writer) {
+fn list_metadata(sess: session, path: ~str, out: io::Writer) {
     metadata::loader::list_file_metadata(
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);
 }

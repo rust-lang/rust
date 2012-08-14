@@ -48,7 +48,7 @@ fn end(s: ps) {
     pp::end(s.s);
 }
 
-fn rust_printer(writer: io::writer) -> ps {
+fn rust_printer(writer: io::Writer) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
              cm: none::<codemap>,
              intr: @interner::mk::<@~str>(|x| str::hash(*x),
@@ -61,7 +61,7 @@ fn rust_printer(writer: io::writer) -> ps {
              ann: no_ann()};
 }
 
-fn unexpanded_rust_printer(writer: io::writer, intr: ident_interner) -> ps {
+fn unexpanded_rust_printer(writer: io::Writer, intr: ident_interner) -> ps {
     return @{s: pp::mk_printer(writer, default_columns),
              cm: none::<codemap>,
              intr: intr,
@@ -83,8 +83,8 @@ const default_columns: uint = 78u;
 // copy forward.
 fn print_crate(cm: codemap, intr: @interner::interner<@~str>,
                span_diagnostic: diagnostic::span_handler,
-               crate: @ast::crate, filename: ~str, in: io::reader,
-               out: io::writer, ann: pp_ann, is_expanded: bool) {
+               crate: @ast::crate, filename: ~str, in: io::Reader,
+               out: io::Writer, ann: pp_ann, is_expanded: bool) {
     let r = comments::gather_comments_and_literals(span_diagnostic,
                                                    filename, in);
     let s =

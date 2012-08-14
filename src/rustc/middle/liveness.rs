@@ -108,7 +108,7 @@ import visit::vt;
 import syntax::codemap::span;
 import syntax::ast::*;
 import driver::session::session;
-import io::writer_util;
+import io::WriterUtil;
 import capture::{cap_move, cap_drop, cap_copy, cap_ref};
 
 export check_crate;
@@ -647,7 +647,7 @@ class liveness {
         }
     }
 
-    fn write_vars(wr: io::writer,
+    fn write_vars(wr: io::Writer,
                   ln: live_node,
                   test: fn(uint) -> live_node) {
         let node_base_idx = self.idx(ln, variable(0u));

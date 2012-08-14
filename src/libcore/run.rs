@@ -6,7 +6,7 @@
 import option::{some, none};
 import libc::{pid_t, c_void, c_int};
 
-export program;
+export Program;
 export run_program;
 export start_program;
 export program_output;
@@ -22,18 +22,18 @@ extern mod rustrt {
 }
 
 /// A value representing a child process
-trait program {
+trait Program {
     /// Returns the process id of the program
     fn get_id() -> pid_t;
 
     /// Returns an io::writer that can be used to write to stdin
-    fn input() -> io::writer;
+    fn input() -> io::Writer;
 
     /// Returns an io::reader that can be used to read from stdout
-    fn output() -> io::reader;
+    fn output() -> io::Reader;
 
     /// Returns an io::reader that can be used to read from stderr
-    fn err() -> io::reader;
+    fn err() -> io::Reader;
 
     /// Closes the handle to the child processes standard input
     fn close_input();
@@ -187,7 +187,7 @@ fn run_program(prog: &str, args: &[~str]) -> int {
  *
  * A class with a <program> field
  */
-fn start_program(prog: &str, args: &[~str]) -> program {
+fn start_program(prog: &str, args: &[~str]) -> Program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
@@ -201,41 +201,41 @@ fn start_program(prog: &str, args: &[~str]) -> program {
     libc::close(pipe_output.out);
     libc::close(pipe_err.out);
 
-    type prog_repr = {pid: pid_t,
-                      mut in_fd: c_int,
-                      out_file: *libc::FILE,
-                      err_file: *libc::FILE,
-                      mut finished: bool};
+    type ProgRepr = {pid: pid_t,
+                     mut in_fd: c_int,
+                     out_file: *libc::FILE,
+                     err_file: *libc::FILE,
+                     mut finished: bool};
 
-    fn close_repr_input(r: &prog_repr) {
+    fn close_repr_input(r: &ProgRepr) {
         let invalid_fd = -1i32;
         if r.in_fd != invalid_fd {
             libc::close(r.in_fd);
             r.in_fd = invalid_fd;
         }
     }
-    fn finish_repr(r: &prog_repr) -> int {
+    fn finish_repr(r: &ProgRepr) -> int {
         if r.finished { return 0; }
         r.finished = true;
         close_repr_input(r);
         return waitpid(r.pid);
     }
-    fn destroy_repr(r: &prog_repr) {
+    fn destroy_repr(r: &ProgRepr) {
         finish_repr(r);
        libc::fclose(r.out_file);
        libc::fclose(r.err_file);
     }
-    class prog_res {
-        let r: prog_repr;
-        new(+r: prog_repr) { self.r = r; }
+    class ProgRes {
+        let r: ProgRepr;
+        new(+r: ProgRepr) { self.r = r; }
         drop { destroy_repr(&self.r); }
     }
 
-    impl prog_res: program {
+    impl ProgRes: Program {
         fn get_id() -> pid_t { return self.r.pid; }
-        fn input() -> io::writer { io::fd_writer(self.r.in_fd, false) }
-        fn output() -> io::reader { io::FILE_reader(self.r.out_file, false) }
-        fn err() -> io::reader { io::FILE_reader(self.r.err_file, false) }
+        fn input() -> io::Writer { io::fd_writer(self.r.in_fd, false) }
+        fn output() -> io::Reader { io::FILE_reader(self.r.out_file, false) }
+        fn err() -> io::Reader { io::FILE_reader(self.r.err_file, false) }
         fn close_input() { close_repr_input(&self.r); }
         fn finish() -> int { finish_repr(&self.r) }
         fn destroy() { destroy_repr(&self.r); }
@@ -245,10 +245,10 @@ fn start_program(prog: &str, args: &[~str]) -> program {
                 out_file: os::fdopen(pipe_output.in),
                 err_file: os::fdopen(pipe_err.in),
                 mut finished: false};
-    return prog_res(move repr) as program;
+    return ProgRes(move repr) as Program;
 }
 
-fn read_all(rd: io::reader) -> ~str {
+fn read_all(rd: io::Reader) -> ~str {
     let mut buf = ~"";
     while !rd.eof() {
         let bytes = rd.read_bytes(4096u);
@@ -326,7 +326,7 @@ fn program_output(prog: &str, args: &[~str]) ->
 }
 
 fn writeclose(fd: c_int, s: &str) {
-    import io::writer_util;
+    import io::WriterUtil;
 
     error!{"writeclose %d, %s", fd as int, s};
     let writer = io::fd_writer(fd, false);
@@ -392,7 +392,7 @@ fn waitpid(pid: pid_t) -> int {
 #[cfg(test)]
 mod tests {
 
-    import io::writer_util;
+    import io::WriterUtil;
 
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)

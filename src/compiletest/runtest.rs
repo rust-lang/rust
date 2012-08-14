@@ -1,4 +1,4 @@
-import io::writer_util;
+import io::WriterUtil;
 
 import common::mode_run_pass;
 import common::mode_run_fail;
@@ -339,7 +339,7 @@ fn compose_and_run_compiler(
                     config.compile_lib_path, input)
 }
 
-fn ensure_dir(path: path) {
+fn ensure_dir(path: Path) {
     if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
         fail fmt!{"can't make dir %s", path};
@@ -455,7 +455,7 @@ fn dump_output_file(config: config, testfile: ~str,
                     out: ~str, extension: ~str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer = result::get(
-        io::file_writer(outfile, ~[io::create, io::truncate]));
+        io::file_writer(outfile, ~[io::Create, io::Truncate]));
     writer.write_str(out);
 }
 

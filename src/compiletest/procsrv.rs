@@ -1,5 +1,5 @@
 import run::spawn_process;
-import io::writer_util;
+import io::WriterUtil;
 import libc::{c_int, pid_t};
 
 import pipes::chan;

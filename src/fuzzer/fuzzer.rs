@@ -1,4 +1,4 @@
-import io::writer_util;
+import io::WriterUtil;
 
 import syntax::{ast, ast_util, fold, visit, codemap};
 import syntax::parse;
@@ -10,7 +10,7 @@ type context = { mode: test_mode }; // + rng
 
 fn write_file(filename: ~str, content: ~str) {
     result::get(
-        io::file_writer(filename, ~[io::create, io::truncate]))
+        io::file_writer(filename, ~[io::Create, io::Truncate]))
         .write_str(content);
 }
 
@@ -216,9 +216,9 @@ fn under(n: uint, it: fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-fn devnull() -> io::writer { io::mem_buffer_writer(io::mem_buffer()) }
+fn devnull() -> io::Writer { io::mem_buffer_writer(io::mem_buffer()) }
 
-fn as_str(f: fn@(io::writer)) -> ~str {
+fn as_str(f: fn@(io::Writer)) -> ~str {
     let buf = io::mem_buffer();
     f(io::mem_buffer_writer(buf));
     io::mem_buffer_str(buf)

@@ -7,7 +7,7 @@
 
 import either::either;
 import result::{ok, err};
-import io::writer_util;
+import io::WriterUtil;
 import libc::size_t;
 import task::task_builder;
 
@@ -91,8 +91,8 @@ fn parse_opts(args: ~[~str]) -> opt_res {
 enum test_result { tr_ok, tr_failed, tr_ignored, }
 
 type console_test_state =
-    @{out: io::writer,
-      log_out: option<io::writer>,
+    @{out: io::Writer,
+      log_out: option<io::Writer>,
       use_color: bool,
       mut total: uint,
       mut passed: uint,
@@ -141,7 +141,7 @@ fn run_tests_console(opts: test_opts,
 
     let log_out = match opts.logfile {
         some(path) => match io::file_writer(path,
-                                            ~[io::create, io::truncate]) {
+                                            ~[io::Create, io::Truncate]) {
           result::ok(w) => some(w),
           result::err(s) => {
               fail(fmt!{"can't open output file: %s", s})
@@ -179,7 +179,7 @@ fn run_tests_console(opts: test_opts,
 
     return success;
 
-    fn write_log(out: io::writer, result: test_result, test: test_desc) {
+    fn write_log(out: io::Writer, result: test_result, test: test_desc) {
         out.write_line(fmt!{"%s %s",
                     match result {
                         tr_ok => ~"ok",
@@ -188,19 +188,19 @@ fn run_tests_console(opts: test_opts,
                     }, test.name});
     }
 
-    fn write_ok(out: io::writer, use_color: bool) {
+    fn write_ok(out: io::Writer, use_color: bool) {
         write_pretty(out, ~"ok", term::color_green, use_color);
     }
 
-    fn write_failed(out: io::writer, use_color: bool) {
+    fn write_failed(out: io::Writer, use_color: bool) {
         write_pretty(out, ~"FAILED", term::color_red, use_color);
     }
 
-    fn write_ignored(out: io::writer, use_color: bool) {
+    fn write_ignored(out: io::Writer, use_color: bool) {
         write_pretty(out, ~"ignored", term::color_yellow, use_color);
     }
 
-    fn write_pretty(out: io::writer, word: ~str, color: u8, use_color: bool) {
+    fn write_pretty(out: io::Writer, word: ~str, color: u8, use_color: bool) {
         if use_color && term::color_supported() {
             term::fg(out, color);
         }

@@ -1,6 +1,6 @@
 // Type encoding
 
-import io::writer_util;
+import io::WriterUtil;
 import std::map::hashmap;
 import syntax::ast::*;
 import syntax::diagnostic::span_handler;
@@ -40,7 +40,7 @@ fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     }
 }
 
-fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
+fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(t) {
@@ -95,7 +95,7 @@ fn enc_ty(w: io::writer, cx: @ctxt, t: ty::t) {
       }
     }
 }
-fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
+fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
     match mt.mutbl {
       m_imm => (),
       m_mutbl => w.write_char('m'),
@@ -104,7 +104,7 @@ fn enc_mt(w: io::writer, cx: @ctxt, mt: ty::mt) {
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: io::writer, t: option<T>, enc_f: fn(T)) {
+fn enc_opt<T>(w: io::Writer, t: option<T>, enc_f: fn(T)) {
     match t {
       none => w.write_char('n'),
       some(v) => {
@@ -114,7 +114,7 @@ fn enc_opt<T>(w: io::writer, t: option<T>, enc_f: fn(T)) {
     }
 }
 
-fn enc_substs(w: io::writer, cx: @ctxt, substs: ty::substs) {
+fn enc_substs(w: io::Writer, cx: @ctxt, substs: ty::substs) {
     do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
@@ -122,7 +122,7 @@ fn enc_substs(w: io::writer, cx: @ctxt, substs: ty::substs) {
     w.write_char(']');
 }
 
-fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
+fn enc_region(w: io::Writer, cx: @ctxt, r: ty::region) {
     match r {
       ty::re_bound(br) => {
         w.write_char('b');
@@ -151,7 +151,7 @@ fn enc_region(w: io::writer, cx: @ctxt, r: ty::region) {
     }
 }
 
-fn enc_bound_region(w: io::writer, br: ty::bound_region) {
+fn enc_bound_region(w: io::Writer, br: ty::bound_region) {
     match br {
       ty::br_self => w.write_char('s'),
       ty::br_anon => w.write_char('a'),
@@ -169,7 +169,7 @@ fn enc_bound_region(w: io::writer, br: ty::bound_region) {
     }
 }
 
-fn enc_vstore(w: io::writer, cx: @ctxt, v: ty::vstore) {
+fn enc_vstore(w: io::Writer, cx: @ctxt, v: ty::vstore) {
     w.write_char('/');
     match v {
       ty::vstore_fixed(u) => {
@@ -189,7 +189,7 @@ fn enc_vstore(w: io::writer, cx: @ctxt, v: ty::vstore) {
     }
 }
 
-fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
+fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
     match st {
       ty::ty_nil => w.write_char('n'),
       ty::ty_bot => w.write_char('z'),
@@ -307,7 +307,7 @@ fn enc_sty(w: io::writer, cx: @ctxt, st: ty::sty) {
     }
 }
 
-fn enc_proto(w: io::writer, cx: @ctxt, proto: ty::fn_proto) {
+fn enc_proto(w: io::Writer, cx: @ctxt, proto: ty::fn_proto) {
     w.write_str(&"f");
     match proto {
         ty::proto_bare => w.write_str(&"n"),
@@ -318,7 +318,7 @@ fn enc_proto(w: io::writer, cx: @ctxt, proto: ty::fn_proto) {
     }
 }
 
-fn enc_mode(w: io::writer, cx: @ctxt, m: mode) {
+fn enc_mode(w: io::Writer, cx: @ctxt, m: mode) {
     match ty::resolved_mode(cx.tcx, m) {
       by_mutbl_ref => w.write_char('&'),
       by_move => w.write_char('-'),
@@ -328,7 +328,7 @@ fn enc_mode(w: io::writer, cx: @ctxt, m: mode) {
     }
 }
 
-fn enc_purity(w: io::writer, p: purity) {
+fn enc_purity(w: io::Writer, p: purity) {
     match p {
       pure_fn => w.write_char('p'),
       impure_fn => w.write_char('i'),
@@ -337,7 +337,7 @@ fn enc_purity(w: io::writer, p: purity) {
     }
 }
 
-fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
+fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::fn_ty) {
     enc_proto(w, cx, ft.proto);
     enc_purity(w, ft.purity);
     enc_bounds(w, cx, ft.bounds);
@@ -353,7 +353,7 @@ fn enc_ty_fn(w: io::writer, cx: @ctxt, ft: ty::fn_ty) {
     }
 }
 
-fn enc_bounds(w: io::writer, cx: @ctxt, bs: @~[ty::param_bound]) {
+fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
     for vec::each(*bs) |bound| {
         match bound {
           ty::bound_send => w.write_char('S'),
