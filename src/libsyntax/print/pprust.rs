@@ -1512,7 +1512,7 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
       ast::pat_range(begin, end) => {
         print_expr(s, begin);
         space(s.s);
-        word_space(s, ~"to");
+        word(s.s, ~"..");
         print_expr(s, end);
       }
     }

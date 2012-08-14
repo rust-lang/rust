@@ -1797,7 +1797,7 @@ class parser {
                 || self.is_keyword(~"false")
             {
                 let val = self.parse_expr_res(RESTRICT_NO_BAR_OP);
-                if self.eat_keyword(~"to") {
+                if self.eat_keyword(~"to") || self.eat(token::DOTDOT) {
                     let end = self.parse_expr_res(RESTRICT_NO_BAR_OP);
                     pat = pat_range(val, end);
                 } else {
