@@ -3119,6 +3119,30 @@ class parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
+        } else if self.eat_keyword(~"use") {
+            let view_item = self.parse_use();
+            return iovi_view_item(@{
+                node: view_item,
+                attrs: attrs,
+                vis: visibility,
+                span: mk_sp(lo, self.last_span.hi)
+            });
+        } else if self.eat_keyword(~"import") {
+            let view_paths = self.parse_view_paths();
+            return iovi_view_item(@{
+                node: view_item_import(view_paths),
+                attrs: attrs,
+                vis: visibility,
+                span: mk_sp(lo, self.last_span.hi)
+            });
+        } else if self.eat_keyword(~"export") {
+            let view_paths = self.parse_view_paths();
+            return iovi_view_item(@{
+                node: view_item_export(view_paths),
+                attrs: attrs,
+                vis: visibility,
+                span: mk_sp(lo, self.last_span.hi)
+            });
         } else if !self.is_any_keyword(copy self.token)
                 && self.look_ahead(1) == token::NOT
                 && is_plain_ident(self.look_ahead(2)) {
