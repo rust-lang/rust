@@ -120,13 +120,13 @@ fn with_envp<T>(env: &option<~[(~str,~str)]>,
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: option<~[(~str,~str)]>,
+fn with_envp<T>(env: &option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
     unsafe {
-        match env {
+        match *env {
           some(es) if !vec::is_empty(es) => {
             let mut blk : ~[u8] = ~[];
             for vec::each(es) |e| {
