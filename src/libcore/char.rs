@@ -1,5 +1,9 @@
 //! Utilities for manipulating the char type
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /*
     Lu  Uppercase_Letter    an uppercase letter
     Ll  Lowercase_Letter    a lowercase letter

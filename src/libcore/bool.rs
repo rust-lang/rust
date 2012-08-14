@@ -1,5 +1,9 @@
 // -*- rust -*-
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 //! Boolean logic
 
 export not, and, or, xor, implies;
@@ -38,11 +42,13 @@ pure fn is_true(v: bool) -> bool { v }
 pure fn is_false(v: bool) -> bool { !v }
 
 /// Parse logic value from `s`
-pure fn from_str(s: ~str) -> option<bool> {
-    match check s {
-      ~"true" => some(true),
-      ~"false" => some(false),
-      _ => none
+pure fn from_str(s: &str) -> option<bool> {
+    if s == "true" {
+        some(true)
+    } else if s == "false" {
+        some(false)
+    } else {
+        none
     }
 }
 

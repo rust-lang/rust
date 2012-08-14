@@ -23,5 +23,5 @@ fn main() {
         assert e == exp[i];
     }
 
-    assert dvec::unwrap(d) == exp;
+    assert dvec::unwrap(move d) == exp;
 }
