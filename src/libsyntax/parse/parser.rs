@@ -157,6 +157,14 @@ macro_rules! maybe_whole {
 }
 
 
+pure fn maybe_append(+lhs: ~[attribute], rhs: option<~[attribute]>)
+                  -> ~[attribute] {
+    match rhs {
+        none => lhs,
+        some(attrs) => vec::append(lhs, attrs)
+    }
+}
+
 
 /* ident is handled by common.rs */
 
@@ -2803,18 +2811,37 @@ class parser {
              items: items};
     }
 
-    fn parse_item_foreign_mod() -> item_info {
+    fn parse_item_foreign_mod(lo: uint,
+                              visibility: visibility,
+                              attrs: ~[attribute])
+                           -> item_or_view_item {
         if self.is_keyword(~"mod") {
             self.expect_keyword(~"mod");
         } else {
             self.expect_keyword(~"module");
         }
-        let id = self.parse_ident();
-        self.expect(token::LBRACE);
-        let more_attrs = self.parse_inner_attrs_and_next();
-        let m = self.parse_foreign_mod_items(more_attrs.next);
-        self.expect(token::RBRACE);
-        (id, item_foreign_mod(m), some(more_attrs.inner))
+        let ident = self.parse_ident();
+
+        // extern mod { ... }
+        if self.eat(token::LBRACE) {
+            let extra_attrs = self.parse_inner_attrs_and_next();
+            let m = self.parse_foreign_mod_items(extra_attrs.next);
+            self.expect(token::RBRACE);
+            return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
+                                          item_foreign_mod(m), visibility,
+                                          maybe_append(attrs,
+                                                       some(extra_attrs.
+                                                            inner))));
+        }
+
+        // extern mod foo;
+        let metadata = self.parse_optional_meta();
+        return iovi_view_item(@{
+            node: view_item_use(ident, metadata, self.get_id()),
+            attrs: attrs,
+            vis: visibility,
+            span: mk_sp(lo, self.last_span.hi)
+        });
     }
 
     fn parse_type_decl() -> {lo: uint, ident: ident} {
@@ -3019,14 +3046,6 @@ class parser {
             visibility = inherited;
         }
 
-        pure fn maybe_append(+lhs: ~[attribute], rhs: option<~[attribute]>)
-                          -> ~[attribute] {
-            match rhs {
-                none => lhs,
-                some(attrs) => vec::append(lhs, attrs)
-            }
-        }
-
         if self.eat_keyword(~"const") {
             let (ident, item_, extra_attrs) = self.parse_item_const();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
@@ -3063,10 +3082,7 @@ class parser {
                                               maybe_append(attrs,
                                                            extra_attrs)));
             }
-            let (ident, item_, extra_attrs) = self.parse_item_foreign_mod();
-            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
-                                          visibility,
-                                          maybe_append(attrs, extra_attrs)));
+            return self.parse_item_foreign_mod(lo, visibility, attrs);
         } else if self.eat_keyword(~"mod") || self.eat_keyword(~"module") {
             let (ident, item_, extra_attrs) = self.parse_item_mod();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
@@ -3104,9 +3120,8 @@ class parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if !self.is_any_keyword(copy self.token)
-            && self.look_ahead(1) == token::NOT
-            && is_plain_ident(self.look_ahead(2))
-        {
+                && self.look_ahead(1) == token::NOT
+                && is_plain_ident(self.look_ahead(2)) {
             // item macro.
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
