@@ -71,7 +71,7 @@ fn run(args: &[~str]) {
         server(from_parent, to_parent);
     }
 
-    vec::iter(worker_results, |r| { future::get(r); } );
+    vec::iter(worker_results, |r| { future::get(&r); } );
     //error!{"sending stop message"};
     to_child.send(stop);
     move_out!{to_child};
