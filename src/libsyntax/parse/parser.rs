@@ -3132,9 +3132,15 @@ class parser {
     }
 
     fn parse_use() -> view_item_ {
-        let ident = self.parse_ident();
-        let metadata = self.parse_optional_meta();
-        return view_item_use(ident, metadata, self.get_id());
+        if self.look_ahead(1) == token::SEMI ||
+            self.look_ahead(1) == token::LPAREN {
+            // Old-style "use"; i.e. what we now call "extern mod".
+            let ident = self.parse_ident();
+            let metadata = self.parse_optional_meta();
+            return view_item_use(ident, metadata, self.get_id());
+        }
+
+        return view_item_import(self.parse_view_paths());
     }
 
     fn parse_view_path() -> @view_path {
