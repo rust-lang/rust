@@ -763,9 +763,51 @@ mod tests {
         assert result.is_err();
         // child task must have finished by the time try returns
         do m.lock_cond |cond| {
-            let _woken = cond.signal();
-            // FIXME(#3145) this doesn't work
-            //assert !woken;
+            let woken = cond.signal();
+            assert !woken;
+        }
+    }
+    #[test] #[ignore(cfg(windows))]
+    fn test_mutex_killed_broadcast() {
+        let m = ~mutex();
+        let m2 = ~m.clone();
+        let (c,p) = pipes::stream();
+
+        let result: result::result<(),()> = do task::try {
+            let mut sibling_convos = ~[];
+            for 2.times {
+                let (c,p) = pipes::stream();
+                let c = ~mut some(c);
+                vec::push(sibling_convos, p);
+                let mi = ~m2.clone();
+                // spawn sibling task
+                do task::spawn { // linked
+                    do mi.lock_cond |cond| {
+                        let c = option::swap_unwrap(c);
+                        c.send(()); // tell sibling to go ahead
+                        let _z = send_on_failure(c);
+                        cond.wait(); // block forever
+                    }
+                }
+            }
+            for vec::each(sibling_convos) |p| {
+                let _ = p.recv(); // wait for sibling to get in the mutex
+            }
+            do m2.lock { }
+            c.send(sibling_convos); // let parent wait on all children
+            fail;
+        };
+        assert result.is_err();
+        // child task must have finished by the time try returns
+        for vec::each(p.recv()) |p| { p.recv(); } // wait on all its siblings
+        do m.lock_cond |cond| {
+            let woken = cond.broadcast();
+            assert woken == 0;
+        }
+        struct send_on_failure {
+            c: pipes::chan<()>;
+            new(+c: pipes::chan<()>) { self.c = c; }
+            drop { self.c.send(()); }
         }
     }
     /************************************************************************
