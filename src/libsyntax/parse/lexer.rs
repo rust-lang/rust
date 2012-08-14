@@ -377,7 +377,8 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         }
     }
     let mut is_float = false;
-    if rdr.curr == '.' && !(is_alpha(nextch(rdr)) || nextch(rdr) == '_') {
+    if rdr.curr == '.' && !(is_alpha(nextch(rdr)) || nextch(rdr) == '_' ||
+                            nextch(rdr) == '.') {
         is_float = true;
         bump(rdr);
         let dec_part = scan_digits(rdr, 10u);
