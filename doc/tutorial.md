@@ -2882,21 +2882,20 @@ arguments and generates no return value. The effect of `task::spawn()`
 is to fire up a child task that will execute the closure in parallel
 with the creator.
 
-## Ports and channels
+## Communication
 
 Now that we have spawned a child task, it would be nice if we could
-communicate with it.  This is done by creating a *port* with an
-associated *channel*.  A port is simply a location to receive messages
-of a particular type.  A channel is used to send messages to a port.
-For example, imagine we wish to perform two expensive computations
-in parallel.  We might write something like:
+communicate with it. This is done using *pipes*. Pipes are simply a
+pair of endpoints, with one for sending messages and another for
+receiving messages. The easiest way to create a pipe is to use
+`pipes::stream`.  Imagine we wish to perform two expensive
+computations in parallel.  We might write something like:
 
 ~~~~
 import task::spawn;
-import comm::{port, chan};
+import pipes::{stream, port, chan};
 
-let port = port();
-let chan = port.chan();
+let (chan, port) = stream();
 
 do spawn {
     let result = some_expensive_computation();
@@ -2911,25 +2910,16 @@ let result = port.recv();
 ~~~~
 
 Let's walk through this code line-by-line.  The first line creates a
-port for receiving integers:
+stream for sending and receiving integers:
 
 ~~~~ {.ignore}
-# import comm::port;
-let port = port();
+# import pipes::stream;
+let (chan, port) = stream();
 ~~~~
 
 This port is where we will receive the message from the child task
-once it is complete.  The second line creates a channel for sending
-integers to the port `port`:
-
-~~~~
-# import comm::{port, chan};
-# let port = port::<int>();
-let chan = port.chan();
-~~~~
-
-The channel will be used by the child to send a message to the port.
-The next statement actually spawns the child:
+once it is complete.  The channel will be used by the child to send a
+message to the port.  The next statement actually spawns the child:
 
 ~~~~
 # import task::{spawn};
@@ -2953,10 +2943,9 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
-# import comm::{port, chan};
+# import pipes::{stream, port, chan};
 # fn some_other_expensive_computation() {}
-# let port = port::<int>();
-# let chan = chan::<int>(port);
+# let (chan, port) = stream::<int>();
 # chan.send(0);
 some_other_expensive_computation();
 let result = port.recv();
@@ -2965,9 +2954,9 @@ let result = port.recv();
 ## Creating a task with a bi-directional communication path
 
 A very common thing to do is to spawn a child task where the parent
-and child both need to exchange messages with each
-other. The function `task::spawn_conversation()` supports this pattern.
-We'll look briefly at how it is used.
+and child both need to exchange messages with each other. There
+function `std::comm::DuplexStream()` supports this pattern.  We'll
+look briefly at how it is used.
 
 To see how `spawn_conversation()` works, we will create a child task
 that receives `uint` messages, converts them to a string, and sends
@@ -2975,48 +2964,53 @@ the string in response.  The child terminates when `0` is received.
 Here is the function that implements the child task:
 
 ~~~~
-# import comm::{Port, port, Chan, chan};
-fn stringifier(from_parent: Port<uint>,
-               to_parent: Chan<~str>) {
+# import std::comm::DuplexStream;
+# import pipes::{port, chan};
+fn stringifier(channel: DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
-        value = from_parent.recv();
-        to_parent.send(uint::to_str(value, 10u));
+        value = channel.recv();
+        channel.send(uint::to_str(value, 10u));
         if value == 0u { break; }
     }
 }
 ~~~~
 
-You can see that the function takes two parameters.  The first is a
-port used to receive messages from the parent, and the second is a
-channel used to send messages to the parent.  The body itself simply
-loops, reading from the `from_parent` port and then sending its
-response to the `to_parent` channel.  The actual response itself is
-simply the strified version of the received value,
+The implementation of `DuplexStream` supports both sending and
+receiving. The `stringifier` function takes a `DuplexStream` that can
+send strings (the first type parameter) and receive `uint` messages
+(the second type parameter). The body itself simply loops, reading
+from the channel and then sending its response back.  The actual
+response itself is simply the strified version of the received value,
 `uint::to_str(value)`.
 
 Here is the code for the parent task:
 
 ~~~~
-# import task::{spawn_conversation};
-# import comm::{Chan, chan, Port, port};
-# fn stringifier(from_parent: comm::Port<uint>,
-#                to_parent: comm::Chan<~str>) {
-#     comm::send(to_parent, ~"22");
-#     comm::send(to_parent, ~"23");
-#     comm::send(to_parent, ~"0");
+# import std::comm::DuplexStream;
+# import pipes::{port, chan};
+# import task::spawn;
+# fn stringifier(channel: DuplexStream<~str, uint>) {
+#     let mut value: uint;
+#     loop {
+#         value = channel.recv();
+#         channel.send(uint::to_str(value, 10u));
+#         if value == 0u { break; }
+#     }
 # }
 # fn main() {
 
-let (from_child, to_child) = do spawn_conversation |from_parent, to_parent| {
-    stringifier(from_parent, to_parent);
+let (from_child, to_child) = DuplexStream();
+
+do spawn |to_child| {
+    stringifier();
 };
 
-to_child.send(22u);
+from_child.send(22u);
 assert from_child.recv() == ~"22";
 
-to_child.send(23u);
-to_child.send(0u);
+from_child.send(23u);
+from_child.send(0u);
 
 assert from_child.recv() == ~"23";
 assert from_child.recv() == ~"0";
@@ -3024,14 +3018,8 @@ assert from_child.recv() == ~"0";
 # }
 ~~~~
 
-The parent task calls `spawn_conversation` with a function that takes
-a `from_parent` port and a `to_parent` channel.  In return, it gets a
-`from_child` channel and a `to_child` port.  As a result, both parent
+The parent task first calls `DuplexStream` to create a pair of bidirectional endpoints. It then uses `task::spawn` to create the child task, which captures one end of the communication channel.  As a result, both parent
 and child can send and receive data to and from the other.
-
-`spawn_conversation`
-will create two port/channel pairs, passing one set to the child task
-and returning the other set to the caller.
 
 # Testing
 
