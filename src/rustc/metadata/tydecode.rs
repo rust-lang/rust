@@ -212,8 +212,9 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         assert next(st) == '[';
         let def = parse_def(st, conv);
         let substs = parse_substs(st, conv);
+        let vstore = parse_vstore(st);
         assert next(st) == ']';
-        return ty::mk_trait(st.tcx, def, substs);
+        return ty::mk_trait(st.tcx, def, substs, vstore);
       }
       'p' => {
         let did = parse_def(st, conv);

@@ -1902,10 +1902,14 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_trait(a_id, ref a_substs), ty::ty_trait(b_id, ref b_substs))
+      (ty::ty_trait(a_id, ref a_substs, a_vstore),
+       ty::ty_trait(b_id, ref b_substs, b_vstore))
       if a_id == b_id => {
         do self.substs(a_substs, b_substs).chain |substs| {
-            ok(ty::mk_trait(tcx, a_id, substs))
+            do self.vstores(ty::terr_trait, a_vstore,
+                            b_vstore).chain |vstores| {
+                ok(ty::mk_trait(tcx, a_id, substs, vstores))
+            }
         }
       }
 

@@ -162,7 +162,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
 
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
-    // Also handle function sigils.
+    // Also handle function sigils and first-class trait types.
     fn mk_maybe_vstore<AC: ast_conv, RS: region_scope copy owned>(
         self: AC, rscope: RS, a_seq_ty: ast::mt, vst: ty::vstore,
         span: span, constr: fn(ty::mt) -> ty::t) -> ty::t {
@@ -180,6 +180,23 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
               some(ast::def_prim_ty(ast::ty_str)) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 return ty::mk_estr(tcx, vst);
+              }
+              some(ast::def_ty(type_def_id)) => {
+                let result = ast_path_to_substs_and_ty(self, rscope,
+                                                       type_def_id, path);
+                match ty::get(result.ty).struct {
+                    ty::ty_trait(trait_def_id, substs, _) => {
+                        if vst != ty::vstore_box {
+                            tcx.sess.span_unimpl(path.span,
+                                                 ~"`~trait` and `&trait` are \
+                                                   unimplemented; use \
+                                                   `@trait` instead for now");
+                        }
+                        return ty::mk_trait(tcx, trait_def_id, substs, vst);
+                    }
+                    _ =>
+                        {}
+                }
               }
               _ => ()
             }

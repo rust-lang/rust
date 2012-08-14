@@ -19,7 +19,7 @@ fn seq_sep_none() -> seq_sep {
 }
 
 fn token_to_str(reader: reader, ++token: token::token) -> ~str {
-    token::to_str(*reader.interner(), token)
+    token::to_str(reader.interner(), token)
 }
 
 trait parser_common {

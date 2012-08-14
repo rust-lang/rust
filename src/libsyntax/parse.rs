@@ -24,7 +24,7 @@ type parse_sess = @{
     cm: codemap::codemap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
-    interner: @interner::interner<@~str>,
+    interner: interner::interner<@~str>,
     // these two must be kept up to date
     mut chpos: uint,
     mut byte_pos: uint
@@ -35,7 +35,7 @@ fn new_parse_sess(demitter: option<emitter>) -> parse_sess {
     return @{cm: cm,
           mut next_id: 1,
           span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-          interner: @interner::mk::<@~str>(|x| str::hash(*x),
+          interner: interner::mk::<@~str>(|x| str::hash(*x),
                                           |x,y| str::eq(*x, *y)),
           mut chpos: 0u, mut byte_pos: 0u};
 }
@@ -45,7 +45,7 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
     return @{cm: cm,
           mut next_id: 1,
           span_diagnostic: sh,
-          interner: @interner::mk::<@~str>(|x| str::hash(*x),
+          interner: interner::mk::<@~str>(|x| str::hash(*x),
                                           |x,y| str::eq(*x, *y)),
           mut chpos: 0u, mut byte_pos: 0u};
 }

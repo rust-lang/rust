@@ -158,7 +158,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
           result::err(_) => { return; /* typeck will fail anyhow */ }
           result::ok(target_ty) => {
             match ty::get(target_ty).struct {
-              ty::ty_trait(_, substs) => {
+              ty::ty_trait(_, substs, _) => {
                 let trait_region = match substs.self_r {
                   some(r) => {r}
                   none => {ty::re_static}

@@ -40,7 +40,8 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
                     match intrinsic_item.node {
                       ast::item_trait(*) => {
-                        let ty = ty::mk_trait(ccx.tcx, def_id, substs);
+                        let ty = ty::mk_trait(ccx.tcx, def_id, substs,
+                                              ty::vstore_box);
                         ccx.tcx.intrinsic_defs.insert
                             (intrinsic_item.ident, (def_id, ty));
                       }
@@ -648,7 +649,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
       }
       ast::item_trait(tps, _, ms) => {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
-        let t = ty::mk_trait(tcx, local_def(it.id), substs);
+        let t = ty::mk_trait(tcx, local_def(it.id), substs, ty::vstore_box);
         let tpt = {bounds: bounds, rp: rp, ty: t};
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;

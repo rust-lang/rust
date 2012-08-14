@@ -498,7 +498,7 @@ fn check_cast_for_escaping_regions(
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
     let target_substs = match ty::get(target_ty).struct {
-      ty::ty_trait(_, substs) => {substs}
+      ty::ty_trait(_, substs, _) => {substs}
       _ => { return; /* not a cast to a trait */ }
     };
 

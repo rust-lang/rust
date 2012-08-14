@@ -314,10 +314,11 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         let base = ast_map::path_to_str(path);
         parameterized(cx, base, substs.self_r, substs.tps)
       }
-      ty_trait(did, substs) => {
+      ty_trait(did, substs, vs) => {
         let path = ty::item_path(cx, did);
         let base = ast_map::path_to_str(path);
-        parameterized(cx, base, substs.self_r, substs.tps)
+        let result = parameterized(cx, base, substs.self_r, substs.tps);
+        vstore_ty_to_str(cx, result, vs)
       }
       ty_evec(mt, vs) => {
         vstore_ty_to_str(cx, fmt!{"[%s]", mt_to_str(cx, mt)}, vs)
