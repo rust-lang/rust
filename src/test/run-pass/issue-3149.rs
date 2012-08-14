@@ -1,5 +1,3 @@
-import Num = num::num;
-
 pure fn Matrix4<T:copy Num>(m11: T, m12: T, m13: T, m14: T,
                                      m21: T, m22: T, m23: T, m24: T,
                                      m31: T, m32: T, m33: T, m34: T,
