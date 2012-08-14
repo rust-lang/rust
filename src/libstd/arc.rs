@@ -1,3 +1,6 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 /**
  * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
  * between tasks.

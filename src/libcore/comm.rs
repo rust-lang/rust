@@ -1,3 +1,6 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 /*!
  * Communication between tasks
  *
@@ -162,7 +165,7 @@ fn chan<T: send>(p: port<T>) -> chan<T> {
  * Sends data over a channel. The sent data is moved into the channel,
  * whereupon the caller loses access to it.
  */
-fn send<T: send>(ch: chan<T>, -data: T) {
+fn send<T: send>(ch: chan<T>, +data: T) {
     let chan_t(p) = ch;
     let data_ptr = ptr::addr_of(data) as *();
     let res = rustrt::rust_port_id_send(p, data_ptr);

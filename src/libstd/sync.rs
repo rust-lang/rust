@@ -1,3 +1,6 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 /**
  * The concurrency primitives you know and love.
  *
@@ -836,7 +839,7 @@ mod tests {
         }
     }
     #[cfg(test)]
-    fn test_rwlock_exclusion(x: ~rwlock, mode1: rwlock_mode,
+    fn test_rwlock_exclusion(+x: ~rwlock, mode1: rwlock_mode,
                              mode2: rwlock_mode) {
         // Test mutual exclusion between readers and writers. Just like the
         // mutex mutual exclusion test, a ways above.
@@ -881,7 +884,7 @@ mod tests {
         test_rwlock_exclusion(~rwlock(), downgrade, downgrade);
     }
     #[cfg(test)]
-    fn test_rwlock_handshake(x: ~rwlock, mode1: rwlock_mode,
+    fn test_rwlock_handshake(+x: ~rwlock, mode1: rwlock_mode,
                              mode2: rwlock_mode, make_mode2_go_first: bool) {
         // Much like sem_multi_resource.
         let x2 = ~x.clone();
