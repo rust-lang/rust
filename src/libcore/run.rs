@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 //! Process spawning
 import option::{some, none};
 import libc::{pid_t, c_void, c_int};
@@ -62,9 +66,9 @@ trait program {
  *
  * The process id of the spawned process
  */
-fn spawn_process(prog: ~str, args: ~[~str],
-                 env: option<~[(~str,~str)]>,
-                 dir: option<~str>,
+fn spawn_process(prog: &str, args: &[~str],
+                 env: &option<~[(~str,~str)]>,
+                 dir: &option<~str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
    -> pid_t {
     do with_argv(prog, args) |argv| {
@@ -77,7 +81,7 @@ fn spawn_process(prog: ~str, args: ~[~str],
     }
 }
 
-fn with_argv<T>(prog: ~str, args: ~[~str],
+fn with_argv<T>(prog: &str, args: &[~str],
                 cb: fn(**libc::c_char) -> T) -> T {
     let mut argptrs = str::as_c_str(prog, |b| ~[b]);
     let mut tmps = ~[];
@@ -91,11 +95,11 @@ fn with_argv<T>(prog: ~str, args: ~[~str],
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: option<~[(~str,~str)]>,
+fn with_envp<T>(env: &option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
-    match env {
+    match *env {
       some(es) if !vec::is_empty(es) => {
         let mut tmps = ~[];
         let mut ptrs = ~[];
@@ -140,9 +144,9 @@ fn with_envp<T>(env: option<~[(~str,~str)]>,
     }
 }
 
-fn with_dirp<T>(d: option<~str>,
+fn with_dirp<T>(d: &option<~str>,
                 cb: fn(*libc::c_char) -> T) -> T {
-    match d {
+    match *d {
       some(dir) => str::as_c_str(dir, cb),
       none => cb(ptr::null())
     }
@@ -160,8 +164,8 @@ fn with_dirp<T>(d: option<~str>,
  *
  * The process id
  */
-fn run_program(prog: ~str, args: ~[~str]) -> int {
-    let pid = spawn_process(prog, args, none, none,
+fn run_program(prog: &str, args: &[~str]) -> int {
+    let pid = spawn_process(prog, args, &none, &none,
                             0i32, 0i32, 0i32);
     if pid == -1 as pid_t { fail; }
     return waitpid(pid);
@@ -183,12 +187,12 @@ fn run_program(prog: ~str, args: ~[~str]) -> int {
  *
  * A class with a <program> field
  */
-fn start_program(prog: ~str, args: ~[~str]) -> program {
+fn start_program(prog: &str, args: &[~str]) -> program {
     let pipe_input = os::pipe();
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
     let pid =
-        spawn_process(prog, args, none, none,
+        spawn_process(prog, args, &none, &none,
                       pipe_input.in, pipe_output.out,
                       pipe_err.out);
 
@@ -203,28 +207,28 @@ fn start_program(prog: ~str, args: ~[~str]) -> program {
                       err_file: *libc::FILE,
                       mut finished: bool};
 
-    fn close_repr_input(r: prog_repr) {
+    fn close_repr_input(r: &prog_repr) {
         let invalid_fd = -1i32;
         if r.in_fd != invalid_fd {
             libc::close(r.in_fd);
             r.in_fd = invalid_fd;
         }
     }
-    fn finish_repr(r: prog_repr) -> int {
+    fn finish_repr(r: &prog_repr) -> int {
         if r.finished { return 0; }
         r.finished = true;
         close_repr_input(r);
         return waitpid(r.pid);
     }
-    fn destroy_repr(r: prog_repr) {
+    fn destroy_repr(r: &prog_repr) {
         finish_repr(r);
        libc::fclose(r.out_file);
        libc::fclose(r.err_file);
     }
     class prog_res {
         let r: prog_repr;
-        new(-r: prog_repr) { self.r = r; }
-        drop { destroy_repr(self.r); }
+        new(+r: prog_repr) { self.r = r; }
+        drop { destroy_repr(&self.r); }
     }
 
     impl prog_res: program {
@@ -232,16 +236,16 @@ fn start_program(prog: ~str, args: ~[~str]) -> program {
         fn input() -> io::writer { io::fd_writer(self.r.in_fd, false) }
         fn output() -> io::reader { io::FILE_reader(self.r.out_file, false) }
         fn err() -> io::reader { io::FILE_reader(self.r.err_file, false) }
-        fn close_input() { close_repr_input(self.r); }
-        fn finish() -> int { finish_repr(self.r) }
-        fn destroy() { destroy_repr(self.r); }
+        fn close_input() { close_repr_input(&self.r); }
+        fn finish() -> int { finish_repr(&self.r) }
+        fn destroy() { destroy_repr(&self.r); }
     }
     let repr = {pid: pid,
                 mut in_fd: pipe_input.out,
                 out_file: os::fdopen(pipe_output.in),
                 err_file: os::fdopen(pipe_err.in),
                 mut finished: false};
-    return prog_res(repr) as program;
+    return prog_res(move repr) as program;
 }
 
 fn read_all(rd: io::reader) -> ~str {
@@ -267,13 +271,13 @@ fn read_all(rd: io::reader) -> ~str {
  * A record, {status: int, out: str, err: str} containing the exit code,
  * the contents of stdout and the contents of stderr.
  */
-fn program_output(prog: ~str, args: ~[~str]) ->
+fn program_output(prog: &str, args: &[~str]) ->
    {status: int, out: ~str, err: ~str} {
 
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
-    let pid = spawn_process(prog, args, none, none,
+    let pid = spawn_process(prog, args, &none, &none,
                             pipe_in.in, pipe_out.out, pipe_err.out);
 
     os::close(pipe_in.in);
@@ -321,7 +325,7 @@ fn program_output(prog: ~str, args: ~[~str]) ->
     return {status: status, out: outs, err: errs};
 }
 
-fn writeclose(fd: c_int, s: ~str) {
+fn writeclose(fd: c_int, s: &str) {
     import io::writer_util;
 
     error!{"writeclose %d, %s", fd as int, s};
@@ -393,9 +397,9 @@ mod tests {
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)
     fn test_leaks() {
-        run::run_program(~"echo", ~[]);
-        run::start_program(~"echo", ~[]);
-        run::program_output(~"echo", ~[]);
+        run::run_program("echo", []);
+        run::start_program("echo", []);
+        run::program_output("echo", []);
     }
 
     #[test]
@@ -406,7 +410,7 @@ mod tests {
 
         let pid =
             run::spawn_process(
-                ~"cat", ~[], none, none,
+                "cat", [], &none, &none,
                 pipe_in.in, pipe_out.out, pipe_err.out);
         os::close(pipe_in.in);
         os::close(pipe_out.out);
@@ -426,8 +430,8 @@ mod tests {
 
     #[test]
     fn waitpid() {
-        let pid = run::spawn_process(~"false", ~[],
-                                     none, none,
+        let pid = run::spawn_process("false", [],
+                                     &none, &none,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
         assert status == 1;
