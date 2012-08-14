@@ -1522,20 +1522,6 @@ fn remove_copyable(k: kind) -> kind {
     k - kind_(KIND_MASK_COPY)
 }
 
-impl kind {
-    fn &(other: kind) -> kind {
-        lower_kind(self, other)
-    }
-
-    fn |(other: kind) -> kind {
-        raise_kind(self, other)
-    }
-
-    fn -(other: kind) -> kind {
-        kind_(*self & !*other)
-    }
-}
-
 impl kind: ops::bitand<kind,kind> {
     pure fn bitand(other: kind) -> kind {
         unchecked {

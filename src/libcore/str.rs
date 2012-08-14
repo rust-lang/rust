@@ -1911,12 +1911,6 @@ impl ~str: unique_str {
     /// Returns a string with trailing whitespace removed
     #[inline]
     fn trim_right() -> ~str { trim_right(self) }
-
-    /// Concatenate two strings: operator version
-    #[inline(always)]
-    pure fn +(rhs: &str) -> ~str {
-        append(self, rhs)
-    }
 }
 
 #[cfg(notest)]

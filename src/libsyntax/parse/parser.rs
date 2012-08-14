@@ -2391,22 +2391,7 @@ class parser {
     }
 
     fn parse_method_name() -> ident {
-        match copy self.token {
-          token::BINOP(op) => { self.bump(); @token::binop_to_str(op) }
-          token::NOT => { self.bump(); @~"!" }
-          token::LBRACKET => {
-            self.bump();
-            self.expect(token::RBRACKET);
-            @~"[]"
-          }
-          _ => {
-            let id = self.parse_value_ident();
-            if id == @~"unary" && self.eat(token::BINOP(token::MINUS)) {
-                @~"unary-"
-            }
-            else { id }
-          }
-        }
+        self.parse_value_ident()
     }
 
     fn parse_method(pr: visibility) -> @method {

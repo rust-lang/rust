@@ -258,12 +258,6 @@ impl<A: copy> dvec<A> {
 
     /// Copy out an individual element
     #[inline(always)]
-    pure fn [](idx: uint) -> A {
-        self.get_elt(idx)
-    }
-
-    /// Copy out an individual element
-    #[inline(always)]
     pure fn get_elt(idx: uint) -> A {
         self.check_not_borrowed();
         return self.data[idx];

@@ -53,7 +53,6 @@ class cat<T: copy> : map<int, T> {
       none    => { fail ~"epic fail"; }
     }
   }
-  fn [](&&k:int) -> T { self.get(k) }
   fn find(+k:int) -> option<T> { if k <= self.meows {
         some(self.name)
      }

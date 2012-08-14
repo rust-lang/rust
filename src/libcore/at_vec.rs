@@ -123,13 +123,6 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> @[T] {
     }
 }
 
-impl<T: copy> @[T]: vec_concat<T> {
-    #[inline(always)]
-    pure fn +(rhs: &[const T]) -> @[T] {
-        append(self, rhs)
-    }
-}
-
 #[cfg(notest)]
 impl<T: copy> @[T]: add<&[const T],@[T]> {
     #[inline(always)]

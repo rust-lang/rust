@@ -8,7 +8,7 @@ import path = path::path;
 import tuple::{tuple_ops, extended_tuple_ops};
 import str::{str_slice, unique_str};
 import vec::{const_vector, copyable_vector, immutable_vector};
-import vec::{immutable_copyable_vector, iter_trait_extensions, vec_concat};
+import vec::{immutable_copyable_vector, iter_trait_extensions};
 import iter::{base_iter, extended_iter, copyable_iter, times, timesi};
 import num::num;
 import ptr::ptr;
@@ -21,7 +21,7 @@ export num, times, timesi;
 // The following exports are the common traits
 export str_slice, unique_str;
 export const_vector, copyable_vector, immutable_vector;
-export immutable_copyable_vector, iter_trait_extensions, vec_concat;
+export immutable_copyable_vector, iter_trait_extensions;
 export base_iter, copyable_iter, extended_iter;
 export tuple_ops, extended_tuple_ops;
 export ptr;
