@@ -1,0 +1,5 @@
+mod trait_mix {
+    #[path = "trait-mix.rs"]
+    mod trait_mix;
+    mod u_trait_mix;
+}

@@ -156,15 +156,18 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
     }
 }
 
-fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
+fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
     fn store_methods<T>(ccx: @crate_ctxt, id: ast::node_id,
                         stuff: ~[T], f: fn@(T) -> ty::method) {
         ty::store_trait_methods(ccx.tcx, id, @vec::map(stuff, f));
     }
 
-    fn make_static_method_ty(ccx: @crate_ctxt, id: ast::node_id,
+    fn make_static_method_ty(ccx: @crate_ctxt,
                              am: ast::ty_method,
                              rp: bool, m: ty::method,
+                             // Take this as an argument b/c we may check
+                             // the impl before the trait.
+                             trait_ty: ty::t,
                              trait_bounds: @~[ty::param_bounds]) {
         // We need to create a typaram that replaces self. This param goes
         // *in between* the typarams from the trait and those from the
@@ -188,7 +191,6 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
         let substs = { self_r: none, self_ty: some(self_param),
                        tps: non_shifted_trait_tps + shifted_method_tps };
         let ty = ty::subst(ccx.tcx, &substs, ty::mk_fn(ccx.tcx, m.fty));
-        let trait_ty = ty::node_id_to_type(ccx.tcx, id);
         let bounds = @(*trait_bounds + ~[@~[ty::bound_trait(trait_ty)]]
                        + *m.tps);
         ccx.tcx.tcache.insert(local_def(am.id),
@@ -205,8 +207,8 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id) {
             let ty_m = trait_method_to_ty_method(m);
             let method_ty = ty_of_ty_method(ccx, ty_m, rp);
             if ty_m.self_ty.node == ast::sty_static {
-                make_static_method_ty(ccx, id, ty_m, rp,
-                                      method_ty, trait_bounds);
+                make_static_method_ty(ccx, ty_m, rp,
+                                      method_ty, trait_ty, trait_bounds);
             }
             method_ty
         });
@@ -319,7 +321,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     let (did, tpt) = instantiate_trait_ref(ccx, a_trait_ty, rp);
     if did.crate == ast::local_crate {
-        ensure_trait_methods(ccx, did.node);
+        ensure_trait_methods(ccx, did.node, tpt.ty);
     }
     for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
         match vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
@@ -430,7 +432,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         debug!{"item_trait(it.id=%d, tpt.ty=%s)",
                it.id, ty_to_str(tcx, tpt.ty)};
         write_ty_to_tcx(tcx, it.id, tpt.ty);
-        ensure_trait_methods(ccx, it.id);
+        ensure_trait_methods(ccx, it.id, tpt.ty);
 
         let (_, provided_methods) = split_trait_methods(trait_methods);
         let selfty = ty::mk_self(tcx);
@@ -499,7 +501,7 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
                            rp: rp,
                            ty: t_dtor});
     };
-    ensure_trait_methods(ccx, id);
+    ensure_trait_methods(ccx, id, tpt.ty);
 
     // Write the type of each of the members
     let (fields, methods) = split_class_items(struct_def.members);
