@@ -472,7 +472,19 @@ class parser {
             ty_rec(elems)
         } else if self.token == token::LBRACKET {
             self.expect(token::LBRACKET);
-            let t = ty_vec(self.parse_mt());
+            let mut t = ty_vec(self.parse_mt());
+
+            // Parse the `* 3` in `[ int * 3 ]`
+            match self.maybe_parse_fixed_vstore_with_star() {
+                none => {}
+                some(suffix) => {
+                    t = ty_fixed_length(@{
+                        id: self.get_id(),
+                        node: t,
+                        span: mk_sp(lo, self.last_span.hi)
+                    }, suffix)
+                }
+            }
             self.expect(token::RBRACKET);
             t
         } else if self.token == token::BINOP(token::AND) {
@@ -595,6 +607,22 @@ class parser {
     fn maybe_parse_fixed_vstore() -> option<option<uint>> {
         if self.token == token::BINOP(token::SLASH) {
             self.bump();
+            match copy self.token {
+              token::UNDERSCORE => {
+                self.bump(); some(none)
+              }
+              token::LIT_INT_UNSUFFIXED(i) if i >= 0i64 => {
+                self.bump(); some(some(i as uint))
+              }
+              _ => none
+            }
+        } else {
+            none
+        }
+    }
+
+    fn maybe_parse_fixed_vstore_with_star() -> option<option<uint>> {
+        if self.eat(token::BINOP(token::STAR)) {
             match copy self.token {
               token::UNDERSCORE => {
                 self.bump(); some(none)
