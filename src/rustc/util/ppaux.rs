@@ -50,7 +50,7 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
           some(ast_map::node_block(blk)) => {
             fmt!{"the lifetime %s as defined on %s",
                  bound_region_to_str(cx, br),
-                 explain_span(cx, ~"the block", blk.span)}
+                 explain_span(cx, ~"block", blk.span)}
           }
           some(_) | none => {
             // this really should not happen
