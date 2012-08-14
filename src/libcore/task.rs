@@ -409,7 +409,7 @@ impl task_builder {
         do self.future_result(|+r| { result = some(r); }).spawn {
             comm::send(ch, f());
         }
-        match future::get(option::unwrap(result)) {
+        match future::get(&option::unwrap(result)) {
             success => result::ok(comm::recv(po)),
             failure => result::err(())
         }
@@ -1704,13 +1704,13 @@ fn test_add_wrapper() {
 fn test_future_result() {
     let mut result = none;
     do task().future_result(|+r| { result = some(r); }).spawn { }
-    assert future::get(option::unwrap(result)) == success;
+    assert future::get(&option::unwrap(result)) == success;
 
     result = none;
     do task().future_result(|+r| { result = some(r); }).unlinked().spawn {
         fail;
     }
-    assert future::get(option::unwrap(result)) == failure;
+    assert future::get(&option::unwrap(result)) == failure;
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]

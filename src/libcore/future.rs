@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /*!
  * A type representing values that may be computed concurrently and
  * operations for working with them.
@@ -37,13 +41,13 @@ impl<A:copy send> future<A> {
     fn get() -> A {
         //! Get the value of the future
 
-        get(self)
+        get(&self)
     }
 
-    fn with<B>(blk: fn(A) -> B) -> B {
+    fn with<B>(blk: fn((&A)) -> B) -> B {
         //! Work with the value without copying it
 
-        with(self, blk)
+        with(&self, blk)
     }
 }
 
@@ -64,7 +68,7 @@ macro_rules! move_it {
     {$x:expr} => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
-fn from_port<A:send>(-port: future_pipe::client::waiting<A>) -> future<A> {
+fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> future<A> {
     #[doc = "
     Create a future from a port
 
@@ -110,13 +114,13 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
     }))
 }
 
-fn get<A:copy>(future: future<A>) -> A {
+fn get<A:copy>(future: &future<A>) -> A {
     //! Get the value of the future
 
-    do with(future) |v| { v }
+    do with(future) |v| { *v }
 }
 
-fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
+fn with<A,B>(future: &future<A>, blk: fn((&A)) -> B) -> B {
     //! Work with the value without copying it
 
     let v = match copy future.v {
@@ -127,7 +131,7 @@ fn with<A,B>(future: future<A>, blk: fn(A) -> B) -> B {
         v
       }
     };
-    blk(*v)
+    blk(v)
 }
 
 proto! future_pipe {
@@ -139,7 +143,7 @@ proto! future_pipe {
 #[test]
 fn test_from_value() {
     let f = from_value(~"snail");
-    assert get(f) == ~"snail";
+    assert get(&f) == ~"snail";
 }
 
 #[test]
@@ -147,14 +151,14 @@ fn test_from_port() {
     let (po, ch) = future_pipe::init();
     future_pipe::server::completed(ch, ~"whale");
     let f = from_port(po);
-    assert get(f) == ~"whale";
+    assert get(&f) == ~"whale";
 }
 
 #[test]
 fn test_from_fn() {
     let f = fn@() -> ~str { ~"brail" };
     let f = from_fn(f);
-    assert get(f) == ~"brail";
+    assert get(&f) == ~"brail";
 }
 
 #[test]
@@ -166,19 +170,19 @@ fn test_interface_get() {
 #[test]
 fn test_with() {
     let f = from_value(~"nail");
-    assert with(f, |v| v) == ~"nail";
+    assert with(&f, |v| *v) == ~"nail";
 }
 
 #[test]
 fn test_interface_with() {
     let f = from_value(~"kale");
-    assert f.with(|v| v) == ~"kale";
+    assert f.with(|v| *v) == ~"kale";
 }
 
 #[test]
 fn test_spawn() {
     let f = spawn(|| ~"bale");
-    assert get(f) == ~"bale";
+    assert get(&f) == ~"bale";
 }
 
 #[test]
@@ -186,5 +190,5 @@ fn test_spawn() {
 #[ignore(cfg(target_os = "win32"))]
 fn test_futurefail() {
     let f = spawn(|| fail);
-    let _x: ~str = get(f);
+    let _x: ~str = get(&f);
 }

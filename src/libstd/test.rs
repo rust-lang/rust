@@ -391,7 +391,7 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
         task::task().unlinked().future_result(|+r| {
             result_future = some(r);
         }).spawn(testfn);
-        let task_result = future::get(option::unwrap(result_future));
+        let task_result = future::get(&option::unwrap(result_future));
         let test_result = calc_result(test, task_result == task::success);
         comm::send(monitor_ch, (copy test, test_result));
     };
