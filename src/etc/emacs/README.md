@@ -29,7 +29,7 @@ it, and pressing `C-j`:
 Rust mode will automatically be associated with .rs and .rc files. To
 enable it explicitly, do `M-x rust-mode`.
 
-### package.el installation via Marmalade or Melpa
+### package.el installation via Marmalade
 
 It can be more convenient to use Emacs's package manager to handle
 installation for you if you use many elisp libraries.
@@ -38,13 +38,6 @@ installation for you if you use many elisp libraries.
 (require 'package)
 (add-to-list 'package-archives
              '("marmalade" . "http://marmalade-repo.org/packages/"))
-(package-initialize)
-```
-
-```lisp
-(require 'package)
-(add-to-list 'package-archives
-             '("melpa" . "http://melpa.milkbox.net/packages/") t)
 (package-initialize)
 ```
 
