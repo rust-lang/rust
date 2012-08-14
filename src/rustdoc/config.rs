@@ -77,7 +77,7 @@ fn default_config(input_crate: ~str) -> config {
     }
 }
 
-type program_output = fn~(~str, ~[~str]) ->
+type program_output = fn~((&str), (&[~str])) ->
     {status: int, out: ~str, err: ~str};
 
 fn mock_program_output(_prog: ~str, _args: ~[~str]) -> {
