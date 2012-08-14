@@ -110,8 +110,8 @@ fn recv_timeout<T: copy send>(iotask: iotask,
                            left_val});
             none
         }, |right_val| {
-            some(right_val)
-        }, comm::select2(timeout_po, wait_po)
+            some(*right_val)
+        }, &comm::select2(timeout_po, wait_po)
     )
 }
 

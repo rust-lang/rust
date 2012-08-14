@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 // Dynamic Vector
 //
 // A growable vector that makes use of unique pointers so that the
@@ -69,7 +73,7 @@ fn from_vec<A>(+v: ~[mut A]) -> dvec<A> {
 }
 
 /// Consumes the vector and returns its contents
-fn unwrap<A>(-d: dvec<A>) -> ~[mut A] {
+fn unwrap<A>(+d: dvec<A>) -> ~[mut A] {
     let dvec_({data: v}) <- d;
     return v;
 }

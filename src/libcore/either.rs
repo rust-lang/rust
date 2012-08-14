@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 //! A type that represents one of two alternatives
 
 import result::result;
@@ -8,8 +12,8 @@ enum either<T, U> {
     right(U)
 }
 
-fn either<T, U, V>(f_left: fn(T) -> V,
-                   f_right: fn(U) -> V, value: either<T, U>) -> V {
+fn either<T, U, V>(f_left: fn((&T)) -> V,
+                   f_right: fn((&U)) -> V, value: &either<T, U>) -> V {
     /*!
      * Applies a function based on the given either value
      *
@@ -18,13 +22,13 @@ fn either<T, U, V>(f_left: fn(T) -> V,
      * result is returned.
      */
 
-    match value {
-      left(l) => f_left(l),
-      right(r) => f_right(r)
+    match *value {
+      left(ref l) => f_left(l),
+      right(ref r) => f_right(r)
     }
 }
 
-fn lefts<T: copy, U>(eithers: ~[either<T, U>]) -> ~[T] {
+fn lefts<T: copy, U>(eithers: &[either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
     let mut result: ~[T] = ~[];
@@ -37,7 +41,7 @@ fn lefts<T: copy, U>(eithers: ~[either<T, U>]) -> ~[T] {
     return result;
 }
 
-fn rights<T, U: copy>(eithers: ~[either<T, U>]) -> ~[U] {
+fn rights<T, U: copy>(eithers: &[either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
     let mut result: ~[U] = ~[];
@@ -50,7 +54,7 @@ fn rights<T, U: copy>(eithers: ~[either<T, U>]) -> ~[U] {
     return result;
 }
 
-fn partition<T: copy, U: copy>(eithers: ~[either<T, U>])
+fn partition<T: copy, U: copy>(eithers: &[either<T, U>])
     -> {lefts: ~[T], rights: ~[U]} {
     /*!
      * Extracts from a vector of either all the left values and right values
@@ -70,17 +74,16 @@ fn partition<T: copy, U: copy>(eithers: ~[either<T, U>])
     return {lefts: lefts, rights: rights};
 }
 
-pure fn flip<T: copy, U: copy>(eith: either<T, U>) -> either<U, T> {
+pure fn flip<T: copy, U: copy>(eith: &either<T, U>) -> either<U, T> {
     //! Flips between left and right of a given either
 
-    match eith {
+    match *eith {
       right(r) => left(r),
       left(l) => right(l)
     }
 }
 
-pure fn to_result<T: copy, U: copy>(
-    eith: either<T, U>) -> result<U, T> {
+pure fn to_result<T: copy, U: copy>(eith: &either<T, U>) -> result<U, T> {
     /*!
      * Converts either::t to a result::t
      *
@@ -88,38 +91,38 @@ pure fn to_result<T: copy, U: copy>(
      * an ok result, and the "left" choice a fail
      */
 
-    match eith {
+    match *eith {
       right(r) => result::ok(r),
       left(l) => result::err(l)
     }
 }
 
-pure fn is_left<T, U>(eith: either<T, U>) -> bool {
+pure fn is_left<T, U>(eith: &either<T, U>) -> bool {
     //! Checks whether the given value is a left
 
-    match eith { left(_) => true, _ => false }
+    match *eith { left(_) => true, _ => false }
 }
 
-pure fn is_right<T, U>(eith: either<T, U>) -> bool {
+pure fn is_right<T, U>(eith: &either<T, U>) -> bool {
     //! Checks whether the given value is a right
 
-    match eith { right(_) => true, _ => false }
+    match *eith { right(_) => true, _ => false }
 }
 
 #[test]
 fn test_either_left() {
     let val = left(10);
-    fn f_left(&&x: int) -> bool { x == 10 }
-    fn f_right(&&_x: uint) -> bool { false }
-    assert (either(f_left, f_right, val));
+    fn f_left(x: &int) -> bool { *x == 10 }
+    fn f_right(_x: &uint) -> bool { false }
+    assert (either(f_left, f_right, &val));
 }
 
 #[test]
 fn test_either_right() {
     let val = right(10u);
-    fn f_left(&&_x: int) -> bool { false }
-    fn f_right(&&x: uint) -> bool { x == 10u }
-    assert (either(f_left, f_right, val));
+    fn f_left(_x: &int) -> bool { false }
+    fn f_right(x: &uint) -> bool { *x == 10u }
+    assert (either(f_left, f_right, &val));
 }
 
 #[test]

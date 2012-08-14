@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /// Interfaces used for comparison.
 
 trait ord {

@@ -1,5 +1,9 @@
 //! Operations on shared box types
 
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 export ptr_eq;
 
 pure fn ptr_eq<T>(a: @T, b: @T) -> bool {

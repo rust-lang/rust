@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /**
  * A doubly-linked list. Supports O(1) head, tail, count, push, pop, etc.
  *
