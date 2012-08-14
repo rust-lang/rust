@@ -5,7 +5,7 @@
  * in std.
  */
 
-export condvar, semaphore, mutex, rwlock;
+export condvar, semaphore, mutex, rwlock, rwlock_write_mode, rwlock_read_mode;
 
 // FIXME (#3119) This shouldn't be a thing exported from core.
 import unsafe::{Exclusive, exclusive};
@@ -387,16 +387,17 @@ impl &rwlock {
      * the meantime (such as unlocking and then re-locking as a reader would
      * do). The block takes a "write mode token" argument, which can be
      * transformed into a "read mode token" by calling downgrade(). Example:
-     *
-     *     do lock.write_downgrade |write_mode| {
-     *         do (&write_mode).write_cond |condvar| {
-     *             ... exclusive access ...
-     *         }
-     *         let read_mode = lock.downgrade(write_mode);
-     *         do (&read_mode).read {
-     *             ... shared access ...
-     *         }
+     * ~~~
+     * do lock.write_downgrade |write_mode| {
+     *     do (&write_mode).write_cond |condvar| {
+     *         ... exclusive access ...
      *     }
+     *     let read_mode = lock.downgrade(write_mode);
+     *     do (&read_mode).read {
+     *         ... shared access ...
+     *     }
+     * }
+     * ~~~
      */
     fn write_downgrade<U>(blk: fn(+rwlock_write_mode) -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
@@ -413,6 +414,7 @@ impl &rwlock {
         blk(rwlock_write_mode { lock: self })
     }
 
+    /// To be called inside of the write_downgrade block.
     fn downgrade(+token: rwlock_write_mode) -> rwlock_read_mode {
         if !ptr::ref_eq(self, token.lock) {
             fail ~"Can't downgrade() with a different rwlock's write_mode!";
@@ -498,8 +500,7 @@ struct rwlock_write_mode { lock: &rwlock; drop { } }
 /// The "read permission" token used for rwlock.write_downgrade().
 struct rwlock_read_mode  { priv lock: &rwlock; drop { } }
 
-// FIXME(#3145) XXX Region invariance forbids "mode.write(blk)"
-impl rwlock_write_mode {
+impl &rwlock_write_mode {
     /// Access the pre-downgrade rwlock in write mode.
     fn write<U>(blk: fn() -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
@@ -507,7 +508,7 @@ impl rwlock_write_mode {
         blk(&condvar { sem: &self.lock.access_lock })
     }
 }
-impl rwlock_read_mode {
+impl &rwlock_read_mode {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(blk: fn() -> U) -> U { blk() }
 }
@@ -777,9 +778,19 @@ mod tests {
         match mode {
             read => x.read(blk),
             write => x.write(blk),
-            downgrade => do x.write_downgrade |mode| { mode.write(blk); },
+            downgrade =>
+                do x.write_downgrade |mode| {
+                    // FIXME(#2282)
+                    let mode = unsafe { unsafe::transmute_region(&mode) };
+                    mode.write(blk);
+                },
             downgrade_read =>
-                do x.write_downgrade |mode| { x.downgrade(mode).read(blk); },
+                do x.write_downgrade |mode| {
+                    let mode = x.downgrade(mode);
+                    // FIXME(#2282)
+                    let mode = unsafe { unsafe::transmute_region(&mode) };
+                    mode.read(blk);
+                },
         }
     }
     #[cfg(test)]
@@ -922,7 +933,11 @@ mod tests {
         // Much like the mutex broadcast test. Downgrade-enabled.
         fn lock_cond(x: &rwlock, downgrade: bool, blk: fn(c: &condvar)) {
             if downgrade {
-                do x.write_downgrade |mode| { mode.write_cond(blk) }
+                do x.write_downgrade |mode| {
+                    // FIXME(#2282)
+                    let mode = unsafe { unsafe::transmute_region(&mode) };
+                    mode.write_cond(blk)
+                }
             } else {
                 x.write_cond(blk)
             }
@@ -1009,9 +1024,8 @@ mod tests {
         do x.write_downgrade |xwrite| {
             let mut xopt = some(xwrite);
             do y.write_downgrade |_ywrite| {
-                do y.downgrade(option::swap_unwrap(&mut xopt)).read {
-                    error!("oops, y.downgrade(x) should have failed!");
-                }
+                y.downgrade(option::swap_unwrap(&mut xopt));
+                error!("oops, y.downgrade(x) should have failed!");
             }
         }
     }

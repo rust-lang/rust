@@ -152,7 +152,7 @@ fn to_uint<T>(thing: &T) -> uint unsafe {
 
 /// Determine if two borrowed pointers point to the same thing.
 #[inline(always)]
-fn ref_eq<T>(thing: &T, other: &T) -> bool {
+fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
     to_uint(thing) == to_uint(other)
 }
 
