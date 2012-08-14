@@ -54,6 +54,7 @@ export
 
    // Comparing strings
    eq,
+   eq_slice,
    le,
    hash,
 

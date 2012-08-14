@@ -389,6 +389,12 @@ fn hashmap<K: const, V: copy>(+hasher: hashfn<K>, +eqer: eqfn<K>)
     chained::mk(hasher, eqer)
 }
 
+/// Construct a hashmap for string-slice keys
+fn str_slice_hash<V: copy>() -> hashmap<&str, V> {
+    return hashmap(|s| hash::hash_str(*s) as uint,
+                   |a,b| str::eq_slice(*a, *b));
+}
+
 /// Construct a hashmap for string keys
 fn str_hash<V: copy>() -> hashmap<~str, V> {
     return hashmap(str::hash, str::eq);
