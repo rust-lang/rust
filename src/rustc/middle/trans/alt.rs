@@ -41,7 +41,7 @@ enum opt_result {
     range_result(result, result),
 }
 fn trans_opt(bcx: block, o: opt) -> opt_result {
-    let _icx = bcx.insn_ctxt(~"alt::trans_opt");
+    let _icx = bcx.insn_ctxt("alt::trans_opt");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     match o {
@@ -303,7 +303,7 @@ fn get_options(ccx: @crate_ctxt, m: match_, col: uint) -> ~[opt] {
 fn extract_variant_args(bcx: block, pat_id: ast::node_id,
                         vdefs: {enm: def_id, var: def_id}, val: ValueRef) ->
    {vals: ~[ValueRef], bcx: block} {
-    let _icx = bcx.insn_ctxt(~"alt::extract_variant_args");
+    let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
     let enum_ty_substs = match check ty::get(node_id_type(bcx, pat_id))
         .struct {
@@ -449,7 +449,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
       For an empty match, a fall-through case must exist
      */
     assert(m.len() > 0u || is_some(chk));
-    let _icx = bcx.insn_ctxt(~"alt::compile_submatch");
+    let _icx = bcx.insn_ctxt("alt::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
     if m.len() == 0u { Br(bcx, option::get(chk)()); return; }
@@ -735,7 +735,7 @@ fn make_phi_bindings(bcx: block,
                      map: ~[exit_node],
                      ids: pat_util::pat_id_map)
     -> option<phi_bindings_list> {
-    let _icx = bcx.insn_ctxt(~"alt::make_phi_bindings");
+    let _icx = bcx.insn_ctxt("alt::make_phi_bindings");
     let our_block = bcx.llbb as uint;
     let mut phi_bindings = ~[];
     for ids.each |name, node_id| {
@@ -815,7 +815,7 @@ fn trans_alt(bcx: block,
              arms: ~[ast::arm],
              mode: ast::alt_mode,
              dest: dest) -> block {
-    let _icx = bcx.insn_ctxt(~"alt::trans_alt");
+    let _icx = bcx.insn_ctxt("alt::trans_alt");
     do with_scope(bcx, alt_expr.info(), ~"alt") |bcx| {
         trans_alt_inner(bcx, expr, arms, mode, dest)
     }
@@ -823,7 +823,7 @@ fn trans_alt(bcx: block,
 
 fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
                    mode: ast::alt_mode, dest: dest) -> block {
-    let _icx = scope_cx.insn_ctxt(~"alt::trans_alt_inner");
+    let _icx = scope_cx.insn_ctxt("alt::trans_alt_inner");
     let bcx = scope_cx, tcx = bcx.tcx();
     let mut bodies = ~[], matches = ~[];
 
@@ -897,7 +897,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
 // Not alt-related, but similar to the pattern-munging code above
 fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                         make_copy: bool) -> block {
-    let _icx = bcx.insn_ctxt(~"alt::bind_irrefutable_pat");
+    let _icx = bcx.insn_ctxt("alt::bind_irrefutable_pat");
     let ccx = bcx.fcx.ccx;
     let mut bcx = bcx;
 
