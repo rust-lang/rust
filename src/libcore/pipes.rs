@@ -581,14 +581,14 @@ that vector. The index points to an endpoint that has either been
 closed by the sender or has a message waiting to be received.
 
 */
-fn wait_many(pkts: &[*packet_header]) -> uint {
+fn wait_many<T: selectable>(pkts: &[T]) -> uint {
     let this = rustrt::rust_get_task();
 
     rustrt::task_clear_event_reject(this);
     let mut data_avail = false;
     let mut ready_packet = pkts.len();
     for pkts.eachi |i, p| unsafe {
-        let p = unsafe { &*p };
+        let p = unsafe { &*p.header() };
         let old = p.mark_blocked(this);
         match old {
           full | terminated => {
@@ -605,7 +605,7 @@ fn wait_many(pkts: &[*packet_header]) -> uint {
     while !data_avail {
         debug!{"sleeping on %? packets", pkts.len()};
         let event = wait_event(this) as *packet_header;
-        let pos = vec::position(pkts, |p| p == event);
+        let pos = vec::position(pkts, |p| p.header() == event);
 
         match pos {
           some(i) => {
@@ -618,13 +618,13 @@ fn wait_many(pkts: &[*packet_header]) -> uint {
 
     debug!{"%?", pkts[ready_packet]};
 
-    for pkts.each |p| { unsafe{ (*p).unblock()} }
+    for pkts.each |p| { unsafe{ (*p.header()).unblock()} }
 
     debug!("%?, %?", ready_packet, pkts[ready_packet]);
 
     unsafe {
-        assert (*pkts[ready_packet]).state == full
-            || (*pkts[ready_packet]).state == terminated;
+        assert (*pkts[ready_packet].header()).state == full
+            || (*pkts[ready_packet].header()).state == terminated;
     }
 
     ready_packet
@@ -686,7 +686,7 @@ impl *packet_header: selectable {
 
 /// Returns the index of an endpoint that is ready to receive.
 fn selecti<T: selectable>(endpoints: &[T]) -> uint {
-    wait_many(endpoints.map(|p| p.header()))
+    wait_many(endpoints)
 }
 
 /// Returns 0 or 1 depending on which endpoint is ready to receive
