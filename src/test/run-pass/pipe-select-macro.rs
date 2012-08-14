@@ -1,3 +1,4 @@
+// xfail-pretty
 
 // Protocols
 proto! foo {
