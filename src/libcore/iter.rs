@@ -1,9 +1,9 @@
-trait base_iter<A> {
+trait BaseIter<A> {
     fn each(blk: fn(A) -> bool);
     fn size_hint() -> option<uint>;
 }
 
-trait extended_iter<A> {
+trait ExtendedIter<A> {
     fn eachi(blk: fn(uint, A) -> bool);
     fn all(blk: fn(A) -> bool) -> bool;
     fn any(blk: fn(A) -> bool) -> bool;
@@ -13,14 +13,14 @@ trait extended_iter<A> {
     fn position(f: fn(A) -> bool) -> option<uint>;
 }
 
-trait times {
+trait Times {
     fn times(it: fn() -> bool);
 }
-trait timesi{
+trait TimesIx{
     fn timesi(it: fn(uint) -> bool);
 }
 
-trait copyable_iter<A:copy> {
+trait CopyableIter<A:copy> {
     fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
     fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
     fn to_vec() -> ~[A];
@@ -29,7 +29,7 @@ trait copyable_iter<A:copy> {
     fn find(p: fn(A) -> bool) -> option<A>;
 }
 
-fn eachi<A,IA:base_iter<A>>(self: IA, blk: fn(uint, A) -> bool) {
+fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     let mut i = 0u;
     for self.each |a| {
         if !blk(i, a) { break; }
@@ -37,21 +37,21 @@ fn eachi<A,IA:base_iter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     }
 }
 
-fn all<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+fn all<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
         if !blk(a) { return false; }
     }
     return true;
 }
 
-fn any<A,IA:base_iter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+fn any<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
         if blk(a) { return true; }
     }
     return false;
 }
 
-fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
+fn filter_to_vec<A:copy,IA:BaseIter<A>>(self: IA,
                                          prd: fn(A) -> bool) -> ~[A] {
     let mut result = ~[];
     self.size_hint().iter(|hint| vec::reserve(result, hint));
@@ -61,7 +61,7 @@ fn filter_to_vec<A:copy,IA:base_iter<A>>(self: IA,
     return result;
 }
 
-fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
+fn map_to_vec<A:copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
     let mut result = ~[];
     self.size_hint().iter(|hint| vec::reserve(result, hint));
     for self.each |a| {
@@ -70,7 +70,7 @@ fn map_to_vec<A:copy,B,IA:base_iter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
     return result;
 }
 
-fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
+fn flat_map_to_vec<A:copy,B:copy,IA:BaseIter<A>,IB:BaseIter<B>>(
     self: IA, op: fn(A) -> IB) -> ~[B] {
 
     let mut result = ~[];
@@ -82,7 +82,7 @@ fn flat_map_to_vec<A:copy,B:copy,IA:base_iter<A>,IB:base_iter<B>>(
     return result;
 }
 
-fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
+fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     let mut b <- b0;
     for self.each |a| {
         b = blk(b, a);
@@ -90,18 +90,18 @@ fn foldl<A,B,IA:base_iter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     return b;
 }
 
-fn to_vec<A:copy,IA:base_iter<A>>(self: IA) -> ~[A] {
+fn to_vec<A:copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
     foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(r, ~[a]))
 }
 
-fn contains<A,IA:base_iter<A>>(self: IA, x: A) -> bool {
+fn contains<A,IA:BaseIter<A>>(self: IA, x: A) -> bool {
     for self.each |a| {
         if a == x { return true; }
     }
     return false;
 }
 
-fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
+fn count<A,IA:BaseIter<A>>(self: IA, x: A) -> uint {
     do foldl(self, 0u) |count, value| {
         if value == x {
             count + 1u
@@ -111,7 +111,7 @@ fn count<A,IA:base_iter<A>>(self: IA, x: A) -> uint {
     }
 }
 
-fn position<A,IA:base_iter<A>>(self: IA, f: fn(A) -> bool)
+fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
         -> option<uint> {
     let mut i = 0;
     for self.each |a| {
@@ -133,7 +133,7 @@ fn repeat(times: uint, blk: fn() -> bool) {
     }
 }
 
-fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
+fn min<A:copy,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,option<A>,IA>(self, none) |a, b| {
         match a {
           some(a_) if a_ < b => {
@@ -149,7 +149,7 @@ fn min<A:copy,IA:base_iter<A>>(self: IA) -> A {
     }
 }
 
-fn max<A:copy,IA:base_iter<A>>(self: IA) -> A {
+fn max<A:copy,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,option<A>,IA>(self, none) |a, b| {
         match a {
           some(a_) if a_ > b => {

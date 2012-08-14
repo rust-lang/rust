@@ -340,40 +340,40 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
     if c == 'u' || c == 'i' {
         let signed = c == 'i';
         let mut tp = {
-            if signed { either::left(ast::ty_i) }
-            else { either::right(ast::ty_u) }
+            if signed { either::Left(ast::ty_i) }
+            else { either::Right(ast::ty_u) }
         };
         bump(rdr);
         c = rdr.curr;
         if c == '8' {
             bump(rdr);
-            tp = if signed { either::left(ast::ty_i8) }
-                      else { either::right(ast::ty_u8) };
+            tp = if signed { either::Left(ast::ty_i8) }
+                      else { either::Right(ast::ty_u8) };
         }
         n = nextch(rdr);
         if c == '1' && n == '6' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { either::left(ast::ty_i16) }
-                      else { either::right(ast::ty_u16) };
+            tp = if signed { either::Left(ast::ty_i16) }
+                      else { either::Right(ast::ty_u16) };
         } else if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { either::left(ast::ty_i32) }
-                      else { either::right(ast::ty_u32) };
+            tp = if signed { either::Left(ast::ty_i32) }
+                      else { either::Right(ast::ty_u32) };
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { either::left(ast::ty_i64) }
-                      else { either::right(ast::ty_u64) };
+            tp = if signed { either::Left(ast::ty_i64) }
+                      else { either::Right(ast::ty_u64) };
         }
         if str::len(num_str) == 0u {
             rdr.fatal(~"no valid digits found for number");
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
         match tp {
-          either::left(t) => return token::LIT_INT(parsed as i64, t),
-          either::right(t) => return token::LIT_UINT(parsed, t)
+          either::Left(t) => return token::LIT_INT(parsed as i64, t),
+          either::Right(t) => return token::LIT_UINT(parsed, t)
         }
     }
     let mut is_float = false;

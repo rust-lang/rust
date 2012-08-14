@@ -1,6 +1,6 @@
 //! A type representing either success or failure
 
-import either::either;
+import either::Either;
 
 /// The result type
 enum result<T, U> {
@@ -59,10 +59,10 @@ pure fn is_err<T, U>(res: result<T, U>) -> bool {
  * `ok` result variants are converted to `either::right` variants, `err`
  * result variants are converted to `either::left`.
  */
-pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> either<T, U> {
+pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> Either<T, U> {
     match res {
-      ok(res) => either::right(res),
-      err(fail_) => either::left(fail_)
+      ok(res) => either::Right(res),
+      err(fail_) => either::Left(fail_)
     }
 }
 

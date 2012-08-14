@@ -49,7 +49,7 @@ pure fn build<A, B: buildable<A>>(builder: fn(push: pure fn(+A))) -> B {
 }
 
 /// Apply a function to each element of an iterable and return the results
-fn map<T, IT: base_iter<T>, U, BU: buildable<U>>
+fn map<T, IT: BaseIter<T>, U, BU: buildable<U>>
     (v: IT, f: fn(T) -> U) -> BU {
     do build |push| {
         for v.each() |elem| {

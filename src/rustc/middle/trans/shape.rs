@@ -15,7 +15,7 @@ import syntax::ast_util::{dummy_sp, new_def_hash};
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import syntax::codemap::span;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 import std::map::hashmap;
 import option::is_some;
@@ -65,7 +65,7 @@ type ctxt =
     {mut next_tag_id: u16,
      pad: u16,
      tag_id_to_index: hashmap<nominal_id, u16>,
-     tag_order: dvec<enum_data>,
+     tag_order: DVec<enum_data>,
      resources: interner::interner<nominal_id>,
      llshapetablesty: TypeRef,
      llshapetables: ValueRef};

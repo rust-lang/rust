@@ -4,10 +4,10 @@
 use std;
 
 import dvec::*;
-import dvec::dvec;
+import dvec::DVec;
 import std::map::hashmap;
 
-type header_map = hashmap<~str, @dvec<@~str>>;
+type header_map = hashmap<~str, @DVec<@~str>>;
 
 // the unused ty param is necessary so this gets monomorphized
 fn request<T: copy>(req: header_map) {

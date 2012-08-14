@@ -5015,8 +5015,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast::item_const(_, expr) => consts::trans_const(ccx, expr, item.id),
       ast::item_foreign_mod(foreign_mod) => {
         let abi = match attr::foreign_abi(item.attrs) {
-          either::right(abi_) => abi_,
-          either::left(msg) => ccx.sess.span_fatal(item.span, msg)
+          either::Right(abi_) => abi_,
+          either::Left(msg) => ccx.sess.span_fatal(item.span, msg)
         };
         foreign::trans_foreign_mod(ccx, foreign_mod, abi);
       }

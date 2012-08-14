@@ -7,7 +7,7 @@ import pp::{break_offset, word, printer,
 import diagnostic;
 import ast::{required, provided};
 import ast_util::{operator_prec};
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import parse::classify::*;
 import util::interner;
 
@@ -35,7 +35,7 @@ type ps =
       literals: option<~[comments::lit]>,
       mut cur_cmnt: uint,
       mut cur_lit: uint,
-      boxes: dvec<pp::breaks>,
+      boxes: DVec<pp::breaks>,
       ann: pp_ann};
 
 fn ibox(s: ps, u: uint) {

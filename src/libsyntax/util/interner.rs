@@ -3,11 +3,11 @@
 // type, and vice versa.
 import std::map;
 import std::map::{hashmap, hashfn, eqfn};
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 type hash_interner<T: const> =
     {map: hashmap<T, uint>,
-     vect: dvec<T>,
+     vect: DVec<T>,
      hasher: hashfn<T>,
      eqer: eqfn<T>};
 

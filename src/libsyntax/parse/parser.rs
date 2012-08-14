@@ -1,7 +1,7 @@
 import print::pprust::expr_to_str;
 
 import result::result;
-import either::{either, left, right};
+import either::{Either, Left, Right};
 import std::map::{hashmap, str_hash};
 import token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
                INTERPOLATED};
@@ -102,7 +102,7 @@ enum class_contents { ctor_decl(fn_decl, ~[attribute], blk, codemap::span),
                       dtor_decl(blk, ~[attribute], codemap::span),
                       members(~[@class_member]) }
 
-type arg_or_capture_item = either<arg, capture_item>;
+type arg_or_capture_item = Either<arg, capture_item>;
 type item_info = (ident, item_, option<~[attribute]>);
 
 enum item_or_view_item {
@@ -557,9 +557,9 @@ class parser {
         }
 
         if self.eat_keyword(~"move") {
-            either::right(parse_capture_item(self, true))
+            either::Right(parse_capture_item(self, true))
         } else if self.eat_keyword(~"copy") {
-            either::right(parse_capture_item(self, false))
+            either::Right(parse_capture_item(self, false))
         } else {
             parse_arg_fn(self)
         }
@@ -570,7 +570,7 @@ class parser {
         let i = self.parse_value_ident();
         self.expect(token::COLON);
         let t = self.parse_ty(false);
-        either::left({mode: m, ty: t, ident: i, id: self.get_id()})
+        either::Left({mode: m, ty: t, ident: i, id: self.get_id()})
     }
 
     fn parse_arg_or_capture_item() -> arg_or_capture_item {
@@ -588,7 +588,7 @@ class parser {
                   node: ty_infer,
                   span: mk_sp(p.span.lo, p.span.hi)}
             };
-            either::left({mode: m, ty: t, ident: i, id: p.get_id()})
+            either::Left({mode: m, ty: t, ident: i, id: p.get_id()})
         }
     }
 
@@ -2051,8 +2051,8 @@ class parser {
             let mut item_attrs;
             match self.parse_outer_attrs_or_ext(first_item_attrs) {
               none => item_attrs = ~[],
-              some(left(attrs)) => item_attrs = attrs,
-              some(right(ext)) => {
+              some(Left(attrs)) => item_attrs = attrs,
+              some(Right(ext)) => {
                 return @spanned(lo, ext.span.hi,
                                 stmt_expr(ext, self.get_id()));
               }

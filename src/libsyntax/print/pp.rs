@@ -1,5 +1,5 @@
 import io::WriterUtil;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
@@ -222,7 +222,7 @@ type printer_ = {
     mut top: uint, // index of top of scan_stack
     mut bottom: uint, // index of bottom of scan_stack
     // stack of blocks-in-progress being flushed by print
-    print_stack: dvec<print_stack_elt>,
+    print_stack: DVec<print_stack_elt>,
     // buffered indentation to avoid writing trailing whitespace
     mut pending_indentation: int,
     mut token_tree_last_was_ident: bool

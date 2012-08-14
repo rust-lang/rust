@@ -1,7 +1,7 @@
-import dvec::dvec;
+import dvec::DVec;
 
 type parser = {
-    tokens: dvec<int>,
+    tokens: DVec<int>,
 };
 
 trait parse {

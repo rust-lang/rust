@@ -1,6 +1,6 @@
 import codemap::span;
 import std::map::{hashmap, str_hash, box_str_hash};
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 import base::*;
 
@@ -124,7 +124,7 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 type binders =
     {real_binders: hashmap<ident, selector>,
-     literal_ast_matchers: dvec<selector>};
+     literal_ast_matchers: DVec<selector>};
 type bindings = hashmap<ident, arb_depth<matchable>>;
 
 fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }

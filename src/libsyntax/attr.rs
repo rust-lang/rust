@@ -2,7 +2,7 @@
 
 import std::map;
 import std::map::hashmap;
-import either::either;
+import either::Either;
 import diagnostic::span_handler;
 import ast_util::{spanned, dummy_spanned};
 import parse::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -330,22 +330,22 @@ fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     }
 }
 
-fn foreign_abi(attrs: ~[ast::attribute]) -> either<~str, ast::foreign_abi> {
+fn foreign_abi(attrs: ~[ast::attribute]) -> Either<~str, ast::foreign_abi> {
     return match attr::first_attr_value_str_by_name(attrs, ~"abi") {
       option::none => {
-        either::right(ast::foreign_abi_cdecl)
+        either::Right(ast::foreign_abi_cdecl)
       }
       option::some(@~"rust-intrinsic") => {
-        either::right(ast::foreign_abi_rust_intrinsic)
+        either::Right(ast::foreign_abi_rust_intrinsic)
       }
       option::some(@~"cdecl") => {
-        either::right(ast::foreign_abi_cdecl)
+        either::Right(ast::foreign_abi_cdecl)
       }
       option::some(@~"stdcall") => {
-        either::right(ast::foreign_abi_stdcall)
+        either::Right(ast::foreign_abi_stdcall)
       }
       option::some(t) => {
-        either::left(~"unsupported abi: " + *t)
+        either::Left(~"unsupported abi: " + *t)
       }
     };
 }

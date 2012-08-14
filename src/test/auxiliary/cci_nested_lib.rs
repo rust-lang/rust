@@ -1,7 +1,7 @@
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 type entry<A,B> = {key: A, value: B};
-type alist<A,B> = { eq_fn: fn@(A,A) -> bool, data: dvec<entry<A,B>> };
+type alist<A,B> = { eq_fn: fn@(A,A) -> bool, data: DVec<entry<A,B>> };
 
 fn alist_add<A: copy, B: copy>(lst: alist<A,B>, k: A, v: B) {
     lst.data.push({key:k, value:v});

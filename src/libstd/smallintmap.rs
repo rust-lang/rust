@@ -4,12 +4,12 @@
  */
 import core::option;
 import core::option::{some, none};
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import map::map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
-type smallintmap_<T: copy> = {v: dvec<option<T>>};
+type smallintmap_<T: copy> = {v: DVec<option<T>>};
 
 enum smallintmap<T:copy> {
     smallintmap_(@smallintmap_<T>)

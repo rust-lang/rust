@@ -2,7 +2,7 @@ mod argparse {
     use std;
 
     import std::map;
-    import either::{either, left, right};
+    import either::{Either, Left, Right};
 
     struct Flag {
         name: &str;

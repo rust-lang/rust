@@ -30,7 +30,7 @@ import syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
 import syntax::visit::{visit_mod};
 import util::ppaux::ty_to_str;
 
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import result::ok;
 import std::map::{hashmap, int_hash};
 import uint::range;
@@ -121,11 +121,11 @@ fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
 class CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    let inherent_methods: hashmap<def_id,@dvec<@Impl>>;
+    let inherent_methods: hashmap<def_id,@DVec<@Impl>>;
 
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
-    let extension_methods: hashmap<def_id,@dvec<@Impl>>;
+    let extension_methods: hashmap<def_id,@DVec<@Impl>>;
 
     new() {
         self.inherent_methods = new_def_hash();
@@ -356,7 +356,7 @@ class CoherenceChecker {
     }
 
     fn check_implementation_coherence(_trait_def_id: def_id,
-                                      implementations: @dvec<@Impl>) {
+                                      implementations: @DVec<@Impl>) {
 
         // Unify pairs of polytypes.
         for range(0, implementations.len()) |i| {
@@ -540,7 +540,7 @@ class CoherenceChecker {
         return trait_id;
     }
 
-    fn gather_privileged_types(items: ~[@item]) -> @dvec<def_id> {
+    fn gather_privileged_types(items: ~[@item]) -> @DVec<def_id> {
         let results = @dvec();
         for items.each |item| {
             match item.node {

@@ -15,7 +15,7 @@
  * ~~~
  */
 
-import either::either;
+import either::Either;
 import pipes::recv;
 
 export future;
@@ -32,7 +32,7 @@ export future_pipe;
 
 #[doc = "The future type"]
 enum future<A> = {
-    mut v: either<@A, fn@() -> A>
+    mut v: Either<@A, fn@() -> A>
 };
 
 /// Methods on the `future` type
@@ -60,7 +60,7 @@ fn from_value<A>(+val: A) -> future<A> {
      */
 
     future({
-        mut v: either::left(@val)
+        mut v: either::Left(@val)
     })
 }
 
@@ -97,7 +97,7 @@ fn from_fn<A>(f: fn@() -> A) -> future<A> {
      */
 
     future({
-        mut v: either::right(f)
+        mut v: either::Right(f)
     })
 }
 
@@ -124,10 +124,10 @@ fn with<A,B>(future: &future<A>, blk: fn((&A)) -> B) -> B {
     //! Work with the value without copying it
 
     let v = match copy future.v {
-      either::left(v) => v,
-      either::right(f) => {
+      either::Left(v) => v,
+      either::Right(f) => {
         let v = @f();
-        future.v = either::left(v);
+        future.v = either::Left(v);
         v
       }
     };

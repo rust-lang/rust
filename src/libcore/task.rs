@@ -693,7 +693,7 @@ type task_id = int;
 type rust_task = libc::c_void;
 type rust_closure = libc::c_void;
 
-type taskset = send_map::linear::linear_map<*rust_task,()>;
+type taskset = send_map::linear::LinearMap<*rust_task,()>;
 
 fn new_taskset() -> taskset {
     pure fn task_hash(t: &*rust_task) -> uint {
@@ -1271,7 +1271,7 @@ impl<T: owned> @T: local_data { }
 // heavily in future, this could be made more efficient with a proper map.
 type task_local_element = (*libc::c_void, *libc::c_void, local_data);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
-type task_local_map = @dvec::dvec<option<task_local_element>>;
+type task_local_map = @dvec::DVec<option<task_local_element>>;
 
 extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();

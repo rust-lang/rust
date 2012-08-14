@@ -415,7 +415,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
 
     match it.node {
       ast::item_foreign_mod(nmod) if attr::foreign_abi(it.attrs) !=
-      either::right(ast::foreign_abi_rust_intrinsic) => {
+      either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
             match ni.node {
               ast::foreign_item_fn(decl, tps) => {

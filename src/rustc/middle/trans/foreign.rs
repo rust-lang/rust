@@ -1168,8 +1168,8 @@ fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
         ast_map::node_foreign_item(_, abi, _) => abi
       },
       some(_) => match attr::foreign_abi(i.attrs) {
-        either::right(abi) => abi,
-        either::left(msg) => ccx.sess.span_fatal(i.span, msg)
+        either::Right(abi) => abi,
+        either::Left(msg) => ccx.sess.span_fatal(i.span, msg)
       }
     }
 }

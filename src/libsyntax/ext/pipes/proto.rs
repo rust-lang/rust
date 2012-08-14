@@ -1,5 +1,5 @@
 import to_str::ToStr;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 import ast::{ident};
 
@@ -62,7 +62,7 @@ enum state {
         span: span,
         dir: direction,
         ty_params: ~[ast::ty_param],
-        messages: dvec<message>,
+        messages: DVec<message>,
         proto: protocol,
     }),
 }
@@ -112,7 +112,7 @@ fn protocol(name: ident, +span: span) -> protocol {
 class protocol_ {
     let name: ident;
     let span: span;
-    let states: dvec<state>;
+    let states: DVec<state>;
 
     let mut bounded: option<bool>;
 

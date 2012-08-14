@@ -6,25 +6,25 @@ import option::{some, none};
 import option = option::option;
 import Path = path::Path;
 import tuple::{TupleOps, ExtendedTupleOps};
-import str::{str_slice, unique_str};
-import vec::{const_vector, copyable_vector, immutable_vector};
-import vec::{immutable_copyable_vector, iter_trait_extensions};
-import iter::{base_iter, extended_iter, copyable_iter, times, timesi};
+import str::{StrSlice, UniqueStr};
+import vec::{ConstVector, CopyableVector, ImmutableVector};
+import vec::{ImmutableCopyableVector, IterTraitExtensions};
+import iter::{BaseIter, ExtendedIter, CopyableIter, Times, TimesIx};
 import num::Num;
-import ptr::ptr;
+import ptr::Ptr;
 import to_str::ToStr;
 
 export Path, option, some, none, unreachable;
 export extensions;
 // The following exports are the extension impls for numeric types
-export Num, times, timesi;
+export Num, Times, TimesIx;
 // The following exports are the common traits
-export str_slice, unique_str;
-export const_vector, copyable_vector, immutable_vector;
-export immutable_copyable_vector, iter_trait_extensions;
-export base_iter, copyable_iter, extended_iter;
+export StrSlice, UniqueStr;
+export ConstVector, CopyableVector, ImmutableVector;
+export ImmutableCopyableVector, IterTraitExtensions;
+export BaseIter, CopyableIter, ExtendedIter;
 export TupleOps, ExtendedTupleOps;
-export ptr;
+export Ptr;
 export ToStr;
 
 // The following exports are the core operators and kinds

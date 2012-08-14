@@ -16,7 +16,7 @@ export to_uint;
 export ref_eq;
 export buf_len;
 export position;
-export ptr;
+export Ptr;
 
 import libc::{c_void, size_t};
 
@@ -156,13 +156,13 @@ fn ref_eq<T>(thing: &a/T, other: &b/T) -> bool {
     to_uint(thing) == to_uint(other)
 }
 
-trait ptr {
+trait Ptr {
     pure fn is_null() -> bool;
     pure fn is_not_null() -> bool;
 }
 
 /// Extension methods for pointers
-impl<T> *T: ptr {
+impl<T> *T: Ptr {
     /// Returns true if the pointer is equal to the null pointer.
     pure fn is_null() -> bool { is_null(self) }
 

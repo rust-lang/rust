@@ -1,4 +1,4 @@
-import either::{either, left, right};
+import either::{Either, Left, Right};
 import ast_util::spanned;
 import common::*; //resolve bug?
 
@@ -7,7 +7,7 @@ export parser_attr;
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option<either<~[ast::attribute], @ast::expr>>;
+type attr_or_ext = option<Either<~[ast::attribute], @ast::expr>>;
 
 trait parser_attr {
     fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
@@ -36,18 +36,18 @@ impl parser: parser_attr {
                 self.bump();
                 let first_attr =
                     self.parse_attribute_naked(ast::attr_outer, lo);
-                return some(left(vec::append(~[first_attr],
+                return some(Left(vec::append(~[first_attr],
                                           self.parse_outer_attributes())));
             } else if !(self.look_ahead(1u) == token::LT
                         || self.look_ahead(1u) == token::LBRACKET
                         || self.look_ahead(1u) == token::POUND
                         || expect_item_next) {
                 self.bump();
-                return some(right(self.parse_syntax_ext_naked(lo)));
+                return some(Right(self.parse_syntax_ext_naked(lo)));
             } else { return none; }
         }
         token::DOC_COMMENT(_) => {
-          return some(left(self.parse_outer_attributes()));
+          return some(Left(self.parse_outer_attributes()));
         }
         _ => return none
       }

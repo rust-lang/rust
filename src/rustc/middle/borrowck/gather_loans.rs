@@ -393,7 +393,7 @@ impl gather_loan_ctxt {
         }
     }
 
-    fn add_loans(scope_id: ast::node_id, loans: @dvec<loan>) {
+    fn add_loans(scope_id: ast::node_id, loans: @DVec<loan>) {
         match self.req_maps.req_loan_map.find(scope_id) {
           some(l) => {
             (*l).push(loans);

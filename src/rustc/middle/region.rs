@@ -14,7 +14,7 @@ import syntax::codemap::span;
 import syntax::print::pprust;
 import syntax::ast_util::new_def_hash;
 import syntax::ast_map;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import metadata::csearch;
 
 import std::list;
@@ -343,7 +343,7 @@ fn resolve_crate(sess: session, def_map: resolve3::DefMap,
 // dependencies until a fixed point is reached.
 
 type region_paramd_items = hashmap<ast::node_id, ()>;
-type dep_map = hashmap<ast::node_id, @dvec<ast::node_id>>;
+type dep_map = hashmap<ast::node_id, @DVec<ast::node_id>>;
 
 type determine_rp_ctxt_ = {
     sess: session,
@@ -351,7 +351,7 @@ type determine_rp_ctxt_ = {
     def_map: resolve3::DefMap,
     region_paramd_items: region_paramd_items,
     dep_map: dep_map,
-    worklist: dvec<ast::node_id>,
+    worklist: DVec<ast::node_id>,
 
     // the innermost enclosing item id
     mut item_id: ast::node_id,

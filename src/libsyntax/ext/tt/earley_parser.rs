@@ -7,7 +7,7 @@ import parse::parser::{parser,SOURCE_FILE};
 //import parse::common::parser_common;
 import parse::common::*; //resolve bug?
 import parse::parse_sess;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 import ast_util::mk_sp;
 import std::map::{hashmap, box_str_hash};
@@ -42,7 +42,7 @@ type matcher_pos = ~{
     sep: option<token>,
     mut idx: uint,
     mut up: matcher_pos_up, // mutable for swapping only
-    matches: ~[dvec<@named_match>],
+    matches: ~[DVec<@named_match>],
     match_lo: uint, match_hi: uint,
     sp_lo: uint,
 };
