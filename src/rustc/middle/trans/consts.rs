@@ -4,7 +4,7 @@ import base::get_insn_ctxt;
 
 fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     -> ValueRef {
-    let _icx = cx.insn_ctxt(~"trans_lit");
+    let _icx = cx.insn_ctxt("trans_lit");
     match lit.node {
       ast::lit_int(i, t) => C_integral(T_int_ty(cx, t), i as u64, True),
       ast::lit_uint(u, t) => C_integral(T_uint_ty(cx, t), u, False),
@@ -82,7 +82,7 @@ fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
 
 
 fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
-    let _icx = cx.insn_ctxt(~"const_expr");
+    let _icx = cx.insn_ctxt("const_expr");
     match e.node {
       ast::expr_lit(lit) => consts::const_lit(cx, e, *lit),
       ast::expr_binary(b, e1, e2) => {
@@ -366,7 +366,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
 }
 
 fn trans_const(ccx: @crate_ctxt, e: @ast::expr, id: ast::node_id) {
-    let _icx = ccx.insn_ctxt(~"trans_const");
+    let _icx = ccx.insn_ctxt("trans_const");
     let v = const_expr(ccx, e);
 
     // The scalars come back as 1st class LLVM vals

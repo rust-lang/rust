@@ -20,7 +20,7 @@ import syntax::print::pprust::expr_to_str;
 
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: ~[@ast::method], tps: ~[ast::ty_param]) {
-    let _icx = ccx.insn_ctxt(~"impl::trans_impl");
+    let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { return; }
     let sub_path = vec::append_one(path, path_name(name));
     for vec::each(methods) |m| {
@@ -41,7 +41,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
 }
 
 fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
-    let _icx = bcx.insn_ctxt(~"impl::trans_self_arg");
+    let _icx = bcx.insn_ctxt("impl::trans_self_arg");
     let basety = expr_ty(bcx, base);
     let m_by_ref = ast::expl(ast::by_ref);
     let mut temp_cleanups = ~[];
@@ -59,7 +59,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
 fn trans_method_callee(bcx: block, callee_id: ast::node_id,
                        self: @ast::expr, mentry: typeck::method_map_entry)
     -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt(~"impl::trans_method_callee");
+    let _icx = bcx.insn_ctxt("impl::trans_method_callee");
     match mentry.origin {
       typeck::method_static(did) => {
         let {bcx, val} = trans_self_arg(bcx, self, mentry.derefs);
@@ -89,7 +89,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
 
 fn trans_static_method_callee(bcx: block, method_id: ast::def_id,
                               callee_id: ast::node_id) -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt(~"impl::trans_static_method_callee");
+    let _icx = bcx.insn_ctxt("impl::trans_static_method_callee");
     let ccx = bcx.ccx();
 
     let mname = if method_id.crate == ast::local_crate {
@@ -175,7 +175,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                               trait_id: ast::def_id, n_method: uint,
                               vtbl: typeck::vtable_origin)
     -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt(~"impl::trans_monomorphized_callee");
+    let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
     match vtbl {
       typeck::vtable_static(impl_did, impl_substs, sub_origins) => {
         let ccx = bcx.ccx();
@@ -210,7 +210,7 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
 fn trans_trait_callee(bcx: block, val: ValueRef,
                       callee_ty: ty::t, n_method: uint)
     -> lval_maybe_callee {
-    let _icx = bcx.insn_ctxt(~"impl::trans_trait_callee");
+    let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
     let ccx = bcx.ccx();
     let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, ~[0u, 0u]),
                                        T_ptr(T_ptr(T_vtable()))));
@@ -299,7 +299,7 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
 }
 
 fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
-    let _icx = ccx.insn_ctxt(~"impl::make_vtable");
+    let _icx = ccx.insn_ctxt("impl::make_vtable");
     let tbl = C_struct(ptrs);
     let vt_gvar = str::as_c_str(ccx.names(~"vtable"), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(tbl), buf)
@@ -312,7 +312,7 @@ fn make_vtable(ccx: @crate_ctxt, ptrs: ~[ValueRef]) -> ValueRef {
 
 fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
                     vtables: typeck::vtable_res) -> ValueRef {
-    let _icx = ccx.insn_ctxt(~"impl::make_impl_vtable");
+    let _icx = ccx.insn_ctxt("impl::make_impl_vtable");
     let tcx = ccx.tcx;
 
     // XXX: This should support multiple traits.
@@ -345,7 +345,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
 
 fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     -> block {
-    let _icx = bcx.insn_ctxt(~"impl::trans_cast");
+    let _icx = bcx.insn_ctxt("impl::trans_cast");
     if dest == ignore { return trans_expr(bcx, val, ignore); }
     let ccx = bcx.ccx();
     let v_ty = expr_ty(bcx, val);
