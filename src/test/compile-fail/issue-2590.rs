@@ -1,3 +1,5 @@
+#[forbid(implicit_copies)];
+
 import dvec::dvec;
 
 type parser = {
@@ -10,7 +12,7 @@ trait parse {
 
 impl parser: parse {
     fn parse() -> ~[mut int] {
-        dvec::unwrap(self.tokens) //~ ERROR illegal move from self
+        dvec::unwrap(self.tokens) //~ ERROR implicitly copying
     }
 }
 
