@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 mod general_category {
     pure fn Cc(c: char) -> bool {
         return match c {
