@@ -1,8 +1,8 @@
 ;;; cm-mode.el --- Wrapper for CodeMirror-style Emacs modes
 
 ;; Version: 0.1.0
+;; Author: Mozilla
 ;; Url: https://github.com/mozilla/rust
-
 ;; Highlighting is done by running a stateful parser (with first-class
 ;; state object) over the buffer, line by line, using the output to
 ;; add 'face properties, and storing the parser state at the end of

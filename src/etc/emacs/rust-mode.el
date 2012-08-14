@@ -1,6 +1,7 @@
 ;;; rust-mode.el --- A major emacs mode for editing Rust source code
 
 ;; Version: 0.1.0
+;; Author: Mozilla
 ;; Package-Requires: ((cm-mode "0.1.0"))
 ;; Url: https://github.com/mozilla/rust
 
