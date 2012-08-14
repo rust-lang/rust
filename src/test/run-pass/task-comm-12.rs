@@ -20,7 +20,7 @@ fn test00() {
     }
 
     // Try joining tasks that have already finished.
-    future::get(option::unwrap(result));
+    future::get(&option::unwrap(result));
 
     debug!{"Joined task."};
 }

@@ -11,7 +11,7 @@ fn main() {
     error!{"2"};
     yield();
     error!{"3"};
-    future::get(option::unwrap(result));
+    future::get(&option::unwrap(result));
 }
 
 fn child() {
