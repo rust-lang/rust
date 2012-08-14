@@ -46,7 +46,13 @@ pure fn map<T, U>(opt: option<T>, f: fn(T) -> U) -> option<U> {
     match opt { some(x) => some(f(x)), none => none }
 }
 
-pure fn map_consume<T, U>(-opt: option<T>, f: fn(-T) -> U) -> option<U> {
+pure fn map_ref<T, U>(opt: &option<T>, f: fn(x: &T) -> U) -> option<U> {
+    //! Maps a `some` value by reference from one type to another
+
+    match *opt { some(ref x) => some(f(x)), none => none }
+}
+
+pure fn map_consume<T, U>(+opt: option<T>, f: fn(+T) -> U) -> option<U> {
     /*!
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
@@ -61,6 +67,16 @@ pure fn chain<T, U>(opt: option<T>, f: fn(T) -> option<U>) -> option<U> {
      */
 
     match opt { some(x) => f(x), none => none }
+}
+
+pure fn chain_ref<T, U>(opt: &option<T>,
+                        f: fn(x: &T) -> option<U>) -> option<U> {
+    /*!
+     * Update an optional value by optionally running its content by reference
+     * through a function that returns an option.
+     */
+
+    match *opt { some(ref x) => f(x), none => none }
 }
 
 #[inline(always)]
@@ -97,14 +113,28 @@ pure fn map_default<T, U>(opt: option<T>, +def: U, f: fn(T) -> U) -> U {
     match opt { none => def, some(t) => f(t) }
 }
 
+// This should replace map_default.
+pure fn map_default_ref<T, U>(opt: &option<T>, +def: U,
+                              f: fn(x: &T) -> U) -> U {
+    //! Applies a function to the contained value or returns a default
+
+    match *opt { none => def, some(ref t) => f(t) }
+}
+
+// This should change to by-copy mode; use iter_ref below for by reference
 pure fn iter<T>(opt: option<T>, f: fn(T)) {
     //! Performs an operation on the contained value or does nothing
 
     match opt { none => (), some(t) => f(t) }
 }
 
+pure fn iter_ref<T>(opt: &option<T>, f: fn(x: &T)) {
+    //! Performs an operation on the contained value by reference
+    match *opt { none => (), some(ref t) => f(t) }
+}
+
 #[inline(always)]
-pure fn unwrap<T>(-opt: option<T>) -> T {
+pure fn unwrap<T>(+opt: option<T>) -> T {
     /*!
      * Moves a value out of an option type and returns it.
      *
@@ -130,12 +160,13 @@ fn swap_unwrap<T>(opt: &mut option<T>) -> T {
     unwrap(util::replace(opt, none))
 }
 
-pure fn unwrap_expect<T>(-opt: option<T>, reason: &str) -> T {
+pure fn unwrap_expect<T>(+opt: option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     if opt.is_none() { fail reason.to_unique(); }
     unwrap(opt)
 }
 
+// Some of these should change to be &option<T>, some should not. See below.
 impl<T> option<T> {
     /**
      * Update an optional value by optionally running its content through a
@@ -153,6 +184,23 @@ impl<T> option<T> {
     pure fn is_some() -> bool { is_some(self) }
     /// Maps a `some` value from one type to another
     pure fn map<U>(f: fn(T) -> U) -> option<U> { map(self, f) }
+}
+
+impl<T> &option<T> {
+    /**
+     * Update an optional value by optionally running its content by reference
+     * through a function that returns an option.
+     */
+    pure fn chain_ref<U>(f: fn(x: &T) -> option<U>) -> option<U> {
+        chain_ref(self, f)
+    }
+    /// Applies a function to the contained value or returns a default
+    pure fn map_default_ref<U>(+def: U, f: fn(x: &T) -> U) -> U
+        { map_default_ref(self, def, f) }
+    /// Performs an operation on the contained value by reference
+    pure fn iter_ref(f: fn(x: &T)) { iter_ref(self, f) }
+    /// Maps a `some` value from one type to another by reference
+    pure fn map_ref<U>(f: fn(x: &T) -> U) -> option<U> { map_ref(self, f) }
 }
 
 impl<T: copy> option<T> {

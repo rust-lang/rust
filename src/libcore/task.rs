@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /*!
  * Task management.
  *
@@ -730,8 +734,8 @@ type taskgroup_arc = unsafe::Exclusive<option<taskgroup_data>>;
 type taskgroup_inner = &mut option<taskgroup_data>;
 
 // A taskgroup is 'dead' when nothing can cause it to fail; only members can.
-fn taskgroup_is_dead(tg: taskgroup_data) -> bool {
-    (&mut tg.members).is_empty()
+pure fn taskgroup_is_dead(tg: &taskgroup_data) -> bool {
+    (&tg.members).is_empty()
 }
 
 // A list-like structure by which taskgroups keep track of all ancestor groups
@@ -841,8 +845,11 @@ fn each_ancestor(list:        &mut ancestor_list,
                     do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
                         // Decide whether this group is dead. Note that the
                         // group being *dead* is disjoint from it *failing*.
-                        do tg_opt.iter |tg| {
-                            nobe_is_dead = taskgroup_is_dead(tg);
+                        match *tg_opt {
+                            some(ref tg) => {
+                                nobe_is_dead = taskgroup_is_dead(tg);
+                            },
+                            none => { }
                         }
                         // Call iterator block. (If the group is dead, it's
                         // safe to skip it. This will leave our *rust_task
@@ -1100,7 +1107,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     }
 }
 
-fn spawn_raw(opts: task_opts, +f: fn~()) {
+fn spawn_raw(+opts: task_opts, +f: fn~()) {
     let (child_tg, ancestors, is_main) =
         gen_child_taskgroup(opts.linked, opts.supervised);
 
@@ -1138,10 +1145,10 @@ fn spawn_raw(opts: task_opts, +f: fn~()) {
     // (3a) If any of those fails, it leaves all groups, and does nothing.
     // (3b) Otherwise it builds a task control structure and puts it in TLS,
     // (4) ...and runs the provided body function.
-    fn make_child_wrapper(child: *rust_task, -child_arc: taskgroup_arc,
-                          -ancestors: ancestor_list, is_main: bool,
+    fn make_child_wrapper(child: *rust_task, +child_arc: taskgroup_arc,
+                          +ancestors: ancestor_list, is_main: bool,
                           notify_chan: option<comm::chan<notification>>,
-                          -f: fn~()) -> fn~() {
+                          +f: fn~()) -> fn~() {
         let child_data = ~mut some((child_arc, ancestors));
         return fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
