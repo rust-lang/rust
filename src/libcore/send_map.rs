@@ -237,11 +237,11 @@ mod linear {
     }
 
     impl<K,V> &const linear_map<K,V> {
-        fn len() -> uint {
+        pure fn len() -> uint {
             self.size
         }
 
-        fn is_empty() -> bool {
+        pure fn is_empty() -> bool {
             self.len() == 0
         }
 
