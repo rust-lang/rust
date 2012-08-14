@@ -1,7 +1,7 @@
 //! A deque. Untested as of yet. Likely buggy
 
 import option::{some, none};
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 trait t<T> {
     fn size() -> uint;
@@ -40,14 +40,14 @@ fn create<T: copy>() -> t<T> {
 
         return rv;
     }
-    fn get<T: copy>(elts: dvec<cell<T>>, i: uint) -> T {
+    fn get<T: copy>(elts: DVec<cell<T>>, i: uint) -> T {
         match elts.get_elt(i) { some(t) => t, _ => fail }
     }
 
     type repr<T> = {mut nelts: uint,
                     mut lo: uint,
                     mut hi: uint,
-                    elts: dvec<cell<T>>};
+                    elts: DVec<cell<T>>};
 
     impl <T: copy> repr<T>: t<T> {
         fn size() -> uint { return self.nelts; }

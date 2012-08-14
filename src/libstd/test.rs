@@ -5,7 +5,7 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
-import either::either;
+import either::Either;
 import result::{ok, err};
 import io::WriterUtil;
 import libc::size_t;
@@ -53,8 +53,8 @@ type test_desc = {
 fn test_main(args: ~[~str], tests: ~[test_desc]) {
     let opts =
         match parse_opts(args) {
-          either::left(o) => o,
-          either::right(m) => fail m
+          either::Left(o) => o,
+          either::Right(m) => fail m
         };
     if !run_tests_console(opts, tests) { fail ~"Some tests failed"; }
 }
@@ -62,7 +62,7 @@ fn test_main(args: ~[~str], tests: ~[test_desc]) {
 type test_opts = {filter: option<~str>, run_ignored: bool,
                   logfile: option<~str>};
 
-type opt_res = either<test_opts, ~str>;
+type opt_res = Either<test_opts, ~str>;
 
 // Parses command line arguments into test options
 fn parse_opts(args: ~[~str]) -> opt_res {
@@ -71,7 +71,7 @@ fn parse_opts(args: ~[~str]) -> opt_res {
     let matches =
         match getopts::getopts(args_, opts) {
           ok(m) => m,
-          err(f) => return either::right(getopts::fail_str(f))
+          err(f) => return either::Right(getopts::fail_str(f))
         };
 
     let filter =
@@ -85,7 +85,7 @@ fn parse_opts(args: ~[~str]) -> opt_res {
     let test_opts = {filter: filter, run_ignored: run_ignored,
                      logfile: logfile};
 
-    return either::left(test_opts);
+    return either::Left(test_opts);
 }
 
 enum test_result { tr_ok, tr_failed, tr_ignored, }
@@ -479,7 +479,7 @@ mod tests {
     fn first_free_arg_should_be_a_filter() {
         let args = ~[~"progname", ~"filter"];
         let opts = match parse_opts(args) {
-          either::left(o) => o,
+          either::Left(o) => o,
           _ => fail ~"Malformed arg in first_free_arg_should_be_a_filter"
         };
         assert ~"filter" == option::get(opts.filter);
@@ -489,7 +489,7 @@ mod tests {
     fn parse_ignored_flag() {
         let args = ~[~"progname", ~"filter", ~"--ignored"];
         let opts = match parse_opts(args) {
-          either::left(o) => o,
+          either::Left(o) => o,
           _ => fail ~"Malformed arg in parse_ignored_flag"
         };
         assert (opts.run_ignored);

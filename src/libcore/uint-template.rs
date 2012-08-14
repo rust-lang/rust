@@ -80,7 +80,7 @@ impl T: num::Num {
     static pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
-impl T: iter::times {
+impl T: iter::Times {
     #[inline(always)]
     #[doc = "A convenience form for basic iteration. Given a variable `x` \
         of any numeric type, the expression `for x.times { /* anything */ }` \
@@ -96,7 +96,7 @@ impl T: iter::times {
     }
 }
 
-impl T: iter::timesi {
+impl T: iter::TimesIx {
     #[inline(always)]
     /// Like `times`, but with an index, `eachi`-style.
     fn timesi(it: fn(uint) -> bool) {
@@ -295,7 +295,7 @@ fn to_str_radix17() {
 
 #[test]
 fn test_times() {
-    import iter::times;
+    import iter::Times;
     let ten = 10 as T;
     let mut accum = 0;
     for ten.times { accum += 1; }

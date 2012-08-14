@@ -2,8 +2,8 @@
 
 import std::{ebml, map};
 import std::map::{hashmap, str_hash};
-import dvec::dvec;
 import io::WriterUtil;
+import dvec::{DVec, dvec};
 import syntax::{ast, ast_util};
 import syntax::attr;
 import middle::ty;
@@ -684,7 +684,7 @@ fn get_trait_methods(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 // their self types. Otherwise, returns none. This overlaps in an
 // annoying way with get_trait_methods.
 fn get_method_names_if_trait(cdata: cmd, node_id: ast::node_id)
-                          -> option<@dvec<(@~str, ast::self_ty_)>> {
+                          -> option<@DVec<(@~str, ast::self_ty_)>> {
 
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != 'I' {

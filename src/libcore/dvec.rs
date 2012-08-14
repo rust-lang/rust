@@ -12,6 +12,7 @@
 import unsafe::reinterpret_cast;
 import ptr::null;
 
+export DVec;
 export dvec;
 export from_elem;
 export from_vec;
@@ -49,36 +50,36 @@ export unwrap;
  * pointers achieved about 103 million pushes/second.  Using an option
  * type could only produce 47 million pushes/second.
  */
-type dvec_<A> = {
+type DVec_<A> = {
     mut data: ~[mut A]
 };
 
-enum dvec<A> {
-    dvec_(dvec_<A>)
+enum DVec<A> {
+    DVec_(DVec_<A>)
 }
 
 /// Creates a new, empty dvec
-fn dvec<A>() -> dvec<A> {
-    dvec_({mut data: ~[mut]})
+fn dvec<A>() -> DVec<A> {
+    DVec_({mut data: ~[mut]})
 }
 
 /// Creates a new dvec with a single element
-fn from_elem<A>(+e: A) -> dvec<A> {
-    dvec_({mut data: ~[mut e]})
+fn from_elem<A>(+e: A) -> DVec<A> {
+    DVec_({mut data: ~[mut e]})
 }
 
 /// Creates a new dvec with the contents of a vector
-fn from_vec<A>(+v: ~[mut A]) -> dvec<A> {
-    dvec_({mut data: v})
+fn from_vec<A>(+v: ~[mut A]) -> DVec<A> {
+    DVec_({mut data: v})
 }
 
 /// Consumes the vector and returns its contents
-fn unwrap<A>(+d: dvec<A>) -> ~[mut A] {
-    let dvec_({data: v}) <- d;
+fn unwrap<A>(+d: DVec<A>) -> ~[mut A] {
+    let DVec_({data: v}) <- d;
     return v;
 }
 
-priv impl<A> dvec<A> {
+priv impl<A> DVec<A> {
     pure fn check_not_borrowed() {
         unsafe {
             let data: *() = unsafe::reinterpret_cast(self.data);
@@ -110,7 +111,7 @@ priv impl<A> dvec<A> {
 // In theory, most everything should work with any A, but in practice
 // almost nothing works without the copy bound due to limitations
 // around closures.
-impl<A> dvec<A> {
+impl<A> DVec<A> {
     /// Reserves space for N elements
     fn reserve(count: uint) {
         vec::reserve(self.data, count)
@@ -191,7 +192,7 @@ impl<A> dvec<A> {
     }
 }
 
-impl<A: copy> dvec<A> {
+impl<A: copy> DVec<A> {
     /**
      * Append all elements of a vector to the end of the list
      *
@@ -308,7 +309,7 @@ impl<A: copy> dvec<A> {
     }
 }
 
-impl<A:copy> dvec<A>: index<uint,A> {
+impl<A:copy> DVec<A>: index<uint,A> {
     pure fn index(&&idx: uint) -> A {
         self.get_elt(idx)
     }

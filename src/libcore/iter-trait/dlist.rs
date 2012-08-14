@@ -1,4 +1,5 @@
-type IMPL_T<A> = dlist::dlist<A>;
+#[allow(non_camel_case_types)]
+type IMPL_T<A> = dlist::DList<A>;
 
 /**
  * Iterates through the current contents.

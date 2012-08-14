@@ -9,7 +9,7 @@ import iotask::{iotask, spawn_iotask};
 import priv::{chan_from_global_ptr, weaken_task};
 import comm::{port, chan, select2, listen};
 import task::task_builder;
-import either::{left, right};
+import either::{Left, Right};
 
 extern mod rustrt {
     fn rust_uv_get_kernel_global_chan_ptr() -> *libc::uintptr_t;
@@ -58,14 +58,14 @@ fn get_monitor_task_gl() -> iotask unsafe {
             loop {
                 debug!{"in outer_loop..."};
                 match select2(weak_exit_po, msg_po) {
-                  left(weak_exit) => {
+                  Left(weak_exit) => {
                     // all normal tasks have ended, tell the
                     // libuv loop to tear_down, then exit
                     debug!{"weak_exit_po recv'd msg: %?", weak_exit};
                     iotask::exit(hl_loop);
                     break;
                   }
-                  right(fetch_ch) => {
+                  Right(fetch_ch) => {
                     debug!{"hl_loop req recv'd: %?", fetch_ch};
                     fetch_ch.send(hl_loop);
                   }

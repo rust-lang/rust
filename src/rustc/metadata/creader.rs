@@ -9,7 +9,7 @@ import std::map::{hashmap, int_hash};
 import syntax::print::pprust;
 import filesearch::filesearch;
 import common::*;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 export read_crates;
 
@@ -42,7 +42,7 @@ type cache_entry = {
     metas: @~[@ast::meta_item]
 };
 
-fn dump_crates(crate_cache: dvec<cache_entry>) {
+fn dump_crates(crate_cache: DVec<cache_entry>) {
     debug!{"resolved crates:"};
     for crate_cache.each |entry| {
         debug!{"cnum: %?", entry.cnum};
@@ -67,9 +67,9 @@ fn warn_if_multiple_versions(diag: span_handler,
             partition(crate_cache.map_to_vec(|entry| {
                 let othername = loader::crate_name_from_metas(*entry.metas);
                 if name == othername {
-                    left(entry)
+                    Left(entry)
                 } else {
-                    right(entry)
+                    Right(entry)
                 }
             }));
 
@@ -96,7 +96,7 @@ type env = @{diag: span_handler,
              cstore: cstore::cstore,
              os: loader::os,
              static: bool,
-             crate_cache: dvec<cache_entry>,
+             crate_cache: DVec<cache_entry>,
              mut next_crate_num: ast::crate_num};
 
 fn visit_view_item(e: env, i: @ast::view_item) {
@@ -114,11 +114,11 @@ fn visit_item(e: env, i: @ast::item) {
     match i.node {
       ast::item_foreign_mod(m) => {
         match attr::foreign_abi(i.attrs) {
-          either::right(abi) => {
+          either::Right(abi) => {
             if abi != ast::foreign_abi_cdecl &&
                abi != ast::foreign_abi_stdcall { return; }
           }
-          either::left(msg) => e.diag.span_fatal(i.span, msg)
+          either::Left(msg) => e.diag.span_fatal(i.span, msg)
         }
 
         let cstore = e.cstore;

@@ -229,7 +229,7 @@ import syntax::print::pprust;
 import util::common::indenter;
 import ty::to_str;
 import driver::session::session;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import mem_categorization::*;
 
 export check_crate, root_map, mutbl_map;
@@ -339,7 +339,7 @@ type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 type req_maps = {
-    req_loan_map: hashmap<ast::node_id, @dvec<@dvec<loan>>>,
+    req_loan_map: hashmap<ast::node_id, @DVec<@DVec<loan>>>,
     pure_map: hashmap<ast::node_id, bckerr>
 };
 

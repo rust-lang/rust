@@ -2,7 +2,7 @@ import ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
 import parse::parser;
 import parse::parser::parse_from_source_str;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 import fold::*;
 import visit::*;
@@ -20,7 +20,7 @@ struct gather_item {
     constr: ~str;
 }
 
-type aq_ctxt = @{lo: uint, gather: dvec<gather_item>};
+type aq_ctxt = @{lo: uint, gather: DVec<gather_item>};
 enum fragment {
     from_expr(@ast::expr),
     from_ty(@ast::ty)

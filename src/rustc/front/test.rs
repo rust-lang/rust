@@ -9,7 +9,7 @@ import syntax::codemap::span;
 import driver::session;
 import session::session;
 import syntax::attr;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 export modify_for_testing;
 
@@ -22,7 +22,7 @@ type test_ctxt =
     @{sess: session::session,
       crate: @ast::crate,
       mut path: ~[ast::ident],
-      testfns: dvec<test>};
+      testfns: DVec<test>};
 
 // Traverse the crate, collecting all the test functions, eliding any
 // existing main functions, and synthesizing a main test harness

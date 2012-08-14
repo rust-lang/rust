@@ -501,7 +501,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       }
       ast::item_foreign_mod(m) => {
         if syntax::attr::foreign_abi(it.attrs) ==
-            either::right(ast::foreign_abi_rust_intrinsic) {
+            either::Right(ast::foreign_abi_rust_intrinsic) {
             for m.items.each |item| {
                 check_intrinsic_type(ccx, item);
             }

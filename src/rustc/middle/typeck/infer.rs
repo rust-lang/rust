@@ -262,7 +262,7 @@ import driver::session::session;
 import util::common::{indent, indenter};
 import ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 import ast::{m_const, m_imm, m_mutbl};
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 export infer_ctxt;
 export new_infer_ctxt;
@@ -402,7 +402,7 @@ enum infer_ctxt = @{
     ty_var_integral_counter: @mut uint,
     region_var_counter: @mut uint,
 
-    borrowings: dvec<{expr_id: ast::node_id,
+    borrowings: DVec<{expr_id: ast::node_id,
                       span: span,
                       scope: ty::region,
                       mutbl: ast::mutability}>

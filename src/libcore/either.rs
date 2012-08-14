@@ -7,13 +7,13 @@
 import result::result;
 
 /// The either type
-enum either<T, U> {
-    left(T),
-    right(U)
+enum Either<T, U> {
+    Left(T),
+    Right(U)
 }
 
 fn either<T, U, V>(f_left: fn((&T)) -> V,
-                   f_right: fn((&U)) -> V, value: &either<T, U>) -> V {
+                   f_right: fn((&U)) -> V, value: &Either<T, U>) -> V {
     /*!
      * Applies a function based on the given either value
      *
@@ -23,38 +23,38 @@ fn either<T, U, V>(f_left: fn((&T)) -> V,
      */
 
     match *value {
-      left(ref l) => f_left(l),
-      right(ref r) => f_right(r)
+      Left(ref l) => f_left(l),
+      Right(ref r) => f_right(r)
     }
 }
 
-fn lefts<T: copy, U>(eithers: &[either<T, U>]) -> ~[T] {
+fn lefts<T: copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
     let mut result: ~[T] = ~[];
     for vec::each(eithers) |elt| {
         match elt {
-          left(l) => vec::push(result, l),
+          Left(l) => vec::push(result, l),
           _ => { /* fallthrough */ }
         }
     }
     return result;
 }
 
-fn rights<T, U: copy>(eithers: &[either<T, U>]) -> ~[U] {
+fn rights<T, U: copy>(eithers: &[Either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
     let mut result: ~[U] = ~[];
     for vec::each(eithers) |elt| {
         match elt {
-          right(r) => vec::push(result, r),
+          Right(r) => vec::push(result, r),
           _ => { /* fallthrough */ }
         }
     }
     return result;
 }
 
-fn partition<T: copy, U: copy>(eithers: &[either<T, U>])
+fn partition<T: copy, U: copy>(eithers: &[Either<T, U>])
     -> {lefts: ~[T], rights: ~[U]} {
     /*!
      * Extracts from a vector of either all the left values and right values
@@ -67,23 +67,23 @@ fn partition<T: copy, U: copy>(eithers: &[either<T, U>])
     let mut rights: ~[U] = ~[];
     for vec::each(eithers) |elt| {
         match elt {
-          left(l) => vec::push(lefts, l),
-          right(r) => vec::push(rights, r)
+          Left(l) => vec::push(lefts, l),
+          Right(r) => vec::push(rights, r)
         }
     }
     return {lefts: lefts, rights: rights};
 }
 
-pure fn flip<T: copy, U: copy>(eith: &either<T, U>) -> either<U, T> {
+pure fn flip<T: copy, U: copy>(eith: &Either<T, U>) -> Either<U, T> {
     //! Flips between left and right of a given either
 
     match *eith {
-      right(r) => left(r),
-      left(l) => right(l)
+      Right(r) => Left(r),
+      Left(l) => Right(l)
     }
 }
 
-pure fn to_result<T: copy, U: copy>(eith: &either<T, U>) -> result<U, T> {
+pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> result<U, T> {
     /*!
      * Converts either::t to a result::t
      *
@@ -92,26 +92,26 @@ pure fn to_result<T: copy, U: copy>(eith: &either<T, U>) -> result<U, T> {
      */
 
     match *eith {
-      right(r) => result::ok(r),
-      left(l) => result::err(l)
+      Right(r) => result::ok(r),
+      Left(l) => result::err(l)
     }
 }
 
-pure fn is_left<T, U>(eith: &either<T, U>) -> bool {
+pure fn is_left<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a left
 
-    match *eith { left(_) => true, _ => false }
+    match *eith { Left(_) => true, _ => false }
 }
 
-pure fn is_right<T, U>(eith: &either<T, U>) -> bool {
+pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a right
 
-    match *eith { right(_) => true, _ => false }
+    match *eith { Right(_) => true, _ => false }
 }
 
 #[test]
 fn test_either_left() {
-    let val = left(10);
+    let val = Left(10);
     fn f_left(x: &int) -> bool { *x == 10 }
     fn f_right(_x: &uint) -> bool { false }
     assert (either(f_left, f_right, &val));
@@ -119,7 +119,7 @@ fn test_either_left() {
 
 #[test]
 fn test_either_right() {
-    let val = right(10u);
+    let val = Right(10u);
     fn f_left(_x: &int) -> bool { false }
     fn f_right(x: &uint) -> bool { *x == 10u }
     assert (either(f_left, f_right, &val));
@@ -127,49 +127,49 @@ fn test_either_right() {
 
 #[test]
 fn test_lefts() {
-    let input = ~[left(10), right(11), left(12), right(13), left(14)];
+    let input = ~[Left(10), Right(11), Left(12), Right(13), Left(14)];
     let result = lefts(input);
     assert (result == ~[10, 12, 14]);
 }
 
 #[test]
 fn test_lefts_none() {
-    let input: ~[either<int, int>] = ~[right(10), right(10)];
+    let input: ~[Either<int, int>] = ~[Right(10), Right(10)];
     let result = lefts(input);
     assert (vec::len(result) == 0u);
 }
 
 #[test]
 fn test_lefts_empty() {
-    let input: ~[either<int, int>] = ~[];
+    let input: ~[Either<int, int>] = ~[];
     let result = lefts(input);
     assert (vec::len(result) == 0u);
 }
 
 #[test]
 fn test_rights() {
-    let input = ~[left(10), right(11), left(12), right(13), left(14)];
+    let input = ~[Left(10), Right(11), Left(12), Right(13), Left(14)];
     let result = rights(input);
     assert (result == ~[11, 13]);
 }
 
 #[test]
 fn test_rights_none() {
-    let input: ~[either<int, int>] = ~[left(10), left(10)];
+    let input: ~[Either<int, int>] = ~[Left(10), Left(10)];
     let result = rights(input);
     assert (vec::len(result) == 0u);
 }
 
 #[test]
 fn test_rights_empty() {
-    let input: ~[either<int, int>] = ~[];
+    let input: ~[Either<int, int>] = ~[];
     let result = rights(input);
     assert (vec::len(result) == 0u);
 }
 
 #[test]
 fn test_partition() {
-    let input = ~[left(10), right(11), left(12), right(13), left(14)];
+    let input = ~[Left(10), Right(11), Left(12), Right(13), Left(14)];
     let result = partition(input);
     assert (result.lefts[0] == 10);
     assert (result.lefts[1] == 12);
@@ -180,7 +180,7 @@ fn test_partition() {
 
 #[test]
 fn test_partition_no_lefts() {
-    let input: ~[either<int, int>] = ~[right(10), right(11)];
+    let input: ~[Either<int, int>] = ~[Right(10), Right(11)];
     let result = partition(input);
     assert (vec::len(result.lefts) == 0u);
     assert (vec::len(result.rights) == 2u);
@@ -188,7 +188,7 @@ fn test_partition_no_lefts() {
 
 #[test]
 fn test_partition_no_rights() {
-    let input: ~[either<int, int>] = ~[left(10), left(11)];
+    let input: ~[Either<int, int>] = ~[Left(10), Left(11)];
     let result = partition(input);
     assert (vec::len(result.lefts) == 2u);
     assert (vec::len(result.rights) == 0u);
@@ -196,7 +196,7 @@ fn test_partition_no_rights() {
 
 #[test]
 fn test_partition_empty() {
-    let input: ~[either<int, int>] = ~[];
+    let input: ~[Either<int, int>] = ~[];
     let result = partition(input);
     assert (vec::len(result.lefts) == 0u);
     assert (vec::len(result.rights) == 0u);

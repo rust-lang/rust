@@ -13,7 +13,7 @@ import syntax::print::pprust::pat_to_str;
 import middle::resolve3::DefMap;
 import back::abi;
 import std::map::hashmap;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 import common::*;
 
@@ -277,7 +277,7 @@ fn enter_uniq(bcx: block, dm: DefMap, m: match_, col: uint, val: ValueRef)
 }
 
 fn get_options(ccx: @crate_ctxt, m: match_, col: uint) -> ~[opt] {
-    fn add_to_set(tcx: ty::ctxt, &&set: dvec<opt>, val: opt) {
+    fn add_to_set(tcx: ty::ctxt, &&set: DVec<opt>, val: opt) {
         if set.any(|l| opt_eq(tcx, l, val)) {return;}
         set.push(val);
     }

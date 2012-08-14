@@ -15,7 +15,7 @@ export unsafe;
 #[abi = "cdecl"]
 extern mod rustrt {
     fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                 ++v: **vec::unsafe::vec_repr,
+                                 ++v: **vec::unsafe::VecRepr,
                                  ++n: libc::size_t);
 }
 
@@ -25,13 +25,13 @@ extern mod rusti {
 }
 
 /// A function used to initialize the elements of a vector
-type init_op<T> = fn(uint) -> T;
+type InitOp<T> = fn(uint) -> T;
 
 /// Returns the number of elements the vector can hold without reallocating
 #[inline(always)]
 pure fn capacity<T>(&&v: @[const T]) -> uint {
     unsafe {
-        let repr: **unsafe::vec_repr =
+        let repr: **unsafe::VecRepr =
             ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).alloc / sys::size_of::<T>()
     }
@@ -103,7 +103,7 @@ pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pure fn from_fn<T>(n_elts: uint, op: init_op<T>) -> @[T] {
+pure fn from_fn<T>(n_elts: uint, op: InitOp<T>) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
@@ -133,8 +133,8 @@ impl<T: copy> @[T]: add<&[const T],@[T]> {
 
 
 mod unsafe {
-    type vec_repr = vec::unsafe::vec_repr;
-    type slice_repr = vec::unsafe::slice_repr;
+    type VecRepr = vec::unsafe::VecRepr;
+    type SliceRepr = vec::unsafe::SliceRepr;
 
     /**
      * Sets the length of a vector
@@ -145,13 +145,13 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn set_len<T>(&&v: @[const T], new_len: uint) {
-        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
     #[inline(always)]
     unsafe fn push<T>(&v: @[const T], +initval: T) {
-        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
             push_fast(v, initval);
@@ -163,7 +163,7 @@ mod unsafe {
     // This doesn't bother to make sure we have space.
     #[inline(always)] // really pretty please
     unsafe fn push_fast<T>(&v: @[const T], +initval: T) {
-        let repr: **vec_repr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
         let fill = (**repr).fill;
         (**repr).fill += sys::size_of::<T>();
         let p = ptr::addr_of((**repr).data);
@@ -190,7 +190,7 @@ mod unsafe {
     unsafe fn reserve<T>(&v: @[const T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if capacity(v) < n {
-            let ptr = addr_of(v) as **vec_repr;
+            let ptr = addr_of(v) as **VecRepr;
             rustrt::vec_reserve_shared_actual(sys::get_type_desc::<T>(),
                                               ptr, n as libc::size_t);
         }

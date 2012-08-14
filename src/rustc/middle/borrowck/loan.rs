@@ -8,7 +8,7 @@ import result::{result, ok, err};
 impl borrowck_ctxt {
     fn loan(cmt: cmt,
             scope_region: ty::region,
-            mutbl: ast::mutability) -> bckres<@dvec<loan>> {
+            mutbl: ast::mutability) -> bckres<@DVec<loan>> {
         let lc = loan_ctxt_(@{bccx: self,
                               scope_region: scope_region,
                               loans: @dvec()});
@@ -26,7 +26,7 @@ type loan_ctxt_ = {
     scope_region: ty::region,
 
     // accumulated list of loans that will be required
-    loans: @dvec<loan>
+    loans: @DVec<loan>
 };
 
 enum loan_ctxt {

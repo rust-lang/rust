@@ -27,7 +27,7 @@
  * ~~~
  */
 
-import either::either;
+import either::Either;
 import libc::size_t;
 
 export port;
@@ -222,7 +222,7 @@ fn peek_(p: *rust_port) -> bool {
 
 /// Receive on one of two ports
 fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
-    -> either<A, B> {
+    -> Either<A, B> {
     let ports = ~[(**p_a).po, (**p_b).po];
     let yield = 0u, yieldp = ptr::addr_of(yield);
 
@@ -246,9 +246,9 @@ fn select2<A: send, B: send>(p_a: port<A>, p_b: port<B>)
     assert resport != ptr::null();
 
     if resport == (**p_a).po {
-        either::left(recv(p_a))
+        either::Left(recv(p_a))
     } else if resport == (**p_b).po {
-        either::right(recv(p_b))
+        either::Right(recv(p_b))
     } else {
         fail ~"unexpected result from rust_port_select";
     }
@@ -355,11 +355,11 @@ fn test_select2_available() {
 
     send(ch_a, ~"a");
 
-    assert select2(po_a, po_b) == either::left(~"a");
+    assert select2(po_a, po_b) == either::Left(~"a");
 
     send(ch_b, ~"b");
 
-    assert select2(po_a, po_b) == either::right(~"b");
+    assert select2(po_a, po_b) == either::Right(~"b");
 }
 
 #[test]
@@ -375,14 +375,14 @@ fn test_select2_rendezvous() {
             send(ch_a, ~"a");
         };
 
-        assert select2(po_a, po_b) == either::left(~"a");
+        assert select2(po_a, po_b) == either::Left(~"a");
 
         do task::spawn {
             for iter::repeat(10u) { task::yield() }
             send(ch_b, ~"b");
         };
 
-        assert select2(po_a, po_b) == either::right(~"b");
+        assert select2(po_a, po_b) == either::Right(~"b");
     }
 }
 
@@ -413,8 +413,8 @@ fn test_select2_stress() {
     let mut bs = 0;
     for iter::repeat(msgs * times * 2u) {
         match select2(po_a, po_b) {
-          either::left(~"a") => as += 1,
-          either::right(~"b") => bs += 1,
+          either::Left(~"a") => as += 1,
+          either::Right(~"b") => bs += 1,
           _ => fail ~"test_select_2_stress failed"
         }
     }

@@ -100,7 +100,7 @@
  * - `self_var`: a variable representing 'self'
  */
 
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import std::map::{hashmap, int_hash, str_hash, box_str_hash};
 import syntax::{visit, ast_util};
 import syntax::print::pprust::{expr_to_str};
@@ -122,7 +122,7 @@ export last_use_map;
 //
 // Very subtle (#2633): borrowck will remove entries from this table
 // if it detects an outstanding loan (that is, the addr is taken).
-type last_use_map = hashmap<node_id, @dvec<node_id>>;
+type last_use_map = hashmap<node_id, @DVec<node_id>>;
 
 enum variable = uint;
 enum live_node = uint;

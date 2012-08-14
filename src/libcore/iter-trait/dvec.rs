@@ -1,4 +1,5 @@
-type IMPL_T<A> = dvec::dvec<A>;
+#[allow(non_camel_case_types)]
+type IMPL_T<A> = dvec::DVec<A>;
 
 /**
  * Iterates through the current contents.

@@ -9,7 +9,7 @@ import syntax::ast::{sty_value};
 import syntax::ast_map;
 import syntax::ast_map::node_id_to_str;
 import syntax::ast_util::{dummy_sp, new_def_hash};
-import dvec::dvec;
+import dvec::{DVec, dvec};
 
 type candidate = {
     self_ty: ty::t,          // type of a in a.b()
@@ -57,7 +57,7 @@ class lookup {
     let m_name: ast::ident;
     let mut self_ty: ty::t;
     let mut derefs: uint;
-    let candidates: dvec<candidate>;
+    let candidates: DVec<candidate>;
     let candidate_impls: hashmap<def_id, ()>;
     let supplied_tps: ~[ty::t];
     let include_private: bool;
@@ -435,7 +435,7 @@ class lookup {
     }
 
     fn add_inherent_and_extension_candidates(optional_inherent_methods:
-                                                option<@dvec<@Impl>>,
+                                                option<@DVec<@Impl>>,
                                              use_assignability: bool) {
 
         // Add inherent methods.

@@ -177,16 +177,16 @@ mod global_env {
             do priv::weaken_task |weak_po| {
                 loop {
                     match comm::select2(msg_po, weak_po) {
-                      either::left(MsgGetEnv(n, resp_ch)) => {
+                      either::Left(MsgGetEnv(n, resp_ch)) => {
                         comm::send(resp_ch, impl::getenv(n))
                       }
-                      either::left(MsgSetEnv(n, v, resp_ch)) => {
+                      either::Left(MsgSetEnv(n, v, resp_ch)) => {
                         comm::send(resp_ch, impl::setenv(n, v))
                       }
-                      either::left(MsgEnv(resp_ch)) => {
+                      either::Left(MsgEnv(resp_ch)) => {
                         comm::send(resp_ch, impl::env())
                       }
-                      either::right(_) => break
+                      either::Right(_) => break
                     }
                 }
             }

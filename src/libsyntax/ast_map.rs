@@ -205,8 +205,8 @@ fn map_item(i: @item, cx: ctx, v: vt) {
       }
       item_foreign_mod(nm) => {
         let abi = match attr::foreign_abi(i.attrs) {
-          either::left(msg) => cx.diag.span_fatal(i.span, msg),
-          either::right(abi) => abi
+          either::Left(msg) => cx.diag.span_fatal(i.span, msg),
+          either::Right(abi) => abi
         };
         for nm.items.each |nitem| {
             cx.map.insert(nitem.id,

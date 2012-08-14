@@ -52,7 +52,7 @@ import syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 import syntax::visit::{visit_mod, visit_ty, vt};
 
 import box::ptr_eq;
-import dvec::dvec;
+import dvec::{DVec, dvec};
 import option::{get, is_some};
 import str::{connect, split_str};
 import vec::pop;
@@ -89,7 +89,7 @@ type ImplScopes = @list<ImplScope>;
 type ImplMap = hashmap<node_id,ImplScopes>;
 
 // Trait method resolution
-type TraitMap = @hashmap<node_id,@dvec<def_id>>;
+type TraitMap = @hashmap<node_id,@DVec<def_id>>;
 
 // Export mapping
 type Export = { reexp: bool, id: def_id };
@@ -116,7 +116,7 @@ enum NamespaceResult {
 enum ImplNamespaceResult {
     UnknownImplResult,
     UnboundImplResult,
-    BoundImplResult(@dvec<@Target>)
+    BoundImplResult(@DVec<@Target>)
 }
 
 enum NameDefinition {
@@ -250,7 +250,7 @@ fn Atom(n: uint) -> Atom {
 
 class AtomTable {
     let atoms: hashmap<@~str,Atom>;
-    let strings: dvec<@~str>;
+    let strings: DVec<@~str>;
     let mut atom_count: uint;
 
     new() {
@@ -326,11 +326,11 @@ class Rib {
 
 /// One import directive.
 class ImportDirective {
-    let module_path: @dvec<Atom>;
+    let module_path: @DVec<Atom>;
     let subclass: @ImportDirectiveSubclass;
     let span: span;
 
-    new(module_path: @dvec<Atom>,
+    new(module_path: @DVec<Atom>,
         subclass: @ImportDirectiveSubclass,
         span: span) {
 
@@ -363,7 +363,7 @@ class ImportResolution {
     let mut module_target: option<Target>;
     let mut value_target: option<Target>;
     let mut type_target: option<Target>;
-    let mut impl_target: @dvec<@Target>;
+    let mut impl_target: @DVec<@Target>;
 
     let mut used: bool;
 
@@ -409,7 +409,7 @@ class Module {
     let mut def_id: option<def_id>;
 
     let children: hashmap<Atom,@NameBindings>;
-    let imports: dvec<@ImportDirective>;
+    let imports: DVec<@ImportDirective>;
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -677,17 +677,17 @@ class Resolver {
     // The current set of local scopes, for values.
     // XXX: Reuse ribs to avoid allocation.
 
-    let value_ribs: @dvec<@Rib>;
+    let value_ribs: @DVec<@Rib>;
 
     // The current set of local scopes, for types.
-    let type_ribs: @dvec<@Rib>;
+    let type_ribs: @DVec<@Rib>;
 
     // Whether the current context is an X-ray context. An X-ray context is
     // allowed to access private names of any module.
     let mut xray_context: XrayFlag;
 
     // The trait that the current context can refer to.
-    let mut current_trait_refs: option<@dvec<def_id>>;
+    let mut current_trait_refs: option<@DVec<def_id>>;
 
     // The atom for the keyword "self".
     let self_atom: Atom;
@@ -1571,7 +1571,7 @@ class Resolver {
 
     /// Creates and adds an import directive to the given module.
     fn build_import_directive(module_: @Module,
-                              module_path: @dvec<Atom>,
+                              module_path: @DVec<Atom>,
                               subclass: @ImportDirectiveSubclass,
                               span: span) {
 
@@ -2181,7 +2181,7 @@ class Resolver {
     }
 
     fn resolve_module_path_from_root(module_: @Module,
-                                     module_path: @dvec<Atom>,
+                                     module_path: @DVec<Atom>,
                                      index: uint,
                                      xray: XrayFlag,
                                      span: span)
@@ -2238,7 +2238,7 @@ class Resolver {
      * the given module.
      */
     fn resolve_module_path_for_import(module_: @Module,
-                                      module_path: @dvec<Atom>,
+                                      module_path: @DVec<Atom>,
                                       xray: XrayFlag,
                                       span: span)
                                    -> ResolveResult<@Module> {
@@ -2932,7 +2932,7 @@ class Resolver {
     // Wraps the given definition in the appropriate number of `def_upvar`
     // wrappers.
 
-    fn upvarify(ribs: @dvec<@Rib>, rib_index: uint, def_like: def_like,
+    fn upvarify(ribs: @DVec<@Rib>, rib_index: uint, def_like: def_like,
                 span: span, allow_capturing_self: AllowCapturingSelfFlag)
              -> option<def_like> {
 
@@ -3031,7 +3031,7 @@ class Resolver {
         return some(dl_def(def));
     }
 
-    fn search_ribs(ribs: @dvec<@Rib>, name: Atom, span: span,
+    fn search_ribs(ribs: @DVec<@Rib>, name: Atom, span: span,
                    allow_capturing_self: AllowCapturingSelfFlag)
                 -> option<def_like> {
 
@@ -4150,7 +4150,7 @@ class Resolver {
         }
     }
 
-    fn intern_module_part_of_path(path: @path) -> @dvec<Atom> {
+    fn intern_module_part_of_path(path: @path) -> @DVec<Atom> {
         let module_path_atoms = @dvec();
         for path.idents.eachi |index, ident| {
             if index == path.idents.len() - 1u {
@@ -4508,7 +4508,7 @@ class Resolver {
         }
     }
 
-    fn search_for_traits_containing_method(name: Atom) -> @dvec<def_id> {
+    fn search_for_traits_containing_method(name: Atom) -> @DVec<def_id> {
         let found_traits = @dvec();
         let mut search_module = self.current_module;
         loop {
@@ -4577,7 +4577,7 @@ class Resolver {
         return found_traits;
     }
 
-    fn add_trait_info_if_containing_method(found_traits: @dvec<def_id>,
+    fn add_trait_info_if_containing_method(found_traits: @DVec<def_id>,
                                            trait_def_id: def_id,
                                            name: Atom) {
 
