@@ -1037,7 +1037,6 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         commasep_cmnt(s, consistent, fields, print_field, get_span);
         match wth {
           some(expr) => {
-            if vec::len(fields) > 0u { space(s.s); }
             ibox(s, indent_unit);
             word(s.s, ~",");
             space(s.s);
