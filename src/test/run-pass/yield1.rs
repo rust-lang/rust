@@ -8,7 +8,7 @@ fn main() {
     task::task().future_result(|+r| { result = some(r); }).spawn(child);
     error!{"1"};
     yield();
-    future::get(option::unwrap(result));
+    future::get(&option::unwrap(result));
 }
 
 fn child() { error!{"2"}; }
