@@ -821,31 +821,9 @@ pure fn empty_span() -> span {
 
 // Convenience implementations
 
-// Remove after snapshot!
-trait path_concat {
-    pure fn +(&&id: ident) -> @path;
-}
-
-// Remove after snapshot!
-impl ident: path_concat {
-    pure fn +(&&id: ident) -> @path {
-        simple_path(self, empty_span()) + id
-    }
-}
-
 impl ident: ops::add<ident,@path> {
     pure fn add(&&id: ident) -> @path {
         simple_path(self, empty_span()) + id
-    }
-}
-
-// Remove after snapshot!
-impl @path: path_concat {
-    pure fn +(&&id: ident) -> @path {
-        @{
-            idents: vec::append_one(self.idents, id)
-            with *self
-        }
     }
 }
 

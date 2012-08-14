@@ -42,16 +42,6 @@ type doc = {data: @~[u8], start: uint, end: uint};
 
 type tagged_doc = {tag: uint, doc: doc};
 
-trait get_doc {
-    fn [](tag: uint) -> doc;
-}
-
-impl doc: get_doc {
-    fn [](tag: uint) -> doc {
-        get_doc(self, tag)
-    }
-}
-
 impl doc: ops::index<uint,doc> {
     pure fn index(&&tag: uint) -> doc {
         unchecked {

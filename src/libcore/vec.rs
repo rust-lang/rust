@@ -1289,29 +1289,11 @@ pure fn as_mut_buf<T,U>(s: &[mut T],
     }
 }
 
-trait vec_concat<T> {
-    pure fn +(rhs: &[const T]) -> self;
-}
-
-impl<T: copy> ~[T]: vec_concat<T> {
-    #[inline(always)]
-    pure fn +(rhs: &[const T]) -> ~[T] {
-        append(self, rhs)
-    }
-}
-
 #[cfg(notest)]
 impl<T: copy> ~[T]: add<&[const T],~[T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[T] {
         append(self, rhs)
-    }
-}
-
-impl<T: copy> ~[mut T]: vec_concat<T> {
-    #[inline(always)]
-    pure fn +(rhs: &[const T]) -> ~[mut T] {
-        append_mut(self, rhs)
     }
 }
 

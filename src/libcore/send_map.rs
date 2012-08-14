@@ -275,9 +275,6 @@ mod linear {
             option::unwrap(value)
         }
 
-        fn [](k: &K) -> V {
-            self.get(k)
-        }
     }
 
     impl<K,V> &linear_map<K,V> {
