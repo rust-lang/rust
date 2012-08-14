@@ -838,6 +838,11 @@ fn print_block_unclosed(s: ps, blk: ast::blk) {
                                  false);
 }
 
+fn print_block_unclosed_indent(s: ps, blk: ast::blk, indented: uint) {
+    print_possibly_embedded_block_(s, blk, block_normal, indented, ~[],
+                                   false);
+}
+
 fn print_block_with_attrs(s: ps, blk: ast::blk, attrs: ~[ast::attribute]) {
     print_possibly_embedded_block_(s, blk, block_normal, indent_unit, attrs,
                                   true);
@@ -1178,8 +1183,16 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
             assert arm.body.node.rules == ast::default_blk;
             match arm.body.node.expr {
               some(expr) => {
-                end(s); // close the ibox for the pattern
-                print_expr(s, expr);
+                match expr.node {
+                  ast::expr_block(blk) => {
+                    // the block will close the pattern's ibox
+                    print_block_unclosed_indent(s, blk, alt_indent_unit);
+                  }
+                  _ => {
+                    end(s); // close the ibox for the pattern
+                    print_expr(s, expr);
+                  }
+                }
                 if !expr_is_simple_block(expr)
                     && i < len - 1 {
                     word(s.s, ~",");
