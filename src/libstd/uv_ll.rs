@@ -22,6 +22,7 @@
 
 import libc::size_t;
 import ptr::assimilate;
+import comm = core::comm;
 
 // libuv struct mappings
 type uv_ip4_addr = {
@@ -1046,7 +1047,7 @@ mod test {
             let bytes = vec::unsafe::from_buf(buf_base, buf_len as uint);
             let read_chan = *((*client_data).read_chan);
             let msg_from_server = str::from_bytes(bytes);
-            comm::send(read_chan, msg_from_server);
+            core::comm::send(read_chan, msg_from_server);
             close(stream as *libc::c_void, after_close_cb)
         }
         else if (nread == -1) {
@@ -1231,7 +1232,7 @@ mod test {
                 log(debug, ~"SERVER: sending response to client");
                 read_stop(client_stream_ptr);
                 let server_chan = *((*client_data).server_chan);
-                comm::send(server_chan, request_str);
+                core::comm::send(server_chan, request_str);
                 let write_result = write(
                     write_req,
                     client_stream_ptr as *libc::c_void,
@@ -1346,7 +1347,7 @@ mod test {
             async_handle as *libc::c_void) as *async_handle_data;
         let continue_chan = *((*data).continue_chan);
         let should_continue = status == 0i32;
-        comm::send(continue_chan, should_continue);
+        core::comm::send(continue_chan, should_continue);
         close(async_handle as *libc::c_void, async_close_cb);
     }
 
@@ -1460,13 +1461,13 @@ mod test {
         let port = 8887;
         let kill_server_msg = ~"does a dog have buddha nature?";
         let server_resp_msg = ~"mu!";
-        let client_port = comm::port::<~str>();
-        let client_chan = comm::chan::<~str>(client_port);
-        let server_port = comm::port::<~str>();
-        let server_chan = comm::chan::<~str>(server_port);
+        let client_port = core::comm::port::<~str>();
+        let client_chan = core::comm::chan::<~str>(client_port);
+        let server_port = core::comm::port::<~str>();
+        let server_chan = core::comm::chan::<~str>(server_port);
 
-        let continue_port = comm::port::<bool>();
-        let continue_chan = comm::chan::<bool>(continue_port);
+        let continue_port = core::comm::port::<bool>();
+        let continue_chan = core::comm::chan::<bool>(continue_port);
         let continue_chan_ptr = ptr::addr_of(continue_chan);
 
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1479,7 +1480,7 @@ mod test {
 
         // block until the server up is.. possibly a race?
         log(debug, ~"before receiving on server continue_port");
-        comm::recv(continue_port);
+        core::comm::recv(continue_port);
         log(debug, ~"received on continue port, set up tcp client");
 
         do task::spawn_sched(task::ManualThreads(1u)) {
@@ -1488,8 +1489,8 @@ mod test {
                                ptr::addr_of(client_chan));
         };
 
-        let msg_from_client = comm::recv(server_port);
-        let msg_from_server = comm::recv(client_port);
+        let msg_from_client = core::comm::recv(server_port);
+        let msg_from_server = core::comm::recv(client_port);
 
         assert str::contains(msg_from_client, kill_server_msg);
         assert str::contains(msg_from_server, server_resp_msg);

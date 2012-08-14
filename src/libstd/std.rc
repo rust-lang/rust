@@ -52,6 +52,7 @@ mod cell;
 
 mod sync;
 mod arc;
+mod comm;
 
 // Collections
 

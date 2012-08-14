@@ -1,7 +1,3 @@
-import comm::port;
-import comm::chan;
-import comm::send;
-import comm::recv;
 import future_spawn = future::spawn;
 
 export map, mapi, alli, any, mapi_factory;
