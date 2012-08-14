@@ -1,8 +1,8 @@
-import io::writer;
-import io::writer_util;
+import io::Writer;
+import io::WriterUtil;
 import serialization::serializer;
 
-impl writer: serializer {
+impl Writer: serializer {
     fn emit_nil() {
         self.write_str(~"()")
     }

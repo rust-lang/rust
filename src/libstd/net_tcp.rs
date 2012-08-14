@@ -8,7 +8,7 @@ import future_spawn = future::spawn;
 // should be able to, but can't atm, replace w/ result::{result, extensions};
 import result::*;
 import libc::size_t;
-import io::{reader, writer};
+import io::{Reader, Writer};
 
 // tcp interfaces
 export tcp_socket;
@@ -752,7 +752,7 @@ impl tcp_socket {
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
-impl @tcp_socket_buf: io::reader {
+impl @tcp_socket_buf: io::Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         // Loop until our buffer has enough data in it for us to read from.
         while self.data.buf.len() < len {
@@ -795,7 +795,7 @@ impl @tcp_socket_buf: io::reader {
     fn eof() -> bool {
         false // noop
     }
-    fn seek(dist: int, seek: io::seek_style) {
+    fn seek(dist: int, seek: io::SeekStyle) {
         log(debug, fmt!{"tcp_socket_buf seek stub %? %?", dist, seek});
         // noop
     }
@@ -805,7 +805,7 @@ impl @tcp_socket_buf: io::reader {
 }
 
 /// Implementation of `io::reader` trait for a buffered `net::tcp::tcp_socket`
-impl @tcp_socket_buf: io::writer {
+impl @tcp_socket_buf: io::Writer {
     fn write(data: &[const u8]) unsafe {
         let socket_data_ptr =
             ptr::addr_of(*((*(self.data)).sock).socket_data);
@@ -817,7 +817,7 @@ impl @tcp_socket_buf: io::writer {
                              err_data.err_name, err_data.err_msg});
         }
     }
-    fn seek(dist: int, seek: io::seek_style) {
+    fn seek(dist: int, seek: io::SeekStyle) {
       log(debug, fmt!{"tcp_socket_buf seek stub %? %?", dist, seek});
         // noop
     }
@@ -827,8 +827,8 @@ impl @tcp_socket_buf: io::writer {
     fn flush() -> int {
         0
     }
-    fn get_type() -> io::writer_type {
-        io::file
+    fn get_type() -> io::WriterType {
+        io::File
     }
 }
 
@@ -1441,11 +1441,11 @@ mod test {
             assert false;
         }
         let sock_buf = @socket_buf(result::unwrap(conn_result));
-        buf_write(sock_buf as io::writer, expected_req);
+        buf_write(sock_buf as io::Writer, expected_req);
 
         // so contrived!
         let actual_resp = do str::as_bytes(expected_resp) |resp_buf| {
-            buf_read(sock_buf as io::reader,
+            buf_read(sock_buf as io::Reader,
                      vec::len(resp_buf))
         };
 
@@ -1458,7 +1458,7 @@ mod test {
         assert str::contains(actual_resp, expected_resp);
     }
 
-    fn buf_write(+w: io::writer, val: ~str) {
+    fn buf_write(+w: io::Writer, val: ~str) {
         log(debug, fmt!{"BUF_WRITE: val len %?", str::len(val)});
         do str::byte_slice(val) |b_slice| {
             log(debug, fmt!{"BUF_WRITE: b_slice len %?",
@@ -1467,7 +1467,7 @@ mod test {
         }
     }
 
-    fn buf_read(+r: io::reader, len: uint) -> ~str {
+    fn buf_read(+r: io::Reader, len: uint) -> ~str {
         let new_bytes = r.read_bytes(len);
         log(debug, fmt!{"in buf_read.. new_bytes len: %?",
                         vec::len(new_bytes)});

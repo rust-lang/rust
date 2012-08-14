@@ -1,5 +1,5 @@
 import base::*;
-import io::writer_util;
+import io::WriterUtil;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, tt: ~[ast::token_tree])
     -> base::mac_result {

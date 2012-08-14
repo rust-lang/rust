@@ -1,5 +1,5 @@
 import libc::{c_char, c_int, c_long, size_t, time_t};
-import io::reader;
+import io::Reader;
 import result::{result, ok, err};
 
 export

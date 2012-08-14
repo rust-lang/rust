@@ -15,7 +15,7 @@ import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
         FileType};
 import metadata::filesearch;
 import syntax::ast_map::{path, path_mod, path_name};
-import io::{writer, writer_util};
+import io::{Writer, WriterUtil};
 
 enum output_type {
     output_type_none,

@@ -6,7 +6,7 @@ import syntax::attr;
 import syntax::codemap::span;
 import std::map::{map,hashmap,int_hash,hash_from_strs};
 import std::smallintmap::{map,smallintmap};
-import io::writer_util;
+import io::WriterUtil;
 import util::ppaux::{ty_to_str};
 import middle::pat_util::{pat_bindings};
 import syntax::ast_util::{path_to_ident};

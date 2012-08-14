@@ -11,8 +11,8 @@
 // xfail-pretty
 
 use std;
-import io::writer;
-import io::writer_util;
+import io::Writer;
+import io::WriterUtil;
 
 import pipes::{port, chan, shared_chan};
 

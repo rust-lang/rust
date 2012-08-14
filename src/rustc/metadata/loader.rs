@@ -6,7 +6,7 @@ import syntax::print::pprust;
 import syntax::codemap::span;
 import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
 import filesearch::filesearch;
-import io::writer_util;
+import io::WriterUtil;
 
 export os;
 export os_macos, os_win32, os_linux, os_freebsd;
@@ -206,7 +206,7 @@ fn meta_section_name(os: os) -> ~str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(os: os, path: ~str, out: io::writer) {
+fn list_file_metadata(os: os, path: ~str, out: io::Writer) {
     match get_metadata_section(os, path) {
       option::some(bytes) => decoder::list_crate_metadata(bytes, out),
       option::none => {

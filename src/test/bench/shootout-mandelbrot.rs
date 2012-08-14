@@ -13,7 +13,7 @@
 //  writes pbm image to output path
 
 use std;
-import io::writer_util;
+import io::WriterUtil;
 import std::map::hashmap;
 
 struct cmplx {
@@ -90,12 +90,12 @@ fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
 
 type devnull = {dn: int};
 
-impl devnull: io::writer {
+impl devnull: io::Writer {
     fn write(_b: &[const u8]) {}
-    fn seek(_i: int, _s: io::seek_style) {}
+    fn seek(_i: int, _s: io::SeekStyle) {}
     fn tell() -> uint {0_u}
     fn flush() -> int {0}
-    fn get_type() -> io::writer_type { io::file }
+    fn get_type() -> io::WriterType { io::File }
 }
 
 fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
@@ -103,9 +103,9 @@ fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
     let p: comm::port<line> = comm::port();
     let ch = comm::chan(p);
     comm::send(writech, ch);
-    let cout: io::writer = match path {
+    let cout: io::Writer = match path {
         ~"" => {
-            {dn: 0} as io::writer
+            {dn: 0} as io::Writer
         }
         ~"-" => {
             io::stdout()
@@ -113,7 +113,7 @@ fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
         _ => {
             result::get(
                 io::file_writer(path,
-                ~[io::create, io::truncate]))
+                ~[io::Create, io::Truncate]))
         }
     };
     cout.write_line(~"P4");

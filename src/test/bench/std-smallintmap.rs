@@ -3,7 +3,7 @@
 use std;
 import std::smallintmap;
 import std::smallintmap::smallintmap;
-import io::writer_util;
+import io::WriterUtil;
 
 fn append_sequential(min: uint, max: uint, map: smallintmap<uint>) {
     for uint::range(min, max) |i| {

@@ -20,7 +20,7 @@ import std::map;
 import std::map::hashmap;
 import vec;
 import io;
-import io::writer_util;
+import io::WriterUtil;
 
 import std::time;
 import u64;
@@ -73,7 +73,7 @@ fn join(t: joinable_task) {
     t.recv()
 }
 
-impl io::reader: word_reader {
+impl io::Reader: word_reader {
     fn read_word() -> option<~str> { read_word(self) }
 }
 
@@ -331,7 +331,7 @@ fn main(argv: ~[~str]) {
              + u64::str(elapsed) + ~"ms");
 }
 
-fn read_word(r: io::reader) -> option<~str> {
+fn read_word(r: io::Reader) -> option<~str> {
     let mut w = ~"";
 
     while !r.eof() {
@@ -350,7 +350,7 @@ fn is_word_char(c: char) -> bool {
 
 class random_word_reader: word_reader {
     let mut remaining: uint;
-    let rng: rand::rng;
+    let rng: rand::Rng;
     new(count: uint) {
         self.remaining = count;
         self.rng = rand::rng();

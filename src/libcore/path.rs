@@ -1,6 +1,6 @@
 //! Path data type and helper functions
 
-export path;
+export Path;
 export consts;
 export path_is_absolute;
 export path_sep;
@@ -14,7 +14,7 @@ export normalize;
 
 // FIXME: This type should probably be constrained (#2624)
 /// A path or fragment of a filesystem path
-type path = ~str;
+type Path = ~str;
 
 #[cfg(unix)]
 mod consts {
@@ -45,7 +45,7 @@ mod consts {
  * on Windows, begins with a drive letter.
  */
 #[cfg(unix)]
-fn path_is_absolute(p: path) -> bool {
+fn path_is_absolute(p: Path) -> bool {
     str::char_at(p, 0u) == '/'
 }
 
@@ -60,7 +60,7 @@ fn path_is_absolute(p: ~str) -> bool {
 /// Get the default path separator for the host platform
 fn path_sep() -> ~str { return str::from_char(consts::path_sep); }
 
-fn split_dirname_basename (pp: path) -> {dirname: ~str, basename: ~str} {
+fn split_dirname_basename (pp: Path) -> {dirname: ~str, basename: ~str} {
     match str::rfind(pp, |ch|
         ch == consts::path_sep || ch == consts::alt_path_sep
     ) {
@@ -81,7 +81,7 @@ fn split_dirname_basename (pp: path) -> {dirname: ~str, basename: ~str} {
  *
  * If the path is not prefixed with a directory, then "." is returned.
  */
-fn dirname(pp: path) -> path {
+fn dirname(pp: Path) -> Path {
     return split_dirname_basename(pp).dirname;
 }
 
@@ -94,7 +94,7 @@ fn dirname(pp: path) -> path {
  * the provided path. If an empty path is provided or the path ends
  * with a path separator then an empty path is returned.
  */
-fn basename(pp: path) -> path {
+fn basename(pp: Path) -> Path {
     return split_dirname_basename(pp).basename;
 }
 
@@ -105,7 +105,7 @@ fn basename(pp: path) -> path {
  * and any leading path separator on `post`, and returns the concatenation of
  * the two with a single path separator between them.
  */
-fn connect(pre: path, post: path) -> path {
+fn connect(pre: Path, post: Path) -> Path {
     let mut pre_ = pre;
     let mut post_ = post;
     let sep = consts::path_sep as u8;
@@ -127,7 +127,7 @@ fn connect(pre: path, post: path) -> path {
  *
  * Inserts path separators as needed.
  */
-fn connect_many(paths: ~[path]) -> path {
+fn connect_many(paths: ~[Path]) -> Path {
     return if vec::len(paths) == 1u {
         paths[0]
     } else {
@@ -144,7 +144,7 @@ fn connect_many(paths: ~[path]) -> path {
  * the first element of the returned vector will be the drive letter
  * followed by a colon.
  */
-fn split(p: path) -> ~[path] {
+fn split(p: Path) -> ~[Path] {
     str::split_nonempty(p, |c| {
         c == consts::path_sep || c == consts::alt_path_sep
     })
@@ -159,7 +159,7 @@ fn split(p: path) -> ~[path] {
  * ignored.  If the path includes directory components then they are included
  * in the filename part of the result pair.
  */
-fn splitext(p: path) -> (~str, ~str) {
+fn splitext(p: Path) -> (~str, ~str) {
     if str::is_empty(p) { (~"", ~"") }
     else {
         let parts = str::split_char(p, '.');
@@ -212,7 +212,7 @@ fn splitext(p: path) -> (~str, ~str) {
  * * 'a/b/../../../' becomes '..'
  * * '/a/b/c/../d/./../../e/' becomes '/a/e/'
  */
-fn normalize(p: path) -> path {
+fn normalize(p: Path) -> Path {
     let s = split(p);
     let s = strip_dots(s);
     let s = rollup_doubledots(s);
@@ -233,7 +233,7 @@ fn normalize(p: path) -> path {
 
     return s;
 
-    fn strip_dots(s: ~[path]) -> ~[path] {
+    fn strip_dots(s: ~[Path]) -> ~[Path] {
         vec::filter_map(s, |elem|
             if elem == ~"." {
                 option::none
@@ -242,7 +242,7 @@ fn normalize(p: path) -> path {
             })
     }
 
-    fn rollup_doubledots(s: ~[path]) -> ~[path] {
+    fn rollup_doubledots(s: ~[Path]) -> ~[Path] {
         if vec::is_empty(s) {
             return ~[];
         }
@@ -271,7 +271,7 @@ fn normalize(p: path) -> path {
     }
 
     #[cfg(unix)]
-    fn reabsolute(orig: path, n: path) -> path {
+    fn reabsolute(orig: Path, n: Path) -> Path {
         if path_is_absolute(orig) {
             path_sep() + n
         } else {
@@ -280,7 +280,7 @@ fn normalize(p: path) -> path {
     }
 
     #[cfg(windows)]
-    fn reabsolute(orig: path, newp: path) -> path {
+    fn reabsolute(orig: Path, newp: Path) -> Path {
        if path_is_absolute(orig) && orig[0] == consts::path_sep as u8 {
            str::from_char(consts::path_sep) + newp
        } else {
@@ -288,7 +288,7 @@ fn normalize(p: path) -> path {
        }
     }
 
-    fn reterminate(orig: path, newp: path) -> path {
+    fn reterminate(orig: Path, newp: Path) -> Path {
         let last = orig[str::len(orig) - 1u];
         if last == consts::path_sep as u8
             || last == consts::path_sep as u8 {

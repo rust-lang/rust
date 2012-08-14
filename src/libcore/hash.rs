@@ -13,8 +13,8 @@
  * CPRNG like rand::rng.
  */
 
-import io::writer;
-import io::writer_util;
+import io::Writer;
+import io::WriterUtil;
 
 export Streaming, State;
 export default_state;
@@ -126,7 +126,7 @@ fn SipState(key0: u64, key1: u64) -> SipState {
 }
 
 
-impl &SipState : io::writer {
+impl &SipState : io::Writer {
 
     // Methods for io::writer
     fn write(msg: &[const u8]) {
@@ -209,7 +209,7 @@ impl &SipState : io::writer {
         self.ntail = left;
     }
 
-    fn seek(_x: int, _s: io::seek_style) {
+    fn seek(_x: int, _s: io::SeekStyle) {
         fail;
     }
     fn tell() -> uint {
@@ -218,8 +218,8 @@ impl &SipState : io::writer {
     fn flush() -> int {
         0
     }
-    fn get_type() -> io::writer_type {
-        io::file
+    fn get_type() -> io::WriterType {
+        io::File
     }
 }
 

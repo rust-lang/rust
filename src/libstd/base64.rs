@@ -1,4 +1,4 @@
-import io::reader;
+import io::Reader;
 
 trait to_base64 {
     fn to_base64() -> ~str;

@@ -4,14 +4,14 @@ use std;
 // the common code.
 
 import std::ebml;
-import io::writer;
+import io::Writer;
 import std::serialization::{serialize_uint, deserialize_uint};
 
 fn test_ser_and_deser<A>(a1: A,
                          expected: ~str,
                          ebml_ser_fn: fn(ebml::writer, A),
                          ebml_deser_fn: fn(ebml::ebml_deserializer) -> A,
-                         io_ser_fn: fn(io::writer, A)) {
+                         io_ser_fn: fn(io::Writer, A)) {
 
     // check the pretty printer:
     io_ser_fn(io::stdout(), a1);
@@ -21,7 +21,7 @@ fn test_ser_and_deser<A>(a1: A,
 
     // check the EBML serializer:
     let buf = io::mem_buffer();
-    let w = ebml::writer(buf as io::writer);
+    let w = ebml::writer(buf as io::Writer);
     ebml_ser_fn(w, a1);
     let d = ebml::doc(@io::mem_buffer_buf(buf));
     let a2 = ebml_deser_fn(ebml::ebml_deserializer(d));

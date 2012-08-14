@@ -1,6 +1,6 @@
 use std;
 import io;
-import io::writer_util;
+import io::WriterUtil;
 import std::map::hashmap;
 
 enum object

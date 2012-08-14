@@ -4,7 +4,7 @@ import util::ppaux::ty_to_str;
 
 import std::{ebml, map};
 import std::map::hashmap;
-import io::writer_util;
+import io::WriterUtil;
 import ebml::writer;
 import syntax::ast::*;
 import syntax::print::pprust;
@@ -1005,7 +1005,7 @@ fn create_index<T: copy>(index: ~[entry<T>], hash_fn: fn@(T) -> uint) ->
 }
 
 fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
-                   write_fn: fn(io::writer, T)) {
+                   write_fn: fn(io::Writer, T)) {
     let writer = ebml_w.writer;
     ebml_w.start_tag(tag_index);
     let mut bucket_locs: ~[uint] = ~[];
@@ -1032,9 +1032,9 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
     ebml_w.end_tag();
 }
 
-fn write_str(writer: io::writer, &&s: ~str) { writer.write_str(s); }
+fn write_str(writer: io::Writer, &&s: ~str) { writer.write_str(s); }
 
-fn write_int(writer: io::writer, &&n: int) {
+fn write_int(writer: io::Writer, &&n: int) {
     assert n < 0x7fff_ffff;
     writer.write_be_u32(n as u32);
 }
