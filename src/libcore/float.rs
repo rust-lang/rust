@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 //! Operations and constants for `float`
 
 // Even though this module exports everything defined in it,
@@ -238,12 +242,12 @@ fn to_str(num: float, digits: uint) -> ~str {
  * `none` if the string did not represent a valid number.  Otherwise,
  * `some(n)` where `n` is the floating-point number represented by `[num]`.
  */
-fn from_str(num: ~str) -> option<float> {
-   if num == ~"inf" {
+fn from_str(num: &str) -> option<float> {
+   if num == "inf" {
        return some(infinity as float);
-   } else if num == ~"-inf" {
+   } else if num == "-inf" {
        return some(neg_infinity as float);
-   } else if num == ~"NaN" {
+   } else if num == "NaN" {
        return some(NaN as float);
    }
 
@@ -516,7 +520,7 @@ fn test_to_str_inf() {
 
 #[test]
 fn test_traits() {
-    fn test<U:num::Num>(ten: U) {
+    fn test<U:num::Num>(ten: &U) {
         assert (ten.to_int() == 10);
 
         let two = ten.from_int(2);
@@ -529,7 +533,7 @@ fn test_traits() {
         assert (ten.modulo(two) == ten.from_int(0));
     }
 
-    test(10.0);
+    test(&10.0);
 }
 
 
