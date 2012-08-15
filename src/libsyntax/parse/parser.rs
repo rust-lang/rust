@@ -2950,30 +2950,41 @@ class parser {
             }
 
             let vis = self.parse_visibility();
-            let ident = self.parse_value_ident();
+
+            // Is this a nested enum declaration?
+            let ident, needs_comma, kind;
             let mut args = ~[], disr_expr = none;
-            let kind;
-            if self.eat(token::LBRACE) {
-                // Parse a struct variant.
-                all_nullary = false;
-                let path = self.ident_to_path_tys(ident, ty_params);
-                kind = struct_variant_kind(self.parse_struct_def(path));
-            } else if self.token == token::LPAREN {
-                all_nullary = false;
-                let arg_tys = self.parse_unspanned_seq(
-                    token::LPAREN, token::RPAREN,
-                    seq_sep_trailing_disallowed(token::COMMA),
-                    |p| p.parse_ty(false));
-                for arg_tys.each |ty| {
-                    vec::push(args, {ty: ty, id: self.get_id()});
-                }
-                kind = tuple_variant_kind(args);
-            } else if self.eat(token::EQ) {
-                have_disr = true;
-                disr_expr = some(self.parse_expr());
-                kind = tuple_variant_kind(args);
+            if self.eat_keyword(~"enum") {
+                ident = self.parse_ident();
+                self.expect(token::LBRACE);
+                let nested_enum_def = self.parse_enum_def(ident, ty_params);
+                kind = enum_variant_kind(move nested_enum_def);
+                needs_comma = false;
             } else {
-                kind = tuple_variant_kind(~[]);
+                ident = self.parse_value_ident();
+                if self.eat(token::LBRACE) {
+                    // Parse a struct variant.
+                    all_nullary = false;
+                    let path = self.ident_to_path_tys(ident, ty_params);
+                    kind = struct_variant_kind(self.parse_struct_def(path));
+                } else if self.token == token::LPAREN {
+                    all_nullary = false;
+                    let arg_tys = self.parse_unspanned_seq(
+                        token::LPAREN, token::RPAREN,
+                        seq_sep_trailing_disallowed(token::COMMA),
+                        |p| p.parse_ty(false));
+                    for arg_tys.each |ty| {
+                        vec::push(args, {ty: ty, id: self.get_id()});
+                    }
+                    kind = tuple_variant_kind(args);
+                } else if self.eat(token::EQ) {
+                    have_disr = true;
+                    disr_expr = some(self.parse_expr());
+                    kind = tuple_variant_kind(args);
+                } else {
+                    kind = tuple_variant_kind(~[]);
+                }
+                needs_comma = true;
             }
 
             let vr = {name: ident, attrs: variant_attrs,
@@ -2981,7 +2992,7 @@ class parser {
                       disr_expr: disr_expr, vis: vis};
             vec::push(variants, spanned(vlo, self.last_span.hi, vr));
 
-            if !self.eat(token::COMMA) { break; }
+            if needs_comma && !self.eat(token::COMMA) { break; }
         }
         self.expect(token::RBRACE);
         if (have_disr && !all_nullary) {
