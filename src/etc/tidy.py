@@ -19,7 +19,7 @@ def report_err(s):
     err=1
 
 file_names = [s for s in sys.argv[1:] if (not s.endswith("_gen.rs"))
-                                     and (not s.startswith(".#"))]
+                                     and (not ".#" in s)]
 
 try:
     for line in fileinput.input(file_names,
