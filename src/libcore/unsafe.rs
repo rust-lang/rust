@@ -105,6 +105,7 @@ unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
     }
 }
 
+#[inline(always)]
 unsafe fn get_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
         -> &mut T {
     unsafe {
@@ -116,6 +117,7 @@ unsafe fn get_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
         return r;
     }
 }
+#[inline(always)]
 unsafe fn get_shared_immutable_state<T: send>(rc: &SharedMutableState<T>)
         -> &T {
     unsafe {
@@ -169,6 +171,7 @@ class LittleLock {
 }
 
 impl LittleLock {
+    #[inline(always)]
     unsafe fn lock<T>(f: fn() -> T) -> T {
         class Unlock {
             let l: rust_little_lock;
@@ -209,6 +212,7 @@ impl<T: send> Exclusive<T> {
     // Currently, scheduling operations (i.e., yielding, receiving on a pipe,
     // accessing the provided condition variable) are prohibited while inside
     // the exclusive. Supporting that is a work in progress.
+    #[inline(always)]
     unsafe fn with<U>(f: fn(x: &mut T) -> U) -> U {
         let rec = unsafe { get_shared_mutable_state(&self.x) };
         do rec.lock.lock {
