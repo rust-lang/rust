@@ -111,6 +111,9 @@ fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
                             builtin(ext::source_util::expand_mod));
     syntax_expanders.insert(~"proto",
                             builtin_item_tt(ext::pipes::expand_proto));
+    syntax_expanders.insert(
+        ~"trace_macros",
+        builtin_expr_tt(ext::trace_macros::expand_trace_macros));
     return syntax_expanders;
 }
 
@@ -136,6 +139,8 @@ trait ext_ctxt {
     fn span_bug(sp: span, msg: ~str) -> !;
     fn bug(msg: ~str) -> !;
     fn next_id() -> ast::node_id;
+    pure fn trace_macros() -> bool;
+    fn set_trace_macros(x: bool);
 }
 
 fn mk_ctxt(parse_sess: parse::parse_sess,
@@ -143,7 +148,8 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
     type ctxt_repr = {parse_sess: parse::parse_sess,
                       cfg: ast::crate_cfg,
                       mut backtrace: expn_info,
-                      mut mod_path: ~[ast::ident]};
+                      mut mod_path: ~[ast::ident],
+                      mut trace_mac: bool};
     impl ctxt_repr: ext_ctxt {
         fn codemap() -> codemap { self.parse_sess.cm }
         fn parse_sess() -> parse::parse_sess { self.parse_sess }
@@ -199,12 +205,19 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         fn next_id() -> ast::node_id {
             return parse::next_node_id(self.parse_sess);
         }
+        pure fn trace_macros() -> bool {
+            self.trace_mac
+        }
+        fn set_trace_macros(x: bool) {
+            self.trace_mac = x
+        }
     }
     let imp : ctxt_repr = {
         parse_sess: parse_sess,
         cfg: cfg,
         mut backtrace: none,
-        mut mod_path: ~[]
+        mut mod_path: ~[],
+        mut trace_mac: false
     };
     return imp as ext_ctxt
 }

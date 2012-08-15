@@ -89,4 +89,6 @@ mod ext {
         mod check;
         mod liveness;
     }
+
+    mod trace_macros;
 }
