@@ -2771,10 +2771,11 @@ mod tests {
     fn test_chars_iter() {
         let mut i = 0;
         do chars_iter(~"x\u03c0y") |ch| {
-            match check i {
+            match i {
               0 => assert ch == 'x',
               1 => assert ch == '\u03c0',
-              2 => assert ch == 'y'
+              2 => assert ch == 'y',
+              _ => fail ~"test_chars_iter failed"
             }
             i += 1;
         }
@@ -2787,10 +2788,11 @@ mod tests {
         let mut i = 0;
 
         do bytes_iter(~"xyz") |bb| {
-            match check i {
+            match i {
               0 => assert bb == 'x' as u8,
               1 => assert bb == 'y' as u8,
-              2 => assert bb == 'z' as u8
+              2 => assert bb == 'z' as u8,
+              _ => fail ~"test_bytes_iter failed"
             }
             i += 1;
         }

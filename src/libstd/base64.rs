@@ -30,22 +30,25 @@ impl ~[u8]: to_base64 {
             i += 3u;
         }
 
-        match check len % 3u {
-          0u => (),
-          1u => {
+        // Heh, would be cool if we knew this was exhaustive
+        // (the dream of bounded integer types)
+        match len % 3 {
+          0 => (),
+          1 => {
             let n = (self[i] as uint) << 16u;
             str::push_char(s, chars[(n >> 18u) & 63u]);
             str::push_char(s, chars[(n >> 12u) & 63u]);
             str::push_char(s, '=');
             str::push_char(s, '=');
           }
-          2u => {
+          2 => {
             let n = (self[i] as uint) << 16u | (self[i + 1u] as uint) << 8u;
             str::push_char(s, chars[(n >> 18u) & 63u]);
             str::push_char(s, chars[(n >> 12u) & 63u]);
             str::push_char(s, chars[(n >> 6u) & 63u]);
             str::push_char(s, '=');
           }
+          _ => fail ~"Algebra is broken, please alert the math police"
         }
 
         s

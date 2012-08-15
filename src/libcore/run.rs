@@ -312,12 +312,16 @@ fn program_output(prog: &str, args: &[~str]) ->
     let mut count = 2;
     while count > 0 {
         let stream = comm::recv(p);
-        match check stream {
+        match stream {
             (1, s) => {
                 outs = s;
             }
             (2, s) => {
                 errs = s;
+            }
+            (n, _) => {
+                fail(#fmt("program_output received an unexpected file \
+                  number: %u", n));
             }
         };
         count -= 1;

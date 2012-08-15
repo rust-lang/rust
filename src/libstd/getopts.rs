@@ -431,11 +431,12 @@ mod tests {
         let args = ~[~"--test=20"];
         let opts = ~[reqopt(~"test")];
         let rs = getopts(args, opts);
-        match check rs {
+        match rs {
           ok(m) => {
             assert (opt_present(m, ~"test"));
             assert (opt_str(m, ~"test") == ~"20");
           }
+          _ => { fail ~"test_reqopt_long failed"; }
         }
     }
 

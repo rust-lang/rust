@@ -572,26 +572,30 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
 fn strftime(format: ~str, tm: tm) -> ~str {
     fn parse_type(ch: char, tm: tm) -> ~str {
         //FIXME (#2350): Implement missing types.
-        match check ch {
-          'A' => match check tm.tm_wday as int {
+      let die = || #fmt("strftime: can't understand this format %c ",
+                             ch);
+        match ch {
+          'A' => match tm.tm_wday as int {
             0 => ~"Sunday",
             1 => ~"Monday",
             2 => ~"Tuesday",
             3 => ~"Wednesday",
             4 => ~"Thursday",
             5 => ~"Friday",
-            6 => ~"Saturday"
+            6 => ~"Saturday",
+            _ => die()
           },
-          'a' => match check tm.tm_wday as int {
+         'a' => match tm.tm_wday as int {
             0 => ~"Sun",
             1 => ~"Mon",
             2 => ~"Tue",
             3 => ~"Wed",
             4 => ~"Thu",
             5 => ~"Fri",
-            6 => ~"Sat"
+            6 => ~"Sat",
+            _ => die()
           },
-          'B' => match check tm.tm_mon as int {
+          'B' => match tm.tm_mon as int {
             0 => ~"January",
             1 => ~"February",
             2 => ~"March",
@@ -603,9 +607,10 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             8 => ~"September",
             9 => ~"October",
             10 => ~"November",
-            11 => ~"December"
+            11 => ~"December",
+            _ => die()
           },
-          'b' | 'h' => match check tm.tm_mon as int {
+          'b' | 'h' => match tm.tm_mon as int {
             0 => ~"Jan",
             1 => ~"Feb",
             2 => ~"Mar",
@@ -618,6 +623,7 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             9 => ~"Oct",
             10 => ~"Nov",
             11 => ~"Dec",
+            _  => die()
           },
           'C' => fmt!{"%02d", (tm.tm_year as int + 1900) / 100},
           'c' => {
@@ -712,7 +718,8 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             fmt!{"%c%02d%02d", sign, h as int, m as int}
           }
           //'+' {}
-          '%' => ~"%"
+          '%' => ~"%",
+          _   => die()
         }
     }
 
