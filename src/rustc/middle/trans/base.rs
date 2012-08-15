@@ -3852,12 +3852,18 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           }
 
           // These return nothing
-          ast::expr_break => {
+          ast::expr_break(label_opt) => {
             assert dest == ignore;
+            if label_opt.is_some() {
+                bcx.tcx().sess.span_unimpl(e.span, ~"labeled break");
+            }
             return trans_break(bcx);
           }
-          ast::expr_again => {
+          ast::expr_again(label_opt) => {
             assert dest == ignore;
+            if label_opt.is_some() {
+                bcx.tcx().sess.span_unimpl(e.span, ~"labeled again");
+            }
             return trans_cont(bcx);
           }
           ast::expr_ret(ex) => {
@@ -3880,7 +3886,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             assert dest == ignore;
             return trans_while(bcx, cond, body);
           }
-          ast::expr_loop(body) => {
+          ast::expr_loop(body, _) => {
             assert dest == ignore;
             return trans_loop(bcx, body);
           }

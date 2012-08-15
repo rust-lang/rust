@@ -939,10 +939,18 @@ class parser {
                 ex = expr_ret(some(e));
             } else { ex = expr_ret(none); }
         } else if self.eat_keyword(~"break") {
-            ex = expr_break;
+            if is_ident(self.token) {
+                ex = expr_break(some(self.parse_ident()));
+            } else {
+                ex = expr_break(none);
+            }
             hi = self.span.hi;
         } else if self.eat_keyword(~"again") {
-            ex = expr_again;
+            if is_ident(self.token) {
+                ex = expr_again(some(self.parse_ident()));
+            } else {
+                ex = expr_again(none);
+            }
             hi = self.span.hi;
         } else if self.eat_keyword(~"copy") {
             let e = self.parse_expr();
@@ -1585,10 +1593,18 @@ class parser {
     }
 
     fn parse_loop_expr() -> @expr {
+        let opt_ident;
+        if is_ident(self.token) {
+            opt_ident = some(self.parse_ident());
+            self.expect(token::COLON);
+        } else {
+            opt_ident = none;
+        }
+
         let lo = self.last_span.lo;
         let body = self.parse_block_no_value();
         let mut hi = body.span.hi;
-        return self.mk_expr(lo, hi, expr_loop(body));
+        return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
     }
 
     // For distingishing between record literals and blocks

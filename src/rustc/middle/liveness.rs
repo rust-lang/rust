@@ -469,7 +469,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
       expr_assert(*) | expr_addr_of(*) | expr_copy(*) |
       expr_loop_body(*) | expr_do_body(*) | expr_cast(*) |
       expr_unary(*) | expr_fail(*) |
-      expr_break | expr_again | expr_lit(_) | expr_ret(*) |
+      expr_break(_) | expr_again(_) | expr_lit(_) | expr_ret(*) |
       expr_block(*) | expr_move(*) | expr_unary_move(*) | expr_assign(*) |
       expr_swap(*) | expr_assign_op(*) | expr_mac(*) | expr_struct(*) |
       expr_repeat(*) => {
@@ -962,7 +962,7 @@ class liveness {
             self.propagate_through_loop(expr, some(cond), blk, succ)
           }
 
-          expr_loop(blk) => {
+          expr_loop(blk, _) => {
             self.propagate_through_loop(expr, none, blk, succ)
           }
 
@@ -1000,19 +1000,27 @@ class liveness {
             self.propagate_through_opt_expr(o_e, self.s.exit_ln)
           }
 
-          expr_break => {
+          expr_break(opt_label) => {
             if !self.break_ln.is_valid() {
                 self.tcx.sess.span_bug(
                     expr.span, ~"break with invalid break_ln");
             }
 
+            if opt_label.is_some() {
+                self.tcx.sess.span_unimpl(expr.span, ~"labeled break");
+            }
+
             self.break_ln
           }
 
-          expr_again => {
+          expr_again(opt_label) => {
             if !self.cont_ln.is_valid() {
                 self.tcx.sess.span_bug(
                     expr.span, ~"cont with invalid cont_ln");
+            }
+
+            if opt_label.is_some() {
+                self.tcx.sess.span_unimpl(expr.span, ~"labeled again");
             }
 
             self.cont_ln
@@ -1457,7 +1465,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_assert(*) | expr_copy(*) |
       expr_loop_body(*) | expr_do_body(*) |
       expr_cast(*) | expr_unary(*) | expr_fail(*) |
-      expr_ret(*) | expr_break | expr_again | expr_lit(_) |
+      expr_ret(*) | expr_break(*) | expr_again(*) | expr_lit(_) |
       expr_block(*) | expr_swap(*) | expr_mac(*) | expr_addr_of(*) |
       expr_struct(*) | expr_repeat(*) => {
         visit::visit_expr(expr, self, vt);

@@ -89,7 +89,8 @@ enum def {
               node_id /* expr node that creates the closure */),
     def_class(def_id, bool /* has constructor */),
     def_typaram_binder(node_id), /* class, impl or trait that has ty params */
-    def_region(node_id)
+    def_region(node_id),
+    def_label(node_id)
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -316,7 +317,7 @@ enum expr_ {
     /* Conditionless loop (can be exited with break, cont, ret, or fail)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
-    expr_loop(blk),
+    expr_loop(blk, option<ident>),
     expr_match(@expr, ~[arm], alt_mode),
     expr_fn(proto, fn_decl, blk, capture_clause),
     expr_fn_block(fn_decl, blk, capture_clause),
@@ -339,8 +340,8 @@ enum expr_ {
     expr_path(@path),
     expr_addr_of(mutability, @expr),
     expr_fail(option<@expr>),
-    expr_break,
-    expr_again,
+    expr_break(option<ident>),
+    expr_again(option<ident>),
     expr_ret(option<@expr>),
     expr_log(int, @expr, @expr),
 

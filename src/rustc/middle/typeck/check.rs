@@ -1466,8 +1466,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
         fcx.write_bot(id);
       }
-      ast::expr_break => { fcx.write_bot(id); bot = true; }
-      ast::expr_again => { fcx.write_bot(id); bot = true; }
+      ast::expr_break(_) => { fcx.write_bot(id); bot = true; }
+      ast::expr_again(_) => { fcx.write_bot(id); bot = true; }
       ast::expr_ret(expr_opt) => {
         bot = true;
         let ret_ty = match fcx.indirect_ret_ty {
@@ -1518,7 +1518,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
       }
-      ast::expr_loop(body) => {
+      ast::expr_loop(body, _) => {
         check_block_no_value(fcx, body);
         fcx.write_ty(id, ty::mk_nil(tcx));
         bot = !may_break(body);
@@ -2295,6 +2295,9 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_typaram_binder(*) => {
         fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type \
                                           parameter");
+      }
+      ast::def_label(*) => {
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found label");
       }
     }
 }

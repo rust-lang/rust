@@ -374,6 +374,7 @@ impl ast::def: tr {
           ast::def_typaram_binder(nid) => {
             ast::def_typaram_binder(xcx.tr_id(nid))
           }
+          ast::def_label(nid) => ast::def_label(xcx.tr_id(nid))
         }
     }
 }

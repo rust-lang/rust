@@ -253,10 +253,10 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         })
       }
       expr_match(_, _, _) | expr_block(_) | expr_if(_, _, _) |
-      expr_while(_, _) | expr_fail(_) | expr_break | expr_again |
+      expr_while(_, _) | expr_fail(_) | expr_break(_) | expr_again(_) |
       expr_unary(_, _) | expr_lit(_) | expr_assert(_) |
       expr_mac(_) | expr_addr_of(_, _) |
-      expr_ret(_) | expr_loop(_) |
+      expr_ret(_) | expr_loop(_, _) |
       expr_loop_body(_) | expr_do_body(_) => ()
     }
 }

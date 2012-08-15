@@ -227,7 +227,7 @@ fn req_loans_in_expr(ex: @ast::expr,
       }
 
       // see explanation attached to the `root_ub` field:
-      ast::expr_loop(body) => {
+      ast::expr_loop(body, _) => {
         self.root_ub = body.node.id;
         visit::visit_expr(ex, self, vt);
       }
