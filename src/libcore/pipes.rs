@@ -97,6 +97,9 @@ export stream, port, chan, shared_chan, port_set, channel;
 export oneshot, chan_one, port_one;
 export recv_one, try_recv_one, send_one, try_send_one;
 
+// Functions used by the protocol compiler
+export rt;
+
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;
 
@@ -1192,6 +1195,13 @@ fn send_one<T: send>(+chan: chan_one<T>, +data: T) {
 fn try_send_one<T: send>(+chan: chan_one<T>, +data: T)
         -> bool {
     oneshot::client::try_send(chan, data).is_some()
+}
+
+mod rt {
+    // These are used to hide the option constructors from the
+    // compiler because their names are changing
+    fn make_some<T>(+val: T) -> option<T> { some(val) }
+    fn make_none<T>() -> option<T> { none }
 }
 
 #[cfg(test)]
