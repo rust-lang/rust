@@ -97,6 +97,7 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
  * Mutex protected ARC (unsafe)
  ****************************************************************************/
 
+#[doc(hidden)]
 struct mutex_arc_inner<T: send> { lock: mutex; failed: bool; data: T; }
 /// An ARC with mutable data protected by a blocking mutex.
 struct mutex_arc<T: send> { x: SharedMutableState<mutex_arc_inner<T>>; }
@@ -182,6 +183,7 @@ impl<T: send> &mutex_arc<T> {
 
 // Common code for {mutex.access,rwlock.write}{,_cond}.
 #[inline(always)]
+#[doc(hidden)]
 fn check_poison(is_mutex: bool, failed: bool) {
     if failed {
         if is_mutex {
@@ -192,6 +194,7 @@ fn check_poison(is_mutex: bool, failed: bool) {
     }
 }
 
+#[doc(hidden)]
 struct poison_on_fail {
     failed: &mut bool;
     new(failed: &mut bool) { self.failed = failed; }
@@ -205,6 +208,7 @@ struct poison_on_fail {
  * R/W lock protected ARC
  ****************************************************************************/
 
+#[doc(hidden)]
 struct rw_arc_inner<T: const send> { lock: rwlock; failed: bool; data: T; }
 /**
  * A dual-mode ARC protected by a reader-writer lock. The data can be accessed
@@ -346,6 +350,7 @@ impl<T: const send> &rw_arc<T> {
 // Borrowck rightly complains about immutably aliasing the rwlock in order to
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
+#[doc(hidden)]
 fn borrow_rwlock<T: const send>(state: &mut rw_arc_inner<T>) -> &rwlock {
     unsafe { unsafe::reinterpret_cast(&state.lock) }
 }

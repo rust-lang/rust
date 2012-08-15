@@ -18,14 +18,18 @@ import unsafe::{Exclusive, exclusive};
  * Internals
  ****************************************************************************/
 
-// Each waiting task receives on one of these. FIXME #3125 make these oneshot.
+// Each waiting task receives on one of these.
+#[doc(hidden)]
 type wait_end = pipes::port_one<()>;
+#[doc(hidden)]
 type signal_end = pipes::chan_one<()>;
 // A doubly-ended queue of waiting tasks.
+#[doc(hidden)]
 struct waitqueue { head: pipes::port<signal_end>;
                    tail: pipes::chan<signal_end>; }
 
 // Signals one live task from the queue.
+#[doc(hidden)]
 fn signal_waitqueue(q: &waitqueue) -> bool {
     // The peek is mandatory to make sure recv doesn't block.
     if q.head.peek() {
@@ -41,6 +45,7 @@ fn signal_waitqueue(q: &waitqueue) -> bool {
     }
 }
 
+#[doc(hidden)]
 fn broadcast_waitqueue(q: &waitqueue) -> uint {
     let mut count = 0;
     while q.head.peek() {
@@ -52,6 +57,7 @@ fn broadcast_waitqueue(q: &waitqueue) -> uint {
 }
 
 // The building-block used to make semaphores, mutexes, and rwlocks.
+#[doc(hidden)]
 struct sem_inner<Q> {
     mut count: int;
     waiters:   waitqueue;
@@ -59,8 +65,10 @@ struct sem_inner<Q> {
     // a condition variable attached, others should.
     blocked:   Q;
 }
+#[doc(hidden)]
 enum sem<Q: send> = Exclusive<sem_inner<Q>>;
 
+#[doc(hidden)]
 fn new_sem<Q: send>(count: int, +q: Q) -> sem<Q> {
     let (wait_tail, wait_head)  = pipes::stream();
     sem(exclusive(sem_inner {
@@ -68,6 +76,7 @@ fn new_sem<Q: send>(count: int, +q: Q) -> sem<Q> {
         waiters: waitqueue { head: wait_head, tail: wait_tail },
         blocked: q }))
 }
+#[doc(hidden)]
 fn new_sem_and_signal(count: int, num_condvars: uint) -> sem<~[waitqueue]> {
     let mut queues = ~[];
     for num_condvars.times {
@@ -77,6 +86,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint) -> sem<~[waitqueue]> {
     new_sem(count, queues)
 }
 
+#[doc(hidden)]
 impl<Q: send> &sem<Q> {
     fn acquire() {
         let mut waiter_nobe = none;
@@ -112,6 +122,7 @@ impl<Q: send> &sem<Q> {
     }
 }
 // FIXME(#3154) move both copies of this into sem<Q>, and unify the 2 structs
+#[doc(hidden)]
 impl &sem<()> {
     fn access<U>(blk: fn() -> U) -> U {
         let mut release = none;
@@ -124,6 +135,7 @@ impl &sem<()> {
         blk()
     }
 }
+#[doc(hidden)]
 impl &sem<~[waitqueue]> {
     fn access<U>(blk: fn() -> U) -> U {
         let mut release = none;
@@ -138,11 +150,13 @@ impl &sem<~[waitqueue]> {
 }
 
 // FIXME(#3136) should go inside of access()
+#[doc(hidden)]
 struct sem_release {
     sem: &sem<()>;
     new(sem: &sem<()>) { self.sem = sem; }
     drop { self.sem.release(); }
 }
+#[doc(hidden)]
 struct sem_and_signal_release {
     sem: &sem<~[waitqueue]>;
     new(sem: &sem<~[waitqueue]>) { self.sem = sem; }
@@ -153,7 +167,14 @@ struct sem_and_signal_release {
 struct condvar { priv sem: &sem<~[waitqueue]>; drop { } }
 
 impl &condvar {
-    /// Atomically drop the associated lock, and block until a signal is sent.
+    /**
+     * Atomically drop the associated lock, and block until a signal is sent.
+     *
+     * # Failure
+     * A task which is killed (i.e., by linked failure with another task)
+     * while waiting on a condition variable will wake up, fail, and unlock
+     * the associated lock as it unwinds.
+     */
     fn wait() { self.wait_on(0) }
     /**
      * As wait(), but can specify which of multiple condition variables to
@@ -267,6 +288,7 @@ impl &condvar {
 // Checks whether a condvar ID was out of bounds, and fails if so, or does
 // something else next on success.
 #[inline(always)]
+#[doc(hidden)]
 fn check_cvar_bounds<U>(out_of_bounds: option<uint>, id: uint, act: &str,
                         blk: fn() -> U) -> U {
     match out_of_bounds {
@@ -280,6 +302,7 @@ fn check_cvar_bounds<U>(out_of_bounds: option<uint>, id: uint, act: &str,
     }
 }
 
+#[doc(hidden)]
 impl &sem<~[waitqueue]> {
     // The only other place that condvars get built is rwlock_write_mode.
     fn access_cond<U>(blk: fn(c: &condvar) -> U) -> U {
@@ -316,7 +339,6 @@ impl &semaphore {
     fn release() { (&self.sem).release() }
 
     /// Run a function with ownership of one of the semaphore's resources.
-    // FIXME(#3145): figure out whether or not this should get exported.
     fn access<U>(blk: fn() -> U) -> U { (&self.sem).access(blk) }
 }
 
@@ -327,7 +349,10 @@ impl &semaphore {
 /**
  * A blocking, bounded-waiting, mutual exclusion lock with an associated
  * FIFO condition variable.
- * FIXME(#3145): document killability
+ *
+ * # Failure
+ * A task which fails while holding a mutex will unlock the mutex as it
+ * unwinds.
  */
 struct mutex { priv sem: sem<~[waitqueue]>; }
 
@@ -362,12 +387,19 @@ impl &mutex {
 
 // NB: Wikipedia - Readers-writers_problem#The_third_readers-writers_problem
 
+#[doc(hidden)]
 struct rwlock_inner {
     read_mode:  bool;
     read_count: uint;
 }
 
-/// A blocking, no-starvation, reader-writer lock with an associated condvar.
+/**
+ * A blocking, no-starvation, reader-writer lock with an associated condvar.
+ *
+ * # Failure
+ * A task which fails while holding an rwlock will unlock the rwlock as it
+ * unwinds.
+ */
 struct rwlock {
     /* priv */ order_lock:  semaphore;
     /* priv */ access_lock: sem<~[waitqueue]>;
@@ -527,6 +559,7 @@ impl &rwlock {
 }
 
 // FIXME(#3136) should go inside of read()
+#[doc(hidden)]
 struct rwlock_release_read {
     lock: &rwlock;
     new(lock: &rwlock) { self.lock = lock; }
@@ -550,6 +583,7 @@ struct rwlock_release_read {
 }
 
 // FIXME(#3136) should go inside of downgrade()
+#[doc(hidden)]
 struct rwlock_release_downgrade {
     lock: &rwlock;
     new(lock: &rwlock) { self.lock = lock; }
@@ -580,8 +614,7 @@ struct rwlock_release_downgrade {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-// FIXME(#3145): make lock priv somehow
-struct rwlock_write_mode { lock: &rwlock; drop { } }
+struct rwlock_write_mode { /* priv */ lock: &rwlock; drop { } }
 /// The "read permission" token used for rwlock.write_downgrade().
 struct rwlock_read_mode  { priv lock: &rwlock; drop { } }
 
