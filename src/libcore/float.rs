@@ -41,6 +41,7 @@ import f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
 import f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
 import f64::signbit;
 import f64::{j0, j1, jn, y0, y1, yn};
+import num::from_int;
 
 const NaN: float = 0.0/0.0;
 
@@ -523,7 +524,7 @@ fn test_traits() {
     fn test<U:num::Num>(ten: &U) {
         assert (ten.to_int() == 10);
 
-        let two = from_int(2);
+        let two: U = from_int(2);
         assert (two.to_int() == 2);
 
         assert (ten.add(two) == from_int(12));
