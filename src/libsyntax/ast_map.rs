@@ -248,7 +248,6 @@ fn map_item(i: @item, cx: ctx, v: vt) {
 
 fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
                   ident: ast::ident, id: ast::node_id, cx: ctx, _v: vt) {
-    let (_, ms) = ast_util::split_class_items(struct_def.members);
     // Map trait refs to their parent classes. This is
     // so we can find the self_ty
     for struct_def.traits.each |p| {
@@ -260,7 +259,7 @@ fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
     let d_id = ast_util::local_def(id);
     let p = extend(cx, ident);
      // only need to handle methods
-    do vec::iter(ms) |m| { map_method(d_id, p, m, cx); }
+    do vec::iter(struct_def.methods) |m| { map_method(d_id, p, m, cx); }
 }
 
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {

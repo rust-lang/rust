@@ -24,7 +24,7 @@ trait ast_fold {
     fn fold_view_item(&&@view_item) -> @view_item;
     fn fold_foreign_item(&&@foreign_item) -> @foreign_item;
     fn fold_item(&&@item) -> option<@item>;
-    fn fold_class_item(&&@class_member) -> @class_member;
+    fn fold_struct_field(&&@struct_field) -> @struct_field;
     fn fold_item_underscore(item_) -> item_;
     fn fold_method(&&@method) -> @method;
     fn fold_block(blk) -> blk;
@@ -55,7 +55,7 @@ type ast_fold_precursor = @{
     fold_view_item: fn@(view_item_, ast_fold) -> view_item_,
     fold_foreign_item: fn@(&&@foreign_item, ast_fold) -> @foreign_item,
     fold_item: fn@(&&@item, ast_fold) -> option<@item>,
-    fold_class_item: fn@(&&@class_member, ast_fold) -> @class_member,
+    fold_struct_field: fn@(&&@struct_field, ast_fold) -> @struct_field,
     fold_item_underscore: fn@(item_, ast_fold) -> item_,
     fold_method: fn@(&&@method, ast_fold) -> @method,
     fold_block: fn@(blk_, span, ast_fold) -> (blk_, span),
@@ -214,16 +214,12 @@ fn noop_fold_item(&&i: @item, fld: ast_fold) -> option<@item> {
                span: fld.new_span(i.span)});
 }
 
-fn noop_fold_class_item(&&ci: @class_member, fld: ast_fold)
-    -> @class_member {
-    @{node: match ci.node {
-        instance_var(ident, t, cm, id, p) => {
-           instance_var(/* FIXME (#2543) */ copy ident,
-                        fld.fold_ty(t), cm, id, p)
-        }
-        class_method(m) => class_method(fld.fold_method(m))
-      },
-      span: ci.span}
+fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)
+                       -> @struct_field {
+    @{node: {kind: copy sf.node.kind,
+             id: sf.node.id,
+             ty: fld.fold_ty(sf.node.ty)},
+      span: sf.span}
 }
 
 fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
@@ -295,7 +291,8 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
             with dtor}};
     return @{
         traits: vec::map(struct_def.traits, |p| fold_trait_ref(p, fld)),
-        members: vec::map(struct_def.members, |x| fld.fold_class_item(x)),
+        fields: vec::map(struct_def.fields, |f| fold_struct_field(f, fld)),
+        methods: vec::map(struct_def.methods, |m| fld.fold_method(m)),
         ctor: resulting_optional_constructor,
         dtor: dtor
     };
@@ -304,6 +301,13 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
 fn fold_trait_ref(&&p: @trait_ref, fld: ast_fold) -> @trait_ref {
     @{path: fld.fold_path(p.path), ref_id: fld.new_id(p.ref_id),
      impl_id: fld.new_id(p.impl_id)}
+}
+
+fn fold_struct_field(&&f: @struct_field, fld: ast_fold) -> @struct_field {
+    @{node: {kind: copy f.node.kind,
+             id: fld.new_id(f.node.id),
+             ty: fld.fold_ty(f.node.ty)},
+      span: fld.new_span(f.span)}
 }
 
 fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
@@ -570,8 +574,9 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                     with dtor}};
             kind = struct_variant_kind(@{
                 traits: ~[],
-                members: vec::map(struct_def.members,
-                                  |x| fld.fold_class_item(x)),
+                fields: vec::map(struct_def.fields,
+                                 |f| fld.fold_struct_field(f)),
+                methods: vec::map(struct_def.methods, |m| fld.fold_method(m)),
                 ctor: none,
                 dtor: dtor
             })
@@ -644,7 +649,7 @@ fn default_ast_fold() -> ast_fold_precursor {
           fold_view_item: noop_fold_view_item,
           fold_foreign_item: noop_fold_foreign_item,
           fold_item: noop_fold_item,
-          fold_class_item: noop_fold_class_item,
+          fold_struct_field: noop_fold_struct_field,
           fold_item_underscore: noop_fold_item_underscore,
           fold_method: noop_fold_method,
           fold_block: wrap(noop_fold_block),
@@ -692,16 +697,11 @@ impl ast_fold_precursor: ast_fold {
     fn fold_item(&&i: @item) -> option<@item> {
         return self.fold_item(i, self as ast_fold);
     }
-    fn fold_class_item(&&ci: @class_member) -> @class_member {
-        @{node: match ci.node {
-           instance_var(nm, t, mt, id, p) => {
-               instance_var(/* FIXME (#2543) */ copy nm,
-                            (self as ast_fold).fold_ty(t), mt, id, p)
-           }
-           class_method(m) => {
-               class_method(self.fold_method(m, self as ast_fold))
-           }
-          }, span: self.new_span(ci.span)}
+    fn fold_struct_field(&&sf: @struct_field) -> @struct_field {
+        @{node: {kind: copy sf.node.kind,
+                 id: sf.node.id,
+                 ty: (self as ast_fold).fold_ty(sf.node.ty)},
+          span: self.new_span(sf.span)}
     }
     fn fold_item_underscore(i: item_) ->
        item_ {

@@ -372,19 +372,6 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method,
     check_bare_fn(ccx, method.decl, method.body, method.id, some(self_info));
 }
 
-fn check_class_member(ccx: @crate_ctxt, self_ty: ty::t,
-                      node_id: ast::node_id,
-                      cm: @ast::class_member) {
-    match cm.node {
-      ast::instance_var(_,t,_,_,_) => (),
-      ast::class_method(m) => {
-        let class_t = {self_ty: self_ty, node_id: node_id,
-                       explicit_self: m.self_ty.node};
-        check_method(ccx, m, class_t)
-      }
-    }
-}
-
 fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
                              ~[(ast::ident, span)]) {
     let field_names = hashmap::<@~str, span>(|x| str::hash(*x),
@@ -435,13 +422,13 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
         write_ty_to_tcx(tcx, dtor.node.self_id, class_t.self_ty);
     };
 
-    // typecheck the members
-    for struct_def.members.each |m| {
-        check_class_member(ccx, self_ty, id, m);
+    // typecheck the methods
+    for struct_def.methods.each |m| {
+        check_method(ccx, m, {self_ty: self_ty, node_id: id,
+                              explicit_self: m.self_ty.node});
     }
     // Check that there's at least one field
-    let (fields,_) = split_class_items(struct_def.members);
-    if fields.len() < 1u {
+    if struct_def.fields.len() < 1u {
         ccx.tcx.sess.span_err(span, ~"a class must have at least one field");
     }
     // Check that the class is instantiable

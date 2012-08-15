@@ -126,16 +126,11 @@ fn traverse_public_item(cx: ctx, item: @item) {
                 traverse_inline_body(cx, dtor.node.body);
             }
         }
-        for vec::each(struct_def.members) |item| {
-            match item.node {
-              class_method(m) => {
-                cx.rmap.insert(m.id, ());
-                if tps.len() > 0u ||
-                   attr::find_inline_attr(m.attrs) != attr::ia_none {
-                    traverse_inline_body(cx, m.body);
-                }
-              }
-              _ => ()
+        for vec::each(struct_def.methods) |m| {
+            cx.rmap.insert(m.id, ());
+            if tps.len() > 0 ||
+                    attr::find_inline_attr(m.attrs) != attr::ia_none {
+                traverse_inline_body(cx, m.body);
             }
         }
       }

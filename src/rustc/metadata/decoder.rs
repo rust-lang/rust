@@ -745,11 +745,12 @@ fn get_class_fields(cdata: cmd, id: ast::node_id) -> ~[ty::field_ty] {
 }
 
 fn family_has_type_params(fam_ch: char) -> bool {
-    match check fam_ch {
-      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' | 'e' => false,
+    match fam_ch {
+      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' | 'e' | 'N' => false,
       'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
           | 'a' | 'S'
-          => true
+          => true,
+      _ => fail fmt!("'%c' is not a family", fam_ch)
     }
 }
 

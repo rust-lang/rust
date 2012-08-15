@@ -629,45 +629,29 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
       head(s, ~"drop");
       print_block(s, dtor.node.body);
     }
-    for struct_def.members.each |ci| {
-            /*
-               FIXME (#1893): collect all private items and print
-               them in a single "priv" section
-
-               tjc: I'm not going to fix this yet b/c we might
-               change how exports work, including for class items
-             */
-       hardbreak_if_not_bol(s);
-       maybe_print_comment(s, ci.span.lo);
-       let pr = ast_util::class_member_visibility(ci);
-       match pr {
-          ast::private => {
-              head(s, ~"priv");
-              bopen(s);
-              hardbreak_if_not_bol(s);
-          }
-          _ => ()
-       }
-       match ci.node {
-          ast::instance_var(nm, t, mt, _,_) => {
-              word_nbsp(s, ~"let");
-              match mt {
-                ast::class_mutable => word_nbsp(s, ~"mut"),
-                _ => ()
-              }
-              word(s.s, *nm);
-              word_nbsp(s, ~":");
-              print_type(s, t);
-              word(s.s, ~";");
-          }
-          ast::class_method(m) => {
-              print_method(s, m);
-          }
-       }
-       match pr {
-           ast::private => bclose(s, ci.span),
-           _ => ()
-       }
+    for struct_def.fields.each |field| {
+        match field.node.kind {
+            ast::unnamed_field => {} // We don't print here.
+            ast::named_field(ident, mutability, visibility) => {
+                hardbreak_if_not_bol(s);
+                maybe_print_comment(s, field.span.lo);
+                if visibility == ast::private {
+                    head(s, ~"priv");
+                    bopen(s);
+                    hardbreak_if_not_bol(s);
+                }
+                if mutability == ast::class_mutable {
+                    word_nbsp(s, ~"mut");
+                }
+                word(s.s, *ident);
+                word_nbsp(s, ~":");
+                print_type(s, field.node.ty);
+                word(s.s, ~";");
+            }
+        }
+    }
+    for struct_def.methods.each |method| {
+        print_method(s, method);
     }
     bclose(s, span);
 }
