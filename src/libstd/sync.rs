@@ -8,7 +8,8 @@
  * in std.
  */
 
-export condvar, semaphore, mutex, rwlock, rwlock_write_mode, rwlock_read_mode;
+export condvar, semaphore, mutex, mutex_with_condvars;
+export rwlock, rwlock_with_condvars, rwlock_write_mode, rwlock_read_mode;
 
 // FIXME (#3119) This shouldn't be a thing exported from core.
 import unsafe::{Exclusive, exclusive};

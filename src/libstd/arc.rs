@@ -10,31 +10,55 @@ import unsafe::{SharedMutableState,
                 shared_mutable_state, clone_shared_mutable_state,
                 get_shared_mutable_state, get_shared_immutable_state};
 import sync;
-import sync::{mutex, rwlock};
+import sync::{mutex, mutex_with_condvars, rwlock, rwlock_with_condvars};
 
 export arc, clone, get;
-export condvar, mutex_arc, rw_arc, rw_write_mode, rw_read_mode;
+export condvar, mutex_arc, mutex_arc_with_condvars;
+export rw_arc, rw_arc_with_condvars, rw_write_mode, rw_read_mode;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 struct condvar { is_mutex: bool; failed: &mut bool; cond: &sync::condvar; }
 
 impl &condvar {
     /// Atomically exit the associated ARC and block until a signal is sent.
-    fn wait() {
+    #[inline(always)]
+    fn wait() { self.wait_on(0) }
+    /**
+     * Atomically exit the associated ARC and block on a specified condvar
+     * until a signal is sent on that same condvar (as sync::cond.wait_on).
+     *
+     * wait() is equivalent to wait_on(0).
+     */
+    #[inline(always)]
+    fn wait_on(condvar_id: uint) {
         assert !*self.failed;
-        self.cond.wait();
+        self.cond.wait_on(condvar_id);
         // This is why we need to wrap sync::condvar.
         check_poison(self.is_mutex, *self.failed);
     }
     /// Wake up a blocked task. Returns false if there was no blocked task.
-    fn signal() -> bool {
+    #[inline(always)]
+    fn signal() -> bool { self.signal_on(0) }
+    /**
+     * Wake up a blocked task on a specified condvar (as
+     * sync::cond.signal_on). Returns false if there was no blocked task.
+     */
+    #[inline(always)]
+    fn signal_on(condvar_id: uint) -> bool {
         assert !*self.failed;
-        self.cond.signal()
+        self.cond.signal_on(condvar_id)
     }
     /// Wake up all blocked tasks. Returns the number of tasks woken.
-    fn broadcast() -> uint {
+    #[inline(always)]
+    fn broadcast() -> uint { self.broadcast_on(0) }
+    /**
+     * Wake up all blocked tasks on a specified condvar (as
+     * sync::cond.broadcast_on). Returns Returns the number of tasks woken.
+     */
+    #[inline(always)]
+    fn broadcast_on(condvar_id: uint) -> uint {
         assert !*self.failed;
-        self.cond.broadcast()
+        self.cond.broadcast_on(condvar_id)
     }
 }
 
@@ -79,9 +103,17 @@ struct mutex_arc<T: send> { x: SharedMutableState<mutex_arc_inner<T>>; }
 
 /// Create a mutex-protected ARC with the supplied data.
 fn mutex_arc<T: send>(+user_data: T) -> mutex_arc<T> {
-    let data = mutex_arc_inner {
-        lock: mutex(), failed: false, data: user_data
-    };
+    mutex_arc_with_condvars(user_data, 1)
+}
+/**
+ * Create a mutex-protected ARC with the supplied data and a specified number
+ * of condvars (as sync::mutex_with_condvars).
+ */
+fn mutex_arc_with_condvars<T: send>(+user_data: T,
+                                    num_condvars: uint) -> mutex_arc<T> {
+    let data =
+        mutex_arc_inner { lock: mutex_with_condvars(num_condvars),
+                          failed: false, data: user_data };
     mutex_arc { x: unsafe { shared_mutable_state(data) } }
 }
 
@@ -187,9 +219,17 @@ struct rw_arc<T: const send> {
 
 /// Create a reader/writer ARC with the supplied data.
 fn rw_arc<T: const send>(+user_data: T) -> rw_arc<T> {
-    let data = rw_arc_inner {
-        lock: rwlock(), failed: false, data: user_data
-    };
+    rw_arc_with_condvars(user_data, 1)
+}
+/**
+ * Create a reader/writer ARC with the supplied data and a specified number
+ * of condvars (as sync::rwlock_with_condvars).
+ */
+fn rw_arc_with_condvars<T: const send>(+user_data: T,
+                                       num_condvars: uint) -> rw_arc<T> {
+    let data =
+        rw_arc_inner { lock: rwlock_with_condvars(num_condvars),
+                       failed: false, data: user_data };
     rw_arc { x: unsafe { shared_mutable_state(data) }, cant_nest: () }
 }
 
