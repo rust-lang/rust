@@ -207,7 +207,7 @@ impl f64: num::Num {
     pure fn neg()                -> f64 { return -self;        }
 
     pure fn to_int()         -> int { return self as int; }
-    pure fn from_int(n: int) -> f64 { return n as f64;    }
+    static pure fn from_int(n: int) -> f64 { return n as f64;    }
 }
 
 //

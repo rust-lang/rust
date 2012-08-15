@@ -180,7 +180,7 @@ impl f32: num::Num {
     pure fn neg()                -> f32 { return -self;        }
 
     pure fn to_int()         -> int { return self as int; }
-    pure fn from_int(n: int) -> f32 { return n as f32;    }
+    static pure fn from_int(n: int) -> f32 { return n as f32;    }
 }
 
 //
