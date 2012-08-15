@@ -3,6 +3,7 @@ use std;
 import task;
 import task::task;
 import comm;
+import comm::Chan;
 import comm::chan;
 import comm::port;
 import comm::send;
@@ -17,7 +18,7 @@ fn main() {
     test06();
 }
 
-fn test00_start(ch: chan<int>, message: int, count: int) {
+fn test00_start(ch: Chan<int>, message: int, count: int) {
     debug!{"Starting test00_start"};
     let mut i: int = 0;
     while i < count {
@@ -93,7 +94,7 @@ fn test04() {
     debug!{"Finishing up."};
 }
 
-fn test05_start(ch: chan<int>) {
+fn test05_start(ch: Chan<int>) {
     send(ch, 10);
     send(ch, 20);
     send(ch, 30);

@@ -9,7 +9,7 @@ import either::Either;
 import result::{ok, err};
 import io::WriterUtil;
 import libc::size_t;
-import task::task_builder;
+import task::TaskBuilder;
 
 export test_name;
 export test_fn;
@@ -379,7 +379,7 @@ fn filter_tests(opts: test_opts,
 
 type test_future = {test: test_desc, wait: fn@() -> test_result};
 
-fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
+fn run_test(+test: test_desc, monitor_ch: comm::Chan<monitor_msg>) {
     if test.ignore {
         comm::send(monitor_ch, (copy test, tr_ignored));
         return;
@@ -392,7 +392,7 @@ fn run_test(+test: test_desc, monitor_ch: comm::chan<monitor_msg>) {
             result_future = some(r);
         }).spawn(testfn);
         let task_result = future::get(&option::unwrap(result_future));
-        let test_result = calc_result(test, task_result == task::success);
+        let test_result = calc_result(test, task_result == task::Success);
         comm::send(monitor_ch, (copy test, test_result));
     };
 }

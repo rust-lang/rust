@@ -14,9 +14,9 @@ fn run(i: int) {
         return;
     }
 
-    do task::task().sched_mode(task::platform_thread).unlinked().spawn {
+    do task::task().sched_mode(task::PlatformThread).unlinked().spawn {
         task::yield();
-        do task::task().sched_mode(task::single_threaded).unlinked().spawn {
+        do task::task().sched_mode(task::SingleThreaded).unlinked().spawn {
             task::yield();
             run(i - 1);
             task::yield();

@@ -720,7 +720,7 @@ mod tests {
     fn test_sem_runtime_friendly_blocking() {
         // Force the runtime to schedule two threads on the same sched_loop.
         // When one blocks, it should schedule the other one.
-        do task::spawn_sched(task::manual_threads(1)) {
+        do task::spawn_sched(task::ManualThreads(1)) {
             let s = ~semaphore(1);
             let s2 = ~s.clone();
             let (c,p) = pipes::stream();

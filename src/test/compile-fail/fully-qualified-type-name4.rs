@@ -1,10 +1,10 @@
 // Test that we use fully-qualified type names in error messages.
 
-import core::task::task;
+import core::task::Task;
 
-fn bar(x: uint) -> task {
+fn bar(x: uint) -> Task {
     return x;
-    //~^ ERROR mismatched types: expected `core::task::task`
+    //~^ ERROR mismatched types: expected `core::task::Task`
 }
 
 fn main() {

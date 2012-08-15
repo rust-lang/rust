@@ -10,7 +10,7 @@ import str;
 import comm;
 import task;
 
-type ctx = comm::chan<int>;
+type ctx = comm::Chan<int>;
 
 fn iotask(cx: ctx, ip: ~str) {
     assert (ip == ~"localhost");

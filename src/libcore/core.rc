@@ -235,8 +235,11 @@ mod dlist_iter {
 mod send_map;
 
 // Concurrency
+#[warn(non_camel_case_types)]
 mod comm;
+#[warn(non_camel_case_types)]
 mod task;
+//#[warn(non_camel_ase_types)] pipec code continues to trip this warning
 mod future;
 mod pipes;
 

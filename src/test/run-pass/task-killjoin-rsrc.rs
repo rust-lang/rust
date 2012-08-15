@@ -7,8 +7,8 @@ use std;
 import task;
 
 class notify {
-    let ch: comm::chan<bool>; let v: @mut bool;
-    new(ch: comm::chan<bool>, v: @mut bool) { self.ch = ch; self.v = v; }
+    let ch: comm::Chan<bool>; let v: @mut bool;
+    new(ch: comm::Chan<bool>, v: @mut bool) { self.ch = ch; self.v = v; }
     drop {
         error!{"notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),
@@ -20,8 +20,8 @@ class notify {
     }
 }
 
-fn joinable(+f: fn~()) -> comm::port<bool> {
-    fn wrapper(+c: comm::chan<bool>, +f: fn()) {
+fn joinable(+f: fn~()) -> comm::Port<bool> {
+    fn wrapper(+c: comm::Chan<bool>, +f: fn()) {
         let b = @mut false;
         error!{"wrapper: task=%? allocated v=%x",
                task::get_task(),
@@ -36,7 +36,7 @@ fn joinable(+f: fn~()) -> comm::port<bool> {
     p
 }
 
-fn join(port: comm::port<bool>) -> bool {
+fn join(port: comm::Port<bool>) -> bool {
     comm::recv(port)
 }
 

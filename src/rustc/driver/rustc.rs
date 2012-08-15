@@ -231,8 +231,8 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         };
 
         class finally {
-            let ch: comm::chan<monitor_msg>;
-            new(ch: comm::chan<monitor_msg>) { self.ch = ch; }
+            let ch: comm::Chan<monitor_msg>;
+            new(ch: comm::Chan<monitor_msg>) { self.ch = ch; }
             drop { comm::send(self.ch, done); }
         }
 

@@ -4,8 +4,8 @@ import task;
 import comm;
 
 class complainer {
-  let c: comm::chan<bool>;
-  new(c: comm::chan<bool>) {
+  let c: comm::Chan<bool>;
+  new(c: comm::Chan<bool>) {
     error!{"Hello!"};
     self.c = c; }
   drop { error!{"About to send!"};
@@ -13,7 +13,7 @@ class complainer {
     error!{"Sent!"}; }
 }
 
-fn f(c: comm::chan<bool>) {
+fn f(c: comm::Chan<bool>) {
     let _c <- complainer(c);
     fail;
 }

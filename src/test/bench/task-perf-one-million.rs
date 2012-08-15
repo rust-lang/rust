@@ -1,12 +1,12 @@
 // Test for concurrent tasks
 
 enum msg {
-    ready(comm::chan<msg>),
+    ready(comm::Chan<msg>),
     start,
     done(int),
 }
 
-fn calc(children: uint, parent_ch: comm::chan<msg>) {
+fn calc(children: uint, parent_ch: comm::Chan<msg>) {
     let port = comm::port();
     let chan = comm::chan(port);
     let mut child_chs = ~[];

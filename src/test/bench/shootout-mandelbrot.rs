@@ -75,7 +75,7 @@ fn fillbyte(x: cmplx, incr: f64) -> u8 {
     rv
 }
 
-fn chanmb(i: uint, size: uint, ch: comm::chan<line>) -> ()
+fn chanmb(i: uint, size: uint, ch: comm::Chan<line>) -> ()
 {
     let mut crv = ~[];
     let incr = 2f64/(size as f64);
@@ -98,9 +98,9 @@ impl devnull: io::Writer {
     fn get_type() -> io::WriterType { io::File }
 }
 
-fn writer(path: ~str, writech: comm::chan<comm::chan<line>>, size: uint)
+fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
 {
-    let p: comm::port<line> = comm::port();
+    let p: comm::Port<line> = comm::port();
     let ch = comm::chan(p);
     comm::send(writech, ch);
     let cout: io::Writer = match path {

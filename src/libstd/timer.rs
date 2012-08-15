@@ -22,7 +22,7 @@ export delayed_send, sleep, recv_timeout;
  * * val - a value of type T to send over the provided `ch`
  */
 fn delayed_send<T: copy send>(iotask: iotask,
-                              msecs: uint, ch: comm::chan<T>, val: T) {
+                              msecs: uint, ch: comm::Chan<T>, val: T) {
         unsafe {
             let timer_done_po = comm::port::<()>();
             let timer_done_ch = comm::chan(timer_done_po);
@@ -99,7 +99,7 @@ fn sleep(iotask: iotask, msecs: uint) {
  */
 fn recv_timeout<T: copy send>(iotask: iotask,
                               msecs: uint,
-                              wait_po: comm::port<T>) -> option<T> {
+                              wait_po: comm::Port<T>) -> option<T> {
     let timeout_po = comm::port::<()>();
     let timeout_ch = comm::chan(timeout_po);
     delayed_send(iotask, msecs, timeout_ch, ());
@@ -120,7 +120,7 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
                                 status: libc::c_int) unsafe {
     log(debug, fmt!{"delayed_send_cb handle %? status %?", handle, status});
     let timer_done_ch =
-        *(uv::ll::get_data_for_uv_handle(handle) as *comm::chan<()>);
+        *(uv::ll::get_data_for_uv_handle(handle) as *comm::Chan<()>);
     let stop_result = uv::ll::timer_stop(handle);
     if (stop_result == 0i32) {
         comm::send(timer_done_ch, ());
@@ -136,7 +136,7 @@ extern fn delayed_send_cb(handle: *uv::ll::uv_timer_t,
 extern fn delayed_send_close_cb(handle: *uv::ll::uv_timer_t) unsafe {
     log(debug, fmt!{"delayed_send_close_cb handle %?", handle});
     let timer_done_ch =
-        *(uv::ll::get_data_for_uv_handle(handle) as *comm::chan<()>);
+        *(uv::ll::get_data_for_uv_handle(handle) as *comm::Chan<()>);
     comm::send(timer_done_ch, ());
 }
 

@@ -9,14 +9,15 @@ use std;
 
 import task;
 import comm;
+import comm::Chan;
 import comm::chan;
 import comm::send;
 import comm::port;
 import comm::recv;
 
-fn grandchild(c: chan<int>) { send(c, 42); }
+fn grandchild(c: Chan<int>) { send(c, 42); }
 
-fn child(c: chan<int>) {
+fn child(c: Chan<int>) {
     task::spawn(|| grandchild(c) )
 }
 

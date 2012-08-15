@@ -7,7 +7,7 @@
 export chan_from_global_ptr, weaken_task;
 
 import compare_and_swap = rustrt::rust_compare_and_swap_ptr;
-import task::task_builder;
+import task::TaskBuilder;
 
 #[allow(non_camel_case_types)] // runtime type
 type rust_port_id = uint;
@@ -29,9 +29,9 @@ type GlobalPtr = *libc::uintptr_t;
  */
 unsafe fn chan_from_global_ptr<T: send>(
     global: GlobalPtr,
-    task_fn: fn() -> task::task_builder,
-    +f: fn~(comm::port<T>)
-) -> comm::chan<T> {
+    task_fn: fn() -> task::TaskBuilder,
+    +f: fn~(comm::Port<T>)
+) -> comm::Chan<T> {
 
     enum Msg {
         Proceed,
@@ -185,7 +185,7 @@ fn test_from_global_chan2() {
  * * Weak tasks must not be supervised. A supervised task keeps
  *   a reference to its parent, so the parent will not die.
  */
-unsafe fn weaken_task(f: fn(comm::port<()>)) {
+unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     let po = comm::port();
     let ch = comm::chan(po);
     unsafe {
@@ -195,8 +195,8 @@ unsafe fn weaken_task(f: fn(comm::port<()>)) {
     f(po);
 
     class Unweaken {
-      let ch: comm::chan<()>;
-      new(ch: comm::chan<()>) { self.ch = ch; }
+      let ch: comm::Chan<()>;
+      new(ch: comm::Chan<()>) { self.ch = ch; }
       drop unsafe {
         rustrt::rust_task_unweaken(unsafe::reinterpret_cast(self.ch));
       }

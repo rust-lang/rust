@@ -18,7 +18,7 @@
 import either::Either;
 import pipes::recv;
 
-export future;
+export Future;
 export extensions;
 export from_value;
 export from_port;
@@ -31,12 +31,12 @@ export spawn;
 export future_pipe;
 
 #[doc = "The future type"]
-enum future<A> = {
+enum Future<A> = {
     mut v: Either<@A, fn@() -> A>
 };
 
 /// Methods on the `future` type
-impl<A:copy send> future<A> {
+impl<A:copy send> Future<A> {
 
     fn get() -> A {
         //! Get the value of the future
@@ -51,7 +51,7 @@ impl<A:copy send> future<A> {
     }
 }
 
-fn from_value<A>(+val: A) -> future<A> {
+fn from_value<A>(+val: A) -> Future<A> {
     /*!
      * Create a future from a value
      *
@@ -59,7 +59,7 @@ fn from_value<A>(+val: A) -> future<A> {
      * not block.
      */
 
-    future({
+    Future({
         mut v: either::Left(@val)
     })
 }
@@ -68,7 +68,7 @@ macro_rules! move_it {
     {$x:expr} => { unsafe { let y <- *ptr::addr_of($x); y } }
 }
 
-fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> future<A> {
+fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
     #[doc = "
     Create a future from a port
 
@@ -87,7 +87,7 @@ fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> future<A> {
     }
 }
 
-fn from_fn<A>(f: fn@() -> A) -> future<A> {
+fn from_fn<A>(f: fn@() -> A) -> Future<A> {
     /*!
      * Create a future from a function.
      *
@@ -96,12 +96,12 @@ fn from_fn<A>(f: fn@() -> A) -> future<A> {
      * function. It is not spawned into another task.
      */
 
-    future({
+    Future({
         mut v: either::Right(f)
     })
 }
 
-fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
+fn spawn<A:send>(+blk: fn~() -> A) -> Future<A> {
     /*!
      * Create a future from a unique closure.
      *
@@ -114,13 +114,13 @@ fn spawn<A:send>(+blk: fn~() -> A) -> future<A> {
     }))
 }
 
-fn get<A:copy>(future: &future<A>) -> A {
+fn get<A:copy>(future: &Future<A>) -> A {
     //! Get the value of the future
 
     do with(future) |v| { *v }
 }
 
-fn with<A,B>(future: &future<A>, blk: fn((&A)) -> B) -> B {
+fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
     //! Work with the value without copying it
 
     let v = match copy future.v {

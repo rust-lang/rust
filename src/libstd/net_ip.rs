@@ -245,7 +245,7 @@ mod v6 {
 }
 
 type get_addr_data = {
-    output_ch: comm::chan<result::result<~[ip_addr],ip_get_addr_err>>
+    output_ch: comm::Chan<result::result<~[ip_addr],ip_get_addr_err>>
 };
 
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,

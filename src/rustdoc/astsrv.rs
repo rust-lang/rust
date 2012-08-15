@@ -43,7 +43,7 @@ enum msg {
 }
 
 enum srv = {
-    ch: comm::chan<msg>
+    ch: comm::Chan<msg>
 };
 
 fn from_str<T>(source: ~str, owner: srv_owner<T>) -> T {
@@ -67,7 +67,7 @@ fn run<T>(owner: srv_owner<T>, source: ~str, +parse: parser) -> T {
     return res;
 }
 
-fn act(po: comm::port<msg>, source: ~str, parse: parser) {
+fn act(po: comm::Port<msg>, source: ~str, parse: parser) {
     let sess = build_session();
 
     let ctxt = build_ctxt(

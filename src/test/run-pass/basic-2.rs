@@ -4,11 +4,12 @@ use std;
 import comm;
 import comm::port;
 import comm::send;
+import comm::Chan;
 import comm::chan;
 import comm::recv;
 import task;
 
-fn a(c: chan<int>) { debug!{"task a0"}; debug!{"task a1"}; send(c, 10); }
+fn a(c: Chan<int>) { debug!{"task a0"}; debug!{"task a1"}; send(c, 10); }
 
 fn main() {
     let p = port();
@@ -21,7 +22,7 @@ fn main() {
     debug!{"Finished."};
 }
 
-fn b(c: chan<int>) {
+fn b(c: Chan<int>) {
     debug!{"task b0"};
     debug!{"task b1"};
     debug!{"task b2"};

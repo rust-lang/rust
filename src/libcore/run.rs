@@ -298,11 +298,11 @@ fn program_output(prog: &str, args: &[~str]) ->
     // clever way to do this.
     let p = comm::port();
     let ch = comm::chan(p);
-    do task::spawn_sched(task::single_threaded) {
+    do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);
         comm::send(ch, (2, errput));
     };
-    do task::spawn_sched(task::single_threaded) {
+    do task::spawn_sched(task::SingleThreaded) {
         let output = readclose(pipe_out.in);
         comm::send(ch, (1, output));
     };

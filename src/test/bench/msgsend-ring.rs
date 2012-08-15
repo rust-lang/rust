@@ -12,8 +12,8 @@ import std::time;
 
 fn thread_ring(i: uint,
                count: uint,
-               num_chan: comm::chan<uint>,
-               num_port: comm::port<uint>) {
+               num_chan: comm::Chan<uint>,
+               num_port: comm::Port<uint>) {
     // Send/Receive lots of messages.
     for uint::range(0u, count) |j| {
         num_chan.send(i * j);

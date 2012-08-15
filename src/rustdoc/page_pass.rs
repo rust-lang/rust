@@ -38,8 +38,8 @@ fn run(
     comm::recv(result_port)
 }
 
-type page_port = comm::port<option<doc::page>>;
-type page_chan = comm::chan<option<doc::page>>;
+type page_port = comm::Port<option<doc::page>>;
+type page_chan = comm::Chan<option<doc::page>>;
 
 fn make_doc_from_pages(page_port: page_port) -> doc::doc {
     let mut pages = ~[];

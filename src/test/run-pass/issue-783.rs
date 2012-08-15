@@ -4,7 +4,7 @@ import task::*;
 
 fn a() {
     fn doit() {
-        fn b(c: chan<chan<int>>) {
+        fn b(c: Chan<Chan<int>>) {
             let p = port();
             send(c, chan(p));
         }

@@ -3,7 +3,7 @@ import comm;
 import task;
 import uint;
 
-fn child(c: comm::chan<~uint>, i: uint) {
+fn child(c: comm::Chan<~uint>, i: uint) {
     comm::send(c, ~i);
 }
 

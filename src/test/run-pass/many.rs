@@ -4,7 +4,7 @@ use std;
 import task;
 import comm;
 
-fn sub(parent: comm::chan<int>, id: int) {
+fn sub(parent: comm::Chan<int>, id: int) {
     if id == 0 {
         comm::send(parent, 0);
     } else {

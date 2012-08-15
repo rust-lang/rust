@@ -2,17 +2,18 @@
 
 use std;
 import task;
+import comm::Chan;
 import comm::chan;
 import comm::send;
 import comm;
 import comm::port;
 import comm::recv;
 
-enum request { quit, close(chan<bool>), }
+enum request { quit, close(Chan<bool>), }
 
-type ctx = chan<request>;
+type ctx = Chan<request>;
 
-fn request_task(c: chan<ctx>) {
+fn request_task(c: Chan<ctx>) {
     let p = port();
     send(c, chan(p));
     let mut req: request;

@@ -24,7 +24,7 @@ import option::{some, none};
 
 import getcwd = rustrt::rust_getcwd;
 import consts::*;
-import task::task_builder;
+import task::TaskBuilder;
 
 export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
@@ -135,9 +135,9 @@ mod global_env {
     }
 
     enum Msg {
-        MsgGetEnv(~str, comm::chan<option<~str>>),
-        MsgSetEnv(~str, ~str, comm::chan<()>),
-        MsgEnv(comm::chan<~[(~str,~str)]>)
+        MsgGetEnv(~str, comm::Chan<option<~str>>),
+        MsgSetEnv(~str, ~str, comm::Chan<()>),
+        MsgEnv(comm::Chan<~[(~str,~str)]>)
     }
 
     fn getenv(n: ~str) -> option<~str> {
@@ -161,18 +161,18 @@ mod global_env {
         comm::recv(po)
     }
 
-    fn get_global_env_chan() -> comm::chan<Msg> {
+    fn get_global_env_chan() -> comm::Chan<Msg> {
         let global_ptr = rustrt::rust_global_env_chan_ptr();
         unsafe {
             priv::chan_from_global_ptr(global_ptr, || {
                 // FIXME (#2621): This would be a good place to use a very
                 // small foreign stack
-                task::task().sched_mode(task::single_threaded).unlinked()
+                task::task().sched_mode(task::SingleThreaded).unlinked()
             }, global_env_task)
         }
     }
 
-    fn global_env_task(msg_po: comm::port<Msg>) {
+    fn global_env_task(msg_po: comm::Port<Msg>) {
         unsafe {
             do priv::weaken_task |weak_po| {
                 loop {

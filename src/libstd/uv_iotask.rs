@@ -12,23 +12,23 @@ export exit;
 
 import libc::c_void;
 import ptr::addr_of;
-import comm::{port, chan, listen};
-import task::task_builder;
+import comm::{Port, port, Chan, chan, listen};
+import task::TaskBuilder;
 import ll = uv_ll;
 
 /// Used to abstract-away direct interaction with a libuv loop.
 enum iotask {
     iotask_({
         async_handle: *ll::uv_async_t,
-        op_chan: chan<iotask_msg>
+        op_chan: Chan<iotask_msg>
     })
 }
 
-fn spawn_iotask(-task: task::task_builder) -> iotask {
+fn spawn_iotask(-task: task::TaskBuilder) -> iotask {
 
     do listen |iotask_ch| {
 
-        do task.sched_mode(task::single_threaded).spawn {
+        do task.sched_mode(task::SingleThreaded).spawn {
             debug!{"entering libuv task"};
             run_loop(iotask_ch);
             debug!{"libuv task exiting"};
@@ -86,7 +86,7 @@ enum iotask_msg {
 }
 
 /// Run the loop and begin handling messages
-fn run_loop(iotask_ch: chan<iotask>) unsafe {
+fn run_loop(iotask_ch: Chan<iotask>) unsafe {
 
     let loop_ptr = ll::loop_new();
 
@@ -123,7 +123,7 @@ fn run_loop(iotask_ch: chan<iotask>) unsafe {
 // data that lives for the lifetime of the high-evel oo
 type iotask_loop_data = {
     async_handle: *ll::uv_async_t,
-    msg_po: port<iotask_msg>
+    msg_po: Port<iotask_msg>
 };
 
 fn send_msg(iotask: iotask,
@@ -180,7 +180,7 @@ mod test {
     }
     type ah_data = {
         iotask: iotask,
-        exit_ch: comm::chan<()>
+        exit_ch: comm::Chan<()>
     };
     fn impl_uv_iotask_async(iotask: iotask) unsafe {
         let async_handle = ll::async_t();
@@ -202,10 +202,10 @@ mod test {
 
     // this fn documents the bear minimum neccesary to roll your own
     // high_level_loop
-    unsafe fn spawn_test_loop(exit_ch: comm::chan<()>) -> iotask {
+    unsafe fn spawn_test_loop(exit_ch: comm::Chan<()>) -> iotask {
         let iotask_port = comm::port::<iotask>();
         let iotask_ch = comm::chan(iotask_port);
-        do task::spawn_sched(task::manual_threads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) {
             run_loop(iotask_ch);
             exit_ch.send(());
         };
@@ -237,7 +237,7 @@ mod test {
         let work_exit_po = comm::port::<()>();
         let work_exit_ch = comm::chan(work_exit_po);
         for iter::repeat(7u) {
-            do task::spawn_sched(task::manual_threads(1u)) {
+            do task::spawn_sched(task::ManualThreads(1u)) {
                 impl_uv_iotask_async(iotask);
                 comm::send(work_exit_ch, ());
             };

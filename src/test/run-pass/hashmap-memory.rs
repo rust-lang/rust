@@ -14,6 +14,7 @@ import vec;
 import std::map;
 import std::map::hashmap;
 import task;
+import comm::Chan;
 import comm::chan;
 import comm::port;
 import comm::send;
@@ -31,18 +32,18 @@ mod map_reduce {
 
     type mapper = extern fn(~str, putter);
 
-    enum ctrl_proto { find_reducer(~[u8], chan<int>), mapper_done, }
+    enum ctrl_proto { find_reducer(~[u8], Chan<int>), mapper_done, }
 
-    fn start_mappers(ctrl: chan<ctrl_proto>, inputs: ~[~str]) {
+    fn start_mappers(ctrl: Chan<ctrl_proto>, inputs: ~[~str]) {
         for inputs.each |i| {
             task::spawn(|| map_task(ctrl, i) );
         }
     }
 
-    fn map_task(ctrl: chan<ctrl_proto>, input: ~str) {
+    fn map_task(ctrl: Chan<ctrl_proto>, input: ~str) {
         let intermediates = map::str_hash();
 
-        fn emit(im: map::hashmap<~str, int>, ctrl: chan<ctrl_proto>, key: ~str,
+        fn emit(im: map::hashmap<~str, int>, ctrl: Chan<ctrl_proto>, key: ~str,
                 val: ~str) {
             let mut c;
             match im.find(key) {

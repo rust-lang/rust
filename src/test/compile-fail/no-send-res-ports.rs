@@ -1,7 +1,7 @@
 fn main() {
     class foo {
-      let _x: comm::port<()>;
-      new(x: comm::port<()>) { self._x = x; }
+      let _x: comm::Port<()>;
+      new(x: comm::Port<()>) { self._x = x; }
       drop {}
     }
    
