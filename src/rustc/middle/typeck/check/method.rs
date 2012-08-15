@@ -411,7 +411,7 @@ class lookup {
             // subtypability. Collect the matches.
             let matches;
             match mode {
-                subtyping_mode => 
+                subtyping_mode =>
                     matches = self.fcx.can_mk_subty(self.self_ty, impl_ty),
                 assignability_mode =>
                     matches = self.fcx.can_mk_assignty(self.self_expr,

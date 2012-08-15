@@ -550,7 +550,8 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
             named_field(nm, mt, vis) => {
                 let id = field.node.id;
                 vec::push(*index, {val: id, pos: ebml_w.writer.tell()});
-                vec::push(*global_index, {val: id, pos: ebml_w.writer.tell()});
+                vec::push(*global_index, {val: id,
+                                          pos: ebml_w.writer.tell()});
                 ebml_w.start_tag(tag_items_data_item);
                 debug!{"encode_info_for_class: doing %s %d", *nm, id};
                 encode_visibility(ebml_w, vis);
