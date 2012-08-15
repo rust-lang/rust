@@ -1008,7 +1008,7 @@ mod test {
     type request_wrapper = {
         write_req: *uv_write_t,
         req_buf: *~[uv_buf_t],
-        read_chan: *comm::chan<~str>
+        read_chan: *comm::Chan<~str>
     };
 
     extern fn after_close_cb(handle: *libc::c_void) {
@@ -1106,7 +1106,7 @@ mod test {
     }
 
     fn impl_uv_tcp_request(ip: ~str, port: int, req_str: ~str,
-                          client_chan: *comm::chan<~str>) unsafe {
+                          client_chan: *comm::Chan<~str>) unsafe {
         let test_loop = loop_new();
         let tcp_handle = tcp_t();
         let tcp_handle_ptr = ptr::addr_of(tcp_handle);
@@ -1323,12 +1323,12 @@ mod test {
         server: *uv_tcp_t,
         server_kill_msg: ~str,
         server_resp_buf: *~[uv_buf_t],
-        server_chan: *comm::chan<~str>,
+        server_chan: *comm::Chan<~str>,
         server_write_req: *uv_write_t
     };
 
     type async_handle_data = {
-        continue_chan: *comm::chan<bool>
+        continue_chan: *comm::Chan<bool>
     };
 
     extern fn async_close_cb(handle: *libc::c_void) {
@@ -1354,8 +1354,8 @@ mod test {
                           server_port: int,
                           kill_server_msg: ~str,
                           server_resp_msg: ~str,
-                          server_chan: *comm::chan<~str>,
-                          continue_chan: *comm::chan<bool>) unsafe {
+                          server_chan: *comm::Chan<~str>,
+                          continue_chan: *comm::Chan<bool>) unsafe {
         let test_loop = loop_new();
         let tcp_server = tcp_t();
         let tcp_server_ptr = ptr::addr_of(tcp_server);
@@ -1469,7 +1469,7 @@ mod test {
         let continue_chan = comm::chan::<bool>(continue_port);
         let continue_chan_ptr = ptr::addr_of(continue_chan);
 
-        do task::spawn_sched(task::manual_threads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) {
             impl_uv_tcp_server(bind_ip, port,
                                kill_server_msg,
                                server_resp_msg,
@@ -1482,7 +1482,7 @@ mod test {
         comm::recv(continue_port);
         log(debug, ~"received on continue port, set up tcp client");
 
-        do task::spawn_sched(task::manual_threads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) {
             impl_uv_tcp_request(request_ip, port,
                                kill_server_msg,
                                ptr::addr_of(client_chan));

@@ -7,8 +7,8 @@ import iotask = uv_iotask;
 import get_gl = get;
 import iotask::{iotask, spawn_iotask};
 import priv::{chan_from_global_ptr, weaken_task};
-import comm::{port, chan, select2, listen};
-import task::task_builder;
+import comm::{Port, Chan, port, chan, select2, listen};
+import task::TaskBuilder;
 import either::{Left, Right};
 
 extern mod rustrt {
@@ -40,13 +40,13 @@ fn get_monitor_task_gl() -> iotask unsafe {
            monitor_loop_chan_ptr};
 
     debug!{"before priv::chan_from_global_ptr"};
-    type monchan = chan<iotask>;
+    type monchan = Chan<iotask>;
 
     let monitor_ch =
         do chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
                                            || {
                                                 task::task().sched_mode
-                                                (task::single_threaded)
+                                                (task::SingleThreaded)
                                                 .unlinked()
                                            }) |msg_po| {
         debug!{"global monitor task starting"};
@@ -108,7 +108,7 @@ fn spawn_loop() -> iotask unsafe {
 mod test {
     extern fn simple_timer_close_cb(timer_ptr: *ll::uv_timer_t) unsafe {
         let exit_ch_ptr = ll::get_data_for_uv_handle(
-            timer_ptr as *libc::c_void) as *comm::chan<bool>;
+            timer_ptr as *libc::c_void) as *comm::Chan<bool>;
         let exit_ch = *exit_ch_ptr;
         comm::send(exit_ch, true);
         log(debug, fmt!{"EXIT_CH_PTR simple_timer_close_cb exit_ch_ptr: %?",
@@ -164,7 +164,7 @@ mod test {
         let hl_loop = get_gl();
         let exit_po = comm::port::<()>();
         let exit_ch = comm::chan(exit_po);
-        task::spawn_sched(task::manual_threads(1u), || {
+        task::spawn_sched(task::ManualThreads(1u), || {
             impl_uv_hl_simple_timer(hl_loop);
             comm::send(exit_ch, ());
         });
@@ -182,7 +182,7 @@ mod test {
         let exit_ch = comm::chan(exit_po);
         let cycles = 5000u;
         for iter::repeat(cycles) {
-            task::spawn_sched(task::manual_threads(1u), || {
+            task::spawn_sched(task::ManualThreads(1u), || {
                 impl_uv_hl_simple_timer(hl_loop);
                 comm::send(exit_ch, ());
             });

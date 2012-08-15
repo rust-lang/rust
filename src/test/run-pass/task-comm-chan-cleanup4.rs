@@ -6,7 +6,7 @@ import task;
 // We're trying to trigger a race between send and port destruction that
 // results in the string not being freed
 
-fn starship(&&ch: comm::chan<~str>) {
+fn starship(&&ch: comm::Chan<~str>) {
     for int::range(0, 10) |_i| {
         comm::send(ch, ~"pew pew");
     }

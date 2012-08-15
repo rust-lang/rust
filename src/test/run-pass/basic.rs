@@ -3,11 +3,12 @@
 use std;
 import comm;
 import comm::send;
+import comm::Chan;
 import comm::chan;
 import comm::recv;
 import task;
 
-fn a(c: chan<int>) {
+fn a(c: Chan<int>) {
     if true {
         debug!{"task a"};
         debug!{"task a"};
@@ -42,7 +43,7 @@ fn main() {
     debug!{"children finished, root finishing"};
 }
 
-fn b(c: chan<int>) {
+fn b(c: Chan<int>) {
     if true {
         debug!{"task b"};
         debug!{"task b"};

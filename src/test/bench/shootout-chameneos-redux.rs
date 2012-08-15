@@ -85,9 +85,9 @@ fn transform(aa: color, bb: color) -> color {
 fn creature(
     name: uint,
     color: color,
-    from_rendezvous: comm::port<option<creature_info>>,
-    to_rendezvous: comm::chan<creature_info>,
-    to_rendezvous_log: comm::chan<~str>
+    from_rendezvous: comm::Port<option<creature_info>>,
+    to_rendezvous: comm::Chan<creature_info>,
+    to_rendezvous_log: comm::Chan<~str>
 ) {
     let mut color = color;
     let mut creatures_met = 0;
@@ -122,17 +122,17 @@ fn creature(
 
 fn rendezvous(nn: uint, set: ~[color]) {
     // these ports will allow us to hear from the creatures
-    let from_creatures:     comm::port<creature_info> = comm::port();
-    let from_creatures_log: comm::port<~str> = comm::port();
+    let from_creatures:     comm::Port<creature_info> = comm::port();
+    let from_creatures_log: comm::Port<~str> = comm::port();
 
     // these channels will be passed to the creatures so they can talk to us
     let to_rendezvous     = comm::chan(from_creatures);
     let to_rendezvous_log = comm::chan(from_creatures_log);
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let to_creature: ~[comm::chan<option<creature_info>>] =
+    let to_creature: ~[comm::Chan<option<creature_info>>] =
         vec::mapi(set,
-            fn@(ii: uint, col: color) -> comm::chan<option<creature_info>> {
+            fn@(ii: uint, col: color) -> comm::Chan<option<creature_info>> {
                 // create each creature as a listener with a port, and
                 // give us a channel to talk to each
                 return do task::spawn_listener |from_rendezvous| {

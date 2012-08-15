@@ -110,14 +110,14 @@ fn pandoc_writer(
 
         let stdout_po = comm::port();
         let stdout_ch = comm::chan(stdout_po);
-        do task::spawn_sched(task::single_threaded) {
+        do task::spawn_sched(task::SingleThreaded) {
             comm::send(stdout_ch, readclose(pipe_out.in));
         }
         let stdout = comm::recv(stdout_po);
 
         let stderr_po = comm::port();
         let stderr_ch = comm::chan(stderr_po);
-        do task::spawn_sched(task::single_threaded) {
+        do task::spawn_sched(task::SingleThreaded) {
             comm::send(stderr_ch, readclose(pipe_err.in));
         }
         let stderr = comm::recv(stderr_po);
@@ -146,7 +146,7 @@ fn readclose(fd: libc::c_int) -> ~str {
 }
 
 fn generic_writer(+process: fn~(markdown: ~str)) -> writer {
-    let ch = do task::spawn_listener |po: comm::port<writeinstr>| {
+    let ch = do task::spawn_listener |po: comm::Port<writeinstr>| {
         let mut markdown = ~"";
         let mut keep_going = true;
         while keep_going {
@@ -265,7 +265,7 @@ fn write_file(path: ~str, s: ~str) {
 }
 
 fn future_writer_factory(
-) -> (writer_factory, comm::port<(doc::page, ~str)>) {
+) -> (writer_factory, comm::Port<(doc::page, ~str)>) {
     let markdown_po = comm::port();
     let markdown_ch = comm::chan(markdown_po);
     let writer_factory = fn~(page: doc::page) -> writer {
@@ -283,7 +283,7 @@ fn future_writer_factory(
     (writer_factory, markdown_po)
 }
 
-fn future_writer() -> (writer, future::future<~str>) {
+fn future_writer() -> (writer, future::Future<~str>) {
     let port = comm::port();
     let chan = comm::chan(port);
     let writer = fn~(+instr: writeinstr) {

@@ -14,7 +14,7 @@ enum request {
     stop
 }
 
-fn server(requests: comm::port<request>, responses: comm::chan<uint>) {
+fn server(requests: comm::Port<request>, responses: comm::Chan<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {

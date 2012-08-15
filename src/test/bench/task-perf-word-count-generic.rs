@@ -27,7 +27,9 @@ import u64;
 
 import task;
 import comm;
+import comm::Chan;
 import comm::chan;
+import comm::Port;
 import comm::port;
 import comm::recv;
 import comm::send;
@@ -58,7 +60,7 @@ impl ~str: hash_key {
 }
 
 // These used to be in task, but they disappeard.
-type joinable_task = port<()>;
+type joinable_task = Port<()>;
 fn spawn_joinable(+f: fn~()) -> joinable_task {
     let p = port();
     let c = chan(p);
@@ -135,7 +137,7 @@ mod map_reduce {
     type reducer<K: copy send, V: copy send> = fn~(K, getter<V>);
 
     enum ctrl_proto<K: copy send, V: copy send> {
-        find_reducer(K, chan<chan<reduce_proto<V>>>),
+        find_reducer(K, Chan<Chan<reduce_proto<V>>>),
         mapper_done
     }
 
@@ -147,7 +149,7 @@ mod map_reduce {
         }
 
         reducer_response: recv<K: copy send, V: copy send> {
-            reducer(chan<reduce_proto<V>>) -> open<K, V>
+            reducer(Chan<reduce_proto<V>>) -> open<K, V>
         }
     }
 
@@ -199,7 +201,7 @@ mod map_reduce {
             send(c.get(), emit_val(val));
         }
 
-        fn finish<K: copy send, V: copy send>(_k: K, v: chan<reduce_proto<V>>)
+        fn finish<K: copy send, V: copy send>(_k: K, v: Chan<reduce_proto<V>>)
         {
             send(v, release);
         }
@@ -210,7 +212,7 @@ mod map_reduce {
     fn reduce_task<K: copy send, V: copy send>(
         reduce: reducer<K, V>, 
         key: K,
-        out: chan<chan<reduce_proto<V>>>)
+        out: Chan<Chan<reduce_proto<V>>>)
     {
         let p = port();
 
@@ -219,7 +221,7 @@ mod map_reduce {
         let mut ref_count = 0;
         let mut is_done = false;
 
-        fn get<V: copy send>(p: port<reduce_proto<V>>,
+        fn get<V: copy send>(p: Port<reduce_proto<V>>,
                              &ref_count: int, &is_done: bool)
            -> option<V> {
             while !is_done || ref_count > 0 {

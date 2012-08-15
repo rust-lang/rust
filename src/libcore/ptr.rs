@@ -173,9 +173,9 @@ impl<T> *T: Ptr {
 #[test]
 fn test() {
     unsafe {
-        type pair = {mut fst: int, mut snd: int};
+        type Pair = {mut fst: int, mut snd: int};
         let p = {mut fst: 10, mut snd: 20};
-        let pptr: *mut pair = mut_addr_of(p);
+        let pptr: *mut Pair = mut_addr_of(p);
         let iptr: *mut int = unsafe::reinterpret_cast(pptr);
         assert (*iptr == 10);;
         *iptr = 30;

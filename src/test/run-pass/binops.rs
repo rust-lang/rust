@@ -68,7 +68,7 @@ fn test_port() {
 }
 
 fn test_chan() {
-    let p: comm::port<int> = comm::port();
+    let p: comm::Port<int> = comm::port();
     let ch1 = comm::chan(p);
     let ch2 = comm::chan(p);
 

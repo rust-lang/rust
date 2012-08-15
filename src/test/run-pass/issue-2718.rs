@@ -10,14 +10,14 @@ mod pipes {
 
     type packet<T: send> = {
         mut state: state,
-        mut blocked_task: option<task::task>,
+        mut blocked_task: option<task::Task>,
         mut payload: option<T>
     };
 
     fn packet<T: send>() -> *packet<T> unsafe {
         let p: *packet<T> = unsafe::transmute(~{
             mut state: empty,
-            mut blocked_task: none::<task::task>,
+            mut blocked_task: none::<task::Task>,
             mut payload: none::<T>
         });
         p

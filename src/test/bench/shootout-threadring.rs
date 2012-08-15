@@ -19,7 +19,7 @@ fn start(+token: int) {
     roundtrip(1, p, ch);
 }
 
-fn roundtrip(id: int, p: comm::port<int>, ch: comm::chan<int>) {
+fn roundtrip(id: int, p: comm::Port<int>, ch: comm::Chan<int>) {
     while (true) {
         match comm::recv(p) {
           1 => {

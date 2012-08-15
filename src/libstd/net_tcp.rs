@@ -292,7 +292,7 @@ fn write(sock: tcp_socket, raw_write_data: ~[u8])
  * value as the `err` variant
  */
 fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
-    -> future::future<result::result<(), tcp_err_data>> unsafe {
+    -> future::Future<result::result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     do future_spawn {
         let data_copy = copy(raw_write_data);
@@ -315,7 +315,7 @@ fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
  * on) from until `read_stop` is called, or a `tcp_err_data` record
  */
 fn read_start(sock: tcp_socket)
-    -> result::result<comm::port<
+    -> result::result<comm::Port<
         result::result<~[u8], tcp_err_data>>, tcp_err_data> unsafe {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     read_start_common_impl(socket_data)
@@ -329,7 +329,7 @@ fn read_start(sock: tcp_socket)
  * * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
  */
 fn read_stop(sock: tcp_socket,
-             -read_port: comm::port<result::result<~[u8], tcp_err_data>>) ->
+             -read_port: comm::Port<result::result<~[u8], tcp_err_data>>) ->
     result::result<(), tcp_err_data> unsafe {
     log(debug, fmt!{"taking the read_port out of commission %?", read_port});
     let socket_data = ptr::addr_of(*sock.socket_data);
@@ -387,7 +387,7 @@ fn read(sock: tcp_socket, timeout_msecs: uint)
  * read attempt. Pass `0u` to wait indefinitely
  */
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
-    -> future::future<result::result<~[u8],tcp_err_data>> {
+    -> future::Future<result::result<~[u8],tcp_err_data>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     do future_spawn {
         read_common_impl(socket_data, timeout_msecs)
@@ -563,9 +563,9 @@ fn accept(new_conn: tcp_new_connection)
  */
 fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
-          on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
+          on_establish_cb: fn~(comm::Chan<option<tcp_err_data>>),
           +new_connect_cb: fn~(tcp_new_connection,
-                               comm::chan<option<tcp_err_data>>))
+                               comm::Chan<option<tcp_err_data>>))
     -> result::result<(), tcp_listen_err_data> unsafe {
     do listen_common(host_ip, port, backlog, iotask, on_establish_cb)
         // on_connect_cb
@@ -580,7 +580,7 @@ fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
 
 fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
-          on_establish_cb: fn~(comm::chan<option<tcp_err_data>>),
+          on_establish_cb: fn~(comm::Chan<option<tcp_err_data>>),
           -on_connect_cb: fn~(*uv::ll::uv_tcp_t))
     -> result::result<(), tcp_listen_err_data> unsafe {
     let stream_closed_po = comm::port::<()>();
@@ -724,12 +724,12 @@ fn socket_buf(-sock: tcp_socket) -> tcp_socket_buf {
 
 /// Convenience methods extending `net::tcp::tcp_socket`
 impl tcp_socket {
-    fn read_start() -> result::result<comm::port<
+    fn read_start() -> result::result<comm::Port<
         result::result<~[u8], tcp_err_data>>, tcp_err_data> {
         read_start(self)
     }
     fn read_stop(-read_port:
-                 comm::port<result::result<~[u8], tcp_err_data>>) ->
+                 comm::Port<result::result<~[u8], tcp_err_data>>) ->
         result::result<(), tcp_err_data> {
         read_stop(self, read_port)
     }
@@ -738,7 +738,7 @@ impl tcp_socket {
         read(self, timeout_msecs)
     }
     fn read_future(timeout_msecs: uint) ->
-        future::future<result::result<~[u8], tcp_err_data>> {
+        future::Future<result::result<~[u8], tcp_err_data>> {
         read_future(self, timeout_msecs)
     }
     fn write(raw_write_data: ~[u8])
@@ -746,7 +746,7 @@ impl tcp_socket {
         write(self, raw_write_data)
     }
     fn write_future(raw_write_data: ~[u8])
-        -> future::future<result::result<(), tcp_err_data>> {
+        -> future::Future<result::result<(), tcp_err_data>> {
         write_future(self, raw_write_data)
     }
 }
@@ -922,7 +922,7 @@ fn read_stop_common_impl(socket_data: *tcp_socket_data) ->
 
 // shared impl for read_start
 fn read_start_common_impl(socket_data: *tcp_socket_data)
-    -> result::result<comm::port<
+    -> result::result<comm::Port<
         result::result<~[u8], tcp_err_data>>, tcp_err_data> unsafe {
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let start_po = comm::port::<option<uv::ll::uv_err_data>>();
@@ -1002,8 +1002,8 @@ enum tcp_new_connection {
 
 type tcp_listen_fc_data = {
     server_stream_ptr: *uv::ll::uv_tcp_t,
-    stream_closed_ch: comm::chan<()>,
-    kill_ch: comm::chan<option<tcp_err_data>>,
+    stream_closed_ch: comm::Chan<()>,
+    kill_ch: comm::Chan<option<tcp_err_data>>,
     on_connect_cb: fn~(*uv::ll::uv_tcp_t),
     iotask: iotask,
     mut active: bool
@@ -1050,7 +1050,7 @@ enum tcp_write_result {
 }
 
 enum tcp_read_start_result {
-    tcp_read_start_success(comm::port<tcp_read_result>),
+    tcp_read_start_success(comm::Port<tcp_read_result>),
     tcp_read_start_error(tcp_err_data)
 }
 
@@ -1116,7 +1116,7 @@ extern fn on_alloc_cb(handle: *libc::c_void,
 }
 
 type tcp_socket_close_data = {
-    closed_ch: comm::chan<()>
+    closed_ch: comm::Chan<()>
 };
 
 extern fn tcp_socket_dtor_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
@@ -1145,12 +1145,12 @@ extern fn tcp_write_complete_cb(write_req: *uv::ll::uv_write_t,
 }
 
 type write_req_data = {
-    result_ch: comm::chan<tcp_write_result>
+    result_ch: comm::Chan<tcp_write_result>
 };
 
 type connect_req_data = {
-    result_ch: comm::chan<conn_attempt>,
-    closed_signal_ch: comm::chan<()>
+    result_ch: comm::Chan<conn_attempt>,
+    closed_signal_ch: comm::Chan<()>
 };
 
 extern fn stream_error_close_cb(handle: *uv::ll::uv_tcp_t) unsafe {
@@ -1198,8 +1198,8 @@ enum conn_attempt {
 }
 
 type tcp_socket_data = {
-    reader_po: comm::port<result::result<~[u8], tcp_err_data>>,
-    reader_ch: comm::chan<result::result<~[u8], tcp_err_data>>,
+    reader_po: comm::Port<result::result<~[u8], tcp_err_data>>,
+    reader_ch: comm::Chan<result::result<~[u8], tcp_err_data>>,
     stream_handle_ptr: *uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
@@ -1285,7 +1285,7 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        do task::spawn_sched(task::manual_threads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) {
             let actual_req = do comm::listen |server_ch| {
                 run_tcp_test_server(
                     server_ip,
@@ -1351,7 +1351,7 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        do task::spawn_sched(task::manual_threads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) {
             let actual_req = do comm::listen |server_ch| {
                 run_tcp_test_server(
                     server_ip,
@@ -1421,7 +1421,7 @@ mod test {
         let cont_po = comm::port::<()>();
         let cont_ch = comm::chan(cont_po);
         // server
-        do task::spawn_sched(task::manual_threads(1u)) {
+        do task::spawn_sched(task::ManualThreads(1u)) {
             let actual_req = do comm::listen |server_ch| {
                 run_tcp_test_server(
                     server_ip,
@@ -1475,8 +1475,8 @@ mod test {
     }
 
     fn run_tcp_test_server(server_ip: ~str, server_port: uint, resp: ~str,
-                          server_ch: comm::chan<~str>,
-                          cont_ch: comm::chan<()>,
+                          server_ch: comm::Chan<~str>,
+                          cont_ch: comm::Chan<()>,
                           iotask: iotask) -> ~str {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
         let listen_result = listen(server_ip_addr, server_port, 128u, iotask,
@@ -1491,7 +1491,7 @@ mod test {
             |new_conn, kill_ch| {
             log(debug, ~"SERVER: new connection!");
             do comm::listen |cont_ch| {
-                do task::spawn_sched(task::manual_threads(1u)) {
+                do task::spawn_sched(task::ManualThreads(1u)) {
                     log(debug, ~"SERVER: starting worker for new req");
 
                     let accept_result = accept(new_conn);
@@ -1582,7 +1582,7 @@ mod test {
     }
 
     fn run_tcp_test_client(server_ip: ~str, server_port: uint, resp: ~str,
-                          client_ch: comm::chan<~str>,
+                          client_ch: comm::Chan<~str>,
                           iotask: iotask) -> result::result<~str,
                                                     tcp_connect_err_data> {
         let server_ip_addr = ip::v4::parse_addr(server_ip);

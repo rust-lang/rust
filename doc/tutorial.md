@@ -2975,9 +2975,9 @@ the string in response.  The child terminates when `0` is received.
 Here is the function that implements the child task:
 
 ~~~~
-# import comm::{port, chan};
-fn stringifier(from_parent: port<uint>,
-               to_parent: chan<~str>) {
+# import comm::{Port, port, Chan, chan};
+fn stringifier(from_parent: Port<uint>,
+               to_parent: Chan<~str>) {
     let mut value: uint;
     loop {
         value = from_parent.recv();
@@ -2999,9 +2999,9 @@ Here is the code for the parent task:
 
 ~~~~
 # import task::{spawn_conversation};
-# import comm::{chan, port};
-# fn stringifier(from_parent: comm::port<uint>,
-#                to_parent: comm::chan<~str>) {
+# import comm::{Chan, chan, Port, port};
+# fn stringifier(from_parent: comm::Port<uint>,
+#                to_parent: comm::Chan<~str>) {
 #     comm::send(to_parent, ~"22");
 #     comm::send(to_parent, ~"23");
 #     comm::send(to_parent, ~"0");
