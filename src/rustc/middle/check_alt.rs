@@ -4,6 +4,7 @@ import const_eval::{eval_const_expr, const_val, const_int,
                     compare_const_vals};
 import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;
+import util::ppaux::ty_to_str;
 import pat_util::*;
 import syntax::visit;
 import driver::session::session;
@@ -29,10 +30,15 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
          // Check for empty enum, because is_useful only works on inhabited
          // types.
        let pat_ty = node_id_to_type(tcx, scrut.id);
-       if type_is_empty(tcx, pat_ty) && arms.is_empty() {
-               // Vacuously exhaustive
-               return;
+       if arms.is_empty() {
+           if !type_is_empty(tcx, pat_ty) {
+               // We know the type is inhabited, so this must be wrong
+               tcx.sess.span_err(ex.span, #fmt("non-exhaustive patterns: \
+                             type %s is non-empty", ty_to_str(tcx, pat_ty)));
            }
+           // If the type *is* empty, it's vacuously exhaustive
+           return;
+       }
        match ty::get(pat_ty).struct {
           ty_enum(did, _) => {
               if (*enum_variants(tcx, did)).is_empty() && arms.is_empty() {
