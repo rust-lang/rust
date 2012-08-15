@@ -18,8 +18,8 @@ import unsafe::{Exclusive, exclusive};
  ****************************************************************************/
 
 // Each waiting task receives on one of these. FIXME #3125 make these oneshot.
-type wait_end = pipes::port<()>;
-type signal_end = pipes::chan<()>;
+type wait_end = pipes::port_one<()>;
+type signal_end = pipes::chan_one<()>;
 // A doubly-ended queue of waiting tasks.
 struct waitqueue { head: pipes::port<signal_end>;
                    tail: pipes::chan<signal_end>; }
@@ -30,7 +30,7 @@ fn signal_waitqueue(q: &waitqueue) -> bool {
     if q.head.peek() {
         // Pop and send a wakeup signal. If the waiter was killed, its port
         // will have closed. Keep trying until we get a live task.
-        if q.head.recv().try_send(()) {
+        if pipes::try_send_one(q.head.recv(), ()) {
             true
         } else {
             signal_waitqueue(q)
@@ -43,7 +43,7 @@ fn signal_waitqueue(q: &waitqueue) -> bool {
 fn broadcast_waitqueue(q: &waitqueue) -> uint {
     let mut count = 0;
     while q.head.peek() {
-        if q.head.recv().try_send(()) {
+        if pipes::try_send_one(q.head.recv(), ()) {
             count += 1;
         }
     }
@@ -80,7 +80,7 @@ impl<Q: send> &sem<Q> {
                 state.count -= 1;
                 if state.count < 0 {
                     // Create waiter nobe.
-                    let (signal_end, wait_end) = pipes::stream();
+                    let (signal_end, wait_end) = pipes::oneshot();
                     // Tell outer scope we need to block.
                     waiter_nobe = some(wait_end);
                     // Enqueue ourself.
@@ -92,7 +92,7 @@ impl<Q: send> &sem<Q> {
         /* for 1000.times { task::yield(); } */
         // Need to wait outside the exclusive.
         if waiter_nobe.is_some() {
-            let _ = option::unwrap(waiter_nobe).recv();
+            let _ = pipes::recv_one(option::unwrap(waiter_nobe));
         }
     }
     fn release() {
@@ -151,7 +151,7 @@ impl &condvar {
     /// Atomically drop the associated lock, and block until a signal is sent.
     fn wait() {
         // Create waiter nobe.
-        let (signal_end, wait_end) = pipes::stream();
+        let (signal_end, wait_end) = pipes::oneshot();
         let mut signal_end = some(signal_end);
         let mut reacquire = none;
         unsafe {
@@ -177,7 +177,7 @@ impl &condvar {
         }
         // Unconditionally "block". (Might not actually block if a signaller
         // did send -- I mean 'unconditionally' in contrast with acquire().)
-        let _ = wait_end.recv();
+        let _ = pipes::recv_one(wait_end);
 
         // This is needed for a failing condition variable to reacquire the
         // mutex during unwinding. As long as the wrapper (mutex, etc) is

@@ -90,7 +90,8 @@ export send_packet, recv_packet, send, recv, try_recv, peek;
 export select, select2, selecti, select2i, selectable;
 export spawn_service, spawn_service_recv;
 export stream, port, chan, shared_chan, port_set, channel;
-export oneshot, recv_one, try_recv_one, send_one, try_send_one;
+export oneshot, chan_one, port_one;
+export recv_one, try_recv_one, send_one, try_send_one;
 
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;
@@ -1144,9 +1145,13 @@ proto! oneshot {
     }
 }
 
+/// The send end of a oneshot pipe.
+type chan_one<T: send> = oneshot::client::oneshot<T>;
+/// The receive end of a oneshot pipe.
+type port_one<T: send> = oneshot::server::oneshot<T>;
+
 /// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
-fn oneshot<T: send>() -> (oneshot::client::oneshot<T>,
-                          oneshot::server::oneshot<T>) {
+fn oneshot<T: send>() -> (chan_one<T>, port_one<T>) {
     oneshot::init()
 }
 
@@ -1154,13 +1159,13 @@ fn oneshot<T: send>() -> (oneshot::client::oneshot<T>,
  * Receive a message from a oneshot pipe, failing if the connection was
  * closed.
  */
-fn recv_one<T: send>(+port: oneshot::server::oneshot<T>) -> T {
+fn recv_one<T: send>(+port: port_one<T>) -> T {
     let oneshot::send(message) = recv(port);
     message
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
-fn try_recv_one<T: send> (+port: oneshot::server::oneshot<T>) -> option<T> {
+fn try_recv_one<T: send> (+port: port_one<T>) -> option<T> {
     let message = try_recv(port);
 
     if message == none { none }
@@ -1171,7 +1176,7 @@ fn try_recv_one<T: send> (+port: oneshot::server::oneshot<T>) -> option<T> {
 }
 
 /// Send a message on a oneshot pipe, failing if the connection was closed.
-fn send_one<T: send>(+chan: oneshot::client::oneshot<T>, +data: T) {
+fn send_one<T: send>(+chan: chan_one<T>, +data: T) {
     oneshot::client::send(chan, data);
 }
 
@@ -1179,7 +1184,7 @@ fn send_one<T: send>(+chan: oneshot::client::oneshot<T>, +data: T) {
  * Send a message on a oneshot pipe, or return false if the connection was
  * closed.
  */
-fn try_send_one<T: send>(+chan: oneshot::client::oneshot<T>, +data: T)
+fn try_send_one<T: send>(+chan: chan_one<T>, +data: T)
         -> bool {
     oneshot::client::try_send(chan, data).is_some()
 }
