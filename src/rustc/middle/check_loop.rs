@@ -15,7 +15,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
                 v.visit_expr(e, cx, v);
                 v.visit_block(b, {in_loop: true with cx}, v);
               }
-              expr_loop(b) => {
+              expr_loop(b, _) => {
                 v.visit_block(b, {in_loop: true with cx}, v);
               }
               expr_fn(_, _, _, _) => {
@@ -29,12 +29,12 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
                                                                       e)));
                 v.visit_block(b, {in_loop: true, can_ret: blk}, v);
               }
-              expr_break => {
+              expr_break(_) => {
                 if !cx.in_loop {
                     tcx.sess.span_err(e.span, ~"`break` outside of loop");
                 }
               }
-              expr_again => {
+              expr_again(_) => {
                 if !cx.in_loop {
                     tcx.sess.span_err(e.span, ~"`again` outside of loop");
                 }

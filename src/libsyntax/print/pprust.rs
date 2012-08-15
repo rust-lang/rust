@@ -1142,9 +1142,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         space(s.s);
         print_block(s, blk);
       }
-      ast::expr_loop(blk) => {
+      ast::expr_loop(blk, opt_ident) => {
         head(s, ~"loop");
         space(s.s);
+        option::iter(opt_ident, |ident| word_space(s, *ident));
         print_block(s, blk);
       }
       ast::expr_match(expr, arms, mode) => {
@@ -1310,8 +1311,16 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
           _ => ()
         }
       }
-      ast::expr_break => word(s.s, ~"break"),
-      ast::expr_again => word(s.s, ~"again"),
+      ast::expr_break(opt_ident) => {
+        word(s.s, ~"break");
+        space(s.s);
+        option::iter(opt_ident, |ident| word_space(s, *ident));
+      }
+      ast::expr_again(opt_ident) => {
+        word(s.s, ~"again");
+        space(s.s);
+        option::iter(opt_ident, |ident| word_space(s, *ident));
+      }
       ast::expr_ret(result) => {
         word(s.s, ~"return");
         match result {

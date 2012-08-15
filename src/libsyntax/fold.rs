@@ -448,8 +448,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           expr_while(cond, body) => {
             expr_while(fld.fold_expr(cond), fld.fold_block(body))
           }
-          expr_loop(body) => {
-              expr_loop(fld.fold_block(body))
+          expr_loop(body, opt_ident) => {
+              expr_loop(fld.fold_block(body),
+                        option::map(opt_ident, |x| fld.fold_ident(x)))
           }
           expr_match(expr, arms, mode) => {
             expr_match(fld.fold_expr(expr),
@@ -492,7 +493,10 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
           }
           expr_path(pth) => expr_path(fld.fold_path(pth)),
           expr_fail(e) => expr_fail(option::map(e, |x| fld.fold_expr(x))),
-          expr_break | expr_again => copy e,
+          expr_break(opt_ident) =>
+            expr_break(option::map(opt_ident, |x| fld.fold_ident(x))),
+          expr_again(opt_ident) =>
+            expr_again(option::map(opt_ident, |x| fld.fold_ident(x))),
           expr_ret(e) => expr_ret(option::map(e, |x| fld.fold_expr(x))),
           expr_log(i, lv, e) => expr_log(i, fld.fold_expr(lv),
                                          fld.fold_expr(e)),

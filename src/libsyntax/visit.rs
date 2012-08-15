@@ -422,7 +422,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
         visit_expr_opt(eo, e, v);
       }
       expr_while(x, b) => { v.visit_expr(x, e, v); v.visit_block(b, e, v); }
-      expr_loop(b) => v.visit_block(b, e, v),
+      expr_loop(b, _) => v.visit_block(b, e, v),
       expr_match(x, arms, _) => {
         v.visit_expr(x, e, v);
         for arms.each |a| { v.visit_arm(a, e, v); }
@@ -452,8 +452,8 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       expr_index(a, b) => { v.visit_expr(a, e, v); v.visit_expr(b, e, v); }
       expr_path(p) => visit_path(p, e, v),
       expr_fail(eo) => visit_expr_opt(eo, e, v),
-      expr_break => (),
-      expr_again => (),
+      expr_break(_) => (),
+      expr_again(_) => (),
       expr_ret(eo) => visit_expr_opt(eo, e, v),
       expr_log(_, lv, x) => {
         v.visit_expr(lv, e, v);

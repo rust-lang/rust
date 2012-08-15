@@ -14,7 +14,7 @@ import syntax::ast::{bound_trait, binding_mode,
                      capture_clause, class_ctor, class_dtor};
 import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
-import syntax::ast::{def_foreign_mod, def_id, def_local, def_mod};
+import syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 import syntax::ast::{def_typaram_binder, def_static_method};
 import syntax::ast::{def_upvar, def_use, def_variant, expr, expr_assign_op};
@@ -22,9 +22,10 @@ import syntax::ast::{expr_binary, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_path};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
 import syntax::ast::{def_upvar, def_use, def_variant, div, eq};
-import syntax::ast::{enum_variant_kind, expr, expr_assign_op, expr_binary};
-import syntax::ast::{expr_cast, expr_field, expr_fn, expr_fn_block};
-import syntax::ast::{expr_index, expr_path, expr_struct, expr_unary, fn_decl};
+import syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
+import syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
+import syntax::ast::{expr_fn_block, expr_index, expr_loop};
+import syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 import syntax::ast::{foreign_item, foreign_item_fn, ge, gt, ident, trait_ref};
 import syntax::ast::{impure_fn, instance_var, item, item_class, item_const};
 import syntax::ast::{item_enum, item_fn, item_mac, item_foreign_mod};
@@ -310,10 +311,7 @@ fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
     hashmap::<Atom,V>(uint::hash, uint::eq)
 }
 
-/**
- * One local scope. In Rust, local scopes can only contain value bindings.
- * Therefore, we don't have to worry about the other namespaces here.
- */
+/// One local scope.
 class Rib {
     let bindings: hashmap<Atom,def_like>;
     let kind: RibKind;
@@ -676,11 +674,13 @@ class Resolver {
 
     // The current set of local scopes, for values.
     // XXX: Reuse ribs to avoid allocation.
-
     let value_ribs: @DVec<@Rib>;
 
     // The current set of local scopes, for types.
     let type_ribs: @DVec<@Rib>;
+
+    // The current set of local scopes, for labels.
+    let label_ribs: @DVec<@Rib>;
 
     // Whether the current context is an X-ray context. An X-ray context is
     // allowed to access private names of any module.
@@ -728,6 +728,7 @@ class Resolver {
         self.current_module = (*self.graph_root).get_module();
         self.value_ribs = @dvec();
         self.type_ribs = @dvec();
+        self.label_ribs = @dvec();
 
         self.xray_context = NoXray;
         self.current_trait_refs = none;
@@ -1486,7 +1487,7 @@ class Resolver {
           def_self(*) | def_arg(*) | def_local(*) |
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
           def_use(*) | def_upvar(*) | def_region(*) |
-          def_typaram_binder(*) => {
+          def_typaram_binder(*) | def_label(*) => {
             fail fmt!("didn't expect `%?`", def);
           }
         }
@@ -3305,10 +3306,16 @@ class Resolver {
                 (*self.type_ribs).pop();
             }
 
-            NoTypeParameters =>{
+            NoTypeParameters => {
                 // Nothing to do.
             }
         }
+    }
+
+    fn with_label_rib(f: fn()) {
+        (*self.label_ribs).push(@Rib(NormalRibKind));
+        f();
+        (*self.label_ribs).pop();
     }
 
     fn resolve_function(rib_kind: RibKind,
@@ -3347,6 +3354,10 @@ class Resolver {
         // Create a value rib for the function.
         let function_value_rib = @Rib(rib_kind);
         (*self.value_ribs).push(function_value_rib);
+
+        // Create a label rib for the function.
+        let function_label_rib = @Rib(rib_kind);
+        (*self.label_ribs).push(function_label_rib);
 
         // If this function has type parameters, add them now.
         do self.with_type_parameter_rib(type_parameters) {
@@ -3400,6 +3411,7 @@ class Resolver {
             debug!{"(resolving function) leaving function"};
         }
 
+        (*self.label_ribs).pop();
         (*self.value_ribs).pop();
     }
 
@@ -4426,6 +4438,33 @@ class Resolver {
                 }
 
                 visit_expr(expr, (), visitor);
+            }
+
+            expr_loop(_, some(label)) => {
+                do self.with_label_rib {
+                    let atom = self.atom_table.intern(label);
+                    let def_like = dl_def(def_label(expr.id));
+                    self.label_ribs.last().bindings.insert(atom, def_like);
+
+                    visit_expr(expr, (), visitor);
+                }
+            }
+
+            expr_break(some(label)) | expr_again(some(label)) => {
+                let atom = self.atom_table.intern(label);
+                match self.search_ribs(self.label_ribs, atom, expr.span,
+                                       DontAllowCapturingSelf) {
+                    none =>
+                        self.session.span_err(expr.span,
+                                              fmt!("use of undeclared label \
+                                                   `%s`", *label)),
+                    some(dl_def(def @ def_label(id))) =>
+                        self.record_def(expr.id, def),
+                    some(_) =>
+                        self.session.span_bug(expr.span,
+                                              ~"label wasn't mapped to a \
+                                                label def!")
+                }
             }
 
             _ => {

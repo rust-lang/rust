@@ -61,7 +61,7 @@ pure fn def_id_of_def(d: def) -> def_id {
       }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
       def_upvar(id, _, _) | def_binding(id, _) | def_region(id)
-      | def_typaram_binder(id) => {
+      | def_typaram_binder(id) | def_label(id) => {
         local_def(id)
       }
 
