@@ -10,7 +10,7 @@ import vec;
 import uint;
 import int;
 import str;
-import io::writer_util;
+import io::WriterUtil;
 
 fn LINE_LENGTH() -> uint { return 60u; }
 
@@ -43,7 +43,7 @@ fn select_random(r: u32, genelist: ~[aminoacids]) -> char {
     return bisect(genelist, 0u, vec::len::<aminoacids>(genelist) - 1u, r);
 }
 
-fn make_random_fasta(wr: io::writer, id: ~str, desc: ~str, genelist: ~[aminoacids], n: int) {
+fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[aminoacids], n: int) {
     wr.write_line(~">" + id + ~" " + desc);
     let rng = @{mut last: rand::rng().next()};
     let mut op: ~str = ~"";
@@ -58,7 +58,7 @@ fn make_random_fasta(wr: io::writer, id: ~str, desc: ~str, genelist: ~[aminoacid
     if str::len(op) > 0u { wr.write_line(op); }
 }
 
-fn make_repeat_fasta(wr: io::writer, id: ~str, desc: ~str, s: ~str, n: int) unsafe {
+fn make_repeat_fasta(wr: io::Writer, id: ~str, desc: ~str, s: ~str, n: int) unsafe {
     wr.write_line(~">" + id + ~" " + desc);
     let mut op: ~str = ~"";
     let sl: uint = str::len(s);
@@ -85,7 +85,7 @@ fn main(args: ~[~str]) {
     };
 
     let writer = if os::getenv(~"RUST_BENCH").is_some() {
-        result::get(io::file_writer(~"./shootout-fasta.data", ~[io::truncate, io::create]))
+        result::get(io::file_writer(~"./shootout-fasta.data", ~[io::Truncate, io::Create]))
     } else {
         io::stdout()
     };

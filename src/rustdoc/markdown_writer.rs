@@ -88,7 +88,7 @@ fn pandoc_writer(
     ];
 
     do generic_writer |markdown| {
-        import io::writer_util;
+        import io::WriterUtil;
 
         debug!{"pandoc cmd: %s", pandoc_cmd};
         debug!{"pandoc args: %s", str::connect(pandoc_args, ~" ")};
@@ -97,7 +97,7 @@ fn pandoc_writer(
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
         let pid = run::spawn_process(
-            pandoc_cmd, pandoc_args, none, none,
+            pandoc_cmd, pandoc_args, &none, &none,
             pipe_in.in, pipe_out.out, pipe_err.out);
 
         let writer = io::fd_writer(pipe_in.out, false);
@@ -254,9 +254,9 @@ mod test {
 }
 
 fn write_file(path: ~str, s: ~str) {
-    import io::writer_util;
+    import io::WriterUtil;
 
-    match io::file_writer(path, ~[io::create, io::truncate]) {
+    match io::file_writer(path, ~[io::Create, io::Truncate]) {
       result::ok(writer) => {
         writer.write_str(s);
       }

@@ -4,7 +4,7 @@ import util::ppaux::ty_to_str;
 
 import std::{ebml, map};
 import std::map::hashmap;
-import io::writer_util;
+import io::WriterUtil;
 import ebml::writer;
 import syntax::ast::*;
 import syntax::print::pprust;
@@ -500,7 +500,7 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
         sty_static =>       { ch = 's' as u8; }
         sty_by_ref =>       { ch = 'r' as u8; }
         sty_value =>        { ch = 'v' as u8; }
-        sty_region(_, _) => { ch = '&' as u8; }
+        sty_region(_) =>    { ch = '&' as u8; }
         sty_box(_) =>       { ch = '@' as u8; }
         sty_uniq(_) =>      { ch = '~' as u8; }
     }
@@ -509,24 +509,14 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
     // Encode mutability.
     match self_type {
         sty_static | sty_by_ref | sty_value => { /* No-op. */ }
-        sty_region(_, m_imm) | sty_box(m_imm) | sty_uniq(m_imm) => {
+        sty_region(m_imm) | sty_box(m_imm) | sty_uniq(m_imm) => {
             ebml_w.writer.write(&[ 'i' as u8 ]);
         }
-        sty_region(_, m_mutbl) | sty_box(m_mutbl) | sty_uniq(m_mutbl) => {
+        sty_region(m_mutbl) | sty_box(m_mutbl) | sty_uniq(m_mutbl) => {
             ebml_w.writer.write(&[ 'm' as u8 ]);
         }
-        sty_region(_, m_const) | sty_box(m_const) | sty_uniq(m_const) => {
+        sty_region(m_const) | sty_box(m_const) | sty_uniq(m_const) => {
             ebml_w.writer.write(&[ 'c' as u8 ]);
-        }
-    }
-
-    // Encode the region.
-    match self_type {
-        sty_region(region, _) => {
-            encode_region(ebml_w, *region);
-        }
-        sty_static | sty_by_ref | sty_value | sty_box(*) | sty_uniq(*) => {
-            // Nothing to do.
         }
     }
 
@@ -1015,7 +1005,7 @@ fn create_index<T: copy>(index: ~[entry<T>], hash_fn: fn@(T) -> uint) ->
 }
 
 fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
-                   write_fn: fn(io::writer, T)) {
+                   write_fn: fn(io::Writer, T)) {
     let writer = ebml_w.writer;
     ebml_w.start_tag(tag_index);
     let mut bucket_locs: ~[uint] = ~[];
@@ -1042,9 +1032,9 @@ fn encode_index<T>(ebml_w: ebml::writer, buckets: ~[@~[entry<T>]],
     ebml_w.end_tag();
 }
 
-fn write_str(writer: io::writer, &&s: ~str) { writer.write_str(s); }
+fn write_str(writer: io::Writer, &&s: ~str) { writer.write_str(s); }
 
-fn write_int(writer: io::writer, &&n: int) {
+fn write_int(writer: io::Writer, &&n: int) {
     assert n < 0x7fff_ffff;
     writer.write_be_u32(n as u32);
 }

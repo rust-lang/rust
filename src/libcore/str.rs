@@ -8,7 +8,7 @@
  */
 
 import libc::size_t;
-import io::writer_util;
+import io::WriterUtil;
 
 export
    // Creating a string
@@ -54,6 +54,7 @@ export
 
    // Comparing strings
    eq,
+   eq_slice,
    le,
    hash,
 

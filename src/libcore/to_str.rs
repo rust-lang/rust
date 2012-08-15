@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 trait ToStr { fn to_str() -> ~str; }
 
 impl int: ToStr {

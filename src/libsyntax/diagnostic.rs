@@ -1,5 +1,5 @@
 import std::term;
-import io::writer_util;
+import io::WriterUtil;
 import codemap::span;
 
 export emitter, emit;
@@ -166,7 +166,7 @@ fn diagnosticcolor(lvl: level) -> u8 {
 
 fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
     let use_color = term::color_supported() &&
-        io::stderr().get_type() == io::screen;
+        io::stderr().get_type() == io::Screen;
     if str::is_not_empty(topic) {
         io::stderr().write_str(fmt!{"%s ", topic});
     }

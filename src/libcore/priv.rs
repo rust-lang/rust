@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 #[doc(hidden)];
 
 export chan_from_global_ptr, weaken_task;

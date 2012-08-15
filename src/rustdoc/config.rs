@@ -77,10 +77,10 @@ fn default_config(input_crate: ~str) -> config {
     }
 }
 
-type program_output = fn~(~str, ~[~str]) ->
+type program_output = fn~((&str), (&[~str])) ->
     {status: int, out: ~str, err: ~str};
 
-fn mock_program_output(_prog: ~str, _args: ~[~str]) -> {
+fn mock_program_output(_prog: &str, _args: &[~str]) -> {
     status: int, out: ~str, err: ~str
 } {
     {
@@ -231,7 +231,7 @@ fn should_find_pandoc() {
         output_format: pandoc_html
         with default_config(~"test")
     };
-    let mock_program_output = fn~(_prog: ~str, _args: ~[~str]) -> {
+    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
         status: int, out: ~str, err: ~str
     } {
         {
@@ -248,7 +248,7 @@ fn should_error_with_no_pandoc() {
         output_format: pandoc_html
         with default_config(~"test")
     };
-    let mock_program_output = fn~(_prog: ~str, _args: ~[~str]) -> {
+    let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
         status: int, out: ~str, err: ~str
     } {
         {

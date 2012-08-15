@@ -600,7 +600,7 @@ enum self_ty_ {
     sty_static,                         // no self: static method
     sty_by_ref,                         // old by-reference self: ``
     sty_value,                          // by-value self: `self`
-    sty_region(@region, mutability),    // by-region self: `&self`
+    sty_region(mutability),             // by-region self: `&self`
     sty_box(mutability),                // by-managed-pointer self: `@self`
     sty_uniq(mutability)                // by-unique-pointer self: `~self`
 }

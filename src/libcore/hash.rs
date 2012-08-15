@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /*!
  * Implementation of SipHash 2-4
  *
@@ -9,8 +13,8 @@
  * CPRNG like rand::rng.
  */
 
-import io::writer;
-import io::writer_util;
+import io::Writer;
+import io::WriterUtil;
 
 export Streaming, State;
 export default_state;
@@ -122,7 +126,7 @@ fn SipState(key0: u64, key1: u64) -> SipState {
 }
 
 
-impl &SipState : io::writer {
+impl &SipState : io::Writer {
 
     // Methods for io::writer
     fn write(msg: &[const u8]) {
@@ -205,7 +209,7 @@ impl &SipState : io::writer {
         self.ntail = left;
     }
 
-    fn seek(_x: int, _s: io::seek_style) {
+    fn seek(_x: int, _s: io::SeekStyle) {
         fail;
     }
     fn tell() -> uint {
@@ -214,8 +218,8 @@ impl &SipState : io::writer {
     fn flush() -> int {
         0
     }
-    fn get_type() -> io::writer_type {
-        io::file
+    fn get_type() -> io::WriterType {
+        io::File
     }
 }
 
@@ -362,9 +366,9 @@ fn test_siphash() {
     let stream_inc = &State(k0,k1);
     let stream_full = &State(k0,k1);
 
-    fn to_hex_str(r:[u8]/8) -> ~str {
+    fn to_hex_str(r:  &[u8]/8) -> ~str {
         let mut s = ~"";
-        for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
+        for vec::each(*r) |b| { s += uint::to_str(b as uint, 16u); }
         return s;
     }
 
@@ -379,7 +383,7 @@ fn test_siphash() {
         stream_full.input(buf);
         let f = stream_full.result_str();
         let i = stream_inc.result_str();
-        let v = to_hex_str(vecs[t]);
+        let v = to_hex_str(&vecs[t]);
         debug!{"%d: (%s) => inc=%s full=%s", t, v, i, f};
 
         assert f == i && f == v;

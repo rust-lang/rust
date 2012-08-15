@@ -14,31 +14,31 @@ export get_cargo_root;
 export get_cargo_root_nearest;
 export libdir;
 
-import path::path;
+import path::Path;
 
-type pick<T> = fn(path: path) -> option<T>;
+type pick<T> = fn(path: Path) -> option<T>;
 
-fn pick_file(file: path, path: path) -> option<path> {
+fn pick_file(file: Path, path: Path) -> option<Path> {
     if path::basename(path) == file { option::some(path) }
     else { option::none }
 }
 
 trait filesearch {
-    fn sysroot() -> path;
-    fn lib_search_paths() -> ~[path];
-    fn get_target_lib_path() -> path;
-    fn get_target_lib_file_path(file: path) -> path;
+    fn sysroot() -> Path;
+    fn lib_search_paths() -> ~[Path];
+    fn get_target_lib_path() -> Path;
+    fn get_target_lib_file_path(file: Path) -> Path;
 }
 
-fn mk_filesearch(maybe_sysroot: option<path>,
+fn mk_filesearch(maybe_sysroot: option<Path>,
                  target_triple: ~str,
-                 addl_lib_search_paths: ~[path]) -> filesearch {
-    type filesearch_impl = {sysroot: path,
-                            addl_lib_search_paths: ~[path],
+                 addl_lib_search_paths: ~[Path]) -> filesearch {
+    type filesearch_impl = {sysroot: Path,
+                            addl_lib_search_paths: ~[Path],
                             target_triple: ~str};
     impl filesearch_impl: filesearch {
-        fn sysroot() -> path { self.sysroot }
-        fn lib_search_paths() -> ~[path] {
+        fn sysroot() -> Path { self.sysroot }
+        fn lib_search_paths() -> ~[Path] {
             let mut paths = self.addl_lib_search_paths;
 
             vec::push(paths,
@@ -53,10 +53,10 @@ fn mk_filesearch(maybe_sysroot: option<path>,
             }
             paths
         }
-        fn get_target_lib_path() -> path {
+        fn get_target_lib_path() -> Path {
             make_target_lib_path(self.sysroot, self.target_triple)
         }
-        fn get_target_lib_file_path(file: path) -> path {
+        fn get_target_lib_file_path(file: Path) -> Path {
             path::connect(self.get_target_lib_path(), file)
         }
     }
@@ -88,38 +88,38 @@ fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     return rslt;
 }
 
-fn relative_target_lib_path(target_triple: ~str) -> ~[path] {
+fn relative_target_lib_path(target_triple: ~str) -> ~[Path] {
     ~[libdir(), ~"rustc", target_triple, libdir()]
 }
 
-fn make_target_lib_path(sysroot: path,
-                        target_triple: ~str) -> path {
+fn make_target_lib_path(sysroot: Path,
+                        target_triple: ~str) -> Path {
     let path = vec::append(~[sysroot],
                            relative_target_lib_path(target_triple));
     let path = path::connect_many(path);
     return path;
 }
 
-fn get_default_sysroot() -> path {
+fn get_default_sysroot() -> Path {
     match os::self_exe_path() {
       option::some(p) => path::normalize(path::connect(p, ~"..")),
       option::none => fail ~"can't determine value for sysroot"
     }
 }
 
-fn get_sysroot(maybe_sysroot: option<path>) -> path {
+fn get_sysroot(maybe_sysroot: option<Path>) -> Path {
     match maybe_sysroot {
       option::some(sr) => sr,
       option::none => get_default_sysroot()
     }
 }
 
-fn get_cargo_sysroot() -> result<path, ~str> {
+fn get_cargo_sysroot() -> result<Path, ~str> {
     let path = ~[get_default_sysroot(), libdir(), ~"cargo"];
     result::ok(path::connect_many(path))
 }
 
-fn get_cargo_root() -> result<path, ~str> {
+fn get_cargo_root() -> result<Path, ~str> {
     match os::getenv(~"CARGO_ROOT") {
         some(_p) => result::ok(_p),
         none => match os::homedir() {
@@ -129,7 +129,7 @@ fn get_cargo_root() -> result<path, ~str> {
     }
 }
 
-fn get_cargo_root_nearest() -> result<path, ~str> {
+fn get_cargo_root_nearest() -> result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         let cwd = os::getcwd();
         let mut dirname = path::dirname(cwd);
@@ -153,13 +153,13 @@ fn get_cargo_root_nearest() -> result<path, ~str> {
     }
 }
 
-fn get_cargo_lib_path() -> result<path, ~str> {
+fn get_cargo_lib_path() -> result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         result::ok(path::connect(p, libdir()))
     }
 }
 
-fn get_cargo_lib_path_nearest() -> result<path, ~str> {
+fn get_cargo_lib_path_nearest() -> result<Path, ~str> {
     do result::chain(get_cargo_root_nearest()) |p| {
         result::ok(path::connect(p, libdir()))
     }

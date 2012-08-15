@@ -1,3 +1,6 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 /**
  * Concurrency-enabled mechanisms for sharing mutable and/or immutable state
  * between tasks.
@@ -10,7 +13,7 @@ import sync;
 import sync::{mutex, rwlock};
 
 export arc, clone, get;
-export condvar, mutex_arc, rw_arc;
+export condvar, mutex_arc, rw_arc, rw_write_mode, rw_read_mode;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 struct condvar { is_mutex: bool; failed: &mut bool; cond: &sync::condvar; }
@@ -136,10 +139,11 @@ impl<T: send> &mutex_arc<T> {
                 &condvar { is_mutex: true, failed: &mut state.failed,
                            cond: cond })
             */
-            // XXX: Working around two seeming region bugs here
-            let fref = unsafe { unsafe::reinterpret_cast(&mut state.failed) };
+            // FIXME(#2282) region variance
+            let fref =
+                unsafe { unsafe::transmute_mut_region(&mut state.failed) };
             let cvar = condvar { is_mutex: true, failed: fref, cond: cond };
-            blk(&mut state.data, unsafe { unsafe::reinterpret_cast(&cvar) } )
+            blk(&mut state.data, unsafe { unsafe::transmute_region(&cvar) } )
         }
     }
 }
@@ -227,10 +231,12 @@ impl<T: const send> &rw_arc<T> {
                 &condvar { is_mutex: false, failed: &mut state.failed,
                            cond: cond })
             */
-            // XXX: Working around two seeming region bugs here
-            let fref = unsafe { unsafe::reinterpret_cast(&mut state.failed) };
+            // FIXME(#2282): Need region variance to use the commented-out
+            // code above instead of this casting mess
+            let fref =
+                unsafe { unsafe::transmute_mut_region(&mut state.failed) };
             let cvar = condvar { is_mutex: false, failed: fref, cond: cond };
-            blk(&mut state.data, unsafe { unsafe::reinterpret_cast(&cvar) } )
+            blk(&mut state.data, unsafe { unsafe::transmute_region(&cvar) } )
         }
     }
     /**
@@ -249,6 +255,52 @@ impl<T: const send> &rw_arc<T> {
             blk(&state.data)
         }
     }
+
+    /**
+     * As write(), but with the ability to atomically 'downgrade' the lock.
+     * See sync::rwlock.write_downgrade(). The rw_write_mode token must be
+     * used to obtain the &mut T, and can be transformed into a rw_read_mode
+     * token by calling downgrade(), after which a &T can be obtained instead.
+     * ~~~
+     * do arc.write_downgrade |write_mode| {
+     *     do (&write_mode).write_cond |state, condvar| {
+     *         ... exclusive access with mutable state ...
+     *     }
+     *     let read_mode = arc.downgrade(write_mode);
+     *     do (&read_mode).read |state| {
+     *         ... shared access with immutable state ...
+     *     }
+     * }
+     * ~~~
+     */
+    fn write_downgrade<U>(blk: fn(+rw_write_mode<T>) -> U) -> U {
+        let state = unsafe { get_shared_mutable_state(&self.x) };
+        do borrow_rwlock(state).write_downgrade |write_mode| {
+            check_poison(false, state.failed);
+            // FIXME(#2282) need region variance to avoid having to cast here
+            let (data,failed) =
+                unsafe { (unsafe::transmute_mut_region(&mut state.data),
+                          unsafe::transmute_mut_region(&mut state.failed)) };
+            blk(rw_write_mode((data, write_mode, poison_on_fail(failed))))
+        }
+    }
+
+    /// To be called inside of the write_downgrade block.
+    fn downgrade(+token: rw_write_mode<T>) -> rw_read_mode<T> {
+        // The rwlock should assert that the token belongs to us for us.
+        let state = unsafe { get_shared_immutable_state(&self.x) };
+        let rw_write_mode((data, t, _poison)) = token;
+        // Let readers in
+        let new_token = (&state.lock).downgrade(t);
+        // Whatever region the input reference had, it will be safe to use
+        // the same region for the output reference. (The only 'unsafe' part
+        // of this cast is removing the mutability.)
+        let new_data = unsafe { unsafe::transmute_immut(data) };
+        // Downgrade ensured the token belonged to us. Just a sanity check.
+        assert ptr::ref_eq(&state.data, new_data);
+        // Produce new token
+        rw_read_mode((new_data, new_token))
+    }
 }
 
 // Borrowck rightly complains about immutably aliasing the rwlock in order to
@@ -256,6 +308,58 @@ impl<T: const send> &rw_arc<T> {
 // field is never overwritten; only 'failed' and 'data'.
 fn borrow_rwlock<T: const send>(state: &mut rw_arc_inner<T>) -> &rwlock {
     unsafe { unsafe::reinterpret_cast(&state.lock) }
+}
+
+// FIXME (#3154) ice with struct/&<T> prevents these from being structs.
+
+/// The "write permission" token used for rw_arc.write_downgrade().
+enum rw_write_mode<T: const send> =
+    (&mut T, sync::rwlock_write_mode, poison_on_fail);
+/// The "read permission" token used for rw_arc.write_downgrade().
+enum rw_read_mode<T:const send> = (&T, sync::rwlock_read_mode);
+
+impl<T: const send> &rw_write_mode<T> {
+    /// Access the pre-downgrade rw_arc in write mode.
+    fn write<U>(blk: fn(x: &mut T) -> U) -> U {
+        match *self {
+            rw_write_mode((data, ref token, _)) => {
+                // FIXME(#2282) cast to avoid region invariance
+                let mode = unsafe { unsafe::transmute_region(token) };
+                do mode.write {
+                    blk(data)
+                }
+            }
+        }
+    }
+    /// Access the pre-downgrade rw_arc in write mode with a condvar.
+    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/condvar) -> U) -> U {
+        match *self {
+            rw_write_mode((data, ref token, ref poison)) => {
+                // FIXME(#2282) cast to avoid region invariance
+                let mode = unsafe { unsafe::transmute_region(token) };
+                do mode.write_cond |cond| {
+                    let cvar = condvar {
+                        is_mutex: false, failed: poison.failed,
+                        cond: unsafe { unsafe::reinterpret_cast(cond) } };
+                    // FIXME(#2282) region variance would avoid having to cast
+                    blk(data, &cvar)
+                }
+            }
+        }
+    }
+}
+
+impl<T: const send> &rw_read_mode<T> {
+    /// Access the post-downgrade rwlock in read mode.
+    fn read<U>(blk: fn(x: &T) -> U) -> U {
+        match *self {
+            rw_read_mode((data, ref token)) => {
+                // FIXME(#2282) cast to avoid region invariance
+                let mode = unsafe { unsafe::transmute_region(token) };
+                do mode.read { blk(data) }
+            }
+        }
+    }
 }
 
 /****************************************************************************
@@ -374,6 +478,23 @@ mod tests {
             assert *one == 1;
         }
     }
+    #[test] #[should_fail] #[ignore(cfg(windows))]
+    fn test_rw_arc_poison_dw() {
+        let arc = ~rw_arc(1);
+        let arc2 = ~arc.clone();
+        do task::try {
+            do arc2.write_downgrade |write_mode| {
+                // FIXME(#2282)
+                let mode = unsafe { unsafe::transmute_region(&write_mode) };
+                do mode.write |one| {
+                    assert *one == 2;
+                }
+            }
+        };
+        do arc.write |one| {
+            assert *one == 1;
+        }
+    }
     #[test] #[ignore(cfg(windows))]
     fn test_rw_arc_no_poison_rr() {
         let arc = ~rw_arc(1);
@@ -400,7 +521,24 @@ mod tests {
             assert *one == 1;
         }
     }
-
+    #[test] #[ignore(cfg(windows))]
+    fn test_rw_arc_no_poison_dr() {
+        let arc = ~rw_arc(1);
+        let arc2 = ~arc.clone();
+        do task::try {
+            do arc2.write_downgrade |write_mode| {
+                let read_mode = arc2.downgrade(write_mode);
+                // FIXME(#2282)
+                let mode = unsafe { unsafe::transmute_region(&read_mode) };
+                do mode.read |one| {
+                    assert *one == 2;
+                }
+            }
+        };
+        do arc.write |one| {
+            assert *one == 1;
+        }
+    }
     #[test]
     fn test_rw_arc() {
         let arc = ~rw_arc(0);
@@ -433,5 +571,85 @@ mod tests {
         // Wait for writer to finish
         p.recv();
         do arc.read |num| { assert *num == 10; }
+    }
+    #[test]
+    fn test_rw_downgrade() {
+        // (1) A downgrader gets in write mode and does cond.wait.
+        // (2) A writer gets in write mode, sets state to 42, and does signal.
+        // (3) Downgrader wakes, sets state to 31337.
+        // (4) tells writer and all other readers to contend as it downgrades.
+        // (5) Writer attempts to set state back to 42, while downgraded task
+        //     and all reader tasks assert that it's 31337.
+        let arc = ~rw_arc(0);
+
+        // Reader tasks
+        let mut reader_convos = ~[];
+        for 10.times {
+            let ((rc1,rp1),(rc2,rp2)) = (pipes::stream(),pipes::stream());
+            vec::push(reader_convos, (rc1,rp2));
+            let arcn = ~arc.clone();
+            do task::spawn {
+                rp1.recv(); // wait for downgrader to give go-ahead
+                do arcn.read |state| {
+                    assert *state == 31337;
+                    rc2.send(());
+                }
+            }
+        }
+
+        // Writer task
+        let arc2 = ~arc.clone();
+        let ((wc1,wp1),(wc2,wp2)) = (pipes::stream(),pipes::stream());
+        do task::spawn {
+            wp1.recv();
+            do arc2.write_cond |state, cond| {
+                assert *state == 0;
+                *state = 42;
+                cond.signal();
+            }
+            wp1.recv();
+            do arc2.write |state| {
+                // This shouldn't happen until after the downgrade read
+                // section, and all other readers, finish.
+                assert *state == 31337;
+                *state = 42;
+            }
+            wc2.send(());
+        }
+
+        // Downgrader (us)
+        do arc.write_downgrade |write_mode| {
+            // FIXME(#2282)
+            let mode = unsafe { unsafe::transmute_region(&write_mode) };
+            do mode.write_cond |state, cond| {
+                wc1.send(()); // send to another writer who will wake us up
+                while *state == 0 {
+                    cond.wait();
+                }
+                assert *state == 42;
+                *state = 31337;
+                // send to other readers
+                for vec::each(reader_convos) |x| {
+                    match x {
+                        (rc, _) => rc.send(()),
+                    }
+                }
+            }
+            let read_mode = arc.downgrade(write_mode);
+            // FIXME(#2282)
+            let mode = unsafe { unsafe::transmute_region(&read_mode) };
+            do mode.read |state| {
+                // complete handshake with other readers
+                for vec::each(reader_convos) |x| {
+                    match x {
+                        (_, rp) => rp.recv(),
+                    }
+                }
+                wc1.send(()); // tell writer to try again
+                assert *state == 31337;
+            }
+        }
+
+        wp2.recv(); // complete handshake with writer
     }
 }

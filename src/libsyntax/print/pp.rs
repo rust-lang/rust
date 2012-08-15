@@ -1,4 +1,4 @@
-import io::writer_util;
+import io::WriterUtil;
 import dvec::dvec;
 
 /*
@@ -95,7 +95,7 @@ type print_stack_elt = {offset: int, pbreak: print_stack_break};
 
 const size_infinity: int = 0xffff;
 
-fn mk_printer(out: io::writer, linewidth: uint) -> printer {
+fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3u * linewidth;
@@ -201,7 +201,7 @@ fn mk_printer(out: io::writer, linewidth: uint) -> printer {
  * called 'print'.
  */
 type printer_ = {
-    out: io::writer,
+    out: io::Writer,
     buf_len: uint,
     mut margin: int, // width of lines we're constrained to
     mut space: int, // number of spaces left on line

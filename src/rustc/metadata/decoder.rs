@@ -3,7 +3,7 @@
 import std::{ebml, map};
 import std::map::{hashmap, str_hash};
 import dvec::dvec;
-import io::writer_util;
+import io::WriterUtil;
 import syntax::{ast, ast_util};
 import syntax::attr;
 import middle::ty;
@@ -598,22 +598,7 @@ fn get_self_ty(item: ebml::doc) -> ast::self_ty_ {
         'v' => { return ast::sty_value; }
         '@' => { return ast::sty_box(get_mutability(string[1])); }
         '~' => { return ast::sty_uniq(get_mutability(string[1])); }
-        '&' => {
-            let mutability = get_mutability(string[1]);
-
-            let region;
-            let region_doc =
-                ebml::get_doc(self_type_doc,
-                              tag_item_trait_method_self_ty_region);
-            let region_string = str::from_bytes(ebml::doc_data(region_doc));
-            if region_string == ~"" {
-                region = ast::re_anon;
-            } else {
-                region = ast::re_named(@region_string);
-            }
-
-            return ast::sty_region(@{ id: 0, node: region }, mutability);
-        }
+        '&' => { return ast::sty_region(get_mutability(string[1])); }
         _ => {
             fail fmt!{"unknown self type code: `%c`", self_ty_kind as char};
         }
@@ -861,13 +846,13 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
     return attrs;
 }
 
-fn list_meta_items(meta_items: ebml::doc, out: io::writer) {
+fn list_meta_items(meta_items: ebml::doc, out: io::Writer) {
     for get_meta_items(meta_items).each |mi| {
         out.write_str(fmt!{"%s\n", pprust::meta_item_to_str(*mi)});
     }
 }
 
-fn list_crate_attributes(md: ebml::doc, hash: @~str, out: io::writer) {
+fn list_crate_attributes(md: ebml::doc, hash: @~str, out: io::Writer) {
     out.write_str(fmt!{"=Crate Attributes (%s)=\n", *hash});
 
     for get_attributes(md).each |attr| {
@@ -902,7 +887,7 @@ fn get_crate_deps(data: @~[u8]) -> ~[crate_dep] {
     return deps;
 }
 
-fn list_crate_deps(data: @~[u8], out: io::writer) {
+fn list_crate_deps(data: @~[u8], out: io::Writer) {
     out.write_str(~"=External Dependencies=\n");
 
     for get_crate_deps(data).each |dep| {
@@ -928,7 +913,7 @@ fn get_crate_vers(data: @~[u8]) -> @~str {
     };
 }
 
-fn list_crate_items(bytes: @~[u8], md: ebml::doc, out: io::writer) {
+fn list_crate_items(bytes: @~[u8], md: ebml::doc, out: io::Writer) {
     out.write_str(~"=Items=\n");
     let items = ebml::get_doc(md, tag_items);
     do iter_crate_items(bytes) |tag, path, did| {
@@ -984,7 +969,7 @@ fn get_crate_module_paths(bytes: @~[u8]) -> ~[(ast::def_id, ~str)] {
     }
 }
 
-fn list_crate_metadata(bytes: @~[u8], out: io::writer) {
+fn list_crate_metadata(bytes: @~[u8], out: io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = ebml::doc(bytes);
     list_crate_attributes(md, hash, out);

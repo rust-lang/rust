@@ -1,3 +1,6 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 /*!
  * Bindings for libc.
  *
@@ -33,6 +36,8 @@
  * final one from Berkeley after the lawsuits died down and the CSRG
  * dissolved.
  */
+
+#[allow(non_camel_case_types)];
 
 // Initial glob-exports mean that all the contents of all the modules
 // wind up exported, if you're interested in writing platform-specific code.

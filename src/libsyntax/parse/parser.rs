@@ -111,6 +111,12 @@ enum item_or_view_item {
     iovi_view_item(@view_item)
 }
 
+enum view_item_parse_mode {
+    VIEW_ITEMS_AND_ITEMS_ALLOWED,
+    VIEW_ITEMS_ALLOWED,
+    IMPORTS_AND_ITEMS_ALLOWED
+}
+
 /* The expr situation is not as complex as I thought it would be.
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
@@ -2054,7 +2060,7 @@ class parser {
 
             let item_attrs = vec::append(first_item_attrs, item_attrs);
 
-            match self.parse_item_or_view_item(item_attrs) {
+            match self.parse_item_or_view_item(item_attrs, true) {
               iovi_item(i) => {
                 let mut hi = i.span.hi;
                 let decl = @spanned(lo, hi, decl_item(i));
@@ -2141,8 +2147,17 @@ class parser {
                          +first_item_attrs: ~[attribute]) -> blk {
         let mut stmts = ~[];
         let mut expr = none;
-        let {attrs_remaining, view_items} =
-            self.parse_view(first_item_attrs, true);
+
+        let {attrs_remaining, view_items, items: items} =
+            self.parse_items_and_view_items(first_item_attrs,
+                                            IMPORTS_AND_ITEMS_ALLOWED);
+
+        for items.each |item| {
+            let decl = @spanned(item.span.lo, item.span.hi, decl_item(item));
+            push(stmts, @spanned(item.span.lo, item.span.hi,
+                                 stmt_decl(decl, self.get_id())));
+        }
+
         let mut initial_attrs = attrs_remaining;
 
         if self.token == token::RBRACE && !vec::is_empty(initial_attrs) {
@@ -2285,29 +2300,7 @@ class parser {
                     self.bump();
                     let mutability = self.parse_mutability();
                     self.expect_self_ident();
-
-                    // Parse an explicit region, if possible.
-                    let region_name;
-                    match copy self.token {
-                        token::BINOP(token::SLASH) => {
-                            self.bump();
-                            match copy self.token {
-                                token::IDENT(sid, false) => {
-                                    self.bump();
-                                    region_name = some(self.get_str(sid));
-                                }
-                                _ => {
-                                    region_name = none;
-                                }
-                            }
-                        }
-                        _ => {
-                            region_name = none;
-                        }
-                    }
-
-                    let region = self.region_from_name(region_name);
-                    self_ty = sty_region(region, mutability);
+                    self_ty = sty_region(mutability);
                 } else {
                     self_ty = sty_by_ref;
                 }
@@ -2709,9 +2702,11 @@ class parser {
     fn parse_mod_items(term: token::token,
                        +first_item_attrs: ~[attribute]) -> _mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining, view_items} =
-            self.parse_view(first_item_attrs, false);
-        let mut items: ~[@item] = ~[];
+        let {attrs_remaining, view_items, items: starting_items} =
+            self.parse_items_and_view_items(first_item_attrs,
+                                            VIEW_ITEMS_AND_ITEMS_ALLOWED);
+        let mut items: ~[@item] = move starting_items;
+
         let mut first = true;
         while self.token != term {
             let mut attrs = self.parse_outer_attributes();
@@ -2721,7 +2716,7 @@ class parser {
             }
             debug!("parse_mod_items: parse_item_or_view_item(attrs=%?)",
                    attrs);
-            match self.parse_item_or_view_item(attrs) {
+            match self.parse_item_or_view_item(attrs, true) {
               iovi_item(item) => vec::push(items, item),
               iovi_view_item(view_item) => {
                 self.span_fatal(view_item.span, ~"view items must be \
@@ -2797,8 +2792,10 @@ class parser {
     fn parse_foreign_mod_items(+first_item_attrs: ~[attribute]) ->
         foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
-        let {attrs_remaining, view_items} =
-            self.parse_view(first_item_attrs, false);
+        let {attrs_remaining, view_items, items: _} =
+            self.parse_items_and_view_items(first_item_attrs,
+                                            VIEW_ITEMS_ALLOWED);
+
         let mut items: ~[@foreign_item] = ~[];
         let mut initial_attrs = attrs_remaining;
         while self.token != token::RBRACE {
@@ -2813,7 +2810,8 @@ class parser {
 
     fn parse_item_foreign_mod(lo: uint,
                               visibility: visibility,
-                              attrs: ~[attribute])
+                              attrs: ~[attribute],
+                              items_allowed: bool)
                            -> item_or_view_item {
         if self.is_keyword(~"mod") {
             self.expect_keyword(~"mod");
@@ -2823,7 +2821,7 @@ class parser {
         let ident = self.parse_ident();
 
         // extern mod { ... }
-        if self.eat(token::LBRACE) {
+        if items_allowed && self.eat(token::LBRACE) {
             let extra_attrs = self.parse_inner_attrs_and_next();
             let m = self.parse_foreign_mod_items(extra_attrs.next);
             self.expect(token::RBRACE);
@@ -2836,6 +2834,7 @@ class parser {
 
         // extern mod foo;
         let metadata = self.parse_optional_meta();
+        self.expect(token::SEMI);
         return iovi_view_item(@{
             node: view_item_use(ident, metadata, self.get_id()),
             attrs: attrs,
@@ -3033,7 +3032,8 @@ class parser {
         }
     }
 
-    fn parse_item_or_view_item(+attrs: ~[attribute]) -> item_or_view_item {
+    fn parse_item_or_view_item(+attrs: ~[attribute], items_allowed: bool)
+                            -> item_or_view_item {
         maybe_whole!{iovi self,nt_item};
         let lo = self.span.lo;
 
@@ -3046,25 +3046,26 @@ class parser {
             visibility = inherited;
         }
 
-        if self.eat_keyword(~"const") {
+        if items_allowed && self.eat_keyword(~"const") {
             let (ident, item_, extra_attrs) = self.parse_item_const();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.is_keyword(~"fn") &&
+        } else if items_allowed &&
+            self.is_keyword(~"fn") &&
             !self.fn_expr_lookahead(self.look_ahead(1u)) {
             self.bump();
             let (ident, item_, extra_attrs) = self.parse_item_fn(impure_fn);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(~"pure") {
+        } else if items_allowed && self.eat_keyword(~"pure") {
             self.expect_keyword(~"fn");
             let (ident, item_, extra_attrs) = self.parse_item_fn(pure_fn);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.is_keyword(~"unsafe")
+        } else if items_allowed && self.is_keyword(~"unsafe")
             && self.look_ahead(1u) != token::LBRACE {
             self.bump();
             self.expect_keyword(~"fn");
@@ -3073,8 +3074,7 @@ class parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"extern") {
-            // XXX: "extern mod foo;" syntax as a "use" replacement.
-            if self.eat_keyword(~"fn") {
+            if items_allowed && self.eat_keyword(~"fn") {
                 let (ident, item_, extra_attrs) =
                     self.parse_item_fn(extern_fn);
                 return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
@@ -3082,45 +3082,49 @@ class parser {
                                               maybe_append(attrs,
                                                            extra_attrs)));
             }
-            return self.parse_item_foreign_mod(lo, visibility, attrs);
-        } else if self.eat_keyword(~"mod") || self.eat_keyword(~"module") {
+            return self.parse_item_foreign_mod(lo, visibility, attrs,
+                                               items_allowed);
+        } else if items_allowed && (self.eat_keyword(~"mod") ||
+                                    self.eat_keyword(~"module")) {
             let (ident, item_, extra_attrs) = self.parse_item_mod();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(~"type") {
+        } else if items_allowed && self.eat_keyword(~"type") {
             let (ident, item_, extra_attrs) = self.parse_item_type();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(~"enum") {
+        } else if items_allowed && self.eat_keyword(~"enum") {
             let (ident, item_, extra_attrs) = self.parse_item_enum();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(~"iface") {
+        } else if items_allowed && self.eat_keyword(~"iface") {
             self.warn(~"`iface` is deprecated; use `trait`");
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(~"trait") {
+        } else if items_allowed && self.eat_keyword(~"trait") {
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(~"impl") {
+        } else if items_allowed && self.eat_keyword(~"impl") {
             let (ident, item_, extra_attrs) = self.parse_item_impl();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if self.eat_keyword(~"class") || self.eat_keyword(~"struct") {
+        } else if items_allowed &&
+                (self.eat_keyword(~"class") || self.eat_keyword(~"struct")) {
             let (ident, item_, extra_attrs) = self.parse_item_class();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"use") {
             let view_item = self.parse_use();
+            self.expect(token::SEMI);
             return iovi_view_item(@{
                 node: view_item,
                 attrs: attrs,
@@ -3129,6 +3133,7 @@ class parser {
             });
         } else if self.eat_keyword(~"import") {
             let view_paths = self.parse_view_paths();
+            self.expect(token::SEMI);
             return iovi_view_item(@{
                 node: view_item_import(view_paths),
                 attrs: attrs,
@@ -3137,15 +3142,16 @@ class parser {
             });
         } else if self.eat_keyword(~"export") {
             let view_paths = self.parse_view_paths();
+            self.expect(token::SEMI);
             return iovi_view_item(@{
                 node: view_item_export(view_paths),
                 attrs: attrs,
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if !self.is_any_keyword(copy self.token)
+        } else if items_allowed && (!self.is_any_keyword(copy self.token)
                 && self.look_ahead(1) == token::NOT
-                && is_plain_ident(self.look_ahead(2)) {
+                && is_plain_ident(self.look_ahead(2))) {
             // item macro.
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
@@ -3173,7 +3179,7 @@ class parser {
     }
 
     fn parse_item(+attrs: ~[attribute]) -> option<@ast::item> {
-        match self.parse_item_or_view_item(attrs) {
+        match self.parse_item_or_view_item(attrs, true) {
             iovi_none =>
                 none,
             iovi_view_item(_) =>
@@ -3296,18 +3302,53 @@ class parser {
           vis: vis, span: mk_sp(lo, self.last_span.hi)}
     }
 
-    fn parse_view(+first_item_attrs: ~[attribute],
-                  only_imports: bool) -> {attrs_remaining: ~[attribute],
-                                          view_items: ~[@view_item]} {
+    fn parse_items_and_view_items(+first_item_attrs: ~[attribute],
+                                  mode: view_item_parse_mode)
+                               -> {attrs_remaining: ~[attribute],
+                                   view_items: ~[@view_item],
+                                   items: ~[@item]} {
         let mut attrs = vec::append(first_item_attrs,
                                     self.parse_outer_attributes());
-        let mut items = ~[];
-        while if only_imports { self.is_keyword(~"import") }
-        else { self.is_view_item() } {
-            vec::push(items, self.parse_view_item(attrs));
+
+        let items_allowed;
+        match mode {
+            VIEW_ITEMS_AND_ITEMS_ALLOWED | IMPORTS_AND_ITEMS_ALLOWED =>
+                items_allowed = true,
+            VIEW_ITEMS_ALLOWED =>
+                items_allowed = false
+        }
+
+        let (view_items, items) = (dvec(), dvec());
+        loop {
+            match self.parse_item_or_view_item(attrs, items_allowed) {
+                iovi_none =>
+                    break,
+                iovi_view_item(view_item) => {
+                    match mode {
+                        VIEW_ITEMS_AND_ITEMS_ALLOWED |
+                        VIEW_ITEMS_ALLOWED => {}
+                        IMPORTS_AND_ITEMS_ALLOWED =>
+                            match view_item.node {
+                                view_item_import(_) => {}
+                                view_item_export(_) | view_item_use(*) =>
+                                    self.fatal(~"exports and \"extern mod\" \
+                                                 declarations are not \
+                                                 allowed here")
+                            }
+                    }
+                    view_items.push(view_item);
+                }
+                iovi_item(item) => {
+                    assert items_allowed;
+                    items.push(item)
+                }
+            }
             attrs = self.parse_outer_attributes();
         }
-        {attrs_remaining: attrs, view_items: items}
+
+        {attrs_remaining: attrs,
+         view_items: vec::from_mut(dvec::unwrap(view_items)),
+         items: vec::from_mut(dvec::unwrap(items))}
     }
 
     // Parses a source module as a crate

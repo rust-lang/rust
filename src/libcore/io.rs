@@ -11,6 +11,7 @@ import libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
 import libc::consts::os::extra::*;
 
+#[allow(non_camel_case_types)] // not sure what to do about this
 type fd_t = c_int;
 
 #[abi = "cdecl"]
@@ -24,11 +25,11 @@ extern mod rustrt {
 
 // FIXME (#2004): This is all buffered. We might need an unbuffered variant
 // as well
-enum seek_style { seek_set, seek_end, seek_cur, }
+enum SeekStyle { SeekSet, SeekEnd, SeekCur, }
 
 
 // The raw underlying reader trait. All readers must implement this.
-trait reader {
+trait Reader {
     // FIXME (#2004): Seekable really should be orthogonal.
 
     // FIXME (#2982): This should probably return an error.
@@ -36,13 +37,13 @@ trait reader {
     fn read_byte() -> int;
     fn unread_byte(int);
     fn eof() -> bool;
-    fn seek(int, seek_style);
+    fn seek(int, SeekStyle);
     fn tell() -> uint;
 }
 
 // Generic utility functions defined on readers
 
-impl reader {
+impl Reader {
     fn read_bytes(len: uint) -> ~[u8] {
         let mut buf = ~[mut];
         vec::reserve(buf, len);
@@ -195,15 +196,15 @@ impl reader {
 
 // Reader implementations
 
-fn convert_whence(whence: seek_style) -> i32 {
+fn convert_whence(whence: SeekStyle) -> i32 {
     return match whence {
-      seek_set => 0i32,
-      seek_cur => 1i32,
-      seek_end => 2i32
+      SeekSet => 0i32,
+      SeekCur => 1i32,
+      SeekEnd => 2i32
     };
 }
 
-impl *libc::FILE: reader {
+impl *libc::FILE: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         do vec::as_buf(buf) |buf_p, buf_len| {
             assert buf_len <= len;
@@ -217,7 +218,7 @@ impl *libc::FILE: reader {
     fn read_byte() -> int { return libc::fgetc(self) as int; }
     fn unread_byte(byte: int) { libc::ungetc(byte as c_int, self); }
     fn eof() -> bool { return libc::feof(self) != 0 as c_int; }
-    fn seek(offset: int, whence: seek_style) {
+    fn seek(offset: int, whence: SeekStyle) {
         assert libc::fseek(self, offset as c_long, convert_whence(whence))
             == 0 as c_int;
     }
@@ -227,26 +228,26 @@ impl *libc::FILE: reader {
 // A forwarding impl of reader that also holds on to a resource for the
 // duration of its lifetime.
 // FIXME there really should be a better way to do this // #2004
-impl<T: reader, C> {base: T, cleanup: C}: reader {
+impl<T: Reader, C> {base: T, cleanup: C}: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint { self.base.read(buf, len) }
     fn read_byte() -> int { self.base.read_byte() }
     fn unread_byte(byte: int) { self.base.unread_byte(byte); }
     fn eof() -> bool { self.base.eof() }
-    fn seek(off: int, whence: seek_style) { self.base.seek(off, whence) }
+    fn seek(off: int, whence: SeekStyle) { self.base.seek(off, whence) }
     fn tell() -> uint { self.base.tell() }
 }
 
-class FILE_res {
+class FILERes {
     let f: *libc::FILE;
     new(f: *libc::FILE) { self.f = f; }
     drop { libc::fclose(self.f); }
 }
 
-fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
+fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
     if cleanup {
-        {base: f, cleanup: FILE_res(f)} as reader
+        {base: f, cleanup: FILERes(f)} as Reader
     } else {
-        f as reader
+        f as Reader
     }
 }
 
@@ -254,9 +255,9 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> reader {
 // top-level functions that take a reader, or a set of default methods on
 // reader (which can then be called reader)
 
-fn stdin() -> reader { rustrt::rust_get_stdin() as reader }
+fn stdin() -> Reader { rustrt::rust_get_stdin() as Reader }
 
-fn file_reader(path: ~str) -> result<reader, ~str> {
+fn file_reader(path: ~str) -> result<Reader, ~str> {
     let f = os::as_c_charp(path, |pathbuf| {
         os::as_c_charp(~"r", |modebuf|
             libc::fopen(pathbuf, modebuf)
@@ -271,9 +272,9 @@ fn file_reader(path: ~str) -> result<reader, ~str> {
 
 // Byte buffer readers
 
-type byte_buf = {buf: ~[const u8], mut pos: uint, len: uint};
+type ByteBuf = {buf: ~[const u8], mut pos: uint, len: uint};
 
-impl byte_buf: reader {
+impl ByteBuf: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         let count = uint::min(len, self.len - self.pos);
 
@@ -293,65 +294,65 @@ impl byte_buf: reader {
     // FIXME (#2738): implement this
     fn unread_byte(_byte: int) { error!{"Unimplemented: unread_byte"}; fail; }
     fn eof() -> bool { self.pos == self.len }
-    fn seek(offset: int, whence: seek_style) {
+    fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
         self.pos = seek_in_buf(offset, pos, self.len, whence);
     }
     fn tell() -> uint { self.pos }
 }
 
-fn bytes_reader(bytes: ~[u8]) -> reader {
+fn bytes_reader(bytes: ~[u8]) -> Reader {
     bytes_reader_between(bytes, 0u, vec::len(bytes))
 }
 
-fn bytes_reader_between(bytes: ~[u8], start: uint, end: uint) -> reader {
-    {buf: bytes, mut pos: start, len: end} as reader
+fn bytes_reader_between(bytes: ~[u8], start: uint, end: uint) -> Reader {
+    {buf: bytes, mut pos: start, len: end} as Reader
 }
 
-fn with_bytes_reader<t>(bytes: ~[u8], f: fn(reader) -> t) -> t {
+fn with_bytes_reader<t>(bytes: ~[u8], f: fn(Reader) -> t) -> t {
     f(bytes_reader(bytes))
 }
 
 fn with_bytes_reader_between<t>(bytes: ~[u8], start: uint, end: uint,
-                                f: fn(reader) -> t) -> t {
+                                f: fn(Reader) -> t) -> t {
     f(bytes_reader_between(bytes, start, end))
 }
 
-fn str_reader(s: ~str) -> reader {
+fn str_reader(s: ~str) -> Reader {
     bytes_reader(str::bytes(s))
 }
 
-fn with_str_reader<T>(s: ~str, f: fn(reader) -> T) -> T {
+fn with_str_reader<T>(s: ~str, f: fn(Reader) -> T) -> T {
     do str::as_bytes(s) |bytes| {
         with_bytes_reader_between(bytes, 0u, str::len(s), f)
     }
 }
 
 // Writing
-enum fileflag { append, create, truncate, no_flag, }
+enum FileFlag { Append, Create, Truncate, NoFlag, }
 
 // What type of writer are we?
-enum writer_type { screen, file }
+enum WriterType { Screen, File }
 
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64
-trait writer {
+trait Writer {
     fn write(v: &[const u8]);
-    fn seek(int, seek_style);
+    fn seek(int, SeekStyle);
     fn tell() -> uint;
     fn flush() -> int;
-    fn get_type() -> writer_type;
+    fn get_type() -> WriterType;
 }
 
-impl<T: writer, C> {base: T, cleanup: C}: writer {
+impl<T: Writer, C> {base: T, cleanup: C}: Writer {
     fn write(bs: &[const u8]) { self.base.write(bs); }
-    fn seek(off: int, style: seek_style) { self.base.seek(off, style); }
+    fn seek(off: int, style: SeekStyle) { self.base.seek(off, style); }
     fn tell() -> uint { self.base.tell() }
     fn flush() -> int { self.base.flush() }
-    fn get_type() -> writer_type { file }
+    fn get_type() -> WriterType { File }
 }
 
-impl *libc::FILE: writer {
+impl *libc::FILE: Writer {
     fn write(v: &[const u8]) {
         do vec::as_const_buf(v) |vbuf, len| {
             let nout = libc::fwrite(vbuf as *c_void, len as size_t,
@@ -363,28 +364,28 @@ impl *libc::FILE: writer {
             }
         }
     }
-    fn seek(offset: int, whence: seek_style) {
+    fn seek(offset: int, whence: SeekStyle) {
         assert libc::fseek(self, offset as c_long, convert_whence(whence))
             == 0 as c_int;
     }
     fn tell() -> uint { libc::ftell(self) as uint }
     fn flush() -> int { libc::fflush(self) as int }
-    fn get_type() -> writer_type {
+    fn get_type() -> WriterType {
         let fd = libc::fileno(self);
-        if libc::isatty(fd) == 0 { file   }
-        else                     { screen }
+        if libc::isatty(fd) == 0 { File   }
+        else                     { Screen }
     }
 }
 
-fn FILE_writer(f: *libc::FILE, cleanup: bool) -> writer {
+fn FILE_writer(f: *libc::FILE, cleanup: bool) -> Writer {
     if cleanup {
-        {base: f, cleanup: FILE_res(f)} as writer
+        {base: f, cleanup: FILERes(f)} as Writer
     } else {
-        f as writer
+        f as Writer
     }
 }
 
-impl fd_t: writer {
+impl fd_t: Writer {
     fn write(v: &[const u8]) {
         let mut count = 0u;
         do vec::as_const_buf(v) |vbuf, len| {
@@ -400,7 +401,7 @@ impl fd_t: writer {
             }
         }
     }
-    fn seek(_offset: int, _whence: seek_style) {
+    fn seek(_offset: int, _whence: SeekStyle) {
         error!{"need 64-bit foreign calls for seek, sorry"};
         fail;
     }
@@ -409,28 +410,28 @@ impl fd_t: writer {
         fail;
     }
     fn flush() -> int { 0 }
-    fn get_type() -> writer_type {
-        if libc::isatty(self) == 0 { file } else { screen }
+    fn get_type() -> WriterType {
+        if libc::isatty(self) == 0 { File } else { Screen }
     }
 }
 
-class fd_res {
+class FdRes {
     let fd: fd_t;
     new(fd: fd_t) { self.fd = fd; }
     drop { libc::close(self.fd); }
 }
 
-fn fd_writer(fd: fd_t, cleanup: bool) -> writer {
+fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
     if cleanup {
-        {base: fd, cleanup: fd_res(fd)} as writer
+        {base: fd, cleanup: FdRes(fd)} as Writer
     } else {
-        fd as writer
+        fd as Writer
     }
 }
 
 
-fn mk_file_writer(path: ~str, flags: ~[fileflag])
-    -> result<writer, ~str> {
+fn mk_file_writer(path: ~str, flags: ~[FileFlag])
+    -> result<Writer, ~str> {
 
     #[cfg(windows)]
     fn wb() -> c_int { (O_WRONLY | O_BINARY) as c_int }
@@ -441,10 +442,10 @@ fn mk_file_writer(path: ~str, flags: ~[fileflag])
     let mut fflags: c_int = wb();
     for vec::each(flags) |f| {
         match f {
-          append => fflags |= O_APPEND as c_int,
-          create => fflags |= O_CREAT as c_int,
-          truncate => fflags |= O_TRUNC as c_int,
-          no_flag => ()
+          Append => fflags |= O_APPEND as c_int,
+          Create => fflags |= O_CREAT as c_int,
+          Truncate => fflags |= O_TRUNC as c_int,
+          NoFlag => ()
         }
     }
     let fd = do os::as_c_charp(path) |pathbuf| {
@@ -535,7 +536,7 @@ fn u64_from_be_bytes(data: ~[u8], start: uint, size: uint) -> u64 {
 
 // FIXME: #3048 combine trait+impl (or just move these to
 // default methods on writer)
-trait writer_util {
+trait WriterUtil {
     fn write_char(ch: char);
     fn write_str(s: &str);
     fn write_line(s: &str);
@@ -560,7 +561,7 @@ trait writer_util {
     fn write_u8(n: u8);
 }
 
-impl<T:writer> T : writer_util {
+impl<T: Writer> T : WriterUtil {
     fn write_char(ch: char) {
         if ch as uint < 128u {
             self.write(&[ch as u8]);
@@ -631,13 +632,13 @@ impl<T:writer> T : writer_util {
     fn write_u8(n: u8) { self.write(&[n]) }
 }
 
-fn file_writer(path: ~str, flags: ~[fileflag]) -> result<writer, ~str> {
+fn file_writer(path: ~str, flags: ~[FileFlag]) -> result<Writer, ~str> {
     result::chain(mk_file_writer(path, flags), |w| result::ok(w))
 }
 
 
 // FIXME: fileflags // #2004
-fn buffered_file_writer(path: ~str) -> result<writer, ~str> {
+fn buffered_file_writer(path: ~str) -> result<Writer, ~str> {
     let f = do os::as_c_charp(path) |pathbuf| {
         do os::as_c_charp(~"w") |modebuf| {
             libc::fopen(pathbuf, modebuf)
@@ -650,15 +651,15 @@ fn buffered_file_writer(path: ~str) -> result<writer, ~str> {
 // FIXME (#2004) it would be great if this could be a const
 // FIXME (#2004) why are these different from the way stdin() is
 // implemented?
-fn stdout() -> writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
-fn stderr() -> writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
+fn stdout() -> Writer { fd_writer(libc::STDOUT_FILENO as c_int, false) }
+fn stderr() -> Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 
 fn print(s: &str) { stdout().write_str(s); }
 fn println(s: &str) { stdout().write_line(s); }
 
-type mem_buffer = @{buf: dvec<u8>, mut pos: uint};
+type MemBuffer = @{buf: dvec<u8>, mut pos: uint};
 
-impl mem_buffer: writer {
+impl MemBuffer: Writer {
     fn write(v: &[const u8]) {
         // Fast path.
         let vlen = vec::len(v);
@@ -679,33 +680,33 @@ impl mem_buffer: writer {
         self.buf.push_slice(v, vpos, vlen);
         self.pos += vlen;
     }
-    fn seek(offset: int, whence: seek_style) {
+    fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
         let len = self.buf.len();
         self.pos = seek_in_buf(offset, pos, len, whence);
     }
     fn tell() -> uint { self.pos }
     fn flush() -> int { 0 }
-    fn get_type() -> writer_type { file }
+    fn get_type() -> WriterType { File }
 }
 
-fn mem_buffer() -> mem_buffer {
+fn mem_buffer() -> MemBuffer {
     @{buf: dvec(), mut pos: 0u}
 }
-fn mem_buffer_writer(b: mem_buffer) -> writer { b as writer }
-fn mem_buffer_buf(b: mem_buffer) -> ~[u8] { b.buf.get() }
-fn mem_buffer_str(b: mem_buffer) -> ~str {
+fn mem_buffer_writer(b: MemBuffer) -> Writer { b as Writer }
+fn mem_buffer_buf(b: MemBuffer) -> ~[u8] { b.buf.get() }
+fn mem_buffer_str(b: MemBuffer) -> ~str {
     str::from_bytes(b.buf.get())
 }
 
-fn with_str_writer(f: fn(writer)) -> ~str {
+fn with_str_writer(f: fn(Writer)) -> ~str {
     let buf = mem_buffer();
     let wr = mem_buffer_writer(buf);
     f(wr);
     io::mem_buffer_str(buf)
 }
 
-fn with_buf_writer(f: fn(writer)) -> ~[u8] {
+fn with_buf_writer(f: fn(Writer)) -> ~[u8] {
     let buf = mem_buffer();
     let wr = mem_buffer_writer(buf);
     f(wr);
@@ -713,14 +714,14 @@ fn with_buf_writer(f: fn(writer)) -> ~[u8] {
 }
 
 // Utility functions
-fn seek_in_buf(offset: int, pos: uint, len: uint, whence: seek_style) ->
+fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
    uint {
     let mut bpos = pos as int;
     let blen = len as int;
     match whence {
-      seek_set => bpos = offset,
-      seek_cur => bpos += offset,
-      seek_end => bpos = blen + offset
+      SeekSet => bpos = offset,
+      SeekCur => bpos += offset,
+      SeekEnd => bpos = blen + offset
     }
     if bpos < 0 { bpos = 0; } else if bpos > blen { bpos = blen; }
     return bpos as uint;
@@ -748,24 +749,24 @@ fn read_whole_file(file: ~str) -> result<~[u8], ~str> {
 
 mod fsync {
 
-    enum level {
+    enum Level {
         // whatever fsync does on that platform
-        fsync,
+        FSync,
 
         // fdatasync on linux, similiar or more on other platforms
-        fdatasync,
+        FDataSync,
 
         // full fsync
         //
         // You must additionally sync the parent directory as well!
-        fullfsync,
+        FullFSync,
     }
 
 
     // Artifacts that need to fsync on destruction
-    class res<t> {
-        let arg: arg<t>;
-        new(-arg: arg<t>) { self.arg <- arg; }
+    class Res<t> {
+        let arg: Arg<t>;
+        new(-arg: Arg<t>) { self.arg <- arg; }
         drop {
           match self.arg.opt_level {
             option::none => (),
@@ -777,44 +778,47 @@ mod fsync {
         }
     }
 
-    type arg<t> = {
+    type Arg<t> = {
         val: t,
-        opt_level: option<level>,
-        fsync_fn: fn@(t, level) -> int
+        opt_level: option<Level>,
+        fsync_fn: fn@(t, Level) -> int
     };
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
     // outer res
-    fn FILE_res_sync(&&file: FILE_res, opt_level: option<level>,
-                  blk: fn(&&res<*libc::FILE>)) {
-        blk(res({
+    fn FILE_res_sync(&&file: FILERes, opt_level: option<Level>,
+                  blk: fn(&&Res<*libc::FILE>)) {
+        blk(Res({
             val: file.f, opt_level: opt_level,
-            fsync_fn: fn@(&&file: *libc::FILE, l: level) -> int {
+            fsync_fn: fn@(&&file: *libc::FILE, l: Level) -> int {
                 return os::fsync_fd(libc::fileno(file), l) as int;
             }
         }));
     }
 
     // fsync fd after executing blk
-    fn fd_res_sync(&&fd: fd_res, opt_level: option<level>,
-                   blk: fn(&&res<fd_t>)) {
-        blk(res({
+    fn fd_res_sync(&&fd: FdRes, opt_level: option<Level>,
+                   blk: fn(&&Res<fd_t>)) {
+        blk(Res({
             val: fd.fd, opt_level: opt_level,
-            fsync_fn: fn@(&&fd: fd_t, l: level) -> int {
+            fsync_fn: fn@(&&fd: fd_t, l: Level) -> int {
                 return os::fsync_fd(fd, l) as int;
             }
         }));
     }
 
     // Type of objects that may want to fsync
-    trait t { fn fsync(l: level) -> int; }
+    trait FSyncable { fn fsync(l: Level) -> int; }
 
     // Call o.fsync after executing blk
-    fn obj_sync(&&o: t, opt_level: option<level>, blk: fn(&&res<t>)) {
-        blk(res({
+    fn obj_sync(&&o: FSyncable, opt_level: option<Level>,
+                blk: fn(&&Res<FSyncable>)) {
+        blk(Res({
             val: o, opt_level: opt_level,
-            fsync_fn: fn@(&&o: t, l: level) -> int { return o.fsync(l); }
+            fsync_fn: fn@(&&o: FSyncable, l: Level) -> int {
+                return o.fsync(l);
+            }
         }));
     }
 }
@@ -830,12 +834,12 @@ mod tests {
             ~"A hoopy frood who really knows where his towel is.";
         log(debug, frood);
         {
-            let out: io::writer =
+            let out: io::Writer =
                 result::get(
-                    io::file_writer(tmpfile, ~[io::create, io::truncate]));
+                    io::file_writer(tmpfile, ~[io::Create, io::Truncate]));
             out.write_str(frood);
         }
-        let inp: io::reader = result::get(io::file_reader(tmpfile));
+        let inp: io::Reader = result::get(io::file_reader(tmpfile));
         let frood2: ~str = inp.read_c_str();
         log(debug, frood2);
         assert frood == frood2;
@@ -843,7 +847,7 @@ mod tests {
 
     #[test]
     fn test_readchars_empty() {
-        let inp : io::reader = io::str_reader(~"");
+        let inp : io::Reader = io::str_reader(~"");
         let res : ~[char] = inp.read_chars(128u);
         assert(vec::len(res) == 0u);
     }
@@ -858,7 +862,7 @@ mod tests {
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748];
         fn check_read_ln(len : uint, s: ~str, ivals: ~[int]) {
-            let inp : io::reader = io::str_reader(s);
+            let inp : io::Reader = io::str_reader(s);
             let res : ~[char] = inp.read_chars(len);
             if (len <= vec::len(ivals)) {
                 assert(vec::len(res) == len);
@@ -877,14 +881,14 @@ mod tests {
 
     #[test]
     fn test_readchar() {
-        let inp : io::reader = io::str_reader(~"生");
+        let inp : io::Reader = io::str_reader(~"生");
         let res : char = inp.read_char();
         assert(res as int == 29983);
     }
 
     #[test]
     fn test_readchar_empty() {
-        let inp : io::reader = io::str_reader(~"");
+        let inp : io::Reader = io::str_reader(~"");
         let res : char = inp.read_char();
         assert(res as int == -1);
     }
@@ -924,12 +928,12 @@ mod tests {
         let mbuf = mem_buffer();
         mbuf.write(~[0u8, 1u8, 2u8, 3u8]);
         assert mem_buffer_buf(mbuf) == ~[0u8, 1u8, 2u8, 3u8];
-        mbuf.seek(-2, seek_cur);
+        mbuf.seek(-2, SeekCur);
         mbuf.write(~[4u8, 5u8, 6u8, 7u8]);
         assert mem_buffer_buf(mbuf) == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8];
-        mbuf.seek(-2, seek_end);
+        mbuf.seek(-2, SeekEnd);
         mbuf.write(~[8u8]);
-        mbuf.seek(1, seek_set);
+        mbuf.seek(1, SeekSet);
         mbuf.write(~[9u8]);
         assert mem_buffer_buf(mbuf) == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8];
     }

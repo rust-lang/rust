@@ -6,7 +6,7 @@ import std::time::precise_time_s;
 import std::map;
 import std::map::{map, hashmap};
 
-import io::reader;
+import io::Reader;
 
 fn main(argv: ~[~str]) {
     #macro[

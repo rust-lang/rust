@@ -99,7 +99,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     }
 }
 
-fn res_rel_file(cx: ext_ctxt, sp: codemap::span, +arg: path) -> path {
+fn res_rel_file(cx: ext_ctxt, sp: codemap::span, +arg: Path) -> Path {
     // NB: relative paths are resolved relative to the compilation unit
     if !path::path_is_absolute(arg) {
         let cu = codemap::span_to_filename(sp, cx.codemap());
