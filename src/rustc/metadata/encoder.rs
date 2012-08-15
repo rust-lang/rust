@@ -158,19 +158,27 @@ fn encode_foreign_module_item_paths(ebml_w: ebml::writer, nmod: foreign_mod,
 }
 
 fn encode_class_item_paths(ebml_w: ebml::writer,
-     items: ~[@class_member], path: ~[ident], &index: ~[entry<~str>]) {
-    for items.each |it| {
-     match ast_util::class_member_visibility(it) {
-          private => again,
-          public | inherited => {
-              let (id, ident) = match it.node {
-                 instance_var(v, _, _, vid, _) => (vid, v),
-                 class_method(it) => (it.id, it.ident)
-              };
-              add_to_index(ebml_w, path, index, ident);
-              encode_named_def_id(ebml_w, ident, local_def(id));
-          }
-       }
+                           fields: ~[@ast::struct_field],
+                           methods: ~[@ast::method],
+                           path: ~[ident],
+                           &index: ~[entry<~str>]) {
+    for fields.each |field| {
+        match field.node.kind {
+            ast::named_field(ident, _, visibility) => {
+                if visibility == private { again; }
+                let (id, ident) = (field.node.id, ident);
+                add_to_index(ebml_w, path, index, ident);
+                encode_named_def_id(ebml_w, ident, local_def(id));
+            }
+            ast::unnamed_field => {}
+        }
+    }
+
+    for methods.each |method| {
+        if method.vis == private { again; }
+        let (id, ident) = (method.id, method.ident);
+        add_to_index(ebml_w, path, index, ident);
+        encode_named_def_id(ebml_w, ident, local_def(id));
     }
 }
 
@@ -257,7 +265,8 @@ fn encode_struct_def(ebml_w: ebml::writer,
     }
 
     encode_class_item_paths(ebml_w,
-                            struct_def.members,
+                            struct_def.fields,
+                            struct_def.methods,
                             vec::append_one(path, ident),
                             index);
 }
@@ -527,32 +536,38 @@ fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
 fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                          id: node_id, path: ast_map::path,
                          class_tps: ~[ty_param],
-                         items: ~[@class_member],
+                         fields: ~[@struct_field],
+                         methods: ~[@method],
                          global_index: @mut~[entry<int>]) -> ~[entry<int>] {
     /* Each class has its own index, since different classes
        may have fields with the same name */
     let index = @mut ~[];
     let tcx = ecx.tcx;
-    for items.each |ci| {
      /* We encode both private and public fields -- need to include
         private fields to get the offsets right */
-      match ci.node {
-        instance_var(nm, _, mt, id, vis) => {
-          vec::push(*index, {val: id, pos: ebml_w.writer.tell()});
-          vec::push(*global_index, {val: id, pos: ebml_w.writer.tell()});
-          ebml_w.start_tag(tag_items_data_item);
-          debug!{"encode_info_for_class: doing %s %d", *nm, id};
-          encode_visibility(ebml_w, vis);
-          encode_name(ebml_w, nm);
-          encode_path(ebml_w, path, ast_map::path_name(nm));
-          encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
-          encode_mutability(ebml_w, mt);
-          encode_def_id(ebml_w, local_def(id));
-          ebml_w.end_tag();
+    for fields.each |field| {
+        match field.node.kind {
+            named_field(nm, mt, vis) => {
+                let id = field.node.id;
+                vec::push(*index, {val: id, pos: ebml_w.writer.tell()});
+                vec::push(*global_index, {val: id, pos: ebml_w.writer.tell()});
+                ebml_w.start_tag(tag_items_data_item);
+                debug!{"encode_info_for_class: doing %s %d", *nm, id};
+                encode_visibility(ebml_w, vis);
+                encode_name(ebml_w, nm);
+                encode_path(ebml_w, path, ast_map::path_name(nm));
+                encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
+                encode_mutability(ebml_w, mt);
+                encode_def_id(ebml_w, local_def(id));
+                ebml_w.end_tag();
+            }
+            unnamed_field => {}
         }
-        class_method(m) => {
-           match m.vis {
-              public | inherited => {
+    }
+
+    for methods.each |m| {
+        match m.vis {
+            public | inherited => {
                 vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
                 vec::push(*global_index,
                           {val: m.id, pos: ebml_w.writer.tell()});
@@ -564,10 +579,9 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
                                        vec::append(class_tps, m.tps));
             }
             _ => { /* don't encode private methods */ }
-          }
         }
-      }
-    };
+    }
+
     *index
 }
 
@@ -738,7 +752,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
            the index, and the index needs to be in the item for the
            class itself */
         let idx = encode_info_for_class(ecx, ebml_w, item.id, path, tps,
-                                        struct_def.members, index);
+                                        struct_def.fields, struct_def.methods,
+                                        index);
         /* Encode the dtor */
         do option::iter(struct_def.dtor) |dtor| {
             vec::push(*index, {val: dtor.node.id, pos: ebml_w.writer.tell()});
@@ -779,15 +794,20 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        let (fs,ms) = ast_util::split_class_items(struct_def.members);
-        for fs.each |f| {
-           ebml_w.start_tag(tag_item_field);
-           encode_visibility(ebml_w, f.vis);
-           encode_name(ebml_w, f.ident);
-           encode_def_id(ebml_w, local_def(f.id));
-           ebml_w.end_tag();
+        for struct_def.fields.each |f| {
+            match f.node.kind {
+                named_field(ident, mutability, vis) => {
+                   ebml_w.start_tag(tag_item_field);
+                   encode_visibility(ebml_w, vis);
+                   encode_name(ebml_w, ident);
+                   encode_def_id(ebml_w, local_def(f.node.id));
+                   ebml_w.end_tag();
+                }
+                unnamed_field => {}
+            }
         }
-        for ms.each |m| {
+
+        for struct_def.methods.each |m| {
            match m.vis {
               private => { /* do nothing */ }
               public | inherited => {

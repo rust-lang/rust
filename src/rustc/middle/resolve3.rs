@@ -12,7 +12,7 @@ import syntax::ast::{bitand, bitor, bitxor};
 import syntax::ast::{blk, bound_const, bound_copy, bound_owned, bound_send};
 import syntax::ast::{bound_trait, binding_mode,
                      capture_clause, class_ctor, class_dtor};
-import syntax::ast::{class_member, class_method, crate, crate_num, decl_item};
+import syntax::ast::{crate, crate_num, decl_item};
 import syntax::ast::{def, def_arg, def_binding, def_class, def_const, def_fn};
 import syntax::ast::{def_foreign_mod, def_id, def_label, def_local, def_mod};
 import syntax::ast::{def_prim_ty, def_region, def_self, def_ty, def_ty_param};
@@ -27,15 +27,15 @@ import syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_loop};
 import syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 import syntax::ast::{foreign_item, foreign_item_fn, ge, gt, ident, trait_ref};
-import syntax::ast::{impure_fn, instance_var, item, item_class, item_const};
+import syntax::ast::{impure_fn, item, item_class, item_const};
 import syntax::ast::{item_enum, item_fn, item_mac, item_foreign_mod};
 import syntax::ast::{item_impl, item_mod, item_trait, item_ty, le, local};
 import syntax::ast::{local_crate, lt, method, mul, ne, neg, node_id, pat};
 import syntax::ast::{pat_enum, pat_ident, path, prim_ty, pat_box, pat_uniq};
 import syntax::ast::{pat_lit, pat_range, pat_rec, pat_struct, pat_tup};
 import syntax::ast::{pat_wild, provided, required, rem, self_ty_, shl};
-import syntax::ast::{stmt_decl, struct_variant_kind, sty_static, subtract};
-import syntax::ast::{tuple_variant_kind, ty};
+import syntax::ast::{stmt_decl, struct_field, struct_variant_kind};
+import syntax::ast::{sty_static, subtract, tuple_variant_kind, ty};
 import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
 import syntax::ast::{ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8};
@@ -1021,23 +1021,16 @@ class Resolver {
                 // bindings.
 
                 let mut method_infos = ~[];
-                for struct_definition.members.each |class_member| {
-                    match class_member.node {
-                        class_method(method) => {
-                            // XXX: Combine with impl method code below.
-                            method_infos += ~[
-                                @{
-                                    did: local_def(method.id),
-                                    n_tps: method.tps.len(),
-                                    ident: method.ident,
-                                    self_type: method.self_ty.node
-                                }
-                            ];
+                for struct_definition.methods.each |method| {
+                    // XXX: Combine with impl method code below.
+                    method_infos += ~[
+                        @{
+                            did: local_def(method.id),
+                            n_tps: method.tps.len(),
+                            ident: method.ident,
+                            self_type: method.self_ty.node
                         }
-                        instance_var(*) => {
-                            // Don't need to do anything with this.
-                        }
-                    }
+                    ];
                 }
 
                 let impl_info = @{
@@ -3195,7 +3188,8 @@ class Resolver {
                 self.resolve_class(item.id,
                                    @copy ty_params,
                                    struct_def.traits,
-                                   struct_def.members,
+                                   struct_def.fields,
+                                   struct_def.methods,
                                    struct_def.ctor,
                                    struct_def.dtor,
                                    visitor);
@@ -3435,7 +3429,8 @@ class Resolver {
     fn resolve_class(id: node_id,
                      type_parameters: @~[ty_param],
                      traits: ~[@trait_ref],
-                     class_members: ~[@class_member],
+                     fields: ~[@struct_field],
+                     methods: ~[@method],
                      optional_constructor: option<class_ctor>,
                      optional_destructor: option<class_dtor>,
                      visitor: ResolveVisitor) {
@@ -3479,19 +3474,16 @@ class Resolver {
             }
 
             // Resolve methods.
-            for class_members.each |class_member| {
-                match class_member.node {
-                    class_method(method) => {
-                      self.resolve_method(MethodRibKind(id,
-                                               Provided(method.id)),
-                                          method,
-                                          outer_type_parameter_count,
-                                          visitor);
-                    }
-                    instance_var(_, field_type, _, _, _) => {
-                        self.resolve_type(field_type, visitor);
-                    }
-                }
+            for methods.each |method| {
+                self.resolve_method(MethodRibKind(id, Provided(method.id)),
+                                    method,
+                                    outer_type_parameter_count,
+                                    visitor);
+            }
+
+            // Resolve fields.
+            for fields.each |field| {
+                self.resolve_type(field.node.ty, visitor);
             }
 
             // Resolve the constructor, if applicable.

@@ -8,8 +8,7 @@ import driver::session;
 import session::session;
 import syntax::{ast, ast_map};
 import syntax::ast_util;
-import syntax::ast_util::{is_local, local_def, split_class_items,
-                          new_def_hash};
+import syntax::ast_util::{is_local, local_def, new_def_hash};
 import syntax::codemap::span;
 import metadata::csearch;
 import util::ppaux::{region_to_str, explain_region, vstore_to_str};
@@ -3006,10 +3005,10 @@ fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
     match cx.items.find(did.node) {
        some(ast_map::node_item(i,_)) => {
          match i.node {
-                 ast::item_class(struct_def, _) => {
-               class_field_tys(struct_def.members)
-           }
-           _ => cx.sess.bug(~"class ID bound to non-class")
+            ast::item_class(struct_def, _) => {
+               class_field_tys(struct_def.fields)
+            }
+            _ => cx.sess.bug(~"class ID bound to non-class")
          }
        }
        _ => {
@@ -3062,9 +3061,9 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
           some(ast_map::node_item(@{
             node: item_class(struct_def, _), _
           }, _)) => {
-            let (_,ms) = split_class_items(struct_def.members);
-            vec::map(ms, |m| {name: m.ident, id: m.id,
-                              vis: m.vis})
+            vec::map(struct_def.methods, |m| {name: m.ident,
+                                              id: m.id,
+                                              vis: m.vis})
           }
           _ => {
             cx.sess.bug(~"lookup_class_method_ids: id not bound to a class");
@@ -3087,15 +3086,17 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
     }
 }
 
-fn class_field_tys(items: ~[@class_member]) -> ~[field_ty] {
+fn class_field_tys(fields: ~[@struct_field]) -> ~[field_ty] {
     let mut rslt = ~[];
-    for items.each |it| {
-       match it.node {
-          instance_var(nm, _, cm, id, vis) => {
-              vec::push(rslt, {ident: nm, id: ast_util::local_def(id),
-                        vis: vis, mutability: cm});
-          }
-          class_method(_) => ()
+    for fields.each |field| {
+        match field.node.kind {
+            named_field(ident, mutability, visibility) => {
+                vec::push(rslt, {ident: ident,
+                                 id: ast_util::local_def(field.node.id),
+                                 vis: visibility,
+                                 mutability: mutability});
+            }
+            unnamed_field => {}
        }
     }
     rslt

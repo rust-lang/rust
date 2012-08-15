@@ -63,7 +63,8 @@ type visitor<E> =
       visit_trait_method: fn@(trait_method, E, vt<E>),
       visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id, E,
                             vt<E>),
-      visit_class_item: fn@(@class_member, E, vt<E>)};
+      visit_struct_field: fn@(@struct_field, E, vt<E>),
+      visit_struct_method: fn@(@method, E, vt<E>)};
 
 fn default_visitor<E>() -> visitor<E> {
     return @{visit_mod: |a,b,c,d,e|visit_mod::<E>(a, b, c, d, e),
@@ -85,7 +86,8 @@ fn default_visitor<E>() -> visitor<E> {
           visit_trait_method: |a,b,c|visit_trait_method::<E>(a, b, c),
           visit_struct_def: |a,b,c,d,e,f|visit_struct_def::<E>(a, b, c,
                                                                d, e, f),
-          visit_class_item: |a,b,c|visit_class_item::<E>(a, b, c)};
+          visit_struct_field: |a,b,c|visit_struct_field::<E>(a, b, c),
+          visit_struct_method: |a,b,c|visit_struct_method::<E>(a, b, c)};
 }
 
 fn visit_crate<E>(c: crate, e: E, v: vt<E>) {
@@ -180,13 +182,6 @@ fn visit_enum_def<E>(enum_definition: ast::enum_def, tps: ~[ast::ty_param],
                 visit_enum_def(enum_definition, tps, e, v);
             }
         }
-    }
-}
-
-fn visit_class_item<E>(cm: @class_member, e:E, v:vt<E>) {
-    match cm.node {
-      instance_var(_, t, _, _, _) => v.visit_ty(t, e, v),
-      class_method(m) => visit_method_helper(m, e, v)
     }
 }
 
@@ -332,8 +327,11 @@ fn visit_trait_method<E>(m: trait_method, e: E, v: vt<E>) {
 
 fn visit_struct_def<E>(sd: @struct_def, nm: ast::ident, tps: ~[ty_param],
                        id: node_id, e: E, v: vt<E>) {
-    for sd.members.each |m| {
-       v.visit_class_item(m, e, v);
+    for sd.fields.each |f| {
+        v.visit_struct_field(f, e, v);
+    }
+    for sd.methods.each |m| {
+        v.visit_struct_method(m, e, v);
     }
     for sd.traits.each |p| { visit_path(p.path, e, v); }
     do option::iter(sd.ctor) |ctor| {
@@ -342,6 +340,14 @@ fn visit_struct_def<E>(sd: @struct_def, nm: ast::ident, tps: ~[ty_param],
     do option::iter(sd.dtor) |dtor| {
       visit_class_dtor_helper(dtor, tps, ast_util::local_def(id), e, v)
     };
+}
+
+fn visit_struct_field<E>(sf: @struct_field, e: E, v: vt<E>) {
+    v.visit_ty(sf.node.ty, e, v);
+}
+
+fn visit_struct_method<E>(m: @method, e: E, v: vt<E>) {
+    visit_method_helper(m, e, v);
 }
 
 fn visit_block<E>(b: ast::blk, e: E, v: vt<E>) {
@@ -492,7 +498,8 @@ type simple_visitor =
       visit_ty_method: fn@(ty_method),
       visit_trait_method: fn@(trait_method),
       visit_struct_def: fn@(@struct_def, ident, ~[ty_param], node_id),
-      visit_class_item: fn@(@class_member)};
+      visit_struct_field: fn@(@struct_field),
+      visit_struct_method: fn@(@method)};
 
 fn simple_ignore_ty(_t: @ty) {}
 
@@ -517,7 +524,8 @@ fn default_simple_visitor() -> simple_visitor {
           visit_trait_method: fn@(_m: trait_method) { },
           visit_struct_def: fn@(_sd: @struct_def, _nm: ident,
                                 _tps: ~[ty_param], _id: node_id) { },
-          visit_class_item: fn@(_c: @class_member) {}
+          visit_struct_field: fn@(_f: @struct_field) { },
+          visit_struct_method: fn@(_m: @method) { }
          };
 }
 
@@ -607,11 +615,14 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
     } else {
         |a,b,c| v_ty(v.visit_ty, a, b, c)
     };
-    fn v_class_item(f: fn@(@class_member),
-                    cm: @class_member, &&e: (),
-                    v: vt<()>) {
-        f(cm);
-        visit_class_item(cm, e, v);
+    fn v_struct_field(f: fn@(@struct_field), sf: @struct_field, &&e: (),
+                      v: vt<()>) {
+        f(sf);
+        visit_struct_field(sf, e, v);
+    }
+    fn v_struct_method(f: fn@(@method), m: @method, &&e: (), v: vt<()>) {
+        f(m);
+        visit_struct_method(m, e, v);
     }
     return mk_vt(@{visit_mod: |a,b,c,d,e|v_mod(v.visit_mod, a, b, c, d, e),
                 visit_view_item: |a,b,c|
@@ -639,8 +650,10 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
                     v_trait_method(v.visit_trait_method, a, b, c),
                 visit_struct_def: |a,b,c,d,e,f|
                     v_struct_def(v.visit_struct_def, a, b, c, d, e, f),
-                visit_class_item: |a,b,c|
-                    v_class_item(v.visit_class_item, a, b, c)
+                visit_struct_field: |a,b,c|
+                    v_struct_field(v.visit_struct_field, a, b, c),
+                visit_struct_method: |a,b,c|
+                    v_struct_method(v.visit_struct_method, a, b, c)
                });
 }
 

@@ -215,10 +215,9 @@ fn ensure_trait_methods(ccx: @crate_ctxt, id: ast::node_id, trait_ty: ty::t) {
         });
       }
       ast_map::node_item(@{node: ast::item_class(struct_def, _), _}, _) => {
-        let (_,ms) = split_class_items(struct_def.members);
         // All methods need to be stored, since lookup_method
         // relies on the same method cache for self-calls
-        store_methods::<@ast::method>(ccx, id, ms, |m| {
+        store_methods::<@ast::method>(ccx, id, struct_def.methods, |m| {
             ty_of_method(ccx, m, rp)
         });
       }
@@ -369,11 +368,12 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
 fn convert_field(ccx: @crate_ctxt,
                  rp: bool,
                  bounds: @~[ty::param_bounds],
-                 v: ast_util::ivar) {
-    let tt = ccx.to_ty(type_rscope(rp), v.ty);
-    write_ty_to_tcx(ccx.tcx, v.id, tt);
+                 v: @ast::struct_field) {
+    let tt = ccx.to_ty(type_rscope(rp), v.node.ty);
+    write_ty_to_tcx(ccx.tcx, v.node.id, tt);
     /* add the field to the tcache */
-    ccx.tcx.tcache.insert(local_def(v.id), {bounds: bounds, rp: rp, ty: tt});
+    ccx.tcx.tcache.insert(local_def(v.node.id),
+                          {bounds: bounds, rp: rp, ty: tt});
 }
 
 type converted_method = {mty: ty::method, id: ast::node_id, span: span};
@@ -505,13 +505,12 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
     ensure_trait_methods(ccx, id, tpt.ty);
 
     // Write the type of each of the members
-    let (fields, methods) = split_class_items(struct_def.members);
-    for fields.each |f| {
+    for struct_def.fields.each |f| {
        convert_field(ccx, rp, tpt.bounds, f);
     }
     let {bounds, substs} = mk_substs(ccx, tps, rp);
     let selfty = ty::mk_class(tcx, local_def(id), substs);
-    let cms = convert_methods(ccx, methods, rp, bounds, selfty);
+    let cms = convert_methods(ccx, struct_def.methods, rp, bounds, selfty);
     for struct_def.traits.each |trait_ref| {
         check_methods_against_trait(ccx, tps, rp, selfty, trait_ref, cms);
         // trait_ref.impl_id represents (class, trait) pair

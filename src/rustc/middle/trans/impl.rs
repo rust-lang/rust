@@ -7,7 +7,7 @@ import driver::session::session;
 import syntax::{ast, ast_map};
 import ast_map::{path, path_mod, path_name, node_id_to_str};
 import driver::session::expect;
-import syntax::ast_util::{local_def, split_class_items};
+import syntax::ast_util::local_def;
 import metadata::csearch;
 import back::{link, abi};
 import lib::llvm::llvm;
@@ -163,8 +163,7 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
           }
           ast_map::node_item(@{node:
               ast::item_class(struct_def, _), _}, _) => {
-            let (_,ms) = split_class_items(struct_def.members);
-            method_from_methods(ms, name)
+            method_from_methods(struct_def.methods, name)
           }
         }
     } else {

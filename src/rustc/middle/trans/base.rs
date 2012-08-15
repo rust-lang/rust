@@ -5062,8 +5062,7 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     // If there are ty params, the ctor will get monomorphized
 
     // Translate methods
-    let (_, ms) = ast_util::split_class_items(struct_def.members);
-    impl::trans_impl(ccx, *path, ident, ms, tps);
+    impl::trans_impl(ccx, *path, ident, struct_def.methods, tps);
 }
 
 fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],

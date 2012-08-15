@@ -17,7 +17,7 @@ import middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
 import middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_var};
 import middle::typeck::infer::{infer_ctxt, mk_subty};
 import middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
-import syntax::ast::{class_method, crate, def_id, def_mod, instance_var};
+import syntax::ast::{crate, def_id, def_mod};
 import syntax::ast::{item, item_class, item_const, item_enum, item_fn};
 import syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
 import syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
@@ -650,20 +650,13 @@ class CoherenceChecker {
                                id: node_id)
                             -> @Impl {
         let mut methods = ~[];
-        for struct_def.members.each |class_member| {
-            match class_member.node {
-                instance_var(*) => {
-                    // Nothing to do.
-                }
-                class_method(ast_method) => {
-                    push(methods, @{
-                        did: local_def(ast_method.id),
-                        n_tps: ast_method.tps.len(),
-                        ident: ast_method.ident,
-                        self_type: ast_method.self_ty.node
-                    });
-                }
-            }
+        for struct_def.methods.each |ast_method| {
+            push(methods, @{
+                did: local_def(ast_method.id),
+                n_tps: ast_method.tps.len(),
+                ident: ast_method.ident,
+                self_type: ast_method.self_ty.node
+            });
         }
 
         return @{ did: local_def(id), ident: ident, methods: methods };

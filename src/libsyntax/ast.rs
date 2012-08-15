@@ -718,9 +718,26 @@ type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
 enum visibility { public, private, inherited }
 
 #[auto_serialize]
+type struct_field_ = {
+    kind: struct_field_kind,
+    id: node_id,
+    ty: @ty
+};
+
+#[auto_serialize]
+type struct_field = spanned<struct_field_>;
+
+#[auto_serialize]
+enum struct_field_kind {
+    named_field(ident, class_mutability, visibility),
+    unnamed_field   // element of a tuple-like struct
+}
+
+#[auto_serialize]
 type struct_def = {
-    traits: ~[@trait_ref],   /* traits this class implements */
-    members: ~[@class_member], /* methods, etc. */
+    traits: ~[@trait_ref],   /* traits this struct implements */
+    fields: ~[@struct_field], /* fields */
+    methods: ~[@method],    /* methods */
     /* (not including ctor or dtor) */
     /* ctor is optional, and will soon go away */
     ctor: option<class_ctor>,
@@ -748,15 +765,6 @@ enum item_ {
               @ty, /* self */
               ~[@method]),
     item_mac(mac),
-}
-
-#[auto_serialize]
-type class_member = spanned<class_member_>;
-
-#[auto_serialize]
-enum class_member_ {
-    instance_var(ident, @ty, class_mutability, node_id, visibility),
-    class_method(@method)
 }
 
 #[auto_serialize]

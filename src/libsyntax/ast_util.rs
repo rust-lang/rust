@@ -295,39 +295,12 @@ pure fn unguarded_pat(a: arm) -> option<~[@pat]> {
     if is_unguarded(a) { some(/* FIXME (#2543) */ copy a.pats) } else { none }
 }
 
-pure fn class_item_ident(ci: @class_member) -> ident {
-    match ci.node {
-      instance_var(i,_,_,_,_) => /* FIXME (#2543) */ copy i,
-      class_method(it) => /* FIXME (#2543) */ copy it.ident
-    }
-}
-
-type ivar = {ident: ident, ty: @ty, cm: class_mutability,
-             id: node_id, vis: visibility};
-
 fn public_methods(ms: ~[@method]) -> ~[@method] {
     vec::filter(ms,
                 |m| match m.vis {
                     public => true,
                     _   => false
                 })
-}
-
-fn split_class_items(cs: ~[@class_member]) -> (~[ivar], ~[@method]) {
-    let mut vs = ~[], ms = ~[];
-    for cs.each |c| {
-      match c.node {
-        instance_var(i, t, cm, id, vis) => {
-          vec::push(vs, {ident: /* FIXME (#2543) */ copy i,
-                         ty: t,
-                         cm: cm,
-                         id: id,
-                         vis: vis});
-        }
-        class_method(m) => vec::push(ms, m)
-      }
-    };
-    (vs, ms)
 }
 
 // extract a ty_method from a trait_method. if the trait_method is
@@ -355,11 +328,11 @@ fn split_trait_methods(trait_methods: ~[trait_method])
     (reqd, provd)
 }
 
-pure fn class_member_visibility(ci: @class_member) -> visibility {
-  match ci.node {
-     instance_var(_, _, _, _, vis) => vis,
-     class_method(m) => m.vis
-  }
+pure fn struct_field_visibility(field: ast::struct_field) -> visibility {
+    match field.node.kind {
+        ast::named_field(_, _, visibility) => visibility,
+        ast::unnamed_field => ast::public
+    }
 }
 
 trait inlined_item_utils {
@@ -570,11 +543,11 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
                               _id: node_id) {
         },
 
-        visit_class_item: fn@(c: @class_member) {
-            match c.node {
-              instance_var(_, _, _, id,_) => vfn(id),
-              class_method(_) => ()
-            }
+        visit_struct_field: fn@(f: @struct_field) {
+            vfn(f.node.id);
+        },
+
+        visit_struct_method: fn@(_m: @method) {
         }
     })
 }

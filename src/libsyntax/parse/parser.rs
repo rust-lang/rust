@@ -21,7 +21,7 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bound_copy, bound_send, bound_trait, bound_owned, box, by_copy,
              by_move, by_mutbl_ref, by_ref, by_val, capture_clause,
              capture_item, cdir_dir_mod, cdir_src_mod, cdir_view_item,
-             class_immutable, class_member, class_method, class_mutable,
+             class_immutable, class_mutable,
              crate, crate_cfg, crate_directive, decl, decl_item, decl_local,
              default_blk, deref, div, enum_def, enum_variant_kind, expl, expr,
              expr_, expr_addr_of, expr_match, expr_again, expr_assert,
@@ -33,20 +33,21 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              expr_struct, expr_tup, expr_unary, expr_unary_move, expr_vec,
              expr_vstore, expr_while, extern_fn, field, fn_decl, foreign_item,
              foreign_item_fn, foreign_mod, ident, impure_fn, infer, inherited,
-             init_assign, init_move, initializer, instance_var, item, item_,
+             init_assign, init_move, initializer, item, item_,
              item_class, item_const, item_enum, item_fn, item_foreign_mod,
              item_impl, item_mac, item_mod, item_trait, item_ty, lit, lit_,
              lit_bool, lit_float, lit_int, lit_int_unsuffixed, lit_nil,
              lit_str, lit_uint, local, m_const, m_imm, m_mutbl, mac_, mac_aq,
              mac_ellipsis, mac_invoc, mac_invoc_tt, mac_var, matcher,
              match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
-             mutability, neg, noreturn, not, pat, pat_box, pat_enum,
+             mutability, named_field, neg, noreturn, not, pat, pat_box, pat_enum,
              pat_ident, pat_lit, pat_range, pat_rec, pat_struct, pat_tup,
              pat_uniq, pat_wild, path, private, proto, proto_bare,
              proto_block, proto_box, proto_uniq, provided, public, pure_fn,
              purity, re_anon, re_named, region, rem, required, ret_style,
              return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
-             stmt_semi, struct_def, struct_variant_kind, subtract, sty_box,
+             stmt_semi, struct_def, struct_field, struct_variant_kind,
+             subtract, sty_box,
              sty_by_ref, sty_region, sty_static, sty_uniq, sty_value,
              token_tree, trait_method, trait_ref, tt_delim, tt_seq, tt_tok,
              tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
@@ -92,6 +93,11 @@ enum file_type { CRATE_FILE, SOURCE_FILE, }
 // can then be converted to true expressions by a call to `to_expr()`.
 enum pexpr {
     pexpr(@expr),
+}
+
+enum class_member {
+    field_member(@struct_field),
+    method_member(@method)
 }
 
 /*
@@ -2043,8 +2049,11 @@ class parser {
         let name = self.parse_ident();
         self.expect(token::COLON);
         let ty = self.parse_ty(false);
-        return @{node: instance_var(name, ty, is_mutbl, self.get_id(), pr),
-              span: mk_sp(lo, self.last_span.hi)};
+        return @field_member(@spanned(lo, self.last_span.hi, {
+            kind: named_field(name, is_mutbl, pr),
+            id: self.get_id(),
+            ty: ty
+        }));
     }
 
     fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
@@ -2556,7 +2565,8 @@ class parser {
             { self.parse_trait_ref_list(token::LBRACE) }
         else { ~[] };
         self.expect(token::LBRACE);
-        let mut ms: ~[@class_member] = ~[];
+        let mut fields: ~[@struct_field] = ~[];
+        let mut methods: ~[@method] = ~[];
         let ctor_id = self.get_id();
         let mut the_ctor : option<(fn_decl, ~[attribute], blk,
                                    codemap::span)> = none;
@@ -2589,7 +2599,16 @@ class parser {
                     }
                   }
               }
-              members(mms) => { ms = vec::append(ms, mms); }
+              members(mms) => {
+                for mms.each |mm| {
+                    match mm {
+                        @field_member(struct_field) =>
+                            vec::push(fields, struct_field),
+                        @method_member(the_method_member) =>
+                            vec::push(methods, the_method_member)
+                    }
+                }
+              }
             }
         }
         let actual_dtor = do option::map(the_dtor) |dtor| {
@@ -2605,7 +2624,8 @@ class parser {
             (class_name,
              item_class(@{
                 traits: traits,
-                members: ms,
+                fields: move fields,
+                methods: move methods,
                 ctor: some({
                  node: {id: ctor_id,
                         attrs: ct_attrs,
@@ -2621,7 +2641,8 @@ class parser {
             (class_name,
              item_class(@{
                     traits: traits,
-                    members: ms,
+                    fields: move fields,
+                    methods: move methods,
                     ctor: none,
                     dtor: actual_dtor
              }, ty_params),
@@ -2647,7 +2668,7 @@ class parser {
             return a_var;
         } else {
             let m = self.parse_method(vis);
-            return @{node: class_method(m), span: m.span};
+            return @method_member(m);
         }
     }
 
@@ -2883,7 +2904,8 @@ class parser {
 
     fn parse_struct_def(path: @path) -> @struct_def {
         let mut the_dtor: option<(blk, ~[attribute], codemap::span)> = none;
-        let mut ms: ~[@class_member] = ~[];
+        let mut fields: ~[@struct_field] = ~[];
+        let mut methods: ~[@method] = ~[];
         while self.token != token::RBRACE {
             match self.parse_class_item(path) {
                 ctor_decl(*) => {
@@ -2906,8 +2928,16 @@ class parser {
                         }
                     }
                 }
-                members(mms) =>
-                    ms = vec::append(ms, mms)
+                members(mms) => {
+                    for mms.each |mm| {
+                        match mm {
+                            @field_member(struct_field) =>
+                                vec::push(fields, struct_field),
+                            @method_member(the_method_member) =>
+                                vec::push(methods, the_method_member)
+                        }
+                    }
+                }
             }
         }
         self.bump();
@@ -2922,7 +2952,8 @@ class parser {
 
         return @{
             traits: ~[],
-            members: ms,
+            fields: move fields,
+            methods: move methods,
             ctor: none,
             dtor: actual_dtor
         };
