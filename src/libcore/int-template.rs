@@ -1,5 +1,6 @@
 import T = inst::T;
 import cmp::{Eq, Ord};
+import num::from_int;
 
 export min_value, max_value;
 export min, max;
@@ -238,7 +239,7 @@ fn test_interfaces() {
     fn test<U:num::Num>(ten: U) {
         assert (ten.to_int() == 10);
 
-        let two = from_int(2);
+        let two: U = from_int(2);
         assert (two.to_int() == 2);
 
         assert (ten.add(two) == from_int(12));
