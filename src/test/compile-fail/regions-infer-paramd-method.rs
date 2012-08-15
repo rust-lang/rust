@@ -15,7 +15,7 @@ trait set_foo_foo {
 
 impl with_foo: set_foo_foo {
     fn set_foo(f: foo) {
-        self.f = f; //~ ERROR mismatched types: expected `foo/&self` but found `foo/&`
+        self.f = f; //~ ERROR mismatched types: expected `@foo/&self` but found `@foo/&`
     }
 }
 

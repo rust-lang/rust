@@ -236,7 +236,8 @@ struct mem_categorization_ctxt {
 
 impl &mem_categorization_ctxt {
     fn cat_borrow_of_expr(expr: @ast::expr) -> cmt {
-        // a borrowed expression must be either an @, ~, or a @vec, ~vec
+        // Any expression can be borrowed (to account for auto-ref on method
+        // receivers), but @, ~, @vec, and ~vec are handled specially.
         let expr_ty = ty::expr_ty(self.tcx, expr);
         match ty::get(expr_ty).struct {
           ty::ty_evec(*) | ty::ty_estr(*) => {
@@ -255,10 +256,7 @@ impl &mem_categorization_ctxt {
           */
 
           _ => {
-            self.tcx.sess.span_bug(
-                expr.span,
-                fmt!{"Borrowing of non-derefable type `%s`",
-                     ty_to_str(self.tcx, expr_ty)});
+            self.cat_rvalue(expr, expr_ty)
           }
         }
     }

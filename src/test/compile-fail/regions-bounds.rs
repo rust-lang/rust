@@ -11,7 +11,7 @@ fn a_fn1(e: an_enum/&a) -> an_enum/&b {
 }
 
 fn a_fn2(e: a_trait/&a) -> a_trait/&b {
-    return e; //~ ERROR mismatched types: expected `a_trait/&b` but found `a_trait/&a`
+    return e; //~ ERROR mismatched types: expected `@a_trait/&b` but found `@a_trait/&a`
 }
 
 fn a_fn3(e: a_class/&a) -> a_class/&b {

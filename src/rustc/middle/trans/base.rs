@@ -3056,9 +3056,15 @@ fn adapt_borrowed_value(lv: lval_result,
       }
 
       _ => {
-        bcx.tcx().sess.span_bug(
-            e.span, fmt!{"cannot borrow a value of type %s",
-                         ppaux::ty_to_str(bcx.tcx(), e_ty)});
+        // Just take a reference. This is basically like trans_addr_of.
+        let mut {bcx, val, kind} = trans_temp_lval(bcx, e);
+        let is_immediate = ty::type_is_immediate(e_ty);
+        if (kind == lv_temporary && is_immediate) || kind == lv_owned_imm {
+            val = do_spill(bcx, val, e_ty);
+        }
+        return {lv: {bcx: bcx, val: val, kind: lv_temporary},
+                ty: ty::mk_rptr(bcx.tcx(), ty::re_static,
+                                {ty: e_ty, mutbl: ast::m_imm})};
       }
     }
 }
