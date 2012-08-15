@@ -361,7 +361,7 @@ impl protocol: gen_init {
             }
         }
 
-        cx.ty_path_ast_builder(path(@~"buffer", self.span)
+        cx.ty_path_ast_builder(path(@~"__Buffer", self.span)
                                .add_tys(cx.ty_vars(params)))
     }
 
@@ -383,7 +383,7 @@ impl protocol: gen_init {
         };
 
         cx.item_ty_poly(
-            @~"buffer",
+            @~"__Buffer",
             cx.ty_rec(fields),
             params)
     }
