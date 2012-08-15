@@ -47,15 +47,17 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
     };
 
     // Given `lhses` and `rhses`, this is the new macro we create
-    fn generic_extension(cx: ext_ctxt, sp: span, _name: ident,
+    fn generic_extension(cx: ext_ctxt, sp: span, name: ident,
                          arg: ~[ast::token_tree],
                          lhses: ~[@named_match], rhses: ~[@named_match])
     -> mac_result {
 
-        //io::println(fmt!("%s! { %s }", *name,
-        //                 print::pprust::unexpanded_tt_to_str(
-        //                     ast::tt_delim(arg),
-        //                     cx.parse_sess().interner)));
+        if cx.trace_macros() {
+            io::println(fmt!("%s! { %s }", *name,
+                             print::pprust::unexpanded_tt_to_str(
+                                 ast::tt_delim(arg),
+                                 cx.parse_sess().interner)));
+        }
 
         // Which arm's failure should we report? (the one furthest along)
         let mut best_fail_spot = {lo: 0u, hi: 0u, expn_info: none};
