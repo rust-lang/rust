@@ -104,8 +104,8 @@ impl message: gen_send {
             }
             else {
                 body += fmt!("if pipes::send(pipe, message) {\n \
-                                  some(c) \
-                              } else { none } }");
+                                  pipes::rt::make_some(c) \
+                              } else { pipes::rt::make_none() } }");
             }
 
             let body = cx.parse_expr(body);
@@ -163,8 +163,8 @@ impl message: gen_send {
                     body += ~" }";
                 } else {
                     body += fmt!("if pipes::send(pipe, message) { \
-                                      some(()) \
-                                  } else { none } }");
+                                      pipes::rt::make_some(()) \
+                                  } else { pipes::rt::make_none() } }");
                 }
 
                 let body = cx.parse_expr(body);
