@@ -1,4 +1,5 @@
 // aux-build:issue_2472_b.rs
+// xfail-fast
 
 use issue_2472_b;
 
