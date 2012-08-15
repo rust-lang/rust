@@ -84,7 +84,7 @@ impl T: num::Num {
     pure fn neg()              -> T { return -self;        }
 
     pure fn to_int()         -> int { return self as int; }
-    pure fn from_int(n: int) -> T   { return n as T;      }
+    static pure fn from_int(n: int) -> T   { return n as T;      }
 }
 
 impl T: iter::times {
@@ -238,15 +238,15 @@ fn test_interfaces() {
     fn test<U:num::Num>(ten: U) {
         assert (ten.to_int() == 10);
 
-        let two = ten.from_int(2);
+        let two = from_int(2);
         assert (two.to_int() == 2);
 
-        assert (ten.add(two) == ten.from_int(12));
-        assert (ten.sub(two) == ten.from_int(8));
-        assert (ten.mul(two) == ten.from_int(20));
-        assert (ten.div(two) == ten.from_int(5));
-        assert (ten.modulo(two) == ten.from_int(0));
-        assert (ten.neg() == ten.from_int(-10));
+        assert (ten.add(two) == from_int(12));
+        assert (ten.sub(two) == from_int(8));
+        assert (ten.mul(two) == from_int(20));
+        assert (ten.div(two) == from_int(5));
+        assert (ten.modulo(two) == from_int(0));
+        assert (ten.neg() == from_int(-10));
     }
 
     test(10 as T);
