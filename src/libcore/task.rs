@@ -1025,9 +1025,9 @@ fn kill_taskgroup(state: taskgroup_inner, me: *rust_task, is_main: bool) {
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
 // a proper closure because the #[test]s won't understand. Have to fake it.
-unsafe fn taskgroup_key() -> local_data_key<tcb> {
+macro_rules! taskgroup_key {
     // Use a "code pointer" value that will never be a real code pointer.
-    unsafe::transmute((-2 as uint, 0u))
+    {} => (unsafe::transmute((-2 as uint, 0u)))
 }
 
 fn gen_child_taskgroup(linked: bool, supervised: bool)
@@ -1036,7 +1036,8 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     /*######################################################################*
      * Step 1. Get spawner's taskgroup info.
      *######################################################################*/
-    let spawner_group = match unsafe { local_get(spawner, taskgroup_key()) } {
+    let spawner_group = match unsafe { local_get(spawner,
+                                                 taskgroup_key!()) } {
         none => {
             // Main task, doing first spawn ever. Lazily initialise here.
             let mut members = new_taskset();
@@ -1047,7 +1048,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // Main task/group has no ancestors, no notifier, etc.
             let group =
                 @tcb(spawner, tasks, ancestor_list(none), true, none);
-            unsafe { local_set(spawner, taskgroup_key(), group); }
+            unsafe { local_set(spawner, taskgroup_key!(), group); }
             group
         }
         some(group) => group
@@ -1162,7 +1163,7 @@ fn spawn_raw(+opts: task_opts, +f: fn~()) {
             if enlist_many(child, child_arc, &mut ancestors) {
                 let group = @tcb(child, child_arc, ancestors,
                                  is_main, notifier);
-                unsafe { local_set(child, taskgroup_key(), group); }
+                unsafe { local_set(child, taskgroup_key!(), group); }
                 // Run the child's body.
                 f();
                 // TLS cleanup code will exit the taskgroup.
@@ -1261,7 +1262,7 @@ fn spawn_raw(+opts: task_opts, +f: fn~()) {
  *
  * These two cases aside, the interface is safe.
  */
-type local_data_key<T: owned> = fn@(+@T);
+type local_data_key<T: owned> = &fn(+@T);
 
 trait local_data { }
 impl<T: owned> @T: local_data { }
