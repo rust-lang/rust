@@ -91,7 +91,11 @@ pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
 
 /// Returns the first element of a list
 pure fn head<T: copy>(ls: @list<T>) -> T {
-    match check *ls { cons(hd, _) => hd }
+    match *ls {
+      cons(hd, _) => hd,
+      // makes me sad
+      _ => fail ~"head invoked on empty list"
+    }
 }
 
 /// Appends one list to another

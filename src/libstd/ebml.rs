@@ -602,13 +602,16 @@ fn test_option_int() {
     fn deserialize_0<S: serialization::deserializer>(s: S) -> option<int> {
         do s.read_enum(~"core::option::t") {
             do s.read_enum_variant |i| {
-                match check i {
-                  0u => none,
-                  1u => {
+                match i {
+                  0 => none,
+                  1 => {
                     let v0 = do s.read_enum_variant_arg(0u) {
                         deserialize_1(s)
                     };
                     some(v0)
+                  }
+                  _ => {
+                    fail #fmt("deserialize_0: unexpected variant %u", i);
                   }
                 }
             }

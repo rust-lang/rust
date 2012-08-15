@@ -260,9 +260,10 @@ fn deserialize_option<D: deserializer,T: copy>(d: D, st: fn() -> T)
     -> option<T> {
     do d.read_enum(~"option") {
         do d.read_enum_variant |i| {
-            match check i {
-              0u => none,
-              1u => some(d.read_enum_variant_arg(0u, || st() ))
+            match i {
+              0 => none,
+              1 => some(d.read_enum_variant_arg(0u, || st() )),
+              _ => fail(#fmt("Bad variant for option: %u", i))
             }
         }
     }

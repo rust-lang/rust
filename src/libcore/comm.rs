@@ -412,9 +412,10 @@ fn test_select2_stress() {
     let mut as = 0;
     let mut bs = 0;
     for iter::repeat(msgs * times * 2u) {
-        match check select2(po_a, po_b) {
+        match select2(po_a, po_b) {
           either::left(~"a") => as += 1,
-          either::right(~"b") => bs += 1
+          either::right(~"b") => bs += 1,
+          _ => fail ~"test_select_2_stress failed"
         }
     }
 
