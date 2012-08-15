@@ -11,13 +11,21 @@ import syntax::ast_map::node_id_to_str;
 import syntax::ast_util::{dummy_sp, new_def_hash};
 import dvec::{DVec, dvec};
 
+enum method_lookup_mode {
+    subtyping_mode,
+    assignability_mode,
+    immutable_reference_mode,
+    mutable_reference_mode
+}
+
 type candidate = {
-    self_ty: ty::t,          // type of a in a.b()
-    self_substs: ty::substs, // values for any tvars def'd on the class
-    rcvr_ty: ty::t,          // type of receiver in the method def
-    n_tps_m: uint,           // number of tvars defined on the method
-    fty: ty::t,              // type of the method
-    entry: method_map_entry
+    self_ty: ty::t,             // type of a in a.b()
+    self_substs: ty::substs,    // values for any tvars def'd on the class
+    rcvr_ty: ty::t,             // type of receiver in the method def
+    n_tps_m: uint,              // number of tvars defined on the method
+    fty: ty::t,                 // type of the method
+    entry: method_map_entry,
+    mode: method_lookup_mode    // the mode we used
 };
 
 fn transform_self_type_for_method
@@ -141,16 +149,33 @@ class lookup {
             // it.
             if self.candidates.len() > 0u { break; }
 
-            // Look for inherent methods.
+            // Look for inherent and extension methods, using subtyping.
             self.add_inherent_and_extension_candidates
-                (optional_inherent_methods, false);
+                (optional_inherent_methods, subtyping_mode);
 
             // if we found anything, stop before trying borrows
             if self.candidates.len() > 0u { break; }
 
-            // Again, look for inherent methods.
+            // Again, look for inherent and extension methods, this time using
+            // assignability.
             self.add_inherent_and_extension_candidates
-                (optional_inherent_methods, true);
+                (optional_inherent_methods, assignability_mode);
+
+            // If we found anything, stop before trying auto-ref.
+            if self.candidates.len() > 0u { break; }
+
+            // Now look for inherent and extension methods, this time using an
+            // immutable reference.
+            self.add_inherent_and_extension_candidates
+                (optional_inherent_methods, immutable_reference_mode);
+
+            // if we found anything, stop before attempting auto-deref.
+            if self.candidates.len() > 0u { break; }
+
+            // Now look for inherent and extension methods, this time using a
+            // mutable reference.
+            self.add_inherent_and_extension_candidates
+                (optional_inherent_methods, mutable_reference_mode);
 
             // if we found anything, stop before attempting auto-deref.
             if self.candidates.len() > 0u { break; }
@@ -362,9 +387,8 @@ class lookup {
     }
 
     // Returns true if any were added and false otherwise.
-    fn add_candidates_from_impl(im: @resolve3::Impl,
-                                use_assignability: bool) -> bool {
-
+    fn add_candidates_from_impl(im: @resolve3::Impl, mode: method_lookup_mode)
+                             -> bool {
         let mut added_any = false;
 
         // Check whether this impl has a method with the right name.
@@ -382,15 +406,33 @@ class lookup {
                 self.tcx(), impl_substs.self_r,
                 impl_ty, m.self_type);
 
-            // Depending on our argument, we find potential
-            // matches either by checking subtypability or
-            // type assignability. Collect the matches.
-            let matches = if use_assignability {
-                self.fcx.can_mk_assignty(self.self_expr, self.borrow_lb,
-                                         self.self_ty, impl_ty)
-            } else {
-                self.fcx.can_mk_subty(self.self_ty, impl_ty)
-            };
+            // Depending on our argument, we find potential matches by
+            // checking subtypability, type assignability, or reference
+            // subtypability. Collect the matches.
+            let matches;
+            match mode {
+                subtyping_mode => 
+                    matches = self.fcx.can_mk_subty(self.self_ty, impl_ty),
+                assignability_mode =>
+                    matches = self.fcx.can_mk_assignty(self.self_expr,
+                                                       self.borrow_lb,
+                                                       self.self_ty,
+                                                       impl_ty),
+                immutable_reference_mode => {
+                    let region = self.fcx.infcx.next_region_var_with_scope_lb
+                        (self.self_expr.id);
+                    let tm = { ty: self.self_ty, mutbl: ast::m_imm };
+                    let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
+                    matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
+                }
+                mutable_reference_mode => {
+                    let region = self.fcx.infcx.next_region_var_with_scope_lb
+                        (self.self_expr.id);
+                    let tm = { ty: self.self_ty, mutbl: ast::m_mutbl };
+                    let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
+                    matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
+                }
+            }
             debug!{"matches = %?", matches};
             match matches {
               result::err(_) => { /* keep looking */ }
@@ -404,7 +446,8 @@ class lookup {
                          n_tps_m: m.n_tps,
                          fty: fty,
                          entry: {derefs: self.derefs,
-                                 origin: method_static(m.did)}});
+                                 origin: method_static(m.did)},
+                         mode: mode});
                     self.candidate_impls.insert(im.did, ());
                     added_any = true;
                 }
@@ -431,12 +474,13 @@ class lookup {
              rcvr_ty: self.self_ty,
              n_tps_m: (*m.tps).len(),
              fty: fty,
-             entry: {derefs: self.derefs, origin: origin}});
+             entry: {derefs: self.derefs, origin: origin},
+             mode: subtyping_mode});
     }
 
     fn add_inherent_and_extension_candidates(optional_inherent_methods:
                                                 option<@DVec<@Impl>>,
-                                             use_assignability: bool) {
+                                             mode: method_lookup_mode) {
 
         // Add inherent methods.
         match optional_inherent_methods {
@@ -451,8 +495,7 @@ class lookup {
                         adding candidates from impl: %s",
                         node_id_to_str(self.tcx().items,
                                        implementation.did.node)};
-                self.add_candidates_from_impl(implementation,
-                                              use_assignability);
+                self.add_candidates_from_impl(implementation, mode);
             }
           }
         }
@@ -479,8 +522,7 @@ class lookup {
                                 candidates) adding impl %s",
                                 self.def_id_to_str
                                 (implementation.did)};
-                        self.add_candidates_from_impl
-                            (implementation, use_assignability);
+                        self.add_candidates_from_impl(implementation, mode);
                     }
                   }
                 }
@@ -505,19 +547,41 @@ class lookup {
                self.fcx.infcx.ty_to_str(cand.fty),
                cand.entry};
 
-        // Make the actual receiver type (cand.self_ty) assignable to the
-        // required receiver type (cand.rcvr_ty).  If this method is not
-        // from an impl, this'll basically be a no-nop.
-        match self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
-                                   cand.self_ty, cand.rcvr_ty) {
-          result::ok(_) => (),
-          result::err(_) => {
-            self.tcx().sess.span_bug(
-                self.expr.span,
-                fmt!{"%s was assignable to %s but now is not?",
-                     self.fcx.infcx.ty_to_str(cand.self_ty),
-                     self.fcx.infcx.ty_to_str(cand.rcvr_ty)});
-          }
+        match cand.mode {
+            subtyping_mode | assignability_mode => {
+                // Make the actual receiver type (cand.self_ty) assignable to
+                // the required receiver type (cand.rcvr_ty).  If this method
+                // is not from an impl, this'll basically be a no-nop.
+                match self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
+                                           cand.self_ty, cand.rcvr_ty) {
+                  result::ok(_) => (),
+                  result::err(_) => {
+                    self.tcx().sess.span_bug(
+                        self.expr.span,
+                        fmt!{"%s was assignable to %s but now is not?",
+                             self.fcx.infcx.ty_to_str(cand.self_ty),
+                             self.fcx.infcx.ty_to_str(cand.rcvr_ty)});
+                  }
+                }
+            }
+            immutable_reference_mode => {
+                // Borrow as an immutable reference.
+                let region_var = self.fcx.infcx.next_region_var_with_scope_lb
+                    (self.self_expr.id);
+                self.fcx.infcx.borrowings.push({expr_id: self.self_expr.id,
+                                                span: self.self_expr.span,
+                                                scope: region_var,
+                                                mutbl: ast::m_imm});
+            }
+            mutable_reference_mode => {
+                // Borrow as a mutable reference.
+                let region_var = self.fcx.infcx.next_region_var_with_scope_lb
+                    (self.self_expr.id);
+                self.fcx.infcx.borrowings.push({expr_id: self.self_expr.id,
+                                                span: self.self_expr.span,
+                                                scope: region_var,
+                                                mutbl: ast::m_mutbl});
+            }
         }
 
         // Construct the full set of type parameters for the method,
@@ -546,7 +610,7 @@ class lookup {
         let all_substs = {tps: vec::append(cand.self_substs.tps, m_substs)
                           with cand.self_substs};
 
-         self.fcx.write_ty_substs(self.node_id, cand.fty, all_substs);
+        self.fcx.write_ty_substs(self.node_id, cand.fty, all_substs);
 
         return cand.entry;
     }
