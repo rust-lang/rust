@@ -2,7 +2,7 @@
 
 import map;
 import map::{hashmap, str_hash};
-import io::reader;
+import io::Reader;
 import dvec::dvec;
 
 export url, userinfo, query;

@@ -8,7 +8,7 @@ import rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
 import syntax::diagnostic;
 
 import result::{ok, err};
-import io::writer_util;
+import io::WriterUtil;
 import std::{map, json, tempfile, term, sort, getopts};
 import map::hashmap;
 import to_str::to_str;

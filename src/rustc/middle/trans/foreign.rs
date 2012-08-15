@@ -511,7 +511,7 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
                   arg_builder: wrap_arg_builder,
                   ret_builder: wrap_ret_builder) {
 
-    let _icx = ccx.insn_ctxt(~"foreign::build_wrap_fn_");
+    let _icx = ccx.insn_ctxt("foreign::build_wrap_fn_");
     let fcx = new_fn_ctxt(ccx, ~[], llwrapfn, none);
     let bcx = top_scope_block(fcx, none);
     let lltop = bcx.llbb;
@@ -571,18 +571,18 @@ fn build_wrap_fn_(ccx: @crate_ctxt,
 fn trans_foreign_mod(ccx: @crate_ctxt,
                     foreign_mod: ast::foreign_mod, abi: ast::foreign_abi) {
 
-    let _icx = ccx.insn_ctxt(~"foreign::trans_foreign_mod");
+    let _icx = ccx.insn_ctxt("foreign::trans_foreign_mod");
 
     fn build_shim_fn(ccx: @crate_ctxt,
                      foreign_item: @ast::foreign_item,
                      tys: @c_stack_tys,
                      cc: lib::llvm::CallConv) -> ValueRef {
 
-        let _icx = ccx.insn_ctxt(~"foreign::build_shim_fn");
+        let _icx = ccx.insn_ctxt("foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt(~"foreign::shim::build_args");
+            let _icx = bcx.insn_ctxt("foreign::shim::build_args");
             let mut llargvals = ~[];
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
@@ -628,7 +628,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef, llretval: ValueRef)  {
-            let _icx = bcx.insn_ctxt(~"foreign::shim::build_ret");
+            let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
             match tys.x86_64_tys {
                 some(x86_64) => {
                   do vec::iteri(x86_64.attrs) |i, a| {
@@ -719,11 +719,11 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                      llshimfn: ValueRef,
                      llwrapfn: ValueRef) {
 
-        let _icx = ccx.insn_ctxt(~"foreign::build_wrap_fn");
+        let _icx = ccx.insn_ctxt("foreign::build_wrap_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt(~"foreign::wrap::build_args");
+            let _icx = bcx.insn_ctxt("foreign::wrap::build_args");
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
             let implicit_args = first_real_arg; // return + env
@@ -738,7 +738,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
         fn build_ret(bcx: block, _tys: @c_stack_tys,
                      _llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt(~"foreign::wrap::build_ret");
+            let _icx = bcx.insn_ctxt("foreign::wrap::build_ret");
             RetVoid(bcx);
         }
 
@@ -987,12 +987,12 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
 fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                   body: ast::blk, llwrapfn: ValueRef, id: ast::node_id) {
 
-    let _icx = ccx.insn_ctxt(~"foreign::build_foreign_fn");
+    let _icx = ccx.insn_ctxt("foreign::build_foreign_fn");
 
     fn build_rust_fn(ccx: @crate_ctxt, path: ast_map::path,
                      decl: ast::fn_decl, body: ast::blk,
                      id: ast::node_id) -> ValueRef {
-        let _icx = ccx.insn_ctxt(~"foreign::foreign::build_rust_fn");
+        let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
         let ps = link::mangle_internal_name_by_path(
             ccx, vec::append_one(path, ast_map::path_name(@~"__rust_abi")));
@@ -1005,11 +1005,11 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_shim_fn(ccx: @crate_ctxt, path: ast_map::path,
                      llrustfn: ValueRef, tys: @c_stack_tys) -> ValueRef {
 
-        let _icx = ccx.insn_ctxt(~"foreign::foreign::build_shim_fn");
+        let _icx = ccx.insn_ctxt("foreign::foreign::build_shim_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llargbundle: ValueRef) -> ~[ValueRef] {
-            let _icx = bcx.insn_ctxt(~"foreign::extern::shim::build_args");
+            let _icx = bcx.insn_ctxt("foreign::extern::shim::build_args");
             let mut llargvals = ~[];
             let mut i = 0u;
             let n = vec::len(tys.arg_tys);
@@ -1042,11 +1042,11 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
     fn build_wrap_fn(ccx: @crate_ctxt, llshimfn: ValueRef,
                      llwrapfn: ValueRef, tys: @c_stack_tys) {
 
-        let _icx = ccx.insn_ctxt(~"foreign::foreign::build_wrap_fn");
+        let _icx = ccx.insn_ctxt("foreign::foreign::build_wrap_fn");
 
         fn build_args(bcx: block, tys: @c_stack_tys,
                       llwrapfn: ValueRef, llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt(~"foreign::foreign::wrap::build_args");
+            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_args");
             match tys.x86_64_tys {
                 option::some(x86_64) => {
                     let mut atys = x86_64.arg_tys;
@@ -1100,7 +1100,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 
         fn build_ret(bcx: block, tys: @c_stack_tys,
                      llargbundle: ValueRef) {
-            let _icx = bcx.insn_ctxt(~"foreign::foreign::wrap::build_ret");
+            let _icx = bcx.insn_ctxt("foreign::foreign::wrap::build_ret");
             match tys.x86_64_tys {
                 option::some(x86_64) => {
                     if x86_64.sret || !tys.ret_def {
@@ -1144,7 +1144,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
 fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
                      path: ast_map::path, node_id: ast::node_id)
     -> ValueRef {
-    let _icx = ccx.insn_ctxt(~"foreign::register_foreign_fn");
+    let _icx = ccx.insn_ctxt("foreign::register_foreign_fn");
     let t = ty::node_id_to_type(ccx.tcx, node_id);
     let (llargtys, llretty, ret_ty) = c_arg_and_ret_lltys(ccx, node_id);
     return if ccx.sess.targ_cfg.arch == arch_x86_64 {

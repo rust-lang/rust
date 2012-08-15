@@ -36,7 +36,7 @@ fn get_rpath_flags(sess: session::session, out_filename: ~str) -> ~[~str] {
     rpaths_to_flags(rpaths)
 }
 
-fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::path {
+fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::Path {
     let mut path = vec::append(~[sess.filesearch.sysroot()],
                            filesearch::relative_target_lib_path(
                                sess.opts.target_triple));
@@ -48,8 +48,8 @@ fn rpaths_to_flags(rpaths: ~[~str]) -> ~[~str] {
     vec::map(rpaths, |rpath| fmt!{"-Wl,-rpath,%s",rpath} )
 }
 
-fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
-              output: path::path, libs: ~[path::path],
+fn get_rpaths(os: session::os, cwd: path::Path, sysroot: path::Path,
+              output: path::Path, libs: ~[path::Path],
               target_triple: ~str) -> ~[~str] {
     debug!{"cwd: %s", cwd};
     debug!{"sysroot: %s", sysroot};
@@ -93,18 +93,18 @@ fn get_rpaths(os: session::os, cwd: path::path, sysroot: path::path,
 }
 
 fn get_rpaths_relative_to_output(os: session::os,
-                                 cwd: path::path,
-                                 output: path::path,
-                                 libs: ~[path::path]) -> ~[~str] {
+                                 cwd: path::Path,
+                                 output: path::Path,
+                                 libs: ~[path::Path]) -> ~[~str] {
     vec::map(libs, |a| {
         get_rpath_relative_to_output(os, cwd, output, a)
     })
 }
 
 fn get_rpath_relative_to_output(os: session::os,
-                                cwd: path::path,
-                                output: path::path,
-                                &&lib: path::path) -> ~str {
+                                cwd: path::Path,
+                                output: path::Path,
+                                &&lib: path::Path) -> ~str {
     assert not_win32(os);
 
     // Mac doesn't appear to support $ORIGIN
@@ -121,7 +121,7 @@ fn get_rpath_relative_to_output(os: session::os,
 }
 
 // Find the relative path from one file to another
-fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
+fn get_relative_to(abs1: path::Path, abs2: path::Path) -> path::Path {
     assert path::path_is_absolute(abs1);
     assert path::path_is_absolute(abs2);
     debug!{"finding relative path from %s to %s",
@@ -154,15 +154,15 @@ fn get_relative_to(abs1: path::path, abs2: path::path) -> path::path {
     }
 }
 
-fn get_absolute_rpaths(cwd: path::path, libs: ~[path::path]) -> ~[~str] {
+fn get_absolute_rpaths(cwd: path::Path, libs: ~[path::Path]) -> ~[~str] {
     vec::map(libs, |a| get_absolute_rpath(cwd, a) )
 }
 
-fn get_absolute_rpath(cwd: path::path, &&lib: path::path) -> ~str {
+fn get_absolute_rpath(cwd: path::Path, &&lib: path::Path) -> ~str {
     path::dirname(get_absolute(cwd, lib))
 }
 
-fn get_absolute(cwd: path::path, lib: path::path) -> path::path {
+fn get_absolute(cwd: path::Path, lib: path::Path) -> path::Path {
     if path::path_is_absolute(lib) {
         lib
     } else {
@@ -170,7 +170,7 @@ fn get_absolute(cwd: path::path, lib: path::path) -> path::path {
     }
 }
 
-fn get_install_prefix_rpath(cwd: path::path, target_triple: ~str) -> ~str {
+fn get_install_prefix_rpath(cwd: path::Path, target_triple: ~str) -> ~str {
     let install_prefix = env!{"CFG_PREFIX"};
 
     if install_prefix == ~"" {

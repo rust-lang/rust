@@ -4,7 +4,7 @@
 
 import option::{some, none};
 import option = option::option;
-import path = path::path;
+import Path = path::Path;
 import tuple::{TupleOps, ExtendedTupleOps};
 import str::{str_slice, unique_str};
 import vec::{const_vector, copyable_vector, immutable_vector};
@@ -14,7 +14,7 @@ import num::Num;
 import ptr::ptr;
 import to_str::ToStr;
 
-export path, option, some, none, unreachable;
+export Path, option, some, none, unreachable;
 export extensions;
 // The following exports are the extension impls for numeric types
 export Num, times, timesi;

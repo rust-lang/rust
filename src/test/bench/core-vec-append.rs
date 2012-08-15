@@ -2,7 +2,7 @@
 
 use std;
 import dvec::dvec;
-import io::writer_util;
+import io::WriterUtil;
 
 fn collect_raw(num: uint) -> ~[uint] {
     let mut result = ~[];

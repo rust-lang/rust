@@ -13,7 +13,7 @@ import std::map::hashmap;
 import std::deque;
 import std::deque::t;
 import std::par;
-import io::writer_util;
+import io::WriterUtil;
 import comm::*;
 import int::abs;
 
@@ -24,7 +24,7 @@ type bfs_result = ~[node_id];
 fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
     let r = rand::xorshift();
 
-    fn choose_edge(i: node_id, j: node_id, scale: uint, r: rand::rng)
+    fn choose_edge(i: node_id, j: node_id, scale: uint, r: rand::Rng)
         -> (node_id, node_id) {
 
         let A = 0.57;

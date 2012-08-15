@@ -1,5 +1,5 @@
 import run::spawn_process;
-import io::writer_util;
+import io::WriterUtil;
 import libc::{c_int, pid_t};
 
 import pipes::chan;
@@ -45,8 +45,8 @@ fn run(lib_path: ~str,
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
     let pid = spawn_process(prog, args,
-                            some(env + target_env(lib_path, prog)),
-                            none, pipe_in.in, pipe_out.out, pipe_err.out);
+                            &some(env + target_env(lib_path, prog)),
+                            &none, pipe_in.in, pipe_out.out, pipe_err.out);
 
     os::close(pipe_in.in);
     os::close(pipe_out.out);

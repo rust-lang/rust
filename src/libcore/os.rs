@@ -134,34 +134,34 @@ mod global_env {
         fn rust_global_env_chan_ptr() -> *libc::uintptr_t;
     }
 
-    enum msg {
-        msg_getenv(~str, comm::chan<option<~str>>),
-        msg_setenv(~str, ~str, comm::chan<()>),
-        msg_env(comm::chan<~[(~str,~str)]>)
+    enum Msg {
+        MsgGetEnv(~str, comm::chan<option<~str>>),
+        MsgSetEnv(~str, ~str, comm::chan<()>),
+        MsgEnv(comm::chan<~[(~str,~str)]>)
     }
 
     fn getenv(n: ~str) -> option<~str> {
         let env_ch = get_global_env_chan();
         let po = comm::port();
-        comm::send(env_ch, msg_getenv(n, comm::chan(po)));
+        comm::send(env_ch, MsgGetEnv(n, comm::chan(po)));
         comm::recv(po)
     }
 
     fn setenv(n: ~str, v: ~str) {
         let env_ch = get_global_env_chan();
         let po = comm::port();
-        comm::send(env_ch, msg_setenv(n, v, comm::chan(po)));
+        comm::send(env_ch, MsgSetEnv(n, v, comm::chan(po)));
         comm::recv(po)
     }
 
     fn env() -> ~[(~str,~str)] {
         let env_ch = get_global_env_chan();
         let po = comm::port();
-        comm::send(env_ch, msg_env(comm::chan(po)));
+        comm::send(env_ch, MsgEnv(comm::chan(po)));
         comm::recv(po)
     }
 
-    fn get_global_env_chan() -> comm::chan<msg> {
+    fn get_global_env_chan() -> comm::chan<Msg> {
         let global_ptr = rustrt::rust_global_env_chan_ptr();
         unsafe {
             priv::chan_from_global_ptr(global_ptr, || {
@@ -172,18 +172,18 @@ mod global_env {
         }
     }
 
-    fn global_env_task(msg_po: comm::port<msg>) {
+    fn global_env_task(msg_po: comm::port<Msg>) {
         unsafe {
             do priv::weaken_task |weak_po| {
                 loop {
                     match comm::select2(msg_po, weak_po) {
-                      either::left(msg_getenv(n, resp_ch)) => {
+                      either::left(MsgGetEnv(n, resp_ch)) => {
                         comm::send(resp_ch, impl::getenv(n))
                       }
-                      either::left(msg_setenv(n, v, resp_ch)) => {
+                      either::left(MsgSetEnv(n, v, resp_ch)) => {
                         comm::send(resp_ch, impl::setenv(n, v))
                       }
-                      either::left(msg_env(resp_ch)) => {
+                      either::left(MsgEnv(resp_ch)) => {
                         comm::send(resp_ch, impl::env())
                       }
                       either::right(_) => break
@@ -272,28 +272,28 @@ fn fdopen(fd: c_int) -> *FILE {
 // fsync related
 
 #[cfg(windows)]
-fn fsync_fd(fd: c_int, _level: io::fsync::level) -> c_int {
+fn fsync_fd(fd: c_int, _level: io::fsync::Level) -> c_int {
     import libc::funcs::extra::msvcrt::*;
     return commit(fd);
 }
 
 #[cfg(target_os = "linux")]
-fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
+fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     import libc::funcs::posix01::unistd::*;
     match level {
-      io::fsync::fsync
-      | io::fsync::fullfsync => return fsync(fd),
-      io::fsync::fdatasync => return fdatasync(fd)
+      io::fsync::FSync
+      | io::fsync::FullFSync => return fsync(fd),
+      io::fsync::FDataSync => return fdatasync(fd)
     }
 }
 
 #[cfg(target_os = "macos")]
-fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
+fn fsync_fd(fd: c_int, level: io::fsync::Level) -> c_int {
     import libc::consts::os::extra::*;
     import libc::funcs::posix88::fcntl::*;
     import libc::funcs::posix01::unistd::*;
     match level {
-      io::fsync::fsync => return fsync(fd),
+      io::fsync::FSync => return fsync(fd),
       _ => {
         // According to man fnctl, the ok retval is only specified to be !=-1
         if (fcntl(F_FULLFSYNC as c_int, fd) == -1 as c_int)
@@ -305,7 +305,7 @@ fn fsync_fd(fd: c_int, level: io::fsync::level) -> c_int {
 }
 
 #[cfg(target_os = "freebsd")]
-fn fsync_fd(fd: c_int, _l: io::fsync::level) -> c_int {
+fn fsync_fd(fd: c_int, _l: io::fsync::Level) -> c_int {
     import libc::funcs::posix01::unistd::*;
     return fsync(fd);
 }
@@ -369,10 +369,10 @@ fn dll_filename(base: ~str) -> ~str {
 }
 
 
-fn self_exe_path() -> option<path> {
+fn self_exe_path() -> option<Path> {
 
     #[cfg(target_os = "freebsd")]
-    fn load_self() -> option<path> {
+    fn load_self() -> option<Path> {
         unsafe {
             import libc::funcs::bsd44::*;
             import libc::consts::os::extra::*;
@@ -388,7 +388,7 @@ fn self_exe_path() -> option<path> {
     }
 
     #[cfg(target_os = "linux")]
-    fn load_self() -> option<path> {
+    fn load_self() -> option<Path> {
         import libc::funcs::posix01::unistd::readlink;
         do fill_charp_buf() |buf, sz| {
             do as_c_charp(~"/proc/self/exe") |proc_self_buf| {
@@ -398,7 +398,7 @@ fn self_exe_path() -> option<path> {
     }
 
     #[cfg(target_os = "macos")]
-    fn load_self() -> option<path> {
+    fn load_self() -> option<Path> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::*;
         do fill_charp_buf() |buf, sz| {
@@ -408,7 +408,7 @@ fn self_exe_path() -> option<path> {
     }
 
     #[cfg(windows)]
-    fn load_self() -> option<path> {
+    fn load_self() -> option<Path> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
@@ -437,7 +437,7 @@ fn self_exe_path() -> option<path> {
  *
  * Otherwise, homedir returns option::none.
  */
-fn homedir() -> option<path> {
+fn homedir() -> option<Path> {
     return match getenv(~"HOME") {
         some(p) => if !str::is_empty(p) {
           some(p)
@@ -448,12 +448,12 @@ fn homedir() -> option<path> {
     };
 
     #[cfg(unix)]
-    fn secondary() -> option<path> {
+    fn secondary() -> option<Path> {
         none
     }
 
     #[cfg(windows)]
-    fn secondary() -> option<path> {
+    fn secondary() -> option<Path> {
         do option::chain(getenv(~"USERPROFILE")) |p| {
             if !str::is_empty(p) {
                 some(p)
@@ -465,11 +465,11 @@ fn homedir() -> option<path> {
 }
 
 /// Recursively walk a directory structure
-fn walk_dir(p: path, f: fn(path) -> bool) {
+fn walk_dir(p: Path, f: fn(Path) -> bool) {
 
     walk_dir_(p, f);
 
-    fn walk_dir_(p: path, f: fn(path) -> bool) -> bool {
+    fn walk_dir_(p: Path, f: fn(Path) -> bool) -> bool {
         let mut keepgoing = true;
         do list_dir(p).each |q| {
             let path = path::connect(p, q);
@@ -494,14 +494,14 @@ fn walk_dir(p: path, f: fn(path) -> bool) {
 }
 
 /// Indicates whether a path represents a directory
-fn path_is_dir(p: path) -> bool {
+fn path_is_dir(p: Path) -> bool {
     do str::as_c_str(p) |buf| {
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
 /// Indicates whether a path exists
-fn path_exists(p: path) -> bool {
+fn path_exists(p: Path) -> bool {
     do str::as_c_str(p) |buf| {
         rustrt::rust_path_exists(buf) != 0 as c_int
     }
@@ -519,7 +519,7 @@ fn path_exists(p: path) -> bool {
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
-fn make_absolute(p: path) -> path {
+fn make_absolute(p: Path) -> Path {
     if path::path_is_absolute(p) {
         p
     } else {
@@ -529,11 +529,11 @@ fn make_absolute(p: path) -> path {
 
 
 /// Creates a directory at the specified path
-fn make_dir(p: path, mode: c_int) -> bool {
+fn make_dir(p: Path, mode: c_int) -> bool {
     return mkdir(p, mode);
 
     #[cfg(windows)]
-    fn mkdir(p: path, _mode: c_int) -> bool {
+    fn mkdir(p: Path, _mode: c_int) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
@@ -546,7 +546,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
     }
 
     #[cfg(unix)]
-    fn mkdir(p: path, mode: c_int) -> bool {
+    fn mkdir(p: Path, mode: c_int) -> bool {
         do as_c_charp(p) |c| {
             libc::mkdir(c, mode as mode_t) == (0 as c_int)
         }
@@ -554,7 +554,7 @@ fn make_dir(p: path, mode: c_int) -> bool {
 }
 
 /// Lists the contents of a directory
-fn list_dir(p: path) -> ~[~str] {
+fn list_dir(p: Path) -> ~[~str] {
 
     #[cfg(unix)]
     fn star(p: ~str) -> ~str { p }
@@ -580,7 +580,7 @@ fn list_dir(p: path) -> ~[~str] {
  *
  * This version prepends each entry with the directory.
  */
-fn list_dir_path(p: path) -> ~[~str] {
+fn list_dir_path(p: Path) -> ~[~str] {
     let mut p = p;
     let pl = str::len(p);
     if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
@@ -591,11 +591,11 @@ fn list_dir_path(p: path) -> ~[~str] {
 }
 
 /// Removes a directory at the specified path
-fn remove_dir(p: path) -> bool {
+fn remove_dir(p: Path) -> bool {
    return rmdir(p);
 
     #[cfg(windows)]
-    fn rmdir(p: path) -> bool {
+    fn rmdir(p: Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
@@ -606,18 +606,18 @@ fn remove_dir(p: path) -> bool {
     }
 
     #[cfg(unix)]
-    fn rmdir(p: path) -> bool {
+    fn rmdir(p: Path) -> bool {
         return do as_c_charp(p) |buf| {
             libc::rmdir(buf) == (0 as c_int)
         };
     }
 }
 
-fn change_dir(p: path) -> bool {
+fn change_dir(p: Path) -> bool {
     return chdir(p);
 
     #[cfg(windows)]
-    fn chdir(p: path) -> bool {
+    fn chdir(p: Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
@@ -628,7 +628,7 @@ fn change_dir(p: path) -> bool {
     }
 
     #[cfg(unix)]
-    fn chdir(p: path) -> bool {
+    fn chdir(p: Path) -> bool {
         return do as_c_charp(p) |buf| {
             libc::chdir(buf) == (0 as c_int)
         };
@@ -636,11 +636,11 @@ fn change_dir(p: path) -> bool {
 }
 
 /// Copies a file from one location to another
-fn copy_file(from: path, to: path) -> bool {
+fn copy_file(from: Path, to: Path) -> bool {
     return do_copy_file(from, to);
 
     #[cfg(windows)]
-    fn do_copy_file(from: path, to: path) -> bool {
+    fn do_copy_file(from: Path, to: Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
@@ -653,7 +653,7 @@ fn copy_file(from: path, to: path) -> bool {
     }
 
     #[cfg(unix)]
-    fn do_copy_file(from: path, to: path) -> bool {
+    fn do_copy_file(from: Path, to: Path) -> bool {
         let istream = do as_c_charp(from) |fromp| {
             do as_c_charp(~"rb") |modebuf| {
                 libc::fopen(fromp, modebuf)
@@ -699,11 +699,11 @@ fn copy_file(from: path, to: path) -> bool {
 }
 
 /// Deletes an existing file
-fn remove_file(p: path) -> bool {
+fn remove_file(p: Path) -> bool {
     return unlink(p);
 
     #[cfg(windows)]
-    fn unlink(p: path) -> bool {
+    fn unlink(p: Path) -> bool {
         // FIXME (similar to Issue #2006): remove imports when export globs
         // work properly.
         import libc::funcs::extra::kernel32::*;
@@ -715,7 +715,7 @@ fn remove_file(p: path) -> bool {
     }
 
     #[cfg(unix)]
-    fn unlink(p: path) -> bool {
+    fn unlink(p: Path) -> bool {
         return do as_c_charp(p) |buf| {
             libc::unlink(buf) == (0 as c_int)
         };
@@ -792,7 +792,7 @@ mod tests {
 
     fn make_rand_name() -> ~str {
         import rand;
-        let rng: rand::rng = rand::rng();
+        let rng: rand::Rng = rand::rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert option::is_none(getenv(n));
         n
