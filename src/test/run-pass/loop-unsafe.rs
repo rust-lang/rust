@@ -3,6 +3,7 @@
 fn main() {
     loop unsafe {
         io::println("Hello world!");
+        return ();
     }
 }
 
