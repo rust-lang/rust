@@ -1043,10 +1043,14 @@ struct port_set<T: send> : recv<T> {
         let mut ports = ~[];
         ports <-> self.ports;
         while result == none && ports.len() > 0 {
-            let i = wait_many(ports.map(|p| p.header()));
+            let i = wait_many(ports);
             match move ports[i].try_recv() {
-                some(copy m) => {
-                    result = some(move m);
+                // FIXME (#2329): use this version once move from enum works.
+                //some(copy m) => {
+                //  result = some(move m);
+                //}
+                some(m) => {
+                  result = some(move_it!(m));
                 }
                 none => {
                     // Remove this port.
@@ -1065,7 +1069,9 @@ struct port_set<T: send> : recv<T> {
 
     fn recv() -> T {
         match move self.try_recv() {
-            some(copy x) => move x,
+            // FIXME (#2329): use this version once move from enum works.
+            //some(copy x) => move x,
+            some(x) => move_it!(x),
             none => fail ~"port_set: endpoints closed"
         }
     }
