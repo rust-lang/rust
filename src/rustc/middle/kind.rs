@@ -215,6 +215,51 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     debug!{"kind::check_expr(%s)", expr_to_str(e)};
+
+    // Handle any kind bounds on type parameters
+    do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {
+        let bounds = match check e.node {
+          expr_path(_) => {
+            let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
+            ty::lookup_item_type(cx.tcx, did).bounds
+          }
+          _ => {
+            // Type substitions should only occur on paths and
+            // method calls, so this needs to be a method call.
+            match cx.method_map.get(e.id).origin {
+              typeck::method_static(did) => {
+                // n.b.: When we encode class/impl methods, the bounds
+                // that we encode include both the class/impl bounds
+                // and then the method bounds themselves...
+                ty::lookup_item_type(cx.tcx, did).bounds
+              }
+              typeck::method_param({trait_id:trt_id,
+                                    method_num:n_mth, _}) |
+              typeck::method_trait(trt_id, n_mth) => {
+                // ...trait methods bounds, in contrast, include only the
+                // method bounds, so we must preprend the tps from the
+                // trait itself.  This ought to be harmonized.
+                let trt_bounds =
+                    ty::lookup_item_type(cx.tcx, trt_id).bounds;
+                let mth = ty::trait_methods(cx.tcx, trt_id)[n_mth];
+                @(vec::append(*trt_bounds, *mth.tps))
+              }
+            }
+          }
+        };
+        if vec::len(ts) != vec::len(*bounds) {
+            // Fail earlier to make debugging easier
+            fail fmt!("Internal error: in kind::check_expr, length \
+                       mismatch between actual and declared bounds: actual = \
+                        %s (%u tys), declared = %? (%u tys)",
+                      tys_to_str(cx.tcx, ts), ts.len(),
+                      *bounds, (*bounds).len());
+        }
+        do vec::iter2(ts, *bounds) |ty, bound| {
+            check_bounds(cx, e.id, e.span, ty, bound)
+        }
+    }
+
     match e.node {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
@@ -266,45 +311,12 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             i += 1u;
         }
       }
-      expr_path(_) | expr_field(_, _, _) => {
-        do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {
-            let bounds = match check e.node {
-              expr_path(_) => {
-                let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
-                ty::lookup_item_type(cx.tcx, did).bounds
-              }
-              expr_field(base, _, _) => {
-                match cx.method_map.get(e.id).origin {
-                  typeck::method_static(did) => {
-                    // n.b.: When we encode class/impl methods, the bounds
-                    // that we encode include both the class/impl bounds
-                    // and then the method bounds themselves...
-                    ty::lookup_item_type(cx.tcx, did).bounds
-                  }
-                  typeck::method_param({trait_id:trt_id,
-                                        method_num:n_mth, _}) |
-                  typeck::method_trait(trt_id, n_mth) => {
-                    // ...trait methods bounds, in contrast, include only the
-                    // method bounds, so we must preprend the tps from the
-                    // trait itself.  This ought to be harmonized.
-                    let trt_bounds =
-                        ty::lookup_item_type(cx.tcx, trt_id).bounds;
-                    let mth = ty::trait_methods(cx.tcx, trt_id)[n_mth];
-                    @(vec::append(*trt_bounds, *mth.tps))
-                  }
-                }
-              }
-            };
-            if vec::len(ts) != vec::len(*bounds) {
-              // Fail earlier to make debugging easier
-              fail fmt!{"Internal error: in kind::check_expr, length \
-                  mismatch between actual and declared bounds: actual = \
-                  %s (%u tys), declared = %? (%u tys)",
-                  tys_to_str(cx.tcx, ts), ts.len(), *bounds, (*bounds).len()};
-            }
-            do vec::iter2(ts, *bounds) |ty, bound| {
-                check_bounds(cx, e.id, e.span, ty, bound)
-            }
+      expr_field(lhs, _, _) => {
+        // If this is a method call with a by-val argument, we need
+        // to check the copy
+        match cx.method_map.find(e.id) {
+          some({self_mode: by_copy, _}) => maybe_copy(cx, lhs),
+          _ => ()
         }
       }
       expr_repeat(element, count_expr, _) => {

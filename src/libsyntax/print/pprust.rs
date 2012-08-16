@@ -1522,9 +1522,10 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
     s.ann.post(ann_node);
 }
 
-fn print_self_ty(s: ps, self_ty: ast::self_ty_) {
+// Returns whether it printed anything
+fn print_self_ty(s: ps, self_ty: ast::self_ty_) -> bool {
     match self_ty {
-      ast::sty_static | ast::sty_by_ref => {}
+      ast::sty_static | ast::sty_by_ref => { return false; }
       ast::sty_value => { word(s.s, ~"self"); }
       ast::sty_region(m) => {
         word(s.s, ~"&"); print_mutability(s, m); word(s.s, ~"self");
@@ -1536,6 +1537,7 @@ fn print_self_ty(s: ps, self_ty: ast::self_ty_) {
         word(s.s, ~"~"); print_mutability(s, m); word(s.s, ~"self");
       }
     }
+    return true;
 }
 
 fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
@@ -1556,8 +1558,7 @@ fn print_fn_args(s: ps, decl: ast::fn_decl,
     box(s, 0u, inconsistent);
     let mut first = true;
     for opt_self_ty.each |self_ty| {
-        first = false;
-        print_self_ty(s, self_ty);
+        first = !print_self_ty(s, self_ty);
     }
 
     for decl.inputs.each |arg| {
@@ -1780,8 +1781,7 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
     box(s, 0u, inconsistent);
     let mut first = true;
     for opt_self_ty.each |self_ty| {
-        first = false;
-        print_self_ty(s, self_ty);
+        first = !print_self_ty(s, self_ty);
     }
     for decl.inputs.each |arg| {
         if first { first = false; } else { word_space(s, ~","); }
