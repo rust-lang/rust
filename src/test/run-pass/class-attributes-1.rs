@@ -1,6 +1,6 @@
 // pp-exact - Make sure we actually print the attributes
 
-class cat {
+struct cat {
     #[cat_maker]
     new(name: ~str) { self.name = name; }
     #[cat_dropper]
