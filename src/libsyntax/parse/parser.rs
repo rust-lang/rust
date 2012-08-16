@@ -1600,7 +1600,7 @@ class parser {
 
     fn parse_loop_expr() -> @expr {
         let opt_ident;
-        if is_ident(self.token) {
+        if is_ident(self.token) && !self.is_any_keyword(copy self.token) {
             opt_ident = some(self.parse_ident());
             self.expect(token::COLON);
         } else {
