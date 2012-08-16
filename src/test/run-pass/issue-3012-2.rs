@@ -1,3 +1,4 @@
+// xfail-fast
 // aux-build:issue-3012-1.rs
 use socketlib;
 import socketlib::socket;
