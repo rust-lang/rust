@@ -2581,7 +2581,7 @@ class parser {
                       match the_ctor {
                         some((_, _, _, s_first)) => {
                           self.span_note(s, #fmt("Duplicate constructor \
-                                       declaration for class %s", *class_name));
+                                     declaration for class %s", *class_name));
                            self.span_fatal(copy s_first, ~"First constructor \
                                                           declared here");
                         }
@@ -2594,7 +2594,7 @@ class parser {
                       match the_dtor {
                         some((_, _, s_first)) => {
                           self.span_note(s, #fmt("Duplicate destructor \
-                                        declaration for class %s", *class_name));
+                                     declaration for class %s", *class_name));
                           self.span_fatal(copy s_first, ~"First destructor \
                                                           declared here");
                         }
