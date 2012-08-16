@@ -1,4 +1,3 @@
-// xfail-test
 /*
   A reduced test case for Issue #506, provided by Rob Arnold.
 
@@ -10,10 +9,9 @@ import task;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn get_task_id() -> libc::intptr_t;
+    fn rust_dbg_do_nothing();
 }
 
 fn main() {
-    let f: fn() -> libc::intptr_t = rustrt::get_task_id;
-    task::spawn(unsafe { unsafe::reinterpret_cast(f) });
+    task::spawn(rustrt::rust_dbg_do_nothing);
 }
