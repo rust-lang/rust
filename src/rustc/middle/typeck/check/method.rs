@@ -56,7 +56,7 @@ fn transform_self_type_for_method
     }
 }
 
-class lookup {
+struct lookup {
     let fcx: @fn_ctxt;
     let expr: @ast::expr;
     let self_expr: @ast::expr;

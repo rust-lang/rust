@@ -125,7 +125,7 @@ fn test_foreign_fn() {
     assert test::rust_get_sched_id == test::rust_get_sched_id;
 }
 
-class p {
+struct p {
   let mut x: int;
   let mut y: int;
   new(x: int, y: int) { self.x = x; self.y = y; }

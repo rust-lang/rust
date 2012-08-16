@@ -1,4 +1,4 @@
-class shrinky_pointer {
+struct shrinky_pointer {
   let i: @@mut int;
   fn look_at() -> int { return **(self.i); }
   new(i: @@mut int) { self.i = i; }

@@ -25,12 +25,12 @@ enum tg { foo, }
 enum tg { bar, }
 
 #[cfg(bogus)]
-class r {
+struct r {
   let i: int;
   new(i:int) { self.i = i; }
 }
 
-class r {
+struct r {
   let i: int;
   new(i:int) { self.i = i; }
 }

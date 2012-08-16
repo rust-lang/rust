@@ -1,4 +1,4 @@
-class example {
+struct example {
   let x: int;
   new() { //~ ERROR First constructor declared here
     self.x = 1;

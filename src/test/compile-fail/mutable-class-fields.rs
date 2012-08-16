@@ -1,5 +1,5 @@
 // error-pattern:assigning to immutable field
-class cat {
+struct cat {
   priv {
     let mut meows : uint;
   }

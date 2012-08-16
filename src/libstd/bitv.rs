@@ -19,7 +19,7 @@ export to_str;
 export eq_vec;
 export methods;
 
-class small_bitv {
+struct small_bitv {
     let mut bits: u32;
     new(bits: u32) { self.bits = bits; }
     priv {
@@ -78,7 +78,7 @@ class small_bitv {
     fn invert() { self.bits = !self.bits; }
 }
 
-class big_bitv {
+struct big_bitv {
 // only mut b/c of clone and lack of other constructor
     let mut storage: ~[mut uint];
     new(-storage: ~[mut uint]) {
@@ -153,7 +153,7 @@ enum a_bitv { big(~big_bitv), small(~small_bitv) }
 enum op {union, intersect, assign, difference}
 
 // The bitvector type
-class bitv {
+struct bitv {
     let rep: a_bitv;
     let nbits: uint;
 

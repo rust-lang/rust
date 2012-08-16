@@ -4,7 +4,7 @@ fn failfn() {
     fail;
 }
 
-class r {
+struct r {
   let v: *int;
   new(v: *int) { self.v = v; }
   drop unsafe {

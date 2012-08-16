@@ -27,7 +27,7 @@ fn port<T: send>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
 
-class port_ptr<T:send> {
+struct port_ptr<T:send> {
    let po: *rust_port;
    new(po: *rust_port) {
     debug!{"in the port_ptr constructor"};

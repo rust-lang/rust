@@ -208,7 +208,7 @@ fn relevant_def(def: def) -> option<relevant_def> {
     }
 }
 
-class ir_maps {
+struct ir_maps {
     let tcx: ty::ctxt;
     let method_map: typeck::method_map;
     let last_use_map: last_use_map;
@@ -505,7 +505,7 @@ const ACC_READ: uint = 1u;
 const ACC_WRITE: uint = 2u;
 const ACC_USE: uint = 4u;
 
-class liveness {
+struct liveness {
     let tcx: ty::ctxt;
     let ir: @ir_maps;
     let s: specials;

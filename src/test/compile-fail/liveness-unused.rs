@@ -35,7 +35,7 @@ fn f4() {
 }
 
 // leave this in here just to trigger compile-fail:
-class r {
+struct r {
     let x: ();
     new() { self.x = (); }
     drop {}

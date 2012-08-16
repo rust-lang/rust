@@ -2,7 +2,7 @@ trait noisy {
   fn speak() -> int;
 }
 
-class dog : noisy {
+struct dog : noisy {
   priv {
     let barks : @mut uint;
     fn bark() -> int {
@@ -26,7 +26,7 @@ class dog : noisy {
   fn speak() -> int { self.bark() }
 }
 
-class cat : noisy {
+struct cat : noisy {
   priv {
     let meows : @mut uint;
     fn meow() -> uint {

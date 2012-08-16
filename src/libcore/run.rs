@@ -225,7 +225,7 @@ fn start_program(prog: &str, args: &[~str]) -> Program {
        libc::fclose(r.out_file);
        libc::fclose(r.err_file);
     }
-    class ProgRes {
+    struct ProgRes {
         let r: ProgRepr;
         new(+r: ProgRepr) { self.r = r; }
         drop { destroy_repr(&self.r); }

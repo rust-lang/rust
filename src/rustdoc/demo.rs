@@ -111,7 +111,7 @@ mod blade_runner {
  * eget ante feugiat tortor congue auctor ac quis ante. Proin
  * condimentum lacinia tincidunt.
  */
-class bored {
+struct bored {
   let bored: bool;
   new(bored: bool) { self.bored = bored; }
   drop { log(error, self.bored); }

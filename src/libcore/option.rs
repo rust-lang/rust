@@ -264,7 +264,7 @@ fn test_unwrap_str() {
 
 #[test]
 fn test_unwrap_resource() {
-    class r {
+    struct r {
        let i: @mut int;
        new(i: @mut int) { self.i = i; }
        drop { *(self.i) += 1; }

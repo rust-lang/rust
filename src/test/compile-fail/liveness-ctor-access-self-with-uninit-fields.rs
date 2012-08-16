@@ -1,4 +1,4 @@
-class cat {
+struct cat {
   let how_hungry : int;
   fn meow() {}
   new() {

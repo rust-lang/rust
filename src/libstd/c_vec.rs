@@ -42,7 +42,7 @@ enum c_vec<T> {
     c_vec_({ base: *mut T, len: uint, rsrc: @dtor_res})
 }
 
-class dtor_res {
+struct dtor_res {
   let dtor: option<fn@()>;
   new(dtor: option<fn@()>) { self.dtor = dtor; }
   drop {

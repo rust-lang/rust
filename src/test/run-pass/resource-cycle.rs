@@ -1,6 +1,6 @@
 // Don't leak the unique pointers
 
-class r {
+struct r {
   let v: *int;
   new(v: *int) unsafe {
     self.v = v;

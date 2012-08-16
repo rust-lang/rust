@@ -243,7 +243,7 @@ impl Rng {
 
 }
 
-class RandRes {
+struct RandRes {
     let c: *rctx;
     new(c: *rctx) { self.c = c; }
     drop { rustrt::rand_free(self.c); }

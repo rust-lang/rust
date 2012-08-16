@@ -1,4 +1,4 @@
-class C {
+struct C {
     let x: uint;
 
     new(x: uint) {

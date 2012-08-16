@@ -1,6 +1,6 @@
 fn main() {
   
-  class b {
+  struct b {
     let i: int;
     fn do_stuff() -> int { return 37; }
     new(i:int) { self.i = i; }

@@ -1,4 +1,4 @@
-class c { //~ ERROR a struct must have at least one field
+struct c { //~ ERROR a struct must have at least one field
     new() { }
 }
 

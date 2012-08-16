@@ -2,7 +2,7 @@ use std;
 
 fn siphash(k0 : u64) {
 
-    class siphash {
+    struct siphash {
         let mut v0: u64;
         fn reset() {
            self.v0 = k0 ^ 0x736f6d6570736575; //~ ERROR attempted dynamic environment-capture

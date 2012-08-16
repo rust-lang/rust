@@ -40,7 +40,7 @@ enum st {
     })
 }
 
-class r {
+struct r {
   let _l: @nillist;
   new(l: @nillist) { self._l = l; }
   drop {}

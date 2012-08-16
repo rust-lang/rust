@@ -1,4 +1,4 @@
-class r {
+struct r {
   let b: @mut int;
   new(b: @mut int) {
     self.b = b;

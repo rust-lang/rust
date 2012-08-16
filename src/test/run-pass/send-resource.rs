@@ -1,7 +1,7 @@
 import task::*;
 import comm::*;
 
-class test {
+struct test {
   let f: int;
   new(f: int) { self.f = f; }
   drop {}

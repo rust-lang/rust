@@ -1,6 +1,6 @@
 // Test that a class with only sendable fields can be sent
 
-class foo {
+struct foo {
   let i: int;
   let j: char;
   new(i:int, j: char) { self.i = i; self.j = j; }

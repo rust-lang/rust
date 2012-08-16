@@ -1,6 +1,6 @@
 mod kitties {
 
-class cat {
+struct cat {
   priv {
     let mut meows : uint;
   }

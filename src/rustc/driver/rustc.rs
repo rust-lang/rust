@@ -230,7 +230,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
             diagnostic::emit(cmsp, msg, lvl);
         };
 
-        class finally {
+        struct finally {
             let ch: comm::Chan<monitor_msg>;
             new(ch: comm::Chan<monitor_msg>) { self.ch = ch; }
             drop { comm::send(self.ch, done); }

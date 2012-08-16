@@ -1,4 +1,4 @@
-class cat {
+struct cat {
   priv {
     let mut meows : uint;
     fn meow() {

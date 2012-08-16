@@ -1,4 +1,4 @@
-class dog {
+struct dog {
     let mut food: uint;
 
     new() {

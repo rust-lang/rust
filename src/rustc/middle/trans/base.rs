@@ -83,7 +83,7 @@ fn dup_for_join(dest: dest) -> dest {
     }
 }
 
-class icx_popper {
+struct icx_popper {
     let ccx: @crate_ctxt;
     new(ccx: @crate_ctxt) { self.ccx = ccx; }
     drop {

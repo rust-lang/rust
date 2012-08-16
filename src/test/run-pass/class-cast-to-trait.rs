@@ -2,7 +2,7 @@ trait noisy {
   fn speak();
 }
 
-class cat : noisy {
+struct cat : noisy {
   priv {
     let mut meows : uint;
     fn meow() {

@@ -109,7 +109,7 @@ fn protocol(name: ident, +span: span) -> protocol {
     @protocol_(name, span)
 }
 
-class protocol_ {
+struct protocol_ {
     let name: ident;
     let span: span;
     let states: DVec<state>;

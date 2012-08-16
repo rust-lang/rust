@@ -1,4 +1,4 @@
-class cat {
+struct cat {
   priv {
     let mut meows : uint;
       fn nap() { for uint::range(1u, 10u) |_i| { }}

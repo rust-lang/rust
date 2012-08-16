@@ -249,7 +249,7 @@ fn Atom(n: uint) -> Atom {
     return n;
 }
 
-class AtomTable {
+struct AtomTable {
     let atoms: hashmap<@~str,Atom>;
     let strings: DVec<@~str>;
     let mut atom_count: uint;
@@ -312,7 +312,7 @@ fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
 }
 
 /// One local scope.
-class Rib {
+struct Rib {
     let bindings: hashmap<Atom,def_like>;
     let kind: RibKind;
 
@@ -323,7 +323,7 @@ class Rib {
 }
 
 /// One import directive.
-class ImportDirective {
+struct ImportDirective {
     let module_path: @DVec<Atom>;
     let subclass: @ImportDirectiveSubclass;
     let span: span;
@@ -339,7 +339,7 @@ class ImportDirective {
 }
 
 /// The item that an import resolves to.
-class Target {
+struct Target {
     let target_module: @Module;
     let bindings: @NameBindings;
 
@@ -349,7 +349,7 @@ class Target {
     }
 }
 
-class ImportResolution {
+struct ImportResolution {
     let span: span;
 
     // The number of outstanding references to this name. When this reaches
@@ -402,7 +402,7 @@ enum ParentLink {
 }
 
 /// One node in the tree of modules.
-class Module {
+struct Module {
     let parent_link: ParentLink;
     let mut def_id: option<def_id>;
 
@@ -491,7 +491,7 @@ fn unused_import_lint_level(session: session) -> level {
 
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
-class NameBindings {
+struct NameBindings {
     let mut module_def: ModuleDef;      //< Meaning in the module namespace.
     let mut type_def: option<def>;      //< Meaning in the type namespace.
     let mut value_def: option<def>;     //< Meaning in the value namespace.
@@ -611,7 +611,7 @@ class NameBindings {
 }
 
 /// Interns the names of the primitive types.
-class PrimitiveTypeTable {
+struct PrimitiveTypeTable {
     let primitive_types: hashmap<Atom,prim_ty>;
 
     new(atom_table: @AtomTable) {
@@ -652,7 +652,7 @@ fn namespace_to_str(ns: Namespace) -> ~str {
 }
 
 /// The main resolver class.
-class Resolver {
+struct Resolver {
     let session: session;
     let lang_items: LanguageItems;
     let crate: @crate;

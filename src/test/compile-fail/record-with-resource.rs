@@ -1,6 +1,6 @@
 // error-pattern: copying a noncopyable value
 
-class my_resource {
+struct my_resource {
   let x: int;
   new(x: int) { self.x = x; }
   drop { log(error, self.x); }

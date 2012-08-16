@@ -335,7 +335,7 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
     let keys = ~[
         ~"again", ~"assert",
         ~"break",
-        ~"check", ~"class", ~"const", ~"copy",
+        ~"check", ~"const", ~"copy",
         ~"do", ~"drop",
         ~"else", ~"enum", ~"export", ~"extern",
         ~"fail", ~"false", ~"fn", ~"for",

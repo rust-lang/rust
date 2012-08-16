@@ -3,7 +3,7 @@
 use cci_class_trait;
 import cci_class_trait::animals::*;
 
-class cat : noisy {
+struct cat : noisy {
   priv {
     let mut meows : uint;
     fn meow() {

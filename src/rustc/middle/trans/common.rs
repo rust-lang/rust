@@ -72,7 +72,7 @@ type stats =
      llvm_insns: hashmap<~str, uint>,
      fn_times: @mut ~[{ident: ~str, time: int}]};
 
-class BuilderRef_res {
+struct BuilderRef_res {
     let B: BuilderRef;
     new(B: BuilderRef) { self.B = B; }
     drop { llvm::LLVMDisposeBuilder(self.B); }
@@ -390,7 +390,7 @@ type node_info = {
 // code.  Each basic block we generate is attached to a function, typically
 // with many basic blocks per function.  All the basic blocks attached to a
 // function are organized as a directed graph.
-class block_ {
+struct block_ {
     // The BasicBlockRef returned from a call to
     // llvm::LLVMAppendBasicBlock(llfn, name), which adds a basic
     // block to the function pointed to by llfn.  We insert

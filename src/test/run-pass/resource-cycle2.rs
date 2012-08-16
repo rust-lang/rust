@@ -6,7 +6,7 @@ type u = {
     c: *int
 };
 
-class r {
+struct r {
   let v: u;
   new(v: u) { self.v = v; }
   drop unsafe {
