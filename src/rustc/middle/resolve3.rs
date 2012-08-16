@@ -1476,6 +1476,8 @@ class Resolver {
             if has_constructor {
                 child_name_bindings.define_value(def, dummy_sp());
             }
+
+            self.structs.insert(def_id, has_constructor);
           }
           def_self(*) | def_arg(*) | def_local(*) |
           def_prim_ty(*) | def_ty_param(*) | def_binding(*) |
@@ -4409,7 +4411,7 @@ class Resolver {
                 //    let bar = Bar { ... } // no type parameters
 
                 match self.resolve_path(path, TypeNS, false, visitor) {
-                    some(def_ty(class_id))
+                    some(def_ty(class_id)) | some(def_class(class_id, _))
                             if self.structs.contains_key(class_id) => {
                         let has_constructor = self.structs.get(class_id);
                         let class_def = def_class(class_id, has_constructor);
