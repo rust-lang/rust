@@ -153,7 +153,7 @@ mod test {
     #[test]
     fn test_gl_timer_sleep_stress1() {
         let hl_loop = uv::global_loop::get();
-        for iter::repeat(200u) {
+        for iter::repeat(50u) {
             sleep(hl_loop, 1u);
         }
     }
@@ -242,7 +242,7 @@ mod test {
             let test_ch = core::comm::chan(test_po);
 
             do task::spawn() {
-                delayed_send(hl_loop, 1000u, test_ch, expected);
+                delayed_send(hl_loop, 50u, test_ch, expected);
             };
 
             match recv_timeout(hl_loop, 1u, test_po) {
