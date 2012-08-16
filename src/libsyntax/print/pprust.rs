@@ -497,7 +497,7 @@ fn print_item(s: ps, &&item: @ast::item) {
         print_enum_def(s, enum_definition, params, item.ident, item.span);
       }
       ast::item_class(struct_def, tps) => {
-          head(s, ~"class");
+          head(s, ~"struct");
           print_struct(s, struct_def, tps, item.ident, item.span);
       }
       ast::item_impl(tps, traits, ty, methods) => {
@@ -636,9 +636,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
                 hardbreak_if_not_bol(s);
                 maybe_print_comment(s, field.span.lo);
                 if visibility == ast::private {
-                    head(s, ~"priv");
-                    bopen(s);
-                    hardbreak_if_not_bol(s);
+                    word_nbsp(s, ~"priv");
                 }
                 if mutability == ast::class_mutable {
                     word_nbsp(s, ~"mut");
