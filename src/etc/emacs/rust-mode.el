@@ -21,9 +21,6 @@
                             (c-populate-syntax-table table)
                             table))
 
-(add-to-list 'auto-mode-alist '("\\.rs$" . rust-mode))
-(add-to-list 'auto-mode-alist '("\\.rc$" . rust-mode))
-
 (defun make-rust-state ()
   (vector 'rust-token-base
           (list (vector 'top (- rust-indent-unit) nil nil nil))
@@ -299,6 +296,11 @@
 
 (define-key rust-mode-map "}" 'rust-electric-brace)
 (define-key rust-mode-map "{" 'rust-electric-brace)
+
+;;;###autoload
+(progn
+  (add-to-list 'auto-mode-alist '("\\.rs$" . rust-mode))
+  (add-to-list 'auto-mode-alist '("\\.rc$" . rust-mode)))
 
 (provide 'rust-mode)
 
