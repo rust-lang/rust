@@ -412,7 +412,9 @@ trait read_method_map_entry_helper {
 impl ebml::ebml_deserializer: read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry {
         let mme = deserialize_method_map_entry(self);
-        {derefs: mme.derefs, origin: mme.origin.tr(xcx)}
+        {derefs: mme.derefs,
+         self_mode: mme.self_mode,
+         origin: mme.origin.tr(xcx)}
     }
 }
 

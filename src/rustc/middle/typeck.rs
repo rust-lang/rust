@@ -113,6 +113,9 @@ type method_map_entry = {
     // number of derefs that are required on the receiver
     derefs: uint,
 
+    // the mode by which the self parameter needs to be passed
+    self_mode: ast::rmode,
+
     // method details being invoked
     origin: method_origin
 };

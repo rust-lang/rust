@@ -5,7 +5,7 @@ import middle::resolve3::{Impl, MethodInfo};
 import middle::ty::{mk_box, mk_rptr, mk_uniq};
 import syntax::ast::{def_id,
                      sty_static, sty_box, sty_by_ref, sty_region, sty_uniq};
-import syntax::ast::{sty_value};
+import syntax::ast::{sty_value, by_ref, by_copy};
 import syntax::ast_map;
 import syntax::ast_map::node_id_to_str;
 import syntax::ast_util::{dummy_sp, new_def_hash};
@@ -53,6 +53,13 @@ fn transform_self_type_for_method
       sty_uniq(mutability) => {
         mk_uniq(tcx, { ty: impl_ty, mutbl: mutability })
       }
+    }
+}
+
+fn get_mode_from_self_type(self_type: ast::self_ty_) -> ast::rmode {
+    match self_type {
+      sty_value => by_copy,
+      _ => by_ref
     }
 }
 
@@ -478,6 +485,8 @@ struct lookup {
                          n_tps_m: m.n_tps,
                          fty: fty,
                          entry: {derefs: self.derefs,
+                                 self_mode: get_mode_from_self_type(
+                                     m.self_type),
                                  origin: method_static(m.did)},
                          mode: mode});
                     self.candidate_impls.insert(im.did, ());
@@ -506,7 +515,9 @@ struct lookup {
              rcvr_ty: self.self_ty,
              n_tps_m: (*m.tps).len(),
              fty: fty,
-             entry: {derefs: self.derefs, origin: origin},
+             entry: {derefs: self.derefs,
+                     self_mode: get_mode_from_self_type(m.self_ty),
+                     origin: origin},
              mode: subtyping_mode});
     }
 

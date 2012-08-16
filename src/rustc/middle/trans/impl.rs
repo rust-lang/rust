@@ -35,12 +35,11 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               ast::sty_uniq(_) => {
                 impl_self(ty::mk_imm_uniq(ccx.tcx, self_ty))
               }
-              // XXX: Is this right at all?
               ast::sty_region(*) => {
                 impl_self(ty::mk_imm_ptr(ccx.tcx, self_ty))
               }
               ast::sty_value => {
-                ccx.sess.unimpl(~"by value self type not implemented");
+                impl_owned_self(self_ty)
               }
               ast::sty_by_ref => { impl_self(self_ty) }
             };
@@ -54,18 +53,22 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     }
 }
 
-fn trans_self_arg(bcx: block, base: @ast::expr, derefs: uint) -> result {
+fn trans_self_arg(bcx: block, base: @ast::expr,
+                  mentry: typeck::method_map_entry) -> result {
     let _icx = bcx.insn_ctxt("impl::trans_self_arg");
     let basety = expr_ty(bcx, base);
-    let m_by_ref = ast::expl(ast::by_ref);
+    let mode = ast::expl(mentry.self_mode);
     let mut temp_cleanups = ~[];
-    let result = trans_arg_expr(bcx, {mode: m_by_ref, ty: basety},
+    let result = trans_arg_expr(bcx, {mode: mode, ty: basety},
                                 T_ptr(type_of::type_of(bcx.ccx(), basety)),
-                                base, temp_cleanups, none, derefs);
+                                base, temp_cleanups, none, mentry.derefs);
 
     // by-ref self argument should not require cleanup in the case of
     // other arguments failing:
-    assert temp_cleanups == ~[];
+    //assert temp_cleanups == ~[];
+    //do vec::iter(temp_cleanups) |c| {
+    //    revoke_clean(bcx, c)
+    //}
 
     return result;
 }
@@ -76,8 +79,11 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
     let _icx = bcx.insn_ctxt("impl::trans_method_callee");
     match mentry.origin {
       typeck::method_static(did) => {
-        let {bcx, val} = trans_self_arg(bcx, self, mentry.derefs);
-        {env: self_env(val, node_id_type(bcx, self.id), none)
+
+
+        let {bcx, val} = trans_self_arg(bcx, self, mentry);
+        {env: self_env(val, node_id_type(bcx, self.id), none,
+                       mentry.self_mode)
          with lval_static_fn(bcx, did, callee_id)}
       }
       typeck::method_param({trait_id:trait_id, method_num:off,
@@ -85,7 +91,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         match check bcx.fcx.param_substs {
           some(substs) => {
             let vtbl = find_vtable_in_fn_ctxt(substs, p, b);
-            trans_monomorphized_callee(bcx, callee_id, self, mentry.derefs,
+            trans_monomorphized_callee(bcx, callee_id, self, mentry,
                                        trait_id, off, vtbl)
           }
         }
@@ -184,7 +190,8 @@ fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
 }
 
 fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
-                              base: @ast::expr, derefs: uint,
+                              base: @ast::expr,
+                              mentry: typeck::method_map_entry,
                               trait_id: ast::def_id, n_method: uint,
                               vtbl: typeck::vtable_origin)
     -> lval_maybe_callee {
@@ -200,10 +207,11 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
             = vec::append(impl_substs,
                           vec::tailn(node_substs,
                                      node_substs.len() - n_m_tps));
-        let {bcx, val} = trans_self_arg(bcx, base, derefs);
+        let {bcx, val} = trans_self_arg(bcx, base, mentry);
         let lval = lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
                                         some(sub_origins));
-        {env: self_env(val, node_id_type(bcx, base.id), none),
+        {env: self_env(val, node_id_type(bcx, base.id),
+                       none, mentry.self_mode),
          val: PointerCast(bcx, lval.val, T_ptr(type_of_fn_from_ty(
              ccx, node_id_type(bcx, callee_id))))
          with lval}
@@ -230,7 +238,9 @@ fn trans_trait_callee(bcx: block, val: ValueRef,
     let llbox = Load(bcx, GEPi(bcx, val, ~[0u, 1u]));
     // FIXME[impl] I doubt this is alignment-safe (#2534)
     let self = GEPi(bcx, llbox, ~[0u, abi::box_field_body]);
-    let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(llbox));
+    let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(llbox),
+                       // XXX: is this bogosity?
+                       ast::by_ref);
     let llfty = type_of::type_of_fn_from_ty(ccx, callee_ty);
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));

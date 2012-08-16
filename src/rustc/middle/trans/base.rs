@@ -1984,7 +1984,7 @@ type lval_result = {bcx: block, val: ValueRef, kind: lval_kind};
 enum callee_env {
     null_env,
     is_closure,
-    self_env(ValueRef, ty::t, option<ValueRef>),
+    self_env(ValueRef, ty::t, option<ValueRef>, ast::rmode),
 }
 type lval_maybe_callee = {bcx: block,
                           val: ValueRef,
@@ -2447,7 +2447,9 @@ fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
     }
 }
 
-fn cast_self(cx: block, slf: val_self_pair) -> ValueRef {
+// This shouldn't exist. We should cast self *once*, but right now this
+// conflicts with default methods.
+fn cast_self(cx: block, slf: val_self_data) -> ValueRef {
     PointerCast(cx, slf.v, T_ptr(type_of(cx.ccx(), slf.t)))
 }
 
@@ -3201,7 +3203,7 @@ fn trans_call_inner(
           null_env => {
             llvm::LLVMGetUndef(T_opaque_box_ptr(ccx))
           }
-          self_env(e, _, _) => {
+          self_env(e, _, _, _) => {
             PointerCast(bcx, e, T_opaque_box_ptr(ccx))
           }
           is_closure => {
@@ -3224,6 +3226,13 @@ fn trans_call_inner(
         let mut llargs = args_res.args;
 
         let llretslot = args_res.retslot;
+
+        // Now that the arguments have finished evaluating, we need to revoke
+        // the cleanup for the self argument, if it exists
+        match f_res.env {
+          self_env(e, _, _, ast::by_copy) => revoke_clean(bcx, e),
+          _ => (),
+        }
 
         /* If the block is terminated,
         then one or more of the args has
@@ -4635,7 +4644,10 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
     let mut arg_n = first_real_arg;
     match ty_self {
       impl_self(tt) => {
-        cx.llself = some({v: cx.llenv, t: tt});
+        cx.llself = some({v: cx.llenv, t: tt, is_owned: false});
+      }
+      impl_owned_self(tt) => {
+        cx.llself = some({v: cx.llenv, t: tt, is_owned: true});
       }
       no_self => ()
     }
@@ -4662,6 +4674,21 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: ~[ast::arg],
         tcx.sess.bug(~"someone forgot\
                 to document an invariant in copy_args_to_allocas!");
     };
+
+    match fcx.llself {
+      some(copy slf) => {
+        // We really should do this regardless of whether self is owned,
+        // but it doesn't work right with default method impls yet.
+        if slf.is_owned {
+            let self_val = PointerCast(bcx, slf.v,
+                                       T_ptr(type_of(bcx.ccx(), slf.t)));
+            fcx.llself = some({v: self_val with slf});
+            add_clean(bcx, self_val, slf.t);
+        }
+      }
+      _ => {}
+    }
+
     for vec::each(arg_tys) |arg| {
         let id = args[arg_n].id;
         let argval = match fcx.llargs.get(id) {
@@ -4705,7 +4732,7 @@ fn tie_up_header_blocks(fcx: fn_ctxt, lltop: BasicBlockRef) {
     Br(raw_block(fcx, false, fcx.llloadenv), lltop);
 }
 
-enum self_arg { impl_self(ty::t), no_self, }
+enum self_arg { impl_self(ty::t), impl_owned_self(ty::t), no_self, }
 
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
@@ -4897,7 +4924,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   }
 
   // note we don't want to take *or* drop self.
-  fcx.llself = some({v: selfptr, t: rslt_ty});
+  fcx.llself = some({v: selfptr, t: rslt_ty, is_owned: false});
 
   // Translate the body of the ctor
   bcx = trans_block(bcx_top, body, ignore);

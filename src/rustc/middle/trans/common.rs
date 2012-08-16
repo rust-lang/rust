@@ -141,7 +141,7 @@ type crate_ctxt = {
      mut do_not_commit_warning_issued: bool};
 
 // Types used for llself.
-type val_self_pair = {v: ValueRef, t: ty::t};
+type val_self_data = {v: ValueRef, t: ty::t, is_owned: bool};
 
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
 
@@ -177,7 +177,7 @@ type fn_ctxt = @{
     mut llreturn: BasicBlockRef,
     // The 'self' value currently in use in this function, if there
     // is one.
-    mut llself: option<val_self_pair>,
+    mut llself: option<val_self_data>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
     mut personality: option<ValueRef>,
