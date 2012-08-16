@@ -29,17 +29,28 @@ it, and pressing `C-j`:
 Rust mode will automatically be associated with .rs and .rc files. To
 enable it explicitly, do `M-x rust-mode`.
 
-### package.el installation via Marmalade
+### package.el installation via Marmalade or MELPA
 
 It can be more convenient to use Emacs's package manager to handle
 installation for you if you use many elisp libraries. If you have
-package.el but haven't added Marmalade, the community package source,
+package.el but haven't added Marmalade or MELPA, the community package source,
 yet, add this to ~/.emacs.d/init.el:
+
+Using Marmalade:
 
 ```lisp
 (require 'package)
 (add-to-list 'package-archives
              '("marmalade" . "http://marmalade-repo.org/packages/"))
+(package-initialize)
+```
+
+Using MELPA:
+
+```lisp
+(require 'package)
+(add-to-list 'package-archives
+             '("melpa" . "http://melpa.milkbox.net/packages/") t)
 (package-initialize)
 ```
 
@@ -55,18 +66,6 @@ If you have an older ELPA package.el installed from tromey.com, you
 should upgrade in order to support installation from multiple sources.
 The ELPA archive is deprecated and no longer accepting new packages,
 so the version there (1.7.1) is very outdated.
-
-From there you can install rust-mode or any other modes by choosing
-them from a list:
-
-* <kbd>M-x package-list-packages</kbd>
-
-Now, to install packages, move your cursor to them and press i. This
-will mark the packages for installation. When you're done with
-marking, press x, and ELPA will install the packages for you (under
-~/.emacs.d/elpa/).
-
-* or using <kbd>M-x package-install rust-mode
 
 #### Important
 
@@ -85,3 +84,17 @@ your init file or if you are a melpa user install the `melpa` package.
   "initialize the package after compilation"
   (package-initialize))
 ```
+
+#### Install rust-mode
+
+From there you can install rust-mode or any other modes by choosing
+them from a list:
+
+* <kbd>M-x package-list-packages</kbd>
+
+Now, to install packages, move your cursor to them and press i. This
+will mark the packages for installation. When you're done with
+marking, press x, and ELPA will install the packages for you (under
+~/.emacs.d/elpa/).
+
+* or using <kbd>M-x package-install rust-mode
