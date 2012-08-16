@@ -1,4 +1,4 @@
-class kitten {
+struct kitten {
     let cat: option<cat>;
     new(cat: option<cat>) {
        self.cat = cat;

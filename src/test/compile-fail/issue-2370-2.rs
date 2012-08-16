@@ -1,5 +1,5 @@
 // error-pattern: type cat cannot be dereferenced
-class cat { new() {} }
+struct cat { new() {} }
 
 fn main() {
   let kitty : cat = cat();

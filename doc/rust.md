@@ -211,7 +211,7 @@ The keywords in [source files](#source-files) are the following strings:
 ~~~~~~~~ {.keyword}
 again assert
 break
-check class const copy
+check const copy
 drop
 else enum export extern
 fail false fn for
@@ -220,6 +220,7 @@ let log loop
 match mod mut
 pure
 return
+struct
 true trait type
 unchecked unsafe
 while
@@ -1097,151 +1098,6 @@ enum list<T> {
 let a: list<int> = cons(7, @cons(13, @nil));
 ~~~~
 
-### Classes
-
-A _class_ is a named record type that collects together fields and
-methods. It must have a _constructor_ (a function called `new` that
-returns a new instance of the class), and may have a destructor (a
-nullary function called `drop` that executes before the memory manager
-frees the memory for a given class). For historical reasons, we may
-call a class with a destructor and a single field a "resource".
-
-A _class item_ declares a class type:
-
-~~~~
-class file_descriptor {
-    let fd: libc::c_int;
-    new(fd: libc::c_int) { self.fd = fd; }
-    drop { libc::close(self.fd); }
-}
-~~~~
-
-Calling the `file_descriptor` constructor function on an integer will
-produce a value with the `file_descriptor` type.
-
-_Fields_ are immutable by default, so instances of `file_descriptor`
-can't have their `fd` fields reassigned. A mutable field declaration
-looks like:
-
-~~~~
-    let mut fd: libc::c_int;
-~~~~
-
-The only exception is that the body of the class constructor begins
-with all the class's fields uninitialized, and is allowed to -- in
-fact, must -- initialize all the fields. The compiler enforces this
-invariant.
-
-Usually, the class constructor stores its argument or arguments in the
-class's named fields. In this case, the `file_descriptor`'s data field
-would be accessed like `f.fd`, if `f` is a value of type
-`file_descriptor`. By default, class fields are _public_: they can be
-accessed both from methods inside the class, and code outside the
-class. Classes can also have private fields:
-
-~~~~
-class file_descriptor {
-    let fd: *libc::FILE;
-    new(fd: *libc::FILE) {
-      self.fd = fd; self.name = none;
-    }
-    priv {
-      let mut name: option<~str>;
-    }
-    fn get_name() -> ~str {
-      match self.name {
-         none    => fail ~"File has no name!",
-         some(n) => n
-      }
-    }
-}
-~~~~
-
-Private fields are instance-private: methods in a class `C` can access
-`self`'s private fields, but not private fields of other values of
-type `C`. Code outside a class can't access any private fields.
-
-A class item may contain _methods_, which take an implicit `self`
-argument:
-
-~~~~
-class file_descriptor {
-    let fd: *libc::FILE;
-    new(fd: *libc::FILE) { self.fd = fd; }
-    fn flush() {
-       libc::fflush(self.fd);
-    }
-}
-~~~~
-
-In this case, ```open``` is a nullary method that calls the
-```fopen``` function, defined in another library, on the ```fd```
-field. As in this example, methods must refer to their self's fields
-as fields of ```self```; bare references to ```fd``` can't
-occur. Methods can be public or private; just like fields, they are
-public by default and private if enclosed in a `priv` section.
-
-Classes may be polymorphic:
-
-~~~~
-class file<A: copy> {
-  let data: A;
-  let fd: *libc::FILE;
-  new(data: A, fd: *libc::FILE) { self.data = data; self.fd = fd; }
-}
-~~~~
-
-Methods may also be polymorphic, and can have additional type
-parameters other than those bound in the class:
-
-~~~~
-class file<A: copy> {
-  let data: A;
-  let fd: *libc::FILE;
-  new(fd: *libc::FILE, data: A) { self.fd = fd; self.data = data; }
-  fn map_data<B>(f: fn(A) -> B) -> B {
-     f(self.data)
-  }
-}
-~~~~
-
-Classes do not support inheritance, except through traits. As a
-result, all class method dispatch is static (non-virtual).
-
-A class may implement a trait (see [traits](#traits)):
-
-~~~~
-trait to_str {
-  fn to_str() -> ~str;
-}
-
-class file : to_str {
-  let fd: *libc::FILE;
-  new(fd: *libc::FILE) { self.fd = fd; }
-  fn to_str() -> ~str { ~"a file" }
-}
-~~~~
-
-The syntax `class file: to_str` is pronounced "class `file`
-implements trait `to_str`".
-
-Class instances may be allocated on the stack, in the exchange heap,
-or on the task heap. A value with a class type ```C``` has a
-noncopyable [type kind](#type-kinds) if ```C``` has a destructor, and
-thus may not be copied. Class types that don't have destructors may be
-copied if all their fields are copyable.
-
-The semantics guarantee that for each constructed resource value, the
-destructor will run once: when the value is disposed of (barring
-drastic program termination that somehow prevents unwinding from
-taking place). For stack-allocated values, disposal happens when the
-value goes out of scope. For values in shared boxes, it happens when
-the reference count of the box reaches zero.
-
-The order of fields in a class instance is significant; its runtime
-representation is the same as that of a record with identical fields
-laid out in the same order.
-
 ### Traits
 
 A _trait item_ describes a set of method types. [_implementation
@@ -1348,7 +1204,7 @@ trait.  The methods in such an implementation can only be used
 statically (as direct calls on the values of the type that the
 implementation targets). In such an implementation, the `of` clause is
 not given, and the name is mandatory.  Such implementations are
-limited to nominal types (enums, classes) and the implementation must
+limited to nominal types (enums, structs) and the implementation must
 appear in the same module or a sub-module as the receiver type.
 
 _When_ a trait is specified, all methods declared as part of the
@@ -2744,9 +2600,9 @@ fn main() {
 In this example, the trait `printable` occurs as a type in both the type signature of
 `print`, and the cast expression in `main`.
 
-### Class types
+### Struct types
 
-Every class item defines a type. See [classes](#classes).
+Every struct item defines a type.
 
 ### Type parameters
 
@@ -2766,7 +2622,7 @@ type `~[B]`, a vector type with element type `B`.
 
 ### Self type
 
-The special type `self` has a meaning within methods inside a class or
+The special type `self` has a meaning within methods inside an
 impl item. It refers to the type of the implicit `self` argument. For
 example, in:
 
@@ -2781,19 +2637,7 @@ impl ~str: printable {
 ~~~~~~
 
 `self` refers to the value of type `str` that is the receiver for a
-call to the method `to_str`. Similarly, in a class declaration:
-
-~~~~~~
-class cat {
-  let mut meows: uint;
-  new() { self.meows = 0; }
-  fn meow() { self.meows = self.meows + 1; }
-}
-~~~~~~
-
-`self` refers to the class instance that is the receiver of the method
-(except in the constructor `new`, where `self` is the class instance
-that the constructor implicitly returns).
+call to the method `to_str`.
 
 ## Type kinds
 

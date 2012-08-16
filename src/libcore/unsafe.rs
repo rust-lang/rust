@@ -74,7 +74,7 @@ type ArcData<T> = {
     data: T
 };
 
-class ArcDestruct<T> {
+struct ArcDestruct<T> {
    let data: *libc::c_void;
    new(data: *libc::c_void) { self.data = data; }
    drop unsafe {
@@ -162,7 +162,7 @@ extern mod rustrt {
     fn rust_unlock_little_lock(lock: rust_little_lock);
 }
 
-class LittleLock {
+struct LittleLock {
     let l: rust_little_lock;
     new() {
         self.l = rustrt::rust_create_little_lock();
@@ -173,7 +173,7 @@ class LittleLock {
 impl LittleLock {
     #[inline(always)]
     unsafe fn lock<T>(f: fn() -> T) -> T {
-        class Unlock {
+        struct Unlock {
             let l: rust_little_lock;
             new(l: rust_little_lock) { self.l = l; }
             drop { rustrt::rust_unlock_little_lock(self.l); }

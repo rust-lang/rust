@@ -33,7 +33,7 @@ fn replace<T>(dest: &mut T, +src: T) -> T {
 }
 
 /// A non-copyable dummy type.
-class NonCopyable {
+struct NonCopyable {
     i: ();
     new() { self.i = (); }
     drop { }

@@ -1,7 +1,7 @@
 // Resources can't be copied, but storing into data structures counts
 // as a move unless the stored thing is used afterwards.
 
-class r {
+struct r {
   let i: @mut int;
   new(i: @mut int) {
     self.i = i;

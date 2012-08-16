@@ -578,7 +578,7 @@ fn get_task() -> Task {
  * ~~~
  */
 unsafe fn unkillable<U>(f: fn() -> U) -> U {
-    class AllowFailure {
+    struct AllowFailure {
         let t: *rust_task;
         new(t: *rust_task) { self.t = t; }
         drop { rustrt::rust_task_allow_kill(self.t); }
@@ -592,7 +592,7 @@ unsafe fn unkillable<U>(f: fn() -> U) -> U {
 
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 unsafe fn rekillable<U>(f: fn() -> U) -> U {
-    class DisallowFailure {
+    struct DisallowFailure {
         let t: *rust_task;
         new(t: *rust_task) { self.t = t; }
         drop { rustrt::rust_task_inhibit_kill(self.t); }
@@ -609,7 +609,7 @@ unsafe fn rekillable<U>(f: fn() -> U) -> U {
  * For use with exclusive ARCs, which use pthread mutexes directly.
  */
 unsafe fn atomically<U>(f: fn() -> U) -> U {
-    class DeferInterrupts {
+    struct DeferInterrupts {
         let t: *rust_task;
         new(t: *rust_task) { self.t = t; }
         drop {
@@ -911,7 +911,7 @@ fn each_ancestor(list:        &mut AncestorList,
 }
 
 // One of these per task.
-class Tcb {
+struct Tcb {
     let me:            *rust_task;
     // List of tasks with whose fates this one's is intertwined.
     let tasks:         TaskGroupArc; // 'none' means the group has failed.
@@ -952,7 +952,7 @@ class Tcb {
     }
 }
 
-class AutoNotify {
+struct AutoNotify {
     let notify_chan: comm::Chan<Notification>;
     let mut failed:  bool;
     new(chan: comm::Chan<Notification>) {

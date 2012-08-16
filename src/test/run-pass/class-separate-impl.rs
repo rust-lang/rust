@@ -2,7 +2,7 @@
 import to_str::*;
 import to_str::ToStr;
 
-class cat {
+struct cat {
   priv {
     let mut meows : uint;
     fn meow() {

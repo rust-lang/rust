@@ -1,4 +1,4 @@
-class socket {
+struct socket {
     let sock: int;
 
     new() { self.sock = 1; }

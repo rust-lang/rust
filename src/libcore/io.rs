@@ -237,7 +237,7 @@ impl<T: Reader, C> {base: T, cleanup: C}: Reader {
     fn tell() -> uint { self.base.tell() }
 }
 
-class FILERes {
+struct FILERes {
     let f: *libc::FILE;
     new(f: *libc::FILE) { self.f = f; }
     drop { libc::fclose(self.f); }
@@ -415,7 +415,7 @@ impl fd_t: Writer {
     }
 }
 
-class FdRes {
+struct FdRes {
     let fd: fd_t;
     new(fd: fd_t) { self.fd = fd; }
     drop { libc::close(self.fd); }
@@ -764,7 +764,7 @@ mod fsync {
 
 
     // Artifacts that need to fsync on destruction
-    class Res<t> {
+    struct Res<t> {
         let arg: Arg<t>;
         new(-arg: Arg<t>) { self.arg <- arg; }
         drop {

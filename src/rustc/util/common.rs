@@ -14,7 +14,7 @@ fn indent<R>(op: fn() -> R) -> R {
     return r;
 }
 
-class _indenter {
+struct _indenter {
     let _i: ();
     new(_i: ()) { self._i = (); }
     drop { debug!{"<<"}; }

@@ -180,7 +180,7 @@ pure fn maybe_append(+lhs: ~[attribute], rhs: option<~[attribute]>)
 
 /* ident is handled by common.rs */
 
-class parser {
+struct parser {
     let sess: parse_sess;
     let cfg: crate_cfg;
     let file_type: file_type;
@@ -3201,8 +3201,7 @@ class parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed &&
-                (self.eat_keyword(~"class") || self.eat_keyword(~"struct")) {
+        } else if items_allowed && self.eat_keyword(~"struct") {
             let (ident, item_, extra_attrs) = self.parse_item_class();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,

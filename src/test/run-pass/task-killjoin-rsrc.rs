@@ -6,7 +6,7 @@
 use std;
 import task;
 
-class notify {
+struct notify {
     let ch: comm::Chan<bool>; let v: @mut bool;
     new(ch: comm::Chan<bool>, v: @mut bool) { self.ch = ch; self.v = v; }
     drop {

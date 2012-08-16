@@ -1,4 +1,4 @@
-class cat : int { //~ ERROR trait
+struct cat : int { //~ ERROR trait
   let meows: uint;
   new(in_x : uint) { self.meows = in_x; }
 }

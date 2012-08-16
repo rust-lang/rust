@@ -97,7 +97,7 @@ fn listen<T: send, U>(f: fn(Chan<T>) -> U) -> U {
     f(po.chan())
 }
 
-class PortPtr<T:send> {
+struct PortPtr<T:send> {
   let po: *rust_port;
   new(po: *rust_port) { self.po = po; }
   drop unsafe {
@@ -132,7 +132,7 @@ class PortPtr<T:send> {
  */
 fn as_raw_port<T: send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
 
-    class PortRef {
+    struct PortRef {
        let p: *rust_port;
        new(p: *rust_port) { self.p = p; }
        drop {

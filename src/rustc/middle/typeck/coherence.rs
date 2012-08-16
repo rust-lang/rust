@@ -118,7 +118,7 @@ fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
     }
 }
 
-class CoherenceInfo {
+struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
     let inherent_methods: hashmap<def_id,@DVec<@Impl>>;
@@ -133,7 +133,7 @@ class CoherenceInfo {
     }
 }
 
-class CoherenceChecker {
+struct CoherenceChecker {
     let crate_context: @crate_ctxt;
     let inference_context: infer_ctxt;
 

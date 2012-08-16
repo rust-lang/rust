@@ -1,7 +1,7 @@
 // Test that a class with an unsendable field can't be
 // sent
 
-class foo {
+struct foo {
   let i: int;
   let j: @~str;
   new(i:int, j: @~str) { self.i = i; self.j = j; }

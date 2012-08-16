@@ -38,7 +38,7 @@ extern mod rustrt {
  * underlying libuv data structures when it goes out of scope. This is the
  * data structure that is used for read/write operations over a TCP stream.
  */
-class tcp_socket {
+struct tcp_socket {
   let socket_data: @tcp_socket_data;
   new(socket_data: @tcp_socket_data) { self.socket_data = socket_data; }
   drop {
@@ -54,7 +54,7 @@ class tcp_socket {
  * It is created with a call to `net::tcp::socket_buf()` and has impls that
  * satisfy both the `io::reader` and `io::writer` traits.
  */
-class tcp_socket_buf {
+struct tcp_socket_buf {
   let data: @tcp_buffered_socket_data;
   new(data: @tcp_buffered_socket_data) { self.data = data; }
 }

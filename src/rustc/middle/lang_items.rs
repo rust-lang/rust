@@ -22,7 +22,7 @@ import syntax::visit::{visit_crate, visit_item};
 import std::map::{hashmap, str_hash};
 import str_eq = str::eq;
 
-class LanguageItems {
+struct LanguageItems {
     let mut const_trait: option<def_id>;
     let mut copy_trait: option<def_id>;
     let mut send_trait: option<def_id>;
@@ -62,7 +62,7 @@ class LanguageItems {
     }
 }
 
-class LanguageItemCollector {
+struct LanguageItemCollector {
     let items: &LanguageItems;
 
     let crate: @crate;

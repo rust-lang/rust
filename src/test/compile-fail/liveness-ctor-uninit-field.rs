@@ -1,4 +1,4 @@
-class cat {
+struct cat {
   let mut a: int;
   let mut b: int;
   let mut c: int;

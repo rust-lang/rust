@@ -104,7 +104,7 @@ fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
     io::println(fmt!{"%s\t%?", word, count});
 }
 
-class box<T> {
+struct box<T> {
     let mut contents: option<T>;
     new(+x: T) { self.contents = some(x); }
 
@@ -350,7 +350,7 @@ fn is_word_char(c: char) -> bool {
     char::is_alphabetic(c) || char::is_digit(c) || c == '_'
 }
 
-class random_word_reader: word_reader {
+struct random_word_reader: word_reader {
     let mut remaining: uint;
     let rng: rand::Rng;
     new(count: uint) {

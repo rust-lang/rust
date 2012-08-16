@@ -1,5 +1,5 @@
 fn main() {
-    class foo {
+    struct foo {
       let _x: comm::Port<()>;
       new(x: comm::Port<()>) { self._x = x; }
       drop {}

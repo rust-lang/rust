@@ -1,6 +1,6 @@
 // error-pattern:whatever
 
-class r {
+struct r {
   let x:int;
             // Setting the exit status after the runtime has already
             // failed has no effect and the process exits with the

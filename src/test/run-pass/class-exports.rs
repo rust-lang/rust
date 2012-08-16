@@ -5,7 +5,7 @@ import kitty::*;
 
 mod kitty {
   export cat;
-  class cat {
+  struct cat {
     let meows: uint;
     let name: ~str;
 

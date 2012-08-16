@@ -1,4 +1,4 @@
-class cat {
+struct cat {
   let name: ~str;
   #[cat_maker]
   /**

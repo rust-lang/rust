@@ -8,7 +8,7 @@ type u = {
     c: *int
 };
 
-class r {
+struct r {
   let v: u;
   let w: int;
   let x: *int;

@@ -1,4 +1,4 @@
-class cat {
+struct cat {
   let done : extern fn(uint);
   let meows : uint;
   new(done: extern fn(uint)) {

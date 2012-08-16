@@ -194,7 +194,7 @@ unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     let _unweaken = Unweaken(ch);
     f(po);
 
-    class Unweaken {
+    struct Unweaken {
       let ch: comm::Chan<()>;
       new(ch: comm::Chan<()>) { self.ch = ch; }
       drop unsafe {

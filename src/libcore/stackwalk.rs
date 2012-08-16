@@ -6,7 +6,7 @@ import sys::size_of;
 
 type Word = uint;
 
-class Frame {
+struct Frame {
     let fp: *Word;
 
     new(fp: *Word) {

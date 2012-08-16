@@ -3,7 +3,7 @@ use std;
 import task;
 import comm;
 
-class complainer {
+struct complainer {
   let c: comm::Chan<bool>;
   new(c: comm::Chan<bool>) {
     error!{"Hello!"};

@@ -1,4 +1,4 @@
-class example {
+struct example {
     let x: int;
     new() {
         self.x = 1;

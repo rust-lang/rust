@@ -133,7 +133,7 @@ mod pipes {
         }
     }
 
-    class send_packet<T: send> {
+    struct send_packet<T: send> {
         let mut p: option<*packet<T>>;
         new(p: *packet<T>) { self.p = some(p); }
         drop {
@@ -150,7 +150,7 @@ mod pipes {
         }
     }
 
-    class recv_packet<T: send> {
+    struct recv_packet<T: send> {
         let mut p: option<*packet<T>>;
         new(p: *packet<T>) { self.p = some(p); }
         drop {
