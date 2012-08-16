@@ -429,7 +429,7 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     }
     // Check that there's at least one field
     if struct_def.fields.len() < 1u {
-        ccx.tcx.sess.span_err(span, ~"a class must have at least one field");
+        ccx.tcx.sess.span_err(span, ~"a struct must have at least one field");
     }
     // Check that the class is instantiable
     check_instantiable(ccx.tcx, span, id);
