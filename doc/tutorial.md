@@ -3002,8 +3002,8 @@ Here is the code for the parent task:
 
 let (from_child, to_child) = DuplexStream();
 
-do spawn |to_child| {
-    stringifier();
+do spawn || {
+    stringifier(to_child);
 };
 
 from_child.send(22u);
