@@ -797,6 +797,8 @@ rust_dbg_call(dbg_callback cb, void *data) {
     return cb(data);
 }
 
+extern "C" CDECL void rust_dbg_do_nothing() { }
+
 extern "C" CDECL void
 rust_dbg_breakpoint() {
     BREAKPOINT_AWESOME;
