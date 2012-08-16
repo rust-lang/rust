@@ -53,10 +53,11 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound,
              ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq,
              ty_vec, ty_fixed_length, tuple_variant_kind, unchecked_blk, uniq,
-             unsafe_blk, unsafe_fn, variant, view_item, view_item_,
-             view_item_export, view_item_import, view_item_use, view_path,
-             view_path_glob, view_path_list, view_path_simple, visibility,
-             vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
+             unnamed_field, unsafe_blk, unsafe_fn, variant, view_item,
+             view_item_, view_item_export, view_item_import, view_item_use,
+             view_path, view_path_glob, view_path_list, view_path_simple,
+             visibility, vstore, vstore_box, vstore_fixed, vstore_slice,
+             vstore_uniq};
 
 export file_type;
 export parser;
@@ -2563,53 +2564,81 @@ class parser {
         let traits : ~[@trait_ref] = if self.eat(token::COLON)
             { self.parse_trait_ref_list(token::LBRACE) }
         else { ~[] };
-        self.expect(token::LBRACE);
-        let mut fields: ~[@struct_field] = ~[];
+
+        let mut fields: ~[@struct_field];
         let mut methods: ~[@method] = ~[];
+        let mut the_ctor: option<(fn_decl, ~[attribute], blk, codemap::span)>
+            = none;
+        let mut the_dtor: option<(blk, ~[attribute], codemap::span)> = none;
         let ctor_id = self.get_id();
-        let mut the_ctor : option<(fn_decl, ~[attribute], blk,
-                                   codemap::span)> = none;
-        let mut the_dtor : option<(blk, ~[attribute], codemap::span)> = none;
-        while self.token != token::RBRACE {
-            match self.parse_class_item(class_path) {
-              ctor_decl(a_fn_decl, attrs, blk, s) => {
-                  match the_ctor {
-                    some((_, _, _, s_first)) => {
-                      self.span_note(s, #fmt("Duplicate constructor \
-                                   declaration for class %s", *class_name));
-                       self.span_fatal(copy s_first, ~"First constructor \
-                                                      declared here");
-                    }
-                    none    => {
-                      the_ctor = some((a_fn_decl, attrs, blk, s));
+
+        if self.eat(token::LBRACE) {
+            // It's a record-like struct.
+            fields = ~[];
+            while self.token != token::RBRACE {
+                match self.parse_class_item(class_path) {
+                  ctor_decl(a_fn_decl, attrs, blk, s) => {
+                      match the_ctor {
+                        some((_, _, _, s_first)) => {
+                          self.span_note(s, #fmt("Duplicate constructor \
+                                       declaration for class %s", *class_name));
+                           self.span_fatal(copy s_first, ~"First constructor \
+                                                          declared here");
+                        }
+                        none    => {
+                          the_ctor = some((a_fn_decl, attrs, blk, s));
+                        }
+                      }
+                  }
+                  dtor_decl(blk, attrs, s) => {
+                      match the_dtor {
+                        some((_, _, s_first)) => {
+                          self.span_note(s, #fmt("Duplicate destructor \
+                                        declaration for class %s", *class_name));
+                          self.span_fatal(copy s_first, ~"First destructor \
+                                                          declared here");
+                        }
+                        none => {
+                          the_dtor = some((blk, attrs, s));
+                        }
+                      }
+                  }
+                  members(mms) => {
+                    for mms.each |mm| {
+                        match mm {
+                            @field_member(struct_field) =>
+                                vec::push(fields, struct_field),
+                            @method_member(the_method_member) =>
+                                vec::push(methods, the_method_member)
+                        }
                     }
                   }
-              }
-              dtor_decl(blk, attrs, s) => {
-                  match the_dtor {
-                    some((_, _, s_first)) => {
-                      self.span_note(s, #fmt("Duplicate destructor \
-                                    declaration for class %s", *class_name));
-                      self.span_fatal(copy s_first, ~"First destructor \
-                                                      declared here");
-                    }
-                    none => {
-                      the_dtor = some((blk, attrs, s));
-                    }
-                  }
-              }
-              members(mms) => {
-                for mms.each |mm| {
-                    match mm {
-                        @field_member(struct_field) =>
-                            vec::push(fields, struct_field),
-                        @method_member(the_method_member) =>
-                            vec::push(methods, the_method_member)
-                    }
                 }
-              }
             }
+            self.bump();
+        } else if self.token == token::LPAREN {
+            // It's a tuple-like struct.
+            fields = do self.parse_unspanned_seq(token::LPAREN, token::RPAREN,
+                                                 seq_sep_trailing_allowed
+                                                    (token::COMMA)) |p| {
+                let lo = p.span.lo;
+                let struct_field_ = {
+                    kind: unnamed_field,
+                    id: self.get_id(),
+                    ty: p.parse_ty(false)
+                };
+                @spanned(lo, p.span.hi, struct_field_)
+            };
+            self.expect(token::SEMI);
+        } else if self.eat(token::SEMI) {
+            // It's a unit-like struct.
+            fields = ~[];
+        } else {
+            self.fatal(fmt!("expected `{`, `(`, or `;` after struct name \
+                             but found `%s`",
+                            token_to_str(self.reader, self.token)));
         }
+
         let actual_dtor = do option::map(the_dtor) |dtor| {
             let (d_body, d_attrs, d_s) = dtor;
             {node: {id: self.get_id(),
@@ -2617,7 +2646,6 @@ class parser {
                     self_id: self.get_id(),
                     body: d_body},
              span: d_s}};
-        self.bump();
         match the_ctor {
           some((ct_d, ct_attrs, ct_b, ct_s)) => {
             (class_name,
