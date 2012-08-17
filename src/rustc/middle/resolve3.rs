@@ -1,6 +1,5 @@
 import driver::session::session;
-import metadata::csearch::{each_path};
-import metadata::csearch::{get_method_names_if_trait, lookup_defs};
+import metadata::csearch::{each_path, get_method_names_if_trait};
 import metadata::cstore::find_use_stmt_cnum;
 import metadata::decoder::{def_like, dl_def, dl_field, dl_impl};
 import middle::lang_items::LanguageItems;
