@@ -74,7 +74,7 @@ Here's a parallel game of rock, paper, scissors to whet your appetite.
 ~~~~
 use std;
 
-import comm::listen;
+import pipes::PortSet;
 import task::spawn;
 import iter::repeat;
 import rand::{seeded_rng, seed};
@@ -83,25 +83,24 @@ import io::println;
 
 fn main() {
     // Open a channel to receive game results
-    do listen |result_from_game| {
+    let result_from_game = PortSet();
+    let times = 10;
+    let player1 = ~"graydon";
+    let player2 = ~"patrick";
 
-        let times = 10;
-        let player1 = ~"graydon";
-        let player2 = ~"patrick";
-
-        for repeat(times) {
-            // Start another task to play the game
-            do spawn |copy player1, copy player2| {
-                let outcome = play_game(player1, player2);
-                result_from_game.send(outcome);
-            }
+    for repeat(times) {
+        // Start another task to play the game
+        let result = result_from_game.chan();
+        do spawn |copy player1, copy player2| {
+            let outcome = play_game(player1, player2);
+            result.send(outcome);
         }
+    }
 
-        // Report the results as the games complete
-        for range(0, times) |round| {
-            let winner = result_from_game.recv();
-            println(#fmt("%s wins round #%u", winner, round));
-        }
+    // Report the results as the games complete
+    for range(0, times) |round| {
+        let winner = result_from_game.recv();
+        println(#fmt("%s wins round #%u", winner, round));
     }
 
     fn play_game(player1: ~str, player2: ~str) -> ~str {

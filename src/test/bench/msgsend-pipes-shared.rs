@@ -14,7 +14,7 @@ use std;
 import io::Writer;
 import io::WriterUtil;
 
-import pipes::{port, chan, shared_chan};
+import pipes::{port, chan, SharedChan};
 
 macro_rules! move_out {
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
@@ -48,7 +48,7 @@ fn run(args: &[~str]) {
     let (to_parent, from_child) = pipes::stream();
     let (to_child, from_parent) = pipes::stream();
 
-    let to_child = shared_chan(to_child);
+    let to_child = SharedChan(to_child);
 
     let size = option::get(uint::from_str(args[1]));
     let workers = option::get(uint::from_str(args[2]));

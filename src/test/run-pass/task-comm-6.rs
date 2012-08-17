@@ -9,7 +9,7 @@ fn main() { test00(); }
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = pipes::port_set();
+    let p = pipes::PortSet();
     let c0 = p.chan();
     let c1 = p.chan();
     let c2 = p.chan();
