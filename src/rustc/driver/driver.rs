@@ -177,7 +177,6 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     let { def_map: def_map,
           exp_map: exp_map,
           exp_map2: exp_map2,
-          impl_map: impl_map,
           trait_map: trait_map } =
         time(time_passes, ~"resolution", ||
              middle::resolve3::resolve_crate(sess, lang_items, crate));
@@ -232,9 +231,10 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     if upto == cu_no_trans { return {crate: crate, tcx: some(ty_cx)}; }
     let outputs = option::get(outputs);
 
-    let maps = {mutbl_map: mutbl_map, root_map: root_map,
+    let maps = {mutbl_map: mutbl_map,
+                root_map: root_map,
                 last_use_map: last_use_map,
-                impl_map: impl_map, method_map: method_map,
+                method_map: method_map,
                 vtable_map: vtable_map};
 
     let (llmod, link_meta) = time(time_passes, ~"translation", ||

@@ -84,9 +84,6 @@ type MethodInfo = {
 };
 
 type Impl = { did: def_id, ident: ident, methods: ~[@MethodInfo] };
-type ImplScope = @~[@Impl];
-type ImplScopes = @list<ImplScope>;
-type ImplMap = hashmap<node_id,ImplScopes>;
 
 // Trait method resolution
 type TraitMap = @hashmap<node_id,@DVec<def_id>>;
@@ -452,9 +449,6 @@ struct Module {
     // The index of the import we're resolving.
     let mut resolved_import_count: uint;
 
-    // The list of implementation scopes, rooted from this module.
-    let mut impl_scopes: ImplScopes;
-
     new(parent_link: ParentLink, def_id: option<def_id>) {
         self.parent_link = parent_link;
         self.def_id = def_id;
@@ -469,8 +463,6 @@ struct Module {
         self.import_resolutions = atom_hashmap();
         self.glob_count = 0u;
         self.resolved_import_count = 0u;
-
-        self.impl_scopes = @nil;
     }
 
     fn all_imports_resolved() -> bool {
@@ -708,7 +700,6 @@ struct Resolver {
     let namespaces: ~[Namespace];
 
     let def_map: DefMap;
-    let impl_map: ImplMap;
     let export_map: ExportMap;
     let export_map2: ExportMap2;
     let trait_map: TraitMap;
@@ -749,7 +740,6 @@ struct Resolver {
         self.namespaces = ~[ ModuleNS, TypeNS, ValueNS, ImplNS ];
 
         self.def_map = int_hash();
-        self.impl_map = int_hash();
         self.export_map = int_hash();
         self.export_map2 = int_hash();
         self.trait_map = @int_hash();
@@ -764,9 +754,6 @@ struct Resolver {
         self.session.abort_if_errors();
 
         self.record_exports();
-        self.session.abort_if_errors();
-
-        self.build_impl_scopes();
         self.session.abort_if_errors();
 
         self.resolve_crate();
@@ -2809,106 +2796,6 @@ struct Resolver {
         }
     }
 
-    // Implementation scope creation
-    //
-    // This is a fairly simple pass that simply gathers up all the typeclass
-    // implementations in scope and threads a series of singly-linked series
-    // of impls through the tree.
-
-    fn build_impl_scopes() {
-        let root_module = (*self.graph_root).get_module();
-        self.build_impl_scopes_for_module_subtree(root_module);
-    }
-
-    fn build_impl_scopes_for_module_subtree(module_: @Module) {
-        // If this isn't a local crate, then bail out. We don't need to
-        // resolve implementations for external crates.
-
-        match module_.def_id {
-            some(def_id) if def_id.crate == local_crate => {
-                // OK. Continue.
-            }
-            none => {
-                // Resolve implementation scopes for the root module.
-            }
-            some(_) => {
-                // Bail out.
-                debug!{"(building impl scopes for module subtree) not \
-                        resolving implementations for `%s`",
-                       self.module_to_str(module_)};
-                return;
-            }
-        }
-
-        self.build_impl_scope_for_module(module_);
-
-        for module_.children.each |_atom, child_name_bindings| {
-            match (*child_name_bindings).get_module_if_available() {
-                none => {
-                    // Nothing to do.
-                }
-                some(child_module) => {
-                    self.build_impl_scopes_for_module_subtree(child_module);
-                }
-            }
-        }
-
-        for module_.anonymous_children.each |_node_id, child_module| {
-            self.build_impl_scopes_for_module_subtree(child_module);
-        }
-    }
-
-    fn build_impl_scope_for_module(module_: @Module) {
-        let mut impl_scope = ~[];
-
-        debug!{"(building impl scope for module) processing module %s (%?)",
-               self.module_to_str(module_),
-               copy module_.def_id};
-
-        // Gather up all direct children implementations in the module.
-        for module_.children.each |_impl_name, child_name_bindings| {
-            if child_name_bindings.impl_defs.len() >= 1u {
-                impl_scope += child_name_bindings.impl_defs;
-            }
-        }
-
-        debug!{"(building impl scope for module) found %u impl(s) as direct \
-                children",
-               impl_scope.len()};
-
-        // Gather up all imports.
-        for module_.import_resolutions.each |_impl_name, import_resolution| {
-            for (*import_resolution.impl_target).each |impl_target| {
-                debug!{"(building impl scope for module) found impl def"};
-                impl_scope += impl_target.bindings.impl_defs;
-            }
-        }
-
-        debug!{"(building impl scope for module) found %u impl(s) in total",
-               impl_scope.len()};
-
-        // Determine the parent's implementation scope.
-        let mut parent_impl_scopes;
-        match module_.parent_link {
-            NoParentLink => {
-                parent_impl_scopes = @nil;
-            }
-            ModuleParentLink(parent_module_node, _) |
-            BlockParentLink(parent_module_node, _) => {
-                parent_impl_scopes = parent_module_node.impl_scopes;
-            }
-        }
-
-        // Create the new implementation scope, if it was nonempty, and chain
-        // it up to the parent.
-
-        if impl_scope.len() >= 1u {
-            module_.impl_scopes = @cons(@impl_scope, parent_impl_scopes);
-        } else {
-            module_.impl_scopes = parent_impl_scopes;
-        }
-    }
-
     // AST resolution
     //
     // We maintain a list of value ribs and type ribs.
@@ -3094,11 +2981,6 @@ struct Resolver {
     // XXX: This shouldn't be unsafe!
     fn resolve_crate() unsafe {
         debug!{"(resolving crate) starting"};
-
-        // To avoid a failure in metadata encoding later, we have to add the
-        // crate-level implementation scopes
-
-        self.impl_map.insert(0, (*self.graph_root).get_module().impl_scopes);
 
         // XXX: This is awful!
         let this = ptr::addr_of(self);
@@ -3669,8 +3551,6 @@ struct Resolver {
 
         // Write the implementations in scope into the module metadata.
         debug!{"(resolving module) resolving module ID %d", id};
-        self.impl_map.insert(id, self.current_module.impl_scopes);
-
         visit_mod(module_, span, id, (), visitor);
     }
 
@@ -4385,13 +4265,8 @@ struct Resolver {
     }
 
     fn resolve_expr(expr: @expr, visitor: ResolveVisitor) {
-        // First, write the implementations in scope into a table if the
-        // expression might need them.
-
-        self.record_impls_for_expr_if_necessary(expr);
-
-        // Then record candidate traits for this expression if it could result
-        // in the invocation of a method call.
+        // First, record candidate traits for this expression if it could
+        // result in the invocation of a method call.
 
         self.record_candidate_traits_for_expr_if_necessary(expr);
 
@@ -4502,19 +4377,6 @@ struct Resolver {
 
             _ => {
                 visit_expr(expr, (), visitor);
-            }
-        }
-    }
-
-    fn record_impls_for_expr_if_necessary(expr: @expr) {
-        match expr.node {
-            expr_field(*) | expr_path(*) | expr_cast(*) | expr_binary(*) |
-            expr_unary(*) | expr_assign_op(*) | expr_index(*) => {
-                self.impl_map.insert(expr.id,
-                                     self.current_module.impl_scopes);
-            }
-            _ => {
-                // Nothing to do.
             }
         }
     }
@@ -4855,30 +4717,6 @@ struct Resolver {
                    module_repr, value_repr, type_repr, impl_repr};
         }
     }
-
-    fn dump_impl_scopes(impl_scopes: ImplScopes) {
-        debug!{"Dump of impl scopes:"};
-
-        let mut i = 0u;
-        let mut impl_scopes = impl_scopes;
-        loop {
-            match *impl_scopes {
-                cons(impl_scope, rest_impl_scopes) => {
-                    debug!{"Impl scope %u:", i};
-
-                    for (*impl_scope).each |implementation| {
-                        debug!{"Impl: %s", *implementation.ident};
-                    }
-
-                    i += 1u;
-                    impl_scopes = rest_impl_scopes;
-                }
-                nil => {
-                    break;
-                }
-            }
-        }
-    }
 }
 
 /// Entry point to crate resolution.
@@ -4886,7 +4724,6 @@ fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
               -> { def_map: DefMap,
                    exp_map: ExportMap,
                    exp_map2: ExportMap2,
-                   impl_map: ImplMap,
                    trait_map: TraitMap } {
 
     let resolver = @Resolver(session, lang_items, crate);
@@ -4895,7 +4732,6 @@ fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
         def_map: resolver.def_map,
         exp_map: resolver.export_map,
         exp_map2: resolver.export_map2,
-        impl_map: resolver.impl_map,
         trait_map: resolver.trait_map
     };
 }
