@@ -5648,6 +5648,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         tcx: cx.tcx,
         reachable: cx.reachable,
         reexports: reexports(cx),
+        reexports2: cx.exp_map2,
         impl_map: |a| impl_map(cx, a),
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
@@ -5662,9 +5663,10 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
             for defs.each |def| {
                 if !def.reexp { again; }
                 let path = match check cx.tcx.items.get(exp_id) {
-                  ast_map::node_export(_, path) => {
-                    ast_map::path_to_str(*path)
-                  }
+                    ast_map::node_export(_, path) => {
+
+                        ast_map::path_to_str(*path)
+                    }
                 };
                 vec::push(reexports, (path, def.id));
             }
@@ -5711,10 +5713,15 @@ fn write_abi_version(ccx: @crate_ctxt) {
                      false);
 }
 
-fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
-               output: ~str, emap: resolve3::ExportMap,
+fn trans_crate(sess: session::session,
+               crate: @ast::crate,
+               tcx: ty::ctxt,
+               output: ~str,
+               emap: resolve3::ExportMap,
+               emap2: resolve3::ExportMap2,
                maps: astencode::maps)
-    -> (ModuleRef, link_meta) {
+            -> (ModuleRef, link_meta) {
+
     let symbol_hasher = @hash::default_state();
     let link_meta =
         link::build_link_meta(sess, *crate, output, symbol_hasher);
@@ -5773,6 +5780,7 @@ fn trans_crate(sess: session::session, crate: @ast::crate, tcx: ty::ctxt,
           intrinsics: intrinsics,
           item_vals: int_hash::<ValueRef>(),
           exp_map: emap,
+          exp_map2: emap2,
           reachable: reachable,
           item_symbols: int_hash::<~str>(),
           mut main_fn: none::<ValueRef>,

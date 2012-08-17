@@ -96,6 +96,16 @@ type TraitMap = @hashmap<node_id,@DVec<def_id>>;
 type Export = { reexp: bool, id: def_id };
 type ExportMap = hashmap<node_id, ~[Export]>;
 
+// This is the replacement export map. It maps a module to all of the exports
+// within.
+type ExportMap2 = hashmap<node_id, ~[Export2]>;
+
+struct Export2 {
+    name: ~str;         // The name of the target.
+    def_id: def_id;     // The definition of the target.
+    reexport: bool;     // Whether this is a reexport.
+}
+
 enum PatternBindingMode {
     RefutableMode,
     IrrefutableMode
@@ -701,6 +711,7 @@ struct Resolver {
     let def_map: DefMap;
     let impl_map: ImplMap;
     let export_map: ExportMap;
+    let export_map2: ExportMap2;
     let trait_map: TraitMap;
 
     new(session: session, lang_items: LanguageItems, crate: @crate) {
@@ -741,6 +752,7 @@ struct Resolver {
         self.def_map = int_hash();
         self.impl_map = int_hash();
         self.export_map = int_hash();
+        self.export_map2 = int_hash();
         self.trait_map = @int_hash();
     }
 
@@ -2734,6 +2746,7 @@ struct Resolver {
     }
 
     fn record_exports_for_module(module_: @Module) {
+        let mut exports2 = ~[];
         for module_.exported_names.each |name, node_id| {
             let mut exports = ~[];
             for self.namespaces.each |namespace| {
@@ -2752,21 +2765,48 @@ struct Resolver {
                         // Nothing to do.
                     }
                     ChildNameDefinition(target_def) => {
+                        debug!("(computing exports) found child export '%s' \
+                                for %?",
+                               *self.atom_table.atom_to_str(name),
+                               module_.def_id);
                         vec::push(exports, {
                             reexp: false,
                             id: def_id_of_def(target_def)
                         });
+                        vec::push(exports2, Export2 {
+                            reexport: false,
+                            name: copy *self.atom_table.atom_to_str(name),
+                            def_id: def_id_of_def(target_def)
+                        });
                     }
                     ImportNameDefinition(target_def) => {
+                        debug!("(computing exports) found reexport '%s' for \
+                                %?",
+                               *self.atom_table.atom_to_str(name),
+                               module_.def_id);
                         vec::push(exports, {
                             reexp: true,
                             id: def_id_of_def(target_def)
+                        });
+                        vec::push(exports2, Export2 {
+                            reexport: true,
+                            name: copy *self.atom_table.atom_to_str(name),
+                            def_id: def_id_of_def(target_def)
                         });
                     }
                 }
             }
 
             self.export_map.insert(node_id, exports);
+        }
+
+        match copy module_.def_id {
+            some(def_id) => {
+                self.export_map2.insert(def_id.node, move exports2);
+                debug!("(computing exports) writing exports for %d (some)",
+                       def_id.node);
+            }
+            none => {}
         }
     }
 
@@ -4846,6 +4886,7 @@ struct Resolver {
 fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
               -> { def_map: DefMap,
                    exp_map: ExportMap,
+                   exp_map2: ExportMap2,
                    impl_map: ImplMap,
                    trait_map: TraitMap } {
 
@@ -4854,6 +4895,7 @@ fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
     return {
         def_map: resolver.def_map,
         exp_map: resolver.export_map,
+        exp_map2: resolver.export_map2,
         impl_map: resolver.impl_map,
         trait_map: resolver.trait_map
     };

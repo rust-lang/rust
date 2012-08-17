@@ -127,6 +127,14 @@ fn item_def_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
                                                     |d| parse_def_id(d)));
 }
 
+fn each_reexport(d: ebml::doc, f: fn(ebml::doc) -> bool) {
+    for ebml::tagged_docs(d, tag_items_data_item_reexport) |reexport_doc| {
+        if !f(reexport_doc) {
+            return;
+        }
+    }
+}
+
 fn field_mutability(d: ebml::doc) -> ast::class_mutability {
     // Use maybe_get_doc in case it's a method
     option::map_default(
@@ -426,20 +434,65 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
     // First, go through all the explicit items.
     for ebml::tagged_docs(items_data, tag_items_data_item) |item_doc| {
         if !broken {
-            let name = ast_map::path_to_str_with_sep(item_path(item_doc),
+            let path = ast_map::path_to_str_with_sep(item_path(item_doc),
                                                      ~"::");
-            if name != ~"" {
+            if path != ~"" {
                 // Extract the def ID.
                 let def_id = item_def_id(item_doc, cdata);
 
                 // Construct the def for this item.
-                debug!{"(each_path) yielding explicit item: %s", name};
+                debug!{"(each_path) yielding explicit item: %s", path};
                 let def_like = item_to_def_like(item_doc, def_id, cdata.cnum);
 
                 // Hand the information off to the iteratee.
-                let this_path_entry = path_entry(name, def_like);
+                let this_path_entry = path_entry(path, def_like);
                 if !f(this_path_entry) {
                     broken = true;      // XXX: This is awful.
+                }
+            }
+
+            // If this is a module, find the reexports.
+            for each_reexport(item_doc) |reexport_doc| {
+                if !broken {
+                    let def_id_doc =
+                        ebml::get_doc(reexport_doc,
+                            tag_items_data_item_reexport_def_id);
+                    let def_id =
+                        ebml::with_doc_data(def_id_doc, |d| parse_def_id(d));
+                    let def_id = translate_def_id(cdata, def_id);
+
+                    let reexport_name_doc =
+                        ebml::get_doc(reexport_doc,
+                                      tag_items_data_item_reexport_name);
+                    let reexport_name = ebml::doc_as_str(reexport_name_doc);
+
+                    let reexport_path;
+                    if path == ~"" {
+                        reexport_path = reexport_name;
+                    } else {
+                        reexport_path = path + ~"::" + reexport_name;
+                    }
+
+                    // Get the item.
+                    match maybe_find_item(def_id.node, items) {
+                        none => {}
+                        some(item_doc) => {
+                            // Construct the def for this item.
+                            let def_like = item_to_def_like(item_doc,
+                                                            def_id,
+                                                            cdata.cnum);
+
+                            // Hand the information off to the iteratee.
+                            debug!("(each_path) yielding reexported \
+                                    item: %s", reexport_path);
+
+                            let this_path_entry =
+                                path_entry(reexport_path, def_like);
+                            if (!f(this_path_entry)) {
+                                broken = true;  // XXX: This is awful.
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -448,54 +501,6 @@ fn each_path(cdata: cmd, f: fn(path_entry) -> bool) {
     // If broken, stop here.
     if broken {
         return;
-    }
-
-    // Next, go through all the paths. We will find items that we didn't know
-    // about before (reexports in particular).
-    //
-    // XXX: This is broken; the paths are actually hierarchical.
-
-    let outer_paths = ebml::get_doc(root, tag_paths);
-    let inner_paths = ebml::get_doc(outer_paths, tag_paths);
-
-    fn g(cdata: cmd, items: ebml::doc, path_doc: ebml::doc, &broken: bool,
-         f: fn(path_entry) -> bool) {
-
-        if !broken {
-            let path = item_name(path_doc);
-
-            // Extract the def ID.
-            let def_id = item_def_id(path_doc, cdata);
-
-            // Get the item.
-            match maybe_find_item(def_id.node, items) {
-                none => {
-                    debug!{"(each_path) ignoring implicit item: %s",
-                            *path};
-                }
-                some(item_doc) => {
-                    // Construct the def for this item.
-                    let def_like = item_to_def_like(item_doc, def_id,
-                                                    cdata.cnum);
-
-                    // Hand the information off to the iteratee.
-                    debug!{"(each_path) yielding implicit item: %s",
-                            *path};
-                    let this_path_entry = path_entry(*path, def_like);
-                    if (!f(this_path_entry)) {
-                        broken = true;      // XXX: This is awful.
-                    }
-                }
-            }
-        }
-    }
-
-    for ebml::tagged_docs(inner_paths, tag_paths_data_item) |path_doc| {
-        g(cdata, items, path_doc, broken, f);
-    }
-
-    for ebml::tagged_docs(inner_paths, tag_paths_foreign_path) |path_doc| {
-        g(cdata, items, path_doc, broken, f);
     }
 }
 

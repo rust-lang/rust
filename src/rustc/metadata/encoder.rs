@@ -13,6 +13,7 @@ import syntax::ast_util::*;
 import common::*;
 import middle::ty;
 import middle::ty::node_id_to_type;
+import middle::resolve3;
 import syntax::ast_map;
 import syntax::attr;
 import std::serialization::serializer;
@@ -44,6 +45,7 @@ type encode_parms = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
+    reexports2: middle::resolve3::ExportMap2,
     impl_map: fn@(ast::node_id) -> ~[(ident, def_id)],
     item_symbols: hashmap<ast::node_id, ~str>,
     discrim_symbols: hashmap<ast::node_id, ~str>,
@@ -57,6 +59,7 @@ enum encode_ctxt = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
+    reexports2: middle::resolve3::ExportMap2,
     impl_map: fn@(ast::node_id) -> ~[(ident, def_id)],
     item_symbols: hashmap<ast::node_id, ~str>,
     discrim_symbols: hashmap<ast::node_id, ~str>,
@@ -278,7 +281,7 @@ fn encode_trait_ref(ebml_w: ebml::writer, ecx: @encode_ctxt, t: @trait_ref) {
 }
 
 fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
-    -> ~[entry<~str>] {
+                  -> ~[entry<~str>] {
     let mut index: ~[entry<~str>] = ~[];
     let mut path: ~[ident] = ~[];
     ebml_w.start_tag(tag_paths);
@@ -478,6 +481,31 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     } // for
 
     encode_path(ebml_w, path, ast_map::path_mod(name));
+
+    // Encode the reexports of this module.
+    debug!("(encoding info for module) encoding reexports for %d", id);
+    match ecx.reexports2.find(id) {
+        some(exports) => {
+            debug!("(encoding info for module) found reexports for %d", id);
+            for exports.each |exp| {
+                debug!("(encoding info for module) reexport '%s' for %d",
+                       exp.name, id);
+                ebml_w.start_tag(tag_items_data_item_reexport);
+                ebml_w.start_tag(tag_items_data_item_reexport_def_id);
+                ebml_w.wr_str(def_to_str(exp.def_id));
+                ebml_w.end_tag();
+                ebml_w.start_tag(tag_items_data_item_reexport_name);
+                ebml_w.wr_str(exp.name);
+                ebml_w.end_tag();
+                ebml_w.end_tag();
+            }
+        }
+        none => {
+            debug!("(encoding info for module) found no reexports for %d",
+                   id);
+        }
+    }
+
     ebml_w.end_tag();
 }
 
@@ -1228,6 +1256,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
         tcx: parms.tcx,
         reachable: parms.reachable,
         reexports: parms.reexports,
+        reexports2: parms.reexports2,
         impl_map: parms.impl_map,
         item_symbols: parms.item_symbols,
         discrim_symbols: parms.discrim_symbols,
