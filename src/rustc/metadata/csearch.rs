@@ -50,30 +50,6 @@ fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
     }
 }
 
-/* Returns a vector of possible def IDs for a given path,
-   in a given crate */
-fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
-                path: ~[ast::ident]) ->
-    ~[(ast::crate_num, @~[u8], ast::def_id)] {
-    let cm = cstore::get_crate_data(cstore, cnum);
-    debug!{"resolve_path %s in crates[%d]:%s",
-           ast_util::path_name_i(path), cnum, cm.name};
-    let mut result = ~[];
-    for decoder::resolve_path(path, cm.data).each |def| {
-        if def.crate == ast::local_crate {
-            vec::push(result, (cnum, cm.data, def));
-        } else {
-            if cm.cnum_map.contains_key(def.crate) {
-                // This reexport is itself a reexport from another crate
-                let next_cnum = cm.cnum_map.get(def.crate);
-                let next_cm_data = cstore::get_crate_data(cstore, next_cnum);
-                vec::push(result, (next_cnum, next_cm_data.data, def));
-            }
-        }
-    }
-    return result;
-}
-
 /// Iterates over all the paths in the given crate.
 fn each_path(cstore: cstore::cstore, cnum: ast::crate_num,
              f: fn(decoder::path_entry) -> bool) {
