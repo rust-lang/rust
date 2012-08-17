@@ -176,6 +176,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let { def_map: def_map,
           exp_map: exp_map,
+          exp_map2: exp_map2,
           impl_map: impl_map,
           trait_map: trait_map } =
         time(time_passes, ~"resolution", ||
@@ -238,7 +239,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let (llmod, link_meta) = time(time_passes, ~"translation", ||
         trans::base::trans_crate(sess, crate, ty_cx, outputs.obj_filename,
-                                 exp_map, maps));
+                                 exp_map, exp_map2, maps));
 
     time(time_passes, ~"LLVM passes", ||
         link::write::run_passes(sess, llmod, outputs.obj_filename));

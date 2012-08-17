@@ -100,6 +100,12 @@ const tag_paths_foreign_path: uint = 0x4a;
 const tag_item_trait_method_self_ty: uint = 0x4b;
 const tag_item_trait_method_self_ty_region: uint = 0x4c;
 
+// Reexports are found within module tags. Each reexport contains def_ids
+// and names.
+const tag_items_data_item_reexport: uint = 0x4d;
+const tag_items_data_item_reexport_def_id: uint = 0x4e;
+const tag_items_data_item_reexport_name: uint = 0x4f;
+
 // used to encode crate_ctxt side tables
 enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_ast = 0x50,
@@ -115,15 +121,15 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_node_type = 0x57,
     tag_table_node_type_subst = 0x58,
     tag_table_freevars = 0x59,
-    tag_table_tcache,
-    tag_table_param_bounds,
-    tag_table_inferred_modes,
-    tag_table_mutbl,
-    tag_table_last_use,
-    tag_table_spill,
-    tag_table_method_map,
-    tag_table_vtable_map,
-    tag_table_borrowings
+    tag_table_tcache = 0x5a,
+    tag_table_param_bounds = 0x5b,
+    tag_table_inferred_modes = 0x5c,
+    tag_table_mutbl = 0x5d,
+    tag_table_last_use = 0x5e,
+    tag_table_spill = 0x5f,
+    tag_table_method_map = 0x60,
+    tag_table_vtable_map = 0x61,
+    tag_table_borrowings = 0x62
 }
 
 // djb's cdb hashes.
