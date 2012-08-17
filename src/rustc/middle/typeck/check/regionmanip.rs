@@ -60,9 +60,14 @@ fn replace_bound_regions_in_fn_ty(
 
     // Glue updated self_ty back together with its original def_id.
     let new_self_info = match self_info {
-        some(s) => match check t_self {
-          some(t) => some({self_ty: t with s})
-          // this 'none' case shouldn't happen
+        some(s) => {
+            match t_self {
+                some(t) => some({self_ty: t with s}),
+                none => {
+                    tcx.sess.bug(~"unexpected t_self in \
+                                   replace_bound_regions_in_fn_ty()");
+                }
+            }
         },
         none => none
     };
