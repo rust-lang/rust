@@ -617,7 +617,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
       cbox(s, indent_unit);
       ibox(s, 4);
       word(s.s, ~"new(");
-      print_fn_args(s, ctor.node.dec, ~[]);
+      print_fn_args(s, ctor.node.dec, ~[], none);
       word(s.s, ~")");
       space(s.s);
       print_block(s, ctor.node.body);
@@ -1193,7 +1193,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         // head-box, will be closed by print-block at start
         ibox(s, 0u);
         word(s.s, fn_header_info_to_str(none, decl.purity, some(proto)));
-        print_fn_args_and_ret(s, decl, *cap_clause);
+        print_fn_args_and_ret(s, decl, *cap_clause, none);
         space(s.s);
         print_block(s, body);
       }
@@ -1522,33 +1522,64 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
     s.ann.post(ann_node);
 }
 
+fn print_self_ty(s: ps, self_ty: ast::self_ty_) {
+    match self_ty {
+      ast::sty_static | ast::sty_by_ref => {}
+      ast::sty_value => { word(s.s, ~"self"); }
+      ast::sty_region(m) => {
+        word(s.s, ~"&"); print_mutability(s, m); word(s.s, ~"self");
+      }
+      ast::sty_box(m) => {
+        word(s.s, ~"@"); print_mutability(s, m); word(s.s, ~"self");
+      }
+      ast::sty_uniq(m) => {
+        word(s.s, ~"~"); print_mutability(s, m); word(s.s, ~"self");
+      }
+    }
+}
+
 fn print_fn(s: ps, decl: ast::fn_decl, name: ast::ident,
             typarams: ~[ast::ty_param],
             opt_self_ty: option<ast::self_ty_>) {
     head(s, fn_header_info_to_str(opt_self_ty, decl.purity, none));
     word(s.s, *name);
     print_type_params(s, typarams);
-    print_fn_args_and_ret(s, decl, ~[]);
+    print_fn_args_and_ret(s, decl, ~[], opt_self_ty);
 }
 
 fn print_fn_args(s: ps, decl: ast::fn_decl,
-                 cap_items: ~[ast::capture_item]) {
-    commasep(s, inconsistent, decl.inputs, print_arg);
-    if cap_items.is_not_empty() {
-        let mut first = decl.inputs.is_empty();
-        for cap_items.each |cap_item| {
-            if first { first = false; } else { word_space(s, ~","); }
-            if cap_item.is_move { word_nbsp(s, ~"move") }
-            else { word_nbsp(s, ~"copy") }
-            word(s.s, *cap_item.name);
-        }
+                 cap_items: ~[ast::capture_item],
+                 opt_self_ty: option<ast::self_ty_>) {
+    // It is unfortunate to duplicate the commasep logic, but we
+    // we want the self type, the args, and the capture clauses all
+    // in the same box.
+    box(s, 0u, inconsistent);
+    let mut first = true;
+    for opt_self_ty.each |self_ty| {
+        first = false;
+        print_self_ty(s, self_ty);
     }
+
+    for decl.inputs.each |arg| {
+        if first { first = false; } else { word_space(s, ~","); }
+        print_arg(s, arg);
+    }
+
+    for cap_items.each |cap_item| {
+        if first { first = false; } else { word_space(s, ~","); }
+        if cap_item.is_move { word_nbsp(s, ~"move") }
+        else { word_nbsp(s, ~"copy") }
+        word(s.s, *cap_item.name);
+    }
+
+    end(s);
 }
 
 fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
-                         cap_items: ~[ast::capture_item]) {
+                         cap_items: ~[ast::capture_item],
+                         opt_self_ty: option<ast::self_ty_>) {
     popen(s);
-    print_fn_args(s, decl, cap_items);
+    print_fn_args(s, decl, cap_items, opt_self_ty);
     pclose(s);
 
     maybe_print_comment(s, decl.output.span.lo);
@@ -1562,7 +1593,7 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
 fn print_fn_block_args(s: ps, decl: ast::fn_decl,
                        cap_items: ~[ast::capture_item]) {
     word(s.s, ~"|");
-    print_fn_args(s, decl, cap_items);
+    print_fn_args(s, decl, cap_items, none);
     word(s.s, ~"|");
     if decl.output.node != ast::ty_infer {
         space_if_not_bol(s);
@@ -1741,9 +1772,24 @@ fn print_ty_fn(s: ps, opt_proto: option<ast::proto>,
     match id { some(id) => { word(s.s, ~" "); word(s.s, *id); } _ => () }
     match tps { some(tps) => print_type_params(s, tps), _ => () }
     zerobreak(s.s);
+
     popen(s);
-    commasep(s, inconsistent, decl.inputs, print_arg);
+    // It is unfortunate to duplicate the commasep logic, but we
+    // we want the self type, the args, and the capture clauses all
+    // in the same box.
+    box(s, 0u, inconsistent);
+    let mut first = true;
+    for opt_self_ty.each |self_ty| {
+        first = false;
+        print_self_ty(s, self_ty);
+    }
+    for decl.inputs.each |arg| {
+        if first { first = false; } else { word_space(s, ~","); }
+        print_arg(s, arg);
+    }
+    end(s);
     pclose(s);
+
     maybe_print_comment(s, decl.output.span.lo);
     if decl.output.node != ast::ty_nil {
         space_if_not_bol(s);
