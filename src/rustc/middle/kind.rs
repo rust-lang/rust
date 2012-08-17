@@ -389,8 +389,17 @@ fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
 
 fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool) {
     if ty::expr_is_lval(cx.method_map, ex) &&
-       !cx.last_use_map.contains_key(ex.id) &&
-       !is_nullary_variant(cx, ex) {
+
+        // this is a move
+        !cx.last_use_map.contains_key(ex.id) &&
+
+        // a reference to a constant like `none`... no need to warn
+        // about *this* even if the type is option<~int>
+        !is_nullary_variant(cx, ex) &&
+
+        // borrowed unique value isn't really a copy
+        !cx.tcx.borrowings.contains_key(ex.id)
+    {
         let ty = ty::expr_ty(cx.tcx, ex);
         check_copy(cx, ex.id, ty, ex.span, implicit_copy);
     }

@@ -1,3 +1,4 @@
+// xfail-test #2587
 // error-pattern: copying a noncopyable value
 
 struct r {

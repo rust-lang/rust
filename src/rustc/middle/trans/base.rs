@@ -2171,6 +2171,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       ast_map::node_expr(*) => {
         ccx.tcx.sess.bug(~"Can't monomorphize an expr")
       }
+      ast_map::node_stmt(*) => {
+        ccx.tcx.sess.bug(~"Can't monomorphize a stmt")
+      }
       ast_map::node_export(*) => {
           ccx.tcx.sess.bug(~"Can't monomorphize an export")
       }
@@ -2270,21 +2273,14 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
           dtor.node.id, psubsts, some(hash_id), parent_id)
       }
       // Ugh -- but this ensures any new variants won't be forgotten
-      ast_map::node_expr(*) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize an expr")
-      }
-      ast_map::node_trait_method(*) => {
-        ccx.tcx.sess.bug(~"Can't monomorphize a trait method")
-      }
-      ast_map::node_export(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize an export")
-      }
-      ast_map::node_arg(*) => ccx.tcx.sess.bug(~"Can't monomorphize an arg"),
-      ast_map::node_block(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a block")
-      }
+      ast_map::node_expr(*) |
+      ast_map::node_stmt(*) |
+      ast_map::node_trait_method(*) |
+      ast_map::node_export(*) |
+      ast_map::node_arg(*) |
+      ast_map::node_block(*) |
       ast_map::node_local(*) => {
-          ccx.tcx.sess.bug(~"Can't monomorphize a local")
+        ccx.tcx.sess.bug(fmt!("Can't monomorphize a %?", map_node))
       }
     };
     ccx.monomorphizing.insert(fn_id, depth);

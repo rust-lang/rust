@@ -28,16 +28,24 @@ type binding = {node_id: ast::node_id,
                 name: ~str,
                 br: ty::bound_region};
 
-/// Mapping from a block/expr/binding to the innermost scope that
-/// bounds its lifetime.  For a block/expression, this is the lifetime
-/// in which it will be evaluated.  For a binding, this is the lifetime
-/// in which is in scope.
+/**
+Encodes the bounding lifetime for a given AST node:
+
+- Expressions are mapped to the expression or block encoding the maximum
+  (static) lifetime of a value produced by that expression.  This is
+  generally the innermost call, statement, match, or block.
+
+- Variables and bindings are mapped to the block in which they are declared.
+
+*/
 type region_map = hashmap<ast::node_id, ast::node_id>;
 
-type ctxt = {
-    sess: session,
-    def_map: resolve3::DefMap,
-    region_map: region_map,
+struct ctxt {
+    sess: session;
+    def_map: resolve3::DefMap;
+
+    // Generated maps:
+    region_map: region_map;
 
     // Generally speaking, expressions are parented to their innermost
     // enclosing block. But some kinds of expressions serve as
@@ -46,9 +54,9 @@ type ctxt = {
     // the condition in a while loop is always a parent.  In those
     // cases, we add the node id of such an expression to this set so
     // that when we visit it we can view it as a parent.
-    root_exprs: hashmap<ast::node_id, ()>,
+    root_exprs: hashmap<ast::node_id, ()>;
 
-    // The parent scope is the innermost block, call, or alt
+    // The parent scope is the innermost block, statement, call, or alt
     // expression during the execution of which the current expression
     // will be evaluated.  Generally speaking, the innermost parent
     // scope is also the closest suitable ancestor in the AST tree.
@@ -79,8 +87,8 @@ type ctxt = {
     // Here, the first argument `&**x` will be a borrow of the `~int`,
     // but the second argument overwrites that very value! Bad.
     // (This test is borrowck-pure-scope-in-call.rs, btw)
-    parent: parent
-};
+    parent: parent;
+}
 
 /// Returns true if `subscope` is equal to or is lexically nested inside
 /// `superscope` and false otherwise.
@@ -186,12 +194,9 @@ fn parent_id(cx: ctxt, span: span) -> ast::node_id {
 
 /// Records the current parent (if any) as the parent of `child_id`.
 fn record_parent(cx: ctxt, child_id: ast::node_id) {
-    match cx.parent {
-      none => { /* no-op */ }
-      some(parent_id) => {
+    for cx.parent.each |parent_id| {
         debug!{"parent of node %d is node %d", child_id, parent_id};
         cx.region_map.insert(child_id, parent_id);
-      }
     }
 }
 
@@ -200,7 +205,7 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, blk.node.id);
 
     // Descend.
-    let new_cx: ctxt = {parent: some(blk.node.id) with cx};
+    let new_cx: ctxt = ctxt {parent: some(blk.node.id) with cx};
     visit::visit_block(blk, new_cx, visitor);
 }
 
@@ -226,6 +231,21 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
     }
 
     visit::visit_pat(pat, cx, visitor);
+}
+
+fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
+    match stmt.node {
+      ast::stmt_decl(*) => {
+        visit::visit_stmt(stmt, cx, visitor);
+      }
+      ast::stmt_expr(expr, stmt_id) |
+      ast::stmt_semi(expr, stmt_id) => {
+        record_parent(cx, stmt_id);
+        let mut expr_cx = cx;
+        expr_cx.parent = some(stmt_id);
+        visit::visit_stmt(stmt, expr_cx, visitor);
+      }
+    }
 }
 
 fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
@@ -270,7 +290,7 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx: ctxt = {parent: none with cx};
+    let new_cx: ctxt = ctxt {parent: none with cx};
     visit::visit_item(item, new_cx, visitor);
 }
 
@@ -282,7 +302,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
       visit::fk_item_fn(*) | visit::fk_method(*) |
       visit::fk_ctor(*) | visit::fk_dtor(*) => {
         // Top-level functions are a root scope.
-        {parent: some(id) with cx}
+        ctxt {parent: some(id) with cx}
       }
 
       visit::fk_anon(*) | visit::fk_fn_block(*) => {
@@ -304,17 +324,18 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
 
 fn resolve_crate(sess: session, def_map: resolve3::DefMap,
                  crate: @ast::crate) -> region_map {
-    let cx: ctxt = {sess: sess,
-                    def_map: def_map,
-                    region_map: int_hash(),
-                    root_exprs: int_hash(),
-                    parent: none};
+    let cx: ctxt = ctxt {sess: sess,
+                         def_map: def_map,
+                         region_map: int_hash(),
+                         root_exprs: int_hash(),
+                         parent: none};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,
         visit_fn: resolve_fn,
         visit_arm: resolve_arm,
         visit_pat: resolve_pat,
+        visit_stmt: resolve_stmt,
         visit_expr: resolve_expr,
         visit_local: resolve_local
         with *visit::default_visitor()

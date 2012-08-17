@@ -79,10 +79,9 @@ priv impl &preserve_ctxt {
             let scope_region = if self.root_ub == 0 {
                 ty::re_static
             } else {
-                ty::re_scope(self.root_ub)
+                ty::re_scope(self.tcx().region_map.get(cmt.id))
             };
 
-            // FIXME(#2977)--need to update trans!
             self.compare_scope(cmt, scope_region)
           }
           cat_stack_upvar(cmt) => {

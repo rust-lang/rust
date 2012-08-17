@@ -2,7 +2,7 @@ import std::map;
 import std::map::hashmap;
 import ast::*;
 import print::pprust;
-import ast_util::path_to_ident;
+import ast_util::{path_to_ident, stmt_id};
 import diagnostic::span_handler;
 
 enum path_elt { path_mod(ident), path_name(ident) }
@@ -39,6 +39,7 @@ enum ast_node {
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
     node_variant(variant, @item, @path),
     node_expr(@expr),
+    node_stmt(@stmt),
     node_export(@view_path, @path),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
@@ -65,6 +66,7 @@ fn mk_ast_map_visitor() -> vt {
     return visit::mk_vt(@{
         visit_item: map_item,
         visit_expr: map_expr,
+        visit_stmt: map_stmt,
         visit_fn: map_fn,
         visit_local: map_local,
         visit_arm: map_arm,
@@ -284,6 +286,11 @@ fn map_expr(ex: @expr, cx: ctx, v: vt) {
     visit::visit_expr(ex, cx, v);
 }
 
+fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
+    cx.map.insert(stmt_id(*stmt), node_stmt(stmt));
+    visit::visit_stmt(stmt, cx, v);
+}
+
 fn node_id_to_str(map: map, id: node_id) -> ~str {
     match map.find(id) {
       none => {
@@ -312,6 +319,10 @@ fn node_id_to_str(map: map, id: node_id) -> ~str {
       some(node_expr(expr)) => {
         fmt!{"expr %s (id=%?)",
              pprust::expr_to_str(expr), id}
+      }
+      some(node_stmt(stmt)) => {
+        fmt!{"stmt %s (id=%?)",
+             pprust::stmt_to_str(*stmt), id}
       }
       // FIXMEs are as per #2410
       some(node_export(_, path)) => {
