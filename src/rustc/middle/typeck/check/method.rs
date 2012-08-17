@@ -174,7 +174,11 @@ struct lookup {
                 (optional_inherent_methods, subtyping_mode);
 
             // if we found anything, stop before trying borrows
-            if self.candidates.len() > 0u { break; }
+            if self.candidates.len() > 0u {
+                debug!{"(checking method) found at least one inherent \
+                        method; giving up looking now"};
+                break;
+            }
 
             // Again, look for inherent and extension methods, this time using
             // assignability.
@@ -198,7 +202,11 @@ struct lookup {
                 (optional_inherent_methods, mutable_reference_mode);
 
             // if we found anything, stop before attempting auto-deref.
-            if self.candidates.len() > 0u { break; }
+            if self.candidates.len() > 0u {
+                debug!{"(checking method) found at least one inherent \
+                        method; giving up looking now"};
+                break;
+            }
 
             // check whether we can autoderef and if so loop around again.
             match ty::deref(self.tcx(), self.self_ty, false) {
@@ -210,7 +218,11 @@ struct lookup {
             }
         }
 
-        if self.candidates.len() == 0u { return none; }
+        if self.candidates.len() == 0u {
+            debug!{"(checking method) couldn't find any candidate methods; \
+                    returning none"};
+            return none;
+        }
 
         if self.candidates.len() > 1u {
             self.tcx().sess.span_err(
@@ -270,7 +282,7 @@ struct lookup {
     }
 
     fn add_candidates_from_param(n: uint, did: ast::def_id) {
-        debug!{"candidates_from_param"};
+        debug!{"add_candidates_from_param"};
 
         let tcx = self.tcx();
         let mut trait_bnd_idx = 0u; // count only trait bounds
@@ -320,7 +332,7 @@ struct lookup {
 
     fn add_candidates_from_trait(did: ast::def_id, trait_substs: ty::substs) {
 
-        debug!{"method_from_trait"};
+        debug!{"add_candidates_from_trait"};
 
         let ms = *ty::trait_methods(self.tcx(), did);
         for ms.eachi |i, m| {
@@ -355,7 +367,7 @@ struct lookup {
 
     fn add_candidates_from_class(did: ast::def_id, class_substs: ty::substs) {
 
-        debug!{"method_from_class"};
+        debug!{"add_candidates_from_class"};
 
         let ms = *ty::trait_methods(self.tcx(), did);
 
