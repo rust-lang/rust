@@ -1,5 +1,6 @@
 import stackwalk::Word;
 import libc::size_t;
+import send_map::linear::LinearMap;
 
 extern mod rustrt {
     fn rust_annihilate_box(ptr: *Word);
@@ -37,7 +38,7 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
     return None;
 }
 
-type Visitor = fn(root: **Word, tydesc: *Word);
+type Visitor = fn(root: **Word, tydesc: *Word) -> bool;
 
 unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
     let fp_bytes: *u8 = unsafe::reinterpret_cast(&fp);
@@ -69,7 +70,7 @@ unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
             } else {
                 ptr::null()
             };
-            visitor(root, tydesc);
+            if !visitor(root, tydesc) { return; }
         }
         sri += 1;
     }
@@ -94,25 +95,25 @@ const need_cleanup:    Memory = exchange_heap | stack;
 
 unsafe fn walk_gc_roots(mem: Memory, visitor: Visitor) {
     let mut last_ret: *Word = ptr::null();
-    do stackwalk::walk_stack |frame| {
+    for stackwalk::walk_stack |frame| {
         unsafe {
             if ptr::is_not_null(last_ret) {
                 let sp = is_safe_point(last_ret);
                 match sp {
                   Some(sp_info) => {
-                    do walk_safe_point(frame.fp, sp_info) |root, tydesc| {
+                    for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
                         if ptr::is_null(tydesc) {
                             // Root is a generic box.
                             let refcount = **root;
                             if mem | task_local_heap != 0 && refcount != -1 {
-                                visitor(root, tydesc);
+                                if !visitor(root, tydesc) { return; }
                             } else if mem | exchange_heap != 0 {
-                                visitor(root, tydesc);
+                                if !visitor(root, tydesc) { return; }
                             }
                         } else {
                             // Root is a non-immediate.
                             if mem | stack != 0 {
-                                visitor(root, tydesc);
+                                if !visitor(root, tydesc) { return; }
                             }
                         }
                     }
@@ -122,19 +123,22 @@ unsafe fn walk_gc_roots(mem: Memory, visitor: Visitor) {
             }
             last_ret = *ptr::offset(frame.fp, 1) as *Word;
         }
-        true
     }
 }
 
 fn gc() {
     unsafe {
-        let mut i = 0;
-        do walk_gc_roots(task_local_heap) |_root, _tydesc| {
+        for walk_gc_roots(task_local_heap) |_root, _tydesc| {
             // FIXME(#2997): Walk roots and mark them.
             io::stdout().write([46]); // .
-            i += 1;
         }
     }
+}
+
+type RootSet = LinearMap<*Word,()>;
+
+fn RootSet() -> RootSet {
+    LinearMap()
 }
 
 // This should only be called from fail, as it will drop the roots
@@ -142,14 +146,19 @@ fn gc() {
 // dead.
 fn cleanup_stack_for_failure() {
     unsafe {
-        let mut i = 0;
-        do walk_gc_roots(need_cleanup) |root, tydesc| {
+        let mut roots = ~RootSet();
+        for walk_gc_roots(need_cleanup) |root, tydesc| {
+            // Track roots to avoid double frees.
+            if option::is_some(roots.find(&*root)) {
+                again;
+            }
+            roots.insert(*root, ());
+
             if ptr::is_null(tydesc) {
                 rustrt::rust_annihilate_box(*root);
             } else {
                 rustrt::rust_call_tydesc_glue(*root, tydesc, 3 as size_t);
             }
-            i += 1;
         }
     }
 }
