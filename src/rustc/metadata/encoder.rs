@@ -262,32 +262,26 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     encode_family(ebml_w, 'm');
     encode_name(ebml_w, name);
     debug!{"(encoding info for module) encoding info for module ID %d", id};
-    // the impl map contains ref_ids
-    let impls = ecx.impl_map(id);
-    for impls.each |i| {
-        let (ident, did) = i;
-        debug!{"(encoding info for module) ... encoding impl %s (%?/%?), \
-                exported? %?",
-               *ident,
-               did,
-               ast_map::node_id_to_str(ecx.tcx.items, did.node),
-               ast_util::is_exported(ident, md)};
 
-        ebml_w.start_tag(tag_mod_impl);
-        match ecx.tcx.items.find(did.node) {
-          some(ast_map::node_item(it@@{node: cl@item_class(*),_},_)) => {
-        /* If did stands for a trait
-        ref, we need to map it to its parent class */
-            ebml_w.wr_str(def_to_str(local_def(it.id)));
-          }
-          _ => {
-            // Must be a re-export, then!
-            // ...or a trait ref
-            ebml_w.wr_str(def_to_str(did));
-          }
-        };
-        ebml_w.end_tag();
-    } // for
+    // Encode info about all the module children.
+    for md.items.each |item| {
+        match item.node {
+            item_impl(*) | item_class(*) => {
+                let (ident, did) = (item.ident, item.id);
+                debug!{"(encoding info for module) ... encoding impl %s \
+                        (%?/%?), exported? %?",
+                       *ident,
+                       did,
+                       ast_map::node_id_to_str(ecx.tcx.items, did),
+                       ast_util::is_exported(ident, md)};
+
+                ebml_w.start_tag(tag_mod_impl);
+                ebml_w.wr_str(def_to_str(local_def(did)));
+                ebml_w.end_tag();
+            }
+            _ => {} // XXX: Encode these too.
+        }
+    }
 
     encode_path(ebml_w, path, ast_map::path_mod(name));
 
