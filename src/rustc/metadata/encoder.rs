@@ -73,7 +73,6 @@ fn reachable(ecx: @encode_ctxt, id: node_id) -> bool {
     ecx.reachable.contains_key(id)
 }
 
-// Path table encoding
 fn encode_name(ebml_w: ebml::writer, name: ident) {
     ebml_w.wr_tagged_str(tag_paths_data_name, *name);
 }
@@ -82,24 +81,10 @@ fn encode_def_id(ebml_w: ebml::writer, id: def_id) {
     ebml_w.wr_tagged_str(tag_def_id, def_to_str(id));
 }
 
-/* Encodes the given name, then def_id as tagged strings */
-fn encode_name_and_def_id(ebml_w: ebml::writer, nm: ident,
-                          id: node_id) {
-    encode_name(ebml_w, nm);
-    encode_def_id(ebml_w, local_def(id));
-}
-
 fn encode_region_param(ecx: @encode_ctxt, ebml_w: ebml::writer,
                        it: @ast::item) {
     let rp = ecx.tcx.region_paramd_items.contains_key(it.id);
     if rp { do ebml_w.wr_tag(tag_region_param) { } }
-}
-
-fn encode_named_def_id(ebml_w: ebml::writer, name: ident, id: def_id) {
-    do ebml_w.wr_tag(tag_paths_data_item) {
-        encode_name(ebml_w, name);
-        encode_def_id(ebml_w, id);
-    }
 }
 
 fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
@@ -114,32 +99,6 @@ fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
 
 type entry<T> = {val: T, pos: uint};
 
-fn encode_enum_variant_paths(ebml_w: ebml::writer, variants: ~[variant],
-                            path: ~[ident], &index: ~[entry<~str>]) {
-    for variants.each |variant| {
-        add_to_index(ebml_w, path, index, variant.node.name);
-        do ebml_w.wr_tag(tag_paths_data_item) {
-            encode_name(ebml_w, variant.node.name);
-            encode_def_id(ebml_w, local_def(variant.node.id));
-        }
-    }
-}
-
-fn encode_trait_static_method_paths(ebml_w: ebml::writer,
-                                    methods: ~[trait_method],
-                                    path: ~[ident],
-                                    &index: ~[entry<~str>]) {
-    for methods.each |method| {
-        let ty_m = trait_method_to_ty_method(method);
-        if ty_m.self_ty.node != sty_static { again; }
-        add_to_index(ebml_w, path, index, ty_m.ident);
-        do ebml_w.wr_tag(tag_paths_data_item) {
-            encode_name(ebml_w, ty_m.ident);
-            encode_def_id(ebml_w, local_def(ty_m.id));
-        }
-    }
-}
-
 fn add_to_index(ebml_w: ebml::writer, path: &[ident], &index: ~[entry<~str>],
                 name: ident) {
     let mut full_path = ~[];
@@ -149,160 +108,10 @@ fn add_to_index(ebml_w: ebml::writer, path: &[ident], &index: ~[entry<~str>],
                       pos: ebml_w.writer.tell()});
 }
 
-fn encode_foreign_module_item_paths(ebml_w: ebml::writer, nmod: foreign_mod,
-                                    path: ~[ident], &index: ~[entry<~str>]) {
-    for nmod.items.each |nitem| {
-      add_to_index(ebml_w, path, index, nitem.ident);
-      do ebml_w.wr_tag(tag_paths_foreign_path) {
-          encode_name(ebml_w, nitem.ident);
-          encode_def_id(ebml_w, local_def(nitem.id));
-      }
-    }
-}
-
-fn encode_class_item_paths(ebml_w: ebml::writer,
-                           fields: ~[@ast::struct_field],
-                           methods: ~[@ast::method],
-                           path: ~[ident],
-                           &index: ~[entry<~str>]) {
-    for fields.each |field| {
-        match field.node.kind {
-            ast::named_field(ident, _, visibility) => {
-                if visibility == private { again; }
-                let (id, ident) = (field.node.id, ident);
-                add_to_index(ebml_w, path, index, ident);
-                encode_named_def_id(ebml_w, ident, local_def(id));
-            }
-            ast::unnamed_field => {}
-        }
-    }
-
-    for methods.each |method| {
-        if method.vis == private { again; }
-        let (id, ident) = (method.id, method.ident);
-        add_to_index(ebml_w, path, index, ident);
-        encode_named_def_id(ebml_w, ident, local_def(id));
-    }
-}
-
-fn encode_module_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt,
-                            module_: _mod, path: ~[ident],
-                            &index: ~[entry<~str>]) {
-    for module_.items.each |it| {
-        if !reachable(ecx, it.id) ||
-           !ast_util::is_exported(it.ident, module_) { again; }
-        if !ast_util::is_item_impl(it) {
-            add_to_index(ebml_w, path, index, it.ident);
-        }
-        match it.node {
-          item_const(_, _) => {
-            encode_named_def_id(ebml_w, it.ident, local_def(it.id));
-          }
-          item_fn(_, tps, _) => {
-            encode_named_def_id(ebml_w, it.ident, local_def(it.id));
-          }
-          item_mod(_mod) => {
-            do ebml_w.wr_tag(tag_paths_data_mod) {
-               encode_name_and_def_id(ebml_w, it.ident, it.id);
-               encode_module_item_paths(ebml_w, ecx, _mod,
-                                        vec::append_one(path, it.ident),
-                                        index);
-            }
-          }
-          item_foreign_mod(nmod) => {
-            do ebml_w.wr_tag(tag_paths_data_mod) {
-              encode_name_and_def_id(ebml_w, it.ident, it.id);
-              encode_foreign_module_item_paths(
-                  ebml_w, nmod,
-                  vec::append_one(path, it.ident), index);
-            }
-          }
-          item_ty(_, tps) => {
-            do ebml_w.wr_tag(tag_paths_data_item) {
-              encode_name_and_def_id(ebml_w, it.ident, it.id);
-            }
-          }
-          item_class(struct_def, _) => {
-            do ebml_w.wr_tag(tag_paths_data_item) {
-                encode_name_and_def_id(ebml_w, it.ident, it.id);
-            }
-            do ebml_w.wr_tag(tag_paths) {
-                // We add the same ident twice: for the
-                // class and for its ctor
-                add_to_index(ebml_w, path, index, it.ident);
-
-                encode_struct_def(ebml_w, struct_def, path, it.ident, index);
-            }
-          }
-          item_enum(enum_definition, _) => {
-            do ebml_w.wr_tag(tag_paths_data_item) {
-                  encode_name_and_def_id(ebml_w, it.ident, it.id);
-              }
-              encode_enum_variant_paths(ebml_w, enum_definition.variants,
-                                        path, index);
-          }
-          item_trait(_, _, methods) => {
-            do ebml_w.wr_tag(tag_paths_data_item) {
-                encode_name_and_def_id(ebml_w, it.ident, it.id);
-            }
-            encode_trait_static_method_paths(ebml_w, methods, path, index);
-          }
-          item_impl(*) => {}
-          item_mac(*) => fail ~"item macros unimplemented"
-        }
-    }
-}
-
-fn encode_struct_def(ebml_w: ebml::writer,
-                     struct_def: @ast::struct_def,
-                     path: ~[ast::ident],
-                     ident: ast::ident,
-                     &index: ~[entry<~str>]) {
-    match struct_def.ctor {
-        none => {
-            // Nothing to do.
-        }
-        some(ctor) => {
-            encode_named_def_id(ebml_w, ident, local_def(ctor.node.id));
-        }
-    }
-
-    encode_class_item_paths(ebml_w,
-                            struct_def.fields,
-                            struct_def.methods,
-                            vec::append_one(path, ident),
-                            index);
-}
-
 fn encode_trait_ref(ebml_w: ebml::writer, ecx: @encode_ctxt, t: @trait_ref) {
     ebml_w.start_tag(tag_impl_trait);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, t.ref_id));
     ebml_w.end_tag();
-}
-
-fn encode_item_paths(ebml_w: ebml::writer, ecx: @encode_ctxt, crate: @crate)
-                  -> ~[entry<~str>] {
-    let mut index: ~[entry<~str>] = ~[];
-    let mut path: ~[ident] = ~[];
-    ebml_w.start_tag(tag_paths);
-    encode_module_item_paths(ebml_w, ecx, crate.node.module, path, index);
-    encode_reexport_paths(ebml_w, ecx, index);
-    ebml_w.end_tag();
-    return index;
-}
-
-fn encode_reexport_paths(ebml_w: ebml::writer,
-                         ecx: @encode_ctxt, &index: ~[entry<~str>]) {
-    for ecx.reexports.each |reexport| {
-        let (path, def_id) = reexport;
-        vec::push(index, {val: path, pos: ebml_w.writer.tell()});
-        // List metadata ignores tag_paths_foreign_path things, but
-        // other things look at it.
-        ebml_w.start_tag(tag_paths_foreign_path);
-        encode_name(ebml_w, @path);
-        encode_def_id(ebml_w, def_id);
-        ebml_w.end_tag();
-    }
 }
 
 
@@ -515,17 +324,6 @@ fn encode_visibility(ebml_w: ebml::writer, visibility: visibility) {
         private => 'j',
         inherited => 'N'
     });
-}
-
-fn encode_region(ebml_w: ebml::writer, region: region) {
-    match region.node {
-        re_anon => {
-            ebml_w.wr_tagged_str(tag_item_trait_method_self_ty, ~"");
-        }
-        re_named(ident) => {
-            ebml_w.wr_tagged_str(tag_item_trait_method_self_ty, *ident);
-        }
-    }
 }
 
 fn encode_self_type(ebml_w: ebml::writer, self_type: ast::self_ty_) {
@@ -1276,13 +1074,6 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
     encode_attributes(ebml_w, crate_attrs);
 
     encode_crate_deps(ebml_w, ecx.cstore);
-
-    // Encode and index the paths.
-    ebml_w.start_tag(tag_paths);
-    let paths_index = encode_item_paths(ebml_w, ecx, crate);
-    let paths_buckets = create_index(paths_index, hash_path);
-    encode_index(ebml_w, paths_buckets, write_str);
-    ebml_w.end_tag();
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
