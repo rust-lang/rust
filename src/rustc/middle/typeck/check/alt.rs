@@ -283,6 +283,8 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         for fields.each |field| {
             match field_map.find(field.ident) {
                 some(index) => {
+                    tcx.sess.span_err(pat.span, ~"Pattern-matching structs \
+                            is not allowed (#3215) until the next snapshot.");
                     let class_field = class_fields[index];
                     let field_type = ty::lookup_field_type(tcx,
                                                            class_id,

@@ -1,3 +1,4 @@
+// xfail-test
 struct Foo {
     x: int;
     y: int;
