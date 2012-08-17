@@ -121,7 +121,7 @@ impl T: iter::TimesIx {
  *
  * `buf` must not be empty
  */
-fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
+fn parse_buf(buf: &[const u8], radix: uint) -> option<T> {
     if vec::len(buf) == 0u { return none; }
     let mut i = vec::len(buf) - 1u;
     let mut power = 1u as T;
