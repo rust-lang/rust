@@ -39,6 +39,13 @@ impl<T> Cell<T> {
     fn is_empty() -> bool {
         self.value.is_none()
     }
+
+    // Calls a closure with a reference to the value.
+    fn with_ref(f: fn(v: &T)) {
+        let val = move self.take();
+        f(&val);
+        self.put_back(move val);
+    }
 }
 
 #[test]
