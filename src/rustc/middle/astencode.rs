@@ -50,7 +50,6 @@ type maps = {
     mutbl_map: middle::borrowck::mutbl_map,
     root_map: middle::borrowck::root_map,
     last_use_map: middle::liveness::last_use_map,
-    impl_map: middle::resolve3::ImplMap,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
 };
@@ -726,9 +725,6 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
             }
         }
     }
-
-    // impl_map is not used except when emitting metadata,
-    // don't need to keep it.
 
     do option::iter(maps.method_map.find(id)) |mme| {
         do ebml_w.tag(c::tag_table_method_map) {

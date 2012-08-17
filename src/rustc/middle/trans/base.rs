@@ -5645,7 +5645,6 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         reachable: cx.reachable,
         reexports: reexports(cx),
         reexports2: cx.exp_map2,
-        impl_map: |a| impl_map(cx, a),
         item_symbols: cx.item_symbols,
         discrim_symbols: cx.discrim_symbols,
         link_meta: cx.link_meta,
@@ -5668,15 +5667,6 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
             }
         }
         return reexports;
-    }
-
-    fn impl_map(cx: @crate_ctxt,
-                id: ast::node_id) -> ~[(ast::ident, ast::def_id)] {
-        let mut result = ~[];
-        for list::each(cx.maps.impl_map.get(id)) |impls| {
-            vec::push_all(result, (*impls).map(|i| (i.ident, i.did)));
-        }
-        return result;
     }
 }
 
