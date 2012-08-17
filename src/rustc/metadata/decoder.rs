@@ -213,38 +213,6 @@ fn enum_variant_ids(item: ebml::doc, cdata: cmd) -> ~[ast::def_id] {
     return ids;
 }
 
-// Given a path and serialized crate metadata, returns the IDs of the
-// definitions the path may refer to.
-fn resolve_path(path: ~[ast::ident], data: @~[u8]) -> ~[ast::def_id] {
-    fn eq_item(data: &[u8], s: ~str) -> bool {
-        // XXX: Use string equality.
-        let data_len = data.len();
-        let s_len = s.len();
-        if data_len != s_len {
-            return false;
-        }
-        let mut i = 0;
-        while i < data_len {
-            if data[i] != s[i] {
-                return false;
-            }
-            i += 1;
-        }
-        return true;
-    }
-    let s = ast_util::path_name_i(path);
-    let md = ebml::doc(data);
-    let paths = ebml::get_doc(md, tag_paths);
-    let eqer = |a| eq_item(a, s);
-    let mut result: ~[ast::def_id] = ~[];
-    debug!{"resolve_path: looking up %s", s};
-    for lookup_hash(paths, eqer, hash_path(s)).each |doc| {
-        let did_doc = ebml::get_doc(doc, tag_def_id);
-        vec::push(result, ebml::with_doc_data(did_doc, |d| parse_def_id(d)));
-    }
-    return result;
-}
-
 fn item_path(item_doc: ebml::doc) -> ast_map::path {
     let path_doc = ebml::get_doc(item_doc, tag_path);
 
