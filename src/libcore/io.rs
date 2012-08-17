@@ -521,7 +521,7 @@ fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn(v: &[u8]) -> T) -> T {
     }
 }
 
-fn u64_from_be_bytes(data: ~[u8], start: uint, size: uint) -> u64 {
+fn u64_from_be_bytes(data: &[const u8], start: uint, size: uint) -> u64 {
     let mut sz = size;
     assert (sz <= 8u);
     let mut val = 0_u64;
