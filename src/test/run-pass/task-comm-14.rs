@@ -1,7 +1,7 @@
 import task;
 
 fn main() {
-    let po = pipes::port_set();
+    let po = pipes::PortSet();
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;

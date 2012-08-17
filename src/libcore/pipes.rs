@@ -93,7 +93,7 @@ export atomic_add_acq, atomic_sub_rel;
 export send_packet, recv_packet, send, recv, try_recv, peek;
 export select, select2, selecti, select2i, selectable;
 export spawn_service, spawn_service_recv;
-export stream, port, chan, shared_chan, port_set, channel;
+export stream, port, chan, SharedChan, PortSet, channel;
 export oneshot, chan_one, port_one;
 export recv_one, try_recv_one, send_one, try_send_one;
 
@@ -1020,8 +1020,8 @@ impl<T: send> port<T>: recv<T> {
     }
 }
 
-// Treat a whole bunch of ports as one.
-struct port_set<T: send> : recv<T> {
+/// Treat many ports as one.
+struct PortSet<T: send> : recv<T> {
     let mut ports: ~[pipes::port<T>];
 
     new() { self.ports = ~[]; }
@@ -1096,9 +1096,9 @@ impl<T: send> port<T>: selectable {
 }
 
 /// A channel that can be shared between many senders.
-type shared_chan<T: send> = unsafe::Exclusive<chan<T>>;
+type SharedChan<T: send> = unsafe::Exclusive<chan<T>>;
 
-impl<T: send> shared_chan<T>: channel<T> {
+impl<T: send> SharedChan<T>: channel<T> {
     fn send(+x: T) {
         let mut xx = some(x);
         do self.with |chan| {
@@ -1119,7 +1119,7 @@ impl<T: send> shared_chan<T>: channel<T> {
 }
 
 /// Converts a `chan` into a `shared_chan`.
-fn shared_chan<T:send>(+c: chan<T>) -> shared_chan<T> {
+fn SharedChan<T:send>(+c: chan<T>) -> SharedChan<T> {
     unsafe::exclusive(c)
 }
 

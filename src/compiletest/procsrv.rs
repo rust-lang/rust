@@ -60,7 +60,7 @@ fn run(lib_path: ~str,
 
 
     writeclose(pipe_in.out, input);
-    let p = pipes::port_set();
+    let p = pipes::PortSet();
     let ch = p.chan();
     do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);

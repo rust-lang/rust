@@ -24,7 +24,7 @@ fn test00() {
 
     debug!{"Creating tasks"};
 
-    let po = pipes::port_set();
+    let po = pipes::PortSet();
 
     let mut i: int = 0;
 

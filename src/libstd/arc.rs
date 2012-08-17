@@ -423,7 +423,7 @@ mod tests {
         let (c, p) = pipes::stream();
 
         do task::spawn() {
-            let p = pipes::port_set();
+            let p = pipes::PortSet();
             c.send(p.chan());
 
             let arc_v = p.recv();

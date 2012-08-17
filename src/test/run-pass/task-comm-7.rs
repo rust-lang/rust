@@ -11,7 +11,7 @@ fn test00_start(c: pipes::chan<int>, start: int, number_of_messages: int) {
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let p = pipes::port_set();
+    let p = pipes::PortSet();
     let number_of_messages: int = 10;
 
     let c = p.chan();
