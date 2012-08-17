@@ -291,17 +291,8 @@ struct parser {
         let inputs = do self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA)) |p| {
-            let mode = p.parse_arg_mode();
-            let name = if is_plain_ident(p.token)
-                && p.look_ahead(1u) == token::COLON {
 
-                let name = self.parse_value_ident();
-                p.bump();
-                name
-            } else { @~"" };
-
-            {mode: mode, ty: p.parse_ty(false), ident: name,
-             id: p.get_id()}
+            p.parse_arg_general(false)
         };
         let (ret_style, ret_ty) = self.parse_ret_ty();
         return {inputs: inputs, output: ret_ty,
@@ -321,11 +312,18 @@ struct parser {
             // could change.
             let vis = p.parse_visibility();
             let ident = p.parse_method_name();
+
             let tps = p.parse_ty_params();
-            let d = p.parse_ty_fn_decl(pur);
+
+            let (self_ty, d, _) = do self.parse_fn_decl_with_self(pur) |p| {
+                // This is somewhat dubious; We don't want to allow argument
+                // names to be left off if there is a definition...
+                either::Left(p.parse_arg_general(false))
+            };
+            // XXX: Wrong. Shouldn't allow both static and self_ty
+            let self_ty = if is_static { static_sty } else { self_ty };
+
             let hi = p.last_span.hi;
-            let self_ty = if is_static { static_sty } else
-                { spanned(lo, hi, sty_by_ref) }; // XXX: Wrong.
             debug!{"parse_trait_methods(): trait method signature ends in \
                     `%s`",
                    token_to_str(p.reader, p.token)};
@@ -571,12 +569,30 @@ struct parser {
         }
     }
 
-    fn parse_arg() -> arg_or_capture_item {
+    // This version of parse arg doesn't necessarily require
+    // identifier names.
+    fn parse_arg_general(require_name: bool) -> arg {
         let m = self.parse_arg_mode();
-        let i = self.parse_value_ident();
-        self.expect(token::COLON);
+        let i = if require_name {
+            let name = self.parse_value_ident();
+            self.expect(token::COLON);
+            name
+        } else {
+            if is_plain_ident(self.token)
+                && self.look_ahead(1u) == token::COLON {
+                let name = self.parse_value_ident();
+                self.bump();
+                name
+            } else { @~"" }
+        };
+
         let t = self.parse_ty(false);
-        either::Left({mode: m, ty: t, ident: i, id: self.get_id()})
+
+        {mode: m, ty: t, ident: i, id: self.get_id()}
+    }
+
+    fn parse_arg() -> arg_or_capture_item {
+        either::Left(self.parse_arg_general(true))
     }
 
     fn parse_arg_or_capture_item() -> arg_or_capture_item {
@@ -2308,48 +2324,46 @@ struct parser {
                                     fn(parser) -> arg_or_capture_item)
                             -> (self_ty, fn_decl, capture_clause) {
 
+        fn maybe_parse_self_ty(cnstr: fn(+mutability) -> ast::self_ty_,
+                               p: parser) -> ast::self_ty_ {
+            // We need to make sure it isn't a mode or a type
+            if p.token_is_keyword(~"self", p.look_ahead(1)) ||
+                ((p.token_is_keyword(~"const", p.look_ahead(1)) ||
+                  p.token_is_keyword(~"mut", p.look_ahead(1))) &&
+                 p.token_is_keyword(~"self", p.look_ahead(2))) {
+
+                p.bump();
+                let mutability = p.parse_mutability();
+                p.expect_self_ident();
+                cnstr(mutability)
+            } else {
+                sty_by_ref
+            }
+        }
+
         self.expect(token::LPAREN);
 
         // A bit of complexity and lookahead is needed here in order to to be
         // backwards compatible.
         let lo = self.span.lo;
-        let self_ty;
-        match copy self.token {
-            token::BINOP(token::AND) => {
-                // We need to make sure it isn't a mode.
-                if self.token_is_keyword(~"self", self.look_ahead(1)) ||
-                    ((self.token_is_keyword(~"const", self.look_ahead(1)) ||
-                      self.token_is_keyword(~"mut", self.look_ahead(1))) &&
-                      self.token_is_keyword(~"self", self.look_ahead(2))) {
-
-                    self.bump();
-                    let mutability = self.parse_mutability();
-                    self.expect_self_ident();
-                    self_ty = sty_region(mutability);
-                } else {
-                    self_ty = sty_by_ref;
-                }
-            }
-            token::AT => {
-                self.bump();
-                let mutability = self.parse_mutability();
-                self.expect_self_ident();
-                self_ty = sty_box(mutability);
-            }
-            token::TILDE => {
-                self.bump();
-                let mutability = self.parse_mutability();
-                self.expect_self_ident();
-                self_ty = sty_uniq(mutability);
-            }
-            token::IDENT(*) if self.is_self_ident() => {
-                self.bump();
-                self_ty = sty_value;
-            }
-            _ => {
-                self_ty = sty_by_ref;
-            }
-        }
+        let self_ty = match copy self.token {
+          token::BINOP(token::AND) => {
+            maybe_parse_self_ty(sty_region, self)
+          }
+          token::AT => {
+            maybe_parse_self_ty(sty_box, self)
+          }
+          token::TILDE => {
+            maybe_parse_self_ty(sty_uniq, self)
+          }
+          token::IDENT(*) if self.is_self_ident() => {
+            self.bump();
+            sty_value
+          }
+          _ => {
+            sty_by_ref
+          }
+        };
 
         // If we parsed a self type, expect a comma before the argument list.
         let args_or_capture_items;
