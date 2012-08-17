@@ -27,7 +27,6 @@ export get_impl_traits;
 export get_class_method;
 export get_impl_method;
 export lookup_def;
-export lookup_item_name;
 export resolve_path;
 export get_crate_attributes;
 export list_crate_metadata;
@@ -240,10 +239,6 @@ fn item_path(item_doc: ebml::doc) -> ast_map::path {
 fn item_name(item: ebml::doc) -> ast::ident {
     let name = ebml::get_doc(item, tag_paths_data_name);
     @str::from_bytes(ebml::doc_data(name))
-}
-
-fn lookup_item_name(data: @~[u8], id: ast::node_id) -> ast::ident {
-    item_name(lookup_item(id, data))
 }
 
 fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
