@@ -2,7 +2,7 @@ import base::*;
 import ast;
 import codemap::span;
 import print::pprust;
-import build::{mk_uint,mk_u8,mk_uniq_str,mk_uniq_vec_e};
+import build::{mk_base_vec_e,mk_uint,mk_u8,mk_uniq_str};
 
 export expand_line;
 export expand_col;
@@ -91,7 +91,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
         let u8_exprs = vec::map(src, |char: u8| {
             mk_u8(cx, sp, char)
         });
-        return mk_uniq_vec_e(cx, sp, u8_exprs);
+        return mk_base_vec_e(cx, sp, u8_exprs);
       }
       result::err(e) => {
         cx.parse_sess().span_diagnostic.handler().fatal(e)
