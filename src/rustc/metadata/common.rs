@@ -1,16 +1,8 @@
 // EBML enum definitions and utils shared by the encoder and decoder
 
-const tag_paths: uint = 0x01u;
-
 const tag_items: uint = 0x02u;
 
-const tag_paths_data: uint = 0x03u;
-
 const tag_paths_data_name: uint = 0x04u;
-
-const tag_paths_data_item: uint = 0x05u;
-
-const tag_paths_data_mod: uint = 0x06u;
 
 const tag_def_id: uint = 0x07u;
 
@@ -96,7 +88,6 @@ const tag_mod_impl_trait: uint = 0x47u;
  */
 const tag_item_impl_method: uint = 0x48u;
 const tag_item_dtor: uint = 0x49u;
-const tag_paths_foreign_path: uint = 0x4a;
 const tag_item_trait_method_self_ty: uint = 0x4b;
 const tag_item_trait_method_self_ty_region: uint = 0x4c;
 
