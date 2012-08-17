@@ -307,6 +307,15 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
             }
         }
       }
+      expr_repeat(element, count_expr, _) => {
+        let count = ty::eval_repeat_count(cx.tcx, count_expr, e.span);
+        if count == 1 {
+            maybe_copy(cx, element);
+        } else {
+            let element_ty = ty::expr_ty(cx.tcx, element);
+            check_copy(cx, element.id, element_ty, element.span, true);
+        }
+      }
       _ => { }
     }
     visit::visit_expr(e, cx, v);
