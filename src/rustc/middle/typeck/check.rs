@@ -79,7 +79,7 @@ import std::map::str_hash;
 
 type self_info = {
     self_ty: ty::t,
-    node_id: ast::node_id,
+    def_id: ast::def_id,
     explicit_self: ast::self_ty_
 };
 
@@ -401,7 +401,8 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     let self_ty = ty::node_id_to_type(tcx, id);
 
     do option::iter(struct_def.ctor) |ctor| {
-        let class_t = {self_ty: self_ty, node_id: id,
+        let class_t = {self_ty: self_ty,
+                       def_id: local_def(id),
                        explicit_self: ast::sty_by_ref};
         // typecheck the ctor
         check_bare_fn(ccx, ctor.node.dec,
@@ -412,7 +413,8 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     }
 
     do option::iter(struct_def.dtor) |dtor| {
-        let class_t = {self_ty: self_ty, node_id: id,
+        let class_t = {self_ty: self_ty,
+                       def_id: local_def(id),
                        explicit_self: ast::sty_by_ref};
         // typecheck the dtor
         check_bare_fn(ccx, ast_util::dtor_dec(),
@@ -424,7 +426,8 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 
     // typecheck the methods
     for struct_def.methods.each |m| {
-        check_method(ccx, m, {self_ty: self_ty, node_id: id,
+        check_method(ccx, m, {self_ty: self_ty,
+                              def_id: local_def(id),
                               explicit_self: m.self_ty.node});
     }
     // Check that there's at least one field
@@ -450,7 +453,8 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                *it.ident, it.id, rp};
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| {
-            let self_info = {self_ty: self_ty, node_id: it.id,
+            let self_info = {self_ty: self_ty,
+                             def_id: local_def(it.id),
                              explicit_self: m.self_ty.node };
             check_method(ccx, m, self_info)
         }
@@ -464,7 +468,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
               }
               provided(m) => {
                 let self_info = {self_ty: ty::mk_self(ccx.tcx),
-                                 node_id: it.id,
+                                 def_id: local_def(it.id),
                                  explicit_self: m.self_ty.node};
                 check_method(ccx, m, self_info);
               }

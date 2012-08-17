@@ -58,7 +58,7 @@ fn replace_bound_regions_in_fn_ty(
            ty_to_str(tcx, t_fn)};
 
 
-    // Glue updated self_ty back together with its original node_id.
+    // Glue updated self_ty back together with its original def_id.
     let new_self_info = match self_info {
         some(s) => match check t_self {
           some(t) => some({self_ty: t with s})
