@@ -207,7 +207,7 @@ impl state: to_type_decls {
         let mut items_msg = ~[];
 
         for self.messages.each |m| {
-            let message(name, _span, tys, this, next) = m;
+            let message(name, span, tys, this, next) = m;
 
             let tys = match next {
               some({state: next, tys: next_tys}) => {
@@ -226,12 +226,13 @@ impl state: to_type_decls {
               none => tys
             };
 
-            let v = cx.variant(name, tys);
+            let v = cx.variant(name, span, tys);
 
             vec::push(items_msg, v);
         }
 
         ~[cx.item_enum_poly(name,
+                            self.span,
                             ast::enum_def({ variants: items_msg,
                                             common: none }),
                             self.ty_params)]
@@ -255,6 +256,7 @@ impl state: to_type_decls {
             vec::push(items,
                       cx.item_ty_poly(
                           self.data_name(),
+                          self.span,
                           cx.ty_path_ast_builder(
                               (@~"pipes" + @(dir.to_str() + ~"_packet"))
                               .add_ty(cx.ty_path_ast_builder(
@@ -266,6 +268,7 @@ impl state: to_type_decls {
             vec::push(items,
                       cx.item_ty_poly(
                           self.data_name(),
+                          self.span,
                           cx.ty_path_ast_builder(
                               (@~"pipes" + @(dir.to_str()
                                              + ~"_packet_buffered"))
@@ -384,6 +387,7 @@ impl protocol: gen_init {
 
         cx.item_ty_poly(
             @~"__Buffer",
+            cx.empty_span(),
             cx.ty_rec(fields),
             params)
     }
@@ -407,12 +411,14 @@ impl protocol: gen_init {
 
         vec::push(items,
                   cx.item_mod(@~"client",
+                              self.span,
                               client_states));
         vec::push(items,
                   cx.item_mod(@~"server",
+                              self.span,
                               server_states));
 
-        cx.item_mod(self.name, items)
+        cx.item_mod(self.name, self.span, items)
     }
 }
 
