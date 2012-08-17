@@ -2861,10 +2861,9 @@ fn item_path(cx: ctxt, id: ast::def_id) -> ast_map::path {
             vec::append_one(*path, ast_map::path_name(@~"dtor"))
           }
 
-
-          ast_map::node_expr(_) | ast_map::node_arg(_, _) |
-          ast_map::node_local(_) | ast_map::node_export(_, _) |
-          ast_map::node_block(_) => {
+          ast_map::node_stmt(*) | ast_map::node_expr(*) |
+          ast_map::node_arg(*) | ast_map::node_local(*) |
+          ast_map::node_export(*) | ast_map::node_block(*) => {
             cx.sess.bug(fmt!{"cannot find item_path for node %?", node});
           }
         }
