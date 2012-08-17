@@ -1,8 +1,6 @@
 //xfail-test
 
-// Right now, this fails with "attempted access of field `purr` on
-// type `self`, but no public field or method with that name was
-// found".
+// Currently failing with an ICE in trans.
 
 trait Cat {
     fn meow() -> bool;
