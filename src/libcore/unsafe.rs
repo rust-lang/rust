@@ -5,6 +5,7 @@ export transmute_mut, transmute_immut, transmute_region, transmute_mut_region;
 
 export SharedMutableState, shared_mutable_state, clone_shared_mutable_state;
 export get_shared_mutable_state, get_shared_immutable_state;
+export unwrap_shared_mutable_state;
 export Exclusive, exclusive;
 
 import task::atomically;
@@ -69,24 +70,120 @@ unsafe fn transmute_mut_region<T>(+ptr: &a/mut T) -> &b/mut T {
  * Shared state & exclusive ARC
  ****************************************************************************/
 
-type ArcData<T> = {
-    mut count: libc::intptr_t,
-    data: T
-};
+// An unwrapper uses this protocol to communicate with the "other" task that
+// drops the last refcount on an arc. Unfortunately this can't be a proper
+// pipe protocol because the unwrapper has to access both stages at once.
+type UnwrapProto = ~mut option<(pipes::chan_one<()>, pipes::port_one<bool>)>;
+
+struct ArcData<T> {
+    mut count:     libc::intptr_t;
+    mut unwrapper: libc::uintptr_t; // either a UnwrapProto or 0
+    // FIXME(#3224) should be able to make this non-option to save memory, and
+    // in unwrap() use "let ~ArcData { data: result, _ } = thing" to unwrap it
+    mut data:      option<T>;
+}
 
 struct ArcDestruct<T> {
-   let data: *libc::c_void;
-   new(data: *libc::c_void) { self.data = data; }
-   drop unsafe {
-      let data: ~ArcData<T> = unsafe::reinterpret_cast(self.data);
-      let new_count = rustrt::rust_atomic_decrement(&mut data.count);
-      assert new_count >= 0;
-      if new_count == 0 {
-          // drop glue takes over.
-      } else {
-        unsafe::forget(data);
-      }
-   }
+    mut data: *libc::c_void;
+    new(data: *libc::c_void) { self.data = data; }
+    drop unsafe {
+        if self.data.is_null() {
+            return; // Happens when destructing an unwrapper's handle.
+        }
+        do task::unkillable {
+            let data: ~ArcData<T> = unsafe::reinterpret_cast(self.data);
+            let new_count = rustrt::rust_atomic_decrement(&mut data.count);
+            assert new_count >= 0;
+            if new_count == 0 {
+                // Were we really last, or should we hand off to an unwrapper?
+                // It's safe to not xchg because the unwrapper will set the
+                // unwrap lock *before* dropping his/her reference. In effect,
+                // being here means we're the only *awake* task with the data.
+                if data.unwrapper != 0 {
+                    let p: UnwrapProto =
+                        unsafe::reinterpret_cast(data.unwrapper);
+                    let (message, response) = option::swap_unwrap(p);
+                    // Send 'ready' and wait for a response.
+                    pipes::send_one(message, ());
+                    // Unkillable wait. Message guaranteed to come.
+                    if pipes::recv_one(response) {
+                        // Other task got the data.
+                        unsafe::forget(data);
+                    } else {
+                        // Other task was killed. drop glue takes over.
+                    }
+                } else {
+                    // drop glue takes over.
+                }
+            } else {
+                unsafe::forget(data);
+            }
+        }
+    }
+}
+
+unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
+        -> T {
+    struct DeathThroes<T> {
+        mut ptr:      option<~ArcData<T>>;
+        mut response: option<pipes::chan_one<bool>>;
+        drop unsafe {
+            let response = option::swap_unwrap(&mut self.response);
+            // In case we get killed early, we need to tell the person who
+            // tried to wake us whether they should hand-off the data to us.
+            if task::failing() {
+                pipes::send_one(response, false);
+                // Either this swap_unwrap or the one below (at "Got here")
+                // ought to run.
+                unsafe::forget(option::swap_unwrap(&mut self.ptr));
+            } else {
+                assert self.ptr.is_none();
+                pipes::send_one(response, true);
+            }
+        }
+    }
+
+    do task::unkillable {
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(rc.data);
+        let (c1,p1) = pipes::oneshot(); // ()
+        let (c2,p2) = pipes::oneshot(); // bool
+        let server: UnwrapProto = ~mut some((c1,p2));
+        let serverp: libc::uintptr_t = unsafe::transmute(server);
+        // Try to put our server end in the unwrapper slot.
+        if rustrt::rust_compare_and_swap_ptr(&mut ptr.unwrapper, 0, serverp) {
+            // Got in. Step 0: Tell destructor not to run. We are now it.
+            rc.data = ptr::null();
+            // Step 1 - drop our own reference.
+            let new_count = rustrt::rust_atomic_decrement(&mut ptr.count);
+            assert new_count >= 0;
+            if new_count == 0 {
+                // We were the last owner. Can unwrap immediately.
+                // Also we have to free the server endpoints.
+                let _server: UnwrapProto = unsafe::transmute(serverp);
+                option::swap_unwrap(&mut ptr.data)
+                // drop glue takes over.
+            } else {
+                // The *next* person who sees the refcount hit 0 will wake us.
+                let end_result =
+                    DeathThroes { ptr: some(ptr), response: some(c2) };
+                let mut p1 = some(p1); // argh
+                do task::rekillable {
+                    pipes::recv_one(option::swap_unwrap(&mut p1));
+                }
+                // Got here. Back in the 'unkillable' without getting killed.
+                // Recover ownership of ptr, then take the data out.
+                let ptr = option::swap_unwrap(&mut end_result.ptr);
+                option::swap_unwrap(&mut ptr.data)
+                // drop glue takes over.
+            }
+        } else {
+            // Somebody else was trying to unwrap. Avoid guaranteed deadlock.
+            unsafe::forget(ptr);
+            // Also we have to free the (rejected) server endpoints.
+            let _server: UnwrapProto = unsafe::transmute(serverp);
+            fail ~"Another task is already unwrapping this ARC!";
+        }
+    }
 }
 
 /**
@@ -98,7 +195,7 @@ struct ArcDestruct<T> {
 type SharedMutableState<T: send> = ArcDestruct<T>;
 
 unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
-    let data = ~{mut count: 1, data: data};
+    let data = ~ArcData { count: 1, unwrapper: 0, data: some(data) };
     unsafe {
         let ptr = unsafe::transmute(data);
         ArcDestruct(ptr)
@@ -112,9 +209,9 @@ unsafe fn get_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
-        let r = unsafe::reinterpret_cast(&ptr.data);
+        let r = unsafe::transmute_region(option::get_ref(&ptr.data));
         unsafe::forget(ptr);
-        return r;
+        return unsafe::transmute_mut(r);
     }
 }
 #[inline(always)]
@@ -124,7 +221,7 @@ unsafe fn get_shared_immutable_state<T: send>(rc: &SharedMutableState<T>)
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
-        let r = unsafe::reinterpret_cast(&ptr.data);
+        let r = unsafe::transmute_region(option::get_ref(&ptr.data));
         unsafe::forget(ptr);
         return r;
     }
@@ -155,6 +252,11 @@ extern mod rustrt {
     #[rust_stack]
     fn rust_atomic_decrement(p: &mut libc::intptr_t)
         -> libc::intptr_t;
+
+    #[rust_stack]
+    fn rust_compare_and_swap_ptr(address: &mut libc::uintptr_t,
+                                 oldval: libc::uintptr_t,
+                                 newval: libc::uintptr_t) -> bool;
 
     fn rust_create_little_lock() -> rust_little_lock;
     fn rust_destroy_little_lock(lock: rust_little_lock);
@@ -225,6 +327,15 @@ impl<T: send> Exclusive<T> {
             result
         }
     }
+}
+
+// FIXME(#2585) make this a by-move method on the exclusive
+#[cfg(stage1)]
+fn unwrap_exclusive<T: send>(+arc: Exclusive<T>) -> T {
+    let Exclusive { x: x } = arc;
+    let inner = unsafe { unwrap_shared_mutable_state(x) };
+    let ExData { data: data, _ } = inner;
+    data
 }
 
 /****************************************************************************
@@ -312,5 +423,74 @@ mod tests {
         do x.with |one| {
             assert *one == 1;
         }
+    }
+
+    #[test]
+    #[cfg(stage1)]
+    fn exclusive_unwrap_basic() {
+        let x = exclusive(~~"hello");
+        assert unwrap_exclusive(x) == ~~"hello";
+    }
+
+    #[test]
+    #[cfg(stage1)]
+    fn exclusive_unwrap_contended() {
+        let x = exclusive(~~"hello");
+        let x2 = ~mut some(x.clone());
+        do task::spawn {
+            let x2 = option::swap_unwrap(x2);
+            do x2.with |_hello| { }
+            task::yield();
+        }
+        assert unwrap_exclusive(x) == ~~"hello";
+
+        // Now try the same thing, but with the child task blocking.
+        let x = exclusive(~~"hello");
+        let x2 = ~mut some(x.clone());
+        let mut res = none;
+        do task::task().future_result(|+r| res = some(r)).spawn {
+            let x2 = option::swap_unwrap(x2);
+            assert unwrap_exclusive(x2) == ~~"hello";
+        }
+        // Have to get rid of our reference before blocking.
+        { let _x = move x; } // FIXME(#3161) util::ignore doesn't work here
+        let res = option::swap_unwrap(&mut res);
+        future::get(&res);
+    }
+
+    #[test] #[should_fail] #[ignore(cfg(windows))]
+    #[cfg(stage1)]
+    fn exclusive_unwrap_conflict() {
+        let x = exclusive(~~"hello");
+        let x2 = ~mut some(x.clone());
+        let mut res = none;
+        do task::task().future_result(|+r| res = some(r)).spawn {
+            let x2 = option::swap_unwrap(x2);
+            assert unwrap_exclusive(x2) == ~~"hello";
+        }
+        assert unwrap_exclusive(x) == ~~"hello";
+        let res = option::swap_unwrap(&mut res);
+        future::get(&res);
+    }
+
+    #[test] #[ignore(cfg(windows))]
+    #[cfg(stage1)]
+    fn exclusive_unwrap_deadlock() {
+        // This is not guaranteed to get to the deadlock before being killed,
+        // but it will show up sometimes, and if the deadlock were not there,
+        // the test would nondeterministically fail.
+        let result = do task::try {
+            // a task that has two references to the same exclusive will
+            // deadlock when it unwraps. nothing to be done about that.
+            let x = exclusive(~~"hello");
+            let x2 = x.clone();
+            do task::spawn {
+                for 10.times { task::yield(); } // try to let the unwrapper go
+                fail; // punt it awake from its deadlock
+            }
+            let _z = unwrap_exclusive(x);
+            do x2.with |_hello| { }
+        };
+        assert result.is_err();
     }
 }
