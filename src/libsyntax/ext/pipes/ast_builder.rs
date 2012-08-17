@@ -69,7 +69,7 @@ trait ext_ctxt_ast_builder {
                       span: span,
                       +enum_definition: ast::enum_def,
                       +ty_params: ~[ast::ty_param]) -> @ast::item;
-    fn item_enum(name: ident, span: span, 
+    fn item_enum(name: ident, span: span,
                  +enum_definition: ast::enum_def) -> @ast::item;
     fn variant(name: ident, span: span, +tys: ~[@ast::ty]) -> ast::variant;
     fn item_mod(name: ident, span: span, +items: ~[@ast::item]) -> @ast::item;
