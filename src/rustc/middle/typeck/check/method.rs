@@ -140,6 +140,26 @@ struct lookup {
               ty::ty_class(did, substs) => {
                 self.add_candidates_from_class(did, substs);
               }
+              ty::ty_self => {
+                // Call is of the form "self.foo()" and appears in one
+                // of a trait's provided methods.
+                let self_def_id = match self.fcx.self_info {
+                  some(self_info) => self_info.def_id,
+                  none => {
+                    // Shouldn't happen; there should always be a
+                    // self_info in this case.
+                    self.tcx().sess.bug(~"unexpected `none` for self_info")
+                  }
+                };
+
+                let substs = {
+                    self_r: none,
+                    self_ty: none,
+                    tps: ~[],
+                };
+
+                self.add_candidates_from_trait(self_def_id, substs);
+              }
               _ => ()
             }
 
