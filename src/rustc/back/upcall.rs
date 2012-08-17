@@ -20,7 +20,6 @@ type upcalls =
      str_new_shared: ValueRef,
      cmp_type: ValueRef,
      log_type: ValueRef,
-     alloc_c_stack: ValueRef,
      call_shim_on_c_stack: ValueRef,
      call_shim_on_rust_stack: ValueRef,
      rust_personality: ValueRef,
@@ -84,8 +83,6 @@ fn declare_upcalls(targ_cfg: @session::config,
           log_type:
               dv(~"log_type", ~[T_ptr(tydesc_type),
                               T_ptr(T_i8()), T_i32()]),
-          alloc_c_stack:
-              d(~"alloc_c_stack", ~[size_t], T_ptr(T_i8())),
           call_shim_on_c_stack:
               d(~"call_shim_on_c_stack",
                 // arguments: void *args, void *fn_ptr
