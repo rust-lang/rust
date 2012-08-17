@@ -29,6 +29,20 @@ pure fn get<T: copy>(opt: option<T>) -> T {
     }
 }
 
+pure fn get_ref<T>(opt: &option<T>) -> &T {
+    /*!
+     * Gets an immutable reference to the value inside an option.
+     *
+     * # Failure
+     *
+     * Fails if the value equals `none`
+     */
+    match *opt {
+        some(ref x) => x,
+        none => fail ~"option::get_ref none"
+    }
+}
+
 pure fn expect<T: copy>(opt: option<T>, reason: ~str) -> T {
     #[doc = "
     Gets the value out of an option, printing a specified message on failure
@@ -201,6 +215,8 @@ impl<T> &option<T> {
     pure fn iter_ref(f: fn(x: &T)) { iter_ref(self, f) }
     /// Maps a `some` value from one type to another by reference
     pure fn map_ref<U>(f: fn(x: &T) -> U) -> option<U> { map_ref(self, f) }
+    /// Gets an immutable reference to the value inside a `some`.
+    pure fn get_ref() -> &self/T { get_ref(self) }
 }
 
 impl<T: copy> option<T> {
