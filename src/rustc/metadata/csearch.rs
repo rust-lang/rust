@@ -19,7 +19,6 @@ export get_class_method;
 export get_field_type;
 export get_type_param_count;
 export get_region_param;
-export lookup_defs;
 export lookup_method_purity;
 export get_enum_variants;
 export get_impls_for_mod;
@@ -41,17 +40,6 @@ fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> ~str {
 fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     return decoder::get_type_param_count(cdata, def.node);
-}
-
-fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
-               path: ~[ast::ident]) -> ~[ast::def] {
-    let mut result = ~[];
-    debug!{"lookup_defs: path = %? cnum = %?", path, cnum};
-    for resolve_path(cstore, cnum, path).each |elt| {
-        let (c, data, def) = elt;
-        vec::push(result, decoder::lookup_def(c, data, def));
-    }
-    return result;
 }
 
 fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
