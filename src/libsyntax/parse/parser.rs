@@ -3185,12 +3185,6 @@ struct parser {
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
-        } else if items_allowed && self.eat_keyword(~"iface") {
-            self.warn(~"`iface` is deprecated; use `trait`");
-            let (ident, item_, extra_attrs) = self.parse_item_trait();
-            return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
-                                          visibility,
-                                          maybe_append(attrs, extra_attrs)));
         } else if items_allowed && self.eat_keyword(~"trait") {
             let (ident, item_, extra_attrs) = self.parse_item_trait();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
