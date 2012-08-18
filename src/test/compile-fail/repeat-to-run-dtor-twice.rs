@@ -11,6 +11,6 @@ struct Foo {
 
 fn main() {
     let a = Foo { x: 3 };
-    let b = [ a, ..5 ];     //~ ERROR copying a noncopyable value
+    let _ = [ a, ..5 ];     //~ ERROR copying a noncopyable value
 }
 
