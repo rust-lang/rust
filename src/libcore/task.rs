@@ -767,11 +767,11 @@ enum AncestorList = option<unsafe::Exclusive<AncestorNode>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
-fn access_group<U>(x: TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
+fn access_group<U>(x: &TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
     unsafe { x.with(blk) }
 }
 #[inline(always)]
-fn access_ancestors<U>(x: unsafe::Exclusive<AncestorNode>,
+fn access_ancestors<U>(x: &unsafe::Exclusive<AncestorNode>,
                        blk: fn(x: &mut AncestorNode) -> U) -> U {
     unsafe { x.with(blk) }
 }
@@ -800,7 +800,7 @@ fn each_ancestor(list:        &mut AncestorList,
         // Need to swap the list out to use it, to appease borrowck.
         let tmp_list = util::replace(list, AncestorList(none));
         let (coalesce_this, early_break) =
-            iterate(tmp_list, bail_opt, forward_blk, last_generation);
+            iterate(&tmp_list, bail_opt, forward_blk, last_generation);
         // What should our next ancestor end up being?
         if coalesce_this.is_some() {
             // Needed coalesce. Our next ancestor becomes our old
@@ -821,7 +821,7 @@ fn each_ancestor(list:        &mut AncestorList,
     // bool:
     //     True if the supplied block did 'break', here or in any recursive
     //     calls. If so, must call the unwinder on all previous nodes.
-    fn iterate(ancestors:       AncestorList,
+    fn iterate(ancestors:       &AncestorList,
                bail_opt:        option<fn@(TaskGroupInner)>,
                forward_blk:     fn(TaskGroupInner) -> bool,
                last_generation: uint) -> (option<AncestorList>, bool) {
@@ -836,9 +836,9 @@ fn each_ancestor(list:        &mut AncestorList,
 
         // The map defaults to none, because if ancestors is none, we're at
         // the end of the list, which doesn't make sense to coalesce.
-        return do (*ancestors).map_default((none,false)) |ancestor_arc| {
+        return do (**ancestors).map_default((none,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
-            do access_ancestors(ancestor_arc) |nobe| {
+            do access_ancestors(&ancestor_arc) |nobe| {
                 // Check monotonicity
                 assert last_generation > nobe.generation;
                 /*##########################################################*
@@ -903,7 +903,7 @@ fn each_ancestor(list:        &mut AncestorList,
                              blk: fn(TaskGroupInner) -> U) -> U {
             // If this trips, more likely the problem is 'blk' failed inside.
             let tmp_arc = option::swap_unwrap(parent_group);
-            let result = do access_group(tmp_arc) |tg_opt| { blk(tg_opt) };
+            let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
             *parent_group <- some(tmp_arc);
             result
         }
@@ -934,12 +934,12 @@ struct Tcb {
         if rustrt::rust_task_is_unwinding(self.me) {
             self.notifier.iter(|x| { x.failed = true; });
             // Take everybody down with us.
-            do access_group(self.tasks) |tg| {
+            do access_group(&self.tasks) |tg| {
                 kill_taskgroup(tg, self.me, self.is_main);
             }
         } else {
             // Remove ourselves from the group(s).
-            do access_group(self.tasks) |tg| {
+            do access_group(&self.tasks) |tg| {
                 leave_taskgroup(tg, self.me, true);
             }
         }
@@ -1080,7 +1080,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // it should be enabled only in debug builds.
             let new_generation =
                 match *old_ancestors {
-                    some(arc) => access_ancestors(arc, |a| a.generation+1),
+                    some(arc) => access_ancestors(&arc, |a| a.generation+1),
                     none      => 0 // the actual value doesn't really matter.
                 };
             assert new_generation < uint::max_value;
@@ -1165,7 +1165,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
             // send something on the notify channel.
             let notifier = notify_chan.map(|c| AutoNotify(c));
 
-            if enlist_many(child, child_arc, &mut ancestors) {
+            if enlist_many(child, &child_arc, &mut ancestors) {
                 let group = @Tcb(child, child_arc, ancestors,
                                  is_main, notifier);
                 unsafe { local_set(child, taskgroup_key!(), group); }
@@ -1178,7 +1178,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
         // Set up membership in taskgroup and descendantship in all ancestor
         // groups. If any enlistment fails, some task was already failing, so
         // don't let the child task run, and undo every successful enlistment.
-        fn enlist_many(child: *rust_task, child_arc: TaskGroupArc,
+        fn enlist_many(child: *rust_task, child_arc: &TaskGroupArc,
                        ancestors: &mut AncestorList) -> bool {
             // Join this taskgroup.
             let mut result =

@@ -1519,7 +1519,7 @@ fn remove_owned_send(k: kind) -> kind {
 }
 
 fn remove_copyable(k: kind) -> kind {
-    k - kind_(KIND_MASK_COPY)
+    k - kind_(KIND_MASK_COPY | KIND_MASK_DEFAULT_MODE)
 }
 
 impl kind: ops::bitand<kind,kind> {
