@@ -73,9 +73,10 @@ struct binding_info {
 type BindingMap = hashmap<ident,binding_info>;
 
 // Implementation resolution
-
+//
 // XXX: This kind of duplicates information kept in ty::method. Maybe it
 // should go away.
+
 type MethodInfo = {
     did: def_id,
     n_tps: uint,
@@ -110,20 +111,13 @@ enum PatternBindingMode {
 enum Namespace {
     ModuleNS,
     TypeNS,
-    ValueNS,
-    ImplNS
+    ValueNS
 }
 
 enum NamespaceResult {
     UnknownResult,
     UnboundResult,
     BoundResult(@Module, @NameBindings)
-}
-
-enum ImplNamespaceResult {
-    UnknownImplResult,
-    UnboundImplResult,
-    BoundImplResult(@DVec<@Target>)
 }
 
 enum NameDefinition {
@@ -367,7 +361,6 @@ struct ImportResolution {
     let mut module_target: option<Target>;
     let mut value_target: option<Target>;
     let mut type_target: option<Target>;
-    let mut impl_target: @DVec<@Target>;
 
     let mut used: bool;
 
@@ -379,7 +372,6 @@ struct ImportResolution {
         self.module_target = none;
         self.value_target = none;
         self.type_target = none;
-        self.impl_target = @dvec();
 
         self.used = false;
     }
@@ -388,14 +380,7 @@ struct ImportResolution {
         match namespace {
             ModuleNS    => return copy self.module_target,
             TypeNS      => return copy self.type_target,
-            ValueNS     => return copy self.value_target,
-
-            ImplNS => {
-                if (*self.impl_target).len() > 0u {
-                    return some(copy *(*self.impl_target).get_elt(0u));
-                }
-                return none;
-            }
+            ValueNS     => return copy self.value_target
         }
     }
 }
@@ -496,7 +481,6 @@ struct NameBindings {
     let mut module_def: ModuleDef;      //< Meaning in the module namespace.
     let mut type_def: option<def>;      //< Meaning in the type namespace.
     let mut value_def: option<def>;     //< Meaning in the value namespace.
-    let mut impl_defs: ~[@Impl];        //< Meaning in the impl namespace.
 
     // For error reporting
     let mut module_span: option<span>;
@@ -507,7 +491,6 @@ struct NameBindings {
         self.module_def = NoModuleDef;
         self.type_def = none;
         self.value_def = none;
-        self.impl_defs = ~[];
         self.module_span = none;
         self.type_span = none;
         self.value_span = none;
@@ -533,11 +516,6 @@ struct NameBindings {
     fn define_value(def: def, sp: span) {
         self.value_def = some(def);
         self.value_span = some(sp);
-    }
-
-    /// Records an impl definition.
-    fn define_impl(implementation: @Impl) {
-        self.impl_defs += ~[implementation];
     }
 
     /// Returns the module node if applicable.
@@ -568,8 +546,7 @@ struct NameBindings {
         match namespace {
             ModuleNS    => return self.module_def != NoModuleDef,
             TypeNS      => return self.type_def != none,
-            ValueNS     => return self.value_def != none,
-            ImplNS      => return self.impl_defs.len() >= 1u
+            ValueNS     => return self.value_def != none
         }
     }
 
@@ -583,15 +560,6 @@ struct NameBindings {
               none => return none,
               some(def_id) => return some(def_mod(def_id))
             }
-          },
-          ImplNS => {
-            // Danger: Be careful what you use this for! def_ty is not
-            // necessarily the right def.
-
-            if self.impl_defs.len() == 0u {
-                return none;
-            }
-            return some(def_ty(self.impl_defs[0].did));
           }
         }
     }
@@ -602,8 +570,7 @@ struct NameBindings {
             match namespace {
               TypeNS   => self.type_span,
               ValueNS  => self.value_span,
-              ModuleNS => self.module_span,
-              _        => none
+              ModuleNS => self.module_span
             }
           }
           none => none
@@ -647,8 +614,7 @@ fn namespace_to_str(ns: Namespace) -> ~str {
     match ns {
       TypeNS   => ~"type",
       ValueNS  => ~"value",
-      ModuleNS => ~"module",
-      ImplNS   => ~"implementation"
+      ModuleNS => ~"module"
     }
 }
 
@@ -737,7 +703,7 @@ struct Resolver {
         self.self_atom = (*self.atom_table).intern(@~"self");
         self.primitive_type_table = @PrimitiveTypeTable(self.atom_table);
 
-        self.namespaces = ~[ ModuleNS, TypeNS, ValueNS, ImplNS ];
+        self.namespaces = ~[ ModuleNS, TypeNS, ValueNS ];
 
         self.def_map = int_hash();
         self.export_map = int_hash();
@@ -846,10 +812,8 @@ struct Resolver {
             }
             some(child) => {
               // We don't want to complain if the multiple definitions
-              // are in different namespaces. (unless it's the impl namespace,
-              // since impls can share a name)
-              match ns.find(|n| n != ImplNS
-                            && child.defined_in_namespace(n)) {
+              // are in different namespaces.
+              match ns.find(|n| child.defined_in_namespace(n)) {
                 some(ns) => {
                   self.session.span_err(sp,
                        #fmt("Duplicate definition of %s %s",
@@ -988,19 +952,20 @@ struct Resolver {
 
             // These items live in both the type and value namespaces.
             item_class(struct_definition, _) => {
-                let (name_bindings, new_parent) =
+                let new_parent =
                     match struct_definition.ctor {
                     none => {
-                        let (name_bindings, new_parent) = self.add_child(atom,
-                              parent, ~[TypeNS], sp);
+                        let (name_bindings, new_parent) =
+                            self.add_child(atom, parent, ~[TypeNS], sp);
 
                         (*name_bindings).define_type(def_ty(
                             local_def(item.id)), sp);
-                        (name_bindings, new_parent)
+                        new_parent
                     }
                     some(ctor) => {
-                        let (name_bindings, new_parent) = self.add_child(atom,
-                                 parent, ~[ValueNS, TypeNS], sp);
+                        let (name_bindings, new_parent) =
+                            self.add_child(atom, parent, ~[ValueNS, TypeNS],
+                                           sp);
 
                         (*name_bindings).define_type(def_ty(
                             local_def(item.id)), sp);
@@ -1009,35 +974,9 @@ struct Resolver {
                         let ctor_def = def_fn(local_def(ctor.node.id),
                                               purity);
                         (*name_bindings).define_value(ctor_def, sp);
-                        (name_bindings, new_parent)
+                        new_parent
                     }
                 };
-
-                // Create the set of implementation information that the
-                // implementation scopes (ImplScopes) need and write it into
-                // the implementation definition list for this set of name
-                // bindings.
-
-                let mut method_infos = ~[];
-                for struct_definition.methods.each |method| {
-                    // XXX: Combine with impl method code below.
-                    method_infos += ~[
-                        @{
-                            did: local_def(method.id),
-                            n_tps: method.tps.len(),
-                            ident: method.ident,
-                            self_type: method.self_ty.node
-                        }
-                    ];
-                }
-
-                let impl_info = @{
-                    did: local_def(item.id),
-                    ident: /* XXX: bad */ copy item.ident,
-                    methods: method_infos
-                };
-
-                (*name_bindings).define_impl(impl_info);
 
                 // Record the def ID of this struct.
                 self.structs.insert(local_def(item.id),
@@ -1046,37 +985,11 @@ struct Resolver {
                 visit_item(item, new_parent, visitor);
             }
 
-            item_impl(_, _, _, methods) => {
-                // Create the set of implementation information that the
-                // implementation scopes (ImplScopes) need and write it into
-                // the implementation definition list for this set of name
-                // bindings.
-              let (name_bindings, new_parent) = self.add_child(atom, parent,
-                                                               ~[ImplNS], sp);
-
-                let mut method_infos = ~[];
-                for methods.each |method| {
-                    method_infos += ~[
-                        @{
-                            did: local_def(method.id),
-                            n_tps: method.tps.len(),
-                            ident: method.ident,
-                            self_type: method.self_ty.node
-                        }
-                    ];
-                }
-
-                let impl_info = @{
-                    did: local_def(item.id),
-                    ident: /* XXX: bad */ copy item.ident,
-                    methods: method_infos
-                };
-
-                (*name_bindings).define_impl(impl_info);
-                visit_item(item, new_parent, visitor);
+            item_impl(*) => {
+                visit_item(item, parent, visitor);
             }
 
-          item_trait(_, _, methods) => {
+            item_trait(_, _, methods) => {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                                ~[TypeNS], sp);
 
@@ -1813,7 +1726,6 @@ struct Resolver {
         let mut module_result = UnknownResult;
         let mut value_result = UnknownResult;
         let mut type_result = UnknownResult;
-        let mut impl_result = UnknownImplResult;
 
         // Search for direct children of the containing module.
         match containing_module.children.find(source) {
@@ -1833,21 +1745,14 @@ struct Resolver {
                     type_result = BoundResult(containing_module,
                                               child_name_bindings);
                 }
-                if (*child_name_bindings).defined_in_namespace(ImplNS) {
-                    let targets = @dvec();
-                    (*targets).push(@Target(containing_module,
-                                            child_name_bindings));
-                    impl_result = BoundImplResult(targets);
-                }
             }
         }
 
         // Unless we managed to find a result in all four namespaces
         // (exceedingly unlikely), search imports as well.
 
-        match (module_result, value_result, type_result, impl_result) {
-            (BoundResult(*), BoundResult(*), BoundResult(*),
-             BoundImplResult(*)) => {
+        match (module_result, value_result, type_result) {
+            (BoundResult(*), BoundResult(*), BoundResult(*)) => {
                 // Continue.
             }
             _ => {
@@ -1880,9 +1785,6 @@ struct Resolver {
                         if type_result == UnknownResult {
                             type_result = UnboundResult;
                         }
-                        if impl_result == UnknownImplResult {
-                            impl_result = UnboundImplResult;
-                        }
                     }
                     some(import_resolution)
                             if import_resolution.outstanding_references
@@ -1905,18 +1807,6 @@ struct Resolver {
                             }
                         }
 
-                        fn get_import_binding(import_resolution:
-                                              @ImportResolution)
-                                           -> ImplNamespaceResult {
-
-                            if (*import_resolution.impl_target).len() == 0u {
-                                return UnboundImplResult;
-                            }
-                            return BoundImplResult(import_resolution.
-                                                impl_target);
-                        }
-
-
                         // The name is an import which has been fully
                         // resolved. We can, therefore, just follow it.
 
@@ -1931,10 +1821,6 @@ struct Resolver {
                         if type_result == UnknownResult {
                             type_result = get_binding(import_resolution,
                                                       TypeNS);
-                        }
-                        if impl_result == UnknownImplResult {
-                            impl_result =
-                                get_import_binding(import_resolution);
                         }
                     }
                     some(_) => {
@@ -1985,26 +1871,14 @@ struct Resolver {
                 fail ~"type result should be known at this point";
             }
         }
-        match impl_result {
-            BoundImplResult(targets) => {
-                for (*targets).each |target| {
-                    (*import_resolution.impl_target).push(target);
-                }
-            }
-            UnboundImplResult => { /* Continue. */ }
-            UnknownImplResult => {
-                fail ~"impl result should be known at this point";
-            }
-        }
 
         let i = import_resolution;
-        match (i.module_target, i.value_target,
-               i.type_target, i.impl_target) {
+        match (i.module_target, i.value_target, i.type_target) {
           /*
             If this name wasn't found in any of the four namespaces, it's
             definitely unresolved
            */
-          (none, none, none, v) if v.len() == 0 => { return Failed; }
+          (none, none, none) => { return Failed; }
           _ => {}
         }
 
@@ -2067,8 +1941,6 @@ struct Resolver {
                         copy target_import_resolution.value_target;
                     new_import_resolution.type_target =
                         copy target_import_resolution.type_target;
-                    new_import_resolution.impl_target =
-                        copy target_import_resolution.impl_target;
 
                     module_.import_resolutions.insert
                         (atom, new_import_resolution);
@@ -2102,17 +1974,6 @@ struct Resolver {
                         some(type_target) => {
                             dest_import_resolution.type_target =
                                 some(copy type_target);
-                        }
-                    }
-                    if (*target_import_resolution.impl_target).len() > 0u &&
-                            !ptr_eq(target_import_resolution.impl_target,
-                                    dest_import_resolution.impl_target) {
-                        for (*target_import_resolution.impl_target).each
-                                |impl_target| {
-
-                            (*dest_import_resolution.impl_target).
-                                push(impl_target);
-
                         }
                     }
                 }
@@ -2162,11 +2023,6 @@ struct Resolver {
                 debug!{"(resolving glob import) ... for type target"};
                 dest_import_resolution.type_target =
                     some(Target(containing_module, name_bindings));
-            }
-            if (*name_bindings).defined_in_namespace(ImplNS) {
-                debug!{"(resolving glob import) ... for impl target"};
-                (*dest_import_resolution.impl_target).push
-                    (@Target(containing_module, name_bindings));
             }
         }
 
@@ -2586,32 +2442,10 @@ struct Resolver {
         // *and* A::B::foo being aliased to A::B::bar.
         //
 
-        let mut impl_result;
-        debug!{"(resolving one-level naming result) searching for impl"};
-        match self.resolve_item_in_lexical_scope(module_,
-                                               source_name,
-                                               ImplNS) {
-
-            Failed => {
-                debug!{"(resolving one-level renaming import) didn't find \
-                        impl result"};
-                impl_result = none;
-            }
-            Indeterminate => {
-                debug!{"(resolving one-level renaming import) impl result is \
-                        indeterminate; bailing"};
-                return Indeterminate;
-            }
-            Success(name_bindings) => {
-                debug!{"(resolving one-level renaming import) impl result \
-                        found"};
-                impl_result = some(@copy name_bindings);
-            }
-        }
-
         // If nothing at all was found, that's an error.
-        if is_none(module_result) && is_none(value_result) &&
-                is_none(type_result) && is_none(impl_result) {
+        if is_none(module_result) &&
+                is_none(value_result) &&
+                is_none(type_result) {
 
             self.session.span_err(import_directive.span,
                                   ~"unresolved import");
@@ -2635,15 +2469,6 @@ struct Resolver {
                 import_resolution.module_target = module_result;
                 import_resolution.value_target = value_result;
                 import_resolution.type_target = type_result;
-
-                match impl_result {
-                    none => {
-                        // Nothing to do.
-                    }
-                    some(impl_result) => {
-                        (*import_resolution.impl_target).push(impl_result);
-                    }
-                }
 
                 assert import_resolution.outstanding_references >= 1u;
                 import_resolution.outstanding_references -= 1u;
@@ -2736,13 +2561,6 @@ struct Resolver {
         for module_.exported_names.each |name, node_id| {
             let mut exports = ~[];
             for self.namespaces.each |namespace| {
-                // Ignore impl namespaces; they cause the original resolve
-                // to fail.
-
-                if namespace == ImplNS {
-                    again;
-                }
-
                 match self.resolve_definition_of_name_in_module(module_,
                                                               name,
                                                               namespace,
@@ -3357,9 +3175,6 @@ struct Resolver {
                      optional_constructor: option<class_ctor>,
                      optional_destructor: option<class_dtor>,
                      visitor: ResolveVisitor) {
-
-        // Add a type into the def map. This is needed to prevent an ICE in
-        // ty::impl_traits.
 
         // If applicable, create a rib for the type parameters.
         let outer_type_parameter_count = (*type_parameters).len();
@@ -4211,8 +4026,8 @@ struct Resolver {
                 search_result = self.search_ribs(self.type_ribs, name, span,
                                                  AllowCapturingSelf);
             }
-            ModuleNS | ImplNS => {
-                fail ~"module or impl namespaces do not have local ribs";
+            ModuleNS => {
+                fail ~"module namespaces do not have local ribs";
             }
         }
 
@@ -4597,7 +4412,7 @@ struct Resolver {
     }
 
     fn check_for_unused_imports_in_module(module_: @Module) {
-        for module_.import_resolutions.each |_impl_name, import_resolution| {
+        for module_.import_resolutions.each |_name, import_resolution| {
             if !import_resolution.used {
                 match self.unused_import_lint_level {
                     warn => {
@@ -4703,18 +4518,9 @@ struct Resolver {
                 }
             }
 
-            let mut impl_repr;
-            match (*import_resolution).target_for_namespace(ImplNS) {
-                none => { impl_repr = ~""; }
-                some(target) => {
-                    impl_repr = ~" impl:?";
-                    // XXX
-                }
-            }
-
-            debug!{"* %s:%s%s%s%s",
+            debug!{"* %s:%s%s%s",
                    *(*self.atom_table).atom_to_str(name),
-                   module_repr, value_repr, type_repr, impl_repr};
+                   module_repr, value_repr, type_repr};
         }
     }
 }
