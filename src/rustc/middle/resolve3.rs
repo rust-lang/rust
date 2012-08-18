@@ -26,21 +26,22 @@ import syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_loop};
 import syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
 import syntax::ast::{foreign_item, foreign_item_fn, ge, gt, ident, trait_ref};
-import syntax::ast::{impure_fn, item, item_class, item_const};
+import syntax::ast::{impure_fn, inherited, item, item_class, item_const};
 import syntax::ast::{item_enum, item_fn, item_mac, item_foreign_mod};
 import syntax::ast::{item_impl, item_mod, item_trait, item_ty, le, local};
 import syntax::ast::{local_crate, lt, method, mul, ne, neg, node_id, pat};
 import syntax::ast::{pat_enum, pat_ident, path, prim_ty, pat_box, pat_uniq};
 import syntax::ast::{pat_lit, pat_range, pat_rec, pat_struct, pat_tup};
-import syntax::ast::{pat_wild, provided, required, rem, self_ty_, shl};
-import syntax::ast::{stmt_decl, struct_field, struct_variant_kind};
+import syntax::ast::{pat_wild, private, provided, public, required, rem};
+import syntax::ast::{self_ty_};
+import syntax::ast::{shl, stmt_decl, struct_field, struct_variant_kind};
 import syntax::ast::{sty_static, subtract, tuple_variant_kind, ty};
 import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
 import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
 import syntax::ast::{ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8};
 import syntax::ast::{ty_uint, variant, view_item, view_item_export};
 import syntax::ast::{view_item_import, view_item_use, view_path_glob};
-import syntax::ast::{view_path_list, view_path_simple};
+import syntax::ast::{view_path_list, view_path_simple, visibility};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 import syntax::attr::{attr_metas, contains_name};
@@ -475,14 +476,26 @@ fn unused_import_lint_level(session: session) -> level {
     return allow;
 }
 
+enum Privacy {
+    Private,
+    Public
+}
+
+// Records a possibly-private definition.
+struct Definition {
+    privacy: Privacy;
+    def: def;
+}
+
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 struct NameBindings {
-    let mut module_def: ModuleDef;      //< Meaning in the module namespace.
-    let mut type_def: option<def>;      //< Meaning in the type namespace.
-    let mut value_def: option<def>;     //< Meaning in the value namespace.
+    let mut module_def: ModuleDef;         //< Meaning in module namespace.
+    let mut type_def: option<Definition>;  //< Meaning in type namespace.
+    let mut value_def: option<Definition>; //< Meaning in value namespace.
 
     // For error reporting
+    // XXX: Merge me into Definition.
     let mut module_span: option<span>;
     let mut type_span: option<span>;
     let mut value_span: option<span>;
@@ -507,14 +520,14 @@ struct NameBindings {
     }
 
     /// Records a type definition.
-    fn define_type(def: def, sp: span) {
-        self.type_def = some(def);
+    fn define_type(privacy: Privacy, def: def, sp: span) {
+        self.type_def = some(Definition { privacy: privacy, def: def });
         self.type_span = some(sp);
     }
 
     /// Records a value definition.
-    fn define_value(def: def, sp: span) {
-        self.value_def = some(def);
+    fn define_value(privacy: Privacy, def: def, sp: span) {
+        self.value_def = some(Definition { privacy: privacy, def: def });
         self.value_span = some(sp);
     }
 
@@ -550,16 +563,22 @@ struct NameBindings {
         }
     }
 
-    fn def_for_namespace(namespace: Namespace) -> option<def> {
+    fn def_for_namespace(namespace: Namespace) -> option<Definition> {
         match namespace {
           TypeNS => return self.type_def,
           ValueNS => return self.value_def,
           ModuleNS => match self.module_def {
             NoModuleDef => return none,
-            ModuleDef(module_) => match module_.def_id {
-              none => return none,
-              some(def_id) => return some(def_mod(def_id))
-            }
+            ModuleDef(module_) =>
+                match module_.def_id {
+                    none => return none,
+                    some(def_id) => {
+                        return some(Definition {
+                            privacy: Public,
+                            def: def_mod(def_id)
+                        });
+                    }
+                }
           }
         }
     }
@@ -762,6 +781,13 @@ struct Resolver {
         }));
     }
 
+    fn visibility_to_privacy(visibility: visibility) -> Privacy {
+        match visibility {
+            inherited | public => Public,
+            privacy => Private
+        }
+    }
+
     /// Returns the current module tracked by the reduced graph parent.
     fn get_module_from_parent(reduced_graph_parent: ReducedGraphParent)
                            -> @Module {
@@ -915,15 +941,18 @@ struct Resolver {
               let (name_bindings, _) = self.add_child(atom, parent,
                                                       ~[ValueNS], sp);
 
-                (*name_bindings).define_value(def_const(local_def(item.id)),
-                                              sp);
+                (*name_bindings).define_value
+                    (self.visibility_to_privacy(item.vis),
+                     def_const(local_def(item.id)),
+                     sp);
             }
             item_fn(decl, _, _) => {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                         ~[ValueNS], sp);
 
                 let def = def_fn(local_def(item.id), decl.purity);
-                (*name_bindings).define_value(def, sp);
+                (*name_bindings).define_value
+                    (self.visibility_to_privacy(item.vis), def, sp);
                 visit_item(item, new_parent, visitor);
             }
 
@@ -932,7 +961,10 @@ struct Resolver {
               let (name_bindings, _) = self.add_child(atom, parent,
                                                       ~[TypeNS], sp);
 
-                (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
+                (*name_bindings).define_type
+                    (self.visibility_to_privacy(item.vis),
+                     def_ty(local_def(item.id)),
+                     sp);
             }
 
             item_enum(enum_definition, _) => {
@@ -940,7 +972,10 @@ struct Resolver {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                                ~[TypeNS], sp);
 
-                (*name_bindings).define_type(def_ty(local_def(item.id)), sp);
+                (*name_bindings).define_type
+                    (self.visibility_to_privacy(item.vis),
+                     def_ty(local_def(item.id)),
+                     sp);
 
                 for enum_definition.variants.each |variant| {
                     self.build_reduced_graph_for_variant(variant,
@@ -958,8 +993,10 @@ struct Resolver {
                         let (name_bindings, new_parent) =
                             self.add_child(atom, parent, ~[TypeNS], sp);
 
-                        (*name_bindings).define_type(def_ty(
-                            local_def(item.id)), sp);
+                        (*name_bindings).define_type
+                            (self.visibility_to_privacy(item.vis),
+                             def_ty(local_def(item.id)),
+                             sp);
                         new_parent
                     }
                     some(ctor) => {
@@ -967,13 +1004,15 @@ struct Resolver {
                             self.add_child(atom, parent, ~[ValueNS, TypeNS],
                                            sp);
 
-                        (*name_bindings).define_type(def_ty(
-                            local_def(item.id)), sp);
+                        let privacy = self.visibility_to_privacy(item.vis);
+
+                        (*name_bindings).define_type
+                            (privacy, def_ty(local_def(item.id)), sp);
 
                         let purity = ctor.node.dec.purity;
                         let ctor_def = def_fn(local_def(ctor.node.id),
                                               purity);
-                        (*name_bindings).define_value(ctor_def, sp);
+                        (*name_bindings).define_value(privacy, ctor_def, sp);
                         new_parent
                     }
                 };
@@ -1009,7 +1048,8 @@ struct Resolver {
                                            ty_m.span);
                         let def = def_static_method(local_def(ty_m.id),
                                                     ty_m.decl.purity);
-                        (*method_name_bindings).define_value(def, ty_m.span);
+                        (*method_name_bindings).define_value
+                            (Public, def, ty_m.span);
                       }
                       _ => {
                         (*method_names).insert(atom, ());
@@ -1020,7 +1060,10 @@ struct Resolver {
                 let def_id = local_def(item.id);
                 self.trait_info.insert(def_id, method_names);
 
-                (*name_bindings).define_type(def_ty(def_id), sp);
+                (*name_bindings).define_type
+                    (self.visibility_to_privacy(item.vis),
+                     def_ty(def_id),
+                     sp);
                 visit_item(item, new_parent, visitor);
             }
 
@@ -1043,18 +1086,21 @@ struct Resolver {
 
         match variant.node.kind {
             tuple_variant_kind(_) => {
-                (*child).define_value(def_variant(item_id,
+                (*child).define_value(Public,
+                                      def_variant(item_id,
                                                   local_def(variant.node.id)),
                                       variant.span);
             }
             struct_variant_kind(_) => {
-                (*child).define_type(def_variant(item_id,
+                (*child).define_type(Public,
+                                     def_variant(item_id,
                                                  local_def(variant.node.id)),
                                      variant.span);
                 self.structs.insert(local_def(variant.node.id), false);
             }
             enum_variant_kind(enum_definition) => {
-                (*child).define_type(def_ty(local_def(variant.node.id)),
+                (*child).define_type(Public,
+                                     def_ty(local_def(variant.node.id)),
                                      variant.span);
                 for enum_definition.variants.each |variant| {
                     self.build_reduced_graph_for_variant(variant, item_id,
@@ -1240,7 +1286,7 @@ struct Resolver {
                                               ~[ValueNS], foreign_item.span);
 
                 let def = def_fn(local_def(foreign_item.id), fn_decl.purity);
-                (*name_bindings).define_value(def, foreign_item.span);
+                (*name_bindings).define_value(Public, def, foreign_item.span);
 
                 do self.with_type_parameter_rib
                         (HasTypeParameters(&type_parameters,
@@ -1342,7 +1388,7 @@ struct Resolver {
           def_const(def_id) | def_variant(_, def_id) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
-            (*child_name_bindings).define_value(def, dummy_sp());
+            (*child_name_bindings).define_value(Public, def, dummy_sp());
           }
           def_ty(def_id) => {
             debug!("(building reduced graph for external \
@@ -1375,17 +1421,17 @@ struct Resolver {
               }
             }
 
-            child_name_bindings.define_type(def, dummy_sp());
+            child_name_bindings.define_type(Public, def, dummy_sp());
           }
           def_class(def_id, has_constructor) => {
             debug!("(building reduced graph for external \
                     crate) building type %s (value? %d)",
                    final_ident,
                    if has_constructor { 1 } else { 0 });
-            child_name_bindings.define_type(def, dummy_sp());
+            child_name_bindings.define_type(Public, def, dummy_sp());
 
             if has_constructor {
-                child_name_bindings.define_value(def, dummy_sp());
+                child_name_bindings.define_value(Public, def, dummy_sp());
             }
 
             self.structs.insert(def_id, has_constructor);
@@ -3751,14 +3797,18 @@ struct Resolver {
                         fail ~"resolved name in the value namespace to a set \
                               of name bindings with no def?!";
                     }
-                    some(def @ def_variant(*)) => {
-                        return FoundEnumVariant(def);
-                    }
-                    some(def_const(*)) => {
-                        return FoundConst;
-                    }
-                    some(_) => {
-                        return EnumVariantOrConstNotFound;
+                    some(def) => {
+                        match def.def {
+                            def @ def_variant(*) => {
+                                return FoundEnumVariant(def);
+                            }
+                            def_const(*) => {
+                                return FoundConst;
+                            }
+                            _ => {
+                                return EnumVariantOrConstNotFound;
+                            }
+                        }
                     }
                 }
             }
@@ -3845,11 +3895,11 @@ struct Resolver {
         match containing_module.children.find(name) {
             some(child_name_bindings) => {
                 match (*child_name_bindings).def_for_namespace(namespace) {
-                    some(def) => {
+                    some(def) if def.privacy == Public => {
                         // Found it. Stop the search here.
-                        return ChildNameDefinition(def);
+                        return ChildNameDefinition(def.def);
                     }
-                    none => {
+                    some(_) | none => {
                         // Continue.
                     }
                 }
@@ -3866,12 +3916,12 @@ struct Resolver {
                     some(target) => {
                         match (*target.bindings)
                             .def_for_namespace(namespace) {
-                            some(def) => {
+                            some(def) if def.privacy == Public => {
                                 // Found it.
                                 import_resolution.used = true;
-                                return ImportNameDefinition(def);
+                                return ImportNameDefinition(def.def);
                             }
-                            none => {
+                            some(_) | none => {
                                 // This can happen with external impls, due to
                                 // the imperfect way we read the metadata.
 
@@ -4066,7 +4116,7 @@ struct Resolver {
                         debug!{"(resolving item path in lexical scope) \
                                 resolved `%s` to item",
                                *(*self.atom_table).atom_to_str(name)};
-                        return some(def);
+                        return some(def.def);
                     }
                 }
             }
@@ -4277,12 +4327,18 @@ struct Resolver {
             // Look for trait children.
             for search_module.children.each |_name, child_name_bindings| {
                 match child_name_bindings.def_for_namespace(TypeNS) {
-                    some(def_ty(trait_def_id)) => {
-                        self.add_trait_info_if_containing_method(found_traits,
-                                                                 trait_def_id,
-                                                                 name);
+                    some(def) => {
+                        match def.def {
+                            def_ty(trait_def_id) => {
+                                self.add_trait_info_if_containing_method
+                                    (found_traits, trait_def_id, name);
+                            }
+                            _ => {
+                                // Continue.
+                            }
+                        }
                     }
-                    some(_) | none => {
+                    none => {
                         // Continue.
                     }
                 }
@@ -4298,11 +4354,19 @@ struct Resolver {
                     }
                     some(target) => {
                         match target.bindings.def_for_namespace(TypeNS) {
-                            some(def_ty(trait_def_id)) => {
-                                self.add_trait_info_if_containing_method
-                                    (found_traits, trait_def_id, name);
+                            some(def) => {
+                                match def.def {
+                                    def_ty(trait_def_id) => {
+                                        self.
+                                        add_trait_info_if_containing_method
+                                        (found_traits, trait_def_id, name);
+                                    }
+                                    _ => {
+                                        // Continue.
+                                    }
+                                }
                             }
-                            some(_) | none => {
+                            none => {
                                 // Continue.
                             }
                         }
