@@ -1859,6 +1859,13 @@ match my_rec {
 }
 ~~~~
 
+It's unsafe to dereference `b` in the second `log` expression, because `b` is
+a _pointer_ to the inside of `my_rec`, and the assignment statement has
+allocated a new record and assigned `my_rec` to point to it. Thus, the old
+contents of `my_rec` are no longer live, and `b` is dangling at this point.
+The borrow-checking analysis inside the compiler recognizes this situation
+and rejects the program.
+
 ## Argument passing styles
 
 The fact that arguments are conceptually passed by safe reference does
