@@ -1720,9 +1720,16 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     // Unidirectional "parenting" shouldn't override bidirectional linked.
     // We have to cheat with opts - the interface doesn't support them because
     // they don't make sense (redundant with task().supervised()).
+    let opts = {
+        let mut opts = default_task_opts();
+        opts.linked = true;
+        opts.supervised = true;
+        move opts
+    };
+
     let b0 = task();
     let b1 = TaskBuilder({
-        opts: { linked: true, supervised: true,.. b0.opts },
+        opts: move opts,
         can_not_copy: None,
         .. *b0
     });
@@ -1733,9 +1740,16 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
 fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     // We have to cheat with opts - the interface doesn't support them because
     // they don't make sense (redundant with task().supervised()).
+    let opts = {
+        let mut opts = default_task_opts();
+        opts.linked = true;
+        opts.supervised = true;
+        move opts
+    };
+    
     let b0 = task();
     let b1 = TaskBuilder({
-        opts: { linked: true, supervised: true,.. b0.opts },
+        opts: move opts,
         can_not_copy: None,
         .. *b0
     });
@@ -1816,21 +1830,27 @@ fn test_spawn_linked_sup_propagate_sibling() {
 
 #[test]
 #[ignore(cfg(windows))]
-fn test_spawn_raw_notify() {
-    let task_po = comm::Port();
-    let task_ch = comm::Chan(task_po);
-    let notify_po = comm::Port();
-    let notify_ch = comm::Chan(notify_po);
+fn test_spawn_raw_notify_success() {
+    let (task_ch, task_po) = pipes::stream();
+    let (notify_ch, notify_po) = pipes::stream();
 
     let opts = {
-        notify_chan: Some(notify_ch),
+        notify_chan: Some(move notify_ch)
         .. default_task_opts()
     };
-    do spawn_raw(opts) {
-        comm::send(task_ch, get_task());
+    do spawn_raw(opts) |move task_ch| {
+        task_ch.send(get_task());
     }
-    let task_ = comm::recv(task_po);
-    assert comm::recv(notify_po) == Exit(task_, Success);
+    let task_ = task_po.recv();
+    assert notify_po.recv() == Exit(task_, Success);
+}
+
+#[test]
+#[ignore(cfg(windows))]
+fn test_spawn_raw_notify_failure() {
+    // New bindings for these
+    let (task_ch, task_po) = pipes::stream();
+    let (notify_ch, notify_po) = pipes::stream();
 
     let opts = {
         linked: false,
@@ -1838,11 +1858,11 @@ fn test_spawn_raw_notify() {
         .. default_task_opts()
     };
     do spawn_raw(opts) {
-        comm::send(task_ch, get_task());
+        task_ch.send(get_task());
         fail;
     }
-    let task_ = comm::recv(task_po);
-    assert comm::recv(notify_po) == Exit(task_, Failure);
+    let task_ = task_po.recv();
+    assert notify_po.recv() == Exit(task_, Failure);
 }
 
 #[test]
@@ -2140,8 +2160,13 @@ fn test_unkillable() {
     let po = comm::Port();
     let ch = po.chan();
 
+    let opts = {
+        let mut opts = default_task_opts();
+        opts.linked = false;
+        move opts
+    };
     // We want to do this after failing
-    do spawn_raw({ linked: false,.. default_task_opts() }) {
+    do spawn_raw(opts) {
         for iter::repeat(10u) { yield() }
         ch.send(());
     }
@@ -2173,11 +2198,15 @@ fn test_unkillable() {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_unkillable_nested() {
-    let po = comm::Port();
-    let ch = po.chan();
+    let (ch, po) = pipes::stream();
 
     // We want to do this after failing
-    do spawn_raw({ linked: false,.. default_task_opts() }) {
+    let opts = {
+        let mut opts = default_task_opts();
+        opts.linked = false;
+        move opts
+    };
+    do spawn_raw(opts) {
         for iter::repeat(10u) { yield() }
         ch.send(());
     }
