@@ -1560,7 +1560,7 @@ if favorite_crayon_name.len() > 5 {
 
 Named functions, like those we've seen so far, may not refer to local
 variables declared outside the function - they do not "close over
-their environment". For example you couldn't write the following:
+their environment". For example, you couldn't write the following:
 
 ~~~~ {.ignore}
 let foo = 10;
