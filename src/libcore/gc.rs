@@ -102,6 +102,12 @@ unsafe fn walk_gc_roots(mem: Memory, visitor: Visitor) {
                 match sp {
                   Some(sp_info) => {
                     for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
+                        // Skip null pointers, which can occur when a
+                        // unique pointer has already been freed.
+                        if ptr::is_null(*root) {
+                            again;
+                        }
+
                         if ptr::is_null(tydesc) {
                             // Root is a generic box.
                             let refcount = **root;
