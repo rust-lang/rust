@@ -178,6 +178,7 @@ export eval_repeat_count;
 export fn_proto, proto_bare, proto_vstore;
 export ast_proto_to_proto;
 export is_blockish;
+export method_call_bounds;
 
 // Data types
 
@@ -2412,6 +2413,32 @@ fn expr_ty_params_and_ty(cx: ctxt,
 
 fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
     return node_id_has_type_params(cx, expr.id);
+}
+
+fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
+                      id: ast::node_id)
+    -> option<@~[param_bounds]> {
+    do method_map.find(id).map |method| {
+        match method.origin {
+          typeck::method_static(did) => {
+            // n.b.: When we encode class/impl methods, the bounds
+            // that we encode include both the class/impl bounds
+            // and then the method bounds themselves...
+            ty::lookup_item_type(tcx, did).bounds
+          }
+          typeck::method_param({trait_id:trt_id,
+                                method_num:n_mth, _}) |
+          typeck::method_trait(trt_id, n_mth) => {
+            // ...trait methods bounds, in contrast, include only the
+            // method bounds, so we must preprend the tps from the
+            // trait itself.  This ought to be harmonized.
+            let trt_bounds =
+                ty::lookup_item_type(tcx, trt_id).bounds;
+            let mth = ty::trait_methods(tcx, trt_id)[n_mth];
+            @(vec::append(*trt_bounds, *mth.tps))
+          }
+        }
+    }
 }
 
 fn expr_is_lval(method_map: typeck::method_map, e: @ast::expr) -> bool {

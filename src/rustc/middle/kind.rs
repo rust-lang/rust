@@ -226,25 +226,8 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           _ => {
             // Type substitions should only occur on paths and
             // method calls, so this needs to be a method call.
-            match cx.method_map.get(e.id).origin {
-              typeck::method_static(did) => {
-                // n.b.: When we encode class/impl methods, the bounds
-                // that we encode include both the class/impl bounds
-                // and then the method bounds themselves...
-                ty::lookup_item_type(cx.tcx, did).bounds
-              }
-              typeck::method_param({trait_id:trt_id,
-                                    method_num:n_mth, _}) |
-              typeck::method_trait(trt_id, n_mth) => {
-                // ...trait methods bounds, in contrast, include only the
-                // method bounds, so we must preprend the tps from the
-                // trait itself.  This ought to be harmonized.
-                let trt_bounds =
-                    ty::lookup_item_type(cx.tcx, trt_id).bounds;
-                let mth = ty::trait_methods(cx.tcx, trt_id)[n_mth];
-                @(vec::append(*trt_bounds, *mth.tps))
-              }
-            }
+            ty::method_call_bounds(cx.tcx, cx.method_map, e.id).expect(
+                ~"non path/method call expr has type substs??")
           }
         };
         if vec::len(ts) != vec::len(*bounds) {
