@@ -235,8 +235,6 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
       ast::pat_struct(path, fields, etc) => {
         // Grab the class data that we care about.
         let class_fields, class_id, substitutions;
-        // FIXME(#3217) If this were "match structure_of...", this bug causes
-        // it to not live long enough for 'substitutions'.
         let structure = structure_of(fcx, pat.span, expected);
         match structure {
             ty::ty_class(cid, ref substs) => {
