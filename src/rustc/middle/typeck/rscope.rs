@@ -52,15 +52,20 @@ impl @anon_rscope: region_scope {
     }
 }
 
-enum binding_rscope = {base: region_scope};
+struct binding_rscope {
+    base: region_scope;
+    mut anon_bindings: uint;
+}
 fn in_binding_rscope<RS: region_scope copy owned>(self: RS)
     -> @binding_rscope {
     let base = self as region_scope;
-    @binding_rscope({base: base})
+    @binding_rscope { base: base, anon_bindings: 0 }
 }
 impl @binding_rscope: region_scope {
     fn anon_region(_span: span) -> result<ty::region, ~str> {
-        result::ok(ty::re_bound(ty::br_anon))
+        let idx = self.anon_bindings;
+        self.anon_bindings += 1;
+        result::ok(ty::re_bound(ty::br_anon(idx)))
     }
     fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
         do self.base.named_region(span, id).chain_err |_e| {

@@ -1,4 +1,4 @@
-fn view<T>(x: &[T]) -> &[T] {x}
+fn view<T>(x: &r/[T]) -> &r/[T] {x}
 
 fn main() {
     let v = ~[1, 2, 3];

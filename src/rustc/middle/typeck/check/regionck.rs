@@ -21,11 +21,41 @@ import util::ppaux;
 import ppaux::{note_and_explain_region, ty_to_str};
 import syntax::print::pprust;
 import infer::{resolve_and_force_all_but_regions, fres};
+import syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
+import middle::freevars::get_freevars;
 import middle::kind::check_owned;
 import middle::pat_util::pat_bindings;
+import middle::ty::{encl_region, proto_bare, proto_vstore, re_scope};
+import middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
+import middle::ty::{vstore_uniq};
 
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;
+
+fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::region {
+    let tcx = fcx.tcx();
+    match def {
+        def_local(node_id, _) | def_arg(node_id, _) | def_self(node_id) |
+        def_binding(node_id, _) =>
+            return encl_region(tcx, node_id),
+        def_upvar(local_id, subdef, closure_id, body_id) => {
+            match ty_fn_proto(fcx.node_ty(closure_id)) {
+                proto_bare =>
+                    tcx.sess.bug(~"proto_bare in encl_region_of_def?!"),
+                proto_vstore(vstore_fixed(_)) =>
+                    tcx.sess.bug(~"vstore_fixed in encl_region_of_def?!"),
+                proto_vstore(vstore_slice(_)) =>
+                    encl_region_of_def(fcx, *subdef),
+                proto_vstore(vstore_uniq) | proto_vstore(vstore_box) =>
+                    re_scope(body_id)
+            }
+        }
+        _ => {
+            tcx.sess.bug(fmt!("unexpected def in encl_region_of_def: %?",
+                              def))
+        }
+    }
+}
 
 impl @rcx {
     /// Try to resolve the type for the given node.
@@ -180,6 +210,22 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         // See #3148 for more details.
       }
 
+      ast::expr_fn(*) | ast::expr_fn_block(*) => {
+        match rcx.resolve_node_type(e.id) {
+          result::err(_) => return,   // Typechecking will fail anyhow.
+          result::ok(function_type) => {
+            match ty::get(function_type).struct {
+              ty::ty_fn({
+                proto: proto_vstore(vstore_slice(region)), _
+              }) => {
+                constrain_free_variables(rcx, region, e);
+              }
+              _ => ()
+            }
+          }
+        }
+      }
+
       _ => ()
     }
 
@@ -215,6 +261,39 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
 
     // Otherwise, look at the type and see if it is a region pointer.
     return constrain_regions_in_type(rcx, encl_region, span, ty);
+}
+
+fn constrain_free_variables(
+    rcx: @rcx,
+    region: ty::region,
+    expr: @ast::expr)
+{
+    // Make sure that all regions referenced by the free
+    // variables inside the closure outlive the closure
+    // itself.
+    let tcx = rcx.fcx.ccx.tcx;
+    for get_freevars(tcx, expr.id).each |freevar| {
+        debug!("freevar def is %?", freevar.def);
+        let def = freevar.def;
+        let en_region = encl_region_of_def(rcx.fcx, def);
+        match rcx.fcx.mk_subr(true, freevar.span,
+                              region, en_region) {
+          result::ok(()) => {}
+          result::err(_) => {
+            tcx.sess.span_err(
+                freevar.span,
+                ~"captured variable does not outlive the enclosing closure");
+            note_and_explain_region(
+                tcx,
+                ~"captured variable is valid for",
+                en_region);
+            note_and_explain_region(
+                tcx,
+                ~"closure is valid for",
+                region);
+          }
+        }
+    }
 }
 
 fn constrain_regions_in_type(

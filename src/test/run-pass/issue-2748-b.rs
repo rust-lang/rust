@@ -1,4 +1,4 @@
-fn thing(x: &[int]) -> &[int] { x }
+fn thing(x: &r/[int]) -> &r/[int] { x }
 fn main() {
     let x = &[1,2,3];
     let y = x;

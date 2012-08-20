@@ -2464,7 +2464,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         }
     }
     match def {
-      ast::def_upvar(nid, _, _) => {
+      ast::def_upvar(nid, _, _, _) => {
         assert (cx.fcx.llupvars.contains_key(nid));
         return { val: cx.fcx.llupvars.get(nid), kind: lv_owned };
       }

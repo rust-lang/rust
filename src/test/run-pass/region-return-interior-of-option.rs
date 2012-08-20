@@ -1,4 +1,4 @@
-fn get<T>(opt: &option<T>) -> &T {
+fn get<T>(opt: &r/option<T>) -> &r/T {
     match *opt {
       some(ref v) => v,
       none => fail ~"none"

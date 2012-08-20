@@ -538,7 +538,7 @@ impl &rwlock {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(+token: rwlock_write_mode) -> rwlock_read_mode {
+    fn downgrade(+token: rwlock_write_mode/&a) -> rwlock_read_mode/&a {
         if !ptr::ref_eq(self, token.lock) {
             fail ~"Can't downgrade() with a different rwlock's write_mode!";
         }

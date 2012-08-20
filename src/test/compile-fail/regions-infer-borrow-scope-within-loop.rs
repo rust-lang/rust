@@ -1,4 +1,4 @@
-fn borrow<T>(x: &T) -> &T {x}
+fn borrow<T>(x: &r/T) -> &r/T {x}
 
 fn foo(cond: fn() -> bool, box: fn() -> @int) {
     let mut y: &int;

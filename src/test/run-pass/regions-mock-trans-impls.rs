@@ -15,7 +15,7 @@ type ccx = {
     x: int
 };
 
-fn h(bcx : &bcx) -> &bcx {
+fn h(bcx : &r/bcx) -> &r/bcx {
     return bcx.fcx.arena.alloc(|| { fcx: bcx.fcx });
 }
 

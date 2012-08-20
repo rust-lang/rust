@@ -60,7 +60,7 @@ pure fn def_id_of_def(d: def) -> def_id {
         id
       }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
-      def_upvar(id, _, _) | def_binding(id, _) | def_region(id)
+      def_upvar(id, _, _, _) | def_binding(id, _) | def_region(id)
       | def_typaram_binder(id) | def_label(id) => {
         local_def(id)
       }
@@ -381,9 +381,9 @@ impl inlined_item: inlined_item_utils {
  referring to a def_self */
 fn is_self(d: ast::def) -> bool {
   match d {
-    def_self(_)        => true,
-    def_upvar(_, d, _) => is_self(*d),
-    _                  => false
+    def_self(_)           => true,
+    def_upvar(_, d, _, _) => is_self(*d),
+    _                     => false
   }
 }
 

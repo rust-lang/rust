@@ -361,7 +361,7 @@ impl<T: const send> &rw_arc<T> {
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(+token: rw_write_mode<T>) -> rw_read_mode<T> {
+    fn downgrade(+token: rw_write_mode/&a<T>) -> rw_read_mode/&a<T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
         let rw_write_mode((data, t, _poison)) = token;

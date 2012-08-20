@@ -199,7 +199,7 @@ enum RibKind {
 
     // We passed through a function scope at the given node ID. Translate
     // upvars as appropriate.
-    FunctionRibKind(node_id),
+    FunctionRibKind(node_id /* func id */, node_id /* body id */),
 
     // We passed through a class, impl, or trait and are now in one of its
     // methods. Allow references to ty params that that class, impl or trait
@@ -2752,11 +2752,12 @@ struct Resolver {
                 NormalRibKind => {
                     // Nothing to do. Continue.
                 }
-                FunctionRibKind(function_id) => {
+                FunctionRibKind(function_id, body_id) => {
                     if !is_ty_param {
                         def = def_upvar(def_id_of_def(def).node,
                                         @def,
-                                        function_id);
+                                        function_id,
+                                        body_id);
                     }
                 }
                 MethodRibKind(item_id, method_id) => {
@@ -4164,7 +4165,7 @@ struct Resolver {
 
             expr_fn(_, fn_decl, block, capture_clause) |
             expr_fn_block(fn_decl, block, capture_clause) => {
-                self.resolve_function(FunctionRibKind(expr.id),
+                self.resolve_function(FunctionRibKind(expr.id, block.node.id),
                                       some(@fn_decl),
                                       NoTypeParameters,
                                       block,

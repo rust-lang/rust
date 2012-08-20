@@ -377,8 +377,8 @@ enum bound_region {
     /// The self region for classes, impls (&T in a type defn or &self/T)
     br_self,
 
-    /// Anonymous region parameter for a given fn (&T)
-    br_anon,
+    /// An anonymous region parameter for a given fn (&T)
+    br_anon(uint),
 
     /// Named region parameters for functions (a in &a/T)
     br_named(ast::ident),
@@ -2192,9 +2192,10 @@ fn index_sty(cx: ctxt, sty: &sty) -> option<mt> {
 pure fn hash_bound_region(br: &bound_region) -> uint {
     match *br { // no idea if this is any good
       ty::br_self => 0u,
-      ty::br_anon => 1u,
-      ty::br_named(str) => str::hash(str),
-      ty::br_cap_avoid(id, br) => id as uint | hash_bound_region(br)
+      ty::br_anon(idx) => 1u | (idx << 2),
+      ty::br_named(str) => 2u | (str::hash(str) << 2),
+      ty::br_cap_avoid(id, br) =>
+        3u | (id as uint << 2) | hash_bound_region(br)
     }
 }
 

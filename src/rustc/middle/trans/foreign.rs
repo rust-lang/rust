@@ -961,7 +961,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         let fty = ty::mk_fn(bcx.tcx(), {
             purity: ast::impure_fn,
             proto:
-                ty::proto_vstore(ty::vstore_slice(ty::re_bound(ty::br_anon))),
+                ty::proto_vstore(ty::vstore_slice(
+                    ty::re_bound(ty::br_anon(0)))),
             bounds: @~[],
             inputs: ~[{
                 mode: ast::expl(ast::by_val),

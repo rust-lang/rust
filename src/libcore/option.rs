@@ -29,7 +29,7 @@ pure fn get<T: copy>(opt: option<T>) -> T {
     }
 }
 
-pure fn get_ref<T>(opt: &option<T>) -> &T {
+pure fn get_ref<T>(opt: &r/option<T>) -> &r/T {
     /*!
      * Gets an immutable reference to the value inside an option.
      *

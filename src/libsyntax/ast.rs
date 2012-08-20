@@ -84,9 +84,10 @@ enum def {
     def_ty_param(def_id, uint),
     def_binding(node_id, binding_mode),
     def_use(def_id),
-    def_upvar(node_id /* local id of closed over var */,
+    def_upvar(node_id /* id of closed over var */,
               @def    /* closed over def */,
-              node_id /* expr node that creates the closure */),
+              node_id /* expr node that creates the closure */,
+              node_id /* id for the block/body of the closure expr */),
     def_class(def_id, bool /* has constructor */),
     def_typaram_binder(node_id), /* class, impl or trait that has ty params */
     def_region(node_id),

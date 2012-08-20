@@ -128,7 +128,11 @@ fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
 fn parse_bound_region(st: @pstate) -> ty::bound_region {
     match check next(st) {
       's' => ty::br_self,
-      'a' => ty::br_anon,
+      'a' => {
+        let id = parse_int(st) as uint;
+        assert next(st) == '|';
+        ty::br_anon(id)
+      }
       '[' => ty::br_named(@parse_str(st, ']')),
       'c' => {
         let id = parse_int(st);

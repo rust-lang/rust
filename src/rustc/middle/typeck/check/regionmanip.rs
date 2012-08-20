@@ -148,7 +148,7 @@ fn replace_bound_regions_in_fn_ty(
               // As long as we are not within a fn() type, `&T` is
               // mapped to the free region anon_r.  But within a fn
               // type, it remains bound.
-              ty::re_bound(ty::br_anon) if in_fn => r,
+              ty::re_bound(ty::br_anon(_)) if in_fn => r,
 
               ty::re_bound(br) => {
                 match isr.find(br) {

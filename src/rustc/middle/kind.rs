@@ -103,7 +103,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
-        if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
+        if !is_move { check_copy(cx, id, var_t, sp, is_implicit); } 
 
         // check that only immutable variables are implicitly copied in
         for fv.each |fv| {
@@ -426,7 +426,7 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
           }
         }
       }
-      def_upvar(_, def1, _) => {
+      def_upvar(_, def1, _, _) => {
         check_imm_free_var(cx, *def1, sp);
       }
       def_binding(*) | def_self(*) => { /*ok*/ }

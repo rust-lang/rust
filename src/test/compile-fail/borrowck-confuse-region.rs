@@ -8,7 +8,7 @@
 fn get() -> &int {
     let x = 3;
     return &x;
-    //~^ ERROR illegal borrow: borrowed pointer must be valid for the lifetime & as defined on the block at 8:17, but the borrowed value is only valid for the block at 8:17
+    //~^ ERROR illegal borrow: borrowed pointer must be valid for the anonymous lifetime #1 defined on the block at 8:17, but the borrowed value is only valid for the block at 8:17
 }
 
 fn main() {}

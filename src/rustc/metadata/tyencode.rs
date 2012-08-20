@@ -154,7 +154,11 @@ fn enc_region(w: io::Writer, cx: @ctxt, r: ty::region) {
 fn enc_bound_region(w: io::Writer, br: ty::bound_region) {
     match br {
       ty::br_self => w.write_char('s'),
-      ty::br_anon => w.write_char('a'),
+      ty::br_anon(idx) => {
+        w.write_char('a');
+        w.write_uint(idx);
+        w.write_char('|');
+      }
       ty::br_named(s) => {
         w.write_char('[');
         w.write_str(*s);
