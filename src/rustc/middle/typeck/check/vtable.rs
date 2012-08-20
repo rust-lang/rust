@@ -252,9 +252,8 @@ fn resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, v: visit::vt<@fn_ctxt>) {
       ast::expr_index(*) => {
         debug!("(vtable - resolving expr) resolving field/binary/unary/\
                 assign/index expr");
-        match cx.method_map.find(ex.id) {
-          some({origin: method_static(did), _}) => {
-            let bounds = ty::lookup_item_type(cx.tcx, did).bounds;
+        match ty::method_call_bounds(cx.tcx, cx.method_map, ex.id) {
+          some(bounds) => {
             if has_trait_bounds(*bounds) {
                 let callee_id = match ex.node {
                   ast::expr_field(_, _, _) => ex.id,
