@@ -363,8 +363,11 @@ impl ast::def: tr {
           ast::def_ty_param(did, v) => ast::def_ty_param(did.tr(xcx), v),
           ast::def_binding(nid, bm) => ast::def_binding(xcx.tr_id(nid), bm),
           ast::def_use(did) => ast::def_use(did.tr(xcx)),
-          ast::def_upvar(nid1, def, nid2) => {
-            ast::def_upvar(xcx.tr_id(nid1), @(*def).tr(xcx), xcx.tr_id(nid2))
+          ast::def_upvar(nid1, def, nid2, nid3) => {
+            ast::def_upvar(xcx.tr_id(nid1),
+                           @(*def).tr(xcx),
+                           xcx.tr_id(nid2),
+                           xcx.tr_id(nid3))
           }
           ast::def_class(did, has_constructor) => {
             ast::def_class(did.tr(xcx), has_constructor)

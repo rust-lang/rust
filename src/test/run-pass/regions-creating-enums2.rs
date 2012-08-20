@@ -3,7 +3,7 @@ enum ast {
     add(&ast, &ast)
 }
 
-fn mk_add_ok(x: &ast, y: &ast) -> ast {
+fn mk_add_ok(x: &r/ast, y: &r/ast) -> ast/&r {
     add(x, y)
 }
 

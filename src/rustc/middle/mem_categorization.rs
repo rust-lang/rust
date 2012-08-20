@@ -378,7 +378,7 @@ impl &mem_categorization_ctxt {
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_upvar(upvid, inner, fn_node_id) => {
+          ast::def_upvar(upvid, inner, fn_node_id, _) => {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
             let proto = ty::ty_fn_proto(ty);
             match proto {

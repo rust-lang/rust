@@ -94,7 +94,6 @@ mod middle {
     }
     mod mem_categorization;
     mod liveness;
-    mod block_use;
     mod kind;
     mod freevars;
     mod capture;

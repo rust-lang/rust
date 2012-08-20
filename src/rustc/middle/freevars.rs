@@ -55,7 +55,7 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
                       let mut def = df;
                       while i < depth {
                         match copy def {
-                          ast::def_upvar(_, inner, _) => { def = *inner; }
+                          ast::def_upvar(_, inner, _, _) => { def = *inner; }
                           _ => break
                         }
                         i += 1;

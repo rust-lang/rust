@@ -1,4 +1,4 @@
-fn borrow<T>(x: &T) -> &T {x}
+fn borrow<T>(x: &r/T) -> &r/T {x}
 
 fn main() {
     let rec = @{mut f: @22};

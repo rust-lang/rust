@@ -1,4 +1,4 @@
-fn select(x: &int, y: &int) -> &int { x }
+fn select(x: &r/int, y: &r/int) -> &r/int { x }
 
 fn with<T>(f: fn(x: &int) -> T) -> T {
     f(&20)

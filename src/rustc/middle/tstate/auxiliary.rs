@@ -525,7 +525,7 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
       expr_path(p) {
         match tcx.def_map.find(e.id) {
           some(def_local(nid, _)) | some(def_arg(nid, _)) |
-          some(def_binding(nid, _)) | some(def_upvar(nid, _, _)) {
+          some(def_binding(nid, _)) | some(def_upvar(nid, _, _, _)) {
             return @respan(p.span,
                         carg_ident({ident: p.idents[0], node: nid}));
           }

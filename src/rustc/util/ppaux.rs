@@ -68,18 +68,21 @@ fn explain_region_and_span(cx: ctxt, region: ty::region)
       }
 
       re_free(id, br) => {
+        let prefix = match br {
+          br_anon(idx) => fmt!("the anonymous lifetime #%u defined on",
+                               idx + 1),
+          _ => fmt!("the lifetime %s as defined on",
+                    bound_region_to_str(cx, br))
+        };
+
         match cx.items.find(id) {
           some(ast_map::node_block(blk)) => {
             let (msg, opt_span) = explain_span(cx, ~"block", blk.span);
-            (fmt!("the lifetime %s as defined on %s",
-                  bound_region_to_str(cx, br), msg),
-             opt_span)
+            (fmt!("%s %s", prefix, msg), opt_span)
           }
           some(_) | none => {
             // this really should not happen
-            (fmt!("the lifetime %s as defined on node %d",
-                  bound_region_to_str(cx, br), id),
-             none)
+            (fmt!("%s node %d", prefix, id), none)
           }
         }
       }
@@ -103,10 +106,13 @@ fn explain_region_and_span(cx: ctxt, region: ty::region)
 
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
     match br {
-      br_anon                        => { ~"&" }
-      br_named(str)                  => { fmt!{"&%s", *str} }
-      br_self if cx.sess.ppregions() => { ~"&<self>" }
-      br_self                        => { ~"&self" }
+      br_named(str)                  => fmt!{"&%s", *str},
+      br_self if cx.sess.ppregions() => ~"&<self>",
+      br_self                        => ~"&self",
+
+      br_anon(idx) => {
+        if cx.sess.ppregions() {fmt!("&%u", idx)} else {~"&"}
+      }
 
       // FIXME(#3011) -- even if this arm is removed, exhaustiveness checking
       // does not fail

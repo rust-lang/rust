@@ -321,7 +321,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                 if !is_early { cx.vtable_map.insert(callee_id, vtbls); }
             }
           }
-          _ => ()
+          none => ()
         }
       }
       ast::expr_cast(src, _) => {

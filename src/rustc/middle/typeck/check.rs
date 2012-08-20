@@ -2304,7 +2304,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_ty(_) | ast::def_prim_ty(_) => {
         fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type");
       }
-      ast::def_upvar(_, inner, _) => {
+      ast::def_upvar(_, inner, _, _) => {
         return ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
       ast::def_ty_param(did, n) => {
@@ -2513,7 +2513,8 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         let fty = ty::mk_fn(ccx.tcx, {
             purity: ast::impure_fn,
             proto:
-                ty::proto_vstore(ty::vstore_slice(ty::re_bound(ty::br_anon))),
+                ty::proto_vstore(ty::vstore_slice(
+                    ty::re_bound(ty::br_anon(0)))),
             bounds: @~[],
             inputs: ~[{
                 mode: ast::expl(ast::by_val),

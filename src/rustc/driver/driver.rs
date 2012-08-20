@@ -207,9 +207,6 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     if upto == cu_typeck { return {crate: crate, tcx: some(ty_cx)}; }
 
-    time(time_passes, ~"block-use checking", ||
-        middle::block_use::check_crate(ty_cx, crate));
-
     time(time_passes, ~"loop checking", ||
         middle::check_loop::check_crate(ty_cx, crate));
 
