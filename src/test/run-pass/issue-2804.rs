@@ -13,16 +13,16 @@ fn lookup(table: std::map::hashmap<~str, std::json::json>, key: ~str, default: ~
 {
     match table.find(key)
     {
-        option::some(std::json::string(s)) =>
+        option::Some(std::json::string(s)) =>
         {
             *s
         }
-        option::some(value) =>
+        option::Some(value) =>
         {
             error!("%s was expected to be a string but is a %?", key, value);
             default
         }
-        option::none =>
+        option::None =>
         {
             default
         }

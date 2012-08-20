@@ -5,7 +5,7 @@ import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_map;
 import middle::ty;
-import option::{some, none};
+import option::{Some, None};
 import syntax::diagnostic::span_handler;
 import syntax::diagnostic::expect;
 import ast_util::dummy_sp;
@@ -85,7 +85,7 @@ fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
 }
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
-                     name: option<ast::ident>)
+                     name: Option<ast::ident>)
     -> @~[@decoder::_impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     do decoder::get_impls_for_mod(cstore.intr, cdata, def.node, name) |cnum| {
@@ -100,7 +100,7 @@ fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
 }
 
 fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
-    -> option<@DVec<(ast::ident, ast::self_ty_)>> {
+    -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_method_names_if_trait(cstore.intr, cdata, def.node);
@@ -127,7 +127,7 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
 }
 
 fn get_region_param(cstore: metadata::cstore::cstore,
-                    def: ast::def_id) -> option<ty::region_variance> {
+                    def: ast::def_id) -> Option<ty::region_variance> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_region_param(cdata, def.node);
 }
@@ -150,7 +150,7 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
     debug!("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     return {bounds: @~[],
-            region_param: none,
+            region_param: None,
             ty: ty};
 }
 
@@ -183,7 +183,7 @@ fn get_class_method(cstore: cstore::cstore,
 
 /* If def names a class with a dtor, return it. Otherwise, return none. */
 fn class_dtor(cstore: cstore::cstore, def: ast::def_id)
-    -> option<ast::def_id> {
+    -> Option<ast::def_id> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::class_dtor(cdata, def.node)
 }

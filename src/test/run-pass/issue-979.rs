@@ -9,7 +9,7 @@ struct r {
 fn main() {
     let b = @mut 0;
     {
-        let p = some(r(b));
+        let p = Some(r(b));
     }
 
     assert *b == 1;

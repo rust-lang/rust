@@ -66,7 +66,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     }
 }
 
-fn sectionalize(desc: option<~str>) -> (option<~str>, ~[doc::section]) {
+fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::section]) {
 
     /*!
      * Take a description of the form
@@ -85,41 +85,41 @@ fn sectionalize(desc: option<~str>) -> (option<~str>, ~[doc::section]) {
      */
 
     if option::is_none(desc) {
-        return (none, ~[]);
+        return (None, ~[]);
     }
 
     let lines = str::lines(option::get(desc));
 
-    let mut new_desc = none::<~str>;
-    let mut current_section = none;
+    let mut new_desc = None::<~str>;
+    let mut current_section = None;
     let mut sections = ~[];
 
     for lines.each |line| {
         match parse_header(line) {
-          some(header) => {
+          Some(header) => {
             if option::is_some(current_section) {
                 sections += ~[option::get(current_section)];
             }
-            current_section = some({
+            current_section = Some({
                 header: header,
                 body: ~""
             });
           }
-          none => {
+          None => {
             match copy current_section {
-              some(section) => {
-                current_section = some({
+              Some(section) => {
+                current_section = Some({
                     body: section.body + ~"\n" + line
                     with section
                 });
               }
-              none => {
+              None => {
                 new_desc = match new_desc {
-                  some(desc) => {
-                    some(desc + ~"\n" + line)
+                  Some(desc) => {
+                    Some(desc + ~"\n" + line)
                   }
-                  none => {
-                    some(line)
+                  None => {
+                    Some(line)
                   }
                 };
               }
@@ -135,11 +135,11 @@ fn sectionalize(desc: option<~str>) -> (option<~str>, ~[doc::section]) {
     (new_desc, sections)
 }
 
-fn parse_header(line: ~str) -> option<~str> {
+fn parse_header(line: ~str) -> Option<~str> {
     if str::starts_with(line, ~"# ") {
-        some(str::slice(line, 2u, str::len(line)))
+        Some(str::slice(line, 2u, str::len(line)))
     } else {
-        none
+        None
     }
 }
 
@@ -200,7 +200,7 @@ fn should_eliminate_desc_if_it_is_just_whitespace() {
          # Header\n\
          Body\"]\
          mod a { }");
-    assert doc.cratemod().mods()[0].desc() == none;
+    assert doc.cratemod().mods()[0].desc() == None;
 }
 
 #[test]

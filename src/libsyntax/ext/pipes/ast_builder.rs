@@ -19,12 +19,12 @@ fn path(ids: ~[ident], span: span) -> @ast::path {
     @{span: span,
       global: false,
       idents: ids,
-      rp: none,
+      rp: None,
       types: ~[]}
 }
 
 fn empty_span() -> span {
-    {lo: 0, hi: 0, expn_info: none}
+    {lo: 0, hi: 0, expn_info: None}
 }
 
 trait append_types {
@@ -90,7 +90,7 @@ trait ext_ctxt_ast_builder {
 
 impl ext_ctxt: ext_ctxt_ast_builder {
     fn ty_option(ty: @ast::ty) -> @ast::ty {
-        self.ty_path_ast_builder(path(~[self.ident_of(~"option")],
+        self.ty_path_ast_builder(path(~[self.ident_of(~"Option")],
                                       self.empty_span())
                                  .add_ty(ty))
     }
@@ -125,9 +125,9 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                             node: ast::pat_ident(ast::bind_by_implicit_ref,
                                                  path(~[ident],
                                                       self.empty_span()),
-                                                 none),
+                                                 None),
                             span: self.empty_span()},
-                     init: some({op: ast::init_move,
+                     init: Some({op: ast::init_move,
                                  expr: e}),
                      id: self.next_id()},
               span: self.empty_span()}]),
@@ -143,7 +143,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn rec(+fields: ~[ast::field]) -> @ast::expr {
         @{id: self.next_id(),
           callee_id: self.next_id(),
-          node: ast::expr_rec(fields, none),
+          node: ast::expr_rec(fields, None),
           span: self.empty_span()}
     }
 
@@ -187,7 +187,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn block(+stmts: ~[@ast::stmt], e: @ast::expr) -> ast::blk {
         let blk = {view_items: ~[],
                    stmts: stmts,
-                   expr: some(e),
+                   expr: Some(e),
                    id: self.next_id(),
                    rules: ast::default_blk};
 
@@ -258,7 +258,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                 attrs: ~[],
                 kind: ast::tuple_variant_kind(args),
                 id: self.next_id(),
-                disr_expr: none,
+                disr_expr: None,
                 vis: ast::public},
          span: span}
     }

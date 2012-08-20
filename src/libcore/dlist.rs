@@ -11,7 +11,7 @@
 export DList, dlist, dlist_node;
 export new_dlist, from_elem, from_vec, extensions;
 
-type DListLink<T> = option<DListNode<T>>;
+type DListLink<T> = Option<DListNode<T>>;
 
 enum DListNode<T> = @{
     data: T,
@@ -29,49 +29,49 @@ enum DList<T> = @{
 priv impl<T> DListNode<T> {
     pure fn assert_links() {
         match self.next {
-            some(neighbour) => match neighbour.prev {
-              some(me) => if !box::ptr_eq(*self, *me) {
+            Some(neighbour) => match neighbour.prev {
+              Some(me) => if !box::ptr_eq(*self, *me) {
                   fail ~"Asymmetric next-link in dlist node."
               },
-              none => fail ~"One-way next-link in dlist node."
+              None => fail ~"One-way next-link in dlist node."
             },
-            none => ()
+            None => ()
         }
         match self.prev {
-            some(neighbour) => match neighbour.next {
-              some(me) => if !box::ptr_eq(*me, *self) {
+            Some(neighbour) => match neighbour.next {
+              Some(me) => if !box::ptr_eq(*me, *self) {
                   fail ~"Asymmetric prev-link in dlist node."
               },
-              none => fail ~"One-way prev-link in dlist node."
+              None => fail ~"One-way prev-link in dlist node."
             },
-            none => ()
+            None => ()
         }
     }
 }
 
 impl<T> DListNode<T> {
     /// Get the next node in the list, if there is one.
-    pure fn next_link() -> option<DListNode<T>> {
+    pure fn next_link() -> Option<DListNode<T>> {
         self.assert_links();
         self.next
     }
     /// Get the next node in the list, failing if there isn't one.
     pure fn next_node() -> DListNode<T> {
         match self.next_link() {
-            some(nobe) => nobe,
-            none       => fail ~"This dlist node has no next neighbour."
+            Some(nobe) => nobe,
+            None       => fail ~"This dlist node has no next neighbour."
         }
     }
     /// Get the previous node in the list, if there is one.
-    pure fn prev_link() -> option<DListNode<T>> {
+    pure fn prev_link() -> Option<DListNode<T>> {
         self.assert_links();
         self.prev
     }
     /// Get the previous node in the list, failing if there isn't one.
     pure fn prev_node() -> DListNode<T> {
         match self.prev_link() {
-            some(nobe) => nobe,
-            none       => fail ~"This dlist node has no previous neighbour."
+            Some(nobe) => nobe,
+            None       => fail ~"This dlist node has no previous neighbour."
         }
     }
 }
@@ -79,12 +79,12 @@ impl<T> DListNode<T> {
 /// Creates a new dlist node with the given data.
 pure fn new_dlist_node<T>(+data: T) -> DListNode<T> {
     DListNode(@{data: data, mut linked: false,
-                 mut prev: none, mut next: none})
+                 mut prev: None, mut next: None})
 }
 
 /// Creates a new, empty dlist.
 pure fn new_dlist<T>() -> DList<T> {
-    DList(@{mut size: 0, mut hd: none, mut tl: none})
+    DList(@{mut size: 0, mut hd: None, mut tl: None})
 }
 
 /// Creates a new dlist with a single element
@@ -113,8 +113,8 @@ fn concat<T>(lists: DList<DList<T>>) -> DList<T> {
 
 priv impl<T> DList<T> {
     pure fn new_link(-data: T) -> DListLink<T> {
-        some(DListNode(@{data: data, mut linked: true,
-                          mut prev: none, mut next: none}))
+        Some(DListNode(@{data: data, mut linked: true,
+                          mut prev: None, mut next: None}))
     }
     pure fn assert_mine(nobe: DListNode<T>) {
         // These asserts could be stronger if we had node-root back-pointers,
@@ -141,12 +141,12 @@ priv impl<T> DList<T> {
     #[inline(always)]
     fn link(+before: DListLink<T>, +after: DListLink<T>) {
         match before {
-            some(neighbour) => neighbour.next = after,
-            none            => self.hd        = after
+            Some(neighbour) => neighbour.next = after,
+            None            => self.hd        = after
         }
         match after {
-            some(neighbour) => neighbour.prev = before,
-            none            => self.tl        = before
+            Some(neighbour) => neighbour.prev = before,
+            None            => self.tl        = before
         }
     }
     // Remove a node from the list.
@@ -154,8 +154,8 @@ priv impl<T> DList<T> {
         self.assert_mine(nobe);
         assert self.size > 0;
         self.link(nobe.prev, nobe.next);
-        nobe.prev = none; // Release extraneous references.
-        nobe.next = none;
+        nobe.prev = None; // Release extraneous references.
+        nobe.next = None;
         nobe.linked = false;
         self.size -= 1;
     }
@@ -174,14 +174,14 @@ priv impl<T> DList<T> {
         self.assert_mine(neighbour);
         assert self.size > 0;
         self.link(neighbour.prev, nobe);
-        self.link(nobe, some(neighbour));
+        self.link(nobe, Some(neighbour));
         self.size += 1;
     }
     fn insert_right(neighbour: DListNode<T>, nobe: DListLink<T>) {
         self.assert_mine(neighbour);
         assert self.size > 0;
         self.link(nobe, neighbour.next);
-        self.link(some(neighbour), nobe);
+        self.link(Some(neighbour), nobe);
         self.size += 1;
     }
 }
@@ -233,7 +233,7 @@ impl<T> DList<T> {
      */
     fn insert_n_before(nobe: DListNode<T>, neighbour: DListNode<T>) {
         self.make_mine(nobe);
-        self.insert_left(some(nobe), neighbour);
+        self.insert_left(Some(nobe), neighbour);
     }
     /**
      * Insert data in the middle of the list, left of the given node,
@@ -257,7 +257,7 @@ impl<T> DList<T> {
      */
     fn insert_n_after(nobe: DListNode<T>, neighbour: DListNode<T>) {
         self.make_mine(nobe);
-        self.insert_right(neighbour, some(nobe));
+        self.insert_right(neighbour, Some(nobe));
     }
     /**
      * Insert data in the middle of the list, right of the given node,
@@ -270,34 +270,34 @@ impl<T> DList<T> {
     }
 
     /// Remove a node from the head of the list. O(1).
-    fn pop_n() -> option<DListNode<T>> {
+    fn pop_n() -> Option<DListNode<T>> {
         let hd = self.peek_n();
         hd.map(|nobe| self.unlink(nobe));
         hd
     }
     /// Remove a node from the tail of the list. O(1).
-    fn pop_tail_n() -> option<DListNode<T>> {
+    fn pop_tail_n() -> Option<DListNode<T>> {
         let tl = self.peek_tail_n();
         tl.map(|nobe| self.unlink(nobe));
         tl
     }
     /// Get the node at the list's head. O(1).
-    pure fn peek_n() -> option<DListNode<T>> { self.hd }
+    pure fn peek_n() -> Option<DListNode<T>> { self.hd }
     /// Get the node at the list's tail. O(1).
-    pure fn peek_tail_n() -> option<DListNode<T>> { self.tl }
+    pure fn peek_tail_n() -> Option<DListNode<T>> { self.tl }
 
     /// Get the node at the list's head, failing if empty. O(1).
     pure fn head_n() -> DListNode<T> {
         match self.hd {
-            some(nobe) => nobe,
-            none       => fail ~"Attempted to get the head of an empty dlist."
+            Some(nobe) => nobe,
+            None       => fail ~"Attempted to get the head of an empty dlist."
         }
     }
     /// Get the node at the list's tail, failing if empty. O(1).
     pure fn tail_n() -> DListNode<T> {
         match self.tl {
-            some(nobe) => nobe,
-            none       => fail ~"Attempted to get the tail of an empty dlist."
+            Some(nobe) => nobe,
+            None       => fail ~"Attempted to get the tail of an empty dlist."
         }
     }
 
@@ -317,8 +317,8 @@ impl<T> DList<T> {
             self.tl    = them.tl;
             self.size += them.size;
             them.size  = 0;
-            them.hd    = none;
-            them.tl    = none;
+            them.hd    = None;
+            them.tl    = None;
         }
     }
     /**
@@ -334,8 +334,8 @@ impl<T> DList<T> {
             self.hd    = them.hd;
             self.size += them.size;
             them.size  = 0;
-            them.hd    = none;
-            them.tl    = none;
+            them.hd    = None;
+            them.tl    = None;
         }
     }
 
@@ -345,7 +345,7 @@ impl<T> DList<T> {
             let next_nobe = nobe.next;
             self.remove(nobe);
             self.make_mine(nobe);
-            self.add_head(some(nobe));
+            self.add_head(Some(nobe));
             next_nobe
         }
     }
@@ -417,13 +417,13 @@ impl<T> DList<T> {
 
 impl<T: copy> DList<T> {
     /// Remove data from the head of the list. O(1).
-    fn pop()       -> option<T> { self.pop_n().map       (|nobe| nobe.data) }
+    fn pop()       -> Option<T> { self.pop_n().map       (|nobe| nobe.data) }
     /// Remove data from the tail of the list. O(1).
-    fn pop_tail()  -> option<T> { self.pop_tail_n().map  (|nobe| nobe.data) }
+    fn pop_tail()  -> Option<T> { self.pop_tail_n().map  (|nobe| nobe.data) }
     /// Get data at the list's head. O(1).
-    pure fn peek() -> option<T> { self.peek_n().map      (|nobe| nobe.data) }
+    pure fn peek() -> Option<T> { self.peek_n().map      (|nobe| nobe.data) }
     /// Get data at the list's tail. O(1).
-    pure fn peek_tail() -> option<T> {
+    pure fn peek_tail() -> Option<T> {
         self.peek_tail_n().map (|nobe| nobe.data)
     }
     /// Get data at the list's head, failing if empty. O(1).
@@ -777,7 +777,7 @@ mod tests {
         l.assert_consistent(); l.remove(two);
         l.assert_consistent(); l.remove(three);
         l.assert_consistent(); l.remove(one); // Twenty-three is number one!
-        l.assert_consistent(); assert l.peek() == none;
+        l.assert_consistent(); assert l.peek() == None;
         l.assert_consistent(); assert l.is_empty();
     }
     #[test]
@@ -847,7 +847,7 @@ mod tests {
         let l = new_dlist::<int>();
         let _one = l.push_n(1);
         let two = l.push_n(2);
-        two.prev = none;
+        two.prev = None;
         l.assert_consistent();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -856,8 +856,8 @@ mod tests {
         let one = l.push_n(1);
         let _two = l.push_n(2);
         let three = l.push_n(3);
-        three.next = some(one);
-        one.prev = some(three);
+        three.next = Some(one);
+        one.prev = Some(three);
         l.assert_consistent();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]

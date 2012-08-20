@@ -57,7 +57,7 @@ trait combine {
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
-    fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>>;
+    fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>>;
     fn substs(did: ast::def_id, as: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs>;
     fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty>;
@@ -122,16 +122,16 @@ fn eq_regions<C: combine>(self: &C, a: ty::region, b: ty::region) -> ures {
 
 fn eq_opt_regions<C:combine>(
     self: &C,
-    a: option<ty::region>,
-    b: option<ty::region>) -> cres<option<ty::region>> {
+    a: Option<ty::region>,
+    b: Option<ty::region>) -> cres<Option<ty::region>> {
 
     match (a, b) {
-      (none, none) => {
-        ok(none)
+      (None, None) => {
+        ok(None)
       }
-      (some(a), some(b)) => {
+      (Some(a), Some(b)) => {
         do eq_regions(self, a, b).then {
-            ok(some(a))
+            ok(Some(a))
         }
       }
       (_, _) => {
@@ -155,28 +155,28 @@ fn super_substs<C:combine>(
     fn relate_region_param<C:combine>(
         self: &C,
         did: ast::def_id,
-        a: option<ty::region>,
-        b: option<ty::region>)
-        -> cres<option<ty::region>>
+        a: Option<ty::region>,
+        b: Option<ty::region>)
+        -> cres<Option<ty::region>>
     {
         let polyty = ty::lookup_item_type(self.infcx().tcx, did);
         match (polyty.region_param, a, b) {
-          (none, none, none) => {
-            ok(none)
+          (None, None, None) => {
+            ok(None)
           }
-          (some(ty::rv_invariant), some(a), some(b)) => {
+          (Some(ty::rv_invariant), Some(a), Some(b)) => {
             do eq_regions(self, a, b).then {
-                ok(some(a))
+                ok(Some(a))
             }
           }
-          (some(ty::rv_covariant), some(a), some(b)) => {
+          (Some(ty::rv_covariant), Some(a), Some(b)) => {
             do self.regions(a, b).chain |r| {
-                ok(some(r))
+                ok(Some(r))
             }
           }
-          (some(ty::rv_contravariant), some(a), some(b)) => {
+          (Some(ty::rv_contravariant), Some(a), Some(b)) => {
             do self.contraregions(a, b).chain |r| {
-                ok(some(r))
+                ok(Some(r))
             }
           }
           (_, _, _) => {
@@ -225,20 +225,20 @@ fn super_tps<C:combine>(
 }
 
 fn super_self_tys<C:combine>(
-    self: &C, a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+    self: &C, a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
 
     // Note: the self type parameter is (currently) always treated as
     // *invariant* (otherwise the type system would be unsound).
 
     match (a, b) {
-      (none, none) => {
-        ok(none)
+      (None, None) => {
+        ok(None)
       }
-      (some(a), some(b)) => {
-        eq_tys(self, a, b).then(|| ok(some(a)) )
+      (Some(a), Some(b)) => {
+        eq_tys(self, a, b).then(|| ok(Some(a)) )
       }
-      (none, some(_)) |
-      (some(_), none) => {
+      (None, Some(_)) |
+      (Some(_), None) => {
         // I think it should never happen that we unify two substs and
         // one of them has a self_ty and one doesn't...? I could be
         // wrong about this.

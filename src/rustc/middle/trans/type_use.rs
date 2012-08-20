@@ -36,8 +36,8 @@ type ctx = {ccx: @crate_ctxt,
 fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     -> ~[type_uses] {
     match ccx.type_use_cache.find(fn_id) {
-      some(uses) => return uses,
-      none => ()
+      Some(uses) => return uses,
+      None => ()
     }
     let fn_id_loc = if fn_id.crate == local_crate { fn_id }
                     else { base::maybe_instantiate_inline(ccx, fn_id) };
@@ -60,8 +60,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         return uses;
     }
     let map_node = match ccx.tcx.items.find(fn_id_loc.node) {
-        some(x) => x,
-        none    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
+        Some(x) => x,
+        None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
                                      fn_id_loc))
     };
     match map_node {
@@ -219,7 +219,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_assign(val, _) | expr_swap(val, _) | expr_assign_op(_, val, _) |
-      expr_ret(some(val)) => {
+      expr_ret(Some(val)) => {
         node_type_needs(cx, use_repr, val.id);
       }
       expr_index(base, _) | expr_field(base, _, _) => {

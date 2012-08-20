@@ -38,7 +38,7 @@ fn id_ext(cx: ext_ctxt, str: ~str) -> ast::ident {
 trait qq_helper {
     fn span() -> span;
     fn visit(aq_ctxt, vt<aq_ctxt>);
-    fn extract_mac() -> option<ast::mac_>;
+    fn extract_mac() -> Option<ast::mac_>;
     fn mk_parse_fn(ext_ctxt,span) -> @ast::expr;
     fn get_fold_fn() -> ~str;
 }
@@ -46,7 +46,7 @@ trait qq_helper {
 impl @ast::crate: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_crate(*self, cx, v);}
-    fn extract_mac() -> option<ast::mac_> {fail}
+    fn extract_mac() -> Option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp,
                 ids_ext(cx, ~[~"syntax", ~"ext", ~"qquote", ~"parse_crate"]))
@@ -56,10 +56,10 @@ impl @ast::crate: qq_helper {
 impl @ast::expr: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_expr(self, cx, v);}
-    fn extract_mac() -> option<ast::mac_> {
+    fn extract_mac() -> Option<ast::mac_> {
         match (self.node) {
-          ast::expr_mac({node: mac, _}) => some(mac),
-          _ => none
+          ast::expr_mac({node: mac, _}) => Some(mac),
+          _ => None
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
@@ -71,10 +71,10 @@ impl @ast::expr: qq_helper {
 impl @ast::ty: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_ty(self, cx, v);}
-    fn extract_mac() -> option<ast::mac_> {
+    fn extract_mac() -> Option<ast::mac_> {
         match (self.node) {
-          ast::ty_mac({node: mac, _}) => some(mac),
-          _ => none
+          ast::ty_mac({node: mac, _}) => Some(mac),
+          _ => None
         }
     }
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
@@ -86,7 +86,7 @@ impl @ast::ty: qq_helper {
 impl @ast::item: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_item(self, cx, v);}
-    fn extract_mac() -> option<ast::mac_> {fail}
+    fn extract_mac() -> Option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp,
                 ids_ext(cx, ~[~"syntax", ~"ext", ~"qquote", ~"parse_item"]))
@@ -96,7 +96,7 @@ impl @ast::item: qq_helper {
 impl @ast::stmt: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_stmt(self, cx, v);}
-    fn extract_mac() -> option<ast::mac_> {fail}
+    fn extract_mac() -> Option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp,
                 ids_ext(cx, ~[~"syntax", ~"ext", ~"qquote", ~"parse_stmt"]))
@@ -106,7 +106,7 @@ impl @ast::stmt: qq_helper {
 impl @ast::pat: qq_helper {
     fn span() -> span {self.span}
     fn visit(cx: aq_ctxt, v: vt<aq_ctxt>) {visit_pat(self, cx, v);}
-    fn extract_mac() -> option<ast::mac_> {fail}
+    fn extract_mac() -> Option<ast::mac_> {fail}
     fn mk_parse_fn(cx: ext_ctxt, sp: span) -> @ast::expr {
         mk_path(cx, sp, ids_ext(cx, ~[~"syntax", ~"ext", ~"qquote",
                                       ~"parse_pat"]))
@@ -135,7 +135,7 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
 fn visit_aq<T:qq_helper>(node: T, constr: ~str, &&cx: aq_ctxt, v: vt<aq_ctxt>)
 {
     match (node.extract_mac()) {
-      some(mac_aq(sp, e)) => {
+      Some(mac_aq(sp, e)) => {
         cx.gather.push(gather_item {
             lo: sp.lo - cx.lo,
             hi: sp.hi - cx.lo,
@@ -194,8 +194,8 @@ fn parse_pat(p: parser) -> @ast::pat { p.parse_pat(true) }
 
 fn parse_item(p: parser) -> @ast::item {
     match p.parse_item(~[]) {
-      some(item) => item,
-      none       => fail ~"parse_item: parsing an item failed"
+      Some(item) => item,
+      None       => fail ~"parse_item: parsing an item failed"
     }
 }
 

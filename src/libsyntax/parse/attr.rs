@@ -7,7 +7,7 @@ export parser_attr;
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option<Either<~[ast::attribute], @ast::expr>>;
+type attr_or_ext = Option<Either<~[ast::attribute], @ast::expr>>;
 
 trait parser_attr {
     fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
@@ -36,20 +36,20 @@ impl parser: parser_attr {
                 self.bump();
                 let first_attr =
                     self.parse_attribute_naked(ast::attr_outer, lo);
-                return some(Left(vec::append(~[first_attr],
+                return Some(Left(vec::append(~[first_attr],
                                           self.parse_outer_attributes())));
             } else if !(self.look_ahead(1u) == token::LT
                         || self.look_ahead(1u) == token::LBRACKET
                         || self.look_ahead(1u) == token::POUND
                         || expect_item_next) {
                 self.bump();
-                return some(Right(self.parse_syntax_ext_naked(lo)));
-            } else { return none; }
+                return Some(Right(self.parse_syntax_ext_naked(lo)));
+            } else { return None; }
         }
         token::DOC_COMMENT(_) => {
-          return some(Left(self.parse_outer_attributes()));
+          return Some(Left(self.parse_outer_attributes()));
         }
-        _ => return none
+        _ => return None
       }
     }
 

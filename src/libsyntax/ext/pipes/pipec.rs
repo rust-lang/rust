@@ -42,7 +42,7 @@ impl message: gen_send {
         debug!("pipec: gen_send");
         match self {
           message(_id, span, tys, this,
-                  some({state: next, tys: next_tys})) => {
+                  Some({state: next, tys: next_tys})) => {
             debug!("pipec: next state exists");
             let next = this.proto.get_state(next);
             assert next_tys.len() == next.ty_params.len();
@@ -126,7 +126,7 @@ impl message: gen_send {
                             cx.expr_block(body))
           }
 
-            message(_id, span, tys, this, none) => {
+            message(_id, span, tys, this, None) => {
                 debug!("pipec: no next state");
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
@@ -207,7 +207,7 @@ impl state: to_type_decls {
             let message(name, span, tys, this, next) = m;
 
             let tys = match next {
-              some({state: next, tys: next_tys}) => {
+              Some({state: next, tys: next_tys}) => {
                 let next = this.proto.get_state(next);
                 let next_name = cx.str_of(next.data_name());
 
@@ -222,7 +222,7 @@ impl state: to_type_decls {
                                            cx.ident_of(next_name)], span)
                                     .add_tys(next_tys)))
               }
-              none => tys
+              None => tys
             };
 
             let v = cx.variant(cx.ident_of(name), span, tys);
@@ -233,7 +233,7 @@ impl state: to_type_decls {
         ~[cx.item_enum_poly(name,
                             self.span,
                             ast::enum_def({ variants: items_msg,
-                                            common: none }),
+                                            common: None }),
                             self.ty_params)]
     }
 
@@ -368,7 +368,7 @@ impl protocol: gen_init {
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
-                  none => vec::push(params, tp),
+                  None => vec::push(params, tp),
                   _ => ()
                 }
             }
@@ -384,7 +384,7 @@ impl protocol: gen_init {
         let fields = do (copy self.states).map_to_vec |s| {
             for s.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
-                  none => vec::push(params, tp),
+                  None => vec::push(params, tp),
                   _ => ()
                 }
             }
@@ -488,8 +488,8 @@ impl ext_ctxt: ext_ctxt_parse_utils {
             ~[],
             self.parse_sess());
         match res {
-          some(ast) => ast,
-          none => {
+          Some(ast) => ast,
+          None => {
             error!("Parse error with ```\n%s\n```", s);
             fail
           }

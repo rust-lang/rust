@@ -174,8 +174,8 @@ fn mk_lint_settings() -> lint_settings {
 
 fn get_lint_level(modes: lint_modes, lint: lint) -> level {
     match modes.find(lint as uint) {
-      some(c) => c,
-      none => allow
+      Some(c) => c,
+      None => allow
     }
 }
 
@@ -184,8 +184,8 @@ fn get_lint_settings_level(settings: lint_settings,
                               _expr_id: ast::node_id,
                               item_id: ast::node_id) -> level {
     match settings.settings_map.find(item_id) {
-      some(modes) => get_lint_level(modes, lint_mode),
-      none => get_lint_level(settings.default_settings, lint_mode)
+      Some(modes) => get_lint_level(modes, lint_mode),
+      None => get_lint_level(settings.default_settings, lint_mode)
     }
 }
 
@@ -263,14 +263,14 @@ impl ctxt {
         for triples.each |pair| {
             let (meta, level, lintname) = pair;
             match self.dict.find(lintname) {
-              none => {
+              None => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
                     meta.span,
                     fmt!("unknown `%s` attribute: `%s`",
                          level_to_str(level), lintname));
               }
-              some(lint) => {
+              Some(lint) => {
 
                 if new_ctxt.get_level(lint.lint) == forbid &&
                     level != forbid {
@@ -461,15 +461,15 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
 
     fn ident_without_trailing_underscores(ident: ~str) -> ~str {
         match str::rfind(ident, |c| c != '_') {
-            some(idx) => (ident).slice(0, idx + 1),
-            none => { ident } // all underscores
+            Some(idx) => (ident).slice(0, idx + 1),
+            None => { ident } // all underscores
         }
     }
 
     fn ident_without_leading_underscores(ident: ~str) -> ~str {
         match str::find(ident, |c| c != '_') {
-          some(idx) => ident.slice(idx, ident.len()),
-          none => {
+          Some(idx) => ident.slice(idx, ident.len()),
+          None => {
             // all underscores
             ident
           }

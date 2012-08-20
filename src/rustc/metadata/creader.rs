@@ -121,7 +121,7 @@ fn visit_item(e: env, i: @ast::item) {
         let cstore = e.cstore;
         let foreign_name =
             match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
-              some(nn) => {
+              Some(nn) => {
                 if nn == ~"" {
                     e.diag.span_fatal(
                         i.span,
@@ -129,7 +129,7 @@ fn visit_item(e: env, i: @ast::item) {
                 }
                 nn
               }
-              none => *e.intr.get(i.ident)
+              None => *e.intr.get(i.ident)
             };
         let mut already_added = false;
         if vec::len(attr::find_attrs_by_name(i.attrs, ~"nolink")) == 0u {
@@ -142,10 +142,10 @@ fn visit_item(e: env, i: @ast::item) {
         }
         for link_args.each |a| {
             match attr::get_meta_item_value_str(attr::attr_meta(a)) {
-              some(linkarg) => {
+              Some(linkarg) => {
                 cstore::add_used_link_args(cstore, linkarg);
               }
-              none => {/* fallthrough */ }
+              None => {/* fallthrough */ }
             }
         }
       }
@@ -169,15 +169,15 @@ fn metas_with_ident(ident: ~str, metas: ~[@ast::meta_item])
 }
 
 fn existing_match(e: env, metas: ~[@ast::meta_item], hash: ~str) ->
-    option<int> {
+    Option<int> {
 
     for e.crate_cache.each |c| {
         if loader::metadata_matches(*c.metas, metas)
             && (hash.is_empty() || c.hash == hash) {
-            return some(c.cnum);
+            return Some(c.cnum);
         }
     }
-    return none;
+    return None;
 }
 
 fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
@@ -185,7 +185,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
     let metas = metas_with_ident(*e.intr.get(ident), metas);
 
     match existing_match(e, metas, hash) {
-      none => {
+      None => {
         let load_ctxt: loader::ctxt = {
             diag: e.diag,
             filesearch: e.filesearch,
@@ -217,8 +217,8 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
 
         let cname =
             match attr::last_meta_item_value_str_by_name(metas, ~"name") {
-              option::some(v) => v,
-              option::none => *e.intr.get(ident)
+              option::Some(v) => v,
+              option::None => *e.intr.get(ident)
             };
         let cmeta = @{name: cname, data: cdata,
                       cnum_map: cnum_map, cnum: cnum};
@@ -228,7 +228,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
         cstore::add_used_crate_file(cstore, &cfilename);
         return cnum;
       }
-      some(cnum) => {
+      Some(cnum) => {
         return cnum;
       }
     }
@@ -248,12 +248,12 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
                *e.intr.get(dep.name), dep.vers, dep.hash);
         match existing_match(e, metas_with_ident(*e.intr.get(cname), cmetas),
                              dep.hash) {
-          some(local_cnum) => {
+          Some(local_cnum) => {
             debug!("already have it");
             // We've already seen this crate
             cnum_map.insert(extrn_cnum, local_cnum);
           }
-          none => {
+          None => {
             debug!("need to load it");
             // This is a new one so we've got to load it
             // FIXME (#2404): Need better error reporting than just a bogus

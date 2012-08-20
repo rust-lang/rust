@@ -188,7 +188,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             type_of(cx, t)
         };
 
-        if ty::ty_dtor(cx.tcx, did) != none {
+        if ty::ty_dtor(cx.tcx, did) != None {
             // resource type
             tys = ~[T_i8(), T_struct(tys)];
         }
@@ -238,7 +238,7 @@ fn llvm_type_name(cx: @crate_ctxt,
         util::ppaux::parameterized(
             cx.tcx,
             ty::item_path_str(cx.tcx, did),
-            none,
+            None,
             tps),
         did.crate
     );

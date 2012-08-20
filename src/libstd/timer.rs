@@ -104,7 +104,7 @@ fn sleep(iotask: iotask, msecs: uint) {
  */
 fn recv_timeout<T: copy send>(iotask: iotask,
                               msecs: uint,
-                              wait_po: comm::Port<T>) -> option<T> {
+                              wait_po: comm::Port<T>) -> Option<T> {
     let timeout_po = comm::port::<()>();
     let timeout_ch = comm::chan(timeout_po);
     delayed_send(iotask, msecs, timeout_ch, ());
@@ -113,9 +113,9 @@ fn recv_timeout<T: copy send>(iotask: iotask,
         |left_val| {
             log(debug, fmt!("recv_time .. left_val %?",
                            left_val));
-            none
+            None
         }, |right_val| {
-            some(*right_val)
+            Some(*right_val)
         }, &core::comm::select2(timeout_po, wait_po)
     )
 }
@@ -249,7 +249,7 @@ mod test {
             };
 
             match recv_timeout(hl_loop, 1u, test_po) {
-              none => successes += 1,
+              None => successes += 1,
               _ => failures += 1
             };
         }

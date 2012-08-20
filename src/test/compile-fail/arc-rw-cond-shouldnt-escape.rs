@@ -3,9 +3,9 @@ use std;
 import std::arc;
 fn main() {
     let x = ~arc::rw_arc(1);
-    let mut y = none;
+    let mut y = None;
     do x.write_cond |_one, cond| {
-        y = some(cond);
+        y = Some(cond);
     }
     option::unwrap(y).wait();
 }

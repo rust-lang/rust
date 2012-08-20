@@ -38,14 +38,14 @@ fn run(lib_path: ~str,
        prog: ~str,
        args: ~[~str],
        env: ~[(~str, ~str)],
-       input: option<~str>) -> {status: int, out: ~str, err: ~str} {
+       input: Option<~str>) -> {status: int, out: ~str, err: ~str} {
 
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
     let pid = spawn_process(prog, args,
-                            &some(env + target_env(lib_path, prog)),
-                            &none, pipe_in.in, pipe_out.out, pipe_err.out);
+                            &Some(env + target_env(lib_path, prog)),
+                            &None, pipe_in.in, pipe_out.out, pipe_err.out);
 
     os::close(pipe_in.in);
     os::close(pipe_out.out);
@@ -89,7 +89,7 @@ fn run(lib_path: ~str,
     return {status: status, out: outs, err: errs};
 }
 
-fn writeclose(fd: c_int, s: option<~str>) {
+fn writeclose(fd: c_int, s: Option<~str>) {
     if option::is_some(s) {
         let writer = io::fd_writer(fd, false);
         writer.write_str(option::get(s));

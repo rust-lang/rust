@@ -4,7 +4,7 @@ fn with_int(f: fn(x: &int)) {
 }
 
 fn main() {
-    let mut x = none;
+    let mut x = None;
          //~^ ERROR reference is not valid outside of its lifetime
-    with_int(|y| x = some(y));
+    with_int(|y| x = Some(y));
 }

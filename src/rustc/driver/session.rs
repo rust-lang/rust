@@ -90,7 +90,7 @@ type options =
      save_temps: bool,
      output_type: back::link::output_type,
      addl_lib_search_paths: ~[Path],
-     maybe_sysroot: option<Path>,
+     maybe_sysroot: Option<Path>,
      target_triple: ~str,
      cfg: ast::crate_cfg,
      test: bool,
@@ -107,7 +107,7 @@ type session_ = {targ_cfg: @config,
                  parse_sess: parse_sess,
                  codemap: codemap::codemap,
                  // For a library crate, this is always none
-                 mut main_fn: option<(node_id, codemap::span)>,
+                 mut main_fn: Option<(node_id, codemap::span)>,
                  span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::filesearch,
                  mut building_library: bool,
@@ -230,7 +230,7 @@ fn basic_options() -> @options {
         save_temps: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: ~[],
-        maybe_sysroot: none,
+        maybe_sysroot: None,
         target_triple: driver::host_triple(),
         cfg: ~[],
         test: false,
@@ -241,7 +241,7 @@ fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-fn expect<T: copy>(sess: session, opt: option<T>, msg: fn() -> ~str) -> T {
+fn expect<T: copy>(sess: session, opt: Option<T>, msg: fn() -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
@@ -257,7 +257,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 ~"crate_type") {
-              option::some(~"lib") => true,
+              option::Some(~"lib") => true,
               _ => false
             }
         }

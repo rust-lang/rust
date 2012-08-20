@@ -43,12 +43,12 @@ enum c_vec<T> {
 }
 
 struct dtor_res {
-  let dtor: option<fn@()>;
-  new(dtor: option<fn@()>) { self.dtor = dtor; }
+  let dtor: Option<fn@()>;
+  new(dtor: Option<fn@()>) { self.dtor = dtor; }
   drop {
     match self.dtor {
-      option::none => (),
-      option::some(f) => f()
+      option::None => (),
+      option::Some(f) => f()
     }
   }
 }
@@ -69,7 +69,7 @@ unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
     return c_vec_({
         base: base,
         len: len,
-        rsrc: @dtor_res(option::none)
+        rsrc: @dtor_res(option::None)
     });
 }
 
@@ -89,7 +89,7 @@ unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
     return c_vec_({
         base: base,
         len: len,
-        rsrc: @dtor_res(option::some(dtor))
+        rsrc: @dtor_res(option::Some(dtor))
     });
 }
 

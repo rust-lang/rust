@@ -36,20 +36,20 @@ fn intersection(a: int_ty_set, b: int_ty_set) -> int_ty_set {
 }
 
 fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
-    option<ty::t> {
+    Option<ty::t> {
     debug!("single_type_contained_in(a=%s)", uint::to_str(*a, 10u));
 
-    if *a == INT_TY_SET_i8    { return some(ty::mk_i8(tcx)); }
-    if *a == INT_TY_SET_u8    { return some(ty::mk_u8(tcx)); }
-    if *a == INT_TY_SET_i16   { return some(ty::mk_i16(tcx)); }
-    if *a == INT_TY_SET_u16   { return some(ty::mk_u16(tcx)); }
-    if *a == INT_TY_SET_i32   { return some(ty::mk_i32(tcx)); }
-    if *a == INT_TY_SET_u32   { return some(ty::mk_u32(tcx)); }
-    if *a == INT_TY_SET_i64   { return some(ty::mk_i64(tcx)); }
-    if *a == INT_TY_SET_u64   { return some(ty::mk_u64(tcx)); }
-    if *a == INT_TY_SET_i     { return some(ty::mk_int(tcx)); }
-    if *a == INT_TY_SET_u     { return some(ty::mk_uint(tcx)); }
-    return none;
+    if *a == INT_TY_SET_i8    { return Some(ty::mk_i8(tcx)); }
+    if *a == INT_TY_SET_u8    { return Some(ty::mk_u8(tcx)); }
+    if *a == INT_TY_SET_i16   { return Some(ty::mk_i16(tcx)); }
+    if *a == INT_TY_SET_u16   { return Some(ty::mk_u16(tcx)); }
+    if *a == INT_TY_SET_i32   { return Some(ty::mk_i32(tcx)); }
+    if *a == INT_TY_SET_u32   { return Some(ty::mk_u32(tcx)); }
+    if *a == INT_TY_SET_i64   { return Some(ty::mk_i64(tcx)); }
+    if *a == INT_TY_SET_u64   { return Some(ty::mk_u64(tcx)); }
+    if *a == INT_TY_SET_i     { return Some(ty::mk_int(tcx)); }
+    if *a == INT_TY_SET_u     { return Some(ty::mk_uint(tcx)); }
+    return None;
 }
 
 fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)

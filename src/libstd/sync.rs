@@ -90,7 +90,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 #[doc(hidden)]
 impl<Q: send> &sem<Q> {
     fn acquire() {
-        let mut waiter_nobe = none;
+        let mut waiter_nobe = None;
         unsafe {
             do (**self).with |state| {
                 state.count -= 1;
@@ -98,7 +98,7 @@ impl<Q: send> &sem<Q> {
                     // Create waiter nobe.
                     let (signal_end, wait_end) = pipes::oneshot();
                     // Tell outer scope we need to block.
-                    waiter_nobe = some(wait_end);
+                    waiter_nobe = Some(wait_end);
                     // Enqueue ourself.
                     state.waiters.tail.send(signal_end);
                 }
@@ -126,11 +126,11 @@ impl<Q: send> &sem<Q> {
 #[doc(hidden)]
 impl &sem<()> {
     fn access<U>(blk: fn() -> U) -> U {
-        let mut release = none;
+        let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = some(sem_release(self));
+                release = Some(sem_release(self));
             }
         }
         blk()
@@ -139,11 +139,11 @@ impl &sem<()> {
 #[doc(hidden)]
 impl &sem<~[mut waitqueue]> {
     fn access<U>(blk: fn() -> U) -> U {
-        let mut release = none;
+        let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = some(sem_and_signal_release(self));
+                release = Some(sem_and_signal_release(self));
             }
         }
         blk()
@@ -191,10 +191,10 @@ impl &condvar {
     fn wait_on(condvar_id: uint) {
         // Create waiter nobe.
         let (signal_end, wait_end) = pipes::oneshot();
-        let mut wait_end   = some(wait_end);
-        let mut signal_end = some(signal_end);
-        let mut reacquire = none;
-        let mut out_of_bounds = none;
+        let mut wait_end   = Some(wait_end);
+        let mut signal_end = Some(signal_end);
+        let mut reacquire = None;
+        let mut out_of_bounds = None;
         unsafe {
             do task::unkillable {
                 // Release lock, 'atomically' enqueuing ourselves in so doing.
@@ -209,7 +209,7 @@ impl &condvar {
                         let signal_end = option::swap_unwrap(&mut signal_end);
                         state.blocked[condvar_id].tail.send(signal_end);
                     } else {
-                        out_of_bounds = some(vec::len(state.blocked));
+                        out_of_bounds = Some(vec::len(state.blocked));
                     }
                 }
 
@@ -218,7 +218,7 @@ impl &condvar {
                 // unkillably reacquire the lock needs to happen atomically
                 // wrt enqueuing.
                 if out_of_bounds.is_none() {
-                    reacquire = some(sem_and_signal_reacquire(self.sem));
+                    reacquire = Some(sem_and_signal_reacquire(self.sem));
                 }
             }
         }
@@ -248,14 +248,14 @@ impl &condvar {
     fn signal() -> bool { self.signal_on(0) }
     /// As signal, but with a specified condvar_id. See wait_on.
     fn signal_on(condvar_id: uint) -> bool {
-        let mut out_of_bounds = none;
+        let mut out_of_bounds = None;
         let mut result = false;
         unsafe {
             do (**self.sem).with |state| {
                 if condvar_id < vec::len(state.blocked) {
                     result = signal_waitqueue(&state.blocked[condvar_id]);
                 } else {
-                    out_of_bounds = some(vec::len(state.blocked));
+                    out_of_bounds = Some(vec::len(state.blocked));
                 }
             }
         }
@@ -268,18 +268,18 @@ impl &condvar {
     fn broadcast() -> uint { self.broadcast_on(0) }
     /// As broadcast, but with a specified condvar_id. See wait_on.
     fn broadcast_on(condvar_id: uint) -> uint {
-        let mut out_of_bounds = none;
-        let mut queue = none;
+        let mut out_of_bounds = None;
+        let mut queue = None;
         unsafe {
             do (**self.sem).with |state| {
                 if condvar_id < vec::len(state.blocked) {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
                     // old one outside of the little-lock.
-                    queue = some(util::replace(&mut state.blocked[condvar_id],
+                    queue = Some(util::replace(&mut state.blocked[condvar_id],
                                                new_waitqueue()));
                 } else {
-                    out_of_bounds = some(vec::len(state.blocked));
+                    out_of_bounds = Some(vec::len(state.blocked));
                 }
             }
         }
@@ -294,16 +294,16 @@ impl &condvar {
 // something else next on success.
 #[inline(always)]
 #[doc(hidden)]
-fn check_cvar_bounds<U>(out_of_bounds: option<uint>, id: uint, act: &str,
+fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
                         blk: fn() -> U) -> U {
     match out_of_bounds {
-        some(0) =>
+        Some(0) =>
             fail fmt!("%s with illegal ID %u - this lock has no condvars!",
                       act, id),
-        some(length) =>
+        Some(length) =>
             fail fmt!("%s with illegal ID %u - ID must be less than %u",
                       act, id, length),
-        none => blk()
+        None => blk()
     }
 }
 
@@ -438,7 +438,7 @@ impl &rwlock {
      * tasks may run concurrently with this one.
      */
     fn read<U>(blk: fn() -> U) -> U {
-        let mut release = none;
+        let mut release = None;
         unsafe {
             do task::unkillable {
                 do (&self.order_lock).access {
@@ -458,7 +458,7 @@ impl &rwlock {
                         }
                     }
                 }
-                release = some(rwlock_release_read(self));
+                release = Some(rwlock_release_read(self));
             }
         }
         blk()
@@ -524,14 +524,14 @@ impl &rwlock {
     fn write_downgrade<U>(blk: fn(+rwlock_write_mode) -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
-        let mut _release = none;
+        let mut _release = None;
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
                 (&self.access_lock).acquire();
                 (&self.order_lock).release();
             }
-            _release = some(rwlock_release_downgrade(self));
+            _release = Some(rwlock_release_downgrade(self));
         }
         blk(rwlock_write_mode { lock: self })
     }
@@ -723,7 +723,7 @@ mod tests {
             let s = ~semaphore(1);
             let s2 = ~s.clone();
             let (c,p) = pipes::stream();
-            let child_data = ~mut some((s2,c));
+            let child_data = ~mut Some((s2,c));
             do s.access {
                 let (s2,c) = option::swap_unwrap(child_data);
                 do task::spawn {
@@ -900,7 +900,7 @@ mod tests {
             let mut sibling_convos = ~[];
             for 2.times {
                 let (c,p) = pipes::stream();
-                let c = ~mut some(c);
+                let c = ~mut Some(c);
                 vec::push(sibling_convos, p);
                 let mi = ~m2.clone();
                 // spawn sibling task
@@ -1234,7 +1234,7 @@ mod tests {
         let x = ~rwlock();
         let y = ~rwlock();
         do x.write_downgrade |xwrite| {
-            let mut xopt = some(xwrite);
+            let mut xopt = Some(xwrite);
             do y.write_downgrade |_ywrite| {
                 y.downgrade(option::swap_unwrap(&mut xopt));
                 error!("oops, y.downgrade(x) should have failed!");

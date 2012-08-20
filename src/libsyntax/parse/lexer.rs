@@ -196,14 +196,14 @@ fn is_bin_digit(c: char) -> bool { return c == '0' || c == '1'; }
 
 // might return a sugared-doc-attr
 fn consume_whitespace_and_comments(rdr: string_reader)
-                                -> option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::token, sp: span}> {
     while is_whitespace(rdr.curr) { bump(rdr); }
     return consume_any_line_comment(rdr);
 }
 
 // might return a sugared-doc-attr
 fn consume_any_line_comment(rdr: string_reader)
-                                -> option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::token, sp: span}> {
     if rdr.curr == '/' {
         match nextch(rdr) {
           '/' => {
@@ -217,7 +217,7 @@ fn consume_any_line_comment(rdr: string_reader)
                     str::push_char(acc, rdr.curr);
                     bump(rdr);
                 }
-                return some({
+                return Some({
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
                     sp: ast_util::mk_sp(start_chpos, rdr.chpos)
                 });
@@ -241,12 +241,12 @@ fn consume_any_line_comment(rdr: string_reader)
             }
         }
     }
-    return none;
+    return None;
 }
 
 // might return a sugared-doc-attr
 fn consume_block_comment(rdr: string_reader)
-                                -> option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::token, sp: span}> {
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
@@ -262,7 +262,7 @@ fn consume_block_comment(rdr: string_reader)
             acc += ~"*/";
             bump(rdr);
             bump(rdr);
-            return some({
+            return Some({
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
                 sp: ast_util::mk_sp(start_chpos, rdr.chpos)
             });
@@ -289,7 +289,7 @@ fn consume_block_comment(rdr: string_reader)
     return consume_whitespace_and_comments(rdr);
 }
 
-fn scan_exponent(rdr: string_reader) -> option<~str> {
+fn scan_exponent(rdr: string_reader) -> Option<~str> {
     let mut c = rdr.curr;
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
@@ -302,9 +302,9 @@ fn scan_exponent(rdr: string_reader) -> option<~str> {
         }
         let exponent = scan_digits(rdr, 10u);
         if str::len(exponent) > 0u {
-            return some(rslt + exponent);
+            return Some(rslt + exponent);
         } else { rdr.fatal(~"scan_exponent: bad fp literal"); }
-    } else { return none::<~str>; }
+    } else { return None::<~str>; }
 }
 
 fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
@@ -313,7 +313,7 @@ fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
         let c = rdr.curr;
         if c == '_' { bump(rdr); again; }
         match char::to_digit(c, radix) {
-          some(_) => {
+          Some(_) => {
             str::push_char(rslt, c);
             bump(rdr);
           }
@@ -384,11 +384,11 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         num_str += ~"." + dec_part;
     }
     match scan_exponent(rdr) {
-      some(s) => {
+      Some(s) => {
         is_float = true;
         num_str += s;
       }
-      none => ()
+      None => ()
     }
     if rdr.curr == 'f' {
         bump(rdr);

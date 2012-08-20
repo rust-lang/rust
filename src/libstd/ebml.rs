@@ -3,8 +3,8 @@
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
-import core::option;
-import option::{some, none};
+import core::Option;
+import option::{Some, None};
 
 export doc;
 export doc_at;
@@ -85,27 +85,27 @@ fn doc_at(data: @~[u8], start: uint) -> tagged_doc {
          doc: {data: data, start: elt_size.next, end: end}};
 }
 
-fn maybe_get_doc(d: doc, tg: uint) -> option<doc> {
+fn maybe_get_doc(d: doc, tg: uint) -> Option<doc> {
     let mut pos = d.start;
     while pos < d.end {
         let elt_tag = vuint_at(*d.data, pos);
         let elt_size = vuint_at(*d.data, elt_tag.next);
         pos = elt_size.next + elt_size.val;
         if elt_tag.val == tg {
-            return some::<doc>({
+            return Some::<doc>({
                 data: d.data,
                 start: elt_size.next,
                 end: pos
             });
         }
     }
-    return none::<doc>;
+    return None::<doc>;
 }
 
 fn get_doc(d: doc, tg: uint) -> doc {
     match maybe_get_doc(d, tg) {
-      some(d) => return d,
-      none => {
+      Some(d) => return d,
+      None => {
         error!("failed to find block with tag %u", tg);
         fail;
       }
@@ -575,12 +575,12 @@ fn test_option_int() {
         s.emit_i64(v as i64);
     }
 
-    fn serialize_0<S: serialization::serializer>(s: S, v: option<int>) {
+    fn serialize_0<S: serialization::serializer>(s: S, v: Option<int>) {
         do s.emit_enum(~"core::option::t") {
             match v {
-              none => s.emit_enum_variant(
-                  ~"core::option::none", 0u, 0u, || { } ),
-              some(v0) => {
+              None => s.emit_enum_variant(
+                  ~"core::option::None", 0u, 0u, || { } ),
+              Some(v0) => {
                 do s.emit_enum_variant(~"core::option::some", 1u, 1u) {
                     s.emit_enum_variant_arg(0u, || serialize_1(s, v0));
                 }
@@ -593,16 +593,16 @@ fn test_option_int() {
         s.read_i64() as int
     }
 
-    fn deserialize_0<S: serialization::deserializer>(s: S) -> option<int> {
+    fn deserialize_0<S: serialization::deserializer>(s: S) -> Option<int> {
         do s.read_enum(~"core::option::t") {
             do s.read_enum_variant |i| {
                 match i {
-                  0 => none,
+                  0 => None,
                   1 => {
                     let v0 = do s.read_enum_variant_arg(0u) {
                         deserialize_1(s)
                     };
-                    some(v0)
+                    Some(v0)
                   }
                   _ => {
                     fail #fmt("deserialize_0: unexpected variant %u", i);
@@ -612,7 +612,7 @@ fn test_option_int() {
         }
     }
 
-    fn test_v(v: option<int>) {
+    fn test_v(v: Option<int>) {
         debug!("v == %?", v);
         let mbuf = io::mem_buffer();
         let ebml_w = ebml::writer(io::mem_buffer_writer(mbuf));
@@ -624,7 +624,7 @@ fn test_option_int() {
         assert v == v1;
     }
 
-    test_v(some(22));
-    test_v(none);
-    test_v(some(3));
+    test_v(Some(22));
+    test_v(None);
+    test_v(Some(3));
 }

@@ -97,7 +97,7 @@ fn find_pre_post_loop(fcx: fn_ctxt, index: @expr, body: blk, id: node_id) {
 // annotation for an if-expression with consequent conseq
 // and alternative maybe_alt
 fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
-                  maybe_alt: option<@expr>, id: node_id, chck: if_ty) {
+                  maybe_alt: Option<@expr>, id: node_id, chck: if_ty) {
     find_pre_post_expr(fcx, antec);
     find_pre_post_block(fcx, conseq);
     match maybe_alt {
@@ -117,7 +117,7 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
         set_pre_and_post(fcx.ccx, id, precond_res,
                          expr_poststate(fcx.ccx, antec));
       }
-      some(altern) {
+      Some(altern) {
         /*
           if check = if_check, then
           be sure that the predicate implied by antec
@@ -163,7 +163,7 @@ fn join_then_else(fcx: fn_ctxt, antec: @expr, conseq: blk,
 fn gen_if_local(fcx: fn_ctxt, lhs: @expr, rhs: @expr, larger_id: node_id,
                 new_var: node_id) {
     match node_id_to_def(fcx.ccx, new_var) {
-      some(d) {
+      Some(d) {
         match d {
           def_local(nid, _) {
             find_pre_post_expr(fcx, rhs);
@@ -206,9 +206,9 @@ fn handle_update(fcx: fn_ctxt, parent: @expr, lhs: @expr, rhs: @expr,
             let d = local_node_id_to_local_def_id(fcx, lhs.id);
             let d1 = local_node_id_to_local_def_id(fcx, rhs.id);
             match d {
-              some(id) {
+              Some(id) {
                 match d1 {
-                  some(id1) {
+                  Some(id1) {
                     let instlhs =
                         {ident: path_to_ident(p), node: id};
                     let instrhs =
@@ -315,7 +315,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
       }
       expr_rec(fields, maybe_base) {
         let mut es = field_exprs(fields);
-        match maybe_base { none {/* no-op */ } some(b) { vec::push(es, b); } }
+        match maybe_base { none {/* no-op */ } Some(b) { vec::push(es, b); } }
         find_pre_post_exprs(fcx, es, e.id);
       }
       expr_tup(elts) { find_pre_post_exprs(fcx, elts, e.id); }
@@ -336,7 +336,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
             clear_precond(fcx.ccx, e.id);
             set_postcond_false(fcx.ccx, e.id);
           }
-          some(ret_val) {
+          Some(ret_val) {
             find_pre_post_expr(fcx, ret_val);
             set_precondition(node_id_to_ts_ann(fcx.ccx, e.id),
                              expr_precond(fcx.ccx, ret_val));
@@ -392,7 +392,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         find_pre_post_expr(fcx, ex);
         fn do_an_alt(fcx: fn_ctxt, an_alt: arm) -> pre_and_post {
             match an_alt.guard {
-              some(e) { find_pre_post_expr(fcx, e); }
+              Some(e) { find_pre_post_expr(fcx, e); }
               _ {}
             }
             find_pre_post_block(fcx, an_alt.body);
@@ -424,7 +424,7 @@ fn find_pre_post_expr(fcx: fn_ctxt, e: @expr) {
         let mut prestate;
         match maybe_val {
           none { prestate = empty_prestate(num_local_vars); }
-          some(fail_val) {
+          Some(fail_val) {
             find_pre_post_expr(fcx, fail_val);
             prestate = expr_precond(fcx.ccx, fail_val);
           }
@@ -460,7 +460,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
             let prev_pp = empty_pre_post(num_constraints(fcx.enclosing));
             for alocals.each |alocal| {
                 match alocal.node.init {
-                  some(an_init) {
+                  Some(an_init) {
                     /* LHS always becomes initialized,
                      whether or not this is a move */
                     find_pre_post_expr(fcx, an_init.expr);
@@ -474,7 +474,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
 
                     let mut p = none;
                     match an_init.expr.node {
-                      expr_path(_p) { p = some(_p); }
+                      expr_path(_p) { p = Some(_p); }
                       _ { }
                     }
 
@@ -482,7 +482,7 @@ fn find_pre_post_stmt(fcx: fn_ctxt, s: stmt) {
                         |p_id, _s, n| {
                         let ident = path_to_ident(n);
                         match p {
-                          some(p) {
+                          Some(p) {
                             copy_in_postcond(fcx, id,
                                              {ident: ident, node: p_id},
                                              {ident:
@@ -559,7 +559,7 @@ fn find_pre_post_block(fcx: fn_ctxt, b: blk) {
     for b.node.stmts.each |s| { vec::push(pps, stmt_pp(fcx.ccx, *s)); }
     match b.node.expr {
       none {/* no-op */ }
-      some(e) { vec::push(pps, expr_pp(fcx.ccx, e)); }
+      Some(e) { vec::push(pps, expr_pp(fcx.ccx, e)); }
     }
 
     let block_precond = seq_preconds(fcx, pps);
@@ -585,7 +585,7 @@ fn find_pre_post_fn(fcx: fn_ctxt, body: blk) {
 
     // Treat the tail expression as a return statement
     match body.node.expr {
-      some(tailexpr) { set_postcond_false(fcx.ccx, tailexpr.id); }
+      Some(tailexpr) { set_postcond_false(fcx.ccx, tailexpr.id); }
       none {/* fallthrough */ }
     }
 }

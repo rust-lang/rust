@@ -1,19 +1,19 @@
-fn get<T>(opt: &r/option<T>) -> &r/T {
+fn get<T>(opt: &r/Option<T>) -> &r/T {
     match *opt {
-      some(ref v) => v,
-      none => fail ~"none"
+      Some(ref v) => v,
+      None => fail ~"none"
     }
 }
 
 fn main() {
-    let mut x = some(23);
+    let mut x = Some(23);
 
     {
         let y = get(&x);
         assert *y == 23;
     }
 
-    x = some(24);
+    x = Some(24);
 
     {
         let y = get(&x);

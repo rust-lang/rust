@@ -299,27 +299,27 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
                    symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
-        {name: option<~str>,
-         vers: option<~str>,
+        {name: Option<~str>,
+         vers: Option<~str>,
          cmh_items: ~[@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let mut name: option<~str> = none;
-        let mut vers: option<~str> = none;
+        let mut name: Option<~str> = None;
+        let mut vers: Option<~str> = None;
         let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
             if attr::get_meta_item_name(meta) == ~"name" {
                 match attr::get_meta_item_value_str(meta) {
-                  some(v) => { name = some(v); }
-                  none => vec::push(cmh_items, meta)
+                  Some(v) => { name = Some(v); }
+                  None => vec::push(cmh_items, meta)
                 }
             } else if attr::get_meta_item_name(meta) == ~"vers" {
                 match attr::get_meta_item_value_str(meta) {
-                  some(v) => { vers = some(v); }
-                  none => vec::push(cmh_items, meta)
+                  Some(v) => { vers = Some(v); }
+                  None => vec::push(cmh_items, meta)
                 }
             } else { vec::push(cmh_items, meta); }
         }
@@ -375,13 +375,13 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
     fn crate_meta_name(sess: session, _crate: ast::crate,
                        output: &Path, metas: provided_metas) -> ~str {
         return match metas.name {
-              some(v) => v,
-              none => {
+              Some(v) => v,
+              None => {
                 let name = match output.filestem() {
-                  none => sess.fatal(fmt!("output file name `%s` doesn't\
+                  None => sess.fatal(fmt!("output file name `%s` doesn't\
                                            appear to have a stem",
                                           output.to_str())),
-                  some(s) => s
+                  Some(s) => s
                 };
                 warn_missing(sess, ~"name", name);
                 name
@@ -392,8 +392,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: &Path,
     fn crate_meta_vers(sess: session, _crate: ast::crate,
                        metas: provided_metas) -> ~str {
         return match metas.vers {
-              some(v) => v,
-              none => {
+              Some(v) => v,
+              None => {
                 let vers = ~"0.0";
                 warn_missing(sess, ~"vers", vers);
                 vers
@@ -436,8 +436,8 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
     match ccx.type_hashcodes.find(t) {
-      some(h) => return h,
-      none => {
+      Some(h) => return h,
+      None => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);
         return hash;
@@ -596,7 +596,7 @@ fn link_binary(sess: session,
 
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each |cratepath| {
-        if cratepath.filetype() == some(~"rlib") {
+        if cratepath.filetype() == Some(~"rlib") {
             vec::push(cc_args, cratepath.to_str());
             again;
         }

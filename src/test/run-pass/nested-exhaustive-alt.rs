@@ -1,8 +1,8 @@
 fn main() {
-    match @{foo: true, bar: some(10), baz: 20} {
-      @{foo: true, bar: some(_), _} => {}
-      @{foo: false, bar: none, _} => {}
-      @{foo: true, bar: none, _} => {}
-      @{foo: false, bar: some(_), _} => {}
+    match @{foo: true, bar: Some(10), baz: 20} {
+      @{foo: true, bar: Some(_), _} => {}
+      @{foo: false, bar: None, _} => {}
+      @{foo: true, bar: None, _} => {}
+      @{foo: false, bar: Some(_), _} => {}
     }
 }

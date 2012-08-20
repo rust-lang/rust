@@ -15,7 +15,7 @@ pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
 
 /* assuming that we're not in macro expansion */
 pure fn mk_sp(lo: uint, hi: uint) -> span {
-    {lo: lo, hi: hi, expn_info: none}
+    {lo: lo, hi: hi, expn_info: None}
 }
 
 // make this a const, once the compiler supports it
@@ -93,19 +93,19 @@ pure fn binop_to_str(op: binop) -> ~str {
     }
 }
 
-pure fn binop_to_method_name(op: binop) -> option<~str> {
+pure fn binop_to_method_name(op: binop) -> Option<~str> {
     match op {
-      add => return some(~"add"),
-      subtract => return some(~"sub"),
-      mul => return some(~"mul"),
-      div => return some(~"div"),
-      rem => return some(~"modulo"),
-      bitxor => return some(~"bitxor"),
-      bitand => return some(~"bitand"),
-      bitor => return some(~"bitor"),
-      shl => return some(~"shl"),
-      shr => return some(~"shr"),
-      and | or | eq | lt | le | ne | ge | gt => return none
+      add => return Some(~"add"),
+      subtract => return Some(~"sub"),
+      mul => return Some(~"mul"),
+      div => return Some(~"div"),
+      rem => return Some(~"modulo"),
+      bitxor => return Some(~"bitxor"),
+      bitand => return Some(~"bitand"),
+      bitor => return Some(~"bitor"),
+      shl => return Some(~"shl"),
+      shr => return Some(~"shr"),
+      and | or | eq | lt | le | ne | ge | gt => return None
     }
 }
 
@@ -184,7 +184,7 @@ pure fn float_ty_to_str(t: float_ty) -> ~str {
 
 fn is_exported(i: ident, m: _mod) -> bool {
     let mut local = false;
-    let mut parent_enum : option<ident> = none;
+    let mut parent_enum : Option<ident> = None;
     for m.items.each |it| {
         if it.ident == i { local = true; }
         match it.node {
@@ -192,7 +192,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
             for enum_definition.variants.each |v| {
                 if v.node.name == i {
                     local = true;
-                    parent_enum = some(/* FIXME (#2543) */ copy it.ident);
+                    parent_enum = Some(/* FIXME (#2543) */ copy it.ident);
                 }
             },
           _ => ()
@@ -209,7 +209,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
                   ast::view_path_simple(id, _, _) => {
                     if id == i { return true; }
                     match parent_enum {
-                      some(parent_enum_id) => {
+                      Some(parent_enum_id) => {
                         if id == parent_enum_id { return true; }
                       }
                       _ => ()
@@ -270,11 +270,11 @@ fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
 }
 
 fn block_from_expr(e: @expr) -> blk {
-    let blk_ = default_block(~[], option::some::<@expr>(e), e.id);
+    let blk_ = default_block(~[], option::Some::<@expr>(e), e.id);
     return {node: blk_, span: e.span};
 }
 
-fn default_block(+stmts1: ~[@stmt], expr1: option<@expr>, id1: node_id) ->
+fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->
    blk_ {
     {view_items: ~[], stmts: stmts1,
      expr: expr1, id: id1, rules: default_blk}
@@ -282,18 +282,18 @@ fn default_block(+stmts1: ~[@stmt], expr1: option<@expr>, id1: node_id) ->
 
 fn ident_to_path(s: span, +i: ident) -> @path {
     @{span: s, global: false, idents: ~[i],
-      rp: none, types: ~[]}
+      rp: None, types: ~[]}
 }
 
 pure fn is_unguarded(&&a: arm) -> bool {
     match a.guard {
-      none => true,
+      None => true,
       _    => false
     }
 }
 
-pure fn unguarded_pat(a: arm) -> option<~[@pat]> {
-    if is_unguarded(a) { some(/* FIXME (#2543) */ copy a.pats) } else { none }
+pure fn unguarded_pat(a: arm) -> Option<~[@pat]> {
+    if is_unguarded(a) { Some(/* FIXME (#2543) */ copy a.pats) } else { None }
 }
 
 fn public_methods(ms: ~[@method]) -> ~[@method] {
@@ -583,10 +583,10 @@ pure fn is_item_impl(item: @ast::item) -> bool {
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
-      pat_ident(_, _, some(p)) => walk_pat(p, it),
+      pat_ident(_, _, Some(p)) => walk_pat(p, it),
       pat_rec(fields, _) | pat_struct(_, fields, _) =>
         for fields.each |f| { walk_pat(f.pat, it) },
-      pat_enum(_, some(s)) | pat_tup(s) => for s.each |p| {
+      pat_enum(_, Some(s)) | pat_tup(s) => for s.each |p| {
         walk_pat(p, it)
       },
       pat_box(s) | pat_uniq(s) => walk_pat(s, it),

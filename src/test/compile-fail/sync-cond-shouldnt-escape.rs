@@ -4,9 +4,9 @@ import std::sync;
 
 fn main() {
     let m = ~sync::mutex();
-    let mut cond = none;
+    let mut cond = None;
     do m.lock_cond |c| {
-        cond = some(c);
+        cond = Some(c);
     }   
     option::unwrap(cond).signal();
 }

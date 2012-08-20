@@ -9,7 +9,7 @@
  * of features.
  */
 
-import option::{some, none};
+import option::{Some, None};
 import option = option;
 
 export treemap;
@@ -43,12 +43,12 @@ fn insert<K: copy, V: copy>(m: treemap<K, V>, k: K, v: V) -> treemap<K, V> {
 }
 
 /// Find a value based on the key
-fn find<K, V: copy>(m: treemap<K, V>, k: K) -> option<V> {
+fn find<K, V: copy>(m: treemap<K, V>, k: K) -> Option<V> {
     match *m {
-      empty => none,
+      empty => None,
       node(@kk, @v, left, right) => {
         if k == kk {
-            some(v)
+            Some(v)
         } else if k < kk { find(left, k) } else { find(right, k) }
       }
     }

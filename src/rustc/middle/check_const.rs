@@ -84,7 +84,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           }
           expr_path(_) => {
             match def_map.find(e.id) {
-              some(def_const(def_id)) => {
+              Some(def_const(def_id)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
@@ -181,7 +181,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
         match e.node {
           expr_path(path) => {
             match env.def_map.find(e.id) {
-              some(def_const(def_id)) => {
+              Some(def_const(def_id)) => {
                 match env.ast_map.get(def_id.node) {
                   ast_map::node_item(it, _) => {
                     v.visit_item(it, env, v);

@@ -20,7 +20,7 @@ type package = {
     url: ~str,
     method: ~str,
     description: ~str,
-    reference: option<~str>,
+    reference: Option<~str>,
     tags: ~[~str],
     versions: ~[(~str, ~str)]
 };
@@ -36,8 +36,8 @@ type source = @{
     name: ~str,
     mut url: ~str,
     mut method: ~str,
-    mut key: option<~str>,
-    mut keyfp: option<~str>,
+    mut key: Option<~str>,
+    mut keyfp: Option<~str>,
     mut packages: ~[mut package]
 };
 
@@ -59,9 +59,9 @@ type crate = {
     name: ~str,
     vers: ~str,
     uuid: ~str,
-    desc: option<~str>,
-    sigs: option<~str>,
-    crate_type: option<~str>,
+    desc: Option<~str>,
+    sigs: Option<~str>,
+    crate_type: Option<~str>,
     deps: ~[~str]
 };
 
@@ -193,7 +193,7 @@ fn is_archive_url(u: ~str) -> bool {
     // url parsing, we wouldn't need it
 
     match str::find_str(u, ~"://") {
-        option::some(_) => has_archive_extension(u),
+        option::Some(_) => has_archive_extension(u),
         _ => false
     }
 }
@@ -216,19 +216,19 @@ fn assume_source_method(url: ~str) -> ~str {
     ~"curl"
 }
 
-fn load_link(mis: ~[@ast::meta_item]) -> (option<~str>,
-                                         option<~str>,
-                                         option<~str>) {
-    let mut name = none;
-    let mut vers = none;
-    let mut uuid = none;
+fn load_link(mis: ~[@ast::meta_item]) -> (Option<~str>,
+                                         Option<~str>,
+                                         Option<~str>) {
+    let mut name = None;
+    let mut vers = None;
+    let mut uuid = None;
     for mis.each |a| {
         match a.node {
             ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) => {
                 match v {
-                    ~"name" => name = some(*s),
-                    ~"vers" => vers = some(*s),
-                    ~"uuid" => uuid = some(*s),
+                    ~"name" => name = Some(*s),
+                    ~"vers" => vers = Some(*s),
+                    ~"uuid" => uuid = Some(*s),
                     _ => { }
                 }
             }
@@ -238,24 +238,24 @@ fn load_link(mis: ~[@ast::meta_item]) -> (option<~str>,
     (name, vers, uuid)
 }
 
-fn load_crate(filename: &Path) -> option<crate> {
-    let sess = parse::new_parse_sess(none);
+fn load_crate(filename: &Path) -> Option<crate> {
+    let sess = parse::new_parse_sess(None);
     let c = parse::parse_crate_from_crate_file(filename, ~[], sess);
 
-    let mut name = none;
-    let mut vers = none;
-    let mut uuid = none;
-    let mut desc = none;
-    let mut sigs = none;
-    let mut crate_type = none;
+    let mut name = None;
+    let mut vers = None;
+    let mut uuid = None;
+    let mut desc = None;
+    let mut sigs = None;
+    let mut crate_type = None;
 
     for c.node.attrs.each |a| {
         match a.node.value.node {
             ast::meta_name_value(v, {node: ast::lit_str(_), span: _}) => {
                 match v {
-                    ~"desc" => desc = some(v),
-                    ~"sigs" => sigs = some(v),
-                    ~"crate_type" => crate_type = some(v),
+                    ~"desc" => desc = Some(v),
+                    ~"sigs" => sigs = Some(v),
+                    ~"crate_type" => crate_type = Some(v),
                     _ => { }
                 }
             }
@@ -296,7 +296,7 @@ fn load_crate(filename: &Path) -> option<crate> {
 
               for m.each |item| {
                     match attr::get_meta_item_value_str(item) {
-                        some(value) => {
+                        Some(value) => {
                             let name = attr::get_meta_item_name(item);
 
                             match name {
@@ -305,7 +305,7 @@ fn load_crate(filename: &Path) -> option<crate> {
                                 _ => ()
                             }
                         }
-                        none => ()
+                        None => ()
                     }
                 }
 
@@ -342,8 +342,8 @@ fn load_crate(filename: &Path) -> option<crate> {
     let deps = copy e.deps;
 
     match (name, vers, uuid) {
-        (some(name0), some(vers0), some(uuid0)) => {
-            some({
+        (Some(name0), Some(vers0), Some(uuid0)) => {
+            Some({
                 name: name0,
                 vers: vers0,
                 uuid: uuid0,
@@ -352,7 +352,7 @@ fn load_crate(filename: &Path) -> option<crate> {
                 crate_type: crate_type,
                 deps: deps })
         }
-        _ => return none
+        _ => return None
     }
 }
 
@@ -395,20 +395,20 @@ fn parse_source(name: ~str, j: json::json) -> source {
     match j {
         json::dict(j) => {
             let mut url = match j.find(~"url") {
-                some(json::string(u)) => *u,
+                Some(json::string(u)) => *u,
                 _ => fail ~"needed 'url' field in source"
             };
             let method = match j.find(~"method") {
-                some(json::string(u)) => *u,
+                Some(json::string(u)) => *u,
                 _ => assume_source_method(url)
             };
             let key = match j.find(~"key") {
-                some(json::string(u)) => some(*u),
-                _ => none
+                Some(json::string(u)) => Some(*u),
+                _ => None
             };
             let keyfp = match j.find(~"keyfp") {
-                some(json::string(u)) => some(*u),
-                _ => none
+                Some(json::string(u)) => Some(*u),
+                _ => None
             };
             if method == ~"file" {
                 url = os::make_absolute(&Path(url)).to_str();
@@ -442,7 +442,7 @@ fn try_parse_sources(filename: &Path, sources: map::hashmap<~str, source>) {
 
 fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     let name = match p.find(~"name") {
-        some(json::string(n)) => {
+        Some(json::string(n)) => {
             if !valid_pkg_name(*n) {
                 warn(~"malformed source json: "
                      + src.name + ~", '" + *n + ~"'"+
@@ -459,7 +459,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let uuid = match p.find(~"uuid") {
-        some(json::string(n)) => {
+        Some(json::string(n)) => {
             if !is_uuid(*n) {
                 warn(~"malformed source json: "
                      + src.name + ~", '" + *n + ~"'"+
@@ -475,7 +475,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let url = match p.find(~"url") {
-        some(json::string(n)) => *n,
+        Some(json::string(n)) => *n,
         _ => {
             warn(~"malformed source json: " + src.name + ~" (missing url)");
             return;
@@ -483,7 +483,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let method = match p.find(~"method") {
-        some(json::string(n)) => *n,
+        Some(json::string(n)) => *n,
         _ => {
             warn(~"malformed source json: "
                  + src.name + ~" (missing method)");
@@ -492,13 +492,13 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     let reference = match p.find(~"ref") {
-        some(json::string(n)) => some(*n),
-        _ => none
+        Some(json::string(n)) => Some(*n),
+        _ => None
     };
 
     let mut tags = ~[];
     match p.find(~"tags") {
-        some(json::list(js)) => {
+        Some(json::list(js)) => {
           for (*js).each |j| {
                 match j {
                     json::string(j) => vec::grow(tags, 1u, *j),
@@ -510,7 +510,7 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     }
 
     let description = match p.find(~"description") {
-        some(json::string(n)) => *n,
+        Some(json::string(n)) => *n,
         _ => {
             warn(~"malformed source json: " + src.name
                  + ~" (missing description)");
@@ -530,11 +530,11 @@ fn load_one_source_package(src: source, p: map::hashmap<~str, json::json>) {
     };
 
     match vec::position(src.packages, |pkg| pkg.uuid == uuid) {
-      some(idx) => {
+      Some(idx) => {
         src.packages[idx] = newpkg;
         log(debug, ~"  updated package: " + src.name + ~"/" + name);
       }
-      none => {
+      None => {
         vec::grow(src.packages, 1u, newpkg);
       }
     }
@@ -704,7 +704,7 @@ fn run_programs(buildpath: &Path) {
 // Runs rustc in <path + subdir> with the given flags
 // and returns <patho + subdir>
 fn run_in_buildpath(what: &str, path: &Path, subdir: &Path, cf: &Path,
-                    extra_flags: ~[~str]) -> option<Path> {
+                    extra_flags: ~[~str]) -> Option<Path> {
     let buildpath = path.push_rel(subdir);
     need_dir(&buildpath);
     debug!("%s: %s -> %s", what, cf.to_str(), buildpath.to_str());
@@ -714,9 +714,9 @@ fn run_in_buildpath(what: &str, path: &Path, subdir: &Path, cf: &Path,
                                   cf.to_str()] + extra_flags);
     if p.status != 0 {
         error(fmt!("rustc failed: %d\n%s\n%s", p.status, p.err, p.out));
-        return none;
+        return None;
     }
-    some(buildpath)
+    Some(buildpath)
 }
 
 fn test_one_crate(_c: cargo, path: &Path, cf: &Path) {
@@ -724,8 +724,8 @@ fn test_one_crate(_c: cargo, path: &Path, cf: &Path) {
                                            &Path("test"),
                                            cf,
                                            ~[ ~"--test"]) {
-      none => return,
-    some(bp) => bp
+      None => return,
+    Some(bp) => bp
   };
   run_programs(&buildpath);
 }
@@ -734,8 +734,8 @@ fn install_one_crate(c: cargo, path: &Path, cf: &Path) {
     let buildpath = match run_in_buildpath(~"installing", path,
                                            &Path("build"),
                                            cf, ~[]) {
-      none => return,
-      some(bp) => bp
+      None => return,
+      Some(bp) => bp
     };
     let newv = os::list_dir_path(&buildpath);
     let exec_suffix = os::exe_suffix();
@@ -762,12 +762,12 @@ fn install_one_crate(c: cargo, path: &Path, cf: &Path) {
 
 fn rustc_sysroot() -> ~str {
     match os::self_exe_path() {
-        some(path) => {
+        Some(path) => {
             let rustc = path.push_many([~"..", ~"bin", ~"rustc"]);
             debug!("  rustc: %s", rustc.to_str());
             rustc.to_str()
         }
-        none => ~"rustc"
+        None => ~"rustc"
     }
 }
 
@@ -777,7 +777,7 @@ fn install_source(c: cargo, path: &Path) {
 
     let mut cratefiles = ~[];
     for os::walk_dir(&Path(".")) |p| {
-        if p.filetype() == some(~"rc") {
+        if p.filetype() == Some(~"rc") {
             vec::push(cratefiles, *p);
         }
     }
@@ -788,8 +788,8 @@ fn install_source(c: cargo, path: &Path) {
 
     for cratefiles.each |cf| {
         match load_crate(&cf) {
-            none => again,
-            some(crate) => {
+            None => again,
+            Some(crate) => {
               for crate.deps.each |query| {
                     // FIXME (#1356): handle cyclic dependencies
                     // (n.b. #1356 says "Cyclic dependency is an error
@@ -810,7 +810,7 @@ fn install_source(c: cargo, path: &Path) {
     }
 }
 
-fn install_git(c: cargo, wd: &Path, url: ~str, reference: option<~str>) {
+fn install_git(c: cargo, wd: &Path, url: ~str, reference: Option<~str>) {
     run::program_output(~"git", ~[~"clone", url, wd.to_str()]);
     if option::is_some(reference) {
         let r = option::get(reference);
@@ -919,7 +919,7 @@ fn install_named(c: cargo, wd: &Path, name: ~str) {
 
 fn install_uuid_specific(c: cargo, wd: &Path, src: ~str, uuid: ~str) {
     match c.sources.find(src) {
-      some(s) => {
+      Some(s) => {
         let packages = copy s.packages;
         if vec::any(packages, |p| {
             if p.uuid == uuid {
@@ -935,7 +935,7 @@ fn install_uuid_specific(c: cargo, wd: &Path, src: ~str, uuid: ~str) {
 
 fn install_named_specific(c: cargo, wd: &Path, src: ~str, name: ~str) {
     match c.sources.find(src) {
-        some(s) => {
+        Some(s) => {
           let packages = copy s.packages;
           if vec::any(packages, |p| {
                 if p.name == name {
@@ -978,22 +978,22 @@ fn cmd_uninstall(c: cargo) {
     if is_uuid(target) {
         for os::list_dir(lib).each |file| {
             match str::find_str(file, ~"-" + target + ~"-") {
-              some(_) => if !try_uninstall(&lib.push(file)) { return },
-              none => ()
+              Some(_) => if !try_uninstall(&lib.push(file)) { return },
+              None => ()
             }
         }
         error(~"can't find package with uuid: " + target);
     } else {
         for os::list_dir(lib).each |file| {
             match str::find_str(file, ~"lib" + target + ~"-") {
-              some(_) => if !try_uninstall(&lib.push(file)) { return },
-              none => ()
+              Some(_) => if !try_uninstall(&lib.push(file)) { return },
+              None => ()
             }
         }
         for os::list_dir(bin).each |file| {
             match str::find_str(file, target) {
-              some(_) => if !try_uninstall(&lib.push(file)) { return },
-              none => ()
+              Some(_) => if !try_uninstall(&lib.push(file)) { return },
+              None => ()
             }
         }
 
@@ -1003,12 +1003,12 @@ fn cmd_uninstall(c: cargo) {
 
 fn install_query(c: cargo, wd: &Path, target: ~str) {
     match c.dep_cache.find(target) {
-        some(inst) => {
+        Some(inst) => {
             if inst {
                 return;
             }
         }
-        none => ()
+        None => ()
     }
 
     c.dep_cache.insert(target, true);
@@ -1018,9 +1018,9 @@ fn install_query(c: cargo, wd: &Path, target: ~str) {
         return;
     } else if is_git_url(target) {
         let reference = if c.opts.free.len() >= 4u {
-            some(c.opts.free[3u])
+            Some(c.opts.free[3u])
         } else {
-            none
+            None
         };
         install_git(c, wd, target, reference);
     } else if !valid_pkg_name(target) && has_archive_extension(target) {
@@ -1030,7 +1030,7 @@ fn install_query(c: cargo, wd: &Path, target: ~str) {
         let mut ps = copy target;
 
         match str::find_char(ps, '/') {
-            option::some(idx) => {
+            option::Some(idx) => {
                 let source = str::slice(ps, 0u, idx);
                 ps = str::slice(ps, idx + 1u, str::len(ps));
                 if is_uuid(ps) {
@@ -1039,7 +1039,7 @@ fn install_query(c: cargo, wd: &Path, target: ~str) {
                     install_named_specific(c, wd, source, ps);
                 }
             }
-            option::none => {
+            option::None => {
                 if is_uuid(ps) {
                     install_uuid(c, wd, ps);
                 } else {
@@ -1063,8 +1063,8 @@ fn install_query(c: cargo, wd: &Path, target: ~str) {
 
 fn get_temp_workdir(c: cargo) -> Path {
     match tempfile::mkdtemp(&c.workdir, "cargo") {
-      some(wd) => wd,
-      none => fail fmt!("needed temp dir: %s",
+      Some(wd) => wd,
+      None => fail fmt!("needed temp dir: %s",
                         c.workdir.to_str())
     }
 }
@@ -1127,7 +1127,7 @@ fn sync_one_file(c: cargo, dir: &Path, src: source) -> bool {
     os::copy_file(&url.push("packages.json.sig"), &sigfile);
 
     match copy src.key {
-        some(u) => {
+        Some(u) => {
             let p = run::program_output(~"curl",
                                         ~[~"-f", ~"-s",
                                           ~"-o", keyfile.to_str(), u]);
@@ -1140,7 +1140,7 @@ fn sync_one_file(c: cargo, dir: &Path, src: source) -> bool {
         _ => ()
     }
     match (src.key, src.keyfp) {
-        (some(_), some(f)) => {
+        (Some(_), Some(f)) => {
             let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
 
             if !r {
@@ -1237,7 +1237,7 @@ fn sync_one_git(c: cargo, dir: &Path, src: source) -> bool {
     let has_src_file = os::path_exists(&srcfile);
 
     match copy src.key {
-        some(u) => {
+        Some(u) => {
             let p = run::program_output(~"curl",
                                         ~[~"-f", ~"-s",
                                           ~"-o", keyfile.to_str(), u]);
@@ -1251,7 +1251,7 @@ fn sync_one_git(c: cargo, dir: &Path, src: source) -> bool {
         _ => ()
     }
     match (src.key, src.keyfp) {
-        (some(_), some(f)) => {
+        (Some(_), Some(f)) => {
             let r = pgp::verify(&c.root, &pkgfile, &sigfile, f);
 
             if !r {
@@ -1320,7 +1320,7 @@ fn sync_one_curl(c: cargo, dir: &Path, src: source) -> bool {
     }
 
     match copy src.key {
-        some(u) => {
+       Some(u) => {
             let p = run::program_output(~"curl",
                                         ~[~"-f", ~"-s",
                                           ~"-o", keyfile.to_str(), u]);
@@ -1333,7 +1333,7 @@ fn sync_one_curl(c: cargo, dir: &Path, src: source) -> bool {
         _ => ()
     }
     match (src.key, src.keyfp) {
-        (some(_), some(f)) => {
+        (Some(_), Some(f)) => {
             if smart {
                 url = src.url + ~"/packages.json.sig";
             }
@@ -1498,10 +1498,10 @@ fn cmd_list(c: cargo) {
                 error(fmt!("'%s' is an invalid source name", name));
             } else {
                 match c.sources.find(name) {
-                    some(source) => {
+                    Some(source) => {
                         print_source(source);
                     }
-                    none => {
+                    None => {
                         error(fmt!("no such source: %s", name));
                     }
                 }
@@ -1583,13 +1583,13 @@ fn dump_sources(c: cargo) {
                 chash.insert(~"method", json::string(@v.method));
 
                 match copy v.key {
-                    some(key) => {
+                    Some(key) => {
                         chash.insert(~"key", json::string(@key));
                     }
                     _ => ()
                 }
                 match copy v.keyfp {
-                    some(keyfp) => {
+                    Some(keyfp) => {
                         chash.insert(~"keyfp", json::string(@keyfp));
                     }
                     _ => ()
@@ -1653,8 +1653,8 @@ fn cmd_sources(c: cargo) {
                     name: name,
                     mut url: url,
                     mut method: assume_source_method(url),
-                    mut key: none,
-                    mut keyfp: none,
+                    mut key: None,
+                    mut keyfp: None,
                     mut packages: ~[mut]
                 });
                 info(fmt!("added source: %s", name));
@@ -1695,7 +1695,7 @@ fn cmd_sources(c: cargo) {
             }
 
             match c.sources.find(name) {
-                some(source) => {
+                Some(source) => {
                     let old = copy source.url;
                     let method = assume_source_method(url);
 
@@ -1706,7 +1706,7 @@ fn cmd_sources(c: cargo) {
 
                     info(fmt!("changed source url: '%s' to '%s'", old, url));
                 }
-                none => {
+                None => {
                     error(fmt!("no such source: %s", name));
                 }
             }
@@ -1726,7 +1726,7 @@ fn cmd_sources(c: cargo) {
             }
 
             match c.sources.find(name) {
-                some(source) => {
+                Some(source) => {
                     let old = copy source.method;
 
                     source.method = match method {
@@ -1740,7 +1740,7 @@ fn cmd_sources(c: cargo) {
                     info(fmt!("changed source method: '%s' to '%s'", old,
                          method));
                 }
-                none => {
+                None => {
                     error(fmt!("no such source: %s", name));
                 }
             }
@@ -1764,12 +1764,12 @@ fn cmd_sources(c: cargo) {
             }
 
             match c.sources.find(name) {
-                some(source) => {
+                Some(source) => {
                     c.sources.remove(name);
                     c.sources.insert(newn, source);
                     info(fmt!("renamed source: %s to %s", name, newn));
                 }
-                none => {
+                None => {
                     error(fmt!("no such source: %s", name));
                 }
             }

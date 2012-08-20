@@ -41,7 +41,7 @@ macro_rules! follow (
         $($message:path($($x: ident),+) -> $next:ident $e:expr)+
     } => (
         |m| match move m {
-            $(some($message($($x,)* next)) => {
+            $(Some($message($($x,)* next)) => {
                 // FIXME (#2329) use regular move here once move out of
                 // enums is supported.
                 let $next = unsafe { move_it!(next) };
@@ -54,7 +54,7 @@ macro_rules! follow (
         $($message:path -> $next:ident $e:expr)+
     } => (
         |m| match move m {
-            $(some($message(next)) => {
+            $(Some($message(next)) => {
                 // FIXME (#2329) use regular move here once move out of
                 // enums is supported.
                 let $next = unsafe { move_it!(next) };
@@ -65,7 +65,7 @@ macro_rules! follow (
 )
 
 fn switch<T: send, Tb: send, U>(+endp: pipes::recv_packet_buffered<T, Tb>,
-                      f: fn(+option<T>) -> U) -> U {
+                      f: fn(+Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
 

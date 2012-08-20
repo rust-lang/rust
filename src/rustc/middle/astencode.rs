@@ -104,11 +104,11 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
                        tcx: ty::ctxt,
                        maps: maps,
                        path: ast_map::path,
-                       par_doc: ebml::doc) -> option<ast::inlined_item> {
+                       par_doc: ebml::doc) -> Option<ast::inlined_item> {
     let dcx = @{cdata: cdata, tcx: tcx, maps: maps};
     match par_doc.opt_child(c::tag_ast) {
-      none => none,
-      some(ast_doc) => {
+      None => None,
+      Some(ast_doc) => {
         debug!("> Decoding inlined fn: %s::?",
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner));
         let ast_dsr = ebml::ebml_deserializer(ast_doc);
@@ -133,7 +133,7 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
           }
           _ => { }
         }
-        some(ii)
+        Some(ii)
       }
     }
 }
@@ -771,12 +771,12 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
 
 trait doc_decoder_helpers {
     fn as_int() -> int;
-    fn opt_child(tag: c::astencode_tag) -> option<ebml::doc>;
+    fn opt_child(tag: c::astencode_tag) -> Option<ebml::doc>;
 }
 
 impl ebml::doc: doc_decoder_helpers {
     fn as_int() -> int { ebml::doc_as_u64(self) as int }
-    fn opt_child(tag: c::astencode_tag) -> option<ebml::doc> {
+    fn opt_child(tag: c::astencode_tag) -> Option<ebml::doc> {
         ebml::maybe_get_doc(self, tag as uint)
     }
 }
@@ -931,7 +931,7 @@ impl fake_session: fake_ext_ctxt {
 
 #[cfg(test)]
 fn mk_ctxt() -> fake_ext_ctxt {
-    parse::new_parse_sess(none) as fake_ext_ctxt
+    parse::new_parse_sess(None) as fake_ext_ctxt
 }
 
 #[cfg(test)]

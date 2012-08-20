@@ -57,7 +57,7 @@ fn test_run_passes() {
                             with doc.cratemod().item
                         },
                         items: ~[],
-                        index: none
+                        index: None
                     })
                 })
             ]
@@ -76,7 +76,7 @@ fn test_run_passes() {
                             with doc.cratemod().item
                         },
                         items: ~[],
-                        index: none
+                        index: None
                     })
                 })
             ]

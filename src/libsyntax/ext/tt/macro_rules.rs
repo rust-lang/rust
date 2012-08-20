@@ -14,7 +14,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                      arg: ~[ast::token_tree]) -> base::mac_result {
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        {node: m, span: {lo: 0u, hi: 0u, expn_info: none}}
+        {node: m, span: {lo: 0u, hi: 0u, expn_info: None}}
     }
 
     let lhs_nm =  cx.parse_sess().interner.gensym(@~"lhs");
@@ -28,15 +28,15 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
             ms(match_nonterminal(lhs_nm, special_idents::matchers, 0u)),
             ms(match_tok(FAT_ARROW)),
             ms(match_nonterminal(rhs_nm, special_idents::tt, 1u)),
-        ], some(SEMI), false, 0u, 2u)),
+        ], Some(SEMI), false, 0u, 2u)),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        ms(match_seq(~[ms(match_tok(SEMI))], none, true, 2u, 2u))];
+        ms(match_seq(~[ms(match_tok(SEMI))], None, true, 2u, 2u))];
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
-                                   cx.parse_sess().interner, none, arg);
+                                   cx.parse_sess().interner, None, arg);
     let argument_map = parse_or_else(cx.parse_sess(), cx.cfg(),
                                      arg_reader as reader, argument_gram);
 
@@ -65,7 +65,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
         }
 
         // Which arm's failure should we report? (the one furthest along)
-        let mut best_fail_spot = {lo: 0u, hi: 0u, expn_info: none};
+        let mut best_fail_spot = {lo: 0u, hi: 0u, expn_info: None};
         let mut best_fail_msg = ~"internal error: ran no matchers";
 
         let s_d = cx.parse_sess().span_diagnostic;
@@ -75,7 +75,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
             match lhs {
               @matched_nonterminal(nt_matchers(mtcs)) => {
                 // `none` is because we're not interpolating
-                let arg_rdr = new_tt_reader(s_d, itr, none, arg) as reader;
+                let arg_rdr = new_tt_reader(s_d, itr, None, arg) as reader;
                 match parse(cx.parse_sess(), cx.cfg(), arg_rdr, mtcs) {
                   success(named_matches) => {
                     let rhs = match rhses[i] {
@@ -84,7 +84,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                       _ => cx.span_bug(sp, ~"bad thing in rhs")
                     };
                     // rhs has holes ( `$id` and `$(...)` that need filled)
-                    let trncbr = new_tt_reader(s_d, itr, some(named_matches),
+                    let trncbr = new_tt_reader(s_d, itr, Some(named_matches),
                                                ~[rhs]);
                     let p = parser(cx.parse_sess(), cx.cfg(),
                                    trncbr as reader, SOURCE_FILE);
@@ -109,6 +109,6 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     return mr_def({
         name: *cx.parse_sess().interner.get(name),
-        ext: expr_tt({expander: exp, span: some(sp)})
+        ext: expr_tt({expander: exp, span: Some(sp)})
     });
 }

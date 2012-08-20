@@ -40,8 +40,8 @@ type ctxt = {
 
 fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     match find_library_crate(cx) {
-      some(t) => return t,
-      none => {
+      Some(t) => return t,
+      None => {
         cx.diag.span_fatal(
             cx.span, fmt!("can't find crate for `%s`",
                           *cx.intr.get(cx.ident)));
@@ -49,7 +49,7 @@ fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
     }
 }
 
-fn find_library_crate(cx: ctxt) -> option<{ident: ~str, data: @~[u8]}> {
+fn find_library_crate(cx: ctxt) -> Option<{ident: ~str, data: @~[u8]}> {
     attr::require_unique_names(cx.diag, cx.metas);
     find_library_crate_aux(cx, libname(cx), cx.filesearch)
 }
@@ -67,7 +67,7 @@ fn libname(cx: ctxt) -> {prefix: ~str, suffix: ~str} {
 fn find_library_crate_aux(cx: ctxt,
                           nn: {prefix: ~str, suffix: ~str},
                           filesearch: filesearch::filesearch) ->
-   option<{ident: ~str, data: @~[u8]}> {
+   Option<{ident: ~str, data: @~[u8]}> {
     let crate_name = crate_name_from_metas(cx.metas);
     let prefix: ~str = nn.prefix + crate_name + ~"-";
     let suffix: ~str = nn.suffix;
@@ -79,33 +79,33 @@ fn find_library_crate_aux(cx: ctxt,
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
             debug!("skipping %s, doesn't look like %s*%s", path.to_str(),
                    prefix, suffix);
-            option::none::<()>
+            option::None::<()>
         } else {
             debug!("%s is a candidate", path.to_str());
             match get_metadata_section(cx.os, path) {
-              option::some(cvec) => {
+              option::Some(cvec) => {
                 if !crate_matches(cvec, cx.metas, cx.hash) {
                     debug!("skipping %s, metadata doesn't match",
                            path.to_str());
-                    option::none::<()>
+                    option::None::<()>
                 } else {
                     debug!("found %s with matching metadata", path.to_str());
                     vec::push(matches, {ident: path.to_str(), data: cvec});
-                    option::none::<()>
+                    option::None::<()>
                 }
               }
               _ => {
                 debug!("could not load metadata for %s", path.to_str());
-                option::none::<()>
+                option::None::<()>
               }
             }
         }
     });
 
     if matches.is_empty() {
-        none
+        None
     } else if matches.len() == 1u {
-        some(matches[0])
+        Some(matches[0])
     } else {
         cx.diag.span_err(
             cx.span, fmt!("multiple matching crates for `%s`", crate_name));
@@ -116,22 +116,22 @@ fn find_library_crate_aux(cx: ctxt,
             note_linkage_attrs(cx.intr, cx.diag, attrs);
         }
         cx.diag.handler().abort_if_errors();
-        none
+        None
     }
 }
 
 fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
     let name_items = attr::find_meta_items_by_name(metas, ~"name");
     match vec::last_opt(name_items) {
-      some(i) => {
+      Some(i) => {
         match attr::get_meta_item_value_str(i) {
-          some(n) => n,
+          Some(n) => n,
           // FIXME (#2406): Probably want a warning here since the user
           // is using the wrong type of meta item.
           _ => fail
         }
       }
-      none => fail ~"expected to find the crate name"
+      None => fail ~"expected to find the crate name"
     }
 }
 
@@ -169,14 +169,14 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
 }
 
 fn get_metadata_section(os: os,
-                        filename: &Path) -> option<@~[u8]> unsafe {
+                        filename: &Path) -> Option<@~[u8]> unsafe {
     let mb = str::as_c_str(filename.to_str(), |buf| {
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
     });
-    if mb as int == 0 { return option::none::<@~[u8]>; }
+    if mb as int == 0 { return option::None::<@~[u8]>; }
     let of = match mk_object_file(mb) {
-        option::some(of) => of,
-        _ => return option::none::<@~[u8]>
+        option::Some(of) => of,
+        _ => return option::None::<@~[u8]>
     };
     let si = mk_section_iter(of.llof);
     while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
@@ -187,12 +187,12 @@ fn get_metadata_section(os: os,
             let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
             unsafe {
                 let cvbuf: *u8 = unsafe::reinterpret_cast(cbuf);
-                return some(@vec::unsafe::from_buf(cvbuf, csz));
+                return Some(@vec::unsafe::from_buf(cvbuf, csz));
             }
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }
-    return option::none::<@~[u8]>;
+    return option::None::<@~[u8]>;
 }
 
 fn meta_section_name(os: os) -> ~str {
@@ -208,8 +208,8 @@ fn meta_section_name(os: os) -> ~str {
 fn list_file_metadata(intr: ident_interner,
                       os: os, path: &Path, out: io::Writer) {
     match get_metadata_section(os, path) {
-      option::some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
-      option::none => {
+      option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
+      option::None => {
         out.write_str(~"could not find metadata in "
                       + path.to_str() + ~".\n");
       }

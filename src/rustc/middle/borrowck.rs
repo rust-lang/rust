@@ -90,10 +90,10 @@ to ensure that the box is not collected).
 In other cases, like an enum on the stack, the memory cannot be freed
 but its type can change:
 
-    let mut x = some(5);
+    let mut x = Some(5);
     match x {
-      some(ref y) => { ... }
-      none => { ... }
+      Some(ref y) => { ... }
+      None => { ... }
     }
 
 Here as before, the pointer `y` would be invalidated if we were to

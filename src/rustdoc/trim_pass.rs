@@ -17,7 +17,7 @@ fn mk_pass() -> pass {
 fn should_trim_text() {
     let doc = test::mk_doc(~"#[doc = \" desc \"] \
                             mod m { }");
-    assert doc.cratemod().mods()[0].desc() == some(~"desc");
+    assert doc.cratemod().mods()[0].desc() == Some(~"desc");
 }
 
 #[cfg(test)]

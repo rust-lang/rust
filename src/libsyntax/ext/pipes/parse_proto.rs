@@ -15,7 +15,7 @@ impl parser: proto_parser {
         let proto = protocol(id, self.span);
 
         self.parse_seq_to_before_end(token::EOF,
-                                     {sep: none, trailing_sep_allowed: false},
+                                     {sep: None, trailing_sep_allowed: false},
                                      |self| self.parse_state(proto));
 
         return proto;
@@ -47,7 +47,7 @@ impl parser: proto_parser {
         // parse the messages
         self.parse_unspanned_seq(
             token::LBRACE, token::RBRACE,
-            {sep: some(token::COMMA), trailing_sep_allowed: true},
+            {sep: Some(token::COMMA), trailing_sep_allowed: true},
             |self| self.parse_message(state));
     }
 
@@ -57,7 +57,7 @@ impl parser: proto_parser {
         let args = if self.token == token::LPAREN {
             self.parse_unspanned_seq(token::LPAREN,
                                      token::RPAREN,
-                                     {sep: some(token::COMMA),
+                                     {sep: Some(token::COMMA),
                                       trailing_sep_allowed: true},
                                      |p| p.parse_ty(false))
         }
@@ -71,17 +71,17 @@ impl parser: proto_parser {
             let ntys = if self.token == token::LT {
                 self.parse_unspanned_seq(token::LT,
                                          token::GT,
-                                         {sep: some(token::COMMA),
+                                         {sep: Some(token::COMMA),
                                           trailing_sep_allowed: true},
                                          |p| p.parse_ty(false))
             }
             else { ~[] };
-            some({state: name, tys: ntys})
+            Some({state: name, tys: ntys})
           }
           token::NOT => {
             // -> !
             self.bump();
-            none
+            None
           }
           _ => self.fatal(~"invalid next state")
         };

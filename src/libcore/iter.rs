@@ -3,7 +3,7 @@ type InitOp<T> = fn(uint) -> T;
 
 trait BaseIter<A> {
     pure fn each(blk: fn(A) -> bool);
-    pure fn size_hint() -> option<uint>;
+    pure fn size_hint() -> Option<uint>;
 }
 
 trait ExtendedIter<A> {
@@ -13,7 +13,7 @@ trait ExtendedIter<A> {
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
     pure fn contains(x: A) -> bool;
     pure fn count(x: A) -> uint;
-    pure fn position(f: fn(A) -> bool) -> option<uint>;
+    pure fn position(f: fn(A) -> bool) -> Option<uint>;
 }
 
 trait Times {
@@ -29,7 +29,7 @@ trait CopyableIter<A:copy> {
     pure fn to_vec() -> ~[A];
     pure fn min() -> A;
     pure fn max() -> A;
-    pure fn find(p: fn(A) -> bool) -> option<A>;
+    pure fn find(p: fn(A) -> bool) -> Option<A>;
 }
 
 // A trait for sequences that can be by imperatively pushing elements
@@ -134,13 +134,13 @@ pure fn count<A,IA:BaseIter<A>>(self: IA, x: A) -> uint {
 }
 
 pure fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
-        -> option<uint> {
+        -> Option<uint> {
     let mut i = 0;
     for self.each |a| {
-        if f(a) { return some(i); }
+        if f(a) { return Some(i); }
         i += 1;
     }
-    return none;
+    return None;
 }
 
 // note: 'rposition' would only make sense to provide with a bidirectional
@@ -156,43 +156,43 @@ pure fn repeat(times: uint, blk: fn() -> bool) {
 }
 
 pure fn min<A:copy,IA:BaseIter<A>>(self: IA) -> A {
-    match do foldl::<A,option<A>,IA>(self, none) |a, b| {
+    match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          some(a_) if a_ < b => {
+          Some(a_) if a_ < b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move
             a
           }
-          _ => some(b)
+          _ => Some(b)
         }
     } {
-        some(val) => val,
-        none => fail ~"min called on empty iterator"
+        Some(val) => val,
+        None => fail ~"min called on empty iterator"
     }
 }
 
 pure fn max<A:copy,IA:BaseIter<A>>(self: IA) -> A {
-    match do foldl::<A,option<A>,IA>(self, none) |a, b| {
+    match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
-          some(a_) if a_ > b => {
+          Some(a_) if a_ > b => {
             // FIXME (#2005): Not sure if this is successfully optimized to
             // a move.
             a
           }
-          _ => some(b)
+          _ => Some(b)
         }
     } {
-        some(val) => val,
-        none => fail ~"max called on empty iterator"
+        Some(val) => val,
+        None => fail ~"max called on empty iterator"
     }
 }
 
 pure fn find<A: copy,IA:BaseIter<A>>(self: IA,
-                                     p: fn(A) -> bool) -> option<A> {
+                                     p: fn(A) -> bool) -> Option<A> {
     for self.each |i| {
-        if p(i) { return some(i) }
+        if p(i) { return Some(i) }
     }
-    return none;
+    return None;
 }
 
 // Some functions for just building
@@ -227,7 +227,7 @@ pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(+A))) -> B {
  */
 #[inline(always)]
 pure fn build_sized_opt<A,B: Buildable<A>>(
-    size: option<uint>,
+    size: Option<uint>,
     builder: fn(push: pure fn(+A))) -> B {
 
     build_sized(size.get_default(4), builder)
@@ -339,9 +339,9 @@ fn test_filter_on_uint_range() {
 
 #[test]
 fn test_filter_map() {
-    fn negativate_the_evens(&&i: int) -> option<int> {
+    fn negativate_the_evens(&&i: int) -> Option<int> {
         if i % 2 == 0 {
-            some(-i)
+            Some(-i)
         } else {
             none
         }
@@ -354,8 +354,8 @@ fn test_filter_map() {
 
 #[test]
 fn test_flat_map_with_option() {
-    fn if_even(&&i: int) -> option<int> {
-        if (i % 2) == 0 { some(i) }
+    fn if_even(&&i: int) -> Option<int> {
+        if (i % 2) == 0 { Some(i) }
         else { none }
     }
 

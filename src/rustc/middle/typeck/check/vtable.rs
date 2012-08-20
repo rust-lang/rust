@@ -12,7 +12,7 @@ import syntax::print::pprust;
 // arguments and before typechecking closure arguments) in the hope of
 // solving for the trait parameters from the impl. (For example,
 // determining that if a parameter bounded by BaseIter<A> is
-// instantiated with option<int>, that A = int.)
+// instantiated with Option<int>, that A = int.)
 //
 // In early resolution mode, no vtables are recorded, and a number of
 // errors are ignored. Early resolution only works if a type is
@@ -54,7 +54,7 @@ fn lookup_vtables(fcx: @fn_ctxt,
 
 fn fixup_substs(fcx: @fn_ctxt, expr: @ast::expr,
                 id: ast::def_id, substs: ty::substs,
-                is_early: bool) -> option<ty::substs> {
+                is_early: bool) -> Option<ty::substs> {
     let tcx = fcx.ccx.tcx;
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
@@ -95,8 +95,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
              don't know how to handle a non-trait ty")
     };
     let ty = match fixup_ty(fcx, expr, ty, is_early) {
-      some(ty) => ty,
-      none => {
+      Some(ty) => ty,
+      None => {
         // fixup_ty can only fail if this is early resolution
         assert is_early;
         // The type has unconstrained type variables in it, so we can't
@@ -165,10 +165,10 @@ fn lookup_vtable(fcx: @fn_ctxt,
         let mut impls_seen = new_def_hash();
 
         match fcx.ccx.coherence_info.extension_methods.find(trait_id) {
-            none => {
+            None => {
                 // Nothing found. Continue.
             }
-            some(implementations) => {
+            Some(implementations) => {
                 for uint::range(0, implementations.len()) |i| {
                     let im = implementations[i];
 
@@ -211,8 +211,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
                         // see comments around the earlier call to fixup_ty
                         let substs_f = match fixup_substs(fcx, expr, trait_id,
                                                           substs, is_early) {
-                            some(substs) => substs,
-                            none => {
+                            Some(substs) => substs,
+                            None => {
                                 assert is_early;
                                 // Bail out with a bogus answer
                                 return vtable_param(0, 0);
@@ -256,11 +256,11 @@ fn lookup_vtable(fcx: @fn_ctxt,
 fn fixup_ty(fcx: @fn_ctxt,
             expr: @ast::expr,
             ty: ty::t,
-            is_early: bool) -> option<ty::t>
+            is_early: bool) -> Option<ty::t>
 {
     let tcx = fcx.ccx.tcx;
     match resolve_type(fcx.infcx, ty, resolve_and_force_all_but_regions) {
-      result::ok(new_type) => some(new_type),
+      result::ok(new_type) => Some(new_type),
       result::err(e) if !is_early => {
         tcx.sess.span_fatal(
             expr.span,
@@ -269,7 +269,7 @@ fn fixup_ty(fcx: @fn_ctxt,
                  fixup_err_to_str(e)))
       }
       result::err(e) => {
-        none
+        None
       }
     }
 }
@@ -300,7 +300,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
     match ex.node {
       ast::expr_path(*) => {
         match fcx.opt_node_ty_substs(ex.id) {
-          some(ref substs) => {
+          Some(ref substs) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(ex.id));
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             if has_trait_bounds(*item_ty.bounds) {
@@ -317,7 +317,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
       ast::expr_unary(*) | ast::expr_assign_op(*) |
       ast::expr_index(*) => {
         match ty::method_call_bounds(cx.tcx, cx.method_map, ex.id) {
-          some(bounds) => {
+          Some(bounds) => {
             if has_trait_bounds(*bounds) {
                 let callee_id = match ex.node {
                   ast::expr_field(_, _, _) => ex.id,
@@ -329,7 +329,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                 if !is_early { cx.vtable_map.insert(callee_id, vtbls); }
             }
           }
-          none => ()
+          None => ()
         }
       }
       ast::expr_cast(src, _) => {

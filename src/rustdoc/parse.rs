@@ -12,12 +12,12 @@ export from_file, from_str, from_file_sess, from_str_sess;
 
 fn from_file(file: &Path) -> @ast::crate {
     parse::parse_crate_from_file(
-        file, ~[], parse::new_parse_sess(none))
+        file, ~[], parse::new_parse_sess(None))
 }
 
 fn from_str(source: ~str) -> @ast::crate {
     parse::parse_crate_from_source_str(
-        ~"-", @source, ~[], parse::new_parse_sess(none))
+        ~"-", @source, ~[], parse::new_parse_sess(None))
 }
 
 fn from_file_sess(sess: session::session, file: &Path) -> @ast::crate {

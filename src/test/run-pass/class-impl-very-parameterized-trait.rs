@@ -49,22 +49,22 @@ struct cat<T: copy> : map<int, T> {
   fn contains_key_ref(k: &int) -> bool { self.contains_key(*k) }
 
   fn get(+k:int) -> T { match self.find(k) {
-      some(v) => { v }
-      none    => { fail ~"epic fail"; }
+      Some(v) => { v }
+      None    => { fail ~"epic fail"; }
     }
   }
-  fn find(+k:int) -> option<T> { if k <= self.meows {
-        some(self.name)
+  fn find(+k:int) -> Option<T> { if k <= self.meows {
+        Some(self.name)
      }
-     else { none }
+     else { None }
   }
 
   fn remove(+k:int) -> bool {
     match self.find(k) {
-      some(x) => {
+      Some(x) => {
         self.meows -= k; true
       }
-      none => { false }
+      None => { false }
     }
   }
 
@@ -94,8 +94,8 @@ struct cat<T: copy> : map<int, T> {
 fn main() {
   let nyan : cat<~str> = cat(0, 2, ~"nyan");
   for uint::range(1u, 5u) |_i| { nyan.speak(); }
-  assert(nyan.find(1) == some(~"nyan"));
-  assert(nyan.find(10) == none);
+  assert(nyan.find(1) == Some(~"nyan"));
+  assert(nyan.find(10) == None);
   let spotty : cat<cat_type> = cat(2, 57, tuxedo);
   for uint::range(0u, 6u) |_i| { spotty.speak(); }
   assert(spotty.size() == 8u);

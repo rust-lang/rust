@@ -59,10 +59,10 @@ fn add_constraint(tcx: ty::ctxt, c: sp_constr, next: uint, tbl: constr_map) ->
 
     let {path: p, def_id: d_id, args: args} = c.node;
     match tbl.find(d_id) {
-      some(ct) {
+      Some(ct) {
         (*ct.descs).push(respan(c.span, {args: args, bit_num: next}));
       }
-      none {
+      None {
         let rslt = @dvec();
         (*rslt).push(respan(c.span, {args: args, bit_num: next}));
         tbl.insert(d_id, {path:p, descs:rslt});

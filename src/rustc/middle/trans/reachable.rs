@@ -61,8 +61,8 @@ fn traverse_export(cx: ctx, exp_id: node_id) {
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
     let n = match cx.tcx.items.find(did.node) {
-        none => return, // This can happen for self, for example
-        some(n) => n
+        None => return, // This can happen for self, for example
+        Some(n) => n
     };
     match n {
       ast_map::node_item(item, _) => traverse_public_item(cx, item),
@@ -156,9 +156,9 @@ fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
         match cx.tcx.def_map.find(p_id) {
           // Kind of a hack to check this here, but I'm not sure what else
           // to do
-          some(def_prim_ty(_)) => { /* do nothing */ }
-          some(d) => traverse_def_id(cx, def_id_of_def(d)),
-          none    => { /* do nothing -- but should we fail here? */ }
+          Some(def_prim_ty(_)) => { /* do nothing */ }
+          Some(d) => traverse_def_id(cx, def_id_of_def(d)),
+          None    => { /* do nothing -- but should we fail here? */ }
         }
         for p.types.each |t| { v.visit_ty(t, cx, v); };
       }
@@ -171,17 +171,17 @@ fn traverse_inline_body(cx: ctx, body: blk) {
         match e.node {
           expr_path(_) => {
             match cx.tcx.def_map.find(e.id) {
-                some(d) => {
+                Some(d) => {
                   traverse_def_id(cx, def_id_of_def(d));
                 }
-                none      => cx.tcx.sess.span_bug(e.span, fmt!("Unbound node \
+                None      => cx.tcx.sess.span_bug(e.span, fmt!("Unbound node \
                   id %? while traversing %s", e.id,
                   expr_to_str(e, cx.tcx.sess.intr())))
             }
           }
           expr_field(_, _, _) => {
             match cx.method_map.find(e.id) {
-              some({origin: typeck::method_static(did), _}) => {
+              Some({origin: typeck::method_static(did), _}) => {
                 traverse_def_id(cx, did);
               }
               _ => ()

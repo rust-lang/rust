@@ -75,7 +75,7 @@ impl reflector {
         }
         let d = empty_dest_cell();
         let bcx =
-            trans_call_inner(self.bcx, none, mth_ty, ty::mk_bool(tcx),
+            trans_call_inner(self.bcx, None, mth_ty, ty::mk_bool(tcx),
                              get_lval, arg_vals(args), by_val(d));
         let next_bcx = sub_block(bcx, ~"next");
         CondBr(bcx, *d, next_bcx.llbb, self.final_bcx.llbb);

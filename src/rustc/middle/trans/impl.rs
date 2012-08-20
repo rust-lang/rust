@@ -33,7 +33,7 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
         if method.tps.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(sub_path, path_name(method.ident));
-            trans_method(ccx, path, method, none, llfn);
+            trans_method(ccx, path, method, None, llfn);
         }
     }
 }
@@ -52,7 +52,7 @@ Translates a (possibly monomorphized) method body.
 fn trans_method(ccx: @crate_ctxt,
                 path: path,
                 method: &ast::method,
-                param_substs: option<param_substs>,
+                param_substs: Option<param_substs>,
                 llfn: ValueRef) {
 
     // figure out how self is being passed
@@ -65,8 +65,8 @@ fn trans_method(ccx: @crate_ctxt,
         // this method
         let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
         let self_ty = match param_substs {
-          none => self_ty,
-          some({tys: ref tys, _}) => ty::subst_tps(ccx.tcx, *tys, self_ty)
+          None => self_ty,
+          Some({tys: ref tys, _}) => ty::subst_tps(ccx.tcx, *tys, self_ty)
         };
         match method.self_ty.node {
           ast::sty_value => {
@@ -98,7 +98,7 @@ fn trans_self_arg(bcx: block, base: @ast::expr,
     let mut temp_cleanups = ~[];
     let result = trans_arg_expr(bcx, {mode: mode, ty: basety},
                                 T_ptr(type_of::type_of(bcx.ccx(), basety)),
-                                base, temp_cleanups, none, mentry.derefs);
+                                base, temp_cleanups, None, mentry.derefs);
 
     // by-ref self argument should not require cleanup in the case of
     // other arguments failing:
@@ -119,20 +119,20 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
 
 
         let {bcx, val} = trans_self_arg(bcx, self, mentry);
-        {env: self_env(val, node_id_type(bcx, self.id), none,
+        {env: self_env(val, node_id_type(bcx, self.id), None,
                        mentry.self_mode)
          with lval_static_fn(bcx, did, callee_id)}
       }
       typeck::method_param({trait_id:trait_id, method_num:off,
                             param_num:p, bound_num:b}) => {
         match bcx.fcx.param_substs {
-          some(substs) => {
+          Some(substs) => {
             let vtbl = find_vtable_in_fn_ctxt(substs, p, b);
             trans_monomorphized_callee(bcx, callee_id, self, mentry,
                                        trait_id, off, vtbl)
           }
           // how to get rid of this?
-          none => fail ~"trans_method_callee: missing param_substs"
+          None => fail ~"trans_method_callee: missing param_substs"
         }
       }
       typeck::method_trait(_, off) => {
@@ -183,7 +183,7 @@ fn trans_static_method_callee(bcx: block, method_id: ast::def_id,
                                      node_substs.len() - n_m_tps));
 
         let lval = lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
-                                        some(sub_origins));
+                                        Some(sub_origins));
         {env: null_env,
          val: PointerCast(bcx, lval.val, T_ptr(type_of_fn_from_ty(
              ccx, node_id_type(bcx, callee_id))))
@@ -251,9 +251,9 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
                                      node_substs.len() - n_m_tps));
         let {bcx, val} = trans_self_arg(bcx, base, mentry);
         let lval = lval_static_fn_inner(bcx, mth_id, callee_id, ty_substs,
-                                        some(sub_origins));
+                                        Some(sub_origins));
         {env: self_env(val, node_id_type(bcx, base.id),
-                       none, mentry.self_mode),
+                       None, mentry.self_mode),
          val: PointerCast(bcx, lval.val, T_ptr(type_of_fn_from_ty(
              ccx, node_id_type(bcx, callee_id))))
          with lval}
@@ -280,7 +280,7 @@ fn trans_trait_callee(bcx: block, val: ValueRef,
     let llbox = Load(bcx, GEPi(bcx, val, ~[0u, 1u]));
     // FIXME[impl] I doubt this is alignment-safe (#2534)
     let self = GEPi(bcx, llbox, ~[0u, abi::box_field_body]);
-    let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), some(llbox),
+    let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), Some(llbox),
                        // XXX: is this bogosity?
                        ast::by_ref);
     let llfty = type_of::type_of_fn_from_ty(ccx, callee_ty);
@@ -317,7 +317,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
     match vt {
       typeck::vtable_static(trait_id, tys, sub) => {
         let tys = match fcx.param_substs {
-          some(substs) => {
+          Some(substs) => {
             vec::map(tys, |t| ty::subst_tps(fcx.ccx.tcx, substs.tys, t))
           }
           _ => tys
@@ -327,7 +327,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
       }
       typeck::vtable_param(n_param, n_bound) => {
         match fcx.param_substs {
-          some(substs) => {
+          Some(substs) => {
             find_vtable_in_fn_ctxt(substs, n_param, n_bound)
           }
           _ => fail ~"resolve_vtable_in_fn_ctxt: no substs"
@@ -341,12 +341,12 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
     match origin {
       typeck::vtable_static(impl_id, substs, sub_vtables) => {
         make_mono_id(ccx, impl_id, substs,
-                     if (*sub_vtables).len() == 0u { none }
-                     else { some(sub_vtables) }, none)
+                     if (*sub_vtables).len() == 0u { None }
+                     else { Some(sub_vtables) }, None)
       }
       typeck::vtable_trait(trait_id, substs) => {
         @{def: trait_id,
-          params: vec::map(substs, |t| mono_precise(t, none))}
+          params: vec::map(substs, |t| mono_precise(t, None))}
       }
       // can't this be checked at the callee?
       _ => fail ~"vtable_id"
@@ -357,8 +357,8 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
     -> ValueRef {
     let hash_id = vtable_id(ccx, origin);
     match ccx.vtables.find(hash_id) {
-      some(val) => val,
-      none => match origin {
+      Some(val) => val,
+      None => match origin {
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)
         }
@@ -402,7 +402,7 @@ fn make_impl_vtable(ccx: @crate_ctxt, impl_id: ast::def_id, substs: ~[ty::t],
                 if m_id.crate != ast::local_crate {
                     m_id = maybe_instantiate_inline(ccx, m_id);
                 }
-                monomorphic_fn(ccx, m_id, substs, some(vtables), none).val
+                monomorphic_fn(ccx, m_id, substs, Some(vtables), None).val
             } else if m_id.crate == ast::local_crate {
                 get_item_val(ccx, m_id.node)
             } else {

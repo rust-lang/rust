@@ -85,7 +85,7 @@ fn transform(aa: color, bb: color) -> color {
 fn creature(
     name: uint,
     color: color,
-    from_rendezvous: comm::Port<option<creature_info>>,
+    from_rendezvous: comm::Port<Option<creature_info>>,
     to_rendezvous: comm::Chan<creature_info>,
     to_rendezvous_log: comm::Chan<~str>
 ) {
@@ -100,7 +100,7 @@ fn creature(
 
         // log and change, or print and quit
         match resp {
-            option::some(other_creature) => {
+            option::Some(other_creature) => {
                 color = transform(color, other_creature.color);
 
                 // track some statistics
@@ -109,7 +109,7 @@ fn creature(
                    evil_clones_met += 1;
                 }
             }
-            option::none => {
+            option::None => {
                 // log creatures met and evil clones of self
                 let report = fmt!("%u", creatures_met) + ~" " +
                              show_number(evil_clones_met);
@@ -130,9 +130,9 @@ fn rendezvous(nn: uint, set: ~[color]) {
     let to_rendezvous_log = comm::chan(from_creatures_log);
 
     // these channels will allow us to talk to each creature by 'name'/index
-    let to_creature: ~[comm::Chan<option<creature_info>>] =
+    let to_creature: ~[comm::Chan<Option<creature_info>>] =
         vec::mapi(set,
-            fn@(ii: uint, col: color) -> comm::Chan<option<creature_info>> {
+            fn@(ii: uint, col: color) -> comm::Chan<Option<creature_info>> {
                 // create each creature as a listener with a port, and
                 // give us a channel to talk to each
                 return do task::spawn_listener |from_rendezvous| {
@@ -151,13 +151,13 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
         creatures_met += 2;
 
-        comm::send(to_creature[fst_creature.name], some(snd_creature));
-        comm::send(to_creature[snd_creature.name], some(fst_creature));
+        comm::send(to_creature[fst_creature.name], Some(snd_creature));
+        comm::send(to_creature[snd_creature.name], Some(fst_creature));
     }
 
     // tell each creature to stop
     for vec::eachi(to_creature) |_ii, to_one| {
-        comm::send(to_one, none);
+        comm::send(to_one, None);
     }
 
     // save each creature's meeting stats

@@ -25,7 +25,7 @@ debug!("hello, %s!", "world");
 
 */
 
-import option::{some, none};
+import option::{Some, None};
 
 
 /*
@@ -70,7 +70,7 @@ mod ct {
 
     // A formatted conversion from an expression to a string
     type conv =
-        {param: option<int>,
+        {param: Option<int>,
          flags: ~[flag],
          width: count,
          precision: count,
@@ -117,25 +117,25 @@ mod ct {
         return pieces;
     }
     fn peek_num(s: ~str, i: uint, lim: uint) ->
-       option<{num: uint, next: uint}> {
+       Option<{num: uint, next: uint}> {
         let mut j = i;
         let mut accum = 0u;
         let mut found = false;
         while j < lim {
             match char::to_digit(s[j] as char, 10) {
-                some(x) => {
+                Some(x) => {
                     found = true;
                     accum *= 10;
                     accum += x;
                     j += 1;
                 },
-                none => break
+                None => break
             }
         }
         if found {
-            some({num: accum, next: j})
+            Some({num: accum, next: j})
         } else {
-            none
+            None
         }
     }
     fn parse_conversion(s: ~str, i: uint, lim: uint, error: error_fn) ->
@@ -154,17 +154,17 @@ mod ct {
              next: ty.next};
     }
     fn parse_parameter(s: ~str, i: uint, lim: uint) ->
-       {param: option<int>, next: uint} {
-        if i >= lim { return {param: none, next: i}; }
+       {param: Option<int>, next: uint} {
+        if i >= lim { return {param: None, next: i}; }
         let num = peek_num(s, i, lim);
         return match num {
-              none => {param: none, next: i},
-              some(t) => {
+              None => {param: None, next: i},
+              Some(t) => {
                 let n = t.num;
                 let j = t.next;
                 if j < lim && s[j] == '$' as u8 {
-                    {param: some(n as int), next: j + 1u}
-                } else { {param: none, next: i} }
+                    {param: Some(n as int), next: j + 1u}
+                } else { {param: None, next: i} }
               }
             };
     }
@@ -203,14 +203,14 @@ mod ct {
                 let param = parse_parameter(s, i + 1u, lim);
                 let j = param.next;
                 match param.param {
-                  none => {count: count_is_next_param, next: j},
-                  some(n) => {count: count_is_param(n), next: j}
+                  None => {count: count_is_next_param, next: j},
+                  Some(n) => {count: count_is_param(n), next: j}
                 }
             } else {
                 let num = peek_num(s, i, lim);
                 match num {
-                  none => {count: count_implied, next: i},
-                  some(num) => {
+                  None => {count: count_implied, next: i},
+                  Some(num) => {
                     count: count_is(num.num as int),
                     next: num.next
                   }

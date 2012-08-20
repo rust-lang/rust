@@ -10,5 +10,5 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, tt: ~[ast::token_tree])
 
     //trivial expression
     return mr_expr(@{id: cx.next_id(), callee_id: cx.next_id(),
-                     node: ast::expr_rec(~[], option::none), span: sp});
+                     node: ast::expr_rec(~[], option::None), span: sp});
 }

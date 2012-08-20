@@ -41,7 +41,7 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
     fn visit_message(name: ~str, _span: span, _tys: &[@ast::ty],
                      this: state, next: next_state) {
         match next {
-          some({state: next, tys: next_tys}) => {
+          Some({state: next, tys: next_tys}) => {
             let proto = this.proto;
             if !proto.has_state(next) {
                 // This should be a span fatal, but then we need to
@@ -65,7 +65,7 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
                 }
             }
           }
-          none => ()
+          None => ()
         }
     }
 }

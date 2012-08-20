@@ -73,14 +73,14 @@ unsafe fn transmute_mut_region<T>(+ptr: &a/mut T) -> &b/mut T {
 // An unwrapper uses this protocol to communicate with the "other" task that
 // drops the last refcount on an arc. Unfortunately this can't be a proper
 // pipe protocol because the unwrapper has to access both stages at once.
-type UnwrapProto = ~mut option<(pipes::chan_one<()>, pipes::port_one<bool>)>;
+type UnwrapProto = ~mut Option<(pipes::chan_one<()>, pipes::port_one<bool>)>;
 
 struct ArcData<T> {
     mut count:     libc::intptr_t;
     mut unwrapper: libc::uintptr_t; // either a UnwrapProto or 0
     // FIXME(#3224) should be able to make this non-option to save memory, and
     // in unwrap() use "let ~ArcData { data: result, _ } = thing" to unwrap it
-    mut data:      option<T>;
+    mut data:      Option<T>;
 }
 
 struct ArcDestruct<T> {
@@ -125,8 +125,8 @@ struct ArcDestruct<T> {
 unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
-        mut ptr:      option<~ArcData<T>>;
-        mut response: option<pipes::chan_one<bool>>;
+        mut ptr:      Option<~ArcData<T>>;
+        mut response: Option<pipes::chan_one<bool>>;
         drop unsafe {
             let response = option::swap_unwrap(&mut self.response);
             // In case we get killed early, we need to tell the person who
@@ -147,7 +147,7 @@ unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast(rc.data);
         let (c1,p1) = pipes::oneshot(); // ()
         let (c2,p2) = pipes::oneshot(); // bool
-        let server: UnwrapProto = ~mut some((c1,p2));
+        let server: UnwrapProto = ~mut Some((c1,p2));
         let serverp: libc::uintptr_t = unsafe::transmute(server);
         // Try to put our server end in the unwrapper slot.
         if rustrt::rust_compare_and_swap_ptr(&mut ptr.unwrapper, 0, serverp) {
@@ -165,8 +165,8 @@ unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
             } else {
                 // The *next* person who sees the refcount hit 0 will wake us.
                 let end_result =
-                    DeathThroes { ptr: some(ptr), response: some(c2) };
-                let mut p1 = some(p1); // argh
+                    DeathThroes { ptr: Some(ptr), response: Some(c2) };
+                let mut p1 = Some(p1); // argh
                 do task::rekillable {
                     pipes::recv_one(option::swap_unwrap(&mut p1));
                 }
@@ -195,7 +195,7 @@ unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
 type SharedMutableState<T: send> = ArcDestruct<T>;
 
 unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
-    let data = ~ArcData { count: 1, unwrapper: 0, data: some(data) };
+    let data = ~ArcData { count: 1, unwrapper: 0, data: Some(data) };
     unsafe {
         let ptr = unsafe::transmute(data);
         ArcDestruct(ptr)
@@ -433,7 +433,7 @@ mod tests {
     #[test]
     fn exclusive_unwrap_contended() {
         let x = exclusive(~~"hello");
-        let x2 = ~mut some(x.clone());
+        let x2 = ~mut Some(x.clone());
         do task::spawn {
             let x2 = option::swap_unwrap(x2);
             do x2.with |_hello| { }
@@ -443,9 +443,9 @@ mod tests {
 
         // Now try the same thing, but with the child task blocking.
         let x = exclusive(~~"hello");
-        let x2 = ~mut some(x.clone());
-        let mut res = none;
-        do task::task().future_result(|+r| res = some(r)).spawn {
+        let x2 = ~mut Some(x.clone());
+        let mut res = None;
+        do task::task().future_result(|+r| res = Some(r)).spawn {
             let x2 = option::swap_unwrap(x2);
             assert unwrap_exclusive(x2) == ~~"hello";
         }
@@ -458,9 +458,9 @@ mod tests {
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn exclusive_unwrap_conflict() {
         let x = exclusive(~~"hello");
-        let x2 = ~mut some(x.clone());
-        let mut res = none;
-        do task::task().future_result(|+r| res = some(r)).spawn {
+        let x2 = ~mut Some(x.clone());
+        let mut res = None;
+        do task::task().future_result(|+r| res = Some(r)).spawn {
             let x2 = option::swap_unwrap(x2);
             assert unwrap_exclusive(x2) == ~~"hello";
         }

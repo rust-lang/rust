@@ -164,12 +164,12 @@ impl ext_ctxt: ext_ctxt_helpers {
     }
 
     fn path(span: span, strs: ~[ast::ident]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: none, types: ~[]}
+        @{span: span, global: false, idents: strs, rp: None, types: ~[]}
     }
 
     fn path_tps(span: span, strs: ~[ast::ident],
                 tps: ~[@ast::ty]) -> @ast::path {
-        @{span: span, global: false, idents: strs, rp: none, types: tps}
+        @{span: span, global: false, idents: strs, rp: None, types: tps}
     }
 
     fn ty_path(span: span, strs: ~[ast::ident],
@@ -215,7 +215,7 @@ impl ext_ctxt: ext_ctxt_helpers {
     fn blk(span: span, stmts: ~[@ast::stmt]) -> ast::blk {
         {node: {view_items: ~[],
                 stmts: stmts,
-                expr: none,
+                expr: None,
                 id: self.next_id(),
                 rules: ast::default_blk},
          span: span}
@@ -224,7 +224,7 @@ impl ext_ctxt: ext_ctxt_helpers {
     fn expr_blk(expr: @ast::expr) -> ast::blk {
         {node: {view_items: ~[],
                 stmts: ~[],
-                expr: some(expr),
+                expr: Some(expr),
                 id: self.next_id(),
                 rules: ast::default_blk},
          span: expr.span}
@@ -232,11 +232,11 @@ impl ext_ctxt: ext_ctxt_helpers {
 
     fn binder_pat(span: span, nm: ast::ident) -> @ast::pat {
         let path = @{span: span, global: false, idents: ~[nm],
-                     rp: none, types: ~[]};
+                     rp: None, types: ~[]};
         @{id: self.next_id(),
           node: ast::pat_ident(ast::bind_by_implicit_ref,
                                path,
-                               none),
+                               None),
           span: span}
     }
 
@@ -374,7 +374,7 @@ fn ser_variant(cx: ext_ctxt,
     let body_blk = cx.blk(span, stmts);
     let body = cx.blk(span, ~[cx.stmt(bodyfn(s, body_blk))]);
 
-    {pats: ~[pat], guard: none, body: body}
+    {pats: ~[pat], guard: None, body: body}
 }
 
 fn ser_lambda(cx: ext_ctxt, tps: ser_tps_map, ty: @ast::ty,
@@ -387,7 +387,7 @@ fn is_vec_or_str(ty: @ast::ty) -> bool {
       ast::ty_vec(_) => true,
       // This may be wrong if the user has shadowed (!) str
       ast::ty_path(@{span: _, global: _, idents: ids,
-                             rp: none, types: _}, _)
+                             rp: None, types: _}, _)
       if ids == ~[parse::token::special_idents::str] => true,
       _ => false
     }
@@ -493,8 +493,8 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
             let ident = path.idents[0];
 
             match tps.find(ident) {
-              some(f) => f(v),
-              none => ser_path(cx, tps, path, s, v)
+              Some(f) => f(v),
+              None => ser_path(cx, tps, path, s, v)
             }
         } else {
             ser_path(cx, tps, path, s, v)
@@ -684,7 +684,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
                     expr: #ast{ $(d).read_rec_field($(f), $(i), $(l))} },
              span: fld.span}
         };
-        let fld_expr = cx.expr(ty.span, ast::expr_rec(fields, none));
+        let fld_expr = cx.expr(ty.span, ast::expr_rec(fields, None));
         let fld_lambda = cx.lambda(cx.expr_blk(fld_expr));
         #ast{ $(d).read_rec($(fld_lambda)) }
       }
@@ -720,8 +720,8 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
             let ident = path.idents[0];
 
             match tps.find(ident) {
-              some(f) => f(),
-              none => deser_path(cx, tps, path, d)
+              Some(f) => f(),
+              None => deser_path(cx, tps, path, d)
             }
         } else {
             deser_path(cx, tps, path, d)
@@ -850,10 +850,10 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: ast::ident,
                         if vec::is_empty(pats) {
                             ast::pat_ident(ast::bind_by_implicit_ref,
                                            cx.path(v_span, ~[v_name]),
-                                           none)
+                                           None)
                         } else {
                             ast::pat_enum(cx.path(v_span, ~[v_name]),
-                                                  some(pats))
+                                                  Some(pats))
                         }
                     },
 
@@ -928,17 +928,17 @@ fn deser_enum(cx: ext_ctxt, tps: deser_tps_map, e_name: ast::ident,
         {pats: ~[@{id: cx.next_id(),
                   node: ast::pat_lit(cx.lit_uint(v_span, vidx)),
                   span: v_span}],
-         guard: none,
+         guard: None,
          body: cx.expr_blk(body)}
     };
 
     let impossible_case = {pats: ~[@{id: cx.next_id(),
                                      node: ast::pat_wild,
                                      span: e_span}],
-                        guard: none,
+                        guard: None,
                         // FIXME #3198: proper error message
                            body: cx.expr_blk(cx.expr(e_span,
-                                                     ast::expr_fail(none)))};
+                                                     ast::expr_fail(None)))};
     arms += ~[impossible_case];
 
     // Generate code like:

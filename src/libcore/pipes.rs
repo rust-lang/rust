@@ -181,7 +181,7 @@ struct packet_header {
 #[doc(hidden)]
 type packet<T: send> = {
     header: packet_header,
-    mut payload: option<T>,
+    mut payload: Option<T>,
 };
 
 #[doc(hidden)]
@@ -199,7 +199,7 @@ impl<T: send> packet<T>: has_buffer {
 fn mk_packet<T: send>() -> packet<T> {
     {
         header: packet_header(),
-        mut payload: none
+        mut payload: None
     }
 }
 
@@ -209,7 +209,7 @@ fn unibuffer<T: send>() -> ~buffer<packet<T>> {
         header: buffer_header(),
         data: {
             header: packet_header(),
-            mut payload: none,
+            mut payload: None,
         }
     };
 
@@ -359,8 +359,8 @@ fn send<T: send, Tbuffer: send>(+p: send_packet_buffered<T, Tbuffer>,
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
     assert ptr::addr_of(p.header) == header;
-    assert p.payload == none;
-    p.payload <- some(payload);
+    assert p.payload == None;
+    p.payload <- Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, full);
     match old_state {
         empty => {
@@ -404,11 +404,11 @@ fn recv<T: send, Tbuffer: send>(+p: recv_packet_buffered<T, Tbuffer>) -> T {
 /** Attempts to receive a message from a pipe.
 
 Returns `none` if the sender has closed the connection without sending
-a message, or `some(T)` if a message was received.
+a message, or `Some(T)` if a message was received.
 
 */
 fn try_recv<T: send, Tbuffer: send>(+p: recv_packet_buffered<T, Tbuffer>)
-    -> option<T>
+    -> Option<T>
 {
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
@@ -433,12 +433,12 @@ fn try_recv<T: send, Tbuffer: send>(+p: recv_packet_buffered<T, Tbuffer>)
     // optimistic path
     match p.header.state {
       full => {
-        let mut payload = none;
+        let mut payload = None;
         payload <-> p.payload;
         p.header.state = empty;
-        return some(option::unwrap(payload))
+        return Some(option::unwrap(payload))
       },
-      terminated => return none,
+      terminated => return None,
       _ => {}
     }
 
@@ -475,14 +475,14 @@ fn try_recv<T: send, Tbuffer: send>(+p: recv_packet_buffered<T, Tbuffer>)
             fail ~"blocking on already blocked packet"
           },
           full => {
-            let mut payload = none;
+            let mut payload = None;
             payload <-> p.payload;
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
                 rustrt::rust_task_deref(old_task);
             }
             p.header.state = empty;
-            return some(option::unwrap(payload))
+            return Some(option::unwrap(payload))
           }
           terminated => {
             // This assert detects when we've accidentally unsafely
@@ -493,7 +493,7 @@ fn try_recv<T: send, Tbuffer: send>(+p: recv_packet_buffered<T, Tbuffer>)
             if !old_task.is_null() {
                 rustrt::rust_task_deref(old_task);
             }
-            return none;
+            return None;
           }
         }
         first = false;
@@ -603,11 +603,11 @@ fn wait_many<T: selectable>(pkts: &[T]) -> uint {
         let pos = vec::position(pkts, |p| p.header() == event);
 
         match pos {
-          some(i) => {
+          Some(i) => {
             ready_packet = i;
             data_avail = true;
           }
-          none => debug!("ignoring spurious event, %?", event)
+          None => debug!("ignoring spurious event, %?", event)
         }
     }
 
@@ -640,10 +640,10 @@ match select2(a, b) {
   right((a, none)) {
     // endpoint b was closed.
   }
-  left((some(_), b)) {
+  left((Some(_), b)) {
     // endpoint a received a message
   }
-  right(a, some(_)) {
+  right(a, Some(_)) {
     // endpoint b received a message.
   }
 }
@@ -656,8 +656,8 @@ this case, `select2` may return either `left` or `right`.
 fn select2<A: send, Ab: send, B: send, Bb: send>(
     +a: recv_packet_buffered<A, Ab>,
     +b: recv_packet_buffered<B, Bb>)
-    -> Either<(option<A>, recv_packet_buffered<B, Bb>),
-              (recv_packet_buffered<A, Ab>, option<B>)>
+    -> Either<(Option<A>, recv_packet_buffered<B, Bb>),
+              (recv_packet_buffered<A, Ab>, Option<B>)>
 {
     let i = wait_many([a.header(), b.header()]/_);
 
@@ -696,7 +696,7 @@ fn select2i<A: selectable, B: selectable>(a: &A, b: &B) -> Either<(), ()> {
 
 */
 fn select<T: send, Tb: send>(+endpoints: ~[recv_packet_buffered<T, Tb>])
-    -> (uint, option<T>, ~[recv_packet_buffered<T, Tb>])
+    -> (uint, Option<T>, ~[recv_packet_buffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
     let mut remaining = endpoints;
@@ -717,13 +717,13 @@ fn send_packet<T: send>(p: *packet<T>) -> send_packet<T> {
 }
 
 struct send_packet_buffered<T: send, Tbuffer: send> {
-    let mut p: option<*packet<T>>;
-    let mut buffer: option<buffer_resource<Tbuffer>>;
+    let mut p: Option<*packet<T>>;
+    let mut buffer: Option<buffer_resource<Tbuffer>>;
     new(p: *packet<T>) {
         //debug!("take send %?", p);
-        self.p = some(p);
+        self.p = Some(p);
         unsafe {
-            self.buffer = some(
+            self.buffer = Some(
                 buffer_resource(
                     get_buffer(ptr::addr_of((*p).header))));
         };
@@ -732,8 +732,8 @@ struct send_packet_buffered<T: send, Tbuffer: send> {
         //if self.p != none {
         //    debug!("drop send %?", option::get(self.p));
         //}
-        if self.p != none {
-            let mut p = none;
+        if self.p != None {
+            let mut p = None;
             p <-> self.p;
             sender_terminate(option::unwrap(p))
         }
@@ -743,26 +743,26 @@ struct send_packet_buffered<T: send, Tbuffer: send> {
         //                } else { "some" }); }
     }
     fn unwrap() -> *packet<T> {
-        let mut p = none;
+        let mut p = None;
         p <-> self.p;
         option::unwrap(p)
     }
 
     pure fn header() -> *packet_header {
         match self.p {
-          some(packet) => unsafe {
+          Some(packet) => unsafe {
             let packet = &*packet;
             let header = ptr::addr_of(packet.header);
             //forget(packet);
             header
           },
-          none => fail ~"packet already consumed"
+          None => fail ~"packet already consumed"
         }
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
         //error!("send reuse_buffer");
-        let mut tmp = none;
+        let mut tmp = None;
         tmp <-> self.buffer;
         option::unwrap(tmp)
     }
@@ -778,13 +778,13 @@ fn recv_packet<T: send>(p: *packet<T>) -> recv_packet<T> {
 }
 
 struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
-    let mut p: option<*packet<T>>;
-    let mut buffer: option<buffer_resource<Tbuffer>>;
+    let mut p: Option<*packet<T>>;
+    let mut buffer: Option<buffer_resource<Tbuffer>>;
     new(p: *packet<T>) {
         //debug!("take recv %?", p);
-        self.p = some(p);
+        self.p = Some(p);
         unsafe {
-            self.buffer = some(
+            self.buffer = Some(
                 buffer_resource(
                     get_buffer(ptr::addr_of((*p).header))));
         };
@@ -793,8 +793,8 @@ struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
         //if self.p != none {
         //    debug!("drop recv %?", option::get(self.p));
         //}
-        if self.p != none {
-            let mut p = none;
+        if self.p != None {
+            let mut p = None;
             p <-> self.p;
             receiver_terminate(option::unwrap(p))
         }
@@ -804,26 +804,26 @@ struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
         //                } else { "some" }); }
     }
     fn unwrap() -> *packet<T> {
-        let mut p = none;
+        let mut p = None;
         p <-> self.p;
         option::unwrap(p)
     }
 
     pure fn header() -> *packet_header {
         match self.p {
-          some(packet) => unsafe {
+          Some(packet) => unsafe {
             let packet = &*packet;
             let header = ptr::addr_of(packet.header);
             //forget(packet);
             header
           },
-          none => fail ~"packet already consumed"
+          None => fail ~"packet already consumed"
         }
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
         //error!("recv reuse_buffer");
-        let mut tmp = none;
+        let mut tmp = None;
         tmp <-> self.buffer;
         option::unwrap(tmp)
     }
@@ -852,9 +852,9 @@ fn spawn_service<T: send, Tb: send>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut some(server);
+    let server = ~mut Some(server);
     do task::spawn |move service| {
-        let mut server_ = none;
+        let mut server_ = None;
         server_ <-> *server;
         service(option::unwrap(server_))
     }
@@ -876,9 +876,9 @@ fn spawn_service_recv<T: send, Tb: send>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut some(server);
+    let server = ~mut Some(server);
     do task::spawn |move service| {
-        let mut server_ = none;
+        let mut server_ = None;
         server_ <-> *server;
         service(option::unwrap(server_))
     }
@@ -915,7 +915,7 @@ trait recv<T: send> {
     the connection is closed.
 
     */
-    fn try_recv() -> option<T>;
+    fn try_recv() -> Option<T>;
 
     /** Returns true if a message is available or the connection is
     closed.
@@ -925,7 +925,7 @@ trait recv<T: send> {
 }
 
 #[doc(hidden)]
-type chan_<T:send> = { mut endp: option<streamp::client::open<T>> };
+type chan_<T:send> = { mut endp: Option<streamp::client::open<T>> };
 
 /// An endpoint that can send many messages.
 enum chan<T:send> {
@@ -933,7 +933,7 @@ enum chan<T:send> {
 }
 
 #[doc(hidden)]
-type port_<T:send> = { mut endp: option<streamp::server::open<T>> };
+type port_<T:send> = { mut endp: Option<streamp::server::open<T>> };
 
 /// An endpoint that can receive many messages.
 enum port<T:send> {
@@ -948,57 +948,57 @@ These allow sending or receiving an unlimited number of messages.
 fn stream<T:send>() -> (chan<T>, port<T>) {
     let (c, s) = streamp::init();
 
-    (chan_({ mut endp: some(c) }), port_({ mut endp: some(s) }))
+    (chan_({ mut endp: Some(c) }), port_({ mut endp: Some(s) }))
 }
 
 impl<T: send> chan<T>: channel<T> {
     fn send(+x: T) {
-        let mut endp = none;
+        let mut endp = None;
         endp <-> self.endp;
-        self.endp = some(
+        self.endp = Some(
             streamp::client::data(unwrap(endp), x))
     }
 
     fn try_send(+x: T) -> bool {
-        let mut endp = none;
+        let mut endp = None;
         endp <-> self.endp;
         match move streamp::client::try_data(unwrap(endp), x) {
-            some(move next) => {
-                self.endp = some(next);
+            Some(move next) => {
+                self.endp = Some(next);
                 true
             }
-            none => false
+            None => false
         }
     }
 }
 
 impl<T: send> port<T>: recv<T> {
     fn recv() -> T {
-        let mut endp = none;
+        let mut endp = None;
         endp <-> self.endp;
         let streamp::data(x, endp) = pipes::recv(unwrap(endp));
-        self.endp = some(endp);
+        self.endp = Some(endp);
         x
     }
 
-    fn try_recv() -> option<T> {
-        let mut endp = none;
+    fn try_recv() -> Option<T> {
+        let mut endp = None;
         endp <-> self.endp;
         match move pipes::try_recv(unwrap(endp)) {
-          some(streamp::data(move x, move endp)) => {
-            self.endp = some(endp);
-            some(x)
+          Some(streamp::data(move x, move endp)) => {
+            self.endp = Some(endp);
+            Some(x)
           }
-          none => none
+          None => None
         }
     }
 
     pure fn peek() -> bool unchecked {
-        let mut endp = none;
+        let mut endp = None;
         endp <-> self.endp;
         let peek = match endp {
-          some(endp) => pipes::peek(&endp),
-          none => fail ~"peeking empty stream"
+          Some(endp) => pipes::peek(&endp),
+          None => fail ~"peeking empty stream"
         };
         self.endp <-> endp;
         peek
@@ -1021,19 +1021,19 @@ struct PortSet<T: send> : recv<T> {
         ch
     }
 
-    fn try_recv() -> option<T> {
-        let mut result = none;
+    fn try_recv() -> Option<T> {
+        let mut result = None;
         // we have to swap the ports array so we aren't borrowing
         // aliasable mutable memory.
         let mut ports = ~[];
         ports <-> self.ports;
-        while result == none && ports.len() > 0 {
+        while result == None && ports.len() > 0 {
             let i = wait_many(ports);
             match move ports[i].try_recv() {
-                some(move m) => {
-                  result = some(m);
+                Some(move m) => {
+                  result = Some(m);
                 }
-                none => {
+                None => {
                     // Remove this port.
                     let _ = vec::swap_remove(ports, i);
                 }
@@ -1060,8 +1060,8 @@ struct PortSet<T: send> : recv<T> {
 impl<T: send> port<T>: selectable {
     pure fn header() -> *packet_header unchecked {
         match self.endp {
-          some(endp) => endp.header(),
-          none => fail ~"peeking empty stream"
+          Some(endp) => endp.header(),
+          None => fail ~"peeking empty stream"
         }
     }
 }
@@ -1071,18 +1071,18 @@ type SharedChan<T: send> = unsafe::Exclusive<chan<T>>;
 
 impl<T: send> SharedChan<T>: channel<T> {
     fn send(+x: T) {
-        let mut xx = some(x);
+        let mut xx = Some(x);
         do self.with |chan| {
-            let mut x = none;
+            let mut x = None;
             x <-> xx;
             chan.send(option::unwrap(x))
         }
     }
 
     fn try_send(+x: T) -> bool {
-        let mut xx = some(x);
+        let mut xx = Some(x);
         do self.with |chan| {
-            let mut x = none;
+            let mut x = None;
             x <-> xx;
             chan.try_send(option::unwrap(x))
         }
@@ -1097,7 +1097,7 @@ fn SharedChan<T:send>(+c: chan<T>) -> SharedChan<T> {
 /// Receive a message from one of two endpoints.
 trait select2<T: send, U: send> {
     /// Receive a message or return `none` if a connection closes.
-    fn try_select() -> Either<option<T>, option<U>>;
+    fn try_select() -> Either<Option<T>, Option<U>>;
     /// Receive a message or fail if a connection closes.
     fn select() -> Either<T, U>;
 }
@@ -1114,7 +1114,7 @@ impl<T: send, U: send, Left: selectable recv<T>, Right: selectable recv<U>>
         }
     }
 
-    fn try_select() -> Either<option<T>, option<U>> {
+    fn try_select() -> Either<Option<T>, Option<U>> {
         match self {
           (lp, rp) => match select2i(&lp, &rp) {
             Left(()) => Left (lp.try_recv()),
@@ -1150,13 +1150,13 @@ fn recv_one<T: send>(+port: port_one<T>) -> T {
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
-fn try_recv_one<T: send> (+port: port_one<T>) -> option<T> {
+fn try_recv_one<T: send> (+port: port_one<T>) -> Option<T> {
     let message = try_recv(port);
 
-    if message == none { none }
+    if message == None { None }
     else {
         let oneshot::send(message) = option::unwrap(message);
-        some(message)
+        Some(message)
     }
 }
 
@@ -1177,8 +1177,8 @@ fn try_send_one<T: send>(+chan: chan_one<T>, +data: T)
 mod rt {
     // These are used to hide the option constructors from the
     // compiler because their names are changing
-    fn make_some<T>(+val: T) -> option<T> { some(val) }
-    fn make_none<T>() -> option<T> { none }
+    fn make_some<T>(+val: T) -> Option<T> { Some(val) }
+    fn make_none<T>() -> Option<T> { None }
 }
 
 #[cfg(test)]

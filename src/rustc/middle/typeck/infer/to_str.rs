@@ -26,8 +26,8 @@ impl ty::region: to_str {
 impl<V:copy to_str> bound<V>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
-          some(v) => v.to_str(cx),
-          none => ~"none"
+          Some(v) => v.to_str(cx),
+          None => ~"none"
         }
     }
 }

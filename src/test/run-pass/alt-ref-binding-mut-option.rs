@@ -1,8 +1,8 @@
 fn main() {
-    let mut v = some(22);
+    let mut v = Some(22);
     match v {
-      none => {}
-      some(ref mut p) => { *p += 1; }
+      None => {}
+      Some(ref mut p) => { *p += 1; }
     }
-    assert v == some(23);
+    assert v == Some(23);
 }

@@ -1,15 +1,15 @@
-type IMPL_T<A> = option<A>;
+type IMPL_T<A> = Option<A>;
 
 pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
     match self {
-      none => (),
-      some(a) => { f(a); }
+      None => (),
+      Some(a) => { f(a); }
     }
 }
 
-pure fn SIZE_HINT<A>(self: IMPL_T<A>) -> option<uint> {
+pure fn SIZE_HINT<A>(self: IMPL_T<A>) -> Option<uint> {
     match self {
-      none => some(0u),
-      some(_) => some(1u)
+      None => Some(0u),
+      Some(_) => Some(1u)
     }
 }

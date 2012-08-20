@@ -38,8 +38,8 @@ trait interner<T: const copy> {
 impl <T: const copy> hash_interner<T>: interner<T> {
     fn intern(val: T) -> uint {
         match self.map.find(val) {
-          some(idx) => return idx,
-          none => {
+          Some(idx) => return idx,
+          None => {
             let new_idx = self.vect.len();
             self.map.insert(val, new_idx);
             self.vect.push(val);

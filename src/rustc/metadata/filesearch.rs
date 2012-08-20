@@ -14,11 +14,11 @@ export get_cargo_root;
 export get_cargo_root_nearest;
 export libdir;
 
-type pick<T> = fn(path: &Path) -> option<T>;
+type pick<T> = fn(path: &Path) -> Option<T>;
 
-fn pick_file(file: Path, path: &Path) -> option<Path> {
-    if path.file_path() == file { option::some(copy *path) }
-    else { option::none }
+fn pick_file(file: Path, path: &Path) -> Option<Path> {
+    if path.file_path() == file { option::Some(copy *path) }
+    else { option::None }
 }
 
 trait filesearch {
@@ -28,7 +28,7 @@ trait filesearch {
     fn get_target_lib_file_path(file: &Path) -> Path;
 }
 
-fn mk_filesearch(maybe_sysroot: option<Path>,
+fn mk_filesearch(maybe_sysroot: Option<Path>,
                  target_triple: &str,
                  addl_lib_search_paths: ~[Path]) -> filesearch {
     type filesearch_impl = {sysroot: Path,
@@ -67,8 +67,8 @@ fn mk_filesearch(maybe_sysroot: option<Path>,
      target_triple: str::from_slice(target_triple)} as filesearch
 }
 
-fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
-    let mut rslt = none;
+fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> Option<T> {
+    let mut rslt = None;
     for filesearch.lib_search_paths().each |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());
         for os::list_dir_path(&lib_search_path).each |path| {
@@ -100,15 +100,15 @@ fn make_target_lib_path(sysroot: &Path,
 
 fn get_default_sysroot() -> Path {
     match os::self_exe_path() {
-      option::some(p) => p.pop(),
-      option::none => fail ~"can't determine value for sysroot"
+      option::Some(p) => p.pop(),
+      option::None => fail ~"can't determine value for sysroot"
     }
 }
 
-fn get_sysroot(maybe_sysroot: option<Path>) -> Path {
+fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
     match maybe_sysroot {
-      option::some(sr) => sr,
-      option::none => get_default_sysroot()
+      option::Some(sr) => sr,
+      option::None => get_default_sysroot()
     }
 }
 
@@ -118,10 +118,10 @@ fn get_cargo_sysroot() -> result<Path, ~str> {
 
 fn get_cargo_root() -> result<Path, ~str> {
     match os::getenv(~"CARGO_ROOT") {
-        some(_p) => result::ok(Path(_p)),
-        none => match os::homedir() {
-          some(_q) => result::ok(_q.push(".cargo")),
-          none => result::err(~"no CARGO_ROOT or home directory")
+        Some(_p) => result::ok(Path(_p)),
+        None => match os::homedir() {
+          Some(_q) => result::ok(_q.push(".cargo")),
+          None => result::err(~"no CARGO_ROOT or home directory")
         }
     }
 }

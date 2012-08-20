@@ -32,7 +32,7 @@ type config = {
     output_dir: Path,
     output_format: output_format,
     output_style: output_style,
-    pandoc_cmd: option<~str>
+    pandoc_cmd: Option<~str>
 };
 
 fn opt_output_dir() -> ~str { ~"output-dir" }
@@ -73,7 +73,7 @@ fn default_config(input_crate: &Path) -> config {
         output_dir: Path("."),
         output_format: pandoc_html,
         output_style: doc_per_mod,
-        pandoc_cmd: none
+        pandoc_cmd: None
     }
 }
 
@@ -194,21 +194,21 @@ fn parse_output_style(output_style: ~str) -> result<output_style, ~str> {
 
 fn maybe_find_pandoc(
     config: config,
-    maybe_pandoc_cmd: option<~str>,
+    maybe_pandoc_cmd: Option<~str>,
     program_output: program_output
-) -> result<option<~str>, ~str> {
+) -> result<Option<~str>, ~str> {
     if config.output_format != pandoc_html {
         return result::ok(maybe_pandoc_cmd);
     }
 
     let possible_pandocs = match maybe_pandoc_cmd {
-      some(pandoc_cmd) => ~[pandoc_cmd],
-      none => {
+      Some(pandoc_cmd) => ~[pandoc_cmd],
+      None => {
         ~[~"pandoc"] + match os::homedir() {
-          some(dir) => {
+          Some(dir) => {
             ~[dir.push_rel(&Path(".cabal/bin/pandoc")).to_str()]
           }
-          none => ~[]
+          None => ~[]
         }
       }
     };
@@ -239,8 +239,8 @@ fn should_find_pandoc() {
             status: 0, out: ~"pandoc 1.8.2.1", err: ~""
         }
     };
-    let result = maybe_find_pandoc(config, none, mock_program_output);
-    assert result == result::ok(some(~"pandoc"));
+    let result = maybe_find_pandoc(config, None, mock_program_output);
+    assert result == result::ok(Some(~"pandoc"));
 }
 
 #[test]
@@ -256,7 +256,7 @@ fn should_error_with_no_pandoc() {
             status: 1, out: ~"", err: ~""
         }
     };
-    let result = maybe_find_pandoc(config, none, mock_program_output);
+    let result = maybe_find_pandoc(config, None, mock_program_output);
     assert result == result::err(~"couldn't find pandoc");
 }
 
@@ -359,11 +359,11 @@ fn should_set_pandoc_command_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--pandoc-cmd", ~"panda-bear-doc"
     ]);
-    assert result::get(config).pandoc_cmd == some(~"panda-bear-doc");
+    assert result::get(config).pandoc_cmd == Some(~"panda-bear-doc");
 }
 
 #[test]
 fn should_set_pandoc_command_when_using_pandoc() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).pandoc_cmd == some(~"pandoc");
+    assert result::get(config).pandoc_cmd == Some(~"pandoc");
 }

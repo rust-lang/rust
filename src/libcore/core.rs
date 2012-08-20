@@ -2,8 +2,11 @@
 
 // Export various ubiquitous types, constructors, methods.
 
-import option::{some, none};
-import option = option::option;
+import option::{Some, None};
+import Option = option::Option;
+// XXX: snapshot rustc is generating code that wants lower-case option
+#[cfg(stage0)]
+import option = option::Option;
 
 import Path = path2::Path;
 import GenericPath = path2::GenericPath;
@@ -20,7 +23,7 @@ import ptr::Ptr;
 import to_str::ToStr;
 
 export Path, WindowsPath, PosixPath, GenericPath;
-export option, some, none, unreachable;
+export Option, Some, None, unreachable;
 export extensions;
 // The following exports are the extension impls for numeric types
 export Num, Times, TimesIx;

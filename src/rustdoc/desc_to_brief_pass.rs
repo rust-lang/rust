@@ -65,20 +65,20 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 #[test]
 fn should_promote_desc() {
     let doc = test::mk_doc(~"#[doc = \"desc\"] mod m { }");
-    assert doc.cratemod().mods()[0].brief() == some(~"desc");
+    assert doc.cratemod().mods()[0].brief() == Some(~"desc");
 }
 
 #[test]
 fn should_promote_trait_method_desc() {
     let doc = test::mk_doc(~"trait i { #[doc = \"desc\"] fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].brief == some(~"desc");
+    assert doc.cratemod().traits()[0].methods[0].brief == Some(~"desc");
 }
 
 #[test]
 fn should_promote_impl_method_desc() {
     let doc = test::mk_doc(
         ~"impl int { #[doc = \"desc\"] fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].brief == some(~"desc");
+    assert doc.cratemod().impls()[0].methods[0].brief == Some(~"desc");
 }
 
 #[cfg(test)]
@@ -92,37 +92,37 @@ mod test {
     }
 }
 
-fn extract(desc: option<~str>) -> option<~str> {
+fn extract(desc: Option<~str>) -> Option<~str> {
     if option::is_none(desc) {
-        return none
+        return None
     }
 
     parse_desc(option::get(desc))
 }
 
-fn parse_desc(desc: ~str) -> option<~str> {
+fn parse_desc(desc: ~str) -> Option<~str> {
 
     const max_brief_len: uint = 120u;
 
     match first_sentence(desc) {
-      some(first_sentence) => {
+      Some(first_sentence) => {
         if str::len(first_sentence) <= max_brief_len {
-            some(first_sentence)
+            Some(first_sentence)
         } else {
-            none
+            None
         }
       }
-      none => none
+      None => None
     }
 }
 
-fn first_sentence(s: ~str) -> option<~str> {
+fn first_sentence(s: ~str) -> Option<~str> {
     let paras = paragraphs(s);
     if vec::is_not_empty(paras) {
         let first_para = vec::head(paras);
-        some(str::replace(first_sentence_(first_para), ~"\n", ~" "))
+        Some(str::replace(first_sentence_(first_para), ~"\n", ~" "))
     } else {
-        none
+        None
     }
 }
 
@@ -144,7 +144,7 @@ fn first_sentence_(s: ~str) -> ~str {
         }
     };
     match idx {
-      some(idx) if idx > 2u => {
+      Some(idx) if idx > 2u => {
         str::slice(s, 0u, idx - 1u)
       }
       _ => {
@@ -207,14 +207,14 @@ fn test_paragraphs_2() {
 
 #[test]
 fn should_promote_short_descs() {
-    let desc = some(~"desc");
+    let desc = Some(~"desc");
     let brief = extract(desc);
     assert brief == desc;
 }
 
 #[test]
 fn should_not_promote_long_descs() {
-    let desc = some(~"Warkworth Castle is a ruined medieval building
+    let desc = Some(~"Warkworth Castle is a ruined medieval building
 in the town of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -223,12 +223,12 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    assert brief == none;
+    assert brief == None;
 }
 
 #[test]
 fn should_promote_first_sentence() {
-    let desc = some(~"Warkworth Castle is a ruined medieval building
+    let desc = Some(~"Warkworth Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -237,13 +237,13 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    assert brief == some(
+    assert brief == Some(
         ~"Warkworth Castle is a ruined medieval building in the town");
 }
 
 #[test]
 fn should_not_consider_double_period_to_end_sentence() {
-    let desc = some(~"Warkworth..Castle is a ruined medieval building
+    let desc = Some(~"Warkworth..Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -252,13 +252,13 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    assert brief == some(
+    assert brief == Some(
         ~"Warkworth..Castle is a ruined medieval building in the town");
 }
 
 #[test]
 fn should_not_consider_triple_period_to_end_sentence() {
-    let desc = some(~"Warkworth... Castle is a ruined medieval building
+    let desc = Some(~"Warkworth... Castle is a ruined medieval building
 in the town. of the same name in the English county of Northumberland,
 and the town and castle occupy a loop of the River Coquet, less than a mile
 from England's north-east coast. When the castle was founded is uncertain,
@@ -267,6 +267,6 @@ Scotland in the mid 12th century, although it may have been built by
 King Henry II of England when he took control of England'snorthern
 counties.");
     let brief = extract(desc);
-    assert brief == some(
+    assert brief == Some(
         ~"Warkworth... Castle is a ruined medieval building in the town");
 }

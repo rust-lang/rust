@@ -31,7 +31,7 @@ fn run(
     fold.fold_doc(fold, doc)
 }
 
-fn maybe_apply_op(op: op, s: option<~str>) -> option<~str> {
+fn maybe_apply_op(op: op, s: Option<~str>) -> Option<~str> {
     option::map(s, |s| op(s) )
 }
 
@@ -99,89 +99,89 @@ fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
 #[test]
 fn should_execute_op_on_enum_brief() {
     let doc = test::mk_doc(~"#[doc = \" a \"] enum a { b }");
-    assert doc.cratemod().enums()[0].brief() == some(~"a");
+    assert doc.cratemod().enums()[0].brief() == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_enum_desc() {
     let doc = test::mk_doc(~"#[doc = \" a \"] enum a { b }");
-    assert doc.cratemod().enums()[0].desc() == some(~"a");
+    assert doc.cratemod().enums()[0].desc() == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_variant_desc() {
     let doc = test::mk_doc(~"enum a { #[doc = \" a \"] b }");
-    assert doc.cratemod().enums()[0].variants[0].desc == some(~"a");
+    assert doc.cratemod().enums()[0].variants[0].desc == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_brief() {
     let doc = test::mk_doc(
         ~"#[doc = \" a \"] trait i { fn a(); }");
-    assert doc.cratemod().traits()[0].brief() == some(~"a");
+    assert doc.cratemod().traits()[0].brief() == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_desc() {
     let doc = test::mk_doc(
         ~"#[doc = \" a \"] trait i { fn a(); }");
-    assert doc.cratemod().traits()[0].desc() == some(~"a");
+    assert doc.cratemod().traits()[0].desc() == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_method_brief() {
     let doc = test::mk_doc(
         ~"trait i { #[doc = \" a \"] fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].brief == some(~"a");
+    assert doc.cratemod().traits()[0].methods[0].brief == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_trait_method_desc() {
     let doc = test::mk_doc(
         ~"trait i { #[doc = \" a \"] fn a(); }");
-    assert doc.cratemod().traits()[0].methods[0].desc == some(~"a");
+    assert doc.cratemod().traits()[0].methods[0].desc == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_brief() {
     let doc = test::mk_doc(
         ~"#[doc = \" a \"] impl int { fn a() { } }");
-    assert doc.cratemod().impls()[0].brief() == some(~"a");
+    assert doc.cratemod().impls()[0].brief() == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_desc() {
     let doc = test::mk_doc(
         ~"#[doc = \" a \"] impl int { fn a() { } }");
-    assert doc.cratemod().impls()[0].desc() == some(~"a");
+    assert doc.cratemod().impls()[0].desc() == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_brief() {
     let doc = test::mk_doc(
         ~"impl int { #[doc = \" a \"] fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].brief == some(~"a");
+    assert doc.cratemod().impls()[0].methods[0].brief == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_impl_method_desc() {
     let doc = test::mk_doc(
         ~"impl int { #[doc = \" a \"] fn a() { } }");
-    assert doc.cratemod().impls()[0].methods[0].desc == some(~"a");
+    assert doc.cratemod().impls()[0].methods[0].desc == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_type_brief() {
     let doc = test::mk_doc(
         ~"#[doc = \" a \"] type t = int;");
-    assert doc.cratemod().types()[0].brief() == some(~"a");
+    assert doc.cratemod().types()[0].brief() == Some(~"a");
 }
 
 #[test]
 fn should_execute_op_on_type_desc() {
     let doc = test::mk_doc(
         ~"#[doc = \" a \"] type t = int;");
-    assert doc.cratemod().types()[0].desc() == some(~"a");
+    assert doc.cratemod().types()[0].desc() == Some(~"a");
 }
 
 #[test]

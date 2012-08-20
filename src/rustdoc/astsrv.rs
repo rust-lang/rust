@@ -156,17 +156,17 @@ fn build_error_handlers(
         fn note(msg: ~str) { self.inner.note(msg) }
         fn bug(msg: ~str) -> ! { self.inner.bug(msg) }
         fn unimpl(msg: ~str) -> ! { self.inner.unimpl(msg) }
-        fn emit(cmsp: option<(codemap::codemap, codemap::span)>,
+        fn emit(cmsp: Option<(codemap::codemap, codemap::span)>,
                 msg: ~str, lvl: diagnostic::level) {
             self.inner.emit(cmsp, msg, lvl)
         }
     }
 
-    let emitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
+    let emitter = fn@(cmsp: Option<(codemap::codemap, codemap::span)>,
                        msg: ~str, lvl: diagnostic::level) {
         diagnostic::emit(cmsp, msg, lvl);
     };
-    let inner_handler = diagnostic::mk_handler(some(emitter));
+    let inner_handler = diagnostic::mk_handler(Some(emitter));
     let handler = {
         inner: inner_handler,
     };

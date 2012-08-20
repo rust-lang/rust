@@ -64,7 +64,7 @@ export translate_def_id;
 // build.
 
 fn lookup_hash(d: ebml::doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
-   option<ebml::doc> {
+   Option<ebml::doc> {
     let index = ebml::get_doc(d, tag_index);
     let table = ebml::get_doc(index, tag_index_table);
     let hash_pos = table.start + hash % 256u * 4u;
@@ -75,13 +75,13 @@ fn lookup_hash(d: ebml::doc, eq_fn: fn(x:&[u8]) -> bool, hash: uint) ->
     for ebml::tagged_docs(bucket, belt) |elt| {
         let pos = io::u64_from_be_bytes(*elt.data, elt.start, 4u) as uint;
         if eq_fn(vec::view(*elt.data, elt.start + 4u, elt.end)) {
-            return some(ebml::doc_at(d.data, pos).doc);
+            return Some(ebml::doc_at(d.data, pos).doc);
         }
     };
-    none
+    None
 }
 
-fn maybe_find_item(item_id: int, items: ebml::doc) -> option<ebml::doc> {
+fn maybe_find_item(item_id: int, items: ebml::doc) -> Option<ebml::doc> {
     fn eq_item(bytes: &[u8], item_id: int) -> bool {
         return io::u64_from_be_bytes(vec::view(bytes, 0u, 4u), 0u, 4u) as int
             == item_id;
@@ -100,8 +100,8 @@ fn find_item(item_id: int, items: ebml::doc) -> ebml::doc {
 fn lookup_item(item_id: int, data: @~[u8]) -> ebml::doc {
     let items = ebml::get_doc(ebml::doc(data), tag_items);
     match maybe_find_item(item_id, items) {
-       none => fail(fmt!("lookup_item: id not found: %d", item_id)),
-       some(d) => d
+       None => fail(fmt!("lookup_item: id not found: %d", item_id)),
+       Some(d) => d
     }
 }
 
@@ -162,11 +162,11 @@ fn item_symbol(item: ebml::doc) -> ~str {
     return str::from_bytes(ebml::doc_data(sym));
 }
 
-fn item_parent_item(d: ebml::doc) -> option<ast::def_id> {
+fn item_parent_item(d: ebml::doc) -> Option<ast::def_id> {
     for ebml::tagged_docs(d, tag_items_data_parent_item) |did| {
-        return some(ebml::with_doc_data(did, |d| parse_def_id(d)));
+        return Some(ebml::with_doc_data(did, |d| parse_def_id(d)));
     }
-    none
+    None
 }
 
 fn item_def_id(d: ebml::doc, cdata: cmd) -> ast::def_id {
@@ -196,7 +196,7 @@ fn field_mutability(d: ebml::doc) -> ast::class_mutability {
         })
 }
 
-fn variant_disr_val(d: ebml::doc) -> option<int> {
+fn variant_disr_val(d: ebml::doc) -> Option<int> {
     do option::chain(ebml::maybe_get_doc(d, tag_disr_val)) |val_doc| {
         int::parse_buf(ebml::doc_data(val_doc), 10u)
     }
@@ -237,7 +237,7 @@ fn item_ty_param_bounds(item: ebml::doc, tcx: ty::ctxt, cdata: cmd)
     @bounds
 }
 
-fn item_ty_region_param(item: ebml::doc) -> option<ty::region_variance> {
+fn item_ty_region_param(item: ebml::doc) -> Option<ty::region_variance> {
     ebml::maybe_get_doc(item, tag_region_param).map(|doc| {
         let d = ebml::ebml_deserializer(doc);
         ty::deserialize_region_variance(d)
@@ -310,11 +310,11 @@ fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
       ForeignMod => dl_def(ast::def_foreign_mod(did)),
       Variant => {
           match item_parent_item(item) {
-              some(t) => {
+              Some(t) => {
                 let tid = {crate: cnum, node: t.node};
                 dl_def(ast::def_variant(tid, did))
               }
-              none => fail ~"item_to_def_like: enum item has no parent"
+              None => fail ~"item_to_def_like: enum item has no parent"
           }
       }
       Trait | Enum => dl_def(ast::def_ty(did)),
@@ -346,7 +346,7 @@ fn get_type(cdata: cmd, id: ast::node_id, tcx: ty::ctxt)
 }
 
 fn get_region_param(cdata: cmd, id: ast::node_id)
-    -> option<ty::region_variance> {
+    -> Option<ty::region_variance> {
 
     let item = lookup_item(id, cdata.data);
     return item_ty_region_param(item);
@@ -363,11 +363,11 @@ fn get_impl_traits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
 fn get_impl_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
                    name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
-    let mut found = none;
+    let mut found = None;
     for ebml::tagged_docs(find_item(id, items), tag_item_impl_method) |mid| {
         let m_did = ebml::with_doc_data(mid, |d| parse_def_id(d));
         if item_name(intr, find_item(m_did.node, items)) == name {
-            found = some(translate_def_id(cdata, m_did));
+            found = Some(translate_def_id(cdata, m_did));
         }
     }
     option::get(found)
@@ -376,37 +376,37 @@ fn get_impl_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
 fn get_class_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
                     name: ast::ident) -> ast::def_id {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
-    let mut found = none;
+    let mut found = None;
     let cls_items = match maybe_find_item(id, items) {
-      some(it) => it,
-      none => fail (fmt!("get_class_method: class id not found \
+      Some(it) => it,
+      None => fail (fmt!("get_class_method: class id not found \
                               when looking up method %s", *intr.get(name)))
     };
     for ebml::tagged_docs(cls_items, tag_item_trait_method) |mid| {
         let m_did = item_def_id(mid, cdata);
         if item_name(intr, mid) == name {
-            found = some(m_did);
+            found = Some(m_did);
         }
     }
     match found {
-      some(found) => found,
-      none => fail (fmt!("get_class_method: no method named %s",
+      Some(found) => found,
+      None => fail (fmt!("get_class_method: no method named %s",
                          *intr.get(name)))
     }
 }
 
-fn class_dtor(cdata: cmd, id: ast::node_id) -> option<ast::def_id> {
+fn class_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
     let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
-    let mut found = none;
+    let mut found = None;
     let cls_items = match maybe_find_item(id, items) {
-            some(it) => it,
-            none     => fail (fmt!("class_dtor: class id not found \
+            Some(it) => it,
+            None     => fail (fmt!("class_dtor: class id not found \
               when looking up dtor for %d", id))
     };
     for ebml::tagged_docs(cls_items, tag_item_dtor) |doc| {
          let doc1 = ebml::get_doc(doc, tag_def_id);
          let did = ebml::with_doc_data(doc1, |d| parse_def_id(d));
-         found = some(translate_def_id(cdata, did));
+         found = Some(translate_def_id(cdata, did));
     };
     found
 }
@@ -495,8 +495,8 @@ fn each_path(intr: ident_interner, cdata: cmd, f: fn(path_entry) -> bool) {
 
                     // Get the item.
                     match maybe_find_item(def_id.node, items) {
-                        none => {}
-                        some(item_doc) => {
+                        None => {}
+                        Some(item_doc) => {
                             // Construct the def for this item.
                             let def_like = item_to_def_like(item_doc,
                                                             def_id,
@@ -533,7 +533,7 @@ type decode_inlined_item = fn(
     cdata: cstore::crate_metadata,
     tcx: ty::ctxt,
     path: ast_map::path,
-    par_doc: ebml::doc) -> option<ast::inlined_item>;
+    par_doc: ebml::doc) -> Option<ast::inlined_item>;
 
 fn maybe_get_item_ast(intr: ident_interner, cdata: cmd, tcx: ty::ctxt,
                       id: ast::node_id,
@@ -543,19 +543,19 @@ fn maybe_get_item_ast(intr: ident_interner, cdata: cmd, tcx: ty::ctxt,
     let item_doc = lookup_item(id, cdata.data);
     let path = vec::init(item_path(intr, item_doc));
     match decode_inlined_item(cdata, tcx, path, item_doc) {
-      some(ii) => csearch::found(ii),
-      none => {
+      Some(ii) => csearch::found(ii),
+      None => {
         match item_parent_item(item_doc) {
-          some(did) => {
+          Some(did) => {
             let did = translate_def_id(cdata, did);
             let parent_item = lookup_item(did.node, cdata.data);
             match decode_inlined_item(cdata, tcx, path,
                                                parent_item) {
-              some(ii) => csearch::found_parent(did, ii),
-              none => csearch::not_found
+              Some(ii) => csearch::found_parent(did, ii),
+              None => csearch::not_found
             }
           }
-          none => csearch::not_found
+          None => csearch::not_found
         }
       }
     }
@@ -582,7 +582,7 @@ fn get_enum_variants(intr: ident_interner, cdata: cmd, id: ast::node_id,
           _ => { /* Nullary enum variant. */ }
         }
         match variant_disr_val(item) {
-          some(val) => { disr_val = val; }
+          Some(val) => { disr_val = val; }
           _         => { /* empty */ }
         }
         vec::push(infos, @{args: arg_tys, ctor_ty: ctor_ty, name: name,
@@ -648,7 +648,7 @@ fn item_impl_methods(intr: ident_interner, cdata: cmd, item: ebml::doc,
 }
 
 fn get_impls_for_mod(intr: ident_interner, cdata: cmd,
-                     m_id: ast::node_id, name: option<ast::ident>,
+                     m_id: ast::node_id, name: Option<ast::ident>,
                      get_cdata: fn(ast::crate_num) -> cmd)
                   -> @~[@_impl] {
 
@@ -666,7 +666,7 @@ fn get_impls_for_mod(intr: ident_interner, cdata: cmd,
         let impl_data = impl_cdata.data;
         let item = lookup_item(local_did.node, impl_data);
         let nm = item_name(intr, item);
-        if match name { some(n) => { n == nm } none => { true } } {
+        if match name { Some(n) => { n == nm } None => { true } } {
            let base_tps = item_ty_param_count(item);
            vec::push(result, @{
                 did: local_did, ident: nm,
@@ -707,11 +707,11 @@ fn get_trait_methods(intr: ident_interner, cdata: cmd, id: ast::node_id,
 // annoying way with get_trait_methods.
 fn get_method_names_if_trait(intr: ident_interner, cdata: cmd,
                              node_id: ast::node_id)
-                          -> option<@DVec<(ast::ident, ast::self_ty_)>> {
+                          -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
 
     let item = lookup_item(node_id, cdata.data);
     if item_family(item) != Trait {
-        return none;
+        return None;
     }
 
     let resulting_methods = @dvec();
@@ -719,7 +719,7 @@ fn get_method_names_if_trait(intr: ident_interner, cdata: cmd,
         resulting_methods.push(
             (item_name(intr, method), get_self_ty(method)));
     }
-    return some(resulting_methods);
+    return Some(resulting_methods);
 }
 
 fn get_item_attrs(cdata: cmd,
@@ -791,8 +791,8 @@ fn read_path(d: ebml::doc) -> {path: ~str, pos: uint} {
 fn describe_def(items: ebml::doc, id: ast::def_id) -> ~str {
     if id.crate != ast::local_crate { return ~"external"; }
     let it = match maybe_find_item(id.node, items) {
-        some(it) => it,
-        none => fail (fmt!("describe_def: item not found %?", id))
+        Some(it) => it,
+        None => fail (fmt!("describe_def: item not found %?", id))
     };
     return item_family_to_str(item_family(it));
 }
@@ -851,7 +851,7 @@ fn get_meta_items(md: ebml::doc) -> ~[@ast::meta_item] {
 fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
     let mut attrs: ~[ast::attribute] = ~[];
     match ebml::maybe_get_doc(md, tag_attributes) {
-      option::some(attrs_d) => {
+      option::Some(attrs_d) => {
         for ebml::tagged_docs(attrs_d, tag_attribute) |attr_doc| {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
@@ -864,7 +864,7 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
                        span: ast_util::dummy_sp()});
         };
       }
-      option::none => ()
+      option::None => ()
     }
     return attrs;
 }
@@ -934,8 +934,8 @@ fn get_crate_vers(data: @~[u8]) -> ~str {
     let attrs = decoder::get_crate_attributes(data);
     return match attr::last_meta_item_value_str_by_name(
         attr::find_linkage_metas(attrs), ~"vers") {
-      some(ver) => ver,
-      none => ~"0.0"
+      Some(ver) => ver,
+      None => ~"0.0"
     };
 }
 
@@ -997,8 +997,8 @@ fn translate_def_id(cdata: cmd, did: ast::def_id) -> ast::def_id {
     }
 
     match cdata.cnum_map.find(did.crate) {
-      option::some(n) => return {crate: n, node: did.node},
-      option::none => fail ~"didn't find a crate in the cnum_map"
+      option::Some(n) => return {crate: n, node: did.node},
+      option::None => fail ~"didn't find a crate in the cnum_map"
     }
 }
 

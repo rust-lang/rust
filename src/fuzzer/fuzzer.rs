@@ -19,7 +19,7 @@ fn contains(haystack: ~str, needle: ~str) -> bool {
 }
 
 fn find_rust_files(files: &mut ~[Path], path: &Path) {
-    if path.filetype() == some(~"rs") && !contains(path.to_str(), ~"utf8") {
+    if path.filetype() == Some(~"rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
         vec::push(*files, *path);
     } else if os::path_is_dir(path)
@@ -41,12 +41,12 @@ fn common_exprs() -> ~[ast::expr] {
         { node: l, span: ast_util::dummy_sp() }
     }
 
-    ~[dse(ast::expr_break(option::none)),
-     dse(ast::expr_again(option::none)),
-     dse(ast::expr_fail(option::none)),
-     dse(ast::expr_fail(option::some(
+    ~[dse(ast::expr_break(option::None)),
+     dse(ast::expr_again(option::None)),
+     dse(ast::expr_fail(option::None)),
+     dse(ast::expr_fail(option::Some(
          @dse(ast::expr_lit(@dsl(ast::lit_str(@~"boo"))))))),
-     dse(ast::expr_ret(option::none)),
+     dse(ast::expr_ret(option::None)),
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
@@ -76,11 +76,11 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           ast::expr_binary(*) | ast::expr_assign(*) |
           ast::expr_assign_op(*) => { false }
 
-          ast::expr_fail(option::none) |
-          ast::expr_ret(option::none) => { false }
+          ast::expr_fail(option::None) |
+          ast::expr_ret(option::None) => { false }
 
           // https://github.com/mozilla/rust/issues/953
-          ast::expr_fail(option::some(_)) => { false }
+          ast::expr_fail(option::Some(_)) => { false }
 
           // https://github.com/mozilla/rust/issues/928
           //ast::expr_cast(_, _) { false }
@@ -259,7 +259,7 @@ fn check_variants_T<T: copy>(
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
-                let handler = diagnostic::mk_handler(none);
+                let handler = diagnostic::mk_handler(None);
                 let str3 = do io::with_str_reader("") |rdr| {
                     @as_str(|a|pprust::print_crate(
                         codemap,
@@ -418,7 +418,7 @@ fn check_compiling(filename: &Path) -> happiness {
 
 fn parse_and_print(code: @~str) -> ~str {
     let filename = Path("tmp.rs");
-    let sess = parse::new_parse_sess(option::none);
+    let sess = parse::new_parse_sess(option::None);
     write_file(&filename, *code);
     let crate = parse::parse_crate_from_source_str(
         filename.to_str(), code, ~[], sess);
@@ -570,7 +570,7 @@ fn check_variants(files: &[Path], cx: context) {
         }
 
         log(error, ~"check_variants: " + file.to_str());
-        let sess = parse::new_parse_sess(option::none);
+        let sess = parse::new_parse_sess(option::None);
         let crate =
             parse::parse_crate_from_source_str(
                 file.to_str(),

@@ -1964,7 +1964,7 @@ Rust's type inferrer works very well with generics, but there are
 programs that just can't be typed.
 
 ~~~~
-let n = option::none;
+let n = option::None;
 # option::iter(n, fn&(&&x:int) {})
 ~~~~
 
@@ -1974,9 +1974,9 @@ you really want to have such a statement, you'll have to write it like
 this:
 
 ~~~~
-let n2: option<int> = option::none;
+let n2: Option<int> = option::None;
 // or
-let n = option::none::<int>;
+let n = option::None::<int>;
 ~~~~
 
 Note that, in a value expression, `<` already has a meaning as a

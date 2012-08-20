@@ -31,7 +31,7 @@ type parse_sess = @{
     mut byte_pos: uint
 };
 
-fn new_parse_sess(demitter: option<emitter>) -> parse_sess {
+fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
     let cm = codemap::new_codemap();
     return @{cm: cm,
              mut next_id: 1,
@@ -51,9 +51,9 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
 
 fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
                          sess: parse_sess) -> @ast::crate {
-    if input.filetype() == some(~"rc") {
+    if input.filetype() == Some(~"rc") {
         parse_crate_from_crate_file(input, cfg, sess)
-    } else if input.filetype() == some(~"rs") {
+    } else if input.filetype() == Some(~"rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
         sess.span_diagnostic.handler().fatal(~"unknown input file type: " +
@@ -117,7 +117,7 @@ fn parse_expr_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
 
 fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                               +attrs: ~[ast::attribute],
-                              sess: parse_sess) -> option<@ast::item> {
+                              sess: parse_sess) -> Option<@ast::item> {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
     let r = p.parse_item(attrs);
@@ -208,6 +208,6 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: &Path,
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
                       tt: ~[ast::token_tree]) -> parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
-                                    none, tt);
+                                    None, tt);
     return parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }

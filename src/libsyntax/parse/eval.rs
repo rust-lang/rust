@@ -18,7 +18,7 @@ fn eval_crate_directives(cx: ctx,
 }
 
 fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
-                                prefix: &Path, suffix: &option<Path>)
+                                prefix: &Path, suffix: &Option<Path>)
     -> (ast::_mod, ~[ast::attribute]) {
     let (cview_items, citems, cattrs)
         = parse_companion_mod(cx, prefix, suffix);
@@ -40,13 +40,13 @@ companion mod is a .rs file with the same name as the directory.
 We build the path to the companion mod by combining the prefix and the
 optional suffix then adding the .rs extension.
 */
-fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &option<Path>)
+fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
     -> (~[@ast::view_item], ~[@ast::item], ~[ast::attribute]) {
 
-    fn companion_file(prefix: &Path, suffix: &option<Path>) -> Path {
+    fn companion_file(prefix: &Path, suffix: &Option<Path>) -> Path {
         return match *suffix {
-          option::some(s) => prefix.push_many(s.components),
-          option::none => copy *prefix
+          option::Some(s) => prefix.push_many(s.components),
+          option::None => copy *prefix
         }.with_filetype("rs");
     }
 
@@ -76,8 +76,8 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &option<Path>)
 
 fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
     match ::attr::first_attr_value_str_by_name(attrs, ~"path") {
-      some(d) => d,
-      none => default
+      Some(d) => d,
+      None => default
     }
 }
 
@@ -117,7 +117,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
             prefix.push_many(path.components)
         };
         let (m0, a0) = eval_crate_directives_to_mod(
-            cx, cdirs, &full_path, &none);
+            cx, cdirs, &full_path, &None);
         let i =
             @{ident: /* FIXME (#2543) */ copy id,
               attrs: vec::append(attrs, a0),

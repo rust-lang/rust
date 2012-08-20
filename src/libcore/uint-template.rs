@@ -121,37 +121,37 @@ impl T: iter::TimesIx {
  *
  * `buf` must not be empty
  */
-fn parse_buf(buf: &[const u8], radix: uint) -> option<T> {
-    if vec::len(buf) == 0u { return none; }
+fn parse_buf(buf: &[const u8], radix: uint) -> Option<T> {
+    if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut power = 1u as T;
     let mut n = 0u as T;
     loop {
         match char::to_digit(buf[i] as char, radix) {
-          some(d) => n += d as T * power,
-          none => return none
+          Some(d) => n += d as T * power,
+          None => return None
         }
         power *= radix as T;
-        if i == 0u { return some(n); }
+        if i == 0u { return Some(n); }
         i -= 1u;
     };
 }
 
 /// Parse a string to an int
-fn from_str(s: ~str) -> option<T> { parse_buf(str::to_bytes(s), 10u) }
+fn from_str(s: ~str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
 
 /// Parse a string as an unsigned integer.
-fn from_str_radix(buf: ~str, radix: u64) -> option<u64> {
-    if str::len(buf) == 0u { return none; }
+fn from_str_radix(buf: ~str, radix: u64) -> Option<u64> {
+    if str::len(buf) == 0u { return None; }
     let mut i = str::len(buf) - 1u;
     let mut power = 1u64, n = 0u64;
     loop {
         match char::to_digit(buf[i] as char, radix as uint) {
-          some(d) => n += d as u64 * power,
-          none => return none
+          Some(d) => n += d as u64 * power,
+          None => return None
         }
         power *= radix;
-        if i == 0u { return some(n); }
+        if i == 0u { return Some(n); }
         i -= 1u;
     };
 }
@@ -253,30 +253,30 @@ fn test_to_str() {
 #[test]
 #[ignore]
 fn test_from_str() {
-    assert from_str(~"0") == some(0u as T);
-    assert from_str(~"3") == some(3u as T);
-    assert from_str(~"10") == some(10u as T);
-    assert from_str(~"123456789") == some(123456789u as T);
-    assert from_str(~"00100") == some(100u as T);
+    assert from_str(~"0") == Some(0u as T);
+    assert from_str(~"3") == Some(3u as T);
+    assert from_str(~"10") == Some(10u as T);
+    assert from_str(~"123456789") == Some(123456789u as T);
+    assert from_str(~"00100") == Some(100u as T);
 
-    assert from_str(~"") == none;
-    assert from_str(~" ") == none;
-    assert from_str(~"x") == none;
+    assert from_str(~"") == None;
+    assert from_str(~" ") == None;
+    assert from_str(~"x") == None;
 }
 
 #[test]
 #[ignore]
 fn test_parse_buf() {
     import str::to_bytes;
-    assert parse_buf(to_bytes(~"123"), 10u) == some(123u as T);
-    assert parse_buf(to_bytes(~"1001"), 2u) == some(9u as T);
-    assert parse_buf(to_bytes(~"123"), 8u) == some(83u as T);
-    assert parse_buf(to_bytes(~"123"), 16u) == some(291u as T);
-    assert parse_buf(to_bytes(~"ffff"), 16u) == some(65535u as T);
-    assert parse_buf(to_bytes(~"z"), 36u) == some(35u as T);
+    assert parse_buf(to_bytes(~"123"), 10u) == Some(123u as T);
+    assert parse_buf(to_bytes(~"1001"), 2u) == Some(9u as T);
+    assert parse_buf(to_bytes(~"123"), 8u) == Some(83u as T);
+    assert parse_buf(to_bytes(~"123"), 16u) == Some(291u as T);
+    assert parse_buf(to_bytes(~"ffff"), 16u) == Some(65535u as T);
+    assert parse_buf(to_bytes(~"z"), 36u) == Some(35u as T);
 
-    assert parse_buf(to_bytes(~"Z"), 10u) == none;
-    assert parse_buf(to_bytes(~"_"), 2u) == none;
+    assert parse_buf(to_bytes(~"Z"), 10u) == None;
+    assert parse_buf(to_bytes(~"_"), 2u) == None;
 }
 
 #[test]

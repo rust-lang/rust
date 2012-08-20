@@ -293,7 +293,7 @@ fn should_write_full_path_to_mod() {
 
 fn write_common(
     ctxt: ctxt,
-    desc: option<~str>,
+    desc: Option<~str>,
     sections: ~[doc::section]
 ) {
     write_desc(ctxt, desc);
@@ -302,14 +302,14 @@ fn write_common(
 
 fn write_desc(
     ctxt: ctxt,
-    desc: option<~str>
+    desc: Option<~str>
 ) {
     match desc {
-        some(desc) => {
+        Some(desc) => {
             ctxt.w.write_line(desc);
             ctxt.w.write_line(~"");
         }
-        none => ()
+        None => ()
     }
 }
 
@@ -487,21 +487,21 @@ fn write_fn(
 
 fn write_fnlike(
     ctxt: ctxt,
-    sig: option<~str>,
-    desc: option<~str>,
+    sig: Option<~str>,
+    desc: Option<~str>,
     sections: ~[doc::section]
 ) {
     write_sig(ctxt, sig);
     write_common(ctxt, desc, sections);
 }
 
-fn write_sig(ctxt: ctxt, sig: option<~str>) {
+fn write_sig(ctxt: ctxt, sig: Option<~str>) {
     match sig {
-      some(sig) => {
+      Some(sig) => {
         ctxt.w.write_line(code_block_indent(sig));
         ctxt.w.write_line(~"");
       }
-      none => fail ~"unimplemented"
+      None => fail ~"unimplemented"
     }
 }
 
@@ -537,7 +537,7 @@ fn should_correctly_indent_fn_signature() {
             doc::cratepage({
                 topmod: doc::moddoc_({
                     items: ~[doc::fntag({
-                        sig: some(~"line 1\nline 2")
+                        sig: Some(~"line 1\nline 2")
                         with doc.cratemod().fns()[0]
                     })]
                     with *doc.cratemod()
@@ -618,10 +618,10 @@ fn write_variant(ctxt: ctxt, doc: doc::variantdoc) {
     assert option::is_some(doc.sig);
     let sig = option::get(doc.sig);
     match doc.desc {
-      some(desc) => {
+      Some(desc) => {
         ctxt.w.write_line(fmt!("* `%s` - %s", sig, desc));
       }
-      none => {
+      None => {
         ctxt.w.write_line(fmt!("* `%s`", sig));
       }
     }

@@ -9,7 +9,7 @@ export codemap_span_handler, codemap_handler;
 export ice_msg;
 export expect;
 
-type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
+type emitter = fn@(cmsp: Option<(codemap::codemap, span)>,
                    msg: ~str, lvl: level);
 
 
@@ -33,7 +33,7 @@ trait handler {
     fn note(msg: ~str);
     fn bug(msg: ~str) -> !;
     fn unimpl(msg: ~str) -> !;
-    fn emit(cmsp: option<(codemap::codemap, span)>, msg: ~str, lvl: level);
+    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: ~str, lvl: level);
 }
 
 type handler_t = @{
@@ -48,18 +48,18 @@ type codemap_t = @{
 
 impl codemap_t: span_handler {
     fn span_fatal(sp: span, msg: ~str) -> ! {
-        self.handler.emit(some((self.cm, sp)), msg, fatal);
+        self.handler.emit(Some((self.cm, sp)), msg, fatal);
         fail;
     }
     fn span_err(sp: span, msg: ~str) {
-        self.handler.emit(some((self.cm, sp)), msg, error);
+        self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
     fn span_warn(sp: span, msg: ~str) {
-        self.handler.emit(some((self.cm, sp)), msg, warning);
+        self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
     fn span_note(sp: span, msg: ~str) {
-        self.handler.emit(some((self.cm, sp)), msg, note);
+        self.handler.emit(Some((self.cm, sp)), msg, note);
     }
     fn span_bug(sp: span, msg: ~str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
@@ -74,11 +74,11 @@ impl codemap_t: span_handler {
 
 impl handler_t: handler {
     fn fatal(msg: ~str) -> ! {
-        self.emit(none, msg, fatal);
+        self.emit(None, msg, fatal);
         fail;
     }
     fn err(msg: ~str) {
-        self.emit(none, msg, error);
+        self.emit(None, msg, error);
         self.bump_err_count();
     }
     fn bump_err_count() {
@@ -98,16 +98,16 @@ impl handler_t: handler {
         self.fatal(s);
     }
     fn warn(msg: ~str) {
-        self.emit(none, msg, warning);
+        self.emit(None, msg, warning);
     }
     fn note(msg: ~str) {
-        self.emit(none, msg, note);
+        self.emit(None, msg, note);
     }
     fn bug(msg: ~str) -> ! {
         self.fatal(ice_msg(msg));
     }
     fn unimpl(msg: ~str) -> ! { self.bug(~"unimplemented " + msg); }
-    fn emit(cmsp: option<(codemap::codemap, span)>, msg: ~str, lvl: level) {
+    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: ~str, lvl: level) {
         self.emit(cmsp, msg, lvl);
     }
 }
@@ -120,12 +120,12 @@ fn mk_span_handler(handler: handler, cm: codemap::codemap) -> span_handler {
     @{ handler: handler, cm: cm } as span_handler
 }
 
-fn mk_handler(emitter: option<emitter>) -> handler {
+fn mk_handler(emitter: Option<emitter>) -> handler {
 
     let emit = match emitter {
-      some(e) => e,
-      none => {
-        let f = fn@(cmsp: option<(codemap::codemap, span)>,
+      Some(e) => e,
+      None => {
+        let f = fn@(cmsp: Option<(codemap::codemap, span)>,
             msg: ~str, t: level) {
             emit(cmsp, msg, t);
         };
@@ -180,10 +180,10 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
     io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
-fn emit(cmsp: option<(codemap::codemap, span)>,
+fn emit(cmsp: Option<(codemap::codemap, span)>,
         msg: ~str, lvl: level) {
     match cmsp {
-      some((cm, sp)) => {
+      Some((cm, sp)) => {
         let sp = codemap::adjust_span(cm,sp);
         let ss = codemap::span_to_str(sp, cm);
         let lines = codemap::span_to_lines(sp, cm);
@@ -191,7 +191,7 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
         highlight_lines(cm, sp, lines);
         print_macro_backtrace(cm, sp);
       }
-      none => {
+      None => {
         print_diagnostic(~"", lvl, msg);
       }
     }
@@ -265,9 +265,9 @@ fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
 }
 
 fn expect<T: copy>(diag: span_handler,
-                   opt: option<T>, msg: fn() -> ~str) -> T {
+                   opt: Option<T>, msg: fn() -> ~str) -> T {
     match opt {
-       some(t) => t,
-       none => diag.handler().bug(msg())
+       Some(t) => t,
+       None => diag.handler().bug(msg())
     }
 }

@@ -140,7 +140,7 @@ impl Lub: combine {
         super_tps(&self, as, bs)
     }
 
-    fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+    fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
         super_self_tys(&self, a, b)
     }
 }

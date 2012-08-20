@@ -91,7 +91,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
     } else { logv(config, ~"testing for converging pretty-printing"); }
 
     let rounds =
-        match props.pp_exact { option::some(_) => 1, option::none => 2 };
+        match props.pp_exact { option::Some(_) => 1, option::None => 2 };
 
     let mut srcs = ~[result::get(io::read_whole_file_str(testfile))];
 
@@ -111,11 +111,11 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
 
     let mut expected =
         match props.pp_exact {
-          option::some(file) => {
+          option::Some(file) => {
             let filepath = testfile.dir_path().push_rel(&file);
             result::get(io::read_whole_file_str(&filepath))
           }
-          option::none => { srcs[vec::len(srcs) - 2u] }
+          option::None => { srcs[vec::len(srcs) - 2u] }
         };
     let mut actual = srcs[vec::len(srcs) - 1u];
 
@@ -139,7 +139,7 @@ fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
 
     fn print_source(config: config, testfile: &Path, src: ~str) -> procres {
         compose_and_run(config, testfile, make_pp_args(config, testfile),
-                        ~[], config.compile_lib_path, option::some(src))
+                        ~[], config.compile_lib_path, option::Some(src))
     }
 
     fn make_pp_args(config: config, _testfile: &Path) -> procargs {
@@ -173,7 +173,7 @@ actual:\n\
         compose_and_run_compiler(
             config, props, testfile,
             make_typecheck_args(config, testfile),
-            option::some(src))
+            option::Some(src))
     }
 
     fn make_typecheck_args(config: config, testfile: &Path) -> procargs {
@@ -300,7 +300,7 @@ fn compile_test(config: config, props: test_props,
         config, props, testfile,
         make_compile_args(config, props, link_args,
                           make_exe_name, testfile),
-        none)
+        None)
 }
 
 fn exec_compiled_test(config: config, props: test_props,
@@ -308,7 +308,7 @@ fn exec_compiled_test(config: config, props: test_props,
     compose_and_run(config, testfile,
                     make_run_args(config, props, testfile),
                     props.exec_env,
-                    config.run_lib_path, option::none)
+                    config.run_lib_path, option::None)
 }
 
 fn compose_and_run_compiler(
@@ -316,7 +316,7 @@ fn compose_and_run_compiler(
     props: test_props,
     testfile: &Path,
     args: procargs,
-    input: option<~str>) -> procres {
+    input: Option<~str>) -> procres {
 
     if props.aux_builds.is_not_empty() {
         ensure_dir(&aux_output_dir_name(config, testfile));
@@ -331,7 +331,7 @@ fn compose_and_run_compiler(
             make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);
         let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
-                                     config.compile_lib_path, option::none);
+                                     config.compile_lib_path, option::None);
         if auxres.status != 0 {
             fatal_procres(
                 fmt!("auxiliary build of %s failed to compile: ",
@@ -355,7 +355,7 @@ fn compose_and_run(config: config, testfile: &Path,
                    procargs: procargs,
                    procenv: ~[(~str, ~str)],
                    lib_path: ~str,
-                   input: option<~str>) -> procres {
+                   input: Option<~str>) -> procres {
     return program_output(config, testfile, lib_path,
                        procargs.prog, procargs.args, procenv, input);
 }
@@ -391,8 +391,8 @@ fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
             // then split apart its command
             let runtool =
                 match config.runtool {
-                  option::some(s) => option::some(s),
-                  option::none => option::none
+                  option::Some(s) => option::Some(s),
+                  option::None => option::None
                 };
             split_maybe_args(runtool)
         };
@@ -401,23 +401,23 @@ fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
     return {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
 }
 
-fn split_maybe_args(argstr: option<~str>) -> ~[~str] {
+fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
     fn rm_whitespace(v: ~[~str]) -> ~[~str] {
-        fn flt(&&s: ~str) -> option<~str> {
-          if !str::is_whitespace(s) { option::some(s) } else { option::none }
+        fn flt(&&s: ~str) -> Option<~str> {
+          if !str::is_whitespace(s) { option::Some(s) } else { option::None }
         }
         vec::filter_map(v, flt)
     }
 
     match argstr {
-      option::some(s) => rm_whitespace(str::split_char(s, ' ')),
-      option::none => ~[]
+      option::Some(s) => rm_whitespace(str::split_char(s, ' ')),
+      option::None => ~[]
     }
 }
 
 fn program_output(config: config, testfile: &Path, lib_path: ~str, prog: ~str,
                   args: ~[~str], env: ~[(~str, ~str)],
-                  input: option<~str>) -> procres {
+                  input: Option<~str>) -> procres {
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);

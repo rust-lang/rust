@@ -32,7 +32,7 @@ struct DuplexStream<T: send, U: send> : channel<T>, recv<U>, selectable {
         self.port.recv()
     }
 
-    fn try_recv() -> option<U> {
+    fn try_recv() -> Option<U> {
         self.port.try_recv()
     }
 

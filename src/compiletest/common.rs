@@ -31,17 +31,17 @@ type config = {
     run_ignored: bool,
 
     // Only run tests that match this filter
-    filter: option<~str>,
+    filter: Option<~str>,
 
     // Write out a parseable log of tests that were run
-    logfile: option<Path>,
+    logfile: Option<Path>,
 
     // A command line to prefix program execution with,
     // for running under valgrind
-    runtool: option<~str>,
+    runtool: Option<~str>,
 
     // Flags to pass to the compiler
-    rustcflags: option<~str>,
+    rustcflags: Option<~str>,
 
     // Explain what's going on
     verbose: bool};

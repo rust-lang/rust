@@ -50,7 +50,7 @@ fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
-                               cx.parse_sess().interner, none, tt);
+                               cx.parse_sess().interner, None, tt);
     let rdr = tt_rdr as reader;
     let rust_parser = parser(sess, cfg, rdr.dup(), SOURCE_FILE);
 

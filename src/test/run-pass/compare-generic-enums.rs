@@ -1,12 +1,12 @@
 type an_int = int;
 
-fn cmp(x: option<an_int>, y: option<int>) -> bool {
+fn cmp(x: Option<an_int>, y: Option<int>) -> bool {
     x == y
 }
 
 fn main() {
-    assert !cmp(some(3), none);
-    assert !cmp(some(3), some(4));
-    assert cmp(some(3), some(3));
-    assert cmp(none, none);
+    assert !cmp(Some(3), None);
+    assert !cmp(Some(3), Some(4));
+    assert cmp(Some(3), Some(3));
+    assert cmp(None, None);
 }

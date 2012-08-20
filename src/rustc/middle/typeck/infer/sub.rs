@@ -134,7 +134,7 @@ impl Sub: combine {
         // region variable.
         let {fn_ty: a_fn_ty, _} = {
             do replace_bound_regions_in_fn_ty(self.infcx.tcx, @nil,
-                                              none, a) |br| {
+                                              None, a) |br| {
                 // N.B.: The name of the bound region doesn't have
                 // anything to do with the region variable that's created
                 // for it.  The only thing we're doing with `br` here is
@@ -154,7 +154,7 @@ impl Sub: combine {
         // fresh concrete region.
         let {fn_ty: b_fn_ty, _} = {
             do replace_bound_regions_in_fn_ty(self.infcx.tcx, @nil,
-                                              none, b) |br| {
+                                              None, b) |br| {
                 // FIXME: eventually re_skolemized (issue #2263)
                 ty::re_bound(br)
             }
@@ -194,7 +194,7 @@ impl Sub: combine {
         super_tps(&self, as, bs)
     }
 
-    fn self_tys(a: option<ty::t>, b: option<ty::t>) -> cres<option<ty::t>> {
+    fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
         super_self_tys(&self, a, b)
     }
 }

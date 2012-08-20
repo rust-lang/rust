@@ -7,10 +7,10 @@ struct dtor {
     }
 }
 
-fn unwrap<T>(+o: option<T>) -> T {
+fn unwrap<T>(+o: Option<T>) -> T {
     match move o {
-      some(move v) => v,
-      none => fail
+      Some(move v) => v,
+      None => fail
     }
 }
 
@@ -18,7 +18,7 @@ fn main() {
     let x = @mut 1;
 
     {
-        let b = some(dtor { x:x });
+        let b = Some(dtor { x:x });
         let c = unwrap(b);
     }
 

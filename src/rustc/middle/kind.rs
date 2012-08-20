@@ -89,14 +89,14 @@ fn check_crate(tcx: ty::ctxt,
     tcx.sess.abort_if_errors();
 }
 
-type check_fn = fn@(ctx, node_id, option<@freevar_entry>,
+type check_fn = fn@(ctx, node_id, Option<@freevar_entry>,
                     bool, ty::t, sp: span);
 
 // Yields the appropriate function to check the kind of closed over
 // variables. `id` is the node_id for some expression that creates the
 // closure.
 fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
-    fn check_for_uniq(cx: ctx, id: node_id, fv: option<@freevar_entry>,
+    fn check_for_uniq(cx: ctx, id: node_id, fv: Option<@freevar_entry>,
                       is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be sendable, regardless of whether it is
         // moved in or copied in.  Note that send implies owned.
@@ -106,7 +106,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         let is_implicit = fv.is_some();
         if !is_move {
             check_copy(cx, id, var_t, sp, is_implicit,
-                       some(("non-copyable value cannot be copied into a \
+                       Some(("non-copyable value cannot be copied into a \
                               ~fn closure",
                              "to copy values into a ~fn closure, use a \
                               capture clause: `fn~(copy x)` or `|copy x|`")));
@@ -118,7 +118,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         }
     }
 
-    fn check_for_box(cx: ctx, id: node_id, fv: option<@freevar_entry>,
+    fn check_for_box(cx: ctx, id: node_id, fv: Option<@freevar_entry>,
                      is_move: bool, var_t: ty::t, sp: span) {
         // all captured data must be owned
         if !check_owned(cx.tcx, var_t, sp) { return; }
@@ -127,7 +127,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         let is_implicit = fv.is_some();
         if !is_move {
             check_copy(cx, id, var_t, sp, is_implicit,
-                       some(("non-copyable value cannot be copied into a \
+                       Some(("non-copyable value cannot be copied into a \
                               @fn closure",
                              "to copy values into a @fn closure, use a \
                               capture clause: `fn~(copy x)` or `|copy x|`")));
@@ -139,7 +139,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         }
     }
 
-    fn check_for_block(cx: ctx, _id: node_id, fv: option<@freevar_entry>,
+    fn check_for_block(cx: ctx, _id: node_id, fv: Option<@freevar_entry>,
                        _is_move: bool, _var_t: ty::t, sp: span) {
         // only restriction: no capture clauses (we would have to take
         // ownership of the moved/copied in data).
@@ -150,7 +150,7 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
         }
     }
 
-    fn check_for_bare(cx: ctx, _id: node_id, _fv: option<@freevar_entry>,
+    fn check_for_bare(cx: ctx, _id: node_id, _fv: Option<@freevar_entry>,
                       _is_move: bool,_var_t: ty::t, sp: span) {
         cx.tcx.sess.span_err(sp, ~"attempted dynamic environment capture");
     }
@@ -189,7 +189,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             let cap_def = cx.tcx.def_map.get(cap_item.id);
             let cap_def_id = ast_util::def_id_of_def(cap_def).node;
             let ty = ty::node_id_to_type(cx.tcx, cap_def_id);
-            chk(cx, fn_id, none, cap_item.is_move, ty, cap_item.span);
+            chk(cx, fn_id, None, cap_item.is_move, ty, cap_item.span);
             cap_def_id
         };
 
@@ -205,13 +205,13 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             // a move and not a copy
             let is_move = {
                 match cx.last_use_map.find(fn_id) {
-                  some(vars) => (*vars).contains(id),
-                  none => false
+                  Some(vars) => (*vars).contains(id),
+                  None => false
                 }
             };
 
             let ty = ty::node_id_to_type(cx.tcx, id);
-            chk(cx, fn_id, some(fv), is_move, ty, fv.span);
+            chk(cx, fn_id, Some(fv), is_move, ty, fv.span);
         }
     }
 
@@ -220,7 +220,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
 
 fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
     match b.node.expr {
-      some(ex) => maybe_copy(cx, ex, none),
+      Some(ex) => maybe_copy(cx, ex, None),
       _ => ()
     }
     visit::visit_block(b, cx, v);
@@ -232,7 +232,7 @@ fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
             if mode == bind_by_value {
                 let t = ty::node_id_to_type(cx.tcx, id);
                 let reason = "consider binding with `ref` or `move` instead";
-                check_copy(cx, id, t, span, false, some((reason,reason)));
+                check_copy(cx, id, t, span, false, Some((reason,reason)));
             }
         }
     }
@@ -272,24 +272,24 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     match e.node {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
-      expr_ret(some(ex)) => {
-        maybe_copy(cx, ex, none);
+      expr_ret(Some(ex)) => {
+        maybe_copy(cx, ex, None);
       }
       expr_cast(source, _) => {
-        maybe_copy(cx, source, none);
+        maybe_copy(cx, source, None);
         check_cast_for_escaping_regions(cx, source, e);
       }
-      expr_copy(expr) => check_copy_ex(cx, expr, false, none),
+      expr_copy(expr) => check_copy_ex(cx, expr, false, None),
       // Vector add copies, but not "implicitly"
-      expr_assign_op(_, _, ex) => check_copy_ex(cx, ex, false, none),
+      expr_assign_op(_, _, ex) => check_copy_ex(cx, ex, false, None),
       expr_binary(add, ls, rs) => {
-        check_copy_ex(cx, ls, false, none);
-        check_copy_ex(cx, rs, false, none);
+        check_copy_ex(cx, ls, false, None);
+        check_copy_ex(cx, rs, false, None);
       }
       expr_rec(fields, def) => {
-        for fields.each |field| { maybe_copy(cx, field.node.expr, none); }
+        for fields.each |field| { maybe_copy(cx, field.node.expr, None); }
         match def {
-          some(ex) => {
+          Some(ex) => {
             // All noncopyable fields must be overridden
             let t = ty::expr_ty(cx.tcx, ex);
             let ty_fields = match ty::get(t).struct {
@@ -308,13 +308,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_tup(exprs) | expr_vec(exprs, _) => {
-        for exprs.each |expr| { maybe_copy(cx, expr, none); }
+        for exprs.each |expr| { maybe_copy(cx, expr, None); }
       }
       expr_call(f, args, _) => {
         let mut i = 0u;
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each |arg_t| {
             match ty::arg_mode(cx.tcx, arg_t) {
-              by_copy => maybe_copy(cx, args[i], none),
+              by_copy => maybe_copy(cx, args[i], None),
               by_ref | by_val | by_mutbl_ref | by_move => ()
             }
             i += 1u;
@@ -324,17 +324,17 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         // If this is a method call with a by-val argument, we need
         // to check the copy
         match cx.method_map.find(e.id) {
-          some({self_mode: by_copy, _}) => maybe_copy(cx, lhs, none),
+          Some({self_mode: by_copy, _}) => maybe_copy(cx, lhs, None),
           _ => ()
         }
       }
       expr_repeat(element, count_expr, _) => {
         let count = ty::eval_repeat_count(cx.tcx, count_expr, e.span);
         if count == 1 {
-            maybe_copy(cx, element, none);
+            maybe_copy(cx, element, None);
         } else {
             let element_ty = ty::expr_ty(cx.tcx, element);
-            check_copy(cx, element.id, element_ty, element.span, true, none);
+            check_copy(cx, element.id, element_ty, element.span, true, None);
         }
       }
       _ => { }
@@ -347,7 +347,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
       stmt_decl(@{node: decl_local(locals), _}, _) => {
         for locals.each |local| {
             match local.node.init {
-              some({op: init_assign, expr}) => maybe_copy(cx, expr, none),
+              Some({op: init_assign, expr}) => maybe_copy(cx, expr, None),
               _ => {}
             }
         }
@@ -399,7 +399,7 @@ fn check_bounds(cx: ctx, id: node_id, sp: span,
     }
 }
 
-fn maybe_copy(cx: ctx, ex: @expr, why: option<(&str,&str)>) {
+fn maybe_copy(cx: ctx, ex: @expr, why: Option<(&str,&str)>) {
     check_copy_ex(cx, ex, true, why);
 }
 
@@ -418,14 +418,14 @@ fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
 }
 
 fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
-                 why: option<(&str,&str)>) {
+                 why: Option<(&str,&str)>) {
     if ty::expr_is_lval(cx.method_map, ex) &&
 
         // this is a move
         !cx.last_use_map.contains_key(ex.id) &&
 
         // a reference to a constant like `none`... no need to warn
-        // about *this* even if the type is option<~int>
+        // about *this* even if the type is Option<~int>
         !is_nullary_variant(cx, ex) &&
 
         // borrowed unique value isn't really a copy
@@ -466,7 +466,7 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
 }
 
 fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
-              implicit_copy: bool, why: option<(&str,&str)>) {
+              implicit_copy: bool, why: Option<(&str,&str)>) {
     let k = ty::type_kind(cx.tcx, ty);
     if !ty::kind_can_be_copied(k) {
         cx.tcx.sess.span_err(sp, ~"copying a noncopyable value");
@@ -552,9 +552,9 @@ fn check_cast_for_escaping_regions(
     // possibly escape the enclosing fn item (note that all type parameters
     // must have been declared on the enclosing fn item):
     match target_substs.self_r {
-      some(ty::re_scope(*)) => { return; /* case (1) */ }
-      none | some(ty::re_static) | some(ty::re_free(*)) => {}
-      some(ty::re_bound(*)) | some(ty::re_var(*)) => {
+      Some(ty::re_scope(*)) => { return; /* case (1) */ }
+      None | Some(ty::re_static) | Some(ty::re_free(*)) => {}
+      Some(ty::re_bound(*)) | Some(ty::re_var(*)) => {
         cx.tcx.sess.span_bug(
             source.span,
             fmt!("bad region found in kind: %?", target_substs.self_r));

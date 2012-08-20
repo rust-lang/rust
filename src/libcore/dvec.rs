@@ -42,7 +42,7 @@ export unwrap;
  *
  * The reason that I did not use an unsafe pointer in the structure
  * itself is that I wanted to ensure that the vector would be freed when
- * the dvec is dropped.  The reason that I did not use an `option<T>`
+ * the dvec is dropped.  The reason that I did not use an `Option<T>`
  * instead of a nullable pointer is that I found experimentally that it
  * becomes approximately 50% slower. This can probably be improved
  * through optimization.  You can run your own experiments using
@@ -247,7 +247,7 @@ impl<A: copy> DVec<A> {
         do self.swap |v| {
            let mut v = match ts.size_hint() {
              none { v }
-             some(h) {
+             Some(h) {
                let len = v.len() + h;
                let mut v <- v;
                vec::reserve(v, len);

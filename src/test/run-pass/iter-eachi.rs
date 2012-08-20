@@ -6,10 +6,10 @@ fn main() {
     }
     assert c == 5u;
 
-    for none::<uint>.eachi |i, v| { fail; }
+    for None::<uint>.eachi |i, v| { fail; }
 
     let mut c = 0u;
-    for some(1u).eachi |i, v| {
+    for Some(1u).eachi |i, v| {
         assert (i + 1u) == v;
         c += 1u;
     }

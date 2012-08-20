@@ -148,17 +148,17 @@ fn md_from_metadata<T>(val: debug_metadata) -> T unsafe {
 }
 
 fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
-                           eq: fn(md: T) -> bool) -> option<T> unsafe {
+                           eq: fn(md: T) -> bool) -> Option<T> unsafe {
     if cache.contains_key(mdtag) {
         let items = cache.get(mdtag);
         for items.each |item| {
             let md: T = md_from_metadata::<T>(item);
             if eq(md) {
-                return option::some(md);
+                return option::Some(md);
             }
         }
     }
-    return option::none;
+    return option::None;
 }
 
 fn create_compile_unit(cx: @crate_ctxt)
@@ -168,8 +168,8 @@ fn create_compile_unit(cx: @crate_ctxt)
     let tg = CompileUnitTag;
     match cached_metadata::<@metadata<compile_unit_md>>(cache, tg,
                         |md| md.data.name == crate_name) {
-      option::some(md) => return md,
-      option::none => ()
+      option::Some(md) => return md,
+      option::None => ()
     }
 
     let (_, work_dir) = get_file_path_and_dir(cx.sess.working_dir.to_str(),
@@ -211,8 +211,8 @@ fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
     let tg = FileDescriptorTag;
     match cached_metadata::<@metadata<file_md>>(
         cache, tg, |md| md.data.path == full_path) {
-        option::some(md) => return md,
-        option::none => ()
+        option::Some(md) => return md,
+        option::None => ()
     }
 
     let (file_path, work_dir) =
@@ -238,8 +238,8 @@ fn create_block(cx: block) -> @metadata<block_md> {
     let mut cx = cx;
     while option::is_none(cx.node_info) {
         match cx.parent {
-          some(b) => cx = b,
-          none => fail
+          Some(b) => cx = b,
+          None => fail
         }
     }
     let sp = option::get(cx.node_info).span;
@@ -251,18 +251,18 @@ fn create_block(cx: block) -> @metadata<block_md> {
     /*alt cached_metadata::<@metadata<block_md>>(
         cache, tg,
         {|md| start == md.data.start && end == md.data.end}) {
-      option::some(md) { return md; }
-      option::none {}
+      option::Some(md) { return md; }
+      option::None {}
     }*/
 
     let parent = match cx.parent {
-        none => create_function(cx.fcx).node,
-        some(bcx) => create_block(bcx).node
+        None => create_function(cx.fcx).node,
+        Some(bcx) => create_block(bcx).node
     };
     let file_node = create_file(cx.ccx(), fname);
     let unique_id = match cache.find(LexicalBlockTag) {
-      option::some(v) => vec::len(v) as int,
-      option::none => 0
+      option::Some(v) => vec::len(v) as int,
+      option::None => 0
     };
     let lldata = ~[lltag(tg),
                   parent,
@@ -289,8 +289,8 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, span: span)
     let tg = BasicTypeDescriptorTag;
     match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, |md| ty::type_id(t) == md.data.hash) {
-      option::some(md) => return md,
-      option::none => ()
+      option::Some(md) => return md,
+      option::None => ()
     }
 
     let (name, encoding) = (~"uint", DW_ATE_unsigned);
@@ -323,8 +323,8 @@ fn create_pointer_type(cx: @crate_ctxt, t: ty::t, span: span,
     /*let cache = cx.llmetadata;
     match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(t) == ty::hash_ty(md.data.hash)}) {
-      option::some(md) { return md; }
-      option::none {}
+      option::Some(md) { return md; }
+      option::None {}
     }*/
     let (size, align) = size_and_align_of(cx, t);
     let fname = filename_from_span(cx, span);
@@ -349,8 +349,8 @@ type struct_ctxt = {
 
 fn finish_structure(cx: @struct_ctxt) -> ValueRef {
     return create_composite_type(StructureTypeTag, cx.name, cx.file, cx.line,
-                              cx.total_size, cx.align, 0, option::none,
-                              option::some(cx.members));
+                              cx.total_size, cx.align, 0, option::None,
+                              option::Some(cx.members));
 }
 
 fn create_structure(file: @metadata<file_md>, name: ~str, line: int)
@@ -417,8 +417,8 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     /*let cache = cx.llmetadata;
     match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| ty::hash_ty(outer) == ty::hash_ty(md.data.hash)}) {
-      option::some(md) { return md; }
-      option::none {}
+      option::Some(md) { return md; }
+      option::None {}
     }*/
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
@@ -440,8 +440,8 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
 
 fn create_composite_type(type_tag: int, name: ~str, file: ValueRef, line: int,
                          size: int, align: int, offset: int,
-                         derived: option<ValueRef>,
-                         members: option<~[ValueRef]>)
+                         derived: Option<ValueRef>,
+                         members: Option<~[ValueRef]>)
     -> ValueRef {
     let lldata = ~[lltag(type_tag),
                   file,
@@ -484,8 +484,8 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     let (arr_size, arr_align) = size_and_align_of(cx, elem_t);
     let data_ptr = create_composite_type(ArrayTypeTag, ~"", file_node.node, 0,
                                          arr_size, arr_align, 0,
-                                         option::some(elem_ty_md.node),
-                                         option::some(~[subrange]));
+                                         option::Some(elem_ty_md.node),
+                                         option::Some(~[subrange]));
     add_member(scx, ~"data", 0, 0, // clang says the size should be 0
                sys::min_align_of::<u8>() as int, data_ptr);
     let llnode = finish_structure(scx);
@@ -497,8 +497,8 @@ fn create_ty(_cx: @crate_ctxt, _t: ty::t, _ty: @ast::ty)
     /*let cache = get_cache(cx);
     match cached_metadata::<@metadata<tydesc_md>>(
         cache, tg, {|md| t == md.data.hash}) {
-      option::some(md) { return md; }
-      option::none {}
+      option::Some(md) { return md; }
+      option::None {}
     }*/
 
     /* FIXME (#2012): disabled this code as part of the patch that moves
@@ -620,8 +620,8 @@ fn create_local_var(bcx: block, local: @ast::local)
     let tg = AutoVariableTag;
     match cached_metadata::<@metadata<local_var_md>>(
         cache, tg, |md| md.data.id == local.node.id) {
-      option::some(md) => return md,
-      option::none => ()
+      option::Some(md) => return md,
+      option::None => ()
     }
 
     let name = match local.node.pat.node {
@@ -635,8 +635,8 @@ fn create_local_var(bcx: block, local: @ast::local)
     let tymd = create_ty(cx, ty, local.node.ty);
     let filemd = create_file(cx, loc.file.name);
     let context = match bcx.parent {
-        none => create_function(bcx.fcx).node,
-        some(_) => create_block(bcx).node
+        None => create_function(bcx.fcx).node,
+        Some(_) => create_block(bcx).node
     };
     let mdnode = create_var(tg, context, cx.sess.str_of(name), filemd.node,
                             loc.line as int, tymd.node);
@@ -644,12 +644,12 @@ fn create_local_var(bcx: block, local: @ast::local)
     update_cache(cache, AutoVariableTag, local_var_metadata(mdval));
 
     let llptr = match bcx.fcx.lllocals.find(local.node.id) {
-      option::some(local_mem(v)) => v,
-      option::some(_) => {
+      option::Some(local_mem(v)) => v,
+      option::Some(_) => {
         bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
                 something weird");
       }
-      option::none => {
+      option::None => {
         match bcx.fcx.lllocals.get(local.node.pat.id) {
           local_imm(v) => v,
           _ => bcx.tcx().sess.span_bug(local.span, ~"local is bound to \
@@ -670,8 +670,8 @@ fn create_arg(bcx: block, arg: ast::arg, sp: span)
     let tg = ArgVariableTag;
     match cached_metadata::<@metadata<argument_md>>(
         cache, ArgVariableTag, |md| md.data.id == arg.id) {
-      option::some(md) => return md,
-      option::none => ()
+      option::Some(md) => return md,
+      option::None => ()
     }
 
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
@@ -759,8 +759,8 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let cache = get_cache(cx);
     match cached_metadata::<@metadata<subprogram_md>>(
         cache, SubprogramTag, |md| md.data.id == id) {
-      option::some(md) => return md,
-      option::none => ()
+      option::Some(md) => return md,
+      option::None => ()
     }
 
     let loc = codemap::lookup_char_pos(cx.sess.codemap,
@@ -775,8 +775,8 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
         llnull()
     };
     let sub_node = create_composite_type(SubroutineTag, ~"", file_node, 0, 0,
-                                         0, 0, option::none,
-                                         option::some(~[ty_node]));
+                                         0, 0, option::None,
+                                         option::Some(~[ty_node]));
 
     let fn_metadata = ~[lltag(SubprogramTag),
                        llunused(),

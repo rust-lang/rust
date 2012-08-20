@@ -4,8 +4,8 @@ import task;
 import task::*;
 
 fn main() {
-    let mut result = none;
-    task::task().future_result(|+r| { result = some(r); }).spawn(child);
+    let mut result = None;
+    task::task().future_result(|+r| { result = Some(r); }).spawn(child);
     error!("1");
     yield();
     error!("2");

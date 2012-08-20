@@ -37,7 +37,7 @@ macro_rules! move_it (
 )
 
 fn switch<T: send, U>(+endp: pipes::recv_packet<T>,
-                      f: fn(+option<T>) -> U) -> U {
+                      f: fn(+Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
 
@@ -48,7 +48,7 @@ macro_rules! follow (
         $($message:path$(($($x: ident),+))||* -> $next:ident $e:expr)+
     } => (
         |m| match move m {
-          $(some($message($($($x,)+)* next)) => {
+          $(Some($message($($($x,)+)* next)) => {
             let $next = move_it!(next);
             $e })+
           _ => { fail }
@@ -82,23 +82,23 @@ fn bank_client(+bank: bank::client::login) {
 
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = match try_recv(bank) {
-      some(ok(connected)) => {
+      Some(ok(connected)) => {
         move_it!(connected)
       }
-      some(invalid(_)) => { fail ~"login unsuccessful" }
-      none => { fail ~"bank closed the connection" }
+      Some(invalid(_)) => { fail ~"login unsuccessful" }
+      None => { fail ~"bank closed the connection" }
     };
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
     match try_recv(bank) {
-      some(money(m, _)) => {
+      Some(money(m, _)) => {
         io::println(~"Yay! I got money!");
       }
-      some(insufficient_funds(_)) => {
+      Some(insufficient_funds(_)) => {
         fail ~"someone stole my money"
       }
-      none => {
+      None => {
         fail ~"bank closed the connection"
       }
     }

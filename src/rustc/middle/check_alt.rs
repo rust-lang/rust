@@ -74,7 +74,7 @@ fn check_arms(tcx: ty::ctxt, arms: ~[arm]) {
 
 fn raw_pat(p: @pat) -> @pat {
     match p.node {
-      pat_ident(_, _, some(s)) => { raw_pat(s) }
+      pat_ident(_, _, Some(s)) => { raw_pat(s) }
       _ => { p }
     }
 }
@@ -83,14 +83,14 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
     assert(pats.is_not_empty());
     let ext = match is_useful(tcx, vec::map(pats, |p| ~[p]), ~[wild()]) {
       not_useful => return, // This is good, wildcard pattern isn't reachable
-      useful_ => none,
+      useful_ => None,
       useful(ty, ctor) => {
         match ty::get(ty).struct {
           ty::ty_bool => {
             match ctor {
-              val(const_bool(true)) => some(~"true"),
-              val(const_bool(false)) => some(~"false"),
-              _ => none
+              val(const_bool(true)) => Some(~"true"),
+              val(const_bool(false)) => Some(~"false"),
+              _ => None
             }
           }
           ty::ty_enum(id, _) => {
@@ -98,17 +98,17 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
               _ => fail ~"check_exhaustive: non-variant ctor" };
             match vec::find(*ty::enum_variants(tcx, id),
                                 |v| v.id == vid) {
-                some(v) => some(tcx.sess.str_of(v.name)),
-              none => fail ~"check_exhaustive: bad variant in ctor"
+                Some(v) => Some(tcx.sess.str_of(v.name)),
+              None => fail ~"check_exhaustive: bad variant in ctor"
             }
           }
-          _ => none
+          _ => None
         }
       }
     };
     let msg = ~"non-exhaustive patterns" + match ext {
-      some(s) => ~": " + s + ~" not covered",
-      none => ~""
+      Some(s) => ~": " + s + ~" not covered",
+      None => ~""
     };
     tcx.sess.span_err(sp, msg);
 }
@@ -141,15 +141,15 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
     if m.len() == 0u { return useful_; }
     if m[0].len() == 0u { return not_useful; }
     let real_pat = match vec::find(m, |r| r[0].id != 0) {
-      some(r) => r[0], none => v[0]
+      Some(r) => r[0], None => v[0]
     };
     let left_ty = if real_pat.id == 0 { ty::mk_nil(tcx) }
                   else { ty::node_id_to_type(tcx, real_pat.id) };
 
     match pat_ctor_id(tcx, v[0]) {
-      none => {
+      None => {
         match missing_ctor(tcx, m, left_ty) {
-          none => {
+          None => {
             match ty::get(left_ty).struct {
               ty::ty_bool => {
                 match is_useful_specialized(tcx, m, v, val(const_bool(true)),
@@ -177,7 +177,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
               }
             }
           }
-          some(ctor) => {
+          Some(ctor) => {
             match is_useful(tcx, vec::filter_map(m, |r| default(tcx, r) ),
                           vec::tail(v)) {
               useful_ => useful(left_ty, ctor),
@@ -186,7 +186,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
           }
         }
       }
-      some(v0_ctor) => {
+      Some(v0_ctor) => {
         let arity = ctor_arity(tcx, v0_ctor, left_ty);
         is_useful_specialized(tcx, m, v, v0_ctor, arity, left_ty)
       }
@@ -204,23 +204,23 @@ fn is_useful_specialized(tcx: ty::ctxt, m: matrix, v: ~[@pat], ctor: ctor,
     }
 }
 
-fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> option<ctor> {
+fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> Option<ctor> {
     let pat = raw_pat(p);
     match pat.node {
-      pat_wild => { none }
+      pat_wild => { None }
       pat_ident(_, _, _) | pat_enum(_, _) => {
         match tcx.def_map.find(pat.id) {
-          some(def_variant(_, id)) => some(variant(id)),
-          _ => none
+          Some(def_variant(_, id)) => Some(variant(id)),
+          _ => None
         }
       }
-      pat_lit(expr) => { some(val(eval_const_expr(tcx, expr))) }
+      pat_lit(expr) => { Some(val(eval_const_expr(tcx, expr))) }
       pat_range(lo, hi) => {
-        some(range(eval_const_expr(tcx, lo), eval_const_expr(tcx, hi)))
+        Some(range(eval_const_expr(tcx, lo), eval_const_expr(tcx, hi)))
       }
       pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) |
       pat_struct(*) => {
-        some(single)
+        Some(single)
       }
     }
 }
@@ -231,7 +231,7 @@ fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
       pat_wild => { true }
       pat_ident(_, _, _) => {
         match tcx.def_map.find(pat.id) {
-          some(def_variant(_, _)) => { false }
+          Some(def_variant(_, _)) => { false }
           _ => { true }
         }
       }
@@ -239,14 +239,14 @@ fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
     }
 }
 
-fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
+fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
     match ty::get(left_ty).struct {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_tup(_) | ty::ty_rec(_) |
       ty::ty_class(*) => {
         for m.each |r| {
-            if !is_wild(tcx, r[0]) { return none; }
+            if !is_wild(tcx, r[0]) { return None; }
         }
-        return some(single);
+        return Some(single);
       }
       ty::ty_enum(eid, _) => {
         let mut found = ~[];
@@ -259,28 +259,28 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
         if found.len() != (*variants).len() {
             for vec::each(*variants) |v| {
                 if !found.contains(variant(v.id)) {
-                    return some(variant(v.id));
+                    return Some(variant(v.id));
                 }
             }
             fail;
-        } else { none }
+        } else { None }
       }
-      ty::ty_nil => none,
+      ty::ty_nil => None,
       ty::ty_bool => {
         let mut true_found = false, false_found = false;
         for m.each |r| {
             match pat_ctor_id(tcx, r[0]) {
-              none => (),
-              some(val(const_bool(true))) => true_found = true,
-              some(val(const_bool(false))) => false_found = true,
+              None => (),
+              Some(val(const_bool(true))) => true_found = true,
+              Some(val(const_bool(false))) => false_found = true,
               _ => fail ~"impossible case"
             }
         }
-        if true_found && false_found { none }
-        else if true_found { some(val(const_bool(false))) }
-        else { some(val(const_bool(true))) }
+        if true_found && false_found { None }
+        else if true_found { Some(val(const_bool(false))) }
+        else { Some(val(const_bool(true))) }
       }
-      _ => some(single)
+      _ => Some(single)
     }
 }
 
@@ -293,8 +293,8 @@ fn ctor_arity(tcx: ty::ctxt, ctor: ctor, ty: ty::t) -> uint {
           let id = match ctor { variant(id) => id,
           _ => fail ~"impossible case" };
         match vec::find(*ty::enum_variants(tcx, eid), |v| v.id == id ) {
-            some(v) => v.args.len(),
-            none => fail ~"impossible case"
+            Some(v) => v.args.len(),
+            None => fail ~"impossible case"
         }
       }
       ty::ty_class(cid, _) => ty::lookup_class_fields(tcx, cid).len(),
@@ -307,31 +307,31 @@ fn wild() -> @pat {
 }
 
 fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
-              left_ty: ty::t) -> option<~[@pat]> {
+              left_ty: ty::t) -> Option<~[@pat]> {
     let r0 = raw_pat(r[0]);
     match r0.node {
-      pat_wild => some(vec::append(vec::from_elem(arity, wild()),
+      pat_wild => Some(vec::append(vec::from_elem(arity, wild()),
                                    vec::tail(r))),
       pat_ident(_, _, _) => {
         match tcx.def_map.find(r0.id) {
-          some(def_variant(_, id)) => {
-            if variant(id) == ctor_id { some(vec::tail(r)) }
-            else { none }
+          Some(def_variant(_, id)) => {
+            if variant(id) == ctor_id { Some(vec::tail(r)) }
+            else { None }
           }
-          _ => some(vec::append(vec::from_elem(arity, wild()), vec::tail(r)))
+          _ => Some(vec::append(vec::from_elem(arity, wild()), vec::tail(r)))
         }
       }
       pat_enum(_, args) => {
         match tcx.def_map.get(r0.id) {
           def_variant(_, id) if variant(id) == ctor_id => {
             let args = match args {
-              some(args) => args,
-              none => vec::from_elem(arity, wild())
+              Some(args) => args,
+              None => vec::from_elem(arity, wild())
             };
-            some(vec::append(args, vec::tail(r)))
+            Some(vec::append(args, vec::tail(r)))
           }
-          def_variant(_, _) => none,
-          _ => none
+          def_variant(_, _) => None,
+          _ => None
         }
       }
       pat_rec(flds, _) => {
@@ -341,11 +341,11 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         };
         let args = vec::map(ty_flds, |ty_f| {
             match vec::find(flds, |f| f.ident == ty_f.ident ) {
-              some(f) => f.pat,
+              Some(f) => f.pat,
               _ => wild()
             }
         });
-        some(vec::append(args, vec::tail(r)))
+        Some(vec::append(args, vec::tail(r)))
       }
       pat_struct(_, flds, _) => {
         // Grab the class data that we care about.
@@ -362,14 +362,14 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         }
         let args = vec::map(class_fields, |class_field| {
             match vec::find(flds, |f| f.ident == class_field.ident ) {
-              some(f) => f.pat,
+              Some(f) => f.pat,
               _ => wild()
             }
         });
-        some(vec::append(args, vec::tail(r)))
+        Some(vec::append(args, vec::tail(r)))
       }
-      pat_tup(args) => some(vec::append(args, vec::tail(r))),
-      pat_box(a) | pat_uniq(a) => some(vec::append(~[a], vec::tail(r))),
+      pat_tup(args) => Some(vec::append(args, vec::tail(r))),
+      pat_box(a) | pat_uniq(a) => Some(vec::append(~[a], vec::tail(r))),
       pat_lit(expr) => {
         let e_v = eval_const_expr(tcx, expr);
         let match_ = match ctor_id {
@@ -381,27 +381,27 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
           single => true,
           _ => fail ~"type error"
         };
-        if match_ { some(vec::tail(r)) } else { none }
+        if match_ { Some(vec::tail(r)) } else { None }
       }
       pat_range(lo, hi) => {
         let (c_lo, c_hi) = match ctor_id {
           val(v) => (v, v),
           range(lo, hi) => (lo, hi),
-          single => return some(vec::tail(r)),
+          single => return Some(vec::tail(r)),
           _ => fail ~"type error"
         };
         let v_lo = eval_const_expr(tcx, lo),
             v_hi = eval_const_expr(tcx, hi);
         let match_ = compare_const_vals(c_lo, v_lo) >= 0 &&
                     compare_const_vals(c_hi, v_hi) <= 0;
-        if match_ { some(vec::tail(r)) } else { none }
+        if match_ { Some(vec::tail(r)) } else { None }
       }
     }
 }
 
-fn default(tcx: ty::ctxt, r: ~[@pat]) -> option<~[@pat]> {
-    if is_wild(tcx, r[0]) { some(vec::tail(r)) }
-    else { none }
+fn default(tcx: ty::ctxt, r: ~[@pat]) -> Option<~[@pat]> {
+    if is_wild(tcx, r[0]) { Some(vec::tail(r)) }
+    else { None }
 }
 
 fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
@@ -414,7 +414,7 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
 
 fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     match tcx.def_map.find(pat.id) {
-      some(def_variant(enum_id, var_id)) => {
+      Some(def_variant(enum_id, var_id)) => {
         if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u {
             return true;
         }
@@ -423,10 +423,10 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     }
 
     match pat.node {
-      pat_box(sub) | pat_uniq(sub) | pat_ident(_, _, some(sub)) => {
+      pat_box(sub) | pat_uniq(sub) | pat_ident(_, _, Some(sub)) => {
         is_refutable(tcx, sub)
       }
-      pat_wild | pat_ident(_, _, none) => { false }
+      pat_wild | pat_ident(_, _, None) => { false }
       pat_lit(@{node: expr_lit(@{node: lit_nil, _}), _}) => { false } // "()"
       pat_lit(_) | pat_range(_, _) => { true }
       pat_rec(fields, _) => {
@@ -445,7 +445,7 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
         for elts.each |elt| { if is_refutable(tcx, elt) { return true; } }
         false
       }
-      pat_enum(_, some(args)) => {
+      pat_enum(_, Some(args)) => {
         for args.each |p| { if is_refutable(tcx, p) { return true; } };
         false
       }

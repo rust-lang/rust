@@ -35,16 +35,16 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
 }
 
 fn filter_item(cx: ctxt, &&item: @ast::item) ->
-   option<@ast::item> {
-    if item_in_cfg(cx, item) { option::some(item) } else { option::none }
+   Option<@ast::item> {
+    if item_in_cfg(cx, item) { option::Some(item) } else { option::None }
 }
 
 fn filter_view_item(cx: ctxt, &&view_item: @ast::view_item
-                   )-> option<@ast::view_item> {
+                   )-> Option<@ast::view_item> {
     if view_item_in_cfg(cx, view_item) {
-        option::some(view_item)
+        option::Some(view_item)
     } else {
-        option::none
+        option::None
     }
 }
 
@@ -61,10 +61,10 @@ fn fold_mod(cx: ctxt, m: ast::_mod, fld: fold::ast_fold) ->
 }
 
 fn filter_foreign_item(cx: ctxt, &&item: @ast::foreign_item) ->
-   option<@ast::foreign_item> {
+   Option<@ast::foreign_item> {
     if foreign_item_in_cfg(cx, item) {
-        option::some(item)
-    } else { option::none }
+        option::Some(item)
+    } else { option::None }
 }
 
 fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
@@ -81,19 +81,19 @@ fn fold_foreign_mod(cx: ctxt, nm: ast::foreign_mod,
 }
 
 fn filter_stmt(cx: ctxt, &&stmt: @ast::stmt) ->
-   option<@ast::stmt> {
+   Option<@ast::stmt> {
     match stmt.node {
       ast::stmt_decl(decl, _) => {
         match decl.node {
           ast::decl_item(item) => {
             if item_in_cfg(cx, item) {
-                option::some(stmt)
-            } else { option::none }
+                option::Some(stmt)
+            } else { option::None }
           }
-          _ => option::some(stmt)
+          _ => option::Some(stmt)
         }
       }
-      _ => option::some(stmt)
+      _ => option::Some(stmt)
     }
 }
 

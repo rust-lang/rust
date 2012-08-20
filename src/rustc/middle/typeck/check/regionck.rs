@@ -192,8 +192,8 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
             match ty::get(target_ty).struct {
               ty::ty_trait(_, substs, _) => {
                 let trait_region = match substs.self_r {
-                  some(r) => {r}
-                  none => {ty::re_static}
+                  Some(r) => {r}
+                  None => {ty::re_static}
                 };
                 let source_ty = rcx.fcx.expr_ty(source);
                 constrain_regions_in_type(rcx, trait_region,

@@ -50,7 +50,7 @@ fn count_insn(cx: block, category: &str) {
         s += category;
 
         let n = match h.find(s) {
-          some(n) => n,
+          Some(n) => n,
           _ => 0u
         };
         h.insert(s, n+1u);

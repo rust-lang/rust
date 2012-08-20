@@ -53,12 +53,12 @@ import to_str::to_str;
 impl infer_ctxt {
     fn assign_tys(anmnt: &assignment, a: ty::t, b: ty::t) -> ures {
 
-        fn select(fst: option<ty::t>, snd: option<ty::t>) -> option<ty::t> {
+        fn select(fst: Option<ty::t>, snd: Option<ty::t>) -> Option<ty::t> {
             match fst {
-              some(t) => some(t),
-              none => match snd {
-                some(t) => some(t),
-                none => none
+              Some(t) => Some(t),
+              None => match snd {
+                Some(t) => Some(t),
+                None => None
               }
             }
         }
@@ -88,7 +88,7 @@ impl infer_ctxt {
             let a_bounds = nde_a.possible_types;
 
             let a_bnd = select(a_bounds.ub, a_bounds.lb);
-            self.assign_tys_or_sub(anmnt, a, b, a_bnd, some(b))
+            self.assign_tys_or_sub(anmnt, a, b, a_bnd, Some(b))
           }
 
           (_, ty::ty_var(b_id)) => {
@@ -96,11 +96,11 @@ impl infer_ctxt {
             let b_bounds = nde_b.possible_types;
 
             let b_bnd = select(b_bounds.lb, b_bounds.ub);
-            self.assign_tys_or_sub(anmnt, a, b, some(a), b_bnd)
+            self.assign_tys_or_sub(anmnt, a, b, Some(a), b_bnd)
           }
 
           (_, _) => {
-            self.assign_tys_or_sub(anmnt, a, b, some(a), some(b))
+            self.assign_tys_or_sub(anmnt, a, b, Some(a), Some(b))
           }
         }
     }
@@ -108,7 +108,7 @@ impl infer_ctxt {
     fn assign_tys_or_sub(
         anmnt: &assignment,
         a: ty::t, b: ty::t,
-        +a_bnd: option<ty::t>, +b_bnd: option<ty::t>) -> ures {
+        +a_bnd: Option<ty::t>, +b_bnd: Option<ty::t>) -> ures {
 
         debug!("assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
                anmnt, a.to_str(self), b.to_str(self),
@@ -123,7 +123,7 @@ impl infer_ctxt {
         }
 
         match (a_bnd, b_bnd) {
-          (some(a_bnd), some(b_bnd)) => {
+          (Some(a_bnd), Some(b_bnd)) => {
             match (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
               (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) => {
                 let nr_b = ty::mk_box(self.tcx, {ty: mt_b.ty,

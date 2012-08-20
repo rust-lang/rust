@@ -139,7 +139,7 @@ enum SchedMode {
  */
 type SchedOpts = {
     mode: SchedMode,
-    foreign_stack_size: option<uint>
+    foreign_stack_size: Option<uint>
 };
 
 /**
@@ -172,8 +172,8 @@ type SchedOpts = {
 type TaskOpts = {
     linked: bool,
     supervised: bool,
-    notify_chan: option<comm::Chan<Notification>>,
-    sched: option<SchedOpts>,
+    notify_chan: Option<comm::Chan<Notification>>,
+    sched: Option<SchedOpts>,
 };
 
 /**
@@ -193,7 +193,7 @@ type TaskOpts = {
 enum TaskBuilder = {
     opts: TaskOpts,
     gen_body: fn@(+fn~()) -> fn~(),
-    can_not_copy: option<util::NonCopyable>,
+    can_not_copy: Option<util::NonCopyable>,
     mut consumed: bool,
 };
 
@@ -206,7 +206,7 @@ fn task() -> TaskBuilder {
     TaskBuilder({
         opts: default_task_opts(),
         gen_body: |body| body, // Identity function
-        can_not_copy: none,
+        can_not_copy: None,
         mut consumed: false,
     })
 }
@@ -217,7 +217,7 @@ priv impl TaskBuilder {
             fail ~"Cannot copy a task_builder"; // Fake move mode on self
         }
         self.consumed = true;
-        TaskBuilder({ can_not_copy: none, mut consumed: false, with *self })
+        TaskBuilder({ can_not_copy: None, mut consumed: false, with *self })
     }
 }
 
@@ -229,7 +229,7 @@ impl TaskBuilder {
     fn unlinked() -> TaskBuilder {
         TaskBuilder({
             opts: { linked: false with self.opts },
-            can_not_copy: none,
+            can_not_copy: None,
             with *self.consume()
         })
     }
@@ -241,7 +241,7 @@ impl TaskBuilder {
     fn supervised() -> TaskBuilder {
         TaskBuilder({
             opts: { linked: false, supervised: true with self.opts },
-            can_not_copy: none,
+            can_not_copy: None,
             with *self.consume()
         })
     }
@@ -252,7 +252,7 @@ impl TaskBuilder {
     fn linked() -> TaskBuilder {
         TaskBuilder({
             opts: { linked: true, supervised: false with self.opts },
-            can_not_copy: none,
+            can_not_copy: None,
             with *self.consume()
         })
     }
@@ -296,17 +296,17 @@ impl TaskBuilder {
 
         // Reconfigure self to use a notify channel.
         TaskBuilder({
-            opts: { notify_chan: some(ch) with self.opts },
-            can_not_copy: none,
+            opts: { notify_chan: Some(ch) with self.opts },
+            can_not_copy: None,
             with *self.consume()
         })
     }
     /// Configure a custom scheduler mode for the task.
     fn sched_mode(mode: SchedMode) -> TaskBuilder {
         TaskBuilder({
-            opts: { sched: some({ mode: mode, foreign_stack_size: none})
+            opts: { sched: Some({ mode: mode, foreign_stack_size: None})
                     with self.opts },
-            can_not_copy: none,
+            can_not_copy: None,
             with *self.consume()
         })
     }
@@ -327,7 +327,7 @@ impl TaskBuilder {
         let prev_gen_body = self.gen_body;
         TaskBuilder({
             gen_body: |body| { wrapper(prev_gen_body(body)) },
-            can_not_copy: none,
+            can_not_copy: None,
             with *self.consume()
         })
     }
@@ -350,7 +350,7 @@ impl TaskBuilder {
     }
     /// Runs a task, while transfering ownership of one argument to the child.
     fn spawn_with<A: send>(+arg: A, +f: fn~(+A)) {
-        let arg = ~mut some(arg);
+        let arg = ~mut Some(arg);
         do self.spawn {
             f(option::swap_unwrap(arg))
         }
@@ -409,9 +409,9 @@ impl TaskBuilder {
     fn try<T: send>(+f: fn~() -> T) -> result<T,()> {
         let po = comm::port();
         let ch = comm::chan(po);
-        let mut result = none;
+        let mut result = None;
 
-        do self.future_result(|+r| { result = some(r); }).spawn {
+        do self.future_result(|+r| { result = Some(r); }).spawn {
             comm::send(ch, f());
         }
         match future::get(&option::unwrap(result)) {
@@ -435,8 +435,8 @@ fn default_task_opts() -> TaskOpts {
     {
         linked: true,
         supervised: false,
-        notify_chan: none,
-        sched: none
+        notify_chan: None,
+        sched: None
     }
 }
 
@@ -734,9 +734,9 @@ type TaskGroupData = {
     // tasks in this group.
     mut descendants: TaskSet,
 };
-type TaskGroupArc = unsafe::Exclusive<option<TaskGroupData>>;
+type TaskGroupArc = unsafe::Exclusive<Option<TaskGroupData>>;
 
-type TaskGroupInner = &mut option<TaskGroupData>;
+type TaskGroupInner = &mut Option<TaskGroupData>;
 
 // A taskgroup is 'dead' when nothing can cause it to fail; only members can.
 pure fn taskgroup_is_dead(tg: &TaskGroupData) -> bool {
@@ -759,11 +759,11 @@ type AncestorNode = {
     // FIXME(#3068): Make the generation counter togglable with #[cfg(debug)].
     generation:       uint,
     // Should really be an immutable non-option. This way appeases borrowck.
-    mut parent_group: option<TaskGroupArc>,
+    mut parent_group: Option<TaskGroupArc>,
     // Recursive rest of the list.
     mut ancestors:    AncestorList,
 };
-enum AncestorList = option<unsafe::Exclusive<AncestorNode>>;
+enum AncestorList = Option<unsafe::Exclusive<AncestorNode>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
@@ -783,10 +783,10 @@ fn access_ancestors<U>(x: &unsafe::Exclusive<AncestorNode>,
 //     taskgroups that forward_blk already ran on successfully (Note: bail_blk
 //     is NOT called on the block that forward_blk broke on!).
 // (3) As a bonus, coalesces away all 'dead' taskgroup nodes in the list.
-// FIXME(#2190): Change option<fn@(...)> to option<fn&(...)>, to save on
+// FIXME(#2190): Change Option<fn@(...)> to Option<fn&(...)>, to save on
 // allocations. Once that bug is fixed, changing the sigil should suffice.
 fn each_ancestor(list:        &mut AncestorList,
-                 bail_opt:    option<fn@(TaskGroupInner)>,
+                 bail_opt:    Option<fn@(TaskGroupInner)>,
                  forward_blk: fn(TaskGroupInner) -> bool)
         -> bool {
     // "Kickoff" call - there was no last generation.
@@ -795,11 +795,11 @@ fn each_ancestor(list:        &mut AncestorList,
     // Recursively iterates, and coalesces afterwards if needed. Returns
     // whether or not unwinding is needed (i.e., !successful iteration).
     fn coalesce(list:            &mut AncestorList,
-                bail_opt:        option<fn@(TaskGroupInner)>,
+                bail_opt:        Option<fn@(TaskGroupInner)>,
                 forward_blk:     fn(TaskGroupInner) -> bool,
                 last_generation: uint) -> bool {
         // Need to swap the list out to use it, to appease borrowck.
-        let tmp_list = util::replace(list, AncestorList(none));
+        let tmp_list = util::replace(list, AncestorList(None));
         let (coalesce_this, early_break) =
             iterate(&tmp_list, bail_opt, forward_blk, last_generation);
         // What should our next ancestor end up being?
@@ -815,7 +815,7 @@ fn each_ancestor(list:        &mut AncestorList,
     }
 
     // Returns an optional list-to-coalesce and whether unwinding is needed.
-    // option<ancestor_list>:
+    // Option<ancestor_list>:
     //     Whether or not the ancestor taskgroup being iterated over is
     //     dead or not; i.e., it has no more tasks left in it, whether or not
     //     it has descendants. If dead, the caller shall coalesce it away.
@@ -823,9 +823,9 @@ fn each_ancestor(list:        &mut AncestorList,
     //     True if the supplied block did 'break', here or in any recursive
     //     calls. If so, must call the unwinder on all previous nodes.
     fn iterate(ancestors:       &AncestorList,
-               bail_opt:        option<fn@(TaskGroupInner)>,
+               bail_opt:        Option<fn@(TaskGroupInner)>,
                forward_blk:     fn(TaskGroupInner) -> bool,
-               last_generation: uint) -> (option<AncestorList>, bool) {
+               last_generation: uint) -> (Option<AncestorList>, bool) {
         // At each step of iteration, three booleans are at play which govern
         // how the iteration should behave.
         // 'nobe_is_dead' - Should the list should be coalesced at this point?
@@ -837,7 +837,7 @@ fn each_ancestor(list:        &mut AncestorList,
 
         // The map defaults to none, because if ancestors is none, we're at
         // the end of the list, which doesn't make sense to coalesce.
-        return do (**ancestors).map_default((none,false)) |ancestor_arc| {
+        return do (**ancestors).map_default((None,false)) |ancestor_arc| {
             // NB: Takes a lock! (this ancestor node)
             do access_ancestors(&ancestor_arc) |nobe| {
                 // Check monotonicity
@@ -852,8 +852,8 @@ fn each_ancestor(list:        &mut AncestorList,
                         // Decide whether this group is dead. Note that the
                         // group being *dead* is disjoint from it *failing*.
                         nobe_is_dead = match *tg_opt {
-                            some(ref tg) => taskgroup_is_dead(tg),
-                            none => nobe_is_dead
+                            Some(ref tg) => taskgroup_is_dead(tg),
+                            None => nobe_is_dead
                         };
                         // Call iterator block. (If the group is dead, it's
                         // safe to skip it. This will leave our *rust_task
@@ -889,21 +889,21 @@ fn each_ancestor(list:        &mut AncestorList,
                 if nobe_is_dead {
                     // Swap the list out here; the caller replaces us with it.
                     let rest = util::replace(&mut nobe.ancestors,
-                                             AncestorList(none));
-                    (some(rest), need_unwind)
+                                             AncestorList(None));
+                    (Some(rest), need_unwind)
                 } else {
-                    (none, need_unwind)
+                    (None, need_unwind)
                 }
             }
         };
 
         // Wrapper around exclusive::with that appeases borrowck.
-        fn with_parent_tg<U>(parent_group: &mut option<TaskGroupArc>,
+        fn with_parent_tg<U>(parent_group: &mut Option<TaskGroupArc>,
                              blk: fn(TaskGroupInner) -> U) -> U {
             // If this trips, more likely the problem is 'blk' failed inside.
             let tmp_arc = option::swap_unwrap(parent_group);
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
-            *parent_group <- some(tmp_arc);
+            *parent_group <- Some(tmp_arc);
             result
         }
     }
@@ -917,9 +917,9 @@ struct Tcb {
     // Lists of tasks who will kill us if they fail, but whom we won't kill.
     let mut ancestors: AncestorList;
     let is_main:       bool;
-    let notifier:      option<AutoNotify>;
+    let notifier:      Option<AutoNotify>;
     new(me: *rust_task, -tasks: TaskGroupArc, -ancestors: AncestorList,
-        is_main: bool, -notifier: option<AutoNotify>) {
+        is_main: bool, -notifier: Option<AutoNotify>) {
         self.me        = me;
         self.tasks     = tasks;
         self.ancestors = ancestors;
@@ -945,7 +945,7 @@ struct Tcb {
         // It doesn't matter whether this happens before or after dealing with
         // our own taskgroup, so long as both happen before we die. We need to
         // remove ourself from every ancestor we can, so no cleanup; no break.
-        for each_ancestor(&mut self.ancestors, none) |ancestor_group| {
+        for each_ancestor(&mut self.ancestors, None) |ancestor_group| {
             leave_taskgroup(ancestor_group, self.me, false);
         };
     }
@@ -966,13 +966,13 @@ struct AutoNotify {
 
 fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
                        is_member: bool) -> bool {
-    let newstate = util::replace(state, none);
+    let newstate = util::replace(state, None);
     // If 'none', the group was failing. Can't enlist.
     if newstate.is_some() {
         let group = option::unwrap(newstate);
         taskset_insert(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
-        *state = some(group);
+        *state = Some(group);
         true
     } else {
         false
@@ -981,13 +981,13 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
 
 // NB: Runs in destructor/post-exit context. Can't 'fail'.
 fn leave_taskgroup(state: TaskGroupInner, me: *rust_task, is_member: bool) {
-    let newstate = util::replace(state, none);
+    let newstate = util::replace(state, None);
     // If 'none', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
         let group = option::unwrap(newstate);
         taskset_remove(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
-        *state = some(group);
+        *state = Some(group);
     }
 }
 
@@ -1001,7 +1001,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
     // so if we're failing, all concurrently exiting tasks must wait for us.
     // To do it differently, we'd have to use the runtime's task refcounting,
     // but that could leave task structs around long after their task exited.
-    let newstate = util::replace(state, none);
+    let newstate = util::replace(state, None);
     // Might already be none, if somebody is failing simultaneously.
     // That's ok; only one task needs to do the dirty work. (Might also
     // see 'none' if somebody already failed and we got a kill signal.)
@@ -1021,7 +1021,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
         if is_main {
             rustrt::rust_task_kill_all(me);
         }
-        // Do NOT restore state to some(..)! It stays none to indicate
+        // Do NOT restore state to Some(..)! It stays none to indicate
         // that the whole taskgroup is failing, to forbid new spawns.
     }
     // (note: multiple tasks may reach this point)
@@ -1042,20 +1042,20 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
      *######################################################################*/
     let spawner_group = match unsafe { local_get(spawner,
                                                  taskgroup_key!()) } {
-        none => {
+        None => {
             // Main task, doing first spawn ever. Lazily initialise here.
             let mut members = new_taskset();
             taskset_insert(&mut members, spawner);
             let tasks =
-                unsafe::exclusive(some({ mut members:     members,
+                unsafe::exclusive(Some({ mut members:     members,
                                          mut descendants: new_taskset() }));
             // Main task/group has no ancestors, no notifier, etc.
             let group =
-                @Tcb(spawner, tasks, AncestorList(none), true, none);
+                @Tcb(spawner, tasks, AncestorList(None), true, None);
             unsafe { local_set(spawner, taskgroup_key!(), group); }
             group
         }
-        some(group) => group
+        Some(group) => group
     };
     /*######################################################################*
      * Step 2. Process spawn options for child.
@@ -1069,7 +1069,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         (g, a, spawner_group.is_main)
     } else {
         // Child is in a separate group from spawner.
-        let g = unsafe::exclusive(some({ mut members:     new_taskset(),
+        let g = unsafe::exclusive(Some({ mut members:     new_taskset(),
                                          mut descendants: new_taskset() }));
         let a = if supervised {
             // Child's ancestors start with the spawner.
@@ -1079,18 +1079,18 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             // it should be enabled only in debug builds.
             let new_generation =
                 match *old_ancestors {
-                    some(arc) => access_ancestors(&arc, |a| a.generation+1),
-                    none      => 0 // the actual value doesn't really matter.
+                    Some(arc) => access_ancestors(&arc, |a| a.generation+1),
+                    None      => 0 // the actual value doesn't really matter.
                 };
             assert new_generation < uint::max_value;
             // Build a new node in the ancestor list.
-            AncestorList(some(unsafe::exclusive(
+            AncestorList(Some(unsafe::exclusive(
                 { generation:       new_generation,
-                  mut parent_group: some(spawner_group.tasks.clone()),
+                  mut parent_group: Some(spawner_group.tasks.clone()),
                   mut ancestors:    old_ancestors })))
         } else {
             // Child has no ancestors.
-            AncestorList(none)
+            AncestorList(None)
         };
         (g,a, false)
     };
@@ -1098,16 +1098,16 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
     fn share_ancestors(ancestors: &mut AncestorList) -> AncestorList {
         // Appease the borrow-checker. Really this wants to be written as:
         // match ancestors
-        //    some(ancestor_arc) { ancestor_list(some(ancestor_arc.clone())) }
+        //    Some(ancestor_arc) { ancestor_list(Some(ancestor_arc.clone())) }
         //    none               { ancestor_list(none) }
-        let tmp = util::replace(&mut **ancestors, none);
+        let tmp = util::replace(&mut **ancestors, None);
         if tmp.is_some() {
             let ancestor_arc = option::unwrap(tmp);
             let result = ancestor_arc.clone();
-            **ancestors <- some(ancestor_arc);
-            AncestorList(some(result))
+            **ancestors <- Some(ancestor_arc);
+            AncestorList(Some(result))
         } else {
-            AncestorList(none)
+            AncestorList(None)
         }
     }
 }
@@ -1117,15 +1117,15 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
         gen_child_taskgroup(opts.linked, opts.supervised);
 
     unsafe {
-        let child_data = ~mut some((child_tg, ancestors, f));
+        let child_data = ~mut Some((child_tg, ancestors, f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let (child_tg, ancestors, f) = option::swap_unwrap(child_data);
             // Create child task.
             let new_task = match opts.sched {
-              none             => rustrt::new_task(),
-              some(sched_opts) => new_task_in_new_sched(sched_opts)
+              None             => rustrt::new_task(),
+              Some(sched_opts) => new_task_in_new_sched(sched_opts)
             };
             assert !new_task.is_null();
             // Getting killed after here would leak the task.
@@ -1152,9 +1152,9 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
     // (4) ...and runs the provided body function.
     fn make_child_wrapper(child: *rust_task, +child_arc: TaskGroupArc,
                           +ancestors: AncestorList, is_main: bool,
-                          notify_chan: option<comm::Chan<Notification>>,
+                          notify_chan: Option<comm::Chan<Notification>>,
                           +f: fn~()) -> fn~() {
-        let child_data = ~mut some((child_arc, ancestors));
+        let child_data = ~mut Some((child_arc, ancestors));
         return fn~() {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let mut (child_arc, ancestors) = option::swap_unwrap(child_data);
@@ -1191,7 +1191,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
                 };
                 // Attempt to join every ancestor group.
                 result =
-                    for each_ancestor(ancestors, some(bail)) |ancestor_tg| {
+                    for each_ancestor(ancestors, Some(bail)) |ancestor_tg| {
                         // Enlist as a descendant, not as an actual member.
                         // Descendants don't kill ancestor groups on failure.
                         if !enlist_in_taskgroup(ancestor_tg, child, false) {
@@ -1210,7 +1210,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
     }
 
     fn new_task_in_new_sched(opts: SchedOpts) -> *rust_task {
-        if opts.foreign_stack_size != none {
+        if opts.foreign_stack_size != None {
             fail ~"foreign_stack_size scheduler option unimplemented";
         }
 
@@ -1277,7 +1277,7 @@ impl<T: owned> @T: LocalData { }
 // heavily in future, this could be made more efficient with a proper map.
 type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
 // Has to be a pointer at outermost layer; the foreign call returns void *.
-type TaskLocalMap = @dvec::DVec<option<TaskLocalElement>>;
+type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
 
 extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();
@@ -1318,16 +1318,16 @@ unsafe fn key_to_key_value<T: owned>(
     pair.first()
 }
 
-// If returning some(..), returns with @T with the map's reference. Careful!
+// If returning Some(..), returns with @T with the map's reference. Careful!
 unsafe fn local_data_lookup<T: owned>(
     map: TaskLocalMap, key: LocalDataKey<T>)
-    -> option<(uint, *libc::c_void)> {
+    -> Option<(uint, *libc::c_void)> {
 
     let key_value = key_to_key_value(key);
     let map_pos = (*map).position(|entry|
         match entry {
-            some((k,_,_)) => k == key_value,
-            none => false
+            Some((k,_,_)) => k == key_value,
+            None => false
         }
     );
     do map_pos.map |index| {
@@ -1339,7 +1339,7 @@ unsafe fn local_data_lookup<T: owned>(
 
 unsafe fn local_get_helper<T: owned>(
     task: *rust_task, key: LocalDataKey<T>,
-    do_pop: bool) -> option<@T> {
+    do_pop: bool) -> Option<@T> {
 
     let map = get_task_local_map(task);
     // Interpreturn our findings from the map
@@ -1352,7 +1352,7 @@ unsafe fn local_get_helper<T: owned>(
         let data: @T = unsafe::transmute(data_ptr);
         unsafe::bump_box_refcount(data);
         if do_pop {
-            (*map).set_elt(index, none);
+            (*map).set_elt(index, None);
         }
         data
     }
@@ -1360,14 +1360,14 @@ unsafe fn local_get_helper<T: owned>(
 
 unsafe fn local_pop<T: owned>(
     task: *rust_task,
-    key: LocalDataKey<T>) -> option<@T> {
+    key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, true)
 }
 
 unsafe fn local_get<T: owned>(
     task: *rust_task,
-    key: LocalDataKey<T>) -> option<@T> {
+    key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, false)
 }
@@ -1386,19 +1386,19 @@ unsafe fn local_set<T: owned>(
     let data_ptr = unsafe::reinterpret_cast(data);
     let data_box = data as LocalData;
     // Construct new entry to store in the map.
-    let new_entry = some((keyval, data_ptr, data_box));
+    let new_entry = Some((keyval, data_ptr, data_box));
     // Find a place to put it.
     match local_data_lookup(map, key) {
-        some((index, _old_data_ptr)) => {
+        Some((index, _old_data_ptr)) => {
             // Key already had a value set, _old_data_ptr, whose reference
             // will get dropped when the local_data box is overwritten.
             (*map).set_elt(index, new_entry);
         }
-        none => {
+        None => {
             // Find an empty slot. If not, grow the vector.
-            match (*map).position(|x| x == none) {
-                some(empty_index) => (*map).set_elt(empty_index, new_entry),
-                none => (*map).push(new_entry)
+            match (*map).position(|x| x == None) {
+                Some(empty_index) => (*map).set_elt(empty_index, new_entry),
+                None => (*map).push(new_entry)
             }
         }
     }
@@ -1406,7 +1406,7 @@ unsafe fn local_set<T: owned>(
 
 unsafe fn local_modify<T: owned>(
     task: *rust_task, key: LocalDataKey<T>,
-    modify_fn: fn(option<@T>) -> option<@T>) {
+    modify_fn: fn(Option<@T>) -> Option<@T>) {
 
     // Could be more efficient by doing the lookup work, but this is easy.
     let newdata = modify_fn(local_pop(task, key));
@@ -1421,7 +1421,7 @@ unsafe fn local_modify<T: owned>(
  * reference that was originally created to insert it.
  */
 unsafe fn local_data_pop<T: owned>(
-    key: LocalDataKey<T>) -> option<@T> {
+    key: LocalDataKey<T>) -> Option<@T> {
 
     local_pop(rustrt::rust_get_task(), key)
 }
@@ -1430,7 +1430,7 @@ unsafe fn local_data_pop<T: owned>(
  * table until explicitly removed.
  */
 unsafe fn local_data_get<T: owned>(
-    key: LocalDataKey<T>) -> option<@T> {
+    key: LocalDataKey<T>) -> Option<@T> {
 
     local_get(rustrt::rust_get_task(), key)
 }
@@ -1449,7 +1449,7 @@ unsafe fn local_data_set<T: owned>(
  */
 unsafe fn local_data_modify<T: owned>(
     key: LocalDataKey<T>,
-    modify_fn: fn(option<@T>) -> option<@T>) {
+    modify_fn: fn(Option<@T>) -> Option<@T>) {
 
     local_modify(rustrt::rust_get_task(), key, modify_fn)
 }
@@ -1570,7 +1570,7 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     let b0 = task();
     let b1 = TaskBuilder({
         opts: { linked: true, supervised: true with b0.opts },
-        can_not_copy: none,
+        can_not_copy: None,
         with *b0
     });
     do b1.spawn { fail; }
@@ -1583,7 +1583,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     let b0 = task();
     let b1 = TaskBuilder({
         opts: { linked: true, supervised: true with b0.opts },
-        can_not_copy: none,
+        can_not_copy: None,
         with *b0
     });
     do b1.spawn { loop { task::yield(); } }
@@ -1670,7 +1670,7 @@ fn test_spawn_raw_notify() {
     let notify_ch = comm::chan(notify_po);
 
     let opts = {
-        notify_chan: some(notify_ch)
+        notify_chan: Some(notify_ch)
         with default_task_opts()
     };
     do spawn_raw(opts) {
@@ -1681,7 +1681,7 @@ fn test_spawn_raw_notify() {
 
     let opts = {
         linked: false,
-        notify_chan: some(notify_ch)
+        notify_chan: Some(notify_ch)
         with default_task_opts()
     };
     do spawn_raw(opts) {
@@ -1720,12 +1720,12 @@ fn test_add_wrapper() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_future_result() {
-    let mut result = none;
-    do task().future_result(|+r| { result = some(r); }).spawn { }
+    let mut result = None;
+    do task().future_result(|+r| { result = Some(r); }).spawn { }
     assert future::get(&option::unwrap(result)) == Success;
 
-    result = none;
-    do task().future_result(|+r| { result = some(r); }).unlinked().spawn {
+    result = None;
+    do task().future_result(|+r| { result = Some(r); }).unlinked().spawn {
         fail;
     }
     assert future::get(&option::unwrap(result)) == Failure;
@@ -2090,7 +2090,7 @@ fn test_tls_multitask() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_set(my_key, @~"parent data");
     do task::spawn unsafe {
-        assert local_data_get(my_key) == none; // TLS shouldn't carry over.
+        assert local_data_get(my_key) == None; // TLS shouldn't carry over.
         local_data_set(my_key, @~"child data");
         assert *(local_data_get(my_key).get()) == ~"child data";
         // should be cleaned up for us
@@ -2115,7 +2115,7 @@ fn test_tls_pop() unsafe {
     local_data_set(my_key, @~"weasel");
     assert *(local_data_pop(my_key).get()) == ~"weasel";
     // Pop must remove the data from the map.
-    assert local_data_pop(my_key) == none;
+    assert local_data_pop(my_key) == None;
 }
 
 #[test]
@@ -2123,15 +2123,15 @@ fn test_tls_modify() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_modify(my_key, |data| {
         match data {
-            some(@val) => fail ~"unwelcome value: " + val,
-            none       => some(@~"first data")
+            Some(@val) => fail ~"unwelcome value: " + val,
+            None       => Some(@~"first data")
         }
     });
     local_data_modify(my_key, |data| {
         match data {
-            some(@~"first data") => some(@~"next data"),
-            some(@val)           => fail ~"wrong value: " + val,
-            none                 => fail ~"missing value"
+            Some(@~"first data") => Some(@~"next data"),
+            Some(@val)           => fail ~"wrong value: " + val,
+            None                 => fail ~"missing value"
         }
     });
     assert *(local_data_pop(my_key).get()) == ~"next data";

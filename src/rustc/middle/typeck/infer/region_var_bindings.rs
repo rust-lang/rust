@@ -561,8 +561,8 @@ impl RegionVarBindings {
 
         let vars = TwoRegions { a: a, b: b };
         match combines.find(vars) {
-          some(c) => ok(ty::re_var(c)),
-          none => {
+          Some(c) => ok(ty::re_var(c)),
+          None => {
             let c = self.new_region_var(span);
             combines.insert(vars, c);
             if self.in_snapshot() {
@@ -619,7 +619,7 @@ priv impl RegionVarBindings {
               // if the free region's scope `f_id` is bigger than
               // the scope region `s_id`, then the LUB is the free
               // region itself:
-              some(r_id) if r_id == f_id => f,
+              Some(r_id) if r_id == f_id => f,
 
               // otherwise, we don't know what the free region is,
               // so we must conservatively say the LUB is static:
@@ -633,7 +633,7 @@ priv impl RegionVarBindings {
             // block.
             let rm = self.tcx.region_map;
             match region::nearest_common_ancestor(rm, a_id, b_id) {
-              some(r_id) => ty::re_scope(r_id),
+              Some(r_id) => ty::re_scope(r_id),
               _ => ty::re_static
             }
           }
@@ -674,7 +674,7 @@ priv impl RegionVarBindings {
             // big the free region is precisely, the GLB is undefined.
             let rm = self.tcx.region_map;
             match region::nearest_common_ancestor(rm, f_id, s_id) {
-              some(r_id) if r_id == f_id => ok(s),
+              Some(r_id) if r_id == f_id => ok(s),
               _ => err(ty::terr_regions_no_overlap(b, a))
             }
           }
@@ -691,8 +691,8 @@ priv impl RegionVarBindings {
                 // it.  Otherwise fail.
                 let rm = self.tcx.region_map;
                 match region::nearest_common_ancestor(rm, a_id, b_id) {
-                  some(r_id) if a_id == r_id => ok(ty::re_scope(b_id)),
-                  some(r_id) if b_id == r_id => ok(ty::re_scope(a_id)),
+                  Some(r_id) if a_id == r_id => ok(ty::re_scope(b_id)),
+                  Some(r_id) if b_id == r_id => ok(ty::re_scope(a_id)),
                   _ => err(ty::terr_regions_no_overlap(b, a))
                 }
             }

@@ -24,10 +24,10 @@ impl infer_ctxt {
 
         let vid_u = vid.to_uint();
         match vb.vals.find(vid_u) {
-          none => {
+          None => {
             self.tcx.sess.bug(fmt!("failed lookup of vid `%u`", vid_u));
           }
-          some(var_val) => {
+          Some(var_val) => {
             match var_val {
               redirect(vid) => {
                 let node = self.get(vb, vid);
@@ -69,12 +69,12 @@ fn merge_bnd<C: combine>(
     let _r = indenter();
 
     match (a, b) {
-      (none, none) => ok(none),
-      (some(_), none) => ok(a),
-      (none, some(_)) => ok(b),
-      (some(v_a), some(v_b)) => {
+      (None, None) => ok(None),
+      (Some(_), None) => ok(a),
+      (None, Some(_)) => ok(b),
+      (Some(v_a), Some(v_b)) => {
         do merge_op(v_a, v_b).chain |v| {
-            ok(some(v))
+            ok(Some(v))
         }
       }
     }
@@ -195,7 +195,7 @@ fn var_sub_var<C: combine>(self: &C,
     // If both A's UB and B's LB have already been bound to types,
     // see if we can make those types subtypes.
     match (a_bounds.ub, b_bounds.lb) {
-      (some(a_ub), some(b_lb)) => {
+      (Some(a_ub), Some(b_lb)) => {
         let r = self.infcx().try(|| self.sub().tys(a_ub, b_lb));
         match r {
           ok(_ty) => return result::ok(()),
@@ -251,7 +251,7 @@ fn var_sub_t<C: combine>(self: &C, a_id: ty::tv_vid, b: ty::t) -> ures {
            a_id.to_str(),
            a_bounds.to_str(self.infcx()),
            b.to_str(self.infcx()));
-    let b_bounds = {lb: none, ub: some(b)};
+    let b_bounds = {lb: None, ub: Some(b)};
     set_var_to_merged_bounds(self, a_id, a_bounds, b_bounds, nde_a.rank)
 }
 
@@ -259,7 +259,7 @@ fn var_sub_t<C: combine>(self: &C, a_id: ty::tv_vid, b: ty::t) -> ures {
 fn t_sub_var<C: combine>(self: &C, a: ty::t, b_id: ty::tv_vid) -> ures {
 
     let vb = &self.infcx().ty_var_bindings;
-    let a_bounds = {lb: some(a), ub: none};
+    let a_bounds = {lb: Some(a), ub: None};
     let nde_b = self.infcx().get(vb, b_id);
     let b_id = nde_b.root;
     let b_bounds = nde_b.possible_types;
@@ -277,12 +277,12 @@ fn bnds<C: combine>(
     debug!("bnds(%s <: %s)", a.to_str(self.infcx()), b.to_str(self.infcx()));
     do indent {
         match (a, b) {
-          (none, none) |
-          (some(_), none) |
-          (none, some(_)) => {
+          (None, None) |
+          (Some(_), None) |
+          (None, Some(_)) => {
             uok()
           }
-          (some(t_a), some(t_b)) => {
+          (Some(t_a), Some(t_b)) => {
             self.sub().tys(t_a, t_b).to_ures()
           }
         }

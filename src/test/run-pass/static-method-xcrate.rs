@@ -7,6 +7,6 @@ import readMaybeRenamed = static_methods_crate::readMaybe;
 
 fn main() {
     assert read(~"5") == 5;
-    assert readMaybeRenamed(~"false") == some(false);
-    assert readMaybeRenamed(~"foo") == none::<bool>;
+    assert readMaybeRenamed(~"false") == Some(false);
+    assert readMaybeRenamed(~"foo") == None::<bool>;
 }
