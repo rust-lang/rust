@@ -8,22 +8,22 @@ import syntax::print::pprust::{expr_to_str};
 fn replace_bound_regions_in_fn_ty(
     tcx: ty::ctxt,
     isr: isr_alist,
-    self_info: option<self_info>,
+    self_info: Option<self_info>,
     fn_ty: &ty::fn_ty,
     mapf: fn(ty::bound_region) -> ty::region) ->
-    {isr: isr_alist, self_info: option<self_info>, fn_ty: ty::fn_ty} {
+    {isr: isr_alist, self_info: Option<self_info>, fn_ty: ty::fn_ty} {
 
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
     let (self_ty, rebuild_self_info) = match self_info {
-      some(s) => (some(s.self_ty), |t| some({self_ty: t with s})),
-      none => (none, |_t| none)
+      Some(s) => (Some(s.self_ty), |t| Some({self_ty: t with s})),
+      None => (None, |_t| None)
     };
 
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
 
     match self_info {
-      some({explicit_self: {node: ast::sty_region(m), _}, _}) => {
+      Some({explicit_self: {node: ast::sty_region(m), _}, _}) => {
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
                              { ty: ty::mk_self(tcx), mutbl: m });
@@ -59,9 +59,9 @@ fn replace_bound_regions_in_fn_ty(
 
 
     // Glue updated self_ty back together with its original def_id.
-    let new_self_info: option<self_info> = match t_self {
-      none    => none,
-      some(t) => rebuild_self_info(t)
+    let new_self_info: Option<self_info> = match t_self {
+      None    => None,
+      Some(t) => rebuild_self_info(t)
     };
 
     return {isr: isr,
@@ -102,8 +102,8 @@ fn replace_bound_regions_in_fn_ty(
               }
               ty::re_bound(br) => {
                 match isr.find(br) {
-                  some(_) => isr,
-                  none => @cons((br, to_r(br)), isr)
+                  Some(_) => isr,
+                  None => @cons((br, to_r(br)), isr)
                 }
               }
             }
@@ -147,12 +147,12 @@ fn replace_bound_regions_in_fn_ty(
                 match isr.find(br) {
                   // In most cases, all named, bound regions will be
                   // mapped to some free region.
-                  some(fr) => fr,
+                  Some(fr) => fr,
 
                   // But in the case of a fn() type, there may be
                   // named regions within that remain bound:
-                  none if in_fn => r,
-                  none => {
+                  None if in_fn => r,
+                  None => {
                     tcx.sess.bug(
                         fmt!("Bound region not found in \
                               in_scope_regions list: %s",

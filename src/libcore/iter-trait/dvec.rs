@@ -10,6 +10,6 @@ pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
     unsafe { self.swap(|v| { vec::each(v, f); v }) }
 }
 
-pure fn SIZE_HINT<A>(self: IMPL_T<A>) -> option<uint> {
-    some(self.len())
+pure fn SIZE_HINT<A>(self: IMPL_T<A>) -> Option<uint> {
+    Some(self.len())
 }

@@ -30,7 +30,7 @@ type candidate = {
 
 fn transform_self_type_for_method
     (tcx: ty::ctxt,
-     self_region: option<ty::region>,
+     self_region: Option<ty::region>,
      impl_ty: ty::t,
      self_type: ast::self_ty_)
                                -> ty::t {
@@ -105,7 +105,7 @@ struct lookup {
     }
 
     // Entrypoint:
-    fn method() -> option<method_map_entry> {
+    fn method() -> Option<method_map_entry> {
         debug!("method lookup(m_name=%s, self_ty=%s, %?)",
                self.fcx.tcx().sess.str_of(self.m_name),
                self.fcx.infcx.ty_to_str(self.self_ty),
@@ -118,10 +118,10 @@ struct lookup {
         match get_base_type_def_id(self.fcx.infcx,
                                  self.self_expr.span,
                                  self.self_ty) {
-          none => {
-            optional_inherent_methods = none;
+          None => {
+            optional_inherent_methods = None;
           }
-          some(base_type_def_id) => {
+          Some(base_type_def_id) => {
             debug!("(checking method) found base type");
             optional_inherent_methods =
                 self.fcx.ccx.coherence_info.inherent_methods.find
@@ -181,8 +181,8 @@ struct lookup {
 
             // check whether we can autoderef and if so loop around again.
             match ty::deref(self.tcx(), self.self_ty, false) {
-              none => break,
-              some(mt) => {
+              None => break,
+              Some(mt) => {
                 self.self_ty = mt.ty;
                 self.derefs += 1u;
               }
@@ -192,7 +192,7 @@ struct lookup {
         if self.candidates.len() == 0u {
             debug!("(checking method) couldn't find any candidate methods; \
                     returning none");
-            return none;
+            return None;
         }
 
         if self.candidates.len() > 1u {
@@ -215,7 +215,7 @@ struct lookup {
             }
         }
 
-        some(self.write_mty_from_candidate(self.candidates[0u]))
+        Some(self.write_mty_from_candidate(self.candidates[0u]))
     }
 
     fn tcx() -> ty::ctxt { self.fcx.ccx.tcx }
@@ -272,8 +272,8 @@ struct lookup {
                 ~"unexpected `none` for self_impl_def_id");
 
             let substs = {
-                self_r: none,
-                self_ty: none,
+                self_r: None,
+                self_ty: None,
                 tps: ~[],
             };
 
@@ -307,12 +307,12 @@ struct lookup {
 
             let trt_methods = ty::trait_methods(tcx, trait_id);
             match vec::position(*trt_methods, |m| m.ident == self.m_name) {
-              none => {
+              None => {
                 /* check next bound */
                 trait_bnd_idx += 1u;
               }
 
-              some(pos) => {
+              Some(pos) => {
                 // Replace any appearance of `self` with the type of the
                 // generic parameter itself.  Note that this is the only case
                 // where this replacement is necessary: in all other cases, we
@@ -320,7 +320,7 @@ struct lookup {
                 // (where the self type is not permitted), or from a trait
                 // type (in which case methods that refer to self are not
                 // permitted).
-                let substs = {self_ty: some(self.self_ty)
+                let substs = {self_ty: Some(self.self_ty)
                               with bound_substs};
 
                 self.add_candidates_from_m(
@@ -367,7 +367,7 @@ struct lookup {
             // Note: although it is illegal to invoke a method that uses self
             // through a trait instance, we use a dummy subst here so that we
             // can soldier on with the compilation.
-            let substs = {self_ty: some(self.self_ty)
+            let substs = {self_ty: Some(self.self_ty)
                           with trait_substs};
 
             self.add_candidates_from_m(
@@ -527,16 +527,16 @@ struct lookup {
         // If we don't have a self region but have an region pointer
         // explicit self, we need to make up a new region.
         let self_r = match self_substs.self_r {
-          none => {
+          None => {
             match m.self_ty {
               ast::sty_region(_) =>
-                  some(self.fcx.infcx.next_region_var(
+                  Some(self.fcx.infcx.next_region_var(
                       self.self_expr.span,
                       self.self_expr.id)),
-              _ => none
+              _ => None
             }
           }
-          some(_) => self_substs.self_r
+          Some(_) => self_substs.self_r
         };
         let self_substs = {self_r: self_r with self_substs};
 
@@ -571,15 +571,15 @@ struct lookup {
     }
 
     fn add_inherent_and_extension_candidates(optional_inherent_methods:
-                                                option<@DVec<@Impl>>,
+                                                Option<@DVec<@Impl>>,
                                              mode: method_lookup_mode) {
 
         // Add inherent methods.
         match optional_inherent_methods {
-          none => {
+          None => {
             // Continue.
           }
-          some(inherent_methods) => {
+          Some(inherent_methods) => {
             debug!("(adding inherent and extension candidates) adding \
                     inherent candidates");
             for inherent_methods.each |implementation| {
@@ -596,10 +596,10 @@ struct lookup {
 
         // Add trait methods.
         match self.fcx.ccx.trait_map.find(self.expr.id) {
-          none => {
+          None => {
             // Should only happen for placement new right now.
           }
-          some(trait_ids) => {
+          Some(trait_ids) => {
             for (*trait_ids).each |trait_id| {
                 debug!("(adding inherent and extension candidates) \
                         trying trait: %s",
@@ -607,10 +607,10 @@ struct lookup {
 
                 let coherence_info = self.fcx.ccx.coherence_info;
                 match coherence_info.extension_methods.find(trait_id) {
-                  none => {
+                  None => {
                     // Do nothing.
                   }
-                  some(extension_methods) => {
+                  Some(extension_methods) => {
                     for extension_methods.each |implementation| {
                         debug!("(adding inherent and extension \
                                 candidates) adding impl %s",

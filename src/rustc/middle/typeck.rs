@@ -188,7 +188,7 @@ fn write_substs_to_tcx(tcx: ty::ctxt,
 
 fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     match tcx.def_map.find(id) {
-      some(x) => x,
+      Some(x) => x,
       _ => {
         tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
       }
@@ -200,12 +200,12 @@ fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id) -> ast::def {
 }
 
 fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
-    {bounds: @~[], region_param: none, ty: t}
+    {bounds: @~[], region_param: None, ty: t}
 }
 
 fn require_same_types(
     tcx: ty::ctxt,
-    maybe_infcx: option<infer::infer_ctxt>,
+    maybe_infcx: Option<infer::infer_ctxt>,
     t1_is_expected: bool,
     span: span,
     t1: ty::t,
@@ -214,11 +214,11 @@ fn require_same_types(
 
     let l_tcx, l_infcx;
     match maybe_infcx {
-      none => {
+      None => {
         l_tcx = tcx;
         l_infcx = infer::new_infer_ctxt(tcx);
       }
-      some(i) => {
+      Some(i) => {
         l_tcx = i.tcx;
         l_infcx = i;
       }
@@ -257,7 +257,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
       ty::ty_fn({purity: ast::impure_fn, proto: ty::proto_bare, bounds,
                  inputs, output, ret_style: ast::return_val}) => {
         match tcx.items.find(main_id) {
-         some(ast_map::node_item(it,_)) => {
+         Some(ast_map::node_item(it,_)) => {
              match it.node {
                ast::item_fn(_,_,ps,_) if vec::is_not_empty(ps) => {
                   tcx.sess.span_err(main_span,
@@ -293,8 +293,8 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
     let tcx = ccx.tcx;
     if !tcx.sess.building_library {
         match copy tcx.sess.main_fn {
-          some((id, sp)) => check_main_fn_ty(ccx, id, sp),
-          none => tcx.sess.err(~"main function not found")
+          Some((id, sp)) => check_main_fn_ty(ccx, id, sp),
+          None => tcx.sess.err(~"main function not found")
         }
     }
 }

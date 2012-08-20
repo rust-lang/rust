@@ -7,8 +7,8 @@
 use std;
 
 import option = option;
-import option::some;
-import option::none;
+import option::Some;
+import option::None;
 import str;
 import vec;
 import std::map;
@@ -47,8 +47,8 @@ mod map_reduce {
                 val: ~str) {
             let mut c;
             match im.find(key) {
-              some(_c) => { c = _c }
-              none => {
+              Some(_c) => { c = _c }
+              None => {
                 let p = port();
                 error!("sending find_reducer");
                 send(ctrl, find_reducer(str::to_bytes(key), chan(p)));
@@ -84,8 +84,8 @@ mod map_reduce {
               find_reducer(k, cc) => {
                 let mut c;
                 match reducers.find(str::from_bytes(k)) {
-                  some(_c) => { c = _c; }
-                  none => { c = 0; }
+                  Some(_c) => { c = _c; }
+                  None => { c = 0; }
                 }
                 send(cc, c);
               }

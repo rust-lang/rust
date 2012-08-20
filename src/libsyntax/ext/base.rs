@@ -21,7 +21,7 @@ import std::map::str_hash;
 type syntax_expander_ =
     fn@(ext_ctxt, span, ast::mac_arg, ast::mac_body) -> @ast::expr;
 // second argument is the origin of the macro, if user-defined
-type syntax_expander = {expander: syntax_expander_, span: option<span>};
+type syntax_expander = {expander: syntax_expander_, span: Option<span>};
 
 type macro_def = {name: ~str, ext: syntax_extension};
 
@@ -32,12 +32,12 @@ type macro_definer =
 type item_decorator =
     fn@(ext_ctxt, span, ast::meta_item, ~[@ast::item]) -> ~[@ast::item];
 
-type syntax_expander_tt = {expander: syntax_expander_tt_, span: option<span>};
+type syntax_expander_tt = {expander: syntax_expander_tt_, span: Option<span>};
 type syntax_expander_tt_ = fn@(ext_ctxt, span, ~[ast::token_tree])
     -> mac_result;
 
 type syntax_expander_tt_item
-    = {expander: syntax_expander_tt_item_, span: option<span>};
+    = {expander: syntax_expander_tt_item_, span: Option<span>};
 type syntax_expander_tt_item_
     = fn@(ext_ctxt, span, ast::ident, ~[ast::token_tree]) -> mac_result;
 
@@ -67,12 +67,12 @@ enum syntax_extension {
 // AST nodes into full ASTs
 fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
-        {normal({expander: f, span: none})}
+        {normal({expander: f, span: None})}
     fn builtin_expr_tt(f: syntax_expander_tt_) -> syntax_extension {
-        expr_tt({expander: f, span: none})
+        expr_tt({expander: f, span: None})
     }
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
-        item_tt({expander: f, span: none})
+        item_tt({expander: f, span: None})
     }
     let syntax_expanders = str_hash::<syntax_extension>();
     syntax_expanders.insert(~"macro",
@@ -166,7 +166,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
             match ei {
               expanded_from({call_site: cs, callie: callie}) => {
                 self.backtrace =
-                    some(@expanded_from({
+                    Some(@expanded_from({
                         call_site: {lo: cs.lo, hi: cs.hi,
                                     expn_info: self.backtrace},
                         callie: callie}));
@@ -175,7 +175,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
         }
         fn bt_pop() {
             match self.backtrace {
-              some(@expanded_from({call_site: {expn_info: prev, _}, _})) => {
+              Some(@expanded_from({call_site: {expn_info: prev, _}, _})) => {
                 self.backtrace = prev
               }
               _ => self.bug(~"tried to pop without a push")
@@ -225,7 +225,7 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
     let imp : ctxt_repr = {
         parse_sess: parse_sess,
         cfg: cfg,
-        mut backtrace: none,
+        mut backtrace: None,
         mut mod_path: ~[],
         mut trace_mac: false
     };
@@ -255,22 +255,22 @@ fn expr_to_ident(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ast::ident {
 
 fn get_mac_args_no_max(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                        min: uint, name: ~str) -> ~[@ast::expr] {
-    return get_mac_args(cx, sp, arg, min, none, name);
+    return get_mac_args(cx, sp, arg, min, None, name);
 }
 
 fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
-                min: uint, max: option<uint>, name: ~str) -> ~[@ast::expr] {
+                min: uint, max: Option<uint>, name: ~str) -> ~[@ast::expr] {
     match arg {
-      some(expr) => match expr.node {
+      Some(expr) => match expr.node {
         ast::expr_vec(elts, _) => {
             let elts_len = vec::len(elts);
               match max {
-                some(max) if ! (min <= elts_len && elts_len <= max) => {
+                Some(max) if ! (min <= elts_len && elts_len <= max) => {
                   cx.span_fatal(sp,
                                 fmt!("#%s takes between %u and %u arguments.",
                                      name, min, max));
                 }
-                none if ! (min <= elts_len) => {
+                None if ! (min <= elts_len) => {
                   cx.span_fatal(sp, fmt!("#%s needs at least %u arguments.",
                                          name, min));
                 }
@@ -281,7 +281,7 @@ fn get_mac_args(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
             cx.span_fatal(sp, fmt!("#%s: malformed invocation", name))
         }
       },
-      none => cx.span_fatal(sp, fmt!("#%s: missing arguments", name))
+      None => cx.span_fatal(sp, fmt!("#%s: missing arguments", name))
     }
 }
 
@@ -289,8 +289,8 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
     -> ast::mac_body_
 {
     match (args) {
-      some(body) => body,
-      none => cx.span_fatal(sp, ~"missing macro body")
+      Some(body) => body,
+      None => cx.span_fatal(sp, ~"missing macro body")
     }
 }
 
@@ -306,16 +306,16 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
 
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
-        {node: m, span: {lo: 0u, hi: 0u, expn_info: none}}
+        {node: m, span: {lo: 0u, hi: 0u, expn_info: None}}
     }
     let arg_nm = cx.parse_sess().interner.gensym(@~"arg");
 
     let argument_gram = ~[ms(match_seq(~[
         ms(match_nonterminal(arg_nm, parse::token::special_idents::expr, 0u))
-    ], some(parse::token::COMMA), true, 0u, 1u))];
+    ], Some(parse::token::COMMA), true, 0u, 1u))];
 
     let arg_reader = new_tt_reader(cx.parse_sess().span_diagnostic,
-                                   cx.parse_sess().interner, none, arg);
+                                   cx.parse_sess().interner, None, arg);
     let args =
         match parse_or_else(cx.parse_sess(), cx.cfg(), arg_reader as reader,
                           argument_gram).get(arg_nm) {
@@ -331,7 +331,7 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
           _ => fail ~"badly-structured parse result"
         };
 
-    return some(@{id: parse::next_node_id(cx.parse_sess()),
+    return Some(@{id: parse::next_node_id(cx.parse_sess()),
                callee_id: parse::next_node_id(cx.parse_sess()),
                node: ast::expr_vec(args, ast::m_imm), span: sp});
 }

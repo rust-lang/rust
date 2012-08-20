@@ -116,8 +116,8 @@ fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
     v.visit_pat(loc.node.pat, e, v);
     v.visit_ty(loc.node.ty, e, v);
     match loc.node.init {
-      none => (),
-      some(i) => v.visit_expr(i.expr, e, v)
+      None => (),
+      Some(i) => v.visit_expr(i.expr, e, v)
     }
 }
 
@@ -377,8 +377,8 @@ fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     }
 }
 
-fn visit_expr_opt<E>(eo: option<@expr>, e: E, v: vt<E>) {
-    match eo { none => (), some(ex) => v.visit_expr(ex, e, v) }
+fn visit_expr_opt<E>(eo: Option<@expr>, e: E, v: vt<E>) {
+    match eo { None => (), Some(ex) => v.visit_expr(ex, e, v) }
 }
 
 fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {

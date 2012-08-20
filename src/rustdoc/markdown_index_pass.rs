@@ -34,7 +34,7 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::moddoc_({
-        index: some(build_mod_index(doc, fold.ctxt))
+        index: Some(build_mod_index(doc, fold.ctxt))
         with *doc
     })
 }
@@ -47,7 +47,7 @@ fn fold_nmod(
     let doc = fold::default_any_fold_nmod(fold, doc);
 
     {
-        index: some(build_nmod_index(doc, fold.ctxt))
+        index: Some(build_nmod_index(doc, fold.ctxt))
         with doc
     }
 }
@@ -155,13 +155,13 @@ fn should_index_mod_contents() {
     assert option::get(doc.cratemod().index).entries[0] == {
         kind: ~"Module",
         name: ~"a",
-        brief: none,
+        brief: None,
         link: ~"#module-a"
     };
     assert option::get(doc.cratemod().index).entries[1] == {
         kind: ~"Function",
         name: ~"b",
-        brief: none,
+        brief: None,
         link: ~"#function-b"
     };
 }
@@ -175,13 +175,13 @@ fn should_index_mod_contents_multi_page() {
     assert option::get(doc.cratemod().index).entries[0] == {
         kind: ~"Module",
         name: ~"a",
-        brief: none,
+        brief: None,
         link: ~"a.html"
     };
     assert option::get(doc.cratemod().index).entries[1] == {
         kind: ~"Function",
         name: ~"b",
-        brief: none,
+        brief: None,
         link: ~"#function-b"
     };
 }
@@ -195,7 +195,7 @@ fn should_index_foreign_mod_pages() {
     assert option::get(doc.cratemod().index).entries[0] == {
         kind: ~"Foreign module",
         name: ~"a",
-        brief: none,
+        brief: None,
         link: ~"a.html"
     };
 }
@@ -207,7 +207,7 @@ fn should_add_brief_desc_to_index() {
         ~"#[doc = \"test\"] mod a { }"
     );
     assert option::get(doc.cratemod().index).entries[0].brief
-        == some(~"test");
+        == Some(~"test");
 }
 
 #[test]
@@ -219,7 +219,7 @@ fn should_index_foreign_mod_contents() {
     assert option::get(doc.cratemod().nmods()[0].index).entries[0] == {
         kind: ~"Function",
         name: ~"b",
-        brief: none,
+        brief: None,
         link: ~"#function-b"
     };
 }

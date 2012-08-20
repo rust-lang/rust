@@ -349,7 +349,7 @@ fn mk_ident_interner() -> ident_interner {
                                            |x,y| str::eq(*x, *y), init_vec);
 
     /* having multiple interners will just confuse the serializer */
-    unsafe{ assert task::local_data_get(interner_key!()) == none };
+    unsafe{ assert task::local_data_get(interner_key!()) == None };
     unsafe{ task::local_data_set(interner_key!(), @rv) };
     rv
 }

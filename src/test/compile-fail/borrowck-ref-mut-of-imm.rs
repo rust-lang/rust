@@ -1,10 +1,10 @@
-fn destructure(x: option<int>) -> int {
+fn destructure(x: Option<int>) -> int {
     match x {
-      none => 0,
-      some(ref mut v) => *v //~ ERROR illegal borrow
+      None => 0,
+      Some(ref mut v) => *v //~ ERROR illegal borrow
     }
 }
 
 fn main() {
-    assert destructure(some(22)) == 22;
+    assert destructure(Some(22)) == 22;
 }

@@ -295,10 +295,10 @@ fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
 
 fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
     match map.find(id) {
-      none => {
+      None => {
         fmt!("unknown node (id=%d)", id)
       }
-      some(node_item(item, path)) => {
+      Some(node_item(item, path)) => {
         let path_str = path_ident_to_str(*path, item.ident, itr);
         let item_str = match item.node {
           item_const(*) => ~"const",
@@ -314,48 +314,48 @@ fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
         };
         fmt!("%s %s (id=%?)", item_str, path_str, id)
       }
-      some(node_foreign_item(item, abi, path)) => {
+      Some(node_foreign_item(item, abi, path)) => {
         fmt!("foreign item %s with abi %? (id=%?)",
              path_ident_to_str(*path, item.ident, itr), abi, id)
       }
-      some(node_method(m, impl_did, path)) => {
+      Some(node_method(m, impl_did, path)) => {
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      some(node_trait_method(tm, impl_did, path)) => {
+      Some(node_trait_method(tm, impl_did, path)) => {
         let m = ast_util::trait_method_to_ty_method(*tm);
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      some(node_variant(variant, def_id, path)) => {
+      Some(node_variant(variant, def_id, path)) => {
         fmt!("variant %s in %s (id=%?)",
              *itr.get(variant.node.name), path_to_str(*path, itr), id)
       }
-      some(node_expr(expr)) => {
+      Some(node_expr(expr)) => {
         fmt!("expr %s (id=%?)", pprust::expr_to_str(expr, itr), id)
       }
-      some(node_stmt(stmt)) => {
+      Some(node_stmt(stmt)) => {
         fmt!("stmt %s (id=%?)",
              pprust::stmt_to_str(*stmt, itr), id)
       }
       // FIXMEs are as per #2410
-      some(node_export(_, path)) => {
+      Some(node_export(_, path)) => {
         fmt!("export %s (id=%?)", // add more info here
              path_to_str(*path, itr), id)
       }
-      some(node_arg(_, _)) => { // add more info here
+      Some(node_arg(_, _)) => { // add more info here
         fmt!("arg (id=%?)", id)
       }
-      some(node_local(_)) => { // add more info here
+      Some(node_local(_)) => { // add more info here
         fmt!("local (id=%?)", id)
       }
-      some(node_ctor(*)) => { // add more info here
+      Some(node_ctor(*)) => { // add more info here
         fmt!("node_ctor (id=%?)", id)
       }
-      some(node_dtor(*)) => { // add more info here
+      Some(node_dtor(*)) => { // add more info here
         fmt!("node_dtor (id=%?)", id)
       }
-      some(node_block(_)) => {
+      Some(node_block(_)) => {
         fmt!("block")
       }
     }

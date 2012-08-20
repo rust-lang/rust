@@ -74,8 +74,8 @@ mod tests {
     }
     #[test]
     fn test_replace() {
-        let mut x = some(NonCopyable());
-        let y = replace(&mut x, none);
+        let mut x = Some(NonCopyable());
+        let y = replace(&mut x, None);
         assert x.is_none();
         assert y.is_some();
     }

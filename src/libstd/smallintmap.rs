@@ -3,13 +3,13 @@
  * are O(highest integer key).
  */
 import core::option;
-import core::option::{some, none};
+import core::option::{Some, None};
 import dvec::{DVec, dvec};
 import map::map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
-type smallintmap_<T: copy> = {v: DVec<option<T>>};
+type smallintmap_<T: copy> = {v: DVec<Option<T>>};
 
 enum smallintmap<T:copy> {
     smallintmap_(@smallintmap_<T>)
@@ -28,16 +28,16 @@ fn mk<T: copy>() -> smallintmap<T> {
 #[inline(always)]
 fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
     //io::println(fmt!("%?", key));
-    self.v.grow_set_elt(key, none, some(val));
+    self.v.grow_set_elt(key, None, Some(val));
 }
 
 /**
  * Get the value for the specified key. If the key does not exist
  * in the map then returns none
  */
-pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
+pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> Option<T> {
     if key < self.v.len() { return self.v.get_elt(key); }
-    return none::<T>;
+    return None::<T>;
 }
 
 /**
@@ -49,11 +49,11 @@ pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
  */
 pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     match find(self, key) {
-      none => {
+      None => {
         error!("smallintmap::get(): key not present");
         fail;
       }
-      some(v) => return v
+      Some(v) => return v
     }
 }
 
@@ -68,7 +68,7 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
         let mut sz = 0u;
         for self.v.each |item| {
             match item {
-              some(_) => sz += 1u,
+              Some(_) => sz += 1u,
               _ => ()
             }
         }
@@ -85,7 +85,7 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
             return false;
         }
         let old = self.v.get_elt(key);
-        self.v.set_elt(key, none);
+        self.v.set_elt(key, None);
         old.is_some()
     }
     fn clear() {
@@ -98,14 +98,14 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
         contains_key(self, *key)
     }
     fn get(+key: uint) -> V { get(self, key) }
-    fn find(+key: uint) -> option<V> { find(self, key) }
+    fn find(+key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
     fn each(it: fn(+key: uint, +value: V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
-              some(elt) => if !it(idx, elt) { break },
-              none => ()
+              Some(elt) => if !it(idx, elt) { break },
+              None => ()
             }
             idx += 1u;
         }
@@ -120,8 +120,8 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
-              some(elt) => if !it(&idx, &elt) { break },
-              none => ()
+              Some(elt) => if !it(&idx, &elt) { break },
+              None => ()
             }
             idx += 1u;
         }

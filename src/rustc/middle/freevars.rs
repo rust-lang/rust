@@ -50,8 +50,8 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
               ast::expr_path(path) => {
                   let mut i = 0;
                   match def_map.find(expr.id) {
-                    none => fail ~"path not found",
-                    some(df) => {
+                    None => fail ~"path not found",
+                    Some(df) => {
                       let mut def = df;
                       while i < depth {
                         match copy def {
@@ -105,8 +105,8 @@ fn annotate_freevars(def_map: resolve3::DefMap, crate: @ast::crate) ->
 
 fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     match tcx.freevars.find(fid) {
-      none => fail ~"get_freevars: " + int::str(fid) + ~" has no freevars",
-      some(d) => return d
+      None => fail ~"get_freevars: " + int::str(fid) + ~" has no freevars",
+      Some(d) => return d
     }
 }
 fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {

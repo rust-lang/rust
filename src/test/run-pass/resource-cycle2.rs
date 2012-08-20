@@ -15,7 +15,7 @@ struct r {
 }
 
 enum t = {
-    mut next: option<@t>,
+    mut next: Option<@t>,
     r: r
 };
 
@@ -31,13 +31,13 @@ fn main() unsafe {
     let u2 = {a: 0xB, b: 0xC, c: i2p};
 
     let x1 = @t({
-        mut next: none,
+        mut next: None,
         r: r(u1)
     });
     let x2 = @t({
-        mut next: none,
+        mut next: None,
         r: r(u2)
     });
-    x1.next = some(x2);
-    x2.next = some(x1);
+    x1.next = Some(x2);
+    x2.next = Some(x1);
 }

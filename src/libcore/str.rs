@@ -362,16 +362,16 @@ fn unshift_char(&s: ~str, ch: char) { s = from_char(ch) + s; }
 /// Returns a string with leading whitespace removed
 pure fn trim_left(s: &str) -> ~str {
     match find(s, |c| !char::is_whitespace(c)) {
-      none => ~"",
-      some(first) => unsafe { unsafe::slice_bytes(s, first, len(s)) }
+      None => ~"",
+      Some(first) => unsafe { unsafe::slice_bytes(s, first, len(s)) }
     }
 }
 
 /// Returns a string with trailing whitespace removed
 pure fn trim_right(s: &str) -> ~str {
     match rfind(s, |c| !char::is_whitespace(c)) {
-      none => ~"",
-      some(last) => {
+      None => ~"",
+      Some(last) => {
         let {next, _} = char_range_at(s, last);
         unsafe { unsafe::slice_bytes(s, 0u, next) }
       }
@@ -831,7 +831,7 @@ Section: Searching
  * An `option` containing the byte index of the first matching character
  * or `none` if there is no match
  */
-pure fn find_char(s: &str, c: char) -> option<uint> {
+pure fn find_char(s: &str, c: char) -> Option<uint> {
     find_char_between(s, c, 0u, len(s))
 }
 
@@ -855,7 +855,7 @@ pure fn find_char(s: &str, c: char) -> option<uint> {
  * `start` must be less than or equal to `len(s)`. `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`.
  */
-pure fn find_char_from(s: &str, c: char, start: uint) -> option<uint> {
+pure fn find_char_from(s: &str, c: char, start: uint) -> Option<uint> {
     find_char_between(s, c, start, len(s))
 }
 
@@ -881,17 +881,17 @@ pure fn find_char_from(s: &str, c: char, start: uint) -> option<uint> {
  * as defined by `is_char_boundary`.
  */
 pure fn find_char_between(s: &str, c: char, start: uint, end: uint)
-    -> option<uint> {
+    -> Option<uint> {
     if c < 128u as char {
         assert start <= end;
         assert end <= len(s);
         let mut i = start;
         let b = c as u8;
         while i < end {
-            if s[i] == b { return some(i); }
+            if s[i] == b { return Some(i); }
             i += 1u;
         }
-        return none;
+        return None;
     } else {
         find_between(s, start, end, |x| x == c)
     }
@@ -910,7 +910,7 @@ pure fn find_char_between(s: &str, c: char, start: uint, end: uint)
  * An `option` containing the byte index of the last matching character
  * or `none` if there is no match
  */
-pure fn rfind_char(s: &str, c: char) -> option<uint> {
+pure fn rfind_char(s: &str, c: char) -> Option<uint> {
     rfind_char_between(s, c, len(s), 0u)
 }
 
@@ -934,7 +934,7 @@ pure fn rfind_char(s: &str, c: char) -> option<uint> {
  * `start` must be less than or equal to `len(s)`. `start` must be
  * the index of a character boundary, as defined by `is_char_boundary`.
  */
-pure fn rfind_char_from(s: &str, c: char, start: uint) -> option<uint> {
+pure fn rfind_char_from(s: &str, c: char, start: uint) -> Option<uint> {
     rfind_char_between(s, c, start, 0u)
 }
 
@@ -960,7 +960,7 @@ pure fn rfind_char_from(s: &str, c: char, start: uint) -> option<uint> {
  * as defined by `is_char_boundary`.
  */
 pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
-    -> option<uint> {
+    -> Option<uint> {
     if c < 128u as char {
         assert start >= end;
         assert start <= len(s);
@@ -968,9 +968,9 @@ pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
         let b = c as u8;
         while i > end {
             i -= 1u;
-            if s[i] == b { return some(i); }
+            if s[i] == b { return Some(i); }
         }
-        return none;
+        return None;
     } else {
         rfind_between(s, start, end, |x| x == c)
     }
@@ -990,7 +990,7 @@ pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
  * An `option` containing the byte index of the first matching character
  * or `none` if there is no match
  */
-pure fn find(s: &str, f: fn(char) -> bool) -> option<uint> {
+pure fn find(s: &str, f: fn(char) -> bool) -> Option<uint> {
     find_between(s, 0u, len(s), f)
 }
 
@@ -1015,7 +1015,7 @@ pure fn find(s: &str, f: fn(char) -> bool) -> option<uint> {
  * index of a character boundary, as defined by `is_char_boundary`.
  */
 pure fn find_from(s: &str, start: uint, f: fn(char)
-    -> bool) -> option<uint> {
+    -> bool) -> Option<uint> {
     find_between(s, start, len(s), f)
 }
 
@@ -1042,17 +1042,17 @@ pure fn find_from(s: &str, start: uint, f: fn(char)
  * boundary, as defined by `is_char_boundary`.
  */
 pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
-    -> option<uint> {
+    -> Option<uint> {
     assert start <= end;
     assert end <= len(s);
     assert is_char_boundary(s, start);
     let mut i = start;
     while i < end {
         let {ch, next} = char_range_at(s, i);
-        if f(ch) { return some(i); }
+        if f(ch) { return Some(i); }
         i = next;
     }
-    return none;
+    return None;
 }
 
 /**
@@ -1069,7 +1069,7 @@ pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
  * An option containing the byte index of the last matching character
  * or `none` if there is no match
  */
-pure fn rfind(s: &str, f: fn(char) -> bool) -> option<uint> {
+pure fn rfind(s: &str, f: fn(char) -> bool) -> Option<uint> {
     rfind_between(s, len(s), 0u, f)
 }
 
@@ -1094,7 +1094,7 @@ pure fn rfind(s: &str, f: fn(char) -> bool) -> option<uint> {
  * index of a character boundary, as defined by `is_char_boundary`
  */
 pure fn rfind_from(s: &str, start: uint, f: fn(char) -> bool)
-    -> option<uint> {
+    -> Option<uint> {
     rfind_between(s, start, 0u, f)
 }
 
@@ -1121,17 +1121,17 @@ pure fn rfind_from(s: &str, start: uint, f: fn(char) -> bool)
  * boundary, as defined by `is_char_boundary`
  */
 pure fn rfind_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
-    -> option<uint> {
+    -> Option<uint> {
     assert start >= end;
     assert start <= len(s);
     assert is_char_boundary(s, start);
     let mut i = start;
     while i > end {
         let {ch, prev} = char_range_at_reverse(s, i);
-        if f(ch) { return some(prev); }
+        if f(ch) { return Some(prev); }
         i = prev;
     }
-    return none;
+    return None;
 }
 
 // Utility used by various searching functions
@@ -1154,7 +1154,7 @@ pure fn match_at(haystack: &a/str, needle: &b/str, at: uint) -> bool {
  * An `option` containing the byte index of the first matching substring
  * or `none` if there is no match
  */
-pure fn find_str(haystack: &a/str, needle: &b/str) -> option<uint> {
+pure fn find_str(haystack: &a/str, needle: &b/str) -> Option<uint> {
     find_str_between(haystack, needle, 0u, len(haystack))
 }
 
@@ -1178,7 +1178,7 @@ pure fn find_str(haystack: &a/str, needle: &b/str) -> option<uint> {
  * `start` must be less than or equal to `len(s)`
  */
 pure fn find_str_from(haystack: &a/str, needle: &b/str, start: uint)
-  -> option<uint> {
+  -> Option<uint> {
     find_str_between(haystack, needle, start, len(haystack))
 }
 
@@ -1204,20 +1204,20 @@ pure fn find_str_from(haystack: &a/str, needle: &b/str, start: uint)
  */
 pure fn find_str_between(haystack: &a/str, needle: &b/str, start: uint,
                          end:uint)
-  -> option<uint> {
+  -> Option<uint> {
     // See Issue #1932 for why this is a naive search
     assert end <= len(haystack);
     let needle_len = len(needle);
-    if needle_len == 0u { return some(start); }
-    if needle_len > end { return none; }
+    if needle_len == 0u { return Some(start); }
+    if needle_len > end { return None; }
 
     let mut i = start;
     let e = end - needle_len;
     while i <= e {
-        if match_at(haystack, needle, i) { return some(i); }
+        if match_at(haystack, needle, i) { return Some(i); }
         i += 1u;
     }
-    return none;
+    return None;
 }
 
 /**
@@ -2167,11 +2167,11 @@ mod tests {
 
     #[test]
     fn test_rfind_char() {
-        assert rfind_char(~"hello", 'l') == some(3u);
-        assert rfind_char(~"hello", 'o') == some(4u);
-        assert rfind_char(~"hello", 'h') == some(0u);
-        assert rfind_char(~"hello", 'z') == none;
-        assert rfind_char(~"ประเทศไทย中华Việt Nam", '华') == some(30u);
+        assert rfind_char(~"hello", 'l') == Some(3u);
+        assert rfind_char(~"hello", 'o') == Some(4u);
+        assert rfind_char(~"hello", 'h') == Some(0u);
+        assert rfind_char(~"hello", 'z') == None;
+        assert rfind_char(~"ประเทศไทย中华Việt Nam", '华') == Some(30u);
     }
 
     #[test]
@@ -2368,43 +2368,43 @@ mod tests {
     #[test]
     fn test_find_str() {
         // byte positions
-        assert find_str(~"banana", ~"apple pie") == none;
-        assert find_str(~"", ~"") == some(0u);
+        assert find_str(~"banana", ~"apple pie") == None;
+        assert find_str(~"", ~"") == Some(0u);
 
         let data = ~"ประเทศไทย中华Việt Nam";
-        assert find_str(data, ~"")     == some(0u);
-        assert find_str(data, ~"ประเ") == some( 0u);
-        assert find_str(data, ~"ะเ")   == some( 6u);
-        assert find_str(data, ~"中华") == some(27u);
-        assert find_str(data, ~"ไท华") == none;
+        assert find_str(data, ~"")     == Some(0u);
+        assert find_str(data, ~"ประเ") == Some( 0u);
+        assert find_str(data, ~"ะเ")   == Some( 6u);
+        assert find_str(data, ~"中华") == Some(27u);
+        assert find_str(data, ~"ไท华") == None;
     }
 
     #[test]
     fn test_find_str_between() {
         // byte positions
-        assert find_str_between(~"", ~"", 0u, 0u) == some(0u);
+        assert find_str_between(~"", ~"", 0u, 0u) == Some(0u);
 
         let data = ~"abcabc";
-        assert find_str_between(data, ~"ab", 0u, 6u) == some(0u);
-        assert find_str_between(data, ~"ab", 2u, 6u) == some(3u);
-        assert find_str_between(data, ~"ab", 2u, 4u) == none;
+        assert find_str_between(data, ~"ab", 0u, 6u) == Some(0u);
+        assert find_str_between(data, ~"ab", 2u, 6u) == Some(3u);
+        assert find_str_between(data, ~"ab", 2u, 4u) == None;
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
         data += data;
-        assert find_str_between(data, ~"", 0u, 43u) == some(0u);
-        assert find_str_between(data, ~"", 6u, 43u) == some(6u);
+        assert find_str_between(data, ~"", 0u, 43u) == Some(0u);
+        assert find_str_between(data, ~"", 6u, 43u) == Some(6u);
 
-        assert find_str_between(data, ~"ประ", 0u, 43u) == some( 0u);
-        assert find_str_between(data, ~"ทศไ", 0u, 43u) == some(12u);
-        assert find_str_between(data, ~"ย中", 0u, 43u) == some(24u);
-        assert find_str_between(data, ~"iệt", 0u, 43u) == some(34u);
-        assert find_str_between(data, ~"Nam", 0u, 43u) == some(40u);
+        assert find_str_between(data, ~"ประ", 0u, 43u) == Some( 0u);
+        assert find_str_between(data, ~"ทศไ", 0u, 43u) == Some(12u);
+        assert find_str_between(data, ~"ย中", 0u, 43u) == Some(24u);
+        assert find_str_between(data, ~"iệt", 0u, 43u) == Some(34u);
+        assert find_str_between(data, ~"Nam", 0u, 43u) == Some(40u);
 
-        assert find_str_between(data, ~"ประ", 43u, 86u) == some(43u);
-        assert find_str_between(data, ~"ทศไ", 43u, 86u) == some(55u);
-        assert find_str_between(data, ~"ย中", 43u, 86u) == some(67u);
-        assert find_str_between(data, ~"iệt", 43u, 86u) == some(77u);
-        assert find_str_between(data, ~"Nam", 43u, 86u) == some(83u);
+        assert find_str_between(data, ~"ประ", 43u, 86u) == Some(43u);
+        assert find_str_between(data, ~"ทศไ", 43u, 86u) == Some(55u);
+        assert find_str_between(data, ~"ย中", 43u, 86u) == Some(67u);
+        assert find_str_between(data, ~"iệt", 43u, 86u) == Some(77u);
+        assert find_str_between(data, ~"Nam", 43u, 86u) == Some(83u);
     }
 
     #[test]

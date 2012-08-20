@@ -42,13 +42,13 @@ pure fn is_true(v: bool) -> bool { v }
 pure fn is_false(v: bool) -> bool { !v }
 
 /// Parse logic value from `s`
-pure fn from_str(s: &str) -> option<bool> {
+pure fn from_str(s: &str) -> Option<bool> {
     if s == "true" {
-        some(true)
+        Some(true)
     } else if s == "false" {
-        some(false)
+        Some(false)
     } else {
-        none
+        None
     }
 }
 
@@ -70,7 +70,7 @@ pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
 #[test]
 fn test_bool_from_str() {
     do all_values |v| {
-        assert some(v) == from_str(bool::to_str(v))
+        assert Some(v) == from_str(bool::to_str(v))
     }
 }
 

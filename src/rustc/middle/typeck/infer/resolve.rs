@@ -54,7 +54,7 @@ const resolve_and_force_all_but_regions: uint =
 type resolve_state_ = {
     infcx: infer_ctxt,
     modes: uint,
-    mut err: option<fixup_err>,
+    mut err: Option<fixup_err>,
     mut v_seen: ~[tv_vid]
 };
 
@@ -65,7 +65,7 @@ enum resolve_state {
 fn resolver(infcx: infer_ctxt, modes: uint) -> resolve_state {
     resolve_state_(@{infcx: infcx,
                      modes: modes,
-                     mut err: none,
+                     mut err: None,
                      mut v_seen: ~[]})
 }
 
@@ -75,7 +75,7 @@ impl resolve_state {
     }
 
     fn resolve_type_chk(typ: ty::t) -> fres<ty::t> {
-        self.err = none;
+        self.err = None;
 
         debug!("Resolving %s (modes=%x)",
                ty_to_str(self.infcx.tcx, typ),
@@ -88,22 +88,22 @@ impl resolve_state {
         let rty = indent(|| self.resolve_type(typ) );
         assert vec::is_empty(self.v_seen);
         match self.err {
-          none => {
+          None => {
             debug!("Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
                    self.modes);
             return ok(rty);
           }
-          some(e) => return err(e)
+          Some(e) => return err(e)
         }
     }
 
     fn resolve_region_chk(orig: ty::region) -> fres<ty::region> {
-        self.err = none;
+        self.err = None;
         let resolved = indent(|| self.resolve_region(orig) );
         match self.err {
-          none => ok(resolved),
-          some(e) => err(e)
+          None => ok(resolved),
+          Some(e) => err(e)
         }
     }
 
@@ -163,7 +163,7 @@ impl resolve_state {
     fn assert_not_rvar(rid: region_vid, r: ty::region) {
         match r {
           ty::re_var(rid2) => {
-            self.err = some(region_var_bound_by_region_var(rid, rid2));
+            self.err = Some(region_var_bound_by_region_var(rid, rid2));
           }
           _ => { }
         }
@@ -171,7 +171,7 @@ impl resolve_state {
 
     fn resolve_ty_var(vid: tv_vid) -> ty::t {
         if vec::contains(self.v_seen, vid) {
-            self.err = some(cyclic_ty(vid));
+            self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
         } else {
             vec::push(self.v_seen, vid);
@@ -187,12 +187,12 @@ impl resolve_state {
             let bounds = nde.possible_types;
 
             let t1 = match bounds {
-              { ub:_, lb:some(t) } if !type_is_bot(t) => self.resolve_type(t),
-              { ub:some(t), lb:_ } => self.resolve_type(t),
-              { ub:_, lb:some(t) } => self.resolve_type(t),
-              { ub:none, lb:none } => {
+              { ub:_, lb:Some(t) } if !type_is_bot(t) => self.resolve_type(t),
+              { ub:Some(t), lb:_ } => self.resolve_type(t),
+              { ub:_, lb:Some(t) } => self.resolve_type(t),
+              { ub:None, lb:None } => {
                 if self.should(force_tvar) {
-                    self.err = some(unresolved_ty(vid));
+                    self.err = Some(unresolved_ty(vid));
                 }
                 ty::mk_var(tcx, vid)
               }
@@ -213,8 +213,8 @@ impl resolve_state {
         // If there's only one type in the set of possible types, then
         // that's the answer.
         match single_type_contained_in(self.infcx.tcx, pt) {
-          some(t) => t,
-          none => {
+          Some(t) => t,
+          None => {
             if self.should(force_ivar) {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);

@@ -1,10 +1,10 @@
 struct X { x: (); drop { error!("destructor runs"); } }
-struct Y { y: option<X>; }
+struct Y { y: Option<X>; }
 
 fn main() {
-    let x = Y { y: some(X { x: () }) };
+    let x = Y { y: Some(X { x: () }) };
     match x.y {
-        some(move _z) => { }, //~ ERROR cannot bind by-move when matching an lvalue
-        none => fail
+        Some(move _z) => { }, //~ ERROR cannot bind by-move when matching an lvalue
+        None => fail
     }
 }

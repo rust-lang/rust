@@ -3,9 +3,9 @@ use std;
 import std::arc;
 fn main() {
     let x = ~arc::rw_arc(1);
-    let mut y = none;
+    let mut y = None;
     do x.write_downgrade |write_mode| {
-        y = some(write_mode);
+        y = Some(write_mode);
     }
     // Adding this line causes a method unification failure instead
     // do (&option::unwrap(y)).write |state| { assert *state == 1; }

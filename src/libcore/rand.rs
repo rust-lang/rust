@@ -169,12 +169,12 @@ impl Rng {
         self.choose_option(values).get()
     }
 
-    /// Choose some(item) randomly, returning none if values is empty
-    fn choose_option<T:copy>(values: ~[T]) -> option<T> {
+    /// Choose Some(item) randomly, returning None if values is empty
+    fn choose_option<T:copy>(values: ~[T]) -> Option<T> {
         if values.is_empty() {
-            none
+            None
         } else {
-            some(values[self.gen_uint_range(0u, values.len())])
+            Some(values[self.gen_uint_range(0u, values.len())])
         }
     }
 
@@ -187,23 +187,23 @@ impl Rng {
     }
 
     /**
-     * Choose some(item) respecting the relative weights, returning none if
+     * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
      */
-    fn choose_weighted_option<T:copy>(v: ~[Weighted<T>]) -> option<T> {
+    fn choose_weighted_option<T:copy>(v: ~[Weighted<T>]) -> Option<T> {
         let mut total = 0u;
         for v.each |item| {
             total += item.weight;
         }
         if total == 0u {
-            return none;
+            return None;
         }
         let chosen = self.gen_uint_range(0u, total);
         let mut so_far = 0u;
         for v.each |item| {
             so_far += item.weight;
             if so_far > chosen {
-                return some(item.item);
+                return Some(item.item);
             }
         }
         unreachable();
@@ -408,8 +408,8 @@ mod tests {
     #[test]
     fn choose_option() {
         let r = rand::rng();
-        assert r.choose_option(~[]) == none::<int>;
-        assert r.choose_option(~[1, 1, 1]) == some(1);
+        assert r.choose_option(~[]) == None::<int>;
+        assert r.choose_option(~[1, 1, 1]) == Some(1);
     }
 
     #[test]
@@ -426,12 +426,12 @@ mod tests {
     fn choose_weighted_option() {
         let r = rand::rng();
         assert r.choose_weighted_option(~[{weight: 1u, item: 42}]) ==
-               some(42);
+               Some(42);
         assert r.choose_weighted_option(~[
             {weight: 0u, item: 42},
             {weight: 1u, item: 43}
-        ]) == some(43);
-        assert r.choose_weighted_option(~[]) == none::<int>;
+        ]) == Some(43);
+        assert r.choose_weighted_option(~[]) == None::<int>;
     }
 
     #[test]

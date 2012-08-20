@@ -68,7 +68,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
         ends_in_lit_int(sub)
       }
       ast::expr_fail(osub) | ast::expr_ret(osub) => match osub {
-        some(ex) => ends_in_lit_int(ex),
+        Some(ex) => ends_in_lit_int(ex),
         _ => false
       },
       _ => false

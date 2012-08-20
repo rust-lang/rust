@@ -2,7 +2,7 @@
 use std;
 import option;
 
-fn foo<T>(y: option<T>) {
+fn foo<T>(y: Option<T>) {
     let mut x: int;
     let mut rs: ~[int] = ~[];
     /* tests that x doesn't get put in the precondition for the
@@ -11,7 +11,7 @@ fn foo<T>(y: option<T>) {
     if true {
     } else {
         match y {
-          none::<T> => x = 17,
+          None::<T> => x = 17,
           _ => x = 42
         }
         rs += ~[x];
@@ -19,4 +19,4 @@ fn foo<T>(y: option<T>) {
     return;
 }
 
-fn main() { debug!("hello"); foo::<int>(some::<int>(5)); }
+fn main() { debug!("hello"); foo::<int>(Some::<int>(5)); }

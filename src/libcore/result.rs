@@ -280,12 +280,12 @@ fn map_vec<T,U:copy,V:copy>(
 }
 
 fn map_opt<T,U:copy,V:copy>(
-    o_t: option<T>, op: fn(T) -> result<V,U>) -> result<option<V>,U> {
+    o_t: Option<T>, op: fn(T) -> result<V,U>) -> result<Option<V>,U> {
 
     match o_t {
-      none => ok(none),
-      some(t) => match op(t) {
-        ok(v) => ok(some(v)),
+      None => ok(None),
+      Some(t) => match op(t) {
+        ok(v) => ok(Some(v)),
         err(e) => err(e)
       }
     }

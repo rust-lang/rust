@@ -1,6 +1,6 @@
 //! A deque. Untested as of yet. Likely buggy
 
-import option::{some, none};
+import option::{Some, None};
 import dvec::{DVec, dvec};
 
 trait t<T> {
@@ -17,7 +17,7 @@ trait t<T> {
 // FIXME (#2343) eventually, a proper datatype plus an exported impl would
 // be preferrable.
 fn create<T: copy>() -> t<T> {
-    type cell<T> = option<T>;
+    type cell<T> = Option<T>;
 
     let initial_capacity: uint = 32u; // 2^5
      /**
@@ -34,14 +34,14 @@ fn create<T: copy>() -> t<T> {
         while i < nalloc {
             if i < nelts {
                 vec::push(rv, elts[(lo + i) % nelts]);
-            } else { vec::push(rv, none); }
+            } else { vec::push(rv, None); }
             i += 1u;
         }
 
         return rv;
     }
     fn get<T: copy>(elts: DVec<cell<T>>, i: uint) -> T {
-        match elts.get_elt(i) { some(t) => t, _ => fail }
+        match elts.get_elt(i) { Some(t) => t, _ => fail }
     }
 
     type repr<T> = {mut nelts: uint,
@@ -61,7 +61,7 @@ fn create<T: copy>() -> t<T> {
                 self.lo = self.elts.len() - 1u;
                 self.hi = self.nelts;
             }
-            self.elts.set_elt(self.lo, some(t));
+            self.elts.set_elt(self.lo, Some(t));
             self.nelts += 1u;
         }
         fn add_back(t: T) {
@@ -70,7 +70,7 @@ fn create<T: copy>() -> t<T> {
                 self.lo = 0u;
                 self.hi = self.nelts;
             }
-            self.elts.set_elt(self.hi, some(t));
+            self.elts.set_elt(self.hi, Some(t));
             self.hi = (self.hi + 1u) % self.elts.len();
             self.nelts += 1u;
         }
@@ -80,7 +80,7 @@ fn create<T: copy>() -> t<T> {
          */
         fn pop_front() -> T {
             let t: T = get(self.elts, self.lo);
-            self.elts.set_elt(self.lo, none);
+            self.elts.set_elt(self.lo, None);
             self.lo = (self.lo + 1u) % self.elts.len();
             self.nelts -= 1u;
             return t;
@@ -90,7 +90,7 @@ fn create<T: copy>() -> t<T> {
                 self.hi = self.elts.len() - 1u;
             } else { self.hi -= 1u; }
             let t: T = get(self.elts, self.hi);
-            self.elts.set_elt(self.hi, none);
+            self.elts.set_elt(self.hi, None);
             self.nelts -= 1u;
             return t;
         }
@@ -109,7 +109,7 @@ fn create<T: copy>() -> t<T> {
         elts:
             dvec::from_vec(
                 vec::to_mut(
-                    vec::from_elem(initial_capacity, none)))
+                    vec::from_elem(initial_capacity, None)))
     };
     repr as t::<T>
 }

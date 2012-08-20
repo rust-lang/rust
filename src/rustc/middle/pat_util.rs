@@ -24,8 +24,8 @@ fn pat_id_map(dm: resolve3::DefMap, pat: @pat) -> pat_id_map {
 fn pat_is_variant(dm: resolve3::DefMap, pat: @pat) -> bool {
     match pat.node {
       pat_enum(_, _) => true,
-      pat_ident(_, _, none) => match dm.find(pat.id) {
-        some(def_variant(_, _)) => true,
+      pat_ident(_, _, None) => match dm.find(pat.id) {
+        Some(def_variant(_, _)) => true,
         _ => false
       },
       _ => false

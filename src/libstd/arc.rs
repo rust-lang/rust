@@ -470,7 +470,7 @@ mod tests {
         let arc = ~mutex_arc(false);
         let arc2 = ~arc.clone();
         let (c,p) = pipes::oneshot();
-        let (c,p) = (~mut some(c), ~mut some(p));
+        let (c,p) = (~mut Some(c), ~mut Some(p));
         do task::spawn {
             // wait until parent gets in
             pipes::recv_one(option::swap_unwrap(p));

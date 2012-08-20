@@ -22,11 +22,11 @@ import option::is_some;
 
 import ty_ctxt = middle::ty::ctxt;
 
-type nominal_id = @{did: ast::def_id, parent_id: option<ast::def_id>,
+type nominal_id = @{did: ast::def_id, parent_id: Option<ast::def_id>,
                     tps: ~[ty::t]};
 
 fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
-                 parent_id: option<ast::def_id>,
+                 parent_id: Option<ast::def_id>,
                  tps: ~[ty::t]) -> nominal_id {
     let tps_norm = tps.map(|t| ty::normalize_ty(tcx, t));
     @{did: did, parent_id: parent_id, tps: tps_norm}
@@ -237,15 +237,15 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
           tk_enum => ~[s_variant_enum_t(ccx.tcx)],
           tk_newtype | tk_complex => {
             let mut s = ~[shape_enum], id;
-            let nom_id = mk_nominal_id(ccx.tcx, did, none, substs.tps);
+            let nom_id = mk_nominal_id(ccx.tcx, did, None, substs.tps);
             match ccx.shape_cx.tag_id_to_index.find(nom_id) {
-              none => {
+              None => {
                 id = ccx.shape_cx.next_tag_id;
                 ccx.shape_cx.tag_id_to_index.insert(nom_id, id);
                 ccx.shape_cx.tag_order.push({did: did, substs: substs});
                 ccx.shape_cx.next_tag_id += 1u16;
               }
-              some(existing_id) => id = existing_id,
+              Some(existing_id) => id = existing_id,
             }
             add_u16(s, id as u16);
 
@@ -333,7 +333,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
           }
         else { ~[shape_struct] }, sub = ~[];
         do option::iter(m_dtor_did) |dtor_did| {
-          let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
+          let ri = @{did: dtor_did, parent_id: Some(did), tps: tps};
           let id = ccx.shape_cx.resources.intern(ri);
           add_u16(s, id as u16);
         };

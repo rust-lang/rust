@@ -1,6 +1,6 @@
 struct kitten {
-    let cat: option<cat>;
-    new(cat: option<cat>) {
+    let cat: Option<cat>;
+    new(cat: Option<cat>) {
        self.cat = cat;
     }
 }

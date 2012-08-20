@@ -486,8 +486,8 @@ fn eq(value0: json, value1: json) -> bool {
               let mut equal = true;
               for d0.each |k, v0| {
                   match d1.find(k) {
-                    some(v1) => if !eq(v0, v1) { equal = false },
-                    none => equal = false
+                    Some(v1) => if !eq(v0, v1) { equal = false },
+                    None => equal = false
                   }
               };
               equal
@@ -613,11 +613,11 @@ impl <A: to_json copy> hashmap<~str, A>: to_json {
     }
 }
 
-impl <A: to_json> option<A>: to_json {
+impl <A: to_json> Option<A>: to_json {
     fn to_json() -> json {
         match self {
-          none => null,
-          some(value) => value.to_json()
+          None => null,
+          Some(value) => value.to_json()
         }
     }
 }

@@ -1,15 +1,15 @@
 // xfail-pretty -- comments are infaithfully preserved
 
 fn main() {
-    let mut x = none;
+    let mut x = None;
     match x { //~ NOTE loan of mutable local variable granted here
-      none => {
+      None => {
         // It is ok to reassign x here, because there is in
         // fact no outstanding loan of x!
-        x = some(0);
+        x = Some(0);
       }
-      some(ref _i) => {
-        x = some(1); //~ ERROR assigning to mutable local variable prohibited due to outstanding loan
+      Some(ref _i) => {
+        x = Some(1); //~ ERROR assigning to mutable local variable prohibited due to outstanding loan
       }
     }
     copy x; // just to prevent liveness warnings

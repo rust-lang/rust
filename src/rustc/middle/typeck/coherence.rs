@@ -37,7 +37,7 @@ import uint::range;
 import vec::{len, push};
 
 fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
-              -> option<t> {
+              -> Option<t> {
 
     let resolved_type;
     match resolve_type(inference_context,
@@ -67,7 +67,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
 
         ty_enum(*) | ty_trait(*) | ty_class(*) => {
             debug!("(getting base type) found base type");
-            some(resolved_type)
+            Some(resolved_type)
         }
 
         ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
@@ -77,7 +77,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) => {
             debug!("(getting base type) no base type; found %?",
                    get(original_type).struct);
-            none
+            None
         }
     }
 }
@@ -86,18 +86,18 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
 fn get_base_type_def_id(inference_context: infer_ctxt,
                         span: span,
                         original_type: t)
-                     -> option<def_id> {
+                     -> Option<def_id> {
 
     match get_base_type(inference_context, span, original_type) {
-        none => {
-            return none;
+        None => {
+            return None;
         }
-        some(base_type) => {
+        Some(base_type) => {
             match get(base_type).struct {
                 ty_enum(def_id, _) |
                 ty_class(def_id, _) |
                 ty_trait(def_id, _, _) => {
-                    return some(def_id);
+                    return Some(def_id);
                 }
                 _ => {
                     fail ~"get_base_type() returned a type that wasn't an \
@@ -185,7 +185,7 @@ struct CoherenceChecker {
                                 let mi = method_to_MethodInfo(m);
 
                                 match pmm.find(item.id) {
-                                    some(mis) => {
+                                    Some(mis) => {
                                       // If the trait already has an
                                       // entry in the
                                       // provided_methods_map, we just
@@ -200,7 +200,7 @@ struct CoherenceChecker {
                                       push(method_infos, mi);
                                       pmm.insert(item.id, method_infos);
                                     }
-                                    none => {
+                                    None => {
                                       // If the trait doesn't have an
                                       // entry yet, create one.
                                       debug!("(building provided \
@@ -277,14 +277,14 @@ struct CoherenceChecker {
             match get_base_type_def_id(self.inference_context,
                                        item.span,
                                        self_type.ty) {
-                none => {
+                None => {
                     let session = self.crate_context.tcx.sess;
                     session.span_err(item.span,
                                      ~"no base type found for inherent \
                                        implementation; implement a \
                                        trait or new type instead");
                 }
-                some(_) => {
+                Some(_) => {
                     // Nothing to do.
                 }
             }
@@ -310,10 +310,10 @@ struct CoherenceChecker {
         match get_base_type_def_id(self.inference_context,
                                    item.span,
                                    self_type.ty) {
-            none => {
+            None => {
                 // Nothing to do.
             }
-            some(base_type_def_id) => {
+            Some(base_type_def_id) => {
                 let implementation = self.create_impl_from_item(item);
                 self.add_inherent_method(base_type_def_id, implementation);
 
@@ -328,12 +328,12 @@ struct CoherenceChecker {
         match self.crate_context.coherence_info.inherent_methods
             .find(base_def_id) {
 
-            none => {
+            None => {
                 implementation_list = @dvec();
                 self.crate_context.coherence_info.inherent_methods
                     .insert(base_def_id, implementation_list);
             }
-            some(existing_implementation_list) => {
+            Some(existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
             }
         }
@@ -346,12 +346,12 @@ struct CoherenceChecker {
         match self.crate_context.coherence_info.extension_methods
                 .find(trait_id) {
 
-            none => {
+            None => {
                 implementation_list = @dvec();
                 self.crate_context.coherence_info.extension_methods
                     .insert(trait_id, implementation_list);
             }
-            some(existing_implementation_list) => {
+            Some(existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
             }
         }
@@ -412,7 +412,7 @@ struct CoherenceChecker {
 
         let substitutions = {
             self_r: self_region,
-            self_ty: none,
+            self_ty: None,
             tps: type_parameters
         };
 
@@ -462,10 +462,10 @@ struct CoherenceChecker {
                         match self.base_type_def_ids.find(
                             local_def(item.id)) {
 
-                            none => {
+                            None => {
                                 // Nothing to do.
                             }
-                            some(base_type_def_id) => {
+                            Some(base_type_def_id) => {
                                 // Check to see whether the implementation is
                                 // in the scope of its base type.
 
@@ -615,12 +615,12 @@ struct CoherenceChecker {
 
                     match self.crate_context.provided_methods_map
                         .find(trait_did.node) {
-                        none => {
+                        None => {
                             debug!("(creating impl) trait with node_id `%d` \
                                     has no provided methods", trait_did.node);
                             /* fall through */
                         }
-                        some(all_provided)
+                        Some(all_provided)
                                     => {
                             debug!("(creating impl) trait with node_id `%d` \
                                     has provided methods", trait_did.node);
@@ -674,7 +674,7 @@ struct CoherenceChecker {
     fn span_of_impl(implementation: @Impl) -> span {
         assert implementation.did.crate == local_crate;
         match self.crate_context.tcx.items.find(implementation.did.node) {
-            some(node_item(item, _)) => {
+            Some(node_item(item, _)) => {
                 return item.span;
             }
             _ => {
@@ -693,16 +693,16 @@ struct CoherenceChecker {
 
         let implementations = get_impls_for_mod(crate_store,
                                                 module_def_id,
-                                                none);
+                                                None);
         for (*implementations).each |implementation| {
             // Make sure we don't visit the same implementation
             // multiple times.
             match impls_seen.find(implementation.did) {
-                none => {
+                None => {
                     // Good. Continue.
                     impls_seen.insert(implementation.did, ());
                 }
-                some(_) => {
+                Some(_) => {
                     // Skip this one.
                     again;
                 }
@@ -720,7 +720,7 @@ struct CoherenceChecker {
                 match get_base_type_def_id(self.inference_context,
                                            dummy_sp(),
                                            self_type.ty) {
-                    none => {
+                    None => {
                         let session = self.crate_context.tcx.sess;
                         session.bug(fmt!(
                             "no base type for external impl \
@@ -728,7 +728,7 @@ struct CoherenceChecker {
                              session.str_of(implementation.ident),
                              ty_to_str(self.crate_context.tcx,self_type.ty)));
                     }
-                    some(_) => {
+                    Some(_) => {
                         // Nothing to do.
                     }
                 }
@@ -755,10 +755,10 @@ struct CoherenceChecker {
             match get_base_type_def_id(self.inference_context,
                                      dummy_sp(),
                                      self_type.ty) {
-                none => {
+                None => {
                     // Nothing to do.
                 }
-                some(base_type_def_id) => {
+                Some(base_type_def_id) => {
                     self.add_inherent_method(base_type_def_id,
                                              implementation);
 

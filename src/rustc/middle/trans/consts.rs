@@ -51,8 +51,8 @@ fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
 
 fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
     let v = match cx.const_globals.find(v as int) {
-        some(v) => v,
-        none => v
+        Some(v) => v,
+        None => v
     };
     assert llvm::LLVMIsGlobalConstant(v) == True;
     let v = llvm::LLVMGetInitializer(v);
@@ -308,7 +308,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
           C_named_struct(llty, cs)
       }
-      ast::expr_rec(fs, none) => {
+      ast::expr_rec(fs, None) => {
         C_struct(fs.map(|f| const_expr(cx, f.node.expr)))
       }
       ast::expr_vec(es, ast::m_imm) => {
@@ -344,7 +344,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       }
       ast::expr_path(_) => {
         match cx.tcx.def_map.find(e.id) {
-          some(ast::def_const(def_id)) => {
+          Some(ast::def_const(def_id)) => {
             // Don't know how to handle external consts
             assert ast_util::is_local(def_id);
             match cx.tcx.items.get(def_id.node) {

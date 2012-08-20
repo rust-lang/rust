@@ -23,42 +23,42 @@ import std::map::{hashmap, str_hash};
 import str_eq = str::eq;
 
 struct LanguageItems {
-    let mut const_trait: option<def_id>;
-    let mut copy_trait: option<def_id>;
-    let mut send_trait: option<def_id>;
-    let mut owned_trait: option<def_id>;
+    let mut const_trait: Option<def_id>;
+    let mut copy_trait: Option<def_id>;
+    let mut send_trait: Option<def_id>;
+    let mut owned_trait: Option<def_id>;
 
-    let mut add_trait: option<def_id>;
-    let mut sub_trait: option<def_id>;
-    let mut mul_trait: option<def_id>;
-    let mut div_trait: option<def_id>;
-    let mut modulo_trait: option<def_id>;
-    let mut neg_trait: option<def_id>;
-    let mut bitxor_trait: option<def_id>;
-    let mut bitand_trait: option<def_id>;
-    let mut bitor_trait: option<def_id>;
-    let mut shl_trait: option<def_id>;
-    let mut shr_trait: option<def_id>;
-    let mut index_trait: option<def_id>;
+    let mut add_trait: Option<def_id>;
+    let mut sub_trait: Option<def_id>;
+    let mut mul_trait: Option<def_id>;
+    let mut div_trait: Option<def_id>;
+    let mut modulo_trait: Option<def_id>;
+    let mut neg_trait: Option<def_id>;
+    let mut bitxor_trait: Option<def_id>;
+    let mut bitand_trait: Option<def_id>;
+    let mut bitor_trait: Option<def_id>;
+    let mut shl_trait: Option<def_id>;
+    let mut shr_trait: Option<def_id>;
+    let mut index_trait: Option<def_id>;
 
     new() {
-        self.const_trait = none;
-        self.copy_trait = none;
-        self.send_trait = none;
-        self.owned_trait = none;
+        self.const_trait = None;
+        self.copy_trait = None;
+        self.send_trait = None;
+        self.owned_trait = None;
 
-        self.add_trait = none;
-        self.sub_trait = none;
-        self.mul_trait = none;
-        self.div_trait = none;
-        self.modulo_trait = none;
-        self.neg_trait = none;
-        self.bitxor_trait = none;
-        self.bitand_trait = none;
-        self.bitor_trait = none;
-        self.shl_trait = none;
-        self.shr_trait = none;
-        self.index_trait = none;
+        self.add_trait = None;
+        self.sub_trait = None;
+        self.mul_trait = None;
+        self.div_trait = None;
+        self.modulo_trait = None;
+        self.neg_trait = None;
+        self.bitxor_trait = None;
+        self.bitand_trait = None;
+        self.bitor_trait = None;
+        self.shl_trait = None;
+        self.shr_trait = None;
+        self.index_trait = None;
     }
 }
 
@@ -68,7 +68,7 @@ struct LanguageItemCollector {
     let crate: @crate;
     let session: session;
 
-    let item_refs: hashmap<~str,&mut option<def_id>>;
+    let item_refs: hashmap<~str,&mut Option<def_id>>;
 
     new(crate: @crate, session: session, items: &self/LanguageItems) {
         self.crate = crate;
@@ -117,25 +117,25 @@ struct LanguageItemCollector {
         }
 
         match self.item_refs.find(value) {
-            none => {
+            None => {
                 // Didn't match.
             }
-            some(item_ref) => {
+            Some(item_ref) => {
                 // Check for duplicates.
                 match copy *item_ref {
-                    some(original_def_id)
+                    Some(original_def_id)
                             if original_def_id != item_def_id => {
 
                         self.session.err(fmt!("duplicate entry for `%s`",
                                               value));
                     }
-                    some(_) | none => {
+                    Some(_) | None => {
                         // OK.
                     }
                 }
 
                 // Matched.
-                *item_ref = some(item_def_id);
+                *item_ref = Some(item_def_id);
             }
         }
     }
@@ -184,10 +184,10 @@ struct LanguageItemCollector {
     fn check_completeness() {
         for self.item_refs.each |key, item_ref| {
             match copy *item_ref {
-                none => {
+                None => {
                     self.session.err(fmt!("no item found for `%s`", key));
                 }
-                some(_) => {
+                Some(_) => {
                     // OK.
                 }
             }

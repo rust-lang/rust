@@ -135,7 +135,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         }
         let unsupported = ~"conversion not supported in #fmt string";
         match cnv.param {
-          option::none => (),
+          option::None => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
         for cnv.flags.each |f| {
@@ -192,7 +192,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
     fn log_conv(c: conv) {
         match c.param {
-          some(p) => { log(debug, ~"param: " + int::to_str(p, 10u)); }
+          Some(p) => { log(debug, ~"param: " + int::to_str(p, 10u)); }
           _ => debug!("param: none")
         }
         for c.flags.each |f| {

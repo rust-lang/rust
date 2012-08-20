@@ -22,7 +22,7 @@ import std::list;
 import std::list::list;
 import std::map::{hashmap, int_hash};
 
-type parent = option<ast::node_id>;
+type parent = Option<ast::node_id>;
 
 /* Records the parameter ID of a region name. */
 type binding = {node_id: ast::node_id,
@@ -98,8 +98,8 @@ fn scope_contains(region_map: region_map, superscope: ast::node_id,
     let mut subscope = subscope;
     while superscope != subscope {
         match region_map.find(subscope) {
-            none => return false,
-            some(scope) => subscope = scope
+            None => return false,
+            Some(scope) => subscope = scope
         }
     }
     return true;
@@ -132,7 +132,7 @@ fn is_subregion_of(region_map: region_map,
 /// is, finds the smallest scope which is greater than or equal to
 /// both `scope_a` and `scope_b`.
 fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
-                           scope_b: ast::node_id) -> option<ast::node_id> {
+                           scope_b: ast::node_id) -> Option<ast::node_id> {
 
     fn ancestors_of(region_map: region_map, scope: ast::node_id)
                     -> ~[ast::node_id] {
@@ -140,8 +140,8 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
         let mut scope = scope;
         loop {
             match region_map.find(scope) {
-                none => return result,
-                some(superscope) => {
+                None => return result,
+                Some(superscope) => {
                     vec::push(result, superscope);
                     scope = superscope;
                 }
@@ -149,7 +149,7 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
         }
     }
 
-    if scope_a == scope_b { return some(scope_a); }
+    if scope_a == scope_b { return Some(scope_a); }
 
     let a_ancestors = ancestors_of(region_map, scope_a);
     let b_ancestors = ancestors_of(region_map, scope_b);
@@ -165,18 +165,18 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
     // then the corresponding scope is a superscope of the other.
 
     if a_ancestors[a_index] != b_ancestors[b_index] {
-        return none;
+        return None;
     }
 
     loop {
         // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
         // for all indices between a_index and the end of the array
-        if a_index == 0u { return some(scope_a); }
-        if b_index == 0u { return some(scope_b); }
+        if a_index == 0u { return Some(scope_a); }
+        if b_index == 0u { return Some(scope_b); }
         a_index -= 1u;
         b_index -= 1u;
         if a_ancestors[a_index] != b_ancestors[b_index] {
-            return some(a_ancestors[a_index + 1u]);
+            return Some(a_ancestors[a_index + 1u]);
         }
     }
 }
@@ -184,10 +184,10 @@ fn nearest_common_ancestor(region_map: region_map, scope_a: ast::node_id,
 /// Extracts that current parent from cx, failing if there is none.
 fn parent_id(cx: ctxt, span: span) -> ast::node_id {
     match cx.parent {
-      none => {
+      None => {
         cx.sess.span_bug(span, ~"crate should not be parent here");
       }
-      some(parent_id) => {
+      Some(parent_id) => {
         parent_id
       }
     }
@@ -206,7 +206,7 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, blk.node.id);
 
     // Descend.
-    let new_cx: ctxt = ctxt {parent: some(blk.node.id) with cx};
+    let new_cx: ctxt = ctxt {parent: Some(blk.node.id) with cx};
     visit::visit_block(blk, new_cx, visitor);
 }
 
@@ -219,7 +219,7 @@ fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
       ast::pat_ident(_, path, _) => {
         let defn_opt = cx.def_map.find(pat.id);
         match defn_opt {
-          some(ast::def_variant(_,_)) => {
+          Some(ast::def_variant(_,_)) => {
             /* Nothing to do; this names a variant. */
           }
           _ => {
@@ -243,7 +243,7 @@ fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
       ast::stmt_semi(expr, stmt_id) => {
         record_parent(cx, stmt_id);
         let mut expr_cx = cx;
-        expr_cx.parent = some(stmt_id);
+        expr_cx.parent = Some(stmt_id);
         visit::visit_stmt(stmt, expr_cx, visitor);
       }
     }
@@ -257,12 +257,12 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
       ast::expr_call(*) => {
         debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
                                                            cx.sess.intr()));
-        new_cx.parent = some(expr.id);
+        new_cx.parent = Some(expr.id);
       }
       ast::expr_match(subexpr, _) => {
         debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
                                                            cx.sess.intr()));
-        new_cx.parent = some(expr.id);
+        new_cx.parent = Some(expr.id);
       }
       ast::expr_fn(_, _, _, cap_clause) |
       ast::expr_fn_block(_, _, cap_clause) => {
@@ -280,7 +280,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     };
 
     if new_cx.root_exprs.contains_key(expr.id) {
-        new_cx.parent = some(expr.id);
+        new_cx.parent = Some(expr.id);
     }
 
     visit::visit_expr(expr, new_cx, visitor);
@@ -293,7 +293,7 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx: ctxt = ctxt {parent: none with cx};
+    let new_cx: ctxt = ctxt {parent: None with cx};
     visit::visit_item(item, new_cx, visitor);
 }
 
@@ -305,7 +305,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
       visit::fk_item_fn(*) | visit::fk_method(*) |
       visit::fk_ctor(*) | visit::fk_dtor(*) => {
         // Top-level functions are a root scope.
-        ctxt {parent: some(id) with cx}
+        ctxt {parent: Some(id) with cx}
       }
 
       visit::fk_anon(*) | visit::fk_fn_block(*) => {
@@ -331,7 +331,7 @@ fn resolve_crate(sess: session, def_map: resolve3::DefMap,
                          def_map: def_map,
                          region_map: int_hash(),
                          root_exprs: int_hash(),
-                         parent: none};
+                         parent: None};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
         visit_item: resolve_item,
@@ -437,8 +437,8 @@ impl determine_rp_ctxt {
         assert id != 0;
         let old_variance = self.region_paramd_items.find(id);
         let joined_variance = match old_variance {
-          none => variance,
-          some(v) => join_variance(v, variance)
+          None => variance,
+          Some(v) => join_variance(v, variance)
         };
 
         debug!("add_rp() variance for %s: %? == %? ^ %?",
@@ -446,7 +446,7 @@ impl determine_rp_ctxt {
                                        self.sess.parse_sess.interner),
                joined_variance, old_variance, variance);
 
-        if some(joined_variance) != old_variance {
+        if Some(joined_variance) != old_variance {
             self.region_paramd_items.insert(id, joined_variance);
             self.worklist.push(id);
         }
@@ -466,8 +466,8 @@ impl determine_rp_ctxt {
                                        self.sess.parse_sess.interner),
                copy self.ambient_variance);
         let vec = match self.dep_map.find(from) {
-            some(vec) => vec,
-            none => {
+            Some(vec) => vec,
+            None => {
                 let vec = @dvec();
                 self.dep_map.insert(from, vec);
                 vec
@@ -524,12 +524,12 @@ impl determine_rp_ctxt {
     //
     // If the region is explicitly specified, then we follows the
     // normal rules.
-    fn opt_region_is_relevant(opt_r: option<@ast::region>) -> bool {
+    fn opt_region_is_relevant(opt_r: Option<@ast::region>) -> bool {
         debug!("opt_region_is_relevant: %? (anon_implies_rp=%b)",
                opt_r, self.anon_implies_rp);
         match opt_r {
-          none => self.anon_implies_rp,
-          some(r) => self.region_is_relevant(r)
+          None => self.anon_implies_rp,
+          Some(r) => self.region_is_relevant(r)
         }
     }
 
@@ -638,8 +638,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
             } else {
                 let cstore = cx.sess.cstore;
                 match csearch::get_region_param(cstore, did) {
-                  none => {}
-                  some(variance) => {
+                  None => {}
+                  Some(variance) => {
                     debug!("reference to external, rp'd type %s",
                            pprust::ty_to_str(ty, cx.sess.intr()));
                     if cx.opt_region_is_relevant(path.rp) {
@@ -783,8 +783,8 @@ fn determine_rp_in_crate(sess: session,
         let c_variance = cx.region_paramd_items.get(c_id);
         debug!("popped %d from worklist", c_id);
         match cx.dep_map.find(c_id) {
-          none => {}
-          some(deps) => {
+          None => {}
+          Some(deps) => {
             for deps.each |dep| {
                 let v = add_variance(dep.ambient_variance, c_variance);
                 cx.add_rp(dep.id, v);

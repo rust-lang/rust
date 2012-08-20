@@ -82,7 +82,7 @@ pure fn build<A>(builder: fn(push: pure fn(+A))) -> @[A] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pure fn build_sized_opt<A>(size: option<uint>,
+pure fn build_sized_opt<A>(size: Option<uint>,
                            builder: fn(push: pure fn(+A))) -> @[A] {
     build_sized(size.get_default(4), builder)
 }

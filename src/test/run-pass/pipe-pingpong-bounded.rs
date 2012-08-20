@@ -91,15 +91,15 @@ mod test {
 
 fn main() {
     let (client_, server_) = pingpong::init();
-    let client_ = ~mut some(client_);
-    let server_ = ~mut some(server_);
+    let client_ = ~mut Some(client_);
+    let server_ = ~mut Some(server_);
     do task::spawn |move client_| {
-        let mut client__ = none;
+        let mut client__ = None;
         *client_ <-> client__;
         test::client(option::unwrap(client__));
     };
     do task::spawn |move server_| {
-        let mut server_ˊ = none;
+        let mut server_ˊ = None;
         *server_ <-> server_ˊ;
         test::server(option::unwrap(server_ˊ));
     };

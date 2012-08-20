@@ -3,9 +3,9 @@ use std;
 import std::sync;
 fn main() {
     let x = ~sync::rwlock();
-    let mut y = none;
+    let mut y = None;
     do x.write_cond |cond| {
-        y = some(cond);
+        y = Some(cond);
     }
     option::unwrap(y).wait();
 }

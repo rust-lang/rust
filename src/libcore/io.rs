@@ -761,8 +761,8 @@ mod fsync {
         new(-arg: Arg<t>) { self.arg <- arg; }
         drop {
           match self.arg.opt_level {
-            option::none => (),
-            option::some(level) => {
+            option::None => (),
+            option::Some(level) => {
               // fail hard if not succesful
               assert(self.arg.fsync_fn(self.arg.val, level) != -1);
             }
@@ -772,14 +772,14 @@ mod fsync {
 
     type Arg<t> = {
         val: t,
-        opt_level: option<Level>,
+        opt_level: Option<Level>,
         fsync_fn: fn@(t, Level) -> int
     };
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
     // outer res
-    fn FILE_res_sync(&&file: FILERes, opt_level: option<Level>,
+    fn FILE_res_sync(&&file: FILERes, opt_level: Option<Level>,
                   blk: fn(&&Res<*libc::FILE>)) {
         blk(Res({
             val: file.f, opt_level: opt_level,
@@ -790,7 +790,7 @@ mod fsync {
     }
 
     // fsync fd after executing blk
-    fn fd_res_sync(&&fd: FdRes, opt_level: option<Level>,
+    fn fd_res_sync(&&fd: FdRes, opt_level: Option<Level>,
                    blk: fn(&&Res<fd_t>)) {
         blk(Res({
             val: fd.fd, opt_level: opt_level,
@@ -804,7 +804,7 @@ mod fsync {
     trait FSyncable { fn fsync(l: Level) -> int; }
 
     // Call o.fsync after executing blk
-    fn obj_sync(&&o: FSyncable, opt_level: option<Level>,
+    fn obj_sync(&&o: FSyncable, opt_level: Option<Level>,
                 blk: fn(&&Res<FSyncable>)) {
         blk(Res({
             val: o, opt_level: opt_level,

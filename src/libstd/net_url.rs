@@ -15,29 +15,29 @@ export encode_form_urlencoded, decode_form_urlencoded;
 
 type url = {
     scheme: ~str,
-    user: option<userinfo>,
+    user: Option<userinfo>,
     host: ~str,
-    port: option<~str>,
+    port: Option<~str>,
     path: ~str,
     query: query,
-    fragment: option<~str>
+    fragment: Option<~str>
 };
 
 type userinfo = {
     user: ~str,
-    pass: option<~str>
+    pass: Option<~str>
 };
 
 type query = ~[(~str, ~str)];
 
-fn url(-scheme: ~str, -user: option<userinfo>, -host: ~str,
-       -port: option<~str>, -path: ~str, -query: query,
-       -fragment: option<~str>) -> url {
+fn url(-scheme: ~str, -user: Option<userinfo>, -host: ~str,
+       -port: Option<~str>, -path: ~str, -query: query,
+       -fragment: Option<~str>) -> url {
     { scheme: scheme, user: user, host: host, port: port,
      path: path, query: query, fragment: fragment }
 }
 
-fn userinfo(-user: ~str, -pass: option<~str>) -> userinfo {
+fn userinfo(-user: ~str, -pass: Option<~str>) -> userinfo {
     {user: user, pass: pass}
 }
 
@@ -215,8 +215,8 @@ fn decode_form_urlencoded(s: ~[u8]) ->
               '&' | ';' => {
                 if key != ~"" && value != ~"" {
                     let values = match m.find(key) {
-                      some(values) => values,
-                      none => {
+                      Some(values) => values,
+                      None => {
                         let values = @dvec();
                         m.insert(key, values);
                         values
@@ -250,8 +250,8 @@ fn decode_form_urlencoded(s: ~[u8]) ->
 
         if key != ~"" && value != ~"" {
             let values = match m.find(key) {
-              some(values) => values,
-              none => {
+              Some(values) => values,
+              None => {
                 let values = @dvec();
                 m.insert(key, values);
                 values
@@ -292,9 +292,9 @@ fn split_char_first(s: ~str, c: char) -> (~str, ~str) {
 fn userinfo_from_str(uinfo: ~str) -> userinfo {
     let (user, p) = split_char_first(uinfo, ':');
     let pass = if str::len(p) == 0 {
-        option::none
+        option::None
     } else {
-        option::some(p)
+        option::Some(p)
     };
     return userinfo(user, pass);
 }
@@ -358,10 +358,10 @@ fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
 
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: ~str) ->
-    result::result<(option<userinfo>, ~str, option<~str>, ~str), @~str> {
+    result::result<(Option<userinfo>, ~str, Option<~str>, ~str), @~str> {
     if !str::starts_with(rawurl, ~"//") {
         // there is no authority.
-        return result::ok((option::none, ~"", option::none, copy rawurl));
+        return result::ok((option::None, ~"", option::None, copy rawurl));
     }
 
     enum state {
@@ -381,9 +381,9 @@ fn get_authority(rawurl: ~str) ->
     let mut st : state = start;
     let mut in : input = digit; // most restricted, start here.
 
-    let mut userinfo : option<userinfo> = option::none;
+    let mut userinfo : Option<userinfo> = option::None;
     let mut host : ~str = ~"";
-    let mut port : option::option<~str> = option::none;
+    let mut port : option::Option<~str> = option::None;
 
     let mut colon_count = 0;
     let mut pos : uint = 0, begin : uint = 2, end : uint = len;
@@ -462,15 +462,15 @@ fn get_authority(rawurl: ~str) ->
             match st {
               start => {
                 let user = str::slice(rawurl, begin, i);
-                userinfo = option::some({user : user,
-                                         pass: option::none});
+                userinfo = option::Some({user : user,
+                                         pass: option::None});
                 st = in_host;
               }
               pass_host_port => {
                 let user = str::slice(rawurl, begin, pos);
                 let pass = str::slice(rawurl, pos+1, i);
-                userinfo = option::some({user: user,
-                                         pass: option::some(pass)});
+                userinfo = option::Some({user: user,
+                                         pass: option::Some(pass)});
                 st = in_host;
               }
               _ => {
@@ -510,7 +510,7 @@ fn get_authority(rawurl: ~str) ->
             return result::err(@~"Non-digit characters in port.");
         }
         host = str::slice(rawurl, begin, pos);
-        port = option::some(str::slice(rawurl, pos+1, end));
+        port = option::Some(str::slice(rawurl, pos+1, end));
       }
       ip6_host | in_host => {
         host = str::slice(rawurl, begin, end);
@@ -519,7 +519,7 @@ fn get_authority(rawurl: ~str) ->
         if in != digit {
             return result::err(@~"Non-digit characters in port.");
         }
-        port = option::some(str::slice(rawurl, pos+1, end));
+        port = option::Some(str::slice(rawurl, pos+1, end));
       }
     }
 
@@ -562,21 +562,21 @@ fn get_path(rawurl: ~str, authority : bool) ->
 
 // returns the parsed query and the fragment, if present
 fn get_query_fragment(rawurl: ~str) ->
-    result::result<(query, option<~str>), @~str> {
+    result::result<(query, Option<~str>), @~str> {
     if !str::starts_with(rawurl, ~"?") {
         if str::starts_with(rawurl, ~"#") {
             let f = decode_component(str::slice(rawurl,
                                                 1,
                                                 str::len(rawurl)));
-            return result::ok((~[], option::some(f)));
+            return result::ok((~[], option::Some(f)));
         } else {
-            return result::ok((~[], option::none));
+            return result::ok((~[], option::None));
         }
     }
     let (q, r) = split_char_first(str::slice(rawurl, 1,
                                              str::len(rawurl)), '#');
     let f = if str::len(r) != 0 {
-        option::some(decode_component(r)) } else { option::none };
+        option::Some(decode_component(r)) } else { option::None };
     return result::ok((query_from_str(q), f));
 }
 
@@ -696,8 +696,8 @@ mod tests {
     fn test_get_authority() {
         let (u, h, p, r) = result::unwrap(get_authority(
             ~"//user:pass@rust-lang.org/something"));
-        assert u == option::some({user: ~"user",
-                                  pass: option::some(~"pass")});
+        assert u == option::Some({user: ~"user",
+                                  pass: option::Some(~"pass")});
         assert h == ~"rust-lang.org";
         assert option::is_none(p);
         assert r == ~"/something";
@@ -706,7 +706,7 @@ mod tests {
             ~"//rust-lang.org:8000?something"));
         assert option::is_none(u);
         assert h == ~"rust-lang.org";
-        assert p == option::some(~"8000");
+        assert p == option::Some(~"8000");
         assert r == ~"?something";
 
         let (u, h, p, r) = result::unwrap(get_authority(
@@ -724,13 +724,13 @@ mod tests {
         let (_, h, p, _) = result::unwrap(get_authority(
             ~"//2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"));
         assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
-        assert p == option::some(~"8000");
+        assert p == option::Some(~"8000");
 
         let (u, h, p, _) = result::unwrap(get_authority(
             ~"//us:p@2001:0db8:85a3:0042:0000:8a2e:0370:7334:8000#blah"));
-        assert u == option::some({user: ~"us", pass : option::some(~"p")});
+        assert u == option::Some({user: ~"us", pass : option::Some(~"p")});
         assert h == ~"2001:0db8:85a3:0042:0000:8a2e:0370:7334";
-        assert p == option::some(~"8000");
+        assert p == option::Some(~"8000");
 
         // invalid authorities;
         assert result::is_err(get_authority(

@@ -24,7 +24,7 @@ import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
               mode_t, pid_t, FILE};
 import libc::{close, fclose};
 
-import option::{some, none};
+import option::{Some, None};
 
 import consts::*;
 import task::TaskBuilder;
@@ -65,13 +65,13 @@ fn as_c_charp<T>(s: &str, f: fn(*c_char) -> T) -> T {
 }
 
 fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
-    -> option<~str> {
+    -> Option<~str> {
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     do vec::as_mut_buf(buf) |b, sz| {
         if f(b, sz as size_t) unsafe {
-            some(str::unsafe::from_buf(b as *u8))
+            Some(str::unsafe::from_buf(b as *u8))
         } else {
-            none
+            None
         }
     }
 }
@@ -81,14 +81,14 @@ mod win32 {
     import dword = libc::types::os::arch::extra::DWORD;
 
     fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
-        -> option<~str> {
+        -> Option<~str> {
 
         // FIXME: remove these when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::consts::os::extra::*;
 
         let mut n = tmpbuf_sz as dword;
-        let mut res = none;
+        let mut res = None;
         let mut done = false;
         while !done {
             let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
@@ -102,7 +102,7 @@ mod win32 {
                     n *= (2 as dword);
                 } else {
                     let sub = vec::slice(buf, 0u, k as uint);
-                    res = option::some(str::from_utf16(sub));
+                    res = option::Some(str::from_utf16(sub));
                     done = true;
                 }
             }
@@ -118,7 +118,7 @@ mod win32 {
     }
 }
 
-fn getenv(n: &str) -> option<~str> {
+fn getenv(n: &str) -> Option<~str> {
     global_env::getenv(n)
 }
 
@@ -142,12 +142,12 @@ mod global_env {
     }
 
     enum Msg {
-        MsgGetEnv(~str, comm::Chan<option<~str>>),
+        MsgGetEnv(~str, comm::Chan<Option<~str>>),
         MsgSetEnv(~str, ~str, comm::Chan<()>),
         MsgEnv(comm::Chan<~[(~str,~str)]>)
     }
 
-    fn getenv(n: &str) -> option<~str> {
+    fn getenv(n: &str) -> Option<~str> {
         let env_ch = get_global_env_chan();
         let po = comm::port();
         comm::send(env_ch, MsgGetEnv(str::from_slice(n),
@@ -219,20 +219,20 @@ mod global_env {
         }
 
         #[cfg(unix)]
-        fn getenv(n: &str) -> option<~str> {
+        fn getenv(n: &str) -> Option<~str> {
             unsafe {
                 let s = str::as_c_str(n, libc::getenv);
                 return if unsafe::reinterpret_cast(s) == 0 {
-                    option::none::<~str>
+                    option::None::<~str>
                 } else {
                     let s = unsafe::reinterpret_cast(s);
-                    option::some::<~str>(str::unsafe::from_buf(s))
+                    option::Some::<~str>(str::unsafe::from_buf(s))
                 };
             }
         }
 
         #[cfg(windows)]
-        fn getenv(n: &str) -> option<~str> {
+        fn getenv(n: &str) -> Option<~str> {
             import libc::types::os::arch::extra::*;
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -383,10 +383,10 @@ fn dll_filename(base: &str) -> ~str {
 }
 
 
-fn self_exe_path() -> option<Path> {
+fn self_exe_path() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
-    fn load_self() -> option<~str> {
+    fn load_self() -> Option<~str> {
         unsafe {
             import libc::funcs::bsd44::*;
             import libc::consts::os::extra::*;
@@ -402,7 +402,7 @@ fn self_exe_path() -> option<Path> {
     }
 
     #[cfg(target_os = "linux")]
-    fn load_self() -> option<~str> {
+    fn load_self() -> Option<~str> {
         import libc::funcs::posix01::unistd::readlink;
         do fill_charp_buf() |buf, sz| {
             do as_c_charp("/proc/self/exe") |proc_self_buf| {
@@ -412,7 +412,7 @@ fn self_exe_path() -> option<Path> {
     }
 
     #[cfg(target_os = "macos")]
-    fn load_self() -> option<~str> {
+    fn load_self() -> Option<~str> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::*;
         do fill_charp_buf() |buf, sz| {
@@ -422,7 +422,7 @@ fn self_exe_path() -> option<Path> {
     }
 
     #[cfg(windows)]
-    fn load_self() -> option<~str> {
+    fn load_self() -> Option<~str> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
@@ -451,28 +451,28 @@ fn self_exe_path() -> option<Path> {
  *
  * Otherwise, homedir returns option::none.
  */
-fn homedir() -> option<Path> {
+fn homedir() -> Option<Path> {
     return match getenv(~"HOME") {
-        some(p) => if !str::is_empty(p) {
-          some(Path(p))
+        Some(p) => if !str::is_empty(p) {
+          Some(Path(p))
         } else {
           secondary()
         },
-        none => secondary()
+        None => secondary()
     };
 
     #[cfg(unix)]
-    fn secondary() -> option<Path> {
-        none
+    fn secondary() -> Option<Path> {
+        None
     }
 
     #[cfg(windows)]
-    fn secondary() -> option<Path> {
+    fn secondary() -> Option<Path> {
         do option::chain(getenv(~"USERPROFILE")) |p| {
             if !str::is_empty(p) {
-                some(Path(p))
+                Some(Path(p))
             } else {
-                none
+                None
             }
         }
     }
@@ -491,15 +491,15 @@ fn homedir() -> option<Path> {
 fn tmpdir() -> Path {
     return lookup();
 
-    fn getenv_nonempty(v: &str) -> option<Path> {
+    fn getenv_nonempty(v: &str) -> Option<Path> {
         match getenv(v) {
-            some(x) =>
+            Some(x) =>
                 if str::is_empty(x) {
-                    none
+                    None
                 } else {
-                    some(Path(x))
+                    Some(Path(x))
                 },
-            _ => none
+            _ => None
         }
     }
 
@@ -843,7 +843,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n, ~"VALUE");
-        assert getenv(n) == option::some(~"VALUE");
+        assert getenv(n) == option::Some(~"VALUE");
     }
 
     #[test]
@@ -853,9 +853,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n, ~"1");
         setenv(n, ~"2");
-        assert getenv(n) == option::some(~"2");
+        assert getenv(n) == option::Some(~"2");
         setenv(n, ~"");
-        assert getenv(n) == option::some(~"");
+        assert getenv(n) == option::Some(~"");
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -870,7 +870,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, s);
         log(debug, s);
-        assert getenv(n) == option::some(s);
+        assert getenv(n) == option::Some(s);
     }
 
     #[test]
@@ -896,7 +896,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert option::is_none(v2) || v2 == option::some(v);
+            assert option::is_none(v2) || v2 == option::Some(v);
         }
     }
 
@@ -928,10 +928,10 @@ mod tests {
         let oldhome = getenv(~"HOME");
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert os::homedir() == some(Path("/home/MountainView"));
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         setenv(~"HOME", ~"");
-        assert os::homedir() == none;
+        assert os::homedir() == None;
 
         option::iter(oldhome, |s| setenv(~"HOME", s));
     }
@@ -946,19 +946,19 @@ mod tests {
         setenv(~"HOME", ~"");
         setenv(~"USERPROFILE", ~"");
 
-        assert os::homedir() == none;
+        assert os::homedir() == None;
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert os::homedir() == some(Path("/home/MountainView"));
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         setenv(~"HOME", ~"");
 
         setenv(~"USERPROFILE", ~"/home/MountainView");
-        assert os::homedir() == some(Path("/home/MountainView"));
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         setenv(~"HOME", ~"/home/MountainView");
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
-        assert os::homedir() == some(Path("/home/MountainView"));
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         option::iter(oldhome, |s| setenv(~"HOME", s));
         option::iter(olduserprofile,

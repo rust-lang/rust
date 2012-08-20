@@ -26,7 +26,7 @@ macro_rules! select_if (
     } => {
         if $index == $count {
             match move pipes::try_recv($port) {
-              $(some($message($($(ref $x,)+)* ref next)) => {
+              $(Some($message($($(ref $x,)+)* ref next)) => {
                 // FIXME (#2329) we really want move out of enum here.
                 let $next = unsafe { let x <- *ptr::addr_of(*next); x };
                 $e

@@ -60,8 +60,8 @@ fn test_main(args: ~[~str], tests: ~[test_desc]) {
     if !run_tests_console(opts, tests) { fail ~"Some tests failed"; }
 }
 
-type test_opts = {filter: option<~str>, run_ignored: bool,
-                  logfile: option<~str>};
+type test_opts = {filter: Option<~str>, run_ignored: bool,
+                  logfile: Option<~str>};
 
 type opt_res = Either<test_opts, ~str>;
 
@@ -77,8 +77,8 @@ fn parse_opts(args: ~[~str]) -> opt_res {
 
     let filter =
         if vec::len(matches.free) > 0u {
-            option::some(matches.free[0])
-        } else { option::none };
+            option::Some(matches.free[0])
+        } else { option::None };
 
     let run_ignored = getopts::opt_present(matches, ~"ignored");
     let logfile = getopts::opt_maybe_str(matches, ~"logfile");
@@ -93,7 +93,7 @@ enum test_result { tr_ok, tr_failed, tr_ignored, }
 
 type console_test_state =
     @{out: io::Writer,
-      log_out: option<io::Writer>,
+      log_out: Option<io::Writer>,
       use_color: bool,
       mut total: uint,
       mut passed: uint,
@@ -115,8 +115,8 @@ fn run_tests_console(opts: test_opts,
           te_wait(test) => st.out.write_str(fmt!("test %s ... ", test.name)),
           te_result(test, result) => {
             match st.log_out {
-                some(f) => write_log(f, result, test),
-                none => ()
+                Some(f) => write_log(f, result, test),
+                None => ()
             }
             match result {
               tr_ok => {
@@ -141,14 +141,14 @@ fn run_tests_console(opts: test_opts,
     }
 
     let log_out = match opts.logfile {
-        some(path) => match io::file_writer(&Path(path),
+        Some(path) => match io::file_writer(&Path(path),
                                             ~[io::Create, io::Truncate]) {
-          result::ok(w) => some(w),
+          result::ok(w) => Some(w),
           result::err(s) => {
               fail(fmt!("can't open output file: %s", s))
           }
         },
-        none => none
+        None => None
     };
 
     let st =
@@ -243,7 +243,7 @@ fn should_sort_failures_before_printing_them() {
 
     let st =
         @{out: writer,
-          log_out: option::none,
+          log_out: option::None,
           use_color: false,
           mut total: 0u,
           mut passed: 0u,
@@ -337,15 +337,15 @@ fn filter_tests(opts: test_opts,
     } else {
         let filter_str =
             match opts.filter {
-          option::some(f) => f,
-          option::none => ~""
+          option::Some(f) => f,
+          option::None => ~""
         };
 
         fn filter_fn(test: test_desc, filter_str: ~str) ->
-            option<test_desc> {
+            Option<test_desc> {
             if str::contains(test.name, filter_str) {
-                return option::some(copy test);
-            } else { return option::none; }
+                return option::Some(copy test);
+            } else { return option::None; }
         }
 
         vec::filter_map(filtered, |x| filter_fn(x, filter_str))
@@ -355,13 +355,13 @@ fn filter_tests(opts: test_opts,
     filtered = if !opts.run_ignored {
         filtered
     } else {
-        fn filter(test: test_desc) -> option<test_desc> {
+        fn filter(test: test_desc) -> Option<test_desc> {
             if test.ignore {
-                return option::some({name: test.name,
+                return option::Some({name: test.name,
                                   fn: copy test.fn,
                                   ignore: false,
                                   should_fail: test.should_fail});
-            } else { return option::none; }
+            } else { return option::None; }
         };
 
         vec::filter_map(filtered, |x| filter(x))
@@ -388,9 +388,9 @@ fn run_test(+test: test_desc, monitor_ch: comm::Chan<monitor_msg>) {
 
     do task::spawn {
         let testfn = copy test.fn;
-        let mut result_future = none; // task::future_result(builder);
+        let mut result_future = None; // task::future_result(builder);
         task::task().unlinked().future_result(|+r| {
-            result_future = some(r);
+            result_future = Some(r);
         }).spawn(testfn);
         let task_result = future::get(&option::unwrap(result_future));
         let test_result = calc_result(test, task_result == task::Success);
@@ -501,8 +501,8 @@ mod tests {
         // When we run ignored tests the test filter should filter out all the
         // unignored tests and flip the ignore flag on the rest to false
 
-        let opts = {filter: option::none, run_ignored: true,
-            logfile: option::none};
+        let opts = {filter: option::None, run_ignored: true,
+            logfile: option::None};
         let tests =
             ~[{name: ~"1", fn: fn~() { }, ignore: true, should_fail: false},
              {name: ~"2", fn: fn~() { }, ignore: false, should_fail: false}];
@@ -515,8 +515,8 @@ mod tests {
 
     #[test]
     fn sort_tests() {
-        let opts = {filter: option::none, run_ignored: false,
-            logfile: option::none};
+        let opts = {filter: option::None, run_ignored: false,
+            logfile: option::None};
 
         let names =
             ~[~"sha1::test", ~"int::test_to_str", ~"int::test_pow",

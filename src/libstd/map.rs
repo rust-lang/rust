@@ -59,7 +59,7 @@ trait map<K: copy, V: copy> {
      * Get the value for the specified key. If the key does not exist in
      * the map then returns none.
      */
-    fn find(+key: K) -> option<V>;
+    fn find(+key: K) -> Option<V>;
 
     /**
      * Remove and return a value from the map. Returns true if the
@@ -111,12 +111,12 @@ mod chained {
         hash: uint;
         key: K;
         value: V;
-        mut next: option<@entry<K, V>>;
+        mut next: Option<@entry<K, V>>;
     }
 
     struct hashmap_<K, V> {
         mut count: uint;
-        mut chains: ~[mut option<@entry<K,V>>];
+        mut chains: ~[mut Option<@entry<K,V>>];
         hasher: hashfn<K>;
         eqer: eqfn<K>;
     }
@@ -136,12 +136,12 @@ mod chained {
             let mut comp = 1u;   // for logging
             loop {
                 match copy e0.next {
-                  none => {
+                  None => {
                     debug!("search_tbl: absent, comp %u, hash %u, idx %u",
                            comp, h, idx);
                     return not_found;
                   }
-                  some(e1) => {
+                  Some(e1) => {
                     comp += 1u;
                     if e1.hash == h && self.eqer(&e1.key, k) {
                         debug!("search_tbl: present, comp %u, \
@@ -159,12 +159,12 @@ mod chained {
         fn search_tbl(k: &K, h: uint) -> search_result<K,V> {
             let idx = h % vec::len(self.chains);
             match copy self.chains[idx] {
-              none => {
+              None => {
                 debug!("search_tbl: none, comp %u, hash %u, idx %u",
                        0u, h, idx);
                 return not_found;
               }
-              some(e) => {
+              Some(e) => {
                 if e.hash == h && self.eqer(&e.key, k) {
                     debug!("search_tbl: present, comp %u, hash %u, idx %u",
                            1u, h, idx);
@@ -183,7 +183,7 @@ mod chained {
             for self.each_entry |entry| {
                 let idx = entry.hash % n_new_chains;
                 entry.next = new_chains[idx];
-                new_chains[idx] = some(entry);
+                new_chains[idx] = Some(entry);
             }
             self.chains = new_chains;
         }
@@ -196,8 +196,8 @@ mod chained {
                 let mut chain = self.chains[i];
                 loop {
                     chain = match chain {
-                      none => break,
-                      some(entry) => {
+                      None => break,
+                      Some(entry) => {
                         let next = entry.next;
                         if !blk(entry) { return; }
                         next
@@ -231,7 +231,7 @@ mod chained {
                 self.count += 1u;
                 let idx = hash % vec::len(self.chains);
                 let old_chain = self.chains[idx];
-                self.chains[idx] = some(@entry {
+                self.chains[idx] = Some(@entry {
                     hash: hash,
                     key: k,
                     value: v,
@@ -248,7 +248,7 @@ mod chained {
                 return true;
               }
               found_first(idx, entry) => {
-                self.chains[idx] = some(@entry {
+                self.chains[idx] = Some(@entry {
                     hash: hash,
                     key: k,
                     value: v,
@@ -256,7 +256,7 @@ mod chained {
                 return false;
               }
               found_after(prev, entry) => {
-                prev.next = some(@entry {
+                prev.next = Some(@entry {
                     hash: hash,
                     key: k,
                     value: v,
@@ -266,11 +266,11 @@ mod chained {
             }
         }
 
-        fn find(+k: K) -> option<V> {
+        fn find(+k: K) -> Option<V> {
             match self.search_tbl(&k, self.hasher(&k)) {
-              not_found => none,
-              found_first(_, entry) => some(entry.value),
-              found_after(_, entry) => some(entry.value)
+              not_found => None,
+              found_first(_, entry) => Some(entry.value),
+              found_after(_, entry) => Some(entry.value)
             }
         }
 
@@ -364,8 +364,8 @@ mod chained {
         }
     }
 
-    fn chains<K,V>(nchains: uint) -> ~[mut option<@entry<K,V>>] {
-        vec::to_mut(vec::from_elem(nchains, none))
+    fn chains<K,V>(nchains: uint) -> ~[mut Option<@entry<K,V>>] {
+        vec::to_mut(vec::from_elem(nchains, None))
     }
 
     fn mk<K, V: copy>(+hasher: hashfn<K>, +eqer: eqfn<K>) -> t<K,V> {
@@ -503,7 +503,7 @@ impl<K: copy, V: copy> Managed<LinearMap<K, V>>: map<K, V> {
         }
     }
 
-    fn find(+key: K) -> option<V> {
+    fn find(+key: K) -> Option<V> {
         do self.borrow_const |p| {
             p.find(&key)
         }

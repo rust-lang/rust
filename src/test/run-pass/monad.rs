@@ -11,25 +11,25 @@ impl<A> ~[A]: vec_monad<A> {
 }
 
 trait option_monad<A> {
-    fn bind<B>(f: fn(A) -> option<B>) -> option<B>;
+    fn bind<B>(f: fn(A) -> Option<B>) -> Option<B>;
 }
 
-impl<A> option<A>: option_monad<A> {
-    fn bind<B>(f: fn(A) -> option<B>) -> option<B> {
+impl<A> Option<A>: option_monad<A> {
+    fn bind<B>(f: fn(A) -> Option<B>) -> Option<B> {
         match self {
-          some(a) => { f(a) }
-          none => { none }
+          Some(a) => { f(a) }
+          None => { None }
         }
     }
 }
 
-fn transform(x: option<int>) -> option<~str> {
-    x.bind(|n| some(n + 1) ).bind(|n| some(int::str(n)) )
+fn transform(x: Option<int>) -> Option<~str> {
+    x.bind(|n| Some(n + 1) ).bind(|n| Some(int::str(n)) )
 }
 
 fn main() {
-    assert transform(some(10)) == some(~"11");
-    assert transform(none) == none;
+    assert transform(Some(10)) == Some(~"11");
+    assert transform(None) == None;
     assert (~[~"hi"]).bind(|x| ~[x, x + ~"!"] ).bind(|x| ~[x, x + ~"?"] ) ==
         ~[~"hi", ~"hi?", ~"hi!", ~"hi!?"];
 }

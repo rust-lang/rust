@@ -1,10 +1,10 @@
-fn destructure(x: option<int>) -> int {
+fn destructure(x: Option<int>) -> int {
     match x {
-      none => 0,
-      some(ref v) => *v
+      None => 0,
+      Some(ref v) => *v
     }
 }
 
 fn main() {
-    assert destructure(some(22)) == 22;
+    assert destructure(Some(22)) == 22;
 }

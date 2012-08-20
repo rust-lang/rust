@@ -51,8 +51,8 @@ type itemdoc = {
     id: ast_id,
     name: ~str,
     path: ~[~str],
-    brief: option<~str>,
-    desc: option<~str>,
+    brief: Option<~str>,
+    desc: Option<~str>,
     sections: ~[section],
     // Indicates that this node is a reexport of a different item
     reexport: bool
@@ -60,13 +60,13 @@ type itemdoc = {
 
 type simpleitemdoc = {
     item: itemdoc,
-    sig: option<~str>
+    sig: Option<~str>
 };
 
 type moddoc_ = {
     item: itemdoc,
     items: ~[itemtag],
-    index: option<index>
+    index: Option<index>
 };
 
 enum moddoc {
@@ -76,7 +76,7 @@ enum moddoc {
 type nmoddoc = {
     item: itemdoc,
     fns: ~[fndoc],
-    index: option<index>
+    index: Option<index>
 };
 
 type constdoc = simpleitemdoc;
@@ -90,8 +90,8 @@ type enumdoc = {
 
 type variantdoc = {
     name: ~str,
-    desc: option<~str>,
-    sig: option<~str>
+    desc: Option<~str>,
+    sig: Option<~str>
 };
 
 type traitdoc = {
@@ -101,17 +101,17 @@ type traitdoc = {
 
 type methoddoc = {
     name: ~str,
-    brief: option<~str>,
-    desc: option<~str>,
+    brief: Option<~str>,
+    desc: Option<~str>,
     sections: ~[section],
-    sig: option<~str>,
+    sig: Option<~str>,
     implementation: implementation,
 };
 
 type impldoc = {
     item: itemdoc,
     trait_types: ~[~str],
-    self_ty: option<~str>,
+    self_ty: Option<~str>,
     methods: ~[methoddoc]
 };
 
@@ -134,16 +134,16 @@ type index = {
 type index_entry = {
     kind: ~str,
     name: ~str,
-    brief: option<~str>,
+    brief: Option<~str>,
     link: ~str
 };
 
 impl doc {
     fn cratedoc() -> cratedoc {
-        option::get(vec::foldl(none, self.pages, |_m, page| {
+        option::get(vec::foldl(None, self.pages, |_m, page| {
             match page {
-              doc::cratepage(doc) => some(doc),
-              _ => none
+              doc::cratepage(doc) => Some(doc),
+              _ => None
             }
         }))
     }
@@ -159,8 +159,8 @@ impl moddoc {
     fn mods() -> ~[moddoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              modtag(moddoc) => some(moddoc),
-              _ => none
+              modtag(moddoc) => Some(moddoc),
+              _ => None
             }
         }
     }
@@ -168,8 +168,8 @@ impl moddoc {
     fn nmods() -> ~[nmoddoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              nmodtag(nmoddoc) => some(nmoddoc),
-              _ => none
+              nmodtag(nmoddoc) => Some(nmoddoc),
+              _ => None
             }
         }
     }
@@ -177,8 +177,8 @@ impl moddoc {
     fn fns() -> ~[fndoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              fntag(fndoc) => some(fndoc),
-              _ => none
+              fntag(fndoc) => Some(fndoc),
+              _ => None
             }
         }
     }
@@ -186,8 +186,8 @@ impl moddoc {
     fn consts() -> ~[constdoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              consttag(constdoc) => some(constdoc),
-              _ => none
+              consttag(constdoc) => Some(constdoc),
+              _ => None
             }
         }
     }
@@ -195,8 +195,8 @@ impl moddoc {
     fn enums() -> ~[enumdoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              enumtag(enumdoc) => some(enumdoc),
-              _ => none
+              enumtag(enumdoc) => Some(enumdoc),
+              _ => None
             }
         }
     }
@@ -204,8 +204,8 @@ impl moddoc {
     fn traits() -> ~[traitdoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              traittag(traitdoc) => some(traitdoc),
-              _ => none
+              traittag(traitdoc) => Some(traitdoc),
+              _ => None
             }
         }
     }
@@ -213,8 +213,8 @@ impl moddoc {
     fn impls() -> ~[impldoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              impltag(impldoc) => some(impldoc),
-              _ => none
+              impltag(impldoc) => Some(impldoc),
+              _ => None
             }
         }
     }
@@ -222,8 +222,8 @@ impl moddoc {
     fn types() -> ~[tydoc] {
         do vec::filter_map(self.items) |itemtag| {
             match itemtag {
-              tytag(tydoc) => some(tydoc),
-              _ => none
+              tytag(tydoc) => Some(tydoc),
+              _ => None
             }
         }
     }
@@ -245,8 +245,8 @@ impl ~[page]: page_utils {
     fn mods() -> ~[moddoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(modtag(moddoc)) => some(moddoc),
-              _ => none
+              itempage(modtag(moddoc)) => Some(moddoc),
+              _ => None
             }
         }
     }
@@ -254,8 +254,8 @@ impl ~[page]: page_utils {
     fn nmods() -> ~[nmoddoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(nmodtag(nmoddoc)) => some(nmoddoc),
-              _ => none
+              itempage(nmodtag(nmoddoc)) => Some(nmoddoc),
+              _ => None
             }
         }
     }
@@ -263,8 +263,8 @@ impl ~[page]: page_utils {
     fn fns() -> ~[fndoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(fntag(fndoc)) => some(fndoc),
-              _ => none
+              itempage(fntag(fndoc)) => Some(fndoc),
+              _ => None
             }
         }
     }
@@ -272,8 +272,8 @@ impl ~[page]: page_utils {
     fn consts() -> ~[constdoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(consttag(constdoc)) => some(constdoc),
-              _ => none
+              itempage(consttag(constdoc)) => Some(constdoc),
+              _ => None
             }
         }
     }
@@ -281,8 +281,8 @@ impl ~[page]: page_utils {
     fn enums() -> ~[enumdoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(enumtag(enumdoc)) => some(enumdoc),
-              _ => none
+              itempage(enumtag(enumdoc)) => Some(enumdoc),
+              _ => None
             }
         }
     }
@@ -290,8 +290,8 @@ impl ~[page]: page_utils {
     fn traits() -> ~[traitdoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(traittag(traitdoc)) => some(traitdoc),
-              _ => none
+              itempage(traittag(traitdoc)) => Some(traitdoc),
+              _ => None
             }
         }
     }
@@ -299,8 +299,8 @@ impl ~[page]: page_utils {
     fn impls() -> ~[impldoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(impltag(impldoc)) => some(impldoc),
-              _ => none
+              itempage(impltag(impldoc)) => Some(impldoc),
+              _ => None
             }
         }
     }
@@ -308,8 +308,8 @@ impl ~[page]: page_utils {
     fn types() -> ~[tydoc] {
         do vec::filter_map(self) |page| {
             match page {
-              itempage(tytag(tydoc)) => some(tydoc),
-              _ => none
+              itempage(tytag(tydoc)) => Some(tydoc),
+              _ => None
             }
         }
     }
@@ -362,8 +362,8 @@ trait item_utils {
     pure fn id() -> ast_id;
     pure fn name() -> ~str;
     pure fn path() -> ~[~str];
-    pure fn brief() -> option<~str>;
-    pure fn desc() -> option<~str>;
+    pure fn brief() -> Option<~str>;
+    pure fn desc() -> Option<~str>;
     pure fn sections() -> ~[section];
 }
 
@@ -380,11 +380,11 @@ impl<A:item> A: item_utils {
         self.item().path
     }
 
-    pure fn brief() -> option<~str> {
+    pure fn brief() -> Option<~str> {
         self.item().brief
     }
 
-    pure fn desc() -> option<~str> {
+    pure fn desc() -> Option<~str> {
         self.item().desc
     }
 

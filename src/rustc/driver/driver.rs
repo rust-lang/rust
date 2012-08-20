@@ -131,12 +131,12 @@ enum compile_upto {
 
 fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 input: input, upto: compile_upto,
-                outputs: option<output_filenames>)
-    -> {crate: @ast::crate, tcx: option<ty::ctxt>} {
+                outputs: Option<output_filenames>)
+    -> {crate: @ast::crate, tcx: Option<ty::ctxt>} {
     let time_passes = sess.time_passes();
     let mut crate = time(time_passes, ~"parsing",
                          ||parse_input(sess, cfg, input) );
-    if upto == cu_parse { return {crate: crate, tcx: none}; }
+    if upto == cu_parse { return {crate: crate, tcx: None}; }
 
     sess.building_library = session::building_library(
         sess.opts.crate_type, crate, sess.opts.test);
@@ -151,7 +151,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         syntax::ext::expand::expand_crate(sess.parse_sess, sess.opts.cfg,
                                           crate));
 
-    if upto == cu_expand { return {crate: crate, tcx: none}; }
+    if upto == cu_expand { return {crate: crate, tcx: None}; }
 
     crate = time(time_passes, ~"intrinsic injection", ||
         front::intrinsic_inject::inject_intrinsic(sess, crate));
@@ -206,7 +206,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         middle::check_const::check_crate(sess, crate, ast_map, def_map,
                                          method_map, ty_cx));
 
-    if upto == cu_typeck { return {crate: crate, tcx: some(ty_cx)}; }
+    if upto == cu_typeck { return {crate: crate, tcx: Some(ty_cx)}; }
 
     time(time_passes, ~"loop checking", ||
         middle::check_loop::check_crate(ty_cx, crate));
@@ -226,7 +226,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     time(time_passes, ~"lint checking", || lint::check_crate(ty_cx, crate));
 
-    if upto == cu_no_trans { return {crate: crate, tcx: some(ty_cx)}; }
+    if upto == cu_no_trans { return {crate: crate, tcx: Some(ty_cx)}; }
     let outputs = option::get(outputs);
 
     let maps = {mutbl_map: mutbl_map,
@@ -248,24 +248,24 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         sess.opts.output_type != link::output_type_exe ||
             sess.opts.static && sess.building_library;
 
-    if stop_after_codegen { return {crate: crate, tcx: some(ty_cx)}; }
+    if stop_after_codegen { return {crate: crate, tcx: Some(ty_cx)}; }
 
     time(time_passes, ~"linking", ||
          link::link_binary(sess,
                            &outputs.obj_filename,
                            &outputs.out_filename, link_meta));
 
-    return {crate: crate, tcx: some(ty_cx)};
+    return {crate: crate, tcx: Some(ty_cx)};
 }
 
 fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
-                 outdir: &option<Path>, output: &option<Path>) {
+                 outdir: &Option<Path>, output: &Option<Path>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
                else { cu_everything };
     let outputs = build_output_filenames(input, outdir, output, sess);
-    compile_upto(sess, cfg, input, upto, some(outputs));
+    compile_upto(sess, cfg, input, upto, Some(outputs));
 }
 
 fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
@@ -320,7 +320,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
       ppm_typed => cu_typeck,
       _ => cu_parse
     };
-    let {crate, tcx} = compile_upto(sess, cfg, input, upto, none);
+    let {crate, tcx} = compile_upto(sess, cfg, input, upto, None);
 
     let ann = match ppm {
       ppm_typed => {
@@ -342,43 +342,43 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
     }
 }
 
-fn get_os(triple: ~str) -> option<session::os> {
+fn get_os(triple: ~str) -> Option<session::os> {
     if str::contains(triple, ~"win32") ||
                str::contains(triple, ~"mingw32") {
-            some(session::os_win32)
+            Some(session::os_win32)
         } else if str::contains(triple, ~"darwin") {
-            some(session::os_macos)
+            Some(session::os_macos)
         } else if str::contains(triple, ~"linux") {
-            some(session::os_linux)
+            Some(session::os_linux)
         } else if str::contains(triple, ~"freebsd") {
-            some(session::os_freebsd)
-        } else { none }
+            Some(session::os_freebsd)
+        } else { None }
 }
 
-fn get_arch(triple: ~str) -> option<session::arch> {
+fn get_arch(triple: ~str) -> Option<session::arch> {
     if str::contains(triple, ~"i386") ||
         str::contains(triple, ~"i486") ||
                str::contains(triple, ~"i586") ||
                str::contains(triple, ~"i686") ||
                str::contains(triple, ~"i786") {
-            some(session::arch_x86)
+            Some(session::arch_x86)
         } else if str::contains(triple, ~"x86_64") {
-            some(session::arch_x86_64)
+            Some(session::arch_x86_64)
         } else if str::contains(triple, ~"arm") ||
                       str::contains(triple, ~"xscale") {
-            some(session::arch_arm)
-        } else { none }
+            Some(session::arch_arm)
+        } else { None }
 }
 
 fn build_target_config(sopts: @session::options,
                        demitter: diagnostic::emitter) -> @session::config {
     let os = match get_os(sopts.target_triple) {
-      some(os) => os,
-      none => early_error(demitter, ~"unknown operating system")
+      Some(os) => os,
+      None => early_error(demitter, ~"unknown operating system")
     };
     let arch = match get_arch(sopts.target_triple) {
-      some(arch) => arch,
-      none => early_error(demitter,
+      Some(arch) => arch,
+      None => early_error(demitter,
                           ~"unknown architecture: " + sopts.target_triple)
     };
     let (int_type, uint_type, float_type) = match arch {
@@ -441,11 +441,11 @@ fn build_session_options(matches: getopts::matches,
         for flags.each |lint_name| {
             let lint_name = str::replace(lint_name, ~"-", ~"_");
             match lint_dict.find(lint_name) {
-              none => {
+              None => {
                 early_error(demitter, fmt!("unknown %s flag: %s",
                                            level_name, lint_name));
               }
-              some(lint) => {
+              Some(lint) => {
                 vec::push(lint_opts, (lint.lint, level));
               }
             }
@@ -514,8 +514,8 @@ fn build_session_options(matches: getopts::matches,
         } else { No };
     let target =
         match target_opt {
-            none => host_triple(),
-            some(s) => s
+            None => host_triple(),
+            Some(s) => s
         };
 
     let addl_lib_search_paths =
@@ -548,7 +548,7 @@ fn build_session(sopts: @session::options,
                  demitter: diagnostic::emitter) -> session {
     let codemap = codemap::new_codemap();
     let diagnostic_handler =
-        diagnostic::mk_handler(some(demitter));
+        diagnostic::mk_handler(Some(demitter));
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
     build_session_(sopts, codemap, demitter, span_diagnostic_handler)
@@ -575,7 +575,7 @@ fn build_session_(sopts: @session::options,
                parse_sess: p_s,
                codemap: cm,
                // For a library crate, this is always none
-               mut main_fn: none,
+               mut main_fn: None,
                span_diagnostic: span_diagnostic_handler,
                filesearch: filesearch,
                mut building_library: false,
@@ -623,8 +623,8 @@ fn opts() -> ~[getopts::opt] {
 type output_filenames = @{out_filename:Path, obj_filename:Path};
 
 fn build_output_filenames(input: input,
-                          odir: &option<Path>,
-                          ofile: &option<Path>,
+                          odir: &Option<Path>,
+                          ofile: &Option<Path>,
                           sess: session)
         -> output_filenames {
     let obj_path;
@@ -646,13 +646,13 @@ fn build_output_filenames(input: input,
         };
 
     match *ofile {
-      none => {
+      None => {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
         // We want to toss everything after the final '.'
         let dirpath = match *odir {
-          some(d) => d,
-          none => match input {
+          Some(d) => d,
+          None => match input {
             str_input(_) => os::getcwd(),
             file_input(ifile) => ifile.dir_path()
           }
@@ -672,7 +672,7 @@ fn build_output_filenames(input: input,
         }
       }
 
-      some(out_file) => {
+      Some(out_file) => {
         out_path = out_file;
         obj_path = if stop_after_codegen {
             out_file
@@ -687,7 +687,7 @@ fn build_output_filenames(input: input,
             // lib<basename>-<hash>-<version>.so no matter what.
         }
 
-        if *odir != none {
+        if *odir != None {
             sess.warn(~"ignoring --out-dir flag due to -o flag.");
         }
       }
@@ -697,7 +697,7 @@ fn build_output_filenames(input: input,
 }
 
 fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
-    emitter(none, msg, diagnostic::fatal);
+    emitter(None, msg, diagnostic::fatal);
     fail;
 }
 

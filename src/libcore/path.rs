@@ -64,11 +64,11 @@ fn split_dirname_basename (pp: Path) -> {dirname: ~str, basename: ~str} {
     match str::rfind(pp, |ch|
         ch == consts::path_sep || ch == consts::alt_path_sep
     ) {
-      some(i) => {
+      Some(i) => {
         dirname: str::slice(pp, 0u, i),
         basename: str::slice(pp, i + 1u, str::len(pp))
       },
-      none => {dirname: ~".", basename: pp}
+      None => {dirname: ~".", basename: pp}
     }
 }
 
@@ -236,9 +236,9 @@ fn normalize(p: Path) -> Path {
     fn strip_dots(s: ~[Path]) -> ~[Path] {
         vec::filter_map(s, |elem|
             if elem == ~"." {
-                option::none
+                option::None
             } else {
-                option::some(elem)
+                option::Some(elem)
             })
     }
 

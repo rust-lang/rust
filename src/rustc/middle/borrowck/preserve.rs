@@ -190,7 +190,7 @@ priv impl &preserve_ctxt {
             // As an example, consider this scenario:
             //
             //    let mut x = @some(3);
-            //    match *x { some(y) {...} none {...} }
+            //    match *x { Some(y) {...} none {...} }
             //
             // Technically, the value `x` need only be rooted
             // in the `some` arm.  However, we evaluate `x` in trans

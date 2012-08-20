@@ -8,10 +8,10 @@ export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;
 
 fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
-    option<ty::t> {
-    if !ty::type_needs_infer(typ) { return some(typ); }
+    Option<ty::t> {
+    if !ty::type_needs_infer(typ) { return Some(typ); }
     match resolve_type(fcx.infcx, typ, resolve_all | force_all) {
-      result::ok(new_type) => return some(new_type),
+      result::ok(new_type) => return Some(new_type),
       result::err(e) => {
         if !fcx.ccx.tcx.sess.has_errors() {
             fcx.ccx.tcx.sess.span_err(
@@ -20,49 +20,49 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
                       for this expression: %s",
                      infer::fixup_err_to_str(e)))
         }
-        return none;
+        return None;
       }
     }
 }
 fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
-    -> option<ty::t> {
+    -> Option<ty::t> {
     let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
     let n_ty = fcx.node_ty(id);
     match resolve_type_vars_in_type(fcx, sp, n_ty) {
-      none => {
+      None => {
         wbcx.success = false;
-        return none;
+        return None;
       }
 
-      some(t) => {
+      Some(t) => {
         debug!("resolve_type_vars_for_node(id=%d, n_ty=%s, t=%s)",
                id, ty_to_str(tcx, n_ty), ty_to_str(tcx, t));
         write_ty_to_tcx(tcx, id, t);
         match fcx.opt_node_ty_substs(id) {
-          some(substs) => {
+          Some(substs) => {
             let mut new_tps = ~[];
             for substs.tps.each |subst| {
                 match resolve_type_vars_in_type(fcx, sp, subst) {
-                  some(t) => vec::push(new_tps, t),
-                  none => { wbcx.success = false; return none; }
+                  Some(t) => vec::push(new_tps, t),
+                  None => { wbcx.success = false; return None; }
                 }
             }
             write_substs_to_tcx(tcx, id, new_tps);
           }
-          none => ()
+          None => ()
         }
-        return some(t);
+        return Some(t);
       }
     }
 }
 
 fn maybe_resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span,
                                     id: ast::node_id)
-    -> option<ty::t> {
+    -> Option<ty::t> {
     if wbcx.fcx.node_types.contains_key(id) {
         resolve_type_vars_for_node(wbcx, sp, id)
     } else {
-        none
+        None
     }
 }
 
@@ -89,7 +89,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
             // Just in case we never constrained the mode to anything,
             // constrain it to the default for the type in question.
             match (r_ty, input.mode) {
-              (some(t), ast::infer(_)) => {
+              (Some(t), ast::infer(_)) => {
                 let tcx = wbcx.fcx.ccx.tcx;
                 let m_def = ty::default_arg_mode_for_ty(t);
                 ty::set_default_mode(tcx, input.mode, m_def);
@@ -172,7 +172,7 @@ fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
 fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
                            decl: ast::fn_decl,
                            blk: ast::blk,
-                           self_info: option<self_info>) -> bool {
+                           self_info: Option<self_info>) -> bool {
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
     visit.visit_block(blk, wbcx, visit);

@@ -57,8 +57,8 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
 // given a map, search for the frequency of a pattern
 fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
    match mm.find(str::to_bytes(str::to_lower(key))) {
-      option::none      => { return 0u; }
-      option::some(num) => { return num; }
+      option::None      => { return 0u; }
+      option::Some(num) => { return num; }
    }
 }
 
@@ -66,8 +66,8 @@ fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
 fn update_freq(mm: hashmap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len());
     match mm.find(key) {
-      option::none      => { mm.insert(key, 1u      ); }
-      option::some(val) => { mm.insert(key, 1u + val); }
+      option::None      => { mm.insert(key, 1u      ); }
+      option::Some(val) => { mm.insert(key, 1u + val); }
     }
 }
 
@@ -161,8 +161,8 @@ fn main(args: ~[~str]) {
          // start processing if this is the one
          ('>' as u8, false) => {
             match str::find_str_from(line, ~"THREE", 1u) {
-               option::some(_) => proc_mode = true,
-               option::none    => ()
+               option::Some(_) => proc_mode = true,
+               option::None    => ()
             }
          }
 

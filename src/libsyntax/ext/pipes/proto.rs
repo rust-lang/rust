@@ -25,7 +25,7 @@ impl direction {
     }
 }
 
-type next_state = option<{state: ~str, tys: ~[@ast::ty]}>;
+type next_state = Option<{state: ~str, tys: ~[@ast::ty]}>;
 
 enum message {
     // name, span, data, current state, next state
@@ -93,7 +93,7 @@ impl state {
     fn reachable(f: fn(state) -> bool) {
         for self.messages.each |m| {
             match m {
-              message(_, _, _, _, some({state: id, _})) => {
+              message(_, _, _, _, Some({state: id, _})) => {
                 let state = self.proto.get_state(id);
                 if !f(state) { break }
               }
@@ -114,13 +114,13 @@ struct protocol_ {
     let span: span;
     let states: DVec<state>;
 
-    let mut bounded: option<bool>;
+    let mut bounded: Option<bool>;
 
     new(name: ~str, span: span) {
         self.name = name;
         self.span = span;
         self.states = dvec();
-        self.bounded = none;
+        self.bounded = None;
     }
 
     /// Get a state.
@@ -131,7 +131,7 @@ struct protocol_ {
     fn get_state_by_id(id: uint) -> state { self.states[id] }
 
     fn has_state(name: ~str) -> bool {
-        self.states.find(|i| i.name == name) != none
+        self.states.find(|i| i.name == name) != None
     }
 
     fn filename() -> ~str {

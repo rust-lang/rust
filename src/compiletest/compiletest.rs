@@ -57,8 +57,8 @@ fn parse_config(args: ~[~str]) -> config {
          run_ignored: getopts::opt_present(matches, ~"ignored"),
          filter:
              if vec::len(matches.free) > 0u {
-                 option::some(matches.free[0])
-             } else { option::none },
+                 option::Some(matches.free[0])
+             } else { option::None },
          logfile: option::map(getopts::opt_maybe_str(matches,
                                                      ~"logfile"),
                               |s| Path(s)),
@@ -85,12 +85,12 @@ fn log_config(config: config) {
     logv(c, fmt!("\n"));
 }
 
-fn opt_str(maybestr: option<~str>) -> ~str {
-    match maybestr { option::some(s) => s, option::none => ~"(none)" }
+fn opt_str(maybestr: Option<~str>) -> ~str {
+    match maybestr { option::Some(s) => s, option::None => ~"(none)" }
 }
 
-fn str_opt(maybestr: ~str) -> option<~str> {
-    if maybestr != ~"(none)" { option::some(maybestr) } else { option::none }
+fn str_opt(maybestr: ~str) -> Option<~str> {
+    if maybestr != ~"(none)" { option::Some(maybestr) } else { option::None }
 }
 
 fn str_mode(s: ~str) -> mode {
@@ -122,14 +122,14 @@ fn run_tests(config: config) {
 fn test_opts(config: config) -> test::test_opts {
     {filter:
          match config.filter {
-           option::some(s) => option::some(s),
-           option::none => option::none
+           option::Some(s) => option::Some(s),
+           option::None => option::None
          },
      run_ignored: config.run_ignored,
      logfile:
          match config.logfile {
-           option::some(s) => option::some(s.to_str()),
-           option::none => option::none
+           option::Some(s) => option::Some(s.to_str()),
+           option::None => option::None
          }
     }
 }

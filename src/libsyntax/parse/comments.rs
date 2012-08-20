@@ -50,7 +50,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
     }
 
     // drop leftmost columns that contain only values in chars
-    fn block_trim(lines: ~[~str], chars: ~str, max: option<uint>) -> ~[~str] {
+    fn block_trim(lines: ~[~str], chars: ~str, max: Option<uint>) -> ~[~str] {
 
         let mut i = max.get_default(uint::max_value);
         for lines.each |line| {
@@ -85,9 +85,9 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
     if comment.starts_with(~"/*") {
         let lines = str::lines_any(comment.slice(3u, comment.len() - 2u));
         let lines = vertical_trim(lines);
-        let lines = block_trim(lines, ~"\t ", none);
-        let lines = block_trim(lines, ~"*", some(1u));
-        let lines = block_trim(lines, ~"\t ", none);
+        let lines = block_trim(lines, ~"\t ", None);
+        let lines = block_trim(lines, ~"*", Some(1u));
+        let lines = block_trim(lines, ~"\t ", None);
         return str::connect(lines, ~"\n");
     }
 

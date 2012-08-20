@@ -69,14 +69,14 @@ fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
 
     // FIXME (#2403): This is sloppy. Instead we should have some mechanism to
     // indicate to the translation pass which function we want to be main.
-    fn nomain(cx: test_ctxt, item: @ast::item) -> option<@ast::item> {
+    fn nomain(cx: test_ctxt, item: @ast::item) -> Option<@ast::item> {
         match item.node {
           ast::item_fn(*) => {
             if item.ident == cx.sess.ident_of(~"main") {
-                option::none
-            } else { option::some(item) }
+                option::None
+            } else { option::Some(item) }
           }
-          _ => option::some(item)
+          _ => option::Some(item)
         }
     }
 
@@ -97,7 +97,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 
 
 fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
-   option<@ast::item> {
+   Option<@ast::item> {
 
     vec::push(cx.path, i.ident);
     debug!("current path: %s",
@@ -214,7 +214,7 @@ fn nospan<T: copy>(t: T) -> ast::spanned<T> {
 }
 
 fn path_node(ids: ~[ast::ident]) -> @ast::path {
-    @{span: dummy_sp(), global: false, idents: ids, rp: none, types: ~[]}
+    @{span: dummy_sp(), global: false, idents: ids, rp: None, types: ~[]}
 }
 
 fn mk_tests(cx: test_ctxt) -> @ast::item {
@@ -229,7 +229,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     let test_descs = mk_test_desc_vec(cx);
 
     let body_: ast::blk_ =
-        default_block(~[], option::some(test_descs), cx.sess.next_node_id());
+        default_block(~[], option::Some(test_descs), cx.sess.next_node_id());
     let body = nospan(body_);
 
     let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
@@ -249,7 +249,7 @@ fn mk_path(cx: test_ctxt, path: ~[ast::ident]) -> ~[ast::ident] {
     let is_std = {
         let items = attr::find_linkage_metas(cx.crate.node.attrs);
         match attr::last_meta_item_value_str_by_name(items, ~"name") {
-          some(~"std") => true,
+          Some(~"std") => true,
           _ => false
         }
     };
@@ -362,7 +362,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
 
     let desc_rec_: ast::expr_ =
         ast::expr_rec(~[name_field, fn_field, ignore_field, fail_field],
-            option::none);
+            option::None);
     let desc_rec: ast::expr =
         {id: cx.sess.next_node_id(), callee_id: cx.sess.next_node_id(),
          node: desc_rec_, span: span};
@@ -394,7 +394,7 @@ fn mk_test_wrapper(cx: test_ctxt,
     let wrapper_body: ast::blk = nospan({
         view_items: ~[],
         stmts: ~[@call_stmt],
-        expr: option::none,
+        expr: option::None,
         id: cx.sess.next_node_id(),
         rules: ast::default_blk
     });
@@ -445,7 +445,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let test_main_call_expr = mk_test_main_call(cx);
 
     let body_: ast::blk_ =
-        default_block(~[], option::some(test_main_call_expr),
+        default_block(~[], option::Some(test_main_call_expr),
                       cx.sess.next_node_id());
     let body = {node: body_, span: dummy_sp()};
 

@@ -10,15 +10,15 @@ mod pipes {
 
     type packet<T: send> = {
         mut state: state,
-        mut blocked_task: option<task::Task>,
-        mut payload: option<T>
+        mut blocked_task: Option<task::Task>,
+        mut payload: Option<T>
     };
 
     fn packet<T: send>() -> *packet<T> unsafe {
         let p: *packet<T> = unsafe::transmute(~{
             mut state: empty,
-            mut blocked_task: none::<task::Task>,
-            mut payload: none::<T>
+            mut blocked_task: None::<task::Task>,
+            mut payload: None::<T>
         });
         p
     }
@@ -51,8 +51,8 @@ mod pipes {
     fn send<T: send>(-p: send_packet<T>, -payload: T) {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
-        assert (*p).payload == none;
-        (*p).payload <- some(payload);
+        assert (*p).payload == None;
+        (*p).payload <- Some(payload);
         let old_state = swap_state_rel(&mut (*p).state, full);
         match old_state {
           empty => {
@@ -74,7 +74,7 @@ mod pipes {
         }
     }
 
-    fn recv<T: send>(-p: recv_packet<T>) -> option<T> {
+    fn recv<T: send>(-p: recv_packet<T>) -> Option<T> {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
         loop {
@@ -83,13 +83,13 @@ mod pipes {
             match old_state {
               empty | blocked => { task::yield(); }
               full => {
-                let mut payload = none;
+                let mut payload = None;
                 payload <-> (*p).payload;
-                return some(option::unwrap(payload))
+                return Some(option::unwrap(payload))
               }
               terminated => {
                 assert old_state == terminated;
-                return none;
+                return None;
               }
             }
         }
@@ -130,34 +130,34 @@ mod pipes {
     }
 
     struct send_packet<T: send> {
-        let mut p: option<*packet<T>>;
-        new(p: *packet<T>) { self.p = some(p); }
+        let mut p: Option<*packet<T>>;
+        new(p: *packet<T>) { self.p = Some(p); }
         drop {
-            if self.p != none {
-                let mut p = none;
+            if self.p != None {
+                let mut p = None;
                 p <-> self.p;
                 sender_terminate(option::unwrap(p))
             }
         }
         fn unwrap() -> *packet<T> {
-            let mut p = none;
+            let mut p = None;
             p <-> self.p;
             option::unwrap(p)
         }
     }
 
     struct recv_packet<T: send> {
-        let mut p: option<*packet<T>>;
-        new(p: *packet<T>) { self.p = some(p); }
+        let mut p: Option<*packet<T>>;
+        new(p: *packet<T>) { self.p = Some(p); }
         drop {
-            if self.p != none {
-                let mut p = none;
+            if self.p != None {
+                let mut p = None;
                 p <-> self.p;
                 receiver_terminate(option::unwrap(p))
             }
         }
         fn unwrap() -> *packet<T> {
-            let mut p = none;
+            let mut p = None;
             p <-> self.p;
             option::unwrap(p)
         }
@@ -208,7 +208,7 @@ mod pingpong {
 
         fn do_pong(-c: pong) -> (ping, ()) {
             let packet = pipes::recv(c);
-            if packet == none {
+            if packet == None {
                 fail ~"sender closed the connection"
             }
             (liberate_pong(option::unwrap(packet)), ())
@@ -221,7 +221,7 @@ mod pingpong {
 
         fn do_ping(-c: ping) -> (pong, ()) {
             let packet = pipes::recv(c);
-            if packet == none {
+            if packet == None {
                 fail ~"sender closed the connection"
             }
             (liberate_ping(option::unwrap(packet)), ())

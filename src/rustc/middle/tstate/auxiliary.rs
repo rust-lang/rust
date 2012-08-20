@@ -252,7 +252,7 @@ fn add_node(ccx: crate_ctxt, i: node_id, a: ts_ann) {
     ccx.node_anns[i] = a;
 }
 
-fn get_ts_ann(ccx: crate_ctxt, i: node_id) -> option<ts_ann> {
+fn get_ts_ann(ccx: crate_ctxt, i: node_id) -> Option<ts_ann> {
     if i as uint < vec::len(*ccx.node_anns) {
         return some::<ts_ann>(ccx.node_anns[i]);
     } else { return none::<ts_ann>; }
@@ -266,7 +266,7 @@ fn node_id_to_ts_ann(ccx: crate_ctxt, id: node_id) -> ts_ann {
         error!("node_id_to_ts_ann: no ts_ann for node_id %d", id);
         fail;
       }
-      some(tt) { return tt; }
+      Some(tt) { return tt; }
     }
 }
 
@@ -464,11 +464,11 @@ fn node_id_to_def_strict(cx: ty::ctxt, id: node_id) -> def {
         error!("node_id_to_def: node_id %d has no def", id);
         fail;
       }
-      some(d) { return d; }
+      Some(d) { return d; }
     }
 }
 
-fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> option<def> {
+fn node_id_to_def(ccx: crate_ctxt, id: node_id) -> Option<def> {
     return ccx.tcx.def_map.find(id);
 }
 
@@ -515,7 +515,7 @@ fn def_id_for_constr(tcx: ty::ctxt, t: node_id) -> def_id {
       none {
         tcx.sess.bug(~"node_id_for_constr: bad node_id " + int::str(t));
       }
-      some(def_fn(i, _)) { return i; }
+      Some(def_fn(i, _)) { return i; }
       _ { tcx.sess.bug(~"node_id_for_constr: pred is not a function"); }
     }
 }
@@ -524,12 +524,12 @@ fn expr_to_constr_arg(tcx: ty::ctxt, e: @expr) -> @constr_arg_use {
     match e.node {
       expr_path(p) {
         match tcx.def_map.find(e.id) {
-          some(def_local(nid, _)) | some(def_arg(nid, _)) |
-          some(def_binding(nid, _)) | some(def_upvar(nid, _, _, _)) {
+          Some(def_local(nid, _)) | Some(def_arg(nid, _)) |
+          Some(def_binding(nid, _)) | Some(def_upvar(nid, _, _, _)) {
             return @respan(p.span,
                         carg_ident({ident: p.idents[0], node: nid}));
           }
-          some(what) {
+          Some(what) {
               tcx.sess.span_bug(e.span,
                  fmt!("exprs_to_constr_args: non-local variable %? \
                                      as pred arg", what));
@@ -642,9 +642,9 @@ fn pred_args_matches(pattern: ~[constr_arg_general_<inst>],
 
 fn find_instance_(pattern: ~[constr_arg_general_<inst>],
                   descs: ~[pred_args]) ->
-   option<uint> {
+   Option<uint> {
     for descs.each |d| {
-        if pred_args_matches(pattern, d) { return some(d.node.bit_num); }
+        if pred_args_matches(pattern, d) { return Some(d.node.bit_num); }
     }
     return none;
 }
@@ -670,7 +670,7 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
                 let old_bit_num = d.node.bit_num;
                 let newv = replace(subst, d);
                 match find_instance_(newv, v) {
-                  some(d1) {vec::push(res, {from: old_bit_num, to: d1})}
+                  Some(d1) {vec::push(res, {from: old_bit_num, to: d1})}
                   _ {}
                 }
             } else {}
@@ -680,9 +680,9 @@ fn find_instances(_fcx: fn_ctxt, subst: subst,
     return res;
 }
 
-fn find_in_subst(id: node_id, s: subst) -> option<inst> {
+fn find_in_subst(id: node_id, s: subst) -> Option<inst> {
     for s.each |p| {
-        if id == p.from.node { return some(p.to); }
+        if id == p.from.node { return Some(p.to); }
     }
     return none;
 }
@@ -712,7 +712,7 @@ fn replace(subst: subst, d: pred_args) -> ~[constr_arg_general_<inst>] {
         match c.node {
           carg_ident(p) {
             match find_in_subst(p.node, subst) {
-              some(newv) { vec::push(rslt, carg_ident(newv)); }
+              Some(newv) { vec::push(rslt, carg_ident(newv)); }
               _ { vec::push(rslt, c.node); }
             }
           }
@@ -737,11 +737,11 @@ fn for_constraints_mentioning(fcx: fn_ctxt, id: node_id,
 fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
    def_id {
     match local_node_id_to_def(fcx, i) {
-      some(def_local(nid, _)) | some(def_arg(nid, _)) |
-      some(def_upvar(nid, _, _)) {
+      Some(def_local(nid, _)) | Some(def_arg(nid, _)) |
+      Some(def_upvar(nid, _, _)) {
         return local_def(nid);
       }
-      some(_) {
+      Some(_) {
         fcx.ccx.tcx.sess.span_fatal(sp,
                                     ~"local_node_id_to_def_id: id \
                isn't a local");
@@ -755,24 +755,24 @@ fn local_node_id_to_def_id_strict(fcx: fn_ctxt, sp: span, i: node_id) ->
     }
 }
 
-fn local_node_id_to_def(fcx: fn_ctxt, i: node_id) -> option<def> {
+fn local_node_id_to_def(fcx: fn_ctxt, i: node_id) -> Option<def> {
     fcx.ccx.tcx.def_map.find(i)
 }
 
-fn local_node_id_to_def_id(fcx: fn_ctxt, i: node_id) -> option<def_id> {
+fn local_node_id_to_def_id(fcx: fn_ctxt, i: node_id) -> Option<def_id> {
     match local_node_id_to_def(fcx, i) {
-      some(def_local(nid, _)) | some(def_arg(nid, _)) |
-      some(def_binding(nid, _)) | some(def_upvar(nid, _, _)) {
-        some(local_def(nid))
+      Some(def_local(nid, _)) | Some(def_arg(nid, _)) |
+      Some(def_binding(nid, _)) | Some(def_upvar(nid, _, _)) {
+        Some(local_def(nid))
       }
       _ { none }
     }
 }
 
 fn local_node_id_to_local_def_id(fcx: fn_ctxt, i: node_id) ->
-   option<node_id> {
+   Option<node_id> {
     match local_node_id_to_def_id(fcx, i) {
-      some(did) { some(did.node) }
+      Some(did) { Some(did.node) }
       _ { none }
     }
 }
@@ -926,7 +926,7 @@ fn ast_constr_to_sp_constr(tcx: ty::ctxt, args: ~[arg], c: @constr) ->
     return respan(c.span, tconstr);
 }
 
-type binding = {lhs: ~[dest], rhs: option<initializer>};
+type binding = {lhs: ~[dest], rhs: Option<initializer>};
 
 fn local_to_bindings(tcx: ty::ctxt, loc: @local) -> binding {
     let mut lhs = ~[];
@@ -973,7 +973,7 @@ fn arg_bindings(ops: ~[init_op], es: ~[@expr]) -> ~[binding] {
     let mut i = 0u;
     for ops.each |op| {
         vec::push(bindings,
-                  {lhs: ~[call], rhs: some({op: op, expr: es[i]})});
+                  {lhs: ~[call], rhs: Some({op: op, expr: es[i]})});
         i += 1u;
     }
     return bindings;

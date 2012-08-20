@@ -1,3 +1,3 @@
 export foo;
-type oint = option<int>;
-fn foo() -> oint { some(3) }
+type oint = Option<int>;
+fn foo() -> oint { Some(3) }

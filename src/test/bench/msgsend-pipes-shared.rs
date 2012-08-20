@@ -31,12 +31,12 @@ fn server(requests: port<request>, responses: pipes::chan<uint>) {
     let mut done = false;
     while !done {
         match requests.try_recv() {
-          some(get_count) => { responses.send(copy count); }
-          some(bytes(b)) => {
+          Some(get_count) => { responses.send(copy count); }
+          Some(bytes(b)) => {
             //error!("server: received %? bytes", b);
             count += b;
           }
-          none => { done = true; }
+          None => { done = true; }
           _ => { }
         }
     }

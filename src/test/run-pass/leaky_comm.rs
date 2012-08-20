@@ -6,9 +6,9 @@ use test_comm;
 fn main() {
   let p = test_comm::port();
   
-  match none::<int> {
-      none => {}
-      some(_)  =>{
+  match None::<int> {
+      None => {}
+      Some(_)  =>{
   if test_comm::recv(p) == 0 {
       error!("floop");
   }

@@ -3,7 +3,7 @@
 #[forbid(deprecated_pattern)];
 
 //! Process spawning
-import option::{some, none};
+import option::{Some, None};
 import libc::{pid_t, c_void, c_int};
 import io::ReaderUtil;
 
@@ -68,8 +68,8 @@ trait Program {
  * The process id of the spawned process
  */
 fn spawn_process(prog: &str, args: &[~str],
-                 env: &option<~[(~str,~str)]>,
-                 dir: &option<~str>,
+                 env: &Option<~[(~str,~str)]>,
+                 dir: &Option<~str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
    -> pid_t {
     do with_argv(prog, args) |argv| {
@@ -96,12 +96,12 @@ fn with_argv<T>(prog: &str, args: &[~str],
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: &option<~[(~str,~str)]>,
+fn with_envp<T>(env: &Option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     match *env {
-      some(es) if !vec::is_empty(es) => {
+      Some(es) if !vec::is_empty(es) => {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
@@ -121,14 +121,14 @@ fn with_envp<T>(env: &option<~[(~str,~str)]>,
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: &option<~[(~str,~str)]>,
+fn with_envp<T>(env: &Option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
     unsafe {
         match *env {
-          some(es) if !vec::is_empty(es) => {
+          Some(es) if !vec::is_empty(es) => {
             let mut blk : ~[u8] = ~[];
             for vec::each(es) |e| {
                 let (k,v) = e;
@@ -145,11 +145,11 @@ fn with_envp<T>(env: &option<~[(~str,~str)]>,
     }
 }
 
-fn with_dirp<T>(d: &option<~str>,
+fn with_dirp<T>(d: &Option<~str>,
                 cb: fn(*libc::c_char) -> T) -> T {
     match *d {
-      some(dir) => str::as_c_str(dir, cb),
-      none => cb(ptr::null())
+      Some(dir) => str::as_c_str(dir, cb),
+      None => cb(ptr::null())
     }
 }
 
@@ -166,7 +166,7 @@ fn with_dirp<T>(d: &option<~str>,
  * The process id
  */
 fn run_program(prog: &str, args: &[~str]) -> int {
-    let pid = spawn_process(prog, args, &none, &none,
+    let pid = spawn_process(prog, args, &None, &None,
                             0i32, 0i32, 0i32);
     if pid == -1 as pid_t { fail; }
     return waitpid(pid);
@@ -193,7 +193,7 @@ fn start_program(prog: &str, args: &[~str]) -> Program {
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
     let pid =
-        spawn_process(prog, args, &none, &none,
+        spawn_process(prog, args, &None, &None,
                       pipe_input.in, pipe_output.out,
                       pipe_err.out);
 
@@ -278,7 +278,7 @@ fn program_output(prog: &str, args: &[~str]) ->
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
-    let pid = spawn_process(prog, args, &none, &none,
+    let pid = spawn_process(prog, args, &None, &None,
                             pipe_in.in, pipe_out.out, pipe_err.out);
 
     os::close(pipe_in.in);
@@ -415,7 +415,7 @@ mod tests {
 
         let pid =
             run::spawn_process(
-                "cat", [], &none, &none,
+                "cat", [], &None, &None,
                 pipe_in.in, pipe_out.out, pipe_err.out);
         os::close(pipe_in.in);
         os::close(pipe_out.out);
@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn waitpid() {
         let pid = run::spawn_process("false", [],
-                                     &none, &none,
+                                     &None, &None,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
         assert status == 1;

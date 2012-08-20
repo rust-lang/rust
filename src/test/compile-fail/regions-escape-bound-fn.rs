@@ -4,6 +4,6 @@ fn with_int(f: fn(x: &int)) {
 }
 
 fn main() {
-    let mut x: option<&int> = none; //~ ERROR cannot infer
-    with_int(|y| x = some(y));
+    let mut x: Option<&int> = None; //~ ERROR cannot infer
+    with_int(|y| x = Some(y));
 }

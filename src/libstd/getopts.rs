@@ -23,7 +23,7 @@
  *     import std::getopts::{optopt,optflag,getopts,opt_present,opt_maybe_str,
  *         fail_str};
  *
- *     fn do_work(in: str, out: option<str>) {
+ *     fn do_work(in: str, out: Option<str>) {
  *         // ...
  *     }
  *
@@ -64,7 +64,7 @@
 
 import core::result::{err, ok};
 import core::option;
-import core::option::{some, none};
+import core::option::{Some, None};
 export opt;
 export reqopt;
 export optopt;
@@ -146,7 +146,7 @@ fn name_str(nm: name) -> ~str {
     };
 }
 
-fn find_opt(opts: ~[opt], nm: name) -> option<uint> {
+fn find_opt(opts: ~[opt], nm: name) -> Option<uint> {
     vec::position(opts, |opt| opt.name == nm)
 }
 
@@ -206,7 +206,7 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
             break;
         } else {
             let mut names;
-            let mut i_arg = option::none::<~str>;
+            let mut i_arg = option::None::<~str>;
             if cur[1] == '-' as u8 {
                 let tail = str::slice(cur, 2u, curlen);
                 let tail_eq = str::splitn_char(tail, '=', 1u);
@@ -216,11 +216,11 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
                     names =
                         ~[long(tail_eq[0])];
                     i_arg =
-                        option::some::<~str>(tail_eq[1]);
+                        option::Some::<~str>(tail_eq[1]);
                 }
             } else {
                 let mut j = 1u;
-                let mut last_valid_opt_id = option::none;
+                let mut last_valid_opt_id = option::None;
                 names = ~[];
                 while j < curlen {
                     let range = str::char_range_at(cur, j);
@@ -234,8 +234,8 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
                     */
 
                     match find_opt(opts, opt) {
-                      some(id) => last_valid_opt_id = option::some(id),
-                      none => {
+                      Some(id) => last_valid_opt_id = option::Some(id),
+                      None => {
                         let arg_follows =
                             option::is_some(last_valid_opt_id) &&
                             match opts[option::get(last_valid_opt_id)]
@@ -245,10 +245,10 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
                               no => false
                             };
                         if arg_follows && j + 1 < curlen {
-                            i_arg = option::some(str::slice(cur, j, curlen));
+                            i_arg = option::Some(str::slice(cur, j, curlen));
                             break;
                         } else {
-                            last_valid_opt_id = option::none;
+                            last_valid_opt_id = option::None;
                         }
                       }
                     }
@@ -260,8 +260,8 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
             for vec::each(names) |nm| {
                 name_pos += 1u;
                 let optid = match find_opt(opts, nm) {
-                  some(id) => id,
-                  none => return err(unrecognized_option(name_str(nm)))
+                  Some(id) => id,
+                  None => return err(unrecognized_option(name_str(nm)))
                 };
                 match opts[optid].hasarg {
                   no => {
@@ -312,8 +312,8 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
 
 fn opt_vals(m: matches, nm: ~str) -> ~[optval] {
     return match find_opt(m.opts, mkname(nm)) {
-      some(id) => m.vals[id],
-      none => {
+      Some(id) => m.vals[id],
+      None => {
         error!("No option '%s' defined", nm);
         fail
       }
@@ -331,7 +331,7 @@ fn opt_present(m: matches, nm: ~str) -> bool {
 fn opts_present(m: matches, names: ~[~str]) -> bool {
     for vec::each(names) |nm| {
         match find_opt(m.opts, mkname(nm)) {
-          some(_) => return true,
+          Some(_) => return true,
           _ => ()
         }
     }
@@ -381,10 +381,10 @@ fn opt_strs(m: matches, nm: ~str) -> ~[~str] {
 }
 
 /// Returns the string argument supplied to a matching option or none
-fn opt_maybe_str(m: matches, nm: ~str) -> option<~str> {
+fn opt_maybe_str(m: matches, nm: ~str) -> Option<~str> {
     let vals = opt_vals(m, nm);
-    if vec::len::<optval>(vals) == 0u { return none::<~str>; }
-    return match vals[0] { val(s) => some::<~str>(s), _ => none::<~str> };
+    if vec::len::<optval>(vals) == 0u { return None::<~str>; }
+    return match vals[0] { val(s) => Some::<~str>(s), _ => None::<~str> };
 }
 
 
@@ -395,10 +395,10 @@ fn opt_maybe_str(m: matches, nm: ~str) -> option<~str> {
  * present but no argument was provided, and the argument if the option was
  * present and an argument was provided.
  */
-fn opt_default(m: matches, nm: ~str, def: ~str) -> option<~str> {
+fn opt_default(m: matches, nm: ~str, def: ~str) -> Option<~str> {
     let vals = opt_vals(m, nm);
-    if vec::len::<optval>(vals) == 0u { return none::<~str>; }
-    return match vals[0] { val(s) => some::<~str>(s), _ => some::<~str>(def) }
+    if vec::len::<optval>(vals) == 0u { return None::<~str>; }
+    return match vals[0] { val(s) => Some::<~str>(s), _ => Some::<~str>(def) }
 }
 
 #[cfg(test)]

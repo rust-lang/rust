@@ -2,12 +2,12 @@
 
 use std;
 import option;
-import option::some;
+import option::Some;
 
 // error-pattern: mismatched types
 
-enum bar { t1((), option<~[int]>), t2, }
+enum bar { t1((), Option<~[int]>), t2, }
 
-fn foo(t: bar) -> int { match t { t1(_, some(x)) => { return x * 3; } _ => { fail; } } }
+fn foo(t: bar) -> int { match t { t1(_, Some(x)) => { return x * 3; } _ => { fail; } } }
 
 fn main() { }

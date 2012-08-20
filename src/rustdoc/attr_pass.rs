@@ -106,31 +106,31 @@ fn parse_item_attrs<T:send>(
 #[test]
 fn should_should_extract_mod_attributes() {
     let doc = test::mk_doc(~"#[doc = \"test\"] mod a { }");
-    assert doc.cratemod().mods()[0].desc() == some(~"test");
+    assert doc.cratemod().mods()[0].desc() == Some(~"test");
 }
 
 #[test]
 fn should_extract_top_mod_attributes() {
     let doc = test::mk_doc(~"#[doc = \"test\"];");
-    assert doc.cratemod().desc() == some(~"test");
+    assert doc.cratemod().desc() == Some(~"test");
 }
 
 #[test]
 fn should_extract_foreign_mod_attributes() {
     let doc = test::mk_doc(~"#[doc = \"test\"] extern mod a { }");
-    assert doc.cratemod().nmods()[0].desc() == some(~"test");
+    assert doc.cratemod().nmods()[0].desc() == Some(~"test");
 }
 
 #[test]
 fn should_extract_foreign_fn_attributes() {
     let doc = test::mk_doc(~"extern mod a { #[doc = \"test\"] fn a(); }");
-    assert doc.cratemod().nmods()[0].fns[0].desc() == some(~"test");
+    assert doc.cratemod().nmods()[0].fns[0].desc() == Some(~"test");
 }
 
 #[test]
 fn should_extract_fn_attributes() {
     let doc = test::mk_doc(~"#[doc = \"test\"] fn a() -> int { }");
-    assert doc.cratemod().fns()[0].desc() == some(~"test");
+    assert doc.cratemod().fns()[0].desc() == Some(~"test");
 }
 
 fn fold_enum(
@@ -174,13 +174,13 @@ fn fold_enum(
 fn should_extract_enum_docs() {
     let doc = test::mk_doc(~"#[doc = \"b\"]\
                             enum a { v }");
-    assert doc.cratemod().enums()[0].desc() == some(~"b");
+    assert doc.cratemod().enums()[0].desc() == Some(~"b");
 }
 
 #[test]
 fn should_extract_variant_docs() {
     let doc = test::mk_doc(~"enum a { #[doc = \"c\"] v }");
-    assert doc.cratemod().enums()[0].variants[0].desc == some(~"c");
+    assert doc.cratemod().enums()[0].variants[0].desc == Some(~"c");
 }
 
 fn fold_trait(
@@ -203,7 +203,7 @@ fn merge_method_attrs(
 ) -> ~[doc::methoddoc] {
 
     // Create an assoc list from method name to attributes
-    let attrs: ~[(~str, option<~str>)] = do astsrv::exec(srv) |ctxt| {
+    let attrs: ~[(~str, Option<~str>)] = do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_trait(_, _, methods), _
@@ -244,7 +244,7 @@ fn merge_method_attrs(
 #[test]
 fn should_extract_trait_docs() {
     let doc = test::mk_doc(~"#[doc = \"whatever\"] trait i { fn a(); }");
-    assert doc.cratemod().traits()[0].desc() == some(~"whatever");
+    assert doc.cratemod().traits()[0].desc() == Some(~"whatever");
 }
 
 #[test]
@@ -254,7 +254,7 @@ fn should_extract_trait_method_docs() {
          #[doc = \"desc\"]\
          fn f(a: bool) -> bool;\
          }");
-    assert doc.cratemod().traits()[0].methods[0].desc == some(~"desc");
+    assert doc.cratemod().traits()[0].methods[0].desc == Some(~"desc");
 }
 
 
@@ -275,7 +275,7 @@ fn fold_impl(
 fn should_extract_impl_docs() {
     let doc = test::mk_doc(
         ~"#[doc = \"whatever\"] impl int { fn a() { } }");
-    assert doc.cratemod().impls()[0].desc() == some(~"whatever");
+    assert doc.cratemod().impls()[0].desc() == Some(~"whatever");
 }
 
 #[test]
@@ -285,7 +285,7 @@ fn should_extract_impl_method_docs() {
          #[doc = \"desc\"]\
          fn f(a: bool) -> bool { }\
          }");
-    assert doc.cratemod().impls()[0].methods[0].desc == some(~"desc");
+    assert doc.cratemod().impls()[0].methods[0].desc == Some(~"desc");
 }
 
 #[cfg(test)]

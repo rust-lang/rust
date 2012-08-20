@@ -63,8 +63,8 @@ fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::itemdoc {
         id: id,
         name: name,
         path: ~[],
-        brief: none,
-        desc: none,
+        brief: None,
+        desc: None,
         sections: ~[],
         reexport: false
     }
@@ -80,49 +80,49 @@ fn moddoc_from_mod(
             let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
             match item.node {
               ast::item_mod(m) => {
-                some(doc::modtag(
+                Some(doc::modtag(
                     moddoc_from_mod(itemdoc, m)
                 ))
               }
               ast::item_foreign_mod(nm) => {
-                some(doc::nmodtag(
+                Some(doc::nmodtag(
                     nmoddoc_from_mod(itemdoc, nm)
                 ))
               }
               ast::item_fn(*) => {
-                some(doc::fntag(
+                Some(doc::fntag(
                     fndoc_from_fn(itemdoc)
                 ))
               }
               ast::item_const(_, _) => {
-                some(doc::consttag(
+                Some(doc::consttag(
                     constdoc_from_const(itemdoc)
                 ))
               }
               ast::item_enum(enum_definition, _) => {
-                some(doc::enumtag(
+                Some(doc::enumtag(
                     enumdoc_from_enum(itemdoc, enum_definition.variants)
                 ))
               }
               ast::item_trait(_, _, methods) => {
-                some(doc::traittag(
+                Some(doc::traittag(
                     traitdoc_from_trait(itemdoc, methods)
                 ))
               }
               ast::item_impl(_, _, _, methods) => {
-                some(doc::impltag(
+                Some(doc::impltag(
                     impldoc_from_impl(itemdoc, methods)
                 ))
               }
               ast::item_ty(_, _) => {
-                some(doc::tytag(
+                Some(doc::tytag(
                     tydoc_from_ty(itemdoc)
                 ))
               }
-              _ => none
+              _ => None
             }
         },
-        index: none
+        index: None
     })
 }
 
@@ -143,21 +143,21 @@ fn nmoddoc_from_mod(
     {
         item: itemdoc,
         fns: fns,
-        index: none
+        index: None
     }
 }
 
 fn fndoc_from_fn(itemdoc: doc::itemdoc) -> doc::fndoc {
     {
         item: itemdoc,
-        sig: none
+        sig: None
     }
 }
 
 fn constdoc_from_const(itemdoc: doc::itemdoc) -> doc::constdoc {
     {
         item: itemdoc,
-        sig: none
+        sig: None
     }
 }
 
@@ -188,8 +188,8 @@ fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
 
     {
         name: to_str(variant.node.name),
-        desc: none,
-        sig: none
+        desc: None,
+        sig: None
     }
 }
 
@@ -217,20 +217,20 @@ fn traitdoc_from_trait(
               ast::required(ty_m) => {
                 {
                     name: to_str(ty_m.ident),
-                    brief: none,
-                    desc: none,
+                    brief: None,
+                    desc: None,
                     sections: ~[],
-                    sig: none,
+                    sig: None,
                     implementation: doc::required,
                 }
               }
               ast::provided(m) => {
                 {
                     name: to_str(m.ident),
-                    brief: none,
-                    desc: none,
+                    brief: None,
+                    desc: None,
                     sections: ~[],
-                    sig: none,
+                    sig: None,
                     implementation: doc::provided,
                 }
               }
@@ -258,14 +258,14 @@ fn impldoc_from_impl(
     {
         item: itemdoc,
         trait_types: ~[],
-        self_ty: none,
+        self_ty: None,
         methods: do vec::map(methods) |method| {
             {
                 name: to_str(method.ident),
-                brief: none,
-                desc: none,
+                brief: None,
+                desc: None,
                 sections: ~[],
-                sig: none,
+                sig: None,
                 implementation: doc::provided,
             }
         }
@@ -283,7 +283,7 @@ fn tydoc_from_ty(
 ) -> doc::tydoc {
     {
         item: itemdoc,
-        sig: none
+        sig: None
     }
 }
 

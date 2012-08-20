@@ -176,8 +176,8 @@ fn encode_type(ecx: @encode_ctxt, ebml_w: ebml::writer, typ: ty::t) {
 fn encode_symbol(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
     let sym = match ecx.item_symbols.find(id) {
-      some(x) => x,
-      none => {
+      Some(x) => x,
+      None => {
         ecx.diag.handler().bug(
             fmt!("encode_symbol: id not found %d", id));
       }
@@ -294,7 +294,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
     // Encode the reexports of this module.
     debug!("(encoding info for module) encoding reexports for %d", id);
     match ecx.reexports2.find(id) {
-        some(exports) => {
+        Some(exports) => {
             debug!("(encoding info for module) found reexports for %d", id);
             for exports.each |exp| {
                 debug!("(encoding info for module) reexport '%s' for %d",
@@ -309,7 +309,7 @@ fn encode_info_for_mod(ecx: @encode_ctxt, ebml_w: ebml::writer, md: _mod,
                 ebml_w.end_tag();
             }
         }
-        none => {
+        None => {
             debug!("(encoding info for module) found no reexports for %d",
                    id);
         }
@@ -417,7 +417,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
 // This is for encoding info for ctors and dtors
 fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: ebml::writer,
                         id: node_id, ident: ident, path: ast_map::path,
-                        item: option<inlined_item>, tps: ~[ty_param]) {
+                        item: Option<inlined_item>, tps: ~[ty_param]) {
         ebml_w.start_tag(tag_items_data_item);
         encode_name(ecx, ebml_w, ident);
         encode_def_id(ebml_w, local_def(id));
@@ -430,10 +430,10 @@ fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: ebml::writer,
         encode_type(ecx, ebml_w, its_ty);
         encode_path(ecx, ebml_w, path, ast_map::path_name(ident));
         match item {
-           some(it) => {
+           Some(it) => {
              ecx.encode_inlined_item(ecx, ebml_w, path, it);
            }
-           none => {
+           None => {
              encode_symbol(ecx, ebml_w, id);
            }
         }
@@ -593,9 +593,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                                    ecx.tcx.sess.str_of(item.ident) +
                                    ~"_dtor"),
                                path, if tps.len() > 0u {
-                                   some(ii_dtor(dtor, item.ident, tps,
+                                   Some(ii_dtor(dtor, item.ident, tps,
                                                 local_def(item.id))) }
-                               else { none }, tps);
+                               else { None }, tps);
         }
 
         /* Index the class*/
@@ -605,8 +605,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_def_id(ebml_w, local_def(item.id));
 
         match struct_def.ctor {
-            none => encode_family(ebml_w, 'S'),
-            some(_) => encode_family(ebml_w, 'C')
+            None => encode_family(ebml_w, 'S'),
+            Some(_) => encode_family(ebml_w, 'C')
         }
 
         encode_type_param_bounds(ebml_w, ecx, tps);
@@ -678,9 +678,9 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             });
             encode_info_for_ctor(ecx, ebml_w, ctor.node.id, item.ident,
                                  path, if tps.len() > 0u {
-                                     some(ii_ctor(ctor, item.ident, tps,
+                                     Some(ii_ctor(ctor, item.ident, tps,
                                                   local_def(item.id))) }
-                                 else { none }, tps);
+                                 else { None }, tps);
         }
       }
       item_impl(tps, traits, _, methods) => {

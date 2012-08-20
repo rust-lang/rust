@@ -72,9 +72,9 @@ fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
      * waiting for the result to be received on the port.
      */
 
-    let port = ~mut some(port);
+    let port = ~mut Some(port);
     do from_fn |move port| {
-        let mut port_ = none;
+        let mut port_ = None;
         port_ <-> *port;
         let port = option::unwrap(port_);
         match recv(port) {

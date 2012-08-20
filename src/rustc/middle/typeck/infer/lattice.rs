@@ -9,15 +9,15 @@ import to_str::to_str;
 // for pairs of variables or for variables and values.
 
 trait lattice_ops {
-    fn bnd(b: bounds<ty::t>) -> option<ty::t>;
+    fn bnd(b: bounds<ty::t>) -> Option<ty::t>;
     fn with_bnd(b: bounds<ty::t>, t: ty::t) -> bounds<ty::t>;
     fn ty_bot(t: ty::t) -> cres<ty::t>;
 }
 
 impl Lub: lattice_ops {
-    fn bnd(b: bounds<ty::t>) -> option<ty::t> { b.ub }
+    fn bnd(b: bounds<ty::t>) -> Option<ty::t> { b.ub }
     fn with_bnd(b: bounds<ty::t>, t: ty::t) -> bounds<ty::t> {
-        {ub: some(t) with b}
+        {ub: Some(t) with b}
     }
     fn ty_bot(t: ty::t) -> cres<ty::t> {
         ok(t)
@@ -25,9 +25,9 @@ impl Lub: lattice_ops {
 }
 
 impl Glb: lattice_ops {
-    fn bnd(b: bounds<ty::t>) -> option<ty::t> { b.lb }
+    fn bnd(b: bounds<ty::t>) -> Option<ty::t> { b.lb }
     fn with_bnd(b: bounds<ty::t>, t: ty::t) -> bounds<ty::t> {
-        {lb: some(t) with b}
+        {lb: Some(t) with b}
     }
     fn ty_bot(_t: ty::t) -> cres<ty::t> {
         ok(ty::mk_bot(self.infcx.tcx))
@@ -97,7 +97,7 @@ fn lattice_vars<L:lattice_ops combine>(
     // LUB of those types:
     let a_bnd = self.bnd(a_bounds), b_bnd = self.bnd(b_bounds);
     match (a_bnd, b_bnd) {
-      (some(a_ty), some(b_ty)) => {
+      (Some(a_ty), Some(b_ty)) => {
         match self.infcx().try(|| c_ts(a_ty, b_ty) ) {
             ok(t) => return ok(t),
             err(_) => { /*fallthrough */ }
@@ -129,12 +129,12 @@ fn lattice_var_and_t<L:lattice_ops combine>(
            b.to_str(self.infcx()));
 
     match self.bnd(a_bounds) {
-      some(a_bnd) => {
+      Some(a_bnd) => {
         // If a has an upper bound, return the LUB(a.ub, b)
         debug!("bnd=some(%s)", a_bnd.to_str(self.infcx()));
         return c_ts(a_bnd, b);
       }
-      none => {
+      None => {
         // If a does not have an upper bound, make b the upper bound of a
         // and then return b.
         debug!("bnd=none");

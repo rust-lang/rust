@@ -18,7 +18,7 @@ struct r {
 }
 
 enum t = {
-    mut next: option<@t>,
+    mut next: Option<@t>,
     r: r
 };
 
@@ -31,7 +31,7 @@ fn main() unsafe {
     unsafe::forget(i2);
 
     let x1 = @t({
-        mut next: none,
+        mut next: None,
           r: {
           let rs = r(i1p);
           debug!("r = %x",
@@ -44,7 +44,7 @@ fn main() unsafe {
         unsafe::reinterpret_cast::<*r, uint>(ptr::addr_of(x1.r)));
 
     let x2 = @t({
-        mut next: none,
+        mut next: None,
           r: {
           let rs = r(i2p);
           debug!("r2 = %x",
@@ -57,6 +57,6 @@ fn main() unsafe {
            unsafe::reinterpret_cast::<@t, uint>(x2),
            unsafe::reinterpret_cast::<*r, uint>(ptr::addr_of(x2.r)));
 
-    x1.next = some(x2);
-    x2.next = some(x1);
+    x1.next = Some(x2);
+    x2.next = Some(x1);
 }

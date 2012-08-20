@@ -150,7 +150,7 @@ fn add_use_stmt_cnum(cstore: cstore, use_id: ast::node_id,
 }
 
 fn find_use_stmt_cnum(cstore: cstore,
-                      use_id: ast::node_id) -> option<ast::crate_num> {
+                      use_id: ast::node_id) -> Option<ast::crate_num> {
     p(cstore).use_crate_map.find(use_id)
 }
 

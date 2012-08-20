@@ -98,7 +98,7 @@ fn pandoc_writer(
         let pipe_out = os::pipe();
         let pipe_err = os::pipe();
         let pid = run::spawn_process(
-            pandoc_cmd, pandoc_args, &none, &none,
+            pandoc_cmd, pandoc_args, &None, &None,
             pipe_in.in, pipe_out.out, pipe_err.out);
 
         let writer = io::fd_writer(pipe_in.out, false);

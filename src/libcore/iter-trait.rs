@@ -7,7 +7,7 @@ export extensions;
 
 impl<A> IMPL_T<A>: iter::BaseIter<A> {
     pure fn each(blk: fn(A) -> bool) { EACH(self, blk) }
-    pure fn size_hint() -> option<uint> { SIZE_HINT(self) }
+    pure fn size_hint() -> Option<uint> { SIZE_HINT(self) }
 }
 
 impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
@@ -19,7 +19,7 @@ impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
     }
     pure fn contains(x: A) -> bool { iter::contains(self, x) }
     pure fn count(x: A) -> uint { iter::count(self, x) }
-    pure fn position(f: fn(A) -> bool) -> option<uint> {
+    pure fn position(f: fn(A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
 }
@@ -40,5 +40,5 @@ impl<A: copy> IMPL_T<A>: iter::CopyableIter<A> {
 
     pure fn min() -> A { iter::min(self) }
     pure fn max() -> A { iter::max(self) }
-    pure fn find(p: fn(A) -> bool) -> option<A> { iter::find(self, p) }
+    pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
 }

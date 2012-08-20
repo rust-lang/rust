@@ -241,13 +241,13 @@ fn deserialize_bool<D: deserializer>(d: D) -> bool {
     d.read_bool()
 }
 
-fn serialize_option<S: serializer,T>(s: S, v: option<T>, st: fn(T)) {
+fn serialize_Option<S: serializer,T>(s: S, v: Option<T>, st: fn(T)) {
     do s.emit_enum(~"option") {
         match v {
-          none => do s.emit_enum_variant(~"none", 0u, 0u) {
+          None => do s.emit_enum_variant(~"none", 0u, 0u) {
           },
 
-          some(v) => do s.emit_enum_variant(~"some", 1u, 1u) {
+          Some(v) => do s.emit_enum_variant(~"some", 1u, 1u) {
             do s.emit_enum_variant_arg(0u) {
                 st(v)
             }
@@ -256,13 +256,13 @@ fn serialize_option<S: serializer,T>(s: S, v: option<T>, st: fn(T)) {
     }
 }
 
-fn deserialize_option<D: deserializer,T: copy>(d: D, st: fn() -> T)
-    -> option<T> {
+fn deserialize_Option<D: deserializer,T: copy>(d: D, st: fn() -> T)
+    -> Option<T> {
     do d.read_enum(~"option") {
         do d.read_enum_variant |i| {
             match i {
-              0 => none,
-              1 => some(d.read_enum_variant_arg(0u, || st() )),
+              0 => None,
+              1 => Some(d.read_enum_variant_arg(0u, || st() )),
               _ => fail(#fmt("Bad variant for option: %u", i))
             }
         }

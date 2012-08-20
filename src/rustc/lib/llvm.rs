@@ -994,11 +994,11 @@ fn associate_type(tn: type_names, s: ~str, t: TypeRef) {
     assert tn.named_types.insert(s, t);
 }
 
-fn type_has_name(tn: type_names, t: TypeRef) -> option<~str> {
+fn type_has_name(tn: type_names, t: TypeRef) -> Option<~str> {
     return tn.type_names.find(t);
 }
 
-fn name_has_type(tn: type_names, s: ~str) -> option<TypeRef> {
+fn name_has_type(tn: type_names, s: ~str) -> Option<TypeRef> {
     return tn.named_types.find(s);
 }
 
@@ -1016,7 +1016,7 @@ fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
 fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
    ~str {
     match type_has_name(names, ty) {
-      option::some(n) => return n,
+      option::Some(n) => return n,
       _ => {}
     }
 
@@ -1161,10 +1161,10 @@ struct object_file_res {
 
 type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
 
-fn mk_object_file(llmb: MemoryBufferRef) -> option<object_file> {
+fn mk_object_file(llmb: MemoryBufferRef) -> Option<object_file> {
     let llof = llvm::LLVMCreateObjectFile(llmb);
-    if llof as int == 0 { return option::none::<object_file>; }
-    return option::some({llof: llof, dtor: @object_file_res(llof)});
+    if llof as int == 0 { return option::None::<object_file>; }
+    return option::Some({llof: llof, dtor: @object_file_res(llof)});
 }
 
 /* Memory-managed interface to section iterators. */

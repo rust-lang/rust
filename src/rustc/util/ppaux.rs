@@ -23,12 +23,12 @@ import driver::session::session;
 
 fn note_and_explain_region(cx: ctxt, prefix: ~str, region: ty::region) {
     match explain_region_and_span(cx, region) {
-      (str, some(span)) => {
+      (str, Some(span)) => {
         cx.sess.span_note(
             span,
             fmt!("%s %s", prefix, str));
       }
-      (str, none) => {
+      (str, None) => {
         cx.sess.note(
             fmt!("%s %s", prefix, str));
       }
@@ -44,25 +44,25 @@ fn explain_region(cx: ctxt, region: ty::region) -> ~str {
 
 
 fn explain_region_and_span(cx: ctxt, region: ty::region)
-    -> (~str, option<span>)
+    -> (~str, Option<span>)
 {
     return match region {
       re_scope(node_id) => {
         match cx.items.find(node_id) {
-          some(ast_map::node_block(blk)) => {
+          Some(ast_map::node_block(blk)) => {
             explain_span(cx, ~"block", blk.span)
           }
-          some(ast_map::node_expr(expr)) => {
+          Some(ast_map::node_expr(expr)) => {
             match expr.node {
               ast::expr_call(*) => explain_span(cx, ~"call", expr.span),
               ast::expr_match(*) => explain_span(cx, ~"alt", expr.span),
               _ => explain_span(cx, ~"expression", expr.span)
             }
           }
-          some(_) | none => {
+          Some(_) | None => {
             // this really should not happen
             (fmt!("unknown scope: %d.  Please report a bug.", node_id),
-             none)
+             None)
           }
         }
       }
@@ -76,31 +76,31 @@ fn explain_region_and_span(cx: ctxt, region: ty::region)
         };
 
         match cx.items.find(id) {
-          some(ast_map::node_block(blk)) => {
+          Some(ast_map::node_block(blk)) => {
             let (msg, opt_span) = explain_span(cx, ~"block", blk.span);
             (fmt!("%s %s", prefix, msg), opt_span)
           }
-          some(_) | none => {
+          Some(_) | None => {
             // this really should not happen
-            (fmt!("%s node %d", prefix, id), none)
+            (fmt!("%s node %d", prefix, id), None)
           }
         }
       }
 
-      re_static => { (~"the static lifetime", none) }
+      re_static => { (~"the static lifetime", None) }
 
       // I believe these cases should not occur (except when debugging,
       // perhaps)
       re_var(_) | re_bound(_) => {
-        (fmt!("lifetime %?", region), none)
+        (fmt!("lifetime %?", region), None)
       }
     };
 
     fn explain_span(cx: ctxt, heading: ~str, span: span)
-        -> (~str, option<span>)
+        -> (~str, Option<span>)
     {
         let lo = codemap::lookup_char_pos_adj(cx.sess.codemap, span.lo);
-        (fmt!("the %s at %u:%u", heading, lo.line, lo.col), some(span))
+        (fmt!("the %s at %u:%u", heading, lo.line, lo.col), Some(span))
     }
 }
 
@@ -128,11 +128,11 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
 
 fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     match cx.items.find(node_id) {
-      some(ast_map::node_block(blk)) => {
+      Some(ast_map::node_block(blk)) => {
         fmt!("<block at %s>",
              codemap::span_to_str(blk.span, cx.sess.codemap))
       }
-      some(ast_map::node_expr(expr)) => {
+      Some(ast_map::node_expr(expr)) => {
         match expr.node {
           ast::expr_call(*) => {
             fmt!("<call at %s>",
@@ -156,7 +156,7 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
           }
         }
       }
-      none => {
+      None => {
         fmt!("<unknown-%d>", node_id)
       }
       _ => { cx.sess.bug(
@@ -248,7 +248,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         modestr + ty_to_str(cx, ty)
     }
     fn fn_to_str(cx: ctxt, purity: ast::purity, proto: ty::fn_proto,
-                 ident: option<ast::ident>,
+                 ident: Option<ast::ident>,
                  inputs: ~[arg], output: t, cf: ast::ret_style) -> ~str {
         let mut s;
 
@@ -261,7 +261,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 
         s += proto_ty_to_str(cx, proto);
         match ident {
-          some(i) => { s += ~" "; s += cx.sess.str_of(i); }
+          Some(i) => { s += ~" "; s += cx.sess.str_of(i); }
           _ => { }
         }
         s += ~"(";
@@ -280,7 +280,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
     fn method_to_str(cx: ctxt, m: method) -> ~str {
         return fn_to_str(
-            cx, m.fty.purity, m.fty.proto, some(m.ident), m.fty.inputs,
+            cx, m.fty.purity, m.fty.proto, Some(m.ident), m.fty.inputs,
             m.fty.output, m.fty.ret_style) + ~";";
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
@@ -329,7 +329,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         ~"(" + str::connect(strs, ~",") + ~")"
       }
       ty_fn(f) => {
-        fn_to_str(cx, f.purity, f.proto, none, f.inputs,
+        fn_to_str(cx, f.purity, f.proto, None, f.inputs,
                   f.output, f.ret_style)
       }
       ty_var(v) => v.to_str(),
@@ -362,12 +362,12 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
 
 fn parameterized(cx: ctxt,
                  base: ~str,
-                 self_r: option<ty::region>,
+                 self_r: Option<ty::region>,
                  tps: ~[ty::t]) -> ~str {
 
     let r_str = match self_r {
-      none => ~"",
-      some(r) => {
+      None => ~"",
+      Some(r) => {
         fmt!("/%s", region_to_str(cx, r))
       }
     };

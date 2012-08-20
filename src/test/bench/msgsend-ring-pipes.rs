@@ -32,21 +32,21 @@ fn thread_ring(i: uint,
                count: uint,
                +num_chan: ring::client::num,
                +num_port: ring::server::num) {
-    let mut num_chan <- some(num_chan);
-    let mut num_port <- some(num_port);
+    let mut num_chan <- Some(num_chan);
+    let mut num_port <- Some(num_port);
     // Send/Receive lots of messages.
     for uint::range(0u, count) |j| {
         //error!("task %?, iter %?", i, j);
-        let mut num_chan2 = none;
-        let mut num_port2 = none;
+        let mut num_chan2 = None;
+        let mut num_port2 = None;
         num_chan2 <-> num_chan;
         num_port2 <-> num_port;
-        num_chan = some(ring::client::num(option::unwrap(num_chan2), i * j));
+        num_chan = Some(ring::client::num(option::unwrap(num_chan2), i * j));
         let port = option::unwrap(num_port2);
         match recv(port) {
           ring::num(_n, p) => {
             //log(error, _n);
-            num_port = some(move_out!(p));
+            num_port = Some(move_out!(p));
           }
         }
     };
@@ -65,7 +65,7 @@ fn main(args: ~[~str]) {
     let msg_per_task = option::get(uint::from_str(args[2]));
 
     let (num_chan, num_port) = ring::init();
-    let mut num_chan = some(num_chan);
+    let mut num_chan = Some(num_chan);
 
     let start = time::precise_time_s();
 
@@ -75,19 +75,19 @@ fn main(args: ~[~str]) {
     for uint::range(1u, num_tasks) |i| {
         //error!("spawning %?", i);
         let (new_chan, num_port) = ring::init();
-        let num_chan2 = ~mut none;
+        let num_chan2 = ~mut None;
         *num_chan2 <-> num_chan;
-        let num_port = ~mut some(num_port);
+        let num_port = ~mut Some(num_port);
         futures += ~[future::spawn(|move num_chan2, move num_port| {
-            let mut num_chan = none;
+            let mut num_chan = None;
             num_chan <-> *num_chan2;
-            let mut num_port1 = none;
+            let mut num_port1 = None;
             num_port1 <-> *num_port;
             thread_ring(i, msg_per_task,
                         option::unwrap(num_chan),
                         option::unwrap(num_port1))
         })];
-        num_chan = some(new_chan);
+        num_chan = Some(new_chan);
     };
 
     // do our iteration

@@ -1,10 +1,10 @@
 fn main() {
     let msg;
-    match some(~"Hello") { //~ ERROR illegal borrow
-        some(ref m) => {
+    match Some(~"Hello") { //~ ERROR illegal borrow
+        Some(ref m) => {
             msg = m;
         },  
-        none => { fail }
+        None => { fail }
     }   
     io::println(*msg);
 }

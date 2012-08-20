@@ -150,16 +150,16 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // fine).
                 //
                 match opt_deref_kind(arg_ty.ty) {
-                  some(deref_ptr(region_ptr(_))) |
-                  some(deref_ptr(unsafe_ptr)) => {
+                  Some(deref_ptr(region_ptr(_))) |
+                  Some(deref_ptr(unsafe_ptr)) => {
                     /* region pointers are (by induction) guaranteed */
                     /* unsafe pointers are the user's problem */
                   }
-                  some(deref_comp(_)) |
-                  none => {
+                  Some(deref_comp(_)) |
+                  None => {
                     /* not a pointer, no worries */
                   }
-                  some(deref_ptr(_)) => {
+                  Some(deref_ptr(_)) => {
                     let arg_cmt = self.bccx.cat_borrow_of_expr(arg);
                     self.guarantee_valid(arg_cmt, m_const, scope_r);
                   }
@@ -274,7 +274,7 @@ impl gather_loan_ctxt {
           // duration of the reference: if there is an attempt to move
           // it within that scope, the loan will be detected and an
           // error will be reported.
-          some(_) => {
+          Some(_) => {
             match self.bccx.loan(cmt, scope_r, req_mutbl) {
               err(e) => { self.bccx.report(e); }
               ok(loans) if loans.len() == 0 => {}
@@ -312,7 +312,7 @@ impl gather_loan_ctxt {
           // also check that the mutability of the desired pointer
           // matches with the actual mutability (but if an immutable
           // pointer is desired, that is ok as long as we are pure)
-          none => {
+          None => {
             let result: bckres<preserve_condition> = {
                 do self.check_mutbl(req_mutbl, cmt).chain |pc1| {
                     do self.bccx.preserve(cmt, scope_r,
@@ -396,10 +396,10 @@ impl gather_loan_ctxt {
 
     fn add_loans(scope_id: ast::node_id, loans: @DVec<loan>) {
         match self.req_maps.req_loan_map.find(scope_id) {
-          some(l) => {
+          Some(l) => {
             (*l).push(loans);
           }
-          none => {
+          None => {
             self.req_maps.req_loan_map.insert(
                 scope_id, @dvec::from_vec(~[mut loans]));
           }

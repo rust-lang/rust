@@ -44,8 +44,8 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(t) {
-          some(s) => *s,
-          none => {
+          Some(s) => *s,
+          None => {
             let buf = io::mem_buffer();
             enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).struct);
             cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
@@ -56,11 +56,11 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
       }
       ac_use_abbrevs(abbrevs) => {
         match abbrevs.find(t) {
-          some(a) => { w.write_str(*a.s); return; }
-          none => {
+          Some(a) => { w.write_str(*a.s); return; }
+          None => {
             let pos = w.tell();
             match ty::type_def_id(t) {
-              some(def_id) => {
+              Some(def_id) => {
                 // Do not emit node ids that map to unexported names.  Those
                 // are not helpful.
                 if def_id.crate != local_crate ||
@@ -104,10 +104,10 @@ fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: io::Writer, t: option<T>, enc_f: fn(T)) {
+fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: fn(T)) {
     match t {
-      none => w.write_char('n'),
-      some(v) => {
+      None => w.write_char('n'),
+      Some(v) => {
         w.write_char('s');
         enc_f(v);
       }

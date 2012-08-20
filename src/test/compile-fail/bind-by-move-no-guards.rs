@@ -1,10 +1,10 @@
 fn main() {
     let (c,p) = pipes::stream();
-    let x = some(p);
+    let x = Some(p);
     c.send(false);
     match move x {
-        some(move z) if z.recv() => { fail }, //~ ERROR cannot bind by-move into a pattern guard
-        some(move z) => { assert !z.recv(); },
-        none => fail
+        Some(move z) if z.recv() => { fail }, //~ ERROR cannot bind by-move into a pattern guard
+        Some(move z) => { assert !z.recv(); },
+        None => fail
     }
 }

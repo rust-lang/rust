@@ -2,7 +2,7 @@
 // the boxed type parameter
 
 type Tree<T> = {
-    mut parent: option<T>,
+    mut parent: Option<T>,
 };
 
 fn empty<T>() -> Tree<T> { fail }
@@ -16,7 +16,7 @@ struct Box {
 }
 
 enum layout_data = {
-    mut box: option<@Box>
+    mut box: Option<@Box>
 };
 
 fn main() { }

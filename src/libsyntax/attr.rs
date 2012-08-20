@@ -124,21 +124,21 @@ fn get_meta_item_name(meta: @ast::meta_item) -> ~str {
  * Gets the string value if the meta_item is a meta_name_value variant
  * containing a string, otherwise none
  */
-fn get_meta_item_value_str(meta: @ast::meta_item) -> option<~str> {
+fn get_meta_item_value_str(meta: @ast::meta_item) -> Option<~str> {
     match meta.node {
         ast::meta_name_value(_, v) => match v.node {
-            ast::lit_str(s) => option::some(*s),
-            _ => option::none
+            ast::lit_str(s) => option::Some(*s),
+            _ => option::None
         },
-        _ => option::none
+        _ => option::None
     }
 }
 
 /// Gets a list of inner meta items from a list meta_item type
-fn get_meta_item_list(meta: @ast::meta_item) -> option<~[@ast::meta_item]> {
+fn get_meta_item_list(meta: @ast::meta_item) -> Option<~[@ast::meta_item]> {
     match meta.node {
-      ast::meta_list(_, l) => option::some(/* FIXME (#2543) */ copy l),
-      _ => option::none
+      ast::meta_list(_, l) => option::Some(/* FIXME (#2543) */ copy l),
+      _ => option::None
     }
 }
 
@@ -146,13 +146,13 @@ fn get_meta_item_list(meta: @ast::meta_item) -> option<~[@ast::meta_item]> {
  * If the meta item is a nam-value type with a string value then returns
  * a tuple containing the name and string value, otherwise `none`
  */
-fn get_name_value_str_pair(item: @ast::meta_item) -> option<(~str, ~str)> {
+fn get_name_value_str_pair(item: @ast::meta_item) -> Option<(~str, ~str)> {
     match attr::get_meta_item_value_str(item) {
-      some(value) => {
+      Some(value) => {
         let name = attr::get_meta_item_name(item);
-        some((name, value))
+        Some((name, value))
       }
-      none => none
+      None => None
     }
 }
 
@@ -163,10 +163,10 @@ fn get_name_value_str_pair(item: @ast::meta_item) -> option<(~str, ~str)> {
 fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
    ~[ast::attribute] {
     let filter = (
-        fn@(a: ast::attribute) -> option<ast::attribute> {
+        fn@(a: ast::attribute) -> Option<ast::attribute> {
             if get_attr_name(a) == name {
-                option::some(a)
-            } else { option::none }
+                option::Some(a)
+            } else { option::None }
         }
     );
     return vec::filter_map(attrs, filter);
@@ -175,10 +175,10 @@ fn find_attrs_by_name(attrs: ~[ast::attribute], name: ~str) ->
 /// Searcha list of meta items and return only those with a specific name
 fn find_meta_items_by_name(metas: ~[@ast::meta_item], name: ~str) ->
    ~[@ast::meta_item] {
-    let filter = fn@(&&m: @ast::meta_item) -> option<@ast::meta_item> {
+    let filter = fn@(&&m: @ast::meta_item) -> Option<@ast::meta_item> {
         if get_meta_item_name(m) == name {
-            option::some(m)
-        } else { option::none }
+            option::Some(m)
+        } else { option::None }
     };
     return vec::filter_map(metas, filter);
 }
@@ -225,40 +225,40 @@ fn attrs_contains_name(attrs: ~[ast::attribute], name: ~str) -> bool {
 }
 
 fn first_attr_value_str_by_name(attrs: ~[ast::attribute], name: ~str)
-    -> option<~str> {
+    -> Option<~str> {
 
     let mattrs = find_attrs_by_name(attrs, name);
     if vec::len(mattrs) > 0u {
         return get_meta_item_value_str(attr_meta(mattrs[0]));
     }
-    return option::none;
+    return option::None;
 }
 
 fn last_meta_item_by_name(items: ~[@ast::meta_item], name: ~str)
-    -> option<@ast::meta_item> {
+    -> Option<@ast::meta_item> {
 
     let items = attr::find_meta_items_by_name(items, name);
     vec::last_opt(items)
 }
 
 fn last_meta_item_value_str_by_name(items: ~[@ast::meta_item], name: ~str)
-    -> option<~str> {
+    -> Option<~str> {
 
     match last_meta_item_by_name(items, name) {
-      some(item) => match attr::get_meta_item_value_str(item) {
-        some(value) => some(value),
-        none => none
+      Some(item) => match attr::get_meta_item_value_str(item) {
+        Some(value) => Some(value),
+        None => None
       },
-      none => none
+      None => None
     }
 }
 
 fn last_meta_item_list_by_name(items: ~[@ast::meta_item], name: ~str)
-    -> option<~[@ast::meta_item]> {
+    -> Option<~[@ast::meta_item]> {
 
     match last_meta_item_by_name(items, name) {
-      some(item) => attr::get_meta_item_list(item),
-      none => none
+      Some(item) => attr::get_meta_item_list(item),
+      None => None
     }
 }
 
@@ -290,9 +290,9 @@ fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
 
     return vec::filter_map(items, |item| {
         if get_meta_item_name(item) != name {
-            option::some(/* FIXME (#2543) */ copy item)
+            option::Some(/* FIXME (#2543) */ copy item)
         } else {
-            option::none
+            option::None
         }
     });
 }
@@ -312,19 +312,19 @@ fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
 
 fn foreign_abi(attrs: ~[ast::attribute]) -> Either<~str, ast::foreign_abi> {
     return match attr::first_attr_value_str_by_name(attrs, ~"abi") {
-      option::none => {
+      option::None => {
         either::Right(ast::foreign_abi_cdecl)
       }
-      option::some(~"rust-intrinsic") => {
+      option::Some(~"rust-intrinsic") => {
         either::Right(ast::foreign_abi_rust_intrinsic)
       }
-      option::some(~"cdecl") => {
+      option::Some(~"cdecl") => {
         either::Right(ast::foreign_abi_cdecl)
       }
-      option::some(~"stdcall") => {
+      option::Some(~"stdcall") => {
         either::Right(ast::foreign_abi_stdcall)
       }
-      option::some(t) => {
+      option::Some(t) => {
         either::Left(~"unsupported abi: " + t)
       }
     };

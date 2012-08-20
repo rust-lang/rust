@@ -6,13 +6,13 @@ fn iter<T>(v: ~[T], it: fn(T) -> bool) {
     }
 }
 
-fn find_pos<T>(n: T, h: ~[T]) -> option<uint> {
+fn find_pos<T>(n: T, h: ~[T]) -> Option<uint> {
     let mut i = 0u;
     for iter(h) |e| {
-        if e == n { return some(i); }
+        if e == n { return Some(i); }
         i += 1u;
     }
-    none
+    None
 }
 
 fn bail_deep(x: ~[~[bool]]) {
@@ -45,9 +45,9 @@ fn main() {
     };
     assert last == 5;
 
-    assert find_pos(1, ~[0, 1, 2, 3]) == some(1u);
-    assert find_pos(1, ~[0, 4, 2, 3]) == none;
-    assert find_pos(~"hi", ~[~"foo", ~"bar", ~"baz", ~"hi"]) == some(3u);
+    assert find_pos(1, ~[0, 1, 2, 3]) == Some(1u);
+    assert find_pos(1, ~[0, 4, 2, 3]) == None;
+    assert find_pos(~"hi", ~[~"foo", ~"bar", ~"baz", ~"hi"]) == Some(3u);
 
     bail_deep(~[~[false, false], ~[true, true], ~[false, true]]);
     bail_deep(~[~[true]]);

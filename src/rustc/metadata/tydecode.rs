@@ -77,7 +77,7 @@ fn parse_path(st: @pstate) -> @ast::path {
             if c == '(' {
                 return @{span: ast_util::dummy_sp(),
                       global: false, idents: idents,
-                      rp: none, types: ~[]};
+                      rp: None, types: ~[]};
             } else { vec::push(idents, parse_ident_(st, is_last)); }
           }
         }
@@ -172,10 +172,10 @@ fn parse_region(st: @pstate) -> ty::region {
     }
 }
 
-fn parse_opt<T>(st: @pstate, f: fn() -> T) -> option<T> {
+fn parse_opt<T>(st: @pstate, f: fn() -> T) -> Option<T> {
     match next(st) {
-      'n' => none,
-      's' => some(f()),
+      'n' => None,
+      's' => Some(f()),
       _ => fail ~"parse_opt: bad input"
     }
 }
@@ -292,8 +292,8 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         let len = parse_hex(st);
         assert (next(st) == '#');
         match st.tcx.rcache.find({cnum: st.crate, pos: pos, len: len}) {
-          some(tt) => return tt,
-          none => {
+          Some(tt) => return tt,
+          None => {
             let ps = @{pos: pos with *st};
             let tt = parse_ty(ps, conv);
             st.tcx.rcache.insert({cnum: st.crate, pos: pos, len: len}, tt);
@@ -411,13 +411,13 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let def_part = vec::view(buf, colon_idx + 1u, len);
 
     let crate_num = match uint::parse_buf(crate_part, 10u) {
-       some(cn) => cn as int,
-       none => fail (fmt!("internal error: parse_def_id: crate number \
+       Some(cn) => cn as int,
+       None => fail (fmt!("internal error: parse_def_id: crate number \
                                expected, but found %?", crate_part))
     };
     let def_num = match uint::parse_buf(def_part, 10u) {
-       some(dn) => dn as int,
-       none => fail (fmt!("internal error: parse_def_id: id expected, but \
+       Some(dn) => dn as int,
+       None => fail (fmt!("internal error: parse_def_id: id expected, but \
                                found %?", def_part))
     };
     return {crate: crate_num, node: def_num};

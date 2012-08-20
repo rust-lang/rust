@@ -3,8 +3,8 @@
 #[forbid(deprecated_pattern)];
 
 struct WindowsPath {
-    host: option<~str>;
-    device: option<~str>;
+    host: Option<~str>;
+    device: Option<~str>;
     is_absolute: bool;
     components: ~[~str];
 }
@@ -19,9 +19,9 @@ trait GenericPath {
     static pure fn from_str((&str)) -> self;
 
     pure fn dirname() -> ~str;
-    pure fn filename() -> option<~str>;
-    pure fn filestem() -> option<~str>;
-    pure fn filetype() -> option<~str>;
+    pure fn filename() -> Option<~str>;
+    pure fn filestem() -> Option<~str>;
+    pure fn filetype() -> Option<~str>;
 
     pure fn with_dirname((&str)) -> self;
     pure fn with_filename((&str)) -> self;
@@ -82,32 +82,32 @@ impl PosixPath : GenericPath {
         }
     }
 
-    pure fn filename() -> option<~str> {
+    pure fn filename() -> Option<~str> {
         match self.components.len() {
-          0 => none,
-          n => some(copy self.components[n - 1])
+          0 => None,
+          n => Some(copy self.components[n - 1])
         }
     }
 
-    pure fn filestem() -> option<~str> {
+    pure fn filestem() -> Option<~str> {
         match self.filename() {
-          none => none,
-          some(ref f) => {
+          None => None,
+          Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              some(p) => some(f.slice(0, p)),
-              none => some(copy *f)
+              Some(p) => Some(f.slice(0, p)),
+              None => Some(copy *f)
             }
           }
         }
     }
 
-    pure fn filetype() -> option<~str> {
+    pure fn filetype() -> Option<~str> {
         match self.filename() {
-          none => none,
-          some(ref f) => {
+          None => None,
+          Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              some(p) if p+1 < f.len() => some(f.slice(p+1, f.len())),
-              _ => none
+              Some(p) if p+1 < f.len() => Some(f.slice(p+1, f.len())),
+              _ => None
             }
           }
         }
@@ -116,8 +116,8 @@ impl PosixPath : GenericPath {
     pure fn with_dirname(d: &str) -> PosixPath {
         let dpath = from_str::<PosixPath>(d);
         match self.filename() {
-          some(ref f) => dpath.push(*f),
-          none => dpath
+          Some(ref f) => dpath.push(*f),
+          None => dpath
         }
     }
 
@@ -130,8 +130,8 @@ impl PosixPath : GenericPath {
 
     pure fn with_filestem(s: &str) -> PosixPath {
         match self.filetype() {
-          none => self.with_filename(s),
-          some(ref t) =>
+          None => self.with_filename(s),
+          Some(ref t) =>
           self.with_filename(str::from_slice(s) + "." + *t)
         }
     }
@@ -139,14 +139,14 @@ impl PosixPath : GenericPath {
     pure fn with_filetype(t: &str) -> PosixPath {
         if t.len() == 0 {
             match self.filestem() {
-              none => copy self,
-              some(s) => self.with_filename(s)
+              None => copy self,
+              Some(s) => self.with_filename(s)
             }
         } else {
             let t = ~"." + str::from_slice(t);
             match self.filestem() {
-              none => self.with_filename(t),
-              some(ref s) =>
+              None => self.with_filename(t),
+              Some(ref s) =>
               self.with_filename(*s + t)
             }
         }
@@ -162,8 +162,8 @@ impl PosixPath : GenericPath {
 
     pure fn file_path() -> PosixPath {
         let cs = match self.filename() {
-          none => ~[],
-          some(ref f) => ~[copy *f]
+          None => ~[],
+          Some(ref f) => ~[copy *f]
         };
         return PosixPath { is_absolute: false,
                            components: cs }
@@ -201,12 +201,12 @@ impl WindowsPath : ToStr {
     fn to_str() -> ~str {
         let mut s = ~"";
         match self.host {
-          some(h) => { s += "\\\\"; s += h; }
-          none => { }
+          Some(h) => { s += "\\\\"; s += h; }
+          None => { }
         }
         match self.device {
-          some(d) => { s += d; s += ":"; }
-          none => { }
+          Some(d) => { s += d; s += ":"; }
+          None => { }
         }
         if self.is_absolute {
             s += "\\";
@@ -224,21 +224,21 @@ impl WindowsPath : GenericPath {
         let rest;
 
         match windows::extract_drive_prefix(s) {
-          some((ref d, ref r)) => {
-            host = none;
-            device = some(copy *d);
+          Some((ref d, ref r)) => {
+            host = None;
+            device = Some(copy *d);
             rest = copy *r;
           }
-          none => {
+          None => {
             match windows::extract_unc_prefix(s) {
-              some((ref h, ref r)) => {
-                host = some(copy *h);
-                device = none;
+              Some((ref h, ref r)) => {
+                host = Some(copy *h);
+                device = None;
                 rest = copy *r;
               }
-              none => {
-                host = none;
-                device = none;
+              None => {
+                host = None;
+                device = None;
                 rest = str::from_slice(s);
               }
             }
@@ -265,32 +265,32 @@ impl WindowsPath : GenericPath {
         }
     }
 
-    pure fn filename() -> option<~str> {
+    pure fn filename() -> Option<~str> {
         match self.components.len() {
-          0 => none,
-          n => some(copy self.components[n - 1])
+          0 => None,
+          n => Some(copy self.components[n - 1])
         }
     }
 
-    pure fn filestem() -> option<~str> {
+    pure fn filestem() -> Option<~str> {
         match self.filename() {
-          none => none,
-          some(ref f) => {
+          None => None,
+          Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              some(p) => some(f.slice(0, p)),
-              none => some(copy *f)
+              Some(p) => Some(f.slice(0, p)),
+              None => Some(copy *f)
             }
           }
         }
     }
 
-    pure fn filetype() -> option<~str> {
+    pure fn filetype() -> Option<~str> {
         match self.filename() {
-          none => none,
-          some(ref f) => {
+          None => None,
+          Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              some(p) if p+1 < f.len() => some(f.slice(p+1, f.len())),
-              _ => none
+              Some(p) if p+1 < f.len() => Some(f.slice(p+1, f.len())),
+              _ => None
             }
           }
         }
@@ -299,8 +299,8 @@ impl WindowsPath : GenericPath {
     pure fn with_dirname(d: &str) -> WindowsPath {
         let dpath = from_str::<WindowsPath>(d);
         match self.filename() {
-          some(ref f) => dpath.push(*f),
-          none => dpath
+          Some(ref f) => dpath.push(*f),
+          None => dpath
         }
     }
 
@@ -311,8 +311,8 @@ impl WindowsPath : GenericPath {
 
     pure fn with_filestem(s: &str) -> WindowsPath {
         match self.filetype() {
-          none => self.with_filename(s),
-          some(ref t) =>
+          None => self.with_filename(s),
+          Some(ref t) =>
           self.with_filename(str::from_slice(s) + "." + *t)
         }
     }
@@ -320,14 +320,14 @@ impl WindowsPath : GenericPath {
     pure fn with_filetype(t: &str) -> WindowsPath {
         if t.len() == 0 {
             match self.filestem() {
-              none => copy self,
-              some(s) => self.with_filename(s)
+              None => copy self,
+              Some(s) => self.with_filename(s)
             }
         } else {
             let t = ~"." + str::from_slice(t);
             match self.filestem() {
-              none => self.with_filename(t),
-              some(ref s) =>
+              None => self.with_filename(t),
+              Some(ref s) =>
               self.with_filename(*s + t)
             }
         }
@@ -343,11 +343,11 @@ impl WindowsPath : GenericPath {
 
     pure fn file_path() -> WindowsPath {
         let cs = match self.filename() {
-          none => ~[],
-          some(ref f) => ~[copy *f]
+          None => ~[],
+          Some(ref f) => ~[copy *f]
         };
-        return WindowsPath { host: none,
-                             device: none,
+        return WindowsPath { host: None,
+                             device: None,
                              is_absolute: false,
                              components: cs }
     }
@@ -471,7 +471,7 @@ mod windows {
         u == '/' as u8 || u == '\\' as u8
     }
 
-    pure fn extract_unc_prefix(s: &str) -> option<(~str,~str)> {
+    pure fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
         if (s.len() > 1 &&
             s[0] == '\\' as u8 &&
             s[1] == '\\' as u8) {
@@ -480,15 +480,15 @@ mod windows {
                 if s[i] == '\\' as u8 {
                     let pre = s.slice(2, i);
                     let rest = s.slice(i, s.len());
-                    return some((pre, rest));
+                    return Some((pre, rest));
                 }
                 i += 1;
             }
         }
-        none
+        None
     }
 
-    pure fn extract_drive_prefix(s: &str) -> option<(~str,~str)> {
+    pure fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
         unchecked {
             if (s.len() > 1 &&
                 libc::isalpha(s[0] as libc::c_int) != 0 &&
@@ -498,35 +498,35 @@ mod windows {
                 } else {
                     s.slice(2, s.len())
                 };
-                return some((s.slice(0,1), rest));
+                return Some((s.slice(0,1), rest));
             }
-            none
+            None
         }
     }
 
     #[test]
     fn test_extract_unc_prefixes() {
-        assert extract_unc_prefix("\\\\") == none;
-        assert extract_unc_prefix("\\\\hi") == none;
-        assert extract_unc_prefix("\\\\hi\\") == some((~"hi", ~"\\"));
+        assert extract_unc_prefix("\\\\") == None;
+        assert extract_unc_prefix("\\\\hi") == None;
+        assert extract_unc_prefix("\\\\hi\\") == Some((~"hi", ~"\\"));
         assert extract_unc_prefix("\\\\hi\\there") ==
-            some((~"hi", ~"\\there"));
+            Some((~"hi", ~"\\there"));
         assert extract_unc_prefix("\\\\hi\\there\\friends.txt") ==
-            some((~"hi", ~"\\there\\friends.txt"));
+            Some((~"hi", ~"\\there\\friends.txt"));
     }
 
     #[test]
     fn test_extract_drive_prefixes() {
-        assert extract_drive_prefix("c") == none;
-        assert extract_drive_prefix("c:") == some((~"c", ~""));
-        assert extract_drive_prefix("d:") == some((~"d", ~""));
-        assert extract_drive_prefix("z:") == some((~"z", ~""));
-        assert extract_drive_prefix("c:\\hi") == some((~"c", ~"\\hi"));
-        assert extract_drive_prefix("d:hi") == some((~"d", ~"hi"));
+        assert extract_drive_prefix("c") == None;
+        assert extract_drive_prefix("c:") == Some((~"c", ~""));
+        assert extract_drive_prefix("d:") == Some((~"d", ~""));
+        assert extract_drive_prefix("z:") == Some((~"z", ~""));
+        assert extract_drive_prefix("c:\\hi") == Some((~"c", ~"\\hi"));
+        assert extract_drive_prefix("d:hi") == Some((~"d", ~"hi"));
         assert extract_drive_prefix("c:hi\\there.txt") ==
-            some((~"c", ~"hi\\there.txt"));
+            Some((~"c", ~"hi\\there.txt"));
         assert extract_drive_prefix("c:\\hi\\there.txt") ==
-            some((~"c", ~"\\hi\\there.txt"));
+            Some((~"c", ~"\\hi\\there.txt"));
     }
 
     #[test]

@@ -27,11 +27,11 @@ fn f3b() {
 }
 
 fn f4() {
-    match some(3) {
-      some(i) => {
+    match Some(3) {
+      Some(i) => {
         //~^ WARNING unused variable: `i`
       }
-      none => {}
+      None => {}
     }
 }
 

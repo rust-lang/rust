@@ -200,8 +200,8 @@ fn bal(rope:rope) -> rope {
     match (rope) {
       node::empty => return rope,
       node::content(x) => match (node::bal(x)) {
-        option::none    => rope,
-        option::some(y) => node::content(y)
+        option::None    => rope,
+        option::Some(y) => node::content(y)
       }
     }
 }
@@ -436,7 +436,7 @@ mod iterator {
               node::content(x) => return node::leaf_iterator::start(x)
             }
         }
-        fn next(it: node::leaf_iterator::t) -> option<node::leaf> {
+        fn next(it: node::leaf_iterator::t) -> Option<node::leaf> {
             return node::leaf_iterator::next(it);
         }
     }
@@ -447,7 +447,7 @@ mod iterator {
               node::content(x) => return node::char_iterator::start(x)
             }
         }
-        fn next(it: node::char_iterator::t) -> option<char> {
+        fn next(it: node::char_iterator::t) -> Option<char> {
             return node::char_iterator::next(it)
         }
     }
@@ -801,8 +801,8 @@ mod node {
         let it = leaf_iterator::start(node);
         loop {
             match (leaf_iterator::next(it)) {
-              option::none => break,
-              option::some(x) => {
+              option::None => break,
+              option::Some(x) => {
                 //FIXME (#2744): Replace with memcpy or something similar
                 let mut local_buf: ~[u8] =
                     unsafe::reinterpret_cast(*x.content);
@@ -851,24 +851,24 @@ mod node {
      *
      * # Return value
      *
-     * * `option::none` if no transformation happened
+     * * `option::None` if no transformation happened
      * * `option::some(x)` otherwise, in which case `x` has the same contents
      *    as `node` bot lower height and/or fragmentation.
      */
-    fn bal(node: @node) -> option<@node> {
-        if height(node) < hint_max_node_height { return option::none; }
+    fn bal(node: @node) -> Option<@node> {
+        if height(node) < hint_max_node_height { return option::None; }
         //1. Gather all leaves as a forest
         let mut forest = ~[mut];
         let it = leaf_iterator::start(node);
         loop {
             match (leaf_iterator::next(it)) {
-              option::none    => break,
-              option::some(x) => vec::push(forest, @leaf(x))
+              option::None    => break,
+              option::Some(x) => vec::push(forest, @leaf(x))
             }
         }
         //2. Rebuild tree from forest
         let root = @*tree_from_forest_destructive(forest);
-        return option::some(root);
+        return option::Some(root);
 
     }
 
@@ -1019,14 +1019,14 @@ mod node {
         let mut result = 0;
         while result == 0 {
             match ((char_iterator::next(ita), char_iterator::next(itb))) {
-              (option::none, option::none) => break,
-              (option::some(chara), option::some(charb)) => {
+              (option::None, option::None) => break,
+              (option::Some(chara), option::Some(charb)) => {
                 result = char::cmp(chara, charb);
               }
-              (option::some(_), _) => {
+              (option::Some(_), _) => {
                 result = 1;
               }
-              (_, option::some(_)) => {
+              (_, option::Some(_)) => {
                 result = -1;
               }
             }
@@ -1121,8 +1121,8 @@ mod node {
             }
         }
 
-        fn next(it: t) -> option<leaf> {
-            if it.stackpos < 0 { return option::none; }
+        fn next(it: t) -> Option<leaf> {
+            if it.stackpos < 0 { return option::None; }
             loop {
                 let current = it.stack[it.stackpos];
                 it.stackpos -= 1;
@@ -1133,7 +1133,7 @@ mod node {
                     it.stackpos += 1;
                     it.stack[it.stackpos] = x.left;
                   }
-                  leaf(x) => return option::some(x)
+                  leaf(x) => return option::Some(x)
                 }
             };
         }
@@ -1142,14 +1142,14 @@ mod node {
     mod char_iterator {
         type t = {
             leaf_iterator: leaf_iterator::t,
-            mut leaf:  option<leaf>,
+            mut leaf:  Option<leaf>,
             mut leaf_byte_pos: uint
         };
 
         fn start(node: @node) -> t {
             return {
                 leaf_iterator: leaf_iterator::start(node),
-                mut leaf:          option::none,
+                mut leaf:          option::None,
                 mut leaf_byte_pos: 0u
             }
         }
@@ -1157,34 +1157,34 @@ mod node {
         fn empty() -> t {
             return {
                 leaf_iterator: leaf_iterator::empty(),
-                mut leaf:  option::none,
+                mut leaf:  option::None,
                 mut leaf_byte_pos: 0u
             }
         }
 
-        fn next(it: t) -> option<char> {
+        fn next(it: t) -> Option<char> {
             loop {
                 match (get_current_or_next_leaf(it)) {
-                  option::none => return option::none,
-                  option::some(_) => {
+                  option::None => return option::None,
+                  option::Some(_) => {
                     let next_char = get_next_char_in_leaf(it);
                     match (next_char) {
-                      option::none => again,
-                      option::some(_) => return next_char
+                      option::None => again,
+                      option::Some(_) => return next_char
                     }
                   }
                 }
             };
         }
 
-        fn get_current_or_next_leaf(it: t) -> option<leaf> {
+        fn get_current_or_next_leaf(it: t) -> Option<leaf> {
             match (it.leaf) {
-              option::some(_) => return it.leaf,
-              option::none => {
+              option::Some(_) => return it.leaf,
+              option::None => {
                 let next = leaf_iterator::next(it.leaf_iterator);
                 match (next) {
-                  option::none => return option::none,
-                  option::some(_) => {
+                  option::None => return option::None,
+                  option::Some(_) => {
                     it.leaf          = next;
                     it.leaf_byte_pos = 0u;
                     return next;
@@ -1194,20 +1194,20 @@ mod node {
             }
         }
 
-        fn get_next_char_in_leaf(it: t) -> option<char> {
+        fn get_next_char_in_leaf(it: t) -> Option<char> {
             match copy it.leaf {
-              option::none => return option::none,
-              option::some(aleaf) => {
+              option::None => return option::None,
+              option::Some(aleaf) => {
                 if it.leaf_byte_pos >= aleaf.byte_len {
                     //We are actually past the end of the leaf
-                    it.leaf = option::none;
-                    return option::none
+                    it.leaf = option::None;
+                    return option::None
                 } else {
                     let {ch, next} =
                         str::char_range_at(*aleaf.content,
                                      it.leaf_byte_pos + aleaf.byte_offset);
                     it.leaf_byte_pos = next - aleaf.byte_offset;
-                    return option::some(ch)
+                    return option::Some(ch)
                 }
               }
             }
@@ -1275,11 +1275,11 @@ mod tests {
         let mut equal   = true;
         while equal {
             match (node::char_iterator::next(rope_iter)) {
-              option::none => {
+              option::None => {
                 if string_iter < string_len {
                     equal = false;
                 } break; }
-              option::some(c) => {
+              option::Some(c) => {
                 let {ch, next} = str::char_range_at(*sample, string_iter);
                 string_iter = next;
                 if ch != c { equal = false; break; }
@@ -1302,8 +1302,8 @@ mod tests {
         let it  = iterator::char::start(r);
         loop {
             match (node::char_iterator::next(it)) {
-              option::none => break,
-              option::some(_) => len += 1u
+              option::None => break,
+              option::Some(_) => len += 1u
             }
         }
 

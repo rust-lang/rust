@@ -59,8 +59,8 @@ fn classify(e: @expr,
             tcx: ty::ctxt) -> constness {
     let did = ast_util::local_def(e.id);
     match tcx.ccache.find(did) {
-      some(x) => x,
-      none => {
+      Some(x) => x,
+      None => {
         let cn =
             match e.node {
               ast::expr_lit(lit) => {
@@ -95,8 +95,8 @@ fn classify(e: @expr,
                 }
               }
 
-              ast::expr_struct(_, fs, none) |
-              ast::expr_rec(fs, none) => {
+              ast::expr_struct(_, fs, None) |
+              ast::expr_rec(fs, None) => {
                 let cs = do vec::map(fs) |f| {
                     if f.node.mutbl == ast::m_imm {
                         classify(f.node.expr, def_map, tcx)
@@ -136,7 +136,7 @@ fn classify(e: @expr,
               // surrounding nonlocal constants. But we don't yet.
               ast::expr_path(_) => {
                 match def_map.find(e.id) {
-                  some(ast::def_const(def_id)) => {
+                  Some(ast::def_const(def_id)) => {
                     if ast_util::is_local(def_id) {
                         let ty = ty::expr_ty(tcx, e);
                         if ty::type_is_integral(ty) {
@@ -148,10 +148,10 @@ fn classify(e: @expr,
                         non_const
                     }
                   }
-                  some(_) => {
+                  Some(_) => {
                     non_const
                   }
-                  none => {
+                  None => {
                     tcx.sess.span_bug(e.span,
                                       ~"unknown path when \
                                         classifying constants");

@@ -842,14 +842,14 @@ An example of imports:
 import foo = core::info;
 import core::float::sin;
 import core::str::{slice, to_upper};
-import core::option::some;
+import core::option::Some;
 
 fn main() {
     // Equivalent to 'log(core::info, core::float::sin(1.0));'
     log(foo, sin(1.0));
 
-    // Equivalent to 'log(core::info, core::option::some(1.0));'
-    log(info, some(1.0));
+    // Equivalent to 'log(core::info, core::option::Some(1.0));'
+    log(info, Some(1.0));
 
     // Equivalent to 'log(core::info,
     //                    core::str::to_upper(core::str::slice(~"foo", 0u, 1u)));'
@@ -2229,14 +2229,14 @@ consist of a bool-typed expression following the `if` keyword. A pattern
 guard may refer to the variables bound within the pattern they follow.
 
 ~~~~
-# let maybe_digit = some(0);
+# let maybe_digit = Some(0);
 # fn process_digit(i: int) { }
 # fn process_other(i: int) { }
 
 let message = match maybe_digit {
-  some(x) if x < 10 => process_digit(x),
-  some(x) => process_other(x),
-  none => fail
+  Some(x) if x < 10 => process_digit(x),
+  Some(x) => process_other(x),
+  None => fail
 };
 ~~~~
 

@@ -46,7 +46,7 @@ fn main() {
         error!("selecting");
         let (i, m, _) = select(~[left, right]);
         error!("selected %?", i);
-        if m != none {
+        if m != None {
             assert i == 1;
         }
     });

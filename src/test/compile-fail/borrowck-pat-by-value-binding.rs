@@ -1,32 +1,32 @@
 fn process<T>(_t: T) {}
 
-fn match_const_opt_by_mut_ref(v: &const option<int>) {
+fn match_const_opt_by_mut_ref(v: &const Option<int>) {
     match *v {
-      some(ref mut i) => process(i), //~ ERROR illegal borrow
-      none => ()
+      Some(ref mut i) => process(i), //~ ERROR illegal borrow
+      None => ()
     }
 }
 
-fn match_const_opt_by_const_ref(v: &const option<int>) {
+fn match_const_opt_by_const_ref(v: &const Option<int>) {
     match *v {
-      some(ref const i) => process(i), //~ ERROR illegal borrow unless pure
+      Some(ref const i) => process(i), //~ ERROR illegal borrow unless pure
       //~^ NOTE impure due to
-      none => ()
+      None => ()
     }
 }
 
-fn match_const_opt_by_imm_ref(v: &const option<int>) {
+fn match_const_opt_by_imm_ref(v: &const Option<int>) {
     match *v {
-      some(ref i) => process(i), //~ ERROR illegal borrow unless pure
+      Some(ref i) => process(i), //~ ERROR illegal borrow unless pure
       //~^ NOTE impure due to
-      none => ()
+      None => ()
     }
 }
 
-fn match_const_opt_by_value(v: &const option<int>) {
+fn match_const_opt_by_value(v: &const Option<int>) {
     match *v {
-      some(copy i) => process(i),
-      none => ()
+      Some(copy i) => process(i),
+      None => ()
     }
 }
 

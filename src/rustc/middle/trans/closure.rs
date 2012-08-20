@@ -250,7 +250,7 @@ fn build_closure(bcx0: block,
                  cap_vars: ~[capture::capture_var],
                  ck: ty::closure_kind,
                  id: ast::node_id,
-                 include_ret_handle: option<ValueRef>) -> closure_result {
+                 include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
     let mut env_vals = ~[];
@@ -275,8 +275,8 @@ fn build_closure(bcx0: block,
           }
           capture::cap_copy => {
             let mv = match ccx.maps.last_use_map.find(id) {
-              none => false,
-              some(vars) => (*vars).contains(nid)
+              None => false,
+              Some(vars) => (*vars).contains(nid)
             };
             if mv { vec::push(env_vals, env_move(lv.val, ty, lv.kind)); }
             else { vec::push(env_vals, env_copy(lv.val, ty, lv.kind)); }
@@ -293,8 +293,8 @@ fn build_closure(bcx0: block,
     }
     do option::iter(include_ret_handle) |flagptr| {
         let our_ret = match bcx.fcx.loop_ret {
-          some({retptr, _}) => retptr,
-          none => bcx.fcx.llretptr
+          Some({retptr, _}) => retptr,
+          None => bcx.fcx.llretptr
         };
         let nil_ret = PointerCast(bcx, our_ret, T_ptr(T_nil()));
         vec::push(env_vals,
@@ -344,7 +344,7 @@ fn load_environment(fcx: fn_ctxt,
         let retptr = Load(bcx,
                           GEPi(bcx, llcdata,
                                ~[0u, i+1u]));
-        fcx.loop_ret = some({flagptr: flagptr, retptr: retptr});
+        fcx.loop_ret = Some({flagptr: flagptr, retptr: retptr});
     }
 }
 
@@ -354,7 +354,7 @@ fn trans_expr_fn(bcx: block,
                  body: ast::blk,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
-                 is_loop_body: option<option<ValueRef>>,
+                 is_loop_body: Option<Option<ValueRef>>,
                  dest: dest) -> block {
     let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
     if dest == ignore { return bcx; }
@@ -369,7 +369,7 @@ fn trans_expr_fn(bcx: block,
     let trans_closure_env = fn@(ck: ty::closure_kind) -> result {
         let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
                                                      cap_clause);
-        let ret_handle = match is_loop_body { some(x) => x, none => none };
+        let ret_handle = match is_loop_body { Some(x) => x, None => None };
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
                                                    ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
@@ -392,7 +392,7 @@ fn trans_expr_fn(bcx: block,
       ty::proto_vstore(ty::vstore_uniq) =>
         trans_closure_env(ty::ck_uniq),
       ty::proto_bare => {
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self, none,
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
                       id, |_fcx| { }, |_bcx| { });
         {bcx: bcx, val: C_null(T_opaque_box_ptr(ccx))}
       }
@@ -484,7 +484,7 @@ fn make_opaque_cbox_take_glue(
         // Take the data in the tuple
         let cdata_out = GEPi(bcx, cbox_out, ~[0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata_out, tydesc,
-                              abi::tydesc_field_take_glue, none);
+                              abi::tydesc_field_take_glue, None);
         bcx
     }
 }
@@ -531,7 +531,7 @@ fn make_opaque_cbox_free_glue(
         // Drop the tuple data then free the descriptor
         let cdata = GEPi(bcx, cbox, ~[0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata, tydesc,
-                              abi::tydesc_field_drop_glue, none);
+                              abi::tydesc_field_drop_glue, None);
 
         // Free the ty descr (if necc) and the box itself
         match ck {

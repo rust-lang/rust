@@ -241,29 +241,29 @@ fn to_str(num: float, digits: uint) -> ~str {
  * # Return value
  *
  * `none` if the string did not represent a valid number.  Otherwise,
- * `some(n)` where `n` is the floating-point number represented by `[num]`.
+ * `Some(n)` where `n` is the floating-point number represented by `[num]`.
  */
-fn from_str(num: &str) -> option<float> {
+fn from_str(num: &str) -> Option<float> {
    if num == "inf" {
-       return some(infinity as float);
+       return Some(infinity as float);
    } else if num == "-inf" {
-       return some(neg_infinity as float);
+       return Some(neg_infinity as float);
    } else if num == "NaN" {
-       return some(NaN as float);
+       return Some(NaN as float);
    }
 
    let mut pos = 0u;               //Current byte position in the string.
                                    //Used to walk the string in O(n).
    let len = str::len(num);        //Length of the string, in bytes.
 
-   if len == 0u { return none; }
+   if len == 0u { return None; }
    let mut total = 0f;             //Accumulated result
    let mut c     = 'z';            //Latest char.
 
    //The string must start with one of the following characters.
    match str::char_at(num, 0u) {
       '-' | '+' | '0' to '9' | '.' => (),
-      _ => return none
+      _ => return None
    }
 
    //Determine if first char is '-'/'+'. Set [pos] and [neg] accordingly.
@@ -290,7 +290,7 @@ fn from_str(num: &str) -> option<float> {
            total += ((c as int) - ('0' as int)) as float;
          }
          '.' | 'e' | 'E' => break,
-         _ => return none
+         _ => return None
        }
    }
 
@@ -306,7 +306,7 @@ fn from_str(num: &str) -> option<float> {
                  total += (((c as int) - ('0' as int)) as float)*decimal;
              }
              'e' | 'E' => break,
-             _ => return none
+             _ => return None
          }
       }
    }
@@ -348,17 +348,17 @@ fn from_str(num: &str) -> option<float> {
              total = total * multiplier;
           }
       } else {
-         return none;
+         return None;
       }
    }
 
    if(pos < len) {
-     return none;
+     return None;
    } else {
      if(neg) {
         total *= -1f;
      }
-     return some(total);
+     return Some(total);
    }
 }
 
@@ -428,45 +428,45 @@ impl float: num::Num {
 
 #[test]
 fn test_from_str() {
-   assert from_str(~"3") == some(3.);
-   assert from_str(~"3") == some(3.);
-   assert from_str(~"3.14") == some(3.14);
-   assert from_str(~"+3.14") == some(3.14);
-   assert from_str(~"-3.14") == some(-3.14);
-   assert from_str(~"2.5E10") == some(25000000000.);
-   assert from_str(~"2.5e10") == some(25000000000.);
-   assert from_str(~"25000000000.E-10") == some(2.5);
-   assert from_str(~".") == some(0.);
-   assert from_str(~".e1") == some(0.);
-   assert from_str(~".e-1") == some(0.);
-   assert from_str(~"5.") == some(5.);
-   assert from_str(~".5") == some(0.5);
-   assert from_str(~"0.5") == some(0.5);
-   assert from_str(~"0.5") == some(0.5);
-   assert from_str(~"0.5") == some(0.5);
-   assert from_str(~"-.5") == some(-0.5);
-   assert from_str(~"-.5") == some(-0.5);
-   assert from_str(~"-5") == some(-5.);
-   assert from_str(~"-0") == some(-0.);
-   assert from_str(~"0") == some(0.);
-   assert from_str(~"inf") == some(infinity);
-   assert from_str(~"-inf") == some(neg_infinity);
+   assert from_str(~"3") == Some(3.);
+   assert from_str(~"3") == Some(3.);
+   assert from_str(~"3.14") == Some(3.14);
+   assert from_str(~"+3.14") == Some(3.14);
+   assert from_str(~"-3.14") == Some(-3.14);
+   assert from_str(~"2.5E10") == Some(25000000000.);
+   assert from_str(~"2.5e10") == Some(25000000000.);
+   assert from_str(~"25000000000.E-10") == Some(2.5);
+   assert from_str(~".") == Some(0.);
+   assert from_str(~".e1") == Some(0.);
+   assert from_str(~".e-1") == Some(0.);
+   assert from_str(~"5.") == Some(5.);
+   assert from_str(~".5") == Some(0.5);
+   assert from_str(~"0.5") == Some(0.5);
+   assert from_str(~"0.5") == Some(0.5);
+   assert from_str(~"0.5") == Some(0.5);
+   assert from_str(~"-.5") == Some(-0.5);
+   assert from_str(~"-.5") == Some(-0.5);
+   assert from_str(~"-5") == Some(-5.);
+   assert from_str(~"-0") == Some(-0.);
+   assert from_str(~"0") == Some(0.);
+   assert from_str(~"inf") == Some(infinity);
+   assert from_str(~"-inf") == Some(neg_infinity);
    // note: NaN != NaN, hence this slightly complex test
    match from_str(~"NaN") {
-       some(f) => assert is_NaN(f),
-       none => fail
+       Some(f) => assert is_NaN(f),
+       None => fail
    }
 
-   assert from_str(~"") == none;
-   assert from_str(~"x") == none;
-   assert from_str(~" ") == none;
-   assert from_str(~"   ") == none;
-   assert from_str(~"e") == none;
-   assert from_str(~"E") == none;
-   assert from_str(~"E1") == none;
-   assert from_str(~"1e1e1") == none;
-   assert from_str(~"1e1.1") == none;
-   assert from_str(~"1e1-1") == none;
+   assert from_str(~"") == None;
+   assert from_str(~"x") == None;
+   assert from_str(~" ") == None;
+   assert from_str(~"   ") == None;
+   assert from_str(~"e") == None;
+   assert from_str(~"E") == None;
+   assert from_str(~"E1") == None;
+   assert from_str(~"1e1e1") == None;
+   assert from_str(~"1e1.1") == None;
+   assert from_str(~"1e1-1") == None;
 }
 
 #[test]

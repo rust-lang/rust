@@ -177,11 +177,11 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
                                          ~"normal"),
                     |a| parse_pretty(sess, a) );
     match pretty {
-      some::<pp_mode>(ppm) => {
+      Some::<pp_mode>(ppm) => {
         pretty_print_input(sess, cfg, input, ppm);
         return;
       }
-      none::<pp_mode> => {/* continue */ }
+      None::<pp_mode> => {/* continue */ }
     }
     let ls = opt_present(matches, ~"ls");
     if ls {
@@ -224,7 +224,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
-        let demitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
+        let demitter = fn@(cmsp: Option<(codemap::codemap, codemap::span)>,
                            msg: ~str, lvl: diagnostic::level) {
             if lvl == diagnostic::fatal {
                 comm::send(ch, fatal);
@@ -247,7 +247,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
             // Task failed without emitting a fatal diagnostic
             if comm::recv(p) == done {
                 diagnostic::emit(
-                    none,
+                    None,
                     diagnostic::ice_msg(~"unexpected failure"),
                     diagnostic::error);
 
@@ -258,7 +258,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
                 ]/_.each |note| {
-                    diagnostic::emit(none, note, diagnostic::note)
+                    diagnostic::emit(None, note, diagnostic::note)
                 }
             }
             // Fail so the process returns a failure code

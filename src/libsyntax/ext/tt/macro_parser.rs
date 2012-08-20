@@ -85,19 +85,19 @@ eof: [a $( a )* a b ·]
 nonempty body. */
 
 enum matcher_pos_up { /* to break a circularity */
-    matcher_pos_up(option<matcher_pos>)
+    matcher_pos_up(Option<matcher_pos>)
 }
 
 fn is_some(&&mpu: matcher_pos_up) -> bool {
     match mpu {
-      matcher_pos_up(none) => false,
+      matcher_pos_up(None) => false,
       _ => true
     }
 }
 
 type matcher_pos = ~{
     elts: ~[ast::matcher], // maybe should be /&? Need to understand regions.
-    sep: option<token>,
+    sep: Option<token>,
     mut idx: uint,
     mut up: matcher_pos_up, // mutable for swapping only
     matches: ~[DVec<@named_match>],
@@ -107,7 +107,7 @@ type matcher_pos = ~{
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
     match mpu {
-      matcher_pos_up(some(mp)) => copy mp,
+      matcher_pos_up(Some(mp)) => copy mp,
       _ => fail
     }
 }
@@ -122,7 +122,7 @@ fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
+fn initial_matcher_pos(ms: ~[matcher], sep: Option<token>, lo: uint)
     -> matcher_pos {
     let mut match_idx_hi = 0u;
     for ms.each() |elt| {
@@ -136,7 +136,7 @@ fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
           }
         }
     }
-    ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(none),
+    ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(None),
       matches: copy vec::from_fn(count_names(ms), |_i| dvec::dvec()),
       match_lo: 0u, match_hi: match_idx_hi, sp_lo: lo}
 }
@@ -208,7 +208,7 @@ fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     -> parse_result {
     let mut cur_eis = ~[];
-    vec::push(cur_eis, initial_matcher_pos(ms, none, rdr.peek().sp.lo));
+    vec::push(cur_eis, initial_matcher_pos(ms, None, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
@@ -263,7 +263,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
                     // the *_t vars are workarounds for the lack of unary move
                     match copy ei.sep {
-                      some(t) if idx == len => { // we need a separator
+                      Some(t) if idx == len => { // we need a separator
                         if tok == t { //pass the separator
                             let ei_t <- ei;
                             ei_t.idx += 1u;
@@ -300,7 +300,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     let ei_t <- ei;
                     vec::push(cur_eis, ~{
                         elts: matchers, sep: sep, mut idx: 0u,
-                        mut up: matcher_pos_up(some(ei_t)),
+                        mut up: matcher_pos_up(Some(ei_t)),
                         matches: matches,
                         match_lo: match_idx_lo, match_hi: match_idx_hi,
                         sp_lo: sp.lo
@@ -381,8 +381,8 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 fn parse_nt(p: parser, name: ~str) -> nonterminal {
     match name {
       ~"item" => match p.parse_item(~[]) {
-        some(i) => token::nt_item(i),
-        none => p.fatal(~"expected an item keyword")
+        Some(i) => token::nt_item(i),
+        None => p.fatal(~"expected an item keyword")
       },
       ~"block" => token::nt_block(p.parse_block()),
       ~"stmt" => token::nt_stmt(p.parse_stmt(~[])),

@@ -6,28 +6,28 @@
 export read, readMaybe;
 
 trait read {
-    static fn readMaybe(s: ~str) -> option<self>;
+    static fn readMaybe(s: ~str) -> Option<self>;
 }
 
 impl int: read {
-    static fn readMaybe(s: ~str) -> option<int> {
+    static fn readMaybe(s: ~str) -> Option<int> {
         int::from_str(s)
     }
 }
 
 impl bool: read {
-    static fn readMaybe(s: ~str) -> option<bool> {
+    static fn readMaybe(s: ~str) -> Option<bool> {
         match s {
-          ~"true" => some(true),
-          ~"false" => some(false),
-          _ => none
+          ~"true" => Some(true),
+          ~"false" => Some(false),
+          _ => None
         }
     }
 }
 
 fn read<T: read copy>(s: ~str) -> T {
     match readMaybe(s) {
-      some(x) => x,
+      Some(x) => x,
       _ => fail ~"read failed!"
     }
 }

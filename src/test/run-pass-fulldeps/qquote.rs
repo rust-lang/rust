@@ -24,7 +24,7 @@ impl fake_session: fake_ext_ctxt {
 }
 
 fn mk_ctxt() -> fake_ext_ctxt {
-    parse::new_parse_sess(none) as fake_ext_ctxt
+    parse::new_parse_sess(None) as fake_ext_ctxt
 }
 
 

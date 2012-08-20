@@ -1,27 +1,27 @@
 fn impure(_i: int) {}
 
 // check that unchecked alone does not override borrowck:
-fn foo(v: &const option<int>) {
+fn foo(v: &const Option<int>) {
     match *v {
-      some(ref i) => {
+      Some(ref i) => {
         //~^ ERROR illegal borrow unless pure
         unchecked {
             impure(*i); //~ NOTE impure due to access to impure function
         }
       }
-      none => {
+      None => {
       }
     }
 }
 
-fn bar(v: &const option<int>) {
+fn bar(v: &const Option<int>) {
     match *v {
-      some(ref i) => {
+      Some(ref i) => {
         unsafe {
             impure(*i);
         }
       }
-      none => {
+      None => {
       }
     }
 }

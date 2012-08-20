@@ -1,11 +1,11 @@
 fn main() {
-    let mut x = none;
+    let mut x = None;
     match x {
-      none => {
+      None => {
         // It is ok to reassign x here, because there is in
         // fact no outstanding loan of x!
-        x = some(0);
+        x = Some(0);
       }
-      some(_) => { }
+      Some(_) => { }
     }
 }

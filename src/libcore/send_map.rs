@@ -25,7 +25,7 @@ mod linear {
             eqfn: pure fn~(x: &K, y: &K) -> bool,
             resize_at: uint,
             size: uint,
-            buckets: ~[option<Bucket<K,V>>]})
+            buckets: ~[Option<Bucket<K,V>>]})
     }
 
     // FIXME(#3148) -- we could rewrite found_entry
@@ -56,7 +56,7 @@ mod linear {
             eqfn: eqfn,
             resize_at: resize_at(initial_capacity),
             size: 0,
-            buckets: vec::from_fn(initial_capacity, |_i| none)})
+            buckets: vec::from_fn(initial_capacity, |_i| None)})
     }
 
     priv impl<K, V> LinearMap<K,V> {
@@ -101,7 +101,7 @@ mod linear {
 
         #[inline(always)]
         pure fn bucket_for_key(&const self,
-                               buckets: &[option<Bucket<K,V>>],
+                               buckets: &[Option<Bucket<K,V>>],
                                k: &K) -> SearchResult {
             let hash = self.hashfn(k);
             self.bucket_for_key_with_hash(buckets, hash, k)
@@ -109,15 +109,15 @@ mod linear {
 
         #[inline(always)]
         pure fn bucket_for_key_with_hash(&const self,
-                                         buckets: &[option<Bucket<K,V>>],
+                                         buckets: &[Option<Bucket<K,V>>],
                                          hash: uint,
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match buckets[i] {
-                  some(bkt) => if bkt.hash == hash && self.eqfn(k, &bkt.key) {
+                  Some(bkt) => if bkt.hash == hash && self.eqfn(k, &bkt.key) {
                     return FoundEntry(i);
                   },
-                  none => return FoundHole(i)
+                  None => return FoundHole(i)
                 }
             };
             return TableFull;
@@ -130,11 +130,11 @@ mod linear {
             let new_capacity = old_capacity * 2;
             self.resize_at = ((new_capacity as float) * 3.0 / 4.0) as uint;
 
-            let mut old_buckets = vec::from_fn(new_capacity, |_i| none);
+            let mut old_buckets = vec::from_fn(new_capacity, |_i| None);
             self.buckets <-> old_buckets;
 
             for uint::range(0, old_capacity) |i| {
-                let mut bucket = none;
+                let mut bucket = None;
                 bucket <-> old_buckets[i];
                 if bucket.is_some() {
                     self.insert_bucket(bucket);
@@ -142,7 +142,7 @@ mod linear {
             }
         }
 
-        fn insert_bucket(&mut self, +bucket: option<Bucket<K,V>>) {
+        fn insert_bucket(&mut self, +bucket: Option<Bucket<K,V>>) {
             let {hash, key, value} <- option::unwrap(bucket);
             let _ = self.insert_internal(hash, key, value);
         }
@@ -156,14 +156,14 @@ mod linear {
               FoundHole(idx) => {
                 debug!("insert fresh (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash);
-                self.buckets[idx] = some({hash: hash, key: k, value: v});
+                self.buckets[idx] = Some({hash: hash, key: k, value: v});
                 self.size += 1;
                 return true;
               }
               FoundEntry(idx) => {
                 debug!("insert overwrite (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash);
-                self.buckets[idx] = some({hash: hash, key: k, value: v});
+                self.buckets[idx] = Some({hash: hash, key: k, value: v});
                 return false;
               }
             }
@@ -171,7 +171,7 @@ mod linear {
 
         fn search(&self,
                   hash: uint,
-                  op: fn(x: &option<Bucket<K,V>>) -> bool) {
+                  op: fn(x: &Option<Bucket<K,V>>) -> bool) {
             let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
         }
     }
@@ -218,10 +218,10 @@ mod linear {
             };
 
             let len_buckets = self.buckets.len();
-            self.buckets[idx] = none;
+            self.buckets[idx] = None;
             idx = self.next_bucket(idx, len_buckets);
             while self.buckets[idx].is_some() {
-                let mut bucket = none;
+                let mut bucket = None;
                 bucket <-> self.buckets[idx];
                 self.insert_bucket(bucket);
                 idx = self.next_bucket(idx, len_buckets);
@@ -232,7 +232,7 @@ mod linear {
 
         fn clear(&mut self) {
             for uint::range(0, self.buckets.len()) |idx| {
-                self.buckets[idx] = none;
+                self.buckets[idx] = None;
             }
             self.size = 0;
         }
@@ -292,18 +292,18 @@ mod linear {
     }
 
     impl<K,V: copy> LinearMap<K,V> {
-        fn find(&const self, k: &K) -> option<V> {
+        fn find(&const self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
               FoundEntry(idx) => {
                 // FIXME (#3148): Once we rewrite found_entry, this
                 // failure case won't be necessary
                 match self.buckets[idx] {
-                    some(bkt) => {some(copy bkt.value)}
-                    none => fail ~"LinearMap::find: internal logic error"
+                    Some(bkt) => {Some(copy bkt.value)}
+                    None => fail ~"LinearMap::find: internal logic error"
                 }
               }
               TableFull | FoundHole(_) => {
-                none
+                None
               }
             }
         }

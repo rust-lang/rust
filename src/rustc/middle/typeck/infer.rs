@@ -306,7 +306,7 @@ type assignment = {
     borrow_lb: ast::node_id,
 };
 
-type bound<T:copy> = option<T>;
+type bound<T:copy> = Option<T>;
 type bounds<T:copy> = {lb: bound<T>, ub: bound<T>};
 
 type cres<T> = result<T,ty::type_err>;
@@ -618,7 +618,7 @@ impl infer_ctxt {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;
         self.ty_var_bindings.vals.insert(id,
-                                         root({lb: none, ub: none}, 0u));
+                                         root({lb: None, ub: None}, 0u));
         return tv_vid(id);
     }
 

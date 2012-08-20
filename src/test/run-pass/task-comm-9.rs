@@ -15,8 +15,8 @@ fn test00() {
     let number_of_messages: int = 10;
     let ch = p.chan();
 
-    let mut result = none;
-    do task::task().future_result(|+r| { result = some(r); }).spawn {
+    let mut result = None;
+    do task::task().future_result(|+r| { result = Some(r); }).spawn {
         test00_start(ch, number_of_messages);
     }
 

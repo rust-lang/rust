@@ -121,7 +121,7 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
 }
 
 fn lookup_char_pos_adj(map: codemap, pos: uint)
-    -> {filename: ~str, line: uint, col: uint, file: option<filemap>}
+    -> {filename: ~str, line: uint, col: uint, file: Option<filemap>}
 {
     let loc = lookup_char_pos(map, pos);
     match (loc.file.substr) {
@@ -129,7 +129,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
         {filename: /* FIXME (#2543) */ copy loc.file.name,
          line: loc.line,
          col: loc.col,
-         file: some(loc.file)}
+         file: Some(loc.file)}
       }
       fss_internal(sp) => {
         lookup_char_pos_adj(map, sp.lo + (pos - loc.file.start_pos.ch))
@@ -138,7 +138,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
         {filename: /* FIXME (#2543) */ copy eloc.filename,
          line: eloc.line + loc.line - 1u,
          col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
-         file: none}
+         file: None}
       }
     }
 }
@@ -158,9 +158,9 @@ fn adjust_span(map: codemap, sp: span) -> span {
 
 enum expn_info_ {
     expanded_from({call_site: span,
-                   callie: {name: ~str, span: option<span>}})
+                   callie: {name: ~str, span: Option<span>}})
 }
-type expn_info = option<@expn_info_>;
+type expn_info = Option<@expn_info_>;
 type span = {lo: uint, hi: uint, expn_info: expn_info};
 
 fn span_to_str_no_adj(sp: span, cm: codemap) -> ~str {
@@ -197,8 +197,8 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 fn get_line(fm: filemap, line: int) -> ~str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end = match str::find_char_from(*fm.src, '\n', begin) {
-      some(e) => e,
-      none => str::len(*fm.src)
+      Some(e) => e,
+      None => str::len(*fm.src)
     };
     str::slice(*fm.src, begin, end)
 }

@@ -1,15 +1,15 @@
 // -*- rust -*-
 use std;
 import option;
-import option::some;
+import option::Some;
 
 // error-pattern: mismatched types
 
-enum bar { t1((), option<~[int]>), t2, }
+enum bar { t1((), Option<~[int]>), t2, }
 
 fn foo(t: bar) {
     match t {
-      t1(_, some::<int>(x)) => {
+      t1(_, Some::<int>(x)) => {
         log(debug, x);
       }
       _ => { fail; }

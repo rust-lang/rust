@@ -17,8 +17,8 @@ import middle::lint::{get_lint_level, allow};
 import syntax::ast::*;
 import syntax::print::pprust::*;
 import util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
-import std::serialization::{serialize_option,
-                            deserialize_option};
+import std::serialization::{serialize_Option,
+                            deserialize_Option};
 
 export tv_vid, tvi_vid, region_vid, vid;
 export br_hashmap;
@@ -225,7 +225,7 @@ type field_ty = {
 // the types of AST nodes.
 type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, t>;
 
-type intern_key = {struct: sty, o_def_id: option<ast::def_id>};
+type intern_key = {struct: sty, o_def_id: Option<ast::def_id>};
 
 enum ast_ty_to_ty_cache_entry {
     atttce_unresolved,  /* not resolved yet */
@@ -233,7 +233,7 @@ enum ast_ty_to_ty_cache_entry {
 }
 
 #[auto_serialize]
-type opt_region_variance = option<region_variance>;
+type opt_region_variance = Option<region_variance>;
 
 #[auto_serialize]
 enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
@@ -302,7 +302,7 @@ enum tbox_flag {
 type t_box = @{struct: sty,
                id: uint,
                flags: uint,
-               o_def_id: option<ast::def_id>};
+               o_def_id: Option<ast::def_id>};
 
 // To reduce refcounting cost, we're representing types as unsafe pointers
 // throughout the compiler. These are simply casted t_box values. Use ty::get
@@ -326,7 +326,7 @@ pure fn type_has_params(t: t) -> bool { tbox_has_flag(get(t), has_params) }
 pure fn type_has_self(t: t) -> bool { tbox_has_flag(get(t), has_self) }
 pure fn type_needs_infer(t: t) -> bool { tbox_has_flag(get(t), needs_infer) }
 pure fn type_has_regions(t: t) -> bool { tbox_has_flag(get(t), has_regions) }
-pure fn type_def_id(t: t) -> option<ast::def_id> { get(t).o_def_id }
+pure fn type_def_id(t: t) -> Option<ast::def_id> { get(t).o_def_id }
 pure fn type_id(t: t) -> uint { get(t).id }
 
 enum closure_kind {
@@ -406,7 +406,7 @@ enum bound_region {
     br_cap_avoid(ast::node_id, @bound_region),
 }
 
-type opt_region = option<region>;
+type opt_region = Option<region>;
 
 /// The type substs represents the kinds of things that can be substituted to
 /// convert a polytype into a monotype.  Note however that substituting bound
@@ -418,7 +418,7 @@ type opt_region = option<region>;
 /// `self_r` indicates the region parameter `self` that is present on nominal
 /// types (enums, classes) declared as having a region parameter.  `self_r`
 /// should always be none for types that are not region-parameterized and
-/// some(_) for types that are.  The only bound region parameter that should
+/// Some(_) for types that are.  The only bound region parameter that should
 /// appear within a region-parameterized type is `self`.
 ///
 /// `self_ty` is the type to which `self` should be remapped, if any.  The
@@ -426,7 +426,7 @@ type opt_region = option<region>;
 /// is always substituted away to the implementing type for a trait.
 type substs = {
     self_r: opt_region,
-    self_ty: option<ty::t>,
+    self_ty: Option<ty::t>,
     tps: ~[t]
 };
 
@@ -577,7 +577,7 @@ fn param_bounds_to_kind(bounds: param_bounds) -> kind {
 /// - `ty`: the base type.  May have reference to the (unsubstituted) bound
 ///   region `&self` or to (unsubstituted) ty_param types
 type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
-                               region_param: option<region_variance>,
+                               region_param: Option<region_variance>,
                                ty: t};
 
 type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
@@ -649,14 +649,14 @@ fn mk_ctxt(s: session::session,
 
 
 // Type constructors
-fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, none) }
+fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
-fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: option<ast::def_id>) -> t {
+fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
     let key = {struct: st, o_def_id: o_def_id};
     match cx.interner.find(key) {
-      some(t) => unsafe { return unsafe::reinterpret_cast(t); },
+      Some(t) => unsafe { return unsafe::reinterpret_cast(t); },
       _ => ()
     }
     let mut flags = 0u;
@@ -845,7 +845,7 @@ fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
 fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
 fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
-    mk_t_with_id(cx, get(base).struct, some(def_id))
+    mk_t_with_id(cx, get(base).struct, Some(def_id))
 }
 
 // Converts s to its machine type equivalent
@@ -867,8 +867,8 @@ fn default_arg_mode_for_ty(ty: ty::t) -> ast::rmode {
 // with id `id`.
 fn encl_region(cx: ctxt, id: ast::node_id) -> ty::region {
     match cx.region_map.find(id) {
-      some(encl_scope) => ty::re_scope(encl_scope),
-      none => ty::re_static
+      Some(encl_scope) => ty::re_scope(encl_scope),
+      None => ty::re_static
     }
 }
 
@@ -1324,8 +1324,8 @@ fn type_is_immediate(ty: t) -> bool {
 
 fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     match cx.needs_drop_cache.find(ty) {
-      some(result) => return result,
-      none => {/* fall through */ }
+      Some(result) => return result,
+      None => {/* fall through */ }
     }
 
     let mut accum = false;
@@ -1387,8 +1387,8 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 // cleanups.
 fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
     match cx.needs_unwind_cleanup_cache.find(ty) {
-      some(result) => return result,
-      none => ()
+      Some(result) => return result,
+      None => ()
     }
 
     let tycache = new_ty_hash();
@@ -1404,8 +1404,8 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
 
     // Prevent infinite recursion
     match tycache.find(ty) {
-      some(_) => return false,
-      none => { tycache.insert(ty, ()); }
+      Some(_) => return false,
+      None => { tycache.insert(ty, ()); }
     }
 
     let mut encountered_box = encountered_box;
@@ -1658,8 +1658,8 @@ fn mutable_type_kind(cx: ctxt, ty: mt) -> kind {
 
 fn type_kind(cx: ctxt, ty: t) -> kind {
     match cx.kind_cache.find(ty) {
-      some(result) => return result,
-      none => {/* fall through */ }
+      Some(result) => return result,
+      None => {/* fall through */ }
     }
 
     // Insert a default in case we loop back on self recursively.
@@ -2146,42 +2146,42 @@ fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     }
 }
 
-fn type_param(ty: t) -> option<uint> {
+fn type_param(ty: t) -> Option<uint> {
     match get(ty).struct {
-      ty_param(p) => return some(p.idx),
+      ty_param(p) => return Some(p.idx),
       _ => {/* fall through */ }
     }
-    return none;
+    return None;
 }
 
 // Returns the type and mutability of *t.
 //
 // The parameter `expl` indicates if this is an *explicit* dereference.  Some
 // types---notably unsafe ptrs---can only be dereferenced explicitly.
-fn deref(cx: ctxt, t: t, expl: bool) -> option<mt> {
+fn deref(cx: ctxt, t: t, expl: bool) -> Option<mt> {
     deref_sty(cx, &get(t).struct, expl)
 }
-fn deref_sty(cx: ctxt, sty: &sty, expl: bool) -> option<mt> {
+fn deref_sty(cx: ctxt, sty: &sty, expl: bool) -> Option<mt> {
     match *sty {
       ty_rptr(_, mt) | ty_box(mt) | ty_uniq(mt) => {
-        some(mt)
+        Some(mt)
       }
 
       ty_ptr(mt) if expl => {
-        some(mt)
+        Some(mt)
       }
 
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
         if vec::len(*variants) == 1u && vec::len(variants[0].args) == 1u {
             let v_t = subst(cx, substs, variants[0].args[0]);
-            some({ty: v_t, mutbl: ast::m_imm})
+            Some({ty: v_t, mutbl: ast::m_imm})
         } else {
-            none
+            None
         }
       }
 
-      _ => none
+      _ => None
     }
 }
 
@@ -2189,22 +2189,22 @@ fn type_autoderef(cx: ctxt, t: t) -> t {
     let mut t = t;
     loop {
         match deref(cx, t, false) {
-          none => return t,
-          some(mt) => t = mt.ty
+          None => return t,
+          Some(mt) => t = mt.ty
         }
     }
 }
 
 // Returns the type and mutability of t[i]
-fn index(cx: ctxt, t: t) -> option<mt> {
+fn index(cx: ctxt, t: t) -> Option<mt> {
     index_sty(cx, &get(t).struct)
 }
 
-fn index_sty(cx: ctxt, sty: &sty) -> option<mt> {
+fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
     match *sty {
-      ty_evec(mt, _) => some(mt),
-      ty_estr(_) => some({ty: mk_u8(cx), mutbl: ast::m_imm}),
-      _ => none
+      ty_evec(mt, _) => Some(mt),
+      ty_estr(_) => Some({ty: mk_u8(cx), mutbl: ast::m_imm}),
+      _ => None
     }
 }
 
@@ -2324,8 +2324,8 @@ pure fn hash_type_structure(st: &sty) -> uint {
 fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     //io::println(fmt!("%?/%?", id, cx.node_types.size()));
     match smallintmap::find(*cx.node_types, id as uint) {
-       some(t) => t,
-       none => cx.sess.bug(
+       Some(t) => t,
+       None => cx.sess.bug(
            fmt!("node_id_to_type: unbound node ID %s",
                 ast_map::node_id_to_str(cx.items, id,
                                         cx.sess.parse_sess.interner)))
@@ -2334,8 +2334,8 @@ fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
 
 fn node_id_to_type_params(cx: ctxt, id: ast::node_id) -> ~[t] {
     match cx.node_type_substs.find(id) {
-      none => return ~[],
-      some(ts) => return ts
+      None => return ~[],
+      Some(ts) => return ts
     }
 }
 
@@ -2455,7 +2455,7 @@ fn expr_has_ty_params(cx: ctxt, expr: @ast::expr) -> bool {
 
 fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
                       id: ast::node_id)
-    -> option<@~[param_bounds]> {
+    -> Option<@~[param_bounds]> {
     do method_map.find(id).map |method| {
         match method.origin {
           typeck::method_static(did) => {
@@ -2497,17 +2497,17 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     }
 }
 
-fn field_idx(id: ast::ident, fields: ~[field]) -> option<uint> {
+fn field_idx(id: ast::ident, fields: ~[field]) -> Option<uint> {
     let mut i = 0u;
-    for fields.each |f| { if f.ident == id { return some(i); } i += 1u; }
-    return none;
+    for fields.each |f| { if f.ident == id { return Some(i); } i += 1u; }
+    return None;
 }
 
 fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
     match vec::find(get_fields(rec_ty), |f| f.ident == id) {
-      some(f) => f,
+      Some(f) => f,
       // Do we only call this when we know the field is legit?
-      none => fail (#fmt("get_field: ty doesn't have a field %s",
+      None => fail (#fmt("get_field: ty doesn't have a field %s",
                          tcx.sess.str_of(id)))
     }
 }
@@ -2520,10 +2520,10 @@ fn get_fields(rec_ty:t) -> ~[field] {
     }
 }
 
-fn method_idx(id: ast::ident, meths: &[method]) -> option<uint> {
+fn method_idx(id: ast::ident, meths: &[method]) -> Option<uint> {
     let mut i = 0u;
-    for meths.each |m| { if m.ident == id { return some(i); } i += 1u; }
-    return none;
+    for meths.each |m| { if m.ident == id { return Some(i); } i += 1u; }
+    return None;
 }
 
 /// Returns a vector containing the indices of all type parameters that appear
@@ -2580,8 +2580,8 @@ fn canon<T:copy>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
                  +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
       ast::infer(id) => match tbl.find(id) {
-        none => m0,
-        some(m1) => {
+        None => m0,
+        Some(m1) => {
             let cm1 = canon(tbl, m1);
             // path compression:
             if cm1 != m1 { tbl.insert(id, cm1); }
@@ -2794,7 +2794,7 @@ fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
 fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     match cx.trait_method_cache.find(id) {
       // Local traits are supposed to have been added explicitly.
-      some(ms) => ms,
+      Some(ms) => ms,
       _ => {
         // If the lookup in trait_method_cache fails, assume that the trait
         // method we're trying to look up is in a different crate, and look
@@ -2817,7 +2817,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
         match cx.items.find(id.node) {
-           some(ast_map::node_item(@{
+           Some(ast_map::node_item(@{
                         node: ast::item_impl(_, trait_refs, _, _),
                         _},
                     _)) => {
@@ -2826,19 +2826,19 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
                     node_id_to_type(cx, trait_ref.ref_id)
                 }
            }
-           some(ast_map::node_item(@{node: ast::item_class(*),
+           Some(ast_map::node_item(@{node: ast::item_class(*),
                            _},_)) => {
              match cx.def_map.find(id.node) {
-               some(def_ty(trait_id)) => {
+               Some(def_ty(trait_id)) => {
                    // XXX: Doesn't work cross-crate.
                    debug!("(impl_traits) found trait id %?", trait_id);
                    ~[node_id_to_type(cx, trait_id.node)]
                }
-               some(x) => {
+               Some(x) => {
                  cx.sess.bug(fmt!("impl_traits: trait ref is in trait map \
                                    but is bound to %?", x));
                }
-               none => {
+               None => {
                  ~[]
                }
              }
@@ -2850,10 +2850,10 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
     }
 }
 
-fn ty_to_def_id(ty: t) -> option<ast::def_id> {
+fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
     match get(ty).struct {
-      ty_trait(id, _, _) | ty_class(id, _) | ty_enum(id, _) => some(id),
-      _ => none
+      ty_trait(id, _, _) | ty_class(id, _) | ty_enum(id, _) => Some(id),
+      _ => None
     }
 }
 
@@ -2878,18 +2878,18 @@ fn item_path_str(cx: ctxt, id: ast::def_id) -> ~str {
     ast_map::path_to_str(item_path(cx, id), cx.sess.parse_sess.interner)
 }
 
-/* If class_id names a class with a dtor, return some(the dtor's id).
+/* If class_id names a class with a dtor, return Some(the dtor's id).
    Otherwise return none. */
-fn ty_dtor(cx: ctxt, class_id: def_id) -> option<def_id> {
+fn ty_dtor(cx: ctxt, class_id: def_id) -> Option<def_id> {
     if is_local(class_id) {
        match cx.items.find(class_id.node) {
-           some(ast_map::node_item(@{
-               node: ast::item_class(@{ dtor: some(dtor), _ }, _),
+           Some(ast_map::node_item(@{
+               node: ast::item_class(@{ dtor: Some(dtor), _ }, _),
                _
            }, _)) =>
-               some(local_def(dtor.node.id)),
+               Some(local_def(dtor.node.id)),
            _ =>
-               none
+               None
        }
     }
     else {
@@ -2966,7 +2966,7 @@ fn type_is_empty(cx: ctxt, t: t) -> bool {
 
 fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
     match cx.enum_var_cache.find(id) {
-      some(variants) => return variants,
+      Some(variants) => return variants,
       _ => { /* fallthrough */ }
     }
 
@@ -2995,7 +2995,7 @@ fn enum_variants(cx: ctxt, id: ast::def_id) -> @~[variant_info] {
                             }
                         };
                         match variant.node.disr_expr {
-                          some (ex) => {
+                          Some (ex) => {
                             // FIXME: issue #1417
                             disr_val = match const_eval::eval_const_expr(cx,
                                                                          ex) {
@@ -3047,8 +3047,8 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(cx: ctxt, did: ast::def_id) -> ty_param_bounds_and_ty {
     match cx.tcache.find(did) {
-      some(tpt) => return tpt,
-      none => {
+      Some(tpt) => return tpt,
+      None => {
         // The item is in this crate. The caller should have added it to the
         // type cache already
         assert did.crate != ast::local_crate;
@@ -3069,8 +3069,8 @@ fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
     }
     else {
         match tcx.tcache.find(id) {
-           some(tpt) => tpt.ty,
-           none => {
+           Some(tpt) => tpt.ty,
+           None => {
                let tpt = csearch::get_field_type(tcx, class_id, id);
                tcx.tcache.insert(id, tpt);
                tpt.ty
@@ -3085,7 +3085,7 @@ fn lookup_field_type(tcx: ctxt, class_id: def_id, id: def_id,
 fn lookup_class_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
   if did.crate == ast::local_crate {
     match cx.items.find(did.node) {
-       some(ast_map::node_item(i,_)) => {
+       Some(ast_map::node_item(i,_)) => {
          match i.node {
             ast::item_class(struct_def, _) => {
                class_field_tys(struct_def.fields)
@@ -3110,8 +3110,8 @@ fn lookup_class_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
     -> field_ty {
     match vec::find(lookup_class_fields(cx, parent),
                  |f| f.id.node == field_id.node) {
-        some(t) => t,
-        none => cx.sess.bug(~"class ID not found in parent's fields")
+        Some(t) => t,
+        None => cx.sess.bug(~"class ID not found in parent's fields")
     }
 }
 
@@ -3142,7 +3142,7 @@ fn lookup_class_method_by_name(cx:ctxt, did: ast::def_id, name: ident,
 
         assert is_local(did);
         match cx.items.find(did.node) {
-          some(ast_map::node_item(@{
+          Some(ast_map::node_item(@{
             node: item_class(struct_def, _), _
           }, _)) => {
             vec::map(struct_def.methods, |m| {name: m.ident,
@@ -3312,8 +3312,8 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
     }
 
     match cx.normalized_cache.find(t) {
-      some(t) => return t,
-      none => ()
+      Some(t) => return t,
+      None => ()
     }
 
     let t = match get(t).struct {
@@ -3346,20 +3346,20 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
 
         ty_enum(did, r) =>
             match r.self_r {
-                some(_) =>
+                Some(_) =>
                     // This enum has a self region. Get rid of it
                     mk_enum(cx, did,
-                            {self_r: none, self_ty: none, tps: r.tps}),
-                none =>
+                            {self_r: None, self_ty: None, tps: r.tps}),
+                None =>
                     t
             },
 
         ty_class(did, r) =>
             match r.self_r {
-              some(_) =>
+              Some(_) =>
                 // Ditto.
-                mk_class(cx, did, {self_r: none, self_ty: none, tps: r.tps}),
-              none =>
+                mk_class(cx, did, {self_r: None, self_ty: None, tps: r.tps}),
+              None =>
                 t
             },
 

@@ -3,8 +3,8 @@
 import codemap::{span, filename};
 import std::serialization::{serializer,
                             deserializer,
-                            serialize_option,
-                            deserialize_option,
+                            serialize_Option,
+                            deserialize_Option,
                             serialize_uint,
                             deserialize_uint,
                             serialize_int,
@@ -40,16 +40,16 @@ macro_rules! interner_key (
 
 fn serialize_ident<S: serializer>(s: S, i: ident) {
     let intr = match unsafe{task::local_data_get(interner_key!())}{
-        none => fail ~"serialization: TLS interner not set up",
-        some(intr) => intr
+        None => fail ~"serialization: TLS interner not set up",
+        Some(intr) => intr
     };
 
     s.emit_str(*(*intr).get(i));
 }
 fn deserialize_ident<D: deserializer>(d: D) -> ident  {
     let intr = match unsafe{task::local_data_get(interner_key!())}{
-        none => fail ~"deserialization: TLS interner not set up",
-        some(intr) => intr
+        None => fail ~"deserialization: TLS interner not set up",
+        Some(intr) => intr
     };
 
     (*intr).intern(@d.read_str())
@@ -59,13 +59,13 @@ type ident = token::str_num;
 
 // Functions may or may not have names.
 #[auto_serialize]
-type fn_ident = option<ident>;
+type fn_ident = Option<ident>;
 
 #[auto_serialize]
 type path = {span: span,
              global: bool,
              idents: ~[ident],
-             rp: option<@region>,
+             rp: Option<@region>,
              types: ~[@ty]};
 
 #[auto_serialize]
@@ -162,7 +162,7 @@ type blk = spanned<blk_>;
 #[auto_serialize]
 type blk_ = {view_items: ~[@view_item],
              stmts: ~[@stmt],
-             expr: option<@expr>,
+             expr: Option<@expr>,
              id: node_id,
              rules: blk_check_mode};
 
@@ -185,13 +185,13 @@ enum pat_ {
     pat_wild,
     // A pat_ident may either be a new bound variable,
     // or a nullary enum (in which case the second field
-    // is none).
+    // is None).
     // In the nullary enum case, the parser can't determine
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(binding_mode, @path, option<@pat>),
-    pat_enum(@path, option<~[@pat]>), // "none" means a * pattern where
+    pat_ident(binding_mode, @path, Option<@pat>),
+    pat_enum(@path, Option<~[@pat]>), // "none" means a * pattern where
                                   // we don't bind the fields to names
     pat_rec(~[field_pat], bool),
     pat_struct(@path, ~[field_pat], bool),
@@ -216,7 +216,7 @@ enum proto {
 #[auto_serialize]
 enum vstore {
     // FIXME (#2112): Change uint to @expr (actually only constant exprs)
-    vstore_fixed(option<uint>),   // [1,2,3,4]/_ or 4
+    vstore_fixed(Option<uint>),   // [1,2,3,4]/_ or 4
     vstore_uniq,                  // ~[1,2,3,4]
     vstore_box,                   // @[1,2,3,4]
     vstore_slice(@region)         // &[1,2,3,4](foo)?
@@ -297,7 +297,7 @@ type initializer = {op: init_op, expr: @expr};
 // a refinement on pat.
 #[auto_serialize]
 type local_ =  {is_mutbl: bool, ty: @ty, pat: @pat,
-                init: option<initializer>, id: node_id};
+                init: Option<initializer>, id: node_id};
 
 #[auto_serialize]
 type local = spanned<local_>;
@@ -309,7 +309,7 @@ type decl = spanned<decl_>;
 enum decl_ { decl_local(~[@local]), decl_item(@item), }
 
 #[auto_serialize]
-type arm = {pats: ~[@pat], guard: option<@expr>, body: blk};
+type arm = {pats: ~[@pat], guard: Option<@expr>, body: blk};
 
 #[auto_serialize]
 type field_ = {mutbl: mutability, ident: ident, expr: @expr};
@@ -335,19 +335,19 @@ enum alt_mode { alt_check, alt_exhaustive, }
 enum expr_ {
     expr_vstore(@expr, vstore),
     expr_vec(~[@expr], mutability),
-    expr_rec(~[field], option<@expr>),
+    expr_rec(~[field], Option<@expr>),
     expr_call(@expr, ~[@expr], bool), // True iff last argument is a block
     expr_tup(~[@expr]),
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, @ty),
-    expr_if(@expr, blk, option<@expr>),
+    expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
     /* Conditionless loop (can be exited with break, cont, ret, or fail)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
-    expr_loop(blk, option<ident>),
+    expr_loop(blk, Option<ident>),
     expr_match(@expr, ~[arm]),
     expr_fn(proto, fn_decl, blk, capture_clause),
     expr_fn_block(fn_decl, blk, capture_clause),
@@ -369,10 +369,10 @@ enum expr_ {
     expr_index(@expr, @expr),
     expr_path(@path),
     expr_addr_of(mutability, @expr),
-    expr_fail(option<@expr>),
-    expr_break(option<ident>),
-    expr_again(option<ident>),
-    expr_ret(option<@expr>),
+    expr_fail(Option<@expr>),
+    expr_break(Option<ident>),
+    expr_again(Option<ident>),
+    expr_ret(Option<@expr>),
     expr_log(log_level, @expr, @expr),
 
     /* just an assert */
@@ -381,7 +381,7 @@ enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(@path, ~[field], option<@expr>),
+    expr_struct(@path, ~[field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability)
@@ -420,7 +420,7 @@ enum token_tree {
     tt_tok(span, token::token),
     tt_delim(~[token_tree]),
     // These only make sense for right-hand-sides of MBE macros
-    tt_seq(span, ~[token_tree], option<token::token>, bool),
+    tt_seq(span, ~[token_tree], Option<token::token>, bool),
     tt_nonterminal(span, ident)
 }
 
@@ -485,7 +485,7 @@ enum matcher_ {
     match_tok(token::token),
     // match repetitions of a sequence: body, separator, zero ok?,
     // lo, hi position-in-match-array used:
-    match_seq(~[matcher], option<token::token>, bool, uint, uint),
+    match_seq(~[matcher], Option<token::token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
     match_nonterminal(ident, ident, uint)
 }
@@ -494,13 +494,13 @@ enum matcher_ {
 type mac = spanned<mac_>;
 
 #[auto_serialize]
-type mac_arg = option<@expr>;
+type mac_arg = Option<@expr>;
 
 #[auto_serialize]
 type mac_body_ = {span: span};
 
 #[auto_serialize]
-type mac_body = option<mac_body_>;
+type mac_body = Option<mac_body_>;
 
 #[auto_serialize]
 enum mac_ {
@@ -593,7 +593,7 @@ enum ty_ {
     ty_fn(proto, purity, @~[ty_param_bound], fn_decl),
     ty_tup(~[@ty]),
     ty_path(@path, node_id),
-    ty_fixed_length(@ty, option<uint>),
+    ty_fixed_length(@ty, Option<uint>),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -672,11 +672,11 @@ enum variant_kind {
 }
 
 #[auto_serialize]
-enum enum_def = { variants: ~[variant], common: option<@struct_def> };
+enum enum_def = { variants: ~[variant], common: Option<@struct_def> };
 
 #[auto_serialize]
 type variant_ = {name: ident, attrs: ~[attribute], kind: variant_kind,
-                 id: node_id, disr_expr: option<@expr>, vis: visibility};
+                 id: node_id, disr_expr: Option<@expr>, vis: visibility};
 
 #[auto_serialize]
 type variant = spanned<variant_>;
@@ -770,9 +770,9 @@ type struct_def = {
     methods: ~[@method],    /* methods */
     /* (not including ctor or dtor) */
     /* ctor is optional, and will soon go away */
-    ctor: option<class_ctor>,
+    ctor: Option<class_ctor>,
     /* dtor is optional */
-    dtor: option<class_dtor>
+    dtor: Option<class_dtor>
 };
 
 #[auto_serialize]

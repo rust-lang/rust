@@ -2,7 +2,7 @@
 
 import core::option;
 import option::*;
-import option::{some, none};
+import option::{Some, None};
 
 enum list<T> {
     cons(T, @list<T>),
@@ -40,15 +40,15 @@ fn foldl<T: copy, U>(z: T, ls: @list<U>, f: fn(T, U) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
+fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
           cons(hd, tl) => {
-            if f(hd) { return some(hd); }
+            if f(hd) { return Some(hd); }
             tl
           }
-          nil => return none
+          nil => return None
         }
     };
 }
@@ -201,7 +201,7 @@ mod tests {
     fn test_find_success() {
         fn match_(&&i: int) -> bool { return i == 2; }
         let l = from_vec(~[0, 1, 2]);
-        assert (list::find(l, match_) == option::some(2));
+        assert (list::find(l, match_) == option::Some(2));
     }
 
     #[test]
@@ -209,8 +209,8 @@ mod tests {
         fn match_(&&_i: int) -> bool { return false; }
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::nil::<int>;
-        assert (list::find(l, match_) == option::none::<int>);
-        assert (list::find(empty, match_) == option::none::<int>);
+        assert (list::find(l, match_) == option::None::<int>);
+        assert (list::find(empty, match_) == option::None::<int>);
     }
 
     #[test]

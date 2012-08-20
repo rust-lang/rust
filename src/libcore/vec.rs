@@ -1,6 +1,6 @@
 //! Vectors
 
-import option::{some, none};
+import option::{Some, None};
 import ptr::addr_of;
 import libc::size_t;
 
@@ -264,7 +264,7 @@ pure fn build<A>(builder: fn(push: pure fn(+A))) -> ~[A] {
  *             onto the vector being constructed.
  */
 #[inline(always)]
-pure fn build_sized_opt<A>(size: option<uint>,
+pure fn build_sized_opt<A>(size: Option<uint>,
                            builder: fn(push: pure fn(+A))) -> ~[A] {
     build_sized(size.get_default(4), builder)
 }
@@ -310,12 +310,12 @@ pure fn last<T: copy>(v: &[const T]) -> T {
 }
 
 /**
- * Returns `some(x)` where `x` is the last element of the slice `v`,
+ * Returns `Some(x)` where `x` is the last element of the slice `v`,
  * or `none` if the vector is empty.
  */
-pure fn last_opt<T: copy>(v: &[const T]) -> option<T> {
-    if len(v) == 0u { return none; }
-    some(v[len(v) - 1u])
+pure fn last_opt<T: copy>(v: &[const T]) -> Option<T> {
+    if len(v) == 0u { return None; }
+    Some(v[len(v) - 1u])
 }
 
 /// Returns a copy of the elements from [`start`..`end`) from `v`.
@@ -374,8 +374,8 @@ fn split<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln {
         match position_between(v, start, ln, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, start, i));
             start = i + 1u;
           }
@@ -398,8 +398,8 @@ fn splitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln && count > 0u {
         match position_between(v, start, ln, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, start, i));
             // Make sure to skip the separator.
             start = i + 1u;
@@ -423,8 +423,8 @@ fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u {
         match rposition_between(v, 0u, end, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, i + 1u, end));
             end = i;
           }
@@ -447,8 +447,8 @@ fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u && count > 0u {
         match rposition_between(v, 0u, end, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, i + 1u, end));
             // Make sure to skip the separator.
             end = i;
@@ -751,13 +751,13 @@ pure fn map2<T: copy, U: copy, V>(v0: &[T], v1: &[U],
  * If function `f` returns `none` then that element is excluded from
  * the resulting vector.
  */
-pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> option<U>)
+pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> Option<U>)
     -> ~[U] {
     let mut result = ~[];
     for each(v) |elem| {
         match f(elem) {
-          none => {/* no-op */ }
-          some(result_elem) => unsafe { push(result, result_elem); }
+          None => {/* no-op */ }
+          Some(result_elem) => unsafe { push(result, result_elem); }
         }
     }
     return result;
@@ -899,7 +899,7 @@ pure fn count<T>(v: &[T], x: T) -> uint {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pure fn find<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
+pure fn find<T: copy>(v: &[T], f: fn(T) -> bool) -> Option<T> {
     find_between(v, 0u, len(v), f)
 }
 
@@ -911,7 +911,7 @@ pure fn find<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
  * the element is returned. If `f` matches no elements then none is returned.
  */
 pure fn find_between<T: copy>(v: &[T], start: uint, end: uint,
-                      f: fn(T) -> bool) -> option<T> {
+                      f: fn(T) -> bool) -> Option<T> {
     option::map(position_between(v, start, end, f), |i| v[i])
 }
 
@@ -922,7 +922,7 @@ pure fn find_between<T: copy>(v: &[T], start: uint, end: uint,
  * `f` returns true then an option containing the element is returned. If `f`
  * matches no elements then none is returned.
  */
-pure fn rfind<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
+pure fn rfind<T: copy>(v: &[T], f: fn(T) -> bool) -> Option<T> {
     rfind_between(v, 0u, len(v), f)
 }
 
@@ -934,12 +934,12 @@ pure fn rfind<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
  * the element is returned. If `f` matches no elements then none is returned.
  */
 pure fn rfind_between<T: copy>(v: &[T], start: uint, end: uint,
-                               f: fn(T) -> bool) -> option<T> {
+                               f: fn(T) -> bool) -> Option<T> {
     option::map(rposition_between(v, start, end, f), |i| v[i])
 }
 
 /// Find the first index containing a matching value
-pure fn position_elem<T>(v: &[T], x: T) -> option<uint> {
+pure fn position_elem<T>(v: &[T], x: T) -> Option<uint> {
     position(v, |y| x == y)
 }
 
@@ -950,7 +950,7 @@ pure fn position_elem<T>(v: &[T], x: T) -> option<uint> {
  * then an option containing the index is returned. If `f` matches no elements
  * then none is returned.
  */
-pure fn position<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
+pure fn position<T>(v: &[T], f: fn(T) -> bool) -> Option<uint> {
     position_between(v, 0u, len(v), f)
 }
 
@@ -962,16 +962,16 @@ pure fn position<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
  * the index is returned. If `f` matches no elements then none is returned.
  */
 pure fn position_between<T>(v: &[T], start: uint, end: uint,
-                            f: fn(T) -> bool) -> option<uint> {
+                            f: fn(T) -> bool) -> Option<uint> {
     assert start <= end;
     assert end <= len(v);
     let mut i = start;
-    while i < end { if f(v[i]) { return some::<uint>(i); } i += 1u; }
-    return none;
+    while i < end { if f(v[i]) { return Some::<uint>(i); } i += 1u; }
+    return None;
 }
 
 /// Find the last index containing a matching value
-pure fn rposition_elem<T>(v: &[T], x: T) -> option<uint> {
+pure fn rposition_elem<T>(v: &[T], x: T) -> Option<uint> {
     rposition(v, |y| x == y)
 }
 
@@ -982,7 +982,7 @@ pure fn rposition_elem<T>(v: &[T], x: T) -> option<uint> {
  * `f` returns true then an option containing the index is returned. If `f`
  * matches no elements then none is returned.
  */
-pure fn rposition<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
+pure fn rposition<T>(v: &[T], f: fn(T) -> bool) -> Option<uint> {
     rposition_between(v, 0u, len(v), f)
 }
 
@@ -995,15 +995,15 @@ pure fn rposition<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
  * returned.
  */
 pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
-                             f: fn(T) -> bool) -> option<uint> {
+                             f: fn(T) -> bool) -> Option<uint> {
     assert start <= end;
     assert end <= len(v);
     let mut i = end;
     while i > start {
-        if f(v[i - 1u]) { return some::<uint>(i - 1u); }
+        if f(v[i - 1u]) { return Some::<uint>(i - 1u); }
         i -= 1u;
     }
-    return none;
+    return None;
 }
 
 // FIXME: if issue #586 gets implemented, could have a postcondition
@@ -1439,18 +1439,18 @@ trait ImmutableVector<T> {
     pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U;
     pure fn iter(f: fn(T));
     pure fn iteri(f: fn(uint, T));
-    pure fn position(f: fn(T) -> bool) -> option<uint>;
-    pure fn position_elem(x: T) -> option<uint>;
+    pure fn position(f: fn(T) -> bool) -> Option<uint>;
+    pure fn position_elem(x: T) -> Option<uint>;
     pure fn riter(f: fn(T));
     pure fn riteri(f: fn(uint, T));
-    pure fn rposition(f: fn(T) -> bool) -> option<uint>;
-    pure fn rposition_elem(x: T) -> option<uint>;
+    pure fn rposition(f: fn(T) -> bool) -> Option<uint>;
+    pure fn rposition_elem(x: T) -> Option<uint>;
     pure fn map<U>(f: fn(T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U];
     fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
     pure fn alli(f: fn(uint, T) -> bool) -> bool;
     pure fn flat_map<U>(f: fn(T) -> ~[U]) -> ~[U];
-    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> ~[U];
+    pure fn filter_map<U: copy>(f: fn(T) -> Option<U>) -> ~[U];
 }
 
 /// Extension methods for vectors
@@ -1482,10 +1482,10 @@ impl<T> &[T]: ImmutableVector<T> {
      * elements then none is returned.
      */
     #[inline]
-    pure fn position(f: fn(T) -> bool) -> option<uint> { position(self, f) }
+    pure fn position(f: fn(T) -> bool) -> Option<uint> { position(self, f) }
     /// Find the first index containing a matching value
     #[inline]
-    pure fn position_elem(x: T) -> option<uint> { position_elem(self, x) }
+    pure fn position_elem(x: T) -> Option<uint> { position_elem(self, x) }
     /**
      * Iterates over a vector in reverse
      *
@@ -1510,10 +1510,10 @@ impl<T> &[T]: ImmutableVector<T> {
      * returned. If `f` matches no elements then none is returned.
      */
     #[inline]
-    pure fn rposition(f: fn(T) -> bool) -> option<uint> { rposition(self, f) }
+    pure fn rposition(f: fn(T) -> bool) -> Option<uint> { rposition(self, f) }
     /// Find the last index containing a matching value
     #[inline]
-    pure fn rposition_elem(x: T) -> option<uint> { rposition_elem(self, x) }
+    pure fn rposition_elem(x: T) -> Option<uint> { rposition_elem(self, x) }
     /// Apply a function to each element of a vector and return the results
     #[inline]
     pure fn map<U>(f: fn(T) -> U) -> ~[U] { map(self, f) }
@@ -1557,14 +1557,14 @@ impl<T> &[T]: ImmutableVector<T> {
      * the resulting vector.
      */
     #[inline]
-    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> ~[U] {
+    pure fn filter_map<U: copy>(f: fn(T) -> Option<U>) -> ~[U] {
         filter_map(self, f)
     }
 }
 
 trait ImmutableCopyableVector<T> {
     pure fn filter(f: fn(T) -> bool) -> ~[T];
-    pure fn rfind(f: fn(T) -> bool) -> option<T>;
+    pure fn rfind(f: fn(T) -> bool) -> Option<T>;
 }
 
 /// Extension methods for vectors
@@ -1586,7 +1586,7 @@ impl<T: copy> &[T]: ImmutableCopyableVector<T> {
      * returned. If `f` matches no elements then none is returned.
      */
     #[inline]
-    pure fn rfind(f: fn(T) -> bool) -> option<T> { rfind(self, f) }
+    pure fn rfind(f: fn(T) -> bool) -> Option<T> { rfind(self, f) }
 }
 
 /// Unsafe operations
@@ -1682,9 +1682,9 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn set<T>(v: &[mut T], i: uint, +val: T) {
-        let mut box = some(val);
+        let mut box = Some(val);
         do as_mut_buf(v) |p, _len| {
-            let mut box2 = none;
+            let mut box2 = None;
             box2 <-> box;
             rusti::move_val_init(*ptr::mut_offset(p, i),
                                  option::unwrap(box2));
@@ -1806,7 +1806,7 @@ mod u8 {
 
 impl<A> &[A]: iter::BaseIter<A> {
     pure fn each(blk: fn(A) -> bool) { each(self, blk) }
-    pure fn size_hint() -> option<uint> { some(len(self)) }
+    pure fn size_hint() -> Option<uint> { Some(len(self)) }
 }
 
 impl<A> &[A]: iter::ExtendedIter<A> {
@@ -1818,7 +1818,7 @@ impl<A> &[A]: iter::ExtendedIter<A> {
     }
     pure fn contains(x: A) -> bool { iter::contains(self, x) }
     pure fn count(x: A) -> uint { iter::count(self, x) }
-    pure fn position(f: fn(A) -> bool) -> option<uint> {
+    pure fn position(f: fn(A) -> bool) -> Option<uint> {
         iter::position(self, f)
     }
 }
@@ -1839,7 +1839,7 @@ impl<A: copy> &[A]: iter::CopyableIter<A> {
 
     pure fn min() -> A { iter::min(self) }
     pure fn max() -> A { iter::max(self) }
-    pure fn find(p: fn(A) -> bool) -> option<A> { iter::find(self, p) }
+    pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
 }
 // ___________________________________________________________________________
 
@@ -1856,8 +1856,8 @@ mod tests {
 
     pure fn is_equal(&&x: uint, &&y:uint) -> bool { return x == y; }
 
-    fn square_if_odd(&&n: uint) -> option<uint> {
-        return if n % 2u == 1u { some(n * n) } else { none };
+    fn square_if_odd(&&n: uint) -> Option<uint> {
+        return if n % 2u == 1u { Some(n * n) } else { None };
     }
 
     fn add(&&x: uint, &&y: uint) -> uint { return x + y; }
@@ -1954,11 +1954,11 @@ mod tests {
     #[test]
     fn test_last() {
         let mut n = last_opt(~[]);
-        assert (n == none);
+        assert (n == None);
         n = last_opt(~[1, 2, 3]);
-        assert (n == some(3));
+        assert (n == Some(3));
         n = last_opt(~[1, 2, 3, 4, 5]);
-        assert (n == some(5));
+        assert (n == Some(5));
     }
 
     #[test]
@@ -2140,10 +2140,10 @@ mod tests {
         assert (w[1] == 9u);
         assert (w[2] == 25u);
 
-        fn halve(&&i: int) -> option<int> {
+        fn halve(&&i: int) -> Option<int> {
             if i % 2 == 0 {
-                return option::some::<int>(i / 2);
-            } else { return option::none::<int>; }
+                return option::Some::<int>(i / 2);
+            } else { return option::None::<int>; }
         }
         fn halve_for_sure(&&i: int) -> int { return i / 2; }
         let all_even: ~[int] = ~[0, 2, 8, 6];
@@ -2318,13 +2318,13 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert position_elem(~[], 1) == none;
+        assert position_elem(~[], 1) == None;
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
-        assert position_elem(v1, 1) == some(0u);
-        assert position_elem(v1, 2) == some(1u);
-        assert position_elem(v1, 5) == some(5u);
-        assert position_elem(v1, 4) == none;
+        assert position_elem(v1, 1) == Some(0u);
+        assert position_elem(v1, 2) == Some(1u);
+        assert position_elem(v1, 5) == Some(5u);
+        assert position_elem(v1, 4) == None;
     }
 
     #[test]
@@ -2332,159 +2332,159 @@ mod tests {
         fn less_than_three(&&i: int) -> bool { return i < 3; }
         fn is_eighteen(&&i: int) -> bool { return i == 18; }
 
-        assert position(~[], less_than_three) == none;
+        assert position(~[], less_than_three) == None;
 
         let v1 = ~[5, 4, 3, 2, 1];
-        assert position(v1, less_than_three) == some(3u);
-        assert position(v1, is_eighteen) == none;
+        assert position(v1, less_than_three) == Some(3u);
+        assert position(v1, is_eighteen) == None;
     }
 
     #[test]
     fn test_position_between() {
-        assert position_between(~[], 0u, 0u, f) == none;
+        assert position_between(~[], 0u, 0u, f) == None;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert position_between(v, 0u, 0u, f) == none;
-        assert position_between(v, 0u, 1u, f) == none;
-        assert position_between(v, 0u, 2u, f) == some(1u);
-        assert position_between(v, 0u, 3u, f) == some(1u);
-        assert position_between(v, 0u, 4u, f) == some(1u);
+        assert position_between(v, 0u, 0u, f) == None;
+        assert position_between(v, 0u, 1u, f) == None;
+        assert position_between(v, 0u, 2u, f) == Some(1u);
+        assert position_between(v, 0u, 3u, f) == Some(1u);
+        assert position_between(v, 0u, 4u, f) == Some(1u);
 
-        assert position_between(v, 1u, 1u, f) == none;
-        assert position_between(v, 1u, 2u, f) == some(1u);
-        assert position_between(v, 1u, 3u, f) == some(1u);
-        assert position_between(v, 1u, 4u, f) == some(1u);
+        assert position_between(v, 1u, 1u, f) == None;
+        assert position_between(v, 1u, 2u, f) == Some(1u);
+        assert position_between(v, 1u, 3u, f) == Some(1u);
+        assert position_between(v, 1u, 4u, f) == Some(1u);
 
-        assert position_between(v, 2u, 2u, f) == none;
-        assert position_between(v, 2u, 3u, f) == none;
-        assert position_between(v, 2u, 4u, f) == some(3u);
+        assert position_between(v, 2u, 2u, f) == None;
+        assert position_between(v, 2u, 3u, f) == None;
+        assert position_between(v, 2u, 4u, f) == Some(3u);
 
-        assert position_between(v, 3u, 3u, f) == none;
-        assert position_between(v, 3u, 4u, f) == some(3u);
+        assert position_between(v, 3u, 3u, f) == None;
+        assert position_between(v, 3u, 4u, f) == Some(3u);
 
-        assert position_between(v, 4u, 4u, f) == none;
+        assert position_between(v, 4u, 4u, f) == None;
     }
 
     #[test]
     fn test_find() {
-        assert find(~[], f) == none;
+        assert find(~[], f) == None;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert find(v, f) == some((1, 'b'));
-        assert find(v, g) == none;
+        assert find(v, f) == Some((1, 'b'));
+        assert find(v, g) == None;
     }
 
     #[test]
     fn test_find_between() {
-        assert find_between(~[], 0u, 0u, f) == none;
+        assert find_between(~[], 0u, 0u, f) == None;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert find_between(v, 0u, 0u, f) == none;
-        assert find_between(v, 0u, 1u, f) == none;
-        assert find_between(v, 0u, 2u, f) == some((1, 'b'));
-        assert find_between(v, 0u, 3u, f) == some((1, 'b'));
-        assert find_between(v, 0u, 4u, f) == some((1, 'b'));
+        assert find_between(v, 0u, 0u, f) == None;
+        assert find_between(v, 0u, 1u, f) == None;
+        assert find_between(v, 0u, 2u, f) == Some((1, 'b'));
+        assert find_between(v, 0u, 3u, f) == Some((1, 'b'));
+        assert find_between(v, 0u, 4u, f) == Some((1, 'b'));
 
-        assert find_between(v, 1u, 1u, f) == none;
-        assert find_between(v, 1u, 2u, f) == some((1, 'b'));
-        assert find_between(v, 1u, 3u, f) == some((1, 'b'));
-        assert find_between(v, 1u, 4u, f) == some((1, 'b'));
+        assert find_between(v, 1u, 1u, f) == None;
+        assert find_between(v, 1u, 2u, f) == Some((1, 'b'));
+        assert find_between(v, 1u, 3u, f) == Some((1, 'b'));
+        assert find_between(v, 1u, 4u, f) == Some((1, 'b'));
 
-        assert find_between(v, 2u, 2u, f) == none;
-        assert find_between(v, 2u, 3u, f) == none;
-        assert find_between(v, 2u, 4u, f) == some((3, 'b'));
+        assert find_between(v, 2u, 2u, f) == None;
+        assert find_between(v, 2u, 3u, f) == None;
+        assert find_between(v, 2u, 4u, f) == Some((3, 'b'));
 
-        assert find_between(v, 3u, 3u, f) == none;
-        assert find_between(v, 3u, 4u, f) == some((3, 'b'));
+        assert find_between(v, 3u, 3u, f) == None;
+        assert find_between(v, 3u, 4u, f) == Some((3, 'b'));
 
-        assert find_between(v, 4u, 4u, f) == none;
+        assert find_between(v, 4u, 4u, f) == None;
     }
 
     #[test]
     fn test_rposition() {
-        assert find(~[], f) == none;
+        assert find(~[], f) == None;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert position(v, f) == some(1u);
-        assert position(v, g) == none;
+        assert position(v, f) == Some(1u);
+        assert position(v, g) == None;
     }
 
     #[test]
     fn test_rposition_between() {
-        assert rposition_between(~[], 0u, 0u, f) == none;
+        assert rposition_between(~[], 0u, 0u, f) == None;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rposition_between(v, 0u, 0u, f) == none;
-        assert rposition_between(v, 0u, 1u, f) == none;
-        assert rposition_between(v, 0u, 2u, f) == some(1u);
-        assert rposition_between(v, 0u, 3u, f) == some(1u);
-        assert rposition_between(v, 0u, 4u, f) == some(3u);
+        assert rposition_between(v, 0u, 0u, f) == None;
+        assert rposition_between(v, 0u, 1u, f) == None;
+        assert rposition_between(v, 0u, 2u, f) == Some(1u);
+        assert rposition_between(v, 0u, 3u, f) == Some(1u);
+        assert rposition_between(v, 0u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 1u, 1u, f) == none;
-        assert rposition_between(v, 1u, 2u, f) == some(1u);
-        assert rposition_between(v, 1u, 3u, f) == some(1u);
-        assert rposition_between(v, 1u, 4u, f) == some(3u);
+        assert rposition_between(v, 1u, 1u, f) == None;
+        assert rposition_between(v, 1u, 2u, f) == Some(1u);
+        assert rposition_between(v, 1u, 3u, f) == Some(1u);
+        assert rposition_between(v, 1u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 2u, 2u, f) == none;
-        assert rposition_between(v, 2u, 3u, f) == none;
-        assert rposition_between(v, 2u, 4u, f) == some(3u);
+        assert rposition_between(v, 2u, 2u, f) == None;
+        assert rposition_between(v, 2u, 3u, f) == None;
+        assert rposition_between(v, 2u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 3u, 3u, f) == none;
-        assert rposition_between(v, 3u, 4u, f) == some(3u);
+        assert rposition_between(v, 3u, 3u, f) == None;
+        assert rposition_between(v, 3u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 4u, 4u, f) == none;
+        assert rposition_between(v, 4u, 4u, f) == None;
     }
 
     #[test]
     fn test_rfind() {
-        assert rfind(~[], f) == none;
+        assert rfind(~[], f) == None;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rfind(v, f) == some((3, 'b'));
-        assert rfind(v, g) == none;
+        assert rfind(v, f) == Some((3, 'b'));
+        assert rfind(v, g) == None;
     }
 
     #[test]
     fn test_rfind_between() {
-        assert rfind_between(~[], 0u, 0u, f) == none;
+        assert rfind_between(~[], 0u, 0u, f) == None;
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rfind_between(v, 0u, 0u, f) == none;
-        assert rfind_between(v, 0u, 1u, f) == none;
-        assert rfind_between(v, 0u, 2u, f) == some((1, 'b'));
-        assert rfind_between(v, 0u, 3u, f) == some((1, 'b'));
-        assert rfind_between(v, 0u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 0u, 0u, f) == None;
+        assert rfind_between(v, 0u, 1u, f) == None;
+        assert rfind_between(v, 0u, 2u, f) == Some((1, 'b'));
+        assert rfind_between(v, 0u, 3u, f) == Some((1, 'b'));
+        assert rfind_between(v, 0u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 1u, 1u, f) == none;
-        assert rfind_between(v, 1u, 2u, f) == some((1, 'b'));
-        assert rfind_between(v, 1u, 3u, f) == some((1, 'b'));
-        assert rfind_between(v, 1u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 1u, 1u, f) == None;
+        assert rfind_between(v, 1u, 2u, f) == Some((1, 'b'));
+        assert rfind_between(v, 1u, 3u, f) == Some((1, 'b'));
+        assert rfind_between(v, 1u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 2u, 2u, f) == none;
-        assert rfind_between(v, 2u, 3u, f) == none;
-        assert rfind_between(v, 2u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 2u, 2u, f) == None;
+        assert rfind_between(v, 2u, 3u, f) == None;
+        assert rfind_between(v, 2u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 3u, 3u, f) == none;
-        assert rfind_between(v, 3u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 3u, 3u, f) == None;
+        assert rfind_between(v, 3u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 4u, 4u, f) == none;
+        assert rfind_between(v, 4u, 4u, f) == None;
     }
 
     #[test]

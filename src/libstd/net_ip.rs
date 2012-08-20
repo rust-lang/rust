@@ -156,7 +156,7 @@ mod v4 {
     fn parse_to_ipv4_rep(ip: ~str) -> result::result<ipv4_rep, ~str> {
         let parts = vec::map(str::split_char(ip, '.'), |s| {
             match uint::from_str(s) {
-              some(n) if n <= 255u => n,
+              Some(n) if n <= 255u => n,
               _ => 256u
             }
         });

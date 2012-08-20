@@ -1,9 +1,9 @@
 struct X { x: (); drop { error!("destructor runs"); } }
 
 fn main() {
-    let x = some(X { x: () });
+    let x = Some(X { x: () });
     match x {
-        some(move _z) => { }, //~ ERROR cannot bind by-move when matching an lvalue
-        none => fail
+        Some(move _z) => { }, //~ ERROR cannot bind by-move when matching an lvalue
+        None => fail
     }
 }
