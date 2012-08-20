@@ -252,6 +252,7 @@ mod libc;
 mod os;
 #[warn(non_camel_case_types)]
 mod path;
+mod path2;
 #[warn(non_camel_case_types)]
 mod rand;
 #[warn(non_camel_case_types)]
