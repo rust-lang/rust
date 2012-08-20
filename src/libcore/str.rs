@@ -14,6 +14,7 @@ export
    // Creating a string
    from_bytes,
    from_byte,
+   from_slice,
    from_char,
    from_chars,
    append,
