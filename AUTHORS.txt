@@ -49,6 +49,7 @@ Jeff Muizelaar <jmuizelaar@mozilla.com>
 Jeff Olson <olson.jeffery@gmail.com>
 Jeffrey Yasskin <jyasskin@gmail.com>
 Jesse Ruderman <jruderman@gmail.com>
+Jim Blandy <jimb@red-bean.com>
 Joe Pletcher <joepletcher@gmail.com>
 Jon Morton <jonanin@gmail.com>
 Jonathan Sternberg <jonathansternberg@gmail.com>
