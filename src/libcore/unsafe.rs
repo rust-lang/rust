@@ -56,9 +56,9 @@ unsafe fn transmute<L, G>(-thing: L) -> G {
 }
 
 /// Coerce an immutable reference to be mutable.
-unsafe fn transmute_mut<T>(+ptr: &T) -> &mut T { transmute(ptr) }
+unsafe fn transmute_mut<T>(+ptr: &a/T) -> &a/mut T { transmute(ptr) }
 /// Coerce a mutable reference to be immutable.
-unsafe fn transmute_immut<T>(+ptr: &mut T) -> &T { transmute(ptr) }
+unsafe fn transmute_immut<T>(+ptr: &a/mut T) -> &a/T { transmute(ptr) }
 /// Coerce a borrowed pointer to have an arbitrary associated region.
 unsafe fn transmute_region<T>(+ptr: &a/T) -> &b/T { transmute(ptr) }
 /// Coerce a borrowed mutable pointer to have an arbitrary associated region.
