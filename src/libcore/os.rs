@@ -357,6 +357,10 @@ fn pipe() -> {in: c_int, out: c_int} {
     return {in: fds.in, out: fds.out};
 }
 
+fn dup2(src: c_int, dst: c_int) -> c_int {
+	libc::dup2(src, dst)
+}
+
 
 fn dll_filename(base: ~str) -> ~str {
     return pre() + base + dll_suffix();
