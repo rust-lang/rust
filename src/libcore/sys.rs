@@ -65,11 +65,13 @@ pure fn size_of<T>() -> uint {
  * This is the alignment used for struct fields. It may be smaller
  * than the preferred alignment.
  */
+#[inline(always)]
 pure fn min_align_of<T>() -> uint {
     unchecked { rusti::min_align_of::<T>() }
 }
 
 /// Returns the preferred alignment of a type
+#[inline(always)]
 pure fn pref_align_of<T>() -> uint {
     unchecked { rusti::pref_align_of::<T>() }
 }
