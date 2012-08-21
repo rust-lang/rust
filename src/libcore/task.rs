@@ -254,7 +254,7 @@ priv impl TaskBuilder {
         }
         self.consumed = true;
         let notify_chan = if self.opts.notify_chan == None {
-            None
+            none
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
         };
