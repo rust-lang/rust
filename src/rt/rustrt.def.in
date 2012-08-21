@@ -195,3 +195,4 @@ rust_set_task_local_data
 rust_task_local_data_atexit
 rust_task_ref
 rust_task_deref
+rust_call_tydesc_glue
