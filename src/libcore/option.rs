@@ -93,6 +93,16 @@ pure fn chain_ref<T, U>(opt: &option<T>,
     match *opt { some(ref x) => f(x), none => none }
 }
 
+pure fn or<T>(+opta: option<T>, +optb: option<T>) -> option<T> {
+    /*!
+     * Returns the leftmost some() value, or none if both are none.
+     */
+    match opta {
+        some(_) => opta,
+        _ => optb
+    }
+}
+
 #[inline(always)]
 pure fn while_some<T>(+x: option<T>, blk: fn(+T) -> option<T>) {
     //! Applies a function zero or more times until the result is none.
