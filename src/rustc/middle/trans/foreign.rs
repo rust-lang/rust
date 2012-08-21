@@ -799,64 +799,66 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
                                some(substs), some(item.span));
     let mut bcx = top_scope_block(fcx, none), lltop = bcx.llbb;
-    match check *item.ident {
-      ~"atomic_xchng" => {
+    match *item.ident {
+      // NB: Transitionary, de-mode-ing. Remove the first string of each
+      // pattern when the old intrinsics are gone.
+      ~"atomic_xchng" | ~"atomic_xchg" => {
         let old = AtomicRMW(bcx, Xchg,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_xchng_acq" => {
+      ~"atomic_xchng_acq" | ~"atomic_xchg_acq" => {
         let old = AtomicRMW(bcx, Xchg,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_xchng_rel" => {
+      ~"atomic_xchng_rel" | ~"atomic_xchg_rel" => {
         let old = AtomicRMW(bcx, Xchg,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Release);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_add" => {
+      ~"atomic_add" | ~"atomic_xadd" => {
         let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_add_acq" => {
+      ~"atomic_add_acq" | ~"atomic_xadd_acq" => {
         let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_add_rel" => {
+      ~"atomic_add_rel" | ~"atomic_xadd_rel" => {
         let old = AtomicRMW(bcx, lib::llvm::Add,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Release);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_sub" => {
+      ~"atomic_sub" | ~"atomic_xsub" => {
         let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   SequentiallyConsistent);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_sub_acq" => {
+      ~"atomic_sub_acq" | ~"atomic_xsub_acq" => {
         let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
                   Acquire);
         Store(bcx, old, fcx.llretptr);
       }
-      ~"atomic_sub_rel" => {
+      ~"atomic_sub_rel" | ~"atomic_xsub_rel" => {
         let old = AtomicRMW(bcx, lib::llvm::Sub,
                   get_param(decl, first_real_arg),
                   get_param(decl, first_real_arg + 1u),
@@ -979,6 +981,9 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                    get_param(decl, first_real_arg),
                                    lv_temporary),
                                arg_vals(~[frameaddress_val]), ignore);
+      }
+      _ => {
+          ccx.sess.span_bug(item.span, ~"unknown intrinsic");
       }
     }
     build_return(bcx);

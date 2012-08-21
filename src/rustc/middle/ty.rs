@@ -88,7 +88,7 @@ export ty_nil, mk_nil, type_is_nil;
 export ty_trait, mk_trait;
 export ty_param, mk_param, ty_params_to_tys;
 export ty_ptr, mk_ptr, mk_mut_ptr, mk_imm_ptr, mk_nil_ptr, type_is_unsafe_ptr;
-export ty_rptr, mk_rptr;
+export ty_rptr, mk_rptr, mk_mut_rptr, mk_imm_rptr;
 export ty_rec, mk_rec;
 export ty_enum, mk_enum, type_is_enum;
 export ty_tup, mk_tup;
@@ -763,6 +763,13 @@ fn mk_imm_uniq(cx: ctxt, ty: t) -> t { mk_uniq(cx, {ty: ty,
 fn mk_ptr(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
 
 fn mk_rptr(cx: ctxt, r: region, tm: mt) -> t { mk_t(cx, ty_rptr(r, tm)) }
+
+fn mk_mut_rptr(cx: ctxt, r: region, ty: t) -> t {
+    mk_rptr(cx, r, {ty: ty, mutbl: ast::m_mutbl})
+}
+fn mk_imm_rptr(cx: ctxt, r: region, ty: t) -> t {
+    mk_rptr(cx, r, {ty: ty, mutbl: ast::m_imm})
+}
 
 fn mk_mut_ptr(cx: ctxt, ty: t) -> t { mk_ptr(cx, {ty: ty,
                                                   mutbl: ast::m_mutbl}) }
