@@ -59,9 +59,8 @@ export path;
 // NDM seems to be necessary for resolve to work
 export option_iter;
 
-// FIXME (#2648): This creates some APIs that I do not want to commit
-// to. It is currently exported for the uv code in std, but when that
-// code moves into core this should become unexported
+// This creates some APIs that I do not want to commit to, but it must be
+// exported from core in order for uv to remain in std (see #2648).
 export priv;
 
 
