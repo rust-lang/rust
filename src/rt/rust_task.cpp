@@ -631,27 +631,29 @@ rust_task::on_rust_stack() {
     }
 }
 
+// NB: In inhibit_kill and allow_kill, helgrind would complain that we need to
+// hold lifecycle_lock while accessing disallow_kill. Even though another
+// killing task may access disallow_kill concurrently, this is not racy
+// because the killer only cares if this task is blocking, and block() already
+// uses proper locking. See https://github.com/mozilla/rust/issues/3213 .
+
 void
 rust_task::inhibit_kill() {
-    scoped_lock with(lifecycle_lock);
     // Here might be good, though not mandatory, to check if we have to die.
     disallow_kill++;
 }
 
 void
 rust_task::allow_kill() {
-    scoped_lock with(lifecycle_lock);
     assert(disallow_kill > 0 && "Illegal allow_kill(): already killable!");
     disallow_kill--;
 }
 
 void rust_task::inhibit_yield() {
-    scoped_lock with(lifecycle_lock);
     disallow_yield++;
 }
 
 void rust_task::allow_yield() {
-    scoped_lock with(lifecycle_lock);
     assert(disallow_yield > 0 && "Illegal allow_yield(): already yieldable!");
     disallow_yield--;
 }
