@@ -1473,9 +1473,13 @@ extern mod rustrt {
 
     fn rust_task_is_unwinding(task: *rust_task) -> bool;
     fn rust_osmain_sched_id() -> sched_id;
+    #[rust_stack]
     fn rust_task_inhibit_kill(t: *rust_task);
+    #[rust_stack]
     fn rust_task_allow_kill(t: *rust_task);
+    #[rust_stack]
     fn rust_task_inhibit_yield(t: *rust_task);
+    #[rust_stack]
     fn rust_task_allow_yield(t: *rust_task);
     fn rust_task_kill_other(task: *rust_task);
     fn rust_task_kill_all(task: *rust_task);
