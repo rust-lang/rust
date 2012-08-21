@@ -58,12 +58,6 @@ mod linear {
             buckets: vec::from_fn(initial_capacity, |_i| none)})
     }
 
-    // FIXME(#2979) would allow us to use region type for k
-    unsafe fn borrow<K>(&&k: K) -> &K {
-        let p: *K = ptr::addr_of(k);
-        unsafe::reinterpret_cast(p)
-    }
-
     priv impl<K, V> &const LinearMap<K,V> {
         #[inline(always)]
         pure fn to_bucket(h: uint) -> uint {
@@ -155,8 +149,7 @@ mod linear {
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
         fn insert_internal(hash: uint, +k: K, +v: V) -> bool {
-            match self.bucket_for_key_with_hash(self.buckets, hash,
-                                              unsafe{borrow(k)}) {
+            match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
               TableFull => {fail ~"Internal logic error";}
               FoundHole(idx) => {
                 debug!{"insert fresh (%?->%?) at idx %?, hash %?",
@@ -187,7 +180,7 @@ mod linear {
                 self.expand();
             }
 
-            let hash = self.hashfn(unsafe{borrow(k)});
+            let hash = self.hashfn(&k);
             self.insert_internal(hash, k, v)
         }
 
@@ -279,11 +272,19 @@ mod linear {
 
     impl<K,V> &LinearMap<K,V> {
         /*
-        FIXME --- #2979 must be fixed to typecheck this
-        fn find_ptr(k: K) -> option<&V> {
-            //XXX this should not type check as written, but it should
-            //be *possible* to typecheck it...
-            self.with_ptr(k, |v| v)
+        FIXME(#3148)--region inference fails to capture needed deps
+
+        fn find_ref(k: &K) -> option<&self/V> {
+            match self.bucket_for_key(self.buckets, k) {
+              FoundEntry(idx) => {
+                match check self.buckets[idx] {
+                  some(ref bkt) => some(&bkt.value)
+                }
+              }
+              TableFull | FoundHole(_) => {
+                none
+              }
+            }
         }
         */
 
