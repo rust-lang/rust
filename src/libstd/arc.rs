@@ -93,6 +93,15 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
     arc { x: unsafe { clone_shared_mutable_state(&rc.x) } }
 }
 
+/**
+ * Retrieve the data back out of the ARC. This function blocks until the
+ * reference given to it is the last existing one, and then unwrap the data
+ * instead of destroying it.
+ *
+ * If multiple tasks call unwrap, all but the first will fail. Do not call
+ * unwrap from a task that holds another reference to the same ARC; it is
+ * guaranteed to deadlock.
+ */
 fn unwrap<T: const send>(+rc: arc<T>) -> T {
     let arc { x: x } = rc;
     unsafe { unwrap_shared_mutable_state(x) }
@@ -186,6 +195,12 @@ impl<T: send> &mutex_arc<T> {
     }
 }
 
+/**
+ * Retrieves the data, blocking until all other references are dropped,
+ * exactly as arc::unwrap.
+ *
+ * Will additionally fail if another task has failed while accessing the arc.
+ */
 // FIXME(#2585) make this a by-move method on the arc
 fn unwrap_mutex_arc<T: send>(+arc: mutex_arc<T>) -> T {
     let mutex_arc { x: x } = arc;
@@ -363,6 +378,13 @@ impl<T: const send> &rw_arc<T> {
     }
 }
 
+/**
+ * Retrieves the data, blocking until all other references are dropped,
+ * exactly as arc::unwrap.
+ *
+ * Will additionally fail if another task has failed while accessing the arc
+ * in write mode.
+ */
 // FIXME(#2585) make this a by-move method on the arc
 fn unwrap_rw_arc<T: const send>(+arc: rw_arc<T>) -> T {
     let rw_arc { x: x, _ } = arc;
