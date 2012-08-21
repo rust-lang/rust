@@ -820,6 +820,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     // overloaded operations
     fn check_call_inner(
         fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id, in_fty: ty::t,
+        callee_expr: @ast::expr,
         args: ~[@ast::expr]) -> {fty: ty::t, bot: bool} {
 
         let mut bot = false;
@@ -888,9 +889,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         for [false, true]/_.each |check_blocks| {
+            // More awful hacks: before we check the blocks, try to do
+            // an "opportunistic" vtable resolution of any trait
+            // bounds on the call.
+            if check_blocks {
+                vtable::early_resolve_expr(callee_expr, fcx, true);
+            }
+
             for args.eachi |i, a| {
                 let is_block = match a.node {
-                  ast::expr_fn_block(*) => true,
+                  ast::expr_fn_block(*) | ast::expr_loop_body(*) |
+                  ast::expr_do_body(*) => true,
                   _ => false
                 };
                 if is_block == check_blocks {
@@ -933,7 +942,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Call the generic checker.
         let fty = {
             let r = check_call_inner(fcx, sp, call_expr_id,
-                                     fn_ty, args);
+                                     fn_ty, f, args);
             bot |= r.bot;
             r.fty
         };
@@ -998,7 +1007,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
                 check_call_inner(fcx, op_ex.span, op_ex.id,
-                                 method_ty, args)
+                                 method_ty, op_ex, args)
             };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             some((ty::ty_fn_ret(method_ty), bot))
