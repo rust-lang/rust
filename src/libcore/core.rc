@@ -55,6 +55,7 @@ export hash;
 export cmp;
 export num;
 export path;
+export managed;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
@@ -261,6 +262,7 @@ mod sys;
 #[warn(non_camel_case_types)]
 mod unsafe;
 
+mod managed;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface

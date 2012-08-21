@@ -221,6 +221,13 @@ mod linear {
             self.size -= 1;
             return true;
         }
+
+        fn clear() {
+            for uint::range(0, self.buckets.len()) |idx| {
+                self.buckets[idx] = none;
+            }
+            self.size = 0;
+        }
     }
 
     priv impl<K,V> &LinearMap<K,V> {

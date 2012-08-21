@@ -12,6 +12,24 @@ pure fn id<T>(+x: T) -> T { x }
 /// Ignores a value.
 pure fn ignore<T>(+_x: T) { }
 
+/// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
+/// original value of `*ptr`.
+#[inline(always)]
+fn with<T: copy, R>(
+    ptr: &mut T,
+    +new_value: T,
+    op: &fn() -> R) -> R
+{
+    // NDM: if swap operator were defined somewhat differently,
+    // we wouldn't need to copy...
+
+    let old_value = *ptr;
+    *ptr = move new_value;
+    let result = op();
+    *ptr = move old_value;
+    return move result;
+}
+
 /**
  * Swap the values at two mutable locations of the same type, without
  * deinitialising or copying either one.
