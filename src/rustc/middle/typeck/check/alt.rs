@@ -270,6 +270,12 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             }
         }
 
+        // Forbid pattern-matching structs with destructors.
+        if ty::has_dtor(tcx, class_id) {
+            tcx.sess.span_err(pat.span, ~"deconstructing struct not allowed \
+                                          in pattern (it has a destructor)");
+        }
+
         // Index the class fields.
         let field_map = std::map::box_str_hash();
         for class_fields.eachi |i, class_field| {
