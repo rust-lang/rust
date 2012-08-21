@@ -46,15 +46,15 @@ const tydesc_drop_glue_index: size_t = 3 as size_t;
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
-type chunk = {data: ~[u8], mut fill: uint, is_pod: bool};
+type chunk = {data: @[u8], mut fill: uint, is_pod: bool};
 
 struct arena {
     // The head is seperated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
-    priv mut head: @chunk;
-    priv mut pod_head: @chunk;
-    priv mut chunks: @list<@chunk>;
+    priv mut head: chunk;
+    priv mut pod_head: chunk;
+    priv mut chunks: @list<chunk>;
     drop {
         unsafe {
             destroy_chunk(self.head);
@@ -65,10 +65,10 @@ struct arena {
     }
 }
 
-fn chunk(size: uint, is_pod: bool) -> @chunk {
-    let mut v = ~[];
-    vec::reserve(v, size);
-    @{ data: v, mut fill: 0u, is_pod: is_pod }
+fn chunk(size: uint, is_pod: bool) -> chunk {
+    let mut v = @[];
+    unsafe { at_vec::unsafe::reserve(v, size); }
+    { data: v, mut fill: 0u, is_pod: is_pod }
 }
 
 fn arena_with_size(initial_size: uint) -> arena {
@@ -88,9 +88,9 @@ fn round_up_to(base: uint, align: uint) -> uint {
 
 // Walk down a chunk, running the destructors for any objects stored
 // in it.
-unsafe fn destroy_chunk(chunk: @chunk) {
+unsafe fn destroy_chunk(chunk: chunk) {
     let mut idx = 0;
-    let buf = vec::unsafe::to_ptr(chunk.data);
+    let buf = vec::unsafe::to_ptr_slice(chunk.data);
     let fill = chunk.fill;
 
     while idx < fill {
@@ -133,9 +133,9 @@ impl &arena {
     // Functions for the POD part of the arena
     fn alloc_pod_grow(n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
-        let chunk_size = vec::capacity(self.pod_head.data);
+        let chunk_size = at_vec::capacity(self.pod_head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
-        self.chunks = @cons(self.pod_head, self.chunks);
+        self.chunks = @cons(copy self.pod_head, self.chunks);
         self.pod_head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
 
@@ -144,11 +144,11 @@ impl &arena {
 
     #[inline(always)]
     fn alloc_pod_inner(n_bytes: uint, align: uint) -> *u8 {
-        let head = self.pod_head;
+        let head = &mut self.pod_head;
 
         let start = round_up_to(head.fill, align);
         let end = start + n_bytes;
-        if end > vec::capacity(head.data) {
+        if end > at_vec::capacity(head.data) {
             return self.alloc_pod_grow(n_bytes, align);
         }
         head.fill = end;
@@ -157,7 +157,7 @@ impl &arena {
         //       start, n_bytes, align, head.fill);
 
         unsafe {
-            ptr::offset(vec::unsafe::to_ptr(head.data), start)
+            ptr::offset(vec::unsafe::to_ptr_slice(head.data), start)
         }
     }
 
@@ -175,9 +175,9 @@ impl &arena {
     // Functions for the non-POD part of the arena
     fn alloc_nonpod_grow(n_bytes: uint, align: uint) -> (*u8, *u8) {
         // Allocate a new chunk.
-        let chunk_size = vec::capacity(self.head.data);
+        let chunk_size = at_vec::capacity(self.head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
-        self.chunks = @cons(self.head, self.chunks);
+        self.chunks = @cons(copy self.head, self.chunks);
         self.head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
 
@@ -186,13 +186,13 @@ impl &arena {
 
     #[inline(always)]
     fn alloc_nonpod_inner(n_bytes: uint, align: uint) -> (*u8, *u8) {
-        let head = self.head;
+        let head = &mut self.head;
 
         let tydesc_start = head.fill;
         let after_tydesc = head.fill + sys::size_of::<*TypeDesc>();
         let start = round_up_to(after_tydesc, align);
         let end = start + n_bytes;
-        if end > vec::capacity(head.data) {
+        if end > at_vec::capacity(head.data) {
             return self.alloc_nonpod_grow(n_bytes, align);
         }
         head.fill = round_up_to(end, sys::pref_align_of::<*TypeDesc>());
@@ -201,7 +201,7 @@ impl &arena {
         //       start, n_bytes, align, head.fill);
 
         unsafe {
-            let buf = vec::unsafe::to_ptr(head.data);
+            let buf = vec::unsafe::to_ptr_slice(head.data);
             return (ptr::offset(buf, tydesc_start), ptr::offset(buf, start));
         }
     }
