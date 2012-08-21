@@ -465,16 +465,16 @@ fn homedir() -> option<Path> {
 }
 
 /**
- * Returns the path to a temporary directory, if known.
+ * Returns the path to a temporary directory.
  *
  * On Unix, returns the value of the 'TMPDIR' environment variable if it is
  * set and non-empty and '/tmp' otherwise.
  *
  * On Windows, returns the value of, in order, the 'TMP', 'TEMP',
- * 'USERPROFILE' environment variable if any are set and not the empty
- * string. Otherwise, tmpdir returns option::none.
+ * 'USERPROFILE' environment variable  if any are set and not the empty
+ * string. Otherwise, tmpdir returns the path to the Windows directory.
  */
-fn tmpdir() -> option<Path> {
+fn tmpdir() -> Path {
     return lookup();
 
     fn getenv_nonempty(v: Path) -> option<Path> {
@@ -490,15 +490,18 @@ fn tmpdir() -> option<Path> {
     }
 
     #[cfg(unix)]
-    fn lookup() -> option<Path> {
-        option::or(getenv_nonempty(~"TMPDIR"), some(~"/tmp"))
+    fn lookup() -> Path {
+        option::get_default(getenv_nonempty(~"TMPDIR"), ~"/tmp")
     }
 
     #[cfg(windows)]
-    fn lookup() -> option<Path> {
-        option::or(getenv_nonempty(~"TMP"),
-        option::or(getenv_nonempty(~"TEMP"),
-                   getenv_nonempty(~"USERPROFILE")))
+    fn lookup() -> Path {
+        option::get_default(
+                    option::or(getenv_nonempty(~"TMP"),
+                    option::or(getenv_nonempty(~"TEMP"),
+                    option::or(getenv_nonempty(~"USERPROFILE"),
+                               getenv_nonempty(~"WINDIR")))),
+                    ~"C:\\Windows")
     }
 }
 /// Recursively walk a directory structure
@@ -970,7 +973,7 @@ mod tests {
 
     #[test]
     fn tmpdir() {
-        option::iter(os::tmpdir(), |s| assert !str::is_empty(s));
+        assert !str::is_empty(os::tmpdir());
     }
 
     // Issue #712
