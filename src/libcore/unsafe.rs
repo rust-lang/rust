@@ -330,7 +330,6 @@ impl<T: send> Exclusive<T> {
 }
 
 // FIXME(#2585) make this a by-move method on the exclusive
-#[cfg(stage1)]
 fn unwrap_exclusive<T: send>(+arc: Exclusive<T>) -> T {
     let Exclusive { x: x } = arc;
     let inner = unsafe { unwrap_shared_mutable_state(x) };
@@ -426,14 +425,12 @@ mod tests {
     }
 
     #[test]
-    #[cfg(stage1)]
     fn exclusive_unwrap_basic() {
         let x = exclusive(~~"hello");
         assert unwrap_exclusive(x) == ~~"hello";
     }
 
     #[test]
-    #[cfg(stage1)]
     fn exclusive_unwrap_contended() {
         let x = exclusive(~~"hello");
         let x2 = ~mut some(x.clone());
@@ -459,7 +456,6 @@ mod tests {
     }
 
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    #[cfg(stage1)]
     fn exclusive_unwrap_conflict() {
         let x = exclusive(~~"hello");
         let x2 = ~mut some(x.clone());
@@ -474,7 +470,6 @@ mod tests {
     }
 
     #[test] #[ignore(cfg(windows))]
-    #[cfg(stage1)]
     fn exclusive_unwrap_deadlock() {
         // This is not guaranteed to get to the deadlock before being killed,
         // but it will show up sometimes, and if the deadlock were not there,

@@ -93,7 +93,6 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
     arc { x: unsafe { clone_shared_mutable_state(&rc.x) } }
 }
 
-#[cfg(stage1)]
 fn unwrap<T: const send>(+rc: arc<T>) -> T {
     let arc { x: x } = rc;
     unsafe { unwrap_shared_mutable_state(x) }
@@ -188,7 +187,6 @@ impl<T: send> &mutex_arc<T> {
 }
 
 // FIXME(#2585) make this a by-move method on the arc
-#[cfg(stage1)]
 fn unwrap_mutex_arc<T: send>(+arc: mutex_arc<T>) -> T {
     let mutex_arc { x: x } = arc;
     let inner = unsafe { unwrap_shared_mutable_state(x) };
@@ -366,7 +364,6 @@ impl<T: const send> &rw_arc<T> {
 }
 
 // FIXME(#2585) make this a by-move method on the arc
-#[cfg(stage1)]
 fn unwrap_rw_arc<T: const send>(+arc: rw_arc<T>) -> T {
     let rw_arc { x: x, _ } = arc;
     let inner = unsafe { unwrap_shared_mutable_state(x) };
@@ -527,7 +524,6 @@ mod tests {
         }
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
-    #[cfg(stage1)]
     fn test_mutex_arc_unwrap_poison() {
         let arc = mutex_arc(1);
         let arc2 = ~(&arc).clone();
