@@ -358,7 +358,7 @@ fn pipe() -> {in: c_int, out: c_int} {
 }
 
 fn dup2(src: c_int, dst: c_int) -> c_int {
-	libc::dup2(src, dst)
+    libc::dup2(src, dst)
 }
 
 
