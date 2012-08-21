@@ -243,39 +243,37 @@ fn entangle_buffer<T: send, Tstart: send>(
 #[abi = "rust-intrinsic"]
 #[doc(hidden)]
 extern mod rusti {
-    fn atomic_xchng(&dst: int, src: int) -> int;
-    fn atomic_xchng_acq(&dst: int, src: int) -> int;
-    fn atomic_xchng_rel(&dst: int, src: int) -> int;
+    fn atomic_xchg(dst: &mut int, src: int) -> int;
+    fn atomic_xchg_acq(dst: &mut int, src: int) -> int;
+    fn atomic_xchg_rel(dst: &mut int, src: int) -> int;
 
-    fn atomic_add_acq(&dst: int, src: int) -> int;
-    fn atomic_sub_rel(&dst: int, src: int) -> int;
+    fn atomic_xadd_acq(dst: &mut int, src: int) -> int;
+    fn atomic_xsub_rel(dst: &mut int, src: int) -> int;
 }
 
 // If I call the rusti versions directly from a polymorphic function,
 // I get link errors. This is a bug that needs investigated more.
 #[doc(hidden)]
 fn atomic_xchng_rel(dst: &mut int, src: int) -> int {
-    rusti::atomic_xchng_rel(*dst, src)
+    rusti::atomic_xchg_rel(dst, src)
 }
 
 #[doc(hidden)]
 fn atomic_add_acq(dst: &mut int, src: int) -> int {
-    rusti::atomic_add_acq(*dst, src)
+    rusti::atomic_xadd_acq(dst, src)
 }
 
 #[doc(hidden)]
 fn atomic_sub_rel(dst: &mut int, src: int) -> int {
-    rusti::atomic_sub_rel(*dst, src)
+    rusti::atomic_xsub_rel(dst, src)
 }
 
 #[doc(hidden)]
-fn swap_task(dst: &mut *rust_task, src: *rust_task) -> *rust_task {
+fn swap_task(+dst: &mut *rust_task, src: *rust_task) -> *rust_task {
     // It might be worth making both acquire and release versions of
     // this.
     unsafe {
-        reinterpret_cast(rusti::atomic_xchng(
-            *(ptr::mut_addr_of(*dst) as *mut int),
-            src as int))
+        transmute(rusti::atomic_xchg(transmute(dst), src as int))
     }
 }
 
@@ -309,20 +307,16 @@ fn wait_event(this: *rust_task) -> *libc::c_void {
 }
 
 #[doc(hidden)]
-fn swap_state_acq(dst: &mut state, src: state) -> state {
+fn swap_state_acq(+dst: &mut state, src: state) -> state {
     unsafe {
-        reinterpret_cast(rusti::atomic_xchng_acq(
-            *(ptr::mut_addr_of(*dst) as *mut int),
-            src as int))
+        transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
     }
 }
 
 #[doc(hidden)]
-fn swap_state_rel(dst: &mut state, src: state) -> state {
+fn swap_state_rel(+dst: &mut state, src: state) -> state {
     unsafe {
-        reinterpret_cast(rusti::atomic_xchng_rel(
-            *(ptr::mut_addr_of(*dst) as *mut int),
-            src as int))
+        transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
     }
 }
 
