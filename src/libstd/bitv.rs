@@ -61,7 +61,7 @@ struct small_bitv {
             self.bits |= 1<<i;
         }
         else {
-            self.bits &= !(i as u32);
+            self.bits &= !(1<<i as u32);
         }
     }
     #[inline(always)]
@@ -454,6 +454,14 @@ mod tests {
         assert act.eq_vec(~[0u]);
         act = bitv(1u, true);
         assert act.eq_vec(~[1u]);
+    }
+
+    #[test]
+    fn test_2_elements() {
+        let b = bitv::bitv(2, false);
+        b.set(0, true);
+        b.set(1, false);
+        assert b.to_str() == ~"10";
     }
 
     #[test]
