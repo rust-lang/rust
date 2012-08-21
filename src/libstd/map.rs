@@ -4,6 +4,9 @@
 
 import io::WriterUtil;
 import to_str::ToStr;
+import managed::Managed;
+import send_map::linear::LinearMap;
+
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
 export box_str_hash;
 export bytes_hash, int_hash, uint_hash, set_add;
@@ -59,10 +62,10 @@ trait map<K: copy, V: copy> {
     fn find(+key: K) -> option<V>;
 
     /**
-     * Remove and return a value from the map. If the key does not exist
-     * in the map then returns none.
+     * Remove and return a value from the map. Returns true if the
+     * key was present in the map, otherwise false.
      */
-    fn remove(+key: K) -> option<V>;
+    fn remove(+key: K) -> bool;
 
     /// Clear the map, removing all key/value pairs.
     fn clear();
@@ -279,18 +282,18 @@ mod chained {
             option::unwrap(opt_v)
         }
 
-        fn remove(+k: K) -> option<V> {
+        fn remove(+k: K) -> bool {
             match self.search_tbl(&k, self.hasher(&k)) {
-              not_found => none,
+              not_found => false,
               found_first(idx, entry) => {
                 self.count -= 1u;
                 self.chains[idx] = entry.next;
-                some(entry.value)
+                true
               }
               found_after(eprev, entry) => {
                 self.count -= 1u;
                 eprev.next = entry.next;
-                some(entry.value)
+                true
               }
             }
         }
@@ -466,6 +469,93 @@ fn hash_from_ints<V: copy>(items: &[(int, V)]) -> hashmap<int, V> {
 /// Construct a hashmap from a vector with uint keys
 fn hash_from_uints<V: copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
     hash_from_vec(uint::hash, uint::eq, items)
+}
+
+// XXX Transitionary
+impl<K: copy, V: copy> Managed<LinearMap<K, V>>: map<K, V> {
+    fn size() -> uint {
+        do self.borrow_const |p| {
+            p.len()
+        }
+    }
+
+    fn insert(+key: K, +value: V) -> bool {
+        do self.borrow_mut |p| {
+            p.insert(key, value)
+        }
+    }
+
+    fn contains_key(+key: K) -> bool {
+        do self.borrow_const |p| {
+            p.contains_key(&key)
+        }
+    }
+
+    fn contains_key_ref(key: &K) -> bool {
+        do self.borrow_const |p| {
+            p.contains_key(key)
+        }
+    }
+
+    fn get(+key: K) -> V {
+        do self.borrow_const |p| {
+            p.get(&key)
+        }
+    }
+
+    fn find(+key: K) -> option<V> {
+        do self.borrow_const |p| {
+            p.find(&key)
+        }
+    }
+
+    fn remove(+key: K) -> bool {
+        do self.borrow_mut |p| {
+            p.remove(&key)
+        }
+    }
+
+    fn clear() {
+        do self.borrow_mut |p| {
+            p.clear()
+        }
+    }
+
+    fn each(op: fn(+key: K, +value: V) -> bool) {
+        do self.borrow_imm |p| {
+            p.each(op)
+        }
+    }
+
+    fn each_key(op: fn(+key: K) -> bool) {
+        do self.borrow_imm |p| {
+            p.each_key(op)
+        }
+    }
+
+    fn each_value(op: fn(+value: V) -> bool) {
+        do self.borrow_imm |p| {
+            p.each_value(op)
+        }
+    }
+
+    fn each_ref(op: fn(key: &K, value: &V) -> bool) {
+        do self.borrow_imm |p| {
+            p.each_ref(op)
+        }
+    }
+
+    fn each_key_ref(op: fn(key: &K) -> bool) {
+        do self.borrow_imm |p| {
+            p.each_key_ref(op)
+        }
+    }
+
+    fn each_value_ref(op: fn(value: &V) -> bool) {
+        do self.borrow_imm |p| {
+            p.each_value_ref(op)
+        }
+    }
 }
 
 #[cfg(test)]

@@ -80,13 +80,13 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
         insert(self, key, value);
         return !exists;
     }
-    fn remove(+key: uint) -> option<V> {
+    fn remove(+key: uint) -> bool {
         if key >= self.v.len() {
-            return none;
+            return false;
         }
         let old = self.v.get_elt(key);
         self.v.set_elt(key, none);
-        old
+        old.is_some()
     }
     fn clear() {
         self.v.set(~[mut]);
