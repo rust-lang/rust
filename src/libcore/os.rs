@@ -968,6 +968,11 @@ mod tests {
                                |s| setenv(~"USERPROFILE", s));
     }
 
+    #[test]
+    fn tmpdir() {
+        option::iter(os::tmpdir(), |s| assert !str::is_empty(s));
+    }
+
     // Issue #712
     #[test]
     fn test_list_dir_no_invalid_memory_access() { os::list_dir(~"."); }
