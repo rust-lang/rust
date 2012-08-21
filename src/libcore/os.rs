@@ -30,7 +30,7 @@ export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
 export exe_suffix, dll_suffix, sysname, arch, family;
-export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
+export homedir, tmpdir, list_dir, list_dir_path, path_is_dir, path_exists,
        make_absolute, make_dir, remove_dir, change_dir, remove_file,
        copy_file;
 export last_os_error;
@@ -464,6 +464,43 @@ fn homedir() -> option<Path> {
     }
 }
 
+/**
+ * Returns the path to a temporary directory, if known.
+ *
+ * On Unix, returns the value of the 'TMPDIR' environment variable if it is
+ * set and non-empty and '/tmp' otherwise.
+ *
+ * On Windows, returns the value of, in order, the 'TMP', 'TEMP',
+ * 'USERPROFILE' environment variable if any are set and not the empty
+ * string. Otherwise, tmpdir returns option::none.
+ */
+fn tmpdir() -> option<Path> {
+    return lookup();
+
+    fn getenv_nonempty(v: Path) -> option<Path> {
+        match getenv(v) {
+            some(x) =>
+                if str::is_empty(x) {
+                    none
+                } else {
+                    some(x)
+                },
+            _ => none
+        }
+    }
+
+    #[cfg(unix)]
+    fn lookup() -> option<Path> {
+        option::or(getenv_nonempty(~"TMPDIR"), some(~"/tmp"))
+    }
+
+    #[cfg(windows)]
+    fn lookup() -> option<Path> {
+        option::or(getenv_nonempty(~"TMP"),
+        option::or(getenv_nonempty(~"TEMP"),
+                   getenv_nonempty(~"USERPROFILE")))
+    }
+}
 /// Recursively walk a directory structure
 fn walk_dir(p: Path, f: fn(Path) -> bool) {
 
