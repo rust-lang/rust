@@ -484,7 +484,7 @@ fn homedir() -> option<Path> {
 fn tmpdir() -> Path {
     return lookup();
 
-    fn getenv_nonempty(v: Path) -> option<Path> {
+    fn getenv_nonempty(+v: Path) -> option<Path> {
         match getenv(v) {
             some(x) =>
                 if str::is_empty(x) {
