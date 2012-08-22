@@ -490,7 +490,7 @@ fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
 
     do pat_bindings(tcx.def_map, pat) |binding_mode, id, span, path| {
         match binding_mode {
-          ast::bind_by_ref(_) | ast::bind_by_value => {}
+          ast::bind_by_ref(_) | ast::bind_by_value | ast::bind_by_move => {}
           ast::bind_by_implicit_ref => {
             let pat_ty = ty::node_id_to_type(tcx, id);
             let kind = ty::type_kind(tcx, pat_ty);

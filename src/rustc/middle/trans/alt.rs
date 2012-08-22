@@ -474,6 +474,8 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
                                    load_if_immediate(bcx, llval, ty), ty);
                     bcx.fcx.lllocals.insert(val, local_mem(alloc));
                     add_clean(bcx, alloc, ty);
+                } else if mode == ast::bind_by_move {
+                    fail ~"can't translate bind_by_move into a pattern guard";
                 } else {
                     bcx.fcx.lllocals.insert(val, local_mem(llval));
                 }
@@ -802,6 +804,9 @@ fn make_pattern_bindings(bcx: block, phi_bindings: phi_bindings_list)
                 bcx.fcx.lllocals.insert(binding.pat_id,
                                         local_mem(allocation));
                 add_clean(bcx, allocation, ty);
+            }
+            ast::bind_by_move => {
+                fail ~"unimplemented -- bblum";
             }
         }
     }

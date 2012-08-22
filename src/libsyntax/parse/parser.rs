@@ -16,7 +16,7 @@ import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
 import dvec::dvec;
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
-             bind_by_ref, bind_by_implicit_ref, bind_by_value,
+             bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
              bound_copy, bound_send, bound_trait, bound_owned, box, by_copy,
              by_move, by_mutbl_ref, by_ref, by_val, capture_clause,
@@ -1887,12 +1887,17 @@ struct parser {
                 pat = self.parse_pat_ident(refutable, bind_by_ref(mutbl));
             } else if self.eat_keyword(~"copy") {
                 pat = self.parse_pat_ident(refutable, bind_by_value);
+            } else if self.eat_keyword(~"move") {
+                pat = self.parse_pat_ident(refutable, bind_by_move);
             } else if !is_plain_ident(self.token) {
                 pat = self.parse_enum_variant(refutable);
             } else {
                 let binding_mode;
+                // XXX: Aren't these two cases deadcode? -- bblum
                 if self.eat_keyword(~"copy") {
                     binding_mode = bind_by_value;
+                } else if self.eat_keyword(~"move") {
+                    binding_mode = bind_by_move;
                 } else if refutable {
                     // XXX: Should be bind_by_value, but that's not
                     // backward compatible.

@@ -409,6 +409,7 @@ impl &mem_categorization_ctxt {
           }
 
           ast::def_binding(vid, ast::bind_by_value) |
+          ast::def_binding(vid, ast::bind_by_move)  |
           ast::def_binding(vid, ast::bind_by_ref(_)) => {
             // by-value/by-ref bindings are local variables
             @{id:id, span:span,

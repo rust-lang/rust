@@ -9,6 +9,7 @@ fn check_alt(fcx: @fn_ctxt,
 
     let pattern_ty = fcx.infcx.next_ty_var();
     bot = check_expr_with(fcx, discrim, pattern_ty);
+    let is_lvalue = ty::expr_is_lval(fcx.ccx.method_map, discrim);
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
@@ -18,7 +19,12 @@ fn check_alt(fcx: @fn_ctxt,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
             alt_region: ty::re_scope(expr.id),
             block_region: ty::re_scope(arm.body.node.id),
-            pat_region: ty::re_scope(expr.id)
+            pat_region: ty::re_scope(expr.id),
+            // The following three fields determine whether 'move' is allowed.
+            matching_lvalue: is_lvalue,
+            has_guard: arm.guard.is_some(),
+            // Each arm is freshly allowed to decide whether it can 'move'.
+            mut ever_bound_by_ref: false,
         };
 
         for arm.pats.each |p| { check_pat(pcx, p, pattern_ty);}
@@ -47,7 +53,14 @@ type pat_ctxt = {
     alt_region: ty::region,
     block_region: ty::region,
     /* Equal to either alt_region or block_region. */
-    pat_region: ty::region
+    pat_region: ty::region,
+    /* Moving out is only permitted when matching rvalues. */
+    matching_lvalue: bool,
+    /* Moving out is not permitted with guards. */
+    has_guard: bool,
+    /* If a pattern binding binds by-reference ever, then binding by-move in
+     * the same arm is disallowed (no "ref x @ some(move y)", etc etc). */
+    mut ever_bound_by_ref: bool,
 };
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
@@ -161,6 +174,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
 
         match bm {
           ast::bind_by_ref(mutbl) => {
+            pcx.ever_bound_by_ref = true;
             // if the binding is like
             //    ref x | ref const x | ref mut x
             // then the type of x is &M T where M is the mutability
@@ -172,8 +186,32 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             let region_ty = ty::mk_rptr(tcx, region_var, mt);
             demand::eqtype(fcx, pat.span, region_ty, typ);
           }
-          ast::bind_by_value | ast::bind_by_implicit_ref => {
-            // otherwise the type of x is the expected type T
+          // otherwise the type of x is the expected type T
+          ast::bind_by_value => {
+            demand::eqtype(fcx, pat.span, expected, typ);
+          }
+          ast::bind_by_move => {
+            demand::eqtype(fcx, pat.span, expected, typ);
+            // check legality of moving out of the enum
+            if sub.is_some() {
+                tcx.sess.span_err(pat.span,
+                    ~"cannot bind by-move with sub-bindings");
+            }
+            if pcx.has_guard {
+                tcx.sess.span_err(pat.span,
+                    ~"cannot bind by-move into a pattern guard");
+            }
+            if pcx.ever_bound_by_ref {
+                tcx.sess.span_err(pat.span,
+                    ~"cannot bind by-move and by-ref in the same pattern");
+            }
+            if pcx.matching_lvalue {
+                tcx.sess.span_err(pat.span,
+                    ~"cannot bind by-move when matching an lvalue");
+            }
+          }
+          ast::bind_by_implicit_ref => {
+            pcx.ever_bound_by_ref = true;
             demand::eqtype(fcx, pat.span, expected, typ);
           }
         }

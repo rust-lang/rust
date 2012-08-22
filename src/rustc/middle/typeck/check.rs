@@ -2035,7 +2035,10 @@ fn check_decl_local(fcx: @fn_ctxt, local: @ast::local) -> bool {
         map: pat_id_map(fcx.ccx.tcx.def_map, local.node.pat),
         alt_region: region,
         block_region: region,
-        pat_region: region
+        pat_region: region,
+        matching_lvalue: true, // FIXME(#3235) Make this more flexible
+        has_guard: false,
+        mut ever_bound_by_ref: false,
     };
     alt::check_pat(pcx, local.node.pat, t);
     return bot;
