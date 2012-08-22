@@ -412,9 +412,10 @@ impl gather_loan_ctxt {
             match pat.node {
               ast::pat_ident(bm, id, o_pat) if !self.pat_is_variant(pat) => {
                 match bm {
-                  ast::bind_by_value => {
+                  ast::bind_by_value | ast::bind_by_move => {
                     // copying does not borrow anything, so no check
                     // is required
+                    // as for move, check::alt ensures it's from an rvalue.
                   }
                   ast::bind_by_ref(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must
