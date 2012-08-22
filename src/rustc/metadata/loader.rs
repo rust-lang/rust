@@ -136,8 +136,9 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
 
 fn note_linkage_attrs(intr: ident_interner, diag: span_handler,
                       attrs: ~[ast::attribute]) {
-    for attr::find_linkage_attrs(attrs).each |attr| {
-        diag.handler().note(fmt!{"meta: %s", pprust::attr_to_str(attr,intr)});
+    for attr::find_linkage_metas(attrs).each |mi| {
+        diag.handler().note(fmt!{"meta: %s",
+              pprust::meta_item_to_str(mi,intr)});
     }
 }
 

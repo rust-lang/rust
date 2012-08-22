@@ -117,10 +117,6 @@ fn item_to_str(i: @ast::item, intr: ident_interner) -> ~str {
     to_str(i, print_item, intr)
 }
 
-fn attr_to_str(i: ast::attribute, intr: ident_interner) -> ~str {
-    to_str(i, print_attribute, intr)
-}
-
 fn typarams_to_str(tps: ~[ast::ty_param], intr: ident_interner) -> ~str {
     to_str(tps, print_type_params, intr)
 }
@@ -165,8 +161,8 @@ fn block_to_str(blk: ast::blk, intr: ident_interner) -> ~str {
     io::mem_buffer_str(buffer)
 }
 
-fn meta_item_to_str(mi: ast::meta_item, intr: ident_interner) -> ~str {
-    to_str(@mi, print_meta_item, intr)
+fn meta_item_to_str(mi: @ast::meta_item, intr: ident_interner) -> ~str {
+    to_str(mi, print_meta_item, intr)
 }
 
 fn attribute_to_str(attr: ast::attribute, intr: ident_interner) -> ~str {
