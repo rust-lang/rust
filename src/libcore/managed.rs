@@ -62,6 +62,7 @@ impl<T> Data<T> {
 }
 
 #[test]
+#[ignore(cfg(windows))]
 #[should_fail]
 fn test_mut_in_imm() {
     let m = Managed(1);
@@ -73,6 +74,7 @@ fn test_mut_in_imm() {
 }
 
 #[test]
+#[ignore(cfg(windows))]
 #[should_fail]
 fn test_imm_in_mut() {
     let m = Managed(1);
@@ -129,6 +131,7 @@ fn test_const_in_imm() {
 
 
 #[test]
+#[ignore(cfg(windows))]
 #[should_fail]
 fn test_mut_in_imm_in_const() {
     let m = Managed(1);
