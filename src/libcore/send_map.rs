@@ -258,8 +258,11 @@ mod linear {
         fn find(k: &K) -> option<V> {
             match self.bucket_for_key(self.buckets, k) {
               FoundEntry(idx) => {
-                match check self.buckets[idx] {
+                match self.buckets[idx] {
                   some(bkt) => {some(copy bkt.value)}
+                  // FIXME (#3148): Will be able to get rid of this when we
+                  // redefine SearchResult
+                  none      => fail ~"LinearMap::find: internal logic error"
                 }
               }
               TableFull | FoundHole(_) => {
