@@ -79,3 +79,4 @@ doc/core/
 tmp.*.rs
 config.stamp
 .DS_Store
+src/etc/dl
