@@ -107,7 +107,7 @@ pure fn is_digit(c: char) -> bool {
  *
  * # Safety note
  *
- * This function fails if `c` is not a valid char
+ * This function returns none if `c` is not a valid char
  *
  * # Return value
  *
