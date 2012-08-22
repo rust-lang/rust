@@ -966,9 +966,6 @@ mod tests {
         setenv(~"USERPROFILE", ~"/home/MountainView");
         assert os::homedir() == some(~"/home/MountainView");
 
-        setenv(~"USERPROFILE", ~"/home/MountainView");
-        assert os::homedir() == some(~"/home/MountainView");
-
         setenv(~"HOME", ~"/home/MountainView");
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
         assert os::homedir() == some(~"/home/MountainView");
