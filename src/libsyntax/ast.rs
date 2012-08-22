@@ -310,6 +310,10 @@ type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
 // Extra node ID is only used for index, assign_op, unary, binary
 
 #[auto_serialize]
+enum log_level { error, debug, other }
+// 0 = error, 1 = debug, 2 = other
+
+#[auto_serialize]
 enum alt_mode { alt_check, alt_exhaustive, }
 
 #[auto_serialize]
@@ -354,7 +358,7 @@ enum expr_ {
     expr_break(option<ident>),
     expr_again(option<ident>),
     expr_ret(option<@expr>),
-    expr_log(int, @expr, @expr),
+    expr_log(log_level, @expr, @expr),
 
     /* just an assert */
     expr_assert(@expr),
