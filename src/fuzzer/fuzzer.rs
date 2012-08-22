@@ -259,16 +259,17 @@ fn check_variants_T<T: copy>(
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
                 let handler = diagnostic::mk_handler(none);
-                let str3 =
+                let str3 = do io::with_str_reader("") |rdr| {
                     @as_str(|a|pprust::print_crate(
                         codemap,
                         intr,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
                         filename,
-                        io::str_reader(~""), a,
+                        rdr, a,
                         pprust::no_ann(),
-                        false));
+                        false))
+                };
                 match cx.mode {
                   tm_converge => {
                     check_roundtrip_convergence(str3, 1u);
@@ -419,7 +420,7 @@ fn parse_and_print(code: @~str) -> ~str {
     write_file(filename, *code);
     let crate = parse::parse_crate_from_source_str(
         filename, code, ~[], sess);
-    io::with_str_reader(*code, |rdr| {
+    do io::with_str_reader(*code) |rdr| {
         as_str(|a|
                pprust::print_crate(
                    sess.cm,
@@ -431,7 +432,7 @@ fn parse_and_print(code: @~str) -> ~str {
                    rdr, a,
                    pprust::no_ann(),
                    false) )
-    })
+    }
 }
 
 fn has_raw_pointers(c: ast::crate) -> bool {
