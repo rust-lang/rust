@@ -297,25 +297,15 @@ fn remove_meta_items_by_name(items: ~[@ast::meta_item], name: ~str) ->
     });
 }
 
-fn find_linkage_attrs(attrs: ~[ast::attribute]) -> ~[ast::attribute] {
-    let mut found = ~[];
-    for find_attrs_by_name(attrs, ~"link").each |attr| {
-        match attr.node.value.node {
-          ast::meta_list(_, _) => vec::push(found, attr),
-          _ => debug!{"ignoring link attribute that has incorrect type"}
-        }
-    }
-    return found;
-}
-
 /**
- * From a list of crate attributes get only the meta_items that impact crate
+ * From a list of crate attributes get only the meta_items that affect crate
  * linkage
  */
 fn find_linkage_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
-    do find_linkage_attrs(attrs).flat_map |attr| {
-        match check attr.node.value.node {
-          ast::meta_list(_, items) => /* FIXME (#2543) */ copy items
+    do find_attrs_by_name(attrs, ~"link").flat_map |attr| {
+        match attr.node.value.node {
+            ast::meta_list(_, items) => /* FIXME (#2543) */ copy items,
+            _ => ~[]
         }
     }
 }

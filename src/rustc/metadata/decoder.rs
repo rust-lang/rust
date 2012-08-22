@@ -823,7 +823,7 @@ fn get_attributes(md: ebml::doc) -> ~[ast::attribute] {
 fn list_meta_items(intr: ident_interner,
                    meta_items: ebml::doc, out: io::Writer) {
     for get_meta_items(meta_items).each |mi| {
-        out.write_str(fmt!{"%s\n", pprust::meta_item_to_str(*mi, intr)});
+        out.write_str(fmt!{"%s\n", pprust::meta_item_to_str(mi, intr)});
     }
 }
 
