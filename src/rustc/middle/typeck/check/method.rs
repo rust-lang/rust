@@ -150,14 +150,8 @@ struct lookup {
               ty::ty_self => {
                 // Call is of the form "self.foo()" and appears in one
                 // of a trait's provided methods.
-                let self_def_id = match self.fcx.self_info {
-                  some(self_info) => self_info.def_id,
-                  none => {
-                    // Shouldn't happen; there should always be a
-                    // self_info in this case.
-                    self.tcx().sess.bug(~"unexpected `none` for self_info")
-                  }
-                };
+                let self_def_id = self.fcx.self_impl_def_id.expect(
+                    ~"unexpected `none` for self_impl_def_id");
 
                 let substs = {
                     self_r: none,

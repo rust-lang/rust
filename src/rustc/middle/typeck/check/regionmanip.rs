@@ -23,7 +23,7 @@ fn replace_bound_regions_in_fn_ty(
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
 
     match self_info {
-      some({explicit_self: ast::sty_region(m), _}) => {
+      some({explicit_self: {node: ast::sty_region(m), _}, _}) => {
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
                              { ty: ty::mk_self(tcx), mutbl: m });
