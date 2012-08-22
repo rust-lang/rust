@@ -113,7 +113,8 @@ unsafe fn walk_gc_roots(mem: Memory, visitor: Visitor) {
                             let refcount = **root;
                             if mem | task_local_heap != 0 && refcount != -1 {
                                 if !visitor(root, tydesc) { return; }
-                            } else if mem | exchange_heap != 0 {
+                            } else if mem | exchange_heap != 0
+                                && refcount == -1 {
                                 if !visitor(root, tydesc) { return; }
                             }
                         } else {
