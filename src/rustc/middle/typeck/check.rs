@@ -2323,27 +2323,24 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_upvar(_, inner, _, _) => {
         return ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
-      ast::def_ty_param(did, n) => {
-        return no_params(ty::mk_param(fcx.ccx.tcx, n, did));
-      }
-      ast::def_ty(_) | ast::def_prim_ty(_) => {
-        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type");
+      ast::def_ty(_) | ast::def_prim_ty(_) | ast::def_ty_param(*)=> {
+        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found type");
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) => {
-        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found module");
+        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found module");
       }
       ast::def_use(*) => {
-        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found use");
+        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found use");
       }
       ast::def_region(*) => {
-        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found region");
+        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found region");
       }
       ast::def_typaram_binder(*) => {
-        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type \
+        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found type \
                                           parameter");
       }
       ast::def_label(*) => {
-        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found label");
+        fcx.ccx.tcx.sess.span_bug(sp, ~"expected value but found label");
       }
     }
 }
