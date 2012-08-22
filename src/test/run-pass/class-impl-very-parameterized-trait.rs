@@ -59,12 +59,12 @@ struct cat<T: copy> : map<int, T> {
      else { none }
   }
 
-  fn remove(+k:int) -> option<T> {
+  fn remove(+k:int) -> bool {
     match self.find(k) {
       some(x) => {
-        self.meows -= k; some(x)
+        self.meows -= k; true
       }
-      none => { none }
+      none => { false }
     }
   }
 

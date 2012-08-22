@@ -733,10 +733,7 @@ mod tests {
         i = 0u;
         while i < num_to_insert {
             let v = hm.remove(i);
-            match v {
-              option::some(u) => assert (u == i * i),
-              option::none => fail
-            }
+            assert v;
             i += 2u;
         }
         assert (hm.size() == num_to_insert / 2u);
