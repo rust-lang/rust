@@ -16,6 +16,9 @@
  * to write OS-ignorant code by default.
  */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
               mode_t, pid_t, FILE};
 import libc::{close, fclose};
@@ -53,7 +56,7 @@ extern mod rustrt {
 
 const tmpbuf_sz : uint = 1000u;
 
-fn as_c_charp<T>(s: ~str, f: fn(*c_char) -> T) -> T {
+fn as_c_charp<T>(+s: ~str, f: fn(*c_char) -> T) -> T {
     str::as_c_str(s, |b| f(b as *c_char))
 }
 
@@ -103,7 +106,7 @@ mod win32 {
         return res;
     }
 
-    fn as_utf16_p<T>(s: ~str, f: fn(*u16) -> T) -> T {
+    fn as_utf16_p<T>(+s: ~str, f: fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
         t += ~[0u16];
@@ -111,11 +114,11 @@ mod win32 {
     }
 }
 
-fn getenv(n: ~str) -> option<~str> {
+fn getenv(+n: ~str) -> option<~str> {
     global_env::getenv(n)
 }
 
-fn setenv(n: ~str, v: ~str) {
+fn setenv(+n: ~str, +v: ~str) {
     global_env::setenv(n, v)
 }
 
@@ -140,14 +143,14 @@ mod global_env {
         MsgEnv(comm::Chan<~[(~str,~str)]>)
     }
 
-    fn getenv(n: ~str) -> option<~str> {
+    fn getenv(+n: ~str) -> option<~str> {
         let env_ch = get_global_env_chan();
         let po = comm::port();
         comm::send(env_ch, MsgGetEnv(n, comm::chan(po)));
         comm::recv(po)
     }
 
-    fn setenv(n: ~str, v: ~str) {
+    fn setenv(+n: ~str, +v: ~str) {
         let env_ch = get_global_env_chan();
         let po = comm::port();
         comm::send(env_ch, MsgSetEnv(n, v, comm::chan(po)));
@@ -209,7 +212,7 @@ mod global_env {
         }
 
         #[cfg(unix)]
-        fn getenv(n: ~str) -> option<~str> {
+        fn getenv(+n: ~str) -> option<~str> {
             unsafe {
                 let s = str::as_c_str(n, libc::getenv);
                 return if unsafe::reinterpret_cast(s) == 0 {
@@ -222,7 +225,7 @@ mod global_env {
         }
 
         #[cfg(windows)]
-        fn getenv(n: ~str) -> option<~str> {
+        fn getenv(+n: ~str) -> option<~str> {
             import libc::types::os::arch::extra::*;
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -235,7 +238,7 @@ mod global_env {
 
 
         #[cfg(unix)]
-        fn setenv(n: ~str, v: ~str) {
+        fn setenv(+n: ~str, +v: ~str) {
 
             // FIXME: remove this when export globs work properly. #1238
             import libc::funcs::posix01::unistd::setenv;
@@ -248,7 +251,7 @@ mod global_env {
 
 
         #[cfg(windows)]
-        fn setenv(n: ~str, v: ~str) {
+        fn setenv(+n: ~str, +v: ~str) {
             // FIXME: remove imports when export globs work properly. #1238
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -362,7 +365,7 @@ fn dup2(src: c_int, dst: c_int) -> c_int {
 }
 
 
-fn dll_filename(base: ~str) -> ~str {
+fn dll_filename(+base: ~str) -> ~str {
     return pre() + base + dll_suffix();
 
     #[cfg(unix)]
@@ -509,11 +512,11 @@ fn tmpdir() -> Path {
     }
 }
 /// Recursively walk a directory structure
-fn walk_dir(p: Path, f: fn(Path) -> bool) {
+fn walk_dir(+p: Path, f: fn(Path) -> bool) {
 
     walk_dir_(p, f);
 
-    fn walk_dir_(p: Path, f: fn(Path) -> bool) -> bool {
+    fn walk_dir_(+p: Path, f: fn(Path) -> bool) -> bool {
         let mut keepgoing = true;
         do list_dir(p).each |q| {
             let path = path::connect(p, q);
@@ -538,14 +541,14 @@ fn walk_dir(p: Path, f: fn(Path) -> bool) {
 }
 
 /// Indicates whether a path represents a directory
-fn path_is_dir(p: Path) -> bool {
+fn path_is_dir(+p: Path) -> bool {
     do str::as_c_str(p) |buf| {
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
 /// Indicates whether a path exists
-fn path_exists(p: Path) -> bool {
+fn path_exists(+p: Path) -> bool {
     do str::as_c_str(p) |buf| {
         rustrt::rust_path_exists(buf) != 0 as c_int
     }
@@ -563,7 +566,7 @@ fn path_exists(p: Path) -> bool {
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
-fn make_absolute(p: Path) -> Path {
+fn make_absolute(+p: Path) -> Path {
     if path::path_is_absolute(p) {
         p
     } else {
@@ -573,11 +576,11 @@ fn make_absolute(p: Path) -> Path {
 
 
 /// Creates a directory at the specified path
-fn make_dir(p: Path, mode: c_int) -> bool {
+fn make_dir(+p: Path, mode: c_int) -> bool {
     return mkdir(p, mode);
 
     #[cfg(windows)]
-    fn mkdir(p: Path, _mode: c_int) -> bool {
+    fn mkdir(+p: Path, _mode: c_int) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
@@ -590,7 +593,7 @@ fn make_dir(p: Path, mode: c_int) -> bool {
     }
 
     #[cfg(unix)]
-    fn mkdir(p: Path, mode: c_int) -> bool {
+    fn mkdir(+p: Path, mode: c_int) -> bool {
         do as_c_charp(p) |c| {
             libc::mkdir(c, mode as mode_t) == (0 as c_int)
         }
@@ -598,13 +601,13 @@ fn make_dir(p: Path, mode: c_int) -> bool {
 }
 
 /// Lists the contents of a directory
-fn list_dir(p: Path) -> ~[~str] {
+fn list_dir(+p: Path) -> ~[~str] {
 
     #[cfg(unix)]
-    fn star(p: ~str) -> ~str { p }
+    fn star(+p: ~str) -> ~str { p }
 
     #[cfg(windows)]
-    fn star(p: ~str) -> ~str {
+    fn star(+p: ~str) -> ~str {
         let pl = str::len(p);
         if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
                         || p[pl - 1u] as char != path::consts::alt_path_sep) {
@@ -624,7 +627,7 @@ fn list_dir(p: Path) -> ~[~str] {
  *
  * This version prepends each entry with the directory.
  */
-fn list_dir_path(p: Path) -> ~[~str] {
+fn list_dir_path(+p: Path) -> ~[~str] {
     let mut p = p;
     let pl = str::len(p);
     if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
@@ -635,11 +638,11 @@ fn list_dir_path(p: Path) -> ~[~str] {
 }
 
 /// Removes a directory at the specified path
-fn remove_dir(p: Path) -> bool {
+fn remove_dir(+p: Path) -> bool {
    return rmdir(p);
 
     #[cfg(windows)]
-    fn rmdir(p: Path) -> bool {
+    fn rmdir(+p: Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
@@ -650,18 +653,18 @@ fn remove_dir(p: Path) -> bool {
     }
 
     #[cfg(unix)]
-    fn rmdir(p: Path) -> bool {
+    fn rmdir(+p: Path) -> bool {
         return do as_c_charp(p) |buf| {
             libc::rmdir(buf) == (0 as c_int)
         };
     }
 }
 
-fn change_dir(p: Path) -> bool {
+fn change_dir(+p: Path) -> bool {
     return chdir(p);
 
     #[cfg(windows)]
-    fn chdir(p: Path) -> bool {
+    fn chdir(+p: Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
@@ -672,7 +675,7 @@ fn change_dir(p: Path) -> bool {
     }
 
     #[cfg(unix)]
-    fn chdir(p: Path) -> bool {
+    fn chdir(+p: Path) -> bool {
         return do as_c_charp(p) |buf| {
             libc::chdir(buf) == (0 as c_int)
         };
@@ -680,11 +683,11 @@ fn change_dir(p: Path) -> bool {
 }
 
 /// Copies a file from one location to another
-fn copy_file(from: Path, to: Path) -> bool {
+fn copy_file(+from: Path, +to: Path) -> bool {
     return do_copy_file(from, to);
 
     #[cfg(windows)]
-    fn do_copy_file(from: Path, to: Path) -> bool {
+    fn do_copy_file(+from: Path, +to: Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
@@ -697,7 +700,7 @@ fn copy_file(from: Path, to: Path) -> bool {
     }
 
     #[cfg(unix)]
-    fn do_copy_file(from: Path, to: Path) -> bool {
+    fn do_copy_file(+from: Path, +to: Path) -> bool {
         let istream = do as_c_charp(from) |fromp| {
             do as_c_charp(~"rb") |modebuf| {
                 libc::fopen(fromp, modebuf)
@@ -743,11 +746,11 @@ fn copy_file(from: Path, to: Path) -> bool {
 }
 
 /// Deletes an existing file
-fn remove_file(p: Path) -> bool {
+fn remove_file(+p: Path) -> bool {
     return unlink(p);
 
     #[cfg(windows)]
-    fn unlink(p: Path) -> bool {
+    fn unlink(+p: Path) -> bool {
         // FIXME (similar to Issue #2006): remove imports when export globs
         // work properly.
         import libc::funcs::extra::kernel32::*;
@@ -759,7 +762,7 @@ fn remove_file(p: Path) -> bool {
     }
 
     #[cfg(unix)]
-    fn unlink(p: Path) -> bool {
+    fn unlink(+p: Path) -> bool {
         return do as_c_charp(p) |buf| {
             libc::unlink(buf) == (0 as c_int)
         };
