@@ -249,8 +249,7 @@ fn test_arena_destructors() {
     }
 }
 
-#[test]
-#[should_fail]
+#[test] #[should_fail] #[ignore(cfg(windows))]
 fn test_arena_destructors_fail() {
     let arena = arena::arena();
     // Put some stuff in the arena.
