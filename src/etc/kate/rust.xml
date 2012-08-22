@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE language SYSTEM "language.dtd">
+<language name="Rust" version="0.3.1" kateversion="2.4" section="Sources" extensions="*.rs;*.rc" mimetype="text/x-rust" priority="15">
+<highlighting>
+	<list name="fn">
+		<item> fn </item>
+	</list>
+	<list name="type">
+		<item> type </item>
+	</list>
+	<list name="keywords">
+		<item> alt </item>
+		<item> again </item>
+		<item> as </item>
+		<item> assert </item>
+		<item> break </item>
+		<item> check </item>
+		<item> claim </item>
+		<item> const </item>
+		<item> copy </item>
+		<item> do </item>
+		<item> drop </item>
+		<item> else </item>
+		<item> export </item>
+		<item> extern </item>
+		<item> f16 </item>
+		<item> f80 </item>
+		<item> f128 </item>
+		<item> fail </item>
+		<item> for </item>
+		<item> if </item>
+		<item> impl </item>
+		<item> import </item>
+		<item> in </item>
+		<item> let </item>
+		<item> log </item>
+		<item> loop </item>
+		<item> m32 </item>
+		<item> m64 </item>
+		<item> m128 </item>
+		<item> match </item>
+		<item> mod </item>
+		<item> module </item>
+		<item> move </item>
+		<item> mut </item>
+		<item> new </item>
+		<item> of </item>
+		<item> owned </item>
+		<item> priv </item>
+		<item> pub </item>
+		<item> pure </item>
+		<item> ret </item>
+		<item> return </item>
+		<item> to </item>
+		<item> unchecked </item>
+		<item> unsafe </item>
+		<item> use </item>
+		<item> while </item>
+		<item> with </item>
+		<item> mod </item>
+		<item> trait </item>
+		<item> class </item>
+		<item> struct </item>
+		<item> enum </item>
+	</list>
+	<list name="types">
+		<item> bool </item>
+		<item> int </item>
+		<item> uint </item>
+		<item> i8 </item>
+		<item> i16 </item>
+		<item> i32 </item>
+		<item> i64 </item>
+		<item> u8 </item>
+		<item> u16 </item>
+		<item> u32 </item>
+		<item> u64 </item>
+		<item> f32 </item>
+		<item> f64 </item>
+		<item> float </item>
+		<item> char </item>
+		<item> str </item>
+		<item> option </item>
+		<item> either </item>
+	</list>
+	<list name="ctypes">
+		<item> c_float </item>
+		<item> c_double </item>
+		<item> c_void </item>
+		<item> FILE </item>
+		<item> fpos_t </item>
+		<item> DIR </item>
+		<item> dirent </item>
+		<item> c_char </item>
+		<item> c_schar </item>
+		<item> c_uchar </item>
+		<item> c_short </item>
+		<item> c_ushort </item>
+		<item> c_int </item>
+		<item> c_uint </item>
+		<item> c_long </item>
+		<item> c_ulong </item>
+		<item> size_t </item>
+		<item> ptrdiff_t </item>
+		<item> clock_t </item>
+		<item> time_t </item>
+		<item> c_longlong </item>
+		<item> c_ulonglong </item>
+		<item> intptr_t </item>
+		<item> uintptr_t </item>
+		<item> off_t </item>
+		<item> dev_t </item>
+		<item> ino_t </item>
+		<item> pid_t </item>
+		<item> mode_t </item>
+		<item> ssize_t </item>
+	</list>
+	<list name="self">
+		<item> self </item>
+	</list>
+	<list name="constants">
+		<item> true </item>
+		<item> false </item>
+		<item> some </item>
+		<item> none </item>
+		<item> left </item>
+		<item> right </item>
+		<item> ok </item>
+		<item> err </item>
+		<item> success </item>
+		<item> failure </item>
+		<item> cons </item>
+		<item> nil </item>
+	</list>
+	<list name="cconstants">
+		<item> EXIT_FAILURE </item>
+		<item> EXIT_SUCCESS </item>
+		<item> RAND_MAX </item>
+		<item> EOF </item>
+		<item> SEEK_SET </item>
+		<item> SEEK_CUR </item>
+		<item> SEEK_END </item>
+		<item> _IOFBF </item>
+		<item> _IONBF </item>
+		<item> _IOLBF </item>
+		<item> BUFSIZ </item>
+		<item> FOPEN_MAX </item>
+		<item> FILENAME_MAX </item>
+		<item> L_tmpnam </item>
+		<item> TMP_MAX </item>
+		<item> O_RDONLY </item>
+		<item> O_WRONLY </item>
+		<item> O_RDWR </item>
+		<item> O_APPEND </item>
+		<item> O_CREAT </item>
+		<item> O_EXCL </item>
+		<item> O_TRUNC </item>
+		<item> S_IFIFO </item>
+		<item> S_IFCHR </item>
+		<item> S_IFBLK </item>
+		<item> S_IFDIR </item>
+		<item> S_IFREG </item>
+		<item> S_IFMT </item>
+		<item> S_IEXEC </item>
+		<item> S_IWRITE </item>
+		<item> S_IREAD </item>
+		<item> S_IRWXU </item>
+		<item> S_IXUSR </item>
+		<item> S_IWUSR </item>
+		<item> S_IRUSR </item>
+		<item> F_OK </item>
+		<item> R_OK </item>
+		<item> W_OK </item>
+		<item> X_OK </item>
+		<item> STDIN_FILENO </item>
+		<item> STDOUT_FILENO </item>
+		<item> STDERR_FILENO </item>
+	</list>
+	<contexts>
+		<context attribute="Normal Text" lineEndContext="#stay" name="Normal">
+			<DetectSpaces/>
+			<keyword String="fn" attribute="Keyword" context="Function"/>
+			<keyword String="type" attribute="Keyword" context="Type"/>
+			<keyword String="keywords" attribute="Keyword" context="#stay"/>
+			<keyword String="types" attribute="Type" context="#stay"/>
+			<keyword String="ctypes" attribute="CType" context="#stay"/>
+			<keyword String="self" attribute="Self" context="#stay"/>
+			<keyword String="constants" attribute="Constant" context="#stay"/>
+			<keyword String="cconstants" attribute="CConstant" context="#stay"/>
+			<Detect2Chars char="/" char1="/" attribute="Comment" context="Commentar 1"/>
+			<Detect2Chars char="/" char1="*" attribute="Comment" context="Commentar 2" beginRegion="Comment"/>
+			<RegExpr String="0x[0-9a-fA-F_]+(u8|u16|u32|u64|i8|i16|i32|i64|u|i)?" attribute="Number" context="#stay"/>
+			<RegExpr String="0b[0-1_]+(u8|u16|u32|u64|i8|i16|i32|i64|u|i)?" attribute="Number" context="#stay"/>
+			<RegExpr String="[0-9][0-9_]*\.[0-9_]*([eE][+-]?[0-9_]+)?(f32|f64|f)?" attribute="Number" context="#stay"/>
+			<RegExpr String="[0-9][0-9_]*(u8|u16|u32|u64|i8|i16|i32|i64|u|i)?" attribute="Number" context="#stay"/>
+			<RegExpr String="[a-zA-Z_][a-zA-Z0-9_]*::" attribute="Scope"/>
+			<DetectChar char="{" attribute="Symbol" context="#stay" beginRegion="Brace" />
+			<DetectChar char="}" attribute="Symbol" context="#stay" endRegion="Brace" />
+			<DetectChar char="&quot;" attribute="String" context="String"/>
+			<DetectChar char="&apos;" attribute="Character" context="Character"/>
+			<DetectIdentifier/>
+		</context>
+		<context attribute="Definition" lineEndContext="#stay" name="Function">
+			<DetectSpaces/>
+			<DetectChar char="(" attribute="Normal Text" context="#pop"/>
+			<DetectChar char="&lt;" attribute="Normal Text" context="#pop"/>
+		</context>
+		<context attribute="Definition" lineEndContext="#stay" name="Type">
+			<DetectSpaces/>
+			<DetectChar char="=" attribute="Normal Text" context="#pop"/>
+			<DetectChar char="&lt;" attribute="Normal Text" context="#pop"/>
+		</context>
+		<context attribute="String" lineEndContext="#stay" name="String">
+			<LineContinue attribute="String" context="#stay"/>
+			<HlCStringChar attribute="String Char" context="#stay"/>
+			<DetectChar attribute="String" context="#pop" char="&quot;"/>
+		</context>
+		<context attribute="Character" lineEndContext="#pop" name="Character">
+			<HlCStringChar attribute="Character" context="#stay"/>
+			<DetectChar attribute="Character" context="#pop" char="&apos;"/>
+		</context>
+		<context attribute="Comment" lineEndContext="#pop" name="Commentar 1"/>
+		<context attribute="Comment" lineEndContext="#stay" name="Commentar 2">
+			<DetectSpaces/>
+			<Detect2Chars char="*" char1="/" attribute="Comment" context="#pop" endRegion="Comment"/>
+		</context>
+	</contexts>
+    <itemDatas>
+		<itemData name="Normal Text"  defStyleNum="dsNormal"/>
+		<itemData name="Keyword"      defStyleNum="dsKeyword" color="#770088" bold="1"/>
+		<itemData name="Self"         defStyleNum="dsKeyword" color="#FF0000" bold="1"/>
+		<itemData name="Type"         defStyleNum="dsKeyword" color="#4e9a06" bold="1"/>
+		<itemData name="CType"        defStyleNum="dsNormal" color="#4e9a06"/>
+		<itemData name="Constant"     defStyleNum="dsKeyword" color="#116644"/>
+		<itemData name="CConstant"    defStyleNum="dsNormal" color="#116644"/>
+		<itemData name="Definition"   defStyleNum="dsNormal" color="#0000FF"/>
+		<itemData name="Comment"      defStyleNum="dsComment" color="#AA5500"/>
+		<itemData name="Scope"        defStyleNum="dsNormal" color="#0055AA"/>
+		<itemData name="Number"       defStyleNum="dsDecVal" color="#116644"/>
+		<itemData name="String"       defStyleNum="dsString" color="#FF0000"/>
+		<itemData name="String Char"  defStyleNum="dsChar" color="#FF0000"/>
+		<itemData name="Character"    defStyleNum="dsChar" color="#FF0000"/>
+	</itemDatas>
+</highlighting>
+<general>
+	<comments>
+		<comment name="singleLine" start="//" />
+		<comment name="multiLine" start="/*" end="*/" region="Comment"/>
+	</comments>
+	<keywords casesensitive="1" />
+</general>
+</language>
