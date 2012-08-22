@@ -84,7 +84,7 @@ mod write {
         if opts.save_temps {
             match opts.output_type {
               output_type_bitcode => {
-                if opts.optimize != 0u {
+                if opts.optimize != session::No {
                     let filename = mk_intermediate_name(output, ~"no-opt.bc");
                     str::as_c_str(filename, |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
@@ -107,7 +107,7 @@ mod write {
         // Also: Should we expose and use the pass lists used by the opt
         // tool?
 
-        if opts.optimize != 0u {
+        if opts.optimize != session::No {
             let fpm = mk_pass_manager();
             llvm::LLVMAddTargetData(td.lltd, fpm.llpm);
 
@@ -118,8 +118,8 @@ mod write {
             llvm::LLVMPassManagerBuilderDispose(FPMB);
 
             llvm::LLVMRunPassManager(fpm.llpm, llmod);
-            let mut threshold = 225u;
-            if opts.optimize == 3u { threshold = 275u; }
+            let mut threshold = 225;
+            if opts.optimize == session::Aggressive { threshold = 275; }
 
             let MPMB = llvm::LLVMPassManagerBuilderCreate();
             llvm::LLVMPassManagerBuilderSetOptLevel(MPMB,
@@ -146,11 +146,11 @@ mod write {
             let LLVMOptDefault    = 2 as c_int; // -O2, -Os
             let LLVMOptAggressive = 3 as c_int; // -O3
 
-            let mut CodeGenOptLevel = match check opts.optimize {
-              0u => LLVMOptNone,
-              1u => LLVMOptLess,
-              2u => LLVMOptDefault,
-              3u => LLVMOptAggressive
+            let mut CodeGenOptLevel = match opts.optimize {
+              session::No => LLVMOptNone,
+              session::Less => LLVMOptLess,
+              session::Default => LLVMOptDefault,
+              session::Aggressive => LLVMOptAggressive
             };
 
             let mut FileType;

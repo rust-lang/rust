@@ -55,23 +55,6 @@ enum lint {
     non_camel_case_types
 }
 
-// This is pretty unfortunate. We really want some sort of "deriving Enum"
-// type of thing.
-fn int_to_lint(i: int) -> lint {
-    match check i {
-      0 => ctypes,
-      1 => unused_imports,
-      2 => while_true,
-      3 => path_statement,
-      4 => implicit_copies,
-      5 => unrecognized_lint,
-      6 => non_implicitly_copyable_typarams,
-      7 => vecs_implicitly_copyable,
-      8 => deprecated_mode,
-      9 => non_camel_case_types
-    }
-}
-
 fn level_to_str(lv: level) -> ~str {
     match lv {
       allow => ~"allow",
@@ -537,7 +520,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
     }
 
     let fn_ty = ty::node_id_to_type(tcx, id);
-    match check ty::get(fn_ty).struct {
+    match ty::get(fn_ty).struct {
       ty::ty_fn(fn_ty) => {
         let mut counter = 0;
         do vec::iter2(fn_ty.inputs, decl.inputs) |arg_ty, arg_ast| {
@@ -572,6 +555,8 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
             }
         }
       }
+      _ => tcx.sess.impossible_case(span, ~"check_fn: function has \
+             non-fn type")
     }
 }
 

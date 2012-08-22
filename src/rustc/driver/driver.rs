@@ -1,6 +1,6 @@
 // -*- rust -*-
 import metadata::{creader, cstore, filesearch};
-import session::{session, session_};
+import session::{session, session_, OptLevel, No, Less, Default, Aggressive};
 import syntax::parse;
 import syntax::{ast, codemap};
 import syntax::attr;
@@ -488,24 +488,24 @@ fn build_session_options(matches: getopts::matches,
       link::output_type_llvm_assembly | link::output_type_assembly => (),
       _ => debugging_opts |= session::no_asm_comments
     }
-    let opt_level: uint =
+    let opt_level =
         if opt_present(matches, ~"O") {
             if opt_present(matches, ~"opt-level") {
                 early_error(demitter, ~"-O and --opt-level both provided");
             }
-            2u
+            Default
         } else if opt_present(matches, ~"opt-level") {
             match getopts::opt_str(matches, ~"opt-level") {
-              ~"0" => 0u,
-              ~"1" => 1u,
-              ~"2" => 2u,
-              ~"3" => 3u,
+              ~"0" => No,
+              ~"1" => Less,
+              ~"2" => Default,
+              ~"3" => Aggressive,
               _ => {
                 early_error(demitter, ~"optimization level needs " +
                             ~"to be between 0-3")
               }
             }
-        } else { 0u };
+        } else { No };
     let target =
         match target_opt {
             none => host_triple(),

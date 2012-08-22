@@ -246,7 +246,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         let ety = ty::expr_ty(cx.tcx, e), llty = type_of::type_of(cx, ety);
         let basety = ty::expr_ty(cx.tcx, base);
         let v = const_expr(cx, base);
-        match check (base::cast_type_kind(basety),
+        match (base::cast_type_kind(basety),
                      base::cast_type_kind(ety)) {
 
           (base::cast_integral, base::cast_integral) => {
@@ -264,6 +264,8 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
             if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
             else { llvm::LLVMConstFPToUI(v, llty) }
           }
+          _ => cx.sess.impossible_case(e.span,
+                                       ~"bad combination of types for cast")
         }
       }
       ast::expr_addr_of(ast::m_imm, sub) => {

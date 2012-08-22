@@ -180,7 +180,7 @@ fn create_compile_unit(cx: @crate_ctxt)
                          llstr(work_dir),
                          llstr(env!{"CFG_VERSION"}),
                          lli1(true), // deprecated: main compile unit
-                         lli1(cx.sess.opts.optimize != 0u),
+                         lli1(cx.sess.opts.optimize != session::No),
                          llstr(~""), // flags (???)
                          lli32(0) // runtime version (???)
                         ];
@@ -281,7 +281,7 @@ fn size_and_align_of(cx: @crate_ctxt, t: ty::t) -> (int, int) {
      shape::llalign_of_pref(cx, llty) as int)
 }
 
-fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
+fn create_basic_type(cx: @crate_ctxt, t: ty::t, span: span)
     -> @metadata<tydesc_md> {
     let cache = get_cache(cx);
     let tg = BasicTypeDescriptorTag;
@@ -291,29 +291,7 @@ fn create_basic_type(cx: @crate_ctxt, t: ty::t, ty: ast::prim_ty, span: span)
       option::none => ()
     }
 
-    let (name, encoding) = match check ty {
-      ast::ty_bool => (~"bool", DW_ATE_boolean),
-      ast::ty_int(m) => match m {
-        ast::ty_char => (~"char", DW_ATE_unsigned),
-        ast::ty_i => (~"int", DW_ATE_signed),
-        ast::ty_i8 => (~"i8", DW_ATE_signed_char),
-        ast::ty_i16 => (~"i16", DW_ATE_signed),
-        ast::ty_i32 => (~"i32", DW_ATE_signed),
-        ast::ty_i64 => (~"i64", DW_ATE_signed)
-      },
-      ast::ty_uint(m) => match m {
-        ast::ty_u => (~"uint", DW_ATE_unsigned),
-        ast::ty_u8 => (~"u8", DW_ATE_unsigned_char),
-        ast::ty_u16 => (~"u16", DW_ATE_unsigned),
-        ast::ty_u32 => (~"u32", DW_ATE_unsigned),
-        ast::ty_u64 => (~"u64", DW_ATE_unsigned)
-      },
-      ast::ty_float(m) => match m {
-        ast::ty_f => (~"float", DW_ATE_float),
-        ast::ty_f32 => (~"f32", DW_ATE_float),
-        ast::ty_f64 => (~"f64", DW_ATE_float)
-      }
-    };
+    let (name, encoding) = (~"uint", DW_ATE_unsigned);
 
     let fname = filename_from_span(cx, span);
     let file_node = create_file(cx, fname);
@@ -443,8 +421,7 @@ fn create_boxed_type(cx: @crate_ctxt, outer: ty::t, _inner: ty::t,
     let file_node = create_file(cx, fname);
     //let cu_node = create_compile_unit_metadata(cx, fname);
     let uint_t = ty::mk_uint(cx.tcx);
-    let refcount_type = create_basic_type(cx, uint_t,
-                                          ast::ty_uint(ast::ty_u), span);
+    let refcount_type = create_basic_type(cx, uint_t, span);
     let scx = create_structure(file_node, ty_to_str(cx.tcx, outer), 0);
     add_member(scx, ~"refcnt", 0, sys::size_of::<uint>() as int,
                sys::min_align_of::<uint>() as int, refcount_type.node);
@@ -495,8 +472,7 @@ fn create_vec(cx: @crate_ctxt, vec_t: ty::t, elem_t: ty::t,
     let file_node = create_file(cx, fname);
     let elem_ty_md = create_ty(cx, elem_t, elem_ty);
     let scx = create_structure(file_node, ty_to_str(cx.tcx, vec_t), 0);
-    let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx),
-                                        ast::ty_uint(ast::ty_u), vec_ty_span);
+    let size_t_type = create_basic_type(cx, ty::mk_uint(cx.tcx), vec_ty_span);
     add_member(scx, ~"fill", 0, sys::size_of::<libc::size_t>() as int,
                sys::min_align_of::<libc::size_t>() as int, size_t_type.node);
     add_member(scx, ~"alloc", 0, sys::size_of::<libc::size_t>() as int,
@@ -814,7 +790,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
                        lli32(0i), //index into virt func
                        /*llnull()*/ lli32(0), // base type with vtbl
                        lli32(256), // flags
-                       lli1(cx.sess.opts.optimize != 0u),
+                       lli1(cx.sess.opts.optimize != session::No),
                        fcx.llfn
                        //list of template params
                        //func decl descriptor
