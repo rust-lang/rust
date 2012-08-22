@@ -4069,6 +4069,47 @@ struct Resolver {
         }
     }
 
+    fn name_exists_in_scope_class(name: &str) -> bool {
+        let mut i = self.type_ribs.len();
+        while i != 0 {
+          i -= 1;
+          let rib = self.type_ribs.get_elt(i);
+          match rib.kind {
+            MethodRibKind(node_id, _) =>
+              for vec::each(self.crate.node.module.items) |item| {
+                if item.id == node_id {
+                  match item.node {
+                    item_class(class_def, _) => {
+                      for vec::each(class_def.fields) |field| {
+                        match field.node.kind {
+                          syntax::ast::unnamed_field
+                            => {},
+                          syntax::ast::named_field(ident, _, _)
+                            => {
+                              if str::eq_slice(self.session.str_of(ident),
+                                               name) {
+                                return true
+                              }
+                            }
+                        }
+                      }
+                      for vec::each(class_def.methods) |method| {
+                        if str::eq_slice(self.session.str_of(method.ident),
+                                         name) {
+                          return true
+                        }
+                      }
+                    }
+                    _ => {}
+                  }
+                }
+            },
+          _ => {}
+        }
+      }
+      return false;
+    }
+
     fn resolve_expr(expr: @expr, visitor: ResolveVisitor) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
@@ -4093,12 +4134,21 @@ struct Resolver {
                         self.record_def(expr.id, def);
                     }
                     none => {
-                        self.session.span_err(
-                            expr.span,
-                            fmt!("unresolved name: %s",
-                                 connect(path.idents.map(
-                                     |x| self.session.str_of(x)),
-                                         ~"::")));
+                        let wrong_name =
+                            connect(path.idents.map(
+                                |x| self.session.str_of(x)), ~"::") ;
+                        if self.name_exists_in_scope_class(wrong_name) {
+                            self.session.span_err(expr.span,
+                                        fmt!("unresolved name: %s. \
+                                            Did you mean: self.%s",
+                                        wrong_name,
+                                        wrong_name));
+                        }
+                        else {
+                            self.session.span_err(expr.span,
+                                                fmt!("unresolved name: %s",
+                                                wrong_name));
+                        }
                     }
                 }
 
