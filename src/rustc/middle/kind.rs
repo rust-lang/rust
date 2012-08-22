@@ -191,7 +191,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             // if this is the last use of the variable, then it will be
             // a move and not a copy
             let is_move = {
-                match check cx.last_use_map.find(fn_id) {
+                match cx.last_use_map.find(fn_id) {
                   some(vars) => (*vars).contains(id),
                   none => false
                 }
@@ -218,7 +218,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
 
     // Handle any kind bounds on type parameters
     do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {
-        let bounds = match check e.node {
+        let bounds = match e.node {
           expr_path(_) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
             ty::lookup_item_type(cx.tcx, did).bounds

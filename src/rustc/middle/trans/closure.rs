@@ -272,7 +272,7 @@ fn build_closure(bcx0: block,
             vec::push(env_vals, env_ref(lv.val, ty, lv.kind));
           }
           capture::cap_copy => {
-            let mv = match check ccx.maps.last_use_map.find(id) {
+            let mv = match ccx.maps.last_use_map.find(id) {
               none => false,
               some(vars) => (*vars).contains(nid)
             };

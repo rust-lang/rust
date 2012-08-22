@@ -68,19 +68,15 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           // If the fuzzer moves a block-ending-in-semicolon into callee
           // position, the pretty-printer can't preserve this even by
           // parenthesizing!!  See email to marijn.
-          ast::expr_if(_, _, _) => { false }
-          ast::expr_block(_) => { false }
-          ast::expr_match(_, _, _) => { false }
-          ast::expr_while(_, _) => { false }
+          ast::expr_if(*) | ast::expr_block(*)
+          | ast::expr_match(*) | ast::expr_while(*)  => { false }
 
           // https://github.com/mozilla/rust/issues/929
-          ast::expr_cast(_, _) => { false }
-          ast::expr_assert(_) => { false }
-          ast::expr_binary(_, _, _) => { false }
-          ast::expr_assign(_, _) => { false }
-          ast::expr_assign_op(_, _, _) => { false }
+          ast::expr_cast(*) | ast::expr_assert(*) |
+          ast::expr_binary(*) | ast::expr_assign(*) |
+          ast::expr_assign_op(*) => { false }
 
-          ast::expr_fail(option::none) => { false }
+          ast::expr_fail(option::none) |
           ast::expr_ret(option::none) => { false }
 
           // https://github.com/mozilla/rust/issues/953

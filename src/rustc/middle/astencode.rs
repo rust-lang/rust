@@ -509,8 +509,8 @@ impl ebml::ebml_deserializer: vtable_deserialization_helpers {
         -> typeck::vtable_origin {
         do self.read_enum(~"vtable_origin") {
             do self.read_enum_variant |i| {
-                match check i {
-                  0u => {
+                match i {
+                  0 => {
                     typeck::vtable_static(
                         do self.read_enum_variant_arg(0u) {
                             self.read_def_id(xcx)
@@ -523,7 +523,7 @@ impl ebml::ebml_deserializer: vtable_deserialization_helpers {
                         }
                     )
                   }
-                  1u => {
+                  1 => {
                     typeck::vtable_param(
                         do self.read_enum_variant_arg(0u) {
                             self.read_uint()
@@ -533,7 +533,7 @@ impl ebml::ebml_deserializer: vtable_deserialization_helpers {
                         }
                     )
                   }
-                  2u => {
+                  2 => {
                     typeck::vtable_trait(
                         do self.read_enum_variant_arg(0u) {
                             self.read_def_id(xcx)
@@ -543,6 +543,8 @@ impl ebml::ebml_deserializer: vtable_deserialization_helpers {
                         }
                     )
                   }
+                  // hard to avoid - user input
+                  _ => fail ~"bad enum variant"
                 }
             }
         }

@@ -70,12 +70,19 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ]
 }
 
+enum OptLevel {
+    No, // -O0
+    Less, // -O1
+    Default, // -O2
+    Aggressive // -O3
+}
+
 type options =
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
     {crate_type: crate_type,
      static: bool,
-     optimize: uint,
+     optimize: OptLevel,
      debuginfo: bool,
      extra_debuginfo: bool,
      lint_opts: ~[(lint::lint, lint::level)],
@@ -179,6 +186,11 @@ impl session {
     fn debugging_opt(opt: uint) -> bool {
         (self.opts.debugging_opts & opt) != 0u
     }
+    // This exists to help with refactoring to eliminate impossible
+    // cases later on
+    fn impossible_case(sp: span, msg: ~str) -> ! {
+        self.span_bug(sp, #fmt("Impossible case reached: %s", msg));
+    }
     fn ppregions() -> bool { self.debugging_opt(ppregions) }
     fn time_passes() -> bool { self.debugging_opt(time_passes) }
     fn count_llvm_insns() -> bool { self.debugging_opt(count_llvm_insns) }
@@ -199,7 +211,7 @@ fn basic_options() -> @options {
     @{
         crate_type: session::lib_crate,
         static: false,
-        optimize: 0u,
+        optimize: No,
         debuginfo: false,
         extra_debuginfo: false,
         lint_opts: ~[],

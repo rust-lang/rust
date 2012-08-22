@@ -6,8 +6,8 @@ import ast_util::operator_prec;
 
 fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     match e.node {
-      ast::expr_if(_, _, _) | ast::expr_match(_, _, _) | ast::expr_block(_)
-      | ast::expr_while(_, _) | ast::expr_loop(_, _)
+      ast::expr_if(*) | ast::expr_match(*) | ast::expr_block(_)
+      | ast::expr_while(*) | ast::expr_loop(*)
       | ast::expr_call(_, _, true) => false,
       _ => true
     }
