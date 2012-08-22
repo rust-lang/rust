@@ -28,8 +28,9 @@ mod linear {
             buckets: ~[option<Bucket<K,V>>]})
     }
 
-    // FIXME(#2979) -- with #2979 we could rewrite found_entry
+    // FIXME(#3148) -- we could rewrite found_entry
     // to have type option<&bucket<K,V>> which would be nifty
+    // However, that won't work until #3148 is fixed
     enum SearchResult {
         FoundEntry(uint), FoundHole(uint), TableFull
     }
