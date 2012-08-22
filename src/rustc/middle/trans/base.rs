@@ -2246,10 +2246,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       ast_map::node_method(mth, impl_def_id, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(mth.attrs, d);
-        let selfty = ty::node_id_to_type(ccx.tcx, mth.self_id);
-        let selfty = ty::subst_tps(ccx.tcx, substs, selfty);
-        trans_fn(ccx, pt, mth.decl, mth.body, d,
-                 impl_self(selfty), psubsts, fn_id.node);
+        impl::trans_method(ccx, pt, mth, psubsts, d);
         d
       }
       ast_map::node_ctor(nm, tps, ctor, parent_id, _) => {
@@ -5321,13 +5318,13 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
               }
               ast::provided(m) => {
                 exprt = true;
-                trans_method(ccx, id, pth, m)
+                register_method(ccx, id, pth, m)
               }
             }
           }
           ast_map::node_method(m, _, pth) => {
             exprt = true;
-            trans_method(ccx, id, pth, m)
+            register_method(ccx, id, pth, m)
           }
           ast_map::node_foreign_item(ni, _, pth) => {
             exprt = true;
@@ -5397,7 +5394,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
     }
 }
 
-fn trans_method(ccx: @crate_ctxt, id: ast::node_id, pth: @ast_map::path,
+fn register_method(ccx: @crate_ctxt, id: ast::node_id, pth: @ast_map::path,
                 m: @ast::method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
     let pth = vec::append(*pth, ~[path_name(@ccx.names(~"meth")),
