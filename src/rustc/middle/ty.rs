@@ -1106,7 +1106,7 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
 }
 
 // Substitute *only* type parameters.  Used in trans where regions are erased.
-fn subst_tps(cx: ctxt, tps: ~[t], typ: t) -> t {
+fn subst_tps(cx: ctxt, tps: &[t], typ: t) -> t {
     if tps.len() == 0u { return typ; }
     let tb = ty::get(typ);
     if !tbox_has_flag(tb, has_params) { return typ; }

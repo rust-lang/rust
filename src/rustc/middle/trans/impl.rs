@@ -18,39 +18,80 @@ import util::ppaux::{ty_to_str, tys_to_str};
 
 import syntax::print::pprust::expr_to_str;
 
+/**
+The main "translation" pass for methods.  Generates code
+for non-monomorphized methods only.  Other methods will
+be generated once they are invoked with specific type parameters,
+see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
+*/
 fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
               methods: ~[@ast::method], tps: ~[ast::ty_param]) {
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { return; }
     let sub_path = vec::append_one(path, path_name(name));
-    for vec::each(methods) |m| {
-        if m.tps.len() == 0u {
-            let llfn = get_item_val(ccx, m.id);
-            let self_ty = ty::node_id_to_type(ccx.tcx, m.self_id);
-            let self_arg = match m.self_ty.node {
-              ast::sty_static => { no_self }
-              ast::sty_box(_) => {
-                impl_self(ty::mk_imm_box(ccx.tcx, self_ty))
-              }
-              ast::sty_uniq(_) => {
-                impl_self(ty::mk_imm_uniq(ccx.tcx, self_ty))
-              }
-              ast::sty_region(*) => {
-                impl_self(ty::mk_imm_ptr(ccx.tcx, self_ty))
-              }
-              ast::sty_value => {
-                impl_owned_self(self_ty)
-              }
-              ast::sty_by_ref => { impl_self(self_ty) }
-            };
-
-            trans_fn(ccx,
-                     vec::append_one(sub_path, path_name(m.ident)),
-                     m.decl, m.body,
-                     llfn, self_arg,
-                     none, m.id);
+    for vec::each(methods) |method| {
+        if method.tps.len() == 0u {
+            let llfn = get_item_val(ccx, method.id);
+            let path = vec::append_one(sub_path, path_name(method.ident));
+            trans_method(ccx, path, method, none, llfn);
         }
     }
+}
+
+/**
+Translates a (possibly monomorphized) method body.
+
+# Parameters
+
+- `path`: the path to the method
+- `method`: the AST node for the method
+- `param_substs`: if this is a generic method, the current values for
+  type parameters and so forth, else none
+- `llfn`: the LLVM ValueRef for the method
+*/
+fn trans_method(ccx: @crate_ctxt,
+                path: path,
+                method: &ast::method,
+                param_substs: option<param_substs>,
+                llfn: ValueRef) {
+    // determine the (monomorphized) type that `self` maps to for this method
+    let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
+    let self_ty = match param_substs {
+      none => self_ty,
+      some({tys: ref tys, _}) => ty::subst_tps(ccx.tcx, *tys, self_ty)
+    };
+
+    // apply any transformations from the explicit self declaration
+    let self_arg = match method.self_ty.node {
+      ast::sty_static => {
+        no_self
+      }
+      ast::sty_box(_) => {
+        impl_self(ty::mk_imm_box(ccx.tcx, self_ty))
+      }
+      ast::sty_uniq(_) => {
+        impl_self(ty::mk_imm_uniq(ccx.tcx, self_ty))
+      }
+      ast::sty_region(*) => {
+        impl_self(ty::mk_imm_ptr(ccx.tcx, self_ty))
+      }
+      ast::sty_value => {
+        impl_owned_self(self_ty)
+      }
+      ast::sty_by_ref => {
+        impl_self(self_ty)
+      }
+    };
+
+    // generate the actual code
+    trans_fn(ccx,
+             path,
+             method.decl,
+             method.body,
+             llfn,
+             self_arg,
+             param_substs,
+             method.id);
 }
 
 fn trans_self_arg(bcx: block, base: @ast::expr,
