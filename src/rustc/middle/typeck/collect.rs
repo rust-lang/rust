@@ -381,12 +381,10 @@ type converted_method = {mty: ty::method, id: ast::node_id, span: span};
 fn convert_methods(ccx: @crate_ctxt,
                    ms: ~[@ast::method],
                    rp: bool,
-                   rcvr_bounds: @~[ty::param_bounds],
-                   self_ty: ty::t) -> ~[converted_method] {
+                   rcvr_bounds: @~[ty::param_bounds]) -> ~[converted_method] {
 
     let tcx = ccx.tcx;
     do vec::map(ms) |m| {
-        write_ty_to_tcx(tcx, m.self_id, self_ty);
         let bounds = ty_param_bounds(ccx, m.tps);
         let mty = ty_of_method(ccx, m, rp);
         let fty = ty::mk_fn(tcx, mty.fty);
@@ -423,7 +421,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
                            rp: rp,
                            ty: selfty});
 
-        let cms = convert_methods(ccx, ms, rp, i_bounds, selfty);
+        let cms = convert_methods(ccx, ms, rp, i_bounds);
         for trait_ref.each |t| {
             check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
         }
@@ -436,9 +434,8 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         ensure_trait_methods(ccx, it.id, tpt.ty);
 
         let (_, provided_methods) = split_trait_methods(trait_methods);
-        let selfty = ty::mk_self(tcx);
         let {bounds, _} = mk_substs(ccx, tps, rp);
-        let _cms = convert_methods(ccx, provided_methods, rp, bounds, selfty);
+        let _cms = convert_methods(ccx, provided_methods, rp, bounds);
         // FIXME (#2616): something like this, when we start having
         // trait inheritance?
         // for trait_ref.each |t| {
@@ -510,7 +507,7 @@ fn convert_struct(ccx: @crate_ctxt, rp: bool, struct_def: @ast::struct_def,
     }
     let {bounds, substs} = mk_substs(ccx, tps, rp);
     let selfty = ty::mk_class(tcx, local_def(id), substs);
-    let cms = convert_methods(ccx, struct_def.methods, rp, bounds, selfty);
+    let cms = convert_methods(ccx, struct_def.methods, rp, bounds);
     for struct_def.traits.each |trait_ref| {
         check_methods_against_trait(ccx, tps, rp, selfty, trait_ref, cms);
         // trait_ref.impl_id represents (class, trait) pair

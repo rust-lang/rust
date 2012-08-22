@@ -54,32 +54,28 @@ fn trans_method(ccx: @crate_ctxt,
                 method: &ast::method,
                 param_substs: option<param_substs>,
                 llfn: ValueRef) {
-    // determine the (monomorphized) type that `self` maps to for this method
-    let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
-    let self_ty = match param_substs {
-      none => self_ty,
-      some({tys: ref tys, _}) => ty::subst_tps(ccx.tcx, *tys, self_ty)
-    };
 
-    // apply any transformations from the explicit self declaration
+    // figure out how self is being passed
     let self_arg = match method.self_ty.node {
       ast::sty_static => {
         no_self
       }
-      ast::sty_box(_) => {
-        impl_self(ty::mk_imm_box(ccx.tcx, self_ty))
-      }
-      ast::sty_uniq(_) => {
-        impl_self(ty::mk_imm_uniq(ccx.tcx, self_ty))
-      }
-      ast::sty_region(*) => {
-        impl_self(ty::mk_imm_ptr(ccx.tcx, self_ty))
-      }
-      ast::sty_value => {
-        impl_owned_self(self_ty)
-      }
-      ast::sty_by_ref => {
-        impl_self(self_ty)
+      _ => {
+        // determine the (monomorphized) type that `self` maps to for
+        // this method
+        let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
+        let self_ty = match param_substs {
+          none => self_ty,
+          some({tys: ref tys, _}) => ty::subst_tps(ccx.tcx, *tys, self_ty)
+        };
+        match method.self_ty.node {
+          ast::sty_value => {
+            impl_owned_self(self_ty)
+          }
+          _ => {
+            impl_self(self_ty)
+          }
+        }
       }
     };
 

@@ -79,15 +79,16 @@ import std::map::str_hash;
 
 type self_info = {
     self_ty: ty::t,
+    self_id: ast::node_id,
     def_id: ast::def_id,
-    explicit_self: ast::self_ty_
+    explicit_self: ast::self_ty
 };
 
 type fn_ctxt_ =
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
-    {self_info: option<self_info>,
+    {self_impl_def_id: option<ast::def_id>,
      ret_ty: ty::t,
      // Used by loop bodies that return from the outer function
      indirect_ret_ty: option<ty::t>,
@@ -126,7 +127,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
                  region_bnd: ast::node_id) -> @fn_ctxt {
 // It's kind of a kludge to manufacture a fake function context
 // and statement context, but we might as well do write the code only once
-    @fn_ctxt_({self_info: none,
+    @fn_ctxt_({self_impl_def_id: none,
                ret_ty: rty,
                indirect_ret_ty: none,
                purity: ast::pure_fn,
@@ -244,7 +245,7 @@ fn check_fn(ccx: @crate_ctxt,
             }
         } else { none };
 
-        @fn_ctxt_({self_info: self_info,
+        @fn_ctxt_({self_impl_def_id: self_info.map(|info| info.def_id),
                    ret_ty: ret_ty,
                    indirect_ret_ty: indirect_ret_ty,
                    purity: purity,
@@ -257,7 +258,22 @@ fn check_fn(ccx: @crate_ctxt,
                    ccx: ccx})
     };
 
-    gather_locals(fcx, decl, body, arg_tys);
+    // Update the self_info to contain an accurate self type (taking
+    // into account explicit self).
+    let self_info = do self_info.chain |info| {
+        // If the self type is sty_static, we don't have a self ty.
+        if info.explicit_self.node == ast::sty_static {
+            none
+        } else  {
+            let self_region = fcx.in_scope_regions.find(ty::br_self);
+            let ty = method::transform_self_type_for_method(
+                fcx.tcx(), self_region,
+                info.self_ty, info.explicit_self.node);
+            some({self_ty: ty with info})
+        }
+    };
+
+    gather_locals(fcx, decl, body, arg_tys, self_info);
     check_block(fcx, body);
 
     // We unify the tail expr's type with the
@@ -270,10 +286,11 @@ fn check_fn(ccx: @crate_ctxt,
       none => ()
     }
 
-    let mut i = 0u;
-    do vec::iter(arg_tys) |arg| {
-        fcx.write_ty(decl.inputs[i].id, arg);
-        i += 1u;
+    for self_info.each |info| {
+        fcx.write_ty(info.self_id, info.self_ty);
+    }
+    do vec::iter2(decl.inputs, arg_tys) |input, arg| {
+        fcx.write_ty(input.id, arg);
     }
 
     // If we don't have any enclosing function scope, it is time to
@@ -283,13 +300,14 @@ fn check_fn(ccx: @crate_ctxt,
     if option::is_none(old_fcx) {
         vtable::resolve_in_block(fcx, body);
         regionck::regionck_fn(fcx, decl, body);
-        writeback::resolve_type_vars_in_fn(fcx, decl, body);
+        writeback::resolve_type_vars_in_fn(fcx, decl, body, self_info);
     }
 
     fn gather_locals(fcx: @fn_ctxt,
                      decl: ast::fn_decl,
                      body: ast::blk,
-                     arg_tys: ~[ty::t]) {
+                     arg_tys: ~[ty::t],
+                     self_info: option<self_info>) {
         let tcx = fcx.ccx.tcx;
 
         let assign = fn@(span: span, nid: ast::node_id,
@@ -304,6 +322,14 @@ fn check_fn(ccx: @crate_ctxt,
               }
             }
         };
+
+        // Add the self parameter
+        for self_info.each |info| {
+            assign(info.explicit_self.span,
+                   info.self_id, some(info.self_ty));
+            debug!{"self is assigned to %s",
+                   fcx.locals.get(info.self_id).to_str()};
+        }
 
         // Add formal parameters.
         do vec::iter2(arg_tys, decl.inputs) |arg_ty, input| {
@@ -369,8 +395,11 @@ fn check_fn(ccx: @crate_ctxt,
 }
 
 fn check_method(ccx: @crate_ctxt, method: @ast::method,
-                self_info: self_info) {
-
+                self_ty: ty::t, self_impl_def_id: ast::def_id) {
+    let self_info = {self_ty: self_ty,
+                     self_id: method.self_id,
+                     def_id: self_impl_def_id,
+                     explicit_self: method.self_ty };
     check_bare_fn(ccx, method.decl, method.body, method.id, some(self_info));
 }
 
@@ -404,33 +433,31 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 
     do option::iter(struct_def.ctor) |ctor| {
         let class_t = {self_ty: self_ty,
+                       self_id: ctor.node.self_id,
                        def_id: local_def(id),
-                       explicit_self: ast::sty_by_ref};
+                       explicit_self: {node: ast::sty_by_ref,
+                                       span: ast_util::dummy_sp()}};
         // typecheck the ctor
         check_bare_fn(ccx, ctor.node.dec,
                       ctor.node.body, ctor.node.id,
                       some(class_t));
-        // Write the ctor's self's type
-        write_ty_to_tcx(tcx, ctor.node.self_id, class_t.self_ty);
     }
 
     do option::iter(struct_def.dtor) |dtor| {
         let class_t = {self_ty: self_ty,
+                       self_id: dtor.node.self_id,
                        def_id: local_def(id),
-                       explicit_self: ast::sty_by_ref};
+                       explicit_self: {node: ast::sty_by_ref,
+                                       span: ast_util::dummy_sp()}};
         // typecheck the dtor
         check_bare_fn(ccx, ast_util::dtor_dec(),
                       dtor.node.body, dtor.node.id,
                       some(class_t));
-        // Write the dtor's self's type
-        write_ty_to_tcx(tcx, dtor.node.self_id, class_t.self_ty);
     };
 
     // typecheck the methods
     for struct_def.methods.each |m| {
-        check_method(ccx, m, {self_ty: self_ty,
-                              def_id: local_def(id),
-                              explicit_self: m.self_ty.node});
+        check_method(ccx, m, self_ty, local_def(id));
     }
     // Check that there's at least one field
     if struct_def.fields.len() < 1u {
@@ -455,10 +482,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                *it.ident, it.id, rp};
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| {
-            let self_info = {self_ty: self_ty,
-                             def_id: local_def(it.id),
-                             explicit_self: m.self_ty.node };
-            check_method(ccx, m, self_info)
+            check_method(ccx, m, self_ty, local_def(it.id));
         }
       }
       ast::item_trait(_, _, trait_methods) => {
@@ -469,10 +493,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                 // bodies to check.
               }
               provided(m) => {
-                let self_info = {self_ty: ty::mk_self(ccx.tcx),
-                                 def_id: local_def(it.id),
-                                 explicit_self: m.self_ty.node};
-                check_method(ccx, m, self_info);
+                check_method(ccx, m, ty::mk_self(ccx.tcx), local_def(it.id));
               }
             }
         }
@@ -1204,7 +1225,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         fcx.write_ty(expr.id, fty);
 
-        check_fn(fcx.ccx, fcx.self_info, &fn_ty, decl, body,
+        check_fn(fcx.ccx, none, &fn_ty, decl, body,
                  is_loop_body, some(fcx));
     }
 
@@ -2247,28 +2268,11 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
     ty_param_bounds_and_ty {
 
     match defn {
-      ast::def_arg(nid, _) => {
+      ast::def_arg(nid, _) | ast::def_local(nid, _) |
+      ast::def_self(nid) | ast::def_binding(nid, _) => {
         assert (fcx.locals.contains_key(nid));
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         return no_params(typ);
-      }
-      ast::def_local(nid, _) => {
-        assert (fcx.locals.contains_key(nid));
-        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
-        return no_params(typ);
-      }
-      ast::def_self(_) => {
-        match fcx.self_info {
-          some(self_info) => {
-            let self_region = fcx.in_scope_regions.find(ty::br_self);
-            return no_params(method::transform_self_type_for_method(
-                fcx.tcx(), self_region,
-                self_info.self_ty, self_info.explicit_self));
-          }
-          none => {
-              fcx.ccx.tcx.sess.span_bug(sp, ~"def_self with no self_info");
-          }
-        }
       }
       ast::def_fn(id, ast::extern_fn) => {
         // extern functions are just u8 pointers
@@ -2296,19 +2300,14 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
       ast::def_class(id, _) => {
         return ty::lookup_item_type(fcx.ccx.tcx, id);
       }
-      ast::def_binding(nid, _) => {
-        assert (fcx.locals.contains_key(nid));
-        let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
-        return no_params(typ);
-      }
-      ast::def_ty(_) | ast::def_prim_ty(_) => {
-        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type");
-      }
       ast::def_upvar(_, inner, _, _) => {
         return ty_param_bounds_and_ty_for_def(fcx, sp, *inner);
       }
       ast::def_ty_param(did, n) => {
         return no_params(ty::mk_param(fcx.ccx.tcx, n, did));
+      }
+      ast::def_ty(_) | ast::def_prim_ty(_) => {
+        fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found type");
       }
       ast::def_mod(*) | ast::def_foreign_mod(*) => {
         fcx.ccx.tcx.sess.span_fatal(sp, ~"expected value but found module");
