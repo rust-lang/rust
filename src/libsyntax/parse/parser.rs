@@ -947,7 +947,7 @@ struct parser {
             let lvl = self.parse_expr();
             self.expect(token::COMMA);
             let e = self.parse_expr();
-            ex = expr_log(2, lvl, e);
+            ex = expr_log(ast::other, lvl, e);
             hi = self.span.hi;
             self.expect(token::RPAREN);
         } else if self.eat_keyword(~"assert") {

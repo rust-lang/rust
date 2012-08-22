@@ -1309,10 +1309,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         }
       }
       ast::expr_log(lvl, lexp, expr) => {
-        match check lvl {
-          1 => { word_nbsp(s, ~"log"); print_expr(s, expr); }
-          0 => { word_nbsp(s, ~"log_err"); print_expr(s, expr); }
-          2 => {
+        match lvl {
+          ast::debug => { word_nbsp(s, ~"log"); print_expr(s, expr); }
+          ast::error => { word_nbsp(s, ~"log_err"); print_expr(s, expr); }
+          ast::other => {
             word_nbsp(s, ~"log");
             popen(s);
             print_expr(s, lexp);
