@@ -705,12 +705,13 @@ impl @fn_ctxt {
     }
 
     fn region_var_if_parameterized(rp: option<ty::region_variance>,
-                                   span: span)
-        -> option<ty::region> {
-        match rp {
-          some(_) => some(self.infcx.next_region_var_nb(span)),
-          none => none
-        }
+                                   span: span,
+                                   lower_bound: ty::region)
+        -> option<ty::region>
+    {
+        rp.map(
+            |_rp| self.infcx.next_region_var_with_lb(span,
+                                                     lower_bound))
     }
 }
 
@@ -1877,7 +1878,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Generate the struct type.
         let self_region =
             fcx.region_var_if_parameterized(region_parameterized,
-                                            expr.span);
+                                            expr.span,
+                                            ty::re_scope(expr.id));
         let type_parameters = fcx.infcx.next_ty_vars(type_parameter_count);
         let substitutions = {
             self_r: self_region,
@@ -2373,7 +2375,7 @@ fn instantiate_path(fcx: @fn_ctxt,
       }
       none => {
         fcx.region_var_if_parameterized(
-            tpt.region_param, span)
+            tpt.region_param, span, region_lb)
       }
     };
 

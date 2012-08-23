@@ -66,13 +66,13 @@
  * At each live node `N`, we track three pieces of information for each
  * variable `V` (these are encapsulated in the `users` struct):
  *
- * - `reader`: the `live_node` ID of some node which will read the value
+ * - `reader`: the `LiveNode` ID of some node which will read the value
  *    that `V` holds on entry to `N`.  Formally: a node `M` such
  *    that there exists a path `P` from `N` to `M` where `P` does not
  *    write `V`.  If the `reader` is `invalid_node()`, then the current
  *    value will never be read (the variable is dead, essentially).
  *
- * - `writer`: the `live_node` ID of some node which will write the
+ * - `writer`: the `LiveNode` ID of some node which will write the
  *    variable `V` and which is reachable from `N`.  Formally: a node `M`
  *    such that there exists a path `P` from `N` to `M` and `M` writes
  *    `V`.  If the `writer` is `invalid_node()`, then there is no writer
@@ -124,14 +124,14 @@ export last_use_map;
 // if it detects an outstanding loan (that is, the addr is taken).
 type last_use_map = hashmap<node_id, @DVec<node_id>>;
 
-enum variable = uint;
-enum live_node = uint;
+enum Variable = uint;
+enum LiveNode = uint;
 
-enum live_node_kind {
-    lnk_freevar(span),
-    lnk_expr(span),
-    lnk_vdef(span),
-    lnk_exit
+enum LiveNodeKind {
+    FreeVarNode(span),
+    ExprNode(span),
+    VarDefNode(span),
+    ExitNode
 }
 
 fn check_crate(tcx: ty::ctxt,
@@ -145,18 +145,17 @@ fn check_crate(tcx: ty::ctxt,
     });
 
     let last_use_map = int_hash();
-    let initial_maps = @ir_maps(tcx, method_map,
-                                last_use_map);
+    let initial_maps = @IrMaps(tcx, method_map, last_use_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
     return last_use_map;
 }
 
-impl live_node: to_str::ToStr {
+impl LiveNode: to_str::ToStr {
     fn to_str() -> ~str { fmt!("ln(%u)", *self) }
 }
 
-impl variable: to_str::ToStr {
+impl Variable: to_str::ToStr {
     fn to_str() -> ~str { fmt!("v(%u)", *self) }
 }
 
@@ -182,64 +181,74 @@ impl variable: to_str::ToStr {
 // variable must not be assigned if there is some successor
 // assignment.  And so forth.
 
-impl live_node {
+impl LiveNode {
     pure fn is_valid() -> bool { *self != uint::max_value }
 }
 
-fn invalid_node() -> live_node { live_node(uint::max_value) }
+fn invalid_node() -> LiveNode { LiveNode(uint::max_value) }
 
-enum relevant_def { rdef_var(node_id), rdef_self }
+enum RelevantDef { RelevantVar(node_id), RelevantSelf }
 
-type capture_info = {ln: live_node, is_move: bool, rv: relevant_def};
+type CaptureInfo = {ln: LiveNode, is_move: bool, rv: RelevantDef};
 
-enum var_kind {
-    vk_arg(node_id, ident, rmode),
-    vk_local(node_id, ident),
-    vk_field(ident),
-    vk_self,
-    vk_implicit_ret
+struct LocalInfo {
+    id: node_id;
+    ident: ident;
+    is_mutbl: bool;
+    initialized: bool;
 }
 
-fn relevant_def(def: def) -> option<relevant_def> {
+enum VarKind {
+    Arg(node_id, ident, rmode),
+    Local(LocalInfo),
+    Field(ident),
+    Self,
+    ImplicitRet
+}
+
+fn relevant_def(def: def) -> option<RelevantDef> {
     match def {
-      def_self(_) => some(rdef_self),
-      def_arg(nid, _) | def_local(nid, _) => some(rdef_var(nid)),
+      def_self(_) => some(RelevantSelf),
+      def_arg(nid, _) | def_local(nid, _) => some(RelevantVar(nid)),
       _ => none
     }
 }
 
-struct ir_maps {
-    let tcx: ty::ctxt;
-    let method_map: typeck::method_map;
-    let last_use_map: last_use_map;
+struct IrMaps {
+    tcx: ty::ctxt;
+    method_map: typeck::method_map;
+    last_use_map: last_use_map;
 
-    let mut num_live_nodes: uint;
-    let mut num_vars: uint;
-    let live_node_map: hashmap<node_id, live_node>;
-    let variable_map: hashmap<node_id, variable>;
-    let field_map: hashmap<ident, variable>;
-    let capture_map: hashmap<node_id, @~[capture_info]>;
-    let mut var_kinds: ~[var_kind];
-    let mut lnks: ~[live_node_kind];
+    mut num_live_nodes: uint;
+    mut num_vars: uint;
+    live_node_map: hashmap<node_id, LiveNode>;
+    variable_map: hashmap<node_id, Variable>;
+    field_map: hashmap<ident, Variable>;
+    capture_map: hashmap<node_id, @~[CaptureInfo]>;
+    mut var_kinds: ~[VarKind];
+    mut lnks: ~[LiveNodeKind];
+}
 
-    new(tcx: ty::ctxt, method_map: typeck::method_map,
-        last_use_map: last_use_map) {
-        self.tcx = tcx;
-        self.method_map = method_map;
-        self.last_use_map = last_use_map;
-
-        self.num_live_nodes = 0u;
-        self.num_vars = 0u;
-        self.live_node_map = int_hash();
-        self.variable_map = int_hash();
-        self.capture_map = int_hash();
-        self.field_map = uint_hash();
-        self.var_kinds = ~[];
-        self.lnks = ~[];
+fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,
+          last_use_map: last_use_map) -> IrMaps {
+    IrMaps {
+        tcx: tcx,
+        method_map: method_map,
+        last_use_map: last_use_map,
+        num_live_nodes: 0u,
+        num_vars: 0u,
+        live_node_map: int_hash(),
+        variable_map: int_hash(),
+        capture_map: int_hash(),
+        field_map: uint_hash(),
+        var_kinds: ~[],
+        lnks: ~[]
     }
+}
 
-    fn add_live_node(lnk: live_node_kind) -> live_node {
-        let ln = live_node(self.num_live_nodes);
+impl IrMaps {
+    fn add_live_node(lnk: LiveNodeKind) -> LiveNode {
+        let ln = LiveNode(self.num_live_nodes);
         vec::push(self.lnks, lnk);
         self.num_live_nodes += 1u;
 
@@ -248,26 +257,27 @@ struct ir_maps {
         ln
     }
 
-    fn add_live_node_for_node(node_id: node_id, lnk: live_node_kind) {
+    fn add_live_node_for_node(node_id: node_id, lnk: LiveNodeKind) {
         let ln = self.add_live_node(lnk);
         self.live_node_map.insert(node_id, ln);
 
         debug!("%s is node %d", ln.to_str(), node_id);
     }
 
-    fn add_variable(vk: var_kind) -> variable {
-        let v = variable(self.num_vars);
+    fn add_variable(vk: VarKind) -> Variable {
+        let v = Variable(self.num_vars);
         vec::push(self.var_kinds, vk);
         self.num_vars += 1u;
 
         match vk {
-          vk_local(node_id, _) | vk_arg(node_id, _, _) => {
+          Local(LocalInfo {id:node_id, _}) |
+          Arg(node_id, _, _) => {
             self.variable_map.insert(node_id, v);
           }
-          vk_field(name) => {
+          Field(name) => {
             self.field_map.insert(name, v);
           }
-          vk_self | vk_implicit_ret => {
+          Self | ImplicitRet => {
           }
         }
 
@@ -276,7 +286,7 @@ struct ir_maps {
         v
     }
 
-    fn variable(node_id: node_id, span: span) -> variable {
+    fn variable(node_id: node_id, span: span) -> Variable {
         match self.variable_map.find(node_id) {
           some(var) => var,
           none => {
@@ -286,20 +296,21 @@ struct ir_maps {
         }
     }
 
-    fn variable_name(var: variable) -> ~str {
+    fn variable_name(var: Variable) -> ~str {
         match copy self.var_kinds[*var] {
-          vk_local(_, nm) | vk_arg(_, nm, _) => self.tcx.sess.str_of(nm),
-          vk_field(nm) => ~"self." + self.tcx.sess.str_of(nm),
-          vk_self => ~"self",
-          vk_implicit_return => ~"<implicit-ret>"
+          Local(LocalInfo {ident: nm, _}) |
+          Arg(_, nm, _) => self.tcx.sess.str_of(nm),
+          Field(nm) => ~"self." + self.tcx.sess.str_of(nm),
+          Self => ~"self",
+          ImplicitRet => ~"<implicit-ret>"
         }
     }
 
-    fn set_captures(node_id: node_id, +cs: ~[capture_info]) {
+    fn set_captures(node_id: node_id, +cs: ~[CaptureInfo]) {
         self.capture_map.insert(node_id, @cs);
     }
 
-    fn captures(expr: @expr) -> @~[capture_info] {
+    fn captures(expr: @expr) -> @~[CaptureInfo] {
         match self.capture_map.find(expr.id) {
           some(caps) => caps,
           none => {
@@ -308,17 +319,17 @@ struct ir_maps {
         }
     }
 
-    fn lnk(ln: live_node) -> live_node_kind {
+    fn lnk(ln: LiveNode) -> LiveNodeKind {
         self.lnks[*ln]
     }
 
-    fn add_last_use(expr_id: node_id, var: variable) {
+    fn add_last_use(expr_id: node_id, var: Variable) {
         let vk = self.var_kinds[*var];
         debug!("Node %d is a last use of variable %?", expr_id, vk);
         match vk {
-          vk_arg(id, name, by_move) |
-          vk_arg(id, name, by_copy) |
-          vk_local(id, name) => {
+          Arg(id, name, by_move) |
+          Arg(id, name, by_copy) |
+          Local(LocalInfo {id:id, ident:name, _}) => {
             let v = match self.last_use_map.find(expr_id) {
               some(v) => v,
               none => {
@@ -330,8 +341,8 @@ struct ir_maps {
 
             (*v).push(id);
           }
-          vk_arg(_, _, by_ref) | vk_arg(_, _, by_mutbl_ref) |
-          vk_arg(_, _, by_val) | vk_self | vk_field(_) | vk_implicit_ret => {
+          Arg(_, _, by_ref) | Arg(_, _, by_mutbl_ref) |
+          Arg(_, _, by_val) | Self | Field(_) | ImplicitRet => {
             debug!("--but it is not owned");
           }
         }
@@ -339,20 +350,20 @@ struct ir_maps {
 }
 
 fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
-            sp: span, id: node_id, &&self: @ir_maps, v: vt<@ir_maps>) {
+            sp: span, id: node_id, &&self: @IrMaps, v: vt<@IrMaps>) {
     debug!("visit_fn: id=%d", id);
     let _i = util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let fn_maps = @ir_maps(self.tcx, self.method_map,
-                           self.last_use_map);
+    let fn_maps = @IrMaps(self.tcx, self.method_map,
+                          self.last_use_map);
 
     debug!("creating fn_maps: %x", ptr::addr_of(*fn_maps) as uint);
 
     for decl.inputs.each |arg| {
         debug!("adding argument %d", arg.id);
         let mode = ty::resolved_mode(self.tcx, arg.mode);
-        (*fn_maps).add_variable(vk_arg(arg.id, arg.ident, mode));
+        (*fn_maps).add_variable(Arg(arg.id, arg.ident, mode));
     };
 
     // gather up the various local variables, significant expressions,
@@ -371,14 +382,14 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     // - implicit_ret_var is a pseudo-variable that represents
     //   an implicit return
     let specials = {
-        exit_ln: (*fn_maps).add_live_node(lnk_exit),
-        fallthrough_ln: (*fn_maps).add_live_node(lnk_exit),
-        no_ret_var: (*fn_maps).add_variable(vk_implicit_ret),
-        self_var: (*fn_maps).add_variable(vk_self)
+        exit_ln: (*fn_maps).add_live_node(ExitNode),
+        fallthrough_ln: (*fn_maps).add_live_node(ExitNode),
+        no_ret_var: (*fn_maps).add_variable(ImplicitRet),
+        self_var: (*fn_maps).add_variable(Self)
     };
 
     // compute liveness
-    let lsets = @liveness(fn_maps, specials);
+    let lsets = @Liveness(fn_maps, specials);
     let entry_ln = (*lsets).compute(decl, body);
 
     // check for various error conditions
@@ -394,33 +405,38 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     lsets.warn_about_unused_args(sp, decl, entry_ln);
 }
 
-fn add_class_fields(self: @ir_maps, did: def_id) {
+fn add_class_fields(self: @IrMaps, did: def_id) {
     for ty::lookup_class_fields(self.tcx, did).each |field_ty| {
         assert field_ty.id.crate == local_crate;
-        let var = (*self).add_variable(vk_field(field_ty.ident));
+        let var = self.add_variable(Field(field_ty.ident));
         self.field_map.insert(field_ty.ident, var);
     }
 }
 
-fn visit_local(local: @local, &&self: @ir_maps, vt: vt<@ir_maps>) {
+fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
     let def_map = self.tcx.def_map;
     do pat_util::pat_bindings(def_map, local.node.pat) |_bm, p_id, sp, path| {
         debug!("adding local variable %d", p_id);
         let name = ast_util::path_to_ident(path);
-        (*self).add_live_node_for_node(p_id, lnk_vdef(sp));
-        (*self).add_variable(vk_local(p_id, name));
+        self.add_live_node_for_node(p_id, VarDefNode(sp));
+        self.add_variable(Local(LocalInfo {
+            id: p_id,
+            ident: name,
+            is_mutbl: local.node.is_mutbl,
+            initialized: local.node.init.is_some()
+        }));
     }
     visit::visit_local(local, self, vt);
 }
 
-fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
+fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       expr_path(_) => {
         let def = self.tcx.def_map.get(expr.id);
         debug!("expr %d: path that leads to %?", expr.id, def);
         if relevant_def(def).is_some() {
-            (*self).add_live_node_for_node(expr.id, lnk_expr(expr.span));
+            self.add_live_node_for_node(expr.id, ExprNode(expr.span));
         }
         visit::visit_expr(expr, self, vt);
       }
@@ -437,7 +453,7 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
         for cvs.each |cv| {
             match relevant_def(cv.def) {
               some(rv) => {
-                let cv_ln = (*self).add_live_node(lnk_freevar(cv.span));
+                let cv_ln = self.add_live_node(FreeVarNode(cv.span));
                 let is_move = match cv.mode {
                   cap_move | cap_drop => true, // var must be dead afterwards
                   cap_copy | cap_ref => false // var can still be used
@@ -447,18 +463,18 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
               none => {}
             }
         }
-        (*self).set_captures(expr.id, call_caps);
+        self.set_captures(expr.id, call_caps);
 
         visit::visit_expr(expr, self, vt);
       }
 
       // live nodes required for interesting control flow:
       expr_if(*) | expr_match(*) | expr_while(*) | expr_loop(*) => {
-        (*self).add_live_node_for_node(expr.id, lnk_expr(expr.span));
+        self.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::visit_expr(expr, self, vt);
       }
       expr_binary(op, _, _) if ast_util::lazy_binop(op) => {
-        (*self).add_live_node_for_node(expr.id, lnk_expr(expr.span));
+        self.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::visit_expr(expr, self, vt);
       }
 
@@ -485,8 +501,8 @@ fn visit_expr(expr: @expr, &&self: @ir_maps, vt: vt<@ir_maps>) {
 // the same basic propagation framework in all cases.
 
 type users = {
-    reader: live_node,
-    writer: live_node,
+    reader: LiveNode,
+    writer: LiveNode,
     used: bool
 };
 
@@ -494,45 +510,47 @@ fn invalid_users() -> users {
     {reader: invalid_node(), writer: invalid_node(), used: false}
 }
 
-type specials = {
-    exit_ln: live_node,
-    fallthrough_ln: live_node,
-    no_ret_var: variable,
-    self_var: variable
+type Specials = {
+    exit_ln: LiveNode,
+    fallthrough_ln: LiveNode,
+    no_ret_var: Variable,
+    self_var: Variable
 };
 
 const ACC_READ: uint = 1u;
 const ACC_WRITE: uint = 2u;
 const ACC_USE: uint = 4u;
 
-struct liveness {
+struct Liveness {
     let tcx: ty::ctxt;
-    let ir: @ir_maps;
-    let s: specials;
-    let successors: ~[mut live_node];
+    let ir: @IrMaps;
+    let s: Specials;
+    let successors: ~[mut LiveNode];
     let users: ~[mut users];
-    let mut break_ln: live_node;
-    let mut cont_ln: live_node;
+    let mut break_ln: LiveNode;
+    let mut cont_ln: LiveNode;
+}
 
-    new(ir: @ir_maps, specials: specials) {
-        self.ir = ir;
-        self.tcx = ir.tcx;
-        self.s = specials;
-        self.successors =
+fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
+    Liveness {
+        ir: ir,
+        tcx: ir.tcx,
+        s: specials,
+        successors:
             vec::to_mut(
-                vec::from_elem(self.ir.num_live_nodes,
-                               invalid_node()));
-        self.users =
+                vec::from_elem(ir.num_live_nodes,
+                               invalid_node())),
+        users:
             vec::to_mut(
-                vec::from_elem(self.ir.num_live_nodes * self.ir.num_vars,
-                               invalid_users()));
-        self.break_ln = invalid_node();
-        self.cont_ln = invalid_node();
+                vec::from_elem(ir.num_live_nodes * ir.num_vars,
+                               invalid_users())),
+        break_ln: invalid_node(),
+        cont_ln: invalid_node()
     }
+}
 
-    // _______________________________________________________________________
-
-    fn live_node(node_id: node_id, span: span) -> live_node {
+impl Liveness {
+    fn live_node(node_id: node_id, span: span) -> LiveNode {
         match self.ir.live_node_map.find(node_id) {
           some(ln) => ln,
           none => {
@@ -547,14 +565,14 @@ struct liveness {
         }
     }
 
-    fn variable_from_rdef(rv: relevant_def, span: span) -> variable {
+    fn variable_from_rdef(rv: RelevantDef, span: span) -> Variable {
         match rv {
-          rdef_self => self.s.self_var,
-          rdef_var(nid) => self.variable(nid, span)
+          RelevantSelf => self.s.self_var,
+          RelevantVar(nid) => self.variable(nid, span)
         }
     }
 
-    fn variable_from_path(expr: @expr) -> option<variable> {
+    fn variable_from_path(expr: @expr) -> option<Variable> {
         match expr.node {
           expr_path(_) => {
             let def = self.tcx.def_map.get(expr.id);
@@ -566,12 +584,12 @@ struct liveness {
         }
     }
 
-    fn variable(node_id: node_id, span: span) -> variable {
+    fn variable(node_id: node_id, span: span) -> Variable {
         (*self.ir).variable(node_id, span)
     }
 
     fn variable_from_def_map(node_id: node_id,
-                             span: span) -> option<variable> {
+                             span: span) -> option<Variable> {
         match self.tcx.def_map.find(node_id) {
           some(def) => {
             relevant_def(def).map(
@@ -585,7 +603,7 @@ struct liveness {
         }
     }
 
-    fn pat_bindings(pat: @pat, f: fn(live_node, variable, span)) {
+    fn pat_bindings(pat: @pat, f: fn(LiveNode, Variable, span)) {
         let def_map = self.tcx.def_map;
         do pat_util::pat_bindings(def_map, pat) |_bm, p_id, sp, _n| {
             let ln = self.live_node(p_id, sp);
@@ -594,73 +612,73 @@ struct liveness {
         }
     }
 
-    fn idx(ln: live_node, var: variable) -> uint {
+    fn idx(ln: LiveNode, var: Variable) -> uint {
         *ln * self.ir.num_vars + *var
     }
 
-    fn live_on_entry(ln: live_node, var: variable)
-        -> option<live_node_kind> {
+    fn live_on_entry(ln: LiveNode, var: Variable)
+        -> option<LiveNodeKind> {
 
         assert ln.is_valid();
         let reader = self.users[self.idx(ln, var)].reader;
         if reader.is_valid() {some((*self.ir).lnk(reader))} else {none}
     }
 
-    fn live_on_exit(ln: live_node, var: variable)
-        -> option<live_node_kind> {
+    fn live_on_exit(ln: LiveNode, var: Variable)
+        -> option<LiveNodeKind> {
 
         self.live_on_entry(copy self.successors[*ln], var)
     }
 
-    fn used_on_entry(ln: live_node, var: variable) -> bool {
+    fn used_on_entry(ln: LiveNode, var: Variable) -> bool {
         assert ln.is_valid();
         self.users[self.idx(ln, var)].used
     }
 
-    fn assigned_on_entry(ln: live_node, var: variable)
-        -> option<live_node_kind> {
+    fn assigned_on_entry(ln: LiveNode, var: Variable)
+        -> option<LiveNodeKind> {
 
         assert ln.is_valid();
         let writer = self.users[self.idx(ln, var)].writer;
         if writer.is_valid() {some((*self.ir).lnk(writer))} else {none}
     }
 
-    fn assigned_on_exit(ln: live_node, var: variable)
-        -> option<live_node_kind> {
+    fn assigned_on_exit(ln: LiveNode, var: Variable)
+        -> option<LiveNodeKind> {
 
         self.assigned_on_entry(copy self.successors[*ln], var)
     }
 
-    fn indices(ln: live_node, op: fn(uint)) {
-        let node_base_idx = self.idx(ln, variable(0u));
+    fn indices(ln: LiveNode, op: fn(uint)) {
+        let node_base_idx = self.idx(ln, Variable(0u));
         for uint::range(0u, self.ir.num_vars) |var_idx| {
             op(node_base_idx + var_idx)
         }
     }
 
-    fn indices2(ln: live_node, succ_ln: live_node,
+    fn indices2(ln: LiveNode, succ_ln: LiveNode,
                 op: fn(uint, uint)) {
-        let node_base_idx = self.idx(ln, variable(0u));
-        let succ_base_idx = self.idx(succ_ln, variable(0u));
+        let node_base_idx = self.idx(ln, Variable(0u));
+        let succ_base_idx = self.idx(succ_ln, Variable(0u));
         for uint::range(0u, self.ir.num_vars) |var_idx| {
             op(node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
 
     fn write_vars(wr: io::Writer,
-                  ln: live_node,
-                  test: fn(uint) -> live_node) {
-        let node_base_idx = self.idx(ln, variable(0u));
+                  ln: LiveNode,
+                  test: fn(uint) -> LiveNode) {
+        let node_base_idx = self.idx(ln, Variable(0u));
         for uint::range(0u, self.ir.num_vars) |var_idx| {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 wr.write_str(~" ");
-                wr.write_str(variable(var_idx).to_str());
+                wr.write_str(Variable(var_idx).to_str());
             }
         }
     }
 
-    fn ln_str(ln: live_node) -> ~str {
+    fn ln_str(ln: LiveNode) -> ~str {
         do io::with_str_writer |wr| {
             wr.write_str(~"[ln(");
             wr.write_uint(*ln);
@@ -677,7 +695,7 @@ struct liveness {
         }
     }
 
-    fn init_empty(ln: live_node, succ_ln: live_node) {
+    fn init_empty(ln: LiveNode, succ_ln: LiveNode) {
         self.successors[*ln] = succ_ln;
 
         // It is not necessary to initialize the
@@ -690,7 +708,7 @@ struct liveness {
         // }
     }
 
-    fn init_from_succ(ln: live_node, succ_ln: live_node) {
+    fn init_from_succ(ln: LiveNode, succ_ln: LiveNode) {
         // more efficient version of init_empty() / merge_from_succ()
         self.successors[*ln] = succ_ln;
         self.indices2(ln, succ_ln, |idx, succ_idx| {
@@ -700,7 +718,7 @@ struct liveness {
                self.ln_str(ln), self.ln_str(succ_ln));
     }
 
-    fn merge_from_succ(ln: live_node, succ_ln: live_node,
+    fn merge_from_succ(ln: LiveNode, succ_ln: LiveNode,
                        first_merge: bool) -> bool {
         if ln == succ_ln { return false; }
 
@@ -720,7 +738,7 @@ struct liveness {
                ln.to_str(), self.ln_str(succ_ln), first_merge, changed);
         return changed;
 
-        fn copy_if_invalid(src: live_node, &dst: live_node) -> bool {
+        fn copy_if_invalid(src: LiveNode, &dst: LiveNode) -> bool {
             if src.is_valid() {
                 if !dst.is_valid() {
                     dst = src;
@@ -734,7 +752,7 @@ struct liveness {
     // Indicates that a local variable was *defined*; we know that no
     // uses of the variable can precede the definition (resolve checks
     // this) so we just clear out all the data.
-    fn define(writer: live_node, var: variable) {
+    fn define(writer: LiveNode, var: Variable) {
         let idx = self.idx(writer, var);
         self.users[idx].reader = invalid_node();
         self.users[idx].writer = invalid_node();
@@ -744,7 +762,7 @@ struct liveness {
     }
 
     // Either read, write, or both depending on the acc bitset
-    fn acc(ln: live_node, var: variable, acc: uint) {
+    fn acc(ln: LiveNode, var: Variable, acc: uint) {
         let idx = self.idx(ln, var);
         let user = &mut self.users[idx];
 
@@ -769,11 +787,11 @@ struct liveness {
 
     // _______________________________________________________________________
 
-    fn compute(decl: fn_decl, body: blk) -> live_node {
+    fn compute(decl: fn_decl, body: blk) -> LiveNode {
         // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
-        let entry_ln: live_node =
+        let entry_ln: LiveNode =
             self.with_loop_nodes(self.s.exit_ln, self.s.exit_ln, || {
                 self.propagate_through_fn_block(decl, body)
             });
@@ -782,7 +800,7 @@ struct liveness {
         debug!("^^ liveness computation results for body %d (entry=%s)",
                {
                    for uint::range(0u, self.ir.num_live_nodes) |ln_idx| {
-                       #debug["%s", self.ln_str(live_node(ln_idx))];
+                       #debug["%s", self.ln_str(LiveNode(ln_idx))];
                    }
                    body.node.id
                },
@@ -791,7 +809,7 @@ struct liveness {
         entry_ln
     }
 
-    fn propagate_through_fn_block(decl: fn_decl, blk: blk) -> live_node {
+    fn propagate_through_fn_block(decl: fn_decl, blk: blk) -> LiveNode {
         // inputs passed by & mode should be considered live on exit:
         for decl.inputs.each |arg| {
             match ty::resolved_mode(self.tcx, arg.mode) {
@@ -828,14 +846,14 @@ struct liveness {
         self.propagate_through_block(blk, self.s.fallthrough_ln)
     }
 
-    fn propagate_through_block(blk: blk, succ: live_node) -> live_node {
+    fn propagate_through_block(blk: blk, succ: LiveNode) -> LiveNode {
         let succ = self.propagate_through_opt_expr(blk.node.expr, succ);
         do blk.node.stmts.foldr(succ) |stmt, succ| {
             self.propagate_through_stmt(stmt, succ)
         }
     }
 
-    fn propagate_through_stmt(stmt: @stmt, succ: live_node) -> live_node {
+    fn propagate_through_stmt(stmt: @stmt, succ: LiveNode) -> LiveNode {
         match stmt.node {
           stmt_decl(decl, _) => {
             return self.propagate_through_decl(decl, succ);
@@ -847,7 +865,7 @@ struct liveness {
         }
     }
 
-    fn propagate_through_decl(decl: @decl, succ: live_node) -> live_node {
+    fn propagate_through_decl(decl: @decl, succ: LiveNode) -> LiveNode {
         match decl.node {
           decl_local(locals) => {
             do locals.foldr(succ) |local, succ| {
@@ -860,7 +878,7 @@ struct liveness {
         }
     }
 
-    fn propagate_through_local(local: @local, succ: live_node) -> live_node {
+    fn propagate_through_local(local: @local, succ: LiveNode) -> LiveNode {
         // Note: we mark the variable as defined regardless of whether
         // there is an initializer.  Initially I had thought to only mark
         // the live variable as defined if it was initialized, and then we
@@ -886,20 +904,20 @@ struct liveness {
     }
 
     fn propagate_through_exprs(exprs: ~[@expr],
-                               succ: live_node) -> live_node {
+                               succ: LiveNode) -> LiveNode {
         do exprs.foldr(succ) |expr, succ| {
             self.propagate_through_expr(expr, succ)
         }
     }
 
     fn propagate_through_opt_expr(opt_expr: option<@expr>,
-                                  succ: live_node) -> live_node {
+                                  succ: LiveNode) -> LiveNode {
         do opt_expr.foldl(succ) |succ, expr| {
             self.propagate_through_expr(expr, succ)
         }
     }
 
-    fn propagate_through_expr(expr: @expr, succ: live_node) -> live_node {
+    fn propagate_through_expr(expr: @expr, succ: LiveNode) -> LiveNode {
         match expr.node {
           // Interesting cases with control flow or which gen/kill
 
@@ -1142,7 +1160,7 @@ struct liveness {
     }
 
     fn propagate_through_lvalue_components(expr: @expr,
-                                           succ: live_node) -> live_node {
+                                           succ: LiveNode) -> LiveNode {
         // # Lvalues
         //
         // In general, the full flow graph structure for an
@@ -1205,8 +1223,8 @@ struct liveness {
 
     // see comment on propagate_through_lvalue()
     fn write_lvalue(expr: @expr,
-                    succ: live_node,
-                    acc: uint) -> live_node {
+                    succ: LiveNode,
+                    acc: uint) -> LiveNode {
         match expr.node {
           expr_path(_) => self.access_path(expr, succ, acc),
           expr_field(e, nm, _) => match self.as_self_field(e, nm) {
@@ -1226,10 +1244,10 @@ struct liveness {
         }
     }
 
-    fn access_path(expr: @expr, succ: live_node, acc: uint) -> live_node {
+    fn access_path(expr: @expr, succ: LiveNode, acc: uint) -> LiveNode {
         let def = self.tcx.def_map.get(expr.id);
         match relevant_def(def) {
-          some(rdef_self) => {
+          some(RelevantSelf) => {
             // Accessing `self` is like accessing every field of
             // the current object. This allows something like
             // `self = ...;` (it will be considered a write to
@@ -1249,7 +1267,7 @@ struct liveness {
             }
             ln
           }
-          some(rdef_var(nid)) => {
+          some(RelevantVar(nid)) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0u {
                 self.init_from_succ(ln, succ);
@@ -1263,7 +1281,7 @@ struct liveness {
     }
 
     fn as_self_field(expr: @expr,
-                     fld: ident) -> option<(live_node,variable)> {
+                     fld: ident) -> option<(LiveNode,Variable)> {
         // If we checking a constructor, then we treat self.f as a
         // variable.  we use the live_node id that will be assigned to
         // the reference to self but the variable id for `f`.
@@ -1288,7 +1306,7 @@ struct liveness {
     fn propagate_through_loop(expr: @expr,
                               cond: option<@expr>,
                               body: blk,
-                              succ: live_node) -> live_node {
+                              succ: LiveNode) -> LiveNode {
 
         /*
 
@@ -1336,8 +1354,8 @@ struct liveness {
         cond_ln
     }
 
-    fn with_loop_nodes<R>(break_ln: live_node,
-                          cont_ln: live_node,
+    fn with_loop_nodes<R>(break_ln: LiveNode,
+                          cont_ln: LiveNode,
                           f: fn() -> R) -> R {
         let bl = self.break_ln, cl = self.cont_ln;
         self.break_ln = break_ln;
@@ -1352,7 +1370,7 @@ struct liveness {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
+fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
     match local.node.init {
       some({op: op, expr: expr}) => {
 
@@ -1373,14 +1391,14 @@ fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
         // should not be live at this point.
 
         debug!("check_local() with no initializer");
-        do (*self).pat_bindings(local.node.pat) |ln, var, sp| {
+        do self.pat_bindings(local.node.pat) |ln, var, sp| {
             if !self.warn_about_unused(sp, ln, var) {
-                match (*self).live_on_exit(ln, var) {
+                match self.live_on_exit(ln, var) {
                   none => { /* not live: good */ }
                   some(lnk) => {
                     self.report_illegal_read(
                         local.span, lnk, var,
-                        possibly_uninitialized_variable);
+                        PossiblyUninitializedVariable);
                   }
                 }
             }
@@ -1391,11 +1409,11 @@ fn check_local(local: @local, &&self: @liveness, vt: vt<@liveness>) {
     visit::visit_local(local, self, vt);
 }
 
-fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
+fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
     match expr.node {
       expr_path(_) => {
-        for (*self).variable_from_def_map(expr.id, expr.span).each |var| {
-            let ln = (*self).live_node(expr.id, expr.span);
+        for self.variable_from_def_map(expr.id, expr.span).each |var| {
+            let ln = self.live_node(expr.id, expr.span);
             self.consider_last_use(expr, ln, var);
         }
 
@@ -1405,7 +1423,7 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
       expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) => {
         let caps = (*self.ir).captures(expr);
         for (*caps).each |cap| {
-            let var = (*self).variable_from_rdef(cap.rv, expr.span);
+            let var = self.variable_from_rdef(cap.rv, expr.span);
             self.consider_last_use(expr, cap.ln, var);
             if cap.is_move {
                 self.check_move_from_var(expr.span, cap.ln, var);
@@ -1475,37 +1493,37 @@ fn check_expr(expr: @expr, &&self: @liveness, vt: vt<@liveness>) {
 
 fn check_fn(_fk: visit::fn_kind, _decl: fn_decl,
             _body: blk, _sp: span, _id: node_id,
-            &&_self: @liveness, _v: vt<@liveness>) {
+            &&_self: @Liveness, _v: vt<@Liveness>) {
     // do not check contents of nested fns
 }
 
-enum read_kind {
-    possibly_uninitialized_variable,
-    possibly_uninitialized_field,
-    moved_variable
+enum ReadKind {
+    PossiblyUninitializedVariable,
+    PossiblyUninitializedField,
+    MovedVariable
 }
 
-impl @liveness {
-    fn check_fields(sp: span, entry_ln: live_node) {
+impl @Liveness {
+    fn check_fields(sp: span, entry_ln: LiveNode) {
         for self.ir.field_map.each |nm, var| {
-            match (*self).live_on_entry(entry_ln, var) {
+            match self.live_on_entry(entry_ln, var) {
               none => { /* ok */ }
-              some(lnk_exit) => {
+              some(ExitNode) => {
                 self.tcx.sess.span_err(
                     sp, fmt!("field `self.%s` is never initialized",
                              self.tcx.sess.str_of(nm)));
               }
               some(lnk) => {
                 self.report_illegal_read(
-                    sp, lnk, var, possibly_uninitialized_field);
+                    sp, lnk, var, PossiblyUninitializedField);
               }
             }
         }
     }
 
     fn check_ret(id: node_id, sp: span, fk: visit::fn_kind,
-                 entry_ln: live_node) {
-        if (*self).live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
+                 entry_ln: LiveNode) {
+        if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the
             // function without any kind of return expression:
 
@@ -1530,24 +1548,24 @@ impl @liveness {
         }
     }
 
-    fn check_move_from_var(span: span, ln: live_node, var: variable) {
+    fn check_move_from_var(span: span, ln: LiveNode, var: Variable) {
         debug!("check_move_from_var(%s, %s)",
                ln.to_str(), var.to_str());
 
-        match (*self).live_on_exit(ln, var) {
+        match self.live_on_exit(ln, var) {
           none => {}
           some(lnk) => self.report_illegal_move(span, lnk, var)
         }
     }
 
-    fn consider_last_use(expr: @expr, ln: live_node, var: variable) {
-        match (*self).live_on_exit(ln, var) {
+    fn consider_last_use(expr: @expr, ln: LiveNode, var: Variable) {
+        match self.live_on_exit(ln, var) {
           some(_) => {}
           none => (*self.ir).add_last_use(expr.id, var)
        }
     }
 
-    fn check_move_from_expr(expr: @expr, vt: vt<@liveness>) {
+    fn check_move_from_expr(expr: @expr, vt: vt<@Liveness>) {
         debug!("check_move_from_expr(node %d: %s)",
                expr.id, expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -1558,9 +1576,9 @@ impl @liveness {
 
         match expr.node {
           expr_path(_) => {
-            match (*self).variable_from_path(expr) {
+            match self.variable_from_path(expr) {
               some(var) => {
-                let ln = (*self).live_node(expr.id, expr.span);
+                let ln = self.live_node(expr.id, expr.span);
                 self.check_move_from_var(expr.span, ln, var);
               }
               none => {}
@@ -1590,26 +1608,26 @@ impl @liveness {
        }
     }
 
-    fn check_lvalue(expr: @expr, vt: vt<@liveness>) {
+    fn check_lvalue(expr: @expr, vt: vt<@Liveness>) {
         match expr.node {
           expr_path(_) => {
             match self.tcx.def_map.get(expr.id) {
               def_local(nid, false) => {
                 // Assignment to an immutable variable or argument:
                 // only legal if there is no later assignment.
-                let ln = (*self).live_node(expr.id, expr.span);
-                let var = (*self).variable(nid, expr.span);
+                let ln = self.live_node(expr.id, expr.span);
+                let var = self.variable(nid, expr.span);
                 self.check_for_reassignment(ln, var, expr.span);
                 self.warn_about_dead_assign(expr.span, ln, var);
               }
               def => {
                 match relevant_def(def) {
-                  some(rdef_var(nid)) => {
-                    let ln = (*self).live_node(expr.id, expr.span);
-                    let var = (*self).variable(nid, expr.span);
+                  some(RelevantVar(nid)) => {
+                    let ln = self.live_node(expr.id, expr.span);
+                    let var = self.variable(nid, expr.span);
                     self.warn_about_dead_assign(expr.span, ln, var);
                   }
-                  some(rdef_self) => {}
+                  some(RelevantSelf) => {}
                   none => {}
                 }
               }
@@ -1625,15 +1643,15 @@ impl @liveness {
     }
 
     fn check_for_reassignments_in_pat(pat: @pat) {
-        do (*self).pat_bindings(pat) |ln, var, sp| {
+        do self.pat_bindings(pat) |ln, var, sp| {
             self.check_for_reassignment(ln, var, sp);
         }
     }
 
-    fn check_for_reassignment(ln: live_node, var: variable,
+    fn check_for_reassignment(ln: LiveNode, var: Variable,
                               orig_span: span) {
-        match (*self).assigned_on_exit(ln, var) {
-          some(lnk_expr(span)) => {
+        match self.assigned_on_exit(ln, var) {
+          some(ExprNode(span)) => {
             self.tcx.sess.span_err(
                 span,
                 ~"re-assignment of immutable variable");
@@ -1652,37 +1670,37 @@ impl @liveness {
     }
 
     fn report_illegal_move(move_span: span,
-                           lnk: live_node_kind,
-                           var: variable) {
+                           lnk: LiveNodeKind,
+                           var: Variable) {
 
         // the only time that it is possible to have a moved variable
-        // used by lnk_exit would be arguments or fields in a ctor.
+        // used by ExitNode would be arguments or fields in a ctor.
         // we give a slightly different error message in those cases.
-        if lnk == lnk_exit {
+        if lnk == ExitNode {
             let vk = self.ir.var_kinds[*var];
             match vk {
-              vk_arg(_, name, _) => {
+              Arg(_, name, _) => {
                 self.tcx.sess.span_err(
                     move_span,
                     fmt!("illegal move from argument `%s`, which is not \
                           copy or move mode", self.tcx.sess.str_of(name)));
                 return;
               }
-              vk_field(name) => {
+              Field(name) => {
                 self.tcx.sess.span_err(
                     move_span,
                     fmt!("illegal move from field `%s`",
                          self.tcx.sess.str_of(name)));
                 return;
               }
-              vk_self => {
+              Self => {
                 self.tcx.sess.span_err(
                     move_span,
                     ~"illegal move from self (cannot move out of a field of \
                        self)");
                 return;
               }
-              vk_local(*) | vk_implicit_ret => {
+              Local(*) | ImplicitRet => {
                 self.tcx.sess.span_bug(
                     move_span,
                     fmt!("illegal reader (%?) for `%?`",
@@ -1691,37 +1709,37 @@ impl @liveness {
             }
         }
 
-        self.report_illegal_read(move_span, lnk, var, moved_variable);
+        self.report_illegal_read(move_span, lnk, var, MovedVariable);
         self.tcx.sess.span_note(
             move_span, ~"move of variable occurred here");
 
     }
 
     fn report_illegal_read(chk_span: span,
-                           lnk: live_node_kind,
-                           var: variable,
-                           rk: read_kind) {
+                           lnk: LiveNodeKind,
+                           var: Variable,
+                           rk: ReadKind) {
         let msg = match rk {
-          possibly_uninitialized_variable => {
+          PossiblyUninitializedVariable => {
             ~"possibly uninitialized variable"
           }
-          possibly_uninitialized_field => ~"possibly uninitialized field",
-          moved_variable => ~"moved variable"
+          PossiblyUninitializedField => ~"possibly uninitialized field",
+          MovedVariable => ~"moved variable"
         };
         let name = (*self.ir).variable_name(var);
         match lnk {
-          lnk_freevar(span) => {
+          FreeVarNode(span) => {
             self.tcx.sess.span_err(
                 span,
                 fmt!("capture of %s: `%s`", msg, name));
           }
-          lnk_expr(span) => {
+          ExprNode(span) => {
             self.tcx.sess.span_err(
                 span,
                 fmt!("use of %s: `%s`", msg, name));
           }
-          lnk_exit |
-          lnk_vdef(_) => {
+          ExitNode |
+          VarDefNode(_) => {
             self.tcx.sess.span_bug(
                 chk_span,
                 fmt!("illegal reader: %?", lnk));
@@ -1729,21 +1747,21 @@ impl @liveness {
         }
     }
 
-    fn should_warn(var: variable) -> option<~str> {
+    fn should_warn(var: Variable) -> option<~str> {
         let name = (*self.ir).variable_name(var);
         if name[0] == ('_' as u8) {none} else {some(name)}
     }
 
-    fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: live_node) {
+    fn warn_about_unused_args(sp: span, decl: fn_decl, entry_ln: LiveNode) {
         for decl.inputs.each |arg| {
-            let var = (*self).variable(arg.id, arg.ty.span);
+            let var = self.variable(arg.id, arg.ty.span);
             match ty::resolved_mode(self.tcx, arg.mode) {
               by_mutbl_ref => {
                 // for mutable reference arguments, something like
                 //    x = 1;
                 // is not worth warning about, as it has visible
                 // side effects outside the fn.
-                match (*self).assigned_on_entry(entry_ln, var) {
+                match self.assigned_on_entry(entry_ln, var) {
                   some(_) => { /*ok*/ }
                   none => {
                     // but if it is not written, it ought to be used
@@ -1759,15 +1777,15 @@ impl @liveness {
     }
 
     fn warn_about_unused_or_dead_vars_in_pat(pat: @pat) {
-        do (*self).pat_bindings(pat) |ln, var, sp| {
+        do self.pat_bindings(pat) |ln, var, sp| {
             if !self.warn_about_unused(sp, ln, var) {
                 self.warn_about_dead_assign(sp, ln, var);
             }
         }
     }
 
-    fn warn_about_unused(sp: span, ln: live_node, var: variable) -> bool {
-        if !(*self).used_on_entry(ln, var) {
+    fn warn_about_unused(sp: span, ln: LiveNode, var: Variable) -> bool {
+        if !self.used_on_entry(ln, var) {
             for self.should_warn(var).each |name| {
 
                 // annoying: for parameters in funcs like `fn(x: int)
@@ -1776,7 +1794,7 @@ impl @liveness {
                 let is_assigned = if ln == self.s.exit_ln {
                     false
                 } else {
-                    (*self).assigned_on_exit(ln, var).is_some()
+                    self.assigned_on_exit(ln, var).is_some()
                 };
 
                 if is_assigned {
@@ -1793,8 +1811,8 @@ impl @liveness {
         return false;
     }
 
-    fn warn_about_dead_assign(sp: span, ln: live_node, var: variable) {
-        if (*self).live_on_exit(ln, var).is_none() {
+    fn warn_about_dead_assign(sp: span, ln: LiveNode, var: Variable) {
+        if self.live_on_exit(ln, var).is_none() {
             for self.should_warn(var).each |name| {
                 self.tcx.sess.span_warn(
                     sp,
