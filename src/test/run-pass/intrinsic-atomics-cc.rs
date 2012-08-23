@@ -4,10 +4,10 @@
 // xfail-test
 
 use cci_intrinsic;
-import cci_intrinsic::atomic_xchng;
+import cci_intrinsic::atomic_xchg;
 
 fn main() {
     let mut x = 1;
-    atomic_xchng(x, 5);
+    atomic_xchg(&mut x, 5);
     assert x == 5;
 }

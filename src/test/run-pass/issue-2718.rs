@@ -1,5 +1,5 @@
 mod pipes {
-    import unsafe::{forget, reinterpret_cast};
+    import unsafe::{forget, transmute};
 
     enum state {
         empty,
@@ -25,30 +25,26 @@ mod pipes {
 
     #[abi = "rust-intrinsic"]
     mod rusti {
-      fn atomic_xchng(&dst: int, src: int) -> int { fail; }
-      fn atomic_xchng_acq(&dst: int, src: int) -> int { fail; }
-      fn atomic_xchng_rel(&dst: int, src: int) -> int { fail; }
+      fn atomic_xchg(_dst: &mut int, _src: int) -> int { fail; }
+      fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { fail; }
+      fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { fail; }
     }
 
     // We should consider moving this to core::unsafe, although I
     // suspect graydon would want us to use void pointers instead.
-    unsafe fn uniquify<T>(x: *T) -> ~T {
-        unsafe { unsafe::reinterpret_cast(x) }
+    unsafe fn uniquify<T>(+x: *T) -> ~T {
+        unsafe { unsafe::transmute(x) }
     }
 
-    fn swap_state_acq(&dst: state, src: state) -> state {
+    fn swap_state_acq(+dst: &mut state, src: state) -> state {
         unsafe {
-            reinterpret_cast(rusti::atomic_xchng_acq(
-                *(ptr::mut_addr_of(dst) as *mut int),
-                src as int))
+            transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
         }
     }
 
-    fn swap_state_rel(&dst: state, src: state) -> state {
+    fn swap_state_rel(+dst: &mut state, src: state) -> state {
         unsafe {
-            reinterpret_cast(rusti::atomic_xchng_rel(
-                *(ptr::mut_addr_of(dst) as *mut int),
-                src as int))
+            transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
         }
     }
 
@@ -57,7 +53,7 @@ mod pipes {
         let p = unsafe { uniquify(p) };
         assert (*p).payload == none;
         (*p).payload <- some(payload);
-        let old_state = swap_state_rel((*p).state, full);
+        let old_state = swap_state_rel(&mut (*p).state, full);
         match old_state {
           empty => {
             // Yay, fastpath.
@@ -82,7 +78,7 @@ mod pipes {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
         loop {
-            let old_state = swap_state_acq((*p).state,
+            let old_state = swap_state_acq(&mut (*p).state,
                                            blocked);
             match old_state {
               empty | blocked => { task::yield(); }
@@ -101,7 +97,7 @@ mod pipes {
 
     fn sender_terminate<T: send>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
-        match swap_state_rel((*p).state, terminated) {
+        match swap_state_rel(&mut (*p).state, terminated) {
           empty | blocked => {
             // The receiver will eventually clean up.
             unsafe { forget(p) }
@@ -118,7 +114,7 @@ mod pipes {
 
     fn receiver_terminate<T: send>(p: *packet<T>) {
         let p = unsafe { uniquify(p) };
-        match swap_state_rel((*p).state, terminated) {
+        match swap_state_rel(&mut (*p).state, terminated) {
           empty => {
             // the sender will clean up
             unsafe { forget(p) }
@@ -179,7 +175,7 @@ mod pingpong {
 
     fn liberate_ping(-p: ping) -> pipes::send_packet<pong> unsafe {
         let addr : *pipes::send_packet<pong> = match p {
-          ping(x) => { unsafe::reinterpret_cast(ptr::addr_of(x)) }
+          ping(x) => { unsafe::transmute(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;
         unsafe::forget(p);
@@ -188,7 +184,7 @@ mod pingpong {
 
     fn liberate_pong(-p: pong) -> pipes::send_packet<ping> unsafe {
         let addr : *pipes::send_packet<ping> = match p {
-          pong(x) => { unsafe::reinterpret_cast(ptr::addr_of(x)) }
+          pong(x) => { unsafe::transmute(ptr::addr_of(x)) }
         };
         let liberated_value <- *addr;
         unsafe::forget(p);
