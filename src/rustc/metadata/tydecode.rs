@@ -1,5 +1,8 @@
 // Type decoding
 
+// tjc note: Would be great to have a `match check` macro equivalent
+// for some of these
+
 import syntax::ast;
 import syntax::ast::*;
 import syntax::ast_util;
@@ -103,10 +106,11 @@ fn parse_vstore(st: @pstate) -> ty::vstore {
         return ty::vstore_fixed(n);
     }
 
-    match check next(st) {
+    match next(st) {
       '~' => ty::vstore_uniq,
       '@' => ty::vstore_box,
-      '&' => ty::vstore_slice(parse_region(st))
+      '&' => ty::vstore_slice(parse_region(st)),
+      _ => fail ~"parse_vstore: bad input"
     }
 }
 
@@ -126,7 +130,7 @@ fn parse_substs(st: @pstate, conv: conv_did) -> ty::substs {
 }
 
 fn parse_bound_region(st: @pstate) -> ty::bound_region {
-    match check next(st) {
+    match next(st) {
       's' => ty::br_self,
       'a' => {
         let id = parse_int(st) as uint;
@@ -138,12 +142,13 @@ fn parse_bound_region(st: @pstate) -> ty::bound_region {
         let id = parse_int(st);
         assert next(st) == '|';
         ty::br_cap_avoid(id, @parse_bound_region(st))
-      }
+      },
+      _ => fail ~"parse_bound_region: bad input"
     }
 }
 
 fn parse_region(st: @pstate) -> ty::region {
-    match check next(st) {
+    match next(st) {
       'b' => {
         ty::re_bound(parse_bound_region(st))
       }
@@ -163,13 +168,15 @@ fn parse_region(st: @pstate) -> ty::region {
       't' => {
         ty::re_static
       }
+      _ => fail ~"parse_region: bad input"
     }
 }
 
 fn parse_opt<T>(st: @pstate, f: fn() -> T) -> option<T> {
-    match check next(st) {
+    match next(st) {
       'n' => none,
-      's' => some(f())
+      's' => some(f()),
+      _ => fail ~"parse_opt: bad input"
     }
 }
 
@@ -183,7 +190,7 @@ fn parse_str(st: @pstate, term: char) -> ~str {
 }
 
 fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
-    match check next(st) {
+    match next(st) {
       'n' => return ty::mk_nil(st.tcx),
       'z' => return ty::mk_bot(st.tcx),
       'b' => return ty::mk_bool(st.tcx),
@@ -191,7 +198,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       'u' => return ty::mk_uint(st.tcx),
       'l' => return ty::mk_float(st.tcx),
       'M' => {
-        match check next(st) {
+        match next(st) {
           'b' => return ty::mk_mach_uint(st.tcx, ast::ty_u8),
           'w' => return ty::mk_mach_uint(st.tcx, ast::ty_u16),
           'l' => return ty::mk_mach_uint(st.tcx, ast::ty_u32),
@@ -201,7 +208,8 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
           'L' => return ty::mk_mach_int(st.tcx, ast::ty_i32),
           'D' => return ty::mk_mach_int(st.tcx, ast::ty_i64),
           'f' => return ty::mk_mach_float(st.tcx, ast::ty_f32),
-          'F' => return ty::mk_mach_float(st.tcx, ast::ty_f64)
+          'F' => return ty::mk_mach_float(st.tcx, ast::ty_f64),
+          _ => fail ~"parse_ty: bad numeric type"
         }
       }
       'c' => return ty::mk_char(st.tcx),
@@ -270,10 +278,11 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       'Y' => return ty::mk_type(st.tcx),
       'C' => {
-        let ck = match check next(st) {
+        let ck = match next(st) {
           '&' => ty::ck_block,
           '@' => ty::ck_box,
-          '~' => ty::ck_uniq
+          '~' => ty::ck_uniq,
+          _ => fail ~"parse_ty: bad closure kind"
         };
         return ty::mk_opaque_closure_ptr(st.tcx, ck);
       }
@@ -354,11 +363,12 @@ fn parse_hex(st: @pstate) -> uint {
 }
 
 fn parse_purity(c: char) -> purity {
-    match check c {
+    match c {
       'u' => unsafe_fn,
       'p' => pure_fn,
       'i' => impure_fn,
-      'c' => extern_fn
+      'c' => extern_fn,
+      _ => fail ~"parse_purity: bad purity"
     }
 }
 
@@ -369,12 +379,13 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::fn_ty {
     assert (next(st) == '[');
     let mut inputs: ~[ty::arg] = ~[];
     while peek(st) != ']' {
-        let mode = match check peek(st) {
+        let mode = match peek(st) {
           '&' => ast::by_mutbl_ref,
           '-' => ast::by_move,
           '+' => ast::by_copy,
           '=' => ast::by_ref,
-          '#' => ast::by_val
+          '#' => ast::by_val,
+          _ => fail ~"bad mode"
         };
         st.pos += 1u;
         vec::push(inputs, {mode: ast::expl(mode), ty: parse_ty(st, conv)});
@@ -422,13 +433,14 @@ fn parse_bounds_data(data: @~[u8], start: uint,
 fn parse_bounds(st: @pstate, conv: conv_did) -> @~[ty::param_bound] {
     let mut bounds = ~[];
     loop {
-        vec::push(bounds, match check next(st) {
+        vec::push(bounds, match next(st) {
           'S' => ty::bound_send,
           'C' => ty::bound_copy,
           'K' => ty::bound_const,
           'O' => ty::bound_owned,
           'I' => ty::bound_trait(parse_ty(st, conv)),
-          '.' => break
+          '.' => break,
+          _ => fail ~"parse_bounds: bad bounds"
         });
     }
     @bounds

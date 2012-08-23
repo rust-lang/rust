@@ -88,7 +88,7 @@ fn encode_region_param(ecx: @encode_ctxt, ebml_w: ebml::writer,
 fn encode_mutability(ebml_w: ebml::writer, mt: class_mutability) {
     do ebml_w.wr_tag(tag_class_mut) {
         let val = match mt {
-          class_immutable => 'i',
+          class_immutable => 'a',
           class_mutable => 'm'
         };
         ebml_w.writer.write(&[val as u8]);
@@ -472,7 +472,7 @@ fn purity_static_method_family(p: purity) -> char {
       unsafe_fn => 'U',
       pure_fn => 'P',
       impure_fn => 'F',
-      extern_fn => 'E'
+      _ => fail ~"extern fn can't be static"
     }
 }
 
@@ -813,19 +813,22 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::writer,
         visit_expr: |_e, _cx, _v| { },
         visit_item: |i, cx, v, copy ebml_w| {
             visit::visit_item(i, cx, v);
-            match check ecx.tcx.items.get(i.id) {
+            match ecx.tcx.items.get(i.id) {
               ast_map::node_item(_, pt) => {
                 encode_info_for_item(ecx, ebml_w, i, index, *pt);
               }
+              _ => fail ~"bad item"
             }
         },
         visit_foreign_item: |ni, cx, v, copy ebml_w| {
             visit::visit_foreign_item(ni, cx, v);
-            match check ecx.tcx.items.get(ni.id) {
+            match ecx.tcx.items.get(ni.id) {
               ast_map::node_foreign_item(_, abi, pt) => {
                 encode_info_for_foreign_item(ecx, ebml_w, ni,
                                              index, *pt, abi);
               }
+              // case for separate item and foreign-item tables
+              _ => fail ~"bad foreign item"
             }
         }
         with *visit::default_visitor()
