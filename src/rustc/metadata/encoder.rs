@@ -18,6 +18,7 @@ import syntax::ast_map;
 import syntax::attr;
 import std::serialization::serializer;
 import std::ebml::serializer;
+import str::to_bytes;
 import syntax::ast;
 import syntax::diagnostic::span_handler;
 
@@ -152,7 +153,7 @@ fn encode_type_param_bounds(ebml_w: ebml::writer, ecx: @encode_ctxt,
 
 fn encode_variant_id(ebml_w: ebml::writer, vid: def_id) {
     ebml_w.start_tag(tag_items_data_item_variant);
-    ebml_w.writer.write(str::bytes(def_to_str(vid)));
+    ebml_w.writer.write(str::to_bytes(def_to_str(vid)));
     ebml_w.end_tag();
 }
 
@@ -181,25 +182,25 @@ fn encode_symbol(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
             fmt!("encode_symbol: id not found %d", id));
       }
     };
-    ebml_w.writer.write(str::bytes(sym));
+    ebml_w.writer.write(str::to_bytes(sym));
     ebml_w.end_tag();
 }
 
 fn encode_discriminant(ecx: @encode_ctxt, ebml_w: ebml::writer, id: node_id) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    ebml_w.writer.write(str::bytes(ecx.discrim_symbols.get(id)));
+    ebml_w.writer.write(str::to_bytes(ecx.discrim_symbols.get(id)));
     ebml_w.end_tag();
 }
 
 fn encode_disr_val(_ecx: @encode_ctxt, ebml_w: ebml::writer, disr_val: int) {
     ebml_w.start_tag(tag_disr_val);
-    ebml_w.writer.write(str::bytes(int::to_str(disr_val,10u)));
+    ebml_w.writer.write(str::to_bytes(int::to_str(disr_val,10u)));
     ebml_w.end_tag();
 }
 
 fn encode_parent_item(ebml_w: ebml::writer, id: def_id) {
     ebml_w.start_tag(tag_items_data_parent_item);
-    ebml_w.writer.write(str::bytes(def_to_str(id)));
+    ebml_w.writer.write(str::to_bytes(def_to_str(id)));
     ebml_w.end_tag();
 }
 
@@ -656,7 +657,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 /* Write the info that's needed when viewing this class
                    as an impl (just the method def_id and self type) */
                 ebml_w.start_tag(tag_item_impl_method);
-                ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
+                ebml_w.writer.write(to_bytes(def_to_str(local_def(m.id))));
                 ebml_w.end_tag();
               }
            }
@@ -693,7 +694,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_attributes(ebml_w, item.attrs);
         for methods.each |m| {
             ebml_w.start_tag(tag_item_impl_method);
-            ebml_w.writer.write(str::bytes(def_to_str(local_def(m.id))));
+            ebml_w.writer.write(str::to_bytes(def_to_str(local_def(m.id))));
             ebml_w.end_tag();
         }
         if traits.len() > 1 {
@@ -900,7 +901,7 @@ fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
       meta_word(name) => {
         ebml_w.start_tag(tag_meta_item_word);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::bytes(name));
+        ebml_w.writer.write(str::to_bytes(name));
         ebml_w.end_tag();
         ebml_w.end_tag();
       }
@@ -909,10 +910,10 @@ fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
           lit_str(value) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
-            ebml_w.writer.write(str::bytes(name));
+            ebml_w.writer.write(str::to_bytes(name));
             ebml_w.end_tag();
             ebml_w.start_tag(tag_meta_item_value);
-            ebml_w.writer.write(str::bytes(*value));
+            ebml_w.writer.write(str::to_bytes(*value));
             ebml_w.end_tag();
             ebml_w.end_tag();
           }
@@ -922,7 +923,7 @@ fn encode_meta_item(ebml_w: ebml::writer, mi: meta_item) {
       meta_list(name, items) => {
         ebml_w.start_tag(tag_meta_item_list);
         ebml_w.start_tag(tag_meta_item_name);
-        ebml_w.writer.write(str::bytes(name));
+        ebml_w.writer.write(str::to_bytes(name));
         ebml_w.end_tag();
         for items.each |inner_item| {
             encode_meta_item(ebml_w, *inner_item);
@@ -1044,20 +1045,20 @@ fn encode_crate_dep(ecx: @encode_ctxt, ebml_w: ebml::writer,
                     dep: decoder::crate_dep) {
     ebml_w.start_tag(tag_crate_dep);
     ebml_w.start_tag(tag_crate_dep_name);
-    ebml_w.writer.write(str::bytes(ecx.tcx.sess.str_of(dep.name)));
+    ebml_w.writer.write(str::to_bytes(ecx.tcx.sess.str_of(dep.name)));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_vers);
-    ebml_w.writer.write(str::bytes(dep.vers));
+    ebml_w.writer.write(str::to_bytes(dep.vers));
     ebml_w.end_tag();
     ebml_w.start_tag(tag_crate_dep_hash);
-    ebml_w.writer.write(str::bytes(dep.hash));
+    ebml_w.writer.write(str::to_bytes(dep.hash));
     ebml_w.end_tag();
     ebml_w.end_tag();
 }
 
 fn encode_hash(ebml_w: ebml::writer, hash: ~str) {
     ebml_w.start_tag(tag_crate_hash);
-    ebml_w.writer.write(str::bytes(hash));
+    ebml_w.writer.write(str::to_bytes(hash));
     ebml_w.end_tag();
 }
 

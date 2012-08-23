@@ -1523,7 +1523,7 @@ mod test {
                             server_ch.send(
                                 str::from_bytes(data));
                             log(debug, ~"SERVER: before write");
-                            tcp_write_single(sock, str::bytes(resp));
+                            tcp_write_single(sock, str::to_bytes(resp));
                             log(debug, ~"SERVER: after write.. die");
                             core::comm::send(kill_ch, none);
                           }
@@ -1599,7 +1599,7 @@ mod test {
         }
         else {
             let sock = result::unwrap(connect_result);
-            let resp_bytes = str::bytes(resp);
+            let resp_bytes = str::to_bytes(resp);
             tcp_write_single(sock, resp_bytes);
             let read_result = sock.read(0u);
             if read_result.is_err() {

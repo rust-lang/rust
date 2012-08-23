@@ -38,7 +38,7 @@ export
    trim,
 
    // Transforming strings
-   bytes,
+   to_bytes,
    byte_slice,
    chars,
    substr,
@@ -372,7 +372,7 @@ Section: Transforming strings
  *
  * The result vector is not null-terminated.
  */
-pure fn bytes(s: &str) -> ~[u8] {
+pure fn to_bytes(s: &str) -> ~[u8] {
     unsafe {
         let mut s_copy = from_slice(s);
         let mut v: ~[u8] = ::unsafe::transmute(s_copy);
@@ -2727,7 +2727,7 @@ mod tests {
     fn vec_str_conversions() {
         let s1: ~str = ~"All mimsy were the borogoves";
 
-        let v: ~[u8] = bytes(s1);
+        let v: ~[u8] = to_bytes(s1);
         let s2: ~str = from_bytes(v);
         let mut i: uint = 0u;
         let n1: uint = len(s1);

@@ -57,7 +57,7 @@ impl ~[u8]: to_base64 {
 
 impl ~str: to_base64 {
     fn to_base64() -> ~str {
-        str::bytes(self).to_base64()
+        str::to_bytes(self).to_base64()
     }
 }
 
@@ -129,7 +129,7 @@ impl ~[u8]: from_base64 {
 
 impl ~str: from_base64 {
     fn from_base64() -> ~[u8] {
-        str::bytes(self).from_base64()
+        str::to_bytes(self).from_base64()
     }
 }
 
@@ -148,12 +148,12 @@ mod tests {
 
     #[test]
     fn test_from_base64() {
-        assert (~"").from_base64() == str::bytes(~"");
-        assert (~"Zg==").from_base64() == str::bytes(~"f");
-        assert (~"Zm8=").from_base64() == str::bytes(~"fo");
-        assert (~"Zm9v").from_base64() == str::bytes(~"foo");
-        assert (~"Zm9vYg==").from_base64() == str::bytes(~"foob");
-        assert (~"Zm9vYmE=").from_base64() == str::bytes(~"fooba");
-        assert (~"Zm9vYmFy").from_base64() == str::bytes(~"foobar");
+        assert (~"").from_base64() == str::to_bytes(~"");
+        assert (~"Zg==").from_base64() == str::to_bytes(~"f");
+        assert (~"Zm8=").from_base64() == str::to_bytes(~"fo");
+        assert (~"Zm9v").from_base64() == str::to_bytes(~"foo");
+        assert (~"Zm9vYg==").from_base64() == str::to_bytes(~"foob");
+        assert (~"Zm9vYmE=").from_base64() == str::to_bytes(~"fooba");
+        assert (~"Zm9vYmFy").from_base64() == str::to_bytes(~"foobar");
     }
 }

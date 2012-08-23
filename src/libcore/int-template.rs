@@ -156,7 +156,7 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
 }
 
 /// Parse a string to an int
-fn from_str(s: ~str) -> option<T> { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: ~str) -> option<T> { parse_buf(str::to_bytes(s), 10u) }
 
 /// Convert to a string in a given base
 fn to_str(n: T, radix: uint) -> ~str {
@@ -202,27 +202,27 @@ fn test_from_str() {
 #[test]
 #[ignore]
 fn test_parse_buf() {
-    import str::bytes;
-    assert parse_buf(bytes(~"123"), 10u) == some(123 as T);
-    assert parse_buf(bytes(~"1001"), 2u) == some(9 as T);
-    assert parse_buf(bytes(~"123"), 8u) == some(83 as T);
-    assert parse_buf(bytes(~"123"), 16u) == some(291 as T);
-    assert parse_buf(bytes(~"ffff"), 16u) == some(65535 as T);
-    assert parse_buf(bytes(~"FFFF"), 16u) == some(65535 as T);
-    assert parse_buf(bytes(~"z"), 36u) == some(35 as T);
-    assert parse_buf(bytes(~"Z"), 36u) == some(35 as T);
+    import str::to_bytes;
+    assert parse_buf(to_bytes(~"123"), 10u) == some(123 as T);
+    assert parse_buf(to_bytes(~"1001"), 2u) == some(9 as T);
+    assert parse_buf(to_bytes(~"123"), 8u) == some(83 as T);
+    assert parse_buf(to_bytes(~"123"), 16u) == some(291 as T);
+    assert parse_buf(to_bytes(~"ffff"), 16u) == some(65535 as T);
+    assert parse_buf(to_bytes(~"FFFF"), 16u) == some(65535 as T);
+    assert parse_buf(to_bytes(~"z"), 36u) == some(35 as T);
+    assert parse_buf(to_bytes(~"Z"), 36u) == some(35 as T);
 
-    assert parse_buf(bytes(~"-123"), 10u) == some(-123 as T);
-    assert parse_buf(bytes(~"-1001"), 2u) == some(-9 as T);
-    assert parse_buf(bytes(~"-123"), 8u) == some(-83 as T);
-    assert parse_buf(bytes(~"-123"), 16u) == some(-291 as T);
-    assert parse_buf(bytes(~"-ffff"), 16u) == some(-65535 as T);
-    assert parse_buf(bytes(~"-FFFF"), 16u) == some(-65535 as T);
-    assert parse_buf(bytes(~"-z"), 36u) == some(-35 as T);
-    assert parse_buf(bytes(~"-Z"), 36u) == some(-35 as T);
+    assert parse_buf(to_bytes(~"-123"), 10u) == some(-123 as T);
+    assert parse_buf(to_bytes(~"-1001"), 2u) == some(-9 as T);
+    assert parse_buf(to_bytes(~"-123"), 8u) == some(-83 as T);
+    assert parse_buf(to_bytes(~"-123"), 16u) == some(-291 as T);
+    assert parse_buf(to_bytes(~"-ffff"), 16u) == some(-65535 as T);
+    assert parse_buf(to_bytes(~"-FFFF"), 16u) == some(-65535 as T);
+    assert parse_buf(to_bytes(~"-z"), 36u) == some(-35 as T);
+    assert parse_buf(to_bytes(~"-Z"), 36u) == some(-35 as T);
 
-    assert parse_buf(str::bytes(~"Z"), 35u) == none;
-    assert parse_buf(str::bytes(~"-9"), 2u) == none;
+    assert parse_buf(to_bytes(~"Z"), 35u) == none;
+    assert parse_buf(to_bytes(~"-9"), 2u) == none;
 }
 
 #[test]

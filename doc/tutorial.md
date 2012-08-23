@@ -2713,7 +2713,7 @@ fn as_hex(data: ~[u8]) -> ~str {
 }
 
 fn sha1(data: ~str) -> ~str unsafe {
-    let bytes = str::bytes(data);
+    let bytes = str::to_bytes(data);
     let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                             vec::len(bytes) as c_uint, ptr::null());
     return as_hex(vec::unsafe::from_buf(hash, 20u));
@@ -2813,7 +2813,7 @@ The `sha1` function is the most obscure part of the program.
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 fn sha1(data: ~str) -> ~str {
     unsafe {
-        let bytes = str::bytes(data);
+        let bytes = str::to_bytes(data);
         let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                                 vec::len(bytes), ptr::null());
         return as_hex(vec::unsafe::from_buf(hash, 20u));
@@ -2856,7 +2856,7 @@ Let's look at our `sha1` function again.
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 # fn x(data: ~str) -> ~str {
 # unsafe {
-let bytes = str::bytes(data);
+let bytes = str::to_bytes(data);
 let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                         vec::len(bytes), ptr::null());
 return as_hex(vec::unsafe::from_buf(hash, 20u));
@@ -2864,8 +2864,8 @@ return as_hex(vec::unsafe::from_buf(hash, 20u));
 # }
 ~~~~
 
-The `str::bytes` function is perfectly safe, it converts a string to
-an `[u8]`. This byte array is then fed to `vec::unsafe::to_ptr`, which
+The `str::to_bytes` function is perfectly safe: it converts a string to
+a `[u8]`. This byte array is then fed to `vec::unsafe::to_ptr`, which
 returns an unsafe pointer to its contents.
 
 This pointer will become invalid as soon as the vector it points into

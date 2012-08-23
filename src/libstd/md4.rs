@@ -100,7 +100,7 @@ fn md4_str(msg: ~[u8]) -> ~str {
     result
 }
 
-fn md4_text(msg: ~str) -> ~str { md4_str(str::bytes(msg)) }
+fn md4_text(msg: ~str) -> ~str { md4_str(str::to_bytes(msg)) }
 
 #[test]
 fn test_md4() {

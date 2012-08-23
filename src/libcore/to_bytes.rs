@@ -15,9 +15,9 @@ impl @~[u8]: ToBytes {
 }
 
 impl ~str: ToBytes {
-    fn to_bytes() -> ~[u8] { str::bytes(self) }
+    fn to_bytes() -> ~[u8] { str::to_bytes(self) }
 }
 
 impl @(~str): ToBytes {
-    fn to_bytes() -> ~[u8] { str::bytes(*self) }
+    fn to_bytes() -> ~[u8] { str::to_bytes(*self) }
 }
