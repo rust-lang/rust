@@ -794,19 +794,22 @@ fn make_pattern_bindings(bcx: block, phi_bindings: phi_bindings_list)
                 bcx.fcx.lllocals.insert(binding.pat_id,
                                         local_imm(phi_val));
             }
-            ast::bind_by_value => {
+            ast::bind_by_value | ast::bind_by_move => {
                 // by value: make a new temporary and copy the value out
                 let lltype = type_of::type_of(bcx.fcx.ccx, binding.ty);
                 let allocation = alloca(bcx, lltype);
                 let ty = binding.ty;
-                bcx = copy_val(bcx, INIT, allocation,
-                               load_if_immediate(bcx, phi_val, ty), ty);
+                bcx = if binding.mode == ast::bind_by_value {
+                    copy_val(bcx, INIT, allocation,
+                             load_if_immediate(bcx, phi_val, ty), ty)
+                } else {
+                    error!("moving out");
+                    move_val(bcx, INIT, allocation,
+                             {bcx: bcx, val: phi_val, kind: lv_owned}, ty)
+                };
                 bcx.fcx.lllocals.insert(binding.pat_id,
                                         local_mem(allocation));
                 add_clean(bcx, allocation, ty);
-            }
-            ast::bind_by_move => {
-                fail ~"unimplemented -- bblum";
             }
         }
     }
