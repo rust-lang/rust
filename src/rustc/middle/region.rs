@@ -518,6 +518,21 @@ impl determine_rp_ctxt {
         }
     }
 
+    // For named types like Foo, if there is no explicit region
+    // parameter, then we will add the anonymous region, so there is
+    // a dependency if the anonymous region implies rp.
+    //
+    // If the region is explicitly specified, then we follows the
+    // normal rules.
+    fn opt_region_is_relevant(opt_r: option<@ast::region>) -> bool {
+        debug!("opt_region_is_relevant: %? (anon_implies_rp=%b)",
+               opt_r, self.anon_implies_rp);
+        match opt_r {
+          none => self.anon_implies_rp,
+          some(r) => self.region_is_relevant(r)
+        }
+    }
+
     fn with(item_id: ast::node_id,
             anon_implies_rp: bool,
             f: fn()) {
@@ -613,11 +628,13 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // then check whether it is region-parameterized and consider
     // that as a direct dependency.
     match ty.node {
-      ast::ty_path(_, id) => {
+      ast::ty_path(path, id) => {
         match cx.def_map.get(id) {
           ast::def_ty(did) | ast::def_class(did, _) => {
             if did.crate == ast::local_crate {
-                cx.add_dep(did.node);
+                if cx.opt_region_is_relevant(path.rp) {
+                    cx.add_dep(did.node);
+                }
             } else {
                 let cstore = cx.sess.cstore;
                 match csearch::get_region_param(cstore, did) {
@@ -625,7 +642,9 @@ fn determine_rp_in_ty(ty: @ast::ty,
                   some(variance) => {
                     debug!("reference to external, rp'd type %s",
                            pprust::ty_to_str(ty, cx.sess.intr()));
-                    cx.add_rp(cx.item_id, cx.add_variance(variance))
+                    if cx.opt_region_is_relevant(path.rp) {
+                        cx.add_rp(cx.item_id, cx.add_variance(variance))
+                    }
                   }
                 }
             }
