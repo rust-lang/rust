@@ -18,7 +18,7 @@ export len;
 export from_fn;
 export from_elem;
 export from_slice;
-export build, build_sized;
+export build, build_sized, build_sized_opt;
 export to_mut;
 export from_mut;
 export head;
@@ -257,6 +257,24 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
 #[inline(always)]
 pure fn build<A>(builder: fn(push: pure fn(+A))) -> ~[A] {
     build_sized(4, builder)
+}
+
+/**
+ * Builds a vector by calling a provided function with an argument
+ * function that pushes an element to the back of a vector.
+ * This version takes an initial size for the vector.
+ *
+ * # Arguments
+ *
+ * * size - An option, maybe containing initial size of the vector to reserve
+ * * builder - A function that will construct the vector. It recieves
+ *             as an argument a function that will push an element
+ *             onto the vector being constructed.
+ */
+#[inline(always)]
+pure fn build_sized_opt<A>(size: option<uint>,
+                           builder: fn(push: pure fn(+A))) -> ~[A] {
+    build_sized(size.get_default(4), builder)
 }
 
 /// Produces a mut vector from an immutable vector.
@@ -1505,7 +1523,6 @@ impl<T> &[T]: ImmutableVector<T> {
 
 trait ImmutableCopyableVector<T> {
     pure fn filter(f: fn(T) -> bool) -> ~[T];
-    pure fn find(f: fn(T) -> bool) -> option<T>;
     pure fn rfind(f: fn(T) -> bool) -> option<T>;
 }
 
@@ -1520,15 +1537,6 @@ impl<T: copy> &[T]: ImmutableCopyableVector<T> {
      */
     #[inline]
     pure fn filter(f: fn(T) -> bool) -> ~[T] { filter(self, f) }
-    /**
-     * Search for the first element that matches a given predicate
-     *
-     * Apply function `f` to each element of `v`, starting from the first.
-     * When function `f` returns true then an option containing the element
-     * is returned. If `f` matches no elements then none is returned.
-     */
-    #[inline]
-    pure fn find(f: fn(T) -> bool) -> option<T> { find(self, f) }
     /**
      * Search for the last element that matches a given predicate
      *
@@ -1756,44 +1764,41 @@ mod u8 {
 // required in the slice.
 
 impl<A> &[A]: iter::BaseIter<A> {
-    fn each(blk: fn(A) -> bool) { each(self, blk) }
-    fn size_hint() -> option<uint> { some(len(self)) }
+    pure fn each(blk: fn(A) -> bool) { each(self, blk) }
+    pure fn size_hint() -> option<uint> { some(len(self)) }
 }
 
 impl<A> &[A]: iter::ExtendedIter<A> {
-    fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
-    fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
-    fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
-    fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
+    pure fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
+    pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
+    pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
+    pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
-    fn contains(x: A) -> bool { iter::contains(self, x) }
-    fn count(x: A) -> uint { iter::count(self, x) }
-    fn position(f: fn(A) -> bool) -> option<uint> { iter::position(self, f) }
+    pure fn contains(x: A) -> bool { iter::contains(self, x) }
+    pure fn count(x: A) -> uint { iter::count(self, x) }
+    pure fn position(f: fn(A) -> bool) -> option<uint> {
+        iter::position(self, f)
+    }
 }
 
-trait IterTraitExtensions<A> {
-    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
-    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
-    fn to_vec() -> ~[A];
-    fn min() -> A;
-    fn max() -> A;
-}
-
-impl<A: copy> &[A]: IterTraitExtensions<A> {
-    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
+impl<A: copy> &[A]: iter::CopyableIter<A> {
+    pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
-    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B] { iter::map_to_vec(self, op) }
-    fn to_vec() -> ~[A] { iter::to_vec(self) }
+    pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B] {
+        iter::map_to_vec(self, op)
+    }
+    pure fn to_vec() -> ~[A] { iter::to_vec(self) }
 
     // FIXME--bug in resolve prevents this from working (#2611)
     // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> ~[B] {
     //     iter::flat_map_to_vec(self, op)
     // }
 
-    fn min() -> A { iter::min(self) }
-    fn max() -> A { iter::max(self) }
+    pure fn min() -> A { iter::min(self) }
+    pure fn max() -> A { iter::max(self) }
+    pure fn find(p: fn(A) -> bool) -> option<A> { iter::find(self, p) }
 }
 // ___________________________________________________________________________
 

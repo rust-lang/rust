@@ -29,6 +29,6 @@ pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
     }
 }
 
-fn SIZE_HINT<A>(self: IMPL_T<A>) -> option<uint> {
+pure fn SIZE_HINT<A>(self: IMPL_T<A>) -> option<uint> {
     some(self.len())
 }

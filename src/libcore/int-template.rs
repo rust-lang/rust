@@ -95,7 +95,7 @@ impl T: iter::Times {
         will execute the given function exactly x times. If we assume that \
         `x` is an int, this is functionally equivalent to \
         `for int::range(0, x) |_i| { /* anything */ }`."]
-    fn times(it: fn() -> bool) {
+    pure fn times(it: fn() -> bool) {
         if self < 0 {
             fail fmt!{"The .times method expects a nonnegative number, \
                        but found %?", self};
@@ -111,7 +111,7 @@ impl T: iter::Times {
 impl T: iter::TimesIx {
     #[inline(always)]
     /// Like `times`, but provides an index
-    fn timesi(it: fn(uint) -> bool) {
+    pure fn timesi(it: fn(uint) -> bool) {
         let slf = self as uint;
         if slf < 0u {
             fail fmt!{"The .timesi method expects a nonnegative number, \

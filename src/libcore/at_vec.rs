@@ -4,7 +4,7 @@ import ptr::addr_of;
 
 export init_op;
 export capacity;
-export build_sized, build;
+export build_sized, build, build_sized_opt;
 export map;
 export from_fn, from_elem;
 export unsafe;
@@ -76,6 +76,24 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
 #[inline(always)]
 pure fn build<A>(builder: fn(push: pure fn(+A))) -> @[A] {
     build_sized(4, builder)
+}
+
+/**
+ * Builds a vector by calling a provided function with an argument
+ * function that pushes an element to the back of a vector.
+ * This version takes an initial size for the vector.
+ *
+ * # Arguments
+ *
+ * * size - An option, maybe containing initial size of the vector to reserve
+ * * builder - A function that will construct the vector. It recieves
+ *             as an argument a function that will push an element
+ *             onto the vector being constructed.
+ */
+#[inline(always)]
+pure fn build_sized_opt<A>(size: option<uint>,
+                           builder: fn(push: pure fn(+A))) -> @[A] {
+    build_sized(size.get_default(4), builder)
 }
 
 // Appending

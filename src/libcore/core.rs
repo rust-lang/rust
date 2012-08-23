@@ -8,7 +8,7 @@ import Path = path::Path;
 import tuple::{TupleOps, ExtendedTupleOps};
 import str::{StrSlice, UniqueStr};
 import vec::{ConstVector, CopyableVector, ImmutableVector};
-import vec::{ImmutableCopyableVector, IterTraitExtensions};
+import vec::{ImmutableCopyableVector};
 import iter::{BaseIter, ExtendedIter, CopyableIter, Times, TimesIx};
 import num::Num;
 import ptr::Ptr;
