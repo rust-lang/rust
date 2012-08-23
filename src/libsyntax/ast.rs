@@ -31,14 +31,20 @@ fn deserialize_span<D>(_d: D) -> span {
 type spanned<T> = {node: T, span: span};
 
 fn serialize_ident<S: serializer>(s: S, i: ident) {
-    let intr = unsafe{ task::local_data_get(parse::token::interner_key) };
+    let intr = match unsafe{task::local_data_get(parse::token::interner_key)}{
+        none => fail ~"serialization: TLS interner not set up",
+        some(intr) => intr
+    };
 
-    s.emit_str(*(*intr.get()).get(i));
+    s.emit_str(*(*intr).get(i));
 }
 fn deserialize_ident<D: deserializer>(d: D) -> ident  {
-    let intr = unsafe{ task::local_data_get(parse::token::interner_key) };
+    let intr = match unsafe{task::local_data_get(parse::token::interner_key)}{
+        none => fail ~"deserialization: TLS interner not set up",
+        some(intr) => intr
+    };
 
-    (*intr.get()).intern(@d.read_str())
+    (*intr).intern(@d.read_str())
 }
 
 type ident = token::str_num;
