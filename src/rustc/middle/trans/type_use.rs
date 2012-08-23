@@ -116,10 +116,13 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 }
 
 fn type_needs(cx: ctx, use: uint, ty: ty::t) {
-    let mut done = true;
     // Optimization -- don't descend type if all params already have this use
-    for vec::each(cx.uses) |u| { if u & use != use { done = false } }
-    if !done { type_needs_inner(cx, use, ty, @nil); }
+    for vec::each_mut(cx.uses) |u| {
+        if *u & use != use {
+            type_needs_inner(cx, use, ty, @nil);
+            return;
+        }
+    }
 }
 
 fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,

@@ -851,12 +851,10 @@ fn each_ancestor(list:        &mut AncestorList,
                     do with_parent_tg(&mut nobe.parent_group) |tg_opt| {
                         // Decide whether this group is dead. Note that the
                         // group being *dead* is disjoint from it *failing*.
-                        match *tg_opt {
-                            some(ref tg) => {
-                                nobe_is_dead = taskgroup_is_dead(tg);
-                            },
-                            none => { }
-                        }
+                        nobe_is_dead = match *tg_opt {
+                            some(ref tg) => taskgroup_is_dead(tg),
+                            none => nobe_is_dead
+                        };
                         // Call iterator block. (If the group is dead, it's
                         // safe to skip it. This will leave our *rust_task
                         // hanging around in the group even after it's freed,
