@@ -583,8 +583,9 @@ fn parse_pretty(sess: session, &&name: ~str) -> pp_mode {
       ~"expanded,identified" => ppm_expanded_identified,
       ~"identified" => ppm_identified,
       _ => {
-        sess.fatal(~"argument to `pretty` must be one of `normal`, `typed`, \
-                     or `identified`");
+        sess.fatal(~"argument to `pretty` must be one of `normal`, \
+                     `expanded`, `typed`, `identified`, \
+                     or `expanded,identified`");
       }
     }
 }
