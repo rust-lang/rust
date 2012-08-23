@@ -127,7 +127,7 @@ enum view_item_parse_mode {
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
-    {$p:expr} => { match copy $p.token {
+    ($p:expr) => { match copy $p.token {
       INTERPOLATED(token::nt_expr(e)) => {
         $p.bump();
         return pexpr(e);
@@ -142,26 +142,26 @@ macro_rules! maybe_whole_expr (
 )
 
 macro_rules! maybe_whole (
-    {$p:expr, $constructor:ident} => { match copy $p.token {
+    ($p:expr, $constructor:ident) => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return x; }
       _ => ()
     }} ;
-    {deref $p:expr, $constructor:ident} => { match copy $p.token {
+    (deref $p:expr, $constructor:ident) => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return *x; }
       _ => ()
     }} ;
-    {some $p:expr, $constructor:ident} => { match copy $p.token {
+    (some $p:expr, $constructor:ident) => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return some(x); }
       _ => ()
     }} ;
-    {iovi $p:expr, $constructor:ident} => { match copy $p.token {
+    (iovi $p:expr, $constructor:ident) => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => {
         $p.bump();
         return iovi_item(x);
       }
       _ => ()
     }} ;
-    {pair_empty $p:expr, $constructor:ident} => { match copy $p.token {
+    (pair_empty $p:expr, $constructor:ident) => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return (~[], x); }
       _ => ()
     }}

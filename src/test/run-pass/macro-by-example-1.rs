@@ -3,7 +3,7 @@ fn main() {
     #macro[[#apply[f, [x, ...]], f(x, ...)]];
 
     macro_rules! apply_tt(
-        {$f:expr, ($($x:expr),*)} => {$f($($x),*)}
+        ($f:expr, ($($x:expr),*)) => {$f($($x),*)}
     )
 
     fn add(a: int, b: int) -> int { return a + b; }
