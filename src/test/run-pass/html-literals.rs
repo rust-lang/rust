@@ -16,18 +16,18 @@ left.
 */
 
 macro_rules! html (
-    { $($body:tt)* } => (
+    ( $($body:tt)* ) => (
         parse_node!( []; []; $($body)* )
     )
 )
 
 macro_rules! parse_node (
-    {
+    (
         [:$head:ident ($(:$head_nodes:expr),*)
          $(:$tags:ident ($(:$tag_nodes:expr),*))*];
         [$(:$nodes:expr),*];
         </$tag:ident> $($rest:tt)*
-    } => (
+    ) => (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
             [$(:$head_nodes,)* :tag(stringify!($head), ~[$($nodes),*])];
@@ -35,11 +35,11 @@ macro_rules! parse_node (
         )
     );
 
-    {
+    (
         [$(:$tags:ident ($(:$tag_nodes:expr),*) )*];
         [$(:$nodes:expr),*];
         <$tag:ident> $($rest:tt)*
-    } => (
+    ) => (
         parse_node!(
             [:$tag ($(:$nodes)*) $(: $tags ($(:$tag_nodes),*) )*];
             [];
@@ -47,11 +47,11 @@ macro_rules! parse_node (
         )
     );
 
-    {
+    (
         [$(:$tags:ident ($(:$tag_nodes:expr),*) )*];
         [$(:$nodes:expr),*];
         . $($rest:tt)*
-    } => (
+    ) => (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
             [$(:$nodes,)* :text(~".")];
@@ -59,11 +59,11 @@ macro_rules! parse_node (
         )
     );
 
-    {
+    (
         [$(:$tags:ident ($(:$tag_nodes:expr),*) )*];
         [$(:$nodes:expr),*];
         $word:ident $($rest:tt)*
-    } => (
+    ) => (
         parse_node!(
             [$(: $tags ($(:$tag_nodes),*))*];
             [$(:$nodes,)* :text(stringify!($word))];
@@ -71,7 +71,7 @@ macro_rules! parse_node (
         )
     );
 
-    { []; [:$e:expr]; } => ( $e );
+    ( []; [:$e:expr]; ) => ( $e );
 )
 
 fn main() {

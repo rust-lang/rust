@@ -65,7 +65,7 @@ fn from_value<A>(+val: A) -> Future<A> {
 }
 
 macro_rules! move_it (
-    {$x:expr} => { unsafe { let y <- *ptr::addr_of($x); y } }
+    ($x:expr) => { unsafe { let y <- *ptr::addr_of($x); y } }
 )
 
 fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
