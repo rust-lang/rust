@@ -182,10 +182,11 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
           expr_path(path) => {
             match env.def_map.find(e.id) {
               some(def_const(def_id)) => {
-                match check env.ast_map.get(def_id.node) {
+                match env.ast_map.get(def_id.node) {
                   ast_map::node_item(it, _) => {
                     v.visit_item(it, env, v);
                   }
+                  _ => fail ~"const not bound to an item"
                 }
               }
               _ => ()
