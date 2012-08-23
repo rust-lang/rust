@@ -57,7 +57,7 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
-   match mm.find(str::bytes(str::to_lower(key))) {
+   match mm.find(str::to_bytes(str::to_lower(key))) {
       option::none      => { return 0u; }
       option::some(num) => { return num; }
    }
@@ -185,7 +185,7 @@ fn main(args: ~[~str]) {
 
          // process the sequence for k-mers
          (_, true) => {
-            let line_bytes = str::bytes(line);
+            let line_bytes = str::to_bytes(line);
 
            for sizes.eachi |ii, _sz| {
                let mut lb = line_bytes;

@@ -391,7 +391,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             let variant_shape = shape_of_variant(ccx, v);
             add_substr(data, variant_shape);
 
-            let zname = str::bytes(ccx.sess.str_of(v.name)) + ~[0u8];
+            let zname = str::to_bytes(ccx.sess.str_of(v.name)) + ~[0u8];
             add_substr(data, zname);
         }
         enum_variants += ~[variants];

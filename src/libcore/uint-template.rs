@@ -138,7 +138,7 @@ fn parse_buf(buf: &[const u8], radix: uint) -> option<T> {
 }
 
 /// Parse a string to an int
-fn from_str(s: ~str) -> option<T> { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: ~str) -> option<T> { parse_buf(str::to_bytes(s), 10u) }
 
 /// Parse a string as an unsigned integer.
 fn from_str_radix(buf: ~str, radix: u64) -> option<u64> {
@@ -267,16 +267,16 @@ fn test_from_str() {
 #[test]
 #[ignore]
 fn test_parse_buf() {
-    import str::bytes;
-    assert parse_buf(bytes(~"123"), 10u) == some(123u as T);
-    assert parse_buf(bytes(~"1001"), 2u) == some(9u as T);
-    assert parse_buf(bytes(~"123"), 8u) == some(83u as T);
-    assert parse_buf(bytes(~"123"), 16u) == some(291u as T);
-    assert parse_buf(bytes(~"ffff"), 16u) == some(65535u as T);
-    assert parse_buf(bytes(~"z"), 36u) == some(35u as T);
+    import str::to_bytes;
+    assert parse_buf(to_bytes(~"123"), 10u) == some(123u as T);
+    assert parse_buf(to_bytes(~"1001"), 2u) == some(9u as T);
+    assert parse_buf(to_bytes(~"123"), 8u) == some(83u as T);
+    assert parse_buf(to_bytes(~"123"), 16u) == some(291u as T);
+    assert parse_buf(to_bytes(~"ffff"), 16u) == some(65535u as T);
+    assert parse_buf(to_bytes(~"z"), 36u) == some(35u as T);
 
-    assert parse_buf(str::bytes(~"Z"), 10u) == none;
-    assert parse_buf(str::bytes(~"_"), 2u) == none;
+    assert parse_buf(to_bytes(~"Z"), 10u) == none;
+    assert parse_buf(to_bytes(~"_"), 2u) == none;
 }
 
 #[test]

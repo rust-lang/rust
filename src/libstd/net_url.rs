@@ -1029,7 +1029,7 @@ mod tests {
 
         assert decode_form_urlencoded(~[]) == str_hash();
 
-        let s = str::bytes(~"a=1&foo+bar=abc&foo+bar=12+%3D+34");
+        let s = str::to_bytes(~"a=1&foo+bar=abc&foo+bar=12+%3D+34");
         assert decode_form_urlencoded(s) == hash_from_strs(~[
             (~"a", @dvec::from_elem(@~"1")),
             (~"foo bar", @dvec::from_vec(~[mut @~"abc", @~"12 = 34"]))

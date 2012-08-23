@@ -1028,7 +1028,7 @@ mod tests {
       };
       assert (ostream as uint != 0u);
       let s = ~"hello";
-      let mut buf = vec::to_mut(str::bytes(s) + ~[0 as u8]);
+      let mut buf = vec::to_mut(str::to_bytes(s) + ~[0 as u8]);
       do vec::as_mut_buf(buf) |b, _len| {
           assert (libc::fwrite(b as *c_void, 1u as size_t,
                                (str::len(s) + 1u) as size_t, ostream)

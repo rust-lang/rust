@@ -295,7 +295,7 @@ impl writer {
 
     fn wr_str(s: ~str) {
         debug!("Write str: %?", s);
-        self.writer.write(str::bytes(s));
+        self.writer.write(str::to_bytes(s));
     }
 }
 

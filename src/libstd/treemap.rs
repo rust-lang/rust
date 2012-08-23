@@ -132,8 +132,8 @@ mod tests {
     fn u8_map() {
         let m = treemap();
 
-        let k1 = str::bytes(~"foo");
-        let k2 = str::bytes(~"bar");
+        let k1 = str::to_bytes(~"foo");
+        let k2 = str::to_bytes(~"bar");
 
         insert(m, k1, ~"foo");
         insert(m, k2, ~"bar");

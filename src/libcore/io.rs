@@ -319,7 +319,7 @@ fn with_bytes_reader_between<t>(bytes: ~[u8], start: uint, end: uint,
 }
 
 fn str_reader(s: ~str) -> Reader {
-    bytes_reader(str::bytes(s))
+    bytes_reader(str::to_bytes(s))
 }
 
 fn with_str_reader<T>(s: ~str, f: fn(Reader) -> T) -> T {

@@ -1119,7 +1119,7 @@ mod test {
         // In C, this would be a malloc'd or stack-allocated
         // struct that we'd cast to a void* and store as the
         // data field in our uv_connect_t struct
-        let req_str_bytes = str::bytes(req_str);
+        let req_str_bytes = str::to_bytes(req_str);
         let req_msg_ptr: *u8 = vec::unsafe::to_ptr(req_str_bytes);
         log(debug, fmt!("req_msg ptr: %u", req_msg_ptr as uint));
         let req_msg = ~[
@@ -1367,7 +1367,7 @@ mod test {
         let server_write_req = write_t();
         let server_write_req_ptr = ptr::addr_of(server_write_req);
 
-        let resp_str_bytes = str::bytes(server_resp_msg);
+        let resp_str_bytes = str::to_bytes(server_resp_msg);
         let resp_msg_ptr: *u8 = vec::unsafe::to_ptr(resp_str_bytes);
         log(debug, fmt!("resp_msg ptr: %u", resp_msg_ptr as uint));
         let resp_msg = ~[

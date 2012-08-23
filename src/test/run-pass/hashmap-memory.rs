@@ -51,7 +51,7 @@ mod map_reduce {
               none => {
                 let p = port();
                 error!("sending find_reducer");
-                send(ctrl, find_reducer(str::bytes(key), chan(p)));
+                send(ctrl, find_reducer(str::to_bytes(key), chan(p)));
                 error!("receiving");
                 c = recv(p);
                 log(error, c);
