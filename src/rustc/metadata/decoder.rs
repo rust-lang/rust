@@ -105,9 +105,56 @@ fn lookup_item(item_id: int, data: @~[u8]) -> ebml::doc {
     }
 }
 
-fn item_family(item: ebml::doc) -> char {
+enum Family {
+    Const,                 // c
+    Fn,                    // f
+    UnsafeFn,              // u
+    PureFn,                // p
+    StaticMethod,          // F
+    UnsafeStaticMethod,    // U
+    PureStaticMethod,      // P
+    ForeignFn,             // e
+    Type,                  // y
+    ForeignType,           // T
+    Mod,                   // m
+    ForeignMod,            // n
+    Enum,                  // t
+    Variant,               // v
+    Impl,                  // i
+    Trait,                 // I
+    Class,                 // C
+    Struct,                // S
+    PublicField,           // g
+    PrivateField,          // j
+    InheritedField         // N
+}
+
+fn item_family(item: ebml::doc) -> Family {
     let fam = ebml::get_doc(item, tag_items_data_item_family);
-    ebml::doc_as_u8(fam) as char
+    match ebml::doc_as_u8(fam) as char {
+      'c' => Const,
+      'f' => Fn,
+      'u' => UnsafeFn,
+      'p' => PureFn,
+      'F' => StaticMethod,
+      'U' => UnsafeStaticMethod,
+      'P' => PureStaticMethod,
+      'e' => ForeignFn,
+      'y' => Type,
+      'T' => ForeignType,
+      'm' => Mod,
+      'n' => ForeignMod,
+      't' => Enum,
+      'v' => Variant,
+      'i' => Impl,
+      'I' => Trait,
+      'C' => Class,
+      'S' => Struct,
+      'g' => PublicField,
+      'j' => PrivateField,
+      'N' => InheritedField,
+       c => fail (#fmt("unexpected family char: %c", c))
+    }
 }
 
 fn item_symbol(item: ebml::doc) -> ~str {
@@ -245,31 +292,34 @@ fn item_name(intr: ident_interner, item: ebml::doc) -> ast::ident {
 
 fn item_to_def_like(item: ebml::doc, did: ast::def_id, cnum: ast::crate_num)
         -> def_like {
-    let fam_ch = item_family(item);
-    match fam_ch {
-      'c' => dl_def(ast::def_const(did)),
-      'C' => dl_def(ast::def_class(did, true)),
-      'S' => dl_def(ast::def_class(did, false)),
-      'u' => dl_def(ast::def_fn(did, ast::unsafe_fn)),
-      'f' => dl_def(ast::def_fn(did, ast::impure_fn)),
-      'p' => dl_def(ast::def_fn(did, ast::pure_fn)),
-      'e' => dl_def(ast::def_fn(did, ast::extern_fn)),
-      'U' => dl_def(ast::def_static_method(did, ast::unsafe_fn)),
-      'F' => dl_def(ast::def_static_method(did, ast::impure_fn)),
-      'P' => dl_def(ast::def_static_method(did, ast::pure_fn)),
-      'y' => dl_def(ast::def_ty(did)),
-      't' => dl_def(ast::def_ty(did)),
-      'm' => dl_def(ast::def_mod(did)),
-      'n' => dl_def(ast::def_foreign_mod(did)),
-      'v' => {
-        let mut tid = option::get(item_parent_item(item));
-        tid = {crate: cnum, node: tid.node};
-        dl_def(ast::def_variant(tid, did))
+    let fam = item_family(item);
+    match fam {
+      Const     => dl_def(ast::def_const(did)),
+      Class     => dl_def(ast::def_class(did, true)),
+      Struct    => dl_def(ast::def_class(did, false)),
+      UnsafeFn  => dl_def(ast::def_fn(did, ast::unsafe_fn)),
+      Fn        => dl_def(ast::def_fn(did, ast::impure_fn)),
+      PureFn    => dl_def(ast::def_fn(did, ast::pure_fn)),
+      ForeignFn => dl_def(ast::def_fn(did, ast::extern_fn)),
+      UnsafeStaticMethod => dl_def(ast::def_static_method(did,
+                                                          ast::unsafe_fn)),
+      StaticMethod => dl_def(ast::def_static_method(did, ast::impure_fn)),
+      PureStaticMethod => dl_def(ast::def_static_method(did, ast::pure_fn)),
+      Type | ForeignType => dl_def(ast::def_ty(did)),
+      Mod => dl_def(ast::def_mod(did)),
+      ForeignMod => dl_def(ast::def_foreign_mod(did)),
+      Variant => {
+          match item_parent_item(item) {
+              some(t) => {
+                let tid = {crate: cnum, node: t.node};
+                dl_def(ast::def_variant(tid, did))
+              }
+              none => fail ~"item_to_def_like: enum item has no parent"
+          }
       }
-      'I' => dl_def(ast::def_ty(did)),
-      'i' => dl_impl(did),
-      'g' | 'j' | 'N' => dl_field,
-      ch => fail fmt!{"unexpected family code: '%c'", ch}
+      Trait | Enum => dl_def(ast::def_ty(did)),
+      Impl => dl_impl(did),
+      PublicField | PrivateField | InheritedField => dl_field,
     }
 }
 
@@ -642,12 +692,14 @@ fn get_trait_methods(intr: ident_interner, cdata: cmd, id: ast::node_id,
         let self_ty = get_self_ty(mth);
         vec::push(result, {ident: name, tps: bounds, fty: fty,
                     self_ty: self_ty,
-                    purity: match check item_family(mth) {
-                      'u' => ast::unsafe_fn,
-                      'f' => ast::impure_fn,
-                      'p' => ast::pure_fn
+                    purity: match item_family(mth) {
+                      UnsafeFn => ast::unsafe_fn,
+                      Fn => ast::impure_fn,
+                      PureFn => ast::pure_fn,
+                      _ => fail ~"bad purity"
                     }, vis: ast::public});
     }
+    #debug("get_trait_methods: }");
     @result
 }
 
@@ -659,7 +711,7 @@ fn get_method_names_if_trait(intr: ident_interner, cdata: cmd,
                           -> option<@DVec<(ast::ident, ast::self_ty_)>> {
 
     let item = lookup_item(node_id, cdata.data);
-    if item_family(item) != 'I' {
+    if item_family(item) != Trait {
         return none;
     }
 
@@ -685,7 +737,7 @@ fn get_item_attrs(cdata: cmd,
 
 // Helper function that gets either fields or methods
 fn get_class_members(intr: ident_interner, cdata: cmd, id: ast::node_id,
-                     p: fn(char) -> bool) -> ~[ty::field_ty] {
+                     p: fn(Family) -> bool) -> ~[ty::field_ty] {
     let data = cdata.data;
     let item = lookup_item(id, data);
     let mut result = ~[];
@@ -702,33 +754,31 @@ fn get_class_members(intr: ident_interner, cdata: cmd, id: ast::node_id,
     result
 }
 
-pure fn family_to_visibility(family: char) -> ast::visibility {
+pure fn family_to_visibility(family: Family) -> ast::visibility {
     match family {
-      'g' => ast::public,
-      'j' => ast::private,
-      'N' => ast::inherited,
+      PublicField => ast::public,
+      PrivateField => ast::private,
+      InheritedField => ast::inherited,
       _ => fail
     }
 }
 
-/* 'g' for public field, 'j' for private field, 'N' for inherited field */
 fn get_class_fields(intr: ident_interner, cdata: cmd, id: ast::node_id)
     -> ~[ty::field_ty] {
-    get_class_members(intr, cdata, id, |f| f == 'g' || f == 'j' || f == 'N')
+    get_class_members(intr, cdata, id, |f| f == PublicField
+                      || f == PrivateField || f == InheritedField)
 }
 
-fn family_has_type_params(fam_ch: char) -> bool {
-    match fam_ch {
-      'c' | 'T' | 'm' | 'n' | 'g' | 'h' | 'j' | 'e' | 'N' => false,
-      'f' | 'u' | 'p' | 'F' | 'U' | 'P' | 'y' | 't' | 'v' | 'i' | 'I' | 'C'
-          | 'a' | 'S'
-          => true,
-      _ => fail fmt!("'%c' is not a family", fam_ch)
+fn family_has_type_params(fam: Family) -> bool {
+    match fam {
+      Const | ForeignType | Mod | ForeignMod | PublicField | PrivateField
+      | ForeignFn => false,
+      _           => true
     }
 }
 
-fn family_names_type(fam_ch: char) -> bool {
-    match fam_ch { 'y' | 't' | 'I' => true, _ => false }
+fn family_names_type(fam: Family) -> bool {
+    match fam { Type | Mod | Trait => true, _ => false }
 }
 
 fn read_path(d: ebml::doc) -> {path: ~str, pos: uint} {
@@ -748,29 +798,29 @@ fn describe_def(items: ebml::doc, id: ast::def_id) -> ~str {
     return item_family_to_str(item_family(it));
 }
 
-fn item_family_to_str(fam: char) -> ~str {
-    match check fam {
-      'c' => return ~"const",
-      'f' => return ~"fn",
-      'u' => return ~"unsafe fn",
-      'p' => return ~"pure fn",
-      'F' => return ~"static method",
-      'U' => return ~"unsafe static method",
-      'P' => return ~"pure static method",
-      'e' => return ~"foreign fn",
-      'y' => return ~"type",
-      'T' => return ~"foreign type",
-      't' => return ~"type",
-      'm' => return ~"mod",
-      'n' => return ~"foreign mod",
-      'v' => return ~"enum",
-      'i' => return ~"impl",
-      'I' => return ~"trait",
-      'C' => return ~"class",
-      'S' => return ~"struct",
-      'g' => return ~"public field",
-      'j' => return ~"private field",
-      'N' => return ~"inherited field"
+fn item_family_to_str(fam: Family) -> ~str {
+    match fam {
+      Const => ~"const",
+      Fn => ~"fn",
+      UnsafeFn => ~"unsafe fn",
+      PureFn => ~"pure fn",
+      StaticMethod => ~"static method",
+      UnsafeStaticMethod => ~"unsafe static method",
+      PureStaticMethod => ~"pure static method",
+      ForeignFn => ~"foreign fn",
+      Type => ~"type",
+      ForeignType => ~"foreign type",
+      Mod => ~"mod",
+      ForeignMod => ~"foreign mod",
+      Enum => ~"enum",
+      Variant => ~"variant",
+      Impl => ~"impl",
+      Trait => ~"trait",
+      Class => ~"class",
+      Struct => ~"struct",
+      PublicField => ~"public field",
+      PrivateField => ~"private field",
+      InheritedField => ~"inherited field",
     }
 }
 
