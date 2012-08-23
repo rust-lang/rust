@@ -15,13 +15,13 @@ left.
 
 */
 
-macro_rules! html {
+macro_rules! html (
     { $($body:tt)* } => (
         parse_node!( []; []; $($body)* )
     )
-}
+)
 
-macro_rules! parse_node {
+macro_rules! parse_node (
     {
         [:$head:ident ($(:$head_nodes:expr),*)
          $(:$tags:ident ($(:$tag_nodes:expr),*))*];
@@ -72,7 +72,7 @@ macro_rules! parse_node {
     );
 
     { []; [:$e:expr]; } => ( $e );
-}
+)
 
 fn main() {
     let page = html! (

@@ -16,9 +16,9 @@ import io::WriterUtil;
 
 import pipes::{port, chan, SharedChan};
 
-macro_rules! move_out {
+macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
-}
+)
 
 enum request {
     get_count,

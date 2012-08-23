@@ -32,11 +32,11 @@ proto! pingpong_unbounded {
 }
 
 // This stuff should go in libcore::pipes
-macro_rules! move_it {
+macro_rules! move_it (
     { $x:expr } => { let t <- *ptr::addr_of($x); t }
-}
+)
 
-macro_rules! follow {
+macro_rules! follow (
     {
         $($message:path($($x: ident),+) -> $next:ident $e:expr)+
     } => (
@@ -62,7 +62,7 @@ macro_rules! follow {
                 _ => { fail }
         }
     )
-}
+)
 
 fn switch<T: send, Tb: send, U>(+endp: pipes::recv_packet_buffered<T, Tb>,
                       f: fn(+option<T>) -> U) -> U {

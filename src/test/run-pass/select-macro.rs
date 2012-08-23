@@ -3,7 +3,7 @@
  {
 
 // select!
-macro_rules! select_if {
+macro_rules! select_if (
 
     {
         $index:expr,
@@ -44,9 +44,9 @@ macro_rules! select_if {
             )
         }
     };
-}
+)
 
-macro_rules! select {
+macro_rules! select (
     {
         $( $port:path => {
             $($message:path$(($($x: ident),+))dont_type_this*
@@ -58,6 +58,6 @@ macro_rules! select {
             $(type_this $message$(($(x $x),+))dont_type_this* -> $next => { $e }),+
         ])+)
     }
-}
+)
 
 }

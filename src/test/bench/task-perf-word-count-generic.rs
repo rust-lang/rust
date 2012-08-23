@@ -34,9 +34,9 @@ import comm::port;
 import comm::recv;
 import comm::send;
 
-macro_rules! move_out {
+macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
-}
+)
 
 trait word_reader {
     fn read_word() -> option<~str>;
