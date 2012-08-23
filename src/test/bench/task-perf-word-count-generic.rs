@@ -82,7 +82,7 @@ impl io::Reader: word_reader {
 fn file_word_reader(filename: ~str) -> word_reader {
     match io::file_reader(filename) {
       result::ok(f) => { f as word_reader }
-      result::err(e) => { fail fmt!{"%?", e} }
+      result::err(e) => { fail fmt!("%?", e) }
     }
 }
 
@@ -101,7 +101,7 @@ fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
 
     loop { match get() { some(_) => { count += 1; } none => { break; } } }
     
-    io::println(fmt!{"%s\t%?", word, count});
+    io::println(fmt!("%s\t%?", word, count));
 }
 
 struct box<T> {
@@ -190,7 +190,7 @@ mod map_reduce {
                     match pipes::recv(ctrl) {
                       ctrl_proto::reducer(c_, ctrl) => {
                         c = some(c_);
-                        move_out!{ctrl}
+                        move_out!(ctrl)
                       }
                     }
                 }
@@ -227,11 +227,11 @@ mod map_reduce {
             while !is_done || ref_count > 0 {
                 match recv(p) {
                   emit_val(v) => {
-                    // error!{"received %d", v};
+                    // error!("received %d", v);
                     return some(v);
                   }
                   done => {
-                    // error!{"all done"};
+                    // error!("all done");
                     is_done = true;
                   }
                   addref => { ref_count += 1; }
@@ -262,7 +262,7 @@ mod map_reduce {
             let (_ready, message, ctrls) = pipes::select(ctrl);
             match option::unwrap(message) {
               ctrl_proto::mapper_done => {
-                // error!{"received mapper terminated."};
+                // error!("received mapper terminated.");
                 num_mappers -= 1;
                 ctrl = ctrls;
               }
@@ -288,7 +288,7 @@ mod map_reduce {
                 }
                 ctrl = vec::append_one(
                     ctrls,
-                    ctrl_proto::server::reducer(move_out!{cc}, c));
+                    ctrl_proto::server::reducer(move_out!(cc), c));
               }
             }
         }
@@ -303,7 +303,7 @@ fn main(argv: ~[~str]) {
     if vec::len(argv) < 2u && !os::getenv(~"RUST_BENCH").is_some() {
         let out = io::stdout();
 
-        out.write_line(fmt!{"Usage: %s <filename> ...", argv[0]});
+        out.write_line(fmt!("Usage: %s <filename> ...", argv[0]));
 
         return;
     }

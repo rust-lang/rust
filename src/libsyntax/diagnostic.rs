@@ -91,8 +91,8 @@ impl handler_t: handler {
           0u => return,
           1u => s = ~"aborting due to previous error",
           _  => {
-            s = fmt!{"aborting due to %u previous errors",
-                     self.err_count};
+            s = fmt!("aborting due to %u previous errors",
+                     self.err_count);
           }
         }
         self.fatal(s);
@@ -113,7 +113,7 @@ impl handler_t: handler {
 }
 
 fn ice_msg(msg: ~str) -> ~str {
-    fmt!{"internal compiler error: %s", msg}
+    fmt!("internal compiler error: %s", msg)
 }
 
 fn mk_span_handler(handler: handler, cm: codemap::codemap) -> span_handler {
@@ -168,16 +168,16 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
     let use_color = term::color_supported() &&
         io::stderr().get_type() == io::Screen;
     if str::is_not_empty(topic) {
-        io::stderr().write_str(fmt!{"%s ", topic});
+        io::stderr().write_str(fmt!("%s ", topic));
     }
     if use_color {
         term::fg(io::stderr(), diagnosticcolor(lvl));
     }
-    io::stderr().write_str(fmt!{"%s:", diagnosticstr(lvl)});
+    io::stderr().write_str(fmt!("%s:", diagnosticstr(lvl)));
     if use_color {
         term::reset(io::stderr());
     }
-    io::stderr().write_str(fmt!{" %s\n", msg});
+    io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
 fn emit(cmsp: option<(codemap::codemap, span)>,
@@ -212,13 +212,13 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     }
     // Print the offending lines
     for display_lines.each |line| {
-        io::stderr().write_str(fmt!{"%s:%u ", fm.name, line + 1u});
+        io::stderr().write_str(fmt!("%s:%u ", fm.name, line + 1u));
         let s = codemap::get_line(fm, line as int) + ~"\n";
         io::stderr().write_str(s);
     }
     if elided {
         let last_line = display_lines[vec::len(display_lines) - 1u];
-        let s = fmt!{"%s:%u ", fm.name, last_line + 1u};
+        let s = fmt!("%s:%u ", fm.name, last_line + 1u);
         let mut indent = str::len(s);
         let mut out = ~"";
         while indent > 0u { out += ~" "; indent -= 1u; }
@@ -257,7 +257,7 @@ fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
         let ss = option::map_default(ei.callie.span, @~"",
                                      |span| @codemap::span_to_str(span, cm));
         print_diagnostic(*ss, note,
-                         fmt!{"in expansion of #%s", ei.callie.name});
+                         fmt!("in expansion of #%s", ei.callie.name));
         let ss = codemap::span_to_str(ei.call_site, cm);
         print_diagnostic(ss, note, ~"expansion site");
         print_macro_backtrace(cm, ei.call_site);

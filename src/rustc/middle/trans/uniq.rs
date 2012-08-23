@@ -41,8 +41,8 @@ fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let src_box = v;
     let src_body = opaque_box_body(bcx, content_ty, src_box);
     let src_body = load_if_immediate(bcx, src_body, content_ty);
-    debug!{"ST: %?", val_str(bcx.ccx().tn, src_body)};
-    debug!{"DT: %?", val_str(bcx.ccx().tn, dst_body)};
+    debug!("ST: %?", val_str(bcx.ccx().tn, src_body));
+    debug!("DT: %?", val_str(bcx.ccx().tn, dst_body));
     let bcx = copy_val(bcx, INIT, dst_body, src_body, content_ty);
 
     let src_tydesc_ptr = GEPi(bcx, src_box,

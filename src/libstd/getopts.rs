@@ -314,7 +314,7 @@ fn opt_vals(m: matches, nm: ~str) -> ~[optval] {
     return match find_opt(m.opts, mkname(nm)) {
       some(id) => m.vals[id],
       none => {
-        error!{"No option '%s' defined", nm};
+        error!("No option '%s' defined", nm);
         fail
       }
     };

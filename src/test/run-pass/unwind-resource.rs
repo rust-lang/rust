@@ -6,11 +6,11 @@ import comm;
 struct complainer {
   let c: comm::Chan<bool>;
   new(c: comm::Chan<bool>) {
-    error!{"Hello!"};
+    error!("Hello!");
     self.c = c; }
-  drop { error!{"About to send!"};
+  drop { error!("About to send!");
     comm::send(self.c, true);
-    error!{"Sent!"}; }
+    error!("Sent!"); }
 }
 
 fn f(c: comm::Chan<bool>) {
@@ -22,6 +22,6 @@ fn main() {
     let p = comm::port();
     let c = comm::chan(p);
     task::spawn_unlinked(|| f(c) );
-    error!{"hiiiiiiiii"};
+    error!("hiiiiiiiii");
     assert comm::recv(p);
 }

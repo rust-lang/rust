@@ -112,9 +112,9 @@ fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
             lis_constraint(r_len, r_id) => {
                 let l_n = *r.interner.get(l_id);
                 let r_n = *r.interner.get(r_id);
-                lis_contradiction(fmt!{"Inconsistent lockstep iteration: \
+                lis_contradiction(fmt!("Inconsistent lockstep iteration: \
                                        '%s' has %u items, but '%s' has %u",
-                                        l_n, l_len, r_n, r_len})
+                                        l_n, l_len, r_n, r_len))
             }
           }
         }
@@ -231,8 +231,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
               matched_seq(*) => {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
-                    fmt!{"variable '%s' is still repeating at this depth",
-                         *r.interner.get(ident)});
+                    fmt!("variable '%s' is still repeating at this depth",
+                         *r.interner.get(ident)));
               }
             }
           }

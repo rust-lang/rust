@@ -39,7 +39,7 @@ trait gen_init {
 
 impl message: gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
-        debug!{"pipec: gen_send"};
+        debug!("pipec: gen_send");
         match self {
           message(id, span, tys, this,
                   some({state: next, tys: next_tys})) => {
@@ -75,9 +75,9 @@ impl message: gen_send {
                 body += fmt!("let %s = pipes::send_packet_buffered(\
                               ptr::addr_of(b.buffer.data.%s));\n",
                              sp, next.name);
-                body += fmt!{"let %s = pipes::recv_packet_buffered(\
+                body += fmt!("let %s = pipes::recv_packet_buffered(\
                               ptr::addr_of(b.buffer.data.%s));\n",
-                             rp, next.name};
+                             rp, next.name);
             }
             else {
                 let pat = match (this.dir, next.dir) {
@@ -97,7 +97,7 @@ impl message: gen_send {
                                       ~", "));
 
             if !try {
-                body += fmt!{"pipes::send(pipe, message);\n"};
+                body += fmt!("pipes::send(pipe, message);\n");
                 // return the new channel
                 body += ~"c }";
             }
@@ -127,7 +127,7 @@ impl message: gen_send {
           }
 
             message(id, span, tys, this, none) => {
-                debug!{"pipec: no next state"};
+                debug!("pipec: no next state");
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
                 let args_ast = (arg_names, tys).map(
@@ -150,13 +150,13 @@ impl message: gen_send {
                 };
 
                 let mut body = ~"{ ";
-                body += fmt!{"let message = %s::%s%s;\n",
+                body += fmt!("let message = %s::%s%s;\n",
                              this.proto.name,
                              self.name(),
-                             message_args};
+                             message_args);
 
                 if !try {
-                    body += fmt!{"pipes::send(pipe, message);\n"};
+                    body += fmt!("pipes::send(pipe, message);\n");
                     body += ~" }";
                 } else {
                     body += fmt!("if pipes::send(pipe, message) { \
@@ -192,7 +192,7 @@ impl message: gen_send {
 
 impl state: to_type_decls {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
-        debug!{"pipec: to_type_decls"};
+        debug!("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
         // state is called ping. This will generate both `ping` and
         // `ping_message`. The first contains data that the user cares
@@ -238,7 +238,7 @@ impl state: to_type_decls {
     }
 
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {
-        debug!{"pipec: to_endpoint_decls"};
+        debug!("pipec: to_endpoint_decls");
         let dir = match dir {
           send => (*self).dir,
           recv => (*self).dir.reverse()
@@ -293,7 +293,7 @@ impl protocol: gen_init {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 
-        debug!{"gen_init"};
+        debug!("gen_init");
         let start_state = self.states[0];
 
         let body = if !self.is_bounded() {
@@ -320,12 +320,12 @@ impl protocol: gen_init {
             }
         };
 
-        cx.parse_item(fmt!{"fn init%s() -> (client::%s, server::%s)\
+        cx.parse_item(fmt!("fn init%s() -> (client::%s, server::%s)\
                             { import pipes::has_buffer; %s }",
                            start_state.ty_params.to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
-                           body.to_source(cx)})
+                           body.to_source(cx)))
     }
 
     fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
@@ -337,7 +337,7 @@ impl protocol: gen_init {
     }
 
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
-        debug!{"gen_init_bounded"};
+        debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
 
         let buffer = #ast {
@@ -349,11 +349,11 @@ impl protocol: gen_init {
             ext_cx.block(
                 self.states.map_to_vec(
                     |s| ext_cx.parse_stmt(
-                        fmt!{"data.%s.set_buffer(buffer)",
-                             s.name})),
+                        fmt!("data.%s.set_buffer(buffer)",
+                             s.name))),
                 ext_cx.parse_expr(
-                    fmt!{"ptr::addr_of(data.%s)",
-                         self.states[0].name})));
+                    fmt!("ptr::addr_of(data.%s)",
+                         self.states[0].name))));
 
         #ast {{
             let buffer = $(buffer);
@@ -490,7 +490,7 @@ impl ext_ctxt: ext_ctxt_parse_utils {
         match res {
           some(ast) => ast,
           none => {
-            error!{"Parse error with ```\n%s\n```", s};
+            error!("Parse error with ```\n%s\n```", s);
             fail
           }
         }

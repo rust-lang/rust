@@ -11,7 +11,7 @@
  * ~~~
  * let delayed_fib = future::spawn {|| fib(5000) };
  * make_a_sandwich();
- * io::println(fmt!{"fib(5000) = %?", delayed_fib.get()})
+ * io::println(fmt!("fib(5000) = %?", delayed_fib.get()))
  * ~~~
  */
 
@@ -64,9 +64,9 @@ fn from_value<A>(+val: A) -> Future<A> {
     })
 }
 
-macro_rules! move_it {
+macro_rules! move_it (
     {$x:expr} => { unsafe { let y <- *ptr::addr_of($x); y } }
-}
+)
 
 fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
     #[doc = "
@@ -82,7 +82,7 @@ fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
         port_ <-> *port;
         let port = option::unwrap(port_);
         match recv(port) {
-          future_pipe::completed(data) => move_it!{data}
+          future_pipe::completed(data) => move_it!(data)
         }
     }
 }

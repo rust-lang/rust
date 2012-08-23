@@ -9,8 +9,8 @@ fn start(c: pipes::chan<int>, start: int, number_of_messages: int) {
 }
 
 fn main() {
-    debug!{"Check that we don't deadlock."};
+    debug!("Check that we don't deadlock.");
     let (ch, p) = pipes::stream();
     task::try(|| start(ch, 0, 10) );
-    debug!{"Joined task"};
+    debug!("Joined task");
 }

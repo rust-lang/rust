@@ -7,7 +7,7 @@ mod foo {
 mod bar {
     export x;
 
-    fn x() { debug!{"x"}; }
+    fn x() { debug!("x"); }
 }
 
 fn main() { foo::x(); }

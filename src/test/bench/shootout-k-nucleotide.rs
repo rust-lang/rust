@@ -46,7 +46,7 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
 
    pairs_sorted.each(fn&(kv: (~[u8], float)) -> bool unsafe {
       let (k,v) = kv;
-      buffer += (fmt!{"%s %0.3f\n", str::to_upper(str::unsafe::from_bytes(k)), v});
+      buffer += (fmt!("%s %0.3f\n", str::to_upper(str::unsafe::from_bytes(k)), v));
       return true;
    });
 
@@ -109,15 +109,15 @@ fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
    let buffer = match sz { 
        1u => { sort_and_fmt(freqs, total) }
        2u => { sort_and_fmt(freqs, total) }
-       3u => { fmt!{"%u\t%s", find(freqs, ~"GGT"), ~"GGT"} }
-       4u => { fmt!{"%u\t%s", find(freqs, ~"GGTA"), ~"GGTA"} }
-       6u => { fmt!{"%u\t%s", find(freqs, ~"GGTATT"), ~"GGTATT"} }
-      12u => { fmt!{"%u\t%s", find(freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT"} }
-      18u => { fmt!{"%u\t%s", find(freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT"} }
+       3u => { fmt!("%u\t%s", find(freqs, ~"GGT"), ~"GGT") }
+       4u => { fmt!("%u\t%s", find(freqs, ~"GGTA"), ~"GGTA") }
+       6u => { fmt!("%u\t%s", find(freqs, ~"GGTATT"), ~"GGTATT") }
+      12u => { fmt!("%u\t%s", find(freqs, ~"GGTATTTTAATT"), ~"GGTATTTTAATT") }
+      18u => { fmt!("%u\t%s", find(freqs, ~"GGTATTTTAATTTATAGT"), ~"GGTATTTTAATTTATAGT") }
         _ => { ~"" }
    };
 
-   //comm::send(to_parent, fmt!{"yay{%u}", sz});
+   //comm::send(to_parent, fmt!("yay{%u}", sz));
    comm::send(to_parent, buffer);
 }
 
@@ -127,7 +127,7 @@ fn main(args: ~[~str]) {
        // FIXME: Using this compile-time env variable is a crummy way to
        // get to this massive data set, but #include_bin chokes on it (#2598)
        let path = path::connect(
-           env!{"CFG_SRC_DIR"},
+           env!("CFG_SRC_DIR"),
            ~"src/test/bench/shootout-k-nucleotide.data"
            );
        result::get(io::file_reader(path))

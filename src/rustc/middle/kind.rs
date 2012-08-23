@@ -214,7 +214,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 }
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
-    debug!{"kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr())};
+    debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters
     do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {
@@ -433,7 +433,7 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
       _ => {
         cx.tcx.sess.span_bug(
             sp,
-            fmt!{"unknown def for free variable: %?", def});
+            fmt!("unknown def for free variable: %?", def));
       }
     }
 }
@@ -524,7 +524,7 @@ fn check_cast_for_escaping_regions(
       some(ty::re_bound(*)) | some(ty::re_var(*)) => {
         cx.tcx.sess.span_bug(
             source.span,
-            fmt!{"bad region found in kind: %?", target_substs.self_r});
+            fmt!("bad region found in kind: %?", target_substs.self_r));
       }
     }
 

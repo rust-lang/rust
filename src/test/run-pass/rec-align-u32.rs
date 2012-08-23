@@ -37,11 +37,11 @@ fn main() {
     let x = {c8: 22u8, t: {c64: 44u32}};
 
     // Send it through the shape code
-    let y = fmt!{"%?", x};
+    let y = fmt!("%?", x);
 
-    debug!{"align inner = %?", rusti::min_align_of::<inner>()};
-    debug!{"size outer = %?", sys::size_of::<outer>()};
-    debug!{"y = %s", y};
+    debug!("align inner = %?", rusti::min_align_of::<inner>());
+    debug!("size outer = %?", sys::size_of::<outer>());
+    debug!("y = %s", y);
 
     // per clang/gcc the alignment of `inner` is 4 on x86.
     assert rusti::min_align_of::<inner>() == m::align();

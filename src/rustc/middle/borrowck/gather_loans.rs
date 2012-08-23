@@ -90,8 +90,8 @@ fn req_loans_in_expr(ex: @ast::expr,
     let tcx = bccx.tcx;
     let old_root_ub = self.root_ub;
 
-    debug!{"req_loans_in_expr(ex=%s)",
-           pprust::expr_to_str(ex, tcx.sess.intr())};
+    debug!("req_loans_in_expr(ex=%s)",
+           pprust::expr_to_str(ex, tcx.sess.intr()));
 
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.borrowings.find(ex.id).each |borrow| {
@@ -257,10 +257,10 @@ impl gather_loan_ctxt {
 
         self.bccx.guaranteed_paths += 1;
 
-        debug!{"guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
+        debug!("guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl),
-               region_to_str(self.tcx(), scope_r)};
+               region_to_str(self.tcx(), scope_r));
         let _i = indenter();
 
         match cmt.lp {
@@ -289,7 +289,7 @@ impl gather_loan_ctxt {
                         if self.tcx().sess.borrowck_note_loan() {
                             self.bccx.span_note(
                                 cmt.span,
-                                fmt!{"immutable loan required"});
+                                fmt!("immutable loan required"));
                         }
                     } else {
                         self.bccx.loaned_paths_same += 1;
@@ -343,7 +343,7 @@ impl gather_loan_ctxt {
                     if self.tcx().sess.borrowck_note_pure() {
                         self.bccx.span_note(
                             cmt.span,
-                            fmt!{"purity required"});
+                            fmt!("purity required"));
                     }
                   }
                   _ => {

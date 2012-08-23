@@ -4,7 +4,7 @@ fn test() {
         v = 3;
         break;
     }
-    debug!{"%d", v};
+    debug!("%d", v);
 }
 
 fn main() {

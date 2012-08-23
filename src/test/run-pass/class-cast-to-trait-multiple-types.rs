@@ -6,7 +6,7 @@ struct dog : noisy {
   priv {
     let barks : @mut uint;
     fn bark() -> int {
-      debug!{"Woof %u %d", *self.barks, *self.volume};
+      debug!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
       if *self.barks % 3u == 0u {
           *self.volume += 1;
@@ -14,7 +14,7 @@ struct dog : noisy {
       if *self.barks % 10u == 0u {
           *self.volume -= 2;
       }
-      debug!{"Grrr %u %d", *self.barks, *self.volume};
+      debug!("Grrr %u %d", *self.barks, *self.volume);
       *self.volume
     }
   }
@@ -30,7 +30,7 @@ struct cat : noisy {
   priv {
     let meows : @mut uint;
     fn meow() -> uint {
-      debug!{"Meow"};
+      debug!("Meow");
       *self.meows += 1u;
       if *self.meows % 5u == 0u {
           *self.how_hungry += 1;

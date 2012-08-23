@@ -209,9 +209,9 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
     // Store the individual elements.
     let mut i = 0u, temp_cleanups = ~[val];
-    debug!{"trans_evec: v: %s, dataptr: %s",
+    debug!("trans_evec: v: %s, dataptr: %s",
            val_str(ccx.tn, val),
-           val_str(ccx.tn, dataptr)};
+           val_str(ccx.tn, dataptr));
     match elements {
         individual_evec(args) => {
             for vec::each(args) |e| {
@@ -309,7 +309,7 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
         (base, len)
       }
       ty::vstore_uniq | ty::vstore_box => {
-        debug!{"get_base_and_len: %s", val_str(ccx.tn, v)};
+        debug!("get_base_and_len: %s", val_str(ccx.tn, v));
         let body = tvec::get_bodyptr(cx, v);
         (tvec::get_dataptr(cx, body), tvec::get_fill(cx, body))
       }
@@ -325,13 +325,13 @@ fn trans_estr(bcx: block, s: @~str, vstore: option<ast::vstore>,
     let c = match vstore {
       some(ast::vstore_fixed(_)) => {
         // "hello"/_  =>  "hello"/5  =>  ~[i8 x 6] in llvm
-        debug!{"trans_estr: fixed: %s", *s};
+        debug!("trans_estr: fixed: %s", *s);
         C_postr(*s)
       }
 
       some(ast::vstore_slice(_)) | none => {
         // "hello"  =>  (*i8, 6u) in llvm
-        debug!{"trans_estr: slice '%s'", *s};
+        debug!("trans_estr: slice '%s'", *s);
         C_estr_slice(ccx, *s)
       }
 
@@ -352,7 +352,7 @@ fn trans_estr(bcx: block, s: @~str, vstore: option<ast::vstore>,
       }
     };
 
-    debug!{"trans_estr: type: %s", val_str(ccx.tn, c)};
+    debug!("trans_estr: type: %s", val_str(ccx.tn, c));
     base::store_in_dest(bcx, c, dest)
 }
 

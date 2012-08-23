@@ -308,16 +308,16 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
       }
       'B' => ty::mk_opaque_box(st.tcx),
       'a' => {
-          debug!{"saw a class"};
+          debug!("saw a class");
           assert (next(st) == '[');
-          debug!{"saw a ["};
+          debug!("saw a [");
           let did = parse_def(st, conv);
-          debug!{"parsed a def_id %?", did};
+          debug!("parsed a def_id %?", did);
           let substs = parse_substs(st, conv);
           assert (next(st) == ']');
           return ty::mk_class(st.tcx, did, substs);
       }
-      c => { error!{"unexpected char in type string: %c", c}; fail;}
+      c => { error!("unexpected char in type string: %c", c); fail;}
     }
 }
 
@@ -403,7 +403,7 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
     let len = vec::len(buf);
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
     if colon_idx == len {
-        error!{"didn't find ':' when parsing def id"};
+        error!("didn't find ':' when parsing def id");
         fail;
     }
 
@@ -412,13 +412,13 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
 
     let crate_num = match uint::parse_buf(crate_part, 10u) {
        some(cn) => cn as int,
-       none => fail (fmt!{"internal error: parse_def_id: crate number \
-                               expected, but found %?", crate_part})
+       none => fail (fmt!("internal error: parse_def_id: crate number \
+                               expected, but found %?", crate_part))
     };
     let def_num = match uint::parse_buf(def_part, 10u) {
        some(dn) => dn as int,
-       none => fail (fmt!{"internal error: parse_def_id: id expected, but \
-                               found %?", def_part})
+       none => fail (fmt!("internal error: parse_def_id: id expected, but \
+                               found %?", def_part))
     };
     return {crate: crate_num, node: def_num};
 }

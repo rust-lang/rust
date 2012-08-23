@@ -19,10 +19,10 @@ impl Lub: combine {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
         let tcx = self.infcx.tcx;
 
-        debug!{"%s.mts(%s, %s)",
+        debug!("%s.mts(%s, %s)",
                self.tag(),
                mt_to_str(tcx, a),
-               mt_to_str(tcx, b)};
+               mt_to_str(tcx, b));
 
         let m = if a.mutbl == b.mutbl {
             a.mutbl
@@ -93,10 +93,10 @@ impl Lub: combine {
     }
 
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
-        debug!{"%s.regions(%?, %?)",
+        debug!("%s.regions(%?, %?)",
                self.tag(),
                a.to_str(self.infcx),
-               b.to_str(self.infcx)};
+               b.to_str(self.infcx));
 
         do indent {
             self.infcx.region_vars.lub_regions(self.span, a, b)

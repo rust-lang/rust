@@ -11,7 +11,7 @@ proto! pingpong {
     ping: send {
         ping -> pong
     }
-    
+
     pong: recv {
         pong -> ping
     }
@@ -21,7 +21,7 @@ proto! pingpong_unbounded {
     ping: send {
         ping -> pong
     }
-    
+
     pong: recv {
         pong -> ping
     }
@@ -37,7 +37,7 @@ macro_rules! move_it {
 }
 
 macro_rules! follow {
-    { 
+    {
         $($message:path($($x: ident),+) -> $next:ident $e:expr)+
     } => (
         |m| match move m {
@@ -50,7 +50,7 @@ macro_rules! follow {
         }
     );
 
-    { 
+    {
         $($message:path -> $next:ident $e:expr)+
     } => (
         |m| match move m {
@@ -78,9 +78,9 @@ fn bounded(count: uint) {
         let mut count = count;
         let mut ch = ch;
         while count > 0 {
-            ch = switch(ch, follow! {
+            ch = switch(ch, follow! (
                 ping -> next { server::pong(next) }
-            });
+            ));
 
             count -= 1;
         }
@@ -90,9 +90,9 @@ fn bounded(count: uint) {
     while count > 0 {
         let ch_ = client::ping(ch);
 
-        ch = switch(ch_, follow! {
+        ch = switch(ch_, follow! (
             pong -> next { next }
-        });
+        ));
 
         count -= 1;
     }
@@ -105,9 +105,9 @@ fn unbounded(count: uint) {
         let mut count = count;
         let mut ch = ch;
         while count > 0 {
-            ch = switch(ch, follow! {
+            ch = switch(ch, follow! (
                 ping -> next { server::pong(next) }
-            });
+            ));
 
             count -= 1;
         }
@@ -117,9 +117,9 @@ fn unbounded(count: uint) {
     while count > 0 {
         let ch_ = client::ping(ch);
 
-        ch = switch(ch_, follow! {
+        ch = switch(ch_, follow! (
             pong -> next { next }
-        });
+        ));
 
         count -= 1;
     }
@@ -141,13 +141,13 @@ fn main() {
     let bounded = do timeit { bounded(count) };
     let unbounded = do timeit { unbounded(count) };
 
-    io::println(fmt!{"count: %?\n", count});
-    io::println(fmt!{"bounded:   %? s\t(%? μs/message)",
-                     bounded, bounded * 1000000. / (count as float)});
-    io::println(fmt!{"unbounded: %? s\t(%? μs/message)",
-                     unbounded, unbounded * 1000000. / (count as float)});
+    io::println(fmt!("count: %?\n", count));
+    io::println(fmt!("bounded:   %? s\t(%? μs/message)",
+                     bounded, bounded * 1000000. / (count as float)));
+    io::println(fmt!("unbounded: %? s\t(%? μs/message)",
+                     unbounded, unbounded * 1000000. / (count as float)));
 
-    io::println(fmt!{"\n\
+    io::println(fmt!("\n\
                       bounded is %?%% faster",
-                     (unbounded - bounded) / bounded * 100.});
+                     (unbounded - bounded) / bounded * 100.));
 }

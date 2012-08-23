@@ -20,9 +20,9 @@ fn eval_crate_directives(cx: ctx,
 fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
                                 prefix: ~str, suffix: option<~str>)
     -> (ast::_mod, ~[ast::attribute]) {
-    debug!{"eval crate prefix: %s", prefix};
-    debug!{"eval crate suffix: %s",
-           option::get_default(suffix, ~"none")};
+    debug!("eval crate prefix: %s", prefix);
+    debug!("eval crate suffix: %s",
+           option::get_default(suffix, ~"none"));
     let (cview_items, citems, cattrs)
         = parse_companion_mod(cx, prefix, suffix);
     let mut view_items: ~[@ast::view_item] = ~[];
@@ -63,9 +63,9 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
     }
 
     let modpath = companion_file(prefix, suffix);
-    debug!{"looking for companion mod %s", modpath};
+    debug!("looking for companion mod %s", modpath);
     if file_exists(modpath) {
-        debug!{"found companion mod"};
+        debug!("found companion mod");
         let (p0, r0) = new_parser_etc_from_file(cx.sess, cx.cfg,
                                                 modpath, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();

@@ -76,7 +76,7 @@ mod linear {
                             len_buckets: uint) -> uint {
             let n = (idx + 1) % len_buckets;
             unsafe{ // argh. log not considered pure.
-                debug!{"next_bucket(%?, %?) = %?", idx, len_buckets, n};
+                debug!("next_bucket(%?, %?) = %?", idx, len_buckets, n);
             }
             return n;
         }
@@ -154,15 +154,15 @@ mod linear {
             match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
               TableFull => {fail ~"Internal logic error";}
               FoundHole(idx) => {
-                debug!{"insert fresh (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash};
+                debug!("insert fresh (%?->%?) at idx %?, hash %?",
+                       k, v, idx, hash);
                 self.buckets[idx] = some({hash: hash, key: k, value: v});
                 self.size += 1;
                 return true;
               }
               FoundEntry(idx) => {
-                debug!{"insert overwrite (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash};
+                debug!("insert overwrite (%?->%?) at idx %?, hash %?",
+                       k, v, idx, hash);
                 self.buckets[idx] = some({hash: hash, key: k, value: v});
                 return false;
               }
@@ -308,7 +308,7 @@ mod linear {
         fn get(&const self, k: &K) -> V {
             let value = self.find(k);
             if value.is_none() {
-                fail fmt!{"No entry found for key: %?", k};
+                fail fmt!("No entry found for key: %?", k);
             }
             option::unwrap(value)
         }

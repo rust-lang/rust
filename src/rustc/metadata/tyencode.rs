@@ -298,15 +298,15 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       ty::ty_opaque_closure_ptr(ty::ck_uniq) => w.write_str(&"C~"),
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_class(def, substs) => {
-          debug!{"~~~~ %s", ~"a["};
+          debug!("~~~~ %s", ~"a[");
           w.write_str(&"a[");
           let s = cx.ds(def);
-          debug!{"~~~~ %s", s};
+          debug!("~~~~ %s", s);
           w.write_str(s);
-          debug!{"~~~~ %s", ~"|"};
+          debug!("~~~~ %s", ~"|");
           w.write_char('|');
           enc_substs(w, cx, substs);
-          debug!{"~~~~ %s", ~"]"};
+          debug!("~~~~ %s", ~"]");
           w.write_char(']');
       }
     }

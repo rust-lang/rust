@@ -57,9 +57,9 @@ impl loan_ctxt {
     }
 
     fn loan(cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
-        debug!{"loan(%s, %s)",
+        debug!("loan(%s, %s)",
                self.bccx.cmt_to_repr(cmt),
-               self.bccx.mut_to_str(req_mutbl)};
+               self.bccx.mut_to_str(req_mutbl));
         let _i = indenter();
 
         // see stable() above; should only be called when `cmt` is lendable

@@ -37,7 +37,7 @@ fn intersection(a: int_ty_set, b: int_ty_set) -> int_ty_set {
 
 fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
     option<ty::t> {
-    debug!{"single_type_contained_in(a=%s)", uint::to_str(*a, 10u)};
+    debug!("single_type_contained_in(a=%s)", uint::to_str(*a, 10u));
 
     if *a == INT_TY_SET_i8    { return some(ty::mk_i8(tcx)); }
     if *a == INT_TY_SET_u8    { return some(ty::mk_u8(tcx)); }

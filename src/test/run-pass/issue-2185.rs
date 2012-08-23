@@ -44,5 +44,5 @@ fn main() {
         a);
     let sum = foldl(filt, 0u, |accum, &&n: uint| accum + n );
 
-    io::println(fmt!{"%u", sum});
+    io::println(fmt!("%u", sum));
 }

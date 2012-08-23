@@ -101,12 +101,12 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
         if arg_len > 0u {
             // N-ary variant.
             if arg_len != subpats_len {
-                let s = fmt!{"this pattern has %u field%s, but the \
+                let s = fmt!("this pattern has %u field%s, but the \
                               corresponding variant has %u field%s",
                              subpats_len,
                              if subpats_len == 1u { ~"" } else { ~"s" },
                              arg_len,
-                             if arg_len == 1u { ~"" } else { ~"s" }};
+                             if arg_len == 1u { ~"" } else { ~"s" });
                 tcx.sess.span_fatal(pat.span, s);
             }
 
@@ -117,18 +117,18 @@ fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
             };
         } else if subpats_len > 0u {
             tcx.sess.span_fatal
-                (pat.span, fmt!{"this pattern has %u field%s, \
+                (pat.span, fmt!("this pattern has %u field%s, \
                                  but the corresponding variant has no fields",
                                 subpats_len,
                                 if subpats_len == 1u { ~"" }
-                                else { ~"s" }});
+                                else { ~"s" }));
         }
       }
       _ => {
         tcx.sess.span_fatal
             (pat.span,
-             fmt!{"mismatched types: expected enum but found `%s`",
-                  fcx.infcx.ty_to_str(expected)});
+             fmt!("mismatched types: expected enum but found `%s`",
+                  fcx.infcx.ty_to_str(expected)));
       }
     }
 }
@@ -154,8 +154,8 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
             fcx.infcx.resolve_type_vars_if_possible(fcx.expr_ty(begin));
         let e_ty =
             fcx.infcx.resolve_type_vars_if_possible(fcx.expr_ty(end));
-        debug!{"pat_range beginning type: %?", b_ty};
-        debug!{"pat_range ending type: %?", e_ty};
+        debug!("pat_range beginning type: %?", b_ty);
+        debug!("pat_range ending type: %?", e_ty);
         if !require_same_types(
             tcx, some(fcx.infcx), false, pat.span, b_ty, e_ty,
             || ~"mismatched types in range") {
@@ -240,18 +240,18 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ => {
             tcx.sess.span_fatal
                 (pat.span,
-                fmt!{"mismatched types: expected `%s` but found record",
-                     fcx.infcx.ty_to_str(expected)});
+                fmt!("mismatched types: expected `%s` but found record",
+                     fcx.infcx.ty_to_str(expected)));
           }
         };
         let f_count = vec::len(fields);
         let ex_f_count = vec::len(ex_fields);
         if ex_f_count < f_count || !etc && ex_f_count > f_count {
             tcx.sess.span_fatal
-                (pat.span, fmt!{"mismatched types: expected a record \
+                (pat.span, fmt!("mismatched types: expected a record \
                       with %u fields, found one with %u \
                       fields",
-                                ex_f_count, f_count});
+                                ex_f_count, f_count));
         }
 
         for fields.each |f| {
@@ -261,9 +261,9 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
               }
               none => {
                 tcx.sess.span_fatal(pat.span,
-                                    fmt!{"mismatched types: did not \
+                                    fmt!("mismatched types: did not \
                                           expect a record with a field `%s`",
-                                          tcx.sess.str_of(f.ident)});
+                                          tcx.sess.str_of(f.ident)));
               }
             }
         }
@@ -363,16 +363,16 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ => {
             tcx.sess.span_fatal
                 (pat.span,
-                 fmt!{"mismatched types: expected `%s`, found tuple",
-                      fcx.infcx.ty_to_str(expected)});
+                 fmt!("mismatched types: expected `%s`, found tuple",
+                      fcx.infcx.ty_to_str(expected)));
           }
         };
         let e_count = vec::len(elts);
         if e_count != vec::len(ex_elts) {
             tcx.sess.span_fatal
-                (pat.span, fmt!{"mismatched types: expected a tuple \
+                (pat.span, fmt!("mismatched types: expected a tuple \
                       with %u fields, found one with %u \
-                      fields", vec::len(ex_elts), e_count});
+                      fields", vec::len(ex_elts), e_count));
         }
         let mut i = 0u;
         for elts.each |elt| {

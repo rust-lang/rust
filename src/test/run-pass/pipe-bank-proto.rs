@@ -44,12 +44,12 @@ fn switch<T: send, U>(+endp: pipes::recv_packet<T>,
 fn move_it<T>(-x: T) -> T { x }
 
 macro_rules! follow {
-    { 
+    {
         $($message:path$(($($x: ident),+))||* -> $next:ident $e:expr)+
     } => (
         |m| match move m {
           $(some($message($($($x,)+)* next)) => {
-            let $next = move_it!{next};
+            let $next = move_it!(next);
             $e })+
           _ => { fail }
         }
@@ -60,21 +60,21 @@ fn client_follow(+bank: bank::client::login) {
     import bank::*;
 
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
-    let bank = switch(bank, follow! {
+    let bank = switch(bank, follow! (
         ok -> connected { connected }
         invalid -> _next { fail ~"bank closed the connected" }
-    });
+    ));
 
     let bank = client::deposit(bank, 100.00);
     let bank = client::withdrawal(bank, 50.00);
-    switch(bank, follow! {
+    switch(bank, follow! (
         money(m) -> _next {
             io::println(~"Yay! I got money!");
         }
         insufficient_funds -> _next {
             fail ~"someone stole my money"
         }
-    });
+    ));
 }
 
 fn bank_client(+bank: bank::client::login) {
@@ -83,7 +83,7 @@ fn bank_client(+bank: bank::client::login) {
     let bank = client::login(bank, ~"theincredibleholk", ~"1234");
     let bank = match try_recv(bank) {
       some(ok(connected)) => {
-        move_it!{connected}
+        move_it!(connected)
       }
       some(invalid(_)) => { fail ~"login unsuccessful" }
       none => { fail ~"bank closed the connection" }

@@ -12,7 +12,7 @@ fn rendezvous() {
     let (c, s) = streamp::init();
     let streams: ~[streamp::client::open<int>] = ~[c];
 
-    error!{"%?", streams[0]};
+    error!("%?", streams[0]);
 }
 
 fn main(args: ~[str]) {

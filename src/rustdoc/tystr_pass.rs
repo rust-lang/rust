@@ -296,12 +296,12 @@ fn fold_type(
                 ident: ident,
                 node: ast::item_ty(ty, params), _
               }, _) => {
-                some(fmt!{
+                some(fmt!(
                     "type %s%s = %s",
                     to_str(ident),
                     pprust::typarams_to_str(params, extract::interner()),
                     pprust::ty_to_str(ty, extract::interner())
-                })
+                ))
               }
               _ => fail ~"expected type"
             }

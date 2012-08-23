@@ -628,7 +628,7 @@ impl json: to_str::ToStr {
 
 impl error: to_str::ToStr {
     fn to_str() -> ~str {
-        fmt!{"%u:%u: %s", self.line, self.col, *self.msg}
+        fmt!("%u:%u: %s", self.line, self.col, *self.msg)
     }
 }
 

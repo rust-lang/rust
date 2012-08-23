@@ -256,9 +256,9 @@ fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
 
 fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
-    debug!{"add_clean(%s, %s, %s)",
+    debug!("add_clean(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty)};
+           ty_to_str(cx.ccx().tcx, ty));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |info| {
         vec::push(info.cleanups, clean(|a| base::drop_ty(a, val, ty),
@@ -268,9 +268,9 @@ fn add_clean(cx: block, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
-    debug!{"add_clean_temp(%s, %s, %s)",
+    debug!("add_clean_temp(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty)};
+           ty_to_str(cx.ccx().tcx, ty));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     fn do_drop(bcx: block, val: ValueRef, ty: ty::t) ->
        block {
@@ -288,9 +288,9 @@ fn add_clean_temp(cx: block, val: ValueRef, ty: ty::t) {
 }
 fn add_clean_temp_mem(cx: block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
-    debug!{"add_clean_temp_mem(%s, %s, %s)",
+    debug!("add_clean_temp_mem(%s, %s, %s)",
            cx.to_str(), val_str(cx.ccx().tn, val),
-           ty_to_str(cx.ccx().tcx, ty)};
+           ty_to_str(cx.ccx().tcx, ty));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     do in_scope_cx(cx) |info| {
         vec::push(info.cleanups,
@@ -475,8 +475,8 @@ fn in_scope_cx(cx: block, f: fn(scope_info)) {
 fn block_parent(cx: block) -> block {
     match cx.parent {
       some(b) => b,
-      none    => cx.sess().bug(fmt!{"block_parent called on root block %?",
-                                   cx})
+      none    => cx.sess().bug(fmt!("block_parent called on root block %?",
+                                   cx))
     }
 }
 
@@ -496,10 +496,10 @@ impl block {
     fn to_str() -> ~str {
         match self.node_info {
           some(node_info) => {
-            fmt!{"[block %d]", node_info.id}
+            fmt!("[block %d]", node_info.id)
           }
           none => {
-            fmt!{"[block %x]", ptr::addr_of(*self) as uint}
+            fmt!("[block %x]", ptr::addr_of(*self) as uint)
           }
         }
     }
@@ -876,7 +876,7 @@ fn C_cstr(cx: @crate_ctxt, s: ~str) -> ValueRef {
         llvm::LLVMConstString(buf, str::len(s) as c_uint, False)
     };
     let g =
-        str::as_c_str(fmt!{"str%u", cx.names(~"str")},
+        str::as_c_str(fmt!("str%u", cx.names(~"str")),
                     |buf| llvm::LLVMAddGlobal(cx.llmod, val_ty(sc), buf));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
@@ -930,7 +930,7 @@ fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
     let llshape = C_bytes(bytes);
-    let llglobal = str::as_c_str(fmt!{"shape%u", ccx.names(~"shape")}, |buf| {
+    let llglobal = str::as_c_str(fmt!("shape%u", ccx.names(~"shape")), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });
     llvm::LLVMSetInitializer(llglobal, llshape);
@@ -1025,8 +1025,8 @@ fn field_idx_strict(cx: ty::ctxt, sp: span, ident: ast::ident,
     -> uint {
     match ty::field_idx(ident, fields) {
        none => cx.sess.span_bug(
-           sp, fmt!{"base expr doesn't appear to \
-                         have a field named %s", cx.sess.str_of(ident)}),
+           sp, fmt!("base expr doesn't appear to \
+                         have a field named %s", cx.sess.str_of(ident))),
        some(i) => i
     }
 }

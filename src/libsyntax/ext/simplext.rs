@@ -255,9 +255,9 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
 
 fn wrong_occurs(cx: ext_ctxt, l: ident, l_c: uint, r: ident, r_c: uint)
     -> ~str {
-    fmt!{"'%s' occurs %u times, but '%s' occurs %u times",
+    fmt!("'%s' occurs %u times, but '%s' occurs %u times",
          *cx.parse_sess().interner.get(l), l_c,
-         *cx.parse_sess().interner.get(r), r_c}
+         *cx.parse_sess().interner.get(r), r_c)
 }
 
 /* handle sequences (anywhere in the AST) of exprs, either real or ...ed */

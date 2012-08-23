@@ -21,7 +21,7 @@ fn get_rpath_flags(sess: session::session, out_filename: ~str) -> ~[~str] {
         return ~[];
     }
 
-    debug!{"preparing the RPATH!"};
+    debug!("preparing the RPATH!");
 
     let cwd = os::getcwd();
     let sysroot = sess.filesearch.sysroot();
@@ -45,20 +45,20 @@ fn get_sysroot_absolute_rt_lib(sess: session::session) -> path::Path {
 }
 
 fn rpaths_to_flags(rpaths: ~[~str]) -> ~[~str] {
-    vec::map(rpaths, |rpath| fmt!{"-Wl,-rpath,%s",rpath} )
+    vec::map(rpaths, |rpath| fmt!("-Wl,-rpath,%s",rpath) )
 }
 
 fn get_rpaths(os: session::os, cwd: path::Path, sysroot: path::Path,
               output: path::Path, libs: ~[path::Path],
               target_triple: ~str) -> ~[~str] {
-    debug!{"cwd: %s", cwd};
-    debug!{"sysroot: %s", sysroot};
-    debug!{"output: %s", output};
-    debug!{"libs:"};
+    debug!("cwd: %s", cwd);
+    debug!("sysroot: %s", sysroot);
+    debug!("output: %s", output);
+    debug!("libs:");
     for libs.each |libpath| {
-        debug!{"    %s", libpath};
+        debug!("    %s", libpath);
     }
-    debug!{"target_triple: %s", target_triple};
+    debug!("target_triple: %s", target_triple);
 
     // Use relative paths to the libraries. Binaries can be moved
     // as long as they maintain the relative relationship to the
@@ -73,9 +73,9 @@ fn get_rpaths(os: session::os, cwd: path::Path, sysroot: path::Path,
     let fallback_rpaths = ~[get_install_prefix_rpath(cwd, target_triple)];
 
     fn log_rpaths(desc: ~str, rpaths: ~[~str]) {
-        debug!{"%s rpaths:", desc};
+        debug!("%s rpaths:", desc);
         for rpaths.each |rpath| {
-            debug!{"    %s", rpath};
+            debug!("    %s", rpath);
         }
     }
 
@@ -124,8 +124,8 @@ fn get_rpath_relative_to_output(os: session::os,
 fn get_relative_to(abs1: path::Path, abs2: path::Path) -> path::Path {
     assert path::path_is_absolute(abs1);
     assert path::path_is_absolute(abs2);
-    debug!{"finding relative path from %s to %s",
-           abs1, abs2};
+    debug!("finding relative path from %s to %s",
+           abs1, abs2);
     let normal1 = path::normalize(abs1);
     let normal2 = path::normalize(abs2);
     let split1 = path::split(normal1);
@@ -171,7 +171,7 @@ fn get_absolute(cwd: path::Path, lib: path::Path) -> path::Path {
 }
 
 fn get_install_prefix_rpath(cwd: path::Path, target_triple: ~str) -> ~str {
-    let install_prefix = env!{"CFG_PREFIX"};
+    let install_prefix = env!("CFG_PREFIX");
 
     if install_prefix == ~"" {
         fail ~"rustc compiled without CFG_PREFIX environment variable";
@@ -222,7 +222,7 @@ mod test {
     #[test]
     fn test_prefix_rpath() {
         let res = get_install_prefix_rpath(~"/usr/lib", ~"triple");
-        let d = path::connect(env!{"CFG_PREFIX"}, ~"/lib/rustc/triple/lib");
+        let d = path::connect(env!("CFG_PREFIX"), ~"/lib/rustc/triple/lib");
         assert str::ends_with(res, d);
     }
 

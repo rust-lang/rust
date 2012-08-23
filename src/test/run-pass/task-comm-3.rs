@@ -5,24 +5,24 @@ import pipes::chan;
 import pipes::send;
 import pipes::recv;
 
-fn main() { debug!{"===== WITHOUT THREADS ====="}; test00(); }
+fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 
 fn test00_start(ch: chan<int>, message: int, count: int) {
-    debug!{"Starting test00_start"};
+    debug!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
-        debug!{"Sending Message"};
+        debug!("Sending Message");
         ch.send(message + 0);
         i = i + 1;
     }
-    debug!{"Ending test00_start"};
+    debug!("Ending test00_start");
 }
 
 fn test00() {
     let number_of_tasks: int = 16;
     let number_of_messages: int = 4;
 
-    debug!{"Creating tasks"};
+    debug!("Creating tasks");
 
     let po = pipes::PortSet();
 
@@ -54,7 +54,7 @@ fn test00() {
     // Join spawned tasks...
     for results.each |r| { future::get(&r); }
 
-    debug!{"Completed: Final number is: "};
+    debug!("Completed: Final number is: ");
     log(error, sum);
     // assert (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) *
     //       number_of_messages));

@@ -9,6 +9,6 @@ fn main() {
     assert x.b == 2;
     assert x == y;
     assert z.b == 22;
-    io::println(fmt!{"0x%x", x.b as uint});
-    io::println(fmt!{"0x%x", z.c as uint});
+    io::println(fmt!("0x%x", x.b as uint));
+    io::println(fmt!("0x%x", z.c as uint));
 }

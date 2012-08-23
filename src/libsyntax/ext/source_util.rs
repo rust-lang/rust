@@ -13,7 +13,7 @@ export expand_include;
 export expand_include_str;
 export expand_include_bin;
 
-/* line!{}: expands to the current line number */
+/* line!(): expands to the current line number */
 fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
                _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"line");
@@ -21,7 +21,7 @@ fn expand_line(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     return mk_uint(cx, sp, loc.line);
 }
 
-/* col!{}: expands to the current column number */
+/* col!(): expands to the current column number */
 fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
               _body: ast::mac_body) -> @ast::expr {
     get_mac_args(cx, sp, arg, 0u, option::some(0u), ~"col");
@@ -29,7 +29,7 @@ fn expand_col(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     return mk_uint(cx, sp, loc.col);
 }
 
-/* file!{}: expands to the current filename */
+/* file!(): expands to the current filename */
 /* The filemap (`loc.file`) contains a bunch more information we could spit
  * out if we wanted. */
 fn expand_file(cx: ext_ctxt, sp: span, arg: ast::mac_arg,

@@ -2,8 +2,8 @@
 
 fn altlit(f: int) -> int {
     match check f {
-      10 => { debug!{"case 10"}; return 20; }
-      11 => { debug!{"case 11"}; return 22; }
+      10 => { debug!("case 10"); return 20; }
+      11 => { debug!("case 11"); return 22; }
     }
 }
 

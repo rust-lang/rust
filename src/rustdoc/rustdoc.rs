@@ -33,7 +33,7 @@ fn run_passes(
 
     let mut passno = 0;
     do vec::foldl(doc, passes) |doc, pass| {
-        log(debug, fmt!{"pass #%d", passno});
+        log(debug, fmt!("pass #%d", passno));
         passno += 1;
         log(debug, doc);
         do time(pass.name) {
@@ -110,7 +110,7 @@ fn main(args: ~[~str]) {
     let config = match config::parse_config(args) {
       result::ok(config) => config,
       result::err(err) => {
-        io::println(fmt!{"error: %s", err});
+        io::println(fmt!("error: %s", err));
         return;
       }
     };
@@ -122,7 +122,7 @@ fn time<T>(what: ~str, f: fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = f();
     let end = std::time::precise_time_s();
-    info!{"time: %3.3f s    %s", end - start, what};
+    info!("time: %3.3f s    %s", end - start, what);
     return rv;
 }
 

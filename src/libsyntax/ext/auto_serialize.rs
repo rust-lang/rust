@@ -356,7 +356,7 @@ fn ser_variant(cx: ext_ctxt,
                argfn: fn(-@ast::expr, uint, ast::blk) -> @ast::expr)
     -> ast::arm {
     let vnames = do vec::from_fn(vec::len(tys)) |i| {
-        cx.parse_sess().interner.intern(@fmt!{"__v%u", i})
+        cx.parse_sess().interner.intern(@fmt!("__v%u", i))
     };
     let pats = do vec::from_fn(vec::len(tys)) |i| {
         cx.binder_pat(tys[i].span, vnames[i])
@@ -406,7 +406,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
 
       ast::ty_bot => {
         cx.span_err(
-            ty.span, fmt!{"Cannot serialize bottom type"});
+            ty.span, fmt!("Cannot serialize bottom type"));
         ~[]
       }
 
@@ -553,7 +553,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
              ident: cx.ident_of(~"__s" + cx.str_of(tp.ident)),
              id: cx.next_id()});
 
-    debug!{"tp_inputs = %?", tp_inputs};
+    debug!("tp_inputs = %?", tp_inputs);
 
 
     let ser_inputs: ~[ast::arg] =
@@ -574,7 +574,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
             tp.ident,
             fn@(v: @ast::expr) -> ~[@ast::stmt] {
                 let f = cx.var_ref(span, arg_ident);
-                debug!{"serializing type arg %s", cx.str_of(arg_ident)};
+                debug!("serializing type arg %s", cx.str_of(arg_ident));
                 ~[#ast[stmt]{$(f)($(v));}]
             });
     }
@@ -765,7 +765,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
              ident: cx.ident_of(~"__d" + cx.str_of(tp.ident)),
              id: cx.next_id()});
 
-    debug!{"tp_inputs = %?", tp_inputs};
+    debug!("tp_inputs = %?", tp_inputs);
 
     let deser_inputs: ~[ast::arg] =
         vec::append(~[{mode: ast::expl(ast::by_ref),

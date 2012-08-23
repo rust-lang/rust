@@ -116,8 +116,8 @@ fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
     let start = std::time::precise_time_s();
     let rv = thunk();
     let end = std::time::precise_time_s();
-    io::stdout().write_str(fmt!{"time: %3.3f s\t%s\n",
-                                end - start, what});
+    io::stdout().write_str(fmt!("time: %3.3f s\t%s\n",
+                                end - start, what));
     return rv;
 }
 
@@ -403,7 +403,7 @@ fn host_triple() -> ~str {
     // FIXME (#2400): Instead of grabbing the host triple we really should
     // be grabbing (at compile time) the target triple that this rustc is
     // built with and calling that (at runtime) the host triple.
-    let ht = env!{"CFG_HOST_TRIPLE"};
+    let ht = env!("CFG_HOST_TRIPLE");
     return if ht != ~"" {
             ht
         } else {
@@ -438,8 +438,8 @@ fn build_session_options(matches: getopts::matches,
             let lint_name = str::replace(lint_name, ~"-", ~"_");
             match lint_dict.find(lint_name) {
               none => {
-                early_error(demitter, fmt!{"unknown %s flag: %s",
-                                           level_name, lint_name});
+                early_error(demitter, fmt!("unknown %s flag: %s",
+                                           level_name, lint_name));
               }
               some(lint) => {
                 vec::push(lint_opts, (lint.lint, level));
@@ -458,7 +458,7 @@ fn build_session_options(matches: getopts::matches,
             if name == debug_flag { this_bit = bit; break; }
         }
         if this_bit == 0u {
-            early_error(demitter, fmt!{"unknown debug flag: %s", debug_flag})
+            early_error(demitter, fmt!("unknown debug flag: %s", debug_flag))
         }
         debugging_opts |= this_bit;
     }

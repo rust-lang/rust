@@ -1031,10 +1031,10 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
 
 // FIXME (#2912): Work around core-vs-coretest function duplication. Can't use
 // a proper closure because the #[test]s won't understand. Have to fake it.
-macro_rules! taskgroup_key {
+macro_rules! taskgroup_key (
     // Use a "code pointer" value that will never be a real code pointer.
     {} => (unsafe::transmute((-2 as uint, 0u)))
-}
+)
 
 fn gen_child_taskgroup(linked: bool, supervised: bool)
         -> (TaskGroupArc, AncestorList, bool) {

@@ -196,7 +196,7 @@ fn parent_id(cx: ctxt, span: span) -> ast::node_id {
 /// Records the current parent (if any) as the parent of `child_id`.
 fn record_parent(cx: ctxt, child_id: ast::node_id) {
     for cx.parent.each |parent_id| {
-        debug!{"parent of node %d is node %d", child_id, parent_id};
+        debug!("parent of node %d is node %d", child_id, parent_id);
         cx.region_map.insert(child_id, parent_id);
     }
 }
@@ -255,13 +255,13 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
     let mut new_cx = cx;
     match expr.node {
       ast::expr_call(*) => {
-        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr,
-                                                           cx.sess.intr())};
+        debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
+                                                           cx.sess.intr()));
         new_cx.parent = some(expr.id);
       }
       ast::expr_match(subexpr, _, _) => {
-        debug!{"node %d: %s", expr.id, pprust::expr_to_str(expr,
-                                                           cx.sess.intr())};
+        debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
+                                                           cx.sess.intr()));
         new_cx.parent = some(expr.id);
       }
       ast::expr_fn(_, _, _, cap_clause) |
@@ -314,9 +314,9 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
       }
     };
 
-    debug!{"visiting fn with body %d. cx.parent: %? \
+    debug!("visiting fn with body %d. cx.parent: %? \
             fn_cx.parent: %?",
-           body.node.id, cx.parent, fn_cx.parent};
+           body.node.id, cx.parent, fn_cx.parent);
 
     for decl.inputs.each |input| {
         cx.region_map.insert(input.id, body.node.id);
@@ -441,10 +441,10 @@ impl determine_rp_ctxt {
           some(v) => join_variance(v, variance)
         };
 
-        debug!["add_rp() variance for %s: %? == %? ^ %?",
+        debug!("add_rp() variance for %s: %? == %? ^ %?",
                ast_map::node_id_to_str(self.ast_map, id,
                                        self.sess.parse_sess.interner),
-               joined_variance, old_variance, variance];
+               joined_variance, old_variance, variance);
 
         if some(joined_variance) != old_variance {
             self.region_paramd_items.insert(id, joined_variance);
@@ -458,13 +458,13 @@ impl determine_rp_ctxt {
     /// contains a value of type `from`, so if `from` is
     /// region-parameterized, so is the current item.
     fn add_dep(from: ast::node_id) {
-        debug!["add dependency from %d -> %d (%s -> %s) with variance %?",
+        debug!("add dependency from %d -> %d (%s -> %s) with variance %?",
                from, self.item_id,
                ast_map::node_id_to_str(self.ast_map, from,
                                        self.sess.parse_sess.interner),
                ast_map::node_id_to_str(self.ast_map, self.item_id,
                                        self.sess.parse_sess.interner),
-               copy self.ambient_variance];
+               copy self.ambient_variance);
         let vec = match self.dep_map.find(from) {
             some(vec) => vec,
             none => {
@@ -525,7 +525,7 @@ impl determine_rp_ctxt {
         let old_anon_implies_rp = self.anon_implies_rp;
         self.item_id = item_id;
         self.anon_implies_rp = anon_implies_rp;
-        debug!{"with_item_id(%d, %b)", item_id, anon_implies_rp};
+        debug!("with_item_id(%d, %b)", item_id, anon_implies_rp);
         let _i = util::common::indenter();
         f();
         self.item_id = old_item_id;
@@ -590,8 +590,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
     // locations)
     match ty.node {
       ast::ty_rptr(r, _) => {
-        debug!["referenced rptr type %s",
-               pprust::ty_to_str(ty, cx.sess.intr())];
+        debug!("referenced rptr type %s",
+               pprust::ty_to_str(ty, cx.sess.intr()));
 
         if cx.region_is_relevant(r) {
             cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant))
@@ -623,8 +623,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
                 match csearch::get_region_param(cstore, did) {
                   none => {}
                   some(variance) => {
-                    debug!["reference to external, rp'd type %s",
-                           pprust::ty_to_str(ty, cx.sess.intr())];
+                    debug!("reference to external, rp'd type %s",
+                           pprust::ty_to_str(ty, cx.sess.intr()));
                     cx.add_rp(cx.item_id, cx.add_variance(variance))
                   }
                 }
@@ -743,7 +743,7 @@ fn determine_rp_in_crate(sess: session,
     while cx.worklist.len() != 0 {
         let c_id = cx.worklist.pop();
         let c_variance = cx.region_paramd_items.get(c_id);
-        debug!["popped %d from worklist", c_id];
+        debug!("popped %d from worklist", c_id);
         match cx.dep_map.find(c_id) {
           none => {}
           some(deps) => {

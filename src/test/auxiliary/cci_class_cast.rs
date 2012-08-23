@@ -7,7 +7,7 @@ struct cat : ToStr {
   priv {
     let mut meows : uint;
     fn meow() {
-      error!{"Meow"};
+      error!("Meow");
       self.meows += 1u;
       if self.meows % 5u == 0u {
           self.how_hungry += 1;
@@ -25,12 +25,12 @@ struct cat : ToStr {
 
   fn eat() -> bool {
     if self.how_hungry > 0 {
-        error!{"OM NOM NOM"};
+        error!("OM NOM NOM");
         self.how_hungry -= 2;
         return true;
     }
     else {
-        error!{"Not hungry!"};
+        error!("Not hungry!");
         return false;
     }
   }

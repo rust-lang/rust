@@ -11,7 +11,7 @@ fn main() {
             let v: ~[int] =
                 ~[1, 2, 3, 4, 5]; // we check that it is freed by break
 
-            debug!{"breaking"};
+            debug!("breaking");
             break;
         }
     }

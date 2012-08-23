@@ -77,9 +77,9 @@ impl resolve_state {
     fn resolve_type_chk(typ: ty::t) -> fres<ty::t> {
         self.err = none;
 
-        debug!{"Resolving %s (modes=%x)",
+        debug!("Resolving %s (modes=%x)",
                ty_to_str(self.infcx.tcx, typ),
-               self.modes};
+               self.modes);
 
         // n.b. This is a hokey mess because the current fold doesn't
         // allow us to pass back errors in any useful way.
@@ -89,9 +89,9 @@ impl resolve_state {
         assert vec::is_empty(self.v_seen);
         match self.err {
           none => {
-            debug!{"Resolved to %s (modes=%x)",
+            debug!("Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
-                   self.modes};
+                   self.modes);
             return ok(rty);
           }
           some(e) => return err(e)
@@ -108,7 +108,7 @@ impl resolve_state {
     }
 
     fn resolve_type(typ: ty::t) -> ty::t {
-        debug!{"resolve_type(%s)", typ.to_str(self.infcx)};
+        debug!("resolve_type(%s)", typ.to_str(self.infcx));
         indent(fn&() -> ty::t {
             if !ty::type_needs_infer(typ) { return typ; }
 
@@ -137,7 +137,7 @@ impl resolve_state {
     }
 
     fn resolve_nested_tvar(typ: ty::t) -> ty::t {
-        debug!{"Resolve_if_deep(%s)", typ.to_str(self.infcx)};
+        debug!("Resolve_if_deep(%s)", typ.to_str(self.infcx));
         if !self.should(resolve_nested_tvar) {
             typ
         } else {
@@ -146,7 +146,7 @@ impl resolve_state {
     }
 
     fn resolve_region(orig: ty::region) -> ty::region {
-        debug!{"Resolve_region(%s)", orig.to_str(self.infcx)};
+        debug!("Resolve_region(%s)", orig.to_str(self.infcx));
         match orig {
           ty::re_var(rid) => self.resolve_region_var(rid),
           _ => orig

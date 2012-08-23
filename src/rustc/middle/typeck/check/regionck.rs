@@ -156,8 +156,8 @@ fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
 }
 
 fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
-    debug!{"visit_expr(e=%s)",
-           pprust::expr_to_str(e, rcx.fcx.tcx().sess.intr())};
+    debug!("visit_expr(e=%s)",
+           pprust::expr_to_str(e, rcx.fcx.tcx().sess.intr()));
 
     match e.node {
       ast::expr_path(*) => {
@@ -257,8 +257,8 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     let tcx = fcx.ccx.tcx;
     let encl_region = ty::encl_region(tcx, id);
 
-    debug!{"visit_node(ty=%s, id=%d, encl_region=%?)",
-           ty_to_str(tcx, ty), id, encl_region};
+    debug!("visit_node(ty=%s, id=%d, encl_region=%?)",
+           ty_to_str(tcx, ty), id, encl_region);
 
     // Otherwise, look at the type and see if it is a region pointer.
     return constrain_regions_in_type(rcx, encl_region, span, ty);
@@ -316,8 +316,8 @@ fn constrain_regions_in_type(
                         region: ty::region) {
         let tcx = rcx.fcx.ccx.tcx;
 
-        debug!{"constrain_region(encl_region=%?, region=%?)",
-               encl_region, region};
+        debug!("constrain_region(encl_region=%?, region=%?)",
+               encl_region, region);
 
         match region {
           ty::re_bound(_) => {

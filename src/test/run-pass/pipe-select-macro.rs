@@ -30,7 +30,7 @@ fn macros() {
 fn test(+foo: foo::client::foo, +bar: bar::client::bar) {
     import bar::do_baz;
 
-    select! {
+    select! (
         foo => {
             foo::do_foo -> _next {
             }
@@ -45,7 +45,7 @@ fn test(+foo: foo::client::foo, +bar: bar::client::bar) {
                 if *b { debug!("true") } else { debug!("false") }
             }
         }
-    }
+    )
 }
 
 fn main() {

@@ -1,4 +1,4 @@
 fn main() {
     #[attr]
-    debug!{"hi"}; //~ ERROR expected item
+    debug!("hi"); //~ ERROR expected item
 }

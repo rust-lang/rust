@@ -62,7 +62,7 @@ fn usage() {
     println(~"Usage: rustdoc ~[options] <cratefile>\n");
     println(~"Options:\n");
     for opts().each |opt| {
-        println(fmt!{"    %s", opt.second()});
+        println(fmt!("    %s", opt.second()));
     }
     println(~"");
 }
@@ -179,7 +179,7 @@ fn parse_output_format(output_format: ~str) -> result<output_format, ~str> {
     match output_format {
       ~"markdown" => result::ok(markdown),
       ~"html" => result::ok(pandoc_html),
-      _ => result::err(fmt!{"unknown output format '%s'", output_format})
+      _ => result::err(fmt!("unknown output format '%s'", output_format))
     }
 }
 
@@ -187,7 +187,7 @@ fn parse_output_style(output_style: ~str) -> result<output_style, ~str> {
     match output_style {
       ~"doc-per-crate" => result::ok(doc_per_crate),
       ~"doc-per-mod" => result::ok(doc_per_mod),
-      _ => result::err(fmt!{"unknown output style '%s'", output_style})
+      _ => result::err(fmt!("unknown output style '%s'", output_style))
     }
 }
 
@@ -214,7 +214,7 @@ fn maybe_find_pandoc(
 
     let pandoc = do vec::find(possible_pandocs) |pandoc| {
         let output = program_output(pandoc, ~[~"--version"]);
-        debug!{"testing pandoc cmd %s: %?", pandoc, output};
+        debug!("testing pandoc cmd %s: %?", pandoc, output);
         output.status == 0
     };
 

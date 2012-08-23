@@ -9,7 +9,7 @@ struct cat {
   /**
      Actually, cats don't always land on their feet when you drop them.
   */
-  drop { error!{"%s landed on hir feet", self.name}; }
+  drop { error!("%s landed on hir feet", self.name); }
 }
 
 fn main() {

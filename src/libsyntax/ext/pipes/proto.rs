@@ -152,9 +152,9 @@ struct protocol_ {
         let bounded = self.bounded.get();
         bounded
         //if bounded && self.has_ty_params() {
-        //    debug!{"protocol %s has is bounded, but type parameters\
+        //    debug!("protocol %s has is bounded, but type parameters\
         //            are not yet supported.",
-        //           *self.name};
+        //           *self.name);
         //    false
         //}
         //else { bounded }

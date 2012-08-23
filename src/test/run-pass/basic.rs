@@ -10,11 +10,11 @@ import task;
 
 fn a(c: Chan<int>) {
     if true {
-        debug!{"task a"};
-        debug!{"task a"};
-        debug!{"task a"};
-        debug!{"task a"};
-        debug!{"task a"};
+        debug!("task a");
+        debug!("task a");
+        debug!("task a");
+        debug!("task a");
+        debug!("task a");
     }
     send(c, 10);
 }
@@ -40,17 +40,17 @@ fn main() {
     log(debug, x);
     n = recv(p);
     n = recv(p);
-    debug!{"children finished, root finishing"};
+    debug!("children finished, root finishing");
 }
 
 fn b(c: Chan<int>) {
     if true {
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
     }
     send(c, 10);
 }

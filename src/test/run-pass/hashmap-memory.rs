@@ -50,9 +50,9 @@ mod map_reduce {
               some(_c) => { c = _c }
               none => {
                 let p = port();
-                error!{"sending find_reducer"};
+                error!("sending find_reducer");
                 send(ctrl, find_reducer(str::bytes(key), chan(p)));
-                error!{"receiving"};
+                error!("receiving");
                 c = recv(p);
                 log(error, c);
                 im.insert(key, c);

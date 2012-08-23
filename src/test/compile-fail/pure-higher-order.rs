@@ -40,7 +40,7 @@ pure fn range8(from: uint, to: uint) {
     range(from, to, noop);
 }
 
-fn print(i: uint) { error!{"i=%u", i}; }
+fn print(i: uint) { error!("i=%u", i); }
 
 pure fn noop(_i: uint) {}
 

@@ -110,9 +110,9 @@ fn run_tests_console(opts: test_opts,
           te_filtered(filtered_tests) => {
             st.total = vec::len(filtered_tests);
             let noun = if st.total != 1u { ~"tests" } else { ~"test" };
-            st.out.write_line(fmt!{"\nrunning %u %s", st.total, noun});
+            st.out.write_line(fmt!("\nrunning %u %s", st.total, noun));
           }
-          te_wait(test) => st.out.write_str(fmt!{"test %s ... ", test.name}),
+          te_wait(test) => st.out.write_str(fmt!("test %s ... ", test.name)),
           te_result(test, result) => {
             match st.log_out {
                 some(f) => write_log(f, result, test),
@@ -145,7 +145,7 @@ fn run_tests_console(opts: test_opts,
                                             ~[io::Create, io::Truncate]) {
           result::ok(w) => some(w),
           result::err(s) => {
-              fail(fmt!{"can't open output file: %s", s})
+              fail(fmt!("can't open output file: %s", s))
           }
         },
         none => none
@@ -170,23 +170,23 @@ fn run_tests_console(opts: test_opts,
         print_failures(st);
     }
 
-    st.out.write_str(fmt!{"\nresult: "});
+    st.out.write_str(fmt!("\nresult: "));
     if success {
         // There's no parallelism at this point so it's safe to use color
         write_ok(st.out, true);
     } else { write_failed(st.out, true); }
-    st.out.write_str(fmt!{". %u passed; %u failed; %u ignored\n\n", st.passed,
-                          st.failed, st.ignored});
+    st.out.write_str(fmt!(". %u passed; %u failed; %u ignored\n\n", st.passed,
+                          st.failed, st.ignored));
 
     return success;
 
     fn write_log(out: io::Writer, result: test_result, test: test_desc) {
-        out.write_line(fmt!{"%s %s",
+        out.write_line(fmt!("%s %s",
                     match result {
                         tr_ok => ~"ok",
                         tr_failed => ~"failed",
                         tr_ignored => ~"ignored"
-                    }, test.name});
+                    }, test.name));
     }
 
     fn write_ok(out: io::Writer, use_color: bool) {
@@ -218,7 +218,7 @@ fn print_failures(st: console_test_state) {
     let failures = vec::map(failures, |test| test.name);
     let failures = sort::merge_sort(str::le, failures);
     for vec::each(failures) |name| {
-        st.out.write_line(fmt!{"    %s", name});
+        st.out.write_line(fmt!("    %s", name));
     }
 }
 
@@ -279,7 +279,7 @@ fn run_tests(opts: test_opts, tests: ~[test_desc],
     // It's tempting to just spawn all the tests at once, but since we have
     // many tests that run in other processes we would be making a big mess.
     let concurrency = get_concurrency();
-    debug!{"using %u test tasks", concurrency};
+    debug!("using %u test tasks", concurrency);
 
     let total = vec::len(filtered_tests);
     let mut run_idx = 0u;

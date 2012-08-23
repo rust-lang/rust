@@ -99,9 +99,9 @@ fn eq_tys<C: combine>(self: &C, a: ty::t, b: ty::t) -> ures {
 }
 
 fn eq_regions<C: combine>(self: &C, a: ty::region, b: ty::region) -> ures {
-    debug!{"eq_regions(%s, %s)",
+    debug!("eq_regions(%s, %s)",
            a.to_str(self.infcx()),
-           b.to_str(self.infcx())};
+           b.to_str(self.infcx()));
     let sub = self.sub();
     do indent {
         self.infcx().try(|| {
@@ -140,10 +140,10 @@ fn eq_opt_regions<C:combine>(
         // consistently have a region parameter or not have a
         // region parameter.
         self.infcx().tcx.sess.bug(
-            fmt!{"substitution a had opt_region %s and \
+            fmt!("substitution a had opt_region %s and \
                   b had opt_region %s",
                  a.to_str(self.infcx()),
-                 b.to_str(self.infcx())});
+                 b.to_str(self.infcx())));
       }
     }
 }
@@ -346,10 +346,10 @@ fn super_tys<C:combine>(
       (ty::ty_var(_), _) |
       (_, ty::ty_var(_)) => {
         tcx.sess.bug(
-            fmt!{"%s: bot and var types should have been handled (%s,%s)",
+            fmt!("%s: bot and var types should have been handled (%s,%s)",
                  self.tag(),
                  a.to_str(self.infcx()),
-                 b.to_str(self.infcx())});
+                 b.to_str(self.infcx())));
       }
 
       // Relate integral variables to other types

@@ -97,8 +97,8 @@ impl T: iter::Times {
         `for int::range(0, x) |_i| { /* anything */ }`."]
     pure fn times(it: fn() -> bool) {
         if self < 0 {
-            fail fmt!{"The .times method expects a nonnegative number, \
-                       but found %?", self};
+            fail fmt!("The .times method expects a nonnegative number, \
+                       but found %?", self);
         }
         let mut i = self;
         while i > 0 {
@@ -114,8 +114,8 @@ impl T: iter::TimesIx {
     pure fn timesi(it: fn(uint) -> bool) {
         let slf = self as uint;
         if slf < 0u {
-            fail fmt!{"The .timesi method expects a nonnegative number, \
-                       but found %?", self};
+            fail fmt!("The .timesi method expects a nonnegative number, \
+                       but found %?", self);
         }
         let mut i = 0u;
         while i < slf {

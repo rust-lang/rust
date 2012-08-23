@@ -17,5 +17,5 @@ fn main(args: ~[~str]) {
         args
     };
     let n = int::from_str(args[1]).get();
-    io::println(fmt!{"%d\n", fib(n)});
+    io::println(fmt!("%d\n", fib(n)));
 }

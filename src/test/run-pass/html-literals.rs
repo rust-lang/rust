@@ -75,14 +75,14 @@ macro_rules! parse_node {
 }
 
 fn main() {
-    let page = html! {
+    let page = html! (
         <html>
             <head><title>This is the title.</title></head>
             <body>
             <p>This is some text</p>
             </body>
         </html>
-    };
+    );
 }
 
 enum HTMLFragment {

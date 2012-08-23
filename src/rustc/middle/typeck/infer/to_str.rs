@@ -34,9 +34,9 @@ impl<V:copy to_str> bound<V>: to_str {
 
 impl<T:copy to_str> bounds<T>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
-        fmt!{"{%s <: %s}",
+        fmt!("{%s <: %s}",
              self.lb.to_str(cx),
-             self.ub.to_str(cx)}
+             self.ub.to_str(cx))
     }
 }
 
@@ -51,9 +51,9 @@ impl int_ty_set: to_str {
 impl<V:copy vid, T:copy to_str> var_value<V, T>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
-          redirect(vid) => fmt!{"redirect(%s)", vid.to_str()},
-          root(pt, rk) => fmt!{"root(%s, %s)", pt.to_str(cx),
-                               uint::to_str(rk, 10u)}
+          redirect(vid) => fmt!("redirect(%s)", vid.to_str()),
+          root(pt, rk) => fmt!("root(%s, %s)", pt.to_str(cx),
+                               uint::to_str(rk, 10u))
         }
     }
 }

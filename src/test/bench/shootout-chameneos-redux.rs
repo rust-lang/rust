@@ -111,7 +111,7 @@ fn creature(
             }
             option::none => {
                 // log creatures met and evil clones of self
-                let report = fmt!{"%u", creatures_met} + ~" " +
+                let report = fmt!("%u", creatures_met) + ~" " +
                              show_number(evil_clones_met);
                 comm::send(to_rendezvous_log, report);
                 break;

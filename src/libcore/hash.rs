@@ -174,11 +174,11 @@ impl &SipState : io::Writer {
                 t += 1;
             }
 
-            let m = u8to64_le!{self.tail, 0};
+            let m = u8to64_le!(self.tail, 0);
 
             self.v3 ^= m;
-            compress!{self.v0, self.v1, self.v2, self.v3};
-            compress!{self.v0, self.v1, self.v2, self.v3};
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            compress!(self.v0, self.v1, self.v2, self.v3);
             self.v0 ^= m;
 
             self.ntail = 0;
@@ -191,11 +191,11 @@ impl &SipState : io::Writer {
 
         let mut i = needed;
         while i < end {
-            let mi = u8to64_le!{msg, i};
+            let mi = u8to64_le!(msg, i);
 
             self.v3 ^= mi;
-            compress!{self.v0, self.v1, self.v2, self.v3};
-            compress!{self.v0, self.v1, self.v2, self.v3};
+            compress!(self.v0, self.v1, self.v2, self.v3);
+            compress!(self.v0, self.v1, self.v2, self.v3);
             self.v0 ^= mi;
 
             i += 8;
@@ -246,15 +246,15 @@ impl &SipState : Streaming {
         if self.ntail > 6 { b |= self.tail[6] as u64 << 48; }
 
         v3 ^= b;
-        compress!{v0, v1, v2, v3};
-        compress!{v0, v1, v2, v3};
+        compress!(v0, v1, v2, v3);
+        compress!(v0, v1, v2, v3);
         v0 ^= b;
 
         v2 ^= 0xff;
-        compress!{v0, v1, v2, v3};
-        compress!{v0, v1, v2, v3};
-        compress!{v0, v1, v2, v3};
-        compress!{v0, v1, v2, v3};
+        compress!(v0, v1, v2, v3);
+        compress!(v0, v1, v2, v3);
+        compress!(v0, v1, v2, v3);
+        compress!(v0, v1, v2, v3);
 
         return (v0 ^ v1 ^ v2 ^ v3);
     }
@@ -373,10 +373,10 @@ fn test_siphash() {
     }
 
     while t < 64 {
-        debug!{"siphash test %?", t};
-        let vec = u8to64_le!{vecs[t], 0};
+        debug!("siphash test %?", t);
+        let vec = u8to64_le!(vecs[t], 0);
         let out = hash_bytes_keyed(buf, k0, k1);
-        debug!{"got %?, expected %?", out, vec};
+        debug!("got %?, expected %?", out, vec);
         assert vec == out;
 
         stream_full.reset();
@@ -384,7 +384,7 @@ fn test_siphash() {
         let f = stream_full.result_str();
         let i = stream_inc.result_str();
         let v = to_hex_str(&vecs[t]);
-        debug!{"%d: (%s) => inc=%s full=%s", t, v, i, f};
+        debug!("%d: (%s) => inc=%s full=%s", t, v, i, f);
 
         assert f == i && f == v;
 

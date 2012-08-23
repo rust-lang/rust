@@ -25,7 +25,7 @@ fn path_ident_to_str(p: path, i: ident, itr: ident_interner) -> ~str {
         //FIXME /* FIXME (#2543) */ copy *i
         *itr.get(i)
     } else {
-        fmt!{"%s::%s", path_to_str(p, itr), *itr.get(i)}
+        fmt!("%s::%s", path_to_str(p, itr), *itr.get(i))
     }
 }
 
@@ -296,7 +296,7 @@ fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
 fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
     match map.find(id) {
       none => {
-        fmt!{"unknown node (id=%d)", id}
+        fmt!("unknown node (id=%d)", id)
       }
       some(node_item(item, path)) => {
         let path_str = path_ident_to_str(*path, item.ident, itr);
@@ -315,48 +315,48 @@ fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
         fmt!("%s %s (id=%?)", item_str, path_str, id)
       }
       some(node_foreign_item(item, abi, path)) => {
-        fmt!{"foreign item %s with abi %? (id=%?)",
-             path_ident_to_str(*path, item.ident, itr), abi, id}
+        fmt!("foreign item %s with abi %? (id=%?)",
+             path_ident_to_str(*path, item.ident, itr), abi, id)
       }
       some(node_method(m, impl_did, path)) => {
-        fmt!{"method %s in %s (id=%?)",
-             *itr.get(m.ident), path_to_str(*path, itr), id}
+        fmt!("method %s in %s (id=%?)",
+             *itr.get(m.ident), path_to_str(*path, itr), id)
       }
       some(node_trait_method(tm, impl_did, path)) => {
         let m = ast_util::trait_method_to_ty_method(*tm);
-        fmt!{"method %s in %s (id=%?)",
-             *itr.get(m.ident), path_to_str(*path, itr), id}
+        fmt!("method %s in %s (id=%?)",
+             *itr.get(m.ident), path_to_str(*path, itr), id)
       }
       some(node_variant(variant, def_id, path)) => {
-        fmt!{"variant %s in %s (id=%?)",
-             *itr.get(variant.node.name), path_to_str(*path, itr), id}
+        fmt!("variant %s in %s (id=%?)",
+             *itr.get(variant.node.name), path_to_str(*path, itr), id)
       }
       some(node_expr(expr)) => {
-        fmt!{"expr %s (id=%?)", pprust::expr_to_str(expr, itr), id}
+        fmt!("expr %s (id=%?)", pprust::expr_to_str(expr, itr), id)
       }
       some(node_stmt(stmt)) => {
-        fmt!{"stmt %s (id=%?)",
-             pprust::stmt_to_str(*stmt, itr), id}
+        fmt!("stmt %s (id=%?)",
+             pprust::stmt_to_str(*stmt, itr), id)
       }
       // FIXMEs are as per #2410
       some(node_export(_, path)) => {
-        fmt!{"export %s (id=%?)", // add more info here
-             path_to_str(*path, itr), id}
+        fmt!("export %s (id=%?)", // add more info here
+             path_to_str(*path, itr), id)
       }
       some(node_arg(_, _)) => { // add more info here
-        fmt!{"arg (id=%?)", id}
+        fmt!("arg (id=%?)", id)
       }
       some(node_local(_)) => { // add more info here
-        fmt!{"local (id=%?)", id}
+        fmt!("local (id=%?)", id)
       }
       some(node_ctor(*)) => { // add more info here
-        fmt!{"node_ctor (id=%?)", id}
+        fmt!("node_ctor (id=%?)", id)
       }
       some(node_dtor(*)) => { // add more info here
-        fmt!{"node_dtor (id=%?)", id}
+        fmt!("node_dtor (id=%?)", id)
       }
       some(node_block(_)) => {
-        fmt!{"block"}
+        fmt!("block")
       }
     }
 }

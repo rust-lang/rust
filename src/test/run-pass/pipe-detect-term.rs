@@ -38,7 +38,7 @@ fn failtest() {
         fail;
     }
 
-    error!{"%?", recv(p)};
+    error!("%?", recv(p));
     // make sure we get killed if we missed it in the receive.
     loop { task::yield() }
 }
