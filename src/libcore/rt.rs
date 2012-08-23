@@ -8,8 +8,7 @@ use libc::c_void;
 use libc::size_t;
 use libc::uintptr_t;
 
-import gc::gc;
-import gc::cleanup_stack_for_failure;
+import gc::{cleanup_stack_for_failure, gc, Word};
 
 #[allow(non_camel_case_types)]
 type rust_task = c_void;

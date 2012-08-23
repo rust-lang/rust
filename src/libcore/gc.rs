@@ -2,6 +2,10 @@ import stackwalk::Word;
 import libc::size_t;
 import send_map::linear::LinearMap;
 
+export Word;
+export gc;
+export cleanup_stack_for_failure;
+
 extern mod rustrt {
     fn rust_annihilate_box(ptr: *Word);
 
@@ -93,15 +97,29 @@ const stack:           Memory = 4;
 
 const need_cleanup:    Memory = exchange_heap | stack;
 
-unsafe fn walk_gc_roots(mem: Memory, visitor: Visitor) {
+unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     let mut last_ret: *Word = ptr::null();
+    // To avoid collecting memory used by the GC itself, skip stack
+    // frames until past the root GC stack frame. The root GC stack
+    // frame is marked by a sentinel, which is a box pointer stored on
+    // the stack.
+    let mut reached_sentinel = ptr::is_null(sentinel);
     for stackwalk::walk_stack |frame| {
         unsafe {
+            let mut delay_reached_sentinel = reached_sentinel;
             if ptr::is_not_null(last_ret) {
                 let sp = is_safe_point(last_ret);
                 match sp {
                   Some(sp_info) => {
                     for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
+                        // Skip roots until we see the sentinel.
+                        if !reached_sentinel {
+                            if root == sentinel {
+                                delay_reached_sentinel = true;
+                            }
+                            again;
+                        }
+
                         // Skip null pointers, which can occur when a
                         // unique pointer has already been freed.
                         if ptr::is_null(*root) {
@@ -128,6 +146,7 @@ unsafe fn walk_gc_roots(mem: Memory, visitor: Visitor) {
                   None => ()
                 }
             }
+            reached_sentinel = delay_reached_sentinel;
             last_ret = *ptr::offset(frame.fp, 1) as *Word;
         }
     }
@@ -135,7 +154,7 @@ unsafe fn walk_gc_roots(mem: Memory, visitor: Visitor) {
 
 fn gc() {
     unsafe {
-        for walk_gc_roots(task_local_heap) |_root, _tydesc| {
+        for walk_gc_roots(task_local_heap, ptr::null()) |_root, _tydesc| {
             // FIXME(#2997): Walk roots and mark them.
             io::stdout().write([46]); // .
         }
@@ -153,8 +172,16 @@ fn RootSet() -> RootSet {
 // dead.
 fn cleanup_stack_for_failure() {
     unsafe {
+        // Leave a sentinel on the stack to mark the current
+        // frame. The stack walker will ignore any frames above the
+        // sentinel, thus avoiding collecting any memory being used by
+        // the stack walker itself.
+        let sentinel_box = ~0;
+        let sentinel: **Word =
+            unsafe::reinterpret_cast(&ptr::addr_of(sentinel_box));
+
         let mut roots = ~RootSet();
-        for walk_gc_roots(need_cleanup) |root, tydesc| {
+        for walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
             // Track roots to avoid double frees.
             if option::is_some(roots.find(&*root)) {
                 again;
