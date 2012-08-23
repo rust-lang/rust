@@ -1768,6 +1768,7 @@ mod unsafe {
    export
       from_buf,
       from_buf_len,
+      from_buf_len_nocopy,
       from_c_str,
       from_c_str_len,
       from_bytes,
@@ -1796,6 +1797,13 @@ mod unsafe {
         vec::push(v, 0u8);
 
         assert is_utf8(v);
+        return ::unsafe::transmute(v);
+    }
+
+    /// Create a Rust string from a *u8 buffer of the given length without copying
+    unsafe fn from_buf_len_nocopy(buf: &a / *u8, len: uint) -> &a / str {
+        let v = (*buf, len + 1);
+        assert is_utf8(::unsafe::reinterpret_cast(v));
         return ::unsafe::transmute(v);
     }
 
