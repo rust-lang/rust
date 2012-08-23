@@ -284,14 +284,8 @@ impl writer {
         self.wr_tagged_bytes(tag_id, &[v as u8]);
     }
 
-    fn wr_tagged_str(tag_id: uint, v: ~str) {
-        // Lame: can't use str::as_bytes() here because the resulting
-        // vector is NULL-terminated.  Annoyingly, the underlying
-        // writer interface doesn't permit us to write a slice of a
-        // vector.  We need first-class slices, I think.
-
-        // str::as_bytes(v) {|b| self.wr_tagged_bytes(tag_id, b); }
-        self.wr_tagged_bytes(tag_id, str::bytes(v));
+    fn wr_tagged_str(tag_id: uint, v: &str) {
+        str::byte_slice(v, |b| self.wr_tagged_bytes(tag_id, b));
     }
 
     fn wr_bytes(b: &[u8]) {
@@ -369,7 +363,7 @@ impl ebml::writer: serialization::serializer {
     fn emit_f32(_v: f32) { fail ~"Unimplemented: serializing an f32"; }
     fn emit_float(_v: float) { fail ~"Unimplemented: serializing a float"; }
 
-    fn emit_str(v: ~str) { self.wr_tagged_str(es_str as uint, v) }
+    fn emit_str(v: &str) { self.wr_tagged_str(es_str as uint, v) }
 
     fn emit_enum(name: ~str, f: fn()) {
         self._emit_label(name);
@@ -451,7 +445,7 @@ priv impl ebml_deserializer {
         return r_doc;
     }
 
-    fn push_doc<T: copy>(d: ebml::doc, f: fn() -> T) -> T{
+    fn push_doc<T>(d: ebml::doc, f: fn() -> T) -> T{
         let old_parent = self.parent;
         let old_pos = self.pos;
         self.parent = d;
@@ -505,13 +499,13 @@ impl ebml_deserializer: serialization::deserializer {
     fn read_str() -> ~str { ebml::doc_as_str(self.next_doc(es_str)) }
 
     // Compound types:
-    fn read_enum<T:copy>(name: ~str, f: fn() -> T) -> T {
+    fn read_enum<T>(name: ~str, f: fn() -> T) -> T {
         debug!{"read_enum(%s)", name};
         self._check_label(name);
         self.push_doc(self.next_doc(es_enum), f)
     }
 
-    fn read_enum_variant<T:copy>(f: fn(uint) -> T) -> T {
+    fn read_enum_variant<T>(f: fn(uint) -> T) -> T {
         debug!{"read_enum_variant()"};
         let idx = self._next_uint(es_enum_vid);
         debug!{"  idx=%u", idx};
@@ -520,12 +514,12 @@ impl ebml_deserializer: serialization::deserializer {
         }
     }
 
-    fn read_enum_variant_arg<T:copy>(idx: uint, f: fn() -> T) -> T {
+    fn read_enum_variant_arg<T>(idx: uint, f: fn() -> T) -> T {
         debug!{"read_enum_variant_arg(idx=%u)", idx};
         f()
     }
 
-    fn read_vec<T:copy>(f: fn(uint) -> T) -> T {
+    fn read_vec<T>(f: fn(uint) -> T) -> T {
         debug!{"read_vec()"};
         do self.push_doc(self.next_doc(es_vec)) {
             let len = self._next_uint(es_vec_len);
@@ -534,38 +528,38 @@ impl ebml_deserializer: serialization::deserializer {
         }
     }
 
-    fn read_vec_elt<T:copy>(idx: uint, f: fn() -> T) -> T {
+    fn read_vec_elt<T>(idx: uint, f: fn() -> T) -> T {
         debug!{"read_vec_elt(idx=%u)", idx};
         self.push_doc(self.next_doc(es_vec_elt), f)
     }
 
-    fn read_box<T:copy>(f: fn() -> T) -> T {
+    fn read_box<T>(f: fn() -> T) -> T {
         debug!{"read_box()"};
         f()
     }
 
-    fn read_uniq<T:copy>(f: fn() -> T) -> T {
+    fn read_uniq<T>(f: fn() -> T) -> T {
         debug!{"read_uniq()"};
         f()
     }
 
-    fn read_rec<T:copy>(f: fn() -> T) -> T {
+    fn read_rec<T>(f: fn() -> T) -> T {
         debug!{"read_rec()"};
         f()
     }
 
-    fn read_rec_field<T:copy>(f_name: ~str, f_idx: uint, f: fn() -> T) -> T {
+    fn read_rec_field<T>(f_name: ~str, f_idx: uint, f: fn() -> T) -> T {
         debug!{"read_rec_field(%s, idx=%u)", f_name, f_idx};
         self._check_label(f_name);
         f()
     }
 
-    fn read_tup<T:copy>(sz: uint, f: fn() -> T) -> T {
+    fn read_tup<T>(sz: uint, f: fn() -> T) -> T {
         debug!{"read_tup(sz=%u)", sz};
         f()
     }
 
-    fn read_tup_elt<T:copy>(idx: uint, f: fn() -> T) -> T {
+    fn read_tup_elt<T>(idx: uint, f: fn() -> T) -> T {
         debug!{"read_tup_elt(idx=%u)", idx};
         f()
     }
