@@ -100,7 +100,7 @@ fn main() {
     // Report the results as the games complete
     for range(0, times) |round| {
         let winner = result_from_game.recv();
-        println(#fmt("%s wins round #%u", winner, round));
+        println(fmt!("%s wins round #%u", winner, round));
     }
 
     fn play_game(player1: ~str, player2: ~str) -> ~str {
@@ -650,7 +650,7 @@ one is `#fmt`, a printf-style text formatting macro that is expanded
 at compile time.
 
 ~~~~
-io::println(#fmt("%s is %d", ~"the answer", 42));
+io::println(fmt!("%s is %d", ~"the answer", 42));
 ~~~~
 
 `#fmt` supports most of the directives that [printf][pf] supports, but
@@ -664,7 +664,7 @@ All syntax extensions look like `#word`. Another built-in one is
 compile-time.
 
 ~~~~
-io::println(#env("PATH"));
+io::println(env!("PATH"));
 ~~~~
 
 # Control structures
@@ -908,8 +908,8 @@ and will log the formatted string:
 
 ~~~~
 # fn get_error_string() -> ~str { ~"boo" }
-#warn("only %d seconds remaining", 10);
-#error("fatal: %s", get_error_string());
+warn!("only %d seconds remaining", 10);
+error!("fatal: %s", get_error_string());
 ~~~~
 
 Because the macros `#debug`, `#warn`, and `#error` expand to calls to `log`,
@@ -1578,7 +1578,7 @@ the enclosing scope.
 fn call_closure_with_ten(b: fn(int)) { b(10); }
 
 let captured_var = 20;
-let closure = |arg| println(#fmt("captured_var=%d, arg=%d", captured_var, arg));
+let closure = |arg| println(fmt!("captured_var=%d, arg=%d", captured_var, arg));
 
 call_closure_with_ten(closure);
 ~~~~
@@ -1706,7 +1706,7 @@ structure.
 # fn each(v: ~[int], op: fn(int)) {}
 # fn do_some_work(i: int) { }
 each(~[1, 2, 3], |n| {
-    #debug("%i", n);
+    debug!("%i", n);
     do_some_work(n);
 });
 ~~~~
@@ -1718,7 +1718,7 @@ call that can be written more like a built-in control structure:
 # fn each(v: ~[int], op: fn(int)) {}
 # fn do_some_work(i: int) { }
 do each(~[1, 2, 3]) |n| {
-    #debug("%i", n);
+    debug!("%i", n);
     do_some_work(n);
 }
 ~~~~
@@ -1735,7 +1735,7 @@ takes a final closure argument.
 import task::spawn;
 
 do spawn() || {
-    #debug("I'm a task, whatever");
+    debug!("I'm a task, whatever");
 }
 ~~~~
 
@@ -1746,7 +1746,7 @@ there?
 ~~~~
 # import task::spawn;
 do spawn {
-   #debug("Kablam!");
+   debug!("Kablam!");
 }
 ~~~~
 
@@ -2558,7 +2558,7 @@ extern mod crypto {
 
 fn as_hex(data: ~[u8]) -> ~str {
     let mut acc = ~"";
-    for data.each |byte| { acc += #fmt("%02x", byte as uint); }
+    for data.each |byte| { acc += fmt!("%02x", byte as uint); }
     return acc;
 }
 
@@ -2759,7 +2759,7 @@ fn unix_time_in_microseconds() -> u64 unsafe {
     return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
 
-# fn main() { assert #fmt("%?", unix_time_in_microseconds()) != ~""; }
+# fn main() { assert fmt!("%?", unix_time_in_microseconds()) != ~""; }
 ~~~~
 
 The `#[nolink]` attribute indicates that there's no foreign library to
@@ -2799,7 +2799,7 @@ let some_value = 22;
 
 do spawn {
     println(~"This executes in the child task.");
-    println(#fmt("%d", some_value));
+    println(fmt!("%d", some_value));
 }
 ~~~~
 
