@@ -90,16 +90,10 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
               ~"get_tydesc" | ~"needs_drop" => {
                 use_tydesc
               }
-              // NB: new intrinsics
               ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub" |
               ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
-              ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" |
-              // old intrinsics
-              ~"atomic_xchng" | ~"atomic_add" | ~"atomic_sub" |
-              ~"atomic_xchng_acq" | ~"atomic_add_acq" | ~"atomic_sub_acq" |
-              ~"atomic_xchng_rel" | ~"atomic_add_rel" | ~"atomic_sub_rel" => {
-                0u
-              }
+              ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" =>
+              { 0u }
               ~"visit_tydesc" | ~"forget" | ~"addr_of" => {
                 0u
               }
