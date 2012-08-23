@@ -186,30 +186,35 @@ enum const_val {
     const_int(i64),
     const_uint(u64),
     const_str(~str),
+    const_bool(bool)
 }
 
 // FIXME: issue #1417
 fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
     import middle::ty;
     fn fromb(b: bool) -> const_val { const_int(b as i64) }
-    match check e.node {
+    match e.node {
       expr_unary(neg, inner) => {
-        match check eval_const_expr(tcx, inner) {
+        match eval_const_expr(tcx, inner) {
           const_float(f) => const_float(-f),
           const_int(i) => const_int(-i),
-          const_uint(i) => const_uint(-i)
+          const_uint(i) => const_uint(-i),
+          const_str(_) => fail ~"Negate on string",
+          const_bool(_) => fail ~"Negate on boolean"
         }
       }
       expr_unary(not, inner) => {
-        match check eval_const_expr(tcx, inner) {
+        match eval_const_expr(tcx, inner) {
           const_int(i) => const_int(!i),
-          const_uint(i) => const_uint(!i)
+          const_uint(i) => const_uint(!i),
+          const_bool(b) => const_bool(!b),
+          _ => fail ~"Not on float or string"
         }
       }
       expr_binary(op, a, b) => {
-        match check (eval_const_expr(tcx, a), eval_const_expr(tcx, b)) {
+        match (eval_const_expr(tcx, a), eval_const_expr(tcx, b)) {
           (const_float(a), const_float(b)) => {
-            match check op {
+            match op {
               add => const_float(a + b),
               subtract => const_float(a - b),
               mul => const_float(a * b),
@@ -220,11 +225,12 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
               le => fromb(a <= b),
               ne => fromb(a != b),
               ge => fromb(a >= b),
-              gt => fromb(a > b)
+              gt => fromb(a > b),
+              _ => fail ~"Can't do this op on floats"
             }
           }
           (const_int(a), const_int(b)) => {
-            match check op {
+            match op {
               add => const_int(a + b),
               subtract => const_int(a - b),
               mul => const_int(a * b),
@@ -244,7 +250,7 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
             }
           }
           (const_uint(a), const_uint(b)) => {
-            match check op {
+            match op {
               add => const_uint(a + b),
               subtract => const_uint(a - b),
               mul => const_uint(a * b),
@@ -260,54 +266,74 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
               le => fromb(a <= b),
               ne => fromb(a != b),
               ge => fromb(a >= b),
-              gt => fromb(a > b)
+              gt => fromb(a > b),
             }
           }
           // shifts can have any integral type as their rhs
           (const_int(a), const_uint(b)) => {
-            match check op {
+            match op {
               shl => const_int(a << b),
-              shr => const_int(a >> b)
+              shr => const_int(a >> b),
+              _ => fail ~"Can't do this op on an int and uint"
             }
           }
           (const_uint(a), const_int(b)) => {
-            match check op {
+            match op {
               shl => const_uint(a << b),
-              shr => const_uint(a >> b)
+              shr => const_uint(a >> b),
+              _ => fail ~"Can't do this op on a uint and int"
             }
           }
+          (const_bool(a), const_bool(b)) => {
+            const_bool(match op {
+              and => a && b,
+              or => a || b,
+              bitxor => a ^ b,
+              bitand => a & b,
+              bitor => a | b,
+              eq => a == b,
+              ne => a != b,
+              _ => fail ~"Can't do this op on bools"
+             })
+          }
+          _ => fail ~"Bad operands for binary"
         }
       }
       expr_cast(base, _) => {
         let ety = ty::expr_ty(tcx, e);
         let base = eval_const_expr(tcx, base);
-        match check ty::get(ety).struct {
+        match ty::get(ety).struct {
           ty::ty_float(_) => {
-            match check base {
+            match base {
               const_uint(u) => const_float(u as f64),
               const_int(i) => const_float(i as f64),
-              const_float(_) => base
+              const_float(_) => base,
+              _ => fail ~"Can't cast float to str"
             }
           }
           ty::ty_uint(_) => {
-            match check base {
+            match base {
               const_uint(_) => base,
               const_int(i) => const_uint(i as u64),
-              const_float(f) => const_uint(f as u64)
+              const_float(f) => const_uint(f as u64),
+              _ => fail ~"Can't cast str to uint"
             }
           }
           ty::ty_int(_) | ty::ty_bool => {
-            match check base {
+            match base {
               const_uint(u) => const_int(u as i64),
               const_int(_) => base,
-              const_float(f) => const_int(f as i64)
+              const_float(f) => const_int(f as i64),
+              _ => fail ~"Can't cast str to int"
             }
           }
+          _ => fail ~"Can't cast this type"
         }
       }
       expr_lit(lit) => lit_to_const(lit),
       // If we have a vstore, just keep going; it has to be a string
-      expr_vstore(e, _) => eval_const_expr(tcx, e)
+      expr_vstore(e, _) => eval_const_expr(tcx, e),
+      _ => fail ~"Unsupported constant expr"
     }
 }
 
@@ -319,7 +345,7 @@ fn lit_to_const(lit: @lit) -> const_val {
       lit_int_unsuffixed(n) => const_int(n),
       lit_float(n, _) => const_float(option::get(float::from_str(*n)) as f64),
       lit_nil => const_int(0i64),
-      lit_bool(b) => const_int(b as i64)
+      lit_bool(b) => const_bool(b)
     }
 }
 
@@ -353,6 +379,15 @@ fn compare_const_vals(a: const_val, b: const_val) -> int {
         }
     }
     (const_str(a), const_str(b)) => {
+        if a == b {
+            0
+        } else if a < b {
+            -1
+        } else {
+            1
+        }
+    }
+    (const_bool(a), const_bool(b)) => {
         if a == b {
             0
         } else if a < b {

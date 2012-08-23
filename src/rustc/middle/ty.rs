@@ -3379,6 +3379,13 @@ fn eval_repeat_count(tcx: ctxt, count_expr: @ast::expr, span: span) -> uint {
                                 repeat count but found string");
             return 0;
         }
+        const_eval::const_bool(_) => {
+            tcx.sess.span_err(span,
+                              ~"expected signed or unsigned integer for \
+                                repeat count but found boolean");
+            return 0;
+        }
+
     }
 }
 

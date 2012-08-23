@@ -1,6 +1,6 @@
 import syntax::ast::*;
 import syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat};
-import const_eval::{eval_const_expr, const_val, const_int,
+import const_eval::{eval_const_expr, const_val, const_int, const_bool,
                     compare_const_vals};
 import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;
@@ -90,16 +90,19 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
       useful(ty, ctor) => {
         match ty::get(ty).struct {
           ty::ty_bool => {
-            match check ctor {
-              val(const_int(1i64)) => some(~"true"),
-              val(const_int(0i64)) => some(~"false")
+            match ctor {
+              val(const_bool(true)) => some(~"true"),
+              val(const_bool(false)) => some(~"false"),
+              _ => none
             }
           }
           ty::ty_enum(id, _) => {
-            let vid = match check ctor { variant(id) => id };
-            match check vec::find(*ty::enum_variants(tcx, id),
+              let vid = match ctor { variant(id) => id,
+              _ => fail ~"check_exhaustive: non-variant ctor" };
+            match vec::find(*ty::enum_variants(tcx, id),
                                 |v| v.id == vid) {
-              some(v) => some(tcx.sess.str_of(v.name))
+                some(v) => some(tcx.sess.str_of(v.name)),
+              none => fail ~"check_exhaustive: bad variant in ctor"
             }
           }
           _ => none
@@ -152,10 +155,10 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
           none => {
             match ty::get(left_ty).struct {
               ty::ty_bool => {
-                match is_useful_specialized(tcx, m, v, val(const_int(1i64)),
+                match is_useful_specialized(tcx, m, v, val(const_bool(true)),
                                           0u, left_ty){
                   not_useful => {
-                    is_useful_specialized(tcx, m, v, val(const_int(0i64)),
+                    is_useful_specialized(tcx, m, v, val(const_bool(false)),
                                           0u, left_ty)
                   }
                   u => u
@@ -269,15 +272,16 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> option<ctor> {
       ty::ty_bool => {
         let mut true_found = false, false_found = false;
         for m.each |r| {
-            match check pat_ctor_id(tcx, r[0]) {
+            match pat_ctor_id(tcx, r[0]) {
               none => (),
-              some(val(const_int(1i64))) => true_found = true,
-              some(val(const_int(0i64))) => false_found = true
+              some(val(const_bool(true))) => true_found = true,
+              some(val(const_bool(false))) => false_found = true,
+              _ => fail ~"impossible case"
             }
         }
         if true_found && false_found { none }
-        else if true_found { some(val(const_int(0i64))) }
-        else { some(val(const_int(1i64))) }
+        else if true_found { some(val(const_bool(false))) }
+        else { some(val(const_bool(true))) }
       }
       _ => some(single)
     }
@@ -289,9 +293,11 @@ fn ctor_arity(tcx: ty::ctxt, ctor: ctor, ty: ty::t) -> uint {
       ty::ty_rec(fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) => 1u,
       ty::ty_enum(eid, _) => {
-        let id = match check ctor { variant(id) => id };
-        match check vec::find(*ty::enum_variants(tcx, eid), |v| v.id == id ) {
-          some(v) => v.args.len()
+          let id = match ctor { variant(id) => id,
+          _ => fail ~"impossible case" };
+        match vec::find(*ty::enum_variants(tcx, eid), |v| v.id == id ) {
+            some(v) => v.args.len(),
+            none => fail ~"impossible case"
         }
       }
       ty::ty_class(cid, _) => ty::lookup_class_fields(tcx, cid).len(),
@@ -319,7 +325,7 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         }
       }
       pat_enum(_, args) => {
-        match check tcx.def_map.get(r0.id) {
+        match tcx.def_map.get(r0.id) {
           def_variant(_, id) if variant(id) == ctor_id => {
             let args = match args {
               some(args) => args,
@@ -327,12 +333,14 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
             };
             some(vec::append(args, vec::tail(r)))
           }
-          def_variant(_, _) => none
+          def_variant(_, _) => none,
+          _ => none
         }
       }
       pat_rec(flds, _) => {
-        let ty_flds = match check ty::get(left_ty).struct {
-          ty::ty_rec(flds) => flds
+        let ty_flds = match ty::get(left_ty).struct {
+            ty::ty_rec(flds) => flds,
+            _ => fail ~"bad type for pat_rec"
         };
         let args = vec::map(ty_flds, |ty_f| {
             match vec::find(flds, |f| f.ident == ty_f.ident ) {
@@ -367,21 +375,23 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
       pat_box(a) | pat_uniq(a) => some(vec::append(~[a], vec::tail(r))),
       pat_lit(expr) => {
         let e_v = eval_const_expr(tcx, expr);
-        let match_ = match check ctor_id {
+        let match_ = match ctor_id {
           val(v) => compare_const_vals(e_v, v) == 0,
           range(c_lo, c_hi) => {
             compare_const_vals(c_lo, e_v) >= 0 &&
                 compare_const_vals(c_hi, e_v) <= 0
           }
-          single => true
+          single => true,
+          _ => fail ~"type error"
         };
         if match_ { some(vec::tail(r)) } else { none }
       }
       pat_range(lo, hi) => {
-        let (c_lo, c_hi) = match check ctor_id {
+        let (c_lo, c_hi) = match ctor_id {
           val(v) => (v, v),
           range(lo, hi) => (lo, hi),
           single => return some(vec::tail(r)),
+          _ => fail ~"type error"
         };
         let v_lo = eval_const_expr(tcx, lo),
             v_hi = eval_const_expr(tcx, hi);
