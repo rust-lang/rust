@@ -6,7 +6,7 @@ export transmute_mut, transmute_immut, transmute_region, transmute_mut_region;
 export SharedMutableState, shared_mutable_state, clone_shared_mutable_state;
 export get_shared_mutable_state, get_shared_immutable_state;
 export unwrap_shared_mutable_state;
-export Exclusive, exclusive;
+export Exclusive, exclusive, unwrap_exclusive;
 
 import task::atomically;
 
