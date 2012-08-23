@@ -1,4 +1,4 @@
-#[warn(deprecated_mode)];
+// #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
 import std::{map, smallintmap};
