@@ -2411,6 +2411,11 @@ The right-hand side of the `=>` follows the same rules as the left-hand side,
 except that `$` need only be followed by the name of the syntactic fragment
 to transcribe.
 
+The right-hand side must be surrounded by delimiters of some kind, and must be
+an expression; currently, user-defined macros can only be invoked in
+expression position (even though `macro_rules!` itself can be in item
+position).
+
 ## Multiplicity
 
 ### Invocation
