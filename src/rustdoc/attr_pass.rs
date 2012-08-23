@@ -145,7 +145,7 @@ fn fold_enum(
     {
         variants: do par::map(doc.variants) |variant| {
             let desc = do astsrv::exec(srv) |ctxt| {
-                match check ctxt.ast_map.get(doc_id) {
+                match ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
@@ -156,6 +156,8 @@ fn fold_enum(
 
                     attr_parser::parse_desc(ast_variant.node.attrs)
                   }
+                  _ => fail #fmt("Enum variant %s has id that's not bound \
+                         to an enum item", variant.name)
                 }
             };
 

@@ -47,7 +47,7 @@ fn fold_fn(
 
 fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<~str> {
     do astsrv::exec(srv) |ctxt| {
-        match check ctxt.ast_map.get(fn_id) {
+        match ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
             node: ast::item_fn(decl, tys, _), _
@@ -58,6 +58,7 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<~str> {
           }, _, _) => {
             some(pprust::fun_to_str(decl, ident, tys, extract::interner()))
           }
+          _ => fail ~"get_fn_sig: fn_id not bound to a fn item"
         }
     }
 }
@@ -82,12 +83,13 @@ fn fold_const(
 
     {
         sig: some(do astsrv::exec(srv) |ctxt| {
-            match check ctxt.ast_map.get(doc.id()) {
+            match ctxt.ast_map.get(doc.id()) {
               ast_map::node_item(@{
                 node: ast::item_const(ty, _), _
               }, _) => {
                 pprust::ty_to_str(ty, extract::interner())
               }
+              _ => fail ~"fold_const: id not bound to a const item"
             }
         })
         with doc
@@ -110,7 +112,7 @@ fn fold_enum(
     {
         variants: do par::map(doc.variants) |variant| {
             let sig = do astsrv::exec(srv) |ctxt| {
-                match check ctxt.ast_map.get(doc_id) {
+                match ctxt.ast_map.get(doc_id) {
                   ast_map::node_item(@{
                     node: ast::item_enum(enum_definition, _), _
                   }, _) => {
@@ -121,6 +123,7 @@ fn fold_enum(
 
                     pprust::variant_to_str(ast_variant, extract::interner())
                   }
+                  _ => fail ~"enum variant not bound to an enum item"
                 }
             };
 
@@ -168,11 +171,11 @@ fn get_method_sig(
     method_name: ~str
 ) -> option<~str> {
     do astsrv::exec(srv) |ctxt| {
-        match check ctxt.ast_map.get(item_id) {
+        match ctxt.ast_map.get(item_id) {
           ast_map::node_item(@{
             node: ast::item_trait(_, _, methods), _
           }, _) => {
-            match check vec::find(methods, |method| {
+            match vec::find(methods, |method| {
                 match method {
                   ast::required(ty_m) => to_str(ty_m.ident) == method_name,
                   ast::provided(m) => to_str(m.ident) == method_name,
@@ -198,12 +201,13 @@ fn get_method_sig(
                     }
                   }
                 }
+                _ => fail ~"method not found"
             }
           }
           ast_map::node_item(@{
             node: ast::item_impl(_, _, _, methods), _
           }, _) => {
-            match check vec::find(methods, |method| {
+            match vec::find(methods, |method| {
                 to_str(method.ident) == method_name
             }) {
                 some(method) => {
@@ -214,8 +218,10 @@ fn get_method_sig(
                         extract::interner()
                     ))
                 }
+                none => fail ~"method not found"
             }
           }
+          _ => fail ~"get_method_sig: item ID not bound to trait or impl"
         }
     }
 }
