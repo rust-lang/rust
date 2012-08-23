@@ -11,7 +11,7 @@ type password = ~str;
 type money = float;
 type amount = float;
 
-proto! bank {
+proto! bank (
     login:send {
         login(username, password) -> login_response
     }
@@ -30,7 +30,7 @@ proto! bank {
         money(money) -> connected,
         insufficient_funds -> connected
     }
-}
+)
 
 macro_rules! move_it (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }

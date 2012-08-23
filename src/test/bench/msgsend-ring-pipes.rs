@@ -15,11 +15,11 @@ import std::time;
 
 import pipes::recv;
 
-proto! ring {
+proto! ring (
     num:send {
         num(uint) -> num
     }
-}
+)
 
 fn macros() {
     #macro[

@@ -3,14 +3,14 @@
 This is frequently called the pipe compiler. It handles code such as...
 
 ~~~
-proto! pingpong {
+proto! pingpong (
     ping: send {
         ping -> pong
     }
     pong: recv {
         pong -> ping
     }
-}
+)
 ~~~
 
 There are several components:
