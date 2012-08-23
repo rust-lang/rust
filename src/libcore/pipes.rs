@@ -666,12 +666,10 @@ fn select2<A: send, Ab: send, B: send, Bb: send>(
 {
     let i = wait_many([a.header(), b.header()]/_);
 
-    unsafe {
-        match i {
-          0 => Left((try_recv(a), b)),
-          1 => Right((a, try_recv(b))),
-          _ => fail ~"select2 return an invalid packet"
-        }
+    match i {
+      0 => Left((try_recv(a), b)),
+      1 => Right((a, try_recv(b))),
+      _ => fail ~"select2 return an invalid packet"
     }
 }
 
@@ -706,17 +704,9 @@ fn select<T: send, Tb: send>(+endpoints: ~[recv_packet_buffered<T, Tb>])
     -> (uint, option<T>, ~[recv_packet_buffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
-    let mut remaining = ~[];
-    let mut result = none;
-    do vec::consume(endpoints) |i, p| {
-        if i == ready {
-            result = try_recv(p);
-        }
-        else {
-            vec::push(remaining, p);
-        }
-    }
-
+    let mut remaining = endpoints;
+    let port = vec::swap_remove(remaining, ready);
+    let result = try_recv(port);
     (ready, result, remaining)
 }
 
@@ -1054,12 +1044,7 @@ struct PortSet<T: send> : recv<T> {
                 }
                 none => {
                     // Remove this port.
-                    let mut ports_ = ~[];
-                    ports <-> ports_;
-                    vec::consume(ports_,
-                                 |j, x| if i != j {
-                                     vec::push(ports, x)
-                                 });
+                    let _ = vec::swap_remove(ports, i);
                 }
             }
         }
