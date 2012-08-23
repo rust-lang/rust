@@ -2254,10 +2254,10 @@ log(core::error, ~"file not found: " + filename);
 log(error, ~"file not found: " + filename);
 
 // Formatting the message using a format-string and #fmt
-log(error, #fmt("file not found: %s", filename));
+log(error, fmt!("file not found: %s", filename));
 
 // Using the #error macro, that expands to the previous call.
-#error("file not found: %s", filename);
+error!("file not found: %s", filename);
 ~~~~
 
 A `log` expression is *not evaluated* when logging at the specified
@@ -2328,7 +2328,7 @@ and the syntax to expand into. An example:
 #macro([#apply[fn, [args, ...]], fn(args, ...)]);
 ~~~~~~~~
 
-In this case, the invocation `#apply[sum, 5, 8, 6]` expands to
+In this case, the invocation `apply!(sum, 5, 8, 6)` expands to
 `sum(5,8,6)`. If `...` follows an expression (which need not be as
 simple as a single identifier) in the input syntax, the matcher will expect an
 arbitrary number of occurrences of the thing preceding it, and bind syntax to
@@ -2348,12 +2348,12 @@ sophisticated example:
 #macro([#unzip_literals[[x, y], ...], [[x, ...], [y, ...]]]);
 ~~~~~~~~
 
-In this case, `#zip_literals[[1,2,3], [1,2,3]]` expands to
-`[[1,1],[2,2],[3,3]]`, and `#unzip_literals[[1,1], [2,2], [3,3]]`
+In this case, `zip_literals!([1,2,3], [1,2,3])` expands to
+`[[1,1],[2,2],[3,3]]`, and `unzip_literals!([1,1], [2,2], [3,3])`
 expands to `[[1,2,3],[1,2,3]]`.
 
 Macro expansion takes place outside-in: that is,
-`#unzip_literals[#zip_literals[[1,2,3],[1,2,3]]]` will fail because
+`unzip_literals!(zip_literals!([1,2,3],[1,2,3]))` will fail because
 `unzip_literals` expects a list, not a macro invocation, as an argument.
 
 The macro system currently has some limitations. It's not possible to
