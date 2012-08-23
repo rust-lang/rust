@@ -142,10 +142,10 @@ fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
     if cx.unreachable { return; }
     assert (!cx.terminated);
     cx.terminated = true;
-    debug!{"Invoke(%s with arguments (%s))",
+    debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
            str::connect(vec::map(Args, |a| val_str(cx.ccx().tn, a)),
-                        ~", ")};
+                        ~", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx), Fn, vec::unsafe::to_ptr(Args),
@@ -413,9 +413,9 @@ fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
 
 fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
     if cx.unreachable { return; }
-    debug!{"Store %s -> %s",
+    debug!("Store %s -> %s",
            val_str(cx.ccx().tn, Val),
-           val_str(cx.ccx().tn, Ptr)};
+           val_str(cx.ccx().tn, Ptr));
     count_insn(cx, "store");
     llvm::LLVMBuildStore(B(cx), Val, Ptr);
 }
@@ -673,9 +673,9 @@ fn Call(cx: block, Fn: ValueRef, Args: ~[ValueRef]) -> ValueRef {
     unsafe {
         count_insn(cx, "call");
 
-        debug!{"Call(Fn=%s, Args=%?)",
+        debug!("Call(Fn=%s, Args=%?)",
                val_str(cx.ccx().tn, Fn),
-               Args.map(|arg| val_str(cx.ccx().tn, arg))};
+               Args.map(|arg| val_str(cx.ccx().tn, arg)));
 
         return llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                 Args.len() as c_uint, noname());

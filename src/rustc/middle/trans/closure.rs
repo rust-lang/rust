@@ -100,12 +100,12 @@ enum environment_value {
 
 fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> ~str {
     match ev {
-      env_copy(v, t, lk) => fmt!{"copy(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)},
-      env_move(v, t, lk) => fmt!{"move(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)},
-      env_ref(v, t, lk) => fmt!{"ref(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)}
+      env_copy(v, t, lk) => fmt!("copy(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t)),
+      env_move(v, t, lk) => fmt!("move(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t)),
+      env_ref(v, t, lk) => fmt!("ref(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t))
     }
 }
 
@@ -129,7 +129,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
         });
     }
     let cdata_ty = ty::mk_tup(tcx, bound_tys);
-    debug!{"cdata_ty=%s", ty_to_str(tcx, cdata_ty)};
+    debug!("cdata_ty=%s", ty_to_str(tcx, cdata_ty));
     return cdata_ty;
 }
 
@@ -195,16 +195,16 @@ fn store_environment(bcx: block,
     let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mutbl:ast::m_imm});
 
     let llbox = PointerCast(bcx, llbox, type_of(ccx, cboxptr_ty));
-    debug!{"tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty)};
+    debug!("tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty));
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
     do vec::iteri(bound_values) |i, bv| {
-        debug!{"Copy %s into closure", ev_to_str(ccx, bv)};
+        debug!("Copy %s into closure", ev_to_str(ccx, bv));
 
         if !ccx.sess.no_asm_comments() {
-            add_comment(bcx, fmt!{"Copy %s into closure",
-                                  ev_to_str(ccx, bv)});
+            add_comment(bcx, fmt!("Copy %s into closure",
+                                  ev_to_str(ccx, bv)));
         }
 
         let bound_data = GEPi(bcx, llbox,
@@ -225,9 +225,9 @@ fn store_environment(bcx: block,
             bcx = move_val(bcx, INIT, bound_data, src, ty);
           }
           env_ref(val, ty, lv_owned) => {
-            debug!{"> storing %s into %s",
+            debug!("> storing %s into %s",
                    val_str(bcx.ccx().tn, val),
-                   val_str(bcx.ccx().tn, bound_data)};
+                   val_str(bcx.ccx().tn, bound_data));
             Store(bcx, val, bound_data);
           }
           env_ref(val, ty, lv_owned_imm) => {
@@ -259,13 +259,13 @@ fn build_closure(bcx0: block,
 
     // Package up the captured upvars
     do vec::iter(cap_vars) |cap_var| {
-        debug!{"Building closure: captured variable %?", cap_var};
+        debug!("Building closure: captured variable %?", cap_var);
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
-        debug!{"Node id is %s",
+        debug!("Node id is %s",
                syntax::ast_map::node_id_to_str
                    (bcx.ccx().tcx.items, nid,
-                    bcx.ccx().sess.parse_sess.interner)};
+                    bcx.ccx().sess.parse_sess.interner));
         let mut ty = node_id_type(bcx, nid);
         match cap_var.mode {
           capture::cap_ref => {

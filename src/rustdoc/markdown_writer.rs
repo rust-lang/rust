@@ -90,8 +90,8 @@ fn pandoc_writer(
     do generic_writer |markdown| {
         import io::WriterUtil;
 
-        debug!{"pandoc cmd: %s", pandoc_cmd};
-        debug!{"pandoc args: %s", str::connect(pandoc_args, ~" ")};
+        debug!("pandoc cmd: %s", pandoc_cmd);
+        debug!("pandoc args: %s", str::connect(pandoc_args, ~" "));
 
         let pipe_in = os::pipe();
         let pipe_out = os::pipe();
@@ -123,10 +123,10 @@ fn pandoc_writer(
         let stderr = comm::recv(stderr_po);
 
         let status = run::waitpid(pid);
-        debug!{"pandoc result: %i", status};
+        debug!("pandoc result: %i", status);
         if status != 0 {
-            error!{"pandoc-out: %s", stdout};
-            error!{"pandoc-err: %s", stderr};
+            error!("pandoc-out: %s", stdout);
+            error!("pandoc-err: %s", stderr);
             fail ~"pandoc failed";
         }
     }

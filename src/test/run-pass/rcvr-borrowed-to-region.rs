@@ -18,21 +18,21 @@ fn main() {
 
     let x = @6;
     let y = x.get();
-    debug!{"y=%d", y};
+    debug!("y=%d", y);
     assert y == 6;
 
     let x = ~mut 6;
     let y = x.get();
-    debug!{"y=%d", y};
+    debug!("y=%d", y);
     assert y == 6;
 
     let x = ~6;
     let y = x.get();
-    debug!{"y=%d", y};
+    debug!("y=%d", y);
     assert y == 6;
 
     let x = &6;
     let y = x.get();
-    debug!{"y=%d", y};
+    debug!("y=%d", y);
     assert y == 6;
 }

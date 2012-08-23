@@ -63,15 +63,15 @@ impl reflector {
         let get_lval = |bcx| {
             let callee =
                 impl::trans_trait_callee(bcx, v, mth_ty, mth_idx);
-            debug!{"calling mth ty %s, lltype %s",
+            debug!("calling mth ty %s, lltype %s",
                    ty_to_str(bcx.ccx().tcx, mth_ty),
-                   val_str(bcx.ccx().tn, callee.val)};
+                   val_str(bcx.ccx().tn, callee.val));
             callee
         };
-        debug!{"passing %u args:", vec::len(args)};
+        debug!("passing %u args:", vec::len(args));
         let bcx = self.bcx;
         for args.eachi |i, a| {
-            debug!{"arg %u: %s", i, val_str(bcx.ccx().tn, a)};
+            debug!("arg %u: %s", i, val_str(bcx.ccx().tn, a));
         }
         let d = empty_dest_cell();
         let bcx =
@@ -112,8 +112,8 @@ impl reflector {
     fn visit_ty(t: ty::t) {
 
         let bcx = self.bcx;
-        debug!{"reflect::visit_ty %s",
-               ty_to_str(bcx.ccx().tcx, t)};
+        debug!("reflect::visit_ty %s",
+               ty_to_str(bcx.ccx().tcx, t));
 
         match ty::get(t).struct {
           ty::ty_bot => self.leaf(~"bot"),

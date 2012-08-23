@@ -1,7 +1,7 @@
 fn main() {
     match ~100 {
       ~x => {
-        debug!{"%?", x};
+        debug!("%?", x);
         assert x == 100;
       }
     }

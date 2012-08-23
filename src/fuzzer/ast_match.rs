@@ -26,5 +26,5 @@ fn main() {
     assert (!vec_equal(~[5, 5], ~[4, 5], builtin_equal_int));
     assert (vec_equal(~[5, 5], ~[5, 5], builtin_equal_int));
 
-    error!{"Pass"};
+    error!("Pass");
 }

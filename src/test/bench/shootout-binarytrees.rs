@@ -47,9 +47,9 @@ fn main(args: ~[~str]) {
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
 
-    io::println(fmt!{"stretch tree of depth %d\t check: %d",
+    io::println(fmt!("stretch tree of depth %d\t check: %d",
                           stretch_depth,
-                          item_check(stretch_tree)});
+                          item_check(stretch_tree)));
 
     let long_lived_arena = arena::arena();
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
@@ -65,12 +65,12 @@ fn main(args: ~[~str]) {
             chk += item_check(temp_tree);
             i += 1;
         }
-        io::println(fmt!{"%d\t trees of depth %d\t check: %d",
+        io::println(fmt!("%d\t trees of depth %d\t check: %d",
                          iterations * 2, depth,
-                         chk});
+                         chk));
         depth += 2;
     }
-    io::println(fmt!{"long lived trees of depth %d\t check: %d",
+    io::println(fmt!("long lived trees of depth %d\t check: %d",
                      max_depth,
-                          item_check(long_lived_tree)});
+                          item_check(long_lived_tree)));
 }

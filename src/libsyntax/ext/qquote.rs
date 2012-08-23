@@ -205,7 +205,7 @@ fn finish<T: qq_helper>
 {
     let cm = ecx.codemap();
     let str = @codemap::span_to_snippet(body.span, cm);
-    debug!{"qquote--str==%?", str};
+    debug!("qquote--str==%?", str);
     let fname = codemap::mk_substr_filename(cm, body.span);
     let node = parse_from_source_str
         (f, fname, codemap::fss_internal(body.span), str,
@@ -231,7 +231,7 @@ fn finish<T: qq_helper>
     do str::chars_iter(*str) |ch| {
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
-            let repl = fmt!{"$%u ", j};
+            let repl = fmt!("$%u ", j);
             state = skip(str::char_len(repl));
             str2 += repl;
         }

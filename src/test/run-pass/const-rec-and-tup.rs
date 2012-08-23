@@ -9,5 +9,5 @@ const y : { x: (i64, i64),
 fn main() {
     let (p, _) = y.x;
     assert p == 0xf0f0f0f0_f0f0f0f0;
-    io::println(fmt!{"0x%x", p as uint});
+    io::println(fmt!("0x%x", p as uint));
 }

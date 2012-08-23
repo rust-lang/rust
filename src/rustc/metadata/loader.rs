@@ -43,8 +43,8 @@ fn load_library_crate(cx: ctxt) -> {ident: ~str, data: @~[u8]} {
       some(t) => return t,
       none => {
         cx.diag.span_fatal(
-            cx.span, fmt!{"can't find crate for `%s`",
-                          *cx.intr.get(cx.ident)});
+            cx.span, fmt!("can't find crate for `%s`",
+                          *cx.intr.get(cx.ident)));
       }
     }
 }
@@ -74,27 +74,27 @@ fn find_library_crate_aux(cx: ctxt,
 
     let mut matches = ~[];
     filesearch::search(filesearch, |path| {
-        debug!{"inspecting file %s", path};
+        debug!("inspecting file %s", path);
         let f: ~str = path::basename(path);
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
-            debug!{"skipping %s, doesn't look like %s*%s", path, prefix,
-                   suffix};
+            debug!("skipping %s, doesn't look like %s*%s", path, prefix,
+                   suffix);
             option::none::<()>
         } else {
-            debug!{"%s is a candidate", path};
+            debug!("%s is a candidate", path);
             match get_metadata_section(cx.os, path) {
               option::some(cvec) => {
                 if !crate_matches(cvec, cx.metas, cx.hash) {
-                    debug!{"skipping %s, metadata doesn't match", path};
+                    debug!("skipping %s, metadata doesn't match", path);
                     option::none::<()>
                 } else {
-                    debug!{"found %s with matching metadata", path};
+                    debug!("found %s with matching metadata", path);
                     vec::push(matches, {ident: path, data: cvec});
                     option::none::<()>
                 }
               }
               _ => {
-                debug!{"could not load metadata for %s", path};
+                debug!("could not load metadata for %s", path);
                 option::none::<()>
               }
             }
@@ -107,10 +107,10 @@ fn find_library_crate_aux(cx: ctxt,
         some(matches[0])
     } else {
         cx.diag.span_err(
-            cx.span, fmt!{"multiple matching crates for `%s`", crate_name});
+            cx.span, fmt!("multiple matching crates for `%s`", crate_name));
         cx.diag.handler().note(~"candidates:");
         for matches.each |match_| {
-            cx.diag.handler().note(fmt!{"path: %s", match_.ident});
+            cx.diag.handler().note(fmt!("path: %s", match_.ident));
             let attrs = decoder::get_crate_attributes(match_.data);
             note_linkage_attrs(cx.intr, cx.diag, attrs);
         }
@@ -137,8 +137,8 @@ fn crate_name_from_metas(metas: ~[@ast::meta_item]) -> ~str {
 fn note_linkage_attrs(intr: ident_interner, diag: span_handler,
                       attrs: ~[ast::attribute]) {
     for attr::find_linkage_metas(attrs).each |mi| {
-        diag.handler().note(fmt!{"meta: %s",
-              pprust::meta_item_to_str(mi,intr)});
+        diag.handler().note(fmt!("meta: %s",
+              pprust::meta_item_to_str(mi,intr)));
     }
 }
 
@@ -156,8 +156,8 @@ fn crate_matches(crate_data: @~[u8], metas: ~[@ast::meta_item],
 fn metadata_matches(extern_metas: ~[@ast::meta_item],
                     local_metas: ~[@ast::meta_item]) -> bool {
 
-    debug!{"matching %u metadata requirements against %u items",
-           vec::len(local_metas), vec::len(extern_metas)};
+    debug!("matching %u metadata requirements against %u items",
+           vec::len(local_metas), vec::len(extern_metas));
 
     for local_metas.each |needed| {
         if !attr::contains(extern_metas, needed) {

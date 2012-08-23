@@ -34,14 +34,14 @@ macro_rules! select_if {
               _ => fail
             }
         } else {
-            select_if!{
+            select_if!(
                 $index,
                 $count + 1
                 $(, $ports => [
                     $(type_this $messages$(($(x $xs),+))dont_type_this*
                       -> $nexts => { $es }),+
                 ])*
-            }
+            )
         }
     };
 }
@@ -54,9 +54,9 @@ macro_rules! select {
         } )+
     } => {
         let index = pipes::selecti([$(($port).header()),+]/_);
-        select_if!{index, 0 $(, $port => [
+        select_if!(index, 0 $(, $port => [
             $(type_this $message$(($(x $x),+))dont_type_this* -> $next => { $e }),+
-        ])+}
+        ])+)
     }
 }
 

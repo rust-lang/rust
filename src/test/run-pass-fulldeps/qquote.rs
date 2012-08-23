@@ -92,7 +92,7 @@ fn check_pp<T>(cx: fake_ext_ctxt,
     let str = mem_buffer_str(buf);
     stdout().write_line(str);
     if expect != ~"" {
-        error!{"expect: '%s', got: '%s'", expect, str};
+        error!("expect: '%s', got: '%s'", expect, str);
         assert str == expect;
     }
 }

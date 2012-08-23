@@ -45,7 +45,7 @@ fn thread_ring(i: uint,
     let mut num_port <- some(num_port);
     // Send/Receive lots of messages.
     for uint::range(0u, count) |j| {
-        //error!{"task %?, iter %?", i, j};
+        //error!("task %?, iter %?", i, j);
         let mut num_chan2 = option::swap_unwrap(&mut num_chan);
         let mut num_port2 = option::swap_unwrap(&mut num_port);
         send(&num_chan2, i * j);
@@ -77,7 +77,7 @@ fn main(args: ~[~str]) {
     let mut futures = ~[];
 
     for uint::range(1u, num_tasks) |i| {
-        //error!{"spawning %?", i};
+        //error!("spawning %?", i);
         let (new_chan, num_port) = init();
         let num_chan2 = ~mut none;
         *num_chan2 <-> num_chan;
@@ -107,8 +107,8 @@ fn main(args: ~[~str]) {
     let elapsed = (stop - start);
     let rate = (num_msgs as float) / elapsed;
 
-    io::println(fmt!{"Sent %? messages in %? seconds",
-                     num_msgs, elapsed});
-    io::println(fmt!{"  %? messages / second", rate});
-    io::println(fmt!{"  %? μs / message", 1000000. / rate});
+    io::println(fmt!("Sent %? messages in %? seconds",
+                     num_msgs, elapsed));
+    io::println(fmt!("  %? messages / second", rate));
+    io::println(fmt!("  %? μs / message", 1000000. / rate));
 }

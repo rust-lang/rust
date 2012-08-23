@@ -106,7 +106,7 @@ fn with_envp<T>(env: &option<~[(~str,~str)]>,
 
         for vec::each(es) |e| {
             let (k,v) = e;
-            let t = @(fmt!{"%s=%s", k, v});
+            let t = @(fmt!("%s=%s", k, v));
             vec::push(tmps, t);
             vec::push_all(ptrs, str::as_c_str(*t, |b| ~[b]));
         }
@@ -131,7 +131,7 @@ fn with_envp<T>(env: &option<~[(~str,~str)]>,
             let mut blk : ~[u8] = ~[];
             for vec::each(es) |e| {
                 let (k,v) = e;
-                let t = fmt!{"%s=%s", k, v};
+                let t = fmt!("%s=%s", k, v);
                 let mut v : ~[u8] = ::unsafe::reinterpret_cast(t);
                 blk += v;
                 ::unsafe::forget(v);
@@ -332,7 +332,7 @@ fn program_output(prog: &str, args: &[~str]) ->
 fn writeclose(fd: c_int, s: &str) {
     import io::WriterUtil;
 
-    error!{"writeclose %d, %s", fd as int, s};
+    error!("writeclose %d, %s", fd as int, s);
     let writer = io::fd_writer(fd, false);
     writer.write_str(s);
 

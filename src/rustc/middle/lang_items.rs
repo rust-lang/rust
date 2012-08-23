@@ -126,8 +126,8 @@ struct LanguageItemCollector {
                     some(original_def_id)
                             if original_def_id != item_def_id => {
 
-                        self.session.err(fmt!{"duplicate entry for `%s`",
-                                              value});
+                        self.session.err(fmt!("duplicate entry for `%s`",
+                                              value));
                     }
                     some(_) | none => {
                         // OK.
@@ -185,7 +185,7 @@ struct LanguageItemCollector {
         for self.item_refs.each |key, item_ref| {
             match copy *item_ref {
                 none => {
-                    self.session.err(fmt!{"no item found for `%s`", key});
+                    self.session.err(fmt!("no item found for `%s`", key));
                 }
                 some(did) => {
                     // OK.

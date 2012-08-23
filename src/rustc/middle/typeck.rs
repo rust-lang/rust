@@ -175,7 +175,7 @@ enum crate_ctxt {
 
 // Functions that write types into the node type table
 fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
-    debug!{"write_ty_to_tcx(%d, %s)", node_id, ty_to_str(tcx, ty)};
+    debug!("write_ty_to_tcx(%d, %s)", node_id, ty_to_str(tcx, ty));
     smallintmap::insert(*tcx.node_types, node_id as uint, ty);
 }
 fn write_substs_to_tcx(tcx: ty::ctxt,
@@ -275,10 +275,10 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
               arg_is_argv_ty(tcx, inputs[0]);
         if !ok {
                 tcx.sess.span_err(main_span,
-                   fmt!{"Wrong type in main function: found `%s`, \
+                   fmt!("Wrong type in main function: found `%s`, \
                    expected `extern fn(~[str]) -> ()` \
                    or `extern fn() -> ()`",
-                         ty_to_str(tcx, main_t)});
+                         ty_to_str(tcx, main_t)));
          }
       }
       _ => {

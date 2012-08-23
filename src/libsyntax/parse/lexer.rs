@@ -419,8 +419,8 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
 
-        debug!{"lexing %s as an unsuffixed integer literal",
-               num_str};
+        debug!("lexing %s as an unsuffixed integer literal",
+               num_str);
         return token::LIT_INT_UNSUFFIXED(parsed as i64);
     }
 }
@@ -431,7 +431,7 @@ fn scan_numeric_escape(rdr: string_reader, n_hex_digits: uint) -> char {
         let n = rdr.curr;
         bump(rdr);
         if !is_hex_digit(n) {
-            rdr.fatal(fmt!{"illegal numeric character escape: %d", n as int});
+            rdr.fatal(fmt!("illegal numeric character escape: %d", n as int));
         }
         accum_int *= 16;
         accum_int += hex_digit_val(n);
@@ -578,7 +578,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
               'u' => { c2 = scan_numeric_escape(rdr, 4u); }
               'U' => { c2 = scan_numeric_escape(rdr, 8u); }
               c2 => {
-                rdr.fatal(fmt!{"unknown character escape: %d", c2 as int});
+                rdr.fatal(fmt!("unknown character escape: %d", c2 as int));
               }
             }
         }
@@ -593,8 +593,8 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {
-                rdr.fatal(fmt!{"unterminated double quote string: %s",
-                               get_str_from(rdr, n)});
+                rdr.fatal(fmt!("unterminated double quote string: %s",
+                               get_str_from(rdr, n)));
             }
 
             let ch = rdr.curr;
@@ -621,7 +621,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 8u));
                   }
                   c2 => {
-                    rdr.fatal(fmt!{"unknown string escape: %d", c2 as int});
+                    rdr.fatal(fmt!("unknown string escape: %d", c2 as int));
                   }
                 }
               }
@@ -656,7 +656,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
       '/' => { return binop(rdr, token::SLASH); }
       '^' => { return binop(rdr, token::CARET); }
       '%' => { return binop(rdr, token::PERCENT); }
-      c => { rdr.fatal(fmt!{"unknown start of token: %d", c as int}); }
+      c => { rdr.fatal(fmt!("unknown start of token: %d", c as int)); }
     }
 }
 

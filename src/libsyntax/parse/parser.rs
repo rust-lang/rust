@@ -126,7 +126,7 @@ enum view_item_parse_mode {
 /* The expr situation is not as complex as I thought it would be.
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
-macro_rules! maybe_whole_expr {
+macro_rules! maybe_whole_expr (
     {$p:expr} => { match copy $p.token {
       INTERPOLATED(token::nt_expr(e)) => {
         $p.bump();
@@ -139,9 +139,9 @@ macro_rules! maybe_whole_expr {
       }
       _ => ()
     }}
-}
+)
 
-macro_rules! maybe_whole {
+macro_rules! maybe_whole (
     {$p:expr, $constructor:ident} => { match copy $p.token {
       INTERPOLATED(token::$constructor(x)) => { $p.bump(); return x; }
       _ => ()
@@ -166,7 +166,7 @@ macro_rules! maybe_whole {
       _ => ()
     }}
 
-}
+)
 
 
 pure fn maybe_append(+lhs: ~[attribute], rhs: option<~[attribute]>)
@@ -325,13 +325,13 @@ struct parser {
             let self_ty = if is_static { static_sty } else { self_ty };
 
             let hi = p.last_span.hi;
-            debug!{"parse_trait_methods(): trait method signature ends in \
+            debug!("parse_trait_methods(): trait method signature ends in \
                     `%s`",
-                   token_to_str(p.reader, p.token)};
+                   token_to_str(p.reader, p.token));
             match p.token {
               token::SEMI => {
                 p.bump();
-                debug!{"parse_trait_methods(): parsing required method"};
+                debug!("parse_trait_methods(): parsing required method");
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
                 required({ident: ident, attrs: attrs,
@@ -340,7 +340,7 @@ struct parser {
                           id: p.get_id(), span: mk_sp(lo, hi)})
               }
               token::LBRACE => {
-                debug!{"parse_trait_methods(): parsing provided method"};
+                debug!("parse_trait_methods(): parsing provided method");
                 let (inner_attrs, body) =
                     p.parse_inner_attrs_and_block(true);
                 let attrs = vec::append(attrs, inner_attrs);
@@ -441,7 +441,7 @@ struct parser {
     }
 
     fn parse_ty(colons_before_params: bool) -> @ty {
-        maybe_whole!{self, nt_ty};
+        maybe_whole!(self, nt_ty);
 
         let lo = self.span.lo;
 
@@ -708,7 +708,7 @@ struct parser {
         parse_ident: fn(parser) -> ident,
         parse_last_ident: fn(parser) -> ident) -> @path {
 
-        maybe_whole!{self, nt_path};
+        maybe_whole!(self, nt_path);
         let lo = self.span.lo;
         let global = self.eat(token::MOD_SEP);
         let mut ids = ~[];
@@ -735,9 +735,9 @@ struct parser {
     }
 
     fn parse_path_with_tps(colons: bool) -> @path {
-        debug!{"parse_path_with_tps(colons=%b)", colons};
+        debug!("parse_path_with_tps(colons=%b)", colons);
 
-        maybe_whole!{self, nt_path};
+        maybe_whole!(self, nt_path);
         let lo = self.span.lo;
         let path = self.parse_path_without_tps();
         if colons && !self.eat(token::MOD_SEP) {
@@ -829,7 +829,7 @@ struct parser {
     }
 
     fn parse_bottom_expr() -> pexpr {
-        maybe_whole_expr!{self};
+        maybe_whole_expr!(self);
         let lo = self.span.lo;
         let mut hi = self.span.hi;
 
@@ -1197,7 +1197,7 @@ struct parser {
     }
 
     fn parse_token_tree() -> token_tree {
-        maybe_whole!{deref self, nt_tt};
+        maybe_whole!(deref self, nt_tt);
 
         fn parse_tt_tok(p: parser, delim_ok: bool) -> token_tree {
             match p.token {
@@ -1249,7 +1249,7 @@ struct parser {
     fn parse_matchers() -> ~[matcher] {
         // unification of matchers and token_trees would vastly improve
         // the interpolation of matchers
-        maybe_whole!{self, nt_matchers};
+        maybe_whole!(self, nt_matchers);
         let name_idx = @mut 0u;
         return match self.token {
           token::LBRACE | token::LPAREN | token::LBRACKET => {
@@ -1598,9 +1598,9 @@ struct parser {
             // There may be other types of expressions that can
             // represent the callee in `for` and `do` expressions
             // but they aren't represented by tests
-            debug!{"sugary call on %?", e.node};
+            debug!("sugary call on %?", e.node);
             self.span_fatal(
-                lo, fmt!{"`%s` must be followed by a block call", keyword});
+                lo, fmt!("`%s` must be followed by a block call", keyword));
           }
         }
     }
@@ -1801,7 +1801,7 @@ struct parser {
     }
 
     fn parse_pat(refutable: bool) -> @pat {
-        maybe_whole!{self, nt_pat};
+        maybe_whole!(self, nt_pat);
 
         let lo = self.span.lo;
         let mut hi = self.span.hi;
@@ -2077,7 +2077,7 @@ struct parser {
     }
 
     fn parse_stmt(+first_item_attrs: ~[attribute]) -> @stmt {
-        maybe_whole!{self, nt_stmt};
+        maybe_whole!(self, nt_stmt);
 
         fn check_expected_item(p: parser, current_attrs: ~[attribute]) {
             // If we have attributes then we should have an item
@@ -2140,7 +2140,7 @@ struct parser {
     fn parse_inner_attrs_and_block(parse_attrs: bool)
         -> (~[attribute], blk) {
 
-        maybe_whole!{pair_empty self, nt_block};
+        maybe_whole!(pair_empty self, nt_block);
 
         fn maybe_parse_inner_attrs_and_next(p: parser, parse_attrs: bool) ->
             {inner: ~[attribute], next: ~[attribute]} {
@@ -2812,7 +2812,7 @@ struct parser {
                            token_to_str(self.reader, self.token) + ~"`");
               }
             }
-            debug!{"parse_mod_items: attrs=%?", attrs};
+            debug!("parse_mod_items: attrs=%?", attrs);
         }
 
         if first && attrs_remaining.len() > 0u {
@@ -3139,7 +3139,7 @@ struct parser {
 
     fn parse_item_or_view_item(+attrs: ~[attribute], items_allowed: bool)
                             -> item_or_view_item {
-        maybe_whole!{iovi self,nt_item};
+        maybe_whole!(iovi self,nt_item);
         let lo = self.span.lo;
 
         let visibility;
@@ -3303,7 +3303,7 @@ struct parser {
         let lo = self.span.lo;
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        debug!{"parsed view_path: %s", *self.id_to_str(first_ident)};
+        debug!("parsed view_path: %s", *self.id_to_str(first_ident));
         match self.token {
           token::EQ => {
             // x = foo::bar

@@ -69,5 +69,5 @@ fn main(args: ~[~str]) {
         i += 1u;
     }
 
-    io::println(fmt!{"%0.9f\n", float::sqrt(vBv / vv)});
+    io::println(fmt!("%0.9f\n", float::sqrt(vBv / vv)));
 }

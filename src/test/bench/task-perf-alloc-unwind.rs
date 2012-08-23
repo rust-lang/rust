@@ -17,11 +17,11 @@ fn main() {
 
 fn run(repeat: int, depth: int) {
     for iter::repeat(repeat as uint) {
-        debug!{"starting %.4f", precise_time_s()};
+        debug!("starting %.4f", precise_time_s());
         do task::try {
             recurse_or_fail(depth, none)
         };
-        debug!{"stopping %.4f", precise_time_s()};
+        debug!("stopping %.4f", precise_time_s());
     }
 }
 
@@ -48,7 +48,7 @@ struct r {
 
 fn recurse_or_fail(depth: int, st: option<st>) {
     if depth == 0 {
-        debug!{"unwinding %.4f", precise_time_s()};
+        debug!("unwinding %.4f", precise_time_s());
         fail;
     } else {
         let depth = depth - 1;

@@ -8,20 +8,20 @@ import syntax::print;
 fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
-    debug!{">>"};
+    debug!(">>");
     let r <- op();
-    debug!{"<< (Result = %?)", r};
+    debug!("<< (Result = %?)", r);
     return r;
 }
 
 struct _indenter {
     let _i: ();
     new(_i: ()) { self._i = (); }
-    drop { debug!{"<<"}; }
+    drop { debug!("<<"); }
 }
 
 fn indenter() -> _indenter {
-    debug!{">>"};
+    debug!(">>");
     _indenter(())
 }
 

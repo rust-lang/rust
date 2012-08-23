@@ -48,18 +48,18 @@ fn main(args: ~[~str]) {
     let rawf = raw as float;
     let dvecf = dvec as float;
     
-    io::stdout().write_str(fmt!{"Raw     : %? seconds\n", raw});
-    io::stdout().write_str(fmt!{"        : %f op/sec\n", maxf/rawf});
-    io::stdout().write_str(fmt!{"\n"});
-    io::stdout().write_str(fmt!{"Dvec    : %? seconds\n", dvec});
-    io::stdout().write_str(fmt!{"        : %f op/sec\n", maxf/dvecf});
-    io::stdout().write_str(fmt!{"\n"});
+    io::stdout().write_str(fmt!("Raw     : %? seconds\n", raw));
+    io::stdout().write_str(fmt!("        : %f op/sec\n", maxf/rawf));
+    io::stdout().write_str(fmt!("\n"));
+    io::stdout().write_str(fmt!("Dvec    : %? seconds\n", dvec));
+    io::stdout().write_str(fmt!("        : %f op/sec\n", maxf/dvecf));
+    io::stdout().write_str(fmt!("\n"));
     
     if dvec < raw {
-        io::stdout().write_str(fmt!{"Dvec is %f%% faster than raw\n",
-                                    (rawf - dvecf) / rawf * 100.0});
+        io::stdout().write_str(fmt!("Dvec is %f%% faster than raw\n",
+                                    (rawf - dvecf) / rawf * 100.0));
     } else {
-        io::stdout().write_str(fmt!{"Raw is %f%% faster than dvec\n",
-                                    (dvecf - rawf) / dvecf * 100.0});
+        io::stdout().write_str(fmt!("Raw is %f%% faster than dvec\n",
+                                    (dvecf - rawf) / dvecf * 100.0));
     }
 }

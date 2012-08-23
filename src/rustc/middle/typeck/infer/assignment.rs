@@ -63,8 +63,8 @@ impl infer_ctxt {
             }
         }
 
-        debug!{"assign_tys(anmnt=%?, %s -> %s)",
-               anmnt, a.to_str(self), b.to_str(self)};
+        debug!("assign_tys(anmnt=%?, %s -> %s)",
+               anmnt, a.to_str(self), b.to_str(self));
         let _r = indenter();
 
         match (ty::get(a).struct, ty::get(b).struct) {
@@ -110,9 +110,9 @@ impl infer_ctxt {
         a: ty::t, b: ty::t,
         +a_bnd: option<ty::t>, +b_bnd: option<ty::t>) -> ures {
 
-        debug!{"assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
+        debug!("assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
                anmnt, a.to_str(self), b.to_str(self),
-               a_bnd.to_str(self), b_bnd.to_str(self)};
+               a_bnd.to_str(self), b_bnd.to_str(self));
         let _r = indenter();
 
         fn is_borrowable(v: ty::vstore) -> bool {
@@ -167,9 +167,9 @@ impl infer_ctxt {
                       m: ast::mutability,
                       r_b: ty::region) -> ures {
 
-        debug!{"crosspollinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
+        debug!("crosspollinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
                anmnt, a.to_str(self), nr_b.to_str(self),
-               r_b.to_str(self)};
+               r_b.to_str(self));
 
         do indent {
             let sub = mk_sub(self, false, anmnt.span);
@@ -179,12 +179,12 @@ impl infer_ctxt {
                 let r_a = self.next_region_var(anmnt.span,
                                                anmnt.borrow_lb);
 
-                debug!{"anmnt=%?", anmnt};
+                debug!("anmnt=%?", anmnt);
                 do sub.contraregions(r_a, r_b).chain |_r| {
                     // if successful, add an entry indicating that
                     // borrowing occurred
-                    debug!{"borrowing expression #%?, scope=%?, m=%?",
-                           anmnt, r_a, m};
+                    debug!("borrowing expression #%?, scope=%?, m=%?",
+                           anmnt, r_a, m);
                     self.borrowings.push({expr_id: anmnt.expr_id,
                                           span: anmnt.span,
                                           scope: r_a,

@@ -1,3 +1,3 @@
 
 
-fn other() { debug!{"yes"}; }
+fn other() { debug!("yes"); }

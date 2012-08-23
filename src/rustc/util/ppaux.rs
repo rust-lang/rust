@@ -100,7 +100,7 @@ fn explain_region_and_span(cx: ctxt, region: ty::region)
         -> (~str, option<span>)
     {
         let lo = codemap::lookup_char_pos_adj(cx.sess.codemap, span.lo);
-        (fmt!{"the %s at %u:%u", heading, lo.line, lo.col}, some(span))
+        (fmt!("the %s at %u:%u", heading, lo.line, lo.col), some(span))
     }
 }
 
@@ -118,7 +118,7 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
       // does not fail
       br_cap_avoid(id, br) => {
         if cx.sess.ppregions() {
-            fmt!{"br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br)}
+            fmt!("br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br))
         } else {
             bound_region_to_str(cx, *br)
         }
@@ -129,40 +129,40 @@ fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
 fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
     match cx.items.find(node_id) {
       some(ast_map::node_block(blk)) => {
-        fmt!{"<block at %s>",
-             codemap::span_to_str(blk.span, cx.sess.codemap)}
+        fmt!("<block at %s>",
+             codemap::span_to_str(blk.span, cx.sess.codemap))
       }
       some(ast_map::node_expr(expr)) => {
         match expr.node {
           ast::expr_call(*) => {
-            fmt!{"<call at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap)}
+            fmt!("<call at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
           }
           ast::expr_match(*) => {
-            fmt!{"<alt at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap)}
+            fmt!("<alt at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
           }
           ast::expr_assign_op(*) |
           ast::expr_field(*) |
           ast::expr_unary(*) |
           ast::expr_binary(*) |
           ast::expr_index(*) => {
-            fmt!{"<method at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap)}
+            fmt!("<method at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
           }
           _ => {
-            fmt!{"<expression at %s>",
-                 codemap::span_to_str(expr.span, cx.sess.codemap)}
+            fmt!("<expression at %s>",
+                 codemap::span_to_str(expr.span, cx.sess.codemap))
           }
         }
       }
       none => {
-        fmt!{"<unknown-%d>", node_id}
+        fmt!("<unknown-%d>", node_id)
       }
       _ => { cx.sess.bug(
-          fmt!{"re_scope refers to %s",
+          fmt!("re_scope refers to %s",
                ast_map::node_id_to_str(cx.items, node_id,
-                                       cx.sess.parse_sess.interner)}) }
+                                       cx.sess.parse_sess.interner))) }
     }
 }
 
@@ -198,7 +198,7 @@ fn mt_to_str(cx: ctxt, m: mt) -> ~str {
 
 fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
     match vs {
-      ty::vstore_fixed(n) => fmt!{"%u", n},
+      ty::vstore_fixed(n) => fmt!("%u", n),
       ty::vstore_uniq => ~"~",
       ty::vstore_box => ~"@",
       ty::vstore_slice(r) => region_to_str(cx, r)
@@ -208,9 +208,9 @@ fn vstore_to_str(cx: ctxt, vs: ty::vstore) -> ~str {
 fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
     match vs {
       ty::vstore_fixed(_) => {
-        fmt!{"%s/%s", ty, vstore_to_str(cx, vs)}
+        fmt!("%s/%s", ty, vstore_to_str(cx, vs))
       }
-      _ => fmt!{"%s%s", vstore_to_str(cx, vs), ty}
+      _ => fmt!("%s%s", vstore_to_str(cx, vs), ty)
     }
 }
 
@@ -347,7 +347,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         vstore_ty_to_str(cx, result, vs)
       }
       ty_evec(mt, vs) => {
-        vstore_ty_to_str(cx, fmt!{"[%s]", mt_to_str(cx, mt)}, vs)
+        vstore_ty_to_str(cx, fmt!("[%s]", mt_to_str(cx, mt)), vs)
       }
       ty_estr(vs) => vstore_ty_to_str(cx, ~"str", vs),
       ty_opaque_box => ~"@?",
@@ -365,15 +365,15 @@ fn parameterized(cx: ctxt,
     let r_str = match self_r {
       none => ~"",
       some(r) => {
-        fmt!{"/%s", region_to_str(cx, r)}
+        fmt!("/%s", region_to_str(cx, r))
       }
     };
 
     if vec::len(tps) > 0u {
         let strs = vec::map(tps, |t| ty_to_str(cx, t) );
-        fmt!{"%s%s<%s>", base, r_str, str::connect(strs, ~",")}
+        fmt!("%s%s<%s>", base, r_str, str::connect(strs, ~","))
     } else {
-        fmt!{"%s%s", base, r_str}
+        fmt!("%s%s", base, r_str)
     }
 }
 

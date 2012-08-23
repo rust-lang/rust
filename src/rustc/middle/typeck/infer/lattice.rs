@@ -37,9 +37,9 @@ impl Glb: lattice_ops {
 fn lattice_tys<L:lattice_ops combine>(
     self: &L, a: ty::t, b: ty::t) -> cres<ty::t> {
 
-    debug!{"%s.lattice_tys(%s, %s)", self.tag(),
+    debug!("%s.lattice_tys(%s, %s)", self.tag(),
            a.to_str(self.infcx()),
-           b.to_str(self.infcx())};
+           b.to_str(self.infcx()));
     if a == b { return ok(a); }
     do indent {
         match (ty::get(a).struct, ty::get(b).struct) {
@@ -84,10 +84,10 @@ fn lattice_vars<L:lattice_ops combine>(
     let a_bounds = nde_a.possible_types;
     let b_bounds = nde_b.possible_types;
 
-    debug!{"%s.lattice_vars(%s=%s <: %s=%s)",
+    debug!("%s.lattice_vars(%s=%s <: %s=%s)",
            self.tag(),
            a_vid.to_str(), a_bounds.to_str(self.infcx()),
-           b_vid.to_str(), b_bounds.to_str(self.infcx())};
+           b_vid.to_str(), b_bounds.to_str(self.infcx()));
 
     if a_vid == b_vid {
         return ok(a_t);
@@ -123,21 +123,21 @@ fn lattice_var_and_t<L:lattice_ops combine>(
     // The comments in this function are written for LUB, but they
     // apply equally well to GLB if you inverse upper/lower/sub/super/etc.
 
-    debug!{"%s.lattice_var_and_t(%s=%s <: %s)",
+    debug!("%s.lattice_var_and_t(%s=%s <: %s)",
            self.tag(),
            a_id.to_str(), a_bounds.to_str(self.infcx()),
-           b.to_str(self.infcx())};
+           b.to_str(self.infcx()));
 
     match self.bnd(a_bounds) {
       some(a_bnd) => {
         // If a has an upper bound, return the LUB(a.ub, b)
-        debug!{"bnd=some(%s)", a_bnd.to_str(self.infcx())};
+        debug!("bnd=some(%s)", a_bnd.to_str(self.infcx()));
         return c_ts(a_bnd, b);
       }
       none => {
         // If a does not have an upper bound, make b the upper bound of a
         // and then return b.
-        debug!{"bnd=none"};
+        debug!("bnd=none");
         let a_bounds = self.with_bnd(a_bounds, b);
         do bnds(self, a_bounds.lb, a_bounds.ub).then {
             self.infcx().set(vb, a_id, root(a_bounds, nde_a.rank));

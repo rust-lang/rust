@@ -371,7 +371,7 @@ fn rest(s: ~str, start: uint) -> ~str {
 fn need_dir(s: ~str) {
     if os::path_is_dir(s) { return; }
     if !os::make_dir(s, 493_i32 /* oct: 755 */) {
-        fail fmt!{"can't make_dir %s", s};
+        fail fmt!("can't make_dir %s", s);
     }
 }
 
@@ -389,7 +389,7 @@ fn valid_pkg_name(s: ~str) -> bool {
 
 fn parse_source(name: ~str, j: json::json) -> source {
     if !valid_pkg_name(name) {
-        fail fmt!{"'%s' is an invalid source name", name};
+        fail fmt!("'%s' is an invalid source name", name);
     }
 
     match j {
@@ -432,11 +432,11 @@ fn try_parse_sources(filename: ~str, sources: map::hashmap<~str, source>) {
         ok(json::dict(j)) => {
           for j.each |k, v| {
                 sources.insert(k, parse_source(k, v));
-                debug!{"source: %s", k};
+                debug!("source: %s", k);
             }
         }
         ok(_) => fail ~"malformed sources.json",
-        err(e) => fail fmt!{"%s:%s", filename, e.to_str()}
+        err(e) => fail fmt!("%s:%s", filename, e.to_str())
     }
 }
 
@@ -559,7 +559,7 @@ fn load_source_info(c: cargo, src: source) {
                  ~"(source info is not a dict)");
         }
         err(e) => {
-            warn(fmt!{"%s:%s", src.name, e.to_str()});
+            warn(fmt!("%s:%s", src.name, e.to_str()));
         }
     };
 }
@@ -588,7 +588,7 @@ fn load_source_packages(c: cargo, src: source) {
                  ~"(packages is not a list)");
         }
         err(e) => {
-            warn(fmt!{"%s:%s", src.name, e.to_str()});
+            warn(fmt!("%s:%s", src.name, e.to_str()));
         }
     };
 }
@@ -597,7 +597,7 @@ fn build_cargo_options(argv: ~[~str]) -> options {
     let matches = match getopts::getopts(argv, opts()) {
         result::ok(m) => m,
         result::err(f) => {
-            fail fmt!{"%s", getopts::fail_str(f)};
+            fail fmt!("%s", getopts::fail_str(f));
         }
     };
 
@@ -707,11 +707,11 @@ fn run_in_buildpath(what: ~str, path: ~str, subdir: ~str, cf: ~str,
                     extra_flags: ~[~str]) -> option<~str> {
     let buildpath = path::connect(path, subdir);
     need_dir(buildpath);
-    debug!{"%s: %s -> %s", what, cf, buildpath};
+    debug!("%s: %s -> %s", what, cf, buildpath);
     let p = run::program_output(rustc_sysroot(),
                                 ~[~"--out-dir", buildpath, cf] + extra_flags);
     if p.status != 0 {
-        error(fmt!{"rustc failed: %d\n%s\n%s", p.status, p.err, p.out});
+        error(fmt!("rustc failed: %d\n%s\n%s", p.status, p.err, p.out));
         return none;
     }
     some(buildpath)
@@ -738,7 +738,7 @@ fn install_one_crate(c: cargo, path: ~str, cf: ~str) {
         if (exec_suffix != ~"" && str::ends_with(ct, exec_suffix)) ||
             (exec_suffix == ~"" && !str::starts_with(path::basename(ct),
                                                     ~"lib")) {
-            debug!{"  bin: %s", ct};
+            debug!("  bin: %s", ct);
             install_to_dir(ct, c.bindir);
             if c.opts.mode == system_mode {
                 // FIXME (#2662): Put this file in PATH / symlink it so it can
@@ -746,7 +746,7 @@ fn install_one_crate(c: cargo, path: ~str, cf: ~str) {
                 // `cargo install -G rustray` and `rustray file.obj`
             }
         } else {
-            debug!{"  lib: %s", ct};
+            debug!("  lib: %s", ct);
             install_to_dir(ct, c.libdir);
         }
     }
@@ -758,7 +758,7 @@ fn rustc_sysroot() -> ~str {
         some(path) => {
             let path = ~[path, ~"..", ~"bin", ~"rustc"];
             let rustc = path::normalize(path::connect_many(path));
-            debug!{"  rustc: %s", rustc};
+            debug!("  rustc: %s", rustc);
             rustc
         }
         none => ~"rustc"
@@ -766,7 +766,7 @@ fn rustc_sysroot() -> ~str {
 }
 
 fn install_source(c: cargo, path: ~str) {
-    debug!{"source: %s", path};
+    debug!("source: %s", path);
     os::change_dir(path);
 
     let mut cratefiles = ~[];
@@ -792,7 +792,7 @@ fn install_source(c: cargo, path: ~str) {
                     let wd_base = c.workdir + path::path_sep();
                     let wd = match tempfile::mkdtemp(wd_base, ~"") {
                         some(wd) => wd,
-                        none => fail fmt!{"needed temp dir: %s", wd_base}
+                        none => fail fmt!("needed temp dir: %s", wd_base)
                     };
 
                     install_query(c, wd, query);
@@ -825,7 +825,7 @@ fn install_curl(c: cargo, wd: ~str, url: ~str) {
     let p = run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o",
                                          tarpath, url]);
     if p.status != 0 {
-        fail fmt!{"fetch of %s failed: %s", url, p.err};
+        fail fmt!("fetch of %s failed: %s", url, p.err);
     }
     run::run_program(~"tar", ~[~"-x", ~"--strip-components=1",
                              ~"-C", wd, ~"-f", tarpath]);
@@ -846,7 +846,7 @@ fn install_package(c: cargo, src: ~str, wd: ~str, pkg: package) {
         _ => ~"curl"
     };
 
-    info(fmt!{"installing %s/%s via %s...", src, pkg.name, method});
+    info(fmt!("installing %s/%s via %s...", src, pkg.name, method));
 
     match method {
         ~"git" => install_git(c, wd, url, copy pkg.reference),
@@ -1076,7 +1076,7 @@ fn cmd_install(c: cargo) unsafe {
     let wd_base = c.workdir + path::path_sep();
     let wd = match tempfile::mkdtemp(wd_base, ~"") {
         some(wd) => wd,
-        none => fail fmt!{"needed temp dir: %s", wd_base}
+        none => fail fmt!("needed temp dir: %s", wd_base)
     };
 
     if vec::len(c.opts.free) == 2u {
@@ -1084,7 +1084,7 @@ fn cmd_install(c: cargo) unsafe {
         let status = run::run_program(~"cp", ~[~"-R", cwd, wd]);
 
         if status != 0 {
-            fail fmt!{"could not copy directory: %s", cwd};
+            fail fmt!("could not copy directory: %s", cwd);
         }
 
         install_source(c, wd);
@@ -1120,7 +1120,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
     let mut has_src_file = false;
 
     if !os::copy_file(path::connect(url, ~"packages.json"), pkgfile) {
-        error(fmt!{"fetch for source %s (url %s) failed", name, url});
+        error(fmt!("fetch for source %s (url %s) failed", name, url));
         return false;
     }
 
@@ -1136,7 +1136,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
             let p = run::program_output(~"curl",
                                         ~[~"-f", ~"-s", ~"-o", keyfile, u]);
             if p.status != 0 {
-                error(fmt!{"fetch for source %s (key %s) failed", name, u});
+                error(fmt!("fetch for source %s (key %s) failed", name, u));
                 return false;
             }
             pgp::add(c.root, keyfile);
@@ -1148,8 +1148,8 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
             let r = pgp::verify(c.root, pkgfile, sigfile, f);
 
             if !r {
-                error(fmt!{"signature verification failed for source %s",
-                          name});
+                error(fmt!("signature verification failed for source %s",
+                          name));
                 return false;
             }
 
@@ -1157,8 +1157,8 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
                 let e = pgp::verify(c.root, srcfile, srcsigfile, f);
 
                 if !e {
-                    error(fmt!{"signature verification failed for source %s",
-                              name});
+                    error(fmt!("signature verification failed for source %s",
+                              name));
                     return false;
                 }
             }
@@ -1178,7 +1178,7 @@ fn sync_one_file(c: cargo, dir: ~str, src: source) -> bool {
     os::remove_file(pkgfile);
     os::remove_file(sigfile);
 
-    info(fmt!{"synced source: %s", name});
+    info(fmt!("synced source: %s", name));
 
     return true;
 }
@@ -1194,7 +1194,7 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
 
     fn rollback(name: ~str, dir: ~str, insecure: bool) {
         fn msg(name: ~str, insecure: bool) {
-            error(fmt!{"could not rollback source: %s", name});
+            error(fmt!("could not rollback source: %s", name));
 
             if insecure {
                 warn(~"a past security check failed on source " +
@@ -1220,20 +1220,20 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
         let p = run::program_output(~"git", ~[~"clone", url, dir]);
 
         if p.status != 0 {
-            error(fmt!{"fetch for source %s (url %s) failed", name, url});
+            error(fmt!("fetch for source %s (url %s) failed", name, url));
             return false;
         }
     }
     else {
         if !os::change_dir(dir) {
-            error(fmt!{"fetch for source %s (url %s) failed", name, url});
+            error(fmt!("fetch for source %s (url %s) failed", name, url));
             return false;
         }
 
         let p = run::program_output(~"git", ~[~"pull"]);
 
         if p.status != 0 {
-            error(fmt!{"fetch for source %s (url %s) failed", name, url});
+            error(fmt!("fetch for source %s (url %s) failed", name, url));
             return false;
         }
     }
@@ -1245,7 +1245,7 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
             let p = run::program_output(~"curl",
                                         ~[~"-f", ~"-s", ~"-o", keyfile, u]);
             if p.status != 0 {
-                error(fmt!{"fetch for source %s (key %s) failed", name, u});
+                error(fmt!("fetch for source %s (key %s) failed", name, u));
                 rollback(name, dir, false);
                 return false;
             }
@@ -1258,8 +1258,8 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
             let r = pgp::verify(c.root, pkgfile, sigfile, f);
 
             if !r {
-                error(fmt!{"signature verification failed for source %s",
-                          name});
+                error(fmt!("signature verification failed for source %s",
+                          name));
                 rollback(name, dir, false);
                 return false;
             }
@@ -1268,8 +1268,8 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
                 let e = pgp::verify(c.root, srcfile, srcsigfile, f);
 
                 if !e {
-                    error(fmt!{"signature verification failed for source %s",
-                              name});
+                    error(fmt!("signature verification failed for source %s",
+                              name));
                     rollback(name, dir, false);
                     return false;
                 }
@@ -1280,7 +1280,7 @@ fn sync_one_git(c: cargo, dir: ~str, src: source) -> bool {
 
     os::remove_file(keyfile);
 
-    info(fmt!{"synced source: %s", name});
+    info(fmt!("synced source: %s", name));
 
     return true;
 }
@@ -1306,7 +1306,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
                                 ~[~"-f", ~"-s", ~"-o", pkgfile, url]);
 
     if p.status != 0 {
-        error(fmt!{"fetch for source %s (url %s) failed", name, url});
+        error(fmt!("fetch for source %s (url %s) failed", name, url));
         return false;
     }
     if smart {
@@ -1325,7 +1325,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
             let p = run::program_output(~"curl",
                                         ~[~"-f", ~"-s", ~"-o", keyfile, u]);
             if p.status != 0 {
-                error(fmt!{"fetch for source %s (key %s) failed", name, u});
+                error(fmt!("fetch for source %s (key %s) failed", name, u));
                 return false;
             }
             pgp::add(c.root, keyfile);
@@ -1344,15 +1344,15 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
             let mut p = run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o",
                         sigfile, url]);
             if p.status != 0 {
-                error(fmt!{"fetch for source %s (sig %s) failed", name, url});
+                error(fmt!("fetch for source %s (sig %s) failed", name, url));
                 return false;
             }
 
             let r = pgp::verify(c.root, pkgfile, sigfile, f);
 
             if !r {
-                error(fmt!{"signature verification failed for source %s",
-                          name});
+                error(fmt!("signature verification failed for source %s",
+                          name));
                 return false;
             }
 
@@ -1363,8 +1363,8 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
                                         ~[~"-f", ~"-s", ~"-o",
                                           srcsigfile, url]);
                 if p.status != 0 {
-                    error(fmt!{"fetch for source %s (sig %s) failed",
-                          name, url});
+                    error(fmt!("fetch for source %s (sig %s) failed",
+                          name, url));
                     return false;
                 }
 
@@ -1392,7 +1392,7 @@ fn sync_one_curl(c: cargo, dir: ~str, src: source) -> bool {
     os::remove_file(pkgfile);
     os::remove_file(sigfile);
 
-    info(fmt!{"synced source: %s", name});
+    info(fmt!("synced source: %s", name));
 
     return true;
 }
@@ -1401,7 +1401,7 @@ fn sync_one(c: cargo, src: source) {
     let name = src.name;
     let dir = path::connect(c.sourcedir, name);
 
-    info(fmt!{"syncing source: %s...", name});
+    info(fmt!("syncing source: %s...", name));
 
     need_dir(dir);
 
@@ -1428,20 +1428,20 @@ fn cmd_init(c: cargo) {
     let p =
         run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o", srcfile, srcurl]);
     if p.status != 0 {
-        error(fmt!{"fetch of sources.json failed: %s", p.out});
+        error(fmt!("fetch of sources.json failed: %s", p.out));
         return;
     }
 
     let p =
         run::program_output(~"curl", ~[~"-f", ~"-s", ~"-o", sigfile, sigurl]);
     if p.status != 0 {
-        error(fmt!{"fetch of sources.json.sig failed: %s", p.out});
+        error(fmt!("fetch of sources.json.sig failed: %s", p.out));
         return;
     }
 
     let r = pgp::verify(c.root, srcfile, sigfile, pgp::signing_key_fp());
     if !r {
-        error(fmt!{"signature verification failed for '%s'", srcfile});
+        error(fmt!("signature verification failed for '%s'", srcfile));
         return;
     }
 
@@ -1449,7 +1449,7 @@ fn cmd_init(c: cargo) {
     os::remove_file(srcfile);
     os::remove_file(sigfile);
 
-    info(fmt!{"initialized .cargo in %s", c.root});
+    info(fmt!("initialized .cargo in %s", c.root));
 }
 
 fn print_pkg(s: source, p: package) {
@@ -1490,14 +1490,14 @@ fn cmd_list(c: cargo) {
     if vec::len(c.opts.free) >= 3u {
         do vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) |name| {
             if !valid_pkg_name(name) {
-                error(fmt!{"'%s' is an invalid source name", name});
+                error(fmt!("'%s' is an invalid source name", name));
             } else {
                 match c.sources.find(name) {
                     some(source) => {
                         print_source(source);
                     }
                     none => {
-                        error(fmt!{"no such source: %s", name});
+                        error(fmt!("no such source: %s", name));
                     }
                 }
             }
@@ -1527,7 +1527,7 @@ fn cmd_search(c: cargo) {
             n += 1;
         }
     });
-    info(fmt!{"found %d packages", n});
+    info(fmt!("found %d packages", n));
 }
 
 fn install_to_dir(srcfile: ~str, destdir: ~str) {
@@ -1535,9 +1535,9 @@ fn install_to_dir(srcfile: ~str, destdir: ~str) {
 
     let status = run::run_program(~"cp", ~[~"-r", srcfile, newfile]);
     if status == 0 {
-        info(fmt!{"installed: '%s'", newfile});
+        info(fmt!("installed: '%s'", newfile));
     } else {
-        error(fmt!{"could not install: '%s'", newfile});
+        error(fmt!("could not install: '%s'", newfile));
     }
 }
 
@@ -1595,22 +1595,22 @@ fn dump_sources(c: cargo) {
             writer.write_str(json::to_str(root));
         }
         result::err(e) => {
-            error(fmt!{"could not dump sources: %s", e});
+            error(fmt!("could not dump sources: %s", e));
         }
     }
 }
 
 fn copy_warn(srcfile: ~str, destfile: ~str) {
     if !os::copy_file(srcfile, destfile) {
-        warn(fmt!{"copying %s to %s failed", srcfile, destfile});
+        warn(fmt!("copying %s to %s failed", srcfile, destfile));
     }
 }
 
 fn cmd_sources(c: cargo) {
     if vec::len(c.opts.free) < 3u {
         for c.sources.each_value |v| {
-            info(fmt!{"%s (%s) via %s",
-                      v.name, v.url, v.method});
+            info(fmt!("%s (%s) via %s",
+                      v.name, v.url, v.method));
         }
         return;
     }
@@ -1635,13 +1635,13 @@ fn cmd_sources(c: cargo) {
             let url = c.opts.free[4u];
 
             if !valid_pkg_name(name) {
-                error(fmt!{"'%s' is an invalid source name", name});
+                error(fmt!("'%s' is an invalid source name", name));
                 return;
             }
 
             match c.sources.find(name) {
                 some(source) => {
-                    error(fmt!{"source already exists: %s", name});
+                    error(fmt!("source already exists: %s", name));
                 }
                 none => {
                     c.sources.insert(name, @{
@@ -1652,7 +1652,7 @@ fn cmd_sources(c: cargo) {
                         mut keyfp: none,
                         mut packages: ~[mut]
                     });
-                    info(fmt!{"added source: %s", name});
+                    info(fmt!("added source: %s", name));
                 }
             }
         }
@@ -1665,17 +1665,17 @@ fn cmd_sources(c: cargo) {
             let name = c.opts.free[3u];
 
             if !valid_pkg_name(name) {
-                error(fmt!{"'%s' is an invalid source name", name});
+                error(fmt!("'%s' is an invalid source name", name));
                 return;
             }
 
             match c.sources.find(name) {
                 some(source) => {
                     c.sources.remove(name);
-                    info(fmt!{"removed source: %s", name});
+                    info(fmt!("removed source: %s", name));
                 }
                 none => {
-                    error(fmt!{"no such source: %s", name});
+                    error(fmt!("no such source: %s", name));
                 }
             }
         }
@@ -1689,7 +1689,7 @@ fn cmd_sources(c: cargo) {
             let url = c.opts.free[4u];
 
             if !valid_pkg_name(name) {
-                error(fmt!{"'%s' is an invalid source name", name});
+                error(fmt!("'%s' is an invalid source name", name));
                 return;
             }
 
@@ -1703,10 +1703,10 @@ fn cmd_sources(c: cargo) {
 
                     c.sources.insert(name, source);
 
-                    info(fmt!{"changed source url: '%s' to '%s'", old, url});
+                    info(fmt!("changed source url: '%s' to '%s'", old, url));
                 }
                 none => {
-                    error(fmt!{"no such source: %s", name});
+                    error(fmt!("no such source: %s", name));
                 }
             }
         }
@@ -1720,7 +1720,7 @@ fn cmd_sources(c: cargo) {
             let method = c.opts.free[4u];
 
             if !valid_pkg_name(name) {
-                error(fmt!{"'%s' is an invalid source name", name});
+                error(fmt!("'%s' is an invalid source name", name));
                 return;
             }
 
@@ -1736,11 +1736,11 @@ fn cmd_sources(c: cargo) {
 
                     c.sources.insert(name, source);
 
-                    info(fmt!{"changed source method: '%s' to '%s'", old,
-                         method});
+                    info(fmt!("changed source method: '%s' to '%s'", old,
+                         method));
                 }
                 none => {
-                    error(fmt!{"no such source: %s", name});
+                    error(fmt!("no such source: %s", name));
                 }
             }
         }
@@ -1754,11 +1754,11 @@ fn cmd_sources(c: cargo) {
             let newn = c.opts.free[4u];
 
             if !valid_pkg_name(name) {
-                error(fmt!{"'%s' is an invalid source name", name});
+                error(fmt!("'%s' is an invalid source name", name));
                 return;
             }
             if !valid_pkg_name(newn) {
-                error(fmt!{"'%s' is an invalid source name", newn});
+                error(fmt!("'%s' is an invalid source name", newn));
                 return;
             }
 
@@ -1766,10 +1766,10 @@ fn cmd_sources(c: cargo) {
                 some(source) => {
                     c.sources.remove(name);
                     c.sources.insert(newn, source);
-                    info(fmt!{"renamed source: %s to %s", name, newn});
+                    info(fmt!("renamed source: %s to %s", name, newn));
                 }
                 none => {
-                    error(fmt!{"no such source: %s", name});
+                    error(fmt!("no such source: %s", name));
                 }
             }
         }

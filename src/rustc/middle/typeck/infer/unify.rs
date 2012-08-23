@@ -25,7 +25,7 @@ impl infer_ctxt {
         let vid_u = vid.to_uint();
         match vb.vals.find(vid_u) {
           none => {
-            self.tcx.sess.bug(fmt!{"failed lookup of vid `%u`", vid_u});
+            self.tcx.sess.bug(fmt!("failed lookup of vid `%u`", vid_u));
           }
           some(var_val) => {
             match var_val {
@@ -53,8 +53,8 @@ impl infer_ctxt {
         vec::push(vb.bindings, (vid, old_v));
         vb.vals.insert(vid.to_uint(), new_v);
 
-        debug!{"Updating variable %s from %s to %s",
-               vid.to_str(), old_v.to_str(self), new_v.to_str(self)};
+        debug!("Updating variable %s from %s to %s",
+               vid.to_str(), old_v.to_str(self), new_v.to_str(self));
     }
 }
 
@@ -87,15 +87,15 @@ fn merge_bnds<C: combine>(
 
     let _r = indenter();
     do merge_bnd(self, a.ub, b.ub, glb).chain |ub| {
-        debug!{"glb of ubs %s and %s is %s",
+        debug!("glb of ubs %s and %s is %s",
                a.ub.to_str(self.infcx()),
                b.ub.to_str(self.infcx()),
-               ub.to_str(self.infcx())};
+               ub.to_str(self.infcx()));
         do merge_bnd(self, a.lb, b.lb, lub).chain |lb| {
-            debug!{"lub of lbs %s and %s is %s",
+            debug!("lub of lbs %s and %s is %s",
                    a.lb.to_str(self.infcx()),
                    b.lb.to_str(self.infcx()),
-                   lb.to_str(self.infcx())};
+                   lb.to_str(self.infcx()));
             ok({lb: lb, ub: ub})
         }
     }
@@ -134,10 +134,10 @@ fn set_var_to_merged_bounds<C: combine>(
     //       A     \ / A
     //              B
 
-    debug!{"merge(%s,%s,%s)",
+    debug!("merge(%s,%s,%s)",
            v_id.to_str(),
            a.to_str(self.infcx()),
-           b.to_str(self.infcx())};
+           b.to_str(self.infcx()));
 
     // First, relate the lower/upper bounds of A and B.
     // Note that these relations *must* hold for us to
@@ -153,9 +153,9 @@ fn set_var_to_merged_bounds<C: combine>(
                     do merge_bnd(self, a.lb, b.lb,
                                  |x, y| self.lub().tys(x, y)).chain |lb| {
                         let bounds = {lb: lb, ub: ub};
-                        debug!{"merge(%s): bounds=%s",
+                        debug!("merge(%s): bounds=%s",
                                v_id.to_str(),
-                               bounds.to_str(self.infcx())};
+                               bounds.to_str(self.infcx()));
 
                         // the new bounds must themselves
                         // be relatable:
@@ -186,9 +186,9 @@ fn var_sub_var<C: combine>(self: &C,
     let a_bounds = nde_a.possible_types;
     let b_bounds = nde_b.possible_types;
 
-    debug!{"vars(%s=%s <: %s=%s)",
+    debug!("vars(%s=%s <: %s=%s)",
            a_id.to_str(), a_bounds.to_str(self.infcx()),
-           b_id.to_str(), b_bounds.to_str(self.infcx())};
+           b_id.to_str(), b_bounds.to_str(self.infcx()));
 
     if a_id == b_id { return uok(); }
 
@@ -214,20 +214,20 @@ fn var_sub_var<C: combine>(self: &C,
     // Make the node with greater rank the parent of the node with
     // smaller rank.
     if nde_a.rank > nde_b.rank {
-        debug!{"vars(): a has smaller rank"};
+        debug!("vars(): a has smaller rank");
         // a has greater rank, so a should become b's parent,
         // i.e., b should redirect to a.
         self.infcx().set(vb, b_id, redirect(a_id));
         set_var_to_merged_bounds(
             self, a_id, a_bounds, b_bounds, nde_a.rank)
     } else if nde_a.rank < nde_b.rank {
-        debug!{"vars(): b has smaller rank"};
+        debug!("vars(): b has smaller rank");
         // b has greater rank, so a should redirect to b.
         self.infcx().set(vb, a_id, redirect(b_id));
         set_var_to_merged_bounds(
             self, b_id, a_bounds, b_bounds, nde_b.rank)
     } else {
-        debug!{"vars(): a and b have equal rank"};
+        debug!("vars(): a and b have equal rank");
         assert nde_a.rank == nde_b.rank;
         // If equal, just redirect one to the other and increment
         // the other's rank.  We choose arbitrarily to redirect b
@@ -247,10 +247,10 @@ fn var_sub_t<C: combine>(self: &C, a_id: ty::tv_vid, b: ty::t) -> ures {
     let a_id = nde_a.root;
     let a_bounds = nde_a.possible_types;
 
-    debug!{"var_sub_t(%s=%s <: %s)",
+    debug!("var_sub_t(%s=%s <: %s)",
            a_id.to_str(),
            a_bounds.to_str(self.infcx()),
-           b.to_str(self.infcx())};
+           b.to_str(self.infcx()));
     let b_bounds = {lb: none, ub: some(b)};
     set_var_to_merged_bounds(self, a_id, a_bounds, b_bounds, nde_a.rank)
 }
@@ -264,17 +264,17 @@ fn t_sub_var<C: combine>(self: &C, a: ty::t, b_id: ty::tv_vid) -> ures {
     let b_id = nde_b.root;
     let b_bounds = nde_b.possible_types;
 
-    debug!{"t_sub_var(%s <: %s=%s)",
+    debug!("t_sub_var(%s <: %s=%s)",
            a.to_str(self.infcx()),
            b_id.to_str(),
-           b_bounds.to_str(self.infcx())};
+           b_bounds.to_str(self.infcx()));
     set_var_to_merged_bounds(self, b_id, a_bounds, b_bounds, nde_b.rank)
 }
 
 fn bnds<C: combine>(
     self: &C, a: bound<ty::t>, b: bound<ty::t>) -> ures {
 
-    debug!{"bnds(%s <: %s)", a.to_str(self.infcx()), b.to_str(self.infcx())};
+    debug!("bnds(%s <: %s)", a.to_str(self.infcx()), b.to_str(self.infcx()));
     do indent {
         match (a, b) {
           (none, none) |
@@ -316,18 +316,18 @@ impl infer_ctxt {
 
         // Rank optimization
         if nde_a.rank > nde_b.rank {
-            debug!{"vars_integral(): a has smaller rank"};
+            debug!("vars_integral(): a has smaller rank");
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
             self.set(vb, a_id, root(intersection, nde_a.rank));
             self.set(vb, b_id, redirect(a_id));
         } else if nde_a.rank < nde_b.rank {
-            debug!{"vars_integral(): b has smaller rank"};
+            debug!("vars_integral(): b has smaller rank");
             // b has greater rank, so a should redirect to b.
             self.set(vb, b_id, root(intersection, nde_b.rank));
             self.set(vb, a_id, redirect(b_id));
         } else {
-            debug!{"vars_integral(): a and b have equal rank"};
+            debug!("vars_integral(): a and b have equal rank");
             assert nde_a.rank == nde_b.rank;
             // If equal, just redirect one to the other and increment
             // the other's rank.  We choose arbitrarily to redirect b

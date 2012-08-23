@@ -4,7 +4,7 @@ use std;
 import std::map::hashmap;
 
 fn add_interfaces(managed_ip: ~str, device: std::map::hashmap<~str, int>)  {
-     error!{"%s, %?", managed_ip, device[~"interfaces"]};
+     error!("%s, %?", managed_ip, device[~"interfaces"]);
 }
 
 fn main() {}

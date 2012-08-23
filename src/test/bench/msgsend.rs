@@ -49,10 +49,10 @@ fn run(args: ~[~str]) {
     let result = comm::recv(from_child);
     let end = std::time::precise_time_s();
     let elapsed = end - start;
-    io::stdout().write_str(fmt!{"Count is %?\n", result});
-    io::stdout().write_str(fmt!{"Test took %? seconds\n", elapsed});
+    io::stdout().write_str(fmt!("Count is %?\n", result));
+    io::stdout().write_str(fmt!("Test took %? seconds\n", elapsed));
     let thruput = ((size / workers * workers) as float) / (elapsed as float);
-    io::stdout().write_str(fmt!{"Throughput=%f per sec\n", thruput});
+    io::stdout().write_str(fmt!("Throughput=%f per sec\n", thruput));
 }
 
 fn main(args: ~[~str]) {
@@ -64,7 +64,7 @@ fn main(args: ~[~str]) {
         args
     };
 
-    debug!{"%?", args};
+    debug!("%?", args);
     run(args);
 }
 

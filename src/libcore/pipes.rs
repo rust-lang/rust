@@ -103,9 +103,9 @@ export rt;
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;
 
-macro_rules! move_it {
+macro_rules! move_it (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
-}
+)
 
 #[doc(hidden)]
 enum state {
@@ -335,15 +335,15 @@ struct buffer_resource<T: send> {
     let buffer: ~buffer<T>;
     new(+b: ~buffer<T>) {
         //let p = ptr::addr_of(*b);
-        //error!{"take %?", p};
+        //error!("take %?", p);
         atomic_add_acq(&mut b.header.ref_count, 1);
         self.buffer = b;
     }
 
     drop unsafe {
-        let b = move_it!{self.buffer};
+        let b = move_it!(self.buffer);
         //let p = ptr::addr_of(*b);
-        //error!{"drop %?", p};
+        //error!("drop %?", p);
         let old_count = atomic_sub_rel(&mut b.header.ref_count, 1);
         //let old_count = atomic_xchng_rel(b.header.ref_count, 0);
         if old_count == 1 {
@@ -377,7 +377,7 @@ fn send<T: send, Tbuffer: send>(+p: send_packet_buffered<T, Tbuffer>,
         }
         full => fail ~"duplicate send",
         blocked => {
-            debug!{"waking up task for %?", p_};
+            debug!("waking up task for %?", p_);
             let old_task = swap_task(&mut p.header.blocked_task, ptr::null());
             if !old_task.is_null() {
                 rustrt::task_signal_event(
@@ -461,7 +461,7 @@ fn try_recv<T: send, Tbuffer: send>(+p: recv_packet_buffered<T, Tbuffer>)
                                        blocked);
         match old_state {
           empty => {
-            debug!{"no data available on %?, going to sleep.", p_};
+            debug!("no data available on %?, going to sleep.", p_);
             if count == 0 {
                 wait_event(this);
             }
@@ -474,7 +474,7 @@ fn try_recv<T: send, Tbuffer: send>(+p: recv_packet_buffered<T, Tbuffer>)
                 // sometimes blocking the thing we are waiting on.
                 task::yield();
             }
-            debug!{"woke up, p.state = %?", copy p.header.state};
+            debug!("woke up, p.state = %?", copy p.header.state);
           }
           blocked => if first {
             fail ~"blocking on already blocked packet"
@@ -603,7 +603,7 @@ fn wait_many<T: selectable>(pkts: &[T]) -> uint {
     }
 
     while !data_avail {
-        debug!{"sleeping on %? packets", pkts.len()};
+        debug!("sleeping on %? packets", pkts.len());
         let event = wait_event(this) as *packet_header;
         let pos = vec::position(pkts, |p| p.header() == event);
 
@@ -612,11 +612,11 @@ fn wait_many<T: selectable>(pkts: &[T]) -> uint {
             ready_packet = i;
             data_avail = true;
           }
-          none => debug!{"ignoring spurious event, %?", event}
+          none => debug!("ignoring spurious event, %?", event)
         }
     }
 
-    debug!{"%?", pkts[ready_packet]};
+    debug!("%?", pkts[ready_packet]);
 
     for pkts.each |p| { unsafe{ (*p.header()).unblock()} }
 
@@ -725,7 +725,7 @@ struct send_packet_buffered<T: send, Tbuffer: send> {
     let mut p: option<*packet<T>>;
     let mut buffer: option<buffer_resource<Tbuffer>>;
     new(p: *packet<T>) {
-        //debug!{"take send %?", p};
+        //debug!("take send %?", p);
         self.p = some(p);
         unsafe {
             self.buffer = some(
@@ -735,17 +735,17 @@ struct send_packet_buffered<T: send, Tbuffer: send> {
     }
     drop {
         //if self.p != none {
-        //    debug!{"drop send %?", option::get(self.p)};
+        //    debug!("drop send %?", option::get(self.p));
         //}
         if self.p != none {
             let mut p = none;
             p <-> self.p;
             sender_terminate(option::unwrap(p))
         }
-        //unsafe { error!{"send_drop: %?",
+        //unsafe { error!("send_drop: %?",
         //                if self.buffer == none {
         //                    "none"
-        //                } else { "some" }}; }
+        //                } else { "some" }); }
     }
     fn unwrap() -> *packet<T> {
         let mut p = none;
@@ -766,7 +766,7 @@ struct send_packet_buffered<T: send, Tbuffer: send> {
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
-        //error!{"send reuse_buffer"};
+        //error!("send reuse_buffer");
         let mut tmp = none;
         tmp <-> self.buffer;
         option::unwrap(tmp)
@@ -786,7 +786,7 @@ struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     let mut p: option<*packet<T>>;
     let mut buffer: option<buffer_resource<Tbuffer>>;
     new(p: *packet<T>) {
-        //debug!{"take recv %?", p};
+        //debug!("take recv %?", p);
         self.p = some(p);
         unsafe {
             self.buffer = some(
@@ -796,17 +796,17 @@ struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     }
     drop {
         //if self.p != none {
-        //    debug!{"drop recv %?", option::get(self.p)};
+        //    debug!("drop recv %?", option::get(self.p));
         //}
         if self.p != none {
             let mut p = none;
             p <-> self.p;
             receiver_terminate(option::unwrap(p))
         }
-        //unsafe { error!{"recv_drop: %?",
+        //unsafe { error!("recv_drop: %?",
         //                if self.buffer == none {
         //                    "none"
-        //                } else { "some" }}; }
+        //                } else { "some" }); }
     }
     fn unwrap() -> *packet<T> {
         let mut p = none;
@@ -827,7 +827,7 @@ struct recv_packet_buffered<T: send, Tbuffer: send> : selectable {
     }
 
     fn reuse_buffer() -> buffer_resource<Tbuffer> {
-        //error!{"recv reuse_buffer"};
+        //error!("recv reuse_buffer");
         let mut tmp = none;
         tmp <-> self.buffer;
         option::unwrap(tmp)
@@ -991,8 +991,8 @@ impl<T: send> port<T>: recv<T> {
         endp <-> self.endp;
         match move pipes::try_recv(unwrap(endp)) {
           some(streamp::data(x, endp)) => {
-            self.endp = some(move_it!{endp});
-            some(move_it!{x})
+            self.endp = some(move_it!(endp));
+            some(move_it!(x))
           }
           none => none
         }

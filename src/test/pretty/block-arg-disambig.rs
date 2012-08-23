@@ -2,4 +2,4 @@
 // is probably not necessary anymore (#2882)
 
 fn blk1(b: fn()) -> fn@() { return fn@() { }; }
-fn test1() { (do blk1 { debug!{"hi"}; })(); }
+fn test1() { (do blk1 { debug!("hi"); })(); }

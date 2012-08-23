@@ -67,8 +67,8 @@ enum dest {
 
 fn dest_str(ccx: @crate_ctxt, d: dest) -> ~str {
     match d {
-      by_val(v) => fmt!{"by_val(%s)", val_str(ccx.tn, *v)},
-      save_in(v) => fmt!{"save_in(%s)", val_str(ccx.tn, v)},
+      by_val(v) => fmt!("by_val(%s)", val_str(ccx.tn, *v)),
+      save_in(v) => fmt!("save_in(%s)", val_str(ccx.tn, v)),
       ignore => ~"ignore"
     }
 }
@@ -100,7 +100,7 @@ trait get_insn_ctxt {
 
 impl @crate_ctxt: get_insn_ctxt {
     fn insn_ctxt(s: &str) -> icx_popper {
-        debug!{"new insn_ctxt: %s", s};
+        debug!("new insn_ctxt: %s", s);
         if self.sess.count_llvm_insns() {
             vec::push(*self.stats.llvm_insn_ctxt, str::from_slice(s));
         }
@@ -504,7 +504,7 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
         mangle_internal_name_by_type_only(ccx, t, ~"tydesc")
     } else { mangle_internal_name_by_seq(ccx, ~"tydesc") };
     note_unique_llvm_symbol(ccx, name);
-    log(debug, fmt!{"+++ declare_tydesc %s %s", ty_to_str(ccx.tcx, t), name});
+    log(debug, fmt!("+++ declare_tydesc %s %s", ty_to_str(ccx.tcx, t), name));
     let gvar = str::as_c_str(name, |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, ccx.tydesc_type, buf)
     });
@@ -1116,52 +1116,52 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
         match ti.take_glue {
           some(_) => (),
           none => {
-            debug!{"+++ lazily_emit_tydesc_glue TAKE %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("+++ lazily_emit_tydesc_glue TAKE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"take");
             ti.take_glue = some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_take_glue, ~"take");
-            debug!{"--- lazily_emit_tydesc_glue TAKE %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("--- lazily_emit_tydesc_glue TAKE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
     } else if field == abi::tydesc_field_drop_glue {
         match ti.drop_glue {
           some(_) => (),
           none => {
-            debug!{"+++ lazily_emit_tydesc_glue DROP %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("+++ lazily_emit_tydesc_glue DROP %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"drop");
             ti.drop_glue = some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_drop_glue, ~"drop");
-            debug!{"--- lazily_emit_tydesc_glue DROP %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("--- lazily_emit_tydesc_glue DROP %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
     } else if field == abi::tydesc_field_free_glue {
         match ti.free_glue {
           some(_) => (),
           none => {
-            debug!{"+++ lazily_emit_tydesc_glue FREE %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("+++ lazily_emit_tydesc_glue FREE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"free");
             ti.free_glue = some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_free_glue, ~"free");
-            debug!{"--- lazily_emit_tydesc_glue FREE %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("--- lazily_emit_tydesc_glue FREE %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
     } else if field == abi::tydesc_field_visit_glue {
         match ti.visit_glue {
           some(_) => (),
           none => {
-            debug!{"+++ lazily_emit_tydesc_glue VISIT %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("+++ lazily_emit_tydesc_glue VISIT %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, ~"visit");
             ti.visit_glue = some(glue_fn);
             make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, ~"visit");
-            debug!{"--- lazily_emit_tydesc_glue VISIT %s",
-                   ppaux::ty_to_str(ccx.tcx, ti.ty)};
+            debug!("--- lazily_emit_tydesc_glue VISIT %s",
+                   ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
     }
@@ -1722,7 +1722,7 @@ fn trans_eager_binop(cx: block, span: span, op: ast::binop, lhs: ValueRef,
 
 fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
                    dst: @ast::expr, src: @ast::expr) -> block {
-    debug!{"%s", expr_to_str(ex, bcx.tcx().sess.parse_sess.interner)};
+    debug!("%s", expr_to_str(ex, bcx.tcx().sess.parse_sess.interner));
     let _icx = bcx.insn_ctxt("trans_assign_op");
     let t = expr_ty(bcx, src);
     let lhs_res = trans_lval(bcx, dst);
@@ -1732,9 +1732,9 @@ fn trans_assign_op(bcx: block, ex: @ast::expr, op: ast::binop,
     match bcx.ccx().maps.method_map.find(ex.id) {
       some(origin) => {
         let bcx = lhs_res.bcx;
-        debug!{"user-defined method callee_id: %s",
+        debug!("user-defined method callee_id: %s",
                ast_map::node_id_to_str(bcx.tcx().items, ex.callee_id,
-                                       bcx.sess().parse_sess.interner)};
+                                       bcx.sess().parse_sess.interner));
         let fty = node_id_type(bcx, ex.callee_id);
 
         let dty = expr_ty(bcx, dst);
@@ -1770,7 +1770,7 @@ fn root_value(bcx: block, val: ValueRef, ty: ty::t,
     if bcx.sess().trace() {
         trans_trace(
             bcx, none,
-            fmt!{"preserving until end of scope %d", scope_id});
+            fmt!("preserving until end of scope %d", scope_id));
     }
 
     let root_loc = alloca_zeroed(bcx, type_of(bcx.ccx(), ty));
@@ -1789,9 +1789,9 @@ fn autoderef(cx: block, e_id: ast::node_id,
     let ccx = cx.ccx();
     let mut derefs = 0u;
     while derefs < max {
-        debug!{"autoderef(e_id=%d, v1=%s, t1=%s, derefs=%u)",
+        debug!("autoderef(e_id=%d, v1=%s, t1=%s, derefs=%u)",
                e_id, val_str(ccx.tn, v1), ppaux::ty_to_str(ccx.tcx, t1),
-               derefs};
+               derefs);
 
         // root the autoderef'd value, if necessary:
         derefs += 1u;
@@ -2140,8 +2140,8 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
 
     match ccx.monomorphized.find(hash_id) {
       some(val) => {
-        debug!{"leaving monomorphic fn %s",
-               ty::item_path_str(ccx.tcx, fn_id)};
+        debug!("leaving monomorphic fn %s",
+               ty::item_path_str(ccx.tcx, fn_id));
         return {val: val, must_cast: must_cast};
       }
       none => ()
@@ -2151,9 +2151,9 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
     let mut llitem_ty = tpt.ty;
 
     let map_node = session::expect(ccx.sess, ccx.tcx.items.find(fn_id.node),
-     || fmt!{"While monomorphizing %?, couldn't find it in the item map \
+     || fmt!("While monomorphizing %?, couldn't find it in the item map \
         (may have attempted to monomorphize an item defined in a different \
-        crate?)", fn_id});
+        crate?)", fn_id));
     // Get the path so that we can create a symbol
     let (pt, name, span) = match map_node {
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),
@@ -2287,7 +2287,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
     };
     ccx.monomorphizing.insert(fn_id, depth);
 
-    debug!{"leaving monomorphic fn %s", ty::item_path_str(ccx.tcx, fn_id)};
+    debug!("leaving monomorphic fn %s", ty::item_path_str(ccx.tcx, fn_id));
     {val: lldecl, must_cast: must_cast}
 }
 
@@ -2297,8 +2297,8 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
     match ccx.external.find(fn_id) {
       some(some(node_id)) => {
         // Already inline
-        debug!{"maybe_instantiate_inline(%s): already inline as node id %d",
-               ty::item_path_str(ccx.tcx, fn_id), node_id};
+        debug!("maybe_instantiate_inline(%s): already inline as node id %d",
+               ty::item_path_str(ccx.tcx, fn_id), node_id);
         local_def(node_id)
       }
       some(none) => fn_id, // Not inlinable
@@ -2487,8 +2487,8 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         return {val: slf, kind: lv_owned};
       }
       _ => {
-        cx.sess().unimpl(fmt!{"unsupported def type in trans_local_var: %?",
-                              def});
+        cx.sess().unimpl(fmt!("unsupported def type in trans_local_var: %?",
+                              def));
       }
     }
 }
@@ -2576,7 +2576,7 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
 
     let ix = field_idx_strict(bcx.tcx(), sp, field, fields);
 
-    debug!{"val = %s ix = %u", bcx.val_str(val), ix};
+    debug!("val = %s ix = %u", bcx.val_str(val), ix);
 
     /* self is a class with a dtor, which means we
        have to select out the object itself
@@ -2628,8 +2628,8 @@ fn trans_index(cx: block, ex: @ast::expr, base: @ast::expr,
         len = Sub(bcx, len, C_uint(bcx.ccx(), 1u));
     }
 
-    debug!{"trans_index: base %s", val_str(bcx.ccx().tn, base)};
-    debug!{"trans_index: len %s", val_str(bcx.ccx().tn, len)};
+    debug!("trans_index: base %s", val_str(bcx.ccx().tn, base));
+    debug!("trans_index: len %s", val_str(bcx.ccx().tn, len));
 
     let bounds_check = ICmp(bcx, lib::llvm::IntUGE, scaled_ix, len);
     let bcx = do with_cond(bcx, bounds_check) |bcx| {
@@ -2687,8 +2687,8 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
         let lv = unrooted(cx, e);
 
         if !cx.sess().no_asm_comments() {
-            add_comment(cx, fmt!{"preserving until end of scope %d",
-                                 scope_id});
+            add_comment(cx, fmt!("preserving until end of scope %d",
+                                 scope_id));
         }
 
         let _icx = lv.bcx.insn_ctxt("root_value_lval");
@@ -2749,7 +2749,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
  * wrong address space and thus be the wrong type.
  */
 fn non_gc_box_cast(cx: block, val: ValueRef) -> ValueRef {
-    debug!{"non_gc_box_cast"};
+    debug!("non_gc_box_cast");
     add_comment(cx, ~"non_gc_box_cast");
     assert(llvm::LLVMGetPointerAddressSpace(val_ty(val)) as uint == 1u);
     let non_gc_t = T_ptr(llvm::LLVMGetElementType(val_ty(val)));
@@ -2904,7 +2904,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     -> result {
     let _icx = cx.insn_ctxt("trans_arg_expr");
     let ccx = cx.ccx();
-    debug!{"+++ trans_arg_expr on %s", expr_to_str(e, ccx.sess.intr())};
+    debug!("+++ trans_arg_expr on %s", expr_to_str(e, ccx.sess.intr()));
     let e_ty = expr_ty(cx, e);
     let is_bot = ty::type_is_bot(e_ty);
 
@@ -2925,7 +2925,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
 
     // auto-deref value as required (this only applies to method
     // call receivers) of method
-    debug!{"   pre-deref value: %s", val_str(lv.bcx.ccx().tn, lv.val)};
+    debug!("   pre-deref value: %s", val_str(lv.bcx.ccx().tn, lv.val));
     let {lv, e_ty} = if derefs == 0u {
       {lv: lv, e_ty: e_ty}
     } else {
@@ -2937,11 +2937,11 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     };
 
     // borrow value (convert from @T to &T and so forth)
-    debug!{"   pre-adaptation value: %s", val_str(lv.bcx.ccx().tn, lv.val)};
+    debug!("   pre-adaptation value: %s", val_str(lv.bcx.ccx().tn, lv.val));
     let {lv, ty: e_ty} = adapt_borrowed_value(lv, e, e_ty);
     let mut bcx = lv.bcx;
     let mut val = lv.val;
-    debug!{"   adapted value: %s", val_str(bcx.ccx().tn, val)};
+    debug!("   adapted value: %s", val_str(bcx.ccx().tn, val));
 
     // finally, deal with the various modes
     let arg_mode = ty::resolved_mode(ccx.tcx, arg.mode);
@@ -2993,11 +2993,11 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     }
 
     if !is_bot && arg.ty != e_ty || ty::type_has_params(arg.ty) {
-        debug!{"   casting from %s", val_str(bcx.ccx().tn, val)};
+        debug!("   casting from %s", val_str(bcx.ccx().tn, val));
         val = PointerCast(bcx, val, lldestty);
     }
 
-    debug!{"--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val)};
+    debug!("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
     return rslt(bcx, val);
 }
 
@@ -3038,9 +3038,9 @@ fn adapt_borrowed_value(lv: lval_result,
         let (base, len) = tvec::get_base_and_len(bcx, val, e_ty);
         let p = alloca(bcx, T_struct(~[T_ptr(llunit_ty), ccx.int_type]));
 
-        debug!{"adapt_borrowed_value: adapting %s to %s",
+        debug!("adapt_borrowed_value: adapting %s to %s",
                val_str(bcx.ccx().tn, val),
-               val_str(bcx.ccx().tn, p)};
+               val_str(bcx.ccx().tn, p));
 
         Store(bcx, base, GEPi(bcx, p, ~[0u, abi::slice_elt_base]));
         Store(bcx, len, GEPi(bcx, p, ~[0u, abi::slice_elt_len]));
@@ -3683,9 +3683,9 @@ fn lval_result_to_result(lv: lval_result, ty: ty::t) -> result {
 fn add_root_cleanup(bcx: block, scope_id: ast::node_id,
                     root_loc: ValueRef, ty: ty::t) {
 
-    debug!{"add_root_cleanup(bcx=%s, scope_id=%d, root_loc=%s, ty=%s)",
+    debug!("add_root_cleanup(bcx=%s, scope_id=%d, root_loc=%s, ty=%s)",
            bcx.to_str(), scope_id, val_str(bcx.ccx().tn, root_loc),
-           ppaux::ty_to_str(bcx.ccx().tcx, ty)};
+           ppaux::ty_to_str(bcx.ccx().tcx, ty));
 
     let bcx_scope = find_bcx_for_scope(bcx, scope_id);
     add_clean_temp_mem(bcx_scope, root_loc, ty);
@@ -3700,7 +3700,7 @@ fn add_root_cleanup(bcx: block, scope_id: ast::node_id,
               _ => {
                 match bcx_sid.parent {
                   none => bcx.tcx().sess.bug(
-                      fmt!{"no enclosing scope with id %d", scope_id}),
+                      fmt!("no enclosing scope with id %d", scope_id)),
                   some(bcx_par) => bcx_par
                 }
               }
@@ -3724,16 +3724,16 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
     return match bcx.ccx().maps.root_map.find({id:e.id, derefs:0u}) {
       none => unrooted(bcx, e, dest),
       some(scope_id) => {
-        debug!{"expression %d found in root map with scope %d",
-               e.id, scope_id};
+        debug!("expression %d found in root map with scope %d",
+               e.id, scope_id);
 
         let ty = expr_ty(bcx, e);
         let root_loc = alloca_zeroed(bcx, type_of(bcx.ccx(), ty));
         let bcx = unrooted(bcx, e, save_in(root_loc));
 
         if !bcx.sess().no_asm_comments() {
-            add_comment(bcx, fmt!{"preserving until end of scope %d",
-                                  scope_id});
+            add_comment(bcx, fmt!("preserving until end of scope %d",
+                                  scope_id));
         }
 
         let _icx = bcx.insn_ctxt("root_value_expr");
@@ -3812,9 +3812,9 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_fn_block(decl, body, cap_clause) => {
             match check ty::get(expr_ty(bcx, e)).struct {
               ty::ty_fn({proto, _}) => {
-                debug!{"translating fn_block %s with type %s",
+                debug!("translating fn_block %s with type %s",
                        expr_to_str(e, tcx.sess.intr()),
-                       ppaux::ty_to_str(tcx, expr_ty(bcx, e))};
+                       ppaux::ty_to_str(tcx, expr_ty(bcx, e)));
                 return closure::trans_expr_fn(bcx, proto, decl, body,
                                            e.id, cap_clause, none, dest);
               }
@@ -3945,8 +3945,8 @@ fn lval_to_dps(bcx: block, e: @ast::expr, dest: dest) -> block {
     let ty = expr_ty(bcx, e);
     let lv = trans_lval(bcx, e);
     let last_use = (lv.kind == lv_owned && last_use_map.contains_key(e.id));
-    debug!{"is last use (%s) = %b, %d", expr_to_str(e, bcx.ccx().sess.intr()),
-           last_use, lv.kind as int};
+    debug!("is last use (%s) = %b, %d", expr_to_str(e, bcx.ccx().sess.intr()),
+           last_use, lv.kind as int);
     lval_result_to_dps(lv, ty, last_use, dest)
 }
 
@@ -4297,7 +4297,7 @@ fn init_local(bcx: block, local: @ast::local) -> block {
 
 fn trans_stmt(cx: block, s: ast::stmt) -> block {
     let _icx = cx.insn_ctxt("trans_stmt");
-    debug!{"trans_stmt(%s)", stmt_to_str(s, cx.tcx().sess.intr())};
+    debug!("trans_stmt(%s)", stmt_to_str(s, cx.tcx().sess.intr()));
 
     if !cx.sess().no_asm_comments() {
         add_span_comment(cx, s.span, stmt_to_str(s, cx.ccx().sess.intr()));
@@ -4434,12 +4434,12 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
     let mut cur = bcx, bcx = bcx;
     let is_lpad = leave == none;
     loop {
-        debug!{"cleanup_and_leave: leaving %s", cur.to_str()};
+        debug!("cleanup_and_leave: leaving %s", cur.to_str());
 
         if bcx.sess().trace() {
             trans_trace(
                 bcx, none,
-                fmt!{"cleanup_and_leave(%s)", cur.to_str()});
+                fmt!("cleanup_and_leave(%s)", cur.to_str()));
         }
 
         match cur.kind {
@@ -5133,9 +5133,9 @@ fn register_fn_fuller(ccx: @crate_ctxt, sp: span, path: path,
     let llfn: ValueRef = decl_fn(ccx.llmod, ps, cc, llfty);
     ccx.item_symbols.insert(node_id, ps);
 
-    debug!{"register_fn_fuller created fn %s for item %d with path %s",
+    debug!("register_fn_fuller created fn %s for item %d with path %s",
            val_str(ccx.tn, llfn), node_id,
-           ast_map::path_to_str(path, ccx.sess.parse_sess.interner)};
+           ast_map::path_to_str(path, ccx.sess.parse_sess.interner));
 
     let is_main = is_main_name(path) && !ccx.sess.building_library;
     if is_main { create_main_wrapper(ccx, sp, llfn, node_type); }
@@ -5276,8 +5276,8 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
                mono_ty)
          }
          none => {
-             ccx.sess.bug(fmt!{"get_dtor_symbol: not monomorphizing and \
-               couldn't find a symbol for dtor %?", path});
+             ccx.sess.bug(fmt!("get_dtor_symbol: not monomorphizing and \
+               couldn't find a symbol for dtor %?", path));
          }
        }
      }
@@ -5285,7 +5285,7 @@ fn get_dtor_symbol(ccx: @crate_ctxt, path: path, id: ast::node_id,
 }
 
 fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
-    debug!{"get_item_val(id=`%?`)", id};
+    debug!("get_item_val(id=`%?`)", id);
     let tcx = ccx.tcx;
     match ccx.item_vals.find(id) {
       some(v) => v,
@@ -5316,7 +5316,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
             }
           }
           ast_map::node_trait_method(trait_method, _, pth) => {
-            debug!{"get_item_val(): processing a node_trait_method"};
+            debug!("get_item_val(): processing a node_trait_method");
             match *trait_method {
               ast::required(_) => {
                 ccx.sess.bug(~"unexpected variant: required trait method in \
@@ -5527,7 +5527,7 @@ fn trap(bcx: block) {
 
 fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
     if ccx.rtcalls.contains_key(name) {
-        fail fmt!{"multiple definitions for runtime call %s", name};
+        fail fmt!("multiple definitions for runtime call %s", name);
     }
     ccx.rtcalls.insert(name, did);
 }
@@ -5597,7 +5597,7 @@ fn gather_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
         ~[~"exchange_free", ~"exchange_malloc", ~"fail", ~"free", ~"malloc"];
     for vec::each(expected_rtcalls) |name| {
         if !ccx.rtcalls.contains_key(name) {
-            fail fmt!{"no definition for runtime call %s", name};
+            fail fmt!("no definition for runtime call %s", name);
         }
     }
 }
@@ -5867,25 +5867,25 @@ fn trans_crate(sess: session::session,
     write_metadata(ccx, crate);
     if ccx.sess.trans_stats() {
         io::println(~"--- trans stats ---");
-        io::println(fmt!{"n_static_tydescs: %u",
-                         ccx.stats.n_static_tydescs});
-        io::println(fmt!{"n_glues_created: %u",
-                         ccx.stats.n_glues_created});
-        io::println(fmt!{"n_null_glues: %u", ccx.stats.n_null_glues});
-        io::println(fmt!{"n_real_glues: %u", ccx.stats.n_real_glues});
+        io::println(fmt!("n_static_tydescs: %u",
+                         ccx.stats.n_static_tydescs));
+        io::println(fmt!("n_glues_created: %u",
+                         ccx.stats.n_glues_created));
+        io::println(fmt!("n_null_glues: %u", ccx.stats.n_null_glues));
+        io::println(fmt!("n_real_glues: %u", ccx.stats.n_real_glues));
 
         // FIXME (#2280): this temporary shouldn't be
         // necessary, but seems to be, for borrowing.
         let times = copy *ccx.stats.fn_times;
         for vec::each(times) |timing| {
-            io::println(fmt!{"time: %s took %d ms", timing.ident,
-                             timing.time});
+            io::println(fmt!("time: %s took %d ms", timing.ident,
+                             timing.time));
         }
     }
 
     if ccx.sess.count_llvm_insns() {
         for ccx.stats.llvm_insns.each |k, v| {
-            io::println(fmt!{"%-7u %s", v, k});
+            io::println(fmt!("%-7u %s", v, k));
         }
     }
     return (llmod, link_meta);

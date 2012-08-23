@@ -149,8 +149,8 @@ fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
       some(k) => k,
       none => {
         tcx.sess.bug(
-            fmt!{"deref_cat() invoked on non-derefable type %s",
-                 ty_to_str(tcx, t)});
+            fmt!("deref_cat() invoked on non-derefable type %s",
+                 ty_to_str(tcx, t)));
       }
     }
 }
@@ -262,8 +262,8 @@ impl &mem_categorization_ctxt {
     }
 
     fn cat_expr(expr: @ast::expr) -> cmt {
-        debug!{"cat_expr: id=%d expr=%s",
-               expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr())};
+        debug!("cat_expr: id=%d expr=%s",
+               expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
         let tcx = self.tcx;
         let expr_ty = tcx.ty(expr);
@@ -279,8 +279,8 @@ impl &mem_categorization_ctxt {
               none => {
                 tcx.sess.span_bug(
                     e_base.span,
-                    fmt!{"Explicit deref of non-derefable type `%s`",
-                         ty_to_str(tcx, tcx.ty(e_base))});
+                    fmt!("Explicit deref of non-derefable type `%s`",
+                         ty_to_str(tcx, tcx.ty(e_base))));
               }
             }
           }
@@ -468,9 +468,9 @@ impl &mem_categorization_ctxt {
           none => {
             self.tcx.sess.span_bug(
                 node.span(),
-                fmt!{"Cannot find field `%s` in type `%s`",
+                fmt!("Cannot find field `%s` in type `%s`",
                      self.tcx.sess.str_of(f_name),
-                     ty_to_str(self.tcx, base_cmt.ty)});
+                     ty_to_str(self.tcx, base_cmt.ty)));
           }
         };
         let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
@@ -533,8 +533,8 @@ impl &mem_categorization_ctxt {
           none => {
             self.tcx.sess.span_bug(
                 expr.span,
-                fmt!{"Explicit index of non-index type `%s`",
-                     ty_to_str(self.tcx, base_cmt.ty)});
+                fmt!("Explicit index of non-index type `%s`",
+                     ty_to_str(self.tcx, base_cmt.ty)));
           }
         };
 
@@ -655,9 +655,9 @@ impl &mem_categorization_ctxt {
 
         let _i = indenter();
         let tcx = self.tcx;
-        debug!{"cat_pattern: id=%d pat=%s cmt=%s",
+        debug!("cat_pattern: id=%d pat=%s cmt=%s",
                pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
-               self.cmt_to_repr(cmt)};
+               self.cmt_to_repr(cmt));
 
         match pat.node {
           ast::pat_wild => {
@@ -672,7 +672,7 @@ impl &mem_categorization_ctxt {
             let enum_did = match self.tcx.def_map.find(pat.id) {
               some(ast::def_variant(enum_did, _)) => enum_did,
               e => tcx.sess.span_bug(pat.span,
-                                     fmt!{"resolved to %?, not variant", e})
+                                     fmt!("resolved to %?, not variant", e))
             };
 
             for subpats.each |subpat| {
@@ -737,15 +737,15 @@ impl &mem_categorization_ctxt {
           cat_special(sk_heap_upvar) => ~"heap-upvar",
           cat_stack_upvar(_) => ~"stack-upvar",
           cat_rvalue => ~"rvalue",
-          cat_local(node_id) => fmt!{"local(%d)", node_id},
-          cat_binding(node_id) => fmt!{"binding(%d)", node_id},
-          cat_arg(node_id) => fmt!{"arg(%d)", node_id},
+          cat_local(node_id) => fmt!("local(%d)", node_id),
+          cat_binding(node_id) => fmt!("binding(%d)", node_id),
+          cat_arg(node_id) => fmt!("arg(%d)", node_id),
           cat_deref(cmt, derefs, ptr) => {
-            fmt!{"%s->(%s, %u)", self.cat_to_repr(cmt.cat),
-                 self.ptr_sigil(ptr), derefs}
+            fmt!("%s->(%s, %u)", self.cat_to_repr(cmt.cat),
+                 self.ptr_sigil(ptr), derefs)
           }
           cat_comp(cmt, comp) => {
-            fmt!{"%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)}
+            fmt!("%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp))
           }
           cat_discr(cmt, _) => self.cat_to_repr(cmt.cat)
         }
@@ -780,29 +780,29 @@ impl &mem_categorization_ctxt {
     fn lp_to_str(lp: @loan_path) -> ~str {
         match *lp {
           lp_local(node_id) => {
-            fmt!{"local(%d)", node_id}
+            fmt!("local(%d)", node_id)
           }
           lp_arg(node_id) => {
-            fmt!{"arg(%d)", node_id}
+            fmt!("arg(%d)", node_id)
           }
           lp_deref(lp, ptr) => {
-            fmt!{"%s->(%s)", self.lp_to_str(lp),
-                 self.ptr_sigil(ptr)}
+            fmt!("%s->(%s)", self.lp_to_str(lp),
+                 self.ptr_sigil(ptr))
           }
           lp_comp(lp, comp) => {
-            fmt!{"%s.%s", self.lp_to_str(lp),
-                 self.comp_to_repr(comp)}
+            fmt!("%s.%s", self.lp_to_str(lp),
+                 self.comp_to_repr(comp))
           }
         }
     }
 
     fn cmt_to_repr(cmt: cmt) -> ~str {
-        fmt!{"{%s id:%d m:%s lp:%s ty:%s}",
+        fmt!("{%s id:%d m:%s lp:%s ty:%s}",
              self.cat_to_repr(cmt.cat),
              cmt.id,
              self.mut_to_str(cmt.mutbl),
              cmt.lp.map_default(~"none", |p| self.lp_to_str(p) ),
-             ty_to_str(self.tcx, cmt.ty)}
+             ty_to_str(self.tcx, cmt.ty))
     }
 
     fn cmt_to_str(cmt: cmt) -> ~str {
@@ -818,8 +818,8 @@ impl &mem_categorization_ctxt {
           cat_local(_) => mut_str + ~" local variable",
           cat_binding(_) => ~"pattern binding",
           cat_arg(_) => ~"argument",
-          cat_deref(_, _, pk) => fmt!{"dereference of %s %s pointer",
-                                      mut_str, self.ptr_sigil(pk)},
+          cat_deref(_, _, pk) => fmt!("dereference of %s %s pointer",
+                                      mut_str, self.ptr_sigil(pk)),
           cat_stack_upvar(_) => {
             ~"captured outer " + mut_str + ~" variable in a stack closure"
           }

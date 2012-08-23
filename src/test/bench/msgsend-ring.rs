@@ -67,8 +67,8 @@ fn main(args: ~[~str]) {
     let elapsed = (stop - start);
     let rate = (num_msgs as float) / elapsed;
 
-    io::println(fmt!{"Sent %? messages in %? seconds",
-                     num_msgs, elapsed});
-    io::println(fmt!{"  %? messages / second", rate});
-    io::println(fmt!{"  %? μs / message", 1000000. / rate});
+    io::println(fmt!("Sent %? messages in %? seconds",
+                     num_msgs, elapsed));
+    io::println(fmt!("  %? messages / second", rate));
+    io::println(fmt!("  %? μs / message", 1000000. / rate));
 }

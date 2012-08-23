@@ -343,7 +343,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                               metas: provided_metas,
                               dep_hashes: ~[~str]) -> ~str {
         fn len_and_str(s: ~str) -> ~str {
-            return fmt!{"%u_%s", str::len(s), s};
+            return fmt!("%u_%s", str::len(s), s);
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
@@ -379,8 +379,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
 
     fn warn_missing(sess: session, name: ~str, default: ~str) {
         if !sess.building_library { return; }
-        sess.warn(fmt!{"missing crate link meta `%s`, using `%s` as default",
-                       name, default});
+        sess.warn(fmt!("missing crate link meta `%s`, using `%s` as default",
+                       name, default));
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
@@ -393,8 +393,8 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
                         let mut os =
                             str::split_char(path::basename(output), '.');
                         if (vec::len(os) < 2u) {
-                            sess.fatal(fmt!{"output file name `%s` doesn't\
-                              appear to have an extension", output});
+                            sess.fatal(fmt!("output file name `%s` doesn't\
+                              appear to have an extension", output));
                         }
                         vec::pop(os);
                         str::connect(os, ~".")
@@ -505,7 +505,7 @@ fn mangle(sess: session, ss: path) -> ~str {
     for ss.each |s| {
         match s { path_name(s) | path_mod(s) => {
           let sani = sanitize(sess.str_of(s));
-          n += fmt!{"%u%s", str::len(sani), sani};
+          n += fmt!("%u%s", str::len(sani), sani);
         } }
     }
     n += ~"E"; // End name-sequence.
@@ -581,12 +581,12 @@ fn link_binary(sess: session,
 
     let output = if sess.building_library {
         let long_libname =
-            os::dll_filename(fmt!{"%s-%s-%s",
-                                  lm.name, lm.extras_hash, lm.vers});
-        debug!{"link_meta.name:  %s", lm.name};
-        debug!{"long_libname: %s", long_libname};
-        debug!{"out_filename: %s", out_filename};
-        debug!{"dirname(out_filename): %s", path::dirname(out_filename)};
+            os::dll_filename(fmt!("%s-%s-%s",
+                                  lm.name, lm.extras_hash, lm.vers));
+        debug!("link_meta.name:  %s", lm.name);
+        debug!("long_libname: %s", long_libname);
+        debug!("out_filename: %s", out_filename);
+        debug!("dirname(out_filename): %s", path::dirname(out_filename));
 
         path::connect(path::dirname(out_filename), long_libname)
     } else { out_filename };
@@ -703,14 +703,14 @@ fn link_binary(sess: session,
     // extern libraries might live, based on the addl_lib_search_paths
     vec::push_all(cc_args, rpath::get_rpath_flags(sess, output));
 
-    debug!{"%s link args: %s", cc_prog, str::connect(cc_args, ~" ")};
+    debug!("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);
     if 0 != prog.status {
-        sess.err(fmt!{"linking with `%s` failed with code %d",
-                      cc_prog, prog.status});
-        sess.note(fmt!{"%s arguments: %s",
-                       cc_prog, str::connect(cc_args, ~" ")});
+        sess.err(fmt!("linking with `%s` failed with code %d",
+                      cc_prog, prog.status));
+        sess.note(fmt!("%s arguments: %s",
+                       cc_prog, str::connect(cc_args, ~" ")));
         sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }
@@ -723,8 +723,8 @@ fn link_binary(sess: session,
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
         if ! os::remove_file(obj_filename) {
-            sess.warn(fmt!{"failed to delete object file `%s`",
-                           obj_filename});
+            sess.warn(fmt!("failed to delete object file `%s`",
+                           obj_filename));
         }
     }
 }

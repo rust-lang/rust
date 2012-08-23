@@ -23,7 +23,7 @@ fn main() {
     let z = f(~x, y);
     make_cycle(z);
     let (a, b) = z();
-    debug!{"a=%u b=%u", *a as uint, b as uint};
+    debug!("a=%u b=%u", *a as uint, b as uint);
     assert *a == x;
     assert b == y;
 }

@@ -35,15 +35,15 @@ fn replace_bound_regions_in_fn_ty(
 
     for self_ty.each |t| { vec::push(all_tys, t) }
 
-    debug!{"replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
+    debug!("replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
                 all_tys=%?)",
            self_ty.map(|t| ty_to_str(tcx, t)),
            ty_to_str(tcx, ty::mk_fn(tcx, *fn_ty)),
-           all_tys.map(|t| ty_to_str(tcx, t))};
+           all_tys.map(|t| ty_to_str(tcx, t)));
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
-        debug!{"br=%?", br};
+        debug!("br=%?", br);
         mapf(br)
     };
     let ty_fn = ty::ty_fn(*fn_ty);
@@ -52,10 +52,10 @@ fn replace_bound_regions_in_fn_ty(
     });
     let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, t));
 
-    debug!{"result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
+    debug!("result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
                 fn_ty=%s",
            t_self.map(|t| ty_to_str(tcx, t)),
-           ty_to_str(tcx, t_fn)};
+           ty_to_str(tcx, t_fn));
 
 
     // Glue updated self_ty back together with its original def_id.
@@ -161,9 +161,9 @@ fn replace_bound_regions_in_fn_ty(
                   none if in_fn => r,
                   none => {
                     tcx.sess.bug(
-                        fmt!{"Bound region not found in \
+                        fmt!("Bound region not found in \
                               in_scope_regions list: %s",
-                             region_to_str(tcx, r)});
+                             region_to_str(tcx, r)));
                   }
                 }
               }

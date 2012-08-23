@@ -937,14 +937,14 @@ fn print_mac(s: ps, m: ast::mac) {
         bclose(s, m.span);
       }
       ast::mac_ellipsis => word(s.s, ~"..."),
-      ast::mac_var(v) => word(s.s, fmt!{"$%u", v}),
+      ast::mac_var(v) => word(s.s, fmt!("$%u", v)),
       _ => { /* fixme */ }
     }
 }
 
 fn print_vstore(s: ps, t: ast::vstore) {
     match t {
-      ast::vstore_fixed(some(i)) => word(s.s, fmt!{"%u", i}),
+      ast::vstore_fixed(some(i)) => word(s.s, fmt!("%u", i)),
       ast::vstore_fixed(none) => word(s.s, ~"_"),
       ast::vstore_uniq => word(s.s, ~"~"),
       ast::vstore_box => word(s.s, ~"@"),

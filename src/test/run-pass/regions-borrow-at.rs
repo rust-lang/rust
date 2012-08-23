@@ -5,6 +5,6 @@ fn foo(x: &uint) -> uint {
 fn main() {
     let p = @22u;
     let r = foo(p);
-    debug!{"r=%u", r};
+    debug!("r=%u", r);
     assert r == 22u;
 }

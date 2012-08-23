@@ -14,7 +14,7 @@ fn main(args: ~[str]) {
     let leak = init(&ar, args[0]);
     match *leak {
         s(astr) {
-            io::println(fmt!{"%?", astr});
+            io::println(fmt!("%?", astr));
         }
     };
 }

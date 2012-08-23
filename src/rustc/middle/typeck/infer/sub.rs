@@ -28,10 +28,10 @@ impl Sub: combine {
     }
 
     fn regions(a: ty::region, b: ty::region) -> cres<ty::region> {
-        debug!{"%s.regions(%s, %s)",
+        debug!("%s.regions(%s, %s)",
                self.tag(),
                a.to_str(self.infcx),
-               b.to_str(self.infcx)};
+               b.to_str(self.infcx));
         do indent {
             match self.infcx.region_vars.make_subregion(self.span, a, b) {
               ok(()) => ok(a),
@@ -41,7 +41,7 @@ impl Sub: combine {
     }
 
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
-        debug!{"mts(%s <: %s)", a.to_str(self.infcx), b.to_str(self.infcx)};
+        debug!("mts(%s <: %s)", a.to_str(self.infcx), b.to_str(self.infcx));
 
         if a.mutbl != b.mutbl && b.mutbl != m_const {
             return err(ty::terr_mutability);
@@ -97,8 +97,8 @@ impl Sub: combine {
     }
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
-        debug!{"%s.tys(%s, %s)", self.tag(),
-               a.to_str(self.infcx), b.to_str(self.infcx)};
+        debug!("%s.tys(%s, %s)", self.tag(),
+               a.to_str(self.infcx), b.to_str(self.infcx));
         if a == b { return ok(a); }
         do indent {
             match (ty::get(a).struct, ty::get(b).struct) {
@@ -143,9 +143,9 @@ impl Sub: combine {
                 // NDM--we should not be used dummy_sp() here, but
                 // rather passing in the span or something like that.
                 let rvar = self.infcx.next_region_var_nb(dummy_sp());
-                debug!{"Bound region %s maps to %s",
+                debug!("Bound region %s maps to %s",
                        bound_region_to_str(self.infcx.tcx, br),
-                       region_to_str(self.infcx.tcx, rvar)};
+                       region_to_str(self.infcx.tcx, rvar));
                 rvar
             }
         };

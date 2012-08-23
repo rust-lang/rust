@@ -69,7 +69,7 @@ unsafe fn chan_from_global_ptr<T: send>(
         log(debug,~"BEFORE COMPARE AND SWAP");
         let swapped = compare_and_swap(
             global, 0u, unsafe::reinterpret_cast(ch));
-        log(debug,fmt!{"AFTER .. swapped? %?", swapped});
+        log(debug,fmt!("AFTER .. swapped? %?", swapped));
 
         if swapped {
             // Success!

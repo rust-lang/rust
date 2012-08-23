@@ -27,7 +27,7 @@ fn mk<T: copy>() -> smallintmap<T> {
  */
 #[inline(always)]
 fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
-    //io::println(fmt!{"%?", key});
+    //io::println(fmt!("%?", key));
     self.v.grow_set_elt(key, none, some(val));
 }
 
@@ -50,7 +50,7 @@ pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
 pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     match find(self, key) {
       none => {
-        error!{"smallintmap::get(): key not present"};
+        error!("smallintmap::get(): key not present");
         fail;
       }
       some(v) => return v

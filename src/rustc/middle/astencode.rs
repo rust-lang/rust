@@ -82,10 +82,10 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
                        path: ast_map::path,
                        ii: ast::inlined_item,
                        maps: maps) {
-    debug!{"> Encoding inlined item: %s::%s (%u)",
+    debug!("> Encoding inlined item: %s::%s (%u)",
            ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
            ecx.tcx.sess.str_of(ii.ident()),
-           ebml_w.writer.tell()};
+           ebml_w.writer.tell());
 
     let id_range = ast_util::compute_id_range_for_inlined_item(ii);
     do ebml_w.wr_tag(c::tag_ast as uint) {
@@ -94,10 +94,10 @@ fn encode_inlined_item(ecx: @e::encode_ctxt,
         encode_side_tables_for_ii(ecx, maps, ebml_w, ii);
     }
 
-    debug!{"< Encoded inlined fn: %s::%s (%u)",
+    debug!("< Encoded inlined fn: %s::%s (%u)",
            ast_map::path_to_str(path, ecx.tcx.sess.parse_sess.interner),
            ecx.tcx.sess.str_of(ii.ident()),
-           ebml_w.writer.tell()};
+           ebml_w.writer.tell());
 }
 
 fn decode_inlined_item(cdata: cstore::crate_metadata,
@@ -109,8 +109,8 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
     match par_doc.opt_child(c::tag_ast) {
       none => none,
       some(ast_doc) => {
-        debug!{"> Decoding inlined fn: %s::?",
-               ast_map::path_to_str(path, tcx.sess.parse_sess.interner)};
+        debug!("> Decoding inlined fn: %s::?",
+               ast_map::path_to_str(path, tcx.sess.parse_sess.interner));
         let ast_dsr = ebml::ebml_deserializer(ast_doc);
         let from_id_range = ast_util::deserialize_id_range(ast_dsr);
         let to_id_range = reserve_id_range(dcx.tcx.sess, from_id_range);
@@ -121,15 +121,15 @@ fn decode_inlined_item(cdata: cstore::crate_metadata,
         let ii = renumber_ast(xcx, raw_ii);
         ast_map::map_decoded_item(tcx.sess.diagnostic(),
                                   dcx.tcx.items, path, ii);
-        debug!{"Fn named: %s", tcx.sess.str_of(ii.ident())};
+        debug!("Fn named: %s", tcx.sess.str_of(ii.ident()));
         decode_side_tables(xcx, ast_doc);
-        debug!{"< Decoded inlined fn: %s::%s",
+        debug!("< Decoded inlined fn: %s::%s",
                ast_map::path_to_str(path, tcx.sess.parse_sess.interner),
-               tcx.sess.str_of(ii.ident())};
+               tcx.sess.str_of(ii.ident()));
         match ii {
           ast::ii_item(i) => {
-            debug!{">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
-                   syntax::print::pprust::item_to_str(i, tcx.sess.intr())};
+            debug!(">>> DECODED ITEM >>>\n%s\n<<< DECODED ITEM <<<",
+                   syntax::print::pprust::item_to_str(i, tcx.sess.intr()));
           }
           _ => { }
         }
@@ -650,7 +650,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
                              id: ast::node_id) {
     let tcx = ecx.tcx;
 
-    debug!{"Encoding side tables for id %d", id};
+    debug!("Encoding side tables for id %d", id);
 
     do option::iter(tcx.def_map.find(id)) |def| {
         do ebml_w.tag(c::tag_table_def) {
@@ -838,9 +838,9 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
         let id0 = entry_doc[c::tag_table_id as uint].as_int();
         let id = xcx.tr_id(id0);
 
-        debug!{">> Side table document with tag 0x%x \
+        debug!(">> Side table document with tag 0x%x \
                 found for id %d (orig %d)",
-               tag, id, id0};
+               tag, id, id0);
 
         if tag == (c::tag_table_mutbl as uint) {
             dcx.maps.mutbl_map.insert(id, ());
@@ -889,11 +889,11 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 dcx.tcx.borrowings.insert(id, borrow);
             } else {
                 xcx.dcx.tcx.sess.bug(
-                    fmt!{"unknown tag found in side tables: %x", tag});
+                    fmt!("unknown tag found in side tables: %x", tag));
             }
         }
 
-        debug!{">< Side table doc loaded"};
+        debug!(">< Side table doc loaded");
     }
 }
 
@@ -947,8 +947,8 @@ fn roundtrip(in_item: @ast::item) {
     let out_str =
         io::with_str_writer(|w| ast::serialize_item(w, *out_item) );
 
-    debug!{"expected string: %s", exp_str};
-    debug!{"actual string  : %s", out_str};
+    debug!("expected string: %s", exp_str);
+    debug!("actual string  : %s", out_str);
 
     assert exp_str == out_str;
 }

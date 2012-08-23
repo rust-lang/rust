@@ -109,7 +109,7 @@ fn parse_exec_env(line: ~str) -> option<(~str, ~str)> {
         match strs.len() {
           1u => (strs[0], ~""),
           2u => (strs[0], strs[1]),
-          n => fail fmt!{"Expected 1 or 2 strings, not %u", n}
+          n => fail fmt!("Expected 1 or 2 strings, not %u", n)
         }
     }
 }
@@ -138,7 +138,7 @@ fn parse_name_value_directive(line: ~str,
         option::some(colon) => {
             let value = str::slice(line, colon + str::len(keycolon),
                                    str::len(line));
-            debug!{"%s: %s", directive,  value};
+            debug!("%s: %s", directive,  value);
             option::some(value)
         }
         option::none => option::none

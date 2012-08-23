@@ -67,7 +67,7 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 }
 
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
-    debug!{"type_of %?: %?", t, ty::get(t)};
+    debug!("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
     if cx.lltypes.contains_key(t) { return cx.lltypes.get(t); }
@@ -203,7 +203,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
                      llty: TypeRef) {
 
-    debug!{"type_of_enum %?: %?", t, ty::get(t)};
+    debug!("type_of_enum %?: %?", t, ty::get(t));
 
     let lltys = {
         let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
@@ -227,7 +227,7 @@ fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
       ty::ty_enum(did, substs) => (~"enum", did, substs.tps),
       ty::ty_class(did, substs) => (~"class", did, substs.tps)
     };
-    return fmt!{
+    return fmt!(
         "%s %s[#%d]",
         name,
         util::ppaux::parameterized(
@@ -236,7 +236,7 @@ fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
             none,
             tps),
         did.crate
-    };
+    );
 }
 
 fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {

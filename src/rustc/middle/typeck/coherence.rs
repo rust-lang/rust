@@ -60,13 +60,13 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_uniq(base_mutability_and_type) |
         ty_ptr(base_mutability_and_type) |
         ty_rptr(_, base_mutability_and_type) => {
-            debug!{"(getting base type) recurring"};
+            debug!("(getting base type) recurring");
             get_base_type(inference_context, span,
                           base_mutability_and_type.ty)
         }
 
         ty_enum(*) | ty_trait(*) | ty_class(*) => {
-            debug!{"(getting base type) found base type"};
+            debug!("(getting base type) found base type");
             some(resolved_type)
         }
 
@@ -75,8 +75,8 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_fn(*) | ty_tup(*) | ty_var(*) | ty_var_integral(*) |
         ty_param(*) | ty_self | ty_type | ty_opaque_box |
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) => {
-            debug!{"(getting base type) no base type; found %?",
-                   get(original_type).struct};
+            debug!("(getting base type) no base type; found %?",
+                   get(original_type).struct);
             none
         }
     }
@@ -173,9 +173,9 @@ struct CoherenceChecker {
                 match item.node {
                   item_trait(_, _, trait_methods) => {
                     for trait_methods.each |trait_method| {
-                        debug!{"(building provided methods map) checking \
+                        debug!("(building provided methods map) checking \
                                 trait `%s` with id %d",
-                                sess.str_of(item.ident), item.id};
+                                sess.str_of(item.ident), item.id);
 
                         match trait_method {
                             required(_) => { /* fall through */}
@@ -191,11 +191,11 @@ struct CoherenceChecker {
                                       // provided_methods_map, we just
                                       // need to add this method to
                                       // that entry.
-                                      debug!{"(building provided \
+                                      debug!("(building provided \
                                               methods map) adding \
                                               method `%s` to entry for \
                                               existing trait",
-                                              sess.str_of(mi.ident)};
+                                              sess.str_of(mi.ident));
                                       let mut method_infos = mis;
                                       push(method_infos, mi);
                                       pmm.insert(item.id, method_infos);
@@ -203,10 +203,10 @@ struct CoherenceChecker {
                                     none => {
                                       // If the trait doesn't have an
                                       // entry yet, create one.
-                                      debug!{"(building provided \
+                                      debug!("(building provided \
                                               methods map) creating new \
                                               entry for method `%s`",
-                                              sess.str_of(mi.ident)};
+                                              sess.str_of(mi.ident));
                                       pmm.insert(item.id, ~[mi]);
                                     }
                                 }
@@ -229,8 +229,8 @@ struct CoherenceChecker {
         // inherent methods and extension methods.
         visit_crate(*crate, (), mk_simple_visitor(@{
             visit_item: |item| {
-                debug!{"(checking coherence) item '%s'",
-                       self.crate_context.tcx.sess.str_of(item.ident)};
+                debug!("(checking coherence) item '%s'",
+                       self.crate_context.tcx.sess.str_of(item.ident));
 
                 match item.node {
                     item_impl(_, associated_traits, _, _) => {
@@ -270,9 +270,9 @@ struct CoherenceChecker {
         // base type.
 
         if associated_traits.len() == 0 {
-            debug!{"(checking implementation) no associated traits for item \
+            debug!("(checking implementation) no associated traits for item \
                     '%s'",
-                   self.crate_context.tcx.sess.str_of(item.ident)};
+                   self.crate_context.tcx.sess.str_of(item.ident));
 
             match get_base_type_def_id(self.inference_context,
                                        item.span,
@@ -293,12 +293,12 @@ struct CoherenceChecker {
         for associated_traits.each |associated_trait| {
             let trait_did =
                 self.trait_ref_to_trait_def_id(associated_trait);
-            debug!{"(checking implementation) adding impl for trait \
+            debug!("(checking implementation) adding impl for trait \
                     '%s', item '%s'",
                     ast_map::node_id_to_str(
                         self.crate_context.tcx.items, trait_did.node,
                         self.crate_context.tcx.sess.parse_sess.interner),
-                    self.crate_context.tcx.sess.str_of(item.ident)};
+                    self.crate_context.tcx.sess.str_of(item.ident));
 
             let implementation = self.create_impl_from_item(item);
             self.add_trait_method(trait_did, implementation);
@@ -442,10 +442,10 @@ struct CoherenceChecker {
                         let privileged_types =
                             self.gather_privileged_types(module_.items);
                         for privileged_types.each |privileged_type| {
-                            debug!{"(checking privileged scopes) entering \
+                            debug!("(checking privileged scopes) entering \
                                     privileged scope of %d:%d",
                                    privileged_type.crate,
-                                   privileged_type.node};
+                                   privileged_type.node);
 
                             self.privileged_types.insert(privileged_type, ());
                         }
@@ -586,9 +586,9 @@ struct CoherenceChecker {
                 }
 
                 if !method_inherent_to_impl {
-                    debug!{
+                    debug!(
                         "(creating impl) adding provided method `%s` to impl",
-                        sess.str_of(provided_method.ident)};
+                        sess.str_of(provided_method.ident));
                     push(methods, provided_method);
                 }
             }
@@ -616,14 +616,14 @@ struct CoherenceChecker {
                     match self.crate_context.provided_methods_map
                         .find(trait_did.node) {
                         none => {
-                            debug!{"(creating impl) trait with node_id `%d` \
-                                    has no provided methods", trait_did.node};
+                            debug!("(creating impl) trait with node_id `%d` \
+                                    has no provided methods", trait_did.node);
                             /* fall through */
                         }
                         some(all_provided)
                                     => {
-                            debug!{"(creating impl) trait with node_id `%d` \
-                                    has provided methods", trait_did.node};
+                            debug!("(creating impl) trait with node_id `%d` \
+                                    has provided methods", trait_did.node);
                             // Selectively add only those provided
                             // methods that aren't inherent to the
                             // trait.
@@ -722,11 +722,11 @@ struct CoherenceChecker {
                                            self_type.ty) {
                     none => {
                         let session = self.crate_context.tcx.sess;
-                        session.bug(fmt!{
+                        session.bug(fmt!(
                             "no base type for external impl \
                              with no trait: %s (type %s)!",
                              session.str_of(implementation.ident),
-                             ty_to_str(self.crate_context.tcx,self_type.ty)});
+                             ty_to_str(self.crate_context.tcx,self_type.ty)));
                     }
                     some(_) => {
                         // Nothing to do.

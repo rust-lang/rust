@@ -352,8 +352,8 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
       cyclic_ty(_) => ~"cyclic type of infinite size",
       unresolved_region(_) => ~"unconstrained region",
       region_var_bound_by_region_var(r1, r2) => {
-        fmt!{"region var %? bound by another region var %?; this is \
-              a bug in rustc", r1, r2}
+        fmt!("region var %? bound by another region var %?; this is \
+              a bug in rustc", r1, r2)
       }
     }
 }
@@ -384,7 +384,7 @@ fn mk_sub(cx: infer_ctxt, a_is_expected: bool, span: span) -> Sub {
 
 fn mk_subty(cx: infer_ctxt, a_is_expected: bool, span: span,
             a: ty::t, b: ty::t) -> ures {
-    debug!{"mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
+    debug!("mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
             mk_sub(cx, a_is_expected, span).tys(a, b)
@@ -393,7 +393,7 @@ fn mk_subty(cx: infer_ctxt, a_is_expected: bool, span: span,
 }
 
 fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
-    debug!{"can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
+    debug!("can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.probe {
             mk_sub(cx, true, ast_util::dummy_sp()).tys(a, b)
@@ -403,7 +403,7 @@ fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
 
 fn mk_subr(cx: infer_ctxt, a_is_expected: bool, span: span,
            a: ty::region, b: ty::region) -> ures {
-    debug!{"mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx)};
+    debug!("mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
             mk_sub(cx, a_is_expected, span).regions(a, b)
@@ -413,7 +413,7 @@ fn mk_subr(cx: infer_ctxt, a_is_expected: bool, span: span,
 
 fn mk_eqty(cx: infer_ctxt, a_is_expected: bool, span: span,
            a: ty::t, b: ty::t) -> ures {
-    debug!{"mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx)};
+    debug!("mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
             let suber = mk_sub(cx, a_is_expected, span);
@@ -424,8 +424,8 @@ fn mk_eqty(cx: infer_ctxt, a_is_expected: bool, span: span,
 
 fn mk_assignty(cx: infer_ctxt, anmnt: &assignment,
                a: ty::t, b: ty::t) -> ures {
-    debug!{"mk_assignty(%? / %s <: %s)",
-           anmnt, a.to_str(cx), b.to_str(cx)};
+    debug!("mk_assignty(%? / %s <: %s)",
+           anmnt, a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
             cx.assign_tys(anmnt, a, b)
@@ -435,8 +435,8 @@ fn mk_assignty(cx: infer_ctxt, anmnt: &assignment,
 
 fn can_mk_assignty(cx: infer_ctxt, anmnt: &assignment,
                 a: ty::t, b: ty::t) -> ures {
-    debug!{"can_mk_assignty(%? / %s <: %s)",
-           anmnt, a.to_str(cx), b.to_str(cx)};
+    debug!("can_mk_assignty(%? / %s <: %s)",
+           anmnt, a.to_str(cx), b.to_str(cx));
 
     // FIXME(#2593)---this will not unroll any entries we make in the
     // borrowings table.  But this is OK for the moment because this
@@ -464,8 +464,8 @@ fn resolve_borrowings(cx: infer_ctxt) {
     for cx.borrowings.each |item| {
         match resolve_region(cx, item.scope, resolve_all|force_all) {
           ok(region) => {
-            debug!{"borrowing for expr %d resolved to region %?, mutbl %?",
-                   item.expr_id, region, item.mutbl};
+            debug!("borrowing for expr %d resolved to region %?, mutbl %?",
+                   item.expr_id, region, item.mutbl);
             cx.tcx.borrowings.insert(
                 item.expr_id, {region: region, mutbl: item.mutbl});
           }
@@ -474,7 +474,7 @@ fn resolve_borrowings(cx: infer_ctxt) {
             let str = fixup_err_to_str(e);
             cx.tcx.sess.span_err(
                 item.span,
-                fmt!{"could not resolve lifetime for borrow: %s", str});
+                fmt!("could not resolve lifetime for borrow: %s", str));
           }
         }
     }
@@ -573,7 +573,7 @@ impl infer_ctxt {
     fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
         assert !self.in_snapshot();
 
-        debug!{"commit()"};
+        debug!("commit()");
         do indent {
             let r <- self.try(f);
 
@@ -589,7 +589,7 @@ impl infer_ctxt {
 
     /// Execute `f`, unroll bindings on failure
     fn try<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
-        debug!{"try()"};
+        debug!("try()");
         do indent {
             let snapshot = self.start_snapshot();
             let r = f();
@@ -603,7 +603,7 @@ impl infer_ctxt {
 
     /// Execute `f` then unroll any bindings it creates
     fn probe<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
-        debug!{"probe()"};
+        debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
             let r = self.try(f);

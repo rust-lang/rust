@@ -30,10 +30,10 @@ fn port<T: send>() -> port<T> {
 struct port_ptr<T:send> {
    let po: *rust_port;
    new(po: *rust_port) {
-    debug!{"in the port_ptr constructor"};
+    debug!("in the port_ptr constructor");
     self.po = po; }
    drop unsafe {
-    debug!{"in the port_ptr destructor"};
+    debug!("in the port_ptr destructor");
        do task::unkillable {
         let yield = 0u;
         let yieldp = ptr::addr_of(yield);

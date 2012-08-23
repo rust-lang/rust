@@ -62,7 +62,7 @@ fn angrydome() {
     loop { i += 1; if i == 1 { match check again { 1 => { } } } break; }
 }
 
-fn evil_lincoln() { let evil <- debug!{"lincoln"}; }
+fn evil_lincoln() { let evil <- debug!("lincoln"); }
 
 fn main() {
     strange();

@@ -24,7 +24,7 @@ fn main() {
     for iter::repeat(10u) {
         do task::spawn {
             let result = count(5u);
-            debug!{"result = %?", result};
+            debug!("result = %?", result);
             fail;
         };
     }

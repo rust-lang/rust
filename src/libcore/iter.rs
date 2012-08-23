@@ -176,7 +176,7 @@ pure fn find<A: copy,IA:BaseIter<A>>(self: IA,
 #[test]
 fn test_enumerate() {
     enumerate(["0", "1", "2"]) {|i,j|
-        assert fmt!{"%u",i} == j;
+        assert fmt!("%u",i) == j;
     }
 }
 
@@ -254,7 +254,7 @@ fn test_flat_map_with_list() {
     let a = bind vec::iter(~[0, 1, 2, 3], _);
     let b = bind flat_map(a, repeat, _);
     let c = to_vec(b);
-    debug!{"c = %?", c};
+    debug!("c = %?", c);
     assert c == ~[1, 2, 2, 3, 3, 3];
 }
 
@@ -265,7 +265,7 @@ fn test_repeat() {
         c += ~[(i * i)];
         i += 1u;
     };
-    debug!{"c = %?", c};
+    debug!("c = %?", c);
     assert c == ~[0u, 1u, 4u, 9u, 16u];
 }
 

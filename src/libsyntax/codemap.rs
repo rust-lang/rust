@@ -73,7 +73,7 @@ fn new_filemap(+filename: filename, src: @~str,
 fn mk_substr_filename(cm: codemap, sp: span) -> ~str
 {
     let pos = lookup_char_pos(cm, sp.lo);
-    return fmt!{"<%s:%u:%u>", pos.file.name, pos.line, pos.col};
+    return fmt!("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
@@ -93,7 +93,7 @@ fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
         if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
     }
     if (a >= len) {
-        fail fmt!{"position %u does not resolve to a source location", pos}
+        fail fmt!("position %u does not resolve to a source location", pos)
     }
     let f = map.files[a];
     a = 0u;
@@ -166,15 +166,15 @@ type span = {lo: uint, hi: uint, expn_info: expn_info};
 fn span_to_str_no_adj(sp: span, cm: codemap) -> ~str {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
-    return fmt!{"%s:%u:%u: %u:%u", lo.file.name,
-             lo.line, lo.col, hi.line, hi.col}
+    return fmt!("%s:%u:%u: %u:%u", lo.file.name,
+             lo.line, lo.col, hi.line, hi.col)
 }
 
 fn span_to_str(sp: span, cm: codemap) -> ~str {
     let lo = lookup_char_pos_adj(cm, sp.lo);
     let hi = lookup_char_pos_adj(cm, sp.hi);
-    return fmt!{"%s:%u:%u: %u:%u", lo.filename,
-             lo.line, lo.col, hi.line, hi.col}
+    return fmt!("%s:%u:%u: %u:%u", lo.filename,
+             lo.line, lo.col, hi.line, hi.col)
 }
 
 type file_lines = {file: filemap, lines: ~[uint]};

@@ -21,21 +21,21 @@ fn packager(cb: Chan<Chan<~[u8]>>, msg: Chan<msg>) {
     let p: Port<~[u8]> = port();
     send(cb, chan(p));
     loop {
-        debug!{"waiting for bytes"};
+        debug!("waiting for bytes");
         let data = recv(p);
-        debug!{"got bytes"};
+        debug!("got bytes");
         if vec::len(data) == 0u {
-            debug!{"got empty bytes, quitting"};
+            debug!("got empty bytes, quitting");
             break;
         }
-        debug!{"sending non-empty buffer of length"};
+        debug!("sending non-empty buffer of length");
         log(debug, vec::len(data));
         send(msg, received(data));
-        debug!{"sent non-empty buffer"};
+        debug!("sent non-empty buffer");
     }
-    debug!{"sending closed message"};
+    debug!("sending closed message");
     send(msg, closed);
-    debug!{"sent closed message"};
+    debug!("sent closed message");
 }
 
 fn main() {
@@ -51,9 +51,9 @@ fn main() {
     loop {
         let msg = recv(p);
         match msg {
-          closed => { debug!{"Got close message"}; break; }
+          closed => { debug!("Got close message"); break; }
           received(data) => {
-            debug!{"Got data. Length is:"};
+            debug!("Got data. Length is:");
             log(debug, vec::len::<u8>(data));
           }
         }

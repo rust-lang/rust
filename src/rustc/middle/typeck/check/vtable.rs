@@ -83,8 +83,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
     -> vtable_origin
 {
 
-    debug!{"lookup_vtable(ty=%s, trait_ty=%s)",
-           fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(trait_ty)};
+    debug!("lookup_vtable(ty=%s, trait_ty=%s)",
+           fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(trait_ty));
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;
@@ -116,8 +116,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
                 match check ty::get(ity).struct {
                   ty::ty_trait(idid, substs, _) => {
                     if trait_id == idid {
-                        debug!{"(checking vtable) @0 relating ty to trait ty
-                                with did %?", idid};
+                        debug!("(checking vtable) @0 relating ty to trait ty
+                                with did %?", idid);
                         relate_trait_tys(fcx, expr, trait_ty, ity);
                         return vtable_param(n, n_bound);
                     }
@@ -130,8 +130,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
       }
 
       ty::ty_trait(did, substs, _) if trait_id == did => {
-        debug!{"(checking vtable) @1 relating ty to trait ty with did %?",
-               did};
+        debug!("(checking vtable) @1 relating ty to trait ty with did %?",
+               did);
 
         relate_trait_tys(fcx, expr, trait_ty, ty);
         if !allow_unsafe && !is_early {
@@ -258,9 +258,9 @@ fn fixup_ty(fcx: @fn_ctxt,
       result::err(e) if !is_early => {
         tcx.sess.span_fatal(
             expr.span,
-            fmt!{"cannot determine a type \
+            fmt!("cannot determine a type \
                   for this bounded type parameter: %s",
-                 fixup_err_to_str(e)})
+                 fixup_err_to_str(e)))
       }
       result::err(e) => {
         none
@@ -275,8 +275,8 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
     // XXX: This should work for multiple traits.
     let ity = ty::impl_traits(tcx, impl_did)[0];
     let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
-    debug!{"(connect trait tps) trait type is %?, impl did is %?",
-           ty::get(trait_ty).struct, impl_did};
+    debug!("(connect trait tps) trait type is %?, impl did is %?",
+           ty::get(trait_ty).struct, impl_did);
     match check ty::get(trait_ty).struct {
       ty::ty_trait(_, substs, _) => {
         vec::iter2(substs.tps, trait_tys,

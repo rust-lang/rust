@@ -16,4 +16,4 @@ fn bitv_to_str(enclosing: fn_info, v: ~bitv::bitv) -> str {
     return s;
 }
 
-fn main() { debug!{"OK"}; }
+fn main() { debug!("OK"); }

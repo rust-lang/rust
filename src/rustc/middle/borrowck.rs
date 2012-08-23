@@ -255,16 +255,16 @@ fn check_crate(tcx: ty::ctxt,
 
     if tcx.sess.borrowck_stats() {
         io::println(~"--- borrowck stats ---");
-        io::println(fmt!{"paths requiring guarantees: %u",
-                        bccx.guaranteed_paths});
-        io::println(fmt!{"paths requiring loans     : %s",
-                         make_stat(bccx, bccx.loaned_paths_same)});
-        io::println(fmt!{"paths requiring imm loans : %s",
-                         make_stat(bccx, bccx.loaned_paths_imm)});
-        io::println(fmt!{"stable paths              : %s",
-                         make_stat(bccx, bccx.stable_paths)});
-        io::println(fmt!{"paths requiring purity    : %s",
-                         make_stat(bccx, bccx.req_pure_paths)});
+        io::println(fmt!("paths requiring guarantees: %u",
+                        bccx.guaranteed_paths));
+        io::println(fmt!("paths requiring loans     : %s",
+                         make_stat(bccx, bccx.loaned_paths_same)));
+        io::println(fmt!("paths requiring imm loans : %s",
+                         make_stat(bccx, bccx.loaned_paths_imm)));
+        io::println(fmt!("stable paths              : %s",
+                         make_stat(bccx, bccx.stable_paths)));
+        io::println(fmt!("paths requiring purity    : %s",
+                         make_stat(bccx, bccx.req_pure_paths)));
     }
 
     return (bccx.root_map, bccx.mutbl_map);
@@ -272,7 +272,7 @@ fn check_crate(tcx: ty::ctxt,
     fn make_stat(bccx: borrowck_ctxt, stat: uint) -> ~str {
         let stat_f = stat as float;
         let total = bccx.guaranteed_paths as float;
-        fmt!{"%u (%.0f%%)", stat  , stat_f * 100f / total}
+        fmt!("%u (%.0f%%)", stat  , stat_f * 100f / total)
     }
 }
 
@@ -412,8 +412,8 @@ impl borrowck_ctxt {
     fn report(err: bckerr) {
         self.span_err(
             err.cmt.span,
-            fmt!{"illegal borrow: %s",
-                 self.bckerr_code_to_str(err.code)});
+            fmt!("illegal borrow: %s",
+                 self.bckerr_code_to_str(err.code)));
     }
 
     fn span_err(s: span, m: ~str) {
@@ -439,8 +439,8 @@ impl borrowck_ctxt {
     fn bckerr_code_to_str(code: bckerr_code) -> ~str {
         match code {
           err_mutbl(req, act) => {
-            fmt!{"creating %s alias to aliasable, %s memory",
-                 self.mut_to_str(req), self.mut_to_str(act)}
+            fmt!("creating %s alias to aliasable, %s memory",
+                 self.mut_to_str(req), self.mut_to_str(act))
           }
           err_mut_uniq => {
             ~"unique value in aliasable, mutable location"
@@ -455,16 +455,16 @@ impl borrowck_ctxt {
             ~"rooting is not permitted"
           }
           err_out_of_root_scope(super_scope, sub_scope) => {
-            fmt!{"managed value would have to be rooted for %s, \
+            fmt!("managed value would have to be rooted for %s, \
                   but can only be rooted for %s",
                   explain_region(self.tcx, sub_scope),
-                  explain_region(self.tcx, super_scope)}
+                  explain_region(self.tcx, super_scope))
           }
           err_out_of_scope(super_scope, sub_scope) => {
-            fmt!{"borrowed pointer must be valid for %s, \
+            fmt!("borrowed pointer must be valid for %s, \
                   but the borrowed value is only valid for %s",
                   explain_region(self.tcx, sub_scope),
-                  explain_region(self.tcx, super_scope)}
+                  explain_region(self.tcx, super_scope))
           }
         }
     }
