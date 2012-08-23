@@ -87,7 +87,7 @@ impl T: iter::Times {
         will execute the given function exactly x times. If we assume that \
         `x` is an int, this is functionally equivalent to \
         `for int::range(0, x) |_i| { /* anything */ }`."]
-    fn times(it: fn() -> bool) {
+    pure fn times(it: fn() -> bool) {
         let mut i = self;
         while i > 0 {
             if !it() { break }
@@ -99,7 +99,7 @@ impl T: iter::Times {
 impl T: iter::TimesIx {
     #[inline(always)]
     /// Like `times`, but with an index, `eachi`-style.
-    fn timesi(it: fn(uint) -> bool) {
+    pure fn timesi(it: fn(uint) -> bool) {
         let slf = self as uint;
         let mut i = 0u;
         while i < slf {

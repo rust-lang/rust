@@ -1,35 +1,35 @@
 trait BaseIter<A> {
-    fn each(blk: fn(A) -> bool);
-    fn size_hint() -> option<uint>;
+    pure fn each(blk: fn(A) -> bool);
+    pure fn size_hint() -> option<uint>;
 }
 
 trait ExtendedIter<A> {
-    fn eachi(blk: fn(uint, A) -> bool);
-    fn all(blk: fn(A) -> bool) -> bool;
-    fn any(blk: fn(A) -> bool) -> bool;
-    fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
-    fn contains(x: A) -> bool;
-    fn count(x: A) -> uint;
-    fn position(f: fn(A) -> bool) -> option<uint>;
+    pure fn eachi(blk: fn(uint, A) -> bool);
+    pure fn all(blk: fn(A) -> bool) -> bool;
+    pure fn any(blk: fn(A) -> bool) -> bool;
+    pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
+    pure fn contains(x: A) -> bool;
+    pure fn count(x: A) -> uint;
+    pure fn position(f: fn(A) -> bool) -> option<uint>;
 }
 
 trait Times {
-    fn times(it: fn() -> bool);
+    pure fn times(it: fn() -> bool);
 }
 trait TimesIx{
-    fn timesi(it: fn(uint) -> bool);
+    pure fn timesi(it: fn(uint) -> bool);
 }
 
 trait CopyableIter<A:copy> {
-    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
-    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
-    fn to_vec() -> ~[A];
-    fn min() -> A;
-    fn max() -> A;
-    fn find(p: fn(A) -> bool) -> option<A>;
+    pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
+    pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
+    pure fn to_vec() -> ~[A];
+    pure fn min() -> A;
+    pure fn max() -> A;
+    pure fn find(p: fn(A) -> bool) -> option<A>;
 }
 
-fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, A) -> bool) {
+pure fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     let mut i = 0u;
     for self.each |a| {
         if !blk(i, a) { break; }
@@ -37,52 +37,51 @@ fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     }
 }
 
-fn all<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+pure fn all<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
         if !blk(a) { return false; }
     }
     return true;
 }
 
-fn any<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
+pure fn any<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
         if blk(a) { return true; }
     }
     return false;
 }
 
-fn filter_to_vec<A:copy,IA:BaseIter<A>>(self: IA,
+pure fn filter_to_vec<A:copy,IA:BaseIter<A>>(self: IA,
                                          prd: fn(A) -> bool) -> ~[A] {
-    let mut result = ~[];
-    self.size_hint().iter(|hint| vec::reserve(result, hint));
-    for self.each |a| {
-        if prd(a) { vec::push(result, a); }
-    }
-    return result;
-}
-
-fn map_to_vec<A:copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B) -> ~[B] {
-    let mut result = ~[];
-    self.size_hint().iter(|hint| vec::reserve(result, hint));
-    for self.each |a| {
-        vec::push(result, op(a));
-    }
-    return result;
-}
-
-fn flat_map_to_vec<A:copy,B:copy,IA:BaseIter<A>,IB:BaseIter<B>>(
-    self: IA, op: fn(A) -> IB) -> ~[B] {
-
-    let mut result = ~[];
-    for self.each |a| {
-        for op(a).each |b| {
-            vec::push(result, b);
+    do vec::build_sized_opt(self.size_hint()) |push| {
+        for self.each |a| {
+            if prd(a) { push(a); }
         }
     }
-    return result;
 }
 
-fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
+pure fn map_to_vec<A:copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B)
+    -> ~[B] {
+    do vec::build_sized_opt(self.size_hint()) |push| {
+        for self.each |a| {
+            push(op(a));
+        }
+    }
+}
+
+pure fn flat_map_to_vec<A:copy,B:copy,IA:BaseIter<A>,IB:BaseIter<B>>(
+    self: IA, op: fn(A) -> IB) -> ~[B] {
+
+    do vec::build |push| {
+        for self.each |a| {
+            for op(a).each |b| {
+                push(b);
+            }
+        }
+    }
+}
+
+pure fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     let mut b <- b0;
     for self.each |a| {
         b = blk(b, a);
@@ -90,18 +89,18 @@ fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     return b;
 }
 
-fn to_vec<A:copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
+pure fn to_vec<A:copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
     foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(r, ~[a]))
 }
 
-fn contains<A,IA:BaseIter<A>>(self: IA, x: A) -> bool {
+pure fn contains<A,IA:BaseIter<A>>(self: IA, x: A) -> bool {
     for self.each |a| {
         if a == x { return true; }
     }
     return false;
 }
 
-fn count<A,IA:BaseIter<A>>(self: IA, x: A) -> uint {
+pure fn count<A,IA:BaseIter<A>>(self: IA, x: A) -> uint {
     do foldl(self, 0u) |count, value| {
         if value == x {
             count + 1u
@@ -111,7 +110,7 @@ fn count<A,IA:BaseIter<A>>(self: IA, x: A) -> uint {
     }
 }
 
-fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
+pure fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
         -> option<uint> {
     let mut i = 0;
     for self.each |a| {
@@ -125,7 +124,7 @@ fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
 // iter interface, such as would provide "reach" in addition to "each". as is,
 // it would have to be implemented with foldr, which is too inefficient.
 
-fn repeat(times: uint, blk: fn() -> bool) {
+pure fn repeat(times: uint, blk: fn() -> bool) {
     let mut i = 0u;
     while i < times {
         if !blk() { break }
@@ -133,7 +132,7 @@ fn repeat(times: uint, blk: fn() -> bool) {
     }
 }
 
-fn min<A:copy,IA:BaseIter<A>>(self: IA) -> A {
+pure fn min<A:copy,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,option<A>,IA>(self, none) |a, b| {
         match a {
           some(a_) if a_ < b => {
@@ -149,7 +148,7 @@ fn min<A:copy,IA:BaseIter<A>>(self: IA) -> A {
     }
 }
 
-fn max<A:copy,IA:BaseIter<A>>(self: IA) -> A {
+pure fn max<A:copy,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,option<A>,IA>(self, none) |a, b| {
         match a {
           some(a_) if a_ > b => {
@@ -163,6 +162,14 @@ fn max<A:copy,IA:BaseIter<A>>(self: IA) -> A {
         some(val) => val,
         none => fail ~"max called on empty iterator"
     }
+}
+
+pure fn find<A: copy,IA:BaseIter<A>>(self: IA,
+                                     p: fn(A) -> bool) -> option<A> {
+    for self.each |i| {
+        if p(i) { return some(i) }
+    }
+    return none;
 }
 
 /*

@@ -6,43 +6,39 @@ import inst::{IMPL_T, EACH, SIZE_HINT};
 export extensions;
 
 impl<A> IMPL_T<A>: iter::BaseIter<A> {
-    fn each(blk: fn(A) -> bool) { EACH(self, blk) }
-    fn size_hint() -> option<uint> { SIZE_HINT(self) }
+    pure fn each(blk: fn(A) -> bool) { EACH(self, blk) }
+    pure fn size_hint() -> option<uint> { SIZE_HINT(self) }
 }
 
 impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
-    fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
-    fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
-    fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
-    fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
+    pure fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
+    pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
+    pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
+    pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
-    fn contains(x: A) -> bool { iter::contains(self, x) }
-    fn count(x: A) -> uint { iter::count(self, x) }
-    fn position(f: fn(A) -> bool) -> option<uint> {
+    pure fn contains(x: A) -> bool { iter::contains(self, x) }
+    pure fn count(x: A) -> uint { iter::count(self, x) }
+    pure fn position(f: fn(A) -> bool) -> option<uint> {
         iter::position(self, f)
     }
 }
 
 impl<A: copy> IMPL_T<A>: iter::CopyableIter<A> {
-    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
+    pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
-    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B] { iter::map_to_vec(self, op) }
-    fn to_vec() -> ~[A] { iter::to_vec(self) }
+    pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B] {
+        iter::map_to_vec(self, op)
+    }
+    pure fn to_vec() -> ~[A] { iter::to_vec(self) }
 
     // FIXME--bug in resolve prevents this from working (#2611)
     // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> ~[B] {
     //     iter::flat_map_to_vec(self, op)
     // }
 
-    fn min() -> A { iter::min(self) }
-    fn max() -> A { iter::max(self) }
-
-    fn find(p: fn(A) -> bool) -> option<A> {
-        for self.each |i| {
-            if p(i) { return some(i) }
-        }
-        return none;
-    }
+    pure fn min() -> A { iter::min(self) }
+    pure fn max() -> A { iter::max(self) }
+    pure fn find(p: fn(A) -> bool) -> option<A> { iter::find(self, p) }
 }
