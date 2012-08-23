@@ -146,19 +146,12 @@ impl parser: parser_common {
 
     fn eat_keyword(word: ~str) -> bool {
         self.require_keyword(word);
-
-        let mut bump = false;
-        let val = match self.token {
-          token::IDENT(sid, false) => {
-            if word == *self.id_to_str(sid) {
-                bump = true;
-                true
-            } else { false }
-          }
+        let is_kw = match self.token {
+          token::IDENT(sid, false) => (word == *self.id_to_str(sid)),
           _ => false
         };
-        if bump { self.bump() }
-        val
+        if is_kw { self.bump() }
+        is_kw
     }
 
     fn expect_keyword(word: ~str) {

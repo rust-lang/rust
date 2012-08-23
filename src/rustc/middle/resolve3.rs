@@ -2065,7 +2065,7 @@ struct Resolver {
                                                            str_of(name)));
                             return Failed;
                         }
-                        ModuleDef(module_) => {
+                        ModuleDef(copy module_) => {
                             search_module = module_;
                         }
                     }

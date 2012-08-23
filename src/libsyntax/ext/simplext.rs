@@ -205,10 +205,10 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
 
 
 /* helper: descend into a matcher */
-fn follow(m: arb_depth<matchable>, idx_path: @mut ~[uint]) ->
+pure fn follow(m: arb_depth<matchable>, idx_path: &[uint]) ->
    arb_depth<matchable> {
     let mut res: arb_depth<matchable> = m;
-    for vec::each(*idx_path) |idx| {
+    for vec::each(idx_path) |idx| {
         res = match res {
           leaf(_) => return res,/* end of the line */
           seq(new_ms, _) => new_ms[idx]
@@ -222,7 +222,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: option<arb_depth<matchable>>,
     match mmaybe {
       none => return none,
       some(m) => {
-        return match follow(m, idx_path) {
+        return match follow(m, *idx_path) {
               seq(_, sp) => {
                 cx.span_fatal(sp,
                               ~"syntax matched under ... but not " +
@@ -274,7 +274,8 @@ fn transcribe_exprs(cx: ext_ctxt, b: bindings, idx_path: @mut ~[uint],
             /* we need to walk over all the free vars in lockstep, except for
             the leaves, which are just duplicated */
             do free_vars(b, repeat_me) |fv| {
-                let cur_pos = follow(b.get(fv), idx_path);
+                let fv_depth = b.get(fv);
+                let cur_pos = follow(fv_depth, *idx_path);
                 match cur_pos {
                   leaf(_) => (),
                   seq(ms, _) => {

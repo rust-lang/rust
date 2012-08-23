@@ -75,6 +75,7 @@ export swap;
 export reverse;
 export reversed;
 export iter, iter_between, each, eachi, reach, reachi;
+export each_mut, each_const;
 export iter2;
 export iteri;
 export riter;
@@ -1168,6 +1169,24 @@ pure fn each<T>(v: &[T], f: fn(T) -> bool) {
             unsafe {
                 if !f(*p) { break; }
                 p = ptr::offset(p, 1u);
+            }
+            n -= 1u;
+        }
+    }
+}
+
+/// Like `each()`, but for the case where you have
+/// a vector with mutable contents and you would like
+/// to mutate the contents as you iterate.
+#[inline(always)]
+pure fn each_mut<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
+    do vec::as_mut_buf(v) |p, n| {
+        let mut n = n;
+        let mut p = p;
+        while n > 0u {
+            unsafe {
+                if !f(&mut *p) { break; }
+                p = ptr::mut_offset(p, 1u);
             }
             n -= 1u;
         }

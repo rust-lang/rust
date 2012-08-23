@@ -158,7 +158,8 @@ fn sha1() -> sha1 {
     fn mk_result(st: sha1state) -> ~[u8] {
         if !st.computed { pad_msg(st); st.computed = true; }
         let mut rs: ~[u8] = ~[];
-        for vec::each(st.h) |hpart| {
+        for vec::each_mut(st.h) |ptr_hpart| {
+            let hpart = *ptr_hpart;
             let a = (hpart >> 24u32 & 0xFFu32) as u8;
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
             let c = (hpart >> 8u32 & 0xFFu32) as u8;
