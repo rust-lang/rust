@@ -182,16 +182,9 @@ impl<T: send> &mutex_arc<T> {
         do (&state.lock).lock_cond |cond| {
             check_poison(true, state.failed);
             let _z = poison_on_fail(&mut state.failed);
-            /*
             blk(&mut state.data,
                 &condvar { is_mutex: true, failed: &mut state.failed,
                            cond: cond })
-            */
-            // FIXME(#2282) region variance
-            let fref =
-                unsafe { unsafe::transmute_mut_region(&mut state.failed) };
-            let cvar = condvar { is_mutex: true, failed: fref, cond: cond };
-            blk(&mut state.data, unsafe { unsafe::transmute_region(&cvar) } )
         }
     }
 }
@@ -302,17 +295,9 @@ impl<T: const send> &rw_arc<T> {
         do borrow_rwlock(state).write_cond |cond| {
             check_poison(false, state.failed);
             let _z = poison_on_fail(&mut state.failed);
-            /*
             blk(&mut state.data,
                 &condvar { is_mutex: false, failed: &mut state.failed,
                            cond: cond })
-            */
-            // FIXME(#2282): Need region variance to use the commented-out
-            // code above instead of this casting mess
-            let fref =
-                unsafe { unsafe::transmute_mut_region(&mut state.failed) };
-            let cvar = condvar { is_mutex: false, failed: fref, cond: cond };
-            blk(&mut state.data, unsafe { unsafe::transmute_region(&cvar) } )
         }
     }
     /**
@@ -353,11 +338,8 @@ impl<T: const send> &rw_arc<T> {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write_downgrade |write_mode| {
             check_poison(false, state.failed);
-            // FIXME(#2282) need region variance to avoid having to cast here
-            let (data,failed) =
-                unsafe { (unsafe::transmute_mut_region(&mut state.data),
-                          unsafe::transmute_mut_region(&mut state.failed)) };
-            blk(rw_write_mode((data, write_mode, poison_on_fail(failed))))
+            blk(rw_write_mode((&mut state.data, write_mode,
+                               poison_on_fail(&mut state.failed))))
         }
     }
 
@@ -401,8 +383,8 @@ fn unwrap_rw_arc<T: const send>(+arc: rw_arc<T>) -> T {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T: const send>(state: &mut rw_arc_inner<T>) -> &rwlock {
-    unsafe { unsafe::reinterpret_cast(&state.lock) }
+fn borrow_rwlock<T: const send>(state: &r/mut rw_arc_inner<T>) -> &r/rwlock {
+    unsafe { unsafe::transmute_immut(&mut state.lock) }
 }
 
 // FIXME (#3154) ice with struct/&<T> prevents these from being structs.
@@ -418,9 +400,7 @@ impl<T: const send> &rw_write_mode<T> {
     fn write<U>(blk: fn(x: &mut T) -> U) -> U {
         match *self {
             rw_write_mode((data, ref token, _)) => {
-                // FIXME(#2282) cast to avoid region invariance
-                let mode = unsafe { unsafe::transmute_region(token) };
-                do mode.write {
+                do token.write {
                     blk(data)
                 }
             }
@@ -430,13 +410,10 @@ impl<T: const send> &rw_write_mode<T> {
     fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/condvar) -> U) -> U {
         match *self {
             rw_write_mode((data, ref token, ref poison)) => {
-                // FIXME(#2282) cast to avoid region invariance
-                let mode = unsafe { unsafe::transmute_region(token) };
-                do mode.write_cond |cond| {
+                do token.write_cond |cond| {
                     let cvar = condvar {
                         is_mutex: false, failed: poison.failed,
-                        cond: unsafe { unsafe::reinterpret_cast(cond) } };
-                    // FIXME(#2282) region variance would avoid having to cast
+                        cond: cond };
                     blk(data, &cvar)
                 }
             }
@@ -449,9 +426,7 @@ impl<T: const send> &rw_read_mode<T> {
     fn read<U>(blk: fn(x: &T) -> U) -> U {
         match *self {
             rw_read_mode((data, ref token)) => {
-                // FIXME(#2282) cast to avoid region invariance
-                let mode = unsafe { unsafe::transmute_region(token) };
-                do mode.read { blk(data) }
+                do token.read { blk(data) }
             }
         }
     }
@@ -593,9 +568,7 @@ mod tests {
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.write_downgrade |write_mode| {
-                // FIXME(#2282)
-                let mode = unsafe { unsafe::transmute_region(&write_mode) };
-                do mode.write |one| {
+                do (&write_mode).write |one| {
                     assert *one == 2;
                 }
             }
@@ -637,9 +610,7 @@ mod tests {
         do task::try {
             do arc2.write_downgrade |write_mode| {
                 let read_mode = arc2.downgrade(write_mode);
-                // FIXME(#2282)
-                let mode = unsafe { unsafe::transmute_region(&read_mode) };
-                do mode.read |one| {
+                do (&read_mode).read |one| {
                     assert *one == 2;
                 }
             }
@@ -728,9 +699,7 @@ mod tests {
 
         // Downgrader (us)
         do arc.write_downgrade |write_mode| {
-            // FIXME(#2282)
-            let mode = unsafe { unsafe::transmute_region(&write_mode) };
-            do mode.write_cond |state, cond| {
+            do (&write_mode).write_cond |state, cond| {
                 wc1.send(()); // send to another writer who will wake us up
                 while *state == 0 {
                     cond.wait();
@@ -745,9 +714,7 @@ mod tests {
                 }
             }
             let read_mode = arc.downgrade(write_mode);
-            // FIXME(#2282)
-            let mode = unsafe { unsafe::transmute_region(&read_mode) };
-            do mode.read |state| {
+            do (&read_mode).read |state| {
                 // complete handshake with other readers
                 for vec::each(reader_convos) |x| {
                     match x {

@@ -998,16 +998,12 @@ mod tests {
             write => x.write(blk),
             downgrade =>
                 do x.write_downgrade |mode| {
-                    // FIXME(#2282)
-                    let mode = unsafe { unsafe::transmute_region(&mode) };
-                    mode.write(blk);
+                    (&mode).write(blk);
                 },
             downgrade_read =>
                 do x.write_downgrade |mode| {
                     let mode = x.downgrade(mode);
-                    // FIXME(#2282)
-                    let mode = unsafe { unsafe::transmute_region(&mode) };
-                    mode.read(blk);
+                    (&mode).read(blk);
                 },
         }
     }
@@ -1152,9 +1148,7 @@ mod tests {
         fn lock_cond(x: &rwlock, downgrade: bool, blk: fn(c: &condvar)) {
             if downgrade {
                 do x.write_downgrade |mode| {
-                    // FIXME(#2282)
-                    let mode = unsafe { unsafe::transmute_region(&mode) };
-                    mode.write_cond(blk)
+                    (&mode).write_cond(blk)
                 }
             } else {
                 x.write_cond(blk)
