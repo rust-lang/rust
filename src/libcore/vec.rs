@@ -510,11 +510,36 @@ fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +T)) unsafe {
 /// Remove the last element from a vector and return it
 fn pop<T>(&v: ~[const T]) -> T {
     let ln = len(v);
-    assert ln > 0u;
+    if ln == 0 {
+        fail ~"sorry, cannot vec::pop an empty vector"
+    }
     let valptr = ptr::mut_addr_of(v[ln - 1u]);
     unsafe {
         let val <- *valptr;
         unsafe::set_len(v, ln - 1u);
+        val
+    }
+}
+
+/**
+ * Remove an element from anywhere in the vector and return it, replacing it
+ * with the last element. This does not preserve ordering, but is O(1).
+ *
+ * Fails if index >= length.
+ */
+fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
+    let ln = len(v);
+    if index >= ln {
+        fail #fmt("vec::swap_remove - index %u >= length %u", index, ln);
+    }
+    let lastptr = ptr::mut_addr_of(v[ln - 1]);
+    unsafe {
+        let mut val <- *lastptr;
+        if index < ln - 1 {
+            let valptr = ptr::mut_addr_of(v[index]);
+            *valptr <-> val;
+        }
+        unsafe::set_len(v, ln - 1);
         val
     }
 }
@@ -1933,6 +1958,34 @@ mod tests {
         assert (v[2] == 3);
         assert (v[3] == 4);
         assert (e == 5);
+    }
+
+    #[test]
+    fn test_swap_remove() {
+        let mut v = ~[1, 2, 3, 4, 5];
+        let mut e = swap_remove(v, 0);
+        assert (len(v) == 4);
+        assert e == 1;
+        assert (v[0] == 5);
+        e = swap_remove(v, 3);
+        assert (len(v) == 3);
+        assert e == 4;
+        assert (v[0] == 5);
+        assert (v[1] == 2);
+        assert (v[2] == 3);
+    }
+
+    #[test]
+    fn test_swap_remove_noncopyable() {
+        // Tests that we don't accidentally run destructors twice.
+        let mut v = ~[::unsafe::exclusive(()), ::unsafe::exclusive(()),
+                      ::unsafe::exclusive(())];
+        let mut _e = swap_remove(v, 0);
+        assert (len(v) == 2);
+        _e = swap_remove(v, 1);
+        assert (len(v) == 1);
+        _e = swap_remove(v, 0);
+        assert (len(v) == 0);
     }
 
     #[test]
