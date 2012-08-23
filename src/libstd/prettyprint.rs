@@ -63,7 +63,7 @@ impl Writer: serializer {
         self.write_str(fmt!{"%?_f32", v});
     }
 
-    fn emit_str(v: ~str) {
+    fn emit_str(v: &str) {
         self.write_str(fmt!{"%?", v});
     }
 

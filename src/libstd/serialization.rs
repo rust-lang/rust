@@ -23,7 +23,7 @@ trait serializer {
     fn emit_float(v: float);
     fn emit_f64(v: f64);
     fn emit_f32(v: f32);
-    fn emit_str(v: ~str);
+    fn emit_str(v: &str);
 
     // Compound types:
     fn emit_enum(name: ~str, f: fn());
@@ -65,17 +65,17 @@ trait deserializer {
     fn read_float() -> float;
 
     // Compound types:
-    fn read_enum<T:copy>(name: ~str, f: fn() -> T) -> T;
-    fn read_enum_variant<T:copy>(f: fn(uint) -> T) -> T;
-    fn read_enum_variant_arg<T:copy>(idx: uint, f: fn() -> T) -> T;
-    fn read_vec<T:copy>(f: fn(uint) -> T) -> T;
-    fn read_vec_elt<T:copy>(idx: uint, f: fn() -> T) -> T;
-    fn read_box<T:copy>(f: fn() -> T) -> T;
-    fn read_uniq<T:copy>(f: fn() -> T) -> T;
-    fn read_rec<T:copy>(f: fn() -> T) -> T;
-    fn read_rec_field<T:copy>(f_name: ~str, f_idx: uint, f: fn() -> T) -> T;
-    fn read_tup<T:copy>(sz: uint, f: fn() -> T) -> T;
-    fn read_tup_elt<T:copy>(idx: uint, f: fn() -> T) -> T;
+    fn read_enum<T>(name: ~str, f: fn() -> T) -> T;
+    fn read_enum_variant<T>(f: fn(uint) -> T) -> T;
+    fn read_enum_variant_arg<T>(idx: uint, f: fn() -> T) -> T;
+    fn read_vec<T>(f: fn(uint) -> T) -> T;
+    fn read_vec_elt<T>(idx: uint, f: fn() -> T) -> T;
+    fn read_box<T>(f: fn() -> T) -> T;
+    fn read_uniq<T>(f: fn() -> T) -> T;
+    fn read_rec<T>(f: fn() -> T) -> T;
+    fn read_rec_field<T>(f_name: ~str, f_idx: uint, f: fn() -> T) -> T;
+    fn read_tup<T>(sz: uint, f: fn() -> T) -> T;
+    fn read_tup_elt<T>(idx: uint, f: fn() -> T) -> T;
 }
 
 // ___________________________________________________________________________
@@ -201,7 +201,7 @@ fn deserialize_i64<D: deserializer>(d: D) -> i64 {
     d.read_i64()
 }
 
-fn serialize_str<S: serializer>(s: S, v: ~str) {
+fn serialize_str<S: serializer>(s: S, v: &str) {
     s.emit_str(v);
 }
 
