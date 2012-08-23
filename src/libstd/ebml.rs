@@ -285,13 +285,7 @@ impl writer {
     }
 
     fn wr_tagged_str(tag_id: uint, v: ~str) {
-        // Lame: can't use str::as_bytes() here because the resulting
-        // vector is NULL-terminated.  Annoyingly, the underlying
-        // writer interface doesn't permit us to write a slice of a
-        // vector.  We need first-class slices, I think.
-
-        // str::as_bytes(v) {|b| self.wr_tagged_bytes(tag_id, b); }
-        self.wr_tagged_bytes(tag_id, str::bytes(v));
+        str::byte_slice(v, |b| self.wr_tagged_bytes(tag_id, b));
     }
 
     fn wr_bytes(b: &[u8]) {
