@@ -803,7 +803,6 @@ fn make_pattern_bindings(bcx: block, phi_bindings: phi_bindings_list)
                     copy_val(bcx, INIT, allocation,
                              load_if_immediate(bcx, phi_val, ty), ty)
                 } else {
-                    error!("moving out");
                     move_val(bcx, INIT, allocation,
                              {bcx: bcx, val: phi_val, kind: lv_owned}, ty)
                 };
