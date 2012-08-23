@@ -3,7 +3,7 @@
 fn f() -> int {
     // Make sure typestate doesn't interpreturn this match expression
     // as the function result
-    match check true { true => { } };
+   match true { true => { } _ => {} };
 }
 
 fn main() { }

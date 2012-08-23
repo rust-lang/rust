@@ -1,7 +1,7 @@
 // Issue #53
 
 fn main() {
-    match check ~"test" { ~"not-test" => fail, ~"test" => (), _ => fail }
+    match ~"test" { ~"not-test" => fail, ~"test" => (), _ => fail }
 
     enum t { tag1(~str), tag2, }
 
@@ -13,9 +13,9 @@ fn main() {
       _ => fail
     }
 
-    let x = match check ~"a" { ~"a" => 1, ~"b" => 2 };
+    let x = match ~"a" { ~"a" => 1, ~"b" => 2, _ => fail };
     assert (x == 1);
 
-    match check ~"a" { ~"a" => { } ~"b" => { } }
+    match ~"a" { ~"a" => { } ~"b" => { }, _ => fail }
 
 }

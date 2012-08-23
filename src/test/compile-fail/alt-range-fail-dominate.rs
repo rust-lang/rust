@@ -5,28 +5,33 @@
 //error-pattern: unreachable
 
 fn main() {
-    match check 5u {
+    match 5u {
       1u to 10u => { }
       5u to 6u => { }
+      _ => {}
     };
 
-    match check 5u {
+    match 5u {
       3u to 6u => { }
       4u to 6u => { }
+      _ => {}
     };
 
-    match check 5u {
+    match 5u {
       4u to 6u => { }
       4u to 6u => { }
+      _ => {}
     };
 
-    match check 'c' {
+    match 'c' {
       'A' to 'z' => {}
       'a' to 'z' => {}
+      _ => {}
     };
 
-    match check 1.0 {
+    match 1.0 {
       0.01 to 6.5 => {}
       0.02 => {}
+      _ => {}
     };
 }
