@@ -527,11 +527,13 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_mac({node: ast::mac_invoc_tt(pth, tts), _}) => {
         print_path(s, pth, false);
-        head(s, ~"! ");
+        word(s.s, ~"! ");
         print_ident(s, item.ident);
-        bopen(s);
+        cbox(s, indent_unit);
+        popen(s);
         for tts.each |tt| { print_tt(s, tt);  }
-        bclose(s, item.span);
+        pclose(s);
+        end(s);
       }
       ast::item_mac(_) => {
         fail ~"invalid item-position syntax bit"
@@ -931,10 +933,10 @@ fn print_mac(s: ps, m: ast::mac) {
       }
       ast::mac_invoc_tt(pth, tts) => {
         print_path(s, pth, false);
-        head(s, ~"!");
-        bopen(s);
+        word(s.s, ~"!");
+        popen(s);
         for tts.each() |tt| { print_tt(s, tt); }
-        bclose(s, m.span);
+        pclose(s);
       }
       ast::mac_ellipsis => word(s.s, ~"..."),
       ast::mac_var(v) => word(s.s, fmt!("$%u", v)),
