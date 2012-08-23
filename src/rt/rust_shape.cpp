@@ -394,7 +394,8 @@ log::walk_string2(const std::pair<ptr,ptr> &data) {
             if (isprint(ch)) {
                 out << ch;
             } else if (ch) {
-                out << "\\x" << std::setw(2) << std::setfill('0') << (int)ch;
+                out << "\\x" << std::setw(2) << std::setfill('0')
+                    << (unsigned int)(unsigned char)ch;
             }
         }
         ++subdp;
