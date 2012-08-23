@@ -8,7 +8,7 @@
 import double_buffer::client::*;
 import double_buffer::give_buffer;
 
-macro_rules! select_if {
+macro_rules! select_if (
     {
         $index:expr,
         $count:expr,
@@ -48,9 +48,9 @@ macro_rules! select_if {
     } => {
         fail
     }
-}
+)
 
-macro_rules! select {
+macro_rules! select (
     {
         $( $port:path => {
             $($message:path$(($($x: ident),+))dont_type_this*
@@ -62,7 +62,7 @@ macro_rules! select {
             $($message$(($($x),+))dont_type_this* -> $next $e),+
         ], )+)
     }
-}
+)
 
 // Types and protocols
 struct Buffer {

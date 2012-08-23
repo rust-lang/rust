@@ -5,8 +5,8 @@ fn main() {
 
     assert (trivial!() == 16);
 
-    macro_rules! trivial_tt{
+    macro_rules! trivial_tt(
         {} => {1*2*4*2*1}
-    }
+    )
     assert(trivial_tt!() == 16);
 }

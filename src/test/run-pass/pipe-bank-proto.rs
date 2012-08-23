@@ -32,9 +32,9 @@ proto! bank {
     }
 }
 
-macro_rules! move_it {
+macro_rules! move_it (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
-}
+)
 
 fn switch<T: send, U>(+endp: pipes::recv_packet<T>,
                       f: fn(+option<T>) -> U) -> U {
@@ -43,7 +43,7 @@ fn switch<T: send, U>(+endp: pipes::recv_packet<T>,
 
 fn move_it<T>(-x: T) -> T { x }
 
-macro_rules! follow {
+macro_rules! follow (
     {
         $($message:path$(($($x: ident),+))||* -> $next:ident $e:expr)+
     } => (
@@ -54,7 +54,7 @@ macro_rules! follow {
           _ => { fail }
         }
     );
-}
+)
 
 fn client_follow(+bank: bank::client::login) {
     import bank::*;
