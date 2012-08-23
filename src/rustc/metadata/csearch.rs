@@ -8,6 +8,7 @@ import middle::ty;
 import option::{some, none};
 import syntax::diagnostic::span_handler;
 import syntax::diagnostic::expect;
+import ast_util::dummy_sp;
 import common::*;
 import std::map::hashmap;
 import dvec::{DVec, dvec};
@@ -19,7 +20,6 @@ export get_class_method;
 export get_field_type;
 export get_type_param_count;
 export get_region_param;
-export lookup_method_purity;
 export get_enum_variants;
 export get_impls_for_mod;
 export get_trait_methods;
@@ -40,14 +40,6 @@ fn get_symbol(cstore: cstore::cstore, def: ast::def_id) -> ~str {
 fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
     let cdata = cstore::get_crate_data(cstore, def.crate).data;
     return decoder::get_type_param_count(cdata, def.node);
-}
-
-fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
-    -> ast::purity {
-    let cdata = cstore::get_crate_data(cstore, did.crate).data;
-    match check decoder::lookup_def(did.crate, cdata, did) {
-      ast::def_fn(_, p) => p
-    }
 }
 
 /// Iterates over all the paths in the given crate.
