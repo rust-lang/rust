@@ -59,9 +59,10 @@ mod linear {
             buckets: vec::from_fn(initial_capacity, |_i| none)})
     }
 
-    priv impl<K, V> &const LinearMap<K,V> {
+    priv impl<K, V> LinearMap<K,V> {
         #[inline(always)]
-        pure fn to_bucket(h: uint) -> uint {
+        pure fn to_bucket(&const self,
+                          h: uint) -> uint {
             // FIXME(#3041) borrow a more sophisticated technique here from
             // Gecko, for example borrowing from Knuth, as Eich so
             // colorfully argues for here:
@@ -70,7 +71,9 @@ mod linear {
         }
 
         #[inline(always)]
-        pure fn next_bucket(idx: uint, len_buckets: uint) -> uint {
+        pure fn next_bucket(&const self,
+                            idx: uint,
+                            len_buckets: uint) -> uint {
             let n = (idx + 1) % len_buckets;
             unsafe{ // argh. log not considered pure.
                 debug!{"next_bucket(%?, %?) = %?", idx, len_buckets, n};
@@ -79,7 +82,9 @@ mod linear {
         }
 
         #[inline(always)]
-        pure fn bucket_sequence(hash: uint, op: fn(uint) -> bool) -> uint {
+        pure fn bucket_sequence(&const self,
+                                hash: uint,
+                                op: fn(uint) -> bool) -> uint {
             let start_idx = self.to_bucket(hash);
             let len_buckets = self.buckets.len();
             let mut idx = start_idx;
@@ -95,20 +100,18 @@ mod linear {
         }
 
         #[inline(always)]
-        pure fn bucket_for_key(
-            buckets: &[option<Bucket<K,V>>],
-            k: &K) -> SearchResult {
-
+        pure fn bucket_for_key(&const self,
+                               buckets: &[option<Bucket<K,V>>],
+                               k: &K) -> SearchResult {
             let hash = self.hashfn(k);
             self.bucket_for_key_with_hash(buckets, hash, k)
         }
 
         #[inline(always)]
-        pure fn bucket_for_key_with_hash(
-            buckets: &[option<Bucket<K,V>>],
-            hash: uint,
-            k: &K) -> SearchResult {
-
+        pure fn bucket_for_key_with_hash(&const self,
+                                         buckets: &[option<Bucket<K,V>>],
+                                         hash: uint,
+                                         k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match buckets[i] {
                   some(bkt) => if bkt.hash == hash && self.eqfn(k, &bkt.key) {
@@ -119,12 +122,10 @@ mod linear {
             };
             return TableFull;
         }
-    }
 
-    priv impl<K,V> &mut LinearMap<K,V> {
         /// Expands the capacity of the array and re-inserts each
         /// of the existing buckets.
-        fn expand() {
+        fn expand(&mut self) {
             let old_capacity = self.buckets.len();
             let new_capacity = old_capacity * 2;
             self.resize_at = ((new_capacity as float) * 3.0 / 4.0) as uint;
@@ -141,7 +142,7 @@ mod linear {
             }
         }
 
-        fn insert_bucket(+bucket: option<Bucket<K,V>>) {
+        fn insert_bucket(&mut self, +bucket: option<Bucket<K,V>>) {
             let {hash, key, value} <- option::unwrap(bucket);
             let _ = self.insert_internal(hash, key, value);
         }
@@ -149,7 +150,7 @@ mod linear {
         /// Inserts the key value pair into the buckets.
         /// Assumes that there will be a bucket.
         /// True if there was no previous entry with that key
-        fn insert_internal(hash: uint, +k: K, +v: V) -> bool {
+        fn insert_internal(&mut self, hash: uint, +k: K, +v: V) -> bool {
             match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
               TableFull => {fail ~"Internal logic error";}
               FoundHole(idx) => {
@@ -167,10 +168,16 @@ mod linear {
               }
             }
         }
+
+        fn search(&self,
+                  hash: uint,
+                  op: fn(x: &option<Bucket<K,V>>) -> bool) {
+            let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
+        }
     }
 
-    impl<K,V> &mut LinearMap<K,V> {
-        fn insert(+k: K, +v: V) -> bool {
+    impl<K,V> LinearMap<K,V> {
+        fn insert(&mut self, +k: K, +v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
                 // that we do not resize if this call to insert is
@@ -185,7 +192,7 @@ mod linear {
             self.insert_internal(hash, k, v)
         }
 
-        fn remove(k: &K) -> bool {
+        fn remove(&mut self, k: &K) -> bool {
             // Removing from an open-addressed hashtable
             // is, well, painful.  The problem is that
             // the entry may lie on the probe path for other
@@ -223,69 +230,33 @@ mod linear {
             return true;
         }
 
-        fn clear() {
+        fn clear(&mut self) {
             for uint::range(0, self.buckets.len()) |idx| {
                 self.buckets[idx] = none;
             }
             self.size = 0;
         }
-    }
 
-    priv impl<K,V> &LinearMap<K,V> {
-        fn search(hash: uint, op: fn(x: &option<Bucket<K,V>>) -> bool) {
-            let _ = self.bucket_sequence(hash, |i| op(&self.buckets[i]));
-        }
-    }
-
-    impl<K,V> &const LinearMap<K,V> {
-        pure fn len() -> uint {
+        pure fn len(&const self) -> uint {
             self.size
         }
 
-        pure fn is_empty() -> bool {
+        pure fn is_empty(&const self) -> bool {
             self.len() == 0
         }
 
-        fn contains_key(k: &K) -> bool {
+        fn contains_key(&const self,
+                        k: &K) -> bool {
             match self.bucket_for_key(self.buckets, k) {
               FoundEntry(_) => {true}
               TableFull | FoundHole(_) => {false}
             }
         }
-    }
 
-    impl<K,V: copy> &const LinearMap<K,V> {
-        fn find(k: &K) -> option<V> {
-            match self.bucket_for_key(self.buckets, k) {
-              FoundEntry(idx) => {
-                match self.buckets[idx] {
-                  some(bkt) => {some(copy bkt.value)}
-                  // FIXME (#3148): Will be able to get rid of this when we
-                  // redefine SearchResult
-                  none      => fail ~"LinearMap::find: internal logic error"
-                }
-              }
-              TableFull | FoundHole(_) => {
-                none
-              }
-            }
-        }
-
-        fn get(k: &K) -> V {
-            let value = self.find(k);
-            if value.is_none() {
-                fail fmt!{"No entry found for key: %?", k};
-            }
-            option::unwrap(value)
-        }
-
-    }
-
-    impl<K,V> &LinearMap<K,V> {
         /*
         FIXME(#3148)--region inference fails to capture needed deps
 
-        fn find_ref(k: &K) -> option<&self/V> {
+        fn find_ref(&self, k: &K) -> option<&self/V> {
             match self.bucket_for_key(self.buckets, k) {
               FoundEntry(idx) => {
                 match check self.buckets[idx] {
@@ -299,7 +270,7 @@ mod linear {
         }
         */
 
-        fn each_ref(blk: fn(k: &K, v: &V) -> bool) {
+        fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
                 let mut broke = false;
                 do slot.iter |bucket| {
@@ -310,26 +281,52 @@ mod linear {
                 if broke { break; }
             }
         }
-        fn each_key_ref(blk: fn(k: &K) -> bool) {
+
+        fn each_key_ref(&self, blk: fn(k: &K) -> bool) {
             self.each_ref(|k, _v| blk(k))
         }
-        fn each_value_ref(blk: fn(v: &V) -> bool) {
+
+        fn each_value_ref(&self, blk: fn(v: &V) -> bool) {
             self.each_ref(|_k, v| blk(v))
         }
     }
 
-    impl<K: copy, V: copy> &LinearMap<K,V> {
-        fn each(blk: fn(+K,+V) -> bool) {
+    impl<K,V: copy> LinearMap<K,V> {
+        fn find(&const self, k: &K) -> option<V> {
+            match self.bucket_for_key(self.buckets, k) {
+              FoundEntry(idx) => {
+                match check self.buckets[idx] {
+                  some(bkt) => {some(copy bkt.value)}
+                }
+              }
+              TableFull | FoundHole(_) => {
+                none
+              }
+            }
+        }
+
+        fn get(&const self, k: &K) -> V {
+            let value = self.find(k);
+            if value.is_none() {
+                fail fmt!{"No entry found for key: %?", k};
+            }
+            option::unwrap(value)
+        }
+
+    }
+
+    impl<K: copy, V: copy> LinearMap<K,V> {
+        fn each(&self, blk: fn(+K,+V) -> bool) {
             self.each_ref(|k,v| blk(copy *k, copy *v));
         }
     }
-    impl<K: copy, V> &LinearMap<K,V> {
-        fn each_key(blk: fn(+K) -> bool) {
+    impl<K: copy, V> LinearMap<K,V> {
+        fn each_key(&self, blk: fn(+K) -> bool) {
             self.each_key_ref(|k| blk(copy *k));
         }
     }
-    impl<K, V: copy> &LinearMap<K,V> {
-        fn each_value(blk: fn(+V) -> bool) {
+    impl<K, V: copy> LinearMap<K,V> {
+        fn each_value(&self, blk: fn(+V) -> bool) {
             self.each_value_ref(|v| blk(copy *v));
         }
     }
