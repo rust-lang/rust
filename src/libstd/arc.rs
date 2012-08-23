@@ -13,8 +13,9 @@ import sync;
 import sync::{mutex, mutex_with_condvars, rwlock, rwlock_with_condvars};
 
 export arc, clone, get;
-export condvar, mutex_arc, mutex_arc_with_condvars;
+export condvar, mutex_arc, mutex_arc_with_condvars, unwrap_mutex_arc;
 export rw_arc, rw_arc_with_condvars, rw_write_mode, rw_read_mode;
+export unwrap_rw_arc;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
 struct condvar { is_mutex: bool; failed: &mut bool; cond: &sync::condvar; }
