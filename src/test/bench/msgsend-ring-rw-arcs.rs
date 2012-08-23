@@ -25,7 +25,6 @@ fn send(p: &pipe, msg: uint) {
 fn recv(p: &pipe) -> uint {
     do p.write_cond |state, cond| {
         while vec::is_empty(*state) {
-            error!("have to wait");
             cond.wait();
         }
         vec::pop(*state)
