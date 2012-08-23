@@ -990,15 +990,10 @@ struct parser {
             /* `!`, as an operator, is prefix, so we know this isn't that */
             if self.token == token::NOT {
                 self.bump();
-                let tts = match self.token {
-                  token::LPAREN | token::LBRACE | token::LBRACKET => {
-                    let ket = token::flip_delimiter(self.token);
-                    self.parse_unspanned_seq(copy self.token, ket,
-                                             seq_sep_none(),
-                                             |p| p.parse_token_tree())
-                  }
-                  _ => self.fatal(~"expected open delimiter")
-                };
+                let tts = self.parse_unspanned_seq(
+                    token::LPAREN, token::RPAREN, seq_sep_none(),
+                    |p| p.parse_token_tree());
+
                 let hi = self.span.hi;
 
                 return pexpr(self.mk_mac_expr(
@@ -3254,15 +3249,9 @@ struct parser {
             let pth = self.parse_path_without_tps();
             self.expect(token::NOT);
             let id = self.parse_ident();
-            let tts = match self.token {
-              token::LPAREN | token::LBRACE | token::LBRACKET => {
-                let ket = token::flip_delimiter(self.token);
-                self.parse_unspanned_seq(copy self.token, ket,
-                                         seq_sep_none(),
-                                         |p| p.parse_token_tree())
-              }
-              _ => self.fatal(~"expected open delimiter")
-            };
+            let tts = self.parse_unspanned_seq(
+                token::LPAREN, token::RPAREN, seq_sep_none(),
+                |p| p.parse_token_tree());
             let m = ast::mac_invoc_tt(pth, tts);
             let m: ast::mac = {node: m,
                                span: {lo: self.span.lo,
