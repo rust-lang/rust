@@ -5,7 +5,7 @@
 
 // Tests for match as expressions resulting in structural types
 fn test_rec() {
-    let rs = match check true { true => { {i: 100} } };
+    let rs = match true { true => {i: 100}, _ => fail };
     assert (rs == {i: 100});
 }
 

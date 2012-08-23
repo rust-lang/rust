@@ -5,7 +5,7 @@
 type compare<T> = fn@(@T, @T) -> bool;
 
 fn test_generic<T>(expected: @T, eq: compare<T>) {
-    let actual: @T = match check true { true => { expected } };
+    let actual: @T = match true { true => { expected }, _ => fail };
     assert (eq(expected, actual));
 }
 

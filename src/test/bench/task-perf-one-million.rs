@@ -19,26 +19,29 @@ fn calc(children: uint, parent_ch: comm::Chan<msg>) {
     }
 
     for iter::repeat (children) {
-        match check comm::recv(port) {
+        match comm::recv(port) {
           ready(child_ch) => {
             vec::push(child_chs, child_ch);
           }
+          _ => fail ~"task-perf-one-million failed (port not ready)"
         }
     }
 
     comm::send(parent_ch, ready(chan));
 
-    match check comm::recv(port) {
+    match comm::recv(port) {
         start => {
           do vec::iter (child_chs) |child_ch| {
               comm::send(child_ch, start);
           }
         }
+        _ => fail ~"task-perf-one-million failed (port not in start state)"
     }
 
     for iter::repeat (children) {
-        match check comm::recv(port) {
+        match comm::recv(port) {
           done(child_sum) => { sum += child_sum; }
+          _ => fail ~"task-perf-one-million failed (port not done)"
         }
     }
 
@@ -60,13 +63,15 @@ fn main(args: ~[~str]) {
     do task::spawn {
         calc(children, chan);
     };
-    match check comm::recv(port) {
+    match comm::recv(port) {
       ready(chan) => {
         comm::send(chan, start);
       }
+      _ => fail ~"task-perf-one-million failed (port not ready)"
     }
-    let sum = match check comm::recv(port) {
+    let sum = match comm::recv(port) {
       done(sum) => { sum }
+      _ => fail ~"task-perf-one-million failed (port not done)"
     };
     error!("How many tasks? %d tasks.", sum);
 }
