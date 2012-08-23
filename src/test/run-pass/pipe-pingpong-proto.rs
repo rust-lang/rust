@@ -2,7 +2,7 @@
 
 // xfail-pretty
 
-proto! pingpong {
+proto! pingpong (
     ping:send {
         ping -> pong
     }
@@ -10,7 +10,7 @@ proto! pingpong {
     pong:recv {
         pong -> ping
     }
-}
+)
 
 mod test {
     import pipes::recv;

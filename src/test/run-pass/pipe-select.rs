@@ -7,17 +7,17 @@ import std::uv;
 
 import pipes::{recv, select};
 
-proto! oneshot {
+proto! oneshot (
     waiting:send {
         signal -> !
     }
-}
+)
 
-proto! stream {
+proto! stream (
     stream:send<T:send> {
         send(T) -> stream<T>
     }
-}
+)
 
 fn main() {
     import oneshot::client::*;

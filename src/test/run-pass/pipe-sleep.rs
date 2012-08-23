@@ -5,11 +5,11 @@ import std::timer::sleep;
 import std::uv;
 import pipes::recv;
 
-proto! oneshot {
+proto! oneshot (
     waiting:send {
         signal -> !
     }
-}
+)
 
 fn main() {
     import oneshot::client::*;

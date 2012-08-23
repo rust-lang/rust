@@ -9,11 +9,11 @@ import std::uv;
 
 import pipes::{try_recv, recv};
 
-proto! oneshot {
+proto! oneshot (
     waiting:send {
         signal -> !
     }
-}
+)
 
 fn main() {
     let iotask = uv::global_loop::get();

@@ -142,7 +142,7 @@ mod map_reduce {
     }
 
 
-    proto! ctrl_proto {
+    proto! ctrl_proto (
         open: send<K: copy send, V: copy send> {
             find_reducer(K) -> reducer_response<K, V>,
             mapper_done -> !
@@ -151,7 +151,7 @@ mod map_reduce {
         reducer_response: recv<K: copy send, V: copy send> {
             reducer(Chan<reduce_proto<V>>) -> open<K, V>
         }
-    }
+    )
 
     enum reduce_proto<V: copy send> { emit_val(V), done, addref, release }
 

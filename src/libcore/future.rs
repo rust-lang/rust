@@ -134,11 +134,11 @@ fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
     blk(v)
 }
 
-proto! future_pipe {
+proto! future_pipe (
     waiting:recv<T:send> {
         completed(T) -> !
     }
-}
+)
 
 #[test]
 fn test_from_value() {

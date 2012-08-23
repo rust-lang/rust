@@ -7,14 +7,14 @@ directions they can flow at any given point are determined by a
 protocol. Below is an example protocol.
 
 ~~~
-proto! pingpong {
+proto! pingpong (
     ping: send {
         ping -> pong
     }
     pong: recv {
         pong -> ping
     }
-}
+)
 ~~~
 
 The `proto!` syntax extension will convert this into a module called
@@ -893,11 +893,11 @@ fn spawn_service_recv<T: send, Tb: send>(
 
 // Streams - Make pipes a little easier in general.
 
-proto! streamp {
+proto! streamp (
     open:send<T: send> {
         data(T) -> open<T>
     }
-}
+)
 
 /// A trait for things that can send multiple messages.
 trait channel<T: send> {
@@ -1138,11 +1138,11 @@ impl<T: send, U: send, Left: selectable recv<T>, Right: selectable recv<U>>
     }
 }
 
-proto! oneshot {
+proto! oneshot (
     oneshot:send<T:send> {
         send(T) -> !
     }
-}
+)
 
 /// The send end of a oneshot pipe.
 type chan_one<T: send> = oneshot::client::oneshot<T>;

@@ -1,13 +1,13 @@
 // xfail-pretty
 
 // Protocols
-proto! foo {
+proto! foo (
     foo:recv {
         do_foo -> foo
     }
-}
+)
 
-proto! bar {
+proto! bar (
     bar:recv {
         do_bar(int) -> barbar,
         do_baz(bool) -> bazbar,
@@ -20,7 +20,7 @@ proto! bar {
     bazbar:send {
         rebazbar -> bar
     }
-}
+)
 
 fn macros() {
     include!("select-macro.rs");

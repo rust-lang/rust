@@ -2,11 +2,11 @@
 //
 // xfail-test
 
-proto! streamp {
+proto! streamp (
     open:send<T: send> {
         data(T) -> open<T>
     }
-}
+)
 
 fn rendezvous() {
     let (c, s) = streamp::init();

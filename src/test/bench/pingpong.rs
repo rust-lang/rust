@@ -7,7 +7,7 @@ use std;
 import pipes::{spawn_service, recv};
 import std::time::precise_time_s;
 
-proto! pingpong {
+proto! pingpong (
     ping: send {
         ping -> pong
     }
@@ -15,9 +15,9 @@ proto! pingpong {
     pong: recv {
         pong -> ping
     }
-}
+)
 
-proto! pingpong_unbounded {
+proto! pingpong_unbounded (
     ping: send {
         ping -> pong
     }
@@ -29,7 +29,7 @@ proto! pingpong_unbounded {
     you_will_never_catch_me: send {
         never_ever_ever -> you_will_never_catch_me
     }
-}
+)
 
 // This stuff should go in libcore::pipes
 macro_rules! move_it (

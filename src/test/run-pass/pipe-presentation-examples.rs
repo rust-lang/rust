@@ -71,7 +71,7 @@ struct Buffer {
     drop { }
 }
 
-proto! double_buffer {
+proto! double_buffer (
     acquire:send {
         request -> wait_buffer
     }
@@ -83,7 +83,7 @@ proto! double_buffer {
     release:send {
         release(Buffer) -> acquire
     }
-}
+)
 
 // Code examples
 fn render(_buffer: &Buffer) {
