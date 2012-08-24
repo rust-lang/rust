@@ -325,8 +325,14 @@ mod special_idents {
 type ident_interner = util::interner::interner<@~str>;
 
 /** Key for thread-local data for sneaking interner information to the
- * serializer/deserializer. It sounds like a hack because it is one. */
-fn interner_key(+_x: @@ident_interner) { }
+ * serializer/deserializer. It sounds like a hack because it is one.
+ * Bonus ultra-hack: functions as keys don't work across crates,
+ * so we have to use a unique number. See taskgroup_key! in task.rs
+ * for another case of this. */
+macro_rules! interner_key (
+    () => (unsafe::transmute::<(uint, uint), &fn(+@@token::ident_interner)>(
+        (-3 as uint, 0u)))
+)
 
 fn mk_ident_interner() -> ident_interner {
     /* the indices here must correspond to the numbers in special_idents */
@@ -343,8 +349,8 @@ fn mk_ident_interner() -> ident_interner {
                                            |x,y| str::eq(*x, *y), init_vec);
 
     /* having multiple interners will just confuse the serializer */
-    unsafe{ assert task::local_data_get(interner_key) == none };
-    unsafe{ task::local_data_set(interner_key, @rv) };
+    unsafe{ assert task::local_data_get(interner_key!()) == none };
+    unsafe{ task::local_data_set(interner_key!(), @rv) };
     rv
 }
 
