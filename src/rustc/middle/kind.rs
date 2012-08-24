@@ -103,7 +103,13 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
-        if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
+        if !is_move {
+            check_copy(cx, id, var_t, sp, is_implicit,
+                       some(("non-copyable value cannot be copied into a \
+                              ~fn closure",
+                             "to copy values into a ~fn closure, use a \
+                              capture clause: `fn~(copy x)` or `|copy x|`")));
+        }
 
         // check that only immutable variables are implicitly copied in
         for fv.each |fv| {
@@ -118,7 +124,13 @@ fn with_appropriate_checker(cx: ctx, id: node_id, b: fn(check_fn)) {
 
         // copied in data must be copyable, but moved in data can be anything
         let is_implicit = fv.is_some();
-        if !is_move { check_copy(cx, id, var_t, sp, is_implicit); }
+        if !is_move {
+            check_copy(cx, id, var_t, sp, is_implicit,
+                       some(("non-copyable value cannot be copied into a \
+                              @fn closure",
+                             "to copy values into a @fn closure, use a \
+                              capture clause: `fn~(copy x)` or `|copy x|`")));
+        }
 
         // check that only immutable variables are implicitly copied in
         for fv.each |fv| {
@@ -207,7 +219,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
 
 fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
     match b.node.expr {
-      some(ex) => maybe_copy(cx, ex),
+      some(ex) => maybe_copy(cx, ex, none),
       _ => ()
     }
     visit::visit_block(b, cx, v);
@@ -247,21 +259,21 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
       expr_assign(_, ex) |
       expr_unary(box(_), ex) | expr_unary(uniq(_), ex) |
       expr_ret(some(ex)) => {
-        maybe_copy(cx, ex);
+        maybe_copy(cx, ex, none);
       }
       expr_cast(source, _) => {
-        maybe_copy(cx, source);
+        maybe_copy(cx, source, none);
         check_cast_for_escaping_regions(cx, source, e);
       }
-      expr_copy(expr) => check_copy_ex(cx, expr, false),
+      expr_copy(expr) => check_copy_ex(cx, expr, false, none),
       // Vector add copies, but not "implicitly"
-      expr_assign_op(_, _, ex) => check_copy_ex(cx, ex, false),
+      expr_assign_op(_, _, ex) => check_copy_ex(cx, ex, false, none),
       expr_binary(add, ls, rs) => {
-        check_copy_ex(cx, ls, false);
-        check_copy_ex(cx, rs, false);
+        check_copy_ex(cx, ls, false, none);
+        check_copy_ex(cx, rs, false, none);
       }
       expr_rec(fields, def) => {
-        for fields.each |field| { maybe_copy(cx, field.node.expr); }
+        for fields.each |field| { maybe_copy(cx, field.node.expr, none); }
         match def {
           some(ex) => {
             // All noncopyable fields must be overridden
@@ -282,13 +294,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         }
       }
       expr_tup(exprs) | expr_vec(exprs, _) => {
-        for exprs.each |expr| { maybe_copy(cx, expr); }
+        for exprs.each |expr| { maybe_copy(cx, expr, none); }
       }
       expr_call(f, args, _) => {
         let mut i = 0u;
         for ty::ty_fn_args(ty::expr_ty(cx.tcx, f)).each |arg_t| {
             match ty::arg_mode(cx.tcx, arg_t) {
-              by_copy => maybe_copy(cx, args[i]),
+              by_copy => maybe_copy(cx, args[i], none),
               by_ref | by_val | by_mutbl_ref | by_move => ()
             }
             i += 1u;
@@ -298,17 +310,17 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         // If this is a method call with a by-val argument, we need
         // to check the copy
         match cx.method_map.find(e.id) {
-          some({self_mode: by_copy, _}) => maybe_copy(cx, lhs),
+          some({self_mode: by_copy, _}) => maybe_copy(cx, lhs, none),
           _ => ()
         }
       }
       expr_repeat(element, count_expr, _) => {
         let count = ty::eval_repeat_count(cx.tcx, count_expr, e.span);
         if count == 1 {
-            maybe_copy(cx, element);
+            maybe_copy(cx, element, none);
         } else {
             let element_ty = ty::expr_ty(cx.tcx, element);
-            check_copy(cx, element.id, element_ty, element.span, true);
+            check_copy(cx, element.id, element_ty, element.span, true, none);
         }
       }
       _ => { }
@@ -321,7 +333,7 @@ fn check_stmt(stmt: @stmt, cx: ctx, v: visit::vt<ctx>) {
       stmt_decl(@{node: decl_local(locals), _}, _) => {
         for locals.each |local| {
             match local.node.init {
-              some({op: init_assign, expr}) => maybe_copy(cx, expr),
+              some({op: init_assign, expr}) => maybe_copy(cx, expr, none),
               _ => {}
             }
         }
@@ -373,8 +385,8 @@ fn check_bounds(cx: ctx, id: node_id, sp: span,
     }
 }
 
-fn maybe_copy(cx: ctx, ex: @expr) {
-    check_copy_ex(cx, ex, true);
+fn maybe_copy(cx: ctx, ex: @expr, why: option<(&str,&str)>) {
+    check_copy_ex(cx, ex, true, why);
 }
 
 fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
@@ -391,7 +403,8 @@ fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
     }
 }
 
-fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool) {
+fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
+                 why: option<(&str,&str)>) {
     if ty::expr_is_lval(cx.method_map, ex) &&
 
         // this is a move
@@ -405,7 +418,7 @@ fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool) {
         !cx.tcx.borrowings.contains_key(ex.id)
     {
         let ty = ty::expr_ty(cx.tcx, ex);
-        check_copy(cx, ex.id, ty, ex.span, implicit_copy);
+        check_copy(cx, ex.id, ty, ex.span, implicit_copy, why);
     }
 }
 
@@ -439,15 +452,21 @@ fn check_imm_free_var(cx: ctx, def: def, sp: span) {
 }
 
 fn check_copy(cx: ctx, id: node_id, ty: ty::t, sp: span,
-              implicit_copy: bool) {
+              implicit_copy: bool, why: option<(&str,&str)>) {
     let k = ty::type_kind(cx.tcx, ty);
     if !ty::kind_can_be_copied(k) {
         cx.tcx.sess.span_err(sp, ~"copying a noncopyable value");
+        do why.map |reason| {
+            cx.tcx.sess.span_note(sp, fmt!("%s", reason.first()));
+        };
     } else if implicit_copy && !ty::kind_can_be_implicitly_copied(k) {
         cx.tcx.sess.span_lint(
             implicit_copies, id, cx.current_item,
             sp,
             ~"implicitly copying a non-implicitly-copyable value");
+        do why.map |reason| {
+            cx.tcx.sess.span_note(sp, fmt!("%s", reason.second()));
+        };
     }
 }
 
