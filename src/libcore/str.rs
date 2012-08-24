@@ -1800,7 +1800,8 @@ mod unsafe {
         return ::unsafe::transmute(v);
     }
 
-    /// Create a Rust string from a *u8 buffer of the given length without copying
+    /// Create a Rust string from a *u8 buffer of the given length
+    /// without copying
     unsafe fn from_buf_len_nocopy(buf: &a / *u8, len: uint) -> &a / str {
         let v = (*buf, len + 1);
         assert is_utf8(::unsafe::reinterpret_cast(v));
