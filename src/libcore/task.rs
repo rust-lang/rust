@@ -366,17 +366,22 @@ impl TaskBuilder {
         }
 
         // Construct the future and give it to the caller.
-        let (ch, po) = stream::<Notification>();
+        let (notify_pipe_ch, notify_pipe_po) = stream::<Notification>();
 
         blk(do future::from_fn {
-            match po.recv() {
+            match notify_pipe_po.recv() {
               Exit(_, result) => result
             }
         });
 
         // Reconfigure self to use a notify channel.
         TaskBuilder({
-            opts: { notify_chan: Some(ch),.. self.opts },
+            opts: {
+                linked: self.opts.linked,
+                supervised: self.opts.supervised,
+                mut notify_chan: Some(notify_pipe_ch),
+                sched: self.opts.sched
+            },
             can_not_copy: None,
             .. *self.consume()
         })
@@ -445,12 +450,14 @@ impl TaskBuilder {
      * must be greater than zero.
      */
     fn spawn(+f: fn~()) {
-        let x = self.consume();
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan == none {
             None
         } else {
-            Some(option::swap_unwrap(&mut self.opts.notify_chan))
+            let swapped_notify_chan =
+                option::swap_unwrap(&mut self.opts.notify_chan);
+            some(swapped_notify_chan)
         };
+        let x = self.consume();
         let opts = {
             linked: x.opts.linked,
             supervised: x.opts.supervised,
@@ -522,7 +529,8 @@ impl TaskBuilder {
         let ch = comm::Chan(po);
         let mut result = None;
 
-        do self.future_result(|+r| { result = Some(r); }).spawn {
+        let fr_task_builder = self.future_result(|+r| { result = Some(r); });
+        do fr_task_builder.spawn {
             comm::send(ch, f());
         }
         match future::get(&option::unwrap(result)) {
