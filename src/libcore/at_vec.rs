@@ -24,9 +24,6 @@ extern mod rusti {
     fn move_val_init<T>(&dst: T, -src: T);
 }
 
-/// A function used to initialize the elements of a vector
-type InitOp<T> = fn(uint) -> T;
-
 /// Returns the number of elements the vector can hold without reallocating
 #[inline(always)]
 pure fn capacity<T>(&&v: @[const T]) -> uint {
@@ -115,7 +112,7 @@ pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pure fn from_fn<T>(n_elts: uint, op: InitOp<T>) -> @[T] {
+pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
