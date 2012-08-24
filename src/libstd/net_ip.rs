@@ -85,9 +85,9 @@ enum ip_get_addr_err {
  * object in the case of failure
  */
 fn get_addr(++node: ~str, iotask: iotask)
-        -> result::result<~[ip_addr], ip_get_addr_err> unsafe {
+        -> result::result<~[ip_addr], ip_get_addr_err> {
     do core::comm::listen |output_ch| {
-        do str::as_buf(node) |node_ptr, len| {
+        do str::as_buf(node) |node_ptr, len| unsafe {
             log(debug, fmt!("slice len %?", len));
             let handle = create_uv_getaddrinfo_t();
             let handle_ptr = ptr::addr_of(handle);
@@ -95,7 +95,7 @@ fn get_addr(++node: ~str, iotask: iotask)
                 output_ch: output_ch
             };
             let handle_data_ptr = ptr::addr_of(handle_data);
-            do interact(iotask) |loop_ptr| {
+            do interact(iotask) |loop_ptr| unsafe {
                 let result = uv_getaddrinfo(
                     loop_ptr,
                     handle_ptr,

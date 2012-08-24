@@ -49,7 +49,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
                                                 task::task().sched_mode
                                                 (task::SingleThreaded)
                                                 .unlinked()
-                                           }) |msg_po| {
+                                           }) |msg_po| unsafe {
         debug!("global monitor task starting");
 
         // As a weak task the runtime will notify us when to exit
@@ -85,20 +85,22 @@ fn get_monitor_task_gl() -> iotask unsafe {
     }
 }
 
-fn spawn_loop() -> iotask unsafe {
+fn spawn_loop() -> iotask {
     let builder = do task::task().add_wrapper |task_body| {
         fn~(move task_body) {
             // The I/O loop task also needs to be weak so it doesn't keep
             // the runtime alive
-            do weaken_task |weak_exit_po| {
-                debug!("global libuv task is now weak %?", weak_exit_po);
-                task_body();
+            unsafe {
+                do weaken_task |weak_exit_po| {
+                    debug!("global libuv task is now weak %?", weak_exit_po);
+                    task_body();
 
-                // We don't wait for the exit message on weak_exit_po
-                // because the monitor task will tell the uv loop when to
-                // exit
+                    // We don't wait for the exit message on weak_exit_po
+                    // because the monitor task will tell the uv loop when to
+                    // exit
 
-                debug!("global libuv task is leaving weakened state");
+                    debug!("global libuv task is leaving weakened state");
+                }
             }
         }
     };
@@ -120,7 +122,7 @@ mod test {
         log(debug, ~"in simple timer cb");
         ll::timer_stop(timer_ptr);
         let hl_loop = get_gl();
-        do iotask::interact(hl_loop) |_loop_ptr| {
+        do iotask::interact(hl_loop) |_loop_ptr| unsafe {
             log(debug, ~"closing timer");
             ll::close(timer_ptr, simple_timer_close_cb);
             log(debug, ~"about to deref exit_ch_ptr");
@@ -137,7 +139,7 @@ mod test {
                        exit_ch_ptr));
         let timer_handle = ll::timer_t();
         let timer_ptr = ptr::addr_of(timer_handle);
-        do iotask::interact(iotask) |loop_ptr| {
+        do iotask::interact(iotask) |loop_ptr| unsafe {
             log(debug, ~"user code inside interact loop!!!");
             let init_status = ll::timer_init(loop_ptr, timer_ptr);
             if(init_status == 0i32) {
