@@ -431,12 +431,11 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     assert(get_sp_limit() != 0 && "Stack must be configured");
     assert(next_rust_sp);
 
-    bool had_reentered_rust_stack;
-    {
-        scoped_lock with(lifecycle_lock);
-        had_reentered_rust_stack = reentered_rust_stack;
-        reentered_rust_stack = true;
-    }
+    // Unlocked access. Might "race" a killer, but harmlessly. This code is
+    // only run by the task itself, so cannot race itself. See the comment
+    // above inhibit_kill (or #3213) in rust_task.cpp for justification.
+    bool had_reentered_rust_stack = reentered_rust_stack;
+    reentered_rust_stack = true;
 
     uintptr_t prev_c_sp = next_c_sp;
     next_c_sp = get_sp();
@@ -448,10 +447,7 @@ rust_task::call_on_rust_stack(void *args, void *fn_ptr) {
     __morestack(args, fn_ptr, sp);
 
     next_c_sp = prev_c_sp;
-    {
-        scoped_lock with(lifecycle_lock);
-        reentered_rust_stack = had_reentered_rust_stack;
-    }
+    reentered_rust_stack = had_reentered_rust_stack;
 
     record_sp_limit(0);
 }
