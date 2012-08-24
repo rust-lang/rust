@@ -26,15 +26,15 @@ trait serializer {
     fn emit_str(v: &str);
 
     // Compound types:
-    fn emit_enum(name: ~str, f: fn());
-    fn emit_enum_variant(v_name: ~str, v_id: uint, sz: uint, f: fn());
+    fn emit_enum(name: &str, f: fn());
+    fn emit_enum_variant(v_name: &str, v_id: uint, sz: uint, f: fn());
     fn emit_enum_variant_arg(idx: uint, f: fn());
     fn emit_vec(len: uint, f: fn());
     fn emit_vec_elt(idx: uint, f: fn());
     fn emit_box(f: fn());
     fn emit_uniq(f: fn());
     fn emit_rec(f: fn());
-    fn emit_rec_field(f_name: ~str, f_idx: uint, f: fn());
+    fn emit_rec_field(f_name: &str, f_idx: uint, f: fn());
     fn emit_tup(sz: uint, f: fn());
     fn emit_tup_elt(idx: uint, f: fn());
 }
