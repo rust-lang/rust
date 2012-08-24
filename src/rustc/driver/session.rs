@@ -189,7 +189,7 @@ impl session {
     }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
-    fn impossible_case(sp: span, msg: ~str) -> ! {
+    fn impossible_case(sp: span, msg: &str) -> ! {
         self.span_bug(sp, #fmt("Impossible case reached: %s", msg));
     }
     fn ppregions() -> bool { self.debugging_opt(ppregions) }

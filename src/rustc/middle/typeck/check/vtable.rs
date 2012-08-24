@@ -59,8 +59,9 @@ fn fixup_substs(fcx: @fn_ctxt, expr: @ast::expr,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
     do fixup_ty(fcx, expr, t, is_early).map |t_f| {
-        match check ty::get(t_f).struct {
+        match ty::get(t_f).struct {
           ty::ty_trait(_, substs_f, _) => substs_f,
+          _ => fail ~"t_f should be a trait"
         }
     }
 }
@@ -88,8 +89,10 @@ fn lookup_vtable(fcx: @fn_ctxt,
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;
-    let (trait_id, trait_substs) = match check ty::get(trait_ty).struct {
-      ty::ty_trait(did, substs, _) => (did, substs)
+    let (trait_id, trait_substs) = match ty::get(trait_ty).struct {
+      ty::ty_trait(did, substs, _) => (did, substs),
+      _ => tcx.sess.impossible_case(expr.span, "lookup_vtable: \
+             don't know how to handle a non-trait ty")
     };
     let ty = match fixup_ty(fcx, expr, ty, is_early) {
       some(ty) => ty,
@@ -105,7 +108,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
 
     match ty::get(ty).struct {
       ty::ty_param({idx: n, def_id: did}) => {
-        let mut n_bound = 0u;
+        let mut n_bound = 0;
         for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
             match bound {
               ty::bound_send | ty::bound_copy | ty::bound_const |
@@ -113,7 +116,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                 /* ignore */
               }
               ty::bound_trait(ity) => {
-                match check ty::get(ity).struct {
+                match ty::get(ity).struct {
                   ty::ty_trait(idid, substs, _) => {
                     if trait_id == idid {
                         debug!("(checking vtable) @0 relating ty to trait ty
@@ -122,6 +125,9 @@ fn lookup_vtable(fcx: @fn_ctxt,
                         return vtable_param(n, n_bound);
                     }
                   }
+                  _ => tcx.sess.impossible_case(expr.span,
+                         "lookup_vtable: in loop, \
+                         don't know how to handle a non-trait ity")
                 }
                 n_bound += 1u;
               }
@@ -277,11 +283,13 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
     let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
     debug!("(connect trait tps) trait type is %?, impl did is %?",
            ty::get(trait_ty).struct, impl_did);
-    match check ty::get(trait_ty).struct {
-      ty::ty_trait(_, substs, _) => {
+    match ty::get(trait_ty).struct {
+     ty::ty_trait(_, substs, _) => {
         vec::iter2(substs.tps, trait_tys,
                    |a, b| demand::suptype(fcx, expr.span, a, b));
       }
+     _ => tcx.sess.impossible_case(expr.span, "connect_trait_tps: \
+            don't know how to handle a non-trait ty")
     }
 }
 

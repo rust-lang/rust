@@ -97,6 +97,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
               ~"visit_tydesc" | ~"forget" | ~"addr_of" => {
                 0u
               }
+              // would be cool to make these an enum instead of strings!
               _ => fail ~"unknown intrinsic in type_use"
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
@@ -255,8 +256,8 @@ fn mark_for_expr(cx: ctx, e: @expr) {
             }
         })
       }
-      expr_match(_, _, _) | expr_block(_) | expr_if(_, _, _) |
-      expr_while(_, _) | expr_fail(_) | expr_break(_) | expr_again(_) |
+      expr_match(*) | expr_block(_) | expr_if(*) |
+      expr_while(*) | expr_fail(_) | expr_break(_) | expr_again(_) |
       expr_unary(_, _) | expr_lit(_) | expr_assert(_) |
       expr_mac(_) | expr_addr_of(_, _) |
       expr_ret(_) | expr_loop(_, _) |

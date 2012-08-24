@@ -305,10 +305,10 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
    {vals: ~[ValueRef], bcx: block} {
     let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
-    let enum_ty_substs = match check ty::get(node_id_type(bcx, pat_id))
+    let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id))
         .struct {
-
       ty::ty_enum(id, substs) => { assert id == vdefs.enm; substs.tps }
+      _ => bcx.sess().bug(~"extract_variant_args: pattern has non-enum type")
     };
     let mut blobptr = val;
     let variants = ty::enum_variants(ccx.tcx, vdefs.enm);
@@ -667,11 +667,13 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
             match kind {
               single => Br(bcx, opt_cx.llbb),
               switch => {
-                match check trans_opt(bcx, opt) {
+                match trans_opt(bcx, opt) {
                   single_result(r) => {
                     llvm::LLVMAddCase(sw, r.val, opt_cx.llbb);
                     bcx = r.bcx;
                   }
+                  _ => bcx.sess().bug(~"in compile_submatch, expected \
+                         trans_opt to return a single_result")
                 }
               }
               compare => {
@@ -892,7 +894,8 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
                 let arm_dest = dup_for_join(dest);
                 vec::push(arm_dests, arm_dest);
                 let mut arm_cx = trans_block(body_cx, a.body, arm_dest);
-                arm_cx = trans_block_cleanups(arm_cx, body_cx);
+                arm_cx = trans_block_cleanups(arm_cx,
+                                              block_cleanups(body_cx));
                 vec::push(arm_cxs, arm_cx);
             }
         }

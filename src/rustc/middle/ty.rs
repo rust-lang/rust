@@ -2503,15 +2503,20 @@ fn field_idx(id: ast::ident, fields: ~[field]) -> option<uint> {
     return none;
 }
 
-fn get_field(rec_ty: t, id: ast::ident) -> field {
-    match check vec::find(get_fields(rec_ty), |f| f.ident == id) {
-      some(f) => f
+fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
+    match vec::find(get_fields(rec_ty), |f| f.ident == id) {
+      some(f) => f,
+      // Do we only call this when we know the field is legit?
+      none => fail (#fmt("get_field: ty doesn't have a field %s",
+                         tcx.sess.str_of(id)))
     }
 }
 
 fn get_fields(rec_ty:t) -> ~[field] {
-    match check get(rec_ty).struct {
-      ty_rec(fields) => fields
+    match get(rec_ty).struct {
+      ty_rec(fields) => fields,
+      // Can we check at the caller?
+      _ => fail ~"get_fields: not a record type"
     }
 }
 
@@ -2805,6 +2810,9 @@ fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     }
 }
 
+/*
+  Could this return a list of (def_id, substs) pairs?
+ */
 fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
     if id.crate == ast::local_crate {
         debug!("(impl_traits) searching for trait impl %?", id);
