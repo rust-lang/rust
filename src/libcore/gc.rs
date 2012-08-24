@@ -1,19 +1,38 @@
 import stackwalk::Word;
 import libc::size_t;
+import libc::uintptr_t;
 import send_map::linear::LinearMap;
 
 export Word;
 export gc;
 export cleanup_stack_for_failure;
 
+// Mirrors rust_stack.h stk_seg
+struct StackSegment {
+    let prev: *StackSegment;
+    let next: *StackSegment;
+    let end: uintptr_t;
+    // And other fields which we don't care about...
+}
+
 extern mod rustrt {
     fn rust_annihilate_box(ptr: *Word);
 
     #[rust_stack]
-    fn rust_gc_metadata() -> *Word;
+    fn rust_call_tydesc_glue(root: *Word, tydesc: *Word, field: size_t);
 
     #[rust_stack]
-    fn rust_call_tydesc_glue(root: *Word, tydesc: *Word, field: size_t);
+    fn rust_gc_metadata() -> *Word;
+
+    fn rust_get_stack_segment() -> *StackSegment;
+}
+
+unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
+    let begin: Word = unsafe::reinterpret_cast(&segment);
+    let end: Word = unsafe::reinterpret_cast(&(*segment).end);
+    let frame: Word = unsafe::reinterpret_cast(&fp);
+
+    return begin <= frame && frame <= end;
 }
 
 type SafePoint = { sp_meta: *Word, fn_meta: *Word };
@@ -43,6 +62,17 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
 }
 
 type Visitor = fn(root: **Word, tydesc: *Word) -> bool;
+
+unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {
+    return unsafe::reinterpret_cast(&ptr::offset(ptr, count));
+}
+
+unsafe fn align_to_pointer<T>(ptr: *T) -> *T {
+    let align = sys::min_align_of::<*T>();
+    let ptr: uint = unsafe::reinterpret_cast(&ptr);
+    let ptr = (ptr + (align - 1)) & -align;
+    return unsafe::reinterpret_cast(&ptr);
+}
 
 unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
     let fp_bytes: *u8 = unsafe::reinterpret_cast(&fp);
@@ -97,7 +127,35 @@ const stack:           Memory = 4;
 
 const need_cleanup:    Memory = exchange_heap | stack;
 
+unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
+    -> {segment: *StackSegment, boundary: bool} {
+    // Check if frame is in either current frame or previous frame.
+    let in_segment = is_frame_in_segment(fp, segment);
+    let in_prev_segment = ptr::is_not_null((*segment).prev) &&
+        is_frame_in_segment(fp, (*segment).prev);
+
+    // If frame is not in either segment, walk down segment list until
+    // we find the segment containing this frame.
+    if !in_segment && !in_prev_segment {
+        let mut segment = segment;
+        while ptr::is_not_null((*segment).next) &&
+            is_frame_in_segment(fp, (*segment).next) {
+            segment = (*segment).next;
+        }
+        return {segment: segment, boundary: false};
+    }
+
+    // If frame is in previous frame, then we're at a boundary.
+    if !in_segment && in_prev_segment {
+        return {segment: (*segment).prev, boundary: true};
+    }
+
+    // Otherwise, we're somewhere on the inside of the frame.
+    return {segment: segment, boundary: false};
+}
+
 unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
+    let mut segment = rustrt::rust_get_stack_segment();
     let mut last_ret: *Word = ptr::null();
     // To avoid collecting memory used by the GC itself, skip stack
     // frames until past the root GC stack frame. The root GC stack
@@ -106,48 +164,55 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     let mut reached_sentinel = ptr::is_null(sentinel);
     for stackwalk::walk_stack |frame| {
         unsafe {
+            let pc = last_ret;
+            let {segment: next_segment, boundary: boundary} =
+                find_segment_for_frame(frame.fp, segment);
+            segment = next_segment;
+            let ret_offset = if boundary { 4 } else { 1 };
+            last_ret = *ptr::offset(frame.fp, ret_offset) as *Word;
+
+            if ptr::is_null(pc) {
+                again;
+            }
+
             let mut delay_reached_sentinel = reached_sentinel;
-            if ptr::is_not_null(last_ret) {
-                let sp = is_safe_point(last_ret);
-                match sp {
-                  Some(sp_info) => {
-                    for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
-                        // Skip roots until we see the sentinel.
-                        if !reached_sentinel {
-                            if root == sentinel {
-                                delay_reached_sentinel = true;
-                            }
-                            again;
+            let sp = is_safe_point(pc);
+            match sp {
+              Some(sp_info) => {
+                for walk_safe_point(frame.fp, sp_info) |root, tydesc| {
+                    // Skip roots until we see the sentinel.
+                    if !reached_sentinel {
+                        if root == sentinel {
+                            delay_reached_sentinel = true;
                         }
+                        again;
+                    }
 
-                        // Skip null pointers, which can occur when a
-                        // unique pointer has already been freed.
-                        if ptr::is_null(*root) {
-                            again;
+                    // Skip null pointers, which can occur when a
+                    // unique pointer has already been freed.
+                    if ptr::is_null(*root) {
+                        again;
+                    }
+
+                    if ptr::is_null(tydesc) {
+                        // Root is a generic box.
+                        let refcount = **root;
+                        if mem | task_local_heap != 0 && refcount != -1 {
+                            if !visitor(root, tydesc) { return; }
+                        } else if mem | exchange_heap != 0 && refcount == -1 {
+                            if !visitor(root, tydesc) { return; }
                         }
-
-                        if ptr::is_null(tydesc) {
-                            // Root is a generic box.
-                            let refcount = **root;
-                            if mem | task_local_heap != 0 && refcount != -1 {
-                                if !visitor(root, tydesc) { return; }
-                            } else if mem | exchange_heap != 0
-                                && refcount == -1 {
-                                if !visitor(root, tydesc) { return; }
-                            }
-                        } else {
-                            // Root is a non-immediate.
-                            if mem | stack != 0 {
-                                if !visitor(root, tydesc) { return; }
-                            }
+                    } else {
+                        // Root is a non-immediate.
+                        if mem | stack != 0 {
+                            if !visitor(root, tydesc) { return; }
                         }
                     }
-                  }
-                  None => ()
                 }
+              }
+              None => ()
             }
             reached_sentinel = delay_reached_sentinel;
-            last_ret = *ptr::offset(frame.fp, 1) as *Word;
         }
     }
 }

@@ -6,9 +6,9 @@
 #include <vector>
 
 struct safe_point {
-    size_t safe_point_loc;
-    size_t safe_point_meta;
-    size_t function_meta;
+    uintptr_t safe_point_loc;
+    uintptr_t safe_point_meta;
+    uintptr_t function_meta;
 };
 
 struct update_gc_entry_args {
@@ -19,7 +19,7 @@ static void
 update_gc_entry(const mod_entry* entry, void *cookie) {
     update_gc_entry_args *args = (update_gc_entry_args *)cookie;
     if (!strcmp(entry->name, "_gc_module_metadata")) {
-        size_t *next = entry->state;
+        uintptr_t *next = entry->state;
         uint32_t num_safe_points = *(uint32_t *)next;
         next++;
 
@@ -37,7 +37,7 @@ cmp_safe_point(safe_point a, safe_point b) {
     return a.safe_point_loc < b.safe_point_loc;
 }
 
-size_t *global_safe_points = 0;
+uintptr_t *global_safe_points = 0;
 
 void
 update_gc_metadata(const void* map) {
@@ -50,10 +50,10 @@ update_gc_metadata(const void* map) {
 
     // Serialize safe point list into format expected by runtime.
     global_safe_points =
-        (size_t *)malloc((safe_points.size()*3 + 1)*sizeof(size_t));
+        (uintptr_t *)malloc((safe_points.size()*3 + 1)*sizeof(uintptr_t));
     if (!global_safe_points) return;
 
-    size_t *next = global_safe_points;
+    uintptr_t *next = global_safe_points;
     *(uint32_t *)next = safe_points.size();
     next++;
     for (uint32_t i = 0; i < safe_points.size(); i++) {
