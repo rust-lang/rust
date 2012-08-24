@@ -676,7 +676,7 @@ struct Resolver {
     }
 
     /// The main name resolution procedure.
-    fn resolve(this: @Resolver) {
+    fn resolve(@self, this: @Resolver) {
         self.build_reduced_graph(this);
         self.session.abort_if_errors();
 
@@ -2792,25 +2792,22 @@ struct Resolver {
         return none;
     }
 
-    // XXX: This shouldn't be unsafe!
-    fn resolve_crate() unsafe {
+    fn resolve_crate(@self) {
         debug!("(resolving crate) starting");
 
-        // XXX: This is awful!
-        let this = ptr::addr_of(self);
         visit_crate(*self.crate, (), mk_vt(@{
             visit_item: |item, _context, visitor|
-                (*this).resolve_item(item, visitor),
+                self.resolve_item(item, visitor),
             visit_arm: |arm, _context, visitor|
-                (*this).resolve_arm(arm, visitor),
+                self.resolve_arm(arm, visitor),
             visit_block: |block, _context, visitor|
-                (*this).resolve_block(block, visitor),
+                self.resolve_block(block, visitor),
             visit_expr: |expr, _context, visitor|
-                (*this).resolve_expr(expr, visitor),
+                self.resolve_expr(expr, visitor),
             visit_local: |local, _context, visitor|
-                (*this).resolve_local(local, visitor),
+                self.resolve_local(local, visitor),
             visit_ty: |ty, _context, visitor|
-                (*this).resolve_type(ty, visitor)
+                self.resolve_type(ty, visitor)
             with *default_visitor()
         }));
     }
@@ -4542,7 +4539,7 @@ fn resolve_crate(session: session, lang_items: LanguageItems, crate: @crate)
                    trait_map: TraitMap } {
 
     let resolver = @Resolver(session, lang_items, crate);
-    (*resolver).resolve(resolver);
+    resolver.resolve(resolver);
     return {
         def_map: resolver.def_map,
         exp_map: resolver.export_map,
