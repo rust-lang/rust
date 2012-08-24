@@ -130,13 +130,13 @@ fn time<T>(what: ~str, f: fn() -> T) -> T {
 fn run(config: config::config) {
 
     let source_file = config.input_crate;
-    do astsrv::from_file(source_file) |srv| {
+    do astsrv::from_file(source_file.to_str()) |srv| {
         do time(~"wait_ast") {
             do astsrv::exec(srv) |_ctxt| { }
         };
         let doc = time(~"extract", || {
             let default_name = source_file;
-            extract::from_srv(srv, default_name)
+            extract::from_srv(srv, default_name.to_str())
         });
         run_passes(srv, doc, ~[
             tystr_pass::mk_pass(),

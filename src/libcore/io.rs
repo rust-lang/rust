@@ -257,13 +257,14 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
 
 fn stdin() -> Reader { rustrt::rust_get_stdin() as Reader }
 
-fn file_reader(path: ~str) -> result<Reader, ~str> {
-    let f = os::as_c_charp(path, |pathbuf| {
-        os::as_c_charp(~"r", |modebuf|
+fn file_reader(path: &Path) -> result<Reader, ~str> {
+    let f = os::as_c_charp(path.to_str(), |pathbuf| {
+        os::as_c_charp("r", |modebuf|
             libc::fopen(pathbuf, modebuf)
         )
     });
-    return if f as uint == 0u { result::err(~"error opening " + path) }
+    return if f as uint == 0u { result::err(~"error opening "
+                                            + path.to_str()) }
     else {
         result::ok(FILE_reader(f, true))
     }
@@ -412,7 +413,7 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
 }
 
 
-fn mk_file_writer(path: ~str, flags: ~[FileFlag])
+fn mk_file_writer(path: &Path, flags: ~[FileFlag])
     -> result<Writer, ~str> {
 
     #[cfg(windows)]
@@ -430,12 +431,13 @@ fn mk_file_writer(path: ~str, flags: ~[FileFlag])
           NoFlag => ()
         }
     }
-    let fd = do os::as_c_charp(path) |pathbuf| {
+    let fd = do os::as_c_charp(path.to_str()) |pathbuf| {
         libc::open(pathbuf, fflags,
                    (S_IRUSR | S_IWUSR) as c_int)
     };
     if fd < (0 as c_int) {
-        result::err(fmt!("error opening %s: %s", path, os::last_os_error()))
+        result::err(fmt!("error opening %s: %s", path.to_str(),
+                         os::last_os_error()))
     } else {
         result::ok(fd_writer(fd, true))
     }
@@ -614,19 +616,20 @@ impl<T: Writer> T : WriterUtil {
     fn write_u8(n: u8) { self.write(&[n]) }
 }
 
-fn file_writer(path: ~str, flags: ~[FileFlag]) -> result<Writer, ~str> {
+fn file_writer(path: &Path, flags: ~[FileFlag]) -> result<Writer, ~str> {
     result::chain(mk_file_writer(path, flags), |w| result::ok(w))
 }
 
 
 // FIXME: fileflags // #2004
-fn buffered_file_writer(path: ~str) -> result<Writer, ~str> {
-    let f = do os::as_c_charp(path) |pathbuf| {
-        do os::as_c_charp(~"w") |modebuf| {
+fn buffered_file_writer(path: &Path) -> result<Writer, ~str> {
+    let f = do os::as_c_charp(path.to_str()) |pathbuf| {
+        do os::as_c_charp("w") |modebuf| {
             libc::fopen(pathbuf, modebuf)
         }
     };
-    return if f as uint == 0u { result::err(~"error opening " + path) }
+    return if f as uint == 0u { result::err(~"error opening "
+                                            + path.to_str()) }
     else { result::ok(FILE_writer(f, true)) }
 }
 
@@ -709,19 +712,19 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
     return bpos as uint;
 }
 
-fn read_whole_file_str(file: ~str) -> result<~str, ~str> {
+fn read_whole_file_str(file: &Path) -> result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
         if str::is_utf8(bytes) {
             result::ok(str::from_bytes(bytes))
        } else {
-           result::err(file + ~" is not UTF-8")
+           result::err(file.to_str() + ~" is not UTF-8")
        }
     })
 }
 
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
-fn read_whole_file(file: ~str) -> result<~[u8], ~str> {
+fn read_whole_file(file: &Path) -> result<~[u8], ~str> {
     result::chain(file_reader(file), |rdr| {
         result::ok(rdr.read_whole_stream())
     })
@@ -810,7 +813,7 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let tmpfile: ~str = ~"tmp/lib-io-test-simple.tmp";
+        let tmpfile = &Path("tmp/lib-io-test-simple.tmp");
         log(debug, tmpfile);
         let frood: ~str =
             ~"A hoopy frood who really knows where his towel is.";
@@ -881,7 +884,7 @@ mod tests {
 
     #[test]
     fn file_reader_not_exist() {
-        match io::file_reader(~"not a file") {
+        match io::file_reader(&Path("not a file")) {
           result::err(e) => {
             assert e == ~"error opening not a file";
           }
@@ -891,9 +894,9 @@ mod tests {
 
     #[test]
     fn file_writer_bad_name() {
-        match io::file_writer(~"?/?", ~[]) {
+        match io::file_writer(&Path("?/?"), ~[]) {
           result::err(e) => {
-            assert str::starts_with(e, ~"error opening ?/?");
+            assert str::starts_with(e, "error opening");
           }
           result::ok(_) => fail
         }
@@ -901,9 +904,9 @@ mod tests {
 
     #[test]
     fn buffered_file_writer_bad_name() {
-        match io::buffered_file_writer(~"?/?") {
+        match io::buffered_file_writer(&Path("?/?")) {
           result::err(e) => {
-            assert e == ~"error opening ?/?";
+            assert str::starts_with(e, "error opening");
           }
           result::ok(_) => fail
         }

@@ -10,16 +10,16 @@ type config = {
     run_lib_path: ~str,
 
     // The rustc executable
-    rustc_path: ~str,
+    rustc_path: Path,
 
     // The directory containing the tests to run
-    src_base: ~str,
+    src_base: Path,
 
     // The directory where programs should be built
-    build_base: ~str,
+    build_base: Path,
 
     // Directory for auxiliary libraries
-    aux_base: ~str,
+    aux_base: Path,
 
     // The name of the stage being built (stage1, etc)
     stage_id: ~str,
@@ -34,7 +34,7 @@ type config = {
     filter: option<~str>,
 
     // Write out a parseable log of tests that were run
-    logfile: option<~str>,
+    logfile: option<Path>,
 
     // A command line to prefix program execution with,
     // for running under valgrind

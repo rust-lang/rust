@@ -28,8 +28,8 @@ enum output_style {
 
 /// The configuration for a rustdoc session
 type config = {
-    input_crate: ~str,
-    output_dir: ~str,
+    input_crate: Path,
+    output_dir: Path,
     output_format: output_format,
     output_style: output_style,
     pandoc_cmd: option<~str>
@@ -67,10 +67,10 @@ fn usage() {
     println(~"");
 }
 
-fn default_config(input_crate: ~str) -> config {
+fn default_config(input_crate: &Path) -> config {
     {
-        input_crate: input_crate,
-        output_dir: ~".",
+        input_crate: *input_crate,
+        output_dir: Path("."),
         output_format: pandoc_html,
         output_style: doc_per_mod,
         pandoc_cmd: none
@@ -103,8 +103,8 @@ fn parse_config_(
     match getopts::getopts(args, opts) {
         result::ok(matches) => {
             if vec::len(matches.free) == 1u {
-                let input_crate = vec::head(matches.free);
-                config_from_opts(input_crate, matches, program_output)
+                let input_crate = Path(vec::head(matches.free));
+                config_from_opts(&input_crate, matches, program_output)
             } else if vec::is_empty(matches.free) {
                 result::err(~"no crates specified")
             } else {
@@ -118,7 +118,7 @@ fn parse_config_(
 }
 
 fn config_from_opts(
-    input_crate: ~str,
+    input_crate: &Path,
     matches: getopts::matches,
     program_output: program_output
 ) -> result<config, ~str> {
@@ -127,6 +127,7 @@ fn config_from_opts(
     let result = result::ok(config);
     let result = do result::chain(result) |config| {
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
+        let output_dir = option::map(output_dir, |s| Path(s));
         result::ok({
             output_dir: option::get_default(output_dir, config.output_dir)
             with config
@@ -205,7 +206,7 @@ fn maybe_find_pandoc(
       none => {
         ~[~"pandoc"] + match os::homedir() {
           some(dir) => {
-            ~[path::connect(dir, ~".cabal/bin/pandoc")]
+            ~[dir.push_rel(&Path(".cabal/bin/pandoc")).to_str()]
           }
           none => ~[]
         }
@@ -229,7 +230,7 @@ fn maybe_find_pandoc(
 fn should_find_pandoc() {
     let config = {
         output_format: pandoc_html
-        with default_config(~"test")
+        with default_config(&Path("test"))
     };
     let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
         status: int, out: ~str, err: ~str
@@ -246,7 +247,7 @@ fn should_find_pandoc() {
 fn should_error_with_no_pandoc() {
     let config = {
         output_format: pandoc_html
-        with default_config(~"test")
+        with default_config(&Path("test"))
     };
     let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
         status: int, out: ~str, err: ~str
@@ -282,7 +283,7 @@ fn should_error_with_multiple_crates() {
 #[test]
 fn should_set_output_dir_to_cwd_if_not_provided() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).output_dir == ~".";
+    assert result::get(config).output_dir == Path(".");
 }
 
 #[test]
@@ -290,7 +291,7 @@ fn should_set_output_dir_if_provided() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-dir", ~"snuggles"
     ]);
-    assert result::get(config).output_dir == ~"snuggles";
+    assert result::get(config).output_dir == Path("snuggles");
 }
 
 #[test]

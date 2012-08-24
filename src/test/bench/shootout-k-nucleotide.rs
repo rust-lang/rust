@@ -126,11 +126,9 @@ fn main(args: ~[~str]) {
    let rdr = if os::getenv(~"RUST_BENCH").is_some() {
        // FIXME: Using this compile-time env variable is a crummy way to
        // get to this massive data set, but #include_bin chokes on it (#2598)
-       let path = path::connect(
-           env!("CFG_SRC_DIR"),
-           ~"src/test/bench/shootout-k-nucleotide.data"
-           );
-       result::get(io::file_reader(path))
+       let path = Path(env!("CFG_SRC_DIR"))
+           .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
+       result::get(io::file_reader(&path))
    } else {
       io::stdin()
    };

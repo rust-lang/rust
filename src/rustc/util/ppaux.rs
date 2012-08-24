@@ -210,6 +210,9 @@ fn vstore_ty_to_str(cx: ctxt, ty: ~str, vs: ty::vstore) -> ~str {
       ty::vstore_fixed(_) => {
         fmt!("%s/%s", ty, vstore_to_str(cx, vs))
       }
+      ty::vstore_slice(_) => {
+        fmt!("%s/%s", vstore_to_str(cx, vs), ty)
+      }
       _ => fmt!("%s%s", vstore_to_str(cx, vs), ty)
     }
 }

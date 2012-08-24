@@ -54,7 +54,7 @@ export send_map;
 export hash;
 export cmp;
 export num;
-export path;
+export path, path2;
 export managed;
 
 // NDM seems to be necessary for resolve to work

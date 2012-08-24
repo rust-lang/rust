@@ -9,7 +9,7 @@ type ctx =
 
 fn eval_crate_directives(cx: ctx,
                          cdirs: ~[@ast::crate_directive],
-                         prefix: ~str,
+                         prefix: &Path,
                          &view_items: ~[@ast::view_item],
                          &items: ~[@ast::item]) {
     for cdirs.each |sub_cdir| {
@@ -18,11 +18,8 @@ fn eval_crate_directives(cx: ctx,
 }
 
 fn eval_crate_directives_to_mod(cx: ctx, cdirs: ~[@ast::crate_directive],
-                                prefix: ~str, suffix: option<~str>)
+                                prefix: &Path, suffix: &option<Path>)
     -> (ast::_mod, ~[ast::attribute]) {
-    debug!("eval crate prefix: %s", prefix);
-    debug!("eval crate suffix: %s",
-           option::get_default(suffix, ~"none"));
     let (cview_items, citems, cattrs)
         = parse_companion_mod(cx, prefix, suffix);
     let mut view_items: ~[@ast::view_item] = ~[];
@@ -43,17 +40,17 @@ companion mod is a .rs file with the same name as the directory.
 We build the path to the companion mod by combining the prefix and the
 optional suffix then adding the .rs extension.
 */
-fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
+fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &option<Path>)
     -> (~[@ast::view_item], ~[@ast::item], ~[ast::attribute]) {
 
-    fn companion_file(+prefix: ~str, suffix: option<~str>) -> ~str {
-        return match suffix {
-          option::some(s) => path::connect(prefix, s),
-          option::none => prefix
-        } + ~".rs";
+    fn companion_file(prefix: &Path, suffix: &option<Path>) -> Path {
+        return match *suffix {
+          option::some(s) => prefix.push_many(s.components),
+          option::none => copy *prefix
+        }.with_filetype("rs");
     }
 
-    fn file_exists(path: ~str) -> bool {
+    fn file_exists(path: &Path) -> bool {
         // Crude, but there's no lib function for this and I'm not
         // up to writing it just now
         match io::file_reader(path) {
@@ -62,8 +59,7 @@ fn parse_companion_mod(cx: ctx, prefix: ~str, suffix: option<~str>)
         }
     }
 
-    let modpath = companion_file(prefix, suffix);
-    debug!("looking for companion mod %s", modpath);
+    let modpath = &companion_file(prefix, suffix);
     if file_exists(modpath) {
         debug!("found companion mod");
         let (p0, r0) = new_parser_etc_from_file(cx.sess, cx.cfg,
@@ -85,19 +81,21 @@ fn cdir_path_opt(default: ~str, attrs: ~[ast::attribute]) -> ~str {
     }
 }
 
-fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
+fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: &Path,
                         &view_items: ~[@ast::view_item],
                         &items: ~[@ast::item]) {
     match cdir.node {
       ast::cdir_src_mod(id, attrs) => {
-        let file_path = cdir_path_opt((cx.sess.interner.get(id) + ~".rs"),
-                                      attrs);
-        let full_path =
-            if path::path_is_absolute(file_path) {
-                file_path
-            } else { prefix + path::path_sep() + file_path };
+        let file_path = Path(cdir_path_opt(
+            cx.sess.interner.get(id) + ~".rs", attrs));
+        let full_path = if file_path.is_absolute {
+            copy file_path
+        } else {
+            prefix.push_many(file_path.components)
+        };
         let (p0, r0) =
-            new_parser_etc_from_file(cx.sess, cx.cfg, full_path, SOURCE_FILE);
+            new_parser_etc_from_file(cx.sess, cx.cfg,
+                                     &full_path, SOURCE_FILE);
         let inner_attrs = p0.parse_inner_attrs_and_next();
         let mod_attrs = vec::append(attrs, inner_attrs.inner);
         let first_item_outer_attrs = inner_attrs.next;
@@ -112,13 +110,14 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
         vec::push(items, i);
       }
       ast::cdir_dir_mod(id, cdirs, attrs) => {
-        let path = cdir_path_opt(*cx.sess.interner.get(id), attrs);
-        let full_path =
-            if path::path_is_absolute(path) {
-                path
-            } else { prefix + path::path_sep() + path };
+        let path = Path(cdir_path_opt(*cx.sess.interner.get(id), attrs));
+        let full_path = if path.is_absolute {
+            copy path
+        } else {
+            prefix.push_many(path.components)
+        };
         let (m0, a0) = eval_crate_directives_to_mod(
-            cx, cdirs, full_path, none);
+            cx, cdirs, &full_path, &none);
         let i =
             @{ident: /* FIXME (#2543) */ copy id,
               attrs: vec::append(attrs, a0),

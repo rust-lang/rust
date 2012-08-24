@@ -59,7 +59,7 @@ fn expand_include(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let args = get_mac_args(cx, sp, arg, 1u, option::some(1u), ~"include");
     let file = expr_to_str(cx, args[0], ~"#include_str requires a string");
     let p = parse::new_parser_from_file(cx.parse_sess(), cx.cfg(),
-                                        res_rel_file(cx, sp, file),
+                                        &res_rel_file(cx, sp, &Path(file)),
                                         parse::parser::SOURCE_FILE);
     return p.parse_expr();
 }
@@ -70,7 +70,7 @@ fn expand_include_str(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     let file = expr_to_str(cx, args[0], ~"#include_str requires a string");
 
-    let res = io::read_whole_file_str(res_rel_file(cx, sp, file));
+    let res = io::read_whole_file_str(&res_rel_file(cx, sp, &Path(file)));
     match res {
       result::ok(_) => { /* Continue. */ }
       result::err(e) => {
@@ -87,7 +87,7 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
 
     let file = expr_to_str(cx, args[0], ~"#include_bin requires a string");
 
-    match io::read_whole_file(res_rel_file(cx, sp, file)) {
+    match io::read_whole_file(&res_rel_file(cx, sp, &Path(file))) {
       result::ok(src) => {
         let u8_exprs = vec::map(src, |char: u8| {
             mk_u8(cx, sp, char)
@@ -100,14 +100,13 @@ fn expand_include_bin(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     }
 }
 
-fn res_rel_file(cx: ext_ctxt, sp: codemap::span, +arg: Path) -> Path {
+fn res_rel_file(cx: ext_ctxt, sp: codemap::span, arg: &Path) -> Path {
     // NB: relative paths are resolved relative to the compilation unit
-    if !path::path_is_absolute(arg) {
-        let cu = codemap::span_to_filename(sp, cx.codemap());
-        let dir = path::dirname(cu);
-        return path::connect(dir, arg);
+    if !arg.is_absolute {
+        let cu = Path(codemap::span_to_filename(sp, cx.codemap()));
+        cu.dir_path().push_many(arg.components)
     } else {
-        return arg;
+        copy *arg
     }
 }
 

@@ -14,7 +14,7 @@ type test_props = {
     compile_flags: option<~str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: option<~str>,
+    pp_exact: option<Path>,
     // Modules from aux directory that should be compiled
     aux_builds: ~[~str],
     // Environment settings to use during execution
@@ -22,7 +22,7 @@ type test_props = {
 };
 
 // Load any test directives embedded in the file
-fn load_props(testfile: ~str) -> test_props {
+fn load_props(testfile: &Path) -> test_props {
     let mut error_patterns = ~[];
     let mut aux_builds = ~[];
     let mut exec_env = ~[];
@@ -59,7 +59,7 @@ fn load_props(testfile: ~str) -> test_props {
     };
 }
 
-fn is_test_ignored(config: config, testfile: ~str) -> bool {
+fn is_test_ignored(config: config, testfile: &Path) -> bool {
     let mut found = false;
     for iter_header(testfile) |ln| {
         if parse_name_directive(ln, ~"xfail-test") { return true; }
@@ -74,7 +74,7 @@ fn is_test_ignored(config: config, testfile: ~str) -> bool {
     }
 }
 
-fn iter_header(testfile: ~str, it: fn(~str) -> bool) -> bool {
+fn iter_header(testfile: &Path, it: fn(~str) -> bool) -> bool {
     let rdr = result::get(io::file_reader(testfile));
     while !rdr.eof() {
         let ln = rdr.read_line();
@@ -114,12 +114,12 @@ fn parse_exec_env(line: ~str) -> option<(~str, ~str)> {
     }
 }
 
-fn parse_pp_exact(line: ~str, testfile: ~str) -> option<~str> {
+fn parse_pp_exact(line: ~str, testfile: &Path) -> option<Path> {
     match parse_name_value_directive(line, ~"pp-exact") {
-      option::some(s) => option::some(s),
+      option::some(s) => option::some(Path(s)),
       option::none => {
         if parse_name_directive(line, ~"pp-exact") {
-            option::some(path::basename(testfile))
+            option::some(testfile.file_path())
         } else {
             option::none
         }

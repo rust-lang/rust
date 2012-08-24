@@ -4,7 +4,12 @@
 
 import option::{some, none};
 import option = option::option;
-import Path = path::Path;
+
+import Path = path2::Path;
+import GenericPath = path2::GenericPath;
+import WindowsPath = path2::WindowsPath;
+import PosixPath = path2::PosixPath;
+
 import tuple::{TupleOps, ExtendedTupleOps};
 import str::{StrSlice, UniqueStr};
 import vec::{ConstVector, CopyableVector, ImmutableVector};
@@ -14,7 +19,8 @@ import num::Num;
 import ptr::Ptr;
 import to_str::ToStr;
 
-export Path, option, some, none, unreachable;
+export Path, WindowsPath, PosixPath, GenericPath;
+export option, some, none, unreachable;
 export extensions;
 // The following exports are the extension impls for numeric types
 export Num, Times, TimesIx;

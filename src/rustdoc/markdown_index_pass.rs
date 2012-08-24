@@ -81,7 +81,7 @@ fn item_to_entry(
     let link = match doc {
       doc::modtag(_) | doc::nmodtag(_)
       if config.output_style == config::doc_per_mod => {
-        markdown_writer::make_filename(config, doc::itempage(doc))
+        markdown_writer::make_filename(config, doc::itempage(doc)).to_str()
       }
       _ => {
         ~"#" + pandoc_header_id(markdown_pass::header_text(doc))
@@ -230,7 +230,7 @@ mod test {
         do astsrv::from_str(source) |srv| {
             let config = {
                 output_style: output_style
-                with config::default_config(~"whatever")
+                with config::default_config(&Path("whatever"))
             };
             let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);

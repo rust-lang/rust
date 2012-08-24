@@ -4,13 +4,14 @@ import core::option;
 import option::{none, some};
 import rand;
 
-fn mkdtemp(prefix: ~str, suffix: ~str) -> option<~str> {
+fn mkdtemp(tmpdir: &Path, suffix: &str) -> option<Path> {
     let r = rand::rng();
     let mut i = 0u;
     while (i < 1000u) {
-        let s = prefix + r.gen_str(16u) + suffix;
-        if os::make_dir(s, 0x1c0i32) {  // FIXME: u+rwx (#2349)
-            return some(s);
+        let p = tmpdir.push(r.gen_str(16u) +
+                            str::from_slice(suffix));
+        if os::make_dir(&p, 0x1c0i32) {  // FIXME: u+rwx (#2349)
+            return some(p);
         }
         i += 1u;
     }
@@ -19,11 +20,11 @@ fn mkdtemp(prefix: ~str, suffix: ~str) -> option<~str> {
 
 #[test]
 fn test_mkdtemp() {
-    let r = mkdtemp(~"./", ~"foobar");
+    let r = mkdtemp(&Path("."), "foobar");
     match r {
         some(p) => {
-            os::remove_dir(p);
-            assert(str::ends_with(p, ~"foobar"));
+            os::remove_dir(&p);
+            assert(str::ends_with(p.to_str(), "foobar"));
         }
         _ => assert(false)
     }
