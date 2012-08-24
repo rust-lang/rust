@@ -30,8 +30,16 @@ fn deserialize_span<D>(_d: D) -> span {
 #[auto_serialize]
 type spanned<T> = {node: T, span: span};
 
+
+/* can't import macros yet, so this is copied from token.rs. See its comment
+ * there. */
+macro_rules! interner_key (
+    () => (unsafe::transmute::<(uint, uint), &fn(+@@token::ident_interner)>(
+        (-3 as uint, 0u)))
+)
+
 fn serialize_ident<S: serializer>(s: S, i: ident) {
-    let intr = match unsafe{task::local_data_get(parse::token::interner_key)}{
+    let intr = match unsafe{task::local_data_get(interner_key!())}{
         none => fail ~"serialization: TLS interner not set up",
         some(intr) => intr
     };
@@ -39,7 +47,7 @@ fn serialize_ident<S: serializer>(s: S, i: ident) {
     s.emit_str(*(*intr).get(i));
 }
 fn deserialize_ident<D: deserializer>(d: D) -> ident  {
-    let intr = match unsafe{task::local_data_get(parse::token::interner_key)}{
+    let intr = match unsafe{task::local_data_get(interner_key!())}{
         none => fail ~"deserialization: TLS interner not set up",
         some(intr) => intr
     };
