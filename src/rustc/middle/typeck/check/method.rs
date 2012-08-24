@@ -135,35 +135,12 @@ struct lookup {
           }
         }
 
+        let matching_modes =
+            [subtyping_mode, assignability_mode,
+             immutable_reference_mode, mutable_reference_mode];
+
         loop {
-            match ty::get(self.self_ty).struct {
-              // First, see whether this is a bounded parameter.
-              ty::ty_param(p) => {
-                self.add_candidates_from_param(p.idx, p.def_id);
-              }
-
-              ty::ty_trait(did, substs, _) => {
-                self.add_candidates_from_trait(did, substs);
-              }
-              ty::ty_class(did, substs) => {
-                self.add_candidates_from_class(did, substs);
-              }
-              ty::ty_self => {
-                // Call is of the form "self.foo()" and appears in one
-                // of a trait's provided methods.
-                let self_def_id = self.fcx.self_impl_def_id.expect(
-                    ~"unexpected `none` for self_impl_def_id");
-
-                let substs = {
-                    self_r: none,
-                    self_ty: none,
-                    tps: ~[],
-                };
-
-                self.add_candidates_from_trait(self_def_id, substs);
-              }
-              _ => ()
-            }
+            self.add_candidates_from_type();
 
             // if we found anything, stop now.  otherwise continue to
             // loop for impls in scope.  Note: I don't love these
@@ -171,38 +148,13 @@ struct lookup {
             // it.
             if self.candidates.len() > 0u { break; }
 
-            // Look for inherent and extension methods, using subtyping.
-            self.add_inherent_and_extension_candidates
-                (optional_inherent_methods, subtyping_mode);
-
-            // if we found anything, stop before trying borrows
-            if self.candidates.len() > 0u {
-                debug!("(checking method) found at least one inherent \
-                        method; giving up looking now");
-                break;
+            // Try each of the possible matching semantics in turn.
+            for matching_modes.each |mode| {
+                self.add_inherent_and_extension_candidates(
+                    optional_inherent_methods, mode);
+                // If we find anything, stop.
+                if self.candidates.len() > 0u { break; }
             }
-
-            // Again, look for inherent and extension methods, this time using
-            // assignability.
-            self.add_inherent_and_extension_candidates
-                (optional_inherent_methods, assignability_mode);
-
-            // If we found anything, stop before trying auto-ref.
-            if self.candidates.len() > 0u { break; }
-
-            // Now look for inherent and extension methods, this time using an
-            // immutable reference.
-            self.add_inherent_and_extension_candidates
-                (optional_inherent_methods, immutable_reference_mode);
-
-            // if we found anything, stop before attempting mutable auto-ref.
-            if self.candidates.len() > 0u { break; }
-
-            // Now look for inherent and extension methods, this time using a
-            // mutable reference.
-            self.add_inherent_and_extension_candidates
-                (optional_inherent_methods, mutable_reference_mode);
-
             // if we found anything, stop before attempting auto-deref.
             if self.candidates.len() > 0u {
                 debug!("(checking method) found at least one inherent \
@@ -281,6 +233,37 @@ struct lookup {
                   which is the trait `%s`",
                  (idx+1u),
                  ty::item_path_str(self.tcx(), did)));
+    }
+
+    fn add_candidates_from_type() {
+        match ty::get(self.self_ty).struct {
+          // First, see whether this is a bounded parameter.
+          ty::ty_param(p) => {
+            self.add_candidates_from_param(p.idx, p.def_id);
+          }
+
+          ty::ty_trait(did, substs, _) => {
+            self.add_candidates_from_trait(did, substs);
+          }
+          ty::ty_class(did, substs) => {
+            self.add_candidates_from_class(did, substs);
+          }
+          ty::ty_self => {
+            // Call is of the form "self.foo()" and appears in one
+            // of a trait's provided methods.
+            let self_def_id = self.fcx.self_impl_def_id.expect(
+                ~"unexpected `none` for self_impl_def_id");
+
+            let substs = {
+                self_r: none,
+                self_ty: none,
+                tps: ~[],
+            };
+
+            self.add_candidates_from_trait(self_def_id, substs);
+          }
+          _ => ()
+        }
     }
 
     fn add_candidates_from_param(n: uint, did: ast::def_id) {
@@ -420,6 +403,43 @@ struct lookup {
         */
     }
 
+    fn check_type_match(impl_ty: ty::t,
+                        mode: method_lookup_mode)
+        -> result<(), ty::type_err> {
+        // Depending on our argument, we find potential matches by
+        // checking subtypability, type assignability, or reference
+        // subtypability. Collect the matches.
+        let matches;
+        match mode {
+          subtyping_mode => {
+            matches = self.fcx.can_mk_subty(self.self_ty, impl_ty);
+          }
+          assignability_mode => {
+            matches = self.fcx.can_mk_assignty(self.self_expr,
+                                               self.borrow_lb,
+                                               self.self_ty,
+                                               impl_ty);
+          }
+          immutable_reference_mode => {
+            let region = self.fcx.infcx.next_region_var(
+                self.self_expr.span,
+                self.self_expr.id);
+            let tm = { ty: self.self_ty, mutbl: ast::m_imm };
+            let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
+            matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
+          }
+          mutable_reference_mode => {
+            let region = self.fcx.infcx.next_region_var(
+                self.self_expr.span,
+                self.self_expr.id);
+            let tm = { ty: self.self_ty, mutbl: ast::m_mutbl };
+            let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
+            matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
+          }
+        }
+        matches
+    }
+
     // Returns true if any were added and false otherwise.
     fn add_candidates_from_impl(im: @resolve3::Impl, mode: method_lookup_mode)
                              -> bool {
@@ -440,35 +460,7 @@ struct lookup {
                 self.tcx(), impl_substs.self_r,
                 impl_ty, m.self_type);
 
-            // Depending on our argument, we find potential matches by
-            // checking subtypability, type assignability, or reference
-            // subtypability. Collect the matches.
-            let matches;
-            match mode {
-                subtyping_mode =>
-                    matches = self.fcx.can_mk_subty(self.self_ty, impl_ty),
-                assignability_mode =>
-                    matches = self.fcx.can_mk_assignty(self.self_expr,
-                                                       self.borrow_lb,
-                                                       self.self_ty,
-                                                       impl_ty),
-                immutable_reference_mode => {
-                    let region = self.fcx.infcx.next_region_var(
-                        self.self_expr.span,
-                        self.self_expr.id);
-                    let tm = { ty: self.self_ty, mutbl: ast::m_imm };
-                    let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
-                    matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
-                }
-                mutable_reference_mode => {
-                    let region = self.fcx.infcx.next_region_var(
-                        self.self_expr.span,
-                        self.self_expr.id);
-                    let tm = { ty: self.self_ty, mutbl: ast::m_mutbl };
-                    let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
-                    matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
-                }
-            }
+            let matches = self.check_type_match(impl_ty, mode);
             debug!("matches = %?", matches);
             match matches {
               result::err(_) => { /* keep looking */ }
