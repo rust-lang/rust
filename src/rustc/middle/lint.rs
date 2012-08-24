@@ -52,7 +52,11 @@ enum lint {
     vecs_implicitly_copyable,
     deprecated_mode,
     deprecated_pattern,
-    non_camel_case_types
+    non_camel_case_types,
+
+    // FIXME(#3266)--make liveness warnings lintable
+    // unused_variable,
+    // dead_assignment
 }
 
 fn level_to_str(lv: level) -> ~str {
@@ -134,7 +138,19 @@ fn get_lint_dict() -> lint_dict {
         (~"non_camel_case_types",
          @{lint: non_camel_case_types,
            desc: ~"types, variants and traits must have camel case names",
-           default: allow})
+           default: allow}),
+
+        /* FIXME(#3266)--make liveness warnings lintable
+        (~"unused_variable",
+         @{lint: unused_variable,
+           desc: ~"detect variables which are not used in any way",
+           default: warn}),
+
+        (~"dead_assignment",
+         @{lint: dead_assignment,
+           desc: ~"detect assignments that will never be read",
+           default: warn}),
+        */
     ];
     hash_from_strs(v)
 }
