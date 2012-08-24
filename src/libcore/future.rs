@@ -64,17 +64,13 @@ fn from_value<A>(+val: A) -> Future<A> {
     })
 }
 
-macro_rules! move_it (
-    ($x:expr) => { unsafe { let y <- *ptr::addr_of($x); y } }
-)
-
 fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
-    #[doc = "
-    Create a future from a port
-
-    The first time that the value is requested the task will block
-    waiting for the result to be received on the port.
-    "];
+    /*!
+     * Create a future from a port
+     *
+     * The first time that the value is requested the task will block
+     * waiting for the result to be received on the port.
+     */
 
     let port = ~mut some(port);
     do from_fn |move port| {
@@ -82,7 +78,7 @@ fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
         port_ <-> *port;
         let port = option::unwrap(port_);
         match recv(port) {
-          future_pipe::completed(data) => move_it!(data)
+          future_pipe::completed(move data) => data
         }
     }
 }

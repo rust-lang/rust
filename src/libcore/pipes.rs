@@ -325,6 +325,7 @@ unsafe fn get_buffer<T: send>(p: *packet_header) -> ~buffer<T> {
     transmute((*p).buf_header())
 }
 
+// This could probably be done with SharedMutableState to avoid move_it!().
 struct buffer_resource<T: send> {
     let buffer: ~buffer<T>;
     new(+b: ~buffer<T>) {
@@ -962,8 +963,8 @@ impl<T: send> chan<T>: channel<T> {
         let mut endp = none;
         endp <-> self.endp;
         match move streamp::client::try_data(unwrap(endp), x) {
-            some(next) => {
-                self.endp = some(move_it!(next));
+            some(move next) => {
+                self.endp = some(next);
                 true
             }
             none => false
@@ -984,9 +985,9 @@ impl<T: send> port<T>: recv<T> {
         let mut endp = none;
         endp <-> self.endp;
         match move pipes::try_recv(unwrap(endp)) {
-          some(streamp::data(x, endp)) => {
-            self.endp = some(move_it!(endp));
-            some(move_it!(x))
+          some(streamp::data(move x, move endp)) => {
+            self.endp = some(endp);
+            some(x)
           }
           none => none
         }
@@ -1029,12 +1030,8 @@ struct PortSet<T: send> : recv<T> {
         while result == none && ports.len() > 0 {
             let i = wait_many(ports);
             match move ports[i].try_recv() {
-                // FIXME (#2329): use this version once move from enum works.
-                //some(copy m) => {
-                //  result = some(move m);
-                //}
-                some(m) => {
-                  result = some(move_it!(m));
+                some(move m) => {
+                  result = some(m);
                 }
                 none => {
                     // Remove this port.
@@ -1047,12 +1044,7 @@ struct PortSet<T: send> : recv<T> {
     }
 
     fn recv() -> T {
-        match move self.try_recv() {
-            // FIXME (#2329): use this version once move from enum works.
-            //some(copy x) => move x,
-            some(x) => move_it!(x),
-            none => fail ~"port_set: endpoints closed"
-        }
+        option::unwrap_expect(self.try_recv(), "port_set: endpoints closed")
     }
 
     pure fn peek() -> bool {
