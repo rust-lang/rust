@@ -1,3 +1,6 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import libc::{c_char, c_int, c_long, size_t, time_t};
 import io::Reader;
 import result::{result, ok, err};
@@ -128,7 +131,7 @@ fn now() -> tm {
 }
 
 /// Parses the time from the string according to the format string.
-fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
+fn strptime(s: &str, format: &str) -> result<tm, ~str> {
     type tm_mut = {
        mut tm_sec: i32,
        mut tm_min: i32,
@@ -144,7 +147,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
        mut tm_nsec: i32,
     };
 
-    fn match_str(s: ~str, pos: uint, needle: ~str) -> bool {
+    fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for str::each(needle) |ch| {
             if s[i] != ch {
@@ -155,14 +158,14 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         return true;
     }
 
-    fn match_strs(s: ~str, pos: uint, strs: ~[(~str, i32)])
+    fn match_strs(ss: &str, pos: uint, strs: &[(~str, i32)])
       -> option<(i32, uint)> {
         let mut i = 0u;
         let len = vec::len(strs);
         while i < len {
             let (needle, value) = strs[i];
 
-            if match_str(s, pos, needle) {
+            if match_str(ss, pos, needle) {
                 return some((value, pos + str::len(needle)));
             }
             i += 1u;
@@ -171,14 +174,14 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         none
     }
 
-    fn match_digits(s: ~str, pos: uint, digits: uint, ws: bool)
+    fn match_digits(ss: &str, pos: uint, digits: uint, ws: bool)
       -> option<(i32, uint)> {
         let mut pos = pos;
         let mut value = 0_i32;
 
         let mut i = 0u;
         while i < digits {
-            let {ch, next} = str::char_range_at(s, pos);
+            let {ch, next} = str::char_range_at(str::from_slice(ss), pos);
             pos = next;
 
             match ch {
@@ -194,7 +197,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         some((value, pos))
     }
 
-    fn parse_char(s: ~str, pos: uint, c: char) -> result<uint, ~str> {
+    fn parse_char(s: &str, pos: uint, c: char) -> result<uint, ~str> {
         let {ch, next} = str::char_range_at(s, pos);
 
         if c == ch {
@@ -206,7 +209,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         }
     }
 
-    fn parse_type(s: ~str, pos: uint, ch: char, tm: tm_mut)
+    fn parse_type(s: &str, pos: uint, ch: char, tm: &tm_mut)
       -> result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, ~[
@@ -516,7 +519,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         }
     }
 
-    do io::with_str_reader(format) |rdr| {
+    do io::with_str_reader(str::from_slice(format)) |rdr| {
         let tm = {
             mut tm_sec: 0_i32,
             mut tm_min: 0_i32,
@@ -539,7 +542,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
             let {ch, next} = str::char_range_at(s, pos);
 
             match rdr.read_char() {
-              '%' => match parse_type(s, pos, rdr.read_char(), tm) {
+              '%' => match parse_type(s, pos, rdr.read_char(), &tm) {
                 ok(next) => pos = next,
                   err(e) => { result = err(e); break; }
               },
@@ -569,8 +572,8 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
     }
 }
 
-fn strftime(format: ~str, tm: tm) -> ~str {
-    fn parse_type(ch: char, tm: tm) -> ~str {
+fn strftime(format: &str, +tm: tm) -> ~str {
+    fn parse_type(ch: char, tm: &tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || #fmt("strftime: can't understand this format %c ",
                              ch);
@@ -725,10 +728,10 @@ fn strftime(format: ~str, tm: tm) -> ~str {
 
     let mut buf = ~"";
 
-    do io::with_str_reader(format) |rdr| {
+    do io::with_str_reader(str::from_slice(format)) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
-                '%' => buf += parse_type(rdr.read_char(), tm),
+                '%' => buf += parse_type(rdr.read_char(), &tm),
                 ch => str::push_char(buf, ch)
             }
         }
@@ -766,7 +769,7 @@ impl tm {
     fn ctime() -> ~str { self.strftime(~"%c") }
 
     /// Formats the time according to the format string.
-    fn strftime(format: ~str) -> ~str { strftime(format, self) }
+    fn strftime(format: &str) -> ~str { strftime(format, self) }
 
     /**
      * Returns a time string formatted according to RFC 822.
@@ -983,9 +986,9 @@ mod tests {
           }
         }
 
-        fn test(s: ~str, format: ~str) -> bool {
+        fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
-              ok(tm) => tm.strftime(format) == s,
+              ok(tm) => tm.strftime(format) == str::from_slice(s),
               err(e) => fail e
             }
         }
