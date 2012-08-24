@@ -223,12 +223,12 @@ fn check_fn(ccx: @crate_ctxt,
           none => {
             {infcx: infer::new_infer_ctxt(tcx),
              locals: int_hash(),
-             purity: decl.purity,
+             purity: fn_ty.purity,
              node_types: map::int_hash(),
              node_type_substs: map::int_hash()}
           }
           some(fcx) => {
-            assert decl.purity == ast::impure_fn;
+            assert fn_ty.purity == ast::impure_fn;
             {infcx: fcx.infcx,
              locals: fcx.locals,
              purity: fcx.purity,
@@ -476,7 +476,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_enum(enum_definition, _) => {
         check_enum_variants(ccx, it.span, enum_definition.variants, it.id);
       }
-      ast::item_fn(decl, tps, body) => {
+      ast::item_fn(decl, _, tps, body) => {
         check_bare_fn(ccx, decl, body, it.id, none);
       }
       ast::item_impl(tps, _, ty, ms) => {
@@ -1232,8 +1232,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             }
         }
 
+        let purity = ast::impure_fn;
+
         // construct the function type
-        let mut fn_ty = astconv::ty_of_fn_decl(fcx, fcx, ast_proto, @~[],
+        let mut fn_ty = astconv::ty_of_fn_decl(fcx, fcx, ast_proto, purity,
+                                               @~[],
                                                decl, expected_tys, expr.span);
 
         // Patch up the function declaration, if necessary.
@@ -1599,16 +1602,18 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = alt::check_alt(fcx, expr, discrim, arms);
       }
       ast::expr_fn(proto, decl, body, cap_clause) => {
-        check_expr_fn(fcx, expr, foap_ast_proto(proto), decl, body, false,
+        check_expr_fn(fcx, expr, foap_ast_proto(proto),
+                      decl, body, false,
                       expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(decl, body, cap_clause) => {
-         // Take the prototype from the expected type, but default to block:
-          let proto = unpack_expected(fcx, expected, |sty|
-              match sty { ty::ty_fn({proto, _}) => some(proto), _ => none }
-          ).get_default(ty::proto_vstore(ty::vstore_box));
-        check_expr_fn(fcx, expr, foap_fn_proto(proto), decl, body, false,
+        // Take the prototype from the expected type, but default to block:
+        let proto = do unpack_expected(fcx, expected) |sty| {
+            match sty { ty::ty_fn({proto, _}) => some(proto), _ => none }
+        }.get_default(ty::proto_vstore(ty::vstore_box));
+        check_expr_fn(fcx, expr, foap_fn_proto(proto),
+                      decl, body, false,
                       expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
@@ -1642,7 +1647,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         match check b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
-            check_expr_fn(fcx, b, foap_fn_proto(proto), decl, body, true,
+            check_expr_fn(fcx, b, foap_fn_proto(proto),
+                          decl, body, true,
                           some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
@@ -1671,7 +1677,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         match check b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
-            check_expr_fn(fcx, b, foap_fn_proto(proto), decl, body, true,
+            check_expr_fn(fcx, b, foap_fn_proto(proto),
+                          decl, body, true,
                           some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);

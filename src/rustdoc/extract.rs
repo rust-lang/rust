@@ -83,7 +83,7 @@ fn moddoc_from_mod(
                     nmoddoc_from_mod(itemdoc, nm)
                 ))
               }
-              ast::item_fn(_, _, _) => {
+              ast::item_fn(*) => {
                 some(doc::fntag(
                     fndoc_from_fn(itemdoc)
                 ))
@@ -129,7 +129,7 @@ fn nmoddoc_from_mod(
         fns: do vec::map(module_.items) |item| {
             let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
             match item.node {
-              ast::foreign_item_fn(_, _) => {
+              ast::foreign_item_fn(*) => {
                 fndoc_from_fn(itemdoc)
               }
             }

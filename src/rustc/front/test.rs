@@ -71,7 +71,7 @@ fn fold_mod(cx: test_ctxt, m: ast::_mod, fld: fold::ast_fold) -> ast::_mod {
     // indicate to the translation pass which function we want to be main.
     fn nomain(cx: test_ctxt, item: @ast::item) -> option<@ast::item> {
         match item.node {
-          ast::item_fn(_, _, _) => {
+          ast::item_fn(*) => {
             if item.ident == cx.sess.ident_of(~"main") {
                 option::none
             } else { option::some(item) }
@@ -105,7 +105,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 
     if is_test_fn(i) {
         match i.node {
-          ast::item_fn(decl, _, _) if decl.purity == ast::unsafe_fn => {
+          ast::item_fn(decl, purity, _, _) if purity == ast::unsafe_fn => {
             cx.sess.span_fatal(
                 i.span,
                 ~"unsafe functions cannot be used for tests");
@@ -132,7 +132,7 @@ fn is_test_fn(i: @ast::item) -> bool {
 
     fn has_test_signature(i: @ast::item) -> bool {
         match i.node {
-          ast::item_fn(decl, tps, _) => {
+          ast::item_fn(decl, _, tps, _) => {
             let input_cnt = vec::len(decl.inputs);
             let no_output = decl.output.node == ast::ty_nil;
             let tparm_cnt = vec::len(tps);
@@ -223,7 +223,6 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
     let decl: ast::fn_decl =
         {inputs: ~[],
          output: ret_ty,
-         purity: ast::impure_fn,
          cf: ast::return_val};
 
     // The vector of test_descs for this crate
@@ -233,7 +232,7 @@ fn mk_tests(cx: test_ctxt) -> @ast::item {
         default_block(~[], option::some(test_descs), cx.sess.next_node_id());
     let body = nospan(body_);
 
-    let item_ = ast::item_fn(decl, ~[], body);
+    let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
     let item: ast::item =
         {ident: cx.sess.ident_of(~"tests"),
          attrs: ~[],
@@ -389,7 +388,6 @@ fn mk_test_wrapper(cx: test_ctxt,
     let wrapper_decl: ast::fn_decl = {
         inputs: ~[],
         output: @{id: cx.sess.next_node_id(), node: ast::ty_nil, span: span},
-        purity: ast::impure_fn,
         cf: ast::return_val
     };
 
@@ -442,7 +440,6 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
     let decl: ast::fn_decl =
         {inputs: ~[args_arg],
          output: @ret_ty,
-         purity: ast::impure_fn,
          cf: ast::return_val};
 
     let test_main_call_expr = mk_test_main_call(cx);
@@ -452,7 +449,7 @@ fn mk_main(cx: test_ctxt) -> @ast::item {
                       cx.sess.next_node_id());
     let body = {node: body_, span: dummy_sp()};
 
-    let item_ = ast::item_fn(decl, ~[], body);
+    let item_ = ast::item_fn(decl, ast::impure_fn, ~[], body);
     let item: ast::item =
         {ident: cx.sess.ident_of(~"main"),
          attrs: ~[],

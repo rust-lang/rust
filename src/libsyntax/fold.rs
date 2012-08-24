@@ -127,7 +127,6 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
 fn fold_fn_decl(decl: ast::fn_decl, fld: ast_fold) -> ast::fn_decl {
     return {inputs: vec::map(decl.inputs, |x| fold_arg_(x, fld) ),
          output: fld.fold_ty(decl.output),
-         purity: decl.purity,
          cf: decl.cf}
 }
 
@@ -190,12 +189,12 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
           attrs: vec::map(ni.attrs, fold_attribute),
           node:
               match ni.node {
-                foreign_item_fn(fdec, typms) => {
+                foreign_item_fn(fdec, purity, typms) => {
                   foreign_item_fn({inputs: vec::map(fdec.inputs, fold_arg),
-                                  output: fld.fold_ty(fdec.output),
-                                  purity: fdec.purity,
-                                  cf: fdec.cf},
-                                 fold_ty_params(typms, fld))
+                                   output: fld.fold_ty(fdec.output),
+                                   cf: fdec.cf},
+                                  purity,
+                                  fold_ty_params(typms, fld))
                 }
               },
           id: fld.new_id(ni.id),
@@ -224,8 +223,9 @@ fn noop_fold_struct_field(&&sf: @struct_field, fld: ast_fold)
 fn noop_fold_item_underscore(i: item_, fld: ast_fold) -> item_ {
     return match i {
           item_const(t, e) => item_const(fld.fold_ty(t), fld.fold_expr(e)),
-          item_fn(decl, typms, body) => {
+          item_fn(decl, purity, typms, body) => {
               item_fn(fold_fn_decl(decl, fld),
+                      purity,
                       fold_ty_params(typms, fld),
                       fld.fold_block(body))
           }
@@ -314,6 +314,7 @@ fn noop_fold_method(&&m: @method, fld: ast_fold) -> @method {
           attrs: /* FIXME (#2543) */ copy m.attrs,
           tps: fold_ty_params(m.tps, fld),
           self_ty: m.self_ty,
+          purity: m.purity,
           decl: fold_fn_decl(m.decl, fld),
           body: fld.fold_block(m.body),
           id: fld.new_id(m.id),
@@ -531,10 +532,11 @@ fn noop_fold_ty(t: ty_, fld: ast_fold) -> ty_ {
       ty_ptr(mt) => ty_ptr(fold_mt(mt, fld)),
       ty_rptr(region, mt) => ty_rptr(region, fold_mt(mt, fld)),
       ty_rec(fields) => ty_rec(vec::map(fields, |f| fold_field(f, fld))),
-      ty_fn(proto, bounds, decl) =>
-        ty_fn(proto, @vec::map(*bounds,
-                               |x| fold_ty_param_bound(x, fld)),
-                               fold_fn_decl(decl, fld)),
+      ty_fn(proto, purity, bounds, decl) =>
+        ty_fn(proto, purity,
+              @vec::map(*bounds,
+                        |x| fold_ty_param_bound(x, fld)),
+              fold_fn_decl(decl, fld)),
       ty_tup(tys) => ty_tup(vec::map(tys, |ty| fld.fold_ty(ty))),
       ty_path(path, id) => ty_path(fld.fold_path(path), fld.new_id(id)),
       ty_fixed_length(t, vs) => ty_fixed_length(fld.fold_ty(t), vs),

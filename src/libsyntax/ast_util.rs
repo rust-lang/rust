@@ -311,7 +311,8 @@ fn trait_method_to_ty_method(method: trait_method) -> ty_method {
       required(m) => m,
       provided(m) => {
         {ident: m.ident, attrs: m.attrs,
-         decl: m.decl, tps: m.tps, self_ty: m.self_ty,
+         purity: m.purity, decl: m.decl,
+         tps: m.tps, self_ty: m.self_ty,
          id: m.id, span: m.span}
       }
     }
@@ -411,7 +412,7 @@ fn dtor_dec() -> fn_decl {
     {inputs: ~[{mode: ast::expl(ast::by_ref),
                 ty: nil_t, ident: parse::token::special_idents::underscore,
                 id: 0}],
-     output: nil_t, purity: impure_fn, cf: return_val}
+     output: nil_t, cf: return_val}
 }
 
 // ______________________________________________________________________
@@ -515,7 +516,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
                 vfn(self_id);
                 vfn(parent_id.node);
               }
-              visit::fk_item_fn(_, tps) => {
+              visit::fk_item_fn(_, tps, _) => {
                 vec::iter(tps, |tp| vfn(tp.id));
               }
               visit::fk_method(_, tps, m) => {

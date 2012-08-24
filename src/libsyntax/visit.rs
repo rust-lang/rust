@@ -13,7 +13,7 @@ import codemap::span;
 enum vt<E> { mk_vt(visitor<E>), }
 
 enum fn_kind {
-    fk_item_fn(ident, ~[ty_param]), //< an item declared with fn()
+    fk_item_fn(ident, ~[ty_param], purity), //< an item declared with fn()
     fk_method(ident, ~[ty_param], @method),
     fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
@@ -26,7 +26,7 @@ enum fn_kind {
 
 fn name_of_fn(fk: fn_kind) -> ident {
     match fk {
-      fk_item_fn(name, _) | fk_method(name, _, _)
+      fk_item_fn(name, _, _) | fk_method(name, _, _)
           | fk_ctor(name, _, _, _, _) =>  /* FIXME (#2543) */ copy name,
       fk_anon(*) | fk_fn_block(*) => parse::token::special_idents::anon,
       fk_dtor(*)                  => parse::token::special_idents::dtor
@@ -35,7 +35,7 @@ fn name_of_fn(fk: fn_kind) -> ident {
 
 fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
     match fk {
-      fk_item_fn(_, tps) | fk_method(_, tps, _)
+      fk_item_fn(_, tps, _) | fk_method(_, tps, _)
           | fk_ctor(_, _, tps, _, _) | fk_dtor(tps, _, _, _) => {
           /* FIXME (#2543) */ copy tps
       }
@@ -124,9 +124,10 @@ fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
 fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     match i.node {
       item_const(t, ex) => { v.visit_ty(t, e, v); v.visit_expr(ex, e, v); }
-      item_fn(decl, tp, body) => {
+      item_fn(decl, purity, tp, body) => {
         v.visit_fn(fk_item_fn(/* FIXME (#2543) */ copy i.ident,
-                              /* FIXME (#2543) */ copy tp), decl, body,
+                              /* FIXME (#2543) */ copy tp,
+                              purity), decl, body,
                    i.span, i.id, e, v);
       }
       item_mod(m) => v.visit_mod(m, i.span, i.id, e, v),
@@ -199,7 +200,7 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_tup(ts) => for ts.each |tt| {
         v.visit_ty(tt, e, v);
       },
-      ty_fn(_, bounds, decl) => {
+      ty_fn(_, _, bounds, decl) => {
         for decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
         visit_ty_param_bounds(bounds, e, v);
         v.visit_ty(decl.output, e, v);
@@ -249,7 +250,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
 
 fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     match ni.node {
-      foreign_item_fn(fd, tps) => {
+      foreign_item_fn(fd, purity, tps) => {
         v.visit_ty_params(tps, e, v);
         visit_fn_decl(fd, e, v);
       }

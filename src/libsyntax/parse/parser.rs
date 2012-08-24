@@ -285,10 +285,10 @@ struct parser {
             proto = self.parse_fn_ty_proto();
             bounds = self.parse_optional_ty_param_bounds();
         };
-        ty_fn(proto, bounds, self.parse_ty_fn_decl(purity))
+        ty_fn(proto, purity, bounds, self.parse_ty_fn_decl())
     }
 
-    fn parse_ty_fn_decl(purity: ast::purity) -> fn_decl {
+    fn parse_ty_fn_decl() -> fn_decl {
         let inputs = do self.parse_unspanned_seq(
             token::LPAREN, token::RPAREN,
             seq_sep_trailing_disallowed(token::COMMA)) |p| {
@@ -297,7 +297,7 @@ struct parser {
         };
         let (ret_style, ret_ty) = self.parse_ret_ty();
         return {inputs: inputs, output: ret_ty,
-             purity: purity, cf: ret_style};
+                cf: ret_style};
     }
 
     fn parse_trait_methods() -> ~[trait_method] {
@@ -316,7 +316,7 @@ struct parser {
 
             let tps = p.parse_ty_params();
 
-            let (self_ty, d, _) = do self.parse_fn_decl_with_self(pur) |p| {
+            let (self_ty, d, _) = do self.parse_fn_decl_with_self() |p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
                 either::Left(p.parse_arg_general(false))
@@ -335,7 +335,7 @@ struct parser {
                 // NB: at the moment, visibility annotations on required
                 // methods are ignored; this could change.
                 required({ident: ident, attrs: attrs,
-                          decl: {purity: pur with d}, tps: tps,
+                          purity: pur, decl: d, tps: tps,
                           self_ty: self_ty,
                           id: p.get_id(), span: mk_sp(lo, hi)})
               }
@@ -348,6 +348,7 @@ struct parser {
                            attrs: attrs,
                            tps: tps,
                            self_ty: self_ty,
+                           purity: pur,
                            decl: d,
                            body: body,
                            id: p.get_id(),
@@ -518,7 +519,7 @@ struct parser {
             self.parse_ty_fn(ast::impure_fn)
         } else if self.eat_keyword(~"extern") {
             self.expect_keyword(~"fn");
-            ty_fn(proto_bare, @~[], self.parse_ty_fn_decl(ast::impure_fn))
+            ty_fn(proto_bare, ast::impure_fn, @~[], self.parse_ty_fn_decl())
         } else if self.token == token::MOD_SEP || is_ident(self.token) {
             let path = self.parse_path_with_tps(colons_before_params);
             ty_path(path, self.get_id())
@@ -1492,8 +1493,7 @@ struct parser {
         // if we want to allow fn expression argument types to be inferred in
         // the future, just have to change parse_arg to parse_fn_block_arg.
         let (decl, capture_clause) =
-            self.parse_fn_decl(impure_fn,
-                               |p| p.parse_arg_or_capture_item());
+            self.parse_fn_decl(|p| p.parse_arg_or_capture_item());
 
         let body = self.parse_block();
         return self.mk_expr(lo, body.span.hi,
@@ -1518,7 +1518,6 @@ struct parser {
                                 node: ty_infer,
                                 span: self.span
                             },
-                            purity: impure_fn,
                             cf: return_val
                         }
                     },
@@ -2281,8 +2280,7 @@ struct parser {
         } else { ~[] }
     }
 
-    fn parse_fn_decl(purity: purity,
-                     parse_arg_fn: fn(parser) -> arg_or_capture_item)
+    fn parse_fn_decl(parse_arg_fn: fn(parser) -> arg_or_capture_item)
         -> (fn_decl, capture_clause) {
 
         let args_or_capture_items: ~[arg_or_capture_item] =
@@ -2295,9 +2293,8 @@ struct parser {
 
         let (ret_style, ret_ty) = self.parse_ret_ty();
         return ({inputs: inputs,
-              output: ret_ty,
-              purity: purity,
-              cf: ret_style}, capture_clause);
+                 output: ret_ty,
+                 cf: ret_style}, capture_clause);
     }
 
     fn is_self_ident() -> bool {
@@ -2316,8 +2313,7 @@ struct parser {
         self.bump();
     }
 
-    fn parse_fn_decl_with_self(purity: purity,
-                               parse_arg_fn:
+    fn parse_fn_decl_with_self(parse_arg_fn:
                                     fn(parser) -> arg_or_capture_item)
                             -> (self_ty, fn_decl, capture_clause) {
 
@@ -2401,7 +2397,6 @@ struct parser {
         let fn_decl = {
             inputs: inputs,
             output: ret_ty,
-            purity: purity,
             cf: ret_style
         };
 
@@ -2425,10 +2420,9 @@ struct parser {
             @{id: self.get_id(), node: ty_infer, span: self.span}
         };
         return ({inputs: either::lefts(inputs_captures),
-              output: output,
-              purity: impure_fn,
-              cf: return_val},
-             @either::rights(inputs_captures));
+                 output: output,
+                 cf: return_val},
+                @either::rights(inputs_captures));
     }
 
     fn parse_fn_header() -> {ident: ident, tps: ~[ty_param]} {
@@ -2450,9 +2444,9 @@ struct parser {
 
     fn parse_item_fn(purity: purity) -> item_info {
         let t = self.parse_fn_header();
-        let (decl, _) = self.parse_fn_decl(purity, |p| p.parse_arg());
+        let (decl, _) = self.parse_fn_decl(|p| p.parse_arg());
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
-        (t.ident, item_fn(decl, t.tps, body), some(inner_attrs))
+        (t.ident, item_fn(decl, purity, t.tps, body), some(inner_attrs))
     }
 
     fn parse_method_name() -> ident {
@@ -2469,7 +2463,7 @@ struct parser {
         let pur = self.parse_fn_purity();
         let ident = self.parse_method_name();
         let tps = self.parse_ty_params();
-        let (self_ty, decl, _) = do self.parse_fn_decl_with_self(pur) |p| {
+        let (self_ty, decl, _) = do self.parse_fn_decl_with_self() |p| {
             p.parse_arg()
         };
         // XXX: interaction between staticness, self_ty is broken now
@@ -2478,7 +2472,7 @@ struct parser {
         let (inner_attrs, body) = self.parse_inner_attrs_and_block(true);
         let attrs = vec::append(attrs, inner_attrs);
         @{ident: ident, attrs: attrs,
-          tps: tps, self_ty: self_ty, decl: decl,
+          tps: tps, self_ty: self_ty, purity: pur, decl: decl,
           body: body, id: self.get_id(), span: mk_sp(lo, body.span.hi),
           self_id: self.get_id(), vis: pr}
     }
@@ -2717,7 +2711,7 @@ struct parser {
     fn parse_ctor(attrs: ~[attribute],
                   result_ty: ast::ty_) -> class_contents {
         let lo = self.last_span.lo;
-        let (decl_, _) = self.parse_fn_decl(impure_fn, |p| p.parse_arg());
+        let (decl_, _) = self.parse_fn_decl(|p| p.parse_arg());
         let decl = {output: @{id: self.get_id(),
                               node: result_ty, span: decl_.output.span}
                     with decl_};
@@ -2837,18 +2831,18 @@ struct parser {
         (id, item_mod(m), some(inner_attrs.inner))
     }
 
-    fn parse_item_foreign_fn(+attrs: ~[attribute],
-                             purity: purity) -> @foreign_item {
-        let lo = self.last_span.lo;
+    fn parse_item_foreign_fn(+attrs: ~[attribute]) -> @foreign_item {
+        let lo = self.span.lo;
+        let purity = self.parse_fn_purity();
         let t = self.parse_fn_header();
-        let (decl, _) = self.parse_fn_decl(purity, |p| p.parse_arg());
+        let (decl, _) = self.parse_fn_decl(|p| p.parse_arg());
         let mut hi = self.span.hi;
         self.expect(token::SEMI);
         return @{ident: t.ident,
-              attrs: attrs,
-              node: foreign_item_fn(decl, t.tps),
-              id: self.get_id(),
-              span: mk_sp(lo, hi)};
+                 attrs: attrs,
+                 node: foreign_item_fn(decl, purity, t.tps),
+                 id: self.get_id(),
+                 span: mk_sp(lo, hi)};
     }
 
     fn parse_fn_purity() -> purity {
@@ -2865,7 +2859,7 @@ struct parser {
 
     fn parse_foreign_item(+attrs: ~[attribute]) ->
         @foreign_item {
-        self.parse_item_foreign_fn(attrs, self.parse_fn_purity())
+        self.parse_item_foreign_fn(attrs)
     }
 
     fn parse_foreign_mod_items(+first_item_attrs: ~[attribute]) ->

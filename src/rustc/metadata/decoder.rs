@@ -695,13 +695,8 @@ fn get_trait_methods(intr: ident_interner, cdata: cmd, id: ast::node_id,
         } };
         let self_ty = get_self_ty(mth);
         vec::push(result, {ident: name, tps: bounds, fty: fty,
-                    self_ty: self_ty,
-                    purity: match item_family(mth) {
-                      UnsafeFn => ast::unsafe_fn,
-                      Fn => ast::impure_fn,
-                      PureFn => ast::pure_fn,
-                      _ => fail ~"bad purity"
-                    }, vis: ast::public});
+                           self_ty: self_ty,
+                           vis: ast::public});
     }
     #debug("get_trait_methods: }");
     @result

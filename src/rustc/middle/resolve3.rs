@@ -891,11 +891,11 @@ struct Resolver {
                      def_const(local_def(item.id)),
                      sp);
             }
-            item_fn(decl, _, _) => {
+            item_fn(decl, purity, _, _) => {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                         ~[ValueNS], sp);
 
-                let def = def_fn(local_def(item.id), decl.purity);
+                let def = def_fn(local_def(item.id), purity);
                 (*name_bindings).define_value
                     (self.visibility_to_privacy(item.vis), def, sp);
                 visit_item(item, new_parent, visitor);
@@ -954,7 +954,7 @@ struct Resolver {
                         (*name_bindings).define_type
                             (privacy, def_ty(local_def(item.id)), sp);
 
-                        let purity = ctor.node.dec.purity;
+                        let purity = impure_fn;
                         let ctor_def = def_fn(local_def(ctor.node.id),
                                               purity);
                         (*name_bindings).define_value(privacy, ctor_def, sp);
@@ -992,7 +992,7 @@ struct Resolver {
                             self.add_child(atom, new_parent, ~[ValueNS],
                                            ty_m.span);
                         let def = def_static_method(local_def(ty_m.id),
-                                                    ty_m.decl.purity);
+                                                    ty_m.purity);
                         (*method_name_bindings).define_value
                             (Public, def, ty_m.span);
                       }
@@ -1215,11 +1215,11 @@ struct Resolver {
         let name = foreign_item.ident;
 
         match foreign_item.node {
-            foreign_item_fn(fn_decl, type_parameters) => {
+            foreign_item_fn(fn_decl, purity, type_parameters) => {
               let (name_bindings, new_parent) = self.add_child(name, parent,
                                               ~[ValueNS], foreign_item.span);
 
-                let def = def_fn(local_def(foreign_item.id), fn_decl.purity);
+                let def = def_fn(local_def(foreign_item.id), purity);
                 (*name_bindings).define_value(Public, def, foreign_item.span);
 
                 do self.with_type_parameter_rib
@@ -2944,7 +2944,7 @@ struct Resolver {
                 do self.with_scope(some(item.ident)) {
                     for foreign_module.items.each |foreign_item| {
                         match foreign_item.node {
-                            foreign_item_fn(_, type_parameters) => {
+                            foreign_item_fn(_, _, type_parameters) => {
                                 do self.with_type_parameter_rib
                                     (HasTypeParameters(&type_parameters,
                                                        foreign_item.id,
@@ -2961,7 +2961,7 @@ struct Resolver {
                 }
             }
 
-            item_fn(fn_decl, ty_params, block) => {
+            item_fn(fn_decl, _, ty_params, block) => {
                 // If this is the main function, we must record it in the
                 // session.
                 //
