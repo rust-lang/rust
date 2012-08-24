@@ -610,6 +610,11 @@ rust_get_task() {
     return rust_get_current_task();
 }
 
+extern "C" CDECL stk_seg *
+rust_get_stack_segment() {
+    return rust_get_current_task()->stk;
+}
+
 extern "C" CDECL void
 start_task(rust_task *target, fn_env_pair *f) {
     target->start(f->f, f->env, NULL);
