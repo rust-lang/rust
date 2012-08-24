@@ -116,7 +116,7 @@ fn fold_mac_(m: mac, fld: ast_fold) -> mac {
                  mac_invoc(fld.fold_path(pth),
                            option::map(arg, |x| fld.fold_expr(x)), body)
                }
-               mac_invoc_tt(pth, tt) => m.node,
+               mac_invoc_tt(*) => m.node,
                mac_ellipsis => mac_ellipsis,
                mac_aq(_,_) => /* FIXME (#2543) */ copy m.node,
                mac_var(_) => /* FIXME (#2543) */ copy m.node,

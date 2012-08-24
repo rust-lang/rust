@@ -204,7 +204,7 @@ fn eq(a: @ast::meta_item, b: @ast::meta_item) -> bool {
             ast::meta_name_value(nb, vb) => na == nb && va.node == vb.node,
             _ => false
           },
-          ast::meta_list(na, la) => {
+          ast::meta_list(*) => {
 
             // ~[Fixme-sorting]
             // FIXME (#607): Needs implementing

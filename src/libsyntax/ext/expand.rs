@@ -211,7 +211,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                                                span: expand.span}}));
             let maybe_it = match expanded {
               mr_item(it) => fld.fold_item(it),
-              mr_expr(e) => cx.span_fatal(pth.span,
+              mr_expr(_) => cx.span_fatal(pth.span,
                                          ~"expr macro in item position: " +
                                          *extname),
               mr_def(mdef) => {

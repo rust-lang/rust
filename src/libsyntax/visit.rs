@@ -384,11 +384,11 @@ fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
 
 fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
     match m.node {
-      ast::mac_invoc(pth, arg, body) => {
+      ast::mac_invoc(_, arg, _) => {
         option::map(arg, |arg| v.visit_expr(arg, e, v)); }
-      ast::mac_invoc_tt(pth, tt) => { /* no user-serviceable parts inside */ }
+      ast::mac_invoc_tt(*) => { /* no user-serviceable parts inside */ }
       ast::mac_ellipsis => (),
-      ast::mac_aq(_, e) => { /* FIXME: maybe visit (Issue #2340) */ }
+      ast::mac_aq(*) => { /* FIXME: maybe visit (Issue #2340) */ }
       ast::mac_var(_) => ()
     }
 }

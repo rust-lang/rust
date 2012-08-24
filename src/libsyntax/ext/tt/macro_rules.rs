@@ -42,11 +42,11 @@ fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
 
     // Extract the arguments:
     let lhses:~[@named_match] = match argument_map.get(lhs_nm) {
-      @matched_seq(s, sp) => s,
+      @matched_seq(s, _) => s,
       _ => cx.span_bug(sp, ~"wrong-structured lhs")
     };
     let rhses:~[@named_match] = match argument_map.get(rhs_nm) {
-      @matched_seq(s, sp) => s,
+      @matched_seq(s, _) => s,
       _ => cx.span_bug(sp, ~"wrong-structured rhs")
     };
 

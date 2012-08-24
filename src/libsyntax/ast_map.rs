@@ -193,7 +193,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     match i.node {
-      item_impl(_, opt_ir, _, ms) => {
+      item_impl(_, _, _, ms) => {
         let impl_did = ast_util::local_def(i.id);
         for ms.each |m| {
             map_method(impl_did, extend(cx, i.ident), m,

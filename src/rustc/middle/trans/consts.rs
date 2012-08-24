@@ -242,7 +242,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
           const_get_elt(arr, iv as uint)
       }
-      ast::expr_cast(base, tp) => {
+      ast::expr_cast(base, _) => {
         let ety = ty::expr_ty(cx.tcx, e), llty = type_of::type_of(cx, ety);
         let basety = ty::expr_ty(cx.tcx, base);
         let v = const_expr(cx, base);
@@ -311,7 +311,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
       ast::expr_rec(fs, none) => {
         C_struct(fs.map(|f| const_expr(cx, f.node.expr)))
       }
-      ast::expr_vec(es, m_imm) => {
+      ast::expr_vec(es, ast::m_imm) => {
         let (v, _, _) = const_vec(cx, e, es);
         v
       }
@@ -327,7 +327,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                       ~"bad const-slice lit") }
             }
           }
-          ast::expr_vec(es, m_imm) => {
+          ast::expr_vec(es, ast::m_imm) => {
             let (cv, sz, llunitty) = const_vec(cx, e, es);
             let llty = val_ty(cv);
             let gv = do str::as_c_str("const") |name| {
@@ -342,7 +342,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                 ~"bad const-slice expr")
         }
       }
-      ast::expr_path(path) => {
+      ast::expr_path(_) => {
         match cx.tcx.def_map.find(e.id) {
           some(ast::def_const(def_id)) => {
             // Don't know how to handle external consts

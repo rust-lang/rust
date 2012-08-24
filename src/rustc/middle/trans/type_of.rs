@@ -95,7 +95,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_estr(ty::vstore_uniq) => {
         T_unique_ptr(T_unique(cx, T_vec(cx, T_i8())))
       }
-      ty::ty_enum(did, _) => {
+      ty::ty_enum(*) => {
         // Only create the named struct, but don't fill it in. We
         // fill it in *after* placing it into the type cache. This
         // avoids creating more than one copy of the enum when one

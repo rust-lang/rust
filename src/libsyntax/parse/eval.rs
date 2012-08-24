@@ -130,7 +130,7 @@ fn eval_crate_directive(cx: ctx, cdir: @ast::crate_directive, prefix: ~str,
         vec::push(items, i);
       }
       ast::cdir_view_item(vi) => vec::push(view_items, vi),
-      ast::cdir_syntax(pth) => ()
+      ast::cdir_syntax(*) => ()
     }
 }
 //

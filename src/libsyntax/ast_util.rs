@@ -372,7 +372,7 @@ impl inlined_item: inlined_item_utils {
           ii_ctor(ctor, nm, tps, parent_id) => {
               visit::visit_class_ctor_helper(ctor, nm, tps, parent_id, e, v);
           }
-          ii_dtor(dtor, nm, tps, parent_id) => {
+          ii_dtor(dtor, _, tps, parent_id) => {
               visit::visit_class_dtor_helper(dtor, tps, parent_id, e, v);
           }
         }
@@ -504,7 +504,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(id);
 
             match fk {
-              visit::fk_ctor(nm, _, tps, self_id, parent_id) => {
+              visit::fk_ctor(_, _, tps, self_id, parent_id) => {
                 vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);
@@ -583,7 +583,7 @@ pure fn is_item_impl(item: @ast::item) -> bool {
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
-      pat_ident(_, pth, some(p)) => walk_pat(p, it),
+      pat_ident(_, _, some(p)) => walk_pat(p, it),
       pat_rec(fields, _) | pat_struct(_, fields, _) =>
         for fields.each |f| { walk_pat(f.pat, it) },
       pat_enum(_, some(s)) | pat_tup(s) => for s.each |p| {

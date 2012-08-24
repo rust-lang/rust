@@ -923,7 +923,7 @@ fn print_if(s: ps, test: @ast::expr, blk: ast::blk,
 
 fn print_mac(s: ps, m: ast::mac) {
     match m.node {
-      ast::mac_invoc(path, arg, body) => {
+      ast::mac_invoc(path, arg, _body) => {
         word(s.s, ~"#");
         print_path(s, path, false);
         match arg {
