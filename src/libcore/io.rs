@@ -272,13 +272,14 @@ fn file_reader(path: ~str) -> result<Reader, ~str> {
 
 // Byte buffer readers
 
-type ByteBuf = {buf: ~[const u8], mut pos: uint, len: uint};
+type ByteBuf = {buf: &[const u8], mut pos: uint};
 
 impl ByteBuf: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
-        let count = uint::min(len, self.len - self.pos);
+        let count = uint::min(len, self.buf.len() - self.pos);
 
-        vec::u8::memcpy(buf, vec::const_view(self.buf, self.pos, self.len),
+        vec::u8::memcpy(buf,
+                        vec::const_view(self.buf, self.pos, self.buf.len()),
                         count);
 
         self.pos += count;
@@ -286,46 +287,27 @@ impl ByteBuf: Reader {
         count
     }
     fn read_byte() -> int {
-        if self.pos == self.len { return -1; }
+        if self.pos == self.buf.len() { return -1; }
         let b = self.buf[self.pos];
         self.pos += 1u;
         return b as int;
     }
     // FIXME (#2738): implement this
     fn unread_byte(_byte: int) { error!("Unimplemented: unread_byte"); fail; }
-    fn eof() -> bool { self.pos == self.len }
+    fn eof() -> bool { self.pos == self.buf.len() }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
-        self.pos = seek_in_buf(offset, pos, self.len, whence);
+        self.pos = seek_in_buf(offset, pos, self.buf.len(), whence);
     }
     fn tell() -> uint { self.pos }
 }
 
-fn bytes_reader(bytes: ~[u8]) -> Reader {
-    bytes_reader_between(bytes, 0u, vec::len(bytes))
+fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
+    f({buf: bytes, mut pos: 0u} as Reader)
 }
 
-fn bytes_reader_between(bytes: ~[u8], start: uint, end: uint) -> Reader {
-    {buf: bytes, mut pos: start, len: end} as Reader
-}
-
-fn with_bytes_reader<t>(bytes: ~[u8], f: fn(Reader) -> t) -> t {
-    f(bytes_reader(bytes))
-}
-
-fn with_bytes_reader_between<t>(bytes: ~[u8], start: uint, end: uint,
-                                f: fn(Reader) -> t) -> t {
-    f(bytes_reader_between(bytes, start, end))
-}
-
-fn str_reader(s: ~str) -> Reader {
-    bytes_reader(str::to_bytes(s))
-}
-
-fn with_str_reader<T>(s: ~str, f: fn(Reader) -> T) -> T {
-    do str::as_bytes(s) |bytes| {
-        with_bytes_reader_between(bytes, 0u, str::len(s), f)
-    }
+fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
+    str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
 }
 
 // Writing
@@ -847,9 +829,10 @@ mod tests {
 
     #[test]
     fn test_readchars_empty() {
-        let inp : io::Reader = io::str_reader(~"");
-        let res : ~[char] = inp.read_chars(128u);
-        assert(vec::len(res) == 0u);
+        do io::with_str_reader(~"") |inp| {
+            let res : ~[char] = inp.read_chars(128u);
+            assert(vec::len(res) == 0u);
+        }
     }
 
     #[test]
@@ -862,13 +845,14 @@ mod tests {
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748];
         fn check_read_ln(len : uint, s: ~str, ivals: ~[int]) {
-            let inp : io::Reader = io::str_reader(s);
-            let res : ~[char] = inp.read_chars(len);
-            if (len <= vec::len(ivals)) {
-                assert(vec::len(res) == len);
+            do io::with_str_reader(s) |inp| {
+                let res : ~[char] = inp.read_chars(len);
+                if (len <= vec::len(ivals)) {
+                    assert(vec::len(res) == len);
+                }
+                assert(vec::slice(ivals, 0u, vec::len(res)) ==
+                       vec::map(res, |x| x as int));
             }
-            assert(vec::slice(ivals, 0u, vec::len(res)) ==
-                   vec::map(res, |x| x as int));
         }
         let mut i = 0u;
         while i < 8u {
@@ -881,16 +865,18 @@ mod tests {
 
     #[test]
     fn test_readchar() {
-        let inp : io::Reader = io::str_reader(~"生");
-        let res : char = inp.read_char();
-        assert(res as int == 29983);
+        do io::with_str_reader(~"生") |inp| {
+            let res : char = inp.read_char();
+            assert(res as int == 29983);
+        }
     }
 
     #[test]
     fn test_readchar_empty() {
-        let inp : io::Reader = io::str_reader(~"");
-        let res : char = inp.read_char();
-        assert(res as int == -1);
+        do io::with_str_reader(~"") |inp| {
+            let res : char = inp.read_char();
+            assert(res as int == -1);
+        }
     }
 
     #[test]
