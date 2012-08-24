@@ -1,3 +1,6 @@
+/// A function used to initialize the elements of a sequence
+type InitOp<T> = fn(uint) -> T;
+
 trait BaseIter<A> {
     pure fn each(blk: fn(A) -> bool);
     pure fn size_hint() -> option<uint>;
@@ -27,6 +30,26 @@ trait CopyableIter<A:copy> {
     pure fn min() -> A;
     pure fn max() -> A;
     pure fn find(p: fn(A) -> bool) -> option<A>;
+}
+
+// A trait for sequences that can be by imperatively pushing elements
+// onto them.
+trait Buildable<A> {
+    /**
+     * Builds a buildable sequence by calling a provided function with
+     * an argument function that pushes an element onto the back of
+     * the sequence.
+     * This version takes an initial size for the sequence.
+     *
+     * # Arguments
+     *
+     * * size - A hint for an initial size of the sequence
+     * * builder - A function that will construct the sequence. It recieves
+     *             as an argument a function that will push an element
+     *             onto the sequence being constructed.
+     */
+     static pure fn build_sized(size: uint,
+                                builder: fn(push: pure fn(+A))) -> self;
 }
 
 pure fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, A) -> bool) {
@@ -171,6 +194,105 @@ pure fn find<A: copy,IA:BaseIter<A>>(self: IA,
     }
     return none;
 }
+
+// Some functions for just building
+
+/**
+ * Builds a sequence by calling a provided function with an argument
+ * function that pushes an element to the back of a sequence.
+ *
+ * # Arguments
+ *
+ * * builder - A function that will construct the sequence. It recieves
+ *             as an argument a function that will push an element
+ *             onto the sequence being constructed.
+ */
+#[inline(always)]
+pure fn build<A,B: Buildable<A>>(builder: fn(push: pure fn(+A))) -> B {
+    build_sized(4, builder)
+}
+
+/**
+ * Builds a sequence by calling a provided function with an argument
+ * function that pushes an element to the back of a sequence.
+ * This version takes an initial size for the sequence.
+ *
+ * # Arguments
+ *
+ * * size - An option, maybe containing initial size of the sequence
+ *          to reserve
+ * * builder - A function that will construct the sequence. It recieves
+ *             as an argument a function that will push an element
+ *             onto the sequence being constructed.
+ */
+#[inline(always)]
+pure fn build_sized_opt<A,B: Buildable<A>>(
+    size: option<uint>,
+    builder: fn(push: pure fn(+A))) -> B {
+
+    build_sized(size.get_default(4), builder)
+}
+
+// Functions that combine iteration and building
+
+/// Apply a function to each element of an iterable and return the results
+fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: IT, f: fn(T) -> U) -> BU {
+    do build_sized_opt(v.size_hint()) |push| {
+        for v.each() |elem| {
+            push(f(elem));
+        }
+    }
+}
+
+/**
+ * Creates and initializes a generic sequence from a function
+ *
+ * Creates a generic sequence of size `n_elts` and initializes the elements
+ * to the value returned by the function `op`.
+ */
+pure fn from_fn<T,BT: Buildable<T>>(n_elts: uint, op: InitOp<T>) -> BT {
+    do build_sized(n_elts) |push| {
+        let mut i: uint = 0u;
+        while i < n_elts { push(op(i)); i += 1u; }
+    }
+}
+
+/**
+ * Creates and initializes a generic sequence with some element
+ *
+ * Creates an immutable vector of size `n_elts` and initializes the elements
+ * to the value `t`.
+ */
+pure fn from_elem<T: copy,BT: Buildable<T>>(n_elts: uint, t: T) -> BT {
+    do build_sized(n_elts) |push| {
+        let mut i: uint = 0u;
+        while i < n_elts { push(t); i += 1u; }
+    }
+}
+
+/// Appending two generic sequences
+#[inline(always)]
+pure fn append<T: copy,IT: BaseIter<T>,BT: Buildable<T>>(
+    lhs: IT, rhs: IT) -> BT {
+    let size_opt = lhs.size_hint().chain(
+        |sz1| rhs.size_hint().map(|sz2| sz1+sz2));
+    do build_sized_opt(size_opt) |push| {
+        for lhs.each |x| { push(x); }
+        for rhs.each |x| { push(x); }
+    }
+}
+
+/// Copies a generic sequence, possibly converting it to a different
+/// type of sequence.
+#[inline(always)]
+pure fn copy_seq<T: copy,IT: BaseIter<T>,BT: Buildable<T>>(
+    v: IT) -> BT {
+    do build_sized_opt(v.size_hint()) |push| {
+        for v.each |x| { push(x); }
+    }
+}
+
+
 
 /*
 #[test]

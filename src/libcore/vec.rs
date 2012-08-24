@@ -110,9 +110,6 @@ extern mod rusti {
     fn move_val_init<T>(&dst: T, -src: T);
 }
 
-/// A function used to initialize the elements of a vector
-type InitOp/&<T> = fn(uint) -> T;
-
 /// Returns true if a vector contains no elements
 pure fn is_empty<T>(v: &[const T]) -> bool {
     as_const_buf(v, |_p, len| len == 0u)
@@ -188,7 +185,7 @@ pure fn len<T>(&&v: &[const T]) -> uint {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pure fn from_fn<T>(n_elts: uint, op: InitOp<T>) -> ~[T] {
+pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
@@ -679,7 +676,7 @@ fn grow<T: copy>(&v: ~[const T], n: uint, initval: T) {
  * * init_op - A function to call to retreive each appended element's
  *             value
  */
-fn grow_fn<T>(&v: ~[const T], n: uint, op: InitOp<T>) {
+fn grow_fn<T>(&v: ~[const T], n: uint, op: iter::InitOp<T>) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
     while i < n { push(v, op(i)); i += 1u; }
