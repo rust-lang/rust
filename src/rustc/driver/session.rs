@@ -89,8 +89,8 @@ type options =
      lint_opts: ~[(lint::lint, lint::level)],
      save_temps: bool,
      output_type: back::link::output_type,
-     addl_lib_search_paths: ~[~str],
-     maybe_sysroot: option<~str>,
+     addl_lib_search_paths: ~[Path],
+     maybe_sysroot: option<Path>,
      target_triple: ~str,
      cfg: ast::crate_cfg,
      test: bool,
@@ -111,7 +111,7 @@ type session_ = {targ_cfg: @config,
                  span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::filesearch,
                  mut building_library: bool,
-                 working_dir: ~str,
+                 working_dir: Path,
                  lint_settings: lint::lint_settings};
 
 enum session {

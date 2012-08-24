@@ -27,7 +27,7 @@ fn anon_src() -> ~str { ~"<anon>" }
 
 fn source_name(input: input) -> ~str {
     match input {
-      file_input(ifile) => ifile,
+      file_input(ifile) => ifile.to_str(),
       str_input(_) => anon_src()
     }
 }
@@ -92,7 +92,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
 
 enum input {
     /// Load source from file
-    file_input(~str),
+    file_input(Path),
     /// The string is the source
     str_input(~str)
 }
@@ -101,7 +101,7 @@ fn parse_input(sess: session, cfg: ast::crate_cfg, input: input)
     -> @ast::crate {
     match input {
       file_input(file) => {
-        parse::parse_crate_from_file(file, cfg, sess.parse_sess)
+        parse::parse_crate_from_file(&file, cfg, sess.parse_sess)
       }
       str_input(src) => {
         // FIXME (#2319): Don't really want to box the source string
@@ -236,11 +236,13 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 vtable_map: vtable_map};
 
     let (llmod, link_meta) = time(time_passes, ~"translation", ||
-        trans::base::trans_crate(sess, crate, ty_cx, outputs.obj_filename,
+        trans::base::trans_crate(sess, crate, ty_cx,
+                                 &outputs.obj_filename,
                                  exp_map, exp_map2, maps));
 
     time(time_passes, ~"LLVM passes", ||
-        link::write::run_passes(sess, llmod, outputs.obj_filename));
+        link::write::run_passes(sess, llmod,
+                                &outputs.obj_filename));
 
     let stop_after_codegen =
         sess.opts.output_type != link::output_type_exe ||
@@ -249,14 +251,15 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
     if stop_after_codegen { return {crate: crate, tcx: some(ty_cx)}; }
 
     time(time_passes, ~"linking", ||
-         link::link_binary(sess, outputs.obj_filename,
-                           outputs.out_filename, link_meta));
+         link::link_binary(sess,
+                           &outputs.obj_filename,
+                           &outputs.out_filename, link_meta));
 
     return {crate: crate, tcx: some(ty_cx)};
 }
 
 fn compile_input(sess: session, cfg: ast::crate_cfg, input: input,
-                 outdir: option<~str>, output: option<~str>) {
+                 outdir: &option<Path>, output: &option<Path>) {
 
     let upto = if sess.opts.parse_only { cu_parse }
                else if sess.opts.no_trans { cu_no_trans }
@@ -483,6 +486,7 @@ fn build_session_options(matches: getopts::matches,
     let extra_debuginfo = opt_present(matches, ~"xg");
     let debuginfo = opt_present(matches, ~"g") || extra_debuginfo;
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
+    let sysroot_opt = option::map(sysroot_opt, |m| Path(m));
     let target_opt = getopts::opt_maybe_str(matches, ~"target");
     let save_temps = getopts::opt_present(matches, ~"save-temps");
     match output_type {
@@ -514,7 +518,9 @@ fn build_session_options(matches: getopts::matches,
             some(s) => s
         };
 
-    let addl_lib_search_paths = getopts::opt_strs(matches, ~"L");
+    let addl_lib_search_paths =
+        getopts::opt_strs(matches, ~"L")
+        .map(|s| Path(s));
     let cfg = parse_cfgspecs(getopts::opt_strs(matches, ~"cfg"));
     let test = opt_present(matches, ~"test");
     let sopts: @session::options =
@@ -614,11 +620,11 @@ fn opts() -> ~[getopts::opt] {
           optflag(~"static"), optflag(~"gc")];
 }
 
-type output_filenames = @{out_filename: ~str, obj_filename:~str};
+type output_filenames = @{out_filename:Path, obj_filename:Path};
 
 fn build_output_filenames(input: input,
-                          odir: option<~str>,
-                          ofile: option<~str>,
+                          odir: &option<Path>,
+                          ofile: &option<Path>,
                           sess: session)
         -> output_filenames {
     let obj_path;
@@ -639,37 +645,30 @@ fn build_output_filenames(input: input,
           link::output_type_object | link::output_type_exe => ~"o"
         };
 
-    match ofile {
+    match *ofile {
       none => {
         // "-" as input file will cause the parser to read from stdin so we
         // have to make up a name
         // We want to toss everything after the final '.'
-        let dirname = match odir {
+        let dirpath = match *odir {
           some(d) => d,
           none => match input {
             str_input(_) => os::getcwd(),
-            file_input(ifile) => path::dirname(ifile)
+            file_input(ifile) => ifile.dir_path()
           }
         };
 
-        let base_filename = match input {
-          file_input(ifile) => {
-            let (path, _) = path::splitext(ifile);
-            path::basename(path)
-          }
+        let stem = match input {
+          file_input(ifile) => option::get(ifile.filestem()),
           str_input(_) => ~"rust_out"
         };
-        let base_path = path::connect(dirname, base_filename);
-
 
         if sess.building_library {
-            let basename = path::basename(base_path);
-            let dylibname = os::dll_filename(basename);
-            out_path = path::connect(dirname, dylibname);
-            obj_path = path::connect(dirname, basename + ~"." + obj_suffix);
+            out_path = dirpath.push(os::dll_filename(stem));
+            obj_path = dirpath.push(stem).with_filetype(obj_suffix);
         } else {
-            out_path = base_path;
-            obj_path = base_path + ~"." + obj_suffix;
+            out_path = dirpath.push(stem);
+            obj_path = dirpath.push(stem).with_filetype(obj_suffix);
         }
       }
 
@@ -678,9 +677,7 @@ fn build_output_filenames(input: input,
         obj_path = if stop_after_codegen {
             out_file
         } else {
-            let (base, _) = path::splitext(out_file);
-            let modified = base + ~"." + obj_suffix;
-            modified
+            out_file.with_filetype(obj_suffix)
         };
 
         if sess.building_library {
@@ -690,13 +687,13 @@ fn build_output_filenames(input: input,
             // lib<basename>-<hash>-<version>.so no matter what.
         }
 
-        if odir != none {
+        if *odir != none {
             sess.warn(~"ignoring --out-dir flag due to -o flag.");
         }
       }
     }
     return @{out_filename: out_path,
-          obj_filename: obj_path};
+             obj_filename: obj_path};
 }
 
 fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
@@ -704,7 +701,7 @@ fn early_error(emitter: diagnostic::emitter, msg: ~str) -> ! {
     fail;
 }
 
-fn list_metadata(sess: session, path: ~str, out: io::Writer) {
+fn list_metadata(sess: session, path: &Path, out: io::Writer) {
     metadata::loader::list_file_metadata(
         sess.parse_sess.interner,
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);

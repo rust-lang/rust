@@ -159,7 +159,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
             let src = str::from_bytes(io::stdin().read_whole_stream());
             str_input(src)
         } else {
-            file_input(ifile)
+            file_input(Path(ifile))
         }
       }
       _ => early_error(demitter, ~"multiple input filenames provided")
@@ -168,7 +168,9 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     let sopts = build_session_options(matches, demitter);
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(matches, ~"out-dir");
+    let odir = option::map(odir, |o| Path(o));
     let ofile = getopts::opt_maybe_str(matches, ~"o");
+    let ofile = option::map(ofile, |o| Path(o));
     let cfg = build_configuration(sess, binary, input);
     let pretty =
         option::map(getopts::opt_default(matches, ~"pretty",
@@ -185,7 +187,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     if ls {
         match input {
           file_input(ifile) => {
-            list_metadata(sess, ifile, io::stdout());
+            list_metadata(sess, &ifile, io::stdout());
           }
           str_input(_) => {
             early_error(demitter, ~"can not list metadata for stdin");
@@ -194,7 +196,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
         return;
     }
 
-    compile_input(sess, cfg, input, odir, ofile);
+    compile_input(sess, cfg, input, &odir, &ofile);
 }
 
 /*

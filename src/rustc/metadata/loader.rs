@@ -74,27 +74,28 @@ fn find_library_crate_aux(cx: ctxt,
 
     let mut matches = ~[];
     filesearch::search(filesearch, |path| {
-        debug!("inspecting file %s", path);
-        let f: ~str = path::basename(path);
+        debug!("inspecting file %s", path.to_str());
+        let f: ~str = option::get(path.filename());
         if !(str::starts_with(f, prefix) && str::ends_with(f, suffix)) {
-            debug!("skipping %s, doesn't look like %s*%s", path, prefix,
-                   suffix);
+            debug!("skipping %s, doesn't look like %s*%s", path.to_str(),
+                   prefix, suffix);
             option::none::<()>
         } else {
-            debug!("%s is a candidate", path);
+            debug!("%s is a candidate", path.to_str());
             match get_metadata_section(cx.os, path) {
               option::some(cvec) => {
                 if !crate_matches(cvec, cx.metas, cx.hash) {
-                    debug!("skipping %s, metadata doesn't match", path);
+                    debug!("skipping %s, metadata doesn't match",
+                           path.to_str());
                     option::none::<()>
                 } else {
-                    debug!("found %s with matching metadata", path);
-                    vec::push(matches, {ident: path, data: cvec});
+                    debug!("found %s with matching metadata", path.to_str());
+                    vec::push(matches, {ident: path.to_str(), data: cvec});
                     option::none::<()>
                 }
               }
               _ => {
-                debug!("could not load metadata for %s", path);
+                debug!("could not load metadata for %s", path.to_str());
                 option::none::<()>
               }
             }
@@ -168,10 +169,10 @@ fn metadata_matches(extern_metas: ~[@ast::meta_item],
 }
 
 fn get_metadata_section(os: os,
-                        filename: ~str) -> option<@~[u8]> unsafe {
-    let mb = str::as_c_str(filename, |buf| {
+                        filename: &Path) -> option<@~[u8]> unsafe {
+    let mb = str::as_c_str(filename.to_str(), |buf| {
         llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-                                   });
+    });
     if mb as int == 0 { return option::none::<@~[u8]>; }
     let of = match mk_object_file(mb) {
         option::some(of) => of,
@@ -204,12 +205,13 @@ fn meta_section_name(os: os) -> ~str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-fn list_file_metadata(intr: ident_interner, os: os, path: ~str,
-                      out: io::Writer) {
+fn list_file_metadata(intr: ident_interner,
+                      os: os, path: &Path, out: io::Writer) {
     match get_metadata_section(os, path) {
       option::some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::none => {
-        out.write_str(~"could not find metadata in " + path + ~".\n");
+        out.write_str(~"could not find metadata in "
+                      + path.to_str() + ~".\n");
       }
     }
 }

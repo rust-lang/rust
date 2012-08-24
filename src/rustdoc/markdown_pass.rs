@@ -785,7 +785,7 @@ mod test {
 
             let config = {
                 output_style: config::doc_per_crate
-                with config::default_config(~"whatever")
+                with config::default_config(&Path("whatever"))
             };
 
             let doc = extract::from_srv(srv, ~"");

@@ -199,7 +199,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
         };
         let cinfo = loader::load_library_crate(load_ctxt);
 
-        let cfilename = cinfo.ident;
+        let cfilename = Path(cinfo.ident);
         let cdata = cinfo.data;
 
         let attrs = decoder::get_crate_attributes(cdata);
@@ -225,7 +225,7 @@ fn resolve_crate(e: env, ident: ast::ident, metas: ~[@ast::meta_item],
 
         let cstore = e.cstore;
         cstore::set_crate_data(cstore, cnum, cmeta);
-        cstore::add_used_crate_file(cstore, cfilename);
+        cstore::add_used_crate_file(cstore, &cfilename);
         return cnum;
       }
       some(cnum) => {

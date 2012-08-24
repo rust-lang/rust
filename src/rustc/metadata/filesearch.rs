@@ -14,12 +14,10 @@ export get_cargo_root;
 export get_cargo_root_nearest;
 export libdir;
 
-import path::Path;
+type pick<T> = fn(path: &Path) -> option<T>;
 
-type pick<T> = fn(path: Path) -> option<T>;
-
-fn pick_file(file: Path, path: Path) -> option<Path> {
-    if path::basename(path) == file { option::some(path) }
+fn pick_file(file: Path, path: &Path) -> option<Path> {
+    if path.file_path() == file { option::some(copy *path) }
     else { option::none }
 }
 
@@ -27,11 +25,11 @@ trait filesearch {
     fn sysroot() -> Path;
     fn lib_search_paths() -> ~[Path];
     fn get_target_lib_path() -> Path;
-    fn get_target_lib_file_path(file: Path) -> Path;
+    fn get_target_lib_file_path(file: &Path) -> Path;
 }
 
 fn mk_filesearch(maybe_sysroot: option<Path>,
-                 target_triple: ~str,
+                 target_triple: &str,
                  addl_lib_search_paths: ~[Path]) -> filesearch {
     type filesearch_impl = {sysroot: Path,
                             addl_lib_search_paths: ~[Path],
@@ -42,7 +40,8 @@ fn mk_filesearch(maybe_sysroot: option<Path>,
             let mut paths = self.addl_lib_search_paths;
 
             vec::push(paths,
-                      make_target_lib_path(self.sysroot, self.target_triple));
+                      make_target_lib_path(&self.sysroot,
+                                           self.target_triple));
             match get_cargo_lib_path_nearest() {
               result::ok(p) => vec::push(paths, p),
               result::err(p) => ()
@@ -54,33 +53,33 @@ fn mk_filesearch(maybe_sysroot: option<Path>,
             paths
         }
         fn get_target_lib_path() -> Path {
-            make_target_lib_path(self.sysroot, self.target_triple)
+            make_target_lib_path(&self.sysroot, self.target_triple)
         }
-        fn get_target_lib_file_path(file: Path) -> Path {
-            path::connect(self.get_target_lib_path(), file)
+        fn get_target_lib_file_path(file: &Path) -> Path {
+            self.get_target_lib_path().push_rel(file)
         }
     }
 
     let sysroot = get_sysroot(maybe_sysroot);
-    debug!("using sysroot = %s", sysroot);
+    debug!("using sysroot = %s", sysroot.to_str());
     {sysroot: sysroot,
      addl_lib_search_paths: addl_lib_search_paths,
-     target_triple: target_triple} as filesearch
+     target_triple: str::from_slice(target_triple)} as filesearch
 }
 
 fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     let mut rslt = none;
     for filesearch.lib_search_paths().each |lib_search_path| {
-        debug!("searching %s", lib_search_path);
-        for os::list_dir_path(lib_search_path).each |path| {
-            debug!("testing %s", path);
+        debug!("searching %s", lib_search_path.to_str());
+        for os::list_dir_path(&lib_search_path).each |path| {
+            debug!("testing %s", path.to_str());
             let maybe_picked = pick(path);
             if option::is_some(maybe_picked) {
-                debug!("picked %s", path);
+                debug!("picked %s", path.to_str());
                 rslt = maybe_picked;
                 break;
             } else {
-                debug!("rejected %s", path);
+                debug!("rejected %s", path.to_str());
             }
         }
         if option::is_some(rslt) { break; }
@@ -88,21 +87,20 @@ fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> option<T> {
     return rslt;
 }
 
-fn relative_target_lib_path(target_triple: ~str) -> ~[Path] {
-    ~[libdir(), ~"rustc", target_triple, libdir()]
+fn relative_target_lib_path(target_triple: &str) -> Path {
+    Path(libdir()).push_many([~"rustc",
+                              str::from_slice(target_triple),
+                              libdir()])
 }
 
-fn make_target_lib_path(sysroot: Path,
-                        target_triple: ~str) -> Path {
-    let path = vec::append(~[sysroot],
-                           relative_target_lib_path(target_triple));
-    let path = path::connect_many(path);
-    return path;
+fn make_target_lib_path(sysroot: &Path,
+                        target_triple: &str) -> Path {
+    sysroot.push_rel(&relative_target_lib_path(target_triple))
 }
 
 fn get_default_sysroot() -> Path {
     match os::self_exe_path() {
-      option::some(p) => path::normalize(path::connect(p, ~"..")),
+      option::some(p) => p.pop(),
       option::none => fail ~"can't determine value for sysroot"
     }
 }
@@ -115,15 +113,14 @@ fn get_sysroot(maybe_sysroot: option<Path>) -> Path {
 }
 
 fn get_cargo_sysroot() -> result<Path, ~str> {
-    let path = ~[get_default_sysroot(), libdir(), ~"cargo"];
-    result::ok(path::connect_many(path))
+    result::ok(get_default_sysroot().push_many([libdir(), ~"cargo"]))
 }
 
 fn get_cargo_root() -> result<Path, ~str> {
     match os::getenv(~"CARGO_ROOT") {
-        some(_p) => result::ok(_p),
+        some(_p) => result::ok(Path(_p)),
         none => match os::homedir() {
-          some(_q) => result::ok(path::connect(_q, ~".cargo")),
+          some(_q) => result::ok(_q.push(".cargo")),
           none => result::err(~"no CARGO_ROOT or home directory")
         }
     }
@@ -132,21 +129,21 @@ fn get_cargo_root() -> result<Path, ~str> {
 fn get_cargo_root_nearest() -> result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         let cwd = os::getcwd();
-        let mut dirname = path::dirname(cwd);
-        let mut dirpath = path::split(dirname);
-        let cwd_cargo = path::connect(cwd, ~".cargo");
-        let mut par_cargo = path::connect(dirname, ~".cargo");
+        let cwd_cargo = cwd.push(".cargo");
+        let mut par_cargo = cwd.pop().push(".cargo");
         let mut rslt = result::ok(cwd_cargo);
 
-        if !os::path_is_dir(cwd_cargo) && cwd_cargo != p {
-            while vec::is_not_empty(dirpath) && par_cargo != p {
-                if os::path_is_dir(par_cargo) {
+        if !os::path_is_dir(&cwd_cargo) && cwd_cargo != p {
+            while par_cargo != p {
+                if os::path_is_dir(&par_cargo) {
                     rslt = result::ok(par_cargo);
                     break;
                 }
-                vec::pop(dirpath);
-                dirname = path::dirname(dirname);
-                par_cargo = path::connect(dirname, ~".cargo");
+                if par_cargo.components.len() == 1 {
+                    // We just checked /.cargo, stop now.
+                    break;
+                }
+                par_cargo = par_cargo.pop().pop().push(".cargo");
             }
         }
         rslt
@@ -155,13 +152,13 @@ fn get_cargo_root_nearest() -> result<Path, ~str> {
 
 fn get_cargo_lib_path() -> result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
-        result::ok(path::connect(p, libdir()))
+        result::ok(p.push(libdir()))
     }
 }
 
 fn get_cargo_lib_path_nearest() -> result<Path, ~str> {
     do result::chain(get_cargo_root_nearest()) |p| {
-        result::ok(path::connect(p, libdir()))
+        result::ok(p.push(libdir()))
     }
 }
 

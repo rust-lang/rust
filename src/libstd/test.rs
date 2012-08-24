@@ -141,7 +141,7 @@ fn run_tests_console(opts: test_opts,
     }
 
     let log_out = match opts.logfile {
-        some(path) => match io::file_writer(path,
+        some(path) => match io::file_writer(&Path(path),
                                             ~[io::Create, io::Truncate]) {
           result::ok(w) => some(w),
           result::err(s) => {

@@ -5778,7 +5778,7 @@ fn write_abi_version(ccx: @crate_ctxt) {
 fn trans_crate(sess: session::session,
                crate: @ast::crate,
                tcx: ty::ctxt,
-               output: ~str,
+               output: &Path,
                emap: resolve3::ExportMap,
                emap2: resolve3::ExportMap2,
                maps: astencode::maps)

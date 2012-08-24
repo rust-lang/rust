@@ -8,7 +8,7 @@ import syntax::diagnostic;
 enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
 
-fn write_file(filename: ~str, content: ~str) {
+fn write_file(filename: &Path, content: ~str) {
     result::get(
         io::file_writer(filename, ~[io::Create, io::Truncate]))
         .write_str(content);
@@ -18,13 +18,13 @@ fn contains(haystack: ~str, needle: ~str) -> bool {
     str::contains(haystack, needle)
 }
 
-fn find_rust_files(&files: ~[~str], path: ~str) {
-    if str::ends_with(path, ~".rs") && !contains(path, ~"utf8") {
+fn find_rust_files(files: &mut ~[Path], path: &Path) {
+    if path.filetype() == some(~"rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
-        files += ~[path];
+        vec::push(*files, *path);
     } else if os::path_is_dir(path)
-        && !contains(path, ~"compile-fail")
-        && !contains(path, ~"build") {
+        && !contains(path.to_str(), ~"compile-fail")
+        && !contains(path.to_str(), ~"build") {
         for os::list_dir_path(path).each |p| {
             find_rust_files(files, p);
         }
@@ -221,7 +221,7 @@ fn as_str(f: fn@(io::Writer)) -> ~str {
 }
 
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
-                         filename: ~str, cx: context) {
+                         filename: &Path, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
                                   |a| safe_to_use_expr(a, cx.mode) );
@@ -235,14 +235,14 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
 fn check_variants_T<T: copy>(
   crate: ast::crate,
   codemap: codemap::codemap,
-  filename: ~str,
+  filename: &Path,
   thing_label: ~str,
   things: ~[T],
   stringifier: fn@(@T, syntax::parse::token::ident_interner) -> ~str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
-    error!("%s contains %u %s objects", filename,
+    error!("%s contains %u %s objects", filename.to_str(),
            vec::len(things), thing_label);
 
     // Assuming we're not generating any token_trees
@@ -253,6 +253,7 @@ fn check_variants_T<T: copy>(
     if L < 100u {
         do under(uint::min(L, 20u)) |i| {
             log(error, ~"Replacing... #" + uint::str(i));
+            let fname = str::from_slice(filename.to_str());
             do under(uint::min(L, 30u)) |j| {
                 log(error, ~"With... " + stringifier(@things[j], intr));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
@@ -265,7 +266,7 @@ fn check_variants_T<T: copy>(
                         intr,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
-                        filename,
+                        fname,
                         rdr, a,
                         pprust::no_ann(),
                         false))
@@ -276,11 +277,12 @@ fn check_variants_T<T: copy>(
                   }
                   tm_run => {
                     let file_label = fmt!("rusttmp/%s_%s_%u_%u",
-                                          last_part(filename),
+                                          last_part(filename.to_str()),
                                           thing_label, i, j);
                     let safe_to_run = !(content_is_dangerous_to_run(*str3)
                                         || has_raw_pointers(*crate2));
-                    check_whole_compiler(*str3, file_label, safe_to_run);
+                    check_whole_compiler(*str3, &Path(file_label),
+                                         safe_to_run);
                   }
                 }
             }
@@ -305,9 +307,9 @@ enum happiness {
 // - that would be tricky, requiring use of tasks or serialization
 //   or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: ~str, suggested_filename_prefix: ~str,
+fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
                         allow_running: bool) {
-    let filename = suggested_filename_prefix + ~".rs";
+    let filename = &suggested_filename_prefix.with_filetype("rs");
     write_file(filename, code);
 
     let compile_result = check_compiling(filename);
@@ -320,32 +322,32 @@ fn check_whole_compiler(code: ~str, suggested_filename_prefix: ~str,
     match run_result {
       passed | cleanly_rejected(_) | known_bug(_) => {
         removeIfExists(suggested_filename_prefix);
-        removeIfExists(suggested_filename_prefix + ~".rs");
-        removeDirIfExists(suggested_filename_prefix + ~".dSYM");
+        removeIfExists(&suggested_filename_prefix.with_filetype("rs"));
+        removeDirIfExists(&suggested_filename_prefix.with_filetype("dSYM"));
       }
       failed(s) => {
         log(error, ~"check_whole_compiler failure: " + s);
-        log(error, ~"Saved as: " + filename);
+        log(error, ~"Saved as: " + filename.to_str());
       }
     }
 }
 
-fn removeIfExists(filename: ~str) {
+fn removeIfExists(filename: &Path) {
     // So sketchy!
-    assert !contains(filename, ~" ");
-    run::program_output(~"bash", ~[~"-c", ~"rm " + filename]);
+    assert !contains(filename.to_str(), ~" ");
+    run::program_output(~"bash", ~[~"-c", ~"rm " + filename.to_str()]);
 }
 
-fn removeDirIfExists(filename: ~str) {
+fn removeDirIfExists(filename: &Path) {
     // So sketchy!
-    assert !contains(filename, ~" ");
-    run::program_output(~"bash", ~[~"-c", ~"rm -r " + filename]);
+    assert !contains(filename.to_str(), ~" ");
+    run::program_output(~"bash", ~[~"-c", ~"rm -r " + filename.to_str()]);
 }
 
-fn check_running(exe_filename: ~str) -> happiness {
+fn check_running(exe_filename: &Path) -> happiness {
     let p = run::program_output(
         ~"/Users/jruderman/scripts/timed_run_rust_program.py",
-        ~[exe_filename]);
+        ~[exe_filename.to_str()]);
     let comb = p.out + ~"\n" + p.err;
     if str::len(comb) > 1u {
         log(error, ~"comb comb comb: " + comb);
@@ -381,11 +383,11 @@ fn check_running(exe_filename: ~str) -> happiness {
     }
 }
 
-fn check_compiling(filename: ~str) -> happiness {
+fn check_compiling(filename: &Path) -> happiness {
     let p = run::program_output(
         ~"/Users/jruderman/code/rust/build/x86_64-apple-darwin/\
          stage1/bin/rustc",
-        ~[filename]);
+        ~[filename.to_str()]);
 
     //error!("Status: %d", p.status);
     if p.status == 0 {
@@ -415,11 +417,11 @@ fn check_compiling(filename: ~str) -> happiness {
 
 
 fn parse_and_print(code: @~str) -> ~str {
-    let filename = ~"tmp.rs";
+    let filename = Path("tmp.rs");
     let sess = parse::new_parse_sess(option::none);
-    write_file(filename, *code);
+    write_file(&filename, *code);
     let crate = parse::parse_crate_from_source_str(
-        filename, code, ~[], sess);
+        filename.to_str(), code, ~[], sess);
     do io::with_str_reader(*code) |rdr| {
         as_str(|a|
                pprust::print_crate(
@@ -428,7 +430,7 @@ fn parse_and_print(code: @~str) -> ~str {
                    syntax::parse::token::mk_fake_ident_interner(),
                    sess.span_diagnostic,
                    crate,
-                   filename,
+                   filename.to_str(),
                    rdr, a,
                    pprust::no_ann(),
                    false) )
@@ -486,7 +488,7 @@ fn content_might_not_converge(code: ~str) -> bool {
     return false;
 }
 
-fn file_might_not_converge(filename: ~str) -> bool {
+fn file_might_not_converge(filename: &Path) -> bool {
     let confusing_files = ~[
       ~"expr-alt.rs", // pretty-printing "(a = b) = c"
                      // vs "a = b = c" and wrapping
@@ -496,7 +498,11 @@ fn file_might_not_converge(filename: ~str) -> bool {
     ];
 
 
-    for confusing_files.each |f| { if contains(filename, f) { return true; } }
+    for confusing_files.each |f| {
+        if contains(filename.to_str(), f) {
+            return true;
+        }
+    }
 
     return false;
 }
@@ -519,8 +525,8 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
         error!("Converged after %u iterations", i);
     } else {
         error!("Did not converge after %u iterations!", i);
-        write_file(~"round-trip-a.rs", *oldv);
-        write_file(~"round-trip-b.rs", *newv);
+        write_file(&Path("round-trip-a.rs"), *oldv);
+        write_file(&Path("round-trip-b.rs"), *newv);
         run::run_program(~"diff",
                          ~[~"-w", ~"-u", ~"round-trip-a.rs",
                           ~"round-trip-b.rs"]);
@@ -528,13 +534,13 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
     }
 }
 
-fn check_convergence(files: ~[~str]) {
+fn check_convergence(files: &[Path]) {
     error!("pp convergence tests: %u files", vec::len(files));
     for files.each |file| {
-        if !file_might_not_converge(file) {
-            let s = @result::get(io::read_whole_file_str(file));
+        if !file_might_not_converge(&file) {
+            let s = @result::get(io::read_whole_file_str(&file));
             if !content_might_not_converge(*s) {
-                error!("pp converge: %s", file);
+                error!("pp converge: %s", file.to_str());
                 // Change from 7u to 2u once
                 // https://github.com/mozilla/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
@@ -543,15 +549,16 @@ fn check_convergence(files: ~[~str]) {
     }
 }
 
-fn check_variants(files: ~[~str], cx: context) {
+fn check_variants(files: &[Path], cx: context) {
     for files.each |file| {
-        if cx.mode == tm_converge && file_might_not_converge(file) {
+        if cx.mode == tm_converge &&
+            file_might_not_converge(&file) {
             error!("Skipping convergence test based on\
                     file_might_not_converge");
             again;
         }
 
-        let s = @result::get(io::read_whole_file_str(file));
+        let s = @result::get(io::read_whole_file_str(&file));
         if contains(*s, ~"#") {
             again; // Macros are confusing
         }
@@ -562,11 +569,11 @@ fn check_variants(files: ~[~str], cx: context) {
             again;
         }
 
-        log(error, ~"check_variants: " + file);
+        log(error, ~"check_variants: " + file.to_str());
         let sess = parse::new_parse_sess(option::none);
         let crate =
             parse::parse_crate_from_source_str(
-                file,
+                file.to_str(),
                 s, ~[], sess);
         io::with_str_reader(*s, |rdr| {
             error!("%s",
@@ -576,12 +583,12 @@ fn check_variants(files: ~[~str], cx: context) {
                        syntax::parse::token::mk_fake_ident_interner(),
                        sess.span_diagnostic,
                        crate,
-                       file,
+                       file.to_str(),
                        rdr, a,
                        pprust::no_ann(),
                        false) ))
         });
-        check_variants_of_ast(*crate, sess.cm, file, cx);
+        check_variants_of_ast(*crate, sess.cm, &file, cx);
     }
 }
 
@@ -591,9 +598,9 @@ fn main(args: ~[~str]) {
         return;
     }
     let mut files = ~[];
-    let root = args[1];
+    let root = Path(args[1]);
 
-    find_rust_files(files, root);
+    find_rust_files(&mut files, &root);
     error!("== check_convergence ==");
     check_convergence(files);
     error!("== check_variants: converge ==");

@@ -57,18 +57,7 @@ mod write {
         return false;
     }
 
-    // Decides what to call an intermediate file, given the name of the output
-    // and the extension to use.
-    fn mk_intermediate_name(output_path: ~str, extension: ~str) ->
-        ~str unsafe {
-        let stem = match str::find_char(output_path, '.') {
-          some(dot_pos) => str::slice(output_path, 0u, dot_pos),
-          none => output_path
-        };
-        return stem + ~"." + extension;
-    }
-
-    fn run_passes(sess: session, llmod: ModuleRef, output: ~str) {
+    fn run_passes(sess: session, llmod: ModuleRef, output: &Path) {
         let opts = sess.opts;
         if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
         let mut pm = mk_pass_manager();
@@ -85,15 +74,15 @@ mod write {
             match opts.output_type {
               output_type_bitcode => {
                 if opts.optimize != session::No {
-                    let filename = mk_intermediate_name(output, ~"no-opt.bc");
-                    str::as_c_str(filename, |buf| {
+                    let filename = output.with_filetype("no-opt.bc");
+                    str::as_c_str(filename.to_str(), |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     });
                 }
               }
               _ => {
-                let filename = mk_intermediate_name(output, ~"bc");
-                str::as_c_str(filename, |buf| {
+                let filename = output.with_filetype("bc");
+                str::as_c_str(filename.to_str(), |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                 });
               }
@@ -163,9 +152,9 @@ mod write {
             if opts.save_temps {
                 // Always output the bitcode file with --save-temps
 
-                let filename = mk_intermediate_name(output, ~"opt.bc");
+                let filename = output.with_filetype("opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                str::as_c_str(filename, |buf| {
+                str::as_c_str(filename.to_str(), |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                 });
                 pm = mk_pass_manager();
@@ -175,7 +164,7 @@ mod write {
                     let _: () = str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
                         |buf_t| {
-                            str::as_c_str(output, |buf_o| {
+                            str::as_c_str(output.to_str(), |buf_o| {
                                 WriteOutputFile(
                                     sess,
                                     pm.llpm,
@@ -197,7 +186,7 @@ mod write {
                     let _: () = str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
                         |buf_t| {
-                            str::as_c_str(output, |buf_o| {
+                            str::as_c_str(output.to_str(), |buf_o| {
                                 WriteOutputFile(
                                     sess,
                                     pm.llpm,
@@ -217,7 +206,7 @@ mod write {
                 let _: () = str::as_c_str(
                     sess.targ_cfg.target_strs.target_triple,
                     |buf_t| {
-                        str::as_c_str(output, |buf_o| {
+                        str::as_c_str(output.to_str(), |buf_o| {
                             WriteOutputFile(
                                 sess,
                                 pm.llpm,
@@ -239,13 +228,13 @@ mod write {
 
         if opts.output_type == output_type_llvm_assembly {
             // Given options "-S --emit-llvm": output LLVM assembly
-            str::as_c_str(output, |buf_o| {
+            str::as_c_str(output.to_str(), |buf_o| {
                 llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o)});
         } else {
             // If only a bitcode file is asked for by using the '--emit-llvm'
             // flag, then output it here
             llvm::LLVMRunPassManager(pm.llpm, llmod);
-            str::as_c_str(output,
+            str::as_c_str(output.to_str(),
                         |buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) );
         }
 
@@ -306,7 +295,7 @@ mod write {
  *
  */
 
-fn build_link_meta(sess: session, c: ast::crate, output: ~str,
+fn build_link_meta(sess: session, c: ast::crate, output: &Path,
                    symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
@@ -384,21 +373,16 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
-                       output: ~str, metas: provided_metas) -> ~str {
+                       output: &Path, metas: provided_metas) -> ~str {
         return match metas.name {
               some(v) => v,
               none => {
-                let name =
-                    {
-                        let mut os =
-                            str::split_char(path::basename(output), '.');
-                        if (vec::len(os) < 2u) {
-                            sess.fatal(fmt!("output file name `%s` doesn't\
-                              appear to have an extension", output));
-                        }
-                        vec::pop(os);
-                        str::connect(os, ~".")
-                    };
+                let name = match output.filestem() {
+                  none => sess.fatal(fmt!("output file name `%s` doesn't\
+                                           appear to have a stem",
+                                          output.to_str())),
+                  some(s) => s
+                };
                 warn_missing(sess, ~"name", name);
                 name
               }
@@ -552,31 +536,17 @@ fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
 // If the user wants an exe generated we need to invoke
 // cc to link the object file with some libs
 fn link_binary(sess: session,
-               obj_filename: ~str,
-               out_filename: ~str,
+               obj_filename: &Path,
+               out_filename: &Path,
                lm: link_meta) {
-    // Converts a library file name into a cc -l argument
-    fn unlib(config: @session::config, filename: ~str) -> ~str unsafe {
-        let rmlib = fn@(filename: ~str) -> ~str {
-            let found = str::find_str(filename, ~"lib");
-            if config.os == session::os_macos ||
-                (config.os == session::os_linux ||
-                 config.os == session::os_freebsd) &&
-                option::is_some(found) && option::get(found) == 0u {
-                return str::slice(filename, 3u, str::len(filename));
-            } else { return filename; }
-        };
-        fn rmext(filename: ~str) -> ~str {
-            let mut parts = str::split_char(filename, '.');
-            vec::pop(parts);
-            return str::connect(parts, ~".");
+    // Converts a library file-stem into a cc -l argument
+    fn unlib(config: @session::config, stem: ~str) -> ~str {
+        if stem.starts_with("lib") &&
+            config.os != session::os_win32 {
+            stem.slice(3, stem.len())
+        } else {
+            stem
         }
-        return match config.os {
-              session::os_macos => rmext(rmlib(filename)),
-              session::os_linux => rmext(rmlib(filename)),
-              session::os_freebsd => rmext(rmlib(filename)),
-              _ => rmext(filename)
-            };
     }
 
     let output = if sess.building_library {
@@ -585,17 +555,19 @@ fn link_binary(sess: session,
                                   lm.name, lm.extras_hash, lm.vers));
         debug!("link_meta.name:  %s", lm.name);
         debug!("long_libname: %s", long_libname);
-        debug!("out_filename: %s", out_filename);
-        debug!("dirname(out_filename): %s", path::dirname(out_filename));
+        debug!("out_filename: %s", out_filename.to_str());
+        debug!("dirname(out_filename): %s", out_filename.dir_path().to_str());
 
-        path::connect(path::dirname(out_filename), long_libname)
-    } else { out_filename };
+        out_filename.dir_path().push(long_libname)
+    } else {
+        *out_filename
+    };
 
-    log(debug, ~"output: " + output);
+    log(debug, ~"output: " + output.to_str());
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
-    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path();
+    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path().to_str();
 
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
@@ -609,27 +581,28 @@ fn link_binary(sess: session,
     let mut cc_args =
         vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
     vec::push(cc_args, ~"-o");
-    vec::push(cc_args, output);
-    vec::push(cc_args, obj_filename);
+    vec::push(cc_args, output.to_str());
+    vec::push(cc_args, obj_filename.to_str());
 
     let mut lib_cmd;
     let os = sess.targ_cfg.os;
     if os == session::os_macos {
         lib_cmd = ~"-dynamiclib";
-    } else { lib_cmd = ~"-shared"; }
+    } else {
+        lib_cmd = ~"-shared";
+    }
 
     // # Crate linking
 
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each |cratepath| {
-        if str::ends_with(cratepath, ~".rlib") {
-            vec::push(cc_args, cratepath);
+        if cratepath.filetype() == some(~"rlib") {
+            vec::push(cc_args, cratepath.to_str());
             again;
         }
-        let cratepath = cratepath;
-        let dir = path::dirname(cratepath);
+        let dir = cratepath.dirname();
         if dir != ~"" { vec::push(cc_args, ~"-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, path::basename(cratepath));
+        let libarg = unlib(sess.targ_cfg, option::get(cratepath.filestem()));
         vec::push(cc_args, ~"-l" + libarg);
     }
 
@@ -645,7 +618,7 @@ fn link_binary(sess: session,
     // forces to make sure that library can be found at runtime.
 
     let addl_paths = sess.opts.addl_lib_search_paths;
-    for addl_paths.each |path| { vec::push(cc_args, ~"-L" + path); }
+    for addl_paths.each |path| { vec::push(cc_args, ~"-L" + path.to_str()); }
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
@@ -658,7 +631,7 @@ fn link_binary(sess: session,
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
             vec::push(cc_args, ~"-Wl,-install_name,@rpath/"
-                      + path::basename(output));
+                      + option::get(output.filename()));
         }
     }
 
@@ -701,7 +674,7 @@ fn link_binary(sess: session,
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // extern libraries might live, based on the addl_lib_search_paths
-    vec::push_all(cc_args, rpath::get_rpath_flags(sess, output));
+    vec::push_all(cc_args, rpath::get_rpath_flags(sess, &output));
 
     debug!("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
     // We run 'cc' here
@@ -717,14 +690,14 @@ fn link_binary(sess: session,
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::os_macos {
-        run::run_program(~"dsymutil", ~[output]);
+        run::run_program(~"dsymutil", ~[output.to_str()]);
     }
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
         if ! os::remove_file(obj_filename) {
             sess.warn(fmt!("failed to delete object file `%s`",
-                           obj_filename));
+                           obj_filename.to_str()));
         }
     }
 }

@@ -42,12 +42,16 @@ fn parse_config(args: ~[~str]) -> config {
           err(f) => fail getopts::fail_str(f)
         };
 
+    fn opt_path(m: getopts::matches, nm: ~str) -> Path {
+        Path(getopts::opt_str(m, nm))
+    }
+
     return {compile_lib_path: getopts::opt_str(matches, ~"compile-lib-path"),
          run_lib_path: getopts::opt_str(matches, ~"run-lib-path"),
-         rustc_path: getopts::opt_str(matches, ~"rustc-path"),
-         src_base: getopts::opt_str(matches, ~"src-base"),
-         build_base: getopts::opt_str(matches, ~"build-base"),
-         aux_base: getopts::opt_str(matches, ~"aux-base"),
+         rustc_path: opt_path(matches, ~"rustc-path"),
+         src_base: opt_path(matches, ~"src-base"),
+         build_base: opt_path(matches, ~"build-base"),
+         aux_base: opt_path(matches, ~"aux-base"),
          stage_id: getopts::opt_str(matches, ~"stage-id"),
          mode: str_mode(getopts::opt_str(matches, ~"mode")),
          run_ignored: getopts::opt_present(matches, ~"ignored"),
@@ -55,7 +59,9 @@ fn parse_config(args: ~[~str]) -> config {
              if vec::len(matches.free) > 0u {
                  option::some(matches.free[0])
              } else { option::none },
-         logfile: getopts::opt_maybe_str(matches, ~"logfile"),
+         logfile: option::map(getopts::opt_maybe_str(matches,
+                                                     ~"logfile"),
+                              |s| Path(s)),
          runtool: getopts::opt_maybe_str(matches, ~"runtool"),
          rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
          verbose: getopts::opt_present(matches, ~"verbose")};
@@ -66,9 +72,9 @@ fn log_config(config: config) {
     logv(c, fmt!("configuration:"));
     logv(c, fmt!("compile_lib_path: %s", config.compile_lib_path));
     logv(c, fmt!("run_lib_path: %s", config.run_lib_path));
-    logv(c, fmt!("rustc_path: %s", config.rustc_path));
-    logv(c, fmt!("src_base: %s", config.src_base));
-    logv(c, fmt!("build_base: %s", config.build_base));
+    logv(c, fmt!("rustc_path: %s", config.rustc_path.to_str()));
+    logv(c, fmt!("src_base: %s", config.src_base.to_str()));
+    logv(c, fmt!("build_base: %s", config.build_base.to_str()));
     logv(c, fmt!("stage_id: %s", config.stage_id));
     logv(c, fmt!("mode: %s", mode_str(config.mode)));
     logv(c, fmt!("run_ignored: %b", config.run_ignored));
@@ -122,18 +128,19 @@ fn test_opts(config: config) -> test::test_opts {
      run_ignored: config.run_ignored,
      logfile:
          match config.logfile {
-           option::some(s) => option::some(s),
+           option::some(s) => option::some(s.to_str()),
            option::none => option::none
          }
     }
 }
 
 fn make_tests(config: config) -> ~[test::test_desc] {
-    debug!("making tests from %s", config.src_base);
+    debug!("making tests from %s",
+           config.src_base.to_str());
     let mut tests = ~[];
-    for os::list_dir_path(config.src_base).each |file| {
-        let file = file;
-        debug!("inspecting file %s", file);
+    for os::list_dir_path(&config.src_base).each |file| {
+        let file = copy file;
+        debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
             vec::push(tests, make_test(config, file))
         }
@@ -141,7 +148,7 @@ fn make_tests(config: config) -> ~[test::test_desc] {
     return tests;
 }
 
-fn is_test(config: config, testfile: ~str) -> bool {
+fn is_test(config: config, testfile: &Path) -> bool {
     // Pretty-printer does not work with .rc files yet
     let valid_extensions =
         match config.mode {
@@ -149,7 +156,7 @@ fn is_test(config: config, testfile: ~str) -> bool {
           _ => ~[~".rc", ~".rs"]
         };
     let invalid_prefixes = ~[~".", ~"#", ~"~"];
-    let name = path::basename(testfile);
+    let name = option::get(testfile.filename());
 
     let mut valid = false;
 
@@ -164,7 +171,7 @@ fn is_test(config: config, testfile: ~str) -> bool {
     return valid;
 }
 
-fn make_test(config: config, testfile: ~str) ->
+fn make_test(config: config, testfile: &Path) ->
    test::test_desc {
     {
         name: make_test_name(config, testfile),
@@ -174,12 +181,13 @@ fn make_test(config: config, testfile: ~str) ->
     }
 }
 
-fn make_test_name(config: config, testfile: ~str) -> ~str {
-    fmt!("[%s] %s", mode_str(config.mode), testfile)
+fn make_test_name(config: config, testfile: &Path) -> ~str {
+    fmt!("[%s] %s", mode_str(config.mode), testfile.to_str())
 }
 
-fn make_test_closure(config: config, testfile: ~str) -> test::test_fn {
-    fn~() { runtest::run(config, copy testfile) }
+fn make_test_closure(config: config, testfile: &Path) -> test::test_fn {
+    let testfile = testfile.to_str();
+    fn~() { runtest::run(config, testfile) }
 }
 
 // Local Variables:

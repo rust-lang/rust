@@ -56,7 +56,7 @@ type cstore_private =
     @{metas: map::hashmap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
       mod_path_map: mod_path_map,
-      mut used_crate_files: ~[~str],
+      mut used_crate_files: ~[Path],
       mut used_libraries: ~[~str],
       mut used_link_args: ~[~str],
       intr: ident_interner};
@@ -114,13 +114,13 @@ fn iter_crate_data(cstore: cstore, i: fn(ast::crate_num, crate_metadata)) {
     for p(cstore).metas.each |k,v| { i(k, v);};
 }
 
-fn add_used_crate_file(cstore: cstore, lib: ~str) {
-    if !vec::contains(p(cstore).used_crate_files, lib) {
-        vec::push(p(cstore).used_crate_files, lib);
+fn add_used_crate_file(cstore: cstore, lib: &Path) {
+    if !vec::contains(p(cstore).used_crate_files, copy *lib) {
+        vec::push(p(cstore).used_crate_files, copy *lib);
     }
 }
 
-fn get_used_crate_files(cstore: cstore) -> ~[~str] {
+fn get_used_crate_files(cstore: cstore) -> ~[Path] {
     return p(cstore).used_crate_files;
 }
 

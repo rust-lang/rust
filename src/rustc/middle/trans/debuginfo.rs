@@ -172,7 +172,7 @@ fn create_compile_unit(cx: @crate_ctxt)
       option::none => ()
     }
 
-    let (_, work_dir) = get_file_path_and_dir(cx.sess.working_dir,
+    let (_, work_dir) = get_file_path_and_dir(cx.sess.working_dir.to_str(),
                                               crate_name);
     let unit_metadata = ~[lltag(tg),
                          llunused(),
@@ -197,13 +197,13 @@ fn get_cache(cx: @crate_ctxt) -> metadata_cache {
     option::get(cx.dbg_cx).llmetadata
 }
 
-fn get_file_path_and_dir(work_dir: ~str, full_path: ~str) -> (~str, ~str) {
+fn get_file_path_and_dir(work_dir: &str, full_path: &str) -> (~str, ~str) {
     (if str::starts_with(full_path, work_dir) {
         str::slice(full_path, str::len(work_dir) + 1u,
                    str::len(full_path))
     } else {
-        full_path
-    }, work_dir)
+        str::from_slice(full_path)
+    }, str::from_slice(work_dir))
 }
 
 fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
@@ -215,8 +215,9 @@ fn create_file(cx: @crate_ctxt, full_path: ~str) -> @metadata<file_md> {
         option::none => ()
     }
 
-    let (file_path, work_dir) = get_file_path_and_dir(cx.sess.working_dir,
-                                                      full_path);
+    let (file_path, work_dir) =
+        get_file_path_and_dir(cx.sess.working_dir.to_str(),
+                              full_path);
     let unit_node = create_compile_unit(cx).node;
     let file_md = ~[lltag(tg),
                    llstr(file_path),

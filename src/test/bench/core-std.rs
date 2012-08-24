@@ -52,13 +52,11 @@ fn shift_push() {
 }
 
 fn read_line() {
-    let path = path::connect(
-        env!("CFG_SRC_DIR"),
-        ~"src/test/bench/shootout-k-nucleotide.data"
-    );
+    let path = Path(env!("CFG_SRC_DIR"))
+        .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
 
     for int::range(0, 3) |_i| {
-        let reader = result::get(io::file_reader(path));
+        let reader = result::get(io::file_reader(&path));
         while !reader.eof() {
             reader.read_line();
         }
