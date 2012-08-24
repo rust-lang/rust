@@ -193,7 +193,7 @@ mod test {
             exit_ch: exit_ch
         };
         let ah_data_ptr = ptr::addr_of(ah_data);
-        do interact(iotask) |loop_ptr| {
+        do interact(iotask) |loop_ptr| unsafe {
             ll::async_init(loop_ptr, ah_ptr, async_handle_cb);
             ll::set_data_for_uv_handle(ah_ptr, ah_data_ptr as *libc::c_void);
             ll::async_send(ah_ptr);

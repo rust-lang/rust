@@ -2089,7 +2089,7 @@ fn test_child_doesnt_ref_parent() {
 fn test_tls_multitask() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_set(my_key, @~"parent data");
-    do task::spawn {
+    do task::spawn unsafe {
         assert local_data_get(my_key) == none; // TLS shouldn't carry over.
         local_data_set(my_key, @~"child data");
         assert *(local_data_get(my_key).get()) == ~"child data";
@@ -2155,7 +2155,7 @@ fn test_tls_multiple_types() unsafe {
     fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
-    do task::spawn {
+    do task::spawn unsafe {
         local_data_set(str_key, @~"string data");
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);
@@ -2163,11 +2163,11 @@ fn test_tls_multiple_types() unsafe {
 }
 
 #[test]
-fn test_tls_overwrite_multiple_types() unsafe {
+fn test_tls_overwrite_multiple_types() {
     fn str_key(+_x: @~str) { }
     fn box_key(+_x: @@()) { }
     fn int_key(+_x: @int) { }
-    do task::spawn {
+    do task::spawn unsafe {
         local_data_set(str_key, @~"string data");
         local_data_set(int_key, @42);
         // This could cause a segfault if overwriting-destruction is done with
@@ -2185,7 +2185,7 @@ fn test_tls_cleanup_on_failure() unsafe {
     fn int_key(+_x: @int) { }
     local_data_set(str_key, @~"parent data");
     local_data_set(box_key, @@());
-    do task::spawn { // spawn_linked
+    do task::spawn unsafe { // spawn_linked
         local_data_set(str_key, @~"string data");
         local_data_set(box_key, @@());
         local_data_set(int_key, @42);

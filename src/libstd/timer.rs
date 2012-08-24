@@ -31,7 +31,7 @@ fn delayed_send<T: copy send>(iotask: iotask,
             let timer_done_ch_ptr = ptr::addr_of(timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(timer);
-            do iotask::interact(iotask) |loop_ptr| {
+            do iotask::interact(iotask) |loop_ptr| unsafe {
                 let init_result = uv::ll::timer_init(loop_ptr, timer_ptr);
                 if (init_result == 0i32) {
                     let start_result = uv::ll::timer_start(

@@ -145,7 +145,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
     // we can send into the interact cb to be handled in libuv..
     log(debug, fmt!("stream_handle_ptr outside interact %?",
         stream_handle_ptr));
-    do iotask::interact(iotask) |loop_ptr| {
+    do iotask::interact(iotask) |loop_ptr| unsafe {
         log(debug, ~"in interact cb for tcp client connect..");
         log(debug, fmt!("stream_handle_ptr in interact %?",
             stream_handle_ptr));
@@ -571,7 +571,7 @@ fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
     -> result::result<(), tcp_listen_err_data> unsafe {
     do listen_common(host_ip, port, backlog, iotask, on_establish_cb)
         // on_connect_cb
-        |handle| {
+        |handle| unsafe {
             let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
                 as *tcp_listen_fc_data;
             let new_conn = new_tcp_conn(handle);
@@ -608,7 +608,7 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
         // tcp::connect (because the iotask::interact cb isn't
         // nested within a core::comm::listen block)
         let loc_ip = copy(host_ip);
-        do iotask::interact(iotask) |loop_ptr| {
+        do iotask::interact(iotask) |loop_ptr| unsafe {
             match uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
               0i32 => {
                 uv::ll::set_data_for_uv_handle(
@@ -660,7 +660,7 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
     };
     match setup_result {
       some(err_data) => {
-        do iotask::interact(iotask) |loop_ptr| {
+        do iotask::interact(iotask) |loop_ptr| unsafe {
             log(debug, fmt!("tcp::listen post-kill recv hl interact %?",
                             loop_ptr));
             (*server_data_ptr).active = false;
@@ -687,7 +687,7 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
       none => {
         on_establish_cb(kill_ch);
         let kill_result = core::comm::recv(kill_po);
-        do iotask::interact(iotask) |loop_ptr| {
+        do iotask::interact(iotask) |loop_ptr| unsafe {
             log(debug, fmt!("tcp::listen post-kill recv hl interact %?",
                             loop_ptr));
             (*server_data_ptr).active = false;
@@ -844,7 +844,7 @@ fn tear_down_socket_data(socket_data: @tcp_socket_data) unsafe {
     };
     let close_data_ptr = ptr::addr_of(close_data);
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
-    do iotask::interact((*socket_data).iotask) |loop_ptr| {
+    do iotask::interact((*socket_data).iotask) |loop_ptr| unsafe {
         log(debug, fmt!("interact dtor for tcp_socket stream %? loop %?",
             stream_handle_ptr, loop_ptr));
         uv::ll::set_data_for_uv_handle(stream_handle_ptr,
@@ -902,7 +902,7 @@ fn read_stop_common_impl(socket_data: *tcp_socket_data) ->
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let stop_po = core::comm::port::<option<tcp_err_data>>();
     let stop_ch = core::comm::chan(stop_po);
-    do iotask::interact((*socket_data).iotask) |loop_ptr| {
+    do iotask::interact((*socket_data).iotask) |loop_ptr| unsafe {
         log(debug, ~"in interact cb for tcp::read_stop");
         match uv::ll::read_stop(stream_handle_ptr as *uv::ll::uv_stream_t) {
           0i32 => {
@@ -930,7 +930,7 @@ fn read_start_common_impl(socket_data: *tcp_socket_data)
     let start_po = core::comm::port::<option<uv::ll::uv_err_data>>();
     let start_ch = core::comm::chan(start_po);
     log(debug, ~"in tcp::read_start before interact loop");
-    do iotask::interact((*socket_data).iotask) |loop_ptr| {
+    do iotask::interact((*socket_data).iotask) |loop_ptr| unsafe {
         log(debug, fmt!("in tcp::read_start interact cb %?", loop_ptr));
         match uv::ll::read_start(stream_handle_ptr as *uv::ll::uv_stream_t,
                                on_alloc_cb,
@@ -970,7 +970,7 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
         result_ch: core::comm::chan(result_po)
     };
     let write_data_ptr = ptr::addr_of(write_data);
-    do iotask::interact((*socket_data_ptr).iotask) |loop_ptr| {
+    do iotask::interact((*socket_data_ptr).iotask) |loop_ptr| unsafe {
         log(debug, fmt!("in interact cb for tcp::write %?", loop_ptr));
         match uv::ll::write(write_req_ptr,
                           stream_handle_ptr,
