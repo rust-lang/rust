@@ -117,6 +117,9 @@ type crate_ctxt = {
      discrims: hashmap<ast::def_id, ValueRef>,
      discrim_symbols: hashmap<ast::node_id, ~str>,
      tydescs: hashmap<ty::t, @tydesc_info>,
+     // Set when running emit_tydescs to enforce that no more tydescs are
+     // created.
+     mut finished_tydescs: bool,
      // Track mapping of external ids to local items imported for inlining
      external: hashmap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions

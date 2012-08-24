@@ -584,6 +584,34 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     return mk_global(ccx, ~"resource_shapes", C_struct(dtors), true);
 }
 
+// This function serves to break a cyclical dependence between
+// emit_tydescs and gen_shape_tables.
+//
+//  * emit_tydescs calls shape_of, which causes changes to the shape
+//    tables
+//  * gen_shape_tables transitively calls get_tydesc, which causes new
+//    tydescs to be created
+//
+// We force those tydescs to be emitted now, thus breaking the
+// dependency.
+fn force_declare_tydescs(ccx: @crate_ctxt) {
+    // Walk all known tydescs first to force shape code to declare
+    // dependencies.
+    for ccx.tydescs.each |key, _val| {
+        shape_of(ccx, key);
+    }
+
+    // Then walk all resource shapes to force emit all dtors.
+    let len = ccx.shape_cx.resources.len();
+    for uint::range(0u, len) |i| {
+        let ri = ccx.shape_cx.resources.get(i);
+        for ri.tps.each() |s| { assert !ty::type_has_params(s); }
+        do option::iter(ri.parent_id) |id| {
+            trans::base::get_res_dtor(ccx, ri.did, id, ri.tps);
+        }
+    }
+}
+
 fn gen_shape_tables(ccx: @crate_ctxt) {
     let lltagstable = gen_enum_shapes(ccx);
     let llresourcestable = gen_resource_shapes(ccx);

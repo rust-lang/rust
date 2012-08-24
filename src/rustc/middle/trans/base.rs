@@ -531,6 +531,10 @@ fn declare_tydesc_addrspace(ccx: @crate_ctxt, t: ty::t) -> addrspace {
 // Generates the declaration for (but doesn't emit) a type descriptor.
 fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     let _icx = ccx.insn_ctxt("declare_tydesc");
+    // If emit_tydescs already ran, then we shouldn't be creating any new
+    // tydescs.
+    assert !ccx.finished_tydescs;
+
     let llty = type_of(ccx, t);
 
     if ccx.sess.count_type_sizes() {
@@ -624,6 +628,8 @@ fn make_generic_glue(ccx: @crate_ctxt, t: ty::t, llfn: ValueRef,
 
 fn emit_tydescs(ccx: @crate_ctxt) {
     let _icx = ccx.insn_ctxt("emit_tydescs");
+    // As of this point, allow no more tydescs to be created.
+    ccx.finished_tydescs = true;
     for ccx.tydescs.each |key, val| {
         let glue_fn_ty = T_ptr(T_generic_glue_fn(ccx));
         let ti = val;
@@ -5927,6 +5933,7 @@ fn trans_crate(sess: session::session,
           discrims: ast_util::new_def_hash::<ValueRef>(),
           discrim_symbols: int_hash::<~str>(),
           tydescs: ty::new_ty_hash(),
+          mut finished_tydescs: false,
           external: ast_util::new_def_hash(),
           monomorphized: map::hashmap(hash_mono_id, sys::shape_eq),
           monomorphizing: ast_util::new_def_hash(),
@@ -5982,6 +5989,9 @@ fn trans_crate(sess: session::session,
     }
 
     fill_crate_map(ccx, crate_map);
+    // NB: Must call force_declare_tydescs before emit_tydescs to break
+    // cyclical dependency with shape code! See shape.rs for details.
+    force_declare_tydescs(ccx);
     emit_tydescs(ccx);
     gen_shape_tables(ccx);
     write_abi_version(ccx);
