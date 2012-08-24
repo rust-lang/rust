@@ -44,13 +44,14 @@ pure fn get_ref<T>(opt: &r/option<T>) -> &r/T {
 }
 
 pure fn expect<T: copy>(opt: option<T>, reason: ~str) -> T {
-    #[doc = "
-    Gets the value out of an option, printing a specified message on failure
-
-    # Failure
-
-    Fails if the value equals `none`
-    "];
+    /*!
+     * Gets the value out of an option, printing a specified message on
+     * failure
+     *
+     * # Failure
+     *
+     * Fails if the value equals `none`
+     */
     match opt { some(x) => x, none => fail reason }
 }
 
@@ -165,15 +166,9 @@ pure fn unwrap<T>(+opt: option<T>) -> T {
      * Useful primarily for getting strings, vectors and unique pointers out
      * of option types without copying them.
      */
-
-    unsafe {
-        let addr = match opt {
-          some(x) => ptr::addr_of(x),
-          none => fail ~"option::unwrap none"
-        };
-        let liberated_value = unsafe::reinterpret_cast(*addr);
-        unsafe::forget(opt);
-        return liberated_value;
+    match move opt {
+        some(move x) => x,
+        none => fail ~"option::unwrap none"
     }
 }
 
