@@ -228,10 +228,10 @@ fn check_fn(ccx: @crate_ctxt,
              node_type_substs: map::int_hash()}
           }
           some(fcx) => {
-            assert fn_ty.purity == ast::impure_fn;
             {infcx: fcx.infcx,
              locals: fcx.locals,
-             purity: fcx.purity,
+             purity: ty::determine_inherited_purity(fcx.purity, fn_ty.purity,
+                                                    fn_ty.proto),
              node_types: fcx.node_types,
              node_type_substs: fcx.node_type_substs}
           }
@@ -1187,14 +1187,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
     }
 
-    enum fn_or_ast_proto {
-        foap_fn_proto(ty::fn_proto),
-        foap_ast_proto(ast::proto)
-    }
-
     fn check_expr_fn(fcx: @fn_ctxt,
                      expr: @ast::expr,
-                     fn_or_ast_proto: fn_or_ast_proto,
+                     ast_proto_opt: option<ast::proto>,
                      decl: ast::fn_decl,
                      body: ast::blk,
                      is_loop_body: bool,
@@ -1205,44 +1200,48 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // avoid capture of bound regions in the expected type.  See
         // def'n of br_cap_avoid() for a more lengthy explanation of
         // what's going on here.
-        let expected_tys = do unpack_expected(fcx, expected) |sty| {
-            match sty {
-              ty::ty_fn(ref fn_ty) => {
+        // Also try to pick up inferred purity and proto, defaulting
+        // to impure and block. Note that we only will use those for
+        // block syntax lambdas; that is, lambdas without explicit
+        // protos.
+        let expected_sty = unpack_expected(fcx, expected, |x| some(x));
+        let (expected_tys, expected_purity, expected_proto) =
+            match expected_sty {
+              some(ty::ty_fn(ref fn_ty)) => {
                 let {fn_ty, _} =
                     replace_bound_regions_in_fn_ty(
                         tcx, @nil, none, fn_ty,
                         |br| ty::re_bound(ty::br_cap_avoid(expr.id, @br)));
-                some({inputs:fn_ty.inputs,
-                      output:fn_ty.output})
+                (some({inputs:fn_ty.inputs,
+                       output:fn_ty.output}),
+                 fn_ty.purity,
+                 fn_ty.proto)
               }
-              _ => {none}
-            }
-        };
+              _ => {
+                (none, ast::impure_fn, ty::proto_vstore(ty::vstore_box))
+              }
+            };
 
-        let ast_proto;
-        match fn_or_ast_proto {
-            foap_fn_proto(fn_proto) => {
-                // Generate a fake AST prototype. We'll fill in the type with
-                // the real one later.
-                // XXX: This is a hack.
-                ast_proto = ast::proto_box;
-            }
-            foap_ast_proto(existing_ast_proto) => {
-                ast_proto = existing_ast_proto;
-            }
-        }
 
-        let purity = ast::impure_fn;
+        // Generate AST prototypes and purity.
+        // If this is a block lambda (ast_proto == none), these values
+        // are bogus. We'll fill in the type with the real one later.
+        // XXX: This is a hack.
+        let ast_proto = ast_proto_opt.get_default(ast::proto_box);
+        let ast_purity = ast::impure_fn;
 
         // construct the function type
-        let mut fn_ty = astconv::ty_of_fn_decl(fcx, fcx, ast_proto, purity,
-                                               @~[],
+        let mut fn_ty = astconv::ty_of_fn_decl(fcx, fcx,
+                                               ast_proto, ast_purity, @~[],
                                                decl, expected_tys, expr.span);
 
         // Patch up the function declaration, if necessary.
-        match fn_or_ast_proto {
-            foap_fn_proto(fn_proto) => fn_ty.proto = fn_proto,
-            foap_ast_proto(_) => {}
+        match ast_proto_opt {
+          none => {
+            fn_ty.purity = expected_purity;
+            fn_ty.proto = expected_proto;
+          }
+          some(_) => { }
         }
 
         let fty = ty::mk_fn(tcx, fn_ty);
@@ -1602,17 +1601,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = alt::check_alt(fcx, expr, discrim, arms);
       }
       ast::expr_fn(proto, decl, body, cap_clause) => {
-        check_expr_fn(fcx, expr, foap_ast_proto(proto),
+        check_expr_fn(fcx, expr, some(proto),
                       decl, body, false,
                       expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
       }
       ast::expr_fn_block(decl, body, cap_clause) => {
-        // Take the prototype from the expected type, but default to block:
-        let proto = do unpack_expected(fcx, expected) |sty| {
-            match sty { ty::ty_fn({proto, _}) => some(proto), _ => none }
-        }.get_default(ty::proto_vstore(ty::vstore_box));
-        check_expr_fn(fcx, expr, foap_fn_proto(proto),
+        check_expr_fn(fcx, expr, none,
                       decl, body, false,
                       expected);
         capture::check_capture_clause(tcx, expr.id, cap_clause);
@@ -1625,7 +1620,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // 1. a closure that returns a bool is expected
         // 2. the cloure that was given returns unit
         let expected_sty = unpack_expected(fcx, expected, |x| some(x));
-        let (inner_ty, proto) = match expected_sty {
+        let inner_ty = match expected_sty {
           some(ty::ty_fn(fty)) => {
             match fcx.mk_subty(false, expr.span,
                                fty.output, ty::mk_bool(tcx)) {
@@ -1637,7 +1632,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                     fcx.infcx.ty_to_str(fty.output)));
               }
             }
-            (ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty}), fty.proto)
+            ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty})
           }
           _ => {
             tcx.sess.span_fatal(expr.span, ~"a `loop` function's last \
@@ -1647,7 +1642,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         match check b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
-            check_expr_fn(fcx, b, foap_fn_proto(proto),
+            check_expr_fn(fcx, b, none,
                           decl, body, true,
                           some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
@@ -1665,9 +1660,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_do_body(b) => {
         let expected_sty = unpack_expected(fcx, expected, |x| some(x));
-        let (inner_ty, proto) = match expected_sty {
+        let inner_ty = match expected_sty {
           some(ty::ty_fn(fty)) => {
-            (ty::mk_fn(tcx, fty), fty.proto)
+            ty::mk_fn(tcx, fty)
           }
           _ => {
             tcx.sess.span_fatal(expr.span, ~"Non-function passed to a `do` \
@@ -1677,7 +1672,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         };
         match check b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
-            check_expr_fn(fcx, b, foap_fn_proto(proto),
+            check_expr_fn(fcx, b, none,
                           decl, body, true,
                           some(inner_ty));
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));

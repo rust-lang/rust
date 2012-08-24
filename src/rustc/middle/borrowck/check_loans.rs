@@ -521,8 +521,11 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
         do save_and_restore(self.declared_purity) {
             do save_and_restore(self.fn_args) {
                 let is_stack_closure = self.is_stack_closure(id);
-                let purity =
-                    ty::ty_fn_purity(ty::node_id_to_type(self.tcx(), id));
+                let fty = ty::node_id_to_type(self.tcx(), id);
+                self.declared_purity = ty::determine_inherited_purity(
+                    copy self.declared_purity,
+                    ty::ty_fn_purity(fty),
+                    ty::ty_fn_proto(fty));
 
                 // In principle, we could consider fk_anon(*) or
                 // fk_fn_block(*) to be in a ctor, I suppose, but the
@@ -533,19 +536,17 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                 match fk {
                   visit::fk_ctor(*) => {
                     self.in_ctor = true;
-                    self.declared_purity = purity;
                     self.fn_args = @decl.inputs.map(|i| i.id );
                   }
                   visit::fk_anon(*) |
                   visit::fk_fn_block(*) if is_stack_closure => {
                     self.in_ctor = false;
-                    // inherits the purity/fn_args from enclosing ctxt
+                    // inherits the fn_args from enclosing ctxt
                   }
                   visit::fk_anon(*) | visit::fk_fn_block(*) |
                   visit::fk_method(*) | visit::fk_item_fn(*) |
                   visit::fk_dtor(*) => {
                     self.in_ctor = false;
-                    self.declared_purity = purity;
                     self.fn_args = @decl.inputs.map(|i| i.id );
                   }
                 }

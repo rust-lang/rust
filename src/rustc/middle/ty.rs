@@ -187,6 +187,7 @@ export region_variance, rv_covariant, rv_invariant, rv_contravariant;
 export serialize_region_variance, deserialize_region_variance;
 export opt_region_variance;
 export serialize_opt_region_variance, deserialize_opt_region_variance;
+export determine_inherited_purity;
 
 // Data types
 
@@ -3405,6 +3406,19 @@ pure fn is_blockish(proto: fn_proto) -> bool {
             fail ~"fixed vstore not allowed here"
     }
 }
+
+// Determine what purity to check a nested function under
+pure fn determine_inherited_purity(parent_purity: ast::purity,
+                                   child_purity: ast::purity,
+                                   child_proto: ty::fn_proto) -> ast::purity {
+    // If the closure is a stack closure and hasn't had some non-standard
+    // purity inferred for it, then check it under its parent's purity.
+    // Otherwise, use its own
+    if ty::is_blockish(child_proto) && child_purity == ast::impure_fn {
+        parent_purity
+    } else { child_purity }
+}
+
 
 // Local Variables:
 // mode: rust
