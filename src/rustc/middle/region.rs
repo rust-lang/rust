@@ -655,6 +655,25 @@ fn determine_rp_in_ty(ty: @ast::ty,
       _ => {}
     }
 
+    // temporary hack: right now, fn() is short for &fn(), but @(fn())
+    // is `@fn()`, so catch this and set anon_implies_rp to none in
+    // that case
+    match ty.node {
+      ast::ty_box(mt) | ast::ty_uniq(mt) => {
+        match mt.ty.node {
+          ast::ty_fn(ast::proto_bare, _, _) |
+          ast::ty_fn(ast::proto_block, _, _) => {
+            do cx.with(cx.item_id, false) {
+                visit_mt(mt, cx, visitor);
+            }
+            return;
+          }
+          _ => {}
+        }
+      }
+      _ => {}
+    }
+
     match ty.node {
       ast::ty_box(mt) | ast::ty_uniq(mt) | ast::ty_vec(mt) |
       ast::ty_rptr(_, mt) | ast::ty_ptr(mt) => {
