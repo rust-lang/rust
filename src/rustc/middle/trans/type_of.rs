@@ -248,8 +248,8 @@ fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
 
 fn type_of_rooted(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
     let addrspace = base::get_tydesc(ccx, t).addrspace;
-    debug!{"type_of_rooted %s in addrspace %u",
-           ty_to_str(ccx.tcx, t), addrspace as uint};
+    debug!("type_of_rooted %s in addrspace %u",
+           ty_to_str(ccx.tcx, t), addrspace as uint);
     return T_root(type_of(ccx, t), addrspace);
 }
 
