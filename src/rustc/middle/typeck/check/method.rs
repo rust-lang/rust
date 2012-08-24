@@ -195,7 +195,7 @@ struct lookup {
             self.add_inherent_and_extension_candidates
                 (optional_inherent_methods, immutable_reference_mode);
 
-            // if we found anything, stop before attempting auto-deref.
+            // if we found anything, stop before attempting mutable auto-ref.
             if self.candidates.len() > 0u { break; }
 
             // Now look for inherent and extension methods, this time using a
