@@ -234,14 +234,8 @@ pure fn from_slice<T: copy>(t: &[T]) -> ~[T] {
 #[inline(always)]
 pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
     let mut vec = ~[];
-    unsafe {
-        reserve(vec, size);
-        // This is an awful hack to be able to make the push function
-        // pure. Is there a better way?
-        ::unsafe::reinterpret_cast::
-            <fn(push: pure fn(+A)), fn(push: fn(+A))>
-            (builder)(|+x| push(vec, x));
-    }
+    unchecked { reserve(vec, size); }
+    builder(|+x| unchecked { push(vec, x) });
     return vec;
 }
 

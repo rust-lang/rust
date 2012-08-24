@@ -52,14 +52,8 @@ pure fn capacity<T>(&&v: @[const T]) -> uint {
 #[inline(always)]
 pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
     let mut vec = @[];
-    unsafe {
-        unsafe::reserve(vec, size);
-        // This is an awful hack to be able to make the push function
-        // pure. Is there a better way?
-        ::unsafe::reinterpret_cast::
-            <fn(push: pure fn(+A)), fn(push: fn(+A))>
-            (builder)(|+x| unsafe::push(vec, x));
-    }
+    unsafe { unsafe::reserve(vec, size); }
+    builder(|+x| unsafe { unsafe::push(vec, x) });
     return vec;
 }
 
