@@ -1962,7 +1962,7 @@ fn trans_if(cx: block, cond: @ast::expr, thn: ast::blk,
     let else_cx = scope_block(bcx, els.info(), ~"else");
     CondBr(bcx, cond_val, then_cx.llbb, else_cx.llbb);
     let then_bcx = trans_block(then_cx, thn, then_dest);
-    let then_bcx = trans_block_cleanups(then_bcx, then_cx);
+    let then_bcx = trans_block_cleanups(then_bcx, block_cleanups(then_cx));
     // Calling trans_block directly instead of trans_expr
     // because trans_expr will create another scope block
     // context for the block, but we've already got the
@@ -1983,7 +1983,7 @@ fn trans_if(cx: block, cond: @ast::expr, thn: ast::blk,
       }
       _ => else_cx
     };
-    let else_bcx = trans_block_cleanups(else_bcx, else_cx);
+    let else_bcx = trans_block_cleanups(else_bcx, block_cleanups(else_cx));
     return join_returns(cx,
                      ~[then_bcx, else_bcx], ~[then_dest, else_dest], dest);
 }
@@ -1998,7 +1998,8 @@ fn trans_while(cx: block, cond: @ast::expr, body: ast::blk)
     Br(cx, loop_cx.llbb);
     Br(loop_cx, cond_cx.llbb);
     let cond_res = trans_temp_expr(cond_cx, cond);
-    let cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
+    let cond_bcx = trans_block_cleanups(cond_res.bcx,
+                                        block_cleanups(cond_cx));
     CondBr(cond_bcx, cond_res.val, body_cx.llbb, next_cx.llbb);
     let body_end = trans_block(body_cx, body, ignore);
     cleanup_and_Br(body_end, body_cx, cond_cx.llbb);
@@ -2113,19 +2114,19 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
                   _ => ()
                 }
             }
-            mono_precise(subst, if v.len() > 0u { some(v) } else { none })
+            (subst, if v.len() > 0u { some(v) } else { none })
         })
       }
       none => {
-        vec::map(substs, |subst| mono_precise(subst, none))
+        vec::map(substs, |subst| (subst, none))
       }
     };
     let param_ids = match param_uses {
       some(uses) => {
         vec::map2(precise_param_ids, uses, |id, uses| {
-            match check id {
-              mono_precise(_, some(_)) => id,
-              mono_precise(subst, none) => {
+            match id {
+                (a, b@some(_)) => mono_precise(a, b),
+              (subst, none) => {
                 if uses == 0u { mono_any }
                 else if uses == type_use::use_repr &&
                         !ty::type_needs_drop(ccx.tcx, subst) {
@@ -2137,12 +2138,13 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
                     if size == 1u && ty::type_is_nil(subst) {
                         mono_repr(0u, 0u)
                     } else { mono_repr(size, align) }
-                } else { id }
+                } else { mono_precise(subst, none) }
               }
             }
         })
       }
-      none => precise_param_ids
+      none => precise_param_ids.map(|x| { let (a, b) = x;
+                mono_precise(a, b) })
     };
     @{def: item, params: param_ids}
 }
@@ -2367,7 +2369,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
           csearch::found_parent(parent_id, ast::ii_item(item)) => {
             ccx.external.insert(parent_id, some(item.id));
             let mut my_id = 0;
-            match check item.node {
+            match item.node {
               ast::item_enum(_, _) => {
                 let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
                 let vs_there = ty::enum_variants(ccx.tcx, parent_id);
@@ -2376,6 +2378,8 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                     ccx.external.insert(there.id, some(here.id.node));
                 }
               }
+              _ => ccx.sess.bug(~"maybe_instantiate_inline: item has a \
+                    non-enum parent")
             }
             trans_item(ccx, *item);
             local_def(my_id)
@@ -2756,7 +2760,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
             let ccx = cx.ccx();
             let sub = trans_temp_expr(cx, base);
             let t = expr_ty(cx, base);
-            let val = match check ty::get(t).struct {
+            let val = match ty::get(t).struct {
               ty::ty_box(_) => {
                 let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
                 GEPi(sub.bcx, non_gc_val, ~[0u, abi::box_field_body])
@@ -2770,7 +2774,9 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
                 let ellty = T_ptr(type_of(ccx, ety));
                 PointerCast(sub.bcx, sub.val, ellty)
               }
-              ty::ty_ptr(_) | ty::ty_rptr(_,_) => sub.val
+              ty::ty_ptr(_) | ty::ty_rptr(_,_) => sub.val,
+              _ => cx.sess().impossible_case(e.span, #fmt("unary operand \
+                may not have type %s", cx.ty_to_str(t)))
             };
             return lval_owned(sub.bcx, val);
           }
@@ -2917,22 +2923,13 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
     return store_in_dest(e_res.bcx, newval, dest);
 }
 
-fn trans_loop_body(bcx: block, e: @ast::expr, ret_flag: option<ValueRef>,
+fn trans_loop_body(bcx: block, id: ast::node_id,
+                   decl: ast::fn_decl, body: ast::blk,
+                   proto: ty::fn_proto, cap: ast::capture_clause,
+                   ret_flag: option<ValueRef>,
                    dest: dest) -> block {
-    match check e.node {
-      ast::expr_loop_body(b@@{
-        node: ast::expr_fn_block(decl, body, cap),
-        _
-      }) => {
-        match check ty::get(expr_ty(bcx, e)).struct {
-          ty::ty_fn({proto, _}) => {
-            closure::trans_expr_fn(bcx, proto, decl, body, b.id,
-                                   cap, some(ret_flag),
-                                   dest)
-          }
-        }
-      }
-    }
+    closure::trans_expr_fn(bcx, proto, decl, body, id,
+                           cap, some(ret_flag), dest)
 }
 
 // temp_cleanups: cleanups that should run only if failure occurs before the
@@ -2950,12 +2947,21 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     // translate the arg expr as an lvalue
     let lv = match ret_flag {
       // If there is a ret_flag, this *must* be a loop body
-      some(_) => match check e.node {
-        ast::expr_loop_body(blk) => {
+      some(_) => match e.node {
+          ast::expr_loop_body(blk@@{node:
+                  ast::expr_fn_block(decl, body, cap),_}) => {
             let scratch = alloc_ty(cx, expr_ty(cx, blk));
-            let bcx = trans_loop_body(cx, e, ret_flag, save_in(scratch));
+            let proto = match ty::get(expr_ty(cx, e)).struct {
+                ty::ty_fn({proto, _}) => proto,
+                _ => cx.sess().impossible_case(e.span, ~"Loop body has \
+                       non-fn ty")
+            };
+            let bcx = trans_loop_body(cx, blk.id, decl, body, proto,
+                                      cap, ret_flag, save_in(scratch));
             {bcx: bcx, val: scratch, kind: lv_temporary}
         }
+        _ => cx.sess().impossible_case(e.span, ~"ret_flag with non-loop-\
+              body expr")
       },
       none => {
         trans_temp_lval(cx, e)
@@ -3462,21 +3468,25 @@ fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: dest) -> block {
 
 fn trans_rec(bcx: block, fields: ~[ast::field],
              base: option<@ast::expr>, id: ast::node_id,
-             dest: dest) -> block {
+             // none = ignore; some(x) = save_in(x)
+             dest: option<ValueRef>) -> block {
     let _icx = bcx.insn_ctxt("trans_rec");
     let t = node_id_type(bcx, id);
     let mut bcx = bcx;
-    let addr = match check dest {
-      ignore => {
+    let addr = match dest {
+      none => {
         for vec::each(fields) |fld| {
             bcx = trans_expr(bcx, fld.node.expr, ignore);
         }
         return bcx;
       }
-      save_in(pos) => pos
+      some(pos) => pos
     };
 
-    let ty_fields = match check ty::get(t).struct { ty::ty_rec(f) => f };
+    let ty_fields = match ty::get(t).struct {
+        ty::ty_rec(f) => f,
+        _ => bcx.sess().bug(~"trans_rec: record has non-record type")
+    };
 
     let mut temp_cleanups = ~[];
     for fields.each |fld| {
@@ -3797,7 +3807,13 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
             };
           }
           ast::expr_rec(args, base) => {
-            return trans_rec(bcx, args, base, e.id, dest);
+              let d = match dest {
+                  ignore => none,
+                  save_in(p) => some(p),
+                  _ => bcx.sess().impossible_case(e.span,
+                        "trans_expr::unrooted: can't pass a record by val")
+              };
+            return trans_rec(bcx, args, base, e.id, d);
           }
           ast::expr_struct(_, fields, base) => {
             return trans_struct(bcx, e.span, fields, base, e.id, dest);
@@ -3849,7 +3865,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
                                           dest);
           }
           ast::expr_fn_block(decl, body, cap_clause) => {
-            match check ty::get(expr_ty(bcx, e)).struct {
+            match ty::get(expr_ty(bcx, e)).struct {
               ty::ty_fn({proto, _}) => {
                 debug!("translating fn_block %s with type %s",
                        expr_to_str(e, tcx.sess.intr()),
@@ -3857,10 +3873,25 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
                 return closure::trans_expr_fn(bcx, proto, decl, body,
                                            e.id, cap_clause, none, dest);
               }
+              _ =>  bcx.sess().impossible_case(e.span, "fn_block has \
+                         body with a non-fn type")
             }
           }
-          ast::expr_loop_body(_) => {
-            return trans_loop_body(bcx, e, none, dest);
+          ast::expr_loop_body(blk) => {
+              match ty::get(expr_ty(bcx, e)).struct {
+                  ty::ty_fn({proto, _}) => {
+                      match blk.node {
+                          ast::expr_fn_block(decl, body, cap) =>
+                            return trans_loop_body(bcx, blk.id, decl, body,
+                                                   proto, cap, none, dest),
+                          _ => bcx.sess().impossible_case(e.span, "loop_body \
+                                 has the wrong kind of contents")
+                      }
+
+                  }
+                  _ => bcx.sess().impossible_case(e.span, "loop_body has \
+                         body with a non-fn type")
+              }
           }
           ast::expr_do_body(blk) => {
             return trans_expr(bcx, blk, dest);
@@ -4436,19 +4467,18 @@ fn raw_block(fcx: fn_ctxt, is_lpad: bool, llbb: BasicBlockRef) -> block {
 // need to make sure those variables go out of scope when the block ends.  We
 // do that by running a 'cleanup' function for each variable.
 // trans_block_cleanups runs all the cleanup functions for the block.
-fn trans_block_cleanups(bcx: block, cleanup_cx: block) -> block {
-    trans_block_cleanups_(bcx, cleanup_cx, false)
+fn trans_block_cleanups(bcx: block, +cleanups: ~[cleanup]) -> block {
+    trans_block_cleanups_(bcx, cleanups, false)
 }
 
-fn trans_block_cleanups_(bcx: block, cleanup_cx: block, is_lpad: bool) ->
+fn trans_block_cleanups_(bcx: block,
+                         +cleanups: ~[cleanup],
+                         /* cleanup_cx: block, */ is_lpad: bool) ->
    block {
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
     if bcx.unreachable { return bcx; }
     let mut bcx = bcx;
-    match check cleanup_cx.kind {
-      block_scope({cleanups, _}) => {
-        let cleanups = copy cleanups;
-        do vec::riter(cleanups) |cu| {
+    do vec::riter(cleanups) |cu| {
             match cu {
               clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during
@@ -4458,9 +4488,7 @@ fn trans_block_cleanups_(bcx: block, cleanup_cx: block, is_lpad: bool) ->
                 }
               }
             }
-        }
-      }
-    }
+            }
     return bcx;
 }
 
@@ -4491,7 +4519,7 @@ fn cleanup_and_leave(bcx: block, upto: option<BasicBlockRef>,
             let sub_cx = sub_block(bcx, ~"cleanup");
             Br(bcx, sub_cx.llbb);
             vec::push(inf.cleanup_paths, {target: leave, dest: sub_cx.llbb});
-            bcx = trans_block_cleanups_(sub_cx, cur, is_lpad);
+            bcx = trans_block_cleanups_(sub_cx, block_cleanups(cur), is_lpad);
           }
           _ => ()
         }
@@ -4906,8 +4934,9 @@ fn trans_enum_variant(ccx: @crate_ctxt,
         // If this argument to this function is a enum, it'll have come in to
         // this function as an opaque blob due to the way that type_of()
         // works. So we have to cast to the destination's view of the type.
-        let llarg = match check fcx.llargs.find(va.id) {
-          some(local_mem(x)) => x
+        let llarg = match fcx.llargs.find(va.id) {
+            some(local_mem(x)) => x,
+            _ => fail ~"trans_enum_variant: how do we know this works?",
         };
         let arg_ty = arg_tys[i].ty;
         memmove_ty(bcx, lldestptr, llarg, arg_ty);
@@ -5052,8 +5081,10 @@ fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
 
 fn trans_item(ccx: @crate_ctxt, item: ast::item) {
     let _icx = ccx.insn_ctxt("trans_item");
-    let path = match check ccx.tcx.items.get(item.id) {
-      ast_map::node_item(_, p) => p
+    let path = match ccx.tcx.items.get(item.id) {
+        ast_map::node_item(_, p) => p,
+        // tjc: ?
+        _ => fail ~"trans_item",
     };
     match item.node {
       ast::item_fn(decl, purity, tps, body) => {
@@ -5288,8 +5319,10 @@ fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
 
 fn item_path(ccx: @crate_ctxt, i: @ast::item) -> path {
     vec::append(
-        *match check ccx.tcx.items.get(i.id) {
-            ast_map::node_item(_, p) => p
+        *match ccx.tcx.items.get(i.id) {
+            ast_map::node_item(_, p) => p,
+                // separate map for paths?
+            _ => fail ~"item_path"
         },
         ~[path_name(i.ident)])
 }
@@ -5340,7 +5373,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
         let val = match ccx.tcx.items.get(id) {
           ast_map::node_item(i, pth) => {
             let my_path = vec::append(*pth, ~[path_name(i.ident)]);
-            match check i.node {
+            match i.node {
               ast::item_const(_, _) => {
                 let typ = ty::node_id_to_type(ccx.tcx, i.id);
                 let s = mangle_exported_name(ccx, my_path, typ);
@@ -5359,6 +5392,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 set_inline_hint_if_appr(i.attrs, llfn);
                 llfn
               }
+              _ => fail ~"get_item_val: weird result in table"
             }
           }
           ast_map::node_trait_method(trait_method, _, pth) => {
@@ -5417,10 +5451,11 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                     let pth = vec::append(*pth,
                                           ~[path_name(enm.ident),
                                             path_name(v.node.name)]);
-                    llfn = match check enm.node {
+                    llfn = match enm.node {
                       ast::item_enum(_, _) => {
                         register_fn(ccx, v.span, pth, id)
                       }
+                      _ => fail ~"node_variant, shouldn't happen"
                     };
                 }
                 ast::struct_variant_kind(_) => {
@@ -5733,11 +5768,11 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         for cx.exp_map.each |exp_id, defs| {
             for defs.each |def| {
                 if !def.reexp { again; }
-                let path = match check cx.tcx.items.get(exp_id) {
-                    ast_map::node_export(_, path) => {
-                        ast_map::path_to_str(*path,
-                                             cx.sess.parse_sess.interner)
-                    }
+                let path = match cx.tcx.items.get(exp_id) {
+                  ast_map::node_export(_, path) => {
+                      ast_map::path_to_str(*path, cx.sess.parse_sess.interner)
+                  }
+                  _ => fail ~"reexports"
                 };
                 vec::push(reexports, (path, def.id));
             }

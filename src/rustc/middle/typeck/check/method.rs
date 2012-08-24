@@ -222,8 +222,9 @@ struct lookup {
 
     fn report_static_candidate(idx: uint, did: ast::def_id) {
         let span = if did.crate == ast::local_crate {
-            match check self.tcx().items.get(did.node) {
+            match self.tcx().items.get(did.node) {
               ast_map::node_method(m, _, _) => m.span,
+              _ => fail ~"report_static_candidate: bad item"
             }
         } else {
             self.expr.span
@@ -297,8 +298,9 @@ struct lookup {
                 again; /* ok */
               }
               ty::bound_trait(bound_t) => {
-                match check ty::get(bound_t).struct {
-                  ty::ty_trait(i, substs, _) => (i, substs)
+                match ty::get(bound_t).struct {
+                  ty::ty_trait(i, substs, _) => (i, substs),
+                  _ => fail ~"add_candidates_from_param: non-trait bound"
                 }
               }
             };
@@ -402,11 +404,12 @@ struct lookup {
     }
 
     fn ty_from_did(did: ast::def_id) -> ty::t {
-        match check ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
+        match ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
           ty::ty_fn(fty) => {
             ty::mk_fn(self.tcx(),
                       {proto: ty::proto_vstore(ty::vstore_box) with fty})
           }
+          _ => fail ~"ty_from_did: not function ty"
         }
         /*
         if did.crate == ast::local_crate {

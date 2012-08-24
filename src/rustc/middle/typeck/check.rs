@@ -177,10 +177,12 @@ fn check_bare_fn(ccx: @crate_ctxt,
                  id: ast::node_id,
                  self_info: option<self_info>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
-    match check ty::get(fty).struct {
+    match ty::get(fty).struct {
         ty::ty_fn(ref fn_ty) => {
             check_fn(ccx, self_info, fn_ty, decl, body, false, none)
         }
+        _ => ccx.tcx.sess.impossible_case(body.span,
+                                 "check_bare_fn: function type expected")
     }
 }
 
@@ -803,7 +805,7 @@ fn impl_self_ty(fcx: @fn_ctxt,
 
     let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
         let region_param = fcx.tcx().region_paramd_items.find(did.node);
-        match check tcx.items.find(did.node) {
+        match tcx.items.find(did.node) {
           some(ast_map::node_item(@{node: ast::item_impl(ts, _, st, _),
                                   _}, _)) => {
             {n_tps: ts.len(),
@@ -1597,7 +1599,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         fcx.write_ty(id, ty::mk_nil(tcx));
         bot = !may_break(body);
       }
-      ast::expr_match(discrim, arms, _) => {
+      ast::expr_match(discrim, arms, mode) => {
         bot = alt::check_alt(fcx, expr, discrim, arms);
       }
       ast::expr_fn(proto, decl, body, cap_clause) => {
@@ -1640,7 +1642,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                             type");
           }
         };
-        match check b.node {
+        match b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
             check_expr_fn(fcx, b, none,
                           decl, body, true,
@@ -1648,14 +1650,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
+          // argh
+          _ => fail ~"expr_fn_block"
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
-        match check ty::get(block_ty).struct {
+        match ty::get(block_ty).struct {
           ty::ty_fn(fty) => {
             fcx.write_ty(expr.id, ty::mk_fn(tcx, {output: ty::mk_bool(tcx)
                                                   with fty}));
           }
+          _ => fail ~"expected fn type"
         }
       }
       ast::expr_do_body(b) => {
@@ -1670,7 +1675,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               passed to a `do` function");
           }
         };
-        match check b.node {
+        match b.node {
           ast::expr_fn_block(decl, body, cap_clause) => {
             check_expr_fn(fcx, b, none,
                           decl, body, true,
@@ -1678,13 +1683,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
             capture::check_capture_clause(tcx, b.id, cap_clause);
           }
+          // argh
+          _ => fail ~"expected fn ty"
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
-        match check ty::get(block_ty).struct {
+        match ty::get(block_ty).struct {
           ty::ty_fn(fty) => {
             fcx.write_ty(expr.id, ty::mk_fn(tcx, fty));
           }
+          _ => fail ~"expected fn ty"
         }
       }
       ast::expr_block(b) => {

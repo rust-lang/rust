@@ -925,8 +925,9 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
             out_sz = shape::llsize_of_real(ccx, llout_ty);
         if tp_sz != out_sz {
-            let sp = match check ccx.tcx.items.get(option::get(ref_id)) {
-              ast_map::node_expr(e) => e.span
+            let sp = match ccx.tcx.items.get(option::get(ref_id)) {
+              ast_map::node_expr(e) => e.span,
+              _ => fail ~"reinterpret_cast or forget has non-expr arg"
             };
             ccx.sess.span_fatal(
                 sp, fmt!("reinterpret_cast called on types \
@@ -981,6 +982,8 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                arg_vals(~[frameaddress_val]), ignore);
       }
       _ => {
+      // Could we make this an enum rather than a string? does it get
+      // checked earlier?
           ccx.sess.span_bug(item.span, ~"unknown intrinsic");
       }
     }
@@ -1171,8 +1174,10 @@ fn register_foreign_fn(ccx: @crate_ctxt, sp: span,
 fn abi_of_foreign_fn(ccx: @crate_ctxt, i: @ast::foreign_item)
     -> ast::foreign_abi {
     match attr::first_attr_value_str_by_name(i.attrs, ~"abi") {
-      none => match check ccx.tcx.items.get(i.id) {
-        ast_map::node_foreign_item(_, abi, _) => abi
+      none => match ccx.tcx.items.get(i.id) {
+        ast_map::node_foreign_item(_, abi, _) => abi,
+        // ??
+        _ => fail ~"abi_of_foreign_fn: not foreign"
       },
       some(_) => match attr::foreign_abi(i.attrs) {
         either::Right(abi) => abi,

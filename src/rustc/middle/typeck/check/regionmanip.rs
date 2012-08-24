@@ -15,9 +15,9 @@ fn replace_bound_regions_in_fn_ty(
 
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
-    let self_ty = match self_info {
-      some(s) => some(s.self_ty),
-      none => none
+    let (self_ty, rebuild_self_info) = match self_info {
+      some(s) => (some(s.self_ty), |t| some({self_ty: t with s})),
+      none => (none, |_t| none)
     };
 
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
@@ -59,22 +59,15 @@ fn replace_bound_regions_in_fn_ty(
 
 
     // Glue updated self_ty back together with its original def_id.
-    let new_self_info = match self_info {
-        some(s) => {
-            match t_self {
-                some(t) => some({self_ty: t with s}),
-                none => {
-                    tcx.sess.bug(~"unexpected t_self in \
-                                   replace_bound_regions_in_fn_ty()");
-                }
-            }
-        },
-        none => none
+    let new_self_info: option<self_info> = match t_self {
+      none    => none,
+      some(t) => rebuild_self_info(t)
     };
 
     return {isr: isr,
          self_info: new_self_info,
-         fn_ty: match check ty::get(t_fn).struct { ty::ty_fn(o) => o }};
+         fn_ty: match ty::get(t_fn).struct { ty::ty_fn(o) => o,
+          _ => tcx.sess.bug(~"replace_bound_regions_in_fn_ty: impossible")}};
 
 
     // Takes `isr`, a (possibly empty) mapping from in-scope region

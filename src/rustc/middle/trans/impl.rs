@@ -125,12 +125,14 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
       }
       typeck::method_param({trait_id:trait_id, method_num:off,
                             param_num:p, bound_num:b}) => {
-        match check bcx.fcx.param_substs {
+        match bcx.fcx.param_substs {
           some(substs) => {
             let vtbl = find_vtable_in_fn_ctxt(substs, p, b);
             trans_monomorphized_callee(bcx, callee_id, self, mentry,
                                        trait_id, off, vtbl)
           }
+          // how to get rid of this?
+          none => fail ~"trans_method_callee: missing param_substs"
         }
       }
       typeck::method_trait(_, off) => {
@@ -150,10 +152,11 @@ fn trans_static_method_callee(bcx: block, method_id: ast::def_id,
     let ccx = bcx.ccx();
 
     let mname = if method_id.crate == ast::local_crate {
-        match check bcx.tcx().items.get(method_id.node) {
+        match bcx.tcx().items.get(method_id.node) {
           ast_map::node_trait_method(trait_method, _, _) => {
             ast_util::trait_method_to_ty_method(*trait_method).ident
           }
+          _ => fail ~"callee is not a trait method"
         }
     } else {
         let path = csearch::get_item_path(bcx.tcx(), method_id);
@@ -200,7 +203,7 @@ fn method_from_methods(ms: ~[@ast::method], name: ast::ident)
 fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
                     name: ast::ident) -> ast::def_id {
     if impl_id.crate == ast::local_crate {
-        match check ccx.tcx.items.get(impl_id.node) {
+        match ccx.tcx.items.get(impl_id.node) {
           ast_map::node_item(@{node: ast::item_impl(_, _, _, ms), _}, _) => {
             method_from_methods(ms, name)
           }
@@ -208,6 +211,7 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
               ast::item_class(struct_def, _), _}, _) => {
             method_from_methods(struct_def.methods, name)
           }
+          _ => fail ~"method_with_name"
         }
     } else {
         csearch::get_impl_method(ccx.sess.cstore, impl_id, name)
@@ -217,8 +221,9 @@ fn method_with_name(ccx: @crate_ctxt, impl_id: ast::def_id,
 fn method_ty_param_count(ccx: @crate_ctxt, m_id: ast::def_id,
                          i_id: ast::def_id) -> uint {
     if m_id.crate == ast::local_crate {
-        match check ccx.tcx.items.get(m_id.node) {
+        match ccx.tcx.items.get(m_id.node) {
           ast_map::node_method(m, _, _) => vec::len(m.tps),
+          _ => fail ~"method_ty_param_count"
         }
     } else {
         csearch::get_type_param_count(ccx.sess.cstore, m_id) -
@@ -321,10 +326,11 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
                               resolve_vtables_in_fn_ctxt(fcx, sub))
       }
       typeck::vtable_param(n_param, n_bound) => {
-        match check fcx.param_substs {
+        match fcx.param_substs {
           some(substs) => {
             find_vtable_in_fn_ctxt(substs, n_param, n_bound)
           }
+          _ => fail ~"resolve_vtable_in_fn_ctxt: no substs"
         }
       }
       _ => vt
@@ -332,7 +338,7 @@ fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
 }
 
 fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
-    match check origin {
+    match origin {
       typeck::vtable_static(impl_id, substs, sub_vtables) => {
         make_mono_id(ccx, impl_id, substs,
                      if (*sub_vtables).len() == 0u { none }
@@ -342,6 +348,8 @@ fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
         @{def: trait_id,
           params: vec::map(substs, |t| mono_precise(t, none))}
       }
+      // can't this be checked at the callee?
+      _ => fail ~"vtable_id"
     }
 }
 
@@ -350,10 +358,11 @@ fn get_vtable(ccx: @crate_ctxt, origin: typeck::vtable_origin)
     let hash_id = vtable_id(ccx, origin);
     match ccx.vtables.find(hash_id) {
       some(val) => val,
-      none => match check origin {
+      none => match origin {
         typeck::vtable_static(id, substs, sub_vtables) => {
             make_impl_vtable(ccx, id, substs, sub_vtables)
         }
+        _ => fail ~"get_vtable: expected a static origin"
       }
     }
 }

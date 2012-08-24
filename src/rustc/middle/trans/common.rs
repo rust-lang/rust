@@ -368,6 +368,13 @@ fn revoke_clean(cx: block, val: ValueRef) {
     }
 }
 
+fn block_cleanups(bcx: block) -> ~[cleanup] {
+    match bcx.kind {
+       block_non_scope  => ~[],
+       block_scope(inf) => inf.cleanups
+    }
+}
+
 enum block_kind {
     // A scope at the end of which temporary values created inside of it are
     // cleaned up. May correspond to an actual block in the language, but also
