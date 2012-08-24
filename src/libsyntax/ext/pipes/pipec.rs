@@ -41,7 +41,7 @@ impl message: gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
         debug!("pipec: gen_send");
         match self {
-          message(id, span, tys, this,
+          message(_id, span, tys, this,
                   some({state: next, tys: next_tys})) => {
             debug!("pipec: next state exists");
             let next = this.proto.get_state(next);
@@ -126,7 +126,7 @@ impl message: gen_send {
                             cx.expr_block(body))
           }
 
-            message(id, span, tys, this, none) => {
+            message(_id, span, tys, this, none) => {
                 debug!("pipec: no next state");
                 let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 

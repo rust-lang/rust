@@ -759,7 +759,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
                               none);
         trans_free(bcx, v)
       }
-      ty::ty_uniq(content_mt) => {
+      ty::ty_uniq(*) => {
         uniq::make_free_glue(bcx, v, t)
       }
       ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
@@ -1062,8 +1062,8 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
             cx = f(cx, llfld_a, fld.mt.ty);
         }
       }
-      ty::ty_estr(ty::vstore_fixed(n)) |
-      ty::ty_evec(_, ty::vstore_fixed(n)) => {
+      ty::ty_estr(ty::vstore_fixed(_)) |
+      ty::ty_evec(_, ty::vstore_fixed(_)) => {
         let (base, len) = tvec::get_base_and_len(cx, av, t);
         cx = tvec::iter_vec_raw(cx, base, t, len, f);
       }
@@ -2071,7 +2071,7 @@ fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
 fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> option<ty::t> {
     // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
     match ty::get(ty).struct {
-      ty::ty_box(mt) => {
+      ty::ty_box(*) => {
         some(ty::mk_opaque_box(tcx))
       }
       ty::ty_fn(ref fty) => {
@@ -2199,10 +2199,10 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
       ast_map::node_method(m, _, pt) => (pt, m.ident, m.span),
       ast_map::node_foreign_item(i, ast::foreign_abi_rust_intrinsic, pt)
       => (pt, i.ident, i.span),
-      ast_map::node_foreign_item(_, abi, _) => {
+      ast_map::node_foreign_item(*) => {
         // Foreign externs don't have to be monomorphized.
         return {val: get_item_val(ccx, fn_id.node),
-             must_cast: true};
+                must_cast: true};
       }
       ast_map::node_ctor(nm, _, ct, _, pt) => (pt, nm, ct.span),
       ast_map::node_dtor(_, dtor, _, pt) =>
@@ -2286,13 +2286,13 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
         }
         d
       }
-      ast_map::node_method(mth, impl_def_id, _) => {
+      ast_map::node_method(mth, _, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(mth.attrs, d);
         impl::trans_method(ccx, pt, mth, psubsts, d);
         d
       }
-      ast_map::node_ctor(nm, tps, ctor, parent_id, _) => {
+      ast_map::node_ctor(_, tps, ctor, parent_id, _) => {
         // ctors don't have attrs, at least not right now
         let d = mk_lldecl();
         let tp_tys = ty::ty_params_to_tys(ccx.tcx, tps);
@@ -2356,7 +2356,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             trans_item(ccx, *item);
             local_def(item.id)
           }
-          csearch::found(ast::ii_ctor(ctor, nm, tps, parent_id)) => {
+          csearch::found(ast::ii_ctor(ctor, _, tps, _)) => {
             ccx.external.insert(fn_id, some(ctor.node.id));
             local_def(ctor.node.id)
           }
@@ -2398,7 +2398,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             }
             local_def(mth.id)
           }
-          csearch::found(ast::ii_dtor(dtor, nm, tps, parent_id)) => {
+          csearch::found(ast::ii_dtor(dtor, _, tps, _)) => {
               ccx.external.insert(fn_id, some(dtor.node.id));
               local_def(dtor.node.id)
           }
@@ -2500,7 +2500,8 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         match table.find(id) {
           some(local_mem(v)) => {val: v, kind: lv_owned},
           some(local_imm(v)) => {val: v, kind: lv_owned_imm},
-          r => fail(~"take_local: internal error")
+          none => fail(fmt!("take_local: internal error, \
+                             found no entry for %?", id))
         }
     }
     match def {
@@ -2516,7 +2517,7 @@ fn trans_local_var(cx: block, def: ast::def) -> local_var_result {
         assert (cx.fcx.lllocals.contains_key(nid));
         return take_local(cx.fcx.lllocals, nid);
       }
-      ast::def_self(sid) => {
+      ast::def_self(_) => {
         let slf = match copy cx.fcx.llself {
           some(s) => cast_self(cx, s),
           none => cx.sess().bug(~"trans_local_var: reference to self \
@@ -2690,7 +2691,7 @@ fn expr_is_lval(bcx: block, e: @ast::expr) -> bool {
 fn trans_callee(bcx: block, e: @ast::expr) -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("trans_callee");
     match e.node {
-      ast::expr_path(path) => return trans_path(bcx, e.id),
+      ast::expr_path(_) => return trans_path(bcx, e.id),
       ast::expr_field(base, _, _) => {
         // Lval means this is a record field, so not a method
         if !expr_is_lval(bcx, e) {
@@ -2949,7 +2950,7 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
     // translate the arg expr as an lvalue
     let lv = match ret_flag {
       // If there is a ret_flag, this *must* be a loop body
-      some(ptr) => match check e.node {
+      some(_) => match check e.node {
         ast::expr_loop_body(blk) => {
             let scratch = alloc_ty(cx, expr_ty(cx, blk));
             let bcx = trans_loop_body(cx, e, ret_flag, save_in(scratch));
@@ -3858,7 +3859,7 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
               }
             }
           }
-          ast::expr_loop_body(blk) => {
+          ast::expr_loop_body(_) => {
             return trans_loop_body(bcx, e, none, dest);
           }
           ast::expr_do_body(blk) => {
@@ -5383,11 +5384,11 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                         vec::append(*pth, ~[path_name(ni.ident)]),
                         ni.id)
           }
-          ast_map::node_ctor(nm, tps, ctor, _, pt) => {
+          ast_map::node_ctor(nm, _, ctor, _, pt) => {
             let my_path = vec::append(*pt, ~[path_name(nm)]);
             register_fn(ccx, ctor.span, my_path, ctor.node.id)
           }
-          ast_map::node_dtor(tps, dt, parent_id, pt) => {
+          ast_map::node_dtor(_, dt, parent_id, pt) => {
             /*
                 Don't just call register_fn, since we don't want to add
                 the implicit self argument automatically (we want to make sure

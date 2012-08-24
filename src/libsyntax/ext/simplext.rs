@@ -635,7 +635,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
     let mut clauses: ~[@clause] = ~[];
     for args.each |arg| {
         match arg.node {
-          expr_vec(elts, mutbl) => {
+          expr_vec(elts, _) => {
             if vec::len(elts) != 2u {
                 cx.span_fatal((*arg).span,
                               ~"extension clause must consist of ~[" +

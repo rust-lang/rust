@@ -231,7 +231,7 @@ struct bitv {
                   assign     => s.become(s1,     self.nbits),
                   difference => s.difference(s1, self.nbits)
                 },
-                big(s1) => self.die()
+                big(_) => self.die()
               },
               big(s) => match other.rep {
                 small(_) => self.die(),
