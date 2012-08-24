@@ -531,7 +531,7 @@ type ty_field_ = {ident: ident, mt: mt};
 type ty_field = spanned<ty_field_>;
 
 #[auto_serialize]
-type ty_method = {ident: ident, attrs: ~[attribute],
+type ty_method = {ident: ident, attrs: ~[attribute], purity: purity,
                   decl: fn_decl, tps: ~[ty_param], self_ty: self_ty,
                   id: node_id, span: span};
 
@@ -582,7 +582,7 @@ enum ty_ {
     ty_ptr(mt),
     ty_rptr(@region, mt),
     ty_rec(~[ty_field]),
-    ty_fn(proto, @~[ty_param_bound], fn_decl),
+    ty_fn(proto, purity, @~[ty_param_bound], fn_decl),
     ty_tup(~[@ty]),
     ty_path(@path, node_id),
     ty_fixed_length(@ty, option<uint>),
@@ -600,7 +600,6 @@ type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 type fn_decl =
     {inputs: ~[arg],
      output: @ty,
-     purity: purity,
      cf: ret_style};
 
 #[auto_serialize]
@@ -633,7 +632,8 @@ type self_ty = spanned<self_ty_>;
 
 #[auto_serialize]
 type method = {ident: ident, attrs: ~[attribute],
-               tps: ~[ty_param], self_ty: self_ty, decl: fn_decl, body: blk,
+               tps: ~[ty_param], self_ty: self_ty,
+               purity: purity, decl: fn_decl, body: blk,
                id: node_id, span: span, self_id: node_id,
                vis: visibility};  // always public, unless it's a
                                   // class method
@@ -775,7 +775,7 @@ type item = {ident: ident, attrs: ~[attribute],
 #[auto_serialize]
 enum item_ {
     item_const(@ty, @expr),
-    item_fn(fn_decl, ~[ty_param], blk),
+    item_fn(fn_decl, purity, ~[ty_param], blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
     item_ty(@ty, ~[ty_param]),
@@ -821,7 +821,7 @@ type foreign_item =
 
 #[auto_serialize]
 enum foreign_item_ {
-    foreign_item_fn(fn_decl, ~[ty_param]),
+    foreign_item_fn(fn_decl, purity, ~[ty_param]),
 }
 
 // The data we save and restore about an inlined item or method.  This is not

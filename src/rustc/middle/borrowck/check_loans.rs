@@ -521,6 +521,8 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
         do save_and_restore(self.declared_purity) {
             do save_and_restore(self.fn_args) {
                 let is_stack_closure = self.is_stack_closure(id);
+                let purity =
+                    ty::ty_fn_purity(ty::node_id_to_type(self.tcx(), id));
 
                 // In principle, we could consider fk_anon(*) or
                 // fk_fn_block(*) to be in a ctor, I suppose, but the
@@ -531,7 +533,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                 match fk {
                   visit::fk_ctor(*) => {
                     self.in_ctor = true;
-                    self.declared_purity = decl.purity;
+                    self.declared_purity = purity;
                     self.fn_args = @decl.inputs.map(|i| i.id );
                   }
                   visit::fk_anon(*) |
@@ -543,7 +545,7 @@ fn check_loans_in_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
                   visit::fk_method(*) | visit::fk_item_fn(*) |
                   visit::fk_dtor(*) => {
                     self.in_ctor = false;
-                    self.declared_purity = decl.purity;
+                    self.declared_purity = purity;
                     self.fn_args = @decl.inputs.map(|i| i.id );
                   }
                 }

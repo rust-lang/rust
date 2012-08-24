@@ -247,7 +247,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                        trait_m: ty::method, trait_substs: ty::substs,
                        self_ty: ty::t) {
 
-    if impl_m.purity != trait_m.purity {
+    if impl_m.fty.purity != trait_m.fty.purity {
         tcx.sess.span_err(
             sp, fmt!("method `%s`'s purity does \
                           not match the trait method's \
@@ -506,7 +506,8 @@ fn convert_struct(ccx: @crate_ctxt,
         // Write the dtor type
         let t_dtor = ty::mk_fn(
             tcx,
-            ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare, @~[],
+            ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare,
+                          ast::impure_fn, @~[],
                           ast_util::dtor_dec(), none, dtor.span));
         write_ty_to_tcx(tcx, dtor.node.id, t_dtor);
         tcx.tcache.insert(local_def(dtor.node.id),
@@ -537,7 +538,7 @@ fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
     // table.
     let tpt = ty_of_foreign_item(ccx, i);
     match i.node {
-      ast::foreign_item_fn(_, _) => {
+      ast::foreign_item_fn(*) => {
         write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
         ccx.tcx.tcache.insert(local_def(i.id), tpt);
       }
@@ -549,10 +550,10 @@ fn ty_of_method(ccx: @crate_ctxt,
                 rp: option<ty::region_variance>) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(ccx, m.tps),
-     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare, @~[],
+     fty: ty_of_fn_decl(ccx, type_rscope(rp), ast::proto_bare,
+                        m.purity, @~[],
                         m.decl, none, m.span),
      self_ty: m.self_ty.node,
-     purity: m.decl.purity,
      vis: m.vis}
 }
 
@@ -561,11 +562,11 @@ fn ty_of_ty_method(self: @crate_ctxt,
                    rp: option<ty::region_variance>) -> ty::method {
     {ident: m.ident,
      tps: ty_param_bounds(self, m.tps),
-     fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, @~[], m.decl,
-                        none, m.span),
+     fty: ty_of_fn_decl(self, type_rscope(rp), ast::proto_bare, m.purity,
+                        @~[], m.decl, none, m.span),
      // assume public, because this is only invoked on trait methods
      self_ty: m.self_ty.node,
-     purity: m.decl.purity, vis: ast::public}
+     vis: ast::public}
 }
 
 /*
@@ -614,9 +615,10 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_fn(decl, tps, _) => {
+      ast::item_fn(decl, purity, tps, _) => {
         let bounds = ty_param_bounds(ccx, tps);
-        let tofd = ty_of_fn_decl(ccx, empty_rscope, ast::proto_bare, @~[],
+        let tofd = ty_of_fn_decl(ccx, empty_rscope,
+                                 ast::proto_bare, purity, @~[],
                                  decl, none, it.span);
         let tpt = {bounds: bounds,
                    region_param: none,
@@ -689,9 +691,9 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
 fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
     -> ty::ty_param_bounds_and_ty {
     match it.node {
-      ast::foreign_item_fn(fn_decl, params) => {
-        return ty_of_foreign_fn_decl(ccx, fn_decl, params,
-                                  local_def(it.id));
+      ast::foreign_item_fn(fn_decl, purity, params) => {
+        return ty_of_foreign_fn_decl(ccx, fn_decl, purity, params,
+                                     local_def(it.id));
       }
     }
 }
@@ -739,16 +741,17 @@ fn ty_param_bounds(ccx: @crate_ctxt,
 }
 
 fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
-                        decl: ast::fn_decl,
-                        ty_params: ~[ast::ty_param],
-                        def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {
+                         decl: ast::fn_decl,
+                         purity: ast::purity,
+                         ty_params: ~[ast::ty_param],
+                         def_id: ast::def_id) -> ty::ty_param_bounds_and_ty {
 
     let bounds = ty_param_bounds(ccx, ty_params);
     let rb = in_binding_rscope(empty_rscope);
     let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, rb, a, none) );
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
-    let t_fn = ty::mk_fn(ccx.tcx, {purity: decl.purity,
+    let t_fn = ty::mk_fn(ccx.tcx, {purity: purity,
                                    proto: ty::proto_bare,
                                    bounds: @~[],
                                    inputs: input_tys,

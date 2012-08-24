@@ -414,14 +414,14 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::writer,
     *index
 }
 
-fn encode_info_for_fn(ecx: @encode_ctxt, ebml_w: ebml::writer,
-                      id: node_id, ident: ident, path: ast_map::path,
-                      item: option<inlined_item>, tps: ~[ty_param],
-                      decl: fn_decl) {
+// This is for encoding info for ctors and dtors
+fn encode_info_for_ctor(ecx: @encode_ctxt, ebml_w: ebml::writer,
+                        id: node_id, ident: ident, path: ast_map::path,
+                        item: option<inlined_item>, tps: ~[ty_param]) {
         ebml_w.start_tag(tag_items_data_item);
         encode_name(ecx, ebml_w, ident);
         encode_def_id(ebml_w, local_def(id));
-        encode_family(ebml_w, purity_fn_family(decl.purity));
+        encode_family(ebml_w, purity_fn_family(ast::impure_fn));
         encode_type_param_bounds(ebml_w, ecx, tps);
         let its_ty = node_id_to_type(ecx.tcx, id);
         debug!("fn name = %s ty = %s its node id = %d",
@@ -448,7 +448,7 @@ fn encode_info_for_method(ecx: @encode_ctxt, ebml_w: ebml::writer,
            ecx.tcx.sess.str_of(m.ident), all_tps.len());
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(m.id));
-    encode_family(ebml_w, purity_fn_family(m.decl.purity));
+    encode_family(ebml_w, purity_fn_family(m.purity));
     encode_type_param_bounds(ebml_w, ecx, all_tps);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, m.id));
     encode_name(ecx, ebml_w, m.ident);
@@ -519,11 +519,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
-      item_fn(decl, tps, _) => {
+      item_fn(decl, purity, tps, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
-        encode_family(ebml_w, purity_fn_family(decl.purity));
+        encode_family(ebml_w, purity_fn_family(purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
@@ -588,13 +588,14 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         /* Encode the dtor */
         do option::iter(struct_def.dtor) |dtor| {
             vec::push(*index, {val: dtor.node.id, pos: ebml_w.writer.tell()});
-          encode_info_for_fn(ecx, ebml_w, dtor.node.id,
-                             ecx.tcx.sess.ident_of(
-                                 ecx.tcx.sess.str_of(item.ident) + ~"_dtor"),
-                             path, if tps.len() > 0u {
-                                 some(ii_dtor(dtor, item.ident, tps,
-                                              local_def(item.id))) }
-                             else { none }, tps, ast_util::dtor_dec());
+          encode_info_for_ctor(ecx, ebml_w, dtor.node.id,
+                               ecx.tcx.sess.ident_of(
+                                   ecx.tcx.sess.str_of(item.ident) +
+                                   ~"_dtor"),
+                               path, if tps.len() > 0u {
+                                   some(ii_dtor(dtor, item.ident, tps,
+                                                local_def(item.id))) }
+                               else { none }, tps);
         }
 
         /* Index the class*/
@@ -647,7 +648,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 /* Write the info that's needed when viewing this class
                    as a trait */
                 ebml_w.start_tag(tag_item_trait_method);
-                encode_family(ebml_w, purity_fn_family(m.decl.purity));
+                encode_family(ebml_w, purity_fn_family(m.purity));
                 encode_name(ecx, ebml_w, m.ident);
                 encode_type_param_bounds(ebml_w, ecx, m.tps);
                 encode_type(ecx, ebml_w, node_id_to_type(tcx, m.id));
@@ -675,11 +676,11 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 val: ctor.node.id,
                 pos: ebml_w.writer.tell()
             });
-            encode_info_for_fn(ecx, ebml_w, ctor.node.id, item.ident,
-                               path, if tps.len() > 0u {
-                                   some(ii_ctor(ctor, item.ident, tps,
-                                                local_def(item.id))) }
-                               else { none }, tps, ctor.node.dec);
+            encode_info_for_ctor(ecx, ebml_w, ctor.node.id, item.ident,
+                                 path, if tps.len() > 0u {
+                                     some(ii_ctor(ctor, item.ident, tps,
+                                                  local_def(item.id))) }
+                                 else { none }, tps);
         }
       }
       item_impl(tps, traits, _, methods) => {
@@ -734,7 +735,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
                 encode_name(ecx, ebml_w, mty.ident);
                 encode_type_param_bounds(ebml_w, ecx, ty_m.tps);
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
-                encode_family(ebml_w, purity_fn_family(mty.purity));
+                encode_family(ebml_w, purity_fn_family(mty.fty.purity));
                 encode_self_type(ebml_w, mty.self_ty);
                 ebml_w.end_tag();
               }
@@ -766,7 +767,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
             encode_def_id(ebml_w, local_def(ty_m.id));
             encode_name(ecx, ebml_w, ty_m.ident);
             encode_family(ebml_w,
-                          purity_static_method_family(ty_m.decl.purity));
+                          purity_static_method_family(ty_m.purity));
             let polyty = ecx.tcx.tcache.get(local_def(ty_m.id));
             encode_ty_type_param_bounds(ebml_w, ecx, polyty.bounds);
             encode_type(ecx, ebml_w, polyty.ty);
@@ -789,9 +790,9 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
-      foreign_item_fn(fn_decl, tps) => {
+      foreign_item_fn(fn_decl, purity, tps) => {
         encode_def_id(ebml_w, local_def(nitem.id));
-        encode_family(ebml_w, purity_fn_family(fn_decl.purity));
+        encode_family(ebml_w, purity_fn_family(purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         if abi == foreign_abi_rust_intrinsic {

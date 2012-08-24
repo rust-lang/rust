@@ -721,7 +721,7 @@ fn create_function(fcx: fn_ctxt) -> @metadata<subprogram_md> {
     let (ident, ret_ty, id) = match cx.tcx.items.get(fcx.id) {
       ast_map::node_item(item, _) => {
         match item.node {
-          ast::item_fn(decl, _, _) => {
+          ast::item_fn(decl, _, _, _) => {
             (item.ident, decl.output, item.id)
           }
           _ => fcx.ccx.sess.span_bug(item.span, ~"create_function: item \

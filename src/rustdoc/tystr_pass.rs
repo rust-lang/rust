@@ -50,11 +50,11 @@ fn get_fn_sig(srv: astsrv::srv, fn_id: doc::ast_id) -> option<~str> {
         match ctxt.ast_map.get(fn_id) {
           ast_map::node_item(@{
             ident: ident,
-            node: ast::item_fn(decl, tys, _), _
+            node: ast::item_fn(decl, _, tys, _), _
           }, _) |
           ast_map::node_foreign_item(@{
             ident: ident,
-            node: ast::foreign_item_fn(decl, tys), _
+            node: ast::foreign_item_fn(decl, _, tys), _
           }, _, _) => {
             some(pprust::fun_to_str(decl, ident, tys, extract::interner()))
           }

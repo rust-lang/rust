@@ -96,7 +96,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
               for vec::each(nm.items) |item| { cx.rmap.insert(item.id, ()); }
           }
       }
-      item_fn(_, tps, blk) => {
+      item_fn(_, _, tps, blk) => {
         if tps.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
             traverse_inline_body(cx, blk);

@@ -203,7 +203,6 @@ impl ext_ctxt: ext_ctxt_ast_builder {
                output: @ast::ty) -> ast::fn_decl {
         {inputs: inputs,
          output: output,
-         purity: ast::impure_fn,
          cf: ast::return_val}
     }
 
@@ -226,6 +225,7 @@ impl ext_ctxt: ext_ctxt_ast_builder {
         self.item(name,
                   self.empty_span(),
                   ast::item_fn(self.fn_decl(inputs, output),
+                               ast::impure_fn,
                                ty_params,
                                body))
     }

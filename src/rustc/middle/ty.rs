@@ -79,7 +79,7 @@ export ty_opaque_closure_ptr, mk_opaque_closure_ptr;
 export ty_opaque_box, mk_opaque_box;
 export ty_float, mk_float, mk_mach_float, type_is_fp;
 export ty_fn, fn_ty, mk_fn;
-export ty_fn_proto, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
+export ty_fn_proto, ty_fn_purity, ty_fn_ret, ty_fn_ret_style, tys_in_fn_ty;
 export ty_int, mk_int, mk_mach_int, mk_char;
 export mk_i8, mk_u8, mk_i16, mk_u16, mk_i32, mk_u32, mk_i64, mk_u64;
 export ty_estr, mk_estr, type_is_str;
@@ -202,7 +202,6 @@ type method = {ident: ast::ident,
                tps: @~[param_bounds],
                fty: fn_ty,
                self_ty: ast::self_ty_,
-               purity: ast::purity,
                vis: ast::visibility};
 
 type mt = {ty: t, mutbl: ast::mutability};
@@ -2355,6 +2354,13 @@ fn ty_fn_proto(fty: t) -> fn_proto {
     match get(fty).struct {
       ty_fn(ref f) => f.proto,
       _ => fail ~"ty_fn_proto() called on non-fn type"
+    }
+}
+
+fn ty_fn_purity(fty: t) -> ast::purity {
+    match get(fty).struct {
+      ty_fn(ref f) => f.purity,
+      _ => fail ~"ty_fn_purity() called on non-fn type"
     }
 }
 

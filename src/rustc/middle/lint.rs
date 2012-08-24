@@ -401,7 +401,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
             match ni.node {
-              ast::foreign_item_fn(decl, tps) => {
+              ast::foreign_item_fn(decl, _, tps) => {
                 check_foreign_fn(cx, it.id, decl);
               }
             }

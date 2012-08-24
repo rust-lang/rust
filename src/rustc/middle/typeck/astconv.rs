@@ -201,7 +201,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
               _ => ()
             }
           }
-          ast::ty_fn(ast::proto_block, ast_bounds, ast_fn_decl) => {
+          ast::ty_fn(ast::proto_block, purity, ast_bounds, ast_fn_decl) => {
             let new_proto;
             match vst {
                 ty::vstore_fixed(_) => {
@@ -216,7 +216,8 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
 
             // Run through the normal function type conversion process.
             let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-            let fn_decl = ty_of_fn_decl(self, rscope, new_proto, bounds,
+            let fn_decl = ty_of_fn_decl(self, rscope, new_proto, purity,
+                                        bounds,
                                         ast_fn_decl, none, span);
             return ty::mk_fn(tcx, fn_decl);
           }
@@ -301,9 +302,10 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_fn(proto, ast_bounds, decl) => {
+      ast::ty_fn(proto, purity, ast_bounds, decl) => {
         let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-        let fn_decl = ty_of_fn_decl(self, rscope, proto, bounds, decl, none,
+        let fn_decl = ty_of_fn_decl(self, rscope, proto, purity,
+                                    bounds, decl, none,
                                     ast_ty.span);
         ty::mk_fn(tcx, fn_decl)
       }
@@ -465,6 +467,7 @@ type expected_tys = option<{inputs: ~[ty::arg],
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS,
     ast_proto: ast::proto,
+    purity: ast::purity,
     bounds: @~[ty::param_bound],
     decl: ast::fn_decl,
     expected_tys: expected_tys,
@@ -494,7 +497,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
 
         let proto = ast_proto_to_proto(self, rscope, span, ast_proto);
 
-        {purity: decl.purity, proto: proto, bounds: bounds, inputs: input_tys,
+        {purity: purity, proto: proto, bounds: bounds, inputs: input_tys,
          output: output_ty, ret_style: decl.cf}
     }
 }

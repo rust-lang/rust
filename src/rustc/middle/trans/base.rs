@@ -2214,7 +2214,7 @@ fn monomorphic_fn(ccx: @crate_ctxt, fn_id: ast::def_id,
 
     let psubsts = some({tys: substs, vtables: vtables, bounds: tpt.bounds});
     let lldecl = match map_node {
-      ast_map::node_item(i@@{node: ast::item_fn(decl, _, body), _}, _) => {
+      ast_map::node_item(i@@{node: ast::item_fn(decl, _, _, body), _}, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(i.attrs, d);
         trans_fn(ccx, pt, decl, body, d, no_self, psubsts, fn_id.node);
@@ -5010,8 +5010,8 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
       ast_map::node_item(_, p) => p
     };
     match item.node {
-      ast::item_fn(decl, tps, body) => {
-        if decl.purity == ast::extern_fn  {
+      ast::item_fn(decl, purity, tps, body) => {
+        if purity == ast::extern_fn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_foreign_fn(ccx,
                                      vec::append(
@@ -5304,8 +5304,8 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 ccx.item_symbols.insert(i.id, s);
                 g
               }
-              ast::item_fn(decl, _, _) => {
-                let llfn = if decl.purity != ast::extern_fn {
+              ast::item_fn(decl, purity, _, _) => {
+                let llfn = if purity != ast::extern_fn {
                     register_fn(ccx, i.span, my_path, i.id)
                 } else {
                     foreign::register_foreign_fn(ccx, i.span, my_path, i.id)
@@ -5535,7 +5535,7 @@ fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
 fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_item: |item| match item.node {
-          ast::item_fn(decl, _, _) => {
+          ast::item_fn(decl, _, _, _) => {
             let attr_metas = attr::attr_metas(
                 attr::find_attrs_by_name(item.attrs, ~"rt"));
             do vec::iter(attr_metas) |attr_meta| {

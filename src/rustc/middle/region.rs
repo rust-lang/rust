@@ -613,8 +613,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
         }
       }
 
-      ast::ty_fn(ast::proto_bare, _, _) |
-      ast::ty_fn(ast::proto_block, _, _) if cx.anon_implies_rp => {
+      ast::ty_fn(ast::proto_bare, _, _, _) |
+      ast::ty_fn(ast::proto_block, _, _, _) if cx.anon_implies_rp => {
         debug!("referenced bare fn type with regions %s",
                pprust::ty_to_str(ty, cx.sess.intr()));
         cx.add_rp(cx.item_id, cx.add_variance(rv_contravariant));
@@ -661,8 +661,8 @@ fn determine_rp_in_ty(ty: @ast::ty,
     match ty.node {
       ast::ty_box(mt) | ast::ty_uniq(mt) => {
         match mt.ty.node {
-          ast::ty_fn(ast::proto_bare, _, _) |
-          ast::ty_fn(ast::proto_block, _, _) => {
+          ast::ty_fn(ast::proto_bare, _, _, _) |
+          ast::ty_fn(ast::proto_block, _, _, _) => {
             do cx.with(cx.item_id, false) {
                 visit_mt(mt, cx, visitor);
             }
@@ -695,7 +695,7 @@ fn determine_rp_in_ty(ty: @ast::ty,
         }
       }
 
-      ast::ty_fn(_, bounds, decl) => {
+      ast::ty_fn(_, _, bounds, decl) => {
         // fn() binds the & region, so do not consider &T types that
         // appear *inside* a fn() type to affect the enclosing item:
         do cx.with(cx.item_id, false) {
