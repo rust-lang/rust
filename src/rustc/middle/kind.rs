@@ -74,6 +74,7 @@ fn check_crate(tcx: ty::ctxt,
                last_use_map: last_use_map,
                current_item: -1};
     let visit = visit::mk_vt(@{
+        visit_arm: check_arm,
         visit_expr: check_expr,
         visit_stmt: check_stmt,
         visit_block: check_block,
@@ -223,6 +224,19 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
       _ => ()
     }
     visit::visit_block(b, cx, v);
+}
+
+fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
+    for vec::each(a.pats) |p| {
+        do pat_util::pat_bindings(cx.tcx.def_map, p) |mode, id, span, _path| {
+            if mode == bind_by_value {
+                let t = ty::node_id_to_type(cx.tcx, id);
+                let reason = "consider binding with `ref` or `move` instead";
+                check_copy(cx, id, t, span, false, some((reason,reason)));
+            }
+        }
+    }
+    visit::visit_arm(a, cx, v);
 }
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
