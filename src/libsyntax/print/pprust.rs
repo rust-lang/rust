@@ -1450,8 +1450,10 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
             word_nbsp(s, ~"ref");
             print_mutability(s, mutbl);
           }
+          ast::bind_by_move => {
+            word_nbsp(s, ~"move");
+          }
           ast::bind_by_implicit_ref |
-          ast::bind_by_move | // this is totally the wrong thing
           ast::bind_by_value => {}
         }
         print_path(s, path, true);

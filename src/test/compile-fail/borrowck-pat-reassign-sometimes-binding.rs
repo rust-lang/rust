@@ -8,7 +8,7 @@ fn main() {
         // fact no outstanding loan of x!
         x = some(0);
       }
-      some(ref i) => {
+      some(ref _i) => {
         x = some(1); //~ ERROR assigning to mutable local variable prohibited due to outstanding loan
       }
     }

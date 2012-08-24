@@ -29,8 +29,21 @@ fn f3b() {
 fn f4() {
     match some(3) {
       some(i) => {
+        //~^ WARNING unused variable: `i`
       }
       none => {}
+    }
+}
+
+enum tri {
+    a(int), b(int), c(int)
+}
+
+fn f4b() -> int {
+    match a(3) {
+      a(i) | b(i) | c(i) => {
+        i
+      }
     }
 }
 

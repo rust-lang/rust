@@ -140,7 +140,8 @@ fn check_crate(tcx: ty::ctxt,
     let visitor = visit::mk_vt(@{
         visit_fn: visit_fn,
         visit_local: visit_local,
-        visit_expr: visit_expr
+        visit_expr: visit_expr,
+        visit_arm: visit_arm,
         with *visit::default_visitor()
     });
 
@@ -191,11 +192,17 @@ enum RelevantDef { RelevantVar(node_id), RelevantSelf }
 
 type CaptureInfo = {ln: LiveNode, is_move: bool, rv: RelevantDef};
 
+enum LocalKind {
+    FromMatch(binding_mode),
+    FromLetWithInitializer,
+    FromLetNoInitializer
+}
+
 struct LocalInfo {
     id: node_id;
     ident: ident;
     is_mutbl: bool;
-    initialized: bool;
+    kind: LocalKind;
 }
 
 enum VarKind {
@@ -209,7 +216,11 @@ enum VarKind {
 fn relevant_def(def: def) -> option<RelevantDef> {
     match def {
       def_self(_) => some(RelevantSelf),
-      def_arg(nid, _) | def_local(nid, _) => some(RelevantVar(nid)),
+
+      def_binding(nid, _) |
+      def_arg(nid, _) |
+      def_local(nid, _) => some(RelevantVar(nid)),
+
       _ => none
     }
 }
@@ -329,7 +340,16 @@ impl IrMaps {
         match vk {
           Arg(id, name, by_move) |
           Arg(id, name, by_copy) |
-          Local(LocalInfo {id:id, ident:name, _}) => {
+          Local(LocalInfo {id:id, ident:name,
+                           kind: FromLetNoInitializer, _}) |
+          Local(LocalInfo {id:id, ident:name,
+                           kind: FromLetWithInitializer, _}) |
+          Local(LocalInfo {id:id, ident:name,
+                           kind: FromMatch(bind_by_value), _}) |
+          Local(LocalInfo {id:id, ident:name,
+                           kind: FromMatch(bind_by_ref(_)), _}) |
+          Local(LocalInfo {id:id, ident:name,
+                           kind: FromMatch(bind_by_move), _}) => {
             let v = match self.last_use_map.find(expr_id) {
               some(v) => v,
               none => {
@@ -342,7 +362,8 @@ impl IrMaps {
             (*v).push(id);
           }
           Arg(_, _, by_ref) | Arg(_, _, by_mutbl_ref) |
-          Arg(_, _, by_val) | Self | Field(_) | ImplicitRet => {
+          Arg(_, _, by_val) | Self | Field(_) | ImplicitRet |
+          Local(LocalInfo {kind: FromMatch(bind_by_implicit_ref), _}) => {
             debug!("--but it is not owned");
           }
         }
@@ -396,7 +417,8 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
     let check_vt = visit::mk_vt(@{
         visit_fn: check_fn,
         visit_local: check_local,
-        visit_expr: check_expr
+        visit_expr: check_expr,
+        visit_arm: check_arm,
         with *visit::default_visitor()
     });
     check_vt.visit_block(body, lsets, check_vt);
@@ -419,14 +441,37 @@ fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
         debug!("adding local variable %d", p_id);
         let name = ast_util::path_to_ident(path);
         self.add_live_node_for_node(p_id, VarDefNode(sp));
+        let kind = match local.node.init {
+          some(_) => FromLetWithInitializer,
+          none => FromLetNoInitializer
+        };
         self.add_variable(Local(LocalInfo {
-            id: p_id,
-            ident: name,
-            is_mutbl: local.node.is_mutbl,
-            initialized: local.node.init.is_some()
+          id: p_id,
+          ident: name,
+          is_mutbl: local.node.is_mutbl,
+          kind: kind
         }));
     }
     visit::visit_local(local, self, vt);
+}
+
+fn visit_arm(arm: arm, &&self: @IrMaps, vt: vt<@IrMaps>) {
+    let def_map = self.tcx.def_map;
+    for arm.pats.each |pat| {
+        do pat_util::pat_bindings(def_map, pat) |bm, p_id, sp, path| {
+            debug!("adding local variable %d from match with bm %?",
+                   p_id, bm);
+            let name = ast_util::path_to_ident(path);
+            self.add_live_node_for_node(p_id, VarDefNode(sp));
+            self.add_variable(Local(LocalInfo {
+                id: p_id,
+                ident: name,
+                is_mutbl: false,
+                kind: FromMatch(bm)
+            }));
+        }
+    }
+    visit::visit_arm(arm, self, vt);
 }
 
 fn visit_expr(expr: @expr, &&self: @IrMaps, vt: vt<@IrMaps>) {
@@ -610,6 +655,30 @@ impl Liveness {
             let var = self.variable(p_id, sp);
             f(ln, var, sp);
         }
+    }
+
+    fn arm_pats_bindings(pats: &[@pat], f: fn(LiveNode, Variable, span)) {
+        // only consider the first pattern; any later patterns must have
+        // the same bindings, and we also consider the first pattern to be
+        // the "authoratative" set of ids
+        if !pats.is_empty() {
+            self.pat_bindings(pats[0], f)
+        }
+    }
+
+    fn define_bindings_in_pat(pat: @pat, succ: LiveNode) -> LiveNode {
+        self.define_bindings_in_arm_pats([pat], succ)
+    }
+
+    fn define_bindings_in_arm_pats(pats: &[@pat],
+                                   succ: LiveNode) -> LiveNode {
+        let mut succ = succ;
+        do self.arm_pats_bindings(pats) |ln, var, _sp| {
+            self.init_from_succ(ln, succ);
+            self.define(ln, var);
+            succ = ln;
+        }
+        succ
     }
 
     fn idx(ln: LiveNode, var: Variable) -> uint {
@@ -894,13 +963,8 @@ impl Liveness {
         // once at the func header but otherwise equivalent.
 
         let opt_init = local.node.init.map(|i| i.expr );
-        let mut succ = self.propagate_through_opt_expr(opt_init, succ);
-        do self.pat_bindings(local.node.pat) |ln, var, _sp| {
-            self.init_from_succ(ln, succ);
-            self.define(ln, var);
-            succ = ln;
-        }
-        succ
+        let succ = self.propagate_through_opt_expr(opt_init, succ);
+        self.define_bindings_in_pat(local.node.pat, succ)
     }
 
     fn propagate_through_exprs(exprs: ~[@expr],
@@ -1003,10 +1067,12 @@ impl Liveness {
             self.init_empty(ln, succ);
             let mut first_merge = true;
             for arms.each |arm| {
+                let body_succ =
+                    self.propagate_through_block(arm.body, succ);
+                let guard_succ =
+                    self.propagate_through_opt_expr(arm.guard, body_succ);
                 let arm_succ =
-                    self.propagate_through_opt_expr(
-                        arm.guard,
-                        self.propagate_through_block(arm.body, succ));
+                    self.define_bindings_in_arm_pats(arm.pats, guard_succ);
                 self.merge_from_succ(ln, arm_succ, first_merge);
                 first_merge = false;
             };
@@ -1409,6 +1475,13 @@ fn check_local(local: @local, &&self: @Liveness, vt: vt<@Liveness>) {
     visit::visit_local(local, self, vt);
 }
 
+fn check_arm(arm: arm, &&self: @Liveness, vt: vt<@Liveness>) {
+    do self.arm_pats_bindings(arm.pats) |ln, var, sp| {
+        self.warn_about_unused(sp, ln, var);
+    }
+    visit::visit_arm(arm, self, vt);
+}
+
 fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
     match expr.node {
       expr_path(_) => {
@@ -1798,10 +1871,12 @@ impl @Liveness {
                 };
 
                 if is_assigned {
+                    // FIXME(#3266)--make liveness warnings lintable
                     self.tcx.sess.span_warn(
                         sp, fmt!("variable `%s` is assigned to, \
                                   but never used", name));
                 } else {
+                    // FIXME(#3266)--make liveness warnings lintable
                     self.tcx.sess.span_warn(
                         sp, fmt!("unused variable: `%s`", name));
                 }
@@ -1814,6 +1889,7 @@ impl @Liveness {
     fn warn_about_dead_assign(sp: span, ln: LiveNode, var: Variable) {
         if self.live_on_exit(ln, var).is_none() {
             for self.should_warn(var).each |name| {
+                // FIXME(#3266)--make liveness warnings lintable
                 self.tcx.sess.span_warn(
                     sp,
                     fmt!("value assigned to `%s` is never read", name));
