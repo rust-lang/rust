@@ -12,17 +12,86 @@
    * Switching between running Rust code on the Rust segmented stack and
    foreign C code on large stacks owned by the scheduler
 
+   # Lifetime
+
    The lifetime of a rust_task object closely mirrors that of a running Rust
    task object, but they are not identical. In particular, the rust_task is an
    atomically reference counted object that might be accessed from arbitrary
    threads at any time. This may keep the task from being destroyed even after
-   the task is dead from a Rust task lifecycle perspective.
+   the task is dead from a Rust task lifecycle perspective. The rust_tasks are
+   reference counted in the following places:
 
-   FIXME (#2696): The task and the scheduler have an over-complicated,
-   undocumented protocol for shutting down the task, hopefully without
-   races. It would be easier to reason about if other runtime objects could
-   not access the task from arbitrary threads, and didn't need to be
-   atomically refcounted.
+   * By the task's lifetime (i.e., running tasks hold a reference to themself)
+
+   * In the rust_task_kill_all -> rust_kernel::fail ->
+     rust_sched_loop::kill_all_tasks path. When a task brings down the whole
+     runtime, each sched_loop must use refcounts to take a 'snapshot' of all
+     existing tasks so it can be sure to kill all of them.
+
+   * In core::pipes, tasks that use select() use reference counts to avoid
+     use-after-free races with multiple different signallers.
+
+   # Death
+
+   All task death goes through a single central path: The task invokes
+   rust_task::die(), which invokes transition(task_state_dead), which pumps
+   the scheduler loop, which switches to rust_sched_loop::run_single_turn(),
+   which calls reap_dead_tasks(), which cleans up the task's stack segments
+   and drops the reference count.
+
+   When a task's reference count hits zero, rust_sched_loop::release_task()
+   is called. This frees the memory and deregisters the task from the kernel,
+   which may trigger the sched_loop, the scheduler, and/or the kernel to exit
+   completely in the case it was the last task alive.
+
+   die() is called from two places: the successful exit path, in cleanup_task,
+   and on failure (on linux, this is also in cleanup_task, after unwinding
+   completes; on windows, it is in begin_failure).
+
+   Tasks do not force-quit other tasks; a task die()s only itself. However...
+
+   # Killing
+
+   Tasks may kill each other. This happens when propagating failure between
+   tasks (see the task::spawn options interface). The code path for this is
+   rust_task_kill_other() -> rust_task::kill().
+
+   It also happens when the main ("root") task (or any task in that task's
+   linked-failure-group) fails: this brings down the whole runtime, and kills
+   all tasks in all groups. The code path for this is rust_task_kill_all() ->
+   rust_kernel::fail() -> rust_scheduler::kill_all_tasks() ->
+   rust_sched_loop::kill_all_tasks() -> rust_task::kill().
+
+   In either case, killing a task involves, under the protection of its
+   lifecycle_lock, (a) setting the 'killed' flag, and (b) checking if it is
+   'blocked'* and if so punting it awake.
+   (* and also isn't unkillable, which may happen via task::unkillable()
+   or via calling an extern rust function from C.)
+
+   The killed task will then (wake up if it was asleep, and) eventually call
+   yield() (or wait_event()), which will check the killed flag, see that it is
+   true, and then invoke 'fail', which begins the death process described
+   above.
+
+   Three things guarantee concurrency safety in this whole affair:
+
+   * The lifecycle_lock protects tasks accessing each other's state: it makes
+     killing-and-waking up atomic with respect to a task in block() deciding
+     whether it's allowed to go to sleep, so tasks can't 'escape' being woken.
+
+   * In the case of linked failure propagation, we ensure (in task.rs) that
+     tasks can only see another task's rust_task pointer if that task is
+     already alive. Even before entering the runtime failure path, a task will
+     access (locked) the linked-failure data structures to remove its task
+     pointer so that no subsequently-failing tasks will do a use-after-free.
+
+   * In the case of bringing down the whole runtime, each sched_loop takes an
+     "atomic snapshot" of all its tasks, protected by the sched_loop's lock,
+     and also sets a 'failing' flag so that any subsequently-failing task will
+     know that it must fail immediately upon creation (which is also checked
+     under the same lock). A similar process exists at the one-step-higher
+     level of the kernel killing all the schedulers (the kernel snapshots all
+     the schedulers and sets a 'failing' flag in the scheduler table).
  */
 
 #ifndef RUST_TASK_H
