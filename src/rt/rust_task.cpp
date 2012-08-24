@@ -248,6 +248,13 @@ MUST_CHECK bool rust_task::yield() {
 
     // This check is largely superfluous; it's the one after the context swap
     // that really matters. This one allows us to assert a useful invariant.
+
+    // NB: This takes lifecycle_lock three times, and I believe that none of
+    // them are actually necessary, as per #3213. Removing the locks here may
+    // cause *harmless* races with a killer... but I didn't observe any
+    // substantial performance improvement from removing them, even with
+    // msgsend-ring-pipes, and also it's my last day, so I'm not about to
+    // remove them.  -- bblum
     if (must_fail_from_being_killed()) {
         {
             scoped_lock with(lifecycle_lock);
