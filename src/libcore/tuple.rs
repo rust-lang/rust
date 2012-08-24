@@ -41,7 +41,7 @@ impl<A: copy, B: copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
 
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;
-        vec::zip(a, b)
+        vec::zip_slice(a, b)
     }
 
     fn map<C>(f: fn(A, B) -> C) -> ~[C] {

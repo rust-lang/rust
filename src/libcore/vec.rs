@@ -70,7 +70,7 @@ export position_elem;
 export rposition;
 export rposition_between;
 export unzip;
-export zip;
+export zip, zip_slice;
 export swap;
 export reverse;
 export reversed;
@@ -1019,14 +1019,9 @@ pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
 // return a nominal record with a constraint saying that, instead of
 // returning a tuple (contingent on issue #869)
 /**
- * Convert a vector of pairs into a pair of vectors
- *
- * Returns a tuple containing two vectors where the i-th element of the first
- * vector contains the first element of the i-th tuple of the input vector,
- * and the i-th element of the second vector contains the second element
- * of the i-th tuple of the input vector.
+ * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
  */
-pure fn unzip<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
+pure fn unzip_slice<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut as = ~[], bs = ~[];
     for each(v) |p| {
         let (a, b) = p;
@@ -1039,18 +1034,54 @@ pure fn unzip<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
 }
 
 /**
- * Convert two vectors to a vector of pairs
+ * Convert a vector of pairs into a pair of vectors.
  *
- * Returns a vector of tuples, where the i-th tuple contains contains the
- * i-th elements from each of the input vectors.
+ * Returns a tuple containing two vectors where the i-th element of the first
+ * vector contains the first element of the i-th tuple of the input vector,
+ * and the i-th element of the second vector contains the second element
+ * of the i-th tuple of the input vector.
  */
-pure fn zip<T: copy, U: copy>(v: &[const T], u: &[const U]) -> ~[(T, U)] {
+pure fn unzip<T,U>(+v: ~[(T, U)]) -> (~[T], ~[U]) {
+    let mut ts = ~[], us = ~[];
+    unchecked {
+        do consume(v) |_i, p| {
+            let (a,b) = p;
+            push(ts, a);
+            push(us, b);
+        }
+    }
+    (ts, us)
+}
+
+/**
+ * Convert two vectors to a vector of pairs, by reference. As zip().
+ */
+pure fn zip_slice<T: copy, U: copy>(v: &[const T], u: &[const U])
+        -> ~[(T, U)] {
     let mut zipped = ~[];
     let sz = len(v);
     let mut i = 0u;
     assert sz == len(u);
     while i < sz unchecked { vec::push(zipped, (v[i], u[i])); i += 1u; }
     return zipped;
+}
+
+/**
+ * Convert two vectors to a vector of pairs.
+ *
+ * Returns a vector of tuples, where the i-th tuple contains contains the
+ * i-th elements from each of the input vectors.
+ */
+pure fn zip<T, U>(+v: ~[const T], +u: ~[const U]) -> ~[(T, U)] {
+    let mut v = v, u = u, i = len(v);
+    assert i == len(u);
+    let mut w = ~[mut];
+    while i > 0 {
+        unchecked { push(w, (pop(v),pop(u))); }
+        i -= 1;
+    }
+    unchecked { reverse(w); }
+    from_mut(w)
 }
 
 /**
