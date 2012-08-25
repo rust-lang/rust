@@ -646,7 +646,7 @@ fn print_struct(s: ps, struct_def: @ast::struct_def, tps: ~[ast::ty_param],
                 print_ident(s, ident);
                 word_nbsp(s, ~":");
                 print_type(s, field.node.ty);
-                word(s.s, ~";");
+                word(s.s, ~",");
             }
         }
     }

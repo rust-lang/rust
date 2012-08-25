@@ -2698,7 +2698,19 @@ struct parser {
                 !self.is_any_keyword(copy self.token)) &&
                 !self.token_is_pound_or_doc_comment(self.token) {
             let a_var = self.parse_instance_var(vis);
-            self.expect(token::SEMI);
+            match self.token {
+                token::SEMI | token::COMMA => {
+                    self.bump();
+                }
+                token::RBRACE => {}
+                _ => {
+                    self.span_fatal(copy self.span,
+                                    fmt!("expected `;`, `,`, or '}' but \
+                                          found `%s`",
+                                         token_to_str(self.reader,
+                                                      self.token)));
+                }
+            }
             return a_var;
         } else {
             let m = self.parse_method(vis);
