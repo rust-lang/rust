@@ -822,16 +822,15 @@ fn trans_alt(bcx: block,
              alt_expr: @ast::expr,
              expr: @ast::expr,
              arms: ~[ast::arm],
-             mode: ast::alt_mode,
              dest: dest) -> block {
     let _icx = bcx.insn_ctxt("alt::trans_alt");
     do with_scope(bcx, alt_expr.info(), ~"alt") |bcx| {
-        trans_alt_inner(bcx, expr, arms, mode, dest)
+        trans_alt_inner(bcx, expr, arms, dest)
     }
 }
 
 fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
-                   mode: ast::alt_mode, dest: dest) -> block {
+                   dest: dest) -> block {
     let _icx = scope_cx.insn_ctxt("alt::trans_alt_inner");
     let bcx = scope_cx, tcx = bcx.tcx();
     let mut bodies = ~[], matches = ~[];
@@ -860,15 +859,7 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
             return fail_cx.llbb;
     }
     let t = node_id_type(bcx, expr.id);
-    let mk_fail = match mode {
-      ast::alt_check => {
-        let fail_cx = @mut none;
-        // Cached fail-on-fallthrough block
-        some(|| mk_fail(scope_cx, expr.span, ~"non-exhaustive match failure",
-                        fail_cx))
-      }
-      ast::alt_exhaustive => {
-          let fail_cx = @mut none;
+    let mk_fail = { let fail_cx = @mut none;
           // special case for uninhabited type
           if ty::type_is_empty(tcx, t) {
                   some(|| mk_fail(scope_cx, expr.span,
@@ -877,7 +868,6 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
           else {
               none
           }
-      }
     };
     let mut exit_map = ~[];
     let spilled = spill_if_immediate(bcx, val, t);

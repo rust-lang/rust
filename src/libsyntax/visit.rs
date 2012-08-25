@@ -430,7 +430,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_while(x, b) => { v.visit_expr(x, e, v); v.visit_block(b, e, v); }
       expr_loop(b, _) => v.visit_block(b, e, v),
-      expr_match(x, arms, _) => {
+      expr_match(x, arms) => {
         v.visit_expr(x, e, v);
         for arms.each |a| { v.visit_arm(a, e, v); }
       }

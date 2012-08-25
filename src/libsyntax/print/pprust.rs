@@ -1128,11 +1128,10 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
         print_block(s, blk);
       }
-      ast::expr_match(expr, arms, mode) => {
+      ast::expr_match(expr, arms) => {
         cbox(s, alt_indent_unit);
         ibox(s, 4u);
         word_nbsp(s, ~"match");
-        if mode == ast::alt_check { word_nbsp(s, ~"check"); }
         print_maybe_parens_discrim(s, expr);
         space(s.s);
         bopen(s);

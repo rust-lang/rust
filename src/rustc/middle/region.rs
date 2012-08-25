@@ -259,7 +259,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                                                            cx.sess.intr()));
         new_cx.parent = some(expr.id);
       }
-      ast::expr_match(subexpr, _, _) => {
+      ast::expr_match(subexpr, _) => {
         debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
                                                            cx.sess.intr()));
         new_cx.parent = some(expr.id);

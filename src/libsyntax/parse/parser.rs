@@ -1668,8 +1668,6 @@ struct parser {
 
     fn parse_alt_expr() -> @expr {
         let lo = self.last_span.lo;
-        let mode = if self.eat_keyword(~"check") { alt_check }
-        else { alt_exhaustive };
         let discriminant = self.parse_expr();
         self.expect(token::LBRACE);
         let mut arms: ~[arm] = ~[];
@@ -1701,7 +1699,7 @@ struct parser {
         }
         let mut hi = self.span.hi;
         self.bump();
-        return self.mk_expr(lo, hi, expr_match(discriminant, arms, mode));
+        return self.mk_expr(lo, hi, expr_match(discriminant, arms));
     }
 
     fn parse_expr() -> @expr {

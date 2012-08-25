@@ -1048,7 +1048,7 @@ impl Liveness {
             self.propagate_through_loop(expr, none, blk, succ)
           }
 
-          expr_match(e, arms, _) => {
+          expr_match(e, arms) => {
             //
             //      (e)
             //       |

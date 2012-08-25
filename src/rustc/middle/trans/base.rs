@@ -3798,8 +3798,8 @@ fn trans_expr(bcx: block, e: @ast::expr, dest: dest) -> block {
           ast::expr_if(cond, thn, els) => {
             return trans_if(bcx, cond, thn, els, dest);
           }
-          ast::expr_match(expr, arms, mode) => {
-            return alt::trans_alt(bcx, e, expr, arms, mode, dest);
+          ast::expr_match(expr, arms) => {
+            return alt::trans_alt(bcx, e, expr, arms, dest);
           }
           ast::expr_block(blk) => {
             return do with_scope(bcx, blk.info(), ~"block-expr body") |bcx| {
@@ -4488,7 +4488,7 @@ fn trans_block_cleanups_(bcx: block,
                 }
               }
             }
-            }
+        }
     return bcx;
 }
 

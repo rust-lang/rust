@@ -171,7 +171,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_match(ex_v, arms, _) => {
+      ast::expr_match(ex_v, arms) => {
         let cmt = self.bccx.cat_expr(ex_v);
         for arms.each |arm| {
             for arm.pats.each |pat| {
