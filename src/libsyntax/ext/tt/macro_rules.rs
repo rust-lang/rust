@@ -5,8 +5,8 @@ import ast::{ident, matcher_, matcher, match_tok,
 import parse::lexer::{new_tt_reader, reader};
 import parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 import parse::parser::{parser, SOURCE_FILE};
-import earley_parser::{parse, parse_or_else, success, failure, named_match,
-                       matched_seq, matched_nonterminal, error};
+import macro_parser::{parse, parse_or_else, success, failure, named_match,
+                      matched_seq, matched_nonterminal, error};
 import std::map::hashmap;
 import parse::token::special_idents;
 

@@ -67,7 +67,7 @@ mod ext {
 
     mod tt {
         mod transcribe;
-        mod earley_parser;
+        mod macro_parser;
         mod macro_rules;
     }
 

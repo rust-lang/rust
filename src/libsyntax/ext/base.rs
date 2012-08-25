@@ -301,8 +301,8 @@ fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     -> ast::mac_arg {
     import ast::{matcher, matcher_, match_tok, match_seq, match_nonterminal};
     import parse::lexer::{new_tt_reader, reader};
-    import tt::earley_parser::{parse_or_else, matched_seq,
-                               matched_nonterminal};
+    import tt::macro_parser::{parse_or_else, matched_seq,
+                              matched_nonterminal};
 
     // these spans won't matter, anyways
     fn ms(m: matcher_) -> matcher {
