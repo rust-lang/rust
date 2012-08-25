@@ -93,5 +93,6 @@ Tim Chevalier <chevalier@alum.wellesley.edu>
 Tom Lee <github@tomlee.co>
 Tomoki Aonuma <uasi@99cm.org>
 Tycho Sci <tychosci@gmail.com>
+Vincent Belliard <vincent@famillebelliard.fr>
 Wade Mealing <wmealing@gmail.com>
 Zack Corr <zackcorr95@gmail.com>
