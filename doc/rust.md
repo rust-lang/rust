@@ -350,7 +350,7 @@ error.
 Examples of integer literals of various forms:
 
 ~~~~
-123; 0xff00;                       // type determined by program context; 
+123; 0xff00;                       // type determined by program context
                                    // defaults to int in absence of type
                                    // information
 
@@ -454,6 +454,95 @@ type t = map::hashmap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
 # }
 ~~~~
+
+# Syntax extensions
+
+A number of minor features of Rust are not central enough to have their own
+syntax, and yet are not implementable as functions. Instead, they are given
+names, and invoked through a consistent syntax: `name!(...)`. Examples
+include:
+
+* `fmt!` : format data into a string
+* `env!` : look up an environment variable's value at compile time
+* `stringify!` : pretty-print the Rust expression given as an argument
+* `proto!` : define a protocol for inter-task communication
+* `include!` : include the Rust expression in the given file
+* `include_str!` : include the contents of the given file as a string
+* `include_bin!` : include the contents of the given file as a binary blob
+
+All of the above extensions, with the exception of `proto!`, are expressions
+with values. `proto!` is an item, defining a new name.
+
+## Macros
+
+User-defined syntax extensions are called "macros", and they can be defined
+with the `macro_rules!` syntax extension.
+
+~~~~ {.ebnf .gram}
+expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')'
+macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';'
+matcher : '(' matcher * ')' | '[' matcher * ']'
+        | '{' matcher * '}' | '$' ident ':' ident
+        | '$' '(' matcher * ')' sep_token? [ '*' | '+' ]
+        | non_special_token
+transcriber : '(' transcriber * ')' | '[' transcriber * ']'
+            | '{' transcriber * '}' | '$' ident
+            | '$' '(' transcriber * ')' sep_token? [ '*' | '+' ]
+            | non_special_token
+
+~~~~
+(A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
+any token other than a delimiter or `$`.)
+
+Macro invocations are looked up by name, and each macro rule is tried in turn;
+the first successful match is transcribed. The matching and transcribing
+processes are close cousins, and will be described together:
+
+### Macro By Example
+
+Everything that does not begin with a `$` is matched and transcirbed
+literally, including delimiters. For parsing reasons, they must be matched,
+but they are otherwise not special.
+
+In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the
+Rust syntax named by _designator_. Valid designators are `item`, `block`,
+`stmt`, `pat`, `expr`, `ty`, `ident`, `path`, `tt`, `matchers`. The last two
+are the right-hand side and the left-hand side respectively of the `=>` in
+macro rules. In the transcriber, the designator is already known, and so only
+the name of a matched nonterminal comes after the dollar sign.
+
+In bothe the matcher and transcriber, the Kleene star-like operator,
+consisting of `$` and parens, optionally followed by a separator token,
+followed by `*` or `+`, indicates repetition. (`*` means zero or more
+repetitions, `+` means at least one repetition. The parens are not matched or
+transcribed). On the matcher side, a name is bound to _all_ of the names it
+matches, in a structure that mimics the structure of the repetition
+encountered on a successful match. The job of the transcriber is to sort that
+structure out.
+
+The rules for transcription of these repetitions are called "Macro By Example". Essentially, one "layer" of repetition is discharged at a time, and all of
+them must be discharged by the time a name is transcribed. Therefore,
+`( $( $i:ident ),* ) => ( $i )` is an invalid macro, but
+`( $( $i:ident ),* ) => ( $( $i:ident ),*  )` is acceptable (if trivial).
+
+When Macro By Example encounters a repetition, it examines all of the `$`
+_name_ s that occur in its body. At the "current layer", they all must repeat
+the same number of times, so
+` ( $( $i:ident ),* ; $( $j:ident ),* ) => ( $( ($i,$j) ),* )` is valid if
+given the argument `(a,b,c ; d,e,f)`, but not `(a,b,c ; d,e)`. The repetition
+walks through the choices at that layer in lockstep, so the former input
+transcribes to `( (a,d), (b,e), (c,f) )`.
+
+Nested repetitions are allowed.
+
+## Syntax extensions useful for the macro author
+
+* `log_syntax!` : print out the arguments at compile time
+* `trace_macros!` : supply `true` or `false` to enable or disable printing
+of the macro expansion process.
+* `ident_to_str!` : turns the identifier argument into a string literal
+* `concat_idents!` : creates a new identifier by concatenating its arguments
+
 
 
 # Crates and source files
