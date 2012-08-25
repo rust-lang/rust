@@ -789,6 +789,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
               }
           }
         }
+        ast::foreign_item_const(*) => {}
       }
     }
 }

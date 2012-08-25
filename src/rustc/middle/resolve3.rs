@@ -25,23 +25,23 @@ import syntax::ast::{enum_variant_kind, expr, expr_again, expr_assign_op};
 import syntax::ast::{expr_binary, expr_break, expr_cast, expr_field, expr_fn};
 import syntax::ast::{expr_fn_block, expr_index, expr_loop};
 import syntax::ast::{expr_path, expr_struct, expr_unary, fn_decl};
-import syntax::ast::{foreign_item, foreign_item_fn, ge, gt, ident, trait_ref};
-import syntax::ast::{impure_fn, inherited, item, item_class, item_const};
-import syntax::ast::{item_enum, item_fn, item_mac, item_foreign_mod};
-import syntax::ast::{item_impl, item_mod, item_trait, item_ty, le, local};
-import syntax::ast::{local_crate, lt, method, mul, ne, neg, node_id, pat};
-import syntax::ast::{pat_enum, pat_ident, path, prim_ty, pat_box, pat_uniq};
+import syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
+import syntax::ast::{gt, ident, impure_fn, inherited, item, item_class};
+import syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
+import syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
+import syntax::ast::{local, local_crate, lt, method, mul, ne, neg, node_id};
+import syntax::ast::{pat, pat_enum, pat_ident, path, prim_ty, pat_box};
 import syntax::ast::{pat_lit, pat_range, pat_rec, pat_struct, pat_tup};
-import syntax::ast::{pat_wild, private, provided, public, required, rem};
-import syntax::ast::{self_ty_};
-import syntax::ast::{shl, stmt_decl, struct_field, struct_variant_kind};
-import syntax::ast::{sty_static, subtract, tuple_variant_kind, ty};
-import syntax::ast::{ty_bool, ty_char, ty_f, ty_f32, ty_f64, ty_float, ty_i};
-import syntax::ast::{ty_i16, ty_i32, ty_i64, ty_i8, ty_int, ty_param};
-import syntax::ast::{ty_path, ty_str, ty_u, ty_u16, ty_u32, ty_u64, ty_u8};
-import syntax::ast::{ty_uint, variant, view_item, view_item_export};
-import syntax::ast::{view_item_import, view_item_use, view_path_glob};
-import syntax::ast::{view_path_list, view_path_simple, visibility};
+import syntax::ast::{pat_uniq, pat_wild, private, provided, public, required};
+import syntax::ast::{rem, self_ty_, shl, stmt_decl, struct_field};
+import syntax::ast::{struct_variant_kind, sty_static, subtract, trait_ref};
+import syntax::ast::{tuple_variant_kind, ty, ty_bool, ty_char, ty_f, ty_f32};
+import syntax::ast::{ty_f64, ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8};
+import syntax::ast::{ty_int, ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32};
+import syntax::ast::{ty_u64, ty_u8, ty_uint, variant, view_item};
+import syntax::ast::{view_item_export, view_item_import, view_item_use};
+import syntax::ast::{view_path_glob, view_path_list, view_path_simple};
+import syntax::ast::{visibility};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 import syntax::attr::{attr_metas, contains_name};
@@ -1213,26 +1213,27 @@ struct Resolver {
                                                 vt<ReducedGraphParent>) {
 
         let name = foreign_item.ident;
+        let (name_bindings, new_parent) =
+            self.add_child(name, parent, ~[ValueNS], foreign_item.span);
 
         match foreign_item.node {
             foreign_item_fn(fn_decl, purity, type_parameters) => {
-              let (name_bindings, new_parent) = self.add_child(name, parent,
-                                              ~[ValueNS], foreign_item.span);
-
                 let def = def_fn(local_def(foreign_item.id), purity);
                 (*name_bindings).define_value(Public, def, foreign_item.span);
 
                 do self.with_type_parameter_rib
-                        (HasTypeParameters(&type_parameters,
-                                           foreign_item.id,
-                                           0u,
-                                           NormalRibKind)) || {
-
+                        (HasTypeParameters(&type_parameters, foreign_item.id,
+                                           0u, NormalRibKind)) {
                     visit_foreign_item(foreign_item, new_parent, visitor);
                 }
             }
-        }
+            foreign_item_const(item_type) => {
+                let def = def_const(local_def(foreign_item.id));
+                (*name_bindings).define_value(Public, def, foreign_item.span);
 
+                visit_foreign_item(foreign_item, new_parent, visitor);
+            }
+        }
     }
 
     fn build_reduced_graph_for_block(block: blk,
@@ -2952,6 +2953,10 @@ struct Resolver {
                                     visit_foreign_item(foreign_item, (),
                                                        visitor);
                                 }
+                            }
+                            foreign_item_const(item_type) => {
+                                visit_foreign_item(foreign_item, (),
+                                                   visitor);
                             }
                         }
                     }

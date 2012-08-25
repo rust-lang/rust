@@ -537,12 +537,8 @@ fn convert_foreign(ccx: @crate_ctxt, i: @ast::foreign_item) {
     // type of the foreign item. We simply write it into the node type
     // table.
     let tpt = ty_of_foreign_item(ccx, i);
-    match i.node {
-      ast::foreign_item_fn(*) => {
-        write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
-        ccx.tcx.tcache.insert(local_def(i.id), tpt);
-      }
-    }
+    write_ty_to_tcx(ccx.tcx, i.id, tpt.ty);
+    ccx.tcx.tcache.insert(local_def(i.id), tpt);
 }
 
 fn ty_of_method(ccx: @crate_ctxt,
@@ -694,6 +690,14 @@ fn ty_of_foreign_item(ccx: @crate_ctxt, it: @ast::foreign_item)
       ast::foreign_item_fn(fn_decl, purity, params) => {
         return ty_of_foreign_fn_decl(ccx, fn_decl, purity, params,
                                      local_def(it.id));
+      }
+      ast::foreign_item_const(t) => {
+        let rb = in_binding_rscope(empty_rscope);
+        return {
+            bounds: @~[],
+            region_param: none,
+            ty: ast_ty_to_ty(ccx, rb, t)
+        };
       }
     }
 }

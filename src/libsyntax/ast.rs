@@ -830,6 +830,7 @@ type foreign_item =
 #[auto_serialize]
 enum foreign_item_ {
     foreign_item_fn(fn_decl, purity, ~[ty_param]),
+    foreign_item_const(@ty)
 }
 
 // The data we save and restore about an inlined item or method.  This is not

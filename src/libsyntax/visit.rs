@@ -254,6 +254,9 @@ fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
         v.visit_ty_params(tps, e, v);
         visit_fn_decl(fd, e, v);
       }
+      foreign_item_const(t) => {
+        v.visit_ty(t, e, v);
+      }
     }
 }
 

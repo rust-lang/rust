@@ -5414,9 +5414,22 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
           }
           ast_map::node_foreign_item(ni, _, pth) => {
             exprt = true;
-            register_fn(ccx, ni.span,
-                        vec::append(*pth, ~[path_name(ni.ident)]),
-                        ni.id)
+            match ni.node {
+                ast::foreign_item_fn(*) => {
+                    register_fn(ccx, ni.span,
+                                vec::append(*pth, ~[path_name(ni.ident)]),
+                                ni.id)
+                }
+                ast::foreign_item_const(*) => {
+                    let typ = ty::node_id_to_type(ccx.tcx, ni.id);
+                    let ident = ccx.sess.parse_sess.interner.get(ni.ident);
+                    let g = do str::as_c_str(*ident) |buf| {
+                        llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
+                    };
+                    ccx.item_symbols.insert(ni.id, copy *ident);
+                    g
+                }
+            }
           }
           ast_map::node_ctor(nm, _, ctor, _, pt) => {
             let my_path = vec::append(*pt, ~[path_name(nm)]);

@@ -130,16 +130,19 @@ fn nmoddoc_from_mod(
     itemdoc: doc::itemdoc,
     module_: ast::foreign_mod
 ) -> doc::nmoddoc {
+    let mut fns = ~[];
+    for module_.items.each |item| {
+        let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
+        match item.node {
+          ast::foreign_item_fn(*) => {
+            vec::push(fns, fndoc_from_fn(itemdoc));
+          }
+          ast::foreign_item_const(*) => {} // XXX: Not implemented.
+        }
+    }
     {
         item: itemdoc,
-        fns: do vec::map(module_.items) |item| {
-            let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
-            match item.node {
-              ast::foreign_item_fn(*) => {
-                fndoc_from_fn(itemdoc)
-              }
-            }
-        },
+        fns: fns,
         index: none
     }
 }

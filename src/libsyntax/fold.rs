@@ -196,6 +196,9 @@ fn noop_fold_foreign_item(&&ni: @foreign_item, fld: ast_fold)
                                   purity,
                                   fold_ty_params(typms, fld))
                 }
+                foreign_item_const(t) => {
+                  foreign_item_const(fld.fold_ty(t))
+                }
               },
           id: fld.new_id(ni.id),
           span: fld.new_span(ni.span)};
