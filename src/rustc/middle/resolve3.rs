@@ -4139,8 +4139,8 @@ struct Resolver {
                                 |x| self.session.str_of(x)), ~"::") ;
                         if self.name_exists_in_scope_class(wrong_name) {
                             self.session.span_err(expr.span,
-                                        fmt!("unresolved name: %s. \
-                                            Did you mean: self.%s",
+                                        fmt!("unresolved name: `%s`. \
+                                            Did you mean: `self.%s`?",
                                         wrong_name,
                                         wrong_name));
                         }
