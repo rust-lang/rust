@@ -76,6 +76,7 @@ mod write {
         // Generate a pre-optimization intermediate file if -save-temps was
         // specified.
 
+
         if opts.save_temps {
             match opts.output_type {
               output_type_bitcode => {
@@ -135,7 +136,7 @@ mod write {
             llvm::LLVMPassManagerBuilderDispose(MPMB);
         }
         if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
-        if is_object_or_assembly_or_exe(opts.output_type) {
+        if is_object_or_assembly_or_exe(opts.output_type) || opts.jit {
             let LLVMOptNone       = 0 as c_int; // -O0
             let LLVMOptLess       = 1 as c_int; // -O1
             let LLVMOptDefault    = 2 as c_int; // -O2, -Os
@@ -147,6 +148,29 @@ mod write {
               session::Default => LLVMOptDefault,
               session::Aggressive => LLVMOptAggressive
             };
+
+            if opts.jit {
+                // If we are using JIT, go ahead and create and
+                // execute the engine now.
+
+                /*llvm::LLVMAddBasicAliasAnalysisPass(pm.llpm);
+                llvm::LLVMAddInstructionCombiningPass(pm.llpm);
+                llvm::LLVMAddReassociatePass(pm.llpm);
+                llvm::LLVMAddGVNPass(pm.llpm);
+                llvm::LLVMAddCFGSimplificationPass(pm.llpm);*/
+
+                // JIT execution takes ownership of the module,
+                // so don't dispose and return.
+
+                if !llvm::LLVMRustJIT(pm.llpm,
+                                      llmod,
+                                      CodeGenOptLevel,
+                                      true) {
+                    llvm_err(sess, ~"Could not JIT");
+                }
+                if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
+                return;
+            }
 
             let mut FileType;
             if opts.output_type == output_type_object ||

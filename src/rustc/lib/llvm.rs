@@ -986,6 +986,12 @@ extern mod llvm {
         call. */
     fn LLVMRustGetLastError() -> *c_char;
 
+    /** JIT the module. **/
+    fn LLVMRustJIT(PM: PassManagerRef,
+                   M: ModuleRef,
+                   OptLevel: c_int,
+                   EnableSegmentedStacks: bool) -> bool;
+
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
 
