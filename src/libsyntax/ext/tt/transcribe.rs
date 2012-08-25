@@ -1,6 +1,6 @@
 import diagnostic::span_handler;
 import ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-import earley_parser::{named_match, matched_seq, matched_nonterminal};
+import macro_parser::{named_match, matched_seq, matched_nonterminal};
 import codemap::span;
 import parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
                       ident_interner};
