@@ -469,6 +469,7 @@ include:
 * `include!` : include the Rust expression in the given file
 * `include_str!` : include the contents of the given file as a string
 * `include_bin!` : include the contents of the given file as a binary blob
+* `error!`, `warn!`, `info!`, `debug!` : provide diagnostic information.
 
 All of the above extensions, with the exception of `proto!`, are expressions
 with values. `proto!` is an item, defining a new name.
@@ -476,7 +477,8 @@ with values. `proto!` is an item, defining a new name.
 ## Macros
 
 User-defined syntax extensions are called "macros", and they can be defined
-with the `macro_rules!` syntax extension.
+with the `macro_rules!` syntax extension. User-defined macros can currently
+only be invoked in expression position.
 
 ~~~~ {.ebnf .gram}
 expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')'
@@ -2325,9 +2327,9 @@ lower levels indicate more-urgent levels of logging. By default, the lowest
 four logging levels (`0_u32 ... 3_u32`) are predefined as the constants
 `error`, `warn`, `info` and `debug` in the `core` library.
 
-Additionally, the macros `#error`, `#warn`, `#info` and `#debug` are defined
+Additionally, the macros `error!`, `warn!`, `info!` and `debug!` are defined
 in the default syntax-extension namespace. These expand into calls to the
-logging facility composed with calls to the `#fmt` string formatting
+logging facility composed with calls to the `fmt!` string formatting
 syntax-extension.
 
 The following examples all produce the same output, logged at the `error`
@@ -2375,84 +2377,6 @@ An `assert` expression is similar to a `check` expression, except
 the condition may be any boolean-typed expression, and the compiler makes no
 use of the knowledge that the condition holds if the program continues to
 execute after the `assert`.
-
-
-### Syntax extension expressions
-
-~~~~~~~~ {.abnf .gram}
-syntax_ext_expr : '#' ident paren_expr_list ? brace_match ? ;
-~~~~~~~~
-
-Rust provides a notation for _syntax extension_. The notation for invoking
-a syntax extension is a marked syntactic form that can appear as an expression
-in the body of a Rust program.
-
-After parsing, a syntax-extension invocation is expanded into a Rust
-expression. The name of the extension determines the translation performed. In
-future versions of Rust, user-provided syntax extensions aside from macros
-will be provided via external crates.
-
-At present, only a set of built-in syntax extensions, as well as macros
-introduced inline in source code using the `macro` extension, may be used. The
-current built-in syntax extensions are:
-
-
-* `fmt` expands into code to produce a formatted string, similar to
-      `printf` from C.
-* `env` expands into a string literal containing the value of that
-      environment variable at compile-time.
-* `concat_idents` expands into an identifier which is the
-      concatenation of its arguments.
-* `ident_to_str` expands into a string literal containing the name of
-      its argument (which must be a literal).
-* `log_syntax` causes the compiler to pretty-print its arguments.
-
-
-Finally, `macro` is used to define a new macro. A macro can abstract over
-second-class Rust concepts that are present in syntax. The arguments to
-`macro` are pairs (two-element vectors). The pairs consist of an invocation
-and the syntax to expand into. An example:
-
-~~~~~~~~{.xfail-test}
-#macro([#apply[fn, [args, ...]], fn(args, ...)]);
-~~~~~~~~
-
-In this case, the invocation `apply!(sum, 5, 8, 6)` expands to
-`sum(5,8,6)`. If `...` follows an expression (which need not be as
-simple as a single identifier) in the input syntax, the matcher will expect an
-arbitrary number of occurrences of the thing preceding it, and bind syntax to
-the identifiers it contains. If it follows an expression in the output syntax,
-it will transcribe that expression repeatedly, according to the identifiers
-(bound to syntax) that it contains.
-
-The behaviour of `...` is known as Macro By Example. It allows you to
-write a macro with arbitrary repetition by specifying only one case of that
-repetition, and following it by `...`, both where the repeated input is
-matched, and where the repeated output must be transcribed. A more
-sophisticated example:
-
-
-~~~~~~~~{.xfail-test}
-#macro([#zip_literals[[x, ...], [y, ...]), [[x, y], ...]]);
-#macro([#unzip_literals[[x, y], ...], [[x, ...], [y, ...]]]);
-~~~~~~~~
-
-In this case, `zip_literals!([1,2,3], [1,2,3])` expands to
-`[[1,1],[2,2],[3,3]]`, and `unzip_literals!([1,1], [2,2], [3,3])`
-expands to `[[1,2,3],[1,2,3]]`.
-
-Macro expansion takes place outside-in: that is,
-`unzip_literals!(zip_literals!([1,2,3],[1,2,3]))` will fail because
-`unzip_literals` expects a list, not a macro invocation, as an argument.
-
-The macro system currently has some limitations. It's not possible to
-destructure anything other than vector literals (therefore, the arguments to
-complicated macros will tend to be an ocean of square brackets). Macro
-invocations and `...` can only appear in expression positions. Finally,
-macro expansion is currently unhygienic. That is, name collisions between
-macro-generated and user-written code can cause unintentional capture.
-
-Future versions of Rust will address these issues.
 
 
 # Type system
