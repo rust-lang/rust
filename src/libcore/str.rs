@@ -117,7 +117,6 @@ export
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn rust_str_push(&s: ~str, ch: u8);
     fn str_reserve_shared(&ss: ~str, nn: libc::size_t);
 }
 
@@ -1998,12 +1997,18 @@ mod unsafe {
 
     /// Appends a byte to a string. (Not UTF-8 safe).
     unsafe fn push_byte(&s: ~str, b: u8) {
-        rustrt::rust_str_push(s, b);
+        reserve_at_least(s, s.len() + 1);
+        do as_buf(s) |buf, len| {
+            let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
+            *ptr::mut_offset(buf, len) = b;
+        }
+        set_len(s, s.len() + 1);
     }
 
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
     unsafe fn push_bytes(&s: ~str, bytes: ~[u8]) {
-        for vec::each(bytes) |byte| { rustrt::rust_str_push(s, byte); }
+        reserve_at_least(s, s.len() + bytes.len());
+        for vec::each(bytes) |byte| { push_byte(s, byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
