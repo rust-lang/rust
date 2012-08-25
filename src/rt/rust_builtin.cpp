@@ -148,16 +148,6 @@ str_reserve_shared(rust_vec_box** sp,
     reserve_vec_exact(task, sp, n_elts + 1);
 }
 
-extern "C" CDECL void
-rust_str_push(rust_vec_box** sp, uint8_t byte) {
-    rust_task *task = rust_get_current_task();
-    size_t fill = (*sp)->body.fill;
-    reserve_vec(task, sp, fill + 1);
-    (*sp)->body.data[fill-1] = byte;
-    (*sp)->body.data[fill] = 0;
-    (*sp)->body.fill = fill + 1;
-}
-
 extern "C" CDECL rust_vec*
 rand_seed() {
     size_t size = sizeof(ub4) * RANDSIZ;
