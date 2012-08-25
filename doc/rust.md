@@ -522,7 +522,8 @@ matches, in a structure that mimics the structure of the repetition
 encountered on a successful match. The job of the transcriber is to sort that
 structure out.
 
-The rules for transcription of these repetitions are called "Macro By Example". Essentially, one "layer" of repetition is discharged at a time, and all of
+The rules for transcription of these repetitions are called "Macro By Example".
+Essentially, one "layer" of repetition is discharged at a time, and all of
 them must be discharged by the time a name is transcribed. Therefore,
 `( $( $i:ident ),* ) => ( $i )` is an invalid macro, but
 `( $( $i:ident ),* ) => ( $( $i:ident ),*  )` is acceptable (if trivial).
@@ -536,6 +537,20 @@ walks through the choices at that layer in lockstep, so the former input
 transcribes to `( (a,d), (b,e), (c,f) )`.
 
 Nested repetitions are allowed.
+
+### Parsing limitations
+
+The parser used by the macro system is reasonably powerful, but the parsing of
+Rust syntax is restricted in two ways:
+
+1. The parser will always parse as much as possible. If it attempts to match
+`$i:expr [ , ]` against `8 [ , ]`, it will attempt to parse `i` as an array
+index operation and fail. Adding a separator can solve this problem.
+2. The parser must have eliminated all ambiguity by the time it reaches a
+`$` _name_ `:` _designator_. This most often affects them when they occur in
+the beginning of, or immediately after, a `$(...)*`; requiring a distinctive
+token in front can solve the problem.
+
 
 ## Syntax extensions useful for the macro author
 

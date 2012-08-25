@@ -2481,8 +2481,9 @@ Macros, as currently implemented, are not for the faint of heart. Even
 ordinary syntax errors can be more difficult to debug when they occur inside
 a macro, and errors caused by parse problems in generated code can be very
 tricky. Invoking the `log_syntax!` macro can help elucidate intermediate
-states, and using `--pretty expanded` as an argument to the compiler will
-show the result of expansion.
+states, using `trace_macros!(true)` will automatically print those
+intermediate states out, and using `--pretty expanded` as an argument to the
+compiler will show the result of expansion.
 
 # Traits
 
