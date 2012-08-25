@@ -420,6 +420,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
               ast::foreign_item_fn(decl, _, tps) => {
                 check_foreign_fn(cx, it.id, decl);
               }
+              ast::foreign_item_const(*) => {}  // XXX: Not implemented.
             }
         }
       }

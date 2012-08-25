@@ -421,6 +421,14 @@ fn print_foreign_item(s: ps, item: @ast::foreign_item) {
         word(s.s, ~";");
         end(s); // end the outer fn box
       }
+      ast::foreign_item_const(t) => {
+        head(s, ~"const");
+        print_ident(s, item.ident);
+        word_space(s, ~":");
+        print_type(s, t);
+        word(s.s, ~";");
+        end(s); // end the head-ibox
+      }
     }
 }
 

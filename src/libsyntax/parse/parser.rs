@@ -32,32 +32,32 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              expr_move, expr_path, expr_rec, expr_repeat, expr_ret, expr_swap,
              expr_struct, expr_tup, expr_unary, expr_unary_move, expr_vec,
              expr_vstore, expr_while, extern_fn, field, fn_decl, foreign_item,
-             foreign_item_fn, foreign_mod, ident, impure_fn, infer, inherited,
-             init_assign, init_move, initializer, item, item_,
-             item_class, item_const, item_enum, item_fn, item_foreign_mod,
-             item_impl, item_mac, item_mod, item_trait, item_ty, lit, lit_,
-             lit_bool, lit_float, lit_int, lit_int_unsuffixed, lit_nil,
-             lit_str, lit_uint, local, m_const, m_imm, m_mutbl, mac_, mac_aq,
-             mac_ellipsis, mac_invoc, mac_invoc_tt, mac_var, matcher,
-             match_nonterminal, match_seq, match_tok, method, mode, mt, mul,
-             mutability, named_field, neg, noreturn, not, pat, pat_box,
-             pat_enum, pat_ident, pat_lit, pat_range, pat_rec, pat_struct,
-             pat_tup, pat_uniq, pat_wild, path, private, proto, proto_bare,
-             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
-             purity, re_anon, re_named, region, rem, required, ret_style,
-             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
-             stmt_semi, struct_def, struct_field, struct_variant_kind,
-             subtract, sty_box, sty_by_ref, sty_region, sty_static, sty_uniq,
-             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
-             tt_tok, tt_nonterminal, ty, ty_, ty_bot, ty_box, ty_field, ty_fn,
-             ty_infer, ty_mac, ty_method, ty_nil, ty_param, ty_param_bound,
-             ty_path, ty_ptr, ty_rec, ty_rptr, ty_tup, ty_u32, ty_uniq,
-             ty_vec, ty_fixed_length, tuple_variant_kind, unchecked_blk, uniq,
-             unnamed_field, unsafe_blk, unsafe_fn, variant, view_item,
-             view_item_, view_item_export, view_item_import, view_item_use,
-             view_path, view_path_glob, view_path_list, view_path_simple,
-             visibility, vstore, vstore_box, vstore_fixed, vstore_slice,
-             vstore_uniq};
+             foreign_item_const, foreign_item_fn, foreign_mod, ident,
+             impure_fn, infer, inherited, init_assign, init_move, initializer,
+             item, item_, item_class, item_const, item_enum, item_fn,
+             item_foreign_mod, item_impl, item_mac, item_mod, item_trait,
+             item_ty, lit, lit_, lit_bool, lit_float, lit_int,
+             lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const,
+             m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis, mac_invoc,
+             mac_invoc_tt, mac_var, matcher, match_nonterminal, match_seq,
+             match_tok, method, mode, mt, mul, mutability, named_field, neg,
+             noreturn, not, pat, pat_box, pat_enum, pat_ident, pat_lit,
+             pat_range, pat_rec, pat_struct, pat_tup, pat_uniq, pat_wild,
+             path, private, proto, proto_bare, proto_block, proto_box,
+             proto_uniq, provided, public, pure_fn, purity, re_anon, re_named,
+             region, rem, required, ret_style, return_val, self_ty, shl, shr,
+             stmt, stmt_decl, stmt_expr, stmt_semi, struct_def, struct_field,
+             struct_variant_kind, subtract, sty_box, sty_by_ref, sty_region,
+             sty_static, sty_uniq, sty_value, token_tree, trait_method,
+             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty, ty_,
+             ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method,
+             ty_nil, ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec,
+             ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length,
+             tuple_variant_kind, unchecked_blk, uniq, unnamed_field,
+             unsafe_blk, unsafe_fn, variant, view_item, view_item_,
+             view_item_export, view_item_import, view_item_use, view_path,
+             view_path_glob, view_path_list, view_path_simple, visibility,
+             vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
 
 export file_type;
 export parser;
@@ -2843,6 +2843,21 @@ struct parser {
                  span: mk_sp(lo, hi)};
     }
 
+    fn parse_item_foreign_const(+attrs: ~[attribute]) -> @foreign_item {
+        let lo = self.span.lo;
+        self.expect_keyword(~"const");
+        let ident = self.parse_ident();
+        self.expect(token::COLON);
+        let ty = self.parse_ty(false);
+        let hi = self.span.hi;
+        self.expect(token::SEMI);
+        return @{ident: ident,
+                 attrs: attrs,
+                 node: foreign_item_const(move ty),
+                 id: self.get_id(),
+                 span: mk_sp(lo, hi)};
+    }
+
     fn parse_fn_purity() -> purity {
         if self.eat_keyword(~"fn") { impure_fn }
         else if self.eat_keyword(~"pure") {
@@ -2855,9 +2870,12 @@ struct parser {
         else { self.unexpected(); }
     }
 
-    fn parse_foreign_item(+attrs: ~[attribute]) ->
-        @foreign_item {
-        self.parse_item_foreign_fn(attrs)
+    fn parse_foreign_item(+attrs: ~[attribute]) -> @foreign_item {
+        if self.is_keyword(~"const") {
+            self.parse_item_foreign_const(move attrs)
+        } else {
+            self.parse_item_foreign_fn(move attrs)
+        }
     }
 
     fn parse_foreign_mod_items(+first_item_attrs: ~[attribute]) ->
