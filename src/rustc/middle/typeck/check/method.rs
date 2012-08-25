@@ -140,7 +140,24 @@ struct lookup {
              immutable_reference_mode, mutable_reference_mode];
 
         loop {
-            self.add_candidates_from_type();
+            // Try to find a method that is keyed directly off of the
+            // type. This only happens for boxed traits, type params,
+            // classes, and self. If we see some sort of pointer, then
+            // we look at candidates for the pointed to type to match
+            // them against methods that take explicit self parameters.
+            // N.B.: this looking through boxes to match against
+            // explicit self parameters is *not* the same as
+            // autoderef.
+            // Try each of the possible matching semantics in turn.
+            for matching_modes.each |mode| {
+                match ty::get(self.self_ty).struct {
+                  ty::ty_box(mt) | ty::ty_uniq(mt) | ty::ty_rptr(_, mt) => {
+                    self.add_candidates_from_type(mt.ty, mode);
+                  }
+                  _ => { self.add_candidates_from_type(self.self_ty, mode); }
+                }
+                if self.candidates.len() > 0u { break; }
+            }
 
             // if we found anything, stop now.  otherwise continue to
             // loop for impls in scope.  Note: I don't love these
@@ -235,18 +252,17 @@ struct lookup {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn add_candidates_from_type() {
-        match ty::get(self.self_ty).struct {
+    fn add_candidates_from_type(inner_ty: ty::t, mode: method_lookup_mode) {
+        match ty::get(inner_ty).struct {
           // First, see whether this is a bounded parameter.
           ty::ty_param(p) => {
-            self.add_candidates_from_param(p.idx, p.def_id);
+            self.add_candidates_from_param(inner_ty, mode, p.idx, p.def_id);
           }
-
           ty::ty_trait(did, substs, _) => {
-            self.add_candidates_from_trait(did, substs);
+            self.add_candidates_from_trait(inner_ty, mode, did, substs);
           }
           ty::ty_class(did, substs) => {
-            self.add_candidates_from_class(did, substs);
+            self.add_candidates_from_class(inner_ty, mode, did, substs);
           }
           ty::ty_self => {
             // Call is of the form "self.foo()" and appears in one
@@ -260,13 +276,15 @@ struct lookup {
                 tps: ~[],
             };
 
-            self.add_candidates_from_trait(self_def_id, substs);
+            self.add_candidates_from_trait(inner_ty, mode,
+                                           self_def_id, substs);
           }
           _ => ()
         }
     }
 
-    fn add_candidates_from_param(n: uint, did: ast::def_id) {
+    fn add_candidates_from_param(inner_ty: ty::t, mode: method_lookup_mode,
+                                 n: uint, did: ast::def_id) {
         debug!("add_candidates_from_param");
 
         let tcx = self.tcx();
@@ -304,6 +322,8 @@ struct lookup {
                               with bound_substs};
 
                 self.add_candidates_from_m(
+                    inner_ty,
+                    mode,
                     substs, trt_methods[pos],
                     method_param({trait_id:trait_id,
                                   method_num:pos,
@@ -315,7 +335,10 @@ struct lookup {
 
     }
 
-    fn add_candidates_from_trait(did: ast::def_id, trait_substs: ty::substs) {
+    fn add_candidates_from_trait(inner_ty: ty::t,
+                                 mode: method_lookup_mode,
+                                 did: ast::def_id,
+                                 trait_substs: ty::substs) {
 
         debug!("add_candidates_from_trait");
 
@@ -346,11 +369,14 @@ struct lookup {
                           with trait_substs};
 
             self.add_candidates_from_m(
-                substs, m, method_trait(did, i));
+                inner_ty, mode, substs, m, method_trait(did, i));
         }
     }
 
-    fn add_candidates_from_class(did: ast::def_id, class_substs: ty::substs) {
+    fn add_candidates_from_class(inner_ty: ty::t,
+                                 mode: method_lookup_mode,
+                                 did: ast::def_id,
+                                 class_substs: ty::substs) {
 
         debug!("add_candidates_from_class");
 
@@ -371,7 +397,7 @@ struct lookup {
                 self.tcx(), did, self.m_name, self.expr.span);
 
             self.add_candidates_from_m(
-                class_substs, m, method_static(m_declared));
+                inner_ty, mode, class_substs, m, method_static(m_declared));
         }
     }
 
@@ -488,10 +514,41 @@ struct lookup {
         return added_any;
     }
 
-    fn add_candidates_from_m(self_substs: ty::substs,
+    fn add_candidates_from_m(inner_ty: ty::t,
+                             mode: method_lookup_mode,
+                             self_substs: ty::substs,
                              m: ty::method,
                              origin: method_origin) {
         let tcx = self.fcx.ccx.tcx;
+
+        // If we don't have a self region but have an region pointer
+        // explicit self, we need to make up a new region.
+        let self_r = match self_substs.self_r {
+          none => {
+            match m.self_ty {
+              ast::sty_region(_) =>
+                  some(self.fcx.infcx.next_region_var(
+                      self.self_expr.span,
+                      self.self_expr.id)),
+              _ => none
+            }
+          }
+          some(_) => self_substs.self_r
+        };
+        let self_substs = {self_r: self_r with self_substs};
+
+        // Before we can be sure we succeeded we need to match the
+        // self type against the impl type that we get when we apply
+        // the explicit self parameter to whatever inner type we are
+        // looking at (which may be something that the self_type
+        // points to).
+        let impl_ty = transform_self_type_for_method(
+            self.tcx(), self_substs.self_r,
+            inner_ty, m.self_ty);
+
+        let matches = self.check_type_match(impl_ty, mode);
+        debug!("matches = %?", matches);
+        if matches.is_err() { return; }
 
         // a bit hokey, but the method unbound has a bare protocol, whereas
         // a.b has a protocol like fn@() (perhaps eventually fn&()):
@@ -507,7 +564,7 @@ struct lookup {
              entry: {derefs: self.derefs,
                      self_mode: get_mode_from_self_type(m.self_ty),
                      origin: origin},
-             mode: subtyping_mode});
+             mode: mode});
     }
 
     fn add_inherent_and_extension_candidates(optional_inherent_methods:
