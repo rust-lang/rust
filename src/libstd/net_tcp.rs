@@ -153,7 +153,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
           0i32 => {
             log(debug, ~"tcp_init successful");
             match input_ip {
-              ipv4 => {
+              _ipv4 => {
                 log(debug, ~"dealing w/ ipv4 connection..");
                 let connect_req_ptr =
                     ptr::addr_of((*socket_data_ptr).connect_req);
