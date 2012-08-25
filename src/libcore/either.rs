@@ -109,6 +109,22 @@ pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     match *eith { Right(_) => true, _ => false }
 }
 
+pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
+    //! Retrieves the value in the left branch. Fails if the either is Right.
+
+    match move eith {
+        Left(move x) => x, Right(_) => fail ~"either::unwrap_left Right"
+    }
+}
+
+pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
+    //! Retrieves the value in the right branch. Fails if the either is Left.
+
+    match move eith {
+        Right(move x) => x, Left(_) => fail ~"either::unwrap_right Left"
+    }
+}
+
 #[test]
 fn test_either_left() {
     let val = Left(10);
