@@ -348,7 +348,7 @@ enum expr_ {
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
     expr_loop(blk, option<ident>),
-    expr_match(@expr, ~[arm], alt_mode),
+    expr_match(@expr, ~[arm]),
     expr_fn(proto, fn_decl, blk, capture_clause),
     expr_fn_block(fn_decl, blk, capture_clause),
     // Inner expr is always an expr_fn_block. We need the wrapping node to

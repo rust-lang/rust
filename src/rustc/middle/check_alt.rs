@@ -24,7 +24,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
 fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
     visit::visit_expr(ex, s, v);
     match ex.node {
-      expr_match(scrut, arms, mode) => {
+      expr_match(scrut, arms) => {
         check_arms(tcx, arms);
         /* Check for exhaustiveness */
          // Check for empty enum, because is_useful only works on inhabited
@@ -48,13 +48,10 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
           }
           _ => { /* We assume only enum types can be uninhabited */ }
        }
-
-        if mode == alt_exhaustive {
-            let arms = vec::concat(vec::filter_map(arms, unguarded_pat));
-            check_exhaustive(tcx, ex.span, arms);
-        }
-      }
-      _ => ()
+       let arms = vec::concat(vec::filter_map(arms, unguarded_pat));
+       check_exhaustive(tcx, ex.span, arms);
+     }
+     _ => ()
     }
 }
 

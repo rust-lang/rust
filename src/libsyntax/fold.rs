@@ -456,9 +456,9 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
               expr_loop(fld.fold_block(body),
                         option::map(opt_ident, |x| fld.fold_ident(x)))
           }
-          expr_match(expr, arms, mode) => {
+          expr_match(expr, arms) => {
             expr_match(fld.fold_expr(expr),
-                     vec::map(arms, |x| fld.fold_arm(x)), mode)
+                     vec::map(arms, |x| fld.fold_arm(x)))
           }
           expr_fn(proto, decl, body, captures) => {
             expr_fn(proto, fold_fn_decl(decl, fld),
