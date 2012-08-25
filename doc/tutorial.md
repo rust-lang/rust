@@ -751,10 +751,7 @@ match my_number {
 If the arm with the wildcard pattern was left off in the above
 example, the typechecker would reject it at compile time. `match`
 constructs must be exhaustive: they must have an arm covering every
-possible case. (You may use the `match check` construct to write a
-non-exhaustive match, but it's highly undesirable to do so. You may
-reason that the missing cases will never occur, but the typechecker
-provides you with no assurance that your reasoning is correct.)
+possible case.
 
 A powerful application of pattern matching is *destructuring*, where
 you use the matching to get at the contents of data types. Remember
@@ -849,8 +846,6 @@ In addition to the `fail` statement, the following circumstances cause
 task failure:
 
 * Accessing an out-of-bounds element of a vector.
-
-* Having no clauses match when evaluating an `match check` expression.
 
 * An assertion failure.
 
