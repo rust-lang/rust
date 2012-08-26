@@ -29,14 +29,25 @@
 #include "llvm/Support/Host.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/DynamicLibrary.h"
+#include "llvm/Support/Memory.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JIT.h"
+#include "llvm/ExecutionEngine/JITMemoryManager.h"
+#include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
 #include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Object.h"
 #include <cstdlib>
+
+// Used by RustMCJITMemoryManager::getPointerToNamedFunction()
+// to get around glibc issues. See the function for more information.
+#ifdef __linux__
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 using namespace llvm;
 
@@ -85,7 +96,208 @@ void LLVMInitializeX86AsmParser();
                              LLVMInitializeX86AsmParser();
 
 extern "C" bool
-LLVMRustJIT(LLVMPassManagerRef PMR,
+LLVMRustLoadLibrary(const char* file) {
+  std::string err;
+
+  if(llvm::sys::DynamicLibrary::LoadLibraryPermanently(file, &err)) {
+    LLVMRustError = err.c_str();
+    return false;
+  }
+
+  return true;
+}
+
+ExecutionEngine* EE;
+
+// Custom memory manager for MCJITting. It needs special features
+// that the generic JIT memory manager doesn't entail. Based on
+// code from LLI, change where needed for Rust.
+class RustMCJITMemoryManager : public JITMemoryManager {
+public:
+  SmallVector<sys::MemoryBlock, 16> AllocatedDataMem;
+  SmallVector<sys::MemoryBlock, 16> AllocatedCodeMem;
+  SmallVector<sys::MemoryBlock, 16> FreeCodeMem;
+
+  RustMCJITMemoryManager() { }
+  ~RustMCJITMemoryManager();
+
+  virtual uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
+                                       unsigned SectionID);
+
+  virtual uint8_t *allocateDataSection(uintptr_t Size, unsigned Alignment,
+                                       unsigned SectionID);
+
+  virtual void *getPointerToNamedFunction(const std::string &Name,
+                                          bool AbortOnFailure = true);
+
+  // Invalidate instruction cache for code sections. Some platforms with
+  // separate data cache and instruction cache require explicit cache flush,
+  // otherwise JIT code manipulations (like resolved relocations) will get to
+  // the data cache but not to the instruction cache.
+  virtual void invalidateInstructionCache();
+
+  // The MCJITMemoryManager doesn't use the following functions, so we don't
+  // need implement them.
+  virtual void setMemoryWritable() {
+    llvm_unreachable("Unimplemented call");
+  }
+  virtual void setMemoryExecutable() {
+    llvm_unreachable("Unimplemented call");
+  }
+  virtual void setPoisonMemory(bool poison) {
+    llvm_unreachable("Unimplemented call");
+  }
+  virtual void AllocateGOT() {
+    llvm_unreachable("Unimplemented call");
+  }
+  virtual uint8_t *getGOTBase() const {
+    llvm_unreachable("Unimplemented call");
+    return 0;
+  }
+  virtual uint8_t *startFunctionBody(const Function *F,
+                                     uintptr_t &ActualSize){
+    llvm_unreachable("Unimplemented call");
+    return 0;
+  }
+  virtual uint8_t *allocateStub(const GlobalValue* F, unsigned StubSize,
+                                unsigned Alignment) {
+    llvm_unreachable("Unimplemented call");
+    return 0;
+  }
+  virtual void endFunctionBody(const Function *F, uint8_t *FunctionStart,
+                               uint8_t *FunctionEnd) {
+    llvm_unreachable("Unimplemented call");
+  }
+  virtual uint8_t *allocateSpace(intptr_t Size, unsigned Alignment) {
+    llvm_unreachable("Unimplemented call");
+    return 0;
+  }
+  virtual uint8_t *allocateGlobal(uintptr_t Size, unsigned Alignment) {
+    llvm_unreachable("Unimplemented call");
+    return 0;
+  }
+  virtual void deallocateFunctionBody(void *Body) {
+    llvm_unreachable("Unimplemented call");
+  }
+  virtual uint8_t* startExceptionTable(const Function* F,
+                                       uintptr_t &ActualSize) {
+    llvm_unreachable("Unimplemented call");
+    return 0;
+  }
+  virtual void endExceptionTable(const Function *F, uint8_t *TableStart,
+                                 uint8_t *TableEnd, uint8_t* FrameRegister) {
+    llvm_unreachable("Unimplemented call");
+  }
+  virtual void deallocateExceptionTable(void *ET) {
+    llvm_unreachable("Unimplemented call");
+  }
+};
+
+uint8_t *RustMCJITMemoryManager::allocateDataSection(uintptr_t Size,
+                                                    unsigned Alignment,
+                                                    unsigned SectionID) {
+  if (!Alignment)
+    Alignment = 16;
+  uint8_t *Addr = (uint8_t*)calloc((Size + Alignment - 1)/Alignment, Alignment);
+  AllocatedDataMem.push_back(sys::MemoryBlock(Addr, Size));
+  return Addr;
+}
+
+uint8_t *RustMCJITMemoryManager::allocateCodeSection(uintptr_t Size,
+                                                    unsigned Alignment,
+                                                    unsigned SectionID) {
+  if (!Alignment)
+    Alignment = 16;
+  unsigned NeedAllocate = Alignment * ((Size + Alignment - 1)/Alignment + 1);
+  uintptr_t Addr = 0;
+  // Look in the list of free code memory regions and use a block there if one
+  // is available.
+  for (int i = 0, e = FreeCodeMem.size(); i != e; ++i) {
+    sys::MemoryBlock &MB = FreeCodeMem[i];
+    if (MB.size() >= NeedAllocate) {
+      Addr = (uintptr_t)MB.base();
+      uintptr_t EndOfBlock = Addr + MB.size();
+      // Align the address.
+      Addr = (Addr + Alignment - 1) & ~(uintptr_t)(Alignment - 1);
+      // Store cutted free memory block.
+      FreeCodeMem[i] = sys::MemoryBlock((void*)(Addr + Size),
+                                        EndOfBlock - Addr - Size);
+      return (uint8_t*)Addr;
+    }
+  }
+
+  // No pre-allocated free block was large enough. Allocate a new memory region.
+  sys::MemoryBlock MB = sys::Memory::AllocateRWX(NeedAllocate, 0, 0);
+
+  AllocatedCodeMem.push_back(MB);
+  Addr = (uintptr_t)MB.base();
+  uintptr_t EndOfBlock = Addr + MB.size();
+  // Align the address.
+  Addr = (Addr + Alignment - 1) & ~(uintptr_t)(Alignment - 1);
+  // The AllocateRWX may allocate much more memory than we need. In this case,
+  // we store the unused memory as a free memory block.
+  unsigned FreeSize = EndOfBlock-Addr-Size;
+  if (FreeSize > 16)
+    FreeCodeMem.push_back(sys::MemoryBlock((void*)(Addr + Size), FreeSize));
+
+  // Return aligned address
+  return (uint8_t*)Addr;
+}
+
+void RustMCJITMemoryManager::invalidateInstructionCache() {
+  for (int i = 0, e = AllocatedCodeMem.size(); i != e; ++i)
+    sys::Memory::InvalidateInstructionCache(AllocatedCodeMem[i].base(),
+                                            AllocatedCodeMem[i].size());
+}
+
+void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
+                                                       bool AbortOnFailure) {
+#ifdef __linux__
+  // Force the following functions to be linked in to anything that uses the
+  // JIT. This is a hack designed to work around the all-too-clever Glibc
+  // strategy of making these functions work differently when inlined vs. when
+  // not inlined, and hiding their real definitions in a separate archive file
+  // that the dynamic linker can't see. For more info, search for
+  // 'libc_nonshared.a' on Google, or read http://llvm.org/PR274.
+  if (Name == "stat") return (void*)(intptr_t)&stat;
+  if (Name == "fstat") return (void*)(intptr_t)&fstat;
+  if (Name == "lstat") return (void*)(intptr_t)&lstat;
+  if (Name == "stat64") return (void*)(intptr_t)&stat64;
+  if (Name == "fstat64") return (void*)(intptr_t)&fstat64;
+  if (Name == "lstat64") return (void*)(intptr_t)&lstat64;
+  if (Name == "atexit") return (void*)(intptr_t)&atexit;
+  if (Name == "mknod") return (void*)(intptr_t)&mknod;
+#endif
+
+  const char *NameStr = Name.c_str();
+  void *Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr);
+  if (Ptr) return Ptr;
+
+  // If it wasn't found and if it starts with an underscore ('_') character,
+  // try again without the underscore.
+  if (NameStr[0] == '_') {
+    Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr+1);
+    if (Ptr) return Ptr;
+  }
+
+  if (AbortOnFailure)
+    report_fatal_error("Program used external function '" + Name +
+                      "' which could not be resolved!");
+  return 0;
+}
+
+RustMCJITMemoryManager::~RustMCJITMemoryManager() {
+  for (unsigned i = 0, e = AllocatedCodeMem.size(); i != e; ++i)
+    sys::Memory::ReleaseRWX(AllocatedCodeMem[i]);
+  for (unsigned i = 0, e = AllocatedDataMem.size(); i != e; ++i)
+    free(AllocatedDataMem[i].base());
+}
+
+// Separated functions because loading libraries before creating
+// an execution engine seems to break stuff.
+
+extern "C" bool
+LLVMRustPrepareJIT(LLVMPassManagerRef PMR,
             LLVMModuleRef M,
             CodeGenOpt::Level OptLevel,
             bool EnableSegmentedStacks) {
@@ -96,15 +308,16 @@ LLVMRustJIT(LLVMPassManagerRef PMR,
 
   std::string Err;
   TargetOptions Options;
-  Options.NoFramePointerElim = true;
-  Options.EnableSegmentedStacks = EnableSegmentedStacks;
+  Options.JITEmitDebugInfo = true;
+  //Options.NoFramePointerElim = true;
+  //Options.EnableSegmentedStacks = EnableSegmentedStacks;
 
-  PassManager *PM = unwrap<PassManager>(PMR);
+  unwrap<PassManager>(PMR)->run(*unwrap(M));
 
-  PM->run(*unwrap(M));
-
-  ExecutionEngine* EE = EngineBuilder(unwrap(M))
+  RustMCJITMemoryManager* MM = new RustMCJITMemoryManager();
+  EE = EngineBuilder(unwrap(M))
     .setTargetOptions(Options)
+    .setJITMemoryManager(MM)
     .setOptLevel(OptLevel)
     .setUseMCJIT(true)
     .create();
@@ -114,6 +327,16 @@ LLVMRustJIT(LLVMPassManagerRef PMR,
     return false;
   }
 
+  MM->invalidateInstructionCache();
+
+  return true;
+}
+
+extern "C" bool
+LLVMRustExecuteJIT() {
+  assert(EE);
+
+  std::string Err;
   Function* func = EE->FindFunctionNamed("main");
 
   if(!func || Err != "") {
@@ -121,9 +344,13 @@ LLVMRustJIT(LLVMPassManagerRef PMR,
     return false;
   }
 
-  std::vector<GenericValue> args;
+  //std::vector<GenericValue> args;
+  typedef int (*entry_t)(int, int);
+  entry_t entry = (entry_t) EE->getPointerToFunction(func);
 
-  EE->runFunction(func, args);
+  assert(entry);
+  entry(0, 0);
+  //EE->runFunction(func, args);
 
   return true;
 }

@@ -986,11 +986,17 @@ extern mod llvm {
         call. */
     fn LLVMRustGetLastError() -> *c_char;
 
-    /** JIT the module. **/
-    fn LLVMRustJIT(PM: PassManagerRef,
+    /** Load a shared library to resolve symbols against. */
+    fn LLVMRustLoadLibrary(Filename: *c_char) -> bool;
+
+    /** Create the JIT engine. */
+    fn LLVMRustPrepareJIT(PM: PassManagerRef,
                    M: ModuleRef,
                    OptLevel: c_int,
                    EnableSegmentedStacks: bool) -> bool;
+
+    /** Execute the JIT engine. */
+    fn LLVMRustExecuteJIT() -> bool;
 
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;

@@ -160,14 +160,37 @@ mod write {
                 llvm::LLVMAddCFGSimplificationPass(pm.llpm);*/
 
                 // JIT execution takes ownership of the module,
-                // so don't dispose and return.
+                // so don't dispose and return. Due to a weird bug
+                // with dynamic libraries, we need to separate jitting
+                // into two functions and load crates inbetween.
 
-                if !llvm::LLVMRustJIT(pm.llpm,
-                                      llmod,
-                                      CodeGenOptLevel,
-                                      true) {
+                if !llvm::LLVMRustPrepareJIT(pm.llpm,
+                                             llmod,
+                                             CodeGenOptLevel,
+                                             true) {
                     llvm_err(sess, ~"Could not JIT");
                 }
+
+                // We need to tell LLVM where to resolve all linked
+                // symbols from. The equivalent of -lstd, -lcore, etc.
+                /*let cstore = sess.cstore;
+                for cstore::get_used_crate_files(cstore).each |cratepath| {
+                    debug!{"linking: %s", cratepath};
+
+                    let _: () = str::as_c_str(
+                        cratepath,
+                        |buf_t| {
+                            if !llvm::LLVMRustLoadLibrary(buf_t) {
+                                llvm_err(sess, ~"Could not link");
+                            }
+                            debug!{"linked: %s", cratepath};
+                        });
+                }*/
+
+                if !llvm::LLVMRustExecuteJIT() {
+                    llvm_err(sess, ~"Could not JIT");
+                }
+
                 if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
                 return;
             }
