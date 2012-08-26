@@ -628,7 +628,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
                 kind = switch;
             }
           }
-          lit(l) => {
+          lit(_) => {
             test_val = Load(bcx, val);
             let pty = node_id_type(bcx, pat_id);
             kind = if ty::type_is_integral(pty) { switch }
@@ -940,7 +940,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         // Grab the class data that we care about.
         let class_fields, class_id;
         match ty::get(node_id_type(bcx, pat.id)).struct {
-            ty::ty_class(cid, substs) => {
+            ty::ty_class(cid, _) => {
                 class_id = cid;
                 class_fields = ty::lookup_class_fields(ccx.tcx, class_id);
             }

@@ -39,7 +39,7 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
 
     let walk_expr = fn@(expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
             match expr.node {
-              ast::expr_fn(proto, decl, _, _) => {
+              ast::expr_fn(proto, _, _, _) => {
                 if proto != ast::proto_bare {
                     visit::visit_expr(expr, depth + 1, v);
                 }
@@ -47,7 +47,7 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
               ast::expr_fn_block(*) => {
                 visit::visit_expr(expr, depth + 1, v);
               }
-              ast::expr_path(path) => {
+              ast::expr_path(*) => {
                   let mut i = 0;
                   match def_map.find(expr.id) {
                     None => fail ~"path not found",

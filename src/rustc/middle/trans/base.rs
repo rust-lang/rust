@@ -2396,7 +2396,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             trans_item(ccx, *item);
             local_def(item.id)
           }
-          csearch::found(ast::ii_ctor(ctor, _, tps, _)) => {
+          csearch::found(ast::ii_ctor(ctor, _, _, _)) => {
             ccx.external.insert(fn_id, Some(ctor.node.id));
             local_def(ctor.node.id)
           }
@@ -2440,7 +2440,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
             }
             local_def(mth.id)
           }
-          csearch::found(ast::ii_dtor(dtor, _, tps, _)) => {
+          csearch::found(ast::ii_dtor(dtor, _, _, _)) => {
               ccx.external.insert(fn_id, Some(dtor.node.id));
               local_def(dtor.node.id)
           }
@@ -5425,7 +5425,7 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                 ccx.item_symbols.insert(i.id, s);
                 g
               }
-              ast::item_fn(decl, purity, _, _) => {
+              ast::item_fn(_, purity, _, _) => {
                 let llfn = if purity != ast::extern_fn {
                     register_fn(ccx, i.span, my_path, i.id)
                 } else {
@@ -5671,7 +5671,7 @@ fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
 fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_item: |item| match item.node {
-          ast::item_fn(decl, _, _, _) => {
+          ast::item_fn(*) => {
             let attr_metas = attr::attr_metas(
                 attr::find_attrs_by_name(item.attrs, ~"rt"));
             do vec::iter(attr_metas) |attr_meta| {

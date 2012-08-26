@@ -519,7 +519,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         ebml_w.end_tag();
       }
-      item_fn(decl, purity, tps, _) => {
+      item_fn(_, purity, tps, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -630,7 +630,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::writer, item: @item,
         needs to know*/
         for struct_def.fields.each |f| {
             match f.node.kind {
-                named_field(ident, mutability, vis) => {
+                named_field(ident, _, vis) => {
                    ebml_w.start_tag(tag_item_field);
                    encode_visibility(ebml_w, vis);
                    encode_name(ecx, ebml_w, ident);
@@ -790,7 +790,7 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
-      foreign_item_fn(fn_decl, purity, tps) => {
+      foreign_item_fn(_, purity, tps) => {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, purity_fn_family(purity));
         encode_type_param_bounds(ebml_w, ecx, tps);
@@ -803,7 +803,7 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::writer,
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));
       }
-      foreign_item_const(t) => {
+      foreign_item_const(*) => {
         encode_def_id(ebml_w, local_def(nitem.id));
         encode_family(ebml_w, 'c');
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));

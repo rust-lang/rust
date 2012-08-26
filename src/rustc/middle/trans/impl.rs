@@ -258,12 +258,12 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
              ccx, node_id_type(bcx, callee_id))))
          with lval}
       }
-      typeck::vtable_trait(trait_id, tps) => {
+      typeck::vtable_trait(*) => {
         let {bcx, val} = trans_temp_expr(bcx, base);
         let fty = node_id_type(bcx, callee_id);
         trans_trait_callee(bcx, val, fty, n_method)
       }
-      typeck::vtable_param(n_param, n_bound) => {
+      typeck::vtable_param(*) => {
         fail ~"vtable_param left in monomorphized function's vtable substs";
       }
     }

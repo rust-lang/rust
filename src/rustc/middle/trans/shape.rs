@@ -267,7 +267,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         add_substr(s, shape_of(ccx, mt.ty));
         s
       }
-      ty::ty_evec(mt, ty::vstore_uniq) => {
+      ty::ty_evec(_, ty::vstore_uniq) => {
         shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
 
@@ -290,7 +290,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_estr(ty::vstore_slice(r)) => {
+      ty::ty_estr(ty::vstore_slice(_)) => {
         let mut s = ~[shape_slice];
         let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         add_bool(s, true); // is_pod
@@ -299,7 +299,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_evec(mt, ty::vstore_slice(r)) => {
+      ty::ty_evec(mt, ty::vstore_slice(_)) => {
         let mut s = ~[shape_slice];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_bool(s, false); // is_str
