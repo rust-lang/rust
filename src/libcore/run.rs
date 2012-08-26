@@ -5,6 +5,7 @@
 //! Process spawning
 import option::{some, none};
 import libc::{pid_t, c_void, c_int};
+import io::ReaderUtil;
 
 export Program;
 export run_program;

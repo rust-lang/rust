@@ -1,4 +1,5 @@
 import doc::item_utils;
+import io::ReaderUtil;
 
 export writeinstr;
 export writer;
