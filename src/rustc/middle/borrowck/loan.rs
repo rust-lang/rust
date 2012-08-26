@@ -3,7 +3,7 @@
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
 export public_methods;
-import result::{result, ok, err};
+import result::{Result, Ok, Err};
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,
@@ -13,8 +13,8 @@ impl borrowck_ctxt {
                               scope_region: scope_region,
                               loans: @dvec()});
         match lc.loan(cmt, mutbl) {
-          ok(()) => {ok(lc.loans)}
-          err(e) => {err(e)}
+          Ok(()) => {Ok(lc.loans)}
+          Err(e) => {Err(e)}
         }
     }
 }
@@ -47,11 +47,11 @@ impl loan_ctxt {
             (*self.loans).push({lp: option::get(cmt.lp),
                                 cmt: cmt,
                                 mutbl: mutbl});
-            ok(())
+            Ok(())
         } else {
             // The loan being requested lives longer than the data
             // being loaned out!
-            err({cmt:cmt, code:err_out_of_scope(scope_ub,
+            Err({cmt:cmt, code:err_out_of_scope(scope_ub,
                                                 self.scope_region)})
         }
     }

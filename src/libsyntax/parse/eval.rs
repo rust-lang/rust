@@ -54,8 +54,8 @@ fn parse_companion_mod(cx: ctx, prefix: &Path, suffix: &Option<Path>)
         // Crude, but there's no lib function for this and I'm not
         // up to writing it just now
         match io::file_reader(path) {
-          result::ok(_) => true,
-          result::err(_) => false
+          result::Ok(_) => true,
+          result::Err(_) => false
         }
     }
 

@@ -8,7 +8,7 @@ import middle::{trans, freevars, kind, ty, typeck, lint};
 import syntax::print::{pp, pprust};
 import util::ppaux;
 import back::link;
-import result::{ok, err};
+import result::{Ok, Err};
 import std::getopts;
 import io::WriterUtil;
 import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
@@ -715,8 +715,8 @@ mod test {
     fn test_switch_implies_cfg_test() {
         let matches =
             match getopts::getopts(~[~"--test"], opts()) {
-              ok(m) => m,
-              err(f) => fail ~"test_switch_implies_cfg_test: " +
+              Ok(m) => m,
+              Err(f) => fail ~"test_switch_implies_cfg_test: " +
                              getopts::fail_str(f)
             };
         let sessopts = build_session_options(matches, diagnostic::emit);
@@ -731,8 +731,8 @@ mod test {
     fn test_switch_implies_cfg_test_unless_cfg_test() {
         let matches =
             match getopts::getopts(~[~"--test", ~"--cfg=test"], opts()) {
-              ok(m) => m,
-              err(f) => {
+              Ok(m) => m,
+              Err(f) => {
                 fail ~"test_switch_implies_cfg_test_unless_cfg_test: " +
                     getopts::fail_str(f);
               }

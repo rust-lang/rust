@@ -2,7 +2,7 @@
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
 
-import result::result;
+import result::Result;
 export filesearch;
 export mk_filesearch;
 export pick;
@@ -43,12 +43,12 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
                       make_target_lib_path(&self.sysroot,
                                            self.target_triple));
             match get_cargo_lib_path_nearest() {
-              result::ok(p) => vec::push(paths, p),
-              result::err(_) => ()
+              result::Ok(p) => vec::push(paths, p),
+              result::Err(_) => ()
             }
             match get_cargo_lib_path() {
-              result::ok(p) => vec::push(paths, p),
-              result::err(_) => ()
+              result::Ok(p) => vec::push(paths, p),
+              result::Err(_) => ()
             }
             paths
         }
@@ -112,31 +112,31 @@ fn get_sysroot(maybe_sysroot: Option<Path>) -> Path {
     }
 }
 
-fn get_cargo_sysroot() -> result<Path, ~str> {
-    result::ok(get_default_sysroot().push_many([libdir(), ~"cargo"]))
+fn get_cargo_sysroot() -> Result<Path, ~str> {
+    result::Ok(get_default_sysroot().push_many([libdir(), ~"cargo"]))
 }
 
-fn get_cargo_root() -> result<Path, ~str> {
+fn get_cargo_root() -> Result<Path, ~str> {
     match os::getenv(~"CARGO_ROOT") {
-        Some(_p) => result::ok(Path(_p)),
+        Some(_p) => result::Ok(Path(_p)),
         None => match os::homedir() {
-          Some(_q) => result::ok(_q.push(".cargo")),
-          None => result::err(~"no CARGO_ROOT or home directory")
+          Some(_q) => result::Ok(_q.push(".cargo")),
+          None => result::Err(~"no CARGO_ROOT or home directory")
         }
     }
 }
 
-fn get_cargo_root_nearest() -> result<Path, ~str> {
+fn get_cargo_root_nearest() -> Result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
         let cwd = os::getcwd();
         let cwd_cargo = cwd.push(".cargo");
         let mut par_cargo = cwd.pop().push(".cargo");
-        let mut rslt = result::ok(cwd_cargo);
+        let mut rslt = result::Ok(cwd_cargo);
 
         if !os::path_is_dir(&cwd_cargo) && cwd_cargo != p {
             while par_cargo != p {
                 if os::path_is_dir(&par_cargo) {
-                    rslt = result::ok(par_cargo);
+                    rslt = result::Ok(par_cargo);
                     break;
                 }
                 if par_cargo.components.len() == 1 {
@@ -150,15 +150,15 @@ fn get_cargo_root_nearest() -> result<Path, ~str> {
     }
 }
 
-fn get_cargo_lib_path() -> result<Path, ~str> {
+fn get_cargo_lib_path() -> Result<Path, ~str> {
     do result::chain(get_cargo_root()) |p| {
-        result::ok(p.push(libdir()))
+        result::Ok(p.push(libdir()))
     }
 }
 
-fn get_cargo_lib_path_nearest() -> result<Path, ~str> {
+fn get_cargo_lib_path_nearest() -> Result<Path, ~str> {
     do result::chain(get_cargo_root_nearest()) |p| {
-        result::ok(p.push(libdir()))
+        result::Ok(p.push(libdir()))
     }
 }
 

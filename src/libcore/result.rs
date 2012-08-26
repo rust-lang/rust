@@ -3,11 +3,11 @@
 import either::Either;
 
 /// The result type
-enum result<T, U> {
+enum Result<T, U> {
     /// Contains the successful result value
-    ok(T),
+    Ok(T),
     /// Contains the error value
-    err(U)
+    Err(U)
 }
 
 /**
@@ -17,10 +17,10 @@ enum result<T, U> {
  *
  * If the result is an error
  */
-pure fn get<T: copy, U>(res: result<T, U>) -> T {
+pure fn get<T: copy, U>(res: Result<T, U>) -> T {
     match res {
-      ok(t) => t,
-      err(the_err) => unchecked {
+      Ok(t) => t,
+      Err(the_err) => unchecked {
         fail fmt!("get called on error result: %?", the_err)
       }
     }
@@ -33,10 +33,10 @@ pure fn get<T: copy, U>(res: result<T, U>) -> T {
  *
  * If the result is an error
  */
-pure fn get_ref<T, U>(res: &a/result<T, U>) -> &a/T {
+pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
     match *res {
-        ok(ref t) => t,
-        err(ref the_err) => unchecked {
+        Ok(ref t) => t,
+        Err(ref the_err) => unchecked {
             fail fmt!("get_ref called on error result: %?", the_err)
         }
     }
@@ -49,23 +49,23 @@ pure fn get_ref<T, U>(res: &a/result<T, U>) -> &a/T {
  *
  * If the result is not an error
  */
-pure fn get_err<T, U: copy>(res: result<T, U>) -> U {
+pure fn get_err<T, U: copy>(res: Result<T, U>) -> U {
     match res {
-      err(u) => u,
-      ok(_) => fail ~"get_error called on ok result"
+      Err(u) => u,
+      Ok(_) => fail ~"get_error called on ok result"
     }
 }
 
 /// Returns true if the result is `ok`
-pure fn is_ok<T, U>(res: result<T, U>) -> bool {
+pure fn is_ok<T, U>(res: Result<T, U>) -> bool {
     match res {
-      ok(_) => true,
-      err(_) => false
+      Ok(_) => true,
+      Err(_) => false
     }
 }
 
 /// Returns true if the result is `err`
-pure fn is_err<T, U>(res: result<T, U>) -> bool {
+pure fn is_err<T, U>(res: Result<T, U>) -> bool {
     !is_ok(res)
 }
 
@@ -75,10 +75,10 @@ pure fn is_err<T, U>(res: result<T, U>) -> bool {
  * `ok` result variants are converted to `either::right` variants, `err`
  * result variants are converted to `either::left`.
  */
-pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> Either<T, U> {
+pure fn to_either<T: copy, U: copy>(res: Result<U, T>) -> Either<T, U> {
     match res {
-      ok(res) => either::Right(res),
-      err(fail_) => either::Left(fail_)
+      Ok(res) => either::Right(res),
+      Err(fail_) => either::Left(fail_)
     }
 }
 
@@ -96,11 +96,11 @@ pure fn to_either<T: copy, U: copy>(res: result<U, T>) -> Either<T, U> {
  *         ok(parse_buf(buf))
  *     }
  */
-fn chain<T, U: copy, V: copy>(res: result<T, V>, op: fn(T) -> result<U, V>)
-    -> result<U, V> {
+fn chain<T, U: copy, V: copy>(res: Result<T, V>, op: fn(T) -> Result<U, V>)
+    -> Result<U, V> {
     match res {
-      ok(t) => op(t),
-      err(e) => err(e)
+      Ok(t) => op(t),
+      Err(e) => Err(e)
     }
 }
 
@@ -113,12 +113,12 @@ fn chain<T, U: copy, V: copy>(res: result<T, V>, op: fn(T) -> result<U, V>)
  * successful result while handling an error.
  */
 fn chain_err<T: copy, U: copy, V: copy>(
-    res: result<T, V>,
-    op: fn(V) -> result<T, U>)
-    -> result<T, U> {
+    res: Result<T, V>,
+    op: fn(V) -> Result<T, U>)
+    -> Result<T, U> {
     match res {
-      ok(t) => ok(t),
-      err(v) => op(v)
+      Ok(t) => Ok(t),
+      Err(v) => op(v)
     }
 }
 
@@ -136,10 +136,10 @@ fn chain_err<T: copy, U: copy, V: copy>(
  *         print_buf(buf)
  *     }
  */
-fn iter<T, E>(res: result<T, E>, f: fn(T)) {
+fn iter<T, E>(res: Result<T, E>, f: fn(T)) {
     match res {
-      ok(t) => f(t),
-      err(_) => ()
+      Ok(t) => f(t),
+      Err(_) => ()
     }
 }
 
@@ -151,10 +151,10 @@ fn iter<T, E>(res: result<T, E>, f: fn(T)) {
  * This function can be used to pass through a successful result while
  * handling an error.
  */
-fn iter_err<T, E>(res: result<T, E>, f: fn(E)) {
+fn iter_err<T, E>(res: Result<T, E>, f: fn(E)) {
     match res {
-      ok(_) => (),
-      err(e) => f(e)
+      Ok(_) => (),
+      Err(e) => f(e)
     }
 }
 
@@ -172,11 +172,11 @@ fn iter_err<T, E>(res: result<T, E>, f: fn(E)) {
  *         parse_buf(buf)
  *     }
  */
-fn map<T, E: copy, U: copy>(res: result<T, E>, op: fn(T) -> U)
-  -> result<U, E> {
+fn map<T, E: copy, U: copy>(res: Result<T, E>, op: fn(T) -> U)
+  -> Result<U, E> {
     match res {
-      ok(t) => ok(op(t)),
-      err(e) => err(e)
+      Ok(t) => Ok(op(t)),
+      Err(e) => Err(e)
     }
 }
 
@@ -188,62 +188,62 @@ fn map<T, E: copy, U: copy>(res: result<T, E>, op: fn(T) -> U)
  * is immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-fn map_err<T: copy, E, F: copy>(res: result<T, E>, op: fn(E) -> F)
-  -> result<T, F> {
+fn map_err<T: copy, E, F: copy>(res: Result<T, E>, op: fn(E) -> F)
+  -> Result<T, F> {
     match res {
-      ok(t) => ok(t),
-      err(e) => err(op(e))
+      Ok(t) => Ok(t),
+      Err(e) => Err(op(e))
     }
 }
 
-impl<T, E> result<T, E> {
+impl<T, E> Result<T, E> {
     fn is_ok() -> bool { is_ok(self) }
 
     fn is_err() -> bool { is_err(self) }
 
     fn iter(f: fn(T)) {
         match self {
-          ok(t) => f(t),
-          err(_) => ()
+          Ok(t) => f(t),
+          Err(_) => ()
         }
     }
 
     fn iter_err(f: fn(E)) {
         match self {
-          ok(_) => (),
-          err(e) => f(e)
+          Ok(_) => (),
+          Err(e) => f(e)
         }
     }
 }
 
-impl<T: copy, E> result<T, E> {
+impl<T: copy, E> Result<T, E> {
     fn get() -> T { get(self) }
 
-    fn map_err<F:copy>(op: fn(E) -> F) -> result<T,F> {
+    fn map_err<F:copy>(op: fn(E) -> F) -> Result<T,F> {
         match self {
-          ok(t) => ok(t),
-          err(e) => err(op(e))
+          Ok(t) => Ok(t),
+          Err(e) => Err(op(e))
         }
     }
 }
 
-impl<T, E: copy> result<T, E> {
+impl<T, E: copy> Result<T, E> {
     fn get_err() -> E { get_err(self) }
 
-    fn map<U:copy>(op: fn(T) -> U) -> result<U,E> {
+    fn map<U:copy>(op: fn(T) -> U) -> Result<U,E> {
         match self {
-          ok(t) => ok(op(t)),
-          err(e) => err(e)
+          Ok(t) => Ok(op(t)),
+          Err(e) => Err(e)
         }
     }
 }
 
-impl<T: copy, E: copy> result<T, E> {
-    fn chain<U:copy>(op: fn(T) -> result<U,E>) -> result<U,E> {
+impl<T: copy, E: copy> Result<T, E> {
+    fn chain<U:copy>(op: fn(T) -> Result<U,E>) -> Result<U,E> {
         chain(self, op)
     }
 
-    fn chain_err<F:copy>(op: fn(E) -> result<T,F>) -> result<T,F> {
+    fn chain_err<F:copy>(op: fn(E) -> Result<T,F>) -> Result<T,F> {
         chain_err(self, op)
     }
 }
@@ -266,27 +266,27 @@ impl<T: copy, E: copy> result<T, E> {
  *     }
  */
 fn map_vec<T,U:copy,V:copy>(
-    ts: &[T], op: fn(T) -> result<V,U>) -> result<~[V],U> {
+    ts: &[T], op: fn(T) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = ~[];
     vec::reserve(vs, vec::len(ts));
     for vec::each(ts) |t| {
         match op(t) {
-          ok(v) => vec::push(vs, v),
-          err(u) => return err(u)
+          Ok(v) => vec::push(vs, v),
+          Err(u) => return Err(u)
         }
     }
-    return ok(vs);
+    return Ok(vs);
 }
 
 fn map_opt<T,U:copy,V:copy>(
-    o_t: Option<T>, op: fn(T) -> result<V,U>) -> result<Option<V>,U> {
+    o_t: Option<T>, op: fn(T) -> Result<V,U>) -> Result<Option<V>,U> {
 
     match o_t {
-      None => ok(None),
+      None => Ok(None),
       Some(t) => match op(t) {
-        ok(v) => ok(Some(v)),
-        err(e) => err(e)
+        Ok(v) => Ok(Some(v)),
+        Err(e) => Err(e)
       }
     }
 }
@@ -301,7 +301,7 @@ fn map_opt<T,U:copy,V:copy>(
  * to accommodate an error like the vectors being of different lengths.
  */
 fn map_vec2<S,T,U:copy,V:copy>(ss: &[S], ts: &[T],
-                               op: fn(S,T) -> result<V,U>) -> result<~[V],U> {
+                               op: fn(S,T) -> Result<V,U>) -> Result<~[V],U> {
 
     assert vec::same_length(ss, ts);
     let n = vec::len(ts);
@@ -310,12 +310,12 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: &[S], ts: &[T],
     let mut i = 0u;
     while i < n {
         match op(ss[i],ts[i]) {
-          ok(v) => vec::push(vs, v),
-          err(u) => return err(u)
+          Ok(v) => vec::push(vs, v),
+          Err(u) => return Err(u)
         }
         i += 1u;
     }
-    return ok(vs);
+    return Ok(vs);
 }
 
 /**
@@ -324,27 +324,27 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: &[S], ts: &[T],
  * on its own as no result vector is built.
  */
 fn iter_vec2<S,T,U:copy>(ss: &[S], ts: &[T],
-                         op: fn(S,T) -> result<(),U>) -> result<(),U> {
+                         op: fn(S,T) -> Result<(),U>) -> Result<(),U> {
 
     assert vec::same_length(ss, ts);
     let n = vec::len(ts);
     let mut i = 0u;
     while i < n {
         match op(ss[i],ts[i]) {
-          ok(()) => (),
-          err(u) => return err(u)
+          Ok(()) => (),
+          Err(u) => return Err(u)
         }
         i += 1u;
     }
-    return ok(());
+    return Ok(());
 }
 
 /// Unwraps a result, assuming it is an `ok(T)`
-fn unwrap<T, U>(-res: result<T, U>) -> T {
+fn unwrap<T, U>(-res: Result<T, U>) -> T {
     unsafe {
         let addr = match res {
-          ok(x) => ptr::addr_of(x),
-          err(_) => fail ~"error result"
+          Ok(x) => ptr::addr_of(x),
+          Err(_) => fail ~"error result"
         };
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(res);
@@ -354,13 +354,13 @@ fn unwrap<T, U>(-res: result<T, U>) -> T {
 
 #[cfg(test)]
 mod tests {
-    fn op1() -> result::result<int, ~str> { result::ok(666) }
+    fn op1() -> result::Result<int, ~str> { result::Ok(666) }
 
-    fn op2(&&i: int) -> result::result<uint, ~str> {
-        result::ok(i as uint + 1u)
+    fn op2(&&i: int) -> result::Result<uint, ~str> {
+        result::Ok(i as uint + 1u)
     }
 
-    fn op3() -> result::result<int, ~str> { result::err(~"sadface") }
+    fn op3() -> result::Result<int, ~str> { result::Err(~"sadface") }
 
     #[test]
     fn chain_success() {
@@ -375,33 +375,33 @@ mod tests {
     #[test]
     fn test_impl_iter() {
         let mut valid = false;
-        ok::<~str, ~str>(~"a").iter(|_x| valid = true);
+        Ok::<~str, ~str>(~"a").iter(|_x| valid = true);
         assert valid;
 
-        err::<~str, ~str>(~"b").iter(|_x| valid = false);
+        Err::<~str, ~str>(~"b").iter(|_x| valid = false);
         assert valid;
     }
 
     #[test]
     fn test_impl_iter_err() {
         let mut valid = true;
-        ok::<~str, ~str>(~"a").iter_err(|_x| valid = false);
+        Ok::<~str, ~str>(~"a").iter_err(|_x| valid = false);
         assert valid;
 
         valid = false;
-        err::<~str, ~str>(~"b").iter_err(|_x| valid = true);
+        Err::<~str, ~str>(~"b").iter_err(|_x| valid = true);
         assert valid;
     }
 
     #[test]
     fn test_impl_map() {
-        assert ok::<~str, ~str>(~"a").map(|_x| ~"b") == ok(~"b");
-        assert err::<~str, ~str>(~"a").map(|_x| ~"b") == err(~"a");
+        assert Ok::<~str, ~str>(~"a").map(|_x| ~"b") == Ok(~"b");
+        assert Err::<~str, ~str>(~"a").map(|_x| ~"b") == Err(~"a");
     }
 
     #[test]
     fn test_impl_map_err() {
-        assert ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == ok(~"a");
-        assert err::<~str, ~str>(~"a").map_err(|_x| ~"b") == err(~"b");
+        assert Ok::<~str, ~str>(~"a").map_err(|_x| ~"b") == Ok(~"a");
+        assert Err::<~str, ~str>(~"a").map_err(|_x| ~"b") == Err(~"b");
     }
 }

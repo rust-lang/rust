@@ -9,7 +9,7 @@ use syntax(vers = "0.3");
 import core::*;
 
 // -*- rust -*-
-import result::{ok, err};
+import result::{Ok, Err};
 import std::getopts;
 import std::map::hashmap;
 import getopts::{opt_present};
@@ -124,8 +124,8 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
 
     let matches =
         match getopts::getopts(args, opts()) {
-          ok(m) => m,
-          err(f) => {
+          Ok(m) => m,
+          Err(f) => {
             early_error(demitter, getopts::fail_str(f))
           }
         };
@@ -242,8 +242,8 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 
         f(demitter)
     } {
-        result::ok(_) => { /* fallthrough */ }
-        result::err(_) => {
+        result::Ok(_) => { /* fallthrough */ }
+        result::Err(_) => {
             // Task failed without emitting a fatal diagnostic
             if comm::recv(p) == done {
                 diagnostic::emit(

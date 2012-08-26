@@ -553,17 +553,17 @@ impl @fn_ctxt: ast_conv {
 }
 
 impl @fn_ctxt: region_scope {
-    fn anon_region(span: span) -> result<ty::region, ~str> {
-        result::ok(self.infcx.next_region_var_nb(span))
+    fn anon_region(span: span) -> Result<ty::region, ~str> {
+        result::Ok(self.infcx.next_region_var_nb(span))
     }
-    fn named_region(span: span, id: ast::ident) -> result<ty::region, ~str> {
+    fn named_region(span: span, id: ast::ident) -> Result<ty::region, ~str> {
         do empty_rscope.named_region(span, id).chain_err |_e| {
             match self.in_scope_regions.find(ty::br_named(id)) {
-              Some(r) => result::ok(r),
+              Some(r) => result::Ok(r),
               None if id == syntax::parse::token::special_idents::blk
-                  => result::ok(self.block_region()),
+                  => result::Ok(self.block_region()),
               None => {
-                result::err(fmt!("named region `%s` not in scope here",
+                result::Err(fmt!("named region `%s` not in scope here",
                                  self.ccx.tcx.sess.str_of(id)))
               }
             }
@@ -656,35 +656,35 @@ impl @fn_ctxt {
     }
 
     fn mk_subty(a_is_expected: bool, span: span,
-                sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+                sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
         infer::mk_subty(self.infcx, a_is_expected, span, sub, sup)
     }
 
-    fn can_mk_subty(sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+    fn can_mk_subty(sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
         infer::can_mk_subty(self.infcx, sub, sup)
     }
 
     fn mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
-                   sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+                   sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
         let anmnt = &{expr_id: expr.id, span: expr.span,
                       borrow_lb: borrow_lb};
         infer::mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
     fn can_mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
-                       sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+                       sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
         let anmnt = &{expr_id: expr.id, span: expr.span,
                       borrow_lb: borrow_lb};
         infer::can_mk_assignty(self.infcx, anmnt, sub, sup)
     }
 
     fn mk_eqty(a_is_expected: bool, span: span,
-               sub: ty::t, sup: ty::t) -> result<(), ty::type_err> {
+               sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
         infer::mk_eqty(self.infcx, a_is_expected, span, sub, sup)
     }
 
     fn mk_subr(a_is_expected: bool, span: span,
-               sub: ty::region, sup: ty::region) -> result<(), ty::type_err> {
+               sub: ty::region, sup: ty::region) -> Result<(), ty::type_err> {
         infer::mk_subr(self.infcx, a_is_expected, span, sub, sup)
     }
 
@@ -1181,7 +1181,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match expected {
           Some(t) => {
             match resolve_type(fcx.infcx, t, force_tvar) {
-              result::ok(t) => unpack(ty::get(t).struct),
+              result::Ok(t) => unpack(ty::get(t).struct),
               _ => None
             }
           }
@@ -1551,8 +1551,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match expr_opt {
           None => match fcx.mk_eqty(false, expr.span,
                                     ret_ty, ty::mk_nil(tcx)) {
-            result::ok(_) => { /* fall through */ }
-            result::err(_) => {
+            result::Ok(_) => { /* fall through */ }
+            result::Err(_) => {
                 tcx.sess.span_err(
                     expr.span,
                     ~"`return;` in function returning non-nil");
@@ -1626,8 +1626,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           Some(ty::ty_fn(fty)) => {
             match fcx.mk_subty(false, expr.span,
                                fty.output, ty::mk_bool(tcx)) {
-              result::ok(_) => (),
-              result::err(_) => {
+              result::Ok(_) => (),
+              result::Err(_) => {
                 tcx.sess.span_fatal(
                     expr.span, fmt!("a `loop` function's last argument \
                                      should return `bool`, not `%s`",
@@ -2417,7 +2417,7 @@ fn instantiate_path(fcx: @fn_ctxt,
 // resolution is possible, then an error is reported.
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     match infer::resolve_type(fcx.infcx, tp, force_tvar) {
-      result::ok(t_s) if !ty::type_is_var(t_s) => return t_s,
+      result::Ok(t_s) if !ty::type_is_var(t_s) => return t_s,
       _ => {
         fcx.ccx.tcx.sess.span_fatal
             (sp, ~"the type of this value must be known in this context");

@@ -276,9 +276,9 @@ impl gather_loan_ctxt {
           // error will be reported.
           Some(_) => {
             match self.bccx.loan(cmt, scope_r, req_mutbl) {
-              err(e) => { self.bccx.report(e); }
-              ok(loans) if loans.len() == 0 => {}
-              ok(loans) => {
+              Err(e) => { self.bccx.report(e); }
+              Ok(loans) if loans.len() == 0 => {}
+              Ok(loans) => {
                 match scope_r {
                   ty::re_scope(scope_id) => {
                     self.add_loans(scope_id, loans);
@@ -318,19 +318,19 @@ impl gather_loan_ctxt {
                     do self.bccx.preserve(cmt, scope_r,
                                           self.item_ub,
                                           self.root_ub).chain |pc2| {
-                        ok(pc1.combine(pc2))
+                        Ok(pc1.combine(pc2))
                     }
                 }
             };
 
             match result {
-              ok(pc_ok) => {
+              Ok(pc_ok) => {
                 // we were able guarantee the validity of the ptr,
                 // perhaps by rooting or because it is immutably
                 // rooted.  good.
                 self.bccx.stable_paths += 1;
               }
-              ok(pc_if_pure(e)) => {
+              Ok(pc_if_pure(e)) => {
                 // we are only able to guarantee the validity if
                 // the scope is pure
                 match scope_r {
@@ -353,7 +353,7 @@ impl gather_loan_ctxt {
                   }
                 }
               }
-              err(e) => {
+              Err(e) => {
                 // we cannot guarantee the validity of this pointer
                 self.bccx.report(e);
               }
@@ -376,7 +376,7 @@ impl gather_loan_ctxt {
           (m_const, _) |
           (m_imm, m_imm) |
           (m_mutbl, m_mutbl) => {
-            ok(pc_ok)
+            Ok(pc_ok)
           }
 
           (_, m_const) |
@@ -386,9 +386,9 @@ impl gather_loan_ctxt {
                      code: err_mutbl(req_mutbl, cmt.mutbl)};
             if req_mutbl == m_imm {
                 // you can treat mutable things as imm if you are pure
-                ok(pc_if_pure(e))
+                Ok(pc_if_pure(e))
             } else {
-                err(e)
+                Err(e)
             }
           }
         }

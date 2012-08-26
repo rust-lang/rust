@@ -31,7 +31,7 @@ import syntax::visit::{visit_mod};
 import util::ppaux::ty_to_str;
 
 import dvec::{DVec, dvec};
-import result::ok;
+import result::Ok;
 import std::map::{hashmap, int_hash};
 import uint::range;
 import vec::{len, push};
@@ -43,7 +43,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
     match resolve_type(inference_context,
                      original_type,
                      resolve_ivar) {
-        ok(resulting_type) if !type_is_var(resulting_type) => {
+        Ok(resulting_type) if !type_is_var(resulting_type) => {
             resolved_type = resulting_type;
         }
         _ => {

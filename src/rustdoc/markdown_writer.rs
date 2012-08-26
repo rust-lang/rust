@@ -258,10 +258,10 @@ fn write_file(path: &Path, s: ~str) {
     import io::WriterUtil;
 
     match io::file_writer(path, ~[io::Create, io::Truncate]) {
-      result::ok(writer) => {
+      result::Ok(writer) => {
         writer.write_str(s);
       }
-      result::err(e) => fail e
+      result::Err(e) => fail e
     }
 }
 

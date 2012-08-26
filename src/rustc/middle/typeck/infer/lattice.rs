@@ -20,7 +20,7 @@ impl Lub: lattice_ops {
         {ub: Some(t) with b}
     }
     fn ty_bot(t: ty::t) -> cres<ty::t> {
-        ok(t)
+        Ok(t)
     }
 }
 
@@ -30,7 +30,7 @@ impl Glb: lattice_ops {
         {lb: Some(t) with b}
     }
     fn ty_bot(_t: ty::t) -> cres<ty::t> {
-        ok(ty::mk_bot(self.infcx.tcx))
+        Ok(ty::mk_bot(self.infcx.tcx))
     }
 }
 
@@ -40,7 +40,7 @@ fn lattice_tys<L:lattice_ops combine>(
     debug!("%s.lattice_tys(%s, %s)", self.tag(),
            a.to_str(self.infcx()),
            b.to_str(self.infcx()));
-    if a == b { return ok(a); }
+    if a == b { return Ok(a); }
     do indent {
         match (ty::get(a).struct, ty::get(b).struct) {
           (ty::ty_bot, _) => self.ty_bot(b),
@@ -90,7 +90,7 @@ fn lattice_vars<L:lattice_ops combine>(
            b_vid.to_str(), b_bounds.to_str(self.infcx()));
 
     if a_vid == b_vid {
-        return ok(a_t);
+        return Ok(a_t);
     }
 
     // If both A and B have an UB type, then we can just compute the
@@ -99,8 +99,8 @@ fn lattice_vars<L:lattice_ops combine>(
     match (a_bnd, b_bnd) {
       (Some(a_ty), Some(b_ty)) => {
         match self.infcx().try(|| c_ts(a_ty, b_ty) ) {
-            ok(t) => return ok(t),
-            err(_) => { /*fallthrough */ }
+            Ok(t) => return Ok(t),
+            Err(_) => { /*fallthrough */ }
         }
       }
       _ => {/*fallthrough*/}
@@ -108,7 +108,7 @@ fn lattice_vars<L:lattice_ops combine>(
 
     // Otherwise, we need to merge A and B into one variable.  We can
     // then use either variable as an upper bound:
-    var_sub_var(self, a_vid, b_vid).then(|| ok(a_t) )
+    var_sub_var(self, a_vid, b_vid).then(|| Ok(a_t) )
 }
 
 fn lattice_var_and_t<L:lattice_ops combine>(
@@ -141,7 +141,7 @@ fn lattice_var_and_t<L:lattice_ops combine>(
         let a_bounds = self.with_bnd(a_bounds, b);
         do bnds(self, a_bounds.lb, a_bounds.ub).then {
             self.infcx().set(vb, a_id, root(a_bounds, nde_a.rank));
-            ok(b)
+            Ok(b)
         }
       }
     }

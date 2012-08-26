@@ -306,8 +306,8 @@ because `&x` was created alone, but is relatable to `&A`.
 #[warn(deprecated_pattern)];
 
 import dvec::{DVec, dvec};
-import result::result;
-import result::{ok, err};
+import result::Result;
+import result::{Ok, Err};
 import std::map::{hashmap, uint_hash};
 import std::cell::{Cell, empty_cell};
 import std::list::{list, nil, cons};
@@ -478,21 +478,21 @@ impl RegionVarBindings {
         match (sub, sup) {
           (ty::re_var (sub_id), ty::re_var(sup_id)) => {
             self.add_constraint(ConstrainVarSubVar(sub_id, sup_id), span);
-            ok(())
+            Ok(())
           }
           (r, ty::re_var(sup_id)) => {
             self.add_constraint(ConstrainRegSubVar(r, sup_id), span);
-            ok(())
+            Ok(())
           }
           (ty::re_var(sub_id), r) => {
             self.add_constraint(ConstrainVarSubReg(sub_id, r), span);
-            ok(())
+            Ok(())
           }
           _ => {
             if self.is_subregion_of(sub, sup) {
-                ok(())
+                Ok(())
             } else {
-                err(ty::terr_regions_does_not_outlive(sub, sup))
+                Err(ty::terr_regions_does_not_outlive(sub, sup))
             }
           }
         }
@@ -505,7 +505,7 @@ impl RegionVarBindings {
         debug!("RegionVarBindings: lub_regions(%?, %?)", a, b);
         match (a, b) {
           (ty::re_static, _) | (_, ty::re_static) => {
-            ok(ty::re_static) // nothing lives longer than static
+            Ok(ty::re_static) // nothing lives longer than static
           }
 
           (ty::re_var(*), _) | (_, ty::re_var(*)) => {
@@ -515,7 +515,7 @@ impl RegionVarBindings {
           }
 
           _ => {
-            ok(self.lub_concrete_regions(a, b))
+            Ok(self.lub_concrete_regions(a, b))
           }
         }
     }
@@ -528,7 +528,7 @@ impl RegionVarBindings {
         match (a, b) {
           (ty::re_static, r) | (r, ty::re_static) => {
             // static lives longer than everything else
-            ok(r)
+            Ok(r)
           }
 
           (ty::re_var(*), _) | (_, ty::re_var(*)) => {
@@ -561,7 +561,7 @@ impl RegionVarBindings {
 
         let vars = TwoRegions { a: a, b: b };
         match combines.find(vars) {
-          Some(c) => ok(ty::re_var(c)),
+          Some(c) => Ok(ty::re_var(c)),
           None => {
             let c = self.new_region_var(span);
             combines.insert(vars, c);
@@ -571,7 +571,7 @@ impl RegionVarBindings {
             do relate(a, ty::re_var(c)).then {
                 do relate(b, ty::re_var(c)).then {
                     debug!("combine_vars() c=%?", ty::re_var(c));
-                    ok(ty::re_var(c))
+                    Ok(ty::re_var(c))
                 }
             }
           }
@@ -655,7 +655,7 @@ priv impl RegionVarBindings {
         match (a, b) {
           (ty::re_static, r) | (r, ty::re_static) => {
             // static lives longer than everything else
-            ok(r)
+            Ok(r)
           }
 
           (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) => {
@@ -674,8 +674,8 @@ priv impl RegionVarBindings {
             // big the free region is precisely, the GLB is undefined.
             let rm = self.tcx.region_map;
             match region::nearest_common_ancestor(rm, f_id, s_id) {
-              Some(r_id) if r_id == f_id => ok(s),
-              _ => err(ty::terr_regions_no_overlap(b, a))
+              Some(r_id) if r_id == f_id => Ok(s),
+              _ => Err(ty::terr_regions_no_overlap(b, a))
             }
           }
 
@@ -683,7 +683,7 @@ priv impl RegionVarBindings {
           (ty::re_free(a_id, _), ty::re_free(b_id, _)) => {
             if a == b {
                 // Same scope or same free identifier, easy case.
-                ok(a)
+                Ok(a)
             } else {
                 // We want to generate the intersection of two
                 // scopes or two free regions.  So, if one of
@@ -691,9 +691,9 @@ priv impl RegionVarBindings {
                 // it.  Otherwise fail.
                 let rm = self.tcx.region_map;
                 match region::nearest_common_ancestor(rm, a_id, b_id) {
-                  Some(r_id) if a_id == r_id => ok(ty::re_scope(b_id)),
-                  Some(r_id) if b_id == r_id => ok(ty::re_scope(a_id)),
-                  _ => err(ty::terr_regions_no_overlap(b, a))
+                  Some(r_id) if a_id == r_id => Ok(ty::re_scope(b_id)),
+                  Some(r_id) if b_id == r_id => Ok(ty::re_scope(a_id)),
+                  _ => Err(ty::terr_regions_no_overlap(b, a))
                 }
             }
           }
@@ -706,9 +706,9 @@ priv impl RegionVarBindings {
           (ty::re_free(_, _), ty::re_bound(_)) |
           (ty::re_scope(_), ty::re_bound(_)) => {
             if a == b {
-                ok(a)
+                Ok(a)
             } else {
-                err(ty::terr_regions_no_overlap(b, a))
+                Err(ty::terr_regions_no_overlap(b, a))
             }
           }
         }
@@ -961,7 +961,7 @@ impl RegionVarBindings {
                        a_region: region,
                        b_region: region) -> bool {
             match self.glb_concrete_regions(a_region, b_region) {
-              ok(glb) => {
+              Ok(glb) => {
                 if glb == a_region {
                     false
                 } else {
@@ -971,7 +971,7 @@ impl RegionVarBindings {
                     true
                 }
               }
-              err(_) => {
+              Err(_) => {
                 a_node.value = ErrorValue;
                 false
               }
@@ -1101,8 +1101,8 @@ impl RegionVarBindings {
             for vec::each(upper_bounds) |upper_bound_2| {
                 match self.glb_concrete_regions(upper_bound_1.region,
                                                 upper_bound_2.region) {
-                  ok(_) => {}
-                  err(_) => {
+                  Ok(_) => {}
+                  Err(_) => {
 
                     if self.is_reported(dup_map,
                                         upper_bound_1.region,

@@ -27,7 +27,7 @@
  * ~~~
  */
 
-import result::result;
+import result::Result;
 
 export Task;
 export TaskResult;
@@ -406,7 +406,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T: send>(+f: fn~() -> T) -> result<T,()> {
+    fn try<T: send>(+f: fn~() -> T) -> Result<T,()> {
         let po = comm::port();
         let ch = comm::chan(po);
         let mut result = None;
@@ -415,8 +415,8 @@ impl TaskBuilder {
             comm::send(ch, f());
         }
         match future::get(&option::unwrap(result)) {
-            Success => result::ok(comm::recv(po)),
-            Failure => result::err(())
+            Success => result::Ok(comm::recv(po)),
+            Failure => result::Err(())
         }
     }
 }
@@ -526,7 +526,7 @@ fn spawn_sched(mode: SchedMode, +f: fn~()) {
     task().sched_mode(mode).spawn(f)
 }
 
-fn try<T:send>(+f: fn~() -> T) -> result<T,()> {
+fn try<T:send>(+f: fn~() -> T) -> Result<T,()> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -1769,7 +1769,7 @@ fn test_try_success() {
     match do try {
         ~"Success!"
     } {
-        result::ok(~"Success!") => (),
+        result::Ok(~"Success!") => (),
         _ => fail
     }
 }
@@ -1780,8 +1780,8 @@ fn test_try_fail() {
     match do try {
         fail
     } {
-        result::err(()) => (),
-        result::ok(()) => fail
+        result::Err(()) => (),
+        result::Ok(()) => fail
     }
 }
 

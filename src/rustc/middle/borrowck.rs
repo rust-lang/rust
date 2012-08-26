@@ -224,7 +224,7 @@ import util::ppaux::{ty_to_str, region_to_str, explain_region};
 import std::map::{int_hash, hashmap, set};
 import std::list;
 import std::list::{list, cons, nil};
-import result::{result, ok, err};
+import result::{Result, Ok, Err};
 import syntax::print::pprust;
 import util::common::indenter;
 import ty::to_str;
@@ -327,7 +327,7 @@ enum bckerr_code {
 type bckerr = {cmt: cmt, code: bckerr_code};
 
 // shorthand for something that fails with `bckerr` or succeeds with `T`
-type bckres<T> = result<T, bckerr>;
+type bckres<T> = Result<T, bckerr>;
 
 /// a complete record of a loan that was granted
 type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
@@ -404,8 +404,8 @@ impl borrowck_ctxt {
 
     fn report_if_err(bres: bckres<()>) {
         match bres {
-          ok(()) => (),
-          err(e) => self.report(e)
+          Ok(()) => (),
+          Err(e) => self.report(e)
         }
     }
 

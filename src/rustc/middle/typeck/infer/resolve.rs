@@ -92,9 +92,9 @@ impl resolve_state {
             debug!("Resolved to %s (modes=%x)",
                    ty_to_str(self.infcx.tcx, rty),
                    self.modes);
-            return ok(rty);
+            return Ok(rty);
           }
-          Some(e) => return err(e)
+          Some(e) => return Err(e)
         }
     }
 
@@ -102,8 +102,8 @@ impl resolve_state {
         self.err = None;
         let resolved = indent(|| self.resolve_region(orig) );
         match self.err {
-          None => ok(resolved),
-          Some(e) => err(e)
+          None => Ok(resolved),
+          Some(e) => Err(e)
         }
     }
 

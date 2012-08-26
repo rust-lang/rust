@@ -4,7 +4,7 @@
 
 //! A type that represents one of two alternatives
 
-import result::result;
+import result::Result;
 
 /// The either type
 enum Either<T, U> {
@@ -83,7 +83,7 @@ pure fn flip<T: copy, U: copy>(eith: &Either<T, U>) -> Either<U, T> {
     }
 }
 
-pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> result<U, T> {
+pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> Result<U, T> {
     /*!
      * Converts either::t to a result::t
      *
@@ -92,8 +92,8 @@ pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> result<U, T> {
      */
 
     match *eith {
-      Right(r) => result::ok(r),
-      Left(l) => result::err(l)
+      Right(r) => result::Ok(r),
+      Left(l) => result::Err(l)
     }
 }
 
