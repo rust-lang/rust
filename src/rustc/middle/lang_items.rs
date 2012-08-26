@@ -187,7 +187,7 @@ struct LanguageItemCollector {
                 none => {
                     self.session.err(fmt!("no item found for `%s`", key));
                 }
-                some(did) => {
+                some(_) => {
                     // OK.
                 }
             }

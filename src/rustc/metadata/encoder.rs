@@ -990,7 +990,7 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
                 attr
             } else {
                 match attr.node.value.node {
-                  meta_list(n, l) => {
+                  meta_list(_, l) => {
                     found_link_attr = true;;
                     synthesize_link_attr(ecx, l)
                   }

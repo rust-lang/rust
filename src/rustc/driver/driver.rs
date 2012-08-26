@@ -272,7 +272,7 @@ fn pretty_print_input(sess: session, cfg: ast::crate_cfg, input: input,
                       ppm: pp_mode) {
     fn ann_paren_for_expr(node: pprust::ann_node) {
         match node {
-          pprust::node_expr(s, expr) => pprust::popen(s),
+          pprust::node_expr(s, _) => pprust::popen(s),
           _ => ()
         }
     }

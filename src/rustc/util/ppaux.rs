@@ -179,10 +179,10 @@ fn region_to_str(cx: ctxt, region: region) -> ~str {
     // to fit that into a short string.  Hence the recommendation to use
     // `explain_region()` or `note_and_explain_region()`.
     match region {
-      re_scope(node_id) => ~"&",
+      re_scope(_) => ~"&",
       re_bound(br) => bound_region_to_str(cx, br),
-      re_free(id, br) => bound_region_to_str(cx, br),
-      re_var(id)    => ~"&",
+      re_free(_, br) => bound_region_to_str(cx, br),
+      re_var(_)    => ~"&",
       re_static     => ~"&static"
     }
 }
