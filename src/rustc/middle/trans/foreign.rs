@@ -937,9 +937,12 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                          ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
         }
         if !ty::type_is_nil(substs.tys[1]) {
-            let cast = PointerCast(bcx, get_param(decl, first_real_arg),
-                                   T_ptr(llout_ty));
-            Store(bcx, Load(bcx, cast), fcx.llretptr);
+            // NB: Do not use a Load and Store here. This causes massive code
+            // bloat when reinterpret_cast is used on large structural types.
+            let llretptr = PointerCast(bcx, fcx.llretptr, T_ptr(T_i8()));
+            let llcast = get_param(decl, first_real_arg);
+            let llcast = PointerCast(bcx, llcast, T_ptr(T_i8()));
+            call_memmove(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
         }
       }
       ~"addr_of" => {
