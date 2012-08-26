@@ -52,7 +52,8 @@ import syntax::codemap::span;
 import pat_util::{pat_is_variant, pat_id_map};
 import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
-                    ty_param_bounds_and_ty, lookup_public_fields};
+                    ty_param_bounds_and_ty, lookup_public_fields,
+                    vstore_uniq};
 import std::smallintmap;
 import std::map;
 import std::map::{hashmap, int_hash};
