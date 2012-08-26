@@ -508,7 +508,7 @@ impl RegionVarBindings {
             ok(ty::re_static) // nothing lives longer than static
           }
 
-          (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) => {
+          (ty::re_var(*), _) | (_, ty::re_var(*)) => {
             self.combine_vars(
                 self.lubs, a, b, span,
                 |old_r, new_r| self.make_subregion(span, old_r, new_r))
@@ -531,7 +531,7 @@ impl RegionVarBindings {
             ok(r)
           }
 
-          (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) => {
+          (ty::re_var(*), _) | (_, ty::re_var(*)) => {
             self.combine_vars(
                 self.glbs, a, b, span,
                 |old_r, new_r| self.make_subregion(span, new_r, old_r))

@@ -331,7 +331,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     }
     for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
         match vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
-          Some({mty: impl_m, id, span}) => {
+          Some({mty: impl_m, span, _}) => {
             compare_impl_method(
                 ccx.tcx, span, impl_m, vec::len(tps),
                 trait_m, tpt.substs, selfty);
@@ -350,7 +350,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
 
                   match vec::find(provided_methods, |provided_method|
                                 provided_method.ident == trait_m.ident) {
-                    Some(m) => {
+                    Some(_) => {
                       // If there's a provided method with the name we
                       // want, then we're fine; nothing else to do.
                     }
@@ -660,7 +660,7 @@ fn ty_of_item(ccx: @crate_ctxt, it: @ast::item)
         tcx.tcache.insert(local_def(it.id), tpt);
         return tpt;
       }
-      ast::item_trait(tps, _, ms) => {
+      ast::item_trait(tps, _, _) => {
         let {bounds, substs} = mk_substs(ccx, tps, rp);
         let t = ty::mk_trait(tcx, local_def(it.id), substs, ty::vstore_box);
         let tpt = {bounds: bounds,

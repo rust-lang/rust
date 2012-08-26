@@ -529,7 +529,7 @@ struct NameBindings {
 
     fn span_for_namespace(namespace: Namespace) -> Option<span> {
         match self.def_for_namespace(namespace) {
-          Some(d) => {
+          Some(_) => {
             match namespace {
               TypeNS   => self.type_span,
               ValueNS  => self.value_span,
@@ -866,7 +866,7 @@ struct Resolver {
 
                 visit_mod(module_, sp, item.id, new_parent, visitor);
             }
-            item_foreign_mod(foreign_module) => {
+            item_foreign_mod(*) => {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                            ~[ModuleNS], sp);
 
@@ -891,7 +891,7 @@ struct Resolver {
                      def_const(local_def(item.id)),
                      sp);
             }
-            item_fn(decl, purity, _, _) => {
+            item_fn(_, purity, _, _) => {
               let (name_bindings, new_parent) = self.add_child(atom, parent,
                                                         ~[ValueNS], sp);
 
@@ -1217,7 +1217,7 @@ struct Resolver {
             self.add_child(name, parent, ~[ValueNS], foreign_item.span);
 
         match foreign_item.node {
-            foreign_item_fn(fn_decl, purity, type_parameters) => {
+            foreign_item_fn(_, purity, type_parameters) => {
                 let def = def_fn(local_def(foreign_item.id), purity);
                 (*name_bindings).define_value(Public, def, foreign_item.span);
 
@@ -1227,7 +1227,7 @@ struct Resolver {
                     visit_foreign_item(foreign_item, new_parent, visitor);
                 }
             }
-            foreign_item_const(item_type) => {
+            foreign_item_const(*) => {
                 let def = def_const(local_def(foreign_item.id));
                 (*name_bindings).define_value(Public, def, foreign_item.span);
 
@@ -1319,8 +1319,8 @@ struct Resolver {
               }
             }
           }
-          def_fn(def_id, _) | def_static_method(def_id, _) |
-          def_const(def_id) | def_variant(_, def_id) => {
+          def_fn(*) | def_static_method(*) | def_const(*) |
+          def_variant(*) => {
             debug!("(building reduced graph for external \
                     crate) building value %s", final_ident);
             (*child_name_bindings).define_value(Public, def, dummy_sp());
@@ -2710,7 +2710,7 @@ struct Resolver {
                                         body_id);
                     }
                 }
-                MethodRibKind(item_id, method_id) => {
+                MethodRibKind(item_id, _) => {
                   // If the def is a ty param, and came from the parent
                   // item, it's ok
                   match def {
@@ -2954,7 +2954,7 @@ struct Resolver {
                                                        visitor);
                                 }
                             }
-                            foreign_item_const(item_type) => {
+                            foreign_item_const(_) => {
                                 visit_foreign_item(foreign_item, (),
                                                    visitor);
                             }
@@ -3033,7 +3033,7 @@ struct Resolver {
         f();
 
         match type_parameters {
-            HasTypeParameters(type_parameters, _, _, _) => {
+            HasTypeParameters(*) => {
                 (*self.type_ribs).pop();
             }
 
@@ -4228,7 +4228,7 @@ struct Resolver {
                                               fmt!("use of undeclared label \
                                                    `%s`", self.session.str_of(
                                                   label))),
-                    Some(dl_def(def @ def_label(id))) =>
+                    Some(dl_def(def @ def_label(_))) =>
                         self.record_def(expr.id, def),
                     Some(_) =>
                         self.session.span_bug(expr.span,
@@ -4514,7 +4514,7 @@ struct Resolver {
                     atoms.push(name);
                     current_module = module_;
                 }
-                BlockParentLink(module_, node_id) => {
+                BlockParentLink(module_, _) => {
                     atoms.push(syntax::parse::token::special_idents::opaque);
                     current_module = module_;
                 }
@@ -4555,7 +4555,7 @@ struct Resolver {
             let mut module_repr;
             match (*import_resolution).target_for_namespace(ModuleNS) {
                 None => { module_repr = ~""; }
-                Some(target) => {
+                Some(_) => {
                     module_repr = ~" module:?";
                     // XXX
                 }
@@ -4564,7 +4564,7 @@ struct Resolver {
             let mut value_repr;
             match (*import_resolution).target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }
-                Some(target) => {
+                Some(_) => {
                     value_repr = ~" value:?";
                     // XXX
                 }
@@ -4573,7 +4573,7 @@ struct Resolver {
             let mut type_repr;
             match (*import_resolution).target_for_namespace(TypeNS) {
                 None => { type_repr = ~""; }
-                Some(target) => {
+                Some(_) => {
                     type_repr = ~" type:?";
                     // XXX
                 }

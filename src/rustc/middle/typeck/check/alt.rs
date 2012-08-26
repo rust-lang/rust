@@ -228,7 +228,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           _ => ()
         }
       }
-      ast::pat_ident(_, path, c) => {
+      ast::pat_ident(_, path, _) => {
         check_pat_variant(pcx, pat, path, Some(~[]), expected);
       }
       ast::pat_enum(path, subpats) => {
