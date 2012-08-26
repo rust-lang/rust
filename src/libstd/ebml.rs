@@ -320,7 +320,7 @@ enum ebml_serializer_tag {
 
 trait serializer_priv {
     fn _emit_tagged_uint(t: ebml_serializer_tag, v: uint);
-    fn _emit_label(label: ~str);
+    fn _emit_label(label: &str);
 }
 
 impl ebml::writer: serializer_priv {
@@ -330,7 +330,7 @@ impl ebml::writer: serializer_priv {
         self.wr_tagged_u32(t as uint, v as u32);
     }
 
-    fn _emit_label(label: ~str) {
+    fn _emit_label(label: &str) {
         // There are various strings that we have access to, such as
         // the name of a record field, which do not actually appear in
         // the serialized EBML (normally).  This is just for
@@ -365,11 +365,11 @@ impl ebml::writer: serialization::serializer {
 
     fn emit_str(v: &str) { self.wr_tagged_str(es_str as uint, v) }
 
-    fn emit_enum(name: ~str, f: fn()) {
+    fn emit_enum(name: &str, f: fn()) {
         self._emit_label(name);
         self.wr_tag(es_enum as uint, f)
     }
-    fn emit_enum_variant(_v_name: ~str, v_id: uint, _cnt: uint, f: fn()) {
+    fn emit_enum_variant(_v_name: &str, v_id: uint, _cnt: uint, f: fn()) {
         self._emit_tagged_uint(es_enum_vid, v_id);
         self.wr_tag(es_enum_body as uint, f)
     }
@@ -389,7 +389,7 @@ impl ebml::writer: serialization::serializer {
     fn emit_box(f: fn()) { f() }
     fn emit_uniq(f: fn()) { f() }
     fn emit_rec(f: fn()) { f() }
-    fn emit_rec_field(f_name: ~str, _f_idx: uint, f: fn()) {
+    fn emit_rec_field(f_name: &str, _f_idx: uint, f: fn()) {
         self._emit_label(f_name);
         f()
     }

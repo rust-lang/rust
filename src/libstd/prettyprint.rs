@@ -67,11 +67,11 @@ impl Writer: serializer {
         self.write_str(fmt!("%?", v));
     }
 
-    fn emit_enum(_name: ~str, f: fn()) {
+    fn emit_enum(_name: &str, f: fn()) {
         f();
     }
 
-    fn emit_enum_variant(v_name: ~str, _v_id: uint, sz: uint, f: fn()) {
+    fn emit_enum_variant(v_name: &str, _v_id: uint, sz: uint, f: fn()) {
         self.write_str(v_name);
         if sz > 0u { self.write_str(~"("); }
         f();
@@ -110,7 +110,7 @@ impl Writer: serializer {
         self.write_str(~"}");
     }
 
-    fn emit_rec_field(f_name: ~str, f_idx: uint, f: fn()) {
+    fn emit_rec_field(f_name: &str, f_idx: uint, f: fn()) {
         if f_idx > 0u { self.write_str(~", "); }
         self.write_str(f_name);
         self.write_str(~": ");
