@@ -1020,7 +1020,7 @@ impl RegionVarBindings {
                     self.report_error_for_expanding_node(
                         graph, dup_map, node_vid);
                   }
-                  Contraction => {
+                  Contracting => {
                     self.report_error_for_contracting_node(
                         graph, dup_map, node_vid);
                   }
