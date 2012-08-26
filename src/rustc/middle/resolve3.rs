@@ -33,7 +33,7 @@ import syntax::ast::{local, local_crate, lt, method, mul, ne, neg, node_id};
 import syntax::ast::{pat, pat_enum, pat_ident, path, prim_ty, pat_box};
 import syntax::ast::{pat_lit, pat_range, pat_rec, pat_struct, pat_tup};
 import syntax::ast::{pat_uniq, pat_wild, private, provided, public, required};
-import syntax::ast::{rem, self_ty_, shl, stmt_decl, struct_field};
+import syntax::ast::{rem, self_ty_, shl, shr, stmt_decl, struct_field};
 import syntax::ast::{struct_variant_kind, sty_static, subtract, trait_ref};
 import syntax::ast::{tuple_variant_kind, ty, ty_bool, ty_char, ty_f, ty_f32};
 import syntax::ast::{ty_f64, ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8};
