@@ -478,10 +478,10 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_enum(enum_definition, _) => {
         check_enum_variants(ccx, it.span, enum_definition.variants, it.id);
       }
-      ast::item_fn(decl, _, tps, body) => {
+      ast::item_fn(decl, _, _, body) => {
         check_bare_fn(ccx, decl, body, it.id, None);
       }
-      ast::item_impl(tps, _, ty, ms) => {
+      ast::item_impl(_, _, ty, ms) => {
         let rp = ccx.tcx.region_paramd_items.find(it.id);
         debug!("item_impl %s with id %d rp %?",
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
@@ -493,7 +493,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
       ast::item_trait(_, _, trait_methods) => {
         for trait_methods.each |trait_method| {
             match trait_method {
-              required(ty_m) => {
+              required(*) => {
                 // Nothing to do, since required methods don't have
                 // bodies to check.
               }
@@ -734,7 +734,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
               _ => ()
             }
           }
-          ty::ty_enum(did, substs) => {
+          ty::ty_enum(did, _) => {
             // Watch out for a type like `enum t = @t`.  Such a type would
             // otherwise infinitely auto-deref.  This is the only autoderef
             // loop that needs to be concerned with this, as an error will be
@@ -761,7 +761,7 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-      ast::lit_str(s) => ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)),
+      ast::lit_str(*) => ty::mk_estr(tcx, ty::vstore_slice(ty::re_static)),
       ast::lit_int(_, t) => ty::mk_mach_int(tcx, t),
       ast::lit_uint(_, t) => ty::mk_mach_uint(tcx, t),
       ast::lit_int_unsuffixed(_) => {
@@ -898,7 +898,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     |_br| fcx.infcx.next_region_var(sp,
                                                     call_expr_id)).fn_ty
               }
-              sty => {
+              _ => {
                 // I would like to make this span_err, but it's
                 // really hard due to the way that expr_bind() is
                 // written.
@@ -1146,7 +1146,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // supply the do keyword.  Let's be more helpful in that situation.
         if op == ast::or {
           match ty::get(lhs_resolved_t).struct {
-            ty::ty_fn(f) => {
+            ty::ty_fn(_) => {
               tcx.sess.span_note(
                   ex.span, ~"did you forget the 'do' keyword for the call?");
             }
@@ -1627,7 +1627,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             match fcx.mk_subty(false, expr.span,
                                fty.output, ty::mk_bool(tcx)) {
               result::ok(_) => (),
-              result::err(err) => {
+              result::err(_) => {
                 tcx.sess.span_fatal(
                     expr.span, fmt!("a `loop` function's last argument \
                                      should return `bool`, not `%s`",
@@ -2221,7 +2221,7 @@ fn check_enum_variants(ccx: @crate_ctxt,
                 ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {
                     arg_tys = Some(~[]);
                 }
-                ast::enum_variant_kind(subvariants) => {
+                ast::enum_variant_kind(_) => {
                     arg_tys = None;
                     do_check(ccx, sp, vs, id, disr_vals, disr_val, variants);
                 }
@@ -2306,7 +2306,7 @@ fn ty_param_bounds_and_ty_for_def(fcx: @fn_ctxt, sp: span, defn: ast::def) ->
         let typ = ty::mk_var(fcx.ccx.tcx, lookup_local(fcx, sp, nid));
         return no_params(typ);
       }
-      ast::def_fn(id, ast::extern_fn) => {
+      ast::def_fn(_, ast::extern_fn) => {
         // extern functions are just u8 pointers
         return {
             bounds: @~[],
@@ -2458,7 +2458,7 @@ fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
       }
       ast::vstore_uniq => ty::vstore_uniq,
       ast::vstore_box => ty::vstore_box,
-      ast::vstore_slice(a_r) => {
+      ast::vstore_slice(_) => {
         let r = fcx.infcx.next_region_var(e.span, e.id);
         ty::vstore_slice(r)
       }

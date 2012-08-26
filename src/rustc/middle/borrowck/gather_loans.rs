@@ -410,7 +410,7 @@ impl gather_loan_ctxt {
                   arm_id: ast::node_id, alt_id: ast::node_id) {
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
-              ast::pat_ident(bm, id, o_pat) if !self.pat_is_variant(pat) => {
+              ast::pat_ident(bm, _, _) if !self.pat_is_variant(pat) => {
                 match bm {
                   ast::bind_by_value | ast::bind_by_move => {
                     // copying does not borrow anything, so no check

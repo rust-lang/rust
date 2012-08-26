@@ -125,12 +125,12 @@ impl infer_ctxt {
         match (a_bnd, b_bnd) {
           (Some(a_bnd), Some(b_bnd)) => {
             match (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
-              (ty::ty_box(mt_a), ty::ty_rptr(r_b, mt_b)) => {
+              (ty::ty_box(*), ty::ty_rptr(r_b, mt_b)) => {
                 let nr_b = ty::mk_box(self.tcx, {ty: mt_b.ty,
                                                  mutbl: m_const});
                 self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
               }
-              (ty::ty_uniq(mt_a), ty::ty_rptr(r_b, mt_b)) => {
+              (ty::ty_uniq(*), ty::ty_rptr(r_b, mt_b)) => {
                 let nr_b = ty::mk_uniq(self.tcx, {ty: mt_b.ty,
                                                   mutbl: m_const});
                 self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
@@ -142,7 +142,7 @@ impl infer_ctxt {
                 self.crosspollinate(anmnt, a, nr_b, m_imm, r_b)
               }
 
-              (ty::ty_evec(mt_a, vs_a),
+              (ty::ty_evec(_, vs_a),
                ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
               if is_borrowable(vs_a) => {
                 let nr_b = ty::mk_evec(self.tcx, {ty: mt_b.ty,

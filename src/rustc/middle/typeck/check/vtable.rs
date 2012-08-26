@@ -117,7 +117,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
               }
               ty::bound_trait(ity) => {
                 match ty::get(ity).struct {
-                  ty::ty_trait(idid, substs, _) => {
+                  ty::ty_trait(idid, _, _) => {
                     if trait_id == idid {
                         debug!("(checking vtable) @0 relating ty to trait ty
                                 with did %?", idid);
@@ -268,7 +268,7 @@ fn fixup_ty(fcx: @fn_ctxt,
                   for this bounded type parameter: %s",
                  fixup_err_to_str(e)))
       }
-      result::err(e) => {
+      result::err(_) => {
         None
       }
     }

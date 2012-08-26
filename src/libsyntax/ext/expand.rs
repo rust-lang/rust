@@ -197,7 +197,7 @@ fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
                    cx: ext_ctxt, &&it: @ast::item,
                    fld: ast_fold) -> Option<@ast::item> {
     match it.node {
-      item_mac({node: mac_invoc_tt(pth, tts), span}) => {
+      item_mac({node: mac_invoc_tt(pth, tts), _}) => {
         let extname = cx.parse_sess().interner.get(pth.idents[0]);
         match exts.find(*extname) {
           None => {

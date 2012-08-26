@@ -113,9 +113,9 @@ impl loan_ctxt {
             // then the memory is freed.
             self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
           }
-          cat_deref(cmt1, _, unsafe_ptr) |
-          cat_deref(cmt1, _, gc_ptr) |
-          cat_deref(cmt1, _, region_ptr(_)) => {
+          cat_deref(_, _, unsafe_ptr) |
+          cat_deref(_, _, gc_ptr) |
+          cat_deref(_, _, region_ptr(_)) => {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,
