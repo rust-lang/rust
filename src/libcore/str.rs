@@ -220,14 +220,9 @@ fn push_char(&s: ~str, ch: char) {
                 *ptr::mut_offset(buf, off + 5u) =
                     (code & 63u | tag_cont) as u8;
             }
-            *ptr::mut_offset(buf, off + nb) = 0u8;
         }
 
-        do as_bytes(s) |bytes| {
-            let mut mut_bytes: ~[u8] = ::unsafe::reinterpret_cast(bytes);
-            vec::unsafe::set_len(mut_bytes, new_len + 1u);
-            ::unsafe::forget(mut_bytes);
-        }
+        unsafe::set_len(s, new_len);
     }
 }
 
