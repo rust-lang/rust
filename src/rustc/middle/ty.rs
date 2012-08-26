@@ -1928,7 +1928,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             return type_requires(cx, seen, r_ty, mt.ty);
           }
 
-          ty_ptr(mt) => {
+          ty_ptr(*) => {
             false           // unsafe ptrs can always be NULL
           }
 
@@ -2137,7 +2137,7 @@ fn type_is_enum(ty: t) -> bool {
 // constructors
 fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     match get(ty).struct {
-      ty_enum(did, ref substs) => {
+      ty_enum(did, _) => {
         let variants = enum_variants(cx, did);
         let some_n_ary = vec::any(*variants, |v| vec::len(v.args) > 0u);
         return !some_n_ary;
