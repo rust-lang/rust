@@ -338,18 +338,13 @@ impl IrMaps {
         let vk = self.var_kinds[*var];
         debug!("Node %d is a last use of variable %?", expr_id, vk);
         match vk {
-          Arg(id, name, by_move) |
-          Arg(id, name, by_copy) |
-          Local(LocalInfo {id:id, ident:name,
-                           kind: FromLetNoInitializer, _}) |
-          Local(LocalInfo {id:id, ident:name,
-                           kind: FromLetWithInitializer, _}) |
-          Local(LocalInfo {id:id, ident:name,
-                           kind: FromMatch(bind_by_value), _}) |
-          Local(LocalInfo {id:id, ident:name,
-                           kind: FromMatch(bind_by_ref(_)), _}) |
-          Local(LocalInfo {id:id, ident:name,
-                           kind: FromMatch(bind_by_move), _}) => {
+          Arg(id, _, by_move) |
+          Arg(id, _, by_copy) |
+          Local(LocalInfo {id: id, kind: FromLetNoInitializer, _}) |
+          Local(LocalInfo {id: id, kind: FromLetWithInitializer, _}) |
+          Local(LocalInfo {id: id, kind: FromMatch(bind_by_value), _}) |
+          Local(LocalInfo {id: id, kind: FromMatch(bind_by_ref(_)), _}) |
+          Local(LocalInfo {id: id, kind: FromMatch(bind_by_move), _}) => {
             let v = match self.last_use_map.find(expr_id) {
               Some(v) => v,
               None => {
@@ -1493,7 +1488,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
         visit::visit_expr(expr, self, vt);
       }
 
-      expr_fn(_, _, _, cap_clause) | expr_fn_block(_, _, cap_clause) => {
+      expr_fn(*) | expr_fn_block(*) => {
         let caps = (*self.ir).captures(expr);
         for (*caps).each |cap| {
             let var = self.variable_from_rdef(cap.rv, expr.span);

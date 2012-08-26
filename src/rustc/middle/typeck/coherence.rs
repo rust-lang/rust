@@ -597,7 +597,7 @@ struct CoherenceChecker {
         }
 
         match item.node {
-            item_impl(ty_params, trait_refs, _, ast_methods) => {
+            item_impl(_, trait_refs, _, ast_methods) => {
                 let mut methods = ~[];
 
                 for ast_methods.each |ast_method| {

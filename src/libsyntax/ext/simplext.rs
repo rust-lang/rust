@@ -504,7 +504,7 @@ fn p_t_s_r_path(cx: ext_ctxt, p: @path, s: selector, b: binders) {
       Some(p_id) => {
         fn select(cx: ext_ctxt, m: matchable) -> match_result {
             return match m {
-                  match_expr(e) => Some(leaf(specialize_match(m))),
+                  match_expr(*) => Some(leaf(specialize_match(m))),
                   _ => cx.bug(~"broken traversal in p_t_s_r")
                 }
         }
@@ -646,7 +646,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
             match elts[0u].node {
               expr_mac(mac) => {
                 match mac.node {
-                  mac_invoc(pth, invoc_arg, body) => {
+                  mac_invoc(pth, invoc_arg, _) => {
                     match path_to_ident(pth) {
                       Some(id) => {
                         let id_str = cx.str_of(id);

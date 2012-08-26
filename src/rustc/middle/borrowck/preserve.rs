@@ -16,7 +16,7 @@ impl preserve_condition {
     fn combine(pc: preserve_condition) -> preserve_condition {
         match self {
           pc_ok => {pc}
-          pc_if_pure(e) => {self}
+          pc_if_pure(_) => {self}
         }
     }
 }

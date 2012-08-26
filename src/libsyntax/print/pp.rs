@@ -378,7 +378,7 @@ impl printer {
         if !self.scan_stack_empty {
             let x = self.scan_top();
             match copy self.token[x] {
-              BEGIN(b) => {
+              BEGIN(_) => {
                 if k > 0 {
                     self.size[self.scan_pop()] = self.size[x] +
                         self.right_total;

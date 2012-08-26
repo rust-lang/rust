@@ -223,7 +223,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         map_struct_def(struct_def, node_item(i, item_path), i.ident, i.id, cx,
                        v);
       }
-      item_trait(tps, traits, methods) => {
+      item_trait(_, traits, methods) => {
         // Map trait refs to their parent classes. This is
         // so we can find the self_ty
         for traits.each |p| {
@@ -318,16 +318,16 @@ fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
         fmt!("foreign item %s with abi %? (id=%?)",
              path_ident_to_str(*path, item.ident, itr), abi, id)
       }
-      Some(node_method(m, impl_did, path)) => {
+      Some(node_method(m, _, path)) => {
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      Some(node_trait_method(tm, impl_did, path)) => {
+      Some(node_trait_method(tm, _, path)) => {
         let m = ast_util::trait_method_to_ty_method(*tm);
         fmt!("method %s in %s (id=%?)",
              *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      Some(node_variant(variant, def_id, path)) => {
+      Some(node_variant(variant, _, path)) => {
         fmt!("variant %s in %s (id=%?)",
              *itr.get(variant.node.name), path_to_str(*path, itr), id)
       }

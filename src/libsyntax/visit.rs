@@ -250,7 +250,7 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
 
 fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     match ni.node {
-      foreign_item_fn(fd, purity, tps) => {
+      foreign_item_fn(fd, _, tps) => {
         v.visit_ty_params(tps, e, v);
         visit_fn_decl(fd, e, v);
       }

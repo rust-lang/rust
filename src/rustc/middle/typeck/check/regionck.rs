@@ -38,7 +38,7 @@ fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::region {
         def_local(node_id, _) | def_arg(node_id, _) | def_self(node_id) |
         def_binding(node_id, _) =>
             return encl_region(tcx, node_id),
-        def_upvar(local_id, subdef, closure_id, body_id) => {
+        def_upvar(_, subdef, closure_id, body_id) => {
             match ty_fn_proto(fcx.node_ty(closure_id)) {
                 proto_bare =>
                     tcx.sess.bug(~"proto_bare in encl_region_of_def?!"),
@@ -205,7 +205,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         };
       }
 
-      ast::expr_addr_of(_, operand) => {
+      ast::expr_addr_of(*) => {
         // FIXME(#3148) -- in some cases, we need to capture a dependency
         // between the regions found in operand the resulting region type.
         // See #3148 for more details.
