@@ -43,7 +43,12 @@ trait Reader {
 
 // Generic utility functions defined on readers
 
-impl Reader {
+trait ReaderUtil {
+    fn read_bytes(len: uint) -> ~[u8];
+    fn read_line() -> ~str;
+}
+
+impl<T: Reader> T : ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8] {
         let mut buf = ~[mut];
         vec::reserve(buf, len);
@@ -54,6 +59,18 @@ impl Reader {
         unsafe { vec::unsafe::set_len(buf, count); }
         vec::from_mut(buf)
     }
+    fn read_line() -> ~str {
+        let mut buf = ~[];
+        loop {
+            let ch = self.read_byte();
+            if ch == -1 || ch == 10 { break; }
+            vec::push(buf, ch as u8);
+        }
+        str::from_bytes(buf)
+    }
+}
+
+impl Reader {
     fn read_chars(n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
         fn chars_from_buf(buf: ~[u8], &chars: ~[char]) -> (uint, uint) {
@@ -120,16 +137,6 @@ impl Reader {
         }
         assert(vec::len(c) == 1u);
         return c[0];
-    }
-
-    fn read_line() -> ~str {
-        let mut buf = ~[];
-        loop {
-            let ch = self.read_byte();
-            if ch == -1 || ch == 10 { break; }
-            vec::push(buf, ch as u8);
-        }
-        str::from_bytes(buf)
     }
 
     fn read_c_str() -> ~str {
