@@ -1,6 +1,6 @@
 import print::pprust::expr_to_str;
 
-import result::result;
+import result::Result;
 import either::{Either, Left, Right};
 import std::map::{hashmap, str_hash};
 import token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,

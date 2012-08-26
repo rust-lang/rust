@@ -187,8 +187,8 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         // check_cast_for_escaping_regions() in kind.rs explaining how
         // it goes about doing that.
         match rcx.resolve_node_type(e.id) {
-          result::err(_) => { return; /* typeck will fail anyhow */ }
-          result::ok(target_ty) => {
+          result::Err(_) => { return; /* typeck will fail anyhow */ }
+          result::Ok(target_ty) => {
             match ty::get(target_ty).struct {
               ty::ty_trait(_, substs, _) => {
                 let trait_region = match substs.self_r {
@@ -213,8 +213,8 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
 
       ast::expr_fn(*) | ast::expr_fn_block(*) => {
         match rcx.resolve_node_type(e.id) {
-          result::err(_) => return,   // Typechecking will fail anyhow.
-          result::ok(function_type) => {
+          result::Err(_) => return,   // Typechecking will fail anyhow.
+          result::Ok(function_type) => {
             match ty::get(function_type).struct {
               ty::ty_fn({
                 proto: proto_vstore(vstore_slice(region)), _
@@ -249,8 +249,8 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty = match rcx.resolve_node_type(id) {
-      result::err(_) => return true,
-      result::ok(ty) => ty
+      result::Err(_) => return true,
+      result::Ok(ty) => ty
     };
 
     // find the region where this expr evaluation is taking place
@@ -279,8 +279,8 @@ fn constrain_free_variables(
         let en_region = encl_region_of_def(rcx.fcx, def);
         match rcx.fcx.mk_subr(true, freevar.span,
                               region, en_region) {
-          result::ok(()) => {}
-          result::err(_) => {
+          result::Ok(()) => {}
+          result::Err(_) => {
             tcx.sess.span_err(
                 freevar.span,
                 ~"captured variable does not outlive the enclosing closure");
@@ -331,7 +331,7 @@ fn constrain_regions_in_type(
         }
 
         match rcx.fcx.mk_subr(true, span, encl_region, region) {
-          result::err(_) => {
+          result::Err(_) => {
             tcx.sess.span_err(
                 span,
                 fmt!("reference is not valid outside of its lifetime"));
@@ -341,7 +341,7 @@ fn constrain_regions_in_type(
                 region);
             rcx.errors_reported += 1u;
           }
-          result::ok(()) => {
+          result::Ok(()) => {
           }
         }
     }

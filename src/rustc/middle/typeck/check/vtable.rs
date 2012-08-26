@@ -194,8 +194,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             impl_self_ty(fcx, expr, im.did, false);
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                         match fcx.mk_subty(false, expr.span, ty, for_ty) {
-                          result::err(_) => again,
-                          result::ok(()) => ()
+                          result::Err(_) => again,
+                          result::Ok(()) => ()
                         }
 
                         // check that desired trait type unifies
@@ -260,15 +260,15 @@ fn fixup_ty(fcx: @fn_ctxt,
 {
     let tcx = fcx.ccx.tcx;
     match resolve_type(fcx.infcx, ty, resolve_and_force_all_but_regions) {
-      result::ok(new_type) => Some(new_type),
-      result::err(e) if !is_early => {
+      result::Ok(new_type) => Some(new_type),
+      result::Err(e) if !is_early => {
         tcx.sess.span_fatal(
             expr.span,
             fmt!("cannot determine a type \
                   for this bounded type parameter: %s",
                  fixup_err_to_str(e)))
       }
-      result::err(_) => {
+      result::Err(_) => {
         None
       }
     }

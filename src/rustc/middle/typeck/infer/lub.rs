@@ -13,7 +13,7 @@ impl Lub: combine {
     fn lub() -> Lub { Lub(*self) }
     fn glb() -> Glb { Glb(*self) }
 
-    fn bot_ty(b: ty::t) -> cres<ty::t> { ok(b) }
+    fn bot_ty(b: ty::t) -> cres<ty::t> { Ok(b) }
     fn ty_bot(b: ty::t) -> cres<ty::t> { self.bot_ty(b) } // commutative
 
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt> {
@@ -32,17 +32,17 @@ impl Lub: combine {
 
         match m {
           m_imm | m_const => {
-            self.tys(a.ty, b.ty).chain(|t| ok({ty: t, mutbl: m}) )
+            self.tys(a.ty, b.ty).chain(|t| Ok({ty: t, mutbl: m}) )
           }
 
           m_mutbl => {
             self.infcx.try(|| {
                 eq_tys(&self, a.ty, b.ty).then(|| {
-                    ok({ty: a.ty, mutbl: m})
+                    Ok({ty: a.ty, mutbl: m})
                 })
             }).chain_err(|_e| {
                 self.tys(a.ty, b.ty).chain(|t| {
-                    ok({ty: t, mutbl: m_const})
+                    Ok({ty: t, mutbl: m_const})
                 })
             })
           }
@@ -56,16 +56,16 @@ impl Lub: combine {
     // XXX: Wrong.
     fn protos(p1: ty::fn_proto, p2: ty::fn_proto) -> cres<ty::fn_proto> {
         match (p1, p2) {
-            (ty::proto_bare, _) => ok(p2),
-            (_, ty::proto_bare) => ok(p1),
+            (ty::proto_bare, _) => Ok(p2),
+            (_, ty::proto_bare) => Ok(p1),
             (ty::proto_vstore(v1), ty::proto_vstore(v2)) => {
                 self.infcx.try(|| {
                     do self.vstores(terr_fn, v1, v2).chain |vs| {
-                        ok(ty::proto_vstore(vs))
+                        Ok(ty::proto_vstore(vs))
                     }
                 }).chain_err(|_err| {
                     // XXX: Totally unsound, but fixed up later.
-                    ok(ty::proto_vstore(ty::vstore_slice(ty::re_static)))
+                    Ok(ty::proto_vstore(ty::vstore_slice(ty::re_static)))
                 })
             }
         }
@@ -73,18 +73,18 @@ impl Lub: combine {
 
     fn purities(a: purity, b: purity) -> cres<purity> {
         match (a, b) {
-          (unsafe_fn, _) | (_, unsafe_fn) => ok(unsafe_fn),
-          (impure_fn, _) | (_, impure_fn) => ok(impure_fn),
-          (extern_fn, _) | (_, extern_fn) => ok(extern_fn),
-          (pure_fn, pure_fn) => ok(pure_fn)
+          (unsafe_fn, _) | (_, unsafe_fn) => Ok(unsafe_fn),
+          (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
+          (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
+          (pure_fn, pure_fn) => Ok(pure_fn)
         }
     }
 
     fn ret_styles(r1: ret_style, r2: ret_style) -> cres<ret_style> {
         match (r1, r2) {
           (ast::return_val, _) |
-          (_, ast::return_val) => ok(ast::return_val),
-          (ast::noreturn, ast::noreturn) => ok(ast::noreturn)
+          (_, ast::return_val) => Ok(ast::return_val),
+          (ast::noreturn, ast::noreturn) => Ok(ast::noreturn)
         }
     }
 

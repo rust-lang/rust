@@ -57,11 +57,11 @@ trait ast_conv {
 
 fn get_region_reporting_err(tcx: ty::ctxt,
                             span: span,
-                            res: result<ty::region, ~str>) -> ty::region {
+                            res: Result<ty::region, ~str>) -> ty::region {
 
     match res {
-      result::ok(r) => r,
-      result::err(e) => {
+      result::Ok(r) => r,
+      result::Err(e) => {
         tcx.sess.span_err(span, e);
         ty::re_static
       }

@@ -69,12 +69,12 @@ fn merge_bnd<C: combine>(
     let _r = indenter();
 
     match (a, b) {
-      (None, None) => ok(None),
-      (Some(_), None) => ok(a),
-      (None, Some(_)) => ok(b),
+      (None, None) => Ok(None),
+      (Some(_), None) => Ok(a),
+      (None, Some(_)) => Ok(b),
       (Some(v_a), Some(v_b)) => {
         do merge_op(v_a, v_b).chain |v| {
-            ok(Some(v))
+            Ok(Some(v))
         }
       }
     }
@@ -96,7 +96,7 @@ fn merge_bnds<C: combine>(
                    a.lb.to_str(self.infcx()),
                    b.lb.to_str(self.infcx()),
                    lb.to_str(self.infcx()));
-            ok({lb: lb, ub: ub})
+            Ok({lb: lb, ub: ub})
         }
     }
 }
@@ -198,8 +198,8 @@ fn var_sub_var<C: combine>(self: &C,
       (Some(a_ub), Some(b_lb)) => {
         let r = self.infcx().try(|| self.sub().tys(a_ub, b_lb));
         match r {
-          ok(_ty) => return result::ok(()),
-          err(_) => { /*fallthrough */ }
+          Ok(_ty) => return result::Ok(()),
+          Err(_) => { /*fallthrough */ }
         }
       }
       _ => { /*fallthrough*/ }
@@ -311,7 +311,7 @@ impl infer_ctxt {
         // possible types.
         let intersection = intersection(a_pt, b_pt);
         if *intersection == INT_TY_SET_EMPTY {
-            return err(ty::terr_no_integral_type);
+            return Err(ty::terr_no_integral_type);
         }
 
         // Rank optimization
@@ -351,7 +351,7 @@ impl infer_ctxt {
             intersection(a_pt,
                          convert_integral_ty_to_int_ty_set(self.tcx, b));
         if *intersection == INT_TY_SET_EMPTY {
-            return err(ty::terr_no_integral_type);
+            return Err(ty::terr_no_integral_type);
         }
         self.set(vb, a_id, root(intersection, nde_a.rank));
         uok()
@@ -369,7 +369,7 @@ impl infer_ctxt {
             intersection(b_pt,
                          convert_integral_ty_to_int_ty_set(self.tcx, a));
         if *intersection == INT_TY_SET_EMPTY {
-            return err(ty::terr_no_integral_type);
+            return Err(ty::terr_no_integral_type);
         }
         self.set(vb, b_id, root(intersection, nde_b.rank));
         uok()

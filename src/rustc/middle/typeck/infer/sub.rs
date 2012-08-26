@@ -34,8 +34,8 @@ impl Sub: combine {
                b.to_str(self.infcx));
         do indent {
             match self.infcx.region_vars.make_subregion(self.span, a, b) {
-              ok(()) => ok(a),
-              err(e) => err(e)
+              Ok(()) => Ok(a),
+              Err(e) => Err(e)
             }
         }
     }
@@ -44,18 +44,18 @@ impl Sub: combine {
         debug!("mts(%s <: %s)", a.to_str(self.infcx), b.to_str(self.infcx));
 
         if a.mutbl != b.mutbl && b.mutbl != m_const {
-            return err(ty::terr_mutability);
+            return Err(ty::terr_mutability);
         }
 
         match b.mutbl {
           m_mutbl => {
             // If supertype is mut, subtype must match exactly
             // (i.e., invariant if mut):
-            eq_tys(&self, a.ty, b.ty).then(|| ok(a) )
+            eq_tys(&self, a.ty, b.ty).then(|| Ok(a) )
           }
           m_imm | m_const => {
             // Otherwise we can be covariant:
-            self.tys(a.ty, b.ty).chain(|_t| ok(a) )
+            self.tys(a.ty, b.ty).chain(|_t| Ok(a) )
           }
         }
     }
@@ -63,22 +63,22 @@ impl Sub: combine {
     fn protos(a: ty::fn_proto, b: ty::fn_proto) -> cres<ty::fn_proto> {
         match (a, b) {
             (ty::proto_bare, _) =>
-                ok(ty::proto_bare),
+                Ok(ty::proto_bare),
 
             (ty::proto_vstore(ty::vstore_box),
              ty::proto_vstore(ty::vstore_slice(_))) =>
-                ok(ty::proto_vstore(ty::vstore_box)),
+                Ok(ty::proto_vstore(ty::vstore_box)),
 
             (ty::proto_vstore(ty::vstore_uniq),
              ty::proto_vstore(ty::vstore_slice(_))) =>
-                ok(ty::proto_vstore(ty::vstore_uniq)),
+                Ok(ty::proto_vstore(ty::vstore_uniq)),
 
             (_, ty::proto_bare) =>
-                err(ty::terr_proto_mismatch(expected_found(&self, a, b))),
+                Err(ty::terr_proto_mismatch(expected_found(&self, a, b))),
 
             (ty::proto_vstore(vs_a), ty::proto_vstore(vs_b)) => {
                 do self.vstores(ty::terr_fn, vs_a, vs_b).chain |vs_c| {
-                    ok(ty::proto_vstore(vs_c))
+                    Ok(ty::proto_vstore(vs_c))
                 }
             }
         }
@@ -99,23 +99,23 @@ impl Sub: combine {
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         debug!("%s.tys(%s, %s)", self.tag(),
                a.to_str(self.infcx), b.to_str(self.infcx));
-        if a == b { return ok(a); }
+        if a == b { return Ok(a); }
         do indent {
             match (ty::get(a).struct, ty::get(b).struct) {
               (ty::ty_bot, _) => {
-                ok(a)
+                Ok(a)
               }
               (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-                var_sub_var(&self, a_id, b_id).then(|| ok(a) )
+                var_sub_var(&self, a_id, b_id).then(|| Ok(a) )
               }
               (ty::ty_var(a_id), _) => {
-                var_sub_t(&self, a_id, b).then(|| ok(a) )
+                var_sub_t(&self, a_id, b).then(|| Ok(a) )
               }
               (_, ty::ty_var(b_id)) => {
-                t_sub_var(&self, a, b_id).then(|| ok(a) )
+                t_sub_var(&self, a, b_id).then(|| Ok(a) )
               }
               (_, ty::ty_bot) => {
-                err(ty::terr_sorts(expected_found(&self, a, b)))
+                Err(ty::terr_sorts(expected_found(&self, a, b)))
               }
               _ => {
                 super_tys(&self, a, b)

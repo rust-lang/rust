@@ -113,8 +113,8 @@ fn eq_regions<C: combine>(self: &C, a: ty::region, b: ty::region) -> ures {
             // found in the original error
             match e {
               ty::terr_regions_does_not_outlive(a1, b1) =>
-                err(ty::terr_regions_not_same(a1, b1)),
-              _ => err(e)
+                Err(ty::terr_regions_not_same(a1, b1)),
+              _ => Err(e)
             }
         }).to_ures()
     }
@@ -127,11 +127,11 @@ fn eq_opt_regions<C:combine>(
 
     match (a, b) {
       (None, None) => {
-        ok(None)
+        Ok(None)
       }
       (Some(a), Some(b)) => {
         do eq_regions(self, a, b).then {
-            ok(Some(a))
+            Ok(Some(a))
         }
       }
       (_, _) => {
@@ -162,21 +162,21 @@ fn super_substs<C:combine>(
         let polyty = ty::lookup_item_type(self.infcx().tcx, did);
         match (polyty.region_param, a, b) {
           (None, None, None) => {
-            ok(None)
+            Ok(None)
           }
           (Some(ty::rv_invariant), Some(a), Some(b)) => {
             do eq_regions(self, a, b).then {
-                ok(Some(a))
+                Ok(Some(a))
             }
           }
           (Some(ty::rv_covariant), Some(a), Some(b)) => {
             do self.regions(a, b).chain |r| {
-                ok(Some(r))
+                Ok(Some(r))
             }
           }
           (Some(ty::rv_contravariant), Some(a), Some(b)) => {
             do self.contraregions(a, b).chain |r| {
-                ok(Some(r))
+                Ok(Some(r))
             }
           }
           (_, _, _) => {
@@ -200,7 +200,7 @@ fn super_substs<C:combine>(
             do relate_region_param(self, did,
                                    a.self_r, b.self_r).chain |self_r|
             {
-                ok({self_r: self_r, self_ty: self_ty, tps: tps})
+                Ok({self_r: self_r, self_ty: self_ty, tps: tps})
             }
         }
     }
@@ -217,9 +217,9 @@ fn super_tps<C:combine>(
     if vec::same_length(as, bs) {
         iter_vec2(as, bs, |a, b| {
             eq_tys(self, a, b)
-        }).then(|| ok(as.to_vec()) )
+        }).then(|| Ok(as.to_vec()) )
     } else {
-        err(ty::terr_ty_param_size(
+        Err(ty::terr_ty_param_size(
             expected_found(self, as.len(), bs.len())))
     }
 }
@@ -232,17 +232,17 @@ fn super_self_tys<C:combine>(
 
     match (a, b) {
       (None, None) => {
-        ok(None)
+        Ok(None)
       }
       (Some(a), Some(b)) => {
-        eq_tys(self, a, b).then(|| ok(Some(a)) )
+        eq_tys(self, a, b).then(|| Ok(Some(a)) )
       }
       (None, Some(_)) |
       (Some(_), None) => {
         // I think it should never happen that we unify two substs and
         // one of them has a self_ty and one doesn't...? I could be
         // wrong about this.
-        err(ty::terr_self_substs)
+        Err(ty::terr_self_substs)
       }
     }
 }
@@ -252,10 +252,10 @@ fn super_flds<C:combine>(
 
     if a.ident == b.ident {
         self.mts(a.mt, b.mt)
-            .chain(|mt| ok({ident: a.ident, mt: mt}) )
-            .chain_err(|e| err(ty::terr_in_field(@e, a.ident)) )
+            .chain(|mt| Ok({ident: a.ident, mt: mt}) )
+            .chain_err(|e| Err(ty::terr_in_field(@e, a.ident)) )
     } else {
-        err(ty::terr_record_fields(
+        Err(ty::terr_record_fields(
             expected_found(self, a.ident, b.ident)))
     }
 }
@@ -274,7 +274,7 @@ fn super_args<C:combine>(
 
     do self.modes(a.mode, b.mode).chain |m| {
         do self.contratys(a.ty, b.ty).chain |t| {
-            ok({mode: m, ty: t})
+            Ok({mode: m, ty: t})
         }
     }
 }
@@ -286,16 +286,16 @@ fn super_vstores<C:combine>(
     match (a, b) {
       (ty::vstore_slice(a_r), ty::vstore_slice(b_r)) => {
         do self.contraregions(a_r, b_r).chain |r| {
-            ok(ty::vstore_slice(r))
+            Ok(ty::vstore_slice(r))
         }
       }
 
       _ if a == b => {
-        ok(a)
+        Ok(a)
       }
 
       _ => {
-        err(ty::terr_vstores_differ(vk, expected_found(self, a, b)))
+        Err(ty::terr_vstores_differ(vk, expected_found(self, a, b)))
       }
     }
 }
@@ -309,7 +309,7 @@ fn super_fns<C:combine>(
         if vec::same_length(a_args, b_args) {
             map_vec2(a_args, b_args, |a, b| self.args(a, b) )
         } else {
-            err(ty::terr_arg_count)
+            Err(ty::terr_arg_count)
         }
     }
 
@@ -321,7 +321,7 @@ fn super_fns<C:combine>(
                     // FIXME: uncomment if #2588 doesn't get accepted:
                     // self.infcx().constrvecs(a_f.constraints,
                     //                         b_f.constraints).then {||
-                        ok({purity: purity,
+                        Ok({purity: purity,
                             proto: p,
                             bounds: a_f.bounds, // XXX: This is wrong!
                             inputs: inputs,
@@ -354,15 +354,15 @@ fn super_tys<C:combine>(
 
       // Relate integral variables to other types
       (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) => {
-        self.infcx().vars_integral(a_id, b_id).then(|| ok(a) )
+        self.infcx().vars_integral(a_id, b_id).then(|| Ok(a) )
       }
       (ty::ty_var_integral(a_id), ty::ty_int(_)) |
       (ty::ty_var_integral(a_id), ty::ty_uint(_)) => {
-        self.infcx().var_integral_sub_t(a_id, b).then(|| ok(a) )
+        self.infcx().var_integral_sub_t(a_id, b).then(|| Ok(a) )
       }
       (ty::ty_int(_), ty::ty_var_integral(b_id)) |
       (ty::ty_uint(_), ty::ty_var_integral(b_id)) => {
-        self.infcx().t_sub_var_integral(a, b_id).then(|| ok(a) )
+        self.infcx().t_sub_var_integral(a, b_id).then(|| Ok(a) )
       }
 
       (ty::ty_int(_), _) |
@@ -371,9 +371,9 @@ fn super_tys<C:combine>(
         let as = ty::get(a).struct;
         let bs = ty::get(b).struct;
         if as == bs {
-            ok(a)
+            Ok(a)
         } else {
-            err(ty::terr_sorts(expected_found(self, a, b)))
+            Err(ty::terr_sorts(expected_found(self, a, b)))
         }
       }
 
@@ -381,21 +381,21 @@ fn super_tys<C:combine>(
       (ty::ty_bool, _) => {
         let cfg = tcx.sess.targ_cfg;
         if ty::mach_sty(cfg, a) == ty::mach_sty(cfg, b) {
-            ok(a)
+            Ok(a)
         } else {
-            err(ty::terr_sorts(expected_found(self, a, b)))
+            Err(ty::terr_sorts(expected_found(self, a, b)))
         }
       }
 
       (ty::ty_param(a_p), ty::ty_param(b_p)) if a_p.idx == b_p.idx => {
-        ok(a)
+        Ok(a)
       }
 
       (ty::ty_enum(a_id, ref a_substs),
        ty::ty_enum(b_id, ref b_substs))
       if a_id == b_id => {
         do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            ok(ty::mk_enum(tcx, a_id, substs))
+            Ok(ty::mk_enum(tcx, a_id, substs))
         }
       }
 
@@ -404,7 +404,7 @@ fn super_tys<C:combine>(
       if a_id == b_id => {
         do self.substs(a_id, a_substs, b_substs).chain |substs| {
             do self.vstores(ty::terr_trait, a_vstore, b_vstore).chain |vs| {
-                ok(ty::mk_trait(tcx, a_id, substs, vs))
+                Ok(ty::mk_trait(tcx, a_id, substs, vs))
             }
         }
       }
@@ -412,32 +412,32 @@ fn super_tys<C:combine>(
       (ty::ty_class(a_id, ref a_substs), ty::ty_class(b_id, ref b_substs))
       if a_id == b_id => {
         do self.substs(a_id, a_substs, b_substs).chain |substs| {
-            ok(ty::mk_class(tcx, a_id, substs))
+            Ok(ty::mk_class(tcx, a_id, substs))
         }
       }
 
       (ty::ty_box(a_mt), ty::ty_box(b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
-            ok(ty::mk_box(tcx, mt))
+            Ok(ty::mk_box(tcx, mt))
         }
       }
 
       (ty::ty_uniq(a_mt), ty::ty_uniq(b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
-            ok(ty::mk_uniq(tcx, mt))
+            Ok(ty::mk_uniq(tcx, mt))
         }
       }
 
       (ty::ty_ptr(a_mt), ty::ty_ptr(b_mt)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
-            ok(ty::mk_ptr(tcx, mt))
+            Ok(ty::mk_ptr(tcx, mt))
         }
       }
 
       (ty::ty_rptr(a_r, a_mt), ty::ty_rptr(b_r, b_mt)) => {
         do self.contraregions(a_r, b_r).chain |r| {
             do self.mts(a_mt, b_mt).chain |mt| {
-                ok(ty::mk_rptr(tcx, r, mt))
+                Ok(ty::mk_rptr(tcx, r, mt))
             }
         }
       }
@@ -445,14 +445,14 @@ fn super_tys<C:combine>(
       (ty::ty_evec(a_mt, vs_a), ty::ty_evec(b_mt, vs_b)) => {
         do self.mts(a_mt, b_mt).chain |mt| {
             do self.vstores(ty::terr_vec, vs_a, vs_b).chain |vs| {
-                ok(ty::mk_evec(tcx, mt, vs))
+                Ok(ty::mk_evec(tcx, mt, vs))
             }
         }
       }
 
       (ty::ty_estr(vs_a), ty::ty_estr(vs_b)) => {
         do self.vstores(ty::terr_str, vs_a, vs_b).chain |vs| {
-            ok(ty::mk_estr(tcx,vs))
+            Ok(ty::mk_estr(tcx,vs))
         }
       }
 
@@ -460,9 +460,9 @@ fn super_tys<C:combine>(
         if vec::same_length(as, bs) {
             map_vec2(as, bs, |a,b| {
                 self.flds(a, b)
-            }).chain(|flds| ok(ty::mk_rec(tcx, flds)) )
+            }).chain(|flds| Ok(ty::mk_rec(tcx, flds)) )
         } else {
-            err(ty::terr_record_size(expected_found(self, as.len(),
+            Err(ty::terr_record_size(expected_found(self, as.len(),
                                                     bs.len())))
         }
       }
@@ -470,19 +470,19 @@ fn super_tys<C:combine>(
       (ty::ty_tup(as), ty::ty_tup(bs)) => {
         if vec::same_length(as, bs) {
             map_vec2(as, bs, |a, b| self.tys(a, b) )
-                .chain(|ts| ok(ty::mk_tup(tcx, ts)) )
+                .chain(|ts| Ok(ty::mk_tup(tcx, ts)) )
         } else {
-            err(ty::terr_tuple_size(expected_found(self, as.len(), bs.len())))
+            Err(ty::terr_tuple_size(expected_found(self, as.len(), bs.len())))
         }
       }
 
       (ty::ty_fn(ref a_fty), ty::ty_fn(ref b_fty)) => {
         do self.fns(a_fty, b_fty).chain |fty| {
-            ok(ty::mk_fn(tcx, fty))
+            Ok(ty::mk_fn(tcx, fty))
         }
       }
 
-      _ => err(ty::terr_sorts(expected_found(self, a, b)))
+      _ => Err(ty::terr_sorts(expected_found(self, a, b)))
     }
 }
 

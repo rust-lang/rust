@@ -6,7 +6,7 @@ import vec;
 import task;
 
 import core::result;
-import result::{ok, err};
+import result::{Ok, Err};
 
 import common::config;
 import common::mode_run_pass;
@@ -38,8 +38,8 @@ fn parse_config(args: ~[~str]) -> config {
     let args_ = vec::tail(args);
     let matches =
         match getopts::getopts(args_, opts) {
-          ok(m) => m,
-          err(f) => fail getopts::fail_str(f)
+          Ok(m) => m,
+          Err(f) => fail getopts::fail_str(f)
         };
 
     fn opt_path(m: getopts::matches, nm: ~str) -> Path {

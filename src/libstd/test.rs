@@ -6,7 +6,7 @@
 // while providing a base that other test frameworks may build off of.
 
 import either::Either;
-import result::{ok, err};
+import result::{Ok, Err};
 import io::WriterUtil;
 import libc::size_t;
 import task::TaskBuilder;
@@ -71,8 +71,8 @@ fn parse_opts(args: ~[~str]) -> opt_res {
     let opts = ~[getopts::optflag(~"ignored"), getopts::optopt(~"logfile")];
     let matches =
         match getopts::getopts(args_, opts) {
-          ok(m) => m,
-          err(f) => return either::Right(getopts::fail_str(f))
+          Ok(m) => m,
+          Err(f) => return either::Right(getopts::fail_str(f))
         };
 
     let filter =
@@ -143,8 +143,8 @@ fn run_tests_console(opts: test_opts,
     let log_out = match opts.logfile {
         Some(path) => match io::file_writer(&Path(path),
                                             ~[io::Create, io::Truncate]) {
-          result::ok(w) => Some(w),
-          result::err(s) => {
+          result::Ok(w) => Some(w),
+          result::Err(s) => {
               fail(fmt!("can't open output file: %s", s))
           }
         },

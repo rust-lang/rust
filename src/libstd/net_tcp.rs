@@ -120,7 +120,7 @@ enum tcp_connect_err_data {
  */
 fn connect(-input_ip: ip::ip_addr, port: uint,
            iotask: iotask)
-    -> result::result<tcp_socket, tcp_connect_err_data> unsafe {
+    -> result::Result<tcp_socket, tcp_connect_err_data> unsafe {
     let result_po = core::comm::port::<conn_attempt>();
     let closed_signal_po = core::comm::port::<()>();
     let conn_data = {
@@ -128,7 +128,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
         closed_signal_ch: core::comm::chan(closed_signal_po)
     };
     let conn_data_ptr = ptr::addr_of(conn_data);
-    let reader_po = core::comm::port::<result::result<~[u8], tcp_err_data>>();
+    let reader_po = core::comm::port::<result::Result<~[u8], tcp_err_data>>();
     let stream_handle_ptr = malloc_uv_tcp_t();
     *(stream_handle_ptr as *mut uv::ll::uv_tcp_t) = uv::ll::tcp_t();
     let socket_data = @{
@@ -220,7 +220,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
     match core::comm::recv(result_po) {
       conn_success => {
         log(debug, ~"tcp::connect - received success on result_po");
-        result::ok(tcp_socket(socket_data))
+        result::Ok(tcp_socket(socket_data))
       }
       conn_failure(err_data) => {
         core::comm::recv(closed_signal_po);
@@ -232,7 +232,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
           ~"ECONNREFUSED" => connection_refused,
           _ => generic_connect_err(err_data.err_name, err_data.err_msg)
         };
-        result::err(tcp_conn_err)
+        result::Err(tcp_conn_err)
       }
     }
 }
@@ -252,7 +252,7 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
  * `tcp_err_data` value as the `err` variant
  */
 fn write(sock: tcp_socket, raw_write_data: ~[u8])
-    -> result::result<(), tcp_err_data> unsafe {
+    -> result::Result<(), tcp_err_data> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     write_common_impl(socket_data_ptr, raw_write_data)
 }
@@ -289,7 +289,7 @@ fn write(sock: tcp_socket, raw_write_data: ~[u8])
  * value as the `err` variant
  */
 fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
-    -> future::Future<result::result<(), tcp_err_data>> unsafe {
+    -> future::Future<result::Result<(), tcp_err_data>> unsafe {
     let socket_data_ptr = ptr::addr_of(*(sock.socket_data));
     do future_spawn {
         let data_copy = copy(raw_write_data);
@@ -313,8 +313,8 @@ fn write_future(sock: tcp_socket, raw_write_data: ~[u8])
  * `tcp_err_data` record
  */
 fn read_start(sock: tcp_socket)
-    -> result::result<comm::Port<
-        result::result<~[u8], tcp_err_data>>, tcp_err_data> unsafe {
+    -> result::Result<comm::Port<
+        result::Result<~[u8], tcp_err_data>>, tcp_err_data> unsafe {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     read_start_common_impl(socket_data)
 }
@@ -327,8 +327,8 @@ fn read_start(sock: tcp_socket)
  * * `sock` - a `net::tcp::tcp_socket` that you wish to stop reading on
  */
 fn read_stop(sock: tcp_socket,
-             -read_port: comm::Port<result::result<~[u8], tcp_err_data>>) ->
-    result::result<(), tcp_err_data> unsafe {
+             -read_port: comm::Port<result::Result<~[u8], tcp_err_data>>) ->
+    result::Result<(), tcp_err_data> unsafe {
     log(debug, fmt!("taking the read_port out of commission %?", read_port));
     let socket_data = ptr::addr_of(*sock.socket_data);
     read_stop_common_impl(socket_data)
@@ -350,7 +350,7 @@ fn read_stop(sock: tcp_socket,
  * read attempt. Pass `0u` to wait indefinitely
  */
 fn read(sock: tcp_socket, timeout_msecs: uint)
-    -> result::result<~[u8],tcp_err_data> {
+    -> result::Result<~[u8],tcp_err_data> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     read_common_impl(socket_data, timeout_msecs)
 }
@@ -385,7 +385,7 @@ fn read(sock: tcp_socket, timeout_msecs: uint)
  * read attempt. Pass `0u` to wait indefinitely
  */
 fn read_future(sock: tcp_socket, timeout_msecs: uint)
-    -> future::Future<result::result<~[u8],tcp_err_data>> {
+    -> future::Future<result::Result<~[u8],tcp_err_data>> {
     let socket_data = ptr::addr_of(*(sock.socket_data));
     do future_spawn {
         read_common_impl(socket_data, timeout_msecs)
@@ -462,7 +462,7 @@ fn read_future(sock: tcp_socket, timeout_msecs: uint)
  * as the `err` variant of a `result`.
  */
 fn accept(new_conn: tcp_new_connection)
-    -> result::result<tcp_socket, tcp_err_data> unsafe {
+    -> result::Result<tcp_socket, tcp_err_data> unsafe {
 
     match new_conn{
       new_tcp_conn(server_handle_ptr) => {
@@ -524,8 +524,8 @@ fn accept(new_conn: tcp_new_connection)
         }
         // UNSAFE LIBUV INTERACTION END
         match core::comm::recv(result_po) {
-          Some(err_data) => result::err(err_data),
-          None => result::ok(tcp_socket(client_socket_data))
+          Some(err_data) => result::Err(err_data),
+          None => result::Ok(tcp_socket(client_socket_data))
         }
       }
     }
@@ -564,7 +564,7 @@ fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
           on_establish_cb: fn~(comm::Chan<Option<tcp_err_data>>),
           +new_connect_cb: fn~(tcp_new_connection,
                                comm::Chan<Option<tcp_err_data>>))
-    -> result::result<(), tcp_listen_err_data> unsafe {
+    -> result::Result<(), tcp_listen_err_data> unsafe {
     do listen_common(host_ip, port, backlog, iotask, on_establish_cb)
         // on_connect_cb
         |handle| unsafe {
@@ -580,7 +580,7 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
           iotask: iotask,
           on_establish_cb: fn~(comm::Chan<Option<tcp_err_data>>),
           -on_connect_cb: fn~(*uv::ll::uv_tcp_t))
-    -> result::result<(), tcp_listen_err_data> unsafe {
+    -> result::Result<(), tcp_listen_err_data> unsafe {
     let stream_closed_po = core::comm::port::<()>();
     let kill_po = core::comm::port::<Option<tcp_err_data>>();
     let kill_ch = core::comm::chan(kill_po);
@@ -666,16 +666,16 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
         match err_data.err_name {
           ~"EACCES" => {
             log(debug, ~"Got EACCES error");
-            result::err(access_denied)
+            result::Err(access_denied)
           }
           ~"EADDRINUSE" => {
             log(debug, ~"Got EADDRINUSE error");
-            result::err(address_in_use)
+            result::Err(address_in_use)
           }
           _ => {
             log(debug, fmt!("Got '%s' '%s' libuv error",
                             err_data.err_name, err_data.err_msg));
-            result::err(
+            result::Err(
                 generic_listen_err(err_data.err_name, err_data.err_msg))
           }
         }
@@ -692,10 +692,10 @@ fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
         stream_closed_po.recv();
         match kill_result {
           // some failure post bind/listen
-          Some(err_data) => result::err(generic_listen_err(err_data.err_name,
+          Some(err_data) => result::Err(generic_listen_err(err_data.err_name,
                                                            err_data.err_msg)),
           // clean exit
-          None => result::ok(())
+          None => result::Ok(())
         }
       }
     }
@@ -722,29 +722,29 @@ fn socket_buf(-sock: tcp_socket) -> tcp_socket_buf {
 
 /// Convenience methods extending `net::tcp::tcp_socket`
 impl tcp_socket {
-    fn read_start() -> result::result<comm::Port<
-        result::result<~[u8], tcp_err_data>>, tcp_err_data> {
+    fn read_start() -> result::Result<comm::Port<
+        result::Result<~[u8], tcp_err_data>>, tcp_err_data> {
         read_start(self)
     }
     fn read_stop(-read_port:
-                 comm::Port<result::result<~[u8], tcp_err_data>>) ->
-        result::result<(), tcp_err_data> {
+                 comm::Port<result::Result<~[u8], tcp_err_data>>) ->
+        result::Result<(), tcp_err_data> {
         read_stop(self, read_port)
     }
     fn read(timeout_msecs: uint) ->
-        result::result<~[u8], tcp_err_data> {
+        result::Result<~[u8], tcp_err_data> {
         read(self, timeout_msecs)
     }
     fn read_future(timeout_msecs: uint) ->
-        future::Future<result::result<~[u8], tcp_err_data>> {
+        future::Future<result::Result<~[u8], tcp_err_data>> {
         read_future(self, timeout_msecs)
     }
     fn write(raw_write_data: ~[u8])
-        -> result::result<(), tcp_err_data> {
+        -> result::Result<(), tcp_err_data> {
         write(self, raw_write_data)
     }
     fn write_future(raw_write_data: ~[u8])
-        -> future::Future<result::result<(), tcp_err_data>> {
+        -> future::Future<result::Result<(), tcp_err_data>> {
         write_future(self, raw_write_data)
     }
 }
@@ -856,13 +856,13 @@ fn tear_down_socket_data(socket_data: @tcp_socket_data) unsafe {
 
 // shared implementation for tcp::read
 fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
-    -> result::result<~[u8],tcp_err_data> unsafe {
+    -> result::Result<~[u8],tcp_err_data> unsafe {
     log(debug, ~"starting tcp::read");
     let iotask = (*socket_data).iotask;
     let rs_result = read_start_common_impl(socket_data);
     if result::is_err(rs_result) {
         let err_data = result::get_err(rs_result);
-        result::err(err_data)
+        result::Err(err_data)
     }
     else {
         log(debug, ~"tcp::read before recv_timeout");
@@ -881,7 +881,7 @@ fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
                 err_msg: ~"req timed out"
             };
             read_stop_common_impl(socket_data);
-            result::err(err_data)
+            result::Err(err_data)
           }
           Some(data_result) => {
             log(debug, ~"tcp::read got data");
@@ -894,7 +894,7 @@ fn read_common_impl(socket_data: *tcp_socket_data, timeout_msecs: uint)
 
 // shared impl for read_stop
 fn read_stop_common_impl(socket_data: *tcp_socket_data) ->
-    result::result<(), tcp_err_data> unsafe {
+    result::Result<(), tcp_err_data> unsafe {
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let stop_po = core::comm::port::<Option<tcp_err_data>>();
     let stop_ch = core::comm::chan(stop_po);
@@ -913,15 +913,15 @@ fn read_stop_common_impl(socket_data: *tcp_socket_data) ->
         }
     };
     match core::comm::recv(stop_po) {
-      Some(err_data) => result::err(err_data.to_tcp_err()),
-      None => result::ok(())
+      Some(err_data) => result::Err(err_data.to_tcp_err()),
+      None => result::Ok(())
     }
 }
 
 // shared impl for read_start
 fn read_start_common_impl(socket_data: *tcp_socket_data)
-    -> result::result<comm::Port<
-        result::result<~[u8], tcp_err_data>>, tcp_err_data> unsafe {
+    -> result::Result<comm::Port<
+        result::Result<~[u8], tcp_err_data>>, tcp_err_data> unsafe {
     let stream_handle_ptr = (*socket_data).stream_handle_ptr;
     let start_po = core::comm::port::<Option<uv::ll::uv_err_data>>();
     let start_ch = core::comm::chan(start_po);
@@ -943,8 +943,8 @@ fn read_start_common_impl(socket_data: *tcp_socket_data)
         }
     };
     match core::comm::recv(start_po) {
-      Some(err_data) => result::err(err_data.to_tcp_err()),
-      None => result::ok((*socket_data).reader_po)
+      Some(err_data) => result::Err(err_data.to_tcp_err()),
+      None => result::Ok((*socket_data).reader_po)
     }
 }
 
@@ -953,7 +953,7 @@ fn read_start_common_impl(socket_data: *tcp_socket_data)
 // shared implementation used by write and write_future
 fn write_common_impl(socket_data_ptr: *tcp_socket_data,
                      raw_write_data: ~[u8])
-    -> result::result<(), tcp_err_data> unsafe {
+    -> result::Result<(), tcp_err_data> unsafe {
     let write_req_ptr = ptr::addr_of((*socket_data_ptr).write_req);
     let stream_handle_ptr =
         (*socket_data_ptr).stream_handle_ptr;
@@ -989,8 +989,8 @@ fn write_common_impl(socket_data_ptr: *tcp_socket_data,
     // ownership of everything to the I/O task and let it deal with the
     // aftermath, so we don't have to sit here blocking.
     match core::comm::recv(result_po) {
-      tcp_write_success => result::ok(()),
-      tcp_write_error(err_data) => result::err(err_data.to_tcp_err())
+      tcp_write_success => result::Ok(()),
+      tcp_write_error(err_data) => result::Err(err_data.to_tcp_err())
     }
 }
 
@@ -1083,7 +1083,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
         log(debug, fmt!("on_tcp_read_cb: incoming err.. name %? msg %?",
                         err_data.err_name, err_data.err_msg));
         let reader_ch = (*socket_data_ptr).reader_ch;
-        core::comm::send(reader_ch, result::err(err_data));
+        core::comm::send(reader_ch, result::Err(err_data));
       }
       // do nothing .. unneeded buf
       0 => (),
@@ -1094,7 +1094,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
         let reader_ch = (*socket_data_ptr).reader_ch;
         let buf_base = uv::ll::get_base_from_buf(buf);
         let new_bytes = vec::unsafe::from_buf(buf_base, nread as uint);
-        core::comm::send(reader_ch, result::ok(new_bytes));
+        core::comm::send(reader_ch, result::Ok(new_bytes));
       }
     }
     uv::ll::free_base_of_buf(buf);
@@ -1197,8 +1197,8 @@ enum conn_attempt {
 }
 
 type tcp_socket_data = {
-    reader_po: comm::Port<result::result<~[u8], tcp_err_data>>,
-    reader_ch: comm::Chan<result::result<~[u8], tcp_err_data>>,
+    reader_po: comm::Port<result::Result<~[u8], tcp_err_data>>,
+    reader_ch: comm::Chan<result::Result<~[u8], tcp_err_data>>,
     stream_handle_ptr: *uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
@@ -1515,7 +1515,7 @@ mod test {
                             ~"connection!");
                         let received_req_bytes = read(sock, 0u);
                         match received_req_bytes {
-                          result::ok(data) => {
+                          result::Ok(data) => {
                             log(debug, ~"SERVER: got REQ str::from_bytes..");
                             log(debug, fmt!("SERVER: REQ data len: %?",
                                             vec::len(data)));
@@ -1526,7 +1526,7 @@ mod test {
                             log(debug, ~"SERVER: after write.. die");
                             core::comm::send(kill_ch, None);
                           }
-                          result::err(err_data) => {
+                          result::Err(err_data) => {
                             log(debug, fmt!("SERVER: error recvd: %s %s",
                                 err_data.err_name, err_data.err_msg));
                             core::comm::send(kill_ch, Some(err_data));
@@ -1585,7 +1585,7 @@ mod test {
 
     fn run_tcp_test_client(server_ip: ~str, server_port: uint, resp: ~str,
                           client_ch: comm::Chan<~str>,
-                          iotask: iotask) -> result::result<~str,
+                          iotask: iotask) -> result::Result<~str,
                                                     tcp_connect_err_data> {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
 
@@ -1594,7 +1594,7 @@ mod test {
         if result::is_err(connect_result) {
             log(debug, ~"CLIENT: failed to connect");
             let err_data = result::get_err(connect_result);
-            err(err_data)
+            Err(err_data)
         }
         else {
             let sock = result::unwrap(connect_result);
@@ -1603,14 +1603,14 @@ mod test {
             let read_result = sock.read(0u);
             if read_result.is_err() {
                 log(debug, ~"CLIENT: failure to read");
-                ok(~"")
+                Ok(~"")
             }
             else {
                 client_ch.send(str::from_bytes(read_result.get()));
                 let ret_val = client_ch.recv();
                 log(debug, fmt!("CLIENT: after client_ch recv ret: '%s'",
                    ret_val));
-                ok(ret_val)
+                Ok(ret_val)
             }
         }
     }

@@ -330,38 +330,38 @@ fn query_to_str(query: query) -> ~str {
 }
 
 // returns the scheme and the rest of the url, or a parsing error
-fn get_scheme(rawurl: ~str) -> result::result<(~str, ~str), @~str> {
+fn get_scheme(rawurl: ~str) -> result::Result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
         match c {
           'A' to 'Z' | 'a' to 'z' => again,
           '0' to '9' | '+' | '-' | '.' => {
             if i == 0 {
-                return result::err(@~"url: Scheme must begin with a letter.");
+                return result::Err(@~"url: Scheme must begin with a letter.");
             }
             again;
           }
           ':' => {
             if i == 0 {
-                return result::err(@~"url: Scheme cannot be empty.");
+                return result::Err(@~"url: Scheme cannot be empty.");
             } else {
-                return result::ok((rawurl.slice(0,i),
+                return result::Ok((rawurl.slice(0,i),
                                 rawurl.slice(i+1,str::len(rawurl))));
             }
           }
           _ => {
-            return result::err(@~"url: Invalid character in scheme.");
+            return result::Err(@~"url: Invalid character in scheme.");
           }
         }
     };
-    return result::err(@~"url: Scheme must be terminated with a colon.");
+    return result::Err(@~"url: Scheme must be terminated with a colon.");
 }
 
 // returns userinfo, host, port, and unparsed part, or an error
 fn get_authority(rawurl: ~str) ->
-    result::result<(Option<userinfo>, ~str, Option<~str>, ~str), @~str> {
+    result::Result<(Option<userinfo>, ~str, Option<~str>, ~str), @~str> {
     if !str::starts_with(rawurl, ~"//") {
         // there is no authority.
-        return result::ok((option::None, ~"", option::None, copy rawurl));
+        return result::Ok((option::None, ~"", option::None, copy rawurl));
     }
 
     enum state {
@@ -407,7 +407,7 @@ fn get_authority(rawurl: ~str) ->
             // separators, don't change anything
           }
           _ => {
-            return result::err(@~"Illegal character in authority");
+            return result::Err(@~"Illegal character in authority");
           }
         }
 
@@ -423,7 +423,7 @@ fn get_authority(rawurl: ~str) ->
               pass_host_port => {
                 // multiple colons means ipv6 address.
                 if in == unreserved {
-                    return result::err(
+                    return result::Err(
                         @~"Illegal characters in IPv6 address.");
                 }
                 st = ip6_host;
@@ -432,13 +432,13 @@ fn get_authority(rawurl: ~str) ->
                 pos = i;
                 // can't be sure whether this is an ipv6 address or a port
                 if in == unreserved {
-                    return result::err(@~"Illegal characters in authority.");
+                    return result::Err(@~"Illegal characters in authority.");
                 }
                 st = ip6_port;
               }
               ip6_port => {
                 if in == unreserved {
-                    return result::err(@~"Illegal characters in authority.");
+                    return result::Err(@~"Illegal characters in authority.");
                 }
                 st = ip6_host;
               }
@@ -450,7 +450,7 @@ fn get_authority(rawurl: ~str) ->
                 }
               }
               _ => {
-                return result::err(@~"Invalid ':' in authority.");
+                return result::Err(@~"Invalid ':' in authority.");
               }
             }
             in = digit; // reset input class
@@ -474,7 +474,7 @@ fn get_authority(rawurl: ~str) ->
                 st = in_host;
               }
               _ => {
-                return result::err(@~"Invalid '@' in authority.");
+                return result::Err(@~"Invalid '@' in authority.");
               }
             }
             begin = i+1;
@@ -507,7 +507,7 @@ fn get_authority(rawurl: ~str) ->
       }
       pass_host_port | ip6_port => {
         if in != digit {
-            return result::err(@~"Non-digit characters in port.");
+            return result::Err(@~"Non-digit characters in port.");
         }
         host = str::slice(rawurl, begin, pos);
         port = option::Some(str::slice(rawurl, pos+1, end));
@@ -517,7 +517,7 @@ fn get_authority(rawurl: ~str) ->
       }
       in_port => {
         if in != digit {
-            return result::err(@~"Non-digit characters in port.");
+            return result::Err(@~"Non-digit characters in port.");
         }
         port = option::Some(str::slice(rawurl, pos+1, end));
       }
@@ -525,13 +525,13 @@ fn get_authority(rawurl: ~str) ->
 
     let rest = if host_is_end_plus_one() { ~"" }
     else { str::slice(rawurl, end, len) };
-    return result::ok((userinfo, host, port, rest));
+    return result::Ok((userinfo, host, port, rest));
 }
 
 
 // returns the path and unparsed part of url, or an error
 fn get_path(rawurl: ~str, authority : bool) ->
-    result::result<(~str, ~str), @~str> {
+    result::Result<(~str, ~str), @~str> {
     let len = str::len(rawurl);
     let mut end = len;
     for str::each_chari(rawurl) |i,c| {
@@ -545,39 +545,39 @@ fn get_path(rawurl: ~str, authority : bool) ->
             end = i;
             break;
           }
-          _ => return result::err(@~"Invalid character in path.")
+          _ => return result::Err(@~"Invalid character in path.")
         }
     }
 
     if authority {
         if end != 0 && !str::starts_with(rawurl, ~"/") {
-            return result::err(@~"Non-empty path must begin with\
+            return result::Err(@~"Non-empty path must begin with\
                                '/' in presence of authority.");
         }
     }
 
-    return result::ok((decode_component(str::slice(rawurl, 0, end)),
+    return result::Ok((decode_component(str::slice(rawurl, 0, end)),
                     str::slice(rawurl, end, len)));
 }
 
 // returns the parsed query and the fragment, if present
 fn get_query_fragment(rawurl: ~str) ->
-    result::result<(query, Option<~str>), @~str> {
+    result::Result<(query, Option<~str>), @~str> {
     if !str::starts_with(rawurl, ~"?") {
         if str::starts_with(rawurl, ~"#") {
             let f = decode_component(str::slice(rawurl,
                                                 1,
                                                 str::len(rawurl)));
-            return result::ok((~[], option::Some(f)));
+            return result::Ok((~[], option::Some(f)));
         } else {
-            return result::ok((~[], option::None));
+            return result::Ok((~[], option::None));
         }
     }
     let (q, r) = split_char_first(str::slice(rawurl, 1,
                                              str::len(rawurl)), '#');
     let f = if str::len(r) != 0 {
         option::Some(decode_component(r)) } else { option::None };
-    return result::ok((query_from_str(q), f));
+    return result::Ok((query_from_str(q), f));
 }
 
 /**
@@ -593,18 +593,18 @@ fn get_query_fragment(rawurl: ~str) ->
  *
  */
 
-fn from_str(rawurl: ~str) -> result::result<url, ~str> {
+fn from_str(rawurl: ~str) -> result::Result<url, ~str> {
     // scheme
     let mut schm = get_scheme(rawurl);
     if result::is_err(schm) {
-        return result::err(copy *result::get_err(schm));
+        return result::Err(copy *result::get_err(schm));
     }
     let (scheme, rest) = result::unwrap(schm);
 
     // authority
     let mut auth = get_authority(rest);
     if result::is_err(auth) {
-        return result::err(copy *result::get_err(auth));
+        return result::Err(copy *result::get_err(auth));
     }
     let (userinfo, host, port, rest) = result::unwrap(auth);
 
@@ -612,18 +612,18 @@ fn from_str(rawurl: ~str) -> result::result<url, ~str> {
     let has_authority = if host == ~"" { false } else { true };
     let mut pth = get_path(rest, has_authority);
     if result::is_err(pth) {
-        return result::err(copy *result::get_err(pth));
+        return result::Err(copy *result::get_err(pth));
     }
     let (path, rest) = result::unwrap(pth);
 
     // query and fragment
     let mut qry = get_query_fragment(rest);
     if result::is_err(qry) {
-        return result::err(copy *result::get_err(qry));
+        return result::Err(copy *result::get_err(qry));
     }
     let (query, fragment) = result::unwrap(qry);
 
-    return result::ok(url(scheme, userinfo, host,
+    return result::Ok(url(scheme, userinfo, host,
                        port, path, query, fragment));
 }
 

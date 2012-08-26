@@ -855,7 +855,7 @@ mod tests {
         let m = ~mutex();
         let m2 = ~m.clone();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             do m2.lock {
                 fail;
             }
@@ -871,7 +871,7 @@ mod tests {
         let m = ~mutex();
         let m2 = ~m.clone();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             let (c,p) = pipes::stream();
             do task::spawn { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
@@ -896,7 +896,7 @@ mod tests {
         let m2 = ~m.clone();
         let (c,p) = pipes::stream();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             let mut sibling_convos = ~[];
             for 2.times {
                 let (c,p) = pipes::stream();
@@ -1196,7 +1196,7 @@ mod tests {
         let x = ~rwlock();
         let x2 = ~x.clone();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             do lock_rwlock_in_mode(x2, mode1) {
                 fail;
             }

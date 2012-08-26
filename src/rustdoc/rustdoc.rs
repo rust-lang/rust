@@ -108,8 +108,8 @@ fn main(args: ~[~str]) {
     }
 
     let config = match config::parse_config(args) {
-      result::ok(config) => config,
-      result::err(err) => {
+      result::Ok(config) => config,
+      result::Err(err) => {
         io::println(fmt!("error: %s", err));
         return;
       }

@@ -434,7 +434,7 @@ struct lookup {
 
     fn check_type_match(impl_ty: ty::t,
                         mode: method_lookup_mode)
-        -> result<(), ty::type_err> {
+        -> Result<(), ty::type_err> {
         // Depending on our argument, we find potential matches by
         // checking subtypability, type assignability, or reference
         // subtypability. Collect the matches.
@@ -492,8 +492,8 @@ struct lookup {
             let matches = self.check_type_match(impl_ty, mode);
             debug!("matches = %?", matches);
             match matches {
-              result::err(_) => { /* keep looking */ }
-              result::ok(_) => {
+              result::Err(_) => { /* keep looking */ }
+              result::Ok(_) => {
                 if !self.candidate_impls.contains_key(im.did) {
                     let fty = self.ty_from_did(m.did);
                     self.candidates.push(
@@ -650,8 +650,8 @@ struct lookup {
                 // is not from an impl, this'll basically be a no-nop.
                 match self.fcx.mk_assignty(self.self_expr, self.borrow_lb,
                                            cand.self_ty, cand.rcvr_ty) {
-                  result::ok(_) => (),
-                  result::err(_) => {
+                  result::Ok(_) => (),
+                  result::Err(_) => {
                     self.tcx().sess.span_bug(
                         self.expr.span,
                         fmt!("%s was assignable to %s but now is not?",

@@ -21,7 +21,7 @@ import pipes::send;
 import pipes::recv;
 
 import core::result;
-import result::{ok, err};
+import result::{Ok, Err};
 
 fn fib(n: int) -> int {
     fn pfib(c: chan<int>, n: int) {
@@ -52,8 +52,8 @@ fn parse_opts(argv: ~[~str]) -> config {
     let opt_args = vec::slice(argv, 1u, vec::len(argv));
 
     match getopts::getopts(opt_args, opts) {
-      ok(m) => { return {stress: getopts::opt_present(m, ~"stress")} }
-      err(_) => { fail; }
+      Ok(m) => { return {stress: getopts::opt_present(m, ~"stress")} }
+      Err(_) => { fail; }
     }
 }
 

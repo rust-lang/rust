@@ -38,7 +38,7 @@ independently:
 
 */
 
-import result::result;
+import result::Result;
 import syntax::{ast, ast_util, ast_map};
 import ast::spanned;
 import ast::{required, provided};
@@ -226,8 +226,8 @@ fn require_same_types(
     }
 
     match infer::mk_eqty(l_infcx, t1_is_expected, span, t1, t2) {
-      result::ok(()) => true,
-      result::err(ref terr) => {
+      result::Ok(()) => true,
+      result::Err(ref terr) => {
         l_tcx.sess.span_err(span, msg() + ~": " +
             ty::type_err_to_str(l_tcx, terr));
         false

@@ -7,7 +7,7 @@ import rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
                                      get_cargo_sysroot, libdir};
 import syntax::diagnostic;
 
-import result::{ok, err};
+import result::{Ok, Err};
 import io::WriterUtil;
 import std::{map, json, tempfile, term, sort, getopts};
 import map::hashmap;
@@ -429,14 +429,14 @@ fn try_parse_sources(filename: &Path, sources: map::hashmap<~str, source>) {
     if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
     match json::from_str(result::get(c)) {
-        ok(json::dict(j)) => {
+        Ok(json::dict(j)) => {
           for j.each |k, v| {
                 sources.insert(k, parse_source(k, v));
                 debug!("source: %s", k);
             }
         }
-        ok(_) => fail ~"malformed sources.json",
-        err(e) => fail fmt!("%s:%s", filename.to_str(), e.to_str())
+        Ok(_) => fail ~"malformed sources.json",
+        Err(e) => fail fmt!("%s:%s", filename.to_str(), e.to_str())
     }
 }
 
@@ -548,17 +548,17 @@ fn load_source_info(c: cargo, src: source) {
     if !os::path_exists(&srcfile) { return; }
     let srcstr = io::read_whole_file_str(&srcfile);
     match json::from_str(result::get(srcstr)) {
-        ok(json::dict(s)) => {
+        Ok(json::dict(s)) => {
             let o = parse_source(src.name, json::dict(s));
 
             src.key = o.key;
             src.keyfp = o.keyfp;
         }
-        ok(_) => {
+        Ok(_) => {
             warn(~"malformed source.json: " + src.name +
                  ~"(source info is not a dict)");
         }
-        err(e) => {
+        Err(e) => {
             warn(fmt!("%s:%s", src.name, e.to_str()));
         }
     };
@@ -570,7 +570,7 @@ fn load_source_packages(c: cargo, src: source) {
     if !os::path_exists(&pkgfile) { return; }
     let pkgstr = io::read_whole_file_str(&pkgfile);
     match json::from_str(result::get(pkgstr)) {
-        ok(json::list(js)) => {
+        Ok(json::list(js)) => {
           for (*js).each |j| {
                 match j {
                     json::dict(p) => {
@@ -583,11 +583,11 @@ fn load_source_packages(c: cargo, src: source) {
                 }
             }
         }
-        ok(_) => {
+        Ok(_) => {
             warn(~"malformed packages.json: " + src.name +
                  ~"(packages is not a list)");
         }
-        err(e) => {
+        Err(e) => {
             warn(fmt!("%s:%s", src.name, e.to_str()));
         }
     };
@@ -595,8 +595,8 @@ fn load_source_packages(c: cargo, src: source) {
 
 fn build_cargo_options(argv: ~[~str]) -> options {
     let matches = match getopts::getopts(argv, opts()) {
-        result::ok(m) => m,
-        result::err(f) => {
+        result::Ok(m) => m,
+        result::Err(f) => {
             fail fmt!("%s", getopts::fail_str(f));
         }
     };
@@ -626,8 +626,8 @@ fn build_cargo_options(argv: ~[~str]) -> options {
 
 fn configure(opts: options) -> cargo {
     let home = match get_cargo_root() {
-        ok(home) => home,
-        err(_err) => result::get(get_cargo_sysroot())
+        Ok(home) => home,
+        Err(_err) => result::get(get_cargo_sysroot())
     };
 
     let get_cargo_dir = match opts.mode {
@@ -1571,7 +1571,7 @@ fn dump_sources(c: cargo) {
     }
 
     match io::buffered_file_writer(&out) {
-        result::ok(writer) => {
+        result::Ok(writer) => {
             let hash = map::str_hash();
             let root = json::dict(hash);
 
@@ -1600,7 +1600,7 @@ fn dump_sources(c: cargo) {
 
             writer.write_str(json::to_str(root));
         }
-        result::err(e) => {
+        result::Err(e) => {
             error(fmt!("could not dump sources: %s", e));
         }
     }

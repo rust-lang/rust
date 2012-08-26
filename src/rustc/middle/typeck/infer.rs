@@ -255,7 +255,7 @@ import middle::ty::{tv_vid, tvi_vid, region_vid, vid,
 import syntax::{ast, ast_util};
 import syntax::ast::{ret_style, purity};
 import util::ppaux::{ty_to_str, mt_to_str};
-import result::{result, ok, err, map_vec, map_vec2, iter_vec2};
+import result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
 import ty::{mk_fn, type_is_bot};
 import check::regionmanip::{replace_bound_regions_in_fn_ty};
 import driver::session::session;
@@ -309,7 +309,7 @@ type assignment = {
 type bound<T:copy> = Option<T>;
 type bounds<T:copy> = {lb: bound<T>, ub: bound<T>};
 
-type cres<T> = result<T,ty::type_err>;
+type cres<T> = Result<T,ty::type_err>;
 
 enum infer_ctxt = @{
     tcx: ty::ctxt,
@@ -358,8 +358,8 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
     }
 }
 
-type ures = result::result<(), ty::type_err>;
-type fres<T> = result::result<T, fixup_err>;
+type ures = result::Result<(), ty::type_err>;
+type fres<T> = result::Result<T, fixup_err>;
 
 fn new_vals_and_bindings<V:copy, T:copy>() -> vals_and_bindings<V, T> {
     vals_and_bindings {
@@ -463,14 +463,14 @@ fn resolve_region(cx: infer_ctxt, r: ty::region, modes: uint)
 fn resolve_borrowings(cx: infer_ctxt) {
     for cx.borrowings.each |item| {
         match resolve_region(cx, item.scope, resolve_all|force_all) {
-          ok(region) => {
+          Ok(region) => {
             debug!("borrowing for expr %d resolved to region %?, mutbl %?",
                    item.expr_id, region, item.mutbl);
             cx.tcx.borrowings.insert(
                 item.expr_id, {region: region, mutbl: item.mutbl});
           }
 
-          err(e) => {
+          Err(e) => {
             let str = fixup_err_to_str(e);
             cx.tcx.sess.span_err(
                 item.span,
@@ -481,13 +481,13 @@ fn resolve_borrowings(cx: infer_ctxt) {
 }
 
 trait then {
-    fn then<T:copy>(f: fn() -> result<T,ty::type_err>)
-        -> result<T,ty::type_err>;
+    fn then<T:copy>(f: fn() -> Result<T,ty::type_err>)
+        -> Result<T,ty::type_err>;
 }
 
 impl ures: then {
-    fn then<T:copy>(f: fn() -> result<T,ty::type_err>)
-        -> result<T,ty::type_err> {
+    fn then<T:copy>(f: fn() -> Result<T,ty::type_err>)
+        -> Result<T,ty::type_err> {
         self.chain(|_i| f())
     }
 }
@@ -500,8 +500,8 @@ trait cres_helpers<T> {
 impl<T:copy> cres<T>: cres_helpers<T> {
     fn to_ures() -> ures {
         match self {
-          ok(_v) => ok(()),
-          err(e) => err(e)
+          Ok(_v) => Ok(()),
+          Err(e) => Err(e)
         }
     }
 
@@ -510,14 +510,14 @@ impl<T:copy> cres<T>: cres_helpers<T> {
             if s == t {
                 self
             } else {
-                err(f())
+                Err(f())
             }
         }
     }
 }
 
 fn uok() -> ures {
-    ok(())
+    Ok(())
 }
 
 fn rollback_to<V:copy vid, T:copy>(
@@ -570,7 +570,7 @@ impl infer_ctxt {
     }
 
     /// Execute `f` and commit the bindings if successful
-    fn commit<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
+    fn commit<T,E>(f: fn() -> Result<T,E>) -> Result<T,E> {
         assert !self.in_snapshot();
 
         debug!("commit()");
@@ -588,21 +588,21 @@ impl infer_ctxt {
     }
 
     /// Execute `f`, unroll bindings on failure
-    fn try<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
+    fn try<T,E>(f: fn() -> Result<T,E>) -> Result<T,E> {
         debug!("try()");
         do indent {
             let snapshot = self.start_snapshot();
             let r = f();
             match r {
-              ok(_) => (),
-              err(_) => self.rollback_to(&snapshot)
+              Ok(_) => (),
+              Err(_) => self.rollback_to(&snapshot)
             }
             r
         }
     }
 
     /// Execute `f` then unroll any bindings it creates
-    fn probe<T,E>(f: fn() -> result<T,E>) -> result<T,E> {
+    fn probe<T,E>(f: fn() -> Result<T,E>) -> Result<T,E> {
         debug!("probe()");
         do indent {
             let snapshot = self.start_snapshot();
@@ -674,8 +674,8 @@ impl infer_ctxt {
 
     fn resolve_type_vars_if_possible(typ: ty::t) -> ty::t {
         match resolve_type(self, typ, resolve_nested_tvar | resolve_ivar) {
-          result::ok(new_type) => new_type,
-          result::err(_) => typ
+          result::Ok(new_type) => new_type,
+          result::Err(_) => typ
         }
     }
 }

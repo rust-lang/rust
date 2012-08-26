@@ -11,8 +11,8 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
     Option<ty::t> {
     if !ty::type_needs_infer(typ) { return Some(typ); }
     match resolve_type(fcx.infcx, typ, resolve_all | force_all) {
-      result::ok(new_type) => return Some(new_type),
-      result::err(e) => {
+      result::Ok(new_type) => return Some(new_type),
+      result::Err(e) => {
         if !fcx.ccx.tcx.sess.has_errors() {
             fcx.ccx.tcx.sess.span_err(
                 sp,
@@ -128,13 +128,13 @@ fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
     let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
     match resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
-      result::ok(lty) => {
+      result::Ok(lty) => {
         debug!("Type for local %s (id %d) resolved to %s",
                pat_to_str(l.node.pat, wbcx.fcx.ccx.tcx.sess.intr()),l.node.id,
                wbcx.fcx.infcx.ty_to_str(lty));
         write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.node.id, lty);
       }
-      result::err(e) => {
+      result::Err(e) => {
         wbcx.fcx.ccx.tcx.sess.span_err(
             l.span,
             fmt!("cannot determine a type \

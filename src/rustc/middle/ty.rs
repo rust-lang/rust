@@ -2,7 +2,7 @@
 #[warn(deprecated_pattern)];
 
 import std::{map, smallintmap};
-import result::result;
+import result::Result;
 import std::map::hashmap;
 import driver::session;
 import session::session;
@@ -2613,24 +2613,24 @@ fn arg_mode(cx: ctxt, a: arg) -> ast::rmode { resolved_mode(cx, a.mode) }
 
 // Unifies `m1` and `m2`.  Returns unified value or failure code.
 fn unify_mode(cx: ctxt, modes: expected_found<ast::mode>)
-    -> result<ast::mode, type_err> {
+    -> Result<ast::mode, type_err> {
 
     let m1 = modes.expected;
     let m2 = modes.found;
     match (canon_mode(cx, m1), canon_mode(cx, m2)) {
       (m1, m2) if (m1 == m2) => {
-        result::ok(m1)
+        result::Ok(m1)
       }
       (ast::infer(_), ast::infer(id2)) => {
         cx.inferred_modes.insert(id2, m1);
-        result::ok(m1)
+        result::Ok(m1)
       }
       (ast::infer(id), m) | (m, ast::infer(id)) => {
         cx.inferred_modes.insert(id, m);
-        result::ok(m1)
+        result::Ok(m1)
       }
       (_, _) => {
-        result::err(terr_mode_mismatch(modes))
+        result::Err(terr_mode_mismatch(modes))
       }
     }
 }
