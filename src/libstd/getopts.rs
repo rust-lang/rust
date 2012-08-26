@@ -62,6 +62,9 @@
  *     }
  */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import core::result::{Err, Ok};
 import core::option;
 import core::option::{Some, None};
@@ -93,29 +96,30 @@ enum occur { req, optional, multi, }
 /// A description of a possible option
 type opt = {name: name, hasarg: hasarg, occur: occur};
 
-fn mkname(nm: ~str) -> name {
+fn mkname(nm: &str) -> name {
+    let unm = str::from_slice(nm);
     return if str::len(nm) == 1u {
-            short(str::char_at(nm, 0u))
-        } else { long(nm) };
+            short(str::char_at(unm, 0u))
+        } else { long(unm) };
 }
 
 /// Create an option that is required and takes an argument
-fn reqopt(name: ~str) -> opt {
+fn reqopt(name: &str) -> opt {
     return {name: mkname(name), hasarg: yes, occur: req};
 }
 
 /// Create an option that is optional and takes an argument
-fn optopt(name: ~str) -> opt {
+fn optopt(name: &str) -> opt {
     return {name: mkname(name), hasarg: yes, occur: optional};
 }
 
 /// Create an option that is optional and does not take an argument
-fn optflag(name: ~str) -> opt {
+fn optflag(name: &str) -> opt {
     return {name: mkname(name), hasarg: no, occur: optional};
 }
 
 /// Create an option that is optional and takes an optional argument
-fn optflagopt(name: ~str) -> opt {
+fn optflagopt(name: &str) -> opt {
     return {name: mkname(name), hasarg: maybe, occur: optional};
 }
 
@@ -123,7 +127,7 @@ fn optflagopt(name: ~str) -> opt {
  * Create an option that is optional, takes an argument, and may occur
  * multiple times
  */
-fn optmulti(name: ~str) -> opt {
+fn optmulti(name: &str) -> opt {
     return {name: mkname(name), hasarg: yes, occur: multi};
 }
 
@@ -135,18 +139,18 @@ enum optval { val(~str), given, }
  */
 type matches = {opts: ~[opt], vals: ~[~[optval]], free: ~[~str]};
 
-fn is_arg(arg: ~str) -> bool {
+fn is_arg(arg: &str) -> bool {
     return str::len(arg) > 1u && arg[0] == '-' as u8;
 }
 
-fn name_str(nm: name) -> ~str {
-    return match nm {
+fn name_str(nm: &name) -> ~str {
+    return match *nm {
       short(ch) => str::from_char(ch),
       long(s) => s
     };
 }
 
-fn find_opt(opts: ~[opt], nm: name) -> Option<uint> {
+fn find_opt(opts: &[opt], +nm: name) -> Option<uint> {
     vec::position(opts, |opt| opt.name == nm)
 }
 
@@ -163,7 +167,7 @@ enum fail_ {
 }
 
 /// Convert a `fail_` enum into an error string
-fn fail_str(f: fail_) -> ~str {
+fn fail_str(+f: fail_) -> ~str {
     return match f {
       argument_missing(nm) => ~"Argument to option '" + nm + ~"' missing.",
       unrecognized_option(nm) => ~"Unrecognized option: '" + nm + ~"'.",
@@ -188,7 +192,7 @@ type result = result::Result<matches, fail_>;
  * `opt_str`, etc. to interrogate results.  Returns `err(fail_)` on failure.
  * Use <fail_str> to get an error message.
  */
-fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
+fn getopts(args: &[~str], opts: &[opt]) -> result unsafe {
     let n_opts = vec::len::<opt>(opts);
     fn f(_x: uint) -> ~[optval] { return ~[]; }
     let vals = vec::to_mut(vec::from_fn(n_opts, f));
@@ -261,12 +265,12 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
                 name_pos += 1u;
                 let optid = match find_opt(opts, nm) {
                   Some(id) => id,
-                  None => return Err(unrecognized_option(name_str(nm)))
+                  None => return Err(unrecognized_option(name_str(&nm)))
                 };
                 match opts[optid].hasarg {
                   no => {
                     if !option::is_none::<~str>(i_arg) {
-                        return Err(unexpected_argument(name_str(nm)));
+                        return Err(unexpected_argument(name_str(&nm)));
                     }
                     vec::push(vals[optid], given);
                   }
@@ -283,7 +287,7 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
                         vec::push(vals[optid],
                                   val(option::get::<~str>(i_arg)));
                     } else if i + 1u == l {
-                        return Err(argument_missing(name_str(nm)));
+                        return Err(argument_missing(name_str(&nm)));
                     } else { i += 1u; vec::push(vals[optid], val(args[i])); }
                   }
                 }
@@ -297,22 +301,24 @@ fn getopts(args: ~[~str], opts: ~[opt]) -> result unsafe {
         let occ = opts[i].occur;
         if occ == req {
             if n == 0u {
-                return Err(option_missing(name_str(opts[i].name)));
+                return Err(option_missing(name_str(&(opts[i].name))));
             }
         }
         if occ != multi {
             if n > 1u {
-                return Err(option_duplicated(name_str(opts[i].name)));
+                return Err(option_duplicated(name_str(&(opts[i].name))));
             }
         }
         i += 1u;
     }
-    return Ok({opts: opts, vals: vec::from_mut(vals), free: free});
+    return Ok({opts: vec::from_slice(opts),
+               vals: vec::from_mut(vals),
+               free: free});
 }
 
-fn opt_vals(m: matches, nm: ~str) -> ~[optval] {
-    return match find_opt(m.opts, mkname(nm)) {
-      Some(id) => m.vals[id],
+fn opt_vals(+mm: matches, nm: &str) -> ~[optval] {
+    return match find_opt(mm.opts, mkname(nm)) {
+      Some(id) => mm.vals[id],
       None => {
         error!("No option '%s' defined", nm);
         fail
@@ -320,19 +326,19 @@ fn opt_vals(m: matches, nm: ~str) -> ~[optval] {
     };
 }
 
-fn opt_val(m: matches, nm: ~str) -> optval { return opt_vals(m, nm)[0]; }
+fn opt_val(+mm: matches, nm: &str) -> optval { return opt_vals(mm, nm)[0]; }
 
 /// Returns true if an option was matched
-fn opt_present(m: matches, nm: ~str) -> bool {
-    return vec::len::<optval>(opt_vals(m, nm)) > 0u;
+fn opt_present(+mm: matches, nm: &str) -> bool {
+    return vec::len::<optval>(opt_vals(mm, nm)) > 0u;
 }
 
 /// Returns true if any of several options were matched
-fn opts_present(m: matches, names: ~[~str]) -> bool {
+fn opts_present(+mm: matches, names: &[~str]) -> bool {
     for vec::each(names) |nm| {
-        match find_opt(m.opts, mkname(nm)) {
+        match find_opt(mm.opts, mkname(nm)) {
           Some(_) => return true,
-          _ => ()
+          None    => ()
         }
     }
     return false;
@@ -345,8 +351,8 @@ fn opts_present(m: matches, names: ~[~str]) -> bool {
  * Fails if the option was not matched or if the match did not take an
  * argument
  */
-fn opt_str(m: matches, nm: ~str) -> ~str {
-    return match opt_val(m, nm) { val(s) => s, _ => fail };
+fn opt_str(+mm: matches, nm: &str) -> ~str {
+    return match opt_val(mm, nm) { val(s) => s, _ => fail };
 }
 
 /**
@@ -355,9 +361,9 @@ fn opt_str(m: matches, nm: ~str) -> ~str {
  * Fails if the no option was provided from the given list, or if the no such
  * option took an argument
  */
-fn opts_str(m: matches, names: ~[~str]) -> ~str {
+fn opts_str(+mm: matches, names: &[~str]) -> ~str {
     for vec::each(names) |nm| {
-        match opt_val(m, nm) {
+        match opt_val(mm, nm) {
           val(s) => return s,
           _ => ()
         }
@@ -372,17 +378,17 @@ fn opts_str(m: matches, names: ~[~str]) -> ~str {
  *
  * Used when an option accepts multiple values.
  */
-fn opt_strs(m: matches, nm: ~str) -> ~[~str] {
+fn opt_strs(+mm: matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
-    for vec::each(opt_vals(m, nm)) |v| {
+    for vec::each(opt_vals(mm, nm)) |v| {
         match v { val(s) => vec::push(acc, s), _ => () }
     }
     return acc;
 }
 
 /// Returns the string argument supplied to a matching option or none
-fn opt_maybe_str(m: matches, nm: ~str) -> Option<~str> {
-    let vals = opt_vals(m, nm);
+fn opt_maybe_str(+mm: matches, nm: &str) -> Option<~str> {
+    let vals = opt_vals(mm, nm);
     if vec::len::<optval>(vals) == 0u { return None::<~str>; }
     return match vals[0] { val(s) => Some::<~str>(s), _ => None::<~str> };
 }
@@ -395,10 +401,11 @@ fn opt_maybe_str(m: matches, nm: ~str) -> Option<~str> {
  * present but no argument was provided, and the argument if the option was
  * present and an argument was provided.
  */
-fn opt_default(m: matches, nm: ~str, def: ~str) -> Option<~str> {
-    let vals = opt_vals(m, nm);
+fn opt_default(+mm: matches, nm: &str, def: &str) -> Option<~str> {
+    let vals = opt_vals(mm, nm);
     if vec::len::<optval>(vals) == 0u { return None::<~str>; }
-    return match vals[0] { val(s) => Some::<~str>(s), _ => Some::<~str>(def) }
+    return match vals[0] { val(s) => Some::<~str>(s),
+                           _      => Some::<~str>(str::from_slice(def)) }
 }
 
 #[cfg(test)]
@@ -414,7 +421,7 @@ mod tests {
         unexpected_argument_,
     }
 
-    fn check_fail_type(f: fail_, ft: fail_type) {
+    fn check_fail_type(+f: fail_, ft: fail_type) {
         match f {
           argument_missing(_) => assert ft == argument_missing_,
           unrecognized_option(_) => assert ft == unrecognized_option_,
@@ -877,7 +884,7 @@ mod tests {
         let opts = ~[optopt(~"e"), optopt(~"encrypt")];
         let matches = match getopts(args, opts) {
           result::Ok(m) => m,
-          result::Err(_) => fail
+          result::Err(_f) => fail
         };
         assert opts_present(matches, ~[~"e"]);
         assert opts_present(matches, ~[~"encrypt"]);
@@ -898,7 +905,7 @@ mod tests {
         let opts = ~[optmulti(~"L")];
         let matches = match getopts(args, opts) {
           result::Ok(m) => m,
-          result::Err(_) => fail
+          result::Err(_f) => fail
         };
         assert opts_present(matches, ~[~"L"]);
         assert opts_str(matches, ~[~"L"]) == ~"foo";
