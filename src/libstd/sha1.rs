@@ -12,6 +12,9 @@
  * the `reset` method.
  */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /*
  * A SHA-1 implementation derived from Paul E. Jones's reference
  * implementation, which is written for clarity, not speed. At some
@@ -22,9 +25,9 @@ export sha1;
 /// The SHA-1 interface
 trait sha1 {
     /// Provide message input as bytes
-    fn input(~[u8]);
+    fn input((&[u8]));
     /// Provide message input as string
-    fn input_str(~str);
+    fn input_str((&str));
     /**
      * Read the digest as a vector of 20 bytes. After calling this no further
      * input may be provided until reset is called.
@@ -60,7 +63,7 @@ fn sha1() -> sha1 {
          mut computed: bool,
          work_buf: @~[mut u32]};
 
-    fn add_input(st: sha1state, msg: ~[u8]) {
+    fn add_input(st: &sha1state, msg: &[u8]) {
         assert (!st.computed);
         for vec::each(msg) |element| {
             st.msg_block[st.msg_block_idx] = element;
@@ -76,7 +79,7 @@ fn sha1() -> sha1 {
             if st.msg_block_idx == msg_block_len { process_msg_block(st); }
         }
     }
-    fn process_msg_block(st: sha1state) {
+    fn process_msg_block(st: &sha1state) {
         assert (vec::len(st.h) == digest_buf_len);
         assert (vec::len(*st.work_buf) == work_buf_len);
         let mut t: int; // Loop counter
@@ -155,10 +158,10 @@ fn sha1() -> sha1 {
     fn circular_shift(bits: u32, word: u32) -> u32 {
         return word << bits | word >> 32u32 - bits;
     }
-    fn mk_result(st: sha1state) -> ~[u8] {
-        if !st.computed { pad_msg(st); st.computed = true; }
+    fn mk_result(st: &sha1state) -> ~[u8] {
+        if !(*st).computed { pad_msg(st); (*st).computed = true; }
         let mut rs: ~[u8] = ~[];
-        for vec::each_mut(st.h) |ptr_hpart| {
+        for vec::each_mut((*st).h) |ptr_hpart| {
             let hpart = *ptr_hpart;
             let a = (hpart >> 24u32 & 0xFFu32) as u8;
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
@@ -178,40 +181,40 @@ fn sha1() -> sha1 {
      * call process_msg_block() appropriately.  When it returns, it
      * can be assumed that the message digest has been computed.
      */
-    fn pad_msg(st: sha1state) {
-        assert (vec::len(st.msg_block) == msg_block_len);
+    fn pad_msg(st: &sha1state) {
+        assert (vec::len((*st).msg_block) == msg_block_len);
 
         /*
          * Check to see if the current message block is too small to hold
          * the initial padding bits and length.  If so, we will pad the
          * block, process it, and then continue padding into a second block.
          */
-        if st.msg_block_idx > 55u {
-            st.msg_block[st.msg_block_idx] = 0x80u8;
-            st.msg_block_idx += 1u;
-            while st.msg_block_idx < msg_block_len {
-                st.msg_block[st.msg_block_idx] = 0u8;
-                st.msg_block_idx += 1u;
+        if (*st).msg_block_idx > 55u {
+            (*st).msg_block[(*st).msg_block_idx] = 0x80u8;
+            (*st).msg_block_idx += 1u;
+            while (*st).msg_block_idx < msg_block_len {
+                (*st).msg_block[(*st).msg_block_idx] = 0u8;
+                (*st).msg_block_idx += 1u;
             }
             process_msg_block(st);
         } else {
-            st.msg_block[st.msg_block_idx] = 0x80u8;
-            st.msg_block_idx += 1u;
+            (*st).msg_block[(*st).msg_block_idx] = 0x80u8;
+            (*st).msg_block_idx += 1u;
         }
-        while st.msg_block_idx < 56u {
-            st.msg_block[st.msg_block_idx] = 0u8;
-            st.msg_block_idx += 1u;
+        while (*st).msg_block_idx < 56u {
+            (*st).msg_block[(*st).msg_block_idx] = 0u8;
+            (*st).msg_block_idx += 1u;
         }
 
         // Store the message length as the last 8 octets
-        st.msg_block[56] = (st.len_high >> 24u32 & 0xFFu32) as u8;
-        st.msg_block[57] = (st.len_high >> 16u32 & 0xFFu32) as u8;
-        st.msg_block[58] = (st.len_high >> 8u32 & 0xFFu32) as u8;
-        st.msg_block[59] = (st.len_high & 0xFFu32) as u8;
-        st.msg_block[60] = (st.len_low >> 24u32 & 0xFFu32) as u8;
-        st.msg_block[61] = (st.len_low >> 16u32 & 0xFFu32) as u8;
-        st.msg_block[62] = (st.len_low >> 8u32 & 0xFFu32) as u8;
-        st.msg_block[63] = (st.len_low & 0xFFu32) as u8;
+        (*st).msg_block[56] = ((*st).len_high >> 24u32 & 0xFFu32) as u8;
+        (*st).msg_block[57] = ((*st).len_high >> 16u32 & 0xFFu32) as u8;
+        (*st).msg_block[58] = ((*st).len_high >> 8u32 & 0xFFu32) as u8;
+        (*st).msg_block[59] = ((*st).len_high & 0xFFu32) as u8;
+        (*st).msg_block[60] = ((*st).len_low >> 24u32 & 0xFFu32) as u8;
+        (*st).msg_block[61] = ((*st).len_low >> 16u32 & 0xFFu32) as u8;
+        (*st).msg_block[62] = ((*st).len_low >> 8u32 & 0xFFu32) as u8;
+        (*st).msg_block[63] = ((*st).len_low & 0xFFu32) as u8;
         process_msg_block(st);
     }
 
@@ -228,13 +231,16 @@ fn sha1() -> sha1 {
             self.h[4] = 0xC3D2E1F0u32;
             self.computed = false;
         }
-        fn input(msg: ~[u8]) { add_input(self, msg); }
-        fn input_str(msg: ~str) { add_input(self, str::to_bytes(msg)); }
-        fn result() -> ~[u8] { return mk_result(self); }
+        fn input(msg: &[u8]) { add_input(&self, msg); }
+        fn input_str(msg: &str) {
+            let bs = str::to_bytes(msg);
+            add_input(&self, bs);
+        }
+        fn result() -> ~[u8] { return mk_result(&self); }
         fn result_str() -> ~str {
-            let r = mk_result(self);
+            let rr = mk_result(&self);
             let mut s = ~"";
-            for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
+            for vec::each(rr) |b| { s += uint::to_str(b as uint, 16u); }
             return s;
         }
     }
