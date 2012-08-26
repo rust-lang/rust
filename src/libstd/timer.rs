@@ -1,5 +1,8 @@
 //! Utilities that leverage libuv's `uv_timer_*` API
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import uv = uv;
 import uv::iotask;
 import iotask::iotask;
@@ -24,7 +27,7 @@ export delayed_send, sleep, recv_timeout;
  * * val - a value of type T to send over the provided `ch`
  */
 fn delayed_send<T: copy send>(iotask: iotask,
-                              msecs: uint, ch: comm::Chan<T>, val: T) {
+                              msecs: uint, ch: comm::Chan<T>, +val: T) {
         unsafe {
             let timer_done_po = core::comm::port::<()>();
             let timer_done_ch = core::comm::chan(timer_done_po);
