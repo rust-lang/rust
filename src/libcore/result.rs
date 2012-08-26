@@ -27,6 +27,22 @@ pure fn get<T: copy, U>(res: result<T, U>) -> T {
 }
 
 /**
+ * Get a reference to the value out of a successful result
+ *
+ * # Failure
+ *
+ * If the result is an error
+ */
+pure fn get_ref<T, U>(res: &a/result<T, U>) -> &a/T {
+    match *res {
+        ok(ref t) => t,
+        err(ref the_err) => unchecked {
+            fail fmt!("get_ref called on error result: %?", the_err)
+        }
+    }
+}
+
+/**
  * Get the value out of an error result
  *
  * # Failure
