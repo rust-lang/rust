@@ -100,12 +100,12 @@ enum environment_value {
 
 fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> ~str {
     match ev {
-      env_copy(v, t, lk) => fmt!("copy(%s,%s)", val_str(ccx.tn, v),
+      env_copy(v, t, _) => fmt!("copy(%s,%s)", val_str(ccx.tn, v),
                                 ty_to_str(ccx.tcx, t)),
-      env_move(v, t, lk) => fmt!("move(%s,%s)", val_str(ccx.tn, v),
+      env_move(v, t, _) => fmt!("move(%s,%s)", val_str(ccx.tn, v),
                                 ty_to_str(ccx.tcx, t)),
-      env_ref(v, t, lk) => fmt!("ref(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t))
+      env_ref(v, t, _) => fmt!("ref(%s,%s)", val_str(ccx.tn, v),
+                               ty_to_str(ccx.tcx, t))
     }
 }
 
@@ -224,13 +224,13 @@ fn store_environment(bcx: block,
             let src = {bcx:bcx, val:val, kind:kind};
             bcx = move_val(bcx, INIT, bound_data, src, ty);
           }
-          env_ref(val, ty, lv_owned) => {
+          env_ref(val, _, lv_owned) => {
             debug!("> storing %s into %s",
                    val_str(bcx.ccx().tn, val),
                    val_str(bcx.ccx().tn, bound_data));
             Store(bcx, val, bound_data);
           }
-          env_ref(val, ty, lv_owned_imm) => {
+          env_ref(val, _, lv_owned_imm) => {
             let addr = do_spill_noroot(bcx, val);
             Store(bcx, addr, bound_data);
           }

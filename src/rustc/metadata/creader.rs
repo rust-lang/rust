@@ -109,7 +109,7 @@ fn visit_view_item(e: env, i: @ast::view_item) {
 
 fn visit_item(e: env, i: @ast::item) {
     match i.node {
-      ast::item_foreign_mod(m) => {
+      ast::item_foreign_mod(_) => {
         match attr::foreign_abi(i.attrs) {
           either::Right(abi) => {
             if abi != ast::foreign_abi_cdecl &&

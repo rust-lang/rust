@@ -44,11 +44,11 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
                                            self.target_triple));
             match get_cargo_lib_path_nearest() {
               result::ok(p) => vec::push(paths, p),
-              result::err(p) => ()
+              result::err(_) => ()
             }
             match get_cargo_lib_path() {
               result::ok(p) => vec::push(paths, p),
-              result::err(p) => ()
+              result::err(_) => ()
             }
             paths
         }

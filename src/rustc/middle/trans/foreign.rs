@@ -755,7 +755,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
     for vec::each(foreign_mod.items) |foreign_item| {
       match foreign_item.node {
-        ast::foreign_item_fn(fn_decl, purity, typarams) => {
+        ast::foreign_item_fn(_, _, typarams) => {
           let id = foreign_item.id;
           if abi != ast::foreign_abi_rust_intrinsic {
               let llwrapfn = get_item_val(ccx, id);
