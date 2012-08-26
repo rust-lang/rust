@@ -5,7 +5,7 @@ struct cat {
     new(name: ~str) { self.name = name; }
     #[cat_dropper]
     drop { error!("%s landed on hir feet",self.name); }
-    name: ~str;
+    name: ~str,
 }
 
 fn main() { let _kitty = cat(~"Spotty"); }
