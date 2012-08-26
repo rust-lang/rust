@@ -1,7 +1,6 @@
 import run::spawn_process;
-import io::WriterUtil;
+import io::{ReaderUtil, WriterUtil};
 import libc::{c_int, pid_t};
-
 import pipes::chan;
 
 export run;

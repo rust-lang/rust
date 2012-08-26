@@ -2,6 +2,7 @@ import option;
 import str;
 
 import common::config;
+import io::ReaderUtil;
 
 export test_props;
 export load_props;

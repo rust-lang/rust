@@ -6,7 +6,7 @@ use std;
 import std::map;
 import std::map::hashmap;
 import std::sort;
-
+import io::ReaderUtil;
 import pipes::{stream, port, chan};
 
 // given a map, print a sorted version of it
