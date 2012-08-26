@@ -32,6 +32,7 @@ export
    push_char,
    pop_char,
    shift_char,
+   view_shift_char,
    unshift_char,
    trim_left,
    trim_right,
@@ -43,6 +44,7 @@ export
    chars,
    substr,
    slice,
+   view,
    split, splitn, split_nonempty,
    split_char, splitn_char, split_char_nonempty,
    split_str, split_str_nonempty,
@@ -338,6 +340,22 @@ fn shift_char(&s: ~str) -> char {
     return ch;
 }
 
+/**
+ * Removes the first character from a string slice and returns it. This does
+ * not allocate a new string; instead, it mutates a slice to point one
+ * character beyond the character that was shifted.
+ *
+ * # Failure
+ *
+ * If the string does not contain any characters
+ */
+#[inline]
+fn view_shift_char(s: &a/str) -> (char, &a/str) {
+    let {ch, next} = char_range_at(s, 0u);
+    let next_s = unsafe { unsafe::view_bytes(s, next, len(s)) };
+    return (ch, next_s);
+}
+
 /// Prepend a char to a string
 fn unshift_char(&s: ~str, ch: char) { s = from_char(ch) + s; }
 
@@ -421,6 +439,18 @@ pure fn slice(s: &str, begin: uint, end: uint) -> ~str {
     assert is_char_boundary(s, begin);
     assert is_char_boundary(s, end);
     unsafe { unsafe::slice_bytes(s, begin, end) }
+}
+
+/**
+ * Returns a view of the given string from the byte range [`begin`..`end`)
+ *
+ * Fails when `begin` and `end` do not point to valid characters or beyond
+ * the last character of the string
+ */
+pure fn view(s: &a/str, begin: uint, end: uint) -> &a/str {
+    assert is_char_boundary(s, begin);
+    assert is_char_boundary(s, end);
+    unsafe { unsafe::view_bytes(s, begin, end) }
 }
 
 /// Splits a string into substrings at each occurrence of a given character
@@ -1773,6 +1803,7 @@ mod unsafe {
       from_c_str_len,
       from_bytes,
       slice_bytes,
+      view_bytes,
       push_byte,
       pop_byte,
       shift_byte,
@@ -1854,6 +1885,27 @@ mod unsafe {
                vec::push(v, 0u8);
                ::unsafe::transmute(v)
            }
+       }
+   }
+
+   /**
+    * Takes a bytewise (not UTF-8) view from a string.
+    *
+    * Returns the substring from [`begin`..`end`).
+    *
+    * # Failure
+    *
+    * If begin is greater than end.
+    * If end is greater than the length of the string.
+    */
+   #[inline]
+   unsafe fn view_bytes(s: &str, begin: uint, end: uint) -> &str {
+       do as_buf(s) |sbuf, n| {
+            assert (begin <= end);
+            assert (end <= n);
+
+            let tuple = (ptr::offset(sbuf, begin), end - begin + 1);
+            ::unsafe::reinterpret_cast(tuple)
        }
    }
 
@@ -1958,6 +2010,7 @@ trait StrSlice {
     fn escape_default() -> ~str;
     fn escape_unicode() -> ~str;
     pure fn to_unique() -> ~str;
+    pure fn char_at(i: uint) -> char;
 }
 
 /// Extension methods for strings
@@ -2067,6 +2120,9 @@ impl &str: StrSlice {
 
     #[inline]
     pure fn to_unique() -> ~str { self.slice(0, self.len()) }
+
+    #[inline]
+    pure fn char_at(i: uint) -> char { char_at(self, i) }
 }
 
 #[cfg(test)]
