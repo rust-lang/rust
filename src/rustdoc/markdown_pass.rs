@@ -204,7 +204,7 @@ fn header_kind(doc: doc::itemtag) -> ~str {
       doc::traittag(_) => {
         ~"Interface"
       }
-      doc::impltag(doc) => {
+      doc::impltag(_) => {
         ~"Implementation"
       }
       doc::tytag(_) => {

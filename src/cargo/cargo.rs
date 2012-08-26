@@ -193,7 +193,7 @@ fn is_archive_url(u: ~str) -> bool {
     // url parsing, we wouldn't need it
 
     match str::find_str(u, ~"://") {
-        option::some(i) => has_archive_extension(u),
+        option::some(_) => has_archive_extension(u),
         _ => false
     }
 }
@@ -251,7 +251,7 @@ fn load_crate(filename: &Path) -> option<crate> {
 
     for c.node.attrs.each |a| {
         match a.node.value.node {
-            ast::meta_name_value(v, {node: ast::lit_str(s), span: _}) => {
+            ast::meta_name_value(v, {node: ast::lit_str(_), span: _}) => {
                 match v {
                     ~"desc" => desc = some(v),
                     ~"sigs" => sigs = some(v),
@@ -281,7 +281,7 @@ fn load_crate(filename: &Path) -> option<crate> {
     fn goto_view_item(ps: syntax::parse::parse_sess, e: env,
                       i: @ast::view_item) {
         match i.node {
-            ast::view_item_use(ident, metas, id) => {
+            ast::view_item_use(ident, metas, _) => {
                 let name_items =
                     attr::find_meta_items_by_name(metas, ~"name");
                 let m = if name_items.is_empty() {
@@ -1646,21 +1646,18 @@ fn cmd_sources(c: cargo) {
                 return;
             }
 
-            match c.sources.find(name) {
-                some(source) => {
-                    error(fmt!("source already exists: %s", name));
-                }
-                none => {
-                    c.sources.insert(name, @{
-                        name: name,
-                        mut url: url,
-                        mut method: assume_source_method(url),
-                        mut key: none,
-                        mut keyfp: none,
-                        mut packages: ~[mut]
-                    });
-                    info(fmt!("added source: %s", name));
-                }
+            if c.sources.contains_key(name) {
+                error(fmt!("source already exists: %s", name));
+            } else {
+                c.sources.insert(name, @{
+                    name: name,
+                    mut url: url,
+                    mut method: assume_source_method(url),
+                    mut key: none,
+                    mut keyfp: none,
+                    mut packages: ~[mut]
+                });
+                info(fmt!("added source: %s", name));
             }
         }
         ~"remove" => {
@@ -1676,14 +1673,11 @@ fn cmd_sources(c: cargo) {
                 return;
             }
 
-            match c.sources.find(name) {
-                some(source) => {
-                    c.sources.remove(name);
-                    info(fmt!("removed source: %s", name));
-                }
-                none => {
-                    error(fmt!("no such source: %s", name));
-                }
+            if c.sources.contains_key(name) {
+                c.sources.remove(name);
+                info(fmt!("removed source: %s", name));
+            } else {
+                error(fmt!("no such source: %s", name));
             }
         }
         ~"set-url" => {
