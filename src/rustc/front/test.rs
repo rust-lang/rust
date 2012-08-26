@@ -105,7 +105,7 @@ fn fold_item(cx: test_ctxt, &&i: @ast::item, fld: fold::ast_fold) ->
 
     if is_test_fn(i) {
         match i.node {
-          ast::item_fn(decl, purity, _, _) if purity == ast::unsafe_fn => {
+          ast::item_fn(_, purity, _, _) if purity == ast::unsafe_fn => {
             cx.sess.span_fatal(
                 i.span,
                 ~"unsafe functions cannot be used for tests");

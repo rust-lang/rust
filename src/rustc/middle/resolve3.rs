@@ -729,7 +729,7 @@ struct Resolver {
     fn visibility_to_privacy(visibility: visibility) -> Privacy {
         match visibility {
             inherited | public => Public,
-            privacy => Private
+            private => Private
         }
     }
 
