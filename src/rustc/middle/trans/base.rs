@@ -278,7 +278,7 @@ fn alloca_maybe_zeroed(cx: block, t: TypeRef, zero: bool) -> ValueRef {
     if cx.unreachable { return llvm::LLVMGetUndef(t); }
     let initcx = raw_block(cx.fcx, false, cx.fcx.llstaticallocas);
     let p = Alloca(initcx, t);
-    if zero { Store(initcx, C_null(t), p); }
+    if zero { memzero(initcx, p, t); }
     return p;
 }
 
@@ -287,8 +287,36 @@ fn zero_mem(cx: block, llptr: ValueRef, t: ty::t) -> block {
     let bcx = cx;
     let ccx = cx.ccx();
     let llty = type_of(ccx, t);
-    Store(bcx, C_null(llty), llptr);
+    memzero(bcx, llptr, llty);
     return bcx;
+}
+
+// Always use this function instead of storing a zero constant to the memory
+// in question. If you store a zero constant, LLVM will drown in vreg
+// allocation for large data structures, and the generated code will be
+// awful. (A telltale sign of this is large quantities of
+// `mov [byte ptr foo],0` in the generated code.)
+fn memzero(cx: block, llptr: ValueRef, llty: TypeRef) {
+    let _icx = cx.insn_ctxt("memzero");
+    let ccx = cx.ccx();
+
+    let intrinsic_key;
+    match ccx.sess.targ_cfg.arch {
+        session::arch_x86 | session::arch_arm => {
+            intrinsic_key = ~"llvm.memset.p0i8.i32";
+        }
+        session::arch_x86_64 => {
+            intrinsic_key = ~"llvm.memset.p0i8.i64";
+        }
+    }
+
+    let llintrinsicfn = ccx.intrinsics.get(intrinsic_key);
+    let llptr = PointerCast(cx, llptr, T_ptr(T_i8()));
+    let llzeroval = C_u8(0);
+    let size = IntCast(cx, llsize_of(ccx, llty), ccx.int_type);
+    let align = C_i32(1i32);
+    let volatile = C_bool(false);
+    Call(cx, llintrinsicfn, ~[llptr, llzeroval, size, align, volatile]);
 }
 
 fn arrayalloca(cx: block, t: TypeRef, v: ValueRef) -> ValueRef {
