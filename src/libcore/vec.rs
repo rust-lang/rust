@@ -541,7 +541,7 @@ fn pop<T>(&v: ~[const T]) -> T {
 fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
     let ln = len(v);
     if index >= ln {
-        fail #fmt("vec::swap_remove - index %u >= length %u", index, ln);
+        fail fmt!("vec::swap_remove - index %u >= length %u", index, ln);
     }
     let lastptr = ptr::mut_addr_of(v[ln - 1]);
     unsafe {
