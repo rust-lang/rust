@@ -1,7 +1,7 @@
 // xfail-test
 use std;
 import std::arc;
-fn dispose(+_x: arc::arc<bool>) unsafe { }
+fn dispose(+_x: arc::ARC<bool>) unsafe { }
 
 fn main() {
     let p = arc::arc(true);
