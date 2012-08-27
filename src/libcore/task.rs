@@ -910,7 +910,7 @@ fn each_ancestor(list:        &mut AncestorList,
 }
 
 // One of these per task.
-struct Tcb {
+struct TCB {
     let me:            *rust_task;
     // List of tasks with whose fates this one's is intertwined.
     let tasks:         TaskGroupArc; // 'none' means the group has failed.
@@ -1051,7 +1051,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                                          mut descendants: new_taskset() }));
             // Main task/group has no ancestors, no notifier, etc.
             let group =
-                @Tcb(spawner, tasks, AncestorList(None), true, None);
+                @TCB(spawner, tasks, AncestorList(None), true, None);
             unsafe { local_set(spawner, taskgroup_key!(), group); }
             group
         }
@@ -1165,7 +1165,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
             let notifier = notify_chan.map(|c| AutoNotify(c));
 
             if enlist_many(child, &child_arc, &mut ancestors) {
-                let group = @Tcb(child, child_arc, ancestors,
+                let group = @TCB(child, child_arc, ancestors,
                                  is_main, notifier);
                 unsafe { local_set(child, taskgroup_key!(), group); }
                 // Run the child's body.

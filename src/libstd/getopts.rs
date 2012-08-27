@@ -877,7 +877,7 @@ mod tests {
         let opts = ~[optopt(~"e"), optopt(~"encrypt")];
         let matches = match getopts(args, opts) {
           result::ok(m) => m,
-          result::err(f) => fail
+          result::err(_) => fail
         };
         assert opts_present(matches, ~[~"e"]);
         assert opts_present(matches, ~[~"encrypt"]);
@@ -898,7 +898,7 @@ mod tests {
         let opts = ~[optmulti(~"L")];
         let matches = match getopts(args, opts) {
           result::ok(m) => m,
-          result::err(f) => fail
+          result::err(_) => fail
         };
         assert opts_present(matches, ~[~"L"]);
         assert opts_str(matches, ~[~"L"]) == ~"foo";
