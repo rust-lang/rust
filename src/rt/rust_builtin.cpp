@@ -141,13 +141,6 @@ vec_reserve_shared(type_desc* ty, rust_vec_box** vp,
     reserve_vec_exact(task, vp, n_elts * ty->size);
 }
 
-extern "C" CDECL void
-str_reserve_shared(rust_vec_box** sp,
-                   size_t n_elts) {
-    rust_task *task = rust_get_current_task();
-    reserve_vec_exact(task, sp, n_elts + 1);
-}
-
 extern "C" CDECL rust_vec*
 rand_seed() {
     size_t size = sizeof(ub4) * RANDSIZ;

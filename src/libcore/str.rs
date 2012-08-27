@@ -115,11 +115,6 @@ export
    StrSlice,
    UniqueStr;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    fn str_reserve_shared(&ss: ~str, nn: libc::size_t);
-}
-
 /*
 Section: Creating a string
 */
@@ -1818,8 +1813,9 @@ pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
  * * n - The number of bytes to reserve space for
  */
 fn reserve(&s: ~str, n: uint) {
-    if capacity(s) < n {
-        rustrt::str_reserve_shared(s, n as size_t);
+    unsafe {
+        let v: *mut ~[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        vec::reserve(*v, n + 1);
     }
 }
 
