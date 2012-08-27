@@ -54,9 +54,23 @@ type encode_parms = {
     encode_inlined_item: encode_inlined_item
 };
 
+type stats = {
+    mut inline_bytes: uint,
+    mut attr_bytes: uint,
+    mut dep_bytes: uint,
+    mut item_bytes: uint,
+    mut index_bytes: uint,
+    mut zero_bytes: uint,
+    mut total_bytes: uint,
+
+    mut n_inlines: uint
+};
+
 enum encode_ctxt = {
     diag: span_handler,
     tcx: ty::ctxt,
+    buf: io::MemBuffer,
+    stats: stats,
     reachable: hashmap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
     reexports2: middle::resolve3::ExportMap2,
@@ -1072,9 +1086,21 @@ fn encode_hash(ebml_w: ebml::writer, hash: ~str) {
 }
 
 fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
+    let buf = io::mem_buffer();
+    let stats =
+        {mut inline_bytes: 0,
+         mut attr_bytes: 0,
+         mut dep_bytes: 0,
+         mut item_bytes: 0,
+         mut index_bytes: 0,
+         mut zero_bytes: 0,
+         mut total_bytes: 0,
+         mut n_inlines: 0};
     let ecx: @encode_ctxt = @encode_ctxt({
         diag: parms.diag,
         tcx: parms.tcx,
+        buf: buf,
+        stats: stats,
         reachable: parms.reachable,
         reexports: parms.reexports,
         reexports2: parms.reexports2,
@@ -1086,23 +1112,54 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
         type_abbrevs: ty::new_ty_hash()
      });
 
-    let buf = io::mem_buffer();
     let buf_w = io::mem_buffer_writer(buf);
     let ebml_w = ebml::writer(buf_w);
 
     encode_hash(ebml_w, ecx.link_meta.extras_hash);
 
+    let mut i = buf.pos;
     let crate_attrs = synthesize_crate_attrs(ecx, crate);
     encode_attributes(ebml_w, crate_attrs);
+    ecx.stats.attr_bytes = buf.pos - i;
 
+    i = buf.pos;
     encode_crate_deps(ecx, ebml_w, ecx.cstore);
+    ecx.stats.dep_bytes = buf.pos - i;
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
+    i = buf.pos;
     let items_index = encode_info_for_items(ecx, ebml_w, crate);
+    ecx.stats.item_bytes = buf.pos - i;
+
+    i = buf.pos;
     let items_buckets = create_index(items_index, hash_node_id);
     encode_index(ebml_w, items_buckets, write_int);
+    ecx.stats.index_bytes = buf.pos - i;
     ebml_w.end_tag();
+
+    ecx.stats.total_bytes = buf.pos;
+
+    if (parms.tcx.sess.meta_stats()) {
+
+        do buf.buf.borrow |v| {
+            do v.each |e| {
+                if e == 0 {
+                    ecx.stats.zero_bytes += 1;
+                }
+                true
+            }
+        }
+
+        io::println("metadata stats:");
+        io::println(fmt!("    inline bytes: %u", ecx.stats.inline_bytes));
+        io::println(fmt!(" attribute bytes: %u", ecx.stats.attr_bytes));
+        io::println(fmt!("       dep bytes: %u", ecx.stats.dep_bytes));
+        io::println(fmt!("      item bytes: %u", ecx.stats.item_bytes));
+        io::println(fmt!("     index bytes: %u", ecx.stats.index_bytes));
+        io::println(fmt!("      zero bytes: %u", ecx.stats.zero_bytes));
+        io::println(fmt!("     total bytes: %u", ecx.stats.total_bytes));
+    }
 
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.

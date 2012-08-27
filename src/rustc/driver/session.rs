@@ -42,6 +42,7 @@ const borrowck_note_loan: uint = 4096;
 const no_landing_pads: uint = 8192;
 const debug_llvm: uint = 16384;
 const count_type_sizes: uint = 32768;
+const meta_stats: uint = 65536;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"ppregions", ~"prettyprint regions with \
@@ -66,7 +67,8 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       no_landing_pads),
      (~"debug-llvm", ~"enable debug output from LLVM", debug_llvm),
      (~"count-type-sizes", ~"count the sizes of aggregate types",
-      count_type_sizes)
+      count_type_sizes),
+     (~"meta-stats", ~"gather metadata statistics", meta_stats)
     ]
 }
 
@@ -198,6 +200,7 @@ impl session {
     fn count_type_sizes() -> bool { self.debugging_opt(count_type_sizes) }
     fn time_llvm_passes() -> bool { self.debugging_opt(time_llvm_passes) }
     fn trans_stats() -> bool { self.debugging_opt(trans_stats) }
+    fn meta_stats() -> bool { self.debugging_opt(meta_stats) }
     fn no_asm_comments() -> bool { self.debugging_opt(no_asm_comments) }
     fn no_verify() -> bool { self.debugging_opt(no_verify) }
     fn trace() -> bool { self.debugging_opt(trace) }
