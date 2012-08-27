@@ -321,8 +321,8 @@ fn program_output(prog: &str, args: &[~str]) ->
                 errs = s;
             }
             (n, _) => {
-                fail(#fmt("program_output received an unexpected file \
-                  number: %u", n));
+                fail(fmt!("program_output received an unexpected file \
+                           number: %u", n));
             }
         };
         count -= 1;
