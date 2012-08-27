@@ -1233,8 +1233,12 @@ fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
 fn call_tydesc_glue_full(++bcx: block, v: ValueRef, tydesc: ValueRef,
                          field: uint, static_ti: Option<@tydesc_info>) {
     let _icx = bcx.insn_ctxt("call_tydesc_glue_full");
-        if bcx.unreachable { return; }
     let ccx = bcx.ccx();
+    // NB: Don't short-circuit even if this block is unreachable because
+    // GC-based cleanup needs to the see that the roots are live.
+    let no_lpads =
+        ccx.sess.opts.debugging_opts & session::no_landing_pads != 0;
+    if bcx.unreachable && !no_lpads { return; }
 
     let static_glue_fn = match static_ti {
       None => None,
@@ -4510,7 +4514,11 @@ fn trans_block_cleanups_(bcx: block,
                          /* cleanup_cx: block, */ is_lpad: bool) ->
    block {
     let _icx = bcx.insn_ctxt("trans_block_cleanups");
-    if bcx.unreachable { return bcx; }
+    // NB: Don't short-circuit even if this block is unreachable because
+    // GC-based cleanup needs to the see that the roots are live.
+    let no_lpads =
+        bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
+    if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
     do vec::riter(cleanups) |cu| {
             match cu {
