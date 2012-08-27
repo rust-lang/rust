@@ -23,42 +23,52 @@ import std::map::{hashmap, str_hash};
 import str_eq = str::eq;
 
 struct LanguageItems {
-    let mut const_trait: Option<def_id>;
-    let mut copy_trait: Option<def_id>;
-    let mut send_trait: Option<def_id>;
-    let mut owned_trait: Option<def_id>;
+    mut const_trait: Option<def_id>;
+    mut copy_trait: Option<def_id>;
+    mut send_trait: Option<def_id>;
+    mut owned_trait: Option<def_id>;
 
-    let mut add_trait: Option<def_id>;
-    let mut sub_trait: Option<def_id>;
-    let mut mul_trait: Option<def_id>;
-    let mut div_trait: Option<def_id>;
-    let mut modulo_trait: Option<def_id>;
-    let mut neg_trait: Option<def_id>;
-    let mut bitxor_trait: Option<def_id>;
-    let mut bitand_trait: Option<def_id>;
-    let mut bitor_trait: Option<def_id>;
-    let mut shl_trait: Option<def_id>;
-    let mut shr_trait: Option<def_id>;
-    let mut index_trait: Option<def_id>;
+    mut add_trait: Option<def_id>;
+    mut sub_trait: Option<def_id>;
+    mut mul_trait: Option<def_id>;
+    mut div_trait: Option<def_id>;
+    mut modulo_trait: Option<def_id>;
+    mut neg_trait: Option<def_id>;
+    mut bitxor_trait: Option<def_id>;
+    mut bitand_trait: Option<def_id>;
+    mut bitor_trait: Option<def_id>;
+    mut shl_trait: Option<def_id>;
+    mut shr_trait: Option<def_id>;
+    mut index_trait: Option<def_id>;
 
-    new() {
-        self.const_trait = None;
-        self.copy_trait = None;
-        self.send_trait = None;
-        self.owned_trait = None;
+    mut eq_trait: Option<def_id>;
+    mut ord_trait: Option<def_id>;
+}
 
-        self.add_trait = None;
-        self.sub_trait = None;
-        self.mul_trait = None;
-        self.div_trait = None;
-        self.modulo_trait = None;
-        self.neg_trait = None;
-        self.bitxor_trait = None;
-        self.bitand_trait = None;
-        self.bitor_trait = None;
-        self.shl_trait = None;
-        self.shr_trait = None;
-        self.index_trait = None;
+mod LanguageItems {
+    fn make() -> LanguageItems {
+        LanguageItems {
+            const_trait: None,
+            copy_trait: None,
+            send_trait: None,
+            owned_trait: None,
+
+            add_trait: None,
+            sub_trait: None,
+            mul_trait: None,
+            div_trait: None,
+            modulo_trait: None,
+            neg_trait: None,
+            bitxor_trait: None,
+            bitand_trait: None,
+            bitor_trait: None,
+            shl_trait: None,
+            shr_trait: None,
+            index_trait: None,
+
+            eq_trait: None,
+            ord_trait: None
+        }
     }
 }
 
@@ -93,6 +103,9 @@ struct LanguageItemCollector {
         self.item_refs.insert(~"shl", &mut self.items.shl_trait);
         self.item_refs.insert(~"shr", &mut self.items.shr_trait);
         self.item_refs.insert(~"index", &mut self.items.index_trait);
+
+        self.item_refs.insert(~"eq", &mut self.items.eq_trait);
+        self.item_refs.insert(~"ord", &mut self.items.ord_trait);
     }
 
     fn match_and_collect_meta_item(item_def_id: def_id,
@@ -202,7 +215,7 @@ struct LanguageItemCollector {
 }
 
 fn collect_language_items(crate: @crate, session: session) -> LanguageItems {
-    let items = LanguageItems();
+    let items = LanguageItems::make();
     let collector = LanguageItemCollector(crate, session, &items);
     collector.collect();
     copy items
