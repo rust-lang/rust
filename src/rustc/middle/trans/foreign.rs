@@ -592,7 +592,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                     let mut atys = x86_64.arg_tys;
                     let mut attrs = x86_64.attrs;
                     if x86_64.sret {
-                        let llretptr = GEPi(bcx, llargbundle, ~[0u, n]);
+                        let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                         let llretloc = Load(bcx, llretptr);
                         llargvals = ~[llretloc];
                         atys = vec::tail(atys);
@@ -600,15 +600,14 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                     }
                     while i < n {
                         let llargval = if atys[i].cast {
-                            let arg_ptr = GEPi(bcx, llargbundle,
-                                               ~[0u, i]);
+                            let arg_ptr = GEPi(bcx, llargbundle, [0u, i]);
                             let arg_ptr = BitCast(bcx, arg_ptr,
                                               T_ptr(atys[i].ty));
                             Load(bcx, arg_ptr)
                         } else if option::is_some(attrs[i]) {
-                            GEPi(bcx, llargbundle, ~[0u, i])
+                            GEPi(bcx, llargbundle, [0u, i])
                         } else {
-                            load_inbounds(bcx, llargbundle, ~[0u, i])
+                            load_inbounds(bcx, llargbundle, [0u, i])
                         };
                         vec::push(llargvals, llargval);
                         i += 1u;
@@ -617,7 +616,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                 _ => {
                     while i < n {
                         let llargval = load_inbounds(bcx, llargbundle,
-                                                          ~[0u, i]);
+                                                          [0u, i]);
                         vec::push(llargvals, llargval);
                         i += 1u;
                     }
@@ -645,7 +644,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                         return;
                     }
                     let n = vec::len(tys.arg_tys);
-                    let llretptr = GEPi(bcx, llargbundle, ~[0u, n]);
+                    let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                     let llretloc = Load(bcx, llretptr);
                     if x86_64.ret_ty.cast {
                         let tmp_ptr = BitCast(bcx, llretloc,
@@ -659,7 +658,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                     if tys.ret_def {
                         let n = vec::len(tys.arg_tys);
                         // R** llretptr = &args->r;
-                        let llretptr = GEPi(bcx, llargbundle, ~[0u, n]);
+                        let llretptr = GEPi(bcx, llargbundle, [0u, n]);
                         // R* llretloc = *llretptr; /* (args->r) */
                         let llretloc = Load(bcx, llretptr);
                         // *args->r = r;
@@ -1085,19 +1084,19 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                         if option::is_some(attrs[i]) {
                             argval = Load(bcx, argval);
                             store_inbounds(bcx, argval, llargbundle,
-                                           ~[0u, i]);
+                                           [0u, i]);
                         } else if atys[i].cast {
-                            let argptr = GEPi(bcx, llargbundle, ~[0u, i]);
+                            let argptr = GEPi(bcx, llargbundle, [0u, i]);
                             let argptr = BitCast(bcx, argptr,
                                                  T_ptr(atys[i].ty));
                             Store(bcx, argval, argptr);
                         } else {
                             store_inbounds(bcx, argval, llargbundle,
-                                           ~[0u, i]);
+                                           [0u, i]);
                         }
                         i += 1u;
                     }
-                    store_inbounds(bcx, llretptr, llargbundle, ~[0u, n]);
+                    store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
                 }
                 _ => {
                     let llretptr = alloca(bcx, tys.ret_ty);
@@ -1105,9 +1104,9 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                   for uint::range(0u, n) |i| {
                         let llargval = get_param(llwrapfn, i);
                         store_inbounds(bcx, llargval, llargbundle,
-                                                      ~[0u, i]);
+                                                      [0u, i]);
                     };
-                    store_inbounds(bcx, llretptr, llargbundle, ~[0u, n]);
+                    store_inbounds(bcx, llretptr, llargbundle, [0u, n]);
                 }
             }
         }

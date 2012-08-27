@@ -275,18 +275,18 @@ fn trans_trait_callee(bcx: block, val: ValueRef,
     -> lval_maybe_callee {
     let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
     let ccx = bcx.ccx();
-    let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, ~[0u, 0u]),
+    let vtable = Load(bcx, PointerCast(bcx, GEPi(bcx, val, [0u, 0u]),
                                        T_ptr(T_ptr(T_vtable()))));
-    let llbox = Load(bcx, GEPi(bcx, val, ~[0u, 1u]));
+    let llbox = Load(bcx, GEPi(bcx, val, [0u, 1u]));
     // FIXME[impl] I doubt this is alignment-safe (#2534)
-    let self = GEPi(bcx, llbox, ~[0u, abi::box_field_body]);
+    let self = GEPi(bcx, llbox, [0u, abi::box_field_body]);
     let env = self_env(self, ty::mk_opaque_box(bcx.tcx()), Some(llbox),
                        // XXX: is this bogosity?
                        ast::by_ref);
     let llfty = type_of::type_of_fn_from_ty(ccx, callee_ty);
     let vtable = PointerCast(bcx, vtable,
                              T_ptr(T_array(T_ptr(llfty), n_method + 1u)));
-    let mptr = Load(bcx, GEPi(bcx, vtable, ~[0u, n_method]));
+    let mptr = Load(bcx, GEPi(bcx, vtable, [0u, n_method]));
     {bcx: bcx, val: mptr, kind: lv_owned, env: env}
 }
 
@@ -423,12 +423,12 @@ fn trans_cast(bcx: block, val: @ast::expr, id: ast::node_id, dest: dest)
     let bcx = trans_expr_save_in(bcx, val, body);
     revoke_clean(bcx, llbox);
     let result = get_dest_addr(dest);
-    Store(bcx, llbox, PointerCast(bcx, GEPi(bcx, result, ~[0u, 1u]),
+    Store(bcx, llbox, PointerCast(bcx, GEPi(bcx, result, [0u, 1u]),
                                   T_ptr(val_ty(llbox))));
     let orig = ccx.maps.vtable_map.get(id)[0];
     let orig = resolve_vtable_in_fn_ctxt(bcx.fcx, orig);
     let vtable = get_vtable(bcx.ccx(), orig);
-    Store(bcx, vtable, PointerCast(bcx, GEPi(bcx, result, ~[0u, 0u]),
+    Store(bcx, vtable, PointerCast(bcx, GEPi(bcx, result, [0u, 0u]),
                                    T_ptr(val_ty(vtable))));
     bcx
 }

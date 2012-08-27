@@ -362,7 +362,7 @@ fn GEP_enum(bcx: block, llblobptr: ValueRef, enum_id: ast::def_id,
     });
     let typed_blobptr = PointerCast(bcx, llblobptr,
                                     T_ptr(T_struct(arg_lltys)));
-    GEPi(bcx, typed_blobptr, ~[0u, ix])
+    GEPi(bcx, typed_blobptr, [0u, ix])
 }
 
 // Returns a pointer to the body for the box. The box may be an opaque
@@ -376,7 +376,7 @@ fn opaque_box_body(bcx: block,
     let _icx = bcx.insn_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
     let boxptr = PointerCast(bcx, boxptr, T_ptr(T_box_header(ccx)));
-    let bodyptr = GEPi(bcx, boxptr, ~[1u]);
+    let bodyptr = GEPi(bcx, boxptr, [1u]);
     PointerCast(bcx, bodyptr, T_ptr(type_of(ccx, body_t)))
 }
 
@@ -422,7 +422,7 @@ fn malloc_general_dyn(bcx: block, t: ty::t, heap: heap, size: ValueRef)
     let _icx = bcx.insn_ctxt("malloc_general");
     let {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
     let non_gc_box = non_gc_box_cast(bcx, llbox);
-    let body = GEPi(bcx, non_gc_box, ~[0u, abi::box_field_body]);
+    let body = GEPi(bcx, non_gc_box, [0u, abi::box_field_body]);
     return {bcx: bcx, box: llbox, body: body};
 }
 
@@ -732,7 +732,7 @@ fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
         closure::make_fn_glue(bcx, v, t, take_ty)
       }
       ty::ty_trait(_, _, _) => {
-        let llbox = Load(bcx, GEPi(bcx, v, ~[0u, 1u]));
+        let llbox = Load(bcx, GEPi(bcx, v, [0u, 1u]));
         incr_refcnt_of_boxed(bcx, llbox);
         bcx
       }
@@ -752,7 +752,7 @@ fn incr_refcnt_of_boxed(cx: block, box_ptr: ValueRef) {
     let _icx = cx.insn_ctxt("incr_refcnt_of_boxed");
     let ccx = cx.ccx();
     maybe_validate_box(cx, box_ptr);
-    let rc_ptr = GEPi(cx, box_ptr, ~[0u, abi::box_field_refcnt]);
+    let rc_ptr = GEPi(cx, box_ptr, [0u, abi::box_field_refcnt]);
     let rc = Load(cx, rc_ptr);
     let rc = Add(cx, rc, C_int(ccx, 1));
     Store(cx, rc, rc_ptr);
@@ -777,7 +777,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     let bcx = match ty::get(t).struct {
       ty::ty_box(body_mt) => {
         let v = Load(bcx, v);
-        let body = GEPi(bcx, v, ~[0u, abi::box_field_body]);
+        let body = GEPi(bcx, v, [0u, abi::box_field_body]);
         // Cast away the addrspace of the box pointer.
         let body = PointerCast(bcx, body, T_ptr(type_of(ccx, body_mt.ty)));
         let bcx = drop_ty(bcx, body, body_mt.ty);
@@ -785,8 +785,8 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
       }
       ty::ty_opaque_box => {
         let v = Load(bcx, v);
-        let td = Load(bcx, GEPi(bcx, v, ~[0u, abi::box_field_tydesc]));
-        let valptr = GEPi(bcx, v, ~[0u, abi::box_field_body]);
+        let td = Load(bcx, GEPi(bcx, v, [0u, abi::box_field_tydesc]));
+        let valptr = GEPi(bcx, v, [0u, abi::box_field_body]);
         // Generate code that, dynamically, indexes into the
         // tydesc and calls the drop glue that got set dynamically
         call_tydesc_glue_full(bcx, valptr, td, abi::tydesc_field_drop_glue,
@@ -822,11 +822,11 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
 fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
                     class_did: ast::def_id,
                     substs: &ty::substs) -> block {
-  let drop_flag = GEPi(bcx, v0, ~[0u, 0u]);
+  let drop_flag = GEPi(bcx, v0, [0u, 0u]);
     do with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag))) |cx| {
     let mut bcx = cx;
       // We have to cast v0
-     let classptr = GEPi(bcx, v0, ~[0u, 1u]);
+     let classptr = GEPi(bcx, v0, [0u, 1u]);
      // Find and call the actual destructor
      let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, class_did, substs.tps);
      // The second argument is the "self" argument for drop
@@ -843,7 +843,7 @@ fn trans_class_drop(bcx: block, v0: ValueRef, dtor_did: ast::def_id,
      for vec::eachi(ty::class_items_as_mutable_fields(bcx.tcx(), class_did,
                                                       substs))
          |i, fld| {
-        let llfld_a = GEPi(bcx, classptr, ~[0u, i]);
+        let llfld_a = GEPi(bcx, classptr, [0u, i]);
         bcx = drop_ty(bcx, llfld_a, fld.mt.ty);
      }
      Store(bcx, C_u8(0u), drop_flag);
@@ -884,7 +884,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
         closure::make_fn_glue(bcx, v0, t, drop_ty)
       }
       ty::ty_trait(_, _, _) => {
-        let llbox = Load(bcx, GEPi(bcx, v0, ~[0u, 1u]));
+        let llbox = Load(bcx, GEPi(bcx, v0, [0u, 1u]));
         decr_refcnt_maybe_free(bcx, llbox, ty::mk_opaque_box(ccx.tcx))
       }
       ty::ty_opaque_closure_ptr(ck) => {
@@ -940,7 +940,7 @@ fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t) -> block {
     maybe_validate_box(bcx, box_ptr);
 
     do with_cond(bcx, IsNotNull(bcx, box_ptr)) |bcx| {
-        let rc_ptr = GEPi(bcx, box_ptr, ~[0u, abi::box_field_refcnt]);
+        let rc_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_refcnt]);
         let rc = Sub(bcx, Load(bcx, rc_ptr), C_int(ccx, 1));
         Store(bcx, rc, rc_ptr);
         let zero_test = ICmp(bcx, lib::llvm::IntEQ, C_int(ccx, 0), rc);
@@ -1046,12 +1046,11 @@ fn compare_scalar_values(cx: block, lhs: ValueRef, rhs: ValueRef,
 type val_pair_fn = fn@(block, ValueRef, ValueRef) -> block;
 type val_and_ty_fn = fn@(block, ValueRef, ty::t) -> block;
 
-fn load_inbounds(cx: block, p: ValueRef, idxs: ~[uint]) -> ValueRef {
+fn load_inbounds(cx: block, p: ValueRef, idxs: &[uint]) -> ValueRef {
     return Load(cx, GEPi(cx, p, idxs));
 }
 
-fn store_inbounds(cx: block, v: ValueRef, p: ValueRef,
-                  idxs: ~[uint]) {
+fn store_inbounds(cx: block, v: ValueRef, p: ValueRef, idxs: &[uint]) {
     Store(cx, v, GEPi(cx, p, idxs));
 }
 
@@ -1092,7 +1091,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     match ty::get(t).struct {
       ty::ty_rec(fields) => {
         for vec::eachi(fields) |i, fld| {
-            let llfld_a = GEPi(cx, av, ~[0u, i]);
+            let llfld_a = GEPi(cx, av, [0u, i]);
             cx = f(cx, llfld_a, fld.mt.ty);
         }
       }
@@ -1103,7 +1102,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       }
       ty::ty_tup(args) => {
         for vec::eachi(args) |i, arg| {
-            let llfld_a = GEPi(cx, av, ~[0u, i]);
+            let llfld_a = GEPi(cx, av, [0u, i]);
             cx = f(cx, llfld_a, arg);
         }
       }
@@ -1120,8 +1119,8 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         let ccx = cx.ccx();
         let llenumty = T_opaque_enum_ptr(ccx);
         let av_enum = PointerCast(cx, av, llenumty);
-        let lldiscrim_a_ptr = GEPi(cx, av_enum, ~[0u, 0u]);
-        let llunion_a_ptr = GEPi(cx, av_enum, ~[0u, 1u]);
+        let lldiscrim_a_ptr = GEPi(cx, av_enum, [0u, 0u]);
+        let llunion_a_ptr = GEPi(cx, av_enum, [0u, 1u]);
         let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
 
         // NB: we must hit the discriminant first so that structural
@@ -1147,13 +1146,13 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
       ty::ty_class(did, ref substs) => {
           // Take the drop bit into account
           let classptr = if is_some(ty::ty_dtor(cx.tcx(), did)) {
-                  GEPi(cx, av, ~[0u, 1u])
+                  GEPi(cx, av, [0u, 1u])
               }
           else { av };
         for vec::eachi(ty::class_items_as_mutable_fields(cx.tcx(), did,
                                                          substs))
             |i, fld| {
-               let llfld_a = GEPi(cx, classptr, ~[0u, i]);
+               let llfld_a = GEPi(cx, classptr, [0u, i]);
                cx = f(cx, llfld_a, fld.mt.ty);
            }
       }
@@ -1282,7 +1281,7 @@ fn call_tydesc_glue_full(++bcx: block, v: ValueRef, tydesc: ValueRef,
         match static_glue_fn {
           None => {
             // Select out the glue function to call from the tydesc
-            let llfnptr = GEPi(bcx, tydesc, ~[0u, field]);
+            let llfnptr = GEPi(bcx, tydesc, [0u, field]);
             Load(bcx, llfnptr)
           }
           Some(sgf) => sgf
@@ -1880,7 +1879,7 @@ fn autoderef(cx: block, e_id: ast::node_id,
 
         match ty::get(t1).struct {
           ty::ty_box(mt) => {
-            let body = GEPi(cx, v1, ~[0u, abi::box_field_body]);
+            let body = GEPi(cx, v1, [0u, abi::box_field_body]);
             t1 = mt.ty;
 
             // Since we're changing levels of box indirection, we may have
@@ -2603,7 +2602,7 @@ fn trans_var(cx: block, def: ast::def, id: ast::node_id)-> lval_maybe_callee {
             // Nullary variant.
             let enum_ty = node_id_type(cx, id);
             let llenumptr = alloc_ty(cx, enum_ty);
-            let lldiscrimptr = GEPi(cx, llenumptr, ~[0u, 0u]);
+            let lldiscrimptr = GEPi(cx, llenumptr, [0u, 0u]);
             let lldiscrim_gv = lookup_discriminant(ccx, vid);
             let lldiscrim = Load(cx, lldiscrim_gv);
             Store(cx, lldiscrim, lldiscrimptr);
@@ -2664,9 +2663,9 @@ fn trans_rec_field_inner(bcx: block, val: ValueRef, ty: ty::t,
        (If any other code does the same thing, that's
        a bug */
     let val = if llderef {
-        GEPi(bcx, GEPi(bcx, val, ~[0u, 1u]), ~[0u, ix])
+        GEPi(bcx, GEPi(bcx, val, [0u, 1u]), [0u, ix])
     }
-    else { GEPi(bcx, val, ~[0u, ix]) };
+    else { GEPi(bcx, val, [0u, ix]) };
 
     return {bcx: bcx, val: val, kind: lv_owned};
 }
@@ -2801,11 +2800,11 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
             let val = match ty::get(t).struct {
               ty::ty_box(_) => {
                 let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
-                GEPi(sub.bcx, non_gc_val, ~[0u, abi::box_field_body])
+                GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_uniq(_) => {
                 let non_gc_val = non_gc_box_cast(sub.bcx, sub.val);
-                GEPi(sub.bcx, non_gc_val, ~[0u, abi::box_field_body])
+                GEPi(sub.bcx, non_gc_val, [0u, abi::box_field_body])
               }
               ty::ty_enum(_, _) => {
                 let ety = expr_ty(cx, e);
@@ -2946,7 +2945,7 @@ fn trans_cast(cx: block, e: @ast::expr, id: ast::node_id,
             let cx = e_res.bcx;
             let llenumty = T_opaque_enum_ptr(ccx);
             let av_enum = PointerCast(cx, e_res.val, llenumty);
-            let lldiscrim_a_ptr = GEPi(cx, av_enum, ~[0u, 0u]);
+            let lldiscrim_a_ptr = GEPi(cx, av_enum, [0u, 0u]);
             let lldiscrim_a = Load(cx, lldiscrim_a_ptr);
             match k_out {
               cast_integral => int_cast(e_res.bcx, ll_t_out,
@@ -3103,7 +3102,7 @@ fn adapt_borrowed_value(lv: lval_result,
     match ty::get(e_ty).struct {
       ty::ty_uniq(mt) | ty::ty_box(mt) => {
         let box_ptr = load_value_from_lval_result(lv, e_ty);
-        let body_ptr = GEPi(bcx, box_ptr, ~[0u, abi::box_field_body]);
+        let body_ptr = GEPi(bcx, box_ptr, [0u, abi::box_field_body]);
         let rptr_ty = ty::mk_rptr(bcx.tcx(), ty::re_static, mt);
         return {lv: lval_temp(bcx, body_ptr), ty: rptr_ty};
       }
@@ -3125,8 +3124,8 @@ fn adapt_borrowed_value(lv: lval_result,
                val_str(bcx.ccx().tn, val),
                val_str(bcx.ccx().tn, p));
 
-        Store(bcx, base, GEPi(bcx, p, ~[0u, abi::slice_elt_base]));
-        Store(bcx, len, GEPi(bcx, p, ~[0u, abi::slice_elt_len]));
+        Store(bcx, base, GEPi(bcx, p, [0u, abi::slice_elt_base]));
+        Store(bcx, len, GEPi(bcx, p, [0u, abi::slice_elt_len]));
 
         // this isn't necessarily the type that rust would assign but it's
         // close enough for trans purposes, as it will have the same runtime
@@ -3297,9 +3296,9 @@ fn trans_call_inner(
                 faddr = load_if_immediate(bcx, faddr, fn_expr_ty);
             }
             let pair = faddr;
-            faddr = GEPi(bcx, pair, ~[0u, abi::fn_field_code]);
+            faddr = GEPi(bcx, pair, [0u, abi::fn_field_code]);
             faddr = Load(bcx, faddr);
-            let llclosure = GEPi(bcx, pair, ~[0u, abi::fn_field_box]);
+            let llclosure = GEPi(bcx, pair, [0u, abi::fn_field_box]);
             Load(bcx, llclosure)
           }
         };
@@ -3494,7 +3493,7 @@ fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: dest) -> block {
     };
     let mut temp_cleanups = ~[];
     for vec::eachi(elts) |i, e| {
-        let dst = GEPi(bcx, addr, ~[0u, i]);
+        let dst = GEPi(bcx, addr, [0u, i]);
         let e_ty = expr_ty(bcx, e);
         bcx = trans_expr_save_in(bcx, e, dst);
         add_clean_temp_mem(bcx, dst, e_ty);
@@ -3530,7 +3529,7 @@ fn trans_rec(bcx: block, fields: ~[ast::field],
     for fields.each |fld| {
         let ix = option::get(vec::position(ty_fields,
             |ft| ft.ident == fld.node.ident));
-        let dst = GEPi(bcx, addr, ~[0u, ix]);
+        let dst = GEPi(bcx, addr, [0u, ix]);
         bcx = trans_expr_save_in(bcx, fld.node.expr, dst);
         add_clean_temp_mem(bcx, dst, ty_fields[ix].mt.ty);
         vec::push(temp_cleanups, dst);
@@ -3542,8 +3541,8 @@ fn trans_rec(bcx: block, fields: ~[ast::field],
         // Copy over inherited fields
         for ty_fields.eachi |i, tf| {
             if !vec::any(fields, |f| f.node.ident == tf.ident) {
-                let dst = GEPi(bcx, addr, ~[0u, i]);
-                let base = GEPi(bcx, base_val, ~[0u, i]);
+                let dst = GEPi(bcx, addr, [0u, i]);
+                let base = GEPi(bcx, base_val, [0u, i]);
                 let val = load_if_immediate(bcx, base, tf.mt.ty);
                 bcx = copy_val(bcx, INIT, dst, val, tf.mt.ty);
             }
@@ -3564,10 +3563,10 @@ fn get_struct_field(block_context: block, dest_address: ValueRef,
                     class_id: ast::def_id, index: uint) -> ValueRef {
     if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
         return GEPi(block_context,
-                    GEPi(block_context, dest_address, ~[0, 1]),
-                    ~[0, index]);
+                    GEPi(block_context, dest_address, [0, 1]),
+                    [0, index]);
     }
-    return GEPi(block_context, dest_address, ~[0, index]);
+    return GEPi(block_context, dest_address, [0, index]);
 }
 
 fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
@@ -3615,7 +3614,7 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
 
     // Add the drop flag if necessary.
     if ty::ty_dtor(block_context.tcx(), class_id).is_some() {
-        let llflagptr = GEPi(block_context, dest_address, ~[0, 0]);
+        let llflagptr = GEPi(block_context, dest_address, [0, 0]);
         Store(block_context, C_u8(1), llflagptr);
     }
 
@@ -3674,7 +3673,7 @@ fn trans_struct(block_context: block, span: span, fields: ~[ast::field],
                                                         i);
                 let llbasefieldvalue = GEPi(block_context,
                                             llbasevalue,
-                                            ~[0, i]);
+                                            [0, i]);
                 let field_type = ty::lookup_field_type(block_context.tcx(),
                                                        class_id,
                                                        class_field.id,
@@ -4964,9 +4963,9 @@ fn trans_enum_variant(ccx: @crate_ctxt,
     } else {
         let llenumptr =
             PointerCast(bcx, fcx.llretptr, T_opaque_enum_ptr(ccx));
-        let lldiscrimptr = GEPi(bcx, llenumptr, ~[0u, 0u]);
+        let lldiscrimptr = GEPi(bcx, llenumptr, [0u, 0u]);
         Store(bcx, C_int(ccx, disr), lldiscrimptr);
-        GEPi(bcx, llenumptr, ~[0u, 1u])
+        GEPi(bcx, llenumptr, [0u, 1u])
     };
     let t_id = local_def(enum_id);
     let v_id = local_def(variant.node.id);
@@ -5023,10 +5022,10 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                                   parent_id)) {
     // Initialize the drop flag
     let one = C_u8(1u);
-    let flag = GEPi(bcx_top, selfptr, ~[0u, 0u]);
+    let flag = GEPi(bcx_top, selfptr, [0u, 0u]);
     Store(bcx_top, one, flag);
     // Select the pointer to the class itself
-    GEPi(bcx_top, selfptr, ~[0u, 1u])
+    GEPi(bcx_top, selfptr, [0u, 1u])
   }
   else { selfptr };
 
@@ -5039,7 +5038,7 @@ fn trans_class_ctor(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
   // drop their LHS
     for fields.each |field| {
      let ix = field_idx_strict(bcx.tcx(), sp, field.ident, fields);
-     bcx = zero_mem(bcx, GEPi(bcx, valptr, ~[0u, ix]), field.mt.ty);
+     bcx = zero_mem(bcx, GEPi(bcx, valptr, [0u, ix]), field.mt.ty);
   }
 
   // note we don't want to take *or* drop self.
@@ -5352,9 +5351,9 @@ fn create_real_fn_pair(cx: block, llfnty: TypeRef, llfn: ValueRef,
 fn fill_fn_pair(bcx: block, pair: ValueRef, llfn: ValueRef,
                 llenvptr: ValueRef) {
     let ccx = bcx.ccx();
-    let code_cell = GEPi(bcx, pair, ~[0u, abi::fn_field_code]);
+    let code_cell = GEPi(bcx, pair, [0u, abi::fn_field_code]);
     Store(bcx, llfn, code_cell);
-    let env_cell = GEPi(bcx, pair, ~[0u, abi::fn_field_box]);
+    let env_cell = GEPi(bcx, pair, [0u, abi::fn_field_box]);
     let llenvblobptr = PointerCast(bcx, llenvptr, T_opaque_box_ptr(ccx));
     Store(bcx, llenvblobptr, env_cell);
 }

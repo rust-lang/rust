@@ -145,7 +145,7 @@ fn allocate_cbox(bcx: block,
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx.ccx();
         let llbox = PointerCast(bcx, llbox, T_opaque_box_ptr(ccx));
-        let ref_cnt = GEPi(bcx, llbox, ~[0u, abi::box_field_refcnt]);
+        let ref_cnt = GEPi(bcx, llbox, [0u, abi::box_field_refcnt]);
         let rc = C_int(ccx, 0x12345678);
         Store(bcx, rc, ref_cnt);
     }
@@ -207,8 +207,7 @@ fn store_environment(bcx: block,
                                   ev_to_str(ccx, bv)));
         }
 
-        let bound_data = GEPi(bcx, llbox,
-             ~[0u, abi::box_field_body, i]);
+        let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
         match bv {
           env_copy(val, ty, lv_owned) => {
             let val1 = load_if_immediate(bcx, val, ty);
@@ -326,8 +325,7 @@ fn load_environment(fcx: fn_ctxt,
         match cap_var.mode {
           capture::cap_drop => { /* ignore */ }
           _ => {
-            let mut upvarptr =
-                GEPi(bcx, llcdata, ~[0u, i]);
+            let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
             match ck {
               ty::ck_block => { upvarptr = Load(bcx, upvarptr); }
               ty::ck_uniq | ty::ck_box => ()
@@ -339,11 +337,9 @@ fn load_environment(fcx: fn_ctxt,
         }
     }
     if load_ret_handle {
-        let flagptr = Load(bcx, GEPi(bcx, llcdata,
-                                     ~[0u, i]));
+        let flagptr = Load(bcx, GEPi(bcx, llcdata, [0u, i]));
         let retptr = Load(bcx,
-                          GEPi(bcx, llcdata,
-                               ~[0u, i+1u]));
+                          GEPi(bcx, llcdata, [0u, i+1u]));
         fcx.loop_ret = Some({flagptr: flagptr, retptr: retptr});
     }
 }
@@ -415,7 +411,7 @@ fn make_fn_glue(
     let tcx = cx.tcx();
 
     let fn_env = fn@(ck: ty::closure_kind) -> block {
-        let box_cell_v = GEPi(cx, v, ~[0u, abi::fn_field_box]);
+        let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
         let box_ptr_v = Load(cx, box_cell_v);
         do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
             let closure_ty = ty::mk_opaque_closure_ptr(tcx, ck);
@@ -459,10 +455,10 @@ fn make_opaque_cbox_take_glue(
     do with_cond(bcx, IsNotNull(bcx, cbox_in)) |bcx| {
         // Load the size from the type descr found in the cbox
         let cbox_in = PointerCast(bcx, cbox_in, llopaquecboxty);
-        let tydescptr = GEPi(bcx, cbox_in, ~[0u, abi::box_field_tydesc]);
+        let tydescptr = GEPi(bcx, cbox_in, [0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);
         let tydesc = PointerCast(bcx, tydesc, T_ptr(ccx.tydesc_type));
-        let sz = Load(bcx, GEPi(bcx, tydesc, ~[0u, abi::tydesc_field_size]));
+        let sz = Load(bcx, GEPi(bcx, tydesc, [0u, abi::tydesc_field_size]));
 
         // Adjust sz to account for the rust_opaque_box header fields
         let sz = Add(bcx, sz, shape::llsize_of(ccx, T_box_header(ccx)));
@@ -478,11 +474,11 @@ fn make_opaque_cbox_take_glue(
         Store(bcx, cbox_out, cboxptr);
 
         // Take the (deeply cloned) type descriptor
-        let tydesc_out = GEPi(bcx, cbox_out, ~[0u, abi::box_field_tydesc]);
+        let tydesc_out = GEPi(bcx, cbox_out, [0u, abi::box_field_tydesc]);
         let bcx = take_ty(bcx, tydesc_out, ty::mk_type(tcx));
 
         // Take the data in the tuple
-        let cdata_out = GEPi(bcx, cbox_out, ~[0u, abi::box_field_body]);
+        let cdata_out = GEPi(bcx, cbox_out, [0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata_out, tydesc,
                               abi::tydesc_field_take_glue, None);
         bcx
@@ -524,12 +520,12 @@ fn make_opaque_cbox_free_glue(
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
         let cbox = Load(bcx, cbox);
-        let tydescptr = GEPi(bcx, cbox, ~[0u, abi::box_field_tydesc]);
+        let tydescptr = GEPi(bcx, cbox, [0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);
         let tydesc = PointerCast(bcx, tydesc, lltydescty);
 
         // Drop the tuple data then free the descriptor
-        let cdata = GEPi(bcx, cbox, ~[0u, abi::box_field_body]);
+        let cdata = GEPi(bcx, cbox, [0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata, tydesc,
                               abi::tydesc_field_drop_glue, None);
 

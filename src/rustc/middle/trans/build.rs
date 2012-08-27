@@ -431,20 +431,22 @@ fn GEP(cx: block, Pointer: ValueRef, Indices: ~[ValueRef]) -> ValueRef {
 
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
-fn GEPi(cx: block, base: ValueRef, ixs: ~[uint]) -> ValueRef {
+//
+// XXX: Use a small-vector optimization to avoid allocations here.
+fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     let mut v: ~[ValueRef] = ~[];
     for vec::each(ixs) |i| { vec::push(v, C_i32(i as i32)); }
     count_insn(cx, "gepi");
     return InBoundsGEP(cx, base, v);
 }
 
-fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: ~[ValueRef]) ->
+fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) ->
    ValueRef {
     if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
         count_insn(cx, "inboundsgep");
     return llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                       vec::unsafe::to_ptr(Indices),
+                                       vec::unsafe::to_ptr_slice(Indices),
                                        Indices.len() as c_uint,
                                        noname());
     }

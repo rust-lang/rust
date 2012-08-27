@@ -46,9 +46,9 @@ fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let bcx = copy_val(bcx, INIT, dst_body, src_body, content_ty);
 
     let src_tydesc_ptr = GEPi(bcx, src_box,
-                              ~[0u, back::abi::box_field_tydesc]);
+                              [0u, back::abi::box_field_tydesc]);
     let dst_tydesc_ptr = GEPi(bcx, dst_box,
-                              ~[0u, back::abi::box_field_tydesc]);
+                              [0u, back::abi::box_field_tydesc]);
 
     let td = Load(bcx, src_tydesc_ptr);
     Store(bcx, td, dst_tydesc_ptr);
