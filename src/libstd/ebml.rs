@@ -304,7 +304,7 @@ impl writer {
 
 // Set to true to generate more debugging in EBML serialization.
 // Totally lame approach.
-const debug: bool = true;
+const debug: bool = false;
 
 enum ebml_serializer_tag {
     es_uint, es_u64, es_u32, es_u16, es_u8,
