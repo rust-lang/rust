@@ -206,7 +206,7 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
 }
 
 /// A parallel version of the bfs function.
-fn pbfs(&&graph: arc::arc<graph>, key: node_id) -> bfs_result {
+fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
     // This works by doing functional updates of a color vector.
 
     enum color {

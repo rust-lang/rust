@@ -14,7 +14,7 @@ import std::time;
 import std::arc;
 
 // A poor man's pipe.
-type pipe = arc::mutex_arc<~[uint]>;
+type pipe = arc::MutexARC<~[uint]>;
 
 fn send(p: &pipe, msg: uint) {
     do p.access_cond |state, cond| {
