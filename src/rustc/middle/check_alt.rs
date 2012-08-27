@@ -351,7 +351,7 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         // Grab the class data that we care about.
         let class_fields, class_id;
         match ty::get(left_ty).struct {
-            ty::ty_class(cid, substs) => {
+            ty::ty_class(cid, _) => {
                 class_id = cid;
                 class_fields = ty::lookup_class_fields(tcx, class_id);
             }
@@ -414,7 +414,7 @@ fn check_local(tcx: ty::ctxt, loc: @local, &&s: (), v: visit::vt<()>) {
 
 fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     match tcx.def_map.find(pat.id) {
-      Some(def_variant(enum_id, var_id)) => {
+      Some(def_variant(enum_id, _)) => {
         if vec::len(*ty::enum_variants(tcx, enum_id)) != 1u {
             return true;
         }

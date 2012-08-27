@@ -508,7 +508,7 @@ impl RegionVarBindings {
             ok(ty::re_static) // nothing lives longer than static
           }
 
-          (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) => {
+          (ty::re_var(*), _) | (_, ty::re_var(*)) => {
             self.combine_vars(
                 self.lubs, a, b, span,
                 |old_r, new_r| self.make_subregion(span, old_r, new_r))
@@ -531,7 +531,7 @@ impl RegionVarBindings {
             ok(r)
           }
 
-          (ty::re_var(v_id), _) | (_, ty::re_var(v_id)) => {
+          (ty::re_var(*), _) | (_, ty::re_var(*)) => {
             self.combine_vars(
                 self.glbs, a, b, span,
                 |old_r, new_r| self.make_subregion(span, new_r, old_r))
@@ -1020,7 +1020,7 @@ impl RegionVarBindings {
                     self.report_error_for_expanding_node(
                         graph, dup_map, node_vid);
                   }
-                  Contraction => {
+                  Contracting => {
                     self.report_error_for_contracting_node(
                         graph, dup_map, node_vid);
                   }

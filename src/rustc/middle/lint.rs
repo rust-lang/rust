@@ -417,7 +417,7 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
             match ni.node {
-              ast::foreign_item_fn(decl, _, tps) => {
+              ast::foreign_item_fn(decl, _, _) => {
                 check_foreign_fn(cx, it.id, decl);
               }
               ast::foreign_item_const(*) => {}  // XXX: Not implemented.
@@ -434,7 +434,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
             match s.node {
               ast::stmt_semi(@{id: id,
                                callee_id: _,
-                               node: ast::expr_path(@path),
+                               node: ast::expr_path(_),
                                span: _}, _) => {
                 cx.sess.span_lint(
                     path_statement, id, it.id,

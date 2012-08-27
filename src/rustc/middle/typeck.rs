@@ -52,7 +52,8 @@ import syntax::codemap::span;
 import pat_util::{pat_is_variant, pat_id_map};
 import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
-                    ty_param_bounds_and_ty, lookup_public_fields};
+                    ty_param_bounds_and_ty, lookup_public_fields,
+                    vstore_uniq};
 import std::smallintmap;
 import std::map;
 import std::map::{hashmap, int_hash};
@@ -254,8 +255,8 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).struct {
-      ty::ty_fn({purity: ast::impure_fn, proto: ty::proto_bare, bounds,
-                 inputs, output, ret_style: ast::return_val}) => {
+      ty::ty_fn({purity: ast::impure_fn, proto: ty::proto_bare,
+                 inputs, output, ret_style: ast::return_val, _}) => {
         match tcx.items.find(main_id) {
          Some(ast_map::node_item(it,_)) => {
              match it.node {

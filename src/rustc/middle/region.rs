@@ -216,7 +216,7 @@ fn resolve_arm(arm: ast::arm, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_pat(pat: @ast::pat, cx: ctxt, visitor: visit::vt<ctxt>) {
     match pat.node {
-      ast::pat_ident(_, path, _) => {
+      ast::pat_ident(*) => {
         let defn_opt = cx.def_map.find(pat.id);
         match defn_opt {
           Some(ast::def_variant(_,_)) => {
@@ -239,8 +239,8 @@ fn resolve_stmt(stmt: @ast::stmt, cx: ctxt, visitor: visit::vt<ctxt>) {
       ast::stmt_decl(*) => {
         visit::visit_stmt(stmt, cx, visitor);
       }
-      ast::stmt_expr(expr, stmt_id) |
-      ast::stmt_semi(expr, stmt_id) => {
+      ast::stmt_expr(_, stmt_id) |
+      ast::stmt_semi(_, stmt_id) => {
         record_parent(cx, stmt_id);
         let mut expr_cx = cx;
         expr_cx.parent = Some(stmt_id);
@@ -259,7 +259,7 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
                                                            cx.sess.intr()));
         new_cx.parent = Some(expr.id);
       }
-      ast::expr_match(subexpr, _) => {
+      ast::expr_match(*) => {
         debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
                                                            cx.sess.intr()));
         new_cx.parent = Some(expr.id);

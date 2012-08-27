@@ -1859,83 +1859,83 @@ mod unsafe {
     /// Converts a byte to a string.
     unsafe fn from_byte(u: u8) -> ~str { unsafe::from_bytes([u]) }
 
-   /**
-    * Takes a bytewise (not UTF-8) slice from a string.
-    *
-    * Returns the substring from [`begin`..`end`).
-    *
-    * # Failure
-    *
-    * If begin is greater than end.
-    * If end is greater than the length of the string.
-    */
-   unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> ~str {
-       do as_buf(s) |sbuf, n| {
-           assert (begin <= end);
-           assert (end <= n);
-
-           let mut v = ~[];
-           vec::reserve(v, end - begin + 1u);
-           unsafe {
-               do vec::as_buf(v) |vbuf, _vlen| {
-                   let src = ptr::offset(sbuf, begin);
-                   ptr::memcpy(vbuf, src, end - begin);
-               }
-               vec::unsafe::set_len(v, end - begin);
-               vec::push(v, 0u8);
-               ::unsafe::transmute(v)
-           }
-       }
-   }
-
-   /**
-    * Takes a bytewise (not UTF-8) view from a string.
-    *
-    * Returns the substring from [`begin`..`end`).
-    *
-    * # Failure
-    *
-    * If begin is greater than end.
-    * If end is greater than the length of the string.
-    */
-   #[inline]
-   unsafe fn view_bytes(s: &str, begin: uint, end: uint) -> &str {
-       do as_buf(s) |sbuf, n| {
+    /**
+     * Takes a bytewise (not UTF-8) slice from a string.
+     *
+     * Returns the substring from [`begin`..`end`).
+     *
+     * # Failure
+     *
+     * If begin is greater than end.
+     * If end is greater than the length of the string.
+     */
+    unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> ~str {
+        do as_buf(s) |sbuf, n| {
             assert (begin <= end);
             assert (end <= n);
 
-            let tuple = (ptr::offset(sbuf, begin), end - begin + 1);
-            ::unsafe::reinterpret_cast(tuple)
-       }
-   }
+            let mut v = ~[];
+            vec::reserve(v, end - begin + 1u);
+            unsafe {
+                do vec::as_buf(v) |vbuf, _vlen| {
+                    let src = ptr::offset(sbuf, begin);
+                    ptr::memcpy(vbuf, src, end - begin);
+                }
+                vec::unsafe::set_len(v, end - begin);
+                vec::push(v, 0u8);
+                ::unsafe::transmute(v)
+            }
+        }
+    }
 
-   /// Appends a byte to a string. (Not UTF-8 safe).
-   unsafe fn push_byte(&s: ~str, b: u8) {
-       rustrt::rust_str_push(s, b);
-   }
+    /**
+     * Takes a bytewise (not UTF-8) view from a string.
+     *
+     * Returns the substring from [`begin`..`end`).
+     *
+     * # Failure
+     *
+     * If begin is greater than end.
+     * If end is greater than the length of the string.
+     */
+    #[inline]
+    unsafe fn view_bytes(s: &str, begin: uint, end: uint) -> &str {
+        do as_buf(s) |sbuf, n| {
+             assert (begin <= end);
+             assert (end <= n);
 
-   /// Appends a vector of bytes to a string. (Not UTF-8 safe).
-   unsafe fn push_bytes(&s: ~str, bytes: ~[u8]) {
-       for vec::each(bytes) |byte| { rustrt::rust_str_push(s, byte); }
-   }
+             let tuple = (ptr::offset(sbuf, begin), end - begin + 1);
+             ::unsafe::reinterpret_cast(tuple)
+        }
+    }
 
-   /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
-   unsafe fn pop_byte(&s: ~str) -> u8 {
-       let len = len(s);
-       assert (len > 0u);
-       let b = s[len - 1u];
-       unsafe { set_len(s, len - 1u) };
-       return b;
-   }
+    /// Appends a byte to a string. (Not UTF-8 safe).
+    unsafe fn push_byte(&s: ~str, b: u8) {
+        rustrt::rust_str_push(s, b);
+    }
 
-   /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
-   unsafe fn shift_byte(&s: ~str) -> u8 {
-       let len = len(s);
-       assert (len > 0u);
-       let b = s[0];
-       s = unsafe { unsafe::slice_bytes(s, 1u, len) };
-       return b;
-   }
+    /// Appends a vector of bytes to a string. (Not UTF-8 safe).
+    unsafe fn push_bytes(&s: ~str, bytes: ~[u8]) {
+        for vec::each(bytes) |byte| { rustrt::rust_str_push(s, byte); }
+    }
+
+    /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
+    unsafe fn pop_byte(&s: ~str) -> u8 {
+        let len = len(s);
+        assert (len > 0u);
+        let b = s[len - 1u];
+        unsafe { set_len(s, len - 1u) };
+        return b;
+    }
+
+    /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
+    unsafe fn shift_byte(&s: ~str) -> u8 {
+        let len = len(s);
+        assert (len > 0u);
+        let b = s[0];
+        s = unsafe { unsafe::slice_bytes(s, 1u, len) };
+        return b;
+    }
 
     /// Sets the length of the string and adds the null terminator
     unsafe fn set_len(&v: ~str, new_len: uint) {

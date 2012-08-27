@@ -378,7 +378,7 @@ impl &mem_categorization_ctxt {
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_upvar(upvid, inner, fn_node_id, _) => {
+          ast::def_upvar(_, inner, fn_node_id, _) => {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
             let proto = ty::ty_fn_proto(ty);
             match proto {
@@ -856,7 +856,7 @@ fn field_mutbl(tcx: ty::ctxt,
             }
         }
       }
-      ty::ty_class(did, substs) => {
+      ty::ty_class(did, _) => {
         for ty::lookup_class_fields(tcx, did).each |fld| {
             if fld.ident == f_name {
                 let m = match fld.mutability {

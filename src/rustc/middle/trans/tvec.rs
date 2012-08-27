@@ -268,10 +268,10 @@ fn trans_vstore(bcx: block, e: @ast::expr,
       ast::expr_lit(@{node: ast::lit_str(s), span: _}) => {
         return trans_estr(bcx, s, Some(v), dest);
       }
-      ast::expr_vec(es, mutbl) => {
+      ast::expr_vec(es, _) => {
         return trans_evec(bcx, individual_evec(es), v, e.id, dest);
       }
-      ast::expr_repeat(element, count_expr, mutbl) => {
+      ast::expr_repeat(element, count_expr, _) => {
         let count = ty::eval_repeat_count(bcx.tcx(), count_expr, e.span);
         return trans_evec(bcx, repeating_evec(element, count), v, e.id, dest);
       }

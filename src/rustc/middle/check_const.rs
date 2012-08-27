@@ -179,7 +179,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
 
     fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
         match e.node {
-          expr_path(path) => {
+          expr_path(*) => {
             match env.def_map.find(e.id) {
               Some(def_const(def_id)) => {
                 match env.ast_map.get(def_id.node) {

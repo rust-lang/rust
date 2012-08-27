@@ -1928,7 +1928,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             return type_requires(cx, seen, r_ty, mt.ty);
           }
 
-          ty_ptr(mt) => {
+          ty_ptr(*) => {
             false           // unsafe ptrs can always be NULL
           }
 
@@ -2137,7 +2137,7 @@ fn type_is_enum(ty: t) -> bool {
 // constructors
 fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
     match get(ty).struct {
-      ty_enum(did, ref substs) => {
+      ty_enum(did, _) => {
         let variants = enum_variants(cx, did);
         let some_n_ary = vec::any(*variants, |v| vec::len(v.args) > 0u);
         return !some_n_ary;
@@ -2621,7 +2621,7 @@ fn unify_mode(cx: ctxt, modes: expected_found<ast::mode>)
       (m1, m2) if (m1 == m2) => {
         result::ok(m1)
       }
-      (ast::infer(id1), ast::infer(id2)) => {
+      (ast::infer(_), ast::infer(id2)) => {
         cx.inferred_modes.insert(id2, m1);
         result::ok(m1)
       }
@@ -2629,7 +2629,7 @@ fn unify_mode(cx: ctxt, modes: expected_found<ast::mode>)
         cx.inferred_modes.insert(id, m);
         result::ok(m1)
       }
-      (m1, m2) => {
+      (_, _) => {
         result::err(terr_mode_mismatch(modes))
       }
     }
@@ -3325,7 +3325,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
             // This type has a vstore. Get rid of it
             mk_estr(cx, normalize_vstore(vstore)),
 
-        ty_rptr(region, mt) =>
+        ty_rptr(_, mt) =>
             // This type has a region. Get rid of it
             mk_rptr(cx, re_static, normalize_mt(cx, mt)),
 
