@@ -203,8 +203,8 @@ unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
 }
 
 #[inline(always)]
-unsafe fn get_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
-        -> &mut T {
+unsafe fn get_shared_mutable_state<T: send>(rc: &a/SharedMutableState<T>)
+        -> &a/mut T {
     unsafe {
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
         assert ptr.count > 0;
@@ -215,8 +215,8 @@ unsafe fn get_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
     }
 }
 #[inline(always)]
-unsafe fn get_shared_immutable_state<T: send>(rc: &SharedMutableState<T>)
-        -> &T {
+unsafe fn get_shared_immutable_state<T: send>(rc: &a/SharedMutableState<T>)
+        -> &a/T {
     unsafe {
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
         assert ptr.count > 0;
