@@ -1,5 +1,4 @@
 import T = inst::T;
-import cmp::{Eq, Ord};
 import num::from_int;
 
 export min_value, max_value;
@@ -63,18 +62,22 @@ pure fn abs(i: T) -> T {
     if is_negative(i) { -i } else { i }
 }
 
-impl T: Ord {
-    pure fn lt(&&other: T) -> bool {
-        return self < other;
+#[cfg(notest)]
+mod impls {
+    import cmp::{Eq, Ord};
+
+    impl T: Ord {
+        pure fn lt(&&other: T) -> bool {
+            return self < other;
+        }
+    }
+
+    impl T: Eq {
+        pure fn eq(&&other: T) -> bool {
+            return self == other;
+        }
     }
 }
-
-impl T: Eq {
-    pure fn eq(&&other: T) -> bool {
-        return self == other;
-    }
-}
-
 
 impl T: num::Num {
     pure fn add(&&other: T)    -> T { return self + other; }
