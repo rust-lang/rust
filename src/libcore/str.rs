@@ -7,6 +7,7 @@
  * some heavy-duty uses, try std::rope.
  */
 
+import cmp::Eq;
 import libc::size_t;
 import io::WriterUtil;
 
@@ -693,6 +694,30 @@ pure fn eq(a: &~str, b: &~str) -> bool {
 
 /// Bytewise less than or equal
 pure fn le(a: &~str, b: &~str) -> bool { *a <= *b }
+
+#[cfg(notest)]
+impl &str: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: &str) -> bool {
+        eq_slice(self, other)
+    }
+}
+
+#[cfg(notest)]
+impl ~str: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: ~str) -> bool {
+        eq_slice(self, other)
+    }
+}
+
+#[cfg(notest)]
+impl @str: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: @str) -> bool {
+        eq_slice(self, other)
+    }
+}
 
 /// String hash function
 pure fn hash(s: &~str) -> uint {
