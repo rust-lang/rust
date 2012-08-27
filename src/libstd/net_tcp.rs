@@ -152,64 +152,60 @@ fn connect(-input_ip: ip::ip_addr, port: uint,
         match uv::ll::tcp_init( loop_ptr, stream_handle_ptr) {
           0i32 => {
             log(debug, ~"tcp_init successful");
-            match input_ip {
-              _ipv4 => {
-                log(debug, ~"dealing w/ ipv4 connection..");
-                let connect_req_ptr =
-                    ptr::addr_of((*socket_data_ptr).connect_req);
-                let addr_str = ip::format_addr(input_ip);
-                let connect_result = match input_ip {
-                  ip::ipv4(addr) => {
-                    // have to "recreate" the sockaddr_in/6
-                    // since the ip_addr discards the port
-                    // info.. should probably add an additional
-                    // rust type that actually is closer to
-                    // what the libuv API expects (ip str + port num)
-                    log(debug, fmt!("addr: %?", addr));
-                    let in_addr = uv::ll::ip4_addr(addr_str, port as int);
-                    uv::ll::tcp_connect(
-                        connect_req_ptr,
-                        stream_handle_ptr,
-                        ptr::addr_of(in_addr),
-                        tcp_connect_on_connect_cb)
-                  }
-                  ip::ipv6(addr) => {
-                    log(debug, fmt!("addr: %?", addr));
-                    let in_addr = uv::ll::ip6_addr(addr_str, port as int);
-                    uv::ll::tcp_connect6(
-                        connect_req_ptr,
-                        stream_handle_ptr,
-                        ptr::addr_of(in_addr),
-                        tcp_connect_on_connect_cb)
-                  }
-                };
-                match connect_result {
-                  0i32 => {
-                    log(debug, ~"tcp_connect successful");
-                    // reusable data that we'll have for the
-                    // duration..
-                    uv::ll::set_data_for_uv_handle(stream_handle_ptr,
-                                               socket_data_ptr as
-                                                  *libc::c_void);
-                    // just so the connect_cb can send the
-                    // outcome..
-                    uv::ll::set_data_for_req(connect_req_ptr,
-                                             conn_data_ptr);
-                    log(debug, ~"leaving tcp_connect interact cb...");
-                    // let tcp_connect_on_connect_cb send on
-                    // the result_ch, now..
-                  }
-                  _ => {
-                    // immediate connect failure.. probably a garbage
-                    // ip or somesuch
-                    let err_data = uv::ll::get_last_err_data(loop_ptr);
-                    core::comm::send((*conn_data_ptr).result_ch,
-                               conn_failure(err_data.to_tcp_err()));
-                    uv::ll::set_data_for_uv_handle(stream_handle_ptr,
-                                                   conn_data_ptr);
-                    uv::ll::close(stream_handle_ptr, stream_error_close_cb);
-                  }
-                }
+            log(debug, ~"dealing w/ ipv4 connection..");
+            let connect_req_ptr =
+                ptr::addr_of((*socket_data_ptr).connect_req);
+            let addr_str = ip::format_addr(input_ip);
+            let connect_result = match input_ip {
+              ip::ipv4(addr) => {
+                // have to "recreate" the sockaddr_in/6
+                // since the ip_addr discards the port
+                // info.. should probably add an additional
+                // rust type that actually is closer to
+                // what the libuv API expects (ip str + port num)
+                log(debug, fmt!("addr: %?", addr));
+                let in_addr = uv::ll::ip4_addr(addr_str, port as int);
+                uv::ll::tcp_connect(
+                    connect_req_ptr,
+                    stream_handle_ptr,
+                    ptr::addr_of(in_addr),
+                    tcp_connect_on_connect_cb)
+              }
+              ip::ipv6(addr) => {
+                log(debug, fmt!("addr: %?", addr));
+                let in_addr = uv::ll::ip6_addr(addr_str, port as int);
+                uv::ll::tcp_connect6(
+                    connect_req_ptr,
+                    stream_handle_ptr,
+                    ptr::addr_of(in_addr),
+                    tcp_connect_on_connect_cb)
+              }
+            };
+            match connect_result {
+              0i32 => {
+                log(debug, ~"tcp_connect successful");
+                // reusable data that we'll have for the
+                // duration..
+                uv::ll::set_data_for_uv_handle(stream_handle_ptr,
+                                           socket_data_ptr as
+                                              *libc::c_void);
+                // just so the connect_cb can send the
+                // outcome..
+                uv::ll::set_data_for_req(connect_req_ptr,
+                                         conn_data_ptr);
+                log(debug, ~"leaving tcp_connect interact cb...");
+                // let tcp_connect_on_connect_cb send on
+                // the result_ch, now..
+              }
+              _ => {
+                // immediate connect failure.. probably a garbage
+                // ip or somesuch
+                let err_data = uv::ll::get_last_err_data(loop_ptr);
+                core::comm::send((*conn_data_ptr).result_ch,
+                           conn_failure(err_data.to_tcp_err()));
+                uv::ll::set_data_for_uv_handle(stream_handle_ptr,
+                                               conn_data_ptr);
+                uv::ll::close(stream_handle_ptr, stream_error_close_cb);
               }
             }
         }
