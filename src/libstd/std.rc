@@ -52,6 +52,7 @@ mod cell;
 
 #[warn(non_camel_case_types)]
 mod sync;
+#[warn(non_camel_case_types)]
 mod arc;
 mod comm;
 
