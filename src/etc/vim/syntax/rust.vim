@@ -30,7 +30,7 @@ syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128
 
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str
-syn keyword   rustType        option either
+syn keyword   rustType        Option Either
 
 " Types from libc
 syn keyword   rustType        c_float c_double c_void FILE fpos_t
@@ -44,11 +44,11 @@ syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
 
-syn keyword   rustConstant    some none       " option
-syn keyword   rustConstant    left right      " either
-syn keyword   rustConstant    ok err          " result
-syn keyword   rustConstant    success failure " task
-syn keyword   rustConstant    cons nil        " list
+syn keyword   rustConstant    Some None       " option
+syn keyword   rustConstant    Left Right      " either
+syn keyword   rustConstant    Ok Err          " result
+syn keyword   rustConstant    Success Failure " task
+syn keyword   rustConstant    Cons Nil        " list
 " syn keyword   rustConstant    empty node      " tree
 
 " Constants from libc
