@@ -14,7 +14,7 @@ import std::time;
 import std::arc;
 
 // A poor man's pipe.
-type pipe = arc::rw_arc<~[uint]>;
+type pipe = arc::RWARC<~[uint]>;
 
 fn send(p: &pipe, msg: uint) {
     do p.write_cond |state, cond| {
