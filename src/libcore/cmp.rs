@@ -4,10 +4,14 @@
 
 /// Interfaces used for comparison.
 
+#[cfg(notest)]
+#[lang="ord"]
 trait Ord {
     pure fn lt(&&other: self) -> bool;
 }
 
+#[cfg(notest)]
+#[lang="eq"]
 trait Eq {
     pure fn eq(&&other: self) -> bool;
 }
