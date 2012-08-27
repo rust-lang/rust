@@ -317,7 +317,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     if size > 0u && (*variants).len() != 1u {
         let enumptr =
             PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
-        blobptr = GEPi(bcx, enumptr, ~[0u, 1u]);
+        blobptr = GEPi(bcx, enumptr, [0u, 1u]);
     }
     let vdefs_tg = vdefs.enm;
     let vdefs_var = vdefs.var;
@@ -525,7 +525,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
         let mut rec_vals = ~[];
         for vec::each(rec_fields) |field_name| {
             let ix = option::get(ty::field_idx(field_name, fields));
-            vec::push(rec_vals, GEPi(bcx, val, ~[0u, ix]));
+            vec::push(rec_vals, GEPi(bcx, val, [0u, ix]));
         }
         compile_submatch(bcx,
                          enter_rec_or_struct(bcx, dm, m, col, rec_fields,
@@ -581,7 +581,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
         };
         let mut tup_vals = ~[], i = 0u;
         while i < n_tup_elts {
-            vec::push(tup_vals, GEPi(bcx, val, ~[0u, i]));
+            vec::push(tup_vals, GEPi(bcx, val, [0u, i]));
             i += 1u;
         }
         compile_submatch(bcx, enter_tup(bcx, dm, m, col, val, n_tup_elts),
@@ -594,7 +594,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
         let llbox = Load(bcx, val);
         let box_no_addrspace = non_gc_box_cast(bcx, llbox);
         let unboxed =
-            GEPi(bcx, box_no_addrspace, ~[0u, abi::box_field_body]);
+            GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
         compile_submatch(bcx, enter_box(bcx, dm, m, col, val),
                          vec::append(~[unboxed], vals_left), chk, exits);
         return;
@@ -604,7 +604,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
         let llbox = Load(bcx, val);
         let box_no_addrspace = non_gc_box_cast(bcx, llbox);
         let unboxed =
-            GEPi(bcx, box_no_addrspace, ~[0u, abi::box_field_body]);
+            GEPi(bcx, box_no_addrspace, [0u, abi::box_field_body]);
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),
                          vec::append(~[unboxed], vals_left), chk, exits);
         return;
@@ -623,7 +623,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
             } else {
                 let enumptr =
                     PointerCast(bcx, val, T_opaque_enum_ptr(ccx));
-                let discrimptr = GEPi(bcx, enumptr, ~[0u, 0u]);
+                let discrimptr = GEPi(bcx, enumptr, [0u, 0u]);
                 test_val = Load(bcx, discrimptr);
                 kind = switch;
             }
@@ -932,7 +932,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
         let rec_fields = ty::get_fields(node_id_type(bcx, pat.id));
         for vec::each(fields) |f| {
             let ix = option::get(ty::field_idx(f.ident, rec_fields));
-            let fldptr = GEPi(bcx, val, ~[0u, ix]);
+            let fldptr = GEPi(bcx, val, [0u, ix]);
             bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
         }
       }
@@ -967,7 +967,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
       ast::pat_tup(elems) => {
         let mut i = 0u;
         for vec::each(elems) |elem| {
-            let fldptr = GEPi(bcx, val, ~[0u, i]);
+            let fldptr = GEPi(bcx, val, [0u, i]);
             bcx = bind_irrefutable_pat(bcx, elem, fldptr, make_copy);
             i += 1u;
         }
@@ -975,13 +975,13 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
       ast::pat_box(inner) => {
         let llbox = Load(bcx, val);
         let unboxed =
-            GEPi(bcx, llbox, ~[0u, abi::box_field_body]);
+            GEPi(bcx, llbox, [0u, abi::box_field_body]);
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_uniq(inner) => {
         let llbox = Load(bcx, val);
         let unboxed =
-            GEPi(bcx, llbox, ~[0u, abi::box_field_body]);
+            GEPi(bcx, llbox, [0u, abi::box_field_body]);
         bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
       }
       ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) => ()

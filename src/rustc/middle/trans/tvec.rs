@@ -33,23 +33,23 @@ fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
 
 fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_fill");
-    Load(bcx, GEPi(bcx, vptr, ~[0u, abi::vec_elt_fill]))
+    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
 fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
-    Store(bcx, fill, GEPi(bcx, vptr, ~[0u, abi::vec_elt_fill]));
+    Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]));
 }
 fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
-    Load(bcx, GEPi(bcx, vptr, ~[0u, abi::vec_elt_alloc]))
+    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
 }
 
 fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
-    non_gc_box_cast(bcx, GEPi(bcx, vptr, ~[0u, abi::box_field_body]))
+    non_gc_box_cast(bcx, GEPi(bcx, vptr, [0u, abi::box_field_body]))
 }
 
 fn get_dataptr(bcx: block, vptr: ValueRef)
     -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_dataptr");
-    GEPi(bcx, vptr, ~[0u, abi::vec_elt_elems, 0u])
+    GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
 }
 
 fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
@@ -69,8 +69,8 @@ fn alloc_raw(bcx: block, unit_ty: ty::t,
 
     let {bcx, box, body} =
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
-    Store(bcx, fill, GEPi(bcx, body, ~[0u, abi::vec_elt_fill]));
-    Store(bcx, alloc, GEPi(bcx, body, ~[0u, abi::vec_elt_alloc]));
+    Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
+    Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
     return {bcx: bcx, val: box};
 }
 fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
@@ -187,8 +187,8 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
             let p = base::alloca(bcx, T_struct(~[T_ptr(llunitty),
                                                 ccx.int_type]));
-            Store(bcx, vp, GEPi(bcx, p, ~[0u, abi::slice_elt_base]));
-            Store(bcx, len, GEPi(bcx, p, ~[0u, abi::slice_elt_len]));
+            Store(bcx, vp, GEPi(bcx, p, [0u, abi::slice_elt_base]));
+            Store(bcx, len, GEPi(bcx, p, [0u, abi::slice_elt_len]));
 
             {bcx: bcx, val: p, dataptr: vp}
           }
@@ -298,14 +298,14 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
 
     match vstore {
       ty::vstore_fixed(n) => {
-        let base = GEPi(cx, v, ~[0u, 0u]);
+        let base = GEPi(cx, v, [0u, 0u]);
         let n = if ty::type_is_str(e_ty) { n + 1u } else { n };
         let len = Mul(cx, C_uint(ccx, n), unit_sz);
         (base, len)
       }
       ty::vstore_slice(_) => {
-        let base = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_base]));
-        let len = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_len]));
+        let base = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_base]));
+        let len = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_len]));
         (base, len)
       }
       ty::vstore_uniq | ty::vstore_box => {
