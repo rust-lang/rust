@@ -1,3 +1,5 @@
+use cmp::{Eq, Ord};
+
 /// A function used to initialize the elements of a sequence
 type InitOp<T> = fn(uint) -> T;
 
@@ -11,6 +13,9 @@ trait ExtendedIter<A> {
     pure fn all(blk: fn(A) -> bool) -> bool;
     pure fn any(blk: fn(A) -> bool) -> bool;
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
+}
+
+trait EqIter<A:Eq> {
     pure fn contains(x: A) -> bool;
     pure fn count(x: A) -> uint;
     pure fn position(f: fn(A) -> bool) -> Option<uint>;
@@ -27,9 +32,12 @@ trait CopyableIter<A:copy> {
     pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
     pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
     pure fn to_vec() -> ~[A];
+    pure fn find(p: fn(A) -> bool) -> Option<A>;
+}
+
+trait CopyableOrderedIter<A:copy Ord> {
     pure fn min() -> A;
     pure fn max() -> A;
-    pure fn find(p: fn(A) -> bool) -> Option<A>;
 }
 
 // A trait for sequences that can be by imperatively pushing elements
@@ -116,14 +124,14 @@ pure fn to_vec<A:copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
     foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(r, ~[a]))
 }
 
-pure fn contains<A,IA:BaseIter<A>>(self: IA, x: A) -> bool {
+pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: A) -> bool {
     for self.each |a| {
         if a == x { return true; }
     }
     return false;
 }
 
-pure fn count<A,IA:BaseIter<A>>(self: IA, x: A) -> uint {
+pure fn count<A:Eq,IA:BaseIter<A>>(self: IA, x: A) -> uint {
     do foldl(self, 0u) |count, value| {
         if value == x {
             count + 1u
@@ -155,7 +163,7 @@ pure fn repeat(times: uint, blk: fn() -> bool) {
     }
 }
 
-pure fn min<A:copy,IA:BaseIter<A>>(self: IA) -> A {
+pure fn min<A:copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           Some(a_) if a_ < b => {

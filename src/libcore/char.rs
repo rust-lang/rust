@@ -4,6 +4,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+import cmp::Eq;
+
 /*
     Lu  Uppercase_Letter    an uppercase letter
     Ll  Lowercase_Letter    a lowercase letter
@@ -185,6 +187,10 @@ pure fn cmp(a: char, b: char) -> int {
     return  if b > a { -1 }
     else if b < a { 1 }
     else { 0 }
+}
+
+impl char: Eq {
+    pure fn eq(&&other: char) -> bool { self == other }
 }
 
 #[test]

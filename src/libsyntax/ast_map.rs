@@ -6,7 +6,30 @@ import ast_util::{path_to_ident, stmt_id};
 import diagnostic::span_handler;
 import parse::token::ident_interner;
 
-enum path_elt { path_mod(ident), path_name(ident) }
+enum path_elt {
+    path_mod(ident),
+    path_name(ident)
+}
+
+impl path_elt : cmp::Eq {
+    pure fn eq(&&other: path_elt) -> bool {
+        match self {
+            path_mod(e0a) => {
+                match other {
+                    path_mod(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            path_name(e0a) => {
+                match other {
+                    path_name(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */

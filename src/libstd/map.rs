@@ -30,7 +30,7 @@ type hashmap<K, V> = chained::t<K, V>;
 
 trait map<K: copy, V: copy> {
     /// Return the number of elements in the map
-    fn size() -> uint;
+    pure fn size() -> uint;
 
     /**
      * Add a value to the map.
@@ -59,7 +59,7 @@ trait map<K: copy, V: copy> {
      * Get the value for the specified key. If the key does not exist in
      * the map then returns none.
      */
-    fn find(+key: K) -> Option<V>;
+    pure fn find(+key: K) -> Option<V>;
 
     /**
      * Remove and return a value from the map. Returns true if the
@@ -71,22 +71,22 @@ trait map<K: copy, V: copy> {
     fn clear();
 
     /// Iterate over all the key/value pairs in the map by value
-    fn each(fn(+key: K, +value: V) -> bool);
+    pure fn each(fn(+key: K, +value: V) -> bool);
 
     /// Iterate over all the keys in the map by value
-    fn each_key(fn(+key: K) -> bool);
+    pure fn each_key(fn(+key: K) -> bool);
 
     /// Iterate over all the values in the map by value
-    fn each_value(fn(+value: V) -> bool);
+    pure fn each_value(fn(+value: V) -> bool);
 
     /// Iterate over all the key/value pairs in the map by reference
-    fn each_ref(fn(key: &K, value: &V) -> bool);
+    pure fn each_ref(fn(key: &K, value: &V) -> bool);
 
     /// Iterate over all the keys in the map by reference
-    fn each_key_ref(fn(key: &K) -> bool);
+    pure fn each_key_ref(fn(key: &K) -> bool);
 
     /// Iterate over all the values in the map by reference
-    fn each_value_ref(fn(value: &V) -> bool);
+    pure fn each_value_ref(fn(value: &V) -> bool);
 }
 
 mod util {
@@ -130,8 +130,8 @@ mod chained {
     }
 
     priv impl<K, V: copy> t<K, V> {
-        fn search_rem(k: &K, h: uint, idx: uint,
-                      e_root: @entry<K,V>) -> search_result<K,V> {
+        pure fn search_rem(k: &K, h: uint, idx: uint,
+                           e_root: @entry<K,V>) -> search_result<K,V> {
             let mut e0 = e_root;
             let mut comp = 1u;   // for logging
             loop {
@@ -143,20 +143,22 @@ mod chained {
                   }
                   Some(e1) => {
                     comp += 1u;
-                    if e1.hash == h && self.eqer(&e1.key, k) {
-                        debug!("search_tbl: present, comp %u, \
-                                hash %u, idx %u",
-                               comp, h, idx);
-                        return found_after(e0, e1);
-                    } else {
-                        e0 = e1;
+                    unchecked {
+                        if e1.hash == h && self.eqer(&e1.key, k) {
+                            debug!("search_tbl: present, comp %u, \
+                                    hash %u, idx %u",
+                                   comp, h, idx);
+                            return found_after(e0, e1);
+                        } else {
+                            e0 = e1;
+                        }
                     }
                   }
                 }
             };
         }
 
-        fn search_tbl(k: &K, h: uint) -> search_result<K,V> {
+        pure fn search_tbl(k: &K, h: uint) -> search_result<K,V> {
             let idx = h % vec::len(self.chains);
             match copy self.chains[idx] {
               None => {
@@ -165,12 +167,14 @@ mod chained {
                 return not_found;
               }
               Some(e) => {
-                if e.hash == h && self.eqer(&e.key, k) {
-                    debug!("search_tbl: present, comp %u, hash %u, idx %u",
-                           1u, h, idx);
-                    return found_first(idx, e);
-                } else {
-                    return self.search_rem(k, h, idx, e);
+                unchecked {
+                    if e.hash == h && self.eqer(&e.key, k) {
+                        debug!("search_tbl: present, comp %u, hash %u, \
+                                idx %u", 1u, h, idx);
+                        return found_first(idx, e);
+                    } else {
+                        return self.search_rem(k, h, idx, e);
+                    }
                 }
               }
             }
@@ -188,7 +192,7 @@ mod chained {
             self.chains = new_chains;
         }
 
-        fn each_entry(blk: fn(@entry<K,V>) -> bool) {
+        pure fn each_entry(blk: fn(@entry<K,V>) -> bool) {
             // n.b. we can't use vec::iter() here because self.chains
             // is stored in a mutable location.
             let mut i = 0u, n = self.chains.len();
@@ -210,7 +214,7 @@ mod chained {
     }
 
     impl<K: copy, V: copy> t<K, V>: map<K, V> {
-        fn size() -> uint { self.count }
+        pure fn size() -> uint { self.count }
 
         fn contains_key(+k: K) -> bool {
             self.contains_key_ref(&k)
@@ -266,11 +270,13 @@ mod chained {
             }
         }
 
-        fn find(+k: K) -> Option<V> {
-            match self.search_tbl(&k, self.hasher(&k)) {
-              not_found => None,
-              found_first(_, entry) => Some(entry.value),
-              found_after(_, entry) => Some(entry.value)
+        pure fn find(+k: K) -> Option<V> {
+            unchecked {
+                match self.search_tbl(&k, self.hasher(&k)) {
+                  not_found => None,
+                  found_first(_, entry) => Some(entry.value),
+                  found_after(_, entry) => Some(entry.value)
+                }
             }
         }
 
@@ -303,29 +309,29 @@ mod chained {
             self.chains = chains(initial_capacity);
         }
 
-        fn each(blk: fn(+key: K, +value: V) -> bool) {
+        pure fn each(blk: fn(+key: K, +value: V) -> bool) {
             self.each_ref(|k, v| blk(*k, *v))
         }
 
-        fn each_key(blk: fn(+key: K) -> bool) {
+        pure fn each_key(blk: fn(+key: K) -> bool) {
             self.each_key_ref(|p| blk(*p))
         }
 
-        fn each_value(blk: fn(+value: V) -> bool) {
+        pure fn each_value(blk: fn(+value: V) -> bool) {
             self.each_value_ref(|p| blk(*p))
         }
 
-        fn each_ref(blk: fn(key: &K, value: &V) -> bool) {
+        pure fn each_ref(blk: fn(key: &K, value: &V) -> bool) {
             for self.each_entry |entry| {
                 if !blk(&entry.key, &entry.value) { break; }
             }
         }
 
-        fn each_key_ref(blk: fn(key: &K) -> bool) {
+        pure fn each_key_ref(blk: fn(key: &K) -> bool) {
             self.each_ref(|k, _v| blk(k))
         }
 
-        fn each_value_ref(blk: fn(value: &V) -> bool) {
+        pure fn each_value_ref(blk: fn(value: &V) -> bool) {
             self.each_ref(|_k, v| blk(v))
         }
     }
@@ -473,9 +479,11 @@ fn hash_from_uints<V: copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
 
 // XXX Transitionary
 impl<K: copy, V: copy> Managed<LinearMap<K, V>>: map<K, V> {
-    fn size() -> uint {
-        do self.borrow_const |p| {
-            p.len()
+    pure fn size() -> uint {
+        unchecked {
+            do self.borrow_const |p| {
+                p.len()
+            }
         }
     }
 
@@ -503,9 +511,11 @@ impl<K: copy, V: copy> Managed<LinearMap<K, V>>: map<K, V> {
         }
     }
 
-    fn find(+key: K) -> Option<V> {
-        do self.borrow_const |p| {
-            p.find(&key)
+    pure fn find(+key: K) -> Option<V> {
+        unchecked {
+            do self.borrow_const |p| {
+                p.find(&key)
+            }
         }
     }
 
@@ -521,39 +531,51 @@ impl<K: copy, V: copy> Managed<LinearMap<K, V>>: map<K, V> {
         }
     }
 
-    fn each(op: fn(+key: K, +value: V) -> bool) {
-        do self.borrow_imm |p| {
-            p.each(op)
+    pure fn each(op: fn(+key: K, +value: V) -> bool) {
+        unchecked {
+            do self.borrow_imm |p| {
+                p.each(op)
+            }
         }
     }
 
-    fn each_key(op: fn(+key: K) -> bool) {
-        do self.borrow_imm |p| {
-            p.each_key(op)
+    pure fn each_key(op: fn(+key: K) -> bool) {
+        unchecked {
+            do self.borrow_imm |p| {
+                p.each_key(op)
+            }
         }
     }
 
-    fn each_value(op: fn(+value: V) -> bool) {
-        do self.borrow_imm |p| {
-            p.each_value(op)
+    pure fn each_value(op: fn(+value: V) -> bool) {
+        unchecked {
+            do self.borrow_imm |p| {
+                p.each_value(op)
+            }
         }
     }
 
-    fn each_ref(op: fn(key: &K, value: &V) -> bool) {
-        do self.borrow_imm |p| {
-            p.each_ref(op)
+    pure fn each_ref(op: fn(key: &K, value: &V) -> bool) {
+        unchecked {
+            do self.borrow_imm |p| {
+                p.each_ref(op)
+            }
         }
     }
 
-    fn each_key_ref(op: fn(key: &K) -> bool) {
-        do self.borrow_imm |p| {
-            p.each_key_ref(op)
+    pure fn each_key_ref(op: fn(key: &K) -> bool) {
+        unchecked {
+            do self.borrow_imm |p| {
+                p.each_key_ref(op)
+            }
         }
     }
 
-    fn each_value_ref(op: fn(value: &V) -> bool) {
-        do self.borrow_imm |p| {
-            p.each_value_ref(op)
+    pure fn each_value_ref(op: fn(value: &V) -> bool) {
+        unchecked {
+            do self.borrow_imm |p| {
+                p.each_value_ref(op)
+            }
         }
     }
 }

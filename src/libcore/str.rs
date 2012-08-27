@@ -7,7 +7,7 @@
  * some heavy-duty uses, try std::rope.
  */
 
-import cmp::Eq;
+import cmp::{Eq, Ord};
 import libc::size_t;
 import io::WriterUtil;
 
@@ -671,8 +671,6 @@ Section: Comparing strings
 
 /// Bytewise slice equality
 pure fn eq_slice(a: &str, b: &str) -> bool {
-    // FIXME (#2627): This should just be "a == b" but that calls into the
-    // shape code.
     let a_len = a.len();
     let b_len = b.len();
     if a_len != b_len { return false; }
@@ -692,10 +690,25 @@ pure fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
+/// Bytewise slice less than
+pure fn lt(a: &str, b: &str) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    let mut end = uint::min(a_len, b_len);
+
+    let mut i = 0;
+    while i < end {
+        let (c_a, c_b) = (a[i], b[i]);
+        if c_a < c_b { return true; }
+        if c_a > c_b { return false; }
+        i += 1;
+    }
+
+    return a_len < b_len;
+}
+
 /// Bytewise less than or equal
 pure fn le(a: &~str, b: &~str) -> bool { *a <= *b }
 
-#[cfg(notest)]
 impl &str: Eq {
     #[inline(always)]
     pure fn eq(&&other: &str) -> bool {
@@ -703,7 +716,6 @@ impl &str: Eq {
     }
 }
 
-#[cfg(notest)]
 impl ~str: Eq {
     #[inline(always)]
     pure fn eq(&&other: ~str) -> bool {
@@ -711,12 +723,26 @@ impl ~str: Eq {
     }
 }
 
-#[cfg(notest)]
 impl @str: Eq {
     #[inline(always)]
     pure fn eq(&&other: @str) -> bool {
         eq_slice(self, other)
     }
+}
+
+impl ~str : Ord {
+    #[inline(always)]
+    pure fn lt(&&other: ~str) -> bool { lt(self, other) }
+}
+
+impl &str : Ord {
+    #[inline(always)]
+    pure fn lt(&&other: &str) -> bool { lt(self, other) }
+}
+
+impl @str : Ord {
+    #[inline(always)]
+    pure fn lt(&&other: @str) -> bool { lt(self, other) }
 }
 
 /// String hash function

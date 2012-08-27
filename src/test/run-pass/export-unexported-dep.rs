@@ -8,6 +8,12 @@ mod foo {
     // not exported
     enum t { t1, t2, }
 
+    impl t : cmp::Eq {
+        pure fn eq(&&other: t) -> bool {
+            (self as uint) == (other as uint)
+        }
+    }
+
     fn f() -> t { return t1; }
 
     fn g(v: t) { assert (v == t1); }

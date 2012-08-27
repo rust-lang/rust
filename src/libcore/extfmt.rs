@@ -25,6 +25,7 @@ debug!("hello, %s!", "world");
 
 */
 
+import cmp::Eq;
 import option::{Some, None};
 
 
@@ -383,7 +384,24 @@ mod rt {
               count_implied => 1u
             };
     }
+
     enum pad_mode { pad_signed, pad_unsigned, pad_nozero, pad_float }
+
+    impl pad_mode: Eq {
+        pure fn eq(&&other: pad_mode) -> bool {
+            match (self, other) {
+                (pad_signed, pad_signed) => true,
+                (pad_unsigned, pad_unsigned) => true,
+                (pad_nozero, pad_nozero) => true,
+                (pad_float, pad_float) => true,
+                (pad_signed, _) => false,
+                (pad_unsigned, _) => false,
+                (pad_nozero, _) => false,
+                (pad_float, _) => false
+            }
+        }
+    }
+
     fn pad(cv: conv, &s: ~str, mode: pad_mode) -> ~str {
         let uwidth : uint = match cv.width {
           count_implied => return s,

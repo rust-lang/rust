@@ -408,7 +408,8 @@ mod tests {
     #[test]
     fn choose_option() {
         let r = rand::Rng();
-        assert r.choose_option::<int>([]).is_none();
+        let x: Option<int> = r.choose_option([]);
+        assert x.is_none();
         assert r.choose_option([1, 1, 1]) == Some(1);
     }
 
@@ -431,7 +432,8 @@ mod tests {
             {weight: 0u, item: 42},
             {weight: 1u, item: 43}
         ]) == Some(43);
-        assert r.choose_weighted_option::<int>([]).is_none();
+        let v: Option<int> = r.choose_weighted_option([]);
+        assert v.is_none();
     }
 
     #[test]

@@ -349,7 +349,7 @@ fn mk_ident_interner() -> ident_interner {
                                            |x,y| str::eq(*x, *y), init_vec);
 
     /* having multiple interners will just confuse the serializer */
-    unsafe{ assert task::local_data_get(interner_key!()) == None };
+    unsafe{ assert task::local_data_get(interner_key!()).is_none() };
     unsafe{ task::local_data_set(interner_key!(), @rv) };
     rv
 }
@@ -438,6 +438,277 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
         words.insert(word, ());
     }
     words
+}
+
+impl binop : cmp::Eq {
+    pure fn eq(&&other: binop) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
+impl token : cmp::Eq {
+    pure fn eq(&&other: token) -> bool {
+        match self {
+            EQ => {
+                match other {
+                    EQ => true,
+                    _ => false
+                }
+            }
+            LT => {
+                match other {
+                    LT => true,
+                    _ => false
+                }
+            }
+            LE => {
+                match other {
+                    LE => true,
+                    _ => false
+                }
+            }
+            EQEQ => {
+                match other {
+                    EQEQ => true,
+                    _ => false
+                }
+            }
+            NE => {
+                match other {
+                    NE => true,
+                    _ => false
+                }
+            }
+            GE => {
+                match other {
+                    GE => true,
+                    _ => false
+                }
+            }
+            GT => {
+                match other {
+                    GT => true,
+                    _ => false
+                }
+            }
+            ANDAND => {
+                match other {
+                    ANDAND => true,
+                    _ => false
+                }
+            }
+            OROR => {
+                match other {
+                    OROR => true,
+                    _ => false
+                }
+            }
+            NOT => {
+                match other {
+                    NOT => true,
+                    _ => false
+                }
+            }
+            TILDE => {
+                match other {
+                    TILDE => true,
+                    _ => false
+                }
+            }
+            BINOP(e0a) => {
+                match other {
+                    BINOP(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            BINOPEQ(e0a) => {
+                match other {
+                    BINOPEQ(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            AT => {
+                match other {
+                    AT => true,
+                    _ => false
+                }
+            }
+            DOT => {
+                match other {
+                    DOT => true,
+                    _ => false
+                }
+            }
+            DOTDOT => {
+                match other {
+                    DOTDOT => true,
+                    _ => false
+                }
+            }
+            ELLIPSIS => {
+                match other {
+                    ELLIPSIS => true,
+                    _ => false
+                }
+            }
+            COMMA => {
+                match other {
+                    COMMA => true,
+                    _ => false
+                }
+            }
+            SEMI => {
+                match other {
+                    SEMI => true,
+                    _ => false
+                }
+            }
+            COLON => {
+                match other {
+                    COLON => true,
+                    _ => false
+                }
+            }
+            MOD_SEP => {
+                match other {
+                    MOD_SEP => true,
+                    _ => false
+                }
+            }
+            RARROW => {
+                match other {
+                    RARROW => true,
+                    _ => false
+                }
+            }
+            LARROW => {
+                match other {
+                    LARROW => true,
+                    _ => false
+                }
+            }
+            DARROW => {
+                match other {
+                    DARROW => true,
+                    _ => false
+                }
+            }
+            FAT_ARROW => {
+                match other {
+                    FAT_ARROW => true,
+                    _ => false
+                }
+            }
+            LPAREN => {
+                match other {
+                    LPAREN => true,
+                    _ => false
+                }
+            }
+            RPAREN => {
+                match other {
+                    RPAREN => true,
+                    _ => false
+                }
+            }
+            LBRACKET => {
+                match other {
+                    LBRACKET => true,
+                    _ => false
+                }
+            }
+            RBRACKET => {
+                match other {
+                    RBRACKET => true,
+                    _ => false
+                }
+            }
+            LBRACE => {
+                match other {
+                    LBRACE => true,
+                    _ => false
+                }
+            }
+            RBRACE => {
+                match other {
+                    RBRACE => true,
+                    _ => false
+                }
+            }
+            POUND => {
+                match other {
+                    POUND => true,
+                    _ => false
+                }
+            }
+            DOLLAR => {
+                match other {
+                    DOLLAR => true,
+                    _ => false
+                }
+            }
+            LIT_INT(e0a, e1a) => {
+                match other {
+                    LIT_INT(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            LIT_UINT(e0a, e1a) => {
+                match other {
+                    LIT_UINT(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            LIT_INT_UNSUFFIXED(e0a) => {
+                match other {
+                    LIT_INT_UNSUFFIXED(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            LIT_FLOAT(e0a, e1a) => {
+                match other {
+                    LIT_FLOAT(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            LIT_STR(e0a) => {
+                match other {
+                    LIT_STR(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            IDENT(e0a, e1a) => {
+                match other {
+                    IDENT(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            UNDERSCORE => {
+                match other {
+                    UNDERSCORE => true,
+                    _ => false
+                }
+            }
+            INTERPOLATED(_) => {
+                match other {
+                    INTERPOLATED(_) => true,
+                    _ => false
+                }
+            }
+            DOC_COMMENT(e0a) => {
+                match other {
+                    DOC_COMMENT(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            EOF => {
+                match other {
+                    EOF => true,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 // Local Variables:

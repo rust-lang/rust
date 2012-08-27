@@ -3,6 +3,12 @@ import std::map::*;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
+impl cat_type : cmp::Eq {
+    pure fn eq(&&other: cat_type) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 // Very silly -- this just returns the value of the name field
 // for any int value that's less than the meows field
 
@@ -40,7 +46,7 @@ struct cat<T: copy> : map<int, T> {
     }
   }
 
-  fn size() -> uint { self.meows as uint }
+  pure fn size() -> uint { self.meows as uint }
   fn insert(+k: int, +_v: T) -> bool {
     self.meows += k;
     true
@@ -53,7 +59,7 @@ struct cat<T: copy> : map<int, T> {
       None    => { fail ~"epic fail"; }
     }
   }
-  fn find(+k:int) -> Option<T> { if k <= self.meows {
+  pure fn find(+k:int) -> Option<T> { if k <= self.meows {
         Some(self.name)
      }
      else { None }
@@ -68,7 +74,7 @@ struct cat<T: copy> : map<int, T> {
     }
   }
 
-  fn each(f: fn(+int, +T) -> bool) {
+  pure fn each(f: fn(+int, +T) -> bool) {
     let mut n = int::abs(self.meows);
     while n > 0 {
         if !f(n, self.name) { break; }
@@ -76,16 +82,16 @@ struct cat<T: copy> : map<int, T> {
     }
   }
 
-  fn each_key(&&f: fn(+int) -> bool) {
+  pure fn each_key(&&f: fn(+int) -> bool) {
     for self.each |k, _v| { if !f(k) { break; } again;};
   }
-  fn each_value(&&f: fn(+T) -> bool) {
+  pure fn each_value(&&f: fn(+T) -> bool) {
     for self.each |_k, v| { if !f(v) { break; } again;};
   }
 
-  fn each_ref(f: fn(k: &int, v: &T) -> bool) {}
-  fn each_key_ref(f: fn(k: &int) -> bool) {}
-  fn each_value_ref(f: fn(k: &T) -> bool) {}
+  pure fn each_ref(f: fn(k: &int, v: &T) -> bool) {}
+  pure fn each_key_ref(f: fn(k: &int) -> bool) {}
+  pure fn each_value_ref(f: fn(k: &T) -> bool) {}
 
   fn clear() { }
 }

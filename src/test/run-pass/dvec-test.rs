@@ -23,5 +23,6 @@ fn main() {
         assert e == exp[i];
     }
 
-    assert dvec::unwrap(move d) == exp;
+    let v = vec::from_mut(dvec::unwrap(move d));
+    assert v == exp;
 }

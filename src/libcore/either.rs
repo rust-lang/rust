@@ -4,6 +4,7 @@
 
 //! A type that represents one of two alternatives
 
+import cmp::Eq;
 import result::Result;
 
 /// The either type
@@ -122,6 +123,25 @@ pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
 
     match move eith {
         Right(move x) => x, Left(_) => fail ~"either::unwrap_right Left"
+    }
+}
+
+impl<T:Eq,U:Eq> Either<T,U> : Eq {
+    pure fn eq(&&other: Either<T,U>) -> bool {
+        match self {
+            Left(a) => {
+                match other {
+                    Left(b) => a.eq(b),
+                    Right(_) => false
+                }
+            }
+            Right(a) => {
+                match other {
+                    Left(_) => false,
+                    Right(b) => a.eq(b)
+                }
+            }
+        }
     }
 }
 

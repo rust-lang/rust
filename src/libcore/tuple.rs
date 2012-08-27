@@ -4,6 +4,8 @@
 
 //! Operations on tuples
 
+use cmp::{Eq, Ord};
+
 trait TupleOps<T,U> {
     pure fn first() -> T;
     pure fn second() -> U;
@@ -60,6 +62,76 @@ impl<A: copy, B: copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
     fn map<C>(f: fn(A, B) -> C) -> ~[C] {
         let (a, b) = self;
         vec::map2(a, b, f)
+    }
+}
+
+impl<A: Eq, B: Eq> (A, B): Eq {
+    pure fn eq(&&other: (A, B)) -> bool {
+        // XXX: This would be a lot less wordy with ref bindings, but I don't
+        // trust that they work yet.
+        match self {
+            (self_a, self_b) => {
+                match other {
+                    (other_a, other_b) => {
+                        self_a.eq(other_a) && self_b.eq(other_b)
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<A: Ord, B: Ord> (A, B): Ord {
+    pure fn lt(&&other: (A, B)) -> bool {
+        match self {
+            (self_a, self_b) => {
+                match other {
+                    (other_a, other_b) => {
+                        if self_a.lt(other_a) { return true; }
+                        if other_a.lt(self_a) { return false; }
+                        if self_b.lt(other_b) { return true; }
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<A: Eq, B: Eq, C: Eq> (A, B, C): Eq {
+    pure fn eq(&&other: (A, B, C)) -> bool {
+        // XXX: This would be a lot less wordy with ref bindings, but I don't
+        // trust that they work yet.
+        match self {
+            (self_a, self_b, self_c) => {
+                match other {
+                    (other_a, other_b, other_c) => {
+                        self_a.eq(other_a) &&
+                        self_b.eq(other_b) &&
+                        self_c.eq(other_c)
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<A: Ord, B: Ord, C: Ord> (A, B, C): Ord {
+    pure fn lt(&&other: (A, B, C)) -> bool {
+        match self {
+            (self_a, self_b, self_c) => {
+                match other {
+                    (other_a, other_b, other_c) => {
+                        if self_a.lt(other_a) { return true; }
+                        if other_a.lt(self_a) { return false; }
+                        if self_b.lt(other_b) { return true; }
+                        if other_b.lt(self_b) { return false; }
+                        if self_c.lt(other_c) { return true; }
+                        return false;
+                    }
+                }
+            }
+        }
     }
 }
 

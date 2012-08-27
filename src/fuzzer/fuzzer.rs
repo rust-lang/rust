@@ -8,6 +8,12 @@ import syntax::diagnostic;
 enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
 
+impl test_mode : cmp::Eq {
+    pure fn eq(&&other: test_mode) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn write_file(filename: &Path, content: ~str) {
     result::get(
         io::file_writer(filename, ~[io::Create, io::Truncate]))

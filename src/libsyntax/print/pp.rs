@@ -55,11 +55,36 @@ import dvec::DVec;
  */
 enum breaks { consistent, inconsistent, }
 
+impl breaks : cmp::Eq {
+    pure fn eq(&&other: breaks) -> bool {
+        match (self, other) {
+            (consistent, consistent) => true,
+            (inconsistent, inconsistent) => true,
+            (consistent, _) => false,
+            (inconsistent, _) => false,
+        }
+    }
+}
+
 type break_t = {offset: int, blank_space: int};
 
 type begin_t = {offset: int, breaks: breaks};
 
 enum token { STRING(@~str, int), BREAK(break_t), BEGIN(begin_t), END, EOF, }
+
+impl token {
+    fn is_eof() -> bool {
+        match self { EOF => true, _ => false }
+    }
+    fn is_hardbreak_tok() -> bool {
+        match self {
+            BREAK({offset: 0, blank_space: bs }) if bs == size_infinity =>
+                true,
+            _ =>
+                false
+        }
+    }
+}
 
 fn tok_str(++t: token) -> ~str {
     match t {

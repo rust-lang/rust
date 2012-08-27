@@ -57,6 +57,8 @@ export num;
 export path;
 export managed;
 export flate;
+export unit;
+export uniq;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
@@ -183,6 +185,10 @@ mod at_vec;
 mod bool;
 #[warn(non_camel_case_types)]
 mod tuple;
+#[warn(non_camel_case_types)]
+mod unit;
+#[warn(non_camel_case_types)]
+mod uniq;
 
 // Ubiquitous-utility-type modules
 

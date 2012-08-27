@@ -18,12 +18,24 @@ enum output_format {
     pandoc_html
 }
 
+impl output_format : cmp::Eq {
+    pure fn eq(&&other: output_format) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 /// How to organize the output
 enum output_style {
     /// All in a single document
     doc_per_crate,
     /// Each module in its own document
     doc_per_mod
+}
+
+impl output_style : cmp::Eq {
+    pure fn eq(&&other: output_style) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 /// The configuration for a rustdoc session

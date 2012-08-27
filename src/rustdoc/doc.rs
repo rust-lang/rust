@@ -6,8 +6,20 @@ type doc_ = {
     pages: ~[page]
 };
 
+impl doc_ : cmp::Eq {
+    pure fn eq(&&other: doc_) -> bool {
+        self.pages == other.pages
+    }
+}
+
 enum doc {
     doc_(doc_)
+}
+
+impl doc : cmp::Eq {
+    pure fn eq(&&other: doc) -> bool {
+        *self == *other
+    }
 }
 
 enum page {
@@ -15,10 +27,36 @@ enum page {
     itempage(itemtag)
 }
 
+impl page : cmp::Eq {
+    pure fn eq(&&other: page) -> bool {
+        match self {
+            cratepage(e0a) => {
+                match other {
+                    cratepage(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            itempage(e0a) => {
+                match other {
+                    itempage(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 enum implementation {
     required,
     provided,
 }
+
+impl implementation : cmp::Eq {
+    pure fn eq(&&other: implementation) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 
 /**
  * Most rustdocs can be parsed into 'sections' according to their markdown
@@ -29,12 +67,24 @@ type section = {
     body: ~str
 };
 
+impl section : cmp::Eq {
+    pure fn eq(&&other: section) -> bool {
+        self.header == other.header && self.body == other.body
+    }
+}
+
 // FIXME (#2596): We currently give topmod the name of the crate.  There
 // would probably be fewer special cases if the crate had its own name
 // and topmod's name was the empty string.
 type cratedoc = {
     topmod: moddoc,
 };
+
+impl cratedoc : cmp::Eq {
+    pure fn eq(&&other: cratedoc) -> bool {
+        self.topmod == other.topmod
+    }
+}
 
 enum itemtag {
     modtag(moddoc),
@@ -45,6 +95,61 @@ enum itemtag {
     traittag(traitdoc),
     impltag(impldoc),
     tytag(tydoc)
+}
+
+impl itemtag : cmp::Eq {
+    pure fn eq(&&other: itemtag) -> bool {
+        match self {
+            modtag(e0a) => {
+                match other {
+                    modtag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            nmodtag(e0a) => {
+                match other {
+                    nmodtag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            consttag(e0a) => {
+                match other {
+                    consttag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            fntag(e0a) => {
+                match other {
+                    fntag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            enumtag(e0a) => {
+                match other {
+                    enumtag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            traittag(e0a) => {
+                match other {
+                    traittag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            impltag(e0a) => {
+                match other {
+                    impltag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            tytag(e0a) => {
+                match other {
+                    tytag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 type itemdoc = {
@@ -58,10 +163,28 @@ type itemdoc = {
     reexport: bool
 };
 
+impl itemdoc : cmp::Eq {
+    pure fn eq(&&other: itemdoc) -> bool {
+        self.id == other.id &&
+        self.name == other.name &&
+        self.path == other.path &&
+        self.brief == other.brief &&
+        self.desc == other.desc &&
+        self.sections == other.sections &&
+        self.reexport == other.reexport
+    }
+}
+
 type simpleitemdoc = {
     item: itemdoc,
     sig: Option<~str>
 };
+
+impl simpleitemdoc : cmp::Eq {
+    pure fn eq(&&other: simpleitemdoc) -> bool {
+        self.item == other.item && self.sig == other.sig
+    }
+}
 
 type moddoc_ = {
     item: itemdoc,
@@ -69,8 +192,22 @@ type moddoc_ = {
     index: Option<index>
 };
 
+impl moddoc_ : cmp::Eq {
+    pure fn eq(&&other: moddoc_) -> bool {
+        self.item == other.item &&
+        self.items == other.items &&
+        self.index == other.index
+    }
+}
+
 enum moddoc {
     moddoc_(moddoc_)
+}
+
+impl moddoc : cmp::Eq {
+    pure fn eq(&&other: moddoc) -> bool {
+        *self == *other
+    }
 }
 
 type nmoddoc = {
@@ -78,6 +215,14 @@ type nmoddoc = {
     fns: ~[fndoc],
     index: Option<index>
 };
+
+impl nmoddoc : cmp::Eq {
+    pure fn eq(&&other: nmoddoc) -> bool {
+        self.item == other.item &&
+        self.fns == other.fns &&
+        self.index == other.index
+    }
+}
 
 type constdoc = simpleitemdoc;
 
@@ -88,16 +233,36 @@ type enumdoc = {
     variants: ~[variantdoc]
 };
 
+impl enumdoc : cmp::Eq {
+    pure fn eq(&&other: enumdoc) -> bool {
+        self.item == other.item && self.variants == other.variants
+    }
+}
+
 type variantdoc = {
     name: ~str,
     desc: Option<~str>,
     sig: Option<~str>
 };
 
+impl variantdoc : cmp::Eq {
+    pure fn eq(&&other: variantdoc) -> bool {
+        self.name == other.name &&
+        self.desc == other.desc &&
+        self.sig == other.sig
+    }
+}
+
 type traitdoc = {
     item: itemdoc,
     methods: ~[methoddoc]
 };
+
+impl traitdoc : cmp::Eq {
+    pure fn eq(&&other: traitdoc) -> bool {
+        self.item == other.item && self.methods == other.methods
+    }
+}
 
 type methoddoc = {
     name: ~str,
@@ -108,6 +273,17 @@ type methoddoc = {
     implementation: implementation,
 };
 
+impl methoddoc : cmp::Eq {
+    pure fn eq(&&other: methoddoc) -> bool {
+        self.name == other.name &&
+        self.brief == other.brief &&
+        self.desc == other.desc &&
+        self.sections == other.sections &&
+        self.sig == other.sig &&
+        self.implementation == other.implementation
+    }
+}
+
 type impldoc = {
     item: itemdoc,
     trait_types: ~[~str],
@@ -115,11 +291,26 @@ type impldoc = {
     methods: ~[methoddoc]
 };
 
+impl impldoc : cmp::Eq {
+    pure fn eq(&&other: impldoc) -> bool {
+        self.item == other.item &&
+        self.trait_types == other.trait_types &&
+        self.self_ty == other.self_ty &&
+        self.methods == other.methods
+    }
+}
+
 type tydoc = simpleitemdoc;
 
 type index = {
     entries: ~[index_entry]
 };
+
+impl index : cmp::Eq {
+    pure fn eq(&&other: index) -> bool {
+        self.entries == other.entries
+    }
+}
 
 /**
  * A single entry in an index
@@ -137,6 +328,15 @@ type index_entry = {
     brief: Option<~str>,
     link: ~str
 };
+
+impl index_entry : cmp::Eq {
+    pure fn eq(&&other: index_entry) -> bool {
+        self.kind == other.kind &&
+        self.name == other.name &&
+        self.brief == other.brief &&
+        self.link == other.link
+    }
+}
 
 impl doc {
     fn cratedoc() -> cratedoc {

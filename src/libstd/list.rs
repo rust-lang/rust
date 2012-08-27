@@ -1,5 +1,6 @@
 //! A standard linked list
 
+import core::cmp::Eq;
 import core::option;
 import option::*;
 import option::{Some, None};
@@ -54,7 +55,7 @@ fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> Option<T> {
 }
 
 /// Returns true if a list contains an element with the given value
-fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
+fn has<T: copy Eq>(ls: @list<T>, elt: T) -> bool {
     for each(ls) |e| {
         if e == elt { return true; }
     }
@@ -138,6 +139,25 @@ fn each<T>(l: @list<T>, f: fn(T) -> bool) {
             tl
           }
           nil => break
+        }
+    }
+}
+
+impl<T:Eq> list<T> : Eq {
+    pure fn eq(&&other: list<T>) -> bool {
+        match self {
+            cons(e0a, e1a) => {
+                match other {
+                    cons(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            nil => {
+                match other {
+                    nil => true,
+                    _ => false
+                }
+            }
         }
     }
 }

@@ -67,6 +67,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+import core::cmp::Eq;
 import core::result::{Err, Ok};
 import core::option;
 import core::option::{Some, None};
@@ -89,7 +90,10 @@ export opt_maybe_str;
 export opt_default;
 export Result; //NDM
 
-enum Name { Long(~str), Short(char), }
+enum Name {
+    Long(~str),
+    Short(char),
+}
 
 enum HasArg { Yes, No, Maybe, }
 
@@ -103,6 +107,31 @@ fn mkname(nm: &str) -> Name {
     return if str::len(nm) == 1u {
             Short(str::char_at(unm, 0u))
         } else { Long(unm) };
+}
+
+impl Name : Eq {
+    pure fn eq(&&other: Name) -> bool {
+        match self {
+            Long(e0a) => {
+                match other {
+                    Long(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            Short(e0a) => {
+                match other {
+                    Short(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
+impl Occur : Eq {
+    pure fn eq(&&other: Occur) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 /// Create an option that is required and takes an argument
@@ -410,18 +439,24 @@ fn opt_default(+mm: Matches, nm: &str, def: &str) -> Option<~str> {
                            _      => Some::<~str>(str::from_slice(def)) }
 }
 
+enum FailType {
+    ArgumentMissing_,
+    UnrecognizedOption_,
+    OptionMissing_,
+    OptionDuplicated_,
+    UnexpectedArgument_,
+}
+
+impl FailType : Eq {
+    pure fn eq(&&other: FailType) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     import opt = getopts;
     import result::{Err, Ok};
-
-    enum FailType {
-        ArgumentMissing_,
-        UnrecognizedOption_,
-        OptionMissing_,
-        OptionDuplicated_,
-        UnexpectedArgument_,
-    }
 
     fn check_fail_type(+f: Fail_, ft: FailType) {
         match f {

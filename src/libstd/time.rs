@@ -1,6 +1,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+import core::cmp::Eq;
 import libc::{c_char, c_int, c_long, size_t, time_t};
 import io::Reader;
 import result::{Result, Ok, Err};
@@ -34,6 +35,12 @@ extern mod rustrt {
 
 /// A record specifying a time value in seconds and nanoseconds.
 type Timespec = {sec: i64, nsec: i32};
+
+impl timespec : Eq {
+    pure fn eq(&&other: timespec) -> bool {
+        self.sec == other.sec && self.nsec == other.nsec
+    }
+}
 
 /**
  * Returns the current time as a `timespec` containing the seconds and

@@ -996,7 +996,34 @@ enum mono_param_id {
     mono_any,
     mono_repr(uint /* size */, uint /* align */),
 }
-type mono_id = @{def: ast::def_id, params: ~[mono_param_id]};
+
+type mono_id_ = {def: ast::def_id, params: ~[mono_param_id]};
+
+type mono_id = @mono_id_;
+
+impl mono_param_id: cmp::Eq {
+    pure fn eq(&&other: mono_param_id) -> bool {
+        match (self, other) {
+            (mono_precise(ty_a, ids_a), mono_precise(ty_b, ids_b)) => {
+                ty_a == ty_b && ids_a == ids_b
+            }
+            (mono_any, mono_any) => true,
+            (mono_repr(size_a, align_a), mono_repr(size_b, align_b)) => {
+                size_a == size_b && align_a == align_b
+            }
+            (mono_precise(*), _) => false,
+            (mono_any, _) => false,
+            (mono_repr(*), _) => false
+        }
+    }
+}
+
+impl mono_id_: cmp::Eq {
+    pure fn eq(&&other: mono_id_) -> bool {
+        return self.def == other.def && self.params == other.params;
+    }
+}
+
 pure fn hash_mono_id(mi: &mono_id) -> uint {
     let mut h = syntax::ast_util::hash_def(&mi.def);
     for vec::each(mi.params) |param| {
@@ -1082,6 +1109,25 @@ fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
     {self_r: Some(ty::re_bound(ty::br_self)),
      self_ty: None,
      tps: tps}
+}
+
+impl cleantype : cmp::Eq {
+    pure fn eq(&&other: cleantype) -> bool {
+        match self {
+            normal_exit_only => {
+                match other {
+                    normal_exit_only => true,
+                    _ => false
+                }
+            }
+            normal_exit_and_unwind => {
+                match other {
+                    normal_exit_and_unwind => true,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 //

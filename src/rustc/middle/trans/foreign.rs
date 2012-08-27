@@ -37,6 +37,12 @@ enum x86_64_reg_class {
     memory_class
 }
 
+impl x86_64_reg_class: cmp::Eq {
+    pure fn eq(&&other: x86_64_reg_class) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn is_sse(++c: x86_64_reg_class) -> bool {
     return match c {
         sse_fs_class | sse_fv_class |

@@ -222,7 +222,7 @@ mod global_env {
         fn getenv(n: &str) -> Option<~str> {
             unsafe {
                 let s = str::as_c_str(n, libc::getenv);
-                return if unsafe::reinterpret_cast(s) == 0 {
+                return if ptr::null::<u8>() == unsafe::reinterpret_cast(s) {
                     option::None::<~str>
                 } else {
                     let s = unsafe::reinterpret_cast(s);

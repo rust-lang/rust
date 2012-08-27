@@ -2,6 +2,7 @@
 // workaround our lack of traits and lack of macros.  See core.{rc,rs} for
 // how this file is used.
 
+import cmp::{Eq, Ord};
 import inst::{IMPL_T, EACH, SIZE_HINT};
 export extensions;
 
@@ -17,6 +18,9 @@ impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
+}
+
+impl<A: Eq> IMPL_T<A>: iter::EqIter<A> {
     pure fn contains(x: A) -> bool { iter::contains(self, x) }
     pure fn count(x: A) -> uint { iter::count(self, x) }
     pure fn position(f: fn(A) -> bool) -> Option<uint> {
@@ -38,7 +42,11 @@ impl<A: copy> IMPL_T<A>: iter::CopyableIter<A> {
     //     iter::flat_map_to_vec(self, op)
     // }
 
-    pure fn min() -> A { iter::min(self) }
-    pure fn max() -> A { iter::max(self) }
     pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
 }
+
+impl<A: copy Ord> IMPL_T<A>: iter::CopyableOrderedIter<A> {
+    pure fn min() -> A { iter::min(self) }
+    pure fn max() -> A { iter::max(self) }
+}
+

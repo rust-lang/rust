@@ -16,9 +16,14 @@ fn test_bool() {
     test_generic::<bool>(true, false, compare_bool);
 }
 
-fn test_rec() {
-    type t = {a: int, b: int};
+type t = {a: int, b: int};
+impl t : cmp::Eq {
+    pure fn eq(&&other: t) -> bool {
+        self.a == other.a && self.b == other.b
+    }
+}
 
+fn test_rec() {
     fn compare_rec(t1: t, t2: t) -> bool { return t1 == t2; }
     test_generic::<t>({a: 1, b: 2}, {a: 2, b: 3}, compare_rec);
 }

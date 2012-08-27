@@ -77,6 +77,12 @@ type node_id = int;
 #[auto_serialize]
 type def_id = {crate: crate_num, node: node_id};
 
+impl def_id: cmp::Eq {
+    pure fn eq(&&other: def_id) -> bool {
+        self.crate == other.crate && self.node == other.node
+    }
+}
+
 const local_crate: crate_num = 0;
 const crate_node_id: node_id = 0;
 
@@ -108,14 +114,136 @@ enum def {
     def_ty_param(def_id, uint),
     def_binding(node_id, binding_mode),
     def_use(def_id),
-    def_upvar(node_id /* id of closed over var */,
-              @def    /* closed over def */,
-              node_id /* expr node that creates the closure */,
-              node_id /* id for the block/body of the closure expr */),
+    def_upvar(node_id,  // id of closed over var
+              @def,     // closed over def
+              node_id,  // expr node that creates the closure
+              node_id), // id for the block/body of the closure expr
     def_class(def_id, bool /* has constructor */),
     def_typaram_binder(node_id), /* class, impl or trait that has ty params */
     def_region(node_id),
     def_label(node_id)
+}
+
+impl def : cmp::Eq {
+    pure fn eq(&&other: def) -> bool {
+        match self {
+            def_fn(e0a, e1a) => {
+                match other {
+                    def_fn(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_static_method(e0a, e1a) => {
+                match other {
+                    def_static_method(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_self(e0a) => {
+                match other {
+                    def_self(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_mod(e0a) => {
+                match other {
+                    def_mod(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_foreign_mod(e0a) => {
+                match other {
+                    def_foreign_mod(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_const(e0a) => {
+                match other {
+                    def_const(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_arg(e0a, e1a) => {
+                match other {
+                    def_arg(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_local(e0a, e1a) => {
+                match other {
+                    def_local(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_variant(e0a, e1a) => {
+                match other {
+                    def_variant(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_ty(e0a) => {
+                match other {
+                    def_ty(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_prim_ty(e0a) => {
+                match other {
+                    def_prim_ty(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_ty_param(e0a, e1a) => {
+                match other {
+                    def_ty_param(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_binding(e0a, e1a) => {
+                match other {
+                    def_binding(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_use(e0a) => {
+                match other {
+                    def_use(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_upvar(e0a, e1a, e2a, e3a) => {
+                match other {
+                    def_upvar(e0b, e1b, e2b, e3b) =>
+                        e0a == e0b && e1a == e1b && e2a == e2b && e3a == e3b,
+                    _ => false
+                }
+            }
+            def_class(e0a, e1a) => {
+                match other {
+                    def_class(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_typaram_binder(e0a) => {
+                match other {
+                    def_typaram_binder(e1a) => e0a == e1a,
+                    _ => false
+                }
+            }
+            def_region(e0a) => {
+                match other {
+                    def_region(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_label(e0a) => {
+                match other {
+                    def_label(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -180,6 +308,37 @@ enum binding_mode {
     bind_by_implicit_ref
 }
 
+impl binding_mode : cmp::Eq {
+    pure fn eq(&&other: binding_mode) -> bool {
+        match self {
+            bind_by_value => {
+                match other {
+                    bind_by_value => true,
+                    _ => false
+                }
+            }
+            bind_by_move => {
+                match other {
+                    bind_by_move => true,
+                    _ => false
+                }
+            }
+            bind_by_ref(e0a) => {
+                match other {
+                    bind_by_ref(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            bind_by_implicit_ref => {
+                match other {
+                    bind_by_implicit_ref => true,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 #[auto_serialize]
 enum pat_ {
     pat_wild,
@@ -204,6 +363,12 @@ enum pat_ {
 
 #[auto_serialize]
 enum mutability { m_mutbl, m_imm, m_const, }
+
+impl mutability: cmp::Eq {
+    pure fn eq(&&other: mutability) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 #[auto_serialize]
 enum proto {
@@ -251,6 +416,12 @@ enum binop {
     gt,
 }
 
+impl binop : cmp::Eq {
+    pure fn eq(&&other: binop) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 #[auto_serialize]
 enum unop {
     box(mutability),
@@ -262,12 +433,38 @@ enum unop {
 // using ty::resolved_T(...).
 #[auto_serialize]
 enum inferable<T> {
-    expl(T), infer(node_id)
+    expl(T),
+    infer(node_id)
+}
+
+impl<T:cmp::Eq> inferable<T> : cmp::Eq {
+    pure fn eq(&&other: inferable<T>) -> bool {
+        match self {
+            expl(e0a) => {
+                match other {
+                    expl(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            infer(e0a) => {
+                match other {
+                    infer(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 // "resolved" mode: the real modes.
 #[auto_serialize]
 enum rmode { by_ref, by_val, by_mutbl_ref, by_move, by_copy }
+
+impl rmode : cmp::Eq {
+    pure fn eq(&&other: rmode) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 // inferable mode.
 #[auto_serialize]
@@ -289,6 +486,25 @@ enum stmt_ {
 
 #[auto_serialize]
 enum init_op { init_assign, init_move, }
+
+impl init_op : cmp::Eq {
+    pure fn eq(&&other: init_op) -> bool {
+        match self {
+            init_assign => {
+                match other {
+                    init_assign => true,
+                    _ => false
+                }
+            }
+            init_move => {
+                match other {
+                    init_move => true,
+                    _ => false
+                }
+            }
+        }
+    }
+}
 
 #[auto_serialize]
 type initializer = {op: init_op, expr: @expr};
@@ -319,6 +535,19 @@ type field = spanned<field_>;
 
 #[auto_serialize]
 enum blk_check_mode { default_blk, unchecked_blk, unsafe_blk, }
+
+impl blk_check_mode : cmp::Eq {
+    pure fn eq(&&other: blk_check_mode) -> bool {
+        match (self, other) {
+            (default_blk, default_blk) => true,
+            (unchecked_blk, unchecked_blk) => true,
+            (unsafe_blk, unsafe_blk) => true,
+            (default_blk, _) => false,
+            (unchecked_blk, _) => false,
+            (unsafe_blk, _) => false,
+        }
+    }
+}
 
 #[auto_serialize]
 type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
@@ -527,6 +756,33 @@ enum lit_ {
     lit_bool(bool),
 }
 
+impl ast::lit_: cmp::Eq {
+    pure fn eq(&&other: ast::lit_) -> bool {
+        match (self, other) {
+            (lit_str(a), lit_str(b)) => a == b,
+            (lit_int(val_a, ty_a), lit_int(val_b, ty_b)) => {
+                val_a == val_b && ty_a == ty_b
+            }
+            (lit_uint(val_a, ty_a), lit_uint(val_b, ty_b)) => {
+                val_a == val_b && ty_a == ty_b
+            }
+            (lit_int_unsuffixed(a), lit_int_unsuffixed(b)) => a == b,
+            (lit_float(val_a, ty_a), lit_float(val_b, ty_b)) => {
+                val_a == val_b && ty_a == ty_b
+            }
+            (lit_nil, lit_nil) => true,
+            (lit_bool(a), lit_bool(b)) => a == b,
+            (lit_str(_), _) => false,
+            (lit_int(*), _) => false,
+            (lit_uint(*), _) => false,
+            (lit_int_unsuffixed(*), _) => false,
+            (lit_float(*), _) => false,
+            (lit_nil, _) => false,
+            (lit_bool(_), _) => false
+        }
+    }
+}
+
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[auto_serialize]
@@ -555,11 +811,56 @@ enum trait_method {
 #[auto_serialize]
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
+impl int_ty: cmp::Eq {
+    pure fn eq(&&other: int_ty) -> bool {
+        match (self, other) {
+            (ty_i, ty_i) => true,
+            (ty_char, ty_char) => true,
+            (ty_i8, ty_i8) => true,
+            (ty_i16, ty_i16) => true,
+            (ty_i32, ty_i32) => true,
+            (ty_i64, ty_i64) => true,
+            (ty_i, _) => false,
+            (ty_char, _) => false,
+            (ty_i8, _) => false,
+            (ty_i16, _) => false,
+            (ty_i32, _) => false,
+            (ty_i64, _) => false,
+        }
+    }
+}
+
 #[auto_serialize]
 enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
+impl uint_ty: cmp::Eq {
+    pure fn eq(&&other: uint_ty) -> bool {
+        match (self, other) {
+            (ty_u, ty_u) => true,
+            (ty_u8, ty_u8) => true,
+            (ty_u16, ty_u16) => true,
+            (ty_u32, ty_u32) => true,
+            (ty_u64, ty_u64) => true,
+            (ty_u, _) => false,
+            (ty_u8, _) => false,
+            (ty_u16, _) => false,
+            (ty_u32, _) => false,
+            (ty_u64, _) => false
+        }
+    }
+}
+
 #[auto_serialize]
 enum float_ty { ty_f, ty_f32, ty_f64, }
+
+impl float_ty: cmp::Eq {
+    pure fn eq(&&other: float_ty) -> bool {
+        match (self, other) {
+            (ty_f, ty_f) | (ty_f32, ty_f32) | (ty_f64, ty_f64) => true,
+            (ty_f, _) | (ty_f32, _) | (ty_f64, _) => false
+        }
+    }
+}
 
 #[auto_serialize]
 type ty = {id: node_id, node: ty_, span: span};
@@ -572,6 +873,43 @@ enum prim_ty {
     ty_float(float_ty),
     ty_str,
     ty_bool,
+}
+
+impl prim_ty : cmp::Eq {
+    pure fn eq(&&other: prim_ty) -> bool {
+        match self {
+            ty_int(e0a) => {
+                match other {
+                    ty_int(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_uint(e0a) => {
+                match other {
+                    ty_uint(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_float(e0a) => {
+                match other {
+                    ty_float(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_str => {
+                match other {
+                    ty_str => true,
+                    _ => false
+                }
+            }
+            ty_bool => {
+                match other {
+                    ty_bool => true,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 #[auto_serialize]
@@ -618,11 +956,28 @@ enum purity {
     extern_fn, // declared with "extern fn"
 }
 
+impl purity : cmp::Eq {
+    pure fn eq(&&other: purity) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 #[auto_serialize]
 enum ret_style {
     noreturn, // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
     return_val, // everything else
+}
+
+impl ret_style : cmp::Eq {
+    pure fn eq(&&other: ret_style) -> bool {
+        match (self, other) {
+            (noreturn, noreturn) => true,
+            (return_val, return_val) => true,
+            (noreturn, _) => false,
+            (return_val, _) => false,
+        }
+    }
 }
 
 #[auto_serialize]
@@ -633,6 +988,49 @@ enum self_ty_ {
     sty_region(mutability),             // by-region self: `&self`
     sty_box(mutability),                // by-managed-pointer self: `@self`
     sty_uniq(mutability)                // by-unique-pointer self: `~self`
+}
+
+impl self_ty_ : cmp::Eq {
+    pure fn eq(&&other: self_ty_) -> bool {
+        match self {
+            sty_static => {
+                match other {
+                    sty_static => true,
+                    _ => false
+                }
+            }
+            sty_by_ref => {
+                match other {
+                    sty_by_ref => true,
+                    _ => false
+                }
+            }
+            sty_value => {
+                match other {
+                    sty_value => true,
+                    _ => false
+                }
+            }
+            sty_region(e0a) => {
+                match other {
+                    sty_region(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            sty_box(e0a) => {
+                match other {
+                    sty_box(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            sty_uniq(e0a) => {
+                match other {
+                    sty_uniq(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 #[auto_serialize]
@@ -659,6 +1057,25 @@ enum foreign_abi {
 // Foreign mods can be named or anonymous
 #[auto_serialize]
 enum foreign_mod_sort { named, anonymous }
+
+impl foreign_mod_sort : cmp::Eq {
+    pure fn eq(&&other: foreign_mod_sort) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
+impl foreign_abi : cmp::Eq {
+    pure fn eq(&&other: foreign_abi) -> bool {
+        match (self, other) {
+            (foreign_abi_rust_intrinsic, foreign_abi_rust_intrinsic) => true,
+            (foreign_abi_cdecl, foreign_abi_cdecl) => true,
+            (foreign_abi_stdcall, foreign_abi_stdcall) => true,
+            (foreign_abi_rust_intrinsic, _) => false,
+            (foreign_abi_cdecl, _) => false,
+            (foreign_abi_stdcall, _) => false,
+        }
+    }
+}
 
 #[auto_serialize]
 type foreign_mod =
@@ -733,6 +1150,17 @@ type attribute = spanned<attribute_>;
 #[auto_serialize]
 enum attr_style { attr_outer, attr_inner, }
 
+impl attr_style : cmp::Eq {
+    pure fn eq(&&other: attr_style) -> bool {
+        match (self, other) {
+            (attr_outer, attr_outer) => true,
+            (attr_inner, attr_inner) => true,
+            (attr_outer, _) => false,
+            (attr_inner, _) => false,
+        }
+    }
+}
+
 // doc-comments are promoted to attributes that have is_sugared_doc = true
 #[auto_serialize]
 type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
@@ -751,6 +1179,19 @@ type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
 
 #[auto_serialize]
 enum visibility { public, private, inherited }
+
+impl visibility : cmp::Eq {
+    pure fn eq(&&other: visibility) -> bool {
+        match (self, other) {
+            (public, public) => true,
+            (private, private) => true,
+            (inherited, inherited) => true,
+            (public, _) => false,
+            (private, _) => false,
+            (inherited, _) => false,
+        }
+    }
+}
 
 #[auto_serialize]
 type struct_field_ = {
@@ -808,6 +1249,17 @@ enum item_ {
 
 #[auto_serialize]
 enum class_mutability { class_mutable, class_immutable }
+
+impl class_mutability : cmp::Eq {
+    pure fn eq(&&other: class_mutability) -> bool {
+        match (self, other) {
+            (class_mutable, class_mutable) => true,
+            (class_immutable, class_immutable) => true,
+            (class_mutable, _) => false,
+            (class_immutable, _) => false,
+        }
+    }
+}
 
 #[auto_serialize]
 type class_ctor = spanned<class_ctor_>;

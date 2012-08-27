@@ -129,6 +129,12 @@ enum Family {
     InheritedField         // N
 }
 
+impl Family : cmp::Eq {
+    pure fn eq(&&other: Family) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn item_family(item: ebml::Doc) -> Family {
     let fam = ebml::get_doc(item, tag_items_data_item_family);
     match ebml::doc_as_u8(fam) as char {

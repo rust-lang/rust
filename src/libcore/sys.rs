@@ -1,5 +1,7 @@
 //! Misc low level stuff
 
+use cmp::{Eq, Ord};
+
 export TypeDesc;
 export Closure;
 export get_type_desc;
@@ -38,16 +40,16 @@ extern mod rusti {
 
 /// Compares contents of two pointers using the default method.
 /// Equivalent to `*x1 == *x2`.  Useful for hashtables.
-pure fn shape_eq<T>(x1: &T, x2: &T) -> bool {
+pure fn shape_eq<T:Eq>(x1: &T, x2: &T) -> bool {
     *x1 == *x2
 }
 
-pure fn shape_lt<T>(x1: &T, x2: &T) -> bool {
+pure fn shape_lt<T:Ord>(x1: &T, x2: &T) -> bool {
     *x1 < *x2
 }
 
-pure fn shape_le<T>(x1: &T, x2: &T) -> bool {
-    *x1 < *x2
+pure fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
+    *x1 <= *x2
 }
 
 /**

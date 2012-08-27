@@ -28,13 +28,13 @@ trait Eq {
 }
 
 pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
-    v1.lt(*v2)
+    v1.lt(v2)
 }
 
 pure fn le<T: Ord Eq>(v1: &T, v2: &T) -> bool {
-    v1.lt(*v2) || v1.eq(*v2)
+    v1.lt(v2) || v1.eq(v2)
 }
 
 pure fn eq<T: Eq>(v1: &T, v2: &T) -> bool {
-    v1.eq(*v2)
+    v1.eq(v2)
 }

@@ -41,6 +41,7 @@ import f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
 import f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
 import f64::signbit;
 import f64::{j0, j1, jn, y0, y1, yn};
+import cmp::{Eq, Ord};
 import num::from_int;
 
 const NaN: float = 0.0/0.0;
@@ -311,7 +312,7 @@ fn from_str(num: &str) -> Option<float> {
       }
    }
 
-   if (c == 'e') | (c == 'E') {//Examine exponent
+   if (c == 'e') || (c == 'E') { //Examine exponent
       let mut exponent = 0u;
       let mut neg_exponent = false;
       if(pos < len) {
@@ -413,6 +414,14 @@ pure fn atan(x: float) -> float { f64::atan(x as f64) as float }
 pure fn sin(x: float) -> float { f64::sin(x as f64) as float }
 pure fn cos(x: float) -> float { f64::cos(x as f64) as float }
 pure fn tan(x: float) -> float { f64::tan(x as f64) as float }
+
+impl float: Eq {
+    pure fn eq(&&other: float) -> bool { self == other }
+}
+
+impl float: Ord {
+    pure fn lt(&&other: float) -> bool { self < other }
+}
 
 impl float: num::Num {
     pure fn add(&&other: float)    -> float { return self + other; }
@@ -521,7 +530,7 @@ fn test_to_str_inf() {
 
 #[test]
 fn test_traits() {
-    fn test<U:num::Num>(ten: &U) {
+    fn test<U:num::Num cmp::Eq>(ten: &U) {
         assert (ten.to_int() == 10);
 
         let two: U = from_int(2);

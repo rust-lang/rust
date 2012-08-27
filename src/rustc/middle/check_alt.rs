@@ -124,6 +124,22 @@ enum ctor {
     range(const_val, const_val),
 }
 
+impl ctor: cmp::Eq {
+    pure fn eq(&&other: ctor) -> bool {
+        match (self, other) {
+            (single, single) => true,
+            (variant(did_self), variant(did_other)) => did_self == did_other,
+            (val(cv_self), val(cv_other)) => cv_self == cv_other,
+            (range(cv0_self, cv1_self), range(cv0_other, cv1_other)) => {
+                cv0_self == cv0_other && cv1_self == cv1_other
+            }
+            (single, _) | (variant(_), _) | (val(_), _) | (range(*), _) => {
+                false
+            }
+        }
+    }
+}
+
 // Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
 //
 // Whether a vector `v` of patterns is 'useful' in relation to a set of such

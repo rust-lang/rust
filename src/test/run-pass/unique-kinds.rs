@@ -1,10 +1,12 @@
+use cmp::Eq;
+
 fn sendable() {
 
-    fn f<T: send>(i: T, j: T) {
+    fn f<T: send Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: send>(i: T, j: T) {
+    fn g<T: send Eq>(i: T, j: T) {
         assert i != j;
     }
 
@@ -18,11 +20,11 @@ fn sendable() {
 
 fn copyable() {
 
-    fn f<T: copy>(i: T, j: T) {
+    fn f<T: copy Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: copy>(i: T, j: T) {
+    fn g<T: copy Eq>(i: T, j: T) {
         assert i != j;
     }
 
@@ -36,11 +38,11 @@ fn copyable() {
 
 fn noncopyable() {
 
-    fn f<T>(i: T, j: T) {
+    fn f<T: Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T>(i: T, j: T) {
+    fn g<T: Eq>(i: T, j: T) {
         assert i != j;
     }
 

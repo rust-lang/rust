@@ -61,7 +61,7 @@ mod tests {
     #[test]
     fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
-        let x = ~[{mut a: 5, b: false}];
+        let x = ~[(5, false)];
         assert x == id(copy x);
     }
     #[test]

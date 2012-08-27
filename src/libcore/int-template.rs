@@ -239,7 +239,7 @@ fn test_to_str() {
 
 #[test]
 fn test_interfaces() {
-    fn test<U:num::Num>(+ten: U) {
+    fn test<U:num::Num cmp::Eq>(+ten: U) {
         assert (ten.to_int() == 10);
 
         let two: U = from_int(2);

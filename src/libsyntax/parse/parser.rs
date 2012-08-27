@@ -3563,6 +3563,13 @@ struct parser {
         return cdirs;
     }
 }
+
+impl restriction : cmp::Eq {
+    pure fn eq(&&other: restriction) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 //
 // Local Variables:
 // mode: rust

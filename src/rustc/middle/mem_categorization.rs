@@ -55,8 +55,106 @@ enum categorization {
     cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
 }
 
+impl categorization : cmp::Eq {
+    pure fn eq(&&other: categorization) -> bool {
+        match self {
+            cat_rvalue => {
+                match other {
+                    cat_rvalue => true,
+                    _ => false
+                }
+            }
+            cat_special(e0a) => {
+                match other {
+                    cat_special(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_local(e0a) => {
+                match other {
+                    cat_local(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_binding(e0a) => {
+                match other {
+                    cat_binding(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_arg(e0a) => {
+                match other {
+                    cat_arg(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_stack_upvar(e0a) => {
+                match other {
+                    cat_stack_upvar(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_deref(e0a, e1a, e2a) => {
+                match other {
+                    cat_deref(e0b, e1b, e2b) =>
+                        e0a == e0b && e1a == e1b && e2a == e2b,
+                    _ => false
+                }
+            }
+            cat_comp(e0a, e1a) => {
+                match other {
+                    cat_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            cat_discr(e0a, e1a) => {
+                match other {
+                    cat_discr(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 // different kinds of pointers:
-enum ptr_kind {uniq_ptr, gc_ptr, region_ptr(ty::region), unsafe_ptr}
+enum ptr_kind {
+    uniq_ptr,
+    gc_ptr,
+    region_ptr(ty::region),
+    unsafe_ptr
+}
+
+impl ptr_kind : cmp::Eq {
+    pure fn eq(&&other: ptr_kind) -> bool {
+        match self {
+            uniq_ptr => {
+                match other {
+                    uniq_ptr => true,
+                    _ => false
+                }
+            }
+            gc_ptr => {
+                match other {
+                    gc_ptr => true,
+                    _ => false
+                }
+            }
+            region_ptr(e0a) => {
+                match other {
+                    region_ptr(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            unsafe_ptr => {
+                match other {
+                    unsafe_ptr => true,
+                    _ => false
+                }
+            }
+        }
+    }
+}
 
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
@@ -69,6 +167,37 @@ enum comp_kind {
                ast::mutability)  // mutability of vec content
 }
 
+impl comp_kind : cmp::Eq {
+    pure fn eq(&&other: comp_kind) -> bool {
+        match self {
+            comp_tuple => {
+                match other {
+                    comp_tuple => true,
+                    _ => false
+                }
+            }
+            comp_variant(e0a) => {
+                match other {
+                    comp_variant(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            comp_field(e0a, e1a) => {
+                match other {
+                    comp_field(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            comp_index(e0a, e1a) => {
+                match other {
+                    comp_index(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 // different kinds of expressions we might evaluate
 enum special_kind {
     sk_method,
@@ -77,15 +206,34 @@ enum special_kind {
     sk_heap_upvar
 }
 
+impl special_kind : cmp::Eq {
+    pure fn eq(&&other: special_kind) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 // a complete categorization of a value indicating where it originated
 // and how it is located, as well as the mutability of the memory in
 // which the value is stored.
-type cmt = @{id: ast::node_id,        // id of expr/pat producing this value
+type cmt_ = {id: ast::node_id,        // id of expr/pat producing this value
              span: span,              // span of same expr/pat
              cat: categorization,     // categorization of expr
              lp: Option<@loan_path>,  // loan path for expr, if any
              mutbl: ast::mutability,  // mutability of expr as lvalue
              ty: ty::t};              // type of the expr
+
+type cmt = @cmt_;
+
+impl cmt_ : cmp::Eq {
+    pure fn eq(&&other: cmt_) -> bool {
+        self.id == other.id &&
+        self.span == other.span &&
+        self.cat == other.cat &&
+        self.lp == other.lp &&
+        self.mutbl == other.mutbl &&
+        self.ty == other.ty
+    }
+}
 
 // a loan path is like a category, but it exists only when the data is
 // interior to the stack frame.  loan paths are used as the key to a
@@ -95,6 +243,37 @@ enum loan_path {
     lp_arg(ast::node_id),
     lp_deref(@loan_path, ptr_kind),
     lp_comp(@loan_path, comp_kind)
+}
+
+impl loan_path : cmp::Eq {
+    pure fn eq(&&other: loan_path) -> bool {
+        match self {
+            lp_local(e0a) => {
+                match other {
+                    lp_local(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            lp_arg(e0a) => {
+                match other {
+                    lp_arg(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            lp_deref(e0a, e1a) => {
+                match other {
+                    lp_deref(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            lp_comp(e0a, e1a) => {
+                match other {
+                    lp_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 // We pun on *T to mean both actual deref of a ptr as well

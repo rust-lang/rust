@@ -5,6 +5,7 @@
 
 //! json serialization
 
+import core::cmp::Eq;
 import result::{Result, Ok, Err};
 import io;
 import io::WriterUtil;
@@ -477,7 +478,7 @@ fn from_str(s: ~str) -> Result<Json, Error> {
 }
 
 /// Test if two json values are equal
-fn eq(value0: Json, value1: Json) -> bool {
+pure fn eq(value0: Json, value1: Json) -> bool {
     match (value0, value1) {
       (Num(f0), Num(f1)) => f0 == f1,
       (String(s0), String(s1)) => s0 == s1,
@@ -499,6 +500,20 @@ fn eq(value0: Json, value1: Json) -> bool {
       }
       (Null, Null) => true,
       _ => false
+    }
+}
+
+impl Error : Eq {
+    pure fn eq(&&other: Error) -> bool {
+        self.line == other.line &&
+        self.col == other.col &&
+        self.msg == other.msg
+    }
+}
+
+impl Json : Eq {
+    pure fn eq(&&other: Json) -> bool {
+        eq(self, other)
     }
 }
 

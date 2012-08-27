@@ -4,11 +4,21 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+import cmp::{Eq, Ord};
+
 export ptr_eq;
 
 pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object
     unsafe { ptr::addr_of(*a) == ptr::addr_of(*b) }
+}
+
+impl<T:Eq> @const T : Eq {
+    pure fn eq(&&other: @const T) -> bool { *self == *other }
+}
+
+impl<T:Ord> @const T : Ord {
+    pure fn lt(&&other: @const T) -> bool { *self < *other }
 }
 
 #[test]

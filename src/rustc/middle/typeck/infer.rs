@@ -265,6 +265,7 @@ import ast::{m_const, m_imm, m_mutbl};
 import dvec::DVec;
 import region_var_bindings::{RegionVarBindings};
 import ast_util::dummy_sp;
+import cmp::Eq;
 
 // From submodules:
 import resolve::{resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all,
@@ -473,7 +474,7 @@ trait cres_helpers<T> {
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T>;
 }
 
-impl<T:copy> cres<T>: cres_helpers<T> {
+impl<T:copy Eq> cres<T>: cres_helpers<T> {
     fn to_ures() -> ures {
         match self {
           Ok(_v) => Ok(()),

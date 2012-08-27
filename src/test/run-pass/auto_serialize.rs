@@ -3,15 +3,16 @@ use std;
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
+import cmp::Eq;
 import std::ebml;
 import io::Writer;
 import std::serialization::{serialize_uint, deserialize_uint};
 
-fn test_ser_and_deser<A>(a1: A,
-                         expected: ~str,
-                         ebml_ser_fn: fn(ebml::Writer, A),
-                         ebml_deser_fn: fn(ebml::EbmlDeserializer) -> A,
-                         io_ser_fn: fn(io::Writer, A)) {
+fn test_ser_and_deser<A:Eq>(a1: A,
+                            expected: ~str,
+                            ebml_ser_fn: fn(ebml::Writer, A),
+                            ebml_deser_fn: fn(ebml::EbmlDeserializer) -> A,
+                            io_ser_fn: fn(io::Writer, A)) {
 
     // check the pretty printer:
     io_ser_fn(io::stdout(), a1);
@@ -41,9 +42,39 @@ enum expr {
     minus(@expr, @expr)
 }
 
+impl expr : cmp::Eq {
+    pure fn eq(&&other: expr) -> bool {
+        match self {
+            val(e0a) => {
+                match other {
+                    val(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            plus(e0a, e1a) => {
+                match other {
+                    plus(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            minus(e0a, e1a) => {
+                match other {
+                    minus(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
 
 #[auto_serialize]
 type spanned<T> = {lo: uint, hi: uint, node: T};
+
+impl<T:cmp::Eq> spanned<T> : cmp::Eq {
+    pure fn eq(&&other: spanned<T>) -> bool {
+        self.lo == other.lo && self.hi == other.hi && self.node.eq(other.node)
+    }
+}
 
 #[auto_serialize]
 type spanned_uint = spanned<uint>;

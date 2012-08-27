@@ -63,6 +63,12 @@ enum lint {
     // dead_assignment
 }
 
+impl lint : cmp::Eq {
+    pure fn eq(&&other: lint) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn level_to_str(lv: level) -> ~str {
     match lv {
       allow => ~"allow",
@@ -74,6 +80,12 @@ fn level_to_str(lv: level) -> ~str {
 
 enum level {
     allow, warn, deny, forbid
+}
+
+impl level : cmp::Eq {
+    pure fn eq(&&other: level) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 type lint_spec = @{lint: lint,

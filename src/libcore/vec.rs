@@ -68,7 +68,6 @@ export rfind_between;
 export position_elem;
 export position;
 export position_between;
-export position_elem;
 export rposition;
 export rposition_between;
 export unzip;
@@ -93,6 +92,7 @@ export extensions;
 export ConstVector;
 export CopyableVector;
 export ImmutableVector;
+export ImmutableEqVector;
 export ImmutableCopyableVector;
 export IterTraitExtensions;
 export vec_concat;
@@ -896,13 +896,13 @@ pure fn all2<T, U>(v0: &[T], v1: &[U],
 }
 
 /// Return true if a vector contains an element with the given value
-pure fn contains<T>(v: &[T], x: T) -> bool {
+pure fn contains<T: Eq>(v: &[T], x: T) -> bool {
     for each(v) |elt| { if x == elt { return true; } }
     return false;
 }
 
 /// Returns the number of elements that are equal to a given value
-pure fn count<T>(v: &[T], x: T) -> uint {
+pure fn count<T: Eq>(v: &[T], x: T) -> uint {
     let mut cnt = 0u;
     for each(v) |elt| { if x == elt { cnt += 1u; } }
     return cnt;
@@ -955,7 +955,7 @@ pure fn rfind_between<T: copy>(v: &[T], start: uint, end: uint,
 }
 
 /// Find the first index containing a matching value
-pure fn position_elem<T>(v: &[T], x: T) -> Option<uint> {
+pure fn position_elem<T: Eq>(v: &[T], x: T) -> Option<uint> {
     position(v, |y| x == y)
 }
 
@@ -987,7 +987,7 @@ pure fn position_between<T>(v: &[T], start: uint, end: uint,
 }
 
 /// Find the last index containing a matching value
-pure fn rposition_elem<T>(v: &[T], x: T) -> Option<uint> {
+pure fn rposition_elem<T: Eq>(v: &[T], x: T) -> Option<uint> {
     rposition(v, |y| x == y)
 }
 
@@ -1529,18 +1529,21 @@ trait ImmutableVector<T> {
     pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U;
     pure fn iter(f: fn(T));
     pure fn iteri(f: fn(uint, T));
-    pure fn position(f: fn(T) -> bool) -> Option<uint>;
-    pure fn position_elem(x: T) -> Option<uint>;
     pure fn riter(f: fn(T));
     pure fn riteri(f: fn(uint, T));
-    pure fn rposition(f: fn(T) -> bool) -> Option<uint>;
-    pure fn rposition_elem(x: T) -> Option<uint>;
     pure fn map<U>(f: fn(T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U];
     fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
     pure fn alli(f: fn(uint, T) -> bool) -> bool;
     pure fn flat_map<U>(f: fn(T) -> ~[U]) -> ~[U];
     pure fn filter_map<U: copy>(f: fn(T) -> Option<U>) -> ~[U];
+}
+
+trait ImmutableEqVector<T: Eq> {
+    pure fn position(f: fn(T) -> bool) -> Option<uint>;
+    pure fn position_elem(x: T) -> Option<uint>;
+    pure fn rposition(f: fn(T) -> bool) -> Option<uint>;
+    pure fn rposition_elem(x: T) -> Option<uint>;
 }
 
 /// Extension methods for vectors
@@ -1565,18 +1568,6 @@ impl<T> &[T]: ImmutableVector<T> {
     #[inline]
     pure fn iteri(f: fn(uint, T)) { iteri(self, f) }
     /**
-     * Find the first index matching some predicate
-     *
-     * Apply function `f` to each element of `v`.  When function `f` returns
-     * true then an option containing the index is returned. If `f` matches no
-     * elements then none is returned.
-     */
-    #[inline]
-    pure fn position(f: fn(T) -> bool) -> Option<uint> { position(self, f) }
-    /// Find the first index containing a matching value
-    #[inline]
-    pure fn position_elem(x: T) -> Option<uint> { position_elem(self, x) }
-    /**
      * Iterates over a vector in reverse
      *
      * Iterates over vector `v` and, for each element, calls function `f` with
@@ -1592,18 +1583,6 @@ impl<T> &[T]: ImmutableVector<T> {
      */
     #[inline]
     pure fn riteri(f: fn(uint, T)) { riteri(self, f) }
-    /**
-     * Find the last index matching some predicate
-     *
-     * Apply function `f` to each element of `v` in reverse order.  When
-     * function `f` returns true then an option containing the index is
-     * returned. If `f` matches no elements then none is returned.
-     */
-    #[inline]
-    pure fn rposition(f: fn(T) -> bool) -> Option<uint> { rposition(self, f) }
-    /// Find the last index containing a matching value
-    #[inline]
-    pure fn rposition_elem(x: T) -> Option<uint> { rposition_elem(self, x) }
     /// Apply a function to each element of a vector and return the results
     #[inline]
     pure fn map<U>(f: fn(T) -> U) -> ~[U] { map(self, f) }
@@ -1650,6 +1629,33 @@ impl<T> &[T]: ImmutableVector<T> {
     pure fn filter_map<U: copy>(f: fn(T) -> Option<U>) -> ~[U] {
         filter_map(self, f)
     }
+}
+
+impl<T: Eq> &[T]: ImmutableEqVector<T> {
+    /**
+     * Find the first index matching some predicate
+     *
+     * Apply function `f` to each element of `v`.  When function `f` returns
+     * true then an option containing the index is returned. If `f` matches no
+     * elements then none is returned.
+     */
+    #[inline]
+    pure fn position(f: fn(T) -> bool) -> Option<uint> { position(self, f) }
+    /// Find the first index containing a matching value
+    #[inline]
+    pure fn position_elem(x: T) -> Option<uint> { position_elem(self, x) }
+    /**
+     * Find the last index matching some predicate
+     *
+     * Apply function `f` to each element of `v` in reverse order.  When
+     * function `f` returns true then an option containing the index is
+     * returned. If `f` matches no elements then none is returned.
+     */
+    #[inline]
+    pure fn rposition(f: fn(T) -> bool) -> Option<uint> { rposition(self, f) }
+    /// Find the last index containing a matching value
+    #[inline]
+    pure fn rposition_elem(x: T) -> Option<uint> { rposition_elem(self, x) }
 }
 
 trait ImmutableCopyableVector<T> {
@@ -1906,6 +1912,9 @@ impl<A> &[A]: iter::ExtendedIter<A> {
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
+}
+
+impl<A: Eq> &[A]: iter::EqIter<A> {
     pure fn contains(x: A) -> bool { iter::contains(self, x) }
     pure fn count(x: A) -> uint { iter::count(self, x) }
     pure fn position(f: fn(A) -> bool) -> Option<uint> {
@@ -1927,9 +1936,12 @@ impl<A: copy> &[A]: iter::CopyableIter<A> {
     //     iter::flat_map_to_vec(self, op)
     // }
 
+    pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
+}
+
+impl<A: copy Ord> &[A]: iter::CopyableOrderedIter<A> {
     pure fn min() -> A { iter::min(self) }
     pure fn max() -> A { iter::max(self) }
-    pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
 }
 // ___________________________________________________________________________
 

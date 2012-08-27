@@ -6,11 +6,17 @@
 // Tests for match as expressions resulting in structural types
 fn test_rec() {
     let rs = match true { true => {i: 100}, _ => fail };
-    assert (rs == {i: 100});
+    assert (rs.i == 100);
+}
+
+enum mood { happy, sad, }
+impl mood : cmp::Eq {
+    pure fn eq(&&other: mood) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 fn test_tag() {
-    enum mood { happy, sad, }
     let rs = match true { true => { happy } false => { sad } };
     assert (rs == happy);
 }

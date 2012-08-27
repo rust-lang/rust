@@ -65,6 +65,19 @@ enum dest {
     ignore,
 }
 
+impl dest : cmp::Eq {
+    pure fn eq(&&other: dest) -> bool {
+        match (self, other) {
+            (by_val(e0a), by_val(e0b)) => e0a == e0b,
+            (save_in(e0a), save_in(e0b)) => e0a == e0b,
+            (ignore, ignore) => true,
+            (by_val(*), _) => false,
+            (save_in(*), _) => false,
+            (ignore, _) => false,
+        }
+    }
+}
+
 fn dest_str(ccx: @crate_ctxt, d: dest) -> ~str {
     match d {
       by_val(v) => fmt!("by_val(%s)", val_str(ccx.tn, *v)),
@@ -1448,6 +1461,17 @@ fn memmove_ty(bcx: block, dst: ValueRef, src: ValueRef, t: ty::t) {
 
 enum copy_action { INIT, DROP_EXISTING, }
 
+impl copy_action : cmp::Eq {
+    pure fn eq(&&other: copy_action) -> bool {
+        match (self, other) {
+            (INIT, INIT) => true,
+            (DROP_EXISTING, DROP_EXISTING) => true,
+            (INIT, _) => false,
+            (DROP_EXISTING, _) => false,
+        }
+    }
+}
+
 // These are the types that are passed by pointer.
 fn type_is_structural_or_param(t: ty::t) -> bool {
     if ty::type_is_structural(t) { return true; }
@@ -2058,6 +2082,20 @@ enum lval_kind {
     lv_owned,     //< Non-temporary value passed by pointer
     lv_owned_imm, //< Non-temporary value passed by value
 }
+
+impl lval_kind : cmp::Eq {
+    pure fn eq(&&other: lval_kind) -> bool {
+        match (self, other) {
+            (lv_temporary, lv_temporary) => true,
+            (lv_owned, lv_owned) => true,
+            (lv_owned_imm, lv_owned_imm) => true,
+            (lv_temporary, _) => false,
+            (lv_owned, _) => false,
+            (lv_owned_imm, _) => false,
+        }
+    }
+}
+
 type local_var_result = {val: ValueRef, kind: lval_kind};
 type lval_result = {bcx: block, val: ValueRef, kind: lval_kind};
 enum callee_env {
@@ -2879,8 +2917,31 @@ fn float_cast(bcx: block, lldsttype: TypeRef, llsrctype: TypeRef,
     } else { llsrc };
 }
 
-enum cast_kind { cast_pointer, cast_integral, cast_float,
-                cast_enum, cast_other, }
+enum cast_kind {
+    cast_pointer,
+    cast_integral,
+    cast_float,
+    cast_enum,
+    cast_other,
+}
+
+impl cast_kind : cmp::Eq {
+    pure fn eq(&&other: cast_kind) -> bool {
+        match (self, other) {
+            (cast_pointer, cast_pointer) => true,
+            (cast_integral, cast_integral) => true,
+            (cast_float, cast_float) => true,
+            (cast_enum, cast_enum) => true,
+            (cast_other, cast_other) => true,
+            (cast_pointer, _) => false,
+            (cast_integral, _) => false,
+            (cast_float, _) => false,
+            (cast_enum, _) => false,
+            (cast_other, _) => false,
+        }
+    }
+}
+
 fn cast_type_kind(t: ty::t) -> cast_kind {
     match ty::get(t).struct {
       ty::ty_float(*)   => cast_float,

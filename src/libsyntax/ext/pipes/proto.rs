@@ -3,8 +3,17 @@ import dvec::DVec;
 
 import ast_builder::{path, append_types};
 
-enum direction {
-    send, recv
+enum direction { send, recv }
+
+impl direction : cmp::Eq {
+    pure fn eq(&&other: direction) -> bool {
+        match (self, other) {
+            (send, send) => true,
+            (recv, recv) => true,
+            (send, _) => false,
+            (recv, _) => false,
+        }
+    }
 }
 
 impl direction: ToStr {

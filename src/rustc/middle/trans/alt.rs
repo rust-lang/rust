@@ -443,6 +443,14 @@ fn pick_col(m: match_) -> uint {
     return best_col;
 }
 
+enum branch_kind { no_branch, single, switch, compare, }
+
+impl branch_kind : cmp::Eq {
+    pure fn eq(&&other: branch_kind) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
                     chk: Option<mk_fail>, &exits: ~[exit_node]) {
     /*
@@ -612,7 +620,6 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
 
     // Decide what kind of branch we need
     let opts = get_options(ccx, m, col);
-    enum branch_kind { no_branch, single, switch, compare, }
     let mut kind = no_branch;
     let mut test_val = val;
     if opts.len() > 0u {
