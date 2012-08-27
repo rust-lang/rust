@@ -12,6 +12,7 @@ mod intrinsic {
         rusti::get_tydesc::<T>() as *tydesc
     }
 
+    #[allow(non_camel_case_types)]
     enum tydesc = {
         first_param: **u8,
         size: uint,
