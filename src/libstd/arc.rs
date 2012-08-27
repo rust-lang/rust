@@ -13,15 +13,16 @@ import sync;
 import sync::{Mutex,  mutex,  mutex_with_condvars,
               RWlock, rwlock, rwlock_with_condvars};
 
-export arc, clone, get;
-export condvar, mutex_arc, mutex_arc_with_condvars, unwrap_mutex_arc;
-export rw_arc, rw_arc_with_condvars, rw_write_mode, rw_read_mode;
+export ARC, arc, clone, get;
+export Condvar;
+export MutexARC, mutex_arc, mutex_arc_with_condvars, unwrap_mutex_arc;
+export RWARC, rw_arc, rw_arc_with_condvars, RWWriteMode, RWReadMode;
 export unwrap_rw_arc;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
-struct condvar { is_mutex: bool; failed: &mut bool; cond: &sync::Condvar; }
+struct Condvar { is_mutex: bool; failed: &mut bool; cond: &sync::Condvar; }
 
-impl &condvar {
+impl &Condvar {
     /// Atomically exit the associated ARC and block until a signal is sent.
     #[inline(always)]
     fn wait() { self.wait_on(0) }
@@ -69,18 +70,18 @@ impl &condvar {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-struct arc<T: const send> { x: SharedMutableState<T>; }
+struct ARC<T: const send> { x: SharedMutableState<T>; }
 
 /// Create an atomically reference counted wrapper.
-fn arc<T: const send>(+data: T) -> arc<T> {
-    arc { x: unsafe { shared_mutable_state(data) } }
+fn arc<T: const send>(+data: T) -> ARC<T> {
+    ARC { x: unsafe { shared_mutable_state(data) } }
 }
 
 /**
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-fn get<T: const send>(rc: &arc<T>) -> &T {
+fn get<T: const send>(rc: &ARC<T>) -> &T {
     unsafe { get_shared_immutable_state(&rc.x) }
 }
 
@@ -91,8 +92,8 @@ fn get<T: const send>(rc: &arc<T>) -> &T {
  * object. However, one of the `arc` objects can be sent to another task,
  * allowing them to share the underlying data.
  */
-fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
-    arc { x: unsafe { clone_shared_mutable_state(&rc.x) } }
+fn clone<T: const send>(rc: &ARC<T>) -> ARC<T> {
+    ARC { x: unsafe { clone_shared_mutable_state(&rc.x) } }
 }
 
 /**
@@ -104,8 +105,8 @@ fn clone<T: const send>(rc: &arc<T>) -> arc<T> {
  * unwrap from a task that holds another reference to the same ARC; it is
  * guaranteed to deadlock.
  */
-fn unwrap<T: const send>(+rc: arc<T>) -> T {
-    let arc { x: x } = rc;
+fn unwrap<T: const send>(+rc: ARC<T>) -> T {
+    let ARC { x: x } = rc;
     unsafe { unwrap_shared_mutable_state(x) }
 }
 
@@ -114,12 +115,12 @@ fn unwrap<T: const send>(+rc: arc<T>) -> T {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct mutex_arc_inner<T: send> { lock: Mutex; failed: bool; data: T; }
+struct MutexARCInner<T: send> { lock: Mutex; failed: bool; data: T; }
 /// An ARC with mutable data protected by a blocking mutex.
-struct mutex_arc<T: send> { x: SharedMutableState<mutex_arc_inner<T>>; }
+struct MutexARC<T: send> { x: SharedMutableState<MutexARCInner<T>>; }
 
 /// Create a mutex-protected ARC with the supplied data.
-fn mutex_arc<T: send>(+user_data: T) -> mutex_arc<T> {
+fn mutex_arc<T: send>(+user_data: T) -> MutexARC<T> {
     mutex_arc_with_condvars(user_data, 1)
 }
 /**
@@ -127,19 +128,19 @@ fn mutex_arc<T: send>(+user_data: T) -> mutex_arc<T> {
  * of condvars (as sync::mutex_with_condvars).
  */
 fn mutex_arc_with_condvars<T: send>(+user_data: T,
-                                    num_condvars: uint) -> mutex_arc<T> {
+                                    num_condvars: uint) -> MutexARC<T> {
     let data =
-        mutex_arc_inner { lock: mutex_with_condvars(num_condvars),
+        MutexARCInner { lock: mutex_with_condvars(num_condvars),
                           failed: false, data: user_data };
-    mutex_arc { x: unsafe { shared_mutable_state(data) } }
+    MutexARC { x: unsafe { shared_mutable_state(data) } }
 }
 
-impl<T: send> &mutex_arc<T> {
+impl<T: send> &MutexARC<T> {
     /// Duplicate a mutex-protected ARC, as arc::clone.
-    fn clone() -> mutex_arc<T> {
+    fn clone() -> MutexARC<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
-        mutex_arc { x: unsafe { clone_shared_mutable_state(&self.x) } }
+        MutexARC { x: unsafe { clone_shared_mutable_state(&self.x) } }
     }
 
     /**
@@ -172,19 +173,19 @@ impl<T: send> &mutex_arc<T> {
         // unsafe. See borrow_rwlock, far below.
         do (&state.lock).lock {
             check_poison(true, state.failed);
-            let _z = poison_on_fail(&mut state.failed);
+            let _z = PoisonOnFail(&mut state.failed);
             blk(&mut state.data)
         }
     }
     /// As access(), but with a condvar, as sync::mutex.lock_cond().
     #[inline(always)]
-    unsafe fn access_cond<U>(blk: fn(x: &x/mut T, c: &c/condvar) -> U) -> U {
+    unsafe fn access_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do (&state.lock).lock_cond |cond| {
             check_poison(true, state.failed);
-            let _z = poison_on_fail(&mut state.failed);
+            let _z = PoisonOnFail(&mut state.failed);
             blk(&mut state.data,
-                &condvar { is_mutex: true, failed: &mut state.failed,
+                &Condvar { is_mutex: true, failed: &mut state.failed,
                            cond: cond })
         }
     }
@@ -197,12 +198,12 @@ impl<T: send> &mutex_arc<T> {
  * Will additionally fail if another task has failed while accessing the arc.
  */
 // FIXME(#2585) make this a by-move method on the arc
-fn unwrap_mutex_arc<T: send>(+arc: mutex_arc<T>) -> T {
-    let mutex_arc { x: x } = arc;
+fn unwrap_mutex_arc<T: send>(+arc: MutexARC<T>) -> T {
+    let MutexARC { x: x } = arc;
     let inner = unsafe { unwrap_shared_mutable_state(x) };
-    let mutex_arc_inner { failed: failed, data: data, _ } = inner;
+    let MutexARCInner { failed: failed, data: data, _ } = inner;
     if failed {
-        fail ~"Can't unwrap poisoned mutex_arc - another task failed inside!"
+        fail ~"Can't unwrap poisoned MutexARC - another task failed inside!"
     }
     data
 }
@@ -213,7 +214,7 @@ fn unwrap_mutex_arc<T: send>(+arc: mutex_arc<T>) -> T {
 fn check_poison(is_mutex: bool, failed: bool) {
     if failed {
         if is_mutex {
-            fail ~"Poisoned mutex_arc - another task failed inside!";
+            fail ~"Poisoned MutexARC - another task failed inside!";
         } else {
             fail ~"Poisoned rw_arc - another task failed inside!";
         }
@@ -221,7 +222,7 @@ fn check_poison(is_mutex: bool, failed: bool) {
 }
 
 #[doc(hidden)]
-struct poison_on_fail {
+struct PoisonOnFail {
     failed: &mut bool;
     new(failed: &mut bool) { self.failed = failed; }
     drop {
@@ -235,20 +236,20 @@ struct poison_on_fail {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct rw_arc_inner<T: const send> { lock: RWlock; failed: bool; data: T; }
+struct RWARCInner<T: const send> { lock: RWlock; failed: bool; data: T; }
 /**
  * A dual-mode ARC protected by a reader-writer lock. The data can be accessed
  * mutably or immutably, and immutably-accessing tasks may run concurrently.
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-struct rw_arc<T: const send> {
-    x: SharedMutableState<rw_arc_inner<T>>;
+struct RWARC<T: const send> {
+    x: SharedMutableState<RWARCInner<T>>;
     mut cant_nest: ();
 }
 
 /// Create a reader/writer ARC with the supplied data.
-fn rw_arc<T: const send>(+user_data: T) -> rw_arc<T> {
+fn rw_arc<T: const send>(+user_data: T) -> RWARC<T> {
     rw_arc_with_condvars(user_data, 1)
 }
 /**
@@ -256,18 +257,18 @@ fn rw_arc<T: const send>(+user_data: T) -> rw_arc<T> {
  * of condvars (as sync::rwlock_with_condvars).
  */
 fn rw_arc_with_condvars<T: const send>(+user_data: T,
-                                       num_condvars: uint) -> rw_arc<T> {
+                                       num_condvars: uint) -> RWARC<T> {
     let data =
-        rw_arc_inner { lock: rwlock_with_condvars(num_condvars),
-                       failed: false, data: user_data };
-    rw_arc { x: unsafe { shared_mutable_state(data) }, cant_nest: () }
+        RWARCInner { lock: rwlock_with_condvars(num_condvars),
+                     failed: false, data: user_data };
+    RWARC { x: unsafe { shared_mutable_state(data) }, cant_nest: () }
 }
 
-impl<T: const send> &rw_arc<T> {
+impl<T: const send> &RWARC<T> {
     /// Duplicate a rwlock-protected ARC, as arc::clone.
-    fn clone() -> rw_arc<T> {
-        rw_arc { x: unsafe { clone_shared_mutable_state(&self.x) },
-                 cant_nest: () }
+    fn clone() -> RWARC<T> {
+        RWARC { x: unsafe { clone_shared_mutable_state(&self.x) },
+                cant_nest: () }
     }
 
     /**
@@ -277,7 +278,7 @@ impl<T: const send> &rw_arc<T> {
      * # Failure
      *
      * Failing while inside the ARC will unlock the ARC while unwinding, so
-     * that other tasks won't block forever. As mutex_arc.access, it will also
+     * that other tasks won't block forever. As MutexARC.access, it will also
      * poison the ARC, so subsequent readers and writers will both also fail.
      */
     #[inline(always)]
@@ -285,19 +286,19 @@ impl<T: const send> &rw_arc<T> {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write {
             check_poison(false, state.failed);
-            let _z = poison_on_fail(&mut state.failed);
+            let _z = PoisonOnFail(&mut state.failed);
             blk(&mut state.data)
         }
     }
     /// As write(), but with a condvar, as sync::rwlock.write_cond().
     #[inline(always)]
-    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/condvar) -> U) -> U {
+    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write_cond |cond| {
             check_poison(false, state.failed);
-            let _z = poison_on_fail(&mut state.failed);
+            let _z = PoisonOnFail(&mut state.failed);
             blk(&mut state.data,
-                &condvar { is_mutex: false, failed: &mut state.failed,
+                &Condvar { is_mutex: false, failed: &mut state.failed,
                            cond: cond })
         }
     }
@@ -320,9 +321,9 @@ impl<T: const send> &rw_arc<T> {
 
     /**
      * As write(), but with the ability to atomically 'downgrade' the lock.
-     * See sync::rwlock.write_downgrade(). The rw_write_mode token must be
-     * used to obtain the &mut T, and can be transformed into a rw_read_mode
-     * token by calling downgrade(), after which a &T can be obtained instead.
+     * See sync::rwlock.write_downgrade(). The RWWriteMode token must be used
+     * to obtain the &mut T, and can be transformed into a RWReadMode token by
+     * calling downgrade(), after which a &T can be obtained instead.
      * ~~~
      * do arc.write_downgrade |write_mode| {
      *     do (&write_mode).write_cond |state, condvar| {
@@ -335,20 +336,20 @@ impl<T: const send> &rw_arc<T> {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(+rw_write_mode<T>) -> U) -> U {
+    fn write_downgrade<U>(blk: fn(+RWWriteMode<T>) -> U) -> U {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write_downgrade |write_mode| {
             check_poison(false, state.failed);
-            blk(rw_write_mode((&mut state.data, write_mode,
-                               poison_on_fail(&mut state.failed))))
+            blk(RWWriteMode((&mut state.data, write_mode,
+                              PoisonOnFail(&mut state.failed))))
         }
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(+token: rw_write_mode/&a<T>) -> rw_read_mode/&a<T> {
+    fn downgrade(+token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
-        let rw_write_mode((data, t, _poison)) = token;
+        let RWWriteMode((data, t, _poison)) = token;
         // Let readers in
         let new_token = (&state.lock).downgrade(t);
         // Whatever region the input reference had, it will be safe to use
@@ -358,7 +359,7 @@ impl<T: const send> &rw_arc<T> {
         // Downgrade ensured the token belonged to us. Just a sanity check.
         assert ptr::ref_eq(&state.data, new_data);
         // Produce new token
-        rw_read_mode((new_data, new_token))
+        RWReadMode((new_data, new_token))
     }
 }
 
@@ -370,12 +371,12 @@ impl<T: const send> &rw_arc<T> {
  * in write mode.
  */
 // FIXME(#2585) make this a by-move method on the arc
-fn unwrap_rw_arc<T: const send>(+arc: rw_arc<T>) -> T {
-    let rw_arc { x: x, _ } = arc;
+fn unwrap_rw_arc<T: const send>(+arc: RWARC<T>) -> T {
+    let RWARC { x: x, _ } = arc;
     let inner = unsafe { unwrap_shared_mutable_state(x) };
-    let rw_arc_inner { failed: failed, data: data, _ } = inner;
+    let RWARCInner { failed: failed, data: data, _ } = inner;
     if failed {
-        fail ~"Can't unwrap poisoned rw_arc - another task failed inside!"
+        fail ~"Can't unwrap poisoned RWARC - another task failed inside!"
     }
     data
 }
@@ -384,35 +385,35 @@ fn unwrap_rw_arc<T: const send>(+arc: rw_arc<T>) -> T {
 // lock it. This wraps the unsafety, with the justification that the 'lock'
 // field is never overwritten; only 'failed' and 'data'.
 #[doc(hidden)]
-fn borrow_rwlock<T: const send>(state: &r/mut rw_arc_inner<T>) -> &r/RWlock {
+fn borrow_rwlock<T: const send>(state: &r/mut RWARCInner<T>) -> &r/RWlock {
     unsafe { unsafe::transmute_immut(&mut state.lock) }
 }
 
 // FIXME (#3154) ice with struct/&<T> prevents these from being structs.
 
-/// The "write permission" token used for rw_arc.write_downgrade().
-enum rw_write_mode<T: const send> =
-    (&mut T, sync::RWlockWriteMode, poison_on_fail);
-/// The "read permission" token used for rw_arc.write_downgrade().
-enum rw_read_mode<T:const send> = (&T, sync::RWlockReadMode);
+/// The "write permission" token used for RWARC.write_downgrade().
+enum RWWriteMode<T: const send> =
+    (&mut T, sync::RWlockWriteMode, PoisonOnFail);
+/// The "read permission" token used for RWARC.write_downgrade().
+enum RWReadMode<T:const send> = (&T, sync::RWlockReadMode);
 
-impl<T: const send> &rw_write_mode<T> {
-    /// Access the pre-downgrade rw_arc in write mode.
+impl<T: const send> &RWWriteMode<T> {
+    /// Access the pre-downgrade RWARC in write mode.
     fn write<U>(blk: fn(x: &mut T) -> U) -> U {
         match *self {
-            rw_write_mode((data, ref token, _)) => {
+            RWWriteMode((data, ref token, _)) => {
                 do token.write {
                     blk(data)
                 }
             }
         }
     }
-    /// Access the pre-downgrade rw_arc in write mode with a condvar.
-    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/condvar) -> U) -> U {
+    /// Access the pre-downgrade RWARC in write mode with a condvar.
+    fn write_cond<U>(blk: fn(x: &x/mut T, c: &c/Condvar) -> U) -> U {
         match *self {
-            rw_write_mode((data, ref token, ref poison)) => {
+            RWWriteMode((data, ref token, ref poison)) => {
                 do token.write_cond |cond| {
-                    let cvar = condvar {
+                    let cvar = Condvar {
                         is_mutex: false, failed: poison.failed,
                         cond: cond };
                     blk(data, &cvar)
@@ -422,11 +423,11 @@ impl<T: const send> &rw_write_mode<T> {
     }
 }
 
-impl<T: const send> &rw_read_mode<T> {
+impl<T: const send> &RWReadMode<T> {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(blk: fn(x: &T) -> U) -> U {
         match *self {
-            rw_read_mode((data, ref token)) => {
+            RWReadMode((data, ref token)) => {
                 do token.read { blk(data) }
             }
         }
