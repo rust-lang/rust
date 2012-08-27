@@ -892,7 +892,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // functions.  Therefore, we match one level of structure.
         let fn_ty =
             match structure_of(fcx, sp, in_fty) {
-              sty @ ty::ty_fn(ref fn_ty) => {
+              ty::ty_fn(ref fn_ty) => {
                 replace_bound_regions_in_fn_ty(
                     fcx.ccx.tcx, @nil, None, fn_ty,
                     |_br| fcx.infcx.next_region_var(sp,

@@ -1035,7 +1035,7 @@ fn fold_regions_and_ty(
       ty_trait(def_id, ref substs, vst) => {
         ty::mk_trait(cx, def_id, fold_substs(substs, fldr, fldt), vst)
       }
-      ref sty @ ty_fn(f) => {
+      ty_fn(f) => {
         let new_proto;
         match f.proto {
             proto_bare =>
@@ -2229,7 +2229,7 @@ pure fn hash_region(r: &region) -> uint {
       (hash_bound_region(&br)) << 2u | 1u,
       re_scope(id)  => ((id as uint) << 2u) | 2u,
       re_var(id)    => (id.to_uint() << 2u) | 3u,
-      re_bot        => 4u
+      re_static     => 4u
     }
 }
 
