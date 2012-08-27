@@ -1,5 +1,4 @@
 import T = inst::T;
-import cmp::{Eq, Ord};
 
 export min_value, max_value;
 export min, max;
@@ -56,15 +55,20 @@ pure fn compl(i: T) -> T {
     max_value ^ i
 }
 
-impl T: Ord {
-    pure fn lt(&&other: T) -> bool {
-        return self < other;
-    }
-}
+#[cfg(notest)]
+mod impls {
+    import cmp::{Eq, Ord};
 
-impl T: Eq {
-    pure fn eq(&&other: T) -> bool {
-        return self == other;
+    impl T: Ord {
+        pure fn lt(&&other: T) -> bool {
+            return self < other;
+        }
+    }
+
+    impl T: Eq {
+        pure fn eq(&&other: T) -> bool {
+            return self == other;
+        }
     }
 }
 
