@@ -11,7 +11,7 @@ import syntax::diagnostic::expect;
 import ast_util::dummy_sp;
 import common::*;
 import std::map::hashmap;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 export class_dtor;
 export get_symbol;

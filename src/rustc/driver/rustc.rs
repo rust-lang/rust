@@ -217,8 +217,8 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         done,
     };
 
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
 
     match do task::try  {
 

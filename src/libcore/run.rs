@@ -297,8 +297,8 @@ fn program_output(prog: &str, args: &[~str]) ->
     // in parallel so we don't deadlock while blocking on one
     // or the other. FIXME (#2625): Surely there's a much more
     // clever way to do this.
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
     do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);
         comm::send(ch, (2, errput));

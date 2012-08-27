@@ -2,7 +2,7 @@
 
 import to_str::ToStr;
 
-import dvec::dvec;
+import dvec::DVec;
 
 import ast::ident;
 import util::interner;

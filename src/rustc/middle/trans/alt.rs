@@ -13,7 +13,7 @@ import syntax::print::pprust::pat_to_str;
 import middle::resolve3::DefMap;
 import back::abi;
 import std::map::hashmap;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 import common::*;
 
@@ -282,7 +282,7 @@ fn get_options(ccx: @crate_ctxt, m: match_, col: uint) -> ~[opt] {
         set.push(val);
     }
 
-    let found = dvec();
+    let found = DVec();
     for vec::each(m) |br| {
         let cur = br.pats[col];
         if pat_is_variant(ccx.tcx.def_map, cur) {

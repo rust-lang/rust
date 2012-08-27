@@ -6,7 +6,7 @@ import pp::{break_offset, word, printer,
 import diagnostic;
 import ast::{required, provided};
 import ast_util::{operator_prec};
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import parse::classify::*;
 import parse::token::ident_interner;
 
@@ -53,7 +53,7 @@ fn rust_printer(writer: io::Writer, intr: ident_interner) -> ps {
              literals: None::<~[comments::lit]>,
              mut cur_cmnt: 0u,
              mut cur_lit: 0u,
-             boxes: dvec(),
+             boxes: DVec(),
              ann: no_ann()};
 }
 
@@ -82,7 +82,7 @@ fn print_crate(cm: codemap, intr: ident_interner,
           literals: if is_expanded { None } else { Some(r.lits) },
           mut cur_cmnt: 0u,
           mut cur_lit: 0u,
-          boxes: dvec(),
+          boxes: DVec(),
           ann: ann};
     print_crate_(s, crate);
 }

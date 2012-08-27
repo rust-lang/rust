@@ -1,5 +1,5 @@
 import to_str::ToStr;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 import ast_builder::{path, append_types};
 
@@ -119,7 +119,7 @@ struct protocol_ {
     new(name: ~str, span: span) {
         self.name = name;
         self.span = span;
-        self.states = dvec();
+        self.states = DVec();
         self.bounded = None;
     }
 
@@ -164,7 +164,7 @@ struct protocol_ {
 impl protocol {
     fn add_state_poly(name: ~str, ident: ast::ident, dir: direction,
                       +ty_params: ~[ast::ty_param]) -> state {
-        let messages = dvec();
+        let messages = DVec();
 
         let state = state_(@{
             id: self.states.len(),

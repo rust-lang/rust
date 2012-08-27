@@ -3,14 +3,13 @@
 use std;
 import comm;
 import comm::Chan;
-import comm::chan;
 import comm::send;
 import comm::recv;
 import task;
 
 fn main() {
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
     let t = task::spawn(|| child(ch) );
     let y = recv(p);
     error!("received");

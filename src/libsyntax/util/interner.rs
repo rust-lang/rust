@@ -3,7 +3,7 @@
 // type, and vice versa.
 import std::map;
 import std::map::{hashmap, hashfn, eqfn};
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 type hash_interner<T: const> =
     {map: hashmap<T, uint>,
@@ -14,7 +14,7 @@ type hash_interner<T: const> =
 fn mk<T: const copy>(+hasher: hashfn<T>, +eqer: eqfn<T>) -> interner<T> {
     let m = map::hashmap::<T, uint>(copy hasher, copy eqer);
     let hi: hash_interner<T> =
-        {map: m, vect: dvec(), hasher: hasher, eqer: eqer};
+        {map: m, vect: DVec(), hasher: hasher, eqer: eqer};
     return hi as interner::<T>;
 }
 

@@ -3,9 +3,7 @@ import vec;
 import task;
 import comm;
 import comm::Chan;
-import comm::chan;
 import comm::Port;
-import comm::port;
 import comm::recv;
 import comm::send;
 
@@ -18,8 +16,8 @@ fn producer(c: Chan<~[u8]>) {
 }
 
 fn packager(cb: Chan<Chan<~[u8]>>, msg: Chan<msg>) {
-    let p: Port<~[u8]> = port();
-    send(cb, chan(p));
+    let p: Port<~[u8]> = Port();
+    send(cb, Chan(p));
     loop {
         debug!("waiting for bytes");
         let data = recv(p);
@@ -39,10 +37,10 @@ fn packager(cb: Chan<Chan<~[u8]>>, msg: Chan<msg>) {
 }
 
 fn main() {
-    let p: Port<msg> = port();
-    let ch = chan(p);
-    let recv_reader: Port<Chan<~[u8]>> = port();
-    let recv_reader_chan = chan(recv_reader);
+    let p: Port<msg> = Port();
+    let ch = Chan(p);
+    let recv_reader: Port<Chan<~[u8]>> = Port();
+    let recv_reader_chan = Chan(recv_reader);
     let pack = task::spawn(|| packager(recv_reader_chan, ch) );
 
     let source_chan: Chan<~[u8]> = recv(recv_reader);

@@ -2996,9 +2996,9 @@ message to the port.  The next statement actually spawns the child:
 
 ~~~~
 # import task::{spawn};
-# import comm::{port, chan};
+# import comm::{Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
-# let port = port();
+# let port = Port();
 # let chan = port.chan();
 do spawn {
     let result = some_expensive_computation();

@@ -1,4 +1,4 @@
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 export filename;
 export filemap;
@@ -52,7 +52,7 @@ type codemap = @{files: DVec<filemap>};
 
 type loc = {file: filemap, line: uint, col: uint};
 
-fn new_codemap() -> codemap { @{files: dvec()} }
+fn new_codemap() -> codemap { @{files: DVec()} }
 
 fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
                         src: @~str,

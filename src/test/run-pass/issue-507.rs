@@ -10,9 +10,8 @@ use std;
 import task;
 import comm;
 import comm::Chan;
-import comm::chan;
 import comm::send;
-import comm::port;
+import comm::Port;
 import comm::recv;
 
 fn grandchild(c: Chan<int>) { send(c, 42); }
@@ -22,8 +21,8 @@ fn child(c: Chan<int>) {
 }
 
 fn main() {
-    let p = comm::port();
-    let ch = chan(p);
+    let p = comm::Port();
+    let ch = Chan(p);
 
     task::spawn(|| child(ch) );
 

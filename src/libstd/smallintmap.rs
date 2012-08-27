@@ -4,7 +4,7 @@
  */
 import core::option;
 import core::option::{Some, None};
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import map::map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
@@ -17,7 +17,7 @@ enum smallintmap<T:copy> {
 
 /// Create a smallintmap
 fn mk<T: copy>() -> smallintmap<T> {
-    let v = dvec();
+    let v = DVec();
     return smallintmap_(@{v: v});
 }
 

@@ -9,7 +9,7 @@ import syntax::codemap::span;
 import driver::session;
 import session::session;
 import syntax::attr;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 export modify_for_testing;
 
@@ -42,7 +42,7 @@ fn generate_test_harness(sess: session::session,
         @{sess: sess,
           crate: crate,
           mut path: ~[],
-          testfns: dvec()};
+          testfns: DVec()};
 
     let precursor =
         @{fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),

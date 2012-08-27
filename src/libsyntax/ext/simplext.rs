@@ -1,6 +1,6 @@
 import codemap::span;
 import std::map::{hashmap, str_hash, uint_hash};
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 import base::*;
 
@@ -136,7 +136,7 @@ fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
     let res: binders =
         {real_binders: uint_hash::<selector>(),
-         literal_ast_matchers: dvec()};
+         literal_ast_matchers: DVec()};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
     fn trivial_selector(m: matchable) -> match_result {

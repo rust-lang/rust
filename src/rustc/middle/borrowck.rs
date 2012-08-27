@@ -229,7 +229,7 @@ import syntax::print::pprust;
 import util::common::indenter;
 import ty::to_str;
 import driver::session::session;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import mem_categorization::*;
 
 export check_crate, root_map, mutbl_map;

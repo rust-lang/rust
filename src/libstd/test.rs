@@ -286,8 +286,8 @@ fn run_tests(opts: test_opts, tests: ~[test_desc],
     let mut wait_idx = 0u;
     let mut done_idx = 0u;
 
-    let p = core::comm::port();
-    let ch = core::comm::chan(p);
+    let p = core::comm::Port();
+    let ch = core::comm::Chan(p);
 
     while done_idx < total {
         while wait_idx < concurrency && run_idx < total {
@@ -420,8 +420,8 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let p = core::comm::port();
-        let ch = core::comm::chan(p);
+        let p = core::comm::Port();
+        let ch = core::comm::Chan(p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res != tr_ok;
@@ -436,8 +436,8 @@ mod tests {
             ignore: true,
             should_fail: false
         };
-        let p = core::comm::port();
-        let ch = core::comm::chan(p);
+        let p = core::comm::Port();
+        let ch = core::comm::Chan(p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res == tr_ignored;
@@ -453,8 +453,8 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let p = core::comm::port();
-        let ch = core::comm::chan(p);
+        let p = core::comm::Port();
+        let ch = core::comm::Chan(p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res == tr_ok;
@@ -469,8 +469,8 @@ mod tests {
             ignore: false,
             should_fail: true
         };
-        let p = core::comm::port();
-        let ch = core::comm::chan(p);
+        let p = core::comm::Port();
+        let ch = core::comm::Chan(p);
         run_test(desc, ch);
         let (_, res) = core::comm::recv(p);
         assert res == tr_failed;

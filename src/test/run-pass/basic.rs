@@ -4,7 +4,6 @@ use std;
 import comm;
 import comm::send;
 import comm::Chan;
-import comm::chan;
 import comm::recv;
 import task;
 
@@ -31,8 +30,8 @@ fn g(x: int, y: ~str) -> int {
 fn main() {
     let mut n: int = 2 + 3 * 7;
     let s: ~str = ~"hello there";
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
     task::spawn(|| a(ch) );
     task::spawn(|| b(ch) );
     let mut x: int = 10;

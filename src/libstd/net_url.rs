@@ -3,7 +3,7 @@
 import map;
 import map::{hashmap, str_hash};
 import io::{Reader, ReaderUtil};
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 export url, userinfo, query;
 export from_str, to_str;
@@ -217,7 +217,7 @@ fn decode_form_urlencoded(s: ~[u8]) ->
                     let values = match m.find(key) {
                       Some(values) => values,
                       None => {
-                        let values = @dvec();
+                        let values = @DVec();
                         m.insert(key, values);
                         values
                       }
@@ -252,7 +252,7 @@ fn decode_form_urlencoded(s: ~[u8]) ->
             let values = match m.find(key) {
               Some(values) => values,
               None => {
-                let values = @dvec();
+                let values = @DVec();
                 m.insert(key, values);
                 values
               }
@@ -1010,8 +1010,8 @@ mod tests {
         let m = str_hash();
         assert encode_form_urlencoded(m) == ~"";
 
-        m.insert(~"", @dvec());
-        m.insert(~"foo", @dvec());
+        m.insert(~"", @DVec());
+        m.insert(~"foo", @DVec());
         assert encode_form_urlencoded(m) == ~"";
 
         let m = str_hash();

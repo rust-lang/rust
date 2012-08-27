@@ -9,7 +9,7 @@ import syntax::ast::{sty_value, by_ref, by_copy};
 import syntax::ast_map;
 import syntax::ast_map::node_id_to_str;
 import syntax::ast_util::{dummy_sp, new_def_hash};
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 enum method_lookup_mode {
     subtyping_mode,
@@ -98,7 +98,7 @@ struct lookup {
         self.m_name = m_name;
         self.self_ty = self_ty;
         self.derefs = 0u;
-        self.candidates = dvec();
+        self.candidates = DVec();
         self.candidate_impls = new_def_hash();
         self.supplied_tps = supplied_tps;
         self.include_private = include_private;

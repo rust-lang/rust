@@ -50,7 +50,7 @@ fn main() {
         calllink09,
         calllink10
     ];
-    let rng = rand::rng();
+    let rng = rand::Rng();
     for fns.each |f| {
         let sz = rng.next() % 256u32 + 256u32;
         let frame_backoff = rng.next() % 10u32 + 1u32;

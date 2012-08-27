@@ -305,7 +305,7 @@ because `&x` was created alone, but is relatable to `&A`.
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import result::Result;
 import result::{Ok, Err};
 import std::map::{hashmap, uint_hash};
@@ -365,12 +365,12 @@ struct RegionVarBindings {
 fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
-        var_spans: dvec(),
+        var_spans: DVec(),
         values: empty_cell(),
         constraints: hashmap(hash_constraint, sys::shape_eq),
         lubs: CombineMap(),
         glbs: CombineMap(),
-        undo_log: dvec()
+        undo_log: DVec()
     }
 }
 

@@ -100,7 +100,7 @@
  * - `self_var`: a variable representing 'self'
  */
 
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import std::map::{hashmap, int_hash, str_hash, uint_hash};
 import syntax::{visit, ast_util};
 import syntax::print::pprust::{expr_to_str};
@@ -348,7 +348,7 @@ impl IrMaps {
             let v = match self.last_use_map.find(expr_id) {
               Some(v) => v,
               None => {
-                let v = @dvec();
+                let v = @DVec();
                 self.last_use_map.insert(expr_id, v);
                 v
               }

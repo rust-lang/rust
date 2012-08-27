@@ -28,9 +28,7 @@ import u64;
 import task;
 import comm;
 import comm::Chan;
-import comm::chan;
 import comm::Port;
-import comm::port;
 import comm::recv;
 import comm::send;
 
@@ -62,8 +60,8 @@ impl ~str: hash_key {
 // These used to be in task, but they disappeard.
 type joinable_task = Port<()>;
 fn spawn_joinable(+f: fn~()) -> joinable_task {
-    let p = port();
-    let c = chan(p);
+    let p = Port();
+    let c = Chan(p);
     do task::spawn() |move f| {
         f();
         c.send(());
@@ -214,9 +212,9 @@ mod map_reduce {
         key: K,
         out: Chan<Chan<reduce_proto<V>>>)
     {
-        let p = port();
+        let p = Port();
 
-        send(out, chan(p));
+        send(out, Chan(p));
 
         let mut ref_count = 0;
         let mut is_done = false;
@@ -277,8 +275,8 @@ mod map_reduce {
                   }
                   None => {
                     // log(error, "creating new reducer for " + k);
-                    let p = port();
-                    let ch = chan(p);
+                    let p = Port();
+                    let ch = Chan(p);
                     let r = reduce, kk = k;
                     vec::push(tasks,
                               spawn_joinable(|| reduce_task(r, kk, ch) ));
@@ -355,7 +353,7 @@ struct random_word_reader: word_reader {
     let rng: rand::Rng;
     new(count: uint) {
         self.remaining = count;
-        self.rng = rand::rng();
+        self.rng = rand::Rng();
     }
 
     fn read_word() -> Option<~str> {

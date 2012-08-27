@@ -7,7 +7,7 @@ import parse::parser::{parser,SOURCE_FILE};
 //import parse::common::parser_common;
 import parse::common::*; //resolve bug?
 import parse::parse_sess;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 import ast_util::mk_sp;
 import std::map::{hashmap, uint_hash};
@@ -137,7 +137,7 @@ fn initial_matcher_pos(ms: ~[matcher], sep: Option<token>, lo: uint)
         }
     }
     ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(None),
-      matches: copy vec::from_fn(count_names(ms), |_i| dvec::dvec()),
+      matches: copy vec::from_fn(count_names(ms), |_i| dvec::DVec()),
       match_lo: 0u, match_hi: match_idx_hi, sp_lo: lo}
 }
 
@@ -296,7 +296,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     }
 
                     let matches = vec::map(ei.matches, // fresh, same size:
-                                           |_m| dvec::<@named_match>());
+                                           |_m| DVec::<@named_match>());
                     let ei_t <- ei;
                     vec::push(cur_eis, ~{
                         elts: matchers, sep: sep, mut idx: 0u,

@@ -3,10 +3,9 @@
 use std;
 import task;
 import comm::Chan;
-import comm::chan;
 import comm::send;
 import comm;
-import comm::port;
+import comm::Port;
 import comm::recv;
 
 enum request { quit, close(Chan<bool>), }
@@ -14,8 +13,8 @@ enum request { quit, close(Chan<bool>), }
 type ctx = Chan<request>;
 
 fn request_task(c: Chan<ctx>) {
-    let p = port();
-    send(c, chan(p));
+    let p = Port();
+    send(c, Chan(p));
     let mut req: request;
     req = recv(p);
     // Need to drop req before receiving it again
@@ -23,8 +22,8 @@ fn request_task(c: Chan<ctx>) {
 }
 
 fn new_cx() -> ctx {
-    let p = port();
-    let ch = chan(p);
+    let p = Port();
+    let ch = Chan(p);
     let t = task::spawn(|| request_task(ch) );
     let mut cx: ctx;
     cx = recv(p);
@@ -34,7 +33,7 @@ fn new_cx() -> ctx {
 fn main() {
     let cx = new_cx();
 
-    let p = port::<bool>();
-    send(cx, close(chan(p)));
+    let p = Port::<bool>();
+    send(cx, close(Chan(p)));
     send(cx, quit);
 }

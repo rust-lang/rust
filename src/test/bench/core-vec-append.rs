@@ -1,7 +1,7 @@
 // A raw test of vector appending performance.
 
 use std;
-import dvec::dvec;
+import dvec::DVec;
 import io::WriterUtil;
 
 fn collect_raw(num: uint) -> ~[uint] {
@@ -13,7 +13,7 @@ fn collect_raw(num: uint) -> ~[uint] {
 }
 
 fn collect_dvec(num: uint) -> ~[mut uint] {
-    let result = dvec();
+    let result = DVec();
     for uint::range(0u, num) |i| {
         result.push(i);
     }

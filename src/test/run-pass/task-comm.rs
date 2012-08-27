@@ -4,8 +4,7 @@ import task;
 import task::task;
 import comm;
 import comm::Chan;
-import comm::chan;
-import comm::port;
+import comm::Port;
 import comm::send;
 import comm::recv;
 
@@ -34,8 +33,8 @@ fn test00() {
     let number_of_messages: int = 4;
     debug!("Creating tasks");
 
-    let po = port();
-    let ch = chan(po);
+    let po = Port();
+    let ch = Chan(po);
 
     let mut i: int = 0;
 
@@ -64,15 +63,15 @@ fn test00() {
 }
 
 fn test01() {
-    let p = port();
+    let p = Port();
     debug!("Reading from a port that is never written to.");
     let value: int = recv(p);
     log(debug, value);
 }
 
 fn test02() {
-    let p = port();
-    let c = chan(p);
+    let p = Port();
+    let c = Chan(p);
     debug!("Writing to a local task channel.");
     send(c, 42);
     debug!("Reading from a local task port.");
@@ -103,8 +102,8 @@ fn test05_start(ch: Chan<int>) {
 }
 
 fn test05() {
-    let po = comm::port();
-    let ch = chan(po);
+    let po = comm::Port();
+    let ch = Chan(po);
     task::spawn(|| test05_start(ch) );
     let mut value: int;
     value = recv(po);

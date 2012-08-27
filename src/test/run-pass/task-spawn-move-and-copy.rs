@@ -1,6 +1,6 @@
 fn main() {
-    let p = comm::port::<uint>();
-    let ch = comm::chan(p);
+    let p = comm::Port::<uint>();
+    let ch = comm::Chan(p);
 
     let x = ~1;
     let x_in_parent = ptr::addr_of(*x) as uint;

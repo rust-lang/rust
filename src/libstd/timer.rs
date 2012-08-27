@@ -29,8 +29,8 @@ export delayed_send, sleep, recv_timeout;
 fn delayed_send<T: copy send>(iotask: iotask,
                               msecs: uint, ch: comm::Chan<T>, +val: T) {
         unsafe {
-            let timer_done_po = core::comm::port::<()>();
-            let timer_done_ch = core::comm::chan(timer_done_po);
+            let timer_done_po = core::comm::Port::<()>();
+            let timer_done_ch = core::comm::Chan(timer_done_po);
             let timer_done_ch_ptr = ptr::addr_of(timer_done_ch);
             let timer = uv::ll::timer_t();
             let timer_ptr = ptr::addr_of(timer);
@@ -76,8 +76,8 @@ fn delayed_send<T: copy send>(iotask: iotask,
  * * msecs - an amount of time, in milliseconds, for the current task to block
  */
 fn sleep(iotask: iotask, msecs: uint) {
-    let exit_po = core::comm::port::<()>();
-    let exit_ch = core::comm::chan(exit_po);
+    let exit_po = core::comm::Port::<()>();
+    let exit_ch = core::comm::Chan(exit_po);
     delayed_send(iotask, msecs, exit_ch, ());
     core::comm::recv(exit_po);
 }
@@ -105,8 +105,8 @@ fn sleep(iotask: iotask, msecs: uint) {
 fn recv_timeout<T: copy send>(iotask: iotask,
                               msecs: uint,
                               wait_po: comm::Port<T>) -> Option<T> {
-    let timeout_po = comm::port::<()>();
-    let timeout_ch = comm::chan(timeout_po);
+    let timeout_po = comm::Port::<()>();
+    let timeout_ch = comm::Chan(timeout_po);
     delayed_send(iotask, msecs, timeout_ch, ());
     // FIXME: This could be written clearer (#2618)
     either::either(
@@ -163,8 +163,8 @@ mod test {
 
     #[test]
     fn test_gl_timer_sleep_stress2() {
-        let po = core::comm::port();
-        let ch = core::comm::chan(po);
+        let po = core::comm::Port();
+        let ch = core::comm::Chan(po);
         let hl_loop = uv::global_loop::get();
 
         let repeat = 20u;
@@ -182,7 +182,7 @@ mod test {
                 let (times, maxms) = spec;
                 do task::spawn {
                     import rand::*;
-                    let rng = rng();
+                    let rng = Rng();
                     for iter::repeat(times) {
                         sleep(hl_loop, rng.next() as uint % maxms);
                     }
@@ -240,9 +240,9 @@ mod test {
         let hl_loop = uv::global_loop::get();
 
         for iter::repeat(times as uint) {
-            let expected = rand::rng().gen_str(16u);
-            let test_po = core::comm::port::<~str>();
-            let test_ch = core::comm::chan(test_po);
+            let expected = rand::Rng().gen_str(16u);
+            let test_po = core::comm::Port::<~str>();
+            let test_ch = core::comm::Chan(test_po);
 
             do task::spawn() {
                 delayed_send(hl_loop, 50u, test_ch, expected);

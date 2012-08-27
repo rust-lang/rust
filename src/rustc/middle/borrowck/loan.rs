@@ -11,7 +11,7 @@ impl borrowck_ctxt {
             mutbl: ast::mutability) -> bckres<@DVec<loan>> {
         let lc = loan_ctxt_(@{bccx: self,
                               scope_region: scope_region,
-                              loans: @dvec()});
+                              loans: @DVec()});
         match lc.loan(cmt, mutbl) {
           Ok(()) => {Ok(lc.loans)}
           Err(e) => {Err(e)}

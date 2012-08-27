@@ -1,7 +1,7 @@
-import dvec::dvec;
+import dvec::DVec;
 
 fn main() {
-    let d = dvec();
+    let d = DVec();
     d.push(3);
     d.push(4);
     assert d.get() == ~[3, 4];

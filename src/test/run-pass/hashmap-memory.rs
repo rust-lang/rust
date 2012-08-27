@@ -15,8 +15,7 @@ import std::map;
 import std::map::hashmap;
 import task;
 import comm::Chan;
-import comm::chan;
-import comm::port;
+import comm::Port;
 import comm::send;
 import comm::recv;
 import comm;
@@ -49,9 +48,9 @@ mod map_reduce {
             match im.find(key) {
               Some(_c) => { c = _c }
               None => {
-                let p = port();
+                let p = Port();
                 error!("sending find_reducer");
-                send(ctrl, find_reducer(str::to_bytes(key), chan(p)));
+                send(ctrl, find_reducer(str::to_bytes(key), Chan(p)));
                 error!("receiving");
                 c = recv(p);
                 log(error, c);
@@ -65,7 +64,7 @@ mod map_reduce {
     }
 
     fn map_reduce(inputs: ~[~str]) {
-        let ctrl = port();
+        let ctrl = Port();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
@@ -74,7 +73,7 @@ mod map_reduce {
 
         reducers = map::str_hash();
 
-        start_mappers(chan(ctrl), inputs);
+        start_mappers(Chan(ctrl), inputs);
 
         let mut num_mappers = vec::len(inputs) as int;
 

@@ -60,17 +60,17 @@ fn test_box() {
 }
 
 fn test_port() {
-    let p1 = comm::port::<int>();
-    let p2 = comm::port::<int>();
+    let p1 = comm::Port::<int>();
+    let p2 = comm::Port::<int>();
 
     assert (p1 == p1);
     assert (p1 != p2);
 }
 
 fn test_chan() {
-    let p: comm::Port<int> = comm::port();
-    let ch1 = comm::chan(p);
-    let ch2 = comm::chan(p);
+    let p: comm::Port<int> = comm::Port();
+    let ch1 = comm::Chan(p);
+    let ch2 = comm::Chan(p);
 
     assert (ch1 == ch1);
     // Chans are equal because they are just task:port addresses.
