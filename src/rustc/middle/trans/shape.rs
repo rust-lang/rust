@@ -15,7 +15,7 @@ import syntax::ast_util::{dummy_sp, new_def_hash};
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import syntax::codemap::span;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 import std::map::hashmap;
 import option::is_some;
@@ -192,7 +192,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     return {mut next_tag_id: 0u16,
          pad: 0u16,
          tag_id_to_index: new_nominal_id_hash(),
-         tag_order: dvec(),
+         tag_order: DVec(),
          resources: interner::mk(hash_nominal_id, eq_nominal_id),
          llshapetablesty: llshapetablesty,
          llshapetables: llshapetables};

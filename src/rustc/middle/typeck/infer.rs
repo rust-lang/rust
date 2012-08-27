@@ -262,7 +262,7 @@ import driver::session::session;
 import util::common::{indent, indenter};
 import ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
 import ast::{m_const, m_imm, m_mutbl};
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import region_var_bindings::{RegionVarBindings};
 import ast_util::dummy_sp;
 
@@ -376,7 +376,7 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
                  ty_var_counter: @mut 0u,
                  ty_var_integral_counter: @mut 0u,
                  region_var_counter: @mut 0u,
-                 borrowings: dvec()})}
+                 borrowings: DVec()})}
 
 fn mk_sub(cx: infer_ctxt, a_is_expected: bool, span: span) -> Sub {
     Sub(combine_fields {infcx: cx, a_is_expected: a_is_expected, span: span})

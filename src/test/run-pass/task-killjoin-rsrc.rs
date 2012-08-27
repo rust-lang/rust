@@ -30,8 +30,8 @@ fn joinable(+f: fn~()) -> comm::Port<bool> {
         f();
         *b = true;
     }
-    let p = comm::port();
-    let c = comm::chan(p);
+    let p = comm::Port();
+    let c = comm::Chan(p);
     do task::spawn_unlinked { wrapper(c, copy f) };
     p
 }

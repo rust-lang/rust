@@ -1,5 +1,5 @@
 import io::WriterUtil;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's
@@ -117,7 +117,7 @@ fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
                mut scan_stack_empty: true,
                mut top: 0u,
                mut bottom: 0u,
-               print_stack: dvec(),
+               print_stack: DVec(),
                mut pending_indentation: 0,
                mut token_tree_last_was_ident: false})
 }

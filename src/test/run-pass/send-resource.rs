@@ -8,12 +8,12 @@ struct test {
 }
 
 fn main() {
-    let p = port();
-    let c = chan(p);
+    let p = Port();
+    let c = Chan(p);
 
     do spawn() {
-        let p = port();
-        c.send(chan(p));
+        let p = Port();
+        c.send(Chan(p));
 
         let _r = p.recv();
     }

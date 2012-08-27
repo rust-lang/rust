@@ -3030,8 +3030,8 @@ The result of a `spawn` call is a `core::task::task` value.
 An example of a `spawn` call:
 
 ~~~~
-let po = comm::port();
-let ch = comm::chan(po);
+let po = comm::Port();
+let ch = comm::Chan(po);
 
 do task::spawn {
     // let task run, do other things
@@ -3052,8 +3052,8 @@ channel's outgoing buffer.
 An example of a send:
 
 ~~~~
-let po = comm::port();
-let ch = comm::chan(po);
+let po = comm::Port();
+let ch = comm::Chan(po);
 comm::send(ch, ~"hello, world");
 ~~~~
 
@@ -3061,15 +3061,15 @@ comm::send(ch, ~"hello, world");
 ### Receiving values from ports
 
 Receiving a value is done by a call to the `recv` method on a value of type
-`core::comm::port`. This call causes the receiving task to enter the *blocked
+`core::comm::Port`. This call causes the receiving task to enter the *blocked
 reading* state until a value arrives in the port's receive queue, at which
 time the port deques a value to return, and un-blocks the receiving task.
 
 An example of a *receive*:
 
 ~~~~~~~~
-# let po = comm::port();
-# let ch = comm::chan(po);
+# let po = comm::Port();
+# let ch = comm::Chan(po);
 # comm::send(ch, ~"");
 let s = comm::recv(po);
 ~~~~~~~~

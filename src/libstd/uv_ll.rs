@@ -1461,13 +1461,13 @@ mod test {
         let port = 8887;
         let kill_server_msg = ~"does a dog have buddha nature?";
         let server_resp_msg = ~"mu!";
-        let client_port = core::comm::port::<~str>();
-        let client_chan = core::comm::chan::<~str>(client_port);
-        let server_port = core::comm::port::<~str>();
-        let server_chan = core::comm::chan::<~str>(server_port);
+        let client_port = core::comm::Port::<~str>();
+        let client_chan = core::comm::Chan::<~str>(client_port);
+        let server_port = core::comm::Port::<~str>();
+        let server_chan = core::comm::Chan::<~str>(server_port);
 
-        let continue_port = core::comm::port::<bool>();
-        let continue_chan = core::comm::chan::<bool>(continue_port);
+        let continue_port = core::comm::Port::<bool>();
+        let continue_chan = core::comm::Chan::<bool>(continue_port);
         let continue_chan_ptr = ptr::addr_of(continue_chan);
 
         do task::spawn_sched(task::ManualThreads(1u)) {

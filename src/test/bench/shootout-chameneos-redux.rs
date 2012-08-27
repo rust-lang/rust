@@ -122,12 +122,12 @@ fn creature(
 
 fn rendezvous(nn: uint, set: ~[color]) {
     // these ports will allow us to hear from the creatures
-    let from_creatures:     comm::Port<creature_info> = comm::port();
-    let from_creatures_log: comm::Port<~str> = comm::port();
+    let from_creatures:     comm::Port<creature_info> = comm::Port();
+    let from_creatures_log: comm::Port<~str> = comm::Port();
 
     // these channels will be passed to the creatures so they can talk to us
-    let to_rendezvous     = comm::chan(from_creatures);
-    let to_rendezvous_log = comm::chan(from_creatures_log);
+    let to_rendezvous     = comm::Chan(from_creatures);
+    let to_rendezvous_log = comm::Chan(from_creatures_log);
 
     // these channels will allow us to talk to each creature by 'name'/index
     let to_creature: ~[comm::Chan<Option<creature_info>>] =

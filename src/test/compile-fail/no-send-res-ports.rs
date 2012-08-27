@@ -5,7 +5,7 @@ fn main() {
       drop {}
     }
    
-    let x = ~mut Some(foo(comm::port()));
+    let x = ~mut Some(foo(comm::Port()));
 
     do task::spawn |move x| { //~ ERROR not a sendable value
         let mut y = None;

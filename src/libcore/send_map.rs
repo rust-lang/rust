@@ -39,7 +39,7 @@ mod linear {
         ((capacity as float) * 3. / 4.) as uint
     }
 
-    fn linear_map<K,V>(
+    fn LinearMap<K,V>(
         +hashfn: pure fn~(x: &K) -> uint,
         +eqfn: pure fn~(x: &K, y: &K) -> bool) -> LinearMap<K,V> {
 
@@ -338,13 +338,13 @@ mod linear {
 #[test]
 mod test {
 
-    import linear::{LinearMap, linear_map};
+    import linear::LinearMap;
 
     pure fn uint_hash(x: &uint) -> uint { *x }
     pure fn uint_eq(x: &uint, y: &uint) -> bool { *x == *y }
 
     fn int_linear_map<V>() -> LinearMap<uint,V> {
-        return linear_map(uint_hash, uint_eq);
+        return LinearMap(uint_hash, uint_eq);
     }
 
     #[test]

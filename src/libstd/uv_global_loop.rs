@@ -8,7 +8,7 @@ import get_gl = get;
 import iotask::{iotask, spawn_iotask};
 import priv::{chan_from_global_ptr, weaken_task};
 import comm = core::comm;
-import comm::{Port, Chan, port, chan, select2, listen};
+import comm::{Port, Chan, select2, listen};
 import task::TaskBuilder;
 import either::{Left, Right};
 
@@ -132,8 +132,8 @@ mod test {
     }
 
     fn impl_uv_hl_simple_timer(iotask: iotask) unsafe {
-        let exit_po = core::comm::port::<bool>();
-        let exit_ch = core::comm::chan(exit_po);
+        let exit_po = core::comm::Port::<bool>();
+        let exit_ch = core::comm::Chan(exit_po);
         let exit_ch_ptr = ptr::addr_of(exit_ch);
         log(debug, fmt!("EXIT_CH_PTR newly created exit_ch_ptr: %?",
                        exit_ch_ptr));
@@ -165,8 +165,8 @@ mod test {
     #[test]
     fn test_gl_uv_global_loop_high_level_global_timer() unsafe {
         let hl_loop = get_gl();
-        let exit_po = comm::port::<()>();
-        let exit_ch = comm::chan(exit_po);
+        let exit_po = comm::Port::<()>();
+        let exit_ch = comm::Chan(exit_po);
         task::spawn_sched(task::ManualThreads(1u), || {
             impl_uv_hl_simple_timer(hl_loop);
             core::comm::send(exit_ch, ());
@@ -181,8 +181,8 @@ mod test {
     #[ignore]
     fn test_stress_gl_uv_global_loop_high_level_global_timer() unsafe {
         let hl_loop = get_gl();
-        let exit_po = core::comm::port::<()>();
-        let exit_ch = core::comm::chan(exit_po);
+        let exit_po = core::comm::Port::<()>();
+        let exit_ch = core::comm::Chan(exit_po);
         let cycles = 5000u;
         for iter::repeat(cycles) {
             task::spawn_sched(task::ManualThreads(1u), || {

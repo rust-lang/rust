@@ -53,7 +53,7 @@ import syntax::visit::{visit_foreign_item, visit_item, visit_method_helper};
 import syntax::visit::{visit_mod, visit_ty, vt};
 
 import box::ptr_eq;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import option::{get, is_some};
 import str::{connect, split_str};
 import vec::pop;
@@ -384,7 +384,7 @@ struct Module {
         self.def_id = def_id;
 
         self.children = atom_hashmap();
-        self.imports = dvec();
+        self.imports = DVec();
 
         self.anonymous_children = int_hash();
 
@@ -654,9 +654,9 @@ struct Resolver {
         self.unresolved_imports = 0u;
 
         self.current_module = (*self.graph_root).get_module();
-        self.value_ribs = @dvec();
-        self.type_ribs = @dvec();
-        self.label_ribs = @dvec();
+        self.value_ribs = @DVec();
+        self.type_ribs = @DVec();
+        self.label_ribs = @DVec();
 
         self.xray_context = NoXray;
         self.current_trait_refs = None;
@@ -1069,7 +1069,7 @@ struct Resolver {
                     // globs and lists, the path is found directly in the AST;
                     // for simple paths we have to munge the path a little.
 
-                    let module_path = @dvec();
+                    let module_path = @DVec();
                     match view_path.node {
                         view_path_simple(_, full_path, _) => {
                             let path_len = full_path.idents.len();
@@ -3304,7 +3304,7 @@ struct Resolver {
             // Resolve the trait reference, if necessary.
             let original_trait_refs = self.current_trait_refs;
             if trait_references.len() >= 1 {
-                let mut new_trait_refs = @dvec();
+                let mut new_trait_refs = @DVec();
                 for trait_references.each |trait_reference| {
                     match self.resolve_path(
                         trait_reference.path, TypeNS, true, visitor) {
@@ -3893,7 +3893,7 @@ struct Resolver {
     }
 
     fn intern_module_part_of_path(path: @path) -> @DVec<Atom> {
-        let module_path_atoms = @dvec();
+        let module_path_atoms = @DVec();
         for path.idents.eachi |index, ident| {
             if index == path.idents.len() - 1u {
                 break;
@@ -4304,7 +4304,7 @@ struct Resolver {
     }
 
     fn search_for_traits_containing_method(name: Atom) -> @DVec<def_id> {
-        let found_traits = @dvec();
+        let found_traits = @DVec();
         let mut search_module = self.current_module;
         loop {
             // Look for the current trait.
@@ -4406,7 +4406,7 @@ struct Resolver {
     }
 
     fn add_fixed_trait_for_expr(expr_id: node_id, +trait_id: Option<def_id>) {
-        let traits = @dvec();
+        let traits = @DVec();
         traits.push(trait_id.get());
         self.trait_map.insert(expr_id, traits);
     }
@@ -4503,7 +4503,7 @@ struct Resolver {
 
     /// A somewhat inefficient routine to print out the name of a module.
     fn module_to_str(module_: @Module) -> ~str {
-        let atoms = dvec();
+        let atoms = DVec();
         let mut current_module = module_;
         loop {
             match current_module.parent_link {

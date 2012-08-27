@@ -10,8 +10,8 @@ fn die() {
 
 fn iloop() {
     task::spawn(|| die() );
-    let p = comm::port::<()>();
-    let c = comm::chan(p);
+    let p = comm::Port::<()>();
+    let c = comm::Chan(p);
     loop {
         // Sending and receiving here because these actions yield,
         // at which point our child can kill us

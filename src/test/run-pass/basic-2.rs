@@ -2,18 +2,17 @@
 
 use std;
 import comm;
-import comm::port;
+import comm::Port;
 import comm::send;
 import comm::Chan;
-import comm::chan;
 import comm::recv;
 import task;
 
 fn a(c: Chan<int>) { debug!("task a0"); debug!("task a1"); send(c, 10); }
 
 fn main() {
-    let p = port();
-    let ch = chan(p);
+    let p = Port();
+    let ch = Chan(p);
     task::spawn(|| a(ch) );
     task::spawn(|| b(ch) );
     let mut n: int = 0;

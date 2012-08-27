@@ -88,7 +88,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
 
 fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
     let keys = map::hashmap::<node_id, ()>(node_hash, sys::shape_eq);
-    let r = rand::rng();
+    let r = rand::Rng();
 
     while keys.size() < n {
         let k = r.gen_uint_range(0u, graph.len());

@@ -47,8 +47,8 @@ unsafe fn chan_from_global_ptr<T: send>(
 
         let (setup_po, setup_ch) = do task_fn().spawn_conversation
             |setup_po, setup_ch| {
-            let po = comm::port::<T>();
-            let ch = comm::chan(po);
+            let po = comm::Port::<T>();
+            let ch = comm::Chan(po);
             comm::send(setup_ch, ch);
 
             // Wait to hear if we are the official instance of
@@ -105,8 +105,8 @@ fn test_from_global_chan1() {
         }
     };
     // Talk to it
-    let po = comm::port();
-    comm::send(ch, comm::chan(po));
+    let po = comm::Port();
+    comm::send(ch, comm::Chan(po));
     assert comm::recv(po) == true;
 
     // This one just reuses the previous channel
@@ -118,8 +118,8 @@ fn test_from_global_chan1() {
     };
 
     // Talk to the original global task
-    let po = comm::port();
-    comm::send(ch, comm::chan(po));
+    let po = comm::Port();
+    comm::send(ch, comm::Chan(po));
     assert comm::recv(po) == true;
 }
 
@@ -131,8 +131,8 @@ fn test_from_global_chan2() {
         let globchan = 0u;
         let globchanp = ptr::addr_of(globchan);
 
-        let resultpo = comm::port();
-        let resultch = comm::chan(resultpo);
+        let resultpo = comm::Port();
+        let resultch = comm::Chan(resultpo);
 
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
@@ -148,9 +148,9 @@ fn test_from_global_chan2() {
                         }
                     }
                 };
-                let po = comm::port();
-                comm::send(ch, comm::chan(po));
-                // We are the winner if our version of the
+                let po = comm::Port();
+                comm::send(ch, comm::Chan(po));
+                // We are The winner if our version of the
                 // task was installed
                 let winner = comm::recv(po);
                 comm::send(resultch, winner == i);
@@ -186,8 +186,8 @@ fn test_from_global_chan2() {
  *   a reference to its parent, so the parent will not die.
  */
 unsafe fn weaken_task(f: fn(comm::Port<()>)) {
-    let po = comm::port();
-    let ch = comm::chan(po);
+    let po = comm::Port();
+    let ch = comm::Chan(po);
     unsafe {
         rustrt::rust_task_weaken(unsafe::reinterpret_cast(ch));
     }

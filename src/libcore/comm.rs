@@ -30,8 +30,8 @@
 import either::Either;
 import libc::size_t;
 
-export Port, port;
-export Chan, chan;
+export Port;
+export Chan;
 export send;
 export recv;
 export peek;
@@ -69,13 +69,13 @@ enum Chan<T: send> {
 }
 
 /// Constructs a port
-fn port<T: send>() -> Port<T> {
+fn Port<T: send>() -> Port<T> {
     Port_(@PortPtr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
 
 impl<T: send> Port<T> {
 
-    fn chan() -> Chan<T> { chan(self) }
+    fn chan() -> Chan<T> { Chan(self) }
     fn send(+v: T) { self.chan().send(v) }
     fn recv() -> T { recv(self) }
     fn peek() -> bool { peek(self) }
@@ -93,7 +93,7 @@ impl<T: send> Chan<T> {
 
 /// Open a new receiving channel for the duration of a function
 fn listen<T: send, U>(f: fn(Chan<T>) -> U) -> U {
-    let po = port();
+    let po = Port();
     f(po.chan())
 }
 
@@ -157,7 +157,7 @@ fn as_raw_port<T: send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
  * Constructs a channel. The channel is bound to the port used to
  * construct it.
  */
-fn chan<T: send>(p: Port<T>) -> Chan<T> {
+fn Chan<T: send>(p: Port<T>) -> Chan<T> {
     Chan_(rustrt::get_port_id((**p).po))
 }
 
@@ -295,51 +295,51 @@ extern mod rusti {
 
 
 #[test]
-fn create_port_and_chan() { let p = port::<int>(); chan(p); }
+fn create_port_and_chan() { let p = Port::<int>(); Chan(p); }
 
 #[test]
 fn send_int() {
-    let p = port::<int>();
-    let c = chan(p);
+    let p = Port::<int>();
+    let c = Chan(p);
     send(c, 22);
 }
 
 #[test]
 fn send_recv_fn() {
-    let p = port::<int>();
-    let c = chan::<int>(p);
+    let p = Port::<int>();
+    let c = Chan::<int>(p);
     send(c, 42);
     assert (recv(p) == 42);
 }
 
 #[test]
 fn send_recv_fn_infer() {
-    let p = port();
-    let c = chan(p);
+    let p = Port();
+    let c = Chan(p);
     send(c, 42);
     assert (recv(p) == 42);
 }
 
 #[test]
 fn chan_chan_infer() {
-    let p = port(), p2 = port::<int>();
-    let c = chan(p);
-    send(c, chan(p2));
+    let p = Port(), p2 = Port::<int>();
+    let c = Chan(p);
+    send(c, Chan(p2));
     recv(p);
 }
 
 #[test]
 fn chan_chan() {
-    let p = port::<Chan<int>>(), p2 = port::<int>();
-    let c = chan(p);
-    send(c, chan(p2));
+    let p = Port::<Chan<int>>(), p2 = Port::<int>();
+    let c = Chan(p);
+    send(c, Chan(p2));
     recv(p);
 }
 
 #[test]
 fn test_peek() {
-    let po = port();
-    let ch = chan(po);
+    let po = Port();
+    let ch = Chan(po);
     assert !peek(po);
     send(ch, ());
     assert peek(po);
@@ -349,10 +349,10 @@ fn test_peek() {
 
 #[test]
 fn test_select2_available() {
-    let po_a = port();
-    let po_b = port();
-    let ch_a = chan(po_a);
-    let ch_b = chan(po_b);
+    let po_a = Port();
+    let po_b = Port();
+    let ch_a = Chan(po_a);
+    let ch_b = Chan(po_b);
 
     send(ch_a, ~"a");
 
@@ -365,10 +365,10 @@ fn test_select2_available() {
 
 #[test]
 fn test_select2_rendezvous() {
-    let po_a = port();
-    let po_b = port();
-    let ch_a = chan(po_a);
-    let ch_b = chan(po_b);
+    let po_a = Port();
+    let po_b = Port();
+    let ch_a = Chan(po_a);
+    let ch_b = Chan(po_b);
 
     for iter::repeat(10u) {
         do task::spawn {
@@ -389,10 +389,10 @@ fn test_select2_rendezvous() {
 
 #[test]
 fn test_select2_stress() {
-    let po_a = port();
-    let po_b = port();
-    let ch_a = chan(po_a);
-    let ch_b = chan(po_b);
+    let po_a = Port();
+    let po_b = Port();
+    let ch_a = Chan(po_a);
+    let ch_b = Chan(po_b);
 
     let msgs = 100u;
     let times = 4u;
@@ -426,8 +426,8 @@ fn test_select2_stress() {
 
 #[test]
 fn test_recv_chan() {
-    let po = port();
-    let ch = chan(po);
+    let po = Port();
+    let ch = Chan(po);
     send(ch, ~"flower");
     assert recv_chan(ch) == ~"flower";
 }
@@ -436,7 +436,7 @@ fn test_recv_chan() {
 #[should_fail]
 #[ignore(cfg(windows))]
 fn test_recv_chan_dead() {
-    let ch = chan(port());
+    let ch = Chan(Port());
     send(ch, ~"flower");
     recv_chan(ch);
 }
@@ -444,8 +444,8 @@ fn test_recv_chan_dead() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_recv_chan_wrong_task() {
-    let po = port();
-    let ch = chan(po);
+    let po = Port();
+    let ch = Chan(po);
     send(ch, ~"flower");
     assert result::is_err(task::try(||
         recv_chan(ch)
@@ -454,14 +454,14 @@ fn test_recv_chan_wrong_task() {
 
 #[test]
 fn test_port_send() {
-    let po = port();
+    let po = Port();
     po.send(());
     po.recv();
 }
 
 #[test]
 fn test_chan_peek() {
-    let po = port();
+    let po = Port();
     let ch = po.chan();
     ch.send(());
     assert ch.peek();
@@ -482,7 +482,7 @@ fn test_listen() {
 fn test_port_detach_fail() {
     for iter::repeat(100u) {
         do task::spawn_unlinked {
-            let po = port();
+            let po = Port();
             let ch = po.chan();
 
             do task::spawn {

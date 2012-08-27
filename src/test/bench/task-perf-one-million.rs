@@ -7,8 +7,8 @@ enum msg {
 }
 
 fn calc(children: uint, parent_ch: comm::Chan<msg>) {
-    let port = comm::port();
-    let chan = comm::chan(port);
+    let port = comm::Port();
+    let chan = comm::Chan(port);
     let mut child_chs = ~[];
     let mut sum = 0;
 
@@ -58,8 +58,8 @@ fn main(args: ~[~str]) {
     };
 
     let children = uint::from_str(args[1]).get();
-    let port = comm::port();
-    let chan = comm::chan(port);
+    let port = comm::Port();
+    let chan = comm::Chan(port);
     do task::spawn {
         calc(children, chan);
     };

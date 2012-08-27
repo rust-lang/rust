@@ -64,7 +64,7 @@ fn read_line() {
 }
 
 fn str_set() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let s = map::hashmap(str::hash, str::eq);
 
@@ -82,7 +82,7 @@ fn str_set() {
 }
 
 fn vec_plus() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let mut v = ~[]; 
     let mut i = 0;
@@ -99,7 +99,7 @@ fn vec_plus() {
 }
 
 fn vec_append() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let mut v = ~[];
     let mut i = 0;
@@ -116,7 +116,7 @@ fn vec_append() {
 }
 
 fn vec_push_all() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let mut v = ~[];
     for uint::range(0, 1500) |i| {

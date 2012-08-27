@@ -7,7 +7,7 @@ struct foo {
 }
 
 fn main() {
-  let po = comm::port::<foo>();
-  let ch = comm::chan(po);
+  let po = comm::Port::<foo>();
+  let ch = comm::Chan(po);
   comm::send(ch, foo(42, 'c'));
 }

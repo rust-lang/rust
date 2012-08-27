@@ -8,7 +8,7 @@
  * Do not use ==, !=, <, etc on doubly-linked lists -- it may not terminate.
  */
 
-export DList, dlist, dlist_node;
+export DList;
 export new_dlist, from_elem, from_vec, extensions;
 
 type DListLink<T> = Option<DListNode<T>>;
@@ -20,11 +20,13 @@ enum DListNode<T> = @{
     mut next: DListLink<T>
 };
 
-enum DList<T> = @{
-    mut size: uint,
-    mut hd:   DListLink<T>,
-    mut tl:   DListLink<T>,
-};
+enum DList<T> {
+    DList_(@{
+        mut size: uint,
+        mut hd:   DListLink<T>,
+        mut tl:   DListLink<T>
+    })
+}
 
 priv impl<T> DListNode<T> {
     pure fn assert_links() {
@@ -83,19 +85,19 @@ pure fn new_dlist_node<T>(+data: T) -> DListNode<T> {
 }
 
 /// Creates a new, empty dlist.
-pure fn new_dlist<T>() -> DList<T> {
-    DList(@{mut size: 0, mut hd: None, mut tl: None})
+pure fn DList<T>() -> DList<T> {
+    DList_(@{mut size: 0, mut hd: None, mut tl: None})
 }
 
 /// Creates a new dlist with a single element
 pure fn from_elem<T>(+data: T) -> DList<T> {
-    let list = new_dlist();
+    let list = DList();
     unchecked { list.push(data); }
     list
 }
 
 fn from_vec<T: copy>(+vec: &[T]) -> DList<T> {
-    do vec::foldl(new_dlist(), vec) |list,data| {
+    do vec::foldl(DList(), vec) |list,data| {
         list.push(data); // Iterating left-to-right -- add newly to the tail.
         list
     }
@@ -104,7 +106,7 @@ fn from_vec<T: copy>(+vec: &[T]) -> DList<T> {
 /// Produce a list from a list of lists, leaving no elements behind in the
 /// input. O(number of sub-lists).
 fn concat<T>(lists: DList<DList<T>>) -> DList<T> {
-    let result = new_dlist();
+    let result = DList();
     while !lists.is_empty() {
         result.append(lists.pop().get());
     }
@@ -485,7 +487,7 @@ mod tests {
     #[test]
     fn test_dlist_append_empty() {
         let a = from_vec(~[1,2,3]);
-        let b = new_dlist::<int>();
+        let b = DList::<int>();
         a.append(b);
         assert a.len() == 3;
         assert b.len() == 0;
@@ -497,7 +499,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_append_to_empty() {
-        let a = new_dlist::<int>();
+        let a = DList::<int>();
         let b = from_vec(~[4,5,6]);
         a.append(b);
         assert a.len() == 3;
@@ -510,8 +512,8 @@ mod tests {
     }
     #[test]
     fn test_dlist_append_two_empty() {
-        let a = new_dlist::<int>();
-        let b = new_dlist::<int>();
+        let a = DList::<int>();
+        let b = DList::<int>();
         a.append(b);
         assert a.len() == 0;
         assert b.len() == 0;
@@ -522,14 +524,14 @@ mod tests {
     #[ignore(cfg(windows))]
     #[should_fail]
     fn test_dlist_append_self() {
-        let a = new_dlist::<int>();
+        let a = DList::<int>();
         a.append(a);
     }
     #[test]
     #[ignore(cfg(windows))]
     #[should_fail]
     fn test_dlist_prepend_self() {
-        let a = new_dlist::<int>();
+        let a = DList::<int>();
         a.prepend(a);
     }
     #[test]
@@ -562,7 +564,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_reverse_empty() {
-        let a = new_dlist::<int>();
+        let a = DList::<int>();
         a.reverse();
         assert a.len() == 0;
         a.assert_consistent();
@@ -593,7 +595,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_is_empty() {
-        let empty = new_dlist::<int>();
+        let empty = DList::<int>();
         let full1 = from_vec(~[1,2,3]);
         assert empty.is_empty();
         assert !full1.is_empty();
@@ -635,7 +637,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_push() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.push(1);
         assert l.head() == 1;
         assert l.tail() == 1;
@@ -649,7 +651,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_push_head() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.push_head(3);
         assert l.head() == 3;
         assert l.tail() == 3;
@@ -678,7 +680,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_head() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
@@ -693,7 +695,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_mid() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
@@ -708,7 +710,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_tail() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -723,7 +725,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_one_two() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let _three = l.push_n(3);
@@ -739,7 +741,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_one_three() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -754,7 +756,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_two_three() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -769,7 +771,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_remove_all() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = l.push_n(3);
@@ -782,7 +784,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_n_before() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); let three = new_dlist_node(3);
@@ -798,7 +800,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_n_after() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); let three = new_dlist_node(3);
@@ -814,7 +816,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_before_head() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let one = l.push_n(1);
         l.assert_consistent(); let _two = l.push_n(2);
         l.assert_consistent(); assert l.len() == 2;
@@ -829,7 +831,7 @@ mod tests {
     }
     #[test]
     fn test_dlist_insert_after_tail() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         l.assert_consistent(); let _one = l.push_n(1);
         l.assert_consistent(); let two = l.push_n(2);
         l.assert_consistent(); assert l.len() == 2;
@@ -844,7 +846,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_dlist_asymmetric_link() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         let _one = l.push_n(1);
         let two = l.push_n(2);
         two.prev = None;
@@ -852,7 +854,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_dlist_cyclic_list() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         let one = l.push_n(1);
         let _two = l.push_n(2);
         let three = l.push_n(3);
@@ -862,32 +864,32 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_dlist_headless() {
-        new_dlist::<int>().head();
+        DList::<int>().head();
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_dlist_insert_already_present_before() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_before(two, one);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_dlist_insert_already_present_after() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         let one = l.push_n(1);
         let two = l.push_n(2);
         l.insert_n_after(one, two);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_dlist_insert_before_orphan() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         let one = new_dlist_node(1);
         let two = new_dlist_node(2);
         l.insert_n_before(one, two);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_dlist_insert_after_orphan() {
-        let l = new_dlist::<int>();
+        let l = DList::<int>();
         let one = new_dlist_node(1);
         let two = new_dlist_node(2);
         l.insert_n_after(two, one);

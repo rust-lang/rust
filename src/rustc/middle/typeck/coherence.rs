@@ -30,7 +30,7 @@ import syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
 import syntax::visit::{visit_mod};
 import util::ppaux::ty_to_str;
 
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import result::Ok;
 import std::map::{hashmap, int_hash};
 import uint::range;
@@ -329,7 +329,7 @@ struct CoherenceChecker {
             .find(base_def_id) {
 
             None => {
-                implementation_list = @dvec();
+                implementation_list = @DVec();
                 self.crate_context.coherence_info.inherent_methods
                     .insert(base_def_id, implementation_list);
             }
@@ -347,7 +347,7 @@ struct CoherenceChecker {
                 .find(trait_id) {
 
             None => {
-                implementation_list = @dvec();
+                implementation_list = @DVec();
                 self.crate_context.coherence_info.extension_methods
                     .insert(trait_id, implementation_list);
             }
@@ -547,7 +547,7 @@ struct CoherenceChecker {
     }
 
     fn gather_privileged_types(items: ~[@item]) -> @DVec<def_id> {
-        let results = @dvec();
+        let results = @DVec();
         for items.each |item| {
             match item.node {
                 item_class(*) | item_enum(*) | item_trait(*) => {

@@ -3,8 +3,8 @@ import comm;
 
 fn main() {
     let c = {
-        let p = comm::port();
-        comm::chan(p)
+        let p = comm::Port();
+        comm::Chan(p)
     };
     comm::send(c, ~"coffee");
 }

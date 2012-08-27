@@ -3,9 +3,7 @@ use std;
 import task;
 import comm;
 import comm::Chan;
-import comm::chan;
 import comm::Port;
-import comm::port;
 import comm::send;
 import comm::recv;
 
@@ -16,8 +14,8 @@ fn producer(c: Chan<~[u8]>) {
 }
 
 fn main() {
-    let p: Port<~[u8]> = port();
-    let ch = chan(p);
+    let p: Port<~[u8]> = Port();
+    let ch = Chan(p);
     let prod = task::spawn(|| producer(ch) );
 
     let data: ~[u8] = recv(p);

@@ -2,7 +2,7 @@ import ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
 import parse::parser;
 import parse::parser::parse_from_source_str;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import parse::token::ident_interner;
 
 import fold::*;
@@ -119,7 +119,7 @@ fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
     let v = @{visit_expr: |node, &&cx, v| visit_aq(node, ~"from_expr", cx, v),
               visit_ty: |node, &&cx, v| visit_aq(node, ~"from_ty", cx, v)
               with *default_visitor()};
-    let cx = @{lo:lo, gather: dvec()};
+    let cx = @{lo:lo, gather: DVec()};
     node.visit(cx, mk_vt(v));
     // FIXME (#2250): Maybe this is an overkill (merge_sort), it might
     // be better to just keep the gather array in sorted order.

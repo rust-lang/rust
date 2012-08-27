@@ -13,7 +13,6 @@ import unsafe::reinterpret_cast;
 import ptr::null;
 
 export DVec;
-export dvec;
 export from_elem;
 export from_vec;
 export extensions;
@@ -59,7 +58,7 @@ enum DVec<A> {
 }
 
 /// Creates a new, empty dvec
-fn dvec<A>() -> DVec<A> {
+fn DVec<A>() -> DVec<A> {
     DVec_({mut data: ~[mut]})
 }
 

@@ -11,7 +11,7 @@ fn goodfail() {
 
 fn main() {
     task::spawn(|| goodfail() );
-    let po = comm::port();
+    let po = comm::Port();
     // We shouldn't be able to get past this recv since there's no
     // message available
     let i: int = comm::recv(po);

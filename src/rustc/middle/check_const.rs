@@ -2,7 +2,7 @@ import syntax::ast::*;
 import syntax::{visit, ast_util, ast_map};
 import driver::session::session;
 import std::map::hashmap;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve3::DefMap,
@@ -158,7 +158,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: @dvec()
+        idstack: @DVec()
     };
 
     let visitor = visit::mk_vt(@{

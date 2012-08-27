@@ -6,7 +6,7 @@ Basic input/output
 
 import result::Result;
 
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
 import libc::consts::os::extra::*;
@@ -683,7 +683,7 @@ impl MemBuffer: Writer {
 }
 
 fn mem_buffer() -> MemBuffer {
-    @{buf: dvec(), mut pos: 0u}
+    @{buf: DVec(), mut pos: 0u}
 }
 fn mem_buffer_writer(b: MemBuffer) -> Writer { b as Writer }
 fn mem_buffer_buf(b: MemBuffer) -> ~[u8] { b.buf.get() }

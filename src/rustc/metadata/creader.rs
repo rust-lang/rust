@@ -9,7 +9,7 @@ import std::map::{hashmap, int_hash};
 import syntax::print::pprust;
 import filesearch::filesearch;
 import common::*;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import syntax::parse::token::ident_interner;
 
 export read_crates;
@@ -24,7 +24,7 @@ fn read_crates(diag: span_handler, crate: ast::crate,
               cstore: cstore,
               os: os,
               static: static,
-              crate_cache: dvec(),
+              crate_cache: DVec(),
               mut next_crate_num: 1,
               intr: intr};
     let v =

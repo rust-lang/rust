@@ -5,8 +5,8 @@ import task;
 import comm::*;
 
 fn main() {
-    let p = port();
-    let ch = chan(p);
+    let p = Port();
+    let ch = Chan(p);
     let mut y: int;
 
     task::spawn(|| child(ch) );

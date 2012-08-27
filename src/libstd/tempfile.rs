@@ -5,7 +5,7 @@ import option::{None, Some};
 import rand;
 
 fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
-    let r = rand::rng();
+    let r = rand::Rng();
     let mut i = 0u;
     while (i < 1000u) {
         let p = tmpdir.push(r.gen_str(16u) +

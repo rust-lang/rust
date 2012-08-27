@@ -3,7 +3,7 @@
 import std::{ebml, map};
 import std::map::{hashmap, str_hash};
 import io::WriterUtil;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import syntax::{ast, ast_util};
 import syntax::attr;
 import middle::ty;
@@ -714,7 +714,7 @@ fn get_method_names_if_trait(intr: ident_interner, cdata: cmd,
         return None;
     }
 
-    let resulting_methods = @dvec();
+    let resulting_methods = @DVec();
     for ebml::tagged_docs(item, tag_item_trait_method) |method| {
         resulting_methods.push(
             (item_name(intr, method), get_self_ty(method)));

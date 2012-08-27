@@ -14,7 +14,7 @@ import syntax::codemap::span;
 import syntax::print::pprust;
 import syntax::ast_util::new_def_hash;
 import syntax::ast_map;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import metadata::csearch;
 import ty::{region_variance, rv_covariant, rv_invariant, rv_contravariant};
 
@@ -468,7 +468,7 @@ impl determine_rp_ctxt {
         let vec = match self.dep_map.find(from) {
             Some(vec) => vec,
             None => {
-                let vec = @dvec();
+                let vec = @DVec();
                 self.dep_map.insert(from, vec);
                 vec
             }
@@ -753,7 +753,7 @@ fn determine_rp_in_crate(sess: session,
                                   def_map: def_map,
                                   region_paramd_items: int_hash(),
                                   dep_map: int_hash(),
-                                  worklist: dvec(),
+                                  worklist: DVec(),
                                   mut item_id: 0,
                                   mut anon_implies_rp: false,
                                   mut ambient_variance: rv_covariant});

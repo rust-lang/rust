@@ -149,25 +149,25 @@ mod global_env {
 
     fn getenv(n: &str) -> Option<~str> {
         let env_ch = get_global_env_chan();
-        let po = comm::port();
+        let po = comm::Port();
         comm::send(env_ch, MsgGetEnv(str::from_slice(n),
-                                     comm::chan(po)));
+                                     comm::Chan(po)));
         comm::recv(po)
     }
 
     fn setenv(n: &str, v: &str) {
         let env_ch = get_global_env_chan();
-        let po = comm::port();
+        let po = comm::Port();
         comm::send(env_ch, MsgSetEnv(str::from_slice(n),
                                      str::from_slice(v),
-                                     comm::chan(po)));
+                                     comm::Chan(po)));
         comm::recv(po)
     }
 
     fn env() -> ~[(~str,~str)] {
         let env_ch = get_global_env_chan();
-        let po = comm::port();
-        comm::send(env_ch, MsgEnv(comm::chan(po)));
+        let po = comm::Port();
+        comm::send(env_ch, MsgEnv(comm::Chan(po)));
         comm::recv(po)
     }
 
@@ -833,7 +833,7 @@ mod tests {
 
     fn make_rand_name() -> ~str {
         import rand;
-        let rng: rand::Rng = rand::rng();
+        let rng: rand::Rng = rand::Rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert option::is_none(getenv(n));
         n

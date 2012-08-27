@@ -13,7 +13,7 @@ import prec::{as_prec, token_to_binop};
 import attr::parser_attr;
 import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
                 seq_sep_none, token_to_str};
-import dvec::dvec;
+import dvec::DVec;
 import vec::{push};
 import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
@@ -3427,7 +3427,7 @@ struct parser {
                 items_allowed = false
         }
 
-        let (view_items, items) = (dvec(), dvec());
+        let (view_items, items) = (DVec(), DVec());
         loop {
             match self.parse_item_or_view_item(attrs, items_allowed) {
                 iovi_none =>
