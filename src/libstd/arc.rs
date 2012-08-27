@@ -81,7 +81,7 @@ fn arc<T: const send>(+data: T) -> ARC<T> {
  * Access the underlying data in an atomically reference counted
  * wrapper.
  */
-fn get<T: const send>(rc: &ARC<T>) -> &T {
+fn get<T: const send>(rc: &a/ARC<T>) -> &a/T {
     unsafe { get_shared_immutable_state(&rc.x) }
 }
 
