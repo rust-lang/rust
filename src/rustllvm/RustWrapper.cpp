@@ -49,6 +49,9 @@
 #include <unistd.h>
 #endif
 
+// Does this need to be done, or can it be made to resolve from the main program?
+extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
+
 using namespace llvm;
 
 static const char *LLVMRustError;
@@ -269,16 +272,11 @@ void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
   if (Name == "mknod") return (void*)(intptr_t)&mknod;
 #endif
 
+  if (Name == "__morestack") return (void*)(intptr_t)&__morestack;
+
   const char *NameStr = Name.c_str();
   void *Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr);
   if (Ptr) return Ptr;
-
-  // If it wasn't found and if it starts with an underscore ('_') character,
-  // try again without the underscore.
-  if (NameStr[0] == '_') {
-    Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr+1);
-    if (Ptr) return Ptr;
-  }
 
   if (AbortOnFailure)
     report_fatal_error("Program used external function '" + Name +
@@ -309,8 +307,8 @@ LLVMRustPrepareJIT(LLVMPassManagerRef PMR,
   std::string Err;
   TargetOptions Options;
   Options.JITEmitDebugInfo = true;
-  //Options.NoFramePointerElim = true;
-  //Options.EnableSegmentedStacks = EnableSegmentedStacks;
+  Options.NoFramePointerElim = true;
+  Options.EnableSegmentedStacks = EnableSegmentedStacks;
 
   unwrap<PassManager>(PMR)->run(*unwrap(M));
 
