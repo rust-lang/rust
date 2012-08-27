@@ -2,6 +2,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cmp::Eq;
+
 struct WindowsPath {
     host: Option<~str>;
     device: Option<~str>;
@@ -59,6 +61,13 @@ impl PosixPath : ToStr {
             s += "/";
         }
         s + str::connect(self.components, "/")
+    }
+}
+
+impl PosixPath : Eq {
+    pure fn eq(&&other: PosixPath) -> bool {
+        return self.is_absolute == other.is_absolute &&
+            self.components == other.components;
     }
 }
 

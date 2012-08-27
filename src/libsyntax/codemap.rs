@@ -32,6 +32,12 @@ type filename = ~str;
 
 type file_pos = {ch: uint, byte: uint};
 
+impl file_pos: cmp::Eq {
+    pure fn eq(&&other: file_pos) -> bool {
+        self.ch == other.ch && self.byte == other.byte
+    }
+}
+
 /* A codemap is a thing that maps uints to file/line/column positions
  * in a crate. This to make it possible to represent the positions
  * with single-word things, rather than passing records all over the
@@ -161,7 +167,14 @@ enum expn_info_ {
                    callie: {name: ~str, span: Option<span>}})
 }
 type expn_info = Option<@expn_info_>;
+
 type span = {lo: uint, hi: uint, expn_info: expn_info};
+
+impl span : cmp::Eq {
+    pure fn eq(&&other: span) -> bool {
+        return self.lo == other.lo && self.hi == other.hi;
+    }
+}
 
 fn span_to_str_no_adj(sp: span, cm: codemap) -> ~str {
     let lo = lookup_char_pos(cm, sp.lo);
@@ -216,7 +229,7 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
 fn span_to_snippet(sp: span, cm: codemap::codemap) -> ~str {
     let begin = lookup_byte_offset(cm, sp.lo);
     let end = lookup_byte_offset(cm, sp.hi);
-    assert begin.fm == end.fm;
+    assert begin.fm.start_pos == end.fm.start_pos;
     return str::slice(*begin.fm.src, begin.pos, end.pos);
 }
 

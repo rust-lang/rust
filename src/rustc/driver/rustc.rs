@@ -199,6 +199,17 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
     compile_input(sess, cfg, input, &odir, &ofile);
 }
 
+enum monitor_msg {
+    fatal,
+    done,
+}
+
+impl monitor_msg : cmp::Eq {
+    pure fn eq(&&other: monitor_msg) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 /*
 This is a sanity check that any failure of the compiler is performed
 through the diagnostic module and reported properly - we shouldn't be calling
@@ -212,11 +223,6 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 fn monitor(+f: fn~(diagnostic::emitter)) {
-    enum monitor_msg {
-        fatal,
-        done,
-    };
-
     let p = comm::Port();
     let ch = comm::Chan(p);
 

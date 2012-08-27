@@ -36,6 +36,25 @@ enum purity_cause {
     pc_cmt(bckerr)
 }
 
+impl purity_cause : cmp::Eq {
+    pure fn eq(&&other: purity_cause) -> bool {
+        match self {
+            pc_pure_fn => {
+                match other {
+                    pc_pure_fn => true,
+                    _ => false
+                }
+            }
+            pc_cmt(e0a) => {
+                match other {
+                    pc_cmt(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 fn check_loans(bccx: borrowck_ctxt,
                req_maps: req_maps,
                crate: @ast::crate) {

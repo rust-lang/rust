@@ -227,6 +227,12 @@ type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, t>;
 
 type intern_key = {struct: sty, o_def_id: Option<ast::def_id>};
 
+impl intern_key: cmp::Eq {
+    pure fn eq(&&other: intern_key) -> bool {
+        self.struct == other.struct && self.o_def_id == other.o_def_id
+    }
+}
+
 enum ast_ty_to_ty_cache_entry {
     atttce_unresolved,  /* not resolved yet */
     atttce_resolved(t)  /* resolved to a type, irrespective of region */
@@ -238,6 +244,19 @@ type opt_region_variance = Option<region_variance>;
 #[auto_serialize]
 enum region_variance { rv_covariant, rv_invariant, rv_contravariant }
 
+impl region_variance: cmp::Eq {
+    pure fn eq(&&other: region_variance) -> bool {
+        match (self, other) {
+            (rv_covariant, rv_covariant) => true,
+            (rv_invariant, rv_invariant) => true,
+            (rv_contravariant, rv_contravariant) => true,
+            (rv_covariant, _) => false,
+            (rv_invariant, _) => false,
+            (rv_contravariant, _) => false
+        }
+    }
+}
+
 // N.B.: Borrows from inlined content are not accurately deserialized.  This
 // is because we don't need the details in trans, we only care if there is an
 // entry in the table or not.
@@ -245,6 +264,12 @@ type borrow = {
     region: ty::region,
     mutbl: ast::mutability
 };
+
+impl borrow : cmp::Eq {
+    pure fn eq(&&other: borrow) -> bool {
+        self.region == other.region && self.mutbl == other.mutbl
+    }
+}
 
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
@@ -335,9 +360,34 @@ enum closure_kind {
     ck_uniq,
 }
 
+impl closure_kind : cmp::Eq {
+    pure fn eq(&&other: closure_kind) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 enum fn_proto {
     proto_bare,             // supertype of all other protocols
     proto_vstore(vstore)
+}
+
+impl fn_proto : cmp::Eq {
+    pure fn eq(&&other: fn_proto) -> bool {
+        match self {
+            proto_bare => {
+                match other {
+                    proto_bare => true,
+                    _ => false
+                }
+            }
+            proto_vstore(e0a) => {
+                match other {
+                    proto_vstore(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 /// Innards of a function type:
@@ -356,6 +406,12 @@ type fn_ty = {purity: ast::purity,
               ret_style: ret_style};
 
 type param_ty = {idx: uint, def_id: def_id};
+
+impl param_ty: cmp::Eq {
+    pure fn eq(&&other: param_ty) -> bool {
+        self.idx == other.idx && self.def_id == other.def_id
+    }
+}
 
 /// Representation of regions:
 enum region {
@@ -3272,12 +3328,12 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     /*.          add,     shift,   bit
       .             sub,     rel,     logic
       .                mult,    eq,         */
-    /*other*/   ~[f, f, f, f, t, t, f, f],
+    /*other*/   ~[f, f, f, f, f, f, f, f],
     /*bool*/    ~[f, f, f, f, t, t, t, t],
     /*int*/     ~[t, t, t, t, t, t, t, f],
     /*float*/   ~[t, t, t, f, t, t, f, f],
-    /*bot*/     ~[f, f, f, f, t, t, f, f],
-    /*struct*/  ~[t, t, t, t, t, t, t, t]];
+    /*bot*/     ~[f, f, f, f, f, f, f, f],
+    /*struct*/  ~[t, t, t, t, f, f, t, t]];
 
     return tbl[tycat(ty)][opcat(op)];
 }
@@ -3414,6 +3470,367 @@ pure fn determine_inherited_purity(parent_purity: ast::purity,
     if ty::is_blockish(child_proto) && child_purity == ast::impure_fn {
         parent_purity
     } else { child_purity }
+}
+
+impl mt : cmp::Eq {
+    pure fn eq(&&other: mt) -> bool {
+        self.ty == other.ty && self.mutbl == other.mutbl
+    }
+}
+
+impl arg : cmp::Eq {
+    pure fn eq(&&other: arg) -> bool {
+        self.mode == other.mode && self.ty == other.ty
+    }
+}
+
+impl field : cmp::Eq {
+    pure fn eq(&&other: field) -> bool {
+        self.ident == other.ident && self.mt == other.mt
+    }
+}
+
+impl vstore : cmp::Eq {
+    pure fn eq(&&other: vstore) -> bool {
+        match self {
+            vstore_fixed(e0a) => {
+                match other {
+                    vstore_fixed(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            vstore_uniq => {
+                match other {
+                    vstore_uniq => true,
+                    _ => false
+                }
+            }
+            vstore_box => {
+                match other {
+                    vstore_box => true,
+                    _ => false
+                }
+            }
+            vstore_slice(e0a) => {
+                match other {
+                    vstore_slice(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
+impl fn_ty : cmp::Eq {
+    pure fn eq(&&other: fn_ty) -> bool {
+        self.purity == other.purity &&
+        self.proto == other.proto &&
+        self.bounds == other.bounds &&
+        self.inputs == other.inputs &&
+        self.output == other.output &&
+        self.ret_style == other.ret_style
+    }
+}
+
+impl tv_vid: cmp::Eq {
+    pure fn eq(&&other: tv_vid) -> bool {
+        *self == *other
+    }
+}
+
+impl tvi_vid: cmp::Eq {
+    pure fn eq(&&other: tvi_vid) -> bool {
+        *self == *other
+    }
+}
+
+impl region_vid: cmp::Eq {
+    pure fn eq(&&other: region_vid) -> bool {
+        *self == *other
+    }
+}
+
+impl region : cmp::Eq {
+    pure fn eq(&&other: region) -> bool {
+        match self {
+            re_bound(e0a) => {
+                match other {
+                    re_bound(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            re_free(e0a, e1a) => {
+                match other {
+                    re_free(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            re_scope(e0a) => {
+                match other {
+                    re_scope(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            re_static => {
+                match other {
+                    re_static => true,
+                    _ => false
+                }
+            }
+            re_var(e0a) => {
+                match other {
+                    re_var(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
+impl bound_region : cmp::Eq {
+    pure fn eq(&&other: bound_region) -> bool {
+        match self {
+            br_self => {
+                match other {
+                    br_self => true,
+                    _ => false
+                }
+            }
+            br_anon(e0a) => {
+                match other {
+                    br_anon(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            br_named(e0a) => {
+                match other {
+                    br_named(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            br_cap_avoid(e0a, e1a) => {
+                match other {
+                    br_cap_avoid(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
+impl substs : cmp::Eq {
+    pure fn eq(&&other: substs) -> bool {
+        self.self_r == other.self_r &&
+        self.self_ty == other.self_ty &&
+        self.tps == other.tps
+    }
+}
+
+impl sty : cmp::Eq {
+    pure fn eq(&&other: sty) -> bool {
+        match self {
+            ty_nil => {
+                match other {
+                    ty_nil => true,
+                    _ => false
+                }
+            }
+            ty_bot => {
+                match other {
+                    ty_bot => true,
+                    _ => false
+                }
+            }
+            ty_bool => {
+                match other {
+                    ty_bool => true,
+                    _ => false
+                }
+            }
+            ty_int(e0a) => {
+                match other {
+                    ty_int(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_uint(e0a) => {
+                match other {
+                    ty_uint(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_float(e0a) => {
+                match other {
+                    ty_float(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_estr(e0a) => {
+                match other {
+                    ty_estr(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_enum(e0a, e1a) => {
+                match other {
+                    ty_enum(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            ty_box(e0a) => {
+                match other {
+                    ty_box(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_uniq(e0a) => {
+                match other {
+                    ty_uniq(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_evec(e0a, e1a) => {
+                match other {
+                    ty_evec(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            ty_ptr(e0a) => {
+                match other {
+                    ty_ptr(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_rptr(e0a, e1a) => {
+                match other {
+                    ty_rptr(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            ty_rec(e0a) => {
+                match other {
+                    ty_rec(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_fn(e0a) => {
+                match other {
+                    ty_fn(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_trait(e0a, e1a, e2a) => {
+                match other {
+                    ty_trait(e0b, e1b, e2b) =>
+                        e0a == e0b && e1a == e1b && e2a == e2b,
+                    _ => false
+                }
+            }
+            ty_class(e0a, e1a) => {
+                match other {
+                    ty_class(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            ty_tup(e0a) => {
+                match other {
+                    ty_tup(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_var(e0a) => {
+                match other {
+                    ty_var(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_var_integral(e0a) => {
+                match other {
+                    ty_var_integral(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_param(e0a) => {
+                match other {
+                    ty_param(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_self => {
+                match other {
+                    ty_self => true,
+                    _ => false
+                }
+            }
+            ty_type => {
+                match other {
+                    ty_type => true,
+                    _ => false
+                }
+            }
+            ty_opaque_box => {
+                match other {
+                    ty_opaque_box => true,
+                    _ => false
+                }
+            }
+            ty_opaque_closure_ptr(e0a) => {
+                match other {
+                    ty_opaque_closure_ptr(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_unboxed_vec(e0a) => {
+                match other {
+                    ty_unboxed_vec(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
+impl param_bound : cmp::Eq {
+    pure fn eq(&&other: param_bound) -> bool {
+        match self {
+            bound_copy => {
+                match other {
+                    bound_copy => true,
+                    _ => false
+                }
+            }
+            bound_owned => {
+                match other {
+                    bound_owned => true,
+                    _ => false
+                }
+            }
+            bound_send => {
+                match other {
+                    bound_send => true,
+                    _ => false
+                }
+            }
+            bound_const => {
+                match other {
+                    bound_const => true,
+                    _ => false
+                }
+            }
+            bound_trait(e0a) => {
+                match other {
+                    bound_trait(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
+impl kind : cmp::Eq {
+    pure fn eq(&&other: kind) -> bool {
+        *self == *other
+    }
 }
 
 

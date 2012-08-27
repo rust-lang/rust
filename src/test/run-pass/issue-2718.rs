@@ -8,6 +8,12 @@ mod pipes {
         terminated
     }
 
+    impl state : cmp::Eq {
+        pure fn eq(&&other: state) -> bool {
+            (self as uint) == (other as uint)
+        }
+    }
+
     type packet<T: send> = {
         mut state: state,
         mut blocked_task: Option<task::Task>,
@@ -51,7 +57,7 @@ mod pipes {
     fn send<T: send>(-p: send_packet<T>, -payload: T) {
         let p = p.unwrap();
         let p = unsafe { uniquify(p) };
-        assert (*p).payload == None;
+        assert (*p).payload.is_none();
         (*p).payload <- Some(payload);
         let old_state = swap_state_rel(&mut (*p).state, full);
         match old_state {
@@ -208,7 +214,7 @@ mod pingpong {
 
         fn do_pong(-c: pong) -> (ping, ()) {
             let packet = pipes::recv(c);
-            if packet == None {
+            if packet.is_none() {
                 fail ~"sender closed the connection"
             }
             (liberate_pong(option::unwrap(packet)), ())
@@ -221,7 +227,7 @@ mod pingpong {
 
         fn do_ping(-c: ping) -> (pong, ()) {
             let packet = pipes::recv(c);
-            if packet == None {
+            if packet.is_none() {
                 fail ~"sender closed the connection"
             }
             (liberate_ping(option::unwrap(packet)), ())

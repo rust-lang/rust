@@ -1,5 +1,6 @@
 //! A type representing either success or failure
 
+import cmp::Eq;
 import either::Either;
 
 /// The result type
@@ -349,6 +350,25 @@ fn unwrap<T, U>(-res: Result<T, U>) -> T {
         let liberated_value = unsafe::reinterpret_cast(*addr);
         unsafe::forget(res);
         return liberated_value;
+    }
+}
+
+impl<T:Eq,U:Eq> Result<T,U> : Eq {
+    pure fn eq(&&other: Result<T,U>) -> bool {
+        match self {
+            Ok(e0a) => {
+                match other {
+                    Ok(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            Err(e0a) => {
+                match other {
+                    Err(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
     }
 }
 

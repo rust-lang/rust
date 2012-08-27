@@ -42,8 +42,39 @@ fn test_str() {
     assert (s1[3] == 't' as u8);
 }
 
+enum t {
+    tag1,
+    tag2(int),
+    tag3(int, u8, char)
+}
+
+impl t : cmp::Eq {
+    pure fn eq(&&other: t) -> bool {
+        match self {
+            tag1 => {
+                match other {
+                    tag1 => true,
+                    _ => false
+                }
+            }
+            tag2(e0a) => {
+                match other {
+                    tag2(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            tag3(e0a, e1a, e2a) => {
+                match other {
+                    tag3(e0b, e1b, e2b) =>
+                        e0a == e0b && e1a == e1b && e2a == e2b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 fn test_tag() {
-    enum t { tag1, tag2(int), tag3(int, u8, char), }
     let (ch, po) = pipes::stream();
     ch.send(tag1);
     ch.send(tag2(10));

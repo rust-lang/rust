@@ -6,6 +6,7 @@
  * red-black tree or something else.
  */
 
+import core::cmp::{Eq, Ord};
 import core::option::{Some, None};
 import Option = core::Option;
 
@@ -29,7 +30,7 @@ enum tree_node<K, V> = {
 fn treemap<K, V>() -> treemap<K, V> { @mut None }
 
 /// Insert a value into the map
-fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
+fn insert<K: copy Eq Ord, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
     match copy *m {
       None => {
         *m = Some(@tree_node({key: k,
@@ -51,7 +52,8 @@ fn insert<K: copy, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
 }
 
 /// Find a value based on the key
-fn find<K: copy, V: copy>(m: &const tree_edge<K, V>, k: K) -> Option<V> {
+fn find<K: copy Eq Ord, V: copy>(m: &const tree_edge<K, V>, k: K)
+                              -> Option<V> {
     match copy *m {
       None => None,
 

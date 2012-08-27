@@ -76,6 +76,7 @@ bounded and unbounded protocols allows for less code duplication.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+import cmp::Eq;
 import unsafe::{forget, reinterpret_cast, transmute};
 import either::{Either, Left, Right};
 import option::unwrap;
@@ -121,6 +122,12 @@ enum State {
     Full,
     Blocked,
     Terminated
+}
+
+impl State: Eq {
+    pure fn eq(&&other: State) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 struct BufferHeader {

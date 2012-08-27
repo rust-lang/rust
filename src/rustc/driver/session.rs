@@ -12,7 +12,19 @@ import middle::lint;
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
 
+impl os : cmp::Eq {
+    pure fn eq(&&other: os) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 enum arch { arch_x86, arch_x86_64, arch_arm, }
+
+impl arch: cmp::Eq {
+    pure fn eq(&&other: arch) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 enum crate_type { bin_crate, lib_crate, unknown_crate, }
 
@@ -77,6 +89,12 @@ enum OptLevel {
     Less, // -O1
     Default, // -O2
     Aggressive // -O3
+}
+
+impl OptLevel : cmp::Eq {
+    pure fn eq(&&other: OptLevel) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 type options =

@@ -26,6 +26,12 @@ enum output_type {
     output_type_exe,
 }
 
+impl output_type : cmp::Eq {
+    pure fn eq(&&other: output_type) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn llvm_err(sess: session, msg: ~str) -> ! unsafe {
     let cstr = llvm::LLVMRustGetLastError();
     if cstr == ptr::null() {

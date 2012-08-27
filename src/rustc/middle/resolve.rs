@@ -110,6 +110,13 @@ enum PatternBindingMode {
     IrrefutableMode
 }
 
+impl PatternBindingMode : cmp::Eq {
+    pure fn eq(&&other: PatternBindingMode) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
+
 enum Namespace {
     ModuleNS,
     TypeNS,
@@ -122,6 +129,15 @@ enum NamespaceResult {
     BoundResult(@Module, @NameBindings)
 }
 
+impl NamespaceResult {
+    pure fn is_unknown() -> bool {
+        match self {
+            UnknownResult => true,
+            _ => false
+        }
+    }
+}
+
 enum NameDefinition {
     NoNameDefinition,           //< The name was unbound.
     ChildNameDefinition(def),   //< The name identifies an immediate child.
@@ -132,6 +148,12 @@ enum NameDefinition {
 enum Mutability {
     Mutable,
     Immutable
+}
+
+impl Mutability : cmp::Eq {
+    pure fn eq(&&other: Mutability) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 enum SelfBinding {
@@ -149,6 +171,12 @@ type ResolveVisitor = vt<()>;
 enum ModuleDef {
     NoModuleDef,            // Does not define a module.
     ModuleDef(@Module),     // Defines a module.
+}
+
+impl ModuleDef {
+    pure fn is_none() -> bool {
+        match self { NoModuleDef => true, _ => false }
+    }
 }
 
 /// Contains data for specific types of import directives.
@@ -231,9 +259,21 @@ enum XrayFlag {
     Xray        //< Private items can be accessed.
 }
 
+impl XrayFlag : cmp::Eq {
+    pure fn eq(&&other: XrayFlag) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 enum AllowCapturingSelfFlag {
     AllowCapturingSelf,         //< The "self" definition can be captured.
     DontAllowCapturingSelf,     //< The "self" definition cannot be captured.
+}
+
+impl AllowCapturingSelfFlag : cmp::Eq {
+    pure fn eq(&&other: AllowCapturingSelfFlag) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 enum EnumVariantOrConstResolution {
@@ -425,6 +465,12 @@ enum Privacy {
     Public
 }
 
+impl Privacy : cmp::Eq {
+    pure fn eq(&&other: Privacy) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 // Records a possibly-private definition.
 struct Definition {
     privacy: Privacy;
@@ -456,7 +502,7 @@ struct NameBindings {
     /// Creates a new module in this set of name bindings.
     fn define_module(parent_link: ParentLink, def_id: Option<def_id>,
                      sp: span) {
-        if self.module_def == NoModuleDef {
+        if self.module_def.is_none() {
             let module_ = @Module(parent_link, def_id);
             self.module_def = ModuleDef(module_);
             self.module_span = Some(sp);
@@ -1778,13 +1824,13 @@ struct Resolver {
                         // therefore accurately report that the names are
                         // unbound.
 
-                        if module_result == UnknownResult {
+                        if module_result.is_unknown() {
                             module_result = UnboundResult;
                         }
-                        if value_result == UnknownResult {
+                        if value_result.is_unknown() {
                             value_result = UnboundResult;
                         }
-                        if type_result == UnknownResult {
+                        if type_result.is_unknown() {
                             type_result = UnboundResult;
                         }
                     }
@@ -1812,15 +1858,15 @@ struct Resolver {
                         // The name is an import which has been fully
                         // resolved. We can, therefore, just follow it.
 
-                        if module_result == UnknownResult {
+                        if module_result.is_unknown() {
                             module_result = get_binding(import_resolution,
                                                         ModuleNS);
                         }
-                        if value_result == UnknownResult {
+                        if value_result.is_unknown() {
                             value_result = get_binding(import_resolution,
                                                        ValueNS);
                         }
-                        if type_result == UnknownResult {
+                        if type_result.is_unknown() {
                             type_result = get_binding(import_resolution,
                                                       TypeNS);
                         }
@@ -4294,6 +4340,14 @@ struct Resolver {
             expr_binary(shr, _, _) | expr_assign_op(shr, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.shr_trait);
+            }
+            expr_binary(lt, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.ord_trait);
+            }
+            expr_binary(eq, _, _) => {
+                self.add_fixed_trait_for_expr(expr.id,
+                                              self.lang_items.eq_trait);
             }
             expr_unary(neg, _) => {
                 self.add_fixed_trait_for_expr(expr.id,

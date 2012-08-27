@@ -614,11 +614,7 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(fk, decl, body, sp, id);
         visit_fn(fk, decl, body, sp, id, e, v);
     }
-    let visit_ty = if v.visit_ty == simple_ignore_ty {
-        |a,b,c| skip_ty(a, b, c)
-    } else {
-        |a,b,c| v_ty(v.visit_ty, a, b, c)
-    };
+    let visit_ty = |a,b,c| v_ty(v.visit_ty, a, b, c);
     fn v_struct_field(f: fn@(@struct_field), sf: @struct_field, &&e: (),
                       v: vt<()>) {
         f(sf);

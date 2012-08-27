@@ -146,6 +146,12 @@ enum level {
     note,
 }
 
+impl level : cmp::Eq {
+    pure fn eq(&&other: level) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn diagnosticstr(lvl: level) -> ~str {
     match lvl {
       fatal => ~"error",

@@ -6,6 +6,7 @@ Basic input/output
 
 import result::Result;
 
+import cmp::Eq;
 import dvec::DVec;
 import libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
@@ -323,6 +324,15 @@ enum FileFlag { Append, Create, Truncate, NoFlag, }
 
 // What type of writer are we?
 enum WriterType { Screen, File }
+
+impl WriterType: Eq {
+    pure fn eq(&&other: WriterType) -> bool {
+        match (self, other) {
+            (Screen, Screen) | (File, File) => true,
+            (Screen, _) | (File, _) => false
+        }
+    }
+}
 
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64

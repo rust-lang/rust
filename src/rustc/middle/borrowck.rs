@@ -322,9 +322,59 @@ enum bckerr_code {
     err_out_of_scope(ty::region, ty::region) // superscope, subscope
 }
 
+impl bckerr_code : cmp::Eq {
+    pure fn eq(&&other: bckerr_code) -> bool {
+        match self {
+            err_mut_uniq => {
+                match other {
+                    err_mut_uniq => true,
+                    _ => false
+                }
+            }
+            err_mut_variant => {
+                match other {
+                    err_mut_variant => true,
+                    _ => false
+                }
+            }
+            err_root_not_permitted => {
+                match other {
+                    err_root_not_permitted => true,
+                    _ => false
+                }
+            }
+            err_mutbl(e0a, e1a) => {
+                match other {
+                    err_mutbl(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            err_out_of_root_scope(e0a, e1a) => {
+                match other {
+                    err_out_of_root_scope(e0b, e1b) =>
+                        e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            err_out_of_scope(e0a, e1a) => {
+                match other {
+                    err_out_of_scope(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 // Combination of an error code and the categorization of the expression
 // that caused it
 type bckerr = {cmt: cmt, code: bckerr_code};
+
+impl bckerr : cmp::Eq {
+    pure fn eq(&&other: bckerr) -> bool {
+        self.cmt == other.cmt && self.code == other.code
+    }
+}
 
 // shorthand for something that fails with `bckerr` or succeeds with `T`
 type bckres<T> = Result<T, bckerr>;

@@ -105,7 +105,9 @@ pure fn binop_to_method_name(op: binop) -> Option<~str> {
       bitor => return Some(~"bitor"),
       shl => return Some(~"shl"),
       shr => return Some(~"shr"),
-      and | or | eq | lt | le | ne | ge | gt => return None
+      lt => return Some(~"lt"),
+      eq => return Some(~"eq"),
+      and | or | le | ne | ge | gt => return None
     }
 }
 

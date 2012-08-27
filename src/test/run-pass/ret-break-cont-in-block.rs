@@ -1,3 +1,5 @@
+import cmp::Eq;
+
 fn iter<T>(v: ~[T], it: fn(T) -> bool) {
     let mut i = 0u, l = v.len();
     while i < l {
@@ -6,7 +8,7 @@ fn iter<T>(v: ~[T], it: fn(T) -> bool) {
     }
 }
 
-fn find_pos<T>(n: T, h: ~[T]) -> Option<uint> {
+fn find_pos<T:Eq>(n: T, h: ~[T]) -> Option<uint> {
     let mut i = 0u;
     for iter(h) |e| {
         if e == n { return Some(i); }

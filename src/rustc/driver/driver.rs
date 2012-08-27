@@ -136,6 +136,12 @@ enum compile_upto {
     cu_everything,
 }
 
+impl compile_upto : cmp::Eq {
+    pure fn eq(&&other: compile_upto) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn compile_upto(sess: session, cfg: ast::crate_cfg,
                 input: input, upto: compile_upto,
                 outputs: Option<output_filenames>)

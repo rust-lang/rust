@@ -329,9 +329,34 @@ enum Constraint {
     ConstrainVarSubReg(region_vid, region)
 }
 
+impl Constraint: cmp::Eq {
+    pure fn eq(&&other: Constraint) -> bool {
+        match (self, other) {
+            (ConstrainVarSubVar(v0a, v1a), ConstrainVarSubVar(v0b, v1b)) => {
+                v0a == v0b && v1a == v1b
+            }
+            (ConstrainRegSubVar(ra, va), ConstrainRegSubVar(rb, vb)) => {
+                ra == rb && va == vb
+            }
+            (ConstrainVarSubReg(va, ra), ConstrainVarSubReg(vb, rb)) => {
+                va == vb && ra == rb
+            }
+            (ConstrainVarSubVar(*), _) => false,
+            (ConstrainRegSubVar(*), _) => false,
+            (ConstrainVarSubReg(*), _) => false
+        }
+    }
+}
+
 struct TwoRegions {
     a: region;
     b: region;
+}
+
+impl TwoRegions: cmp::Eq {
+    pure fn eq(&&other: TwoRegions) -> bool {
+        self.a == other.a && self.b == other.b
+    }
 }
 
 enum UndoLogEntry {
@@ -724,7 +749,19 @@ priv impl RegionVarBindings {
 
 enum Direction { Incoming = 0, Outgoing = 1 }
 
+impl Direction : cmp::Eq {
+    pure fn eq(&&other: Direction) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 enum Classification { Expanding, Contracting }
+
+impl Classification : cmp::Eq {
+    pure fn eq(&&other: Classification) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 enum GraphNodeValue { NoValue, Value(region), ErrorValue }
 

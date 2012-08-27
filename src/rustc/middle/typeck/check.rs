@@ -1102,6 +1102,15 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let tcx = fcx.ccx.tcx;
         let lhs_bot = check_expr(fcx, lhs, None);
         let lhs_t = fcx.expr_ty(lhs);
+
+        // Hack: Unify the two sides if this is a relational operator.
+        match op {
+            ast::eq | ast::lt | ast::le | ast::ne | ast::ge | ast::gt => {
+                check_expr_with(fcx, rhs, lhs_t);
+            }
+            _ => {}
+        }
+
         let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
         return match (op, ty::get(lhs_t).struct) {
           (_, _) if ty::type_is_integral(lhs_t) &&
@@ -1118,19 +1127,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let tvar = fcx.infcx().next_ty_var();
             demand::suptype(fcx, expr.span, tvar, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
-            let rhs_t = match op {
+            let result_t = match op {
               ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
-              ast::gt => {
-                // these comparison operators are handled in a
-                // separate case below.
-                tcx.sess.span_bug(
-                    expr.span,
-                    fmt!("comparison operator in expr_binop: %s",
-                         ast_util::binop_to_str(op)));
-              }
+              ast::gt => ty::mk_bool(fcx.ccx.tcx),
               _ => lhs_t
             };
-            fcx.write_ty(expr.id, rhs_t);
+            fcx.write_ty(expr.id, result_t);
             if !ast_util::lazy_binop(op) { lhs_bot | rhs_bot }
             else { lhs_bot }
           }
@@ -1424,9 +1426,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       // complicated trait requirements, fail without this---I think this code
       // can be removed if we improve trait resolution to be more eager when
       // possible.
-      ast::expr_binary(ast::eq, lhs, rhs) |
       ast::expr_binary(ast::ne, lhs, rhs) |
-      ast::expr_binary(ast::lt, lhs, rhs) |
       ast::expr_binary(ast::le, lhs, rhs) |
       ast::expr_binary(ast::gt, lhs, rhs) |
       ast::expr_binary(ast::ge, lhs, rhs) => {

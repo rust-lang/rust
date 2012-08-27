@@ -27,6 +27,12 @@ impl Point : ops::index<bool,int> {
     }
 }
 
+impl Point : cmp::Eq {
+    pure fn eq(&&other: Point) -> bool {
+        self.x == other.x && self.y == other.y
+    }
+}
+
 fn main() {
     let mut p = Point {x: 10, y: 20};
     p += Point {x: 101, y: 102};

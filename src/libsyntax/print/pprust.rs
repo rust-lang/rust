@@ -244,8 +244,7 @@ fn is_end(s: ps) -> bool {
 }
 
 fn is_bol(s: ps) -> bool {
-    return s.s.last_token() == pp::EOF ||
-            s.s.last_token() == pp::hardbreak_tok();
+    return s.s.last_token().is_eof() || s.s.last_token().is_hardbreak_tok();
 }
 
 fn in_cbox(s: ps) -> bool {
@@ -260,7 +259,7 @@ fn break_offset_if_not_bol(s: ps, n: uint, off: int) {
     if !is_bol(s) {
         break_offset(s.s, n, off);
     } else {
-        if off != 0 && s.s.last_token() == pp::hardbreak_tok() {
+        if off != 0 && s.s.last_token().is_hardbreak_tok() {
             // We do something pretty sketchy here: tuck the nonzero
             // offset-adjustment we were going to deposit along with the
             // break into the previous hardbreak.

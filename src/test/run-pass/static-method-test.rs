@@ -67,10 +67,13 @@ fn seq_range<BT: buildable<int>>(lo: uint, hi: uint) -> BT {
 }
 
 fn main() {
-    assert seq_range(0, 10) == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let v: @[int] = seq_range(0, 10);
+    assert v == @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-    assert map(&[1,2,3], |x| 1+x) == @[2, 3, 4];
-    assert map(&[1,2,3], |x| 1+x) == ~[2, 3, 4];
+    let v: @[int] = map(&[1,2,3], |x| 1+x);
+    assert v == @[2, 3, 4];
+    let v: ~[int] = map(&[1,2,3], |x| 1+x);
+    assert v == ~[2, 3, 4];
 
     assert select(true, 9, 14) == 9;
     assert !andand(true, false);

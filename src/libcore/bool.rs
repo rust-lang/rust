@@ -6,6 +6,8 @@
 
 //! Boolean logic
 
+import cmp::Eq;
+
 export not, and, or, xor, implies;
 export eq, ne, is_true, is_false;
 export from_str, to_str, all_values, to_bit;
@@ -66,6 +68,12 @@ fn all_values(blk: fn(v: bool)) {
 
 /// converts truth value to an 8 bit byte
 pure fn to_bit(v: bool) -> u8 { if v { 1u8 } else { 0u8 } }
+
+impl bool : cmp::Eq {
+    pure fn eq(&&other: bool) -> bool {
+        self == other
+    }
+}
 
 #[test]
 fn test_bool_from_str() {

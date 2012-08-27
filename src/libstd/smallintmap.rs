@@ -64,7 +64,7 @@ fn contains_key<T: copy>(self: smallintmap<T>, key: uint) -> bool {
 
 /// Implements the map::map interface for smallintmap
 impl<V: copy> smallintmap<V>: map::map<uint, V> {
-    fn size() -> uint {
+    pure fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
             match item {
@@ -98,9 +98,9 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
         contains_key(self, *key)
     }
     fn get(+key: uint) -> V { get(self, key) }
-    fn find(+key: uint) -> Option<V> { find(self, key) }
+    pure fn find(+key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
-    fn each(it: fn(+key: uint, +value: V) -> bool) {
+    pure fn each(it: fn(+key: uint, +value: V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
@@ -110,13 +110,13 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
             idx += 1u;
         }
     }
-    fn each_key(it: fn(+key: uint) -> bool) {
+    pure fn each_key(it: fn(+key: uint) -> bool) {
         self.each(|k, _v| it(k))
     }
-    fn each_value(it: fn(+value: V) -> bool) {
+    pure fn each_value(it: fn(+value: V) -> bool) {
         self.each(|_k, v| it(v))
     }
-    fn each_ref(it: fn(key: &uint, value: &V) -> bool) {
+    pure fn each_ref(it: fn(key: &uint, value: &V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
@@ -126,10 +126,10 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
             idx += 1u;
         }
     }
-    fn each_key_ref(blk: fn(key: &uint) -> bool) {
+    pure fn each_key_ref(blk: fn(key: &uint) -> bool) {
         self.each_ref(|k, _v| blk(k))
     }
-    fn each_value_ref(blk: fn(value: &V) -> bool) {
+    pure fn each_value_ref(blk: fn(value: &V) -> bool) {
         self.each_ref(|_k, v| blk(v))
     }
 }

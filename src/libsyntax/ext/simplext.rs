@@ -466,7 +466,12 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                match_result {
                 return match m {
                       match_expr(e) => {
-                        if e == pat { Some(leaf(match_exact)) } else { None }
+                        if box::ptr_eq(e, pat) {
+                            // XXX: Is this right?
+                            Some(leaf(match_exact))
+                        } else {
+                            None
+                        }
                       }
                       _ => cx.bug(~"broken traversal in p_t_s_r")
                     }

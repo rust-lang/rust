@@ -11,6 +11,7 @@
  * of features.
  */
 
+import core::cmp::{Eq, Ord};
 import option::{Some, None};
 import option = option;
 
@@ -31,7 +32,8 @@ enum TreeNode<K, V> {
 fn init<K, V>() -> Treemap<K, V> { @Empty }
 
 /// Insert a value into the map
-fn insert<K: copy, V: copy>(m: Treemap<K, V>, k: K, v: V) -> Treemap<K, V> {
+fn insert<K: copy Eq Ord, V: copy>(m: Treemap<K, V>, k: K, v: V)
+                                -> Treemap<K, V> {
     @match m {
        @Empty => Node(@k, @v, @Empty, @Empty),
        @Node(@kk, vv, left, right) => {
@@ -45,7 +47,7 @@ fn insert<K: copy, V: copy>(m: Treemap<K, V>, k: K, v: V) -> Treemap<K, V> {
 }
 
 /// Find a value based on the key
-fn find<K, V: copy>(m: Treemap<K, V>, k: K) -> Option<V> {
+fn find<K: Eq Ord, V: copy>(m: Treemap<K, V>, k: K) -> Option<V> {
     match *m {
       Empty => None,
       Node(@kk, @v, left, right) => {

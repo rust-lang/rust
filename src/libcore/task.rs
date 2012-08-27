@@ -27,6 +27,7 @@
  * ~~~
  */
 
+import cmp::Eq;
 import result::Result;
 
 export Task;
@@ -79,7 +80,15 @@ export PlatformThread;
 /* Data types */
 
 /// A handle to a task
-enum Task { TaskHandle(task_id) }
+enum Task {
+    TaskHandle(task_id)
+}
+
+impl Task : cmp::Eq {
+    pure fn eq(&&other: Task) -> bool {
+        *self == *other
+    }
+}
 
 /**
  * Indicates the manner in which a task exited.
@@ -97,10 +106,31 @@ enum TaskResult {
     Failure,
 }
 
+impl TaskResult: Eq {
+    pure fn eq(&&other: TaskResult) -> bool {
+        match (self, other) {
+            (Success, Success) | (Failure, Failure) => true,
+            (Success, _) | (Failure, _) => false
+        }
+    }
+}
+
 /// A message type for notifying of task lifecycle events
 enum Notification {
     /// Sent when a task exits with the task handle and result
     Exit(Task, TaskResult)
+}
+
+impl Notification : cmp::Eq {
+    pure fn eq(&&other: Notification) -> bool {
+        match self {
+            Exit(e0a, e1a) => {
+                match other {
+                    Exit(e0b, e1b) => e0a == e0b && e1a == e1b
+                }
+            }
+        }
+    }
 }
 
 /// Scheduler modes
@@ -1273,6 +1303,14 @@ type LocalDataKey<T: owned> = &fn(+@T);
 trait LocalData { }
 impl<T: owned> @T: LocalData { }
 
+impl LocalData: Eq {
+    pure fn eq(&&other: LocalData) -> bool unsafe {
+        let ptr_a: (uint, uint) = unsafe::reinterpret_cast(self);
+        let ptr_b: (uint, uint) = unsafe::reinterpret_cast(other);
+        return ptr_a == ptr_b;
+    }
+}
+
 // We use dvec because it's the best data structure in core. If TLS is used
 // heavily in future, this could be made more efficient with a proper map.
 type TaskLocalElement = (*libc::c_void, *libc::c_void, LocalData);
@@ -1743,13 +1781,13 @@ fn test_spawn_listiner_bidi() {
     let ch = do spawn_listener |po| {
         // Now the child has a port called 'po' to read from and
         // an environment-captured channel called 'ch'.
-        let res = comm::recv(po);
+        let res: ~str = comm::recv(po);
         assert res == ~"ping";
         comm::send(ch, ~"pong");
     };
     // Likewise, the parent has both a 'po' and 'ch'
     comm::send(ch, ~"ping");
-    let res = comm::recv(po);
+    let res: ~str = comm::recv(po);
     assert res == ~"pong";
 }
 

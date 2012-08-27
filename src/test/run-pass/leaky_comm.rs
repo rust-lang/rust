@@ -8,8 +8,8 @@ fn main() {
   
   match None::<int> {
       None => {}
-      Some(_)  =>{
-  if test_comm::recv(p) == 0 {
+      Some(_) => {
+  if 0 == test_comm::recv(p) {
       error!("floop");
   }
   else {

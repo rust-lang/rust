@@ -134,7 +134,10 @@ fn is_test_fn(i: @ast::item) -> bool {
         match i.node {
           ast::item_fn(decl, _, tps, _) => {
             let input_cnt = vec::len(decl.inputs);
-            let no_output = decl.output.node == ast::ty_nil;
+            let no_output = match decl.output.node {
+                ast::ty_nil => true,
+                _ => false
+            };
             let tparm_cnt = vec::len(tps);
             input_cnt == 0u && no_output && tparm_cnt == 0u
           }

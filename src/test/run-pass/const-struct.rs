@@ -1,6 +1,12 @@
 
 struct foo { a: int; b: int; c: int; }
 
+impl foo : cmp::Eq {
+    pure fn eq(&&other: foo) -> bool {
+        self.a == other.a && self.b == other.b && self.c == other.c
+    }
+}
+
 const x : foo = foo { a:1, b:2, c: 3 };
 const y : foo = foo { b:2, c:3, a: 1 };
 const z : &foo = &foo { a: 10, b: 22, c: 12 };
