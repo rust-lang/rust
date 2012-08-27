@@ -7,6 +7,7 @@ export SharedMutableState, shared_mutable_state, clone_shared_mutable_state;
 export get_shared_mutable_state, get_shared_immutable_state;
 export unwrap_shared_mutable_state;
 export Exclusive, exclusive, unwrap_exclusive;
+export copy_lifetime;
 
 import task::atomically;
 
@@ -57,14 +58,23 @@ unsafe fn transmute<L, G>(-thing: L) -> G {
 
 /// Coerce an immutable reference to be mutable.
 unsafe fn transmute_mut<T>(+ptr: &a/T) -> &a/mut T { transmute(ptr) }
+
 /// Coerce a mutable reference to be immutable.
 unsafe fn transmute_immut<T>(+ptr: &a/mut T) -> &a/T { transmute(ptr) }
+
 /// Coerce a borrowed pointer to have an arbitrary associated region.
 unsafe fn transmute_region<T>(+ptr: &a/T) -> &b/T { transmute(ptr) }
+
 /// Coerce a borrowed mutable pointer to have an arbitrary associated region.
 unsafe fn transmute_mut_region<T>(+ptr: &a/mut T) -> &b/mut T {
     transmute(ptr)
 }
+
+/// Transforms lifetime of the second pointer to match the first.
+unsafe fn copy_lifetime<S,T>(_ptr: &a/S, ptr: &T) -> &a/T {
+    transmute_region(ptr)
+}
+
 
 /****************************************************************************
  * Shared state & exclusive ARC

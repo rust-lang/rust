@@ -1,7 +1,7 @@
 //! Unsafe pointer utility functions
 
 export addr_of;
-export assimilate;
+export to_unsafe_ptr;
 export mut_addr_of;
 export offset;
 export const_offset;
@@ -136,9 +136,10 @@ unsafe fn memset<T>(dst: *mut T, c: int, count: uint)  {
   ("assimilate" because it makes the pointer forget its region.)
 */
 #[inline(always)]
-fn assimilate<T>(thing: &T) -> *T unsafe {
+fn to_unsafe_ptr<T>(thing: &T) -> *T unsafe {
     unsafe::reinterpret_cast(thing)
 }
+
 /**
   Cast a region pointer - &T - to a uint.
   This is safe, but is implemented with an unsafe block due to
