@@ -50,6 +50,7 @@ mod cell;
 
 // Concurrency
 
+#[warn(non_camel_case_types)]
 mod sync;
 mod arc;
 mod comm;
