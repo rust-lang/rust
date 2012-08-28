@@ -18,6 +18,7 @@
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Analysis/Passes.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Assembly/Parser.h"
 #include "llvm/Assembly/PrintModulePass.h"
