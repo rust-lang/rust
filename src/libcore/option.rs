@@ -8,6 +8,8 @@
  * type.
  */
 
+use cmp::Eq;
+
 /// The option type
 enum Option<T> {
     None,
@@ -245,6 +247,25 @@ impl<T: copy> Option<T> {
     pure fn expect(reason: ~str) -> T { expect(self, reason) }
     /// Applies a function zero or more times until the result is none.
     pure fn while_some(blk: fn(+T) -> Option<T>) { while_some(self, blk) }
+}
+
+impl<T: Eq> Option<T> : Eq {
+    pure fn eq(&&other: Option<T>) -> bool {
+        match self {
+            None => {
+                match other {
+                    None => true,
+                    Some(_) => false
+                }
+            }
+            Some(self_contents) => {
+                match other {
+                    None => false,
+                    Some(other_contents) => self_contents.eq(other_contents)
+                }
+            }
+        }
+    }
 }
 
 #[test]
