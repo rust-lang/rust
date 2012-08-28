@@ -15,6 +15,9 @@
 #include "llvm/LLVMContext.h"
 #include "llvm/Linker.h"
 #include "llvm/PassManager.h"
+#include "llvm/Analysis/Verifier.h"
+#include "llvm/Analysis/Passes.h"
+#include "llvm/Transforms/Scalar.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Assembly/Parser.h"
 #include "llvm/Assembly/PrintModulePass.h"
@@ -35,7 +38,6 @@
 #include "llvm/ExecutionEngine/JITMemoryManager.h"
 #include "llvm/ExecutionEngine/MCJIT.h"
 #include "llvm/ExecutionEngine/Interpreter.h"
-#include "llvm/ExecutionEngine/GenericValue.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Object.h"
@@ -291,11 +293,8 @@ RustMCJITMemoryManager::~RustMCJITMemoryManager() {
     free(AllocatedDataMem[i].base());
 }
 
-// Separated functions because loading libraries before creating
-// an execution engine seems to break stuff.
-
 extern "C" bool
-LLVMRustPrepareJIT(LLVMPassManagerRef PMR,
+LLVMRustJIT(LLVMPassManagerRef PMR,
             LLVMModuleRef M,
             CodeGenOpt::Level OptLevel,
             bool EnableSegmentedStacks) {
@@ -309,8 +308,16 @@ LLVMRustPrepareJIT(LLVMPassManagerRef PMR,
   Options.JITEmitDebugInfo = true;
   Options.NoFramePointerElim = true;
   Options.EnableSegmentedStacks = EnableSegmentedStacks;
+  PassManager *PM = unwrap<PassManager>(PMR);
 
-  unwrap<PassManager>(PMR)->run(*unwrap(M));
+  PM->add(createBasicAliasAnalysisPass());
+  PM->add(createInstructionCombiningPass());
+  PM->add(createReassociatePass());
+  PM->add(createGVNPass());
+  PM->add(createPromoteMemoryToRegisterPass());
+  PM->add(createCFGSimplificationPass());
+  PM->add(createFunctionInliningPass());
+  PM->run(*unwrap(M));
 
   RustMCJITMemoryManager* MM = new RustMCJITMemoryManager();
   EE = EngineBuilder(unwrap(M))
@@ -326,15 +333,6 @@ LLVMRustPrepareJIT(LLVMPassManagerRef PMR,
   }
 
   MM->invalidateInstructionCache();
-
-  return true;
-}
-
-extern "C" bool
-LLVMRustExecuteJIT() {
-  assert(EE);
-
-  std::string Err;
   Function* func = EE->FindFunctionNamed("main");
 
   if(!func || Err != "") {
@@ -342,13 +340,11 @@ LLVMRustExecuteJIT() {
     return false;
   }
 
-  //std::vector<GenericValue> args;
-  typedef int (*entry_t)(int, int);
-  entry_t entry = (entry_t) EE->getPointerToFunction(func);
+  typedef int (*Entry)(int, int);
+  Entry entry = (Entry) EE->getPointerToFunction(func);
 
   assert(entry);
   entry(0, 0);
-  //EE->runFunction(func, args);
 
   return true;
 }
