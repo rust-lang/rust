@@ -8,6 +8,8 @@ import Option = option::Option;
 #[cfg(stage0)]
 import option = option::Option;
 
+import result::{Result, Ok, Err};
+
 import Path = path2::Path;
 import GenericPath = path2::GenericPath;
 import WindowsPath = path2::WindowsPath;
@@ -24,6 +26,7 @@ import to_str::ToStr;
 
 export Path, WindowsPath, PosixPath, GenericPath;
 export Option, Some, None, unreachable;
+export Result, Ok, Error;
 export extensions;
 // The following exports are the extension impls for numeric types
 export Num, Times, TimesIx;
