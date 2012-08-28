@@ -121,6 +121,7 @@ ALL_CS := $(wildcard $(S)src/rt/*.cpp \
                      $(S)srcrustllvm/*.cpp)
 ALL_CS := $(filter-out $(S)src/rt/bigint/bigint_ext.cpp \
                        $(S)src/rt/bigint/bigint_int.cpp \
+                       $(S)src/rt/miniz.cpp \
 	,$(ALL_CS))
 ALL_HS := $(wildcard $(S)src/rt/*.h \
                      $(S)src/rt/*/*.h \

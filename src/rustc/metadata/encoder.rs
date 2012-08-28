@@ -1164,7 +1164,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
     buf_w.write(&[0u8, 0u8, 0u8, 0u8]);
-    io::mem_buffer_buf(buf)
+    flate::deflate_buf(io::mem_buffer_buf(buf))
 }
 
 // Get the encoded string for a type

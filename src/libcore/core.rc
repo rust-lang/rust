@@ -56,6 +56,7 @@ export cmp;
 export num;
 export path, path2;
 export managed;
+export flate;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
@@ -264,6 +265,8 @@ mod sys;
 mod unsafe;
 
 mod managed;
+
+mod flate;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface
