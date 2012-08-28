@@ -95,8 +95,7 @@ fn quick_sort<T: copy>(compare_func: le<T>, arr: ~[mut T]) {
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
-fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
-                  arr: ~[mut T], left: int, right: int) {
+fn qsort3<T: copy Ord Eq>(arr: ~[mut T], left: int, right: int) {
     if right <= left { return; }
     let v: T = arr[right];
     let mut i: int = left - 1;
@@ -105,19 +104,19 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
     let mut q: int = j;
     loop {
         i += 1;
-        while compare_func_lt(&arr[i], &v) { i += 1; }
+        while arr[i] < v { i += 1; }
         j -= 1;
-        while compare_func_lt(&v, &arr[j]) {
+        while v < arr[j] {
             if j == left { break; }
             j -= 1;
         }
         if i >= j { break; }
         arr[i] <-> arr[j];
-        if compare_func_eq(&arr[i], &v) {
+        if arr[i] == v {
             p += 1;
             arr[p] <-> arr[i];
         }
-        if compare_func_eq(&v, &arr[j]) {
+        if v == arr[j] {
             q -= 1;
             arr[j] <-> arr[q];
         }
@@ -139,8 +138,8 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
         i += 1;
         if k == 0 { break; }
     }
-    qsort3::<T>(compare_func_lt, compare_func_eq, arr, left, j);
-    qsort3::<T>(compare_func_lt, compare_func_eq, arr, i, right);
+    qsort3::<T>(arr, left, j);
+    qsort3::<T>(arr, i, right);
 }
 
 /**
@@ -155,7 +154,7 @@ fn qsort3<T: copy>(compare_func_lt: le<T>, compare_func_eq: le<T>,
  */
 fn quick_sort3<T: copy Ord Eq>(arr: ~[mut T]) {
     if arr.len() <= 1 { return; }
-    qsort3(core::cmp::lt, core::cmp::eq, arr, 0, (arr.len() - 1) as int);
+    qsort3(arr, 0, (arr.len() - 1) as int);
 }
 
 #[cfg(test)]
