@@ -993,6 +993,16 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                                    lv_temporary),
                                arg_vals(~[frameaddress_val]), ignore);
       }
+      ~"morestack_addr" => {
+        // XXX This is a hack to grab the address of this particular
+        // native function. There should be a general in-language
+        // way to do this
+        let llfty = type_of_fn(bcx.ccx(), ~[], ty::mk_nil(bcx.tcx()));
+        let morestack_addr = decl_cdecl_fn(
+            bcx.ccx().llmod, ~"__morestack", llfty);
+        let morestack_addr = PointerCast(bcx, morestack_addr, T_ptr(T_nil()));
+        Store(bcx, morestack_addr, fcx.llretptr);
+      }
       _ => {
       // Could we make this an enum rather than a string? does it get
       // checked earlier?
