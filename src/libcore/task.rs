@@ -1396,7 +1396,7 @@ unsafe fn local_set<T: owned>(
         }
         None => {
             // Find an empty slot. If not, grow the vector.
-            match (*map).position(|x| x == None) {
+            match (*map).position(|x| x.is_none()) {
                 Some(empty_index) => (*map).set_elt(empty_index, new_entry),
                 None => (*map).push(new_entry)
             }
