@@ -11,7 +11,8 @@ use syntax::ast_util;
 use syntax::ast_util::{is_local, local_def, new_def_hash};
 use syntax::codemap::span;
 use metadata::csearch;
-use util::ppaux::{region_to_str, explain_region, vstore_to_str};
+use util::ppaux::{region_to_str, explain_region, vstore_to_str,
+                  note_and_explain_region};
 use middle::lint;
 use middle::lint::{get_lint_level, allow};
 use syntax::ast::*;
@@ -36,12 +37,13 @@ export def_has_ty_params;
 export expr_has_ty_params;
 export expr_ty;
 export expr_ty_params_and_ty;
-export expr_is_lval;
+export expr_is_lval, expr_kind;
+export ExprKind, LvalueExpr, RvalueDatumExpr, RvalueDpsExpr, RvalueStmtExpr;
 export field_ty;
 export fold_ty, fold_sty_to_ty, fold_region, fold_regions;
 export fold_regions_and_ty, walk_regions_and_ty;
 export field;
-export field_idx;
+export field_idx, field_idx_strict;
 export get_field;
 export get_fields;
 export get_element_type;
@@ -120,7 +122,7 @@ export kind_is_owned;
 export proto_kind, kind_lteq, type_kind;
 export operators;
 export type_err, terr_vstore_kind;
-export type_err_to_str;
+export type_err_to_str, note_and_explain_type_err;
 export expected_found;
 export type_needs_drop;
 export type_is_empty;
@@ -2382,7 +2384,7 @@ fn node_id_to_type(cx: ctxt, id: ast::node_id) -> t {
     match smallintmap::find(*cx.node_types, id as uint) {
        Some(t) => t,
        None => cx.sess.bug(
-           fmt!("node_id_to_type: unbound node ID %s",
+           fmt!("node_id_to_type: no type for node `%s`",
                 ast_map::node_id_to_str(cx.items, id,
                                         cx.sess.parse_sess.interner)))
     }
@@ -2535,13 +2537,156 @@ fn method_call_bounds(tcx: ctxt, method_map: typeck::method_map,
     }
 }
 
-fn expr_is_lval(method_map: typeck::method_map, e: @ast::expr) -> bool {
-    match e.node {
-      ast::expr_path(_) | ast::expr_unary(ast::deref, _) => true,
-      ast::expr_field(_, _, _) | ast::expr_index(_, _) => {
-        !method_map.contains_key(e.id)
-      }
-      _ => false
+fn resolve_expr(tcx: ctxt, expr: @ast::expr) -> ast::def {
+    match tcx.def_map.find(expr.id) {
+        Some(def) => def,
+        None => {
+            tcx.sess.span_bug(expr.span, fmt!(
+                "No def-map entry for expr %?", expr.id));
+        }
+    }
+}
+
+fn expr_is_lval(tcx: ctxt,
+                method_map: typeck::method_map,
+                e: @ast::expr) -> bool {
+    match expr_kind(tcx, method_map, e) {
+        LvalueExpr => true,
+        RvalueDpsExpr | RvalueDatumExpr | RvalueStmtExpr => false
+    }
+}
+
+/// We categorize expressions into three kinds.  The distinction between
+/// lvalue/rvalue is fundamental to the language.  The distinction between the
+/// two kinds of rvalues is an artifact of trans which reflects how we will
+/// generate code for that kind of expression.  See trans/expr.rs for more
+/// information.
+enum ExprKind {
+    LvalueExpr,
+    RvalueDpsExpr,
+    RvalueDatumExpr,
+    RvalueStmtExpr
+}
+
+fn expr_kind(tcx: ctxt,
+             method_map: typeck::method_map,
+             expr: @ast::expr) -> ExprKind {
+    if method_map.contains_key(expr.id) {
+        // Overloaded operations are generally calls, and hence they are
+        // generated via DPS.  However, assign_op (e.g., `x += y`) is an
+        // exception, as its result is always unit.
+        return match expr.node {
+            ast::expr_assign_op(*) => RvalueStmtExpr,
+            _ => RvalueDpsExpr
+        };
+    }
+
+    match expr.node {
+        ast::expr_path(*) => {
+            match resolve_expr(tcx, expr) {
+                ast::def_fn(*) | ast::def_static_method(*) |
+                ast::def_variant(*) => RvalueDpsExpr,
+
+                // Note: there is actually a good case to be made that
+                // def_args, particularly those of immediate type, ought to
+                // considered rvalues.
+                ast::def_const(*) |
+                ast::def_binding(*) |
+                ast::def_upvar(*) |
+                ast::def_arg(*) |
+                ast::def_local(*) |
+                ast::def_self(*) => LvalueExpr,
+
+                move def => {
+                    tcx.sess.span_bug(expr.span, fmt!(
+                        "Uncategorized def for expr %?: %?",
+                        expr.id, def));
+                }
+            }
+        }
+
+        ast::expr_unary(ast::deref, _) |
+        ast::expr_field(*) |
+        ast::expr_index(*) => {
+            LvalueExpr
+        }
+
+        ast::expr_call(*) |
+        ast::expr_rec(*) |
+        ast::expr_struct(*) |
+        ast::expr_tup(*) |
+        ast::expr_if(*) |
+        ast::expr_match(*) |
+        ast::expr_fn(*) |
+        ast::expr_fn_block(*) |
+        ast::expr_loop_body(*) |
+        ast::expr_do_body(*) |
+        ast::expr_block(*) |
+        ast::expr_copy(*) |
+        ast::expr_unary_move(*) |
+        ast::expr_repeat(*) |
+        ast::expr_lit(@{node: lit_str(_), _}) |
+        ast::expr_vstore(_, ast::vstore_slice(_)) |
+        ast::expr_vstore(_, ast::vstore_fixed(_)) |
+        ast::expr_vec(*) => {
+            RvalueDpsExpr
+        }
+
+        ast::expr_cast(*) => {
+            match smallintmap::find(*tcx.node_types, expr.id as uint) {
+                Some(t) => {
+                    if ty::type_is_immediate(t) {
+                        RvalueDatumExpr
+                    } else {
+                        RvalueDpsExpr
+                    }
+                }
+                None => {
+                    // Technically, it should not happen that the expr is not
+                    // present within the table.  However, it DOES happen
+                    // during type check, because the final types from the
+                    // expressions are not yet recorded in the tcx.  At that
+                    // time, though, we are only interested in knowing lvalue
+                    // vs rvalue.  It would be better to base this decision on
+                    // the AST type in cast node---but (at the time of this
+                    // writing) it's not easy to distinguish casts to traits
+                    // from other casts based on the AST.  This should be
+                    // easier in the future, when casts to traits would like
+                    // like @Foo, ~Foo, or &Foo.
+                    RvalueDatumExpr
+                }
+            }
+        }
+
+        ast::expr_break(*) |
+        ast::expr_again(*) |
+        ast::expr_ret(*) |
+        ast::expr_log(*) |
+        ast::expr_fail(*) |
+        ast::expr_assert(*) |
+        ast::expr_while(*) |
+        ast::expr_loop(*) |
+        ast::expr_assign(*) |
+        ast::expr_move(*) |
+        ast::expr_swap(*) |
+        ast::expr_assign_op(*) => {
+            RvalueStmtExpr
+        }
+
+        ast::expr_lit(_) | // Note: lit_str is carved out above
+        ast::expr_unary(*) |
+        ast::expr_addr_of(*) |
+        ast::expr_binary(*) |
+        ast::expr_vstore(_, ast::vstore_box) |
+        ast::expr_vstore(_, ast::vstore_uniq) => {
+            RvalueDatumExpr
+        }
+
+        ast::expr_mac(*) => {
+            tcx.sess.span_bug(
+                expr.span,
+                ~"macro expression remains after expansion");
+        }
     }
 }
 
@@ -2553,10 +2698,19 @@ fn stmt_node_id(s: @ast::stmt) -> ast::node_id {
     }
 }
 
-fn field_idx(id: ast::ident, fields: ~[field]) -> Option<uint> {
+fn field_idx(id: ast::ident, fields: &[field]) -> Option<uint> {
     let mut i = 0u;
     for fields.each |f| { if f.ident == id { return Some(i); } i += 1u; }
     return None;
+}
+
+fn field_idx_strict(tcx: ty::ctxt, id: ast::ident, fields: &[field]) -> uint {
+    let mut i = 0u;
+    for fields.each |f| { if f.ident == id { return i; } i += 1u; }
+    tcx.sess.bug(fmt!(
+        "No field named `%s` found in the list of fields `%?`",
+        tcx.sess.str_of(id),
+        fields.map(|f| tcx.sess.str_of(f.ident))));
 }
 
 fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
@@ -2730,6 +2884,15 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
 }
 
 fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
+    /*!
+     *
+     * Explains the source of a type err in a short,
+     * human readable way.  This is meant to be placed in
+     * parentheses after some larger message.  You should
+     * also invoke `note_and_explain_type_err()` afterwards
+     * to present additional details, particularly when
+     * it comes to lifetime-related errors. */
+
     fn terr_vstore_kind_to_str(k: terr_vstore_kind) -> ~str {
         match k {
             terr_vec => ~"[]",
@@ -2795,20 +2958,14 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         fmt!("expected argument mode %s, but found %s",
              mode_to_str(values.expected), mode_to_str(values.found))
       }
-      terr_regions_does_not_outlive(subregion, superregion) => {
-        fmt!("%s does not necessarily outlive %s",
-                    explain_region(cx, superregion),
-                    explain_region(cx, subregion))
+      terr_regions_does_not_outlive(*) => {
+        fmt!("lifetime mismatch")
       }
-      terr_regions_not_same(region1, region2) => {
-        fmt!("%s is not the same as %s",
-                    explain_region(cx, region1),
-                    explain_region(cx, region2))
+      terr_regions_not_same(*) => {
+        fmt!("lifetimes are not the same")
       }
-      terr_regions_no_overlap(region1, region2) => {
-        fmt!("%s does not intersect %s",
-                    explain_region(cx, region1),
-                    explain_region(cx, region2))
+      terr_regions_no_overlap(*) => {
+        fmt!("lifetimes do not intersect")
       }
       terr_vstores_differ(k, values) => {
         fmt!("%s storage differs: expected %s but found %s",
@@ -2832,6 +2989,27 @@ fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
         ~"couldn't determine an appropriate integral type for integer \
           literal"
       }
+    }
+}
+
+fn note_and_explain_type_err(cx: ctxt, err: &type_err) {
+    match *err {
+        terr_regions_does_not_outlive(subregion, superregion) => {
+            note_and_explain_region(cx, ~"", subregion, ~"...");
+            note_and_explain_region(cx, ~"...does not necessarily outlive ",
+                                    superregion, ~"");
+        }
+        terr_regions_not_same(region1, region2) => {
+            note_and_explain_region(cx, ~"", region1, ~"...");
+            note_and_explain_region(cx, ~"...is not the same lifetime as ",
+                                    region2, ~"");
+        }
+        terr_regions_no_overlap(region1, region2) => {
+            note_and_explain_region(cx, ~"", region1, ~"...");
+            note_and_explain_region(cx, ~"...does not overlap ",
+                                    region2, ~"");
+        }
+        _ => {}
     }
 }
 

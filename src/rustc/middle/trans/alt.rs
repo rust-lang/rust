@@ -14,8 +14,11 @@ use middle::resolve::DefMap;
 use back::abi;
 use std::map::hashmap;
 use dvec::DVec;
-
+use datum::*;
 use common::*;
+use expr::Dest;
+
+fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
@@ -37,38 +40,25 @@ fn opt_eq(tcx: ty::ctxt, a: opt, b: opt) -> bool {
 }
 
 enum opt_result {
-    single_result(result),
-    range_result(result, result),
+    single_result(Result),
+    range_result(Result, Result),
 }
 fn trans_opt(bcx: block, o: opt) -> opt_result {
     let _icx = bcx.insn_ctxt("alt::trans_opt");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
     match o {
-      lit(l) => {
-        match l.node {
-          ast::expr_vstore(@{node: ast::expr_lit(
-              @{node: ast::lit_str(s), _}), _},
-                           ast::vstore_uniq) => {
-            let strty = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
-            let cell = empty_dest_cell();
-            bcx = tvec::trans_estr(bcx, s, Some(ast::vstore_uniq),
-                                   by_val(cell));
-            add_clean_temp_immediate(bcx, *cell, strty);
-            return single_result(rslt(bcx, *cell));
-          }
-          _ => {
-            return single_result(trans_temp_expr(bcx, l));
-          }
+        lit(lit_expr) => {
+            let datumblock = expr::trans_to_datum(bcx, lit_expr);
+            return single_result(datumblock.to_result());
         }
-      }
-      var(disr_val, _) => {
-        return single_result(rslt(bcx, C_int(ccx, disr_val)));
-      }
-      range(l1, l2) => {
-        return range_result(rslt(bcx, consts::const_expr(ccx, l1)),
-                         rslt(bcx, consts::const_expr(ccx, l2)));
-      }
+        var(disr_val, _) => {
+            return single_result(rslt(bcx, C_int(ccx, disr_val)));
+        }
+        range(l1, l2) => {
+            return range_result(rslt(bcx, consts::const_expr(ccx, l1)),
+                                rslt(bcx, consts::const_expr(ccx, l2)));
+        }
     }
 }
 
@@ -140,7 +130,7 @@ fn expand_nested_bindings(bcx: block, m: match_, col: uint, val: ValueRef)
                                             ty: node_id_type(bcx,
                                                              br.pats[col].id)
                                          }}]),
-                                .. *br});
+                        ..*br});
           }
           _ => vec::push(result, br)
         }
@@ -173,7 +163,7 @@ fn enter_match(bcx: block, dm: DefMap, m: match_, col: uint, val: ValueRef,
               }
               _ => br.bound
             };
-            vec::push(result, @{pats: pats, bound: bound,.. *br});
+            vec::push(result, @{pats: pats, bound: bound, ..*br});
           }
           None => ()
         }
@@ -229,11 +219,10 @@ fn enter_rec_or_struct(bcx: block, dm: DefMap, m: match_, col: uint,
           ast::pat_rec(fpats, _) | ast::pat_struct(_, fpats, _) => {
             let mut pats = ~[];
             for vec::each(fields) |fname| {
-                let mut pat = dummy;
-                for vec::each(fpats) |fpat| {
-                    if fpat.ident == fname { pat = fpat.pat; break; }
+                match fpats.find(|p| p.ident == fname) {
+                    None => vec::push(pats, dummy),
+                    Some(pat) => vec::push(pats, pat.pat)
                 }
-                vec::push(pats, pat);
             }
             Some(pats)
           }
@@ -327,38 +316,25 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
     return {vals: args, bcx: bcx};
 }
 
-fn collect_record_fields(m: match_, col: uint) -> ~[ast::ident] {
+fn collect_record_or_struct_fields(m: match_, col: uint) -> ~[ast::ident] {
     let mut fields: ~[ast::ident] = ~[];
     for vec::each(m) |br| {
         match br.pats[col].node {
-          ast::pat_rec(fs, _) => {
-            for vec::each(fs) |f| {
-                if !vec::any(fields, |x| f.ident == x) {
-                    vec::push(fields, f.ident);
-                }
-            }
-          }
+          ast::pat_rec(fs, _) => extend(&mut fields, fs),
+          ast::pat_struct(_, fs, _) => extend(&mut fields, fs),
           _ => ()
         }
     }
     return fields;
-}
 
-fn collect_struct_fields(m: match_, col: uint) -> ~[ast::ident] {
-    let mut fields: ~[ast::ident] = ~[];
-    for vec::each(m) |br| {
-        match br.pats[col].node {
-          ast::pat_struct(_, fs, _) => {
-            for vec::each(fs) |f| {
-                if !vec::any(fields, |x| f.ident == x) {
-                    vec::push(fields, f.ident);
-                }
+    fn extend(idents: &mut ~[ast::ident], field_pats: &[ast::field_pat]) {
+        for field_pats.each |field_pat| {
+            let field_ident = field_pat.ident;
+            if !vec::any(*idents, |x| x == field_ident) {
+                vec::push(*idents, field_ident);
             }
-          }
-          _ => ()
         }
     }
-    return fields;
 }
 
 fn root_pats_as_necessary(bcx: block, m: match_, col: uint, val: ValueRef) {
@@ -366,17 +342,17 @@ fn root_pats_as_necessary(bcx: block, m: match_, col: uint, val: ValueRef) {
         let pat_id = br.pats[col].id;
 
         match bcx.ccx().maps.root_map.find({id:pat_id, derefs:0u}) {
-          None => (),
-          Some(scope_id) => {
-            // Note: the scope_id will always be the id of the alt.  See the
-            // extended comment in rustc::middle::borrowck::preserve() for
-            // details (look for the case covering cat_discr).
+            None => (),
+            Some(scope_id) => {
+                // Note: the scope_id will always be the id of the alt.  See
+                // the extended comment in rustc::middle::borrowck::preserve()
+                // for details (look for the case covering cat_discr).
 
-            let ty = node_id_type(bcx, pat_id);
-            let val = load_if_immediate(bcx, val, ty);
-            root_value(bcx, val, ty, scope_id);
-            return; // if we kept going, we'd only be rooting same value again
-          }
+                let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
+                                   mode: ByRef, source: FromLvalue};
+                datum.root(bcx, scope_id);
+                return; // if we kept going, we'd only re-root the same value
+            }
         }
     }
 }
@@ -459,7 +435,10 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
     let _icx = bcx.insn_ctxt("alt::compile_submatch");
     let mut bcx = bcx;
     let tcx = bcx.tcx(), dm = tcx.def_map;
-    if m.len() == 0u { Br(bcx, option::get(chk)()); return; }
+    if m.len() == 0u {
+        Br(bcx, option::get(chk)());
+        return;
+    }
     if m[0].pats.len() == 0u {
         let data = m[0].data;
         match data.guard {
@@ -471,27 +450,28 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
 
             for data.id_map.each |key, val| {
                 let binding = assoc(key, m[0].bound).get();
-                let (llval, mode) = (binding.val, binding.mode);
-                let ty = binding.ty;
+                let datum = Datum {val: binding.val, ty: binding.ty,
+                                   mode: ByRef, source: FromLvalue};
 
-                if mode == ast::bind_by_value {
-                    let llty = type_of::type_of(bcx.fcx.ccx, ty);
+                if binding.mode == ast::bind_by_value {
+                    let llty = type_of::type_of(bcx.fcx.ccx, binding.ty);
                     let alloc = alloca(bcx, llty);
-                    bcx = copy_val(bcx, INIT, alloc,
-                                   load_if_immediate(bcx, llval, ty), ty);
+                    bcx = datum.copy_to(bcx, INIT, alloc);
                     bcx.fcx.lllocals.insert(val, local_mem(alloc));
-                    add_clean(bcx, alloc, ty);
-                } else if mode == ast::bind_by_move {
+                    add_clean(bcx, alloc, binding.ty);
+                } else if binding.mode == ast::bind_by_move {
                     fail ~"can't translate bind_by_move into a pattern guard";
                 } else {
-                    bcx.fcx.lllocals.insert(val, local_mem(llval));
+                    bcx.fcx.lllocals.insert(val, local_mem(datum.val));
                 }
             };
-            let {bcx: guard_cx, val} = {
+
+            let Result {bcx: guard_cx, val} = {
                 do with_scope_result(bcx, e.info(), ~"guard") |bcx| {
-                    trans_temp_expr(bcx, e)
+                    expr::trans_to_appropriate_llval(bcx, e)
                 }
             };
+
             bcx = do with_cond(guard_cx, Not(guard_cx, val)) |bcx| {
                 compile_submatch(bcx, vec::tail(m), vals, chk, exits);
                 bcx
@@ -525,58 +505,22 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
 
     root_pats_as_necessary(bcx, m, col, val);
 
-    let rec_fields = collect_record_fields(m, col);
-    // Separate path for extracting and binding record fields
+    let rec_fields = collect_record_or_struct_fields(m, col);
     if rec_fields.len() > 0 {
-        let fields = ty::get_fields(node_id_type(bcx, pat_id));
-        let mut rec_vals = ~[];
-        for vec::each(rec_fields) |field_name| {
-            let ix = option::get(ty::field_idx(field_name, fields));
-            vec::push(rec_vals, GEPi(bcx, val, [0u, ix]));
-        }
-        compile_submatch(bcx,
-                         enter_rec_or_struct(bcx, dm, m, col, rec_fields,
-                                             val),
-                         vec::append(rec_vals, vals_left),
-                         chk,
-                         exits);
-        return;
-    }
-
-    // Separate path for extracting and binding struct fields.
-    let struct_fields = collect_struct_fields(m, col);
-    if struct_fields.len() > 0 {
-        let class_id, class_fields;
-        match ty::get(node_id_type(bcx, pat_id)).struct {
-            ty::ty_class(cid, _) => {
-                class_id = cid;
-                class_fields = ty::lookup_class_fields(ccx.tcx, class_id);
+        let pat_ty = node_id_type(bcx, pat_id);
+        do expr::with_field_tys(tcx, pat_ty) |_has_dtor, field_tys| {
+            let mut rec_vals = ~[];
+            for vec::each(rec_fields) |field_name| {
+                let ix = ty::field_idx_strict(tcx, field_name, field_tys);
+                vec::push(rec_vals, GEPi(bcx, val, struct_field(ix)));
             }
-            _ => {
-                ccx.tcx.sess.bug(~"struct pattern didn't resolve to a \
-                                   struct");
-            }
+            compile_submatch(
+                bcx,
+                enter_rec_or_struct(bcx, dm, m, col, rec_fields, val),
+                vec::append(rec_vals, vals_left),
+                chk,
+                exits);
         }
-
-        // Index the class fields.
-        let field_map = std::map::uint_hash();
-        for class_fields.eachi |i, class_field| {
-            field_map.insert(class_field.ident, i);
-        }
-
-        // Fetch each field.
-        let mut struct_vals = ~[];
-        for struct_fields.each |field_name| {
-            let index = field_map.get(field_name);
-            let fldptr = base::get_struct_field(bcx, val, class_id, index);
-            vec::push(struct_vals, fldptr);
-        }
-        compile_submatch(bcx,
-                         enter_rec_or_struct(bcx, dm, m, col, struct_fields,
-                                             val),
-                         vec::append(struct_vals, vals_left),
-                         chk,
-                         exits);
         return;
     }
 
@@ -641,8 +585,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
                    else { compare };
           }
           range(_, _) => {
-            let pty = node_id_type(bcx, pat_id);
-            test_val = load_if_immediate(bcx, val, pty);
+            test_val = Load(bcx, val);
             kind = compare;
           }
         }
@@ -665,6 +608,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
     let exhaustive = option::is_none(chk) && defaults.len() == 0u;
     let len = opts.len();
     let mut i = 0u;
+
     // Compile subtrees for each option
     for vec::each(opts) |opt| {
         i += 1u;
@@ -685,20 +629,25 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
               }
               compare => {
                 let t = node_id_type(bcx, pat_id);
-                let {bcx: after_cx, val: matches} = {
+                let Result {bcx: after_cx, val: matches} = {
                     do with_scope_result(bcx, None, ~"compare_scope") |bcx| {
                         match trans_opt(bcx, opt) {
-                          single_result({bcx, val}) => {
-                            trans_compare(bcx, ast::eq, test_val, t, val, t)
-                          }
-                          range_result(
-                              {val: vbegin, _}, {bcx, val: vend}) => {
-                            let {bcx, val: llge} = trans_compare(
-                                bcx, ast::ge, test_val, t, vbegin, t);
-                            let {bcx, val: llle} = trans_compare(
-                                bcx, ast::le, test_val, t, vend, t);
-                            {bcx: bcx, val: And(bcx, llge, llle)}
-                          }
+                            single_result(
+                                Result {bcx, val}) =>
+                            {
+                                trans_compare(bcx, ast::eq, test_val,
+                                              t, val, t)
+                            }
+                            range_result(
+                                Result {val: vbegin, _},
+                                Result {bcx, val: vend}) =>
+                            {
+                                let Result {bcx, val: llge} = trans_compare(
+                                    bcx, ast::ge, test_val, t, vbegin, t);
+                                let Result {bcx, val: llle} = trans_compare(
+                                    bcx, ast::le, test_val, t, vend, t);
+                                rslt(bcx, And(bcx, llge, llle))
+                            }
                         }
                     }
                 };
@@ -805,19 +754,17 @@ fn make_pattern_bindings(bcx: block, phi_bindings: phi_bindings_list)
             }
             ast::bind_by_value | ast::bind_by_move => {
                 // by value: make a new temporary and copy the value out
-                let lltype = type_of::type_of(bcx.fcx.ccx, binding.ty);
-                let allocation = alloca(bcx, lltype);
-                let ty = binding.ty;
-                bcx = if binding.mode == ast::bind_by_value {
-                    copy_val(bcx, INIT, allocation,
-                             load_if_immediate(bcx, phi_val, ty), ty)
+                let phi_datum = Datum {val: phi_val, ty: binding.ty,
+                                       mode: ByRef, source: FromLvalue};
+                let scratch = scratch_datum(bcx, binding.ty, false);
+                if binding.mode == ast::bind_by_value {
+                    phi_datum.copy_to_datum(bcx, INIT, scratch);
                 } else {
-                    move_val(bcx, INIT, allocation,
-                             {bcx: bcx, val: phi_val, kind: lv_owned}, ty)
-                };
+                    phi_datum.move_to_datum(bcx, INIT, scratch);
+                }
                 bcx.fcx.lllocals.insert(binding.pat_id,
-                                        local_mem(allocation));
-                add_clean(bcx, allocation, ty);
+                                        local_mem(scratch.val));
+                add_clean(bcx, scratch.val, binding.ty);
             }
         }
     }
@@ -827,24 +774,31 @@ fn make_pattern_bindings(bcx: block, phi_bindings: phi_bindings_list)
 
 fn trans_alt(bcx: block,
              alt_expr: @ast::expr,
-             expr: @ast::expr,
+             discr_expr: @ast::expr,
              arms: ~[ast::arm],
-             dest: dest) -> block {
+             dest: Dest) -> block {
     let _icx = bcx.insn_ctxt("alt::trans_alt");
     do with_scope(bcx, alt_expr.info(), ~"alt") |bcx| {
-        trans_alt_inner(bcx, expr, arms, dest)
+        trans_alt_inner(bcx, discr_expr, arms, dest)
     }
 }
 
-fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
-                   dest: dest) -> block {
+fn trans_alt_inner(scope_cx: block,
+                   discr_expr: @ast::expr,
+                   arms: ~[ast::arm],
+                   dest: Dest) -> block {
     let _icx = scope_cx.insn_ctxt("alt::trans_alt_inner");
-    let bcx = scope_cx, tcx = bcx.tcx();
+    let mut bcx = scope_cx;
+    let tcx = bcx.tcx();
+
+    let discr_datum = unpack_datum!(bcx, {
+        expr::trans_to_datum(bcx, discr_expr)
+    });
+    if bcx.unreachable {
+        return bcx;
+    }
+
     let mut bodies = ~[], matches = ~[];
-
-    let {bcx, val, _} = trans_temp_expr(bcx, expr);
-    if bcx.unreachable { return bcx; }
-
     for vec::each(arms) |a| {
         let body = scope_block(bcx, a.body.info(), ~"case_body");
         let id_map = pat_util::pat_id_map(tcx.def_map, a.pats[0]);
@@ -857,30 +811,22 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
         }
     }
 
-    fn mk_fail(bcx: block, sp: span, msg: ~str,
-                   done: @mut Option<BasicBlockRef>) -> BasicBlockRef {
-            match *done { Some(bb) => return bb, _ => () }
-            let fail_cx = sub_block(bcx, ~"case_fallthrough");
-            trans_fail(fail_cx, Some(sp), msg);
-            *done = Some(fail_cx.llbb);
-            return fail_cx.llbb;
-    }
-    let t = node_id_type(bcx, expr.id);
-    let mk_fail = { let fail_cx = @mut None;
-          // special case for uninhabited type
-          if ty::type_is_empty(tcx, t) {
-                  Some(|| mk_fail(scope_cx, expr.span,
+    let t = node_id_type(bcx, discr_expr.id);
+    let chk = {
+        if ty::type_is_empty(tcx, t) {
+            // Special case for empty types
+            let fail_cx = @mut None;
+            Some(|| mk_fail(scope_cx, discr_expr.span,
                             ~"scrutinizing value that can't exist", fail_cx))
-          }
-          else {
-              None
-          }
+        } else {
+            None
+        }
     };
     let mut exit_map = ~[];
-    let spilled = spill_if_immediate(bcx, val, t);
-    compile_submatch(bcx, matches, ~[spilled], mk_fail, exit_map);
+    let lldiscr = discr_datum.to_ref_llval(bcx);
+    compile_submatch(bcx, matches, ~[lldiscr], chk, exit_map);
 
-    let mut arm_cxs = ~[], arm_dests = ~[], i = 0u;
+    let mut arm_cxs = ~[], i = 0u;
     for vec::each(arms) |a| {
         let body_cx = bodies[i];
         let id_map = pat_util::pat_id_map(tcx.def_map, a.pats[0]);
@@ -888,9 +834,8 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
             None => {}
             Some(phi_bindings) => {
                 let body_cx = make_pattern_bindings(body_cx, phi_bindings);
-                let arm_dest = dup_for_join(dest);
-                vec::push(arm_dests, arm_dest);
-                let mut arm_cx = trans_block(body_cx, a.body, arm_dest);
+                let mut arm_cx =
+                    controlflow::trans_block(body_cx, a.body, dest);
                 arm_cx = trans_block_cleanups(arm_cx,
                                               block_cleanups(body_cx));
                 vec::push(arm_cxs, arm_cx);
@@ -898,7 +843,16 @@ fn trans_alt_inner(scope_cx: block, expr: @ast::expr, arms: ~[ast::arm],
         }
         i += 1u;
     }
-    join_returns(scope_cx, arm_cxs, arm_dests, dest)
+    return controlflow::join_blocks(scope_cx, arm_cxs);
+
+    fn mk_fail(bcx: block, sp: span, msg: ~str,
+               done: @mut Option<BasicBlockRef>) -> BasicBlockRef {
+        match *done { Some(bb) => return bb, _ => () }
+        let fail_cx = sub_block(bcx, ~"case_fallthrough");
+        controlflow::trans_fail(fail_cx, Some(sp), msg);
+        *done = Some(fail_cx.llbb);
+        return fail_cx.llbb;
+    }
 }
 
 // Not alt-related, but similar to the pattern-munging code above
@@ -910,88 +864,66 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
 
     // Necessary since bind_irrefutable_pat is called outside trans_alt
     match pat.node {
-      ast::pat_ident(_, _,inner) => {
-        if pat_is_variant(bcx.tcx().def_map, pat) { return bcx; }
-        if make_copy {
-            let ty = node_id_type(bcx, pat.id);
-            let llty = type_of::type_of(ccx, ty);
-            let alloc = alloca(bcx, llty);
-            bcx = copy_val(bcx, INIT, alloc,
-                                  load_if_immediate(bcx, val, ty), ty);
-            bcx.fcx.lllocals.insert(pat.id, local_mem(alloc));
-            add_clean(bcx, alloc, ty);
-        } else { bcx.fcx.lllocals.insert(pat.id, local_mem(val)); }
-        match inner {
-          Some(pat) => { bcx = bind_irrefutable_pat(bcx, pat, val, true); }
-          _ => ()
-        }
-      }
-      ast::pat_enum(_, sub) => {
-        let vdefs = ast_util::variant_def_ids(ccx.tcx.def_map.get(pat.id));
-        let args = extract_variant_args(bcx, pat.id, vdefs, val);
-        let mut i = 0;
-        do option::iter(sub) |sub| { for vec::each(args.vals) |argval| {
-            bcx = bind_irrefutable_pat(bcx, sub[i], argval, make_copy);
-            i += 1;
-        }}
-      }
-      ast::pat_rec(fields, _) => {
-        let rec_fields = ty::get_fields(node_id_type(bcx, pat.id));
-        for vec::each(fields) |f| {
-            let ix = option::get(ty::field_idx(f.ident, rec_fields));
-            let fldptr = GEPi(bcx, val, [0u, ix]);
-            bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
-        }
-      }
-      ast::pat_struct(_, fields, _) => {
-        // Grab the class data that we care about.
-        let class_fields, class_id;
-        match ty::get(node_id_type(bcx, pat.id)).struct {
-            ty::ty_class(cid, _) => {
-                class_id = cid;
-                class_fields = ty::lookup_class_fields(ccx.tcx, class_id);
+        ast::pat_ident(_, _,inner) => {
+            if pat_is_variant(bcx.tcx().def_map, pat) {
+                return bcx;
             }
-            _ => {
-                ccx.tcx.sess.span_bug(pat.span, ~"struct pattern didn't \
-                                                  resolve to a struct");
+
+            if make_copy {
+                let binding_ty = node_id_type(bcx, pat.id);
+                let datum = Datum {val: val, ty: binding_ty,
+                                   mode: ByRef, source: FromRvalue};
+                let scratch = scratch_datum(bcx, binding_ty, false);
+                datum.copy_to_datum(bcx, INIT, scratch);
+                bcx.fcx.lllocals.insert(pat.id, local_mem(scratch.val));
+                add_clean(bcx, scratch.val, binding_ty);
+            } else {
+                bcx.fcx.lllocals.insert(pat.id, local_mem(val));
+            }
+
+            for inner.each |inner_pat| {
+                bcx = bind_irrefutable_pat(bcx, inner_pat, val, true);
+            }
+      }
+        ast::pat_enum(_, sub_pats) => {
+            let pat_def = ccx.tcx.def_map.get(pat.id);
+            let vdefs = ast_util::variant_def_ids(pat_def);
+            let args = extract_variant_args(bcx, pat.id, vdefs, val);
+            for sub_pats.each |sub_pat| {
+                for vec::eachi(args.vals) |i, argval| {
+                    bcx = bind_irrefutable_pat(bcx, sub_pat[i],
+                                               argval, make_copy);
+                }
             }
         }
-
-        // Index the class fields.
-        let field_map = std::map::uint_hash();
-        for class_fields.eachi |i, class_field| {
-            field_map.insert(class_field.ident, i);
+        ast::pat_rec(fields, _) | ast::pat_struct(_, fields, _) => {
+            let tcx = bcx.tcx();
+            let pat_ty = node_id_type(bcx, pat.id);
+            do expr::with_field_tys(tcx, pat_ty) |_has_dtor, field_tys| {
+                for vec::each(fields) |f| {
+                    let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
+                    let fldptr = GEPi(bcx, val, struct_field(ix));
+                    bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);
+                }
+            }
         }
-
-        // Fetch each field.
-        for fields.each |supplied_field| {
-            let index = field_map.get(supplied_field.ident);
-            let fldptr = base::get_struct_field(bcx, val, class_id, index);
-            bcx = bind_irrefutable_pat(bcx, supplied_field.pat, fldptr,
-                                       make_copy);
+        ast::pat_tup(elems) => {
+            for vec::eachi(elems) |i, elem| {
+                let fldptr = GEPi(bcx, val, [0u, i]);
+                bcx = bind_irrefutable_pat(bcx, elem, fldptr, make_copy);
+            }
         }
-      }
-      ast::pat_tup(elems) => {
-        let mut i = 0u;
-        for vec::each(elems) |elem| {
-            let fldptr = GEPi(bcx, val, [0u, i]);
-            bcx = bind_irrefutable_pat(bcx, elem, fldptr, make_copy);
-            i += 1u;
+        ast::pat_box(inner) => {
+            let llbox = Load(bcx, val);
+            let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+            bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
         }
-      }
-      ast::pat_box(inner) => {
-        let llbox = Load(bcx, val);
-        let unboxed =
-            GEPi(bcx, llbox, [0u, abi::box_field_body]);
-        bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
-      }
-      ast::pat_uniq(inner) => {
-        let llbox = Load(bcx, val);
-        let unboxed =
-            GEPi(bcx, llbox, [0u, abi::box_field_body]);
-        bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
-      }
-      ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) => ()
+        ast::pat_uniq(inner) => {
+            let llbox = Load(bcx, val);
+            let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
+            bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
+        }
+        ast::pat_wild | ast::pat_lit(_) | ast::pat_range(_, _) => ()
     }
     return bcx;
 }

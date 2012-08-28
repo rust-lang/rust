@@ -1104,21 +1104,23 @@ impl RegionVarBindings {
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"first, the lifetime cannot outlive",
-                        upper_bound.region);
+                        ~"first, the lifetime cannot outlive ",
+                        upper_bound.region,
+                        ~"...");
 
                     self.tcx.sess.span_note(
                         upper_bound.span,
-                        fmt!("due to the following expression"));
+                        fmt!("...due to the following expression"));
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"but, the lifetime must be valid for",
-                        lower_bound.region);
+                        ~"but, the lifetime must be valid for ",
+                        lower_bound.region,
+                        ~"...");
 
                     self.tcx.sess.span_note(
                         lower_bound.span,
-                        fmt!("due to the following expression"));
+                        fmt!("...due to the following expression"));
 
                     return;
                 }
@@ -1154,21 +1156,23 @@ impl RegionVarBindings {
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"first, the lifetime must be contained by",
-                        upper_bound_1.region);
+                        ~"first, the lifetime must be contained by ",
+                        upper_bound_1.region,
+                        ~"...");
 
                     self.tcx.sess.span_note(
                         upper_bound_1.span,
-                        fmt!("due to the following expression"));
+                        fmt!("...due to the following expression"));
 
                     note_and_explain_region(
                         self.tcx,
-                        ~"but, the lifetime must also be contained by",
-                        upper_bound_2.region);
+                        ~"but, the lifetime must also be contained by ",
+                        upper_bound_2.region,
+                        ~"...");
 
                     self.tcx.sess.span_note(
                         upper_bound_2.span,
-                        fmt!("due to the following expression"));
+                        fmt!("...due to the following expression"));
 
                     return;
                   }

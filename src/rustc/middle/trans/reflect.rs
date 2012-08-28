@@ -9,6 +9,9 @@ use base::*;
 use type_of::*;
 use ast::def_id;
 use util::ppaux::ty_to_str;
+use datum::*;
+use callee::ArgVals;
+use expr::SaveIn;
 
 enum reflector = {
     visitor_val: ValueRef,
@@ -44,7 +47,7 @@ impl reflector {
     fn c_tydesc(t: ty::t) -> ValueRef {
         let bcx = self.bcx;
         let static_ti = get_tydesc(bcx.ccx(), t);
-        lazily_emit_all_tydesc_glue(bcx.ccx(), static_ti);
+        glue::lazily_emit_all_tydesc_glue(bcx.ccx(), static_ti);
         PointerCast(bcx, static_ti.tydesc, T_ptr(self.tydesc_ty))
     }
 
@@ -60,25 +63,21 @@ impl reflector {
             *self.visitor_methods));
         let mth_ty = ty::mk_fn(tcx, self.visitor_methods[mth_idx].fty);
         let v = self.visitor_val;
-        let get_lval = |bcx| {
-            let callee =
-                impl::trans_trait_callee(bcx, v, mth_ty, mth_idx);
-            debug!("calling mth ty %s, lltype %s",
-                   ty_to_str(bcx.ccx().tcx, mth_ty),
-                   val_str(bcx.ccx().tn, callee.val));
-            callee
-        };
         debug!("passing %u args:", vec::len(args));
         let bcx = self.bcx;
         for args.eachi |i, a| {
             debug!("arg %u: %s", i, val_str(bcx.ccx().tn, a));
         }
-        let d = empty_dest_cell();
-        let bcx =
-            trans_call_inner(self.bcx, None, mth_ty, ty::mk_bool(tcx),
-                             get_lval, arg_vals(args), by_val(d));
+        let bool_ty = ty::mk_bool(tcx);
+        let scratch = scratch_datum(bcx, bool_ty, false);
+        let bcx = callee::trans_call_inner(
+            self.bcx, None, mth_ty, bool_ty,
+            |bcx| impl::trans_trait_callee_from_llval(bcx, mth_ty,
+                                                      mth_idx, v),
+            ArgVals(args), SaveIn(scratch.val));
+        let result = scratch.to_value_llval(bcx);
         let next_bcx = sub_block(bcx, ~"next");
-        CondBr(bcx, *d, next_bcx.llbb, self.final_bcx.llbb);
+        CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
         self.bcx = next_bcx
     }
 

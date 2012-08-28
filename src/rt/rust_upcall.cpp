@@ -147,7 +147,6 @@ extern "C" CDECL void
 upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
     rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
-    LOG(task, mem, "upcall exchange malloc(0x%" PRIxPTR ")", args->td);
 
     size_t total_size = get_box_size(args->size, args->td->align);
     // FIXME--does this have to be calloc? (Issue #2682)
@@ -158,6 +157,9 @@ upcall_s_exchange_malloc(s_exchange_malloc_args *args) {
     header->td = args->td;
     header->prev = 0;
     header->next = 0;
+
+    LOG(task, mem, "exchange malloced %p of size %" PRIuPTR,
+        header, args->size);
 
     args->retval = (uintptr_t)header;
 }
@@ -187,6 +189,7 @@ extern "C" CDECL void
 upcall_s_exchange_free(s_exchange_free_args *args) {
     rust_task *task = args->task;
     LOG_UPCALL_ENTRY(task);
+    LOG(task, mem, "exchange freed %p", args->ptr);
     task->kernel->free(args->ptr);
 }
 

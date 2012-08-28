@@ -225,12 +225,13 @@ fn require_same_types(
     }
 
     match infer::mk_eqty(l_infcx, t1_is_expected, span, t1, t2) {
-      result::Ok(()) => true,
-      result::Err(ref terr) => {
-        l_tcx.sess.span_err(span, msg() + ~": " +
-            ty::type_err_to_str(l_tcx, terr));
-        false
-      }
+        result::Ok(()) => true,
+        result::Err(ref terr) => {
+            l_tcx.sess.span_err(span, msg() + ~": " +
+                                ty::type_err_to_str(l_tcx, terr));
+            ty::note_and_explain_type_err(l_tcx, terr);
+            false
+        }
     }
 }
 

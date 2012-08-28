@@ -40,7 +40,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       None => ()
     }
     let fn_id_loc = if fn_id.crate == local_crate { fn_id }
-                    else { base::maybe_instantiate_inline(ccx, fn_id) };
+                    else { inline::maybe_instantiate_inline(ccx, fn_id) };
     // Conservatively assume full use for recursive loops
     ccx.type_use_cache.insert(fn_id, vec::from_elem(n_tps, 3u));
 
@@ -82,25 +82,23 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
                                  abi, _) => {
         if abi == foreign_abi_rust_intrinsic {
             let flags = match cx.ccx.sess.str_of(i.ident) {
-              ~"size_of" |  ~"pref_align_of" | ~"min_align_of" |
-              ~"init" |  ~"reinterpret_cast" |
-              ~"move_val" | ~"move_val_init" => {
-                use_repr
-              }
-              ~"get_tydesc" | ~"needs_drop" => {
-                use_tydesc
-              }
-              ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub" |
-              ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
-              ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" =>
-              { 0u }
-              ~"visit_tydesc" | ~"forget" | ~"addr_of" |
-              ~"frame_address" | ~"morestack_addr" => {
-                0u
-              }
-              // would be cool to make these an enum instead of strings!
-              _ => fail fmt!("unknown intrinsic in type_use %?",
-                             cx.ccx.sess.str_of(i.ident))
+                ~"size_of"  | ~"pref_align_of"    | ~"min_align_of" |
+                ~"init"     | ~"reinterpret_cast" |
+                ~"move_val" | ~"move_val_init" => use_repr,
+
+                ~"get_tydesc" | ~"needs_drop" => use_tydesc,
+
+                ~"atomic_xchg"     | ~"atomic_xadd"     |
+                ~"atomic_xsub"     | ~"atomic_xchg_acq" |
+                ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
+                ~"atomic_xchg_rel" | ~"atomic_xadd_rel" |
+                ~"atomic_xsub_rel" => 0,
+
+                ~"visit_tydesc"  | ~"forget" | ~"addr_of" |
+                ~"frame_address" | ~"morestack_addr" => 0,
+
+                // would be cool to make these an enum instead of strings!
+                _ => fail ~"unknown intrinsic in type_use"
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
@@ -288,7 +286,7 @@ fn handle_body(cx: ctx, body: blk) {
             }
         },
         visit_item: |_i, _cx, _v| { },
-        .. *visit::default_visitor()
+        ..*visit::default_visitor()
     });
     v.visit_block(body, cx, v);
 }

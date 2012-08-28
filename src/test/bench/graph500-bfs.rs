@@ -174,9 +174,9 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
             match c {
               white => {
                 let i = i as node_id;
-                
+
                 let neighbors = graph[i];
-                
+
                 let mut color = white;
 
                 do neighbors.each() |k| {
@@ -217,7 +217,8 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         black(node_id)
     };
 
-    let mut colors = do vec::from_fn((*arc::get(&graph)).len()) |i| {
+    let graph_vec = arc::get(&graph); // FIXME #3387 requires this temp
+    let mut colors = do vec::from_fn(graph_vec.len()) |i| {
         if i as node_id == key {
             gray(key)
         }
@@ -243,7 +244,8 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
 
         let color = arc::ARC(colors);
 
-        colors = do par::mapi_factory(*arc::get(&color)) {
+        let color_vec = arc::get(&color); // FIXME #3387 requires this temp
+        colors = do par::mapi_factory(*color_vec) {
             let colors = arc::clone(&color);
             let graph = arc::clone(&graph);
             fn~(i: uint, c: color) -> color {
@@ -253,11 +255,11 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
                 match c {
                   white => {
                     let i = i as node_id;
-                    
+
                     let neighbors = graph[i];
-                    
+
                     let mut color = white;
-                    
+
                     do neighbors.each() |k| {
                         if is_gray(colors[k]) {
                             color = gray(k);

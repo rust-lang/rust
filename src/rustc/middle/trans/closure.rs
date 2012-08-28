@@ -17,6 +17,7 @@ use util::ppaux::ty_to_str;
 use syntax::ast_map::{path, path_mod, path_name};
 use driver::session::session;
 use std::map::hashmap;
+use datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
 
 // ___Good to know (tm)__________________________________________________
 //
@@ -87,25 +88,35 @@ use std::map::hashmap;
 //
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-enum environment_value {
-    // Copy the value from this llvm ValueRef into the environment.
-    env_copy(ValueRef, ty::t, lval_kind),
+enum EnvAction {
+    /// Copy the value from this llvm ValueRef into the environment.
+    EnvStore,
 
-    // Move the value from this llvm ValueRef into the environment.
-    env_move(ValueRef, ty::t, lval_kind),
+    /// Move the value from this llvm ValueRef into the environment.
+    EnvMove,
 
-    // Access by reference (used for blocks).
-    env_ref(ValueRef, ty::t, lval_kind),
+    /// Access by reference (used for stack closures).
+    EnvRef
 }
 
-fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> ~str {
-    match ev {
-      env_copy(v, t, _) => fmt!("copy(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)),
-      env_move(v, t, _) => fmt!("move(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)),
-      env_ref(v, t, _) => fmt!("ref(%s,%s)", val_str(ccx.tn, v),
-                               ty_to_str(ccx.tcx, t))
+struct EnvValue {
+    action: EnvAction;
+    datum: Datum;
+}
+
+impl EnvAction {
+    fn to_str() -> ~str {
+        match self {
+            EnvStore => ~"EnvStore",
+            EnvMove => ~"EnvMove",
+            EnvRef => ~"EnvRef"
+        }
+    }
+}
+
+impl EnvValue {
+    fn to_str(ccx: @crate_ctxt) -> ~str {
+        fmt!("%s(%s)", self.action.to_str(), self.datum.to_str(ccx))
     }
 }
 
@@ -116,18 +127,18 @@ fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
 
 // Given a closure ty, emits a corresponding tuple ty
 fn mk_closure_tys(tcx: ty::ctxt,
-                  bound_values: ~[environment_value])
+                  bound_values: ~[EnvValue])
     -> ty::t {
-    let mut bound_tys = ~[];
-
-    // Compute the closed over data
-    for vec::each(bound_values) |bv| {
-        vec::push(bound_tys, match bv {
-            env_copy(_, t, _) => t,
-            env_move(_, t, _) => t,
-            env_ref(_, t, _) => t
-        });
-    }
+    // determine the types of the values in the env.  Note that this
+    // is the actual types that will be stored in the map, not the
+    // logical types as the user sees them, so by-ref upvars must be
+    // converted to ptrs.
+    let bound_tys = bound_values.map(|bv| {
+        match bv.action {
+            EnvStore | EnvMove => bv.datum.ty,
+            EnvRef => ty::mk_mut_ptr(tcx, bv.datum.ty)
+        }
+    });
     let cdata_ty = ty::mk_tup(tcx, bound_tys);
     debug!("cdata_ty=%s", ty_to_str(tcx, cdata_ty));
     return cdata_ty;
@@ -136,7 +147,8 @@ fn mk_closure_tys(tcx: ty::ctxt,
 fn allocate_cbox(bcx: block,
                  ck: ty::closure_kind,
                  cdata_ty: ty::t)
-    -> result {
+    -> Result
+{
     let _icx = bcx.insn_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
@@ -151,18 +163,16 @@ fn allocate_cbox(bcx: block,
     }
 
     // Allocate and initialize the box:
-    let {bcx, val} = match ck {
+    match ck {
       ty::ck_box => malloc_raw(bcx, cdata_ty, heap_shared),
       ty::ck_uniq => malloc_raw(bcx, cdata_ty, heap_exchange),
       ty::ck_block => {
-        let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-        let llbox = base::alloc_ty(bcx, cbox_ty);
-        nuke_ref_count(bcx, llbox);
-        {bcx: bcx, val: llbox}
+          let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
+          let llbox = base::alloc_ty(bcx, cbox_ty);
+          nuke_ref_count(bcx, llbox);
+          rslt(bcx, llbox)
       }
-    };
-
-    return {bcx: bcx, val: val};
+    }
 }
 
 type closure_result = {
@@ -176,7 +186,7 @@ type closure_result = {
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
 fn store_environment(bcx: block,
-                     bound_values: ~[environment_value],
+                     bound_values: ~[EnvValue],
                      ck: ty::closure_kind) -> closure_result {
     let _icx = bcx.insn_ctxt("closure::store_environment");
     let ccx = bcx.ccx(), tcx = ccx.tcx;
@@ -185,7 +195,7 @@ fn store_environment(bcx: block,
     let cdata_ty = mk_closure_tys(tcx, bound_values);
 
     // allocate closure in the heap
-    let {bcx: bcx, val: llbox} = allocate_cbox(bcx, ck, cdata_ty);
+    let Result {bcx: bcx, val: llbox} = allocate_cbox(bcx, ck, cdata_ty);
     let mut temp_cleanups = ~[];
 
     // cbox_ty has the form of a tuple: (a, b, c) we want a ptr to a
@@ -200,43 +210,27 @@ fn store_environment(bcx: block,
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
     do vec::iteri(bound_values) |i, bv| {
-        debug!("Copy %s into closure", ev_to_str(ccx, bv));
+        debug!("Copy %s into closure", bv.to_str(ccx));
 
         if !ccx.sess.no_asm_comments() {
             add_comment(bcx, fmt!("Copy %s into closure",
-                                  ev_to_str(ccx, bv)));
+                                  bv.to_str(ccx)));
         }
 
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
-        match bv {
-          env_copy(val, ty, lv_owned) => {
-            let val1 = load_if_immediate(bcx, val, ty);
-            bcx = base::copy_val(bcx, INIT, bound_data, val1, ty);
-          }
-          env_copy(val, ty, lv_owned_imm) => {
-            bcx = base::copy_val(bcx, INIT, bound_data, val, ty);
-          }
-          env_copy(_, _, lv_temporary) => {
-            fail ~"cannot capture temporary upvar";
-          }
-          env_move(val, ty, kind) => {
-            let src = {bcx:bcx, val:val, kind:kind};
-            bcx = move_val(bcx, INIT, bound_data, src, ty);
-          }
-          env_ref(val, _, lv_owned) => {
-            debug!("> storing %s into %s",
-                   val_str(bcx.ccx().tn, val),
-                   val_str(bcx.ccx().tn, bound_data));
-            Store(bcx, val, bound_data);
-          }
-          env_ref(val, _, lv_owned_imm) => {
-            let addr = do_spill_noroot(bcx, val);
-            Store(bcx, addr, bound_data);
-          }
-          env_ref(_, _, lv_temporary) => {
-            fail ~"cannot capture temporary upvar";
-          }
+
+        match bv.action {
+            EnvStore => {
+                bcx = bv.datum.store_to(bcx, INIT, bound_data);
+            }
+            EnvMove => {
+                bcx = bv.datum.move_to(bcx, INIT, bound_data);
+            }
+            EnvRef => {
+                Store(bcx, bv.datum.to_ref_llval(bcx), bound_data);
+            }
         }
+
     }
     for vec::each(temp_cleanups) |cleanup| { revoke_clean(bcx, cleanup); }
 
@@ -252,56 +246,57 @@ fn build_closure(bcx0: block,
                  include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
-    let mut env_vals = ~[];
-    let mut bcx = bcx0;
+    let mut bcx = bcx0;;
     let ccx = bcx.ccx(), tcx = ccx.tcx;
 
     // Package up the captured upvars
+    let mut env_vals = ~[];
     do vec::iter(cap_vars) |cap_var| {
         debug!("Building closure: captured variable %?", cap_var);
-        let lv = trans_local_var(bcx, cap_var.def);
-        let nid = ast_util::def_id_of_def(cap_var.def).node;
-        debug!("Node id is %s",
-               syntax::ast_map::node_id_to_str
-                   (bcx.ccx().tcx.items, nid,
-                    bcx.ccx().sess.parse_sess.interner));
-        let mut ty = node_id_type(bcx, nid);
+        let datum = expr::trans_local_var(bcx, id, cap_var.def);
         match cap_var.mode {
-          capture::cap_ref => {
-            assert ck == ty::ck_block;
-            ty = ty::mk_mut_ptr(tcx, ty);
-            vec::push(env_vals, env_ref(lv.val, ty, lv.kind));
-          }
-          capture::cap_copy => {
-            let mv = match ccx.maps.last_use_map.find(id) {
-              None => false,
-              Some(vars) => (*vars).contains(nid)
-            };
-            if mv { vec::push(env_vals, env_move(lv.val, ty, lv.kind)); }
-            else { vec::push(env_vals, env_copy(lv.val, ty, lv.kind)); }
-          }
-          capture::cap_move => {
-            vec::push(env_vals, env_move(lv.val, ty, lv.kind));
-          }
-          capture::cap_drop => {
-            assert lv.kind == lv_owned;
-            bcx = drop_ty(bcx, lv.val, ty);
-            bcx = zero_mem(bcx, lv.val, ty);
-          }
+            capture::cap_ref => {
+                assert ck == ty::ck_block;
+                vec::push(env_vals, EnvValue {action: EnvRef,
+                                              datum: datum});
+            }
+            capture::cap_copy => {
+                vec::push(env_vals, EnvValue {action: EnvStore,
+                                              datum: datum});
+            }
+            capture::cap_move => {
+                vec::push(env_vals, EnvValue {action: EnvMove,
+                                              datum: datum});
+            }
+            capture::cap_drop => {
+                bcx = datum.drop_val(bcx);
+                datum.cancel_clean(bcx);
+            }
         }
     }
+
+    // If this is a `for` loop body, add two special environment
+    // variables:
     do option::iter(include_ret_handle) |flagptr| {
-        let our_ret = match bcx.fcx.loop_ret {
-          Some({retptr, _}) => retptr,
-          None => bcx.fcx.llretptr
+        // Flag indicating we have returned (a by-ref bool):
+        let flag_datum = Datum {val: flagptr, ty: ty::mk_bool(tcx),
+                                mode: ByRef, source: FromLvalue};
+        vec::push(env_vals, EnvValue {action: EnvRef,
+                                      datum: flag_datum});
+
+        // Return value (we just pass a by-ref () and cast it later to
+        // the right thing):
+        let ret_true = match bcx.fcx.loop_ret {
+            Some({retptr, _}) => retptr,
+            None => bcx.fcx.llretptr
         };
-        let nil_ret = PointerCast(bcx, our_ret, T_ptr(T_nil()));
-        vec::push(env_vals,
-                  env_ref(flagptr,
-                          ty::mk_mut_ptr(tcx, ty::mk_bool(tcx)), lv_owned));
-        vec::push(env_vals,
-                  env_ref(nil_ret, ty::mk_nil_ptr(tcx), lv_owned));
+        let ret_casted = PointerCast(bcx, ret_true, T_ptr(T_nil()));
+        let ret_datum = Datum {val: ret_casted, ty: ty::mk_nil(tcx),
+                               mode: ByRef, source: FromLvalue};
+        vec::push(env_vals, EnvValue {action: EnvRef,
+                                      datum: ret_datum});
     }
+
     return store_environment(bcx, env_vals, ck);
 }
 
@@ -351,9 +346,16 @@ fn trans_expr_fn(bcx: block,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
                  is_loop_body: Option<Option<ValueRef>>,
-                 dest: dest) -> block {
+                 dest: expr::Dest) -> block {
     let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
-    if dest == ignore { return bcx; }
+
+    let dest_addr = match dest {
+        expr::SaveIn(p) => p,
+        expr::Ignore => {
+            return bcx; // closure construction is non-side-effecting
+        }
+    };
+
     let ccx = bcx.ccx();
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
@@ -362,7 +364,7 @@ fn trans_expr_fn(bcx: block,
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
-    let trans_closure_env = fn@(ck: ty::closure_kind) -> result {
+    let trans_closure_env = fn@(ck: ty::closure_kind) -> Result {
         let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
                                                      cap_clause);
         let ret_handle = match is_loop_body { Some(x) => x, None => None };
@@ -377,25 +379,29 @@ fn trans_expr_fn(bcx: block,
                 Store(bcx, C_bool(true), bcx.fcx.llretptr);
             }
         });
-        {bcx: bcx, val: llbox}
+        rslt(bcx, llbox)
     };
 
-    let {bcx: bcx, val: closure} = match proto {
-      ty::proto_vstore(ty::vstore_slice(_)) =>
-        trans_closure_env(ty::ck_block),
-      ty::proto_vstore(ty::vstore_box) =>
-        trans_closure_env(ty::ck_box),
-      ty::proto_vstore(ty::vstore_uniq) =>
-        trans_closure_env(ty::ck_uniq),
-      ty::proto_bare => {
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
-                      id, |_fcx| { }, |_bcx| { });
-        {bcx: bcx, val: C_null(T_opaque_box_ptr(ccx))}
-      }
-      ty::proto_vstore(ty::vstore_fixed(_)) =>
-        fail ~"vstore_fixed unexpected"
+    let Result {bcx: bcx, val: closure} = match proto {
+        ty::proto_vstore(ty::vstore_slice(_)) => {
+            trans_closure_env(ty::ck_block)
+        }
+        ty::proto_vstore(ty::vstore_box) => {
+            trans_closure_env(ty::ck_box)
+        }
+        ty::proto_vstore(ty::vstore_uniq) => {
+            trans_closure_env(ty::ck_uniq)
+        }
+        ty::proto_bare => {
+            trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
+                          id, |_fcx| { }, |_bcx| { });
+            rslt(bcx, C_null(T_opaque_box_ptr(ccx)))
+        }
+        ty::proto_vstore(ty::vstore_fixed(_)) => {
+            fail ~"vstore_fixed unexpected"
+        }
     };
-    fill_fn_pair(bcx, get_dest_addr(dest), llfn, closure);
+    fill_fn_pair(bcx, dest_addr, llfn, closure);
 
     return bcx;
 }
@@ -440,12 +446,12 @@ fn make_opaque_cbox_take_glue(
     // Easy cases:
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_take_glue");
     match ck {
-      ty::ck_block => return bcx,
-      ty::ck_box => {
-        incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
-        return bcx;
-      }
-      ty::ck_uniq => { /* hard case: */ }
+        ty::ck_block => return bcx,
+        ty::ck_box => {
+            glue::incr_refcnt_of_boxed(bcx, Load(bcx, cboxptr));
+            return bcx;
+        }
+        ty::ck_uniq => { /* hard case: */ }
     }
 
     // Hard case, a deep copy:
@@ -467,20 +473,20 @@ fn make_opaque_cbox_take_glue(
         let malloc = ~"exchange_malloc";
         let opaque_tydesc = PointerCast(bcx, tydesc, T_ptr(T_i8()));
         let rval = alloca_zeroed(bcx, T_ptr(T_i8()));
-        let bcx = trans_rtcall(bcx, malloc, ~[opaque_tydesc, sz],
-                               save_in(rval));
+        let bcx = callee::trans_rtcall(bcx, malloc, ~[opaque_tydesc, sz],
+                                       expr::SaveIn(rval));
         let cbox_out = PointerCast(bcx, Load(bcx, rval), llopaquecboxty);
         call_memmove(bcx, cbox_out, cbox_in, sz);
         Store(bcx, cbox_out, cboxptr);
 
         // Take the (deeply cloned) type descriptor
         let tydesc_out = GEPi(bcx, cbox_out, [0u, abi::box_field_tydesc]);
-        let bcx = take_ty(bcx, tydesc_out, ty::mk_type(tcx));
+        let bcx = glue::take_ty(bcx, tydesc_out, ty::mk_type(tcx));
 
         // Take the data in the tuple
         let cdata_out = GEPi(bcx, cbox_out, [0u, abi::box_field_body]);
-        call_tydesc_glue_full(bcx, cdata_out, tydesc,
-                              abi::tydesc_field_take_glue, None);
+        glue::call_tydesc_glue_full(bcx, cdata_out, tydesc,
+                                    abi::tydesc_field_take_glue, None);
         bcx
     }
 }
@@ -492,15 +498,17 @@ fn make_opaque_cbox_drop_glue(
     -> block {
     let _icx = bcx.insn_ctxt("closure::make_opaque_cbox_drop_glue");
     match ck {
-      ty::ck_block => bcx,
-      ty::ck_box => {
-        decr_refcnt_maybe_free(bcx, Load(bcx, cboxptr),
-                               ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
-      }
-      ty::ck_uniq => {
-        free_ty(bcx, cboxptr,
+        ty::ck_block => bcx,
+        ty::ck_box => {
+            glue::decr_refcnt_maybe_free(
+                bcx, Load(bcx, cboxptr),
                 ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
-      }
+        }
+        ty::ck_uniq => {
+            glue::free_ty(
+                bcx, cboxptr,
+                ty::mk_opaque_closure_ptr(bcx.tcx(), ck))
+        }
     }
 }
 
@@ -526,14 +534,14 @@ fn make_opaque_cbox_free_glue(
 
         // Drop the tuple data then free the descriptor
         let cdata = GEPi(bcx, cbox, [0u, abi::box_field_body]);
-        call_tydesc_glue_full(bcx, cdata, tydesc,
-                              abi::tydesc_field_drop_glue, None);
+        glue::call_tydesc_glue_full(bcx, cdata, tydesc,
+                                    abi::tydesc_field_drop_glue, None);
 
         // Free the ty descr (if necc) and the box itself
         match ck {
-          ty::ck_block => fail ~"Impossible",
-          ty::ck_box => trans_free(bcx, cbox),
-          ty::ck_uniq => trans_unique_free(bcx, cbox)
+            ty::ck_block => fail ~"Impossible",
+            ty::ck_box => glue::trans_free(bcx, cbox),
+            ty::ck_uniq => glue::trans_unique_free(bcx, cbox)
         }
     }
 }

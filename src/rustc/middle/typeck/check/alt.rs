@@ -1,4 +1,6 @@
 use syntax::print::pprust;
+use syntax::ast_util::{walk_pat};
+use pat_util::{pat_is_variant};
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,
@@ -9,7 +11,7 @@ fn check_alt(fcx: @fn_ctxt,
 
     let pattern_ty = fcx.infcx().next_ty_var();
     bot = check_expr_with(fcx, discrim, pattern_ty);
-    let is_lvalue = ty::expr_is_lval(fcx.ccx.method_map, discrim);
+    let is_lvalue = ty::expr_is_lval(tcx, fcx.ccx.method_map, discrim);
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
@@ -18,17 +20,16 @@ fn check_alt(fcx: @fn_ctxt,
             fcx: fcx,
             map: pat_id_map(tcx.def_map, arm.pats[0]),
             alt_region: ty::re_scope(expr.id),
-            block_region: ty::re_scope(arm.body.node.id),
-            pat_region: ty::re_scope(expr.id),
-            // The following three fields determine whether 'move' is allowed.
-            matching_lvalue: is_lvalue,
-            has_guard: arm.guard.is_some(),
-            // Each arm is freshly allowed to decide whether it can 'move'.
-            mut ever_bound_by_ref: false,
+            block_region: ty::re_scope(arm.body.node.id)
         };
 
         for arm.pats.each |p| { check_pat(pcx, p, pattern_ty);}
+        check_legality_of_move_bindings(fcx,
+                                        is_lvalue,
+                                        arm.guard.is_some(),
+                                        arm.pats);
     }
+
     // Now typecheck the blocks.
     let mut result_ty = fcx.infcx().next_ty_var();
     let mut arm_non_bot = false;
@@ -47,20 +48,72 @@ fn check_alt(fcx: @fn_ctxt,
     return bot;
 }
 
+fn check_legality_of_move_bindings(fcx: @fn_ctxt,
+                                   is_lvalue: bool,
+                                   has_guard: bool,
+                                   pats: &[@ast::pat])
+{
+    let tcx = fcx.tcx();
+    let def_map = tcx.def_map;
+    let mut by_ref = None;
+    let mut any_by_move = false;
+    for pats.each |pat| {
+        do pat_util::pat_bindings(def_map, pat) |bm, _id, span, _path| {
+            match bm {
+                ast::bind_by_ref(_) | ast::bind_by_implicit_ref => {
+                    by_ref = Some(span);
+                }
+                ast::bind_by_move => {
+                    any_by_move = true;
+                }
+                _ => { }
+            }
+        }
+    }
+
+    if !any_by_move { return; } // pointless micro-optimization
+    for pats.each |pat| {
+        do walk_pat(pat) |p| {
+            if !pat_is_variant(def_map, p) {
+                match p.node {
+                    ast::pat_ident(ast::bind_by_move, _, sub) => {
+                        // check legality of moving out of the enum
+                        if sub.is_some() {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move with sub-bindings");
+                        } else if has_guard {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move into a pattern guard");
+                        } else if by_ref.is_some() {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move and by-ref \
+                                  in the same pattern");
+                            tcx.sess.span_note(
+                                by_ref.get(),
+                                ~"by-ref binding occurs here");
+                        } else if is_lvalue {
+                            tcx.sess.span_err(
+                                p.span,
+                                ~"cannot bind by-move when \
+                                  matching an lvalue");
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+
 type pat_ctxt = {
     fcx: @fn_ctxt,
     map: pat_id_map,
-    alt_region: ty::region,
-    block_region: ty::region,
-    /* Equal to either alt_region or block_region. */
-    pat_region: ty::region,
-    /* Moving out is only permitted when matching rvalues. */
-    matching_lvalue: bool,
-    /* Moving out is not permitted with guards. */
-    has_guard: bool,
-    /* If a pattern binding binds by-reference ever, then binding by-move in
-     * the same arm is disallowed (no "ref x @ some(move y)", etc etc). */
-    mut ever_bound_by_ref: bool,
+    alt_region: ty::region,   // Region for the alt as a whole
+    block_region: ty::region, // Region for the block of the arm
 };
 
 fn check_pat_variant(pcx: pat_ctxt, pat: @ast::pat, path: @ast::path,
@@ -175,7 +228,6 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
 
         match bm {
           ast::bind_by_ref(mutbl) => {
-            pcx.ever_bound_by_ref = true;
             // if the binding is like
             //    ref x | ref const x | ref mut x
             // then the type of x is &M T where M is the mutability
@@ -193,26 +245,8 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
           ast::bind_by_move => {
             demand::eqtype(fcx, pat.span, expected, typ);
-            // check legality of moving out of the enum
-            if sub.is_some() {
-                tcx.sess.span_err(pat.span,
-                    ~"cannot bind by-move with sub-bindings");
-            }
-            if pcx.has_guard {
-                tcx.sess.span_err(pat.span,
-                    ~"cannot bind by-move into a pattern guard");
-            }
-            if pcx.ever_bound_by_ref {
-                tcx.sess.span_err(pat.span,
-                    ~"cannot bind by-move and by-ref in the same pattern");
-            }
-            if pcx.matching_lvalue {
-                tcx.sess.span_err(pat.span,
-                    ~"cannot bind by-move when matching an lvalue");
-            }
           }
           ast::bind_by_implicit_ref => {
-            pcx.ever_bound_by_ref = true;
             demand::eqtype(fcx, pat.span, expected, typ);
           }
         }

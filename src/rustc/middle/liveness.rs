@@ -1572,17 +1572,16 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
 
       expr_call(f, args, _) => {
         let targs = ty::ty_fn_args(ty::expr_ty(self.tcx, f));
-        vt.visit_expr(f, self, vt);
         do vec::iter2(args, targs) |arg_expr, arg_ty| {
             match ty::resolved_mode(self.tcx, arg_ty.mode) {
-              by_val | by_copy | by_ref | by_mutbl_ref => {
-                vt.visit_expr(arg_expr, self, vt);
-              }
-              by_move => {
-                self.check_move_from_expr(arg_expr, vt);
-              }
+                by_val | by_copy | by_ref | by_mutbl_ref => {}
+                by_move => {
+                    self.check_move_from_expr(arg_expr, vt);
+                }
             }
         }
+
+        visit::visit_expr(expr, self, vt);
       }
 
       // no correctness conditions related to liveness
@@ -1670,6 +1669,9 @@ impl @Liveness {
     }
 
     fn consider_last_use(expr: @expr, ln: LiveNode, var: Variable) {
+        debug!("consider_last_use(expr.id=%?, ln=%s, var=%s)",
+               expr.id, ln.to_str(), var.to_str());
+
         match self.live_on_exit(ln, var) {
           Some(_) => {}
           None => (*self.ir).add_last_use(expr.id, var)
@@ -1682,7 +1684,7 @@ impl @Liveness {
 
         if self.ir.method_map.contains_key(expr.id) {
             // actually an rvalue, since this calls a method
-            return vt.visit_expr(expr, self, vt);
+            return;
         }
 
         match expr.node {
@@ -1703,18 +1705,16 @@ impl @Liveness {
             self.check_move_from_expr(base, vt);
           }
 
-          expr_index(base, idx) => {
+          expr_index(base, _) => {
             // Moving from x[y] is allowed if x is never used later.
             // (Note that the borrowck guarantees that anything
             //  being moved from is uniquely tied to the stack frame)
             self.check_move_from_expr(base, vt);
-            vt.visit_expr(idx, self, vt);
           }
 
           _ => {
             // For other kinds of lvalues, no checks are required,
             // and any embedded expressions are actually rvalues
-            vt.visit_expr(expr, self, vt);
           }
        }
     }

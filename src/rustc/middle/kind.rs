@@ -419,7 +419,7 @@ fn is_nullary_variant(cx: ctx, ex: @expr) -> bool {
 
 fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
                  why: Option<(&str,&str)>) {
-    if ty::expr_is_lval(cx.method_map, ex) &&
+    if ty::expr_is_lval(cx.tcx, cx.method_map, ex) &&
 
         // this is a move
         !cx.last_use_map.contains_key(ex.id) &&

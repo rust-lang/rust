@@ -6,8 +6,8 @@ use codemap::span;
 use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
 use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
         CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
-use common::*;
 use driver::session::session;
+use common::*;
 
 fn B(cx: block) -> BuilderRef {
     let b = cx.fcx.ccx.builder.B;
@@ -670,7 +670,7 @@ fn add_comment(bcx: block, text: ~str) {
     }
 }
 
-fn Call(cx: block, Fn: ValueRef, Args: ~[ValueRef]) -> ValueRef {
+fn Call(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
     if cx.unreachable { return _UndefReturn(cx, Fn); }
     unsafe {
         count_insn(cx, "call");
@@ -679,8 +679,9 @@ fn Call(cx: block, Fn: ValueRef, Args: ~[ValueRef]) -> ValueRef {
                val_str(cx.ccx().tn, Fn),
                Args.map(|arg| val_str(cx.ccx().tn, arg)));
 
-        return llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
-                                Args.len() as c_uint, noname());
+        do vec::as_buf(Args) |ptr, len| {
+            llvm::LLVMBuildCall(B(cx), Fn, ptr, len as c_uint, noname())
+        }
     }
 }
 

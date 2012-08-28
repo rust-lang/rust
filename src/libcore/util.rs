@@ -65,7 +65,9 @@ mod tests {
     fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
         let x = ~[(5, false)];
-        assert x.eq(id(copy x));
+        //FIXME #3387 assert x.eq(id(copy x));
+        let y = copy x;
+        assert x.eq(id(y));
     }
     #[test]
     fn test_swap() {

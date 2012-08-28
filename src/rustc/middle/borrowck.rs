@@ -220,7 +220,8 @@ use syntax::visit;
 use syntax::ast_util;
 use syntax::ast_map;
 use syntax::codemap::span;
-use util::ppaux::{ty_to_str, region_to_str, explain_region};
+use util::ppaux::{ty_to_str, region_to_str, explain_region,
+                  note_and_explain_region};
 use std::map::{int_hash, hashmap, set};
 use std::list;
 use std::list::{List, Cons, Nil};
@@ -464,6 +465,7 @@ impl borrowck_ctxt {
             err.cmt.span,
             fmt!("illegal borrow: %s",
                  self.bckerr_code_to_str(err.code)));
+        self.note_and_explain_bckerr(err.code);
     }
 
     fn span_err(s: span, m: ~str) {
@@ -488,36 +490,64 @@ impl borrowck_ctxt {
 
     fn bckerr_code_to_str(code: bckerr_code) -> ~str {
         match code {
-          err_mutbl(req, act) => {
-            fmt!("creating %s alias to aliasable, %s memory",
-                 self.mut_to_str(req), self.mut_to_str(act))
-          }
-          err_mut_uniq => {
-            ~"unique value in aliasable, mutable location"
-          }
-          err_mut_variant => {
-            ~"enum variant in aliasable, mutable location"
-          }
-          err_root_not_permitted => {
-            // note: I don't expect users to ever see this error
-            // message, reasons are discussed in attempt_root() in
-            // preserve.rs.
-            ~"rooting is not permitted"
-          }
-          err_out_of_root_scope(super_scope, sub_scope) => {
-            fmt!("managed value would have to be rooted for %s, \
-                  but can only be rooted for %s",
-                  explain_region(self.tcx, sub_scope),
-                  explain_region(self.tcx, super_scope))
-          }
-          err_out_of_scope(super_scope, sub_scope) => {
-            fmt!("borrowed pointer must be valid for %s, \
-                  but the borrowed value is only valid for %s",
-                  explain_region(self.tcx, sub_scope),
-                  explain_region(self.tcx, super_scope))
+            err_mutbl(req, act) => {
+                fmt!("creating %s alias to aliasable, %s memory",
+                     self.mut_to_str(req), self.mut_to_str(act))
+            }
+            err_mut_uniq => {
+                ~"unique value in aliasable, mutable location"
+            }
+            err_mut_variant => {
+                ~"enum variant in aliasable, mutable location"
+            }
+            err_root_not_permitted => {
+                // note: I don't expect users to ever see this error
+                // message, reasons are discussed in attempt_root() in
+                // preserve.rs.
+                ~"rooting is not permitted"
+            }
+            err_out_of_root_scope(*) => {
+                ~"cannot root managed value long enough"
+            }
+            err_out_of_scope(*) => {
+                ~"borrowed value does not live long enough"
+            }
+        }
+    }
+
+    fn note_and_explain_bckerr(code: bckerr_code) {
+        match code {
+            err_mutbl(*) | err_mut_uniq | err_mut_variant |
+            err_root_not_permitted => {}
+
+            err_out_of_root_scope(super_scope, sub_scope) => {
+                note_and_explain_region(
+                    self.tcx,
+                    ~"managed value would have to be rooted for ",
+                    sub_scope,
+                    ~"...");
+                note_and_explain_region(
+                    self.tcx,
+                    ~"...but can only be rooted for ",
+                    super_scope,
+                    ~"");
+            }
+
+            err_out_of_scope(super_scope, sub_scope) => {
+                note_and_explain_region(
+                    self.tcx,
+                    ~"borrowed pointer must be valid for ",
+                    sub_scope,
+                    ~"...");
+                note_and_explain_region(
+                    self.tcx,
+                    ~"...but borrowed value is only valid for ",
+                    super_scope,
+                    ~"");
           }
         }
     }
+
 
     fn cmt_to_str(cmt: cmt) -> ~str {
         let mc = &mem_categorization_ctxt {tcx: self.tcx,

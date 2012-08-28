@@ -7,6 +7,7 @@ use std::map::hashmap;
 
 export type_of;
 export type_of_dtor;
+export type_of_explicit_arg;
 export type_of_explicit_args;
 export type_of_fn_from_ty;
 export type_of_fn;
@@ -14,16 +15,17 @@ export type_of_glue_fn;
 export type_of_non_gc_box;
 export type_of_rooted;
 
-fn type_of_explicit_args(cx: @crate_ctxt,
-                         inputs: ~[ty::arg]) -> ~[TypeRef] {
-    do vec::map(inputs) |arg| {
-        let arg_ty = arg.ty;
-        let llty = type_of(cx, arg_ty);
-        match ty::resolved_mode(cx.tcx, arg.mode) {
-          ast::by_val => llty,
-          _ => T_ptr(llty)
-        }
+fn type_of_explicit_arg(ccx: @crate_ctxt, arg: ty::arg) -> TypeRef {
+    let arg_ty = arg.ty;
+    let llty = type_of(ccx, arg_ty);
+    match ty::resolved_mode(ccx.tcx, arg.mode) {
+        ast::by_val => llty,
+        _ => T_ptr(llty)
     }
+}
+
+fn type_of_explicit_args(ccx: @crate_ctxt, inputs: ~[ty::arg]) -> ~[TypeRef] {
+    inputs.map(|arg| type_of_explicit_arg(ccx, arg))
 }
 
 fn type_of_fn(cx: @crate_ctxt, inputs: ~[ty::arg],
@@ -145,7 +147,10 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             let mt_ty = f.mt.ty;
             vec::push(tys, type_of(cx, mt_ty));
         }
-        T_struct(tys)
+
+        // n.b.: introduce an extra layer of indirection to match
+        // structs
+        T_struct(~[T_struct(tys)])
       }
       ty::ty_fn(_) => T_fn_pair(cx, type_of_fn_from_ty(cx, t)),
       ty::ty_trait(_, _, _) => T_opaque_trait(cx),
@@ -188,12 +193,13 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             type_of(cx, t)
         };
 
+        // include a byte flag if there is a dtor so that we know when we've
+        // been dropped
         if ty::ty_dtor(cx.tcx, did) != None {
-            // resource type
-            tys = ~[T_i8(), T_struct(tys)];
+            common::set_struct_body(llty, ~[T_struct(tys), T_i8()]);
+        } else {
+            common::set_struct_body(llty, ~[T_struct(tys)]);
         }
-
-        common::set_struct_body(llty, tys);
       }
       _ => ()
     }
