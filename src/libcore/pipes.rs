@@ -1027,7 +1027,7 @@ struct PortSet<T: send> : recv<T> {
         // aliasable mutable memory.
         let mut ports = ~[];
         ports <-> self.ports;
-        while result == None && ports.len() > 0 {
+        while result.is_none() && ports.len() > 0 {
             let i = wait_many(ports);
             match move ports[i].try_recv() {
                 Some(move m) => {
@@ -1153,7 +1153,7 @@ fn recv_one<T: send>(+port: port_one<T>) -> T {
 fn try_recv_one<T: send> (+port: port_one<T>) -> Option<T> {
     let message = try_recv(port);
 
-    if message == None { None }
+    if message.is_none() { None }
     else {
         let oneshot::send(message) = option::unwrap(message);
         Some(message)

@@ -931,7 +931,7 @@ mod tests {
         assert os::homedir() == Some(Path("/home/MountainView"));
 
         setenv(~"HOME", ~"");
-        assert os::homedir() == None;
+        assert os::homedir().is_none();
 
         option::iter(oldhome, |s| setenv(~"HOME", s));
     }
@@ -946,7 +946,7 @@ mod tests {
         setenv(~"HOME", ~"");
         setenv(~"USERPROFILE", ~"");
 
-        assert os::homedir() == None;
+        assert os::homedir().is_none();
 
         setenv(~"HOME", ~"/home/MountainView");
         assert os::homedir() == Some(Path("/home/MountainView"));

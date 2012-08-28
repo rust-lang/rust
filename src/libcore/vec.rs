@@ -2029,7 +2029,7 @@ mod tests {
     #[test]
     fn test_last() {
         let mut n = last_opt(~[]);
-        assert (n == None);
+        assert (n.is_none());
         n = last_opt(~[1, 2, 3]);
         assert (n == Some(3));
         n = last_opt(~[1, 2, 3, 4, 5]);
@@ -2393,13 +2393,13 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert position_elem(~[], 1) == None;
+        assert position_elem(~[], 1).is_none();
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
         assert position_elem(v1, 1) == Some(0u);
         assert position_elem(v1, 2) == Some(1u);
         assert position_elem(v1, 5) == Some(5u);
-        assert position_elem(v1, 4) == None;
+        assert position_elem(v1, 4).is_none();
     }
 
     #[test]
@@ -2407,159 +2407,159 @@ mod tests {
         fn less_than_three(&&i: int) -> bool { return i < 3; }
         fn is_eighteen(&&i: int) -> bool { return i == 18; }
 
-        assert position(~[], less_than_three) == None;
+        assert position(~[], less_than_three).is_none();
 
         let v1 = ~[5, 4, 3, 2, 1];
         assert position(v1, less_than_three) == Some(3u);
-        assert position(v1, is_eighteen) == None;
+        assert position(v1, is_eighteen).is_none();
     }
 
     #[test]
     fn test_position_between() {
-        assert position_between(~[], 0u, 0u, f) == None;
+        assert position_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert position_between(v, 0u, 0u, f) == None;
-        assert position_between(v, 0u, 1u, f) == None;
+        assert position_between(v, 0u, 0u, f).is_none();
+        assert position_between(v, 0u, 1u, f).is_none();
         assert position_between(v, 0u, 2u, f) == Some(1u);
         assert position_between(v, 0u, 3u, f) == Some(1u);
         assert position_between(v, 0u, 4u, f) == Some(1u);
 
-        assert position_between(v, 1u, 1u, f) == None;
+        assert position_between(v, 1u, 1u, f).is_none();
         assert position_between(v, 1u, 2u, f) == Some(1u);
         assert position_between(v, 1u, 3u, f) == Some(1u);
         assert position_between(v, 1u, 4u, f) == Some(1u);
 
-        assert position_between(v, 2u, 2u, f) == None;
-        assert position_between(v, 2u, 3u, f) == None;
+        assert position_between(v, 2u, 2u, f).is_none();
+        assert position_between(v, 2u, 3u, f).is_none();
         assert position_between(v, 2u, 4u, f) == Some(3u);
 
-        assert position_between(v, 3u, 3u, f) == None;
+        assert position_between(v, 3u, 3u, f).is_none();
         assert position_between(v, 3u, 4u, f) == Some(3u);
 
-        assert position_between(v, 4u, 4u, f) == None;
+        assert position_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]
     fn test_find() {
-        assert find(~[], f) == None;
+        assert find(~[], f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert find(v, f) == Some((1, 'b'));
-        assert find(v, g) == None;
+        assert find(v, g).is_none();
     }
 
     #[test]
     fn test_find_between() {
-        assert find_between(~[], 0u, 0u, f) == None;
+        assert find_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert find_between(v, 0u, 0u, f) == None;
-        assert find_between(v, 0u, 1u, f) == None;
+        assert find_between(v, 0u, 0u, f).is_none();
+        assert find_between(v, 0u, 1u, f).is_none();
         assert find_between(v, 0u, 2u, f) == Some((1, 'b'));
         assert find_between(v, 0u, 3u, f) == Some((1, 'b'));
         assert find_between(v, 0u, 4u, f) == Some((1, 'b'));
 
-        assert find_between(v, 1u, 1u, f) == None;
+        assert find_between(v, 1u, 1u, f).is_none();
         assert find_between(v, 1u, 2u, f) == Some((1, 'b'));
         assert find_between(v, 1u, 3u, f) == Some((1, 'b'));
         assert find_between(v, 1u, 4u, f) == Some((1, 'b'));
 
-        assert find_between(v, 2u, 2u, f) == None;
-        assert find_between(v, 2u, 3u, f) == None;
+        assert find_between(v, 2u, 2u, f).is_none();
+        assert find_between(v, 2u, 3u, f).is_none();
         assert find_between(v, 2u, 4u, f) == Some((3, 'b'));
 
-        assert find_between(v, 3u, 3u, f) == None;
+        assert find_between(v, 3u, 3u, f).is_none();
         assert find_between(v, 3u, 4u, f) == Some((3, 'b'));
 
-        assert find_between(v, 4u, 4u, f) == None;
+        assert find_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]
     fn test_rposition() {
-        assert find(~[], f) == None;
+        assert find(~[], f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert position(v, f) == Some(1u);
-        assert position(v, g) == None;
+        assert position(v, g).is_none();
     }
 
     #[test]
     fn test_rposition_between() {
-        assert rposition_between(~[], 0u, 0u, f) == None;
+        assert rposition_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rposition_between(v, 0u, 0u, f) == None;
-        assert rposition_between(v, 0u, 1u, f) == None;
+        assert rposition_between(v, 0u, 0u, f).is_none();
+        assert rposition_between(v, 0u, 1u, f).is_none();
         assert rposition_between(v, 0u, 2u, f) == Some(1u);
         assert rposition_between(v, 0u, 3u, f) == Some(1u);
         assert rposition_between(v, 0u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 1u, 1u, f) == None;
+        assert rposition_between(v, 1u, 1u, f).is_none();
         assert rposition_between(v, 1u, 2u, f) == Some(1u);
         assert rposition_between(v, 1u, 3u, f) == Some(1u);
         assert rposition_between(v, 1u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 2u, 2u, f) == None;
-        assert rposition_between(v, 2u, 3u, f) == None;
+        assert rposition_between(v, 2u, 2u, f).is_none();
+        assert rposition_between(v, 2u, 3u, f).is_none();
         assert rposition_between(v, 2u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 3u, 3u, f) == None;
+        assert rposition_between(v, 3u, 3u, f).is_none();
         assert rposition_between(v, 3u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 4u, 4u, f) == None;
+        assert rposition_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]
     fn test_rfind() {
-        assert rfind(~[], f) == None;
+        assert rfind(~[], f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
         assert rfind(v, f) == Some((3, 'b'));
-        assert rfind(v, g) == None;
+        assert rfind(v, g).is_none();
     }
 
     #[test]
     fn test_rfind_between() {
-        assert rfind_between(~[], 0u, 0u, f) == None;
+        assert rfind_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rfind_between(v, 0u, 0u, f) == None;
-        assert rfind_between(v, 0u, 1u, f) == None;
+        assert rfind_between(v, 0u, 0u, f).is_none();
+        assert rfind_between(v, 0u, 1u, f).is_none();
         assert rfind_between(v, 0u, 2u, f) == Some((1, 'b'));
         assert rfind_between(v, 0u, 3u, f) == Some((1, 'b'));
         assert rfind_between(v, 0u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 1u, 1u, f) == None;
+        assert rfind_between(v, 1u, 1u, f).is_none();
         assert rfind_between(v, 1u, 2u, f) == Some((1, 'b'));
         assert rfind_between(v, 1u, 3u, f) == Some((1, 'b'));
         assert rfind_between(v, 1u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 2u, 2u, f) == None;
-        assert rfind_between(v, 2u, 3u, f) == None;
+        assert rfind_between(v, 2u, 2u, f).is_none();
+        assert rfind_between(v, 2u, 3u, f).is_none();
         assert rfind_between(v, 2u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 3u, 3u, f) == None;
+        assert rfind_between(v, 3u, 3u, f).is_none();
         assert rfind_between(v, 3u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 4u, 4u, f) == None;
+        assert rfind_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]

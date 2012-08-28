@@ -506,8 +506,8 @@ mod windows {
 
     #[test]
     fn test_extract_unc_prefixes() {
-        assert extract_unc_prefix("\\\\") == None;
-        assert extract_unc_prefix("\\\\hi") == None;
+        assert extract_unc_prefix("\\\\").is_none();
+        assert extract_unc_prefix("\\\\hi").is_none();
         assert extract_unc_prefix("\\\\hi\\") == Some((~"hi", ~"\\"));
         assert extract_unc_prefix("\\\\hi\\there") ==
             Some((~"hi", ~"\\there"));
@@ -517,7 +517,7 @@ mod windows {
 
     #[test]
     fn test_extract_drive_prefixes() {
-        assert extract_drive_prefix("c") == None;
+        assert extract_drive_prefix("c").is_none();
         assert extract_drive_prefix("c:") == Some((~"c", ~""));
         assert extract_drive_prefix("d:") == Some((~"d", ~""));
         assert extract_drive_prefix("z:") == Some((~"z", ~""));

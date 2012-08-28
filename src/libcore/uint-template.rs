@@ -259,9 +259,9 @@ fn test_from_str() {
     assert from_str(~"123456789") == Some(123456789u as T);
     assert from_str(~"00100") == Some(100u as T);
 
-    assert from_str(~"") == None;
-    assert from_str(~" ") == None;
-    assert from_str(~"x") == None;
+    assert from_str(~"").is_none();
+    assert from_str(~" ").is_none();
+    assert from_str(~"x").is_none();
 }
 
 #[test]
@@ -275,8 +275,8 @@ fn test_parse_buf() {
     assert parse_buf(to_bytes(~"ffff"), 16u) == Some(65535u as T);
     assert parse_buf(to_bytes(~"z"), 36u) == Some(35u as T);
 
-    assert parse_buf(to_bytes(~"Z"), 10u) == None;
-    assert parse_buf(to_bytes(~"_"), 2u) == None;
+    assert parse_buf(to_bytes(~"Z"), 10u).is_none();
+    assert parse_buf(to_bytes(~"_"), 2u).is_none();
 }
 
 #[test]
