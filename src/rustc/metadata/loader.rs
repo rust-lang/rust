@@ -187,7 +187,9 @@ fn get_metadata_section(os: os,
             let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
             unsafe {
                 let cvbuf: *u8 = unsafe::reinterpret_cast(cbuf);
-                return Some(@vec::unsafe::from_buf(cvbuf, csz));
+                let v = vec::unsafe::from_buf(cvbuf, csz);
+                let inflated = flate::inflate_buf(v);
+                return Some(@inflated);
             }
         }
         llvm::LLVMMoveToNextSection(si.llsi);
