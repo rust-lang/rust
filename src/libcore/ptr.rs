@@ -172,8 +172,8 @@ impl<T> *T: Ptr {
 }
 
 // Equality for pointers
-impl<T> *T : Eq {
-    pure fn eq(&&other: *T) -> bool { self == other }
+impl<T> *const T : Eq {
+    pure fn eq(&&other: *const T) -> bool { self == other }
 }
 
 #[test]
