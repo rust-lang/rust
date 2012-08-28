@@ -175,7 +175,9 @@ mod write {
                     llvm_err(sess, ~"Could not JIT");
                 }
 
-                if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
+                if sess.time_llvm_passes() {
+                    llvm::LLVMRustPrintPassTimings();
+                }
                 return;
             }
 
