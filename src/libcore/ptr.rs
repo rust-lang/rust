@@ -18,6 +18,7 @@ export buf_len;
 export position;
 export Ptr;
 
+import cmp::Eq;
 import libc::{c_void, size_t};
 
 #[nolink]
@@ -168,6 +169,11 @@ impl<T> *T: Ptr {
 
     /// Returns true if the pointer is not equal to the null pointer.
     pure fn is_not_null() -> bool { is_not_null(self) }
+}
+
+// Equality for pointers
+impl<T: Eq> *T : Eq {
+    pure fn eq(&&other: *T) -> bool { self == other }
 }
 
 #[test]
