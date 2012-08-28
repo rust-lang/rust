@@ -1,5 +1,6 @@
 //! Vectors
 
+import cmp::{Eq, Ord};
 import option::{Some, None};
 import ptr::addr_of;
 import libc::size_t;
@@ -1371,6 +1372,80 @@ pure fn as_mut_buf<T,U>(s: &[mut T],
             let pp : *mut T = ::unsafe::reinterpret_cast(p);
             f(pp, len)
         }
+    }
+}
+
+// Equality
+
+pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    if a_len != b_len { return false; }
+
+    let mut i = 0;
+    while i < a_len {
+        if a[i] != b[i] { return false; }
+        i += 1;
+    }
+
+    return true;
+}
+
+impl<T: Eq> &[T]: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: &[T]) -> bool {
+        eq(self, other)
+    }
+}
+
+impl<T: Eq> ~[T]: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: ~[T]) -> bool {
+        eq(self, other)
+    }
+}
+
+impl<T: Eq> @[T]: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: @[T]) -> bool {
+        eq(self, other)
+    }
+}
+
+// Lexicographical comparison
+
+pure fn lt<T: Ord>(a: &[T], b: &[T]) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    let mut end = uint::min(a_len, b_len);
+
+    let mut i = 0;
+    while i < end {
+        let (c_a, c_b) = (&a[i], &b[i]);
+        if *c_a < *c_b { return true; }
+        if *c_a > *c_b { return false; }
+        i += 1;
+    }
+
+    return a_len < b_len;
+}
+
+impl<T: Ord> &[T]: Ord {
+    #[inline(always)]
+    pure fn lt(&&other: &[T]) -> bool {
+        lt(self, other)
+    }
+}
+
+impl<T: Ord> ~[T]: Ord {
+    #[inline(always)]
+    pure fn lt(&&other: ~[T]) -> bool {
+        lt(self, other)
+    }
+}
+
+impl<T: Ord> @[T]: Ord {
+    #[inline(always)]
+    pure fn lt(&&other: @[T]) -> bool {
+        lt(self, other)
     }
 }
 
