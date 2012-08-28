@@ -359,7 +359,7 @@ fn send<T: send, Tbuffer: send>(+p: send_packet_buffered<T, Tbuffer>,
     let p_ = p.unwrap();
     let p = unsafe { &*p_ };
     assert ptr::addr_of(p.header) == header;
-    assert p.payload == None;
+    assert p.payload.is_none();
     p.payload <- Some(payload);
     let old_state = swap_state_rel(&mut p.header.state, full);
     match old_state {
