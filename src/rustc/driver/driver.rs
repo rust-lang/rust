@@ -62,6 +62,14 @@ fn default_configuration(sess: session, argv0: ~str, input: input) ->
          mk(~"build_input", source_name(input))];
 }
 
+fn append_configuration(cfg: ast::crate_cfg, name: ~str) -> ast::crate_cfg {
+    if attr::contains_name(cfg, name) {
+        return cfg;
+    } else {
+        return vec::append_one(cfg, attr::mk_word_item(name));
+    }
+}
+
 fn build_configuration(sess: session, argv0: ~str, input: input) ->
    ast::crate_cfg {
     // Combine the configuration requested by the session (command line) with
@@ -69,15 +77,14 @@ fn build_configuration(sess: session, argv0: ~str, input: input) ->
     let default_cfg = default_configuration(sess, argv0, input);
     let user_cfg = sess.opts.cfg;
     // If the user wants a test runner, then add the test cfg
-    let gen_cfg =
-        {
-            if sess.opts.test && !attr::contains_name(user_cfg, ~"test") {
-                ~[attr::mk_word_item(~"test")]
-            } else {
-                ~[attr::mk_word_item(~"notest")]
-            }
-        };
-    return vec::append(vec::append(user_cfg, gen_cfg), default_cfg);
+    let user_cfg = append_configuration(
+        user_cfg,
+        if sess.opts.test { ~"test" } else { ~"notest" });
+    // If the user requested GC, then add the GC cfg
+    let user_cfg = append_configuration(
+        user_cfg,
+        if sess.opts.gc { ~"gc" } else { ~"nogc" });
+    return vec::append(user_cfg, default_cfg);
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
