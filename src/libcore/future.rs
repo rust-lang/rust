@@ -37,7 +37,7 @@ struct Future<A> {
 }
 
 priv enum FutureState<A> {
-    Pending(fn@() -> A),
+    Pending(fn~() -> A),
     Evaluating,
     Forced(A)
 }
@@ -93,7 +93,7 @@ fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
     }
 }
 
-fn from_fn<A>(+f: @fn() -> A) -> Future<A> {
+fn from_fn<A>(+f: ~fn() -> A) -> Future<A> {
     /*!
      * Create a future from a function.
      *
@@ -238,5 +238,15 @@ mod test {
     fn test_futurefail() {
         let f = spawn(|| fail);
         let _x: ~str = get(&f);
+    }
+
+    #[test]
+    fn test_sendable_future() {
+        let expected = ~"schlorf";
+        let f = do spawn |copy expected| { expected };
+        do task::spawn {
+            let actual = get(&f);
+            assert actual == expected;
+        }
     }
 }

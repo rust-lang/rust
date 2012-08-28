@@ -1754,7 +1754,7 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
         opts.supervised = true;
         move opts
     };
-    
+
     let b0 = task();
     let b1 = TaskBuilder({
         opts: move opts,

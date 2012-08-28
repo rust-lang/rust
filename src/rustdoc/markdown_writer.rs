@@ -285,15 +285,14 @@ fn future_writer_factory(
 }
 
 fn future_writer() -> (writer, future::Future<~str>) {
-    let port = comm::Port();
-    let chan = comm::Chan(port);
+    let (chan, port) = pipes::stream();
     let writer = fn~(+instr: writeinstr) {
-        comm::send(chan, copy instr);
+        chan.send(copy instr);
     };
     let future = do future::from_fn {
         let mut res = ~"";
         loop {
-            match comm::recv(port) {
+            match port.recv() {
               write(s) => res += s,
               done => break
             }
