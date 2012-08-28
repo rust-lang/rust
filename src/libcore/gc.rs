@@ -167,18 +167,33 @@ fn RootSet() -> RootSet {
     LinearMap()
 }
 
+#[cfg(gc)]
+fn expect_sentinel() -> bool { true }
+
+#[cfg(nogc)]
+fn expect_sentinel() -> bool { false }
+
 // This should only be called from fail, as it will drop the roots
 // which are *live* on the stack, rather than dropping those that are
 // dead.
 fn cleanup_stack_for_failure() {
     unsafe {
-        // Leave a sentinel on the stack to mark the current
-        // frame. The stack walker will ignore any frames above the
-        // sentinel, thus avoiding collecting any memory being used by
-        // the stack walker itself.
+        // Leave a sentinel on the stack to mark the current frame. The
+        // stack walker will ignore any frames above the sentinel, thus
+        // avoiding collecting any memory being used by the stack walker
+        // itself.
+        //
+        // However, when core itself is not compiled with GC, then none of
+        // the functions in core will have GC metadata, which means we
+        // won't be able to find the sentinel root on the stack. In this
+        // case, we can safely skip the sentinel since we won't find our
+        // own stack roots on the stack anyway.
         let sentinel_box = ~0;
-        let sentinel: **Word =
-            unsafe::reinterpret_cast(&ptr::addr_of(sentinel_box));
+        let sentinel: **Word = if expect_sentinel() {
+            unsafe::reinterpret_cast(&ptr::addr_of(sentinel_box))
+        } else {
+            ptr::null()
+        };
 
         let mut roots = ~RootSet();
         for walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
