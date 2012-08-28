@@ -96,11 +96,11 @@ impl<Q: Send> &Sem<Q> {
                 state.count -= 1;
                 if state.count < 0 {
                     // Create waiter nobe.
-                    let (signal_end, wait_end) = pipes::oneshot();
+                    let (SignalEnd, WaitEnd) = pipes::oneshot();
                     // Tell outer scope we need to block.
-                    waiter_nobe = Some(wait_end);
+                    waiter_nobe = Some(WaitEnd);
                     // Enqueue ourself.
-                    state.waiters.tail.send(signal_end);
+                    state.waiters.tail.send(SignalEnd);
                 }
             }
         }
@@ -202,9 +202,9 @@ impl &Condvar {
      */
     fn wait_on(condvar_id: uint) {
         // Create waiter nobe.
-        let (signal_end, wait_end) = pipes::oneshot();
-        let mut wait_end   = Some(wait_end);
-        let mut signal_end = Some(signal_end);
+        let (SignalEnd, WaitEnd) = pipes::oneshot();
+        let mut WaitEnd   = Some(WaitEnd);
+        let mut SignalEnd = Some(SignalEnd);
         let mut reacquire = None;
         let mut out_of_bounds = None;
         unsafe {
@@ -218,8 +218,8 @@ impl &Condvar {
                             signal_waitqueue(&state.waiters);
                         }
                         // Enqueue ourself to be woken up by a signaller.
-                        let signal_end = option::swap_unwrap(&mut signal_end);
-                        state.blocked[condvar_id].tail.send(signal_end);
+                        let SignalEnd = option::swap_unwrap(&mut SignalEnd);
+                        state.blocked[condvar_id].tail.send(SignalEnd);
                     } else {
                         out_of_bounds = Some(vec::len(state.blocked));
                     }
@@ -238,7 +238,7 @@ impl &Condvar {
             // Unconditionally "block". (Might not actually block if a
             // signaller already sent -- I mean 'unconditionally' in contrast
             // with acquire().)
-            let _ = pipes::recv_one(option::swap_unwrap(&mut wait_end));
+            let _ = pipes::recv_one(option::swap_unwrap(&mut WaitEnd));
         }
 
         // This is needed for a failing condition variable to reacquire the
