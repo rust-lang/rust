@@ -254,6 +254,10 @@ fn resolve_expr(expr: @ast::expr, cx: ctxt, visitor: visit::vt<ctxt>) {
 
     let mut new_cx = cx;
     match expr.node {
+      // Calls or overloadable operators
+      // FIXME #3387
+      // ast::expr_index(*) | ast::expr_binary(*) |
+      // ast::expr_unary(*) |
       ast::expr_call(*) => {
         debug!("node %d: %s", expr.id, pprust::expr_to_str(expr,
                                                            cx.sess.intr()));

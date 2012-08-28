@@ -17,6 +17,9 @@ use base::*;
 use type_of::*;
 use std::map::hashmap;
 use util::ppaux::ty_to_str;
+use datum::*;
+use callee::*;
+use expr::{Dest, Ignore};
 
 export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
        trans_intrinsic;
@@ -87,8 +90,8 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             Double => 8,
             Struct => {
               do vec::foldl(0, struct_tys(ty)) |a, t| {
-                    uint::max(a, ty_align(t))
-                }
+                  uint::max(a, ty_align(t))
+              }
             }
             Array => {
                 let elt = llvm::LLVMGetElementType(ty);
@@ -785,210 +788,209 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
 fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
                    path: ast_map::path, substs: param_substs,
-                   ref_id: Option<ast::node_id>) {
+                   ref_id: Option<ast::node_id>)
+{
+    debug!("trans_intrinsic(item.ident=%s)", ccx.sess.str_of(item.ident));
+
     let fcx = new_fn_ctxt_w_id(ccx, path, decl, item.id,
                                Some(substs), Some(item.span));
     let mut bcx = top_scope_block(fcx, None), lltop = bcx.llbb;
     match ccx.sess.str_of(item.ident) {
-      ~"atomic_xchg" => {
-        let old = AtomicRMW(bcx, Xchg,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  SequentiallyConsistent);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xchg_acq" => {
-        let old = AtomicRMW(bcx, Xchg,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  Acquire);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xchg_rel" => {
-        let old = AtomicRMW(bcx, Xchg,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  Release);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xadd" => {
-        let old = AtomicRMW(bcx, lib::llvm::Add,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  SequentiallyConsistent);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xadd_acq" => {
-        let old = AtomicRMW(bcx, lib::llvm::Add,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  Acquire);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xadd_rel" => {
-        let old = AtomicRMW(bcx, lib::llvm::Add,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  Release);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xsub" => {
-        let old = AtomicRMW(bcx, lib::llvm::Sub,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  SequentiallyConsistent);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xsub_acq" => {
-        let old = AtomicRMW(bcx, lib::llvm::Sub,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  Acquire);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"atomic_xsub_rel" => {
-        let old = AtomicRMW(bcx, lib::llvm::Sub,
-                  get_param(decl, first_real_arg),
-                  get_param(decl, first_real_arg + 1u),
-                  Release);
-        Store(bcx, old, fcx.llretptr);
-      }
-      ~"size_of" => {
-        let tp_ty = substs.tys[0];
-        let lltp_ty = type_of::type_of(ccx, tp_ty);
-        Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
-              fcx.llretptr);
-      }
-      ~"move_val" => {
-        let tp_ty = substs.tys[0];
-        let src = {bcx: bcx,
-                   val: get_param(decl, first_real_arg + 1u),
-                   kind: lv_owned};
-        bcx = move_val(bcx, DROP_EXISTING,
-                       get_param(decl, first_real_arg),
-                       src,
-                       tp_ty);
-      }
-      ~"move_val_init" => {
-        let tp_ty = substs.tys[0];
-        let src = {bcx: bcx,
-                   val: get_param(decl, first_real_arg + 1u),
-                   kind: lv_owned};
-        bcx = move_val(bcx, INIT,
-                       get_param(decl, first_real_arg),
-                       src,
-                       tp_ty);
-      }
-      ~"min_align_of" => {
-        let tp_ty = substs.tys[0];
-        let lltp_ty = type_of::type_of(ccx, tp_ty);
-        Store(bcx, C_uint(ccx, shape::llalign_of_min(ccx, lltp_ty)),
-              fcx.llretptr);
-      }
-      ~"pref_align_of"=> {
-        let tp_ty = substs.tys[0];
-        let lltp_ty = type_of::type_of(ccx, tp_ty);
-        Store(bcx, C_uint(ccx, shape::llalign_of_pref(ccx, lltp_ty)),
-              fcx.llretptr);
-      }
-      ~"get_tydesc" => {
-        let tp_ty = substs.tys[0];
-        let static_ti = get_tydesc(ccx, tp_ty);
-        lazily_emit_all_tydesc_glue(ccx, static_ti);
-        // FIXME (#2712): change this to T_ptr(ccx.tydesc_ty) when the
-        // core::sys copy of the get_tydesc interface dies off.
-        let td = PointerCast(bcx, static_ti.tydesc, T_ptr(T_nil()));
-        Store(bcx, td, fcx.llretptr);
-      }
-      ~"init" => {
-        let tp_ty = substs.tys[0];
-        let lltp_ty = type_of::type_of(ccx, tp_ty);
-        if !ty::type_is_nil(tp_ty) {
-            Store(bcx, C_null(lltp_ty), fcx.llretptr);
+        ~"atomic_xchg" => {
+            let old = AtomicRMW(bcx, Xchg,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                SequentiallyConsistent);
+            Store(bcx, old, fcx.llretptr);
         }
-      }
-      ~"forget" => {}
-      ~"reinterpret_cast" => {
-        let tp_ty = substs.tys[0];
-        let lltp_ty = type_of::type_of(ccx, tp_ty);
-        let llout_ty = type_of::type_of(ccx, substs.tys[1]);
-        let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
+        ~"atomic_xchg_acq" => {
+            let old = AtomicRMW(bcx, Xchg,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Acquire);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_xchg_rel" => {
+            let old = AtomicRMW(bcx, Xchg,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Release);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_xadd" => {
+            let old = AtomicRMW(bcx, lib::llvm::Add,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                SequentiallyConsistent);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_xadd_acq" => {
+            let old = AtomicRMW(bcx, lib::llvm::Add,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Acquire);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_xadd_rel" => {
+            let old = AtomicRMW(bcx, lib::llvm::Add,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Release);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_xsub" => {
+            let old = AtomicRMW(bcx, lib::llvm::Sub,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                SequentiallyConsistent);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_xsub_acq" => {
+            let old = AtomicRMW(bcx, lib::llvm::Sub,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Acquire);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"atomic_xsub_rel" => {
+            let old = AtomicRMW(bcx, lib::llvm::Sub,
+                                get_param(decl, first_real_arg),
+                                get_param(decl, first_real_arg + 1u),
+                                Release);
+            Store(bcx, old, fcx.llretptr);
+        }
+        ~"size_of" => {
+            let tp_ty = substs.tys[0];
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            Store(bcx, C_uint(ccx, shape::llsize_of_real(ccx, lltp_ty)),
+                  fcx.llretptr);
+        }
+        ~"move_val" => {
+            let tp_ty = substs.tys[0];
+            let src = Datum {val: get_param(decl, first_real_arg + 1u),
+                             ty: tp_ty, mode: ByRef, source: FromLvalue};
+            bcx = src.move_to(bcx, DROP_EXISTING,
+                              get_param(decl, first_real_arg));
+        }
+        ~"move_val_init" => {
+            let tp_ty = substs.tys[0];
+            let src = Datum {val: get_param(decl, first_real_arg + 1u),
+                             ty: tp_ty, mode: ByRef, source: FromLvalue};
+            bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
+        }
+        ~"min_align_of" => {
+            let tp_ty = substs.tys[0];
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            Store(bcx, C_uint(ccx, shape::llalign_of_min(ccx, lltp_ty)),
+                  fcx.llretptr);
+        }
+        ~"pref_align_of"=> {
+            let tp_ty = substs.tys[0];
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            Store(bcx, C_uint(ccx, shape::llalign_of_pref(ccx, lltp_ty)),
+                  fcx.llretptr);
+        }
+        ~"get_tydesc" => {
+            let tp_ty = substs.tys[0];
+            let static_ti = get_tydesc(ccx, tp_ty);
+            glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+
+            // FIXME (#2712): change this to T_ptr(ccx.tydesc_ty) when the
+            // core::sys copy of the get_tydesc interface dies off.
+            let td = PointerCast(bcx, static_ti.tydesc, T_ptr(T_nil()));
+            Store(bcx, td, fcx.llretptr);
+        }
+        ~"init" => {
+            let tp_ty = substs.tys[0];
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            if !ty::type_is_nil(tp_ty) {
+                Store(bcx, C_null(lltp_ty), fcx.llretptr);
+            }
+        }
+        ~"forget" => {}
+        ~"reinterpret_cast" => {
+            let tp_ty = substs.tys[0];
+            let lltp_ty = type_of::type_of(ccx, tp_ty);
+            let llout_ty = type_of::type_of(ccx, substs.tys[1]);
+            let tp_sz = shape::llsize_of_real(ccx, lltp_ty),
             out_sz = shape::llsize_of_real(ccx, llout_ty);
-        if tp_sz != out_sz {
-            let sp = match ccx.tcx.items.get(option::get(ref_id)) {
-              ast_map::node_expr(e) => e.span,
-              _ => fail ~"reinterpret_cast or forget has non-expr arg"
-            };
-            ccx.sess.span_fatal(
-                sp, fmt!("reinterpret_cast called on types \
-                          with different size: %s (%u) to %s (%u)",
-                         ty_to_str(ccx.tcx, tp_ty), tp_sz,
-                         ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
+          if tp_sz != out_sz {
+              let sp = match ccx.tcx.items.get(option::get(ref_id)) {
+                  ast_map::node_expr(e) => e.span,
+                  _ => fail ~"reinterpret_cast or forget has non-expr arg"
+              };
+              ccx.sess.span_fatal(
+                  sp, fmt!("reinterpret_cast called on types \
+                            with different size: %s (%u) to %s (%u)",
+                           ty_to_str(ccx.tcx, tp_ty), tp_sz,
+                           ty_to_str(ccx.tcx, substs.tys[1]), out_sz));
+          }
+          if !ty::type_is_nil(substs.tys[1]) {
+              // NB: Do not use a Load and Store here. This causes
+              // massive code bloat when reinterpret_cast is used on
+              // large structural types.
+              let llretptr = PointerCast(bcx, fcx.llretptr, T_ptr(T_i8()));
+              let llcast = get_param(decl, first_real_arg);
+              let llcast = PointerCast(bcx, llcast, T_ptr(T_i8()));
+              call_memmove(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
+          }
+      }
+        ~"addr_of" => {
+            Store(bcx, get_param(decl, first_real_arg), fcx.llretptr);
         }
-        if !ty::type_is_nil(substs.tys[1]) {
-            // NB: Do not use a Load and Store here. This causes massive code
-            // bloat when reinterpret_cast is used on large structural types.
-            let llretptr = PointerCast(bcx, fcx.llretptr, T_ptr(T_i8()));
-            let llcast = get_param(decl, first_real_arg);
-            let llcast = PointerCast(bcx, llcast, T_ptr(T_i8()));
-            call_memmove(bcx, llretptr, llcast, llsize_of(ccx, lltp_ty));
+        ~"needs_drop" => {
+            let tp_ty = substs.tys[0];
+            Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
+                  fcx.llretptr);
         }
-      }
-      ~"addr_of" => {
-        Store(bcx, get_param(decl, first_real_arg), fcx.llretptr);
-      }
-      ~"needs_drop" => {
-        let tp_ty = substs.tys[0];
-        Store(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)),
-              fcx.llretptr);
-      }
-      ~"visit_tydesc" => {
-        let td = get_param(decl, first_real_arg);
-        let visitor = get_param(decl, first_real_arg + 1u);
-        let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
-        call_tydesc_glue_full(bcx, visitor, td,
-                              abi::tydesc_field_visit_glue, None);
-      }
-      ~"frame_address" => {
-        let frameaddress = ccx.intrinsics.get(~"llvm.frameaddress");
-        let frameaddress_val = Call(bcx, frameaddress, ~[C_i32(0i32)]);
-        let fty = ty::mk_fn(bcx.tcx(), {
-            purity: ast::impure_fn,
-            proto:
-                ty::proto_vstore(ty::vstore_slice(
-                    ty::re_bound(ty::br_anon(0)))),
-            bounds: @~[],
-            inputs: ~[{
-                mode: ast::expl(ast::by_val),
-                ty: ty::mk_imm_ptr(
-                    bcx.tcx(),
-                    ty::mk_mach_uint(bcx.tcx(), ast::ty_u8))
-            }],
-            output: ty::mk_nil(bcx.tcx()),
-            ret_style: ast::return_val
-        });
-        bcx = trans_call_inner(bcx, None, fty, ty::mk_nil(bcx.tcx()),
-                               |bcx| lval_no_env(
-                                   bcx,
-                                   get_param(decl, first_real_arg),
-                                   lv_temporary),
-                               arg_vals(~[frameaddress_val]), ignore);
-      }
-      ~"morestack_addr" => {
-        // XXX This is a hack to grab the address of this particular
-        // native function. There should be a general in-language
-        // way to do this
-        let llfty = type_of_fn(bcx.ccx(), ~[], ty::mk_nil(bcx.tcx()));
-        let morestack_addr = decl_cdecl_fn(
-            bcx.ccx().llmod, ~"__morestack", llfty);
-        let morestack_addr = PointerCast(bcx, morestack_addr, T_ptr(T_nil()));
-        Store(bcx, morestack_addr, fcx.llretptr);
-      }
-      _ => {
-      // Could we make this an enum rather than a string? does it get
-      // checked earlier?
-          ccx.sess.span_bug(item.span, ~"unknown intrinsic");
-      }
+        ~"visit_tydesc" => {
+            let td = get_param(decl, first_real_arg);
+            let visitor = get_param(decl, first_real_arg + 1u);
+            let td = PointerCast(bcx, td, T_ptr(ccx.tydesc_type));
+            glue::call_tydesc_glue_full(bcx, visitor, td,
+                                        abi::tydesc_field_visit_glue, None);
+        }
+        ~"frame_address" => {
+            let frameaddress = ccx.intrinsics.get(~"llvm.frameaddress");
+            let frameaddress_val = Call(bcx, frameaddress, ~[C_i32(0i32)]);
+            let fty = ty::mk_fn(bcx.tcx(), {
+                purity: ast::impure_fn,
+                proto:
+                    ty::proto_vstore(ty::vstore_slice(
+                        ty::re_bound(ty::br_anon(0)))),
+                bounds: @~[],
+                inputs: ~[{
+                    mode: ast::expl(ast::by_val),
+                    ty: ty::mk_imm_ptr(
+                        bcx.tcx(),
+                        ty::mk_mach_uint(bcx.tcx(), ast::ty_u8))
+                }],
+                output: ty::mk_nil(bcx.tcx()),
+                ret_style: ast::return_val
+            });
+            let datum = Datum {val: get_param(decl, first_real_arg),
+                               mode: ByRef, ty: fty, source: FromLvalue};
+            bcx = trans_call_inner(
+                bcx, None, fty, ty::mk_nil(bcx.tcx()),
+                |bcx| Callee {bcx: bcx, data: Closure(datum)},
+                ArgVals(~[frameaddress_val]), Ignore);
+        }
+        ~"morestack_addr" => {
+            // XXX This is a hack to grab the address of this particular
+            // native function. There should be a general in-language
+            // way to do this
+            let llfty = type_of_fn(bcx.ccx(), ~[], ty::mk_nil(bcx.tcx()));
+            let morestack_addr = decl_cdecl_fn(
+                bcx.ccx().llmod, ~"__morestack", llfty);
+            let morestack_addr = PointerCast(bcx, morestack_addr,
+                                             T_ptr(T_nil()));
+            Store(bcx, morestack_addr, fcx.llretptr);
+        }
+        _ => {
+            // Could we make this an enum rather than a string? does it get
+            // checked earlier?
+            ccx.sess.span_bug(item.span, ~"unknown intrinsic");
+        }
     }
     build_return(bcx);
     finish_fn(fcx, lltop);

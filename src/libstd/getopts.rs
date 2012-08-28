@@ -800,10 +800,11 @@ mod tests {
         let rs = getopts(args, opts);
         match rs {
           Ok(m) => {
-            assert (opt_present(m, ~"test"));
-            assert (opt_str(m, ~"test") == ~"20");
-            assert (opt_strs(m, ~"test")[0] == ~"20");
-            assert (opt_strs(m, ~"test")[1] == ~"30");
+              assert (opt_present(m, ~"test"));
+              assert (opt_str(m, ~"test") == ~"20");
+              let pair = opt_strs(m, ~"test");
+              assert (pair[0] == ~"20");
+              assert (pair[1] == ~"30");
           }
           _ => fail
         }
@@ -854,8 +855,9 @@ mod tests {
           Ok(m) => {
             assert (opt_present(m, ~"t"));
             assert (opt_str(m, ~"t") == ~"20");
-            assert (opt_strs(m, ~"t")[0] == ~"20");
-            assert (opt_strs(m, ~"t")[1] == ~"30");
+            let pair = opt_strs(m, ~"t");
+            assert (pair[0] == ~"20");
+            assert (pair[1] == ~"30");
           }
           _ => fail
         }
@@ -903,10 +905,12 @@ mod tests {
             assert (opt_present(m, ~"flag"));
             assert (opt_str(m, ~"long") == ~"30");
             assert (opt_present(m, ~"f"));
-            assert (opt_strs(m, ~"m")[0] == ~"40");
-            assert (opt_strs(m, ~"m")[1] == ~"50");
-            assert (opt_strs(m, ~"n")[0] == ~"-A B");
-            assert (opt_strs(m, ~"n")[1] == ~"-60 70");
+            let pair = opt_strs(m, ~"m");
+            assert (pair[0] == ~"40");
+            assert (pair[1] == ~"50");
+            let pair = opt_strs(m, ~"n");
+            assert (pair[0] == ~"-A B");
+            assert (pair[1] == ~"-60 70");
             assert (!opt_present(m, ~"notpresent"));
           }
           _ => fail

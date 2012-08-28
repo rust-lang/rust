@@ -19,7 +19,7 @@ const min_granularity : uint = 1024u;
  * like map or alli.
  */
 fn map_slices<A: copy send, B: copy send>(
-    xs: ~[A],
+    xs: &[A],
     f: fn() -> fn~(uint, v: &[A]) -> B)
     -> ~[B] {
 
@@ -104,7 +104,7 @@ fn mapi<A: copy send, B: copy send>(xs: ~[A],
  * inner elements. This is to skirt the need for copy constructors.
  */
 fn mapi_factory<A: copy send, B: copy send>(
-    xs: ~[A], f: fn() -> fn~(uint, A) -> B) -> ~[B] {
+    xs: &[A], f: fn() -> fn~(uint, A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
         let f = f();
         fn~(base: uint, slice : &[A], move f) -> ~[B] {

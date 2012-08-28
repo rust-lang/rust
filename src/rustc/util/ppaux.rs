@@ -21,16 +21,19 @@ use syntax::{ast, ast_util};
 use syntax::ast_map;
 use driver::session::session;
 
-fn note_and_explain_region(cx: ctxt, prefix: ~str, region: ty::region) {
+fn note_and_explain_region(cx: ctxt,
+                           prefix: ~str,
+                           region: ty::region,
+                           suffix: ~str) {
     match explain_region_and_span(cx, region) {
       (str, Some(span)) => {
         cx.sess.span_note(
             span,
-            fmt!("%s %s", prefix, str));
+            fmt!("%s%s%s", prefix, str, suffix));
       }
       (str, None) => {
         cx.sess.note(
-            fmt!("%s %s", prefix, str));
+            fmt!("%s%s%s", prefix, str, suffix));
       }
     }
 }
@@ -55,7 +58,7 @@ fn explain_region_and_span(cx: ctxt, region: ty::region)
           Some(ast_map::node_expr(expr)) => {
             match expr.node {
               ast::expr_call(*) => explain_span(cx, ~"call", expr.span),
-              ast::expr_match(*) => explain_span(cx, ~"alt", expr.span),
+              ast::expr_match(*) => explain_span(cx, ~"match", expr.span),
               _ => explain_span(cx, ~"expression", expr.span)
             }
           }

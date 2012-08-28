@@ -456,9 +456,11 @@ extern mod llvm {
        ValueRef;
     fn LLVMConstAShr(LHSConstant: ValueRef, RHSConstant: ValueRef) ->
        ValueRef;
-    fn LLVMConstGEP(ConstantVal: ValueRef, ConstantIndices: *uint,
+    fn LLVMConstGEP(ConstantVal: ValueRef,
+                    ConstantIndices: *ValueRef,
                     NumIndices: c_uint) -> ValueRef;
-    fn LLVMConstInBoundsGEP(ConstantVal: ValueRef, ConstantIndices: *uint,
+    fn LLVMConstInBoundsGEP(ConstantVal: ValueRef,
+                            ConstantIndices: *ValueRef,
                             NumIndices: c_uint) -> ValueRef;
     fn LLVMConstTrunc(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
     fn LLVMConstSExt(ConstantVal: ValueRef, ToType: TypeRef) -> ValueRef;
@@ -493,10 +495,10 @@ extern mod llvm {
     fn LLVMConstShuffleVector(VectorAConstant: ValueRef,
                               VectorBConstant: ValueRef,
                               MaskConstant: ValueRef) -> ValueRef;
-    fn LLVMConstExtractValue(AggConstant: ValueRef, IdxList: *uint,
+    fn LLVMConstExtractValue(AggConstant: ValueRef, IdxList: *c_uint,
                              NumIdx: c_uint) -> ValueRef;
     fn LLVMConstInsertValue(AggConstant: ValueRef,
-                            ElementValueConstant: ValueRef, IdxList: *uint,
+                            ElementValueConstant: ValueRef, IdxList: *c_uint,
                             NumIdx: c_uint) -> ValueRef;
     fn LLVMConstInlineAsm(Ty: TypeRef, AsmString: *c_char,
                           Constraints: *c_char, HasSideEffects: Bool,

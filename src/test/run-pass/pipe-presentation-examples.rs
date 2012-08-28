@@ -23,8 +23,8 @@ macro_rules! select_if (
     } => {
         if $index == $count {
             match move pipes::try_recv($port) {
-              $(Some($message($($(move $x,)+)* next)) => {
-                let $next = unsafe { let x <- *ptr::addr_of(next); x };
+              $(Some($message($($(move $x,)+)* move next)) => {
+                let $next = next;
                 $e
               })+
               _ => fail

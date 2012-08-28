@@ -100,6 +100,9 @@ endif
 ifdef TIME_LLVM_PASSES
   CFG_RUSTC_FLAGS += -Z time-llvm-passes
 endif
+ifdef TRACE
+  CFG_RUSTC_FLAGS += -Z trace
+endif
 
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk

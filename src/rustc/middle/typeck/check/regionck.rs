@@ -286,12 +286,14 @@ fn constrain_free_variables(
                 ~"captured variable does not outlive the enclosing closure");
             note_and_explain_region(
                 tcx,
-                ~"captured variable is valid for",
-                en_region);
+                ~"captured variable is valid for ",
+                en_region,
+                ~"");
             note_and_explain_region(
                 tcx,
-                ~"closure is valid for",
-                region);
+                ~"closure is valid for ",
+                region,
+                ~"");
           }
         }
     }
@@ -337,8 +339,9 @@ fn constrain_regions_in_type(
                 fmt!("reference is not valid outside of its lifetime"));
             note_and_explain_region(
                 tcx,
-                ~"the reference is only valid for",
-                region);
+                ~"the reference is only valid for ",
+                region,
+                ~"");
             rcx.errors_reported += 1u;
           }
           result::Ok(()) => {

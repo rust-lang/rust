@@ -35,6 +35,13 @@ use back_ = back;
 
 mod middle {
     mod trans {
+        mod inline;
+        mod monomorphize;
+        mod controlflow;
+        mod glue;
+        mod datum;
+        mod callee;
+        mod expr;
         mod common;
         mod consts;
         mod type_of;

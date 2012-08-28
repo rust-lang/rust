@@ -423,6 +423,7 @@ impl check_loan_ctxt {
                     e.cmt.span,
                     fmt!("illegal borrow unless pure: %s",
                          self.bccx.bckerr_code_to_str(e.code)));
+                self.bccx.note_and_explain_bckerr(e.code);
                 self.tcx().sess.span_note(
                     sp,
                     fmt!("impure due to %s", msg));
@@ -484,10 +485,14 @@ impl check_loan_ctxt {
     // when there is an outstanding loan.  In that case, it is not
     // safe to consider the use a last_use.
     fn check_last_use(expr: @ast::expr) {
+        debug!("Checking last use of expr %?", expr.id);
         let cmt = self.bccx.cat_expr(expr);
         let lp = match cmt.lp {
-          None => return,
-          Some(lp) => lp
+            None => {
+                debug!("Not a loanable expression");
+                return;
+            }
+            Some(lp) => lp
         };
         for self.walk_loans_of(cmt.id, lp) |_loan| {
             debug!("Removing last use entry %? due to outstanding loan",
@@ -592,6 +597,9 @@ fn check_loans_in_local(local: @ast::local,
 fn check_loans_in_expr(expr: @ast::expr,
                        &&self: check_loan_ctxt,
                        vt: visit::vt<check_loan_ctxt>) {
+    debug!("check_loans_in_expr(expr=%?/%s)",
+           expr.id, pprust::expr_to_str(expr, self.tcx().sess.intr()));
+
     self.check_for_conflicting_loans(expr.id);
 
     match expr.node {

@@ -1169,29 +1169,38 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
               None => ()
             }
             word_space(s, ~"=>");
+
             // Extract the expression from the extra block the parser adds
-            assert arm.body.node.view_items.is_empty();
-            assert arm.body.node.stmts.is_empty();
-            assert arm.body.node.rules == ast::default_blk;
-            match arm.body.node.expr {
-              Some(expr) => {
-                match expr.node {
-                  ast::expr_block(blk) => {
-                    // the block will close the pattern's ibox
-                    print_block_unclosed_indent(s, blk, alt_indent_unit);
-                  }
-                  _ => {
-                    end(s); // close the ibox for the pattern
-                    print_expr(s, expr);
-                  }
+            // in the case of foo => expr
+            if arm.body.node.view_items.is_empty() &&
+                arm.body.node.stmts.is_empty() &&
+                arm.body.node.rules == ast::default_blk &&
+                arm.body.node.expr.is_some()
+            {
+                match arm.body.node.expr {
+                    Some(expr) => {
+                        match expr.node {
+                            ast::expr_block(blk) => {
+                                // the block will close the pattern's ibox
+                                print_block_unclosed_indent(
+                                    s, blk, alt_indent_unit);
+                            }
+                            _ => {
+                                end(s); // close the ibox for the pattern
+                                print_expr(s, expr);
+                            }
+                        }
+                        if !expr_is_simple_block(expr)
+                            && i < len - 1 {
+                            word(s.s, ~",");
+                        }
+                        end(s); // close enclosing cbox
+                    }
+                    None => fail
                 }
-                if !expr_is_simple_block(expr)
-                    && i < len - 1 {
-                    word(s.s, ~",");
-                }
-                end(s); // close enclosing cbox
-              }
-              None => fail
+            } else {
+                // the block will close the pattern's ibox
+                print_block_unclosed_indent(s, arm.body, alt_indent_unit);
             }
         }
         bclose_(s, expr.span, alt_indent_unit);

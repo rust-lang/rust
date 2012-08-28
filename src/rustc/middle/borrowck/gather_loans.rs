@@ -90,8 +90,8 @@ fn req_loans_in_expr(ex: @ast::expr,
     let tcx = bccx.tcx;
     let old_root_ub = self.root_ub;
 
-    debug!("req_loans_in_expr(ex=%s)",
-           pprust::expr_to_str(ex, tcx.sess.intr()));
+    debug!("req_loans_in_expr(expr=%?/%s)",
+           ex.id, pprust::expr_to_str(ex, tcx.sess.intr()));
 
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.borrowings.find(ex.id).each |borrow| {
@@ -199,6 +199,21 @@ fn req_loans_in_expr(ex: @ast::expr,
         self.guarantee_valid(rcvr_cmt, m_imm, scope_r);
         visit::visit_expr(ex, self, vt);
       }
+
+      // FIXME--#3387
+      // ast::expr_binary(_, lhs, rhs) => {
+      //     // Universal comparison operators like ==, >=, etc
+      //     // take their arguments by reference.
+      //     let lhs_ty = ty::expr_ty(self.tcx(), lhs);
+      //     if !ty::type_is_scalar(lhs_ty) {
+      //         let scope_r = ty::re_scope(ex.id);
+      //         let lhs_cmt = self.bccx.cat_expr(lhs);
+      //         self.guarantee_valid(lhs_cmt, m_imm, scope_r);
+      //         let rhs_cmt = self.bccx.cat_expr(rhs);
+      //         self.guarantee_valid(rhs_cmt, m_imm, scope_r);
+      //     }
+      //     visit::visit_expr(ex, self, vt);
+      // }
 
       ast::expr_field(rcvr, _, _)
       if self.bccx.method_map.contains_key(ex.id) => {
@@ -395,14 +410,15 @@ impl gather_loan_ctxt {
     }
 
     fn add_loans(scope_id: ast::node_id, loans: @DVec<loan>) {
+        debug!("adding %u loans to scope_id %?", loans.len(), scope_id);
         match self.req_maps.req_loan_map.find(scope_id) {
-          Some(l) => {
-            (*l).push(loans);
-          }
-          None => {
-            self.req_maps.req_loan_map.insert(
-                scope_id, @dvec::from_vec(~[mut loans]));
-          }
+            Some(l) => {
+                l.push(loans);
+            }
+            None => {
+                self.req_maps.req_loan_map.insert(
+                    scope_id, @dvec::from_vec(~[mut loans]));
+            }
         }
     }
 

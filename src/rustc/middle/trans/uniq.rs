@@ -4,52 +4,41 @@ use common::*;
 use build::*;
 use base::*;
 use shape::llsize_of;
+use datum::immediate_rvalue;
 
 export make_free_glue, autoderef, duplicate;
 
-fn make_free_glue(bcx: block, vptrptr: ValueRef, t: ty::t)
+fn make_free_glue(bcx: block, vptrptr: ValueRef, box_ty: ty::t)
     -> block {
     let _icx = bcx.insn_ctxt("uniq::make_free_glue");
-    let vptr = Load(bcx, vptrptr);
-    do with_cond(bcx, IsNotNull(bcx, vptr)) |bcx| {
-        let content_ty = content_ty(t);
-        let body_ptr = opaque_box_body(bcx, content_ty, vptr);
-        let bcx = drop_ty(bcx, body_ptr, content_ty);
-        trans_unique_free(bcx, vptr)
+    let box_datum = immediate_rvalue(Load(bcx, vptrptr), box_ty);
+
+    let not_null = IsNotNull(bcx, box_datum.val);
+    do with_cond(bcx, not_null) |bcx| {
+        let body_datum = box_datum.box_body(bcx);
+        let bcx = glue::drop_ty(bcx, body_datum.to_ref_llval(bcx),
+                                body_datum.ty);
+        glue::trans_unique_free(bcx, box_datum.val)
     }
 }
 
-fn content_ty(t: ty::t) -> ty::t {
-    match ty::get(t).struct {
-      ty::ty_uniq({ty: ct, _}) => ct,
-      _ => core::unreachable()
-    }
-}
-
-fn autoderef(bcx: block, v: ValueRef, t: ty::t) -> {v: ValueRef, t: ty::t} {
-    let content_ty = content_ty(t);
-    let v = opaque_box_body(bcx, content_ty, v);
-    return {v: v, t: content_ty};
-}
-
-fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
+fn duplicate(bcx: block, src_box: ValueRef, src_ty: ty::t) -> Result {
     let _icx = bcx.insn_ctxt("uniq::duplicate");
-    let content_ty = content_ty(t);
+
+    // Load the body of the source (*src)
+    let src_datum = immediate_rvalue(src_box, src_ty);
+    let body_datum = src_datum.box_body(bcx);
+
+    // Malloc space in exchange heap and copy src into it
     let {bcx: bcx, box: dst_box, body: dst_body} =
-        malloc_unique(bcx, content_ty);
+        malloc_unique(bcx, body_datum.ty);
+    body_datum.copy_to(bcx, datum::INIT, dst_body);
 
-    let src_box = v;
-    let src_body = opaque_box_body(bcx, content_ty, src_box);
-    let src_body = load_if_immediate(bcx, src_body, content_ty);
-    debug!("ST: %?", val_str(bcx.ccx().tn, src_body));
-    debug!("DT: %?", val_str(bcx.ccx().tn, dst_body));
-    let bcx = copy_val(bcx, INIT, dst_body, src_body, content_ty);
-
+    // Copy the type descriptor
     let src_tydesc_ptr = GEPi(bcx, src_box,
                               [0u, back::abi::box_field_tydesc]);
     let dst_tydesc_ptr = GEPi(bcx, dst_box,
                               [0u, back::abi::box_field_tydesc]);
-
     let td = Load(bcx, src_tydesc_ptr);
     Store(bcx, td, dst_tydesc_ptr);
 
