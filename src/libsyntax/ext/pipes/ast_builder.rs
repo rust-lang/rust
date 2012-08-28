@@ -4,6 +4,7 @@
 // something smarter.
 
 import ast::{ident, node_id};
+import ast_util::respan;
 import codemap::span;
 import ext::base::mk_ctxt;
 
@@ -209,8 +210,21 @@ impl ext_ctxt: ext_ctxt_ast_builder {
     fn item(name: ident,
             span: span,
             +node: ast::item_) -> @ast::item {
+
+        // XXX: Would be nice if our generated code didn't violate
+        // Rust coding conventions
+        let non_camel_case_attribute = respan(self.empty_span(), {
+            style: ast::attr_outer,
+            value: respan(self.empty_span(),
+                          ast::meta_list(~"allow", ~[
+                              @respan(self.empty_span(),
+                                      ast::meta_word(~"non_camel_case_types"))
+                          ])),
+            is_sugared_doc: false
+        });
+
         @{ident: name,
-         attrs: ~[],
+         attrs: ~[non_camel_case_attribute],
          id: self.next_id(),
          node: node,
          vis: ast::public,

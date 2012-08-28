@@ -7,7 +7,7 @@ import std::map;
 import std::map::hashmap;
 import std::sort;
 import io::ReaderUtil;
-import pipes::{stream, port, chan};
+import pipes::{stream, Port, Chan};
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str { 
@@ -88,8 +88,8 @@ fn windows_with_carry(bb: &[u8], nn: uint,
    return vec::slice(bb, len - (nn - 1u), len); 
 }
 
-fn make_sequence_processor(sz: uint, from_parent: pipes::port<~[u8]>,
-                           to_parent: pipes::chan<~str>) {
+fn make_sequence_processor(sz: uint, from_parent: pipes::Port<~[u8]>,
+                           to_parent: pipes::Chan<~str>) {
    
    let freqs: hashmap<~[u8], uint> = map::bytes_hash();
    let mut carry: ~[u8] = ~[];

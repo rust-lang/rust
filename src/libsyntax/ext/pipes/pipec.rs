@@ -72,10 +72,10 @@ impl message: gen_send {
                 };
 
                 body += ~"let b = pipe.reuse_buffer();\n";
-                body += fmt!("let %s = pipes::send_packet_buffered(\
+                body += fmt!("let %s = pipes::SendPacketBuffered(\
                               ptr::addr_of(b.buffer.data.%s));\n",
                              sp, next.name);
-                body += fmt!("let %s = pipes::recv_packet_buffered(\
+                body += fmt!("let %s = pipes::RecvPacketBuffered(\
                               ptr::addr_of(b.buffer.data.%s));\n",
                              rp, next.name);
             }
@@ -258,7 +258,7 @@ impl state: to_type_decls {
                           self.span,
                           cx.ty_path_ast_builder(
                               path(~[cx.ident_of(~"pipes"),
-                                     cx.ident_of(dir.to_str() + ~"_packet")],
+                                     cx.ident_of(dir.to_str() + ~"Packet")],
                                    empty_span())
                               .add_ty(cx.ty_path_ast_builder(
                                   path(~[cx.ident_of(self.proto.name),
@@ -275,7 +275,7 @@ impl state: to_type_decls {
                           cx.ty_path_ast_builder(
                               path(~[cx.ident_of(~"pipes"),
                                      cx.ident_of(dir.to_str()
-                                                 + ~"_packet_buffered")],
+                                                 + ~"PacketBuffered")],
                                   empty_span())
                               .add_tys(~[cx.ty_path_ast_builder(
                                   path(~[cx.ident_of(self.proto.name),
@@ -321,7 +321,7 @@ impl protocol: gen_init {
         };
 
         cx.parse_item(fmt!("fn init%s() -> (client::%s, server::%s)\
-                            { import pipes::has_buffer; %s }",
+                            { import pipes::HasBuffer; %s }",
                            start_state.ty_params.to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
@@ -341,7 +341,7 @@ impl protocol: gen_init {
         let buffer_fields = self.gen_buffer_init(ext_cx);
 
         let buffer = #ast {
-            ~{header: pipes::buffer_header(),
+            ~{header: pipes::BufferHeader(),
               data: $(buffer_fields)}
         };
 
@@ -349,7 +349,7 @@ impl protocol: gen_init {
             ext_cx.block(
                 self.states.map_to_vec(
                     |s| ext_cx.parse_stmt(
-                        fmt!("data.%s.set_buffer(buffer)",
+                        fmt!("data.%s.set_buffer_(buffer)",
                              s.name))),
                 ext_cx.parse_expr(
                     fmt!("ptr::addr_of(data.%s)",
@@ -390,7 +390,7 @@ impl protocol: gen_init {
             }
             let ty = s.to_ty(cx);
             let fty = #ast[ty] {
-                pipes::packet<$(ty)>
+                pipes::Packet<$(ty)>
             };
             cx.ty_field_imm(cx.ident_of(s.name), fty)
         };

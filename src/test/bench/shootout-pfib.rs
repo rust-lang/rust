@@ -15,8 +15,8 @@ use std;
 import std::{time, getopts};
 import io::WriterUtil;
 import int::range;
-import pipes::port;
-import pipes::chan;
+import pipes::Port;
+import pipes::Chan;
 import pipes::send;
 import pipes::recv;
 
@@ -24,7 +24,7 @@ import core::result;
 import result::{Ok, Err};
 
 fn fib(n: int) -> int {
-    fn pfib(c: chan<int>, n: int) {
+    fn pfib(c: Chan<int>, n: int) {
         if n == 0 {
             c.send(0);
         } else if n <= 2 {

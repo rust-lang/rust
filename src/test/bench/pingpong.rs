@@ -64,7 +64,7 @@ macro_rules! follow (
     )
 )
 
-fn switch<T: send, Tb: send, U>(+endp: pipes::recv_packet_buffered<T, Tb>,
+fn switch<T: send, Tb: send, U>(+endp: pipes::RecvPacketBuffered<T, Tb>,
                       f: fn(+Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }

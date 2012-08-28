@@ -1,6 +1,6 @@
 // xfail-fast
 
-import pipes::{select2, selectable};
+import pipes::{Select2, Selectable};
 
 fn main() {
     let (c,p) = pipes::stream();

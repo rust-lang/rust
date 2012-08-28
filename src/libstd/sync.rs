@@ -19,13 +19,13 @@ import unsafe::{Exclusive, exclusive};
 
 // Each waiting task receives on one of these.
 #[doc(hidden)]
-type WaitEnd = pipes::port_one<()>;
+type WaitEnd = pipes::PortOne<()>;
 #[doc(hidden)]
-type SignalEnd = pipes::chan_one<()>;
+type SignalEnd = pipes::ChanOne<()>;
 // A doubly-ended queue of waiting tasks.
 #[doc(hidden)]
-struct Waitqueue { head: pipes::port<SignalEnd>;
-                   tail: pipes::chan<SignalEnd>; }
+struct Waitqueue { head: pipes::Port<SignalEnd>;
+                   tail: pipes::Chan<SignalEnd>; }
 
 fn new_waitqueue() -> Waitqueue {
     let (block_tail, block_head) = pipes::stream();
@@ -928,8 +928,8 @@ mod tests {
             assert woken == 0;
         }
         struct SendOnFailure {
-            c: pipes::chan<()>;
-            new(+c: pipes::chan<()>) { self.c = c; }
+            c: pipes::Chan<()>;
+            new(+c: pipes::Chan<()>) { self.c = c; }
             drop { self.c.send(()); }
         }
     }

@@ -3,9 +3,9 @@
 use std;
 import pipes;
 import pipes::send;
-import pipes::port;
+import pipes::Port;
 import pipes::recv;
-import pipes::chan;
+import pipes::Chan;
 
 // Tests of ports and channels on various types
 fn test_rec() {

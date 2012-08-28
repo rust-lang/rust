@@ -10,7 +10,7 @@ use std;
 import io::Writer;
 import io::WriterUtil;
 
-import pipes::{port, PortSet, chan};
+import pipes::{Port, PortSet, Chan};
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
@@ -22,7 +22,7 @@ enum request {
     stop
 }
 
-fn server(requests: PortSet<request>, responses: pipes::chan<uint>) {
+fn server(requests: PortSet<request>, responses: pipes::Chan<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {
