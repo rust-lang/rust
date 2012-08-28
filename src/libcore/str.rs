@@ -2195,7 +2195,7 @@ mod tests {
         assert rfind_char(~"hello", 'l') == Some(3u);
         assert rfind_char(~"hello", 'o') == Some(4u);
         assert rfind_char(~"hello", 'h') == Some(0u);
-        assert rfind_char(~"hello", 'z') == None;
+        assert rfind_char(~"hello", 'z').is_none();
         assert rfind_char(~"ประเทศไทย中华Việt Nam", '华') == Some(30u);
     }
 
@@ -2393,7 +2393,7 @@ mod tests {
     #[test]
     fn test_find_str() {
         // byte positions
-        assert find_str(~"banana", ~"apple pie") == None;
+        assert find_str(~"banana", ~"apple pie").is_none();
         assert find_str(~"", ~"") == Some(0u);
 
         let data = ~"ประเทศไทย中华Việt Nam";
@@ -2401,7 +2401,7 @@ mod tests {
         assert find_str(data, ~"ประเ") == Some( 0u);
         assert find_str(data, ~"ะเ")   == Some( 6u);
         assert find_str(data, ~"中华") == Some(27u);
-        assert find_str(data, ~"ไท华") == None;
+        assert find_str(data, ~"ไท华").is_none();
     }
 
     #[test]
@@ -2412,7 +2412,7 @@ mod tests {
         let data = ~"abcabc";
         assert find_str_between(data, ~"ab", 0u, 6u) == Some(0u);
         assert find_str_between(data, ~"ab", 2u, 6u) == Some(3u);
-        assert find_str_between(data, ~"ab", 2u, 4u) == None;
+        assert find_str_between(data, ~"ab", 2u, 4u).is_none();
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
         data += data;

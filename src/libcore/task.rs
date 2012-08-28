@@ -2090,7 +2090,7 @@ fn test_tls_multitask() unsafe {
     fn my_key(+_x: @~str) { }
     local_data_set(my_key, @~"parent data");
     do task::spawn unsafe {
-        assert local_data_get(my_key) == None; // TLS shouldn't carry over.
+        assert local_data_get(my_key).is_none(); // TLS shouldn't carry over.
         local_data_set(my_key, @~"child data");
         assert *(local_data_get(my_key).get()) == ~"child data";
         // should be cleaned up for us
@@ -2115,7 +2115,7 @@ fn test_tls_pop() unsafe {
     local_data_set(my_key, @~"weasel");
     assert *(local_data_pop(my_key).get()) == ~"weasel";
     // Pop must remove the data from the map.
-    assert local_data_pop(my_key) == None;
+    assert local_data_pop(my_key).is_none();
 }
 
 #[test]

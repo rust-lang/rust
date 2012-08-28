@@ -457,16 +457,16 @@ fn test_from_str() {
        None => fail
    }
 
-   assert from_str(~"") == None;
-   assert from_str(~"x") == None;
-   assert from_str(~" ") == None;
-   assert from_str(~"   ") == None;
-   assert from_str(~"e") == None;
-   assert from_str(~"E") == None;
-   assert from_str(~"E1") == None;
-   assert from_str(~"1e1e1") == None;
-   assert from_str(~"1e1.1") == None;
-   assert from_str(~"1e1-1") == None;
+   assert from_str(~"").is_none();
+   assert from_str(~"x").is_none();
+   assert from_str(~" ").is_none();
+   assert from_str(~"   ").is_none();
+   assert from_str(~"e").is_none();
+   assert from_str(~"E").is_none();
+   assert from_str(~"E1").is_none();
+   assert from_str(~"1e1e1").is_none();
+   assert from_str(~"1e1.1").is_none();
+   assert from_str(~"1e1-1").is_none();
 }
 
 #[test]

@@ -230,8 +230,8 @@ fn test_to_digit() {
     assert to_digit('z', 36u) == Some(35u);
     assert to_digit('Z', 36u) == Some(35u);
 
-    assert to_digit(' ', 10u) == None;
-    assert to_digit('$', 36u) == None;
+    assert to_digit(' ', 10u).is_none();
+    assert to_digit('$', 36u).is_none();
 }
 
 #[test]

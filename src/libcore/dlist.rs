@@ -779,7 +779,7 @@ mod tests {
         l.assert_consistent(); l.remove(two);
         l.assert_consistent(); l.remove(three);
         l.assert_consistent(); l.remove(one); // Twenty-three is number one!
-        l.assert_consistent(); assert l.peek() == None;
+        l.assert_consistent(); assert l.peek().is_none();
         l.assert_consistent(); assert l.is_empty();
     }
     #[test]
