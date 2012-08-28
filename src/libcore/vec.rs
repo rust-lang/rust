@@ -1086,7 +1086,7 @@ pure fn zip<T, U>(+v: ~[const T], +u: ~[const U]) -> ~[(T, U)] {
  * * a - The index of the first element
  * * b - The index of the second element
  */
-fn swap<T>(&&v: ~[mut T], a: uint, b: uint) {
+fn swap<T>(v: &[mut T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
