@@ -152,27 +152,14 @@ mod write {
             if opts.jit {
                 // If we are using JIT, go ahead and create and
                 // execute the engine now.
-
-                /*llvm::LLVMAddBasicAliasAnalysisPass(pm.llpm);
-                llvm::LLVMAddInstructionCombiningPass(pm.llpm);
-                llvm::LLVMAddReassociatePass(pm.llpm);
-                llvm::LLVMAddGVNPass(pm.llpm);
-                llvm::LLVMAddCFGSimplificationPass(pm.llpm);*/
-
                 // JIT execution takes ownership of the module,
-                // so don't dispose and return. Due to a weird bug
-                // with dynamic libraries, we need to separate jitting
-                // into two functions and load crates inbetween.
-
-                if !llvm::LLVMRustPrepareJIT(pm.llpm,
-                                             llmod,
-                                             CodeGenOptLevel,
-                                             true) {
-                    llvm_err(sess, ~"Could not JIT");
-                }
+                // so don't dispose and return.
 
                 // We need to tell LLVM where to resolve all linked
                 // symbols from. The equivalent of -lstd, -lcore, etc.
+                // By default the JIT will resolve symbols from the std and
+                // core linked into rustc. We don't want that,
+                // incase the user wants to use an older std library.
                 /*let cstore = sess.cstore;
                 for cstore::get_used_crate_files(cstore).each |cratepath| {
                     debug!{"linking: %s", cratepath};
@@ -187,7 +174,10 @@ mod write {
                         });
                 }*/
 
-                if !llvm::LLVMRustExecuteJIT() {
+                if !llvm::LLVMRustJIT(pm.llpm,
+                                      llmod,
+                                      CodeGenOptLevel,
+                                      true) {
                     llvm_err(sess, ~"Could not JIT");
                 }
 
