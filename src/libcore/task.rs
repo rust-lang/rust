@@ -78,9 +78,9 @@ export ThreadPerTask;
 export ManualThreads;
 export PlatformThread;
 
-macro_rules! move_it {
+macro_rules! move_it (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
-}
+)
 
 /* Data types */
 
@@ -209,7 +209,7 @@ type TaskOpts = {
     linked: bool,
     supervised: bool,
     mut notify_chan: Option<Chan<Notification>>,
-    sched: option<SchedOpts>,
+    sched: Option<SchedOpts>,
 };
 
 /**
@@ -254,7 +254,7 @@ priv impl TaskBuilder {
         }
         self.consumed = true;
         let notify_chan = if self.opts.notify_chan == None {
-            none
+            None
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
         };
@@ -450,12 +450,12 @@ impl TaskBuilder {
      * must be greater than zero.
      */
     fn spawn(+f: fn~()) {
-        let notify_chan = if self.opts.notify_chan == none {
+        let notify_chan = if self.opts.notify_chan == None {
             None
         } else {
             let swapped_notify_chan =
                 option::swap_unwrap(&mut self.opts.notify_chan);
-            some(swapped_notify_chan)
+            Some(swapped_notify_chan)
         };
         let x = self.consume();
         let opts = {
@@ -1309,7 +1309,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
             //let mut notifier = None;//notify_chan.map(|c| AutoNotify(c));
             let notifier = match notify_chan {
                 Some(notify_chan_value) => {
-                    let moved_ncv = move_it!{notify_chan_value};
+                    let moved_ncv = move_it!(notify_chan_value);
                     Some(AutoNotify(moved_ncv))
                 }
                 _ => None
