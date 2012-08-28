@@ -1,13 +1,13 @@
 use std;
 import task;
 import pipes;
-import pipes::chan;
+import pipes::Chan;
 import pipes::send;
 import pipes::recv;
 
 fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 
-fn test00_start(ch: chan<int>, message: int, count: int) {
+fn test00_start(ch: Chan<int>, message: int, count: int) {
     debug!("Starting test00_start");
     let mut i: int = 0;
     while i < count {

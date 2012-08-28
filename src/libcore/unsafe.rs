@@ -83,7 +83,7 @@ unsafe fn copy_lifetime<S,T>(_ptr: &a/S, ptr: &T) -> &a/T {
 // An unwrapper uses this protocol to communicate with the "other" task that
 // drops the last refcount on an arc. Unfortunately this can't be a proper
 // pipe protocol because the unwrapper has to access both stages at once.
-type UnwrapProto = ~mut Option<(pipes::chan_one<()>, pipes::port_one<bool>)>;
+type UnwrapProto = ~mut Option<(pipes::ChanOne<()>, pipes::PortOne<bool>)>;
 
 struct ArcData<T> {
     mut count:     libc::intptr_t;
@@ -136,7 +136,7 @@ unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>;
-        mut response: Option<pipes::chan_one<bool>>;
+        mut response: Option<pipes::ChanOne<bool>>;
         drop unsafe {
             let response = option::swap_unwrap(&mut self.response);
             // In case we get killed early, we need to tell the person who

@@ -241,6 +241,7 @@ mod comm;
 mod task;
 //#[warn(non_camel_ase_types)] pipec code continues to trip this warning
 mod future;
+#[warn(non_camel_case_types)]
 mod pipes;
 
 // Runtime and language-primitive support

@@ -2,7 +2,7 @@ use std;
 import pipes;
 import task;
 
-fn start(c: pipes::chan<pipes::chan<int>>) {
+fn start(c: pipes::Chan<pipes::Chan<int>>) {
     let (ch, p) = pipes::stream();
     c.send(ch);
 }

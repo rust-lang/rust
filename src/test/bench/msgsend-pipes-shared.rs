@@ -14,7 +14,7 @@ use std;
 import io::Writer;
 import io::WriterUtil;
 
-import pipes::{port, chan, SharedChan};
+import pipes::{Port, Chan, SharedChan};
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
@@ -26,7 +26,7 @@ enum request {
     stop
 }
 
-fn server(requests: port<request>, responses: pipes::chan<uint>) {
+fn server(requests: Port<request>, responses: pipes::Chan<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {

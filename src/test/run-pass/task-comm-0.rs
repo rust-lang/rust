@@ -1,13 +1,13 @@
 use std;
 
 import pipes;
-import pipes::chan;
-import pipes::port;
+import pipes::Chan;
+import pipes::Port;
 import task;
 
 fn main() { test05(); }
 
-fn test05_start(ch : chan<int>) {
+fn test05_start(ch : Chan<int>) {
     ch.send(10);
     error!("sent 10");
     ch.send(20);

@@ -11,14 +11,14 @@ Higher level communication abstractions.
 // Make sure we follow the new conventions
 #[forbid(non_camel_case_types)];
 
-import pipes::{channel, recv, chan, port, selectable};
+import pipes::{Channel, Recv, Chan, Port, Selectable};
 
 export DuplexStream;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
-struct DuplexStream<T: send, U: send> : channel<T>, recv<U>, selectable {
-    priv chan: chan<T>;
-    priv port: port<U>;
+struct DuplexStream<T: send, U: send> : Channel<T>, Recv<U>, Selectable {
+    priv chan: Chan<T>;
+    priv port: Port <U>;
 
     fn send(+x: T) {
         self.chan.send(x)
@@ -40,7 +40,7 @@ struct DuplexStream<T: send, U: send> : channel<T>, recv<U>, selectable {
         self.port.peek()
     }
 
-    pure fn header() -> *pipes::packet_header {
+    pure fn header() -> *pipes::PacketHeader {
         self.port.header()
     }
 }

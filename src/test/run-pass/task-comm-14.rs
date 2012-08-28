@@ -26,7 +26,7 @@ fn main() {
     debug!("main thread exiting");
 }
 
-fn child(x: int, ch: pipes::chan<int>) {
+fn child(x: int, ch: pipes::Chan<int>) {
     log(debug, x);
     ch.send(x);
 }

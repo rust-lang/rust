@@ -2966,7 +2966,7 @@ computations in parallel.  We might write something like:
 
 ~~~~
 import task::spawn;
-import pipes::{stream, port, chan};
+import pipes::{stream, Port, Chan};
 
 let (chan, port) = stream();
 
@@ -3016,7 +3016,7 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
-# import pipes::{stream, port, chan};
+# import pipes::{stream, Port, Chan};
 # fn some_other_expensive_computation() {}
 # let (chan, port) = stream::<int>();
 # chan.send(0);
@@ -3038,7 +3038,7 @@ Here is the function that implements the child task:
 
 ~~~~
 # import std::comm::DuplexStream;
-# import pipes::{port, chan};
+# import pipes::{Port, Chan};
 fn stringifier(channel: DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -3061,7 +3061,7 @@ Here is the code for the parent task:
 
 ~~~~
 # import std::comm::DuplexStream;
-# import pipes::{port, chan};
+# import pipes::{Port, Chan};
 # import task::spawn;
 # fn stringifier(channel: DuplexStream<~str, uint>) {
 #     let mut value: uint;

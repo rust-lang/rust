@@ -10,8 +10,8 @@ enum direction {
 impl direction: ToStr {
     fn to_str() -> ~str {
         match self {
-          send => ~"send",
-          recv => ~"recv"
+          send => ~"Send",
+          recv => ~"Recv"
         }
     }
 }

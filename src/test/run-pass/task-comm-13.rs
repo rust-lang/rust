@@ -3,7 +3,7 @@ import task;
 import pipes;
 import pipes::send;
 
-fn start(c: pipes::chan<int>, start: int, number_of_messages: int) {
+fn start(c: pipes::Chan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }
 }
