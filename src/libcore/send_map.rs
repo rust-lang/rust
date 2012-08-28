@@ -13,19 +13,38 @@ Sendable hash maps.  Very much a work in progress.
 type HashFn<K> = pure fn~(K) -> uint;
 type EqFn<K> = pure fn~(K, K) -> bool;
 
+trait send_map<K, V: copy> {
+    // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
+
+    fn insert(&mut self, +k: K, +v: V) -> bool;
+    fn remove(&mut self, k: &K) -> bool;
+    fn clear(&mut self);
+    pure fn len(&const self) -> uint;
+    pure fn is_empty(&const self) -> bool;
+    fn contains_key(&const self, k: &K) -> bool;
+    fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool);
+    fn each_key_ref(&self, blk: fn(k: &K) -> bool);
+    fn each_value_ref(&self, blk: fn(v: &V) -> bool);
+    fn find(&const self, k: &K) -> Option<V>;
+    fn get(&const self, k: &K) -> V;
+}
+
 /// Open addressing with linear probing.
 mod linear {
     export LinearMap, linear_map, linear_map_with_capacity, public_methods;
 
     const initial_capacity: uint = 32u; // 2^5
-    type Bucket<K,V> = {hash: uint, key: K, value: V};
-    enum LinearMap<K,V> {
-        LinearMap_({
-            hashfn: pure fn~(x: &K) -> uint,
-            eqfn: pure fn~(x: &K, y: &K) -> bool,
-            resize_at: uint,
-            size: uint,
-            buckets: ~[Option<Bucket<K,V>>]})
+    struct Bucket<K,V> {
+        hash: uint;
+        key: K;
+        value: V;
+    }
+    struct LinearMap<K,V> {
+        hashfn: pure fn~(x: &K) -> uint;
+        eqfn: pure fn~(x: &K, y: &K) -> bool;
+        resize_at: uint;
+        size: uint;
+        buckets: ~[Option<Bucket<K,V>>];
     }
 
     // FIXME(#3148) -- we could rewrite found_entry
@@ -51,12 +70,13 @@ mod linear {
         +eqfn: pure fn~(x: &K, y: &K) -> bool,
         initial_capacity: uint) -> LinearMap<K,V> {
 
-        LinearMap_({
+        LinearMap {
             hashfn: hashfn,
             eqfn: eqfn,
             resize_at: resize_at(initial_capacity),
             size: 0,
-            buckets: vec::from_fn(initial_capacity, |_i| None)})
+            buckets: vec::from_fn(initial_capacity, |_i| None)
+        }
     }
 
     priv impl<K, V> LinearMap<K,V> {
@@ -136,15 +156,19 @@ mod linear {
             for uint::range(0, old_capacity) |i| {
                 let mut bucket = None;
                 bucket <-> old_buckets[i];
-                if bucket.is_some() {
-                    self.insert_bucket(bucket);
-                }
+                self.insert_opt_bucket(bucket);
             }
         }
 
-        fn insert_bucket(&mut self, +bucket: Option<Bucket<K,V>>) {
-            let {hash, key, value} <- option::unwrap(bucket);
-            let _ = self.insert_internal(hash, key, value);
+        fn insert_opt_bucket(&mut self, +bucket: Option<Bucket<K,V>>) {
+            match move bucket {
+              Some(Bucket {hash: move hash,
+                           key: move key,
+                           value: move value}) => {
+                self.insert_internal(hash, key, value);
+              }
+              None => {}
+            }
         }
 
         /// Inserts the key value pair into the buckets.
@@ -156,14 +180,18 @@ mod linear {
               FoundHole(idx) => {
                 debug!("insert fresh (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash);
-                self.buckets[idx] = Some({hash: hash, key: k, value: v});
+                self.buckets[idx] = Some(Bucket {hash: hash,
+                                                 key: k,
+                                                 value: v});
                 self.size += 1;
                 return true;
               }
               FoundEntry(idx) => {
                 debug!("insert overwrite (%?->%?) at idx %?, hash %?",
                        k, v, idx, hash);
-                self.buckets[idx] = Some({hash: hash, key: k, value: v});
+                self.buckets[idx] = Some(Bucket {hash: hash,
+                                                 key: k,
+                                                 value: v});
                 return false;
               }
             }
@@ -223,7 +251,7 @@ mod linear {
             while self.buckets[idx].is_some() {
                 let mut bucket = None;
                 bucket <-> self.buckets[idx];
-                self.insert_bucket(bucket);
+                self.insert_opt_bucket(bucket);
                 idx = self.next_bucket(idx, len_buckets);
             }
             self.size -= 1;
