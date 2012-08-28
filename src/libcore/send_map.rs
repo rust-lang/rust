@@ -13,7 +13,7 @@ Sendable hash maps.  Very much a work in progress.
 type HashFn<K> = pure fn~(K) -> uint;
 type EqFn<K> = pure fn~(K, K) -> bool;
 
-trait send_map<K, V: copy> {
+trait SendMap<K, V: copy> {
     // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
 
     fn insert(&mut self, +k: K, +v: V) -> bool;
