@@ -10,13 +10,13 @@ import unsafe::{SharedMutableState, shared_mutable_state,
                 clone_shared_mutable_state, unwrap_shared_mutable_state,
                 get_shared_mutable_state, get_shared_immutable_state};
 import sync;
-import sync::{Mutex,  mutex,  mutex_with_condvars,
-              RWlock, rwlock, rwlock_with_condvars};
+import sync::{Mutex,  mutex_with_condvars,
+              RWlock, rwlock_with_condvars};
 
-export ARC, arc, clone, get;
+export ARC, clone, get;
 export Condvar;
-export MutexARC, mutex_arc, mutex_arc_with_condvars, unwrap_mutex_arc;
-export RWARC, rw_arc, rw_arc_with_condvars, RWWriteMode, RWReadMode;
+export MutexARC, mutex_arc_with_condvars, unwrap_mutex_arc;
+export RWARC, rw_arc_with_condvars, RWWriteMode, RWReadMode;
 export unwrap_rw_arc;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
@@ -73,7 +73,7 @@ impl &Condvar {
 struct ARC<T: const send> { x: SharedMutableState<T>; }
 
 /// Create an atomically reference counted wrapper.
-fn arc<T: const send>(+data: T) -> ARC<T> {
+fn ARC<T: const send>(+data: T) -> ARC<T> {
     ARC { x: unsafe { shared_mutable_state(data) } }
 }
 
@@ -120,7 +120,7 @@ struct MutexARCInner<T: send> { lock: Mutex; failed: bool; data: T; }
 struct MutexARC<T: send> { x: SharedMutableState<MutexARCInner<T>>; }
 
 /// Create a mutex-protected ARC with the supplied data.
-fn mutex_arc<T: send>(+user_data: T) -> MutexARC<T> {
+fn MutexARC<T: send>(+user_data: T) -> MutexARC<T> {
     mutex_arc_with_condvars(user_data, 1)
 }
 /**
@@ -249,7 +249,7 @@ struct RWARC<T: const send> {
 }
 
 /// Create a reader/writer ARC with the supplied data.
-fn rw_arc<T: const send>(+user_data: T) -> RWARC<T> {
+fn RWARC<T: const send>(+user_data: T) -> RWARC<T> {
     rw_arc_with_condvars(user_data, 1)
 }
 /**
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn manually_share_arc() {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        let arc_v = arc::arc(v);
+        let arc_v = arc::ARC(v);
 
         let (c, p) = pipes::stream();
 
@@ -469,7 +469,7 @@ mod tests {
 
     #[test]
     fn test_mutex_arc_condvar() {
-        let arc = ~mutex_arc(false);
+        let arc = ~MutexARC(false);
         let arc2 = ~arc.clone();
         let (c,p) = pipes::oneshot();
         let (c,p) = (~mut Some(c), ~mut Some(p));
@@ -491,7 +491,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_arc_condvar_poison() {
-        let arc = ~mutex_arc(1);
+        let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         let (c,p) = pipes::stream();
 
@@ -512,7 +512,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_mutex_arc_poison() {
-        let arc = ~mutex_arc(1);
+        let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.access |one| {
@@ -525,7 +525,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_mutex_arc_unwrap_poison() {
-        let arc = mutex_arc(1);
+        let arc = MutexARC(1);
         let arc2 = ~(&arc).clone();
         let (c,p) = pipes::stream();
         do task::spawn {
@@ -540,7 +540,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_wr() {
-        let arc = ~rw_arc(1);
+        let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.write |one| {
@@ -553,7 +553,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_ww() {
-        let arc = ~rw_arc(1);
+        let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.write |one| {
@@ -566,7 +566,7 @@ mod tests {
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_dw() {
-        let arc = ~rw_arc(1);
+        let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.write_downgrade |write_mode| {
@@ -581,7 +581,7 @@ mod tests {
     }
     #[test] #[ignore(cfg(windows))]
     fn test_rw_arc_no_poison_rr() {
-        let arc = ~rw_arc(1);
+        let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.read |one| {
@@ -594,7 +594,7 @@ mod tests {
     }
     #[test] #[ignore(cfg(windows))]
     fn test_rw_arc_no_poison_rw() {
-        let arc = ~rw_arc(1);
+        let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.read |one| {
@@ -607,7 +607,7 @@ mod tests {
     }
     #[test] #[ignore(cfg(windows))]
     fn test_rw_arc_no_poison_dr() {
-        let arc = ~rw_arc(1);
+        let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
         do task::try {
             do arc2.write_downgrade |write_mode| {
@@ -623,7 +623,7 @@ mod tests {
     }
     #[test]
     fn test_rw_arc() {
-        let arc = ~rw_arc(0);
+        let arc = ~RWARC(0);
         let arc2 = ~arc.clone();
         let (c,p) = pipes::stream();
 
@@ -662,7 +662,7 @@ mod tests {
         // (4) tells writer and all other readers to contend as it downgrades.
         // (5) Writer attempts to set state back to 42, while downgraded task
         //     and all reader tasks assert that it's 31337.
-        let arc = ~rw_arc(0);
+        let arc = ~RWARC(0);
 
         // Reader tasks
         let mut reader_convos = ~[];

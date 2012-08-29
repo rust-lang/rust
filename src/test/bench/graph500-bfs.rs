@@ -241,7 +241,7 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
         i += 1u;
         let old_len = colors.len();
 
-        let color = arc::arc(colors);
+        let color = arc::ARC(colors);
 
         colors = do par::mapi_factory(*arc::get(&color)) {
             let colors = arc::clone(&color);
@@ -414,7 +414,7 @@ fn main(args: ~[~str]) {
     let mut total_seq = 0.0;
     let mut total_par = 0.0;
 
-    let graph_arc = arc::arc(copy graph);
+    let graph_arc = arc::ARC(copy graph);
 
     do gen_search_keys(graph, num_keys).map() |root| {
         io::stdout().write_line(~"");

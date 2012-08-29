@@ -98,7 +98,7 @@ fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
 // Looks up an item in the given metadata and returns an ebml doc pointing
 // to the item data.
 fn lookup_item(item_id: int, data: @~[u8]) -> ebml::Doc {
-    let items = ebml::get_doc(ebml::doc(data), tag_items);
+    let items = ebml::get_doc(ebml::Doc(data), tag_items);
     match maybe_find_item(item_id, items) {
        None => fail(fmt!("lookup_item: id not found: %d", item_id)),
        Some(d) => d
@@ -362,7 +362,7 @@ fn get_impl_traits(cdata: cmd, id: ast::node_id, tcx: ty::ctxt) -> ~[ty::t] {
 
 fn get_impl_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
                    name: ast::ident) -> ast::def_id {
-    let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
+    let items = ebml::get_doc(ebml::Doc(cdata.data), tag_items);
     let mut found = None;
     for ebml::tagged_docs(find_item(id, items), tag_item_impl_method) |mid| {
         let m_did = ebml::with_doc_data(mid, |d| parse_def_id(d));
@@ -375,7 +375,7 @@ fn get_impl_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
 
 fn get_class_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
                     name: ast::ident) -> ast::def_id {
-    let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
+    let items = ebml::get_doc(ebml::Doc(cdata.data), tag_items);
     let mut found = None;
     let cls_items = match maybe_find_item(id, items) {
       Some(it) => it,
@@ -396,7 +396,7 @@ fn get_class_method(intr: ident_interner, cdata: cmd, id: ast::node_id,
 }
 
 fn class_dtor(cdata: cmd, id: ast::node_id) -> Option<ast::def_id> {
-    let items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
+    let items = ebml::get_doc(ebml::Doc(cdata.data), tag_items);
     let mut found = None;
     let cls_items = match maybe_find_item(id, items) {
             Some(it) => it,
@@ -445,7 +445,7 @@ struct path_entry {
 
 /// Iterates over all the paths in the given crate.
 fn each_path(intr: ident_interner, cdata: cmd, f: fn(path_entry) -> bool) {
-    let root = ebml::doc(cdata.data);
+    let root = ebml::Doc(cdata.data);
     let items = ebml::get_doc(root, tag_items);
     let items_data = ebml::get_doc(items, tag_items_data);
 
@@ -564,7 +564,7 @@ fn maybe_get_item_ast(intr: ident_interner, cdata: cmd, tcx: ty::ctxt,
 fn get_enum_variants(intr: ident_interner, cdata: cmd, id: ast::node_id,
                      tcx: ty::ctxt) -> ~[ty::variant_info] {
     let data = cdata.data;
-    let items = ebml::get_doc(ebml::doc(data), tag_items);
+    let items = ebml::get_doc(ebml::Doc(data), tag_items);
     let item = find_item(id, items);
     let mut infos: ~[ty::variant_info] = ~[];
     let variant_ids = enum_variant_ids(item, cdata);
@@ -888,7 +888,7 @@ fn list_crate_attributes(intr: ident_interner, md: ebml::Doc, hash: ~str,
 }
 
 fn get_crate_attributes(data: @~[u8]) -> ~[ast::attribute] {
-    return get_attributes(ebml::doc(data));
+    return get_attributes(ebml::Doc(data));
 }
 
 type crate_dep = {cnum: ast::crate_num, name: ast::ident,
@@ -896,7 +896,7 @@ type crate_dep = {cnum: ast::crate_num, name: ast::ident,
 
 fn get_crate_deps(intr: ident_interner, data: @~[u8]) -> ~[crate_dep] {
     let mut deps: ~[crate_dep] = ~[];
-    let cratedoc = ebml::doc(data);
+    let cratedoc = ebml::Doc(data);
     let depsdoc = ebml::get_doc(cratedoc, tag_crate_deps);
     let mut crate_num = 1;
     fn docstr(doc: ebml::Doc, tag_: uint) -> ~str {
@@ -925,7 +925,7 @@ fn list_crate_deps(intr: ident_interner, data: @~[u8], out: io::Writer) {
 }
 
 fn get_crate_hash(data: @~[u8]) -> ~str {
-    let cratedoc = ebml::doc(data);
+    let cratedoc = ebml::Doc(data);
     let hashdoc = ebml::get_doc(cratedoc, tag_crate_hash);
     return str::from_bytes(ebml::doc_data(hashdoc));
 }
@@ -981,7 +981,7 @@ fn get_crate_module_paths(intr: ident_interner, cdata: cmd)
 fn list_crate_metadata(intr: ident_interner, bytes: @~[u8],
                        out: io::Writer) {
     let hash = get_crate_hash(bytes);
-    let md = ebml::doc(bytes);
+    let md = ebml::Doc(bytes);
     list_crate_attributes(intr, md, hash, out);
     list_crate_deps(intr, bytes, out);
 }

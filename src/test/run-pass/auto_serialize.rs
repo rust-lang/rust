@@ -23,7 +23,7 @@ fn test_ser_and_deser<A>(a1: A,
     let buf = io::mem_buffer();
     let w = ebml::Writer(buf as io::Writer);
     ebml_ser_fn(w, a1);
-    let d = ebml::doc(@io::mem_buffer_buf(buf));
+    let d = ebml::Doc(@io::mem_buffer_buf(buf));
     let a2 = ebml_deser_fn(ebml::ebml_deserializer(d));
     io::print(~"\na1 = ");
     io_ser_fn(io::stdout(), a1);
