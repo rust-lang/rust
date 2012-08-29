@@ -164,7 +164,7 @@ fn push_char(&s: ~str, ch: char) {
         reserve_at_least(s, new_len);
         let off = len;
         do as_buf(s) |buf, _len| {
-            let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
+            let buf: *mut u8 = ::unsafe::reinterpret_cast(&buf);
             if nb == 1u {
                 *ptr::mut_offset(buf, off) =
                     code as u8;
@@ -1746,7 +1746,7 @@ const tag_six_b: uint = 252u;
  */
 pure fn as_bytes<T>(s: ~str, f: fn(~[u8]) -> T) -> T {
     unsafe {
-        let v: *~[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let v: *~[u8] = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         f(*v)
     }
 }
@@ -1790,7 +1790,7 @@ pure fn as_c_str<T>(s: &str, f: fn(*libc::c_char) -> T) -> T {
 #[inline(always)]
 pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let v : *(*u8,uint) = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         let (buf,len) = *v;
         f(buf, len)
     }
@@ -1814,7 +1814,7 @@ pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
  */
 fn reserve(&s: ~str, n: uint) {
     unsafe {
-        let v: *mut ~[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let v: *mut ~[u8] = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         vec::reserve(*v, n + 1);
     }
 }
@@ -1917,18 +1917,18 @@ mod unsafe {
     /// without copying
     unsafe fn from_buf_len_nocopy(buf: &a / *u8, len: uint) -> &a / str {
         let v = (*buf, len + 1);
-        assert is_utf8(::unsafe::reinterpret_cast(v));
+        assert is_utf8(::unsafe::reinterpret_cast(&v));
         return ::unsafe::transmute(v);
     }
 
     /// Create a Rust string from a null-terminated C string
     unsafe fn from_c_str(c_str: *libc::c_char) -> ~str {
-        from_buf(::unsafe::reinterpret_cast(c_str))
+        from_buf(::unsafe::reinterpret_cast(&c_str))
     }
 
     /// Create a Rust string from a `*c_char` buffer of the given length
     unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> ~str {
-        from_buf_len(::unsafe::reinterpret_cast(c_str), len)
+        from_buf_len(::unsafe::reinterpret_cast(&c_str), len)
     }
 
     /// Converts a vector of bytes to a string.
@@ -1987,7 +1987,7 @@ mod unsafe {
              assert (end <= n);
 
              let tuple = (ptr::offset(sbuf, begin), end - begin + 1);
-             ::unsafe::reinterpret_cast(tuple)
+             ::unsafe::reinterpret_cast(&tuple)
         }
     }
 
@@ -1995,7 +1995,7 @@ mod unsafe {
     unsafe fn push_byte(&s: ~str, b: u8) {
         reserve_at_least(s, s.len() + 1);
         do as_buf(s) |buf, len| {
-            let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
+            let buf: *mut u8 = ::unsafe::reinterpret_cast(&buf);
             *ptr::mut_offset(buf, len) = b;
         }
         set_len(s, s.len() + 1);
@@ -2027,7 +2027,7 @@ mod unsafe {
 
     /// Sets the length of the string and adds the null terminator
     unsafe fn set_len(&v: ~str, new_len: uint) {
-        let repr: *vec::unsafe::VecRepr = ::unsafe::reinterpret_cast(v);
+        let repr: *vec::unsafe::VecRepr = ::unsafe::reinterpret_cast(&v);
         (*repr).fill = new_len + 1u;
         let null = ptr::mut_offset(ptr::mut_addr_of((*repr).data), new_len);
         *null = 0u8;

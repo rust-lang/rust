@@ -13,10 +13,10 @@ struct r {
   let w: int;
   let x: *int;
   new(v: u, w: int, _x: *int) unsafe { self.v = v; self.w = w; 
-    self.x = unsafe::reinterpret_cast(0);
+    self.x = unsafe::reinterpret_cast(&0);
     /* self.x = x; */ }
   drop unsafe {
-    let _v2: ~int = unsafe::reinterpret_cast(self.v.c);
+    let _v2: ~int = unsafe::reinterpret_cast(&self.v.c);
     // let _v3: ~int = unsafe::reinterpret_cast(self.x);
   }
 }
@@ -28,10 +28,10 @@ enum t = {
 
 fn main() unsafe {
     let i1 = ~0xA;
-    let i1p = unsafe::reinterpret_cast(i1);
+    let i1p = unsafe::reinterpret_cast(&i1);
     unsafe::forget(i1);
     let i2 = ~0xA;
-    let i2p = unsafe::reinterpret_cast(i2);
+    let i2p = unsafe::reinterpret_cast(&i2);
     unsafe::forget(i2);
 
     let u1 = {a: 0xB, b: 0xC, c: i1p};

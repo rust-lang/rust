@@ -88,14 +88,14 @@ pure fn pref_align_of<T>() -> uint {
 /// Returns the refcount of a shared box (as just before calling this)
 pure fn refcount<T>(+t: @T) -> uint {
     unsafe {
-        let ref_ptr: *uint = unsafe::reinterpret_cast(t);
+        let ref_ptr: *uint = unsafe::reinterpret_cast(&t);
         *ref_ptr - 1
     }
 }
 
 pure fn log_str<T>(t: T) -> ~str {
     unsafe {
-        let data_ptr: *() = unsafe::reinterpret_cast(ptr::addr_of(t));
+        let data_ptr: *() = unsafe::reinterpret_cast(&ptr::addr_of(t));
         rustrt::shape_log_str(get_type_desc::<T>(), data_ptr)
     }
 }

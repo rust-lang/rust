@@ -19,8 +19,8 @@ extern mod rusti {
 
 /// Casts the value at `src` to U. The two types must have the same length.
 #[inline(always)]
-unsafe fn reinterpret_cast<T, U>(src: T) -> U {
-    rusti::reinterpret_cast(src)
+unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
+    rusti::reinterpret_cast(*src)
 }
 
 /**
@@ -51,7 +51,7 @@ unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
  *     assert transmute("L") == ~[76u8, 0u8];
  */
 unsafe fn transmute<L, G>(-thing: L) -> G {
-    let newthing = reinterpret_cast(thing);
+    let newthing = reinterpret_cast(&thing);
     forget(thing);
     return newthing;
 }
@@ -101,7 +101,7 @@ struct ArcDestruct<T> {
             return; // Happens when destructing an unwrapper's handle.
         }
         do task::unkillable {
-            let data: ~ArcData<T> = unsafe::reinterpret_cast(self.data);
+            let data: ~ArcData<T> = unsafe::reinterpret_cast(&self.data);
             let new_count = rustrt::rust_atomic_decrement(&mut data.count);
             assert new_count >= 0;
             if new_count == 0 {
@@ -111,7 +111,7 @@ struct ArcDestruct<T> {
                 // being here means we're the only *awake* task with the data.
                 if data.unwrapper != 0 {
                     let p: UnwrapProto =
-                        unsafe::reinterpret_cast(data.unwrapper);
+                        unsafe::reinterpret_cast(&data.unwrapper);
                     let (message, response) = option::swap_unwrap(p);
                     // Send 'ready' and wait for a response.
                     pipes::send_one(message, ());
@@ -154,7 +154,7 @@ unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
     }
 
     do task::unkillable {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(rc.data);
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&rc.data);
         let (c1,p1) = pipes::oneshot(); // ()
         let (c2,p2) = pipes::oneshot(); // bool
         let server: UnwrapProto = ~mut Some((c1,p2));
@@ -216,7 +216,7 @@ unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
 unsafe fn get_shared_mutable_state<T: send>(rc: &a/SharedMutableState<T>)
         -> &a/mut T {
     unsafe {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
         let r = unsafe::transmute_region(option::get_ref(&ptr.data));
@@ -228,7 +228,7 @@ unsafe fn get_shared_mutable_state<T: send>(rc: &a/SharedMutableState<T>)
 unsafe fn get_shared_immutable_state<T: send>(rc: &a/SharedMutableState<T>)
         -> &a/T {
     unsafe {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
         assert ptr.count > 0;
         // Cast us back into the correct region
         let r = unsafe::transmute_region(option::get_ref(&ptr.data));
@@ -240,7 +240,7 @@ unsafe fn get_shared_immutable_state<T: send>(rc: &a/SharedMutableState<T>)
 unsafe fn clone_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
-        let ptr: ~ArcData<T> = unsafe::reinterpret_cast((*rc).data);
+        let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
         let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
         assert new_count >= 2;
         unsafe::forget(ptr);
@@ -356,7 +356,7 @@ mod tests {
 
     #[test]
     fn test_reinterpret_cast() {
-        assert unsafe { reinterpret_cast(1) } == 1u;
+        assert unsafe { reinterpret_cast(&1) } == 1u;
     }
 
     #[test]
@@ -365,8 +365,8 @@ mod tests {
             let box = @~"box box box";       // refcount 1
             bump_box_refcount(box);         // refcount 2
             let ptr: *int = transmute(box); // refcount 2
-            let _box1: @~str = reinterpret_cast(ptr);
-            let _box2: @~str = reinterpret_cast(ptr);
+            let _box1: @~str = reinterpret_cast(&ptr);
+            let _box2: @~str = reinterpret_cast(&ptr);
             assert *_box1 == ~"box box box";
             assert *_box2 == ~"box box box";
             // Will destroy _box1 and _box2. Without the bump, this would

@@ -29,7 +29,7 @@ extern mod rusti {
 pure fn capacity<T>(&&v: @[const T]) -> uint {
     unsafe {
         let repr: **unsafe::VecRepr =
-            ::unsafe::reinterpret_cast(addr_of(v));
+            ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).alloc / sys::size_of::<T>()
     }
 }
@@ -154,13 +154,13 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn set_len<T>(&&v: @[const T], new_len: uint) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
     #[inline(always)]
     unsafe fn push<T>(&v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
             push_fast(v, initval);
@@ -172,7 +172,7 @@ mod unsafe {
     // This doesn't bother to make sure we have space.
     #[inline(always)] // really pretty please
     unsafe fn push_fast<T>(&v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         let fill = (**repr).fill;
         (**repr).fill += sys::size_of::<T>();
         let p = ptr::addr_of((**repr).data);
