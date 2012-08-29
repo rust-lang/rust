@@ -187,7 +187,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
           exp_map2: exp_map2,
           trait_map: trait_map } =
         time(time_passes, ~"resolution", ||
-             middle::resolve3::resolve_crate(sess, lang_items, crate));
+             middle::resolve::resolve_crate(sess, lang_items, crate));
 
     let freevars = time(time_passes, ~"freevar finding", ||
         freevars::annotate_freevars(def_map, crate));

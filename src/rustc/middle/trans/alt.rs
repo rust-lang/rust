@@ -10,7 +10,7 @@ import syntax::ast_util::{dummy_sp, path_to_ident};
 import syntax::ast::def_id;
 import syntax::codemap::span;
 import syntax::print::pprust::pat_to_str;
-import middle::resolve3::DefMap;
+import middle::resolve::DefMap;
 import back::abi;
 import std::map::hashmap;
 import dvec::DVec;

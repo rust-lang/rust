@@ -1,7 +1,7 @@
 /* Code to handle method lookups (which can be quite complex) */
 
 import coherence::get_base_type_def_id;
-import middle::resolve3::{Impl, MethodInfo};
+import middle::resolve::{Impl, MethodInfo};
 import middle::ty::{mk_box, mk_rptr, mk_uniq};
 import syntax::ast::{def_id,
                      sty_static, sty_box, sty_by_ref, sty_region, sty_uniq};
@@ -462,7 +462,7 @@ struct lookup {
     }
 
     // Returns true if any were added and false otherwise.
-    fn add_candidates_from_impl(im: @resolve3::Impl, mode: method_lookup_mode)
+    fn add_candidates_from_impl(im: @resolve::Impl, mode: method_lookup_mode)
                              -> bool {
         let mut added_any = false;
 

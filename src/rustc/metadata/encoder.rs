@@ -13,7 +13,7 @@ import syntax::ast_util::*;
 import common::*;
 import middle::ty;
 import middle::ty::node_id_to_type;
-import middle::resolve3;
+import middle::resolve;
 import syntax::ast_map;
 import syntax::attr;
 import std::serialization::serializer;
@@ -46,7 +46,7 @@ type encode_parms = {
     tcx: ty::ctxt,
     reachable: hashmap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
-    reexports2: middle::resolve3::ExportMap2,
+    reexports2: middle::resolve::ExportMap2,
     item_symbols: hashmap<ast::node_id, ~str>,
     discrim_symbols: hashmap<ast::node_id, ~str>,
     link_meta: link_meta,
@@ -73,7 +73,7 @@ enum encode_ctxt = {
     stats: stats,
     reachable: hashmap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
-    reexports2: middle::resolve3::ExportMap2,
+    reexports2: middle::resolve::ExportMap2,
     item_symbols: hashmap<ast::node_id, ~str>,
     discrim_symbols: hashmap<ast::node_id, ~str>,
     link_meta: link_meta,
