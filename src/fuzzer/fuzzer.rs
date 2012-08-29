@@ -251,10 +251,10 @@ fn check_variants_T<T: copy>(
     let L = vec::len(things);
 
     if L < 100u {
-        do under(uint::min(L, 20u)) |i| {
+        do under(uint::min(&L, &20u)) |i| {
             log(error, ~"Replacing... #" + uint::str(i));
             let fname = str::from_slice(filename.to_str());
-            do under(uint::min(L, 30u)) |j| {
+            do under(uint::min(&L, &30u)) |j| {
                 log(error, ~"With... " + stringifier(@things[j], intr));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
