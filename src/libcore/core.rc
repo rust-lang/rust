@@ -54,7 +54,7 @@ export send_map;
 export hash;
 export cmp;
 export num;
-export path, path2;
+export path;
 export managed;
 export flate;
 
@@ -254,7 +254,6 @@ mod libc;
 mod os;
 #[warn(non_camel_case_types)]
 mod path;
-mod path2;
 #[warn(non_camel_case_types)]
 mod rand;
 #[warn(non_camel_case_types)]
