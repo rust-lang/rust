@@ -26,7 +26,7 @@ import to_str::ToStr;
 
 export Path, WindowsPath, PosixPath, GenericPath;
 export Option, Some, None, unreachable;
-export Result, Ok, Error;
+export Result, Ok, Err;
 export extensions;
 // The following exports are the extension impls for numeric types
 export Num, Times, TimesIx;
