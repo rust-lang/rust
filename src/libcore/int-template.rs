@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import T = inst::T;
 import cmp::{Eq, Ord};
 import num::from_int;
@@ -21,8 +25,8 @@ const bytes : uint = (inst::bits / 8);
 const min_value: T = (-1 as T) << (bits - 1);
 const max_value: T = min_value - 1 as T;
 
-pure fn min(&&x: T, &&y: T) -> T { if x < y { x } else { y } }
-pure fn max(&&x: T, &&y: T) -> T { if x > y { x } else { y } }
+pure fn min(x: &T, y: &T) -> T { if *x < *y { *x } else { *y } }
+pure fn max(x: &T, y: &T) -> T { if *x > *y { *x } else { *y } }
 
 pure fn add(x: &T, y: &T) -> T { *x + *y }
 pure fn sub(x: &T, y: &T) -> T { *x - *y }
@@ -155,7 +159,7 @@ fn parse_buf(buf: ~[u8], radix: uint) -> Option<T> {
 }
 
 /// Parse a string to an int
-fn from_str(s: ~str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
+fn from_str(s: &str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
 
 /// Convert to a string in a given base
 fn to_str(n: T, radix: uint) -> ~str {
@@ -235,7 +239,7 @@ fn test_to_str() {
 
 #[test]
 fn test_interfaces() {
-    fn test<U:num::Num>(ten: U) {
+    fn test<U:num::Num>(+ten: U) {
         assert (ten.to_int() == 10);
 
         let two: U = from_int(2);

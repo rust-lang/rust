@@ -1856,9 +1856,9 @@ fn type_size(cx: ctxt, ty: t) -> uint {
         let variants = substd_enum_variants(cx, did, substs);
         variants.foldl( // find max size of any variant
             0,
-            |m, v| uint::max(m,
+            |m, v| uint::max(&m,
                              // find size of this variant:
-                             v.args.foldl(0, |s, a| s + type_size(cx, a))))
+                             &v.args.foldl(0, |s, a| s + type_size(cx, a))))
       }
 
       ty_param(_) | ty_self => {

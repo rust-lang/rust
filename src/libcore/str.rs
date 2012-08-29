@@ -676,7 +676,7 @@ pure fn eq_slice(a: &str, b: &str) -> bool {
     let a_len = a.len();
     let b_len = b.len();
     if a_len != b_len { return false; }
-    let mut end = uint::min(a_len, b_len);
+    let mut end = uint::min(&a_len, &b_len);
 
     let mut i = 0u;
     while i < end {

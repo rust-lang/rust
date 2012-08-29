@@ -30,7 +30,7 @@ fn map_slices<A: copy send, B: copy send>(
         ~[f()(0u, xs)]
     }
     else {
-        let num_tasks = uint::min(max_tasks, len / min_granularity);
+        let num_tasks = uint::min(&max_tasks, &(len / min_granularity));
 
         let items_per_task = len / num_tasks;
 
@@ -38,7 +38,7 @@ fn map_slices<A: copy send, B: copy send>(
         let mut base = 0u;
         log(info, ~"spawning tasks");
         while base < len {
-            let end = uint::min(len, base + items_per_task);
+            let end = uint::min(&len, &(base + items_per_task));
             // FIXME: why is the ::<A, ()> annotation required here? (#2617)
             do vec::as_buf::<A, ()>(xs) |p, _len| {
                 let f = f();

@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import T = inst::T;
 import cmp::{Eq, Ord};
 
@@ -20,8 +24,8 @@ const bytes : uint = (inst::bits / 8);
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
 
-pure fn min(&&x: T, &&y: T) -> T { if x < y { x } else { y } }
-pure fn max(&&x: T, &&y: T) -> T { if x > y { x } else { y } }
+pure fn min(x: &T, y: &T) -> T { if *x < *y { *x } else { *y } }
+pure fn max(x: &T, y: &T) -> T { if *x > *y { *x } else { *y } }
 
 pure fn add(x: &T, y: &T) -> T { *x + *y }
 pure fn sub(x: &T, y: &T) -> T { *x - *y }
@@ -138,10 +142,10 @@ fn parse_buf(buf: &[const u8], radix: uint) -> Option<T> {
 }
 
 /// Parse a string to an int
-fn from_str(s: ~str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
+fn from_str(s: &str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
 
 /// Parse a string as an unsigned integer.
-fn from_str_radix(buf: ~str, radix: u64) -> Option<u64> {
+fn from_str_radix(buf: &str, radix: u64) -> Option<u64> {
     if str::len(buf) == 0u { return None; }
     let mut i = str::len(buf) - 1u;
     let mut power = 1u64, n = 0u64;

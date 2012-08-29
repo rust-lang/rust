@@ -82,7 +82,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
             3 /* double */ => 8u,
             10 /* struct */ => {
               do vec::foldl(0u, struct_tys(ty)) |a, t| {
-                    uint::max(a, ty_align(t))
+                    uint::max(&a, &ty_align(t))
                 }
             }
             11 /* array */ => {

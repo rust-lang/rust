@@ -128,7 +128,7 @@ fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     assert len1 > 0u;
     assert len2 > 0u;
 
-    let max_common_path = uint::min(len1, len2) - 1u;
+    let max_common_path = uint::min(&len1, &len2) - 1u;
     let mut start_idx = 0u;
     while start_idx < max_common_path
         && split1[start_idx] == split2[start_idx] {
