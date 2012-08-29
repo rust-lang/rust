@@ -169,10 +169,14 @@ fn lookup_vtable(fcx: @fn_ctxt,
                 // Nothing found. Continue.
             }
             Some(implementations) => {
+                /*
+                implementations is the list of all impls in scope for
+                trait_ty. (Usually, there's just one.)
+                */
                 for uint::range(0, implementations.len()) |i| {
                     let im = implementations[i];
 
-                    // im = one specific impl
+                    // im is one specific impl of trait_ty.
 
                     // First, ensure that we haven't processed this impl yet.
                     if impls_seen.contains_key(im.did) {
@@ -180,25 +184,73 @@ fn lookup_vtable(fcx: @fn_ctxt,
                     }
                     impls_seen.insert(im.did, ());
 
-                    // find the trait that im implements (if any)
+
+                /*
+                ty::impl_traits gives us the list of all traits that im
+                implements. Again, usually there's just one.
+
+                For example, if im represented the struct in:
+
+                struct foo : baz<int>, bar, quux { ... }
+
+                then ty::impl_traits would return
+                    ~[baz<int>, bar, quux]
+
+                For each of the traits foo implements, if it's the
+                same trait as trait_ty, we need to unify it with
+                trait_ty in order to get all the ty vars sorted out.
+                */
                     for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
-                        // it must have the same id as the expected one
                         match ty::get(of_ty).struct {
+                        // This is a trait that is different from the one
+                        // we're looking for, so we skip to the next one.
                           ty::ty_trait(id, _, _) if id != trait_id => again,
                           _ => { /* ok */ }
                         }
 
-                        // check whether the type unifies with the type
-                        // that the impl is for, and continue if not
+                /* At this point, we know that of_ty is the same trait
+                as trait_ty, but possibly applied to different substs.
+
+                Next, we check whether the "for" ty in the impl is
+                compatible with the type that we're casting to a trait. That
+                is, if im is:
+
+                impl<T> self_ty<T>: some_trait<T> { ... }
+
+                we check whether self_ty<T> is the type of the thing that
+                we're trying to cast to some_trait.
+                */
                         let {substs: substs, ty: for_ty} =
                             impl_self_ty(fcx, expr, im.did, false);
                         let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
                         match fcx.mk_subty(false, expr.span, ty, for_ty) {
+                // for_ty is not compatible with ty, so this impl is
+                // irrelevant and we skip to the next impl
                           result::Err(_) => again,
+                // The impl is an impl for ty of the desired trait.
                           result::Ok(()) => ()
                         }
 
-                        // check that desired trait type unifies
+                /*
+                Now, in the previous example, for_ty is bound to the
+                type self_ty, and substs is bound to [T].
+                */
+                        debug!("The self ty is %s and its substs are %s",
+                               fcx.infcx.ty_to_str(for_ty),
+                               tys_to_str(fcx.ccx.tcx, substs.tps));
+
+                /*
+                Next, we unify trait_ty -- the type that we want to cast
+                to -- with of_ty -- the trait that im implements. At this
+                point, we require that they be unifiable with each other --
+                that's what relate_trait_tys does.
+
+                For example, in the above example, of_ty would be
+                some_trait<T>, so we would be unifying trait_ty<U> (for
+                some value of U) with some_trait<T>. This would fail if
+                T and U weren't compatible.
+                */
+
                         debug!("(checking vtable) @2 relating trait ty %s to \
                                 of_ty %s",
                                fcx.infcx.ty_to_str(trait_ty),
@@ -206,9 +258,26 @@ fn lookup_vtable(fcx: @fn_ctxt,
                         let of_ty = ty::subst(tcx, &substs, of_ty);
                         relate_trait_tys(fcx, expr, trait_ty, of_ty);
 
-                        // recursively process the bounds.
+                /*
+                Recall that trait_ty -- the trait type we're casting to --
+                is the trait with id trait_id applied to the substs
+                trait_substs. Now we extract out the types themselves
+                from trait_substs.
+                */
+
                         let trait_tps = trait_substs.tps;
-                        // see comments around the earlier call to fixup_ty
+
+                        debug!("Casting to a trait ty whose substs \
+                          (trait_tps) are %s",
+                               tys_to_str(fcx.ccx.tcx, trait_tps));
+
+                /*
+                Recall that substs is the impl self type's list of
+                substitutions. That is, if this is an impl of some trait
+                for foo<T, U>, then substs is [T, U]. substs might contain
+                type variables, so we call fixup_substs to resolve them.
+                */
+
                         let substs_f = match fixup_substs(fcx, expr, trait_id,
                                                           substs, is_early) {
                             Some(substs) => substs,
@@ -219,11 +288,30 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             }
                         };
 
+                        debug!("The fixed-up substs for the self ty are %s - \
+                                they will be unified with the bounds for \
+                                the target ty, %s",
+                               tys_to_str(fcx.ccx.tcx, substs_f.tps),
+                               tys_to_str(fcx.ccx.tcx, trait_tps));
+
+                /*
+                Next, we unify the fixed-up substitutions for the impl self
+                ty with the substitutions from the trait type that we're
+                trying to cast to. connect_trait_tps requires these
+                lists of types to unify pairwise.
+                */
+
                         connect_trait_tps(fcx, expr, substs_f.tps,
                                           trait_tps, im.did);
                         let subres = lookup_vtables(
                             fcx, expr, im_bs, &substs_f,
                             false, is_early);
+
+                /*
+                Finally, we register that we found a matching impl,
+                and record the def ID of the impl as well as the resolved
+                list of type substitutions for the target trait.
+                */
                         vec::push(found,
                                   vtable_static(im.did, substs_f.tps,
                                                 subres));
@@ -233,8 +321,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
         }
 
         match found.len() {
-          0u => { /* fallthrough */ }
-          1u => { return found[0]; }
+          0 => { /* fallthrough */ }
+          1 => { return found[0]; }
           _ => {
             if !is_early {
                 fcx.ccx.tcx.sess.span_err(
