@@ -189,11 +189,11 @@ struct PacketHeader {
     // thing. You'll proobably want to forget them when you're done.
     unsafe fn buf_header() -> ~BufferHeader {
         assert self.buffer.is_not_null();
-        reinterpret_cast(self.buffer)
+        reinterpret_cast(&self.buffer)
     }
 
     fn set_buffer<T: send>(b: ~Buffer<T>) unsafe {
-        self.buffer = reinterpret_cast(b);
+        self.buffer = reinterpret_cast(&b);
     }
 }
 
@@ -253,7 +253,7 @@ fn unibuffer<T: send>() -> ~Buffer<Packet<T>> {
     };
 
     unsafe {
-        b.data.header.buffer = reinterpret_cast(b);
+        b.data.header.buffer = reinterpret_cast(&b);
     }
 
     b
@@ -274,7 +274,7 @@ fn entangle_buffer<T: send, Tstart: send>(
     init: fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
 {
-    let p = init(unsafe { reinterpret_cast(buffer) }, &buffer.data);
+    let p = init(unsafe { reinterpret_cast(&buffer) }, &buffer.data);
     unsafe { forget(buffer) }
     (SendPacketBuffered(p), RecvPacketBuffered(p))
 }

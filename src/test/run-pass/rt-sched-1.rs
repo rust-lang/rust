@@ -32,7 +32,7 @@ fn main() unsafe {
         assert child_sched_id == new_sched_id;
         comm::send(ch, ());
     };
-    let fptr = unsafe::reinterpret_cast(ptr::addr_of(f));
+    let fptr = unsafe::reinterpret_cast(&ptr::addr_of(f));
     rustrt::start_task(new_task_id, fptr);
     unsafe::forget(f);
     comm::recv(po);

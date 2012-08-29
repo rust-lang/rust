@@ -1154,7 +1154,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
                 make_child_wrapper(new_task, child_tg, ancestors, is_main,
                                    opts.notify_chan, f);
             let fptr = ptr::addr_of(child_wrapper);
-            let closure: *rust_closure = unsafe::reinterpret_cast(fptr);
+            let closure: *rust_closure = unsafe::reinterpret_cast(&fptr);
 
             // Getting killed between these two calls would free the child's
             // closure. (Reordering them wouldn't help - then getting killed
@@ -1295,8 +1295,8 @@ impl<T: owned> @T: LocalData { }
 
 impl LocalData: Eq {
     pure fn eq(&&other: LocalData) -> bool unsafe {
-        let ptr_a: (uint, uint) = unsafe::reinterpret_cast(self);
-        let ptr_b: (uint, uint) = unsafe::reinterpret_cast(other);
+        let ptr_a: (uint, uint) = unsafe::reinterpret_cast(&self);
+        let ptr_b: (uint, uint) = unsafe::reinterpret_cast(&other);
         return ptr_a == ptr_b;
     }
 }
@@ -1310,7 +1310,7 @@ type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
 extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();
     // Get and keep the single reference that was created at the beginning.
-    let _map: TaskLocalMap = unsafe::reinterpret_cast(map_ptr);
+    let _map: TaskLocalMap = unsafe::reinterpret_cast(&map_ptr);
     // All local_data will be destroyed along with the map.
 }
 
@@ -1325,7 +1325,8 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     if map_ptr.is_null() {
         let map: TaskLocalMap = @dvec::DVec();
         // Use reinterpret_cast -- transmute would take map away from us also.
-        rustrt::rust_set_task_local_data(task, unsafe::reinterpret_cast(map));
+        rustrt::rust_set_task_local_data(
+            task, unsafe::reinterpret_cast(&map));
         rustrt::rust_task_local_data_atexit(task, cleanup_task_local_map);
         // Also need to reference it an extra time to keep it for now.
         unsafe::bump_box_refcount(map);
@@ -1342,7 +1343,7 @@ unsafe fn key_to_key_value<T: owned>(
 
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
     // Use reintepret_cast -- transmute would leak (forget) the closure.
-    let pair: (*libc::c_void, *libc::c_void) = unsafe::reinterpret_cast(key);
+    let pair: (*libc::c_void, *libc::c_void) = unsafe::reinterpret_cast(&key);
     pair.first()
 }
 
@@ -1411,7 +1412,7 @@ unsafe fn local_set<T: owned>(
     // own on it can be dropped when the box is destroyed. The unsafe pointer
     // does not have a reference associated with it, so it may become invalid
     // when the box is destroyed.
-    let data_ptr = unsafe::reinterpret_cast(data);
+    let data_ptr = unsafe::reinterpret_cast(&data);
     let data_box = data as LocalData;
     // Construct new entry to store in the map.
     let new_entry = Some((keyval, data_ptr, data_box));

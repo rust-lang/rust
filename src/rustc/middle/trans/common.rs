@@ -971,7 +971,7 @@ fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef unsafe {
 
 fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
     return llvm::LLVMConstString(
-        unsafe::reinterpret_cast(vec::unsafe::to_ptr(bytes)),
+        unsafe::reinterpret_cast(&vec::unsafe::to_ptr(bytes)),
         bytes.len() as c_uint, False);
 }
 

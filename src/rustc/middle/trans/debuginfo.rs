@@ -73,7 +73,7 @@ fn llunused() -> ValueRef {
     lli32(0x0)
 }
 fn llnull() -> ValueRef unsafe {
-    unsafe::reinterpret_cast(ptr::null::<ValueRef>())
+    unsafe::reinterpret_cast(&ptr::null::<ValueRef>())
 }
 
 fn add_named_metadata(cx: @crate_ctxt, name: ~str, val: ValueRef) {
