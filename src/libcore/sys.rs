@@ -16,6 +16,12 @@ enum TypeDesc = {
     // Remaining fields not listed
 };
 
+/// The representation of a Rust closure
+struct Closure {
+    code: *();
+    env: *();
+}
+
 #[abi = "cdecl"]
 extern mod rustrt {
     pure fn shape_log_str(t: *sys::TypeDesc, data: *()) -> ~str;
@@ -137,6 +143,27 @@ mod tests {
     fn align_of_64() {
         assert pref_align_of::<uint>() == 8u;
         assert pref_align_of::<*uint>() == 8u;
+    }
+
+    #[test]
+    fn synthesize_closure() unsafe {
+        let x = 10;
+        let f: fn(int) -> int = |y| x + y;
+
+        assert f(20) == 30;
+
+        let original_closure: Closure = unsafe::transmute(f);
+
+        let actual_function_pointer = original_closure.code;
+        let environment = original_closure.env;
+
+        let new_closure = Closure {
+            code: actual_function_pointer,
+            env: environment
+        };
+
+        let new_f: fn(int) -> int = unsafe::transmute(new_closure);
+        assert new_f(20) == 30;
     }
 }
 
