@@ -3,6 +3,7 @@ import infer::{resolve_type, resolve_and_force_all_but_regions,
                fixup_err_to_str};
 import ast_util::new_def_hash;
 import syntax::print::pprust;
+import result::{Result, Ok, Err};
 
 // vtable resolution looks for places where trait bounds are
 // subsituted in and figures out which vtable is used. There is some
@@ -85,7 +86,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
 {
 
     debug!("lookup_vtable(ty=%s, trait_ty=%s)",
-           fcx.infcx.ty_to_str(ty), fcx.infcx.ty_to_str(trait_ty));
+           fcx.infcx().ty_to_str(ty), fcx.inh.infcx.ty_to_str(trait_ty));
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;
@@ -253,8 +254,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
 
                         debug!("(checking vtable) @2 relating trait ty %s to \
                                 of_ty %s",
-                               fcx.infcx.ty_to_str(trait_ty),
-                               fcx.infcx.ty_to_str(of_ty));
+                               fcx.infcx().ty_to_str(trait_ty),
+                               fcx.infcx().ty_to_str(of_ty));
                         let of_ty = ty::subst(tcx, &substs, of_ty);
                         relate_trait_tys(fcx, expr, trait_ty, of_ty);
 
@@ -347,18 +348,18 @@ fn fixup_ty(fcx: @fn_ctxt,
             is_early: bool) -> Option<ty::t>
 {
     let tcx = fcx.ccx.tcx;
-    match resolve_type(fcx.infcx, ty, resolve_and_force_all_but_regions) {
-      result::Ok(new_type) => Some(new_type),
-      result::Err(e) if !is_early => {
-        tcx.sess.span_fatal(
-            expr.span,
-            fmt!("cannot determine a type \
-                  for this bounded type parameter: %s",
-                 fixup_err_to_str(e)))
-      }
-      result::Err(_) => {
-        None
-      }
+    match resolve_type(fcx.infcx(), ty, resolve_and_force_all_but_regions) {
+        Ok(new_type) => Some(new_type),
+        Err(e) if !is_early => {
+            tcx.sess.span_fatal(
+                expr.span,
+                fmt!("cannot determine a type \
+                      for this bounded type parameter: %s",
+                     fixup_err_to_str(e)))
+        }
+        Err(_) => {
+            None
+        }
     }
 }
 

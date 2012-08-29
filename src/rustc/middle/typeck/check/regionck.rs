@@ -81,7 +81,7 @@ impl @rcx {
     /// that `<R0>` be bigger than the let and the `*b` expression, so we
     /// will effectively resolve `<R0>` to be the block B.
     fn resolve_type(unresolved_ty: ty::t) -> fres<ty::t> {
-        resolve_type(self.fcx.infcx, unresolved_ty,
+        resolve_type(self.fcx.infcx(), unresolved_ty,
                      resolve_and_force_all_but_regions)
     }
 
@@ -95,7 +95,7 @@ fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
     v.visit_expr(e, @rcx, v);
-    fcx.infcx.resolve_regions();
+    fcx.infcx().resolve_regions();
 }
 
 fn regionck_fn(fcx: @fn_ctxt,
@@ -104,7 +104,7 @@ fn regionck_fn(fcx: @fn_ctxt,
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
     v.visit_block(blk, @rcx, v);
-    fcx.infcx.resolve_regions();
+    fcx.infcx().resolve_regions();
 }
 
 fn regionck_visitor() -> rvt {

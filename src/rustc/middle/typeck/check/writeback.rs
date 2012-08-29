@@ -3,30 +3,58 @@
 // substitutions.
 
 import check::{fn_ctxt, lookup_local};
-import infer::{resolve_type, resolve_all, force_all};
+import infer::{resolve_type, resolve_region, resolve_all, force_all};
 export resolve_type_vars_in_fn;
 export resolve_type_vars_in_expr;
+import result::{Result, Ok, Err};
 
-fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t) ->
-    Option<ty::t> {
+fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t)
+    -> Option<ty::t>
+{
     if !ty::type_needs_infer(typ) { return Some(typ); }
-    match resolve_type(fcx.infcx, typ, resolve_all | force_all) {
-      result::Ok(new_type) => return Some(new_type),
-      result::Err(e) => {
-        if !fcx.ccx.tcx.sess.has_errors() {
-            fcx.ccx.tcx.sess.span_err(
-                sp,
-                fmt!("cannot determine a type \
-                      for this expression: %s",
-                     infer::fixup_err_to_str(e)))
+    match resolve_type(fcx.infcx(), typ, resolve_all | force_all) {
+        Ok(new_type) => return Some(new_type),
+        Err(e) => {
+            if !fcx.ccx.tcx.sess.has_errors() {
+                fcx.ccx.tcx.sess.span_err(
+                    sp,
+                    fmt!("cannot determine a type \
+                          for this expression: %s",
+                         infer::fixup_err_to_str(e)))
+            }
+            return None;
         }
-        return None;
-      }
     }
 }
+
 fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
-    -> Option<ty::t> {
+    -> Option<ty::t>
+{
     let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
+
+    // Resolve any borrowings for the node with id `id`
+    match fcx.inh.borrowings.find(id) {
+        None => (),
+        Some(borrow) => {
+            match resolve_region(fcx.infcx(), borrow.region,
+                                 resolve_all | force_all) {
+                Err(e) => {
+                    // This should not, I think, happen.
+                    fcx.ccx.tcx.sess.span_err(
+                        sp, fmt!("cannot resolve scope of borrow: %s",
+                                 infer::fixup_err_to_str(e)));
+                }
+                Ok(r) => {
+                    debug!("Borrowing node %d -> region %?, mutbl %?",
+                           id, r, borrow.mutbl);
+                    fcx.tcx().borrowings.insert(id, {region: r,
+                                                     mutbl: borrow.mutbl});
+                }
+            }
+        }
+    }
+
+    // Resolve the type of the node with id `id`
     let n_ty = fcx.node_ty(id);
     match resolve_type_vars_in_type(fcx, sp, n_ty) {
       None => {
@@ -58,8 +86,9 @@ fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
 
 fn maybe_resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span,
                                     id: ast::node_id)
-    -> Option<ty::t> {
-    if wbcx.fcx.node_types.contains_key(id) {
+    -> Option<ty::t>
+{
+    if wbcx.fcx.inh.node_types.contains_key(id) {
         resolve_type_vars_for_node(wbcx, sp, id)
     } else {
         None
@@ -118,7 +147,7 @@ fn visit_pat(p: @ast::pat, wbcx: wb_ctxt, v: wb_vt) {
     resolve_type_vars_for_node(wbcx, p.span, p.id);
     debug!("Type for pattern binding %s (id %d) resolved to %s",
            pat_to_str(p, wbcx.fcx.ccx.tcx.sess.intr()), p.id,
-           wbcx.fcx.infcx.ty_to_str(
+           wbcx.fcx.infcx().ty_to_str(
                ty::node_id_to_type(wbcx.fcx.ccx.tcx,
                                    p.id)));
     visit::visit_pat(p, wbcx, v);
@@ -127,21 +156,22 @@ fn visit_local(l: @ast::local, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { return; }
     let var_id = lookup_local(wbcx.fcx, l.span, l.node.id);
     let var_ty = ty::mk_var(wbcx.fcx.tcx(), var_id);
-    match resolve_type(wbcx.fcx.infcx, var_ty, resolve_all | force_all) {
-      result::Ok(lty) => {
-        debug!("Type for local %s (id %d) resolved to %s",
-               pat_to_str(l.node.pat, wbcx.fcx.ccx.tcx.sess.intr()),l.node.id,
-               wbcx.fcx.infcx.ty_to_str(lty));
-        write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.node.id, lty);
-      }
-      result::Err(e) => {
-        wbcx.fcx.ccx.tcx.sess.span_err(
-            l.span,
-            fmt!("cannot determine a type \
-                  for this local variable: %s",
-                 infer::fixup_err_to_str(e)));
-        wbcx.success = false;
-      }
+    match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
+        Ok(lty) => {
+            debug!("Type for local %s (id %d) resolved to %s",
+                   pat_to_str(l.node.pat, wbcx.fcx.tcx().sess.intr()),
+                   l.node.id,
+                   wbcx.fcx.infcx().ty_to_str(lty));
+            write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.node.id, lty);
+        }
+        Err(e) => {
+            wbcx.fcx.ccx.tcx.sess.span_err(
+                l.span,
+                fmt!("cannot determine a type \
+                      for this local variable: %s",
+                     infer::fixup_err_to_str(e)));
+            wbcx.success = false;
+        }
     }
     visit::visit_local(l, wbcx, v);
 }
@@ -163,9 +193,6 @@ fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {
     let wbcx = {fcx: fcx, mut success: true};
     let visit = mk_visitor();
     visit.visit_expr(e, wbcx, visit);
-    if wbcx.success {
-        infer::resolve_borrowings(fcx.infcx);
-    }
     return wbcx.success;
 }
 
@@ -183,9 +210,6 @@ fn resolve_type_vars_in_fn(fcx: @fn_ctxt,
     }
     for decl.inputs.each |arg| {
         resolve_type_vars_for_node(wbcx, arg.ty.span, arg.id);
-    }
-    if wbcx.success {
-        infer::resolve_borrowings(fcx.infcx);
     }
     return wbcx.success;
 }

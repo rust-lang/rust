@@ -273,6 +273,7 @@ import resolve::{resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all,
 import unify::{vals_and_bindings, root};
 import integral::{int_ty_set, int_ty_set_all};
 import combine::{combine_fields, eq_tys};
+import assignment::Assign;
 
 import sub::Sub;
 import lub::Lub;
@@ -296,20 +297,13 @@ export assignment;
 export root, to_str;
 export int_ty_set_all;
 
-// Extra information needed to perform an assignment that may borrow.
-// The `expr_id` and `span` are the id/span of the expression
-// whose type is being assigned, and `borrow_scope` is the region
-// scope to use if the value should be borrowed.
-type assignment = {
-    expr_id: ast::node_id,
-    span: span,
-    borrow_lb: ast::node_id,
-};
-
 type bound<T:copy> = Option<T>;
 type bounds<T:copy> = {lb: bound<T>, ub: bound<T>};
 
-type cres<T> = Result<T,ty::type_err>;
+type cres<T> = Result<T,ty::type_err>; // "combine result"
+type ures = cres<()>; // "unify result"
+type fres<T> = Result<T, fixup_err>; // "fixup result"
+type ares = cres<Option<ty::borrow>>; // "assignment result"
 
 enum infer_ctxt = @{
     tcx: ty::ctxt,
@@ -329,12 +323,7 @@ enum infer_ctxt = @{
     // For keeping track of existing type and region variables.
     ty_var_counter: @mut uint,
     ty_var_integral_counter: @mut uint,
-    region_var_counter: @mut uint,
-
-    borrowings: DVec<{expr_id: ast::node_id,
-                      span: span,
-                      scope: ty::region,
-                      mutbl: ast::mutability}>
+    region_var_counter: @mut uint
 };
 
 enum fixup_err {
@@ -358,9 +347,6 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
     }
 }
 
-type ures = result::Result<(), ty::type_err>;
-type fres<T> = result::Result<T, fixup_err>;
-
 fn new_vals_and_bindings<V:copy, T:copy>() -> vals_and_bindings<V, T> {
     vals_and_bindings {
         vals: smallintmap::mk(),
@@ -375,19 +361,14 @@ fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
                  region_vars: RegionVarBindings(tcx),
                  ty_var_counter: @mut 0u,
                  ty_var_integral_counter: @mut 0u,
-                 region_var_counter: @mut 0u,
-                 borrowings: DVec()})}
-
-fn mk_sub(cx: infer_ctxt, a_is_expected: bool, span: span) -> Sub {
-    Sub(combine_fields {infcx: cx, a_is_expected: a_is_expected, span: span})
-}
+                 region_var_counter: @mut 0u})}
 
 fn mk_subty(cx: infer_ctxt, a_is_expected: bool, span: span,
             a: ty::t, b: ty::t) -> ures {
     debug!("mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
-            mk_sub(cx, a_is_expected, span).tys(a, b)
+            cx.sub(a_is_expected, span).tys(a, b)
         }
     }.to_ures()
 }
@@ -396,7 +377,7 @@ fn can_mk_subty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
     debug!("can_mk_subty(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.probe {
-            mk_sub(cx, true, ast_util::dummy_sp()).tys(a, b)
+            cx.sub(true, ast_util::dummy_sp()).tys(a, b)
         }
     }.to_ures()
 }
@@ -406,7 +387,7 @@ fn mk_subr(cx: infer_ctxt, a_is_expected: bool, span: span,
     debug!("mk_subr(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
-            mk_sub(cx, a_is_expected, span).regions(a, b)
+            cx.sub(a_is_expected, span).regions(a, b)
         }
     }.to_ures()
 }
@@ -416,37 +397,30 @@ fn mk_eqty(cx: infer_ctxt, a_is_expected: bool, span: span,
     debug!("mk_eqty(%s <: %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
-            let suber = mk_sub(cx, a_is_expected, span);
+            let suber = cx.sub(a_is_expected, span);
             eq_tys(&suber, a, b)
         }
     }.to_ures()
 }
 
-fn mk_assignty(cx: infer_ctxt, anmnt: &assignment,
-               a: ty::t, b: ty::t) -> ures {
-    debug!("mk_assignty(%? / %s <: %s)",
-           anmnt, a.to_str(cx), b.to_str(cx));
+fn mk_assignty(cx: infer_ctxt, a_is_expected: bool, span: span,
+               a: ty::t, b: ty::t) -> ares {
+    debug!("mk_assignty(%s -> %s)", a.to_str(cx), b.to_str(cx));
     do indent {
         do cx.commit {
-            cx.assign_tys(anmnt, a, b)
+            Assign(cx.combine_fields(a_is_expected, span)).tys(a, b)
         }
-    }.to_ures()
+    }
 }
 
-fn can_mk_assignty(cx: infer_ctxt, anmnt: &assignment,
-                a: ty::t, b: ty::t) -> ures {
-    debug!("can_mk_assignty(%? / %s <: %s)",
-           anmnt, a.to_str(cx), b.to_str(cx));
-
-    // FIXME(#2593)---this will not unroll any entries we make in the
-    // borrowings table.  But this is OK for the moment because this
-    // is only used in method lookup, and there must be exactly one
-    // match or an error is reported. Still, it should be fixed. (#2593)
-    // NDM OUTDATED
-
-    indent(|| cx.probe(||
-        cx.assign_tys(anmnt, a, b)
-    ) ).to_ures()
+fn can_mk_assignty(cx: infer_ctxt, a: ty::t, b: ty::t) -> ures {
+    debug!("can_mk_assignty(%s -> %s)", a.to_str(cx), b.to_str(cx));
+    do indent {
+        do cx.probe {
+            let span = ast_util::dummy_sp();
+            Assign(cx.combine_fields(true, span)).tys(a, b)
+        }
+    }.to_ures()
 }
 
 // See comment on the type `resolve_state` below
@@ -460,6 +434,7 @@ fn resolve_region(cx: infer_ctxt, r: ty::region, modes: uint)
     resolver(cx, modes).resolve_region_chk(r)
 }
 
+/*
 fn resolve_borrowings(cx: infer_ctxt) {
     for cx.borrowings.each |item| {
         match resolve_region(cx, item.scope, resolve_all|force_all) {
@@ -479,6 +454,7 @@ fn resolve_borrowings(cx: infer_ctxt) {
         }
     }
 }
+*/
 
 trait then {
     fn then<T:copy>(f: fn() -> Result<T,ty::type_err>)
@@ -533,10 +509,20 @@ struct Snapshot {
     ty_var_bindings_len: uint;
     ty_var_integral_bindings_len: uint;
     region_vars_snapshot: uint;
-    borrowings_len: uint;
 }
 
 impl infer_ctxt {
+    fn combine_fields(a_is_expected: bool,
+                      span: span) -> combine_fields {
+        combine_fields {infcx: self,
+                        a_is_expected: a_is_expected,
+                        span: span}
+    }
+
+    fn sub(a_is_expected: bool, span: span) -> Sub {
+        Sub(self.combine_fields(a_is_expected, span))
+    }
+
     fn in_snapshot() -> bool {
         self.region_vars.in_snapshot()
     }
@@ -549,8 +535,6 @@ impl infer_ctxt {
                 self.ty_var_integral_bindings.bindings.len(),
             region_vars_snapshot:
                 self.region_vars.start_snapshot(),
-            borrowings_len:
-                self.borrowings.len()
         }
     }
 
@@ -564,9 +548,6 @@ impl infer_ctxt {
 
         self.region_vars.rollback_to(
             snapshot.region_vars_snapshot);
-        while self.borrowings.len() != snapshot.borrowings_len {
-            self.borrowings.pop();
-        }
     }
 
     /// Execute `f` and commit the bindings if successful

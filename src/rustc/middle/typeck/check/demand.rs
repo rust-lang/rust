@@ -6,7 +6,7 @@ fn suptype(fcx: @fn_ctxt, sp: span,
            expected: ty::t, actual: ty::t) {
 
     // n.b.: order of actual, expected is reversed
-    match infer::mk_subty(fcx.infcx, false, sp,
+    match infer::mk_subty(fcx.infcx(), false, sp,
                           actual, expected) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
@@ -18,11 +18,11 @@ fn suptype(fcx: @fn_ctxt, sp: span,
 fn eqtype(fcx: @fn_ctxt, sp: span,
           expected: ty::t, actual: ty::t) {
 
-    match infer::mk_eqty(fcx.infcx, false, sp, actual, expected) {
-      result::Ok(()) => { /* ok */ }
-      result::Err(ref err) => {
-        fcx.report_mismatched_types(sp, expected, actual, err);
-      }
+    match infer::mk_eqty(fcx.infcx(), false, sp, actual, expected) {
+        Ok(()) => { /* ok */ }
+        Err(ref err) => {
+            fcx.report_mismatched_types(sp, expected, actual, err);
+        }
     }
 }
 
