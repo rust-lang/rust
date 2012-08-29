@@ -1,7 +1,7 @@
 import driver::session;
 import driver::session::session;
 import middle::ty;
-import syntax::{ast, visit};
+import syntax::{ast, ast_util, visit};
 import syntax::attr;
 import syntax::codemap::span;
 import std::map::{map,hashmap,int_hash,hash_from_strs};
@@ -53,6 +53,10 @@ enum lint {
     deprecated_mode,
     deprecated_pattern,
     non_camel_case_types,
+
+    managed_heap_memory,
+    owned_heap_memory,
+    heap_memory,
 
     // FIXME(#3266)--make liveness warnings lintable
     // unused_variable,
@@ -138,6 +142,21 @@ fn get_lint_dict() -> lint_dict {
         (~"non_camel_case_types",
          @{lint: non_camel_case_types,
            desc: ~"types, variants and traits must have camel case names",
+           default: allow}),
+
+        (~"managed_heap_memory",
+         @{lint: managed_heap_memory,
+           desc: ~"use of managed (@ type) heap memory",
+           default: allow}),
+
+        (~"owned_heap_memory",
+         @{lint: owned_heap_memory,
+           desc: ~"use of owned (~ type) heap memory",
+           default: allow}),
+
+        (~"heap_memory",
+         @{lint: heap_memory,
+           desc: ~"use of any (~ type or @ type) heap memory",
            default: allow}),
 
         /* FIXME(#3266)--make liveness warnings lintable
@@ -348,6 +367,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_while_true(cx, i);
     check_item_path_statement(cx, i);
     check_item_non_camel_case_types(cx, i);
+    check_item_heap(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -426,6 +446,71 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       }
       _ => {/* nothing to do */ }
     }
+}
+
+fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
+
+    fn check_type_for_lint(cx: ty::ctxt, lint: lint,
+                           node: ast::node_id,
+                           item: ast::node_id,
+                           span: span, ty: ty::t) {
+
+        if get_lint_settings_level(cx.sess.lint_settings,
+                                   lint, node, item) != allow {
+            let mut n_box = 0;
+            let mut n_uniq = 0;
+            ty::fold_ty(cx, ty, |t| {
+                match ty::get(t).struct {
+                  ty::ty_box(_) => n_box += 1,
+                  ty::ty_uniq(_) => n_uniq += 1,
+                  _ => ()
+                };
+                t
+            });
+
+            if (n_uniq > 0 && lint != managed_heap_memory) {
+                let s = ty_to_str(cx, ty);
+                let m = ~"type uses owned (~ type) pointers: " + s;
+                cx.sess.span_lint(lint, node, item, span, m);
+            }
+
+            if (n_box > 0 && lint != owned_heap_memory) {
+                let s = ty_to_str(cx, ty);
+                let m = ~"type uses managed (@ type) pointers: " + s;
+                cx.sess.span_lint(lint, node, item, span, m);
+            }
+        }
+    }
+
+    fn check_type(cx: ty::ctxt,
+                  node: ast::node_id,
+                  item: ast::node_id,
+                  span: span, ty: ty::t) {
+            for [managed_heap_memory,
+                 owned_heap_memory,
+                 heap_memory].each |lint| {
+                check_type_for_lint(cx, lint, node, item, span, ty);
+            }
+    }
+
+    match it.node {
+      ast::item_fn(*) |
+      ast::item_ty(*) |
+      ast::item_enum(*) |
+      ast::item_class(*) |
+      ast::item_trait(*) => check_type(cx, it.id, it.id, it.span,
+                                       ty::node_id_to_type(cx, it.id)),
+      _ => ()
+    }
+
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
+        visit_expr: fn@(e: @ast::expr) {
+            let ty = ty::expr_ty(cx, e);
+            check_type(cx, e.id, it.id, e.span, ty);
+        }
+        with *visit::default_simple_visitor()
+    }));
+    visit::visit_item(it, (), visit);
 }
 
 fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
