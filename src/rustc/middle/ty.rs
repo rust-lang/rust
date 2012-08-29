@@ -2826,22 +2826,11 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
                     node_id_to_type(cx, trait_ref.ref_id)
                 }
            }
-           Some(ast_map::node_item(@{node: ast::item_class(*),
+           Some(ast_map::node_item(@{node: ast::item_class(sd,_),
                            _},_)) => {
-             match cx.def_map.find(id.node) {
-               Some(def_ty(trait_id)) => {
-                   // XXX: Doesn't work cross-crate.
-                   debug!("(impl_traits) found trait id %?", trait_id);
-                   ~[node_id_to_type(cx, trait_id.node)]
-               }
-               Some(x) => {
-                 cx.sess.bug(fmt!("impl_traits: trait ref is in trait map \
-                                   but is bound to %?", x));
-               }
-               None => {
-                 ~[]
-               }
-             }
+               do vec::map(sd.traits) |trait_ref| {
+                    node_id_to_type(cx, trait_ref.ref_id)
+                }
            }
            _ => ~[]
         }
