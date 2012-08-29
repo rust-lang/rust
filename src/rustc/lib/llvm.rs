@@ -990,10 +990,11 @@ extern mod llvm {
     fn LLVMRustLoadLibrary(Filename: *c_char) -> bool;
 
     /** Create and execute the JIT engine. */
-    fn LLVMRustJIT(PM: PassManagerRef,
+    fn LLVMRustJIT(__morestack: *(),
+                   PM: PassManagerRef,
                    M: ModuleRef,
                    OptLevel: c_int,
-                   EnableSegmentedStacks: bool) -> bool;
+                   EnableSegmentedStacks: bool) -> *();
 
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;

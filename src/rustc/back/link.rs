@@ -12,7 +12,7 @@ import std::sha1::sha1;
 import syntax::ast;
 import syntax::print::pprust;
 import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
-        FileType};
+        PassManagerRef, FileType};
 import metadata::filesearch;
 import syntax::ast_map::{path, path_mod, path_name};
 import io::{Writer, WriterUtil};
@@ -51,6 +51,57 @@ fn WriteOutputFile(sess:session,
             PM, M, Triple, Output, FileType, OptLevel, EnableSegmentedStacks);
     if (!result) {
         llvm_err(sess, ~"Could not write output");
+    }
+}
+
+#[cfg(stage0)]
+mod jit {
+    fn exec(_sess: session,
+            _pm: PassManagerRef,
+            _m: ModuleRef,
+            _opt: c_int,
+            _stacks: bool) {
+        fail
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+mod jit {
+    #[nolink]
+    #[abi = "rust-intrinsic"]
+    extern mod rusti {
+        fn morestack_addr() -> *();
+    }
+
+    struct Closure {
+        code: *();
+        env: *();
+    }
+
+    fn exec(sess: session,
+            pm: PassManagerRef,
+            m: ModuleRef,
+            opt: c_int,
+            stacks: bool) unsafe {
+        let ptr = llvm::LLVMRustJIT(rusti::morestack_addr(), pm, m, opt, stacks);
+
+        if ptr::is_null(ptr) {
+            llvm_err(sess, ~"Could not JIT");
+        } else {
+            let bin = match os::self_exe_path() {
+                Some(path) => path.to_str(),
+                _ => ~"rustc"
+            };
+            let closure = Closure {
+                code: ptr,
+                env: ptr::null()
+            };
+            let func: fn(~[~str]) = unsafe::transmute(closure);
+
+            func(~[bin]);
+        }
     }
 }
 
@@ -174,12 +225,7 @@ mod write {
                         });
                 }*/
 
-                if !llvm::LLVMRustJIT(pm.llpm,
-                                      llmod,
-                                      CodeGenOptLevel,
-                                      true) {
-                    llvm_err(sess, ~"Could not JIT");
-                }
+                jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
 
                 if sess.time_llvm_passes() {
                     llvm::LLVMRustPrintPassTimings();

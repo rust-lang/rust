@@ -52,9 +52,6 @@
 #include <unistd.h>
 #endif
 
-// Does this need to be done, or can it be made to resolve from the main program?
-extern "C" void __morestack(void *args, void *fn_ptr, uintptr_t stack_ptr);
-
 using namespace llvm;
 
 static const char *LLVMRustError;
@@ -95,11 +92,13 @@ void LLVMInitializeX86AsmParser();
 // that rustllvm doesn't actually link to and it's pointless to put target info
 // into the registry that Rust can not generate machine code for.
 
-#define INITIALIZE_TARGETS() LLVMInitializeX86TargetInfo(); \
-                             LLVMInitializeX86Target(); \
-                             LLVMInitializeX86TargetMC(); \
-                             LLVMInitializeX86AsmPrinter(); \
-                             LLVMInitializeX86AsmParser();
+void LLVMRustInitializeTargets() {
+  LLVMInitializeX86TargetInfo();
+  LLVMInitializeX86Target();
+  LLVMInitializeX86TargetMC();
+  LLVMInitializeX86AsmPrinter();
+  LLVMInitializeX86AsmParser();
+}
 
 extern "C" bool
 LLVMRustLoadLibrary(const char* file) {
@@ -113,8 +112,6 @@ LLVMRustLoadLibrary(const char* file) {
   return true;
 }
 
-ExecutionEngine* EE;
-
 // Custom memory manager for MCJITting. It needs special features
 // that the generic JIT memory manager doesn't entail. Based on
 // code from LLI, change where needed for Rust.
@@ -123,8 +120,9 @@ public:
   SmallVector<sys::MemoryBlock, 16> AllocatedDataMem;
   SmallVector<sys::MemoryBlock, 16> AllocatedCodeMem;
   SmallVector<sys::MemoryBlock, 16> FreeCodeMem;
+  void* __morestack;
 
-  RustMCJITMemoryManager() { }
+  RustMCJITMemoryManager(void* sym) : __morestack(sym) { }
   ~RustMCJITMemoryManager();
 
   virtual uint8_t *allocateCodeSection(uintptr_t Size, unsigned Alignment,
@@ -275,7 +273,7 @@ void *RustMCJITMemoryManager::getPointerToNamedFunction(const std::string &Name,
   if (Name == "mknod") return (void*)(intptr_t)&mknod;
 #endif
 
-  if (Name == "__morestack") return (void*)(intptr_t)&__morestack;
+  if (Name == "__morestack") return &__morestack;
 
   const char *NameStr = Name.c_str();
   void *Ptr = sys::DynamicLibrary::SearchForAddressOfSymbol(NameStr);
@@ -294,13 +292,13 @@ RustMCJITMemoryManager::~RustMCJITMemoryManager() {
     free(AllocatedDataMem[i].base());
 }
 
-extern "C" bool
-LLVMRustJIT(LLVMPassManagerRef PMR,
+extern "C" void*
+LLVMRustJIT(void* __morestack,
+            LLVMPassManagerRef PMR,
             LLVMModuleRef M,
             CodeGenOpt::Level OptLevel,
             bool EnableSegmentedStacks) {
 
-  INITIALIZE_TARGETS();
   InitializeNativeTarget();
   InitializeNativeTargetAsmPrinter();
 
@@ -315,39 +313,37 @@ LLVMRustJIT(LLVMPassManagerRef PMR,
   PM->add(createInstructionCombiningPass());
   PM->add(createReassociatePass());
   PM->add(createGVNPass());
-  PM->add(createPromoteMemoryToRegisterPass());
   PM->add(createCFGSimplificationPass());
   PM->add(createFunctionInliningPass());
+  PM->add(createPromoteMemoryToRegisterPass());
   PM->run(*unwrap(M));
 
-  RustMCJITMemoryManager* MM = new RustMCJITMemoryManager();
-  EE = EngineBuilder(unwrap(M))
+  RustMCJITMemoryManager* MM = new RustMCJITMemoryManager(__morestack);
+  ExecutionEngine* EE = EngineBuilder(unwrap(M))
     .setTargetOptions(Options)
     .setJITMemoryManager(MM)
     .setOptLevel(OptLevel)
     .setUseMCJIT(true)
+    .setAllocateGVsWithCode(false)
     .create();
 
   if(!EE || Err != "") {
     LLVMRustError = Err.c_str();
-    return false;
+    return 0;
   }
 
   MM->invalidateInstructionCache();
-  Function* func = EE->FindFunctionNamed("main");
+  Function* func = EE->FindFunctionNamed("_rust_main");
 
   if(!func || Err != "") {
     LLVMRustError = Err.c_str();
-    return false;
+    return 0;
   }
 
-  typedef int (*Entry)(int, int);
-  Entry entry = (Entry) EE->getPointerToFunction(func);
-
+  void* entry = EE->getPointerToFunction(func);
   assert(entry);
-  entry(0, 0);
 
-  return true;
+  return entry;
 }
 
 extern "C" bool
@@ -359,7 +355,7 @@ LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                         CodeGenOpt::Level OptLevel,
 			bool EnableSegmentedStacks) {
 
-  INITIALIZE_TARGETS();
+  LLVMRustInitializeTargets();
 
   TargetOptions Options;
   Options.NoFramePointerElim = true;
