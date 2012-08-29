@@ -106,6 +106,7 @@ fn run_tests_console(opts: test_opts,
                      tests: ~[test_desc]) -> bool {
 
     fn callback(event: testevent, st: console_test_state) {
+        debug!("callback(event=%?)", event);
         match event {
           te_filtered(filtered_tests) => {
             st.total = vec::len(filtered_tests);

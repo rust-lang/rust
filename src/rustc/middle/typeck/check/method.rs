@@ -108,14 +108,14 @@ struct lookup {
     fn method() -> Option<method_map_entry> {
         debug!("method lookup(m_name=%s, self_ty=%s, %?)",
                self.fcx.tcx().sess.str_of(self.m_name),
-               self.fcx.infcx.ty_to_str(self.self_ty),
+               self.fcx.infcx().ty_to_str(self.self_ty),
                ty::get(self.self_ty).struct);
 
         // Determine if there are any inherent methods we can call.
         // (An inherent method is one that belongs to no trait, but is
         // inherent to a class or impl.)
         let optional_inherent_methods;
-        match get_base_type_def_id(self.fcx.infcx,
+        match get_base_type_def_id(self.fcx.infcx(),
                                  self.self_expr.span,
                                  self.self_ty) {
           None => {
@@ -438,35 +438,27 @@ struct lookup {
         // Depending on our argument, we find potential matches by
         // checking subtypability, type assignability, or reference
         // subtypability. Collect the matches.
-        let matches;
         match mode {
-          subtyping_mode => {
-            matches = self.fcx.can_mk_subty(self.self_ty, impl_ty);
-          }
-          assignability_mode => {
-            matches = self.fcx.can_mk_assignty(self.self_expr,
-                                               self.borrow_lb,
-                                               self.self_ty,
-                                               impl_ty);
-          }
-          immutable_reference_mode => {
-            let region = self.fcx.infcx.next_region_var(
-                self.self_expr.span,
-                self.self_expr.id);
-            let tm = { ty: self.self_ty, mutbl: ast::m_imm };
-            let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
-            matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
-          }
-          mutable_reference_mode => {
-            let region = self.fcx.infcx.next_region_var(
-                self.self_expr.span,
-                self.self_expr.id);
-            let tm = { ty: self.self_ty, mutbl: ast::m_mutbl };
-            let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
-            matches = self.fcx.can_mk_subty(ref_ty, impl_ty);
-          }
+            subtyping_mode => self.fcx.can_mk_subty(self.self_ty, impl_ty),
+            assignability_mode => self.fcx.can_mk_assignty(self.self_ty,
+                                                           impl_ty),
+            immutable_reference_mode => {
+                let region = self.fcx.infcx().next_region_var(
+                    self.self_expr.span,
+                    self.self_expr.id);
+                let tm = { ty: self.self_ty, mutbl: ast::m_imm };
+                let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
+                self.fcx.can_mk_subty(ref_ty, impl_ty)
+            }
+            mutable_reference_mode => {
+                let region = self.fcx.infcx().next_region_var(
+                    self.self_expr.span,
+                    self.self_expr.id);
+                let tm = { ty: self.self_ty, mutbl: ast::m_mutbl };
+                let ref_ty = ty::mk_rptr(self.tcx(), region, tm);
+                self.fcx.can_mk_subty(ref_ty, impl_ty)
+            }
         }
-        matches
     }
 
     // Returns true if any were added and false otherwise.
@@ -530,7 +522,7 @@ struct lookup {
           None => {
             match m.self_ty {
               ast::sty_region(_) =>
-                  Some(self.fcx.infcx.next_region_var(
+                  Some(self.fcx.infcx().next_region_var(
                       self.self_expr.span,
                       self.self_expr.id)),
               _ => None
@@ -640,7 +632,7 @@ struct lookup {
 
         debug!("write_mty_from_candidate(n_tps_m=%u, fty=%s, entry=%?)",
                cand.n_tps_m,
-               self.fcx.infcx.ty_to_str(cand.fty),
+               self.fcx.infcx().ty_to_str(cand.fty),
                cand.entry);
 
         match cand.mode {
@@ -655,30 +647,18 @@ struct lookup {
                     self.tcx().sess.span_bug(
                         self.expr.span,
                         fmt!("%s was assignable to %s but now is not?",
-                             self.fcx.infcx.ty_to_str(cand.self_ty),
-                             self.fcx.infcx.ty_to_str(cand.rcvr_ty)));
+                             self.fcx.infcx().ty_to_str(cand.self_ty),
+                             self.fcx.infcx().ty_to_str(cand.rcvr_ty)));
                   }
                 }
             }
             immutable_reference_mode => {
                 // Borrow as an immutable reference.
-                let region_var = self.fcx.infcx.next_region_var(
-                    self.self_expr.span,
-                    self.self_expr.id);
-                self.fcx.infcx.borrowings.push({expr_id: self.self_expr.id,
-                                                span: self.self_expr.span,
-                                                scope: region_var,
-                                                mutbl: ast::m_imm});
+                self.add_borrow(ast::m_imm);
             }
             mutable_reference_mode => {
                 // Borrow as a mutable reference.
-                let region_var = self.fcx.infcx.next_region_var(
-                    self.self_expr.span,
-                    self.self_expr.id);
-                self.fcx.infcx.borrowings.push({expr_id: self.self_expr.id,
-                                                span: self.self_expr.span,
-                                                scope: region_var,
-                                                mutbl: ast::m_mutbl});
+                self.add_borrow(ast::m_mutbl);
             }
         }
 
@@ -688,18 +668,18 @@ struct lookup {
         let n_tps_m = cand.n_tps_m;
         let m_substs = {
             if n_tps_supplied == 0u {
-                self.fcx.infcx.next_ty_vars(n_tps_m)
+                self.fcx.infcx().next_ty_vars(n_tps_m)
             } else if n_tps_m == 0u {
                 tcx.sess.span_err(
                     self.expr.span,
                     ~"this method does not take type parameters");
-                self.fcx.infcx.next_ty_vars(n_tps_m)
+                self.fcx.infcx().next_ty_vars(n_tps_m)
             } else if n_tps_supplied != n_tps_m {
                 tcx.sess.span_err(
                     self.expr.span,
                     ~"incorrect number of type \
                      parameters given for this method");
-                self.fcx.infcx.next_ty_vars(n_tps_m)
+                self.fcx.infcx().next_ty_vars(n_tps_m)
             } else {
                 self.supplied_tps
             }
@@ -711,6 +691,14 @@ struct lookup {
         self.fcx.write_ty_substs(self.node_id, cand.fty, all_substs);
 
         return cand.entry;
+    }
+
+    fn add_borrow(mutbl: ast::mutability) {
+        let region_var = self.fcx.infcx().next_region_var(
+            self.self_expr.span,
+            self.self_expr.id);
+        self.fcx.inh.borrowings.insert(self.self_expr.id, {region: region_var,
+                                                           mutbl: mutbl});
     }
 }
 

@@ -49,70 +49,74 @@
 // needed.
 
 import to_str::to_str;
+import combine::combine_fields;
 
-impl infer_ctxt {
-    fn assign_tys(anmnt: &assignment, a: ty::t, b: ty::t) -> ures {
+fn to_ares(+c: cres<ty::t>) -> ares {
+    match c {
+        Ok(_) => Ok(None),
+        Err(e) => Err(e)
+    }
+}
 
-        fn select(fst: Option<ty::t>, snd: Option<ty::t>) -> Option<ty::t> {
-            match fst {
-              Some(t) => Some(t),
-              None => match snd {
-                Some(t) => Some(t),
-                None => None
-              }
-            }
-        }
+// Note: Assign is not actually a combiner, in that it does not
+// conform to the same interface, though it performs a similar
+// function.
+enum Assign = combine_fields;
 
-        debug!("assign_tys(anmnt=%?, %s -> %s)",
-               anmnt, a.to_str(self), b.to_str(self));
+impl Assign {
+    fn tys(a: ty::t, b: ty::t) -> ares {
+        debug!("Assign.tys(%s -> %s)",
+               a.to_str(self.infcx),
+               b.to_str(self.infcx));
         let _r = indenter();
 
         match (ty::get(a).struct, ty::get(b).struct) {
-          (ty::ty_bot, _) => {
-            uok()
-          }
+            (ty::ty_bot, _) => {
+                Ok(None)
+            }
 
-          (ty::ty_var(a_id), ty::ty_var(b_id)) => {
-            let nde_a = self.get(&self.ty_var_bindings, a_id);
-            let nde_b = self.get(&self.ty_var_bindings, b_id);
-            let a_bounds = nde_a.possible_types;
-            let b_bounds = nde_b.possible_types;
+            (ty::ty_var(a_id), ty::ty_var(b_id)) => {
+                let nde_a = self.infcx.get(&self.infcx.ty_var_bindings, a_id);
+                let nde_b = self.infcx.get(&self.infcx.ty_var_bindings, b_id);
+                let a_bounds = nde_a.possible_types;
+                let b_bounds = nde_b.possible_types;
 
-            let a_bnd = select(a_bounds.ub, a_bounds.lb);
-            let b_bnd = select(b_bounds.lb, b_bounds.ub);
-            self.assign_tys_or_sub(anmnt, a, b, a_bnd, b_bnd)
-          }
+                let a_bnd = option::or(a_bounds.ub, a_bounds.lb);
+                let b_bnd = option::or(b_bounds.lb, b_bounds.ub);
+                self.assign_tys_or_sub(a, b, a_bnd, b_bnd)
+            }
 
-          (ty::ty_var(a_id), _) => {
-            let nde_a = self.get(&self.ty_var_bindings, a_id);
-            let a_bounds = nde_a.possible_types;
+            (ty::ty_var(a_id), _) => {
+                let nde_a = self.infcx.get(&self.infcx.ty_var_bindings, a_id);
+                let a_bounds = nde_a.possible_types;
 
-            let a_bnd = select(a_bounds.ub, a_bounds.lb);
-            self.assign_tys_or_sub(anmnt, a, b, a_bnd, Some(b))
-          }
+                let a_bnd = option::or(a_bounds.ub, a_bounds.lb);
+                self.assign_tys_or_sub(a, b, a_bnd, Some(b))
+            }
 
-          (_, ty::ty_var(b_id)) => {
-            let nde_b = self.get(&self.ty_var_bindings, b_id);
-            let b_bounds = nde_b.possible_types;
+            (_, ty::ty_var(b_id)) => {
+                let nde_b = self.infcx.get(&self.infcx.ty_var_bindings, b_id);
+                let b_bounds = nde_b.possible_types;
 
-            let b_bnd = select(b_bounds.lb, b_bounds.ub);
-            self.assign_tys_or_sub(anmnt, a, b, Some(a), b_bnd)
-          }
+                let b_bnd = option::or(b_bounds.lb, b_bounds.ub);
+                self.assign_tys_or_sub(a, b, Some(a), b_bnd)
+            }
 
-          (_, _) => {
-            self.assign_tys_or_sub(anmnt, a, b, Some(a), Some(b))
-          }
+            (_, _) => {
+                self.assign_tys_or_sub(a, b, Some(a), Some(b))
+            }
         }
     }
+}
 
+priv impl Assign {
     fn assign_tys_or_sub(
-        anmnt: &assignment,
         a: ty::t, b: ty::t,
-        +a_bnd: Option<ty::t>, +b_bnd: Option<ty::t>) -> ures {
+        +a_bnd: Option<ty::t>, +b_bnd: Option<ty::t>) -> ares {
 
-        debug!("assign_tys_or_sub(anmnt=%?, %s -> %s, %s -> %s)",
-               anmnt, a.to_str(self), b.to_str(self),
-               a_bnd.to_str(self), b_bnd.to_str(self));
+        debug!("Assign.assign_tys_or_sub(%s -> %s, %s -> %s)",
+               a.to_str(self.infcx), b.to_str(self.infcx),
+               a_bnd.to_str(self.infcx), b_bnd.to_str(self.infcx));
         let _r = indenter();
 
         fn is_borrowable(v: ty::vstore) -> bool {
@@ -123,73 +127,73 @@ impl infer_ctxt {
         }
 
         match (a_bnd, b_bnd) {
-          (Some(a_bnd), Some(b_bnd)) => {
-            match (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
-              (ty::ty_box(*), ty::ty_rptr(r_b, mt_b)) => {
-                let nr_b = ty::mk_box(self.tcx, {ty: mt_b.ty,
-                                                 mutbl: m_const});
-                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
-              }
-              (ty::ty_uniq(*), ty::ty_rptr(r_b, mt_b)) => {
-                let nr_b = ty::mk_uniq(self.tcx, {ty: mt_b.ty,
-                                                  mutbl: m_const});
-                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
-              }
-              (ty::ty_estr(vs_a),
-               ty::ty_estr(ty::vstore_slice(r_b)))
-              if is_borrowable(vs_a) => {
-                let nr_b = ty::mk_estr(self.tcx, vs_a);
-                self.crosspollinate(anmnt, a, nr_b, m_imm, r_b)
-              }
+            (Some(a_bnd), Some(b_bnd)) => {
+                // check for a case where a non-region pointer (@, ~) is
+                // being assigned to a region pointer:
+                match (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
+                    (ty::ty_box(_), ty::ty_rptr(r_b, mt_b)) => {
+                        let nr_b = ty::mk_box(self.infcx.tcx,
+                                              {ty: mt_b.ty, mutbl: m_const});
+                        self.try_assign(a, nr_b, mt_b.mutbl, r_b)
+                    }
+                    (ty::ty_uniq(_), ty::ty_rptr(r_b, mt_b)) => {
+                        let nr_b = ty::mk_uniq(self.infcx.tcx,
+                                               {ty: mt_b.ty, mutbl: m_const});
+                        self.try_assign(a, nr_b, mt_b.mutbl, r_b)
+                    }
+                    (ty::ty_estr(vs_a),
+                     ty::ty_estr(ty::vstore_slice(r_b)))
+                    if is_borrowable(vs_a) => {
+                        let nr_b = ty::mk_estr(self.infcx.tcx, vs_a);
+                        self.try_assign(a, nr_b, m_imm, r_b)
+                    }
 
-              (ty::ty_evec(_, vs_a),
-               ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
-              if is_borrowable(vs_a) => {
-                let nr_b = ty::mk_evec(self.tcx, {ty: mt_b.ty,
-                                                  mutbl: m_const}, vs_a);
-                self.crosspollinate(anmnt, a, nr_b, mt_b.mutbl, r_b)
-              }
+                    (ty::ty_evec(_, vs_a),
+                     ty::ty_evec(mt_b, ty::vstore_slice(r_b)))
+                    if is_borrowable(vs_a) => {
+                        let nr_b = ty::mk_evec(self.infcx.tcx,
+                                               {ty: mt_b.ty, mutbl: m_const},
+                                               vs_a);
+                        self.try_assign(a, nr_b, mt_b.mutbl, r_b)
+                    }
 
-              _ => {
-                mk_sub(self, false, anmnt.span).tys(a, b).to_ures()
-              }
+                    _ => {
+                        // otherwise, assignment follows normal subtype rules:
+                        to_ares(Sub(*self).tys(a, b))
+                    }
+                }
             }
-          }
-          _ => {
-            mk_sub(self, false, anmnt.span).tys(a, b).to_ures()
-          }
+            _ => {
+                // if insufficient bounds were available, just follow
+                // normal subtype rules:
+                to_ares(Sub(*self).tys(a, b))
+            }
         }
     }
 
-    fn crosspollinate(anmnt: &assignment,
-                      a: ty::t,
-                      nr_b: ty::t,
-                      m: ast::mutability,
-                      r_b: ty::region) -> ures {
+    /// Given an assignment from a type like `@a` to `&r_b/m nr_b`,
+    /// this function checks that `a <: nr_b`.  In that case, the
+    /// assignment is permitted, so it constructs a fresh region
+    /// variable `r_a >= r_b` and returns a corresponding assignment
+    /// record.  See the discussion at the top of this file for more
+    /// details.
+    fn try_assign(a: ty::t,
+                  nr_b: ty::t,
+                  m: ast::mutability,
+                  r_b: ty::region) -> ares {
 
-        debug!("crosspollinate(anmnt=%?, a=%s, nr_b=%s, r_b=%s)",
-               anmnt, a.to_str(self), nr_b.to_str(self),
-               r_b.to_str(self));
+        debug!("try_assign(a=%s, nr_b=%s, m=%?, r_b=%s)",
+               a.to_str(self.infcx),
+               nr_b.to_str(self.infcx),
+               m,
+               r_b.to_str(self.infcx));
 
         do indent {
-            let sub = mk_sub(self, false, anmnt.span);
+            let sub = Sub(*self);
             do sub.tys(a, nr_b).chain |_t| {
-                // Create a fresh region variable `r_a` with the given
-                // borrow bounds:
-                let r_a = self.next_region_var(anmnt.span,
-                                               anmnt.borrow_lb);
-
-                debug!("anmnt=%?", anmnt);
+                let r_a = self.infcx.next_region_var_nb(self.span);
                 do sub.contraregions(r_a, r_b).chain |_r| {
-                    // if successful, add an entry indicating that
-                    // borrowing occurred
-                    debug!("borrowing expression #%?, scope=%?, m=%?",
-                           anmnt, r_a, m);
-                    self.borrowings.push({expr_id: anmnt.expr_id,
-                                          span: anmnt.span,
-                                          scope: r_a,
-                                          mutbl: m});
-                    uok()
+                    Ok(Some({region: r_a, mutbl: m}))
                 }
             }
         }
