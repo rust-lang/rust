@@ -23,6 +23,8 @@
  * * access to a character by index is logarithmic (linear in strings);
  */
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 /// The type of ropes.
 type rope = node::root;
@@ -436,7 +438,7 @@ mod iterator {
               node::content(x) => return node::leaf_iterator::start(x)
             }
         }
-        fn next(it: node::leaf_iterator::t) -> Option<node::leaf> {
+        fn next(it: &node::leaf_iterator::t) -> Option<node::leaf> {
             return node::leaf_iterator::next(it);
         }
     }
@@ -447,7 +449,7 @@ mod iterator {
               node::content(x) => return node::char_iterator::start(x)
             }
         }
-        fn next(it: node::char_iterator::t) -> Option<char> {
+        fn next(it: &node::char_iterator::t) -> Option<char> {
             return node::char_iterator::next(it)
         }
     }
@@ -751,7 +753,7 @@ mod node {
      * * forest - The forest. This vector is progressively rewritten during
      *            execution and should be discarded as meaningless afterwards.
      */
-    fn tree_from_forest_destructive(forest: ~[mut @node]) -> @node {
+    fn tree_from_forest_destructive(forest: &[mut @node]) -> @node {
         let mut i;
         let mut len = vec::len(forest);
         while len > 1u {
@@ -800,7 +802,7 @@ mod node {
         let mut offset = 0u;//Current position in the buffer
         let it = leaf_iterator::start(node);
         loop {
-            match (leaf_iterator::next(it)) {
+            match (leaf_iterator::next(&it)) {
               option::None => break,
               option::Some(x) => {
                 //FIXME (#2744): Replace with memcpy or something similar
@@ -861,7 +863,7 @@ mod node {
         let mut forest = ~[mut];
         let it = leaf_iterator::start(node);
         loop {
-            match (leaf_iterator::next(it)) {
+            match (leaf_iterator::next(&it)) {
               option::None    => break,
               option::Some(x) => vec::push(forest, @leaf(x))
             }
@@ -1018,7 +1020,7 @@ mod node {
         let itb = char_iterator::start(b);
         let mut result = 0;
         while result == 0 {
-            match ((char_iterator::next(ita), char_iterator::next(itb))) {
+            match ((char_iterator::next(&ita), char_iterator::next(&itb))) {
               (option::None, option::None) => break,
               (option::Some(chara), option::Some(charb)) => {
                 result = char::cmp(chara, charb);
@@ -1121,7 +1123,7 @@ mod node {
             }
         }
 
-        fn next(it: t) -> Option<leaf> {
+        fn next(it: &t) -> Option<leaf> {
             if it.stackpos < 0 { return option::None; }
             loop {
                 let current = it.stack[it.stackpos];
@@ -1162,7 +1164,7 @@ mod node {
             }
         }
 
-        fn next(it: t) -> Option<char> {
+        fn next(it: &t) -> Option<char> {
             loop {
                 match (get_current_or_next_leaf(it)) {
                   option::None => return option::None,
@@ -1177,16 +1179,16 @@ mod node {
             };
         }
 
-        fn get_current_or_next_leaf(it: t) -> Option<leaf> {
-            match (it.leaf) {
-              option::Some(_) => return it.leaf,
+        fn get_current_or_next_leaf(it: &t) -> Option<leaf> {
+            match ((*it).leaf) {
+              option::Some(_) => return (*it).leaf,
               option::None => {
-                let next = leaf_iterator::next(it.leaf_iterator);
+                let next = leaf_iterator::next(&((*it).leaf_iterator));
                 match (next) {
                   option::None => return option::None,
                   option::Some(_) => {
-                    it.leaf          = next;
-                    it.leaf_byte_pos = 0u;
+                    (*it).leaf          = next;
+                    (*it).leaf_byte_pos = 0u;
                     return next;
                   }
                 }
@@ -1194,19 +1196,19 @@ mod node {
             }
         }
 
-        fn get_next_char_in_leaf(it: t) -> Option<char> {
-            match copy it.leaf {
+        fn get_next_char_in_leaf(it: &t) -> Option<char> {
+            match copy (*it).leaf {
               option::None => return option::None,
               option::Some(aleaf) => {
-                if it.leaf_byte_pos >= aleaf.byte_len {
+                if (*it).leaf_byte_pos >= aleaf.byte_len {
                     //We are actually past the end of the leaf
-                    it.leaf = option::None;
+                    (*it).leaf = option::None;
                     return option::None
                 } else {
                     let {ch, next} =
                         str::char_range_at(*aleaf.content,
-                                     it.leaf_byte_pos + aleaf.byte_offset);
-                    it.leaf_byte_pos = next - aleaf.byte_offset;
+                                     (*it).leaf_byte_pos + aleaf.byte_offset);
+                    (*it).leaf_byte_pos = next - aleaf.byte_offset;
                     return option::Some(ch)
                 }
               }
@@ -1274,7 +1276,7 @@ mod tests {
         let rope_iter   = iterator::char::start(r);
         let mut equal   = true;
         while equal {
-            match (node::char_iterator::next(rope_iter)) {
+            match (node::char_iterator::next(&rope_iter)) {
               option::None => {
                 if string_iter < string_len {
                     equal = false;
@@ -1301,7 +1303,7 @@ mod tests {
         let mut len = 0u;
         let it  = iterator::char::start(r);
         loop {
-            match (node::char_iterator::next(it)) {
+            match (node::char_iterator::next(&it)) {
               option::None => break,
               option::Some(_) => len += 1u
             }
