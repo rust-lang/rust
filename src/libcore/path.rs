@@ -32,6 +32,8 @@ trait GenericPath {
     pure fn push_rel((&self)) -> self;
     pure fn push_many((&[~str])) -> self;
     pure fn pop() -> self;
+
+    pure fn normalize() -> self;
 }
 
 #[cfg(windows)]
@@ -68,7 +70,7 @@ impl PosixPath : GenericPath {
         let mut components = str::split_nonempty(s, |c| c == '/');
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         return PosixPath { is_absolute: is_absolute,
-                           components: normalize(components) }
+                           components: components }
     }
 
     pure fn dirname() -> ~str {
@@ -175,14 +177,13 @@ impl PosixPath : GenericPath {
     }
 
     pure fn push_many(cs: &[~str]) -> PosixPath {
-        return PosixPath { components: normalize(self.components + cs),
+        return PosixPath { components: self.components + cs,
                            ..self }
     }
 
     pure fn push(s: &str) -> PosixPath {
         let mut cs = self.components;
         unchecked { vec::push(cs, move str::from_slice(s)); }
-        cs = normalize(cs);
         return PosixPath { components: move cs,
                            ..self }
     }
@@ -193,6 +194,13 @@ impl PosixPath : GenericPath {
             unchecked { vec::pop(cs); }
         }
         return PosixPath { components: move cs, ..self }
+    }
+
+    pure fn normalize() -> PosixPath {
+        return PosixPath {
+            components: normalize(self.components),
+            ..self
+        }
     }
 }
 
@@ -251,7 +259,7 @@ impl WindowsPath : GenericPath {
         return WindowsPath { host: host,
                              device: device,
                              is_absolute: is_absolute,
-                             components: normalize(components) }
+                             components: components }
     }
 
     pure fn dirname() -> ~str {
@@ -358,14 +366,13 @@ impl WindowsPath : GenericPath {
     }
 
     pure fn push_many(cs: &[~str]) -> WindowsPath {
-        return WindowsPath { components: normalize(self.components + cs),
+        return WindowsPath { components: self.components + cs,
                             ..self }
     }
 
     pure fn push(s: &str) -> WindowsPath {
         let mut cs = self.components;
         unchecked { vec::push(cs, move str::from_slice(s)); }
-        cs = normalize(cs);
         return WindowsPath { components: move cs,
                              ..self }
     }
@@ -376,6 +383,13 @@ impl WindowsPath : GenericPath {
             unchecked { vec::pop(cs); }
         }
         return WindowsPath { components: move cs, ..self }
+    }
+
+    pure fn normalize() -> WindowsPath {
+        return WindowsPath {
+            components: normalize(self.components),
+            ..self
+        }
     }
 }
 
@@ -399,19 +413,22 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
 
 mod posix {
 
+    #[cfg(test)]
+    fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
+
+    #[cfg(test)]
+    fn t(wp: &PosixPath, s: &str) {
+        let ss = wp.to_str();
+        let sss = str::from_slice(s);
+        if (ss != sss) {
+            debug!("got %s", ss);
+            debug!("expected %s", sss);
+            assert ss == sss;
+        }
+    }
+
     #[test]
     fn test_posix_paths() {
-        fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
-        fn t(wp: &PosixPath, s: &str) {
-            let ss = wp.to_str();
-            let sss = str::from_slice(s);
-            if (ss != sss) {
-                debug!("got %s", ss);
-                debug!("expected %s", sss);
-                assert ss == sss;
-            }
-        }
-
         t(&(mk("hi")), "hi");
         t(&(mk("/lib")), "/lib");
         t(&(mk("hi/there")), "hi/there");
@@ -425,13 +442,10 @@ mod posix {
             .with_dirname("hi")), "hi/there.txt");
 
         t(&(mk("hi/there.txt")
-            .with_dirname(".")), "there.txt");
-
-        t(&(mk("a/b/../c/././/../foo.txt/")),
-          "a/foo.txt");
+            .with_dirname(".")), "./there.txt");
 
         t(&(mk("a/b/c")
-            .push("..")), "a/b");
+            .push("..")), "a/b/c/..");
 
         t(&(mk("there.txt")
             .with_filetype("o")), "there.o");
@@ -461,6 +475,17 @@ mod posix {
 
     }
 
+    #[test]
+    fn test_normalize() {
+        t(&(mk("hi/there.txt")
+            .with_dirname(".").normalize()), "there.txt");
+
+        t(&(mk("a/b/../c/././/../foo.txt/").normalize()),
+          "a/foo.txt");
+
+        t(&(mk("a/b/c")
+            .push("..").normalize()), "a/b");
+    }
 }
 
 // Various windows helpers, and tests for the impl.

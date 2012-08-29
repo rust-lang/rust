@@ -117,6 +117,8 @@ fn get_rpath_relative_to_output(os: session::os,
 fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     assert abs1.is_absolute;
     assert abs2.is_absolute;
+    let abs1 = abs1.normalize();
+    let abs2 = abs2.normalize();
     debug!("finding relative path from %s to %s",
            abs1.to_str(), abs2.to_str());
     let split1 = abs1.components;
@@ -295,7 +297,7 @@ mod test {
       let o = session::os_linux;
       let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
-      assert res == Path("$ORIGIN/../lib");
+      assert res.to_str() == ~"$ORIGIN/../lib";
     }
 
     #[test]
@@ -304,7 +306,7 @@ mod test {
         let o = session::os_freebsd;
         let res = get_rpath_relative_to_output(o,
             &Path("bin/rustc"), &Path("lib/libstd.so"));
-        assert res == Path("$ORIGIN/../lib");
+        assert res.to_str() == ~"$ORIGIN/../lib";
     }
 
     #[test]
@@ -315,7 +317,7 @@ mod test {
         let res = get_rpath_relative_to_output(o,
                                                &Path("bin/rustc"),
                                                &Path("lib/libstd.so"));
-        assert res == Path("@executable_path/../lib");
+        assert res.to_str() == ~"@executable_path/../lib";
     }
 
     #[test]
