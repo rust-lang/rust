@@ -10,10 +10,10 @@ import option = option::Option;
 
 import result::{Result, Ok, Err};
 
-import Path = path2::Path;
-import GenericPath = path2::GenericPath;
-import WindowsPath = path2::WindowsPath;
-import PosixPath = path2::PosixPath;
+import Path = path::Path;
+import GenericPath = path::GenericPath;
+import WindowsPath = path::WindowsPath;
+import PosixPath = path::PosixPath;
 
 import tuple::{TupleOps, ExtendedTupleOps};
 import str::{StrSlice, UniqueStr};

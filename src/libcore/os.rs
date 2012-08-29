@@ -914,7 +914,7 @@ mod tests {
 
     #[test]
     fn test() {
-        assert (!path::path_is_absolute(~"test-path"));
+        assert (!Path("test-path").is_absolute);
 
         log(debug, ~"Current working directory: " + getcwd().to_str());
 

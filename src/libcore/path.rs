@@ -1,504 +1,577 @@
-//! Path data type and helper functions
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
-export Path;
-export consts;
-export path_is_absolute;
-export path_sep;
-export dirname;
-export basename;
-export connect;
-export connect_many;
-export split;
-export splitext;
-export normalize;
+struct WindowsPath {
+    host: Option<~str>;
+    device: Option<~str>;
+    is_absolute: bool;
+    components: ~[~str];
+}
 
-// FIXME: This type should probably be constrained (#2624)
-/// A path or fragment of a filesystem path
-type Path = ~str;
+struct PosixPath {
+    is_absolute: bool;
+    components: ~[~str];
+}
 
-#[cfg(unix)]
-mod consts {
-    /**
-     * The primary path separator character for the platform
-     *
-     * On all platforms it is '/'
-     */
-    const path_sep: char = '/';
-    /**
-     * The secondary path separator character for the platform
-     *
-     * On Unixes it is '/'. On Windows it is '\'.
-     */
-    const alt_path_sep: char = '/';
+trait GenericPath {
+
+    static pure fn from_str((&str)) -> self;
+
+    pure fn dirname() -> ~str;
+    pure fn filename() -> Option<~str>;
+    pure fn filestem() -> Option<~str>;
+    pure fn filetype() -> Option<~str>;
+
+    pure fn with_dirname((&str)) -> self;
+    pure fn with_filename((&str)) -> self;
+    pure fn with_filestem((&str)) -> self;
+    pure fn with_filetype((&str)) -> self;
+
+    pure fn push((&str)) -> self;
+    pure fn push_rel((&self)) -> self;
+    pure fn push_many((&[~str])) -> self;
+    pure fn pop() -> self;
 }
 
 #[cfg(windows)]
-mod consts {
-    const path_sep: char = '/';
-    const alt_path_sep: char = '\\';
-}
-
-/**
- * Indicates whether a path is absolute.
- *
- * A path is considered absolute if it begins at the filesystem root ("/") or,
- * on Windows, begins with a drive letter.
- */
-#[cfg(unix)]
-fn path_is_absolute(p: Path) -> bool {
-    str::char_at(p, 0u) == '/'
-}
+type Path = WindowsPath;
 
 #[cfg(windows)]
-fn path_is_absolute(p: ~str) -> bool {
-    return str::char_at(p, 0u) == '/' ||
-        str::char_at(p, 1u) == ':'
-        && (str::char_at(p, 2u) == consts::path_sep
-            || str::char_at(p, 2u) == consts::alt_path_sep);
+pure fn Path(s: &str) -> Path {
+    from_str::<WindowsPath>(s)
 }
 
-/// Get the default path separator for the host platform
-fn path_sep() -> ~str { return str::from_char(consts::path_sep); }
+#[cfg(unix)]
+type Path = PosixPath;
 
-fn split_dirname_basename (pp: Path) -> {dirname: ~str, basename: ~str} {
-    match str::rfind(pp, |ch|
-        ch == consts::path_sep || ch == consts::alt_path_sep
-    ) {
-      Some(i) => {
-        dirname: str::slice(pp, 0u, i),
-        basename: str::slice(pp, i + 1u, str::len(pp))
-      },
-      None => {dirname: ~".", basename: pp}
-    }
+#[cfg(unix)]
+pure fn Path(s: &str) -> Path {
+    from_str::<PosixPath>(s)
 }
 
-/**
- * Get the directory portion of a path
- *
- * Returns all of the path up to, but excluding, the final path separator.
- * The dirname of "/usr/share" will be "/usr", but the dirname of
- * "/usr/share/" is "/usr/share".
- *
- * If the path is not prefixed with a directory, then "." is returned.
- */
-fn dirname(pp: Path) -> Path {
-    return split_dirname_basename(pp).dirname;
-}
-
-/**
- * Get the file name portion of a path
- *
- * Returns the portion of the path after the final path separator.
- * The basename of "/usr/share" will be "share". If there are no
- * path separators in the path then the returned path is identical to
- * the provided path. If an empty path is provided or the path ends
- * with a path separator then an empty path is returned.
- */
-fn basename(pp: Path) -> Path {
-    return split_dirname_basename(pp).basename;
-}
-
-/**
- * Connects to path segments
- *
- * Given paths `pre` and `post, removes any trailing path separator on `pre`
- * and any leading path separator on `post`, and returns the concatenation of
- * the two with a single path separator between them.
- */
-fn connect(pre: Path, post: Path) -> Path {
-    let mut pre_ = pre;
-    let mut post_ = post;
-    let sep = consts::path_sep as u8;
-    let pre_len  = str::len(pre);
-    let post_len = str::len(post);
-    unsafe {
-        if pre_len > 1u && pre[pre_len-1u] == sep {
-            str::unsafe::pop_byte(pre_);
+impl PosixPath : ToStr {
+    fn to_str() -> ~str {
+        let mut s = ~"";
+        if self.is_absolute {
+            s += "/";
         }
-        if post_len > 1u && post[0] == sep {
-            str::unsafe::shift_byte(post_);
-        }
-    }
-    return pre_ + path_sep() + post_;
-}
-
-/**
- * Connects a vector of path segments into a single path.
- *
- * Inserts path separators as needed.
- */
-fn connect_many(paths: ~[Path]) -> Path {
-    return if vec::len(paths) == 1u {
-        paths[0]
-    } else {
-        let rest = vec::slice(paths, 1u, vec::len(paths));
-        connect(paths[0], connect_many(rest))
+        s + str::connect(self.components, "/")
     }
 }
 
-/**
- * Split a path into its individual components
- *
- * Splits a given path by path separators and returns a vector containing
- * each piece of the path. On Windows, if the path is absolute then
- * the first element of the returned vector will be the drive letter
- * followed by a colon.
- */
-fn split(p: Path) -> ~[Path] {
-    str::split_nonempty(p, |c| {
-        c == consts::path_sep || c == consts::alt_path_sep
-    })
-}
+// FIXME (#3227): when default methods in traits are working, de-duplicate
+// PosixPath and WindowsPath, most of their methods are common.
+impl PosixPath : GenericPath {
 
-/**
- * Split a path into the part before the extension and the extension
- *
- * Split a path into a pair of strings with the first element being the
- * filename without the extension and the second being either empty or the
- * file extension including the period. Leading periods in the basename are
- * ignored.  If the path includes directory components then they are included
- * in the filename part of the result pair.
- */
-fn splitext(p: Path) -> (~str, ~str) {
-    if str::is_empty(p) { (~"", ~"") }
-    else {
-        let parts = str::split_char(p, '.');
-        if vec::len(parts) > 1u {
-            let base = str::connect(vec::init(parts), ~".");
-            // We just checked that parts is non-empty, so this is safe
-            let ext = ~"." + vec::last(parts);
+    static pure fn from_str(s: &str) -> PosixPath {
+        let mut components = str::split_nonempty(s, |c| c == '/');
+        let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
+        return PosixPath { is_absolute: is_absolute,
+                           components: normalize(components) }
+    }
 
-            fn is_dotfile(base: ~str) -> bool {
-                str::is_empty(base)
-                    || str::ends_with(
-                        base, str::from_char(consts::path_sep))
-                    || str::ends_with(
-                        base, str::from_char(consts::alt_path_sep))
-            }
-
-            fn ext_contains_sep(ext: ~str) -> bool {
-                vec::len(split(ext)) > 1u
-            }
-
-            fn no_basename(ext: ~str) -> bool {
-                str::ends_with(
-                    ext, str::from_char(consts::path_sep))
-                    || str::ends_with(
-                        ext, str::from_char(consts::alt_path_sep))
-            }
-
-            if is_dotfile(base)
-                || ext_contains_sep(ext)
-                || no_basename(ext) {
-                (p, ~"")
+    pure fn dirname() -> ~str {
+        unchecked {
+            let s = self.dir_path().to_str();
+            if s.len() == 0 {
+                ~"."
             } else {
-                (base, ext)
+                s
+            }
+        }
+    }
+
+    pure fn filename() -> Option<~str> {
+        match self.components.len() {
+          0 => None,
+          n => Some(copy self.components[n - 1])
+        }
+    }
+
+    pure fn filestem() -> Option<~str> {
+        match self.filename() {
+          None => None,
+          Some(ref f) => {
+            match str::rfind_char(*f, '.') {
+              Some(p) => Some(f.slice(0, p)),
+              None => Some(copy *f)
+            }
+          }
+        }
+    }
+
+    pure fn filetype() -> Option<~str> {
+        match self.filename() {
+          None => None,
+          Some(ref f) => {
+            match str::rfind_char(*f, '.') {
+              Some(p) if p+1 < f.len() => Some(f.slice(p+1, f.len())),
+              _ => None
+            }
+          }
+        }
+    }
+
+    pure fn with_dirname(d: &str) -> PosixPath {
+        let dpath = from_str::<PosixPath>(d);
+        match self.filename() {
+          Some(ref f) => dpath.push(*f),
+          None => dpath
+        }
+    }
+
+    pure fn with_filename(f: &str) -> PosixPath {
+        unchecked {
+            assert ! str::any(f, |c| windows::is_sep(c as u8));
+            self.dir_path().push(f)
+        }
+    }
+
+    pure fn with_filestem(s: &str) -> PosixPath {
+        match self.filetype() {
+          None => self.with_filename(s),
+          Some(ref t) =>
+          self.with_filename(str::from_slice(s) + "." + *t)
+        }
+    }
+
+    pure fn with_filetype(t: &str) -> PosixPath {
+        if t.len() == 0 {
+            match self.filestem() {
+              None => copy self,
+              Some(s) => self.with_filename(s)
             }
         } else {
-            (p, ~"")
+            let t = ~"." + str::from_slice(t);
+            match self.filestem() {
+              None => self.with_filename(t),
+              Some(ref s) =>
+              self.with_filename(*s + t)
+            }
         }
+    }
+
+    pure fn dir_path() -> PosixPath {
+        if self.components.len() != 0 {
+            self.pop()
+        } else {
+            copy self
+        }
+    }
+
+    pure fn file_path() -> PosixPath {
+        let cs = match self.filename() {
+          None => ~[],
+          Some(ref f) => ~[copy *f]
+        };
+        return PosixPath { is_absolute: false,
+                           components: cs }
+    }
+
+    pure fn push_rel(other: &PosixPath) -> PosixPath {
+        assert !other.is_absolute;
+        self.push_many(other.components)
+    }
+
+    pure fn push_many(cs: &[~str]) -> PosixPath {
+        return PosixPath { components: normalize(self.components + cs),
+                           ..self }
+    }
+
+    pure fn push(s: &str) -> PosixPath {
+        let mut cs = self.components;
+        unchecked { vec::push(cs, move str::from_slice(s)); }
+        cs = normalize(cs);
+        return PosixPath { components: move cs,
+                           ..self }
+    }
+
+    pure fn pop() -> PosixPath {
+        let mut cs = copy self.components;
+        if cs.len() != 0 {
+            unchecked { vec::pop(cs); }
+        }
+        return PosixPath { components: move cs, ..self }
     }
 }
 
-/**
- * Collapses redundant path separators.
- *
- * Does not follow symbolic links.
- *
- * # Examples
- *
- * * '/a/../b' becomes '/b'
- * * 'a/./b/' becomes 'a/b/'
- * * 'a/b/../../../' becomes '..'
- * * '/a/b/c/../d/./../../e/' becomes '/a/e/'
- */
-fn normalize(p: Path) -> Path {
-    let s = split(p);
-    let s = strip_dots(s);
-    let s = rollup_doubledots(s);
 
-    let s = if vec::is_not_empty(s) {
-        connect_many(s)
-    } else {
-        ~""
-    };
-    let s = reabsolute(p, s);
-    let s = reterminate(p, s);
-
-    let s = if str::len(s) == 0u {
-        ~"."
-    } else {
-        s
-    };
-
-    return s;
-
-    fn strip_dots(s: ~[Path]) -> ~[Path] {
-        vec::filter_map(s, |elem|
-            if elem == ~"." {
-                option::None
-            } else {
-                option::Some(elem)
-            })
+impl WindowsPath : ToStr {
+    fn to_str() -> ~str {
+        let mut s = ~"";
+        match self.host {
+          Some(h) => { s += "\\\\"; s += h; }
+          None => { }
+        }
+        match self.device {
+          Some(d) => { s += d; s += ":"; }
+          None => { }
+        }
+        if self.is_absolute {
+            s += "\\";
+        }
+        s + str::connect(self.components, "\\")
     }
+}
 
-    fn rollup_doubledots(s: ~[Path]) -> ~[Path] {
-        if vec::is_empty(s) {
-            return ~[];
+
+impl WindowsPath : GenericPath {
+
+    static pure fn from_str(s: &str) -> WindowsPath {
+        let host;
+        let device;
+        let rest;
+
+        match windows::extract_drive_prefix(s) {
+          Some((ref d, ref r)) => {
+            host = None;
+            device = Some(copy *d);
+            rest = copy *r;
+          }
+          None => {
+            match windows::extract_unc_prefix(s) {
+              Some((ref h, ref r)) => {
+                host = Some(copy *h);
+                device = None;
+                rest = copy *r;
+              }
+              None => {
+                host = None;
+                device = None;
+                rest = str::from_slice(s);
+              }
+            }
+          }
         }
 
-        let mut t = ~[];
-        let mut i = vec::len(s);
-        let mut skip = 0;
-        while i != 0u {
-            i -= 1u;
-            if s[i] == ~".." {
-                skip += 1;
+        let mut components =
+            str::split_nonempty(rest, |c| windows::is_sep(c as u8));
+        let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0]));
+        return WindowsPath { host: host,
+                             device: device,
+                             is_absolute: is_absolute,
+                             components: normalize(components) }
+    }
+
+    pure fn dirname() -> ~str {
+        unchecked {
+            let s = self.dir_path().to_str();
+            if s.len() == 0 {
+                ~"."
             } else {
-                if skip == 0 {
-                    vec::push(t, s[i]);
-                } else {
-                    skip -= 1;
+                s
+            }
+        }
+    }
+
+    pure fn filename() -> Option<~str> {
+        match self.components.len() {
+          0 => None,
+          n => Some(copy self.components[n - 1])
+        }
+    }
+
+    pure fn filestem() -> Option<~str> {
+        match self.filename() {
+          None => None,
+          Some(ref f) => {
+            match str::rfind_char(*f, '.') {
+              Some(p) => Some(f.slice(0, p)),
+              None => Some(copy *f)
+            }
+          }
+        }
+    }
+
+    pure fn filetype() -> Option<~str> {
+        match self.filename() {
+          None => None,
+          Some(ref f) => {
+            match str::rfind_char(*f, '.') {
+              Some(p) if p+1 < f.len() => Some(f.slice(p+1, f.len())),
+              _ => None
+            }
+          }
+        }
+    }
+
+    pure fn with_dirname(d: &str) -> WindowsPath {
+        let dpath = from_str::<WindowsPath>(d);
+        match self.filename() {
+          Some(ref f) => dpath.push(*f),
+          None => dpath
+        }
+    }
+
+    pure fn with_filename(f: &str) -> WindowsPath {
+        assert ! str::any(f, |c| windows::is_sep(c as u8));
+        self.dir_path().push(f)
+    }
+
+    pure fn with_filestem(s: &str) -> WindowsPath {
+        match self.filetype() {
+          None => self.with_filename(s),
+          Some(ref t) =>
+          self.with_filename(str::from_slice(s) + "." + *t)
+        }
+    }
+
+    pure fn with_filetype(t: &str) -> WindowsPath {
+        if t.len() == 0 {
+            match self.filestem() {
+              None => copy self,
+              Some(s) => self.with_filename(s)
+            }
+        } else {
+            let t = ~"." + str::from_slice(t);
+            match self.filestem() {
+              None => self.with_filename(t),
+              Some(ref s) =>
+              self.with_filename(*s + t)
+            }
+        }
+    }
+
+    pure fn dir_path() -> WindowsPath {
+        if self.components.len() != 0 {
+            self.pop()
+        } else {
+            copy self
+        }
+    }
+
+    pure fn file_path() -> WindowsPath {
+        let cs = match self.filename() {
+          None => ~[],
+          Some(ref f) => ~[copy *f]
+        };
+        return WindowsPath { host: None,
+                             device: None,
+                             is_absolute: false,
+                             components: cs }
+    }
+
+    pure fn push_rel(other: &WindowsPath) -> WindowsPath {
+        assert !other.is_absolute;
+        self.push_many(other.components)
+    }
+
+    pure fn push_many(cs: &[~str]) -> WindowsPath {
+        return WindowsPath { components: normalize(self.components + cs),
+                            ..self }
+    }
+
+    pure fn push(s: &str) -> WindowsPath {
+        let mut cs = self.components;
+        unchecked { vec::push(cs, move str::from_slice(s)); }
+        cs = normalize(cs);
+        return WindowsPath { components: move cs,
+                             ..self }
+    }
+
+    pure fn pop() -> WindowsPath {
+        let mut cs = copy self.components;
+        if cs.len() != 0 {
+            unchecked { vec::pop(cs); }
+        }
+        return WindowsPath { components: move cs, ..self }
+    }
+}
+
+
+pure fn normalize(components: &[~str]) -> ~[~str] {
+    let mut cs = ~[];
+    unchecked {
+        for components.each |c| {
+            unchecked {
+                if c == ~"." && components.len() > 1 { again; }
+                if c == ~".." && cs.len() != 0 {
+                    vec::pop(cs);
+                    again;
                 }
+                vec::push(cs, copy c);
             }
         }
-        let mut t = vec::reversed(t);
-        while skip > 0 {
-            vec::push(t, ~"..");
-            skip -= 1;
-        }
-        return t;
     }
-
-    #[cfg(unix)]
-    fn reabsolute(orig: Path, n: Path) -> Path {
-        if path_is_absolute(orig) {
-            path_sep() + n
-        } else {
-            n
-        }
-    }
-
-    #[cfg(windows)]
-    fn reabsolute(orig: Path, newp: Path) -> Path {
-       if path_is_absolute(orig) && orig[0] == consts::path_sep as u8 {
-           str::from_char(consts::path_sep) + newp
-       } else {
-           newp
-       }
-    }
-
-    fn reterminate(orig: Path, newp: Path) -> Path {
-        let last = orig[str::len(orig) - 1u];
-        if last == consts::path_sep as u8
-            || last == consts::path_sep as u8 {
-            return newp + path_sep();
-        } else {
-            return newp;
-        }
-    }
+    cs
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_connect() {
-        let slash = path_sep();
-        log(error, connect(~"a", ~"b"));
-        assert (connect(~"a", ~"b") == ~"a" + slash + ~"b");
-        assert (connect(~"a" + slash, ~"b") == ~"a" + slash + ~"b");
-    }
-
-    fn ps() -> ~str {
-        path_sep()
-    }
-
-    fn aps() -> ~str {
-        ~"/"
-    }
+mod posix {
 
     #[test]
-    fn split1() {
-        let actual = split(~"a" + ps() + ~"b");
-        let expected = ~[~"a", ~"b"];
-        assert actual == expected;
+    fn test_posix_paths() {
+        fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
+        fn t(wp: &PosixPath, s: &str) {
+            let ss = wp.to_str();
+            let sss = str::from_slice(s);
+            if (ss != sss) {
+                debug!("got %s", ss);
+                debug!("expected %s", sss);
+                assert ss == sss;
+            }
+        }
+
+        t(&(mk("hi")), "hi");
+        t(&(mk("/lib")), "/lib");
+        t(&(mk("hi/there")), "hi/there");
+        t(&(mk("hi/there.txt")), "hi/there.txt");
+
+        t(&(mk("hi/there.txt")), "hi/there.txt");
+        t(&(mk("hi/there.txt")
+           .with_filetype("")), "hi/there");
+
+        t(&(mk("/a/b/c/there.txt")
+            .with_dirname("hi")), "hi/there.txt");
+
+        t(&(mk("hi/there.txt")
+            .with_dirname(".")), "there.txt");
+
+        t(&(mk("a/b/../c/././/../foo.txt/")),
+          "a/foo.txt");
+
+        t(&(mk("a/b/c")
+            .push("..")), "a/b");
+
+        t(&(mk("there.txt")
+            .with_filetype("o")), "there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")), "hi/there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("/usr/lib")),
+          "/usr/lib/there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("/usr/lib/")),
+          "/usr/lib/there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("/usr//lib//")),
+            "/usr/lib/there.o");
+
+        t(&(mk("/usr/bin/rust")
+            .push_many([~"lib", ~"thingy.so"])
+            .with_filestem("librustc")),
+          "/usr/bin/rust/lib/librustc.so");
+
     }
 
-    #[test]
-    fn split2() {
-        let actual = split(~"a" + aps() + ~"b");
-        let expected = ~[~"a", ~"b"];
-        assert actual == expected;
-    }
-
-    #[test]
-    fn split3() {
-        let actual = split(ps() + ~"a" + ps() + ~"b");
-        let expected = ~[~"a", ~"b"];
-        assert actual == expected;
-    }
-
-    #[test]
-    fn split4() {
-        let actual = split(~"a" + ps() + ~"b" + aps() + ~"c");
-        let expected = ~[~"a", ~"b", ~"c"];
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize1() {
-        let actual = normalize(~"a/b/..");
-        let expected = ~"a";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize2() {
-        let actual = normalize(~"/a/b/..");
-        let expected = ~"/a";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize3() {
-        let actual = normalize(~"a/../b");
-        let expected = ~"b";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize4() {
-        let actual = normalize(~"/a/../b");
-        let expected = ~"/b";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize5() {
-        let actual = normalize(~"a/.");
-        let expected = ~"a";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize6() {
-        let actual = normalize(~"a/./b/");
-        let expected = ~"a/b/";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize7() {
-        let actual = normalize(~"a/..");
-        let expected = ~".";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize8() {
-        let actual = normalize(~"../../..");
-        let expected = ~"../../..";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize9() {
-        let actual = normalize(~"a/b/../../..");
-        let expected = ~"..";
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize10() {
-        let actual = normalize(~"/a/b/c/../d/./../../e/");
-        let expected = ~"/a/e/";
-        log(error, actual);
-        assert actual == expected;
-    }
-
-    #[test]
-    fn normalize11() {
-        let actual = normalize(~"/a/..");
-        let expected = ~"/";
-        assert actual == expected;
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn normalize12() {
-        let actual = normalize(~"C:/whatever");
-        let expected = ~"C:/whatever";
-        log(error, actual);
-        assert actual == expected;
-    }
-
-    #[test]
-    #[cfg(windows)]
-    fn path_is_absolute_win32() {
-        assert path_is_absolute(~"C:/whatever");
-    }
-
-    #[test]
-    fn splitext_empty() {
-        let (base, ext) = splitext(~"");
-        assert base == ~"";
-        assert ext == ~"";
-    }
-
-    #[test]
-    fn splitext_ext() {
-        let (base, ext) = splitext(~"grum.exe");
-        assert base == ~"grum";
-        assert ext == ~".exe";
-    }
-
-    #[test]
-    fn splitext_noext() {
-        let (base, ext) = splitext(~"grum");
-        assert base == ~"grum";
-        assert ext == ~"";
-    }
-
-    #[test]
-    fn splitext_dotfile() {
-        let (base, ext) = splitext(~".grum");
-        assert base == ~".grum";
-        assert ext == ~"";
-    }
-
-    #[test]
-    fn splitext_path_ext() {
-        let (base, ext) = splitext(~"oh/grum.exe");
-        assert base == ~"oh/grum";
-        assert ext == ~".exe";
-    }
-
-    #[test]
-    fn splitext_path_noext() {
-        let (base, ext) = splitext(~"oh/grum");
-        assert base == ~"oh/grum";
-        assert ext == ~"";
-    }
-
-    #[test]
-    fn splitext_dot_in_path() {
-        let (base, ext) = splitext(~"oh.my/grum");
-        assert base == ~"oh.my/grum";
-        assert ext == ~"";
-    }
-
-    #[test]
-    fn splitext_nobasename() {
-        let (base, ext) = splitext(~"oh.my/");
-        assert base == ~"oh.my/";
-        assert ext == ~"";
-    }
 }
 
-// Local Variables:
-// mode: rust;
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
+// Various windows helpers, and tests for the impl.
+mod windows {
+
+    #[inline(always)]
+    pure fn is_sep(u: u8) -> bool {
+        u == '/' as u8 || u == '\\' as u8
+    }
+
+    pure fn extract_unc_prefix(s: &str) -> Option<(~str,~str)> {
+        if (s.len() > 1 &&
+            s[0] == '\\' as u8 &&
+            s[1] == '\\' as u8) {
+            let mut i = 2;
+            while i < s.len() {
+                if s[i] == '\\' as u8 {
+                    let pre = s.slice(2, i);
+                    let rest = s.slice(i, s.len());
+                    return Some((pre, rest));
+                }
+                i += 1;
+            }
+        }
+        None
+    }
+
+    pure fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
+        unchecked {
+            if (s.len() > 1 &&
+                libc::isalpha(s[0] as libc::c_int) != 0 &&
+                s[1] == ':' as u8) {
+                let rest = if s.len() == 2 {
+                    ~""
+                } else {
+                    s.slice(2, s.len())
+                };
+                return Some((s.slice(0,1), rest));
+            }
+            None
+        }
+    }
+
+    #[test]
+    fn test_extract_unc_prefixes() {
+        assert extract_unc_prefix("\\\\").is_none();
+        assert extract_unc_prefix("\\\\hi").is_none();
+        assert extract_unc_prefix("\\\\hi\\") == Some((~"hi", ~"\\"));
+        assert extract_unc_prefix("\\\\hi\\there") ==
+            Some((~"hi", ~"\\there"));
+        assert extract_unc_prefix("\\\\hi\\there\\friends.txt") ==
+            Some((~"hi", ~"\\there\\friends.txt"));
+    }
+
+    #[test]
+    fn test_extract_drive_prefixes() {
+        assert extract_drive_prefix("c").is_none();
+        assert extract_drive_prefix("c:") == Some((~"c", ~""));
+        assert extract_drive_prefix("d:") == Some((~"d", ~""));
+        assert extract_drive_prefix("z:") == Some((~"z", ~""));
+        assert extract_drive_prefix("c:\\hi") == Some((~"c", ~"\\hi"));
+        assert extract_drive_prefix("d:hi") == Some((~"d", ~"hi"));
+        assert extract_drive_prefix("c:hi\\there.txt") ==
+            Some((~"c", ~"hi\\there.txt"));
+        assert extract_drive_prefix("c:\\hi\\there.txt") ==
+            Some((~"c", ~"\\hi\\there.txt"));
+    }
+
+    #[test]
+    fn test_windows_paths() {
+        fn mk(s: &str) -> WindowsPath { from_str::<WindowsPath>(s) }
+        fn t(wp: &WindowsPath, s: &str) {
+            let ss = wp.to_str();
+            let sss = str::from_slice(s);
+            if (ss != sss) {
+                debug!("got %s", ss);
+                debug!("expected %s", sss);
+                assert ss == sss;
+            }
+        }
+
+        t(&(mk("hi")), "hi");
+        t(&(mk("hi/there")), "hi\\there");
+        t(&(mk("hi/there.txt")), "hi\\there.txt");
+
+        t(&(mk("there.txt")
+            .with_filetype("o")), "there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")), "hi\\there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("c:\\program files A")),
+          "c:\\program files A\\there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("c:\\program files B\\")),
+          "c:\\program files B\\there.o");
+
+        t(&(mk("hi/there.txt")
+            .with_filetype("o")
+            .with_dirname("c:\\program files C\\/")),
+            "c:\\program files C\\there.o");
+
+        t(&(mk("c:\\program files (x86)\\rust")
+            .push_many([~"lib", ~"thingy.dll"])
+            .with_filename("librustc.dll")),
+          "c:\\program files (x86)\\rust\\lib\\librustc.dll");
+
+    }
+
+}
