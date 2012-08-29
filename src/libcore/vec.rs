@@ -42,6 +42,7 @@ export push, push_all, push_all_move;
 export grow;
 export grow_fn;
 export grow_set;
+export truncate;
 export map;
 export mapi;
 export map2;
@@ -608,6 +609,20 @@ fn push_all_move<T>(&v: ~[const T], -rhs: ~[const T]) {
             }
         }
         unsafe::set_len(rhs, 0);
+    }
+}
+
+/// Shorten a vector, dropping excess elements.
+fn truncate<T>(&v: ~[const T], newlen: uint) {
+    do as_buf(v) |p, oldlen| {
+        assert(newlen <= oldlen);
+        unsafe {
+            // This loop is optimized out for non-drop types.
+            for uint::range(newlen, oldlen) |i| {
+                let _dropped <- *ptr::offset(p, i);
+            }
+            unsafe::set_len(v, newlen);
+        }
     }
 }
 
@@ -2164,6 +2179,15 @@ mod tests {
         assert (v[2] == 3);
         assert (v[3] == 4);
         assert (v[4] == 5);
+    }
+
+    #[test]
+    fn test_truncate() {
+        let mut v = ~[@6,@5,@4];
+        truncate(v, 1);
+        assert(v.len() == 1);
+        assert(*(v[0]) == 6);
+        // If the unsafe block didn't drop things properly, we blow up here.
     }
 
     #[test]
