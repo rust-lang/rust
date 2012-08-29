@@ -1,5 +1,8 @@
 //! Temporary files and directories
 
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import core::option;
 import option::{None, Some};
 import rand;
