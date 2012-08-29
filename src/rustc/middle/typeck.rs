@@ -157,13 +157,13 @@ type vtable_map = hashmap<ast::node_id, vtable_res>;
 // Maps from a trait's def_id to a MethodInfo about
 // that method in that trait.
 type provided_methods_map = hashmap<ast::node_id,
-                                    ~[@resolve3::MethodInfo]>;
+                                    ~[@resolve::MethodInfo]>;
 
 type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};
 
 type crate_ctxt_ = {// A mapping from method call sites to traits that have
                     // that method.
-                    trait_map: resolve3::TraitMap,
+                    trait_map: resolve::TraitMap,
                     method_map: method_map,
                     vtable_map: vtable_map,
                     coherence_info: @coherence::CoherenceInfo,
@@ -301,7 +301,7 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
 }
 
 fn check_crate(tcx: ty::ctxt,
-               trait_map: resolve3::TraitMap,
+               trait_map: resolve::TraitMap,
                crate: @ast::crate)
             -> (method_map, vtable_map) {
 

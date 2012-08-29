@@ -53,7 +53,7 @@ mod middle {
         mod reachable;
     }
     mod ty;
-    mod resolve3;
+    mod resolve;
     mod typeck {
         mod check {
             mod alt;

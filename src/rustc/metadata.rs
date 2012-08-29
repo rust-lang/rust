@@ -5,8 +5,8 @@
 mod middle {
     import ty = middle_::ty;
     export ty;
-    import resolve3 = middle_::resolve3;
-    export resolve3;
+    import resolve = middle_::resolve;
+    export resolve;
 }
 
 mod front {

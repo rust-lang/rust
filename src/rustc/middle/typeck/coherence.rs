@@ -7,7 +7,7 @@
 import metadata::csearch::{each_path, get_impl_traits, get_impls_for_mod};
 import metadata::cstore::{cstore, iter_crate_data};
 import metadata::decoder::{dl_def, dl_field, dl_impl};
-import middle::resolve3::{Impl, MethodInfo};
+import middle::resolve::{Impl, MethodInfo};
 import middle::ty::{get, lookup_item_type, subst, t, ty_box};
 import middle::ty::{ty_uniq, ty_ptr, ty_rptr, ty_enum};
 import middle::ty::{ty_class, ty_nil, ty_bot, ty_bool, ty_int, ty_uint};

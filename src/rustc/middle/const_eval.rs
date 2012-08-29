@@ -55,7 +55,7 @@ fn join_all(cs: &[constness]) -> constness {
 }
 
 fn classify(e: @expr,
-            def_map: resolve3::DefMap,
+            def_map: resolve::DefMap,
             tcx: ty::ctxt) -> constness {
     let did = ast_util::local_def(e.id);
     match tcx.ccache.find(did) {
@@ -168,7 +168,7 @@ fn classify(e: @expr,
 }
 
 fn process_crate(crate: @ast::crate,
-                 def_map: resolve3::DefMap,
+                 def_map: resolve::DefMap,
                  tcx: ty::ctxt) {
     let v = visit::mk_simple_visitor(@{
         visit_expr_post: |e| { classify(e, def_map, tcx); }

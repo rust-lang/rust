@@ -5868,8 +5868,8 @@ fn trans_crate(sess: session::session,
                crate: @ast::crate,
                tcx: ty::ctxt,
                output: &Path,
-               emap: resolve3::ExportMap,
-               emap2: resolve3::ExportMap2,
+               emap: resolve::ExportMap,
+               emap2: resolve::ExportMap2,
                maps: astencode::maps)
             -> (ModuleRef, link_meta) {
 

@@ -43,7 +43,7 @@ type region_map = hashmap<ast::node_id, ast::node_id>;
 
 struct ctxt {
     sess: session;
-    def_map: resolve3::DefMap;
+    def_map: resolve::DefMap;
 
     // Generated maps:
     region_map: region_map;
@@ -325,7 +325,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
     visit::visit_fn(fk, decl, body, sp, id, fn_cx, visitor);
 }
 
-fn resolve_crate(sess: session, def_map: resolve3::DefMap,
+fn resolve_crate(sess: session, def_map: resolve::DefMap,
                  crate: @ast::crate) -> region_map {
     let cx: ctxt = ctxt {sess: sess,
                          def_map: def_map,
@@ -373,7 +373,7 @@ type dep_map = hashmap<ast::node_id, @DVec<region_dep>>;
 type determine_rp_ctxt_ = {
     sess: session,
     ast_map: ast_map::map,
-    def_map: resolve3::DefMap,
+    def_map: resolve::DefMap,
     region_paramd_items: region_paramd_items,
     dep_map: dep_map,
     worklist: DVec<ast::node_id>,
@@ -746,7 +746,7 @@ fn determine_rp_in_struct_field(cm: @ast::struct_field,
 
 fn determine_rp_in_crate(sess: session,
                          ast_map: ast_map::map,
-                         def_map: resolve3::DefMap,
+                         def_map: resolve::DefMap,
                          crate: @ast::crate) -> region_paramd_items {
     let cx = determine_rp_ctxt_(@{sess: sess,
                                   ast_map: ast_map,
