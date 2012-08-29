@@ -2890,7 +2890,8 @@ struct parser {
         }
     }
 
-    fn parse_foreign_mod_items(+first_item_attrs: ~[attribute]) ->
+    fn parse_foreign_mod_items(sort: ast::foreign_mod_sort,
+                               +first_item_attrs: ~[attribute]) ->
         foreign_mod {
         // Shouldn't be any view items since we've already parsed an item attr
         let {attrs_remaining, view_items, items: _} =
@@ -2905,7 +2906,7 @@ struct parser {
             initial_attrs = ~[];
             vec::push(items, self.parse_foreign_item(attrs));
         }
-        return {view_items: view_items,
+        return {sort: sort, view_items: view_items,
              items: items};
     }
 
@@ -2919,12 +2920,16 @@ struct parser {
         } else {
             self.expect_keyword(~"module");
         }
-        let ident = self.parse_ident();
+        let (sort, ident) = match self.token {
+                token::IDENT(*) => (ast::named, self.parse_ident()),
+                _ => (ast::anonymous,
+                      token::special_idents::clownshoes_foreign_mod)
+        };
 
         // extern mod { ... }
         if items_allowed && self.eat(token::LBRACE) {
             let extra_attrs = self.parse_inner_attrs_and_next();
-            let m = self.parse_foreign_mod_items(extra_attrs.next);
+            let m = self.parse_foreign_mod_items(sort, extra_attrs.next);
             self.expect(token::RBRACE);
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident,
                                           item_foreign_mod(m), visibility,
