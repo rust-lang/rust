@@ -33,7 +33,11 @@ export future_pipe;
 
 #[doc = "The future type"]
 struct Future<A> {
-    /*priv*/ mut state: FutureState<A>,
+    /*priv*/ mut state: FutureState<A>;
+
+    // FIXME(#2829) -- futures should not be copyable, because they close
+    // over fn~'s that have pipes and so forth within!
+    drop {}
 }
 
 priv enum FutureState<A> {
@@ -88,7 +92,7 @@ fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
         port_ <-> *port;
         let port = option::unwrap(port_);
         match recv(port) {
-          future_pipe::completed(move data) => data
+            future_pipe::completed(move data) => data
         }
     }
 }
