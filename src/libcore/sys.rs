@@ -1,6 +1,7 @@
 //! Misc low level stuff
 
 export TypeDesc;
+export Closure;
 export get_type_desc;
 export size_of;
 export min_align_of;
