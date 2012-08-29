@@ -91,249 +91,258 @@ fn lookup_vtable(fcx: @fn_ctxt,
 
     let tcx = fcx.ccx.tcx;
     let (trait_id, trait_substs) = match ty::get(trait_ty).struct {
-      ty::ty_trait(did, substs, _) => (did, substs),
-      _ => tcx.sess.impossible_case(expr.span, "lookup_vtable: \
-             don't know how to handle a non-trait ty")
+        ty::ty_trait(did, substs, _) => (did, substs),
+        _ => tcx.sess.impossible_case(expr.span,
+                                      "lookup_vtable: \
+                                       don't know how to handle a non-trait")
     };
     let ty = match fixup_ty(fcx, expr, ty, is_early) {
-      Some(ty) => ty,
-      None => {
-        // fixup_ty can only fail if this is early resolution
-        assert is_early;
-        // The type has unconstrained type variables in it, so we can't
-        // do early resolution on it. Return some completely bogus vtable
-        // information: we aren't storing it anyways.
-        return vtable_param(0, 0);
-      }
+        Some(ty) => ty,
+        None => {
+            // fixup_ty can only fail if this is early resolution
+            assert is_early;
+            // The type has unconstrained type variables in it, so we can't
+            // do early resolution on it. Return some completely bogus vtable
+            // information: we aren't storing it anyways.
+            return vtable_param(0, 0);
+        }
     };
 
     match ty::get(ty).struct {
-      ty::ty_param({idx: n, def_id: did}) => {
-        let mut n_bound = 0;
-        for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
-            match bound {
-              ty::bound_send | ty::bound_copy | ty::bound_const |
-              ty::bound_owned => {
-                /* ignore */
-              }
-              ty::bound_trait(ity) => {
-                match ty::get(ity).struct {
-                  ty::ty_trait(idid, _, _) => {
-                    if trait_id == idid {
-                        debug!("(checking vtable) @0 relating ty to trait ty
-                                with did %?", idid);
-                        relate_trait_tys(fcx, expr, trait_ty, ity);
-                        return vtable_param(n, n_bound);
+        ty::ty_param({idx: n, def_id: did}) => {
+            let mut n_bound = 0;
+            for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
+                match bound {
+                    ty::bound_send | ty::bound_copy | ty::bound_const |
+                    ty::bound_owned => {
+                        /* ignore */
                     }
-                  }
-                  _ => tcx.sess.impossible_case(expr.span,
-                         "lookup_vtable: in loop, \
-                         don't know how to handle a non-trait ity")
-                }
-                n_bound += 1u;
-              }
-            }
-        }
-      }
-
-      ty::ty_trait(did, substs, _) if trait_id == did => {
-        debug!("(checking vtable) @1 relating ty to trait ty with did %?",
-               did);
-
-        relate_trait_tys(fcx, expr, trait_ty, ty);
-        if !allow_unsafe && !is_early {
-            for vec::each(*ty::trait_methods(tcx, did)) |m| {
-                if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
-                    tcx.sess.span_err(
-                        expr.span,
-                        ~"a boxed trait with self types may not be \
-                          passed as a bounded type");
-                } else if (*m.tps).len() > 0u {
-                    tcx.sess.span_err(
-                        expr.span,
-                        ~"a boxed trait with generic methods may not \
-                          be passed as a bounded type");
-
-                }
-            }
-        }
-        return vtable_trait(did, substs.tps);
-      }
-
-      _ => {
-        let mut found = ~[];
-
-        let mut impls_seen = new_def_hash();
-
-        match fcx.ccx.coherence_info.extension_methods.find(trait_id) {
-            None => {
-                // Nothing found. Continue.
-            }
-            Some(implementations) => {
-                /*
-                implementations is the list of all impls in scope for
-                trait_ty. (Usually, there's just one.)
-                */
-                for uint::range(0, implementations.len()) |i| {
-                    let im = implementations[i];
-
-                    // im is one specific impl of trait_ty.
-
-                    // First, ensure that we haven't processed this impl yet.
-                    if impls_seen.contains_key(im.did) {
-                        again;
-                    }
-                    impls_seen.insert(im.did, ());
-
-
-                /*
-                ty::impl_traits gives us the list of all traits that im
-                implements. Again, usually there's just one.
-
-                For example, if im represented the struct in:
-
-                struct foo : baz<int>, bar, quux { ... }
-
-                then ty::impl_traits would return
-                    ~[baz<int>, bar, quux]
-
-                For each of the traits foo implements, if it's the
-                same trait as trait_ty, we need to unify it with
-                trait_ty in order to get all the ty vars sorted out.
-                */
-                    for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
-                        match ty::get(of_ty).struct {
-                        // This is a trait that is different from the one
-                        // we're looking for, so we skip to the next one.
-                          ty::ty_trait(id, _, _) if id != trait_id => again,
-                          _ => { /* ok */ }
-                        }
-
-                /* At this point, we know that of_ty is the same trait
-                as trait_ty, but possibly applied to different substs.
-
-                Next, we check whether the "for" ty in the impl is
-                compatible with the type that we're casting to a trait. That
-                is, if im is:
-
-                impl<T> self_ty<T>: some_trait<T> { ... }
-
-                we check whether self_ty<T> is the type of the thing that
-                we're trying to cast to some_trait.
-                */
-                        let {substs: substs, ty: for_ty} =
-                            impl_self_ty(fcx, expr, im.did, false);
-                        let im_bs = ty::lookup_item_type(tcx, im.did).bounds;
-                        match fcx.mk_subty(false, expr.span, ty, for_ty) {
-                // for_ty is not compatible with ty, so this impl is
-                // irrelevant and we skip to the next impl
-                          result::Err(_) => again,
-                // The impl is an impl for ty of the desired trait.
-                          result::Ok(()) => ()
-                        }
-
-                /*
-                Now, in the previous example, for_ty is bound to the
-                type self_ty, and substs is bound to [T].
-                */
-                        debug!("The self ty is %s and its substs are %s",
-                               fcx.infcx.ty_to_str(for_ty),
-                               tys_to_str(fcx.ccx.tcx, substs.tps));
-
-                /*
-                Next, we unify trait_ty -- the type that we want to cast
-                to -- with of_ty -- the trait that im implements. At this
-                point, we require that they be unifiable with each other --
-                that's what relate_trait_tys does.
-
-                For example, in the above example, of_ty would be
-                some_trait<T>, so we would be unifying trait_ty<U> (for
-                some value of U) with some_trait<T>. This would fail if
-                T and U weren't compatible.
-                */
-
-                        debug!("(checking vtable) @2 relating trait ty %s to \
-                                of_ty %s",
-                               fcx.infcx().ty_to_str(trait_ty),
-                               fcx.infcx().ty_to_str(of_ty));
-                        let of_ty = ty::subst(tcx, &substs, of_ty);
-                        relate_trait_tys(fcx, expr, trait_ty, of_ty);
-
-                /*
-                Recall that trait_ty -- the trait type we're casting to --
-                is the trait with id trait_id applied to the substs
-                trait_substs. Now we extract out the types themselves
-                from trait_substs.
-                */
-
-                        let trait_tps = trait_substs.tps;
-
-                        debug!("Casting to a trait ty whose substs \
-                          (trait_tps) are %s",
-                               tys_to_str(fcx.ccx.tcx, trait_tps));
-
-                /*
-                Recall that substs is the impl self type's list of
-                substitutions. That is, if this is an impl of some trait
-                for foo<T, U>, then substs is [T, U]. substs might contain
-                type variables, so we call fixup_substs to resolve them.
-                */
-
-                        let substs_f = match fixup_substs(fcx, expr, trait_id,
-                                                          substs, is_early) {
-                            Some(substs) => substs,
-                            None => {
-                                assert is_early;
-                                // Bail out with a bogus answer
-                                return vtable_param(0, 0);
+                    ty::bound_trait(ity) => {
+                        match ty::get(ity).struct {
+                            ty::ty_trait(idid, _, _) => {
+                                if trait_id == idid {
+                                    debug!("(checking vtable) @0 relating \
+                                            ty to trait ty with did %?",
+                                           idid);
+                                    relate_trait_tys(fcx, expr,
+                                                     trait_ty, ity);
+                                    return vtable_param(n, n_bound);
+                                }
                             }
-                        };
-
-                        debug!("The fixed-up substs for the self ty are %s - \
-                                they will be unified with the bounds for \
-                                the target ty, %s",
-                               tys_to_str(fcx.ccx.tcx, substs_f.tps),
-                               tys_to_str(fcx.ccx.tcx, trait_tps));
-
-                /*
-                Next, we unify the fixed-up substitutions for the impl self
-                ty with the substitutions from the trait type that we're
-                trying to cast to. connect_trait_tps requires these
-                lists of types to unify pairwise.
-                */
-
-                        connect_trait_tps(fcx, expr, substs_f.tps,
-                                          trait_tps, im.did);
-                        let subres = lookup_vtables(
-                            fcx, expr, im_bs, &substs_f,
-                            false, is_early);
-
-                /*
-                Finally, we register that we found a matching impl,
-                and record the def ID of the impl as well as the resolved
-                list of type substitutions for the target trait.
-                */
-                        vec::push(found,
-                                  vtable_static(im.did, substs_f.tps,
-                                                subres));
+                            _ => tcx.sess.impossible_case(
+                                expr.span,
+                                "lookup_vtable: in loop, \
+                                 don't know how to handle a non-trait ity")
+                        }
+                        n_bound += 1u;
                     }
                 }
             }
         }
 
-        match found.len() {
-          0 => { /* fallthrough */ }
-          1 => { return found[0]; }
-          _ => {
-            if !is_early {
-                fcx.ccx.tcx.sess.span_err(
-                    expr.span,
-                    ~"multiple applicable methods in scope");
+        ty::ty_trait(did, substs, _) if trait_id == did => {
+            debug!("(checking vtable) @1 relating ty to trait ty with did %?",
+                   did);
+
+            relate_trait_tys(fcx, expr, trait_ty, ty);
+            if !allow_unsafe && !is_early {
+                for vec::each(*ty::trait_methods(tcx, did)) |m| {
+                    if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
+                        tcx.sess.span_err(
+                            expr.span,
+                            ~"a boxed trait with self types may not be \
+                              passed as a bounded type");
+                    } else if (*m.tps).len() > 0u {
+                        tcx.sess.span_err(
+                            expr.span,
+                            ~"a boxed trait with generic methods may not \
+                              be passed as a bounded type");
+
+                    }
+                }
             }
-            return found[0];
-          }
+            return vtable_trait(did, substs.tps);
         }
-      }
+
+        _ => {
+            let mut found = ~[];
+
+            let mut impls_seen = new_def_hash();
+
+            match fcx.ccx.coherence_info.extension_methods.find(trait_id) {
+                None => {
+                    // Nothing found. Continue.
+                }
+                Some(implementations) => {
+                    // implementations is the list of all impls in scope for
+                    // trait_ty. (Usually, there's just one.)
+                    for uint::range(0, implementations.len()) |i| {
+                        let im = implementations[i];
+
+                        // im is one specific impl of trait_ty.
+
+                        // First, ensure we haven't processed this impl yet.
+                        if impls_seen.contains_key(im.did) {
+                            again;
+                        }
+                        impls_seen.insert(im.did, ());
+
+                        // ty::impl_traits gives us the list of all
+                        // traits that im implements. Again, usually
+                        // there's just one.
+                        //
+                        // For example, if im represented the struct
+                        // in:
+                        //
+                        //   struct foo : baz<int>, bar, quux { ... }
+                        //
+                        // then ty::impl_traits would return
+                        //
+                        //   ~[baz<int>, bar, quux]
+                        //
+                        // For each of the traits foo implements, if
+                        // it's the same trait as trait_ty, we need to
+                        // unify it with trait_ty in order to get all
+                        // the ty vars sorted out.
+                        for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
+                            match ty::get(of_ty).struct {
+                                ty::ty_trait(id, _, _) => {
+                                    // Not the trait we're looking for
+                                    if id != trait_id { again; }
+                                }
+                                _ => { /* ok */ }
+                            }
+
+                            // At this point, we know that of_ty is
+                            // the same trait as trait_ty, but
+                            // possibly applied to different substs.
+                            //
+                            // Next, we check whether the "for" ty in
+                            // the impl is compatible with the type
+                            // that we're casting to a trait. That is,
+                            // if im is:
+                            //
+                            // impl<T> self_ty<T>: some_trait<T> { ... }
+                            //
+                            // we check whether self_ty<T> is the type
+                            // of the thing that we're trying to cast
+                            // to some_trait.  If not, then we try the next
+                            // impl.
+                            let {substs: substs, ty: for_ty} =
+                                impl_self_ty(fcx, expr, im.did, false);
+                            let im_bs = ty::lookup_item_type(tcx,
+                                                             im.did).bounds;
+                            match fcx.mk_subty(false, expr.span, ty, for_ty) {
+                                result::Err(_) => again,
+                                result::Ok(()) => ()
+                            }
+
+                            // Now, in the previous example, for_ty is
+                            // bound to the type self_ty, and substs
+                            // is bound to [T].
+                            debug!("The self ty is %s and its substs are %s",
+                                   fcx.infcx().ty_to_str(for_ty),
+                                   tys_to_str(fcx.ccx.tcx, substs.tps));
+
+                            // Next, we unify trait_ty -- the type
+                            // that we want to cast to -- with of_ty
+                            // -- the trait that im implements. At
+                            // this point, we require that they be
+                            // unifiable with each other -- that's
+                            // what relate_trait_tys does.
+                            //
+                            // For example, in the above example,
+                            // of_ty would be some_trait<T>, so we
+                            // would be unifying trait_ty<U> (for some
+                            // value of U) with some_trait<T>. This
+                            // would fail if T and U weren't
+                            // compatible.
+
+                            debug!("(checking vtable) @2 relating trait \
+                                    ty %s to of_ty %s",
+                                   fcx.infcx().ty_to_str(trait_ty),
+                                   fcx.infcx().ty_to_str(of_ty));
+                            let of_ty = ty::subst(tcx, &substs, of_ty);
+                            relate_trait_tys(fcx, expr, trait_ty, of_ty);
+
+                            // Recall that trait_ty -- the trait type
+                            // we're casting to -- is the trait with
+                            // id trait_id applied to the substs
+                            // trait_substs. Now we extract out the
+                            // types themselves from trait_substs.
+
+                            let trait_tps = trait_substs.tps;
+
+                            debug!("Casting to a trait ty whose substs \
+                                    (trait_tps) are %s",
+                                   tys_to_str(fcx.ccx.tcx, trait_tps));
+
+                            // Recall that substs is the impl self
+                            // type's list of substitutions. That is,
+                            // if this is an impl of some trait for
+                            // foo<T, U>, then substs is [T,
+                            // U]. substs might contain type
+                            // variables, so we call fixup_substs to
+                            // resolve them.
+
+                            let substs_f = match fixup_substs(fcx,
+                                                              expr,
+                                                              trait_id,
+                                                              substs,
+                                                              is_early) {
+                                Some(substs) => substs,
+                                None => {
+                                    assert is_early;
+                                    // Bail out with a bogus answer
+                                    return vtable_param(0, 0);
+                                }
+                            };
+
+                            debug!("The fixed-up substs are %s - \
+                                    they will be unified with the bounds for \
+                                    the target ty, %s",
+                                   tys_to_str(fcx.ccx.tcx, substs_f.tps),
+                                   tys_to_str(fcx.ccx.tcx, trait_tps));
+
+                            // Next, we unify the fixed-up
+                            // substitutions for the impl self ty with
+                            // the substitutions from the trait type
+                            // that we're trying to cast
+                            // to. connect_trait_tps requires these
+                            // lists of types to unify pairwise.
+
+                            connect_trait_tps(fcx, expr, substs_f.tps,
+                                              trait_tps, im.did);
+                            let subres = lookup_vtables(
+                                fcx, expr, im_bs, &substs_f,
+                                false, is_early);
+
+                            // Finally, we register that we found a
+                            // matching impl, and record the def ID of
+                            // the impl as well as the resolved list
+                            // of type substitutions for the target
+                            // trait.
+                            vec::push(found,
+                                      vtable_static(im.did, substs_f.tps,
+                                                    subres));
+                        }
+                    }
+                }
+            }
+
+            match found.len() {
+                0 => { /* fallthrough */ }
+                1 => { return found[0]; }
+                _ => {
+                    if !is_early {
+                        fcx.ccx.tcx.sess.span_err(
+                            expr.span,
+                            ~"multiple applicable methods in scope");
+                    }
+                    return found[0];
+                }
+            }
+        }
     }
 
     tcx.sess.span_fatal(
