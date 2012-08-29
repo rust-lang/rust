@@ -1430,7 +1430,7 @@ impl<T: Eq> @[T]: Eq {
 
 pure fn lt<T: Ord>(a: &[T], b: &[T]) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(a_len, b_len);
+    let mut end = uint::min(&a_len, &b_len);
 
     let mut i = 0;
     while i < end {
@@ -1821,7 +1821,7 @@ mod u8 {
     pure fn cmp(a: &~[u8], b: &~[u8]) -> int {
         let a_len = len(*a);
         let b_len = len(*b);
-        let n = uint::min(a_len, b_len) as libc::size_t;
+        let n = uint::min(&a_len, &b_len) as libc::size_t;
         let r = unsafe {
             libc::memcmp(unsafe::to_ptr(*a) as *libc::c_void,
                          unsafe::to_ptr(*b) as *libc::c_void, n) as int

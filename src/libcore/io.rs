@@ -284,7 +284,7 @@ type ByteBuf = {buf: &[const u8], mut pos: uint};
 
 impl ByteBuf: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
-        let count = uint::min(len, self.buf.len() - self.pos);
+        let count = uint::min(&len, &(self.buf.len() - self.pos));
 
         vec::u8::memcpy(buf,
                         vec::const_view(self.buf, self.pos, self.buf.len()),

@@ -563,8 +563,8 @@ fn compute_id_range(visit_ids_fn: fn(fn@(node_id))) -> id_range {
     let min = @mut int::max_value;
     let max = @mut int::min_value;
     do visit_ids_fn |id| {
-        *min = int::min(*min, id);
-        *max = int::max(*max, id + 1);
+        *min = int::min(min, &id);
+        *max = int::max(max, &(id + 1));
     }
     return {min:*min, max:*max};
 }
