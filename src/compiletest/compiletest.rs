@@ -32,7 +32,8 @@ fn parse_config(args: ~[~str]) -> config {
           getopts::reqopt(~"mode"), getopts::optflag(~"ignored"),
           getopts::optopt(~"runtool"), getopts::optopt(~"rustcflags"),
           getopts::optflag(~"verbose"),
-          getopts::optopt(~"logfile")];
+          getopts::optopt(~"logfile"),
+          getopts::optflag(~"jit")];
 
     assert (vec::is_not_empty(args));
     let args_ = vec::tail(args);
@@ -64,6 +65,7 @@ fn parse_config(args: ~[~str]) -> config {
                               |s| Path(s)),
          runtool: getopts::opt_maybe_str(matches, ~"runtool"),
          rustcflags: getopts::opt_maybe_str(matches, ~"rustcflags"),
+         jit: getopts::opt_present(matches, ~"jit"),
          verbose: getopts::opt_present(matches, ~"verbose")};
 }
 
@@ -81,6 +83,7 @@ fn log_config(config: config) {
     logv(c, fmt!("filter: %s", opt_str(config.filter)));
     logv(c, fmt!("runtool: %s", opt_str(config.runtool)));
     logv(c, fmt!("rustcflags: %s", opt_str(config.rustcflags)));
+    logv(c, fmt!("jit: %b", config.jit));
     logv(c, fmt!("verbose: %b", config.verbose));
     logv(c, fmt!("\n"));
 }
