@@ -70,19 +70,33 @@ mod treemap;
 
 // And ... other stuff
 
+#[warn(non_camel_case_types)]
 mod ebml;
+#[warn(non_camel_case_types)]
 mod dbg;
+#[warn(non_camel_case_types)]
 mod getopts;
+#[warn(non_camel_case_types)]
 mod json;
+#[warn(non_camel_case_types)]
 mod sha1;
+#[warn(non_camel_case_types)]
 mod md4;
+#[warn(non_camel_case_types)]
 mod tempfile;
+#[warn(non_camel_case_types)]
 mod term;
+#[warn(non_camel_case_types)]
 mod time;
+#[warn(non_camel_case_types)]
 mod prettyprint;
+#[warn(non_camel_case_types)]
 mod arena;
+#[warn(non_camel_case_types)]
 mod par;
+#[warn(non_camel_case_types)]
 mod cmp;
+#[warn(non_camel_case_types)]
 mod base64;
 
 #[cfg(unicode)]

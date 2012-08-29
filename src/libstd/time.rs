@@ -6,12 +6,12 @@ import io::Reader;
 import result::{Result, Ok, Err};
 
 export
-    timespec,
+    Timespec,
     get_time,
     precise_time_ns,
     precise_time_s,
     tzset,
-    tm,
+    Tm,
     empty_tm,
     now,
     at,
@@ -26,20 +26,20 @@ extern mod rustrt {
 
     fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
-    fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: tm);
-    fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: tm);
-    fn rust_timegm(&&tm: tm, &sec: i64);
-    fn rust_mktime(&&tm: tm, &sec: i64);
+    fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    fn rust_timegm(&&tm: Tm, &sec: i64);
+    fn rust_mktime(&&tm: Tm, &sec: i64);
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-type timespec = {sec: i64, nsec: i32};
+type Timespec = {sec: i64, nsec: i32};
 
 /**
  * Returns the current time as a `timespec` containing the seconds and
  * nanoseconds since 1970-01-01T00:00:00Z.
  */
-fn get_time() -> timespec {
+fn get_time() -> Timespec {
     let mut sec = 0i64;
     let mut nsec = 0i32;
     rustrt::get_time(sec, nsec);
@@ -68,7 +68,7 @@ fn tzset() {
     rustrt::rust_tzset();
 }
 
-type tm_ = {
+type Tm_ = {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]
     tm_hour: i32, // hours after midnight ~[0-23]
@@ -83,12 +83,12 @@ type tm_ = {
     tm_nsec: i32, // nanoseconds
 };
 
-enum tm {
-    tm_(tm_)
+enum Tm {
+    Tm_(Tm_)
 }
 
-fn empty_tm() -> tm {
-    tm_({
+fn empty_tm() -> Tm {
+    Tm_({
         tm_sec: 0_i32,
         tm_min: 0_i32,
         tm_hour: 0_i32,
@@ -105,7 +105,7 @@ fn empty_tm() -> tm {
 }
 
 /// Returns the specified time in UTC
-fn at_utc(clock: timespec) -> tm {
+fn at_utc(clock: Timespec) -> Tm {
     let mut {sec, nsec} = clock;
     let mut tm = empty_tm();
     rustrt::rust_gmtime(sec, nsec, tm);
@@ -113,12 +113,12 @@ fn at_utc(clock: timespec) -> tm {
 }
 
 /// Returns the current time in UTC
-fn now_utc() -> tm {
+fn now_utc() -> Tm {
     at_utc(get_time())
 }
 
 /// Returns the specified time in the local timezone
-fn at(clock: timespec) -> tm {
+fn at(clock: Timespec) -> Tm {
     let mut {sec, nsec} = clock;
     let mut tm = empty_tm();
     rustrt::rust_localtime(sec, nsec, tm);
@@ -126,13 +126,13 @@ fn at(clock: timespec) -> tm {
 }
 
 /// Returns the current time in the local timezone
-fn now() -> tm {
+fn now() -> Tm {
     at(get_time())
 }
 
 /// Parses the time from the string according to the format string.
-fn strptime(s: &str, format: &str) -> Result<tm, ~str> {
-    type tm_mut = {
+fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
+    type TmMut = {
        mut tm_sec: i32,
        mut tm_min: i32,
        mut tm_hour: i32,
@@ -209,7 +209,7 @@ fn strptime(s: &str, format: &str) -> Result<tm, ~str> {
         }
     }
 
-    fn parse_type(s: &str, pos: uint, ch: char, tm: &tm_mut)
+    fn parse_type(s: &str, pos: uint, ch: char, tm: &TmMut)
       -> Result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, ~[
@@ -554,7 +554,7 @@ fn strptime(s: &str, format: &str) -> Result<tm, ~str> {
         }
 
         if pos == len && rdr.eof() {
-            Ok(tm_({
+            Ok(Tm_({
                 tm_sec: tm.tm_sec,
                 tm_min: tm.tm_min,
                 tm_hour: tm.tm_hour,
@@ -572,8 +572,8 @@ fn strptime(s: &str, format: &str) -> Result<tm, ~str> {
     }
 }
 
-fn strftime(format: &str, +tm: tm) -> ~str {
-    fn parse_type(ch: char, tm: &tm) -> ~str {
+fn strftime(format: &str, +tm: Tm) -> ~str {
+    fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || #fmt("strftime: can't understand this format %c ",
                              ch);
@@ -740,9 +740,9 @@ fn strftime(format: &str, +tm: tm) -> ~str {
     buf
 }
 
-impl tm {
+impl Tm {
     /// Convert time to the seconds from January 1, 1970
-    fn to_timespec() -> timespec {
+    fn to_timespec() -> Timespec {
         let mut sec = 0i64;
         if self.tm_gmtoff == 0_i32 {
             rustrt::rust_timegm(self, sec);
@@ -753,12 +753,12 @@ impl tm {
     }
 
     /// Convert time to the local timezone
-    fn to_local() -> tm {
+    fn to_local() -> Tm {
         at(self.to_timespec())
     }
 
     /// Convert time to the UTC
-    fn to_utc() -> tm {
+    fn to_utc() -> Tm {
         at_utc(self.to_timespec())
     }
 

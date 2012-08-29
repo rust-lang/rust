@@ -168,8 +168,8 @@ fn get_dest_addr(dest: dest) -> ValueRef {
     }
 }
 
-fn log_fn_time(ccx: @crate_ctxt, name: ~str, start: time::timespec,
-               end: time::timespec) {
+fn log_fn_time(ccx: @crate_ctxt, name: ~str, start: time::Timespec,
+               end: time::Timespec) {
     let elapsed = 1000 * ((end.sec - start.sec) as int) +
         ((end.nsec as int) - (start.nsec as int)) / 1000000;
     vec::push(*ccx.stats.fn_times, {ident: name, time: elapsed});
