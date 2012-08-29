@@ -415,13 +415,13 @@ mod tests {
 
         for uint::range(0u, num_tasks) |_i| {
             let total = total.clone();
-            futures += ~[future::spawn(|| {
+            vec::push(futures, future::spawn(|| {
                 for uint::range(0u, count) |_i| {
                     do total.with |count| {
                         **count += 1u;
                     }
                 }
-            })];
+            }));
         };
 
         for futures.each |f| { f.get() }
