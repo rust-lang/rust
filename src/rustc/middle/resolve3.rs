@@ -41,7 +41,7 @@ import syntax::ast::{ty_int, ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32};
 import syntax::ast::{ty_u64, ty_u8, ty_uint, variant, view_item};
 import syntax::ast::{view_item_export, view_item_import, view_item_use};
 import syntax::ast::{view_path_glob, view_path_list, view_path_simple};
-import syntax::ast::{visibility};
+import syntax::ast::{visibility, anonymous, named};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 import syntax::attr::{attr_metas, contains_name};
@@ -866,19 +866,25 @@ struct Resolver {
 
                 visit_mod(module_, sp, item.id, new_parent, visitor);
             }
-            item_foreign_mod(*) => {
-              let (name_bindings, new_parent) = self.add_child(atom, parent,
-                                                           ~[ModuleNS], sp);
+            item_foreign_mod(fm) => {
+              let new_parent = match fm.sort {
+                named => {
+                  let (name_bindings, new_parent) = self.add_child(atom,
+                     parent, ~[ModuleNS], sp);
 
-                let parent_link = self.get_parent_link(new_parent, atom);
-                let def_id = { crate: 0, node: item.id };
-                (*name_bindings).define_module(parent_link, Some(def_id),
-                                               sp);
+                  let parent_link = self.get_parent_link(new_parent, atom);
+                  let def_id = { crate: 0, node: item.id };
+                  (*name_bindings).define_module(parent_link, Some(def_id),
+                                                 sp);
 
-                let new_parent =
-                    ModuleReducedGraphParent((*name_bindings).get_module());
+                  ModuleReducedGraphParent((*name_bindings).get_module())
+                }
+                // For anon foreign mods, the contents just go in the
+                // current scope
+                anonymous => parent
+              };
 
-                visit_item(item, new_parent, visitor);
+              visit_item(item, new_parent, visitor);
             }
 
             // These items live in the value namespace.

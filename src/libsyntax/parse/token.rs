@@ -319,7 +319,7 @@ mod special_idents {
     const blk : ident = 30u;
     const static : ident = 31u;
     const intrinsic : ident = 32u;
-
+    const clownshoes_foreign_mod: ident = 33;
 }
 
 type ident_interner = util::interner::interner<@~str>;
@@ -343,7 +343,7 @@ fn mk_ident_interner() -> ident_interner {
                      @~"str", @~"ty_visitor", @~"arg", @~"descrim",
                      @~"__rust_abi", @~"__rust_stack_shim", @~"tydesc",
                      @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
-                     @~"intrinsic"];
+                     @~"intrinsic", @~"__foreign_mod__"];
 
     let rv = interner::mk_prefill::<@~str>(|x| str::hash(*x),
                                            |x,y| str::eq(*x, *y), init_vec);

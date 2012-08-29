@@ -656,9 +656,14 @@ enum foreign_abi {
     foreign_abi_stdcall,
 }
 
+// Foreign mods can be named or anonymous
+#[auto_serialize]
+enum foreign_mod_sort { named, anonymous }
+
 #[auto_serialize]
 type foreign_mod =
-    {view_items: ~[@view_item],
+    {sort: foreign_mod_sort,
+     view_items: ~[@view_item],
      items: ~[@foreign_item]};
 
 #[auto_serialize]
@@ -775,6 +780,10 @@ type struct_def = {
     dtor: Option<class_dtor>
 };
 
+/*
+  FIXME (#3300): Should allow items to be anonymous. Right now
+  we just use dummy names for anon items.
+ */
 #[auto_serialize]
 type item = {ident: ident, attrs: ~[attribute],
              id: node_id, node: item_,
