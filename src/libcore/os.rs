@@ -222,10 +222,10 @@ mod global_env {
         fn getenv(n: &str) -> Option<~str> {
             unsafe {
                 let s = str::as_c_str(n, libc::getenv);
-                return if ptr::null::<u8>() == unsafe::reinterpret_cast(s) {
+                return if ptr::null::<u8>() == unsafe::reinterpret_cast(&s) {
                     option::None::<~str>
                 } else {
-                    let s = unsafe::reinterpret_cast(s);
+                    let s = unsafe::reinterpret_cast(&s);
                     option::Some::<~str>(str::unsafe::from_buf(s))
                 };
             }
@@ -595,7 +595,7 @@ fn make_dir(p: &Path, mode: c_int) -> bool {
         import win32::*;
         // FIXME: turn mode into something useful? #2623
         do as_utf16_p(p.to_str()) |buf| {
-            CreateDirectoryW(buf, unsafe { unsafe::reinterpret_cast(0) })
+            CreateDirectoryW(buf, unsafe { unsafe::reinterpret_cast(&0) })
                 != (0 as BOOL)
         }
     }

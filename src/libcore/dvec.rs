@@ -81,7 +81,7 @@ fn unwrap<A>(+d: DVec<A>) -> ~[mut A] {
 priv impl<A> DVec<A> {
     pure fn check_not_borrowed() {
         unsafe {
-            let data: *() = unsafe::reinterpret_cast(self.data);
+            let data: *() = unsafe::reinterpret_cast(&self.data);
             if data.is_null() {
                 fail ~"Recursive use of dvec";
             }
@@ -91,9 +91,9 @@ priv impl<A> DVec<A> {
     #[inline(always)]
     fn check_out<B>(f: fn(-~[mut A]) -> B) -> B {
         unsafe {
-            let mut data = unsafe::reinterpret_cast(null::<()>());
+            let mut data = unsafe::reinterpret_cast(&null::<()>());
             data <-> self.data;
-            let data_ptr: *() = unsafe::reinterpret_cast(data);
+            let data_ptr: *() = unsafe::reinterpret_cast(&data);
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
             return f(data);
         }
@@ -156,9 +156,9 @@ impl<A> DVec<A> {
     /// Insert a single item at the front of the list
     fn unshift(-t: A) {
         unsafe {
-            let mut data = unsafe::reinterpret_cast(null::<()>());
+            let mut data = unsafe::reinterpret_cast(&null::<()>());
             data <-> self.data;
-            let data_ptr: *() = unsafe::reinterpret_cast(data);
+            let data_ptr: *() = unsafe::reinterpret_cast(&data);
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
             log(error, ~"a");
             self.data <- ~[mut t];

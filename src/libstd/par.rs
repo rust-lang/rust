@@ -48,7 +48,7 @@ fn map_slices<A: copy send, B: copy send>(
                                      len * sys::size_of::<A>());
                         log(info, fmt!("pre-slice: %?", (base, slice)));
                         let slice : &[A] =
-                            unsafe::reinterpret_cast(slice);
+                            unsafe::reinterpret_cast(&slice);
                         log(info, fmt!("slice: %?",
                                        (base, vec::len(slice), end - base)));
                         assert(vec::len(slice) == end - base);

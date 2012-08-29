@@ -46,8 +46,8 @@ fn debug_fn<T>(+x: T) {
 
 unsafe fn ptr_cast<T, U>(x: @T) -> @U {
     reinterpret_cast(
-        rustrt::debug_ptrcast(sys::get_type_desc::<T>(),
-                              reinterpret_cast(x)))
+        &rustrt::debug_ptrcast(sys::get_type_desc::<T>(),
+                              reinterpret_cast(&x)))
 }
 
 /// Triggers a debugger breakpoint

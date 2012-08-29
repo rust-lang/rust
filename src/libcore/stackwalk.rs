@@ -20,16 +20,16 @@ fn walk_stack(visit: fn(Frame) -> bool) {
 
     do frame_address |frame_pointer| {
         let mut frame_address: *Word = unsafe {
-            reinterpret_cast(frame_pointer)
+            reinterpret_cast(&frame_pointer)
         };
         loop {
             let fr = Frame(frame_address);
 
-            debug!("frame: %x", unsafe { reinterpret_cast(fr.fp) });
+            debug!("frame: %x", unsafe { reinterpret_cast(&fr.fp) });
             visit(fr);
 
             unsafe {
-                let next_fp: **Word = reinterpret_cast(frame_address);
+                let next_fp: **Word = reinterpret_cast(&frame_address);
                 frame_address = *next_fp;
                 if *frame_address == 0u {
                     debug!("encountered task_start_wrapper. ending walk");

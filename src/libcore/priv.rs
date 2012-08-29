@@ -63,12 +63,12 @@ unsafe fn chan_from_global_ptr<T: send>(
         // This is the proposed global channel
         let ch = comm::recv(setup_po);
         // 0 is our sentinal value. It is not a valid channel
-        assert unsafe::reinterpret_cast(ch) != 0u;
+        assert unsafe::reinterpret_cast(&ch) != 0u;
 
         // Install the channel
         log(debug,~"BEFORE COMPARE AND SWAP");
         let swapped = compare_and_swap(
-            global, 0u, unsafe::reinterpret_cast(ch));
+            global, 0u, unsafe::reinterpret_cast(&ch));
         log(debug,fmt!("AFTER .. swapped? %?", swapped));
 
         if swapped {
@@ -78,11 +78,11 @@ unsafe fn chan_from_global_ptr<T: send>(
         } else {
             // Somebody else got in before we did
             comm::send(setup_ch, Abort);
-            unsafe::reinterpret_cast(*global)
+            unsafe::reinterpret_cast(&*global)
         }
     } else {
         log(debug, ~"global != 0");
-        unsafe::reinterpret_cast(*global)
+        unsafe::reinterpret_cast(&*global)
     }
 }
 
@@ -189,7 +189,7 @@ unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     let po = comm::Port();
     let ch = comm::Chan(po);
     unsafe {
-        rustrt::rust_task_weaken(unsafe::reinterpret_cast(ch));
+        rustrt::rust_task_weaken(unsafe::reinterpret_cast(&ch));
     }
     let _unweaken = Unweaken(ch);
     f(po);
@@ -198,7 +198,7 @@ unsafe fn weaken_task(f: fn(comm::Port<()>)) {
       let ch: comm::Chan<()>;
       new(ch: comm::Chan<()>) { self.ch = ch; }
       drop unsafe {
-        rustrt::rust_task_unweaken(unsafe::reinterpret_cast(self.ch));
+        rustrt::rust_task_unweaken(unsafe::reinterpret_cast(&self.ch));
       }
     }
 }
