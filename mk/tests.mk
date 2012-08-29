@@ -198,7 +198,7 @@ FULL_TEST_SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(SREQ$(1)_T_$(2)_H_$(3)) \
 	$$(TLIBRUSTC_DEFAULT$(1)_T_$(2)_H_$(3))
 
-check-stage$(1)-T-$(2)-H-$(3): tidy				\
+check-stage$(1)-T-$(2)-H-$(3):     				\
 	check-stage$(1)-T-$(2)-H-$(3)-rustc			\
 	check-stage$(1)-T-$(2)-H-$(3)-core          \
 	check-stage$(1)-T-$(2)-H-$(3)-std			\
@@ -595,7 +595,7 @@ $(3)/test/$$(FT_DRIVER)-$(2).out: \
 	$$(Q)$$(call CFG_RUN_TEST,$$<,$(2),$(3)) \
 	--logfile tmp/$$(FT_DRIVER)-$(2).log
 
-check-fast-T-$(2)-H-$(3): tidy			\
+check-fast-T-$(2)-H-$(3):     			\
 	check-stage2-T-$(2)-H-$(3)-rustc	\
 	check-stage2-T-$(2)-H-$(3)-core		\
 	check-stage2-T-$(2)-H-$(3)-std		\
@@ -785,4 +785,4 @@ endef
 $(foreach stage,$(STAGES),						\
  $(eval $(call DEF_CHECK_FOR_STAGE,$(stage))))
 
-check-fast: check-fast-H-$(CFG_HOST_TRIPLE)
+check-fast: tidy check-fast-H-$(CFG_HOST_TRIPLE)
