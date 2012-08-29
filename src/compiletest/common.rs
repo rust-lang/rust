@@ -49,5 +49,10 @@ type config = {
     // Flags to pass to the compiler
     rustcflags: Option<~str>,
 
+    // Run tests using the JIT
+    jit: bool,
+
     // Explain what's going on
-    verbose: bool};
+    verbose: bool
+
+};
