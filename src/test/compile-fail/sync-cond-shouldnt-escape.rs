@@ -3,7 +3,7 @@ use std;
 import std::sync;
 
 fn main() {
-    let m = ~sync::mutex();
+    let m = ~sync::Mutex();
     let mut cond = None;
     do m.lock_cond |c| {
         cond = Some(c);

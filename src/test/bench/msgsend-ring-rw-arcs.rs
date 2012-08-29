@@ -32,7 +32,7 @@ fn recv(p: &pipe) -> uint {
 }
 
 fn init() -> (pipe,pipe) {
-    let x = arc::rw_arc(~[]);
+    let x = arc::RWARC(~[]);
     ((&x).clone(), x)
 }
 

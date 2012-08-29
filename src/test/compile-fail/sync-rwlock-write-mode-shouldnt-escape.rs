@@ -2,7 +2,7 @@
 use std;
 import std::sync;
 fn main() {
-    let x = ~sync::rwlock();
+    let x = ~sync::RWlock();
     let mut y = None;
     do x.write_downgrade |write_mode| {
         y = Some(write_mode);

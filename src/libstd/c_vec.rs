@@ -28,7 +28,7 @@
  */
 
 export CVec;
-export c_vec, c_vec_with_dtor;
+export CVec, c_vec_with_dtor;
 export get, set;
 export len;
 export ptr;
@@ -66,7 +66,7 @@ struct DtorRes {
  * * base - A foreign pointer to a buffer
  * * len - The number of elements in the buffer
  */
-unsafe fn c_vec<T>(base: *mut T, len: uint) -> CVec<T> {
+unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
     return CVecCtor({
         base: base,
         len: len,

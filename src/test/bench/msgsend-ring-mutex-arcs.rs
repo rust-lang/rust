@@ -32,7 +32,7 @@ fn recv(p: &pipe) -> uint {
 }
 
 fn init() -> (pipe,pipe) {
-    let m = arc::mutex_arc(~[]);
+    let m = arc::MutexARC(~[]);
     ((&m).clone(), m)
 }
 

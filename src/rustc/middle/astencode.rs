@@ -939,7 +939,7 @@ fn roundtrip(in_item: @ast::item) {
     let mbuf = io::mem_buffer();
     let ebml_w = ebml::Writer(io::mem_buffer_writer(mbuf));
     encode_item_ast(ebml_w, in_item);
-    let ebml_doc = ebml::doc(@io::mem_buffer_buf(mbuf));
+    let ebml_doc = ebml::Doc(@io::mem_buffer_buf(mbuf));
     let out_item = decode_item_ast(ebml_doc);
 
     let exp_str =

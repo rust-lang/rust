@@ -6,7 +6,6 @@
 import core::Option;
 import option::{Some, None};
 
-export doc;
 export Doc;
 export doc_at;
 export maybe_get_doc;
@@ -75,7 +74,7 @@ fn vuint_at(data: &[u8], start: uint) -> {val: uint, next: uint} {
     } else { error!("vint too big"); fail; }
 }
 
-fn doc(data: @~[u8]) -> Doc {
+fn Doc(data: @~[u8]) -> Doc {
     return {data: data, start: 0u, end: vec::len::<u8>(*data)};
 }
 
@@ -619,7 +618,7 @@ fn test_option_int() {
         let mbuf = io::mem_buffer();
         let ebml_w = ebml::Writer(io::mem_buffer_writer(mbuf));
         serialize_0(ebml_w, v);
-        let ebml_doc = ebml::doc(@io::mem_buffer_buf(mbuf));
+        let ebml_doc = ebml::Doc(@io::mem_buffer_buf(mbuf));
         let deser = ebml_deserializer(ebml_doc);
         let v1 = deserialize_0(deser);
         debug!("v1 == %?", v1);
