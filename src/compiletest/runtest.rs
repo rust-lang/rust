@@ -51,7 +51,9 @@ fn run_rfail_test(config: config, props: test_props, testfile: &Path) {
     let procres = if !config.jit {
         let procres = compile_test(config, props, testfile);
 
-        if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
+        if procres.status != 0 {
+            fatal_procres(~"compilation failed!", procres);
+        }
 
         exec_compiled_test(config, props, testfile)
     } else {
@@ -83,11 +85,15 @@ fn run_rpass_test(config: config, props: test_props, testfile: &Path) {
     if !config.jit {
         let mut procres = compile_test(config, props, testfile);
 
-        if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
+        if procres.status != 0 {
+            fatal_procres(~"compilation failed!", procres);
+        }
 
         procres = exec_compiled_test(config, props, testfile);
 
-        if procres.status != 0 { fatal_procres(~"test run failed!", procres); }
+        if procres.status != 0 {
+            fatal_procres(~"test run failed!", procres);
+        }
     } else {
         let mut procres = jit_test(config, props, testfile);
 
