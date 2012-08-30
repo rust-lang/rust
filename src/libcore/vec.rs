@@ -1877,7 +1877,7 @@ mod u8 {
     pure fn gt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) > 0 }
 
     /// Byte-vec hash function
-    fn hash(s: &~[u8]) -> uint {
+    pure fn hash(s: &~[u8]) -> uint {
         hash::hash_bytes(*s) as uint
     }
 
