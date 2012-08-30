@@ -1443,23 +1443,9 @@ pure fn lt<T: Ord>(a: &[T], b: &[T]) -> bool {
     return a_len < b_len;
 }
 
-pure fn le<T: Ord>(a: &[T], b: &[T]) -> bool {
-    let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(&a_len, &b_len);
-
-    let mut i = 0;
-    while i < end {
-        let (c_a, c_b) = (&a[i], &b[i]);
-        if *c_a < *c_b { return true; }
-        if *c_a > *c_b { return false; }
-        i += 1;
-    }
-
-    return a_len <= b_len;
-}
-
-pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
-pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { !le(b, a) }
+pure fn le<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
+pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
+pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
 
 impl<T: Ord> &[T]: Ord {
     #[inline(always)]
