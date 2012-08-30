@@ -53,7 +53,7 @@ pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
 pure fn get_err<T, U: copy>(res: Result<T, U>) -> U {
     match res {
       Err(u) => u,
-      Ok(_) => fail ~"get_error called on ok result"
+      Ok(_) => fail ~"get_err called on ok result"
     }
 }
 
