@@ -348,6 +348,14 @@ fn unwrap<T, U>(+res: Result<T, U>) -> T {
     }
 }
 
+/// Unwraps a result, assuming it is an `err(U)`
+fn unwrap_err<T, U>(+res: Result<T, U>) -> U {
+    match move res {
+      Err(move u) => u,
+      Ok(_) => fail ~"unwrap called on an ok result"
+    }
+}
+
 impl<T:Eq,U:Eq> Result<T,U> : Eq {
     pure fn eq(&&other: Result<T,U>) -> bool {
         match self {
