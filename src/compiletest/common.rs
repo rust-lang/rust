@@ -2,6 +2,12 @@ import option;
 
 enum mode { mode_compile_fail, mode_run_fail, mode_run_pass, mode_pretty, }
 
+impl mode : cmp::Eq {
+    pure fn eq(&&other: mode) -> bool {
+        other as int == self as int
+    }
+}
+
 type config = {
     // The library paths required for running the compiler
     compile_lib_path: ~str,
