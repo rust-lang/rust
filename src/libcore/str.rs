@@ -2231,10 +2231,10 @@ mod tests {
 
     #[test]
     fn test_le() {
-        assert (le(&~"", &~""));
-        assert (le(&~"", &~"foo"));
-        assert (le(&~"foo", &~"foo"));
-        assert (!eq(&~"foo", &~"bar"));
+        assert (le(&"", &""));
+        assert (le(&"", &"foo"));
+        assert (le(&"foo", &"foo"));
+        assert (!eq(&"foo", &"bar"));
     }
 
     #[test]
