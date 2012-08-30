@@ -36,8 +36,8 @@ extern mod rustrt {
 /// A record specifying a time value in seconds and nanoseconds.
 type Timespec = {sec: i64, nsec: i32};
 
-impl timespec : Eq {
-    pure fn eq(&&other: timespec) -> bool {
+impl Timespec : Eq {
+    pure fn eq(&&other: Timespec) -> bool {
         self.sec == other.sec && self.nsec == other.nsec
     }
 }
