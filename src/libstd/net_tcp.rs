@@ -2,7 +2,7 @@
 
 import ip = net_ip;
 import uv::iotask;
-import uv::iotask::iotask;
+import uv::iotask::IoTask;
 import future_spawn = future::spawn;
 // FIXME #1935
 // should be able to, but can't atm, replace w/ result::{result, extensions};
@@ -119,7 +119,7 @@ enum tcp_connect_err_data {
  * `net::tcp::tcp_connect_err_data` instance will be returned
  */
 fn connect(-input_ip: ip::ip_addr, port: uint,
-           iotask: iotask)
+           iotask: IoTask)
     -> result::Result<tcp_socket, tcp_connect_err_data> unsafe {
     let result_po = core::comm::Port::<conn_attempt>();
     let closed_signal_po = core::comm::Port::<()>();
@@ -560,7 +560,7 @@ fn accept(new_conn: tcp_new_connection)
  * of listen exiting because of an error
  */
 fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
-          iotask: iotask,
+          iotask: IoTask,
           on_establish_cb: fn~(comm::Chan<Option<tcp_err_data>>),
           +new_connect_cb: fn~(tcp_new_connection,
                                comm::Chan<Option<tcp_err_data>>))
@@ -577,7 +577,7 @@ fn listen(-host_ip: ip::ip_addr, port: uint, backlog: uint,
 }
 
 fn listen_common(-host_ip: ip::ip_addr, port: uint, backlog: uint,
-          iotask: iotask,
+          iotask: IoTask,
           on_establish_cb: fn~(comm::Chan<Option<tcp_err_data>>),
           -on_connect_cb: fn~(*uv::ll::uv_tcp_t))
     -> result::Result<(), tcp_listen_err_data> unsafe {
@@ -1003,7 +1003,7 @@ type tcp_listen_fc_data = {
     stream_closed_ch: comm::Chan<()>,
     kill_ch: comm::Chan<Option<tcp_err_data>>,
     on_connect_cb: fn~(*uv::ll::uv_tcp_t),
-    iotask: iotask,
+    iotask: IoTask,
     mut active: bool
 };
 
@@ -1202,7 +1202,7 @@ type tcp_socket_data = {
     stream_handle_ptr: *uv::ll::uv_tcp_t,
     connect_req: uv::ll::uv_connect_t,
     write_req: uv::ll::uv_write_t,
-    iotask: iotask
+    iotask: IoTask
 };
 
 type tcp_buffered_socket_data = {
@@ -1479,7 +1479,7 @@ mod test {
     fn run_tcp_test_server(server_ip: ~str, server_port: uint, resp: ~str,
                           server_ch: comm::Chan<~str>,
                           cont_ch: comm::Chan<()>,
-                          iotask: iotask) -> ~str {
+                          iotask: IoTask) -> ~str {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
         let listen_result = listen(server_ip_addr, server_port, 128u, iotask,
             // on_establish_cb -- called when listener is set up
@@ -1562,7 +1562,7 @@ mod test {
     }
 
     fn run_tcp_test_server_fail(server_ip: ~str, server_port: uint,
-                          iotask: iotask) -> tcp_listen_err_data {
+                          iotask: IoTask) -> tcp_listen_err_data {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
         let listen_result = listen(server_ip_addr, server_port, 128u, iotask,
             // on_establish_cb -- called when listener is set up
@@ -1585,7 +1585,7 @@ mod test {
 
     fn run_tcp_test_client(server_ip: ~str, server_port: uint, resp: ~str,
                           client_ch: comm::Chan<~str>,
-                          iotask: iotask) -> result::Result<~str,
+                          iotask: IoTask) -> result::Result<~str,
                                                     tcp_connect_err_data> {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
 

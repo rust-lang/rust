@@ -5,7 +5,7 @@
  * `interact` function you can execute code in a uv callback.
  */
 
-export iotask;
+export IoTask;
 export spawn_iotask;
 export interact;
 export exit;
@@ -18,14 +18,14 @@ import task::TaskBuilder;
 import ll = uv_ll;
 
 /// Used to abstract-away direct interaction with a libuv loop.
-enum iotask {
-    iotask_({
+enum IoTask {
+    IoTask_({
         async_handle: *ll::uv_async_t,
-        op_chan: Chan<iotask_msg>
+        op_chan: Chan<IoTaskMsg>
     })
 }
 
-fn spawn_iotask(-task: task::TaskBuilder) -> iotask {
+fn spawn_iotask(-task: task::TaskBuilder) -> IoTask {
 
     do listen |iotask_ch| {
 
@@ -62,9 +62,9 @@ fn spawn_iotask(-task: task::TaskBuilder) -> iotask {
  * module. It is not safe to send the `loop_ptr` param to this callback out
  * via ports/chans.
  */
-unsafe fn interact(iotask: iotask,
+unsafe fn interact(iotask: IoTask,
                    -cb: fn~(*c_void)) {
-    send_msg(iotask, interaction(cb));
+    send_msg(iotask, Interaction(cb));
 }
 
 /**
@@ -74,20 +74,20 @@ unsafe fn interact(iotask: iotask,
  * async handle and do a sanity check to make sure that all other handles are
  * closed, causing a failure otherwise.
  */
-fn exit(iotask: iotask) unsafe {
-    send_msg(iotask, teardown_loop);
+fn exit(iotask: IoTask) unsafe {
+    send_msg(iotask, TeardownLoop);
 }
 
 
 // INTERNAL API
 
-enum iotask_msg {
-    interaction (fn~(*libc::c_void)),
-    teardown_loop
+enum IoTaskMsg {
+    Interaction (fn~(*libc::c_void)),
+    TeardownLoop
 }
 
 /// Run the loop and begin handling messages
-fn run_loop(iotask_ch: Chan<iotask>) unsafe {
+fn run_loop(iotask_ch: Chan<IoTask>) unsafe {
 
     let loop_ptr = ll::loop_new();
 
@@ -100,7 +100,7 @@ fn run_loop(iotask_ch: Chan<iotask>) unsafe {
     ll::async_init(loop_ptr, async_handle, wake_up_cb);
 
     // initialize our loop data and store it in the loop
-    let data: iotask_loop_data = {
+    let data: IoTaskLoopData = {
         async_handle: async_handle,
         msg_po: Port()
     };
@@ -108,7 +108,7 @@ fn run_loop(iotask_ch: Chan<iotask>) unsafe {
 
     // Send out a handle through which folks can talk to us
     // while we dwell in the I/O loop
-    let iotask = iotask_({
+    let iotask = IoTask_({
         async_handle: async_handle,
         op_chan: data.msg_po.chan()
     });
@@ -122,13 +122,13 @@ fn run_loop(iotask_ch: Chan<iotask>) unsafe {
 }
 
 // data that lives for the lifetime of the high-evel oo
-type iotask_loop_data = {
+type IoTaskLoopData = {
     async_handle: *ll::uv_async_t,
-    msg_po: Port<iotask_msg>
+    msg_po: Port<IoTaskMsg>
 };
 
-fn send_msg(iotask: iotask,
-            -msg: iotask_msg) unsafe {
+fn send_msg(iotask: IoTask,
+            -msg: IoTaskMsg) unsafe {
     iotask.op_chan.send(msg);
     ll::async_send(iotask.async_handle);
 }
@@ -141,18 +141,18 @@ extern fn wake_up_cb(async_handle: *ll::uv_async_t,
                      async_handle, status));
 
     let loop_ptr = ll::get_loop_for_uv_handle(async_handle);
-    let data = ll::get_data_for_uv_handle(async_handle) as *iotask_loop_data;
+    let data = ll::get_data_for_uv_handle(async_handle) as *IoTaskLoopData;
     let msg_po = (*data).msg_po;
 
     while msg_po.peek() {
         match msg_po.recv() {
-          interaction(cb) => cb(loop_ptr),
-          teardown_loop => begin_teardown(data)
+          Interaction(cb) => cb(loop_ptr),
+          TeardownLoop => begin_teardown(data)
         }
     }
 }
 
-fn begin_teardown(data: *iotask_loop_data) unsafe {
+fn begin_teardown(data: *IoTaskLoopData) unsafe {
     log(debug, ~"iotask begin_teardown() called, close async_handle");
     let async_handle = (*data).async_handle;
     ll::close(async_handle as *c_void, tear_down_close_cb);
@@ -171,7 +171,7 @@ mod test {
     extern fn async_close_cb(handle: *ll::uv_async_t) unsafe {
         log(debug, fmt!("async_close_cb handle %?", handle));
         let exit_ch = (*(ll::get_data_for_uv_handle(handle)
-                        as *ah_data)).exit_ch;
+                        as *AhData)).exit_ch;
         core::comm::send(exit_ch, ());
     }
     extern fn async_handle_cb(handle: *ll::uv_async_t, status: libc::c_int)
@@ -179,11 +179,11 @@ mod test {
         log(debug, fmt!("async_handle_cb handle %? status %?",handle,status));
         ll::close(handle, async_close_cb);
     }
-    type ah_data = {
-        iotask: iotask,
+    type AhData = {
+        iotask: IoTask,
         exit_ch: comm::Chan<()>
     };
-    fn impl_uv_iotask_async(iotask: iotask) unsafe {
+    fn impl_uv_iotask_async(iotask: IoTask) unsafe {
         let async_handle = ll::async_t();
         let ah_ptr = ptr::addr_of(async_handle);
         let exit_po = core::comm::Port::<()>();
@@ -203,8 +203,8 @@ mod test {
 
     // this fn documents the bear minimum neccesary to roll your own
     // high_level_loop
-    unsafe fn spawn_test_loop(exit_ch: comm::Chan<()>) -> iotask {
-        let iotask_port = comm::Port::<iotask>();
+    unsafe fn spawn_test_loop(exit_ch: comm::Chan<()>) -> IoTask {
+        let iotask_port = comm::Port::<IoTask>();
         let iotask_ch = comm::Chan(iotask_port);
         do task::spawn_sched(task::ManualThreads(1u)) {
             run_loop(iotask_ch);

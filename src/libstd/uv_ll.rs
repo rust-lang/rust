@@ -20,6 +20,8 @@
  * with per-platform, generated source files from rust-bindgen.
  */
 
+#[allow(non_camel_case_types)] // C types
+
 import libc::size_t;
 import comm = core::comm;
 import ptr::to_unsafe_ptr;

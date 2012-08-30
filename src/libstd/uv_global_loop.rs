@@ -5,7 +5,7 @@ export get;
 import ll = uv_ll;
 import iotask = uv_iotask;
 import get_gl = get;
-import iotask::{iotask, spawn_iotask};
+import iotask::{IoTask, spawn_iotask};
 import priv::{chan_from_global_ptr, weaken_task};
 import comm = core::comm;
 import comm::{Port, Chan, select2, listen};
@@ -28,12 +28,12 @@ extern mod rustrt {
  * * A `hl::high_level_loop` that encapsulates communication with the global
  * loop.
  */
-fn get() -> iotask {
+fn get() -> IoTask {
     return get_monitor_task_gl();
 }
 
 #[doc(hidden)]
-fn get_monitor_task_gl() -> iotask unsafe {
+fn get_monitor_task_gl() -> IoTask unsafe {
 
     let monitor_loop_chan_ptr = rustrt::rust_uv_get_kernel_global_chan_ptr();
 
@@ -41,10 +41,10 @@ fn get_monitor_task_gl() -> iotask unsafe {
            monitor_loop_chan_ptr);
 
     debug!("before priv::chan_from_global_ptr");
-    type monchan = Chan<iotask>;
+    type MonChan = Chan<IoTask>;
 
     let monitor_ch =
-        do chan_from_global_ptr::<monchan>(monitor_loop_chan_ptr,
+        do chan_from_global_ptr::<MonChan>(monitor_loop_chan_ptr,
                                            || {
                                                 task::task().sched_mode
                                                 (task::SingleThreaded)
@@ -85,7 +85,7 @@ fn get_monitor_task_gl() -> iotask unsafe {
     }
 }
 
-fn spawn_loop() -> iotask {
+fn spawn_loop() -> IoTask {
     let builder = do task::task().add_wrapper |task_body| {
         fn~(move task_body) {
             // The I/O loop task also needs to be weak so it doesn't keep
@@ -131,7 +131,7 @@ mod test {
         log(debug, ~"exiting simple timer cb");
     }
 
-    fn impl_uv_hl_simple_timer(iotask: iotask) unsafe {
+    fn impl_uv_hl_simple_timer(iotask: IoTask) unsafe {
         let exit_po = core::comm::Port::<bool>();
         let exit_ch = core::comm::Chan(exit_po);
         let exit_ch_ptr = ptr::addr_of(exit_ch);
