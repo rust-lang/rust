@@ -428,7 +428,8 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(matches: getopts::Matches,
+fn build_session_options(binary: ~str,
+                         matches: getopts::Matches,
                          demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
@@ -553,6 +554,7 @@ fn build_session_options(matches: getopts::Matches,
           maybe_sysroot: sysroot_opt,
           target_triple: target,
           cfg: cfg,
+          binary: binary,
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
@@ -736,7 +738,8 @@ mod test {
               Err(f) => fail ~"test_switch_implies_cfg_test: " +
                              getopts::fail_str(f)
             };
-        let sessopts = build_session_options(matches, diagnostic::emit);
+        let sessopts = build_session_options(
+            ~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, ~"whatever", str_input(~""));
         assert (attr::contains_name(cfg, ~"test"));
@@ -754,7 +757,8 @@ mod test {
                     getopts::fail_str(f);
               }
             };
-        let sessopts = build_session_options(matches, diagnostic::emit);
+        let sessopts = build_session_options(
+            ~"rustc", matches, diagnostic::emit);
         let sess = build_session(sessopts, diagnostic::emit);
         let cfg = build_configuration(sess, ~"whatever", str_input(~""));
         let test_items = attr::find_meta_items_by_name(cfg, ~"test");

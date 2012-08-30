@@ -85,22 +85,19 @@ mod jit {
             m: ModuleRef,
             opt: c_int,
             stacks: bool) unsafe {
-        let ptr = llvm::LLVMRustJIT(rusti::morestack_addr(), pm, m, opt, stacks);
+        let ptr = llvm::LLVMRustJIT(rusti::morestack_addr(),
+                                    pm, m, opt, stacks);
 
         if ptr::is_null(ptr) {
             llvm_err(sess, ~"Could not JIT");
         } else {
-            let bin = match os::self_exe_path() {
-                Some(path) => path.to_str(),
-                _ => ~"rustc"
-            };
             let closure = Closure {
                 code: ptr,
                 env: ptr::null()
             };
             let func: fn(~[~str]) = unsafe::transmute(closure);
 
-            func(~[bin]);
+            func(~[sess.opts.binary]);
         }
     }
 }
