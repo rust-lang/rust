@@ -39,8 +39,7 @@ fn map_slices<A: copy send, B: copy send>(
         log(info, ~"spawning tasks");
         while base < len {
             let end = uint::min(len, base + items_per_task);
-            // FIXME: why is the ::<A, ()> annotation required here? (#2617)
-            do vec::as_buf::<A, ()>(xs) |p, _len| {
+            do vec::as_buf(xs) |p, _len| {
                 let f = f();
                 let f = do future_spawn() |copy base| {
                     unsafe {
