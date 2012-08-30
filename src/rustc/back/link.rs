@@ -12,7 +12,7 @@ import std::sha1::sha1;
 import syntax::ast;
 import syntax::print::pprust;
 import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
-        FileType};
+        PassManagerRef, FileType};
 import metadata::filesearch;
 import syntax::ast_map::{path, path_mod, path_name};
 import io::{Writer, WriterUtil};
@@ -54,6 +54,57 @@ fn WriteOutputFile(sess:session,
     }
 }
 
+#[cfg(stage0)]
+mod jit {
+    fn exec(_sess: session,
+            _pm: PassManagerRef,
+            _m: ModuleRef,
+            _opt: c_int,
+            _stacks: bool) {
+        fail
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+mod jit {
+    #[nolink]
+    #[abi = "rust-intrinsic"]
+    extern mod rusti {
+        fn morestack_addr() -> *();
+    }
+
+    struct Closure {
+        code: *();
+        env: *();
+    }
+
+    fn exec(sess: session,
+            pm: PassManagerRef,
+            m: ModuleRef,
+            opt: c_int,
+            stacks: bool) unsafe {
+        let ptr = llvm::LLVMRustJIT(rusti::morestack_addr(), pm, m, opt, stacks);
+
+        if ptr::is_null(ptr) {
+            llvm_err(sess, ~"Could not JIT");
+        } else {
+            let bin = match os::self_exe_path() {
+                Some(path) => path.to_str(),
+                _ => ~"rustc"
+            };
+            let closure = Closure {
+                code: ptr,
+                env: ptr::null()
+            };
+            let func: fn(~[~str]) = unsafe::transmute(closure);
+
+            func(~[bin]);
+        }
+    }
+}
+
 mod write {
     fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
@@ -75,6 +126,7 @@ mod write {
 
         // Generate a pre-optimization intermediate file if -save-temps was
         // specified.
+
 
         if opts.save_temps {
             match opts.output_type {
@@ -135,7 +187,7 @@ mod write {
             llvm::LLVMPassManagerBuilderDispose(MPMB);
         }
         if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
-        if is_object_or_assembly_or_exe(opts.output_type) {
+        if is_object_or_assembly_or_exe(opts.output_type) || opts.jit {
             let LLVMOptNone       = 0 as c_int; // -O0
             let LLVMOptLess       = 1 as c_int; // -O1
             let LLVMOptDefault    = 2 as c_int; // -O2, -Os
@@ -147,6 +199,39 @@ mod write {
               session::Default => LLVMOptDefault,
               session::Aggressive => LLVMOptAggressive
             };
+
+            if opts.jit {
+                // If we are using JIT, go ahead and create and
+                // execute the engine now.
+                // JIT execution takes ownership of the module,
+                // so don't dispose and return.
+
+                // We need to tell LLVM where to resolve all linked
+                // symbols from. The equivalent of -lstd, -lcore, etc.
+                // By default the JIT will resolve symbols from the std and
+                // core linked into rustc. We don't want that,
+                // incase the user wants to use an older std library.
+                /*let cstore = sess.cstore;
+                for cstore::get_used_crate_files(cstore).each |cratepath| {
+                    debug!{"linking: %s", cratepath};
+
+                    let _: () = str::as_c_str(
+                        cratepath,
+                        |buf_t| {
+                            if !llvm::LLVMRustLoadLibrary(buf_t) {
+                                llvm_err(sess, ~"Could not link");
+                            }
+                            debug!{"linked: %s", cratepath};
+                        });
+                }*/
+
+                jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
+
+                if sess.time_llvm_passes() {
+                    llvm::LLVMRustPrintPassTimings();
+                }
+                return;
+            }
 
             let mut FileType;
             if opts.output_type == output_type_object ||

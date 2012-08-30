@@ -2590,6 +2590,9 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         });
         (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }
+      ~"morestack_addr" => {
+        (0u, ~[], ty::mk_nil_ptr(tcx))
+      }
       other => {
         tcx.sess.span_err(it.span, ~"unrecognized intrinsic function: `" +
                           other + ~"`");

@@ -42,6 +42,7 @@ Options:
     -L <path>          Add a directory to the library search path
     --lib              Compile a library crate
     --ls               List the symbols defined by a compiled library crate
+    --jit              Execute using JIT (experimental)
     --no-trans         Run all passes except translation; no output
     -O                 Equivalent to --opt-level=2
     -o <filename>      Write output to <filename>

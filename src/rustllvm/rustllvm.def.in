@@ -4,6 +4,8 @@ LLVMRustWriteOutputFile
 LLVMRustGetLastError
 LLVMRustConstSmallInt
 LLVMRustConstInt
+LLVMRustLoadLibrary
+LLVMRustJIT
 LLVMRustParseBitcode
 LLVMRustParseAssemblyFile
 LLVMRustPrintPassTimings
@@ -485,6 +487,7 @@ LLVMIsThreadLocal
 LLVMIsUndef
 LLVMLabelType
 LLVMLabelTypeInContext
+LLVMLinkInInterpreter
 LLVMMDNode
 LLVMMDNodeInContext
 LLVMMDString

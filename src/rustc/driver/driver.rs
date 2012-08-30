@@ -259,7 +259,8 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
 
     let stop_after_codegen =
         sess.opts.output_type != link::output_type_exe ||
-            sess.opts.static && sess.building_library;
+        (sess.opts.static && sess.building_library)    ||
+        sess.opts.jit;
 
     if stop_after_codegen { return {crate: crate, tcx: Some(ty_cx)}; }
 
@@ -483,6 +484,7 @@ fn build_session_options(matches: getopts::Matches,
         llvm::LLVMSetDebug(1);
     }
 
+    let jit = opt_present(matches, ~"jit");
     let output_type =
         if parse_only || no_trans {
             link::output_type_none
@@ -545,6 +547,7 @@ fn build_session_options(matches: getopts::Matches,
           extra_debuginfo: extra_debuginfo,
           lint_opts: lint_opts,
           save_temps: save_temps,
+          jit: jit,
           output_type: output_type,
           addl_lib_search_paths: addl_lib_search_paths,
           maybe_sysroot: sysroot_opt,
@@ -620,6 +623,7 @@ fn opts() -> ~[getopts::Opt] {
           optopt(~"o"), optopt(~"out-dir"), optflag(~"xg"),
           optflag(~"c"), optflag(~"g"), optflag(~"save-temps"),
           optopt(~"sysroot"), optopt(~"target"),
+          optflag(~"jit"),
 
           optmulti(~"W"), optmulti(~"warn"),
           optmulti(~"A"), optmulti(~"allow"),

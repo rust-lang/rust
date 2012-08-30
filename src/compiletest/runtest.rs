@@ -48,11 +48,15 @@ fn run_cfail_test(config: config, props: test_props, testfile: &Path) {
 }
 
 fn run_rfail_test(config: config, props: test_props, testfile: &Path) {
-    let mut procres = compile_test(config, props, testfile);
+    let procres = if !config.jit {
+        let procres = compile_test(config, props, testfile);
 
-    if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
+        if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
 
-    procres = exec_compiled_test(config, props, testfile);
+        exec_compiled_test(config, props, testfile)
+    } else {
+        jit_test(config, props, testfile)
+    };
 
     // The value our Makefile configures valgrind to return on failure
     const valgrind_err: int = 100;
@@ -76,13 +80,19 @@ fn check_correct_failure_status(procres: procres) {
 }
 
 fn run_rpass_test(config: config, props: test_props, testfile: &Path) {
-    let mut procres = compile_test(config, props, testfile);
+    if !config.jit {
+        let mut procres = compile_test(config, props, testfile);
 
-    if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
+        if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
 
-    procres = exec_compiled_test(config, props, testfile);
+        procres = exec_compiled_test(config, props, testfile);
 
-    if procres.status != 0 { fatal_procres(~"test run failed!", procres); }
+        if procres.status != 0 { fatal_procres(~"test run failed!", procres); }
+    } else {
+        let mut procres = jit_test(config, props, testfile);
+
+        if procres.status != 0 { fatal_procres(~"jit failed!", procres); }
+    }
 }
 
 fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
@@ -295,10 +305,19 @@ type procres = {status: int, stdout: ~str, stderr: ~str, cmdline: ~str};
 
 fn compile_test(config: config, props: test_props,
                 testfile: &Path) -> procres {
+    compile_test_(config, props, testfile, [])
+}
+
+fn jit_test(config: config, props: test_props, testfile: &Path) -> procres {
+    compile_test_(config, props, testfile, [~"--jit"])
+}
+
+fn compile_test_(config: config, props: test_props,
+                 testfile: &Path, extra_args: &[~str]) -> procres {
     let link_args = ~[~"-L", aux_output_dir_name(config, testfile).to_str()];
     compose_and_run_compiler(
         config, props, testfile,
-        make_compile_args(config, props, link_args,
+        make_compile_args(config, props, link_args + extra_args,
                           make_exe_name, testfile),
         None)
 }
