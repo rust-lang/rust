@@ -2,6 +2,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cmp::Eq;
+
 /**
  * Miscellaneous helpers for common patterns.
  */
@@ -62,7 +64,7 @@ mod tests {
     fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
         let x = ~[(5, false)];
-        assert x == id(copy x);
+        assert x.eq(id(copy x));
     }
     #[test]
     fn test_swap() {
