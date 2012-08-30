@@ -671,18 +671,18 @@ Section: Comparing strings
 
 /// Bytewise slice equality
 pure fn eq_slice(a: &str, b: &str) -> bool {
-    let a_len = a.len();
-    let b_len = b.len();
-    if a_len != b_len { return false; }
-    let mut end = uint::min(&a_len, &b_len);
-
-    let mut i = 0u;
-    while i < end {
-        if a[i] != b[i] { return false; }
-        i += 1u;
+    do as_buf(a) |ap, alen| {
+        do as_buf(b) |bp, blen| {
+            if (alen != blen) { false }
+            else {
+                unsafe {
+                    libc::memcmp(ap as *libc::c_void,
+                                 bp as *libc::c_void,
+                                 alen as libc::size_t) == 0
+                }
+            }
+        }
     }
-
-    return true;
 }
 
 /// Bytewise string equality
