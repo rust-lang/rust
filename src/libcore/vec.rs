@@ -1168,7 +1168,7 @@ pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn each<T>(v: &[T], f: fn(T) -> bool) {
+pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
     do vec::as_buf(v) |p, n| {
         let mut n = n;
         let mut p = p;
@@ -1206,7 +1206,7 @@ pure fn each_mut<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
+pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
     do vec::as_buf(v) |p, n| {
         let mut i = 0u;
         let mut p = p;
@@ -1916,12 +1916,12 @@ mod u8 {
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
 
-impl<A> &[A]: iter::BaseIter<A> {
+impl<A> &[const A]: iter::BaseIter<A> {
     pure fn each(blk: fn(A) -> bool) { each(self, blk) }
     pure fn size_hint() -> Option<uint> { Some(len(self)) }
 }
 
-impl<A> &[A]: iter::ExtendedIter<A> {
+impl<A> &[const A]: iter::ExtendedIter<A> {
     pure fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
     pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }

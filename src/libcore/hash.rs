@@ -15,6 +15,7 @@
 
 import io::Writer;
 import io::WriterUtil;
+import to_bytes::IterBytes;
 
 export Streaming, State;
 export default_state;
@@ -33,6 +34,21 @@ export hash_u16;
 export hash_u8;
 export hash_uint;
 
+/// Types that can meaningfully be hashed should implement this.
+trait Hash {
+    pure fn hash_keyed(k0: u64, k1: u64) -> u64;
+}
+
+// When we have default methods, won't need this.
+trait HashUtil {
+    pure fn hash() -> u64;
+}
+
+impl <A: Hash> A: HashUtil {
+    #[inline(always)]
+    pure fn hash() -> u64 { self.hash_keyed(0,0) }
+}
+
 /// Streaming hash-functions should implement this.
 trait Streaming {
     fn input((&[const u8]));
@@ -43,38 +59,97 @@ trait Streaming {
     fn reset();
 }
 
-fn keyed(k0: u64, k1: u64, f: fn(s: &State)) -> u64 {
-    let s = &State(k0, k1);
-    f(s);
-    s.result_u64()
-}
-
-pure fn hash_bytes_keyed(buf: &[const u8], k0: u64, k1: u64) -> u64 {
-    unchecked { keyed(k0, k1, |s| s.input(buf)) }
-}
-pure fn hash_str_keyed(s: &str, k0: u64, k1: u64) -> u64 {
-    unsafe {
-        do str::as_buf(s) |buf, len| {
-            do vec::unsafe::form_slice(buf, len) |slice| {
-                hash_bytes_keyed(slice, k0, k1)
+impl <A: IterBytes> A: Hash {
+    #[inline(always)]
+    pure fn hash_keyed(k0: u64, k1: u64) -> u64 {
+        unchecked {
+            let s = &State(k0, k1);
+            for self.iter_le_bytes |bytes| {
+                s.input(bytes);
             }
+            s.result_u64()
         }
     }
 }
+
+// implementations
+
+pure fn hash_keyed_2<A: IterBytes,
+                     B: IterBytes>(a: &A, b: &B,
+                                   k0: u64, k1: u64) -> u64 {
+    unchecked {
+        let s = &State(k0, k1);
+        for a.iter_le_bytes |bytes| { s.input(bytes); }
+        for b.iter_le_bytes |bytes| { s.input(bytes); }
+        s.result_u64()
+    }
+}
+
+pure fn hash_keyed_3<A: IterBytes,
+                     B: IterBytes,
+                     C: IterBytes>(a: &A, b: &B, c: &C,
+                                   k0: u64, k1: u64) -> u64 {
+    unchecked {
+        let s = &State(k0, k1);
+        for a.iter_le_bytes |bytes| { s.input(bytes); }
+        for b.iter_le_bytes |bytes| { s.input(bytes); }
+        for c.iter_le_bytes |bytes| { s.input(bytes); }
+        s.result_u64()
+    }
+}
+
+pure fn hash_keyed_4<A: IterBytes,
+                     B: IterBytes,
+                     C: IterBytes,
+                     D: IterBytes>(a: &A, b: &B, c: &C, d: &D,
+                                   k0: u64, k1: u64) -> u64 {
+    unchecked {
+        let s = &State(k0, k1);
+        for a.iter_le_bytes |bytes| { s.input(bytes); }
+        for b.iter_le_bytes |bytes| { s.input(bytes); }
+        for c.iter_le_bytes |bytes| { s.input(bytes); }
+        for d.iter_le_bytes |bytes| { s.input(bytes); }
+        s.result_u64()
+    }
+}
+
+pure fn hash_keyed_5<A: IterBytes,
+                     B: IterBytes,
+                     C: IterBytes,
+                     D: IterBytes,
+                     E: IterBytes>(a: &A, b: &B, c: &C, d: &D, e: &E,
+                                   k0: u64, k1: u64) -> u64 {
+    unchecked {
+        let s = &State(k0, k1);
+        for a.iter_le_bytes |bytes| { s.input(bytes); }
+        for b.iter_le_bytes |bytes| { s.input(bytes); }
+        for c.iter_le_bytes |bytes| { s.input(bytes); }
+        for d.iter_le_bytes |bytes| { s.input(bytes); }
+        for e.iter_le_bytes |bytes| { s.input(bytes); }
+        s.result_u64()
+    }
+}
+
+pure fn hash_bytes_keyed(val: &[const u8], k0: u64, k1: u64) -> u64 {
+    val.hash_keyed(k0, k1)
+}
+pure fn hash_str_keyed(val: &str, k0: u64, k1: u64) -> u64 {
+    val.hash_keyed(k0, k1)
+}
 pure fn hash_u64_keyed(val: u64, k0: u64, k1: u64) -> u64 {
-    unchecked { keyed(k0, k1, |s| s.write_le_u64(val)) }
+    val.hash_keyed(k0, k1)
 }
 pure fn hash_u32_keyed(val: u32, k0: u64, k1: u64) -> u64 {
-    unchecked { keyed(k0, k1, |s| s.write_le_u32(val)) }
+    val.hash_keyed(k0, k1)
 }
 pure fn hash_u16_keyed(val: u16, k0: u64, k1: u64) -> u64 {
-    unchecked { keyed(k0, k1, |s| s.write_le_u16(val)) }
+    val.hash_keyed(k0, k1)
 }
 pure fn hash_u8_keyed(val: u8, k0: u64, k1: u64) -> u64 {
-    unchecked { keyed(k0, k1, |s| s.write_u8(val)) }
+    val.hash_keyed(k0, k1)
 }
 pure fn hash_uint_keyed(val: uint, k0: u64, k1: u64) -> u64 {
-    unchecked { keyed(k0, k1, |s| s.write_le_uint(val)) }
+    val.hash_keyed(k0, k1)
 }
 
 pure fn hash_bytes(val: &[const u8]) -> u64 { hash_bytes_keyed(val, 0, 0) }
@@ -89,10 +164,13 @@ pure fn hash_uint(val: uint) -> u64 { hash_uint_keyed(val, 0, 0) }
 // Implement State as SipState
 
 type State = SipState;
+
+#[inline(always)]
 fn State(k0: u64, k1: u64) -> State {
     SipState(k0, k1)
 }
 
+#[inline(always)]
 fn default_state() -> State {
     State(0,0)
 }
@@ -109,6 +187,7 @@ struct SipState {
     mut ntail: uint;  // how many bytes in tail are valid
 }
 
+#[inline(always)]
 fn SipState(key0: u64, key1: u64) -> SipState {
     let state = SipState {
         k0 : key0,
@@ -129,6 +208,7 @@ fn SipState(key0: u64, key1: u64) -> SipState {
 impl &SipState : io::Writer {
 
     // Methods for io::writer
+    #[inline(always)]
     fn write(msg: &[const u8]) {
 
         macro_rules! u8to64_le (
@@ -235,10 +315,12 @@ impl &SipState : io::Writer {
 
 impl &SipState : Streaming {
 
+    #[inline(always)]
     fn input(buf: &[const u8]) {
         self.write(buf);
     }
 
+    #[inline(always)]
     fn result_u64() -> u64 {
         let mut v0 = self.v0;
         let mut v1 = self.v1;
@@ -269,7 +351,6 @@ impl &SipState : Streaming {
         return (v0 ^ v1 ^ v2 ^ v3);
     }
 
-
     fn result_bytes() -> ~[u8] {
         let h = self.result_u64();
         ~[(h >> 0) as u8,
@@ -290,6 +371,7 @@ impl &SipState : Streaming {
         return s;
     }
 
+    #[inline(always)]
     fn reset() {
         self.length = 0;
         self.v0 = self.k0 ^ 0x736f6d6570736575;
@@ -385,7 +467,7 @@ fn test_siphash() {
     while t < 64 {
         debug!("siphash test %?", t);
         let vec = u8to64_le!(vecs[t], 0);
-        let out = hash_bytes_keyed(buf, k0, k1);
+        let out = buf.hash_keyed(k0, k1);
         debug!("got %?, expected %?", out, vec);
         assert vec == out;
 
