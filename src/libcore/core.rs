@@ -58,7 +58,7 @@ export add, sub, mul, div, modulo, neg, bitand, bitor, bitxor;
 export shl, shr, index;
 
 #[cfg(test)]
-use coreops(name = "core", vers = "0.3");
+use coreops(name = "core", vers = "0.4");
 
 #[cfg(test)]
 import coreops::ops::{const, copy, send, owned};
@@ -96,7 +96,7 @@ mod core {
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
-    use std(vers = "0.3");
+    use std(vers = "0.4");
     import std::test;
 }
 

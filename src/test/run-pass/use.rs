@@ -1,7 +1,7 @@
 #[no_core];
 use core;
 use zed(name = "core");
-use bar(name = "core", vers = "0.3");
+use bar(name = "core", vers = "0.4");
 
 
 import core::str;
