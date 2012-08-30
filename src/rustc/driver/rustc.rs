@@ -1,10 +1,10 @@
 #[no_core];
 #[allow(vecs_implicitly_copyable)];
 
-use core(vers = "0.3");
-use std(vers = "0.3");
-use rustc(vers = "0.3");
-use syntax(vers = "0.3");
+use core(vers = "0.4");
+use std(vers = "0.4");
+use rustc(vers = "0.4");
+use syntax(vers = "0.4");
 
 import core::*;
 

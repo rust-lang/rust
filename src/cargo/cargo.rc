@@ -10,7 +10,7 @@
 // End:
 
 #[link(name = "cargo",
-       vers = "0.3",
+       vers = "0.4",
        uuid = "9ff87a04-8fed-4295-9ff8-f99bb802650b",
        url = "https://github.com/mozilla/rust/tree/master/src/cargo")];
 
@@ -21,10 +21,10 @@
 #[allow(vecs_implicitly_copyable,
         non_implicitly_copyable_typarams)];
 
-use core(vers = "0.3");
-use std(vers = "0.3");
-use rustc(vers = "0.3");
-use syntax(vers = "0.3");
+use core(vers = "0.4");
+use std(vers = "0.4");
+use rustc(vers = "0.4");
+use syntax(vers = "0.4");
 
 import core::*;
 

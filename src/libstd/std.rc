@@ -1,5 +1,5 @@
 #[link(name = "std",
-       vers = "0.3",
+       vers = "0.4",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
 
@@ -12,7 +12,7 @@
 
 #[allow(vecs_implicitly_copyable)];
 
-use core(vers = "0.3");
+use core(vers = "0.4");
 import core::*;
 
 export net, net_tcp, net_ip, net_url;
