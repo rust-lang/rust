@@ -2,7 +2,7 @@
 
 import vec;
 import uint;
-import iotask = uv::iotask::iotask;
+import iotask = uv::iotask::IoTask;
 import interact = uv::iotask::interact;
 
 import sockaddr_in = uv::ll::sockaddr_in;

@@ -36,16 +36,22 @@ mod net_tcp;
 mod net_url;
 
 // libuv modules
+#[warn(non_camel_case_types)]
 mod uv;
 mod uv_ll;
+#[warn(non_camel_case_types)]
 mod uv_iotask;
+#[warn(non_camel_case_types)]
 mod uv_global_loop;
 
 
 // Utility modules
 
+#[warn(non_camel_case_types)]
 mod c_vec;
+#[warn(non_camel_case_types)]
 mod timer;
+#[warn(non_camel_case_types)]
 mod cell;
 
 // Concurrency
@@ -54,6 +60,7 @@ mod cell;
 mod sync;
 #[warn(non_camel_case_types)]
 mod arc;
+#[warn(non_camel_case_types)]
 mod comm;
 
 // Collections
