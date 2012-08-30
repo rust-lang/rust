@@ -794,7 +794,10 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
               }
           }
         }
-        ast::foreign_item_const(*) => {}
+        ast::foreign_item_const(*) => {
+            let ident = ccx.sess.parse_sess.interner.get(foreign_item.ident);
+            ccx.item_symbols.insert(foreign_item.id, copy *ident);
+        }
       }
     }
 }

@@ -306,7 +306,10 @@ struct lookup {
             };
 
             let trt_methods = ty::trait_methods(tcx, trait_id);
-            match vec::position(*trt_methods, |m| m.ident == self.m_name) {
+            let match_fn: &fn(m: ty::method) -> bool = |m| {
+                m.self_ty != ast::sty_static && m.ident == self.m_name
+            };
+            match vec::position(*trt_methods, match_fn) {
               None => {
                 /* check next bound */
                 trait_bnd_idx += 1u;
