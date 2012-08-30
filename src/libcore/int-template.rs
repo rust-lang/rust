@@ -68,9 +68,10 @@ pure fn abs(i: T) -> T {
 }
 
 impl T: Ord {
-    pure fn lt(&&other: T) -> bool {
-        return self < other;
-    }
+    pure fn lt(&&other: T) -> bool { return self < other; }
+    pure fn le(&&other: T) -> bool { return self <= other; }
+    pure fn ge(&&other: T) -> bool { return self >= other; }
+    pure fn gt(&&other: T) -> bool { return self > other; }
 }
 
 impl T: Eq {

@@ -4341,7 +4341,8 @@ struct Resolver {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.shr_trait);
             }
-            expr_binary(lt, _, _) => {
+            expr_binary(lt, _, _) | expr_binary(le, _, _) |
+            expr_binary(ge, _, _) | expr_binary(gt, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.ord_trait);
             }

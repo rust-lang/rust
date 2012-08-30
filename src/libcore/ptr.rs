@@ -188,6 +188,21 @@ impl<T> *const T : Ord {
         let b: uint = unsafe::reinterpret_cast(other);
         return a < b;
     }
+    pure fn le(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(self);
+        let b: uint = unsafe::reinterpret_cast(other);
+        return a <= b;
+    }
+    pure fn ge(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(self);
+        let b: uint = unsafe::reinterpret_cast(other);
+        return a >= b;
+    }
+    pure fn gt(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(self);
+        let b: uint = unsafe::reinterpret_cast(other);
+        return a > b;
+    }
 }
 
 // Equality for region pointers
@@ -199,9 +214,10 @@ impl<T:Eq> &const T : Eq {
 
 // Comparison for region pointers
 impl<T:Ord> &const T : Ord {
-    pure fn lt(&&other: &const T) -> bool {
-        return *self < *other;
-    }
+    pure fn lt(&&other: &const T) -> bool { *self < *other }
+    pure fn le(&&other: &const T) -> bool { *self <= *other }
+    pure fn ge(&&other: &const T) -> bool { *self >= *other }
+    pure fn gt(&&other: &const T) -> bool { *self > *other }
 }
 
 #[test]

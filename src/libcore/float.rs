@@ -421,6 +421,9 @@ impl float: Eq {
 
 impl float: Ord {
     pure fn lt(&&other: float) -> bool { self < other }
+    pure fn le(&&other: float) -> bool { self <= other }
+    pure fn ge(&&other: float) -> bool { self >= other }
+    pure fn gt(&&other: float) -> bool { self > other }
 }
 
 impl float: num::Num {
