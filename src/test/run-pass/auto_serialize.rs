@@ -42,6 +42,41 @@ enum expr {
     minus(@expr, @expr)
 }
 
+impl an_enum : cmp::Eq {
+    pure fn eq(&&other: an_enum) -> bool {
+        self.v == other.v
+    }
+}
+
+impl point : cmp::Eq {
+    pure fn eq(&&other: point) -> bool {
+        self.x == other.x &&
+            self.y == other.y
+    }
+}
+
+impl<T:cmp::Eq> quark<T> : cmp::Eq {
+    pure fn eq(&&other: quark<T>) -> bool {
+        match self {
+          top(ref q) => match other {
+            top(ref r) => q == r,
+            bottom(_) => false
+          },
+          bottom(ref q) => match other {
+            top(_) => false,
+            bottom(ref r) => q == r
+          }
+        }
+    }
+}
+
+
+impl c_like : cmp::Eq {
+    pure fn eq(&&other: c_like) -> bool {
+        self as int == other as int
+    }
+}
+
 impl expr : cmp::Eq {
     pure fn eq(&&other: expr) -> bool {
         match self {
