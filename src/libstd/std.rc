@@ -30,9 +30,13 @@ export cell;
 
 // General io and system-services modules
 
+#[warn(non_camel_case_types)]
 mod net;
+#[warn(non_camel_case_types)]
 mod net_ip;
+#[warn(non_camel_case_types)]
 mod net_tcp;
+#[warn(non_camel_case_types)]
 mod net_url;
 
 // libuv modules
