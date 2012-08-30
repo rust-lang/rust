@@ -5,6 +5,7 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
+import core::cmp::Eq;
 import either::Either;
 import result::{Ok, Err};
 import io::WriterUtil;
@@ -90,6 +91,12 @@ fn parse_opts(args: ~[~str]) -> opt_res {
 }
 
 enum test_result { tr_ok, tr_failed, tr_ignored, }
+
+impl test_result : Eq {
+    pure fn eq(&&other: test_result) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 type console_test_state =
     @{out: io::Writer,
