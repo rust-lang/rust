@@ -426,12 +426,12 @@ fn bytes_hash<V: copy>() -> hashmap<~[u8], V> {
 
 /// Construct a hashmap for int keys
 fn int_hash<V: copy>() -> hashmap<int, V> {
-    return hashmap(int::hash, int::eq);
+   return hashmap(|x| { int::hash(*x) }, |x, y| { int::eq(*x, *y)});
 }
 
 /// Construct a hashmap for uint keys
 fn uint_hash<V: copy>() -> hashmap<uint, V> {
-    return hashmap(uint::hash, uint::eq);
+   return hashmap(|x| { uint::hash(*x) }, |x, y| { uint::eq(*x, *y) } );
 }
 
 /// Convenience function for adding keys to a hashmap with nil type keys
@@ -473,15 +473,15 @@ fn hash_from_bytes<V: copy>(items: &[(~[u8], V)]) -> hashmap<~[u8], V> {
 
 /// Construct a hashmap from a vector with int keys
 fn hash_from_ints<V: copy>(items: &[(int, V)]) -> hashmap<int, V> {
-    hash_from_vec(int::hash, int::eq, items)
+    hash_from_vec(|x| { int::hash(*x) }, |x, y| { int::eq(*x, *y) }, items)
 }
 
 /// Construct a hashmap from a vector with uint keys
 fn hash_from_uints<V: copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
-    hash_from_vec(uint::hash, uint::eq, items)
+    hash_from_vec(|x| { uint::hash(*x) }, |x, y| { uint::eq(*x, *y) } , items)
 }
 
-// XXX Transitionary
+// XXX Transitional
 impl<K: Eq IterBytes Hash copy, V: copy> Managed<LinearMap<K, V>>:
     map<K, V> {
     pure fn size() -> uint {

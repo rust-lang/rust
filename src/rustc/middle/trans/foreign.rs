@@ -5,11 +5,10 @@ import driver::session::{session, arch_x86_64};
 import syntax::codemap::span;
 import libc::c_uint;
 import syntax::{attr, ast_map};
-import lib::llvm::{ llvm, TypeRef, ValueRef,
-                    ModuleRef, CallConv, Attribute,
-                    StructRetAttribute, ByValAttribute,
-                   SequentiallyConsistent, Acquire, Release,
-                   Xchg };
+import lib::llvm::{ llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double,
+    Struct, Array, ModuleRef, CallConv, Attribute,
+    StructRetAttribute, ByValAttribute,
+    SequentiallyConsistent, Acquire, Release, Xchg };
 import syntax::{ast, ast_util};
 import back::{link, abi};
 import common::*;
@@ -79,19 +78,19 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn ty_align(ty: TypeRef) -> uint {
-        return match llvm::LLVMGetTypeKind(ty) as int {
-            8 /* integer */ => {
-                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7u) / 8u
+        return match llvm::LLVMGetTypeKind(ty) {
+            Integer => {
+                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
             }
-            12 /* pointer */ => 8u,
-            2 /* float */ => 4u,
-            3 /* double */ => 8u,
-            10 /* struct */ => {
-              do vec::foldl(0u, struct_tys(ty)) |a, t| {
-                    uint::max(&a, &ty_align(t))
+            Pointer => 8,
+            Float => 4,
+            Double => 8,
+            Struct => {
+              do vec::foldl(0, struct_tys(ty)) |a, t| {
+                    uint::max(a, ty_align(t))
                 }
             }
-            11 /* array */ => {
+            Array => {
                 let elt = llvm::LLVMGetElementType(ty);
                 ty_align(elt)
             }
@@ -100,19 +99,19 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn ty_size(ty: TypeRef) -> uint {
-        return match llvm::LLVMGetTypeKind(ty) as int {
-            8 /* integer */ => {
-                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7u) / 8u
+        return match llvm::LLVMGetTypeKind(ty) {
+            Integer => {
+                ((llvm::LLVMGetIntTypeWidth(ty) as uint) + 7) / 8
             }
-            12 /* pointer */ => 8u,
-            2 /* float */ => 4u,
-            3 /* double */ => 8u,
-            10 /* struct */ => {
-              do vec::foldl(0u, struct_tys(ty)) |s, t| {
+            Pointer => 8,
+            Float => 4,
+            Double => 8,
+            Struct => {
+              do vec::foldl(0, struct_tys(ty)) |s, t| {
                     s + ty_size(t)
                 }
             }
-            11 /* array */ => {
+            Array => {
               let len = llvm::LLVMGetArrayLength(ty) as uint;
               let elt = llvm::LLVMGetElementType(ty);
               let eltsz = ty_size(elt);
@@ -123,7 +122,7 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
     }
 
     fn all_mem(cls: ~[mut x86_64_reg_class]) {
-        for uint::range(0u, cls.len()) |i| {
+        for uint::range(0, cls.len()) |i| {
             cls[i] = memory_class;
         }
     }

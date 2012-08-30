@@ -242,7 +242,7 @@ mod test_qsort {
 
         let expected = ~[1, 2, 3];
 
-        sort::quick_sort(int::le, names);
+        sort::quick_sort(|x, y| { int::le(*x, *y) }, names);
 
         let immut_names = vec::from_mut(names);
 

@@ -125,20 +125,20 @@ fn get_relative_to(abs1: &Path, abs2: &Path) -> Path {
     let split2 = abs2.components;
     let len1 = vec::len(split1);
     let len2 = vec::len(split2);
-    assert len1 > 0u;
-    assert len2 > 0u;
+    assert len1 > 0;
+    assert len2 > 0;
 
-    let max_common_path = uint::min(&len1, &len2) - 1u;
-    let mut start_idx = 0u;
+    let max_common_path = uint::min(len1, len2) - 1;
+    let mut start_idx = 0;
     while start_idx < max_common_path
         && split1[start_idx] == split2[start_idx] {
-        start_idx += 1u;
+        start_idx += 1;
     }
 
     let mut path = ~[];
-    for uint::range(start_idx, len1 - 1u) |_i| { vec::push(path, ~".."); };
+    for uint::range(start_idx, len1 - 1) |_i| { vec::push(path, ~".."); };
 
-    vec::push_all(path, vec::view(split2, start_idx, len2 - 1u));
+    vec::push_all(path, vec::view(split2, start_idx, len2 - 1));
 
     if vec::is_not_empty(path) {
         return Path("").push_many(path);

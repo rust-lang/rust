@@ -182,7 +182,7 @@ fn trim_whitespace_prefix_and_push_line(&lines: ~[~str],
                                         s: ~str, col: uint) unsafe {
     let mut s1;
     let len = str::len(s);
-    if all_whitespace(s, 0u, uint::min(&len, &col)) {
+    if all_whitespace(s, 0u, uint::min(len, col)) {
         if col < len {
             s1 = str::slice(s, col, len);
         } else { s1 = ~""; }

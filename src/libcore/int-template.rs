@@ -25,21 +25,21 @@ const bytes : uint = (inst::bits / 8);
 const min_value: T = (-1 as T) << (bits - 1);
 const max_value: T = min_value - 1 as T;
 
-pure fn min(x: &T, y: &T) -> T { if *x < *y { *x } else { *y } }
-pure fn max(x: &T, y: &T) -> T { if *x > *y { *x } else { *y } }
+pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
+pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
 
-pure fn add(x: &T, y: &T) -> T { *x + *y }
-pure fn sub(x: &T, y: &T) -> T { *x - *y }
-pure fn mul(x: &T, y: &T) -> T { *x * *y }
-pure fn div(x: &T, y: &T) -> T { *x / *y }
-pure fn rem(x: &T, y: &T) -> T { *x % *y }
+pure fn add(x: T, y: T) -> T { x + y }
+pure fn sub(x: T, y: T) -> T { x - y }
+pure fn mul(x: T, y: T) -> T { x * y }
+pure fn div(x: T, y: T) -> T { x / y }
+pure fn rem(x: T, y: T) -> T { x % y }
 
-pure fn lt(x: &T, y: &T) -> bool { *x < *y }
-pure fn le(x: &T, y: &T) -> bool { *x <= *y }
-pure fn eq(x: &T, y: &T) -> bool { *x == *y }
-pure fn ne(x: &T, y: &T) -> bool { *x != *y }
-pure fn ge(x: &T, y: &T) -> bool { *x >= *y }
-pure fn gt(x: &T, y: &T) -> bool { *x > *y }
+pure fn lt(x: T, y: T) -> bool { x < y }
+pure fn le(x: T, y: T) -> bool { x <= y }
+pure fn eq(x: T, y: T) -> bool { x == y }
+pure fn ne(x: T, y: T) -> bool { x != y }
+pure fn ge(x: T, y: T) -> bool { x >= y }
+pure fn gt(x: T, y: T) -> bool { x > y }
 
 pure fn is_positive(x: T) -> bool { x > 0 as T }
 pure fn is_negative(x: T) -> bool { x < 0 as T }
