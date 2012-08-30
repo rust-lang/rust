@@ -71,6 +71,15 @@ impl PosixPath : Eq {
     }
 }
 
+impl WindowsPath : Eq {
+    pure fn eq(&&other: WindowsPath) -> bool {
+        return self.host == other.host &&
+            self.device == other.device &&
+            self.is_absolute == other.is_absolute &&
+            self.components == other.components;
+    }
+}
+
 // FIXME (#3227): when default methods in traits are working, de-duplicate
 // PosixPath and WindowsPath, most of their methods are common.
 impl PosixPath : GenericPath {
