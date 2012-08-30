@@ -86,6 +86,69 @@ fn to_writer(wr: io::Writer, j: Json) {
     }
 }
 
+/// Serializes a json value into a io::writer
+fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
+    fn spaces(n: uint) -> ~str {
+        let ss = ~"";
+        n.times { str::push_str(ss, " "); }
+        return ss;
+    }
+
+    match j {
+      Num(n) => wr.write_str(float::to_str(n, 6u)),
+      String(s) => wr.write_str(escape_str(*s)),
+      Boolean(b) => wr.write_str(if b { ~"true" } else { ~"false" }),
+      List(v) => {
+        // [
+        wr.write_str(spaces(indent));
+        wr.write_str("[ ");
+
+        // [ elem,
+        //   elem,
+        //   elem ]
+        let inner_indent = indent + 2;
+        let mut first = true;
+        for (*v).each |item| {
+            if !first {
+                wr.write_str(~",\n");
+                wr.write_str(spaces(inner_indent));
+            }
+            first = false;
+            to_writer_pretty(wr, item, inner_indent);
+        };
+
+        // ]
+        wr.write_str(~" ]");
+      }
+      Dict(d) => {
+        // {
+        wr.write_str(spaces(indent));
+        wr.write_str(~"{ ");
+
+        // { k: v,
+        //   k: v,
+        //   k: v }
+        let inner_indent = indent + 2;
+        let mut first = true;
+        for d.each |key, value| {
+            if !first {
+                wr.write_str(~",\n");
+                wr.write_str(spaces(inner_indent));
+            }
+            first = false;
+            let key = str::append(escape_str(key), ~": ");
+            let key_indent = str::len(key);
+            wr.write_str(key);
+            to_writer_pretty(wr, value, key_indent);
+        };
+
+        // }
+        wr.write_str(~" }");
+      }
+      Null => wr.write_str(~"null")
+    }
+}
+
 fn escape_str(s: ~str) -> ~str {
     let mut escaped = ~"\"";
     do str::chars_iter(s) |c| {
@@ -109,6 +172,11 @@ fn escape_str(s: ~str) -> ~str {
 /// Serializes a json value into a string
 fn to_str(j: Json) -> ~str {
     io::with_str_writer(|wr| to_writer(wr, j))
+}
+
+/// Serializes a json value into a string, with whitespace and sorting
+fn to_str_pretty(j: Json) -> ~str {
+    io::with_str_writer(|wr| to_writer_pretty(wr, j, 0))
 }
 
 type Parser_ = {
