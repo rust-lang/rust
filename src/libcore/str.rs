@@ -2234,7 +2234,7 @@ mod tests {
         assert (le(&"", &""));
         assert (le(&"", &"foo"));
         assert (le(&"foo", &"foo"));
-        assert (!eq(&"foo", &"bar"));
+        assert (!eq(&~"foo", &~"bar"));
     }
 
     #[test]
