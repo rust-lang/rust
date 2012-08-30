@@ -1443,25 +1443,55 @@ pure fn lt<T: Ord>(a: &[T], b: &[T]) -> bool {
     return a_len < b_len;
 }
 
+pure fn le<T: Ord>(a: &[T], b: &[T]) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    let mut end = uint::min(&a_len, &b_len);
+
+    let mut i = 0;
+    while i < end {
+        let (c_a, c_b) = (&a[i], &b[i]);
+        if *c_a < *c_b { return true; }
+        if *c_a > *c_b { return false; }
+        i += 1;
+    }
+
+    return a_len <= b_len;
+}
+
+pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
+pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { !le(b, a) }
+
 impl<T: Ord> &[T]: Ord {
     #[inline(always)]
-    pure fn lt(&&other: &[T]) -> bool {
-        lt(self, other)
-    }
+    pure fn lt(&&other: &[T]) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: &[T]) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: &[T]) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: &[T]) -> bool { gt(self, other) }
 }
 
 impl<T: Ord> ~[T]: Ord {
     #[inline(always)]
-    pure fn lt(&&other: ~[T]) -> bool {
-        lt(self, other)
-    }
+    pure fn lt(&&other: ~[T]) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: ~[T]) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: ~[T]) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: ~[T]) -> bool { gt(self, other) }
 }
 
 impl<T: Ord> @[T]: Ord {
     #[inline(always)]
-    pure fn lt(&&other: @[T]) -> bool {
-        lt(self, other)
-    }
+    pure fn lt(&&other: @[T]) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: @[T]) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: @[T]) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: @[T]) -> bool { gt(self, other) }
 }
 
 #[cfg(notest)]

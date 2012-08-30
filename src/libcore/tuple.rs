@@ -96,6 +96,22 @@ impl<A: Ord, B: Ord> (A, B): Ord {
             }
         }
     }
+    pure fn le(&&other: (A, B)) -> bool {
+        match self {
+            (self_a, self_b) => {
+                match other {
+                    (other_a, other_b) => {
+                        if self_a.lt(other_a) { return true; }
+                        if other_a.lt(self_a) { return false; }
+                        if self_b.le(other_b) { return true; }
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    pure fn ge(&&other: (A, B)) -> bool { !other.lt(self) }
+    pure fn gt(&&other: (A, B)) -> bool { !other.ge(self) }
 }
 
 impl<A: Eq, B: Eq, C: Eq> (A, B, C): Eq {
@@ -133,6 +149,24 @@ impl<A: Ord, B: Ord, C: Ord> (A, B, C): Ord {
             }
         }
     }
+    pure fn le(&&other: (A, B, C)) -> bool {
+        match self {
+            (self_a, self_b, self_c) => {
+                match other {
+                    (other_a, other_b, other_c) => {
+                        if self_a.lt(other_a) { return true; }
+                        if other_a.lt(self_a) { return false; }
+                        if self_b.lt(other_b) { return true; }
+                        if other_b.lt(self_b) { return false; }
+                        if self_c.le(other_c) { return true; }
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    pure fn ge(&&other: (A, B, C)) -> bool { !other.lt(self) }
+    pure fn gt(&&other: (A, B, C)) -> bool { !other.ge(self) }
 }
 
 #[test]

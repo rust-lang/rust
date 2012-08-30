@@ -707,7 +707,30 @@ pure fn lt(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise less than or equal
-pure fn le(a: &~str, b: &~str) -> bool { *a <= *b }
+pure fn le(a: &str, b: &str) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    let mut end = uint::min(&a_len, &b_len);
+
+    let mut i = 0;
+    while i < end {
+        let (c_a, c_b) = (a[i], b[i]);
+        if c_a < c_b { return true; }
+        if c_a > c_b { return false; }
+        i += 1;
+    }
+
+    return a_len <= b_len;
+}
+
+/// Bytewise greater than or equal
+pure fn ge(a: &str, b: &str) -> bool {
+    !lt(b, a)
+}
+
+/// Bytewise greater than
+pure fn gt(a: &str, b: &str) -> bool {
+    !le(b, a)
+}
 
 impl &str: Eq {
     #[inline(always)]
@@ -733,16 +756,34 @@ impl @str: Eq {
 impl ~str : Ord {
     #[inline(always)]
     pure fn lt(&&other: ~str) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: ~str) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: ~str) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: ~str) -> bool { gt(self, other) }
 }
 
 impl &str : Ord {
     #[inline(always)]
     pure fn lt(&&other: &str) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: &str) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: &str) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: &str) -> bool { gt(self, other) }
 }
 
 impl @str : Ord {
     #[inline(always)]
     pure fn lt(&&other: @str) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: @str) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: @str) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: @str) -> bool { gt(self, other) }
 }
 
 /// String hash function
