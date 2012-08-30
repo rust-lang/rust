@@ -166,7 +166,7 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
       _ => early_error(demitter, ~"multiple input filenames provided")
     };
 
-    let sopts = build_session_options(matches, demitter);
+    let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(matches, ~"out-dir");
     let odir = option::map(odir, |o| Path(o));

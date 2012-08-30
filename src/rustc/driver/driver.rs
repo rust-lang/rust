@@ -415,7 +415,8 @@ fn host_triple() -> ~str {
         };
 }
 
-fn build_session_options(matches: getopts::matches,
+fn build_session_options(binary: ~str,
+                         matches: getopts::matches,
                          demitter: diagnostic::emitter) -> @session::options {
     let crate_type = if opt_present(matches, ~"lib") {
         session::lib_crate
@@ -540,6 +541,7 @@ fn build_session_options(matches: getopts::matches,
           maybe_sysroot: sysroot_opt,
           target_triple: target,
           cfg: cfg,
+          binary: binary,
           test: test,
           parse_only: parse_only,
           no_trans: no_trans,
