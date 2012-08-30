@@ -682,7 +682,7 @@ pure fn eq(a: &~str, b: &~str) -> bool {
 /// Bytewise slice less than
 pure fn lt(a: &str, b: &str) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(&a_len, &b_len);
+    let mut end = uint::min(a_len, b_len);
 
     let mut i = 0;
     while i < end {
@@ -698,7 +698,7 @@ pure fn lt(a: &str, b: &str) -> bool {
 /// Bytewise less than or equal
 pure fn le(a: &str, b: &str) -> bool {
     let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(&a_len, &b_len);
+    let mut end = uint::min(a_len, b_len);
 
     let mut i = 0;
     while i < end {

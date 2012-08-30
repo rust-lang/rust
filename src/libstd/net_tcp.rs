@@ -772,7 +772,7 @@ impl TcpSocketBuf: io::Reader {
             }
         }
 
-        let count = uint::min(&len, &self.data.buf.len());
+        let count = uint::min(len, self.data.buf.len());
 
         let mut data = ~[];
         self.data.buf <-> data;

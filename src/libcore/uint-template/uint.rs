@@ -61,8 +61,8 @@ pure fn div_round(x: uint, y: uint) -> uint {
 pure fn div_floor(x: uint, y: uint) -> uint { return x / y; }
 
 /// Produce a uint suitable for use in a hash table
-pure fn hash(x: &uint) -> uint {
-    hash::hash_uint(*x) as uint
+pure fn hash(x: uint) -> uint {
+    hash::hash_uint(x) as uint
 }
 
 /**

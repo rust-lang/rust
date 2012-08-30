@@ -249,18 +249,18 @@ fn check_variants_T<T: copy>(
   cx: context
   ) {
     error!("%s contains %u %s objects", filename.to_str(),
-           vec::len(things), thing_label);
+           things.len(), thing_label);
 
     // Assuming we're not generating any token_trees
     let intr = syntax::parse::token::mk_fake_ident_interner();
 
-    let L = vec::len(things);
+    let L = things.len();
 
-    if L < 100u {
-        do under(uint::min(&L, &20u)) |i| {
+    if L < 100 {
+        do under(uint::min(L, 20)) |i| {
             log(error, ~"Replacing... #" + uint::str(i));
             let fname = str::from_slice(filename.to_str());
-            do under(uint::min(&L, &30u)) |j| {
+            do under(uint::min(L, 30)) |j| {
                 log(error, ~"With... " + stringifier(@things[j], intr));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
