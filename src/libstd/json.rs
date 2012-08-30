@@ -703,20 +703,18 @@ mod tests {
         assert to_str(mk_dict(~[])) == ~"{}";
         assert to_str(mk_dict(~[(~"a", Boolean(true))]))
             == ~"{ \"a\": true }";
-        assert to_str(mk_dict(~[
+        let a = mk_dict(~[
             (~"a", Boolean(true)),
             (~"b", List(@~[
                 mk_dict(~[(~"c", String(@~"\x0c\r"))]),
                 mk_dict(~[(~"d", String(@~""))])
             ]))
-        ])) ==
-            ~"{ " +
-                ~"\"a\": true, " +
-                ~"\"b\": [" +
-                    ~"{ \"c\": \"\\f\\r\" }, " +
-                    ~"{ \"d\": \"\" }" +
-                ~"]" +
-            ~" }";
+        ]);
+        let astr = to_str(a);
+        let b = result::get(from_str(astr));
+        let bstr = to_str(b);
+        assert astr == bstr;
+        assert a == b;
     }
 
     #[test]
