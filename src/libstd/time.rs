@@ -90,8 +90,31 @@ type Tm_ = {
     tm_nsec: i32, // nanoseconds
 };
 
+impl Tm_ : Eq {
+    pure fn eq(&&other: Tm_) -> bool {
+        self.tm_sec == other.tm_sec &&
+        self.tm_min == other.tm_min &&
+        self.tm_hour == other.tm_hour &&
+        self.tm_mday == other.tm_mday &&
+        self.tm_mon == other.tm_mon &&
+        self.tm_year == other.tm_year &&
+        self.tm_wday == other.tm_wday &&
+        self.tm_yday == other.tm_yday &&
+        self.tm_isdst == other.tm_isdst &&
+        self.tm_gmtoff == other.tm_gmtoff &&
+        self.tm_zone == other.tm_zone &&
+        self.tm_nsec == other.tm_nsec
+    }
+}
+
 enum Tm {
     Tm_(Tm_)
+}
+
+impl Tm : Eq {
+    pure fn eq(&&other: Tm) -> bool {
+        *self == *other
+    }
 }
 
 fn empty_tm() -> Tm {
