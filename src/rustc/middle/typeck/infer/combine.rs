@@ -14,6 +14,8 @@
 // call the `super_X(foo, ...)` functions directly, but rather call
 // `foo.X(...)`.  The implementation of `X()` can then choose to delegate
 // to the `super` routine or to do other things.
+// (FIXME (#2794): revise this paragraph once default methods in traits
+// are working.)
 //
 // In reality, the sub operation is rather different from lub/glb, but
 // they are combined into one trait to avoid duplication (they used to

@@ -165,7 +165,7 @@ impl Sub: combine {
         super_fns(&self, &a_fn_ty, &b_fn_ty)
     }
 
-    // Traits please:
+    // Traits please (FIXME: #2794):
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(&self, a, b)
