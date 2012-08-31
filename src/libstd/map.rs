@@ -7,6 +7,10 @@ import to_str::ToStr;
 import managed::Managed;
 import send_map::linear::LinearMap;
 
+import core::cmp::Eq;
+import hash::Hash;
+import to_bytes::IterBytes;
+
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
 export box_str_hash;
 export bytes_hash, int_hash, uint_hash, set_add;
@@ -478,7 +482,8 @@ fn hash_from_uints<V: copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
 }
 
 // XXX Transitionary
-impl<K: copy, V: copy> Managed<LinearMap<K, V>>: map<K, V> {
+impl<K: Eq IterBytes Hash copy, V: copy> Managed<LinearMap<K, V>>:
+    map<K, V> {
     pure fn size() -> uint {
         unchecked {
             do self.borrow_const |p| {

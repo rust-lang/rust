@@ -17,7 +17,7 @@ import io::Writer;
 import io::WriterUtil;
 import to_bytes::IterBytes;
 
-export Streaming, State;
+export Streaming, State, Hash, HashUtil;
 export default_state;
 export hash_bytes_keyed;
 export hash_str_keyed;
