@@ -115,12 +115,6 @@ export
    StrSlice,
    UniqueStr;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    fn rust_str_push(&s: ~str, ch: u8);
-    fn str_reserve_shared(&ss: ~str, nn: libc::size_t);
-}
-
 /*
 Section: Creating a string
 */
@@ -220,14 +214,9 @@ fn push_char(&s: ~str, ch: char) {
                 *ptr::mut_offset(buf, off + 5u) =
                     (code & 63u | tag_cont) as u8;
             }
-            *ptr::mut_offset(buf, off + nb) = 0u8;
         }
 
-        do as_bytes(s) |bytes| {
-            let mut mut_bytes: ~[u8] = ::unsafe::reinterpret_cast(bytes);
-            vec::unsafe::set_len(mut_bytes, new_len + 1u);
-            ::unsafe::forget(mut_bytes);
-        }
+        unsafe::set_len(s, new_len);
     }
 }
 
@@ -1824,8 +1813,9 @@ pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
  * * n - The number of bytes to reserve space for
  */
 fn reserve(&s: ~str, n: uint) {
-    if capacity(s) < n {
-        rustrt::str_reserve_shared(s, n as size_t);
+    unsafe {
+        let v: *mut ~[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        vec::reserve(*v, n + 1);
     }
 }
 
@@ -2003,12 +1993,18 @@ mod unsafe {
 
     /// Appends a byte to a string. (Not UTF-8 safe).
     unsafe fn push_byte(&s: ~str, b: u8) {
-        rustrt::rust_str_push(s, b);
+        reserve_at_least(s, s.len() + 1);
+        do as_buf(s) |buf, len| {
+            let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
+            *ptr::mut_offset(buf, len) = b;
+        }
+        set_len(s, s.len() + 1);
     }
 
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
     unsafe fn push_bytes(&s: ~str, bytes: ~[u8]) {
-        for vec::each(bytes) |byte| { rustrt::rust_str_push(s, byte); }
+        reserve_at_least(s, s.len() + bytes.len());
+        for vec::each(bytes) |byte| { push_byte(s, byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
