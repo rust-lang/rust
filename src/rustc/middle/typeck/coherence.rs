@@ -147,18 +147,12 @@ struct CoherenceChecker {
 
     let privileged_implementations: hashmap<node_id,()>;
 
-    // The set of types that we are currently in the privileged scope of. This
-    // is used while we traverse the AST while checking privileged scopes.
-
-    let privileged_types: hashmap<def_id,()>;
-
     new(crate_context: @crate_ctxt) {
         self.crate_context = crate_context;
         self.inference_context = new_infer_ctxt(crate_context.tcx);
 
         self.base_type_def_ids = new_def_hash();
         self.privileged_implementations = int_hash();
-        self.privileged_types = new_def_hash();
     }
 
     // Create a mapping containing a MethodInfo for every provided
@@ -427,36 +421,12 @@ struct CoherenceChecker {
 
     // Privileged scope checking
     fn check_privileged_scopes(crate: @crate) {
-        // Gather up all privileged types.
-        let privileged_types =
-            self.gather_privileged_types(crate.node.module.items);
-        for privileged_types.each |privileged_type| {
-            self.privileged_types.insert(privileged_type, ());
-        }
-
         visit_crate(*crate, (), mk_vt(@{
             visit_item: |item, _context, visitor| {
                 match item.node {
                     item_mod(module_) => {
-                        // First, gather up all privileged types.
-                        let privileged_types =
-                            self.gather_privileged_types(module_.items);
-                        for privileged_types.each |privileged_type| {
-                            debug!("(checking privileged scopes) entering \
-                                    privileged scope of %d:%d",
-                                   privileged_type.crate,
-                                   privileged_type.node);
-
-                            self.privileged_types.insert(privileged_type, ());
-                        }
-
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, (), visitor);
-
-                        // Finally, remove privileged types from the map.
-                        for privileged_types.each |privileged_type| {
-                            self.privileged_types.remove(privileged_type);
-                        }
                     }
                     item_impl(_, associated_traits, _, _) => {
                         match self.base_type_def_ids.find(
@@ -467,12 +437,9 @@ struct CoherenceChecker {
                             }
                             Some(base_type_def_id) => {
                                 // Check to see whether the implementation is
-                                // in the scope of its base type.
+                                // in the same crate as its base type.
 
-                                let privileged_types = &self.privileged_types;
-                                if privileged_types.
-                                        contains_key(base_type_def_id) {
-
+                                if base_type_def_id.crate == local_crate {
                                     // Record that this implementation is OK.
                                     self.privileged_implementations.insert
                                         (item.id, ());
@@ -492,7 +459,7 @@ struct CoherenceChecker {
                                                          ~"cannot implement \
                                                           inherent methods \
                                                           for a type outside \
-                                                          the scope the type \
+                                                          the crate the type \
                                                           was defined in; \
                                                           define and \
                                                           implement a trait \
@@ -544,25 +511,6 @@ struct CoherenceChecker {
         let trait_def = def_map.get(trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
-    }
-
-    fn gather_privileged_types(items: ~[@item]) -> @DVec<def_id> {
-        let results = @DVec();
-        for items.each |item| {
-            match item.node {
-                item_class(*) | item_enum(*) | item_trait(*) => {
-                    results.push(local_def(item.id));
-                }
-
-                item_const(*) | item_fn(*) | item_mod(*) |
-                item_foreign_mod(*) | item_ty(*) | item_impl(*) |
-                item_mac(*) => {
-                    // Nothing to do.
-                }
-            }
-        }
-
-        return results;
     }
 
     // Converts an implementation in the AST to an Impl structure.
