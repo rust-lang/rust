@@ -102,9 +102,6 @@ extern mod rustrt {
     fn vec_reserve_shared(++t: *sys::TypeDesc,
                           ++v: **unsafe::VecRepr,
                           ++n: libc::size_t);
-    fn vec_from_buf_shared(++t: *sys::TypeDesc,
-                           ++ptr: *(),
-                           ++count: libc::size_t) -> *unsafe::VecRepr;
 }
 
 #[abi = "rust-intrinsic"]
@@ -1727,10 +1724,11 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
-        return ::unsafe::reinterpret_cast(
-            rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
-                                        ptr as *(),
-                                        elts as size_t));
+        let mut dst = ~[];
+        reserve(dst, elts);
+        set_len(dst, elts);
+        as_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
+        dst
     }
 
     /**
@@ -1879,7 +1877,7 @@ mod u8 {
     pure fn gt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) > 0 }
 
     /// Byte-vec hash function
-    fn hash(s: &~[u8]) -> uint {
+    pure fn hash(s: &~[u8]) -> uint {
         hash::hash_bytes(*s) as uint
     }
 
