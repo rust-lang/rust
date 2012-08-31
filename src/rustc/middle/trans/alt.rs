@@ -58,8 +58,7 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
             return single_result(rslt(bcx, *cell));
           }
           _ => {
-            return single_result(
-                rslt(bcx, consts::const_expr(ccx, l)));
+            return single_result(trans_temp_expr(bcx, l));
           }
         }
       }
@@ -636,13 +635,14 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
             }
           }
           lit(_) => {
-            test_val = Load(bcx, val);
             let pty = node_id_type(bcx, pat_id);
+            test_val = load_if_immediate(bcx, val, pty);
             kind = if ty::type_is_integral(pty) { switch }
                    else { compare };
           }
           range(_, _) => {
-            test_val = Load(bcx, val);
+            let pty = node_id_type(bcx, pat_id);
+            test_val = load_if_immediate(bcx, val, pty);
             kind = compare;
           }
         }
