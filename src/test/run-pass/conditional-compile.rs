@@ -83,8 +83,8 @@ mod test_foreign_items {
     #[abi = "cdecl"]
     extern mod rustrt {
         #[cfg(bogus)]
-        fn vec_from_buf_shared();
-        fn vec_from_buf_shared();
+        fn rust_getcwd() -> *();
+        fn rust_getcwd() -> *();
     }
 }
 
