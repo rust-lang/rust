@@ -40,24 +40,25 @@ import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              lit_int_unsuffixed, lit_nil, lit_str, lit_uint, local, m_const,
              m_imm, m_mutbl, mac_, mac_aq, mac_ellipsis, mac_invoc,
              mac_invoc_tt, mac_var, matcher, match_nonterminal, match_seq,
-             match_tok, method, mode, mt, mul, mutability, named_field, neg,
-             noreturn, not, pat, pat_box, pat_enum, pat_ident, pat_lit,
-             pat_range, pat_rec, pat_struct, pat_tup, pat_uniq, pat_wild,
-             path, private, proto, proto_bare, proto_block, proto_box,
-             proto_uniq, provided, public, pure_fn, purity, re_anon, re_named,
-             region, rem, required, ret_style, return_val, self_ty, shl, shr,
-             stmt, stmt_decl, stmt_expr, stmt_semi, struct_def, struct_field,
-             struct_variant_kind, subtract, sty_box, sty_by_ref, sty_region,
-             sty_static, sty_uniq, sty_value, token_tree, trait_method,
-             trait_ref, tt_delim, tt_seq, tt_tok, tt_nonterminal, ty, ty_,
-             ty_bot, ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method,
-             ty_nil, ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec,
-             ty_rptr, ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length,
-             tuple_variant_kind, unchecked_blk, uniq, unnamed_field,
-             unsafe_blk, unsafe_fn, variant, view_item, view_item_,
-             view_item_export, view_item_import, view_item_use, view_path,
-             view_path_glob, view_path_list, view_path_simple, visibility,
-             vstore, vstore_box, vstore_fixed, vstore_slice, vstore_uniq};
+             match_tok, method, mode, module_ns, mt, mul, mutability,
+             named_field, neg, noreturn, not, pat, pat_box, pat_enum,
+             pat_ident, pat_lit, pat_range, pat_rec, pat_struct, pat_tup,
+             pat_uniq, pat_wild, path, private, proto, proto_bare,
+             proto_block, proto_box, proto_uniq, provided, public, pure_fn,
+             purity, re_anon, re_named, region, rem, required, ret_style,
+             return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
+             stmt_semi, struct_def, struct_field, struct_variant_kind,
+             subtract, sty_box, sty_by_ref, sty_region, sty_static, sty_uniq,
+             sty_value, token_tree, trait_method, trait_ref, tt_delim, tt_seq,
+             tt_tok, tt_nonterminal, tuple_variant_kind, ty, ty_, ty_bot,
+             ty_box, ty_field, ty_fn, ty_infer, ty_mac, ty_method, ty_nil,
+             ty_param, ty_param_bound, ty_path, ty_ptr, ty_rec, ty_rptr,
+             ty_tup, ty_u32, ty_uniq, ty_vec, ty_fixed_length, type_value_ns,
+             unchecked_blk, uniq, unnamed_field, unsafe_blk, unsafe_fn,
+             variant, view_item, view_item_, view_item_export,
+             view_item_import, view_item_use, view_path, view_path_glob,
+             view_path_list, view_path_simple, visibility, vstore, vstore_box,
+             vstore_fixed, vstore_slice, vstore_uniq};
 
 export file_type;
 export parser;
@@ -3336,6 +3337,14 @@ struct parser {
 
     fn parse_view_path() -> @view_path {
         let lo = self.span.lo;
+
+        let namespace;
+        if self.eat_keyword(~"mod") {
+            namespace = module_ns;
+        } else {
+            namespace = type_value_ns;
+        }
+
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
         debug!("parsed view_path: %s", *self.id_to_str(first_ident));
@@ -3352,7 +3361,8 @@ struct parser {
             let path = @{span: mk_sp(lo, self.span.hi), global: false,
                          idents: path, rp: None, types: ~[]};
             return @spanned(lo, self.span.hi,
-                         view_path_simple(first_ident, path, self.get_id()));
+                         view_path_simple(first_ident, path, namespace,
+                                          self.get_id()));
           }
 
           token::MOD_SEP => {
@@ -3400,7 +3410,7 @@ struct parser {
         let path = @{span: mk_sp(lo, self.span.hi), global: false,
                      idents: path, rp: None, types: ~[]};
         return @spanned(lo, self.span.hi,
-                     view_path_simple(last, path, self.get_id()));
+                     view_path_simple(last, path, namespace, self.get_id()));
     }
 
     fn parse_view_paths() -> ~[@view_path] {

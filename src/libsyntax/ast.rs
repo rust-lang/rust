@@ -1110,6 +1110,15 @@ type path_list_ident_ = {name: ident, id: node_id};
 type path_list_ident = spanned<path_list_ident_>;
 
 #[auto_serialize]
+enum namespace { module_ns, type_value_ns }
+
+impl namespace : cmp::Eq {
+    pure fn eq(&&other: namespace) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
+#[auto_serialize]
 type view_path = spanned<view_path_>;
 
 #[auto_serialize]
@@ -1120,7 +1129,7 @@ enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, @path, node_id),
+    view_path_simple(ident, @path, namespace, node_id),
 
     // foo::bar::*
     view_path_glob(@path, node_id),
@@ -1152,12 +1161,7 @@ enum attr_style { attr_outer, attr_inner, }
 
 impl attr_style : cmp::Eq {
     pure fn eq(&&other: attr_style) -> bool {
-        match (self, other) {
-            (attr_outer, attr_outer) => true,
-            (attr_inner, attr_inner) => true,
-            (attr_outer, _) => false,
-            (attr_inner, _) => false,
-        }
+        (self as uint) == (other as uint)
     }
 }
 

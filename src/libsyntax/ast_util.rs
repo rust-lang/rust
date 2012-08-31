@@ -211,7 +211,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
             has_explicit_exports = true;
             for vps.each |vp| {
                 match vp.node {
-                  ast::view_path_simple(id, _, _) => {
+                  ast::view_path_simple(id, _, _, _) => {
                     if id == i { return true; }
                     match parent_enum {
                       Some(parent_enum_id) => {
@@ -442,7 +442,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
               view_item_import(vps) | view_item_export(vps) => {
                 do vec::iter(vps) |vp| {
                     match vp.node {
-                      view_path_simple(_, _, id) => vfn(id),
+                      view_path_simple(_, _, _, id) => vfn(id),
                       view_path_glob(_, id) => vfn(id),
                       view_path_list(_, _, id) => vfn(id)
                     }
@@ -602,7 +602,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
 
 fn view_path_id(p: @view_path) -> node_id {
     match p.node {
-      view_path_simple(_, _, id) | view_path_glob(_, id) |
+      view_path_simple(_, _, _, id) | view_path_glob(_, id) |
       view_path_list(_, _, id) => id
     }
 }
