@@ -11,11 +11,14 @@ import io::WriterUtil;
 import map;
 import map::hashmap;
 import map::map;
+import sort;
 
 export Json;
 export Error;
 export to_writer;
+export to_writer_pretty;
 export to_str;
+export to_str_pretty;
 export from_reader;
 export from_str;
 export eq;
@@ -88,8 +91,8 @@ fn to_writer(wr: io::Writer, j: Json) {
 /// Serializes a json value into a io::writer
 fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
     fn spaces(n: uint) -> ~str {
-        let ss = ~"";
-        n.times { str::push_str(ss, " "); }
+        let mut ss = ~"";
+        for n.times { str::push_str(ss, " "); }
         return ss;
     }
 
@@ -97,7 +100,7 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
       Num(n) => wr.write_str(float::to_str(n, 6u)),
       String(s) => wr.write_str(escape_str(*s)),
       Boolean(b) => wr.write_str(if b { ~"true" } else { ~"false" }),
-      List(v) => {
+      List(vv) => {
         // [
         wr.write_str(spaces(indent));
         wr.write_str("[ ");
@@ -107,7 +110,7 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
         //   elem ]
         let inner_indent = indent + 2;
         let mut first = true;
-        for (*v).each |item| {
+        for (*vv).each |item| {
             if !first {
                 wr.write_str(~",\n");
                 wr.write_str(spaces(inner_indent));
@@ -119,7 +122,16 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
         // ]
         wr.write_str(~" ]");
       }
-      Dict(d) => {
+      Dict(dd) => {
+        // convert from a dictionary
+        let mut pairs = ~[];
+        for dd.each |key, value| {
+            vec::push(pairs, (key, value));
+        }
+
+        // sort by key strings
+        let sorted_pairs = sort::merge_sort(|a,b| *a <= *b, pairs);
+
         // {
         wr.write_str(spaces(indent));
         wr.write_str(~"{ ");
@@ -129,7 +141,8 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
         //   k: v }
         let inner_indent = indent + 2;
         let mut first = true;
-        for d.each |key, value| {
+        for sorted_pairs.each |kv| {
+            let (key, value) = kv;
             if !first {
                 wr.write_str(~",\n");
                 wr.write_str(spaces(inner_indent));
