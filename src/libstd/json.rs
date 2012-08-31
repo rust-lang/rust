@@ -428,17 +428,25 @@ impl Parser {
                       while i < 4u {
                           match self.next_char() {
                             '0' to '9' => {
-                              n = n * 10u +
-                                  (self.ch as uint) - ('0' as uint);
-                            }
-                            _ => return self.error(~"invalid \\u escape")
+                              n = n * 16u + (self.ch as uint)
+                                          - ('0'     as uint);
+                            },
+                            'a' | 'A' => n = n * 16u + 10u,
+                            'b' | 'B' => n = n * 16u + 11u,
+                            'c' | 'C' => n = n * 16u + 12u,
+                            'd' | 'D' => n = n * 16u + 13u,
+                            'e' | 'E' => n = n * 16u + 14u,
+                            'f' | 'F' => n = n * 16u + 15u,
+                            _ => return self.error(
+                                   ~"invalid \\u escape (unrecognized hex)")
                           }
                           i += 1u;
                       }
 
                       // Error out if we didn't parse 4 digits.
                       if i != 4u {
-                          return self.error(~"invalid \\u escape");
+                          return self.error(
+                            ~"invalid \\u escape (not four digits)");
                       }
 
                       str::push_char(res, n as char);
