@@ -142,39 +142,6 @@ vec_reserve_shared(type_desc* ty, rust_vec_box** vp,
     reserve_vec_exact(task, vp, n_elts * ty->size);
 }
 
-extern "C" CDECL void
-str_reserve_shared(rust_vec_box** sp,
-                   size_t n_elts) {
-    rust_task *task = rust_get_current_task();
-    reserve_vec_exact(task, sp, n_elts + 1);
-}
-
-/**
- * Copies elements in an unsafe buffer to the given interior vector. The
- * vector must have size zero.
- */
-extern "C" CDECL rust_vec_box*
-vec_from_buf_shared(type_desc *ty, void *ptr, size_t count) {
-    rust_task *task = rust_get_current_task();
-    size_t fill = ty->size * count;
-    rust_vec_box* v = (rust_vec_box*)
-        task->kernel->malloc(fill + sizeof(rust_vec_box),
-                             "vec_from_buf");
-    v->body.fill = v->body.alloc = fill;
-    memmove(&v->body.data[0], ptr, fill);
-    return v;
-}
-
-extern "C" CDECL void
-rust_str_push(rust_vec_box** sp, uint8_t byte) {
-    rust_task *task = rust_get_current_task();
-    size_t fill = (*sp)->body.fill;
-    reserve_vec(task, sp, fill + 1);
-    (*sp)->body.data[fill-1] = byte;
-    (*sp)->body.data[fill] = 0;
-    (*sp)->body.fill = fill + 1;
-}
-
 extern "C" CDECL rust_vec*
 rand_seed() {
     size_t size = sizeof(ub4) * RANDSIZ;
@@ -516,8 +483,9 @@ void tm_to_rust_tm(tm* in_tm, rust_tm* out_tm, int32_t gmtoff,
     out_tm->tm_nsec = nsec;
 
     if (zone != NULL) {
+        rust_task *task = rust_get_current_task();
         size_t size = strlen(zone);
-        str_reserve_shared(&out_tm->tm_zone, size);
+        reserve_vec_exact(task, &out_tm->tm_zone, size + 1);
         memcpy(out_tm->tm_zone->body.data, zone, size);
         out_tm->tm_zone->body.fill = size + 1;
         out_tm->tm_zone->body.data[size] = '\0';

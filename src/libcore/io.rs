@@ -663,24 +663,21 @@ type MemBuffer = @{buf: DVec<u8>, mut pos: uint};
 
 impl MemBuffer: Writer {
     fn write(v: &[const u8]) {
-        // Fast path.
-        let vlen = vec::len(v);
-        let buf_len = self.buf.len();
-        if self.pos == buf_len {
-            self.buf.push_all(v);
-            self.pos += vlen;
-            return;
-        }
+        do self.buf.swap |buf| {
+            let mut buf <- buf;
+            let v_len = v.len();
+            let buf_len = buf.len();
 
-        // FIXME #2004--use memcpy here?
-        let mut pos = self.pos, vpos = 0u;
-        while vpos < vlen && pos < buf_len {
-            self.buf.set_elt(pos, copy v[vpos]);
-            pos += 1u;
-            vpos += 1u;
+            let count = uint::max(&buf_len, &(self.pos + v_len));
+            vec::reserve(buf, count);
+            unsafe { vec::unsafe::set_len(buf, count); }
+
+            vec::u8::memcpy(vec::mut_view(buf, self.pos, count), v, v_len);
+
+            self.pos += v_len;
+
+            buf
         }
-        self.buf.push_slice(v, vpos, vlen);
-        self.pos += vlen;
     }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
