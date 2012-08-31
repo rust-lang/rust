@@ -823,7 +823,6 @@ fn encode_info_for_foreign_item(ecx: @encode_ctxt, ebml_w: ebml::Writer,
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
         encode_path(ecx, ebml_w, path, ast_map::path_name(nitem.ident));
-        ebml_w.end_tag();
       }
     }
     ebml_w.end_tag();

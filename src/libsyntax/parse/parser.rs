@@ -2915,15 +2915,34 @@ struct parser {
                               attrs: ~[attribute],
                               items_allowed: bool)
                            -> item_or_view_item {
+
+        let mut must_be_named_mod = false;
         if self.is_keyword(~"mod") {
+            must_be_named_mod = true;
             self.expect_keyword(~"mod");
-        } else {
+        } else if self.is_keyword(~"module") {
+            must_be_named_mod = true;
             self.expect_keyword(~"module");
+        } else if self.token != token::LBRACE {
+            self.span_fatal(copy self.span,
+                            fmt!("expected `{` or `mod` but found %s",
+                                 token_to_str(self.reader, self.token)));
         }
+
         let (sort, ident) = match self.token {
-                token::IDENT(*) => (ast::named, self.parse_ident()),
-                _ => (ast::anonymous,
-                      token::special_idents::clownshoes_foreign_mod)
+            token::IDENT(*) => (ast::named, self.parse_ident()),
+            _ => {
+                if must_be_named_mod {
+                    self.span_fatal(copy self.span,
+                                    fmt!("expected foreign module name but \
+                                          found %s",
+                                         token_to_str(self.reader,
+                                                      self.token)));
+                }
+
+                (ast::anonymous,
+                 token::special_idents::clownshoes_foreign_mod)
+            }
         };
 
         // extern mod { ... }

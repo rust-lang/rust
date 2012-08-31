@@ -1,6 +1,6 @@
 #[abi = "cdecl"]
 #[link_name = "rustrt"]
-extern mod {
+extern {
   fn last_os_error() -> ~str;
 }
 
