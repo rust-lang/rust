@@ -1019,6 +1019,12 @@ To create a new record based on the value of an existing record
 you construct it using the `with` keyword:
 
 ~~~~
+# impl {x:float, y:float} : core::cmp::Eq {
+#   pure fn eq(&&other: {x:float, y:float}) -> bool {
+#       self.x == other.x && self.y == other.y
+#   }
+# }
+
 let oldpoint = {x: 10f, y: 20f};
 let newpoint = {x: 0f with oldpoint};
 assert newpoint == {x: 0f, y: 20f};
@@ -1437,7 +1443,10 @@ also done with square brackets (zero-based):
 # fn draw_scene(c: crayon) { }
 
 let crayons = ~[banana_mania, beaver, bittersweet];
-if crayons[0] == bittersweet { draw_scene(crayons[0]); }
+match crayons[0] {
+	   bittersweet => draw_scene(crayons[0]),
+       _ => ()
+}
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
