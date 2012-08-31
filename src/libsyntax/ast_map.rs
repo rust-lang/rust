@@ -293,7 +293,7 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
     match vi.node {
       view_item_export(vps) => for vps.each |vp| {
         let (id, name) = match vp.node {
-          view_path_simple(nm, _, id) => {
+          view_path_simple(nm, _, _, id) => {
             (id, /* FIXME (#2543) */ copy nm)
           }
           view_path_glob(pth, id) | view_path_list(pth, _, id) => {

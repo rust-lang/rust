@@ -29,19 +29,19 @@ import syntax::ast::{foreign_item, foreign_item_const, foreign_item_fn, ge};
 import syntax::ast::{gt, ident, impure_fn, inherited, item, item_class};
 import syntax::ast::{item_const, item_enum, item_fn, item_foreign_mod};
 import syntax::ast::{item_impl, item_mac, item_mod, item_trait, item_ty, le};
-import syntax::ast::{local, local_crate, lt, method, mul, ne, neg, node_id};
-import syntax::ast::{pat, pat_enum, pat_ident, path, prim_ty, pat_box};
-import syntax::ast::{pat_lit, pat_range, pat_rec, pat_struct, pat_tup};
-import syntax::ast::{pat_uniq, pat_wild, private, provided, public, required};
-import syntax::ast::{rem, self_ty_, shl, shr, stmt_decl, struct_field};
-import syntax::ast::{struct_variant_kind, sty_static, subtract, trait_ref};
-import syntax::ast::{tuple_variant_kind, ty, ty_bool, ty_char, ty_f, ty_f32};
-import syntax::ast::{ty_f64, ty_float, ty_i, ty_i16, ty_i32, ty_i64, ty_i8};
-import syntax::ast::{ty_int, ty_param, ty_path, ty_str, ty_u, ty_u16, ty_u32};
-import syntax::ast::{ty_u64, ty_u8, ty_uint, variant, view_item};
-import syntax::ast::{view_item_export, view_item_import, view_item_use};
-import syntax::ast::{view_path_glob, view_path_list, view_path_simple};
-import syntax::ast::{visibility, anonymous, named};
+import syntax::ast::{local, local_crate, lt, method, module_ns, mul, ne, neg};
+import syntax::ast::{node_id, pat, pat_enum, pat_ident, path, prim_ty};
+import syntax::ast::{pat_box, pat_lit, pat_range, pat_rec, pat_struct};
+import syntax::ast::{pat_tup, pat_uniq, pat_wild, private, provided, public};
+import syntax::ast::{required, rem, self_ty_, shl, shr, stmt_decl};
+import syntax::ast::{struct_field, struct_variant_kind, sty_static, subtract};
+import syntax::ast::{trait_ref, tuple_variant_kind, ty, ty_bool, ty_char};
+import syntax::ast::{ty_f, ty_f32, ty_f64, ty_float, ty_i, ty_i16, ty_i32};
+import syntax::ast::{ty_i64, ty_i8, ty_int, ty_param, ty_path, ty_str, ty_u};
+import syntax::ast::{ty_u16, ty_u32, ty_u64, ty_u8, ty_uint, type_value_ns};
+import syntax::ast::{variant, view_item, view_item_export, view_item_import};
+import syntax::ast::{view_item_use, view_path_glob, view_path_list};
+import syntax::ast::{view_path_simple, visibility, anonymous, named};
 import syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
 import syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 import syntax::attr::{attr_metas, contains_name};
@@ -179,9 +179,20 @@ impl ModuleDef {
     }
 }
 
+enum ImportDirectiveNS {
+    ModuleNSOnly,
+    AnyNS
+}
+
+impl ImportDirectiveNS : cmp::Eq {
+    pure fn eq(&&other: ImportDirectiveNS) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 /// Contains data for specific types of import directives.
 enum ImportDirectiveSubclass {
-    SingleImport(Atom /* target */, Atom /* source */),
+    SingleImport(Atom /* target */, Atom /* source */, ImportDirectiveNS),
     GlobImport
 }
 
@@ -1123,7 +1134,7 @@ struct Resolver {
 
                     let module_path = @DVec();
                     match view_path.node {
-                        view_path_simple(_, full_path, _) => {
+                        view_path_simple(_, full_path, _, _) => {
                             let path_len = full_path.idents.len();
                             assert path_len != 0u;
 
@@ -1145,10 +1156,16 @@ struct Resolver {
                     // Build up the import directives.
                     let module_ = self.get_module_from_parent(parent);
                     match view_path.node {
-                        view_path_simple(binding, full_path, _) => {
+                        view_path_simple(binding, full_path, ns, _) => {
+                            let ns = match ns {
+                                module_ns => ModuleNSOnly,
+                                type_value_ns => AnyNS
+                            };
+
                             let source_ident = full_path.idents.last();
                             let subclass = @SingleImport(binding,
-                                                         source_ident);
+                                                         source_ident,
+                                                         ns);
                             self.build_import_directive(module_,
                                                         module_path,
                                                         subclass,
@@ -1157,7 +1174,9 @@ struct Resolver {
                         view_path_list(_, source_idents, _) => {
                             for source_idents.each |source_ident| {
                                 let name = source_ident.node.name;
-                                let subclass = @SingleImport(name, name);
+                                let subclass = @SingleImport(name,
+                                                             name,
+                                                             AnyNS);
                                 self.build_import_directive(module_,
                                                             module_path,
                                                             subclass,
@@ -1178,7 +1197,7 @@ struct Resolver {
                 let module_ = self.get_module_from_parent(parent);
                 for view_paths.each |view_path| {
                     match view_path.node {
-                        view_path_simple(ident, full_path, ident_id) => {
+                        view_path_simple(ident, full_path, _, ident_id) => {
                             let last_ident = full_path.idents.last();
                             if last_ident != ident {
                                 self.session.span_err(view_item.span,
@@ -1522,7 +1541,7 @@ struct Resolver {
         // the appropriate flag.
 
         match *subclass {
-            SingleImport(target, _) => {
+            SingleImport(target, _, _) => {
                 match module_.import_resolutions.find(target) {
                     Some(resolution) => {
                         resolution.outstanding_references += 1u;
@@ -1699,12 +1718,18 @@ struct Resolver {
                     // within. Attempt to resolve the import within it.
 
                     match *import_directive.subclass {
-                        SingleImport(target, source) => {
+                        SingleImport(target, source, AnyNS) => {
                             resolution_result =
                                 self.resolve_single_import(module_,
                                                            containing_module,
                                                            target,
                                                            source);
+                        }
+                        SingleImport(target, source, ModuleNSOnly) => {
+                            resolution_result =
+                                self.resolve_single_module_import
+                                    (module_, containing_module, target,
+                                     source);
                         }
                         GlobImport => {
                             let span = import_directive.span;
@@ -1749,8 +1774,10 @@ struct Resolver {
         return resolution_result;
     }
 
-    fn resolve_single_import(module_: @Module, containing_module: @Module,
-                             target: Atom, source: Atom)
+    fn resolve_single_import(module_: @Module,
+                             containing_module: @Module,
+                             target: Atom,
+                             source: Atom)
                           -> ResolveResult<()> {
 
         debug!("(resolving single import) resolving `%s` = `%s::%s` from \
@@ -1936,6 +1963,137 @@ struct Resolver {
         debug!("(resolving single import) successfully resolved import");
         return Success(());
     }
+
+    fn resolve_single_module_import(module_: @Module,
+                                    containing_module: @Module,
+                                    target: Atom,
+                                    source: Atom)
+                                 -> ResolveResult<()> {
+
+        debug!("(resolving single module import) resolving `%s` = `%s::%s` \
+                from `%s`",
+               self.session.str_of(target),
+               self.module_to_str(containing_module),
+               self.session.str_of(source),
+               self.module_to_str(module_));
+
+        if !self.name_is_exported(containing_module, source) {
+            debug!("(resolving single import) name `%s` is unexported",
+                   self.session.str_of(source));
+            return Failed;
+        }
+
+        // We need to resolve the module namespace for this to succeed.
+        let mut module_result = UnknownResult;
+
+        // Search for direct children of the containing module.
+        match containing_module.children.find(source) {
+            None => {
+                // Continue.
+            }
+            Some(child_name_bindings) => {
+                if (*child_name_bindings).defined_in_namespace(ModuleNS) {
+                    module_result = BoundResult(containing_module,
+                                                child_name_bindings);
+                }
+            }
+        }
+
+        // Unless we managed to find a result, search imports as well.
+        match module_result {
+            BoundResult(*) => {
+                // Continue.
+            }
+            _ => {
+                // If there is an unresolved glob at this point in the
+                // containing module, bail out. We don't know enough to be
+                // able to resolve this import.
+
+                if containing_module.glob_count > 0u {
+                    debug!("(resolving single module import) unresolved \
+                            glob; bailing out");
+                    return Indeterminate;
+                }
+
+                // Now search the exported imports within the containing
+                // module.
+
+                match containing_module.import_resolutions.find(source) {
+                    None => {
+                        // The containing module definitely doesn't have an
+                        // exported import with the name in question. We can
+                        // therefore accurately report that the names are
+                        // unbound.
+
+                        if module_result.is_unknown() {
+                            module_result = UnboundResult;
+                        }
+                    }
+                    Some(import_resolution)
+                            if import_resolution.outstanding_references
+                                == 0u => {
+                        // The name is an import which has been fully
+                        // resolved. We can, therefore, just follow it.
+
+                        if module_result.is_unknown() {
+                            match (*import_resolution).
+                                    target_for_namespace(ModuleNS) {
+                                None => {
+                                    module_result = UnboundResult;
+                                }
+                                Some(target) => {
+                                    import_resolution.used = true;
+                                    module_result = BoundResult
+                                        (target.target_module,
+                                         target.bindings);
+                                }
+                            }
+                        }
+                    }
+                    Some(_) => {
+                        // The import is unresolved. Bail out.
+                        debug!("(resolving single module import) unresolved \
+                                import; bailing out");
+                        return Indeterminate;
+                    }
+                }
+            }
+        }
+
+        // We've successfully resolved the import. Write the results in.
+        assert module_.import_resolutions.contains_key(target);
+        let import_resolution = module_.import_resolutions.get(target);
+
+        match module_result {
+            BoundResult(target_module, name_bindings) => {
+                debug!("(resolving single import) found module binding");
+                import_resolution.module_target =
+                    Some(Target(target_module, name_bindings));
+            }
+            UnboundResult => {
+                debug!("(resolving single import) didn't find module \
+                        binding");
+            }
+            UnknownResult => {
+                fail ~"module result should be known at this point";
+            }
+        }
+
+        let i = import_resolution;
+        if i.module_target.is_none() {
+          // If this name wasn't found in the module namespace, it's
+          // definitely unresolved.
+          return Failed;
+        }
+
+        assert import_resolution.outstanding_references >= 1u;
+        import_resolution.outstanding_references -= 1u;
+
+        debug!("(resolving single module import) successfully resolved \
+               import");
+        return Success(());
+    }
+
 
     /**
      * Resolves a glob import. Note that this function cannot fail; it either
@@ -2384,10 +2542,12 @@ struct Resolver {
 
         let mut target_name;
         let mut source_name;
+        let allowable_namespaces;
         match *import_directive.subclass {
-            SingleImport(target, source) => {
+            SingleImport(target, source, namespaces) => {
                 target_name = target;
                 source_name = source;
+                allowable_namespaces = namespaces;
             }
             GlobImport => {
                 fail ~"found `import *`, which is invalid";
@@ -2407,8 +2567,8 @@ struct Resolver {
         let mut module_result;
         debug!("(resolving one-level naming result) searching for module");
         match self.resolve_item_in_lexical_scope(module_,
-                                               source_name,
-                                               ModuleNS) {
+                                                 source_name,
+                                                 ModuleNS) {
 
             Failed => {
                 debug!("(resolving one-level renaming import) didn't find \
@@ -2428,48 +2588,53 @@ struct Resolver {
         }
 
         let mut value_result;
-        debug!("(resolving one-level naming result) searching for value");
-        match self.resolve_item_in_lexical_scope(module_,
-                                               source_name,
-                                               ValueNS) {
-
-            Failed => {
-                debug!("(resolving one-level renaming import) didn't find \
-                        value result");
-                value_result = None;
-            }
-            Indeterminate => {
-                debug!("(resolving one-level renaming import) value result \
-                        is indeterminate; bailing");
-                return Indeterminate;
-            }
-            Success(name_bindings) => {
-                debug!("(resolving one-level renaming import) value result \
-                        found");
-                value_result = Some(copy name_bindings);
-            }
-        }
-
         let mut type_result;
-        debug!("(resolving one-level naming result) searching for type");
-        match self.resolve_item_in_lexical_scope(module_,
-                                               source_name,
-                                               TypeNS) {
+        if allowable_namespaces == ModuleNSOnly {
+            value_result = None;
+            type_result = None;
+        } else {
+            debug!("(resolving one-level naming result) searching for value");
+            match self.resolve_item_in_lexical_scope(module_,
+                                                   source_name,
+                                                   ValueNS) {
 
-            Failed => {
-                debug!("(resolving one-level renaming import) didn't find \
-                        type result");
-                type_result = None;
+                Failed => {
+                    debug!("(resolving one-level renaming import) didn't \
+                            find value result");
+                    value_result = None;
+                }
+                Indeterminate => {
+                    debug!("(resolving one-level renaming import) value \
+                            result is indeterminate; bailing");
+                    return Indeterminate;
+                }
+                Success(name_bindings) => {
+                    debug!("(resolving one-level renaming import) value \
+                            result found");
+                    value_result = Some(copy name_bindings);
+                }
             }
-            Indeterminate => {
-                debug!("(resolving one-level renaming import) type result is \
-                        indeterminate; bailing");
-                return Indeterminate;
-            }
-            Success(name_bindings) => {
-                debug!("(resolving one-level renaming import) type result \
-                        found");
-                type_result = Some(copy name_bindings);
+
+            debug!("(resolving one-level naming result) searching for type");
+            match self.resolve_item_in_lexical_scope(module_,
+                                                   source_name,
+                                                   TypeNS) {
+
+                Failed => {
+                    debug!("(resolving one-level renaming import) didn't \
+                            find type result");
+                    type_result = None;
+                }
+                Indeterminate => {
+                    debug!("(resolving one-level renaming import) type \
+                            result is indeterminate; bailing");
+                    return Indeterminate;
+                }
+                Success(name_bindings) => {
+                    debug!("(resolving one-level renaming import) type \
+                            result found");
+                    type_result = Some(copy name_bindings);
+                }
             }
         }
 

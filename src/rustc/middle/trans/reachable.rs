@@ -39,7 +39,7 @@ fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
             found_export = true;
             for vec::each(vps) |vp| {
                 match vp.node {
-                  view_path_simple(_, _, id) | view_path_glob(_, id) |
+                  view_path_simple(_, _, _, id) | view_path_glob(_, id) |
                   view_path_list(_, _, id) => {
                     traverse_export(cx, id);
                   }
