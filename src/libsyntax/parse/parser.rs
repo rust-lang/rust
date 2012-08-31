@@ -3423,12 +3423,19 @@ struct parser {
     }
 
     fn is_view_item() -> bool {
-        let tok = if !self.is_keyword(~"pub") && !self.is_keyword(~"priv") {
-            self.token
-        } else { self.look_ahead(1u) };
+        let tok, next_tok;
+        if !self.is_keyword(~"pub") && !self.is_keyword(~"priv") {
+            tok = self.token;
+            next_tok = self.look_ahead(1);
+        } else {
+            tok = self.look_ahead(1);
+            next_tok = self.look_ahead(2);
+        };
         self.token_is_keyword(~"use", tok)
             || self.token_is_keyword(~"import", tok)
             || self.token_is_keyword(~"export", tok)
+            || (self.token_is_keyword(~"extern", tok) &&
+                self.token_is_keyword(~"mod", next_tok))
     }
 
     fn parse_view_item(+attrs: ~[attribute]) -> @view_item {
@@ -3439,7 +3446,14 @@ struct parser {
             view_item_import(self.parse_view_paths())
         } else if self.eat_keyword(~"export") {
             view_item_export(self.parse_view_paths())
-        } else { fail; };
+        } else if self.eat_keyword(~"extern") {
+            self.expect_keyword(~"mod");
+            let ident = self.parse_ident();
+            let metadata = self.parse_optional_meta();
+            view_item_use(ident, metadata, self.get_id())
+        } else {
+            fail;
+        };
         self.expect(token::SEMI);
         @{node: node, attrs: attrs,
           vis: vis, span: mk_sp(lo, self.last_span.hi)}
@@ -3564,7 +3578,8 @@ struct parser {
         } else if self.is_view_item() {
             let vi = self.parse_view_item(outer_attrs);
             return spanned(lo, vi.span.hi, cdir_view_item(vi));
-        } else { return self.fatal(~"expected crate directive"); }
+        }
+        return self.fatal(~"expected crate directive");
     }
 
     fn parse_crate_directives(term: token::token,
