@@ -5528,7 +5528,6 @@ fn get_item_val(ccx: @crate_ctxt, id: ast::node_id) -> ValueRef {
                     let g = do str::as_c_str(*ident) |buf| {
                         llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ), buf)
                     };
-                    ccx.item_symbols.insert(ni.id, copy *ident);
                     g
                 }
             }
