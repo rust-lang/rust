@@ -102,14 +102,20 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
       String(s) => wr.write_str(escape_str(*s)),
       Boolean(b) => wr.write_str(if b { ~"true" } else { ~"false" }),
       List(vv) => {
+        if vv.len() == 0u {
+            wr.write_str(~"[]");
+            return;
+        }
+
+        let inner_indent = indent + 2;
+
         // [
-        wr.write_str(spaces(indent));
-        wr.write_str("[ ");
+        wr.write_str("[\n");
+        wr.write_str(spaces(inner_indent));
 
         // [ elem,
         //   elem,
         //   elem ]
-        let inner_indent = indent + 2;
         let mut first = true;
         for (*vv).each |item| {
             if !first {
@@ -121,9 +127,18 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
         };
 
         // ]
-        wr.write_str(~" ]");
+        wr.write_str("\n");
+        wr.write_str(spaces(indent));
+        wr.write_str(~"]");
       }
       Dict(dd) => {
+        if dd.size() == 0u {
+            wr.write_str(~"{}");
+            return;
+        }
+
+        let inner_indent = indent + 2;
+
         // convert from a dictionary
         let mut pairs = ~[];
         for dd.each |key, value| {
@@ -134,13 +149,12 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
         let sorted_pairs = sort::merge_sort(|a,b| *a <= *b, pairs);
 
         // {
-        wr.write_str(spaces(indent));
-        wr.write_str(~"{ ");
+        wr.write_str(~"{\n");
+        wr.write_str(spaces(inner_indent));
 
         // { k: v,
         //   k: v,
         //   k: v }
-        let inner_indent = indent + 2;
         let mut first = true;
         for sorted_pairs.each |kv| {
             let (key, value) = kv;
@@ -150,13 +164,15 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
             }
             first = false;
             let key = str::append(escape_str(key), ~": ");
-            let key_indent = str::len(key);
+            let key_indent = inner_indent + str::len(key);
             wr.write_str(key);
             to_writer_pretty(wr, value, key_indent);
         };
 
         // }
-        wr.write_str(~" }");
+        wr.write_str(~"\n");
+        wr.write_str(spaces(indent));
+        wr.write_str(~"}");
       }
       Null => wr.write_str(~"null")
     }
@@ -890,6 +906,12 @@ mod tests {
         assert from_str(~"\"\\r\"") == Ok(String(@~"\r"));
         assert from_str(~"\"\\t\"") == Ok(String(@~"\t"));
         assert from_str(~" \"foo\" ") == Ok(String(@~"foo"));
+    }
+
+    #[test]
+    fn test_unicode_hex_escapes_in_str() {
+        assert from_str(~"\"\\u12ab\"") == Ok(String(@~"\u12ab"));
+        assert from_str(~"\"\\uAB12\"") == Ok(String(@~"\uAB12"));
     }
 
     #[test]
