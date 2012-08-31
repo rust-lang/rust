@@ -1,6 +1,7 @@
 //! A map type
 
-#[warn(deprecated_mode)];
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 import io::WriterUtil;
 import to_str::ToStr;
