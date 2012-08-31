@@ -1,4 +1,6 @@
 #[deny(non_camel_case_types)];
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 /*!
  * A functional key,value store that works on anything.
@@ -32,8 +34,8 @@ enum TreeNode<K, V> {
 fn init<K, V>() -> Treemap<K, V> { @Empty }
 
 /// Insert a value into the map
-fn insert<K: copy Eq Ord, V: copy>(m: Treemap<K, V>, k: K, v: V)
-                                -> Treemap<K, V> {
+fn insert<K: copy Eq Ord, V: copy>(m: Treemap<K, V>, +k: K, +v: V)
+  -> Treemap<K, V> {
     @match m {
        @Empty => Node(@k, @v, @Empty, @Empty),
        @Node(@kk, vv, left, right) => {
@@ -47,7 +49,7 @@ fn insert<K: copy Eq Ord, V: copy>(m: Treemap<K, V>, k: K, v: V)
 }
 
 /// Find a value based on the key
-fn find<K: Eq Ord, V: copy>(m: Treemap<K, V>, k: K) -> Option<V> {
+fn find<K: Eq Ord, V: copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
     match *m {
       Empty => None,
       Node(@kk, @v, left, right) => {
