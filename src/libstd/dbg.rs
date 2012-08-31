@@ -1,4 +1,6 @@
 #[deny(non_camel_case_types)];
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 //! Unsafe debugging functions for inspecting values.
 
 import unsafe::reinterpret_cast;
@@ -26,7 +28,7 @@ fn debug_tydesc<T>() {
     rustrt::debug_tydesc(sys::get_type_desc::<T>());
 }
 
-fn debug_opaque<T>(x: T) {
+fn debug_opaque<T>(+x: T) {
     rustrt::debug_opaque(sys::get_type_desc::<T>(), ptr::addr_of(x) as *());
 }
 
@@ -34,11 +36,11 @@ fn debug_box<T>(x: @T) {
     rustrt::debug_box(sys::get_type_desc::<T>(), ptr::addr_of(x) as *());
 }
 
-fn debug_tag<T>(x: T) {
+fn debug_tag<T>(+x: T) {
     rustrt::debug_tag(sys::get_type_desc::<T>(), ptr::addr_of(x) as *());
 }
 
-fn debug_fn<T>(x: T) {
+fn debug_fn<T>(+x: T) {
     rustrt::debug_fn(sys::get_type_desc::<T>(), ptr::addr_of(x) as *());
 }
 

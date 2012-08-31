@@ -1,3 +1,6 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import io::Writer;
 import io::WriterUtil;
 import serialization::serializer;
