@@ -168,10 +168,10 @@ fn main(args: ~[~str]) {
         let rng = rand::seeded_rng(copy seed);
         let mut results = empty_results();
         int_benchmarks::<Managed<LinearMap<uint, uint>>>(
-            || Managed(LinearMap(uint::hash, uint::eq)),
+            || Managed(LinearMap()),
             rng, num_keys, &mut results);
         str_benchmarks::<Managed<LinearMap<~str, uint>>>(
-            || Managed(LinearMap(str::hash, str::eq)),
+            || Managed(LinearMap()),
             rng, num_keys, &mut results);
         write_results("libstd::map::hashmap", &results);
     }

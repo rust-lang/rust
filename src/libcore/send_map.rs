@@ -4,16 +4,11 @@ Sendable hash maps.  Very much a work in progress.
 
 */
 
+import cmp::Eq;
+import hash::Hash;
+import to_bytes::IterBytes;
 
-/**
- * A function that returns a hash of a value
- *
- * The hash should concentrate entropy in the lower bits.
- */
-type HashFn<K> = pure fn~(K) -> uint;
-type EqFn<K> = pure fn~(K, K) -> bool;
-
-trait SendMap<K, V: copy> {
+trait SendMap<K:Eq Hash, V: copy> {
     // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
 
     fn insert(&mut self, +k: K, +v: V) -> bool;
@@ -34,14 +29,14 @@ mod linear {
     export LinearMap, linear_map, linear_map_with_capacity, public_methods;
 
     const initial_capacity: uint = 32u; // 2^5
-    struct Bucket<K,V> {
+    struct Bucket<K:Eq Hash,V> {
         hash: uint;
         key: K;
         value: V;
     }
-    struct LinearMap<K,V> {
-        hashfn: pure fn~(x: &K) -> uint;
-        eqfn: pure fn~(x: &K, y: &K) -> bool;
+    struct LinearMap<K:Eq Hash,V> {
+        k0: u64;
+        k1: u64;
         resize_at: uint;
         size: uint;
         buckets: ~[Option<Bucket<K,V>>];
@@ -58,28 +53,29 @@ mod linear {
         ((capacity as float) * 3. / 4.) as uint
     }
 
-    fn LinearMap<K,V>(
-        +hashfn: pure fn~(x: &K) -> uint,
-        +eqfn: pure fn~(x: &K, y: &K) -> bool) -> LinearMap<K,V> {
-
-        linear_map_with_capacity(hashfn, eqfn, 32)
+    fn LinearMap<K:Eq Hash,V>() -> LinearMap<K,V> {
+        linear_map_with_capacity(32)
     }
 
-    fn linear_map_with_capacity<K,V>(
-        +hashfn: pure fn~(x: &K) -> uint,
-        +eqfn: pure fn~(x: &K, y: &K) -> bool,
+    fn linear_map_with_capacity<K:Eq Hash,V>(
         initial_capacity: uint) -> LinearMap<K,V> {
+        let r = rand::Rng();
+        linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(),
+                                          initial_capacity)
+    }
 
+    fn linear_map_with_capacity_and_keys<K:Eq Hash,V> (
+        k0: u64, k1: u64,
+        initial_capacity: uint) -> LinearMap<K,V> {
         LinearMap {
-            hashfn: hashfn,
-            eqfn: eqfn,
+            k0: k0, k1: k1,
             resize_at: resize_at(initial_capacity),
             size: 0,
             buckets: vec::from_fn(initial_capacity, |_i| None)
         }
     }
 
-    priv impl<K, V> LinearMap<K,V> {
+    priv impl<K:Hash IterBytes Eq, V> LinearMap<K,V> {
         #[inline(always)]
         pure fn to_bucket(&const self,
                           h: uint) -> uint {
@@ -123,7 +119,7 @@ mod linear {
         pure fn bucket_for_key(&const self,
                                buckets: &[Option<Bucket<K,V>>],
                                k: &K) -> SearchResult {
-            let hash = self.hashfn(k);
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.bucket_for_key_with_hash(buckets, hash, k)
         }
 
@@ -134,7 +130,7 @@ mod linear {
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match buckets[i] {
-                  Some(bkt) => if bkt.hash == hash && self.eqfn(k, &bkt.key) {
+                  Some(bkt) => if bkt.hash == hash && *k == bkt.key {
                     return FoundEntry(i);
                   },
                   None => return FoundHole(i)
@@ -204,7 +200,7 @@ mod linear {
         }
     }
 
-    impl<K,V> LinearMap<K,V> {
+    impl<K:Hash IterBytes Eq,V> LinearMap<K,V> {
         fn insert(&mut self, +k: K, +v: V) -> bool {
             if self.size >= self.resize_at {
                 // n.b.: We could also do this after searching, so
@@ -216,7 +212,7 @@ mod linear {
                 self.expand();
             }
 
-            let hash = self.hashfn(&k);
+            let hash = k.hash_keyed(self.k0, self.k1) as uint;
             self.insert_internal(hash, k, v)
         }
 
@@ -319,7 +315,7 @@ mod linear {
         }
     }
 
-    impl<K,V: copy> LinearMap<K,V> {
+    impl<K:Hash IterBytes Eq, V: copy> LinearMap<K,V> {
         fn find(&const self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
               FoundEntry(idx) => {
@@ -346,17 +342,17 @@ mod linear {
 
     }
 
-    impl<K: copy, V: copy> LinearMap<K,V> {
+    impl<K: Hash IterBytes Eq copy, V: copy> LinearMap<K,V> {
         fn each(&self, blk: fn(+K,+V) -> bool) {
             self.each_ref(|k,v| blk(copy *k, copy *v));
         }
     }
-    impl<K: copy, V> LinearMap<K,V> {
+    impl<K: Hash IterBytes Eq copy, V> LinearMap<K,V> {
         fn each_key(&self, blk: fn(+K) -> bool) {
             self.each_key_ref(|k| blk(copy *k));
         }
     }
-    impl<K, V: copy> LinearMap<K,V> {
+    impl<K: Hash IterBytes Eq, V: copy> LinearMap<K,V> {
         fn each_value(&self, blk: fn(+V) -> bool) {
             self.each_value_ref(|v| blk(copy *v));
         }
@@ -368,11 +364,8 @@ mod test {
 
     import linear::LinearMap;
 
-    pure fn uint_hash(x: &uint) -> uint { *x }
-    pure fn uint_eq(x: &uint, y: &uint) -> bool { *x == *y }
-
     fn int_linear_map<V>() -> LinearMap<uint,V> {
-        return LinearMap(uint_hash, uint_eq);
+        return LinearMap();
     }
 
     #[test]
@@ -395,7 +388,7 @@ mod test {
 
     #[test]
     fn conflicts() {
-        let mut m = ~linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        let mut m = ~linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
         assert m.insert(9, 4);
@@ -406,7 +399,7 @@ mod test {
 
     #[test]
     fn conflict_remove() {
-        let mut m = ~linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        let mut m = ~linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
         assert m.insert(9, 4);
@@ -417,7 +410,7 @@ mod test {
 
     #[test]
     fn empty() {
-        let mut m = ~linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        let mut m = ~linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert !m.is_empty();
         assert m.remove(&1);
@@ -426,7 +419,7 @@ mod test {
 
     #[test]
     fn iterate() {
-        let mut m = linear::linear_map_with_capacity(uint_hash, uint_eq, 4);
+        let mut m = linear::linear_map_with_capacity(4);
         for uint::range(0, 32) |i| {
             assert (&mut m).insert(i, i*2);
         }

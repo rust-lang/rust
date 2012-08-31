@@ -290,6 +290,19 @@ impl<A: IterBytes> ~A: IterBytes {
     }
 }
 
+// NB: raw-pointer IterBytes does _not_ dereference
+// to the target; it just gives you the pointer-bytes.
+impl<A> *A: IterBytes {
+    #[inline(always)]
+    fn iter_le_bytes(f: Cb) {
+        (self as uint).iter_le_bytes(f);
+    }
+    #[inline(always)]
+    fn iter_be_bytes(f: Cb) {
+        (self as uint).iter_be_bytes(f);
+    }
+}
+
 
 trait ToBytes {
     fn to_le_bytes() -> ~[u8];

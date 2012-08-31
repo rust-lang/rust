@@ -731,17 +731,7 @@ type rust_closure = libc::c_void;
 type TaskSet = send_map::linear::LinearMap<*rust_task,()>;
 
 fn new_taskset() -> TaskSet {
-    pure fn task_hash(t: &*rust_task) -> uint {
-        let task: *rust_task = *t;
-        hash::hash_uint(task as uint) as uint
-    }
-    pure fn task_eq(t1: &*rust_task, t2: &*rust_task) -> bool {
-        let task1: *rust_task = *t1;
-        let task2: *rust_task = *t2;
-        task1 == task2
-    }
-
-    send_map::linear::LinearMap(task_hash, task_eq)
+    send_map::linear::LinearMap()
 }
 fn taskset_insert(tasks: &mut TaskSet, task: *rust_task) {
     let didnt_overwrite = tasks.insert(task, ());
