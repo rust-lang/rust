@@ -140,7 +140,7 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
                | ty::ty_trait(_, _, _) => false,
               ty::ty_enum(did, substs) => {
-                if option::is_none(list::find(enums_seen, |id| id == did)) {
+                if option::is_none(list::find(enums_seen, |id| *id == did)) {
                     let seen = @cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
