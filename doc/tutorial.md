@@ -1993,19 +1993,6 @@ comparison operator, so you'll have to write `::<T>` to explicitly
 give a type to a name that denotes a generic value. Fortunately, this
 is rarely necessary.
 
-## Polymorphic built-ins
-
-There are two built-in operations that, perhaps surprisingly, act on
-values of any type. It was already mentioned earlier that `log` can
-take any type of value and output it.
-
-More interesting is that Rust also defines an ordering for values of
-all datatypes, and allows you to meaningfully apply comparison
-operators (`<`, `>`, `<=`, `>=`, `==`, `!=`) to them. For structural
-types, the comparison happens left to right, so `~"abc" < ~"bac"` (but
-note that `~"bac" < ~"ác"`, because the ordering acts on UTF-8 sequences
-without any sophistication).
-
 ## Kinds
 
 Perhaps surprisingly, the 'copy' (duplicate) operation is not defined
