@@ -103,7 +103,7 @@ impl Lub: combine {
         }
     }
 
-    // Traits please:
+    // Traits please (FIXME: #2794):
 
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t> {
         lattice_tys(&self, a, b)

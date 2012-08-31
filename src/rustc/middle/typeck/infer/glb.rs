@@ -128,7 +128,7 @@ impl Glb: combine {
         lattice_tys(&self, a, b)
     }
 
-    // Traits please:
+    // Traits please (FIXME: #2794):
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(&self, a, b)

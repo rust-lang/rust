@@ -1,6 +1,6 @@
 //xfail-test
 
-// Currently failing with an ICE in trans.
+// Currently failing with an ICE in trans.  (FIXME: #2794)
 
 trait Cat {
     fn meow() -> bool;

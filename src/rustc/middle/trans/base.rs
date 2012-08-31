@@ -2567,7 +2567,7 @@ fn lookup_discriminant(ccx: @crate_ctxt, vid: ast::def_id) -> ValueRef {
 }
 
 // This shouldn't exist. We should cast self *once*, but right now this
-// conflicts with default methods.
+// conflicts with default methods.  (FIXME: #2794)
 fn cast_self(cx: block, slf: val_self_data) -> ValueRef {
     PointerCast(cx, slf.v, T_ptr(type_of(cx.ccx(), slf.t)))
 }
