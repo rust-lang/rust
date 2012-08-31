@@ -467,10 +467,12 @@ fn print_item(s: ps, &&item: @ast::item) {
       }
       ast::item_foreign_mod(nmod) => {
         head(s, ~"extern");
-        word_nbsp(s, ~"mod");
         match nmod.sort {
-            ast::named => print_ident(s, item.ident),
-            ast::anonymous => {}
+          ast::named => {
+            word_nbsp(s, ~"mod");
+            print_ident(s, item.ident)
+          }
+          ast::anonymous => {}
         }
         nbsp(s);
         bopen(s);
