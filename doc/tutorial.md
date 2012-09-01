@@ -192,7 +192,9 @@ detail [later on](#modules-and-crates).
 
 There are Vim highlighting and indentation scripts in the Rust source
 distribution under `src/etc/vim/`, and an emacs mode under
-`src/etc/emacs/`.
+`src/etc/emacs/`. There is a package for Sublime Text 2 at
+[github.com/dbp/sublime-rust](http://github.com/dbp/sublime-rust), also
+available through [package control](http://wbond.net/sublime_packages/package_control).
 
 Other editors are not provided for yet. If you end up writing a Rust
 mode for your favorite editor, let us know so that we can link to it.
