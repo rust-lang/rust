@@ -43,6 +43,7 @@ export grow;
 export grow_fn;
 export grow_set;
 export truncate;
+export dedup;
 export map;
 export mapi;
 export map2;
@@ -624,6 +625,41 @@ fn truncate<T>(&v: ~[const T], newlen: uint) {
         }
     }
 }
+
+/**
+ * Remove consecutive repeated elements from a vector; if the vector is
+ * sorted, this removes all duplicates.
+ */
+fn dedup<T: Eq>(&v: ~[const T]) unsafe {
+    if v.len() < 1 { return; }
+    let mut last_written = 0, next_to_read = 1;
+    do as_const_buf(v) |p, ln| {
+        // We have a mutable reference to v, so we can make arbitrary changes.
+        // (cf. push and pop)
+        let p = p as *mut T;
+        // last_written < next_to_read <= ln
+        while next_to_read < ln {
+            // last_written < next_to_read < ln
+            if *ptr::mut_offset(p, next_to_read) ==
+                *ptr::mut_offset(p, last_written) {
+                let _dropped <- *ptr::mut_offset(p, next_to_read);
+            } else {
+                last_written += 1;
+                // last_written <= next_to_read < ln
+                if next_to_read != last_written {
+                    *ptr::mut_offset(p, last_written) <-
+                        *ptr::mut_offset(p, next_to_read);
+                }
+            }
+            // last_written <= next_to_read < ln
+            next_to_read += 1;
+            // last_written < next_to_read <= ln
+        }
+    }
+    // last_written < next_to_read == ln
+    unsafe::set_len(v, last_written + 1);
+}
+
 
 // Appending
 #[inline(always)]
@@ -2216,6 +2252,51 @@ mod tests {
         assert(v.len() == 1);
         assert(*(v[0]) == 6);
         // If the unsafe block didn't drop things properly, we blow up here.
+    }
+
+    #[test]
+    fn test_dedup() {
+        fn case(-a: ~[uint], -b: ~[uint]) {
+            let mut v = a;
+            dedup(v);
+            assert(v == b);
+        }
+        case(~[], ~[]);
+        case(~[1], ~[1]);
+        case(~[1,1], ~[1]);
+        case(~[1,2,3], ~[1,2,3]);
+        case(~[1,1,2,3], ~[1,2,3]);
+        case(~[1,2,2,3], ~[1,2,3]);
+        case(~[1,2,3,3], ~[1,2,3]);
+        case(~[1,1,2,2,2,3,3], ~[1,2,3]);
+    }
+
+    #[test]
+    fn test_dedup_unique() {
+        let mut v0 = ~[~1, ~1, ~2, ~3];
+        dedup(v0);
+        let mut v1 = ~[~1, ~2, ~2, ~3];
+        dedup(v1);
+        let mut v2 = ~[~1, ~2, ~3, ~3];
+        dedup(v2);
+        /*
+         * If the ~pointers were leaked or otherwise misused, valgrind and/or
+         * rustrt should raise errors.
+         */
+    }
+
+    #[test]
+    fn test_dedup_shared() {
+        let mut v0 = ~[@1, @1, @2, @3];
+        dedup(v0);
+        let mut v1 = ~[@1, @2, @2, @3];
+        dedup(v1);
+        let mut v2 = ~[@1, @2, @3, @3];
+        dedup(v2);
+        /*
+         * If the @pointers were leaked or otherwise misused, valgrind and/or
+         * rustrt should raise errors.
+         */
     }
 
     #[test]
