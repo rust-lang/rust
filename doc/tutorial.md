@@ -1551,14 +1551,13 @@ fn contains(v: ~[int], elt: int) -> bool {
 
 ## Generic functions
 
-Throughout this tutorial, we've been defining functions like
-that act only on single data types. It is 2012, and we no longer
-expect to be defining such functions again and again for every type
-they apply to.  Thus, Rust allows functions and datatypes to have type
-parameters.
+Throughout this tutorial, we've been defining functions that act only on
+single data types. It's a burden to define such functions again and again for
+every type they apply to. Thus, Rust allows functions and datatypes to have
+type parameters.
 
 ~~~~
-fn map<T, U>(vector: ~[T], function: fn(T) -> U) -> ~[U] {
+fn map<T, U>(vector: &[T], function: fn(T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vector.each |element| {
         vec::push(accumulator, function(element));
@@ -1577,51 +1576,20 @@ inside them, but you can pass them around.
 
 ## Generic datatypes
 
-Generic `type` and `enum` declarations follow the same pattern:
+Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-type circular_buf<T> = {start: uint,
-                        end: uint,
-                        buf: ~[mut T]};
+struct Stack<T> {
+    elements: ~[mut T]
+}
 
-enum option<T> { some(T), none }
+enum Maybe<T> {
+    Just(T),
+    Nothing
+}
 ~~~~
 
-You can then declare a function to take a `circular_buf<u8>` or return
-an `option<~str>`, or even an `option<T>` if the function itself is
-generic.
-
-The `option` type given above exists in the core library and is the
-way Rust programs express the thing that in C would be a nullable
-pointer. The nice part is that you have to explicitly unpack an
-`option` type, so accidental null pointer dereferences become
-impossible.
-
-## Type-inference and generics
-
-Rust's type inferrer works very well with generics, but there are
-programs that just can't be typed.
-
-~~~~
-let n = option::None;
-# option::iter(n, fn&(&&x:int) {})
-~~~~
-
-If you never do anything else with `n`, the compiler will not be able
-to assign a type to it. (The same goes for `[]`, the empty vector.) If
-you really want to have such a statement, you'll have to write it like
-this:
-
-~~~~
-let n2: Option<int> = option::None;
-// or
-let n = option::None::<int>;
-~~~~
-
-Note that, in a value expression, `<` already has a meaning as a
-comparison operator, so you'll have to write `::<T>` to explicitly
-give a type to a name that denotes a generic value. Fortunately, this
-is rarely necessary.
+These declarations produce valid types like `Stack<u8>` and `Maybe<int>`.
 
 ## Kinds
 
@@ -1660,34 +1628,6 @@ resource type. Rust has several kinds that can be used as type bounds:
 > conveniently thought of as built-in traits. In the future type
 > kinds will actually be traits that the compiler has special
 > knowledge about.
-
-## Generic functions and argument-passing
-
-The previous section mentioned that arguments are passed by pointer or
-by value based on their type. There is one situation in which this is
-difficult. If you try this program:
-
-~~~~{.xfail-test}
-fn plus1(x: int) -> int { x + 1 }
-vec::map(~[1, 2, 3], plus1);
-~~~~
-
-You will get an error message about argument passing styles
-disagreeing. The reason is that generic types are always passed by
-reference, so `map` expects a function that takes its argument by
-reference. The `plus1` you defined, however, uses the default,
-efficient way to pass integers, which is by value. To get around this
-issue, you have to explicitly mark the arguments to a function that
-you want to pass to a generic higher-order function as being passed by
-pointer, using the `&&` sigil:
-
-~~~~
-fn plus1(&&x: int) -> int { x + 1 }
-vec::map(~[1, 2, 3], plus1);
-~~~~
-
-> ***Note:*** This is inconvenient, and we are hoping to get rid of
-> this restriction in the future.
 
 # Modules and crates
 
