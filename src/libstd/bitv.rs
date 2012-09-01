@@ -420,6 +420,44 @@ struct Bitv {
         vec::from_fn(self.nbits, |x| self.init_to_vec(x))
     }
 
+    /**
+     * Organise the bits into bytes, such that the first bit in the
+     * bitv becomes the high-order bit of the first byte. If the
+     * size of the bitv is not a multiple of 8 then trailing bits
+     * will be filled-in with false/0
+     */
+    fn to_bytes() -> ~[u8] {
+
+        fn bit (bitv: &Bitv, byte: uint, bit: uint) -> u8 {
+            let offset = byte * 8 + bit;
+            if offset >= bitv.nbits {
+                0
+            } else {
+                bitv[offset] as u8 << (7 - bit)
+            }
+        }
+
+        let len = self.nbits/8 +
+                  if self.nbits % 8 == 0 { 0 } else { 1 };
+        vec::from_fn(len, |i|
+            bit(&self, i, 0) |
+            bit(&self, i, 1) |
+            bit(&self, i, 2) |
+            bit(&self, i, 3) |
+            bit(&self, i, 4) |
+            bit(&self, i, 5) |
+            bit(&self, i, 6) |
+            bit(&self, i, 7)
+        )
+    }
+
+    /**
+     * Transform self into a [bool] by turning each bit into a bool
+     */
+    fn to_bools() -> ~[bool] {
+        vec::from_fn(self.nbits, |i| self[i])
+    }
+
 /**
  * Converts `self` to a string.
  *
@@ -460,6 +498,38 @@ struct Bitv {
     }
 
 } // end of bitv class
+
+/**
+ * Transform a byte-vector into a bitv. Each byte becomes 8 bits,
+ * with the most significant bits of each byte coming first. Each
+ * bit becomes true if equal to 1 or false if equal to 0.
+ */
+fn from_bytes(bytes: &[u8]) -> Bitv {
+    from_fn(bytes.len() * 8, |i| {
+        let b = bytes[i / 8] as uint;
+        let offset = i % 8;
+        b >> (7 - offset) & 1 == 1
+    })
+}
+
+/**
+ * Transform a [bool] into a bitv by converting each bool into a bit.
+ */
+fn from_bools(bools: &[bool]) -> Bitv {
+    from_fn(bools.len(), |i| bools[i])
+}
+
+/**
+ * Create a bitv of the specified length where the value at each
+ * index is f(index).
+ */
+fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
+    let bitv = Bitv(len, false);
+    for uint::range(0, len) |i| {
+        bitv.set(i, f(i));
+    }
+    return bitv;
+}
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);
 
@@ -815,6 +885,35 @@ mod tests {
         assert a.equal(b);
     }
 
+    #[test]
+    fn test_from_bytes() {
+        let bitv = from_bytes([0b10110110, 0b00000000, 0b11111111]);
+        let str = ~"10110110" + ~"00000000" + ~"11111111";
+        assert bitv.to_str() == str;
+    }
+
+    #[test]
+    fn test_to_bytes() {
+        let bv = Bitv(3, true);
+        bv.set(1, false);
+        assert bv.to_bytes() == ~[0b10100000];
+
+        let bv = Bitv(9, false);
+        bv.set(2, true);
+        bv.set(8, true);
+        assert bv.to_bytes() == ~[0b00100000, 0b10000000];
+    }
+
+    #[test]
+    fn test_from_bools() {
+        assert from_bools([true, false, true, true]).to_str() == ~"1011";
+    }
+
+    #[test]
+    fn test_to_bools() {
+        let bools = ~[false, false, true, false, false, true, true, false];
+        assert from_bytes([0b00100110]).to_bools() == bools;
+    }
 }
 
 //
