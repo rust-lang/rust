@@ -303,14 +303,6 @@ The double-colon (`::`) is used as a module separator, so
 `io::println` means 'the thing named `println` in the module
 named `io`.
 
-Rust will normally emit warnings about unused variables. These can be
-suppressed by using a variable name that starts with an underscore.
-
-~~~~
-fn this_warns(x: int) {}
-fn this_doesnt(_x: int) {}
-~~~~
-
 ## Variable declaration
 
 The `let` keyword, as we've seen, introduces a local variable. Local
@@ -319,11 +311,11 @@ a local variable that can be reassigned.  Global constants can be
 defined with `const`:
 
 ~~~~
-const repeat: int = 5;
+const REPEAT: int = 5;
 fn main() {
     let hi = "Hi!";
     let mut count = 0;
-    while count < repeat {
+    while count < REPEAT {
         io::println(hi);
         count += 1;
     }
@@ -339,28 +331,6 @@ let my_favorite_value: int = my_favorite_value as int;
 ~~~~
 
 ## Types
-
-The `-> bool` in the `is_four` example is the way a function's return
-type is written. For functions that do not return a meaningful value
-(these conceptually return nil in Rust), you can optionally say `->
-()` (`()` is how nil is written), but usually the return annotation is
-simply left off, as in the `fn main() { ... }` examples we've seen
-earlier.
-
-Every argument to a function must have its type declared (for example,
-`x: int`). Inside the function, type inference will be able to
-automatically deduce the type of most locals (generic functions, which
-we'll come back to later, will occasionally need additional
-annotation). Locals can be written either with or without a type
-annotation:
-
-~~~~
-// The type of this vector will be inferred based on its use.
-let x = [];
-# vec::map(x, fn&(&&_y:int) -> int { _y });
-// Explicitly say this is a vector of zero integers.
-let y: [int * 0] = [];
-~~~~
 
 The basic types are written like this:
 
@@ -407,16 +377,16 @@ more detail later on (the `T`s here stand for any other type):
 `@T`, `~T`, `&T`
   : Pointer types.
 
-The size of some types can vary when your program runs. Because of this, you
-don't manipulate them only by pointer, never directly. For instance, you 
-can't refer to a string (`str`); instead you refer to a pointer to a string
-(`@str`, `~str`, or `&str`). These *dynamically-sized* types const of:
+Some types can only be manipulated by pointer, never directly. For instance,
+you cannot refer to a string (`str`); instead you refer to a pointer to a
+string (`@str`, `~str`, or `&str`). These *dynamically-sized* types consist
+of:
 
 `fn(arg1: T1, arg2: T2) -> T3`
   : Function types.
 
 `str`
-  : String type. A string contains a UTF-8 encoded sequence of characters.
+  : String type (in UTF-8).
 
 `[T]`
   : Vector with unknown size (also called a slice).
@@ -436,6 +406,28 @@ interchangeably, and using one where the other is expected is not a type
 error. Read about [single-variant enums](#single_variant_enum)
 further on if you need to create a type name that's not just a
 synonym.
+
+## Using types
+
+The `-> bool` in the `is_four` example is the way a function's return
+type is written. For functions that do not return a meaningful value,
+you can optionally say `-> ()`, but usually the return annotation is simply
+left off, as in the `fn main() { ... }` examples we've seen earlier.
+
+Every argument to a function must have its type declared (for example,
+`x: int`). Inside the function, type inference will be able to
+automatically deduce the type of most locals (generic functions, which
+we'll come back to later, will occasionally need additional
+annotation). Locals can be written either with or without a type
+annotation:
+
+~~~~
+// The type of this vector will be inferred based on its use.
+let x = [];
+# vec::map(x, fn&(&&_y:int) -> int { _y });
+// Explicitly say this is a vector of zero integers.
+let y: [int * 0] = [];
+~~~~
 
 ## Numeric literals
 
@@ -478,20 +470,20 @@ between double quotes (`"hello"`). Rust strings may contain newlines.
 
 ## Operators
 
-Rust's set of operators contains very few surprises. Binary arithmetic
-is done with `*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder,
-plus, minus). `-` is also a unary prefix operator that does negation. As in C,
-the bit operators `>>`, `<<`, `&`, `|`, and `^` are supported.
+Rust's set of operators contains very few surprises. Arithmetic is done with
+`*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder, plus, minus). `-` is
+also a unary prefix operator that does negation. As in C, the bit operators
+`>>`, `<<`, `&`, `|`, and `^` are also supported.
 
-Note that, if applied an integer value, `!` inverts all the bits.
+Note that, if applied to an integer value, `!` flips all the bits (like `~` in
+C).
 
 The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 `<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
 `&&` (and) and `||` (or).
 
-For type casting, Rust uses the binary `as` operator, which has high
-precedence, just lower than multiplication and division.  It takes an
-expression on the left side, and a type on the right side, and will,
+For type casting, Rust uses the binary `as` operator.  It takes an
+expression on the left side and a type on the right side and will,
 if a meaningful conversion exists, convert the result of the
 expression to the given type.
 
@@ -508,11 +500,12 @@ more likely to be what you expect (unless you are a C veteran).
 
 ## Syntax extensions
 
-*Syntax extensions* are special syntax that is not built into the language,
-but are instead provided by the libraries. To make it clear when a syntax
-extension is being used, their names all end with `!`. The standard library
-defines a few syntax extensions. The most useful one is `fmt!`, a
-`sprintf`-style text formatter that is expanded at compile time.
+*Syntax extensions* are special forms that are not built into the language,
+but are instead provided by the libraries. To make it clear to the reader when
+a syntax extension is being used, the names of all syntax extensions end with
+`!`. The standard library defines a few syntax extensions, the most useful of
+which is `fmt!`, a `sprintf`-style text formatter that is expanded at compile
+time.
 
 ~~~~
 io::println(fmt!("%s is %d", ~"the answer", 42));
@@ -524,7 +517,8 @@ don't match the types of the arguments.
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
 
-You can define your own syntax extensions via macros.
+You can define your own syntax extensions with the macro system, which is out
+of scope of this tutorial.
 
 # Control structures
 
@@ -581,8 +575,8 @@ construct when it is finished.
 The part to the left of the arrow `=>` is called the *pattern*. Literals are
 valid patterns and will match only their own value. The pipe operator
 (`|`) can be used to assign multiple patterns to a single arm. Ranges
-of numeric literal patterns can be expressed with `..`. The underscore
-(`_`) is a wildcard pattern that matches everything.
+of numeric literal patterns can be expressed with two dots, as in `M..N`. The
+underscore (`_`) is a wildcard pattern that matches everything.
 
 The patterns in an match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
@@ -601,10 +595,9 @@ match my_number {
 }
 ~~~
 
-If the arm with the wildcard pattern was left off in the above
-example, the typechecker would reject it at compile time. `match`
-constructs must be exhaustive: they must have an arm covering every
-possible case.
+`match` constructs must be *exhaustive*: they must have an arm covering every
+possible case. For example, if the arm with the wildcard pattern was left off
+in the above example, the typechecker would reject it.
 
 A powerful application of pattern matching is *destructuring*, where
 you use the matching to get at the contents of data types. Remember
@@ -632,11 +625,11 @@ an expression of type `bool` that determines, after the pattern is
 found to match, whether the arm is taken or not. The variables bound
 by the pattern are available in this guard expression.
 
-## Destructuring let
+## Let
 
-To a limited extent, it is possible to use destructuring patterns when
-declaring a variable with `let`. For example, you can say this to
-extract the fields from a tuple:
+You've already seen simple `let` bindings. `let` is also a little fancier: it
+is possible to use destructuring patterns in it. For example, you can say this
+to extract the fields from a tuple:
 
 ~~~~
 # fn get_tuple_of_two_ints() -> (int, int) { (1, 1) }
@@ -646,7 +639,7 @@ let (a, b) = get_tuple_of_two_ints();
 This will introduce two new variables, `a` and `b`, bound to the
 content of the tuple.
 
-You may only use irrefutable patterns—patterns that can never fail to
+You may only use *irrefutable* patterns—patterns that can never fail to
 match—in let bindings. Other types of patterns, such as literals, are
 not allowed.
 
@@ -735,16 +728,6 @@ fn do_nothing_the_hard_way() -> () { return (); }
 
 fn do_nothing_the_easy_way() { }
 ~~~~
-
-Some functions (such as the C function `exit`) never return normally.
-In Rust, these are annotated with the pseudo-return type '`!`':
-
-~~~~
-fn dead_end() -> ! { fail }
-~~~~
-
-Using `!` in your code instead of making up a return type helps the compiler
-avoid spurious error messages.
 
 # Basic datatypes
 
