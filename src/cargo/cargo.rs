@@ -1499,7 +1499,8 @@ fn print_pkg(s: source, p: package) {
 fn print_source(s: source) {
     info(s.name + ~" (" + s.url + ~")");
 
-    let pks = sort::merge_sort(sys::shape_lt, copy s.packages);
+    let unsorted_pks = s.packages;  // to prevent illegal borrow?
+    let pks = sort::merge_sort(sys::shape_lt, unsorted_pks);
     let l = vec::len(pks);
 
     print(io::with_str_writer(|writer| {
