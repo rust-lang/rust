@@ -1,4 +1,7 @@
 //! Sorting methods
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import vec::{len, push};
 import core::cmp::{Eq, Ord};
 
@@ -15,12 +18,12 @@ type le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-fn merge_sort<T: copy>(le: le<T>, v: ~[const T]) -> ~[T] {
+fn merge_sort<T: copy>(le: le<T>, v: &[const T]) -> ~[T] {
     type slice = (uint, uint);
 
     return merge_sort_(le, v, (0u, len(v)));
 
-    fn merge_sort_<T: copy>(le: le<T>, v: ~[const T], slice: slice)
+    fn merge_sort_<T: copy>(le: le<T>, v: &[const T], slice: slice)
         -> ~[T] {
         let begin = slice.first();
         let end = slice.second();
@@ -35,7 +38,7 @@ fn merge_sort<T: copy>(le: le<T>, v: ~[const T]) -> ~[T] {
         return merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
     }
 
-    fn merge<T: copy>(le: le<T>, a: ~[T], b: ~[T]) -> ~[T] {
+    fn merge<T: copy>(le: le<T>, a: &[T], b: &[T]) -> ~[T] {
         let mut rs = ~[];
         vec::reserve(rs, len(a) + len(b));
         let a_len = len(a);
@@ -54,7 +57,7 @@ fn merge_sort<T: copy>(le: le<T>, v: ~[const T]) -> ~[T] {
     }
 }
 
-fn part<T: copy>(compare_func: le<T>, arr: ~[mut T], left: uint,
+fn part<T: copy>(compare_func: le<T>, arr: &[mut T], left: uint,
                 right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
@@ -71,7 +74,7 @@ fn part<T: copy>(compare_func: le<T>, arr: ~[mut T], left: uint,
     return storage_index;
 }
 
-fn qsort<T: copy>(compare_func: le<T>, arr: ~[mut T], left: uint,
+fn qsort<T: copy>(compare_func: le<T>, arr: &[mut T], left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -90,12 +93,12 @@ fn qsort<T: copy>(compare_func: le<T>, arr: ~[mut T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-fn quick_sort<T: copy>(compare_func: le<T>, arr: ~[mut T]) {
+fn quick_sort<T: copy>(compare_func: le<T>, arr: &[mut T]) {
     if len::<T>(arr) == 0u { return; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
-fn qsort3<T: copy Ord Eq>(arr: ~[mut T], left: int, right: int) {
+fn qsort3<T: copy Ord Eq>(arr: &[mut T], left: int, right: int) {
     if right <= left { return; }
     let v: T = arr[right];
     let mut i: int = left - 1;
@@ -152,14 +155,14 @@ fn qsort3<T: copy Ord Eq>(arr: ~[mut T], left: int, right: int) {
  *
  * This is an unstable sort.
  */
-fn quick_sort3<T: copy Ord Eq>(arr: ~[mut T]) {
+fn quick_sort3<T: copy Ord Eq>(arr: &[mut T]) {
     if arr.len() <= 1 { return; }
     qsort3(arr, 0, (arr.len() - 1) as int);
 }
 
 #[cfg(test)]
 mod test_qsort3 {
-    fn check_sort(v1: ~[mut int], v2: ~[mut int]) {
+    fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         quick_sort3::<int>(v1);
         let mut i = 0u;
@@ -198,7 +201,7 @@ mod test_qsort3 {
 
 #[cfg(test)]
 mod test_qsort {
-    fn check_sort(v1: ~[mut int], v2: ~[mut int]) {
+    fn check_sort(v1: &[mut int], v2: &[mut int]) {
         let len = vec::len::<int>(v1);
         pure fn leual(a: &int, b: &int) -> bool { *a <= *b }
         quick_sort::<int>(leual, v1);
@@ -258,7 +261,7 @@ mod test_qsort {
 #[cfg(test)]
 mod tests {
 
-    fn check_sort(v1: ~[int], v2: ~[int]) {
+    fn check_sort(v1: &[int], v2: &[int]) {
         let len = vec::len::<int>(v1);
         pure fn le(a: &int, b: &int) -> bool { *a <= *b }
         let f = le;

@@ -1,3 +1,5 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 /// A dynamic, mutable location.
 ///
 /// Similar to a mutable option type, but friendlier.

@@ -1,3 +1,5 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 mod icu {
     type UBool = u8;
