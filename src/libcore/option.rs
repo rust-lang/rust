@@ -290,14 +290,14 @@ fn test_unwrap_str() {
 
 #[test]
 fn test_unwrap_resource() {
-    struct r {
+    struct R {
        let i: @mut int;
        new(i: @mut int) { self.i = i; }
        drop { *(self.i) += 1; }
     }
     let i = @mut 0;
     {
-        let x = r(i);
+        let x = R(i);
         let opt = Some(x);
         let _y = unwrap(opt);
     }
