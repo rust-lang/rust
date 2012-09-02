@@ -146,7 +146,7 @@ fn to_unsafe_ptr<T>(thing: &T) -> *T unsafe {
 */
 #[inline(always)]
 fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T unsafe {
-    unsafe::reinterpret_cast(thing)
+    unsafe::reinterpret_cast(&thing)
 }
 
 /**
