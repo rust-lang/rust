@@ -215,7 +215,7 @@ fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
             pos = next;
 
             match ch {
-              '0' to '9' => {
+              '0' .. '9' => {
                 value = value * 10_i32 + (ch as i32 - '0' as i32);
               }
               ' ' if ws => (),

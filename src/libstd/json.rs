@@ -267,7 +267,7 @@ impl Parser {
           'n' => self.parse_ident(~"ull", Null),
           't' => self.parse_ident(~"rue", Boolean(true)),
           'f' => self.parse_ident(~"alse", Boolean(false)),
-          '0' to '9' | '-' => self.parse_number(),
+          '0' .. '9' | '-' => self.parse_number(),
           '"' => match self.parse_str() {
             Ok(s) => Ok(String(s)),
             Err(e) => Err(e)
@@ -330,14 +330,14 @@ impl Parser {
 
             // There can be only one leading '0'.
             match self.ch {
-              '0' to '9' => return self.error(~"invalid number"),
+              '0' .. '9' => return self.error(~"invalid number"),
               _ => ()
             }
           }
-          '1' to '9' => {
+          '1' .. '9' => {
             while !self.eof() {
                 match self.ch {
-                  '0' to '9' => {
+                  '0' .. '9' => {
                     res *= 10f;
                     res += ((self.ch as int) - ('0' as int)) as float;
 
@@ -358,7 +358,7 @@ impl Parser {
 
         // Make sure a digit follows the decimal place.
         match self.ch {
-          '0' to '9' => (),
+          '0' .. '9' => (),
           _ => return self.error(~"invalid number")
         }
 
@@ -366,7 +366,7 @@ impl Parser {
         let mut dec = 1f;
         while !self.eof() {
             match self.ch {
-              '0' to '9' => {
+              '0' .. '9' => {
                 dec /= 10f;
                 res += (((self.ch as int) - ('0' as int)) as float) * dec;
 
@@ -394,13 +394,13 @@ impl Parser {
 
         // Make sure a digit follows the exponent place.
         match self.ch {
-          '0' to '9' => (),
+          '0' .. '9' => (),
           _ => return self.error(~"invalid number")
         }
 
         while !self.eof() {
             match self.ch {
-              '0' to '9' => {
+              '0' .. '9' => {
                 exp *= 10u;
                 exp += (self.ch as uint) - ('0' as uint);
 
@@ -443,7 +443,7 @@ impl Parser {
                       let mut n = 0u;
                       while i < 4u {
                           match self.next_char() {
-                            '0' to '9' => {
+                            '0' .. '9' => {
                               n = n * 16u + (self.ch as uint)
                                           - ('0'     as uint);
                             },
