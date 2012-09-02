@@ -144,6 +144,7 @@ impl<A: Ord, B: Ord, C: Ord> (A, B, C): Ord {
 }
 
 #[test]
+#[allow(non_implicitly_copyable_typarams)]
 fn test_tuple() {
     assert (948, 4039.48).first() == 948;
     assert (34.5, ~"foo").second() == ~"foo";
