@@ -50,9 +50,9 @@ fn encode_inner(s: ~str, full_url: bool) -> ~str {
             let ch = rdr.read_byte() as char;
             match ch {
               // unreserved:
-              'A' to 'Z' |
-              'a' to 'z' |
-              '0' to '9' |
+              'A' .. 'Z' |
+              'a' .. 'z' |
+              '0' .. '9' |
               '-' | '.' | '_' | '~' => {
                 str::push_char(out, ch);
               }
@@ -162,7 +162,7 @@ fn encode_plus(s: ~str) -> ~str {
         while !rdr.eof() {
             let ch = rdr.read_byte() as char;
             match ch {
-              'A' to 'Z' | 'a' to 'z' | '0' to '9' | '_' | '.' | '-' => {
+              'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '_' | '.' | '-' => {
                 str::push_char(out, ch);
               }
               ' ' => str::push_char(out, '+'),
@@ -340,8 +340,8 @@ fn query_to_str(query: Query) -> ~str {
 fn get_scheme(rawurl: ~str) -> result::Result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
         match c {
-          'A' to 'Z' | 'a' to 'z' => again,
-          '0' to '9' | '+' | '-' | '.' => {
+          'A' .. 'Z' | 'a' .. 'z' => again,
+          '0' .. '9' | '+' | '-' | '.' => {
             if i == 0 {
                 return result::Err(@~"url: Scheme must begin with a letter.");
             }
@@ -415,13 +415,13 @@ fn get_authority(rawurl: ~str) ->
 
         // deal with input class first
         match c {
-          '0' to '9' => (),
-          'A' to 'F' | 'a' to 'f' => {
+          '0' .. '9' => (),
+          'A' .. 'F' | 'a' .. 'f' => {
             if in == Digit {
                 in = Hex;
             }
           }
-          'G' to 'Z' | 'g' to 'z' | '-' | '.' | '_' | '~' | '%' |
+          'G' .. 'Z' | 'g' .. 'z' | '-' | '.' | '_' | '~' | '%' |
           '&' |'\'' | '(' | ')' | '+' | '!' | '*' | ',' | ';' | '=' => {
             in = Unreserved;
           }
@@ -558,7 +558,7 @@ fn get_path(rawurl: ~str, authority : bool) ->
     let mut end = len;
     for str::each_chari(rawurl) |i,c| {
         match c {
-          'A' to 'Z' | 'a' to 'z' | '0' to '9' | '&' |'\'' | '(' | ')' | '.'
+          'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
           | '_' | '-' => {
             again;
