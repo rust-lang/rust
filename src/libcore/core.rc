@@ -31,7 +31,7 @@
 // Don't link to core. We are core.
 #[no_core];
 
-#[allow(vecs_implicitly_copyable)];
+#[deny(vecs_implicitly_copyable)];
 
 export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;

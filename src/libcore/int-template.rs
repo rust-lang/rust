@@ -137,7 +137,7 @@ impl T: iter::TimesIx {
  * * buf - A byte buffer
  * * radix - The base of the number
  */
-fn parse_buf(buf: ~[u8], radix: uint) -> Option<T> {
+fn parse_buf(buf: &[u8], radix: uint) -> Option<T> {
     if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut start = 0u;

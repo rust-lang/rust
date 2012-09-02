@@ -55,12 +55,14 @@ impl<A: copy, B: copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
 impl<A: copy, B: copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 
     fn zip() -> ~[(A, B)] {
-        let (a, b) = self;
+        // XXX: Bad copy
+        let (a, b) = copy self;
         vec::zip(a, b)
     }
 
     fn map<C>(f: fn(A, B) -> C) -> ~[C] {
-        let (a, b) = self;
+        // XXX: Bad copy
+        let (a, b) = copy self;
         vec::map2(a, b, f)
     }
 }

@@ -200,7 +200,7 @@ impl PosixPath : GenericPath {
     }
 
     pure fn push(s: &str) -> PosixPath {
-        let mut cs = self.components;
+        let mut cs = copy self.components;
         unchecked { vec::push(cs, move str::from_slice(s)); }
         return PosixPath { components: move cs,
                            ..self }
@@ -389,7 +389,7 @@ impl WindowsPath : GenericPath {
     }
 
     pure fn push(s: &str) -> WindowsPath {
-        let mut cs = self.components;
+        let mut cs = copy self.components;
         unchecked { vec::push(cs, move str::from_slice(s)); }
         return WindowsPath { components: move cs,
                              ..self }

@@ -86,7 +86,7 @@ mod ct {
         let mut pieces: ~[piece] = ~[];
         let lim = str::len(s);
         let mut buf = ~"";
-        fn flush_buf(buf: ~str, &pieces: ~[piece]) -> ~str {
+        fn flush_buf(+buf: ~str, &pieces: ~[piece]) -> ~str {
             if str::len(buf) > 0u {
                 let piece = piece_string(buf);
                 vec::push(pieces, piece);
@@ -109,7 +109,7 @@ mod ct {
                 } else {
                     buf = flush_buf(buf, pieces);
                     let rs = parse_conversion(s, i, lim, error);
-                    vec::push(pieces, rs.piece);
+                    vec::push(pieces, copy rs.piece);
                     i = rs.next;
                 }
             } else { buf += curr; i += size; }
@@ -148,7 +148,7 @@ mod ct {
         let ty = parse_type(s, prec.next, lim, error);
         return {piece:
                  piece_conv({param: parm.param,
-                             flags: flags.flags,
+                             flags: copy flags.flags,
                              width: width.count,
                              precision: prec.count,
                              ty: ty.ty}),
@@ -177,12 +177,12 @@ mod ct {
         fn more_(f: flag, s: ~str, i: uint, lim: uint) ->
            {flags: ~[flag], next: uint} {
             let next = parse_flags(s, i + 1u, lim);
-            let rest = next.flags;
+            let rest = copy next.flags;
             let j = next.next;
             let curr: ~[flag] = ~[f];
             return {flags: vec::append(curr, rest), next: j};
         }
-        let more = |x| more_(x, s, i, lim);
+        let more = |x, copy s| more_(x, copy s, i, lim);
         let f = s[i];
         return if f == '-' as u8 {
                 more(flag_left_justify)
@@ -404,14 +404,14 @@ mod rt {
 
     fn pad(cv: conv, &s: ~str, mode: pad_mode) -> ~str {
         let uwidth : uint = match cv.width {
-          count_implied => return s,
+          count_implied => return copy s,
           count_is(width) => {
               // FIXME: width should probably be uint (see Issue #1996)
               width as uint
           }
         };
         let strlen = str::char_len(s);
-        if uwidth <= strlen { return s; }
+        if uwidth <= strlen { return copy s; }
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {
