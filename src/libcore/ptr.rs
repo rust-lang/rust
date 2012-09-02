@@ -2,6 +2,7 @@
 
 export addr_of;
 export to_unsafe_ptr;
+export to_mut_unsafe_ptr;
 export mut_addr_of;
 export offset;
 export const_offset;
@@ -132,12 +133,20 @@ unsafe fn memset<T>(dst: *mut T, c: int, count: uint)  {
   Transform a region pointer - &T - to an unsafe pointer - *T.
   This is safe, but is implemented with an unsafe block due to
   reinterpret_cast.
-
-  ("assimilate" because it makes the pointer forget its region.)
 */
 #[inline(always)]
 fn to_unsafe_ptr<T>(thing: &T) -> *T unsafe {
     unsafe::reinterpret_cast(&thing)
+}
+
+/**
+  Transform a mutable region pointer - &mut T - to a mutable unsafe pointer -
+  *mut T. This is safe, but is implemented with an unsafe block due to
+  reinterpret_cast.
+*/
+#[inline(always)]
+fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T unsafe {
+    unsafe::reinterpret_cast(thing)
 }
 
 /**
