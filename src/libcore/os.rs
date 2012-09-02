@@ -827,6 +827,7 @@ fn arch() -> ~str { ~"x86_64" }
 fn arch() -> str { ~"arm" }
 
 #[cfg(test)]
+#[allow(non_implicitly_copyable_typarams)]
 mod tests {
 
     #[test]
@@ -893,7 +894,7 @@ mod tests {
         let e = env();
         assert vec::len(e) > 0u;
         for vec::each(e) |p| {
-            let (n, v) = p;
+            let (n, v) = copy p;
             log(debug, n);
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
@@ -909,7 +910,7 @@ mod tests {
 
         let mut e = env();
         setenv(n, ~"VALUE");
-        assert !vec::contains(e, (n, ~"VALUE"));
+        assert !vec::contains(e, (copy n, ~"VALUE"));
 
         e = env();
         assert vec::contains(e, (n, ~"VALUE"));

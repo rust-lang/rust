@@ -3099,7 +3099,7 @@ mod tests {
                0x000a_u16 ]) ];
 
         for vec::each(pairs) |p| {
-            let (s, u) = p;
+            let (s, u) = copy p;
             assert to_utf16(s) == u;
             assert from_utf16(u) == s;
             assert from_utf16(to_utf16(s)) == s;

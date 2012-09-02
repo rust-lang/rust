@@ -84,6 +84,7 @@ impl<A: ToStr> ~A: ToStr {
 }
 
 #[cfg(test)]
+#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     #[test]
     fn test_simple_types() {

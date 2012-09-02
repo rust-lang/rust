@@ -2381,19 +2381,19 @@ mod tests {
         let mut results: ~[~[int]];
 
         results = ~[];
-        permute(~[], |v| vec::push(results, v));
+        permute(~[], |v| vec::push(results, copy v));
         assert results == ~[~[]];
 
         results = ~[];
-        permute(~[7], |v| results += ~[v]);
+        permute(~[7], |v| results += ~[copy v]);
         assert results == ~[~[7]];
 
         results = ~[];
-        permute(~[1,1], |v| results += ~[v]);
+        permute(~[1,1], |v| results += ~[copy v]);
         assert results == ~[~[1,1],~[1,1]];
 
         results = ~[];
-        permute(~[5,2,0], |v| results += ~[v]);
+        permute(~[5,2,0], |v| results += ~[copy v]);
         assert results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]];
     }

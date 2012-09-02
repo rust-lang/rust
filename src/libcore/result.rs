@@ -376,6 +376,7 @@ impl<T:Eq,U:Eq> Result<T,U> : Eq {
 }
 
 #[cfg(test)]
+#[allow(non_implicitly_copyable_typarams)]
 mod tests {
     fn op1() -> result::Result<int, ~str> { result::Ok(666) }
 

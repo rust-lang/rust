@@ -55,6 +55,7 @@ fn inflate_buf(buf: &[const u8]) -> ~[u8] {
 }
 
 #[test]
+#[allow(non_implicitly_copyable_typarams)]
 fn test_flate_round_trip() {
     let r = rand::Rng();
     let mut words = ~[];

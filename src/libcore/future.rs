@@ -174,66 +174,69 @@ proto! future_pipe (
     }
 )
 
-#[test]
-fn test_from_value() {
-    let f = from_value(~"snail");
-    assert get(&f) == ~"snail";
-}
+#[allow(non_implicitly_copyable_typarams)]
+mod test {
+    #[test]
+    fn test_from_value() {
+        let f = from_value(~"snail");
+        assert get(&f) == ~"snail";
+    }
 
-#[test]
-fn test_from_port() {
-    let (po, ch) = future_pipe::init();
-    future_pipe::server::completed(ch, ~"whale");
-    let f = from_port(po);
-    assert get(&f) == ~"whale";
-}
+    #[test]
+    fn test_from_port() {
+        let (po, ch) = future_pipe::init();
+        future_pipe::server::completed(ch, ~"whale");
+        let f = from_port(po);
+        assert get(&f) == ~"whale";
+    }
 
-#[test]
-fn test_from_fn() {
-    let f = from_fn(|| ~"brail");
-    assert get(&f) == ~"brail";
-}
+    #[test]
+    fn test_from_fn() {
+        let f = from_fn(|| ~"brail");
+        assert get(&f) == ~"brail";
+    }
 
-#[test]
-fn test_interface_get() {
-    let f = from_value(~"fail");
-    assert f.get() == ~"fail";
-}
+    #[test]
+    fn test_interface_get() {
+        let f = from_value(~"fail");
+        assert f.get() == ~"fail";
+    }
 
-#[test]
-fn test_with() {
-    let f = from_value(~"nail");
-    assert with(&f, |v| *v) == ~"nail";
-}
+    #[test]
+    fn test_with() {
+        let f = from_value(~"nail");
+        assert with(&f, |v| copy *v) == ~"nail";
+    }
 
-#[test]
-fn test_get_ref_method() {
-    let f = from_value(22);
-    assert *f.get_ref() == 22;
-}
+    #[test]
+    fn test_get_ref_method() {
+        let f = from_value(22);
+        assert *f.get_ref() == 22;
+    }
 
-#[test]
-fn test_get_ref_fn() {
-    let f = from_value(22);
-    assert *get_ref(&f) == 22;
-}
+    #[test]
+    fn test_get_ref_fn() {
+        let f = from_value(22);
+        assert *get_ref(&f) == 22;
+    }
 
-#[test]
-fn test_interface_with() {
-    let f = from_value(~"kale");
-    assert f.with(|v| *v) == ~"kale";
-}
+    #[test]
+    fn test_interface_with() {
+        let f = from_value(~"kale");
+        assert f.with(|v| copy *v) == ~"kale";
+    }
 
-#[test]
-fn test_spawn() {
-    let f = spawn(|| ~"bale");
-    assert get(&f) == ~"bale";
-}
+    #[test]
+    fn test_spawn() {
+        let f = spawn(|| ~"bale");
+        assert get(&f) == ~"bale";
+    }
 
-#[test]
-#[should_fail]
-#[ignore(cfg(target_os = "win32"))]
-fn test_futurefail() {
-    let f = spawn(|| fail);
-    let _x: ~str = get(&f);
+    #[test]
+    #[should_fail]
+    #[ignore(cfg(target_os = "win32"))]
+    fn test_futurefail() {
+        let f = spawn(|| fail);
+        let _x: ~str = get(&f);
+    }
 }
