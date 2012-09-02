@@ -61,6 +61,7 @@ mod comm;
 mod bitv;
 mod deque;
 mod fun_treemap;
+#[allow(non_camel_case_types)] // XXX
 mod list;
 #[allow(non_camel_case_types)] // XXX
 mod map;
