@@ -547,9 +547,9 @@ fn sanitize(s: ~str) -> ~str {
           ',' => result += ~"_",
 
           '{' | '(' => result += ~"_of_",
-          'a' to 'z'
-          | 'A' to 'Z'
-          | '0' to '9'
+          'a' .. 'z'
+          | 'A' .. 'Z'
+          | '0' .. '9'
           | '_' => str::push_char(result,c),
           _ => {
             if c > 'z' && char::is_XID_continue(c) {

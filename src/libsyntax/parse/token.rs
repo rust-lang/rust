@@ -389,7 +389,6 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
         ~"of",
         ~"priv", ~"pub",
         ~"self", ~"send", ~"static",
-        ~"to",
         ~"use",
         ~"with"
     ];

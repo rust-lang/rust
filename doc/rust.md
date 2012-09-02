@@ -2211,14 +2211,14 @@ fn main() {
 ~~~~
 
 Multiple match patterns may be joined with the `|` operator.  A
-range of values may be specified with `to`. For example:
+range of values may be specified with `..`. For example:
 
 ~~~~
 # let x = 2;
 
 let message = match x {
   0 | 1  => ~"not many",
-  2 to 9 => ~"a few",
+  2 .. 9 => ~"a few",
   _      => ~"lots"
 };
 ~~~~

@@ -4,16 +4,16 @@
 
 fn main() {
     match 5u {
-      6u to 1u => { }
+      6u .. 1u => { }
       _ => { }
     };
 
     match "wow" {
-      "bar" to "foo" => { }
+      "bar" .. "foo" => { }
     };
 
     match 5u {
-      'c' to 100u => { }
+      'c' .. 100u => { }
       _ => { }
     };
 }

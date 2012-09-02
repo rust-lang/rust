@@ -263,7 +263,7 @@ fn from_str(num: &str) -> Option<float> {
 
    //The string must start with one of the following characters.
    match str::char_at(num, 0u) {
-      '-' | '+' | '0' to '9' | '.' => (),
+      '-' | '+' | '0' .. '9' | '.' => (),
       _ => return None
    }
 
@@ -286,7 +286,7 @@ fn from_str(num: &str) -> Option<float> {
        c   = char_range.ch;
        pos = char_range.next;
        match c {
-         '0' to '9' => {
+         '0' .. '9' => {
            total = total * 10f;
            total += ((c as int) - ('0' as int)) as float;
          }
