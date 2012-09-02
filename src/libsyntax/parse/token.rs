@@ -340,8 +340,8 @@ fn mk_ident_interner() -> ident_interner {
                      @~"[]", @~"unary-", @~"__extensions__", @~"self",
                      @~"item", @~"block", @~"stmt", @~"pat", @~"expr",
                      @~"ty", @~"ident", @~"path", @~"tt", @~"matchers",
-                     @~"str", @~"ty_visitor", @~"arg", @~"descrim",
-                     @~"__rust_abi", @~"__rust_stack_shim", @~"tydesc",
+                     @~"str", @~"TyVisitor", @~"arg", @~"descrim",
+                     @~"__rust_abi", @~"__rust_stack_shim", @~"TyDesc",
                      @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
                      @~"intrinsic", @~"__foreign_mod__"];
 

@@ -2562,7 +2562,7 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
       }
       ~"visit_tydesc" => {
           let tydesc_name = syntax::parse::token::special_idents::tydesc;
-          let ty_visitor_name = tcx.sess.ident_of(~"ty_visitor");
+          let ty_visitor_name = tcx.sess.ident_of(~"TyVisitor");
           assert tcx.intrinsic_defs.contains_key(tydesc_name);
           assert ccx.tcx.intrinsic_defs.contains_key(ty_visitor_name);
           let (_, tydesc_ty) = tcx.intrinsic_defs.get(tydesc_name);
