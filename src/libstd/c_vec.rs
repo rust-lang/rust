@@ -1,4 +1,3 @@
-#[deny(non_camel_case_types)];
 /*!
  * Library to interface with chunks of memory allocated in C.
  *

@@ -1,6 +1,5 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
-#[deny(non_camel_case_types)];
 import io::Reader;
 
 trait ToBase64 {

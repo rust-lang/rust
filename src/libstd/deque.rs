@@ -1,5 +1,3 @@
-#[deny(non_camel_case_types)];
-
 //! A deque. Untested as of yet. Likely buggy
 
 import option::{Some, None};
