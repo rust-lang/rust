@@ -3151,6 +3151,9 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
 // routine consults this table and performs these adaptations.  It returns a
 // new location for the borrowed result as well as a new type for the argument
 // that reflects the borrowed value and not the original.
+//
+// NB: "e" has already been translated; do not translate it again. If you do,
+// this will cause problems with autoderef and method receivers (bug #3357).
 fn adapt_borrowed_value(lv: lval_result,
                         e: @ast::expr,
                         e_ty: ty::t) -> {lv: lval_result,
@@ -3200,7 +3203,7 @@ fn adapt_borrowed_value(lv: lval_result,
 
       _ => {
         // Just take a reference. This is basically like trans_addr_of.
-        let mut {bcx, val, kind} = trans_temp_lval(bcx, e);
+        let mut {bcx, val, kind} = lv;
         let is_immediate = ty::type_is_immediate(e_ty);
         if (kind == lv_temporary && is_immediate) || kind == lv_owned_imm {
             val = do_spill(bcx, val, e_ty);

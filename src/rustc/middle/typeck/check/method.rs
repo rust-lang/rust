@@ -183,6 +183,7 @@ struct lookup {
             match ty::deref(self.tcx(), self.self_ty, false) {
               None => break,
               Some(mt) => {
+                debug!("(checking method) ... autodereffing");
                 self.self_ty = mt.ty;
                 self.derefs += 1u;
               }
