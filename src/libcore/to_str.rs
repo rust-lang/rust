@@ -44,7 +44,7 @@ impl (): ToStr {
     fn to_str() -> ~str { ~"()" }
 }
 impl ~str: ToStr {
-    fn to_str() -> ~str { self }
+    fn to_str() -> ~str { copy self }
 }
 impl &str: ToStr {
     fn to_str() -> ~str { str::from_slice(self) }

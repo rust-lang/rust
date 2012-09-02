@@ -419,7 +419,7 @@ fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     if (ln == 0u) { return ~[] }
 
     let mut end = ln;
-    let mut result = ~[];
+    let mut result = ~[mut ];
     while end > 0u {
         match rposition_between(v, 0u, end, f) {
           None => break,
@@ -430,7 +430,8 @@ fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
         }
     }
     push(result, slice(v, 0u, end));
-    reversed(result)
+    reverse(result);
+    return from_mut(move result);
 }
 
 /**
@@ -443,7 +444,7 @@ fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
 
     let mut end = ln;
     let mut count = n;
-    let mut result = ~[];
+    let mut result = ~[mut ];
     while end > 0u && count > 0u {
         match rposition_between(v, 0u, end, f) {
           None => break,
@@ -456,7 +457,8 @@ fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
         }
     }
     push(result, slice(v, 0u, end));
-    reversed(result)
+    reverse(result);
+    return from_mut(result);
 }
 
 // Mutators
@@ -1481,7 +1483,7 @@ impl<T: Ord> @[T]: Ord {
 impl<T: copy> ~[T]: add<&[const T],~[T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[T] {
-        append(self, rhs)
+        append(copy self, rhs)
     }
 }
 

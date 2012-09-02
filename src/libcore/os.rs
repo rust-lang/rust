@@ -213,7 +213,7 @@ mod global_env {
             for vec::each(rustrt::rust_env_pairs()) |p| {
                 let vs = str::splitn_char(p, '=', 1u);
                 assert vec::len(vs) == 2u;
-                vec::push(pairs, (vs[0], vs[1]));
+                vec::push(pairs, (copy vs[0], copy vs[1]));
             }
             return pairs;
         }
@@ -504,12 +504,14 @@ fn tmpdir() -> Path {
     }
 
     #[cfg(unix)]
+    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         option::get_default(getenv_nonempty("TMPDIR"),
                             Path("/tmp"))
     }
 
     #[cfg(windows)]
+    #[allow(non_implicitly_copyable_typarams)]
     fn lookup() -> Path {
         option::get_default(
                     option::or(getenv_nonempty("TMP"),
@@ -609,6 +611,7 @@ fn make_dir(p: &Path, mode: c_int) -> bool {
 }
 
 /// Lists the contents of a directory
+#[allow(non_implicitly_copyable_typarams)]
 fn list_dir(p: &Path) -> ~[~str] {
 
     #[cfg(unix)]

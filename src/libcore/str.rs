@@ -605,7 +605,7 @@ pure fn lines(s: &str) -> ~[~str] { split_char(s, '\n') }
 pure fn lines_any(s: &str) -> ~[~str] {
     vec::map(lines(s), |s| {
         let l = len(s);
-        let mut cp = s;
+        let mut cp = copy s;
         if l > 0u && s[l - 1u] == '\r' as u8 {
             unsafe { unsafe::set_len(cp, l - 1u); }
         }
@@ -2068,7 +2068,7 @@ impl ~str: UniqueStr {
 impl ~str: add<&str,~str> {
     #[inline(always)]
     pure fn add(rhs: &str) -> ~str {
-        append(self, rhs)
+        append(copy self, rhs)
     }
 }
 

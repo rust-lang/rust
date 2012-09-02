@@ -121,7 +121,7 @@ pure fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
 }
 
 pure fn to_vec<A:copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
-    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(r, ~[a]))
+    foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy r, ~[a]))
 }
 
 pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: A) -> bool {
