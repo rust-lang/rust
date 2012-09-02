@@ -1,4 +1,3 @@
-#[deny(non_camel_case_types)];
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 

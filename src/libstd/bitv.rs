@@ -1,4 +1,3 @@
-#[deny(non_camel_case_types)];
 import vec::{to_mut, from_elem};
 
 export Bitv;

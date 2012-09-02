@@ -1,5 +1,3 @@
-#[deny(non_camel_case_types)];
-
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
 

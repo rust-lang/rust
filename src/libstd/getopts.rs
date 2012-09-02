@@ -1,5 +1,3 @@
-#[deny(non_camel_case_types)];
-
 /*!
  * Simple getopt alternative.
  *

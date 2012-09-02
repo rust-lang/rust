@@ -11,6 +11,8 @@
 #[no_core];
 
 #[allow(vecs_implicitly_copyable)];
+// XXX: deny after snapshot
+#[warn(non_camel_case_types)];
 
 use core(vers = "0.4");
 import core::*;
@@ -30,41 +32,28 @@ export cell;
 
 // General io and system-services modules
 
-#[warn(non_camel_case_types)]
 mod net;
-#[warn(non_camel_case_types)]
 mod net_ip;
-#[warn(non_camel_case_types)]
 mod net_tcp;
-#[warn(non_camel_case_types)]
 mod net_url;
 
 // libuv modules
-#[warn(non_camel_case_types)]
 mod uv;
 mod uv_ll;
-#[warn(non_camel_case_types)]
 mod uv_iotask;
-#[warn(non_camel_case_types)]
 mod uv_global_loop;
 
 
 // Utility modules
 
-#[warn(non_camel_case_types)]
 mod c_vec;
-#[warn(non_camel_case_types)]
 mod timer;
-#[warn(non_camel_case_types)]
 mod cell;
 
 // Concurrency
 
-#[warn(non_camel_case_types)]
 mod sync;
-#[warn(non_camel_case_types)]
 mod arc;
-#[warn(non_camel_case_types)]
 mod comm;
 
 // Collections
@@ -73,41 +62,32 @@ mod bitv;
 mod deque;
 mod fun_treemap;
 mod list;
+#[allow(non_camel_case_types)] // XXX
 mod map;
+#[allow(non_camel_case_types)] // XXX
 mod rope;
+#[allow(non_camel_case_types)] // XXX
 mod smallintmap;
+#[allow(non_camel_case_types)] // XXX
 mod sort;
+#[allow(non_camel_case_types)] // XXX
 mod treemap;
 
 // And ... other stuff
 
-#[warn(non_camel_case_types)]
 mod ebml;
-#[warn(non_camel_case_types)]
 mod dbg;
-#[warn(non_camel_case_types)]
 mod getopts;
-#[warn(non_camel_case_types)]
 mod json;
-#[warn(non_camel_case_types)]
 mod sha1;
-#[warn(non_camel_case_types)]
 mod md4;
-#[warn(non_camel_case_types)]
 mod tempfile;
-#[warn(non_camel_case_types)]
 mod term;
-#[warn(non_camel_case_types)]
 mod time;
-#[warn(non_camel_case_types)]
 mod prettyprint;
-#[warn(non_camel_case_types)]
 mod arena;
-#[warn(non_camel_case_types)]
 mod par;
-#[warn(non_camel_case_types)]
 mod cmp;
-#[warn(non_camel_case_types)]
 mod base64;
 
 #[cfg(unicode)]
@@ -116,7 +96,9 @@ mod unicode;
 
 // Compiler support modules
 
+#[allow(non_camel_case_types)] // XXX
 mod test;
+#[allow(non_camel_case_types)] // XXX
 mod serialization;
 
 // Local Variables:

@@ -1,5 +1,4 @@
 // Dynamic arenas.
-#[warn(non_camel_case_types)];
 
 // Arenas are used to quickly allocate objects that share a
 // lifetime. The arena uses ~[u8] vectors as a backing store to

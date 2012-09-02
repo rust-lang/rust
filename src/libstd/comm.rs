@@ -8,9 +8,6 @@ Higher level communication abstractions.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-// Make sure we follow the new conventions
-#[forbid(non_camel_case_types)];
-
 import pipes::{Channel, Recv, Chan, Port, Selectable};
 
 export DuplexStream;
