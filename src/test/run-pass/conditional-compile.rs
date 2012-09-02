@@ -83,8 +83,8 @@ mod test_foreign_items {
     #[abi = "cdecl"]
     extern mod rustrt {
         #[cfg(bogus)]
-        fn rust_getcwd() -> *();
-        fn rust_getcwd() -> *();
+        fn rust_getcwd() -> ~str;
+        fn rust_getcwd() -> ~str;
     }
 }
 
