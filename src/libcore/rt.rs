@@ -8,6 +8,7 @@ import libc::c_void;
 import libc::size_t;
 import libc::uintptr_t;
 
+#[allow(non_camel_case_types)]
 type rust_task = c_void;
 
 extern mod rustrt {

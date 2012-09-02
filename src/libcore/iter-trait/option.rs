@@ -1,3 +1,4 @@
+#[allow(non_camel_case_types)]
 type IMPL_T<A> = Option<A>;
 
 pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {

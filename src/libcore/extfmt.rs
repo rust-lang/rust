@@ -1,4 +1,5 @@
 #[doc(hidden)];
+#[allow(non_camel_case_types)];
 
 /*
 Syntax Extension: fmt

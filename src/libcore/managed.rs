@@ -9,7 +9,6 @@ mutation when the data structure should be immutable.
 
 */
 
-#[forbid(non_camel_case_types)];
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 

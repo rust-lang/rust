@@ -1,5 +1,7 @@
 // Core operators and kinds.
 
+#[allow(non_camel_case_types)];
+
 #[cfg(notest)]
 #[lang="const"]
 trait const {
