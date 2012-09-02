@@ -31,7 +31,7 @@
 // Don't link to core. We are core.
 #[no_core];
 
-#[deny(vecs_implicitly_copyable)];
+#[warn(vecs_implicitly_copyable)];
 // XXX: Switch to deny after snapshot
 #[warn(non_camel_case_types)];
 
