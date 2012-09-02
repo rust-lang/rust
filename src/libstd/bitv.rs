@@ -1,27 +1,6 @@
 use vec::{to_mut, from_elem};
 
-export Bitv;
-export union;
-export Union;
-export intersect;
-export Intersect;
-export assign;
-export Assign;
-export difference;
-export Difference;
-export clone;
-export get;
-export equal;
-export clear;
-export set_all;
-export invert;
-export set;
-export is_true;
-export is_false;
-export to_vec;
-export to_str;
-export eq_vec;
-export methods;
+export Bitv, from_bytes, from_bools, from_fn;
 
 /// a mask that has a 1 for each defined bit in a small_bitv, assuming n bits
 #[inline(always)]
