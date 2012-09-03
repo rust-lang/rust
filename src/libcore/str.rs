@@ -2226,6 +2226,13 @@ mod tests {
     }
 
     #[test]
+    fn test_eq_slice() {
+        assert (eq_slice(view("foobar", 0, 3), "foo"));
+        assert (eq_slice(view("barfoo", 3, 6), "foo"));
+        assert (!eq_slice(view("foobar", 3, 6), "foo"));
+    }
+
+    #[test]
     fn test_le() {
         assert (le(&"", &""));
         assert (le(&"", &"foo"));
