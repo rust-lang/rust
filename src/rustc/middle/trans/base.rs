@@ -2504,7 +2504,6 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
 
     // Check whether this fn has an inlined copy and, if so, redirect fn_id to
     // the local id of the inlined copy.
-    let original_crate = fn_id.crate;
     let fn_id = if fn_id.crate != ast::local_crate {
         maybe_instantiate_inline(ccx, fn_id)
     } else { fn_id };
@@ -2513,27 +2512,27 @@ fn lval_static_fn_inner(bcx: block, fn_id: ast::def_id, id: ast::node_id,
         let local_with_type_params =
             fn_id.crate == ast::local_crate && tys.len() > 0u;
 
-        // Rust intrinsic functions should always be monomorphised
-        let inlined_rust_intrinsic = {
-            if fn_id.crate == ast::local_crate
-                && original_crate != ast::local_crate {
+        // Intrinsic functions should always be monomorphised. In particular,
+        // if we see an intrinsic that is inlined from a different crate, we
+        // want to reemit the intrinsic instead of trying to call it in the
+        // other crate.
+        let rust_intrinsic = if fn_id.crate == ast::local_crate {
 
-                let map_node = session::expect(
-                    ccx.sess,
-                    ccx.tcx.items.find(fn_id.node),
-                    || fmt!("inlined item should be in ast map"));
+            let map_node = session::expect(
+                ccx.sess,
+                ccx.tcx.items.find(fn_id.node),
+                || fmt!("local item should be in ast map"));
 
-                match map_node {
-                  ast_map::node_foreign_item(
-                      _, ast::foreign_abi_rust_intrinsic, _) => true,
-                  _ => false
-                }
-            } else {
-                false
+            match map_node {
+              ast_map::node_foreign_item(
+                  _, ast::foreign_abi_rust_intrinsic, _) => true,
+              _ => false
             }
+        } else {
+            false
         };
 
-        local_with_type_params || inlined_rust_intrinsic
+        local_with_type_params || rust_intrinsic
     };
 
     if must_monomorphise {

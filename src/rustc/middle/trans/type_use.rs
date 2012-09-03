@@ -94,11 +94,13 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
               ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
               ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" =>
               { 0u }
-              ~"visit_tydesc" | ~"forget" | ~"addr_of" => {
+              ~"visit_tydesc" | ~"forget" | ~"addr_of" |
+              ~"frame_address" | ~"morestack_addr" => {
                 0u
               }
               // would be cool to make these an enum instead of strings!
-              _ => fail ~"unknown intrinsic in type_use"
+              _ => fail fmt!("unknown intrinsic in type_use %?",
+                             cx.ccx.sess.str_of(i.ident))
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
