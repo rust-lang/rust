@@ -759,7 +759,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
 
     for vec::each(foreign_mod.items) |foreign_item| {
       match foreign_item.node {
-        ast::foreign_item_fn(_, _, typarams) => {
+        ast::foreign_item_fn(*) => {
           let id = foreign_item.id;
           if abi != ast::foreign_abi_rust_intrinsic {
               let llwrapfn = get_item_val(ccx, id);
@@ -772,25 +772,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
                   build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
               }
           } else {
-              // Intrinsics with type parameters are emitted by
-              // monomorphic_fn, but ones without are emitted here
-              if typarams.is_empty() {
-                  let llwrapfn = get_item_val(ccx, id);
-                  let path = match ccx.tcx.items.find(id) {
-                      Some(ast_map::node_foreign_item(_, _, pt)) => pt,
-                      _ => {
-                          ccx.sess.span_bug(foreign_item.span,
-                                            ~"can't find intrinsic path")
-                      }
-                  };
-                  let psubsts = {
-                      tys: ~[],
-                      vtables: None,
-                      bounds: @~[]
-                  };
-                  trans_intrinsic(ccx, llwrapfn, foreign_item,
-                                  *path, psubsts, None);
-              }
+              // Intrinsics are emitted by monomorphic fn
           }
         }
         ast::foreign_item_const(*) => {
