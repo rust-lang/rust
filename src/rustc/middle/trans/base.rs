@@ -3112,24 +3112,24 @@ fn trans_arg_expr(cx: block, arg: ty::arg, lldestty: TypeRef, e: @ast::expr,
 
           ast::by_copy | ast::by_move => {
             // Ensure that an owned copy of the value is in memory:
-            let alloc = alloc_ty(bcx, arg.ty);
+            let alloc = alloc_ty(bcx, e_ty);
             let move_out = arg_mode == ast::by_move ||
                 ccx.maps.last_use_map.contains_key(e.id);
             if lv.kind == lv_temporary { revoke_clean(bcx, val); }
-            if lv.kind == lv_owned || !ty::type_is_immediate(arg.ty) {
-                memmove_ty(bcx, alloc, val, arg.ty);
-                if move_out && ty::type_needs_drop(ccx.tcx, arg.ty) {
-                    bcx = zero_mem(bcx, val, arg.ty);
+            if lv.kind == lv_owned || !ty::type_is_immediate(e_ty) {
+                memmove_ty(bcx, alloc, val, e_ty);
+                if move_out && ty::type_needs_drop(ccx.tcx, e_ty) {
+                    bcx = zero_mem(bcx, val, e_ty);
                 }
             } else { Store(bcx, val, alloc); }
             val = alloc;
             if lv.kind != lv_temporary && !move_out {
-                bcx = take_ty(bcx, val, arg.ty);
+                bcx = take_ty(bcx, val, e_ty);
             }
 
             // In the event that failure occurs before the call actually
             // happens, have to cleanup this copy:
-            add_clean_temp_mem(bcx, val, arg.ty);
+            add_clean_temp_mem(bcx, val, e_ty);
             vec::push(temp_cleanups, val);
           }
         }
