@@ -9,6 +9,7 @@ export le;
 export merge_sort;
 export quick_sort;
 export quick_sort3;
+export Sort;
 
 type le<T> = pure fn(v1: &T, v2: &T) -> bool;
 
@@ -158,6 +159,14 @@ fn qsort3<T: copy Ord Eq>(arr: &[mut T], left: int, right: int) {
 fn quick_sort3<T: copy Ord Eq>(arr: &[mut T]) {
     if arr.len() <= 1 { return; }
     qsort3(arr, 0, (arr.len() - 1) as int);
+}
+
+trait Sort {
+    fn qsort(self);
+}
+
+impl<T: copy Ord Eq> &[mut T] : Sort {
+    fn qsort(self) { quick_sort3(self); }
 }
 
 #[cfg(test)]
