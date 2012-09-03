@@ -3,7 +3,7 @@ struct Point {
     y: int;
 }
 
-impl Point : ops::add<int,int> {
+impl Point : ops::Add<int,int> {
     pure fn add(&&z: int) -> int {
         self.x + self.y + z
     }

@@ -1605,7 +1605,7 @@ fn remove_copyable(k: kind) -> kind {
     k - kind_(KIND_MASK_COPY | KIND_MASK_DEFAULT_MODE)
 }
 
-impl kind: ops::bitand<kind,kind> {
+impl kind: ops::BitAnd<kind,kind> {
     pure fn bitand(other: kind) -> kind {
         unchecked {
             lower_kind(self, other)
@@ -1613,7 +1613,7 @@ impl kind: ops::bitand<kind,kind> {
     }
 }
 
-impl kind: ops::bitor<kind,kind> {
+impl kind: ops::BitOr<kind,kind> {
     pure fn bitor(other: kind) -> kind {
         unchecked {
             raise_kind(self, other)
@@ -1621,7 +1621,7 @@ impl kind: ops::bitor<kind,kind> {
     }
 }
 
-impl kind: ops::sub<kind,kind> {
+impl kind: ops::Sub<kind,kind> {
     pure fn sub(other: kind) -> kind {
         unchecked {
             kind_(*self & !*other)

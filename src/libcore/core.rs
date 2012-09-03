@@ -44,28 +44,28 @@ export ToStr;
 // The compiler has special knowlege of these so we must not duplicate them
 // when compiling for testing
 #[cfg(notest)]
-import ops::{const, copy, send, owned};
+import ops::{Const, Copy, Send, Owned};
 #[cfg(notest)]
-import ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor};
+import ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 #[cfg(notest)]
-import ops::{shl, shr, index};
+import ops::{Shl, Shr, Index};
 
 #[cfg(notest)]
-export const, copy, send, owned;
+export Const, Copy, Send, Owned;
 #[cfg(notest)]
-export add, sub, mul, div, modulo, neg, bitand, bitor, bitxor;
+export Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor;
 #[cfg(notest)]
-export shl, shr, index;
+export Shl, Shr, Index;
 
 #[cfg(test)]
 use coreops(name = "core", vers = "0.4");
 
 #[cfg(test)]
-import coreops::ops::{const, copy, send, owned};
+import coreops::ops::{Const, Copy, Send, Owned};
 #[cfg(test)]
-import coreops::ops::{add, sub, mul, div, modulo, neg, bitand, bitor, bitxor};
+import coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 #[cfg(test)]
-import coreops::ops::{shl, shr, index};
+import coreops::ops::{Shl, Shr, Index};
 
 
 // Export the log levels as global constants. Higher levels mean

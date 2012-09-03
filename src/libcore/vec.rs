@@ -1480,14 +1480,14 @@ impl<T: Ord> @[T]: Ord {
 }
 
 #[cfg(notest)]
-impl<T: copy> ~[T]: add<&[const T],~[T]> {
+impl<T: copy> ~[T]: Add<&[const T],~[T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[T] {
         append(copy self, rhs)
     }
 }
 
-impl<T: copy> ~[mut T]: add<&[const T],~[mut T]> {
+impl<T: copy> ~[mut T]: Add<&[const T],~[mut T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> ~[mut T] {
         append_mut(self, rhs)

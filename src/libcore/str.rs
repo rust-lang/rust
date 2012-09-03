@@ -2065,7 +2065,7 @@ impl ~str: UniqueStr {
 }
 
 #[cfg(notest)]
-impl ~str: add<&str,~str> {
+impl ~str: Add<&str,~str> {
     #[inline(always)]
     pure fn add(rhs: &str) -> ~str {
         append(copy self, rhs)
