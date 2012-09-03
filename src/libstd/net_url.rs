@@ -14,7 +14,7 @@ export encode, decode;
 export encode_component, decode_component;
 export encode_form_urlencoded, decode_form_urlencoded;
 
-type Url = {
+struct Url {
     scheme: ~str,
     user: Option<UserInfo>,
     host: ~str,
@@ -22,7 +22,7 @@ type Url = {
     path: ~str,
     query: Query,
     fragment: Option<~str>
-};
+}
 
 type UserInfo = {
     user: ~str,
@@ -34,7 +34,7 @@ type Query = ~[(~str, ~str)];
 fn url(-scheme: ~str, -user: Option<UserInfo>, -host: ~str,
        -port: Option<~str>, -path: ~str, -query: Query,
        -fragment: Option<~str>) -> Url {
-    { scheme: scheme, user: user, host: host, port: port,
+    Url { scheme: scheme, user: user, host: host, port: port,
      path: path, query: query, fragment: fragment }
 }
 
