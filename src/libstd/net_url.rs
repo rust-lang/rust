@@ -9,6 +9,7 @@ import dvec::DVec;
 export Url, url, userinfo, query;
 export from_str, to_str;
 export get_scheme;
+export query_to_str;
 
 export encode, decode;
 export encode_component, decode_component;
