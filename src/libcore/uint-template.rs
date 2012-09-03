@@ -4,6 +4,7 @@
 
 import T = inst::T;
 import cmp::{Eq, Ord};
+import from_str::FromStr;
 
 export min_value, max_value;
 export min, max;
@@ -144,6 +145,10 @@ fn parse_buf(buf: &[const u8], radix: uint) -> Option<T> {
 
 /// Parse a string to an int
 fn from_str(s: &str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
+
+impl T : FromStr {
+    static fn from_str(s: &str) -> Option<T> { from_str(s) }
+}
 
 /// Parse a string as an unsigned integer.
 fn from_str_radix(buf: &str, radix: u64) -> Option<u64> {

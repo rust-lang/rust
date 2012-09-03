@@ -49,6 +49,7 @@ export extfmt;
 export rt;
 export tuple;
 export to_str, to_bytes;
+export from_str;
 export util;
 export dvec, dvec_iter;
 export dlist, dlist_iter;
@@ -188,6 +189,7 @@ mod option_iter {
 mod result;
 mod to_str;
 mod to_bytes;
+mod from_str;
 mod util;
 
 // Data structure modules
