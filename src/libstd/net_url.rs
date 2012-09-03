@@ -6,7 +6,7 @@ import map::{hashmap, str_hash};
 import io::{Reader, ReaderUtil};
 import dvec::DVec;
 
-export Url, userinfo, query;
+export Url, url, userinfo, query;
 export from_str, to_str;
 export get_scheme;
 
