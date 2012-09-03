@@ -24,6 +24,7 @@ export
 
    // Reinterpretation
    as_bytes,
+   as_bytes_slice,
    as_buf,
    as_c_str,
 
@@ -1749,6 +1750,10 @@ pure fn as_bytes<T>(s: ~str, f: fn(~[u8]) -> T) -> T {
         let v: *~[u8] = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         f(*v)
     }
+}
+
+pure fn as_bytes_slice(s: &a/str) -> &a/[u8] {
+    unsafe { ::unsafe::reinterpret_cast(&s) }
 }
 
 /**
