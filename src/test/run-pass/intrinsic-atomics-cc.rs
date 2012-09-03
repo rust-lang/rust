@@ -1,8 +1,6 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_intrinsic.rs
 
-// xfail-test
-
 use cci_intrinsic;
 import cci_intrinsic::atomic_xchg;
 
