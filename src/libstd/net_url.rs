@@ -42,7 +42,7 @@ fn userinfo(-user: ~str, -pass: Option<~str>) -> UserInfo {
     {user: user, pass: pass}
 }
 
-fn encode_inner(s: ~str, full_url: bool) -> ~str {
+fn encode_inner(s: &str, full_url: bool) -> ~str {
     do io::with_str_reader(s) |rdr| {
         let mut out = ~"";
 
@@ -87,7 +87,7 @@ fn encode_inner(s: ~str, full_url: bool) -> ~str {
  *
  * This function is compliant with RFC 3986.
  */
-fn encode(s: ~str) -> ~str {
+fn encode(s: &str) -> ~str {
     encode_inner(s, true)
 }
 
@@ -97,7 +97,7 @@ fn encode(s: ~str) -> ~str {
  *
  * This function is compliant with RFC 3986.
  */
-fn encode_component(s: ~str) -> ~str {
+fn encode_component(s: &str) -> ~str {
     encode_inner(s, false)
 }
 
@@ -917,30 +917,30 @@ mod tests {
 
     #[test]
     fn test_encode() {
-        assert encode(~"") == ~"";
-        assert encode(~"http://example.com") == ~"http://example.com";
-        assert encode(~"foo bar% baz") == ~"foo%20bar%25%20baz";
-        assert encode(~" ") == ~"%20";
-        assert encode(~"!") == ~"!";
-        assert encode(~"\"") == ~"\"";
-        assert encode(~"#") == ~"#";
-        assert encode(~"$") == ~"$";
-        assert encode(~"%") == ~"%25";
-        assert encode(~"&") == ~"&";
-        assert encode(~"'") == ~"%27";
-        assert encode(~"(") == ~"(";
-        assert encode(~")") == ~")";
-        assert encode(~"*") == ~"*";
-        assert encode(~"+") == ~"+";
-        assert encode(~",") == ~",";
-        assert encode(~"/") == ~"/";
-        assert encode(~":") == ~":";
-        assert encode(~";") == ~";";
-        assert encode(~"=") == ~"=";
-        assert encode(~"?") == ~"?";
-        assert encode(~"@") == ~"@";
-        assert encode(~"[") == ~"[";
-        assert encode(~"]") == ~"]";
+        assert encode("") == ~"";
+        assert encode("http://example.com") == ~"http://example.com";
+        assert encode("foo bar% baz") == ~"foo%20bar%25%20baz";
+        assert encode(" ") == ~"%20";
+        assert encode("!") == ~"!";
+        assert encode("\"") == ~"\"";
+        assert encode("#") == ~"#";
+        assert encode("$") == ~"$";
+        assert encode("%") == ~"%25";
+        assert encode("&") == ~"&";
+        assert encode("'") == ~"%27";
+        assert encode("(") == ~"(";
+        assert encode(")") == ~")";
+        assert encode("*") == ~"*";
+        assert encode("+") == ~"+";
+        assert encode(",") == ~",";
+        assert encode("/") == ~"/";
+        assert encode(":") == ~":";
+        assert encode(";") == ~";";
+        assert encode("=") == ~"=";
+        assert encode("?") == ~"?";
+        assert encode("@") == ~"@";
+        assert encode("[") == ~"[";
+        assert encode("]") == ~"]";
     }
 
     #[test]
