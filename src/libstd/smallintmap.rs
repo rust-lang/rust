@@ -134,7 +134,7 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
     }
 }
 
-impl<V: copy> smallintmap<V>: ops::index<uint, V> {
+impl<V: copy> smallintmap<V>: ops::Index<uint, V> {
     pure fn index(&&key: uint) -> V {
         unchecked {
             get(self, key)

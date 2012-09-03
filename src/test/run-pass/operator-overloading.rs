@@ -3,25 +3,25 @@ struct Point {
     y: int;
 }
 
-impl Point : ops::add<Point,Point> {
+impl Point : ops::Add<Point,Point> {
     pure fn add(other: Point) -> Point {
         Point {x: self.x + other.x, y: self.y + other.y}
     }
 }
 
-impl Point : ops::sub<Point,Point> {
+impl Point : ops::Sub<Point,Point> {
     pure fn sub(other: Point) -> Point {
         Point {x: self.x - other.x, y: self.y - other.y}
     }
 }
 
-impl Point : ops::neg<Point> {
+impl Point : ops::Neg<Point> {
     pure fn neg() -> Point {
         Point {x: -self.x, y: -self.y}
     }
 }
 
-impl Point : ops::index<bool,int> {
+impl Point : ops::Index<bool,int> {
     pure fn index(&&x: bool) -> int {
         if x { self.x } else { self.y }
     }

@@ -1,100 +1,98 @@
 // Core operators and kinds.
 
-#[allow(non_camel_case_types)];
-
 #[cfg(notest)]
 #[lang="const"]
-trait const {
+trait Const {
     // Empty.
 }
 
 #[cfg(notest)]
 #[lang="copy"]
-trait copy {
+trait Copy {
     // Empty.
 }
 
 #[cfg(notest)]
 #[lang="send"]
-trait send {
+trait Send {
     // Empty.
 }
 
 #[cfg(notest)]
 #[lang="owned"]
-trait owned {
+trait Owned {
     // Empty.
 }
 
 #[cfg(notest)]
 #[lang="add"]
-trait add<RHS,Result> {
+trait Add<RHS,Result> {
     pure fn add(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="sub"]
-trait sub<RHS,Result> {
+trait Sub<RHS,Result> {
     pure fn sub(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="mul"]
-trait mul<RHS,Result> {
+trait Mul<RHS,Result> {
     pure fn mul(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="div"]
-trait div<RHS,Result> {
+trait Div<RHS,Result> {
     pure fn div(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="modulo"]
-trait modulo<RHS,Result> {
+trait Modulo<RHS,Result> {
     pure fn modulo(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="neg"]
-trait neg<Result> {
+trait Neg<Result> {
     pure fn neg() -> Result;
 }
 
 #[cfg(notest)]
 #[lang="bitand"]
-trait bitand<RHS,Result> {
+trait BitAnd<RHS,Result> {
     pure fn bitand(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="bitor"]
-trait bitor<RHS,Result> {
+trait BitOr<RHS,Result> {
     pure fn bitor(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="bitxor"]
-trait bitxor<RHS,Result> {
+trait BitXor<RHS,Result> {
     pure fn bitxor(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="shl"]
-trait shl<RHS,Result> {
+trait Shl<RHS,Result> {
     pure fn shl(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="shr"]
-trait shr<RHS,Result> {
+trait Shr<RHS,Result> {
     pure fn shr(rhs: RHS) -> Result;
 }
 
 #[cfg(notest)]
 #[lang="index"]
-trait index<Index,Result> {
+trait Index<Index,Result> {
     pure fn index(index: Index) -> Result;
 }
 

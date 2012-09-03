@@ -133,7 +133,7 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> @[T] {
 }
 
 #[cfg(notest)]
-impl<T: copy> @[T]: add<&[const T],@[T]> {
+impl<T: copy> @[T]: Add<&[const T],@[T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> @[T] {
         append(self, rhs)

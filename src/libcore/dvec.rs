@@ -327,7 +327,7 @@ impl<A: copy> DVec<A> {
     }
 }
 
-impl<A:copy> DVec<A>: index<uint,A> {
+impl<A:copy> DVec<A>: Index<uint,A> {
     pure fn index(&&idx: uint) -> A {
         self.get_elt(idx)
     }
