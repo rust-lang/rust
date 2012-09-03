@@ -2,6 +2,9 @@
  * A simple map based on a vector for small integer keys. Space requirements
  * are O(highest integer key).
  */
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 use core::option;
 use core::option::{Some, None};
 use dvec::DVec;
@@ -26,7 +29,7 @@ fn mk<T: copy>() -> smallintmap<T> {
  * the specified key then the original value is replaced.
  */
 #[inline(always)]
-fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
+fn insert<T: copy>(self: smallintmap<T>, key: uint, +val: T) {
     //io::println(fmt!("%?", key));
     self.v.grow_set_elt(key, None, Some(val));
 }
