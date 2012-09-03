@@ -1,4 +1,6 @@
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 use iotask = uv::iotask::IoTask;
 use interact = uv::iotask::interact;
@@ -44,8 +46,8 @@ type ParseAddrErr = {
  *
  * * ip - a `std::net::ip::ip_addr`
  */
-fn format_addr(ip: IpAddr) -> ~str {
-    match ip {
+fn format_addr(ip: &IpAddr) -> ~str {
+    match *ip {
       Ipv4(addr) =>  unsafe {
         let result = uv_ip4_name(&addr);
         if result == ~"" {
@@ -82,7 +84,7 @@ enum IpGetAddrErr {
  * a vector of `ip_addr` results, in the case of success, or an error
  * object in the case of failure
  */
-fn get_addr(++node: ~str, iotask: iotask)
+fn get_addr(node: &str, iotask: iotask)
         -> result::Result<~[IpAddr], IpGetAddrErr> {
     do core::comm::listen |output_ch| {
         do str::as_buf(node) |node_ptr, len| unsafe {
@@ -131,7 +133,7 @@ mod v4 {
      *
      * * an `ip_addr` of the `ipv4` variant
      */
-    fn parse_addr(ip: ~str) -> IpAddr {
+    fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => copy(addr),
           result::Err(err_data) => fail err_data.err_msg
@@ -151,7 +153,7 @@ mod v4 {
             *((ptr::addr_of(self)) as *u32)
         }
     }
-    fn parse_to_ipv4_rep(ip: ~str) -> result::Result<Ipv4Rep, ~str> {
+    fn parse_to_ipv4_rep(ip: &str) -> result::Result<Ipv4Rep, ~str> {
         let parts = vec::map(str::split_char(ip, '.'), |s| {
             match uint::from_str(s) {
               Some(n) if n <= 255u => n,
@@ -169,7 +171,7 @@ mod v4 {
                         c: parts[2] as u8, d: parts[3] as u8})
         }
     }
-    fn try_parse_addr(ip: ~str) -> result::Result<IpAddr,ParseAddrErr> {
+    fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             let INADDR_NONE = ll::get_INADDR_NONE();
             let ip_rep_result = parse_to_ipv4_rep(ip);
@@ -181,7 +183,7 @@ mod v4 {
             let input_is_inaddr_none =
                 result::get(ip_rep_result).as_u32() == INADDR_NONE;
 
-            let new_addr = uv_ip4_addr(ip, 22);
+            let new_addr = uv_ip4_addr(str::from_slice(ip), 22);
             let reformatted_name = uv_ip4_name(&new_addr);
             log(debug, fmt!("try_parse_addr: input ip: %s reparsed ip: %s",
                             ip, reformatted_name));
@@ -217,22 +219,22 @@ mod v6 {
      *
      * * an `ip_addr` of the `ipv6` variant
      */
-    fn parse_addr(ip: ~str) -> IpAddr {
+    fn parse_addr(ip: &str) -> IpAddr {
         match try_parse_addr(ip) {
           result::Ok(addr) => copy(addr),
           result::Err(err_data) => fail err_data.err_msg
         }
     }
-    fn try_parse_addr(ip: ~str) -> result::Result<IpAddr,ParseAddrErr> {
+    fn try_parse_addr(ip: &str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             // need to figure out how to establish a parse failure..
-            let new_addr = uv_ip6_addr(ip, 22);
+            let new_addr = uv_ip6_addr(str::from_slice(ip), 22);
             let reparsed_name = uv_ip6_name(&new_addr);
             log(debug, fmt!("v6::try_parse_addr ip: '%s' reparsed '%s'",
                             ip, reparsed_name));
             // '::' appears to be uv_ip6_name() returns for bogus
             // parses..
-            if  ip != ~"::" && reparsed_name == ~"::" {
+            if  ip != &"::" && reparsed_name == ~"::" {
                 result::Err({err_msg:fmt!("failed to parse '%s'",
                                            ip)})
             }
@@ -311,13 +313,13 @@ mod test {
     #[test]
     fn test_ip_ipv4_parse_and_format_ip() {
         let localhost_str = ~"127.0.0.1";
-        assert (format_addr(v4::parse_addr(localhost_str))
+        assert (format_addr(&v4::parse_addr(localhost_str))
                 == localhost_str)
     }
     #[test]
     fn test_ip_ipv6_parse_and_format_ip() {
         let localhost_str = ~"::1";
-        let format_result = format_addr(v6::parse_addr(localhost_str));
+        let format_result = format_addr(&v6::parse_addr(localhost_str));
         log(debug, fmt!("results: expected: '%s' actual: '%s'",
             localhost_str, format_result));
         assert format_result == localhost_str;
@@ -367,7 +369,7 @@ mod test {
               Ipv6(_) => ~"IPv6"
             };
             log(debug, fmt!("test_get_addr: result %s: '%s'",
-                            ipv_prefix, format_addr(r)));
+                            ipv_prefix, format_addr(&r)));
         }
         // at least one result.. this is going to vary from system
         // to system, based on stuff like the contents of /etc/hosts

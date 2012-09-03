@@ -155,7 +155,7 @@ fn connect(-input_ip: ip::IpAddr, port: uint,
             log(debug, ~"dealing w/ ipv4 connection..");
             let connect_req_ptr =
                 ptr::addr_of((*socket_data_ptr).connect_req);
-            let addr_str = ip::format_addr(input_ip);
+            let addr_str = ip::format_addr(&input_ip);
             let connect_result = match input_ip {
               ip::Ipv4(addr) => {
                 // have to "recreate" the sockaddr_in/6
@@ -610,7 +610,7 @@ fn listen_common(-host_ip: ip::IpAddr, port: uint, backlog: uint,
                 uv::ll::set_data_for_uv_handle(
                     server_stream_ptr,
                     server_data_ptr);
-                let addr_str = ip::format_addr(loc_ip);
+                let addr_str = ip::format_addr(&loc_ip);
                 let bind_result = match loc_ip {
                   ip::Ipv4(addr) => {
                     log(debug, fmt!("addr: %?", addr));
