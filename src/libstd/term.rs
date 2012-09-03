@@ -1,4 +1,6 @@
 //! Simple ANSI color library
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 use core::Option;
 
