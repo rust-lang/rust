@@ -5,6 +5,8 @@
  * very naive algorithm, but it will probably be updated to be a
  * red-black tree or something else.
  */
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
 use core::cmp::{Eq, Ord};
 use core::option::{Some, None};
@@ -30,7 +32,7 @@ enum tree_node<K, V> = {
 fn treemap<K, V>() -> treemap<K, V> { @mut None }
 
 /// Insert a value into the map
-fn insert<K: copy Eq Ord, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
+fn insert<K: copy Eq Ord, V: copy>(m: &mut tree_edge<K, V>, +k: K, +v: V) {
     match copy *m {
       None => {
         *m = Some(@tree_node({key: k,
@@ -52,7 +54,7 @@ fn insert<K: copy Eq Ord, V: copy>(m: &mut tree_edge<K, V>, k: K, v: V) {
 }
 
 /// Find a value based on the key
-fn find<K: copy Eq Ord, V: copy>(m: &const tree_edge<K, V>, k: K)
+fn find<K: copy Eq Ord, V: copy>(m: &const tree_edge<K, V>, +k: K)
                               -> Option<V> {
     match copy *m {
       None => None,
@@ -124,7 +126,7 @@ mod tests {
         insert(m, 1, ());
 
         let n = @mut 0;
-        fn t(n: @mut int, &&k: int, &&_v: ()) {
+        fn t(n: @mut int, +k: int, +_v: ()) {
             assert (*n == k); *n += 1;
         }
         traverse(m, |x,y| t(n, x, y));
