@@ -668,7 +668,7 @@ pure fn eq_slice(a: &str, b: &str) -> bool {
                 unsafe {
                     libc::memcmp(ap as *libc::c_void,
                                  bp as *libc::c_void,
-                                 alen as libc::size_t) == 0
+                                 (alen - 1) as libc::size_t) == 0
                 }
             }
         }
