@@ -25,8 +25,8 @@ fn run(
         fold_item: fold_item,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
-        fold_impl: fold_impl
-        with *fold::default_any_fold(op)
+        fold_impl: fold_impl,
+        .. *fold::default_any_fold(op)
     });
     fold.fold_doc(fold, doc)
 }
@@ -41,8 +41,8 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
     {
         brief: maybe_apply_op(fold.ctxt, doc.brief),
         desc: maybe_apply_op(fold.ctxt, doc.desc),
-        sections: apply_to_sections(fold.ctxt, doc.sections)
-        with doc
+        sections: apply_to_sections(fold.ctxt, doc.sections),
+        .. doc
     }
 }
 
@@ -59,11 +59,11 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     {
         variants: do par::map(doc.variants) |variant, copy fold| {
             {
-                desc: maybe_apply_op(fold.ctxt, variant.desc)
-                with variant
+                desc: maybe_apply_op(fold.ctxt, variant.desc),
+                .. variant
             }
-        }
-        with doc
+        },
+        .. doc
     }
 }
 
@@ -71,8 +71,8 @@ fn fold_trait(fold: fold::fold<op>, doc: doc::traitdoc) -> doc::traitdoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
-        methods: apply_to_methods(fold.ctxt, doc.methods)
-        with doc
+        methods: apply_to_methods(fold.ctxt, doc.methods),
+        .. doc
     }
 }
 
@@ -81,8 +81,8 @@ fn apply_to_methods(op: op, docs: ~[doc::methoddoc]) -> ~[doc::methoddoc] {
         {
             brief: maybe_apply_op(op, doc.brief),
             desc: maybe_apply_op(op, doc.desc),
-            sections: apply_to_sections(op, doc.sections)
-            with doc
+            sections: apply_to_sections(op, doc.sections),
+            .. doc
         }
     }
 }
@@ -91,8 +91,8 @@ fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: apply_to_methods(fold.ctxt, doc.methods)
-        with doc
+        methods: apply_to_methods(fold.ctxt, doc.methods),
+        .. doc
     }
 }
 

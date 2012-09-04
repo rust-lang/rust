@@ -777,9 +777,9 @@ struct Resolver {
             visit_block: |block, context, visitor|
                 (*this).build_reduced_graph_for_block(block,
                                                       context,
-                                                      visitor)
+                                                      visitor),
 
-            with *default_visitor()
+            .. *default_visitor()
         }));
     }
 
@@ -3025,8 +3025,8 @@ struct Resolver {
             visit_local: |local, _context, visitor|
                 self.resolve_local(local, visitor),
             visit_ty: |ty, _context, visitor|
-                self.resolve_type(ty, visitor)
-            with *default_visitor()
+                self.resolve_type(ty, visitor),
+            .. *default_visitor()
         }));
     }
 

@@ -247,7 +247,7 @@ priv impl TaskBuilder {
             fail ~"Cannot copy a task_builder"; // Fake move mode on self
         }
         self.consumed = true;
-        TaskBuilder({ can_not_copy: None, mut consumed: false, with *self })
+        TaskBuilder({ can_not_copy: None, mut consumed: false,.. *self })
     }
 }
 
@@ -258,9 +258,9 @@ impl TaskBuilder {
      */
     fn unlinked() -> TaskBuilder {
         TaskBuilder({
-            opts: { linked: false with self.opts },
+            opts: { linked: false,.. self.opts },
             can_not_copy: None,
-            with *self.consume()
+            .. *self.consume()
         })
     }
     /**
@@ -270,9 +270,9 @@ impl TaskBuilder {
      */
     fn supervised() -> TaskBuilder {
         TaskBuilder({
-            opts: { linked: false, supervised: true with self.opts },
+            opts: { linked: false, supervised: true,.. self.opts },
             can_not_copy: None,
-            with *self.consume()
+            .. *self.consume()
         })
     }
     /**
@@ -281,9 +281,9 @@ impl TaskBuilder {
      */
     fn linked() -> TaskBuilder {
         TaskBuilder({
-            opts: { linked: true, supervised: false with self.opts },
+            opts: { linked: true, supervised: false,.. self.opts },
             can_not_copy: None,
-            with *self.consume()
+            .. *self.consume()
         })
     }
 
@@ -326,18 +326,18 @@ impl TaskBuilder {
 
         // Reconfigure self to use a notify channel.
         TaskBuilder({
-            opts: { notify_chan: Some(ch) with self.opts },
+            opts: { notify_chan: Some(ch),.. self.opts },
             can_not_copy: None,
-            with *self.consume()
+            .. *self.consume()
         })
     }
     /// Configure a custom scheduler mode for the task.
     fn sched_mode(mode: SchedMode) -> TaskBuilder {
         TaskBuilder({
-            opts: { sched: Some({ mode: mode, foreign_stack_size: None})
-                    with self.opts },
+            opts: { sched: Some({ mode: mode, foreign_stack_size: None}),
+                    .. self.opts },
             can_not_copy: None,
-            with *self.consume()
+            .. *self.consume()
         })
     }
 
@@ -358,7 +358,7 @@ impl TaskBuilder {
         TaskBuilder({
             gen_body: |body| { wrapper(prev_gen_body(body)) },
             can_not_copy: None,
-            with *self.consume()
+            .. *self.consume()
         })
     }
 
@@ -1560,8 +1560,8 @@ fn test_spawn_raw_simple() {
 #[ignore(cfg(windows))]
 fn test_spawn_raw_unsupervise() {
     let opts = {
-        linked: false
-        with default_task_opts()
+        linked: false,
+        .. default_task_opts()
     };
     do spawn_raw(opts) {
         fail;
@@ -1623,9 +1623,9 @@ fn test_spawn_linked_sup_fail_up() { // child fails; parent fails
     // they don't make sense (redundant with task().supervised()).
     let b0 = task();
     let b1 = TaskBuilder({
-        opts: { linked: true, supervised: true with b0.opts },
+        opts: { linked: true, supervised: true,.. b0.opts },
         can_not_copy: None,
-        with *b0
+        .. *b0
     });
     do b1.spawn { fail; }
     comm::recv(po); // We should get punted awake
@@ -1636,9 +1636,9 @@ fn test_spawn_linked_sup_fail_down() { // parent fails; child fails
     // they don't make sense (redundant with task().supervised()).
     let b0 = task();
     let b1 = TaskBuilder({
-        opts: { linked: true, supervised: true with b0.opts },
+        opts: { linked: true, supervised: true,.. b0.opts },
         can_not_copy: None,
-        with *b0
+        .. *b0
     });
     do b1.spawn { loop { task::yield(); } }
     fail; // *both* mechanisms would be wrong if this didn't kill the child...
@@ -1724,8 +1724,8 @@ fn test_spawn_raw_notify() {
     let notify_ch = comm::Chan(notify_po);
 
     let opts = {
-        notify_chan: Some(notify_ch)
-        with default_task_opts()
+        notify_chan: Some(notify_ch),
+        .. default_task_opts()
     };
     do spawn_raw(opts) {
         comm::send(task_ch, get_task());
@@ -1735,8 +1735,8 @@ fn test_spawn_raw_notify() {
 
     let opts = {
         linked: false,
-        notify_chan: Some(notify_ch)
-        with default_task_opts()
+        notify_chan: Some(notify_ch),
+        .. default_task_opts()
     };
     do spawn_raw(opts) {
         comm::send(task_ch, get_task());
@@ -2042,7 +2042,7 @@ fn test_unkillable() {
     let ch = po.chan();
 
     // We want to do this after failing
-    do spawn_raw({ linked: false with default_task_opts() }) {
+    do spawn_raw({ linked: false,.. default_task_opts() }) {
         for iter::repeat(10u) { yield() }
         ch.send(());
     }
@@ -2078,7 +2078,7 @@ fn test_unkillable_nested() {
     let ch = po.chan();
 
     // We want to do this after failing
-    do spawn_raw({ linked: false with default_task_opts() }) {
+    do spawn_raw({ linked: false,.. default_task_opts() }) {
         for iter::repeat(10u) { yield() }
         ch.send(());
     }

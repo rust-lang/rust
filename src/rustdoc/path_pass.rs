@@ -26,16 +26,16 @@ fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let fold = fold::fold({
         fold_item: fold_item,
         fold_mod: fold_mod,
-        fold_nmod: fold_nmod
-        with *fold::default_any_fold(ctxt)
+        fold_nmod: fold_nmod,
+        .. *fold::default_any_fold(ctxt)
     });
     fold.fold_doc(fold, doc)
 }
 
 fn fold_item(fold: fold::fold<ctxt>, doc: doc::itemdoc) -> doc::itemdoc {
     {
-        path: fold.ctxt.path
-        with doc
+        path: fold.ctxt.path,
+        .. doc
     }
 }
 
@@ -48,8 +48,8 @@ fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
     if !is_topmod { vec::pop(fold.ctxt.path); }
 
     doc::moddoc_({
-        item: fold.fold_item(fold, doc.item)
-        with *doc
+        item: fold.fold_item(fold, doc.item),
+        .. *doc
     })
 }
 
@@ -59,8 +59,8 @@ fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
     vec::pop(fold.ctxt.path);
 
     {
-        item: fold.fold_item(fold, doc.item)
-        with doc
+        item: fold.fold_item(fold, doc.item),
+        .. doc
     }
 }
 

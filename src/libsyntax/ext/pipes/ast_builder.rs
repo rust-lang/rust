@@ -35,13 +35,13 @@ trait append_types {
 
 impl @ast::path: append_types {
     fn add_ty(ty: @ast::ty) -> @ast::path {
-        @{types: vec::append_one(self.types, ty)
-          with *self}
+        @{types: vec::append_one(self.types, ty),
+          .. *self}
     }
 
     fn add_tys(+tys: ~[@ast::ty]) -> @ast::path {
-        @{types: vec::append(self.types, tys)
-          with *self}
+        @{types: vec::append(self.types, tys),
+          .. *self}
     }
 }
 

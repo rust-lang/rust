@@ -1011,7 +1011,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
             {mode: a.mode, ty: new_ty}
         });
         let new_output = fldop(f.output);
-        ty_fn({inputs: new_args, output: new_output with *f})
+        ty_fn({inputs: new_args, output: new_output,.. *f})
       }
       ty_rptr(r, tm) => {
         ty_rptr(r, {ty: fldop(tm.ty), mutbl: tm.mutbl})
@@ -1110,7 +1110,7 @@ fn fold_regions_and_ty(
         ty::mk_fn(cx, {
             inputs: new_args,
             output: new_output,
-            proto: new_proto with f
+            proto: new_proto,.. f
         })
       }
       ref sty => {
@@ -2915,7 +2915,7 @@ fn substd_enum_variants(cx: ctxt,
 
         let substd_ctor_ty = subst(cx, substs, variant_info.ctor_ty);
 
-        @{args: substd_args, ctor_ty: substd_ctor_ty with *variant_info}
+        @{args: substd_args, ctor_ty: substd_ctor_ty,.. *variant_info}
     }
 }
 

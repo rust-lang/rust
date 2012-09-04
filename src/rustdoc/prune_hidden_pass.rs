@@ -13,8 +13,8 @@ fn mk_pass() -> pass {
 
 fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let fold = fold::fold({
-        fold_mod: fold_mod
-        with *fold::default_any_fold(srv)
+        fold_mod: fold_mod,
+        .. *fold::default_any_fold(srv)
     });
     fold.fold_doc(fold, doc)
 }
@@ -28,8 +28,8 @@ fn fold_mod(
     doc::moddoc_({
         items: vec::filter(doc.items, |itemtag| {
             !is_hidden(fold.ctxt, itemtag.item())
-        })
-        with *doc
+        }),
+        .. *doc
     })
 }
 

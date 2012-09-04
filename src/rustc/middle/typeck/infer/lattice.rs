@@ -17,7 +17,7 @@ trait lattice_ops {
 impl Lub: lattice_ops {
     fn bnd(b: bounds<ty::t>) -> Option<ty::t> { b.ub }
     fn with_bnd(b: bounds<ty::t>, t: ty::t) -> bounds<ty::t> {
-        {ub: Some(t) with b}
+        {ub: Some(t),.. b}
     }
     fn ty_bot(t: ty::t) -> cres<ty::t> {
         Ok(t)
@@ -27,7 +27,7 @@ impl Lub: lattice_ops {
 impl Glb: lattice_ops {
     fn bnd(b: bounds<ty::t>) -> Option<ty::t> { b.lb }
     fn with_bnd(b: bounds<ty::t>, t: ty::t) -> bounds<ty::t> {
-        {lb: Some(t) with b}
+        {lb: Some(t),.. b}
     }
     fn ty_bot(_t: ty::t) -> cres<ty::t> {
         Ok(ty::mk_bot(self.infcx.tcx))

@@ -120,8 +120,8 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
 
         let {bcx, val} = trans_self_arg(bcx, self, mentry);
         {env: self_env(val, node_id_type(bcx, self.id), None,
-                       mentry.self_mode)
-         with lval_static_fn(bcx, did, callee_id)}
+                       mentry.self_mode),
+         .. lval_static_fn(bcx, did, callee_id)}
       }
       typeck::method_param({trait_id:trait_id, method_num:off,
                             param_num:p, bound_num:b}) => {
@@ -186,8 +186,8 @@ fn trans_static_method_callee(bcx: block, method_id: ast::def_id,
                                         Some(sub_origins));
         {env: null_env,
          val: PointerCast(bcx, lval.val, T_ptr(type_of_fn_from_ty(
-             ccx, node_id_type(bcx, callee_id))))
-         with lval}
+             ccx, node_id_type(bcx, callee_id)))),
+         .. lval}
       }
       _ => {
         fail ~"vtable_param left in monomorphized function's vtable substs";
@@ -255,8 +255,8 @@ fn trans_monomorphized_callee(bcx: block, callee_id: ast::node_id,
         {env: self_env(val, node_id_type(bcx, base.id),
                        None, mentry.self_mode),
          val: PointerCast(bcx, lval.val, T_ptr(type_of_fn_from_ty(
-             ccx, node_id_type(bcx, callee_id))))
-         with lval}
+             ccx, node_id_type(bcx, callee_id)))),
+         .. lval}
       }
       typeck::vtable_trait(*) => {
         let {bcx, val} = trans_temp_expr(bcx, base);

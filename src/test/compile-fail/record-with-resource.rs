@@ -9,7 +9,7 @@ struct my_resource {
 fn main() {
     {
         let a = {x: 0, y: my_resource(20)};
-        let b = {x: 2 with a};
+        let b = {x: 2,.. a};
         log(error, (a, b));
     }
 }

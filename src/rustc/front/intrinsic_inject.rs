@@ -24,6 +24,6 @@ fn inject_intrinsic(sess: session,
 
     let items = vec::append(~[item], crate.node.module.items);
 
-    return @{node: {module: { items: items with crate.node.module }
-                 with crate.node} with *crate }
+    return @{node: {module: { items: items ,.. crate.node.module }
+                 ,.. crate.node} ,.. *crate }
 }

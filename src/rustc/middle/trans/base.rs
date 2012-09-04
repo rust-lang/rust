@@ -2841,7 +2841,7 @@ fn trans_lval(cx: block, e: @ast::expr) -> lval_result {
         let root_loc = alloca_zeroed(lv.bcx, type_of(cx.ccx(), ty));
         let bcx = store_temp_expr(lv.bcx, INIT, root_loc, lv, ty, false);
         add_root_cleanup(bcx, scope_id, root_loc, ty);
-        {bcx: bcx with lv}
+        {bcx: bcx,.. lv}
       }
     };
 
@@ -3335,7 +3335,7 @@ fn body_contains_ret(body: ast::blk) -> bool {
                   _ => visit::visit_expr(e, cx, v),
                 }
             }
-        } with *visit::default_visitor()
+        } ,.. *visit::default_visitor()
     }));
     cx.found
 }
@@ -4883,7 +4883,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: ~[ast::arg],
         if slf.is_owned {
             let self_val = PointerCast(bcx, slf.v,
                                        T_ptr(type_of(bcx.ccx(), slf.t)));
-            fcx.llself = Some({v: self_val with slf});
+            fcx.llself = Some({v: self_val,.. slf});
             add_clean(bcx, self_val, slf.t);
         }
       }
@@ -5667,8 +5667,8 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
 
 fn trans_constants(ccx: @crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
-        visit_item: |a| trans_constant(ccx, a)
-        with *visit::default_simple_visitor()
+        visit_item: |a| trans_constant(ccx, a),
+        .. *visit::default_simple_visitor()
     }));
 }
 
@@ -5775,8 +5775,8 @@ fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
             }
           }
           _ => ()
-        }
-        with *visit::default_simple_visitor()
+        },
+        .. *visit::default_simple_visitor()
     }));
 }
 

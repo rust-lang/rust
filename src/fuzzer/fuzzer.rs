@@ -132,8 +132,8 @@ fn steal(crate: ast::crate, tm: test_mode) -> stolen_stuff {
     let tys = @mut ~[];
     let v = visit::mk_simple_visitor(@{
         visit_expr: |a| stash_expr_if(safe_to_steal_expr, exprs, a, tm),
-        visit_ty: |a| stash_ty_if(safe_to_steal_ty, tys, a, tm)
-        with *visit::default_simple_visitor()
+        visit_ty: |a| stash_ty_if(safe_to_steal_ty, tys, a, tm),
+        .. *visit::default_simple_visitor()
     });
     visit::visit_crate(crate, (), v);
     {exprs: *exprs, tys: *tys}
@@ -182,8 +182,8 @@ fn replace_expr_in_crate(crate: ast::crate, i: uint,
     let afp = @{
         fold_expr: fold::wrap(|a,b| {
             fold_expr_rep(j, i, newexpr.node, a, b, tm)
-        })
-        with *fold::default_ast_fold()
+        }),
+        .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
@@ -205,8 +205,8 @@ fn replace_ty_in_crate(crate: ast::crate, i: uint, newty: ast::ty,
         } else { fold::noop_fold_ty(original, fld) }
     }
     let afp = @{
-        fold_ty: fold::wrap(|a,b| fold_ty_rep(j, i, newty.node, a, b, tm) )
-        with *fold::default_ast_fold()
+        fold_ty: fold::wrap(|a,b| fold_ty_rep(j, i, newty.node, a, b, tm) ),
+        .. *fold::default_ast_fold()
     };
     let af = fold::make_fold(afp);
     let crate2: @ast::crate = @af.fold_crate(crate);
@@ -452,8 +452,8 @@ fn has_raw_pointers(c: ast::crate) -> bool {
         }
     }
     let v =
-        visit::mk_simple_visitor(@{visit_ty: |a| visit_ty(has_rp, a)
-                                      with *visit::default_simple_visitor()});
+        visit::mk_simple_visitor(@{visit_ty: |a| visit_ty(has_rp, a),
+                                      .. *visit::default_simple_visitor()});
     visit::visit_crate(c, (), v);
     return *has_rp;
 }

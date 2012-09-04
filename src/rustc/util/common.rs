@@ -51,7 +51,7 @@ fn loop_query(b: ast::blk, p: fn@(ast::expr_) -> bool) -> bool {
         }
     };
     let v = visit::mk_vt(@{visit_expr: visit_expr
-                           with *visit::default_visitor()});
+                           ,.. *visit::default_visitor()});
     visit::visit_block(b, rs, v);
     return *rs;
 }

@@ -30,8 +30,8 @@ fn run(
         fold_item: fold_item,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
-        fold_impl: fold_impl
-        with *fold::default_any_fold(srv)
+        fold_impl: fold_impl,
+        .. *fold::default_any_fold(srv)
     });
     fold.fold_doc(fold, doc)
 }
@@ -52,10 +52,10 @@ fn fold_crate(
     {
         topmod: doc::moddoc_({
             item: {
-                name: option::get_default(attrs.name, doc.topmod.name())
-                with doc.topmod.item
-            }
-            with *doc.topmod
+                name: option::get_default(attrs.name, doc.topmod.name()),
+                .. doc.topmod.item
+            },
+            .. *doc.topmod
         })
     }
 }
@@ -84,8 +84,8 @@ fn fold_item(
     };
 
     {
-        desc: desc
-        with doc
+        desc: desc,
+        .. doc
     }
 }
 
@@ -162,11 +162,11 @@ fn fold_enum(
             };
 
             {
-                desc: desc
-                with variant
+                desc: desc,
+                .. variant
             }
-        }
-        with doc
+        },
+        .. doc
     }
 }
 
@@ -191,8 +191,8 @@ fn fold_trait(
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
-        methods: merge_method_attrs(srv, doc.id(), doc.methods)
-        with doc
+        methods: merge_method_attrs(srv, doc.id(), doc.methods),
+        .. doc
     }
 }
 
@@ -235,8 +235,8 @@ fn merge_method_attrs(
         let desc = attrs.second();
 
         {
-            desc: desc
-            with doc
+            desc: desc,
+            .. doc
         }
     }
 }
@@ -266,8 +266,8 @@ fn fold_impl(
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {
-        methods: merge_method_attrs(srv, doc.id(), doc.methods)
-        with doc
+        methods: merge_method_attrs(srv, doc.id(), doc.methods),
+        .. doc
     }
 }
 

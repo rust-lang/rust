@@ -4,5 +4,5 @@ fn main() {
 
     let a = {foo: 0i};
 
-    let b = {foo: true with a};
+    let b = {foo: true,.. a};
 }

@@ -67,8 +67,8 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
             }
 
             visit::visit_expr(expr, env, visitor);
-        }
-        with *visit::default_visitor()
+        },
+        .. *visit::default_visitor()
     });
     visit::visit_crate(*crate, (), visitor);
 }

@@ -13,10 +13,10 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
             match e.node {
               expr_while(e, b) => {
                 v.visit_expr(e, cx, v);
-                v.visit_block(b, {in_loop: true with cx}, v);
+                v.visit_block(b, {in_loop: true,.. cx}, v);
               }
               expr_loop(b, _) => {
-                v.visit_block(b, {in_loop: true with cx}, v);
+                v.visit_block(b, {in_loop: true,.. cx}, v);
               }
               expr_fn(_, _, _, _) => {
                 visit::visit_expr(e, {in_loop: false, can_ret: true}, v);
@@ -47,7 +47,7 @@ fn check_crate(tcx: ty::ctxt, crate: @crate) {
               }
               _ => visit::visit_expr(e, cx, v)
             }
-        }
-        with *visit::default_visitor()
+        },
+        .. *visit::default_visitor()
     }));
 }

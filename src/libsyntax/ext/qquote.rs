@@ -117,8 +117,8 @@ impl @ast::pat: qq_helper {
 fn gather_anti_quotes<N: qq_helper>(lo: uint, node: N) -> aq_ctxt
 {
     let v = @{visit_expr: |node, &&cx, v| visit_aq(node, ~"from_expr", cx, v),
-              visit_ty: |node, &&cx, v| visit_aq(node, ~"from_ty", cx, v)
-              with *default_visitor()};
+              visit_ty: |node, &&cx, v| visit_aq(node, ~"from_ty", cx, v),
+              .. *default_visitor()};
     let cx = @{lo:lo, gather: DVec()};
     node.visit(cx, mk_vt(v));
     // FIXME (#2250): Maybe this is an overkill (merge_sort), it might
@@ -301,8 +301,8 @@ fn replace<T>(node: T, repls: ~[fragment], ff: fn (ast_fold, T) -> T)
     let f_pre = @{fold_expr: |a,b,c|replace_expr(repls, a, b, c,
                                                   aft.fold_expr),
                   fold_ty: |a,b,c|replace_ty(repls, a, b, c,
-                                              aft.fold_ty)
-                  with *aft};
+                                              aft.fold_ty),
+                  .. *aft};
     return ff(make_fold(f_pre), node);
 }
 fn fold_crate(f: ast_fold, &&n: @ast::crate) -> @ast::crate {

@@ -858,7 +858,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::Writer,
               _ => fail ~"bad foreign item"
             }
         }
-        with *visit::default_visitor()
+        ,.. *visit::default_visitor()
     }));
     ebml_w.end_tag();
     return *index;

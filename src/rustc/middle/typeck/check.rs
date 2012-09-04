@@ -188,8 +188,8 @@ impl isr_alist: get_and_find_region {
 
 fn check_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
     let visit = visit::mk_simple_visitor(@{
-        visit_item: |a| check_item(ccx, a)
-        with *visit::default_simple_visitor()
+        visit_item: |a| check_item(ccx, a),
+        .. *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), visit);
 }
@@ -286,7 +286,7 @@ fn check_fn(ccx: @crate_ctxt,
             let ty = method::transform_self_type_for_method(
                 fcx.tcx(), self_region,
                 info.self_ty, info.explicit_self.node);
-            Some({self_ty: ty with info})
+            Some({self_ty: ty,.. info})
         }
     };
 
@@ -405,8 +405,8 @@ fn check_fn(ccx: @crate_ctxt,
                                    visit_pat: visit_pat,
                                    visit_fn: visit_fn,
                                    visit_item: visit_item,
-                                   visit_block: visit_block
-                                   with *visit::default_visitor()});
+                                   visit_block: visit_block,
+                                   .. *visit::default_visitor()});
 
         visit.visit_block(body, (), visit);
     }
@@ -1649,7 +1649,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                                     fcx.infcx().ty_to_str(fty.output)));
               }
             }
-            ty::mk_fn(tcx, {output: ty::mk_nil(tcx) with fty})
+            ty::mk_fn(tcx, {output: ty::mk_nil(tcx),.. fty})
           }
           _ => {
             tcx.sess.span_fatal(expr.span, ~"a `loop` function's last \
@@ -1672,8 +1672,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fcx, expr.span, fcx.node_ty(b.id));
         match ty::get(block_ty).struct {
           ty::ty_fn(fty) => {
-            fcx.write_ty(expr.id, ty::mk_fn(tcx, {output: ty::mk_bool(tcx)
-                                                  with fty}));
+            fcx.write_ty(expr.id, ty::mk_fn(tcx, {output: ty::mk_bool(tcx),
+                                                  .. fty}));
           }
           _ => fail ~"expected fn type"
         }
@@ -2113,8 +2113,8 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
 
 fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
     let fcx = match blk.node.rules {
-      ast::unchecked_blk => @fn_ctxt {purity: ast::impure_fn with *fcx0},
-      ast::unsafe_blk => @fn_ctxt {purity: ast::unsafe_fn with *fcx0},
+      ast::unchecked_blk => @fn_ctxt {purity: ast::impure_fn,.. *fcx0},
+      ast::unsafe_blk => @fn_ctxt {purity: ast::unsafe_fn,.. *fcx0},
       ast::default_blk => fcx0
     };
     do fcx.with_region_lb(blk.node.id) {

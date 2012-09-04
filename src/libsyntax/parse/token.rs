@@ -388,8 +388,7 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
         ~"move",
         ~"priv", ~"pub",
         ~"self", ~"send", ~"static",
-        ~"use",
-        ~"with"
+        ~"use"
     ];
     for keys.each |word| {
         words.insert(word, ());

@@ -112,8 +112,8 @@ fn regionck_visitor() -> rvt {
                    visit_stmt: visit_stmt,
                    visit_expr: visit_expr,
                    visit_block: visit_block,
-                   visit_local: visit_local
-                   with *visit::default_visitor()})
+                   visit_local: visit_local,
+                   .. *visit::default_visitor()})
 }
 
 fn visit_item(_item: @ast::item, &&_rcx: @rcx, _v: rvt) {

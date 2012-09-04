@@ -53,8 +53,8 @@ fn test_run_passes() {
                 doc::cratepage({
                     topmod: doc::moddoc_({
                         item: {
-                            name: doc.cratemod().name() + ~"two"
-                            with doc.cratemod().item
+                            name: doc.cratemod().name() + ~"two",
+                            .. doc.cratemod().item
                         },
                         items: ~[],
                         index: None
@@ -72,8 +72,8 @@ fn test_run_passes() {
                 doc::cratepage({
                     topmod: doc::moddoc_({
                         item: {
-                            name: doc.cratemod().name() + ~"three"
-                            with doc.cratemod().item
+                            name: doc.cratemod().name() + ~"three",
+                            .. doc.cratemod().item
                         },
                         items: ~[],
                         index: None

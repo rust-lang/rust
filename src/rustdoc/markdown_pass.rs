@@ -537,12 +537,12 @@ fn should_correctly_indent_fn_signature() {
             doc::cratepage({
                 topmod: doc::moddoc_({
                     items: ~[doc::fntag({
-                        sig: Some(~"line 1\nline 2")
-                        with doc.cratemod().fns()[0]
-                    })]
-                    with *doc.cratemod()
-                })
-                with doc.cratedoc()
+                        sig: Some(~"line 1\nline 2"),
+                        .. doc.cratemod().fns()[0]
+                    })],
+                    .. *doc.cratemod()
+                }),
+                .. doc.cratedoc()
             })
         ]
     });
@@ -784,8 +784,8 @@ mod test {
         do astsrv::from_str(source) |srv| {
 
             let config = {
-                output_style: config::doc_per_crate
-                with config::default_config(&Path("whatever"))
+                output_style: config::doc_per_crate,
+                .. config::default_config(&Path("whatever"))
             };
 
             let doc = extract::from_srv(srv, ~"");

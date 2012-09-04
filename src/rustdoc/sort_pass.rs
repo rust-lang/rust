@@ -23,8 +23,8 @@ fn run(
     lteq: item_lteq
 ) -> doc::doc {
     let fold = fold::fold({
-        fold_mod: fold_mod
-        with *fold::default_any_fold(lteq)
+        fold_mod: fold_mod,
+        .. *fold::default_any_fold(lteq)
     });
     fold.fold_doc(fold, doc)
 }
@@ -36,8 +36,8 @@ fn fold_mod(
 ) -> doc::moddoc {
     let doc = fold::default_any_fold_mod(fold, doc);
     doc::moddoc_({
-        items: sort::merge_sort(fold.ctxt, doc.items)
-        with *doc
+        items: sort::merge_sort(fold.ctxt, doc.items),
+        .. *doc
     })
 }
 

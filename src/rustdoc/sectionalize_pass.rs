@@ -15,8 +15,8 @@ fn run(_srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     let fold = fold::fold({
         fold_item: fold_item,
         fold_trait: fold_trait,
-        fold_impl: fold_impl
-        with *fold::default_any_fold(())
+        fold_impl: fold_impl,
+        .. *fold::default_any_fold(())
     });
     fold.fold_doc(fold, doc)
 }
@@ -27,8 +27,8 @@ fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
 
     {
         desc: desc,
-        sections: sections
-        with doc
+        sections: sections,
+        .. doc
     }
 }
 
@@ -41,11 +41,11 @@ fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
 
             {
                 desc: desc,
-                sections: sections
-                with method
+                sections: sections,
+                ..method
             }
-        }
-        with doc
+        },
+        .. doc
     }
 }
 
@@ -58,11 +58,11 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 
             {
                 desc: desc,
-                sections: sections
-                with method
+                sections: sections,
+                .. method
             }
-        }
-        with doc
+        },
+        .. doc
     }
 }
 
@@ -109,8 +109,8 @@ fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::section]) {
             match copy current_section {
               Some(section) => {
                 current_section = Some({
-                    body: section.body + ~"\n" + line
-                    with section
+                    body: section.body + ~"\n" + line,
+                    .. section
                 });
               }
               None => {

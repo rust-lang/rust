@@ -66,8 +66,8 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_item: |a|convert(ccx, a),
-        visit_foreign_item: |a|convert_foreign(ccx, a)
-        with *visit::default_simple_visitor()
+        visit_foreign_item: |a|convert_foreign(ccx, a),
+        .. *visit::default_simple_visitor()
     }));
 }
 

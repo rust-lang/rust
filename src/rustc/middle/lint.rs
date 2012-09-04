@@ -321,7 +321,7 @@ impl ctxt {
                 new_ctxt =
                     ctxt_({is_default: false,
                            curr: c,
-                           with *new_ctxt});
+                           .. *new_ctxt});
                 new_ctxt.set_level(lint.lint, level);
               }
             }
@@ -362,11 +362,11 @@ fn build_settings_crate(sess: session::session, crate: @ast::crate) {
             sess.lint_settings.default_settings.insert(k, v);
         }
 
-        let cx = ctxt_({is_default: true with *cx});
+        let cx = ctxt_({is_default: true,.. *cx});
 
         let visit = visit::mk_vt(@{
-            visit_item: build_settings_item
-            with *visit::default_visitor()
+            visit_item: build_settings_item,
+            .. *visit::default_visitor()
         });
         visit::visit_crate(*crate, cx, visit);
     }
@@ -387,7 +387,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
 // not traverse into subitems, since that is handled by the outer
 // lint visitor.
 fn item_stopping_visitor<E>(v: visit::vt<E>) -> visit::vt<E> {
-    visit::mk_vt(@{visit_item: |_i, _e, _v| { } with **v})
+    visit::mk_vt(@{visit_item: |_i, _e, _v| { },.. **v})
 }
 
 fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
@@ -407,8 +407,8 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
              }
              _ => ()
           }
-        }
-        with *visit::default_simple_visitor()
+        },
+        .. *visit::default_simple_visitor()
     }));
     visit::visit_item(it, (), visit);
 }
@@ -519,8 +519,8 @@ fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
         visit_expr: fn@(e: @ast::expr) {
             let ty = ty::expr_ty(cx, e);
             check_type(cx, e.id, it.id, e.span, ty);
-        }
-        with *visit::default_simple_visitor()
+        },
+        .. *visit::default_simple_visitor()
     }));
     visit::visit_item(it, (), visit);
 }
@@ -540,8 +540,8 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
               }
               _ => ()
             }
-        }
-        with *visit::default_simple_visitor()
+        },
+        .. *visit::default_simple_visitor()
     }));
     visit::visit_item(it, (), visit);
 }
@@ -681,7 +681,7 @@ fn check_crate(tcx: ty::ctxt, crate: @ast::crate) {
             check_fn(tcx, fk, decl, body, span, id),
         visit_pat: |pat|
             check_pat(tcx, pat),
-        with *visit::default_simple_visitor()
+        .. *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), v);
 

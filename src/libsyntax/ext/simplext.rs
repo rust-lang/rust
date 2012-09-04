@@ -196,8 +196,8 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
           map_exprs: |x,y|
               transcribe_exprs(cx, b, idx_path, x, y)
           ,
-          new_id: |x|new_id(x, cx)
-          with *afp};
+          new_id: |x|new_id(x, cx),
+          .. *afp};
     let f = make_fold(f_pre);
     let result = f.fold_expr(body);
     return result;
@@ -246,8 +246,8 @@ fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
     // using fold is a hack: we want visit, but it doesn't hit idents ) :
     // solve this with macros
     let f_pre =
-        @{fold_ident: |x,y|mark_ident(x, y, b, idents)
-          with *default_ast_fold()};
+        @{fold_ident: |x,y|mark_ident(x, y, b, idents),
+          .. *default_ast_fold()};
     let f = make_fold(f_pre);
     f.fold_expr(e); // ignore result
     for idents.each_key |x| { it(x); };

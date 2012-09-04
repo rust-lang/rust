@@ -165,8 +165,8 @@ struct LanguageItemCollector {
                                                                      .value);
                     }
                 }
-            }
-            with *default_simple_visitor()
+            },
+            .. *default_simple_visitor()
         }));
     }
 

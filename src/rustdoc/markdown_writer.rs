@@ -205,8 +205,8 @@ fn should_use_markdown_file_name_based_off_crate() {
     let config = {
         output_dir: Path("output/dir"),
         output_format: config::markdown,
-        output_style: config::doc_per_crate
-        with config::default_config(&Path("input/test.rc"))
+        output_style: config::doc_per_crate,
+        .. config::default_config(&Path("input/test.rc"))
     };
     let doc = test::mk_doc(~"test", ~"");
     let page = doc::cratepage(doc.cratedoc());
@@ -219,8 +219,8 @@ fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
     let config = {
         output_dir: Path("output/dir"),
         output_format: config::pandoc_html,
-        output_style: config::doc_per_mod
-        with config::default_config(&Path("input/test.rc"))
+        output_style: config::doc_per_mod,
+        .. config::default_config(&Path("input/test.rc"))
     };
     let doc = test::mk_doc(~"", ~"");
     let page = doc::cratepage(doc.cratedoc());
@@ -233,8 +233,8 @@ fn should_name_mod_file_names_by_path() {
     let config = {
         output_dir: Path("output/dir"),
         output_format: config::pandoc_html,
-        output_style: config::doc_per_mod
-        with config::default_config(&Path("input/test.rc"))
+        output_style: config::doc_per_mod,
+        .. config::default_config(&Path("input/test.rc"))
     };
     let doc = test::mk_doc(~"", ~"mod a { mod b { } }");
     let modb = doc.cratemod().mods()[0].mods()[0];

@@ -20,8 +20,8 @@ fn run(
 ) -> doc::doc {
     let fold = fold::fold({
         fold_mod: fold_mod,
-        fold_nmod: fold_nmod
-        with *fold::default_any_fold(config)
+        fold_nmod: fold_nmod,
+        .. *fold::default_any_fold(config)
     });
     fold.fold_doc(fold, doc)
 }
@@ -34,8 +34,8 @@ fn fold_mod(
     let doc = fold::default_any_fold_mod(fold, doc);
 
     doc::moddoc_({
-        index: Some(build_mod_index(doc, fold.ctxt))
-        with *doc
+        index: Some(build_mod_index(doc, fold.ctxt)),
+        .. *doc
     })
 }
 
@@ -47,8 +47,8 @@ fn fold_nmod(
     let doc = fold::default_any_fold_nmod(fold, doc);
 
     {
-        index: Some(build_nmod_index(doc, fold.ctxt))
-        with doc
+        index: Some(build_nmod_index(doc, fold.ctxt)),
+        .. doc
     }
 }
 
@@ -229,8 +229,8 @@ mod test {
     fn mk_doc(output_style: config::output_style, source: ~str) -> doc::doc {
         do astsrv::from_str(source) |srv| {
             let config = {
-                output_style: output_style
-                with config::default_config(&Path("whatever"))
+                output_style: output_style,
+                .. config::default_config(&Path("whatever"))
             };
             let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);

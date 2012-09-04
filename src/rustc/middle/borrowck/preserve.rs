@@ -158,7 +158,7 @@ priv impl &preserve_ctxt {
             debug!("base.mutbl = %?", self.bccx.mut_to_str(base.mutbl));
             if base.mutbl == m_imm {
                 let non_rooting_ctxt =
-                    preserve_ctxt({root_managed_data: false with **self});
+                    preserve_ctxt({root_managed_data: false,.. **self});
                 match (&non_rooting_ctxt).preserve(base) {
                   Ok(pc_ok) => {
                     Ok(pc_ok)
@@ -232,8 +232,8 @@ priv impl &preserve_ctxt {
             // in the *arm* vs the *alt*.
 
             let alt_rooting_ctxt =
-                preserve_ctxt({scope_region: ty::re_scope(alt_id)
-                               with **self});
+                preserve_ctxt({scope_region: ty::re_scope(alt_id),
+                               .. **self});
             (&alt_rooting_ctxt).preserve(base)
           }
         }
