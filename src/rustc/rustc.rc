@@ -102,6 +102,7 @@ mod middle {
     mod const_eval;
     mod astencode;
     mod lang_items;
+    mod privacy;
 }
 
 mod front {

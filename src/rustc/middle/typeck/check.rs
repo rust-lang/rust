@@ -1317,18 +1317,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               // (1) verify that the class id actually has a field called
               // field
               debug!("class named %s", ty_to_str(tcx, base_t));
-              /*
-                check whether this is a self-reference or not, which
-                determines whether we look at all fields or only public
-                ones
-               */
-              let cls_items = if self_ref(fcx, base.id) {
-                  // base expr is "self" -- consider all fields
-                  ty::lookup_class_fields(tcx, base_id)
-              }
-              else {
-                  lookup_public_fields(tcx, base_id)
-              };
+              let cls_items = ty::lookup_class_fields(tcx, base_id);
               match lookup_field_ty(tcx, base_id, cls_items, field, &substs) {
                  Some(field_ty) => {
                     // (2) look up what field's type is, and return it
@@ -1370,8 +1359,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     let msg =
                         fmt!(
                             "attempted access of field `%s` on type `%s`, \
-                             but no public field or method with that name \
-                             was found",
+                             but no field or method with that name was found",
                             tcx.sess.str_of(field),
                             fcx.infcx().ty_to_str(t_err));
                     tcx.sess.span_err(expr.span, msg);

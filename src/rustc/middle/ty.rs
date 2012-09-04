@@ -3160,10 +3160,6 @@ fn lookup_class_field(cx: ctxt, parent: ast::def_id, field_id: ast::def_id)
     }
 }
 
-fn lookup_public_fields(cx: ctxt, did: ast::def_id) -> ~[field_ty] {
-    vec::filter(lookup_class_fields(cx, did), is_public)
-}
-
 pure fn is_public(f: field_ty) -> bool {
     // XXX: This is wrong.
     match f.vis {
