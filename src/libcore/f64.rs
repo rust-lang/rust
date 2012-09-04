@@ -179,23 +179,8 @@ pure fn signbit(x: f64) -> int {
     if is_negative(x) { return 1; } else { return 0; }
 }
 
-#[cfg(target_os="linux")]
-#[cfg(target_os="macos")]
-#[cfg(target_os="win32")]
 pure fn logarithm(n: f64, b: f64) -> f64 {
     return log2(n) / log2(b);
-}
-
-#[cfg(target_os="freebsd")]
-pure fn logarithm(n: f64, b: f64) -> f64 {
-    // FIXME (#2000): check if it is good to use log2 instead of ln here; in
-    // theory should be faster since the radix is 2
-    return ln(n) / ln(b);
-}
-
-#[cfg(target_os="freebsd")]
-pure fn log2(n: f64) -> f64 {
-    return ln(n) / consts::ln_2;
 }
 
 impl f64: num::Num {
