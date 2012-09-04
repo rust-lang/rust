@@ -247,13 +247,13 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
               ast::stmt_decl(@{node: ast::decl_item(_), span: _}, _) => false
             }
         };
-        let blk_sans_items = { stmts: stmts_sans_items with blk };
+        let blk_sans_items = { stmts: stmts_sans_items,.. blk };
         fold::noop_fold_block(blk_sans_items, fld)
     }
 
     let fld = fold::make_fold(@{
-        fold_block: fold::wrap(drop_nested_items)
-        with *fold::default_ast_fold()
+        fold_block: fold::wrap(drop_nested_items),
+        .. *fold::default_ast_fold()
     });
 
     match ii {
@@ -269,15 +269,15 @@ fn simplify_ast(ii: ast::inlined_item) -> ast::inlined_item {
       ast::ii_ctor(ctor, nm, tps, parent_id) => {
         let ctor_body = fld.fold_block(ctor.node.body);
         let ctor_decl = fold::fold_fn_decl(ctor.node.dec, fld);
-        ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl
-                              with ctor.node}
-            with ctor}, nm, tps, parent_id)
+        ast::ii_ctor({node: {body: ctor_body, dec: ctor_decl,
+                              .. ctor.node},
+            .. ctor}, nm, tps, parent_id)
       }
       ast::ii_dtor(dtor, nm, tps, parent_id) => {
         let dtor_body = fld.fold_block(dtor.node.body);
-        ast::ii_dtor({node: {body: dtor_body
-                              with dtor.node}
-            with dtor}, nm, tps, parent_id)
+        ast::ii_dtor({node: {body: dtor_body,
+                              .. dtor.node},
+            .. dtor}, nm, tps, parent_id)
       }
     }
 }
@@ -292,8 +292,8 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
     -> ast::inlined_item {
     let fld = fold::make_fold(@{
         new_id: |a| xcx.tr_id(a),
-        new_span: |a| xcx.tr_span(a)
-        with *fold::default_ast_fold()
+        new_span: |a| xcx.tr_span(a),
+        .. *fold::default_ast_fold()
     });
 
     match ii {
@@ -314,9 +314,9 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         let ctor_id = fld.new_id(ctor.node.id);
         let new_parent = xcx.tr_def_id(parent_id);
         ast::ii_ctor({node: {body: ctor_body, attrs: ctor_attrs,
-                dec: ctor_decl, id: ctor_id
-                              with ctor.node}
-            with ctor}, nm, new_params, new_parent)
+                dec: ctor_decl, id: ctor_id,
+                              .. ctor.node},
+            .. ctor}, nm, new_params, new_parent)
       }
       ast::ii_dtor(dtor, nm, tps, parent_id) => {
         let dtor_body = fld.fold_block(dtor.node.body);
@@ -326,8 +326,8 @@ fn renumber_ast(xcx: extended_decode_ctxt, ii: ast::inlined_item)
         let new_parent = xcx.tr_def_id(parent_id);
         let new_self = fld.new_id(dtor.node.self_id);
         ast::ii_dtor({node: {id: dtor_id, attrs: dtor_attrs,
-                self_id: new_self, body: dtor_body}
-                        with dtor},
+                self_id: new_self, body: dtor_body},
+                        .. dtor},
           nm, new_params, new_parent)
       }
      }
@@ -432,7 +432,7 @@ impl method_origin: tr {
             typeck::method_static(did.tr(xcx))
           }
           typeck::method_param(mp) => {
-            typeck::method_param({trait_id:mp.trait_id.tr(xcx) with mp})
+            typeck::method_param({trait_id:mp.trait_id.tr(xcx),.. mp})
           }
           typeck::method_trait(did, m) => {
             typeck::method_trait(did.tr(xcx), m)

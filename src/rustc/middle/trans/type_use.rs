@@ -287,8 +287,8 @@ fn handle_body(cx: ctx, body: blk) {
                 node_type_needs(cx, use_repr, e.id);
             }
         },
-        visit_item: |_i, _cx, _v| { }
-        with *visit::default_visitor()
+        visit_item: |_i, _cx, _v| { },
+        .. *visit::default_visitor()
     });
     v.visit_block(body, cx, v);
 }

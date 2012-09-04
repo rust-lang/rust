@@ -278,10 +278,10 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
                 node: {
                     body: fld.fold_block(constructor.node.body),
                     dec: fold_fn_decl(constructor.node.dec, fld),
-                    id: fld.new_id(constructor.node.id)
-                    with constructor.node
-                }
-                with constructor
+                    id: fld.new_id(constructor.node.id),
+                    .. constructor.node
+                },
+                .. constructor
             });
         }
     }
@@ -289,8 +289,8 @@ fn fold_struct_def(struct_def: @ast::struct_def, fld: ast_fold)
         let dtor_body = fld.fold_block(dtor.node.body);
         let dtor_id   = fld.new_id(dtor.node.id);
         {node: {body: dtor_body,
-                id: dtor_id with dtor.node}
-            with dtor}};
+                id: dtor_id,.. dtor.node},
+            .. dtor}};
     return @{
         traits: vec::map(struct_def.traits, |p| fold_trait_ref(p, fld)),
         fields: vec::map(struct_def.fields, |f| fold_struct_field(f, fld)),
@@ -467,14 +467,14 @@ fn noop_fold_expr(e: expr_, fld: ast_fold) -> expr_ {
             expr_fn(proto, fold_fn_decl(decl, fld),
                     fld.fold_block(body),
                     @((*captures).map(|cap_item| {
-                        @({id: fld.new_id((*cap_item).id)
-                           with *cap_item})})))
+                        @({id: fld.new_id((*cap_item).id),
+                           .. *cap_item})})))
           }
           expr_fn_block(decl, body, captures) => {
             expr_fn_block(fold_fn_decl(decl, fld), fld.fold_block(body),
                           @((*captures).map(|cap_item| {
-                              @({id: fld.new_id((*cap_item).id)
-                                 with *cap_item})})))
+                              @({id: fld.new_id((*cap_item).id),
+                                 .. *cap_item})})))
           }
           expr_block(blk) => expr_block(fld.fold_block(blk)),
           expr_move(el, er) => {
@@ -575,8 +575,8 @@ fn noop_fold_variant(v: variant_, fld: ast_fold) -> variant_ {
                 let dtor_body = fld.fold_block(dtor.node.body);
                 let dtor_id   = fld.new_id(dtor.node.id);
                 {node: {body: dtor_body,
-                        id: dtor_id with dtor.node}
-                    with dtor}};
+                        id: dtor_id,.. dtor.node},
+                    .. dtor}};
             kind = struct_variant_kind(@{
                 traits: ~[],
                 fields: vec::map(struct_def.fields,

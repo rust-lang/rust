@@ -185,7 +185,7 @@ fn check_crate(tcx: ty::ctxt,
         visit_local: visit_local,
         visit_expr: visit_expr,
         visit_arm: visit_arm,
-        with *visit::default_visitor()
+        .. *visit::default_visitor()
     });
 
     let last_use_map = int_hash();
@@ -457,7 +457,7 @@ fn visit_fn(fk: visit::fn_kind, decl: fn_decl, body: blk,
         visit_local: check_local,
         visit_expr: check_expr,
         visit_arm: check_arm,
-        with *visit::default_visitor()
+        .. *visit::default_visitor()
     });
     check_vt.visit_block(body, lsets, check_vt);
     lsets.check_ret(id, sp, fk, entry_ln);

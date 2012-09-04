@@ -16,7 +16,7 @@ fn replace_bound_regions_in_fn_ty(
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
     let (self_ty, rebuild_self_info) = match self_info {
-      Some(s) => (Some(s.self_ty), |t| Some({self_ty: t with s})),
+      Some(s) => (Some(s.self_ty), |t| Some({self_ty: t,.. s})),
       None => (None, |_t| None)
     };
 

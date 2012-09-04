@@ -212,8 +212,8 @@ struct CoherenceChecker {
                     // Nothing to do.
                   }
                 };
-            }
-            with *default_simple_visitor()
+            },
+            .. *default_simple_visitor()
         }));
     }
 
@@ -237,8 +237,8 @@ struct CoherenceChecker {
                         // Nothing to do.
                     }
                 };
-            }
-            with *default_simple_visitor()
+            },
+            .. *default_simple_visitor()
         }));
 
         // Check trait coherence.
@@ -501,8 +501,8 @@ struct CoherenceChecker {
                         visit_item(item, (), visitor);
                     }
                 }
-            }
-            with *default_visitor()
+            },
+            .. *default_visitor()
         }));
     }
 

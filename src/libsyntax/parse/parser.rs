@@ -776,7 +776,7 @@ struct parser {
 
         return @{span: mk_sp(lo, tps.span.hi),
               rp: rp,
-              types: tps.node with *path};
+              types: tps.node,.. *path};
     }
 
     fn parse_mutability() -> mutability {
@@ -1000,11 +1000,9 @@ struct parser {
                     self.bump();
                     let mut fields = ~[];
                     vec::push(fields, self.parse_field(token::COLON));
-                    while self.token != token::RBRACE &&
-                            !self.is_keyword(~"with") {
+                    while self.token != token::RBRACE {
                         self.expect(token::COMMA);
                         if self.token == token::RBRACE ||
-                                self.is_keyword(~"with") ||
                                 self.token == token::DOTDOT {
                             // Accept an optional trailing comma.
                             break;
@@ -1013,7 +1011,7 @@ struct parser {
                     }
 
                     let base;
-                    if self.eat_keyword(~"with") || self.eat(token::DOTDOT) {
+                    if self.eat(token::DOTDOT) {
                         base = Some(self.parse_expr());
                     } else {
                         base = None;
@@ -1572,8 +1570,8 @@ struct parser {
             let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                     ctor(block));
             let args = vec::append(args, ~[last_arg]);
-            @{node: expr_call(f, args, true)
-              with *e}
+            @{node: expr_call(f, args, true),
+              .. *e}
           }
           expr_path(*) | expr_field(*) | expr_call(*) => {
             let block = self.parse_lambda_block_expr();
@@ -1661,18 +1659,6 @@ struct parser {
                 base = Some(self.parse_expr()); break;
             }
 
-            // XXX: Remove "with" after all code is converted over and there's
-            // a snapshot.
-
-            // optional comma before "with"
-            if self.token == token::COMMA
-                && self.token_is_keyword(~"with",
-                                         self.look_ahead(1u)) {
-                self.bump();
-            }
-            if self.eat_keyword(~"with") {
-                base = Some(self.parse_expr()); break;
-            }
             self.expect(token::COMMA);
             if self.token == token::RBRACE {
                 // record ends by an optional trailing comma
@@ -2230,7 +2216,7 @@ struct parser {
                       token::SEMI => {
                         self.bump();
                         push(stmts,
-                             @{node: stmt_semi(e, stmt_id) with *stmt});
+                             @{node: stmt_semi(e, stmt_id),.. *stmt});
                       }
                       token::RBRACE => {
                         expr = Some(e);
@@ -2741,8 +2727,8 @@ struct parser {
         let lo = self.last_span.lo;
         let (decl_, _) = self.parse_fn_decl(|p| p.parse_arg());
         let decl = {output: @{id: self.get_id(),
-                              node: result_ty, span: decl_.output.span}
-                    with decl_};
+                              node: result_ty, span: decl_.output.span},
+                    .. decl_};
         let body = self.parse_block();
         ctor_decl(decl, attrs, body, mk_sp(lo, self.last_span.hi))
     }

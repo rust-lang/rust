@@ -26,8 +26,8 @@ fn run(
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
-        fold_type: fold_type
-        with *fold::default_any_fold(srv)
+        fold_type: fold_type,
+        .. *fold::default_any_fold(srv)
     });
     fold.fold_doc(fold, doc)
 }
@@ -40,8 +40,8 @@ fn fold_fn(
     let srv = fold.ctxt;
 
     {
-        sig: get_fn_sig(srv, doc.id())
-        with doc
+        sig: get_fn_sig(srv, doc.id()),
+        .. doc
     }
 }
 
@@ -91,8 +91,8 @@ fn fold_const(
               }
               _ => fail ~"fold_const: id not bound to a const item"
             }
-        })
-        with doc
+        }),
+        .. doc
     }
 }
 
@@ -128,11 +128,11 @@ fn fold_enum(
             };
 
             {
-                sig: Some(sig)
-                with variant
+                sig: Some(sig),
+                .. variant
             }
-        }
-        with doc
+        },
+        .. doc
     }
 }
 
@@ -147,8 +147,8 @@ fn fold_trait(
     doc: doc::traitdoc
 ) -> doc::traitdoc {
     {
-        methods: merge_methods(fold.ctxt, doc.id(), doc.methods)
-        with doc
+        methods: merge_methods(fold.ctxt, doc.id(), doc.methods),
+        .. doc
     }
 }
 
@@ -159,8 +159,8 @@ fn merge_methods(
 ) -> ~[doc::methoddoc] {
     do par::map(docs) |doc| {
         {
-            sig: get_method_sig(srv, item_id, doc.name)
-            with doc
+            sig: get_method_sig(srv, item_id, doc.name),
+            .. doc
         }
     }
 }
@@ -258,8 +258,8 @@ fn fold_impl(
     {
         trait_types: trait_types,
         self_ty: self_ty,
-        methods: merge_methods(fold.ctxt, doc.id(), doc.methods)
-        with doc
+        methods: merge_methods(fold.ctxt, doc.id(), doc.methods),
+        .. doc
     }
 }
 
@@ -311,8 +311,8 @@ fn fold_type(
               }
               _ => fail ~"expected type"
             }
-        }
-        with doc
+        },
+        .. doc
     }
 }
 

@@ -443,7 +443,7 @@ impl borrowck_ctxt {
     }
 
     fn cat_discr(cmt: cmt, alt_id: ast::node_id) -> cmt {
-        return @{cat:cat_discr(cmt, alt_id) with *cmt};
+        return @{cat:cat_discr(cmt, alt_id),.. *cmt};
     }
 
     fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {

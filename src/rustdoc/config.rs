@@ -141,8 +141,8 @@ fn config_from_opts(
         let output_dir = getopts::opt_maybe_str(matches, opt_output_dir());
         let output_dir = option::map(output_dir, |s| Path(s));
         result::Ok({
-            output_dir: option::get_default(output_dir, config.output_dir)
-            with config
+            output_dir: option::get_default(output_dir, config.output_dir),
+            .. config
         })
     };
     let result = do result::chain(result) |config| {
@@ -154,8 +154,8 @@ fn config_from_opts(
                 |output_format| {
 
                 result::Ok({
-                    output_format: output_format
-                    with config
+                    output_format: output_format,
+                    .. config
                 })
             }
         }
@@ -168,8 +168,8 @@ fn config_from_opts(
             do result::chain(parse_output_style(output_style))
                 |output_style| {
                 result::Ok({
-                    output_style: output_style
-                    with config
+                    output_style: output_style,
+                    .. config
                 })
             }
         }
@@ -180,8 +180,8 @@ fn config_from_opts(
             config, pandoc_cmd, program_output);
         do result::chain(pandoc_cmd) |pandoc_cmd| {
             result::Ok({
-                pandoc_cmd: pandoc_cmd
-                with config
+                pandoc_cmd: pandoc_cmd,
+                .. config
             })
         }
     };
@@ -241,8 +241,8 @@ fn maybe_find_pandoc(
 #[test]
 fn should_find_pandoc() {
     let config = {
-        output_format: pandoc_html
-        with default_config(&Path("test"))
+        output_format: pandoc_html,
+        .. default_config(&Path("test"))
     };
     let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
         status: int, out: ~str, err: ~str
@@ -258,8 +258,8 @@ fn should_find_pandoc() {
 #[test]
 fn should_error_with_no_pandoc() {
     let config = {
-        output_format: pandoc_html
-        with default_config(&Path("test"))
+        output_format: pandoc_html,
+        .. default_config(&Path("test"))
     };
     let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
         status: int, out: ~str, err: ~str

@@ -11,8 +11,8 @@ fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
         visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
         visit_pat: check_pat,
         visit_expr: |a,b,c|
-            check_expr(sess, def_map, method_map, tcx, a, b, c)
-        with *visit::default_visitor()
+            check_expr(sess, def_map, method_map, tcx, a, b, c),
+        .. *visit::default_visitor()
     }));
     sess.abort_if_errors();
 }
@@ -163,8 +163,8 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
 
     let visitor = visit::mk_vt(@{
         visit_item: visit_item,
-        visit_expr: visit_expr
-        with *visit::default_visitor()
+        visit_expr: visit_expr,
+        .. *visit::default_visitor()
     });
     visitor.visit_item(it, env, visitor);
 

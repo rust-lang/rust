@@ -15,8 +15,8 @@ use std::map::hashmap;
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate, (), visit::mk_vt(@{
         visit_expr: |a,b,c| check_expr(tcx, a, b, c),
-        visit_local: |a,b,c| check_local(tcx, a, b, c)
-        with *visit::default_visitor::<()>()
+        visit_local: |a,b,c| check_local(tcx, a, b, c),
+        .. *visit::default_visitor::<()>()
     }));
     tcx.sess.abort_if_errors();
 }

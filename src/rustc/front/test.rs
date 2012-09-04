@@ -47,7 +47,7 @@ fn generate_test_harness(sess: session::session,
     let precursor =
         @{fold_crate: fold::wrap(|a,b| fold_crate(cx, a, b) ),
           fold_item: |a,b| fold_item(cx, a, b),
-          fold_mod: |a,b| fold_mod(cx, a, b) with *fold::default_ast_fold()};
+          fold_mod: |a,b| fold_mod(cx, a, b),.. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);
@@ -92,7 +92,7 @@ fn fold_crate(cx: test_ctxt, c: ast::crate_, fld: fold::ast_fold) ->
 
     // Add a special __test module to the crate that will contain code
     // generated for the test harness
-    return {module: add_test_module(cx, folded.module) with folded};
+    return {module: add_test_module(cx, folded.module),.. folded};
 }
 
 
@@ -166,7 +166,7 @@ fn should_fail(i: @ast::item) -> bool {
 
 fn add_test_module(cx: test_ctxt, m: ast::_mod) -> ast::_mod {
     let testmod = mk_test_module(cx);
-    return {items: vec::append_one(m.items, testmod) with m};
+    return {items: vec::append_one(m.items, testmod),.. m};
 }
 
 /*

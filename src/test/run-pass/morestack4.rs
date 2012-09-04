@@ -47,7 +47,7 @@ type biggy = {
 
 fn getbig(i: biggy) {
     if i.a00 != 0u64 {
-        getbig({a00: i.a00 - 1u64 with i});
+        getbig({a00: i.a00 - 1u64,.. i});
     }
 }
 

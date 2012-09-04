@@ -60,8 +60,8 @@ fn find_pages(doc: doc::doc, page_chan: page_chan) {
     let fold = fold::fold({
         fold_crate: fold_crate,
         fold_mod: fold_mod,
-        fold_nmod: fold_nmod
-        with *fold::default_any_fold(page_chan)
+        fold_nmod: fold_nmod,
+        .. *fold::default_any_fold(page_chan)
     });
     fold.fold_doc(fold, doc);
 
@@ -76,8 +76,8 @@ fn fold_crate(
     let doc = fold::default_seq_fold_crate(fold, doc);
 
     let page = doc::cratepage({
-        topmod: strip_mod(doc.topmod)
-        with doc
+        topmod: strip_mod(doc.topmod),
+        .. doc
     });
 
     comm::send(fold.ctxt, Some(page));
@@ -110,8 +110,8 @@ fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
               doc::nmodtag(_) => false,
               _ => true
             }
-        }
-        with *doc
+        },
+        .. *doc
     })
 }
 

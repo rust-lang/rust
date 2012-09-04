@@ -185,8 +185,8 @@ fn mk_visitor() -> visit::vt<wb_ctxt> {
                    visit_expr: visit_expr,
                    visit_block: visit_block,
                    visit_pat: visit_pat,
-                   visit_local: visit_local
-                   with *visit::default_visitor()})
+                   visit_local: visit_local,
+                   .. *visit::default_visitor()})
 }
 
 fn resolve_type_vars_in_expr(fcx: @fn_ctxt, e: @ast::expr) -> bool {

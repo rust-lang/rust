@@ -464,8 +464,8 @@ fn resolve_in_block(fcx: @fn_ctxt, bl: ast::blk) {
     visit::visit_block(bl, fcx, visit::mk_vt(@{
         visit_expr: resolve_expr,
         visit_item: fn@(_i: @ast::item, &&_e: @fn_ctxt,
-                        _v: visit::vt<@fn_ctxt>) {}
-        with *visit::default_visitor()
+                        _v: visit::vt<@fn_ctxt>) {},
+        .. *visit::default_visitor()
     }));
 }
 

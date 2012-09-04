@@ -23,8 +23,8 @@ fn run(
     let fold = fold::fold({
         fold_item: fold_item,
         fold_trait: fold_trait,
-        fold_impl: fold_impl
-        with *fold::default_any_fold(())
+        fold_impl: fold_impl,
+        .. *fold::default_any_fold(())
     });
     fold.fold_doc(fold, doc)
 }
@@ -33,8 +33,8 @@ fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
     {
-        brief: extract(doc.desc)
-        with doc
+        brief: extract(doc.desc),
+        .. doc
     }
 }
 
@@ -43,10 +43,10 @@ fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
 
     {
         methods: par::map(doc.methods, |doc| {
-            brief: extract(doc.desc)
-            with doc
-        })
-        with doc
+            brief: extract(doc.desc),
+            .. doc
+        }),
+        .. doc
     }
 }
 
@@ -55,10 +55,10 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
 
     {
         methods: par::map(doc.methods, |doc| {
-            brief: extract(doc.desc)
-            with doc
-        })
-        with doc
+            brief: extract(doc.desc),
+            .. doc
+        }),
+        .. doc
     }
 }
 

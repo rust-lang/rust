@@ -142,8 +142,8 @@ fn default_seq_fold_doc<T>(fold: fold<T>, doc: doc::doc) -> doc::doc {
                 doc::itempage(fold_itemtag(fold, doc))
               }
             }
-        }
-        with *doc
+        },
+        .. *doc
     })
 }
 
@@ -171,8 +171,8 @@ fn default_any_fold_mod<T:send copy>(
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |itemtag, copy fold| {
             fold_itemtag(fold, itemtag)
-        })
-        with *doc
+        }),
+        .. *doc
     })
 }
 
@@ -184,8 +184,8 @@ fn default_seq_fold_mod<T>(
         item: fold.fold_item(fold, doc.item),
         items: vec::map(doc.items, |itemtag| {
             fold_itemtag(fold, itemtag)
-        })
-        with *doc
+        }),
+        .. *doc
     })
 }
 
@@ -197,8 +197,8 @@ fn default_par_fold_mod<T:send copy>(
         item: fold.fold_item(fold, doc.item),
         items: par::map(doc.items, |itemtag, copy fold| {
             fold_itemtag(fold, itemtag)
-        })
-        with *doc
+        }),
+        .. *doc
     })
 }
 
@@ -210,8 +210,8 @@ fn default_any_fold_nmod<T:send copy>(
         item: fold.fold_item(fold, doc.item),
         fns: par::map(doc.fns, |fndoc, copy fold| {
             fold.fold_fn(fold, fndoc)
-        })
-        with doc
+        }),
+        .. doc
     }
 }
 
@@ -223,8 +223,8 @@ fn default_seq_fold_nmod<T>(
         item: fold.fold_item(fold, doc.item),
         fns: vec::map(doc.fns, |fndoc| {
             fold.fold_fn(fold, fndoc)
-        })
-        with doc
+        }),
+        .. doc
     }
 }
 
@@ -236,8 +236,8 @@ fn default_par_fold_nmod<T:send copy>(
         item: fold.fold_item(fold, doc.item),
         fns: par::map(doc.fns, |fndoc, copy fold| {
             fold.fold_fn(fold, fndoc)
-        })
-        with doc
+        }),
+        .. doc
     }
 }
 
@@ -275,8 +275,8 @@ fn default_seq_fold_fn<T>(
     doc: doc::fndoc
 ) -> doc::fndoc {
     {
-        item: fold.fold_item(fold, doc.item)
-        with doc
+        item: fold.fold_item(fold, doc.item),
+        .. doc
     }
 }
 
@@ -285,8 +285,8 @@ fn default_seq_fold_const<T>(
     doc: doc::constdoc
 ) -> doc::constdoc {
     {
-        item: fold.fold_item(fold, doc.item)
-        with doc
+        item: fold.fold_item(fold, doc.item),
+        .. doc
     }
 }
 
@@ -295,8 +295,8 @@ fn default_seq_fold_enum<T>(
     doc: doc::enumdoc
 ) -> doc::enumdoc {
     {
-        item: fold.fold_item(fold, doc.item)
-        with doc
+        item: fold.fold_item(fold, doc.item),
+        .. doc
     }
 }
 
@@ -305,8 +305,8 @@ fn default_seq_fold_trait<T>(
     doc: doc::traitdoc
 ) -> doc::traitdoc {
     {
-        item: fold.fold_item(fold, doc.item)
-        with doc
+        item: fold.fold_item(fold, doc.item),
+        .. doc
     }
 }
 
@@ -315,8 +315,8 @@ fn default_seq_fold_impl<T>(
     doc: doc::impldoc
 ) -> doc::impldoc {
     {
-        item: fold.fold_item(fold, doc.item)
-        with doc
+        item: fold.fold_item(fold, doc.item),
+        .. doc
     }
 }
 
@@ -325,8 +325,8 @@ fn default_seq_fold_type<T>(
     doc: doc::tydoc
 ) -> doc::tydoc {
     {
-        item: fold.fold_item(fold, doc.item)
-        with doc
+        item: fold.fold_item(fold, doc.item),
+        .. doc
     }
 }
 

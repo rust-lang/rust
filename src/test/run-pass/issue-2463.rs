@@ -8,12 +8,12 @@ fn main() {
     let y = {
         f: 1,
         g: 1,
-        with x
+        .. x
     };
 
     let z = {
         f: 1,
-        with x
+        .. x
     };
 
 }

@@ -53,7 +53,7 @@ fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
                                   mut root_ub: 0});
     let v = visit::mk_vt(@{visit_expr: req_loans_in_expr,
                            visit_fn: req_loans_in_fn,
-                           with *visit::default_visitor()});
+                           .. *visit::default_visitor()});
     visit::visit_crate(*crate, glcx, v);
     return glcx.req_maps;
 }

@@ -160,7 +160,7 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
         }
     };
 
-    return {items: new_items with module_};
+    return {items: new_items,.. module_};
 }
 
 
@@ -259,8 +259,8 @@ fn expand_crate(parse_sess: parse::parse_sess,
         @{fold_expr: |a,b,c| expand_expr(exts, cx, a, b, c, afp.fold_expr),
           fold_mod: |a,b| expand_mod_items(exts, cx, a, b, afp.fold_mod),
           fold_item: |a,b| expand_item(exts, cx, a, b, afp.fold_item),
-          new_span: |a|new_span(cx, a)
-          with *afp};
+          new_span: |a|new_span(cx, a),
+          .. *afp};
     let f = make_fold(f_pre);
     let cm = parse_expr_from_source_str(~"<core-macros>",
                                         @core_macros(),

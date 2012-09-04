@@ -171,8 +171,8 @@ fn process_crate(crate: @ast::crate,
                  def_map: resolve::DefMap,
                  tcx: ty::ctxt) {
     let v = visit::mk_simple_visitor(@{
-        visit_expr_post: |e| { classify(e, def_map, tcx); }
-        with *visit::default_simple_visitor()
+        visit_expr_post: |e| { classify(e, def_map, tcx); },
+        .. *visit::default_simple_visitor()
     });
     visit::visit_crate(*crate, (), v);
     tcx.sess.abort_if_errors();

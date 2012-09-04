@@ -294,7 +294,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         match st.tcx.rcache.find({cnum: st.crate, pos: pos, len: len}) {
           Some(tt) => return tt,
           None => {
-            let ps = @{pos: pos with *st};
+            let ps = @{pos: pos ,.. *st};
             let tt = parse_ty(ps, conv);
             st.tcx.rcache.insert({cnum: st.crate, pos: pos, len: len}, tt);
             return tt;

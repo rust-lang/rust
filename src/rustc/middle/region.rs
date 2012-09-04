@@ -206,7 +206,7 @@ fn resolve_block(blk: ast::blk, cx: ctxt, visitor: visit::vt<ctxt>) {
     record_parent(cx, blk.node.id);
 
     // Descend.
-    let new_cx: ctxt = ctxt {parent: Some(blk.node.id) with cx};
+    let new_cx: ctxt = ctxt {parent: Some(blk.node.id),.. cx};
     visit::visit_block(blk, new_cx, visitor);
 }
 
@@ -293,7 +293,7 @@ fn resolve_local(local: @ast::local, cx: ctxt, visitor: visit::vt<ctxt>) {
 
 fn resolve_item(item: @ast::item, cx: ctxt, visitor: visit::vt<ctxt>) {
     // Items create a new outer block scope as far as we're concerned.
-    let new_cx: ctxt = ctxt {parent: None with cx};
+    let new_cx: ctxt = ctxt {parent: None,.. cx};
     visit::visit_item(item, new_cx, visitor);
 }
 
@@ -305,7 +305,7 @@ fn resolve_fn(fk: visit::fn_kind, decl: ast::fn_decl, body: ast::blk,
       visit::fk_item_fn(*) | visit::fk_method(*) |
       visit::fk_ctor(*) | visit::fk_dtor(*) => {
         // Top-level functions are a root scope.
-        ctxt {parent: Some(id) with cx}
+        ctxt {parent: Some(id),.. cx}
       }
 
       visit::fk_anon(*) | visit::fk_fn_block(*) => {
@@ -340,8 +340,8 @@ fn resolve_crate(sess: session, def_map: resolve::DefMap,
         visit_pat: resolve_pat,
         visit_stmt: resolve_stmt,
         visit_expr: resolve_expr,
-        visit_local: resolve_local
-        with *visit::default_visitor()
+        visit_local: resolve_local,
+        .. *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
     return cx.region_map;
@@ -771,7 +771,7 @@ fn determine_rp_in_crate(sess: session,
         visit_ty: determine_rp_in_ty,
         visit_ty_method: determine_rp_in_ty_method,
         visit_struct_field: determine_rp_in_struct_field,
-        with *visit::default_visitor()
+        .. *visit::default_visitor()
     });
     visit::visit_crate(*crate, cx, visitor);
 

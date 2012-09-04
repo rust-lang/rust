@@ -362,7 +362,7 @@ fn load_crate(filename: &Path) -> Option<crate> {
     let v = visit::mk_simple_visitor(@{
         visit_view_item: |a| goto_view_item(sess, e, a),
         visit_item: |a| goto_item(e, a),
-        with *visit::default_simple_visitor()
+        .. *visit::default_simple_visitor()
     });
 
     visit::visit_crate(*c, (), v);

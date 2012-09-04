@@ -31,7 +31,7 @@ fn read_crates(diag: span_handler, crate: ast::crate,
         visit::mk_simple_visitor(@{visit_view_item:
                                        |a| visit_view_item(e, a),
                                    visit_item: |a| visit_item(e, a)
-                                   with *visit::default_simple_visitor()});
+                                   ,.. *visit::default_simple_visitor()});
     visit::visit_crate(crate, (), v);
     dump_crates(e.crate_cache);
     warn_if_multiple_versions(e, diag, e.crate_cache.get());

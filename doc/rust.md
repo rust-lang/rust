@@ -1595,9 +1595,9 @@ The order of the fields in a record expression is significant, and
 determines the type of the resulting value. `{a: u8, b: u8}` and `{b:
 u8, a: u8}` are two different fields.
 
-A record expression can terminate with the word `with` followed by an
+A record expression can terminate with the syntax `..` followed by an
 expression to denote a functional update. The expression following
-`with` (the base) must be of a record type that includes at least all the
+`..` (the base) must be of a record type that includes at least all the
 fields mentioned in the record expression. A new record will be
 created, of the same type as the base expression, with the given
 values for the fields that were explicitly specified, and the values
@@ -1606,7 +1606,7 @@ such a record expression is not significant.
 
 ~~~~
 let base = {x: 1, y: 2, z: 3};
-{y: 0, z: 10 with base};
+{y: 0, z: 10, .. base};
 ~~~~
 
 ### Field expressions

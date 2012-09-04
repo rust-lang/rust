@@ -26,8 +26,8 @@ fn strip_items(crate: @ast::crate, in_cfg: in_cfg_pred)
     let precursor =
         @{fold_mod: |a,b| fold_mod(ctxt, a, b),
           fold_block: fold::wrap(|a,b| fold_block(ctxt, a, b) ),
-          fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b)
-          with *fold::default_ast_fold()};
+          fold_foreign_mod: |a,b| fold_foreign_mod(ctxt, a, b),
+          .. *fold::default_ast_fold()};
 
     let fold = fold::make_fold(precursor);
     let res = @fold.fold_crate(*crate);

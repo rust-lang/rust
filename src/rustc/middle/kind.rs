@@ -81,9 +81,9 @@ fn check_crate(tcx: ty::ctxt,
         visit_fn: check_fn,
         visit_ty: check_ty,
         visit_item: fn@(i: @item, cx: ctx, v: visit::vt<ctx>) {
-            visit::visit_item(i, {current_item: i.id with cx}, v);
-        }
-        with *visit::default_visitor()
+            visit::visit_item(i, {current_item: i.id,.. cx}, v);
+        },
+        .. *visit::default_visitor()
     });
     visit::visit_crate(*crate, ctx, visit);
     tcx.sess.abort_if_errors();

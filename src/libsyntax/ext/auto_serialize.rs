@@ -96,8 +96,8 @@ fn expand(cx: ext_ctxt,
     }
 
     fn filter_attrs(item: @ast::item) -> @ast::item {
-        @{attrs: vec::filter(item.attrs, not_auto_serialize)
-          with *item}
+        @{attrs: vec::filter(item.attrs, not_auto_serialize),
+          .. *item}
     }
 
     do vec::flat_map(in_items) |in_item| {
@@ -281,8 +281,8 @@ impl ext_ctxt: ext_ctxt_helpers {
 
     fn clone_folder() -> fold::ast_fold {
         fold::make_fold(@{
-            new_id: |_id| self.next_id()
-            with *fold::default_ast_fold()
+            new_id: |_id| self.next_id(),
+            .. *fold::default_ast_fold()
         })
     }
 
@@ -311,8 +311,8 @@ impl ext_ctxt: ext_ctxt_helpers {
         }
 
         let fld = fold::make_fold(@{
-            new_span: |a| repl_sp(a, ast_util::dummy_sp(), span)
-            with *fold::default_ast_fold()
+            new_span: |a| repl_sp(a, ast_util::dummy_sp(), span),
+            .. *fold::default_ast_fold()
         });
 
         fld.fold_expr(expr)
@@ -799,8 +799,8 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
                     vec::map(tps, |tp| {
                         let cloned = cx.clone_ty_param(tp);
                         {bounds: @(vec::append(*cloned.bounds,
-                                               ~[ast::bound_copy]))
-                         with cloned}
+                                               ~[ast::bound_copy])),
+                         .. cloned}
                     }));
 
     let deser_blk = cx.expr_blk(f(cx, tps_map, #ast[expr]{__d}));

@@ -324,8 +324,8 @@ struct lookup {
                 // (where the self type is not permitted), or from a trait
                 // type (in which case methods that refer to self are not
                 // permitted).
-                let substs = {self_ty: Some(self.self_ty)
-                              with bound_substs};
+                let substs = {self_ty: Some(self.self_ty),
+                              .. bound_substs};
 
                 self.add_candidates_from_m(
                     inner_ty,
@@ -371,8 +371,8 @@ struct lookup {
             // Note: although it is illegal to invoke a method that uses self
             // through a trait instance, we use a dummy subst here so that we
             // can soldier on with the compilation.
-            let substs = {self_ty: Some(self.self_ty)
-                          with trait_substs};
+            let substs = {self_ty: Some(self.self_ty),
+                          .. trait_substs};
 
             self.add_candidates_from_m(
                 inner_ty, mode, substs, m, method_trait(did, i));
@@ -411,7 +411,7 @@ struct lookup {
         match ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
           ty::ty_fn(fty) => {
             ty::mk_fn(self.tcx(),
-                      {proto: ty::proto_vstore(ty::vstore_box) with fty})
+                      {proto: ty::proto_vstore(ty::vstore_box),.. fty})
           }
           _ => fail ~"ty_from_did: not function ty"
         }
@@ -534,7 +534,7 @@ struct lookup {
           }
           Some(_) => self_substs.self_r
         };
-        let self_substs = {self_r: self_r with self_substs};
+        let self_substs = {self_r: self_r,.. self_substs};
 
         // Before we can be sure we succeeded we need to match the
         // self type against the impl type that we get when we apply
@@ -551,8 +551,8 @@ struct lookup {
 
         // a bit hokey, but the method unbound has a bare protocol, whereas
         // a.b has a protocol like fn@() (perhaps eventually fn&()):
-        let fty = ty::mk_fn(tcx, {proto: ty::proto_vstore(ty::vstore_box)
-                                  with m.fty});
+        let fty = ty::mk_fn(tcx, {proto: ty::proto_vstore(ty::vstore_box),
+                                  .. m.fty});
 
         self.candidates.push(
             {self_ty: self.self_ty,
@@ -689,8 +689,8 @@ struct lookup {
             }
         };
 
-        let all_substs = {tps: vec::append(cand.self_substs.tps, m_substs)
-                          with cand.self_substs};
+        let all_substs = {tps: vec::append(cand.self_substs.tps, m_substs),
+                          .. cand.self_substs};
 
         self.fcx.write_ty_substs(self.node_id, cand.fty, all_substs);
 

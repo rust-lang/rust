@@ -140,8 +140,8 @@ fn expand_nested_bindings(bcx: block, m: match_, col: uint, val: ValueRef)
                                             mode: mode,
                                             ty: node_id_type(bcx,
                                                              br.pats[col].id)
-                                         }}])
-                                with *br});
+                                         }}]),
+                                .. *br});
           }
           _ => vec::push(result, br)
         }
@@ -174,7 +174,7 @@ fn enter_match(bcx: block, dm: DefMap, m: match_, col: uint, val: ValueRef,
               }
               _ => br.bound
             };
-            vec::push(result, @{pats: pats, bound: bound with *br});
+            vec::push(result, @{pats: pats, bound: bound,.. *br});
           }
           None => ()
         }
