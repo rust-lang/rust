@@ -1752,8 +1752,17 @@ pure fn as_bytes<T>(s: ~str, f: fn(~[u8]) -> T) -> T {
     }
 }
 
+/**
+ * Work with the byte buffer of a string as a byte slice.
+ *
+ * The byte slice does not include the null terminator.
+ */
 pure fn as_bytes_slice(s: &a/str) -> &a/[u8] {
-    unsafe { ::unsafe::reinterpret_cast(&s) }
+    unsafe {
+        let (ptr, len): (*u8, uint) = ::unsafe::reinterpret_cast(&s);
+        let outgoing_tuple: (*u8, uint) = (ptr, len - 1);
+        return ::unsafe::reinterpret_cast(&outgoing_tuple);
+    }
 }
 
 /**
