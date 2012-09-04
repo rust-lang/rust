@@ -4,13 +4,13 @@ Module: io
 Basic input/output
 */
 
-import result::Result;
+use result::Result;
 
-import cmp::Eq;
-import dvec::DVec;
-import libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
-import libc::consts::os::posix88::*;
-import libc::consts::os::extra::*;
+use cmp::Eq;
+use dvec::DVec;
+use libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
+use libc::consts::os::posix88::*;
+use libc::consts::os::extra::*;
 
 #[allow(non_camel_case_types)] // not sure what to do about this
 type fd_t = c_int;

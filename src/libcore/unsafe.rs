@@ -9,7 +9,7 @@ export unwrap_shared_mutable_state;
 export Exclusive, exclusive, unwrap_exclusive;
 export copy_lifetime;
 
-import task::atomically;
+use task::atomically;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {

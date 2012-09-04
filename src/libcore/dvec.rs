@@ -9,8 +9,8 @@
 //
 // Note that recursive use is not permitted.
 
-import unsafe::reinterpret_cast;
-import ptr::null;
+use unsafe::reinterpret_cast;
+use ptr::null;
 
 export DVec;
 export from_elem;

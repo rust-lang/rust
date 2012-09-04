@@ -30,19 +30,19 @@ export j0, j1, jn, y0, y1, yn;
 
 // PORT this must match in width according to architecture
 
-import m_float = f64;
+use m_float = f64;
 
-import f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
-import f64::logarithm;
-import f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
-import f64::{erf, erfc, exp, expm1, exp2, abs_sub};
-import f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
-import f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
-import f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
-import f64::signbit;
-import f64::{j0, j1, jn, y0, y1, yn};
-import cmp::{Eq, Ord};
-import num::from_int;
+use f64::{add, sub, mul, div, rem, lt, le, eq, ne, ge, gt};
+use f64::logarithm;
+use f64::{acos, asin, atan2, cbrt, ceil, copysign, cosh, floor};
+use f64::{erf, erfc, exp, expm1, exp2, abs_sub};
+use f64::{mul_add, fmax, fmin, nextafter, frexp, hypot, ldexp};
+use f64::{lgamma, ln, log_radix, ln1p, log10, log2, ilog_radix};
+use f64::{modf, pow, round, sinh, tanh, tgamma, trunc};
+use f64::signbit;
+use f64::{j0, j1, jn, y0, y1, yn};
+use cmp::{Eq, Ord};
+use num::from_int;
 
 const NaN: float = 0.0/0.0;
 

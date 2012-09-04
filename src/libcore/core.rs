@@ -2,28 +2,28 @@
 
 // Export various ubiquitous types, constructors, methods.
 
-import option::{Some, None};
-import Option = option::Option;
+use option::{Some, None};
+use Option = option::Option;
 // XXX: snapshot rustc is generating code that wants lower-case option
 #[cfg(stage0)]
-import option = option::Option;
+use option = option::Option;
 
-import result::{Result, Ok, Err};
+use result::{Result, Ok, Err};
 
-import Path = path::Path;
-import GenericPath = path::GenericPath;
-import WindowsPath = path::WindowsPath;
-import PosixPath = path::PosixPath;
+use Path = path::Path;
+use GenericPath = path::GenericPath;
+use WindowsPath = path::WindowsPath;
+use PosixPath = path::PosixPath;
 
-import tuple::{TupleOps, ExtendedTupleOps};
-import str::{StrSlice, UniqueStr};
-import vec::{ConstVector, CopyableVector, ImmutableVector};
-import vec::{ImmutableEqVector, ImmutableCopyableVector};
-import iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
-import iter::{CopyableOrderedIter, Times, TimesIx};
-import num::Num;
-import ptr::Ptr;
-import to_str::ToStr;
+use tuple::{TupleOps, ExtendedTupleOps};
+use str::{StrSlice, UniqueStr};
+use vec::{ConstVector, CopyableVector, ImmutableVector};
+use vec::{ImmutableEqVector, ImmutableCopyableVector};
+use iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
+use iter::{CopyableOrderedIter, Times, TimesIx};
+use num::Num;
+use ptr::Ptr;
+use to_str::ToStr;
 
 export Path, WindowsPath, PosixPath, GenericPath;
 export Option, Some, None, unreachable;
@@ -44,11 +44,11 @@ export ToStr;
 // The compiler has special knowlege of these so we must not duplicate them
 // when compiling for testing
 #[cfg(notest)]
-import ops::{Const, Copy, Send, Owned};
+use ops::{Const, Copy, Send, Owned};
 #[cfg(notest)]
-import ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
+use ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 #[cfg(notest)]
-import ops::{Shl, Shr, Index};
+use ops::{Shl, Shr, Index};
 
 #[cfg(notest)]
 export Const, Copy, Send, Owned;
@@ -61,11 +61,11 @@ export Shl, Shr, Index;
 use coreops(name = "core", vers = "0.4");
 
 #[cfg(test)]
-import coreops::ops::{Const, Copy, Send, Owned};
+use coreops::ops::{Const, Copy, Send, Owned};
 #[cfg(test)]
-import coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
+use coreops::ops::{Add, Sub, Mul, Div, Modulo, Neg, BitAnd, BitOr, BitXor};
 #[cfg(test)]
-import coreops::ops::{Shl, Shr, Index};
+use coreops::ops::{Shl, Shr, Index};
 
 
 // Export the log levels as global constants. Higher levels mean

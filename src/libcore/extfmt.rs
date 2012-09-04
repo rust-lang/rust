@@ -26,8 +26,8 @@ debug!("hello, %s!", "world");
 
 */
 
-import cmp::Eq;
-import option::{Some, None};
+use cmp::Eq;
+use option::{Some, None};
 
 
 /*

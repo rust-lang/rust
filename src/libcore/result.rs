@@ -1,7 +1,7 @@
 //! A type representing either success or failure
 
-import cmp::Eq;
-import either::Either;
+use cmp::Eq;
+use either::Either;
 
 /// The result type
 enum Result<T, U> {

@@ -12,8 +12,8 @@ mutation when the data structure should be immutable.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import util::with;
-import unsafe::transmute_immut;
+use util::with;
+use unsafe::transmute_immut;
 
 export Managed;
 

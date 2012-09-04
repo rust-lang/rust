@@ -1,4 +1,4 @@
-import libc::{c_void, size_t, c_int};
+use libc::{c_void, size_t, c_int};
 
 extern mod rustrt {
 

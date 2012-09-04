@@ -15,9 +15,9 @@
  * ~~~
  */
 
-import either::Either;
-import pipes::recv;
-import unsafe::copy_lifetime;
+use either::Either;
+use pipes::recv;
+use unsafe::copy_lifetime;
 
 export Future;
 export extensions;

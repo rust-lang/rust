@@ -6,8 +6,8 @@
 
 export chan_from_global_ptr, weaken_task;
 
-import compare_and_swap = rustrt::rust_compare_and_swap_ptr;
-import task::TaskBuilder;
+use compare_and_swap = rustrt::rust_compare_and_swap_ptr;
+use task::TaskBuilder;
 
 #[allow(non_camel_case_types)] // runtime type
 type rust_port_id = uint;

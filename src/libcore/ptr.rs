@@ -19,8 +19,8 @@ export buf_len;
 export position;
 export Ptr;
 
-import cmp::{Eq, Ord};
-import libc::{c_void, size_t};
+use cmp::{Eq, Ord};
+use libc::{c_void, size_t};
 
 #[nolink]
 #[abi = "cdecl"]

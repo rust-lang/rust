@@ -1,6 +1,6 @@
 //! Operations on unique pointer types
 
-import cmp::{Eq, Ord};
+use cmp::{Eq, Ord};
 
 impl<T:Eq> ~const T : Eq {
     pure fn eq(&&other: ~const T) -> bool { *self == *other }
