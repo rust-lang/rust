@@ -7,9 +7,9 @@
  * some heavy-duty uses, try std::rope.
  */
 
-import cmp::{Eq, Ord};
-import libc::size_t;
-import io::WriterUtil;
+use cmp::{Eq, Ord};
+use libc::size_t;
+use io::WriterUtil;
 
 export
    // Creating a string

@@ -1,9 +1,9 @@
 //! Vectors
 
-import cmp::{Eq, Ord};
-import option::{Some, None};
-import ptr::addr_of;
-import libc::size_t;
+use cmp::{Eq, Ord};
+use option::{Some, None};
+use ptr::addr_of;
+use libc::size_t;
 
 export append;
 export append_one;

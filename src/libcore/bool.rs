@@ -6,7 +6,7 @@
 
 //! Boolean logic
 
-import cmp::Eq;
+use cmp::Eq;
 
 export not, and, or, xor, implies;
 export eq, ne, is_true, is_false;

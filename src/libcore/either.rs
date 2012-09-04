@@ -4,8 +4,8 @@
 
 //! A type that represents one of two alternatives
 
-import cmp::Eq;
-import result::Result;
+use cmp::Eq;
+use result::Result;
 
 /// The either type
 enum Either<T, U> {

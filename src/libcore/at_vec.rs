@@ -1,6 +1,6 @@
 //! Shared Vectors
 
-import ptr::addr_of;
+use ptr::addr_of;
 
 export init_op;
 export capacity;

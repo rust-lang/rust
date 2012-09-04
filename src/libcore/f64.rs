@@ -6,8 +6,8 @@
 
 // PORT
 
-import cmath::c_double::*;
-import cmath::c_double_targ_consts::*;
+use cmath::c_double::*;
+use cmath::c_double_targ_consts::*;
 
 // Even though this module exports everything defined in it,
 // because it contains re-exports, we also have to explicitly

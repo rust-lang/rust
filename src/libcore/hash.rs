@@ -13,9 +13,9 @@
  * CPRNG like rand::rng.
  */
 
-import io::Writer;
-import io::WriterUtil;
-import to_bytes::IterBytes;
+use io::Writer;
+use io::WriterUtil;
+use to_bytes::IterBytes;
 
 export Streaming, State, Hash, HashUtil;
 export default_state;

@@ -2,8 +2,8 @@
 // workaround our lack of traits and lack of macros.  See core.{rc,rs} for
 // how this file is used.
 
-import cmp::{Eq, Ord};
-import inst::{IMPL_T, EACH, SIZE_HINT};
+use cmp::{Eq, Ord};
+use inst::{IMPL_T, EACH, SIZE_HINT};
 export extensions;
 
 impl<A> IMPL_T<A>: iter::BaseIter<A> {

@@ -27,8 +27,8 @@
  * ~~~
  */
 
-import cmp::Eq;
-import result::Result;
+use cmp::Eq;
+use result::Result;
 
 export Task;
 export TaskResult;

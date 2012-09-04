@@ -2,7 +2,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import io::Writer;
+use io::Writer;
 
 type Cb = fn(buf: &[const u8]) -> bool;
 

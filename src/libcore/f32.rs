@@ -6,8 +6,8 @@
 
 // PORT
 
-import cmath::c_float::*;
-import cmath::c_float_targ_consts::*;
+use cmath::c_float::*;
+use cmath::c_float_targ_consts::*;
 
 export add, sub, mul, div, rem, lt, le, eq, ne, ge, gt;
 export is_positive, is_negative, is_nonpositive, is_nonnegative;

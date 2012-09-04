@@ -27,8 +27,8 @@
  * ~~~
  */
 
-import either::Either;
-import libc::size_t;
+use either::Either;
+use libc::size_t;
 
 export Port;
 export Chan;

@@ -3,10 +3,10 @@
 #[forbid(deprecated_pattern)];
 //! Runtime calls emitted by the compiler.
 
-import libc::c_char;
-import libc::c_void;
-import libc::size_t;
-import libc::uintptr_t;
+use libc::c_char;
+use libc::c_void;
+use libc::size_t;
+use libc::uintptr_t;
 
 #[allow(non_camel_case_types)]
 type rust_task = c_void;

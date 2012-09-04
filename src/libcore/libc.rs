@@ -44,44 +44,44 @@
 
 // FIXME (#2006): change these to glob-exports when sufficiently supported.
 
-import types::common::c95::*;
-import types::common::c99::*;
-import types::common::posix88::*;
-import types::common::posix01::*;
-import types::common::posix08::*;
-import types::common::bsd44::*;
-import types::os::arch::c95::*;
-import types::os::arch::c99::*;
-import types::os::arch::posix88::*;
-import types::os::arch::posix01::*;
-import types::os::arch::posix08::*;
-import types::os::arch::bsd44::*;
-import types::os::arch::extra::*;
+use types::common::c95::*;
+use types::common::c99::*;
+use types::common::posix88::*;
+use types::common::posix01::*;
+use types::common::posix08::*;
+use types::common::bsd44::*;
+use types::os::arch::c95::*;
+use types::os::arch::c99::*;
+use types::os::arch::posix88::*;
+use types::os::arch::posix01::*;
+use types::os::arch::posix08::*;
+use types::os::arch::bsd44::*;
+use types::os::arch::extra::*;
 
-import consts::os::c95::*;
-import consts::os::c99::*;
-import consts::os::posix88::*;
-import consts::os::posix01::*;
-import consts::os::posix08::*;
-import consts::os::bsd44::*;
-import consts::os::extra::*;
+use consts::os::c95::*;
+use consts::os::c99::*;
+use consts::os::posix88::*;
+use consts::os::posix01::*;
+use consts::os::posix08::*;
+use consts::os::bsd44::*;
+use consts::os::extra::*;
 
-import funcs::c95::ctype::*;
-import funcs::c95::stdio::*;
-import funcs::c95::stdlib::*;
-import funcs::c95::string::*;
+use funcs::c95::ctype::*;
+use funcs::c95::stdio::*;
+use funcs::c95::stdlib::*;
+use funcs::c95::string::*;
 
-import funcs::posix88::stat::*;
-import funcs::posix88::stdio::*;
-import funcs::posix88::fcntl::*;
-import funcs::posix88::dirent::*;
-import funcs::posix88::unistd::*;
+use funcs::posix88::stat::*;
+use funcs::posix88::stdio::*;
+use funcs::posix88::fcntl::*;
+use funcs::posix88::dirent::*;
+use funcs::posix88::unistd::*;
 
-import funcs::posix01::unistd::*;
-import funcs::posix08::unistd::*;
+use funcs::posix01::unistd::*;
+use funcs::posix08::unistd::*;
 
-import funcs::bsd44::*;
-import funcs::extra::*;
+use funcs::bsd44::*;
+use funcs::extra::*;
 
 // FIXME (#2006): remove these 3 exports (and their uses next door in os::)
 // when export globs work. They provide access (for now) for os:: to dig

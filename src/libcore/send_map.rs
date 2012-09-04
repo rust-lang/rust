@@ -4,9 +4,9 @@ Sendable hash maps.  Very much a work in progress.
 
 */
 
-import cmp::Eq;
-import hash::Hash;
-import to_bytes::IterBytes;
+use cmp::Eq;
+use hash::Hash;
+use to_bytes::IterBytes;
 
 trait SendMap<K:Eq Hash, V: copy> {
     // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy

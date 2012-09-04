@@ -4,7 +4,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import cmp::{Eq, Ord};
+use cmp::{Eq, Ord};
 
 export ptr_eq;
 

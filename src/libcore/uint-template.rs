@@ -2,9 +2,9 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import T = inst::T;
-import cmp::{Eq, Ord};
-import from_str::FromStr;
+use T = inst::T;
+use cmp::{Eq, Ord};
+use from_str::FromStr;
 
 export min_value, max_value;
 export min, max;

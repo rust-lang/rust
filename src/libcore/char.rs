@@ -4,7 +4,7 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import cmp::Eq;
+use cmp::Eq;
 
 /*
     Lu  Uppercase_Letter    an uppercase letter
@@ -47,9 +47,9 @@ export is_alphabetic,
        to_digit, cmp,
        escape_default, escape_unicode;
 
-import is_alphabetic = unicode::derived_property::Alphabetic;
-import is_XID_start = unicode::derived_property::XID_Start;
-import is_XID_continue = unicode::derived_property::XID_Continue;
+use is_alphabetic = unicode::derived_property::Alphabetic;
+use is_XID_start = unicode::derived_property::XID_Start;
+use is_XID_continue = unicode::derived_property::XID_Continue;
 
 
 /**

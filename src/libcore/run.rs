@@ -3,9 +3,9 @@
 #[forbid(deprecated_pattern)];
 
 //! Process spawning
-import option::{Some, None};
-import libc::{pid_t, c_void, c_int};
-import io::ReaderUtil;
+use option::{Some, None};
+use libc::{pid_t, c_void, c_int};
+use io::ReaderUtil;
 
 export Program;
 export run_program;

@@ -20,14 +20,14 @@
  * to write OS-ignorant code by default.
  */
 
-import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
+use libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
               mode_t, pid_t, FILE};
-import libc::{close, fclose};
+use libc::{close, fclose};
 
-import option::{Some, None};
+use option::{Some, None};
 
-import consts::*;
-import task::TaskBuilder;
+use consts::*;
+use task::TaskBuilder;
 
 export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;

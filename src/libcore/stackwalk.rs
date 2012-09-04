@@ -1,8 +1,8 @@
 // NB: Don't rely on other core mods here as this has to move into the rt
 
-import unsafe::reinterpret_cast;
-import ptr::offset;
-import sys::size_of;
+use unsafe::reinterpret_cast;
+use ptr::offset;
+use sys::size_of;
 
 type Word = uint;
 
