@@ -1027,9 +1027,9 @@ pure fn lt_42(x: int) -> bool {
 Pure functions may call other pure functions:
 
 ~~~~{.xfail-test}
-pure fn pure_length<T>(ls: list<T>) -> uint { /* ... */ }
+pure fn pure_length<T>(ls: List<T>) -> uint { /* ... */ }
 
-pure fn nonempty_list<T>(ls: list<T>) -> bool { pure_length(ls) > 0u }
+pure fn nonempty_list<T>(ls: List<T>) -> bool { pure_length(ls) > 0u }
 ~~~~
 
 *TODO:* should actually define referential transparency.
@@ -1055,14 +1055,14 @@ An example of a pure function that uses an unchecked block:
 ~~~~
 # import std::list::*;
 
-fn pure_foldl<T, U: copy>(ls: list<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
+fn pure_foldl<T, U: copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
     match ls {
-      nil => u,
-      cons(hd, tl) => f(hd, pure_foldl(*tl, f(hd, u), f))
+      Nil => u,
+      Cons(hd, tl) => f(hd, pure_foldl(*tl, f(hd, u), f))
     }
 }
 
-pure fn pure_length<T>(ls: list<T>) -> uint {
+pure fn pure_length<T>(ls: List<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
     unchecked {
         pure_foldl(ls, 0u, count)
