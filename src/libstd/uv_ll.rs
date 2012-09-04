@@ -1522,7 +1522,6 @@ mod test {
 
     // struct size tests
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_tcp_t() {
         let foreign_handle_size = rustrt::rust_uv_helper_uv_tcp_t_size();
         let rust_handle_size = sys::size_of::<uv_tcp_t>();
@@ -1532,7 +1531,6 @@ mod test {
         assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_connect_t() {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_connect_t_size();
@@ -1543,7 +1541,6 @@ mod test {
         assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_buf_t() {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_buf_t_size();
@@ -1554,7 +1551,6 @@ mod test {
         assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_write_t() {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_write_t_size();
@@ -1566,7 +1562,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_sockaddr_in() {
         let foreign_handle_size =
             rustrt::rust_uv_helper_sockaddr_in_size();
@@ -1577,7 +1572,6 @@ mod test {
         assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_sockaddr_in6() {
         let foreign_handle_size =
             rustrt::rust_uv_helper_sockaddr_in6_size();
@@ -1605,7 +1599,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_async_t() {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_async_t_size();
@@ -1617,7 +1610,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     fn test_uv_ll_struct_size_uv_timer_t() {
         let foreign_handle_size =
             rustrt::rust_uv_helper_uv_timer_t_size();
@@ -1629,7 +1621,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_uv_getaddrinfo_t() {
         let foreign_handle_size =
@@ -1641,7 +1632,6 @@ mod test {
         assert foreign_handle_size as uint == rust_handle_size;
     }
     #[test]
-    #[ignore(cfg(target_os = "freebsd"))]
     #[ignore(cfg(target_os = "macos"))]
     #[ignore(cfg(target_os = "win32"))]
     fn test_uv_ll_struct_size_addrinfo() {
