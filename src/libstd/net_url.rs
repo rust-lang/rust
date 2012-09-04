@@ -5,6 +5,9 @@ import map;
 import map::{hashmap, str_hash};
 import io::{Reader, ReaderUtil};
 import dvec::DVec;
+import from_str::FromStr;
+import result::{Err, Ok};
+import to_str::ToStr;
 
 export Url, url, userinfo, query;
 export from_str, to_str;
@@ -338,7 +341,7 @@ fn query_to_str(query: Query) -> ~str {
 }
 
 // returns the scheme and the rest of the url, or a parsing error
-fn get_scheme(rawurl: ~str) -> result::Result<(~str, ~str), @~str> {
+fn get_scheme(rawurl: &str) -> result::Result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
         match c {
           'A' .. 'Z' | 'a' .. 'z' => again,
@@ -384,11 +387,11 @@ impl Input: Eq {
 }
 
 // returns userinfo, host, port, and unparsed part, or an error
-fn get_authority(rawurl: ~str) ->
+fn get_authority(rawurl: &str) ->
     result::Result<(Option<UserInfo>, ~str, Option<~str>, ~str), @~str> {
     if !str::starts_with(rawurl, ~"//") {
         // there is no authority.
-        return result::Ok((option::None, ~"", option::None, copy rawurl));
+        return result::Ok((option::None, ~"", option::None, rawurl.to_str()));
     }
 
     enum State {
@@ -514,7 +517,7 @@ fn get_authority(rawurl: ~str) ->
 
     let end = end; // make end immutable so it can be captured
 
-    let host_is_end_plus_one = || {
+    let host_is_end_plus_one: &fn() -> bool = || {
         end+1 == len
             && !['?', '#', '/'].contains(rawurl[end] as char)
     };
@@ -553,7 +556,7 @@ fn get_authority(rawurl: ~str) ->
 
 
 // returns the path and unparsed part of url, or an error
-fn get_path(rawurl: ~str, authority : bool) ->
+fn get_path(rawurl: &str, authority : bool) ->
     result::Result<(~str, ~str), @~str> {
     let len = str::len(rawurl);
     let mut end = len;
@@ -584,7 +587,7 @@ fn get_path(rawurl: ~str, authority : bool) ->
 }
 
 // returns the parsed query and the fragment, if present
-fn get_query_fragment(rawurl: ~str) ->
+fn get_query_fragment(rawurl: &str) ->
     result::Result<(Query, Option<~str>), @~str> {
     if !str::starts_with(rawurl, ~"?") {
         if str::starts_with(rawurl, ~"#") {
@@ -616,7 +619,7 @@ fn get_query_fragment(rawurl: ~str) ->
  *
  */
 
-fn from_str(rawurl: ~str) -> result::Result<Url, ~str> {
+fn from_str(rawurl: &str) -> result::Result<Url, ~str> {
     // scheme
     let mut schm = get_scheme(rawurl);
     if result::is_err(schm) {
@@ -648,6 +651,15 @@ fn from_str(rawurl: ~str) -> result::Result<Url, ~str> {
 
     return result::Ok(url(scheme, userinfo, host,
                        port, path, query, fragment));
+}
+
+impl Url : FromStr {
+    static fn from_str(s: &str) -> Option<Url> {
+        match from_str(s) {
+            Ok(url) => Some(url),
+            Err(_) => None
+        }
+    }
 }
 
 /**
