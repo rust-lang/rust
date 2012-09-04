@@ -386,7 +386,6 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
         ~"as",
         ~"else",
         ~"move",
-        ~"of",
         ~"priv", ~"pub",
         ~"self", ~"send", ~"static",
         ~"use",
@@ -417,7 +416,7 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
     let keys = ~[
         ~"again", ~"assert",
         ~"break",
-        ~"check", ~"const", ~"copy",
+        ~"const", ~"copy",
         ~"do", ~"drop",
         ~"else", ~"enum", ~"export", ~"extern",
         ~"fail", ~"false", ~"fn", ~"for",
