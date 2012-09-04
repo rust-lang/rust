@@ -883,7 +883,9 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
 // alt, do, & while unambiguously without being parenthesized
 fn print_maybe_parens_discrim(s: ps, e: @ast::expr) {
     let disambig = match e.node {
-      ast::expr_ret(None) | ast::expr_fail(None) => true,
+      ast::expr_ret(None)
+      | ast::expr_fail(None)
+      | ast::expr_again(*) => true,
       _ => false
     };
     if disambig { popen(s); }
