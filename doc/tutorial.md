@@ -2593,7 +2593,7 @@ let result = port.recv();
 ## Creating a task with a bi-directional communication path
 
 A very common thing to do is to spawn a child task where the parent
-and child both need to exchange messages with each other. There
+and child both need to exchange messages with each other. The
 function `std::comm::DuplexStream()` supports this pattern.  We'll
 look briefly at how it is used.
 
