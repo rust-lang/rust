@@ -6,7 +6,7 @@ trait ToBase64 {
     fn to_base64() -> ~str;
 }
 
-impl ~[u8]: ToBase64 {
+impl &[u8]: ToBase64 {
     fn to_base64() -> ~str {
         let chars = str::chars(
           ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -57,7 +57,7 @@ impl ~[u8]: ToBase64 {
     }
 }
 
-impl ~str: ToBase64 {
+impl &str: ToBase64 {
     fn to_base64() -> ~str {
         str::to_bytes(self).to_base64()
     }
