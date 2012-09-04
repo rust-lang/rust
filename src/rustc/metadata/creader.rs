@@ -109,7 +109,7 @@ fn visit_view_item(e: env, i: @ast::view_item) {
 
 fn visit_item(e: env, i: @ast::item) {
     match i.node {
-      ast::item_foreign_mod(_) => {
+      ast::item_foreign_mod(fm) => {
         match attr::foreign_abi(i.attrs) {
           either::Right(abi) => {
             if abi != ast::foreign_abi_cdecl &&
@@ -119,27 +119,36 @@ fn visit_item(e: env, i: @ast::item) {
         }
 
         let cstore = e.cstore;
-        let foreign_name =
-            match attr::first_attr_value_str_by_name(i.attrs, ~"link_name") {
-              Some(nn) => {
-                if nn == ~"" {
-                    e.diag.span_fatal(
-                        i.span,
-                        ~"empty #[link_name] not allowed; use #[nolink].");
-                }
-                nn
-              }
-              None => *e.intr.get(i.ident)
-            };
         let mut already_added = false;
-        if vec::len(attr::find_attrs_by_name(i.attrs, ~"nolink")) == 0u {
-            already_added = !cstore::add_used_library(cstore, foreign_name);
-        }
         let link_args = attr::find_attrs_by_name(i.attrs, ~"link_args");
-        if vec::len(link_args) > 0u && already_added {
-            e.diag.span_fatal(i.span, ~"library '" + foreign_name +
-                              ~"' already added: can't specify link_args.");
+
+        match fm.sort {
+          ast::named => {
+            let foreign_name =
+               match attr::first_attr_value_str_by_name(i.attrs,
+                                                        ~"link_name") {
+                 Some(nn) => {
+                   if nn == ~"" {
+                      e.diag.span_fatal(
+                          i.span,
+                          ~"empty #[link_name] not allowed; use #[nolink].");
+                   }
+                   nn
+                 }
+                None => *e.intr.get(i.ident)
+            };
+            if attr::find_attrs_by_name(i.attrs, ~"nolink").is_empty() {
+                already_added = !cstore::add_used_library(cstore,
+                                                          foreign_name);
+            }
+            if link_args.is_not_empty() && already_added {
+                e.diag.span_fatal(i.span, ~"library '" + foreign_name +
+                           ~"' already added: can't specify link_args.");
+            }
+          }
+          ast::anonymous => { /* do nothing */ }
         }
+
         for link_args.each |a| {
             match attr::get_meta_item_value_str(attr::attr_meta(a)) {
               Some(linkarg) => {
