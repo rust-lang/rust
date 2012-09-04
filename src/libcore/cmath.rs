@@ -65,9 +65,6 @@ extern mod c_double {
     // renamed: to be consitent with log as ln
     #[link_name="log1p"] pure fn ln1p(n: c_double) -> c_double;
     pure fn log10(n: c_double) -> c_double;
-    #[cfg(target_os="linux")]
-    #[cfg(target_os="macos")]
-    #[cfg(target_os="win32")]
     pure fn log2(n: c_double) -> c_double;
     #[link_name="ilogb"] pure fn ilog_radix(n: c_double) -> c_int;
     pure fn modf(n: c_double, &iptr: c_double) -> c_double;
@@ -143,9 +140,6 @@ extern mod c_float {
     #[link_name="logf"] pure fn ln(n: c_float) -> c_float;
     #[link_name="logbf"] pure fn log_radix(n: c_float) -> c_float;
     #[link_name="log1pf"] pure fn ln1p(n: c_float) -> c_float;
-    #[cfg(target_os="linux")]
-    #[cfg(target_os="macos")]
-    #[cfg(target_os="win32")]
     #[link_name="log2f"] pure fn log2(n: c_float) -> c_float;
     #[link_name="log10f"] pure fn log10(n: c_float) -> c_float;
     #[link_name="ilogbf"] pure fn ilog_radix(n: c_float) -> c_int;
