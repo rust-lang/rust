@@ -11,7 +11,7 @@
 export Condvar, Semaphore, Mutex, mutex_with_condvars;
 export RWlock, rwlock_with_condvars, RWlockReadMode, RWlockWriteMode;
 
-import unsafe::{Exclusive, exclusive};
+use unsafe::{Exclusive, exclusive};
 
 /****************************************************************************
  * Internals

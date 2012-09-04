@@ -1,13 +1,12 @@
 //! Types/fns concerning URLs (see RFC 3986)
 
-import core::cmp::Eq;
-import map;
-import map::{hashmap, str_hash};
-import io::{Reader, ReaderUtil};
-import dvec::DVec;
-import from_str::FromStr;
-import result::{Err, Ok};
-import to_str::ToStr;
+use core::cmp::Eq;
+use map::{hashmap, str_hash};
+use io::{Reader, ReaderUtil};
+use dvec::DVec;
+use from_str::FromStr;
+use result::{Err, Ok};
+use to_str::ToStr;
 
 export Url, url, userinfo, query;
 export from_str, to_str;

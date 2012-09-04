@@ -1,4 +1,4 @@
-import future_spawn = future::spawn;
+use future_spawn = future::spawn;
 
 export map, mapi, alli, any, mapi_factory;
 

@@ -2,10 +2,10 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import core::cmp::Eq;
-import core::option;
-import option::*;
-import option::{Some, None};
+use core::cmp::Eq;
+use core::option;
+use option::*;
+use option::{Some, None};
 
 enum list<T> {
     cons(T, @list<T>),

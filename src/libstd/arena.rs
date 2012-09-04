@@ -24,11 +24,10 @@
 
 export Arena, arena_with_size;
 
-import list;
-import list::{list, cons, nil};
-import unsafe::reinterpret_cast;
-import sys::TypeDesc;
-import libc::size_t;
+use list::{list, cons, nil};
+use unsafe::reinterpret_cast;
+use sys::TypeDesc;
+use libc::size_t;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {

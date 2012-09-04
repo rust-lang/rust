@@ -1,9 +1,9 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import io::Writer;
-import io::WriterUtil;
-import serialization::serializer;
+use io::Writer;
+use io::WriterUtil;
+use serialization::serializer;
 
 impl Writer: serializer {
     fn emit_nil() {

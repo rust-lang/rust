@@ -3,14 +3,11 @@
 
 //! json serialization
 
-import core::cmp::Eq;
-import result::{Result, Ok, Err};
-import io;
-import io::WriterUtil;
-import map;
-import map::hashmap;
-import map::map;
-import sort;
+use core::cmp::Eq;
+use result::{Result, Ok, Err};
+use io::WriterUtil;
+use map::hashmap;
+use map::map;
 
 export Json;
 export Error;

@@ -6,9 +6,9 @@
  * red-black tree or something else.
  */
 
-import core::cmp::{Eq, Ord};
-import core::option::{Some, None};
-import Option = core::Option;
+use core::cmp::{Eq, Ord};
+use core::option::{Some, None};
+use Option = core::Option;
 
 export treemap;
 export insert;

@@ -8,7 +8,7 @@ Higher level communication abstractions.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import pipes::{Channel, Recv, Chan, Port, Selectable};
+use pipes::{Channel, Recv, Chan, Port, Selectable};
 
 export DuplexStream;
 

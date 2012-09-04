@@ -1,6 +1,6 @@
 //! Simple ANSI color library
 
-import core::Option;
+use core::Option;
 
 // FIXME (#2807): Windows support.
 

@@ -1,10 +1,10 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import core::cmp::Eq;
-import libc::{c_char, c_int, c_long, size_t, time_t};
-import io::Reader;
-import result::{Result, Ok, Err};
+use core::cmp::Eq;
+use libc::{c_char, c_int, c_long, size_t, time_t};
+use io::Reader;
+use result::{Result, Ok, Err};
 
 export
     Timespec,

@@ -22,9 +22,9 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-import libc::size_t;
-import comm = core::comm;
-import ptr::to_unsafe_ptr;
+use libc::size_t;
+use comm = core::comm;
+use ptr::to_unsafe_ptr;
 
 // libuv struct mappings
 type uv_ip4_addr = {
