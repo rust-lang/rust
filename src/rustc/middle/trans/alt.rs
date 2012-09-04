@@ -1,21 +1,21 @@
-import driver::session::session;
-import lib::llvm::llvm;
-import lib::llvm::{ValueRef, BasicBlockRef};
-import pat_util::*;
-import build::*;
-import base::*;
-import syntax::ast;
-import syntax::ast_util;
-import syntax::ast_util::{dummy_sp, path_to_ident};
-import syntax::ast::def_id;
-import syntax::codemap::span;
-import syntax::print::pprust::pat_to_str;
-import middle::resolve::DefMap;
-import back::abi;
-import std::map::hashmap;
-import dvec::DVec;
+use driver::session::session;
+use lib::llvm::llvm;
+use lib::llvm::{ValueRef, BasicBlockRef};
+use pat_util::*;
+use build::*;
+use base::*;
+use syntax::ast;
+use syntax::ast_util;
+use syntax::ast_util::{dummy_sp, path_to_ident};
+use syntax::ast::def_id;
+use syntax::codemap::span;
+use syntax::print::pprust::pat_to_str;
+use middle::resolve::DefMap;
+use back::abi;
+use std::map::hashmap;
+use dvec::DVec;
 
-import common::*;
+use common::*;
 
 // An option identifying a branch (either a literal, a enum variant or a
 // range)

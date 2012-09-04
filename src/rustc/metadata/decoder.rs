@@ -1,21 +1,21 @@
 // Decoding metadata from a single crate's metadata
 
-import std::{ebml, map};
-import std::map::{hashmap, str_hash};
-import io::WriterUtil;
-import dvec::DVec;
-import syntax::{ast, ast_util};
-import syntax::attr;
-import middle::ty;
-import syntax::ast_map;
-import tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
+use std::{ebml, map};
+use std::map::{hashmap, str_hash};
+use io::WriterUtil;
+use dvec::DVec;
+use syntax::{ast, ast_util};
+use syntax::attr;
+use middle::ty;
+use syntax::ast_map;
+use tydecode::{parse_ty_data, parse_def_id, parse_bounds_data,
         parse_ident};
-import syntax::print::pprust;
-import cmd=cstore::crate_metadata;
-import util::ppaux::ty_to_str;
-import syntax::diagnostic::span_handler;
-import common::*;
-import syntax::parse::token::ident_interner;
+use syntax::print::pprust;
+use cmd=cstore::crate_metadata;
+use util::ppaux::ty_to_str;
+use syntax::diagnostic::span_handler;
+use common::*;
+use syntax::parse::token::ident_interner;
 
 
 export class_dtor;

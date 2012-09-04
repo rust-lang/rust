@@ -1,7 +1,7 @@
 // #[warn(deprecated_mode)];
 // #[warn(deprecated_pattern)];
 
-import syntax::print::pprust::{expr_to_str};
+use syntax::print::pprust::{expr_to_str};
 
 // Helper functions related to manipulating region types.
 

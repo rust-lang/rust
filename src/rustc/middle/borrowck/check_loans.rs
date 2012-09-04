@@ -7,7 +7,7 @@
 // 3. assignments do not affect things loaned out as immutable
 // 4. moves to dnot affect things loaned out in any way
 
-import dvec::DVec;
+use dvec::DVec;
 
 export check_loans;
 

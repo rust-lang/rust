@@ -1,8 +1,8 @@
-import syntax::ast::*;
-import syntax::{visit, ast_util, ast_map};
-import driver::session::session;
-import std::map::hashmap;
-import dvec::DVec;
+use syntax::ast::*;
+use syntax::{visit, ast_util, ast_map};
+use driver::session::session;
+use std::map::hashmap;
+use dvec::DVec;
 
 fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
                def_map: resolve::DefMap,

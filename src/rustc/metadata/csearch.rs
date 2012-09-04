@@ -1,17 +1,17 @@
 // Searching for information from the cstore
 
-import std::{ebml};
-import syntax::ast;
-import syntax::ast_util;
-import syntax::ast_map;
-import middle::ty;
-import option::{Some, None};
-import syntax::diagnostic::span_handler;
-import syntax::diagnostic::expect;
-import ast_util::dummy_sp;
-import common::*;
-import std::map::hashmap;
-import dvec::DVec;
+use std::{ebml};
+use syntax::ast;
+use syntax::ast_util;
+use syntax::ast_map;
+use middle::ty;
+use option::{Some, None};
+use syntax::diagnostic::span_handler;
+use syntax::diagnostic::expect;
+use ast_util::dummy_sp;
+use common::*;
+use std::map::hashmap;
+use dvec::DVec;
 
 export class_dtor;
 export get_symbol;

@@ -1,5 +1,5 @@
-import result::Result;
-import syntax::parse::token::special_idents;
+use result::Result;
+use syntax::parse::token::special_idents;
 
 trait region_scope {
     fn anon_region(span: span) -> Result<ty::region, ~str>;

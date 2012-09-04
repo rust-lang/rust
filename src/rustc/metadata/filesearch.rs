@@ -2,7 +2,7 @@
 // FIXME (#2658): I'm not happy how this module turned out. Should
 // probably just be folded into cstore.
 
-import result::Result;
+use result::Result;
 export filesearch;
 export mk_filesearch;
 export pick;

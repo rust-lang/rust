@@ -1,22 +1,22 @@
-import libc::c_uint;
-import base::*;
-import common::*;
-import type_of::*;
-import build::*;
-import driver::session::session;
-import syntax::{ast, ast_map};
-import ast_map::{path, path_mod, path_name, node_id_to_str};
-import driver::session::expect;
-import syntax::ast_util::local_def;
-import metadata::csearch;
-import back::{link, abi};
-import lib::llvm::llvm;
-import lib::llvm::{ValueRef, TypeRef};
-import lib::llvm::llvm::LLVMGetParam;
-import std::map::hashmap;
-import util::ppaux::{ty_to_str, tys_to_str};
+use libc::c_uint;
+use base::*;
+use common::*;
+use type_of::*;
+use build::*;
+use driver::session::session;
+use syntax::{ast, ast_map};
+use ast_map::{path, path_mod, path_name, node_id_to_str};
+use driver::session::expect;
+use syntax::ast_util::local_def;
+use metadata::csearch;
+use back::{link, abi};
+use lib::llvm::llvm;
+use lib::llvm::{ValueRef, TypeRef};
+use lib::llvm::llvm::LLVMGetParam;
+use std::map::hashmap;
+use util::ppaux::{ty_to_str, tys_to_str};
 
-import syntax::print::pprust::expr_to_str;
+use syntax::print::pprust::expr_to_str;
 
 /**
 The main "translation" pass for methods.  Generates code

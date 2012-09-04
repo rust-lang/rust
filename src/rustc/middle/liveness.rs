@@ -100,16 +100,16 @@
  * - `self_var`: a variable representing 'self'
  */
 
-import dvec::DVec;
-import std::map::{hashmap, int_hash, str_hash, uint_hash};
-import syntax::{visit, ast_util};
-import syntax::print::pprust::{expr_to_str};
-import visit::vt;
-import syntax::codemap::span;
-import syntax::ast::*;
-import driver::session::session;
-import io::WriterUtil;
-import capture::{cap_move, cap_drop, cap_copy, cap_ref};
+use dvec::DVec;
+use std::map::{hashmap, int_hash, str_hash, uint_hash};
+use syntax::{visit, ast_util};
+use syntax::print::pprust::{expr_to_str};
+use visit::vt;
+use syntax::codemap::span;
+use syntax::ast::*;
+use driver::session::session;
+use io::WriterUtil;
+use capture::{cap_move, cap_drop, cap_copy, cap_ref};
 
 export check_crate;
 export last_use_map;

@@ -1,21 +1,21 @@
-import libc::{c_int, c_uint, c_char};
-import driver::session;
-import session::session;
-import lib::llvm::llvm;
-import syntax::attr;
-import middle::ty;
-import metadata::{encoder, cstore};
-import middle::trans::common::crate_ctxt;
-import metadata::common::link_meta;
-import std::map::hashmap;
-import std::sha1::sha1;
-import syntax::ast;
-import syntax::print::pprust;
-import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
+use libc::{c_int, c_uint, c_char};
+use driver::session;
+use session::session;
+use lib::llvm::llvm;
+use syntax::attr;
+use middle::ty;
+use metadata::{encoder, cstore};
+use middle::trans::common::crate_ctxt;
+use metadata::common::link_meta;
+use std::map::hashmap;
+use std::sha1::sha1;
+use syntax::ast;
+use syntax::print::pprust;
+use lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
         PassManagerRef, FileType};
-import metadata::filesearch;
-import syntax::ast_map::{path, path_mod, path_name};
-import io::{Writer, WriterUtil};
+use metadata::filesearch;
+use syntax::ast_map::{path, path_mod, path_name};
+use io::{Writer, WriterUtil};
 
 enum output_type {
     output_type_none,

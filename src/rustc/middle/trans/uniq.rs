@@ -1,9 +1,9 @@
-import syntax::ast;
-import lib::llvm::ValueRef;
-import common::*;
-import build::*;
-import base::*;
-import shape::llsize_of;
+use syntax::ast;
+use lib::llvm::ValueRef;
+use common::*;
+use build::*;
+use base::*;
+use shape::llsize_of;
 
 export make_free_glue, autoderef, duplicate;
 

@@ -1,11 +1,11 @@
 
-import driver::session;
-import middle::trans::base;
-import middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
+use driver::session;
+use middle::trans::base;
+use middle::trans::common::{T_fn, T_i1, T_i8, T_i32,
                                T_int, T_nil,
                                T_opaque_vec, T_ptr, T_unique_ptr,
                                T_size_t, T_void, T_vec2};
-import lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
+use lib::llvm::{type_names, ModuleRef, ValueRef, TypeRef};
 
 type upcalls =
     {_fail: ValueRef,

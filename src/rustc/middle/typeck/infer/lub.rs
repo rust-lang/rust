@@ -1,6 +1,6 @@
-import combine::*;
-import lattice::*;
-import to_str::to_str;
+use combine::*;
+use lattice::*;
+use to_str::to_str;
 
 enum Lub = combine_fields;  // "subtype", "subregion" etc
 

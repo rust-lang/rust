@@ -1,9 +1,9 @@
-import common::*;
-import lib::llvm::{TypeRef};
-import syntax::ast;
-import lib::llvm::llvm;
-import driver::session::session;
-import std::map::hashmap;
+use common::*;
+use lib::llvm::{TypeRef};
+use syntax::ast;
+use lib::llvm::llvm;
+use driver::session::session;
+use std::map::hashmap;
 
 export type_of;
 export type_of_dtor;

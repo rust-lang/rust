@@ -6,18 +6,18 @@ use std(vers = "0.4");
 use rustc(vers = "0.4");
 use syntax(vers = "0.4");
 
-import core::*;
+use core::*;
 
 // -*- rust -*-
-import result::{Ok, Err};
-import std::getopts;
-import std::map::hashmap;
-import getopts::{opt_present};
-import rustc::driver::driver::*;
-import syntax::codemap;
-import syntax::diagnostic;
-import rustc::driver::session;
-import rustc::middle::lint;
+use result::{Ok, Err};
+use std::getopts;
+use std::map::hashmap;
+use getopts::{opt_present};
+use rustc::driver::driver::*;
+use syntax::codemap;
+use syntax::diagnostic;
+use rustc::driver::session;
+use rustc::middle::lint;
 
 fn version(argv0: ~str) {
     let mut vers = ~"unknown version";

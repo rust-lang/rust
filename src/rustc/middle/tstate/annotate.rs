@@ -1,11 +1,11 @@
 
-import syntax::ast::*;
-import syntax::visit;
-import syntax::codemap::span;
-import syntax::print::pprust::stmt_to_str;
-import aux::{num_constraints, get_fn_info, crate_ctxt, add_node};
-import ann::empty_ann;
-import pat_util::pat_binding_ids;
+use syntax::ast::*;
+use syntax::visit;
+use syntax::codemap::span;
+use syntax::print::pprust::stmt_to_str;
+use aux::{num_constraints, get_fn_info, crate_ctxt, add_node};
+use ann::empty_ann;
+use pat_util::pat_binding_ids;
 
 fn collect_ids_expr(e: @expr, rs: @mut ~[node_id]) { vec::push(*rs, e.id); }
 

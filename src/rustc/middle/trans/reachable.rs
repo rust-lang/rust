@@ -5,13 +5,13 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-import syntax::ast::*;
-import syntax::{visit, ast_util, ast_map};
-import syntax::ast_util::def_id_of_def;
-import syntax::attr;
-import syntax::print::pprust::expr_to_str;
-import std::map::hashmap;
-import driver::session::*;
+use syntax::ast::*;
+use syntax::{visit, ast_util, ast_map};
+use syntax::ast_util::def_id_of_def;
+use syntax::attr;
+use syntax::print::pprust::expr_to_str;
+use std::map::hashmap;
+use driver::session::*;
 
 export map, find_reachable;
 

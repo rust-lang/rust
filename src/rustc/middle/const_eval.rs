@@ -1,5 +1,5 @@
-import syntax::{ast,ast_util,visit};
-import ast::*;
+use syntax::{ast,ast_util,visit};
+use ast::*;
 
 //
 // This pass classifies expressions by their constant-ness.

@@ -1,23 +1,23 @@
 // #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
-import std::{map, smallintmap};
-import result::Result;
-import std::map::hashmap;
-import driver::session;
-import session::session;
-import syntax::{ast, ast_map};
-import syntax::ast_util;
-import syntax::ast_util::{is_local, local_def, new_def_hash};
-import syntax::codemap::span;
-import metadata::csearch;
-import util::ppaux::{region_to_str, explain_region, vstore_to_str};
-import middle::lint;
-import middle::lint::{get_lint_level, allow};
-import syntax::ast::*;
-import syntax::print::pprust::*;
-import util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
-import std::serialization::{serialize_Option,
+use std::{map, smallintmap};
+use result::Result;
+use std::map::hashmap;
+use driver::session;
+use session::session;
+use syntax::{ast, ast_map};
+use syntax::ast_util;
+use syntax::ast_util::{is_local, local_def, new_def_hash};
+use syntax::codemap::span;
+use metadata::csearch;
+use util::ppaux::{region_to_str, explain_region, vstore_to_str};
+use middle::lint;
+use middle::lint::{get_lint_level, allow};
+use syntax::ast::*;
+use syntax::print::pprust::*;
+use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
+use std::serialization::{serialize_Option,
                             deserialize_Option};
 
 export tv_vid, tvi_vid, region_vid, vid;

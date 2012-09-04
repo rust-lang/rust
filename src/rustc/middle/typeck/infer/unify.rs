@@ -1,6 +1,6 @@
-import combine::combine;
-import integral::*;
-import to_str::to_str;
+use combine::combine;
+use integral::*;
+use to_str::to_str;
 
 enum var_value<V:copy, T:copy> {
     redirect(V),

@@ -1,12 +1,12 @@
 // A pass that annotates for each loops and functions with the free
 // variables that they contain.
 
-import syntax::print::pprust::path_to_str;
-import std::map::*;
-import option::*;
-import syntax::{ast, ast_util, visit};
-import syntax::ast::{serialize_span, deserialize_span};
-import syntax::codemap::span;
+use syntax::print::pprust::path_to_str;
+use std::map::*;
+use option::*;
+use syntax::{ast, ast_util, visit};
+use syntax::ast::{serialize_span, deserialize_span};
+use syntax::codemap::span;
 
 export annotate_freevars;
 export freevar_map;

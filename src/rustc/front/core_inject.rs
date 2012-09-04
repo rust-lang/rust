@@ -1,8 +1,8 @@
-import driver::session::session;
-import syntax::codemap;
-import syntax::ast;
-import syntax::ast_util::*;
-import syntax::attr;
+use driver::session::session;
+use syntax::codemap;
+use syntax::ast;
+use syntax::ast_util::*;
+use syntax::attr;
 
 export maybe_inject_libcore_ref;
 

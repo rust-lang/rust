@@ -1,14 +1,14 @@
-import std::map::{hashmap,str_hash};
-import driver::session::session;
-import lib::llvm::{TypeRef, ValueRef};
-import syntax::ast;
-import back::abi;
-import common::*;
-import build::*;
-import base::*;
-import type_of::*;
-import ast::def_id;
-import util::ppaux::ty_to_str;
+use std::map::{hashmap,str_hash};
+use driver::session::session;
+use lib::llvm::{TypeRef, ValueRef};
+use syntax::ast;
+use back::abi;
+use common::*;
+use build::*;
+use base::*;
+use type_of::*;
+use ast::def_id;
+use util::ppaux::ty_to_str;
 
 enum reflector = {
     visitor_val: ValueRef,

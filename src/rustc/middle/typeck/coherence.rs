@@ -4,37 +4,37 @@
 // has at most one implementation for each type. Then we build a mapping from
 // each trait in the system to its implementations.
 
-import metadata::csearch::{each_path, get_impl_traits, get_impls_for_mod};
-import metadata::cstore::{cstore, iter_crate_data};
-import metadata::decoder::{dl_def, dl_field, dl_impl};
-import middle::resolve::{Impl, MethodInfo};
-import middle::ty::{get, lookup_item_type, subst, t, ty_box};
-import middle::ty::{ty_uniq, ty_ptr, ty_rptr, ty_enum};
-import middle::ty::{ty_class, ty_nil, ty_bot, ty_bool, ty_int, ty_uint};
-import middle::ty::{ty_float, ty_estr, ty_evec, ty_rec};
-import middle::ty::{ty_fn, ty_trait, ty_tup, ty_var, ty_var_integral};
-import middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
-import middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_var};
-import middle::typeck::infer::{infer_ctxt, can_mk_subty};
-import middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
-import syntax::ast::{crate, def_id, def_mod};
-import syntax::ast::{item, item_class, item_const, item_enum, item_fn};
-import syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
-import syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
-import syntax::ast::{trait_ref};
-import syntax::ast_map::node_item;
-import syntax::ast_util::{def_id_of_def, dummy_sp, new_def_hash};
-import syntax::codemap::span;
-import syntax::visit::{default_simple_visitor, default_visitor};
-import syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
-import syntax::visit::{visit_mod};
-import util::ppaux::ty_to_str;
+use metadata::csearch::{each_path, get_impl_traits, get_impls_for_mod};
+use metadata::cstore::{cstore, iter_crate_data};
+use metadata::decoder::{dl_def, dl_field, dl_impl};
+use middle::resolve::{Impl, MethodInfo};
+use middle::ty::{get, lookup_item_type, subst, t, ty_box};
+use middle::ty::{ty_uniq, ty_ptr, ty_rptr, ty_enum};
+use middle::ty::{ty_class, ty_nil, ty_bot, ty_bool, ty_int, ty_uint};
+use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec};
+use middle::ty::{ty_fn, ty_trait, ty_tup, ty_var, ty_var_integral};
+use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
+use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_var};
+use middle::typeck::infer::{infer_ctxt, can_mk_subty};
+use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
+use syntax::ast::{crate, def_id, def_mod};
+use syntax::ast::{item, item_class, item_const, item_enum, item_fn};
+use syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
+use syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
+use syntax::ast::{trait_ref};
+use syntax::ast_map::node_item;
+use syntax::ast_util::{def_id_of_def, dummy_sp, new_def_hash};
+use syntax::codemap::span;
+use syntax::visit::{default_simple_visitor, default_visitor};
+use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
+use syntax::visit::{visit_mod};
+use util::ppaux::ty_to_str;
 
-import dvec::DVec;
-import result::Ok;
-import std::map::{hashmap, int_hash};
-import uint::range;
-import vec::{len, push};
+use dvec::DVec;
+use result::Ok;
+use std::map::{hashmap, int_hash};
+use uint::range;
+use vec::{len, push};
 
 fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
               -> Option<t> {

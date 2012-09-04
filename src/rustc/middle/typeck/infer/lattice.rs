@@ -1,6 +1,6 @@
-import combine::*;
-import unify::*;
-import to_str::to_str;
+use combine::*;
+use unify::*;
+use to_str::to_str;
 
 // ______________________________________________________________________
 // Lattice operations on variables

@@ -1,13 +1,13 @@
-import std::map::{hashmap, str_hash};
-import libc::{c_uint, c_int};
-import lib::llvm::llvm;
-import syntax::codemap;
-import codemap::span;
-import lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
-import lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
+use std::map::{hashmap, str_hash};
+use libc::{c_uint, c_int};
+use lib::llvm::llvm;
+use syntax::codemap;
+use codemap::span;
+use lib::llvm::{ValueRef, TypeRef, BasicBlockRef, BuilderRef, ModuleRef};
+use lib::llvm::{Opcode, IntPredicate, RealPredicate, True, False,
         CallConv, TypeKind, AtomicBinOp, AtomicOrdering};
-import common::*;
-import driver::session::session;
+use common::*;
+use driver::session::session;
 
 fn B(cx: block) -> BuilderRef {
     let b = cx.fcx.ccx.builder.B;

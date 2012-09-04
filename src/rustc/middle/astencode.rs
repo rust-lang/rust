@@ -1,45 +1,45 @@
-import util::ppaux::ty_to_str;
+use util::ppaux::ty_to_str;
 
-import syntax::ast;
-import syntax::fold;
-import syntax::fold::*;
-import syntax::visit;
-import syntax::ast_map;
-import syntax::ast_util;
-import syntax::codemap::span;
-import std::ebml;
-import std::ebml::Writer;
-import std::ebml::get_doc;
-import std::map::hashmap;
-import std::serialization::serializer;
-import std::serialization::deserializer;
-import std::serialization::serializer_helpers;
-import std::serialization::deserializer_helpers;
-import std::prettyprint::serializer;
-import middle::{ty, typeck};
-import middle::typeck::{method_origin, method_map_entry,
+use syntax::ast;
+use syntax::fold;
+use syntax::fold::*;
+use syntax::visit;
+use syntax::ast_map;
+use syntax::ast_util;
+use syntax::codemap::span;
+use std::ebml;
+use std::ebml::Writer;
+use std::ebml::get_doc;
+use std::map::hashmap;
+use std::serialization::serializer;
+use std::serialization::deserializer;
+use std::serialization::serializer_helpers;
+use std::serialization::deserializer_helpers;
+use std::prettyprint::serializer;
+use middle::{ty, typeck};
+use middle::typeck::{method_origin, method_map_entry,
                         serialize_method_map_entry,
                         deserialize_method_map_entry,
                         vtable_res,
                         vtable_origin};
-import driver::session::session;
-import middle::freevars::{freevar_entry,
+use driver::session::session;
+use middle::freevars::{freevar_entry,
                           serialize_freevar_entry,
                           deserialize_freevar_entry};
-import c = metadata::common;
-import e = metadata::encoder;
-import cstore = metadata::cstore;
-import metadata::encoder;
-import metadata::decoder;
-import metadata::tyencode;
-import metadata::tydecode;
+use c = metadata::common;
+use e = metadata::encoder;
+use cstore = metadata::cstore;
+use metadata::encoder;
+use metadata::decoder;
+use metadata::tyencode;
+use metadata::tydecode;
 
 
 // used in testing:
-import syntax::diagnostic;
-import syntax::codemap;
-import syntax::parse;
-import syntax::print::pprust;
+use syntax::diagnostic;
+use syntax::codemap;
+use syntax::parse;
+use syntax::print::pprust;
 
 export maps;
 export encode_inlined_item;

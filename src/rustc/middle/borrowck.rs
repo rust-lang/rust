@@ -214,23 +214,23 @@ Borrowck results in two maps.
   given a memory location and not used as immediates.
  */
 
-import syntax::ast;
-import syntax::ast::{mutability, m_mutbl, m_imm, m_const};
-import syntax::visit;
-import syntax::ast_util;
-import syntax::ast_map;
-import syntax::codemap::span;
-import util::ppaux::{ty_to_str, region_to_str, explain_region};
-import std::map::{int_hash, hashmap, set};
-import std::list;
-import std::list::{list, cons, nil};
-import result::{Result, Ok, Err};
-import syntax::print::pprust;
-import util::common::indenter;
-import ty::to_str;
-import driver::session::session;
-import dvec::DVec;
-import mem_categorization::*;
+use syntax::ast;
+use syntax::ast::{mutability, m_mutbl, m_imm, m_const};
+use syntax::visit;
+use syntax::ast_util;
+use syntax::ast_map;
+use syntax::codemap::span;
+use util::ppaux::{ty_to_str, region_to_str, explain_region};
+use std::map::{int_hash, hashmap, set};
+use std::list;
+use std::list::{list, cons, nil};
+use result::{Result, Ok, Err};
+use syntax::print::pprust;
+use util::common::indenter;
+use ty::to_str;
+use driver::session::session;
+use dvec::DVec;
+use mem_categorization::*;
 
 export check_crate, root_map, mutbl_map;
 

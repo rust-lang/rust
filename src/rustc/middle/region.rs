@@ -7,20 +7,20 @@ region parameterized.
 
 */
 
-import driver::session::session;
-import middle::ty;
-import syntax::{ast, visit};
-import syntax::codemap::span;
-import syntax::print::pprust;
-import syntax::ast_util::new_def_hash;
-import syntax::ast_map;
-import dvec::DVec;
-import metadata::csearch;
-import ty::{region_variance, rv_covariant, rv_invariant, rv_contravariant};
+use driver::session::session;
+use middle::ty;
+use syntax::{ast, visit};
+use syntax::codemap::span;
+use syntax::print::pprust;
+use syntax::ast_util::new_def_hash;
+use syntax::ast_map;
+use dvec::DVec;
+use metadata::csearch;
+use ty::{region_variance, rv_covariant, rv_invariant, rv_contravariant};
 
-import std::list;
-import std::list::list;
-import std::map::{hashmap, int_hash};
+use std::list;
+use std::list::list;
+use std::map::{hashmap, int_hash};
 
 type parent = Option<ast::node_id>;
 

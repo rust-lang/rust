@@ -1,23 +1,23 @@
-import option::*;
-import pat_util::*;
-import syntax::ast::*;
-import syntax::ast_util::*;
-import syntax::{visit, codemap};
-import codemap::span;
-import std::map::{hashmap, int_hash};
-import syntax::print::pprust::path_to_str;
-import tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
+use option::*;
+use pat_util::*;
+use syntax::ast::*;
+use syntax::ast_util::*;
+use syntax::{visit, codemap};
+use codemap::span;
+use std::map::{hashmap, int_hash};
+use syntax::print::pprust::path_to_str;
+use tstate::ann::{pre_and_post, pre_and_post_state, empty_ann, prestate,
                      poststate, precond, postcond,
                      set_prestate, set_poststate, set_in_poststate_,
                      extend_prestate, extend_poststate, set_precondition,
                      set_postcondition, ts_ann,
                      clear_in_postcond,
                      clear_in_poststate_};
-import driver::session::session;
-import dvec::{dvec, extensions};
-import tritv::{trit, tfalse, ttrue, dont_care, t};
+use driver::session::session;
+use dvec::{dvec, extensions};
+use tritv::{trit, tfalse, ttrue, dont_care, t};
 
-import syntax::print::pprust::{constr_args_to_str, lit_to_str};
+use syntax::print::pprust::{constr_args_to_str, lit_to_str};
 
 // Used to communicate which operands should be invalidated
 // to helper functions

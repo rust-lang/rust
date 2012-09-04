@@ -6,9 +6,9 @@
 // their associated scopes.  In phase two, checking loans, we will then make
 // sure that all of these loans are honored.
 
-import mem_categorization::{opt_deref_kind};
-import preserve::{preserve_condition, pc_ok, pc_if_pure};
-import ty::ty_region;
+use mem_categorization::{opt_deref_kind};
+use preserve::{preserve_condition, pc_ok, pc_if_pure};
+use ty::ty_region;
 
 export gather_loans;
 

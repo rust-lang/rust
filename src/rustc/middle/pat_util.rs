@@ -1,10 +1,10 @@
-import syntax::ast::*;
-import syntax::ast_util;
-import syntax::ast_util::{path_to_ident, respan, walk_pat};
-import syntax::fold;
-import syntax::fold::*;
-import syntax::codemap::span;
-import std::map::hashmap;
+use syntax::ast::*;
+use syntax::ast_util;
+use syntax::ast_util::{path_to_ident, respan, walk_pat};
+use syntax::fold;
+use syntax::fold::*;
+use syntax::codemap::span;
+use std::map::hashmap;
 
 export pat_binding_ids, pat_bindings, pat_id_map;
 export pat_is_variant;

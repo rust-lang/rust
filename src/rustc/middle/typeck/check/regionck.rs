@@ -17,17 +17,17 @@ this point a bit better.
 
 */
 
-import util::ppaux;
-import ppaux::{note_and_explain_region, ty_to_str};
-import syntax::print::pprust;
-import infer::{resolve_and_force_all_but_regions, fres};
-import syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
-import middle::freevars::get_freevars;
-import middle::kind::check_owned;
-import middle::pat_util::pat_bindings;
-import middle::ty::{encl_region, proto_bare, proto_vstore, re_scope};
-import middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
-import middle::ty::{vstore_uniq};
+use util::ppaux;
+use ppaux::{note_and_explain_region, ty_to_str};
+use syntax::print::pprust;
+use infer::{resolve_and_force_all_but_regions, fres};
+use syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
+use middle::freevars::get_freevars;
+use middle::kind::check_owned;
+use middle::pat_util::pat_bindings;
+use middle::ty::{encl_region, proto_bare, proto_vstore, re_scope};
+use middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
+use middle::ty::{vstore_uniq};
 
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;

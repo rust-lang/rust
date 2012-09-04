@@ -1,8 +1,8 @@
-import syntax::{ast, ast_util};
-import driver::session::session;
-import syntax::codemap::span;
-import std::map;
-import std::map::hashmap;
+use syntax::{ast, ast_util};
+use driver::session::session;
+use syntax::codemap::span;
+use std::map;
+use std::map::hashmap;
 
 export capture_mode;
 export capture_var;

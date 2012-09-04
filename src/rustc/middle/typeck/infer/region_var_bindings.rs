@@ -305,18 +305,18 @@ because `&x` was created alone, but is relatable to `&A`.
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
-import dvec::DVec;
-import result::Result;
-import result::{Ok, Err};
-import std::map::{hashmap, uint_hash};
-import std::cell::{Cell, empty_cell};
-import std::list::{list, nil, cons};
+use dvec::DVec;
+use result::Result;
+use result::{Ok, Err};
+use std::map::{hashmap, uint_hash};
+use std::cell::{Cell, empty_cell};
+use std::list::{list, nil, cons};
 
-import ty::{region, region_vid, hash_region};
-import region::is_subregion_of;
-import syntax::codemap;
-import to_str::to_str;
-import util::ppaux::note_and_explain_region;
+use ty::{region, region_vid, hash_region};
+use region::is_subregion_of;
+use syntax::codemap;
+use to_str::to_str;
+use util::ppaux::note_and_explain_region;
 
 export RegionVarBindings;
 export make_subregion;

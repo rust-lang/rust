@@ -1,19 +1,19 @@
-import tstate::ann::*;
-import aux::*;
-import bitvectors::{bit_num, seq_preconds, seq_postconds,
+use tstate::ann::*;
+use aux::*;
+use bitvectors::{bit_num, seq_preconds, seq_postconds,
                     intersect_states,
                     relax_precond_block, gen};
-import tritv::*;
+use tritv::*;
 
-import pat_util::*;
-import syntax::ast::*;
-import syntax::ast_util::*;
-import syntax::print::pprust::{expr_to_str, stmt_to_str};
-import syntax::visit;
-import util::common::{field_exprs, has_nonlocal_exits};
-import syntax::codemap::span;
-import driver::session::session;
-import std::map::hashmap;
+use pat_util::*;
+use syntax::ast::*;
+use syntax::ast_util::*;
+use syntax::print::pprust::{expr_to_str, stmt_to_str};
+use syntax::visit;
+use util::common::{field_exprs, has_nonlocal_exits};
+use syntax::codemap::span;
+use driver::session::session;
+use std::map::hashmap;
 
 fn find_pre_post_mod(_m: _mod) -> _mod {
     debug!("implement find_pre_post_mod!");

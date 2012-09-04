@@ -1,18 +1,18 @@
-import ann::*;
-import aux::*;
-import tritv::*;
+use ann::*;
+use aux::*;
+use tritv::*;
 
-import syntax::print::pprust::block_to_str;
-import bitvectors::*;
-import pat_util::*;
-import syntax::ast::*;
-import syntax::ast_util::*;
-import syntax::print::pprust::{expr_to_str, stmt_to_str};
-import syntax::codemap::span;
-import middle::ty::{expr_ty, type_is_bot};
-import util::common::{field_exprs, has_nonlocal_exits, may_break};
-import driver::session::session;
-import std::map::hashmap;
+use syntax::print::pprust::block_to_str;
+use bitvectors::*;
+use pat_util::*;
+use syntax::ast::*;
+use syntax::ast_util::*;
+use syntax::print::pprust::{expr_to_str, stmt_to_str};
+use syntax::codemap::span;
+use middle::ty::{expr_ty, type_is_bot};
+use util::common::{field_exprs, has_nonlocal_exits, may_break};
+use driver::session::session;
+use std::map::hashmap;
 
 fn forbid_upvar(fcx: fn_ctxt, rhs_id: node_id, sp: span, t: oper_type) {
     match t {

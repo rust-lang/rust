@@ -1,16 +1,16 @@
-import syntax::ast;
-import driver::session::session;
-import lib::llvm::{ValueRef, TypeRef};
-import back::abi;
-import base::{call_memmove,
+use syntax::ast;
+use driver::session::session;
+use lib::llvm::{ValueRef, TypeRef};
+use back::abi;
+use base::{call_memmove,
               INIT, copy_val, load_if_immediate, get_tydesc,
               sub_block, do_spill_noroot,
               dest, non_gc_box_cast, move_val, lval_owned};
-import syntax::codemap::span;
-import shape::llsize_of;
-import build::*;
-import common::*;
-import util::ppaux::ty_to_str;
+use syntax::codemap::span;
+use shape::llsize_of;
+use build::*;
+use common::*;
+use util::ppaux::ty_to_str;
 
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an
