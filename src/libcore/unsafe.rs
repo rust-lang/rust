@@ -95,7 +95,6 @@ struct ArcData<T> {
 
 struct ArcDestruct<T> {
     mut data: *libc::c_void;
-    new(data: *libc::c_void) { self.data = data; }
     drop unsafe {
         if self.data.is_null() {
             return; // Happens when destructing an unwrapper's handle.
@@ -129,6 +128,12 @@ struct ArcDestruct<T> {
                 unsafe::forget(data);
             }
         }
+    }
+}
+
+fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
+    ArcDestruct {
+        data: data
     }
 }
 
@@ -276,10 +281,13 @@ extern mod rustrt {
 
 struct LittleLock {
     let l: rust_little_lock;
-    new() {
-        self.l = rustrt::rust_create_little_lock();
-    }
     drop { rustrt::rust_destroy_little_lock(self.l); }
+}
+
+fn LittleLock() -> LittleLock {
+    LittleLock {
+        l: rustrt::rust_create_little_lock()
+    }
 }
 
 impl LittleLock {
@@ -287,8 +295,13 @@ impl LittleLock {
     unsafe fn lock<T>(f: fn() -> T) -> T {
         struct Unlock {
             let l: rust_little_lock;
-            new(l: rust_little_lock) { self.l = l; }
             drop { rustrt::rust_unlock_little_lock(self.l); }
+        }
+
+        fn Unlock(l: rust_little_lock) -> Unlock {
+            Unlock {
+                l: l
+            }
         }
 
         do atomically {

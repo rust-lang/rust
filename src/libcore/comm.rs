@@ -99,7 +99,6 @@ fn listen<T: send, U>(f: fn(Chan<T>) -> U) -> U {
 
 struct PortPtr<T:send> {
   let po: *rust_port;
-  new(po: *rust_port) { self.po = po; }
   drop unsafe {
       do task::unkillable {
         // Once the port is detached it's guaranteed not to receive further
@@ -122,6 +121,12 @@ struct PortPtr<T:send> {
   }
 }
 
+fn PortPtr<T: send>(po: *rust_port) -> PortPtr<T> {
+    PortPtr {
+        po: po
+    }
+}
+
 /**
  * Internal function for converting from a channel to a port
  *
@@ -134,12 +139,17 @@ fn as_raw_port<T: send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
 
     struct PortRef {
        let p: *rust_port;
-       new(p: *rust_port) { self.p = p; }
        drop {
          if !ptr::is_null(self.p) {
            rustrt::rust_port_drop(self.p);
          }
        }
+    }
+
+    fn PortRef(p: *rust_port) -> PortRef {
+        PortRef {
+            p: p
+        }
     }
 
     let p = PortRef(rustrt::rust_port_take(*ch));

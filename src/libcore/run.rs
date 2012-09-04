@@ -228,8 +228,13 @@ fn start_program(prog: &str, args: &[~str]) -> Program {
     }
     struct ProgRes {
         let r: ProgRepr;
-        new(+r: ProgRepr) { self.r = r; }
         drop { destroy_repr(&self.r); }
+    }
+
+    fn ProgRes(+r: ProgRepr) -> ProgRes {
+        ProgRes {
+            r: r
+        }
     }
 
     impl ProgRes: Program {

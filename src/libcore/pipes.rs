@@ -135,10 +135,14 @@ struct BufferHeader {
     // get away with restricting it to 0 or 1, if we're careful.
     let mut ref_count: int;
 
-    new() { self.ref_count = 0; }
-
     // We may want a drop, and to be careful about stringing this
     // thing along.
+}
+
+fn BufferHeader() -> BufferHeader{
+    BufferHeader {
+        ref_count: 0
+    }
 }
 
 // XXX remove me
@@ -159,12 +163,6 @@ struct PacketHeader {
     // This is a reinterpret_cast of a ~buffer, that can also be cast
     // to a buffer_header if need be.
     let mut buffer: *libc::c_void;
-
-    new() {
-        self.state = Empty;
-        self.blocked_task = ptr::null();
-        self.buffer = ptr::null();
-    }
 
     // Returns the old state.
     unsafe fn mark_blocked(this: *rust_task) -> State {
@@ -194,6 +192,14 @@ struct PacketHeader {
 
     fn set_buffer<T: send>(b: ~Buffer<T>) unsafe {
         self.buffer = reinterpret_cast(&b);
+    }
+}
+
+fn PacketHeader() -> PacketHeader {
+    PacketHeader {
+        state: Empty,
+        blocked_task: ptr::null(),
+        buffer: ptr::null()
     }
 }
 
@@ -368,12 +374,6 @@ unsafe fn get_buffer<T: send>(p: *PacketHeader) -> ~Buffer<T> {
 // This could probably be done with SharedMutableState to avoid move_it!().
 struct BufferResource<T: send> {
     let buffer: ~Buffer<T>;
-    new(+b: ~Buffer<T>) {
-        //let p = ptr::addr_of(*b);
-        //error!("take %?", p);
-        atomic_add_acq(&mut b.header.ref_count, 1);
-        self.buffer = b;
-    }
 
     drop unsafe {
         let b = move_it!(self.buffer);
@@ -389,6 +389,16 @@ struct BufferResource<T: send> {
         else {
             forget(b)
         }
+    }
+}
+
+fn BufferResource<T: send>(+b: ~Buffer<T>) -> BufferResource<T> {
+    //let p = ptr::addr_of(*b);
+    //error!("take %?", p);
+    atomic_add_acq(&mut b.header.ref_count, 1);
+
+    BufferResource {
+        buffer: b
     }
 }
 
@@ -770,15 +780,6 @@ fn send_packet<T: send>(p: *packet<T>) -> SendPacket<T> {
 struct SendPacketBuffered<T: send, Tbuffer: send> {
     let mut p: Option<*Packet<T>>;
     let mut buffer: Option<BufferResource<Tbuffer>>;
-    new(p: *Packet<T>) {
-        //debug!("take send %?", p);
-        self.p = Some(p);
-        unsafe {
-            self.buffer = Some(
-                BufferResource(
-                    get_buffer(ptr::addr_of((*p).header))));
-        };
-    }
     drop {
         //if self.p != none {
         //    debug!("drop send %?", option::get(self.p));
@@ -819,6 +820,18 @@ struct SendPacketBuffered<T: send, Tbuffer: send> {
     }
 }
 
+fn SendPacketBuffered<T: send, Tbuffer: send>(p: *Packet<T>)
+    -> SendPacketBuffered<T, Tbuffer> {
+        //debug!("take send %?", p);
+    SendPacketBuffered {
+        p: Some(p),
+        buffer: unsafe {
+            Some(BufferResource(
+                get_buffer(ptr::addr_of((*p).header))))
+        }
+    }
+}
+
 // XXX remove me
 #[cfg(stage0)]
 #[allow(non_camel_case_types)]
@@ -848,15 +861,6 @@ fn recv_packet<T: send>(p: *packet<T>) -> RecvPacket<T> {
 struct RecvPacketBuffered<T: send, Tbuffer: send> : Selectable {
     let mut p: Option<*Packet<T>>;
     let mut buffer: Option<BufferResource<Tbuffer>>;
-    new(p: *Packet<T>) {
-        //debug!("take recv %?", p);
-        self.p = Some(p);
-        unsafe {
-            self.buffer = Some(
-                BufferResource(
-                    get_buffer(ptr::addr_of((*p).header))));
-        };
-    }
     drop {
         //if self.p != none {
         //    debug!("drop recv %?", option::get(self.p));
@@ -894,6 +898,18 @@ struct RecvPacketBuffered<T: send, Tbuffer: send> : Selectable {
         let mut tmp = None;
         tmp <-> self.buffer;
         option::unwrap(tmp)
+    }
+}
+
+fn RecvPacketBuffered<T: send, Tbuffer: send>(p: *Packet<T>)
+    -> RecvPacketBuffered<T, Tbuffer> {
+    //debug!("take recv %?", p);
+    RecvPacketBuffered {
+        p: Some(p),
+        buffer: unsafe {
+            Some(BufferResource(
+                get_buffer(ptr::addr_of((*p).header))))
+        }
     }
 }
 
@@ -1083,8 +1099,6 @@ impl<T: send> Port<T>: Recv<T> {
 struct PortSet<T: send> : Recv<T> {
     let mut ports: ~[pipes::Port<T>];
 
-    new() { self.ports = ~[]; }
-
     fn add(+port: pipes::Port<T>) {
         vec::push(self.ports, port)
     }
@@ -1128,6 +1142,12 @@ struct PortSet<T: send> : Recv<T> {
             if p.peek() { return true }
         }
         false
+    }
+}
+
+fn PortSet<T: send>() -> PortSet<T>{
+    PortSet {
+        ports: ~[]
     }
 }
 

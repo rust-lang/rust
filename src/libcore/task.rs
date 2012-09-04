@@ -610,8 +610,13 @@ fn get_task() -> Task {
 unsafe fn unkillable<U>(f: fn() -> U) -> U {
     struct AllowFailure {
         let t: *rust_task;
-        new(t: *rust_task) { self.t = t; }
         drop { rustrt::rust_task_allow_kill(self.t); }
+    }
+
+    fn AllowFailure(t: *rust_task) -> AllowFailure{
+        AllowFailure {
+            t: t
+        }
     }
 
     let t = rustrt::rust_get_task();
@@ -624,8 +629,13 @@ unsafe fn unkillable<U>(f: fn() -> U) -> U {
 unsafe fn rekillable<U>(f: fn() -> U) -> U {
     struct DisallowFailure {
         let t: *rust_task;
-        new(t: *rust_task) { self.t = t; }
         drop { rustrt::rust_task_inhibit_kill(self.t); }
+    }
+
+    fn DisallowFailure(t: *rust_task) -> DisallowFailure {
+        DisallowFailure {
+            t: t
+        }
     }
 
     let t = rustrt::rust_get_task();
@@ -641,12 +651,18 @@ unsafe fn rekillable<U>(f: fn() -> U) -> U {
 unsafe fn atomically<U>(f: fn() -> U) -> U {
     struct DeferInterrupts {
         let t: *rust_task;
-        new(t: *rust_task) { self.t = t; }
         drop {
             rustrt::rust_task_allow_yield(self.t);
             rustrt::rust_task_allow_kill(self.t);
         }
     }
+
+    fn DeferInterrupts(t: *rust_task) -> DeferInterrupts {
+        DeferInterrupts {
+            t: t
+        }
+    }
+
     let t = rustrt::rust_get_task();
     let _interrupts = DeferInterrupts(t);
     rustrt::rust_task_inhibit_kill(t);
@@ -938,15 +954,6 @@ struct TCB {
     let mut ancestors: AncestorList;
     let is_main:       bool;
     let notifier:      Option<AutoNotify>;
-    new(me: *rust_task, -tasks: TaskGroupArc, -ancestors: AncestorList,
-        is_main: bool, -notifier: Option<AutoNotify>) {
-        self.me        = me;
-        self.tasks     = tasks;
-        self.ancestors = ancestors;
-        self.is_main   = is_main;
-        self.notifier  = notifier;
-        self.notifier.iter(|x| { x.failed = false; });
-    }
     // Runs on task exit.
     drop {
         // If we are failing, the whole taskgroup needs to die.
@@ -971,16 +978,34 @@ struct TCB {
     }
 }
 
+fn TCB(me: *rust_task, +tasks: TaskGroupArc, +ancestors: AncestorList,
+       is_main: bool, +notifier: Option<AutoNotify>) -> TCB {
+
+    let notifier = move notifier;
+    notifier.iter(|x| { x.failed = false; });
+
+    TCB {
+        me: me,
+        tasks: tasks,
+        ancestors: ancestors,
+        is_main: is_main,
+        notifier: move notifier
+    }
+}
+
 struct AutoNotify {
     let notify_chan: comm::Chan<Notification>;
     let mut failed:  bool;
-    new(chan: comm::Chan<Notification>) {
-        self.notify_chan = chan;
-        self.failed = true; // Un-set above when taskgroup successfully made.
-    }
     drop {
         let result = if self.failed { Failure } else { Success };
         comm::send(self.notify_chan, Exit(get_task(), result));
+    }
+}
+
+fn AutoNotify(chan: comm::Chan<Notification>) -> AutoNotify {
+    AutoNotify {
+        notify_chan: chan,
+        failed: true // Un-set above when taskgroup successfully made.
     }
 }
 

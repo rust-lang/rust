@@ -8,9 +8,11 @@ type Word = uint;
 
 struct Frame {
     let fp: *Word;
+}
 
-    new(fp: *Word) {
-        self.fp = fp;
+fn Frame(fp: *Word) -> Frame {
+    Frame {
+        fp: fp
     }
 }
 

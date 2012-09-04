@@ -247,8 +247,13 @@ impl<T: Reader, C> {base: T, cleanup: C}: Reader {
 
 struct FILERes {
     let f: *libc::FILE;
-    new(f: *libc::FILE) { self.f = f; }
     drop { libc::fclose(self.f); }
+}
+
+fn FILERes(f: *libc::FILE) -> FILERes {
+    FILERes {
+        f: f
+    }
 }
 
 fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
@@ -417,8 +422,13 @@ impl fd_t: Writer {
 
 struct FdRes {
     let fd: fd_t;
-    new(fd: fd_t) { self.fd = fd; }
     drop { libc::close(self.fd); }
+}
+
+fn FdRes(fd: fd_t) -> FdRes {
+    FdRes {
+        fd: fd
+    }
 }
 
 fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
@@ -768,7 +778,6 @@ mod fsync {
     // Artifacts that need to fsync on destruction
     struct Res<t> {
         let arg: Arg<t>;
-        new(-arg: Arg<t>) { self.arg <- arg; }
         drop {
           match self.arg.opt_level {
             option::None => (),
@@ -777,6 +786,12 @@ mod fsync {
               assert(self.arg.fsync_fn(self.arg.val, level) != -1);
             }
           }
+        }
+    }
+
+    fn Res<t>(-arg: Arg<t>) -> Res<t>{
+        Res {
+            arg: move arg
         }
     }
 

@@ -245,8 +245,13 @@ impl Rng {
 
 struct RandRes {
     let c: *rctx;
-    new(c: *rctx) { self.c = c; }
     drop { rustrt::rand_free(self.c); }
+}
+
+fn RandRes(c: *rctx) -> RandRes {
+    RandRes {
+        c: c
+    }
 }
 
 impl @RandRes: Rng {
