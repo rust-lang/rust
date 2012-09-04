@@ -1,7 +1,7 @@
-// error-pattern:declaration of `none` shadows
+// error-pattern:declaration of `None` shadows
 import option::*;
 
 fn main() {
-  let none: int = 42;
-  log(debug, none);
+  let None: int = 42;
+  log(debug, None);
 }

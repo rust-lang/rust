@@ -1,5 +1,5 @@
 // error-pattern:no public field or method with that name
-class cat {
+struct cat {
   priv {
     let mut meows : uint;
   }

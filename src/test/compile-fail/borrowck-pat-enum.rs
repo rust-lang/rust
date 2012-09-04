@@ -1,48 +1,48 @@
-fn match_ref(&&v: option<int>) -> int {
+fn match_ref(&&v: Option<int>) -> int {
     match v {
-      some(ref i) => {
+      Some(ref i) => {
         *i
       }
-      none => {0}
+      None => {0}
     }
 }
 
-fn match_ref_unused(&&v: option<int>) {
+fn match_ref_unused(&&v: Option<int>) {
     match v {
-      some(_) => {}
-      none => {}
+      Some(_) => {}
+      None => {}
     }
 }
 
-fn match_const_reg(v: &const option<int>) -> int {
+fn match_const_reg(v: &const Option<int>) -> int {
     match *v {
-      some(ref i) => {*i} // OK because this is pure
-      none => {0}
+      Some(ref i) => {*i} // OK because this is pure
+      None => {0}
     }
 }
 
 fn impure(_i: int) {
 }
 
-fn match_const_reg_unused(v: &const option<int>) {
+fn match_const_reg_unused(v: &const Option<int>) {
     match *v {
-      some(_) => {impure(0)} // OK because nothing is captured
-      none => {}
+      Some(_) => {impure(0)} // OK because nothing is captured
+      None => {}
     }
 }
 
-fn match_const_reg_impure(v: &const option<int>) {
+fn match_const_reg_impure(v: &const Option<int>) {
     match *v {
-      some(ref i) => {impure(*i)} //~ ERROR illegal borrow unless pure
+      Some(ref i) => {impure(*i)} //~ ERROR illegal borrow unless pure
       //~^ NOTE impure due to access to impure function
-      none => {}
+      None => {}
     }
 }
 
-fn match_imm_reg(v: &option<int>) {
+fn match_imm_reg(v: &Option<int>) {
     match *v {
-      some(ref i) => {impure(*i)} // OK because immutable
-      none => {}
+      Some(ref i) => {impure(*i)} // OK because immutable
+      None => {}
     }
 }
 

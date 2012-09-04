@@ -1,5 +1,11 @@
 enum chan { chan_t, }
 
+impl chan : cmp::Eq {
+    pure fn eq(&&other: chan) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn wrapper3(i: chan) {
     assert i == chan_t;
 }

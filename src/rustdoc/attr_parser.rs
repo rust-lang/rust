@@ -14,7 +14,7 @@ export parse_crate, parse_desc;
 export parse_hidden;
 
 type crate_attrs = {
-    name: option<~str>
+    name: Option<~str>
 };
 
 #[cfg(test)]
@@ -27,7 +27,7 @@ mod test {
         import syntax::codemap;
         import syntax::diagnostic;
 
-        let parse_sess = syntax::parse::new_parse_sess(none);
+        let parse_sess = syntax::parse::new_parse_sess(None);
         let parser = parse::new_parser_from_source_str(
             parse_sess, ~[], ~"-", codemap::fss_none, @source);
 
@@ -37,7 +37,7 @@ mod test {
 
 fn doc_meta(
     attrs: ~[ast::attribute]
-) -> option<@ast::meta_item> {
+) -> Option<@ast::meta_item> {
 
     /*!
      * Given a vec of attributes, extract the meta_items contained in the \
@@ -51,11 +51,11 @@ fn doc_meta(
 
     if vec::is_not_empty(doc_metas) {
         if vec::len(doc_metas) != 1u {
-            warn!{"ignoring %u doc attributes", vec::len(doc_metas) - 1u};
+            warn!("ignoring %u doc attributes", vec::len(doc_metas) - 1u);
         }
-        some(doc_metas[0])
+        Some(doc_metas[0])
     } else {
-        none
+        None
     }
 }
 
@@ -63,8 +63,7 @@ fn parse_crate(attrs: ~[ast::attribute]) -> crate_attrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
     {
-        name: attr::last_meta_item_value_str_by_name(
-            link_metas, ~"name").map(|x| *x )
+        name: attr::last_meta_item_value_str_by_name(link_metas, ~"name")
     }
 }
 
@@ -73,7 +72,7 @@ fn should_extract_crate_name_from_link_attribute() {
     let source = ~"#[link(name = \"snuggles\")]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
-    assert attrs.name == some(~"snuggles");
+    assert attrs.name == Some(~"snuggles");
 }
 
 #[test]
@@ -81,7 +80,7 @@ fn should_not_extract_crate_name_if_no_link_attribute() {
     let source = ~"";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
-    assert attrs.name == none;
+    assert attrs.name == None;
 }
 
 #[test]
@@ -89,15 +88,15 @@ fn should_not_extract_crate_name_if_no_name_value_in_link_attribute() {
     let source = ~"#[link(whatever)]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_crate(attrs);
-    assert attrs.name == none;
+    assert attrs.name == None;
 }
 
-fn parse_desc(attrs: ~[ast::attribute]) -> option<~str> {
+fn parse_desc(attrs: ~[ast::attribute]) -> Option<~str> {
     match doc_meta(attrs) {
-      some(meta) => {
-        attr::get_meta_item_value_str(meta).map(|x| *x )
+      Some(meta) => {
+        attr::get_meta_item_value_str(meta)
       }
-      none => none
+      None => None
     }
 }
 
@@ -106,7 +105,7 @@ fn parse_desc_should_handle_undocumented_mods() {
     let source = ~"";
     let attrs = test::parse_attributes(source);
     let attrs = parse_desc(attrs);
-    assert attrs == none;
+    assert attrs == None;
 }
 
 #[test]
@@ -114,21 +113,21 @@ fn parse_desc_should_parse_simple_doc_attributes() {
     let source = ~"#[doc = \"basic\"]";
     let attrs = test::parse_attributes(source);
     let attrs = parse_desc(attrs);
-    assert attrs == some(~"basic");
+    assert attrs == Some(~"basic");
 }
 
 fn parse_hidden(attrs: ~[ast::attribute]) -> bool {
     match doc_meta(attrs) {
-      some(meta) => {
+      Some(meta) => {
         match attr::get_meta_item_list(meta) {
-          some(metas) => {
+          Some(metas) => {
             let hiddens = attr::find_meta_items_by_name(metas, ~"hidden");
             vec::is_not_empty(hiddens)
           }
-          none => false
+          None => false
         }
       }
-      none => false
+      None => false
     }
 }
 

@@ -10,13 +10,13 @@
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 fn grandchild_group(num_tasks: uint) {
-    let po = comm::port();
-    let ch = comm::chan(po);
+    let po = comm::Port();
+    let ch = comm::Chan(po);
 
     for num_tasks.times {
         do task::spawn { // linked
             comm::send(ch, ());
-            comm::recv(comm::port::<()>()); // block forever
+            comm::recv(comm::Port::<()>()); // block forever
         }
     }
     #error["Grandchild group getting started"];
@@ -30,8 +30,8 @@ fn grandchild_group(num_tasks: uint) {
 }
 
 fn spawn_supervised_blocking(myname: &str, +f: fn~()) {
-    let mut res = none;
-    task::task().future_result(|+r| res = some(r)).supervised().spawn(f);
+    let mut res = None;
+    task::task().future_result(|+r| res = Some(r)).supervised().spawn(f);
     #error["%s group waiting", myname];
     let x = future::get(&option::unwrap(res));
     assert x == task::Success;
@@ -51,7 +51,7 @@ fn main(args: ~[~str]) {
     // Main group #0 waits for unsupervised group #1.
     // Grandparent group #1 waits for middle group #2, then fails, killing #3.
     // Middle group #2 creates grandchild_group #3, waits for it to be ready, exits.
-    let x: result::result<(),()> = do task::try { // unlinked
+    let x: result::Result<(),()> = do task::try { // unlinked
         do spawn_supervised_blocking("grandparent") {
             do spawn_supervised_blocking("middle") {
                 grandchild_group(num_tasks);

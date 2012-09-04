@@ -3,7 +3,7 @@
 
 type closable = @mut bool;
 
-class close_res {
+struct close_res {
   let i: closable;
  
   new(i: closable) { self.i = i; }

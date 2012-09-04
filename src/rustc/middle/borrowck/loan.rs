@@ -3,7 +3,7 @@
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
 export public_methods;
-import result::{result, ok, err};
+import result::{Result, Ok, Err};
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,
@@ -11,10 +11,10 @@ impl borrowck_ctxt {
             mutbl: ast::mutability) -> bckres<@DVec<loan>> {
         let lc = loan_ctxt_(@{bccx: self,
                               scope_region: scope_region,
-                              loans: @dvec()});
+                              loans: @DVec()});
         match lc.loan(cmt, mutbl) {
-          ok(()) => {ok(lc.loans)}
-          err(e) => {err(e)}
+          Ok(()) => {Ok(lc.loans)}
+          Err(e) => {Err(e)}
         }
     }
 }
@@ -47,19 +47,19 @@ impl loan_ctxt {
             (*self.loans).push({lp: option::get(cmt.lp),
                                 cmt: cmt,
                                 mutbl: mutbl});
-            ok(())
+            Ok(())
         } else {
             // The loan being requested lives longer than the data
             // being loaned out!
-            err({cmt:cmt, code:err_out_of_scope(scope_ub,
+            Err({cmt:cmt, code:err_out_of_scope(scope_ub,
                                                 self.scope_region)})
         }
     }
 
     fn loan(cmt: cmt, req_mutbl: ast::mutability) -> bckres<()> {
-        debug!{"loan(%s, %s)",
+        debug!("loan(%s, %s)",
                self.bccx.cmt_to_repr(cmt),
-               self.bccx.mut_to_str(req_mutbl)};
+               self.bccx.mut_to_str(req_mutbl));
         let _i = indenter();
 
         // see stable() above; should only be called when `cmt` is lendable
@@ -113,9 +113,9 @@ impl loan_ctxt {
             // then the memory is freed.
             self.loan_unstable_deref(cmt, cmt_base, req_mutbl)
           }
-          cat_deref(cmt1, _, unsafe_ptr) |
-          cat_deref(cmt1, _, gc_ptr) |
-          cat_deref(cmt1, _, region_ptr(_)) => {
+          cat_deref(_, _, unsafe_ptr) |
+          cat_deref(_, _, gc_ptr) |
+          cat_deref(_, _, region_ptr(_)) => {
             // Aliased data is simply not lendable.
             self.bccx.tcx.sess.span_bug(
                 cmt.span,

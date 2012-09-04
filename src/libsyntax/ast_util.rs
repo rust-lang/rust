@@ -15,18 +15,19 @@ pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
 
 /* assuming that we're not in macro expansion */
 pure fn mk_sp(lo: uint, hi: uint) -> span {
-    {lo: lo, hi: hi, expn_info: none}
+    {lo: lo, hi: hi, expn_info: None}
 }
 
 // make this a const, once the compiler supports it
 pure fn dummy_sp() -> span { return mk_sp(0u, 0u); }
 
-pure fn path_name(p: @path) -> ~str { path_name_i(p.idents) }
 
-pure fn path_name_i(idents: ~[ident]) -> ~str {
+
+pure fn path_name_i(idents: ~[ident], intr: token::ident_interner) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
-    str::connect(idents.map(|i|*i), ~"::")
+    str::connect(idents.map(|i| *intr.get(i)), ~"::")
 }
+
 
 pure fn path_to_ident(p: @path) -> ident { vec::last(p.idents) }
 
@@ -60,7 +61,7 @@ pure fn def_id_of_def(d: def) -> def_id {
         id
       }
       def_arg(id, _) | def_local(id, _) | def_self(id) |
-      def_upvar(id, _, _) | def_binding(id, _) | def_region(id)
+      def_upvar(id, _, _, _) | def_binding(id, _) | def_region(id)
       | def_typaram_binder(id) | def_label(id) => {
         local_def(id)
       }
@@ -92,19 +93,24 @@ pure fn binop_to_str(op: binop) -> ~str {
     }
 }
 
-pure fn binop_to_method_name(op: binop) -> option<~str> {
+pure fn binop_to_method_name(op: binop) -> Option<~str> {
     match op {
-      add => return some(~"add"),
-      subtract => return some(~"sub"),
-      mul => return some(~"mul"),
-      div => return some(~"div"),
-      rem => return some(~"modulo"),
-      bitxor => return some(~"bitxor"),
-      bitand => return some(~"bitand"),
-      bitor => return some(~"bitor"),
-      shl => return some(~"shl"),
-      shr => return some(~"shr"),
-      and | or | eq | lt | le | ne | ge | gt => return none
+      add => return Some(~"add"),
+      subtract => return Some(~"sub"),
+      mul => return Some(~"mul"),
+      div => return Some(~"div"),
+      rem => return Some(~"modulo"),
+      bitxor => return Some(~"bitxor"),
+      bitand => return Some(~"bitand"),
+      bitor => return Some(~"bitor"),
+      shl => return Some(~"shl"),
+      shr => return Some(~"shr"),
+      lt => return Some(~"lt"),
+      le => return Some(~"le"),
+      ge => return Some(~"ge"),
+      gt => return Some(~"gt"),
+      eq => return Some(~"eq"),
+      and | or | ne => return None
     }
 }
 
@@ -183,7 +189,7 @@ pure fn float_ty_to_str(t: float_ty) -> ~str {
 
 fn is_exported(i: ident, m: _mod) -> bool {
     let mut local = false;
-    let mut parent_enum : option<ident> = none;
+    let mut parent_enum : Option<ident> = None;
     for m.items.each |it| {
         if it.ident == i { local = true; }
         match it.node {
@@ -191,7 +197,7 @@ fn is_exported(i: ident, m: _mod) -> bool {
             for enum_definition.variants.each |v| {
                 if v.node.name == i {
                     local = true;
-                    parent_enum = some(/* FIXME (#2543) */ copy it.ident);
+                    parent_enum = Some(/* FIXME (#2543) */ copy it.ident);
                 }
             },
           _ => ()
@@ -205,10 +211,10 @@ fn is_exported(i: ident, m: _mod) -> bool {
             has_explicit_exports = true;
             for vps.each |vp| {
                 match vp.node {
-                  ast::view_path_simple(id, _, _) => {
+                  ast::view_path_simple(id, _, _, _) => {
                     if id == i { return true; }
                     match parent_enum {
-                      some(parent_enum_id) => {
+                      Some(parent_enum_id) => {
                         if id == parent_enum_id { return true; }
                       }
                       _ => ()
@@ -269,11 +275,11 @@ fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
 }
 
 fn block_from_expr(e: @expr) -> blk {
-    let blk_ = default_block(~[], option::some::<@expr>(e), e.id);
+    let blk_ = default_block(~[], option::Some::<@expr>(e), e.id);
     return {node: blk_, span: e.span};
 }
 
-fn default_block(+stmts1: ~[@stmt], expr1: option<@expr>, id1: node_id) ->
+fn default_block(+stmts1: ~[@stmt], expr1: Option<@expr>, id1: node_id) ->
    blk_ {
     {view_items: ~[], stmts: stmts1,
      expr: expr1, id: id1, rules: default_blk}
@@ -281,18 +287,18 @@ fn default_block(+stmts1: ~[@stmt], expr1: option<@expr>, id1: node_id) ->
 
 fn ident_to_path(s: span, +i: ident) -> @path {
     @{span: s, global: false, idents: ~[i],
-      rp: none, types: ~[]}
+      rp: None, types: ~[]}
 }
 
 pure fn is_unguarded(&&a: arm) -> bool {
     match a.guard {
-      none => true,
+      None => true,
       _    => false
     }
 }
 
-pure fn unguarded_pat(a: arm) -> option<~[@pat]> {
-    if is_unguarded(a) { some(/* FIXME (#2543) */ copy a.pats) } else { none }
+pure fn unguarded_pat(a: arm) -> Option<~[@pat]> {
+    if is_unguarded(a) { Some(/* FIXME (#2543) */ copy a.pats) } else { None }
 }
 
 fn public_methods(ms: ~[@method]) -> ~[@method] {
@@ -310,7 +316,8 @@ fn trait_method_to_ty_method(method: trait_method) -> ty_method {
       required(m) => m,
       provided(m) => {
         {ident: m.ident, attrs: m.attrs,
-         decl: m.decl, tps: m.tps, self_ty: m.self_ty,
+         purity: m.purity, decl: m.decl,
+         tps: m.tps, self_ty: m.self_ty,
          id: m.id, span: m.span}
       }
     }
@@ -370,7 +377,7 @@ impl inlined_item: inlined_item_utils {
           ii_ctor(ctor, nm, tps, parent_id) => {
               visit::visit_class_ctor_helper(ctor, nm, tps, parent_id, e, v);
           }
-          ii_dtor(dtor, nm, tps, parent_id) => {
+          ii_dtor(dtor, _, tps, parent_id) => {
               visit::visit_class_dtor_helper(dtor, tps, parent_id, e, v);
           }
         }
@@ -381,9 +388,9 @@ impl inlined_item: inlined_item_utils {
  referring to a def_self */
 fn is_self(d: ast::def) -> bool {
   match d {
-    def_self(_)        => true,
-    def_upvar(_, d, _) => is_self(*d),
-    _                  => false
+    def_self(_)           => true,
+    def_upvar(_, d, _, _) => is_self(*d),
+    _                     => false
   }
 }
 
@@ -408,8 +415,9 @@ fn dtor_dec() -> fn_decl {
     let nil_t = @{id: 0, node: ty_nil, span: dummy_sp()};
     // dtor has one argument, of type ()
     {inputs: ~[{mode: ast::expl(ast::by_ref),
-                ty: nil_t, ident: @~"_", id: 0}],
-     output: nil_t, purity: impure_fn, cf: return_val}
+                ty: nil_t, ident: parse::token::special_idents::underscore,
+                id: 0}],
+     output: nil_t, cf: return_val}
 }
 
 // ______________________________________________________________________
@@ -434,7 +442,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
               view_item_import(vps) | view_item_export(vps) => {
                 do vec::iter(vps) |vp| {
                     match vp.node {
-                      view_path_simple(_, _, id) => vfn(id),
+                      view_path_simple(_, _, _, id) => vfn(id),
                       view_path_glob(_, id) => vfn(id),
                       view_path_list(_, _, id) => vfn(id)
                     }
@@ -501,7 +509,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(id);
 
             match fk {
-              visit::fk_ctor(nm, _, tps, self_id, parent_id) => {
+              visit::fk_ctor(_, _, tps, self_id, parent_id) => {
                 vec::iter(tps, |tp| vfn(tp.id));
                 vfn(id);
                 vfn(self_id);
@@ -513,7 +521,7 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
                 vfn(self_id);
                 vfn(parent_id.node);
               }
-              visit::fk_item_fn(_, tps) => {
+              visit::fk_item_fn(_, tps, _) => {
                 vec::iter(tps, |tp| vfn(tp.id));
               }
               visit::fk_method(_, tps, m) => {
@@ -580,10 +588,10 @@ pure fn is_item_impl(item: @ast::item) -> bool {
 fn walk_pat(pat: @pat, it: fn(@pat)) {
     it(pat);
     match pat.node {
-      pat_ident(_, pth, some(p)) => walk_pat(p, it),
+      pat_ident(_, _, Some(p)) => walk_pat(p, it),
       pat_rec(fields, _) | pat_struct(_, fields, _) =>
         for fields.each |f| { walk_pat(f.pat, it) },
-      pat_enum(_, some(s)) | pat_tup(s) => for s.each |p| {
+      pat_enum(_, Some(s)) | pat_tup(s) => for s.each |p| {
         walk_pat(p, it)
       },
       pat_box(s) | pat_uniq(s) => walk_pat(s, it),
@@ -594,7 +602,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
 
 fn view_path_id(p: @view_path) -> node_id {
     match p.node {
-      view_path_simple(_, _, id) | view_path_glob(_, id) |
+      view_path_simple(_, _, _, id) | view_path_glob(_, id) |
       view_path_list(_, _, id) => id
     }
 }

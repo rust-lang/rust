@@ -1,3 +1,4 @@
+#[deny(non_camel_case_types)];
 /*!
  * Library to interface with chunks of memory allocated in C.
  *
@@ -19,15 +20,15 @@
  * obvious reason (they act on a pointer that cannot be checked inside the
  * method), but the elimination form is somewhat more subtle in its unsafety.
  * By using a pointer taken from a c_vec::t without keeping a reference to the
- * c_vec::t itself around, the c_vec could be garbage collected, and the
+ * c_vec::t itself around, the CVec could be garbage collected, and the
  * memory within could be destroyed.  There are legitimate uses for the
  * pointer elimination form -- for instance, to pass memory back into C -- but
  * great care must be taken to ensure that a reference to the c_vec::t is
  * still held if needed.
  */
 
-export c_vec;
-export c_vec, c_vec_with_dtor;
+export CVec;
+export CVec, c_vec_with_dtor;
 export get, set;
 export len;
 export ptr;
@@ -38,17 +39,17 @@ export ptr;
  * Wrapped in a enum for opacity; FIXME #818 when it is possible to have
  * truly opaque types, this should be revisited.
  */
-enum c_vec<T> {
-    c_vec_({ base: *mut T, len: uint, rsrc: @dtor_res})
+enum CVec<T> {
+    CVecCtor({ base: *mut T, len: uint, rsrc: @DtorRes})
 }
 
-class dtor_res {
-  let dtor: option<fn@()>;
-  new(dtor: option<fn@()>) { self.dtor = dtor; }
+struct DtorRes {
+  let dtor: Option<fn@()>;
+  new(dtor: Option<fn@()>) { self.dtor = dtor; }
   drop {
     match self.dtor {
-      option::none => (),
-      option::some(f) => f()
+      option::None => (),
+      option::Some(f) => f()
     }
   }
 }
@@ -58,23 +59,23 @@ class dtor_res {
  */
 
 /**
- * Create a `c_vec` from a foreign buffer with a given length.
+ * Create a `CVec` from a foreign buffer with a given length.
  *
  * # Arguments
  *
  * * base - A foreign pointer to a buffer
  * * len - The number of elements in the buffer
  */
-unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
-    return c_vec_({
+unsafe fn CVec<T>(base: *mut T, len: uint) -> CVec<T> {
+    return CVecCtor({
         base: base,
         len: len,
-        rsrc: @dtor_res(option::none)
+        rsrc: @DtorRes(option::None)
     });
 }
 
 /**
- * Create a `c_vec` from a foreign buffer, with a given length,
+ * Create a `CVec` from a foreign buffer, with a given length,
  * and a function to run upon destruction.
  *
  * # Arguments
@@ -85,11 +86,11 @@ unsafe fn c_vec<T>(base: *mut T, len: uint) -> c_vec<T> {
  *          for freeing the buffer, etc.
  */
 unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
-  -> c_vec<T> {
-    return c_vec_({
+  -> CVec<T> {
+    return CVecCtor({
         base: base,
         len: len,
-        rsrc: @dtor_res(option::some(dtor))
+        rsrc: @DtorRes(option::Some(dtor))
     });
 }
 
@@ -102,7 +103,7 @@ unsafe fn c_vec_with_dtor<T>(base: *mut T, len: uint, dtor: fn@())
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-fn get<T: copy>(t: c_vec<T>, ofs: uint) -> T {
+fn get<T: copy>(t: CVec<T>, ofs: uint) -> T {
     assert ofs < len(t);
     return unsafe { *ptr::mut_offset((*t).base, ofs) };
 }
@@ -112,7 +113,7 @@ fn get<T: copy>(t: c_vec<T>, ofs: uint) -> T {
  *
  * Fails if `ofs` is greater or equal to the length of the vector
  */
-fn set<T: copy>(t: c_vec<T>, ofs: uint, v: T) {
+fn set<T: copy>(t: CVec<T>, ofs: uint, v: T) {
     assert ofs < len(t);
     unsafe { *ptr::mut_offset((*t).base, ofs) = v };
 }
@@ -122,12 +123,12 @@ fn set<T: copy>(t: c_vec<T>, ofs: uint, v: T) {
  */
 
 /// Returns the length of the vector
-fn len<T>(t: c_vec<T>) -> uint {
+fn len<T>(t: CVec<T>) -> uint {
     return (*t).len;
 }
 
 /// Returns a pointer to the first element of the vector
-unsafe fn ptr<T>(t: c_vec<T>) -> *mut T {
+unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
     return (*t).base;
 }
 
@@ -135,7 +136,7 @@ unsafe fn ptr<T>(t: c_vec<T>) -> *mut T {
 mod tests {
     import libc::*;
 
-    fn malloc(n: size_t) -> c_vec<u8> {
+    fn malloc(n: size_t) -> CVec<u8> {
         let mem = libc::malloc(n);
 
         assert mem as int != 0;

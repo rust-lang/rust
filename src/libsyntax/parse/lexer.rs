@@ -1,4 +1,3 @@
-import util::interner::interner;
 import diagnostic::span_handler;
 import codemap::span;
 import ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
@@ -14,7 +13,7 @@ trait reader {
     fn next_token() -> {tok: token::token, sp: span};
     fn fatal(~str) -> !;
     fn span_diag() -> span_handler;
-    pure fn interner() -> interner<@~str>;
+    pure fn interner() -> token::ident_interner;
     fn peek() -> {tok: token::token, sp: span};
     fn dup() -> reader;
 }
@@ -27,7 +26,7 @@ type string_reader = @{
     mut curr: char,
     mut chpos: uint,
     filemap: codemap::filemap,
-    interner: interner<@~str>,
+    interner: token::ident_interner,
     /* cached: */
     mut peek_tok: token::token,
     mut peek_span: span
@@ -35,7 +34,7 @@ type string_reader = @{
 
 fn new_string_reader(span_diagnostic: span_handler,
                      filemap: codemap::filemap,
-                     itr: interner<@~str>) -> string_reader {
+                     itr: token::ident_interner) -> string_reader {
     let r = new_low_level_string_reader(span_diagnostic, filemap, itr);
     string_advance_token(r); /* fill in peek_* */
     return r;
@@ -44,7 +43,7 @@ fn new_string_reader(span_diagnostic: span_handler,
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
 fn new_low_level_string_reader(span_diagnostic: span_handler,
                                filemap: codemap::filemap,
-                               itr: interner<@~str>)
+                               itr: token::ident_interner)
     -> string_reader {
     let r = @{span_diagnostic: span_diagnostic, src: filemap.src,
               mut col: 0u, mut pos: 0u, mut curr: -1 as char,
@@ -79,7 +78,7 @@ impl string_reader: reader {
         self.span_diagnostic.span_fatal(copy self.peek_span, m)
     }
     fn span_diag() -> span_handler { self.span_diagnostic }
-    pure fn interner() -> interner<@~str> { self.interner }
+    pure fn interner() -> token::ident_interner { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         {tok: self.peek_tok, sp: self.peek_span}
     }
@@ -101,7 +100,7 @@ impl tt_reader: reader {
         self.sp_diag.span_fatal(copy self.cur_span, m);
     }
     fn span_diag() -> span_handler { self.sp_diag }
-    pure fn interner() -> interner<@~str> { self.interner }
+    pure fn interner() -> token::ident_interner { self.interner }
     fn peek() -> {tok: token::token, sp: span} {
         { tok: self.cur_tok, sp: self.cur_span }
     }
@@ -197,14 +196,14 @@ fn is_bin_digit(c: char) -> bool { return c == '0' || c == '1'; }
 
 // might return a sugared-doc-attr
 fn consume_whitespace_and_comments(rdr: string_reader)
-                                -> option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::token, sp: span}> {
     while is_whitespace(rdr.curr) { bump(rdr); }
     return consume_any_line_comment(rdr);
 }
 
 // might return a sugared-doc-attr
 fn consume_any_line_comment(rdr: string_reader)
-                                -> option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::token, sp: span}> {
     if rdr.curr == '/' {
         match nextch(rdr) {
           '/' => {
@@ -218,7 +217,7 @@ fn consume_any_line_comment(rdr: string_reader)
                     str::push_char(acc, rdr.curr);
                     bump(rdr);
                 }
-                return some({
+                return Some({
                     tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
                     sp: ast_util::mk_sp(start_chpos, rdr.chpos)
                 });
@@ -242,12 +241,12 @@ fn consume_any_line_comment(rdr: string_reader)
             }
         }
     }
-    return none;
+    return None;
 }
 
 // might return a sugared-doc-attr
 fn consume_block_comment(rdr: string_reader)
-                                -> option<{tok: token::token, sp: span}> {
+                                -> Option<{tok: token::token, sp: span}> {
 
     // block comments starting with "/**" or "/*!" are doc-comments
     if rdr.curr == '*' || rdr.curr == '!' {
@@ -263,7 +262,7 @@ fn consume_block_comment(rdr: string_reader)
             acc += ~"*/";
             bump(rdr);
             bump(rdr);
-            return some({
+            return Some({
                 tok: token::DOC_COMMENT(rdr.interner.intern(@acc)),
                 sp: ast_util::mk_sp(start_chpos, rdr.chpos)
             });
@@ -290,7 +289,7 @@ fn consume_block_comment(rdr: string_reader)
     return consume_whitespace_and_comments(rdr);
 }
 
-fn scan_exponent(rdr: string_reader) -> option<~str> {
+fn scan_exponent(rdr: string_reader) -> Option<~str> {
     let mut c = rdr.curr;
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
@@ -303,9 +302,9 @@ fn scan_exponent(rdr: string_reader) -> option<~str> {
         }
         let exponent = scan_digits(rdr, 10u);
         if str::len(exponent) > 0u {
-            return some(rslt + exponent);
+            return Some(rslt + exponent);
         } else { rdr.fatal(~"scan_exponent: bad fp literal"); }
-    } else { return none::<~str>; }
+    } else { return None::<~str>; }
 }
 
 fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
@@ -314,7 +313,7 @@ fn scan_digits(rdr: string_reader, radix: uint) -> ~str {
         let c = rdr.curr;
         if c == '_' { bump(rdr); again; }
         match char::to_digit(c, radix) {
-          some(d) => {
+          Some(_) => {
             str::push_char(rslt, c);
             bump(rdr);
           }
@@ -385,11 +384,11 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         num_str += ~"." + dec_part;
     }
     match scan_exponent(rdr) {
-      some(s) => {
+      Some(s) => {
         is_float = true;
         num_str += s;
       }
-      none => ()
+      None => ()
     }
     if rdr.curr == 'f' {
         bump(rdr);
@@ -420,8 +419,8 @@ fn scan_number(c: char, rdr: string_reader) -> token::token {
         }
         let parsed = option::get(u64::from_str_radix(num_str, base as u64));
 
-        debug!{"lexing %s as an unsuffixed integer literal",
-               num_str};
+        debug!("lexing %s as an unsuffixed integer literal",
+               num_str);
         return token::LIT_INT_UNSUFFIXED(parsed as i64);
     }
 }
@@ -432,7 +431,7 @@ fn scan_numeric_escape(rdr: string_reader, n_hex_digits: uint) -> char {
         let n = rdr.curr;
         bump(rdr);
         if !is_hex_digit(n) {
-            rdr.fatal(fmt!{"illegal numeric character escape: %d", n as int});
+            rdr.fatal(fmt!("illegal numeric character escape: %d", n as int));
         }
         accum_int *= 16;
         accum_int += hex_digit_val(n);
@@ -579,7 +578,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
               'u' => { c2 = scan_numeric_escape(rdr, 4u); }
               'U' => { c2 = scan_numeric_escape(rdr, 8u); }
               c2 => {
-                rdr.fatal(fmt!{"unknown character escape: %d", c2 as int});
+                rdr.fatal(fmt!("unknown character escape: %d", c2 as int));
               }
             }
         }
@@ -594,8 +593,8 @@ fn next_token_inner(rdr: string_reader) -> token::token {
         bump(rdr);
         while rdr.curr != '"' {
             if is_eof(rdr) {
-                rdr.fatal(fmt!{"unterminated double quote string: %s",
-                               get_str_from(rdr, n)});
+                rdr.fatal(fmt!("unterminated double quote string: %s",
+                               get_str_from(rdr, n)));
             }
 
             let ch = rdr.curr;
@@ -622,7 +621,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
                     str::push_char(accum_str, scan_numeric_escape(rdr, 8u));
                   }
                   c2 => {
-                    rdr.fatal(fmt!{"unknown string escape: %d", c2 as int});
+                    rdr.fatal(fmt!("unknown string escape: %d", c2 as int));
                   }
                 }
               }
@@ -657,7 +656,7 @@ fn next_token_inner(rdr: string_reader) -> token::token {
       '/' => { return binop(rdr, token::SLASH); }
       '^' => { return binop(rdr, token::CARET); }
       '%' => { return binop(rdr, token::PERCENT); }
-      c => { rdr.fatal(fmt!{"unknown start of token: %d", c as int}); }
+      c => { rdr.fatal(fmt!("unknown start of token: %d", c as int)); }
     }
 }
 

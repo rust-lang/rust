@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import T = inst::T;
 import cmp::{Eq, Ord};
 
@@ -20,21 +24,21 @@ const bytes : uint = (inst::bits / 8);
 const min_value: T = 0 as T;
 const max_value: T = 0 as T - 1 as T;
 
-pure fn min(&&x: T, &&y: T) -> T { if x < y { x } else { y } }
-pure fn max(&&x: T, &&y: T) -> T { if x > y { x } else { y } }
+pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
+pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
 
-pure fn add(x: &T, y: &T) -> T { *x + *y }
-pure fn sub(x: &T, y: &T) -> T { *x - *y }
-pure fn mul(x: &T, y: &T) -> T { *x * *y }
-pure fn div(x: &T, y: &T) -> T { *x / *y }
-pure fn rem(x: &T, y: &T) -> T { *x % *y }
+pure fn add(x: T, y: T) -> T { x + y }
+pure fn sub(x: T, y: T) -> T { x - y }
+pure fn mul(x: T, y: T) -> T { x * y }
+pure fn div(x: T, y: T) -> T { x / y }
+pure fn rem(x: T, y: T) -> T { x % y }
 
-pure fn lt(x: &T, y: &T) -> bool { *x < *y }
-pure fn le(x: &T, y: &T) -> bool { *x <= *y }
-pure fn eq(x: &T, y: &T) -> bool { *x == *y }
-pure fn ne(x: &T, y: &T) -> bool { *x != *y }
-pure fn ge(x: &T, y: &T) -> bool { *x >= *y }
-pure fn gt(x: &T, y: &T) -> bool { *x > *y }
+pure fn lt(x: T, y: T) -> bool { x < y }
+pure fn le(x: T, y: T) -> bool { x <= y }
+pure fn eq(x: T, y: T) -> bool { x == y }
+pure fn ne(x: T, y: T) -> bool { x != y }
+pure fn ge(x: T, y: T) -> bool { x >= y }
+pure fn gt(x: T, y: T) -> bool { x > y }
 
 pure fn is_positive(x: T) -> bool { x > 0 as T }
 pure fn is_negative(x: T) -> bool { x < 0 as T }
@@ -57,9 +61,10 @@ pure fn compl(i: T) -> T {
 }
 
 impl T: Ord {
-    pure fn lt(&&other: T) -> bool {
-        return self < other;
-    }
+    pure fn lt(&&other: T) -> bool { self < other }
+    pure fn le(&&other: T) -> bool { self <= other }
+    pure fn ge(&&other: T) -> bool { self >= other }
+    pure fn gt(&&other: T) -> bool { self > other }
 }
 
 impl T: Eq {
@@ -87,7 +92,7 @@ impl T: iter::Times {
         will execute the given function exactly x times. If we assume that \
         `x` is an int, this is functionally equivalent to \
         `for int::range(0, x) |_i| { /* anything */ }`."]
-    fn times(it: fn() -> bool) {
+    pure fn times(it: fn() -> bool) {
         let mut i = self;
         while i > 0 {
             if !it() { break }
@@ -99,7 +104,7 @@ impl T: iter::Times {
 impl T: iter::TimesIx {
     #[inline(always)]
     /// Like `times`, but with an index, `eachi`-style.
-    fn timesi(it: fn(uint) -> bool) {
+    pure fn timesi(it: fn(uint) -> bool) {
         let slf = self as uint;
         let mut i = 0u;
         while i < slf {
@@ -121,37 +126,37 @@ impl T: iter::TimesIx {
  *
  * `buf` must not be empty
  */
-fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
-    if vec::len(buf) == 0u { return none; }
+fn parse_buf(buf: &[const u8], radix: uint) -> Option<T> {
+    if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut power = 1u as T;
     let mut n = 0u as T;
     loop {
         match char::to_digit(buf[i] as char, radix) {
-          some(d) => n += d as T * power,
-          none => return none
+          Some(d) => n += d as T * power,
+          None => return None
         }
         power *= radix as T;
-        if i == 0u { return some(n); }
+        if i == 0u { return Some(n); }
         i -= 1u;
     };
 }
 
 /// Parse a string to an int
-fn from_str(s: ~str) -> option<T> { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: &str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
 
 /// Parse a string as an unsigned integer.
-fn from_str_radix(buf: ~str, radix: u64) -> option<u64> {
-    if str::len(buf) == 0u { return none; }
+fn from_str_radix(buf: &str, radix: u64) -> Option<u64> {
+    if str::len(buf) == 0u { return None; }
     let mut i = str::len(buf) - 1u;
     let mut power = 1u64, n = 0u64;
     loop {
         match char::to_digit(buf[i] as char, radix as uint) {
-          some(d) => n += d as u64 * power,
-          none => return none
+          Some(d) => n += d as u64 * power,
+          None => return None
         }
         power *= radix;
-        if i == 0u { return some(n); }
+        if i == 0u { return Some(n); }
         i -= 1u;
     };
 }
@@ -253,30 +258,30 @@ fn test_to_str() {
 #[test]
 #[ignore]
 fn test_from_str() {
-    assert from_str(~"0") == some(0u as T);
-    assert from_str(~"3") == some(3u as T);
-    assert from_str(~"10") == some(10u as T);
-    assert from_str(~"123456789") == some(123456789u as T);
-    assert from_str(~"00100") == some(100u as T);
+    assert from_str(~"0") == Some(0u as T);
+    assert from_str(~"3") == Some(3u as T);
+    assert from_str(~"10") == Some(10u as T);
+    assert from_str(~"123456789") == Some(123456789u as T);
+    assert from_str(~"00100") == Some(100u as T);
 
-    assert from_str(~"") == none;
-    assert from_str(~" ") == none;
-    assert from_str(~"x") == none;
+    assert from_str(~"").is_none();
+    assert from_str(~" ").is_none();
+    assert from_str(~"x").is_none();
 }
 
 #[test]
 #[ignore]
 fn test_parse_buf() {
-    import str::bytes;
-    assert parse_buf(bytes(~"123"), 10u) == some(123u as T);
-    assert parse_buf(bytes(~"1001"), 2u) == some(9u as T);
-    assert parse_buf(bytes(~"123"), 8u) == some(83u as T);
-    assert parse_buf(bytes(~"123"), 16u) == some(291u as T);
-    assert parse_buf(bytes(~"ffff"), 16u) == some(65535u as T);
-    assert parse_buf(bytes(~"z"), 36u) == some(35u as T);
+    import str::to_bytes;
+    assert parse_buf(to_bytes(~"123"), 10u) == Some(123u as T);
+    assert parse_buf(to_bytes(~"1001"), 2u) == Some(9u as T);
+    assert parse_buf(to_bytes(~"123"), 8u) == Some(83u as T);
+    assert parse_buf(to_bytes(~"123"), 16u) == Some(291u as T);
+    assert parse_buf(to_bytes(~"ffff"), 16u) == Some(65535u as T);
+    assert parse_buf(to_bytes(~"z"), 36u) == Some(35u as T);
 
-    assert parse_buf(str::bytes(~"Z"), 10u) == none;
-    assert parse_buf(str::bytes(~"_"), 2u) == none;
+    assert parse_buf(to_bytes(~"Z"), 10u).is_none();
+    assert parse_buf(to_bytes(~"_"), 2u).is_none();
 }
 
 #[test]

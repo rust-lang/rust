@@ -1,4 +1,4 @@
-class finish<T: copy> {
+struct finish<T: copy> {
   let arg: {val: T, fin: extern fn(T)};
   new(arg: {val: T, fin: extern fn(T)}) {
     self.arg = arg;

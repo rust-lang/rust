@@ -2,6 +2,7 @@ import option;
 import str;
 
 import common::config;
+import io::ReaderUtil;
 
 export test_props;
 export load_props;
@@ -11,10 +12,10 @@ type test_props = {
     // Lines that should be expected, in order, on standard out
     error_patterns: ~[~str],
     // Extra flags to pass to the compiler
-    compile_flags: option<~str>,
+    compile_flags: Option<~str>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pp_exact: option<~str>,
+    pp_exact: Option<Path>,
     // Modules from aux directory that should be compiled
     aux_builds: ~[~str],
     // Environment settings to use during execution
@@ -22,16 +23,16 @@ type test_props = {
 };
 
 // Load any test directives embedded in the file
-fn load_props(testfile: ~str) -> test_props {
+fn load_props(testfile: &Path) -> test_props {
     let mut error_patterns = ~[];
     let mut aux_builds = ~[];
     let mut exec_env = ~[];
-    let mut compile_flags = option::none;
-    let mut pp_exact = option::none;
+    let mut compile_flags = option::None;
+    let mut pp_exact = option::None;
     for iter_header(testfile) |ln| {
         match parse_error_pattern(ln) {
-          option::some(ep) => vec::push(error_patterns, ep),
-          option::none => ()
+          option::Some(ep) => vec::push(error_patterns, ep),
+          option::None => ()
         };
 
         if option::is_none(compile_flags) {
@@ -59,7 +60,7 @@ fn load_props(testfile: ~str) -> test_props {
     };
 }
 
-fn is_test_ignored(config: config, testfile: ~str) -> bool {
+fn is_test_ignored(config: config, testfile: &Path) -> bool {
     let mut found = false;
     for iter_header(testfile) |ln| {
         if parse_name_directive(ln, ~"xfail-test") { return true; }
@@ -74,7 +75,7 @@ fn is_test_ignored(config: config, testfile: ~str) -> bool {
     }
 }
 
-fn iter_header(testfile: ~str, it: fn(~str) -> bool) -> bool {
+fn iter_header(testfile: &Path, it: fn(~str) -> bool) -> bool {
     let rdr = result::get(io::file_reader(testfile));
     while !rdr.eof() {
         let ln = rdr.read_line();
@@ -90,38 +91,38 @@ fn iter_header(testfile: ~str, it: fn(~str) -> bool) -> bool {
     return true;
 }
 
-fn parse_error_pattern(line: ~str) -> option<~str> {
+fn parse_error_pattern(line: ~str) -> Option<~str> {
     parse_name_value_directive(line, ~"error-pattern")
 }
 
-fn parse_aux_build(line: ~str) -> option<~str> {
+fn parse_aux_build(line: ~str) -> Option<~str> {
     parse_name_value_directive(line, ~"aux-build")
 }
 
-fn parse_compile_flags(line: ~str) -> option<~str> {
+fn parse_compile_flags(line: ~str) -> Option<~str> {
     parse_name_value_directive(line, ~"compile-flags")
 }
 
-fn parse_exec_env(line: ~str) -> option<(~str, ~str)> {
+fn parse_exec_env(line: ~str) -> Option<(~str, ~str)> {
     do parse_name_value_directive(line, ~"exec-env").map |nv| {
         // nv is either FOO or FOO=BAR
         let strs = str::splitn_char(nv, '=', 1u);
         match strs.len() {
           1u => (strs[0], ~""),
           2u => (strs[0], strs[1]),
-          n => fail fmt!{"Expected 1 or 2 strings, not %u", n}
+          n => fail fmt!("Expected 1 or 2 strings, not %u", n)
         }
     }
 }
 
-fn parse_pp_exact(line: ~str, testfile: ~str) -> option<~str> {
+fn parse_pp_exact(line: ~str, testfile: &Path) -> Option<Path> {
     match parse_name_value_directive(line, ~"pp-exact") {
-      option::some(s) => option::some(s),
-      option::none => {
+      option::Some(s) => option::Some(Path(s)),
+      option::None => {
         if parse_name_directive(line, ~"pp-exact") {
-            option::some(path::basename(testfile))
+            option::Some(testfile.file_path())
         } else {
-            option::none
+            option::None
         }
       }
     }
@@ -132,15 +133,15 @@ fn parse_name_directive(line: ~str, directive: ~str) -> bool {
 }
 
 fn parse_name_value_directive(line: ~str,
-                              directive: ~str) -> option<~str> unsafe {
+                              directive: ~str) -> Option<~str> unsafe {
     let keycolon = directive + ~":";
     match str::find_str(line, keycolon) {
-        option::some(colon) => {
+        option::Some(colon) => {
             let value = str::slice(line, colon + str::len(keycolon),
                                    str::len(line));
-            debug!{"%s: %s", directive,  value};
-            option::some(value)
+            debug!("%s: %s", directive,  value);
+            option::Some(value)
         }
-        option::none => option::none
+        option::None => option::None
     }
 }

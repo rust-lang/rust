@@ -1,6 +1,6 @@
 // error-pattern: copying a noncopyable value
 
-class foo {
+struct foo {
   let i: int;
   new(i:int) { self.i = i; }
   drop {}

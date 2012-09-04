@@ -2,7 +2,7 @@
 use std;
 import task;
 
-fn start(c: pipes::chan<int>, i0: int) {
+fn start(c: pipes::Chan<int>, i0: int) {
     let mut i = i0;
     while i > 0 {
         c.send(0);

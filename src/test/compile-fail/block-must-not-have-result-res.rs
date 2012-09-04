@@ -1,6 +1,6 @@
 // error-pattern:mismatched types: expected `()` but found `bool`
 
-class r {
+struct r {
   new() {}
   drop { true }
 }

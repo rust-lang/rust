@@ -27,15 +27,28 @@ fn f3b() {
 }
 
 fn f4() {
-    match some(3) {
-      some(i) => {
+    match Some(3) {
+      Some(i) => {
+        //~^ WARNING unused variable: `i`
       }
-      none => {}
+      None => {}
+    }
+}
+
+enum tri {
+    a(int), b(int), c(int)
+}
+
+fn f4b() -> int {
+    match a(3) {
+      a(i) | b(i) | c(i) => {
+        i
+      }
     }
 }
 
 // leave this in here just to trigger compile-fail:
-class r {
+struct r {
     let x: ();
     new() { self.x = (); }
     drop {}

@@ -4,6 +4,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+import cmp::Eq;
+
 /*
     Lu  Uppercase_Letter    an uppercase letter
     Ll  Lowercase_Letter    a lowercase letter
@@ -107,7 +109,7 @@ pure fn is_digit(c: char) -> bool {
  *
  * # Safety note
  *
- * This function fails if `c` is not a valid char
+ * This function returns none if `c` is not a valid char
  *
  * # Return value
  *
@@ -116,15 +118,15 @@ pure fn is_digit(c: char) -> bool {
  * 'b' or 'B', 11, etc. Returns none if the char does not
  * refer to a digit in the given radix.
  */
-pure fn to_digit(c: char, radix: uint) -> option<uint> {
+pure fn to_digit(c: char, radix: uint) -> Option<uint> {
     let val = match c {
-      '0' to '9' => c as uint - ('0' as uint),
-      'a' to 'z' => c as uint + 10u - ('a' as uint),
-      'A' to 'Z' => c as uint + 10u - ('A' as uint),
-      _ => return none
+      '0' .. '9' => c as uint - ('0' as uint),
+      'a' .. 'z' => c as uint + 10u - ('a' as uint),
+      'A' .. 'Z' => c as uint + 10u - ('A' as uint),
+      _ => return None
     };
-    if val < radix { some(val) }
-    else { none }
+    if val < radix { Some(val) }
+    else { None }
 }
 
 /**
@@ -169,7 +171,7 @@ fn escape_default(c: char) -> ~str {
       '\\' => ~"\\\\",
       '\'' => ~"\\'",
       '"'  => ~"\\\"",
-      '\x20' to '\x7e' => str::from_char(c),
+      '\x20' .. '\x7e' => str::from_char(c),
       _ => escape_unicode(c)
     }
 }
@@ -185,6 +187,10 @@ pure fn cmp(a: char, b: char) -> int {
     return  if b > a { -1 }
     else if b < a { 1 }
     else { 0 }
+}
+
+impl char: Eq {
+    pure fn eq(&&other: char) -> bool { self == other }
 }
 
 #[test]
@@ -219,19 +225,19 @@ fn test_is_whitespace() {
 
 #[test]
 fn test_to_digit() {
-    assert to_digit('0', 10u) == some(0u);
-    assert to_digit('1', 2u) == some(1u);
-    assert to_digit('2', 3u) == some(2u);
-    assert to_digit('9', 10u) == some(9u);
-    assert to_digit('a', 16u) == some(10u);
-    assert to_digit('A', 16u) == some(10u);
-    assert to_digit('b', 16u) == some(11u);
-    assert to_digit('B', 16u) == some(11u);
-    assert to_digit('z', 36u) == some(35u);
-    assert to_digit('Z', 36u) == some(35u);
+    assert to_digit('0', 10u) == Some(0u);
+    assert to_digit('1', 2u) == Some(1u);
+    assert to_digit('2', 3u) == Some(2u);
+    assert to_digit('9', 10u) == Some(9u);
+    assert to_digit('a', 16u) == Some(10u);
+    assert to_digit('A', 16u) == Some(10u);
+    assert to_digit('b', 16u) == Some(11u);
+    assert to_digit('B', 16u) == Some(11u);
+    assert to_digit('z', 36u) == Some(35u);
+    assert to_digit('Z', 36u) == Some(35u);
 
-    assert to_digit(' ', 10u) == none;
-    assert to_digit('$', 36u) == none;
+    assert to_digit(' ', 10u).is_none();
+    assert to_digit('$', 36u).is_none();
 }
 
 #[test]

@@ -3,8 +3,9 @@
 #[forbid(deprecated_pattern)];
 
 //! Process spawning
-import option::{some, none};
+import option::{Some, None};
 import libc::{pid_t, c_void, c_int};
+import io::ReaderUtil;
 
 export Program;
 export run_program;
@@ -67,8 +68,8 @@ trait Program {
  * The process id of the spawned process
  */
 fn spawn_process(prog: &str, args: &[~str],
-                 env: &option<~[(~str,~str)]>,
-                 dir: &option<~str>,
+                 env: &Option<~[(~str,~str)]>,
+                 dir: &Option<~str>,
                  in_fd: c_int, out_fd: c_int, err_fd: c_int)
    -> pid_t {
     do with_argv(prog, args) |argv| {
@@ -95,24 +96,24 @@ fn with_argv<T>(prog: &str, args: &[~str],
 }
 
 #[cfg(unix)]
-fn with_envp<T>(env: &option<~[(~str,~str)]>,
+fn with_envp<T>(env: &Option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On posixy systems we can pass a char** for envp, which is
     // a null-terminated array of "k=v\n" strings.
     match *env {
-      some(es) if !vec::is_empty(es) => {
+      Some(es) if !vec::is_empty(es) => {
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
         for vec::each(es) |e| {
             let (k,v) = e;
-            let t = @(fmt!{"%s=%s", k, v});
+            let t = @(fmt!("%s=%s", k, v));
             vec::push(tmps, t);
             vec::push_all(ptrs, str::as_c_str(*t, |b| ~[b]));
         }
         vec::push(ptrs, ptr::null());
         vec::as_buf(ptrs, |p, _len|
-            unsafe { cb(::unsafe::reinterpret_cast(p)) }
+            unsafe { cb(::unsafe::reinterpret_cast(&p)) }
         )
       }
       _ => cb(ptr::null())
@@ -120,35 +121,35 @@ fn with_envp<T>(env: &option<~[(~str,~str)]>,
 }
 
 #[cfg(windows)]
-fn with_envp<T>(env: &option<~[(~str,~str)]>,
+fn with_envp<T>(env: &Option<~[(~str,~str)]>,
                 cb: fn(*c_void) -> T) -> T {
     // On win32 we pass an "environment block" which is not a char**, but
     // rather a concatenation of null-terminated k=v\0 sequences, with a final
     // \0 to terminate.
     unsafe {
         match *env {
-          some(es) if !vec::is_empty(es) => {
+          Some(es) if !vec::is_empty(es) => {
             let mut blk : ~[u8] = ~[];
             for vec::each(es) |e| {
                 let (k,v) = e;
-                let t = fmt!{"%s=%s", k, v};
-                let mut v : ~[u8] = ::unsafe::reinterpret_cast(t);
+                let t = fmt!("%s=%s", k, v);
+                let mut v : ~[u8] = ::unsafe::reinterpret_cast(&t);
                 blk += v;
                 ::unsafe::forget(v);
             }
             blk += ~[0_u8];
-            vec::as_buf(blk, |p, _len| cb(::unsafe::reinterpret_cast(p)))
+            vec::as_buf(blk, |p, _len| cb(::unsafe::reinterpret_cast(&p)))
           }
           _ => cb(ptr::null())
         }
     }
 }
 
-fn with_dirp<T>(d: &option<~str>,
+fn with_dirp<T>(d: &Option<~str>,
                 cb: fn(*libc::c_char) -> T) -> T {
     match *d {
-      some(dir) => str::as_c_str(dir, cb),
-      none => cb(ptr::null())
+      Some(dir) => str::as_c_str(dir, cb),
+      None => cb(ptr::null())
     }
 }
 
@@ -165,7 +166,7 @@ fn with_dirp<T>(d: &option<~str>,
  * The process id
  */
 fn run_program(prog: &str, args: &[~str]) -> int {
-    let pid = spawn_process(prog, args, &none, &none,
+    let pid = spawn_process(prog, args, &None, &None,
                             0i32, 0i32, 0i32);
     if pid == -1 as pid_t { fail; }
     return waitpid(pid);
@@ -192,7 +193,7 @@ fn start_program(prog: &str, args: &[~str]) -> Program {
     let pipe_output = os::pipe();
     let pipe_err = os::pipe();
     let pid =
-        spawn_process(prog, args, &none, &none,
+        spawn_process(prog, args, &None, &None,
                       pipe_input.in, pipe_output.out,
                       pipe_err.out);
 
@@ -225,7 +226,7 @@ fn start_program(prog: &str, args: &[~str]) -> Program {
        libc::fclose(r.out_file);
        libc::fclose(r.err_file);
     }
-    class ProgRes {
+    struct ProgRes {
         let r: ProgRepr;
         new(+r: ProgRepr) { self.r = r; }
         drop { destroy_repr(&self.r); }
@@ -277,7 +278,7 @@ fn program_output(prog: &str, args: &[~str]) ->
     let pipe_in = os::pipe();
     let pipe_out = os::pipe();
     let pipe_err = os::pipe();
-    let pid = spawn_process(prog, args, &none, &none,
+    let pid = spawn_process(prog, args, &None, &None,
                             pipe_in.in, pipe_out.out, pipe_err.out);
 
     os::close(pipe_in.in);
@@ -296,8 +297,8 @@ fn program_output(prog: &str, args: &[~str]) ->
     // in parallel so we don't deadlock while blocking on one
     // or the other. FIXME (#2625): Surely there's a much more
     // clever way to do this.
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
     do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);
         comm::send(ch, (2, errput));
@@ -320,8 +321,8 @@ fn program_output(prog: &str, args: &[~str]) ->
                 errs = s;
             }
             (n, _) => {
-                fail(#fmt("program_output received an unexpected file \
-                  number: %u", n));
+                fail(fmt!("program_output received an unexpected file \
+                           number: %u", n));
             }
         };
         count -= 1;
@@ -332,7 +333,7 @@ fn program_output(prog: &str, args: &[~str]) ->
 fn writeclose(fd: c_int, s: &str) {
     import io::WriterUtil;
 
-    error!{"writeclose %d, %s", fd as int, s};
+    error!("writeclose %d, %s", fd as int, s);
     let writer = io::fd_writer(fd, false);
     writer.write_str(s);
 
@@ -414,7 +415,7 @@ mod tests {
 
         let pid =
             run::spawn_process(
-                "cat", [], &none, &none,
+                "cat", [], &None, &None,
                 pipe_in.in, pipe_out.out, pipe_err.out);
         os::close(pipe_in.in);
         os::close(pipe_out.out);
@@ -435,7 +436,7 @@ mod tests {
     #[test]
     fn waitpid() {
         let pid = run::spawn_process("false", [],
-                                     &none, &none,
+                                     &None, &None,
                                      0i32, 0i32, 0i32);
         let status = run::waitpid(pid);
         assert status == 1;

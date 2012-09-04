@@ -100,8 +100,8 @@ impl devnull: io::Writer {
 
 fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
 {
-    let p: comm::Port<line> = comm::port();
-    let ch = comm::chan(p);
+    let p: comm::Port<line> = comm::Port();
+    let ch = comm::Chan(p);
     comm::send(writech, ch);
     let cout: io::Writer = match path {
         ~"" => {
@@ -112,25 +112,25 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
         }
         _ => {
             result::get(
-                io::file_writer(path,
+                io::file_writer(&Path(path),
                 ~[io::Create, io::Truncate]))
         }
     };
     cout.write_line(~"P4");
-    cout.write_line(fmt!{"%u %u", size, size});
+    cout.write_line(fmt!("%u %u", size, size));
     let lines = std::map::uint_hash();
     let mut done = 0_u;
     let mut i = 0_u;
     while i < size {
         let aline = comm::recv(p);
         if aline.i == done {
-            debug!{"W %u", aline.i};
+            debug!("W %u", aline.i);
             cout.write(aline.b);
             done += 1_u;
             let mut prev = done;
             while prev <= i {
                 if lines.contains_key(prev) {
-                    debug!{"WS %u", prev};
+                    debug!("WS %u", prev);
                     // FIXME (#2280): this temporary shouldn't be
                     // necessary, but seems to be, for borrowing.
                     let v : ~[u8] = lines.get(prev);
@@ -145,7 +145,7 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
             };
         }
         else {
-            debug!{"S %u", aline.i};
+            debug!("S %u", aline.i);
             lines.insert(aline.i, aline.b);
         };
         i += 1_u;
@@ -168,8 +168,8 @@ fn main(args: ~[~str]) {
     let size = if vec::len(args) < 2_u { 80_u }
     else { uint::from_str(args[1]).get() };
 
-    let writep = comm::port();
-    let writech = comm::chan(writep);
+    let writep = comm::Port();
+    let writech = comm::Chan(writep);
     do task::spawn {
         writer(path, writech, size);
     };
@@ -177,7 +177,7 @@ fn main(args: ~[~str]) {
     for uint::range(0_u, size) |j| {
         task::spawn(|| chanmb(j, size, ch) );
         if j % yieldevery == 0_u {
-            debug!{"Y %u", j};
+            debug!("Y %u", j);
             task::yield();
         };
     };

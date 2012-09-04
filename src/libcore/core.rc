@@ -1,5 +1,5 @@
 #[link(name = "core",
-       vers = "0.3",
+       vers = "0.4",
        uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
        url = "https://github.com/mozilla/rust/tree/master/src/libcore")];
 
@@ -55,13 +55,16 @@ export hash;
 export cmp;
 export num;
 export path;
+export managed;
+export flate;
+export unit;
+export uniq;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
 
-// FIXME (#2648): This creates some APIs that I do not want to commit
-// to. It is currently exported for the uv code in std, but when that
-// code moves into core this should become unexported
+// This creates some APIs that I do not want to commit to, but it must be
+// exported from core in order for uv to remain in std (see #2648).
 export priv;
 
 
@@ -182,6 +185,10 @@ mod at_vec;
 mod bool;
 #[warn(non_camel_case_types)]
 mod tuple;
+#[warn(non_camel_case_types)]
+mod unit;
+#[warn(non_camel_case_types)]
+mod uniq;
 
 // Ubiquitous-utility-type modules
 
@@ -241,6 +248,7 @@ mod comm;
 mod task;
 //#[warn(non_camel_ase_types)] pipec code continues to trip this warning
 mod future;
+#[warn(non_camel_case_types)]
 mod pipes;
 
 // Runtime and language-primitive support
@@ -261,6 +269,9 @@ mod sys;
 #[warn(non_camel_case_types)]
 mod unsafe;
 
+mod managed;
+
+mod flate;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface

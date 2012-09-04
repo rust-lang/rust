@@ -1,5 +1,5 @@
 // This test should behave exactly like issue-2735-3
-class defer {
+struct defer {
     let b: &mut bool;
     new(b: &mut bool) {
         self.b = b;

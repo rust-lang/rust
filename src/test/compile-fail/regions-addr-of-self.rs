@@ -1,4 +1,4 @@
-class dog {
+struct dog {
     let mut cats_chased: uint;
 
     new() {
@@ -19,6 +19,6 @@ class dog {
 fn main() {
     let d = dog();
     d.chase_cat();
-    debug!{"cats_chased: %u", d.cats_chased};
+    debug!("cats_chased: %u", d.cats_chased);
 }
 

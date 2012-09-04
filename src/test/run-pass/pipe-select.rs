@@ -7,17 +7,17 @@ import std::uv;
 
 import pipes::{recv, select};
 
-proto! oneshot {
+proto! oneshot (
     waiting:send {
         signal -> !
     }
-}
+)
 
-proto! stream {
+proto! stream (
     stream:send<T:send> {
         send(T) -> stream<T>
     }
-}
+)
 
 fn main() {
     import oneshot::client::*;
@@ -26,27 +26,27 @@ fn main() {
     let iotask = uv::global_loop::get();
     
     let c = pipes::spawn_service(stream::init, |p| { 
-        error!{"waiting for pipes"};
+        error!("waiting for pipes");
         let stream::send(x, p) = recv(p);
-        error!{"got pipes"};
+        error!("got pipes");
         let (left, right) : (oneshot::server::waiting,
                              oneshot::server::waiting)
             = x;
-        error!{"selecting"};
+        error!("selecting");
         let (i, _, _) = select(~[left, right]);
-        error!{"selected"};
+        error!("selected");
         assert i == 0;
 
-        error!{"waiting for pipes"};
+        error!("waiting for pipes");
         let stream::send(x, _) = recv(p);
-        error!{"got pipes"};
+        error!("got pipes");
         let (left, right) : (oneshot::server::waiting,
                              oneshot::server::waiting)
             = x;
-        error!{"selecting"};
+        error!("selecting");
         let (i, m, _) = select(~[left, right]);
-        error!{"selected %?", i};
-        if m != none {
+        error!("selected %?", i);
+        if m != None {
             assert i == 1;
         }
     });
@@ -85,7 +85,7 @@ fn test_select2() {
 
     stream::client::send(bc, ~"abc");
 
-    error!{"done with first select2"};
+    error!("done with first select2");
 
     let (ac, ap) = stream::init();
     let (bc, bp) = stream::init();

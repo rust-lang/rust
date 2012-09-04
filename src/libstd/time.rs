@@ -1,14 +1,18 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
+import core::cmp::Eq;
 import libc::{c_char, c_int, c_long, size_t, time_t};
 import io::Reader;
-import result::{result, ok, err};
+import result::{Result, Ok, Err};
 
 export
-    timespec,
+    Timespec,
     get_time,
     precise_time_ns,
     precise_time_s,
     tzset,
-    tm,
+    Tm,
     empty_tm,
     now,
     at,
@@ -23,20 +27,26 @@ extern mod rustrt {
 
     fn rust_tzset();
     // FIXME: The i64 values can be passed by-val when #2064 is fixed.
-    fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: tm);
-    fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: tm);
-    fn rust_timegm(&&tm: tm, &sec: i64);
-    fn rust_mktime(&&tm: tm, &sec: i64);
+    fn rust_gmtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    fn rust_localtime(&&sec: i64, &&nsec: i32, &&result: Tm);
+    fn rust_timegm(&&tm: Tm, &sec: i64);
+    fn rust_mktime(&&tm: Tm, &sec: i64);
 }
 
 /// A record specifying a time value in seconds and nanoseconds.
-type timespec = {sec: i64, nsec: i32};
+type Timespec = {sec: i64, nsec: i32};
+
+impl Timespec : Eq {
+    pure fn eq(&&other: Timespec) -> bool {
+        self.sec == other.sec && self.nsec == other.nsec
+    }
+}
 
 /**
  * Returns the current time as a `timespec` containing the seconds and
  * nanoseconds since 1970-01-01T00:00:00Z.
  */
-fn get_time() -> timespec {
+fn get_time() -> Timespec {
     let mut sec = 0i64;
     let mut nsec = 0i32;
     rustrt::get_time(sec, nsec);
@@ -65,7 +75,7 @@ fn tzset() {
     rustrt::rust_tzset();
 }
 
-type tm_ = {
+type Tm_ = {
     tm_sec: i32, // seconds after the minute ~[0-60]
     tm_min: i32, // minutes after the hour ~[0-59]
     tm_hour: i32, // hours after midnight ~[0-23]
@@ -80,12 +90,35 @@ type tm_ = {
     tm_nsec: i32, // nanoseconds
 };
 
-enum tm {
-    tm_(tm_)
+impl Tm_ : Eq {
+    pure fn eq(&&other: Tm_) -> bool {
+        self.tm_sec == other.tm_sec &&
+        self.tm_min == other.tm_min &&
+        self.tm_hour == other.tm_hour &&
+        self.tm_mday == other.tm_mday &&
+        self.tm_mon == other.tm_mon &&
+        self.tm_year == other.tm_year &&
+        self.tm_wday == other.tm_wday &&
+        self.tm_yday == other.tm_yday &&
+        self.tm_isdst == other.tm_isdst &&
+        self.tm_gmtoff == other.tm_gmtoff &&
+        self.tm_zone == other.tm_zone &&
+        self.tm_nsec == other.tm_nsec
+    }
 }
 
-fn empty_tm() -> tm {
-    tm_({
+enum Tm {
+    Tm_(Tm_)
+}
+
+impl Tm : Eq {
+    pure fn eq(&&other: Tm) -> bool {
+        *self == *other
+    }
+}
+
+fn empty_tm() -> Tm {
+    Tm_({
         tm_sec: 0_i32,
         tm_min: 0_i32,
         tm_hour: 0_i32,
@@ -102,7 +135,7 @@ fn empty_tm() -> tm {
 }
 
 /// Returns the specified time in UTC
-fn at_utc(clock: timespec) -> tm {
+fn at_utc(clock: Timespec) -> Tm {
     let mut {sec, nsec} = clock;
     let mut tm = empty_tm();
     rustrt::rust_gmtime(sec, nsec, tm);
@@ -110,12 +143,12 @@ fn at_utc(clock: timespec) -> tm {
 }
 
 /// Returns the current time in UTC
-fn now_utc() -> tm {
+fn now_utc() -> Tm {
     at_utc(get_time())
 }
 
 /// Returns the specified time in the local timezone
-fn at(clock: timespec) -> tm {
+fn at(clock: Timespec) -> Tm {
     let mut {sec, nsec} = clock;
     let mut tm = empty_tm();
     rustrt::rust_localtime(sec, nsec, tm);
@@ -123,13 +156,13 @@ fn at(clock: timespec) -> tm {
 }
 
 /// Returns the current time in the local timezone
-fn now() -> tm {
+fn now() -> Tm {
     at(get_time())
 }
 
 /// Parses the time from the string according to the format string.
-fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
-    type tm_mut = {
+fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
+    type TmMut = {
        mut tm_sec: i32,
        mut tm_min: i32,
        mut tm_hour: i32,
@@ -144,7 +177,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
        mut tm_nsec: i32,
     };
 
-    fn match_str(s: ~str, pos: uint, needle: ~str) -> bool {
+    fn match_str(s: &str, pos: uint, needle: &str) -> bool {
         let mut i = pos;
         for str::each(needle) |ch| {
             if s[i] != ch {
@@ -155,59 +188,59 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         return true;
     }
 
-    fn match_strs(s: ~str, pos: uint, strs: ~[(~str, i32)])
-      -> option<(i32, uint)> {
+    fn match_strs(ss: &str, pos: uint, strs: &[(~str, i32)])
+      -> Option<(i32, uint)> {
         let mut i = 0u;
         let len = vec::len(strs);
         while i < len {
             let (needle, value) = strs[i];
 
-            if match_str(s, pos, needle) {
-                return some((value, pos + str::len(needle)));
+            if match_str(ss, pos, needle) {
+                return Some((value, pos + str::len(needle)));
             }
             i += 1u;
         }
 
-        none
+        None
     }
 
-    fn match_digits(s: ~str, pos: uint, digits: uint, ws: bool)
-      -> option<(i32, uint)> {
+    fn match_digits(ss: &str, pos: uint, digits: uint, ws: bool)
+      -> Option<(i32, uint)> {
         let mut pos = pos;
         let mut value = 0_i32;
 
         let mut i = 0u;
         while i < digits {
-            let {ch, next} = str::char_range_at(s, pos);
+            let {ch, next} = str::char_range_at(str::from_slice(ss), pos);
             pos = next;
 
             match ch {
-              '0' to '9' => {
+              '0' .. '9' => {
                 value = value * 10_i32 + (ch as i32 - '0' as i32);
               }
               ' ' if ws => (),
-              _ => return none
+              _ => return None
             }
             i += 1u;
         }
 
-        some((value, pos))
+        Some((value, pos))
     }
 
-    fn parse_char(s: ~str, pos: uint, c: char) -> result<uint, ~str> {
+    fn parse_char(s: &str, pos: uint, c: char) -> Result<uint, ~str> {
         let {ch, next} = str::char_range_at(s, pos);
 
         if c == ch {
-            ok(next)
+            Ok(next)
         } else {
-            err(fmt!{"Expected %?, found %?",
+            Err(fmt!("Expected %?, found %?",
                 str::from_char(c),
-                str::from_char(ch)})
+                str::from_char(ch)))
         }
     }
 
-    fn parse_type(s: ~str, pos: uint, ch: char, tm: tm_mut)
-      -> result<uint, ~str> {
+    fn parse_type(s: &str, pos: uint, ch: char, tm: &TmMut)
+      -> Result<uint, ~str> {
         match ch {
           'A' => match match_strs(s, pos, ~[
               (~"Sunday", 0_i32),
@@ -218,8 +251,8 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
               (~"Friday", 5_i32),
               (~"Saturday", 6_i32)
           ]) {
-            some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
-            none => err(~"Invalid day")
+            Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
+            None => Err(~"Invalid day")
           },
           'a' => match match_strs(s, pos, ~[
               (~"Sun", 0_i32),
@@ -230,8 +263,8 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
               (~"Fri", 5_i32),
               (~"Sat", 6_i32)
           ]) {
-            some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
-            none => err(~"Invalid day")
+            Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
+            None => Err(~"Invalid day")
           },
           'B' => match match_strs(s, pos, ~[
               (~"January", 0_i32),
@@ -247,8 +280,8 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
               (~"November", 10_i32),
               (~"December", 11_i32)
           ]) {
-            some(item) => { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
-            none => err(~"Invalid month")
+            Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
+            None => Err(~"Invalid month")
           },
           'b' | 'h' => match match_strs(s, pos, ~[
               (~"Jan", 0_i32),
@@ -264,16 +297,16 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
               (~"Nov", 10_i32),
               (~"Dec", 11_i32)
           ]) {
-            some(item) => { let (v, pos) = item; tm.tm_mon = v; ok(pos) }
-            none => err(~"Invalid month")
+            Some(item) => { let (v, pos) = item; tm.tm_mon = v; Ok(pos) }
+            None => Err(~"Invalid month")
           },
           'C' => match match_digits(s, pos, 2u, false) {
-            some(item) => {
+            Some(item) => {
                 let (v, pos) = item;
                   tm.tm_year += (v * 100_i32) - 1900_i32;
-                  ok(pos)
+                  Ok(pos)
               }
-            none => err(~"Invalid year")
+            None => Err(~"Invalid year")
           },
           'c' => {
             parse_type(s, pos, 'a', tm)
@@ -294,12 +327,12 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                 .chain(|pos| parse_type(s, pos, 'y', tm))
           }
           'd' => match match_digits(s, pos, 2u, false) {
-            some(item) => { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
-            none => err(~"Invalid day of the month")
+            Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
+            None => Err(~"Invalid day of the month")
           },
           'e' => match match_digits(s, pos, 2u, true) {
-            some(item) => { let (v, pos) = item; tm.tm_mday = v; ok(pos) }
-            none => err(~"Invalid day of the month")
+            Some(item) => { let (v, pos) = item; tm.tm_mday = v; Ok(pos) }
+            None => Err(~"Invalid day of the month")
           },
           'F' => {
             parse_type(s, pos, 'Y', tm)
@@ -311,80 +344,80 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           'H' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, false) {
-              some(item) => { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
-              none => err(~"Invalid hour")
+              Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
+              None => Err(~"Invalid hour")
             }
           }
           'I' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, false) {
-              some(item) => {
+              Some(item) => {
                   let (v, pos) = item;
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
-                  ok(pos)
+                  Ok(pos)
               }
-              none => err(~"Invalid hour")
+              None => Err(~"Invalid hour")
             }
           }
           'j' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 3u, false) {
-              some(item) => {
+              Some(item) => {
                 let (v, pos) = item;
                 tm.tm_yday = v - 1_i32;
-                ok(pos)
+                Ok(pos)
               }
-              none => err(~"Invalid year")
+              None => Err(~"Invalid year")
             }
           }
           'k' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, true) {
-              some(item) => { let (v, pos) = item; tm.tm_hour = v; ok(pos) }
-              none => err(~"Invalid hour")
+              Some(item) => { let (v, pos) = item; tm.tm_hour = v; Ok(pos) }
+              None => Err(~"Invalid hour")
             }
           }
           'l' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, true) {
-              some(item) => {
+              Some(item) => {
                   let (v, pos) = item;
                   tm.tm_hour = if v == 12_i32 { 0_i32 } else { v };
-                  ok(pos)
+                  Ok(pos)
               }
-              none => err(~"Invalid hour")
+              None => Err(~"Invalid hour")
             }
           }
           'M' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, false) {
-              some(item) => { let (v, pos) = item; tm.tm_min = v; ok(pos) }
-              none => err(~"Invalid minute")
+              Some(item) => { let (v, pos) = item; tm.tm_min = v; Ok(pos) }
+              None => Err(~"Invalid minute")
             }
           }
           'm' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, false) {
-              some(item) => {
+              Some(item) => {
                 let (v, pos) = item;
                 tm.tm_mon = v - 1_i32;
-                ok(pos)
+                Ok(pos)
               }
-              none => err(~"Invalid month")
+              None => Err(~"Invalid month")
             }
           }
           'n' => parse_char(s, pos, '\n'),
           'P' => match match_strs(s, pos,
                                   ~[(~"am", 0_i32), (~"pm", 12_i32)]) {
 
-            some(item) => { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
-            none => err(~"Invalid hour")
+            Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
+            None => Err(~"Invalid hour")
           },
           'p' => match match_strs(s, pos,
                                   ~[(~"AM", 0_i32), (~"PM", 12_i32)]) {
 
-            some(item) => { let (v, pos) = item; tm.tm_hour += v; ok(pos) }
-            none => err(~"Invalid hour")
+            Some(item) => { let (v, pos) = item; tm.tm_hour += v; Ok(pos) }
+            None => Err(~"Invalid hour")
           },
           'R' => {
             parse_type(s, pos, 'H', tm)
@@ -403,12 +436,12 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           'S' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, false) {
-              some(item) => {
+              Some(item) => {
                 let (v, pos) = item;
                 tm.tm_sec = v;
-                ok(pos)
+                Ok(pos)
               }
-              none => err(~"Invalid second")
+              None => Err(~"Invalid second")
             }
           }
           //'s' {}
@@ -423,12 +456,12 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           'u' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 1u, false) {
-              some(item) => {
+              Some(item) => {
                 let (v, pos) = item;
                 tm.tm_wday = v;
-                ok(pos)
+                Ok(pos)
               }
-              none => err(~"Invalid weekday")
+              None => Err(~"Invalid weekday")
             }
           }
           'v' => {
@@ -442,8 +475,8 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           'w' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 1u, false) {
-              some(item) => { let (v, pos) = item; tm.tm_wday = v; ok(pos) }
-              none => err(~"Invalid weekday")
+              Some(item) => { let (v, pos) = item; tm.tm_wday = v; Ok(pos) }
+              None => Err(~"Invalid weekday")
             }
           }
           //'X' {}
@@ -451,30 +484,30 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
           'Y' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 4u, false) {
-              some(item) => {
+              Some(item) => {
                 let (v, pos) = item;
                 tm.tm_year = v - 1900_i32;
-                ok(pos)
+                Ok(pos)
               }
-              none => err(~"Invalid weekday")
+              None => Err(~"Invalid weekday")
             }
           }
           'y' => {
             // FIXME (#2350): range check.
             match match_digits(s, pos, 2u, false) {
-              some(item) => {
+              Some(item) => {
                 let (v, pos) = item;
                 tm.tm_year = v - 1900_i32;
-                ok(pos)
+                Ok(pos)
               }
-              none => err(~"Invalid weekday")
+              None => Err(~"Invalid weekday")
             }
           }
           'Z' => {
             if match_str(s, pos, ~"UTC") || match_str(s, pos, ~"GMT") {
                 tm.tm_gmtoff = 0_i32;
                 tm.tm_zone = ~"UTC";
-                ok(pos + 3u)
+                Ok(pos + 3u)
             } else {
                 // It's odd, but to maintain compatibility with c's
                 // strptime we ignore the timezone.
@@ -486,7 +519,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
                     if ch == ' ' { break; }
                 }
 
-                ok(pos)
+                Ok(pos)
             }
           }
           'z' => {
@@ -494,29 +527,29 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
 
             if ch == '+' || ch == '-' {
                 match match_digits(s, next, 4u, false) {
-                  some(item) => {
+                  Some(item) => {
                     let (v, pos) = item;
                     if v == 0_i32 {
                         tm.tm_gmtoff = 0_i32;
                         tm.tm_zone = ~"UTC";
                     }
 
-                    ok(pos)
+                    Ok(pos)
                   }
-                  none => err(~"Invalid zone offset")
+                  None => Err(~"Invalid zone offset")
                 }
             } else {
-                err(~"Invalid zone offset")
+                Err(~"Invalid zone offset")
             }
           }
           '%' => parse_char(s, pos, '%'),
           ch => {
-            err(fmt!{"unknown formatting type: %?", str::from_char(ch)})
+            Err(fmt!("unknown formatting type: %?", str::from_char(ch)))
           }
         }
     }
 
-    do io::with_str_reader(format) |rdr| {
+    do io::with_str_reader(str::from_slice(format)) |rdr| {
         let tm = {
             mut tm_sec: 0_i32,
             mut tm_min: 0_i32,
@@ -533,15 +566,15 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         };
         let mut pos = 0u;
         let len = str::len(s);
-        let mut result = err(~"Invalid time");
+        let mut result = Err(~"Invalid time");
 
         while !rdr.eof() && pos < len {
             let {ch, next} = str::char_range_at(s, pos);
 
             match rdr.read_char() {
-              '%' => match parse_type(s, pos, rdr.read_char(), tm) {
-                ok(next) => pos = next,
-                  err(e) => { result = err(e); break; }
+              '%' => match parse_type(s, pos, rdr.read_char(), &tm) {
+                Ok(next) => pos = next,
+                  Err(e) => { result = Err(e); break; }
               },
               c => {
                 if c != ch { break }
@@ -551,7 +584,7 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
         }
 
         if pos == len && rdr.eof() {
-            ok(tm_({
+            Ok(Tm_({
                 tm_sec: tm.tm_sec,
                 tm_min: tm.tm_min,
                 tm_hour: tm.tm_hour,
@@ -569,8 +602,8 @@ fn strptime(s: ~str, format: ~str) -> result<tm, ~str> {
     }
 }
 
-fn strftime(format: ~str, tm: tm) -> ~str {
-    fn parse_type(ch: char, tm: tm) -> ~str {
+fn strftime(format: &str, +tm: Tm) -> ~str {
+    fn parse_type(ch: char, tm: &Tm) -> ~str {
         //FIXME (#2350): Implement missing types.
       let die = || #fmt("strftime: can't understand this format %c ",
                              ch);
@@ -625,70 +658,70 @@ fn strftime(format: ~str, tm: tm) -> ~str {
             11 => ~"Dec",
             _  => die()
           },
-          'C' => fmt!{"%02d", (tm.tm_year as int + 1900) / 100},
+          'C' => fmt!("%02d", (tm.tm_year as int + 1900) / 100),
           'c' => {
-            fmt!{"%s %s %s %s %s",
+            fmt!("%s %s %s %s %s",
                 parse_type('a', tm),
                 parse_type('b', tm),
                 parse_type('e', tm),
                 parse_type('T', tm),
-                parse_type('Y', tm)}
+                parse_type('Y', tm))
           }
           'D' | 'x' => {
-            fmt!{"%s/%s/%s",
+            fmt!("%s/%s/%s",
                 parse_type('m', tm),
                 parse_type('d', tm),
-                parse_type('y', tm)}
+                parse_type('y', tm))
           }
-          'd' => fmt!{"%02d", tm.tm_mday as int},
-          'e' => fmt!{"%2d", tm.tm_mday as int},
+          'd' => fmt!("%02d", tm.tm_mday as int),
+          'e' => fmt!("%2d", tm.tm_mday as int),
           'F' => {
-            fmt!{"%s-%s-%s",
+            fmt!("%s-%s-%s",
                 parse_type('Y', tm),
                 parse_type('m', tm),
-                parse_type('d', tm)}
+                parse_type('d', tm))
           }
           //'G' {}
           //'g' {}
-          'H' => fmt!{"%02d", tm.tm_hour as int},
+          'H' => fmt!("%02d", tm.tm_hour as int),
           'I' => {
             let mut h = tm.tm_hour as int;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
-            fmt!{"%02d", h}
+            fmt!("%02d", h)
           }
-          'j' => fmt!{"%03d", tm.tm_yday as int + 1},
-          'k' => fmt!{"%2d", tm.tm_hour as int},
+          'j' => fmt!("%03d", tm.tm_yday as int + 1),
+          'k' => fmt!("%2d", tm.tm_hour as int),
           'l' => {
             let mut h = tm.tm_hour as int;
             if h == 0 { h = 12 }
             if h > 12 { h -= 12 }
-            fmt!{"%2d", h}
+            fmt!("%2d", h)
           }
-          'M' => fmt!{"%02d", tm.tm_min as int},
-          'm' => fmt!{"%02d", tm.tm_mon as int + 1},
+          'M' => fmt!("%02d", tm.tm_min as int),
+          'm' => fmt!("%02d", tm.tm_mon as int + 1),
           'n' => ~"\n",
           'P' => if tm.tm_hour as int < 12 { ~"am" } else { ~"pm" },
           'p' => if tm.tm_hour as int < 12 { ~"AM" } else { ~"PM" },
           'R' => {
-            fmt!{"%s:%s",
+            fmt!("%s:%s",
                 parse_type('H', tm),
-                parse_type('M', tm)}
+                parse_type('M', tm))
           }
           'r' => {
-            fmt!{"%s:%s:%s %s",
+            fmt!("%s:%s:%s %s",
                 parse_type('I', tm),
                 parse_type('M', tm),
                 parse_type('S', tm),
-                parse_type('p', tm)}
+                parse_type('p', tm))
           }
-          'S' => fmt!{"%02d", tm.tm_sec as int},
-          's' => fmt!{"%d", tm.to_timespec().sec as int},
+          'S' => fmt!("%02d", tm.tm_sec as int),
+          's' => fmt!("%d", tm.to_timespec().sec as int),
           'T' | 'X' => {
-            fmt!{"%s:%s:%s",
+            fmt!("%s:%s:%s",
                 parse_type('H', tm),
                 parse_type('M', tm),
-                parse_type('S', tm)}
+                parse_type('S', tm))
           }
           't' => ~"\t",
           //'U' {}
@@ -698,24 +731,24 @@ fn strftime(format: ~str, tm: tm) -> ~str {
           }
           //'V' {}
           'v' => {
-            fmt!{"%s-%s-%s",
+            fmt!("%s-%s-%s",
                 parse_type('e', tm),
                 parse_type('b', tm),
-                parse_type('Y', tm)}
+                parse_type('Y', tm))
           }
           //'W' {}
           'w' => int::str(tm.tm_wday as int),
           //'X' {}
           //'x' {}
           'Y' => int::str(tm.tm_year as int + 1900),
-          'y' => fmt!{"%02d", (tm.tm_year as int + 1900) % 100},
+          'y' => fmt!("%02d", (tm.tm_year as int + 1900) % 100),
           'Z' => tm.tm_zone,
           'z' => {
             let sign = if tm.tm_gmtoff > 0_i32 { '+' } else { '-' };
             let mut m = i32::abs(tm.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
-            fmt!{"%c%02d%02d", sign, h as int, m as int}
+            fmt!("%c%02d%02d", sign, h as int, m as int)
           }
           //'+' {}
           '%' => ~"%",
@@ -725,10 +758,10 @@ fn strftime(format: ~str, tm: tm) -> ~str {
 
     let mut buf = ~"";
 
-    do io::with_str_reader(format) |rdr| {
+    do io::with_str_reader(str::from_slice(format)) |rdr| {
         while !rdr.eof() {
             match rdr.read_char() {
-                '%' => buf += parse_type(rdr.read_char(), tm),
+                '%' => buf += parse_type(rdr.read_char(), &tm),
                 ch => str::push_char(buf, ch)
             }
         }
@@ -737,9 +770,9 @@ fn strftime(format: ~str, tm: tm) -> ~str {
     buf
 }
 
-impl tm {
+impl Tm {
     /// Convert time to the seconds from January 1, 1970
-    fn to_timespec() -> timespec {
+    fn to_timespec() -> Timespec {
         let mut sec = 0i64;
         if self.tm_gmtoff == 0_i32 {
             rustrt::rust_timegm(self, sec);
@@ -750,12 +783,12 @@ impl tm {
     }
 
     /// Convert time to the local timezone
-    fn to_local() -> tm {
+    fn to_local() -> Tm {
         at(self.to_timespec())
     }
 
     /// Convert time to the UTC
-    fn to_utc() -> tm {
+    fn to_utc() -> Tm {
         at_utc(self.to_timespec())
     }
 
@@ -766,7 +799,7 @@ impl tm {
     fn ctime() -> ~str { self.strftime(~"%c") }
 
     /// Formats the time according to the format string.
-    fn strftime(format: ~str) -> ~str { strftime(format, self) }
+    fn strftime(format: &str) -> ~str { strftime(format, self) }
 
     /**
      * Returns a time string formatted according to RFC 822.
@@ -807,7 +840,7 @@ impl tm {
             let mut m = i32::abs(self.tm_gmtoff) / 60_i32;
             let h = m / 60_i32;
             m -= h * 60_i32;
-            s + fmt!{"%c%02d:%02d", sign, h as int, m as int}
+            s + fmt!("%c%02d:%02d", sign, h as int, m as int)
         }
     }
 }
@@ -888,7 +921,7 @@ mod tests {
         let time = { sec: 1234567890_i64, nsec: 54321_i32 };
         let local = at(time);
 
-        error!{"time_at: %?", local};
+        error!("time_at: %?", local);
 
         assert local.tm_sec == 30_i32;
         assert local.tm_min == 31_i32;
@@ -944,7 +977,7 @@ mod tests {
         tzset();
 
         match strptime(~"", ~"") {
-          ok(tm) => {
+          Ok(tm) => {
             assert tm.tm_sec == 0_i32;
             assert tm.tm_min == 0_i32;
             assert tm.tm_hour == 0_i32;
@@ -957,17 +990,17 @@ mod tests {
             assert tm.tm_zone == ~"";
             assert tm.tm_nsec == 0_i32;
           }
-          err(_) => ()
+          Err(_) => ()
         }
 
         let format = ~"%a %b %e %T %Y";
-        assert strptime(~"", format) == err(~"Invalid time");
+        assert strptime(~"", format) == Err(~"Invalid time");
         assert strptime(~"Fri Feb 13 15:31:30", format)
-            == err(~"Invalid time");
+            == Err(~"Invalid time");
 
         match strptime(~"Fri Feb 13 15:31:30 2009", format) {
-          err(e) => fail e,
-          ok(tm) => {
+          Err(e) => fail e,
+          Ok(tm) => {
             assert tm.tm_sec == 30_i32;
             assert tm.tm_min == 31_i32;
             assert tm.tm_hour == 15_i32;
@@ -983,10 +1016,10 @@ mod tests {
           }
         }
 
-        fn test(s: ~str, format: ~str) -> bool {
+        fn test(s: &str, format: &str) -> bool {
             match strptime(s, format) {
-              ok(tm) => tm.strftime(format) == s,
-              err(e) => fail e
+              Ok(tm) => tm.strftime(format) == str::from_slice(s),
+              Err(e) => fail e
             }
         }
 
@@ -1094,7 +1127,7 @@ mod tests {
         let utc   = at_utc(time);
         let local = at(time);
 
-        error!{"test_ctime: %? %?", utc.ctime(), local.ctime()};
+        error!("test_ctime: %? %?", utc.ctime(), local.ctime());
 
         assert utc.ctime()   == ~"Fri Feb 13 23:31:30 2009";
         assert local.ctime() == ~"Fri Feb 13 15:31:30 2009";

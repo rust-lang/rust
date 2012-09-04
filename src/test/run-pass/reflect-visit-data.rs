@@ -542,7 +542,7 @@ impl my_visitor: ty_visitor {
                        _sz: uint, _align: uint) -> bool { true }
     fn visit_rec_field(_i: uint, _name: &str,
                        _mtbl: uint, inner: *tydesc) -> bool {
-        error!{"rec field!"};
+        error!("rec field!");
         self.visit_inner(inner)
     }
     fn visit_leave_rec(_n_fields: uint,
@@ -560,7 +560,7 @@ impl my_visitor: ty_visitor {
     fn visit_enter_tup(_n_fields: uint,
                        _sz: uint, _align: uint) -> bool { true }
     fn visit_tup_field(_i: uint, inner: *tydesc) -> bool {
-        error!{"tup field!"};
+        error!("tup field!");
         self.visit_inner(inner)
     }
     fn visit_leave_tup(_n_fields: uint,
@@ -616,14 +616,14 @@ fn main() {
                          mut vals: ~[]});
     let v = ptr_visit_adaptor({inner: u});
     let td = get_tydesc_for(r);
-    unsafe { error!{"tydesc sz: %u, align: %u",
-                    (*td).size, (*td).align}; }
+    unsafe { error!("tydesc sz: %u, align: %u",
+                    (*td).size, (*td).align); }
     let v = v as ty_visitor;
     visit_tydesc(td, v);
 
     for (copy u.vals).each |s| {
-        io::println(fmt!{"val: %s", s});
+        io::println(fmt!("val: %s", s));
     }
-    error!{"%?", copy u.vals};
+    error!("%?", copy u.vals);
     assert u.vals == ~[~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3"];
  }

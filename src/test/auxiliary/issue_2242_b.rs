@@ -5,5 +5,5 @@ use a;
 import a::to_strz;
 
 impl int: to_strz {
-    fn to_strz() -> ~str { fmt!{"%?", self} }
+    fn to_strz() -> ~str { fmt!("%?", self) }
 }

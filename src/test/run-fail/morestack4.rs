@@ -13,7 +13,7 @@ fn getbig_and_fail(&&i: int) {
     }
 }
 
-class and_then_get_big_again {
+struct and_then_get_big_again {
   let x:int;
   new(x:int) {self.x = x;}
   drop {}

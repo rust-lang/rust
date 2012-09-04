@@ -5,12 +5,13 @@ import syntax::ast;
 import syntax::ast_util;
 import syntax::ast_map;
 import middle::ty;
-import option::{some, none};
+import option::{Some, None};
 import syntax::diagnostic::span_handler;
 import syntax::diagnostic::expect;
+import ast_util::dummy_sp;
 import common::*;
 import std::map::hashmap;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 export class_dtor;
 export get_symbol;
@@ -19,8 +20,6 @@ export get_class_method;
 export get_field_type;
 export get_type_param_count;
 export get_region_param;
-export lookup_defs;
-export lookup_method_purity;
 export get_enum_variants;
 export get_impls_for_mod;
 export get_trait_methods;
@@ -43,64 +42,21 @@ fn get_type_param_count(cstore: cstore::cstore, def: ast::def_id) -> uint {
     return decoder::get_type_param_count(cdata, def.node);
 }
 
-fn lookup_defs(cstore: cstore::cstore, cnum: ast::crate_num,
-               path: ~[ast::ident]) -> ~[ast::def] {
-    let mut result = ~[];
-    debug!{"lookup_defs: path = %? cnum = %?", path, cnum};
-    for resolve_path(cstore, cnum, path).each |elt| {
-        let (c, data, def) = elt;
-        vec::push(result, decoder::lookup_def(c, data, def));
-    }
-    return result;
-}
-
-fn lookup_method_purity(cstore: cstore::cstore, did: ast::def_id)
-    -> ast::purity {
-    let cdata = cstore::get_crate_data(cstore, did.crate).data;
-    match check decoder::lookup_def(did.crate, cdata, did) {
-      ast::def_fn(_, p) => p
-    }
-}
-
-/* Returns a vector of possible def IDs for a given path,
-   in a given crate */
-fn resolve_path(cstore: cstore::cstore, cnum: ast::crate_num,
-                path: ~[ast::ident]) ->
-    ~[(ast::crate_num, @~[u8], ast::def_id)] {
-    let cm = cstore::get_crate_data(cstore, cnum);
-    debug!{"resolve_path %s in crates[%d]:%s",
-           ast_util::path_name_i(path), cnum, cm.name};
-    let mut result = ~[];
-    for decoder::resolve_path(path, cm.data).each |def| {
-        if def.crate == ast::local_crate {
-            vec::push(result, (cnum, cm.data, def));
-        } else {
-            if cm.cnum_map.contains_key(def.crate) {
-                // This reexport is itself a reexport from another crate
-                let next_cnum = cm.cnum_map.get(def.crate);
-                let next_cm_data = cstore::get_crate_data(cstore, next_cnum);
-                vec::push(result, (next_cnum, next_cm_data.data, def));
-            }
-        }
-    }
-    return result;
-}
-
 /// Iterates over all the paths in the given crate.
 fn each_path(cstore: cstore::cstore, cnum: ast::crate_num,
              f: fn(decoder::path_entry) -> bool) {
     let crate_data = cstore::get_crate_data(cstore, cnum);
-    decoder::each_path(crate_data, f);
+    decoder::each_path(cstore.intr, crate_data, f);
 }
 
 fn get_item_path(tcx: ty::ctxt, def: ast::def_id) -> ast_map::path {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    let path = decoder::get_item_path(cdata, def.node);
+    let path = decoder::get_item_path(cstore.intr, cdata, def.node);
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(~[ast_map::path_mod(@cdata.name)], path)
+    vec::append(~[ast_map::path_mod(tcx.sess.ident_of(cdata.name))], path)
 }
 
 enum found_ast {
@@ -117,7 +73,7 @@ fn maybe_get_item_ast(tcx: ty::ctxt, def: ast::def_id,
     -> found_ast {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::maybe_get_item_ast(cdata, tcx, def.node,
+    decoder::maybe_get_item_ast(cstore.intr, cdata, tcx, def.node,
                                 decode_inlined_item)
 }
 
@@ -125,14 +81,14 @@ fn get_enum_variants(tcx: ty::ctxt, def: ast::def_id)
     -> ~[ty::variant_info] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    return decoder::get_enum_variants(cdata, def.node, tcx)
+    return decoder::get_enum_variants(cstore.intr, cdata, def.node, tcx)
 }
 
 fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
-                     name: option<ast::ident>)
+                     name: Option<ast::ident>)
     -> @~[@decoder::_impl] {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    do decoder::get_impls_for_mod(cdata, def.node, name) |cnum| {
+    do decoder::get_impls_for_mod(cstore.intr, cdata, def.node, name) |cnum| {
         cstore::get_crate_data(cstore, cnum)
     }
 }
@@ -140,14 +96,14 @@ fn get_impls_for_mod(cstore: cstore::cstore, def: ast::def_id,
 fn get_trait_methods(tcx: ty::ctxt, def: ast::def_id) -> @~[ty::method] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_trait_methods(cdata, def.node, tcx)
+    decoder::get_trait_methods(cstore.intr, cdata, def.node, tcx)
 }
 
 fn get_method_names_if_trait(cstore: cstore::cstore, def: ast::def_id)
-    -> option<@DVec<(@~str, ast::self_ty_)>> {
+    -> Option<@DVec<(ast::ident, ast::self_ty_)>> {
 
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    return decoder::get_method_names_if_trait(cdata, def.node);
+    return decoder::get_method_names_if_trait(cstore.intr, cdata, def.node);
 }
 
 fn get_item_attrs(cstore: cstore::cstore,
@@ -161,7 +117,7 @@ fn get_item_attrs(cstore: cstore::cstore,
 fn get_class_fields(tcx: ty::ctxt, def: ast::def_id) -> ~[ty::field_ty] {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_fields(cdata, def.node)
+    decoder::get_class_fields(cstore.intr, cdata, def.node)
 }
 
 fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
@@ -171,7 +127,7 @@ fn get_type(tcx: ty::ctxt, def: ast::def_id) -> ty::ty_param_bounds_and_ty {
 }
 
 fn get_region_param(cstore: metadata::cstore::cstore,
-                    def: ast::def_id) -> bool {
+                    def: ast::def_id) -> Option<ty::region_variance> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     return decoder::get_region_param(cdata, def.node);
 }
@@ -180,20 +136,22 @@ fn get_field_type(tcx: ty::ctxt, class_id: ast::def_id,
                   def: ast::def_id) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, class_id.crate);
-    let all_items = ebml::get_doc(ebml::doc(cdata.data), tag_items);
-    debug!{"Looking up %?", class_id};
+    let all_items = ebml::get_doc(ebml::Doc(cdata.data), tag_items);
+    debug!("Looking up %?", class_id);
     let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),
-                           || fmt!{"get_field_type: class ID %? not found",
-                                   class_id} );
-    debug!{"looking up %? : %?", def, class_doc};
+                           || fmt!("get_field_type: class ID %? not found",
+                                   class_id) );
+    debug!("looking up %? : %?", def, class_doc);
     let the_field = expect(tcx.diag,
         decoder::maybe_find_item(def.node, class_doc),
-        || fmt!{"get_field_type: in class %?, field ID %? not found",
-                 class_id, def} );
-    debug!{"got field data %?", the_field};
+        || fmt!("get_field_type: in class %?, field ID %? not found",
+                 class_id, def) );
+    debug!("got field data %?", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
-    return {bounds: @~[], rp: false, ty: ty};
+    return {bounds: @~[],
+            region_param: None,
+            ty: ty};
 }
 
 // Given a def_id for an impl or class, return the traits it implements,
@@ -209,7 +167,7 @@ fn get_impl_method(cstore: cstore::cstore,
                    def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_impl_method(cdata, def.node, mname)
+    decoder::get_impl_method(cstore.intr, cdata, def.node, mname)
 }
 
 /* Because classes use the trait format rather than the impl format
@@ -220,12 +178,12 @@ fn get_class_method(cstore: cstore::cstore,
                     def: ast::def_id, mname: ast::ident)
     -> ast::def_id {
     let cdata = cstore::get_crate_data(cstore, def.crate);
-    decoder::get_class_method(cdata, def.node, mname)
+    decoder::get_class_method(cstore.intr, cdata, def.node, mname)
 }
 
 /* If def names a class with a dtor, return it. Otherwise, return none. */
 fn class_dtor(cstore: cstore::cstore, def: ast::def_id)
-    -> option<ast::def_id> {
+    -> Option<ast::def_id> {
     let cdata = cstore::get_crate_data(cstore, def.crate);
     decoder::class_dtor(cdata, def.node)
 }

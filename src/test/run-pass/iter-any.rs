@@ -5,7 +5,7 @@ fn main() {
     assert [1u, 2u]/_.any(is_even);
     assert ![]/_.any(is_even);
 
-    assert !some(1u).any(is_even);
-    assert some(2u).any(is_even);
-    assert !none.any(is_even);
+    assert !Some(1u).any(is_even);
+    assert Some(2u).any(is_even);
+    assert !None.any(is_even);
 }

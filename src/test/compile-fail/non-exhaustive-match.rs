@@ -6,8 +6,8 @@ fn main() {
     match true { //~ ERROR non-exhaustive patterns
       true => {}
     }
-    match @some(10) { //~ ERROR non-exhaustive patterns
-      @none => {}
+    match @Some(10) { //~ ERROR non-exhaustive patterns
+      @None => {}
     }
     match (2, 3, 4) { //~ ERROR non-exhaustive patterns
       (_, _, 4) => {}

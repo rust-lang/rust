@@ -50,7 +50,7 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
     }
 
     // drop leftmost columns that contain only values in chars
-    fn block_trim(lines: ~[~str], chars: ~str, max: option<uint>) -> ~[~str] {
+    fn block_trim(lines: ~[~str], chars: ~str, max: Option<uint>) -> ~[~str] {
 
         let mut i = max.get_default(uint::max_value);
         for lines.each |line| {
@@ -85,9 +85,9 @@ fn strip_doc_comment_decoration(comment: ~str) -> ~str {
     if comment.starts_with(~"/*") {
         let lines = str::lines_any(comment.slice(3u, comment.len() - 2u));
         let lines = vertical_trim(lines);
-        let lines = block_trim(lines, ~"\t ", none);
-        let lines = block_trim(lines, ~"*", some(1u));
-        let lines = block_trim(lines, ~"\t ", none);
+        let lines = block_trim(lines, ~"\t ", None);
+        let lines = block_trim(lines, ~"*", Some(1u));
+        let lines = block_trim(lines, ~"\t ", None);
         return str::connect(lines, ~"\n");
     }
 
@@ -118,7 +118,7 @@ fn consume_non_eol_whitespace(rdr: string_reader) {
 }
 
 fn push_blank_line_comment(rdr: string_reader, &comments: ~[cmnt]) {
-    debug!{">>> blank-line comment"};
+    debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
     vec::push(comments, {style: blank_line, lines: v, pos: rdr.chpos});
 }
@@ -136,9 +136,9 @@ fn consume_whitespace_counting_blank_lines(rdr: string_reader,
 
 fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
                                                         &comments: ~[cmnt]) {
-    debug!{">>> shebang comment"};
+    debug!(">>> shebang comment");
     let p = rdr.chpos;
-    debug!{"<<< shebang comment"};
+    debug!("<<< shebang comment");
     vec::push(comments, {
         style: if code_to_the_left { trailing } else { isolated },
         lines: ~[read_one_line_comment(rdr)],
@@ -148,7 +148,7 @@ fn read_shebang_comment(rdr: string_reader, code_to_the_left: bool,
 
 fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
                                                         &comments: ~[cmnt]) {
-    debug!{">>> line comments"};
+    debug!(">>> line comments");
     let p = rdr.chpos;
     let mut lines: ~[~str] = ~[];
     while rdr.curr == '/' && nextch(rdr) == '/' {
@@ -160,7 +160,7 @@ fn read_line_comments(rdr: string_reader, code_to_the_left: bool,
         vec::push(lines, line);
         consume_non_eol_whitespace(rdr);
     }
-    debug!{"<<< line comments"};
+    debug!("<<< line comments");
     if !lines.is_empty() {
         vec::push(comments, {
             style: if code_to_the_left { trailing } else { isolated },
@@ -193,7 +193,7 @@ fn trim_whitespace_prefix_and_push_line(&lines: ~[~str],
 
 fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
                                                         &comments: ~[cmnt]) {
-    debug!{">>> block comment"};
+    debug!(">>> block comment");
     let p = rdr.chpos;
     let mut lines: ~[~str] = ~[];
     let mut col: uint = rdr.col;
@@ -215,7 +215,7 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
     let mut curr_line = ~"/*";
     let mut level: int = 1;
     while level > 0 {
-        debug!{"=== block comment level %d", level};
+        debug!("=== block comment level %d", level);
         if is_eof(rdr) {(rdr as reader).fatal(~"unterminated block comment");}
         if rdr.curr == '\n' {
             trim_whitespace_prefix_and_push_line(lines, curr_line, col);
@@ -246,7 +246,7 @@ fn read_block_comment(rdr: string_reader, code_to_the_left: bool,
     if !is_eof(rdr) && rdr.curr != '\n' && vec::len(lines) == 1u {
         style = mixed;
     }
-    debug!{"<<< block comment"};
+    debug!("<<< block comment");
     vec::push(comments, {style: style, lines: lines, pos: p});
 }
 
@@ -258,7 +258,7 @@ fn peeking_at_comment(rdr: string_reader) -> bool {
 
 fn consume_comment(rdr: string_reader, code_to_the_left: bool,
                    &comments: ~[cmnt]) {
-    debug!{">>> consume comment"};
+    debug!(">>> consume comment");
     if rdr.curr == '/' && nextch(rdr) == '/' {
         read_line_comments(rdr, code_to_the_left, comments);
     } else if rdr.curr == '/' && nextch(rdr) == '*' {
@@ -266,7 +266,7 @@ fn consume_comment(rdr: string_reader, code_to_the_left: bool,
     } else if rdr.curr == '#' && nextch(rdr) == '!' {
         read_shebang_comment(rdr, code_to_the_left, comments);
     } else { fail; }
-    debug!{"<<< consume comment"};
+    debug!("<<< consume comment");
 }
 
 type lit = {lit: ~str, pos: uint};
@@ -276,10 +276,7 @@ fn gather_comments_and_literals(span_diagnostic: diagnostic::span_handler,
                                 srdr: io::Reader) ->
    {cmnts: ~[cmnt], lits: ~[lit]} {
     let src = @str::from_bytes(srdr.read_whole_stream());
-    let itr = interner::mk::<@~str>(
-        |x| str::hash(*x),
-        |x,y| str::eq(*x, *y)
-    );
+    let itr = parse::token::mk_fake_ident_interner();
     let rdr = lexer::new_low_level_string_reader
         (span_diagnostic, codemap::new_filemap(path, src, 0u, 0u), itr);
 

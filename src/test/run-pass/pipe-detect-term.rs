@@ -9,19 +9,19 @@ import std::uv;
 
 import pipes::{try_recv, recv};
 
-proto! oneshot {
+proto! oneshot (
     waiting:send {
         signal -> !
     }
-}
+)
 
 fn main() {
     let iotask = uv::global_loop::get();
     
     pipes::spawn_service(oneshot::init, |p| { 
         match try_recv(p) {
-          some(*) => { fail }
-          none => { }
+          Some(*) => { fail }
+          None => { }
         }
     });
 
@@ -38,7 +38,7 @@ fn failtest() {
         fail;
     }
 
-    error!{"%?", recv(p)};
+    error!("%?", recv(p));
     // make sure we get killed if we missed it in the receive.
     loop { task::yield() }
 }

@@ -8,20 +8,20 @@ import syntax::print;
 fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
     // to make debug output more readable.
-    debug!{">>"};
+    debug!(">>");
     let r <- op();
-    debug!{"<< (Result = %?)", r};
+    debug!("<< (Result = %?)", r);
     return r;
 }
 
-class _indenter {
+struct _indenter {
     let _i: ();
     new(_i: ()) { self._i = (); }
-    drop { debug!{"<<"}; }
+    drop { debug!("<<"); }
 }
 
 fn indenter() -> _indenter {
-    debug!{">>"};
+    debug!(">>");
     _indenter(())
 }
 
@@ -76,7 +76,7 @@ fn may_break(b: ast::blk) -> bool {
 
 fn local_rhs_span(l: @ast::local, def: span) -> span {
     match l.node.init {
-      some(i) => return i.expr.span,
+      Some(i) => return i.expr.span,
       _ => return def
     }
 }
@@ -84,7 +84,9 @@ fn local_rhs_span(l: @ast::local, def: span) -> span {
 fn is_main_name(path: syntax::ast_map::path) -> bool {
     // FIXME (#34): path should be a constrained type, so we know
     // the call to last doesn't fail.
-    vec::last(path) == syntax::ast_map::path_name(@~"main")
+    vec::last(path) == syntax::ast_map::path_name(
+        syntax::parse::token::special_idents::main
+    )
 }
 
 //

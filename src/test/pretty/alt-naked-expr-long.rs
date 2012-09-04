@@ -4,13 +4,13 @@
 // get the prettyprinter to indent the long expr
 
 fn main() {
-    let x = some(3);
+    let x = Some(3);
     let y =
         match x {
-          some(_) =>
+          Some(_) =>
           ~"some" + ~"very" + ~"very" + ~"very" + ~"very" + ~"very" +
               ~"very" + ~"very" + ~"very" + ~"long" + ~"string",
-          none => ~"none"
+          None => ~"none"
         };
     assert y == ~"some(_)";
 }

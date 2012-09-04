@@ -45,7 +45,7 @@ fn select_random(r: u32, genelist: ~[aminoacids]) -> char {
 
 fn make_random_fasta(wr: io::Writer, id: ~str, desc: ~str, genelist: ~[aminoacids], n: int) {
     wr.write_line(~">" + id + ~" " + desc);
-    let rng = @{mut last: rand::rng().next()};
+    let rng = @{mut last: rand::Rng().next()};
     let mut op: ~str = ~"";
     for uint::range(0u, n as uint) |_i| {
         str::push_char(op, select_random(myrandom_next(rng, 100u32),
@@ -85,7 +85,8 @@ fn main(args: ~[~str]) {
     };
 
     let writer = if os::getenv(~"RUST_BENCH").is_some() {
-        result::get(io::file_writer(~"./shootout-fasta.data", ~[io::Truncate, io::Create]))
+        result::get(io::file_writer(&Path("./shootout-fasta.data"),
+                                    ~[io::Truncate, io::Create]))
     } else {
         io::stdout()
     };

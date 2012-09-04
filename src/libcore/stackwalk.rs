@@ -6,7 +6,7 @@ import sys::size_of;
 
 type Word = uint;
 
-class Frame {
+struct Frame {
     let fp: *Word;
 
     new(fp: *Word) {
@@ -16,23 +16,23 @@ class Frame {
 
 fn walk_stack(visit: fn(Frame) -> bool) {
 
-    debug!{"beginning stack walk"};
+    debug!("beginning stack walk");
 
     do frame_address |frame_pointer| {
         let mut frame_address: *Word = unsafe {
-            reinterpret_cast(frame_pointer)
+            reinterpret_cast(&frame_pointer)
         };
         loop {
             let fr = Frame(frame_address);
 
-            debug!{"frame: %x", unsafe { reinterpret_cast(fr.fp) }};
+            debug!("frame: %x", unsafe { reinterpret_cast(&fr.fp) });
             visit(fr);
 
             unsafe {
-                let next_fp: **Word = reinterpret_cast(frame_address);
+                let next_fp: **Word = reinterpret_cast(&frame_address);
                 frame_address = *next_fp;
                 if *frame_address == 0u {
-                    debug!{"encountered task_start_wrapper. ending walk"};
+                    debug!("encountered task_start_wrapper. ending walk");
                     // This is the task_start_wrapper_frame. There is
                     // no stack beneath it and it is a foreign frame.
                     break;

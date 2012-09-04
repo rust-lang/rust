@@ -41,14 +41,14 @@ fn duplicate(bcx: block, v: ValueRef, t: ty::t) -> result {
     let src_box = v;
     let src_body = opaque_box_body(bcx, content_ty, src_box);
     let src_body = load_if_immediate(bcx, src_body, content_ty);
-    debug!{"ST: %?", val_str(bcx.ccx().tn, src_body)};
-    debug!{"DT: %?", val_str(bcx.ccx().tn, dst_body)};
+    debug!("ST: %?", val_str(bcx.ccx().tn, src_body));
+    debug!("DT: %?", val_str(bcx.ccx().tn, dst_body));
     let bcx = copy_val(bcx, INIT, dst_body, src_body, content_ty);
 
     let src_tydesc_ptr = GEPi(bcx, src_box,
-                              ~[0u, back::abi::box_field_tydesc]);
+                              [0u, back::abi::box_field_tydesc]);
     let dst_tydesc_ptr = GEPi(bcx, dst_box,
-                              ~[0u, back::abi::box_field_tydesc]);
+                              [0u, back::abi::box_field_tydesc]);
 
     let td = Load(bcx, src_tydesc_ptr);
     Store(bcx, td, dst_tydesc_ptr);

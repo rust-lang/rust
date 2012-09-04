@@ -1,7 +1,7 @@
 use std;
 
 import std::bitv;
-import io::WriterUtil;
+import io::{ReaderUtil, WriterUtil};
 
 // Computes a single solution to a given 9x9 sudoku
 //
@@ -50,7 +50,7 @@ fn solve_grid(g: grid_t) {
     fn next_color(g: grid, row: u8, col: u8, start_color: u8) -> bool {
         if start_color < 10u8 {
             // colors not yet used
-            let avail = bitv::bitv(10u, false);
+            let avail = bitv::Bitv(10u, false);
             for u8::range(start_color, 10u8) |color| {
                 avail.set(color as uint, true);
             }
@@ -71,8 +71,8 @@ fn solve_grid(g: grid_t) {
     }
 
     // find colors available in neighbourhood of (row, col)
-    fn drop_colors(g: grid, avail: bitv::bitv, row: u8, col: u8) {
-        fn drop_color(g: grid, colors: bitv::bitv, row: u8, col: u8) {
+    fn drop_colors(g: grid, avail: bitv::Bitv, row: u8, col: u8) {
+        fn drop_color(g: grid, colors: bitv::Bitv, row: u8, col: u8) {
             let color = g[row][col];
             if color != 0u8 { colors.set(color as uint, false); }
         }
@@ -118,9 +118,9 @@ fn solve_grid(g: grid_t) {
 
 fn write_grid(f: io::Writer, g: grid_t) {
     for u8::range(0u8, 9u8) |row| {
-        f.write_str(fmt!{"%u", (*g)[row][0] as uint});
+        f.write_str(fmt!("%u", (*g)[row][0] as uint));
         for u8::range(1u8, 9u8) |col| {
-            f.write_str(fmt!{" %u", (*g)[row][col] as uint});
+            f.write_str(fmt!(" %u", (*g)[row][col] as uint));
         }
         f.write_char('\n');
      }

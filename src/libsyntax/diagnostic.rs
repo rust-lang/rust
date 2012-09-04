@@ -9,7 +9,7 @@ export codemap_span_handler, codemap_handler;
 export ice_msg;
 export expect;
 
-type emitter = fn@(cmsp: option<(codemap::codemap, span)>,
+type emitter = fn@(cmsp: Option<(codemap::codemap, span)>,
                    msg: ~str, lvl: level);
 
 
@@ -33,7 +33,7 @@ trait handler {
     fn note(msg: ~str);
     fn bug(msg: ~str) -> !;
     fn unimpl(msg: ~str) -> !;
-    fn emit(cmsp: option<(codemap::codemap, span)>, msg: ~str, lvl: level);
+    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: ~str, lvl: level);
 }
 
 type handler_t = @{
@@ -48,18 +48,18 @@ type codemap_t = @{
 
 impl codemap_t: span_handler {
     fn span_fatal(sp: span, msg: ~str) -> ! {
-        self.handler.emit(some((self.cm, sp)), msg, fatal);
+        self.handler.emit(Some((self.cm, sp)), msg, fatal);
         fail;
     }
     fn span_err(sp: span, msg: ~str) {
-        self.handler.emit(some((self.cm, sp)), msg, error);
+        self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
     fn span_warn(sp: span, msg: ~str) {
-        self.handler.emit(some((self.cm, sp)), msg, warning);
+        self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
     fn span_note(sp: span, msg: ~str) {
-        self.handler.emit(some((self.cm, sp)), msg, note);
+        self.handler.emit(Some((self.cm, sp)), msg, note);
     }
     fn span_bug(sp: span, msg: ~str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
@@ -74,11 +74,11 @@ impl codemap_t: span_handler {
 
 impl handler_t: handler {
     fn fatal(msg: ~str) -> ! {
-        self.emit(none, msg, fatal);
+        self.emit(None, msg, fatal);
         fail;
     }
     fn err(msg: ~str) {
-        self.emit(none, msg, error);
+        self.emit(None, msg, error);
         self.bump_err_count();
     }
     fn bump_err_count() {
@@ -91,41 +91,41 @@ impl handler_t: handler {
           0u => return,
           1u => s = ~"aborting due to previous error",
           _  => {
-            s = fmt!{"aborting due to %u previous errors",
-                     self.err_count};
+            s = fmt!("aborting due to %u previous errors",
+                     self.err_count);
           }
         }
         self.fatal(s);
     }
     fn warn(msg: ~str) {
-        self.emit(none, msg, warning);
+        self.emit(None, msg, warning);
     }
     fn note(msg: ~str) {
-        self.emit(none, msg, note);
+        self.emit(None, msg, note);
     }
     fn bug(msg: ~str) -> ! {
         self.fatal(ice_msg(msg));
     }
     fn unimpl(msg: ~str) -> ! { self.bug(~"unimplemented " + msg); }
-    fn emit(cmsp: option<(codemap::codemap, span)>, msg: ~str, lvl: level) {
+    fn emit(cmsp: Option<(codemap::codemap, span)>, msg: ~str, lvl: level) {
         self.emit(cmsp, msg, lvl);
     }
 }
 
 fn ice_msg(msg: ~str) -> ~str {
-    fmt!{"internal compiler error: %s", msg}
+    fmt!("internal compiler error: %s", msg)
 }
 
 fn mk_span_handler(handler: handler, cm: codemap::codemap) -> span_handler {
     @{ handler: handler, cm: cm } as span_handler
 }
 
-fn mk_handler(emitter: option<emitter>) -> handler {
+fn mk_handler(emitter: Option<emitter>) -> handler {
 
     let emit = match emitter {
-      some(e) => e,
-      none => {
-        let f = fn@(cmsp: option<(codemap::codemap, span)>,
+      Some(e) => e,
+      None => {
+        let f = fn@(cmsp: Option<(codemap::codemap, span)>,
             msg: ~str, t: level) {
             emit(cmsp, msg, t);
         };
@@ -144,6 +144,12 @@ enum level {
     error,
     warning,
     note,
+}
+
+impl level : cmp::Eq {
+    pure fn eq(&&other: level) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 fn diagnosticstr(lvl: level) -> ~str {
@@ -168,22 +174,22 @@ fn print_diagnostic(topic: ~str, lvl: level, msg: ~str) {
     let use_color = term::color_supported() &&
         io::stderr().get_type() == io::Screen;
     if str::is_not_empty(topic) {
-        io::stderr().write_str(fmt!{"%s ", topic});
+        io::stderr().write_str(fmt!("%s ", topic));
     }
     if use_color {
         term::fg(io::stderr(), diagnosticcolor(lvl));
     }
-    io::stderr().write_str(fmt!{"%s:", diagnosticstr(lvl)});
+    io::stderr().write_str(fmt!("%s:", diagnosticstr(lvl)));
     if use_color {
         term::reset(io::stderr());
     }
-    io::stderr().write_str(fmt!{" %s\n", msg});
+    io::stderr().write_str(fmt!(" %s\n", msg));
 }
 
-fn emit(cmsp: option<(codemap::codemap, span)>,
+fn emit(cmsp: Option<(codemap::codemap, span)>,
         msg: ~str, lvl: level) {
     match cmsp {
-      some((cm, sp)) => {
+      Some((cm, sp)) => {
         let sp = codemap::adjust_span(cm,sp);
         let ss = codemap::span_to_str(sp, cm);
         let lines = codemap::span_to_lines(sp, cm);
@@ -191,7 +197,7 @@ fn emit(cmsp: option<(codemap::codemap, span)>,
         highlight_lines(cm, sp, lines);
         print_macro_backtrace(cm, sp);
       }
-      none => {
+      None => {
         print_diagnostic(~"", lvl, msg);
       }
     }
@@ -212,13 +218,13 @@ fn highlight_lines(cm: codemap::codemap, sp: span,
     }
     // Print the offending lines
     for display_lines.each |line| {
-        io::stderr().write_str(fmt!{"%s:%u ", fm.name, line + 1u});
+        io::stderr().write_str(fmt!("%s:%u ", fm.name, line + 1u));
         let s = codemap::get_line(fm, line as int) + ~"\n";
         io::stderr().write_str(s);
     }
     if elided {
         let last_line = display_lines[vec::len(display_lines) - 1u];
-        let s = fmt!{"%s:%u ", fm.name, last_line + 1u};
+        let s = fmt!("%s:%u ", fm.name, last_line + 1u);
         let mut indent = str::len(s);
         let mut out = ~"";
         while indent > 0u { out += ~" "; indent -= 1u; }
@@ -257,7 +263,7 @@ fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
         let ss = option::map_default(ei.callie.span, @~"",
                                      |span| @codemap::span_to_str(span, cm));
         print_diagnostic(*ss, note,
-                         fmt!{"in expansion of #%s", ei.callie.name});
+                         fmt!("in expansion of #%s", ei.callie.name));
         let ss = codemap::span_to_str(ei.call_site, cm);
         print_diagnostic(ss, note, ~"expansion site");
         print_macro_backtrace(cm, ei.call_site);
@@ -265,9 +271,9 @@ fn print_macro_backtrace(cm: codemap::codemap, sp: span) {
 }
 
 fn expect<T: copy>(diag: span_handler,
-                   opt: option<T>, msg: fn() -> ~str) -> T {
+                   opt: Option<T>, msg: fn() -> ~str) -> T {
     match opt {
-       some(t) => t,
-       none => diag.handler().bug(msg())
+       Some(t) => t,
+       None => diag.handler().bug(msg())
     }
 }

@@ -1,15 +1,15 @@
 #[no_core];
 #[allow(vecs_implicitly_copyable)];
 
-use core(vers = "0.3");
-use std(vers = "0.3");
-use rustc(vers = "0.3");
-use syntax(vers = "0.3");
+use core(vers = "0.4");
+use std(vers = "0.4");
+use rustc(vers = "0.4");
+use syntax(vers = "0.4");
 
 import core::*;
 
 // -*- rust -*-
-import result::{ok, err};
+import result::{Ok, Err};
 import std::getopts;
 import std::map::hashmap;
 import getopts::{opt_present};
@@ -21,14 +21,14 @@ import rustc::middle::lint;
 
 fn version(argv0: ~str) {
     let mut vers = ~"unknown version";
-    let env_vers = env!{"CFG_VERSION"};
+    let env_vers = env!("CFG_VERSION");
     if str::len(env_vers) != 0u { vers = env_vers; }
-    io::println(fmt!{"%s %s", argv0, vers});
-    io::println(fmt!{"host: %s", host_triple()});
+    io::println(fmt!("%s %s", argv0, vers));
+    io::println(fmt!("host: %s", host_triple()));
 }
 
 fn usage(argv0: ~str) {
-    io::println(fmt!{"Usage: %s [options] <input>\n", argv0} +
+    io::println(fmt!("Usage: %s [options] <input>\n", argv0) +
                  ~"
 Options:
 
@@ -42,6 +42,7 @@ Options:
     -L <path>          Add a directory to the library search path
     --lib              Compile a library crate
     --ls               List the symbols defined by a compiled library crate
+    --jit              Execute using JIT (experimental)
     --no-trans         Run all passes except translation; no output
     -O                 Equivalent to --opt-level=2
     -o <filename>      Write output to <filename>
@@ -80,19 +81,19 @@ Options:
 
 fn describe_warnings() {
     let lint_dict = lint::get_lint_dict();
-    let mut max_key = 0u;
+    let mut max_key = 0;
     for lint_dict.each_key |k| { max_key = uint::max(k.len(), max_key); }
     fn padded(max: uint, s: ~str) -> ~str {
         str::from_bytes(vec::from_elem(max - s.len(), ' ' as u8)) + s
     }
-    io::println(fmt!{"\nAvailable lint checks:\n"});
-    io::println(fmt!{"    %s  %7.7s  %s",
-                     padded(max_key, ~"name"), ~"default", ~"meaning"});
-    io::println(fmt!{"    %s  %7.7s  %s\n",
-                     padded(max_key, ~"----"), ~"-------", ~"-------"});
+    io::println(fmt!("\nAvailable lint checks:\n"));
+    io::println(fmt!("    %s  %7.7s  %s",
+                     padded(max_key, ~"name"), ~"default", ~"meaning"));
+    io::println(fmt!("    %s  %7.7s  %s\n",
+                     padded(max_key, ~"----"), ~"-------", ~"-------"));
     for lint_dict.each |k, v| {
         let k = str::replace(k, ~"_", ~"-");
-        io::println(fmt!{"    %s  %7.7s  %s",
+        io::println(fmt!("    %s  %7.7s  %s",
                          padded(max_key, k),
                          match v.default {
                              lint::allow => ~"allow",
@@ -100,16 +101,16 @@ fn describe_warnings() {
                              lint::deny => ~"deny",
                              lint::forbid => ~"forbid"
                          },
-                         v.desc});
+                         v.desc));
     }
     io::println(~"");
 }
 
 fn describe_debug_flags() {
-    io::println(fmt!{"\nAvailable debug options:\n"});
+    io::println(fmt!("\nAvailable debug options:\n"));
     for session::debugging_opts_map().each |pair| {
         let (name, desc, _) = pair;
-        io::println(fmt!{"    -Z%-20s -- %s", name, desc});
+        io::println(fmt!("    -Z%-20s -- %s", name, desc));
     }
 }
 
@@ -124,8 +125,8 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
 
     let matches =
         match getopts::getopts(args, opts()) {
-          ok(m) => m,
-          err(f) => {
+          Ok(m) => m,
+          Err(f) => {
             early_error(demitter, getopts::fail_str(f))
           }
         };
@@ -159,33 +160,35 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
             let src = str::from_bytes(io::stdin().read_whole_stream());
             str_input(src)
         } else {
-            file_input(ifile)
+            file_input(Path(ifile))
         }
       }
       _ => early_error(demitter, ~"multiple input filenames provided")
     };
 
-    let sopts = build_session_options(matches, demitter);
+    let sopts = build_session_options(binary, matches, demitter);
     let sess = build_session(sopts, demitter);
     let odir = getopts::opt_maybe_str(matches, ~"out-dir");
+    let odir = option::map(odir, |o| Path(o));
     let ofile = getopts::opt_maybe_str(matches, ~"o");
+    let ofile = option::map(ofile, |o| Path(o));
     let cfg = build_configuration(sess, binary, input);
     let pretty =
         option::map(getopts::opt_default(matches, ~"pretty",
                                          ~"normal"),
                     |a| parse_pretty(sess, a) );
     match pretty {
-      some::<pp_mode>(ppm) => {
+      Some::<pp_mode>(ppm) => {
         pretty_print_input(sess, cfg, input, ppm);
         return;
       }
-      none::<pp_mode> => {/* continue */ }
+      None::<pp_mode> => {/* continue */ }
     }
     let ls = opt_present(matches, ~"ls");
     if ls {
         match input {
           file_input(ifile) => {
-            list_metadata(sess, ifile, io::stdout());
+            list_metadata(sess, &ifile, io::stdout());
           }
           str_input(_) => {
             early_error(demitter, ~"can not list metadata for stdin");
@@ -194,7 +197,18 @@ fn run_compiler(args: ~[~str], demitter: diagnostic::emitter) {
         return;
     }
 
-    compile_input(sess, cfg, input, odir, ofile);
+    compile_input(sess, cfg, input, &odir, &ofile);
+}
+
+enum monitor_msg {
+    fatal,
+    done,
+}
+
+impl monitor_msg : cmp::Eq {
+    pure fn eq(&&other: monitor_msg) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 /*
@@ -210,19 +224,14 @@ fails without recording a fatal error then we've encountered a compiler
 bug and need to present an error.
 */
 fn monitor(+f: fn~(diagnostic::emitter)) {
-    enum monitor_msg {
-        fatal,
-        done,
-    };
-
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
 
     match do task::try  {
 
         // The 'diagnostics emitter'. Every error, warning, etc. should
         // go through this function.
-        let demitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
+        let demitter = fn@(cmsp: Option<(codemap::codemap, codemap::span)>,
                            msg: ~str, lvl: diagnostic::level) {
             if lvl == diagnostic::fatal {
                 comm::send(ch, fatal);
@@ -230,7 +239,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
             diagnostic::emit(cmsp, msg, lvl);
         };
 
-        class finally {
+        struct finally {
             let ch: comm::Chan<monitor_msg>;
             new(ch: comm::Chan<monitor_msg>) { self.ch = ch; }
             drop { comm::send(self.ch, done); }
@@ -240,12 +249,12 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 
         f(demitter)
     } {
-        result::ok(_) => { /* fallthrough */ }
-        result::err(_) => {
+        result::Ok(_) => { /* fallthrough */ }
+        result::Err(_) => {
             // Task failed without emitting a fatal diagnostic
             if comm::recv(p) == done {
                 diagnostic::emit(
-                    none,
+                    None,
                     diagnostic::ice_msg(~"unexpected failure"),
                     diagnostic::error);
 
@@ -256,7 +265,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
                 ]/_.each |note| {
-                    diagnostic::emit(none, note, diagnostic::note)
+                    diagnostic::emit(None, note, diagnostic::note)
                 }
             }
             // Fail so the process returns a failure code

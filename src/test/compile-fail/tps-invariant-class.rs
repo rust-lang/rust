@@ -1,4 +1,4 @@
-class box_impl<T> {
+struct box_impl<T> {
     let mut f: T;
 
     new(f: T) {

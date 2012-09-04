@@ -1,6 +1,7 @@
 //! Vectors
 
-import option::{some, none};
+import cmp::{Eq, Ord};
+import option::{Some, None};
 import ptr::addr_of;
 import libc::size_t;
 
@@ -18,7 +19,7 @@ export len;
 export from_fn;
 export from_elem;
 export from_slice;
-export build, build_sized;
+export build, build_sized, build_sized_opt;
 export to_mut;
 export from_mut;
 export head;
@@ -36,10 +37,12 @@ export rsplitn;
 export shift;
 export unshift;
 export pop;
+export swap_remove;
 export push, push_all, push_all_move;
 export grow;
 export grow_fn;
 export grow_set;
+export truncate;
 export map;
 export mapi;
 export map2;
@@ -65,15 +68,15 @@ export rfind_between;
 export position_elem;
 export position;
 export position_between;
-export position_elem;
 export rposition;
 export rposition_between;
 export unzip;
-export zip;
+export zip, zip_slice;
 export swap;
 export reverse;
 export reversed;
 export iter, iter_between, each, eachi, reach, reachi;
+export each_mut, each_const;
 export iter2;
 export iteri;
 export riter;
@@ -89,6 +92,7 @@ export extensions;
 export ConstVector;
 export CopyableVector;
 export ImmutableVector;
+export ImmutableEqVector;
 export ImmutableCopyableVector;
 export IterTraitExtensions;
 export vec_concat;
@@ -98,18 +102,12 @@ extern mod rustrt {
     fn vec_reserve_shared(++t: *sys::TypeDesc,
                           ++v: **unsafe::VecRepr,
                           ++n: libc::size_t);
-    fn vec_from_buf_shared(++t: *sys::TypeDesc,
-                           ++ptr: *(),
-                           ++count: libc::size_t) -> *unsafe::VecRepr;
 }
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     fn move_val_init<T>(&dst: T, -src: T);
 }
-
-/// A function used to initialize the elements of a vector
-type InitOp/&<T> = fn(uint) -> T;
 
 /// Returns true if a vector contains no elements
 pure fn is_empty<T>(v: &[const T]) -> bool {
@@ -169,7 +167,7 @@ fn reserve_at_least<T>(&v: ~[const T], n: uint) {
 #[inline(always)]
 pure fn capacity<T>(&&v: ~[const T]) -> uint {
     unsafe {
-        let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).alloc / sys::size_of::<T>()
     }
 }
@@ -186,7 +184,7 @@ pure fn len<T>(&&v: &[const T]) -> uint {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pure fn from_fn<T>(n_elts: uint, op: InitOp<T>) -> ~[T] {
+pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
@@ -232,14 +230,8 @@ pure fn from_slice<T: copy>(t: &[T]) -> ~[T] {
 #[inline(always)]
 pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
     let mut vec = ~[];
-    unsafe {
-        reserve(vec, size);
-        // This is an awful hack to be able to make the push function
-        // pure. Is there a better way?
-        ::unsafe::reinterpret_cast::
-            <fn(push: pure fn(+A)), fn(push: fn(+A))>
-            (builder)(|+x| push(vec, x));
-    }
+    unchecked { reserve(vec, size); }
+    builder(|+x| unchecked { push(vec, x) });
     return vec;
 }
 
@@ -256,6 +248,24 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
 #[inline(always)]
 pure fn build<A>(builder: fn(push: pure fn(+A))) -> ~[A] {
     build_sized(4, builder)
+}
+
+/**
+ * Builds a vector by calling a provided function with an argument
+ * function that pushes an element to the back of a vector.
+ * This version takes an initial size for the vector.
+ *
+ * # Arguments
+ *
+ * * size - An option, maybe containing initial size of the vector to reserve
+ * * builder - A function that will construct the vector. It recieves
+ *             as an argument a function that will push an element
+ *             onto the vector being constructed.
+ */
+#[inline(always)]
+pure fn build_sized_opt<A>(size: Option<uint>,
+                           builder: fn(push: pure fn(+A))) -> ~[A] {
+    build_sized(size.get_default(4), builder)
 }
 
 /// Produces a mut vector from an immutable vector.
@@ -299,12 +309,12 @@ pure fn last<T: copy>(v: &[const T]) -> T {
 }
 
 /**
- * Returns `some(x)` where `x` is the last element of the slice `v`,
+ * Returns `Some(x)` where `x` is the last element of the slice `v`,
  * or `none` if the vector is empty.
  */
-pure fn last_opt<T: copy>(v: &[const T]) -> option<T> {
-    if len(v) == 0u { return none; }
-    some(v[len(v) - 1u])
+pure fn last_opt<T: copy>(v: &[const T]) -> Option<T> {
+    if len(v) == 0u { return None; }
+    Some(v[len(v) - 1u])
 }
 
 /// Returns a copy of the elements from [`start`..`end`) from `v`.
@@ -325,7 +335,7 @@ pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
     do as_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
-                (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+                &(ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
         }
     }
 }
@@ -337,7 +347,7 @@ pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
     do as_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
-                (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+                &(ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
         }
     }
 }
@@ -349,7 +359,7 @@ pure fn const_view<T>(v: &[const T], start: uint, end: uint) -> &[const T] {
     do as_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
-                (ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+                &(ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
         }
     }
 }
@@ -363,8 +373,8 @@ fn split<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln {
         match position_between(v, start, ln, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, start, i));
             start = i + 1u;
           }
@@ -387,8 +397,8 @@ fn splitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while start < ln && count > 0u {
         match position_between(v, start, ln, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, start, i));
             // Make sure to skip the separator.
             start = i + 1u;
@@ -412,8 +422,8 @@ fn rsplit<T: copy>(v: &[T], f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u {
         match rposition_between(v, 0u, end, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, i + 1u, end));
             end = i;
           }
@@ -436,8 +446,8 @@ fn rsplitn<T: copy>(v: &[T], n: uint, f: fn(T) -> bool) -> ~[~[T]] {
     let mut result = ~[];
     while end > 0u && count > 0u {
         match rposition_between(v, 0u, end, f) {
-          none => break,
-          some(i) => {
+          None => break,
+          Some(i) => {
             push(result, slice(v, i + 1u, end));
             // Make sure to skip the separator.
             end = i;
@@ -510,7 +520,9 @@ fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +T)) unsafe {
 /// Remove the last element from a vector and return it
 fn pop<T>(&v: ~[const T]) -> T {
     let ln = len(v);
-    assert ln > 0u;
+    if ln == 0 {
+        fail ~"sorry, cannot vec::pop an empty vector"
+    }
     let valptr = ptr::mut_addr_of(v[ln - 1u]);
     unsafe {
         let val <- *valptr;
@@ -519,11 +531,34 @@ fn pop<T>(&v: ~[const T]) -> T {
     }
 }
 
+/**
+ * Remove an element from anywhere in the vector and return it, replacing it
+ * with the last element. This does not preserve ordering, but is O(1).
+ *
+ * Fails if index >= length.
+ */
+fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
+    let ln = len(v);
+    if index >= ln {
+        fail fmt!("vec::swap_remove - index %u >= length %u", index, ln);
+    }
+    let lastptr = ptr::mut_addr_of(v[ln - 1]);
+    unsafe {
+        let mut val <- *lastptr;
+        if index < ln - 1 {
+            let valptr = ptr::mut_addr_of(v[index]);
+            *valptr <-> val;
+        }
+        unsafe::set_len(v, ln - 1);
+        val
+    }
+}
+
 /// Append an element to a vector
 #[inline(always)]
 fn push<T>(&v: ~[const T], +initval: T) {
     unsafe {
-        let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
             push_fast(v, initval);
@@ -537,7 +572,7 @@ fn push<T>(&v: ~[const T], +initval: T) {
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(&v: ~[const T], +initval: T) {
-    let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+    let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
     let fill = (**repr).fill;
     (**repr).fill += sys::size_of::<T>();
     let p = ptr::addr_of((**repr).data);
@@ -571,6 +606,20 @@ fn push_all_move<T>(&v: ~[const T], -rhs: ~[const T]) {
             }
         }
         unsafe::set_len(rhs, 0);
+    }
+}
+
+/// Shorten a vector, dropping excess elements.
+fn truncate<T>(&v: ~[const T], newlen: uint) {
+    do as_buf(v) |p, oldlen| {
+        assert(newlen <= oldlen);
+        unsafe {
+            // This loop is optimized out for non-drop types.
+            for uint::range(newlen, oldlen) |i| {
+                let _dropped <- *ptr::offset(p, i);
+            }
+            unsafe::set_len(v, newlen);
+        }
     }
 }
 
@@ -640,7 +689,7 @@ fn grow<T: copy>(&v: ~[const T], n: uint, initval: T) {
  * * init_op - A function to call to retreive each appended element's
  *             value
  */
-fn grow_fn<T>(&v: ~[const T], n: uint, op: InitOp<T>) {
+fn grow_fn<T>(&v: ~[const T], n: uint, op: iter::InitOp<T>) {
     reserve_at_least(v, len(v) + n);
     let mut i: uint = 0u;
     while i < n { push(v, op(i)); i += 1u; }
@@ -715,13 +764,13 @@ pure fn map2<T: copy, U: copy, V>(v0: &[T], v1: &[U],
  * If function `f` returns `none` then that element is excluded from
  * the resulting vector.
  */
-pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> option<U>)
+pure fn filter_map<T, U: copy>(v: &[T], f: fn(T) -> Option<U>)
     -> ~[U] {
     let mut result = ~[];
     for each(v) |elem| {
         match f(elem) {
-          none => {/* no-op */ }
-          some(result_elem) => unsafe { push(result, result_elem); }
+          None => {/* no-op */ }
+          Some(result_elem) => unsafe { push(result, result_elem); }
         }
     }
     return result;
@@ -844,13 +893,13 @@ pure fn all2<T, U>(v0: &[T], v1: &[U],
 }
 
 /// Return true if a vector contains an element with the given value
-pure fn contains<T>(v: &[T], x: T) -> bool {
+pure fn contains<T: Eq>(v: &[T], x: T) -> bool {
     for each(v) |elt| { if x == elt { return true; } }
     return false;
 }
 
 /// Returns the number of elements that are equal to a given value
-pure fn count<T>(v: &[T], x: T) -> uint {
+pure fn count<T: Eq>(v: &[T], x: T) -> uint {
     let mut cnt = 0u;
     for each(v) |elt| { if x == elt { cnt += 1u; } }
     return cnt;
@@ -863,7 +912,7 @@ pure fn count<T>(v: &[T], x: T) -> uint {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-pure fn find<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
+pure fn find<T: copy>(v: &[T], f: fn(T) -> bool) -> Option<T> {
     find_between(v, 0u, len(v), f)
 }
 
@@ -875,7 +924,7 @@ pure fn find<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
  * the element is returned. If `f` matches no elements then none is returned.
  */
 pure fn find_between<T: copy>(v: &[T], start: uint, end: uint,
-                      f: fn(T) -> bool) -> option<T> {
+                      f: fn(T) -> bool) -> Option<T> {
     option::map(position_between(v, start, end, f), |i| v[i])
 }
 
@@ -886,7 +935,7 @@ pure fn find_between<T: copy>(v: &[T], start: uint, end: uint,
  * `f` returns true then an option containing the element is returned. If `f`
  * matches no elements then none is returned.
  */
-pure fn rfind<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
+pure fn rfind<T: copy>(v: &[T], f: fn(T) -> bool) -> Option<T> {
     rfind_between(v, 0u, len(v), f)
 }
 
@@ -898,12 +947,12 @@ pure fn rfind<T: copy>(v: &[T], f: fn(T) -> bool) -> option<T> {
  * the element is returned. If `f` matches no elements then none is returned.
  */
 pure fn rfind_between<T: copy>(v: &[T], start: uint, end: uint,
-                               f: fn(T) -> bool) -> option<T> {
+                               f: fn(T) -> bool) -> Option<T> {
     option::map(rposition_between(v, start, end, f), |i| v[i])
 }
 
 /// Find the first index containing a matching value
-pure fn position_elem<T>(v: &[T], x: T) -> option<uint> {
+pure fn position_elem<T: Eq>(v: &[T], x: T) -> Option<uint> {
     position(v, |y| x == y)
 }
 
@@ -914,7 +963,7 @@ pure fn position_elem<T>(v: &[T], x: T) -> option<uint> {
  * then an option containing the index is returned. If `f` matches no elements
  * then none is returned.
  */
-pure fn position<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
+pure fn position<T>(v: &[T], f: fn(T) -> bool) -> Option<uint> {
     position_between(v, 0u, len(v), f)
 }
 
@@ -926,16 +975,16 @@ pure fn position<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
  * the index is returned. If `f` matches no elements then none is returned.
  */
 pure fn position_between<T>(v: &[T], start: uint, end: uint,
-                            f: fn(T) -> bool) -> option<uint> {
+                            f: fn(T) -> bool) -> Option<uint> {
     assert start <= end;
     assert end <= len(v);
     let mut i = start;
-    while i < end { if f(v[i]) { return some::<uint>(i); } i += 1u; }
-    return none;
+    while i < end { if f(v[i]) { return Some::<uint>(i); } i += 1u; }
+    return None;
 }
 
 /// Find the last index containing a matching value
-pure fn rposition_elem<T>(v: &[T], x: T) -> option<uint> {
+pure fn rposition_elem<T: Eq>(v: &[T], x: T) -> Option<uint> {
     rposition(v, |y| x == y)
 }
 
@@ -946,7 +995,7 @@ pure fn rposition_elem<T>(v: &[T], x: T) -> option<uint> {
  * `f` returns true then an option containing the index is returned. If `f`
  * matches no elements then none is returned.
  */
-pure fn rposition<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
+pure fn rposition<T>(v: &[T], f: fn(T) -> bool) -> Option<uint> {
     rposition_between(v, 0u, len(v), f)
 }
 
@@ -959,15 +1008,15 @@ pure fn rposition<T>(v: &[T], f: fn(T) -> bool) -> option<uint> {
  * returned.
  */
 pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
-                             f: fn(T) -> bool) -> option<uint> {
+                             f: fn(T) -> bool) -> Option<uint> {
     assert start <= end;
     assert end <= len(v);
     let mut i = end;
     while i > start {
-        if f(v[i - 1u]) { return some::<uint>(i - 1u); }
+        if f(v[i - 1u]) { return Some::<uint>(i - 1u); }
         i -= 1u;
     }
-    return none;
+    return None;
 }
 
 // FIXME: if issue #586 gets implemented, could have a postcondition
@@ -975,14 +1024,9 @@ pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
 // return a nominal record with a constraint saying that, instead of
 // returning a tuple (contingent on issue #869)
 /**
- * Convert a vector of pairs into a pair of vectors
- *
- * Returns a tuple containing two vectors where the i-th element of the first
- * vector contains the first element of the i-th tuple of the input vector,
- * and the i-th element of the second vector contains the second element
- * of the i-th tuple of the input vector.
+ * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
  */
-pure fn unzip<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
+pure fn unzip_slice<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut as = ~[], bs = ~[];
     for each(v) |p| {
         let (a, b) = p;
@@ -995,18 +1039,54 @@ pure fn unzip<T: copy, U: copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
 }
 
 /**
- * Convert two vectors to a vector of pairs
+ * Convert a vector of pairs into a pair of vectors.
  *
- * Returns a vector of tuples, where the i-th tuple contains contains the
- * i-th elements from each of the input vectors.
+ * Returns a tuple containing two vectors where the i-th element of the first
+ * vector contains the first element of the i-th tuple of the input vector,
+ * and the i-th element of the second vector contains the second element
+ * of the i-th tuple of the input vector.
  */
-pure fn zip<T: copy, U: copy>(v: &[const T], u: &[const U]) -> ~[(T, U)] {
+pure fn unzip<T,U>(+v: ~[(T, U)]) -> (~[T], ~[U]) {
+    let mut ts = ~[], us = ~[];
+    unchecked {
+        do consume(v) |_i, p| {
+            let (a,b) = p;
+            push(ts, a);
+            push(us, b);
+        }
+    }
+    (ts, us)
+}
+
+/**
+ * Convert two vectors to a vector of pairs, by reference. As zip().
+ */
+pure fn zip_slice<T: copy, U: copy>(v: &[const T], u: &[const U])
+        -> ~[(T, U)] {
     let mut zipped = ~[];
     let sz = len(v);
     let mut i = 0u;
     assert sz == len(u);
     while i < sz unchecked { vec::push(zipped, (v[i], u[i])); i += 1u; }
     return zipped;
+}
+
+/**
+ * Convert two vectors to a vector of pairs.
+ *
+ * Returns a vector of tuples, where the i-th tuple contains contains the
+ * i-th elements from each of the input vectors.
+ */
+pure fn zip<T, U>(+v: ~[const T], +u: ~[const U]) -> ~[(T, U)] {
+    let mut v = v, u = u, i = len(v);
+    assert i == len(u);
+    let mut w = ~[mut];
+    while i > 0 {
+        unchecked { push(w, (pop(v),pop(u))); }
+        i -= 1;
+    }
+    unchecked { reverse(w); }
+    from_mut(w)
 }
 
 /**
@@ -1018,7 +1098,7 @@ pure fn zip<T: copy, U: copy>(v: &[const T], u: &[const U]) -> ~[(T, U)] {
  * * a - The index of the first element
  * * b - The index of the second element
  */
-fn swap<T>(&&v: ~[mut T], a: uint, b: uint) {
+fn swap<T>(v: &[mut T], a: uint, b: uint) {
     v[a] <-> v[b];
 }
 
@@ -1085,7 +1165,7 @@ pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn each<T>(v: &[T], f: fn(T) -> bool) {
+pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
     do vec::as_buf(v) |p, n| {
         let mut n = n;
         let mut p = p;
@@ -1099,13 +1179,31 @@ pure fn each<T>(v: &[T], f: fn(T) -> bool) {
     }
 }
 
+/// Like `each()`, but for the case where you have
+/// a vector with mutable contents and you would like
+/// to mutate the contents as you iterate.
+#[inline(always)]
+pure fn each_mut<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
+    do vec::as_mut_buf(v) |p, n| {
+        let mut n = n;
+        let mut p = p;
+        while n > 0u {
+            unsafe {
+                if !f(&mut *p) { break; }
+                p = ptr::mut_offset(p, 1u);
+            }
+            n -= 1u;
+        }
+    }
+}
+
 /**
  * Iterates over a vector's elements and indices
  *
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
+pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
     do vec::as_buf(v) |p, n| {
         let mut i = 0u;
         let mut p = p;
@@ -1259,7 +1357,7 @@ pure fn windowed<TT: copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
 pure fn as_buf<T,U>(s: &[const T],
                     f: fn(*T, uint) -> U) -> U {
     unsafe {
-        let v : *(*T,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let v : *(*T,uint) = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1271,7 +1369,7 @@ pure fn as_const_buf<T,U>(s: &[const T],
                           f: fn(*const T, uint) -> U) -> U {
     do as_buf(s) |p, len| {
         unsafe {
-            let pp : *const T = ::unsafe::reinterpret_cast(p);
+            let pp : *const T = ::unsafe::reinterpret_cast(&p);
             f(pp, len)
         }
     }
@@ -1283,10 +1381,100 @@ pure fn as_mut_buf<T,U>(s: &[mut T],
                         f: fn(*mut T, uint) -> U) -> U {
     do as_buf(s) |p, len| {
         unsafe {
-            let pp : *mut T = ::unsafe::reinterpret_cast(p);
+            let pp : *mut T = ::unsafe::reinterpret_cast(&p);
             f(pp, len)
         }
     }
+}
+
+// Equality
+
+pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    if a_len != b_len { return false; }
+
+    let mut i = 0;
+    while i < a_len {
+        if a[i] != b[i] { return false; }
+        i += 1;
+    }
+
+    return true;
+}
+
+impl<T: Eq> &[T]: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: &[T]) -> bool {
+        eq(self, other)
+    }
+}
+
+impl<T: Eq> ~[T]: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: ~[T]) -> bool {
+        eq(self, other)
+    }
+}
+
+impl<T: Eq> @[T]: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: @[T]) -> bool {
+        eq(self, other)
+    }
+}
+
+// Lexicographical comparison
+
+pure fn lt<T: Ord>(a: &[T], b: &[T]) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    let mut end = uint::min(a_len, b_len);
+
+    let mut i = 0;
+    while i < end {
+        let (c_a, c_b) = (&a[i], &b[i]);
+        if *c_a < *c_b { return true; }
+        if *c_a > *c_b { return false; }
+        i += 1;
+    }
+
+    return a_len < b_len;
+}
+
+pure fn le<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(b, a) }
+pure fn ge<T: Ord>(a: &[T], b: &[T]) -> bool { !lt(a, b) }
+pure fn gt<T: Ord>(a: &[T], b: &[T]) -> bool { lt(b, a)  }
+
+impl<T: Ord> &[T]: Ord {
+    #[inline(always)]
+    pure fn lt(&&other: &[T]) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: &[T]) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: &[T]) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: &[T]) -> bool { gt(self, other) }
+}
+
+impl<T: Ord> ~[T]: Ord {
+    #[inline(always)]
+    pure fn lt(&&other: ~[T]) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: ~[T]) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: ~[T]) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: ~[T]) -> bool { gt(self, other) }
+}
+
+impl<T: Ord> @[T]: Ord {
+    #[inline(always)]
+    pure fn lt(&&other: @[T]) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: @[T]) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: @[T]) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: @[T]) -> bool { gt(self, other) }
 }
 
 #[cfg(notest)]
@@ -1354,18 +1542,21 @@ trait ImmutableVector<T> {
     pure fn foldr<U: copy>(z: U, p: fn(T, U) -> U) -> U;
     pure fn iter(f: fn(T));
     pure fn iteri(f: fn(uint, T));
-    pure fn position(f: fn(T) -> bool) -> option<uint>;
-    pure fn position_elem(x: T) -> option<uint>;
     pure fn riter(f: fn(T));
     pure fn riteri(f: fn(uint, T));
-    pure fn rposition(f: fn(T) -> bool) -> option<uint>;
-    pure fn rposition_elem(x: T) -> option<uint>;
     pure fn map<U>(f: fn(T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U];
     fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
     pure fn alli(f: fn(uint, T) -> bool) -> bool;
     pure fn flat_map<U>(f: fn(T) -> ~[U]) -> ~[U];
-    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> ~[U];
+    pure fn filter_map<U: copy>(f: fn(T) -> Option<U>) -> ~[U];
+}
+
+trait ImmutableEqVector<T: Eq> {
+    pure fn position(f: fn(T) -> bool) -> Option<uint>;
+    pure fn position_elem(x: T) -> Option<uint>;
+    pure fn rposition(f: fn(T) -> bool) -> Option<uint>;
+    pure fn rposition_elem(x: T) -> Option<uint>;
 }
 
 /// Extension methods for vectors
@@ -1390,18 +1581,6 @@ impl<T> &[T]: ImmutableVector<T> {
     #[inline]
     pure fn iteri(f: fn(uint, T)) { iteri(self, f) }
     /**
-     * Find the first index matching some predicate
-     *
-     * Apply function `f` to each element of `v`.  When function `f` returns
-     * true then an option containing the index is returned. If `f` matches no
-     * elements then none is returned.
-     */
-    #[inline]
-    pure fn position(f: fn(T) -> bool) -> option<uint> { position(self, f) }
-    /// Find the first index containing a matching value
-    #[inline]
-    pure fn position_elem(x: T) -> option<uint> { position_elem(self, x) }
-    /**
      * Iterates over a vector in reverse
      *
      * Iterates over vector `v` and, for each element, calls function `f` with
@@ -1417,18 +1596,6 @@ impl<T> &[T]: ImmutableVector<T> {
      */
     #[inline]
     pure fn riteri(f: fn(uint, T)) { riteri(self, f) }
-    /**
-     * Find the last index matching some predicate
-     *
-     * Apply function `f` to each element of `v` in reverse order.  When
-     * function `f` returns true then an option containing the index is
-     * returned. If `f` matches no elements then none is returned.
-     */
-    #[inline]
-    pure fn rposition(f: fn(T) -> bool) -> option<uint> { rposition(self, f) }
-    /// Find the last index containing a matching value
-    #[inline]
-    pure fn rposition_elem(x: T) -> option<uint> { rposition_elem(self, x) }
     /// Apply a function to each element of a vector and return the results
     #[inline]
     pure fn map<U>(f: fn(T) -> U) -> ~[U] { map(self, f) }
@@ -1472,15 +1639,41 @@ impl<T> &[T]: ImmutableVector<T> {
      * the resulting vector.
      */
     #[inline]
-    pure fn filter_map<U: copy>(f: fn(T) -> option<U>) -> ~[U] {
+    pure fn filter_map<U: copy>(f: fn(T) -> Option<U>) -> ~[U] {
         filter_map(self, f)
     }
 }
 
+impl<T: Eq> &[T]: ImmutableEqVector<T> {
+    /**
+     * Find the first index matching some predicate
+     *
+     * Apply function `f` to each element of `v`.  When function `f` returns
+     * true then an option containing the index is returned. If `f` matches no
+     * elements then none is returned.
+     */
+    #[inline]
+    pure fn position(f: fn(T) -> bool) -> Option<uint> { position(self, f) }
+    /// Find the first index containing a matching value
+    #[inline]
+    pure fn position_elem(x: T) -> Option<uint> { position_elem(self, x) }
+    /**
+     * Find the last index matching some predicate
+     *
+     * Apply function `f` to each element of `v` in reverse order.  When
+     * function `f` returns true then an option containing the index is
+     * returned. If `f` matches no elements then none is returned.
+     */
+    #[inline]
+    pure fn rposition(f: fn(T) -> bool) -> Option<uint> { rposition(self, f) }
+    /// Find the last index containing a matching value
+    #[inline]
+    pure fn rposition_elem(x: T) -> Option<uint> { rposition_elem(self, x) }
+}
+
 trait ImmutableCopyableVector<T> {
     pure fn filter(f: fn(T) -> bool) -> ~[T];
-    pure fn find(f: fn(T) -> bool) -> option<T>;
-    pure fn rfind(f: fn(T) -> bool) -> option<T>;
+    pure fn rfind(f: fn(T) -> bool) -> Option<T>;
 }
 
 /// Extension methods for vectors
@@ -1495,15 +1688,6 @@ impl<T: copy> &[T]: ImmutableCopyableVector<T> {
     #[inline]
     pure fn filter(f: fn(T) -> bool) -> ~[T] { filter(self, f) }
     /**
-     * Search for the first element that matches a given predicate
-     *
-     * Apply function `f` to each element of `v`, starting from the first.
-     * When function `f` returns true then an option containing the element
-     * is returned. If `f` matches no elements then none is returned.
-     */
-    #[inline]
-    pure fn find(f: fn(T) -> bool) -> option<T> { find(self, f) }
-    /**
      * Search for the last element that matches a given predicate
      *
      * Apply function `f` to each element of `v` in reverse order. When
@@ -1511,7 +1695,7 @@ impl<T: copy> &[T]: ImmutableCopyableVector<T> {
      * returned. If `f` matches no elements then none is returned.
      */
     #[inline]
-    pure fn rfind(f: fn(T) -> bool) -> option<T> { rfind(self, f) }
+    pure fn rfind(f: fn(T) -> bool) -> Option<T> { rfind(self, f) }
 }
 
 /// Unsafe operations
@@ -1540,10 +1724,11 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
-        return ::unsafe::reinterpret_cast(
-            rustrt::vec_from_buf_shared(sys::get_type_desc::<T>(),
-                                        ptr as *(),
-                                        elts as size_t));
+        let mut dst = ~[];
+        reserve(dst, elts);
+        set_len(dst, elts);
+        as_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
+        dst
     }
 
     /**
@@ -1555,7 +1740,7 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn set_len<T>(&&v: ~[const T], new_len: uint) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
@@ -1570,15 +1755,15 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn to_ptr<T>(v: ~[const T]) -> *T {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
-        return ::unsafe::reinterpret_cast(addr_of((**repr).data));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
     }
 
 
     #[inline(always)]
     unsafe fn to_ptr_slice<T>(v: &[const T]) -> *T {
-        let repr: **SliceRepr = ::unsafe::reinterpret_cast(addr_of(v));
-        return ::unsafe::reinterpret_cast(addr_of((**repr).data));
+        let repr: **SliceRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
     }
 
 
@@ -1590,7 +1775,7 @@ mod unsafe {
     unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(&& &[T]) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
         let v : *(&blk/[T]) =
-            ::unsafe::reinterpret_cast(ptr::addr_of(pair));
+            ::unsafe::reinterpret_cast(&ptr::addr_of(pair));
         f(*v)
     }
 
@@ -1607,9 +1792,9 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn set<T>(v: &[mut T], i: uint, +val: T) {
-        let mut box = some(val);
+        let mut box = Some(val);
         do as_mut_buf(v) |p, _len| {
-            let mut box2 = none;
+            let mut box2 = None;
             box2 <-> box;
             rusti::move_val_init(*ptr::mut_offset(p, i),
                                  option::unwrap(box2));
@@ -1692,7 +1877,7 @@ mod u8 {
     pure fn gt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) > 0 }
 
     /// Byte-vec hash function
-    fn hash(s: &~[u8]) -> uint {
+    pure fn hash(s: &~[u8]) -> uint {
         hash::hash_bytes(*s) as uint
     }
 
@@ -1729,45 +1914,48 @@ mod u8 {
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
 
-impl<A> &[A]: iter::BaseIter<A> {
-    fn each(blk: fn(A) -> bool) { each(self, blk) }
-    fn size_hint() -> option<uint> { some(len(self)) }
+impl<A> &[const A]: iter::BaseIter<A> {
+    pure fn each(blk: fn(A) -> bool) { each(self, blk) }
+    pure fn size_hint() -> Option<uint> { Some(len(self)) }
 }
 
-impl<A> &[A]: iter::ExtendedIter<A> {
-    fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
-    fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
-    fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
-    fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
+impl<A> &[const A]: iter::ExtendedIter<A> {
+    pure fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
+    pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
+    pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
+    pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
         iter::foldl(self, b0, blk)
     }
-    fn contains(x: A) -> bool { iter::contains(self, x) }
-    fn count(x: A) -> uint { iter::count(self, x) }
-    fn position(f: fn(A) -> bool) -> option<uint> { iter::position(self, f) }
 }
 
-trait IterTraitExtensions<A> {
-    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
-    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
-    fn to_vec() -> ~[A];
-    fn min() -> A;
-    fn max() -> A;
+impl<A: Eq> &[A]: iter::EqIter<A> {
+    pure fn contains(x: A) -> bool { iter::contains(self, x) }
+    pure fn count(x: A) -> uint { iter::count(self, x) }
+    pure fn position(f: fn(A) -> bool) -> Option<uint> {
+        iter::position(self, f)
+    }
 }
 
-impl<A: copy> &[A]: IterTraitExtensions<A> {
-    fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
+impl<A: copy> &[A]: iter::CopyableIter<A> {
+    pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
-    fn map_to_vec<B>(op: fn(A) -> B) -> ~[B] { iter::map_to_vec(self, op) }
-    fn to_vec() -> ~[A] { iter::to_vec(self) }
+    pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B] {
+        iter::map_to_vec(self, op)
+    }
+    pure fn to_vec() -> ~[A] { iter::to_vec(self) }
 
     // FIXME--bug in resolve prevents this from working (#2611)
     // fn flat_map_to_vec<B:copy,IB:base_iter<B>>(op: fn(A) -> IB) -> ~[B] {
     //     iter::flat_map_to_vec(self, op)
     // }
 
-    fn min() -> A { iter::min(self) }
-    fn max() -> A { iter::max(self) }
+    pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
+}
+
+impl<A: copy Ord> &[A]: iter::CopyableOrderedIter<A> {
+    pure fn min() -> A { iter::min(self) }
+    pure fn max() -> A { iter::max(self) }
 }
 // ___________________________________________________________________________
 
@@ -1784,8 +1972,8 @@ mod tests {
 
     pure fn is_equal(&&x: uint, &&y:uint) -> bool { return x == y; }
 
-    fn square_if_odd(&&n: uint) -> option<uint> {
-        return if n % 2u == 1u { some(n * n) } else { none };
+    fn square_if_odd(&&n: uint) -> Option<uint> {
+        return if n % 2u == 1u { Some(n * n) } else { None };
     }
 
     fn add(&&x: uint, &&y: uint) -> uint { return x + y; }
@@ -1882,11 +2070,11 @@ mod tests {
     #[test]
     fn test_last() {
         let mut n = last_opt(~[]);
-        assert (n == none);
+        assert (n.is_none());
         n = last_opt(~[1, 2, 3]);
-        assert (n == some(3));
+        assert (n == Some(3));
         n = last_opt(~[1, 2, 3, 4, 5]);
-        assert (n == some(5));
+        assert (n == Some(5));
     }
 
     #[test]
@@ -1933,6 +2121,34 @@ mod tests {
         assert (v[2] == 3);
         assert (v[3] == 4);
         assert (e == 5);
+    }
+
+    #[test]
+    fn test_swap_remove() {
+        let mut v = ~[1, 2, 3, 4, 5];
+        let mut e = swap_remove(v, 0);
+        assert (len(v) == 4);
+        assert e == 1;
+        assert (v[0] == 5);
+        e = swap_remove(v, 3);
+        assert (len(v) == 3);
+        assert e == 4;
+        assert (v[0] == 5);
+        assert (v[1] == 2);
+        assert (v[2] == 3);
+    }
+
+    #[test]
+    fn test_swap_remove_noncopyable() {
+        // Tests that we don't accidentally run destructors twice.
+        let mut v = ~[::unsafe::exclusive(()), ::unsafe::exclusive(()),
+                      ::unsafe::exclusive(())];
+        let mut _e = swap_remove(v, 0);
+        assert (len(v) == 2);
+        _e = swap_remove(v, 1);
+        assert (len(v) == 1);
+        _e = swap_remove(v, 0);
+        assert (len(v) == 0);
     }
 
     #[test]
@@ -1992,6 +2208,15 @@ mod tests {
     }
 
     #[test]
+    fn test_truncate() {
+        let mut v = ~[@6,@5,@4];
+        truncate(v, 1);
+        assert(v.len() == 1);
+        assert(*(v[0]) == 6);
+        // If the unsafe block didn't drop things properly, we blow up here.
+    }
+
+    #[test]
     fn test_map() {
         // Test on-stack map.
         let mut v = ~[1u, 2u, 3u];
@@ -2040,10 +2265,10 @@ mod tests {
         assert (w[1] == 9u);
         assert (w[2] == 25u);
 
-        fn halve(&&i: int) -> option<int> {
+        fn halve(&&i: int) -> Option<int> {
             if i % 2 == 0 {
-                return option::some::<int>(i / 2);
-            } else { return option::none::<int>; }
+                return option::Some::<int>(i / 2);
+            } else { return option::None::<int>; }
         }
         fn halve_for_sure(&&i: int) -> int { return i / 2; }
         let all_even: ~[int] = ~[0, 2, 8, 6];
@@ -2218,13 +2443,13 @@ mod tests {
 
     #[test]
     fn test_position_elem() {
-        assert position_elem(~[], 1) == none;
+        assert position_elem(~[], 1).is_none();
 
         let v1 = ~[1, 2, 3, 3, 2, 5];
-        assert position_elem(v1, 1) == some(0u);
-        assert position_elem(v1, 2) == some(1u);
-        assert position_elem(v1, 5) == some(5u);
-        assert position_elem(v1, 4) == none;
+        assert position_elem(v1, 1) == Some(0u);
+        assert position_elem(v1, 2) == Some(1u);
+        assert position_elem(v1, 5) == Some(5u);
+        assert position_elem(v1, 4).is_none();
     }
 
     #[test]
@@ -2232,159 +2457,159 @@ mod tests {
         fn less_than_three(&&i: int) -> bool { return i < 3; }
         fn is_eighteen(&&i: int) -> bool { return i == 18; }
 
-        assert position(~[], less_than_three) == none;
+        assert position(~[], less_than_three).is_none();
 
         let v1 = ~[5, 4, 3, 2, 1];
-        assert position(v1, less_than_three) == some(3u);
-        assert position(v1, is_eighteen) == none;
+        assert position(v1, less_than_three) == Some(3u);
+        assert position(v1, is_eighteen).is_none();
     }
 
     #[test]
     fn test_position_between() {
-        assert position_between(~[], 0u, 0u, f) == none;
+        assert position_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert position_between(v, 0u, 0u, f) == none;
-        assert position_between(v, 0u, 1u, f) == none;
-        assert position_between(v, 0u, 2u, f) == some(1u);
-        assert position_between(v, 0u, 3u, f) == some(1u);
-        assert position_between(v, 0u, 4u, f) == some(1u);
+        assert position_between(v, 0u, 0u, f).is_none();
+        assert position_between(v, 0u, 1u, f).is_none();
+        assert position_between(v, 0u, 2u, f) == Some(1u);
+        assert position_between(v, 0u, 3u, f) == Some(1u);
+        assert position_between(v, 0u, 4u, f) == Some(1u);
 
-        assert position_between(v, 1u, 1u, f) == none;
-        assert position_between(v, 1u, 2u, f) == some(1u);
-        assert position_between(v, 1u, 3u, f) == some(1u);
-        assert position_between(v, 1u, 4u, f) == some(1u);
+        assert position_between(v, 1u, 1u, f).is_none();
+        assert position_between(v, 1u, 2u, f) == Some(1u);
+        assert position_between(v, 1u, 3u, f) == Some(1u);
+        assert position_between(v, 1u, 4u, f) == Some(1u);
 
-        assert position_between(v, 2u, 2u, f) == none;
-        assert position_between(v, 2u, 3u, f) == none;
-        assert position_between(v, 2u, 4u, f) == some(3u);
+        assert position_between(v, 2u, 2u, f).is_none();
+        assert position_between(v, 2u, 3u, f).is_none();
+        assert position_between(v, 2u, 4u, f) == Some(3u);
 
-        assert position_between(v, 3u, 3u, f) == none;
-        assert position_between(v, 3u, 4u, f) == some(3u);
+        assert position_between(v, 3u, 3u, f).is_none();
+        assert position_between(v, 3u, 4u, f) == Some(3u);
 
-        assert position_between(v, 4u, 4u, f) == none;
+        assert position_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]
     fn test_find() {
-        assert find(~[], f) == none;
+        assert find(~[], f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert find(v, f) == some((1, 'b'));
-        assert find(v, g) == none;
+        assert find(v, f) == Some((1, 'b'));
+        assert find(v, g).is_none();
     }
 
     #[test]
     fn test_find_between() {
-        assert find_between(~[], 0u, 0u, f) == none;
+        assert find_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert find_between(v, 0u, 0u, f) == none;
-        assert find_between(v, 0u, 1u, f) == none;
-        assert find_between(v, 0u, 2u, f) == some((1, 'b'));
-        assert find_between(v, 0u, 3u, f) == some((1, 'b'));
-        assert find_between(v, 0u, 4u, f) == some((1, 'b'));
+        assert find_between(v, 0u, 0u, f).is_none();
+        assert find_between(v, 0u, 1u, f).is_none();
+        assert find_between(v, 0u, 2u, f) == Some((1, 'b'));
+        assert find_between(v, 0u, 3u, f) == Some((1, 'b'));
+        assert find_between(v, 0u, 4u, f) == Some((1, 'b'));
 
-        assert find_between(v, 1u, 1u, f) == none;
-        assert find_between(v, 1u, 2u, f) == some((1, 'b'));
-        assert find_between(v, 1u, 3u, f) == some((1, 'b'));
-        assert find_between(v, 1u, 4u, f) == some((1, 'b'));
+        assert find_between(v, 1u, 1u, f).is_none();
+        assert find_between(v, 1u, 2u, f) == Some((1, 'b'));
+        assert find_between(v, 1u, 3u, f) == Some((1, 'b'));
+        assert find_between(v, 1u, 4u, f) == Some((1, 'b'));
 
-        assert find_between(v, 2u, 2u, f) == none;
-        assert find_between(v, 2u, 3u, f) == none;
-        assert find_between(v, 2u, 4u, f) == some((3, 'b'));
+        assert find_between(v, 2u, 2u, f).is_none();
+        assert find_between(v, 2u, 3u, f).is_none();
+        assert find_between(v, 2u, 4u, f) == Some((3, 'b'));
 
-        assert find_between(v, 3u, 3u, f) == none;
-        assert find_between(v, 3u, 4u, f) == some((3, 'b'));
+        assert find_between(v, 3u, 3u, f).is_none();
+        assert find_between(v, 3u, 4u, f) == Some((3, 'b'));
 
-        assert find_between(v, 4u, 4u, f) == none;
+        assert find_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]
     fn test_rposition() {
-        assert find(~[], f) == none;
+        assert find(~[], f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert position(v, f) == some(1u);
-        assert position(v, g) == none;
+        assert position(v, f) == Some(1u);
+        assert position(v, g).is_none();
     }
 
     #[test]
     fn test_rposition_between() {
-        assert rposition_between(~[], 0u, 0u, f) == none;
+        assert rposition_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rposition_between(v, 0u, 0u, f) == none;
-        assert rposition_between(v, 0u, 1u, f) == none;
-        assert rposition_between(v, 0u, 2u, f) == some(1u);
-        assert rposition_between(v, 0u, 3u, f) == some(1u);
-        assert rposition_between(v, 0u, 4u, f) == some(3u);
+        assert rposition_between(v, 0u, 0u, f).is_none();
+        assert rposition_between(v, 0u, 1u, f).is_none();
+        assert rposition_between(v, 0u, 2u, f) == Some(1u);
+        assert rposition_between(v, 0u, 3u, f) == Some(1u);
+        assert rposition_between(v, 0u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 1u, 1u, f) == none;
-        assert rposition_between(v, 1u, 2u, f) == some(1u);
-        assert rposition_between(v, 1u, 3u, f) == some(1u);
-        assert rposition_between(v, 1u, 4u, f) == some(3u);
+        assert rposition_between(v, 1u, 1u, f).is_none();
+        assert rposition_between(v, 1u, 2u, f) == Some(1u);
+        assert rposition_between(v, 1u, 3u, f) == Some(1u);
+        assert rposition_between(v, 1u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 2u, 2u, f) == none;
-        assert rposition_between(v, 2u, 3u, f) == none;
-        assert rposition_between(v, 2u, 4u, f) == some(3u);
+        assert rposition_between(v, 2u, 2u, f).is_none();
+        assert rposition_between(v, 2u, 3u, f).is_none();
+        assert rposition_between(v, 2u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 3u, 3u, f) == none;
-        assert rposition_between(v, 3u, 4u, f) == some(3u);
+        assert rposition_between(v, 3u, 3u, f).is_none();
+        assert rposition_between(v, 3u, 4u, f) == Some(3u);
 
-        assert rposition_between(v, 4u, 4u, f) == none;
+        assert rposition_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]
     fn test_rfind() {
-        assert rfind(~[], f) == none;
+        assert rfind(~[], f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         fn g(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'd' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rfind(v, f) == some((3, 'b'));
-        assert rfind(v, g) == none;
+        assert rfind(v, f) == Some((3, 'b'));
+        assert rfind(v, g).is_none();
     }
 
     #[test]
     fn test_rfind_between() {
-        assert rfind_between(~[], 0u, 0u, f) == none;
+        assert rfind_between(~[], 0u, 0u, f).is_none();
 
         fn f(xy: (int, char)) -> bool { let (_x, y) = xy; y == 'b' }
         let mut v = ~[(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-        assert rfind_between(v, 0u, 0u, f) == none;
-        assert rfind_between(v, 0u, 1u, f) == none;
-        assert rfind_between(v, 0u, 2u, f) == some((1, 'b'));
-        assert rfind_between(v, 0u, 3u, f) == some((1, 'b'));
-        assert rfind_between(v, 0u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 0u, 0u, f).is_none();
+        assert rfind_between(v, 0u, 1u, f).is_none();
+        assert rfind_between(v, 0u, 2u, f) == Some((1, 'b'));
+        assert rfind_between(v, 0u, 3u, f) == Some((1, 'b'));
+        assert rfind_between(v, 0u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 1u, 1u, f) == none;
-        assert rfind_between(v, 1u, 2u, f) == some((1, 'b'));
-        assert rfind_between(v, 1u, 3u, f) == some((1, 'b'));
-        assert rfind_between(v, 1u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 1u, 1u, f).is_none();
+        assert rfind_between(v, 1u, 2u, f) == Some((1, 'b'));
+        assert rfind_between(v, 1u, 3u, f) == Some((1, 'b'));
+        assert rfind_between(v, 1u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 2u, 2u, f) == none;
-        assert rfind_between(v, 2u, 3u, f) == none;
-        assert rfind_between(v, 2u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 2u, 2u, f).is_none();
+        assert rfind_between(v, 2u, 3u, f).is_none();
+        assert rfind_between(v, 2u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 3u, 3u, f) == none;
-        assert rfind_between(v, 3u, 4u, f) == some((3, 'b'));
+        assert rfind_between(v, 3u, 3u, f).is_none();
+        assert rfind_between(v, 3u, 4u, f) == Some((3, 'b'));
 
-        assert rfind_between(v, 4u, 4u, f) == none;
+        assert rfind_between(v, 4u, 4u, f).is_none();
     }
 
     #[test]

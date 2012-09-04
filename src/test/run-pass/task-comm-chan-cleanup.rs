@@ -2,7 +2,7 @@ use std;
 import comm;
 
 fn main() {
-    let p = comm::port();
-    let c = comm::chan(p);
+    let p = comm::Port();
+    let c = comm::Chan(p);
     comm::send(c, ~"coffee");
 }

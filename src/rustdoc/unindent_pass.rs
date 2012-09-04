@@ -45,12 +45,12 @@ fn unindent(s: ~str) -> ~str {
             min_indent
         } else {
             saw_first_line = true;
-            let mut spaces = 0u;
+            let mut spaces = 0;
             do str::all(line) |char| {
                 // Only comparing against space because I wouldn't
                 // know what to do with mixed whitespace chars
                 if char == ' ' {
-                    spaces += 1u;
+                    spaces += 1;
                     true
                 } else {
                     false

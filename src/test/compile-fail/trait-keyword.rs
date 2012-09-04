@@ -1,5 +1,3 @@
-iface foo { } //~ WARN `iface` is deprecated; use `trait`
+iface foo { } //~ ERROR iface
 
-fn main() { 
-    x //~ ERROR unresolved name: x
-}
+fn main() {}

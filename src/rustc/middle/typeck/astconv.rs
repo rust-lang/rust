@@ -57,11 +57,11 @@ trait ast_conv {
 
 fn get_region_reporting_err(tcx: ty::ctxt,
                             span: span,
-                            res: result<ty::region, ~str>) -> ty::region {
+                            res: Result<ty::region, ~str>) -> ty::region {
 
     match res {
-      result::ok(r) => r,
-      result::err(e) => {
+      result::Ok(r) => r,
+      result::Err(e) => {
         tcx.sess.span_err(span, e);
         ty::re_static
       }
@@ -72,8 +72,8 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
 
     let res = match a_r.node {
-      ast::re_anon => rscope.anon_region(),
-      ast::re_named(id) => rscope.named_region(id)
+      ast::re_anon => rscope.anon_region(span),
+      ast::re_named(id) => rscope.named_region(span, id)
     };
 
     get_region_reporting_err(self.tcx(), span, res)
@@ -84,34 +84,34 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     path: @ast::path) -> ty_param_substs_and_ty {
 
     let tcx = self.tcx();
-    let {bounds: decl_bounds, rp: decl_rp, ty: decl_ty} =
+    let {bounds: decl_bounds, region_param: decl_rp, ty: decl_ty} =
         self.get_item_ty(did);
 
-    debug!{"ast_path_to_substs_and_ty: did=%? decl_rp=%b",
-           did, decl_rp};
+    debug!("ast_path_to_substs_and_ty: did=%? decl_rp=%?",
+           did, decl_rp);
 
     // If the type is parameterized by the self region, then replace self
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
     let self_r = match (decl_rp, path.rp) {
-      (false, none) => {
-        none
+      (None, None) => {
+        None
       }
-      (false, some(_)) => {
+      (None, Some(_)) => {
         tcx.sess.span_err(
             path.span,
-            fmt!{"no region bound is allowed on `%s`, \
+            fmt!("no region bound is allowed on `%s`, \
                   which is not declared as containing region pointers",
-                 ty::item_path_str(tcx, did)});
-        none
+                 ty::item_path_str(tcx, did)));
+        None
       }
-      (true, none) => {
-        let res = rscope.anon_region();
+      (Some(_), None) => {
+        let res = rscope.anon_region(path.span);
         let r = get_region_reporting_err(self.tcx(), path.span, res);
-        some(r)
+        Some(r)
       }
-      (true, some(r)) => {
-        some(ast_region_to_region(self, rscope, path.span, r))
+      (Some(_), Some(r)) => {
+        Some(ast_region_to_region(self, rscope, path.span, r))
       }
     };
 
@@ -119,12 +119,12 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     if !vec::same_length(*decl_bounds, path.types) {
         self.tcx().sess.span_fatal(
             path.span,
-            fmt!{"wrong number of type arguments: expected %u but found %u",
-                 (*decl_bounds).len(), path.types.len()});
+            fmt!("wrong number of type arguments: expected %u but found %u",
+                 (*decl_bounds).len(), path.types.len()));
     }
     let tps = path.types.map(|a_t| ast_ty_to_ty(self, rscope, a_t));
 
-    let substs = {self_r:self_r, self_ty:none, tps:tps};
+    let substs = {self_r:self_r, self_ty:None, tps:tps};
     {substs: substs, ty: ty::subst(tcx, &substs, decl_ty)}
 }
 
@@ -177,11 +177,11 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
           }
           ast::ty_path(path, id) => {
             match tcx.def_map.find(id) {
-              some(ast::def_prim_ty(ast::ty_str)) => {
+              Some(ast::def_prim_ty(ast::ty_str)) => {
                 check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                 return ty::mk_estr(tcx, vst);
               }
-              some(ast::def_ty(type_def_id)) => {
+              Some(ast::def_ty(type_def_id)) => {
                 let result = ast_path_to_substs_and_ty(self, rscope,
                                                        type_def_id, path);
                 match ty::get(result.ty).struct {
@@ -201,7 +201,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
               _ => ()
             }
           }
-          ast::ty_fn(ast::proto_block, ast_bounds, ast_fn_decl) => {
+          ast::ty_fn(ast::proto_block, purity, ast_bounds, ast_fn_decl) => {
             let new_proto;
             match vst {
                 ty::vstore_fixed(_) => {
@@ -216,8 +216,9 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
 
             // Run through the normal function type conversion process.
             let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-            let fn_decl = ty_of_fn_decl(self, rscope, new_proto, bounds,
-                                        ast_fn_decl, none, span);
+            let fn_decl = ty_of_fn_decl(self, rscope, new_proto, purity,
+                                        bounds,
+                                        ast_fn_decl, None, span);
             return ty::mk_fn(tcx, fn_decl);
           }
           _ => ()
@@ -250,13 +251,13 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     let tcx = self.tcx();
 
     match tcx.ast_ty_to_ty_cache.find(ast_ty) {
-      some(ty::atttce_resolved(ty)) => return ty,
-      some(ty::atttce_unresolved) => {
+      Some(ty::atttce_resolved(ty)) => return ty,
+      Some(ty::atttce_unresolved) => {
         tcx.sess.span_fatal(ast_ty.span, ~"illegal recursive type; \
                                           insert an enum in the cycle, \
                                           if this is desired");
       }
-      none => { /* go on */ }
+      None => { /* go on */ }
     }
 
     tcx.ast_ty_to_ty_cache.insert(ast_ty, ty::atttce_unresolved);
@@ -301,17 +302,19 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
         };
         ty::mk_rec(tcx, flds)
       }
-      ast::ty_fn(proto, ast_bounds, decl) => {
+      ast::ty_fn(proto, purity, ast_bounds, decl) => {
         let bounds = collect::compute_bounds(self.ccx(), ast_bounds);
-        let fn_decl = ty_of_fn_decl(self, rscope, proto, bounds, decl, none,
+        let fn_decl = ty_of_fn_decl(self, rscope, proto, purity,
+                                    bounds, decl, None,
                                     ast_ty.span);
         ty::mk_fn(tcx, fn_decl)
       }
       ast::ty_path(path, id) => {
         let a_def = match tcx.def_map.find(id) {
-          none => tcx.sess.span_fatal(ast_ty.span, fmt!{"unbound path %s",
-                                                        path_to_str(path)}),
-          some(d) => d
+          None => tcx.sess.span_fatal(
+              ast_ty.span, fmt!("unbound path %s",
+                                path_to_str(path, tcx.sess.intr()))),
+          Some(d) => d
         };
         match a_def {
           ast::def_ty(did) | ast::def_class(did, _) => {
@@ -360,19 +363,19 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
           }
         }
       }
-      ast::ty_fixed_length(a_t, some(u)) => {
+      ast::ty_fixed_length(a_t, Some(u)) => {
         mk_maybe_vstore(self, rscope, {ty: a_t, mutbl: ast::m_imm},
                         ty::vstore_fixed(u),
                         ast_ty.span,
                         |ty| {
                             tcx.sess.span_err(
                                 a_t.span,
-                                fmt!{"bound not allowed on a %s",
-                                     ty::ty_sort_str(tcx, ty.ty)});
+                                fmt!("bound not allowed on a %s",
+                                     ty::ty_sort_str(tcx, ty.ty)));
                             ty.ty
                         })
       }
-      ast::ty_fixed_length(_, none) => {
+      ast::ty_fixed_length(_, None) => {
         tcx.sess.span_bug(
             ast_ty.span,
             ~"implied fixed length for bound");
@@ -398,7 +401,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
 
 fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS, a: ast::arg,
-    expected_ty: option<ty::arg>) -> ty::arg {
+    expected_ty: Option<ty::arg>) -> ty::arg {
 
     let ty = match a.ty.node {
       ast::ty_infer if expected_ty.is_some() => expected_ty.get().ty,
@@ -409,8 +412,10 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     let mode = {
         match a.mode {
           ast::infer(_) if expected_ty.is_some() => {
-            result::get(ty::unify_mode(self.tcx(), a.mode,
-                                       expected_ty.get().mode))
+            result::get(ty::unify_mode(
+                self.tcx(),
+                ty::expected_found {expected: expected_ty.get().mode,
+                                    found: a.mode}))
           }
           ast::infer(_) => {
             match ty::get(ty).struct {
@@ -425,7 +430,10 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
               // will have been unified with m yet:
               _ => {
                 let m1 = ast::expl(ty::default_arg_mode_for_ty(ty));
-                result::get(ty::unify_mode(self.tcx(), a.mode, m1))
+                result::get(ty::unify_mode(
+                    self.tcx(),
+                    ty::expected_found {expected: m1,
+                                        found: a.mode}))
               }
             }
           }
@@ -446,25 +454,26 @@ fn ast_proto_to_proto<AC: ast_conv, RS: region_scope copy owned>(
         ast::proto_box =>
             ty::proto_vstore(ty::vstore_box),
         ast::proto_block => {
-            let result = rscope.anon_region();
+            let result = rscope.anon_region(span);
             let region = get_region_reporting_err(self.tcx(), span, result);
             ty::proto_vstore(ty::vstore_slice(region))
         }
     }
 }
 
-type expected_tys = option<{inputs: ~[ty::arg],
+type expected_tys = Option<{inputs: ~[ty::arg],
                             output: ty::t}>;
 
 fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     self: AC, rscope: RS,
     ast_proto: ast::proto,
+    purity: ast::purity,
     bounds: @~[ty::param_bound],
     decl: ast::fn_decl,
     expected_tys: expected_tys,
     span: span) -> ty::fn_ty {
 
-    debug!{"ty_of_fn_decl"};
+    debug!("ty_of_fn_decl");
     do indent {
         // new region names that appear inside of the fn decl are bound to
         // that function type
@@ -474,7 +483,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
             let expected_arg_ty = do expected_tys.chain |e| {
                 // no guarantee that the correct number of expected args
                 // were supplied
-                if i < e.inputs.len() {some(e.inputs[i])} else {none}
+                if i < e.inputs.len() {Some(e.inputs[i])} else {None}
             };
             ty_of_arg(self, rb, a, expected_arg_ty)
         };
@@ -488,7 +497,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
 
         let proto = ast_proto_to_proto(self, rscope, span, ast_proto);
 
-        {purity: decl.purity, proto: proto, bounds: bounds, inputs: input_tys,
+        {purity: purity, proto: proto, bounds: bounds, inputs: input_tys,
          output: output_ty, ret_style: decl.cf}
     }
 }

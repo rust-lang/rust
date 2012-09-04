@@ -36,8 +36,8 @@ type ctx = {ccx: @crate_ctxt,
 fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     -> ~[type_uses] {
     match ccx.type_use_cache.find(fn_id) {
-      some(uses) => return uses,
-      none => ()
+      Some(uses) => return uses,
+      None => ()
     }
     let fn_id_loc = if fn_id.crate == local_crate { fn_id }
                     else { base::maybe_instantiate_inline(ccx, fn_id) };
@@ -60,12 +60,12 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
         return uses;
     }
     let map_node = match ccx.tcx.items.find(fn_id_loc.node) {
-        some(x) => x,
-        none    => ccx.sess.bug(fmt!{"type_uses_for: unbound item ID %?",
-                                     fn_id_loc})
+        Some(x) => x,
+        None    => ccx.sess.bug(fmt!("type_uses_for: unbound item ID %?",
+                                     fn_id_loc))
     };
-    match check map_node {
-      ast_map::node_item(@{node: item_fn(_, _, body), _}, _) |
+    match map_node {
+      ast_map::node_item(@{node: item_fn(_, _, _, body), _}, _) |
       ast_map::node_method(@{body, _}, _, _) => {
         handle_body(cx, body);
       }
@@ -78,10 +78,10 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_variant(_, _, _) => {
         for uint::range(0u, n_tps) |n| { cx.uses[n] |= use_repr;}
       }
-      ast_map::node_foreign_item(i@@{node: foreign_item_fn(_, _), _},
+      ast_map::node_foreign_item(i@@{node: foreign_item_fn(*), _},
                                  abi, _) => {
         if abi == foreign_abi_rust_intrinsic {
-            let flags = match check *i.ident {
+            let flags = match cx.ccx.sess.str_of(i.ident) {
               ~"size_of" |  ~"pref_align_of" | ~"min_align_of" |
               ~"init" |  ~"reinterpret_cast" |
               ~"move_val" | ~"move_val_init" => {
@@ -90,14 +90,15 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
               ~"get_tydesc" | ~"needs_drop" => {
                 use_tydesc
               }
-              ~"atomic_xchng" | ~"atomic_add" | ~"atomic_sub" |
-              ~"atomic_xchng_acq" | ~"atomic_add_acq" | ~"atomic_sub_acq" |
-              ~"atomic_xchng_rel" | ~"atomic_add_rel" | ~"atomic_sub_rel" => {
-                0u
-              }
+              ~"atomic_xchg"     | ~"atomic_xadd"     | ~"atomic_xsub" |
+              ~"atomic_xchg_acq" | ~"atomic_xadd_acq" | ~"atomic_xsub_acq" |
+              ~"atomic_xchg_rel" | ~"atomic_xadd_rel" | ~"atomic_xsub_rel" =>
+              { 0u }
               ~"visit_tydesc" | ~"forget" | ~"addr_of" => {
                 0u
               }
+              // would be cool to make these an enum instead of strings!
+              _ => fail ~"unknown intrinsic in type_use"
             };
             for uint::range(0u, n_tps) |n| { cx.uses[n] |= flags;}
         }
@@ -108,7 +109,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
       ast_map::node_dtor(_, dtor, _, _) => {
         handle_body(cx, dtor.node.body);
       }
-
+      _ => fail ~"unknown node type in type_use"
     }
     let uses = vec::from_mut(copy cx.uses);
     ccx.type_use_cache.insert(fn_id, uses);
@@ -116,10 +117,13 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 }
 
 fn type_needs(cx: ctx, use: uint, ty: ty::t) {
-    let mut done = true;
     // Optimization -- don't descend type if all params already have this use
-    for vec::each(cx.uses) |u| { if u & use != use { done = false } }
-    if !done { type_needs_inner(cx, use, ty, @nil); }
+    for vec::each_mut(cx.uses) |u| {
+        if *u & use != use {
+            type_needs_inner(cx, use, ty, @nil);
+            return;
+        }
+    }
 }
 
 fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
@@ -136,7 +140,7 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
               ty::ty_fn(_) | ty::ty_ptr(_) | ty::ty_rptr(_, _)
                | ty::ty_trait(_, _, _) => false,
               ty::ty_enum(did, substs) => {
-                if option::is_none(list::find(enums_seen, |id| id == did)) {
+                if option::is_none(list::find(enums_seen, |id| *id == did)) {
                     let seen = @cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
@@ -215,7 +219,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         }
       }
       expr_assign(val, _) | expr_swap(val, _) | expr_assign_op(_, val, _) |
-      expr_ret(some(val)) => {
+      expr_ret(Some(val)) => {
         node_type_needs(cx, use_repr, val.id);
       }
       expr_index(base, _) | expr_field(base, _, _) => {
@@ -252,8 +256,8 @@ fn mark_for_expr(cx: ctx, e: @expr) {
             }
         })
       }
-      expr_match(_, _, _) | expr_block(_) | expr_if(_, _, _) |
-      expr_while(_, _) | expr_fail(_) | expr_break(_) | expr_again(_) |
+      expr_match(*) | expr_block(_) | expr_if(*) |
+      expr_while(*) | expr_fail(_) | expr_break(_) | expr_again(_) |
       expr_unary(_, _) | expr_lit(_) | expr_assert(_) |
       expr_mac(_) | expr_addr_of(_, _) |
       expr_ret(_) | expr_loop(_, _) |

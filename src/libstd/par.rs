@@ -39,19 +39,18 @@ fn map_slices<A: copy send, B: copy send>(
         log(info, ~"spawning tasks");
         while base < len {
             let end = uint::min(len, base + items_per_task);
-            // FIXME: why is the ::<A, ()> annotation required here? (#2617)
-            do vec::as_buf::<A, ()>(xs) |p, _len| {
+            do vec::as_buf(xs) |p, _len| {
                 let f = f();
                 let f = do future_spawn() |copy base| {
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
                                      len * sys::size_of::<A>());
-                        log(info, fmt!{"pre-slice: %?", (base, slice)});
+                        log(info, fmt!("pre-slice: %?", (base, slice)));
                         let slice : &[A] =
-                            unsafe::reinterpret_cast(slice);
-                        log(info, fmt!{"slice: %?",
-                                       (base, vec::len(slice), end - base)});
+                            unsafe::reinterpret_cast(&slice);
+                        log(info, fmt!("slice: %?",
+                                       (base, vec::len(slice), end - base)));
                         assert(vec::len(slice) == end - base);
                         f(base, slice)
                     }
@@ -62,7 +61,7 @@ fn map_slices<A: copy send, B: copy send>(
         }
         log(info, ~"tasks spawned");
 
-        log(info, fmt!{"num_tasks: %?", (num_tasks, futures.len())});
+        log(info, fmt!("num_tasks: %?", (num_tasks, futures.len())));
         assert(num_tasks == futures.len());
 
         let r = do futures.map() |ys| {

@@ -8,7 +8,7 @@
 import double_buffer::client::*;
 import double_buffer::give_buffer;
 
-macro_rules! select_if {
+macro_rules! select_if (
     {
         $index:expr,
         $count:expr,
@@ -23,22 +23,21 @@ macro_rules! select_if {
     } => {
         if $index == $count {
             match move pipes::try_recv($port) {
-              $(some($message($($(copy $x,)+)* next)) => {
-                // FIXME (#2329) we really want move out of enum here.
+              $(Some($message($($(move $x,)+)* next)) => {
                 let $next = unsafe { let x <- *ptr::addr_of(next); x };
                 $e
               })+
               _ => fail
             }
         } else {
-            select_if!{
+            select_if!(
                 $index,
                 $count + 1,
                 $( $ports => [
                     $($messages$(($($xs),+))dont_type_this*
                       -> $nexts $es),+
                 ], )*
-            }
+            )
         }
     };
 
@@ -48,9 +47,9 @@ macro_rules! select_if {
     } => {
         fail
     }
-}
+)
 
-macro_rules! select {
+macro_rules! select (
     {
         $( $port:path => {
             $($message:path$(($($x: ident),+))dont_type_this*
@@ -58,11 +57,11 @@ macro_rules! select {
         } )+
     } => {
         let index = pipes::selecti([$(($port).header()),+]/_);
-        select_if!{index, 0, $( $port => [
+        select_if!(index, 0, $( $port => [
             $($message$(($($x),+))dont_type_this* -> $next $e),+
-        ], )+}
+        ], )+)
     }
-}
+)
 
 // Types and protocols
 struct Buffer {
@@ -71,7 +70,7 @@ struct Buffer {
     drop { }
 }
 
-proto! double_buffer {
+proto! double_buffer (
     acquire:send {
         request -> wait_buffer
     }
@@ -83,7 +82,7 @@ proto! double_buffer {
     release:send {
         release(Buffer) -> acquire
     }
-}
+)
 
 // Code examples
 fn render(_buffer: &Buffer) {
@@ -92,62 +91,62 @@ fn render(_buffer: &Buffer) {
 
 fn draw_frame(+channel: double_buffer::client::acquire) {
     let channel = request(channel);
-    select! {
+    select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
                 release(channel, move buffer)
             }
         }
-    };
+    );
 }
 
 fn draw_two_frames(+channel: double_buffer::client::acquire) {
     let channel = request(channel);
-    let channel = select! {
+    let channel = select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
                 release(channel, move buffer)
             }
         }
-    };
+    );
     let channel = request(channel);
-    select! {
+    select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
                 release(channel, move buffer)
             }
         }
-    };
+    );
 }
 
 #[cfg(bad1)]
 fn draw_two_frames_bad1(+channel: double_buffer::client::acquire) {
     let channel = request(channel);
-    select! {
+    select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
             }
         }
-    };
+    );
     let channel = request(channel);
-    select! {
+    select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
                 release(channel, move buffer)
             }
         }
-    };
+    );
 }
 
 #[cfg(bad2)]
 fn draw_two_frames_bad2(+channel: double_buffer::client::acquire) {
     let channel = request(channel);
-    select! {
+    select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
@@ -156,7 +155,7 @@ fn draw_two_frames_bad2(+channel: double_buffer::client::acquire) {
                 release(channel, move buffer);
             }
         }
-    };
+    );
 }
 
 fn main() { }

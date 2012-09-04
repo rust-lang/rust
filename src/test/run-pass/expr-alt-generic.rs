@@ -5,7 +5,7 @@
 type compare<T> = fn@(T, T) -> bool;
 
 fn test_generic<T: copy>(expected: T, eq: compare<T>) {
-    let actual: T = match check true { true => { expected } };
+  let actual: T = match true { true => { expected }, _ => fail ~"wat" };
     assert (eq(expected, actual));
 }
 
@@ -14,10 +14,12 @@ fn test_bool() {
     test_generic::<bool>(true, compare_bool);
 }
 
-fn test_rec() {
-    type t = {a: int, b: int};
+type t = {a: int, b: int};
 
-    fn compare_rec(t1: t, t2: t) -> bool { return t1 == t2; }
+fn test_rec() {
+    fn compare_rec(t1: t, t2: t) -> bool {
+        t1.a == t2.a && t1.b == t2.b
+    }
     test_generic::<t>({a: 1, b: 2}, compare_rec);
 }
 

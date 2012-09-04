@@ -7,32 +7,32 @@ enum my_visitor = @{ mut types: ~[str] };
 impl of ty_visitor for my_visitor {
     fn visit_bot() -> bool {
         self.types += ["bot"];
-        error!{"visited bot type"};
+        error!("visited bot type");
         true
     }
     fn visit_nil() -> bool {
         self.types += ["nil"];
-        error!{"visited nil type"};
+        error!("visited nil type");
         true
     }
     fn visit_bool() -> bool {
         self.types += ["bool"];
-        error!{"visited bool type"};
+        error!("visited bool type");
         true
     }
     fn visit_int() -> bool {
         self.types += ["int"];
-        error!{"visited int type"};
+        error!("visited int type");
         true
     }
     fn visit_i8() -> bool {
         self.types += ["i8"];
-        error!{"visited i8 type"};
+        error!("visited i8 type");
         true
     }
     fn visit_i16() -> bool {
         self.types += ["i16"];
-        error!{"visited i16 type"};
+        error!("visited i16 type");
         true
     }
     fn visit_i32() -> bool { true }
@@ -143,7 +143,7 @@ fn main() {
     visit_ty::<~[int]>(vv);
 
     for (copy v.types).each {|s|
-        io::println(fmt!{"type: %s", s});
+        io::println(fmt!("type: %s", s));
     }
     assert v.types == ["bool", "int", "i8", "i16",
                        "[", "int", "]"];

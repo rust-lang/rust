@@ -6,7 +6,7 @@ import std::time::precise_time_s;
 import std::map;
 import std::map::{map, hashmap};
 
-import io::Reader;
+import io::{Reader, ReaderUtil};
 
 fn main(argv: ~[~str]) {
     #macro[
@@ -17,12 +17,12 @@ fn main(argv: ~[~str]) {
 
     let tests = vec::view(argv, 1, argv.len());
 
-    bench!{shift_push};
-    bench!{read_line};
-    bench!{str_set};
-    bench!{vec_plus};
-    bench!{vec_append};
-    bench!{vec_push_all};
+    bench!(shift_push);
+    bench!(read_line);
+    bench!(str_set);
+    bench!(vec_plus);
+    bench!(vec_append);
+    bench!(vec_push_all);
 }
 
 fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
@@ -39,7 +39,7 @@ fn maybe_run_test(argv: &[~str], name: ~str, test: fn()) {
     test();
     let stop = precise_time_s();
 
-    io::println(fmt!{"%s:\t\t%f ms", name, (stop - start) * 1000f});
+    io::println(fmt!("%s:\t\t%f ms", name, (stop - start) * 1000f));
 }
 
 fn shift_push() {
@@ -52,13 +52,11 @@ fn shift_push() {
 }
 
 fn read_line() {
-    let path = path::connect(
-        env!{"CFG_SRC_DIR"},
-        ~"src/test/bench/shootout-k-nucleotide.data"
-    );
+    let path = Path(env!("CFG_SRC_DIR"))
+        .push_rel(&Path("src/test/bench/shootout-k-nucleotide.data"));
 
     for int::range(0, 3) |_i| {
-        let reader = result::get(io::file_reader(path));
+        let reader = result::get(io::file_reader(&path));
         while !reader.eof() {
             reader.read_line();
         }
@@ -66,7 +64,7 @@ fn read_line() {
 }
 
 fn str_set() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let s = map::hashmap(str::hash, str::eq);
 
@@ -77,14 +75,14 @@ fn str_set() {
     let mut found = 0;
     for int::range(0, 1000) |_i| {
         match s.find(r.gen_str(10)) {
-          some(_) => { found += 1; }
-          none => { }
+          Some(_) => { found += 1; }
+          None => { }
         }
     }
 }
 
 fn vec_plus() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let mut v = ~[]; 
     let mut i = 0;
@@ -101,7 +99,7 @@ fn vec_plus() {
 }
 
 fn vec_append() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let mut v = ~[];
     let mut i = 0;
@@ -118,7 +116,7 @@ fn vec_append() {
 }
 
 fn vec_push_all() {
-    let r = rand::rng();
+    let r = rand::Rng();
 
     let mut v = ~[];
     for uint::range(0, 1500) |i| {

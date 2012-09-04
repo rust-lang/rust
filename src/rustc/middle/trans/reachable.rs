@@ -17,12 +17,12 @@ export map, find_reachable;
 
 type map = std::map::hashmap<node_id, ()>;
 
-type ctx = {exp_map: resolve3::ExportMap,
+type ctx = {exp_map: resolve::ExportMap,
             tcx: ty::ctxt,
             method_map: typeck::method_map,
             rmap: map};
 
-fn find_reachable(crate_mod: _mod, exp_map: resolve3::ExportMap,
+fn find_reachable(crate_mod: _mod, exp_map: resolve::ExportMap,
                   tcx: ty::ctxt, method_map: typeck::method_map) -> map {
     let rmap = std::map::int_hash();
     let cx = {exp_map: exp_map, tcx: tcx, method_map: method_map, rmap: rmap};
@@ -39,7 +39,7 @@ fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
             found_export = true;
             for vec::each(vps) |vp| {
                 match vp.node {
-                  view_path_simple(_, _, id) | view_path_glob(_, id) |
+                  view_path_simple(_, _, _, id) | view_path_glob(_, id) |
                   view_path_list(_, _, id) => {
                     traverse_export(cx, id);
                   }
@@ -61,8 +61,8 @@ fn traverse_export(cx: ctx, exp_id: node_id) {
 fn traverse_def_id(cx: ctx, did: def_id) {
     if did.crate != local_crate { return; }
     let n = match cx.tcx.items.find(did.node) {
-        none => return, // This can happen for self, for example
-        some(n) => n
+        None => return, // This can happen for self, for example
+        Some(n) => n
     };
     match n {
       ast_map::node_item(item, _) => traverse_public_item(cx, item),
@@ -96,7 +96,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
               for vec::each(nm.items) |item| { cx.rmap.insert(item.id, ()); }
           }
       }
-      item_fn(_, tps, blk) => {
+      item_fn(_, _, tps, blk) => {
         if tps.len() > 0u ||
            attr::find_inline_attr(item.attrs) != attr::ia_none {
             traverse_inline_body(cx, blk);
@@ -156,9 +156,9 @@ fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
         match cx.tcx.def_map.find(p_id) {
           // Kind of a hack to check this here, but I'm not sure what else
           // to do
-          some(def_prim_ty(_)) => { /* do nothing */ }
-          some(d) => traverse_def_id(cx, def_id_of_def(d)),
-          none    => { /* do nothing -- but should we fail here? */ }
+          Some(def_prim_ty(_)) => { /* do nothing */ }
+          Some(d) => traverse_def_id(cx, def_id_of_def(d)),
+          None    => { /* do nothing -- but should we fail here? */ }
         }
         for p.types.each |t| { v.visit_ty(t, cx, v); };
       }
@@ -171,16 +171,17 @@ fn traverse_inline_body(cx: ctx, body: blk) {
         match e.node {
           expr_path(_) => {
             match cx.tcx.def_map.find(e.id) {
-                some(d) => {
+                Some(d) => {
                   traverse_def_id(cx, def_id_of_def(d));
                 }
-                none      => cx.tcx.sess.span_bug(e.span, fmt!{"Unbound node \
-                  id %? while traversing %s", e.id, expr_to_str(e)})
+                None      => cx.tcx.sess.span_bug(e.span, fmt!("Unbound node \
+                  id %? while traversing %s", e.id,
+                  expr_to_str(e, cx.tcx.sess.intr())))
             }
           }
           expr_field(_, _, _) => {
             match cx.method_map.find(e.id) {
-              some({origin: typeck::method_static(did), _}) => {
+              Some({origin: typeck::method_static(did), _}) => {
                 traverse_def_id(cx, did);
               }
               _ => ()

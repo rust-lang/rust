@@ -3,13 +3,13 @@
  * are O(highest integer key).
  */
 import core::option;
-import core::option::{some, none};
-import dvec::{DVec, dvec};
+import core::option::{Some, None};
+import dvec::DVec;
 import map::map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
-type smallintmap_<T: copy> = {v: DVec<option<T>>};
+type smallintmap_<T: copy> = {v: DVec<Option<T>>};
 
 enum smallintmap<T:copy> {
     smallintmap_(@smallintmap_<T>)
@@ -17,7 +17,7 @@ enum smallintmap<T:copy> {
 
 /// Create a smallintmap
 fn mk<T: copy>() -> smallintmap<T> {
-    let v = dvec();
+    let v = DVec();
     return smallintmap_(@{v: v});
 }
 
@@ -27,17 +27,17 @@ fn mk<T: copy>() -> smallintmap<T> {
  */
 #[inline(always)]
 fn insert<T: copy>(self: smallintmap<T>, key: uint, val: T) {
-    //io::println(fmt!{"%?", key});
-    self.v.grow_set_elt(key, none, some(val));
+    //io::println(fmt!("%?", key));
+    self.v.grow_set_elt(key, None, Some(val));
 }
 
 /**
  * Get the value for the specified key. If the key does not exist
  * in the map then returns none
  */
-pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
+pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> Option<T> {
     if key < self.v.len() { return self.v.get_elt(key); }
-    return none::<T>;
+    return None::<T>;
 }
 
 /**
@@ -49,11 +49,11 @@ pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> option<T> {
  */
 pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
     match find(self, key) {
-      none => {
-        error!{"smallintmap::get(): key not present"};
+      None => {
+        error!("smallintmap::get(): key not present");
         fail;
       }
-      some(v) => return v
+      Some(v) => return v
     }
 }
 
@@ -64,11 +64,11 @@ fn contains_key<T: copy>(self: smallintmap<T>, key: uint) -> bool {
 
 /// Implements the map::map interface for smallintmap
 impl<V: copy> smallintmap<V>: map::map<uint, V> {
-    fn size() -> uint {
+    pure fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
             match item {
-              some(_) => sz += 1u,
+              Some(_) => sz += 1u,
               _ => ()
             }
         }
@@ -80,13 +80,13 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
         insert(self, key, value);
         return !exists;
     }
-    fn remove(+key: uint) -> option<V> {
+    fn remove(+key: uint) -> bool {
         if key >= self.v.len() {
-            return none;
+            return false;
         }
         let old = self.v.get_elt(key);
-        self.v.set_elt(key, none);
-        old
+        self.v.set_elt(key, None);
+        old.is_some()
     }
     fn clear() {
         self.v.set(~[mut]);
@@ -98,38 +98,38 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
         contains_key(self, *key)
     }
     fn get(+key: uint) -> V { get(self, key) }
-    fn find(+key: uint) -> option<V> { find(self, key) }
+    pure fn find(+key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
-    fn each(it: fn(+key: uint, +value: V) -> bool) {
+    pure fn each(it: fn(+key: uint, +value: V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
-              some(elt) => if !it(idx, elt) { break },
-              none => ()
+              Some(elt) => if !it(idx, elt) { break },
+              None => ()
             }
             idx += 1u;
         }
     }
-    fn each_key(it: fn(+key: uint) -> bool) {
+    pure fn each_key(it: fn(+key: uint) -> bool) {
         self.each(|k, _v| it(k))
     }
-    fn each_value(it: fn(+value: V) -> bool) {
+    pure fn each_value(it: fn(+value: V) -> bool) {
         self.each(|_k, v| it(v))
     }
-    fn each_ref(it: fn(key: &uint, value: &V) -> bool) {
+    pure fn each_ref(it: fn(key: &uint, value: &V) -> bool) {
         let mut idx = 0u, l = self.v.len();
         while idx < l {
             match self.v.get_elt(idx) {
-              some(elt) => if !it(&idx, &elt) { break },
-              none => ()
+              Some(elt) => if !it(&idx, &elt) { break },
+              None => ()
             }
             idx += 1u;
         }
     }
-    fn each_key_ref(blk: fn(key: &uint) -> bool) {
+    pure fn each_key_ref(blk: fn(key: &uint) -> bool) {
         self.each_ref(|k, _v| blk(k))
     }
-    fn each_value_ref(blk: fn(value: &V) -> bool) {
+    pure fn each_value_ref(blk: fn(value: &V) -> bool) {
         self.each_ref(|_k, v| blk(v))
     }
 }

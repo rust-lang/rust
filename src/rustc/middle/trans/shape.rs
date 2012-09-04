@@ -15,18 +15,18 @@ import syntax::ast_util::{dummy_sp, new_def_hash};
 import syntax::util::interner;
 import util::ppaux::ty_to_str;
 import syntax::codemap::span;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 import std::map::hashmap;
 import option::is_some;
 
 import ty_ctxt = middle::ty::ctxt;
 
-type nominal_id = @{did: ast::def_id, parent_id: option<ast::def_id>,
+type nominal_id = @{did: ast::def_id, parent_id: Option<ast::def_id>,
                     tps: ~[ty::t]};
 
 fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
-                 parent_id: option<ast::def_id>,
+                 parent_id: Option<ast::def_id>,
                  tps: ~[ty::t]) -> nominal_id {
     let tps_norm = tps.map(|t| ty::normalize_ty(tcx, t));
     @{did: did, parent_id: parent_id, tps: tps_norm}
@@ -192,7 +192,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
     return {mut next_tag_id: 0u16,
          pad: 0u16,
          tag_id_to_index: new_nominal_id_hash(),
-         tag_order: dvec(),
+         tag_order: DVec(),
          resources: interner::mk(hash_nominal_id, eq_nominal_id),
          llshapetablesty: llshapetablesty,
          llshapetables: llshapetables};
@@ -237,15 +237,15 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
           tk_enum => ~[s_variant_enum_t(ccx.tcx)],
           tk_newtype | tk_complex => {
             let mut s = ~[shape_enum], id;
-            let nom_id = mk_nominal_id(ccx.tcx, did, none, substs.tps);
+            let nom_id = mk_nominal_id(ccx.tcx, did, None, substs.tps);
             match ccx.shape_cx.tag_id_to_index.find(nom_id) {
-              none => {
+              None => {
                 id = ccx.shape_cx.next_tag_id;
                 ccx.shape_cx.tag_id_to_index.insert(nom_id, id);
                 ccx.shape_cx.tag_order.push({did: did, substs: substs});
                 ccx.shape_cx.next_tag_id += 1u16;
               }
-              some(existing_id) => id = existing_id,
+              Some(existing_id) => id = existing_id,
             }
             add_u16(s, id as u16);
 
@@ -267,7 +267,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         add_substr(s, shape_of(ccx, mt.ty));
         s
       }
-      ty::ty_evec(mt, ty::vstore_uniq) => {
+      ty::ty_evec(_, ty::vstore_uniq) => {
         shape_of(ccx, tvec::expand_boxed_vec_ty(ccx.tcx, t))
       }
 
@@ -290,7 +290,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_estr(ty::vstore_slice(r)) => {
+      ty::ty_estr(ty::vstore_slice(_)) => {
         let mut s = ~[shape_slice];
         let u8_t = ty::mk_mach_uint(ccx.tcx, ast::ty_u8);
         add_bool(s, true); // is_pod
@@ -299,7 +299,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         s
       }
 
-      ty::ty_evec(mt, ty::vstore_slice(r)) => {
+      ty::ty_evec(mt, ty::vstore_slice(_)) => {
         let mut s = ~[shape_slice];
         add_bool(s, ty::type_is_pod(ccx.tcx, mt.ty));
         add_bool(s, false); // is_str
@@ -333,7 +333,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
           }
         else { ~[shape_struct] }, sub = ~[];
         do option::iter(m_dtor_did) |dtor_did| {
-          let ri = @{did: dtor_did, parent_id: some(did), tps: tps};
+          let ri = @{did: dtor_did, parent_id: Some(did), tps: tps};
           let id = ccx.shape_cx.resources.intern(ri);
           add_u16(s, id as u16);
         };
@@ -391,7 +391,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             let variant_shape = shape_of_variant(ccx, v);
             add_substr(data, variant_shape);
 
-            let zname = str::bytes(*v.name) + ~[0u8];
+            let zname = str::to_bytes(ccx.sess.str_of(v.name)) + ~[0u8];
             add_substr(data, zname);
         }
         enum_variants += ~[variants];
@@ -584,6 +584,34 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     return mk_global(ccx, ~"resource_shapes", C_struct(dtors), true);
 }
 
+// This function serves to break a cyclical dependence between
+// emit_tydescs and gen_shape_tables.
+//
+//  * emit_tydescs calls shape_of, which causes changes to the shape
+//    tables
+//  * gen_shape_tables transitively calls get_tydesc, which causes new
+//    tydescs to be created
+//
+// We force those tydescs to be emitted now, thus breaking the
+// dependency.
+fn force_declare_tydescs(ccx: @crate_ctxt) {
+    // Walk all known tydescs first to force shape code to declare
+    // dependencies.
+    for ccx.tydescs.each |key, _val| {
+        shape_of(ccx, key);
+    }
+
+    // Then walk all resource shapes to force emit all dtors.
+    let len = ccx.shape_cx.resources.len();
+    for uint::range(0u, len) |i| {
+        let ri = ccx.shape_cx.resources.get(i);
+        for ri.tps.each() |s| { assert !ty::type_has_params(s); }
+        do option::iter(ri.parent_id) |id| {
+            trans::base::get_res_dtor(ccx, ri.did, id, ri.tps);
+        }
+    }
+}
+
 fn gen_shape_tables(ccx: @crate_ctxt) {
     let lltagstable = gen_enum_shapes(ccx);
     let llresourcestable = gen_resource_shapes(ccx);
@@ -732,9 +760,9 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
           ty::ty_class(did, ref substs) => {
             let simpl_fields = (if is_some(ty::ty_dtor(tcx, did)) {
                 // remember the drop flag
-                  ~[{ident: @~"drop", mt: {ty:
-                                        ty::mk_u8(tcx),
-                                        mutbl: ast::m_mutbl}}] }
+                  ~[{ident: syntax::parse::token::special_idents::dtor,
+                     mt: {ty: ty::mk_u8(tcx),
+                          mutbl: ast::m_mutbl}}] }
                 else { ~[] }) +
                 do ty::lookup_class_fields(tcx, did).map |f| {
                  let t = ty::lookup_field_type(tcx, did, f.id, substs);

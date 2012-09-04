@@ -124,7 +124,7 @@ fn should_request_new_writer_for_each_page() {
 }
 
 fn write_title(ctxt: ctxt, page: doc::page) {
-    ctxt.w.write_line(fmt!{"%% %s", make_title(page)});
+    ctxt.w.write_line(fmt!("%% %s", make_title(page)));
     ctxt.w.write_line(~"");
 }
 
@@ -176,7 +176,7 @@ fn write_header(ctxt: ctxt, lvl: hlvl, doc: doc::itemtag) {
 
 fn write_header_(ctxt: ctxt, lvl: hlvl, title: ~str) {
     let hashes = str::from_chars(vec::from_elem(lvl as uint, '#'));
-    ctxt.w.write_line(fmt!{"%s %s", hashes, title});
+    ctxt.w.write_line(fmt!("%s %s", hashes, title));
     ctxt.w.write_line(~"");
 }
 
@@ -204,7 +204,7 @@ fn header_kind(doc: doc::itemtag) -> ~str {
       doc::traittag(_) => {
         ~"Interface"
       }
-      doc::impltag(doc) => {
+      doc::impltag(_) => {
         ~"Implementation"
       }
       doc::tytag(_) => {
@@ -234,7 +234,7 @@ fn header_name(doc: doc::itemtag) -> ~str {
             }
             trait_part += trait_type;
         }
-        fmt!{"%s%s for %s", doc.name(), trait_part, self_ty}
+        fmt!("%s%s for %s", doc.name(), trait_part, self_ty)
       }
       _ => {
         doc.name()
@@ -247,12 +247,12 @@ fn header_text(doc: doc::itemtag) -> ~str {
       doc::impltag(impldoc) => {
         let header_kind = header_kind(doc);
         let desc = if impldoc.trait_types.is_empty() {
-            fmt!{"for `%s`", impldoc.self_ty.get()}
+            fmt!("for `%s`", impldoc.self_ty.get())
         } else {
-            fmt!{"of `%s` for `%s`", impldoc.trait_types[0],
-                 impldoc.self_ty.get()}
+            fmt!("of `%s` for `%s`", impldoc.trait_types[0],
+                 impldoc.self_ty.get())
         };
-        fmt!{"%s %s", header_kind, desc}
+        fmt!("%s %s", header_kind, desc)
       }
       _ => {
         header_text_(header_kind(doc), header_name(doc))
@@ -261,7 +261,7 @@ fn header_text(doc: doc::itemtag) -> ~str {
 }
 
 fn header_text_(kind: ~str, name: ~str) -> ~str {
-    fmt!{"%s `%s`", kind, name}
+    fmt!("%s `%s`", kind, name)
 }
 
 fn write_crate(
@@ -293,7 +293,7 @@ fn should_write_full_path_to_mod() {
 
 fn write_common(
     ctxt: ctxt,
-    desc: option<~str>,
+    desc: Option<~str>,
     sections: ~[doc::section]
 ) {
     write_desc(ctxt, desc);
@@ -302,14 +302,14 @@ fn write_common(
 
 fn write_desc(
     ctxt: ctxt,
-    desc: option<~str>
+    desc: Option<~str>
 ) {
     match desc {
-        some(desc) => {
+        Some(desc) => {
             ctxt.w.write_line(desc);
             ctxt.w.write_line(~"");
         }
-        none => ()
+        None => ()
     }
 }
 
@@ -400,10 +400,10 @@ fn write_index(ctxt: ctxt, index: doc::index) {
         let header = header_text_(entry.kind, entry.name);
         let id = entry.link;
         if option::is_some(entry.brief) {
-            ctxt.w.write_line(fmt!{"* [%s](%s) - %s",
-                                   header, id, option::get(entry.brief)});
+            ctxt.w.write_line(fmt!("* [%s](%s) - %s",
+                                   header, id, option::get(entry.brief)));
         } else {
-            ctxt.w.write_line(fmt!{"* [%s](%s)", header, id});
+            ctxt.w.write_line(fmt!("* [%s](%s)", header, id));
         }
     }
     ctxt.w.write_line(~"");
@@ -487,27 +487,27 @@ fn write_fn(
 
 fn write_fnlike(
     ctxt: ctxt,
-    sig: option<~str>,
-    desc: option<~str>,
+    sig: Option<~str>,
+    desc: Option<~str>,
     sections: ~[doc::section]
 ) {
     write_sig(ctxt, sig);
     write_common(ctxt, desc, sections);
 }
 
-fn write_sig(ctxt: ctxt, sig: option<~str>) {
+fn write_sig(ctxt: ctxt, sig: Option<~str>) {
     match sig {
-      some(sig) => {
+      Some(sig) => {
         ctxt.w.write_line(code_block_indent(sig));
         ctxt.w.write_line(~"");
       }
-      none => fail ~"unimplemented"
+      None => fail ~"unimplemented"
     }
 }
 
 fn code_block_indent(s: ~str) -> ~str {
     let lines = str::lines_any(s);
-    let indented = vec::map(lines, |line| fmt!{"    %s", line} );
+    let indented = vec::map(lines, |line| fmt!("    %s", line) );
     str::connect(indented, ~"\n")
 }
 
@@ -537,7 +537,7 @@ fn should_correctly_indent_fn_signature() {
             doc::cratepage({
                 topmod: doc::moddoc_({
                     items: ~[doc::fntag({
-                        sig: some(~"line 1\nline 2")
+                        sig: Some(~"line 1\nline 2")
                         with doc.cratemod().fns()[0]
                     })]
                     with *doc.cratemod()
@@ -618,11 +618,11 @@ fn write_variant(ctxt: ctxt, doc: doc::variantdoc) {
     assert option::is_some(doc.sig);
     let sig = option::get(doc.sig);
     match doc.desc {
-      some(desc) => {
-        ctxt.w.write_line(fmt!{"* `%s` - %s", sig, desc});
+      Some(desc) => {
+        ctxt.w.write_line(fmt!("* `%s` - %s", sig, desc));
       }
-      none => {
-        ctxt.w.write_line(fmt!{"* `%s`", sig});
+      None => {
+        ctxt.w.write_line(fmt!("* `%s`", sig));
       }
     }
 }
@@ -776,7 +776,7 @@ mod test {
     fn render(source: ~str) -> ~str {
         let (srv, doc) = create_doc_srv(source);
         let markdown = write_markdown_str_srv(srv, doc);
-        debug!{"markdown: %s", markdown};
+        debug!("markdown: %s", markdown);
         markdown
     }
 
@@ -785,27 +785,27 @@ mod test {
 
             let config = {
                 output_style: config::doc_per_crate
-                with config::default_config(~"whatever")
+                with config::default_config(&Path("whatever"))
             };
 
             let doc = extract::from_srv(srv, ~"");
-            debug!{"doc (extract): %?", doc};
+            debug!("doc (extract): %?", doc);
             let doc = tystr_pass::mk_pass().f(srv, doc);
-            debug!{"doc (tystr): %?", doc};
+            debug!("doc (tystr): %?", doc);
             let doc = path_pass::mk_pass().f(srv, doc);
-            debug!{"doc (path): %?", doc};
+            debug!("doc (path): %?", doc);
             let doc = attr_pass::mk_pass().f(srv, doc);
-            debug!{"doc (attr): %?", doc};
+            debug!("doc (attr): %?", doc);
             let doc = desc_to_brief_pass::mk_pass().f(srv, doc);
-            debug!{"doc (desc_to_brief): %?", doc};
+            debug!("doc (desc_to_brief): %?", doc);
             let doc = unindent_pass::mk_pass().f(srv, doc);
-            debug!{"doc (unindent): %?", doc};
+            debug!("doc (unindent): %?", doc);
             let doc = sectionalize_pass::mk_pass().f(srv, doc);
-            debug!{"doc (trim): %?", doc};
+            debug!("doc (trim): %?", doc);
             let doc = trim_pass::mk_pass().f(srv, doc);
-            debug!{"doc (sectionalize): %?", doc};
+            debug!("doc (sectionalize): %?", doc);
             let doc = markdown_index_pass::mk_pass(config).f(srv, doc);
-            debug!{"doc (index): %?", doc};
+            debug!("doc (index): %?", doc);
             (srv, doc)
         }
     }

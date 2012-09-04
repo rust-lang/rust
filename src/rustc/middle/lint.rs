@@ -1,7 +1,7 @@
 import driver::session;
 import driver::session::session;
 import middle::ty;
-import syntax::{ast, visit};
+import syntax::{ast, ast_util, visit};
 import syntax::attr;
 import syntax::codemap::span;
 import std::map::{map,hashmap,int_hash,hash_from_strs};
@@ -52,23 +52,20 @@ enum lint {
     vecs_implicitly_copyable,
     deprecated_mode,
     deprecated_pattern,
-    non_camel_case_types
+    non_camel_case_types,
+
+    managed_heap_memory,
+    owned_heap_memory,
+    heap_memory,
+
+    // FIXME(#3266)--make liveness warnings lintable
+    // unused_variable,
+    // dead_assignment
 }
 
-// This is pretty unfortunate. We really want some sort of "deriving Enum"
-// type of thing.
-fn int_to_lint(i: int) -> lint {
-    match check i {
-      0 => ctypes,
-      1 => unused_imports,
-      2 => while_true,
-      3 => path_statement,
-      4 => implicit_copies,
-      5 => unrecognized_lint,
-      6 => non_implicitly_copyable_typarams,
-      7 => vecs_implicitly_copyable,
-      8 => deprecated_mode,
-      9 => non_camel_case_types
+impl lint : cmp::Eq {
+    pure fn eq(&&other: lint) -> bool {
+        (self as uint) == (other as uint)
     }
 }
 
@@ -83,6 +80,12 @@ fn level_to_str(lv: level) -> ~str {
 
 enum level {
     allow, warn, deny, forbid
+}
+
+impl level : cmp::Eq {
+    pure fn eq(&&other: level) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 type lint_spec = @{lint: lint,
@@ -151,7 +154,34 @@ fn get_lint_dict() -> lint_dict {
         (~"non_camel_case_types",
          @{lint: non_camel_case_types,
            desc: ~"types, variants and traits must have camel case names",
-           default: allow})
+           default: allow}),
+
+        (~"managed_heap_memory",
+         @{lint: managed_heap_memory,
+           desc: ~"use of managed (@ type) heap memory",
+           default: allow}),
+
+        (~"owned_heap_memory",
+         @{lint: owned_heap_memory,
+           desc: ~"use of owned (~ type) heap memory",
+           default: allow}),
+
+        (~"heap_memory",
+         @{lint: heap_memory,
+           desc: ~"use of any (~ type or @ type) heap memory",
+           default: allow}),
+
+        /* FIXME(#3266)--make liveness warnings lintable
+        (~"unused_variable",
+         @{lint: unused_variable,
+           desc: ~"detect variables which are not used in any way",
+           default: warn}),
+
+        (~"dead_assignment",
+         @{lint: dead_assignment,
+           desc: ~"detect assignments that will never be read",
+           default: warn}),
+        */
     ];
     hash_from_strs(v)
 }
@@ -175,8 +205,8 @@ fn mk_lint_settings() -> lint_settings {
 
 fn get_lint_level(modes: lint_modes, lint: lint) -> level {
     match modes.find(lint as uint) {
-      some(c) => c,
-      none => allow
+      Some(c) => c,
+      None => allow
     }
 }
 
@@ -185,8 +215,8 @@ fn get_lint_settings_level(settings: lint_settings,
                               _expr_id: ast::node_id,
                               item_id: ast::node_id) -> level {
     match settings.settings_map.find(item_id) {
-      some(modes) => get_lint_level(modes, lint_mode),
-      none => get_lint_level(settings.default_settings, lint_mode)
+      Some(modes) => get_lint_level(modes, lint_mode),
+      None => get_lint_level(settings.default_settings, lint_mode)
     }
 }
 
@@ -263,24 +293,24 @@ impl ctxt {
 
         for triples.each |pair| {
             let (meta, level, lintname) = pair;
-            match self.dict.find(*lintname) {
-              none => {
+            match self.dict.find(lintname) {
+              None => {
                 self.span_lint(
                     new_ctxt.get_level(unrecognized_lint),
                     meta.span,
-                    fmt!{"unknown `%s` attribute: `%s`",
-                         level_to_str(level), *lintname});
+                    fmt!("unknown `%s` attribute: `%s`",
+                         level_to_str(level), lintname));
               }
-              some(lint) => {
+              Some(lint) => {
 
                 if new_ctxt.get_level(lint.lint) == forbid &&
                     level != forbid {
                     self.span_lint(
                         forbid,
                         meta.span,
-                        fmt!{"%s(%s) overruled by outer forbid(%s)",
+                        fmt!("%s(%s) overruled by outer forbid(%s)",
                              level_to_str(level),
-                             *lintname, *lintname});
+                             lintname, lintname));
                 }
 
                 // we do multiple unneeded copies of the
@@ -349,6 +379,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_while_true(cx, i);
     check_item_path_statement(cx, i);
     check_item_non_camel_case_types(cx, i);
+    check_item_heap(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -418,14 +449,80 @@ fn check_item_ctypes(cx: ty::ctxt, it: @ast::item) {
       either::Right(ast::foreign_abi_rust_intrinsic) => {
         for nmod.items.each |ni| {
             match ni.node {
-              ast::foreign_item_fn(decl, tps) => {
+              ast::foreign_item_fn(decl, _, _) => {
                 check_foreign_fn(cx, it.id, decl);
               }
+              ast::foreign_item_const(*) => {}  // XXX: Not implemented.
             }
         }
       }
       _ => {/* nothing to do */ }
     }
+}
+
+fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
+
+    fn check_type_for_lint(cx: ty::ctxt, lint: lint,
+                           node: ast::node_id,
+                           item: ast::node_id,
+                           span: span, ty: ty::t) {
+
+        if get_lint_settings_level(cx.sess.lint_settings,
+                                   lint, node, item) != allow {
+            let mut n_box = 0;
+            let mut n_uniq = 0;
+            ty::fold_ty(cx, ty, |t| {
+                match ty::get(t).struct {
+                  ty::ty_box(_) => n_box += 1,
+                  ty::ty_uniq(_) => n_uniq += 1,
+                  _ => ()
+                };
+                t
+            });
+
+            if (n_uniq > 0 && lint != managed_heap_memory) {
+                let s = ty_to_str(cx, ty);
+                let m = ~"type uses owned (~ type) pointers: " + s;
+                cx.sess.span_lint(lint, node, item, span, m);
+            }
+
+            if (n_box > 0 && lint != owned_heap_memory) {
+                let s = ty_to_str(cx, ty);
+                let m = ~"type uses managed (@ type) pointers: " + s;
+                cx.sess.span_lint(lint, node, item, span, m);
+            }
+        }
+    }
+
+    fn check_type(cx: ty::ctxt,
+                  node: ast::node_id,
+                  item: ast::node_id,
+                  span: span, ty: ty::t) {
+            for [managed_heap_memory,
+                 owned_heap_memory,
+                 heap_memory].each |lint| {
+                check_type_for_lint(cx, lint, node, item, span, ty);
+            }
+    }
+
+    match it.node {
+      ast::item_fn(*) |
+      ast::item_ty(*) |
+      ast::item_enum(*) |
+      ast::item_class(*) |
+      ast::item_trait(*) => check_type(cx, it.id, it.id, it.span,
+                                       ty::node_id_to_type(cx, it.id)),
+      _ => ()
+    }
+
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
+        visit_expr: fn@(e: @ast::expr) {
+            let ty = ty::expr_ty(cx, e);
+            check_type(cx, e.id, it.id, e.span, ty);
+        }
+        with *visit::default_simple_visitor()
+    }));
+    visit::visit_item(it, (), visit);
 }
 
 fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
@@ -434,7 +531,7 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
             match s.node {
               ast::stmt_semi(@{id: id,
                                callee_id: _,
-                               node: ast::expr_path(@path),
+                               node: ast::expr_path(_),
                                span: _}, _) => {
                 cx.sess.span_lint(
                     path_statement, id, it.id,
@@ -450,9 +547,10 @@ fn check_item_path_statement(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
-    fn is_camel_case(ident: ast::ident) -> bool {
+    fn is_camel_case(cx: ty::ctxt, ident: ast::ident) -> bool {
+        let ident = cx.sess.str_of(ident);
         assert ident.is_not_empty();
-        let ident = ident_without_trailing_underscores(*ident);
+        let ident = ident_without_trailing_underscores(ident);
         let ident = ident_without_leading_underscores(ident);
         char::is_uppercase(str::char_at(ident, 0)) &&
             !ident.contains_char('_')
@@ -460,18 +558,15 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
 
     fn ident_without_trailing_underscores(ident: ~str) -> ~str {
         match str::rfind(ident, |c| c != '_') {
-          some(idx) => ident.slice(0, idx + 1),
-          none => {
-            // all underscores
-            ident
-          }
+            Some(idx) => (ident).slice(0, idx + 1),
+            None => { ident } // all underscores
         }
     }
 
     fn ident_without_leading_underscores(ident: ~str) -> ~str {
         match str::find(ident, |c| c != '_') {
-          some(idx) => ident.slice(idx, ident.len()),
-          none => {
+          Some(idx) => ident.slice(idx, ident.len()),
+          None => {
             // all underscores
             ident
           }
@@ -481,7 +576,7 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
     fn check_case(cx: ty::ctxt, ident: ast::ident,
                   expr_id: ast::node_id, item_id: ast::node_id,
                   span: span) {
-        if !is_camel_case(ident) {
+        if !is_camel_case(cx, ident) {
             cx.sess.span_lint(
                 non_camel_case_types, expr_id, item_id, span,
                 ~"type, variant, or trait must be camel case");
@@ -505,11 +600,11 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
 }
 
 fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
-    debug!{"lint check_pat pat=%s", pat_to_str(pat)};
+    debug!("lint check_pat pat=%s", pat_to_str(pat, tcx.sess.intr()));
 
     do pat_bindings(tcx.def_map, pat) |binding_mode, id, span, path| {
         match binding_mode {
-          ast::bind_by_ref(_) | ast::bind_by_value => {}
+          ast::bind_by_ref(_) | ast::bind_by_value | ast::bind_by_move => {}
           ast::bind_by_implicit_ref => {
             let pat_ty = ty::node_id_to_type(tcx, id);
             let kind = ty::type_kind(tcx, pat_ty);
@@ -517,8 +612,8 @@ fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
                 tcx.sess.span_lint(
                     deprecated_pattern, id, id,
                     span,
-                    fmt!{"binding `%s` should use ref or copy mode",
-                         *path_to_ident(path)});
+                    fmt!("binding `%s` should use ref or copy mode",
+                         tcx.sess.str_of(path_to_ident(path))));
             }
           }
         }
@@ -527,7 +622,7 @@ fn check_pat(tcx: ty::ctxt, pat: @ast::pat) {
 
 fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
             _body: ast::blk, span: span, id: ast::node_id) {
-    debug!{"lint check_fn fk=%? id=%?", fk, id};
+    debug!("lint check_fn fk=%? id=%?", fk, id);
 
     // don't complain about blocks, since they tend to get their modes
     // specified from the outside
@@ -537,15 +632,15 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
     }
 
     let fn_ty = ty::node_id_to_type(tcx, id);
-    match check ty::get(fn_ty).struct {
+    match ty::get(fn_ty).struct {
       ty::ty_fn(fn_ty) => {
         let mut counter = 0;
         do vec::iter2(fn_ty.inputs, decl.inputs) |arg_ty, arg_ast| {
             counter += 1;
-            debug!{"arg %d, ty=%s, mode=%s",
+            debug!("arg %d, ty=%s, mode=%s",
                    counter,
                    ty_to_str(tcx, arg_ty.ty),
-                   mode_to_str(arg_ast.mode)};
+                   mode_to_str(arg_ast.mode));
             match arg_ast.mode {
               ast::expl(ast::by_copy) => {
                 /* always allow by-copy */
@@ -555,7 +650,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
                 tcx.sess.span_lint(
                     deprecated_mode, id, id,
                     span,
-                    fmt!{"argument %d uses an explicit mode", counter});
+                    fmt!("argument %d uses an explicit mode", counter));
               }
 
               ast::infer(_) => {
@@ -564,14 +659,16 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
                     tcx.sess.span_lint(
                         deprecated_mode, id, id,
                         span,
-                        fmt!{"argument %d uses the default mode \
+                        fmt!("argument %d uses the default mode \
                               but shouldn't",
-                             counter});
+                             counter));
                 }
               }
             }
         }
       }
+      _ => tcx.sess.impossible_case(span, ~"check_fn: function has \
+             non-fn type")
     }
 }
 

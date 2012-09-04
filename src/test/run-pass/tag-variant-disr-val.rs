@@ -9,6 +9,12 @@ enum color {
     orange = 8 >> 1
 }
 
+impl color : cmp::Eq {
+    pure fn eq(&&other: color) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 fn main() {
     test_color(red, 0xff0000, ~"red");
     test_color(green, 0x00ff00, ~"green");

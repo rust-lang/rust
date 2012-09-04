@@ -1,4 +1,4 @@
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 export filename;
 export filemap;
@@ -32,6 +32,12 @@ type filename = ~str;
 
 type file_pos = {ch: uint, byte: uint};
 
+impl file_pos: cmp::Eq {
+    pure fn eq(&&other: file_pos) -> bool {
+        self.ch == other.ch && self.byte == other.byte
+    }
+}
+
 /* A codemap is a thing that maps uints to file/line/column positions
  * in a crate. This to make it possible to represent the positions
  * with single-word things, rather than passing records all over the
@@ -52,7 +58,7 @@ type codemap = @{files: DVec<filemap>};
 
 type loc = {file: filemap, line: uint, col: uint};
 
-fn new_codemap() -> codemap { @{files: dvec()} }
+fn new_codemap() -> codemap { @{files: DVec()} }
 
 fn new_filemap_w_substr(+filename: filename, +substr: file_substr,
                         src: @~str,
@@ -73,7 +79,7 @@ fn new_filemap(+filename: filename, src: @~str,
 fn mk_substr_filename(cm: codemap, sp: span) -> ~str
 {
     let pos = lookup_char_pos(cm, sp.lo);
-    return fmt!{"<%s:%u:%u>", pos.file.name, pos.line, pos.col};
+    return fmt!("<%s:%u:%u>", pos.file.name, pos.line, pos.col);
 }
 
 fn next_line(file: filemap, chpos: uint, byte_pos: uint) {
@@ -93,7 +99,7 @@ fn lookup_line(map: codemap, pos: uint, lookup: lookup_fn)
         if lookup(map.files[m].start_pos) > pos { b = m; } else { a = m; }
     }
     if (a >= len) {
-        fail fmt!{"position %u does not resolve to a source location", pos}
+        fail fmt!("position %u does not resolve to a source location", pos)
     }
     let f = map.files[a];
     a = 0u;
@@ -121,7 +127,7 @@ fn lookup_byte_pos(map: codemap, pos: uint) -> loc {
 }
 
 fn lookup_char_pos_adj(map: codemap, pos: uint)
-    -> {filename: ~str, line: uint, col: uint, file: option<filemap>}
+    -> {filename: ~str, line: uint, col: uint, file: Option<filemap>}
 {
     let loc = lookup_char_pos(map, pos);
     match (loc.file.substr) {
@@ -129,7 +135,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
         {filename: /* FIXME (#2543) */ copy loc.file.name,
          line: loc.line,
          col: loc.col,
-         file: some(loc.file)}
+         file: Some(loc.file)}
       }
       fss_internal(sp) => {
         lookup_char_pos_adj(map, sp.lo + (pos - loc.file.start_pos.ch))
@@ -138,7 +144,7 @@ fn lookup_char_pos_adj(map: codemap, pos: uint)
         {filename: /* FIXME (#2543) */ copy eloc.filename,
          line: eloc.line + loc.line - 1u,
          col: if loc.line == 1u {eloc.col + loc.col} else {loc.col},
-         file: none}
+         file: None}
       }
     }
 }
@@ -158,23 +164,30 @@ fn adjust_span(map: codemap, sp: span) -> span {
 
 enum expn_info_ {
     expanded_from({call_site: span,
-                   callie: {name: ~str, span: option<span>}})
+                   callie: {name: ~str, span: Option<span>}})
 }
-type expn_info = option<@expn_info_>;
+type expn_info = Option<@expn_info_>;
+
 type span = {lo: uint, hi: uint, expn_info: expn_info};
+
+impl span : cmp::Eq {
+    pure fn eq(&&other: span) -> bool {
+        return self.lo == other.lo && self.hi == other.hi;
+    }
+}
 
 fn span_to_str_no_adj(sp: span, cm: codemap) -> ~str {
     let lo = lookup_char_pos(cm, sp.lo);
     let hi = lookup_char_pos(cm, sp.hi);
-    return fmt!{"%s:%u:%u: %u:%u", lo.file.name,
-             lo.line, lo.col, hi.line, hi.col}
+    return fmt!("%s:%u:%u: %u:%u", lo.file.name,
+             lo.line, lo.col, hi.line, hi.col)
 }
 
 fn span_to_str(sp: span, cm: codemap) -> ~str {
     let lo = lookup_char_pos_adj(cm, sp.lo);
     let hi = lookup_char_pos_adj(cm, sp.hi);
-    return fmt!{"%s:%u:%u: %u:%u", lo.filename,
-             lo.line, lo.col, hi.line, hi.col}
+    return fmt!("%s:%u:%u: %u:%u", lo.filename,
+             lo.line, lo.col, hi.line, hi.col)
 }
 
 type file_lines = {file: filemap, lines: ~[uint]};
@@ -197,8 +210,8 @@ fn span_to_lines(sp: span, cm: codemap::codemap) -> @file_lines {
 fn get_line(fm: filemap, line: int) -> ~str unsafe {
     let begin: uint = fm.lines[line].byte - fm.start_pos.byte;
     let end = match str::find_char_from(*fm.src, '\n', begin) {
-      some(e) => e,
-      none => str::len(*fm.src)
+      Some(e) => e,
+      None => str::len(*fm.src)
     };
     str::slice(*fm.src, begin, end)
 }
@@ -216,7 +229,7 @@ fn lookup_byte_offset(cm: codemap::codemap, chpos: uint)
 fn span_to_snippet(sp: span, cm: codemap::codemap) -> ~str {
     let begin = lookup_byte_offset(cm, sp.lo);
     let end = lookup_byte_offset(cm, sp.hi);
-    assert begin.fm == end.fm;
+    assert begin.fm.start_pos == end.fm.start_pos;
     return str::slice(*begin.fm.src, begin.pos, end.pos);
 }
 

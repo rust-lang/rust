@@ -7,6 +7,7 @@
  * some heavy-duty uses, try std::rope.
  */
 
+import cmp::{Eq, Ord};
 import libc::size_t;
 import io::WriterUtil;
 
@@ -14,6 +15,7 @@ export
    // Creating a string
    from_bytes,
    from_byte,
+   from_slice,
    from_char,
    from_chars,
    append,
@@ -31,17 +33,19 @@ export
    push_char,
    pop_char,
    shift_char,
+   view_shift_char,
    unshift_char,
    trim_left,
    trim_right,
    trim,
 
    // Transforming strings
-   bytes,
+   to_bytes,
    byte_slice,
    chars,
    substr,
    slice,
+   view,
    split, splitn, split_nonempty,
    split_char, splitn_char, split_char_nonempty,
    split_str, split_str_nonempty,
@@ -111,12 +115,6 @@ export
    StrSlice,
    UniqueStr;
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    fn rust_str_push(&s: ~str, ch: u8);
-    fn str_reserve_shared(&ss: ~str, nn: libc::size_t);
-}
-
 /*
 Section: Creating a string
 */
@@ -166,7 +164,7 @@ fn push_char(&s: ~str, ch: char) {
         reserve_at_least(s, new_len);
         let off = len;
         do as_buf(s) |buf, _len| {
-            let buf: *mut u8 = ::unsafe::reinterpret_cast(buf);
+            let buf: *mut u8 = ::unsafe::reinterpret_cast(&buf);
             if nb == 1u {
                 *ptr::mut_offset(buf, off) =
                     code as u8;
@@ -216,14 +214,9 @@ fn push_char(&s: ~str, ch: char) {
                 *ptr::mut_offset(buf, off + 5u) =
                     (code & 63u | tag_cont) as u8;
             }
-            *ptr::mut_offset(buf, off + nb) = 0u8;
         }
 
-        do as_bytes(s) |bytes| {
-            let mut mut_bytes: ~[u8] = ::unsafe::reinterpret_cast(bytes);
-            vec::unsafe::set_len(mut_bytes, new_len + 1u);
-            ::unsafe::forget(mut_bytes);
-        }
+        unsafe::set_len(s, new_len);
     }
 }
 
@@ -337,22 +330,38 @@ fn shift_char(&s: ~str) -> char {
     return ch;
 }
 
+/**
+ * Removes the first character from a string slice and returns it. This does
+ * not allocate a new string; instead, it mutates a slice to point one
+ * character beyond the character that was shifted.
+ *
+ * # Failure
+ *
+ * If the string does not contain any characters
+ */
+#[inline]
+fn view_shift_char(s: &a/str) -> (char, &a/str) {
+    let {ch, next} = char_range_at(s, 0u);
+    let next_s = unsafe { unsafe::view_bytes(s, next, len(s)) };
+    return (ch, next_s);
+}
+
 /// Prepend a char to a string
 fn unshift_char(&s: ~str, ch: char) { s = from_char(ch) + s; }
 
 /// Returns a string with leading whitespace removed
 pure fn trim_left(s: &str) -> ~str {
     match find(s, |c| !char::is_whitespace(c)) {
-      none => ~"",
-      some(first) => unsafe { unsafe::slice_bytes(s, first, len(s)) }
+      None => ~"",
+      Some(first) => unsafe { unsafe::slice_bytes(s, first, len(s)) }
     }
 }
 
 /// Returns a string with trailing whitespace removed
 pure fn trim_right(s: &str) -> ~str {
     match rfind(s, |c| !char::is_whitespace(c)) {
-      none => ~"",
-      some(last) => {
+      None => ~"",
+      Some(last) => {
         let {next, _} = char_range_at(s, last);
         unsafe { unsafe::slice_bytes(s, 0u, next) }
       }
@@ -371,7 +380,7 @@ Section: Transforming strings
  *
  * The result vector is not null-terminated.
  */
-pure fn bytes(s: &str) -> ~[u8] {
+pure fn to_bytes(s: &str) -> ~[u8] {
     unsafe {
         let mut s_copy = from_slice(s);
         let mut v: ~[u8] = ::unsafe::transmute(s_copy);
@@ -420,6 +429,18 @@ pure fn slice(s: &str, begin: uint, end: uint) -> ~str {
     assert is_char_boundary(s, begin);
     assert is_char_boundary(s, end);
     unsafe { unsafe::slice_bytes(s, begin, end) }
+}
+
+/**
+ * Returns a view of the given string from the byte range [`begin`..`end`)
+ *
+ * Fails when `begin` and `end` do not point to valid characters or beyond
+ * the last character of the string
+ */
+pure fn view(s: &a/str, begin: uint, end: uint) -> &a/str {
+    assert is_char_boundary(s, begin);
+    assert is_char_boundary(s, end);
+    unsafe { unsafe::view_bytes(s, begin, end) }
 }
 
 /// Splits a string into substrings at each occurrence of a given character
@@ -639,20 +660,18 @@ Section: Comparing strings
 
 /// Bytewise slice equality
 pure fn eq_slice(a: &str, b: &str) -> bool {
-    // FIXME (#2627): This should just be "a == b" but that calls into the
-    // shape code.
-    let a_len = a.len();
-    let b_len = b.len();
-    if a_len != b_len { return false; }
-    let mut end = uint::min(a_len, b_len);
-
-    let mut i = 0u;
-    while i < end {
-        if a[i] != b[i] { return false; }
-        i += 1u;
+    do as_buf(a) |ap, alen| {
+        do as_buf(b) |bp, blen| {
+            if (alen != blen) { false }
+            else {
+                unsafe {
+                    libc::memcmp(ap as *libc::c_void,
+                                 bp as *libc::c_void,
+                                 alen as libc::size_t) == 0
+                }
+            }
+        }
     }
-
-    return true;
 }
 
 /// Bytewise string equality
@@ -660,8 +679,101 @@ pure fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }
 
+/// Bytewise slice less than
+pure fn lt(a: &str, b: &str) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    let mut end = uint::min(a_len, b_len);
+
+    let mut i = 0;
+    while i < end {
+        let (c_a, c_b) = (a[i], b[i]);
+        if c_a < c_b { return true; }
+        if c_a > c_b { return false; }
+        i += 1;
+    }
+
+    return a_len < b_len;
+}
+
 /// Bytewise less than or equal
-pure fn le(a: &~str, b: &~str) -> bool { *a <= *b }
+pure fn le(a: &str, b: &str) -> bool {
+    let (a_len, b_len) = (a.len(), b.len());
+    let mut end = uint::min(a_len, b_len);
+
+    let mut i = 0;
+    while i < end {
+        let (c_a, c_b) = (a[i], b[i]);
+        if c_a < c_b { return true; }
+        if c_a > c_b { return false; }
+        i += 1;
+    }
+
+    return a_len <= b_len;
+}
+
+/// Bytewise greater than or equal
+pure fn ge(a: &str, b: &str) -> bool {
+    !lt(b, a)
+}
+
+/// Bytewise greater than
+pure fn gt(a: &str, b: &str) -> bool {
+    !le(b, a)
+}
+
+impl &str: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: &str) -> bool {
+        eq_slice(self, other)
+    }
+}
+
+impl ~str: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: ~str) -> bool {
+        eq_slice(self, other)
+    }
+}
+
+impl @str: Eq {
+    #[inline(always)]
+    pure fn eq(&&other: @str) -> bool {
+        eq_slice(self, other)
+    }
+}
+
+impl ~str : Ord {
+    #[inline(always)]
+    pure fn lt(&&other: ~str) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: ~str) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: ~str) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: ~str) -> bool { gt(self, other) }
+}
+
+impl &str : Ord {
+    #[inline(always)]
+    pure fn lt(&&other: &str) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: &str) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: &str) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: &str) -> bool { gt(self, other) }
+}
+
+impl @str : Ord {
+    #[inline(always)]
+    pure fn lt(&&other: @str) -> bool { lt(self, other) }
+    #[inline(always)]
+    pure fn le(&&other: @str) -> bool { le(self, other) }
+    #[inline(always)]
+    pure fn ge(&&other: @str) -> bool { ge(self, other) }
+    #[inline(always)]
+    pure fn gt(&&other: @str) -> bool { gt(self, other) }
+}
 
 /// String hash function
 pure fn hash(s: &~str) -> uint {
@@ -800,7 +912,7 @@ Section: Searching
  * An `option` containing the byte index of the first matching character
  * or `none` if there is no match
  */
-pure fn find_char(s: &str, c: char) -> option<uint> {
+pure fn find_char(s: &str, c: char) -> Option<uint> {
     find_char_between(s, c, 0u, len(s))
 }
 
@@ -824,7 +936,7 @@ pure fn find_char(s: &str, c: char) -> option<uint> {
  * `start` must be less than or equal to `len(s)`. `start` must be the
  * index of a character boundary, as defined by `is_char_boundary`.
  */
-pure fn find_char_from(s: &str, c: char, start: uint) -> option<uint> {
+pure fn find_char_from(s: &str, c: char, start: uint) -> Option<uint> {
     find_char_between(s, c, start, len(s))
 }
 
@@ -850,17 +962,17 @@ pure fn find_char_from(s: &str, c: char, start: uint) -> option<uint> {
  * as defined by `is_char_boundary`.
  */
 pure fn find_char_between(s: &str, c: char, start: uint, end: uint)
-    -> option<uint> {
+    -> Option<uint> {
     if c < 128u as char {
         assert start <= end;
         assert end <= len(s);
         let mut i = start;
         let b = c as u8;
         while i < end {
-            if s[i] == b { return some(i); }
+            if s[i] == b { return Some(i); }
             i += 1u;
         }
-        return none;
+        return None;
     } else {
         find_between(s, start, end, |x| x == c)
     }
@@ -879,7 +991,7 @@ pure fn find_char_between(s: &str, c: char, start: uint, end: uint)
  * An `option` containing the byte index of the last matching character
  * or `none` if there is no match
  */
-pure fn rfind_char(s: &str, c: char) -> option<uint> {
+pure fn rfind_char(s: &str, c: char) -> Option<uint> {
     rfind_char_between(s, c, len(s), 0u)
 }
 
@@ -903,7 +1015,7 @@ pure fn rfind_char(s: &str, c: char) -> option<uint> {
  * `start` must be less than or equal to `len(s)`. `start` must be
  * the index of a character boundary, as defined by `is_char_boundary`.
  */
-pure fn rfind_char_from(s: &str, c: char, start: uint) -> option<uint> {
+pure fn rfind_char_from(s: &str, c: char, start: uint) -> Option<uint> {
     rfind_char_between(s, c, start, 0u)
 }
 
@@ -929,7 +1041,7 @@ pure fn rfind_char_from(s: &str, c: char, start: uint) -> option<uint> {
  * as defined by `is_char_boundary`.
  */
 pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
-    -> option<uint> {
+    -> Option<uint> {
     if c < 128u as char {
         assert start >= end;
         assert start <= len(s);
@@ -937,9 +1049,9 @@ pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
         let b = c as u8;
         while i > end {
             i -= 1u;
-            if s[i] == b { return some(i); }
+            if s[i] == b { return Some(i); }
         }
-        return none;
+        return None;
     } else {
         rfind_between(s, start, end, |x| x == c)
     }
@@ -959,7 +1071,7 @@ pure fn rfind_char_between(s: &str, c: char, start: uint, end: uint)
  * An `option` containing the byte index of the first matching character
  * or `none` if there is no match
  */
-pure fn find(s: &str, f: fn(char) -> bool) -> option<uint> {
+pure fn find(s: &str, f: fn(char) -> bool) -> Option<uint> {
     find_between(s, 0u, len(s), f)
 }
 
@@ -984,7 +1096,7 @@ pure fn find(s: &str, f: fn(char) -> bool) -> option<uint> {
  * index of a character boundary, as defined by `is_char_boundary`.
  */
 pure fn find_from(s: &str, start: uint, f: fn(char)
-    -> bool) -> option<uint> {
+    -> bool) -> Option<uint> {
     find_between(s, start, len(s), f)
 }
 
@@ -1011,17 +1123,17 @@ pure fn find_from(s: &str, start: uint, f: fn(char)
  * boundary, as defined by `is_char_boundary`.
  */
 pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
-    -> option<uint> {
+    -> Option<uint> {
     assert start <= end;
     assert end <= len(s);
     assert is_char_boundary(s, start);
     let mut i = start;
     while i < end {
         let {ch, next} = char_range_at(s, i);
-        if f(ch) { return some(i); }
+        if f(ch) { return Some(i); }
         i = next;
     }
-    return none;
+    return None;
 }
 
 /**
@@ -1038,7 +1150,7 @@ pure fn find_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
  * An option containing the byte index of the last matching character
  * or `none` if there is no match
  */
-pure fn rfind(s: &str, f: fn(char) -> bool) -> option<uint> {
+pure fn rfind(s: &str, f: fn(char) -> bool) -> Option<uint> {
     rfind_between(s, len(s), 0u, f)
 }
 
@@ -1063,7 +1175,7 @@ pure fn rfind(s: &str, f: fn(char) -> bool) -> option<uint> {
  * index of a character boundary, as defined by `is_char_boundary`
  */
 pure fn rfind_from(s: &str, start: uint, f: fn(char) -> bool)
-    -> option<uint> {
+    -> Option<uint> {
     rfind_between(s, start, 0u, f)
 }
 
@@ -1090,17 +1202,17 @@ pure fn rfind_from(s: &str, start: uint, f: fn(char) -> bool)
  * boundary, as defined by `is_char_boundary`
  */
 pure fn rfind_between(s: &str, start: uint, end: uint, f: fn(char) -> bool)
-    -> option<uint> {
+    -> Option<uint> {
     assert start >= end;
     assert start <= len(s);
     assert is_char_boundary(s, start);
     let mut i = start;
     while i > end {
         let {ch, prev} = char_range_at_reverse(s, i);
-        if f(ch) { return some(prev); }
+        if f(ch) { return Some(prev); }
         i = prev;
     }
-    return none;
+    return None;
 }
 
 // Utility used by various searching functions
@@ -1123,7 +1235,7 @@ pure fn match_at(haystack: &a/str, needle: &b/str, at: uint) -> bool {
  * An `option` containing the byte index of the first matching substring
  * or `none` if there is no match
  */
-pure fn find_str(haystack: &a/str, needle: &b/str) -> option<uint> {
+pure fn find_str(haystack: &a/str, needle: &b/str) -> Option<uint> {
     find_str_between(haystack, needle, 0u, len(haystack))
 }
 
@@ -1147,7 +1259,7 @@ pure fn find_str(haystack: &a/str, needle: &b/str) -> option<uint> {
  * `start` must be less than or equal to `len(s)`
  */
 pure fn find_str_from(haystack: &a/str, needle: &b/str, start: uint)
-  -> option<uint> {
+  -> Option<uint> {
     find_str_between(haystack, needle, start, len(haystack))
 }
 
@@ -1173,20 +1285,20 @@ pure fn find_str_from(haystack: &a/str, needle: &b/str, start: uint)
  */
 pure fn find_str_between(haystack: &a/str, needle: &b/str, start: uint,
                          end:uint)
-  -> option<uint> {
+  -> Option<uint> {
     // See Issue #1932 for why this is a naive search
     assert end <= len(haystack);
     let needle_len = len(needle);
-    if needle_len == 0u { return some(start); }
-    if needle_len > end { return none; }
+    if needle_len == 0u { return Some(start); }
+    if needle_len > end { return None; }
 
     let mut i = start;
     let e = end - needle_len;
     while i <= e {
-        if match_at(haystack, needle, i) { return some(i); }
+        if match_at(haystack, needle, i) { return Some(i); }
         i += 1u;
     }
-    return none;
+    return None;
 }
 
 /**
@@ -1463,7 +1575,7 @@ pure fn is_char_boundary(s: &str, index: uint) -> bool {
  * let i = 0u;
  * while i < str::len(s) {
  *     let {ch, next} = str::char_range_at(s, i);
- *     std::io::println(fmt!{"%u: %c",i,ch});
+ *     std::io::println(fmt!("%u: %c",i,ch));
  *     i = next;
  * }
  * ~~~
@@ -1634,7 +1746,7 @@ const tag_six_b: uint = 252u;
  */
 pure fn as_bytes<T>(s: ~str, f: fn(~[u8]) -> T) -> T {
     unsafe {
-        let v: *~[u8] = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let v: *~[u8] = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         f(*v)
     }
 }
@@ -1678,7 +1790,7 @@ pure fn as_c_str<T>(s: &str, f: fn(*libc::c_char) -> T) -> T {
 #[inline(always)]
 pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
     unsafe {
-        let v : *(*u8,uint) = ::unsafe::reinterpret_cast(ptr::addr_of(s));
+        let v : *(*u8,uint) = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         let (buf,len) = *v;
         f(buf, len)
     }
@@ -1701,8 +1813,9 @@ pure fn as_buf<T>(s: &str, f: fn(*u8, uint) -> T) -> T {
  * * n - The number of bytes to reserve space for
  */
 fn reserve(&s: ~str, n: uint) {
-    if capacity(s) < n {
-        rustrt::str_reserve_shared(s, n as size_t);
+    unsafe {
+        let v: *mut ~[u8] = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
+        vec::reserve(*v, n + 1);
     }
 }
 
@@ -1767,10 +1880,12 @@ mod unsafe {
    export
       from_buf,
       from_buf_len,
+      from_buf_len_nocopy,
       from_c_str,
       from_c_str_len,
       from_bytes,
       slice_bytes,
+      view_bytes,
       push_byte,
       pop_byte,
       shift_byte,
@@ -1798,14 +1913,22 @@ mod unsafe {
         return ::unsafe::transmute(v);
     }
 
+    /// Create a Rust string from a *u8 buffer of the given length
+    /// without copying
+    unsafe fn from_buf_len_nocopy(buf: &a / *u8, len: uint) -> &a / str {
+        let v = (*buf, len + 1);
+        assert is_utf8(::unsafe::reinterpret_cast(&v));
+        return ::unsafe::transmute(v);
+    }
+
     /// Create a Rust string from a null-terminated C string
     unsafe fn from_c_str(c_str: *libc::c_char) -> ~str {
-        from_buf(::unsafe::reinterpret_cast(c_str))
+        from_buf(::unsafe::reinterpret_cast(&c_str))
     }
 
     /// Create a Rust string from a `*c_char` buffer of the given length
     unsafe fn from_c_str_len(c_str: *libc::c_char, len: uint) -> ~str {
-        from_buf_len(::unsafe::reinterpret_cast(c_str), len)
+        from_buf_len(::unsafe::reinterpret_cast(&c_str), len)
     }
 
     /// Converts a vector of bytes to a string.
@@ -1818,66 +1941,93 @@ mod unsafe {
     /// Converts a byte to a string.
     unsafe fn from_byte(u: u8) -> ~str { unsafe::from_bytes([u]) }
 
-   /**
-    * Takes a bytewise (not UTF-8) slice from a string.
-    *
-    * Returns the substring from [`begin`..`end`).
-    *
-    * # Failure
-    *
-    * If begin is greater than end.
-    * If end is greater than the length of the string.
-    */
-   unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> ~str {
-       do as_buf(s) |sbuf, n| {
-           assert (begin <= end);
-           assert (end <= n);
+    /**
+     * Takes a bytewise (not UTF-8) slice from a string.
+     *
+     * Returns the substring from [`begin`..`end`).
+     *
+     * # Failure
+     *
+     * If begin is greater than end.
+     * If end is greater than the length of the string.
+     */
+    unsafe fn slice_bytes(s: &str, begin: uint, end: uint) -> ~str {
+        do as_buf(s) |sbuf, n| {
+            assert (begin <= end);
+            assert (end <= n);
 
-           let mut v = ~[];
-           vec::reserve(v, end - begin + 1u);
-           unsafe {
-               do vec::as_buf(v) |vbuf, _vlen| {
-                   let src = ptr::offset(sbuf, begin);
-                   ptr::memcpy(vbuf, src, end - begin);
-               }
-               vec::unsafe::set_len(v, end - begin);
-               vec::push(v, 0u8);
-               ::unsafe::transmute(v)
-           }
-       }
-   }
+            let mut v = ~[];
+            vec::reserve(v, end - begin + 1u);
+            unsafe {
+                do vec::as_buf(v) |vbuf, _vlen| {
+                    let src = ptr::offset(sbuf, begin);
+                    ptr::memcpy(vbuf, src, end - begin);
+                }
+                vec::unsafe::set_len(v, end - begin);
+                vec::push(v, 0u8);
+                ::unsafe::transmute(v)
+            }
+        }
+    }
 
-   /// Appends a byte to a string. (Not UTF-8 safe).
-   unsafe fn push_byte(&s: ~str, b: u8) {
-       rustrt::rust_str_push(s, b);
-   }
+    /**
+     * Takes a bytewise (not UTF-8) view from a string.
+     *
+     * Returns the substring from [`begin`..`end`).
+     *
+     * # Failure
+     *
+     * If begin is greater than end.
+     * If end is greater than the length of the string.
+     */
+    #[inline]
+    unsafe fn view_bytes(s: &str, begin: uint, end: uint) -> &str {
+        do as_buf(s) |sbuf, n| {
+             assert (begin <= end);
+             assert (end <= n);
 
-   /// Appends a vector of bytes to a string. (Not UTF-8 safe).
-   unsafe fn push_bytes(&s: ~str, bytes: ~[u8]) {
-       for vec::each(bytes) |byte| { rustrt::rust_str_push(s, byte); }
-   }
+             let tuple = (ptr::offset(sbuf, begin), end - begin + 1);
+             ::unsafe::reinterpret_cast(&tuple)
+        }
+    }
 
-   /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
-   unsafe fn pop_byte(&s: ~str) -> u8 {
-       let len = len(s);
-       assert (len > 0u);
-       let b = s[len - 1u];
-       unsafe { set_len(s, len - 1u) };
-       return b;
-   }
+    /// Appends a byte to a string. (Not UTF-8 safe).
+    unsafe fn push_byte(&s: ~str, b: u8) {
+        reserve_at_least(s, s.len() + 1);
+        do as_buf(s) |buf, len| {
+            let buf: *mut u8 = ::unsafe::reinterpret_cast(&buf);
+            *ptr::mut_offset(buf, len) = b;
+        }
+        set_len(s, s.len() + 1);
+    }
 
-   /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
-   unsafe fn shift_byte(&s: ~str) -> u8 {
-       let len = len(s);
-       assert (len > 0u);
-       let b = s[0];
-       s = unsafe { unsafe::slice_bytes(s, 1u, len) };
-       return b;
-   }
+    /// Appends a vector of bytes to a string. (Not UTF-8 safe).
+    unsafe fn push_bytes(&s: ~str, bytes: ~[u8]) {
+        reserve_at_least(s, s.len() + bytes.len());
+        for vec::each(bytes) |byte| { push_byte(s, byte); }
+    }
+
+    /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
+    unsafe fn pop_byte(&s: ~str) -> u8 {
+        let len = len(s);
+        assert (len > 0u);
+        let b = s[len - 1u];
+        unsafe { set_len(s, len - 1u) };
+        return b;
+    }
+
+    /// Removes the first byte from a string and returns it. (Not UTF-8 safe).
+    unsafe fn shift_byte(&s: ~str) -> u8 {
+        let len = len(s);
+        assert (len > 0u);
+        let b = s[0];
+        s = unsafe { unsafe::slice_bytes(s, 1u, len) };
+        return b;
+    }
 
     /// Sets the length of the string and adds the null terminator
     unsafe fn set_len(&v: ~str, new_len: uint) {
-        let repr: *vec::unsafe::VecRepr = ::unsafe::reinterpret_cast(v);
+        let repr: *vec::unsafe::VecRepr = ::unsafe::reinterpret_cast(&v);
         (*repr).fill = new_len + 1u;
         let null = ptr::mut_offset(ptr::mut_addr_of((*repr).data), new_len);
         *null = 0u8;
@@ -1948,6 +2098,7 @@ trait StrSlice {
     fn escape_default() -> ~str;
     fn escape_unicode() -> ~str;
     pure fn to_unique() -> ~str;
+    pure fn char_at(i: uint) -> char;
 }
 
 /// Extension methods for strings
@@ -2057,6 +2208,9 @@ impl &str: StrSlice {
 
     #[inline]
     pure fn to_unique() -> ~str { self.slice(0, self.len()) }
+
+    #[inline]
+    pure fn char_at(i: uint) -> char { char_at(self, i) }
 }
 
 #[cfg(test)]
@@ -2073,9 +2227,9 @@ mod tests {
 
     #[test]
     fn test_le() {
-        assert (le(&~"", &~""));
-        assert (le(&~"", &~"foo"));
-        assert (le(&~"foo", &~"foo"));
+        assert (le(&"", &""));
+        assert (le(&"", &"foo"));
+        assert (le(&"foo", &"foo"));
         assert (!eq(&~"foo", &~"bar"));
     }
 
@@ -2101,11 +2255,11 @@ mod tests {
 
     #[test]
     fn test_rfind_char() {
-        assert rfind_char(~"hello", 'l') == some(3u);
-        assert rfind_char(~"hello", 'o') == some(4u);
-        assert rfind_char(~"hello", 'h') == some(0u);
-        assert rfind_char(~"hello", 'z') == none;
-        assert rfind_char(~"ประเทศไทย中华Việt Nam", '华') == some(30u);
+        assert rfind_char(~"hello", 'l') == Some(3u);
+        assert rfind_char(~"hello", 'o') == Some(4u);
+        assert rfind_char(~"hello", 'h') == Some(0u);
+        assert rfind_char(~"hello", 'z').is_none();
+        assert rfind_char(~"ประเทศไทย中华Việt Nam", '华') == Some(30u);
     }
 
     #[test]
@@ -2137,7 +2291,7 @@ mod tests {
         fn t(s: ~str, c: char, u: ~[~str]) {
             log(debug, ~"split_byte: " + s);
             let v = split_char(s, c);
-            debug!{"split_byte to: %?", v};
+            debug!("split_byte to: %?", v);
             assert vec::all2(v, u, |a,b| a == b);
         }
         t(~"abc.hello.there", '.', ~[~"abc", ~"hello", ~"there"]);
@@ -2166,8 +2320,8 @@ mod tests {
         fn t(s: ~str, c: char, n: uint, u: ~[~str]) {
             log(debug, ~"splitn_byte: " + s);
             let v = splitn_char(s, c, n);
-            debug!{"split_byte to: %?", v};
-            debug!{"comparing vs. %?", u};
+            debug!("split_byte to: %?", v);
+            debug!("comparing vs. %?", u);
             assert vec::all2(v, u, |a,b| a == b);
         }
         t(~"abc.hello.there", '.', 0u, ~[~"abc.hello.there"]);
@@ -2302,43 +2456,43 @@ mod tests {
     #[test]
     fn test_find_str() {
         // byte positions
-        assert find_str(~"banana", ~"apple pie") == none;
-        assert find_str(~"", ~"") == some(0u);
+        assert find_str(~"banana", ~"apple pie").is_none();
+        assert find_str(~"", ~"") == Some(0u);
 
         let data = ~"ประเทศไทย中华Việt Nam";
-        assert find_str(data, ~"")     == some(0u);
-        assert find_str(data, ~"ประเ") == some( 0u);
-        assert find_str(data, ~"ะเ")   == some( 6u);
-        assert find_str(data, ~"中华") == some(27u);
-        assert find_str(data, ~"ไท华") == none;
+        assert find_str(data, ~"")     == Some(0u);
+        assert find_str(data, ~"ประเ") == Some( 0u);
+        assert find_str(data, ~"ะเ")   == Some( 6u);
+        assert find_str(data, ~"中华") == Some(27u);
+        assert find_str(data, ~"ไท华").is_none();
     }
 
     #[test]
     fn test_find_str_between() {
         // byte positions
-        assert find_str_between(~"", ~"", 0u, 0u) == some(0u);
+        assert find_str_between(~"", ~"", 0u, 0u) == Some(0u);
 
         let data = ~"abcabc";
-        assert find_str_between(data, ~"ab", 0u, 6u) == some(0u);
-        assert find_str_between(data, ~"ab", 2u, 6u) == some(3u);
-        assert find_str_between(data, ~"ab", 2u, 4u) == none;
+        assert find_str_between(data, ~"ab", 0u, 6u) == Some(0u);
+        assert find_str_between(data, ~"ab", 2u, 6u) == Some(3u);
+        assert find_str_between(data, ~"ab", 2u, 4u).is_none();
 
         let mut data = ~"ประเทศไทย中华Việt Nam";
         data += data;
-        assert find_str_between(data, ~"", 0u, 43u) == some(0u);
-        assert find_str_between(data, ~"", 6u, 43u) == some(6u);
+        assert find_str_between(data, ~"", 0u, 43u) == Some(0u);
+        assert find_str_between(data, ~"", 6u, 43u) == Some(6u);
 
-        assert find_str_between(data, ~"ประ", 0u, 43u) == some( 0u);
-        assert find_str_between(data, ~"ทศไ", 0u, 43u) == some(12u);
-        assert find_str_between(data, ~"ย中", 0u, 43u) == some(24u);
-        assert find_str_between(data, ~"iệt", 0u, 43u) == some(34u);
-        assert find_str_between(data, ~"Nam", 0u, 43u) == some(40u);
+        assert find_str_between(data, ~"ประ", 0u, 43u) == Some( 0u);
+        assert find_str_between(data, ~"ทศไ", 0u, 43u) == Some(12u);
+        assert find_str_between(data, ~"ย中", 0u, 43u) == Some(24u);
+        assert find_str_between(data, ~"iệt", 0u, 43u) == Some(34u);
+        assert find_str_between(data, ~"Nam", 0u, 43u) == Some(40u);
 
-        assert find_str_between(data, ~"ประ", 43u, 86u) == some(43u);
-        assert find_str_between(data, ~"ทศไ", 43u, 86u) == some(55u);
-        assert find_str_between(data, ~"ย中", 43u, 86u) == some(67u);
-        assert find_str_between(data, ~"iệt", 43u, 86u) == some(77u);
-        assert find_str_between(data, ~"Nam", 43u, 86u) == some(83u);
+        assert find_str_between(data, ~"ประ", 43u, 86u) == Some(43u);
+        assert find_str_between(data, ~"ทศไ", 43u, 86u) == Some(55u);
+        assert find_str_between(data, ~"ย中", 43u, 86u) == Some(67u);
+        assert find_str_between(data, ~"iệt", 43u, 86u) == Some(77u);
+        assert find_str_between(data, ~"Nam", 43u, 86u) == Some(83u);
     }
 
     #[test]
@@ -2726,7 +2880,7 @@ mod tests {
     fn vec_str_conversions() {
         let s1: ~str = ~"All mimsy were the borogoves";
 
-        let v: ~[u8] = bytes(s1);
+        let v: ~[u8] = to_bytes(s1);
         let s2: ~str = from_bytes(v);
         let mut i: uint = 0u;
         let n1: uint = len(s1);

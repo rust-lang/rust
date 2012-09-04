@@ -1,15 +1,15 @@
-import util::interner::interner;
 import diagnostic::span_handler;
 import ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-import earley_parser::{named_match, matched_seq, matched_nonterminal};
+import macro_parser::{named_match, matched_seq, matched_nonterminal};
 import codemap::span;
-import parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident};
+import parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
+                      ident_interner};
 import std::map::{hashmap, box_str_hash};
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
 
 enum tt_frame_up { /* to break a circularity */
-    tt_frame_up(option<tt_frame>)
+    tt_frame_up(Option<tt_frame>)
 }
 
 /* FIXME #2811: figure out how to have a uniquely linked stack, and change to
@@ -19,13 +19,13 @@ type tt_frame = @{
     readme: ~[ast::token_tree],
     mut idx: uint,
     dotdotdoted: bool,
-    sep: option<token>,
+    sep: Option<token>,
     up: tt_frame_up,
 };
 
 type tt_reader = @{
     sp_diag: span_handler,
-    interner: interner<@~str>,
+    interner: ident_interner,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
     interpolations: std::map::hashmap<ident, @named_match>,
@@ -39,16 +39,16 @@ type tt_reader = @{
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
-fn new_tt_reader(sp_diag: span_handler, itr: interner<@~str>,
-                 interp: option<std::map::hashmap<ident,@named_match>>,
+fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
+                 interp: Option<std::map::hashmap<ident,@named_match>>,
                  src: ~[ast::token_tree])
     -> tt_reader {
     let r = @{sp_diag: sp_diag, interner: itr,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
-                         sep: none, up: tt_frame_up(option::none)},
+                         sep: None, up: tt_frame_up(option::None)},
               interpolations: match interp { /* just a convienience */
-                none => std::map::box_str_hash::<@named_match>(),
-                some(x) => x
+                None => std::map::uint_hash::<@named_match>(),
+                Some(x) => x
               },
               mut repeat_idx: ~[mut], mut repeat_len: ~[],
               /* dummy values, never read: */
@@ -62,8 +62,8 @@ fn new_tt_reader(sp_diag: span_handler, itr: interner<@~str>,
 pure fn dup_tt_frame(&&f: tt_frame) -> tt_frame {
     @{readme: f.readme, mut idx: f.idx, dotdotdoted: f.dotdotdoted,
       sep: f.sep, up: match f.up {
-        tt_frame_up(some(up_frame)) => {
-          tt_frame_up(some(dup_tt_frame(up_frame)))
+        tt_frame_up(Some(up_frame)) => {
+          tt_frame_up(Some(dup_tt_frame(up_frame)))
         }
         tt_frame_up(none) => tt_frame_up(none)
       }
@@ -100,8 +100,8 @@ enum lis {
     lis_unconstrained, lis_constraint(uint, ident), lis_contradiction(~str)
 }
 
-fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
-    fn lis_merge(lhs: lis, rhs: lis) -> lis {
+fn lockstep_iter_size(t: token_tree, r: tt_reader) -> lis {
+    fn lis_merge(lhs: lis, rhs: lis, r: tt_reader) -> lis {
         match lhs {
           lis_unconstrained => rhs,
           lis_contradiction(_) => lhs,
@@ -110,9 +110,11 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
             lis_contradiction(_) => rhs,
             lis_constraint(r_len, _) if l_len == r_len => lhs,
             lis_constraint(r_len, r_id) => {
-                lis_contradiction(fmt!{"Inconsistent lockstep iteration: \
+                let l_n = *r.interner.get(l_id);
+                let r_n = *r.interner.get(r_id);
+                lis_contradiction(fmt!("Inconsistent lockstep iteration: \
                                        '%s' has %u items, but '%s' has %u",
-                                        *l_id, l_len, *r_id, r_len})
+                                        l_n, l_len, r_n, r_len))
             }
           }
         }
@@ -120,7 +122,7 @@ fn lockstep_iter_size(&&t: token_tree, &&r: tt_reader) -> lis {
     match t {
       tt_delim(tts) | tt_seq(_, tts, _, _) => {
         vec::foldl(lis_unconstrained, tts, {|lis, tt|
-            lis_merge(lis, lockstep_iter_size(tt, r)) })
+            lis_merge(lis, lockstep_iter_size(tt, r), r) })
       }
       tt_tok(*) => lis_unconstrained,
       tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
@@ -139,11 +141,11 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             || r.repeat_idx.last() == r.repeat_len.last() - 1 {
 
             match r.cur.up {
-              tt_frame_up(none) => {
+              tt_frame_up(None) => {
                 r.cur_tok = EOF;
                 return ret_val;
               }
-              tt_frame_up(some(tt_f)) => {
+              tt_frame_up(Some(tt_f)) => {
                 if r.cur.dotdotdoted {
                     vec::pop(r.repeat_idx); vec::pop(r.repeat_len);
                 }
@@ -157,11 +159,11 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
             r.cur.idx = 0u;
             r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
             match r.cur.sep {
-              some(tk) => {
+              Some(tk) => {
                 r.cur_tok = tk; /* repeat same span, I guess */
                 return ret_val;
               }
-              none => ()
+              None => ()
             }
         }
     }
@@ -170,7 +172,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
         match r.cur.readme[r.cur.idx] {
           tt_delim(tts) => {
             r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: false,
-                      sep: none, up: tt_frame_up(option::some(r.cur)) };
+                      sep: None, up: tt_frame_up(option::Some(r.cur)) };
             // if this could be 0-length, we'd need to potentially recur here
           }
           tt_tok(sp, tok) => {
@@ -205,7 +207,7 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
                     vec::push(r.repeat_len, len);
                     vec::push(r.repeat_idx, 0u);
                     r.cur = @{readme: tts, mut idx: 0u, dotdotdoted: true,
-                              sep: sep, up: tt_frame_up(option::some(r.cur))};
+                              sep: sep, up: tt_frame_up(option::Some(r.cur))};
                 }
               }
             }
@@ -229,8 +231,8 @@ fn tt_next_token(&&r: tt_reader) -> {tok: token, sp: span} {
               matched_seq(*) => {
                 r.sp_diag.span_fatal(
                     copy r.cur_span, /* blame the macro writer */
-                    fmt!{"variable '%s' is still repeating at this depth",
-                         *ident});
+                    fmt!("variable '%s' is still repeating at this depth",
+                         *r.interner.get(ident)));
               }
             }
           }

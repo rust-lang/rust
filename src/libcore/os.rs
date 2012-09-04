@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 /*!
  * Higher-level interfaces to libc::* functions and operating system services.
  *
@@ -20,9 +24,8 @@ import libc::{c_char, c_void, c_int, c_uint, size_t, ssize_t,
               mode_t, pid_t, FILE};
 import libc::{close, fclose};
 
-import option::{some, none};
+import option::{Some, None};
 
-import getcwd = rustrt::rust_getcwd;
 import consts::*;
 import task::TaskBuilder;
 
@@ -30,7 +33,7 @@ export close, fclose, fsync_fd, waitpid;
 export env, getenv, setenv, fdopen, pipe;
 export getcwd, dll_filename, self_exe_path;
 export exe_suffix, dll_suffix, sysname, arch, family;
-export homedir, list_dir, list_dir_path, path_is_dir, path_exists,
+export homedir, tmpdir, list_dir, list_dir_path, path_is_dir, path_exists,
        make_absolute, make_dir, remove_dir, change_dir, remove_file,
        copy_file;
 export last_os_error;
@@ -53,18 +56,22 @@ extern mod rustrt {
 
 const tmpbuf_sz : uint = 1000u;
 
-fn as_c_charp<T>(s: ~str, f: fn(*c_char) -> T) -> T {
+fn getcwd() -> Path {
+    Path(rustrt::rust_getcwd())
+}
+
+fn as_c_charp<T>(s: &str, f: fn(*c_char) -> T) -> T {
     str::as_c_str(s, |b| f(b as *c_char))
 }
 
 fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
-    -> option<~str> {
+    -> Option<~str> {
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     do vec::as_mut_buf(buf) |b, sz| {
         if f(b, sz as size_t) unsafe {
-            some(str::unsafe::from_buf(b as *u8))
+            Some(str::unsafe::from_buf(b as *u8))
         } else {
-            none
+            None
         }
     }
 }
@@ -74,14 +81,14 @@ mod win32 {
     import dword = libc::types::os::arch::extra::DWORD;
 
     fn fill_utf16_buf_and_decode(f: fn(*mut u16, dword) -> dword)
-        -> option<~str> {
+        -> Option<~str> {
 
         // FIXME: remove these when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::consts::os::extra::*;
 
         let mut n = tmpbuf_sz as dword;
-        let mut res = none;
+        let mut res = None;
         let mut done = false;
         while !done {
             let buf = vec::to_mut(vec::from_elem(n as uint, 0u16));
@@ -95,7 +102,7 @@ mod win32 {
                     n *= (2 as dword);
                 } else {
                     let sub = vec::slice(buf, 0u, k as uint);
-                    res = option::some(str::from_utf16(sub));
+                    res = option::Some(str::from_utf16(sub));
                     done = true;
                 }
             }
@@ -103,7 +110,7 @@ mod win32 {
         return res;
     }
 
-    fn as_utf16_p<T>(s: ~str, f: fn(*u16) -> T) -> T {
+    fn as_utf16_p<T>(s: &str, f: fn(*u16) -> T) -> T {
         let mut t = str::to_utf16(s);
         // Null terminate before passing on.
         t += ~[0u16];
@@ -111,11 +118,11 @@ mod win32 {
     }
 }
 
-fn getenv(n: ~str) -> option<~str> {
+fn getenv(n: &str) -> Option<~str> {
     global_env::getenv(n)
 }
 
-fn setenv(n: ~str, v: ~str) {
+fn setenv(n: &str, v: &str) {
     global_env::setenv(n, v)
 }
 
@@ -135,29 +142,32 @@ mod global_env {
     }
 
     enum Msg {
-        MsgGetEnv(~str, comm::Chan<option<~str>>),
+        MsgGetEnv(~str, comm::Chan<Option<~str>>),
         MsgSetEnv(~str, ~str, comm::Chan<()>),
         MsgEnv(comm::Chan<~[(~str,~str)]>)
     }
 
-    fn getenv(n: ~str) -> option<~str> {
+    fn getenv(n: &str) -> Option<~str> {
         let env_ch = get_global_env_chan();
-        let po = comm::port();
-        comm::send(env_ch, MsgGetEnv(n, comm::chan(po)));
+        let po = comm::Port();
+        comm::send(env_ch, MsgGetEnv(str::from_slice(n),
+                                     comm::Chan(po)));
         comm::recv(po)
     }
 
-    fn setenv(n: ~str, v: ~str) {
+    fn setenv(n: &str, v: &str) {
         let env_ch = get_global_env_chan();
-        let po = comm::port();
-        comm::send(env_ch, MsgSetEnv(n, v, comm::chan(po)));
+        let po = comm::Port();
+        comm::send(env_ch, MsgSetEnv(str::from_slice(n),
+                                     str::from_slice(v),
+                                     comm::Chan(po)));
         comm::recv(po)
     }
 
     fn env() -> ~[(~str,~str)] {
         let env_ch = get_global_env_chan();
-        let po = comm::port();
-        comm::send(env_ch, MsgEnv(comm::chan(po)));
+        let po = comm::Port();
+        comm::send(env_ch, MsgEnv(comm::Chan(po)));
         comm::recv(po)
     }
 
@@ -209,20 +219,20 @@ mod global_env {
         }
 
         #[cfg(unix)]
-        fn getenv(n: ~str) -> option<~str> {
+        fn getenv(n: &str) -> Option<~str> {
             unsafe {
                 let s = str::as_c_str(n, libc::getenv);
-                return if unsafe::reinterpret_cast(s) == 0 {
-                    option::none::<~str>
+                return if ptr::null::<u8>() == unsafe::reinterpret_cast(&s) {
+                    option::None::<~str>
                 } else {
-                    let s = unsafe::reinterpret_cast(s);
-                    option::some::<~str>(str::unsafe::from_buf(s))
+                    let s = unsafe::reinterpret_cast(&s);
+                    option::Some::<~str>(str::unsafe::from_buf(s))
                 };
             }
         }
 
         #[cfg(windows)]
-        fn getenv(n: ~str) -> option<~str> {
+        fn getenv(n: &str) -> Option<~str> {
             import libc::types::os::arch::extra::*;
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -235,7 +245,7 @@ mod global_env {
 
 
         #[cfg(unix)]
-        fn setenv(n: ~str, v: ~str) {
+        fn setenv(n: &str, v: &str) {
 
             // FIXME: remove this when export globs work properly. #1238
             import libc::funcs::posix01::unistd::setenv;
@@ -248,7 +258,7 @@ mod global_env {
 
 
         #[cfg(windows)]
-        fn setenv(n: ~str, v: ~str) {
+        fn setenv(n: &str, v: &str) {
             // FIXME: remove imports when export globs work properly. #1238
             import libc::funcs::extra::kernel32::*;
             import win32::*;
@@ -263,7 +273,7 @@ mod global_env {
 }
 
 fn fdopen(fd: c_int) -> *FILE {
-    return do as_c_charp(~"r") |modebuf| {
+    return do as_c_charp("r") |modebuf| {
         libc::fdopen(fd, modebuf)
     };
 }
@@ -357,9 +367,13 @@ fn pipe() -> {in: c_int, out: c_int} {
     return {in: fds.in, out: fds.out};
 }
 
+fn dup2(src: c_int, dst: c_int) -> c_int {
+    libc::dup2(src, dst)
+}
 
-fn dll_filename(base: ~str) -> ~str {
-    return pre() + base + dll_suffix();
+
+fn dll_filename(base: &str) -> ~str {
+    return pre() + str::from_slice(base) + dll_suffix();
 
     #[cfg(unix)]
     fn pre() -> ~str { ~"lib" }
@@ -369,10 +383,10 @@ fn dll_filename(base: ~str) -> ~str {
 }
 
 
-fn self_exe_path() -> option<Path> {
+fn self_exe_path() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
-    fn load_self() -> option<Path> {
+    fn load_self() -> Option<~str> {
         unsafe {
             import libc::funcs::bsd44::*;
             import libc::consts::os::extra::*;
@@ -388,17 +402,17 @@ fn self_exe_path() -> option<Path> {
     }
 
     #[cfg(target_os = "linux")]
-    fn load_self() -> option<Path> {
+    fn load_self() -> Option<~str> {
         import libc::funcs::posix01::unistd::readlink;
         do fill_charp_buf() |buf, sz| {
-            do as_c_charp(~"/proc/self/exe") |proc_self_buf| {
+            do as_c_charp("/proc/self/exe") |proc_self_buf| {
                 readlink(proc_self_buf, buf, sz) != (-1 as ssize_t)
             }
         }
     }
 
     #[cfg(target_os = "macos")]
-    fn load_self() -> option<Path> {
+    fn load_self() -> Option<~str> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::*;
         do fill_charp_buf() |buf, sz| {
@@ -408,7 +422,7 @@ fn self_exe_path() -> option<Path> {
     }
 
     #[cfg(windows)]
-    fn load_self() -> option<Path> {
+    fn load_self() -> Option<~str> {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
@@ -419,7 +433,7 @@ fn self_exe_path() -> option<Path> {
     }
 
     do option::map(load_self()) |pth| {
-        path::dirname(pth) + path::path_sep()
+        Path(pth).dir_path()
     }
 }
 
@@ -437,42 +451,83 @@ fn self_exe_path() -> option<Path> {
  *
  * Otherwise, homedir returns option::none.
  */
-fn homedir() -> option<Path> {
+fn homedir() -> Option<Path> {
     return match getenv(~"HOME") {
-        some(p) => if !str::is_empty(p) {
-          some(p)
+        Some(p) => if !str::is_empty(p) {
+          Some(Path(p))
         } else {
           secondary()
         },
-        none => secondary()
+        None => secondary()
     };
 
     #[cfg(unix)]
-    fn secondary() -> option<Path> {
-        none
+    fn secondary() -> Option<Path> {
+        None
     }
 
     #[cfg(windows)]
-    fn secondary() -> option<Path> {
+    fn secondary() -> Option<Path> {
         do option::chain(getenv(~"USERPROFILE")) |p| {
             if !str::is_empty(p) {
-                some(p)
+                Some(Path(p))
             } else {
-                none
+                None
             }
         }
     }
 }
 
+/**
+ * Returns the path to a temporary directory.
+ *
+ * On Unix, returns the value of the 'TMPDIR' environment variable if it is
+ * set and non-empty and '/tmp' otherwise.
+ *
+ * On Windows, returns the value of, in order, the 'TMP', 'TEMP',
+ * 'USERPROFILE' environment variable  if any are set and not the empty
+ * string. Otherwise, tmpdir returns the path to the Windows directory.
+ */
+fn tmpdir() -> Path {
+    return lookup();
+
+    fn getenv_nonempty(v: &str) -> Option<Path> {
+        match getenv(v) {
+            Some(x) =>
+                if str::is_empty(x) {
+                    None
+                } else {
+                    Some(Path(x))
+                },
+            _ => None
+        }
+    }
+
+    #[cfg(unix)]
+    fn lookup() -> Path {
+        option::get_default(getenv_nonempty("TMPDIR"),
+                            Path("/tmp"))
+    }
+
+    #[cfg(windows)]
+    fn lookup() -> Path {
+        option::get_default(
+                    option::or(getenv_nonempty("TMP"),
+                    option::or(getenv_nonempty("TEMP"),
+                    option::or(getenv_nonempty("USERPROFILE"),
+                               getenv_nonempty("WINDIR")))),
+                    Path("C:\\Windows"))
+    }
+}
 /// Recursively walk a directory structure
-fn walk_dir(p: Path, f: fn(Path) -> bool) {
+fn walk_dir(p: &Path, f: fn((&Path)) -> bool) {
 
     walk_dir_(p, f);
 
-    fn walk_dir_(p: Path, f: fn(Path) -> bool) -> bool {
+    fn walk_dir_(p: &Path, f: fn((&Path)) -> bool) -> bool {
         let mut keepgoing = true;
         do list_dir(p).each |q| {
-            let path = path::connect(p, q);
+            let path = &p.push(q);
             if !f(path) {
                 keepgoing = false;
                 false
@@ -494,15 +549,15 @@ fn walk_dir(p: Path, f: fn(Path) -> bool) {
 }
 
 /// Indicates whether a path represents a directory
-fn path_is_dir(p: Path) -> bool {
-    do str::as_c_str(p) |buf| {
+fn path_is_dir(p: &Path) -> bool {
+    do str::as_c_str(p.to_str()) |buf| {
         rustrt::rust_path_is_dir(buf) != 0 as c_int
     }
 }
 
 /// Indicates whether a path exists
-fn path_exists(p: Path) -> bool {
-    do str::as_c_str(p) |buf| {
+fn path_exists(p: &Path) -> bool {
+    do str::as_c_str(p.to_str()) |buf| {
         rustrt::rust_path_exists(buf) != 0 as c_int
     }
 }
@@ -519,58 +574,50 @@ fn path_exists(p: Path) -> bool {
 // NB: this is here rather than in path because it is a form of environment
 // querying; what it does depends on the process working directory, not just
 // the input paths.
-fn make_absolute(p: Path) -> Path {
-    if path::path_is_absolute(p) {
-        p
+fn make_absolute(p: &Path) -> Path {
+    if p.is_absolute {
+        copy *p
     } else {
-        path::connect(getcwd(), p)
+        getcwd().push_many(p.components)
     }
 }
 
 
 /// Creates a directory at the specified path
-fn make_dir(p: Path, mode: c_int) -> bool {
+fn make_dir(p: &Path, mode: c_int) -> bool {
     return mkdir(p, mode);
 
     #[cfg(windows)]
-    fn mkdir(p: Path, _mode: c_int) -> bool {
+    fn mkdir(p: &Path, _mode: c_int) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::types::os::arch::extra::*;
         import libc::funcs::extra::kernel32::*;
         import win32::*;
         // FIXME: turn mode into something useful? #2623
-        do as_utf16_p(p) |buf| {
-            CreateDirectoryW(buf, unsafe { unsafe::reinterpret_cast(0) })
+        do as_utf16_p(p.to_str()) |buf| {
+            CreateDirectoryW(buf, unsafe { unsafe::reinterpret_cast(&0) })
                 != (0 as BOOL)
         }
     }
 
     #[cfg(unix)]
-    fn mkdir(p: Path, mode: c_int) -> bool {
-        do as_c_charp(p) |c| {
+    fn mkdir(p: &Path, mode: c_int) -> bool {
+        do as_c_charp(p.to_str()) |c| {
             libc::mkdir(c, mode as mode_t) == (0 as c_int)
         }
     }
 }
 
 /// Lists the contents of a directory
-fn list_dir(p: Path) -> ~[~str] {
+fn list_dir(p: &Path) -> ~[~str] {
 
     #[cfg(unix)]
-    fn star(p: ~str) -> ~str { p }
+    fn star(p: &Path) -> Path { copy *p }
 
     #[cfg(windows)]
-    fn star(p: ~str) -> ~str {
-        let pl = str::len(p);
-        if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
-                        || p[pl - 1u] as char != path::consts::alt_path_sep) {
-            p + path::path_sep() + ~"*"
-        } else {
-            p + ~"*"
-        }
-    }
+    fn star(p: &Path) -> Path { p.push("*") }
 
-    do rustrt::rust_list_files(star(p)).filter |filename| {
+    do rustrt::rust_list_files(star(p).to_str()).filter |filename| {
         filename != ~"." && filename != ~".."
     }
 }
@@ -580,90 +627,84 @@ fn list_dir(p: Path) -> ~[~str] {
  *
  * This version prepends each entry with the directory.
  */
-fn list_dir_path(p: Path) -> ~[~str] {
-    let mut p = p;
-    let pl = str::len(p);
-    if pl == 0u || (p[pl - 1u] as char != path::consts::path_sep
-                    && p[pl - 1u] as char != path::consts::alt_path_sep) {
-        p += path::path_sep();
-    }
-    os::list_dir(p).map(|f| p + f)
+fn list_dir_path(p: &Path) -> ~[~Path] {
+    os::list_dir(p).map(|f| ~p.push(f))
 }
 
 /// Removes a directory at the specified path
-fn remove_dir(p: Path) -> bool {
+fn remove_dir(p: &Path) -> bool {
    return rmdir(p);
 
     #[cfg(windows)]
-    fn rmdir(p: Path) -> bool {
+    fn rmdir(p: &Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        return do as_utf16_p(p) |buf| {
+        return do as_utf16_p(p.to_str()) |buf| {
             RemoveDirectoryW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
-    fn rmdir(p: Path) -> bool {
-        return do as_c_charp(p) |buf| {
+    fn rmdir(p: &Path) -> bool {
+        return do as_c_charp(p.to_str()) |buf| {
             libc::rmdir(buf) == (0 as c_int)
         };
     }
 }
 
-fn change_dir(p: Path) -> bool {
+fn change_dir(p: &Path) -> bool {
     return chdir(p);
 
     #[cfg(windows)]
-    fn chdir(p: Path) -> bool {
+    fn chdir(p: &Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        return do as_utf16_p(p) |buf| {
+        return do as_utf16_p(p.to_str()) |buf| {
             SetCurrentDirectoryW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
-    fn chdir(p: Path) -> bool {
-        return do as_c_charp(p) |buf| {
+    fn chdir(p: &Path) -> bool {
+        return do as_c_charp(p.to_str()) |buf| {
             libc::chdir(buf) == (0 as c_int)
         };
     }
 }
 
 /// Copies a file from one location to another
-fn copy_file(from: Path, to: Path) -> bool {
+fn copy_file(from: &Path, to: &Path) -> bool {
     return do_copy_file(from, to);
 
     #[cfg(windows)]
-    fn do_copy_file(from: Path, to: Path) -> bool {
+    fn do_copy_file(from: &Path, to: &Path) -> bool {
         // FIXME: remove imports when export globs work properly. #1238
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        return do as_utf16_p(from) |fromp| {
-            do as_utf16_p(to) |top| {
+        return do as_utf16_p(from.to_str()) |fromp| {
+            do as_utf16_p(to.to_str()) |top| {
                 CopyFileW(fromp, top, (0 as BOOL)) != (0 as BOOL)
             }
         }
     }
 
     #[cfg(unix)]
-    fn do_copy_file(from: Path, to: Path) -> bool {
-        let istream = do as_c_charp(from) |fromp| {
-            do as_c_charp(~"rb") |modebuf| {
+    fn do_copy_file(from: &Path, to: &Path) -> bool {
+        let istream = do as_c_charp(from.to_str()) |fromp| {
+            do as_c_charp("rb") |modebuf| {
                 libc::fopen(fromp, modebuf)
             }
         };
         if istream as uint == 0u {
             return false;
         }
-        let ostream = do as_c_charp(to) |top| {
-            do as_c_charp(~"w+b") |modebuf| {
+        let ostream = do as_c_charp(to.to_str()) |top| {
+            do as_c_charp("w+b") |modebuf| {
                 libc::fopen(top, modebuf)
             }
         };
@@ -699,24 +740,24 @@ fn copy_file(from: Path, to: Path) -> bool {
 }
 
 /// Deletes an existing file
-fn remove_file(p: Path) -> bool {
+fn remove_file(p: &Path) -> bool {
     return unlink(p);
 
     #[cfg(windows)]
-    fn unlink(p: Path) -> bool {
+    fn unlink(p: &Path) -> bool {
         // FIXME (similar to Issue #2006): remove imports when export globs
         // work properly.
         import libc::funcs::extra::kernel32::*;
         import libc::types::os::arch::extra::*;
         import win32::*;
-        return do as_utf16_p(p) |buf| {
+        return do as_utf16_p(p.to_str()) |buf| {
             DeleteFileW(buf) != (0 as BOOL)
         };
     }
 
     #[cfg(unix)]
-    fn unlink(p: Path) -> bool {
-        return do as_c_charp(p) |buf| {
+    fn unlink(p: &Path) -> bool {
+        return do as_c_charp(p.to_str()) |buf| {
             libc::unlink(buf) == (0 as c_int)
         };
     }
@@ -792,7 +833,7 @@ mod tests {
 
     fn make_rand_name() -> ~str {
         import rand;
-        let rng: rand::Rng = rand::rng();
+        let rng: rand::Rng = rand::Rng();
         let n = ~"TEST" + rng.gen_str(10u);
         assert option::is_none(getenv(n));
         n
@@ -802,7 +843,7 @@ mod tests {
     fn test_setenv() {
         let n = make_rand_name();
         setenv(n, ~"VALUE");
-        assert getenv(n) == option::some(~"VALUE");
+        assert getenv(n) == option::Some(~"VALUE");
     }
 
     #[test]
@@ -812,9 +853,9 @@ mod tests {
         let n = make_rand_name();
         setenv(n, ~"1");
         setenv(n, ~"2");
-        assert getenv(n) == option::some(~"2");
+        assert getenv(n) == option::Some(~"2");
         setenv(n, ~"");
-        assert getenv(n) == option::some(~"");
+        assert getenv(n) == option::Some(~"");
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -829,7 +870,7 @@ mod tests {
         let n = make_rand_name();
         setenv(n, s);
         log(debug, s);
-        assert getenv(n) == option::some(s);
+        assert getenv(n) == option::Some(s);
     }
 
     #[test]
@@ -840,11 +881,7 @@ mod tests {
         log(debug, path);
 
         // Hard to test this function
-        if os::sysname() != ~"win32" {
-            assert str::starts_with(path, path::path_sep());
-        } else {
-            assert path[1] == ':' as u8;
-        }
+        assert path.is_absolute;
     }
 
     #[test]
@@ -859,7 +896,7 @@ mod tests {
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
-            assert option::is_none(v2) || v2 == option::some(v);
+            assert option::is_none(v2) || v2 == option::Some(v);
         }
     }
 
@@ -877,12 +914,12 @@ mod tests {
 
     #[test]
     fn test() {
-        assert (!path::path_is_absolute(~"test-path"));
+        assert (!Path("test-path").is_absolute);
 
-        log(debug, ~"Current working directory: " + getcwd());
+        log(debug, ~"Current working directory: " + getcwd().to_str());
 
-        log(debug, make_absolute(~"test-path"));
-        log(debug, make_absolute(~"/usr/bin"));
+        log(debug, make_absolute(&Path("test-path")));
+        log(debug, make_absolute(&Path("/usr/bin")));
     }
 
     #[test]
@@ -891,10 +928,10 @@ mod tests {
         let oldhome = getenv(~"HOME");
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert os::homedir() == some(~"/home/MountainView");
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         setenv(~"HOME", ~"");
-        assert os::homedir() == none;
+        assert os::homedir().is_none();
 
         option::iter(oldhome, |s| setenv(~"HOME", s));
     }
@@ -909,35 +946,39 @@ mod tests {
         setenv(~"HOME", ~"");
         setenv(~"USERPROFILE", ~"");
 
-        assert os::homedir() == none;
+        assert os::homedir().is_none();
 
         setenv(~"HOME", ~"/home/MountainView");
-        assert os::homedir() == some(~"/home/MountainView");
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         setenv(~"HOME", ~"");
 
         setenv(~"USERPROFILE", ~"/home/MountainView");
-        assert os::homedir() == some(~"/home/MountainView");
-
-        setenv(~"USERPROFILE", ~"/home/MountainView");
-        assert os::homedir() == some(~"/home/MountainView");
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         setenv(~"HOME", ~"/home/MountainView");
         setenv(~"USERPROFILE", ~"/home/PaloAlto");
-        assert os::homedir() == some(~"/home/MountainView");
+        assert os::homedir() == Some(Path("/home/MountainView"));
 
         option::iter(oldhome, |s| setenv(~"HOME", s));
         option::iter(olduserprofile,
                                |s| setenv(~"USERPROFILE", s));
     }
 
+    #[test]
+    fn tmpdir() {
+        assert !str::is_empty(os::tmpdir().to_str());
+    }
+
     // Issue #712
     #[test]
-    fn test_list_dir_no_invalid_memory_access() { os::list_dir(~"."); }
+    fn test_list_dir_no_invalid_memory_access() {
+        os::list_dir(&Path("."));
+    }
 
     #[test]
     fn list_dir() {
-        let dirs = os::list_dir(~".");
+        let dirs = os::list_dir(&Path("."));
         // Just assuming that we've got some contents in the current directory
         assert (vec::len(dirs) > 0u);
 
@@ -946,53 +987,53 @@ mod tests {
 
     #[test]
     fn path_is_dir() {
-        assert (os::path_is_dir(~"."));
-        assert (!os::path_is_dir(~"test/stdtest/fs.rs"));
+        assert (os::path_is_dir(&Path(".")));
+        assert (!os::path_is_dir(&Path("test/stdtest/fs.rs")));
     }
 
     #[test]
     fn path_exists() {
-        assert (os::path_exists(~"."));
-        assert (!os::path_exists(~"test/nonexistent-bogus-path"));
+        assert (os::path_exists(&Path(".")));
+        assert (!os::path_exists(&Path("test/nonexistent-bogus-path")));
     }
 
     #[test]
     fn copy_file_does_not_exist() {
-      assert !os::copy_file(~"test/nonexistent-bogus-path",
-                           ~"test/other-bogus-path");
-      assert !os::path_exists(~"test/other-bogus-path");
+      assert !os::copy_file(&Path("test/nonexistent-bogus-path"),
+                            &Path("test/other-bogus-path"));
+      assert !os::path_exists(&Path("test/other-bogus-path"));
     }
 
     #[test]
     fn copy_file_ok() {
       let tempdir = getcwd(); // would like to use $TMPDIR,
                               // doesn't seem to work on Linux
-      assert (str::len(tempdir) > 0u);
-      let in = tempdir + path::path_sep() + ~"in.txt";
-      let out = tempdir + path::path_sep() + ~"out.txt";
+      assert (str::len(tempdir.to_str()) > 0u);
+      let in = tempdir.push("in.txt");
+      let out = tempdir.push("out.txt");
 
       /* Write the temp input file */
-        let ostream = do as_c_charp(in) |fromp| {
-            do as_c_charp(~"w+b") |modebuf| {
+        let ostream = do as_c_charp(in.to_str()) |fromp| {
+            do as_c_charp("w+b") |modebuf| {
                 libc::fopen(fromp, modebuf)
             }
       };
       assert (ostream as uint != 0u);
       let s = ~"hello";
-      let mut buf = vec::to_mut(str::bytes(s) + ~[0 as u8]);
+      let mut buf = vec::to_mut(str::to_bytes(s) + ~[0 as u8]);
       do vec::as_mut_buf(buf) |b, _len| {
           assert (libc::fwrite(b as *c_void, 1u as size_t,
                                (str::len(s) + 1u) as size_t, ostream)
                   == buf.len() as size_t)};
       assert (libc::fclose(ostream) == (0u as c_int));
-      let rs = os::copy_file(in, out);
-      if (!os::path_exists(in)) {
-        fail (fmt!{"%s doesn't exist", in});
+      let rs = os::copy_file(&in, &out);
+      if (!os::path_exists(&in)) {
+        fail (fmt!("%s doesn't exist", in.to_str()));
       }
       assert(rs);
-      let rslt = run::run_program(~"diff", ~[in, out]);
+      let rslt = run::run_program(~"diff", ~[in.to_str(), out.to_str()]);
       assert (rslt == 0);
-      assert (remove_file(in));
-      assert (remove_file(out));
+      assert (remove_file(&in));
+      assert (remove_file(&out));
     }
 }

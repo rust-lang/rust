@@ -128,6 +128,45 @@ enum TypeKind {
     X86_MMX   = 15
 }
 
+impl TypeKind : cmp::Eq {
+    pure fn eq(&&other: TypeKind) -> bool {
+        match (self, other) {
+            (Void, Void) => true,
+            (Half, Half) => true,
+            (Float, Float) => true,
+            (Double, Double) => true,
+            (X86_FP80, X86_FP80) => true,
+            (FP128, FP128) => true,
+            (PPC_FP128, PPC_FP128) => true,
+            (Label, Label) => true,
+            (Integer, Integer) => true,
+            (Function, Function) => true,
+            (Struct, Struct) => true,
+            (Array, Array) => true,
+            (Pointer, Pointer) => true,
+            (Vector, Vector) => true,
+            (Metadata, Metadata) => true,
+            (X86_MMX, X86_MMX) => true,
+            (Void, _) => false,
+            (Half, _) => false,
+            (Float, _) => false,
+            (Double, _) => false,
+            (X86_FP80, _) => false,
+            (FP128, _) => false,
+            (PPC_FP128, _) => false,
+            (Label, _) => false,
+            (Integer, _) => false,
+            (Function, _) => false,
+            (Struct, _) => false,
+            (Array, _) => false,
+            (Pointer, _) => false,
+            (Vector, _) => false,
+            (Metadata, _) => false,
+            (X86_MMX, _) => false,
+        }
+    }
+}
+
 enum AtomicBinOp {
     Xchg = 0,
     Add  = 1,
@@ -947,6 +986,16 @@ extern mod llvm {
         call. */
     fn LLVMRustGetLastError() -> *c_char;
 
+    /** Load a shared library to resolve symbols against. */
+    fn LLVMRustLoadLibrary(Filename: *c_char) -> bool;
+
+    /** Create and execute the JIT engine. */
+    fn LLVMRustJIT(__morestack: *(),
+                   PM: PassManagerRef,
+                   M: ModuleRef,
+                   OptLevel: c_int,
+                   EnableSegmentedStacks: bool) -> *();
+
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemBuf: MemoryBufferRef) -> ModuleRef;
 
@@ -994,11 +1043,11 @@ fn associate_type(tn: type_names, s: ~str, t: TypeRef) {
     assert tn.named_types.insert(s, t);
 }
 
-fn type_has_name(tn: type_names, t: TypeRef) -> option<~str> {
+fn type_has_name(tn: type_names, t: TypeRef) -> Option<~str> {
     return tn.type_names.find(t);
 }
 
-fn name_has_type(tn: type_names, s: ~str) -> option<TypeRef> {
+fn name_has_type(tn: type_names, s: ~str) -> Option<TypeRef> {
     return tn.named_types.find(s);
 }
 
@@ -1016,7 +1065,7 @@ fn type_to_str(names: type_names, ty: TypeRef) -> ~str {
 fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
    ~str {
     match type_has_name(names, ty) {
-      option::some(n) => return n,
+      option::Some(n) => return n,
       _ => {}
     }
 
@@ -1090,7 +1139,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
             if addrspace == 0u {
                 ~""
             } else {
-                fmt!{"addrspace(%u)", addrspace}
+                fmt!("addrspace(%u)", addrspace)
             }
         };
         return addrstr + ~"*" +
@@ -1122,7 +1171,7 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] unsafe {
 
 /* Memory-managed interface to target data. */
 
-class target_data_res {
+struct target_data_res {
     let TD: TargetDataRef;
     new(TD: TargetDataRef) { self.TD = TD; }
     drop { llvm::LLVMDisposeTargetData(self.TD); }
@@ -1138,7 +1187,7 @@ fn mk_target_data(string_rep: ~str) -> target_data {
 
 /* Memory-managed interface to pass managers. */
 
-class pass_manager_res {
+struct pass_manager_res {
     let PM: PassManagerRef;
     new(PM: PassManagerRef) { self.PM = PM; }
     drop { llvm::LLVMDisposePassManager(self.PM); }
@@ -1153,7 +1202,7 @@ fn mk_pass_manager() -> pass_manager {
 
 /* Memory-managed interface to object files. */
 
-class object_file_res {
+struct object_file_res {
     let ObjectFile: ObjectFileRef;
     new(ObjectFile: ObjectFileRef) { self.ObjectFile = ObjectFile; }
     drop { llvm::LLVMDisposeObjectFile(self.ObjectFile); }
@@ -1161,15 +1210,15 @@ class object_file_res {
 
 type object_file = {llof: ObjectFileRef, dtor: @object_file_res};
 
-fn mk_object_file(llmb: MemoryBufferRef) -> option<object_file> {
+fn mk_object_file(llmb: MemoryBufferRef) -> Option<object_file> {
     let llof = llvm::LLVMCreateObjectFile(llmb);
-    if llof as int == 0 { return option::none::<object_file>; }
-    return option::some({llof: llof, dtor: @object_file_res(llof)});
+    if llof as int == 0 { return option::None::<object_file>; }
+    return option::Some({llof: llof, dtor: @object_file_res(llof)});
 }
 
 /* Memory-managed interface to section iterators. */
 
-class section_iter_res {
+struct section_iter_res {
     let SI: SectionIteratorRef;
     new(SI: SectionIteratorRef) { self.SI = SI; }
     drop { llvm::LLVMDisposeSectionIterator(self.SI); }

@@ -7,7 +7,7 @@ export parser_attr;
 
 // A type to distingush between the parsing of item attributes or syntax
 // extensions, which both begin with token.POUND
-type attr_or_ext = option<Either<~[ast::attribute], @ast::expr>>;
+type attr_or_ext = Option<Either<~[ast::attribute], @ast::expr>>;
 
 trait parser_attr {
     fn parse_outer_attrs_or_ext(first_item_attrs: ~[ast::attribute])
@@ -36,20 +36,20 @@ impl parser: parser_attr {
                 self.bump();
                 let first_attr =
                     self.parse_attribute_naked(ast::attr_outer, lo);
-                return some(Left(vec::append(~[first_attr],
+                return Some(Left(vec::append(~[first_attr],
                                           self.parse_outer_attributes())));
             } else if !(self.look_ahead(1u) == token::LT
                         || self.look_ahead(1u) == token::LBRACKET
                         || self.look_ahead(1u) == token::POUND
                         || expect_item_next) {
                 self.bump();
-                return some(Right(self.parse_syntax_ext_naked(lo)));
-            } else { return none; }
+                return Some(Right(self.parse_syntax_ext_naked(lo)));
+            } else { return None; }
         }
         token::DOC_COMMENT(_) => {
-          return some(Left(self.parse_outer_attributes()));
+          return Some(Left(self.parse_outer_attributes()));
         }
-        _ => return none
+        _ => return None
       }
     }
 
@@ -66,7 +66,7 @@ impl parser: parser_attr {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.get_str(s), self.span.lo, self.span.hi);
+                        *self.id_to_str(s), self.span.lo, self.span.hi);
                 if attr.node.style != ast::attr_outer {
                   self.fatal(~"expected outer comment");
                 }
@@ -128,7 +128,7 @@ impl parser: parser_attr {
               }
               token::DOC_COMMENT(s) => {
                 let attr = ::attr::mk_sugared_doc_attr(
-                        *self.get_str(s), self.span.lo, self.span.hi);
+                        *self.id_to_str(s), self.span.lo, self.span.hi);
                 self.bump();
                 if attr.node.style == ast::attr_inner {
                   inner_attrs += ~[attr];
@@ -145,22 +145,22 @@ impl parser: parser_attr {
 
     fn parse_meta_item() -> @ast::meta_item {
         let lo = self.span.lo;
-        let ident = self.parse_ident();
+        let name = *self.id_to_str(self.parse_ident());
         match self.token {
           token::EQ => {
             self.bump();
             let lit = self.parse_lit();
             let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_name_value(ident, lit));
+            return @spanned(lo, hi, ast::meta_name_value(name, lit));
           }
           token::LPAREN => {
             let inner_items = self.parse_meta_seq();
             let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_list(ident, inner_items));
+            return @spanned(lo, hi, ast::meta_list(name, inner_items));
           }
           _ => {
             let mut hi = self.span.hi;
-            return @spanned(lo, hi, ast::meta_word(ident));
+            return @spanned(lo, hi, ast::meta_word(name));
           }
         }
     }

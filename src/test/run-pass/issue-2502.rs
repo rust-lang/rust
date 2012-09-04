@@ -1,4 +1,4 @@
-class font {
+struct font {
     let fontbuf: &self/~[u8];
 
     new(fontbuf: &self/~[u8]) {

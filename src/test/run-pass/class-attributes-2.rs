@@ -1,4 +1,4 @@
-class cat {
+struct cat {
   let name: ~str;
   #[cat_maker]
   /**
@@ -9,7 +9,7 @@ class cat {
   /**
      Actually, cats don't always land on their feet when you drop them.
   */
-  drop { error!{"%s landed on hir feet", self.name}; }
+  drop { error!("%s landed on hir feet", self.name); }
 }
 
 fn main() {

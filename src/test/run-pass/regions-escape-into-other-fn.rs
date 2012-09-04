@@ -1,4 +1,4 @@
-fn foo(x: &uint) -> &uint { x }
+fn foo(x: &r/uint) -> &r/uint { x }
 fn bar(x: &uint) -> uint { *x }
 
 fn main() {

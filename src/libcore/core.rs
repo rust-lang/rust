@@ -2,27 +2,40 @@
 
 // Export various ubiquitous types, constructors, methods.
 
-import option::{some, none};
-import option = option::option;
+import option::{Some, None};
+import Option = option::Option;
+// XXX: snapshot rustc is generating code that wants lower-case option
+#[cfg(stage0)]
+import option = option::Option;
+
+import result::{Result, Ok, Err};
+
 import Path = path::Path;
+import GenericPath = path::GenericPath;
+import WindowsPath = path::WindowsPath;
+import PosixPath = path::PosixPath;
+
 import tuple::{TupleOps, ExtendedTupleOps};
 import str::{StrSlice, UniqueStr};
 import vec::{ConstVector, CopyableVector, ImmutableVector};
-import vec::{ImmutableCopyableVector, IterTraitExtensions};
-import iter::{BaseIter, ExtendedIter, CopyableIter, Times, TimesIx};
+import vec::{ImmutableEqVector, ImmutableCopyableVector};
+import iter::{BaseIter, ExtendedIter, EqIter, CopyableIter};
+import iter::{CopyableOrderedIter, Times, TimesIx};
 import num::Num;
 import ptr::Ptr;
 import to_str::ToStr;
 
-export Path, option, some, none, unreachable;
+export Path, WindowsPath, PosixPath, GenericPath;
+export Option, Some, None, unreachable;
+export Result, Ok, Err;
 export extensions;
 // The following exports are the extension impls for numeric types
 export Num, Times, TimesIx;
 // The following exports are the common traits
 export StrSlice, UniqueStr;
 export ConstVector, CopyableVector, ImmutableVector;
-export ImmutableCopyableVector, IterTraitExtensions;
-export BaseIter, CopyableIter, ExtendedIter;
+export ImmutableEqVector, ImmutableCopyableVector, IterTraitExtensions;
+export BaseIter, CopyableIter, CopyableOrderedIter, ExtendedIter, EqIter;
 export TupleOps, ExtendedTupleOps;
 export Ptr;
 export ToStr;
@@ -45,7 +58,7 @@ export add, sub, mul, div, modulo, neg, bitand, bitor, bitxor;
 export shl, shr, index;
 
 #[cfg(test)]
-use coreops(name = "core", vers = "0.3");
+use coreops(name = "core", vers = "0.4");
 
 #[cfg(test)]
 import coreops::ops::{const, copy, send, owned};
@@ -83,7 +96,7 @@ mod core {
 // Similar to above. Some magic to make core testable.
 #[cfg(test)]
 mod std {
-    use std(vers = "0.3");
+    use std(vers = "0.4");
     import std::test;
 }
 

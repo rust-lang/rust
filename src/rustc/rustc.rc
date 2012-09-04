@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 #[link(name = "rustc",
-       vers = "0.3",
+       vers = "0.4",
        uuid = "0ce89b41-2f92-459e-bbc1-8f5fe32f16cf",
        url = "https://github.com/mozilla/rust/tree/master/src/rustc")];
 
@@ -14,9 +14,9 @@
 #[allow(vecs_implicitly_copyable)];
 // #[warn(deprecated_pattern)];
 
-use core(vers = "0.3");
-use std(vers = "0.3");
-use syntax(vers = "0.3");
+use core(vers = "0.4");
+use std(vers = "0.4");
+use syntax(vers = "0.4");
 
 import core::*;
 
@@ -53,7 +53,7 @@ mod middle {
         mod reachable;
     }
     mod ty;
-    mod resolve3;
+    mod resolve;
     mod typeck {
         mod check {
             mod alt;
@@ -66,7 +66,19 @@ mod middle {
         }
         mod rscope;
         mod astconv;
-        mod infer;
+        mod infer {
+            mod assignment;
+            mod combine;
+            mod glb;
+            mod integral;
+            mod lattice;
+            mod lub;
+            mod region_var_bindings;
+            mod resolve;
+            mod sub;
+            mod to_str;
+            mod unify;
+        }
         mod collect;
         mod coherence;
     }
@@ -82,7 +94,6 @@ mod middle {
     }
     mod mem_categorization;
     mod liveness;
-    mod block_use;
     mod kind;
     mod freevars;
     mod capture;

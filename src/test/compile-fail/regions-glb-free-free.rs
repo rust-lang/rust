@@ -11,13 +11,13 @@ mod argparse {
         mut value: uint;
     }
 
-    fn flag(name: &str, desc: &str) -> Flag {
+    fn flag(name: &r/str, desc: &r/str) -> Flag/&r {
         Flag { name: name, desc: desc, max_count: 1, value: 0 }
     }
 
     impl Flag {
         fn set_desc(self, s: &str) -> Flag {
-            Flag { //~ ERROR mismatched types
+            Flag { //~ ERROR cannot infer an appropriate lifetime
                 name: self.name,
                 desc: s,
                 max_count: self.max_count,

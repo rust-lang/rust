@@ -129,7 +129,7 @@ LIBSYNTAX_DSYM_GLOB :=$(call CFG_LIB_DSYM_GLOB,syntax)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.3.1
+CFG_RELEASE = 0.4
 CFG_VERSION = $(CFG_RELEASE)
 
 ifneq ($(wildcard $(CFG_GIT)),)
@@ -216,7 +216,8 @@ RUSTC_INPUTS := $(S)src/rustc/driver/rustc.rs
 ######################################################################
 
 # FIXME: x86-ism
-LLVM_COMPONENTS=x86 ipo bitreader bitwriter linker asmparser
+LLVM_COMPONENTS=x86 ipo bitreader bitwriter linker asmparser jit mcjit \
+                interpreter
 
 define DEF_LLVM_VARS
 # The configure script defines these variables with the target triples

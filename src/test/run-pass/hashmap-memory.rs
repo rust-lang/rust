@@ -7,16 +7,15 @@
 use std;
 
 import option = option;
-import option::some;
-import option::none;
+import option::Some;
+import option::None;
 import str;
 import vec;
 import std::map;
 import std::map::hashmap;
 import task;
 import comm::Chan;
-import comm::chan;
-import comm::port;
+import comm::Port;
 import comm::send;
 import comm::recv;
 import comm;
@@ -47,12 +46,12 @@ mod map_reduce {
                 val: ~str) {
             let mut c;
             match im.find(key) {
-              some(_c) => { c = _c }
-              none => {
-                let p = port();
-                error!{"sending find_reducer"};
-                send(ctrl, find_reducer(str::bytes(key), chan(p)));
-                error!{"receiving"};
+              Some(_c) => { c = _c }
+              None => {
+                let p = Port();
+                error!("sending find_reducer");
+                send(ctrl, find_reducer(str::to_bytes(key), Chan(p)));
+                error!("receiving");
                 c = recv(p);
                 log(error, c);
                 im.insert(key, c);
@@ -65,7 +64,7 @@ mod map_reduce {
     }
 
     fn map_reduce(inputs: ~[~str]) {
-        let ctrl = port();
+        let ctrl = Port();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
@@ -74,7 +73,7 @@ mod map_reduce {
 
         reducers = map::str_hash();
 
-        start_mappers(chan(ctrl), inputs);
+        start_mappers(Chan(ctrl), inputs);
 
         let mut num_mappers = vec::len(inputs) as int;
 
@@ -84,8 +83,8 @@ mod map_reduce {
               find_reducer(k, cc) => {
                 let mut c;
                 match reducers.find(str::from_bytes(k)) {
-                  some(_c) => { c = _c; }
-                  none => { c = 0; }
+                  Some(_c) => { c = _c; }
+                  None => { c = 0; }
                 }
                 send(cc, c);
               }

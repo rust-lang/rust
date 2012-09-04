@@ -3,7 +3,7 @@ use std;
 import task;
 import comm;
 
-class complainer {
+struct complainer {
   let c: @int;
   new(c: @int) { self.c = c; }
   drop {}

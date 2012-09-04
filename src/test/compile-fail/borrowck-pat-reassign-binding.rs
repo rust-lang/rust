@@ -1,12 +1,12 @@
 // xfail-pretty -- comments are infaithfully preserved
 
 fn main() {
-    let mut x: option<int> = none;
+    let mut x: Option<int> = None;
     match x { //~ NOTE loan of mutable local variable granted here
-      none => {}
-      some(ref i) => {
+      None => {}
+      Some(ref i) => {
         // Not ok: i is an outstanding ptr into x.
-        x = some(*i+1); //~ ERROR assigning to mutable local variable prohibited due to outstanding loan
+        x = Some(*i+1); //~ ERROR assigning to mutable local variable prohibited due to outstanding loan
       }
     }
     copy x; // just to prevent liveness warnings

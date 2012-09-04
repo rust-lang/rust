@@ -19,64 +19,63 @@ import ast::node_id;
 import util::interner;
 import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
 import lexer::{reader, string_reader};
+import parse::token::{ident_interner, mk_ident_interner};
 
 type parse_sess = @{
     cm: codemap::codemap,
     mut next_id: node_id,
     span_diagnostic: span_handler,
-    interner: interner::interner<@~str>,
+    interner: ident_interner,
     // these two must be kept up to date
     mut chpos: uint,
     mut byte_pos: uint
 };
 
-fn new_parse_sess(demitter: option<emitter>) -> parse_sess {
+fn new_parse_sess(demitter: Option<emitter>) -> parse_sess {
     let cm = codemap::new_codemap();
     return @{cm: cm,
-          mut next_id: 1,
-          span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-          interner: interner::mk::<@~str>(|x| str::hash(*x),
-                                          |x,y| str::eq(*x, *y)),
-          mut chpos: 0u, mut byte_pos: 0u};
+             mut next_id: 1,
+             span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+             interner: mk_ident_interner(),
+             mut chpos: 0u, mut byte_pos: 0u};
 }
 
 fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
     -> parse_sess {
     return @{cm: cm,
-          mut next_id: 1,
-          span_diagnostic: sh,
-          interner: interner::mk::<@~str>(|x| str::hash(*x),
-                                          |x,y| str::eq(*x, *y)),
-          mut chpos: 0u, mut byte_pos: 0u};
+             mut next_id: 1,
+             span_diagnostic: sh,
+             interner: mk_ident_interner(),
+             mut chpos: 0u, mut byte_pos: 0u};
 }
 
-fn parse_crate_from_file(input: ~str, cfg: ast::crate_cfg,
+fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
                          sess: parse_sess) -> @ast::crate {
-    if str::ends_with(input, ~".rc") {
+    if input.filetype() == Some(~"rc") {
         parse_crate_from_crate_file(input, cfg, sess)
-    } else if str::ends_with(input, ~".rs") {
+    } else if input.filetype() == Some(~"rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
         sess.span_diagnostic.handler().fatal(~"unknown input file type: " +
-                                             input)
+                                             input.to_str())
     }
 }
 
-fn parse_crate_from_crate_file(input: ~str, cfg: ast::crate_cfg,
+fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
                                sess: parse_sess) -> @ast::crate {
     let (p, rdr) = new_parser_etc_from_file(sess, cfg, input,
                                             parser::CRATE_FILE);
     let lo = p.span.lo;
-    let prefix = path::dirname(input);
+    let prefix = input.dir_path();
     let leading_attrs = p.parse_inner_attrs_and_next();
     let { inner: crate_attrs, next: first_cdir_attr } = leading_attrs;
     let cdirs = p.parse_crate_directives(token::EOF, first_cdir_attr);
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     let cx = @{sess: sess, cfg: /* FIXME (#2543) */ copy p.cfg};
-    let (companionmod, _) = path::splitext(path::basename(input));
+    let companionmod = option::map(input.filestem(), |s| Path(s));
     let (m, attrs) = eval::eval_crate_directives_to_mod(
-        cx, cdirs, prefix, option::some(companionmod));
+        cx, cdirs, &prefix, &companionmod);
     let mut hi = p.span.hi;
     p.expect(token::EOF);
     return @ast_util::respan(ast_util::mk_sp(lo, hi),
@@ -86,7 +85,7 @@ fn parse_crate_from_crate_file(input: ~str, cfg: ast::crate_cfg,
                            config: /* FIXME (#2543) */ copy p.cfg});
 }
 
-fn parse_crate_from_source_file(input: ~str, cfg: ast::crate_cfg,
+fn parse_crate_from_source_file(input: &Path, cfg: ast::crate_cfg,
                                 sess: parse_sess) -> @ast::crate {
     let (p, rdr) = new_parser_etc_from_file(sess, cfg, input,
                                             parser::SOURCE_FILE);
@@ -118,7 +117,7 @@ fn parse_expr_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
 
 fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
                               +attrs: ~[ast::attribute],
-                              sess: parse_sess) -> option<@ast::item> {
+                              sess: parse_sess) -> Option<@ast::item> {
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
     let r = p.parse_item(attrs);
@@ -184,22 +183,23 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
 
 
 fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
-                            +path: ~str, ftype: parser::file_type) ->
+                            path: &Path, ftype: parser::file_type) ->
    (parser, string_reader) {
     let res = io::read_whole_file_str(path);
     match res {
-      result::ok(_) => { /* Continue. */ }
-      result::err(e) => sess.span_diagnostic.handler().fatal(e)
+      result::Ok(_) => { /* Continue. */ }
+      result::Err(e) => sess.span_diagnostic.handler().fatal(e)
     }
     let src = @result::unwrap(res);
-    let filemap = codemap::new_filemap(path, src, sess.chpos, sess.byte_pos);
+    let filemap = codemap::new_filemap(path.to_str(), src,
+                                       sess.chpos, sess.byte_pos);
     sess.cm.files.push(filemap);
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap,
                                         sess.interner);
     return (parser(sess, cfg, srdr as reader, ftype), srdr);
 }
 
-fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: ~str,
+fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: &Path,
                         ftype: parser::file_type) -> parser {
     let (p, _) = new_parser_etc_from_file(sess, cfg, path, ftype);
     return p;
@@ -208,6 +208,6 @@ fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, +path: ~str,
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,
                       tt: ~[ast::token_tree]) -> parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, sess.interner,
-                                    none, tt);
+                                    None, tt);
     return parser(sess, cfg, trdr as reader, parser::SOURCE_FILE)
 }

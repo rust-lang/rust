@@ -10,14 +10,13 @@ elseif exists("b:current_syntax")
   finish
 endif
 
-syn keyword   rustAssert      assert
-syn match     rustAssert      "assert\(\w\)*"
-syn keyword   rustKeyword     alt again as break
-syn keyword   rustKeyword     check claim const copy do drop else export extern fail
+syn match     rustAssert      "\<assert\(\w\)*"
+syn keyword   rustKeyword     again as break
+syn keyword   rustKeyword     const copy do drop else export extern fail
 syn keyword   rustKeyword     for if impl import in let log
 syn keyword   rustKeyword     loop match mod module move mut new of owned priv pub pure
-syn keyword   rustKeyword     ref ret return static to unchecked
-syn match     rustKeyword     "unsafe" " Allows also matching unsafe::foo()
+syn keyword   rustKeyword     ref return static to unchecked
+syn match     rustKeyword     "\<unsafe\>" " Allows also matching unsafe::foo()
 syn keyword   rustKeyword     use while with
 " FIXME: Scoped impl's name is also fallen in this category
 syn keyword   rustKeyword     mod trait class struct enum type nextgroup=rustIdentifier skipwhite
@@ -31,7 +30,7 @@ syn keyword   rustKeyword     m32 m64 m128 f80 f16 f128
 
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
 syn keyword   rustType        f64 i8 i16 i32 i64 str
-syn keyword   rustType        option either
+syn keyword   rustType        Option Either
 
 " Types from libc
 syn keyword   rustType        c_float c_double c_void FILE fpos_t
@@ -45,11 +44,11 @@ syn keyword   rustType        off_t dev_t ino_t pid_t mode_t ssize_t
 syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
 
-syn keyword   rustConstant    some none       " option
-syn keyword   rustConstant    left right      " either
-syn keyword   rustConstant    ok err          " result
-syn keyword   rustConstant    success failure " task
-syn keyword   rustConstant    cons nil        " list
+syn keyword   rustConstant    Some None       " option
+syn keyword   rustConstant    Left Right      " either
+syn keyword   rustConstant    Ok Err          " result
+syn keyword   rustConstant    Success Failure " task
+syn keyword   rustConstant    Cons Nil        " list
 " syn keyword   rustConstant    empty node      " tree
 
 " Constants from libc
@@ -73,7 +72,9 @@ syn match     rustFuncCall    "\w\(\w\)*::<"he=e-3,me=e-3 contains=rustAssert " 
 syn match     rustMacro       '\w\(\w\)*!'
 syn match     rustMacro       '#\w\(\w\)*'
 
-syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo
+syn match     rustFormat      display "%\(\d\+\$\)\=[-+' #0*]*\(\d*\|\*\|\*\d\+\$\)\(\.\(\d*\|\*\|\*\d\+\$\)\)\=\([hlLjzt]\|ll\|hh\)\=\([aAbdiuoxXDOUfFeEgGcCsSpn?]\|\[\^\=.[^]]*\]\)" contained
+syn match     rustFormat      display "%%" contained
+syn region    rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+ contains=rustTodo,rustFormat
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString
 
@@ -108,6 +109,7 @@ hi def link rustHexNumber       rustNumber
 hi def link rustBinNumber       rustNumber
 hi def link rustIdentifierPrime rustIdentifier
 
+hi def link rustFormat        Special
 hi def link rustString        String
 hi def link rustCharacter     Character
 hi def link rustNumber        Number

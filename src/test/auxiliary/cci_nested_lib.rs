@@ -1,4 +1,4 @@
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 type entry<A,B> = {key: A, value: B};
 type alist<A,B> = { eq_fn: fn@(A,A) -> bool, data: DVec<entry<A,B>> };
@@ -18,12 +18,12 @@ fn alist_get<A: copy, B: copy>(lst: alist<A,B>, k: A) -> B {
 #[inline]
 fn new_int_alist<B: copy>() -> alist<int, B> {
     fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-    return {eq_fn: eq_int, data: dvec()};
+    return {eq_fn: eq_int, data: DVec()};
 }
 
 #[inline]
 fn new_int_alist_2<B: copy>() -> alist<int, B> {
     #[inline]
     fn eq_int(&&a: int, &&b: int) -> bool { a == b }
-    return {eq_fn: eq_int, data: dvec()};
+    return {eq_fn: eq_int, data: DVec()};
 }

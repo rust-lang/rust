@@ -44,8 +44,8 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(t) {
-          some(s) => *s,
-          none => {
+          Some(s) => *s,
+          None => {
             let buf = io::mem_buffer();
             enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).struct);
             cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
@@ -56,11 +56,11 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
       }
       ac_use_abbrevs(abbrevs) => {
         match abbrevs.find(t) {
-          some(a) => { w.write_str(*a.s); return; }
-          none => {
+          Some(a) => { w.write_str(*a.s); return; }
+          None => {
             let pos = w.tell();
             match ty::type_def_id(t) {
-              some(def_id) => {
+              Some(def_id) => {
                 // Do not emit node ids that map to unexported names.  Those
                 // are not helpful.
                 if def_id.crate != local_crate ||
@@ -104,10 +104,10 @@ fn enc_mt(w: io::Writer, cx: @ctxt, mt: ty::mt) {
     enc_ty(w, cx, mt.ty);
 }
 
-fn enc_opt<T>(w: io::Writer, t: option<T>, enc_f: fn(T)) {
+fn enc_opt<T>(w: io::Writer, t: Option<T>, enc_f: fn(T)) {
     match t {
-      none => w.write_char('n'),
-      some(v) => {
+      None => w.write_char('n'),
+      Some(v) => {
         w.write_char('s');
         enc_f(v);
       }
@@ -126,14 +126,14 @@ fn enc_region(w: io::Writer, cx: @ctxt, r: ty::region) {
     match r {
       ty::re_bound(br) => {
         w.write_char('b');
-        enc_bound_region(w, br);
+        enc_bound_region(w, cx, br);
       }
       ty::re_free(id, br) => {
         w.write_char('f');
         w.write_char('[');
         w.write_int(id);
         w.write_char('|');
-        enc_bound_region(w, br);
+        enc_bound_region(w, cx, br);
         w.write_char(']');
       }
       ty::re_scope(nid) => {
@@ -151,20 +151,24 @@ fn enc_region(w: io::Writer, cx: @ctxt, r: ty::region) {
     }
 }
 
-fn enc_bound_region(w: io::Writer, br: ty::bound_region) {
+fn enc_bound_region(w: io::Writer, cx: @ctxt, br: ty::bound_region) {
     match br {
       ty::br_self => w.write_char('s'),
-      ty::br_anon => w.write_char('a'),
+      ty::br_anon(idx) => {
+        w.write_char('a');
+        w.write_uint(idx);
+        w.write_char('|');
+      }
       ty::br_named(s) => {
         w.write_char('[');
-        w.write_str(*s);
+        w.write_str(cx.tcx.sess.str_of(s));
         w.write_char(']')
       }
       ty::br_cap_avoid(id, br) => {
         w.write_char('c');
         w.write_int(id);
         w.write_char('|');
-        enc_bound_region(w, *br);
+        enc_bound_region(w, cx, *br);
       }
     }
 }
@@ -261,7 +265,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       ty::ty_rec(fields) => {
         w.write_str(&"R[");
         for fields.each |field| {
-            w.write_str(*field.ident);
+            w.write_str(cx.tcx.sess.str_of(field.ident));
             w.write_char('=');
             enc_mt(w, cx, field.mt);
         }
@@ -294,15 +298,15 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       ty::ty_opaque_closure_ptr(ty::ck_uniq) => w.write_str(&"C~"),
       ty::ty_opaque_box => w.write_char('B'),
       ty::ty_class(def, substs) => {
-          debug!{"~~~~ %s", ~"a["};
+          debug!("~~~~ %s", ~"a[");
           w.write_str(&"a[");
           let s = cx.ds(def);
-          debug!{"~~~~ %s", s};
+          debug!("~~~~ %s", s);
           w.write_str(s);
-          debug!{"~~~~ %s", ~"|"};
+          debug!("~~~~ %s", ~"|");
           w.write_char('|');
           enc_substs(w, cx, substs);
-          debug!{"~~~~ %s", ~"]"};
+          debug!("~~~~ %s", ~"]");
           w.write_char(']');
       }
     }

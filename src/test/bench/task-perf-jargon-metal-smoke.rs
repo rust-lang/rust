@@ -5,11 +5,11 @@
 //
 // The filename is a song reference; google it in quotes.
 
-fn child_generation(gens_left: uint, -c: pipes::chan<()>) {
+fn child_generation(gens_left: uint, -c: pipes::Chan<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
-    let c = ~mut some(c);
+    let c = ~mut Some(c);
     do task::spawn_supervised {
         let c = option::swap_unwrap(c);
         if gens_left & 1 == 1 {

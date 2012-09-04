@@ -8,22 +8,22 @@ import syntax::print::pprust::{expr_to_str};
 fn replace_bound_regions_in_fn_ty(
     tcx: ty::ctxt,
     isr: isr_alist,
-    self_info: option<self_info>,
+    self_info: Option<self_info>,
     fn_ty: &ty::fn_ty,
     mapf: fn(ty::bound_region) -> ty::region) ->
-    {isr: isr_alist, self_info: option<self_info>, fn_ty: ty::fn_ty} {
+    {isr: isr_alist, self_info: Option<self_info>, fn_ty: ty::fn_ty} {
 
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.
-    let self_ty = match self_info {
-      some(s) => some(s.self_ty),
-      none => none
+    let (self_ty, rebuild_self_info) = match self_info {
+      Some(s) => (Some(s.self_ty), |t| Some({self_ty: t with s})),
+      None => (None, |_t| None)
     };
 
     let mut all_tys = ty::tys_in_fn_ty(fn_ty);
 
     match self_info {
-      some({explicit_self: ast::sty_region(m), _}) => {
+      Some({explicit_self: {node: ast::sty_region(m), _}, _}) => {
         let region = ty::re_bound(ty::br_self);
         let ty = ty::mk_rptr(tcx, region,
                              { ty: ty::mk_self(tcx), mutbl: m });
@@ -35,15 +35,15 @@ fn replace_bound_regions_in_fn_ty(
 
     for self_ty.each |t| { vec::push(all_tys, t) }
 
-    debug!{"replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
+    debug!("replace_bound_regions_in_fn_ty(self_info.self_ty=%?, fn_ty=%s, \
                 all_tys=%?)",
            self_ty.map(|t| ty_to_str(tcx, t)),
            ty_to_str(tcx, ty::mk_fn(tcx, *fn_ty)),
-           all_tys.map(|t| ty_to_str(tcx, t))};
+           all_tys.map(|t| ty_to_str(tcx, t)));
     let _i = indenter();
 
     let isr = do create_bound_region_mapping(tcx, isr, all_tys) |br| {
-        debug!{"br=%?", br};
+        debug!("br=%?", br);
         mapf(br)
     };
     let ty_fn = ty::ty_fn(*fn_ty);
@@ -52,24 +52,22 @@ fn replace_bound_regions_in_fn_ty(
     });
     let t_self = self_ty.map(|t| replace_bound_regions(tcx, isr, t));
 
-    debug!{"result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
+    debug!("result of replace_bound_regions_in_fn_ty: self_info.self_ty=%?, \
                 fn_ty=%s",
            t_self.map(|t| ty_to_str(tcx, t)),
-           ty_to_str(tcx, t_fn)};
+           ty_to_str(tcx, t_fn));
 
 
-    // Glue updated self_ty back together with its original node_id.
-    let new_self_info = match self_info {
-        some(s) => match check t_self {
-          some(t) => some({self_ty: t with s})
-          // this 'none' case shouldn't happen
-        },
-        none => none
+    // Glue updated self_ty back together with its original def_id.
+    let new_self_info: Option<self_info> = match t_self {
+      None    => None,
+      Some(t) => rebuild_self_info(t)
     };
 
     return {isr: isr,
          self_info: new_self_info,
-         fn_ty: match check ty::get(t_fn).struct { ty::ty_fn(o) => o }};
+         fn_ty: match ty::get(t_fn).struct { ty::ty_fn(o) => o,
+          _ => tcx.sess.bug(~"replace_bound_regions_in_fn_ty: impossible")}};
 
 
     // Takes `isr`, a (possibly empty) mapping from in-scope region
@@ -104,8 +102,8 @@ fn replace_bound_regions_in_fn_ty(
               }
               ty::re_bound(br) => {
                 match isr.find(br) {
-                  some(_) => isr,
-                  none => @cons((br, to_r(br)), isr)
+                  Some(_) => isr,
+                  None => @cons((br, to_r(br)), isr)
                 }
               }
             }
@@ -143,22 +141,22 @@ fn replace_bound_regions_in_fn_ty(
               // As long as we are not within a fn() type, `&T` is
               // mapped to the free region anon_r.  But within a fn
               // type, it remains bound.
-              ty::re_bound(ty::br_anon) if in_fn => r,
+              ty::re_bound(ty::br_anon(_)) if in_fn => r,
 
               ty::re_bound(br) => {
                 match isr.find(br) {
                   // In most cases, all named, bound regions will be
                   // mapped to some free region.
-                  some(fr) => fr,
+                  Some(fr) => fr,
 
                   // But in the case of a fn() type, there may be
                   // named regions within that remain bound:
-                  none if in_fn => r,
-                  none => {
+                  None if in_fn => r,
+                  None => {
                     tcx.sess.bug(
-                        fmt!{"Bound region not found in \
+                        fmt!("Bound region not found in \
                               in_scope_regions list: %s",
-                             region_to_str(tcx, r)});
+                             region_to_str(tcx, r)));
                   }
                 }
               }

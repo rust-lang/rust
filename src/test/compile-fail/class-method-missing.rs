@@ -3,7 +3,7 @@ trait animal {
   fn eat();
 }
 
-class cat : animal {
+struct cat : animal {
   let meows: uint;
   new(in_x : uint) { self.meows = in_x; }
 }

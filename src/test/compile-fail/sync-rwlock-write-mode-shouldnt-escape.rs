@@ -2,10 +2,10 @@
 use std;
 import std::sync;
 fn main() {
-    let x = ~sync::rwlock();
-    let mut y = none;
+    let x = ~sync::RWlock();
+    let mut y = None;
     do x.write_downgrade |write_mode| {
-        y = some(write_mode);
+        y = Some(write_mode);
     }
     // Adding this line causes a method unification failure instead
     // do (&option::unwrap(y)).write { }

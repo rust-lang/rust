@@ -2,6 +2,7 @@
 #include "rust_globals.h"
 #include "rust_task.h"
 #include "rust_shape.h"
+#include "rust_box_annihilator.h"
 
 class annihilator : public shape::data<annihilator,shape::ptr> {
     friend class shape::data<annihilator,shape::ptr>;
@@ -196,7 +197,13 @@ annihilator::do_annihilate(rust_task *task, rust_opaque_box *box) {
     annihilator annihilator(task, true, tydesc->shape,
                             tydesc->shape_tables, p);
     annihilator.walk();
-    task->boxed.free(box);
+    // NB: A reference count of -1 indicates that this box lives on the
+    // exchange heap. Otherwise it lives on the task-local heap.
+    if (box->ref_count + 1 == 0) {
+        task->kernel->free(box);
+    } else {
+        task->boxed.free(box);
+    }
 }
 
 void

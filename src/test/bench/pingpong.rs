@@ -7,21 +7,21 @@ use std;
 import pipes::{spawn_service, recv};
 import std::time::precise_time_s;
 
-proto! pingpong {
+proto! pingpong (
     ping: send {
         ping -> pong
     }
-    
+
     pong: recv {
         pong -> ping
     }
-}
+)
 
-proto! pingpong_unbounded {
+proto! pingpong_unbounded (
     ping: send {
         ping -> pong
     }
-    
+
     pong: recv {
         pong -> ping
     }
@@ -29,19 +29,19 @@ proto! pingpong_unbounded {
     you_will_never_catch_me: send {
         never_ever_ever -> you_will_never_catch_me
     }
-}
+)
 
 // This stuff should go in libcore::pipes
-macro_rules! move_it {
+macro_rules! move_it (
     { $x:expr } => { let t <- *ptr::addr_of($x); t }
-}
+)
 
-macro_rules! follow {
-    { 
+macro_rules! follow (
+    {
         $($message:path($($x: ident),+) -> $next:ident $e:expr)+
     } => (
         |m| match move m {
-            $(some($message($($x,)* next)) => {
+            $(Some($message($($x,)* next)) => {
                 // FIXME (#2329) use regular move here once move out of
                 // enums is supported.
                 let $next = unsafe { move_it!(next) };
@@ -50,11 +50,11 @@ macro_rules! follow {
         }
     );
 
-    { 
+    {
         $($message:path -> $next:ident $e:expr)+
     } => (
         |m| match move m {
-            $(some($message(next)) => {
+            $(Some($message(next)) => {
                 // FIXME (#2329) use regular move here once move out of
                 // enums is supported.
                 let $next = unsafe { move_it!(next) };
@@ -62,10 +62,10 @@ macro_rules! follow {
                 _ => { fail }
         }
     )
-}
+)
 
-fn switch<T: send, Tb: send, U>(+endp: pipes::recv_packet_buffered<T, Tb>,
-                      f: fn(+option<T>) -> U) -> U {
+fn switch<T: send, Tb: send, U>(+endp: pipes::RecvPacketBuffered<T, Tb>,
+                      f: fn(+Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }
 
@@ -78,9 +78,9 @@ fn bounded(count: uint) {
         let mut count = count;
         let mut ch = ch;
         while count > 0 {
-            ch = switch(ch, follow! {
+            ch = switch(ch, follow! (
                 ping -> next { server::pong(next) }
-            });
+            ));
 
             count -= 1;
         }
@@ -90,9 +90,9 @@ fn bounded(count: uint) {
     while count > 0 {
         let ch_ = client::ping(ch);
 
-        ch = switch(ch_, follow! {
+        ch = switch(ch_, follow! (
             pong -> next { next }
-        });
+        ));
 
         count -= 1;
     }
@@ -105,9 +105,9 @@ fn unbounded(count: uint) {
         let mut count = count;
         let mut ch = ch;
         while count > 0 {
-            ch = switch(ch, follow! {
+            ch = switch(ch, follow! (
                 ping -> next { server::pong(next) }
-            });
+            ));
 
             count -= 1;
         }
@@ -117,9 +117,9 @@ fn unbounded(count: uint) {
     while count > 0 {
         let ch_ = client::ping(ch);
 
-        ch = switch(ch_, follow! {
+        ch = switch(ch_, follow! (
             pong -> next { next }
-        });
+        ));
 
         count -= 1;
     }
@@ -141,13 +141,13 @@ fn main() {
     let bounded = do timeit { bounded(count) };
     let unbounded = do timeit { unbounded(count) };
 
-    io::println(fmt!{"count: %?\n", count});
-    io::println(fmt!{"bounded:   %? s\t(%? μs/message)",
-                     bounded, bounded * 1000000. / (count as float)});
-    io::println(fmt!{"unbounded: %? s\t(%? μs/message)",
-                     unbounded, unbounded * 1000000. / (count as float)});
+    io::println(fmt!("count: %?\n", count));
+    io::println(fmt!("bounded:   %? s\t(%? μs/message)",
+                     bounded, bounded * 1000000. / (count as float)));
+    io::println(fmt!("unbounded: %? s\t(%? μs/message)",
+                     unbounded, unbounded * 1000000. / (count as float)));
 
-    io::println(fmt!{"\n\
+    io::println(fmt!("\n\
                       bounded is %?%% faster",
-                     (unbounded - bounded) / bounded * 100.});
+                     (unbounded - bounded) / bounded * 100.));
 }

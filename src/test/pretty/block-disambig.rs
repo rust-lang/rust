@@ -8,7 +8,7 @@ fn test2() -> int { let val = @0; { } *val }
 
 fn test3() {
     let regs = @{mut eax: 0};
-    match check true { true => { } }
+    match true { true => { } _ => { } }
     (*regs).eax = 1;
 }
 
@@ -20,14 +20,15 @@ fn test6() -> bool { { } (true || false) && true }
 
 fn test7() -> uint {
     let regs = @0;
-    match check true { true => { } }
+    match true { true => { } _ => { } }
     (*regs < 2) as uint
 }
 
 fn test8() -> int {
     let val = @0;
-    match check true {
+    match true {
         true => { }
+        _    => { }
     }
     if *val < 1 {
         0
@@ -36,11 +37,11 @@ fn test8() -> int {
     }
 }
 
-fn test9() { let regs = @mut 0; match check true { true => { } } *regs += 1; }
+fn test9() { let regs = @mut 0; match true { true => { } _ => { } } *regs += 1; }
 
 fn test10() -> int {
     let regs = @mut ~[0];
-    match check true { true => { } }
+    match true { true => { } _ => { } }
     (*regs)[0]
 }
 

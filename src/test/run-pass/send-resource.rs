@@ -1,19 +1,19 @@
 import task::*;
 import comm::*;
 
-class test {
+struct test {
   let f: int;
   new(f: int) { self.f = f; }
   drop {}
 }
 
 fn main() {
-    let p = port();
-    let c = chan(p);
+    let p = Port();
+    let c = Chan(p);
 
     do spawn() {
-        let p = port();
-        c.send(chan(p));
+        let p = Port();
+        c.send(Chan(p));
 
         let _r = p.recv();
     }

@@ -1,6 +1,6 @@
 type point = {x: int, y: int};
 
-fn x_coord(p: &point) -> &int {
+fn x_coord(p: &r/point) -> &r/int {
     return &p.x;
 }
 

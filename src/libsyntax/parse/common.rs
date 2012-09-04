@@ -4,18 +4,18 @@ import parser::parser;
 import lexer::reader;
 
 type seq_sep = {
-    sep: option<token::token>,
+    sep: Option<token::token>,
     trailing_sep_allowed: bool
 };
 
 fn seq_sep_trailing_disallowed(t: token::token) -> seq_sep {
-    return {sep: option::some(t), trailing_sep_allowed: false};
+    return {sep: option::Some(t), trailing_sep_allowed: false};
 }
 fn seq_sep_trailing_allowed(t: token::token) -> seq_sep {
-    return {sep: option::some(t), trailing_sep_allowed: true};
+    return {sep: option::Some(t), trailing_sep_allowed: true};
 }
 fn seq_sep_none() -> seq_sep {
-    return {sep: option::none, trailing_sep_allowed: false};
+    return {sep: option::None, trailing_sep_allowed: false};
 }
 
 fn token_to_str(reader: reader, ++token: token::token) -> ~str {
@@ -41,11 +41,11 @@ trait parser_common {
     fn check_restricted_keywords();
     fn check_restricted_keywords_(w: ~str);
     fn expect_gt();
-    fn parse_seq_to_before_gt<T: copy>(sep: option<token::token>,
+    fn parse_seq_to_before_gt<T: copy>(sep: Option<token::token>,
                                        f: fn(parser) -> T) -> ~[T];
-    fn parse_seq_to_gt<T: copy>(sep: option<token::token>,
+    fn parse_seq_to_gt<T: copy>(sep: Option<token::token>,
                                 f: fn(parser) -> T) -> ~[T];
-    fn parse_seq_lt_gt<T: copy>(sep: option<token::token>,
+    fn parse_seq_lt_gt<T: copy>(sep: Option<token::token>,
                                 f: fn(parser) -> T) -> spanned<~[T]>;
     fn parse_seq_to_end<T: copy>(ket: token::token, sep: seq_sep,
                                  f: fn(parser) -> T) -> ~[T];
@@ -85,7 +85,7 @@ impl parser: parser_common {
 
     fn parse_ident() -> ast::ident {
         match copy self.token {
-          token::IDENT(i, _) => { self.bump(); return self.get_str(i); }
+          token::IDENT(i, _) => { self.bump(); return i; }
           token::INTERPOLATED(token::nt_ident(*)) => { self.bug(
               ~"ident interpolation not converted to real token"); }
           _ => { self.fatal(~"expected ident, found `"
@@ -110,16 +110,18 @@ impl parser: parser_common {
         return if self.token == tok { self.bump(); true } else { false };
     }
 
+    // Storing keywords as interned idents instead of strings would be nifty.
+
     // A sanity check that the word we are asking for is a known keyword
     fn require_keyword(word: ~str) {
         if !self.keywords.contains_key_ref(&word) {
-            self.bug(fmt!{"unknown keyword: %s", word});
+            self.bug(fmt!("unknown keyword: %s", word));
         }
     }
 
     fn token_is_word(word: ~str, ++tok: token::token) -> bool {
         match tok {
-          token::IDENT(sid, false) => { word == *self.get_str(sid) }
+          token::IDENT(sid, false) => { *self.id_to_str(sid) == word }
           _ => { false }
         }
     }
@@ -136,7 +138,7 @@ impl parser: parser_common {
     fn is_any_keyword(tok: token::token) -> bool {
         match tok {
           token::IDENT(sid, false) => {
-            self.keywords.contains_key_ref(self.get_str(sid))
+            self.keywords.contains_key_ref(self.id_to_str(sid))
           }
           _ => false
         }
@@ -144,19 +146,12 @@ impl parser: parser_common {
 
     fn eat_keyword(word: ~str) -> bool {
         self.require_keyword(word);
-
-        let mut bump = false;
-        let val = match self.token {
-          token::IDENT(sid, false) => {
-            if word == *self.get_str(sid) {
-                bump = true;
-                true
-            } else { false }
-          }
+        let is_kw = match self.token {
+          token::IDENT(sid, false) => (word == *self.id_to_str(sid)),
           _ => false
         };
-        if bump { self.bump() }
-        val
+        if is_kw { self.bump() }
+        is_kw
     }
 
     fn expect_keyword(word: ~str) {
@@ -203,14 +198,14 @@ impl parser: parser_common {
         }
     }
 
-    fn parse_seq_to_before_gt<T: copy>(sep: option<token::token>,
+    fn parse_seq_to_before_gt<T: copy>(sep: Option<token::token>,
                                        f: fn(parser) -> T) -> ~[T] {
         let mut first = true;
         let mut v = ~[];
         while self.token != token::GT
             && self.token != token::BINOP(token::SHR) {
             match sep {
-              some(t) => {
+              Some(t) => {
                 if first { first = false; }
                 else { self.expect(t); }
               }
@@ -222,7 +217,7 @@ impl parser: parser_common {
         return v;
     }
 
-    fn parse_seq_to_gt<T: copy>(sep: option<token::token>,
+    fn parse_seq_to_gt<T: copy>(sep: Option<token::token>,
                                 f: fn(parser) -> T) -> ~[T] {
         let v = self.parse_seq_to_before_gt(sep, f);
         self.expect_gt();
@@ -230,7 +225,7 @@ impl parser: parser_common {
         return v;
     }
 
-    fn parse_seq_lt_gt<T: copy>(sep: option<token::token>,
+    fn parse_seq_lt_gt<T: copy>(sep: Option<token::token>,
                                 f: fn(parser) -> T) -> spanned<~[T]> {
         let lo = self.span.lo;
         self.expect(token::LT);
@@ -254,7 +249,7 @@ impl parser: parser_common {
         let mut v: ~[T] = ~[];
         while self.token != ket {
             match sep.sep {
-              some(t) => {
+              Some(t) => {
                 if first { first = false; }
                 else { self.expect(t); }
               }

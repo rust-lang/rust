@@ -2,10 +2,10 @@ import syntax::ast::*;
 import syntax::{visit, ast_util, ast_map};
 import driver::session::session;
 import std::map::hashmap;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 
 fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
-               def_map: resolve3::DefMap,
+               def_map: resolve::DefMap,
                 method_map: typeck::method_map, tcx: ty::ctxt) {
     visit::visit_crate(*crate, false, visit::mk_vt(@{
         visit_item: |a,b,c| check_item(sess, ast_map, def_map, a, b, c),
@@ -18,7 +18,7 @@ fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,
 }
 
 fn check_item(sess: session, ast_map: ast_map::map,
-              def_map: resolve3::DefMap,
+              def_map: resolve::DefMap,
               it: @item, &&_is_const: bool, v: visit::vt<bool>) {
     match it.node {
       item_const(_, ex) => {
@@ -55,7 +55,7 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     }
 }
 
-fn check_expr(sess: session, def_map: resolve3::DefMap,
+fn check_expr(sess: session, def_map: resolve::DefMap,
               method_map: typeck::method_map, tcx: ty::ctxt,
               e: @expr, &&is_const: bool, v: visit::vt<bool>) {
     if is_const {
@@ -84,7 +84,7 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
           }
           expr_path(_) => {
             match def_map.find(e.id) {
-              some(def_const(def_id)) => {
+              Some(def_const(def_id)) => {
                 if !ast_util::is_local(def_id) {
                     sess.span_err(
                         e.span, ~"paths in constants may only refer to \
@@ -143,13 +143,13 @@ fn check_expr(sess: session, def_map: resolve3::DefMap,
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
 fn check_item_recursion(sess: session, ast_map: ast_map::map,
-                        def_map: resolve3::DefMap, it: @item) {
+                        def_map: resolve::DefMap, it: @item) {
 
     type env = {
         root_it: @item,
         sess: session,
         ast_map: ast_map::map,
-        def_map: resolve3::DefMap,
+        def_map: resolve::DefMap,
         idstack: @DVec<node_id>,
     };
 
@@ -158,7 +158,7 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: @dvec()
+        idstack: @DVec()
     };
 
     let visitor = visit::mk_vt(@{
@@ -179,13 +179,14 @@ fn check_item_recursion(sess: session, ast_map: ast_map::map,
 
     fn visit_expr(e: @expr, &&env: env, v: visit::vt<env>) {
         match e.node {
-          expr_path(path) => {
+          expr_path(*) => {
             match env.def_map.find(e.id) {
-              some(def_const(def_id)) => {
-                match check env.ast_map.get(def_id.node) {
+              Some(def_const(def_id)) => {
+                match env.ast_map.get(def_id.node) {
                   ast_map::node_item(it, _) => {
                     v.visit_item(it, env, v);
                   }
+                  _ => fail ~"const not bound to an item"
                 }
               }
               _ => ()

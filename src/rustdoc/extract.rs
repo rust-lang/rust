@@ -3,7 +3,27 @@
 import syntax::ast;
 import doc::item_utils;
 
-export from_srv, extract;
+export from_srv, extract, to_str, interner;
+
+
+/* can't import macros yet, so this is copied from token.rs. See its comment
+ * there. */
+macro_rules! interner_key (
+    () => (unsafe::transmute::<(uint, uint),
+           &fn(+@@syntax::parse::token::ident_interner)>((-3 as uint, 0u)))
+)
+
+// Hack; rather than thread an interner through everywhere, rely on
+// thread-local data
+fn to_str(id: ast::ident) -> ~str {
+    let intr = unsafe{ task::local_data_get(interner_key!()) };
+
+    return *(*intr.get()).get(id);
+}
+
+fn interner() -> syntax::parse::token::ident_interner {
+    return *(unsafe{ task::local_data_get(interner_key!()) }).get();
+}
 
 fn from_srv(
     srv: astsrv::srv,
@@ -34,17 +54,17 @@ fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: ~str
 ) -> doc::moddoc {
-    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, @default_name),
+    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
                     crate.node.module)
 }
 
-fn mk_itemdoc(id: ast::node_id, name: ast::ident) -> doc::itemdoc {
+fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::itemdoc {
     {
         id: id,
-        name: *name,
+        name: name,
         path: ~[],
-        brief: none,
-        desc: none,
+        brief: None,
+        desc: None,
         sections: ~[],
         reexport: false
     }
@@ -57,52 +77,52 @@ fn moddoc_from_mod(
     doc::moddoc_({
         item: itemdoc,
         items: do vec::filter_map(module_.items) |item| {
-            let itemdoc = mk_itemdoc(item.id, item.ident);
+            let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
             match item.node {
               ast::item_mod(m) => {
-                some(doc::modtag(
+                Some(doc::modtag(
                     moddoc_from_mod(itemdoc, m)
                 ))
               }
               ast::item_foreign_mod(nm) => {
-                some(doc::nmodtag(
+                Some(doc::nmodtag(
                     nmoddoc_from_mod(itemdoc, nm)
                 ))
               }
-              ast::item_fn(_, _, _) => {
-                some(doc::fntag(
+              ast::item_fn(*) => {
+                Some(doc::fntag(
                     fndoc_from_fn(itemdoc)
                 ))
               }
               ast::item_const(_, _) => {
-                some(doc::consttag(
+                Some(doc::consttag(
                     constdoc_from_const(itemdoc)
                 ))
               }
               ast::item_enum(enum_definition, _) => {
-                some(doc::enumtag(
+                Some(doc::enumtag(
                     enumdoc_from_enum(itemdoc, enum_definition.variants)
                 ))
               }
               ast::item_trait(_, _, methods) => {
-                some(doc::traittag(
+                Some(doc::traittag(
                     traitdoc_from_trait(itemdoc, methods)
                 ))
               }
               ast::item_impl(_, _, _, methods) => {
-                some(doc::impltag(
+                Some(doc::impltag(
                     impldoc_from_impl(itemdoc, methods)
                 ))
               }
               ast::item_ty(_, _) => {
-                some(doc::tytag(
+                Some(doc::tytag(
                     tydoc_from_ty(itemdoc)
                 ))
               }
-              _ => none
+              _ => None
             }
         },
-        index: none
+        index: None
     })
 }
 
@@ -110,31 +130,34 @@ fn nmoddoc_from_mod(
     itemdoc: doc::itemdoc,
     module_: ast::foreign_mod
 ) -> doc::nmoddoc {
+    let mut fns = ~[];
+    for module_.items.each |item| {
+        let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
+        match item.node {
+          ast::foreign_item_fn(*) => {
+            vec::push(fns, fndoc_from_fn(itemdoc));
+          }
+          ast::foreign_item_const(*) => {} // XXX: Not implemented.
+        }
+    }
     {
         item: itemdoc,
-        fns: do vec::map(module_.items) |item| {
-            let itemdoc = mk_itemdoc(item.id, item.ident);
-            match item.node {
-              ast::foreign_item_fn(_, _) => {
-                fndoc_from_fn(itemdoc)
-              }
-            }
-        },
-        index: none
+        fns: fns,
+        index: None
     }
 }
 
 fn fndoc_from_fn(itemdoc: doc::itemdoc) -> doc::fndoc {
     {
         item: itemdoc,
-        sig: none
+        sig: None
     }
 }
 
 fn constdoc_from_const(itemdoc: doc::itemdoc) -> doc::constdoc {
     {
         item: itemdoc,
-        sig: none
+        sig: None
     }
 }
 
@@ -162,10 +185,11 @@ fn variantdocs_from_variants(
 }
 
 fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
+
     {
-        name: *variant.node.name,
-        desc: none,
-        sig: none
+        name: to_str(variant.node.name),
+        desc: None,
+        sig: None
     }
 }
 
@@ -192,21 +216,21 @@ fn traitdoc_from_trait(
             match method {
               ast::required(ty_m) => {
                 {
-                    name: *ty_m.ident,
-                    brief: none,
-                    desc: none,
+                    name: to_str(ty_m.ident),
+                    brief: None,
+                    desc: None,
                     sections: ~[],
-                    sig: none,
+                    sig: None,
                     implementation: doc::required,
                 }
               }
               ast::provided(m) => {
                 {
-                    name: *m.ident,
-                    brief: none,
-                    desc: none,
+                    name: to_str(m.ident),
+                    brief: None,
+                    desc: None,
                     sections: ~[],
-                    sig: none,
+                    sig: None,
                     implementation: doc::provided,
                 }
               }
@@ -234,14 +258,14 @@ fn impldoc_from_impl(
     {
         item: itemdoc,
         trait_types: ~[],
-        self_ty: none,
+        self_ty: None,
         methods: do vec::map(methods) |method| {
             {
-                name: *method.ident,
-                brief: none,
-                desc: none,
+                name: to_str(method.ident),
+                brief: None,
+                desc: None,
                 sections: ~[],
-                sig: none,
+                sig: None,
                 implementation: doc::provided,
             }
         }
@@ -259,7 +283,7 @@ fn tydoc_from_ty(
 ) -> doc::tydoc {
     {
         item: itemdoc,
-        sig: none
+        sig: None
     }
 }
 

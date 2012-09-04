@@ -3,7 +3,7 @@ import task;
 
 fn main() { test00(); }
 
-fn test00_start(c: pipes::chan<int>, number_of_messages: int) {
+fn test00_start(c: pipes::Chan<int>, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(i + 0); i += 1; }
 }
@@ -15,8 +15,8 @@ fn test00() {
     let number_of_messages: int = 10;
     let ch = p.chan();
 
-    let mut result = none;
-    do task::task().future_result(|+r| { result = some(r); }).spawn {
+    let mut result = None;
+    do task::task().future_result(|+r| { result = Some(r); }).spawn {
         test00_start(ch, number_of_messages);
     }
 

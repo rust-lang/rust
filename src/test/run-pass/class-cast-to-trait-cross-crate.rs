@@ -7,7 +7,7 @@ class cat : to_str {
   priv {
     let mut meows : uint;
     fn meow() {
-      error!{"Meow"};
+      error!("Meow");
       self.meows += 1u;
       if self.meows % 5u == 0u {
           self.how_hungry += 1;
@@ -25,12 +25,12 @@ class cat : to_str {
 
   fn eat() -> bool {
     if self.how_hungry > 0 {
-        error!{"OM NOM NOM"};
+        error!("OM NOM NOM");
         self.how_hungry -= 2;
         return true;
     }
     else {
-        error!{"Not hungry!"};
+        error!("Not hungry!");
         return false;
     }
   }
@@ -40,7 +40,7 @@ class cat : to_str {
 
 fn print_out<T: to_str>(thing: T, expected: str) {
   let actual = thing.to_str();
-  debug!{"%s", actual};
+  debug!("%s", actual);
   assert(actual == expected);
 }
 

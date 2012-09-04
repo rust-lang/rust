@@ -1,4 +1,4 @@
-class r {
+struct r {
   let b: @mut int;
   new(b: @mut int) {
     self.b = b;
@@ -9,7 +9,7 @@ class r {
 fn main() {
     let b = @mut 0;
     {
-        let p = some(r(b));
+        let p = Some(r(b));
     }
 
     assert *b == 1;

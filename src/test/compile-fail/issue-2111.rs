@@ -1,11 +1,11 @@
-fn foo(a: option<uint>, b: option<uint>) {
-  match (a,b) { //~ ERROR: non-exhaustive patterns: none not covered
-    (some(a), some(b)) if a == b => { }
-    (some(_), none) |
-    (none, some(_)) => { }
+fn foo(a: Option<uint>, b: Option<uint>) {
+  match (a,b) { //~ ERROR: non-exhaustive patterns: None not covered
+    (Some(a), Some(b)) if a == b => { }
+    (Some(_), None) |
+    (None, Some(_)) => { }
   }
 }
 
 fn main() {
-  foo(none, none);
+  foo(None, None);
 }

@@ -6,8 +6,8 @@ import ast_util::operator_prec;
 
 fn expr_requires_semi_to_be_stmt(e: @ast::expr) -> bool {
     match e.node {
-      ast::expr_if(_, _, _) | ast::expr_match(_, _, _) | ast::expr_block(_)
-      | ast::expr_while(_, _) | ast::expr_loop(_, _)
+      ast::expr_if(*) | ast::expr_match(*) | ast::expr_block(_)
+      | ast::expr_while(*) | ast::expr_loop(*)
       | ast::expr_call(_, _, true) => false,
       _ => true
     }
@@ -31,7 +31,7 @@ fn stmt_ends_with_semi(stmt: ast::stmt) -> bool {
       ast::stmt_expr(e, _) => {
         return expr_requires_semi_to_be_stmt(e);
       }
-      ast::stmt_semi(e, _) => {
+      ast::stmt_semi(*) => {
         return false;
       }
     }
@@ -68,7 +68,7 @@ fn ends_in_lit_int(ex: @ast::expr) -> bool {
         ends_in_lit_int(sub)
       }
       ast::expr_fail(osub) | ast::expr_ret(osub) => match osub {
-        some(ex) => ends_in_lit_int(ex),
+        Some(ex) => ends_in_lit_int(ex),
         _ => false
       },
       _ => false

@@ -2,6 +2,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
+use cmp::Eq;
+
 /**
  * Miscellaneous helpers for common patterns.
  */
@@ -11,6 +13,24 @@ pure fn id<T>(+x: T) -> T { x }
 
 /// Ignores a value.
 pure fn ignore<T>(+_x: T) { }
+
+/// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
+/// original value of `*ptr`.
+#[inline(always)]
+fn with<T: copy, R>(
+    ptr: &mut T,
+    +new_value: T,
+    op: &fn() -> R) -> R
+{
+    // NDM: if swap operator were defined somewhat differently,
+    // we wouldn't need to copy...
+
+    let old_value = *ptr;
+    *ptr = move new_value;
+    let result = op();
+    *ptr = move old_value;
+    return move result;
+}
 
 /**
  * Swap the values at two mutable locations of the same type, without
@@ -33,7 +53,7 @@ fn replace<T>(dest: &mut T, +src: T) -> T {
 }
 
 /// A non-copyable dummy type.
-class NonCopyable {
+struct NonCopyable {
     i: ();
     new() { self.i = (); }
     drop { }
@@ -43,8 +63,8 @@ mod tests {
     #[test]
     fn identity_crisis() {
         // Writing a test for the identity function. How did it come to this?
-        let x = ~[{mut a: 5, b: false}];
-        assert x == id(copy x);
+        let x = ~[(5, false)];
+        assert x.eq(id(copy x));
     }
     #[test]
     fn test_swap() {
@@ -56,8 +76,8 @@ mod tests {
     }
     #[test]
     fn test_replace() {
-        let mut x = some(NonCopyable());
-        let y = replace(&mut x, none);
+        let mut x = Some(NonCopyable());
+        let y = replace(&mut x, None);
         assert x.is_none();
         assert y.is_some();
     }

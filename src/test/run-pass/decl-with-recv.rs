@@ -1,14 +1,14 @@
 // -*- rust -*-
 
 use std;
-import comm::port;
-import comm::chan;
+import comm::Port;
+import comm::Chan;
 import comm::send;
 import comm::recv;
 
 fn main() {
-    let po = port();
-    let ch = chan(po);
+    let po = Port();
+    let ch = Chan(po);
     send(ch, 10);
     let i = recv(po);
     assert (i == 10);

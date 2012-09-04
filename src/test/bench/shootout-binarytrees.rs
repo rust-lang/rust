@@ -1,6 +1,6 @@
 use std;
 import std::arena;
-import methods = std::arena::arena;
+import methods = std::arena::Arena;
 
 enum tree/& { nil, node(&tree, &tree, int), }
 
@@ -13,7 +13,9 @@ fn item_check(t: &tree) -> int {
     }
 }
 
-fn bottom_up_tree(arena: &arena::arena, item: int, depth: int) -> &tree {
+fn bottom_up_tree(arena: &r/arena::Arena,
+                  item: int,
+                  depth: int) -> &r/tree {
     if depth > 0 {
         return arena.alloc(
             || node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
@@ -41,15 +43,15 @@ fn main(args: ~[~str]) {
         max_depth = n;
     }
 
-    let stretch_arena = arena::arena();
+    let stretch_arena = arena::Arena();
     let stretch_depth = max_depth + 1;
     let stretch_tree = bottom_up_tree(&stretch_arena, 0, stretch_depth);
 
-    io::println(fmt!{"stretch tree of depth %d\t check: %d",
+    io::println(fmt!("stretch tree of depth %d\t check: %d",
                           stretch_depth,
-                          item_check(stretch_tree)});
+                          item_check(stretch_tree)));
 
-    let long_lived_arena = arena::arena();
+    let long_lived_arena = arena::Arena();
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
     let mut depth = min_depth;
     while depth <= max_depth {
@@ -63,12 +65,12 @@ fn main(args: ~[~str]) {
             chk += item_check(temp_tree);
             i += 1;
         }
-        io::println(fmt!{"%d\t trees of depth %d\t check: %d",
+        io::println(fmt!("%d\t trees of depth %d\t check: %d",
                          iterations * 2, depth,
-                         chk});
+                         chk));
         depth += 2;
     }
-    io::println(fmt!{"long lived trees of depth %d\t check: %d",
+    io::println(fmt!("long lived trees of depth %d\t check: %d",
                      max_depth,
-                          item_check(long_lived_tree)});
+                          item_check(long_lived_tree)));
 }

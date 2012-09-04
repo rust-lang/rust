@@ -69,61 +69,6 @@ C. As will become clear in the rest of this tutorial, it goes in quite
 a different direction, with efficient, strongly-typed and memory-safe
 support for many high-level idioms.
 
-Here's a parallel game of rock, paper, scissors to whet your appetite.
-
-~~~~
-use std;
-
-import pipes::PortSet;
-import task::spawn;
-import iter::repeat;
-import rand::{seeded_rng, seed};
-import uint::range;
-import io::println;
-
-fn main() {
-    // Open a channel to receive game results
-    let result_from_game = PortSet();
-    let times = 10;
-    let player1 = ~"graydon";
-    let player2 = ~"patrick";
-
-    for repeat(times) {
-        // Start another task to play the game
-        let result = result_from_game.chan();
-        do spawn |copy player1, copy player2| {
-            let outcome = play_game(player1, player2);
-            result.send(outcome);
-        }
-    }
-
-    // Report the results as the games complete
-    for range(0, times) |round| {
-        let winner = result_from_game.recv();
-        println(#fmt("%s wins round #%u", winner, round));
-    }
-
-    fn play_game(player1: ~str, player2: ~str) -> ~str {
-
-        // Our rock/paper/scissors types
-        enum gesture {
-            rock, paper, scissors
-        }
-
-        let rng = seeded_rng(seed());
-        // A small inline function for picking an RPS gesture
-        let pick = || (~[rock, paper, scissors])[rng.gen_uint() % 3];
-
-        // Pick two gestures and decide the result
-        match (pick(), pick()) {
-            (rock, scissors) | (paper, rock) | (scissors, paper) => copy player1,
-            (scissors, rock) | (rock, paper) | (paper, scissors) => copy player2,
-            _ => ~"tie"
-        }
-    }
-}
-~~~~
-
 ## Conventions
 
 Throughout the tutorial, words that indicate language keywords or
@@ -207,8 +152,8 @@ Rust program files are, by convention, given the extension `.rs`. Say
 we have a file `hello.rs` containing this program:
 
 ~~~~
-fn main(args: ~[~str]) {
-    io::println(~"hello world from '" + args[0] + ~"'!");
+fn main() {
+    io::println("hello world!");
 }
 ~~~~
 
@@ -221,7 +166,7 @@ If you modify the program to make it invalid (for example, by changing
 
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: io::print_it
-hello.rs:2     io::print_it(~"hello world from '" + args[0] + ~"'!");
+hello.rs:2     io::print_it("hello world!");
                ^~~~~~~~~~~~
 ~~~~
 
@@ -237,7 +182,7 @@ declaration to appear at the top level of the file—all statements must
 live inside a function.
 
 Rust programs can also be compiled as libraries, and included in other
-programs. The `use std` directive that appears at the top of a lot of
+programs. The `extern mod std` directive that appears at the top of a lot of
 examples imports the [standard library][std]. This is described in more
 detail [later on](#modules-and-crates).
 
@@ -262,13 +207,6 @@ difference to be aware of is that the bodies of `if` statements and of
 `while` loops *have* to be wrapped in brackets. Single-statement,
 bracket-less bodies are not allowed.
 
-If the verbosity of that bothers you, consider the fact that this
-allows you to omit the parentheses around the condition in `if`,
-`while`, and similar constructs. This will save you two characters
-every time. As a bonus, you no longer have to spend any mental energy
-on deciding whether you need to add braces or not, or on adding them
-after the fact when adding a statement to an `if` branch.
-
 Accounting for these differences, the surface syntax of Rust
 statements and expressions is C-like. Function calls are written
 `myfunc(arg1, arg2)`, operators have mostly the same name and
@@ -276,14 +214,18 @@ precedence that they have in C, comments look the same, and constructs
 like `if` and `while` are available:
 
 ~~~~
-# fn call_a_function(_a: int) {}
+# fn it_works() {}
+# fn abort() {}
 fn main() {
-    if 1 < 2 {
-        while false { call_a_function(10 * 4); }
-    } else if 4 < 3 || 3 < 4 {
-        // Comments are C++-style too
-    } else {
-        /* Multi-line comment syntax */
+    while true {
+        /* Ensure that basic math works. */
+        if 2*20 > 30 {
+            // Everything is OK.
+            it_works();
+        } else {
+            abort();
+        }
+        break;
     }
 }
 ~~~~
@@ -291,36 +233,45 @@ fn main() {
 ## Expression syntax
 
 Though it isn't apparent in all code, there is a fundamental
-difference between Rust's syntax and the predecessors in this family
-of languages. A lot of things that are statements in C are expressions
-in Rust. This allows for useless things like this (which passes
-nil—the void type—to a function):
+difference between Rust's syntax and its predecessors in this family
+of languages. Many constructs that are statements in C are expressions
+in Rust. This allows Rust to be more expressive. For example, you might
+write a piece of code like this:
 
 ~~~~
-# fn a_function(_a: ()) {}
-a_function(while false {});
+# let item = "salad";
+let price;
+if item == "salad" {
+    price = 3.50;
+} else if item == "muffin" {
+    price = 2.25;
+} else {
+    price = 2.00;
+}
 ~~~~
 
-But also useful things like this:
+But, in Rust, you don't have to repeat the name `price`:
 
 ~~~~
-# fn the_stars_align() -> bool { false }
-# fn something_else() -> bool { true }
-let x = if the_stars_align() { 4 }
-        else if something_else() { 3 }
-        else { 0 };
+# let item = "salad";
+let price = if item == "salad" { 3.50 }
+            else if item == "muffin" { 2.25 }
+            else { 2.00 };
 ~~~~
 
-This piece of code will bind the variable `x` to a value depending on
-the conditions. Note the condition bodies, which look like `{
-expression }`. The lack of a semicolon after the last statement in a
-braced block gives the whole block the value of that last expression.
-If the branches of the `if` had looked like `{ 4; }`, the above
-example would simply assign nil (void) to `x`. But without the
-semicolon, each branch has a different value, and `x` gets the value
-of the branch that was taken.
+Both pieces of code are exactly equivalent—they assign a value to `price`
+depending on the condition that holds. Note that the semicolons are omitted
+from the second snippet. This is important; the lack of a semicolon after the
+last statement in a braced block gives the whole block the value of that last
+expression.
 
-This also works for function bodies. This function returns a boolean:
+Put another way, the semicolon in Rust *ignores the value of an expression*.
+Thus, if the branches of the `if` had looked like `{ 4; }`, the above example
+would simply assign nil (void) to `price`. But without the semicolon, each
+branch has a different value, and `price` gets the value of the branch that
+was taken.
+
+This feature also works for function bodies. This function returns a boolean:
 
 ~~~~
 fn is_four(x: int) -> bool { x == 4 }
@@ -341,21 +292,16 @@ like the `let x = ...` example above.
 
 ## Identifiers
 
-Rust identifiers must start with an alphabetic character or an
-underscore, and after that may contain any alphanumeric character, and
-more underscores.
+Rust identifiers follow the same rules as C; they start with an alphabetic
+character or an underscore, and after that may contain any sequence of
+alphabetic characters, numbers, or underscores. The preferred style is to
+begin function, variable, and module names with a lowercase letter, using
+underscores where they help readability, while beginning types with a capital
+letter.
 
 The double-colon (`::`) is used as a module separator, so
 `io::println` means 'the thing named `println` in the module
 named `io`.
-
-Rust will normally emit warnings about unused variables. These can be
-suppressed by using a variable name that starts with an underscore.
-
-~~~~
-fn this_warns(x: int) {}
-fn this_doesnt(_x: int) {}
-~~~~
 
 ## Variable declaration
 
@@ -365,20 +311,19 @@ a local variable that can be reassigned.  Global constants can be
 defined with `const`:
 
 ~~~~
-use std;
-const repeat: uint = 5u;
+const REPEAT: int = 5;
 fn main() {
-    let hi = ~"Hi!";
-    let mut count = 0u;
-    while count < repeat {
+    let hi = "Hi!";
+    let mut count = 0;
+    while count < REPEAT {
         io::println(hi);
-        count += 1u;
+        count += 1;
     }
 }
 ~~~~
 
-Local variables may shadow earlier declarations, causing the
-previous variable to go out of scope.
+Local variables may shadow earlier declarations, making the earlier variables
+inaccessible.
 
 ~~~~
 let my_favorite_value: float = 57.8;
@@ -386,28 +331,6 @@ let my_favorite_value: int = my_favorite_value as int;
 ~~~~
 
 ## Types
-
-The `-> bool` in the `is_four` example is the way a function's return
-type is written. For functions that do not return a meaningful value
-(these conceptually return nil in Rust), you can optionally say `->
-()` (`()` is how nil is written), but usually the return annotation is
-simply left off, as in the `fn main() { ... }` examples we've seen
-earlier.
-
-Every argument to a function must have its type declared (for example,
-`x: int`). Inside the function, type inference will be able to
-automatically deduce the type of most locals (generic functions, which
-we'll come back to later, will occasionally need additional
-annotation). Locals can be written either with or without a type
-annotation:
-
-~~~~
-// The type of this vector will be inferred based on its use.
-let x = ~[];
-# vec::map(x, fn&(&&_y:int) -> int { _y });
-// Explicitly say this is a vector of integers.
-let y: ~[int] = ~[];
-~~~~
 
 The basic types are written like this:
 
@@ -429,51 +352,82 @@ The basic types are written like this:
 `u8`, `u16`, `u32`, `u64`
   : Unsigned integers with a specific size.
 
-`f32`, `f64`
-  : Floating-point types.
-
 `float`
-  : The largest floating-point type efficiently supported on the target machine.
+  : The largest floating-point type efficiently supported on the target
+    machine.
+
+`f32`, `f64`
+  : Floating-point types with a specific size.
 
 `char`
-  : A character is a 32-bit Unicode code point.
-
-`~str`
-  : String type. A string contains a UTF-8 encoded sequence of characters.
+  : A Unicode character (32 bits).
 
 These can be combined in composite types, which will be described in
 more detail later on (the `T`s here stand for any other type):
 
-`~[T]`
-  : Vector type.
+`[T * N]`
+  : Vector (like an array in other languages) with N elements.
 
-`~[mut T]`
-  : Mutable vector type.
+`[mut T * N]`
+  : Mutable vector with N elements.
 
 `(T1, T2)`
   : Tuple type. Any arity above 1 is supported.
 
-`{field1: T1, field2: T2}`
-  : Record type.
+`@T`, `~T`, `&T`
+  : Pointer types.
 
-`fn(arg1: T1, arg2: T2) -> T3`, `fn@()`, `fn~()`, `fn&()`
+Some types can only be manipulated by pointer, never directly. For instance,
+you cannot refer to a string (`str`); instead you refer to a pointer to a
+string (`@str`, `~str`, or `&str`). These *dynamically-sized* types consist
+of:
+
+`fn(arg1: T1, arg2: T2) -> T3`
   : Function types.
 
-`@T`, `~T`, `*T`
-  : Pointer types.
+`str`
+  : String type (in UTF-8).
+
+`[T]`
+  : Vector with unknown size (also called a slice).
+
+`[mut T]`
+  : Mutable vector with unknown size.
 
 Types can be given names with `type` declarations:
 
 ~~~~
-type monster_size = uint;
+type MonsterSize = uint;
 ~~~~
 
-This will provide a synonym, `monster_size`, for unsigned integers. It
-will not actually create a new type—`monster_size` and `uint` can be
-used interchangeably, and using one where the other is expected is not
-a type error. Read about [single-variant enums](#single_variant_enum)
+This will provide a synonym, `MonsterSize`, for unsigned integers. It will not
+actually create a new, incompatible type—`MonsterSize` and `uint` can be used
+interchangeably, and using one where the other is expected is not a type
+error. Read about [single-variant enums](#single_variant_enum)
 further on if you need to create a type name that's not just a
 synonym.
+
+## Using types
+
+The `-> bool` in the `is_four` example is the way a function's return
+type is written. For functions that do not return a meaningful value,
+you can optionally say `-> ()`, but usually the return annotation is simply
+left off, as in the `fn main() { ... }` examples we've seen earlier.
+
+Every argument to a function must have its type declared (for example,
+`x: int`). Inside the function, type inference will be able to
+automatically deduce the type of most locals (generic functions, which
+we'll come back to later, will occasionally need additional
+annotation). Locals can be written either with or without a type
+annotation:
+
+~~~~
+// The type of this vector will be inferred based on its use.
+let x = [];
+# vec::map(x, fn&(&&_y:int) -> int { _y });
+// Explicitly say this is a vector of zero integers.
+let y: [int * 0] = [];
+~~~~
 
 ## Numeric literals
 
@@ -482,115 +436,54 @@ binary (`0b10010000`) base.
 
 If you write an integer literal without a suffix (`3`, `-500`, etc.),
 the Rust compiler will try to infer its type based on type annotations
-and function signatures in the surrounding program.  For example, here
-the type of `x` is inferred to be `u16` because it is passed to a
-function that takes a `u16` argument:
+and function signatures in the surrounding program. In the absence of any type
+annotations at all, Rust will assume that an unsuffixed integer literal has
+type `int`. It's also possible to avoid any type ambiguity by writing integer
+literals with a suffix. For example:
 
 ~~~~
-let x = 3;
-
-fn identity_u16(n: u16) -> u16 { n }
-
-identity_u16(x);
+let x = 50;
+log(error, x); // x is an int
+let y = 100u;
+log(error, y); // y is an uint
 ~~~~
-
-On the other hand, if the program gives conflicting information about
-what the type of the unsuffixed literal should be, you'll get an error
-message.
-
-~~~~{.xfail-test}
-let x = 3;
-let y: i32 = 3;
-
-fn identity_u8(n: u8) -> u8 { n }
-fn identity_u16(n: u16) -> u16 { n }
-
-identity_u8(x);  // after this, `x` is assumed to have type `u8`
-identity_u16(x); // raises a type error (expected `u16` but found `u8`)
-identity_u16(y); // raises a type error (expected `u16` but found `i32`)
-~~~~
-
-In the absence of any type annotations at all, Rust will assume that
-an unsuffixed integer literal has type `int`.
-
-~~~~
-let n = 50;
-log(error, n); // n is an int
-~~~~
-
-It's also possible to avoid any type ambiguity by writing integer
-literals with a suffix.  The suffixes `i` and `u` are for the types
-`int` and `uint`, respectively: the literal `-3i` has type `int`,
-while `127u` has type `uint`.  For the fixed-size integer types, just
-suffix the literal with the type name: `255u8`, `50i64`, etc.
 
 Note that, in Rust, no implicit conversion between integer types
 happens. If you are adding one to a variable of type `uint`, saying
 `+= 1u8` will give you a type error.
 
 Floating point numbers are written `0.0`, `1e6`, or `2.1e-4`. Without
-a suffix, the literal is assumed to be of type `float`. Suffixes `f32`
-and `f64` can be used to create literals of a specific type. The
-suffix `f` can be used to write `float` literals without a dot or
-exponent: `3f`.
+a suffix, the literal is assumed to be of type `float`. Suffixes `f` (32-bit)
+and `l` (64-bit) can be used to create literals of a specific type.
 
 ## Other literals
 
 The nil literal is written just like the type: `()`. The keywords
 `true` and `false` produce the boolean literals.
 
-Character literals are written between single quotes, as in `'x'`. You
-may put non-ascii characters between single quotes (your source files
-should be encoded as UTF-8). Rust understands a number of
-character escapes, using the backslash character:
-
-`\n`
-  : A newline (Unicode character 10).
-
-`\r`
-  : A carriage return (13).
-
-`\t`
-  : A tab character (9).
-
-`\\`, `\'`, `\"`
-  : Simply escapes the following character.
-
-`\xHH`, `\uHHHH`, `\UHHHHHHHH`
-  : Unicode escapes, where the `H` characters are the hexadecimal digits that
-    form the character code.
+Character literals are written between single quotes, as in `'x'`. Just as in
+C, Rust understands a number of character escapes, using the backslash
+character, `\n`, `\r`, and `\t` being the most common.
 
 String literals allow the same escape sequences. They are written
-between double quotes (`~"hello"`). Rust strings may contain newlines.
-When a newline is preceded by a backslash, it, and all white space
-following it, will not appear in the resulting string literal. So
-this is equivalent to `~"abc"`:
-
-~~~~
-let s = ~"a\
-         b\
-         c";
-~~~~
+between double quotes (`"hello"`). Rust strings may contain newlines.
 
 ## Operators
 
-Rust's set of operators contains very few surprises. Binary arithmetic
-is done with `*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder,
-plus, minus). `-` is also a unary prefix operator that does negation.
+Rust's set of operators contains very few surprises. Arithmetic is done with
+`*`, `/`, `%`, `+`, and `-` (multiply, divide, remainder, plus, minus). `-` is
+also a unary prefix operator that does negation. As in C, the bit operators
+`>>`, `<<`, `&`, `|`, and `^` are also supported.
 
-Binary shifting is done with `>>` (shift right), and `<<` (shift
-left). Shift right is arithmetic if the value is signed and logical if
-the value is unsigned. Logical bitwise operators are `&`, `|`, and `^`
-(and, or, and exclusive or), and unary `!` for bitwise negation (or
-boolean negation when applied to a boolean value).
+Note that, if applied to an integer value, `!` flips all the bits (like `~` in
+C).
 
 The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 `<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
 `&&` (and) and `||` (or).
 
-For type casting, Rust uses the binary `as` operator, which has high
-precedence, just lower than multiplication and division.  It takes an
-expression on the left side, and a type on the right side, and will,
+For type casting, Rust uses the binary `as` operator.  It takes an
+expression on the left side and a type on the right side and will,
 if a meaningful conversion exists, convert the result of the
 expression to the given type.
 
@@ -605,67 +498,27 @@ the logical bitwise operators have higher precedence — in C, `x & 2 > 0`
 comes out as `x & (2 > 0)`, in Rust, it means `(x & 2) > 0`, which is
 more likely to be what you expect (unless you are a C veteran).
 
-## Attributes
-
-Every definition can be annotated with attributes. Attributes are meta
-information that can serve a variety of purposes. One of those is
-conditional compilation:
-
-~~~~
-#[cfg(windows)]
-fn register_win_service() { /* ... */ }
-~~~~
-
-This will cause the function to vanish without a trace during
-compilation on a non-Windows platform, much like `#ifdef` in C.
-
-Attributes are always wrapped in hash-braces (`#[attr]`). Inside the
-braces, a small minilanguage is supported, whose interpretation
-depends on the attribute that's being used. The simplest form is a
-plain name (as in `#[test]`, which is used by the [built-in test
-framework](#testing)). A name-value pair can be provided using an `=`
-character followed by a literal (as in `#[license = "BSD"]`, which is
-a valid way to annotate a Rust program as being released under a
-BSD-style license). Finally, you can have a name followed by a
-comma-separated list of nested attributes, as in this
-[crate](#modules-and-crates) metadata declaration:
-
-~~~~ {.ignore}
-#[link(name = "std",
-       vers = "0.1",
-       url = "http://rust-lang.org/src/std")];
-~~~~
-
-An attribute without a semicolon following it applies to the
-definition that follows it. When terminated with a semicolon, it
-applies to the module or crate in which it appears.
-
 ## Syntax extensions
 
-There are plans to support user-defined syntax (macros) in Rust. This
-currently only exists in very limited form.
-
-The compiler defines a few built-in syntax extensions. The most useful
-one is `#fmt`, a printf-style text formatting macro that is expanded
-at compile time.
+*Syntax extensions* are special forms that are not built into the language,
+but are instead provided by the libraries. To make it clear to the reader when
+a syntax extension is being used, the names of all syntax extensions end with
+`!`. The standard library defines a few syntax extensions, the most useful of
+which is `fmt!`, a `sprintf`-style text formatter that is expanded at compile
+time.
 
 ~~~~
-io::println(#fmt("%s is %d", ~"the answer", 42));
+io::println(fmt!("%s is %d", ~"the answer", 42));
 ~~~~
 
-`#fmt` supports most of the directives that [printf][pf] supports, but
+`fmt!` supports most of the directives that [printf][pf] supports, but
 will give you a compile-time error when the types of the directives
 don't match the types of the arguments.
 
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
 
-All syntax extensions look like `#word`. Another built-in one is
-`#env`, which will look up its argument as an environment variable at
-compile-time.
-
-~~~~
-io::println(#env("PATH"));
-~~~~
+You can define your own syntax extensions with the macro system, which is out
+of scope of this tutorial.
 
 # Control structures
 
@@ -694,30 +547,24 @@ end of the block:
 fn signum(x: int) -> int {
     if x < 0 { -1 }
     else if x > 0 { 1 }
-    else { return 0; }
+    else { return 0 }
 }
 ~~~~
-
-The `return` and its semicolon could have been left out without
-changing the meaning of this function, but it illustrates that you
-will not get a type error in this case, although the last arm doesn't
-have type `int`, because control doesn't reach the end of that arm
-(`return` is jumping out of the function).
 
 ## Pattern matching
 
 Rust's `match` construct is a generalized, cleaned-up version of C's
-`switch` construct. You provide it with a value and a number of arms,
-each labelled with a pattern, and it will execute the arm that matches
-the value.
+`switch` construct. You provide it with a value and a number of *arms*,
+each labelled with a pattern, and the code will attempt to match each pattern
+in order. For the first one that matches, the arm is executed.
 
 ~~~~
 # let my_number = 1;
 match my_number {
-  0       => io::println(~"zero"),
-  1 | 2   => io::println(~"one or two"),
-  3 to 10 => io::println(~"three to ten"),
-  _       => io::println(~"something else")
+  0     => io::println("zero"),
+  1 | 2 => io::println("one or two"),
+  3..10 => io::println("three to ten"),
+  _     => io::println("something else")
 }
 ~~~~
 
@@ -725,11 +572,11 @@ There is no 'falling through' between arms, as in C—only one arm is
 executed, and it doesn't have to explicitly `break` out of the
 construct when it is finished.
 
-The part to the left of each arm is called the pattern. Literals are
-valid patterns, and will match only their own value. The pipe operator
+The part to the left of the arrow `=>` is called the *pattern*. Literals are
+valid patterns and will match only their own value. The pipe operator
 (`|`) can be used to assign multiple patterns to a single arm. Ranges
-of numeric literal patterns can be expressed with `to`. The underscore
-(`_`) is a wildcard pattern that matches everything.
+of numeric literal patterns can be expressed with two dots, as in `M..N`. The
+underscore (`_`) is a wildcard pattern that matches everything.
 
 The patterns in an match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
@@ -740,31 +587,28 @@ commas are optional.
 # let my_number = 1;
 match my_number {
   0 => {
-    io::println(~"zero")
+    io::println("zero")
   }
   _ => {
-    io::println(~"something else")
+    io::println("something else")
   }
 }
 ~~~
 
-If the arm with the wildcard pattern was left off in the above
-example, the typechecker would reject it at compile time. `match`
-constructs must be exhaustive: they must have an arm covering every
-possible case. (You may use the `match check` construct to write a
-non-exhaustive match, but it's highly undesirable to do so. You may
-reason that the missing cases will never occur, but the typechecker
-provides you with no assurance that your reasoning is correct.)
+`match` constructs must be *exhaustive*: they must have an arm covering every
+possible case. For example, if the arm with the wildcard pattern was left off
+in the above example, the typechecker would reject it.
 
 A powerful application of pattern matching is *destructuring*, where
 you use the matching to get at the contents of data types. Remember
 that `(float, float)` is a tuple of two floats:
 
 ~~~~
-fn angle(vec: (float, float)) -> float {
-    match vec {
-      (0f, y) if y < 0f => 1.5 * float::consts::pi,
-      (0f, y) => 0.5 * float::consts::pi,
+use float::consts::pi;
+fn angle(vector: (float, float)) -> float {
+    match vector {
+      (0f, y) if y < 0f => 1.5 * pi,
+      (0f, y) => 0.5 * pi,
       (x, y) => float::atan(y / x)
     }
 }
@@ -781,11 +625,11 @@ an expression of type `bool` that determines, after the pattern is
 found to match, whether the arm is taken or not. The variables bound
 by the pattern are available in this guard expression.
 
-## Destructuring let
+## Let
 
-To a limited extent, it is possible to use destructuring patterns when
-declaring a variable with `let`. For example, you can say this to
-extract the fields from a tuple:
+You've already seen simple `let` bindings. `let` is also a little fancier: it
+is possible to use destructuring patterns in it. For example, you can say this
+to extract the fields from a tuple:
 
 ~~~~
 # fn get_tuple_of_two_ints() -> (int, int) { (1, 1) }
@@ -795,7 +639,7 @@ let (a, b) = get_tuple_of_two_ints();
 This will introduce two new variables, `a` and `b`, bound to the
 content of the tuple.
 
-You may only use irrefutable patterns—patterns that can never fail to
+You may only use *irrefutable* patterns—patterns that can never fail to
 match—in let bindings. Other types of patterns, such as literals, are
 not allowed.
 
@@ -831,90 +675,6 @@ For more involved iteration, such as going over the elements of a
 collection, Rust uses higher-order functions. We'll come back to those
 in a moment.
 
-## Failure
-
-The `fail` keyword causes the current [task](#tasks) to fail. You use
-it to indicate unexpected failure, much like you'd use `abort` in a
-C program or a fatal exception in a C++ program.
-
-There is no way for the current task to resume execution after
-failure; failure is nonrecoverable. It is, however, possible for
-*another* task to handle the failure, allowing the program to continue
-running.
-
-`fail` takes an optional argument specifying the reason for the
-failure. It must have type `~str`.
-
-In addition to the `fail` statement, the following circumstances cause
-task failure:
-
-* Accessing an out-of-bounds element of a vector.
-
-* Having no clauses match when evaluating an `match check` expression.
-
-* An assertion failure.
-
-* Integer division by zero.
-
-* Running out of memory.
-
-## Assertions
-
-The keyword `assert`, followed by an expression with boolean type,
-will check that the given expression results in `true`, and cause a
-failure otherwise. It is typically used to double-check things that
-*should* hold at a certain point in a program. `assert` statements are
-always active; there is no way to build Rust code with assertions
-disabled.
-
-~~~~
-let mut x = 100;
-while (x > 10) { x -= 10; }
-assert x == 10;
-~~~~
-
-## Logging
-
-Rust has a built-in logging mechanism, using the `log` statement.
-Logging is polymorphic—any type of value can be logged, and the
-runtime will do its best to output a textual representation of the
-value.
-
-~~~~
-log(warn, ~"hi");
-log(error, (1, ~[2.5, -1.8]));
-~~~~
-
-The first argument is the log level (levels `debug`, `info`, `warn`,
-and `error` are predefined), and the second is the value to log. By
-default, you *will not* see the output of that first log statement,
-which has `warn` level. The environment variable `RUST_LOG` controls
-which log level is used. It can contain a comma-separated list of
-paths for modules that should be logged. For example, running `rustc`
-with `RUST_LOG=rustc::front::attr` will turn on logging in its
-attribute parser. If you compile a program named `foo.rs`, its
-top-level module will be called `foo`, and you can set `RUST_LOG` to
-`foo` to enable `warn`, `info` and `debug` logging for the module.
-
-Turned-off `log` statements impose minimal overhead on the code that
-contains them, because the arguments to `log` are evaluated lazily.
-So except in code that needs to be really, really fast,
-you should feel free to scatter around debug logging statements, and
-leave them in.
-
-Three macros that combine text-formatting (as with `#fmt`) and logging
-are available. These take a string and any number of format arguments,
-and will log the formatted string:
-
-~~~~
-# fn get_error_string() -> ~str { ~"boo" }
-#warn("only %d seconds remaining", 10);
-#error("fatal: %s", get_error_string());
-~~~~
-
-Because the macros `#debug`, `#warn`, and `#error` expand to calls to `log`,
-their arguments are also lazily evaluated.
-
 # Functions
 
 Like all other static declarations, such as `type`, functions can be
@@ -926,8 +686,12 @@ with the `fn` keyword, the type of arguments are specified following
 colons and the return type follows the arrow.
 
 ~~~~
-fn int_to_str(i: int) -> ~str {
-    return ~"tube sock";
+fn repeat(string: &str, count: int) -> ~str {
+    let mut result = ~"";
+    for count.times {
+        result += string;
+    }
+    return result;
 }
 ~~~~
 
@@ -965,101 +729,60 @@ fn do_nothing_the_hard_way() -> () { return (); }
 fn do_nothing_the_easy_way() { }
 ~~~~
 
-Some functions (such as the C function `exit`) never return normally.
-In Rust, these are annotated with the pseudo-return type '`!`':
-
-~~~~
-fn dead_end() -> ! { fail }
-~~~~
-
-This helps the compiler avoid spurious error messages. For example,
-the following code would be a type error if `dead_end` would be
-expected to return.
-
-~~~~
-# fn can_go_left() -> bool { true }
-# fn can_go_right() -> bool { true }
-# enum dir { left, right }
-# fn dead_end() -> ! { fail; }
-let dir = if can_go_left() { left }
-          else if can_go_right() { right }
-          else { dead_end(); };
-~~~~
-
 # Basic datatypes
 
-The core datatypes of Rust are structural records, enums (tagged
-unions, algebraic data types), and tuples. They are immutable
-by default.
+The core datatypes of Rust are structs, enums (tagged unions, algebraic data
+types), and tuples. They are immutable by default.
 
 ~~~~
-type point = {x: float, y: float};
+struct Point { x: float, y: float }
 
-enum shape {
-    circle(point, float),
-    rectangle(point, point)
+enum Shape {
+    Circle(Point, float),
+    Rectangle(Point, Point)
 }
 ~~~~
 
-## Records
+## Structs
 
-Rust record types are written `{field1: T1, field2: T2 [, ...]}`,
-where `T1`, `T2`, ... denote types.  Record literals are written in
-the same way, but with expressions instead of types. They are quite
-similar to C structs, and even laid out the same way in memory (so you
-can read from a Rust struct in C, and vice-versa). The dot operator is
-used to access record fields (`mypoint.x`).
+Rust struct types must be declared before they are used using the `struct`
+syntax: `struct Name { field1: T1, field2: T2 [, ...] }`, where `T1`, `T2`,
+... denote types. To construct a struct, use the same syntax, but leave off
+the `struct`; for example: `Point { x: 1.0, y: 2.0 }`.
+
+Structs are quite similar to C structs and are even laid out the same way in
+memory (so you can read from a Rust struct in C, and vice-versa). The dot
+operator is used to access struct fields (`mypoint.x`).
 
 Fields that you want to mutate must be explicitly marked `mut`.
 
 ~~~~
-type stack = {content: ~[int], mut head: uint};
-~~~~
-
-With such a type, you can do `mystack.head += 1u`. If `mut` were
-omitted from the type, such an assignment would result in a type
-error.
-
-To create a new record based on the value of an existing record
-you construct it using the `with` keyword:
-
-~~~~
-let oldpoint = {x: 10f, y: 20f};
-let newpoint = {x: 0f with oldpoint};
-assert newpoint == {x: 0f, y: 20f};
-~~~~
-
-This will create a new record, copying all the fields from `oldpoint`
-into it, except for the ones that are explicitly set in the literal.
-
-Rust record types are *structural*. This means that `{x: float, y:
-float}` is not just a way to define a new type, but is the actual name
-of the type. Record types can be used without first defining them. If
-module A defines `type point = {x: float, y: float}`, and module B,
-without knowing anything about A, defines a function that returns an
-`{x: float, y: float}`, you can use that return value as a `point` in
-module A. (Remember that `type` defines an additional name for a type,
-not an actual new type.)
-
-## Record patterns
-
-Records can be destructured in `match` patterns. The basic syntax is
-`{fieldname: pattern, ...}`, but the pattern for a field can be
-omitted as a shorthand for simply binding the variable with the same
-name as the field.
-
-~~~~
-# let mypoint = {x: 0f, y: 0f};
-match mypoint {
-    {x: 0f, y: y_name} => { /* Provide sub-patterns for fields */ }
-    {x, y}             => { /* Simply bind the fields */ }
+struct Stack {
+    content: ~[int],
+    mut head: uint
 }
 ~~~~
 
-The field names of a record do not have to appear in a pattern in the
-same order they appear in the type. When you are not interested in all
-the fields of a record, a record pattern may end with `, _` (as in
-`{field1, _}`) to indicate that you're ignoring all other fields.
+With a value of such a type, you can do `mystack.head += 1`. If `mut` were
+omitted from the type, such an assignment would result in a type error.
+
+## Struct patterns
+
+Structs can be destructured in `match` patterns. The basic syntax is
+`Name {fieldname: pattern, ...}`:
+~~~~
+# struct Point { x: float, y: float }
+# let mypoint = Point { x: 0.0, y: 0.0 };
+match mypoint {
+    Point { x: 0.0, y: y } => { io::println(y.to_str());                    }
+    Point { x: x, y: y }   => { io::println(x.to_str() + " " + y.to_str()); }
+}
+~~~~
+
+In general, the field names of a struct do not have to appear in the same
+order they appear in the type. When you are not interested in all
+the fields of a struct, a struct pattern may end with `, _` (as in
+`Name {field1, _}`) to indicate that you're ignoring all other fields.
 
 ## Enums
 
@@ -1067,15 +790,15 @@ Enums are datatypes that have several alternate representations. For
 example, consider the type shown earlier:
 
 ~~~~
-# type point = {x: float, y: float};
-enum shape {
-    circle(point, float),
-    rectangle(point, point)
+# struct Point { x: float, y: float }
+enum Shape {
+    Circle(Point, float),
+    Rectangle(Point, Point)
 }
 ~~~~
 
-A value of this type is either a circle, in which case it contains a
-point record and a float, or a rectangle, in which case it contains
+A value of this type is either a Circle, in which case it contains a
+point struct and a float, or a Rectangle, in which case it contains
 two point records. The run-time representation of such a value
 includes an identifier of the actual form that it holds, much like the
 'tagged union' pattern in C, but with better ergonomics.
@@ -1442,7 +1165,10 @@ also done with square brackets (zero-based):
 # fn draw_scene(c: crayon) { }
 
 let crayons = ~[banana_mania, beaver, bittersweet];
-if crayons[0] == bittersweet { draw_scene(crayons[0]); }
+match crayons[0] {
+	   bittersweet => draw_scene(crayons[0]),
+       _ => ()
+}
 ~~~~
 
 By default, vectors are immutable—you can not replace their elements.
@@ -1578,7 +1304,7 @@ the enclosing scope.
 fn call_closure_with_ten(b: fn(int)) { b(10); }
 
 let captured_var = 20;
-let closure = |arg| println(#fmt("captured_var=%d, arg=%d", captured_var, arg));
+let closure = |arg| println(fmt!("captured_var=%d, arg=%d", captured_var, arg));
 
 call_closure_with_ten(closure);
 ~~~~
@@ -1706,7 +1432,7 @@ structure.
 # fn each(v: ~[int], op: fn(int)) {}
 # fn do_some_work(i: int) { }
 each(~[1, 2, 3], |n| {
-    #debug("%i", n);
+    debug!("%i", n);
     do_some_work(n);
 });
 ~~~~
@@ -1718,7 +1444,7 @@ call that can be written more like a built-in control structure:
 # fn each(v: ~[int], op: fn(int)) {}
 # fn do_some_work(i: int) { }
 do each(~[1, 2, 3]) |n| {
-    #debug("%i", n);
+    debug!("%i", n);
     do_some_work(n);
 }
 ~~~~
@@ -1735,7 +1461,7 @@ takes a final closure argument.
 import task::spawn;
 
 do spawn() || {
-    #debug("I'm a task, whatever");
+    debug!("I'm a task, whatever");
 }
 ~~~~
 
@@ -1746,7 +1472,7 @@ there?
 ~~~~
 # import task::spawn;
 do spawn {
-   #debug("Kablam!");
+   debug!("Kablam!");
 }
 ~~~~
 
@@ -1821,182 +1547,17 @@ fn contains(v: ~[int], elt: int) -> bool {
 
 `for` syntax only works with stack closures.
 
-# Classes
-
-Rust lets users define new types with fields and methods, called 'classes', in
-the style of object-oriented languages.
-
-> ***Warning:*** Rust's classes are in the process of changing rapidly. Some more
-> information about some of the potential changes is [here][classchanges].
-
-[classchanges]: http://pcwalton.github.com/blog/2012/06/03/maximally-minimal-classes-for-rust/
-
-An example of a class:
-
-~~~~
-class example {
-  let mut x: int;
-  let y: int;
-
-  priv {
-    let mut private_member: int;
-    fn private_method() {}
-  }
-
-  new(x: int) {
-    // Constructor
-    self.x = x;
-    self.y = 7;
-    self.private_member = 8;
-  }
-
-  fn a() {
-    io::println(~"a");
-  }
-
-  drop {
-    // Destructor
-    self.x = 0;
-  }
-}
-
-fn main() {
-  let x: example = example(1);
-  let y: @example = @example(2);
-  x.a();
-  x.x = 5;
-}
-~~~~
-
-Fields and methods are declared just like functions and local variables, using
-'fn' and 'let'. As usual, 'let mut' can be used to create mutable fields. At
-minimum, Rust classes must have at least one field.
-
-Rust classes must also have a constructor, and can optionally have a destructor
-as well. The constructor and destructor are declared as shown in the example:
-like methods named 'new' and 'drop', but without 'fn', and without arguments
-for drop.
-
-In the constructor, the compiler will enforce that all fields are initialized
-before doing anything that might allow them to be accessed. This includes
-returning from the constructor, calling any method on 'self', calling any
-function with 'self' as an argument, or taking a reference to 'self'. Mutation
-of immutable fields is possible only in the constructor, and only before doing
-any of these things; afterwards it is an error.
-
-Private fields and methods are declared as shown above, using a `priv { ... }`
-block within the class. They are accessible only from within the same instance
-of the same class. (For example, even from within class A, you cannot call
-private methods, or access private fields, on other instances of class A; only
-on `self`.) This accessibility restriction may change in the future.
-
-As mentioned below, in the section on copying types, classes with destructors
-are considered 'resource' types and are not copyable.
-
-Declaring a class also declares its constructor as a function of the same name.
-You can construct an instance of the class, as in the example, by calling that
-function. The function and the type, though they have the same name, are
-otherwise independent. As with other Rust types, you can use `@` or `~` to
-construct a heap-allocated instance of a class, either shared or unique; just
-call e.g. `@example(...)` as shown above.
-
-# Argument passing
-
-Rust datatypes are not trivial to copy (the way, for example,
-JavaScript values can be copied by simply taking one or two machine
-words and plunking them somewhere else). Shared boxes require
-reference count updates, and big records, enums, or unique pointers require
-an arbitrary amount of data to be copied (plus updating the reference
-counts of shared boxes hanging off them).
-
-For this reason, the default calling convention for Rust functions
-leaves ownership of the arguments with the caller. The caller
-guarantees that the arguments will outlive the call, the callee merely
-gets access to them.
-
-## Safe references
-
-*This system has recently changed.  An explanation is forthcoming.*
-
-## Other uses of safe references
-
-Safe references are not only used for argument passing. When you
-destructure on a value in a `match` expression, or loop over a vector
-with `for`, variables bound to the inside of the given data structure
-will use safe references, not copies. This means such references are
-very cheap, but you'll occasionally have to copy them to ensure
-safety.
-
-~~~~
-let mut my_rec = {a: 4, b: ~[1, 2, 3]};
-match my_rec {
-  {a, b} => {
-    log(info, b); // This is okay
-    my_rec = {a: a + 1, b: b + ~[a]};
-    log(info, b); // Here reference b has become invalid
-  }
-}
-~~~~
-
-## Argument passing styles
-
-The fact that arguments are conceptually passed by safe reference does
-not mean all arguments are passed by pointer. Composite types like
-records and enums *are* passed by pointer, but single-word values, like
-integers and pointers, are simply passed by value. Most of the time,
-the programmer does not have to worry about this, as the compiler will
-simply pick the most efficient passing style. There is one exception,
-which will be described in the section on [generics](#generics).
-
-To explicitly set the passing-style for a parameter, you prefix the
-argument name with a sigil. There are three special passing styles that
-are often useful. The first is by-mutable-pointer, written with a
-single `&`:
-
-~~~~
-fn vec_push(&v: ~[int], elt: int) {
-    v += ~[elt];
-}
-~~~~
-
-This allows the function to mutate the value of the argument, *in the
-caller's context*. Clearly, you are only allowed to pass things that
-can actually be mutated to such a function.
-
-Then there is the by-copy style, written `+`. This indicates that the
-function wants to take ownership of the argument value. If the caller
-does not use the argument after the call, it will be 'given' to the
-callee. Otherwise a copy will be made. This mode is mostly used for
-functions that construct data structures. The argument will end up
-being owned by the data structure, so if that can be done without a
-copy, that's a win.
-
-~~~~
-type person = {name: ~str, address: ~str};
-fn make_person(+name: ~str, +address: ~str) -> person {
-    return {name: name, address: address};
-}
-~~~~
-
-Finally there is by-move style, written `-`. This indicates that the
-function will take ownership of the argument, like with by-copy style,
-but a copy must not be made. The caller is (statically) obliged to not
-use the argument after the call; it is de-initialized as part of the
-call. This is used to support ownership-passing in the presence of
-non-copyable types.
-
 # Generics
 
 ## Generic functions
 
-Throughout this tutorial, we've been defining functions like
-that act only on single data types. It is 2012, and we no longer
-expect to be defining such functions again and again for every type
-they apply to.  Thus, Rust allows functions and datatypes to have type
-parameters.
+Throughout this tutorial, we've been defining functions that act only on
+single data types. It's a burden to define such functions again and again for
+every type they apply to. Thus, Rust allows functions and datatypes to have
+type parameters.
 
 ~~~~
-fn map<T, U>(vector: ~[T], function: fn(T) -> U) -> ~[U] {
+fn map<T, U>(vector: &[T], function: fn(T) -> U) -> ~[U] {
     let mut accumulator = ~[];
     for vector.each |element| {
         vec::push(accumulator, function(element));
@@ -2015,64 +1576,20 @@ inside them, but you can pass them around.
 
 ## Generic datatypes
 
-Generic `type` and `enum` declarations follow the same pattern:
+Generic `type`, `struct`, and `enum` declarations follow the same pattern:
 
 ~~~~
-type circular_buf<T> = {start: uint,
-                        end: uint,
-                        buf: ~[mut T]};
+struct Stack<T> {
+    elements: ~[mut T]
+}
 
-enum option<T> { some(T), none }
+enum Maybe<T> {
+    Just(T),
+    Nothing
+}
 ~~~~
 
-You can then declare a function to take a `circular_buf<u8>` or return
-an `option<~str>`, or even an `option<T>` if the function itself is
-generic.
-
-The `option` type given above exists in the core library and is the
-way Rust programs express the thing that in C would be a nullable
-pointer. The nice part is that you have to explicitly unpack an
-`option` type, so accidental null pointer dereferences become
-impossible.
-
-## Type-inference and generics
-
-Rust's type inferrer works very well with generics, but there are
-programs that just can't be typed.
-
-~~~~
-let n = option::none;
-# option::iter(n, fn&(&&x:int) {})
-~~~~
-
-If you never do anything else with `n`, the compiler will not be able
-to assign a type to it. (The same goes for `[]`, the empty vector.) If
-you really want to have such a statement, you'll have to write it like
-this:
-
-~~~~
-let n2: option<int> = option::none;
-// or
-let n = option::none::<int>;
-~~~~
-
-Note that, in a value expression, `<` already has a meaning as a
-comparison operator, so you'll have to write `::<T>` to explicitly
-give a type to a name that denotes a generic value. Fortunately, this
-is rarely necessary.
-
-## Polymorphic built-ins
-
-There are two built-in operations that, perhaps surprisingly, act on
-values of any type. It was already mentioned earlier that `log` can
-take any type of value and output it.
-
-More interesting is that Rust also defines an ordering for values of
-all datatypes, and allows you to meaningfully apply comparison
-operators (`<`, `>`, `<=`, `>=`, `==`, `!=`) to them. For structural
-types, the comparison happens left to right, so `~"abc" < ~"bac"` (but
-note that `~"bac" < ~"ác"`, because the ordering acts on UTF-8 sequences
-without any sophistication).
+These declarations produce valid types like `Stack<u8>` and `Maybe<int>`.
 
 ## Kinds
 
@@ -2111,34 +1628,6 @@ resource type. Rust has several kinds that can be used as type bounds:
 > conveniently thought of as built-in traits. In the future type
 > kinds will actually be traits that the compiler has special
 > knowledge about.
-
-## Generic functions and argument-passing
-
-The previous section mentioned that arguments are passed by pointer or
-by value based on their type. There is one situation in which this is
-difficult. If you try this program:
-
-~~~~{.xfail-test}
-fn plus1(x: int) -> int { x + 1 }
-vec::map(~[1, 2, 3], plus1);
-~~~~
-
-You will get an error message about argument passing styles
-disagreeing. The reason is that generic types are always passed by
-reference, so `map` expects a function that takes its argument by
-reference. The `plus1` you defined, however, uses the default,
-efficient way to pass integers, which is by value. To get around this
-issue, you have to explicitly mark the arguments to a function that
-you want to pass to a generic higher-order function as being passed by
-pointer, using the `&&` sigil:
-
-~~~~
-fn plus1(&&x: int) -> int { x + 1 }
-vec::map(~[1, 2, 3], plus1);
-~~~~
-
-> ***Note:*** This is inconvenient, and we are hoping to get rid of
-> this restriction in the future.
 
 # Modules and crates
 
@@ -2406,6 +1895,157 @@ This makes it possible to rebind a variable without actually mutating
 it, which is mostly useful for destructuring (which can rebind, but
 not assign).
 
+# Macros
+
+Functions are the programmer's primary tool of abstraction, but there are
+cases in which they are insufficient, because the programmer wants to
+abstract over concepts not represented as values. Consider the following
+example:
+
+~~~~
+# enum t { special_a(uint), special_b(uint) };
+# fn f() -> uint {
+# let input_1 = special_a(0), input_2 = special_a(0);
+match input_1 {
+    special_a(x) => { return x; }
+    _ => {}
+}
+// ...
+match input_2 {
+    special_b(x) => { return x; }
+    _ => {}
+}
+# return 0u;
+# }
+~~~~
+
+This code could become tiresome if repeated many times. However, there is
+no reasonable function that could be written to solve this problem. In such a
+case, it's possible to define a macro to solve the problem. Macros are
+lightweight custom syntax extensions, themselves defined using the
+`macro_rules!` syntax extension:
+
+~~~~
+# enum t { special_a(uint), special_b(uint) };
+# fn f() -> uint {
+# let input_1 = special_a(0), input_2 = special_a(0);
+macro_rules! early_return(
+    ($inp:expr $sp:ident) => ( //invoke it like `(input_5 special_e)`
+        match $inp {
+            $sp(x) => { return x; }
+            _ => {}
+        }
+    );
+);
+// ...
+early_return!(input_1 special_a);
+// ...
+early_return!(input_2 special_b);
+# return 0;
+# }
+~~~~
+
+Macros are defined in pattern-matching style:
+
+## Invocation syntax
+
+On the left-hand-side of the `=>` is the macro invocation syntax. It is
+free-form, excepting the following rules:
+
+1. It must be surrounded in parentheses.
+2. `$` has special meaning.
+3. The `()`s, `[]`s, and `{}`s it contains must balance. For example, `([)` is
+forbidden.
+
+To take as an argument a fragment of Rust code, write `$` followed by a name
+ (for use on the right-hand side), followed by a `:`, followed by the sort of
+fragment to match (the most common ones are `ident`, `expr`, `ty`, `pat`, and
+`block`). Anything not preceeded by a `$` is taken literally. The standard
+rules of tokenization apply,
+
+So `($x:ident => (($e:expr)))`, though excessively fancy, would create a macro
+that could be invoked like `my_macro!(i=>(( 2+2 )))`.
+
+## Transcription syntax
+
+The right-hand side of the `=>` follows the same rules as the left-hand side,
+except that `$` need only be followed by the name of the syntactic fragment
+to transcribe.
+
+The right-hand side must be surrounded by delimiters of some kind, and must be
+an expression; currently, user-defined macros can only be invoked in
+expression position (even though `macro_rules!` itself can be in item
+position).
+
+## Multiplicity
+
+### Invocation
+
+Going back to the motivating example, suppose that we wanted each invocation
+of `early_return` to potentially accept multiple "special" identifiers. The
+syntax `$(...)*` accepts zero or more occurences of its contents, much like
+the Kleene star operator in regular expressions. It also supports a separator
+token (a comma-separated list could be written `$(...),*`), and `+` instead of
+`*` to mean "at least one".
+
+~~~~
+# enum t { special_a(uint),special_b(uint),special_c(uint),special_d(uint)};
+# fn f() -> uint {
+# let input_1 = special_a(0), input_2 = special_a(0);
+macro_rules! early_return(
+    ($inp:expr, [ $($sp:ident)|+ ]) => (
+        match $inp {
+            $(
+                $sp(x) => { return x; }
+            )+
+            _ => {}
+        }
+    );
+);
+// ...
+early_return!(input_1, [special_a|special_c|special_d]);
+// ...
+early_return!(input_2, [special_b]);
+# return 0;
+# }
+~~~~
+
+### Transcription
+
+As the above example demonstrates, `$(...)*` is also valid on the right-hand
+side of a macro definition. The behavior of Kleene star in transcription,
+especially in cases where multiple stars are nested, and multiple different
+names are involved, can seem somewhat magical and intuitive at first. The
+system that interprets them is called "Macro By Example". The two rules to
+keep in mind are (1) the behavior of `$(...)*` is to walk through one "layer"
+of repetitions for all of the `$name`s it contains in lockstep, and (2) each
+`$name` must be under at least as many `$(...)*`s as it was matched against.
+If it is under more, it'll will be repeated, as appropriate.
+
+## Parsing limitations
+
+The parser used by the macro system is reasonably powerful, but the parsing of
+Rust syntax is restricted in two ways:
+
+1. The parser will always parse as much as possible. For example, if the comma
+were omitted from the syntax of `early_return!` above, `input_1 [` would've
+been interpreted as the beginning of an array index. In fact, invoking the
+macro would have been impossible.
+2. The parser must have eliminated all ambiguity by the time it reaches a
+`$name:fragment_specifier`. This most often affects them when they occur in
+the beginning of, or immediately after, a `$(...)*`; requiring a distinctive
+token in front can solve the problem.
+
+## A final note
+
+Macros, as currently implemented, are not for the faint of heart. Even
+ordinary syntax errors can be more difficult to debug when they occur inside
+a macro, and errors caused by parse problems in generated code can be very
+tricky. Invoking the `log_syntax!` macro can help elucidate intermediate
+states, using `trace_macros!(true)` will automatically print those
+intermediate states out, and using `--pretty expanded` as an argument to the
+compiler will show the result of expansion.
+
 # Traits
 
 Traits are Rust's take on value polymorphism—the thing that
@@ -2630,12 +2270,12 @@ extern mod crypto {
 
 fn as_hex(data: ~[u8]) -> ~str {
     let mut acc = ~"";
-    for data.each |byte| { acc += #fmt("%02x", byte as uint); }
+    for data.each |byte| { acc += fmt!("%02x", byte as uint); }
     return acc;
 }
 
 fn sha1(data: ~str) -> ~str unsafe {
-    let bytes = str::bytes(data);
+    let bytes = str::to_bytes(data);
     let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                             vec::len(bytes) as c_uint, ptr::null());
     return as_hex(vec::unsafe::from_buf(hash, 20u));
@@ -2735,7 +2375,7 @@ The `sha1` function is the most obscure part of the program.
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 fn sha1(data: ~str) -> ~str {
     unsafe {
-        let bytes = str::bytes(data);
+        let bytes = str::to_bytes(data);
         let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                                 vec::len(bytes), ptr::null());
         return as_hex(vec::unsafe::from_buf(hash, 20u));
@@ -2778,7 +2418,7 @@ Let's look at our `sha1` function again.
 # fn as_hex(data: ~[u8]) -> ~str { ~"hi" }
 # fn x(data: ~str) -> ~str {
 # unsafe {
-let bytes = str::bytes(data);
+let bytes = str::to_bytes(data);
 let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
                         vec::len(bytes), ptr::null());
 return as_hex(vec::unsafe::from_buf(hash, 20u));
@@ -2786,8 +2426,8 @@ return as_hex(vec::unsafe::from_buf(hash, 20u));
 # }
 ~~~~
 
-The `str::bytes` function is perfectly safe, it converts a string to
-an `[u8]`. This byte array is then fed to `vec::unsafe::to_ptr`, which
+The `str::to_bytes` function is perfectly safe: it converts a string to
+a `[u8]`. This byte array is then fed to `vec::unsafe::to_ptr`, which
 returns an unsafe pointer to its contents.
 
 This pointer will become invalid as soon as the vector it points into
@@ -2831,7 +2471,7 @@ fn unix_time_in_microseconds() -> u64 unsafe {
     return (x.tv_sec as u64) * 1000_000_u64 + (x.tv_usec as u64);
 }
 
-# fn main() { assert #fmt("%?", unix_time_in_microseconds()) != ~""; }
+# fn main() { assert fmt!("%?", unix_time_in_microseconds()) != ~""; }
 ~~~~
 
 The `#[nolink]` attribute indicates that there's no foreign library to
@@ -2871,7 +2511,7 @@ let some_value = 22;
 
 do spawn {
     println(~"This executes in the child task.");
-    println(#fmt("%d", some_value));
+    println(fmt!("%d", some_value));
 }
 ~~~~
 
@@ -2892,7 +2532,7 @@ computations in parallel.  We might write something like:
 
 ~~~~
 import task::spawn;
-import pipes::{stream, port, chan};
+import pipes::{stream, Port, Chan};
 
 let (chan, port) = stream();
 
@@ -2922,9 +2562,9 @@ message to the port.  The next statement actually spawns the child:
 
 ~~~~
 # import task::{spawn};
-# import comm::{port, chan};
+# import comm::{Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
-# let port = port();
+# let port = Port();
 # let chan = port.chan();
 do spawn {
     let result = some_expensive_computation();
@@ -2942,7 +2582,7 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
-# import pipes::{stream, port, chan};
+# import pipes::{stream, Port, Chan};
 # fn some_other_expensive_computation() {}
 # let (chan, port) = stream::<int>();
 # chan.send(0);
@@ -2964,7 +2604,7 @@ Here is the function that implements the child task:
 
 ~~~~
 # import std::comm::DuplexStream;
-# import pipes::{port, chan};
+# import pipes::{Port, Chan};
 fn stringifier(channel: DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -2987,7 +2627,7 @@ Here is the code for the parent task:
 
 ~~~~
 # import std::comm::DuplexStream;
-# import pipes::{port, chan};
+# import pipes::{Port, Chan};
 # import task::spawn;
 # fn stringifier(channel: DuplexStream<~str, uint>) {
 #     let mut value: uint;

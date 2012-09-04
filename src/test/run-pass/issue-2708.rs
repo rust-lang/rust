@@ -1,4 +1,4 @@
-class Font {
+struct Font {
     let fontbuf: uint;
     let cairo_font: uint;
     let font_dtor: uint;

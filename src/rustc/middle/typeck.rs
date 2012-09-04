@@ -38,7 +38,7 @@ independently:
 
 */
 
-import result::result;
+import result::Result;
 import syntax::{ast, ast_util, ast_map};
 import ast::spanned;
 import ast::{required, provided};
@@ -52,7 +52,8 @@ import syntax::codemap::span;
 import pat_util::{pat_is_variant, pat_id_map};
 import middle::ty;
 import middle::ty::{arg, field, node_type_table, mk_nil,
-                    ty_param_bounds_and_ty, lookup_public_fields};
+                    ty_param_bounds_and_ty, lookup_public_fields,
+                    vstore_uniq};
 import std::smallintmap;
 import std::map;
 import std::map::{hashmap, int_hash};
@@ -113,6 +114,9 @@ type method_map_entry = {
     // number of derefs that are required on the receiver
     derefs: uint,
 
+    // the mode by which the self parameter needs to be passed
+    self_mode: ast::rmode,
+
     // method details being invoked
     origin: method_origin
 };
@@ -153,13 +157,13 @@ type vtable_map = hashmap<ast::node_id, vtable_res>;
 // Maps from a trait's def_id to a MethodInfo about
 // that method in that trait.
 type provided_methods_map = hashmap<ast::node_id,
-                                    ~[@resolve3::MethodInfo]>;
+                                    ~[@resolve::MethodInfo]>;
 
 type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};
 
 type crate_ctxt_ = {// A mapping from method call sites to traits that have
                     // that method.
-                    trait_map: resolve3::TraitMap,
+                    trait_map: resolve::TraitMap,
                     method_map: method_map,
                     vtable_map: vtable_map,
                     coherence_info: @coherence::CoherenceInfo,
@@ -172,7 +176,7 @@ enum crate_ctxt {
 
 // Functions that write types into the node type table
 fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::node_id, ty: ty::t) {
-    debug!{"write_ty_to_tcx(%d, %s)", node_id, ty_to_str(tcx, ty)};
+    debug!("write_ty_to_tcx(%d, %s)", node_id, ty_to_str(tcx, ty));
     smallintmap::insert(*tcx.node_types, node_id as uint, ty);
 }
 fn write_substs_to_tcx(tcx: ty::ctxt,
@@ -185,7 +189,7 @@ fn write_substs_to_tcx(tcx: ty::ctxt,
 
 fn lookup_def_tcx(tcx: ty::ctxt, sp: span, id: ast::node_id) -> ast::def {
     match tcx.def_map.find(id) {
-      some(x) => x,
+      Some(x) => x,
       _ => {
         tcx.sess.span_fatal(sp, ~"internal error looking up a definition")
       }
@@ -197,12 +201,13 @@ fn lookup_def_ccx(ccx: @crate_ctxt, sp: span, id: ast::node_id) -> ast::def {
 }
 
 fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
-    {bounds: @~[], rp: false, ty: t}
+    {bounds: @~[], region_param: None, ty: t}
 }
 
 fn require_same_types(
     tcx: ty::ctxt,
-    maybe_infcx: option<infer::infer_ctxt>,
+    maybe_infcx: Option<infer::infer_ctxt>,
+    t1_is_expected: bool,
     span: span,
     t1: ty::t,
     t2: ty::t,
@@ -210,19 +215,19 @@ fn require_same_types(
 
     let l_tcx, l_infcx;
     match maybe_infcx {
-      none => {
+      None => {
         l_tcx = tcx;
         l_infcx = infer::new_infer_ctxt(tcx);
       }
-      some(i) => {
+      Some(i) => {
         l_tcx = i.tcx;
         l_infcx = i;
       }
     }
 
-    match infer::mk_eqty(l_infcx, t1, t2) {
-      result::ok(()) => true,
-      result::err(ref terr) => {
+    match infer::mk_eqty(l_infcx, t1_is_expected, span, t1, t2) {
+      result::Ok(()) => true,
+      result::Err(ref terr) => {
         l_tcx.sess.span_err(span, msg() + ~": " +
             ty::type_err_to_str(l_tcx, terr));
         false
@@ -250,12 +255,12 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).struct {
-      ty::ty_fn({purity: ast::impure_fn, proto: ty::proto_bare, bounds,
-                 inputs, output, ret_style: ast::return_val}) => {
+      ty::ty_fn({purity: ast::impure_fn, proto: ty::proto_bare,
+                 inputs, output, ret_style: ast::return_val, _}) => {
         match tcx.items.find(main_id) {
-         some(ast_map::node_item(it,_)) => {
+         Some(ast_map::node_item(it,_)) => {
              match it.node {
-               ast::item_fn(_,ps,_) if vec::is_not_empty(ps) => {
+               ast::item_fn(_,_,ps,_) if vec::is_not_empty(ps) => {
                   tcx.sess.span_err(main_span,
                     ~"main function is not allowed to have type parameters");
                   return;
@@ -271,10 +276,10 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
               arg_is_argv_ty(tcx, inputs[0]);
         if !ok {
                 tcx.sess.span_err(main_span,
-                   fmt!{"Wrong type in main function: found `%s`, \
+                   fmt!("Wrong type in main function: found `%s`, \
                    expected `extern fn(~[str]) -> ()` \
                    or `extern fn() -> ()`",
-                         ty_to_str(tcx, main_t)});
+                         ty_to_str(tcx, main_t)));
          }
       }
       _ => {
@@ -289,14 +294,14 @@ fn check_for_main_fn(ccx: @crate_ctxt) {
     let tcx = ccx.tcx;
     if !tcx.sess.building_library {
         match copy tcx.sess.main_fn {
-          some((id, sp)) => check_main_fn_ty(ccx, id, sp),
-          none => tcx.sess.err(~"main function not found")
+          Some((id, sp)) => check_main_fn_ty(ccx, id, sp),
+          None => tcx.sess.err(~"main function not found")
         }
     }
 }
 
 fn check_crate(tcx: ty::ctxt,
-               trait_map: resolve3::TraitMap,
+               trait_map: resolve::TraitMap,
                crate: @ast::crate)
             -> (method_map, vtable_map) {
 

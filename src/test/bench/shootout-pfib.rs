@@ -15,16 +15,16 @@ use std;
 import std::{time, getopts};
 import io::WriterUtil;
 import int::range;
-import pipes::port;
-import pipes::chan;
+import pipes::Port;
+import pipes::Chan;
 import pipes::send;
 import pipes::recv;
 
 import core::result;
-import result::{ok, err};
+import result::{Ok, Err};
 
 fn fib(n: int) -> int {
-    fn pfib(c: chan<int>, n: int) {
+    fn pfib(c: Chan<int>, n: int) {
         if n == 0 {
             c.send(0);
         } else if n <= 2 {
@@ -52,8 +52,8 @@ fn parse_opts(argv: ~[~str]) -> config {
     let opt_args = vec::slice(argv, 1u, vec::len(argv));
 
     match getopts::getopts(opt_args, opts) {
-      ok(m) => { return {stress: getopts::opt_present(m, ~"stress")} }
-      err(_) => { fail; }
+      Ok(m) => { return {stress: getopts::opt_present(m, ~"stress")} }
+      Err(_) => { fail; }
     }
 }
 
@@ -63,7 +63,7 @@ fn stress_task(&&id: int) {
         let n = 15;
         assert (fib(n) == fib(n));
         i += 1;
-        error!{"%d: Completed %d iterations", id, i};
+        error!("%d: Completed %d iterations", id, i);
     }
 }
 
@@ -93,7 +93,7 @@ fn main(args: ~[~str]) {
     if opts.stress {
         stress(2);
     } else {
-        let max = option::get(uint::parse_buf(str::bytes(args[1]),
+        let max = option::get(uint::parse_buf(str::to_bytes(args[1]),
                                               10u)) as int;
 
         let num_trials = 10;
@@ -108,8 +108,8 @@ fn main(args: ~[~str]) {
 
                 let elapsed = stop - start;
 
-                out.write_line(fmt!{"%d\t%d\t%s", n, fibn,
-                                    u64::str(elapsed)});
+                out.write_line(fmt!("%d\t%d\t%s", n, fibn,
+                                    u64::str(elapsed)));
             }
         }
     }

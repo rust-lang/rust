@@ -4,9 +4,10 @@ Module: io
 Basic input/output
 */
 
-import result::result;
+import result::Result;
 
-import dvec::{DVec, dvec};
+import cmp::Eq;
+import dvec::DVec;
 import libc::{c_int, c_long, c_uint, c_void, size_t, ssize_t};
 import libc::consts::os::posix88::*;
 import libc::consts::os::extra::*;
@@ -43,7 +44,12 @@ trait Reader {
 
 // Generic utility functions defined on readers
 
-impl Reader {
+trait ReaderUtil {
+    fn read_bytes(len: uint) -> ~[u8];
+    fn read_line() -> ~str;
+}
+
+impl<T: Reader> T : ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8] {
         let mut buf = ~[mut];
         vec::reserve(buf, len);
@@ -54,6 +60,18 @@ impl Reader {
         unsafe { vec::unsafe::set_len(buf, count); }
         vec::from_mut(buf)
     }
+    fn read_line() -> ~str {
+        let mut buf = ~[];
+        loop {
+            let ch = self.read_byte();
+            if ch == -1 || ch == 10 { break; }
+            vec::push(buf, ch as u8);
+        }
+        str::from_bytes(buf)
+    }
+}
+
+impl Reader {
     fn read_chars(n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
         fn chars_from_buf(buf: ~[u8], &chars: ~[char]) -> (uint, uint) {
@@ -120,16 +138,6 @@ impl Reader {
         }
         assert(vec::len(c) == 1u);
         return c[0];
-    }
-
-    fn read_line() -> ~str {
-        let mut buf = ~[];
-        loop {
-            let ch = self.read_byte();
-            if ch == -1 || ch == 10 { break; }
-            vec::push(buf, ch as u8);
-        }
-        str::from_bytes(buf)
     }
 
     fn read_c_str() -> ~str {
@@ -237,7 +245,7 @@ impl<T: Reader, C> {base: T, cleanup: C}: Reader {
     fn tell() -> uint { self.base.tell() }
 }
 
-class FILERes {
+struct FILERes {
     let f: *libc::FILE;
     new(f: *libc::FILE) { self.f = f; }
     drop { libc::fclose(self.f); }
@@ -257,28 +265,30 @@ fn FILE_reader(f: *libc::FILE, cleanup: bool) -> Reader {
 
 fn stdin() -> Reader { rustrt::rust_get_stdin() as Reader }
 
-fn file_reader(path: ~str) -> result<Reader, ~str> {
-    let f = os::as_c_charp(path, |pathbuf| {
-        os::as_c_charp(~"r", |modebuf|
+fn file_reader(path: &Path) -> Result<Reader, ~str> {
+    let f = os::as_c_charp(path.to_str(), |pathbuf| {
+        os::as_c_charp("r", |modebuf|
             libc::fopen(pathbuf, modebuf)
         )
     });
-    return if f as uint == 0u { result::err(~"error opening " + path) }
+    return if f as uint == 0u { result::Err(~"error opening "
+                                            + path.to_str()) }
     else {
-        result::ok(FILE_reader(f, true))
+        result::Ok(FILE_reader(f, true))
     }
 }
 
 
 // Byte buffer readers
 
-type ByteBuf = {buf: ~[const u8], mut pos: uint, len: uint};
+type ByteBuf = {buf: &[const u8], mut pos: uint};
 
 impl ByteBuf: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
-        let count = uint::min(len, self.len - self.pos);
+        let count = uint::min(len, self.buf.len() - self.pos);
 
-        vec::u8::memcpy(buf, vec::const_view(self.buf, self.pos, self.len),
+        vec::u8::memcpy(buf,
+                        vec::const_view(self.buf, self.pos, self.buf.len()),
                         count);
 
         self.pos += count;
@@ -286,46 +296,27 @@ impl ByteBuf: Reader {
         count
     }
     fn read_byte() -> int {
-        if self.pos == self.len { return -1; }
+        if self.pos == self.buf.len() { return -1; }
         let b = self.buf[self.pos];
         self.pos += 1u;
         return b as int;
     }
     // FIXME (#2738): implement this
-    fn unread_byte(_byte: int) { error!{"Unimplemented: unread_byte"}; fail; }
-    fn eof() -> bool { self.pos == self.len }
+    fn unread_byte(_byte: int) { error!("Unimplemented: unread_byte"); fail; }
+    fn eof() -> bool { self.pos == self.buf.len() }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
-        self.pos = seek_in_buf(offset, pos, self.len, whence);
+        self.pos = seek_in_buf(offset, pos, self.buf.len(), whence);
     }
     fn tell() -> uint { self.pos }
 }
 
-fn bytes_reader(bytes: ~[u8]) -> Reader {
-    bytes_reader_between(bytes, 0u, vec::len(bytes))
+fn with_bytes_reader<t>(bytes: &[u8], f: fn(Reader) -> t) -> t {
+    f({buf: bytes, mut pos: 0u} as Reader)
 }
 
-fn bytes_reader_between(bytes: ~[u8], start: uint, end: uint) -> Reader {
-    {buf: bytes, mut pos: start, len: end} as Reader
-}
-
-fn with_bytes_reader<t>(bytes: ~[u8], f: fn(Reader) -> t) -> t {
-    f(bytes_reader(bytes))
-}
-
-fn with_bytes_reader_between<t>(bytes: ~[u8], start: uint, end: uint,
-                                f: fn(Reader) -> t) -> t {
-    f(bytes_reader_between(bytes, start, end))
-}
-
-fn str_reader(s: ~str) -> Reader {
-    bytes_reader(str::bytes(s))
-}
-
-fn with_str_reader<T>(s: ~str, f: fn(Reader) -> T) -> T {
-    do str::as_bytes(s) |bytes| {
-        with_bytes_reader_between(bytes, 0u, str::len(s), f)
-    }
+fn with_str_reader<T>(s: &str, f: fn(Reader) -> T) -> T {
+    str::byte_slice(s, |bytes| with_bytes_reader(bytes, f))
 }
 
 // Writing
@@ -333,6 +324,15 @@ enum FileFlag { Append, Create, Truncate, NoFlag, }
 
 // What type of writer are we?
 enum WriterType { Screen, File }
+
+impl WriterType: Eq {
+    pure fn eq(&&other: WriterType) -> bool {
+        match (self, other) {
+            (Screen, Screen) | (File, File) => true,
+            (Screen, _) | (File, _) => false
+        }
+    }
+}
 
 // FIXME (#2004): Seekable really should be orthogonal.
 // FIXME (#2004): eventually u64
@@ -358,7 +358,7 @@ impl *libc::FILE: Writer {
             let nout = libc::fwrite(vbuf as *c_void, len as size_t,
                                     1u as size_t, self);
             if nout < 1 as size_t {
-                error!{"error writing buffer"};
+                error!("error writing buffer");
                 log(error, os::last_os_error());
                 fail;
             }
@@ -393,7 +393,7 @@ impl fd_t: Writer {
                 let vb = ptr::const_offset(vbuf, count) as *c_void;
                 let nout = libc::write(self, vb, len as size_t);
                 if nout < 0 as ssize_t {
-                    error!{"error writing buffer"};
+                    error!("error writing buffer");
                     log(error, os::last_os_error());
                     fail;
                 }
@@ -402,11 +402,11 @@ impl fd_t: Writer {
         }
     }
     fn seek(_offset: int, _whence: SeekStyle) {
-        error!{"need 64-bit foreign calls for seek, sorry"};
+        error!("need 64-bit foreign calls for seek, sorry");
         fail;
     }
     fn tell() -> uint {
-        error!{"need 64-bit foreign calls for tell, sorry"};
+        error!("need 64-bit foreign calls for tell, sorry");
         fail;
     }
     fn flush() -> int { 0 }
@@ -415,7 +415,7 @@ impl fd_t: Writer {
     }
 }
 
-class FdRes {
+struct FdRes {
     let fd: fd_t;
     new(fd: fd_t) { self.fd = fd; }
     drop { libc::close(self.fd); }
@@ -430,8 +430,8 @@ fn fd_writer(fd: fd_t, cleanup: bool) -> Writer {
 }
 
 
-fn mk_file_writer(path: ~str, flags: ~[FileFlag])
-    -> result<Writer, ~str> {
+fn mk_file_writer(path: &Path, flags: ~[FileFlag])
+    -> Result<Writer, ~str> {
 
     #[cfg(windows)]
     fn wb() -> c_int { (O_WRONLY | O_BINARY) as c_int }
@@ -448,14 +448,15 @@ fn mk_file_writer(path: ~str, flags: ~[FileFlag])
           NoFlag => ()
         }
     }
-    let fd = do os::as_c_charp(path) |pathbuf| {
+    let fd = do os::as_c_charp(path.to_str()) |pathbuf| {
         libc::open(pathbuf, fflags,
                    (S_IRUSR | S_IWUSR) as c_int)
     };
     if fd < (0 as c_int) {
-        result::err(fmt!{"error opening %s: %s", path, os::last_os_error()})
+        result::Err(fmt!("error opening %s: %s", path.to_str(),
+                         os::last_os_error()))
     } else {
-        result::ok(fd_writer(fd, true))
+        result::Ok(fd_writer(fd, true))
     }
 }
 
@@ -521,7 +522,7 @@ fn u64_to_be_bytes<T>(n: u64, size: uint, f: fn(v: &[u8]) -> T) -> T {
     }
 }
 
-fn u64_from_be_bytes(data: ~[u8], start: uint, size: uint) -> u64 {
+fn u64_from_be_bytes(data: &[const u8], start: uint, size: uint) -> u64 {
     let mut sz = size;
     assert (sz <= 8u);
     let mut val = 0_u64;
@@ -632,20 +633,21 @@ impl<T: Writer> T : WriterUtil {
     fn write_u8(n: u8) { self.write(&[n]) }
 }
 
-fn file_writer(path: ~str, flags: ~[FileFlag]) -> result<Writer, ~str> {
-    result::chain(mk_file_writer(path, flags), |w| result::ok(w))
+fn file_writer(path: &Path, flags: ~[FileFlag]) -> Result<Writer, ~str> {
+    result::chain(mk_file_writer(path, flags), |w| result::Ok(w))
 }
 
 
 // FIXME: fileflags // #2004
-fn buffered_file_writer(path: ~str) -> result<Writer, ~str> {
-    let f = do os::as_c_charp(path) |pathbuf| {
-        do os::as_c_charp(~"w") |modebuf| {
+fn buffered_file_writer(path: &Path) -> Result<Writer, ~str> {
+    let f = do os::as_c_charp(path.to_str()) |pathbuf| {
+        do os::as_c_charp("w") |modebuf| {
             libc::fopen(pathbuf, modebuf)
         }
     };
-    return if f as uint == 0u { result::err(~"error opening " + path) }
-    else { result::ok(FILE_writer(f, true)) }
+    return if f as uint == 0u { result::Err(~"error opening "
+                                            + path.to_str()) }
+    else { result::Ok(FILE_writer(f, true)) }
 }
 
 // FIXME (#2004) it would be great if this could be a const
@@ -661,24 +663,21 @@ type MemBuffer = @{buf: DVec<u8>, mut pos: uint};
 
 impl MemBuffer: Writer {
     fn write(v: &[const u8]) {
-        // Fast path.
-        let vlen = vec::len(v);
-        let buf_len = self.buf.len();
-        if self.pos == buf_len {
-            self.buf.push_all(v);
-            self.pos += vlen;
-            return;
-        }
+        do self.buf.swap |buf| {
+            let mut buf <- buf;
+            let v_len = v.len();
+            let buf_len = buf.len();
 
-        // FIXME #2004--use memcpy here?
-        let mut pos = self.pos, vpos = 0u;
-        while vpos < vlen && pos < buf_len {
-            self.buf.set_elt(pos, copy v[vpos]);
-            pos += 1u;
-            vpos += 1u;
+            let count = uint::max(buf_len, self.pos + v_len);
+            vec::reserve(buf, count);
+            unsafe { vec::unsafe::set_len(buf, count); }
+
+            vec::u8::memcpy(vec::mut_view(buf, self.pos, count), v, v_len);
+
+            self.pos += v_len;
+
+            buf
         }
-        self.buf.push_slice(v, vpos, vlen);
-        self.pos += vlen;
     }
     fn seek(offset: int, whence: SeekStyle) {
         let pos = self.pos;
@@ -691,7 +690,7 @@ impl MemBuffer: Writer {
 }
 
 fn mem_buffer() -> MemBuffer {
-    @{buf: dvec(), mut pos: 0u}
+    @{buf: DVec(), mut pos: 0u}
 }
 fn mem_buffer_writer(b: MemBuffer) -> Writer { b as Writer }
 fn mem_buffer_buf(b: MemBuffer) -> ~[u8] { b.buf.get() }
@@ -727,21 +726,21 @@ fn seek_in_buf(offset: int, pos: uint, len: uint, whence: SeekStyle) ->
     return bpos as uint;
 }
 
-fn read_whole_file_str(file: ~str) -> result<~str, ~str> {
+fn read_whole_file_str(file: &Path) -> Result<~str, ~str> {
     result::chain(read_whole_file(file), |bytes| {
         if str::is_utf8(bytes) {
-            result::ok(str::from_bytes(bytes))
+            result::Ok(str::from_bytes(bytes))
        } else {
-           result::err(file + ~" is not UTF-8")
+           result::Err(file.to_str() + ~" is not UTF-8")
        }
     })
 }
 
 // FIXME (#2004): implement this in a low-level way. Going through the
 // abstractions is pointless.
-fn read_whole_file(file: ~str) -> result<~[u8], ~str> {
+fn read_whole_file(file: &Path) -> Result<~[u8], ~str> {
     result::chain(file_reader(file), |rdr| {
-        result::ok(rdr.read_whole_stream())
+        result::Ok(rdr.read_whole_stream())
     })
 }
 
@@ -764,13 +763,13 @@ mod fsync {
 
 
     // Artifacts that need to fsync on destruction
-    class Res<t> {
+    struct Res<t> {
         let arg: Arg<t>;
         new(-arg: Arg<t>) { self.arg <- arg; }
         drop {
           match self.arg.opt_level {
-            option::none => (),
-            option::some(level) => {
+            option::None => (),
+            option::Some(level) => {
               // fail hard if not succesful
               assert(self.arg.fsync_fn(self.arg.val, level) != -1);
             }
@@ -780,14 +779,14 @@ mod fsync {
 
     type Arg<t> = {
         val: t,
-        opt_level: option<Level>,
+        opt_level: Option<Level>,
         fsync_fn: fn@(t, Level) -> int
     };
 
     // fsync file after executing blk
     // FIXME (#2004) find better way to create resources within lifetime of
     // outer res
-    fn FILE_res_sync(&&file: FILERes, opt_level: option<Level>,
+    fn FILE_res_sync(&&file: FILERes, opt_level: Option<Level>,
                   blk: fn(&&Res<*libc::FILE>)) {
         blk(Res({
             val: file.f, opt_level: opt_level,
@@ -798,7 +797,7 @@ mod fsync {
     }
 
     // fsync fd after executing blk
-    fn fd_res_sync(&&fd: FdRes, opt_level: option<Level>,
+    fn fd_res_sync(&&fd: FdRes, opt_level: Option<Level>,
                    blk: fn(&&Res<fd_t>)) {
         blk(Res({
             val: fd.fd, opt_level: opt_level,
@@ -812,7 +811,7 @@ mod fsync {
     trait FSyncable { fn fsync(l: Level) -> int; }
 
     // Call o.fsync after executing blk
-    fn obj_sync(&&o: FSyncable, opt_level: option<Level>,
+    fn obj_sync(&&o: FSyncable, opt_level: Option<Level>,
                 blk: fn(&&Res<FSyncable>)) {
         blk(Res({
             val: o, opt_level: opt_level,
@@ -828,7 +827,7 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let tmpfile: ~str = ~"tmp/lib-io-test-simple.tmp";
+        let tmpfile = &Path("tmp/lib-io-test-simple.tmp");
         log(debug, tmpfile);
         let frood: ~str =
             ~"A hoopy frood who really knows where his towel is.";
@@ -847,9 +846,10 @@ mod tests {
 
     #[test]
     fn test_readchars_empty() {
-        let inp : io::Reader = io::str_reader(~"");
-        let res : ~[char] = inp.read_chars(128u);
-        assert(vec::len(res) == 0u);
+        do io::with_str_reader(~"") |inp| {
+            let res : ~[char] = inp.read_chars(128u);
+            assert(vec::len(res) == 0u);
+        }
     }
 
     #[test]
@@ -862,13 +862,14 @@ mod tests {
             29983, 38152, 30340, 27748,
             21273, 20999, 32905, 27748];
         fn check_read_ln(len : uint, s: ~str, ivals: ~[int]) {
-            let inp : io::Reader = io::str_reader(s);
-            let res : ~[char] = inp.read_chars(len);
-            if (len <= vec::len(ivals)) {
-                assert(vec::len(res) == len);
+            do io::with_str_reader(s) |inp| {
+                let res : ~[char] = inp.read_chars(len);
+                if (len <= vec::len(ivals)) {
+                    assert(vec::len(res) == len);
+                }
+                assert(vec::slice(ivals, 0u, vec::len(res)) ==
+                       vec::map(res, |x| x as int));
             }
-            assert(vec::slice(ivals, 0u, vec::len(res)) ==
-                   vec::map(res, |x| x as int));
         }
         let mut i = 0u;
         while i < 8u {
@@ -881,45 +882,47 @@ mod tests {
 
     #[test]
     fn test_readchar() {
-        let inp : io::Reader = io::str_reader(~"生");
-        let res : char = inp.read_char();
-        assert(res as int == 29983);
+        do io::with_str_reader(~"生") |inp| {
+            let res : char = inp.read_char();
+            assert(res as int == 29983);
+        }
     }
 
     #[test]
     fn test_readchar_empty() {
-        let inp : io::Reader = io::str_reader(~"");
-        let res : char = inp.read_char();
-        assert(res as int == -1);
+        do io::with_str_reader(~"") |inp| {
+            let res : char = inp.read_char();
+            assert(res as int == -1);
+        }
     }
 
     #[test]
     fn file_reader_not_exist() {
-        match io::file_reader(~"not a file") {
-          result::err(e) => {
+        match io::file_reader(&Path("not a file")) {
+          result::Err(e) => {
             assert e == ~"error opening not a file";
           }
-          result::ok(_) => fail
+          result::Ok(_) => fail
         }
     }
 
     #[test]
     fn file_writer_bad_name() {
-        match io::file_writer(~"?/?", ~[]) {
-          result::err(e) => {
-            assert str::starts_with(e, ~"error opening ?/?");
+        match io::file_writer(&Path("?/?"), ~[]) {
+          result::Err(e) => {
+            assert str::starts_with(e, "error opening");
           }
-          result::ok(_) => fail
+          result::Ok(_) => fail
         }
     }
 
     #[test]
     fn buffered_file_writer_bad_name() {
-        match io::buffered_file_writer(~"?/?") {
-          result::err(e) => {
-            assert e == ~"error opening ?/?";
+        match io::buffered_file_writer(&Path("?/?")) {
+          result::Err(e) => {
+            assert str::starts_with(e, "error opening");
           }
-          result::ok(_) => fail
+          result::Ok(_) => fail
         }
     }
 

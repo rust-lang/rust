@@ -30,7 +30,7 @@ type freevar_map = hashmap<ast::node_id, freevar_info>;
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
+fn collect_freevars(def_map: resolve::DefMap, blk: ast::blk)
     -> freevar_info {
     let seen = int_hash();
     let refs = @mut ~[];
@@ -39,23 +39,23 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
 
     let walk_expr = fn@(expr: @ast::expr, &&depth: int, v: visit::vt<int>) {
             match expr.node {
-              ast::expr_fn(proto, decl, _, _) => {
+              ast::expr_fn(proto, _, _, _) => {
                 if proto != ast::proto_bare {
                     visit::visit_expr(expr, depth + 1, v);
                 }
               }
-              ast::expr_fn_block(_, _, _) => {
+              ast::expr_fn_block(*) => {
                 visit::visit_expr(expr, depth + 1, v);
               }
-              ast::expr_path(path) => {
+              ast::expr_path(*) => {
                   let mut i = 0;
                   match def_map.find(expr.id) {
-                    none => fail (~"Not found: " + path_to_str(path)),
-                    some(df) => {
+                    None => fail ~"path not found",
+                    Some(df) => {
                       let mut def = df;
                       while i < depth {
                         match copy def {
-                          ast::def_upvar(_, inner, _) => { def = *inner; }
+                          ast::def_upvar(_, inner, _, _) => { def = *inner; }
                           _ => break
                         }
                         i += 1;
@@ -85,7 +85,7 @@ fn collect_freevars(def_map: resolve3::DefMap, blk: ast::blk)
 // efficient as it fully recomputes the free variables at every
 // node of interest rather than building up the free variables in
 // one pass. This could be improved upon if it turns out to matter.
-fn annotate_freevars(def_map: resolve3::DefMap, crate: @ast::crate) ->
+fn annotate_freevars(def_map: resolve::DefMap, crate: @ast::crate) ->
    freevar_map {
     let freevars = int_hash();
 
@@ -105,8 +105,8 @@ fn annotate_freevars(def_map: resolve3::DefMap, crate: @ast::crate) ->
 
 fn get_freevars(tcx: ty::ctxt, fid: ast::node_id) -> freevar_info {
     match tcx.freevars.find(fid) {
-      none => fail ~"get_freevars: " + int::str(fid) + ~" has no freevars",
-      some(d) => return d
+      None => fail ~"get_freevars: " + int::str(fid) + ~" has no freevars",
+      Some(d) => return d
     }
 }
 fn has_freevars(tcx: ty::ctxt, fid: ast::node_id) -> bool {

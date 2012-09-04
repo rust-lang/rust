@@ -2,7 +2,7 @@
 
 import vec;
 import uint;
-import iotask = uv::iotask::iotask;
+import iotask = uv::iotask::IoTask;
 import interact = uv::iotask::interact;
 
 import sockaddr_in = uv::ll::sockaddr_in;
@@ -21,21 +21,21 @@ import get_data_for_req = uv::ll::get_data_for_req;
 import ll = uv::ll;
 import comm = core::comm;
 
-export ip_addr, parse_addr_err;
+export IpAddr, parse_addr_err;
 export format_addr;
 export v4, v6;
 export get_addr;
-export ipv4, ipv6;
+export Ipv4, Ipv6;
 
 /// An IP address
-enum ip_addr {
+enum IpAddr {
     /// An IPv4 address
-    ipv4(sockaddr_in),
-    ipv6(sockaddr_in6)
+    Ipv4(sockaddr_in),
+    Ipv6(sockaddr_in6)
 }
 
 /// Human-friendly feedback on why a parse_addr attempt failed
-type parse_addr_err = {
+type ParseAddrErr = {
     err_msg: ~str
 };
 
@@ -46,16 +46,16 @@ type parse_addr_err = {
  *
  * * ip - a `std::net::ip::ip_addr`
  */
-fn format_addr(ip: ip_addr) -> ~str {
+fn format_addr(ip: IpAddr) -> ~str {
     match ip {
-      ipv4(addr) =>  unsafe {
+      Ipv4(addr) =>  unsafe {
         let result = uv_ip4_name(&addr);
         if result == ~"" {
             fail ~"failed to convert inner sockaddr_in address to str"
         }
         result
       },
-      ipv6(addr) => unsafe {
+      Ipv6(addr) => unsafe {
         let result = uv_ip6_name(&addr);
         if result == ~"" {
             fail ~"failed to convert inner sockaddr_in address to str"
@@ -66,8 +66,8 @@ fn format_addr(ip: ip_addr) -> ~str {
 }
 
 /// Represents errors returned from `net::ip::get_addr()`
-enum ip_get_addr_err {
-    get_addr_unknown_error
+enum IpGetAddrErr {
+    GetAddrUnknownError
 }
 
 /**
@@ -85,17 +85,17 @@ enum ip_get_addr_err {
  * object in the case of failure
  */
 fn get_addr(++node: ~str, iotask: iotask)
-        -> result::result<~[ip_addr], ip_get_addr_err> unsafe {
+        -> result::Result<~[IpAddr], IpGetAddrErr> {
     do core::comm::listen |output_ch| {
-        do str::as_buf(node) |node_ptr, len| {
-            log(debug, fmt!{"slice len %?", len});
+        do str::as_buf(node) |node_ptr, len| unsafe {
+            log(debug, fmt!("slice len %?", len));
             let handle = create_uv_getaddrinfo_t();
             let handle_ptr = ptr::addr_of(handle);
-            let handle_data: get_addr_data = {
+            let handle_data: GetAddrData = {
                 output_ch: output_ch
             };
             let handle_data_ptr = ptr::addr_of(handle_data);
-            do interact(iotask) |loop_ptr| {
+            do interact(iotask) |loop_ptr| unsafe {
                 let result = uv_getaddrinfo(
                     loop_ptr,
                     handle_ptr,
@@ -108,7 +108,7 @@ fn get_addr(++node: ~str, iotask: iotask)
                     set_data_for_req(handle_ptr, handle_data_ptr);
                   }
                   _ => {
-                    output_ch.send(result::err(get_addr_unknown_error));
+                    output_ch.send(result::Err(GetAddrUnknownError));
                   }
                 }
             };
@@ -133,51 +133,51 @@ mod v4 {
      *
      * * an `ip_addr` of the `ipv4` variant
      */
-    fn parse_addr(ip: ~str) -> ip_addr {
+    fn parse_addr(ip: ~str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::ok(addr) => copy(addr),
-          result::err(err_data) => fail err_data.err_msg
+          result::Ok(addr) => copy(addr),
+          result::Err(err_data) => fail err_data.err_msg
         }
     }
     // the simple, old style numberic representation of
     // ipv4
-    type ipv4_rep = { a: u8, b: u8, c: u8, d:u8 };
+    type Ipv4Rep = { a: u8, b: u8, c: u8, d:u8 };
 
-    trait as_unsafe_u32 {
+    trait AsUnsafeU32 {
         unsafe fn as_u32() -> u32;
     }
 
-    impl ipv4_rep: as_unsafe_u32 {
+    impl Ipv4Rep: AsUnsafeU32 {
         // this is pretty dastardly, i know
         unsafe fn as_u32() -> u32 {
             *((ptr::addr_of(self)) as *u32)
         }
     }
-    fn parse_to_ipv4_rep(ip: ~str) -> result::result<ipv4_rep, ~str> {
+    fn parse_to_ipv4_rep(ip: ~str) -> result::Result<Ipv4Rep, ~str> {
         let parts = vec::map(str::split_char(ip, '.'), |s| {
             match uint::from_str(s) {
-              some(n) if n <= 255u => n,
+              Some(n) if n <= 255u => n,
               _ => 256u
             }
         });
         if vec::len(parts) != 4u {
-                result::err(fmt!{"'%s' doesn't have 4 parts", ip})
+                result::Err(fmt!("'%s' doesn't have 4 parts", ip))
                 }
         else if vec::contains(parts, 256u) {
-                result::err(fmt!{"invalid octal in addr '%s'", ip})
+                result::Err(fmt!("invalid octal in addr '%s'", ip))
                 }
         else {
-            result::ok({a: parts[0] as u8, b: parts[1] as u8,
+            result::Ok({a: parts[0] as u8, b: parts[1] as u8,
                         c: parts[2] as u8, d: parts[3] as u8})
         }
     }
-    fn try_parse_addr(ip: ~str) -> result::result<ip_addr,parse_addr_err> {
+    fn try_parse_addr(ip: ~str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             let INADDR_NONE = ll::get_INADDR_NONE();
             let ip_rep_result = parse_to_ipv4_rep(ip);
             if result::is_err(ip_rep_result) {
                 let err_str = result::get_err(ip_rep_result);
-                return result::err({err_msg: err_str})
+                return result::Err({err_msg: err_str})
             }
             // ipv4_rep.as_u32 is unsafe :/
             let input_is_inaddr_none =
@@ -185,20 +185,20 @@ mod v4 {
 
             let new_addr = uv_ip4_addr(ip, 22);
             let reformatted_name = uv_ip4_name(&new_addr);
-            log(debug, fmt!{"try_parse_addr: input ip: %s reparsed ip: %s",
-                            ip, reformatted_name});
+            log(debug, fmt!("try_parse_addr: input ip: %s reparsed ip: %s",
+                            ip, reformatted_name));
             let ref_ip_rep_result = parse_to_ipv4_rep(reformatted_name);
             if result::is_err(ref_ip_rep_result) {
                 let err_str = result::get_err(ref_ip_rep_result);
-                return result::err({err_msg: err_str})
+                return result::Err({err_msg: err_str})
             }
             if result::get(ref_ip_rep_result).as_u32() == INADDR_NONE &&
                  !input_is_inaddr_none {
-                return result::err(
+                return result::Err(
                     {err_msg: ~"uv_ip4_name produced invalid result."})
             }
             else {
-                result::ok(ipv4(copy(new_addr)))
+                result::Ok(Ipv4(copy(new_addr)))
             }
         }
     }
@@ -219,60 +219,60 @@ mod v6 {
      *
      * * an `ip_addr` of the `ipv6` variant
      */
-    fn parse_addr(ip: ~str) -> ip_addr {
+    fn parse_addr(ip: ~str) -> IpAddr {
         match try_parse_addr(ip) {
-          result::ok(addr) => copy(addr),
-          result::err(err_data) => fail err_data.err_msg
+          result::Ok(addr) => copy(addr),
+          result::Err(err_data) => fail err_data.err_msg
         }
     }
-    fn try_parse_addr(ip: ~str) -> result::result<ip_addr,parse_addr_err> {
+    fn try_parse_addr(ip: ~str) -> result::Result<IpAddr,ParseAddrErr> {
         unsafe {
             // need to figure out how to establish a parse failure..
             let new_addr = uv_ip6_addr(ip, 22);
             let reparsed_name = uv_ip6_name(&new_addr);
-            log(debug, fmt!{"v6::try_parse_addr ip: '%s' reparsed '%s'",
-                            ip, reparsed_name});
+            log(debug, fmt!("v6::try_parse_addr ip: '%s' reparsed '%s'",
+                            ip, reparsed_name));
             // '::' appears to be uv_ip6_name() returns for bogus
             // parses..
             if  ip != ~"::" && reparsed_name == ~"::" {
-                result::err({err_msg:fmt!{"failed to parse '%s'",
-                                           ip}})
+                result::Err({err_msg:fmt!("failed to parse '%s'",
+                                           ip)})
             }
             else {
-                result::ok(ipv6(new_addr))
+                result::Ok(Ipv6(new_addr))
             }
         }
     }
 }
 
-type get_addr_data = {
-    output_ch: comm::Chan<result::result<~[ip_addr],ip_get_addr_err>>
+type GetAddrData = {
+    output_ch: comm::Chan<result::Result<~[IpAddr],IpGetAddrErr>>
 };
 
 extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                      res: *addrinfo) unsafe {
     log(debug, ~"in get_addr_cb");
     let handle_data = get_data_for_req(handle) as
-        *get_addr_data;
+        *GetAddrData;
     if status == 0i32 {
         if res != (ptr::null::<addrinfo>()) {
             let mut out_vec = ~[];
-            log(debug, fmt!{"initial addrinfo: %?", res});
+            log(debug, fmt!("initial addrinfo: %?", res));
             let mut curr_addr = res;
             loop {
                 let new_ip_addr = if ll::is_ipv4_addrinfo(curr_addr) {
-                    ipv4(copy((
+                    Ipv4(copy((
                         *ll::addrinfo_as_sockaddr_in(curr_addr))))
                 }
                 else if ll::is_ipv6_addrinfo(curr_addr) {
-                    ipv6(copy((
+                    Ipv6(copy((
                         *ll::addrinfo_as_sockaddr_in6(curr_addr))))
                 }
                 else {
                     log(debug, ~"curr_addr is not of family AF_INET or "+
                         ~"AF_INET6. Error.");
                     (*handle_data).output_ch.send(
-                        result::err(get_addr_unknown_error));
+                        result::Err(GetAddrUnknownError));
                     break;
                 };
                 out_vec += ~[new_ip_addr];
@@ -284,23 +284,23 @@ extern fn get_addr_cb(handle: *uv_getaddrinfo_t, status: libc::c_int,
                 }
                 else {
                     curr_addr = next_addr;
-                    log(debug, fmt!{"next_addr addrinfo: %?", curr_addr});
+                    log(debug, fmt!("next_addr addrinfo: %?", curr_addr));
                 }
             }
-            log(debug, fmt!{"successful process addrinfo result, len: %?",
-                            vec::len(out_vec)});
-            (*handle_data).output_ch.send(result::ok(out_vec));
+            log(debug, fmt!("successful process addrinfo result, len: %?",
+                            vec::len(out_vec)));
+            (*handle_data).output_ch.send(result::Ok(out_vec));
         }
         else {
             log(debug, ~"addrinfo pointer is NULL");
             (*handle_data).output_ch.send(
-                result::err(get_addr_unknown_error));
+                result::Err(GetAddrUnknownError));
         }
     }
     else {
         log(debug, ~"status != 0 error in get_addr_cb");
         (*handle_data).output_ch.send(
-            result::err(get_addr_unknown_error));
+            result::Err(GetAddrUnknownError));
     }
     if res != (ptr::null::<addrinfo>()) {
         uv_freeaddrinfo(res);
@@ -320,19 +320,19 @@ mod test {
     fn test_ip_ipv6_parse_and_format_ip() {
         let localhost_str = ~"::1";
         let format_result = format_addr(v6::parse_addr(localhost_str));
-        log(debug, fmt!{"results: expected: '%s' actual: '%s'",
-            localhost_str, format_result});
+        log(debug, fmt!("results: expected: '%s' actual: '%s'",
+            localhost_str, format_result));
         assert format_result == localhost_str;
     }
     #[test]
     fn test_ip_ipv4_bad_parse() {
         match v4::try_parse_addr(~"b4df00d") {
-          result::err(err_info) => {
-            log(debug, fmt!{"got error as expected %?", err_info});
+          result::Err(err_info) => {
+            log(debug, fmt!("got error as expected %?", err_info));
             assert true;
           }
-          result::ok(addr) => {
-            fail fmt!{"Expected failure, but got addr %?", addr};
+          result::Ok(addr) => {
+            fail fmt!("Expected failure, but got addr %?", addr);
           }
         }
     }
@@ -340,12 +340,12 @@ mod test {
     #[ignore(target_os="win32")]
     fn test_ip_ipv6_bad_parse() {
         match v6::try_parse_addr(~"::,~2234k;") {
-          result::err(err_info) => {
-            log(debug, fmt!{"got error as expected %?", err_info});
+          result::Err(err_info) => {
+            log(debug, fmt!("got error as expected %?", err_info));
             assert true;
           }
-          result::ok(addr) => {
-            fail fmt!{"Expected failure, but got addr %?", addr};
+          result::Ok(addr) => {
+            fail fmt!("Expected failure, but got addr %?", addr);
           }
         }
     }
@@ -361,15 +361,15 @@ mod test {
         // note really sure how to realiably test/assert
         // this.. mostly just wanting to see it work, atm.
         let results = result::unwrap(ga_result);
-        log(debug, fmt!{"test_get_addr: Number of results for %s: %?",
-                        localhost_name, vec::len(results)});
+        log(debug, fmt!("test_get_addr: Number of results for %s: %?",
+                        localhost_name, vec::len(results)));
         for vec::each(results) |r| {
             let ipv_prefix = match r {
-              ipv4(_) => ~"IPv4",
-              ipv6(_) => ~"IPv6"
+              Ipv4(_) => ~"IPv4",
+              Ipv6(_) => ~"IPv6"
             };
-            log(debug, fmt!{"test_get_addr: result %s: '%s'",
-                            ipv_prefix, format_addr(r)});
+            log(debug, fmt!("test_get_addr: result %s: '%s'",
+                            ipv_prefix, format_addr(r)));
         }
         // at least one result.. this is going to vary from system
         // to system, based on stuff like the contents of /etc/hosts

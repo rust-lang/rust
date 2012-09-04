@@ -4,17 +4,16 @@ use std;
 import comm;
 import comm::send;
 import comm::Chan;
-import comm::chan;
 import comm::recv;
 import task;
 
 fn a(c: Chan<int>) {
     if true {
-        debug!{"task a"};
-        debug!{"task a"};
-        debug!{"task a"};
-        debug!{"task a"};
-        debug!{"task a"};
+        debug!("task a");
+        debug!("task a");
+        debug!("task a");
+        debug!("task a");
+        debug!("task a");
     }
     send(c, 10);
 }
@@ -31,8 +30,8 @@ fn g(x: int, y: ~str) -> int {
 fn main() {
     let mut n: int = 2 + 3 * 7;
     let s: ~str = ~"hello there";
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
     task::spawn(|| a(ch) );
     task::spawn(|| b(ch) );
     let mut x: int = 10;
@@ -40,17 +39,17 @@ fn main() {
     log(debug, x);
     n = recv(p);
     n = recv(p);
-    debug!{"children finished, root finishing"};
+    debug!("children finished, root finishing");
 }
 
 fn b(c: Chan<int>) {
     if true {
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
-        debug!{"task b"};
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
+        debug!("task b");
     }
     send(c, 10);
 }

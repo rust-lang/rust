@@ -3,7 +3,7 @@
 
 fn it_takes_two(x: @int, -y: @int) -> int {
     free(y);
-    debug!{"about to deref"};
+    debug!("about to deref");
     *x
 }
 

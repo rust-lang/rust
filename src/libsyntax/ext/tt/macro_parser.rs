@@ -7,39 +7,97 @@ import parse::parser::{parser,SOURCE_FILE};
 //import parse::common::parser_common;
 import parse::common::*; //resolve bug?
 import parse::parse_sess;
-import dvec::{DVec, dvec};
+import dvec::DVec;
 import ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 import ast_util::mk_sp;
-import std::map::{hashmap, box_str_hash};
+import std::map::{hashmap, uint_hash};
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
-onlyl calling out to the main rust parser for named nonterminals (which it
+only by calling out to the main rust parser for named nonterminals (which it
 commits to fully when it hits one in a grammar). This means that there are no
 completer or predictor rules, and therefore no need to store one column per
 token: instead, there's a set of current Earley items and a set of next
 ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
 pathological cases, is worse than traditional Earley parsing, but it's an
 easier fit for Macro-by-Example-style rules, and I think the overhead is
-lower. */
+lower. (In order to prevent the pathological case, we'd need to lazily
+construct the resulting `named_match`es at the very end. It'd be a pain,
+and require more memory to keep around old items, but it would also save
+overhead)*/
+
+/* Quick intro to how the parser works:
+
+A 'position' is a dot in the middle of a matcher, usually represented as a
+dot. For example `· a $( a )* a b` is a position, as is `a $( · a )* a b`.
+
+The parser walks through the input a character at a time, maintaining a list
+of items consistent with the current position in the input string: `cur_eis`.
+
+As it processes them, it fills up `eof_eis` with items that would be valid if
+the macro invocation is now over, `bb_eis` with items that are waiting on
+a Rust nonterminal like `$e:expr`, and `next_eis` with items that are waiting
+on the a particular token. Most of the logic concerns moving the · through the
+repetitions indicated by Kleene stars. It only advances or calls out to the
+real Rust parser when no `cur_eis` items remain
+
+Example: Start parsing `a a a a b` against [· a $( a )* a b].
+
+Remaining input: `a a a a b`
+next_eis: [· a $( a )* a b]
+
+- - - Advance over an `a`. - - -
+
+Remaining input: `a a a b`
+cur: [a · $( a )* a b]
+Descend/Skip (first item).
+next: [a $( · a )* a b]  [a $( a )* · a b].
+
+- - - Advance over an `a`. - - -
+
+Remaining input: `a a b`
+cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+Finish/Repeat (first item)
+next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+
+- - - Advance over an `a`. - - - (this looks exactly like the last step)
+
+Remaining input: `a b`
+cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+Finish/Repeat (first item)
+next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
+
+- - - Advance over an `a`. - - - (this looks exactly like the last step)
+
+Remaining input: `b`
+cur: [a $( a · )* a b]  next: [a $( a )* a · b]
+Finish/Repeat (first item)
+next: [a $( a )* · a b]  [a $( · a )* a b]
+
+- - - Advance over a `b`. - - -
+
+Remaining input: ``
+eof: [a $( a )* a b ·]
+
+ */
 
 
 /* to avoid costly uniqueness checks, we require that `match_seq` always has a
 nonempty body. */
 
 enum matcher_pos_up { /* to break a circularity */
-    matcher_pos_up(option<matcher_pos>)
+    matcher_pos_up(Option<matcher_pos>)
 }
 
 fn is_some(&&mpu: matcher_pos_up) -> bool {
     match mpu {
-      matcher_pos_up(none) => false,
+      matcher_pos_up(None) => false,
       _ => true
     }
 }
 
 type matcher_pos = ~{
     elts: ~[ast::matcher], // maybe should be /&? Need to understand regions.
-    sep: option<token>,
+    sep: Option<token>,
     mut idx: uint,
     mut up: matcher_pos_up, // mutable for swapping only
     matches: ~[DVec<@named_match>],
@@ -49,7 +107,7 @@ type matcher_pos = ~{
 
 fn copy_up(&& mpu: matcher_pos_up) -> matcher_pos {
     match mpu {
-      matcher_pos_up(some(mp)) => copy mp,
+      matcher_pos_up(Some(mp)) => copy mp,
       _ => fail
     }
 }
@@ -64,7 +122,7 @@ fn count_names(ms: &[matcher]) -> uint {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
+fn initial_matcher_pos(ms: ~[matcher], sep: Option<token>, lo: uint)
     -> matcher_pos {
     let mut match_idx_hi = 0u;
     for ms.each() |elt| {
@@ -78,8 +136,8 @@ fn initial_matcher_pos(ms: ~[matcher], sep: option<token>, lo: uint)
           }
         }
     }
-    ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(none),
-      matches: copy vec::from_fn(count_names(ms), |_i| dvec::dvec()),
+    ~{elts: ms, sep: sep, mut idx: 0u, mut up: matcher_pos_up(None),
+      matches: copy vec::from_fn(count_names(ms), |_i| dvec::DVec()),
       match_lo: 0u, match_hi: match_idx_hi, sp_lo: lo}
 }
 
@@ -120,14 +178,14 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
           }
           {node: match_nonterminal(bind_name, _, idx), span: sp} => {
             if ret_val.contains_key(bind_name) {
-                p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "
-                                               + *bind_name)
+                p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
+                                               *p_s.interner.get(bind_name))
             }
             ret_val.insert(bind_name, res[idx]);
           }
         }
     }
-    let ret_val = box_str_hash::<@named_match>();
+    let ret_val = uint_hash::<@named_match>();
     for ms.each() |m| { n_rec(p_s, m, res, ret_val) }
     return ret_val;
 }
@@ -150,7 +208,7 @@ fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
 fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
     -> parse_result {
     let mut cur_eis = ~[];
-    vec::push(cur_eis, initial_matcher_pos(ms, none, rdr.peek().sp.lo));
+    vec::push(cur_eis, initial_matcher_pos(ms, None, rdr.peek().sp.lo));
 
     loop {
         let mut bb_eis = ~[]; // black-box parsed by parser.rs
@@ -205,7 +263,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 
                     // the *_t vars are workarounds for the lack of unary move
                     match copy ei.sep {
-                      some(t) if idx == len => { // we need a separator
+                      Some(t) if idx == len => { // we need a separator
                         if tok == t { //pass the separator
                             let ei_t <- ei;
                             ei_t.idx += 1u;
@@ -238,11 +296,11 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                     }
 
                     let matches = vec::map(ei.matches, // fresh, same size:
-                                           |_m| dvec::<@named_match>());
+                                           |_m| DVec::<@named_match>());
                     let ei_t <- ei;
                     vec::push(cur_eis, ~{
                         elts: matchers, sep: sep, mut idx: 0u,
-                        mut up: matcher_pos_up(some(ei_t)),
+                        mut up: matcher_pos_up(Some(ei_t)),
                         matches: matches,
                         match_lo: match_idx_lo, match_hi: match_idx_hi,
                         sp_lo: sp.lo
@@ -274,14 +332,15 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 let nts = str::connect(vec::map(bb_eis, |ei| {
                     match ei.elts[ei.idx].node {
                       match_nonterminal(bind,name,_) => {
-                        fmt!{"%s ('%s')", *name, *bind}
+                        fmt!("%s ('%s')", *sess.interner.get(name),
+                             *sess.interner.get(bind))
                       }
                       _ => fail
                     } }), ~" or ");
-                return error(sp, fmt!{
+                return error(sp, fmt!(
                     "Local ambiguity: multiple parsing options: \
                      built-in NTs %s or %u other options.",
-                    nts, next_eis.len()});
+                    nts, next_eis.len()));
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
                 return failure(sp, ~"No rules expected the token "
                             + to_str(rdr.interner(), tok));
@@ -298,7 +357,7 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(rust_parser, *name)));
+                        parse_nt(rust_parser, *sess.interner.get(name))));
                     ei.idx += 1u;
                   }
                   _ => fail
@@ -322,8 +381,8 @@ fn parse(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader, ms: ~[matcher])
 fn parse_nt(p: parser, name: ~str) -> nonterminal {
     match name {
       ~"item" => match p.parse_item(~[]) {
-        some(i) => token::nt_item(i),
-        none => p.fatal(~"expected an item keyword")
+        Some(i) => token::nt_item(i),
+        None => p.fatal(~"expected an item keyword")
       },
       ~"block" => token::nt_block(p.parse_block()),
       ~"stmt" => token::nt_stmt(p.parse_stmt(~[])),

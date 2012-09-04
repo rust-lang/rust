@@ -25,12 +25,12 @@ enum tg { foo, }
 enum tg { bar, }
 
 #[cfg(bogus)]
-class r {
+struct r {
   let i: int;
   new(i:int) { self.i = i; }
 }
 
-class r {
+struct r {
   let i: int;
   new(i:int) { self.i = i; }
 }
@@ -83,8 +83,8 @@ mod test_foreign_items {
     #[abi = "cdecl"]
     extern mod rustrt {
         #[cfg(bogus)]
-        fn vec_from_buf_shared();
-        fn vec_from_buf_shared();
+        fn rust_getcwd() -> ~str;
+        fn rust_getcwd() -> ~str;
     }
 }
 

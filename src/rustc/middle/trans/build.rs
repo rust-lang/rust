@@ -50,7 +50,7 @@ fn count_insn(cx: block, category: &str) {
         s += category;
 
         let n = match h.find(s) {
-          some(n) => n,
+          Some(n) => n,
           _ => 0u
         };
         h.insert(s, n+1u);
@@ -134,7 +134,7 @@ fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 // lot more efficient) than doing str::as_c_str("", ...) every time.
 fn noname() -> *libc::c_char unsafe {
     const cnull: uint = 0u;
-    return unsafe::reinterpret_cast(ptr::addr_of(cnull));
+    return unsafe::reinterpret_cast(&ptr::addr_of(cnull));
 }
 
 fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
@@ -142,10 +142,10 @@ fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
     if cx.unreachable { return; }
     assert (!cx.terminated);
     cx.terminated = true;
-    debug!{"Invoke(%s with arguments (%s))",
+    debug!("Invoke(%s with arguments (%s))",
            val_str(cx.ccx().tn, Fn),
            str::connect(vec::map(Args, |a| val_str(cx.ccx().tn, a)),
-                        ~", ")};
+                        ~", "));
     unsafe {
         count_insn(cx, "invoke");
         llvm::LLVMBuildInvoke(B(cx), Fn, vec::unsafe::to_ptr(Args),
@@ -413,9 +413,9 @@ fn Load(cx: block, PointerVal: ValueRef) -> ValueRef {
 
 fn Store(cx: block, Val: ValueRef, Ptr: ValueRef) {
     if cx.unreachable { return; }
-    debug!{"Store %s -> %s",
+    debug!("Store %s -> %s",
            val_str(cx.ccx().tn, Val),
-           val_str(cx.ccx().tn, Ptr)};
+           val_str(cx.ccx().tn, Ptr));
     count_insn(cx, "store");
     llvm::LLVMBuildStore(B(cx), Val, Ptr);
 }
@@ -431,20 +431,22 @@ fn GEP(cx: block, Pointer: ValueRef, Indices: ~[ValueRef]) -> ValueRef {
 
 // Simple wrapper around GEP that takes an array of ints and wraps them
 // in C_i32()
-fn GEPi(cx: block, base: ValueRef, ixs: ~[uint]) -> ValueRef {
+//
+// XXX: Use a small-vector optimization to avoid allocations here.
+fn GEPi(cx: block, base: ValueRef, ixs: &[uint]) -> ValueRef {
     let mut v: ~[ValueRef] = ~[];
     for vec::each(ixs) |i| { vec::push(v, C_i32(i as i32)); }
     count_insn(cx, "gepi");
     return InBoundsGEP(cx, base, v);
 }
 
-fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: ~[ValueRef]) ->
+fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) ->
    ValueRef {
     if cx.unreachable { return llvm::LLVMGetUndef(T_ptr(T_nil())); }
     unsafe {
         count_insn(cx, "inboundsgep");
     return llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                       vec::unsafe::to_ptr(Indices),
+                                       vec::unsafe::to_ptr_slice(Indices),
                                        Indices.len() as c_uint,
                                        noname());
     }
@@ -627,8 +629,8 @@ fn Phi(cx: block, Ty: TypeRef, vals: ~[ValueRef], bbs: ~[BasicBlockRef])
 fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     if llvm::LLVMIsUndef(phi) == lib::llvm::True { return; }
     unsafe {
-        let valptr = unsafe::reinterpret_cast(ptr::addr_of(val));
-        let bbptr = unsafe::reinterpret_cast(ptr::addr_of(bb));
+        let valptr = unsafe::reinterpret_cast(&ptr::addr_of(val));
+        let bbptr = unsafe::reinterpret_cast(&ptr::addr_of(bb));
         llvm::LLVMAddIncoming(phi, valptr, bbptr, 1 as c_uint);
     }
 }
@@ -673,9 +675,9 @@ fn Call(cx: block, Fn: ValueRef, Args: ~[ValueRef]) -> ValueRef {
     unsafe {
         count_insn(cx, "call");
 
-        debug!{"Call(Fn=%s, Args=%?)",
+        debug!("Call(Fn=%s, Args=%?)",
                val_str(cx.ccx().tn, Fn),
-               Args.map(|arg| val_str(cx.ccx().tn, arg))};
+               Args.map(|arg| val_str(cx.ccx().tn, arg)));
 
         return llvm::LLVMBuildCall(B(cx), Fn, vec::unsafe::to_ptr(Args),
                                 Args.len() as c_uint, noname());

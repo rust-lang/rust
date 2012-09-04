@@ -1,5 +1,5 @@
 fn f() {
-    debug!{"This is a bare function"};
+    debug!("This is a bare function");
 }
 
 fn main() {

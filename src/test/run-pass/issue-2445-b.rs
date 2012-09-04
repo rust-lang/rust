@@ -1,4 +1,4 @@
-class c1<T: copy> {
+struct c1<T: copy> {
   let x: T;
   new(x: T) {self.x = x;}
 

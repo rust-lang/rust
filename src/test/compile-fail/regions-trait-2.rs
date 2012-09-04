@@ -12,8 +12,8 @@ impl has_ctxt: get_ctxt {
 
 fn make_gc() -> get_ctxt  {
     let ctxt = { v: 22u };
-    let hc = { c: &ctxt };
-    return hc as get_ctxt; //~ ERROR mismatched types: expected `@get_ctxt/&`
+    let hc = { c: &ctxt }; //~ ERROR illegal borrow
+    return hc as get_ctxt;
 }
 
 fn main() {

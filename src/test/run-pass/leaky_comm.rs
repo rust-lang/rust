@@ -6,14 +6,14 @@ use test_comm;
 fn main() {
   let p = test_comm::port();
   
-  match none::<int> {
-      none => {}
-      some(_)  =>{
-  if test_comm::recv(p) == 0 {
-      error!{"floop"};
+  match None::<int> {
+      None => {}
+      Some(_) => {
+  if 0 == test_comm::recv(p) {
+      error!("floop");
   }
   else {
-      error!{"bloop"};
+      error!("bloop");
   }
       }}
 }

@@ -24,7 +24,7 @@ enum capture_mode {
 type capture_var = {
     def: ast::def,                       // Variable being accessed free
     span: span,                          // Location of access or cap item
-    cap_item: option<ast::capture_item>, // Capture item, if any
+    cap_item: Option<ast::capture_item>, // Capture item, if any
     mode: capture_mode                   // How variable is being accessed
 };
 
@@ -43,16 +43,16 @@ fn check_capture_clause(tcx: ty::ctxt,
         if !vec::any(*freevars, |fv| fv.def == cap_def ) {
             tcx.sess.span_warn(
                 cap_item.span,
-                fmt!{"captured variable `%s` not used in closure",
-                     *cap_item.name});
+                fmt!("captured variable `%s` not used in closure",
+                     tcx.sess.str_of(cap_item.name)));
         }
 
         let cap_def_id = ast_util::def_id_of_def(cap_def).node;
         if !seen_defs.insert(cap_def_id, ()) {
             tcx.sess.span_err(
                 cap_item.span,
-                fmt!{"variable `%s` captured more than once",
-                     *cap_item.name});
+                fmt!("variable `%s` captured more than once",
+                     tcx.sess.str_of(cap_item.name)));
         }
     }
 }
@@ -67,8 +67,8 @@ fn compute_capture_vars(tcx: ty::ctxt,
     // first add entries for anything explicitly named in the cap clause
 
     for (*cap_clause).each |cap_item| {
-        debug!{"Doing capture var: %s (%?)",
-               *cap_item.name, cap_item.id};
+        debug!("Doing capture var: %s (%?)",
+               tcx.sess.str_of(cap_item.name), cap_item.id);
 
         let cap_def = tcx.def_map.get(cap_item.id);
         let cap_def_id = ast_util::def_id_of_def(cap_def).node;
@@ -78,12 +78,12 @@ fn compute_capture_vars(tcx: ty::ctxt,
             if vec::any(*freevars, |fv| fv.def == cap_def ) {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
-                                            cap_item: some(cap_item),
+                                            cap_item: Some(cap_item),
                                             mode:cap_move});
             } else {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
-                                            cap_item: some(cap_item),
+                                            cap_item: Some(cap_item),
                                             mode:cap_drop});
             }
         } else {
@@ -92,7 +92,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
             if vec::any(*freevars, |fv| fv.def == cap_def ) {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
-                                            cap_item: some(cap_item),
+                                            cap_item: Some(cap_item),
                                             mode:cap_copy});
             }
         }
@@ -111,11 +111,11 @@ fn compute_capture_vars(tcx: ty::ctxt,
     do vec::iter(*freevars) |fvar| {
         let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
         match cap_map.find(fvar_def_id) {
-          option::some(_) => { /* was explicitly named, do nothing */ }
-          option::none => {
+          option::Some(_) => { /* was explicitly named, do nothing */ }
+          option::None => {
             cap_map.insert(fvar_def_id, {def:fvar.def,
                                          span: fvar.span,
-                                         cap_item: none,
+                                         cap_item: None,
                                          mode:implicit_mode});
           }
         }

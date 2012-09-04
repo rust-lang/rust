@@ -46,6 +46,9 @@ impl (): ToStr {
 impl ~str: ToStr {
     fn to_str() -> ~str { self }
 }
+impl &str: ToStr {
+    fn to_str() -> ~str { str::from_slice(self) }
+}
 
 impl<A: ToStr copy, B: ToStr copy> (A, B): ToStr {
     fn to_str() -> ~str {

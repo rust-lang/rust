@@ -1,4 +1,4 @@
-class r {
+struct r {
   let i: @mut int;
   new(i: @mut int) { self.i = i; }
   drop { *(self.i) = *(self.i) + 1; }

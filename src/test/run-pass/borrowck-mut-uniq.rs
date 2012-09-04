@@ -19,8 +19,8 @@ fn main() {
     add_int(ints, 44);
 
     for iter_ints(ints) |i| {
-        error!{"int = %d", *i};
+        error!("int = %d", *i);
     }
 
-    error!{"ints=%?", ints};
+    error!("ints=%?", ints);
 }

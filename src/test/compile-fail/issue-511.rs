@@ -1,12 +1,13 @@
 use std;
 import option;
+import cmp::Eq;
 
-fn f<T>(&o: option<T>) {
-    assert o == option::none;
+fn f<T:Eq>(&o: Option<T>) {
+    assert o == option::None;
 }
 
 fn main() {
-    f::<int>(option::none);
+    f::<int>(option::None);
     //~^ ERROR taking mut reference to static item
     //~^^ ERROR illegal borrow: creating mutable alias to aliasable, immutable memory
 }

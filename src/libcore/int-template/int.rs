@@ -2,9 +2,9 @@ type T = int;
 const bits: uint = uint::bits;
 
 /// Produce a uint suitable for use in a hash table
-pure fn hash(x: &int) -> uint {
-    let u : uint = *x as uint;
-    uint::hash(&u)
+pure fn hash(x: int) -> uint {
+    let u : uint = x as uint;
+    uint::hash(u)
 }
 
 /// Returns `base` raised to the power of `exponent`

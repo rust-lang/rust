@@ -55,8 +55,106 @@ enum categorization {
     cat_discr(cmt, ast::node_id),   // match discriminant (see preserve())
 }
 
+impl categorization : cmp::Eq {
+    pure fn eq(&&other: categorization) -> bool {
+        match self {
+            cat_rvalue => {
+                match other {
+                    cat_rvalue => true,
+                    _ => false
+                }
+            }
+            cat_special(e0a) => {
+                match other {
+                    cat_special(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_local(e0a) => {
+                match other {
+                    cat_local(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_binding(e0a) => {
+                match other {
+                    cat_binding(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_arg(e0a) => {
+                match other {
+                    cat_arg(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_stack_upvar(e0a) => {
+                match other {
+                    cat_stack_upvar(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            cat_deref(e0a, e1a, e2a) => {
+                match other {
+                    cat_deref(e0b, e1b, e2b) =>
+                        e0a == e0b && e1a == e1b && e2a == e2b,
+                    _ => false
+                }
+            }
+            cat_comp(e0a, e1a) => {
+                match other {
+                    cat_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            cat_discr(e0a, e1a) => {
+                match other {
+                    cat_discr(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 // different kinds of pointers:
-enum ptr_kind {uniq_ptr, gc_ptr, region_ptr(ty::region), unsafe_ptr}
+enum ptr_kind {
+    uniq_ptr,
+    gc_ptr,
+    region_ptr(ty::region),
+    unsafe_ptr
+}
+
+impl ptr_kind : cmp::Eq {
+    pure fn eq(&&other: ptr_kind) -> bool {
+        match self {
+            uniq_ptr => {
+                match other {
+                    uniq_ptr => true,
+                    _ => false
+                }
+            }
+            gc_ptr => {
+                match other {
+                    gc_ptr => true,
+                    _ => false
+                }
+            }
+            region_ptr(e0a) => {
+                match other {
+                    region_ptr(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            unsafe_ptr => {
+                match other {
+                    unsafe_ptr => true,
+                    _ => false
+                }
+            }
+        }
+    }
+}
 
 // I am coining the term "components" to mean "pieces of a data
 // structure accessible without a dereference":
@@ -69,6 +167,37 @@ enum comp_kind {
                ast::mutability)  // mutability of vec content
 }
 
+impl comp_kind : cmp::Eq {
+    pure fn eq(&&other: comp_kind) -> bool {
+        match self {
+            comp_tuple => {
+                match other {
+                    comp_tuple => true,
+                    _ => false
+                }
+            }
+            comp_variant(e0a) => {
+                match other {
+                    comp_variant(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            comp_field(e0a, e1a) => {
+                match other {
+                    comp_field(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            comp_index(e0a, e1a) => {
+                match other {
+                    comp_index(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 // different kinds of expressions we might evaluate
 enum special_kind {
     sk_method,
@@ -77,15 +206,34 @@ enum special_kind {
     sk_heap_upvar
 }
 
+impl special_kind : cmp::Eq {
+    pure fn eq(&&other: special_kind) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 // a complete categorization of a value indicating where it originated
 // and how it is located, as well as the mutability of the memory in
 // which the value is stored.
-type cmt = @{id: ast::node_id,        // id of expr/pat producing this value
+type cmt_ = {id: ast::node_id,        // id of expr/pat producing this value
              span: span,              // span of same expr/pat
              cat: categorization,     // categorization of expr
-             lp: option<@loan_path>,  // loan path for expr, if any
+             lp: Option<@loan_path>,  // loan path for expr, if any
              mutbl: ast::mutability,  // mutability of expr as lvalue
              ty: ty::t};              // type of the expr
+
+type cmt = @cmt_;
+
+impl cmt_ : cmp::Eq {
+    pure fn eq(&&other: cmt_) -> bool {
+        self.id == other.id &&
+        self.span == other.span &&
+        self.cat == other.cat &&
+        self.lp == other.lp &&
+        self.mutbl == other.mutbl &&
+        self.ty == other.ty
+    }
+}
 
 // a loan path is like a category, but it exists only when the data is
 // interior to the stack frame.  loan paths are used as the key to a
@@ -97,6 +245,37 @@ enum loan_path {
     lp_comp(@loan_path, comp_kind)
 }
 
+impl loan_path : cmp::Eq {
+    pure fn eq(&&other: loan_path) -> bool {
+        match self {
+            lp_local(e0a) => {
+                match other {
+                    lp_local(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            lp_arg(e0a) => {
+                match other {
+                    lp_arg(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            lp_deref(e0a, e1a) => {
+                match other {
+                    lp_deref(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            lp_comp(e0a, e1a) => {
+                match other {
+                    lp_comp(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
 enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
@@ -104,53 +283,53 @@ enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
 // Categorizes a derefable type.  Note that we include vectors and strings as
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
-fn opt_deref_kind(t: ty::t) -> option<deref_kind> {
+fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).struct {
       ty::ty_uniq(*) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) => {
-        some(deref_ptr(uniq_ptr))
+        Some(deref_ptr(uniq_ptr))
       }
 
       ty::ty_rptr(r, _) |
       ty::ty_evec(_, ty::vstore_slice(r)) |
       ty::ty_estr(ty::vstore_slice(r)) => {
-        some(deref_ptr(region_ptr(r)))
+        Some(deref_ptr(region_ptr(r)))
       }
 
       ty::ty_box(*) |
       ty::ty_evec(_, ty::vstore_box) |
       ty::ty_estr(ty::vstore_box) => {
-        some(deref_ptr(gc_ptr))
+        Some(deref_ptr(gc_ptr))
       }
 
       ty::ty_ptr(*) => {
-        some(deref_ptr(unsafe_ptr))
+        Some(deref_ptr(unsafe_ptr))
       }
 
       ty::ty_enum(did, _) => {
-        some(deref_comp(comp_variant(did)))
+        Some(deref_comp(comp_variant(did)))
       }
 
       ty::ty_evec(mt, ty::vstore_fixed(_)) => {
-        some(deref_comp(comp_index(t, mt.mutbl)))
+        Some(deref_comp(comp_index(t, mt.mutbl)))
       }
 
       ty::ty_estr(ty::vstore_fixed(_)) => {
-        some(deref_comp(comp_index(t, m_imm)))
+        Some(deref_comp(comp_index(t, m_imm)))
       }
 
-      _ => none
+      _ => None
     }
 }
 
 fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
     match opt_deref_kind(t) {
-      some(k) => k,
-      none => {
+      Some(k) => k,
+      None => {
         tcx.sess.bug(
-            fmt!{"deref_cat() invoked on non-derefable type %s",
-                 ty_to_str(tcx, t)});
+            fmt!("deref_cat() invoked on non-derefable type %s",
+                 ty_to_str(tcx, t)));
       }
     }
 }
@@ -262,8 +441,8 @@ impl &mem_categorization_ctxt {
     }
 
     fn cat_expr(expr: @ast::expr) -> cmt {
-        debug!{"cat_expr: id=%d expr=%s",
-               expr.id, pprust::expr_to_str(expr)};
+        debug!("cat_expr: id=%d expr=%s",
+               expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
         let tcx = self.tcx;
         let expr_ty = tcx.ty(expr);
@@ -275,12 +454,12 @@ impl &mem_categorization_ctxt {
 
             let base_cmt = self.cat_expr(e_base);
             match self.cat_deref(expr, base_cmt, 0u, true) {
-              some(cmt) => return cmt,
-              none => {
+              Some(cmt) => return cmt,
+              None => {
                 tcx.sess.span_bug(
                     e_base.span,
-                    fmt!{"Explicit deref of non-derefable type `%s`",
-                         ty_to_str(tcx, tcx.ty(e_base))});
+                    fmt!("Explicit deref of non-derefable type `%s`",
+                         ty_to_str(tcx, tcx.ty(e_base))));
               }
             }
           }
@@ -338,7 +517,7 @@ impl &mem_categorization_ctxt {
           ast::def_typaram_binder(*) | ast::def_region(_) |
           ast::def_label(_) => {
             @{id:id, span:span,
-              cat:cat_special(sk_static_item), lp:none,
+              cat:cat_special(sk_static_item), lp:None,
               mutbl:m_imm, ty:expr_ty}
           }
 
@@ -350,13 +529,13 @@ impl &mem_categorization_ctxt {
             // lp: loan path, must be none for aliasable things
             let {m,lp} = match ty::resolved_mode(self.tcx, mode) {
               ast::by_mutbl_ref => {
-                {m: m_mutbl, lp: none}
+                {m: m_mutbl, lp: None}
               }
               ast::by_move | ast::by_copy => {
-                {m: m_imm, lp: some(@lp_arg(vid))}
+                {m: m_imm, lp: Some(@lp_arg(vid))}
               }
               ast::by_ref => {
-                {m: m_imm, lp: none}
+                {m: m_imm, lp: None}
               }
               ast::by_val => {
                 // by-value is this hybrid mode where we have a
@@ -364,7 +543,7 @@ impl &mem_categorization_ctxt {
                 // considered loanable because, for example, a by-ref
                 // and and by-val argument might both actually contain
                 // the same unique ptr.
-                {m: m_imm, lp: none}
+                {m: m_imm, lp: None}
               }
             };
             @{id:id, span:span,
@@ -374,11 +553,11 @@ impl &mem_categorization_ctxt {
 
           ast::def_self(_) => {
             @{id:id, span:span,
-              cat:cat_special(sk_self), lp:none,
+              cat:cat_special(sk_self), lp:None,
               mutbl:m_imm, ty:expr_ty}
           }
 
-          ast::def_upvar(upvid, inner, fn_node_id) => {
+          ast::def_upvar(_, inner, fn_node_id, _) => {
             let ty = ty::node_id_to_type(self.tcx, fn_node_id);
             let proto = ty::ty_fn_proto(ty);
             match proto {
@@ -393,7 +572,7 @@ impl &mem_categorization_ctxt {
               ty::proto_vstore(ty::vstore_box) => {
                 // FIXME #2152 allow mutation of moved upvars
                 @{id:id, span:span,
-                  cat:cat_special(sk_heap_upvar), lp:none,
+                  cat:cat_special(sk_heap_upvar), lp:None,
                   mutbl:m_imm, ty:expr_ty}
               }
               ty::proto_vstore(ty::vstore_fixed(_)) =>
@@ -404,15 +583,16 @@ impl &mem_categorization_ctxt {
           ast::def_local(vid, mutbl) => {
             let m = if mutbl {m_mutbl} else {m_imm};
             @{id:id, span:span,
-              cat:cat_local(vid), lp:some(@lp_local(vid)),
+              cat:cat_local(vid), lp:Some(@lp_local(vid)),
               mutbl:m, ty:expr_ty}
           }
 
           ast::def_binding(vid, ast::bind_by_value) |
+          ast::def_binding(vid, ast::bind_by_move)  |
           ast::def_binding(vid, ast::bind_by_ref(_)) => {
             // by-value/by-ref bindings are local variables
             @{id:id, span:span,
-              cat:cat_local(vid), lp:some(@lp_local(vid)),
+              cat:cat_local(vid), lp:Some(@lp_local(vid)),
               mutbl:m_imm, ty:expr_ty}
           }
 
@@ -426,7 +606,7 @@ impl &mem_categorization_ctxt {
             // dependencies.
 
             @{id:id, span:span,
-              cat:cat_binding(pid), lp:none,
+              cat:cat_binding(pid), lp:None,
               mutbl:m_imm, ty:expr_ty}
           }
         }
@@ -444,7 +624,7 @@ impl &mem_categorization_ctxt {
 
     fn cat_rvalue(expr: @ast::expr, expr_ty: ty::t) -> cmt {
         @{id:expr.id, span:expr.span,
-          cat:cat_rvalue, lp:none,
+          cat:cat_rvalue, lp:None,
           mutbl:m_imm, ty:expr_ty}
     }
 
@@ -463,12 +643,13 @@ impl &mem_categorization_ctxt {
     fn cat_field<N:ast_node>(node: N, base_cmt: cmt,
                              f_name: ast::ident) -> cmt {
         let f_mutbl = match field_mutbl(self.tcx, base_cmt.ty, f_name) {
-          some(f_mutbl) => f_mutbl,
-          none => {
+          Some(f_mutbl) => f_mutbl,
+          None => {
             self.tcx.sess.span_bug(
                 node.span(),
-                fmt!{"Cannot find field `%s` in type `%s`",
-                     *f_name, ty_to_str(self.tcx, base_cmt.ty)});
+                fmt!("Cannot find field `%s` in type `%s`",
+                     self.tcx.sess.str_of(f_name),
+                     ty_to_str(self.tcx, base_cmt.ty)));
           }
         };
         let m = self.inherited_mutability(base_cmt.mutbl, f_mutbl);
@@ -480,7 +661,7 @@ impl &mem_categorization_ctxt {
     }
 
     fn cat_deref<N:ast_node>(node: N, base_cmt: cmt, derefs: uint,
-                             expl: bool) -> option<cmt> {
+                             expl: bool) -> Option<cmt> {
         do ty::deref(self.tcx, base_cmt.ty, expl).map |mt| {
             match deref_kind(self.tcx, base_cmt.ty) {
               deref_ptr(ptr) => {
@@ -491,8 +672,8 @@ impl &mem_categorization_ctxt {
                     // Other ptr types admit aliases and are therefore
                     // not loanable.
                     match ptr {
-                      uniq_ptr => {some(@lp_deref(l, ptr))}
-                      gc_ptr | region_ptr(_) | unsafe_ptr => {none}
+                      uniq_ptr => {Some(@lp_deref(l, ptr))}
+                      gc_ptr | region_ptr(_) | unsafe_ptr => {None}
                     }
                 };
 
@@ -527,12 +708,12 @@ impl &mem_categorization_ctxt {
         let base_cmt = self.cat_autoderef(base);
 
         let mt = match ty::index(self.tcx, base_cmt.ty) {
-          some(mt) => mt,
-          none => {
+          Some(mt) => mt,
+          None => {
             self.tcx.sess.span_bug(
                 expr.span,
-                fmt!{"Explicit index of non-index type `%s`",
-                     ty_to_str(self.tcx, base_cmt.ty)});
+                fmt!("Explicit index of non-index type `%s`",
+                     ty_to_str(self.tcx, base_cmt.ty)));
           }
         };
 
@@ -542,7 +723,7 @@ impl &mem_categorization_ctxt {
             // and this is a *unique* vector
             let deref_lp = match ptr {
               uniq_ptr => {base_cmt.lp.map(|lp| @lp_deref(lp, uniq_ptr))}
-              _ => {none}
+              _ => {None}
             };
 
             // (b) for unique ptrs, we inherit mutability from the
@@ -590,7 +771,7 @@ impl &mem_categorization_ctxt {
 
     fn cat_method_ref(expr: @ast::expr, expr_ty: ty::t) -> cmt {
         @{id:expr.id, span:expr.span,
-          cat:cat_special(sk_method), lp:none,
+          cat:cat_special(sk_method), lp:None,
           mutbl:m_imm, ty:expr_ty}
     }
 
@@ -607,8 +788,8 @@ impl &mem_categorization_ctxt {
         loop {
             ctr += 1u;
             match self.cat_deref(base, cmt, ctr, false) {
-              none => return cmt,
-              some(cmt1) => cmt = cmt1
+              None => return cmt,
+              Some(cmt1) => cmt = cmt1
             }
         }
     }
@@ -650,26 +831,27 @@ impl &mem_categorization_ctxt {
         // in the alt, the id of `local(x)->@` is the `@y` pattern,
         // and the id of `local(x)->@->@` is the id of the `y` pattern.
 
-        debug!{"cat_pattern: id=%d pat=%s cmt=%s",
-               pat.id, pprust::pat_to_str(pat),
-               self.cmt_to_repr(cmt)};
-        let _i = indenter();
 
+        let _i = indenter();
         let tcx = self.tcx;
+        debug!("cat_pattern: id=%d pat=%s cmt=%s",
+               pat.id, pprust::pat_to_str(pat, tcx.sess.intr()),
+               self.cmt_to_repr(cmt));
+
         match pat.node {
           ast::pat_wild => {
             // _
           }
 
-          ast::pat_enum(_, none) => {
+          ast::pat_enum(_, None) => {
             // variant(*)
           }
-          ast::pat_enum(_, some(subpats)) => {
+          ast::pat_enum(_, Some(subpats)) => {
             // variant(x, y, z)
             let enum_did = match self.tcx.def_map.find(pat.id) {
-              some(ast::def_variant(enum_did, _)) => enum_did,
+              Some(ast::def_variant(enum_did, _)) => enum_did,
               e => tcx.sess.span_bug(pat.span,
-                                     fmt!{"resolved to %?, not variant", e})
+                                     fmt!("resolved to %?, not variant", e))
             };
 
             for subpats.each |subpat| {
@@ -678,11 +860,11 @@ impl &mem_categorization_ctxt {
             }
           }
 
-          ast::pat_ident(_, _, some(subpat)) => {
+          ast::pat_ident(_, _, Some(subpat)) => {
               self.cat_pattern(cmt, subpat, op);
           }
 
-          ast::pat_ident(_, _, none) => {
+          ast::pat_ident(_, _, None) => {
               // nullary variant or identifier: ignore
           }
 
@@ -713,10 +895,10 @@ impl &mem_categorization_ctxt {
           ast::pat_box(subpat) | ast::pat_uniq(subpat) => {
             // @p1, ~p1
             match self.cat_deref(subpat, cmt, 0u, true) {
-              some(subcmt) => {
+              Some(subcmt) => {
                 self.cat_pattern(subcmt, subpat, op);
               }
-              none => {
+              None => {
                 tcx.sess.span_bug(pat.span, ~"Non derefable type");
               }
             }
@@ -734,15 +916,15 @@ impl &mem_categorization_ctxt {
           cat_special(sk_heap_upvar) => ~"heap-upvar",
           cat_stack_upvar(_) => ~"stack-upvar",
           cat_rvalue => ~"rvalue",
-          cat_local(node_id) => fmt!{"local(%d)", node_id},
-          cat_binding(node_id) => fmt!{"binding(%d)", node_id},
-          cat_arg(node_id) => fmt!{"arg(%d)", node_id},
+          cat_local(node_id) => fmt!("local(%d)", node_id),
+          cat_binding(node_id) => fmt!("binding(%d)", node_id),
+          cat_arg(node_id) => fmt!("arg(%d)", node_id),
           cat_deref(cmt, derefs, ptr) => {
-            fmt!{"%s->(%s, %u)", self.cat_to_repr(cmt.cat),
-                 self.ptr_sigil(ptr), derefs}
+            fmt!("%s->(%s, %u)", self.cat_to_repr(cmt.cat),
+                 self.ptr_sigil(ptr), derefs)
           }
           cat_comp(cmt, comp) => {
-            fmt!{"%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp)}
+            fmt!("%s.%s", self.cat_to_repr(cmt.cat), self.comp_to_repr(comp))
           }
           cat_discr(cmt, _) => self.cat_to_repr(cmt.cat)
         }
@@ -767,7 +949,7 @@ impl &mem_categorization_ctxt {
 
     fn comp_to_repr(comp: comp_kind) -> ~str {
         match comp {
-          comp_field(fld, _) => *fld,
+          comp_field(fld, _) => self.tcx.sess.str_of(fld),
           comp_index(*) => ~"[]",
           comp_tuple => ~"()",
           comp_variant(_) => ~"<enum>"
@@ -777,29 +959,29 @@ impl &mem_categorization_ctxt {
     fn lp_to_str(lp: @loan_path) -> ~str {
         match *lp {
           lp_local(node_id) => {
-            fmt!{"local(%d)", node_id}
+            fmt!("local(%d)", node_id)
           }
           lp_arg(node_id) => {
-            fmt!{"arg(%d)", node_id}
+            fmt!("arg(%d)", node_id)
           }
           lp_deref(lp, ptr) => {
-            fmt!{"%s->(%s)", self.lp_to_str(lp),
-                 self.ptr_sigil(ptr)}
+            fmt!("%s->(%s)", self.lp_to_str(lp),
+                 self.ptr_sigil(ptr))
           }
           lp_comp(lp, comp) => {
-            fmt!{"%s.%s", self.lp_to_str(lp),
-                 self.comp_to_repr(comp)}
+            fmt!("%s.%s", self.lp_to_str(lp),
+                 self.comp_to_repr(comp))
           }
         }
     }
 
     fn cmt_to_repr(cmt: cmt) -> ~str {
-        fmt!{"{%s id:%d m:%s lp:%s ty:%s}",
+        fmt!("{%s id:%d m:%s lp:%s ty:%s}",
              self.cat_to_repr(cmt.cat),
              cmt.id,
              self.mut_to_str(cmt.mutbl),
              cmt.lp.map_default(~"none", |p| self.lp_to_str(p) ),
-             ty_to_str(self.tcx, cmt.ty)}
+             ty_to_str(self.tcx, cmt.ty))
     }
 
     fn cmt_to_str(cmt: cmt) -> ~str {
@@ -815,8 +997,8 @@ impl &mem_categorization_ctxt {
           cat_local(_) => mut_str + ~" local variable",
           cat_binding(_) => ~"pattern binding",
           cat_arg(_) => ~"argument",
-          cat_deref(_, _, pk) => fmt!{"dereference of %s %s pointer",
-                                      mut_str, self.ptr_sigil(pk)},
+          cat_deref(_, _, pk) => fmt!("dereference of %s %s pointer",
+                                      mut_str, self.ptr_sigil(pk)),
           cat_stack_upvar(_) => {
             ~"captured outer " + mut_str + ~" variable in a stack closure"
           }
@@ -843,29 +1025,29 @@ impl &mem_categorization_ctxt {
 
 fn field_mutbl(tcx: ty::ctxt,
                base_ty: ty::t,
-               f_name: ast::ident) -> option<ast::mutability> {
+               f_name: ast::ident) -> Option<ast::mutability> {
     // Need to refactor so that records/class fields can be treated uniformly.
     match ty::get(base_ty).struct {
       ty::ty_rec(fields) => {
         for fields.each |f| {
             if f.ident == f_name {
-                return some(f.mt.mutbl);
+                return Some(f.mt.mutbl);
             }
         }
       }
-      ty::ty_class(did, substs) => {
+      ty::ty_class(did, _) => {
         for ty::lookup_class_fields(tcx, did).each |fld| {
             if fld.ident == f_name {
                 let m = match fld.mutability {
                   ast::class_mutable => ast::m_mutbl,
                   ast::class_immutable => ast::m_imm
                 };
-                return some(m);
+                return Some(m);
             }
         }
       }
       _ => { }
     }
 
-    return none;
+    return None;
 }

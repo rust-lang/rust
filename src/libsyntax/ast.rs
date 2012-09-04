@@ -3,8 +3,8 @@
 import codemap::{span, filename};
 import std::serialization::{serializer,
                             deserializer,
-                            serialize_option,
-                            deserialize_option,
+                            serialize_Option,
+                            deserialize_Option,
                             serialize_uint,
                             deserialize_uint,
                             serialize_int,
@@ -30,18 +30,42 @@ fn deserialize_span<D>(_d: D) -> span {
 #[auto_serialize]
 type spanned<T> = {node: T, span: span};
 
-#[auto_serialize]
-type ident = @~str;
+
+/* can't import macros yet, so this is copied from token.rs. See its comment
+ * there. */
+macro_rules! interner_key (
+    () => (unsafe::transmute::<(uint, uint), &fn(+@@token::ident_interner)>(
+        (-3 as uint, 0u)))
+)
+
+fn serialize_ident<S: serializer>(s: S, i: ident) {
+    let intr = match unsafe{task::local_data_get(interner_key!())}{
+        None => fail ~"serialization: TLS interner not set up",
+        Some(intr) => intr
+    };
+
+    s.emit_str(*(*intr).get(i));
+}
+fn deserialize_ident<D: deserializer>(d: D) -> ident  {
+    let intr = match unsafe{task::local_data_get(interner_key!())}{
+        None => fail ~"deserialization: TLS interner not set up",
+        Some(intr) => intr
+    };
+
+    (*intr).intern(@d.read_str())
+}
+
+type ident = token::str_num;
 
 // Functions may or may not have names.
 #[auto_serialize]
-type fn_ident = option<ident>;
+type fn_ident = Option<ident>;
 
 #[auto_serialize]
 type path = {span: span,
              global: bool,
              idents: ~[ident],
-             rp: option<@region>,
+             rp: Option<@region>,
              types: ~[@ty]};
 
 #[auto_serialize]
@@ -52,6 +76,12 @@ type node_id = int;
 
 #[auto_serialize]
 type def_id = {crate: crate_num, node: node_id};
+
+impl def_id: cmp::Eq {
+    pure fn eq(&&other: def_id) -> bool {
+        self.crate == other.crate && self.node == other.node
+    }
+}
 
 const local_crate: crate_num = 0;
 const crate_node_id: node_id = 0;
@@ -84,13 +114,136 @@ enum def {
     def_ty_param(def_id, uint),
     def_binding(node_id, binding_mode),
     def_use(def_id),
-    def_upvar(node_id /* local id of closed over var */,
-              @def    /* closed over def */,
-              node_id /* expr node that creates the closure */),
+    def_upvar(node_id,  // id of closed over var
+              @def,     // closed over def
+              node_id,  // expr node that creates the closure
+              node_id), // id for the block/body of the closure expr
     def_class(def_id, bool /* has constructor */),
     def_typaram_binder(node_id), /* class, impl or trait that has ty params */
     def_region(node_id),
     def_label(node_id)
+}
+
+impl def : cmp::Eq {
+    pure fn eq(&&other: def) -> bool {
+        match self {
+            def_fn(e0a, e1a) => {
+                match other {
+                    def_fn(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_static_method(e0a, e1a) => {
+                match other {
+                    def_static_method(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_self(e0a) => {
+                match other {
+                    def_self(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_mod(e0a) => {
+                match other {
+                    def_mod(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_foreign_mod(e0a) => {
+                match other {
+                    def_foreign_mod(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_const(e0a) => {
+                match other {
+                    def_const(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_arg(e0a, e1a) => {
+                match other {
+                    def_arg(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_local(e0a, e1a) => {
+                match other {
+                    def_local(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_variant(e0a, e1a) => {
+                match other {
+                    def_variant(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_ty(e0a) => {
+                match other {
+                    def_ty(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_prim_ty(e0a) => {
+                match other {
+                    def_prim_ty(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_ty_param(e0a, e1a) => {
+                match other {
+                    def_ty_param(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_binding(e0a, e1a) => {
+                match other {
+                    def_binding(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_use(e0a) => {
+                match other {
+                    def_use(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_upvar(e0a, e1a, e2a, e3a) => {
+                match other {
+                    def_upvar(e0b, e1b, e2b, e3b) =>
+                        e0a == e0b && e1a == e1b && e2a == e2b && e3a == e3b,
+                    _ => false
+                }
+            }
+            def_class(e0a, e1a) => {
+                match other {
+                    def_class(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            def_typaram_binder(e0a) => {
+                match other {
+                    def_typaram_binder(e1a) => e0a == e1a,
+                    _ => false
+                }
+            }
+            def_region(e0a) => {
+                match other {
+                    def_region(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            def_label(e0a) => {
+                match other {
+                    def_label(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -126,9 +279,9 @@ type meta_item = spanned<meta_item_>;
 
 #[auto_serialize]
 enum meta_item_ {
-    meta_word(ident),
-    meta_list(ident, ~[@meta_item]),
-    meta_name_value(ident, lit),
+    meta_word(~str),
+    meta_list(~str, ~[@meta_item]),
+    meta_name_value(~str, lit),
 }
 
 #[auto_serialize]
@@ -137,7 +290,7 @@ type blk = spanned<blk_>;
 #[auto_serialize]
 type blk_ = {view_items: ~[@view_item],
              stmts: ~[@stmt],
-             expr: option<@expr>,
+             expr: Option<@expr>,
              id: node_id,
              rules: blk_check_mode};
 
@@ -150,8 +303,40 @@ type field_pat = {ident: ident, pat: @pat};
 #[auto_serialize]
 enum binding_mode {
     bind_by_value,
+    bind_by_move,
     bind_by_ref(ast::mutability),
     bind_by_implicit_ref
+}
+
+impl binding_mode : cmp::Eq {
+    pure fn eq(&&other: binding_mode) -> bool {
+        match self {
+            bind_by_value => {
+                match other {
+                    bind_by_value => true,
+                    _ => false
+                }
+            }
+            bind_by_move => {
+                match other {
+                    bind_by_move => true,
+                    _ => false
+                }
+            }
+            bind_by_ref(e0a) => {
+                match other {
+                    bind_by_ref(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            bind_by_implicit_ref => {
+                match other {
+                    bind_by_implicit_ref => true,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 #[auto_serialize]
@@ -159,13 +344,13 @@ enum pat_ {
     pat_wild,
     // A pat_ident may either be a new bound variable,
     // or a nullary enum (in which case the second field
-    // is none).
+    // is None).
     // In the nullary enum case, the parser can't determine
     // which it is. The resolver determines this, and
     // records this pattern's node_id in an auxiliary
     // set (of "pat_idents that refer to nullary enums")
-    pat_ident(binding_mode, @path, option<@pat>),
-    pat_enum(@path, option<~[@pat]>), // "none" means a * pattern where
+    pat_ident(binding_mode, @path, Option<@pat>),
+    pat_enum(@path, Option<~[@pat]>), // "none" means a * pattern where
                                   // we don't bind the fields to names
     pat_rec(~[field_pat], bool),
     pat_struct(@path, ~[field_pat], bool),
@@ -179,6 +364,12 @@ enum pat_ {
 #[auto_serialize]
 enum mutability { m_mutbl, m_imm, m_const, }
 
+impl mutability: cmp::Eq {
+    pure fn eq(&&other: mutability) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 #[auto_serialize]
 enum proto {
     proto_bare,    // foreign fn
@@ -190,7 +381,7 @@ enum proto {
 #[auto_serialize]
 enum vstore {
     // FIXME (#2112): Change uint to @expr (actually only constant exprs)
-    vstore_fixed(option<uint>),   // [1,2,3,4]/_ or 4
+    vstore_fixed(Option<uint>),   // [1,2,3,4]/_ or 4
     vstore_uniq,                  // ~[1,2,3,4]
     vstore_box,                   // @[1,2,3,4]
     vstore_slice(@region)         // &[1,2,3,4](foo)?
@@ -225,6 +416,12 @@ enum binop {
     gt,
 }
 
+impl binop : cmp::Eq {
+    pure fn eq(&&other: binop) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 #[auto_serialize]
 enum unop {
     box(mutability),
@@ -236,12 +433,38 @@ enum unop {
 // using ty::resolved_T(...).
 #[auto_serialize]
 enum inferable<T> {
-    expl(T), infer(node_id)
+    expl(T),
+    infer(node_id)
+}
+
+impl<T:cmp::Eq> inferable<T> : cmp::Eq {
+    pure fn eq(&&other: inferable<T>) -> bool {
+        match self {
+            expl(e0a) => {
+                match other {
+                    expl(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            infer(e0a) => {
+                match other {
+                    infer(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 // "resolved" mode: the real modes.
 #[auto_serialize]
 enum rmode { by_ref, by_val, by_mutbl_ref, by_move, by_copy }
+
+impl rmode : cmp::Eq {
+    pure fn eq(&&other: rmode) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 // inferable mode.
 #[auto_serialize]
@@ -264,6 +487,25 @@ enum stmt_ {
 #[auto_serialize]
 enum init_op { init_assign, init_move, }
 
+impl init_op : cmp::Eq {
+    pure fn eq(&&other: init_op) -> bool {
+        match self {
+            init_assign => {
+                match other {
+                    init_assign => true,
+                    _ => false
+                }
+            }
+            init_move => {
+                match other {
+                    init_move => true,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 #[auto_serialize]
 type initializer = {op: init_op, expr: @expr};
 
@@ -271,7 +513,7 @@ type initializer = {op: init_op, expr: @expr};
 // a refinement on pat.
 #[auto_serialize]
 type local_ =  {is_mutbl: bool, ty: @ty, pat: @pat,
-                init: option<initializer>, id: node_id};
+                init: Option<initializer>, id: node_id};
 
 #[auto_serialize]
 type local = spanned<local_>;
@@ -283,7 +525,7 @@ type decl = spanned<decl_>;
 enum decl_ { decl_local(~[@local]), decl_item(@item), }
 
 #[auto_serialize]
-type arm = {pats: ~[@pat], guard: option<@expr>, body: blk};
+type arm = {pats: ~[@pat], guard: Option<@expr>, body: blk};
 
 #[auto_serialize]
 type field_ = {mutbl: mutability, ident: ident, expr: @expr};
@@ -294,9 +536,26 @@ type field = spanned<field_>;
 #[auto_serialize]
 enum blk_check_mode { default_blk, unchecked_blk, unsafe_blk, }
 
+impl blk_check_mode : cmp::Eq {
+    pure fn eq(&&other: blk_check_mode) -> bool {
+        match (self, other) {
+            (default_blk, default_blk) => true,
+            (unchecked_blk, unchecked_blk) => true,
+            (unsafe_blk, unsafe_blk) => true,
+            (default_blk, _) => false,
+            (unchecked_blk, _) => false,
+            (unsafe_blk, _) => false,
+        }
+    }
+}
+
 #[auto_serialize]
 type expr = {id: node_id, callee_id: node_id, node: expr_, span: span};
 // Extra node ID is only used for index, assign_op, unary, binary
+
+#[auto_serialize]
+enum log_level { error, debug, other }
+// 0 = error, 1 = debug, 2 = other
 
 #[auto_serialize]
 enum alt_mode { alt_check, alt_exhaustive, }
@@ -305,20 +564,20 @@ enum alt_mode { alt_check, alt_exhaustive, }
 enum expr_ {
     expr_vstore(@expr, vstore),
     expr_vec(~[@expr], mutability),
-    expr_rec(~[field], option<@expr>),
+    expr_rec(~[field], Option<@expr>),
     expr_call(@expr, ~[@expr], bool), // True iff last argument is a block
     expr_tup(~[@expr]),
     expr_binary(binop, @expr, @expr),
     expr_unary(unop, @expr),
     expr_lit(@lit),
     expr_cast(@expr, @ty),
-    expr_if(@expr, blk, option<@expr>),
+    expr_if(@expr, blk, Option<@expr>),
     expr_while(@expr, blk),
     /* Conditionless loop (can be exited with break, cont, ret, or fail)
        Same semantics as while(true) { body }, but typestate knows that the
        (implicit) condition is always true. */
-    expr_loop(blk, option<ident>),
-    expr_match(@expr, ~[arm], alt_mode),
+    expr_loop(blk, Option<ident>),
+    expr_match(@expr, ~[arm]),
     expr_fn(proto, fn_decl, blk, capture_clause),
     expr_fn_block(fn_decl, blk, capture_clause),
     // Inner expr is always an expr_fn_block. We need the wrapping node to
@@ -339,11 +598,11 @@ enum expr_ {
     expr_index(@expr, @expr),
     expr_path(@path),
     expr_addr_of(mutability, @expr),
-    expr_fail(option<@expr>),
-    expr_break(option<ident>),
-    expr_again(option<ident>),
-    expr_ret(option<@expr>),
-    expr_log(int, @expr, @expr),
+    expr_fail(Option<@expr>),
+    expr_break(Option<ident>),
+    expr_again(Option<ident>),
+    expr_ret(Option<@expr>),
+    expr_log(log_level, @expr, @expr),
 
     /* just an assert */
     expr_assert(@expr),
@@ -351,7 +610,7 @@ enum expr_ {
     expr_mac(mac),
 
     // A struct literal expression.
-    expr_struct(@path, ~[field], option<@expr>),
+    expr_struct(@path, ~[field], Option<@expr>),
 
     // A vector literal constructed from one repeated element.
     expr_repeat(@expr /* element */, @expr /* count */, mutability)
@@ -377,7 +636,7 @@ type capture_clause = @~[capture_item];
 // If the syntax extension is an MBE macro, it will attempt to match its
 // LHS "matchers" against the provided token tree, and if it finds a
 // match, will transcribe the RHS token tree, splicing in any captured
-// earley_parser::matched_nonterminals into the tt_nonterminals it finds.
+// macro_parser::matched_nonterminals into the tt_nonterminals it finds.
 //
 // The RHS of an MBE macro is the only place a tt_nonterminal or tt_seq
 // makes any real sense. You could write them elsewhere but nothing
@@ -390,7 +649,7 @@ enum token_tree {
     tt_tok(span, token::token),
     tt_delim(~[token_tree]),
     // These only make sense for right-hand-sides of MBE macros
-    tt_seq(span, ~[token_tree], option<token::token>, bool),
+    tt_seq(span, ~[token_tree], Option<token::token>, bool),
     tt_nonterminal(span, ident)
 }
 
@@ -455,7 +714,7 @@ enum matcher_ {
     match_tok(token::token),
     // match repetitions of a sequence: body, separator, zero ok?,
     // lo, hi position-in-match-array used:
-    match_seq(~[matcher], option<token::token>, bool, uint, uint),
+    match_seq(~[matcher], Option<token::token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
     match_nonterminal(ident, ident, uint)
 }
@@ -464,13 +723,13 @@ enum matcher_ {
 type mac = spanned<mac_>;
 
 #[auto_serialize]
-type mac_arg = option<@expr>;
+type mac_arg = Option<@expr>;
 
 #[auto_serialize]
 type mac_body_ = {span: span};
 
 #[auto_serialize]
-type mac_body = option<mac_body_>;
+type mac_body = Option<mac_body_>;
 
 #[auto_serialize]
 enum mac_ {
@@ -497,6 +756,33 @@ enum lit_ {
     lit_bool(bool),
 }
 
+impl ast::lit_: cmp::Eq {
+    pure fn eq(&&other: ast::lit_) -> bool {
+        match (self, other) {
+            (lit_str(a), lit_str(b)) => a == b,
+            (lit_int(val_a, ty_a), lit_int(val_b, ty_b)) => {
+                val_a == val_b && ty_a == ty_b
+            }
+            (lit_uint(val_a, ty_a), lit_uint(val_b, ty_b)) => {
+                val_a == val_b && ty_a == ty_b
+            }
+            (lit_int_unsuffixed(a), lit_int_unsuffixed(b)) => a == b,
+            (lit_float(val_a, ty_a), lit_float(val_b, ty_b)) => {
+                val_a == val_b && ty_a == ty_b
+            }
+            (lit_nil, lit_nil) => true,
+            (lit_bool(a), lit_bool(b)) => a == b,
+            (lit_str(_), _) => false,
+            (lit_int(*), _) => false,
+            (lit_uint(*), _) => false,
+            (lit_int_unsuffixed(*), _) => false,
+            (lit_float(*), _) => false,
+            (lit_nil, _) => false,
+            (lit_bool(_), _) => false
+        }
+    }
+}
+
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[auto_serialize]
@@ -509,7 +795,7 @@ type ty_field_ = {ident: ident, mt: mt};
 type ty_field = spanned<ty_field_>;
 
 #[auto_serialize]
-type ty_method = {ident: ident, attrs: ~[attribute],
+type ty_method = {ident: ident, attrs: ~[attribute], purity: purity,
                   decl: fn_decl, tps: ~[ty_param], self_ty: self_ty,
                   id: node_id, span: span};
 
@@ -525,11 +811,56 @@ enum trait_method {
 #[auto_serialize]
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
+impl int_ty: cmp::Eq {
+    pure fn eq(&&other: int_ty) -> bool {
+        match (self, other) {
+            (ty_i, ty_i) => true,
+            (ty_char, ty_char) => true,
+            (ty_i8, ty_i8) => true,
+            (ty_i16, ty_i16) => true,
+            (ty_i32, ty_i32) => true,
+            (ty_i64, ty_i64) => true,
+            (ty_i, _) => false,
+            (ty_char, _) => false,
+            (ty_i8, _) => false,
+            (ty_i16, _) => false,
+            (ty_i32, _) => false,
+            (ty_i64, _) => false,
+        }
+    }
+}
+
 #[auto_serialize]
 enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
+impl uint_ty: cmp::Eq {
+    pure fn eq(&&other: uint_ty) -> bool {
+        match (self, other) {
+            (ty_u, ty_u) => true,
+            (ty_u8, ty_u8) => true,
+            (ty_u16, ty_u16) => true,
+            (ty_u32, ty_u32) => true,
+            (ty_u64, ty_u64) => true,
+            (ty_u, _) => false,
+            (ty_u8, _) => false,
+            (ty_u16, _) => false,
+            (ty_u32, _) => false,
+            (ty_u64, _) => false
+        }
+    }
+}
+
 #[auto_serialize]
 enum float_ty { ty_f, ty_f32, ty_f64, }
+
+impl float_ty: cmp::Eq {
+    pure fn eq(&&other: float_ty) -> bool {
+        match (self, other) {
+            (ty_f, ty_f) | (ty_f32, ty_f32) | (ty_f64, ty_f64) => true,
+            (ty_f, _) | (ty_f32, _) | (ty_f64, _) => false
+        }
+    }
+}
 
 #[auto_serialize]
 type ty = {id: node_id, node: ty_, span: span};
@@ -542,6 +873,43 @@ enum prim_ty {
     ty_float(float_ty),
     ty_str,
     ty_bool,
+}
+
+impl prim_ty : cmp::Eq {
+    pure fn eq(&&other: prim_ty) -> bool {
+        match self {
+            ty_int(e0a) => {
+                match other {
+                    ty_int(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_uint(e0a) => {
+                match other {
+                    ty_uint(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_float(e0a) => {
+                match other {
+                    ty_float(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            ty_str => {
+                match other {
+                    ty_str => true,
+                    _ => false
+                }
+            }
+            ty_bool => {
+                match other {
+                    ty_bool => true,
+                    _ => false
+                }
+            }
+        }
+    }
 }
 
 #[auto_serialize]
@@ -560,10 +928,10 @@ enum ty_ {
     ty_ptr(mt),
     ty_rptr(@region, mt),
     ty_rec(~[ty_field]),
-    ty_fn(proto, @~[ty_param_bound], fn_decl),
+    ty_fn(proto, purity, @~[ty_param_bound], fn_decl),
     ty_tup(~[@ty]),
     ty_path(@path, node_id),
-    ty_fixed_length(@ty, option<uint>),
+    ty_fixed_length(@ty, Option<uint>),
     ty_mac(mac),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
@@ -578,7 +946,6 @@ type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 type fn_decl =
     {inputs: ~[arg],
      output: @ty,
-     purity: purity,
      cf: ret_style};
 
 #[auto_serialize]
@@ -589,11 +956,28 @@ enum purity {
     extern_fn, // declared with "extern fn"
 }
 
+impl purity : cmp::Eq {
+    pure fn eq(&&other: purity) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 #[auto_serialize]
 enum ret_style {
     noreturn, // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
     return_val, // everything else
+}
+
+impl ret_style : cmp::Eq {
+    pure fn eq(&&other: ret_style) -> bool {
+        match (self, other) {
+            (noreturn, noreturn) => true,
+            (return_val, return_val) => true,
+            (noreturn, _) => false,
+            (return_val, _) => false,
+        }
+    }
 }
 
 #[auto_serialize]
@@ -606,12 +990,56 @@ enum self_ty_ {
     sty_uniq(mutability)                // by-unique-pointer self: `~self`
 }
 
+impl self_ty_ : cmp::Eq {
+    pure fn eq(&&other: self_ty_) -> bool {
+        match self {
+            sty_static => {
+                match other {
+                    sty_static => true,
+                    _ => false
+                }
+            }
+            sty_by_ref => {
+                match other {
+                    sty_by_ref => true,
+                    _ => false
+                }
+            }
+            sty_value => {
+                match other {
+                    sty_value => true,
+                    _ => false
+                }
+            }
+            sty_region(e0a) => {
+                match other {
+                    sty_region(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            sty_box(e0a) => {
+                match other {
+                    sty_box(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            sty_uniq(e0a) => {
+                match other {
+                    sty_uniq(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 #[auto_serialize]
 type self_ty = spanned<self_ty_>;
 
 #[auto_serialize]
 type method = {ident: ident, attrs: ~[attribute],
-               tps: ~[ty_param], self_ty: self_ty, decl: fn_decl, body: blk,
+               tps: ~[ty_param], self_ty: self_ty,
+               purity: purity, decl: fn_decl, body: blk,
                id: node_id, span: span, self_id: node_id,
                vis: visibility};  // always public, unless it's a
                                   // class method
@@ -626,9 +1054,33 @@ enum foreign_abi {
     foreign_abi_stdcall,
 }
 
+// Foreign mods can be named or anonymous
+#[auto_serialize]
+enum foreign_mod_sort { named, anonymous }
+
+impl foreign_mod_sort : cmp::Eq {
+    pure fn eq(&&other: foreign_mod_sort) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
+impl foreign_abi : cmp::Eq {
+    pure fn eq(&&other: foreign_abi) -> bool {
+        match (self, other) {
+            (foreign_abi_rust_intrinsic, foreign_abi_rust_intrinsic) => true,
+            (foreign_abi_cdecl, foreign_abi_cdecl) => true,
+            (foreign_abi_stdcall, foreign_abi_stdcall) => true,
+            (foreign_abi_rust_intrinsic, _) => false,
+            (foreign_abi_cdecl, _) => false,
+            (foreign_abi_stdcall, _) => false,
+        }
+    }
+}
+
 #[auto_serialize]
 type foreign_mod =
-    {view_items: ~[@view_item],
+    {sort: foreign_mod_sort,
+     view_items: ~[@view_item],
      items: ~[@foreign_item]};
 
 #[auto_serialize]
@@ -642,11 +1094,11 @@ enum variant_kind {
 }
 
 #[auto_serialize]
-enum enum_def = { variants: ~[variant], common: option<@struct_def> };
+enum enum_def = { variants: ~[variant], common: Option<@struct_def> };
 
 #[auto_serialize]
 type variant_ = {name: ident, attrs: ~[attribute], kind: variant_kind,
-                 id: node_id, disr_expr: option<@expr>, vis: visibility};
+                 id: node_id, disr_expr: Option<@expr>, vis: visibility};
 
 #[auto_serialize]
 type variant = spanned<variant_>;
@@ -656,6 +1108,15 @@ type path_list_ident_ = {name: ident, id: node_id};
 
 #[auto_serialize]
 type path_list_ident = spanned<path_list_ident_>;
+
+#[auto_serialize]
+enum namespace { module_ns, type_value_ns }
+
+impl namespace : cmp::Eq {
+    pure fn eq(&&other: namespace) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 #[auto_serialize]
 type view_path = spanned<view_path_>;
@@ -668,7 +1129,7 @@ enum view_path_ {
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(ident, @path, node_id),
+    view_path_simple(ident, @path, namespace, node_id),
 
     // foo::bar::*
     view_path_glob(@path, node_id),
@@ -698,6 +1159,12 @@ type attribute = spanned<attribute_>;
 #[auto_serialize]
 enum attr_style { attr_outer, attr_inner, }
 
+impl attr_style : cmp::Eq {
+    pure fn eq(&&other: attr_style) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 // doc-comments are promoted to attributes that have is_sugared_doc = true
 #[auto_serialize]
 type attribute_ = {style: attr_style, value: meta_item, is_sugared_doc: bool};
@@ -716,6 +1183,19 @@ type trait_ref = {path: @path, ref_id: node_id, impl_id: node_id};
 
 #[auto_serialize]
 enum visibility { public, private, inherited }
+
+impl visibility : cmp::Eq {
+    pure fn eq(&&other: visibility) -> bool {
+        match (self, other) {
+            (public, public) => true,
+            (private, private) => true,
+            (inherited, inherited) => true,
+            (public, _) => false,
+            (private, _) => false,
+            (inherited, _) => false,
+        }
+    }
+}
 
 #[auto_serialize]
 type struct_field_ = {
@@ -740,11 +1220,15 @@ type struct_def = {
     methods: ~[@method],    /* methods */
     /* (not including ctor or dtor) */
     /* ctor is optional, and will soon go away */
-    ctor: option<class_ctor>,
+    ctor: Option<class_ctor>,
     /* dtor is optional */
-    dtor: option<class_dtor>
+    dtor: Option<class_dtor>
 };
 
+/*
+  FIXME (#3300): Should allow items to be anonymous. Right now
+  we just use dummy names for anon items.
+ */
 #[auto_serialize]
 type item = {ident: ident, attrs: ~[attribute],
              id: node_id, node: item_,
@@ -753,7 +1237,7 @@ type item = {ident: ident, attrs: ~[attribute],
 #[auto_serialize]
 enum item_ {
     item_const(@ty, @expr),
-    item_fn(fn_decl, ~[ty_param], blk),
+    item_fn(fn_decl, purity, ~[ty_param], blk),
     item_mod(_mod),
     item_foreign_mod(foreign_mod),
     item_ty(@ty, ~[ty_param]),
@@ -769,6 +1253,17 @@ enum item_ {
 
 #[auto_serialize]
 enum class_mutability { class_mutable, class_immutable }
+
+impl class_mutability : cmp::Eq {
+    pure fn eq(&&other: class_mutability) -> bool {
+        match (self, other) {
+            (class_mutable, class_mutable) => true,
+            (class_immutable, class_immutable) => true,
+            (class_mutable, _) => false,
+            (class_immutable, _) => false,
+        }
+    }
+}
 
 #[auto_serialize]
 type class_ctor = spanned<class_ctor_>;
@@ -799,7 +1294,8 @@ type foreign_item =
 
 #[auto_serialize]
 enum foreign_item_ {
-    foreign_item_fn(fn_decl, ~[ty_param]),
+    foreign_item_fn(fn_decl, purity, ~[ty_param]),
+    foreign_item_const(@ty)
 }
 
 // The data we save and restore about an inlined item or method.  This is not
@@ -814,36 +1310,6 @@ enum inlined_item {
     ii_dtor(class_dtor, ident, ~[ty_param], def_id /* parent id */)
 }
 
-// Convenience functions
-
-pure fn simple_path(id: ident, span: span) -> @path {
-    @{span: span,
-      global: false,
-      idents: ~[id],
-      rp: none,
-      types: ~[]}
-}
-
-pure fn empty_span() -> span {
-    {lo: 0, hi: 0, expn_info: none}
-}
-
-// Convenience implementations
-
-impl ident: ops::add<ident,@path> {
-    pure fn add(&&id: ident) -> @path {
-        simple_path(self, empty_span()) + id
-    }
-}
-
-impl @path: ops::add<ident,@path> {
-    pure fn add(&&id: ident) -> @path {
-        @{
-            idents: vec::append_one(self.idents, id)
-            with *self
-        }
-    }
-}
 
 //
 // Local Variables:

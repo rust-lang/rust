@@ -35,11 +35,13 @@ fn b() {
 
     // Here I create an outstanding loan and check that we get conflicts:
 
-    &mut p; //~ NOTE prior loan as mutable granted here
+    let l = &mut p; //~ NOTE prior loan as mutable granted here
     //~^ NOTE prior loan as mutable granted here
 
     p.purem(); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
     p.impurem(); //~ ERROR loan of mutable local variable as immutable conflicts with prior loan
+
+    l.x += 1;
 }
 
 fn c() {

@@ -2,17 +2,17 @@
 //
 // xfail-test
 
-proto! streamp {
+proto! streamp (
     open:send<T: send> {
         data(T) -> open<T>
     }
-}
+)
 
 fn rendezvous() {
     let (c, s) = streamp::init();
     let streams: ~[streamp::client::open<int>] = ~[c];
 
-    error!{"%?", streams[0]};
+    error!("%?", streams[0]);
 }
 
 fn main(args: ~[str]) {

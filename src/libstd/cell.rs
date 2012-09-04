@@ -1,18 +1,20 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 /// A dynamic, mutable location.
 ///
 /// Similar to a mutable option type, but friendlier.
 
 struct Cell<T> {
-    mut value: option<T>;
+    mut value: Option<T>;
 }
 
 /// Creates a new full cell with the given value.
 fn Cell<T>(+value: T) -> Cell<T> {
-    Cell { value: some(move value) }
+    Cell { value: Some(move value) }
 }
 
 fn empty_cell<T>() -> Cell<T> {
-    Cell { value: none }
+    Cell { value: None }
 }
 
 impl<T> Cell<T> {
@@ -22,7 +24,7 @@ impl<T> Cell<T> {
             fail ~"attempt to take an empty cell";
         }
 
-        let mut value = none;
+        let mut value = None;
         value <-> self.value;
         return option::unwrap(value);
     }
@@ -32,7 +34,7 @@ impl<T> Cell<T> {
         if !self.is_empty() {
             fail ~"attempt to put a value back into a full cell";
         }
-        self.value = some(move value);
+        self.value = Some(move value);
     }
 
     /// Returns true if the cell is empty and false if the cell is full.
@@ -41,10 +43,11 @@ impl<T> Cell<T> {
     }
 
     // Calls a closure with a reference to the value.
-    fn with_ref(f: fn(v: &T)) {
-        let val = move self.take();
-        f(&val);
-        self.put_back(move val);
+    fn with_ref<R>(op: fn(v: &T) -> R) -> R {
+        let v = self.take();
+        let r = op(&v);
+        self.put_back(v);
+        return move r;
     }
 }
 

@@ -2,11 +2,11 @@
 use std;
 import std::sync;
 fn main() {
-    let x = ~sync::rwlock();
-    let mut y = none;
+    let x = ~sync::RWlock();
+    let mut y = None;
     do x.write_downgrade |write_mode| {
         do (&write_mode).write_cond |cond| {
-            y = some(cond);
+            y = Some(cond);
         }
     }
     option::unwrap(y).wait();

@@ -5,11 +5,11 @@ import task::*;
 fn a() {
     fn doit() {
         fn b(c: Chan<Chan<int>>) {
-            let p = port();
-            send(c, chan(p));
+            let p = Port();
+            send(c, Chan(p));
         }
-        let p = port();
-        let ch = chan(p);
+        let p = Port();
+        let ch = Chan(p);
         spawn(|| b(ch) );
         recv(p);
     }

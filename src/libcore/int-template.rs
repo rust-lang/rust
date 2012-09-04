@@ -1,3 +1,7 @@
+// NB: transitionary, de-mode-ing.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+
 import T = inst::T;
 import cmp::{Eq, Ord};
 import num::from_int;
@@ -21,21 +25,21 @@ const bytes : uint = (inst::bits / 8);
 const min_value: T = (-1 as T) << (bits - 1);
 const max_value: T = min_value - 1 as T;
 
-pure fn min(&&x: T, &&y: T) -> T { if x < y { x } else { y } }
-pure fn max(&&x: T, &&y: T) -> T { if x > y { x } else { y } }
+pure fn min(x: T, y: T) -> T { if x < y { x } else { y } }
+pure fn max(x: T, y: T) -> T { if x > y { x } else { y } }
 
-pure fn add(x: &T, y: &T) -> T { *x + *y }
-pure fn sub(x: &T, y: &T) -> T { *x - *y }
-pure fn mul(x: &T, y: &T) -> T { *x * *y }
-pure fn div(x: &T, y: &T) -> T { *x / *y }
-pure fn rem(x: &T, y: &T) -> T { *x % *y }
+pure fn add(x: T, y: T) -> T { x + y }
+pure fn sub(x: T, y: T) -> T { x - y }
+pure fn mul(x: T, y: T) -> T { x * y }
+pure fn div(x: T, y: T) -> T { x / y }
+pure fn rem(x: T, y: T) -> T { x % y }
 
-pure fn lt(x: &T, y: &T) -> bool { *x < *y }
-pure fn le(x: &T, y: &T) -> bool { *x <= *y }
-pure fn eq(x: &T, y: &T) -> bool { *x == *y }
-pure fn ne(x: &T, y: &T) -> bool { *x != *y }
-pure fn ge(x: &T, y: &T) -> bool { *x >= *y }
-pure fn gt(x: &T, y: &T) -> bool { *x > *y }
+pure fn lt(x: T, y: T) -> bool { x < y }
+pure fn le(x: T, y: T) -> bool { x <= y }
+pure fn eq(x: T, y: T) -> bool { x == y }
+pure fn ne(x: T, y: T) -> bool { x != y }
+pure fn ge(x: T, y: T) -> bool { x >= y }
+pure fn gt(x: T, y: T) -> bool { x > y }
 
 pure fn is_positive(x: T) -> bool { x > 0 as T }
 pure fn is_negative(x: T) -> bool { x < 0 as T }
@@ -64,9 +68,10 @@ pure fn abs(i: T) -> T {
 }
 
 impl T: Ord {
-    pure fn lt(&&other: T) -> bool {
-        return self < other;
-    }
+    pure fn lt(&&other: T) -> bool { return self < other; }
+    pure fn le(&&other: T) -> bool { return self <= other; }
+    pure fn ge(&&other: T) -> bool { return self >= other; }
+    pure fn gt(&&other: T) -> bool { return self > other; }
 }
 
 impl T: Eq {
@@ -74,7 +79,6 @@ impl T: Eq {
         return self == other;
     }
 }
-
 
 impl T: num::Num {
     pure fn add(&&other: T)    -> T { return self + other; }
@@ -95,10 +99,10 @@ impl T: iter::Times {
         will execute the given function exactly x times. If we assume that \
         `x` is an int, this is functionally equivalent to \
         `for int::range(0, x) |_i| { /* anything */ }`."]
-    fn times(it: fn() -> bool) {
+    pure fn times(it: fn() -> bool) {
         if self < 0 {
-            fail fmt!{"The .times method expects a nonnegative number, \
-                       but found %?", self};
+            fail fmt!("The .times method expects a nonnegative number, \
+                       but found %?", self);
         }
         let mut i = self;
         while i > 0 {
@@ -111,11 +115,11 @@ impl T: iter::Times {
 impl T: iter::TimesIx {
     #[inline(always)]
     /// Like `times`, but provides an index
-    fn timesi(it: fn(uint) -> bool) {
+    pure fn timesi(it: fn(uint) -> bool) {
         let slf = self as uint;
         if slf < 0u {
-            fail fmt!{"The .timesi method expects a nonnegative number, \
-                       but found %?", self};
+            fail fmt!("The .timesi method expects a nonnegative number, \
+                       but found %?", self);
         }
         let mut i = 0u;
         while i < slf {
@@ -133,8 +137,8 @@ impl T: iter::TimesIx {
  * * buf - A byte buffer
  * * radix - The base of the number
  */
-fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
-    if vec::len(buf) == 0u { return none; }
+fn parse_buf(buf: ~[u8], radix: uint) -> Option<T> {
+    if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut start = 0u;
     let mut power = 1 as T;
@@ -146,17 +150,17 @@ fn parse_buf(buf: ~[u8], radix: uint) -> option<T> {
     let mut n = 0 as T;
     loop {
         match char::to_digit(buf[i] as char, radix) {
-          some(d) => n += (d as T) * power,
-          none => return none
+          Some(d) => n += (d as T) * power,
+          None => return None
         }
         power *= radix as T;
-        if i <= start { return some(n); }
+        if i <= start { return Some(n); }
         i -= 1u;
     };
 }
 
 /// Parse a string to an int
-fn from_str(s: ~str) -> option<T> { parse_buf(str::bytes(s), 10u) }
+fn from_str(s: &str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
 
 /// Convert to a string in a given base
 fn to_str(n: T, radix: uint) -> ~str {
@@ -182,47 +186,47 @@ fn str(i: T) -> ~str { return to_str(i, 10u); }
 #[test]
 #[ignore]
 fn test_from_str() {
-    assert from_str(~"0") == some(0 as T);
-    assert from_str(~"3") == some(3 as T);
-    assert from_str(~"10") == some(10 as T);
-    assert from_str(~"123456789") == some(123456789 as T);
-    assert from_str(~"00100") == some(100 as T);
+    assert from_str(~"0") == Some(0 as T);
+    assert from_str(~"3") == Some(3 as T);
+    assert from_str(~"10") == Some(10 as T);
+    assert from_str(~"123456789") == Some(123456789 as T);
+    assert from_str(~"00100") == Some(100 as T);
 
-    assert from_str(~"-1") == some(-1 as T);
-    assert from_str(~"-3") == some(-3 as T);
-    assert from_str(~"-10") == some(-10 as T);
-    assert from_str(~"-123456789") == some(-123456789 as T);
-    assert from_str(~"-00100") == some(-100 as T);
+    assert from_str(~"-1") == Some(-1 as T);
+    assert from_str(~"-3") == Some(-3 as T);
+    assert from_str(~"-10") == Some(-10 as T);
+    assert from_str(~"-123456789") == Some(-123456789 as T);
+    assert from_str(~"-00100") == Some(-100 as T);
 
-    assert from_str(~" ") == none;
-    assert from_str(~"x") == none;
+    assert from_str(~" ").is_none();
+    assert from_str(~"x").is_none();
 }
 
 // FIXME: Has alignment issues on windows and 32-bit linux (#2609)
 #[test]
 #[ignore]
 fn test_parse_buf() {
-    import str::bytes;
-    assert parse_buf(bytes(~"123"), 10u) == some(123 as T);
-    assert parse_buf(bytes(~"1001"), 2u) == some(9 as T);
-    assert parse_buf(bytes(~"123"), 8u) == some(83 as T);
-    assert parse_buf(bytes(~"123"), 16u) == some(291 as T);
-    assert parse_buf(bytes(~"ffff"), 16u) == some(65535 as T);
-    assert parse_buf(bytes(~"FFFF"), 16u) == some(65535 as T);
-    assert parse_buf(bytes(~"z"), 36u) == some(35 as T);
-    assert parse_buf(bytes(~"Z"), 36u) == some(35 as T);
+    import str::to_bytes;
+    assert parse_buf(to_bytes(~"123"), 10u) == Some(123 as T);
+    assert parse_buf(to_bytes(~"1001"), 2u) == Some(9 as T);
+    assert parse_buf(to_bytes(~"123"), 8u) == Some(83 as T);
+    assert parse_buf(to_bytes(~"123"), 16u) == Some(291 as T);
+    assert parse_buf(to_bytes(~"ffff"), 16u) == Some(65535 as T);
+    assert parse_buf(to_bytes(~"FFFF"), 16u) == Some(65535 as T);
+    assert parse_buf(to_bytes(~"z"), 36u) == Some(35 as T);
+    assert parse_buf(to_bytes(~"Z"), 36u) == Some(35 as T);
 
-    assert parse_buf(bytes(~"-123"), 10u) == some(-123 as T);
-    assert parse_buf(bytes(~"-1001"), 2u) == some(-9 as T);
-    assert parse_buf(bytes(~"-123"), 8u) == some(-83 as T);
-    assert parse_buf(bytes(~"-123"), 16u) == some(-291 as T);
-    assert parse_buf(bytes(~"-ffff"), 16u) == some(-65535 as T);
-    assert parse_buf(bytes(~"-FFFF"), 16u) == some(-65535 as T);
-    assert parse_buf(bytes(~"-z"), 36u) == some(-35 as T);
-    assert parse_buf(bytes(~"-Z"), 36u) == some(-35 as T);
+    assert parse_buf(to_bytes(~"-123"), 10u) == Some(-123 as T);
+    assert parse_buf(to_bytes(~"-1001"), 2u) == Some(-9 as T);
+    assert parse_buf(to_bytes(~"-123"), 8u) == Some(-83 as T);
+    assert parse_buf(to_bytes(~"-123"), 16u) == Some(-291 as T);
+    assert parse_buf(to_bytes(~"-ffff"), 16u) == Some(-65535 as T);
+    assert parse_buf(to_bytes(~"-FFFF"), 16u) == Some(-65535 as T);
+    assert parse_buf(to_bytes(~"-z"), 36u) == Some(-35 as T);
+    assert parse_buf(to_bytes(~"-Z"), 36u) == Some(-35 as T);
 
-    assert parse_buf(str::bytes(~"Z"), 35u) == none;
-    assert parse_buf(str::bytes(~"-9"), 2u) == none;
+    assert parse_buf(to_bytes(~"Z"), 35u).is_none();
+    assert parse_buf(to_bytes(~"-9"), 2u).is_none();
 }
 
 #[test]
@@ -236,7 +240,7 @@ fn test_to_str() {
 
 #[test]
 fn test_interfaces() {
-    fn test<U:num::Num>(ten: U) {
+    fn test<U:num::Num cmp::Eq>(+ten: U) {
         assert (ten.to_int() == 10);
 
         let two: U = from_int(2);

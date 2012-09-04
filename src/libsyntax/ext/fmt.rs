@@ -18,7 +18,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
         expr_to_str(cx, args[0],
                     ~"first argument to #fmt must be a string literal.");
     let fmtspan = args[0].span;
-    debug!{"Format string:"};
+    debug!("Format string:");
     log(debug, fmt);
     fn parse_fmt_err_(cx: ext_ctxt, sp: span, msg: ~str) -> ! {
         cx.span_fatal(sp, msg);
@@ -37,12 +37,13 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
 fn pieces_to_expr(cx: ext_ctxt, sp: span,
                   pieces: ~[piece], args: ~[@ast::expr])
    -> @ast::expr {
-    fn make_path_vec(_cx: ext_ctxt, ident: ast::ident) -> ~[ast::ident] {
-        return ~[@~"extfmt", @~"rt", ident];
+    fn make_path_vec(_cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
+        let intr = _cx.parse_sess().interner;
+        return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt"),
+                 intr.intern(ident)];
     }
-    fn make_rt_path_expr(cx: ext_ctxt, sp: span,
-                         ident: ast::ident) -> @ast::expr {
-        let path = make_path_vec(cx, ident);
+    fn make_rt_path_expr(cx: ext_ctxt, sp: span, nm: @~str) -> @ast::expr {
+        let path = make_path_vec(cx, nm);
         return mk_path(cx, sp, path);
     }
     // Produces an AST expression that represents a RT::conv record,
@@ -94,11 +95,13 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         fn make_conv_rec(cx: ext_ctxt, sp: span, flags_expr: @ast::expr,
                          width_expr: @ast::expr, precision_expr: @ast::expr,
                          ty_expr: @ast::expr) -> @ast::expr {
+            let intr = cx.parse_sess().interner;
             return mk_rec_e(cx, sp,
-                         ~[{ident: @~"flags", ex: flags_expr},
-                          {ident: @~"width", ex: width_expr},
-                          {ident: @~"precision", ex: precision_expr},
-                          {ident: @~"ty", ex: ty_expr}]);
+                         ~[{ident: intr.intern(@~"flags"), ex: flags_expr},
+                           {ident: intr.intern(@~"width"), ex: width_expr},
+                           {ident: intr.intern(@~"precision"),
+                            ex: precision_expr},
+                           {ident: intr.intern(@~"ty"), ex: ty_expr}]);
         }
         let rt_conv_flags = make_flags(cx, sp, cnv.flags);
         let rt_conv_width = make_count(cx, sp, cnv.width);
@@ -132,7 +135,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
         }
         let unsupported = ~"conversion not supported in #fmt string";
         match cnv.param {
-          option::none => (),
+          option::None => (),
           _ => cx.span_unimpl(sp, unsupported)
         }
         for cnv.flags.each |f| {
@@ -189,16 +192,16 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
     }
     fn log_conv(c: conv) {
         match c.param {
-          some(p) => { log(debug, ~"param: " + int::to_str(p, 10u)); }
-          _ => debug!{"param: none"}
+          Some(p) => { log(debug, ~"param: " + int::to_str(p, 10u)); }
+          _ => debug!("param: none")
         }
         for c.flags.each |f| {
             match f {
-              flag_left_justify => debug!{"flag: left justify"},
-              flag_left_zero_pad => debug!{"flag: left zero pad"},
-              flag_space_for_sign => debug!{"flag: left space pad"},
-              flag_sign_always => debug!{"flag: sign always"},
-              flag_alternate => debug!{"flag: alternate"}
+              flag_left_justify => debug!("flag: left justify"),
+              flag_left_zero_pad => debug!("flag: left zero pad"),
+              flag_space_for_sign => debug!("flag: left space pad"),
+              flag_sign_always => debug!("flag: sign always"),
+              flag_alternate => debug!("flag: alternate")
             }
         }
         match c.width {
@@ -206,33 +209,33 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
               debug, ~"width: count is " + int::to_str(i, 10u)),
           count_is_param(i) => log(
               debug, ~"width: count is param " + int::to_str(i, 10u)),
-          count_is_next_param => debug!{"width: count is next param"},
-          count_implied => debug!{"width: count is implied"}
+          count_is_next_param => debug!("width: count is next param"),
+          count_implied => debug!("width: count is implied")
         }
         match c.precision {
           count_is(i) => log(
               debug, ~"prec: count is " + int::to_str(i, 10u)),
           count_is_param(i) => log(
               debug, ~"prec: count is param " + int::to_str(i, 10u)),
-          count_is_next_param => debug!{"prec: count is next param"},
-          count_implied => debug!{"prec: count is implied"}
+          count_is_next_param => debug!("prec: count is next param"),
+          count_implied => debug!("prec: count is implied")
         }
         match c.ty {
-          ty_bool => debug!{"type: bool"},
-          ty_str => debug!{"type: str"},
-          ty_char => debug!{"type: char"},
+          ty_bool => debug!("type: bool"),
+          ty_str => debug!("type: str"),
+          ty_char => debug!("type: char"),
           ty_int(s) => match s {
-            signed => debug!{"type: signed"},
-            unsigned => debug!{"type: unsigned"}
+            signed => debug!("type: signed"),
+            unsigned => debug!("type: unsigned")
           },
-          ty_bits => debug!{"type: bits"},
+          ty_bits => debug!("type: bits"),
           ty_hex(cs) => match cs {
-            case_upper => debug!{"type: uhex"},
-            case_lower => debug!{"type: lhex"},
+            case_upper => debug!("type: uhex"),
+            case_lower => debug!("type: lhex"),
           },
-          ty_octal => debug!{"type: octal"},
-          ty_float => debug!{"type: float"},
-          ty_poly => debug!{"type: poly"}
+          ty_octal => debug!("type: octal"),
+          ty_float => debug!("type: float"),
+          ty_poly => debug!("type: poly")
         }
     }
     let fmt_sp = args[0].span;
@@ -251,7 +254,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
                               ~"not enough arguments to #fmt " +
                                   ~"for the given format string");
             }
-            debug!{"Building conversion:"};
+            debug!("Building conversion:");
             log_conv(conv);
             let arg_expr = args[n];
             let c_expr = make_new_conv(cx, fmt_sp, conv, arg_expr);
@@ -263,12 +266,15 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
 
     if expected_nargs < nargs {
         cx.span_fatal
-            (sp, fmt!{"too many arguments to #fmt. found %u, expected %u",
-                           nargs, expected_nargs});
+            (sp, fmt!("too many arguments to #fmt. found %u, expected %u",
+                           nargs, expected_nargs));
     }
 
     let arg_vec = mk_fixed_vec_e(cx, fmt_sp, piece_exprs);
-    return mk_call(cx, fmt_sp, ~[@~"str", @~"concat"], ~[arg_vec]);
+    return mk_call(cx, fmt_sp,
+                   ~[cx.parse_sess().interner.intern(@~"str"),
+                     cx.parse_sess().interner.intern(@~"concat")],
+                   ~[arg_vec]);
 }
 //
 // Local Variables:

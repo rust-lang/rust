@@ -90,7 +90,8 @@ fn req_loans_in_expr(ex: @ast::expr,
     let tcx = bccx.tcx;
     let old_root_ub = self.root_ub;
 
-    debug!{"req_loans_in_expr(ex=%s)", pprust::expr_to_str(ex)};
+    debug!("req_loans_in_expr(ex=%s)",
+           pprust::expr_to_str(ex, tcx.sess.intr()));
 
     // If this expression is borrowed, have to ensure it remains valid:
     for tcx.borrowings.find(ex.id).each |borrow| {
@@ -149,16 +150,16 @@ fn req_loans_in_expr(ex: @ast::expr,
                 // fine).
                 //
                 match opt_deref_kind(arg_ty.ty) {
-                  some(deref_ptr(region_ptr(_))) |
-                  some(deref_ptr(unsafe_ptr)) => {
+                  Some(deref_ptr(region_ptr(_))) |
+                  Some(deref_ptr(unsafe_ptr)) => {
                     /* region pointers are (by induction) guaranteed */
                     /* unsafe pointers are the user's problem */
                   }
-                  some(deref_comp(_)) |
-                  none => {
+                  Some(deref_comp(_)) |
+                  None => {
                     /* not a pointer, no worries */
                   }
-                  some(deref_ptr(_)) => {
+                  Some(deref_ptr(_)) => {
                     let arg_cmt = self.bccx.cat_borrow_of_expr(arg);
                     self.guarantee_valid(arg_cmt, m_const, scope_r);
                   }
@@ -170,7 +171,7 @@ fn req_loans_in_expr(ex: @ast::expr,
         visit::visit_expr(ex, self, vt);
       }
 
-      ast::expr_match(ex_v, arms, _) => {
+      ast::expr_match(ex_v, arms) => {
         let cmt = self.bccx.cat_expr(ex_v);
         for arms.each |arm| {
             for arm.pats.each |pat| {
@@ -256,10 +257,10 @@ impl gather_loan_ctxt {
 
         self.bccx.guaranteed_paths += 1;
 
-        debug!{"guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
+        debug!("guarantee_valid(cmt=%s, req_mutbl=%s, scope_r=%s)",
                self.bccx.cmt_to_repr(cmt),
                self.bccx.mut_to_str(req_mutbl),
-               region_to_str(self.tcx(), scope_r)};
+               region_to_str(self.tcx(), scope_r));
         let _i = indenter();
 
         match cmt.lp {
@@ -273,11 +274,11 @@ impl gather_loan_ctxt {
           // duration of the reference: if there is an attempt to move
           // it within that scope, the loan will be detected and an
           // error will be reported.
-          some(_) => {
+          Some(_) => {
             match self.bccx.loan(cmt, scope_r, req_mutbl) {
-              err(e) => { self.bccx.report(e); }
-              ok(loans) if loans.len() == 0 => {}
-              ok(loans) => {
+              Err(e) => { self.bccx.report(e); }
+              Ok(loans) if loans.len() == 0 => {}
+              Ok(loans) => {
                 match scope_r {
                   ty::re_scope(scope_id) => {
                     self.add_loans(scope_id, loans);
@@ -288,7 +289,7 @@ impl gather_loan_ctxt {
                         if self.tcx().sess.borrowck_note_loan() {
                             self.bccx.span_note(
                                 cmt.span,
-                                fmt!{"immutable loan required"});
+                                fmt!("immutable loan required"));
                         }
                     } else {
                         self.bccx.loaned_paths_same += 1;
@@ -311,25 +312,25 @@ impl gather_loan_ctxt {
           // also check that the mutability of the desired pointer
           // matches with the actual mutability (but if an immutable
           // pointer is desired, that is ok as long as we are pure)
-          none => {
+          None => {
             let result: bckres<preserve_condition> = {
                 do self.check_mutbl(req_mutbl, cmt).chain |pc1| {
                     do self.bccx.preserve(cmt, scope_r,
                                           self.item_ub,
                                           self.root_ub).chain |pc2| {
-                        ok(pc1.combine(pc2))
+                        Ok(pc1.combine(pc2))
                     }
                 }
             };
 
             match result {
-              ok(pc_ok) => {
+              Ok(pc_ok) => {
                 // we were able guarantee the validity of the ptr,
                 // perhaps by rooting or because it is immutably
                 // rooted.  good.
                 self.bccx.stable_paths += 1;
               }
-              ok(pc_if_pure(e)) => {
+              Ok(pc_if_pure(e)) => {
                 // we are only able to guarantee the validity if
                 // the scope is pure
                 match scope_r {
@@ -342,7 +343,7 @@ impl gather_loan_ctxt {
                     if self.tcx().sess.borrowck_note_pure() {
                         self.bccx.span_note(
                             cmt.span,
-                            fmt!{"purity required"});
+                            fmt!("purity required"));
                     }
                   }
                   _ => {
@@ -352,7 +353,7 @@ impl gather_loan_ctxt {
                   }
                 }
               }
-              err(e) => {
+              Err(e) => {
                 // we cannot guarantee the validity of this pointer
                 self.bccx.report(e);
               }
@@ -375,7 +376,7 @@ impl gather_loan_ctxt {
           (m_const, _) |
           (m_imm, m_imm) |
           (m_mutbl, m_mutbl) => {
-            ok(pc_ok)
+            Ok(pc_ok)
           }
 
           (_, m_const) |
@@ -385,9 +386,9 @@ impl gather_loan_ctxt {
                      code: err_mutbl(req_mutbl, cmt.mutbl)};
             if req_mutbl == m_imm {
                 // you can treat mutable things as imm if you are pure
-                ok(pc_if_pure(e))
+                Ok(pc_if_pure(e))
             } else {
-                err(e)
+                Err(e)
             }
           }
         }
@@ -395,10 +396,10 @@ impl gather_loan_ctxt {
 
     fn add_loans(scope_id: ast::node_id, loans: @DVec<loan>) {
         match self.req_maps.req_loan_map.find(scope_id) {
-          some(l) => {
+          Some(l) => {
             (*l).push(loans);
           }
-          none => {
+          None => {
             self.req_maps.req_loan_map.insert(
                 scope_id, @dvec::from_vec(~[mut loans]));
           }
@@ -409,11 +410,12 @@ impl gather_loan_ctxt {
                   arm_id: ast::node_id, alt_id: ast::node_id) {
         do self.bccx.cat_pattern(discr_cmt, root_pat) |cmt, pat| {
             match pat.node {
-              ast::pat_ident(bm, id, o_pat) if !self.pat_is_variant(pat) => {
+              ast::pat_ident(bm, _, _) if !self.pat_is_variant(pat) => {
                 match bm {
-                  ast::bind_by_value => {
+                  ast::bind_by_value | ast::bind_by_move => {
                     // copying does not borrow anything, so no check
                     // is required
+                    // as for move, check::alt ensures it's from an rvalue.
                   }
                   ast::bind_by_ref(mutbl) => {
                     // ref x or ref x @ p --- creates a ptr which must

@@ -1,9 +1,9 @@
-class cat {
+struct cat {
   priv {
     let mut meows : uint;
     fn sleep() { loop{} }
     fn meow() {
-      error!{"Meow"};
+      error!("Meow");
       meows += 1u; //~ ERROR unresolved name
       sleep();     //~ ERROR unresolved name
     }

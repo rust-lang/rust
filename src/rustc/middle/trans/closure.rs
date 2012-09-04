@@ -100,12 +100,12 @@ enum environment_value {
 
 fn ev_to_str(ccx: @crate_ctxt, ev: environment_value) -> ~str {
     match ev {
-      env_copy(v, t, lk) => fmt!{"copy(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)},
-      env_move(v, t, lk) => fmt!{"move(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)},
-      env_ref(v, t, lk) => fmt!{"ref(%s,%s)", val_str(ccx.tn, v),
-                                ty_to_str(ccx.tcx, t)}
+      env_copy(v, t, _) => fmt!("copy(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t)),
+      env_move(v, t, _) => fmt!("move(%s,%s)", val_str(ccx.tn, v),
+                                ty_to_str(ccx.tcx, t)),
+      env_ref(v, t, _) => fmt!("ref(%s,%s)", val_str(ccx.tn, v),
+                               ty_to_str(ccx.tcx, t))
     }
 }
 
@@ -129,7 +129,7 @@ fn mk_closure_tys(tcx: ty::ctxt,
         });
     }
     let cdata_ty = ty::mk_tup(tcx, bound_tys);
-    debug!{"cdata_ty=%s", ty_to_str(tcx, cdata_ty)};
+    debug!("cdata_ty=%s", ty_to_str(tcx, cdata_ty));
     return cdata_ty;
 }
 
@@ -145,7 +145,7 @@ fn allocate_cbox(bcx: block,
         // Initialize ref count to arbitrary value for debugging:
         let ccx = bcx.ccx();
         let llbox = PointerCast(bcx, llbox, T_opaque_box_ptr(ccx));
-        let ref_cnt = GEPi(bcx, llbox, ~[0u, abi::box_field_refcnt]);
+        let ref_cnt = GEPi(bcx, llbox, [0u, abi::box_field_refcnt]);
         let rc = C_int(ccx, 0x12345678);
         Store(bcx, rc, ref_cnt);
     }
@@ -195,20 +195,19 @@ fn store_environment(bcx: block,
     let cboxptr_ty = ty::mk_ptr(tcx, {ty:cbox_ty, mutbl:ast::m_imm});
 
     let llbox = PointerCast(bcx, llbox, type_of(ccx, cboxptr_ty));
-    debug!{"tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty)};
+    debug!("tuplify_box_ty = %s", ty_to_str(tcx, cbox_ty));
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
     do vec::iteri(bound_values) |i, bv| {
-        debug!{"Copy %s into closure", ev_to_str(ccx, bv)};
+        debug!("Copy %s into closure", ev_to_str(ccx, bv));
 
         if !ccx.sess.no_asm_comments() {
-            add_comment(bcx, fmt!{"Copy %s into closure",
-                                  ev_to_str(ccx, bv)});
+            add_comment(bcx, fmt!("Copy %s into closure",
+                                  ev_to_str(ccx, bv)));
         }
 
-        let bound_data = GEPi(bcx, llbox,
-             ~[0u, abi::box_field_body, i]);
+        let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
         match bv {
           env_copy(val, ty, lv_owned) => {
             let val1 = load_if_immediate(bcx, val, ty);
@@ -224,13 +223,13 @@ fn store_environment(bcx: block,
             let src = {bcx:bcx, val:val, kind:kind};
             bcx = move_val(bcx, INIT, bound_data, src, ty);
           }
-          env_ref(val, ty, lv_owned) => {
-            debug!{"> storing %s into %s",
+          env_ref(val, _, lv_owned) => {
+            debug!("> storing %s into %s",
                    val_str(bcx.ccx().tn, val),
-                   val_str(bcx.ccx().tn, bound_data)};
+                   val_str(bcx.ccx().tn, bound_data));
             Store(bcx, val, bound_data);
           }
-          env_ref(val, ty, lv_owned_imm) => {
+          env_ref(val, _, lv_owned_imm) => {
             let addr = do_spill_noroot(bcx, val);
             Store(bcx, addr, bound_data);
           }
@@ -250,7 +249,7 @@ fn build_closure(bcx0: block,
                  cap_vars: ~[capture::capture_var],
                  ck: ty::closure_kind,
                  id: ast::node_id,
-                 include_ret_handle: option<ValueRef>) -> closure_result {
+                 include_ret_handle: Option<ValueRef>) -> closure_result {
     let _icx = bcx0.insn_ctxt("closure::build_closure");
     // If we need to, package up the iterator body to call
     let mut env_vals = ~[];
@@ -259,11 +258,13 @@ fn build_closure(bcx0: block,
 
     // Package up the captured upvars
     do vec::iter(cap_vars) |cap_var| {
-        debug!{"Building closure: captured variable %?", cap_var};
+        debug!("Building closure: captured variable %?", cap_var);
         let lv = trans_local_var(bcx, cap_var.def);
         let nid = ast_util::def_id_of_def(cap_var.def).node;
-        debug!{"Node id is %s",
-               syntax::ast_map::node_id_to_str(bcx.ccx().tcx.items, nid)};
+        debug!("Node id is %s",
+               syntax::ast_map::node_id_to_str
+                   (bcx.ccx().tcx.items, nid,
+                    bcx.ccx().sess.parse_sess.interner));
         let mut ty = node_id_type(bcx, nid);
         match cap_var.mode {
           capture::cap_ref => {
@@ -272,9 +273,9 @@ fn build_closure(bcx0: block,
             vec::push(env_vals, env_ref(lv.val, ty, lv.kind));
           }
           capture::cap_copy => {
-            let mv = match check ccx.maps.last_use_map.find(id) {
-              none => false,
-              some(vars) => (*vars).contains(nid)
+            let mv = match ccx.maps.last_use_map.find(id) {
+              None => false,
+              Some(vars) => (*vars).contains(nid)
             };
             if mv { vec::push(env_vals, env_move(lv.val, ty, lv.kind)); }
             else { vec::push(env_vals, env_copy(lv.val, ty, lv.kind)); }
@@ -291,8 +292,8 @@ fn build_closure(bcx0: block,
     }
     do option::iter(include_ret_handle) |flagptr| {
         let our_ret = match bcx.fcx.loop_ret {
-          some({retptr, _}) => retptr,
-          none => bcx.fcx.llretptr
+          Some({retptr, _}) => retptr,
+          None => bcx.fcx.llretptr
         };
         let nil_ret = PointerCast(bcx, our_ret, T_ptr(T_nil()));
         vec::push(env_vals,
@@ -324,8 +325,7 @@ fn load_environment(fcx: fn_ctxt,
         match cap_var.mode {
           capture::cap_drop => { /* ignore */ }
           _ => {
-            let mut upvarptr =
-                GEPi(bcx, llcdata, ~[0u, i]);
+            let mut upvarptr = GEPi(bcx, llcdata, [0u, i]);
             match ck {
               ty::ck_block => { upvarptr = Load(bcx, upvarptr); }
               ty::ck_uniq | ty::ck_box => ()
@@ -337,12 +337,10 @@ fn load_environment(fcx: fn_ctxt,
         }
     }
     if load_ret_handle {
-        let flagptr = Load(bcx, GEPi(bcx, llcdata,
-                                     ~[0u, i]));
+        let flagptr = Load(bcx, GEPi(bcx, llcdata, [0u, i]));
         let retptr = Load(bcx,
-                          GEPi(bcx, llcdata,
-                               ~[0u, i+1u]));
-        fcx.loop_ret = some({flagptr: flagptr, retptr: retptr});
+                          GEPi(bcx, llcdata, [0u, i+1u]));
+        fcx.loop_ret = Some({flagptr: flagptr, retptr: retptr});
     }
 }
 
@@ -352,21 +350,22 @@ fn trans_expr_fn(bcx: block,
                  body: ast::blk,
                  id: ast::node_id,
                  cap_clause: ast::capture_clause,
-                 is_loop_body: option<option<ValueRef>>,
+                 is_loop_body: Option<Option<ValueRef>>,
                  dest: dest) -> block {
     let _icx = bcx.insn_ctxt("closure::trans_expr_fn");
     if dest == ignore { return bcx; }
     let ccx = bcx.ccx();
     let fty = node_id_type(bcx, id);
     let llfnty = type_of_fn_from_ty(ccx, fty);
-    let sub_path = vec::append_one(bcx.fcx.path, path_name(@~"anon"));
+    let sub_path = vec::append_one(bcx.fcx.path,
+                                   path_name(special_idents::anon));
     let s = mangle_internal_name_by_path(ccx, sub_path);
     let llfn = decl_internal_cdecl_fn(ccx.llmod, s, llfnty);
 
     let trans_closure_env = fn@(ck: ty::closure_kind) -> result {
         let cap_vars = capture::compute_capture_vars(ccx.tcx, id, proto,
                                                      cap_clause);
-        let ret_handle = match is_loop_body { some(x) => x, none => none };
+        let ret_handle = match is_loop_body { Some(x) => x, None => None };
         let {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, ck, id,
                                                    ret_handle);
         trans_closure(ccx, sub_path, decl, body, llfn, no_self,
@@ -389,7 +388,7 @@ fn trans_expr_fn(bcx: block,
       ty::proto_vstore(ty::vstore_uniq) =>
         trans_closure_env(ty::ck_uniq),
       ty::proto_bare => {
-        trans_closure(ccx, sub_path, decl, body, llfn, no_self, none,
+        trans_closure(ccx, sub_path, decl, body, llfn, no_self, None,
                       id, |_fcx| { }, |_bcx| { });
         {bcx: bcx, val: C_null(T_opaque_box_ptr(ccx))}
       }
@@ -412,7 +411,7 @@ fn make_fn_glue(
     let tcx = cx.tcx();
 
     let fn_env = fn@(ck: ty::closure_kind) -> block {
-        let box_cell_v = GEPi(cx, v, ~[0u, abi::fn_field_box]);
+        let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
         let box_ptr_v = Load(cx, box_cell_v);
         do with_cond(cx, IsNotNull(cx, box_ptr_v)) |bcx| {
             let closure_ty = ty::mk_opaque_closure_ptr(tcx, ck);
@@ -456,10 +455,10 @@ fn make_opaque_cbox_take_glue(
     do with_cond(bcx, IsNotNull(bcx, cbox_in)) |bcx| {
         // Load the size from the type descr found in the cbox
         let cbox_in = PointerCast(bcx, cbox_in, llopaquecboxty);
-        let tydescptr = GEPi(bcx, cbox_in, ~[0u, abi::box_field_tydesc]);
+        let tydescptr = GEPi(bcx, cbox_in, [0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);
         let tydesc = PointerCast(bcx, tydesc, T_ptr(ccx.tydesc_type));
-        let sz = Load(bcx, GEPi(bcx, tydesc, ~[0u, abi::tydesc_field_size]));
+        let sz = Load(bcx, GEPi(bcx, tydesc, [0u, abi::tydesc_field_size]));
 
         // Adjust sz to account for the rust_opaque_box header fields
         let sz = Add(bcx, sz, shape::llsize_of(ccx, T_box_header(ccx)));
@@ -475,13 +474,13 @@ fn make_opaque_cbox_take_glue(
         Store(bcx, cbox_out, cboxptr);
 
         // Take the (deeply cloned) type descriptor
-        let tydesc_out = GEPi(bcx, cbox_out, ~[0u, abi::box_field_tydesc]);
+        let tydesc_out = GEPi(bcx, cbox_out, [0u, abi::box_field_tydesc]);
         let bcx = take_ty(bcx, tydesc_out, ty::mk_type(tcx));
 
         // Take the data in the tuple
-        let cdata_out = GEPi(bcx, cbox_out, ~[0u, abi::box_field_body]);
+        let cdata_out = GEPi(bcx, cbox_out, [0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata_out, tydesc,
-                              abi::tydesc_field_take_glue, none);
+                              abi::tydesc_field_take_glue, None);
         bcx
     }
 }
@@ -521,14 +520,14 @@ fn make_opaque_cbox_free_glue(
         // Load the type descr found in the cbox
         let lltydescty = T_ptr(ccx.tydesc_type);
         let cbox = Load(bcx, cbox);
-        let tydescptr = GEPi(bcx, cbox, ~[0u, abi::box_field_tydesc]);
+        let tydescptr = GEPi(bcx, cbox, [0u, abi::box_field_tydesc]);
         let tydesc = Load(bcx, tydescptr);
         let tydesc = PointerCast(bcx, tydesc, lltydescty);
 
         // Drop the tuple data then free the descriptor
-        let cdata = GEPi(bcx, cbox, ~[0u, abi::box_field_body]);
+        let cdata = GEPi(bcx, cbox, [0u, abi::box_field_body]);
         call_tydesc_glue_full(bcx, cdata, tydesc,
-                              abi::tydesc_field_drop_glue, none);
+                              abi::tydesc_field_drop_glue, None);
 
         // Free the ty descr (if necc) and the box itself
         match ck {

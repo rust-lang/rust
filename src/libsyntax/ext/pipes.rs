@@ -3,14 +3,14 @@
 This is frequently called the pipe compiler. It handles code such as...
 
 ~~~
-proto! pingpong {
+proto! pingpong (
     ping: send {
         ping -> pong
     }
     pong: recv {
         pong -> ping
     }
-}
+)
 ~~~
 
 There are several components:
@@ -50,11 +50,11 @@ fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
     let sess = cx.parse_sess();
     let cfg = cx.cfg();
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
-                               cx.parse_sess().interner, none, tt);
+                               cx.parse_sess().interner, None, tt);
     let rdr = tt_rdr as reader;
     let rust_parser = parser(sess, cfg, rdr.dup(), SOURCE_FILE);
 
-    let proto = rust_parser.parse_proto(id);
+    let proto = rust_parser.parse_proto(cx.str_of(id));
 
     // check for errors
     visit(proto, cx);

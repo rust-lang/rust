@@ -12,7 +12,19 @@ import middle::lint;
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }
 
+impl os : cmp::Eq {
+    pure fn eq(&&other: os) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 enum arch { arch_x86, arch_x86_64, arch_arm, }
+
+impl arch: cmp::Eq {
+    pure fn eq(&&other: arch) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
 
 enum crate_type { bin_crate, lib_crate, unknown_crate, }
 
@@ -42,6 +54,7 @@ const borrowck_note_loan: uint = 4096;
 const no_landing_pads: uint = 8192;
 const debug_llvm: uint = 16384;
 const count_type_sizes: uint = 32768;
+const meta_stats: uint = 65536;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"ppregions", ~"prettyprint regions with \
@@ -66,8 +79,22 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
       no_landing_pads),
      (~"debug-llvm", ~"enable debug output from LLVM", debug_llvm),
      (~"count-type-sizes", ~"count the sizes of aggregate types",
-      count_type_sizes)
+      count_type_sizes),
+     (~"meta-stats", ~"gather metadata statistics", meta_stats)
     ]
+}
+
+enum OptLevel {
+    No, // -O0
+    Less, // -O1
+    Default, // -O2
+    Aggressive // -O3
+}
+
+impl OptLevel : cmp::Eq {
+    pure fn eq(&&other: OptLevel) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 type options =
@@ -75,16 +102,19 @@ type options =
     // with additional crate configurations during the compile process
     {crate_type: crate_type,
      static: bool,
-     optimize: uint,
+     gc: bool,
+     optimize: OptLevel,
      debuginfo: bool,
      extra_debuginfo: bool,
      lint_opts: ~[(lint::lint, lint::level)],
      save_temps: bool,
+     jit: bool,
      output_type: back::link::output_type,
-     addl_lib_search_paths: ~[~str],
-     maybe_sysroot: option<~str>,
+     addl_lib_search_paths: ~[Path],
+     maybe_sysroot: Option<Path>,
      target_triple: ~str,
      cfg: ast::crate_cfg,
+     binary: ~str,
      test: bool,
      parse_only: bool,
      no_trans: bool,
@@ -99,11 +129,11 @@ type session_ = {targ_cfg: @config,
                  parse_sess: parse_sess,
                  codemap: codemap::codemap,
                  // For a library crate, this is always none
-                 mut main_fn: option<(node_id, codemap::span)>,
+                 mut main_fn: Option<(node_id, codemap::span)>,
                  span_diagnostic: diagnostic::span_handler,
                  filesearch: filesearch::filesearch,
                  mut building_library: bool,
-                 working_dir: ~str,
+                 working_dir: Path,
                  lint_settings: lint::lint_settings};
 
 enum session {
@@ -179,12 +209,18 @@ impl session {
     fn debugging_opt(opt: uint) -> bool {
         (self.opts.debugging_opts & opt) != 0u
     }
+    // This exists to help with refactoring to eliminate impossible
+    // cases later on
+    fn impossible_case(sp: span, msg: &str) -> ! {
+        self.span_bug(sp, #fmt("Impossible case reached: %s", msg));
+    }
     fn ppregions() -> bool { self.debugging_opt(ppregions) }
     fn time_passes() -> bool { self.debugging_opt(time_passes) }
     fn count_llvm_insns() -> bool { self.debugging_opt(count_llvm_insns) }
     fn count_type_sizes() -> bool { self.debugging_opt(count_type_sizes) }
     fn time_llvm_passes() -> bool { self.debugging_opt(time_llvm_passes) }
     fn trans_stats() -> bool { self.debugging_opt(trans_stats) }
+    fn meta_stats() -> bool { self.debugging_opt(meta_stats) }
     fn no_asm_comments() -> bool { self.debugging_opt(no_asm_comments) }
     fn no_verify() -> bool { self.debugging_opt(no_verify) }
     fn trace() -> bool { self.debugging_opt(trace) }
@@ -192,6 +228,16 @@ impl session {
     fn borrowck_stats() -> bool { self.debugging_opt(borrowck_stats) }
     fn borrowck_note_pure() -> bool { self.debugging_opt(borrowck_note_pure) }
     fn borrowck_note_loan() -> bool { self.debugging_opt(borrowck_note_loan) }
+
+    fn str_of(id: ast::ident) -> ~str {
+        *self.parse_sess.interner.get(id)
+    }
+    fn ident_of(st: ~str) -> ast::ident {
+        self.parse_sess.interner.intern(@st)
+    }
+    fn intr() -> syntax::parse::token::ident_interner {
+        self.parse_sess.interner
+    }
 }
 
 /// Some reasonable defaults
@@ -199,16 +245,19 @@ fn basic_options() -> @options {
     @{
         crate_type: session::lib_crate,
         static: false,
-        optimize: 0u,
+        gc: false,
+        optimize: No,
         debuginfo: false,
         extra_debuginfo: false,
         lint_opts: ~[],
         save_temps: false,
+        jit: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: ~[],
-        maybe_sysroot: none,
+        maybe_sysroot: None,
         target_triple: driver::host_triple(),
         cfg: ~[],
+        binary: ~"rustc",
         test: false,
         parse_only: false,
         no_trans: false,
@@ -217,7 +266,7 @@ fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-fn expect<T: copy>(sess: session, opt: option<T>, msg: fn() -> ~str) -> T {
+fn expect<T: copy>(sess: session, opt: Option<T>, msg: fn() -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
@@ -233,7 +282,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
             match syntax::attr::first_attr_value_str_by_name(
                 crate.node.attrs,
                 ~"crate_type") {
-              option::some(@~"lib") => true,
+              option::Some(~"lib") => true,
               _ => false
             }
         }
@@ -261,7 +310,7 @@ mod test {
             style: ast::attr_outer,
             value: ast_util::respan(ast_util::dummy_sp(),
                 ast::meta_name_value(
-                    @~"crate_type",
+                    ~"crate_type",
                     ast_util::respan(ast_util::dummy_sp(),
                                      ast::lit_str(@t)))),
             is_sugared_doc: false

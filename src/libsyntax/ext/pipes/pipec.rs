@@ -2,7 +2,7 @@
 
 import to_str::ToStr;
 
-import dvec::dvec;
+import dvec::DVec;
 
 import ast::ident;
 import util::interner;
@@ -13,8 +13,7 @@ import parse;
 import parse::*;
 import proto::*;
 
-import ast_builder::append_types;
-import ast_builder::path;
+import ast_builder::{append_types, path, empty_span};
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -40,24 +39,24 @@ trait gen_init {
 
 impl message: gen_send {
     fn gen_send(cx: ext_ctxt, try: bool) -> @ast::item {
-        debug!{"pipec: gen_send"};
+        debug!("pipec: gen_send");
         match self {
-          message(id, span, tys, this,
-                  some({state: next, tys: next_tys})) => {
+          message(_id, span, tys, this,
+                  Some({state: next, tys: next_tys})) => {
             debug!("pipec: next state exists");
             let next = this.proto.get_state(next);
             assert next_tys.len() == next.ty_params.len();
-            let arg_names = tys.mapi(|i, _ty| @(~"x_" + i.to_str()));
+            let arg_names = tys.mapi(|i, _ty| cx.ident_of(~"x_"+i.to_str()));
 
             let args_ast = (arg_names, tys).map(
                 |n, t| cx.arg_mode(n, t, ast::by_copy)
             );
 
             let pipe_ty = cx.ty_path_ast_builder(
-                path(this.data_name(), span)
+                path(~[this.data_name()], span)
                 .add_tys(cx.ty_vars(this.ty_params)));
             let args_ast = vec::append(
-                ~[cx.arg_mode(@~"pipe",
+                ~[cx.arg_mode(cx.ident_of(~"pipe"),
                               pipe_ty,
                               ast::by_copy)],
                 args_ast);
@@ -73,12 +72,12 @@ impl message: gen_send {
                 };
 
                 body += ~"let b = pipe.reuse_buffer();\n";
-                body += fmt!("let %s = pipes::send_packet_buffered(\
+                body += fmt!("let %s = pipes::SendPacketBuffered(\
                               ptr::addr_of(b.buffer.data.%s));\n",
-                             sp, *next.name);
-                body += fmt!("let %s = pipes::recv_packet_buffered(\
+                             sp, next.name);
+                body += fmt!("let %s = pipes::RecvPacketBuffered(\
                               ptr::addr_of(b.buffer.data.%s));\n",
-                             rp, *next.name);
+                             rp, next.name);
             }
             else {
                 let pat = match (this.dir, next.dir) {
@@ -91,14 +90,14 @@ impl message: gen_send {
                 body += fmt!("let %s = pipes::entangle();\n", pat);
             }
             body += fmt!("let message = %s::%s(%s);\n",
-                         *this.proto.name,
-                         *self.name(),
-                         str::connect(vec::append_one(arg_names, @~"s")
-                                      .map(|x| *x),
+                         this.proto.name,
+                         self.name(),
+                         str::connect(vec::append_one(
+                             arg_names.map(|x| cx.str_of(x)), ~"s"),
                                       ~", "));
 
             if !try {
-                body += fmt!{"pipes::send(pipe, message);\n"};
+                body += fmt!("pipes::send(pipe, message);\n");
                 // return the new channel
                 body += ~"c }";
             }
@@ -110,17 +109,15 @@ impl message: gen_send {
 
             let body = cx.parse_expr(body);
 
-            let mut rty = cx.ty_path_ast_builder(path(next.data_name(),
+            let mut rty = cx.ty_path_ast_builder(path(~[next.data_name()],
                                                       span)
                                                  .add_tys(next_tys));
             if try {
                 rty = cx.ty_option(rty);
             }
 
-            let name = if try {
-                @(~"try_" + *self.name())
-            }
-            else { self.name() };
+            let name = cx.ident_of(if try { ~"try_" + self.name()
+                                          } else { self.name() } );
 
             cx.item_fn_poly(name,
                             args_ast,
@@ -129,18 +126,18 @@ impl message: gen_send {
                             cx.expr_block(body))
           }
 
-            message(id, span, tys, this, none) => {
-                debug!{"pipec: no next state"};
-                let arg_names = tys.mapi(|i, _ty| @(~"x_" + i.to_str()));
+            message(_id, span, tys, this, None) => {
+                debug!("pipec: no next state");
+                let arg_names = tys.mapi(|i, _ty| (~"x_" + i.to_str()));
 
                 let args_ast = (arg_names, tys).map(
-                    |n, t| cx.arg_mode(n, t, ast::by_copy)
+                    |n, t| cx.arg_mode(cx.ident_of(n), t, ast::by_copy)
                 );
 
                 let args_ast = vec::append(
-                    ~[cx.arg_mode(@~"pipe",
+                    ~[cx.arg_mode(cx.ident_of(~"pipe"),
                                   cx.ty_path_ast_builder(
-                                      path(this.data_name(), span)
+                                      path(~[this.data_name()], span)
                                       .add_tys(cx.ty_vars(this.ty_params))),
                                   ast::by_copy)],
                     args_ast);
@@ -149,17 +146,17 @@ impl message: gen_send {
                     ~""
                 }
                 else {
-                    ~"(" + str::connect(arg_names.map(|x| *x), ~", ") + ~")"
+                    ~"(" + str::connect(arg_names, ~", ") + ~")"
                 };
 
                 let mut body = ~"{ ";
-                body += fmt!{"let message = %s::%s%s;\n",
-                             *this.proto.name,
-                             *self.name(),
-                             message_args};
+                body += fmt!("let message = %s::%s%s;\n",
+                             this.proto.name,
+                             self.name(),
+                             message_args);
 
                 if !try {
-                    body += fmt!{"pipes::send(pipe, message);\n"};
+                    body += fmt!("pipes::send(pipe, message);\n");
                     body += ~" }";
                 } else {
                     body += fmt!("if pipes::send(pipe, message) { \
@@ -170,11 +167,11 @@ impl message: gen_send {
                 let body = cx.parse_expr(body);
 
                 let name = if try {
-                    @(~"try_" + *self.name())
+                    ~"try_" + self.name()
                 }
                 else { self.name() };
 
-                cx.item_fn_poly(name,
+                cx.item_fn_poly(cx.ident_of(name),
                                 args_ast,
                                 if try {
                                     cx.ty_option(cx.ty_nil_ast_builder())
@@ -188,14 +185,14 @@ impl message: gen_send {
         }
 
     fn to_ty(cx: ext_ctxt) -> @ast::ty {
-        cx.ty_path_ast_builder(path(self.name(), self.span())
+        cx.ty_path_ast_builder(path(~[cx.ident_of(self.name())], self.span())
           .add_tys(cx.ty_vars(self.get_params())))
     }
 }
 
 impl state: to_type_decls {
     fn to_type_decls(cx: ext_ctxt) -> ~[@ast::item] {
-        debug!{"pipec: to_type_decls"};
+        debug!("pipec: to_type_decls");
         // This compiles into two different type declarations. Say the
         // state is called ping. This will generate both `ping` and
         // `ping_message`. The first contains data that the user cares
@@ -207,38 +204,41 @@ impl state: to_type_decls {
         let mut items_msg = ~[];
 
         for self.messages.each |m| {
-            let message(name, _span, tys, this, next) = m;
+            let message(name, span, tys, this, next) = m;
 
             let tys = match next {
-              some({state: next, tys: next_tys}) => {
+              Some({state: next, tys: next_tys}) => {
                 let next = this.proto.get_state(next);
-                let next_name = next.data_name();
+                let next_name = cx.str_of(next.data_name());
 
                 let dir = match this.dir {
-                  send => @~"server",
-                  recv => @~"client"
+                  send => ~"server",
+                  recv => ~"client"
                 };
 
                 vec::append_one(tys,
-                                cx.ty_path_ast_builder((dir + next_name)
-                                           .add_tys(next_tys)))
+                                cx.ty_path_ast_builder(
+                                    path(~[cx.ident_of(dir),
+                                           cx.ident_of(next_name)], span)
+                                    .add_tys(next_tys)))
               }
-              none => tys
+              None => tys
             };
 
-            let v = cx.variant(name, tys);
+            let v = cx.variant(cx.ident_of(name), span, tys);
 
             vec::push(items_msg, v);
         }
 
         ~[cx.item_enum_poly(name,
+                            self.span,
                             ast::enum_def({ variants: items_msg,
-                                            common: none }),
+                                            common: None }),
                             self.ty_params)]
     }
 
     fn to_endpoint_decls(cx: ext_ctxt, dir: direction) -> ~[@ast::item] {
-        debug!{"pipec: to_endpoint_decls"};
+        debug!("pipec: to_endpoint_decls");
         let dir = match dir {
           send => (*self).dir,
           recv => (*self).dir.reverse()
@@ -255,10 +255,15 @@ impl state: to_type_decls {
             vec::push(items,
                       cx.item_ty_poly(
                           self.data_name(),
+                          self.span,
                           cx.ty_path_ast_builder(
-                              (@~"pipes" + @(dir.to_str() + ~"_packet"))
+                              path(~[cx.ident_of(~"pipes"),
+                                     cx.ident_of(dir.to_str() + ~"Packet")],
+                                   empty_span())
                               .add_ty(cx.ty_path_ast_builder(
-                                  (self.proto.name + self.data_name())
+                                  path(~[cx.ident_of(self.proto.name),
+                                         self.data_name()],
+                                       empty_span())
                                   .add_tys(cx.ty_vars(self.ty_params))))),
                           self.ty_params));
         }
@@ -266,11 +271,16 @@ impl state: to_type_decls {
             vec::push(items,
                       cx.item_ty_poly(
                           self.data_name(),
+                          self.span,
                           cx.ty_path_ast_builder(
-                              (@~"pipes" + @(dir.to_str()
-                                             + ~"_packet_buffered"))
+                              path(~[cx.ident_of(~"pipes"),
+                                     cx.ident_of(dir.to_str()
+                                                 + ~"PacketBuffered")],
+                                  empty_span())
                               .add_tys(~[cx.ty_path_ast_builder(
-                                  (self.proto.name + self.data_name())
+                                  path(~[cx.ident_of(self.proto.name),
+                                         self.data_name()],
+                                       empty_span())
                                   .add_tys(cx.ty_vars(self.ty_params))),
                                          self.proto.buffer_ty_path(cx)])),
                           self.ty_params));
@@ -283,7 +293,7 @@ impl protocol: gen_init {
     fn gen_init(cx: ext_ctxt) -> @ast::item {
         let ext_cx = cx;
 
-        debug!{"gen_init"};
+        debug!("gen_init");
         let start_state = self.states[0];
 
         let body = if !self.is_bounded() {
@@ -310,27 +320,28 @@ impl protocol: gen_init {
             }
         };
 
-        cx.parse_item(fmt!{"fn init%s() -> (client::%s, server::%s)\
-                            { import pipes::has_buffer; %s }",
-                           start_state.ty_params.to_source(),
-                           start_state.to_ty(cx).to_source(),
-                           start_state.to_ty(cx).to_source(),
-                           body.to_source()})
+        cx.parse_item(fmt!("fn init%s() -> (client::%s, server::%s)\
+                            { import pipes::HasBuffer; %s }",
+                           start_state.ty_params.to_source(cx),
+                           start_state.to_ty(cx).to_source(cx),
+                           start_state.to_ty(cx).to_source(cx),
+                           body.to_source(cx)))
     }
 
     fn gen_buffer_init(ext_cx: ext_ctxt) -> @ast::expr {
         ext_cx.rec(self.states.map_to_vec(|s| {
             let fty = s.to_ty(ext_cx);
-            ext_cx.field_imm(s.name, #ast { pipes::mk_packet::<$(fty)>() })
+            ext_cx.field_imm(ext_cx.ident_of(s.name),
+                             #ast { pipes::mk_packet::<$(fty)>() })
         }))
     }
 
     fn gen_init_bounded(ext_cx: ext_ctxt) -> @ast::expr {
-        debug!{"gen_init_bounded"};
+        debug!("gen_init_bounded");
         let buffer_fields = self.gen_buffer_init(ext_cx);
 
         let buffer = #ast {
-            ~{header: pipes::buffer_header(),
+            ~{header: pipes::BufferHeader(),
               data: $(buffer_fields)}
         };
 
@@ -338,9 +349,11 @@ impl protocol: gen_init {
             ext_cx.block(
                 self.states.map_to_vec(
                     |s| ext_cx.parse_stmt(
-                        fmt!{"data.%s.set_buffer(buffer)", *s.name})),
+                        fmt!("data.%s.set_buffer_(buffer)",
+                             s.name))),
                 ext_cx.parse_expr(
-                    fmt!{"ptr::addr_of(data.%s)", *self.states[0].name})));
+                    fmt!("ptr::addr_of(data.%s)",
+                         self.states[0].name))));
 
         #ast {{
             let buffer = $(buffer);
@@ -354,14 +367,14 @@ impl protocol: gen_init {
         let mut params: ~[ast::ty_param] = ~[];
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
-                match params.find(|tpp| *tp.ident == *tpp.ident) {
-                  none => vec::push(params, tp),
+                match params.find(|tpp| tp.ident == tpp.ident) {
+                  None => vec::push(params, tp),
                   _ => ()
                 }
             }
         }
 
-        cx.ty_path_ast_builder(path(@~"__Buffer", self.span)
+        cx.ty_path_ast_builder(path(~[cx.ident_of(~"__Buffer")], self.span)
                                .add_tys(cx.ty_vars(params)))
     }
 
@@ -370,20 +383,21 @@ impl protocol: gen_init {
         let mut params: ~[ast::ty_param] = ~[];
         let fields = do (copy self.states).map_to_vec |s| {
             for s.ty_params.each |tp| {
-                match params.find(|tpp| *tp.ident == *tpp.ident) {
-                  none => vec::push(params, tp),
+                match params.find(|tpp| tp.ident == tpp.ident) {
+                  None => vec::push(params, tp),
                   _ => ()
                 }
             }
             let ty = s.to_ty(cx);
             let fty = #ast[ty] {
-                pipes::packet<$(ty)>
+                pipes::Packet<$(ty)>
             };
-            cx.ty_field_imm(s.name, fty)
+            cx.ty_field_imm(cx.ident_of(s.name), fty)
         };
 
         cx.item_ty_poly(
-            @~"__Buffer",
+            cx.ident_of(~"__Buffer"),
+            cx.empty_span(),
             cx.ty_rec(fields),
             params)
     }
@@ -406,54 +420,56 @@ impl protocol: gen_init {
         }
 
         vec::push(items,
-                  cx.item_mod(@~"client",
+                  cx.item_mod(cx.ident_of(~"client"),
+                              self.span,
                               client_states));
         vec::push(items,
-                  cx.item_mod(@~"server",
+                  cx.item_mod(cx.ident_of(~"server"),
+                              self.span,
                               server_states));
 
-        cx.item_mod(self.name, items)
+        cx.item_mod(cx.ident_of(self.name), self.span, items)
     }
 }
 
 trait to_source {
     // Takes a thing and generates a string containing rust code for it.
-    fn to_source() -> ~str;
+    fn to_source(cx: ext_ctxt) -> ~str;
 }
 
 impl @ast::item: to_source {
-    fn to_source() -> ~str {
-        item_to_str(self)
+    fn to_source(cx: ext_ctxt) -> ~str {
+        item_to_str(self, cx.parse_sess().interner)
     }
 }
 
 impl ~[@ast::item]: to_source {
-    fn to_source() -> ~str {
-        str::connect(self.map(|i| i.to_source()), ~"\n\n")
+    fn to_source(cx: ext_ctxt) -> ~str {
+        str::connect(self.map(|i| i.to_source(cx)), ~"\n\n")
     }
 }
 
 impl @ast::ty: to_source {
-    fn to_source() -> ~str {
-        ty_to_str(self)
+    fn to_source(cx: ext_ctxt) -> ~str {
+        ty_to_str(self, cx.parse_sess().interner)
     }
 }
 
 impl ~[@ast::ty]: to_source {
-    fn to_source() -> ~str {
-        str::connect(self.map(|i| i.to_source()), ~", ")
+    fn to_source(cx: ext_ctxt) -> ~str {
+        str::connect(self.map(|i| i.to_source(cx)), ~", ")
     }
 }
 
 impl ~[ast::ty_param]: to_source {
-    fn to_source() -> ~str {
-        pprust::typarams_to_str(self)
+    fn to_source(cx: ext_ctxt) -> ~str {
+        pprust::typarams_to_str(self, cx.parse_sess().interner)
     }
 }
 
 impl @ast::expr: to_source {
-    fn to_source() -> ~str {
-        pprust::expr_to_str(self)
+    fn to_source(cx: ext_ctxt) -> ~str {
+        pprust::expr_to_str(self, cx.parse_sess().interner)
     }
 }
 
@@ -472,9 +488,9 @@ impl ext_ctxt: ext_ctxt_parse_utils {
             ~[],
             self.parse_sess());
         match res {
-          some(ast) => ast,
-          none => {
-            error!{"Parse error with ```\n%s\n```", s};
+          Some(ast) => ast,
+          None => {
+            error!("Parse error with ```\n%s\n```", s);
             fail
           }
         }

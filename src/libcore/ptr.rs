@@ -1,7 +1,7 @@
 //! Unsafe pointer utility functions
 
 export addr_of;
-export assimilate;
+export to_unsafe_ptr;
 export mut_addr_of;
 export offset;
 export const_offset;
@@ -18,6 +18,7 @@ export buf_len;
 export position;
 export Ptr;
 
+import cmp::{Eq, Ord};
 import libc::{c_void, size_t};
 
 #[nolink]
@@ -44,7 +45,7 @@ pure fn addr_of<T>(val: T) -> *T { unchecked { rusti::addr_of(val) } }
 #[inline(always)]
 pure fn mut_addr_of<T>(val: T) -> *mut T {
     unsafe {
-        unsafe::reinterpret_cast(rusti::addr_of(val))
+        unsafe::reinterpret_cast(&rusti::addr_of(val))
     }
 }
 
@@ -88,7 +89,7 @@ unsafe fn position<T>(buf: *T, f: fn(T) -> bool) -> uint {
 
 /// Create an unsafe null pointer
 #[inline(always)]
-pure fn null<T>() -> *T { unsafe { unsafe::reinterpret_cast(0u) } }
+pure fn null<T>() -> *T { unsafe { unsafe::reinterpret_cast(&0u) } }
 
 /// Returns true if the pointer is equal to the null pointer.
 pure fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
@@ -135,9 +136,10 @@ unsafe fn memset<T>(dst: *mut T, c: int, count: uint)  {
   ("assimilate" because it makes the pointer forget its region.)
 */
 #[inline(always)]
-fn assimilate<T>(thing: &T) -> *T unsafe {
-    unsafe::reinterpret_cast(thing)
+fn to_unsafe_ptr<T>(thing: &T) -> *T unsafe {
+    unsafe::reinterpret_cast(&thing)
 }
+
 /**
   Cast a region pointer - &T - to a uint.
   This is safe, but is implemented with an unsafe block due to
@@ -147,7 +149,7 @@ fn assimilate<T>(thing: &T) -> *T unsafe {
 */
 #[inline(always)]
 fn to_uint<T>(thing: &T) -> uint unsafe {
-    unsafe::reinterpret_cast(thing)
+    unsafe::reinterpret_cast(&thing)
 }
 
 /// Determine if two borrowed pointers point to the same thing.
@@ -170,13 +172,61 @@ impl<T> *T: Ptr {
     pure fn is_not_null() -> bool { is_not_null(self) }
 }
 
+// Equality for pointers
+impl<T> *const T : Eq {
+    pure fn eq(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(&self);
+        let b: uint = unsafe::reinterpret_cast(&other);
+        return a == b;
+    }
+}
+
+// Comparison for pointers
+impl<T> *const T : Ord {
+    pure fn lt(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(&self);
+        let b: uint = unsafe::reinterpret_cast(&other);
+        return a < b;
+    }
+    pure fn le(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(&self);
+        let b: uint = unsafe::reinterpret_cast(&other);
+        return a <= b;
+    }
+    pure fn ge(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(&self);
+        let b: uint = unsafe::reinterpret_cast(&other);
+        return a >= b;
+    }
+    pure fn gt(&&other: *const T) -> bool unsafe {
+        let a: uint = unsafe::reinterpret_cast(&self);
+        let b: uint = unsafe::reinterpret_cast(&other);
+        return a > b;
+    }
+}
+
+// Equality for region pointers
+impl<T:Eq> &const T : Eq {
+    pure fn eq(&&other: &const T) -> bool {
+        return *self == *other;
+    }
+}
+
+// Comparison for region pointers
+impl<T:Ord> &const T : Ord {
+    pure fn lt(&&other: &const T) -> bool { *self < *other }
+    pure fn le(&&other: &const T) -> bool { *self <= *other }
+    pure fn ge(&&other: &const T) -> bool { *self >= *other }
+    pure fn gt(&&other: &const T) -> bool { *self > *other }
+}
+
 #[test]
 fn test() {
     unsafe {
         type Pair = {mut fst: int, mut snd: int};
         let p = {mut fst: 10, mut snd: 20};
         let pptr: *mut Pair = mut_addr_of(p);
-        let iptr: *mut int = unsafe::reinterpret_cast(pptr);
+        let iptr: *mut int = unsafe::reinterpret_cast(&pptr);
         assert (*iptr == 10);;
         *iptr = 30;
         assert (*iptr == 30);

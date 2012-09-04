@@ -51,7 +51,7 @@ fn from_str<T>(source: ~str, owner: srv_owner<T>) -> T {
 }
 
 fn from_file<T>(file: ~str, owner: srv_owner<T>) -> T {
-    run(owner, file, parse::from_file_sess)
+    run(owner, file, |sess, f| parse::from_file_sess(sess, &Path(f)))
 }
 
 fn run<T>(owner: srv_owner<T>, source: ~str, +parse: parser) -> T {
@@ -92,8 +92,8 @@ fn exec<T:send>(
     srv: srv,
     +f: fn~(ctxt: ctxt) -> T
 ) -> T {
-    let po = comm::port();
-    let ch = comm::chan(po);
+    let po = comm::Port();
+    let ch = comm::Chan(po);
     let msg = handle_request(fn~(move f, ctxt: ctxt) {
         comm::send(ch, f(ctxt))
     });
@@ -156,17 +156,17 @@ fn build_error_handlers(
         fn note(msg: ~str) { self.inner.note(msg) }
         fn bug(msg: ~str) -> ! { self.inner.bug(msg) }
         fn unimpl(msg: ~str) -> ! { self.inner.unimpl(msg) }
-        fn emit(cmsp: option<(codemap::codemap, codemap::span)>,
+        fn emit(cmsp: Option<(codemap::codemap, codemap::span)>,
                 msg: ~str, lvl: diagnostic::level) {
             self.inner.emit(cmsp, msg, lvl)
         }
     }
 
-    let emitter = fn@(cmsp: option<(codemap::codemap, codemap::span)>,
+    let emitter = fn@(cmsp: Option<(codemap::codemap, codemap::span)>,
                        msg: ~str, lvl: diagnostic::level) {
         diagnostic::emit(cmsp, msg, lvl);
     };
-    let inner_handler = diagnostic::mk_handler(some(emitter));
+    let inner_handler = diagnostic::mk_handler(Some(emitter));
     let handler = {
         inner: inner_handler,
     };

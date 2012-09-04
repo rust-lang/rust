@@ -16,17 +16,18 @@ fn run(config: config, testfile: ~str) {
         // We're going to be dumping a lot of info. Start on a new line.
         io::stdout().write_str(~"\n\n");
     }
-    debug!{"running %s", testfile};
-    let props = load_props(testfile);
+    let testfile = Path(testfile);
+    debug!("running %s", testfile.to_str());
+    let props = load_props(&testfile);
     match config.mode {
-      mode_compile_fail => run_cfail_test(config, props, testfile),
-      mode_run_fail => run_rfail_test(config, props, testfile),
-      mode_run_pass => run_rpass_test(config, props, testfile),
-      mode_pretty => run_pretty_test(config, props, testfile)
+      mode_compile_fail => run_cfail_test(config, props, &testfile),
+      mode_run_fail => run_rfail_test(config, props, &testfile),
+      mode_run_pass => run_rpass_test(config, props, &testfile),
+      mode_pretty => run_pretty_test(config, props, &testfile)
     }
 }
 
-fn run_cfail_test(config: config, props: test_props, testfile: ~str) {
+fn run_cfail_test(config: config, props: test_props, testfile: &Path) {
     let procres = compile_test(config, props, testfile);
 
     if procres.status == 0 {
@@ -46,12 +47,18 @@ fn run_cfail_test(config: config, props: test_props, testfile: ~str) {
     }
 }
 
-fn run_rfail_test(config: config, props: test_props, testfile: ~str) {
-    let mut procres = compile_test(config, props, testfile);
+fn run_rfail_test(config: config, props: test_props, testfile: &Path) {
+    let procres = if !config.jit {
+        let procres = compile_test(config, props, testfile);
 
-    if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
+        if procres.status != 0 {
+            fatal_procres(~"compilation failed!", procres);
+        }
 
-    procres = exec_compiled_test(config, props, testfile);
+        exec_compiled_test(config, props, testfile)
+    } else {
+        jit_test(config, props, testfile)
+    };
 
     // The value our Makefile configures valgrind to return on failure
     const valgrind_err: int = 100;
@@ -68,39 +75,49 @@ fn check_correct_failure_status(procres: procres) {
     const rust_err: int = 101;
     if procres.status != rust_err {
         fatal_procres(
-            fmt!{"failure produced the wrong error code: %d",
-                 procres.status},
+            fmt!("failure produced the wrong error code: %d",
+                 procres.status),
             procres);
     }
 }
 
-fn run_rpass_test(config: config, props: test_props, testfile: ~str) {
-    let mut procres = compile_test(config, props, testfile);
+fn run_rpass_test(config: config, props: test_props, testfile: &Path) {
+    if !config.jit {
+        let mut procres = compile_test(config, props, testfile);
 
-    if procres.status != 0 { fatal_procres(~"compilation failed!", procres); }
+        if procres.status != 0 {
+            fatal_procres(~"compilation failed!", procres);
+        }
 
-    procres = exec_compiled_test(config, props, testfile);
+        procres = exec_compiled_test(config, props, testfile);
 
-    if procres.status != 0 { fatal_procres(~"test run failed!", procres); }
+        if procres.status != 0 {
+            fatal_procres(~"test run failed!", procres);
+        }
+    } else {
+        let mut procres = jit_test(config, props, testfile);
+
+        if procres.status != 0 { fatal_procres(~"jit failed!", procres); }
+    }
 }
 
-fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
+fn run_pretty_test(config: config, props: test_props, testfile: &Path) {
     if option::is_some(props.pp_exact) {
         logv(config, ~"testing for exact pretty-printing");
     } else { logv(config, ~"testing for converging pretty-printing"); }
 
     let rounds =
-        match props.pp_exact { option::some(_) => 1, option::none => 2 };
+        match props.pp_exact { option::Some(_) => 1, option::None => 2 };
 
     let mut srcs = ~[result::get(io::read_whole_file_str(testfile))];
 
     let mut round = 0;
     while round < rounds {
-        logv(config, fmt!{"pretty-printing round %d", round});
+        logv(config, fmt!("pretty-printing round %d", round));
         let procres = print_source(config, testfile, srcs[round]);
 
         if procres.status != 0 {
-            fatal_procres(fmt!{"pretty-printing failed in round %d", round},
+            fatal_procres(fmt!("pretty-printing failed in round %d", round),
                           procres);
         }
 
@@ -110,11 +127,11 @@ fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
 
     let mut expected =
         match props.pp_exact {
-          option::some(file) => {
-            let filepath = path::connect(path::dirname(testfile), file);
-            result::get(io::read_whole_file_str(filepath))
+          option::Some(file) => {
+            let filepath = testfile.dir_path().push_rel(&file);
+            result::get(io::read_whole_file_str(&filepath))
           }
-          option::none => { srcs[vec::len(srcs) - 2u] }
+          option::None => { srcs[vec::len(srcs) - 2u] }
         };
     let mut actual = srcs[vec::len(srcs) - 1u];
 
@@ -136,22 +153,22 @@ fn run_pretty_test(config: config, props: test_props, testfile: ~str) {
 
     return;
 
-    fn print_source(config: config, testfile: ~str, src: ~str) -> procres {
+    fn print_source(config: config, testfile: &Path, src: ~str) -> procres {
         compose_and_run(config, testfile, make_pp_args(config, testfile),
-                        ~[], config.compile_lib_path, option::some(src))
+                        ~[], config.compile_lib_path, option::Some(src))
     }
 
-    fn make_pp_args(config: config, _testfile: ~str) -> procargs {
+    fn make_pp_args(config: config, _testfile: &Path) -> procargs {
         let prog = config.rustc_path;
         let args = ~[~"-", ~"--pretty", ~"normal"];
-        return {prog: prog, args: args};
+        return {prog: prog.to_str(), args: args};
     }
 
     fn compare_source(expected: ~str, actual: ~str) {
         if expected != actual {
             error(~"pretty-printed source does not match expected source");
             let msg =
-                fmt!{"\n\
+                fmt!("\n\
 expected:\n\
 ------------------------------------------\n\
 %s\n\
@@ -161,35 +178,37 @@ actual:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-                     expected, actual};
+                     expected, actual);
             io::stdout().write_str(msg);
             fail;
         }
     }
 
     fn typecheck_source(config: config, props: test_props,
-                        testfile: ~str, src: ~str) -> procres {
+                        testfile: &Path, src: ~str) -> procres {
         compose_and_run_compiler(
             config, props, testfile,
             make_typecheck_args(config, testfile),
-            option::some(src))
+            option::Some(src))
     }
 
-    fn make_typecheck_args(config: config, testfile: ~str) -> procargs {
+    fn make_typecheck_args(config: config, testfile: &Path) -> procargs {
         let prog = config.rustc_path;
         let mut args = ~[~"-",
-                         ~"--no-trans", ~"--lib", ~"-L", config.build_base,
-                         ~"-L", aux_output_dir_name(config, testfile)];
+                         ~"--no-trans", ~"--lib",
+                         ~"-L", config.build_base.to_str(),
+                         ~"-L",
+                         aux_output_dir_name(config, testfile).to_str()];
         args += split_maybe_args(config.rustcflags);
-        return {prog: prog, args: args};
+        return {prog: prog.to_str(), args: args};
     }
 }
 
 fn check_error_patterns(props: test_props,
-                        testfile: ~str,
+                        testfile: &Path,
                         procres: procres) {
     if vec::is_empty(props.error_patterns) {
-        fatal(~"no error pattern specified in " + testfile);
+        fatal(~"no error pattern specified in " + testfile.to_str());
     }
 
     if procres.status == 0 {
@@ -201,10 +220,10 @@ fn check_error_patterns(props: test_props,
     let mut done = false;
     for str::split_char(procres.stderr, '\n').each |line| {
         if str::contains(line, next_err_pat) {
-            debug!{"found error pattern %s", next_err_pat};
+            debug!("found error pattern %s", next_err_pat);
             next_err_idx += 1u;
             if next_err_idx == vec::len(props.error_patterns) {
-                debug!{"found all error patterns"};
+                debug!("found all error patterns");
                 done = true;
                 break;
             }
@@ -217,18 +236,18 @@ fn check_error_patterns(props: test_props,
         vec::slice(props.error_patterns, next_err_idx,
                    vec::len(props.error_patterns));
     if vec::len(missing_patterns) == 1u {
-        fatal_procres(fmt!{"error pattern '%s' not found!",
-                           missing_patterns[0]}, procres);
+        fatal_procres(fmt!("error pattern '%s' not found!",
+                           missing_patterns[0]), procres);
     } else {
         for missing_patterns.each |pattern| {
-            error(fmt!{"error pattern '%s' not found!", pattern});
+            error(fmt!("error pattern '%s' not found!", pattern));
         }
         fatal_procres(~"multiple error patterns not found", procres);
     }
 }
 
 fn check_expected_errors(expected_errors: ~[errors::expected_error],
-                         testfile: ~str,
+                         testfile: &Path,
                          procres: procres) {
 
     // true if we found the error in question
@@ -240,7 +259,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
     }
 
     let prefixes = vec::map(expected_errors, |ee| {
-        fmt!{"%s:%u:", testfile, ee.line}
+        fmt!("%s:%u:", testfile.to_str(), ee.line)
     });
 
     // Scan and extract our error/warning messages,
@@ -253,8 +272,8 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
         let mut was_expected = false;
         for vec::eachi(expected_errors) |i, ee| {
             if !found_flags[i] {
-                debug!{"prefix=%s ee.kind=%s ee.msg=%s line=%s",
-                       prefixes[i], ee.kind, ee.msg, line};
+                debug!("prefix=%s ee.kind=%s ee.msg=%s line=%s",
+                       prefixes[i], ee.kind, ee.msg, line);
                 if (str::starts_with(line, prefixes[i]) &&
                     str::contains(line, ee.kind) &&
                     str::contains(line, ee.msg)) {
@@ -272,7 +291,7 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
 
         if !was_expected && (str::contains(line, ~"error") ||
                              str::contains(line, ~"warning")) {
-            fatal_procres(fmt!{"unexpected error pattern '%s'!", line},
+            fatal_procres(fmt!("unexpected error pattern '%s'!", line),
                           procres);
         }
     }
@@ -280,8 +299,8 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
     for uint::range(0u, vec::len(found_flags)) |i| {
         if !found_flags[i] {
             let ee = expected_errors[i];
-            fatal_procres(fmt!{"expected %s on line %u not found: %s",
-                               ee.kind, ee.line, ee.msg}, procres);
+            fatal_procres(fmt!("expected %s on line %u not found: %s",
+                               ee.kind, ee.line, ee.msg), procres);
         }
     }
 }
@@ -291,46 +310,57 @@ type procargs = {prog: ~str, args: ~[~str]};
 type procres = {status: int, stdout: ~str, stderr: ~str, cmdline: ~str};
 
 fn compile_test(config: config, props: test_props,
-                testfile: ~str) -> procres {
-    let link_args = ~[~"-L", aux_output_dir_name(config, testfile)];
+                testfile: &Path) -> procres {
+    compile_test_(config, props, testfile, [])
+}
+
+fn jit_test(config: config, props: test_props, testfile: &Path) -> procres {
+    compile_test_(config, props, testfile, [~"--jit"])
+}
+
+fn compile_test_(config: config, props: test_props,
+                 testfile: &Path, extra_args: &[~str]) -> procres {
+    let link_args = ~[~"-L", aux_output_dir_name(config, testfile).to_str()];
     compose_and_run_compiler(
         config, props, testfile,
-        make_compile_args(config, props, link_args,
+        make_compile_args(config, props, link_args + extra_args,
                           make_exe_name, testfile),
-        none)
+        None)
 }
 
 fn exec_compiled_test(config: config, props: test_props,
-                      testfile: ~str) -> procres {
+                      testfile: &Path) -> procres {
     compose_and_run(config, testfile,
                     make_run_args(config, props, testfile),
                     props.exec_env,
-                    config.run_lib_path, option::none)
+                    config.run_lib_path, option::None)
 }
 
 fn compose_and_run_compiler(
     config: config,
     props: test_props,
-    testfile: ~str,
+    testfile: &Path,
     args: procargs,
-    input: option<~str>) -> procres {
+    input: Option<~str>) -> procres {
 
     if props.aux_builds.is_not_empty() {
-        ensure_dir(aux_output_dir_name(config, testfile));
+        ensure_dir(&aux_output_dir_name(config, testfile));
     }
 
-    let extra_link_args = ~[~"-L", aux_output_dir_name(config, testfile)];
+    let extra_link_args = ~[~"-L",
+                            aux_output_dir_name(config, testfile).to_str()];
 
     do vec::iter(props.aux_builds) |rel_ab| {
-        let abs_ab = path::connect(config.aux_base, rel_ab);
+        let abs_ab = config.aux_base.push_rel(&Path(rel_ab));
         let aux_args =
             make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
-                              |a,b| make_lib_name(a, b, testfile), abs_ab);
-        let auxres = compose_and_run(config, abs_ab, aux_args, ~[],
-                                     config.compile_lib_path, option::none);
+                              |a,b| make_lib_name(a, b, testfile), &abs_ab);
+        let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
+                                     config.compile_lib_path, option::None);
         if auxres.status != 0 {
             fatal_procres(
-                fmt!{"auxiliary build of %s failed to compile: ", abs_ab},
+                fmt!("auxiliary build of %s failed to compile: ",
+                     abs_ab.to_str()),
                 auxres);
         }
     }
@@ -339,82 +369,84 @@ fn compose_and_run_compiler(
                     config.compile_lib_path, input)
 }
 
-fn ensure_dir(path: Path) {
+fn ensure_dir(path: &Path) {
     if os::path_is_dir(path) { return; }
     if !os::make_dir(path, 0x1c0i32) {
-        fail fmt!{"can't make dir %s", path};
+        fail fmt!("can't make dir %s", path.to_str());
     }
 }
 
-fn compose_and_run(config: config, testfile: ~str,
+fn compose_and_run(config: config, testfile: &Path,
                    procargs: procargs,
                    procenv: ~[(~str, ~str)],
                    lib_path: ~str,
-                   input: option<~str>) -> procres {
+                   input: Option<~str>) -> procres {
     return program_output(config, testfile, lib_path,
                        procargs.prog, procargs.args, procenv, input);
 }
 
 fn make_compile_args(config: config, props: test_props, extras: ~[~str],
-                     xform: fn(config, ~str) -> ~str, testfile: ~str) ->
-   procargs {
+                     xform: fn(config, (&Path)) -> Path,
+                     testfile: &Path) -> procargs {
     let prog = config.rustc_path;
-    let mut args = ~[testfile, ~"-o", xform(config, testfile),
-                    ~"-L", config.build_base] + extras;
+    let mut args = ~[testfile.to_str(),
+                     ~"-o", xform(config, testfile).to_str(),
+                     ~"-L", config.build_base.to_str()]
+        + extras;
     args += split_maybe_args(config.rustcflags);
     args += split_maybe_args(props.compile_flags);
-    return {prog: prog, args: args};
+    return {prog: prog.to_str(), args: args};
 }
 
-fn make_lib_name(config: config, auxfile: ~str, testfile: ~str) -> ~str {
+fn make_lib_name(config: config, auxfile: &Path, testfile: &Path) -> Path {
     // what we return here is not particularly important, as it
     // happens; rustc ignores everything except for the directory.
     let auxname = output_testname(auxfile);
-    path::connect(aux_output_dir_name(config, testfile), auxname)
+    aux_output_dir_name(config, testfile).push_rel(&auxname)
 }
 
-fn make_exe_name(config: config, testfile: ~str) -> ~str {
-    output_base_name(config, testfile) + os::exe_suffix()
+fn make_exe_name(config: config, testfile: &Path) -> Path {
+    Path(output_base_name(config, testfile).to_str() + os::exe_suffix())
 }
 
-fn make_run_args(config: config, _props: test_props, testfile: ~str) ->
+fn make_run_args(config: config, _props: test_props, testfile: &Path) ->
    procargs {
     let toolargs = {
             // If we've got another tool to run under (valgrind),
             // then split apart its command
             let runtool =
                 match config.runtool {
-                  option::some(s) => option::some(s),
-                  option::none => option::none
+                  option::Some(s) => option::Some(s),
+                  option::None => option::None
                 };
             split_maybe_args(runtool)
         };
 
-    let args = toolargs + ~[make_exe_name(config, testfile)];
+    let args = toolargs + ~[make_exe_name(config, testfile).to_str()];
     return {prog: args[0], args: vec::slice(args, 1u, vec::len(args))};
 }
 
-fn split_maybe_args(argstr: option<~str>) -> ~[~str] {
+fn split_maybe_args(argstr: Option<~str>) -> ~[~str] {
     fn rm_whitespace(v: ~[~str]) -> ~[~str] {
-        fn flt(&&s: ~str) -> option<~str> {
-          if !str::is_whitespace(s) { option::some(s) } else { option::none }
+        fn flt(&&s: ~str) -> Option<~str> {
+          if !str::is_whitespace(s) { option::Some(s) } else { option::None }
         }
         vec::filter_map(v, flt)
     }
 
     match argstr {
-      option::some(s) => rm_whitespace(str::split_char(s, ' ')),
-      option::none => ~[]
+      option::Some(s) => rm_whitespace(str::split_char(s, ' ')),
+      option::None => ~[]
     }
 }
 
-fn program_output(config: config, testfile: ~str, lib_path: ~str, prog: ~str,
+fn program_output(config: config, testfile: &Path, lib_path: ~str, prog: ~str,
                   args: ~[~str], env: ~[(~str, ~str)],
-                  input: option<~str>) -> procres {
+                  input: Option<~str>) -> procres {
     let cmdline =
         {
             let cmdline = make_cmdline(lib_path, prog, args);
-            logv(config, fmt!{"executing %s", cmdline});
+            logv(config, fmt!("executing %s", cmdline));
             cmdline
         };
     let res = procsrv::run(lib_path, prog, args, env, input);
@@ -430,58 +462,57 @@ fn program_output(config: config, testfile: ~str, lib_path: ~str, prog: ~str,
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
 fn make_cmdline(_libpath: ~str, prog: ~str, args: ~[~str]) -> ~str {
-    fmt!{"%s %s", prog, str::connect(args, ~" ")}
+    fmt!("%s %s", prog, str::connect(args, ~" "))
 }
 
 #[cfg(target_os = "win32")]
 fn make_cmdline(libpath: ~str, prog: ~str, args: ~[~str]) -> ~str {
-    fmt!{"%s %s %s", lib_path_cmd_prefix(libpath), prog,
-         str::connect(args, ~" ")}
+    fmt!("%s %s %s", lib_path_cmd_prefix(libpath), prog,
+         str::connect(args, ~" "))
 }
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
 fn lib_path_cmd_prefix(path: ~str) -> ~str {
-    fmt!{"%s=\"%s\"", util::lib_path_env_var(), util::make_new_path(path)}
+    fmt!("%s=\"%s\"", util::lib_path_env_var(), util::make_new_path(path))
 }
 
-fn dump_output(config: config, testfile: ~str, out: ~str, err: ~str) {
+fn dump_output(config: config, testfile: &Path, out: ~str, err: ~str) {
     dump_output_file(config, testfile, out, ~"out");
     dump_output_file(config, testfile, err, ~"err");
     maybe_dump_to_stdout(config, out, err);
 }
 
-fn dump_output_file(config: config, testfile: ~str,
+fn dump_output_file(config: config, testfile: &Path,
                     out: ~str, extension: ~str) {
     let outfile = make_out_name(config, testfile, extension);
     let writer = result::get(
-        io::file_writer(outfile, ~[io::Create, io::Truncate]));
+        io::file_writer(&outfile, ~[io::Create, io::Truncate]));
     writer.write_str(out);
 }
 
-fn make_out_name(config: config, testfile: ~str, extension: ~str) -> ~str {
-    output_base_name(config, testfile) + ~"." + extension
+fn make_out_name(config: config, testfile: &Path, extension: ~str) -> Path {
+    output_base_name(config, testfile).with_filetype(extension)
 }
 
-fn aux_output_dir_name(config: config, testfile: ~str) -> ~str {
-    output_base_name(config, testfile) + ~".libaux"
+fn aux_output_dir_name(config: config, testfile: &Path) -> Path {
+    output_base_name(config, testfile).with_filetype("libaux")
 }
 
-fn output_testname(testfile: ~str) -> ~str {
-    let parts = str::split_char(path::basename(testfile), '.');
-    str::connect(vec::slice(parts, 0u, vec::len(parts) - 1u), ~".")
+fn output_testname(testfile: &Path) -> Path {
+    Path(option::get(testfile.filestem()))
 }
 
-fn output_base_name(config: config, testfile: ~str) -> ~str {
-    let base = config.build_base;
-    let filename = output_testname(testfile);
-    fmt!{"%s%s.%s", base, filename, config.stage_id}
+fn output_base_name(config: config, testfile: &Path) -> Path {
+    config.build_base
+        .push_rel(&output_testname(testfile))
+        .with_filetype(config.stage_id)
 }
 
 fn maybe_dump_to_stdout(config: config, out: ~str, err: ~str) {
     if config.verbose {
-        let sep1 = fmt!{"------%s------------------------------", ~"stdout"};
-        let sep2 = fmt!{"------%s------------------------------", ~"stderr"};
+        let sep1 = fmt!("------%s------------------------------", ~"stdout");
+        let sep2 = fmt!("------%s------------------------------", ~"stderr");
         let sep3 = ~"------------------------------------------";
         io::stdout().write_line(sep1);
         io::stdout().write_line(out);
@@ -491,13 +522,13 @@ fn maybe_dump_to_stdout(config: config, out: ~str, err: ~str) {
     }
 }
 
-fn error(err: ~str) { io::stdout().write_line(fmt!{"\nerror: %s", err}); }
+fn error(err: ~str) { io::stdout().write_line(fmt!("\nerror: %s", err)); }
 
 fn fatal(err: ~str) -> ! { error(err); fail; }
 
 fn fatal_procres(err: ~str, procres: procres) -> ! {
     let msg =
-        fmt!{"\n\
+        fmt!("\n\
 error: %s\n\
 command: %s\n\
 stdout:\n\
@@ -509,7 +540,7 @@ stderr:\n\
 %s\n\
 ------------------------------------------\n\
 \n",
-             err, procres.cmdline, procres.stdout, procres.stderr};
+             err, procres.cmdline, procres.stdout, procres.stderr);
     io::stdout().write_str(msg);
     fail;
 }

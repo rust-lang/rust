@@ -7,9 +7,10 @@ fn main() {
       6u..7u => fail ~"shouldn't match range",
       _ => {}
     }
-    match check 5u {
+    match 5u {
       1u => fail ~"should match non-first range",
       2u..6u => {}
+      _ => fail ~"math is broken"
     }
     match 'c' {
       'a'..'z' => {}

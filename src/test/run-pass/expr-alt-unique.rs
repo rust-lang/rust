@@ -5,7 +5,7 @@
 
 // Tests for match as expressions resulting in boxed types
 fn test_box() {
-    let res = match check true { true => { ~100 } };
+    let res = match true { true => { ~100 }, _ => fail };
     assert (*res == 100);
 }
 

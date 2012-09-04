@@ -211,7 +211,7 @@ The keywords in [source files](#source-files) are the following strings:
 ~~~~~~~~ {.keyword}
 again assert
 break
-check class const copy
+check const copy
 drop
 else enum export extern
 fail false fn for
@@ -220,6 +220,7 @@ let log loop
 match mod mut
 pure
 return
+struct
 true trait type
 unchecked unsafe
 while
@@ -349,7 +350,7 @@ error.
 Examples of integer literals of various forms:
 
 ~~~~
-123; 0xff00;                       // type determined by program context; 
+123; 0xff00;                       // type determined by program context
                                    // defaults to int in absence of type
                                    // information
 
@@ -453,6 +454,112 @@ type t = map::hashmap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
 # }
 ~~~~
+
+# Syntax extensions
+
+A number of minor features of Rust are not central enough to have their own
+syntax, and yet are not implementable as functions. Instead, they are given
+names, and invoked through a consistent syntax: `name!(...)`. Examples
+include:
+
+* `fmt!` : format data into a string
+* `env!` : look up an environment variable's value at compile time
+* `stringify!` : pretty-print the Rust expression given as an argument
+* `proto!` : define a protocol for inter-task communication
+* `include!` : include the Rust expression in the given file
+* `include_str!` : include the contents of the given file as a string
+* `include_bin!` : include the contents of the given file as a binary blob
+* `error!`, `warn!`, `info!`, `debug!` : provide diagnostic information.
+
+All of the above extensions, with the exception of `proto!`, are expressions
+with values. `proto!` is an item, defining a new name.
+
+## Macros
+
+User-defined syntax extensions are called "macros", and they can be defined
+with the `macro_rules!` syntax extension. User-defined macros can currently
+only be invoked in expression position.
+
+~~~~ {.ebnf .gram}
+expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')'
+macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';'
+matcher : '(' matcher * ')' | '[' matcher * ']'
+        | '{' matcher * '}' | '$' ident ':' ident
+        | '$' '(' matcher * ')' sep_token? [ '*' | '+' ]
+        | non_special_token
+transcriber : '(' transcriber * ')' | '[' transcriber * ']'
+            | '{' transcriber * '}' | '$' ident
+            | '$' '(' transcriber * ')' sep_token? [ '*' | '+' ]
+            | non_special_token
+
+~~~~
+(A `sep_token` is any token other than `*` and `+`. A `non_special_token` is
+any token other than a delimiter or `$`.)
+
+Macro invocations are looked up by name, and each macro rule is tried in turn;
+the first successful match is transcribed. The matching and transcribing
+processes are close cousins, and will be described together:
+
+### Macro By Example
+
+Everything that does not begin with a `$` is matched and transcirbed
+literally, including delimiters. For parsing reasons, they must be matched,
+but they are otherwise not special.
+
+In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the
+Rust syntax named by _designator_. Valid designators are `item`, `block`,
+`stmt`, `pat`, `expr`, `ty`, `ident`, `path`, `tt`, `matchers`. The last two
+are the right-hand side and the left-hand side respectively of the `=>` in
+macro rules. In the transcriber, the designator is already known, and so only
+the name of a matched nonterminal comes after the dollar sign.
+
+In bothe the matcher and transcriber, the Kleene star-like operator,
+consisting of `$` and parens, optionally followed by a separator token,
+followed by `*` or `+`, indicates repetition. (`*` means zero or more
+repetitions, `+` means at least one repetition. The parens are not matched or
+transcribed). On the matcher side, a name is bound to _all_ of the names it
+matches, in a structure that mimics the structure of the repetition
+encountered on a successful match. The job of the transcriber is to sort that
+structure out.
+
+The rules for transcription of these repetitions are called "Macro By Example".
+Essentially, one "layer" of repetition is discharged at a time, and all of
+them must be discharged by the time a name is transcribed. Therefore,
+`( $( $i:ident ),* ) => ( $i )` is an invalid macro, but
+`( $( $i:ident ),* ) => ( $( $i:ident ),*  )` is acceptable (if trivial).
+
+When Macro By Example encounters a repetition, it examines all of the `$`
+_name_ s that occur in its body. At the "current layer", they all must repeat
+the same number of times, so
+` ( $( $i:ident ),* ; $( $j:ident ),* ) => ( $( ($i,$j) ),* )` is valid if
+given the argument `(a,b,c ; d,e,f)`, but not `(a,b,c ; d,e)`. The repetition
+walks through the choices at that layer in lockstep, so the former input
+transcribes to `( (a,d), (b,e), (c,f) )`.
+
+Nested repetitions are allowed.
+
+### Parsing limitations
+
+The parser used by the macro system is reasonably powerful, but the parsing of
+Rust syntax is restricted in two ways:
+
+1. The parser will always parse as much as possible. If it attempts to match
+`$i:expr [ , ]` against `8 [ , ]`, it will attempt to parse `i` as an array
+index operation and fail. Adding a separator can solve this problem.
+2. The parser must have eliminated all ambiguity by the time it reaches a
+`$` _name_ `:` _designator_. This most often affects them when they occur in
+the beginning of, or immediately after, a `$(...)*`; requiring a distinctive
+token in front can solve the problem.
+
+
+## Syntax extensions useful for the macro author
+
+* `log_syntax!` : print out the arguments at compile time
+* `trace_macros!` : supply `true` or `false` to enable or disable printing
+of the macro expansion process.
+* `ident_to_str!` : turns the identifier argument into a string literal
+* `concat_idents!` : creates a new identifier by concatenating its arguments
+
 
 
 # Crates and source files
@@ -735,14 +842,14 @@ An example of imports:
 import foo = core::info;
 import core::float::sin;
 import core::str::{slice, to_upper};
-import core::option::some;
+import core::option::Some;
 
 fn main() {
     // Equivalent to 'log(core::info, core::float::sin(1.0));'
     log(foo, sin(1.0));
 
-    // Equivalent to 'log(core::info, core::option::some(1.0));'
-    log(info, some(1.0));
+    // Equivalent to 'log(core::info, core::option::Some(1.0));'
+    log(info, Some(1.0));
 
     // Equivalent to 'log(core::info,
     //                    core::str::to_upper(core::str::slice(~"foo", 0u, 1u)));'
@@ -1097,151 +1204,6 @@ enum list<T> {
 let a: list<int> = cons(7, @cons(13, @nil));
 ~~~~
 
-### Classes
-
-A _class_ is a named record type that collects together fields and
-methods. It must have a _constructor_ (a function called `new` that
-returns a new instance of the class), and may have a destructor (a
-nullary function called `drop` that executes before the memory manager
-frees the memory for a given class). For historical reasons, we may
-call a class with a destructor and a single field a "resource".
-
-A _class item_ declares a class type:
-
-~~~~
-class file_descriptor {
-    let fd: libc::c_int;
-    new(fd: libc::c_int) { self.fd = fd; }
-    drop { libc::close(self.fd); }
-}
-~~~~
-
-Calling the `file_descriptor` constructor function on an integer will
-produce a value with the `file_descriptor` type.
-
-_Fields_ are immutable by default, so instances of `file_descriptor`
-can't have their `fd` fields reassigned. A mutable field declaration
-looks like:
-
-~~~~
-    let mut fd: libc::c_int;
-~~~~
-
-The only exception is that the body of the class constructor begins
-with all the class's fields uninitialized, and is allowed to -- in
-fact, must -- initialize all the fields. The compiler enforces this
-invariant.
-
-Usually, the class constructor stores its argument or arguments in the
-class's named fields. In this case, the `file_descriptor`'s data field
-would be accessed like `f.fd`, if `f` is a value of type
-`file_descriptor`. By default, class fields are _public_: they can be
-accessed both from methods inside the class, and code outside the
-class. Classes can also have private fields:
-
-~~~~
-class file_descriptor {
-    let fd: *libc::FILE;
-    new(fd: *libc::FILE) {
-      self.fd = fd; self.name = none;
-    }
-    priv {
-      let mut name: option<~str>;
-    }
-    fn get_name() -> ~str {
-      match self.name {
-         none    => fail ~"File has no name!",
-         some(n) => n
-      }
-    }
-}
-~~~~
-
-Private fields are instance-private: methods in a class `C` can access
-`self`'s private fields, but not private fields of other values of
-type `C`. Code outside a class can't access any private fields.
-
-A class item may contain _methods_, which take an implicit `self`
-argument:
-
-~~~~
-class file_descriptor {
-    let fd: *libc::FILE;
-    new(fd: *libc::FILE) { self.fd = fd; }
-    fn flush() {
-       libc::fflush(self.fd);
-    }
-}
-~~~~
-
-In this case, ```open``` is a nullary method that calls the
-```fopen``` function, defined in another library, on the ```fd```
-field. As in this example, methods must refer to their self's fields
-as fields of ```self```; bare references to ```fd``` can't
-occur. Methods can be public or private; just like fields, they are
-public by default and private if enclosed in a `priv` section.
-
-Classes may be polymorphic:
-
-~~~~
-class file<A: copy> {
-  let data: A;
-  let fd: *libc::FILE;
-  new(data: A, fd: *libc::FILE) { self.data = data; self.fd = fd; }
-}
-~~~~
-
-Methods may also be polymorphic, and can have additional type
-parameters other than those bound in the class:
-
-~~~~
-class file<A: copy> {
-  let data: A;
-  let fd: *libc::FILE;
-  new(fd: *libc::FILE, data: A) { self.fd = fd; self.data = data; }
-  fn map_data<B>(f: fn(A) -> B) -> B {
-     f(self.data)
-  }
-}
-~~~~
-
-Classes do not support inheritance, except through traits. As a
-result, all class method dispatch is static (non-virtual).
-
-A class may implement a trait (see [traits](#traits)):
-
-~~~~
-trait to_str {
-  fn to_str() -> ~str;
-}
-
-class file : to_str {
-  let fd: *libc::FILE;
-  new(fd: *libc::FILE) { self.fd = fd; }
-  fn to_str() -> ~str { ~"a file" }
-}
-~~~~
-
-The syntax `class file: to_str` is pronounced "class `file`
-implements trait `to_str`".
-
-Class instances may be allocated on the stack, in the exchange heap,
-or on the task heap. A value with a class type ```C``` has a
-noncopyable [type kind](#type-kinds) if ```C``` has a destructor, and
-thus may not be copied. Class types that don't have destructors may be
-copied if all their fields are copyable.
-
-The semantics guarantee that for each constructed resource value, the
-destructor will run once: when the value is disposed of (barring
-drastic program termination that somehow prevents unwinding from
-taking place). For stack-allocated values, disposal happens when the
-value goes out of scope. For values in shared boxes, it happens when
-the reference count of the box reaches zero.
-
-The order of fields in a class instance is significant; its runtime
-representation is the same as that of a record with identical fields
-laid out in the same order.
-
 ### Traits
 
 A _trait item_ describes a set of method types. [_implementation
@@ -1348,7 +1310,7 @@ trait.  The methods in such an implementation can only be used
 statically (as direct calls on the values of the type that the
 implementation targets). In such an implementation, the `of` clause is
 not given, and the name is mandatory.  Such implementations are
-limited to nominal types (enums, classes) and the implementation must
+limited to nominal types (enums, structs) and the implementation must
 appear in the same module or a sub-module as the receiver type.
 
 _When_ a trait is specified, all methods declared as part of the
@@ -2249,14 +2211,14 @@ fn main() {
 ~~~~
 
 Multiple match patterns may be joined with the `|` operator.  A
-range of values may be specified with `to`. For example:
+range of values may be specified with `..`. For example:
 
 ~~~~
 # let x = 2;
 
 let message = match x {
   0 | 1  => ~"not many",
-  2 to 9 => ~"a few",
+  2 .. 9 => ~"a few",
   _      => ~"lots"
 };
 ~~~~
@@ -2267,14 +2229,14 @@ consist of a bool-typed expression following the `if` keyword. A pattern
 guard may refer to the variables bound within the pattern they follow.
 
 ~~~~
-# let maybe_digit = some(0);
+# let maybe_digit = Some(0);
 # fn process_digit(i: int) { }
 # fn process_other(i: int) { }
 
 let message = match maybe_digit {
-  some(x) if x < 10 => process_digit(x),
-  some(x) => process_other(x),
-  none => fail
+  Some(x) if x < 10 => process_digit(x),
+  Some(x) => process_other(x),
+  None => fail
 };
 ~~~~
 
@@ -2380,9 +2342,9 @@ lower levels indicate more-urgent levels of logging. By default, the lowest
 four logging levels (`0_u32 ... 3_u32`) are predefined as the constants
 `error`, `warn`, `info` and `debug` in the `core` library.
 
-Additionally, the macros `#error`, `#warn`, `#info` and `#debug` are defined
+Additionally, the macros `error!`, `warn!`, `info!` and `debug!` are defined
 in the default syntax-extension namespace. These expand into calls to the
-logging facility composed with calls to the `#fmt` string formatting
+logging facility composed with calls to the `fmt!` string formatting
 syntax-extension.
 
 The following examples all produce the same output, logged at the `error`
@@ -2398,10 +2360,10 @@ log(core::error, ~"file not found: " + filename);
 log(error, ~"file not found: " + filename);
 
 // Formatting the message using a format-string and #fmt
-log(error, #fmt("file not found: %s", filename));
+log(error, fmt!("file not found: %s", filename));
 
 // Using the #error macro, that expands to the previous call.
-#error("file not found: %s", filename);
+error!("file not found: %s", filename);
 ~~~~
 
 A `log` expression is *not evaluated* when logging at the specified
@@ -2430,84 +2392,6 @@ An `assert` expression is similar to a `check` expression, except
 the condition may be any boolean-typed expression, and the compiler makes no
 use of the knowledge that the condition holds if the program continues to
 execute after the `assert`.
-
-
-### Syntax extension expressions
-
-~~~~~~~~ {.abnf .gram}
-syntax_ext_expr : '#' ident paren_expr_list ? brace_match ? ;
-~~~~~~~~
-
-Rust provides a notation for _syntax extension_. The notation for invoking
-a syntax extension is a marked syntactic form that can appear as an expression
-in the body of a Rust program.
-
-After parsing, a syntax-extension invocation is expanded into a Rust
-expression. The name of the extension determines the translation performed. In
-future versions of Rust, user-provided syntax extensions aside from macros
-will be provided via external crates.
-
-At present, only a set of built-in syntax extensions, as well as macros
-introduced inline in source code using the `macro` extension, may be used. The
-current built-in syntax extensions are:
-
-
-* `fmt` expands into code to produce a formatted string, similar to
-      `printf` from C.
-* `env` expands into a string literal containing the value of that
-      environment variable at compile-time.
-* `concat_idents` expands into an identifier which is the
-      concatenation of its arguments.
-* `ident_to_str` expands into a string literal containing the name of
-      its argument (which must be a literal).
-* `log_syntax` causes the compiler to pretty-print its arguments.
-
-
-Finally, `macro` is used to define a new macro. A macro can abstract over
-second-class Rust concepts that are present in syntax. The arguments to
-`macro` are pairs (two-element vectors). The pairs consist of an invocation
-and the syntax to expand into. An example:
-
-~~~~~~~~{.xfail-test}
-#macro([#apply[fn, [args, ...]], fn(args, ...)]);
-~~~~~~~~
-
-In this case, the invocation `#apply[sum, 5, 8, 6]` expands to
-`sum(5,8,6)`. If `...` follows an expression (which need not be as
-simple as a single identifier) in the input syntax, the matcher will expect an
-arbitrary number of occurrences of the thing preceding it, and bind syntax to
-the identifiers it contains. If it follows an expression in the output syntax,
-it will transcribe that expression repeatedly, according to the identifiers
-(bound to syntax) that it contains.
-
-The behaviour of `...` is known as Macro By Example. It allows you to
-write a macro with arbitrary repetition by specifying only one case of that
-repetition, and following it by `...`, both where the repeated input is
-matched, and where the repeated output must be transcribed. A more
-sophisticated example:
-
-
-~~~~~~~~{.xfail-test}
-#macro([#zip_literals[[x, ...], [y, ...]), [[x, y], ...]]);
-#macro([#unzip_literals[[x, y], ...], [[x, ...], [y, ...]]]);
-~~~~~~~~
-
-In this case, `#zip_literals[[1,2,3], [1,2,3]]` expands to
-`[[1,1],[2,2],[3,3]]`, and `#unzip_literals[[1,1], [2,2], [3,3]]`
-expands to `[[1,2,3],[1,2,3]]`.
-
-Macro expansion takes place outside-in: that is,
-`#unzip_literals[#zip_literals[[1,2,3],[1,2,3]]]` will fail because
-`unzip_literals` expects a list, not a macro invocation, as an argument.
-
-The macro system currently has some limitations. It's not possible to
-destructure anything other than vector literals (therefore, the arguments to
-complicated macros will tend to be an ocean of square brackets). Macro
-invocations and `...` can only appear in expression positions. Finally,
-macro expansion is currently unhygienic. That is, name collisions between
-macro-generated and user-written code can cause unintentional capture.
-
-Future versions of Rust will address these issues.
 
 
 # Type system
@@ -2744,9 +2628,9 @@ fn main() {
 In this example, the trait `printable` occurs as a type in both the type signature of
 `print`, and the cast expression in `main`.
 
-### Class types
+### Struct types
 
-Every class item defines a type. See [classes](#classes).
+Every struct item defines a type.
 
 ### Type parameters
 
@@ -2766,7 +2650,7 @@ type `~[B]`, a vector type with element type `B`.
 
 ### Self type
 
-The special type `self` has a meaning within methods inside a class or
+The special type `self` has a meaning within methods inside an
 impl item. It refers to the type of the implicit `self` argument. For
 example, in:
 
@@ -2781,19 +2665,7 @@ impl ~str: printable {
 ~~~~~~
 
 `self` refers to the value of type `str` that is the receiver for a
-call to the method `to_str`. Similarly, in a class declaration:
-
-~~~~~~
-class cat {
-  let mut meows: uint;
-  new() { self.meows = 0; }
-  fn meow() { self.meows = self.meows + 1; }
-}
-~~~~~~
-
-`self` refers to the class instance that is the receiver of the method
-(except in the constructor `new`, where `self` is the class instance
-that the constructor implicitly returns).
+call to the method `to_str`.
 
 ## Type kinds
 
@@ -3158,8 +3030,8 @@ The result of a `spawn` call is a `core::task::task` value.
 An example of a `spawn` call:
 
 ~~~~
-let po = comm::port();
-let ch = comm::chan(po);
+let po = comm::Port();
+let ch = comm::Chan(po);
 
 do task::spawn {
     // let task run, do other things
@@ -3180,8 +3052,8 @@ channel's outgoing buffer.
 An example of a send:
 
 ~~~~
-let po = comm::port();
-let ch = comm::chan(po);
+let po = comm::Port();
+let ch = comm::Chan(po);
 comm::send(ch, ~"hello, world");
 ~~~~
 
@@ -3189,15 +3061,15 @@ comm::send(ch, ~"hello, world");
 ### Receiving values from ports
 
 Receiving a value is done by a call to the `recv` method on a value of type
-`core::comm::port`. This call causes the receiving task to enter the *blocked
+`core::comm::Port`. This call causes the receiving task to enter the *blocked
 reading* state until a value arrives in the port's receive queue, at which
 time the port deques a value to return, and un-blocks the receiving task.
 
 An example of a *receive*:
 
 ~~~~~~~~
-# let po = comm::port();
-# let ch = comm::chan(po);
+# let po = comm::Port();
+# let ch = comm::Chan(po);
 # comm::send(ch, ~"");
 let s = comm::recv(po);
 ~~~~~~~~

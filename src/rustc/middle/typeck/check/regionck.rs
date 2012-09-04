@@ -18,14 +18,44 @@ this point a bit better.
 */
 
 import util::ppaux;
+import ppaux::{note_and_explain_region, ty_to_str};
 import syntax::print::pprust;
-import infer::{resolve_type, resolve_all, force_all,
-               resolve_rvar, force_rvar, fres};
+import infer::{resolve_and_force_all_but_regions, fres};
+import syntax::ast::{def_arg, def_binding, def_local, def_self, def_upvar};
+import middle::freevars::get_freevars;
 import middle::kind::check_owned;
 import middle::pat_util::pat_bindings;
+import middle::ty::{encl_region, proto_bare, proto_vstore, re_scope};
+import middle::ty::{ty_fn_proto, vstore_box, vstore_fixed, vstore_slice};
+import middle::ty::{vstore_uniq};
 
 enum rcx { rcx_({fcx: @fn_ctxt, mut errors_reported: uint}) }
 type rvt = visit::vt<@rcx>;
+
+fn encl_region_of_def(fcx: @fn_ctxt, def: ast::def) -> ty::region {
+    let tcx = fcx.tcx();
+    match def {
+        def_local(node_id, _) | def_arg(node_id, _) | def_self(node_id) |
+        def_binding(node_id, _) =>
+            return encl_region(tcx, node_id),
+        def_upvar(_, subdef, closure_id, body_id) => {
+            match ty_fn_proto(fcx.node_ty(closure_id)) {
+                proto_bare =>
+                    tcx.sess.bug(~"proto_bare in encl_region_of_def?!"),
+                proto_vstore(vstore_fixed(_)) =>
+                    tcx.sess.bug(~"vstore_fixed in encl_region_of_def?!"),
+                proto_vstore(vstore_slice(_)) =>
+                    encl_region_of_def(fcx, *subdef),
+                proto_vstore(vstore_uniq) | proto_vstore(vstore_box) =>
+                    re_scope(body_id)
+            }
+        }
+        _ => {
+            tcx.sess.bug(fmt!("unexpected def in encl_region_of_def: %?",
+                              def))
+        }
+    }
+}
 
 impl @rcx {
     /// Try to resolve the type for the given node.
@@ -51,9 +81,8 @@ impl @rcx {
     /// that `<R0>` be bigger than the let and the `*b` expression, so we
     /// will effectively resolve `<R0>` to be the block B.
     fn resolve_type(unresolved_ty: ty::t) -> fres<ty::t> {
-        resolve_type(self.fcx.infcx, unresolved_ty,
-                     (resolve_all | force_all) -
-                     (resolve_rvar | force_rvar))
+        resolve_type(self.fcx.infcx(), unresolved_ty,
+                     resolve_and_force_all_but_regions)
     }
 
     /// Try to resolve the type for the given node.
@@ -66,6 +95,7 @@ fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
     v.visit_expr(e, @rcx, v);
+    fcx.infcx().resolve_regions();
 }
 
 fn regionck_fn(fcx: @fn_ctxt,
@@ -74,6 +104,7 @@ fn regionck_fn(fcx: @fn_ctxt,
     let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
     let v = regionck_visitor();
     v.visit_block(blk, @rcx, v);
+    fcx.infcx().resolve_regions();
 }
 
 fn regionck_visitor() -> rvt {
@@ -125,7 +156,8 @@ fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
 }
 
 fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
-    debug!{"visit_expr(e=%s)", pprust::expr_to_str(e)};
+    debug!("visit_expr(e=%s)",
+           pprust::expr_to_str(e, rcx.fcx.tcx().sess.intr()));
 
     match e.node {
       ast::expr_path(*) => {
@@ -155,13 +187,13 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         // check_cast_for_escaping_regions() in kind.rs explaining how
         // it goes about doing that.
         match rcx.resolve_node_type(e.id) {
-          result::err(_) => { return; /* typeck will fail anyhow */ }
-          result::ok(target_ty) => {
+          result::Err(_) => { return; /* typeck will fail anyhow */ }
+          result::Ok(target_ty) => {
             match ty::get(target_ty).struct {
               ty::ty_trait(_, substs, _) => {
                 let trait_region = match substs.self_r {
-                  some(r) => {r}
-                  none => {ty::re_static}
+                  Some(r) => {r}
+                  None => {ty::re_static}
                 };
                 let source_ty = rcx.fcx.expr_ty(source);
                 constrain_regions_in_type(rcx, trait_region,
@@ -173,10 +205,26 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         };
       }
 
-      ast::expr_addr_of(_, operand) => {
+      ast::expr_addr_of(*) => {
         // FIXME(#3148) -- in some cases, we need to capture a dependency
         // between the regions found in operand the resulting region type.
         // See #3148 for more details.
+      }
+
+      ast::expr_fn(*) | ast::expr_fn_block(*) => {
+        match rcx.resolve_node_type(e.id) {
+          result::Err(_) => return,   // Typechecking will fail anyhow.
+          result::Ok(function_type) => {
+            match ty::get(function_type).struct {
+              ty::ty_fn({
+                proto: proto_vstore(vstore_slice(region)), _
+              }) => {
+                constrain_free_variables(rcx, region, e);
+              }
+              _ => ()
+            }
+          }
+        }
       }
 
       _ => ()
@@ -201,21 +249,52 @@ fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty = match rcx.resolve_node_type(id) {
-      result::err(_) => return true,
-      result::ok(ty) => ty
+      result::Err(_) => return true,
+      result::Ok(ty) => ty
     };
 
     // find the region where this expr evaluation is taking place
     let tcx = fcx.ccx.tcx;
     let encl_region = ty::encl_region(tcx, id);
 
-    debug!{"visit_node(ty=%s, id=%d, encl_region=%s)",
-           ppaux::ty_to_str(tcx, ty),
-           id,
-           ppaux::region_to_str(tcx, encl_region)};
+    debug!("visit_node(ty=%s, id=%d, encl_region=%?)",
+           ty_to_str(tcx, ty), id, encl_region);
 
     // Otherwise, look at the type and see if it is a region pointer.
     return constrain_regions_in_type(rcx, encl_region, span, ty);
+}
+
+fn constrain_free_variables(
+    rcx: @rcx,
+    region: ty::region,
+    expr: @ast::expr)
+{
+    // Make sure that all regions referenced by the free
+    // variables inside the closure outlive the closure
+    // itself.
+    let tcx = rcx.fcx.ccx.tcx;
+    for get_freevars(tcx, expr.id).each |freevar| {
+        debug!("freevar def is %?", freevar.def);
+        let def = freevar.def;
+        let en_region = encl_region_of_def(rcx.fcx, def);
+        match rcx.fcx.mk_subr(true, freevar.span,
+                              region, en_region) {
+          result::Ok(()) => {}
+          result::Err(_) => {
+            tcx.sess.span_err(
+                freevar.span,
+                ~"captured variable does not outlive the enclosing closure");
+            note_and_explain_region(
+                tcx,
+                ~"captured variable is valid for",
+                en_region);
+            note_and_explain_region(
+                tcx,
+                ~"closure is valid for",
+                region);
+          }
+        }
+    }
 }
 
 fn constrain_regions_in_type(
@@ -237,9 +316,8 @@ fn constrain_regions_in_type(
                         region: ty::region) {
         let tcx = rcx.fcx.ccx.tcx;
 
-        debug!{"constrain_region(encl_region=%s, region=%s)",
-               ppaux::region_to_str(tcx, encl_region),
-               ppaux::region_to_str(tcx, region)};
+        debug!("constrain_region(encl_region=%?, region=%?)",
+               encl_region, region);
 
         match region {
           ty::re_bound(_) => {
@@ -252,17 +330,18 @@ fn constrain_regions_in_type(
           _ => ()
         }
 
-        match rcx.fcx.mk_subr(encl_region, region) {
-          result::err(_) => {
-            let region1 = rcx.fcx.infcx.resolve_region_if_possible(region);
+        match rcx.fcx.mk_subr(true, span, encl_region, region) {
+          result::Err(_) => {
             tcx.sess.span_err(
                 span,
-                fmt!{"reference is not valid outside \
-                      of its lifetime, %s",
-                     ppaux::region_to_str(tcx, region1)});
+                fmt!("reference is not valid outside of its lifetime"));
+            note_and_explain_region(
+                tcx,
+                ~"the reference is only valid for",
+                region);
             rcx.errors_reported += 1u;
           }
-          result::ok(()) => {
+          result::Ok(()) => {
           }
         }
     }

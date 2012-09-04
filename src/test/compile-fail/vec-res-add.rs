@@ -1,6 +1,7 @@
+// xfail-test #2587
 // error-pattern: copying a noncopyable value
 
-class r {
+struct r {
   let i:int;
   new(i:int) {self.i = i;}
   drop {}

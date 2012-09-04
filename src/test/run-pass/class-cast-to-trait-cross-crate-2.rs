@@ -6,7 +6,7 @@ import cci_class_cast::kitty::*;
 
 fn print_out<T: ToStr>(thing: T, expected: ~str) {
   let actual = thing.to_str();
-  debug!{"%s", actual};
+  debug!("%s", actual);
   assert(actual == expected);
 }
 

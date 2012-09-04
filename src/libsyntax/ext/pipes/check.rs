@@ -21,8 +21,6 @@ that.
 
 import ext::base::ext_ctxt;
 
-import ast::{ident};
-
 import proto::{state, protocol, next_state};
 import ast_builder::empty_span;
 
@@ -34,24 +32,24 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
         if state.messages.len() == 0 {
             self.span_warn(
                 state.span, // use a real span!
-                fmt!{"state %s contains no messages, \
+                fmt!("state %s contains no messages, \
                       consider stepping to a terminal state instead",
-                     *state.name})
+                      state.name))
         }
     }
 
-    fn visit_message(name: ident, _span: span, _tys: &[@ast::ty],
+    fn visit_message(name: ~str, _span: span, _tys: &[@ast::ty],
                      this: state, next: next_state) {
         match next {
-          some({state: next, tys: next_tys}) => {
+          Some({state: next, tys: next_tys}) => {
             let proto = this.proto;
             if !proto.has_state(next) {
                 // This should be a span fatal, but then we need to
                 // track span information.
                 self.span_err(
                     proto.get_state(next).span,
-                    fmt!{"message %s steps to undefined state, %s",
-                         *name, *next});
+                    fmt!("message %s steps to undefined state, %s",
+                         name, next));
             }
             else {
                 let next = proto.get_state(next);
@@ -59,15 +57,15 @@ impl ext_ctxt: proto::visitor<(), (), ()>  {
                 if next.ty_params.len() != next_tys.len() {
                     self.span_err(
                         next.span, // use a real span
-                        fmt!{"message %s target (%s) \
+                        fmt!("message %s target (%s) \
                               needs %u type parameters, but got %u",
-                             *name, *next.name,
+                             name, next.name,
                              next.ty_params.len(),
-                             next_tys.len()});
+                             next_tys.len()));
                 }
             }
           }
-          none => ()
+          None => ()
         }
     }
 }

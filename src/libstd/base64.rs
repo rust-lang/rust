@@ -1,10 +1,13 @@
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+#[deny(non_camel_case_types)];
 import io::Reader;
 
-trait to_base64 {
+trait ToBase64 {
     fn to_base64() -> ~str;
 }
 
-impl ~[u8]: to_base64 {
+impl ~[u8]: ToBase64 {
     fn to_base64() -> ~str {
         let chars = str::chars(
           ~"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
@@ -55,17 +58,17 @@ impl ~[u8]: to_base64 {
     }
 }
 
-impl ~str: to_base64 {
+impl ~str: ToBase64 {
     fn to_base64() -> ~str {
-        str::bytes(self).to_base64()
+        str::to_bytes(self).to_base64()
     }
 }
 
-trait from_base64 {
+trait FromBase64 {
     fn from_base64() -> ~[u8];
 }
 
-impl ~[u8]: from_base64 {
+impl ~[u8]: FromBase64 {
     fn from_base64() -> ~[u8] {
         if self.len() % 4u != 0u { fail ~"invalid base64 length"; }
 
@@ -127,9 +130,9 @@ impl ~[u8]: from_base64 {
     }
 }
 
-impl ~str: from_base64 {
+impl ~str: FromBase64 {
     fn from_base64() -> ~[u8] {
-        str::bytes(self).from_base64()
+        str::to_bytes(self).from_base64()
     }
 }
 
@@ -148,12 +151,12 @@ mod tests {
 
     #[test]
     fn test_from_base64() {
-        assert (~"").from_base64() == str::bytes(~"");
-        assert (~"Zg==").from_base64() == str::bytes(~"f");
-        assert (~"Zm8=").from_base64() == str::bytes(~"fo");
-        assert (~"Zm9v").from_base64() == str::bytes(~"foo");
-        assert (~"Zm9vYg==").from_base64() == str::bytes(~"foob");
-        assert (~"Zm9vYmE=").from_base64() == str::bytes(~"fooba");
-        assert (~"Zm9vYmFy").from_base64() == str::bytes(~"foobar");
+        assert (~"").from_base64() == str::to_bytes(~"");
+        assert (~"Zg==").from_base64() == str::to_bytes(~"f");
+        assert (~"Zm8=").from_base64() == str::to_bytes(~"fo");
+        assert (~"Zm9v").from_base64() == str::to_bytes(~"foo");
+        assert (~"Zm9vYg==").from_base64() == str::to_bytes(~"foob");
+        assert (~"Zm9vYmE=").from_base64() == str::to_bytes(~"fooba");
+        assert (~"Zm9vYmFy").from_base64() == str::to_bytes(~"foobar");
     }
 }

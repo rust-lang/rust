@@ -3,17 +3,23 @@ import std::map::*;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
+impl cat_type : cmp::Eq {
+    pure fn eq(&&other: cat_type) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
 // Very silly -- this just returns the value of the name field
 // for any int value that's less than the meows field
 
 // ok: T should be in scope when resolving the trait ref for map
-class cat<T: copy> : map<int, T> {
+struct cat<T: copy> : map<int, T> {
   priv {
     // Yes, you can have negative meows
     let mut meows : int;
     fn meow() {
       self.meows += 1;
-      error!{"Meow %d", self.meows};
+      error!("Meow %d", self.meows);
       if self.meows % 5 == 0 {
           self.how_hungry += 1;
       }
@@ -30,17 +36,17 @@ class cat<T: copy> : map<int, T> {
 
   fn eat() -> bool {
     if self.how_hungry > 0 {
-        error!{"OM NOM NOM"};
+        error!("OM NOM NOM");
         self.how_hungry -= 2;
         return true;
     }
     else {
-        error!{"Not hungry!"};
+        error!("Not hungry!");
         return false;
     }
   }
 
-  fn size() -> uint { self.meows as uint }
+  pure fn size() -> uint { self.meows as uint }
   fn insert(+k: int, +_v: T) -> bool {
     self.meows += k;
     true
@@ -49,26 +55,26 @@ class cat<T: copy> : map<int, T> {
   fn contains_key_ref(k: &int) -> bool { self.contains_key(*k) }
 
   fn get(+k:int) -> T { match self.find(k) {
-      some(v) => { v }
-      none    => { fail ~"epic fail"; }
+      Some(v) => { v }
+      None    => { fail ~"epic fail"; }
     }
   }
-  fn find(+k:int) -> option<T> { if k <= self.meows {
-        some(self.name)
+  pure fn find(+k:int) -> Option<T> { if k <= self.meows {
+        Some(self.name)
      }
-     else { none }
+     else { None }
   }
 
-  fn remove(+k:int) -> option<T> {
+  fn remove(+k:int) -> bool {
     match self.find(k) {
-      some(x) => {
-        self.meows -= k; some(x)
+      Some(x) => {
+        self.meows -= k; true
       }
-      none => { none }
+      None => { false }
     }
   }
 
-  fn each(f: fn(+int, +T) -> bool) {
+  pure fn each(f: fn(+int, +T) -> bool) {
     let mut n = int::abs(self.meows);
     while n > 0 {
         if !f(n, self.name) { break; }
@@ -76,16 +82,16 @@ class cat<T: copy> : map<int, T> {
     }
   }
 
-  fn each_key(&&f: fn(+int) -> bool) {
+  pure fn each_key(&&f: fn(+int) -> bool) {
     for self.each |k, _v| { if !f(k) { break; } again;};
   }
-  fn each_value(&&f: fn(+T) -> bool) {
+  pure fn each_value(&&f: fn(+T) -> bool) {
     for self.each |_k, v| { if !f(v) { break; } again;};
   }
 
-  fn each_ref(f: fn(k: &int, v: &T) -> bool) {}
-  fn each_key_ref(f: fn(k: &int) -> bool) {}
-  fn each_value_ref(f: fn(k: &T) -> bool) {}
+  pure fn each_ref(f: fn(k: &int, v: &T) -> bool) {}
+  pure fn each_key_ref(f: fn(k: &int) -> bool) {}
+  pure fn each_value_ref(f: fn(k: &T) -> bool) {}
 
   fn clear() { }
 }
@@ -94,8 +100,8 @@ class cat<T: copy> : map<int, T> {
 fn main() {
   let nyan : cat<~str> = cat(0, 2, ~"nyan");
   for uint::range(1u, 5u) |_i| { nyan.speak(); }
-  assert(nyan.find(1) == some(~"nyan"));
-  assert(nyan.find(10) == none);
+  assert(nyan.find(1) == Some(~"nyan"));
+  assert(nyan.find(10) == None);
   let spotty : cat<cat_type> = cat(2, 57, tuxedo);
   for uint::range(0u, 6u) |_i| { spotty.speak(); }
   assert(spotty.size() == 8u);

@@ -22,53 +22,63 @@ import syntax::visit::{visit_crate, visit_item};
 import std::map::{hashmap, str_hash};
 import str_eq = str::eq;
 
-class LanguageItems {
-    let mut const_trait: option<def_id>;
-    let mut copy_trait: option<def_id>;
-    let mut send_trait: option<def_id>;
-    let mut owned_trait: option<def_id>;
+struct LanguageItems {
+    mut const_trait: Option<def_id>;
+    mut copy_trait: Option<def_id>;
+    mut send_trait: Option<def_id>;
+    mut owned_trait: Option<def_id>;
 
-    let mut add_trait: option<def_id>;
-    let mut sub_trait: option<def_id>;
-    let mut mul_trait: option<def_id>;
-    let mut div_trait: option<def_id>;
-    let mut modulo_trait: option<def_id>;
-    let mut neg_trait: option<def_id>;
-    let mut bitxor_trait: option<def_id>;
-    let mut bitand_trait: option<def_id>;
-    let mut bitor_trait: option<def_id>;
-    let mut shl_trait: option<def_id>;
-    let mut shr_trait: option<def_id>;
-    let mut index_trait: option<def_id>;
+    mut add_trait: Option<def_id>;
+    mut sub_trait: Option<def_id>;
+    mut mul_trait: Option<def_id>;
+    mut div_trait: Option<def_id>;
+    mut modulo_trait: Option<def_id>;
+    mut neg_trait: Option<def_id>;
+    mut bitxor_trait: Option<def_id>;
+    mut bitand_trait: Option<def_id>;
+    mut bitor_trait: Option<def_id>;
+    mut shl_trait: Option<def_id>;
+    mut shr_trait: Option<def_id>;
+    mut index_trait: Option<def_id>;
 
-    new() {
-        self.const_trait = none;
-        self.copy_trait = none;
-        self.send_trait = none;
-        self.owned_trait = none;
+    mut eq_trait: Option<def_id>;
+    mut ord_trait: Option<def_id>;
+}
 
-        self.add_trait = none;
-        self.sub_trait = none;
-        self.mul_trait = none;
-        self.div_trait = none;
-        self.modulo_trait = none;
-        self.neg_trait = none;
-        self.bitxor_trait = none;
-        self.bitand_trait = none;
-        self.bitor_trait = none;
-        self.shl_trait = none;
-        self.shr_trait = none;
-        self.index_trait = none;
+mod LanguageItems {
+    fn make() -> LanguageItems {
+        LanguageItems {
+            const_trait: None,
+            copy_trait: None,
+            send_trait: None,
+            owned_trait: None,
+
+            add_trait: None,
+            sub_trait: None,
+            mul_trait: None,
+            div_trait: None,
+            modulo_trait: None,
+            neg_trait: None,
+            bitxor_trait: None,
+            bitand_trait: None,
+            bitor_trait: None,
+            shl_trait: None,
+            shr_trait: None,
+            index_trait: None,
+
+            eq_trait: None,
+            ord_trait: None
+        }
     }
 }
 
-class LanguageItemCollector {
+struct LanguageItemCollector {
     let items: &LanguageItems;
 
     let crate: @crate;
     let session: session;
 
-    let item_refs: hashmap<~str,&mut option<def_id>>;
+    let item_refs: hashmap<~str,&mut Option<def_id>>;
 
     new(crate: @crate, session: session, items: &self/LanguageItems) {
         self.crate = crate;
@@ -93,6 +103,9 @@ class LanguageItemCollector {
         self.item_refs.insert(~"shl", &mut self.items.shl_trait);
         self.item_refs.insert(~"shr", &mut self.items.shr_trait);
         self.item_refs.insert(~"index", &mut self.items.index_trait);
+
+        self.item_refs.insert(~"eq", &mut self.items.eq_trait);
+        self.item_refs.insert(~"ord", &mut self.items.ord_trait);
     }
 
     fn match_and_collect_meta_item(item_def_id: def_id,
@@ -102,18 +115,12 @@ class LanguageItemCollector {
             meta_name_value(key, literal) => {
                 match literal.node {
                     lit_str(value) => {
-                        self.match_and_collect_item(item_def_id,
-                                                    *key,
-                                                    *value);
+                        self.match_and_collect_item(item_def_id, key, *value);
                     }
-                    _ => {
-                        // Skip.
-                    }
+                    _ => {} // Skip.
                 }
             }
-            meta_word(*) | meta_list(*) => {
-                // Skip.
-            }
+            meta_word(*) | meta_list(*) => {} // Skip.
         }
     }
 
@@ -123,25 +130,25 @@ class LanguageItemCollector {
         }
 
         match self.item_refs.find(value) {
-            none => {
+            None => {
                 // Didn't match.
             }
-            some(item_ref) => {
+            Some(item_ref) => {
                 // Check for duplicates.
                 match copy *item_ref {
-                    some(original_def_id)
+                    Some(original_def_id)
                             if original_def_id != item_def_id => {
 
-                        self.session.err(fmt!{"duplicate entry for `%s`",
-                                              value});
+                        self.session.err(fmt!("duplicate entry for `%s`",
+                                              value));
                     }
-                    some(_) | none => {
+                    Some(_) | None => {
                         // OK.
                     }
                 }
 
                 // Matched.
-                *item_ref = some(item_def_id);
+                *item_ref = Some(item_def_id);
             }
         }
     }
@@ -190,10 +197,10 @@ class LanguageItemCollector {
     fn check_completeness() {
         for self.item_refs.each |key, item_ref| {
             match copy *item_ref {
-                none => {
-                    self.session.err(fmt!{"no item found for `%s`", key});
+                None => {
+                    self.session.err(fmt!("no item found for `%s`", key));
                 }
-                some(did) => {
+                Some(_) => {
                     // OK.
                 }
             }
@@ -208,7 +215,7 @@ class LanguageItemCollector {
 }
 
 fn collect_language_items(crate: @crate, session: session) -> LanguageItems {
-    let items = LanguageItems();
+    let items = LanguageItems::make();
     let collector = LanguageItemCollector(crate, session, &items);
     collector.collect();
     copy items

@@ -5,12 +5,12 @@ type pair<A,B> = {
 enum rec<A> = _rec<A>;
 type _rec<A> = {
     val: A,
-    mut rec: option<@rec<A>>
+    mut rec: Option<@rec<A>>
 };
 
 fn make_cycle<A:copy>(a: A) {
-    let g: @rec<A> = @rec({val: a, mut rec: none});
-    g.rec = some(g);
+    let g: @rec<A> = @rec({val: a, mut rec: None});
+    g.rec = Some(g);
 }
 
 fn f<A:send copy, B:send copy>(a: A, b: B) -> fn@() -> (A, B) {
@@ -23,7 +23,7 @@ fn main() {
     let z = f(~x, y);
     make_cycle(z);
     let (a, b) = z();
-    debug!{"a=%u b=%u", *a as uint, b as uint};
+    debug!("a=%u b=%u", *a as uint, b as uint);
     assert *a == x;
     assert b == y;
 }

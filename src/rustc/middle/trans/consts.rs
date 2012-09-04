@@ -51,8 +51,8 @@ fn const_vec(cx: @crate_ctxt, e: @ast::expr, es: &[@ast::expr])
 
 fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
     let v = match cx.const_globals.find(v as int) {
-        some(v) => v,
-        none => v
+        Some(v) => v,
+        None => v
     };
     assert llvm::LLVMIsGlobalConstant(v) == True;
     let v = llvm::LLVMGetInitializer(v);
@@ -242,11 +242,11 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
           const_get_elt(arr, iv as uint)
       }
-      ast::expr_cast(base, tp) => {
+      ast::expr_cast(base, _) => {
         let ety = ty::expr_ty(cx.tcx, e), llty = type_of::type_of(cx, ety);
         let basety = ty::expr_ty(cx.tcx, base);
         let v = const_expr(cx, base);
-        match check (base::cast_type_kind(basety),
+        match (base::cast_type_kind(basety),
                      base::cast_type_kind(ety)) {
 
           (base::cast_integral, base::cast_integral) => {
@@ -264,6 +264,8 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
             if ty::type_is_signed(ety) { llvm::LLVMConstFPToSI(v, llty) }
             else { llvm::LLVMConstFPToUI(v, llty) }
           }
+          _ => cx.sess.impossible_case(e.span,
+                                       ~"bad combination of types for cast")
         }
       }
       ast::expr_addr_of(ast::m_imm, sub) => {
@@ -306,10 +308,10 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           }
           C_named_struct(llty, cs)
       }
-      ast::expr_rec(fs, none) => {
+      ast::expr_rec(fs, None) => {
         C_struct(fs.map(|f| const_expr(cx, f.node.expr)))
       }
-      ast::expr_vec(es, m_imm) => {
+      ast::expr_vec(es, ast::m_imm) => {
         let (v, _, _) = const_vec(cx, e, es);
         v
       }
@@ -325,7 +327,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                       ~"bad const-slice lit") }
             }
           }
-          ast::expr_vec(es, m_imm) => {
+          ast::expr_vec(es, ast::m_imm) => {
             let (cv, sz, llunitty) = const_vec(cx, e, es);
             let llty = val_ty(cv);
             let gv = do str::as_c_str("const") |name| {
@@ -340,9 +342,9 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                 ~"bad const-slice expr")
         }
       }
-      ast::expr_path(path) => {
+      ast::expr_path(_) => {
         match cx.tcx.def_map.find(e.id) {
-          some(ast::def_const(def_id)) => {
+          Some(ast::def_const(def_id)) => {
             // Don't know how to handle external consts
             assert ast_util::is_local(def_id);
             match cx.tcx.items.get(def_id.node) {

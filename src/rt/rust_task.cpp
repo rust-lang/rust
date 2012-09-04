@@ -248,6 +248,13 @@ MUST_CHECK bool rust_task::yield() {
 
     // This check is largely superfluous; it's the one after the context swap
     // that really matters. This one allows us to assert a useful invariant.
+
+    // NB: This takes lifecycle_lock three times, and I believe that none of
+    // them are actually necessary, as per #3213. Removing the locks here may
+    // cause *harmless* races with a killer... but I didn't observe any
+    // substantial performance improvement from removing them, even with
+    // msgsend-ring-pipes, and also it's my last day, so I'm not about to
+    // remove them.  -- bblum
     if (must_fail_from_being_killed()) {
         {
             scoped_lock with(lifecycle_lock);
@@ -631,27 +638,29 @@ rust_task::on_rust_stack() {
     }
 }
 
+// NB: In inhibit_kill and allow_kill, helgrind would complain that we need to
+// hold lifecycle_lock while accessing disallow_kill. Even though another
+// killing task may access disallow_kill concurrently, this is not racy
+// because the killer only cares if this task is blocking, and block() already
+// uses proper locking. See https://github.com/mozilla/rust/issues/3213 .
+
 void
 rust_task::inhibit_kill() {
-    scoped_lock with(lifecycle_lock);
     // Here might be good, though not mandatory, to check if we have to die.
     disallow_kill++;
 }
 
 void
 rust_task::allow_kill() {
-    scoped_lock with(lifecycle_lock);
     assert(disallow_kill > 0 && "Illegal allow_kill(): already killable!");
     disallow_kill--;
 }
 
 void rust_task::inhibit_yield() {
-    scoped_lock with(lifecycle_lock);
     disallow_yield++;
 }
 
 void rust_task::allow_yield() {
-    scoped_lock with(lifecycle_lock);
     assert(disallow_yield > 0 && "Illegal allow_yield(): already yieldable!");
     disallow_yield--;
 }

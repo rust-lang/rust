@@ -13,8 +13,8 @@
 use std;
 
 import option = option;
-import option::some;
-import option::none;
+import option::Some;
+import option::None;
 import str;
 import std::map;
 import std::map::hashmap;
@@ -28,18 +28,16 @@ import u64;
 import task;
 import comm;
 import comm::Chan;
-import comm::chan;
 import comm::Port;
-import comm::port;
 import comm::recv;
 import comm::send;
 
-macro_rules! move_out {
+macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
-}
+)
 
 trait word_reader {
-    fn read_word() -> option<~str>;
+    fn read_word() -> Option<~str>;
 }
 
 trait hash_key {
@@ -62,8 +60,8 @@ impl ~str: hash_key {
 // These used to be in task, but they disappeard.
 type joinable_task = Port<()>;
 fn spawn_joinable(+f: fn~()) -> joinable_task {
-    let p = port();
-    let c = chan(p);
+    let p = Port();
+    let c = Chan(p);
     do task::spawn() |move f| {
         f();
         c.send(());
@@ -76,13 +74,13 @@ fn join(t: joinable_task) {
 }
 
 impl io::Reader: word_reader {
-    fn read_word() -> option<~str> { read_word(self) }
+    fn read_word() -> Option<~str> { read_word(self) }
 }
 
 fn file_word_reader(filename: ~str) -> word_reader {
-    match io::file_reader(filename) {
-      result::ok(f) => { f as word_reader }
-      result::err(e) => { fail fmt!{"%?", e} }
+    match io::file_reader(&Path(filename)) {
+      result::Ok(f) => { f as word_reader }
+      result::Err(e) => { fail fmt!("%?", e) }
     }
 }
 
@@ -90,8 +88,8 @@ fn map(f: fn~() -> word_reader, emit: map_reduce::putter<~str, int>) {
     let f = f();
     loop {
         match f.read_word() {
-          some(w) => { emit(w, 1); }
-          none => { break; }
+          Some(w) => { emit(w, 1); }
+          None => { break; }
         }
     }
 }
@@ -99,23 +97,23 @@ fn map(f: fn~() -> word_reader, emit: map_reduce::putter<~str, int>) {
 fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
     let mut count = 0;
 
-    loop { match get() { some(_) => { count += 1; } none => { break; } } }
+    loop { match get() { Some(_) => { count += 1; } None => { break; } } }
     
-    io::println(fmt!{"%s\t%?", word, count});
+    io::println(fmt!("%s\t%?", word, count));
 }
 
-class box<T> {
-    let mut contents: option<T>;
-    new(+x: T) { self.contents = some(x); }
+struct box<T> {
+    let mut contents: Option<T>;
+    new(+x: T) { self.contents = Some(x); }
 
     fn swap(f: fn(+T) -> T) {
-        let mut tmp = none;
+        let mut tmp = None;
         self.contents <-> tmp;
-        self.contents = some(f(option::unwrap(tmp)));
+        self.contents = Some(f(option::unwrap(tmp)));
     }
 
     fn unwrap() -> T {
-        let mut tmp = none;
+        let mut tmp = None;
         self.contents <-> tmp;
         option::unwrap(tmp)
     }
@@ -132,7 +130,7 @@ mod map_reduce {
 
     type mapper<K1: send, K2: send, V: send> = fn~(K1, putter<K2, V>);
 
-    type getter<V: send> = fn() -> option<V>;
+    type getter<V: send> = fn() -> Option<V>;
 
     type reducer<K: copy send, V: copy send> = fn~(K, getter<V>);
 
@@ -142,7 +140,7 @@ mod map_reduce {
     }
 
 
-    proto! ctrl_proto {
+    proto! ctrl_proto (
         open: send<K: copy send, V: copy send> {
             find_reducer(K) -> reducer_response<K, V>,
             mapper_done -> !
@@ -151,7 +149,7 @@ mod map_reduce {
         reducer_response: recv<K: copy send, V: copy send> {
             reducer(Chan<reduce_proto<V>>) -> open<K, V>
         }
-    }
+    )
 
     enum reduce_proto<V: copy send> { emit_val(V), done, addref, release }
 
@@ -181,16 +179,16 @@ mod map_reduce {
         let intermediates = mk_hash();
 
         do map(input) |key, val| {
-            let mut c = none;
+            let mut c = None;
             match intermediates.find(key) {
-              some(_c) => { c = some(_c); }
-              none => {
+              Some(_c) => { c = Some(_c); }
+              None => {
                 do ctrl.swap |ctrl| {
                     let ctrl = ctrl_proto::client::find_reducer(ctrl, key);
                     match pipes::recv(ctrl) {
                       ctrl_proto::reducer(c_, ctrl) => {
-                        c = some(c_);
-                        move_out!{ctrl}
+                        c = Some(c_);
+                        move_out!(ctrl)
                       }
                     }
                 }
@@ -214,31 +212,31 @@ mod map_reduce {
         key: K,
         out: Chan<Chan<reduce_proto<V>>>)
     {
-        let p = port();
+        let p = Port();
 
-        send(out, chan(p));
+        send(out, Chan(p));
 
         let mut ref_count = 0;
         let mut is_done = false;
 
         fn get<V: copy send>(p: Port<reduce_proto<V>>,
                              &ref_count: int, &is_done: bool)
-           -> option<V> {
+           -> Option<V> {
             while !is_done || ref_count > 0 {
                 match recv(p) {
                   emit_val(v) => {
-                    // error!{"received %d", v};
-                    return some(v);
+                    // error!("received %d", v);
+                    return Some(v);
                   }
                   done => {
-                    // error!{"all done"};
+                    // error!("all done");
                     is_done = true;
                   }
                   addref => { ref_count += 1; }
                   release => { ref_count -= 1; }
                 }
             }
-            return none;
+            return None;
         }
 
         reduce(key, || get(p, ref_count, is_done) );
@@ -262,7 +260,7 @@ mod map_reduce {
             let (_ready, message, ctrls) = pipes::select(ctrl);
             match option::unwrap(message) {
               ctrl_proto::mapper_done => {
-                // error!{"received mapper terminated."};
+                // error!("received mapper terminated.");
                 num_mappers -= 1;
                 ctrl = ctrls;
               }
@@ -270,15 +268,15 @@ mod map_reduce {
                 let c;
                 // log(error, "finding reducer for " + k);
                 match reducers.find(k) {
-                  some(_c) => {
+                  Some(_c) => {
                     // log(error,
                     // "reusing existing reducer for " + k);
                     c = _c;
                   }
-                  none => {
+                  None => {
                     // log(error, "creating new reducer for " + k);
-                    let p = port();
-                    let ch = chan(p);
+                    let p = Port();
+                    let ch = Chan(p);
                     let r = reduce, kk = k;
                     vec::push(tasks,
                               spawn_joinable(|| reduce_task(r, kk, ch) ));
@@ -288,7 +286,7 @@ mod map_reduce {
                 }
                 ctrl = vec::append_one(
                     ctrls,
-                    ctrl_proto::server::reducer(move_out!{cc}, c));
+                    ctrl_proto::server::reducer(move_out!(cc), c));
               }
             }
         }
@@ -303,7 +301,7 @@ fn main(argv: ~[~str]) {
     if vec::len(argv) < 2u && !os::getenv(~"RUST_BENCH").is_some() {
         let out = io::stdout();
 
-        out.write_line(fmt!{"Usage: %s <filename> ...", argv[0]});
+        out.write_line(fmt!("Usage: %s <filename> ...", argv[0]));
 
         return;
     }
@@ -333,7 +331,7 @@ fn main(argv: ~[~str]) {
              + u64::str(elapsed) + ~"ms");
 }
 
-fn read_word(r: io::Reader) -> option<~str> {
+fn read_word(r: io::Reader) -> Option<~str> {
     let mut w = ~"";
 
     while !r.eof() {
@@ -341,29 +339,29 @@ fn read_word(r: io::Reader) -> option<~str> {
 
         if is_word_char(c) {
             w += str::from_char(c);
-        } else { if w != ~"" { return some(w); } }
+        } else { if w != ~"" { return Some(w); } }
     }
-    return none;
+    return None;
 }
 
 fn is_word_char(c: char) -> bool {
     char::is_alphabetic(c) || char::is_digit(c) || c == '_'
 }
 
-class random_word_reader: word_reader {
+struct random_word_reader: word_reader {
     let mut remaining: uint;
     let rng: rand::Rng;
     new(count: uint) {
         self.remaining = count;
-        self.rng = rand::rng();
+        self.rng = rand::Rng();
     }
 
-    fn read_word() -> option<~str> {
+    fn read_word() -> Option<~str> {
         if self.remaining > 0 {
             self.remaining -= 1;
             let len = self.rng.gen_uint_range(1, 4);
-            some(self.rng.gen_str(len))
+            Some(self.rng.gen_str(len))
         }
-        else { none }
+        else { None }
     }
 }

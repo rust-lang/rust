@@ -1,4 +1,4 @@
-fn select(x: &int, y: &int) -> &int { x }
+fn select(x: &r/int, y: &r/int) -> &r/int { x }
 
 fn with<T>(f: fn(x: &int) -> T) -> T {
     f(&20)
@@ -6,7 +6,7 @@ fn with<T>(f: fn(x: &int) -> T) -> T {
 
 fn manip(x: &a/int) -> int {
     let z = do with |y| { select(x, y) };
-    //~^ ERROR reference is not valid outside of its lifetime
+    //~^ ERROR cannot infer an appropriate lifetime
     *z
 }
 

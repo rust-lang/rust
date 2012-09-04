@@ -1,6 +1,9 @@
 //! Misc low level stuff
 
+use cmp::{Eq, Ord};
+
 export TypeDesc;
+export Closure;
 export get_type_desc;
 export size_of;
 export min_align_of;
@@ -15,6 +18,12 @@ enum TypeDesc = {
     align: uint
     // Remaining fields not listed
 };
+
+/// The representation of a Rust closure
+struct Closure {
+    code: *();
+    env: *();
+}
 
 #[abi = "cdecl"]
 extern mod rustrt {
@@ -31,16 +40,16 @@ extern mod rusti {
 
 /// Compares contents of two pointers using the default method.
 /// Equivalent to `*x1 == *x2`.  Useful for hashtables.
-pure fn shape_eq<T>(x1: &T, x2: &T) -> bool {
+pure fn shape_eq<T:Eq>(x1: &T, x2: &T) -> bool {
     *x1 == *x2
 }
 
-pure fn shape_lt<T>(x1: &T, x2: &T) -> bool {
+pure fn shape_lt<T:Ord>(x1: &T, x2: &T) -> bool {
     *x1 < *x2
 }
 
-pure fn shape_le<T>(x1: &T, x2: &T) -> bool {
-    *x1 < *x2
+pure fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
+    *x1 <= *x2
 }
 
 /**
@@ -65,11 +74,13 @@ pure fn size_of<T>() -> uint {
  * This is the alignment used for struct fields. It may be smaller
  * than the preferred alignment.
  */
+#[inline(always)]
 pure fn min_align_of<T>() -> uint {
     unchecked { rusti::min_align_of::<T>() }
 }
 
 /// Returns the preferred alignment of a type
+#[inline(always)]
 pure fn pref_align_of<T>() -> uint {
     unchecked { rusti::pref_align_of::<T>() }
 }
@@ -77,14 +88,14 @@ pure fn pref_align_of<T>() -> uint {
 /// Returns the refcount of a shared box (as just before calling this)
 pure fn refcount<T>(+t: @T) -> uint {
     unsafe {
-        let ref_ptr: *uint = unsafe::reinterpret_cast(t);
+        let ref_ptr: *uint = unsafe::reinterpret_cast(&t);
         *ref_ptr - 1
     }
 }
 
 pure fn log_str<T>(t: T) -> ~str {
     unsafe {
-        let data_ptr: *() = unsafe::reinterpret_cast(ptr::addr_of(t));
+        let data_ptr: *() = unsafe::reinterpret_cast(&ptr::addr_of(t));
         rustrt::shape_log_str(get_type_desc::<T>(), data_ptr)
     }
 }
@@ -135,6 +146,27 @@ mod tests {
     fn align_of_64() {
         assert pref_align_of::<uint>() == 8u;
         assert pref_align_of::<*uint>() == 8u;
+    }
+
+    #[test]
+    fn synthesize_closure() unsafe {
+        let x = 10;
+        let f: fn(int) -> int = |y| x + y;
+
+        assert f(20) == 30;
+
+        let original_closure: Closure = unsafe::transmute(f);
+
+        let actual_function_pointer = original_closure.code;
+        let environment = original_closure.env;
+
+        let new_closure = Closure {
+            code: actual_function_pointer,
+            env: environment
+        };
+
+        let new_f: fn(int) -> int = unsafe::transmute(new_closure);
+        assert new_f(20) == 30;
     }
 }
 

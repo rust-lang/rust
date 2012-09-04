@@ -1,5 +1,5 @@
 // error-pattern: implement a trait or new type instead
-impl <T> option<T> {
+impl <T> Option<T> {
     fn foo() { }
 }
 

@@ -9,20 +9,14 @@ fn nested(x: &x/int) {  // (1)
                   z: &z/int) -> &z/int) // A fresh region `z` (3)
             -> &x/int {
 
-            if false { return z(x, x, x); } //~ ERROR mismatched types: expected `&y/int` but found `&x/int`
-            if false { return z(x, x, y); } //~ ERROR mismatched types: expected `&y/int` but found `&x/int`
-                                        //~^ ERROR mismatched types: expected `&x/int` but found `&y/int`
             if false { return z(x, y, x); }
-            if false { return z(x, y, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            if false { return z(y, x, x); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
-                                        //~^ ERROR mismatched types: expected `&y/int` but found `&x/int`
-            if false { return z(y, x, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
-                                        //~^ ERROR mismatched types: expected `&y/int` but found `&x/int`
-                                       //~^^ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            if false { return z(y, y, x); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            if false { return z(y, y, y); } //~ ERROR mismatched types: expected `&x/int` but found `&y/int`
-                                        //~^ ERROR mismatched types: expected `&x/int` but found `&y/int`
-            fail;
+
+            if false { return z(x, y, y); }
+            //~^ ERROR cannot infer an appropriate lifetime
+
+            return z(y, x, x);
+            //~^ ERROR mismatched types: expected `&x/int` but found `&y/int`
+            //~^^ ERROR mismatched types: expected `&y/int` but found `&x/int`
         }
     ) |foo| {
 
@@ -40,8 +34,13 @@ fn nested(x: &x/int) {  // (1)
         //
         // let f: &x/int = foo(&z, &z, |_x, _y, z| z ); // ERROR mismatched types: expected `&x/int` but found
 
-        foo(x, &z, |x, _y, _z| x ); //~ ERROR mismatched types: expected `&z/int` but found `&x/int`
-        foo(x, &z, |_x, y, _z| y ); //~ ERROR mismatched types: expected `&z/int` but found `&
+        foo(x, &z, |x, _y, _z| x); //~ ERROR mismatched types: expected `&z/int` but found `&x/int`
+
+        // Note: originally I had foo(x, &z, ...) here, but in that
+        // case the region inferencer deduced that this was valid if
+        // &y==&static, and so inference would succeed but borrow
+        // check would fail because the lifetime of &z is not &static.
+        foo(x, x, |_x, y, _z| y); //~ ERROR cannot infer an appropriate lifetime
     }
 }
 

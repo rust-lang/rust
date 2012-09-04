@@ -147,7 +147,7 @@ doc/version.md: $(MKFILE_DEPS) rust.md
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
 
-doc/version_info.html: version_info_template.html
+doc/version_info.html: version_info.html.template
 	@$(call E, version-info: $@)
 	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
                     $(CFG_VER_HASH) | head -c 8)/;\

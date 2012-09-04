@@ -1,4 +1,4 @@
-class CMap {
+struct CMap {
     let buf: &[u8];
 
     new(buf: &self/[u8]) {

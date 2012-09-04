@@ -1,8 +1,11 @@
 //! A standard linked list
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
 
+import core::cmp::Eq;
 import core::option;
 import option::*;
-import option::{some, none};
+import option::{Some, None};
 
 enum list<T> {
     cons(T, @list<T>),
@@ -27,9 +30,9 @@ fn from_vec<T: copy>(v: &[T]) -> @list<T> {
  * * z - The initial value
  * * f - The function to apply
  */
-fn foldl<T: copy, U>(z: T, ls: @list<U>, f: fn(T, U) -> T) -> T {
+fn foldl<T: copy, U>(+z: T, ls: @list<U>, f: fn((&T), (&U)) -> T) -> T {
     let mut accum: T = z;
-    do iter(ls) |elt| { accum = f(accum, elt);}
+    do iter(ls) |elt| { accum = f(&accum, &elt);}
     accum
 }
 
@@ -40,21 +43,21 @@ fn foldl<T: copy, U>(z: T, ls: @list<U>, f: fn(T, U) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-fn find<T: copy>(ls: @list<T>, f: fn(T) -> bool) -> option<T> {
+fn find<T: copy>(ls: @list<T>, f: fn((&T)) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
           cons(hd, tl) => {
-            if f(hd) { return some(hd); }
+            if f(&hd) { return Some(hd); }
             tl
           }
-          nil => return none
+          nil => return None
         }
     };
 }
 
 /// Returns true if a list contains an element with the given value
-fn has<T: copy>(ls: @list<T>, elt: T) -> bool {
+fn has<T: copy Eq>(ls: @list<T>, +elt: T) -> bool {
     for each(ls) |e| {
         if e == elt { return true; }
     }
@@ -109,10 +112,13 @@ pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
     }
 }
 
-/// Push an element to the front of a list
-fn push<T: copy>(&l: list<T>, v: T) {
-    l = cons(v, @l);
+/*
+/// Push one element into the front of a list, returning a new list
+/// THIS VERSION DOESN'T ACTUALLY WORK
+pure fn push<T: copy>(ll: &mut @list<T>, +vv: T) {
+    ll = &mut @cons(vv, *ll)
 }
+*/
 
 /// Iterate over a list
 fn iter<T>(l: @list<T>, f: fn(T)) {
@@ -138,6 +144,25 @@ fn each<T>(l: @list<T>, f: fn(T) -> bool) {
             tl
           }
           nil => break
+        }
+    }
+}
+
+impl<T:Eq> list<T> : Eq {
+    pure fn eq(&&other: list<T>) -> bool {
+        match self {
+            cons(e0a, e1a) => {
+                match other {
+                    cons(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    _ => false
+                }
+            }
+            nil => {
+                match other {
+                    nil => true,
+                    _ => false
+                }
+            }
         }
     }
 }
@@ -181,7 +206,7 @@ mod tests {
 
     #[test]
     fn test_foldl() {
-        fn add(&&a: uint, &&b: int) -> uint { return a + (b as uint); }
+        fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
         let l = from_vec(~[0, 1, 2, 3, 4]);
         let empty = @list::nil::<int>;
         assert (list::foldl(0u, l, add) == 10u);
@@ -190,8 +215,8 @@ mod tests {
 
     #[test]
     fn test_foldl2() {
-        fn sub(&&a: int, &&b: int) -> int {
-            a - b
+        fn sub(a: &int, b: &int) -> int {
+            *a - *b
         }
         let l = from_vec(~[1, 2, 3, 4]);
         assert (list::foldl(0, l, sub) == -10);
@@ -199,18 +224,18 @@ mod tests {
 
     #[test]
     fn test_find_success() {
-        fn match_(&&i: int) -> bool { return i == 2; }
+        fn match_(i: &int) -> bool { return *i == 2; }
         let l = from_vec(~[0, 1, 2]);
-        assert (list::find(l, match_) == option::some(2));
+        assert (list::find(l, match_) == option::Some(2));
     }
 
     #[test]
     fn test_find_fail() {
-        fn match_(&&_i: int) -> bool { return false; }
+        fn match_(_i: &int) -> bool { return false; }
         let l = from_vec(~[0, 1, 2]);
         let empty = @list::nil::<int>;
-        assert (list::find(l, match_) == option::none::<int>);
-        assert (list::find(empty, match_) == option::none::<int>);
+        assert (list::find(l, match_) == option::None::<int>);
+        assert (list::find(empty, match_) == option::None::<int>);
     }
 
     #[test]
@@ -231,6 +256,11 @@ mod tests {
         assert (list::len(empty) == 0u);
     }
 
+    #[test]
+    fn test_append() {
+        assert from_vec(~[1,2,3,4])
+            == list::append(list::from_vec(~[1,2]), list::from_vec(~[3,4]));
+    }
 }
 
 // Local Variables:

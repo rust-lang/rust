@@ -47,8 +47,8 @@ unsafe fn chan_from_global_ptr<T: send>(
 
         let (setup_po, setup_ch) = do task_fn().spawn_conversation
             |setup_po, setup_ch| {
-            let po = comm::port::<T>();
-            let ch = comm::chan(po);
+            let po = comm::Port::<T>();
+            let ch = comm::Chan(po);
             comm::send(setup_ch, ch);
 
             // Wait to hear if we are the official instance of
@@ -63,13 +63,13 @@ unsafe fn chan_from_global_ptr<T: send>(
         // This is the proposed global channel
         let ch = comm::recv(setup_po);
         // 0 is our sentinal value. It is not a valid channel
-        assert unsafe::reinterpret_cast(ch) != 0u;
+        assert unsafe::reinterpret_cast(&ch) != 0u;
 
         // Install the channel
         log(debug,~"BEFORE COMPARE AND SWAP");
         let swapped = compare_and_swap(
-            global, 0u, unsafe::reinterpret_cast(ch));
-        log(debug,fmt!{"AFTER .. swapped? %?", swapped});
+            global, 0u, unsafe::reinterpret_cast(&ch));
+        log(debug,fmt!("AFTER .. swapped? %?", swapped));
 
         if swapped {
             // Success!
@@ -78,11 +78,11 @@ unsafe fn chan_from_global_ptr<T: send>(
         } else {
             // Somebody else got in before we did
             comm::send(setup_ch, Abort);
-            unsafe::reinterpret_cast(*global)
+            unsafe::reinterpret_cast(&*global)
         }
     } else {
         log(debug, ~"global != 0");
-        unsafe::reinterpret_cast(*global)
+        unsafe::reinterpret_cast(&*global)
     }
 }
 
@@ -105,8 +105,8 @@ fn test_from_global_chan1() {
         }
     };
     // Talk to it
-    let po = comm::port();
-    comm::send(ch, comm::chan(po));
+    let po = comm::Port();
+    comm::send(ch, comm::Chan(po));
     assert comm::recv(po) == true;
 
     // This one just reuses the previous channel
@@ -118,8 +118,8 @@ fn test_from_global_chan1() {
     };
 
     // Talk to the original global task
-    let po = comm::port();
-    comm::send(ch, comm::chan(po));
+    let po = comm::Port();
+    comm::send(ch, comm::Chan(po));
     assert comm::recv(po) == true;
 }
 
@@ -131,8 +131,8 @@ fn test_from_global_chan2() {
         let globchan = 0u;
         let globchanp = ptr::addr_of(globchan);
 
-        let resultpo = comm::port();
-        let resultch = comm::chan(resultpo);
+        let resultpo = comm::Port();
+        let resultch = comm::Chan(resultpo);
 
         // Spawn a bunch of tasks that all want to compete to
         // create the global channel
@@ -148,9 +148,9 @@ fn test_from_global_chan2() {
                         }
                     }
                 };
-                let po = comm::port();
-                comm::send(ch, comm::chan(po));
-                // We are the winner if our version of the
+                let po = comm::Port();
+                comm::send(ch, comm::Chan(po));
+                // We are The winner if our version of the
                 // task was installed
                 let winner = comm::recv(po);
                 comm::send(resultch, winner == i);
@@ -186,19 +186,19 @@ fn test_from_global_chan2() {
  *   a reference to its parent, so the parent will not die.
  */
 unsafe fn weaken_task(f: fn(comm::Port<()>)) {
-    let po = comm::port();
-    let ch = comm::chan(po);
+    let po = comm::Port();
+    let ch = comm::Chan(po);
     unsafe {
-        rustrt::rust_task_weaken(unsafe::reinterpret_cast(ch));
+        rustrt::rust_task_weaken(unsafe::reinterpret_cast(&ch));
     }
     let _unweaken = Unweaken(ch);
     f(po);
 
-    class Unweaken {
+    struct Unweaken {
       let ch: comm::Chan<()>;
       new(ch: comm::Chan<()>) { self.ch = ch; }
       drop unsafe {
-        rustrt::rust_task_unweaken(unsafe::reinterpret_cast(self.ch));
+        rustrt::rust_task_unweaken(unsafe::reinterpret_cast(&self.ch));
       }
     }
 }

@@ -1,4 +1,5 @@
 import common::config;
+import io::ReaderUtil;
 
 export load_errors;
 export expected_error;
@@ -6,7 +7,7 @@ export expected_error;
 type expected_error = { line: uint, kind: ~str, msg: ~str };
 
 // Load any test directives embedded in the file
-fn load_errors(testfile: ~str) -> ~[expected_error] {
+fn load_errors(testfile: &Path) -> ~[expected_error] {
     let mut error_patterns = ~[];
     let rdr = result::get(io::file_reader(testfile));
     let mut line_num = 1u;
@@ -22,8 +23,8 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] unsafe {
     let error_tag = ~"//~";
     let mut idx;
     match str::find_str(line, error_tag) {
-      option::none => return ~[],
-      option::some(nn) => { idx = (nn as uint) + str::len(error_tag); }
+      option::None => return ~[],
+      option::Some(nn) => { idx = (nn as uint) + str::len(error_tag); }
     }
 
     // "//~^^^ kind msg" denotes a message expected
@@ -45,7 +46,7 @@ fn parse_expected(line_num: uint, line: ~str) -> ~[expected_error] unsafe {
     while idx < len && line[idx] == (' ' as u8) { idx += 1u; }
     let msg = str::slice(line, idx, len);
 
-    debug!{"line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg};
+    debug!("line=%u kind=%s msg=%s", line_num - adjust_line, kind, msg);
 
     return ~[{line: line_num - adjust_line, kind: kind, msg: msg}];
 }

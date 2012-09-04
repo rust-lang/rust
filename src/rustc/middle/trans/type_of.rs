@@ -12,6 +12,7 @@ export type_of_fn_from_ty;
 export type_of_fn;
 export type_of_glue_fn;
 export type_of_non_gc_box;
+export type_of_rooted;
 
 fn type_of_explicit_args(cx: @crate_ctxt,
                          inputs: ~[ty::arg]) -> ~[TypeRef] {
@@ -67,7 +68,7 @@ fn type_of_non_gc_box(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 }
 
 fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
-    debug!{"type_of %?: %?", t, ty::get(t)};
+    debug!("type_of %?: %?", t, ty::get(t));
 
     // Check the cache.
     if cx.lltypes.contains_key(t) { return cx.lltypes.get(t); }
@@ -94,13 +95,13 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_estr(ty::vstore_uniq) => {
         T_unique_ptr(T_unique(cx, T_vec(cx, T_i8())))
       }
-      ty::ty_enum(did, _) => {
+      ty::ty_enum(did, substs) => {
         // Only create the named struct, but don't fill it in. We
         // fill it in *after* placing it into the type cache. This
         // avoids creating more than one copy of the enum when one
         // of the enum's variants refers to the enum itself.
 
-        common::T_named_struct(llvm_type_name(cx, t))
+        common::T_named_struct(llvm_type_name(cx, an_enum, did, substs.tps))
       }
       ty::ty_estr(ty::vstore_box) => {
         T_box_ptr(T_box(cx, T_vec(cx, T_i8())))
@@ -157,12 +158,12 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         T_struct(tys)
       }
       ty::ty_opaque_closure_ptr(_) => T_opaque_box_ptr(cx),
-      ty::ty_class(*) => {
+      ty::ty_class(did, substs) => {
         // Only create the named struct, but don't fill it in. We fill it
         // in *after* placing it into the type cache. This prevents
         // infinite recursion with recursive class types.
 
-        common::T_named_struct(llvm_type_name(cx, t))
+        common::T_named_struct(llvm_type_name(cx, a_class, did, substs.tps))
       }
       ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
       ty::ty_var(_) => cx.tcx.sess.bug(~"type_of with ty_var"),
@@ -187,7 +188,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
             type_of(cx, t)
         };
 
-        if ty::ty_dtor(cx.tcx, did) != none {
+        if ty::ty_dtor(cx.tcx, did) != None {
             // resource type
             tys = ~[T_i8(), T_struct(tys)];
         }
@@ -203,7 +204,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
 fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
                      llty: TypeRef) {
 
-    debug!{"type_of_enum %?: %?", t, ty::get(t)};
+    debug!("type_of_enum %?: %?", t, ty::get(t));
 
     let lltys = {
         let degen = (*ty::enum_variants(cx.tcx, did)).len() == 1u;
@@ -222,27 +223,38 @@ fn fill_type_of_enum(cx: @crate_ctxt, did: ast::def_id, t: ty::t,
     common::set_struct_body(llty, lltys);
 }
 
-fn llvm_type_name(cx: @crate_ctxt, t: ty::t) -> ~str {
-    let (name, did, tps) = match check ty::get(t).struct {
-      ty::ty_enum(did, substs) => (~"enum", did, substs.tps),
-      ty::ty_class(did, substs) => (~"class", did, substs.tps)
-    };
-    return fmt!{
+// Want refinements! (Or case classes, I guess
+enum named_ty { a_class, an_enum }
+
+fn llvm_type_name(cx: @crate_ctxt,
+                  what: named_ty,
+                  did: ast::def_id,
+                  tps: ~[ty::t]
+                  ) -> ~str {
+    let name = match what { a_class => { "~class" } an_enum => { "~enum" } };
+    return fmt!(
         "%s %s[#%d]",
-        name,
+          name,
         util::ppaux::parameterized(
             cx.tcx,
             ty::item_path_str(cx.tcx, did),
-            none,
+            None,
             tps),
         did.crate
-    };
+    );
 }
 
 fn type_of_dtor(ccx: @crate_ctxt, self_ty: ty::t) -> TypeRef {
     T_fn(~[T_ptr(type_of(ccx, ty::mk_nil(ccx.tcx))),
           T_ptr(type_of(ccx, self_ty))],
          llvm::LLVMVoidType())
+}
+
+fn type_of_rooted(ccx: @crate_ctxt, t: ty::t) -> TypeRef {
+    let addrspace = base::get_tydesc(ccx, t).addrspace;
+    debug!("type_of_rooted %s in addrspace %u",
+           ty_to_str(ccx.tcx, t), addrspace as uint);
+    return T_root(type_of(ccx, t), addrspace);
 }
 
 fn type_of_glue_fn(ccx: @crate_ctxt, t: ty::t) -> TypeRef {

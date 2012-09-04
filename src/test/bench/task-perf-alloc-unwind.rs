@@ -17,11 +17,11 @@ fn main() {
 
 fn run(repeat: int, depth: int) {
     for iter::repeat(repeat as uint) {
-        debug!{"starting %.4f", precise_time_s()};
+        debug!("starting %.4f", precise_time_s());
         do task::try {
-            recurse_or_fail(depth, none)
+            recurse_or_fail(depth, None)
         };
-        debug!{"stopping %.4f", precise_time_s()};
+        debug!("stopping %.4f", precise_time_s());
     }
 }
 
@@ -40,21 +40,21 @@ enum st {
     })
 }
 
-class r {
+struct r {
   let _l: @nillist;
   new(l: @nillist) { self._l = l; }
   drop {}
 }
 
-fn recurse_or_fail(depth: int, st: option<st>) {
+fn recurse_or_fail(depth: int, st: Option<st>) {
     if depth == 0 {
-        debug!{"unwinding %.4f", precise_time_s()};
+        debug!("unwinding %.4f", precise_time_s());
         fail;
     } else {
         let depth = depth - 1;
 
         let st = match st {
-          none => {
+          None => {
             st_({
                 box: @nil,
                 unique: ~nil,
@@ -65,7 +65,7 @@ fn recurse_or_fail(depth: int, st: option<st>) {
                 res: r(@nil)
             })
           }
-          some(st) => {
+          Some(st) => {
             let fn_box = st.fn_box;
             let fn_unique = st.fn_unique;
 
@@ -82,6 +82,6 @@ fn recurse_or_fail(depth: int, st: option<st>) {
           }
         };
 
-        recurse_or_fail(depth, some(st));
+        recurse_or_fail(depth, Some(st));
     }
 }

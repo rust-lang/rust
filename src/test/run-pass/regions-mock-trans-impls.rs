@@ -1,13 +1,13 @@
 use std;
 import libc, sys, unsafe;
-import std::arena::arena;
+import std::arena::Arena;
 
 type bcx = {
     fcx: &fcx
 };
 
 type fcx = {
-    arena: &arena,
+    arena: &Arena,
     ccx: &ccx
 };
 
@@ -15,7 +15,7 @@ type ccx = {
     x: int
 };
 
-fn h(bcx : &bcx) -> &bcx {
+fn h(bcx : &r/bcx) -> &r/bcx {
     return bcx.fcx.arena.alloc(|| { fcx: bcx.fcx });
 }
 
@@ -25,7 +25,7 @@ fn g(fcx : &fcx) {
 }
 
 fn f(ccx : &ccx) {
-    let a = arena();
+    let a = Arena();
     let fcx = &{ arena: &a, ccx: ccx };
     return g(fcx);
 }

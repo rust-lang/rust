@@ -13,7 +13,7 @@ import codemap::span;
 enum vt<E> { mk_vt(visitor<E>), }
 
 enum fn_kind {
-    fk_item_fn(ident, ~[ty_param]), //< an item declared with fn()
+    fk_item_fn(ident, ~[ty_param], purity), //< an item declared with fn()
     fk_method(ident, ~[ty_param], @method),
     fk_anon(proto, capture_clause),  //< an anonymous function like fn@(...)
     fk_fn_block(capture_clause),     //< a block {||...}
@@ -26,16 +26,16 @@ enum fn_kind {
 
 fn name_of_fn(fk: fn_kind) -> ident {
     match fk {
-      fk_item_fn(name, _) | fk_method(name, _, _)
-          | fk_ctor(name, _, _, _, _) => /* FIXME (#2543) */ copy name,
-      fk_anon(*) | fk_fn_block(*) => @~"anon",
-      fk_dtor(*)                  => @~"drop"
+      fk_item_fn(name, _, _) | fk_method(name, _, _)
+          | fk_ctor(name, _, _, _, _) =>  /* FIXME (#2543) */ copy name,
+      fk_anon(*) | fk_fn_block(*) => parse::token::special_idents::anon,
+      fk_dtor(*)                  => parse::token::special_idents::dtor
     }
 }
 
 fn tps_of_fn(fk: fn_kind) -> ~[ty_param] {
     match fk {
-      fk_item_fn(_, tps) | fk_method(_, tps, _)
+      fk_item_fn(_, tps, _) | fk_method(_, tps, _)
           | fk_ctor(_, _, tps, _, _) | fk_dtor(tps, _, _, _) => {
           /* FIXME (#2543) */ copy tps
       }
@@ -116,17 +116,18 @@ fn visit_local<E>(loc: @local, e: E, v: vt<E>) {
     v.visit_pat(loc.node.pat, e, v);
     v.visit_ty(loc.node.ty, e, v);
     match loc.node.init {
-      none => (),
-      some(i) => v.visit_expr(i.expr, e, v)
+      None => (),
+      Some(i) => v.visit_expr(i.expr, e, v)
     }
 }
 
 fn visit_item<E>(i: @item, e: E, v: vt<E>) {
     match i.node {
       item_const(t, ex) => { v.visit_ty(t, e, v); v.visit_expr(ex, e, v); }
-      item_fn(decl, tp, body) => {
+      item_fn(decl, purity, tp, body) => {
         v.visit_fn(fk_item_fn(/* FIXME (#2543) */ copy i.ident,
-                              /* FIXME (#2543) */ copy tp), decl, body,
+                              /* FIXME (#2543) */ copy tp,
+                              purity), decl, body,
                    i.span, i.id, e, v);
       }
       item_mod(m) => v.visit_mod(m, i.span, i.id, e, v),
@@ -199,7 +200,7 @@ fn visit_ty<E>(t: @ty, e: E, v: vt<E>) {
       ty_tup(ts) => for ts.each |tt| {
         v.visit_ty(tt, e, v);
       },
-      ty_fn(_, bounds, decl) => {
+      ty_fn(_, _, bounds, decl) => {
         for decl.inputs.each |a| { v.visit_ty(a.ty, e, v); }
         visit_ty_param_bounds(bounds, e, v);
         v.visit_ty(decl.output, e, v);
@@ -249,9 +250,12 @@ fn visit_pat<E>(p: @pat, e: E, v: vt<E>) {
 
 fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
     match ni.node {
-      foreign_item_fn(fd, tps) => {
+      foreign_item_fn(fd, _, tps) => {
         v.visit_ty_params(tps, e, v);
         visit_fn_decl(fd, e, v);
+      }
+      foreign_item_const(t) => {
+        v.visit_ty(t, e, v);
       }
     }
 }
@@ -373,8 +377,8 @@ fn visit_decl<E>(d: @decl, e: E, v: vt<E>) {
     }
 }
 
-fn visit_expr_opt<E>(eo: option<@expr>, e: E, v: vt<E>) {
-    match eo { none => (), some(ex) => v.visit_expr(ex, e, v) }
+fn visit_expr_opt<E>(eo: Option<@expr>, e: E, v: vt<E>) {
+    match eo { None => (), Some(ex) => v.visit_expr(ex, e, v) }
 }
 
 fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
@@ -383,11 +387,11 @@ fn visit_exprs<E>(exprs: ~[@expr], e: E, v: vt<E>) {
 
 fn visit_mac<E>(m: mac, e: E, v: vt<E>) {
     match m.node {
-      ast::mac_invoc(pth, arg, body) => {
+      ast::mac_invoc(_, arg, _) => {
         option::map(arg, |arg| v.visit_expr(arg, e, v)); }
-      ast::mac_invoc_tt(pth, tt) => { /* no user-serviceable parts inside */ }
+      ast::mac_invoc_tt(*) => { /* no user-serviceable parts inside */ }
       ast::mac_ellipsis => (),
-      ast::mac_aq(_, e) => { /* FIXME: maybe visit (Issue #2340) */ }
+      ast::mac_aq(*) => { /* FIXME: maybe visit (Issue #2340) */ }
       ast::mac_var(_) => ()
     }
 }
@@ -429,7 +433,7 @@ fn visit_expr<E>(ex: @expr, e: E, v: vt<E>) {
       }
       expr_while(x, b) => { v.visit_expr(x, e, v); v.visit_block(b, e, v); }
       expr_loop(b, _) => v.visit_block(b, e, v),
-      expr_match(x, arms, _) => {
+      expr_match(x, arms) => {
         v.visit_expr(x, e, v);
         for arms.each |a| { v.visit_arm(a, e, v); }
       }
@@ -610,11 +614,7 @@ fn mk_simple_visitor(v: simple_visitor) -> vt<()> {
         f(fk, decl, body, sp, id);
         visit_fn(fk, decl, body, sp, id, e, v);
     }
-    let visit_ty = if v.visit_ty == simple_ignore_ty {
-        |a,b,c| skip_ty(a, b, c)
-    } else {
-        |a,b,c| v_ty(v.visit_ty, a, b, c)
-    };
+    let visit_ty = |a,b,c| v_ty(v.visit_ty, a, b, c);
     fn v_struct_field(f: fn@(@struct_field), sf: @struct_field, &&e: (),
                       v: vt<()>) {
         f(sf);

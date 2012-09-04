@@ -1,6 +1,6 @@
 // Check that issue #954 stays fixed
 
 fn main() {
-    match check -1 { -1 => {} }
+    match -1 { -1 => {}, _ => fail ~"wat" }
     assert 1-1 == 0;
 }

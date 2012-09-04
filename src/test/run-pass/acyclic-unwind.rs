@@ -17,7 +17,7 @@ fn f(c: comm::_chan<int>) {
 
     loop {
         // spin waiting for the parent to kill us.
-        debug!{"child waiting to die..."};
+        debug!("child waiting to die...");
 
         // while waiting to die, the messages we are
         // sending to the channel are never received
@@ -35,5 +35,5 @@ fn main() {
     // synchronize on event from child.
     i = p.recv();
 
-    debug!{"parent exiting, killing child"};
+    debug!("parent exiting, killing child");
 }

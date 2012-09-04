@@ -1,4 +1,4 @@
-class noncopyable {
+struct noncopyable {
     i: (); new() { self.i = (); } drop { #error["dropped"]; }
 }
 enum wrapper = noncopyable;

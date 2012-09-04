@@ -33,23 +33,23 @@ fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
 
 fn get_fill(bcx: block, vptr: ValueRef) -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_fill");
-    Load(bcx, GEPi(bcx, vptr, ~[0u, abi::vec_elt_fill]))
+    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
 fn set_fill(bcx: block, vptr: ValueRef, fill: ValueRef) {
-    Store(bcx, fill, GEPi(bcx, vptr, ~[0u, abi::vec_elt_fill]));
+    Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]));
 }
 fn get_alloc(bcx: block, vptr: ValueRef) -> ValueRef {
-    Load(bcx, GEPi(bcx, vptr, ~[0u, abi::vec_elt_alloc]))
+    Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
 }
 
 fn get_bodyptr(bcx: block, vptr: ValueRef) -> ValueRef {
-    non_gc_box_cast(bcx, GEPi(bcx, vptr, ~[0u, abi::box_field_body]))
+    non_gc_box_cast(bcx, GEPi(bcx, vptr, [0u, abi::box_field_body]))
 }
 
 fn get_dataptr(bcx: block, vptr: ValueRef)
     -> ValueRef {
     let _icx = bcx.insn_ctxt("tvec::get_dataptr");
-    GEPi(bcx, vptr, ~[0u, abi::vec_elt_elems, 0u])
+    GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
 }
 
 fn pointer_add(bcx: block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
@@ -69,8 +69,8 @@ fn alloc_raw(bcx: block, unit_ty: ty::t,
 
     let {bcx, box, body} =
         base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
-    Store(bcx, fill, GEPi(bcx, body, ~[0u, abi::vec_elt_fill]));
-    Store(bcx, alloc, GEPi(bcx, body, ~[0u, abi::vec_elt_alloc]));
+    Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
+    Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
     return {bcx: bcx, val: box};
 }
 fn alloc_uniq_raw(bcx: block, unit_ty: ty::t,
@@ -187,8 +187,8 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
             let p = base::alloca(bcx, T_struct(~[T_ptr(llunitty),
                                                 ccx.int_type]));
-            Store(bcx, vp, GEPi(bcx, p, ~[0u, abi::slice_elt_base]));
-            Store(bcx, len, GEPi(bcx, p, ~[0u, abi::slice_elt_len]));
+            Store(bcx, vp, GEPi(bcx, p, [0u, abi::slice_elt_base]));
+            Store(bcx, len, GEPi(bcx, p, [0u, abi::slice_elt_len]));
 
             {bcx: bcx, val: p, dataptr: vp}
           }
@@ -209,9 +209,9 @@ fn trans_evec(bcx: block, elements: evec_elements,
 
     // Store the individual elements.
     let mut i = 0u, temp_cleanups = ~[val];
-    debug!{"trans_evec: v: %s, dataptr: %s",
+    debug!("trans_evec: v: %s, dataptr: %s",
            val_str(ccx.tn, val),
-           val_str(ccx.tn, dataptr)};
+           val_str(ccx.tn, dataptr));
     match elements {
         individual_evec(args) => {
             for vec::each(args) |e| {
@@ -266,12 +266,12 @@ fn trans_vstore(bcx: block, e: @ast::expr,
                 v: ast::vstore, dest: dest) -> block {
     match e.node {
       ast::expr_lit(@{node: ast::lit_str(s), span: _}) => {
-        return trans_estr(bcx, s, some(v), dest);
+        return trans_estr(bcx, s, Some(v), dest);
       }
-      ast::expr_vec(es, mutbl) => {
+      ast::expr_vec(es, _) => {
         return trans_evec(bcx, individual_evec(es), v, e.id, dest);
       }
-      ast::expr_repeat(element, count_expr, mutbl) => {
+      ast::expr_repeat(element, count_expr, _) => {
         let count = ty::eval_repeat_count(bcx.tcx(), count_expr, e.span);
         return trans_evec(bcx, repeating_evec(element, count), v, e.id, dest);
       }
@@ -298,44 +298,44 @@ fn get_base_and_len(cx: block, v: ValueRef, e_ty: ty::t)
 
     match vstore {
       ty::vstore_fixed(n) => {
-        let base = GEPi(cx, v, ~[0u, 0u]);
+        let base = GEPi(cx, v, [0u, 0u]);
         let n = if ty::type_is_str(e_ty) { n + 1u } else { n };
         let len = Mul(cx, C_uint(ccx, n), unit_sz);
         (base, len)
       }
       ty::vstore_slice(_) => {
-        let base = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_base]));
-        let len = Load(cx, GEPi(cx, v, ~[0u, abi::slice_elt_len]));
+        let base = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_base]));
+        let len = Load(cx, GEPi(cx, v, [0u, abi::slice_elt_len]));
         (base, len)
       }
       ty::vstore_uniq | ty::vstore_box => {
-        debug!{"get_base_and_len: %s", val_str(ccx.tn, v)};
+        debug!("get_base_and_len: %s", val_str(ccx.tn, v));
         let body = tvec::get_bodyptr(cx, v);
         (tvec::get_dataptr(cx, body), tvec::get_fill(cx, body))
       }
     }
 }
 
-fn trans_estr(bcx: block, s: @~str, vstore: option<ast::vstore>,
+fn trans_estr(bcx: block, s: @~str, vstore: Option<ast::vstore>,
               dest: dest) -> block {
     let _icx = bcx.insn_ctxt("tvec::trans_estr");
     if dest == base::ignore { return bcx; }
     let ccx = bcx.ccx();
 
     let c = match vstore {
-      some(ast::vstore_fixed(_)) => {
+      Some(ast::vstore_fixed(_)) => {
         // "hello"/_  =>  "hello"/5  =>  ~[i8 x 6] in llvm
-        debug!{"trans_estr: fixed: %s", *s};
+        debug!("trans_estr: fixed: %s", *s);
         C_postr(*s)
       }
 
-      some(ast::vstore_slice(_)) | none => {
+      Some(ast::vstore_slice(_)) | None => {
         // "hello"  =>  (*i8, 6u) in llvm
-        debug!{"trans_estr: slice '%s'", *s};
+        debug!("trans_estr: slice '%s'", *s);
         C_estr_slice(ccx, *s)
       }
 
-      some(ast::vstore_uniq) => {
+      Some(ast::vstore_uniq) => {
         let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
         let len = C_uint(ccx, str::len(*s));
         let c = Call(bcx, ccx.upcalls.str_new_uniq, ~[cs, len]);
@@ -343,7 +343,7 @@ fn trans_estr(bcx: block, s: @~str, vstore: option<ast::vstore>,
                     T_unique_ptr(T_unique(ccx, T_vec(ccx, T_i8()))))
       }
 
-      some(ast::vstore_box) => {
+      Some(ast::vstore_box) => {
         let cs = PointerCast(bcx, C_cstr(ccx, *s), T_ptr(T_i8()));
         let len = C_uint(ccx, str::len(*s));
         let c = Call(bcx, ccx.upcalls.str_new_shared, ~[cs, len]);
@@ -352,7 +352,7 @@ fn trans_estr(bcx: block, s: @~str, vstore: option<ast::vstore>,
       }
     };
 
-    debug!{"trans_estr: type: %s", val_str(ccx.tn, c)};
+    debug!("trans_estr: type: %s", val_str(ccx.tn, c));
     base::store_in_dest(bcx, c, dest)
 }
 

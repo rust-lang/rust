@@ -8,10 +8,9 @@
  * in std.
  */
 
-export condvar, semaphore, mutex, mutex_with_condvars;
-export rwlock, rwlock_with_condvars, rwlock_write_mode, rwlock_read_mode;
+export Condvar, Semaphore, Mutex, mutex_with_condvars;
+export RWlock, rwlock_with_condvars, RWlockReadMode, RWlockWriteMode;
 
-// FIXME (#3119) This shouldn't be a thing exported from core.
 import unsafe::{Exclusive, exclusive};
 
 /****************************************************************************
@@ -20,22 +19,22 @@ import unsafe::{Exclusive, exclusive};
 
 // Each waiting task receives on one of these.
 #[doc(hidden)]
-type wait_end = pipes::port_one<()>;
+type WaitEnd = pipes::PortOne<()>;
 #[doc(hidden)]
-type signal_end = pipes::chan_one<()>;
+type SignalEnd = pipes::ChanOne<()>;
 // A doubly-ended queue of waiting tasks.
 #[doc(hidden)]
-struct waitqueue { head: pipes::port<signal_end>;
-                   tail: pipes::chan<signal_end>; }
+struct Waitqueue { head: pipes::Port<SignalEnd>;
+                   tail: pipes::Chan<SignalEnd>; }
 
-fn new_waitqueue() -> waitqueue {
+fn new_waitqueue() -> Waitqueue {
     let (block_tail, block_head) = pipes::stream();
-    waitqueue { head: block_head, tail: block_tail }
+    Waitqueue { head: block_head, tail: block_tail }
 }
 
 // Signals one live task from the queue.
 #[doc(hidden)]
-fn signal_waitqueue(q: &waitqueue) -> bool {
+fn signal_waitqueue(q: &Waitqueue) -> bool {
     // The peek is mandatory to make sure recv doesn't block.
     if q.head.peek() {
         // Pop and send a wakeup signal. If the waiter was killed, its port
@@ -51,7 +50,7 @@ fn signal_waitqueue(q: &waitqueue) -> bool {
 }
 
 #[doc(hidden)]
-fn broadcast_waitqueue(q: &waitqueue) -> uint {
+fn broadcast_waitqueue(q: &Waitqueue) -> uint {
     let mut count = 0;
     while q.head.peek() {
         if pipes::try_send_one(q.head.recv(), ()) {
@@ -63,24 +62,24 @@ fn broadcast_waitqueue(q: &waitqueue) -> uint {
 
 // The building-block used to make semaphores, mutexes, and rwlocks.
 #[doc(hidden)]
-struct sem_inner<Q> {
+struct SemInner<Q> {
     mut count: int;
-    waiters:   waitqueue;
+    waiters:   Waitqueue;
     // Can be either unit or another waitqueue. Some sems shouldn't come with
     // a condition variable attached, others should.
     blocked:   Q;
 }
 #[doc(hidden)]
-enum sem<Q: send> = Exclusive<sem_inner<Q>>;
+enum Sem<Q: send> = Exclusive<SemInner<Q>>;
 
 #[doc(hidden)]
-fn new_sem<Q: send>(count: int, +q: Q) -> sem<Q> {
-    sem(exclusive(sem_inner {
+fn new_sem<Q: send>(count: int, +q: Q) -> Sem<Q> {
+    Sem(exclusive(SemInner {
         mut count: count, waiters: new_waitqueue(), blocked: q }))
 }
 #[doc(hidden)]
 fn new_sem_and_signal(count: int, num_condvars: uint)
-        -> sem<~[mut waitqueue]> {
+        -> Sem<~[mut Waitqueue]> {
     let mut queues = ~[mut];
     for num_condvars.times {
         vec::push(queues, new_waitqueue());
@@ -89,9 +88,9 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 }
 
 #[doc(hidden)]
-impl<Q: send> &sem<Q> {
+impl<Q: send> &Sem<Q> {
     fn acquire() {
-        let mut waiter_nobe = none;
+        let mut waiter_nobe = None;
         unsafe {
             do (**self).with |state| {
                 state.count -= 1;
@@ -99,7 +98,7 @@ impl<Q: send> &sem<Q> {
                     // Create waiter nobe.
                     let (signal_end, wait_end) = pipes::oneshot();
                     // Tell outer scope we need to block.
-                    waiter_nobe = some(wait_end);
+                    waiter_nobe = Some(wait_end);
                     // Enqueue ourself.
                     state.waiters.tail.send(signal_end);
                 }
@@ -123,28 +122,28 @@ impl<Q: send> &sem<Q> {
         }
     }
 }
-// FIXME(#3154) move both copies of this into sem<Q>, and unify the 2 structs
+// FIXME(#3154) move both copies of this into Sem<Q>, and unify the 2 structs
 #[doc(hidden)]
-impl &sem<()> {
+impl &Sem<()> {
     fn access<U>(blk: fn() -> U) -> U {
-        let mut release = none;
+        let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = some(sem_release(self));
+                release = Some(SemRelease(self));
             }
         }
         blk()
     }
 }
 #[doc(hidden)]
-impl &sem<~[mut waitqueue]> {
+impl &Sem<~[mut Waitqueue]> {
     fn access<U>(blk: fn() -> U) -> U {
-        let mut release = none;
+        let mut release = None;
         unsafe {
             do task::unkillable {
                 self.acquire();
-                release = some(sem_and_signal_release(self));
+                release = Some(SemAndSignalRelease(self));
             }
         }
         blk()
@@ -153,22 +152,22 @@ impl &sem<~[mut waitqueue]> {
 
 // FIXME(#3136) should go inside of access()
 #[doc(hidden)]
-struct sem_release {
-    sem: &sem<()>;
-    new(sem: &sem<()>) { self.sem = sem; }
+struct SemRelease {
+    sem: &Sem<()>;
+    new(sem: &Sem<()>) { self.sem = sem; }
     drop { self.sem.release(); }
 }
 #[doc(hidden)]
-struct sem_and_signal_release {
-    sem: &sem<~[mut waitqueue]>;
-    new(sem: &sem<~[mut waitqueue]>) { self.sem = sem; }
+struct SemAndSignalRelease {
+    sem: &Sem<~[mut Waitqueue]>;
+    new(sem: &Sem<~[mut Waitqueue]>) { self.sem = sem; }
     drop { self.sem.release(); }
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-struct condvar { priv sem: &sem<~[mut waitqueue]>; drop { } }
+struct Condvar { priv sem: &Sem<~[mut Waitqueue]>; drop { } }
 
-impl &condvar {
+impl &Condvar {
     /**
      * Atomically drop the associated lock, and block until a signal is sent.
      *
@@ -192,10 +191,10 @@ impl &condvar {
     fn wait_on(condvar_id: uint) {
         // Create waiter nobe.
         let (signal_end, wait_end) = pipes::oneshot();
-        let mut wait_end   = some(wait_end);
-        let mut signal_end = some(signal_end);
-        let mut reacquire = none;
-        let mut out_of_bounds = none;
+        let mut wait_end   = Some(wait_end);
+        let mut signal_end = Some(signal_end);
+        let mut reacquire = None;
+        let mut out_of_bounds = None;
         unsafe {
             do task::unkillable {
                 // Release lock, 'atomically' enqueuing ourselves in so doing.
@@ -210,7 +209,7 @@ impl &condvar {
                         let signal_end = option::swap_unwrap(&mut signal_end);
                         state.blocked[condvar_id].tail.send(signal_end);
                     } else {
-                        out_of_bounds = some(vec::len(state.blocked));
+                        out_of_bounds = Some(vec::len(state.blocked));
                     }
                 }
 
@@ -219,7 +218,7 @@ impl &condvar {
                 // unkillably reacquire the lock needs to happen atomically
                 // wrt enqueuing.
                 if out_of_bounds.is_none() {
-                    reacquire = some(sem_and_signal_reacquire(self.sem));
+                    reacquire = Some(SemAndSignalReacquire(self.sem));
                 }
             }
         }
@@ -233,9 +232,9 @@ impl &condvar {
         // This is needed for a failing condition variable to reacquire the
         // mutex during unwinding. As long as the wrapper (mutex, etc) is
         // bounded in when it gets released, this shouldn't hang forever.
-        struct sem_and_signal_reacquire {
-            sem: &sem<~[mut waitqueue]>;
-            new(sem: &sem<~[mut waitqueue]>) { self.sem = sem; }
+        struct SemAndSignalReacquire {
+            sem: &Sem<~[mut Waitqueue]>;
+            new(sem: &Sem<~[mut Waitqueue]>) { self.sem = sem; }
             drop unsafe {
                 // Needs to succeed, instead of itself dying.
                 do task::unkillable {
@@ -249,14 +248,14 @@ impl &condvar {
     fn signal() -> bool { self.signal_on(0) }
     /// As signal, but with a specified condvar_id. See wait_on.
     fn signal_on(condvar_id: uint) -> bool {
-        let mut out_of_bounds = none;
+        let mut out_of_bounds = None;
         let mut result = false;
         unsafe {
             do (**self.sem).with |state| {
                 if condvar_id < vec::len(state.blocked) {
                     result = signal_waitqueue(&state.blocked[condvar_id]);
                 } else {
-                    out_of_bounds = some(vec::len(state.blocked));
+                    out_of_bounds = Some(vec::len(state.blocked));
                 }
             }
         }
@@ -269,18 +268,18 @@ impl &condvar {
     fn broadcast() -> uint { self.broadcast_on(0) }
     /// As broadcast, but with a specified condvar_id. See wait_on.
     fn broadcast_on(condvar_id: uint) -> uint {
-        let mut out_of_bounds = none;
-        let mut queue = none;
+        let mut out_of_bounds = None;
+        let mut queue = None;
         unsafe {
             do (**self.sem).with |state| {
                 if condvar_id < vec::len(state.blocked) {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
                     // old one outside of the little-lock.
-                    queue = some(util::replace(&mut state.blocked[condvar_id],
+                    queue = Some(util::replace(&mut state.blocked[condvar_id],
                                                new_waitqueue()));
                 } else {
-                    out_of_bounds = some(vec::len(state.blocked));
+                    out_of_bounds = Some(vec::len(state.blocked));
                 }
             }
         }
@@ -295,24 +294,24 @@ impl &condvar {
 // something else next on success.
 #[inline(always)]
 #[doc(hidden)]
-fn check_cvar_bounds<U>(out_of_bounds: option<uint>, id: uint, act: &str,
+fn check_cvar_bounds<U>(out_of_bounds: Option<uint>, id: uint, act: &str,
                         blk: fn() -> U) -> U {
     match out_of_bounds {
-        some(0) =>
+        Some(0) =>
             fail fmt!("%s with illegal ID %u - this lock has no condvars!",
                       act, id),
-        some(length) =>
+        Some(length) =>
             fail fmt!("%s with illegal ID %u - ID must be less than %u",
                       act, id, length),
-        none => blk()
+        None => blk()
     }
 }
 
 #[doc(hidden)]
-impl &sem<~[mut waitqueue]> {
+impl &Sem<~[mut Waitqueue]> {
     // The only other place that condvars get built is rwlock_write_mode.
-    fn access_cond<U>(blk: fn(c: &condvar) -> U) -> U {
-        do self.access { blk(&condvar { sem: self }) }
+    fn access_cond<U>(blk: fn(c: &Condvar) -> U) -> U {
+        do self.access { blk(&Condvar { sem: self }) }
     }
 }
 
@@ -321,16 +320,16 @@ impl &sem<~[mut waitqueue]> {
  ****************************************************************************/
 
 /// A counting, blocking, bounded-waiting semaphore.
-struct semaphore { priv sem: sem<()>; }
+struct Semaphore { priv sem: Sem<()>; }
 
 /// Create a new semaphore with the specified count.
-fn semaphore(count: int) -> semaphore {
-    semaphore { sem: new_sem(count, ()) }
+fn semaphore(count: int) -> Semaphore {
+    Semaphore { sem: new_sem(count, ()) }
 }
 
-impl &semaphore {
+impl &Semaphore {
     /// Create a new handle to the semaphore.
-    fn clone() -> semaphore { semaphore { sem: sem((*self.sem).clone()) } }
+    fn clone() -> Semaphore { Semaphore { sem: Sem((*self.sem).clone()) } }
 
     /**
      * Acquire a resource represented by the semaphore. Blocks if necessary
@@ -360,29 +359,29 @@ impl &semaphore {
  * A task which fails while holding a mutex will unlock the mutex as it
  * unwinds.
  */
-struct mutex { priv sem: sem<~[mut waitqueue]>; }
+struct Mutex { priv sem: Sem<~[mut Waitqueue]>; }
 
 /// Create a new mutex, with one associated condvar.
-fn mutex() -> mutex { mutex_with_condvars(1) }
+fn Mutex() -> Mutex { mutex_with_condvars(1) }
 /**
  * Create a new mutex, with a specified number of associated condvars. This
  * will allow calling wait_on/signal_on/broadcast_on with condvar IDs between
  * 0 and num_condvars-1. (If num_condvars is 0, lock_cond will be allowed but
  * any operations on the condvar will fail.)
  */
-fn mutex_with_condvars(num_condvars: uint) -> mutex {
-    mutex { sem: new_sem_and_signal(1, num_condvars) }
+fn mutex_with_condvars(num_condvars: uint) -> Mutex {
+    Mutex { sem: new_sem_and_signal(1, num_condvars) }
 }
 
-impl &mutex {
+impl &Mutex {
     /// Create a new handle to the mutex.
-    fn clone() -> mutex { mutex { sem: sem((*self.sem).clone()) } }
+    fn clone() -> Mutex { Mutex { sem: Sem((*self.sem).clone()) } }
 
     /// Run a function with ownership of the mutex.
     fn lock<U>(blk: fn() -> U) -> U { (&self.sem).access(blk) }
 
     /// Run a function with ownership of the mutex and a handle to a condvar.
-    fn lock_cond<U>(blk: fn(c: &condvar) -> U) -> U {
+    fn lock_cond<U>(blk: fn(c: &Condvar) -> U) -> U {
         (&self.sem).access_cond(blk)
     }
 }
@@ -394,7 +393,7 @@ impl &mutex {
 // NB: Wikipedia - Readers-writers_problem#The_third_readers-writers_problem
 
 #[doc(hidden)]
-struct rwlock_inner {
+struct RWlockInner {
     read_mode:  bool;
     read_count: uint;
 }
@@ -406,31 +405,31 @@ struct rwlock_inner {
  * A task which fails while holding an rwlock will unlock the rwlock as it
  * unwinds.
  */
-struct rwlock {
-    /* priv */ order_lock:  semaphore;
-    /* priv */ access_lock: sem<~[mut waitqueue]>;
-    /* priv */ state:       Exclusive<rwlock_inner>;
+struct RWlock {
+    /* priv */ order_lock:  Semaphore;
+    /* priv */ access_lock: Sem<~[mut Waitqueue]>;
+    /* priv */ state:       Exclusive<RWlockInner>;
 }
 
 /// Create a new rwlock, with one associated condvar.
-fn rwlock() -> rwlock { rwlock_with_condvars(1) }
+fn RWlock() -> RWlock { rwlock_with_condvars(1) }
 
 /**
  * Create a new rwlock, with a specified number of associated condvars.
  * Similar to mutex_with_condvars.
  */
-fn rwlock_with_condvars(num_condvars: uint) -> rwlock {
-    rwlock { order_lock: semaphore(1),
+fn rwlock_with_condvars(num_condvars: uint) -> RWlock {
+    RWlock { order_lock: semaphore(1),
              access_lock: new_sem_and_signal(1, num_condvars),
-             state: exclusive(rwlock_inner { read_mode:  false,
+             state: exclusive(RWlockInner { read_mode:  false,
                                              read_count: 0 }) }
 }
 
-impl &rwlock {
+impl &RWlock {
     /// Create a new handle to the rwlock.
-    fn clone() -> rwlock {
-        rwlock { order_lock:  (&(self.order_lock)).clone(),
-                 access_lock: sem((*self.access_lock).clone()),
+    fn clone() -> RWlock {
+        RWlock { order_lock:  (&(self.order_lock)).clone(),
+                 access_lock: Sem((*self.access_lock).clone()),
                  state:       self.state.clone() }
     }
 
@@ -439,7 +438,7 @@ impl &rwlock {
      * tasks may run concurrently with this one.
      */
     fn read<U>(blk: fn() -> U) -> U {
-        let mut release = none;
+        let mut release = None;
         unsafe {
             do task::unkillable {
                 do (&self.order_lock).access {
@@ -459,7 +458,7 @@ impl &rwlock {
                         }
                     }
                 }
-                release = some(rwlock_release_read(self));
+                release = Some(RWlockReleaseRead(self));
             }
         }
         blk()
@@ -487,7 +486,7 @@ impl &rwlock {
      * the waiting task is signalled. (Note: a writer that waited and then
      * was signalled might reacquire the lock before other waiting writers.)
      */
-    fn write_cond<U>(blk: fn(c: &condvar) -> U) -> U {
+    fn write_cond<U>(blk: fn(c: &Condvar) -> U) -> U {
         // NB: You might think I should thread the order_lock into the cond
         // wait call, so that it gets waited on before access_lock gets
         // reacquired upon being woken up. However, (a) this would be not
@@ -522,23 +521,23 @@ impl &rwlock {
      * }
      * ~~~
      */
-    fn write_downgrade<U>(blk: fn(+rwlock_write_mode) -> U) -> U {
+    fn write_downgrade<U>(blk: fn(+RWlockWriteMode) -> U) -> U {
         // Implementation slightly different from the slicker 'write's above.
         // The exit path is conditional on whether the caller downgrades.
-        let mut _release = none;
+        let mut _release = None;
         unsafe {
             do task::unkillable {
                 (&self.order_lock).acquire();
                 (&self.access_lock).acquire();
                 (&self.order_lock).release();
             }
-            _release = some(rwlock_release_downgrade(self));
+            _release = Some(RWlockReleaseDowngrade(self));
         }
-        blk(rwlock_write_mode { lock: self })
+        blk(RWlockWriteMode { lock: self })
     }
 
     /// To be called inside of the write_downgrade block.
-    fn downgrade(+token: rwlock_write_mode) -> rwlock_read_mode {
+    fn downgrade(+token: RWlockWriteMode/&a) -> RWlockReadMode/&a {
         if !ptr::ref_eq(self, token.lock) {
             fail ~"Can't downgrade() with a different rwlock's write_mode!";
         }
@@ -560,15 +559,15 @@ impl &rwlock {
                 }
             }
         }
-        rwlock_read_mode { lock: token.lock }
+        RWlockReadMode { lock: token.lock }
     }
 }
 
 // FIXME(#3136) should go inside of read()
 #[doc(hidden)]
-struct rwlock_release_read {
-    lock: &rwlock;
-    new(lock: &rwlock) { self.lock = lock; }
+struct RWlockReleaseRead {
+    lock: &RWlock;
+    new(lock: &RWlock) { self.lock = lock; }
     drop unsafe {
         do task::unkillable {
             let mut last_reader = false;
@@ -590,9 +589,9 @@ struct rwlock_release_read {
 
 // FIXME(#3136) should go inside of downgrade()
 #[doc(hidden)]
-struct rwlock_release_downgrade {
-    lock: &rwlock;
-    new(lock: &rwlock) { self.lock = lock; }
+struct RWlockReleaseDowngrade {
+    lock: &RWlock;
+    new(lock: &RWlock) { self.lock = lock; }
     drop unsafe {
         do task::unkillable {
             let mut writer_or_last_reader = false;
@@ -620,19 +619,19 @@ struct rwlock_release_downgrade {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-struct rwlock_write_mode { /* priv */ lock: &rwlock; drop { } }
+struct RWlockWriteMode { /* priv */ lock: &RWlock; drop { } }
 /// The "read permission" token used for rwlock.write_downgrade().
-struct rwlock_read_mode  { priv lock: &rwlock; drop { } }
+struct RWlockReadMode  { priv lock: &RWlock; drop { } }
 
-impl &rwlock_write_mode {
+impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
     fn write<U>(blk: fn() -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
-    fn write_cond<U>(blk: fn(c: &condvar) -> U) -> U {
-        blk(&condvar { sem: &self.lock.access_lock })
+    fn write_cond<U>(blk: fn(c: &Condvar) -> U) -> U {
+        blk(&Condvar { sem: &self.lock.access_lock })
     }
 }
-impl &rwlock_read_mode {
+impl &RWlockReadMode {
     /// Access the post-downgrade rwlock in read mode.
     fn read<U>(blk: fn() -> U) -> U { blk() }
 }
@@ -724,7 +723,7 @@ mod tests {
             let s = ~semaphore(1);
             let s2 = ~s.clone();
             let (c,p) = pipes::stream();
-            let child_data = ~mut some((s2,c));
+            let child_data = ~mut Some((s2,c));
             do s.access {
                 let (s2,c) = option::swap_unwrap(child_data);
                 do task::spawn {
@@ -746,13 +745,13 @@ mod tests {
         // Unsafely achieve shared state, and do the textbook
         // "load tmp <- ptr; inc tmp; store ptr <- tmp" dance.
         let (c,p) = pipes::stream();
-        let m = ~mutex();
+        let m = ~Mutex();
         let m2 = ~m.clone();
         let sharedstate = ~0;
         let ptr = ptr::addr_of(*sharedstate);
         do task::spawn {
             let sharedstate: &mut int =
-                unsafe { unsafe::reinterpret_cast(ptr) };
+                unsafe { unsafe::reinterpret_cast(&ptr) };
             access_shared(sharedstate, m2, 10);
             c.send(());
 
@@ -762,7 +761,7 @@ mod tests {
 
         assert *sharedstate == 20;
 
-        fn access_shared(sharedstate: &mut int, m: &mutex, n: uint) {
+        fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
             for n.times {
                 do m.lock {
                     let oldval = *sharedstate;
@@ -774,7 +773,7 @@ mod tests {
     }
     #[test]
     fn test_mutex_cond_wait() {
-        let m = ~mutex();
+        let m = ~Mutex();
 
         // Child wakes up parent
         do m.lock_cond |cond| {
@@ -806,7 +805,7 @@ mod tests {
     }
     #[cfg(test)]
     fn test_mutex_cond_broadcast_helper(num_waiters: uint) {
-        let m = ~mutex();
+        let m = ~Mutex();
         let mut ports = ~[];
 
         for num_waiters.times {
@@ -841,7 +840,7 @@ mod tests {
     }
     #[test]
     fn test_mutex_cond_no_waiter() {
-        let m = ~mutex();
+        let m = ~Mutex();
         let m2 = ~m.clone();
         do task::try {
             do m.lock_cond |_x| { }
@@ -853,10 +852,10 @@ mod tests {
     #[test] #[ignore(cfg(windows))]
     fn test_mutex_killed_simple() {
         // Mutex must get automatically unlocked if failed/killed within.
-        let m = ~mutex();
+        let m = ~Mutex();
         let m2 = ~m.clone();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             do m2.lock {
                 fail;
             }
@@ -869,10 +868,10 @@ mod tests {
     fn test_mutex_killed_cond() {
         // Getting killed during cond wait must not corrupt the mutex while
         // unwinding (e.g. double unlock).
-        let m = ~mutex();
+        let m = ~Mutex();
         let m2 = ~m.clone();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             let (c,p) = pipes::stream();
             do task::spawn { // linked
                 let _ = p.recv(); // wait for sibling to get in the mutex
@@ -893,15 +892,15 @@ mod tests {
     }
     #[test] #[ignore(cfg(windows))]
     fn test_mutex_killed_broadcast() {
-        let m = ~mutex();
+        let m = ~Mutex();
         let m2 = ~m.clone();
         let (c,p) = pipes::stream();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             let mut sibling_convos = ~[];
             for 2.times {
                 let (c,p) = pipes::stream();
-                let c = ~mut some(c);
+                let c = ~mut Some(c);
                 vec::push(sibling_convos, p);
                 let mi = ~m2.clone();
                 // spawn sibling task
@@ -909,7 +908,7 @@ mod tests {
                     do mi.lock_cond |cond| {
                         let c = option::swap_unwrap(c);
                         c.send(()); // tell sibling to go ahead
-                        let _z = send_on_failure(c);
+                        let _z = SendOnFailure(c);
                         cond.wait(); // block forever
                     }
                 }
@@ -928,16 +927,16 @@ mod tests {
             let woken = cond.broadcast();
             assert woken == 0;
         }
-        struct send_on_failure {
-            c: pipes::chan<()>;
-            new(+c: pipes::chan<()>) { self.c = c; }
+        struct SendOnFailure {
+            c: pipes::Chan<()>;
+            new(+c: pipes::Chan<()>) { self.c = c; }
             drop { self.c.send(()); }
         }
     }
     #[test]
     fn test_mutex_cond_signal_on_0() {
         // Tests that signal_on(0) is equivalent to signal().
-        let m = ~mutex();
+        let m = ~Mutex();
         do m.lock_cond |cond| {
             let m2 = ~m.clone();
             do task::spawn {
@@ -991,30 +990,26 @@ mod tests {
      * Reader/writer lock tests
      ************************************************************************/
     #[cfg(test)]
-    enum rwlock_mode { read, write, downgrade, downgrade_read }
+    enum RWlockMode { Read, Write, Downgrade, DowngradeRead }
     #[cfg(test)]
-    fn lock_rwlock_in_mode(x: &rwlock, mode: rwlock_mode, blk: fn()) {
+    fn lock_rwlock_in_mode(x: &RWlock, mode: RWlockMode, blk: fn()) {
         match mode {
-            read => x.read(blk),
-            write => x.write(blk),
-            downgrade =>
+            Read => x.read(blk),
+            Write => x.write(blk),
+            Downgrade =>
                 do x.write_downgrade |mode| {
-                    // FIXME(#2282)
-                    let mode = unsafe { unsafe::transmute_region(&mode) };
-                    mode.write(blk);
+                    (&mode).write(blk);
                 },
-            downgrade_read =>
+            DowngradeRead =>
                 do x.write_downgrade |mode| {
                     let mode = x.downgrade(mode);
-                    // FIXME(#2282)
-                    let mode = unsafe { unsafe::transmute_region(&mode) };
-                    mode.read(blk);
+                    (&mode).read(blk);
                 },
         }
     }
     #[cfg(test)]
-    fn test_rwlock_exclusion(+x: ~rwlock, mode1: rwlock_mode,
-                             mode2: rwlock_mode) {
+    fn test_rwlock_exclusion(+x: ~RWlock, mode1: RWlockMode,
+                             mode2: RWlockMode) {
         // Test mutual exclusion between readers and writers. Just like the
         // mutex mutual exclusion test, a ways above.
         let (c,p) = pipes::stream();
@@ -1023,7 +1018,7 @@ mod tests {
         let ptr = ptr::addr_of(*sharedstate);
         do task::spawn {
             let sharedstate: &mut int =
-                unsafe { unsafe::reinterpret_cast(ptr) };
+                unsafe { unsafe::reinterpret_cast(&ptr) };
             access_shared(sharedstate, x2, mode1, 10);
             c.send(());
         }
@@ -1032,7 +1027,7 @@ mod tests {
 
         assert *sharedstate == 20;
 
-        fn access_shared(sharedstate: &mut int, x: &rwlock, mode: rwlock_mode,
+        fn access_shared(sharedstate: &mut int, x: &RWlock, mode: RWlockMode,
                          n: uint) {
             for n.times {
                 do lock_rwlock_in_mode(x, mode) {
@@ -1045,21 +1040,21 @@ mod tests {
     }
     #[test]
     fn test_rwlock_readers_wont_modify_the_data() {
-        test_rwlock_exclusion(~rwlock(), read, write);
-        test_rwlock_exclusion(~rwlock(), write, read);
-        test_rwlock_exclusion(~rwlock(), read, downgrade);
-        test_rwlock_exclusion(~rwlock(), downgrade, read);
+        test_rwlock_exclusion(~RWlock(), Read, Write);
+        test_rwlock_exclusion(~RWlock(), Write, Read);
+        test_rwlock_exclusion(~RWlock(), Read, Downgrade);
+        test_rwlock_exclusion(~RWlock(), Downgrade, Read);
     }
     #[test]
     fn test_rwlock_writers_and_writers() {
-        test_rwlock_exclusion(~rwlock(), write, write);
-        test_rwlock_exclusion(~rwlock(), write, downgrade);
-        test_rwlock_exclusion(~rwlock(), downgrade, write);
-        test_rwlock_exclusion(~rwlock(), downgrade, downgrade);
+        test_rwlock_exclusion(~RWlock(), Write, Write);
+        test_rwlock_exclusion(~RWlock(), Write, Downgrade);
+        test_rwlock_exclusion(~RWlock(), Downgrade, Write);
+        test_rwlock_exclusion(~RWlock(), Downgrade, Downgrade);
     }
     #[cfg(test)]
-    fn test_rwlock_handshake(+x: ~rwlock, mode1: rwlock_mode,
-                             mode2: rwlock_mode, make_mode2_go_first: bool) {
+    fn test_rwlock_handshake(+x: ~RWlock, mode1: RWlockMode,
+                             mode2: RWlockMode, make_mode2_go_first: bool) {
         // Much like sem_multi_resource.
         let x2 = ~x.clone();
         let (c1,p1) = pipes::stream();
@@ -1089,32 +1084,32 @@ mod tests {
     }
     #[test]
     fn test_rwlock_readers_and_readers() {
-        test_rwlock_handshake(~rwlock(), read, read, false);
+        test_rwlock_handshake(~RWlock(), Read, Read, false);
         // The downgrader needs to get in before the reader gets in, otherwise
         // they cannot end up reading at the same time.
-        test_rwlock_handshake(~rwlock(), downgrade_read, read, false);
-        test_rwlock_handshake(~rwlock(), read, downgrade_read, true);
+        test_rwlock_handshake(~RWlock(), DowngradeRead, Read, false);
+        test_rwlock_handshake(~RWlock(), Read, DowngradeRead, true);
         // Two downgrade_reads can never both end up reading at the same time.
     }
     #[test]
     fn test_rwlock_downgrade_unlock() {
         // Tests that downgrade can unlock the lock in both modes
-        let x = ~rwlock();
-        do lock_rwlock_in_mode(x, downgrade) { }
-        test_rwlock_handshake(x, read, read, false);
-        let y = ~rwlock();
-        do lock_rwlock_in_mode(y, downgrade_read) { }
-        test_rwlock_exclusion(y, write, write);
+        let x = ~RWlock();
+        do lock_rwlock_in_mode(x, Downgrade) { }
+        test_rwlock_handshake(x, Read, Read, false);
+        let y = ~RWlock();
+        do lock_rwlock_in_mode(y, DowngradeRead) { }
+        test_rwlock_exclusion(y, Write, Write);
     }
     #[test]
     fn test_rwlock_read_recursive() {
-        let x = ~rwlock();
+        let x = ~RWlock();
         do x.read { do x.read { } }
     }
     #[test]
     fn test_rwlock_cond_wait() {
         // As test_mutex_cond_wait above.
-        let x = ~rwlock();
+        let x = ~RWlock();
 
         // Child wakes up parent
         do x.write_cond |cond| {
@@ -1150,18 +1145,16 @@ mod tests {
     fn test_rwlock_cond_broadcast_helper(num_waiters: uint, dg1: bool,
                                          dg2: bool) {
         // Much like the mutex broadcast test. Downgrade-enabled.
-        fn lock_cond(x: &rwlock, downgrade: bool, blk: fn(c: &condvar)) {
+        fn lock_cond(x: &RWlock, downgrade: bool, blk: fn(c: &Condvar)) {
             if downgrade {
                 do x.write_downgrade |mode| {
-                    // FIXME(#2282)
-                    let mode = unsafe { unsafe::transmute_region(&mode) };
-                    mode.write_cond(blk)
+                    (&mode).write_cond(blk)
                 }
             } else {
                 x.write_cond(blk)
             }
         }
-        let x = ~rwlock();
+        let x = ~RWlock();
         let mut ports = ~[];
 
         for num_waiters.times {
@@ -1198,12 +1191,12 @@ mod tests {
         test_rwlock_cond_broadcast_helper(12, false, false);
     }
     #[cfg(test)] #[ignore(cfg(windows))]
-    fn rwlock_kill_helper(mode1: rwlock_mode, mode2: rwlock_mode) {
+    fn rwlock_kill_helper(mode1: RWlockMode, mode2: RWlockMode) {
         // Mutex must get automatically unlocked if failed/killed within.
-        let x = ~rwlock();
+        let x = ~RWlock();
         let x2 = ~x.clone();
 
-        let result: result::result<(),()> = do task::try {
+        let result: result::Result<(),()> = do task::try {
             do lock_rwlock_in_mode(x2, mode1) {
                 fail;
             }
@@ -1213,35 +1206,35 @@ mod tests {
         do lock_rwlock_in_mode(x, mode2) { }
     }
     #[test] #[ignore(cfg(windows))]
-    fn test_rwlock_reader_killed_writer() { rwlock_kill_helper(read, write); }
+    fn test_rwlock_reader_killed_writer() { rwlock_kill_helper(Read, Write); }
     #[test] #[ignore(cfg(windows))]
-    fn test_rwlock_writer_killed_reader() { rwlock_kill_helper(write,read ); }
+    fn test_rwlock_writer_killed_reader() { rwlock_kill_helper(Write,Read ); }
     #[test] #[ignore(cfg(windows))]
-    fn test_rwlock_reader_killed_reader() { rwlock_kill_helper(read, read ); }
+    fn test_rwlock_reader_killed_reader() { rwlock_kill_helper(Read, Read ); }
     #[test] #[ignore(cfg(windows))]
-    fn test_rwlock_writer_killed_writer() { rwlock_kill_helper(write,write); }
+    fn test_rwlock_writer_killed_writer() { rwlock_kill_helper(Write,Write); }
     #[test] #[ignore(cfg(windows))]
     fn test_rwlock_kill_downgrader() {
-        rwlock_kill_helper(downgrade, read);
-        rwlock_kill_helper(read, downgrade);
-        rwlock_kill_helper(downgrade, write);
-        rwlock_kill_helper(write, downgrade);
-        rwlock_kill_helper(downgrade_read, read);
-        rwlock_kill_helper(read, downgrade_read);
-        rwlock_kill_helper(downgrade_read, write);
-        rwlock_kill_helper(write, downgrade_read);
-        rwlock_kill_helper(downgrade_read, downgrade);
-        rwlock_kill_helper(downgrade_read, downgrade);
-        rwlock_kill_helper(downgrade, downgrade_read);
-        rwlock_kill_helper(downgrade, downgrade_read);
+        rwlock_kill_helper(Downgrade, Read);
+        rwlock_kill_helper(Read, Downgrade);
+        rwlock_kill_helper(Downgrade, Write);
+        rwlock_kill_helper(Write, Downgrade);
+        rwlock_kill_helper(DowngradeRead, Read);
+        rwlock_kill_helper(Read, DowngradeRead);
+        rwlock_kill_helper(DowngradeRead, Write);
+        rwlock_kill_helper(Write, DowngradeRead);
+        rwlock_kill_helper(DowngradeRead, Downgrade);
+        rwlock_kill_helper(DowngradeRead, Downgrade);
+        rwlock_kill_helper(Downgrade, DowngradeRead);
+        rwlock_kill_helper(Downgrade, DowngradeRead);
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rwlock_downgrade_cant_swap() {
         // Tests that you can't downgrade with a different rwlock's token.
-        let x = ~rwlock();
-        let y = ~rwlock();
+        let x = ~RWlock();
+        let y = ~RWlock();
         do x.write_downgrade |xwrite| {
-            let mut xopt = some(xwrite);
+            let mut xopt = Some(xwrite);
             do y.write_downgrade |_ywrite| {
                 y.downgrade(option::swap_unwrap(&mut xopt));
                 error!("oops, y.downgrade(x) should have failed!");

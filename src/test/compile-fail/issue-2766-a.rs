@@ -14,7 +14,7 @@ mod stream {
                 recv
             }
         }
-        type stream<T: send> = pipes::recv_packet<stream::stream<T>>;
+        type stream<T: send> = pipes::RecvPacket<stream::stream<T>>;
     }
 }
 

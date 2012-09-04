@@ -1,6 +1,6 @@
 //! Simple ANSI color library
 
-import core::option;
+import core::Option;
 
 // FIXME (#2807): Windows support.
 
@@ -36,13 +36,13 @@ fn color_supported() -> bool {
     let supported_terms = ~[~"xterm-color", ~"xterm",
                            ~"screen-bce", ~"xterm-256color"];
     return match os::getenv(~"TERM") {
-          option::some(env) => {
+          option::Some(env) => {
             for vec::each(supported_terms) |term| {
                 if term == env { return true; }
             }
             false
           }
-          option::none => false
+          option::None => false
         };
 }
 

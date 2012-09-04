@@ -4,7 +4,8 @@
 
 //! A type that represents one of two alternatives
 
-import result::result;
+import cmp::Eq;
+import result::Result;
 
 /// The either type
 enum Either<T, U> {
@@ -83,7 +84,7 @@ pure fn flip<T: copy, U: copy>(eith: &Either<T, U>) -> Either<U, T> {
     }
 }
 
-pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> result<U, T> {
+pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> Result<U, T> {
     /*!
      * Converts either::t to a result::t
      *
@@ -92,8 +93,8 @@ pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> result<U, T> {
      */
 
     match *eith {
-      Right(r) => result::ok(r),
-      Left(l) => result::err(l)
+      Right(r) => result::Ok(r),
+      Left(l) => result::Err(l)
     }
 }
 
@@ -107,6 +108,41 @@ pure fn is_right<T, U>(eith: &Either<T, U>) -> bool {
     //! Checks whether the given value is a right
 
     match *eith { Right(_) => true, _ => false }
+}
+
+pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
+    //! Retrieves the value in the left branch. Fails if the either is Right.
+
+    match move eith {
+        Left(move x) => x, Right(_) => fail ~"either::unwrap_left Right"
+    }
+}
+
+pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
+    //! Retrieves the value in the right branch. Fails if the either is Left.
+
+    match move eith {
+        Right(move x) => x, Left(_) => fail ~"either::unwrap_right Left"
+    }
+}
+
+impl<T:Eq,U:Eq> Either<T,U> : Eq {
+    pure fn eq(&&other: Either<T,U>) -> bool {
+        match self {
+            Left(a) => {
+                match other {
+                    Left(b) => a.eq(b),
+                    Right(_) => false
+                }
+            }
+            Right(a) => {
+                match other {
+                    Left(_) => false,
+                    Right(b) => a.eq(b)
+                }
+            }
+        }
+    }
 }
 
 #[test]

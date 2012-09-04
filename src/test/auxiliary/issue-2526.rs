@@ -7,7 +7,7 @@ use std;
 
 export context;
 
-class arc_destruct<T:const> {
+struct arc_destruct<T:const> {
   let _data: int;
   new(data: int) { self._data = data; }
   drop {}
@@ -21,7 +21,7 @@ fn init() -> arc_destruct<context_res> unsafe {
     arc(context_res())
 }
 
-class context_res {
+struct context_res {
     let ctx : int;
 
     new() { self.ctx = 0; }

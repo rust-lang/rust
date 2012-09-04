@@ -4,11 +4,11 @@ use std;
 import std::timer::sleep;
 import std::uv;
 
-proto! oneshot {
+proto! oneshot (
     waiting:send {
         signal -> !
     }
-}
+)
 
 fn main() {
     let (c, p) = oneshot::init();

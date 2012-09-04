@@ -2,33 +2,58 @@ import std::map;
 import std::map::hashmap;
 import ast::*;
 import print::pprust;
-import ast_util::path_to_ident;
+import ast_util::{path_to_ident, stmt_id};
 import diagnostic::span_handler;
+import parse::token::ident_interner;
 
-enum path_elt { path_mod(ident), path_name(ident) }
+enum path_elt {
+    path_mod(ident),
+    path_name(ident)
+}
+
+impl path_elt : cmp::Eq {
+    pure fn eq(&&other: path_elt) -> bool {
+        match self {
+            path_mod(e0a) => {
+                match other {
+                    path_mod(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            path_name(e0a) => {
+                match other {
+                    path_name(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+        }
+    }
+}
+
 type path = ~[path_elt];
 
 /* FIXMEs that say "bad" are as per #2543 */
-fn path_to_str_with_sep(p: path, sep: ~str) -> ~str {
+fn path_to_str_with_sep(p: path, sep: ~str, itr: ident_interner) -> ~str {
     let strs = do vec::map(p) |e| {
         match e {
-          path_mod(s) => /* FIXME (#2543) */ copy *s,
-          path_name(s) => /* FIXME (#2543) */ copy *s
+          path_mod(s) => *itr.get(s),
+          path_name(s) => *itr.get(s)
         }
     };
     str::connect(strs, sep)
 }
 
-fn path_ident_to_str(p: path, i: ident) -> ~str {
+fn path_ident_to_str(p: path, i: ident, itr: ident_interner) -> ~str {
     if vec::is_empty(p) {
-        /* FIXME (#2543) */ copy *i
+        //FIXME /* FIXME (#2543) */ copy *i
+        *itr.get(i)
     } else {
-        fmt!{"%s::%s", path_to_str(p), *i}
+        fmt!("%s::%s", path_to_str(p, itr), *itr.get(i))
     }
 }
 
-fn path_to_str(p: path) -> ~str {
-    path_to_str_with_sep(p, ~"::")
+fn path_to_str(p: path, itr: ident_interner) -> ~str {
+    path_to_str_with_sep(p, ~"::", itr)
 }
 
 enum ast_node {
@@ -39,6 +64,7 @@ enum ast_node {
     node_method(@method, def_id /* impl did */, @path /* path to the impl */),
     node_variant(variant, @item, @path),
     node_expr(@expr),
+    node_stmt(@stmt),
     node_export(@view_path, @path),
     // Locals are numbered, because the alias analysis needs to know in which
     // order they are introduced.
@@ -65,6 +91,7 @@ fn mk_ast_map_visitor() -> vt {
     return visit::mk_vt(@{
         visit_item: map_item,
         visit_expr: map_expr,
+        visit_stmt: map_stmt,
         visit_fn: map_fn,
         visit_local: map_local,
         visit_arm: map_arm,
@@ -189,7 +216,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
     let item_path = @/* FIXME (#2543) */ copy cx.path;
     cx.map.insert(i.id, node_item(i, item_path));
     match i.node {
-      item_impl(_, opt_ir, _, ms) => {
+      item_impl(_, _, _, ms) => {
         let impl_did = ast_util::local_def(i.id);
         for ms.each |m| {
             map_method(impl_did, extend(cx, i.ident), m,
@@ -219,7 +246,7 @@ fn map_item(i: @item, cx: ctx, v: vt) {
         map_struct_def(struct_def, node_item(i, item_path), i.ident, i.id, cx,
                        v);
       }
-      item_trait(tps, traits, methods) => {
+      item_trait(_, traits, methods) => {
         // Map trait refs to their parent classes. This is
         // so we can find the self_ty
         for traits.each |p| {
@@ -266,7 +293,7 @@ fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {
     match vi.node {
       view_item_export(vps) => for vps.each |vp| {
         let (id, name) = match vp.node {
-          view_path_simple(nm, _, id) => {
+          view_path_simple(nm, _, _, id) => {
             (id, /* FIXME (#2543) */ copy nm)
           }
           view_path_glob(pth, id) | view_path_list(pth, _, id) => {
@@ -284,54 +311,75 @@ fn map_expr(ex: @expr, cx: ctx, v: vt) {
     visit::visit_expr(ex, cx, v);
 }
 
-fn node_id_to_str(map: map, id: node_id) -> ~str {
+fn map_stmt(stmt: @stmt, cx: ctx, v: vt) {
+    cx.map.insert(stmt_id(*stmt), node_stmt(stmt));
+    visit::visit_stmt(stmt, cx, v);
+}
+
+fn node_id_to_str(map: map, id: node_id, itr: ident_interner) -> ~str {
     match map.find(id) {
-      none => {
-        fmt!{"unknown node (id=%d)", id}
+      None => {
+        fmt!("unknown node (id=%d)", id)
       }
-      some(node_item(item, path)) => {
-        fmt!{"item %s (id=%?)", path_ident_to_str(*path, item.ident), id}
+      Some(node_item(item, path)) => {
+        let path_str = path_ident_to_str(*path, item.ident, itr);
+        let item_str = match item.node {
+          item_const(*) => ~"const",
+          item_fn(*) => ~"fn",
+          item_mod(*) => ~"mod",
+          item_foreign_mod(*) => ~"foreign mod",
+          item_ty(*) => ~"ty",
+          item_enum(*) => ~"enum",
+          item_class(*) => ~"class",
+          item_trait(*) => ~"trait",
+          item_impl(*) => ~"impl",
+          item_mac(*) => ~"macro"
+        };
+        fmt!("%s %s (id=%?)", item_str, path_str, id)
       }
-      some(node_foreign_item(item, abi, path)) => {
-        fmt!{"foreign item %s with abi %? (id=%?)",
-             path_ident_to_str(*path, item.ident), abi, id}
+      Some(node_foreign_item(item, abi, path)) => {
+        fmt!("foreign item %s with abi %? (id=%?)",
+             path_ident_to_str(*path, item.ident, itr), abi, id)
       }
-      some(node_method(m, impl_did, path)) => {
-        fmt!{"method %s in %s (id=%?)",
-             *m.ident, path_to_str(*path), id}
+      Some(node_method(m, _, path)) => {
+        fmt!("method %s in %s (id=%?)",
+             *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      some(node_trait_method(tm, impl_did, path)) => {
+      Some(node_trait_method(tm, _, path)) => {
         let m = ast_util::trait_method_to_ty_method(*tm);
-        fmt!{"method %s in %s (id=%?)",
-             *m.ident, path_to_str(*path), id}
+        fmt!("method %s in %s (id=%?)",
+             *itr.get(m.ident), path_to_str(*path, itr), id)
       }
-      some(node_variant(variant, def_id, path)) => {
-        fmt!{"variant %s in %s (id=%?)",
-             *variant.node.name, path_to_str(*path), id}
+      Some(node_variant(variant, _, path)) => {
+        fmt!("variant %s in %s (id=%?)",
+             *itr.get(variant.node.name), path_to_str(*path, itr), id)
       }
-      some(node_expr(expr)) => {
-        fmt!{"expr %s (id=%?)",
-             pprust::expr_to_str(expr), id}
+      Some(node_expr(expr)) => {
+        fmt!("expr %s (id=%?)", pprust::expr_to_str(expr, itr), id)
+      }
+      Some(node_stmt(stmt)) => {
+        fmt!("stmt %s (id=%?)",
+             pprust::stmt_to_str(*stmt, itr), id)
       }
       // FIXMEs are as per #2410
-      some(node_export(_, path)) => {
-        fmt!{"export %s (id=%?)", // add more info here
-             path_to_str(*path), id}
+      Some(node_export(_, path)) => {
+        fmt!("export %s (id=%?)", // add more info here
+             path_to_str(*path, itr), id)
       }
-      some(node_arg(_, _)) => { // add more info here
-        fmt!{"arg (id=%?)", id}
+      Some(node_arg(_, _)) => { // add more info here
+        fmt!("arg (id=%?)", id)
       }
-      some(node_local(_)) => { // add more info here
-        fmt!{"local (id=%?)", id}
+      Some(node_local(_)) => { // add more info here
+        fmt!("local (id=%?)", id)
       }
-      some(node_ctor(*)) => { // add more info here
-        fmt!{"node_ctor (id=%?)", id}
+      Some(node_ctor(*)) => { // add more info here
+        fmt!("node_ctor (id=%?)", id)
       }
-      some(node_dtor(*)) => { // add more info here
-        fmt!{"node_dtor (id=%?)", id}
+      Some(node_dtor(*)) => { // add more info here
+        fmt!("node_dtor (id=%?)", id)
       }
-      some(node_block(_)) => {
-        fmt!{"block"}
+      Some(node_block(_)) => {
+        fmt!("block")
       }
     }
 }

@@ -4,16 +4,16 @@ import task;
 import task::*;
 
 fn main() {
-    let mut result = none;
-    task::task().future_result(|+r| { result = some(r); }).spawn(child);
-    error!{"1"};
+    let mut result = None;
+    task::task().future_result(|+r| { result = Some(r); }).spawn(child);
+    error!("1");
     yield();
-    error!{"2"};
+    error!("2");
     yield();
-    error!{"3"};
+    error!("3");
     future::get(&option::unwrap(result));
 }
 
 fn child() {
-    error!{"4"}; yield(); error!{"5"}; yield(); error!{"6"};
+    error!("4"); yield(); error!("5"); yield(); error!("6");
 }

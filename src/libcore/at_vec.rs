@@ -4,7 +4,7 @@ import ptr::addr_of;
 
 export init_op;
 export capacity;
-export build_sized, build;
+export build_sized, build, build_sized_opt;
 export map;
 export from_fn, from_elem;
 export unsafe;
@@ -24,15 +24,12 @@ extern mod rusti {
     fn move_val_init<T>(&dst: T, -src: T);
 }
 
-/// A function used to initialize the elements of a vector
-type InitOp<T> = fn(uint) -> T;
-
 /// Returns the number of elements the vector can hold without reallocating
 #[inline(always)]
 pure fn capacity<T>(&&v: @[const T]) -> uint {
     unsafe {
         let repr: **unsafe::VecRepr =
-            ::unsafe::reinterpret_cast(addr_of(v));
+            ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).alloc / sys::size_of::<T>()
     }
 }
@@ -52,14 +49,8 @@ pure fn capacity<T>(&&v: @[const T]) -> uint {
 #[inline(always)]
 pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
     let mut vec = @[];
-    unsafe {
-        unsafe::reserve(vec, size);
-        // This is an awful hack to be able to make the push function
-        // pure. Is there a better way?
-        ::unsafe::reinterpret_cast::
-            <fn(push: pure fn(+A)), fn(push: fn(+A))>
-            (builder)(|+x| unsafe::push(vec, x));
-    }
+    unsafe { unsafe::reserve(vec, size); }
+    builder(|+x| unsafe { unsafe::push(vec, x) });
     return vec;
 }
 
@@ -76,6 +67,24 @@ pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
 #[inline(always)]
 pure fn build<A>(builder: fn(push: pure fn(+A))) -> @[A] {
     build_sized(4, builder)
+}
+
+/**
+ * Builds a vector by calling a provided function with an argument
+ * function that pushes an element to the back of a vector.
+ * This version takes an initial size for the vector.
+ *
+ * # Arguments
+ *
+ * * size - An option, maybe containing initial size of the vector to reserve
+ * * builder - A function that will construct the vector. It recieves
+ *             as an argument a function that will push an element
+ *             onto the vector being constructed.
+ */
+#[inline(always)]
+pure fn build_sized_opt<A>(size: Option<uint>,
+                           builder: fn(push: pure fn(+A))) -> @[A] {
+    build_sized(size.get_default(4), builder)
 }
 
 // Appending
@@ -103,7 +112,7 @@ pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
-pure fn from_fn<T>(n_elts: uint, op: InitOp<T>) -> @[T] {
+pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(op(i)); i += 1u; }
@@ -145,13 +154,13 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn set_len<T>(&&v: @[const T], new_len: uint) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).fill = new_len * sys::size_of::<T>();
     }
 
     #[inline(always)]
     unsafe fn push<T>(&v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
             push_fast(v, initval);
@@ -163,7 +172,7 @@ mod unsafe {
     // This doesn't bother to make sure we have space.
     #[inline(always)] // really pretty please
     unsafe fn push_fast<T>(&v: @[const T], +initval: T) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(addr_of(v));
+        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         let fill = (**repr).fill;
         (**repr).fill += sys::size_of::<T>();
         let p = ptr::addr_of((**repr).data);

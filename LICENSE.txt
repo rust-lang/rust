@@ -235,6 +235,11 @@ included:
   BSD-compatible licenses. See src/libuv/LICENSE for
   details.
 
+* The src/rt/miniz.c file, carrying an implementation of
+  RFC1950/RFC1951 DEFLATE, by Rich Geldreich
+  <richgel99@gmail.com>. All uses of this file are
+  permitted by the embedded "unlicense" notice
+  (effectively: public domain with warranty disclaimer).
 
 * LLVM and Clang. Code for this package is found in
   src/llvm.

@@ -12,7 +12,7 @@ import std::sha1::sha1;
 import syntax::ast;
 import syntax::print::pprust;
 import lib::llvm::{ModuleRef, mk_pass_manager, mk_target_data, True, False,
-        FileType};
+        PassManagerRef, FileType};
 import metadata::filesearch;
 import syntax::ast_map::{path, path_mod, path_name};
 import io::{Writer, WriterUtil};
@@ -24,6 +24,12 @@ enum output_type {
     output_type_llvm_assembly,
     output_type_object,
     output_type_exe,
+}
+
+impl output_type : cmp::Eq {
+    pure fn eq(&&other: output_type) -> bool {
+        (self as uint) == (other as uint)
+    }
 }
 
 fn llvm_err(sess: session, msg: ~str) -> ! unsafe {
@@ -48,6 +54,54 @@ fn WriteOutputFile(sess:session,
     }
 }
 
+#[cfg(stage0)]
+mod jit {
+    fn exec(_sess: session,
+            _pm: PassManagerRef,
+            _m: ModuleRef,
+            _opt: c_int,
+            _stacks: bool) {
+        fail
+    }
+}
+
+#[cfg(stage1)]
+#[cfg(stage2)]
+#[cfg(stage3)]
+mod jit {
+    #[nolink]
+    #[abi = "rust-intrinsic"]
+    extern mod rusti {
+        fn morestack_addr() -> *();
+    }
+
+    struct Closure {
+        code: *();
+        env: *();
+    }
+
+    fn exec(sess: session,
+            pm: PassManagerRef,
+            m: ModuleRef,
+            opt: c_int,
+            stacks: bool) unsafe {
+        let ptr = llvm::LLVMRustJIT(rusti::morestack_addr(),
+                                    pm, m, opt, stacks);
+
+        if ptr::is_null(ptr) {
+            llvm_err(sess, ~"Could not JIT");
+        } else {
+            let closure = Closure {
+                code: ptr,
+                env: ptr::null()
+            };
+            let func: fn(~[~str]) = unsafe::transmute(closure);
+
+            func(~[sess.opts.binary]);
+        }
+    }
+}
+
 mod write {
     fn is_object_or_assembly_or_exe(ot: output_type) -> bool {
         if ot == output_type_assembly || ot == output_type_object ||
@@ -57,18 +111,7 @@ mod write {
         return false;
     }
 
-    // Decides what to call an intermediate file, given the name of the output
-    // and the extension to use.
-    fn mk_intermediate_name(output_path: ~str, extension: ~str) ->
-        ~str unsafe {
-        let stem = match str::find_char(output_path, '.') {
-          some(dot_pos) => str::slice(output_path, 0u, dot_pos),
-          none => output_path
-        };
-        return stem + ~"." + extension;
-    }
-
-    fn run_passes(sess: session, llmod: ModuleRef, output: ~str) {
+    fn run_passes(sess: session, llmod: ModuleRef, output: &Path) {
         let opts = sess.opts;
         if sess.time_llvm_passes() { llvm::LLVMRustEnableTimePasses(); }
         let mut pm = mk_pass_manager();
@@ -81,19 +124,20 @@ mod write {
         // Generate a pre-optimization intermediate file if -save-temps was
         // specified.
 
+
         if opts.save_temps {
             match opts.output_type {
               output_type_bitcode => {
-                if opts.optimize != 0u {
-                    let filename = mk_intermediate_name(output, ~"no-opt.bc");
-                    str::as_c_str(filename, |buf| {
+                if opts.optimize != session::No {
+                    let filename = output.with_filetype("no-opt.bc");
+                    str::as_c_str(filename.to_str(), |buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf)
                     });
                 }
               }
               _ => {
-                let filename = mk_intermediate_name(output, ~"bc");
-                str::as_c_str(filename, |buf| {
+                let filename = output.with_filetype("bc");
+                str::as_c_str(filename.to_str(), |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                 });
               }
@@ -107,7 +151,7 @@ mod write {
         // Also: Should we expose and use the pass lists used by the opt
         // tool?
 
-        if opts.optimize != 0u {
+        if opts.optimize != session::No {
             let fpm = mk_pass_manager();
             llvm::LLVMAddTargetData(td.lltd, fpm.llpm);
 
@@ -118,8 +162,8 @@ mod write {
             llvm::LLVMPassManagerBuilderDispose(FPMB);
 
             llvm::LLVMRunPassManager(fpm.llpm, llmod);
-            let mut threshold = 225u;
-            if opts.optimize == 3u { threshold = 275u; }
+            let mut threshold = 225;
+            if opts.optimize == session::Aggressive { threshold = 275; }
 
             let MPMB = llvm::LLVMPassManagerBuilderCreate();
             llvm::LLVMPassManagerBuilderSetOptLevel(MPMB,
@@ -140,18 +184,51 @@ mod write {
             llvm::LLVMPassManagerBuilderDispose(MPMB);
         }
         if !sess.no_verify() { llvm::LLVMAddVerifierPass(pm.llpm); }
-        if is_object_or_assembly_or_exe(opts.output_type) {
+        if is_object_or_assembly_or_exe(opts.output_type) || opts.jit {
             let LLVMOptNone       = 0 as c_int; // -O0
             let LLVMOptLess       = 1 as c_int; // -O1
             let LLVMOptDefault    = 2 as c_int; // -O2, -Os
             let LLVMOptAggressive = 3 as c_int; // -O3
 
-            let mut CodeGenOptLevel = match check opts.optimize {
-              0u => LLVMOptNone,
-              1u => LLVMOptLess,
-              2u => LLVMOptDefault,
-              3u => LLVMOptAggressive
+            let mut CodeGenOptLevel = match opts.optimize {
+              session::No => LLVMOptNone,
+              session::Less => LLVMOptLess,
+              session::Default => LLVMOptDefault,
+              session::Aggressive => LLVMOptAggressive
             };
+
+            if opts.jit {
+                // If we are using JIT, go ahead and create and
+                // execute the engine now.
+                // JIT execution takes ownership of the module,
+                // so don't dispose and return.
+
+                // We need to tell LLVM where to resolve all linked
+                // symbols from. The equivalent of -lstd, -lcore, etc.
+                // By default the JIT will resolve symbols from the std and
+                // core linked into rustc. We don't want that,
+                // incase the user wants to use an older std library.
+                /*let cstore = sess.cstore;
+                for cstore::get_used_crate_files(cstore).each |cratepath| {
+                    debug!{"linking: %s", cratepath};
+
+                    let _: () = str::as_c_str(
+                        cratepath,
+                        |buf_t| {
+                            if !llvm::LLVMRustLoadLibrary(buf_t) {
+                                llvm_err(sess, ~"Could not link");
+                            }
+                            debug!{"linked: %s", cratepath};
+                        });
+                }*/
+
+                jit::exec(sess, pm.llpm, llmod, CodeGenOptLevel, true);
+
+                if sess.time_llvm_passes() {
+                    llvm::LLVMRustPrintPassTimings();
+                }
+                return;
+            }
 
             let mut FileType;
             if opts.output_type == output_type_object ||
@@ -163,9 +240,9 @@ mod write {
             if opts.save_temps {
                 // Always output the bitcode file with --save-temps
 
-                let filename = mk_intermediate_name(output, ~"opt.bc");
+                let filename = output.with_filetype("opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                str::as_c_str(filename, |buf| {
+                str::as_c_str(filename.to_str(), |buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf)
                 });
                 pm = mk_pass_manager();
@@ -175,7 +252,7 @@ mod write {
                     let _: () = str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
                         |buf_t| {
-                            str::as_c_str(output, |buf_o| {
+                            str::as_c_str(output.to_str(), |buf_o| {
                                 WriteOutputFile(
                                     sess,
                                     pm.llpm,
@@ -197,7 +274,7 @@ mod write {
                     let _: () = str::as_c_str(
                         sess.targ_cfg.target_strs.target_triple,
                         |buf_t| {
-                            str::as_c_str(output, |buf_o| {
+                            str::as_c_str(output.to_str(), |buf_o| {
                                 WriteOutputFile(
                                     sess,
                                     pm.llpm,
@@ -217,7 +294,7 @@ mod write {
                 let _: () = str::as_c_str(
                     sess.targ_cfg.target_strs.target_triple,
                     |buf_t| {
-                        str::as_c_str(output, |buf_o| {
+                        str::as_c_str(output.to_str(), |buf_o| {
                             WriteOutputFile(
                                 sess,
                                 pm.llpm,
@@ -239,13 +316,13 @@ mod write {
 
         if opts.output_type == output_type_llvm_assembly {
             // Given options "-S --emit-llvm": output LLVM assembly
-            str::as_c_str(output, |buf_o| {
+            str::as_c_str(output.to_str(), |buf_o| {
                 llvm::LLVMRustAddPrintModulePass(pm.llpm, llmod, buf_o)});
         } else {
             // If only a bitcode file is asked for by using the '--emit-llvm'
             // flag, then output it here
             llvm::LLVMRunPassManager(pm.llpm, llmod);
-            str::as_c_str(output,
+            str::as_c_str(output.to_str(),
                         |buf| llvm::LLVMWriteBitcodeToFile(llmod, buf) );
         }
 
@@ -306,31 +383,31 @@ mod write {
  *
  */
 
-fn build_link_meta(sess: session, c: ast::crate, output: ~str,
+fn build_link_meta(sess: session, c: ast::crate, output: &Path,
                    symbol_hasher: &hash::State) -> link_meta {
 
     type provided_metas =
-        {name: option<@~str>,
-         vers: option<@~str>,
+        {name: Option<~str>,
+         vers: Option<~str>,
          cmh_items: ~[@ast::meta_item]};
 
     fn provided_link_metas(sess: session, c: ast::crate) ->
        provided_metas {
-        let mut name: option<@~str> = none;
-        let mut vers: option<@~str> = none;
+        let mut name: Option<~str> = None;
+        let mut vers: Option<~str> = None;
         let mut cmh_items: ~[@ast::meta_item] = ~[];
         let linkage_metas = attr::find_linkage_metas(c.node.attrs);
         attr::require_unique_names(sess.diagnostic(), linkage_metas);
         for linkage_metas.each |meta| {
-            if *attr::get_meta_item_name(meta) == ~"name" {
+            if attr::get_meta_item_name(meta) == ~"name" {
                 match attr::get_meta_item_value_str(meta) {
-                  some(v) => { name = some(v); }
-                  none => vec::push(cmh_items, meta)
+                  Some(v) => { name = Some(v); }
+                  None => vec::push(cmh_items, meta)
                 }
-            } else if *attr::get_meta_item_name(meta) == ~"vers" {
+            } else if attr::get_meta_item_name(meta) == ~"vers" {
                 match attr::get_meta_item_value_str(meta) {
-                  some(v) => { vers = some(v); }
-                  none => vec::push(cmh_items, meta)
+                  Some(v) => { vers = Some(v); }
+                  None => vec::push(cmh_items, meta)
                 }
             } else { vec::push(cmh_items, meta); }
         }
@@ -341,9 +418,9 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
     fn crate_meta_extras_hash(symbol_hasher: &hash::State,
                               _crate: ast::crate,
                               metas: provided_metas,
-                              dep_hashes: ~[@~str]) -> ~str {
+                              dep_hashes: ~[~str]) -> ~str {
         fn len_and_str(s: ~str) -> ~str {
-            return fmt!{"%u_%s", str::len(s), s};
+            return fmt!("%u_%s", str::len(s), s);
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
@@ -357,11 +434,11 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
             let m = m_;
             match m.node {
               ast::meta_name_value(key, value) => {
-                symbol_hasher.write_str(len_and_str(*key));
+                symbol_hasher.write_str(len_and_str(key));
                 symbol_hasher.write_str(len_and_str_lit(value));
               }
               ast::meta_word(name) => {
-                symbol_hasher.write_str(len_and_str(*name));
+                symbol_hasher.write_str(len_and_str(name));
               }
               ast::meta_list(_, _) => {
                 // FIXME (#607): Implement this
@@ -371,7 +448,7 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
         }
 
         for dep_hashes.each |dh| {
-            symbol_hasher.write_str(len_and_str(*dh));
+            symbol_hasher.write_str(len_and_str(dh));
         }
 
         return truncated_hash_result(symbol_hasher);
@@ -379,40 +456,35 @@ fn build_link_meta(sess: session, c: ast::crate, output: ~str,
 
     fn warn_missing(sess: session, name: ~str, default: ~str) {
         if !sess.building_library { return; }
-        sess.warn(fmt!{"missing crate link meta `%s`, using `%s` as default",
-                       name, default});
+        sess.warn(fmt!("missing crate link meta `%s`, using `%s` as default",
+                       name, default));
     }
 
     fn crate_meta_name(sess: session, _crate: ast::crate,
-                       output: ~str, metas: provided_metas) -> @~str {
+                       output: &Path, metas: provided_metas) -> ~str {
         return match metas.name {
-              some(v) => v,
-              none => {
-                let name =
-                    {
-                        let mut os =
-                            str::split_char(path::basename(output), '.');
-                        if (vec::len(os) < 2u) {
-                            sess.fatal(fmt!{"output file name `%s` doesn't\
-                              appear to have an extension", output});
-                        }
-                        vec::pop(os);
-                        str::connect(os, ~".")
-                    };
+              Some(v) => v,
+              None => {
+                let name = match output.filestem() {
+                  None => sess.fatal(fmt!("output file name `%s` doesn't\
+                                           appear to have a stem",
+                                          output.to_str())),
+                  Some(s) => s
+                };
                 warn_missing(sess, ~"name", name);
-                @name
+                name
               }
             };
     }
 
     fn crate_meta_vers(sess: session, _crate: ast::crate,
-                       metas: provided_metas) -> @~str {
+                       metas: provided_metas) -> ~str {
         return match metas.vers {
-              some(v) => v,
-              none => {
+              Some(v) => v,
+              None => {
                 let vers = ~"0.0";
                 warn_missing(sess, ~"vers", vers);
-                @vers
+                vers
               }
             };
     }
@@ -439,7 +511,7 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.write_str(*link_meta.name);
+    symbol_hasher.write_str(link_meta.name);
     symbol_hasher.write_str(~"-");
     symbol_hasher.write_str(link_meta.extras_hash);
     symbol_hasher.write_str(~"-");
@@ -452,8 +524,8 @@ fn symbol_hash(tcx: ty::ctxt, symbol_hasher: &hash::State, t: ty::t,
 
 fn get_symbol_hash(ccx: @crate_ctxt, t: ty::t) -> ~str {
     match ccx.type_hashcodes.find(t) {
-      some(h) => return h,
-      none => {
+      Some(h) => return h,
+      None => {
         let hash = symbol_hash(ccx.tcx, ccx.symbol_hasher, t, ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);
         return hash;
@@ -475,9 +547,9 @@ fn sanitize(s: ~str) -> ~str {
           ',' => result += ~"_",
 
           '{' | '(' => result += ~"_of_",
-          'a' to 'z'
-          | 'A' to 'Z'
-          | '0' to '9'
+          'a' .. 'z'
+          | 'A' .. 'Z'
+          | '0' .. '9'
           | '_' => str::push_char(result,c),
           _ => {
             if c > 'z' && char::is_XID_continue(c) {
@@ -497,100 +569,93 @@ fn sanitize(s: ~str) -> ~str {
     return result;
 }
 
-fn mangle(ss: path) -> ~str {
+fn mangle(sess: session, ss: path) -> ~str {
     // Follow C++ namespace-mangling style
 
     let mut n = ~"_ZN"; // Begin name-sequence.
 
     for ss.each |s| {
         match s { path_name(s) | path_mod(s) => {
-          let sani = sanitize(*s);
-          n += fmt!{"%u%s", str::len(sani), sani};
+          let sani = sanitize(sess.str_of(s));
+          n += fmt!("%u%s", str::len(sani), sani);
         } }
     }
     n += ~"E"; // End name-sequence.
     n
 }
 
-fn exported_name(path: path, hash: @~str, vers: @~str) -> ~str {
-    return mangle(
-        vec::append_one(vec::append_one(path, path_name(hash)),
-                        path_name(vers)));
+fn exported_name(sess: session, path: path, hash: ~str, vers: ~str) -> ~str {
+    return mangle(sess,
+                  vec::append_one(
+                      vec::append_one(path, path_name(sess.ident_of(hash))),
+                      path_name(sess.ident_of(vers))));
 }
 
 fn mangle_exported_name(ccx: @crate_ctxt, path: path, t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
-    return exported_name(path, @hash, ccx.link_meta.vers);
+    return exported_name(ccx.sess, path, hash, ccx.link_meta.vers);
 }
 
 fn mangle_internal_name_by_type_only(ccx: @crate_ctxt,
-                                     t: ty::t, name: @~str) ->
+                                     t: ty::t, name: ~str) ->
    ~str {
-    let s = @util::ppaux::ty_to_short_str(ccx.tcx, t);
+    let s = util::ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
-    return mangle(~[path_name(name), path_name(s), path_name(@hash)]);
+    return mangle(ccx.sess,
+                  ~[path_name(ccx.sess.ident_of(name)),
+                    path_name(ccx.sess.ident_of(s)),
+                    path_name(ccx.sess.ident_of(hash))]);
 }
 
 fn mangle_internal_name_by_path_and_seq(ccx: @crate_ctxt, path: path,
-                                        flav: @~str) -> ~str {
-    return mangle(vec::append_one(path, path_name(@ccx.names(*flav))));
+                                        flav: ~str) -> ~str {
+    return mangle(ccx.sess,
+                  vec::append_one(path, path_name(ccx.names(flav))));
 }
 
-fn mangle_internal_name_by_path(_ccx: @crate_ctxt, path: path) -> ~str {
-    return mangle(path);
+fn mangle_internal_name_by_path(ccx: @crate_ctxt, path: path) -> ~str {
+    return mangle(ccx.sess, path);
 }
 
-fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: @~str) -> ~str {
-    return ccx.names(*flav);
+fn mangle_internal_name_by_seq(ccx: @crate_ctxt, flav: ~str) -> ~str {
+    return fmt!("%s_%u", flav, ccx.names(flav));
 }
 
 // If the user wants an exe generated we need to invoke
 // cc to link the object file with some libs
 fn link_binary(sess: session,
-               obj_filename: ~str,
-               out_filename: ~str,
+               obj_filename: &Path,
+               out_filename: &Path,
                lm: link_meta) {
-    // Converts a library file name into a cc -l argument
-    fn unlib(config: @session::config, filename: ~str) -> ~str unsafe {
-        let rmlib = fn@(filename: ~str) -> ~str {
-            let found = str::find_str(filename, ~"lib");
-            if config.os == session::os_macos ||
-                (config.os == session::os_linux ||
-                 config.os == session::os_freebsd) &&
-                option::is_some(found) && option::get(found) == 0u {
-                return str::slice(filename, 3u, str::len(filename));
-            } else { return filename; }
-        };
-        fn rmext(filename: ~str) -> ~str {
-            let mut parts = str::split_char(filename, '.');
-            vec::pop(parts);
-            return str::connect(parts, ~".");
+    // Converts a library file-stem into a cc -l argument
+    fn unlib(config: @session::config, stem: ~str) -> ~str {
+        if stem.starts_with("lib") &&
+            config.os != session::os_win32 {
+            stem.slice(3, stem.len())
+        } else {
+            stem
         }
-        return match config.os {
-              session::os_macos => rmext(rmlib(filename)),
-              session::os_linux => rmext(rmlib(filename)),
-              session::os_freebsd => rmext(rmlib(filename)),
-              _ => rmext(filename)
-            };
     }
 
     let output = if sess.building_library {
         let long_libname =
-            os::dll_filename(fmt!{"%s-%s-%s",
-                                  *lm.name, lm.extras_hash, *lm.vers});
-        debug!{"link_meta.name:  %s", *lm.name};
-        debug!{"long_libname: %s", long_libname};
-        debug!{"out_filename: %s", out_filename};
-        debug!{"dirname(out_filename): %s", path::dirname(out_filename)};
+            os::dll_filename(fmt!("%s-%s-%s",
+                                  lm.name, lm.extras_hash, lm.vers));
+        debug!("link_meta.name:  %s", lm.name);
+        debug!("long_libname: %s", long_libname);
+        debug!("out_filename: %s", out_filename.to_str());
+        debug!("dirname(out_filename): %s", out_filename.dir_path().to_str());
 
-        path::connect(path::dirname(out_filename), long_libname)
-    } else { out_filename };
+        out_filename.dir_path().push(long_libname)
+    } else {
+        *out_filename
+    };
 
-    log(debug, ~"output: " + output);
+    log(debug, ~"output: " + output.to_str());
 
     // The default library location, we need this to find the runtime.
     // The location of crates will be determined as needed.
-    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path();
+    let stage: ~str = ~"-L" + sess.filesearch.get_target_lib_path().to_str();
 
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
@@ -604,27 +669,28 @@ fn link_binary(sess: session,
     let mut cc_args =
         vec::append(~[stage], sess.targ_cfg.target_strs.cc_args);
     vec::push(cc_args, ~"-o");
-    vec::push(cc_args, output);
-    vec::push(cc_args, obj_filename);
+    vec::push(cc_args, output.to_str());
+    vec::push(cc_args, obj_filename.to_str());
 
     let mut lib_cmd;
     let os = sess.targ_cfg.os;
     if os == session::os_macos {
         lib_cmd = ~"-dynamiclib";
-    } else { lib_cmd = ~"-shared"; }
+    } else {
+        lib_cmd = ~"-shared";
+    }
 
     // # Crate linking
 
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each |cratepath| {
-        if str::ends_with(cratepath, ~".rlib") {
-            vec::push(cc_args, cratepath);
+        if cratepath.filetype() == Some(~"rlib") {
+            vec::push(cc_args, cratepath.to_str());
             again;
         }
-        let cratepath = cratepath;
-        let dir = path::dirname(cratepath);
+        let dir = cratepath.dirname();
         if dir != ~"" { vec::push(cc_args, ~"-L" + dir); }
-        let libarg = unlib(sess.targ_cfg, path::basename(cratepath));
+        let libarg = unlib(sess.targ_cfg, option::get(cratepath.filestem()));
         vec::push(cc_args, ~"-l" + libarg);
     }
 
@@ -640,7 +706,7 @@ fn link_binary(sess: session,
     // forces to make sure that library can be found at runtime.
 
     let addl_paths = sess.opts.addl_lib_search_paths;
-    for addl_paths.each |path| { vec::push(cc_args, ~"-L" + path); }
+    for addl_paths.each |path| { vec::push(cc_args, ~"-L" + path.to_str()); }
 
     // The names of the extern libraries
     let used_libs = cstore::get_used_libraries(cstore);
@@ -653,7 +719,7 @@ fn link_binary(sess: session,
         // be rpathed
         if sess.targ_cfg.os == session::os_macos {
             vec::push(cc_args, ~"-Wl,-install_name,@rpath/"
-                      + path::basename(output));
+                      + option::get(output.filename()));
         }
     }
 
@@ -696,30 +762,30 @@ fn link_binary(sess: session,
 
     // FIXME (#2397): At some point we want to rpath our guesses as to where
     // extern libraries might live, based on the addl_lib_search_paths
-    vec::push_all(cc_args, rpath::get_rpath_flags(sess, output));
+    vec::push_all(cc_args, rpath::get_rpath_flags(sess, &output));
 
-    debug!{"%s link args: %s", cc_prog, str::connect(cc_args, ~" ")};
+    debug!("%s link args: %s", cc_prog, str::connect(cc_args, ~" "));
     // We run 'cc' here
     let prog = run::program_output(cc_prog, cc_args);
     if 0 != prog.status {
-        sess.err(fmt!{"linking with `%s` failed with code %d",
-                      cc_prog, prog.status});
-        sess.note(fmt!{"%s arguments: %s",
-                       cc_prog, str::connect(cc_args, ~" ")});
+        sess.err(fmt!("linking with `%s` failed with code %d",
+                      cc_prog, prog.status));
+        sess.note(fmt!("%s arguments: %s",
+                       cc_prog, str::connect(cc_args, ~" ")));
         sess.note(prog.err + prog.out);
         sess.abort_if_errors();
     }
 
     // Clean up on Darwin
     if sess.targ_cfg.os == session::os_macos {
-        run::run_program(~"dsymutil", ~[output]);
+        run::run_program(~"dsymutil", ~[output.to_str()]);
     }
 
     // Remove the temporary object file if we aren't saving temps
     if !sess.opts.save_temps {
         if ! os::remove_file(obj_filename) {
-            sess.warn(fmt!{"failed to delete object file `%s`",
-                           obj_filename});
+            sess.warn(fmt!("failed to delete object file `%s`",
+                           obj_filename.to_str()));
         }
     }
 }

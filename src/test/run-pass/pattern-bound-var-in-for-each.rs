@@ -4,8 +4,8 @@
 
 fn foo(src: uint) {
 
-    match some(src) {
-      some(src_id) => {
+    match Some(src) {
+      Some(src_id) => {
         for uint::range(0u, 10u) |i| {
             let yyy = src_id;
             assert (yyy == 0u);

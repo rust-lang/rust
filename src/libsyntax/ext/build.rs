@@ -37,7 +37,7 @@ fn mk_unary(cx: ext_ctxt, sp: span, op: ast::unop, e: @ast::expr)
 fn mk_path(cx: ext_ctxt, sp: span, idents: ~[ast::ident]) ->
     @ast::expr {
     let path = @{span: sp, global: false, idents: idents,
-                 rp: none, types: ~[]};
+                 rp: None, types: ~[]};
     let pathexpr = ast::expr_path(path);
     mk_expr(cx, sp, pathexpr)
 }
@@ -75,7 +75,7 @@ fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
 }
 fn mk_fixed_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
    @ast::expr {
-    mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::vstore_fixed(none))
+    mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::vstore_fixed(None))
 }
 fn mk_base_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
     let lit = ast::lit_str(@s);
@@ -96,7 +96,7 @@ fn mk_rec_e(cx: ext_ctxt, sp: span,
             {node: {mutbl: ast::m_imm, ident: ident, expr: val}, span: sp};
         vec::push(astfields, astfield);
     }
-    let recexpr = ast::expr_rec(astfields, option::none::<@ast::expr>);
+    let recexpr = ast::expr_rec(astfields, option::None::<@ast::expr>);
     mk_expr(cx, sp, recexpr)
 }
 

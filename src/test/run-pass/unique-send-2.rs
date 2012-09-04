@@ -8,8 +8,8 @@ fn child(c: comm::Chan<~uint>, i: uint) {
 }
 
 fn main() {
-    let p = comm::port();
-    let ch = comm::chan(p);
+    let p = comm::Port();
+    let ch = comm::Chan(p);
     let n = 100u;
     let mut expected = 0u;
     for uint::range(0u, n) |i| {

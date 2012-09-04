@@ -16,7 +16,7 @@ impl preserve_condition {
     fn combine(pc: preserve_condition) -> preserve_condition {
         match self {
           pc_ok => {pc}
-          pc_if_pure(e) => {self}
+          pc_if_pure(_) => {self}
         }
     }
 }
@@ -58,9 +58,9 @@ priv impl &preserve_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
     fn preserve(cmt: cmt) -> bckres<preserve_condition> {
-        debug!{"preserve(cmt=%s, root_ub=%?, root_managed_data=%b)",
+        debug!("preserve(cmt=%s, root_ub=%?, root_managed_data=%b)",
                self.bccx.cmt_to_repr(cmt), self.root_ub,
-               self.root_managed_data};
+               self.root_managed_data);
         let _i = indenter();
 
         match cmt.cat {
@@ -68,7 +68,7 @@ priv impl &preserve_ctxt {
             self.compare_scope(cmt, ty::re_scope(self.item_ub))
           }
           cat_special(sk_static_item) | cat_special(sk_method) => {
-            ok(pc_ok)
+            Ok(pc_ok)
           }
           cat_rvalue => {
             // when we borrow an rvalue, we can keep it rooted but only
@@ -79,10 +79,9 @@ priv impl &preserve_ctxt {
             let scope_region = if self.root_ub == 0 {
                 ty::re_static
             } else {
-                ty::re_scope(self.root_ub)
+                ty::re_scope(self.tcx().region_map.get(cmt.id))
             };
 
-            // FIXME(#2977)--need to update trans!
             self.compare_scope(cmt, scope_region)
           }
           cat_stack_upvar(cmt) => {
@@ -148,7 +147,7 @@ priv impl &preserve_ctxt {
           }
           cat_deref(_, _, unsafe_ptr) => {
             // Unsafe pointers are the user's problem
-            ok(pc_ok)
+            Ok(pc_ok)
           }
           cat_deref(base, derefs, gc_ptr) => {
             // GC'd pointers of type @MT: if this pointer lives in
@@ -156,21 +155,21 @@ priv impl &preserve_ctxt {
             // otherwise we have no guarantee the pointer will stay
             // live, so we must root the pointer (i.e., inc the ref
             // count) for the duration of the loan.
-            debug!{"base.mutbl = %?", self.bccx.mut_to_str(base.mutbl)};
+            debug!("base.mutbl = %?", self.bccx.mut_to_str(base.mutbl));
             if base.mutbl == m_imm {
                 let non_rooting_ctxt =
                     preserve_ctxt({root_managed_data: false with **self});
                 match (&non_rooting_ctxt).preserve(base) {
-                  ok(pc_ok) => {
-                    ok(pc_ok)
+                  Ok(pc_ok) => {
+                    Ok(pc_ok)
                   }
-                  ok(pc_if_pure(_)) => {
-                    debug!{"must root @T, otherwise purity req'd"};
+                  Ok(pc_if_pure(_)) => {
+                    debug!("must root @T, otherwise purity req'd");
                     self.attempt_root(cmt, base, derefs)
                   }
-                  err(e) => {
-                    debug!{"must root @T, err: %s",
-                           self.bccx.bckerr_code_to_str(e.code)};
+                  Err(e) => {
+                    debug!("must root @T, err: %s",
+                           self.bccx.bckerr_code_to_str(e.code));
                     self.attempt_root(cmt, base, derefs)
                   }
                 }
@@ -191,7 +190,7 @@ priv impl &preserve_ctxt {
             // As an example, consider this scenario:
             //
             //    let mut x = @some(3);
-            //    match *x { some(y) {...} none {...} }
+            //    match *x { Some(y) {...} none {...} }
             //
             // Technically, the value `x` need only be rooted
             // in the `some` arm.  However, we evaluate `x` in trans
@@ -252,25 +251,25 @@ priv impl &preserve_ctxt {
         match self.preserve(cmt_base) {
           // the base is preserved, but if we are not mutable then
           // purity is required
-          ok(pc_ok) => {
+          Ok(pc_ok) => {
             match cmt_base.mutbl {
               m_mutbl | m_const => {
-                ok(pc_if_pure({cmt:cmt, code:code}))
+                Ok(pc_if_pure({cmt:cmt, code:code}))
               }
               m_imm => {
-                ok(pc_ok)
+                Ok(pc_ok)
               }
             }
           }
 
           // the base requires purity too, that's fine
-          ok(pc_if_pure(e)) => {
-            ok(pc_if_pure(e))
+          Ok(pc_if_pure(e)) => {
+            Ok(pc_if_pure(e))
           }
 
           // base is not stable, doesn't matter
-          err(e) => {
-            err(e)
+          Err(e) => {
+            Err(e)
           }
         }
     }
@@ -280,9 +279,9 @@ priv impl &preserve_ctxt {
     fn compare_scope(cmt: cmt,
                      scope_ub: ty::region) -> bckres<preserve_condition> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
-            ok(pc_ok)
+            Ok(pc_ok)
         } else {
-            err({cmt:cmt, code:err_out_of_scope(scope_ub,
+            Err({cmt:cmt, code:err_out_of_scope(scope_ub,
                                                 self.scope_region)})
         }
     }
@@ -307,7 +306,7 @@ priv impl &preserve_ctxt {
             // would be sort of pointless to avoid rooting the inner
             // box by rooting an outer box, as it would just keep more
             // memory live than necessary, so we set root_ub to none.
-            return err({cmt:cmt, code:err_root_not_permitted});
+            return Err({cmt:cmt, code:err_root_not_permitted});
         }
 
         let root_region = ty::re_scope(self.root_ub);
@@ -323,10 +322,10 @@ priv impl &preserve_ctxt {
                 #debug["Elected to root"];
                 let rk = {id: base.id, derefs: derefs};
                 self.bccx.root_map.insert(rk, scope_id);
-                return ok(pc_ok);
+                return Ok(pc_ok);
             } else {
                 #debug["Unable to root"];
-                return err({cmt:cmt,
+                return Err({cmt:cmt,
                          code:err_out_of_root_scope(root_region,
                                                     self.scope_region)});
             }
@@ -334,7 +333,7 @@ priv impl &preserve_ctxt {
 
           // we won't be able to root long enough
           _ => {
-              return err({cmt:cmt,
+              return Err({cmt:cmt,
                        code:err_out_of_root_scope(root_region,
                                                   self.scope_region)});
           }

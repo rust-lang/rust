@@ -8,7 +8,13 @@ import syntax::diagnostic;
 enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
 
-fn write_file(filename: ~str, content: ~str) {
+impl test_mode : cmp::Eq {
+    pure fn eq(&&other: test_mode) -> bool {
+        (self as uint) == (other as uint)
+    }
+}
+
+fn write_file(filename: &Path, content: ~str) {
     result::get(
         io::file_writer(filename, ~[io::Create, io::Truncate]))
         .write_str(content);
@@ -18,13 +24,13 @@ fn contains(haystack: ~str, needle: ~str) -> bool {
     str::contains(haystack, needle)
 }
 
-fn find_rust_files(&files: ~[~str], path: ~str) {
-    if str::ends_with(path, ~".rs") && !contains(path, ~"utf8") {
+fn find_rust_files(files: &mut ~[Path], path: &Path) {
+    if path.filetype() == Some(~"rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
-        files += ~[path];
+        vec::push(*files, *path);
     } else if os::path_is_dir(path)
-        && !contains(path, ~"compile-fail")
-        && !contains(path, ~"build") {
+        && !contains(path.to_str(), ~"compile-fail")
+        && !contains(path.to_str(), ~"build") {
         for os::list_dir_path(path).each |p| {
             find_rust_files(files, p);
         }
@@ -41,12 +47,12 @@ fn common_exprs() -> ~[ast::expr] {
         { node: l, span: ast_util::dummy_sp() }
     }
 
-    ~[dse(ast::expr_break(option::none)),
-     dse(ast::expr_again(option::none)),
-     dse(ast::expr_fail(option::none)),
-     dse(ast::expr_fail(option::some(
+    ~[dse(ast::expr_break(option::None)),
+     dse(ast::expr_again(option::None)),
+     dse(ast::expr_fail(option::None)),
+     dse(ast::expr_fail(option::Some(
          @dse(ast::expr_lit(@dsl(ast::lit_str(@~"boo"))))))),
-     dse(ast::expr_ret(option::none)),
+     dse(ast::expr_ret(option::None)),
      dse(ast::expr_lit(@dsl(ast::lit_nil))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(false)))),
      dse(ast::expr_lit(@dsl(ast::lit_bool(true)))),
@@ -68,23 +74,19 @@ pure fn safe_to_use_expr(e: ast::expr, tm: test_mode) -> bool {
           // If the fuzzer moves a block-ending-in-semicolon into callee
           // position, the pretty-printer can't preserve this even by
           // parenthesizing!!  See email to marijn.
-          ast::expr_if(_, _, _) => { false }
-          ast::expr_block(_) => { false }
-          ast::expr_match(_, _, _) => { false }
-          ast::expr_while(_, _) => { false }
+          ast::expr_if(*) | ast::expr_block(*)
+          | ast::expr_match(*) | ast::expr_while(*)  => { false }
 
           // https://github.com/mozilla/rust/issues/929
-          ast::expr_cast(_, _) => { false }
-          ast::expr_assert(_) => { false }
-          ast::expr_binary(_, _, _) => { false }
-          ast::expr_assign(_, _) => { false }
-          ast::expr_assign_op(_, _, _) => { false }
+          ast::expr_cast(*) | ast::expr_assert(*) |
+          ast::expr_binary(*) | ast::expr_assign(*) |
+          ast::expr_assign_op(*) => { false }
 
-          ast::expr_fail(option::none) => { false }
-          ast::expr_ret(option::none) => { false }
+          ast::expr_fail(option::None) |
+          ast::expr_ret(option::None) => { false }
 
           // https://github.com/mozilla/rust/issues/953
-          ast::expr_fail(option::some(_)) => { false }
+          ast::expr_fail(option::Some(_)) => { false }
 
           // https://github.com/mozilla/rust/issues/928
           //ast::expr_cast(_, _) { false }
@@ -225,7 +227,7 @@ fn as_str(f: fn@(io::Writer)) -> ~str {
 }
 
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
-                         filename: ~str, cx: context) {
+                         filename: &Path, cx: context) {
     let stolen = steal(crate, cx.mode);
     let extra_exprs = vec::filter(common_exprs(),
                                   |a| safe_to_use_expr(a, cx.mode) );
@@ -239,50 +241,54 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
 fn check_variants_T<T: copy>(
   crate: ast::crate,
   codemap: codemap::codemap,
-  filename: ~str,
+  filename: &Path,
   thing_label: ~str,
   things: ~[T],
-  stringifier: fn@(@T) -> ~str,
+  stringifier: fn@(@T, syntax::parse::token::ident_interner) -> ~str,
   replacer: fn@(ast::crate, uint, T, test_mode) -> ast::crate,
   cx: context
   ) {
-    error!{"%s contains %u %s objects", filename,
-           vec::len(things), thing_label};
+    error!("%s contains %u %s objects", filename.to_str(),
+           things.len(), thing_label);
 
-    let L = vec::len(things);
+    // Assuming we're not generating any token_trees
+    let intr = syntax::parse::token::mk_fake_ident_interner();
 
-    if L < 100u {
-        do under(uint::min(L, 20u)) |i| {
+    let L = things.len();
+
+    if L < 100 {
+        do under(uint::min(L, 20)) |i| {
             log(error, ~"Replacing... #" + uint::str(i));
-            do under(uint::min(L, 30u)) |j| {
-                log(error, ~"With... " + stringifier(@things[j]));
+            let fname = str::from_slice(filename.to_str());
+            do under(uint::min(L, 30)) |j| {
+                log(error, ~"With... " + stringifier(@things[j], intr));
                 let crate2 = @replacer(crate, i, things[j], cx.mode);
                 // It would be best to test the *crate* for stability, but
                 // testing the string for stability is easier and ok for now.
-                let handler = diagnostic::mk_handler(none);
-                let str3 =
+                let handler = diagnostic::mk_handler(None);
+                let str3 = do io::with_str_reader("") |rdr| {
                     @as_str(|a|pprust::print_crate(
                         codemap,
-                        // Assuming we're not generating any token_trees
-                        syntax::util::interner::mk::<@~str>(
-                            |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                        intr,
                         diagnostic::mk_span_handler(handler, codemap),
                         crate2,
-                        filename,
-                        io::str_reader(~""), a,
+                        fname,
+                        rdr, a,
                         pprust::no_ann(),
-                        false));
+                        false))
+                };
                 match cx.mode {
                   tm_converge => {
                     check_roundtrip_convergence(str3, 1u);
                   }
                   tm_run => {
-                    let file_label = fmt!{"rusttmp/%s_%s_%u_%u",
-                                          last_part(filename),
-                                          thing_label, i, j};
+                    let file_label = fmt!("rusttmp/%s_%s_%u_%u",
+                                          last_part(filename.to_str()),
+                                          thing_label, i, j);
                     let safe_to_run = !(content_is_dangerous_to_run(*str3)
                                         || has_raw_pointers(*crate2));
-                    check_whole_compiler(*str3, file_label, safe_to_run);
+                    check_whole_compiler(*str3, &Path(file_label),
+                                         safe_to_run);
                   }
                 }
             }
@@ -307,9 +313,9 @@ enum happiness {
 // - that would be tricky, requiring use of tasks or serialization
 //   or randomness.
 // This seems to find plenty of bugs as it is :)
-fn check_whole_compiler(code: ~str, suggested_filename_prefix: ~str,
+fn check_whole_compiler(code: ~str, suggested_filename_prefix: &Path,
                         allow_running: bool) {
-    let filename = suggested_filename_prefix + ~".rs";
+    let filename = &suggested_filename_prefix.with_filetype("rs");
     write_file(filename, code);
 
     let compile_result = check_compiling(filename);
@@ -322,32 +328,32 @@ fn check_whole_compiler(code: ~str, suggested_filename_prefix: ~str,
     match run_result {
       passed | cleanly_rejected(_) | known_bug(_) => {
         removeIfExists(suggested_filename_prefix);
-        removeIfExists(suggested_filename_prefix + ~".rs");
-        removeDirIfExists(suggested_filename_prefix + ~".dSYM");
+        removeIfExists(&suggested_filename_prefix.with_filetype("rs"));
+        removeDirIfExists(&suggested_filename_prefix.with_filetype("dSYM"));
       }
       failed(s) => {
         log(error, ~"check_whole_compiler failure: " + s);
-        log(error, ~"Saved as: " + filename);
+        log(error, ~"Saved as: " + filename.to_str());
       }
     }
 }
 
-fn removeIfExists(filename: ~str) {
+fn removeIfExists(filename: &Path) {
     // So sketchy!
-    assert !contains(filename, ~" ");
-    run::program_output(~"bash", ~[~"-c", ~"rm " + filename]);
+    assert !contains(filename.to_str(), ~" ");
+    run::program_output(~"bash", ~[~"-c", ~"rm " + filename.to_str()]);
 }
 
-fn removeDirIfExists(filename: ~str) {
+fn removeDirIfExists(filename: &Path) {
     // So sketchy!
-    assert !contains(filename, ~" ");
-    run::program_output(~"bash", ~[~"-c", ~"rm -r " + filename]);
+    assert !contains(filename.to_str(), ~" ");
+    run::program_output(~"bash", ~[~"-c", ~"rm -r " + filename.to_str()]);
 }
 
-fn check_running(exe_filename: ~str) -> happiness {
+fn check_running(exe_filename: &Path) -> happiness {
     let p = run::program_output(
         ~"/Users/jruderman/scripts/timed_run_rust_program.py",
-        ~[exe_filename]);
+        ~[exe_filename.to_str()]);
     let comb = p.out + ~"\n" + p.err;
     if str::len(comb) > 1u {
         log(error, ~"comb comb comb: " + comb);
@@ -383,13 +389,13 @@ fn check_running(exe_filename: ~str) -> happiness {
     }
 }
 
-fn check_compiling(filename: ~str) -> happiness {
+fn check_compiling(filename: &Path) -> happiness {
     let p = run::program_output(
         ~"/Users/jruderman/code/rust/build/x86_64-apple-darwin/\
          stage1/bin/rustc",
-        ~[filename]);
+        ~[filename.to_str()]);
 
-    //error!{"Status: %d", p.status};
+    //error!("Status: %d", p.status);
     if p.status == 0 {
         passed
     } else if p.err != ~"" {
@@ -417,25 +423,24 @@ fn check_compiling(filename: ~str) -> happiness {
 
 
 fn parse_and_print(code: @~str) -> ~str {
-    let filename = ~"tmp.rs";
-    let sess = parse::new_parse_sess(option::none);
-    write_file(filename, *code);
+    let filename = Path("tmp.rs");
+    let sess = parse::new_parse_sess(option::None);
+    write_file(&filename, *code);
     let crate = parse::parse_crate_from_source_str(
-        filename, code, ~[], sess);
-    io::with_str_reader(*code, |rdr| {
+        filename.to_str(), code, ~[], sess);
+    do io::with_str_reader(*code) |rdr| {
         as_str(|a|
                pprust::print_crate(
                    sess.cm,
                    // Assuming there are no token_trees
-                   syntax::util::interner::mk::<@~str>(
-                       |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                   syntax::parse::token::mk_fake_ident_interner(),
                    sess.span_diagnostic,
                    crate,
-                   filename,
+                   filename.to_str(),
                    rdr, a,
                    pprust::no_ann(),
                    false) )
-    })
+    }
 }
 
 fn has_raw_pointers(c: ast::crate) -> bool {
@@ -489,7 +494,7 @@ fn content_might_not_converge(code: ~str) -> bool {
     return false;
 }
 
-fn file_might_not_converge(filename: ~str) -> bool {
+fn file_might_not_converge(filename: &Path) -> bool {
     let confusing_files = ~[
       ~"expr-alt.rs", // pretty-printing "(a = b) = c"
                      // vs "a = b = c" and wrapping
@@ -499,7 +504,11 @@ fn file_might_not_converge(filename: ~str) -> bool {
     ];
 
 
-    for confusing_files.each |f| { if contains(filename, f) { return true; } }
+    for confusing_files.each |f| {
+        if contains(filename.to_str(), f) {
+            return true;
+        }
+    }
 
     return false;
 }
@@ -519,11 +528,11 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
     }
 
     if oldv == newv {
-        error!{"Converged after %u iterations", i};
+        error!("Converged after %u iterations", i);
     } else {
-        error!{"Did not converge after %u iterations!", i};
-        write_file(~"round-trip-a.rs", *oldv);
-        write_file(~"round-trip-b.rs", *newv);
+        error!("Did not converge after %u iterations!", i);
+        write_file(&Path("round-trip-a.rs"), *oldv);
+        write_file(&Path("round-trip-b.rs"), *newv);
         run::run_program(~"diff",
                          ~[~"-w", ~"-u", ~"round-trip-a.rs",
                           ~"round-trip-b.rs"]);
@@ -531,13 +540,13 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
     }
 }
 
-fn check_convergence(files: ~[~str]) {
-    error!{"pp convergence tests: %u files", vec::len(files)};
+fn check_convergence(files: &[Path]) {
+    error!("pp convergence tests: %u files", vec::len(files));
     for files.each |file| {
-        if !file_might_not_converge(file) {
-            let s = @result::get(io::read_whole_file_str(file));
+        if !file_might_not_converge(&file) {
+            let s = @result::get(io::read_whole_file_str(&file));
             if !content_might_not_converge(*s) {
-                error!{"pp converge: %s", file};
+                error!("pp converge: %s", file.to_str());
                 // Change from 7u to 2u once
                 // https://github.com/mozilla/rust/issues/850 is fixed
                 check_roundtrip_convergence(s, 7u);
@@ -546,15 +555,16 @@ fn check_convergence(files: ~[~str]) {
     }
 }
 
-fn check_variants(files: ~[~str], cx: context) {
+fn check_variants(files: &[Path], cx: context) {
     for files.each |file| {
-        if cx.mode == tm_converge && file_might_not_converge(file) {
-            error!{"Skipping convergence test based on\
-                    file_might_not_converge"};
+        if cx.mode == tm_converge &&
+            file_might_not_converge(&file) {
+            error!("Skipping convergence test based on\
+                    file_might_not_converge");
             again;
         }
 
-        let s = @result::get(io::read_whole_file_str(file));
+        let s = @result::get(io::read_whole_file_str(&file));
         if contains(*s, ~"#") {
             again; // Macros are confusing
         }
@@ -565,47 +575,46 @@ fn check_variants(files: ~[~str], cx: context) {
             again;
         }
 
-        log(error, ~"check_variants: " + file);
-        let sess = parse::new_parse_sess(option::none);
+        log(error, ~"check_variants: " + file.to_str());
+        let sess = parse::new_parse_sess(option::None);
         let crate =
             parse::parse_crate_from_source_str(
-                file,
+                file.to_str(),
                 s, ~[], sess);
         io::with_str_reader(*s, |rdr| {
-            error!{"%s",
+            error!("%s",
                    as_str(|a| pprust::print_crate(
                        sess.cm,
                        // Assuming no token_trees
-                       syntax::util::interner::mk::<@~str>(
-                            |x| str::hash(*x), |x,y| str::eq(*x,*y)),
+                       syntax::parse::token::mk_fake_ident_interner(),
                        sess.span_diagnostic,
                        crate,
-                       file,
+                       file.to_str(),
                        rdr, a,
                        pprust::no_ann(),
-                       false) )}
+                       false) ))
         });
-        check_variants_of_ast(*crate, sess.cm, file, cx);
+        check_variants_of_ast(*crate, sess.cm, &file, cx);
     }
 }
 
 fn main(args: ~[~str]) {
     if vec::len(args) != 2u {
-        error!{"usage: %s <testdir>", args[0]};
+        error!("usage: %s <testdir>", args[0]);
         return;
     }
     let mut files = ~[];
-    let root = args[1];
+    let root = Path(args[1]);
 
-    find_rust_files(files, root);
-    error!{"== check_convergence =="};
+    find_rust_files(&mut files, &root);
+    error!("== check_convergence ==");
     check_convergence(files);
-    error!{"== check_variants: converge =="};
+    error!("== check_variants: converge ==");
     check_variants(files, { mode: tm_converge });
-    error!{"== check_variants: run =="};
+    error!("== check_variants: run ==");
     check_variants(files, { mode: tm_run });
 
-    error!{"Fuzzer done"};
+    error!("Fuzzer done");
 }
 
 // Local Variables:

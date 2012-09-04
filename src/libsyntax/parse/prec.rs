@@ -19,27 +19,27 @@ const as_prec: uint = 11u;
  * Maps a token to a record specifying the corresponding binary
  * operator and its precedence
  */
-fn token_to_binop(tok: token) -> option<ast::binop> {
+fn token_to_binop(tok: token) -> Option<ast::binop> {
   match tok {
-      BINOP(STAR)    => some(mul),
-      BINOP(SLASH)   => some(div),
-      BINOP(PERCENT) => some(rem),
+      BINOP(STAR)    => Some(mul),
+      BINOP(SLASH)   => Some(div),
+      BINOP(PERCENT) => Some(rem),
       // 'as' sits between here with 11
-      BINOP(PLUS)    => some(add),
-      BINOP(MINUS)   => some(subtract),
-      BINOP(SHL)     => some(shl),
-      BINOP(SHR)     => some(shr),
-      BINOP(AND)     => some(bitand),
-      BINOP(CARET)   => some(bitxor),
-      BINOP(OR)      => some(bitor),
-      LT             => some(lt),
-      LE             => some(le),
-      GE             => some(ge),
-      GT             => some(gt),
-      EQEQ           => some(eq),
-      NE             => some(ne),
-      ANDAND         => some(and),
-      OROR           => some(or),
-      _              => none
+      BINOP(PLUS)    => Some(add),
+      BINOP(MINUS)   => Some(subtract),
+      BINOP(SHL)     => Some(shl),
+      BINOP(SHR)     => Some(shr),
+      BINOP(AND)     => Some(bitand),
+      BINOP(CARET)   => Some(bitxor),
+      BINOP(OR)      => Some(bitor),
+      LT             => Some(lt),
+      LE             => Some(le),
+      GE             => Some(ge),
+      GT             => Some(gt),
+      EQEQ           => Some(eq),
+      NE             => Some(ne),
+      ANDAND         => Some(and),
+      OROR           => Some(or),
+      _              => None
   }
 }

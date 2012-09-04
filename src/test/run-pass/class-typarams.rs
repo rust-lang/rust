@@ -1,4 +1,4 @@
-class cat<U> {
+struct cat<U> {
   priv {
     let mut meows : uint;
   }
