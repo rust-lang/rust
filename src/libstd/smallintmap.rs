@@ -12,16 +12,16 @@ use map::map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
-type smallintmap_<T: copy> = {v: DVec<Option<T>>};
+type SmallIntMap_<T: copy> = {v: DVec<Option<T>>};
 
-enum smallintmap<T:copy> {
-    smallintmap_(@smallintmap_<T>)
+enum SmallIntMap<T:copy> {
+    SmallIntMap_(@SmallIntMap_<T>)
 }
 
 /// Create a smallintmap
-fn mk<T: copy>() -> smallintmap<T> {
+fn mk<T: copy>() -> SmallIntMap<T> {
     let v = DVec();
-    return smallintmap_(@{v: v});
+    return SmallIntMap_(@{v: v});
 }
 
 /**
@@ -29,7 +29,7 @@ fn mk<T: copy>() -> smallintmap<T> {
  * the specified key then the original value is replaced.
  */
 #[inline(always)]
-fn insert<T: copy>(self: smallintmap<T>, key: uint, +val: T) {
+fn insert<T: copy>(self: SmallIntMap<T>, key: uint, +val: T) {
     //io::println(fmt!("%?", key));
     self.v.grow_set_elt(key, None, Some(val));
 }
@@ -38,7 +38,7 @@ fn insert<T: copy>(self: smallintmap<T>, key: uint, +val: T) {
  * Get the value for the specified key. If the key does not exist
  * in the map then returns none
  */
-pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> Option<T> {
+pure fn find<T: copy>(self: SmallIntMap<T>, key: uint) -> Option<T> {
     if key < self.v.len() { return self.v.get_elt(key); }
     return None::<T>;
 }
@@ -50,7 +50,7 @@ pure fn find<T: copy>(self: smallintmap<T>, key: uint) -> Option<T> {
  *
  * If the key does not exist in the map
  */
-pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
+pure fn get<T: copy>(self: SmallIntMap<T>, key: uint) -> T {
     match find(self, key) {
       None => {
         error!("smallintmap::get(): key not present");
@@ -61,12 +61,12 @@ pure fn get<T: copy>(self: smallintmap<T>, key: uint) -> T {
 }
 
 /// Returns true if the map contains a value for the specified key
-fn contains_key<T: copy>(self: smallintmap<T>, key: uint) -> bool {
+fn contains_key<T: copy>(self: SmallIntMap<T>, key: uint) -> bool {
     return !option::is_none(find(self, key));
 }
 
 /// Implements the map::map interface for smallintmap
-impl<V: copy> smallintmap<V>: map::map<uint, V> {
+impl<V: copy> SmallIntMap<V>: map::map<uint, V> {
     pure fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
@@ -137,7 +137,7 @@ impl<V: copy> smallintmap<V>: map::map<uint, V> {
     }
 }
 
-impl<V: copy> smallintmap<V>: ops::Index<uint, V> {
+impl<V: copy> SmallIntMap<V>: ops::Index<uint, V> {
     pure fn index(&&key: uint) -> V {
         unchecked {
             get(self, key)
@@ -146,6 +146,6 @@ impl<V: copy> smallintmap<V>: ops::Index<uint, V> {
 }
 
 /// Cast the given smallintmap to a map::map
-fn as_map<V: copy>(s: smallintmap<V>) -> map::map<uint, V> {
+fn as_map<V: copy>(s: SmallIntMap<V>) -> map::map<uint, V> {
     s as map::map::<uint, V>
 }

@@ -1,6 +1,7 @@
 use combine::combine;
 use integral::*;
 use to_str::to_str;
+use std::smallintmap::SmallIntMap;
 
 enum var_value<V:copy, T:copy> {
     redirect(V),
@@ -8,7 +9,7 @@ enum var_value<V:copy, T:copy> {
 }
 
 struct vals_and_bindings<V:copy, T:copy> {
-    vals: smallintmap<var_value<V, T>>;
+    vals: SmallIntMap<var_value<V, T>>;
     mut bindings: ~[(V, var_value<V, T>)];
 }
 

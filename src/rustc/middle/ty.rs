@@ -640,7 +640,7 @@ type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
 
 type constness_cache = hashmap<ast::def_id, const_eval::constness>;
 
-type node_type_table = @smallintmap::smallintmap<t>;
+type node_type_table = @smallintmap::SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};

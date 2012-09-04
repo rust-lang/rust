@@ -5,7 +5,7 @@ use syntax::{ast, ast_util, visit};
 use syntax::attr;
 use syntax::codemap::span;
 use std::map::{map,hashmap,int_hash,hash_from_strs};
-use std::smallintmap::{map,smallintmap};
+use std::smallintmap::{map,SmallIntMap};
 use io::WriterUtil;
 use util::ppaux::{ty_to_str};
 use middle::pat_util::{pat_bindings};
@@ -187,7 +187,7 @@ fn get_lint_dict() -> lint_dict {
 }
 
 // This is a highly not-optimal set of data structure decisions.
-type lint_modes = smallintmap<level>;
+type lint_modes = SmallIntMap<level>;
 type lint_mode_map = hashmap<ast::node_id, lint_modes>;
 
 // settings_map maps node ids of items with non-default lint settings
@@ -223,7 +223,7 @@ fn get_lint_settings_level(settings: lint_settings,
 // This is kind of unfortunate. It should be somewhere else, or we should use
 // a persistent data structure...
 fn clone_lint_modes(modes: lint_modes) -> lint_modes {
-    std::smallintmap::smallintmap_(@{v: copy modes.v})
+    std::smallintmap::SmallIntMap_(@{v: copy modes.v})
 }
 
 type ctxt_ = {dict: lint_dict,
