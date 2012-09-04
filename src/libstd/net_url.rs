@@ -8,7 +8,7 @@ use from_str::FromStr;
 use result::{Err, Ok};
 use to_str::ToStr;
 
-export Url, url, userinfo, query;
+export Url, Query;
 export from_str, to_str;
 export get_scheme;
 export query_to_str;
@@ -34,14 +34,14 @@ type UserInfo = {
 
 type Query = ~[(~str, ~str)];
 
-fn url(-scheme: ~str, -user: Option<UserInfo>, -host: ~str,
+fn Url(-scheme: ~str, -user: Option<UserInfo>, -host: ~str,
        -port: Option<~str>, -path: ~str, -query: Query,
        -fragment: Option<~str>) -> Url {
     Url { scheme: scheme, user: user, host: host, port: port,
      path: path, query: query, fragment: fragment }
 }
 
-fn userinfo(-user: ~str, -pass: Option<~str>) -> UserInfo {
+fn UserInfo(-user: ~str, -pass: Option<~str>) -> UserInfo {
     {user: user, pass: pass}
 }
 
@@ -300,7 +300,7 @@ fn userinfo_from_str(uinfo: ~str) -> UserInfo {
     } else {
         option::Some(p)
     };
-    return userinfo(user, pass);
+    return UserInfo(user, pass);
 }
 
 fn userinfo_to_str(-userinfo: UserInfo) -> ~str {
@@ -648,7 +648,7 @@ fn from_str(rawurl: &str) -> result::Result<Url, ~str> {
     }
     let (query, fragment) = result::unwrap(qry);
 
-    return result::Ok(url(scheme, userinfo, host,
+    return result::Ok(Url(scheme, userinfo, host,
                        port, path, query, fragment));
 }
 
