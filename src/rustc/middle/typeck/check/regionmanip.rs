@@ -103,7 +103,7 @@ fn replace_bound_regions_in_fn_ty(
               ty::re_bound(br) => {
                 match isr.find(br) {
                   Some(_) => isr,
-                  None => @cons((br, to_r(br)), isr)
+                  None => @Cons((br, to_r(br)), isr)
                 }
               }
             }

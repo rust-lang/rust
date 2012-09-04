@@ -2,7 +2,7 @@
 
 use std;
 
-import std::list::{list, cons, nil};
+import std::list::{List, Cons, Nil};
 import std::time::precise_time_s;
 
 fn main() {
@@ -25,7 +25,7 @@ fn run(repeat: int, depth: int) {
     }
 }
 
-type nillist = list<()>;
+type nillist = List<()>;
 
 // Filled with things that have to be unwound
 enum st {
@@ -56,13 +56,13 @@ fn recurse_or_fail(depth: int, st: Option<st>) {
         let st = match st {
           None => {
             st_({
-                box: @nil,
-                unique: ~nil,
-                fn_box: fn@() -> @nillist { @nil::<()> },
-                fn_unique: fn~() -> ~nillist { ~nil::<()> },
-                tuple: (@nil, ~nil),
-                vec: ~[@nil],
-                res: r(@nil)
+                box: @Nil,
+                unique: ~Nil,
+                fn_box: fn@() -> @nillist { @Nil::<()> },
+                fn_unique: fn~() -> ~nillist { ~Nil::<()> },
+                tuple: (@Nil, ~Nil),
+                vec: ~[@Nil],
+                res: r(@Nil)
             })
           }
           Some(st) => {
@@ -70,14 +70,14 @@ fn recurse_or_fail(depth: int, st: Option<st>) {
             let fn_unique = st.fn_unique;
 
             st_({
-                box: @cons((), st.box),
-                unique: ~cons((), @*st.unique),
-                fn_box: fn@() -> @nillist { @cons((), fn_box()) },
-                fn_unique: fn~() -> ~nillist { ~cons((), @*fn_unique()) },
-                tuple: (@cons((), st.tuple.first()),
-                        ~cons((), @*st.tuple.second())),
-                vec: st.vec + ~[@cons((), st.vec.last())],
-                res: r(@cons((), st.res._l))
+                box: @Cons((), st.box),
+                unique: ~Cons((), @*st.unique),
+                fn_box: fn@() -> @nillist { @Cons((), fn_box()) },
+                fn_unique: fn~() -> ~nillist { ~Cons((), @*fn_unique()) },
+                tuple: (@Cons((), st.tuple.first()),
+                        ~Cons((), @*st.tuple.second())),
+                vec: st.vec + ~[@Cons((), st.vec.last())],
+                res: r(@Cons((), st.res._l))
             })
           }
         };

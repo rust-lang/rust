@@ -19,7 +19,7 @@
 
 use std::map::hashmap;
 use std::list;
-use std::list::{list, cons, nil};
+use std::list::{List, Cons, Nil};
 use driver::session::session;
 use metadata::csearch;
 use syntax::ast::*, syntax::ast_util, syntax::visit;
@@ -122,14 +122,14 @@ fn type_needs(cx: ctx, use: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
     for vec::each_mut(cx.uses) |u| {
         if *u & use != use {
-            type_needs_inner(cx, use, ty, @nil);
+            type_needs_inner(cx, use, ty, @Nil);
             return;
         }
     }
 }
 
 fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
-                    enums_seen: @list<def_id>) {
+                    enums_seen: @List<def_id>) {
     do ty::maybe_walk_ty(ty) |ty| {
         if ty::type_has_params(ty) {
             match ty::get(ty).struct {
@@ -143,7 +143,7 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                | ty::ty_trait(_, _, _) => false,
               ty::ty_enum(did, substs) => {
                 if option::is_none(list::find(enums_seen, |id| *id == did)) {
-                    let seen = @cons(did, enums_seen);
+                    let seen = @Cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
                             let t = ty::subst(cx.ccx.tcx, &substs, aty);

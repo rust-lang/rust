@@ -24,7 +24,7 @@
 
 export Arena, arena_with_size;
 
-use list::{list, cons, nil};
+use list::{List, Cons, Nil};
 use unsafe::reinterpret_cast;
 use sys::TypeDesc;
 use libc::size_t;
@@ -53,7 +53,7 @@ struct Arena {
     // access the head.
     priv mut head: Chunk;
     priv mut pod_head: Chunk;
-    priv mut chunks: @list<Chunk>;
+    priv mut chunks: @List<Chunk>;
     drop {
         unsafe {
             destroy_chunk(self.head);
@@ -73,7 +73,7 @@ fn chunk(size: uint, is_pod: bool) -> Chunk {
 fn arena_with_size(initial_size: uint) -> Arena {
     return Arena {mut head: chunk(initial_size, false),
                   mut pod_head: chunk(initial_size, true),
-                  mut chunks: @nil};
+                  mut chunks: @Nil};
 }
 
 fn Arena() -> Arena {
@@ -134,7 +134,7 @@ impl &Arena {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.pod_head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
-        self.chunks = @cons(copy self.pod_head, self.chunks);
+        self.chunks = @Cons(copy self.pod_head, self.chunks);
         self.pod_head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
 
@@ -176,7 +176,7 @@ impl &Arena {
         // Allocate a new chunk.
         let chunk_size = at_vec::capacity(self.head.data);
         let new_min_chunk_size = uint::max(n_bytes, chunk_size);
-        self.chunks = @cons(copy self.head, self.chunks);
+        self.chunks = @Cons(copy self.head, self.chunks);
         self.head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
 

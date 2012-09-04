@@ -223,7 +223,7 @@ use syntax::codemap::span;
 use util::ppaux::{ty_to_str, region_to_str, explain_region};
 use std::map::{int_hash, hashmap, set};
 use std::list;
-use std::list::{list, cons, nil};
+use std::list::{List, Cons, Nil};
 use result::{Result, Ok, Err};
 use syntax::print::pprust;
 use util::common::indenter;

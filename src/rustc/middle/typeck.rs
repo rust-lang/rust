@@ -64,7 +64,7 @@ use util::ppaux::{ty_to_str, tys_to_str, region_to_str,
                      bound_region_to_str, vstore_to_str};
 use util::common::{indent, indenter};
 use std::list;
-use list::{list, nil, cons};
+use list::{List, Nil, Cons};
 
 export check_crate;
 export infer;
