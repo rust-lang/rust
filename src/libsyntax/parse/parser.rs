@@ -883,7 +883,7 @@ struct parser {
             return pexpr(self.parse_sugary_call_expr(~"do", expr_do_body));
         } else if self.eat_keyword(~"while") {
             return pexpr(self.parse_while_expr());
-        } else if self.eat_keyword(~"loop") {
+        } else if self.eat_keyword(~"again") || self.eat_keyword(~"loop") {
             return pexpr(self.parse_loop_expr());
         } else if self.eat_keyword(~"match") {
             return pexpr(self.parse_alt_expr());
@@ -967,13 +967,6 @@ struct parser {
                 ex = expr_break(Some(self.parse_ident()));
             } else {
                 ex = expr_break(None);
-            }
-            hi = self.span.hi;
-        } else if self.eat_keyword(~"again") {
-            if is_ident(self.token) {
-                ex = expr_again(Some(self.parse_ident()));
-            } else {
-                ex = expr_again(None);
             }
             hi = self.span.hi;
         } else if self.eat_keyword(~"copy") {
@@ -1609,18 +1602,42 @@ struct parser {
     }
 
     fn parse_loop_expr() -> @expr {
-        let opt_ident;
-        if is_ident(self.token) && !self.is_any_keyword(copy self.token) {
-            opt_ident = Some(self.parse_ident());
-            self.expect(token::COLON);
-        } else {
-            opt_ident = None;
-        }
+        // loop headers look like 'loop {' or 'loop unsafe {'
+        let is_loop_header =
+            self.token == token::LBRACE
+            || (is_ident(copy self.token)
+                && self.look_ahead(1) == token::LBRACE);
+        // labeled loop headers look like 'loop foo: {'
+        let is_labeled_loop_header =
+            is_ident(self.token)
+            && !self.is_any_keyword(copy self.token)
+            && self.look_ahead(1) == token::COLON;
 
-        let lo = self.last_span.lo;
-        let body = self.parse_block_no_value();
-        let mut hi = body.span.hi;
-        return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
+        if is_loop_header || is_labeled_loop_header {
+            // This is a loop body
+            let opt_ident;
+            if is_labeled_loop_header {
+                opt_ident = Some(self.parse_ident());
+                self.expect(token::COLON);
+            } else {
+                opt_ident = None;
+            }
+
+            let lo = self.last_span.lo;
+            let body = self.parse_block_no_value();
+            let mut hi = body.span.hi;
+            return self.mk_expr(lo, hi, expr_loop(body, opt_ident));
+        } else {
+            // This is a 'continue' expression
+            let lo = self.span.lo;
+            let ex = if is_ident(self.token) {
+                expr_again(Some(self.parse_ident()))
+            } else {
+                expr_again(None)
+            };
+            let hi = self.span.hi;
+            return self.mk_expr(lo, hi, ex);
+        }
     }
 
     // For distingishing between record literals and blocks
