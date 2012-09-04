@@ -67,7 +67,6 @@ mod map;
 mod rope;
 #[allow(non_camel_case_types)] // XXX
 mod smallintmap;
-#[allow(non_camel_case_types)] // XXX
 mod sort;
 mod treemap;
 

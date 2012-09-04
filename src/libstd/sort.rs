@@ -11,7 +11,7 @@ export quick_sort;
 export quick_sort3;
 export Sort;
 
-type le<T> = pure fn(v1: &T, v2: &T) -> bool;
+type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.
@@ -19,12 +19,12 @@ type le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-fn merge_sort<T: copy>(le: le<T>, v: &[const T]) -> ~[T] {
-    type slice = (uint, uint);
+fn merge_sort<T: copy>(le: Le<T>, v: &[const T]) -> ~[T] {
+    type Slice = (uint, uint);
 
     return merge_sort_(le, v, (0u, len(v)));
 
-    fn merge_sort_<T: copy>(le: le<T>, v: &[const T], slice: slice)
+    fn merge_sort_<T: copy>(le: Le<T>, v: &[const T], slice: Slice)
         -> ~[T] {
         let begin = slice.first();
         let end = slice.second();
@@ -39,7 +39,7 @@ fn merge_sort<T: copy>(le: le<T>, v: &[const T]) -> ~[T] {
         return merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
     }
 
-    fn merge<T: copy>(le: le<T>, a: &[T], b: &[T]) -> ~[T] {
+    fn merge<T: copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
         let mut rs = ~[];
         vec::reserve(rs, len(a) + len(b));
         let a_len = len(a);
@@ -58,7 +58,7 @@ fn merge_sort<T: copy>(le: le<T>, v: &[const T]) -> ~[T] {
     }
 }
 
-fn part<T: copy>(compare_func: le<T>, arr: &[mut T], left: uint,
+fn part<T: copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
                 right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
@@ -75,7 +75,7 @@ fn part<T: copy>(compare_func: le<T>, arr: &[mut T], left: uint,
     return storage_index;
 }
 
-fn qsort<T: copy>(compare_func: le<T>, arr: &[mut T], left: uint,
+fn qsort<T: copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -94,7 +94,7 @@ fn qsort<T: copy>(compare_func: le<T>, arr: &[mut T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-fn quick_sort<T: copy>(compare_func: le<T>, arr: &[mut T]) {
+fn quick_sort<T: copy>(compare_func: Le<T>, arr: &[mut T]) {
     if len::<T>(arr) == 0u { return; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
