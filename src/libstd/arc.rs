@@ -6,11 +6,10 @@
  * between tasks.
  */
 
-import unsafe::{SharedMutableState, shared_mutable_state,
+use unsafe::{SharedMutableState, shared_mutable_state,
                 clone_shared_mutable_state, unwrap_shared_mutable_state,
                 get_shared_mutable_state, get_shared_immutable_state};
-import sync;
-import sync::{Mutex,  mutex_with_condvars,
+use sync::{Mutex,  mutex_with_condvars,
               RWlock, rwlock_with_condvars};
 
 export ARC, clone, get;

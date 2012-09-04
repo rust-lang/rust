@@ -23,11 +23,11 @@
  * facilities.
  */
 
-import ll = uv_ll;
+use ll = uv_ll;
 export ll;
 
-import iotask = uv_iotask;
+use iotask = uv_iotask;
 export iotask;
 
-import global_loop = uv_global_loop;
+use global_loop = uv_global_loop;
 export global_loop;

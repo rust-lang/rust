@@ -65,10 +65,10 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import core::cmp::Eq;
-import core::result::{Err, Ok};
-import core::option;
-import core::option::{Some, None};
+use core::cmp::Eq;
+use core::result::{Err, Ok};
+use core::option;
+use core::option::{Some, None};
 export Opt;
 export reqopt;
 export optopt;

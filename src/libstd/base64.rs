@@ -1,6 +1,6 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
-import io::Reader;
+use io::Reader;
 
 trait ToBase64 {
     fn to_base64() -> ~str;

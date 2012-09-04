@@ -2,8 +2,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import vec::{len, push};
-import core::cmp::{Eq, Ord};
+use vec::{len, push};
+use core::cmp::{Eq, Ord};
 
 export le;
 export merge_sort;

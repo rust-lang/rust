@@ -1,8 +1,8 @@
 // Simple Extensible Binary Markup Language (ebml) reader and writer on a
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
-import core::Option;
-import option::{Some, None};
+use core::Option;
+use option::{Some, None};
 
 export Doc;
 export doc_at;

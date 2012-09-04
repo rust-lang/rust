@@ -10,12 +10,12 @@ export spawn_iotask;
 export interact;
 export exit;
 
-import libc::c_void;
-import ptr::addr_of;
-import comm = core::comm;
-import comm::{Port, Chan, listen};
-import task::TaskBuilder;
-import ll = uv_ll;
+use libc::c_void;
+use ptr::addr_of;
+use comm = core::comm;
+use comm::{Port, Chan, listen};
+use task::TaskBuilder;
+use ll = uv_ll;
 
 /// Used to abstract-away direct interaction with a libuv loop.
 enum IoTask {

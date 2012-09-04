@@ -12,9 +12,9 @@
  * of features.
  */
 
-import core::cmp::{Eq, Ord};
-import option::{Some, None};
-import option = option;
+use core::cmp::{Eq, Ord};
+use option::{Some, None};
+use option = option;
 
 export Treemap;
 export init;

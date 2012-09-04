@@ -1,7 +1,7 @@
 //! A deque. Untested as of yet. Likely buggy
 
-import option::{Some, None};
-import dvec::DVec;
+use option::{Some, None};
+use dvec::DVec;
 
 trait Deque<T> {
     fn size() -> uint;

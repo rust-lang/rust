@@ -1,25 +1,23 @@
 //! Types/fns concerning Internet Protocol (IP), versions 4 & 6
 
-import vec;
-import uint;
-import iotask = uv::iotask::IoTask;
-import interact = uv::iotask::interact;
+use iotask = uv::iotask::IoTask;
+use interact = uv::iotask::interact;
 
-import sockaddr_in = uv::ll::sockaddr_in;
-import sockaddr_in6 = uv::ll::sockaddr_in6;
-import addrinfo = uv::ll::addrinfo;
-import uv_getaddrinfo_t = uv::ll::uv_getaddrinfo_t;
-import uv_ip4_addr = uv::ll::ip4_addr;
-import uv_ip4_name = uv::ll::ip4_name;
-import uv_ip6_addr = uv::ll::ip6_addr;
-import uv_ip6_name = uv::ll::ip6_name;
-import uv_getaddrinfo = uv::ll::getaddrinfo;
-import uv_freeaddrinfo = uv::ll::freeaddrinfo;
-import create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
-import set_data_for_req = uv::ll::set_data_for_req;
-import get_data_for_req = uv::ll::get_data_for_req;
-import ll = uv::ll;
-import comm = core::comm;
+use sockaddr_in = uv::ll::sockaddr_in;
+use sockaddr_in6 = uv::ll::sockaddr_in6;
+use addrinfo = uv::ll::addrinfo;
+use uv_getaddrinfo_t = uv::ll::uv_getaddrinfo_t;
+use uv_ip4_addr = uv::ll::ip4_addr;
+use uv_ip4_name = uv::ll::ip4_name;
+use uv_ip6_addr = uv::ll::ip6_addr;
+use uv_ip6_name = uv::ll::ip6_name;
+use uv_getaddrinfo = uv::ll::getaddrinfo;
+use uv_freeaddrinfo = uv::ll::freeaddrinfo;
+use create_uv_getaddrinfo_t = uv::ll::getaddrinfo_t;
+use set_data_for_req = uv::ll::set_data_for_req;
+use get_data_for_req = uv::ll::get_data_for_req;
+use ll = uv::ll;
+use comm = core::comm;
 
 export IpAddr, parse_addr_err;
 export format_addr;

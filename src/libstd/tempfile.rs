@@ -3,9 +3,8 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import core::option;
-import option::{None, Some};
-import rand;
+use core::option;
+use option::{None, Some};
 
 fn mkdtemp(tmpdir: &Path, suffix: &str) -> Option<Path> {
     let r = rand::Rng();

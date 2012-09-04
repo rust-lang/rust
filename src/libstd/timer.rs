@@ -3,10 +3,10 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import uv = uv;
-import uv::iotask;
-import iotask::IoTask;
-import comm = core::comm;
+use uv = uv;
+use uv::iotask;
+use iotask::IoTask;
+use comm = core::comm;
 
 export delayed_send, sleep, recv_timeout;
 

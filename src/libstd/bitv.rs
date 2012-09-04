@@ -1,4 +1,4 @@
-import vec::{to_mut, from_elem};
+use vec::{to_mut, from_elem};
 
 export Bitv;
 export union;

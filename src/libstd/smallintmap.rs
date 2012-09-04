@@ -2,10 +2,10 @@
  * A simple map based on a vector for small integer keys. Space requirements
  * are O(highest integer key).
  */
-import core::option;
-import core::option::{Some, None};
-import dvec::DVec;
-import map::map;
+use core::option;
+use core::option::{Some, None};
+use dvec::DVec;
+use map::map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.

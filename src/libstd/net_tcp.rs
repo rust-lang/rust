@@ -1,15 +1,15 @@
 //! High-level interface to libuv's TCP functionality
 
-import ip = net_ip;
-import uv::iotask;
-import uv::iotask::IoTask;
-import future_spawn = future::spawn;
+use ip = net_ip;
+use uv::iotask;
+use uv::iotask::IoTask;
+use future_spawn = future::spawn;
 // FIXME #1935
 // should be able to, but can't atm, replace w/ result::{result, extensions};
-import result::*;
-import libc::size_t;
-import io::{Reader, ReaderUtil, Writer};
-import comm = core::comm;
+use result::*;
+use libc::size_t;
+use io::{Reader, ReaderUtil, Writer};
+use comm = core::comm;
 
 // tcp interfaces
 export TcpSocket;

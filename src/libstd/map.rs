@@ -3,14 +3,14 @@
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
 
-import io::WriterUtil;
-import to_str::ToStr;
-import managed::Managed;
-import send_map::linear::LinearMap;
+use io::WriterUtil;
+use to_str::ToStr;
+use managed::Managed;
+use send_map::linear::LinearMap;
 
-import core::cmp::Eq;
-import hash::Hash;
-import to_bytes::IterBytes;
+use core::cmp::Eq;
+use hash::Hash;
+use to_bytes::IterBytes;
 
 export hashmap, hashfn, eqfn, set, map, chained, hashmap, str_hash;
 export box_str_hash;

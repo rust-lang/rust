@@ -5,13 +5,13 @@
 // simplest interface possible for representing and running tests
 // while providing a base that other test frameworks may build off of.
 
-import core::cmp::Eq;
-import either::Either;
-import result::{Ok, Err};
-import io::WriterUtil;
-import libc::size_t;
-import task::TaskBuilder;
-import comm = core::comm;
+use core::cmp::Eq;
+use either::Either;
+use result::{Ok, Err};
+use io::WriterUtil;
+use libc::size_t;
+use task::TaskBuilder;
+use comm = core::comm;
 
 export test_name;
 export test_fn;
