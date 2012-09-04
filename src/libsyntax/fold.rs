@@ -1,5 +1,5 @@
-import codemap::span;
-import ast::*;
+use codemap::span;
+use ast::*;
 
 export ast_fold_precursor;
 export ast_fold;

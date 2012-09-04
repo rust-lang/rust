@@ -1,5 +1,5 @@
-import codemap::span;
-import ast::*;
+use codemap::span;
+use ast::*;
 
 pure fn spanned<T>(lo: uint, hi: uint, +t: T) -> spanned<T> {
     respan(mk_sp(lo, hi), t)

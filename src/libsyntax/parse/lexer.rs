@@ -1,6 +1,6 @@
-import diagnostic::span_handler;
-import codemap::span;
-import ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
+use diagnostic::span_handler;
+use codemap::span;
+use ext::tt::transcribe::{tt_reader,  new_tt_reader, dup_tt_reader,
                              tt_next_token};
 
 export reader, string_reader, new_string_reader, is_whitespace;

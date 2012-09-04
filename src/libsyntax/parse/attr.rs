@@ -1,6 +1,6 @@
-import either::{Either, Left, Right};
-import ast_util::spanned;
-import common::*; //resolve bug?
+use either::{Either, Left, Right};
+use ast_util::spanned;
+use common::*; //resolve bug?
 
 export attr_or_ext;
 export parser_attr;

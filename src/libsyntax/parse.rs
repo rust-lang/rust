@@ -12,14 +12,14 @@ export parse_expr_from_source_str, parse_item_from_source_str;
 export parse_stmt_from_source_str;
 export parse_from_source_str;
 
-import parser::parser;
-import attr::parser_attr;
-import common::parser_common;
-import ast::node_id;
-import util::interner;
-import diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
-import lexer::{reader, string_reader};
-import parse::token::{ident_interner, mk_ident_interner};
+use parser::parser;
+use attr::parser_attr;
+use common::parser_common;
+use ast::node_id;
+use util::interner;
+use diagnostic::{span_handler, mk_span_handler, mk_handler, emitter};
+use lexer::{reader, string_reader};
+use parse::token::{ident_interner, mk_ident_interner};
 
 type parse_sess = @{
     cm: codemap::codemap,

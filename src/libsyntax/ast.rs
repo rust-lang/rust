@@ -1,7 +1,7 @@
 // The Rust abstract syntax tree.
 
-import codemap::{span, filename};
-import std::serialization::{serializer,
+use codemap::{span, filename};
+use std::serialization::{serializer,
                             deserializer,
                             serialize_Option,
                             deserialize_Option,
@@ -17,7 +17,7 @@ import std::serialization::{serializer,
                             deserialize_str,
                             serialize_bool,
                             deserialize_bool};
-import parse::token;
+use parse::token;
 
 /* Note #1972 -- spans are serialized but not deserialized */
 fn serialize_span<S>(_s: S, _v: span) {

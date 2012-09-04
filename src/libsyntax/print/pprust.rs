@@ -1,14 +1,12 @@
-import parse::{comments, lexer, token};
-import codemap::codemap;
-import pp::{break_offset, word, printer,
-            space, zerobreak, hardbreak, breaks, consistent,
-            inconsistent, eof};
-import diagnostic;
-import ast::{required, provided};
-import ast_util::{operator_prec};
-import dvec::DVec;
-import parse::classify::*;
-import parse::token::ident_interner;
+use parse::{comments, lexer, token};
+use codemap::codemap;
+use pp::{break_offset, word, printer, space, zerobreak, hardbreak, breaks};
+use pp::{consistent, inconsistent, eof};
+use ast::{required, provided};
+use ast_util::{operator_prec};
+use dvec::DVec;
+use parse::classify::*;
+use parse::token::ident_interner;
 
 // The ps is stored here to prevent recursive type.
 enum ann_node {

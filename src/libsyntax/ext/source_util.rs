@@ -1,8 +1,7 @@
-import base::*;
-import ast;
-import codemap::span;
-import print::pprust;
-import build::{mk_base_vec_e,mk_uint,mk_u8,mk_uniq_str};
+use base::*;
+use codemap::span;
+use print::pprust;
+use build::{mk_base_vec_e,mk_uint,mk_u8,mk_uniq_str};
 
 export expand_line;
 export expand_col;

@@ -1,7 +1,7 @@
-import to_str::ToStr;
-import dvec::DVec;
+use to_str::ToStr;
+use dvec::DVec;
 
-import ast_builder::{path, append_types};
+use ast_builder::{path, append_types};
 
 enum direction { send, recv }
 

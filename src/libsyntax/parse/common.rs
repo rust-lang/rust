@@ -1,7 +1,7 @@
-import std::map::{hashmap};
-import ast_util::spanned;
-import parser::parser;
-import lexer::reader;
+use std::map::{hashmap};
+use ast_util::spanned;
+use parser::parser;
+use lexer::reader;
 
 type seq_sep = {
     sep: Option<token::token>,

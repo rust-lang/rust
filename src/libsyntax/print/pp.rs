@@ -1,5 +1,5 @@
-import io::WriterUtil;
-import dvec::DVec;
+use io::WriterUtil;
+use dvec::DVec;
 
 /*
  * This pretty-printer is a direct reimplementation of Philip Karlton's

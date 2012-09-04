@@ -1,21 +1,21 @@
-import print::pprust::expr_to_str;
+use print::pprust::expr_to_str;
 
-import result::Result;
-import either::{Either, Left, Right};
-import std::map::{hashmap, str_hash};
-import token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
+use result::Result;
+use either::{Either, Left, Right};
+use std::map::{hashmap, str_hash};
+use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
                INTERPOLATED};
-import codemap::{span,fss_none};
-import util::interner::interner;
-import ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
-import lexer::reader;
-import prec::{as_prec, token_to_binop};
-import attr::parser_attr;
-import common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
+use codemap::{span,fss_none};
+use util::interner::interner;
+use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
+use lexer::reader;
+use prec::{as_prec, token_to_binop};
+use attr::parser_attr;
+use common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
                 seq_sep_none, token_to_str};
-import dvec::DVec;
-import vec::{push};
-import ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
+use dvec::DVec;
+use vec::{push};
+use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
              bound_copy, bound_send, bound_trait, bound_owned, box, by_copy,
@@ -69,7 +69,7 @@ export SOURCE_FILE;
 // defined in `parse` Fixing this will be easier when we have export
 // decls on individual items -- then parse can export this publicly, and
 // everything else crate-visibly.
-import parse_from_source_str;
+use parse::parse_from_source_str;
 export parse_from_source_str;
 
 export item_or_view_item, iovi_none, iovi_view_item, iovi_item;

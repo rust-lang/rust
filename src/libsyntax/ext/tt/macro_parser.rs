@@ -1,16 +1,16 @@
 // Earley-like parser for macros.
-import parse::token;
-import parse::token::{token, EOF, to_str, nonterminal};
-import parse::lexer::*; //resolve bug?
+use parse::token;
+use parse::token::{token, EOF, to_str, nonterminal};
+use parse::lexer::*; //resolve bug?
 //import parse::lexer::{reader, tt_reader, tt_reader_as_reader};
-import parse::parser::{parser,SOURCE_FILE};
+use parse::parser::{parser,SOURCE_FILE};
 //import parse::common::parser_common;
-import parse::common::*; //resolve bug?
-import parse::parse_sess;
-import dvec::DVec;
-import ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
-import ast_util::mk_sp;
-import std::map::{hashmap, uint_hash};
+use parse::common::*; //resolve bug?
+use parse::parse_sess;
+use dvec::DVec;
+use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
+use ast_util::mk_sp;
+use std::map::{hashmap, uint_hash};
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it

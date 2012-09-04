@@ -1,9 +1,9 @@
 // An "interner" is a data structure that associates values with uint tags and
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
-import std::map;
-import std::map::{hashmap, hashfn, eqfn};
-import dvec::DVec;
+use std::map;
+use std::map::{hashmap, hashfn, eqfn};
+use dvec::DVec;
 
 type hash_interner<T: const> =
     {map: hashmap<T, uint>,

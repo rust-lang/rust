@@ -1,10 +1,10 @@
-import std::map;
-import std::map::hashmap;
-import ast::*;
-import print::pprust;
-import ast_util::{path_to_ident, stmt_id};
-import diagnostic::span_handler;
-import parse::token::ident_interner;
+use std::map;
+use std::map::hashmap;
+use ast::*;
+use print::pprust;
+use ast_util::{path_to_ident, stmt_id};
+use diagnostic::span_handler;
+use parse::token::ident_interner;
 
 enum path_elt {
     path_mod(ident),

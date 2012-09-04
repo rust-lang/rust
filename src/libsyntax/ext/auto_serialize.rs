@@ -69,10 +69,10 @@ into the tree.  This is intended to prevent us from inserting the same
 node twice.
 
 */
-import base::*;
-import codemap::span;
-import std::map;
-import std::map::hashmap;
+use base::*;
+use codemap::span;
+use std::map;
+use std::map::hashmap;
 
 export expand;
 

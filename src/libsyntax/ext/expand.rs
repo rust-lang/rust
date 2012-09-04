@@ -1,14 +1,14 @@
-import std::map::hashmap;
+use std::map::hashmap;
 
-import ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
+use ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
              tt_delim, tt_tok, item_mac};
-import fold::*;
-import ext::base::*;
-import ext::qquote::{qq_helper};
-import parse::{parser, parse_expr_from_source_str, new_parser_from_tt};
+use fold::*;
+use ext::base::*;
+use ext::qquote::{qq_helper};
+use parse::{parser, parse_expr_from_source_str, new_parser_from_tt};
 
 
-import codemap::{span, expanded_from};
+use codemap::{span, expanded_from};
 
 fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
                e: expr_, s: span, fld: ast_fold,

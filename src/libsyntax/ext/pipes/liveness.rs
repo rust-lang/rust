@@ -27,9 +27,9 @@ updating the states using rule (2) until there are no changes.
 
 */
 
-import std::bitv::{Bitv};
+use std::bitv::{Bitv};
 
-import ast_builder::empty_span;
+use ast_builder::empty_span;
 
 fn analyze(proto: protocol, _cx: ext_ctxt) {
     debug!("initializing colive analysis");
