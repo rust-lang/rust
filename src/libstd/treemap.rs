@@ -12,30 +12,30 @@ use core::cmp::{Eq, Ord};
 use core::option::{Some, None};
 use Option = core::Option;
 
-export treemap;
+export TreeMap;
 export insert;
 export find;
 export traverse;
 
-type treemap<K, V> = @mut tree_edge<K, V>;
+type TreeMap<K, V> = @mut TreeEdge<K, V>;
 
-type tree_edge<K, V> = Option<@tree_node<K, V>>;
+type TreeEdge<K, V> = Option<@TreeNode<K, V>>;
 
-enum tree_node<K, V> = {
+enum TreeNode<K, V> = {
     key: K,
     mut value: V,
-    mut left: tree_edge<K, V>,
-    mut right: tree_edge<K, V>
+    mut left: TreeEdge<K, V>,
+    mut right: TreeEdge<K, V>
 };
 
 /// Create a treemap
-fn treemap<K, V>() -> treemap<K, V> { @mut None }
+fn TreeMap<K, V>() -> TreeMap<K, V> { @mut None }
 
 /// Insert a value into the map
-fn insert<K: copy Eq Ord, V: copy>(m: &mut tree_edge<K, V>, +k: K, +v: V) {
+fn insert<K: copy Eq Ord, V: copy>(m: &mut TreeEdge<K, V>, +k: K, +v: V) {
     match copy *m {
       None => {
-        *m = Some(@tree_node({key: k,
+        *m = Some(@TreeNode({key: k,
                               mut value: v,
                               mut left: None,
                               mut right: None}));
@@ -54,7 +54,7 @@ fn insert<K: copy Eq Ord, V: copy>(m: &mut tree_edge<K, V>, +k: K, +v: V) {
 }
 
 /// Find a value based on the key
-fn find<K: copy Eq Ord, V: copy>(m: &const tree_edge<K, V>, +k: K)
+fn find<K: copy Eq Ord, V: copy>(m: &const TreeEdge<K, V>, +k: K)
                               -> Option<V> {
     match copy *m {
       None => None,
@@ -73,7 +73,7 @@ fn find<K: copy Eq Ord, V: copy>(m: &const tree_edge<K, V>, +k: K)
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: copy>(m: &const tree_edge<K, V>, f: fn(K, V)) {
+fn traverse<K, V: copy>(m: &const TreeEdge<K, V>, f: fn(K, V)) {
     match copy *m {
       None => (),
       Some(node) => {
@@ -89,36 +89,36 @@ fn traverse<K, V: copy>(m: &const tree_edge<K, V>, f: fn(K, V)) {
 mod tests {
 
     #[test]
-    fn init_treemap() { let _m = treemap::<int, int>(); }
+    fn init_treemap() { let _m = TreeMap::<int, int>(); }
 
     #[test]
-    fn insert_one() { let m = treemap(); insert(m, 1, 2); }
+    fn insert_one() { let m = TreeMap(); insert(m, 1, 2); }
 
     #[test]
-    fn insert_two() { let m = treemap(); insert(m, 1, 2); insert(m, 3, 4); }
+    fn insert_two() { let m = TreeMap(); insert(m, 1, 2); insert(m, 3, 4); }
 
     #[test]
     fn insert_find() {
-        let m = treemap();
+        let m = TreeMap();
         insert(m, 1, 2);
         assert (find(m, 1) == Some(2));
     }
 
     #[test]
     fn find_empty() {
-        let m = treemap::<int, int>(); assert (find(m, 1) == None);
+        let m = TreeMap::<int, int>(); assert (find(m, 1) == None);
     }
 
     #[test]
     fn find_not_found() {
-        let m = treemap();
+        let m = TreeMap();
         insert(m, 1, 2);
         assert (find(m, 2) == None);
     }
 
     #[test]
     fn traverse_in_order() {
-        let m = treemap();
+        let m = TreeMap();
         insert(m, 3, ());
         insert(m, 0, ());
         insert(m, 4, ());
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn u8_map() {
-        let m = treemap();
+        let m = TreeMap();
 
         let k1 = str::to_bytes(~"foo");
         let k2 = str::to_bytes(~"bar");
