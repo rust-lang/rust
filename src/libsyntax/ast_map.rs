@@ -239,7 +239,14 @@ fn map_item(i: @item, cx: ctx, v: vt) {
             cx.map.insert(nitem.id,
                           node_foreign_item(nitem, abi,
                                            /* FIXME (#2543) */
-                                           extend(cx, i.ident)));
+                                            if nm.sort == ast::named {
+                                                extend(cx, i.ident)
+                                            }
+                                            else {
+                                                /* Anonymous extern mods go
+                                                in the parent scope */
+                                                @copy cx.path
+                                            }));
         }
       }
       item_class(struct_def, _) => {
