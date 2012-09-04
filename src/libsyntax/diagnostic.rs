@@ -1,6 +1,6 @@
-import std::term;
-import io::WriterUtil;
-import codemap::span;
+use std::term;
+use io::WriterUtil;
+use codemap::span;
 
 export emitter, emit;
 export level, fatal, error, warning, note;

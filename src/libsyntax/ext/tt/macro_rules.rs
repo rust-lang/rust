@@ -1,14 +1,14 @@
-import base::{ext_ctxt, mac_result, mr_expr, mr_def, expr_tt};
-import codemap::span;
-import ast::{ident, matcher_, matcher, match_tok,
+use base::{ext_ctxt, mac_result, mr_expr, mr_def, expr_tt};
+use codemap::span;
+use ast::{ident, matcher_, matcher, match_tok,
              match_nonterminal, match_seq, tt_delim};
-import parse::lexer::{new_tt_reader, reader};
-import parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
-import parse::parser::{parser, SOURCE_FILE};
-import macro_parser::{parse, parse_or_else, success, failure, named_match,
+use parse::lexer::{new_tt_reader, reader};
+use parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
+use parse::parser::{parser, SOURCE_FILE};
+use macro_parser::{parse, parse_or_else, success, failure, named_match,
                       matched_seq, matched_nonterminal, error};
-import std::map::hashmap;
-import parse::token::special_idents;
+use std::map::hashmap;
+use parse::token::special_idents;
 
 fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,
                      arg: ~[ast::token_tree]) -> base::mac_result {

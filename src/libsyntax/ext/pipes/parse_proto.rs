@@ -1,9 +1,9 @@
 // Parsing pipes protocols from token trees.
 
-import parse::parser;
-import parse::token;
+use parse::parser;
+use parse::token;
 
-import pipec::*;
+use pipec::*;
 
 trait proto_parser {
     fn parse_proto(id: ~str) -> protocol;

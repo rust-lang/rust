@@ -5,10 +5,10 @@
  * should all get sucked into either the standard library extfmt module or the
  * compiler syntax extension plugin interface.
  */
-import extfmt::ct::*;
-import base::*;
-import codemap::span;
-import ext::build::*;
+use extfmt::ct::*;
+use base::*;
+use codemap::span;
+use ext::build::*;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: span, arg: ast::mac_arg,

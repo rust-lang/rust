@@ -1,7 +1,7 @@
-import util::interner;
-import util::interner::interner;
-import std::map::{hashmap, str_hash};
-import std::serialization::{serializer,
+use util::interner;
+use util::interner::interner;
+use std::map::{hashmap, str_hash};
+use std::serialization::{serializer,
                             deserializer,
                             serialize_uint,
                             deserialize_uint,

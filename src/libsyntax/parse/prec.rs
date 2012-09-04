@@ -2,9 +2,9 @@ export as_prec;
 export unop_prec;
 export token_to_binop;
 
-import token::*;
-import token::token;
-import ast::*;
+use token::*;
+use token::token;
+use ast::*;
 
 /// Unary operators have higher precedence than binary
 const unop_prec: uint = 100u;

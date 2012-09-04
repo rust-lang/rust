@@ -1,9 +1,9 @@
-import codemap::span;
-import ext::base::ext_ctxt;
-import ast::tt_delim;
-import parse::lexer::{new_tt_reader, reader};
-import parse::parser::{parser, SOURCE_FILE};
-import parse::common::parser_common;
+use codemap::span;
+use ext::base::ext_ctxt;
+use ast::tt_delim;
+use parse::lexer::{new_tt_reader, reader};
+use parse::parser::{parser, SOURCE_FILE};
+use parse::common::parser_common;
 
 fn expand_trace_macros(cx: ext_ctxt, sp: span,
                        tt: ~[ast::token_tree]) -> base::mac_result

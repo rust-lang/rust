@@ -1,4 +1,4 @@
-import dvec::DVec;
+use dvec::DVec;
 
 export filename;
 export filemap;

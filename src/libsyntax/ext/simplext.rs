@@ -1,12 +1,12 @@
-import codemap::span;
-import std::map::{hashmap, str_hash, uint_hash};
-import dvec::DVec;
+use codemap::span;
+use std::map::{hashmap, str_hash, uint_hash};
+use dvec::DVec;
 
-import base::*;
+use base::*;
 
-import fold::*;
-import ast_util::respan;
-import ast::{ident, path, ty, blk_, expr, expr_path,
+use fold::*;
+use ast_util::respan;
+use ast::{ident, path, ty, blk_, expr, expr_path,
              expr_vec, expr_mac, mac_invoc, node_id, expr_index};
 
 export add_new_extension;

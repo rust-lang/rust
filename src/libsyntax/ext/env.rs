@@ -4,8 +4,8 @@
  * should all get sucked into either the compiler syntax extension plugin
  * interface.
  */
-import base::*;
-import build::mk_uniq_str;
+use base::*;
+use build::mk_uniq_str;
 export expand_syntax_ext;
 
 fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,

@@ -33,16 +33,16 @@ FIXME (#3072) - This is still incomplete.
 
 */
 
-import codemap::span;
-import ext::base::ext_ctxt;
-import ast::tt_delim;
-import parse::lexer::{new_tt_reader, reader};
-import parse::parser::{parser, SOURCE_FILE};
-import parse::common::parser_common;
+use codemap::span;
+use ext::base::ext_ctxt;
+use ast::tt_delim;
+use parse::lexer::{new_tt_reader, reader};
+use parse::parser::{parser, SOURCE_FILE};
+use parse::common::parser_common;
 
-import pipes::parse_proto::proto_parser;
+use pipes::parse_proto::proto_parser;
 
-import pipes::proto::{visit, protocol};
+use pipes::proto::{visit, protocol};
 
 fn expand_proto(cx: ext_ctxt, _sp: span, id: ast::ident,
                 tt: ~[ast::token_tree]) -> base::mac_result

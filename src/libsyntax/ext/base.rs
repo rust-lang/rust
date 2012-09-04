@@ -1,8 +1,8 @@
-import std::map::hashmap;
-import parse::parser;
-import diagnostic::span_handler;
-import codemap::{codemap, span, expn_info, expanded_from};
-import std::map::str_hash;
+use std::map::hashmap;
+use parse::parser;
+use diagnostic::span_handler;
+use codemap::{codemap, span, expn_info, expanded_from};
+use std::map::str_hash;
 
 // obsolete old-style #macro code:
 //

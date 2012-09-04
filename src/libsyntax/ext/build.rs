@@ -1,5 +1,5 @@
-import codemap::span;
-import base::ext_ctxt;
+use codemap::span;
+use base::ext_ctxt;
 
 fn mk_expr(cx: ext_ctxt, sp: codemap::span, expr: ast::expr_) ->
     @ast::expr {

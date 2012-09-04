@@ -1,10 +1,10 @@
-import diagnostic::span_handler;
-import ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
-import macro_parser::{named_match, matched_seq, matched_nonterminal};
-import codemap::span;
-import parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
+use diagnostic::span_handler;
+use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,ident};
+use macro_parser::{named_match, matched_seq, matched_nonterminal};
+use codemap::span;
+use parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
                       ident_interner};
-import std::map::{hashmap, box_str_hash};
+use std::map::{hashmap, box_str_hash};
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
 

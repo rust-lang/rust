@@ -19,10 +19,10 @@ that.
 
 */
 
-import ext::base::ext_ctxt;
+use ext::base::ext_ctxt;
 
-import proto::{state, protocol, next_state};
-import ast_builder::empty_span;
+use proto::{state, protocol, next_state};
+use ast_builder::empty_span;
 
 impl ext_ctxt: proto::visitor<(), (), ()>  {
     fn visit_proto(_proto: protocol,

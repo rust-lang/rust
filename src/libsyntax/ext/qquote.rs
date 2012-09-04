@@ -1,18 +1,18 @@
-import ast::{crate, expr_, mac_invoc,
+use ast::{crate, expr_, mac_invoc,
                      mac_aq, mac_var};
-import parse::parser;
-import parse::parser::parse_from_source_str;
-import dvec::DVec;
-import parse::token::ident_interner;
+use parse::parser;
+use parse::parser::parse_from_source_str;
+use dvec::DVec;
+use parse::token::ident_interner;
 
-import fold::*;
-import visit::*;
-import ext::base::*;
-import ext::build::*;
-import print::*;
-import io::*;
+use fold::*;
+use visit::*;
+use ext::base::*;
+use ext::build::*;
+use print::*;
+use io::*;
 
-import codemap::span;
+use codemap::span;
 
 struct gather_item {
     lo: uint;

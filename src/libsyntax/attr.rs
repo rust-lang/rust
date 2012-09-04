@@ -1,11 +1,11 @@
 // Functions dealing with attributes and meta_items
 
-import std::map;
-import std::map::hashmap;
-import either::Either;
-import diagnostic::span_handler;
-import ast_util::{spanned, dummy_spanned};
-import parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+use std::map;
+use std::map::hashmap;
+use either::Either;
+use diagnostic::span_handler;
+use ast_util::{spanned, dummy_spanned};
+use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 
 // Constructors
 export mk_name_value_item_str;

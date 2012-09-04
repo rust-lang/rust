@@ -1,19 +1,18 @@
 // A protocol compiler for Rust.
 
-import to_str::ToStr;
+use to_str::ToStr;
 
-import dvec::DVec;
+use dvec::DVec;
 
-import ast::ident;
-import util::interner;
-import print::pprust;
-import pprust::{item_to_str, ty_to_str};
-import ext::base::{mk_ctxt, ext_ctxt};
-import parse;
-import parse::*;
-import proto::*;
+use ast::ident;
+use util::interner;
+use print::pprust;
+use pprust::{item_to_str, ty_to_str};
+use ext::base::{mk_ctxt, ext_ctxt};
+use parse::*;
+use proto::*;
 
-import ast_builder::{append_types, path, empty_span};
+use ast_builder::{append_types, path, empty_span};
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {

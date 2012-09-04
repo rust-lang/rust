@@ -1,6 +1,6 @@
-import io::println;//XXXXXXXXxxx
-import util::interner;
-import lexer::{string_reader, bump, is_eof, nextch,
+use io::println;//XXXXXXXXxxx
+use util::interner;
+use lexer::{string_reader, bump, is_eof, nextch,
                is_whitespace, get_str_from, reader};
 
 export cmnt;

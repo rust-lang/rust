@@ -3,10 +3,10 @@
 // To start with, it will be use dummy spans, but it might someday do
 // something smarter.
 
-import ast::{ident, node_id};
-import ast_util::respan;
-import codemap::span;
-import ext::base::mk_ctxt;
+use ast::{ident, node_id};
+use ast_util::respan;
+use codemap::span;
+use ext::base::mk_ctxt;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
