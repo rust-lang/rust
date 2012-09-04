@@ -133,7 +133,7 @@ impl Sub: combine {
         // First, we instantiate each bound region in the subtype with a fresh
         // region variable.
         let {fn_ty: a_fn_ty, _} = {
-            do replace_bound_regions_in_fn_ty(self.infcx.tcx, @nil,
+            do replace_bound_regions_in_fn_ty(self.infcx.tcx, @Nil,
                                               None, a) |br| {
                 // N.B.: The name of the bound region doesn't have
                 // anything to do with the region variable that's created
@@ -153,7 +153,7 @@ impl Sub: combine {
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
         let {fn_ty: b_fn_ty, _} = {
-            do replace_bound_regions_in_fn_ty(self.infcx.tcx, @nil,
+            do replace_bound_regions_in_fn_ty(self.infcx.tcx, @Nil,
                                               None, b) |br| {
                 // FIXME: eventually re_skolemized (issue #2263)
                 ty::re_bound(br)

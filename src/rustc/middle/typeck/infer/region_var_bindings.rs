@@ -310,7 +310,7 @@ use result::Result;
 use result::{Ok, Err};
 use std::map::{hashmap, uint_hash};
 use std::cell::{Cell, empty_cell};
-use std::list::{list, nil, cons};
+use std::list::{List, Nil, Cons};
 
 use ty::{region, region_vid, hash_region};
 use region::is_subregion_of;

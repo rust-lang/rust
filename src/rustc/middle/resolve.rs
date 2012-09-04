@@ -59,7 +59,7 @@ use str::{connect, split_str};
 use vec::pop;
 use syntax::parse::token::ident_interner;
 
-use std::list::{cons, list, nil};
+use std::list::{Cons, List, Nil};
 use std::map::{hashmap, int_hash, uint_hash};
 use str_eq = str::eq;
 

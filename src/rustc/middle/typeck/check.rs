@@ -157,7 +157,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
         indirect_ret_ty: None,
         purity: ast::pure_fn,
         mut region_lb: region_bnd,
-        in_scope_regions: @nil,
+        in_scope_regions: @Nil,
         inh: blank_inherited(ccx),
         ccx: ccx
     }
@@ -165,7 +165,7 @@ fn blank_fn_ctxt(ccx: @crate_ctxt, rty: ty::t,
 
 // a list of mapping from in-scope-region-names ("isr") to the
 // corresponding ty::region
-type isr_alist = @list<(ty::bound_region, ty::region)>;
+type isr_alist = @List<(ty::bound_region, ty::region)>;
 
 trait get_and_find_region {
     fn get(br: ty::bound_region) -> ty::region;
@@ -225,7 +225,7 @@ fn check_fn(ccx: @crate_ctxt,
     // the node_id of the body block.
 
     let {isr, self_info, fn_ty} = {
-        let old_isr = option::map_default(old_fcx, @nil,
+        let old_isr = option::map_default(old_fcx, @Nil,
                                          |fcx| fcx.in_scope_regions);
         replace_bound_regions_in_fn_ty(tcx, old_isr, self_info, fn_ty,
                                        |br| ty::re_free(body.node.id, br))
@@ -917,7 +917,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             match structure_of(fcx, sp, in_fty) {
               ty::ty_fn(ref fn_ty) => {
                 replace_bound_regions_in_fn_ty(
-                    fcx.ccx.tcx, @nil, None, fn_ty,
+                    fcx.ccx.tcx, @Nil, None, fn_ty,
                     |_br| fcx.infcx().next_region_var(sp,
                                                       call_expr_id)).fn_ty
               }
@@ -1237,7 +1237,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
               Some(ty::ty_fn(ref fn_ty)) => {
                 let {fn_ty, _} =
                     replace_bound_regions_in_fn_ty(
-                        tcx, @nil, None, fn_ty,
+                        tcx, @Nil, None, fn_ty,
                         |br| ty::re_bound(ty::br_cap_avoid(expr.id, @br)));
                 (Some({inputs:fn_ty.inputs,
                        output:fn_ty.output}),

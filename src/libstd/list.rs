@@ -7,14 +7,14 @@ use core::option;
 use option::*;
 use option::{Some, None};
 
-enum list<T> {
-    cons(T, @list<T>),
-    nil,
+enum List<T> {
+    Cons(T, @List<T>),
+    Nil,
 }
 
-/// Create a list from a vector
-fn from_vec<T: copy>(v: &[T]) -> @list<T> {
-    vec::foldr(v, @nil::<T>, |h, t| @cons(h, t))
+/// Cregate a list from a vector
+fn from_vec<T: copy>(v: &[T]) -> @List<T> {
+    vec::foldr(v, @Nil::<T>, |h, t| @Cons(h, t))
 }
 
 /**
@@ -30,7 +30,7 @@ fn from_vec<T: copy>(v: &[T]) -> @list<T> {
  * * z - The initial value
  * * f - The function to apply
  */
-fn foldl<T: copy, U>(+z: T, ls: @list<U>, f: fn((&T), (&U)) -> T) -> T {
+fn foldl<T: copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
     let mut accum: T = z;
     do iter(ls) |elt| { accum = f(&accum, &elt);}
     accum
@@ -43,21 +43,21 @@ fn foldl<T: copy, U>(+z: T, ls: @list<U>, f: fn((&T), (&U)) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-fn find<T: copy>(ls: @list<T>, f: fn((&T)) -> bool) -> Option<T> {
+fn find<T: copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
-          cons(hd, tl) => {
+          Cons(hd, tl) => {
             if f(&hd) { return Some(hd); }
             tl
           }
-          nil => return None
+          Nil => return None
         }
     };
 }
 
 /// Returns true if a list contains an element with the given value
-fn has<T: copy Eq>(ls: @list<T>, +elt: T) -> bool {
+fn has<T: copy Eq>(ls: @List<T>, +elt: T) -> bool {
     for each(ls) |e| {
         if e == elt { return true; }
     }
@@ -65,49 +65,49 @@ fn has<T: copy Eq>(ls: @list<T>, +elt: T) -> bool {
 }
 
 /// Returns true if the list is empty
-pure fn is_empty<T: copy>(ls: @list<T>) -> bool {
+pure fn is_empty<T: copy>(ls: @List<T>) -> bool {
     match *ls {
-        nil => true,
+        Nil => true,
         _ => false
     }
 }
 
 /// Returns true if the list is not empty
-pure fn is_not_empty<T: copy>(ls: @list<T>) -> bool {
+pure fn is_not_empty<T: copy>(ls: @List<T>) -> bool {
     return !is_empty(ls);
 }
 
 /// Returns the length of a list
-fn len<T>(ls: @list<T>) -> uint {
+fn len<T>(ls: @List<T>) -> uint {
     let mut count = 0u;
     iter(ls, |_e| count += 1u);
     count
 }
 
 /// Returns all but the first element of a list
-pure fn tail<T: copy>(ls: @list<T>) -> @list<T> {
+pure fn tail<T: copy>(ls: @List<T>) -> @List<T> {
     match *ls {
-        cons(_, tl) => return tl,
-        nil => fail ~"list empty"
+        Cons(_, tl) => return tl,
+        Nil => fail ~"list empty"
     }
 }
 
 /// Returns the first element of a list
-pure fn head<T: copy>(ls: @list<T>) -> T {
+pure fn head<T: copy>(ls: @List<T>) -> T {
     match *ls {
-      cons(hd, _) => hd,
+      Cons(hd, _) => hd,
       // makes me sad
       _ => fail ~"head invoked on empty list"
     }
 }
 
 /// Appends one list to another
-pure fn append<T: copy>(l: @list<T>, m: @list<T>) -> @list<T> {
+pure fn append<T: copy>(l: @List<T>, m: @List<T>) -> @List<T> {
     match *l {
-      nil => return m,
-      cons(x, xs) => {
+      Nil => return m,
+      Cons(x, xs) => {
         let rest = append(xs, m);
-        return @cons(x, rest);
+        return @Cons(x, rest);
       }
     }
 }
@@ -121,45 +121,45 @@ pure fn push<T: copy>(ll: &mut @list<T>, +vv: T) {
 */
 
 /// Iterate over a list
-fn iter<T>(l: @list<T>, f: fn(T)) {
+fn iter<T>(l: @List<T>, f: fn(T)) {
     let mut cur = l;
     loop {
         cur = match *cur {
-          cons(hd, tl) => {
+          Cons(hd, tl) => {
             f(hd);
             tl
           }
-          nil => break
+          Nil => break
         }
     }
 }
 
 /// Iterate over a list
-fn each<T>(l: @list<T>, f: fn(T) -> bool) {
+fn each<T>(l: @List<T>, f: fn(T) -> bool) {
     let mut cur = l;
     loop {
         cur = match *cur {
-          cons(hd, tl) => {
+          Cons(hd, tl) => {
             if !f(hd) { return; }
             tl
           }
-          nil => break
+          Nil => break
         }
     }
 }
 
-impl<T:Eq> list<T> : Eq {
-    pure fn eq(&&other: list<T>) -> bool {
+impl<T:Eq> List<T> : Eq {
+    pure fn eq(&&other: List<T>) -> bool {
         match self {
-            cons(e0a, e1a) => {
+            Cons(e0a, e1a) => {
                 match other {
-                    cons(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    Cons(e0b, e1b) => e0a == e0b && e1a == e1b,
                     _ => false
                 }
             }
-            nil => {
+            Nil => {
                 match other {
-                    nil => true,
+                    Nil => true,
                     _ => false
                 }
             }
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let empty : @list::list<int> = from_vec(~[]);
+        let empty : @list::List<int> = from_vec(~[]);
         let full1 = from_vec(~[1]);
         let full2 = from_vec(~['r', 'u']);
 
@@ -200,15 +200,15 @@ mod tests {
 
     #[test]
     fn test_from_vec_empty() {
-        let empty : @list::list<int> = from_vec(~[]);
-        assert (empty == @list::nil::<int>);
+        let empty : @list::List<int> = from_vec(~[]);
+        assert (empty == @list::Nil::<int>);
     }
 
     #[test]
     fn test_foldl() {
         fn add(a: &uint, b: &int) -> uint { return *a + (*b as uint); }
         let l = from_vec(~[0, 1, 2, 3, 4]);
-        let empty = @list::nil::<int>;
+        let empty = @list::Nil::<int>;
         assert (list::foldl(0u, l, add) == 10u);
         assert (list::foldl(0u, empty, add) == 0u);
     }
@@ -233,7 +233,7 @@ mod tests {
     fn test_find_fail() {
         fn match_(_i: &int) -> bool { return false; }
         let l = from_vec(~[0, 1, 2]);
-        let empty = @list::nil::<int>;
+        let empty = @list::Nil::<int>;
         assert (list::find(l, match_) == option::None::<int>);
         assert (list::find(empty, match_) == option::None::<int>);
     }
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn test_has() {
         let l = from_vec(~[5, 8, 6]);
-        let empty = @list::nil::<int>;
+        let empty = @list::Nil::<int>;
         assert (list::has(l, 5));
         assert (!list::has(l, 7));
         assert (list::has(l, 8));
@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn test_len() {
         let l = from_vec(~[0, 1, 2]);
-        let empty = @list::nil::<int>;
+        let empty = @list::Nil::<int>;
         assert (list::len(l) == 3u);
         assert (list::len(empty) == 0u);
     }
