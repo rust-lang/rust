@@ -3,12 +3,12 @@
 // tjc note: Would be great to have a `match check` macro equivalent
 // for some of these
 
-import syntax::ast;
-import syntax::ast::*;
-import syntax::ast_util;
-import syntax::ast_util::respan;
-import middle::ty;
-import std::map::hashmap;
+use syntax::ast;
+use syntax::ast::*;
+use syntax::ast_util;
+use syntax::ast_util::respan;
+use middle::ty;
+use std::map::hashmap;
 
 export parse_ty_data, parse_def_id, parse_ident;
 export parse_bounds_data;

@@ -48,8 +48,8 @@
 // A.  But this upper-bound might be stricter than what is truly
 // needed.
 
-import to_str::to_str;
-import combine::combine_fields;
+use to_str::to_str;
+use combine::combine_fields;
 
 fn to_ares(+c: cres<ty::t>) -> ares {
     match c {

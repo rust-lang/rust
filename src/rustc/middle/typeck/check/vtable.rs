@@ -1,9 +1,9 @@
-import check::{fn_ctxt, impl_self_ty};
-import infer::{resolve_type, resolve_and_force_all_but_regions,
+use check::{fn_ctxt, impl_self_ty};
+use infer::{resolve_type, resolve_and_force_all_but_regions,
                fixup_err_to_str};
-import ast_util::new_def_hash;
-import syntax::print::pprust;
-import result::{Result, Ok, Err};
+use ast_util::new_def_hash;
+use syntax::print::pprust;
+use result::{Result, Ok, Err};
 
 // vtable resolution looks for places where trait bounds are
 // subsituted in and figures out which vtable is used. There is some

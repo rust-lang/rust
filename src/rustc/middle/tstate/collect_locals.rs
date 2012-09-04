@@ -1,14 +1,14 @@
-import option::*;
-import pat_util::*;
-import syntax::ast::*;
-import syntax::ast_util::*;
-import syntax::visit;
-import syntax::codemap::span;
-import syntax::ast_util::respan;
-import driver::session::session;
-import aux::*;
-import std::map::hashmap;
-import dvec::{dvec, extensions};
+use option::*;
+use pat_util::*;
+use syntax::ast::*;
+use syntax::ast_util::*;
+use syntax::visit;
+use syntax::codemap::span;
+use syntax::ast_util::respan;
+use driver::session::session;
+use aux::*;
+use std::map::hashmap;
+use dvec::{dvec, extensions};
 
 type ctxt = {cs: @mut ~[sp_constr], tcx: ty::ctxt};
 

@@ -1,16 +1,16 @@
-import syntax::ast::*;
-import syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat};
-import const_eval::{eval_const_expr, const_val, const_int, const_bool,
+use syntax::ast::*;
+use syntax::ast_util::{variant_def_ids, dummy_sp, unguarded_pat};
+use const_eval::{eval_const_expr, const_val, const_int, const_bool,
                     compare_const_vals};
-import syntax::codemap::span;
-import syntax::print::pprust::pat_to_str;
-import util::ppaux::ty_to_str;
-import pat_util::*;
-import syntax::visit;
-import driver::session::session;
-import middle::ty;
-import middle::ty::*;
-import std::map::hashmap;
+use syntax::codemap::span;
+use syntax::print::pprust::pat_to_str;
+use util::ppaux::ty_to_str;
+use pat_util::*;
+use syntax::visit;
+use driver::session::session;
+use middle::ty;
+use middle::ty::*;
+use std::map::hashmap;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate, (), visit::mk_vt(@{

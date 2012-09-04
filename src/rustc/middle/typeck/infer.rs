@@ -246,39 +246,39 @@ section on "Type Combining" below for details.
 #[warn(deprecated_mode)];
 #[warn(deprecated_pattern)];
 
-import std::smallintmap;
-import std::smallintmap::smallintmap;
-import std::map::hashmap;
-import middle::ty;
-import middle::ty::{tv_vid, tvi_vid, region_vid, vid,
+use std::smallintmap;
+use std::smallintmap::smallintmap;
+use std::map::hashmap;
+use middle::ty;
+use middle::ty::{tv_vid, tvi_vid, region_vid, vid,
                     ty_int, ty_uint, get, terr_fn};
-import syntax::{ast, ast_util};
-import syntax::ast::{ret_style, purity};
-import util::ppaux::{ty_to_str, mt_to_str};
-import result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
-import ty::{mk_fn, type_is_bot};
-import check::regionmanip::{replace_bound_regions_in_fn_ty};
-import driver::session::session;
-import util::common::{indent, indenter};
-import ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
-import ast::{m_const, m_imm, m_mutbl};
-import dvec::DVec;
-import region_var_bindings::{RegionVarBindings};
-import ast_util::dummy_sp;
-import cmp::Eq;
+use syntax::{ast, ast_util};
+use syntax::ast::{ret_style, purity};
+use util::ppaux::{ty_to_str, mt_to_str};
+use result::{Result, Ok, Err, map_vec, map_vec2, iter_vec2};
+use ty::{mk_fn, type_is_bot};
+use check::regionmanip::{replace_bound_regions_in_fn_ty};
+use driver::session::session;
+use util::common::{indent, indenter};
+use ast::{unsafe_fn, impure_fn, pure_fn, extern_fn};
+use ast::{m_const, m_imm, m_mutbl};
+use dvec::DVec;
+use region_var_bindings::{RegionVarBindings};
+use ast_util::dummy_sp;
+use cmp::Eq;
 
 // From submodules:
-import resolve::{resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all,
+use resolve::{resolve_nested_tvar, resolve_rvar, resolve_ivar, resolve_all,
                  force_tvar, force_rvar, force_ivar, force_all, not_regions,
                  resolve_and_force_all_but_regions, resolver};
-import unify::{vals_and_bindings, root};
-import integral::{int_ty_set, int_ty_set_all};
-import combine::{combine_fields, eq_tys};
-import assignment::Assign;
+use unify::{vals_and_bindings, root};
+use integral::{int_ty_set, int_ty_set_all};
+use combine::{combine_fields, eq_tys};
+use assignment::Assign;
 
-import sub::Sub;
-import lub::Lub;
-import glb::Glb;
+use sub::Sub;
+use lub::Lub;
+use glb::Glb;
 
 export infer_ctxt;
 export new_infer_ctxt;

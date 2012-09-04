@@ -1,13 +1,13 @@
 
-import syntax::{ast, codemap};
-import syntax::ast::node_id;
-import codemap::span;
-import syntax::ast::{int_ty, uint_ty, float_ty};
-import syntax::parse::parse_sess;
-import metadata::filesearch;
-import back::target_strs;
-import back::link;
-import middle::lint;
+use syntax::{ast, codemap};
+use syntax::ast::node_id;
+use codemap::span;
+use syntax::ast::{int_ty, uint_ty, float_ty};
+use syntax::parse::parse_sess;
+use metadata::filesearch;
+use back::target_strs;
+use back::link;
+use middle::lint;
 
 
 enum os { os_win32, os_macos, os_linux, os_freebsd, }

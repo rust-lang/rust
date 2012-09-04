@@ -38,33 +38,33 @@ independently:
 
 */
 
-import result::Result;
-import syntax::{ast, ast_util, ast_map};
-import ast::spanned;
-import ast::{required, provided};
-import syntax::ast_map::node_id_to_str;
-import syntax::ast_util::{local_def, respan, split_trait_methods};
-import syntax::visit;
-import metadata::csearch;
-import driver::session::session;
-import util::common::may_break;
-import syntax::codemap::span;
-import pat_util::{pat_is_variant, pat_id_map};
-import middle::ty;
-import middle::ty::{arg, field, node_type_table, mk_nil,
+use result::Result;
+use syntax::{ast, ast_util, ast_map};
+use ast::spanned;
+use ast::{required, provided};
+use syntax::ast_map::node_id_to_str;
+use syntax::ast_util::{local_def, respan, split_trait_methods};
+use syntax::visit;
+use metadata::csearch;
+use driver::session::session;
+use util::common::may_break;
+use syntax::codemap::span;
+use pat_util::{pat_is_variant, pat_id_map};
+use middle::ty;
+use middle::ty::{arg, field, node_type_table, mk_nil,
                     ty_param_bounds_and_ty, lookup_public_fields,
                     vstore_uniq};
-import std::smallintmap;
-import std::map;
-import std::map::{hashmap, int_hash};
-import std::serialization::{serialize_uint, deserialize_uint};
-import vec::each;
-import syntax::print::pprust::*;
-import util::ppaux::{ty_to_str, tys_to_str, region_to_str,
+use std::smallintmap;
+use std::map;
+use std::map::{hashmap, int_hash};
+use std::serialization::{serialize_uint, deserialize_uint};
+use vec::each;
+use syntax::print::pprust::*;
+use util::ppaux::{ty_to_str, tys_to_str, region_to_str,
                      bound_region_to_str, vstore_to_str};
-import util::common::{indent, indenter};
-import std::list;
-import list::{list, nil, cons};
+use util::common::{indent, indenter};
+use std::list;
+use list::{list, nil, cons};
 
 export check_crate;
 export infer;

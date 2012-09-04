@@ -1,20 +1,20 @@
 // -*- rust -*-
-import metadata::{creader, cstore, filesearch};
-import session::{session, session_, OptLevel, No, Less, Default, Aggressive};
-import syntax::parse;
-import syntax::{ast, codemap};
-import syntax::attr;
-import middle::{trans, freevars, kind, ty, typeck, lint};
-import syntax::print::{pp, pprust};
-import util::ppaux;
-import back::link;
-import result::{Ok, Err};
-import std::getopts;
-import io::WriterUtil;
-import getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
-import back::{x86, x86_64};
-import std::map::hashmap;
-import lib::llvm::llvm;
+use metadata::{creader, cstore, filesearch};
+use session::{session, session_, OptLevel, No, Less, Default, Aggressive};
+use syntax::parse;
+use syntax::{ast, codemap};
+use syntax::attr;
+use middle::{trans, freevars, kind, ty, typeck, lint};
+use syntax::print::{pp, pprust};
+use util::ppaux;
+use back::link;
+use result::{Ok, Err};
+use std::getopts;
+use io::WriterUtil;
+use getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
+use back::{x86, x86_64};
+use std::map::hashmap;
+use lib::llvm::llvm;
 
 enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,
               ppm_expanded_identified }

@@ -1,4 +1,4 @@
-import syntax::diagnostic;
+use syntax::diagnostic;
 export diagnostic;
 
 export driver;

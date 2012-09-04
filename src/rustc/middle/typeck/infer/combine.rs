@@ -44,7 +44,7 @@
 // terms of error reporting, although we do not do that properly right
 // now.
 
-import to_str::to_str;
+use to_str::to_str;
 
 trait combine {
     fn infcx() -> infer_ctxt;

@@ -1,15 +1,15 @@
 /* Code to handle method lookups (which can be quite complex) */
 
-import coherence::get_base_type_def_id;
-import middle::resolve::{Impl, MethodInfo};
-import middle::ty::{mk_box, mk_rptr, mk_uniq};
-import syntax::ast::{def_id,
+use coherence::get_base_type_def_id;
+use middle::resolve::{Impl, MethodInfo};
+use middle::ty::{mk_box, mk_rptr, mk_uniq};
+use syntax::ast::{def_id,
                      sty_static, sty_box, sty_by_ref, sty_region, sty_uniq};
-import syntax::ast::{sty_value, by_ref, by_copy};
-import syntax::ast_map;
-import syntax::ast_map::node_id_to_str;
-import syntax::ast_util::{dummy_sp, new_def_hash};
-import dvec::DVec;
+use syntax::ast::{sty_value, by_ref, by_copy};
+use syntax::ast_map;
+use syntax::ast_map::node_id_to_str;
+use syntax::ast_util::{dummy_sp, new_def_hash};
+use dvec::DVec;
 
 enum method_lookup_mode {
     subtyping_mode,

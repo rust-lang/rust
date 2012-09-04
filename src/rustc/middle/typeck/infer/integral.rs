@@ -4,7 +4,7 @@ Code related to integral type inference.
 
 */
 
-import to_str::to_str;
+use to_str::to_str;
 
 // Bitvector to represent sets of integral types
 enum int_ty_set = uint;

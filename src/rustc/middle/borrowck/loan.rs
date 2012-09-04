@@ -3,7 +3,7 @@
 // of the scope S, presuming that the returned set of loans `Ls` are honored.
 
 export public_methods;
-import result::{Result, Ok, Err};
+use result::{Result, Ok, Err};
 
 impl borrowck_ctxt {
     fn loan(cmt: cmt,

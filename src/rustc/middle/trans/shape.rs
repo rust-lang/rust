@@ -1,26 +1,26 @@
 // A "shape" is a compact encoding of a type that is used by interpreted glue.
 // This substitutes for the runtime tags used by e.g. MLs.
 
-import lib::llvm::llvm;
-import lib::llvm::{True, False, ModuleRef, TypeRef, ValueRef};
-import driver::session;
-import driver::session::session;
-import trans::base;
-import middle::trans::common::*;
-import back::abi;
-import middle::ty;
-import middle::ty::field;
-import syntax::ast;
-import syntax::ast_util::{dummy_sp, new_def_hash};
-import syntax::util::interner;
-import util::ppaux::ty_to_str;
-import syntax::codemap::span;
-import dvec::DVec;
+use lib::llvm::llvm;
+use lib::llvm::{True, False, ModuleRef, TypeRef, ValueRef};
+use driver::session;
+use driver::session::session;
+use trans::base;
+use middle::trans::common::*;
+use back::abi;
+use middle::ty;
+use middle::ty::field;
+use syntax::ast;
+use syntax::ast_util::{dummy_sp, new_def_hash};
+use syntax::util::interner;
+use util::ppaux::ty_to_str;
+use syntax::codemap::span;
+use dvec::DVec;
 
-import std::map::hashmap;
-import option::is_some;
+use std::map::hashmap;
+use option::is_some;
 
-import ty_ctxt = middle::ty::ctxt;
+use ty_ctxt = middle::ty::ctxt;
 
 type nominal_id = @{did: ast::def_id, parent_id: Option<ast::def_id>,
                     tps: ~[ty::t]};

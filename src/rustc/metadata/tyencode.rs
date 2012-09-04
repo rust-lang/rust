@@ -1,12 +1,12 @@
 // Type encoding
 
-import io::WriterUtil;
-import std::map::hashmap;
-import syntax::ast::*;
-import syntax::diagnostic::span_handler;
-import middle::ty;
-import middle::ty::vid;
-import syntax::print::pprust::*;
+use io::WriterUtil;
+use std::map::hashmap;
+use syntax::ast::*;
+use syntax::diagnostic::span_handler;
+use middle::ty;
+use middle::ty::vid;
+use syntax::print::pprust::*;
 
 export ctxt;
 export ty_abbrev;

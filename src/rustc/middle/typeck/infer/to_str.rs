@@ -1,5 +1,5 @@
-import integral::{int_ty_set};
-import unify::{var_value, redirect, root};
+use integral::{int_ty_set};
+use unify::{var_value, redirect, root};
 
 trait to_str {
     fn to_str(cx: infer_ctxt) -> ~str;

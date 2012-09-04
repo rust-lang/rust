@@ -1,6 +1,6 @@
-import std::map::hashmap;
+use std::map::hashmap;
 
-import libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
+use libc::{c_char, c_int, c_uint, c_longlong, c_ulonglong};
 
 type Opcode = u32;
 type Bool = c_uint;

@@ -1,6 +1,6 @@
-import driver::session;
-import session::sess_os_to_meta_os;
-import metadata::loader::meta_section_name;
+use driver::session;
+use session::sess_os_to_meta_os;
+use metadata::loader::meta_section_name;
 
 fn get_target_strs(target_os: session::os) -> target_strs::t {
     return {

@@ -17,14 +17,14 @@
 // much information, but have the disadvantage of being very
 // invasive.)
 
-import std::map::hashmap;
-import std::list;
-import std::list::{list, cons, nil};
-import driver::session::session;
-import metadata::csearch;
-import syntax::ast::*, syntax::ast_util, syntax::visit;
-import syntax::ast_map;
-import common::*;
+use std::map::hashmap;
+use std::list;
+use std::list::{list, cons, nil};
+use driver::session::session;
+use metadata::csearch;
+use syntax::ast::*, syntax::ast_util, syntax::visit;
+use syntax::ast_map;
+use common::*;
 
 type type_uses = uint; // Bitmask
 const use_repr: uint = 1u; // Dependency on size/alignment and take/drop glue

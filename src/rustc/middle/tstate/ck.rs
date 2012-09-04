@@ -1,22 +1,22 @@
 
-import syntax::ast;
-import ast::{stmt, fn_ident, node_id, crate, return_val, noreturn, expr};
-import syntax::{visit, print};
-import syntax::codemap::span;
-import middle::ty;
-import tstate::ann::{precond, prestate,
+use syntax::ast;
+use ast::{stmt, fn_ident, node_id, crate, return_val, noreturn, expr};
+use syntax::{visit, print};
+use syntax::codemap::span;
+use middle::ty;
+use tstate::ann::{precond, prestate,
                      implies, ann_precond, ann_prestate};
-import aux::*;
+use aux::*;
 
-import util::ppaux::ty_to_str;
-import bitvectors::*;
-import annotate::annotate_crate;
-import collect_locals::mk_f_to_fn_info;
-import pre_post_conditions::fn_pre_post;
-import states::find_pre_post_state_fn;
-import syntax::print::pprust::expr_to_str;
-import driver::session::session;
-import std::map::hashmap;
+use util::ppaux::ty_to_str;
+use bitvectors::*;
+use annotate::annotate_crate;
+use collect_locals::mk_f_to_fn_info;
+use pre_post_conditions::fn_pre_post;
+use states::find_pre_post_state_fn;
+use syntax::print::pprust::expr_to_str;
+use driver::session::session;
+use std::map::hashmap;
 
 fn check_states_expr(e: @expr, fcx: fn_ctxt, v: visit::vt<fn_ctxt>) {
     visit::visit_expr(e, fcx, v);

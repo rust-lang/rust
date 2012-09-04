@@ -1,6 +1,6 @@
-import common::*;
-import syntax::{ast, ast_util, codemap, ast_map};
-import base::get_insn_ctxt;
+use common::*;
+use syntax::{ast, ast_util, codemap, ast_map};
+use base::get_insn_ctxt;
 
 fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
     -> ValueRef {

@@ -1,22 +1,22 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/master/compiler/src/externals.cpp
 
-import driver::session::{session, arch_x86_64};
-import syntax::codemap::span;
-import libc::c_uint;
-import syntax::{attr, ast_map};
-import lib::llvm::{ llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double,
+use driver::session::{session, arch_x86_64};
+use syntax::codemap::span;
+use libc::c_uint;
+use syntax::{attr, ast_map};
+use lib::llvm::{ llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double,
     Struct, Array, ModuleRef, CallConv, Attribute,
     StructRetAttribute, ByValAttribute,
     SequentiallyConsistent, Acquire, Release, Xchg };
-import syntax::{ast, ast_util};
-import back::{link, abi};
-import common::*;
-import build::*;
-import base::*;
-import type_of::*;
-import std::map::hashmap;
-import util::ppaux::ty_to_str;
+use syntax::{ast, ast_util};
+use back::{link, abi};
+use common::*;
+use build::*;
+use base::*;
+use type_of::*;
+use std::map::hashmap;
+use util::ppaux::ty_to_str;
 
 export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
        trans_intrinsic;

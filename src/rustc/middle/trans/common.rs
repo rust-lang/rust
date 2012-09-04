@@ -3,25 +3,25 @@
 
 */
 
-import libc::c_uint;
-import vec::unsafe::to_ptr;
-import std::map::{hashmap,set};
-import syntax::{ast, ast_map};
-import driver::session;
-import session::session;
-import middle::ty;
-import back::{link, abi, upcall};
-import syntax::codemap::span;
-import lib::llvm::{llvm, target_data, type_names, associate_type,
+use libc::c_uint;
+use vec::unsafe::to_ptr;
+use std::map::{hashmap,set};
+use syntax::{ast, ast_map};
+use driver::session;
+use session::session;
+use middle::ty;
+use back::{link, abi, upcall};
+use syntax::codemap::span;
+use lib::llvm::{llvm, target_data, type_names, associate_type,
                    name_has_type};
-import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
-import lib::llvm::{True, False, Bool};
-import metadata::{csearch};
-import metadata::common::link_meta;
-import syntax::ast_map::path;
-import util::ppaux::ty_to_str;
-import syntax::parse::token::ident_interner;
-import syntax::ast::ident;
+use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef, BuilderRef};
+use lib::llvm::{True, False, Bool};
+use metadata::{csearch};
+use metadata::common::link_meta;
+use syntax::ast_map::path;
+use util::ppaux::ty_to_str;
+use syntax::parse::token::ident_interner;
+use syntax::ast::ident;
 
 type namegen = fn@(~str) -> ident;
 fn new_namegen(intr: ident_interner) -> namegen {

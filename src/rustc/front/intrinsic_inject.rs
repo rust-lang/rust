@@ -1,6 +1,6 @@
-import driver::session::session;
-import syntax::parse;
-import syntax::ast;
+use driver::session::session;
+use syntax::parse;
+use syntax::ast;
 
 export inject_intrinsic;
 

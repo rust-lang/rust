@@ -1,13 +1,13 @@
 //! Finds crate binaries and loads their metadata
 
-import syntax::diagnostic::span_handler;
-import syntax::{ast, attr};
-import syntax::print::pprust;
-import syntax::codemap::span;
-import lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
-import filesearch::filesearch;
-import io::WriterUtil;
-import syntax::parse::token::ident_interner;
+use syntax::diagnostic::span_handler;
+use syntax::{ast, attr};
+use syntax::print::pprust;
+use syntax::codemap::span;
+use lib::llvm::{False, llvm, mk_object_file, mk_section_iter};
+use filesearch::filesearch;
+use io::WriterUtil;
+use syntax::parse::token::ident_interner;
 
 export os;
 export os_macos, os_win32, os_linux, os_freebsd;

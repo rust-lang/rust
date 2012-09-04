@@ -1,26 +1,26 @@
 // Metadata encoding
 
-import util::ppaux::ty_to_str;
+use util::ppaux::ty_to_str;
 
-import std::{ebml, map};
-import std::map::hashmap;
-import io::WriterUtil;
-import ebml::Writer;
-import syntax::ast::*;
-import syntax::print::pprust;
-import syntax::{ast_util, visit};
-import syntax::ast_util::*;
-import common::*;
-import middle::ty;
-import middle::ty::node_id_to_type;
-import middle::resolve;
-import syntax::ast_map;
-import syntax::attr;
-import std::serialization::serializer;
-import std::ebml::serializer;
-import str::to_bytes;
-import syntax::ast;
-import syntax::diagnostic::span_handler;
+use std::{ebml, map};
+use std::map::hashmap;
+use io::WriterUtil;
+use ebml::Writer;
+use syntax::ast::*;
+use syntax::print::pprust;
+use syntax::{ast_util, visit};
+use syntax::ast_util::*;
+use common::*;
+use middle::ty;
+use middle::ty::node_id_to_type;
+use middle::resolve;
+use syntax::ast_map;
+use syntax::attr;
+use std::serialization::serializer;
+use std::ebml::serializer;
+use str::to_bytes;
+use syntax::ast;
+use syntax::diagnostic::span_handler;
 
 export encode_parms;
 export encode_metadata;

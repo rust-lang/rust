@@ -1,8 +1,8 @@
-import std::map;
-import std::map::hashmap;
-import metadata::cstore;
-import driver::session;
-import metadata::filesearch;
+use std::map;
+use std::map::hashmap;
+use metadata::cstore;
+use driver::session;
+use metadata::filesearch;
 
 export get_rpath_flags;
 

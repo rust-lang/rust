@@ -13,46 +13,46 @@
 //     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
-import libc::{c_uint, c_ulonglong};
-import std::{map, time, list};
-import std::map::hashmap;
-import std::map::{int_hash, str_hash};
-import driver::session;
-import session::session;
-import syntax::attr;
-import back::{link, abi, upcall};
-import syntax::{ast, ast_util, codemap, ast_map};
-import ast_util::{local_def, path_to_ident};
-import syntax::visit;
-import syntax::codemap::span;
-import syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
-import pat_util::*;
-import visit::vt;
-import util::common::is_main_name;
-import lib::llvm::{llvm, mk_target_data, mk_type_names};
-import lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
-import lib::llvm::{True, False};
-import link::{mangle_internal_name_by_type_only,
+use libc::{c_uint, c_ulonglong};
+use std::{map, time, list};
+use std::map::hashmap;
+use std::map::{int_hash, str_hash};
+use driver::session;
+use session::session;
+use syntax::attr;
+use back::{link, abi, upcall};
+use syntax::{ast, ast_util, codemap, ast_map};
+use ast_util::{local_def, path_to_ident};
+use syntax::visit;
+use syntax::codemap::span;
+use syntax::print::pprust::{expr_to_str, stmt_to_str, path_to_str};
+use pat_util::*;
+use visit::vt;
+use util::common::is_main_name;
+use lib::llvm::{llvm, mk_target_data, mk_type_names};
+use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
+use lib::llvm::{True, False};
+use link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_seq,
               mangle_internal_name_by_path,
               mangle_internal_name_by_path_and_seq,
               mangle_exported_name};
-import metadata::{csearch, cstore, decoder, encoder};
-import metadata::common::link_meta;
-import util::ppaux;
-import util::ppaux::{ty_to_str, ty_to_short_str};
-import syntax::diagnostic::expect;
+use metadata::{csearch, cstore, decoder, encoder};
+use metadata::common::link_meta;
+use util::ppaux;
+use util::ppaux::{ty_to_str, ty_to_short_str};
+use syntax::diagnostic::expect;
 
-import build::*;
-import shape::*;
-import type_of::*;
-import common::*;
-import common::result;
-import syntax::ast_map::{path, path_mod, path_name};
-import syntax::parse::token::special_idents;
+use build::*;
+use shape::*;
+use type_of::*;
+use common::*;
+use common::result;
+use syntax::ast_map::{path, path_mod, path_name};
+use syntax::parse::token::special_idents;
 
-import std::smallintmap;
-import option::{is_none, is_some};
+use std::smallintmap;
+use option::{is_none, is_some};
 
 // Destinations
 

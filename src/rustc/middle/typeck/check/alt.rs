@@ -1,4 +1,4 @@
-import syntax::print::pprust;
+use syntax::print::pprust;
 
 fn check_alt(fcx: @fn_ctxt,
              expr: @ast::expr,

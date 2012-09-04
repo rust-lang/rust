@@ -1,11 +1,11 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-import std::map;
-import std::map::hashmap;
-import syntax::{ast, attr};
-import syntax::ast_util::new_def_hash;
-import syntax::parse::token::ident_interner;
+use std::map;
+use std::map::hashmap;
+use syntax::{ast, attr};
+use syntax::ast_util::new_def_hash;
+use syntax::parse::token::ident_interner;
 
 export cstore;
 export cnum_map;

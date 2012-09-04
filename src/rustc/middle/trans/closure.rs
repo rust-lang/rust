@@ -1,22 +1,22 @@
-import libc::c_uint;
-import syntax::ast;
-import syntax::ast_util;
-import lib::llvm::llvm;
-import lib::llvm::{ValueRef, TypeRef};
-import common::*;
-import build::*;
-import base::*;
-import type_of::*;
-import back::abi;
-import syntax::codemap::span;
-import syntax::print::pprust::expr_to_str;
-import back::link::{
+use libc::c_uint;
+use syntax::ast;
+use syntax::ast_util;
+use lib::llvm::llvm;
+use lib::llvm::{ValueRef, TypeRef};
+use common::*;
+use build::*;
+use base::*;
+use type_of::*;
+use back::abi;
+use syntax::codemap::span;
+use syntax::print::pprust::expr_to_str;
+use back::link::{
     mangle_internal_name_by_path,
     mangle_internal_name_by_path_and_seq};
-import util::ppaux::ty_to_str;
-import syntax::ast_map::{path, path_mod, path_name};
-import driver::session::session;
-import std::map::hashmap;
+use util::ppaux::ty_to_str;
+use syntax::ast_map::{path, path_mod, path_name};
+use driver::session::session;
+use std::map::hashmap;
 
 // ___Good to know (tm)__________________________________________________
 //

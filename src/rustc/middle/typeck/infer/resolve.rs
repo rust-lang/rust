@@ -34,8 +34,8 @@
 // future).  If you want to resolve everything but one type, you are
 // probably better off writing `resolve_all - resolve_ivar`.
 
-import integral::*;
-import to_str::to_str;
+use integral::*;
+use to_str::to_str;
 
 const resolve_nested_tvar: uint = 0b00000001;
 const resolve_rvar: uint        = 0b00000010;

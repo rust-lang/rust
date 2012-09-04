@@ -9,18 +9,18 @@
 //
 // * Functions called by the compiler itself.
 
-import driver::session::session;
-import metadata::csearch::{each_path, get_item_attrs};
-import metadata::cstore::{iter_crate_data};
-import metadata::decoder::{dl_def, dl_field, dl_impl};
-import syntax::ast::{crate, def_id, def_ty, lit_str, meta_item, meta_list};
-import syntax::ast::{meta_name_value, meta_word};
-import syntax::ast_util::{local_def};
-import syntax::visit::{default_simple_visitor, mk_simple_visitor};
-import syntax::visit::{visit_crate, visit_item};
+use driver::session::session;
+use metadata::csearch::{each_path, get_item_attrs};
+use metadata::cstore::{iter_crate_data};
+use metadata::decoder::{dl_def, dl_field, dl_impl};
+use syntax::ast::{crate, def_id, def_ty, lit_str, meta_item, meta_list};
+use syntax::ast::{meta_name_value, meta_word};
+use syntax::ast_util::{local_def};
+use syntax::visit::{default_simple_visitor, mk_simple_visitor};
+use syntax::visit::{visit_crate, visit_item};
 
-import std::map::{hashmap, str_hash};
-import str_eq = str::eq;
+use std::map::{hashmap, str_hash};
+use str_eq = str::eq;
 
 struct LanguageItems {
     mut const_trait: Option<def_id>;

@@ -1,25 +1,25 @@
-import std::map::hashmap;
-import middle::ty;
-import middle::ty::{arg, canon_mode};
-import middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
-import middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
-import middle::ty::{mt, t};
-import middle::ty::{re_bound, re_free, re_scope, re_var, re_static, region};
-import middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
-import middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
-import middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
-import middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
-import middle::ty::{ty_type, ty_uniq, ty_uint, ty_var, ty_var_integral};
-import middle::ty::{ty_unboxed_vec, vid};
-import metadata::encoder;
-import syntax::codemap;
-import syntax::codemap::span;
-import syntax::print::pprust;
-import syntax::print::pprust::{path_to_str, proto_to_str,
+use std::map::hashmap;
+use middle::ty;
+use middle::ty::{arg, canon_mode};
+use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
+use middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
+use middle::ty::{mt, t};
+use middle::ty::{re_bound, re_free, re_scope, re_var, re_static, region};
+use middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
+use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
+use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
+use middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
+use middle::ty::{ty_type, ty_uniq, ty_uint, ty_var, ty_var_integral};
+use middle::ty::{ty_unboxed_vec, vid};
+use metadata::encoder;
+use syntax::codemap;
+use syntax::codemap::span;
+use syntax::print::pprust;
+use syntax::print::pprust::{path_to_str, proto_to_str,
                                mode_to_str, purity_to_str};
-import syntax::{ast, ast_util};
-import syntax::ast_map;
-import driver::session::session;
+use syntax::{ast, ast_util};
+use syntax::ast_map;
+use driver::session::session;
 
 fn note_and_explain_region(cx: ctxt, prefix: ~str, region: ty::region) {
     match explain_region_and_span(cx, region) {

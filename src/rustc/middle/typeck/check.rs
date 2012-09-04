@@ -66,18 +66,18 @@ type parameter).
 
 */
 
-import astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
-import astconv::{ast_region_to_region};
-import middle::ty::{tv_vid, vid};
-import regionmanip::{replace_bound_regions_in_fn_ty};
-import rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
-import rscope::{in_binding_rscope, region_scope, type_rscope,
+use astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
+use astconv::{ast_region_to_region};
+use middle::ty::{tv_vid, vid};
+use regionmanip::{replace_bound_regions_in_fn_ty};
+use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
+use rscope::{in_binding_rscope, region_scope, type_rscope,
                 bound_self_region};
-import syntax::ast::ty_i;
-import typeck::infer::{resolve_type, force_tvar};
-import result::{Result, Ok, Err};
+use syntax::ast::ty_i;
+use typeck::infer::{resolve_type, force_tvar};
+use result::{Result, Ok, Err};
 
-import std::map::{str_hash, uint_hash};
+use std::map::{str_hash, uint_hash};
 
 type self_info = {
     self_ty: ty::t,

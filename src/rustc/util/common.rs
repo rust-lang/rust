@@ -1,9 +1,9 @@
-import std::map::hashmap;
-import syntax::ast;
-import ast::{ty, pat};
-import syntax::codemap::{span};
-import syntax::visit;
-import syntax::print;
+use std::map::hashmap;
+use syntax::ast;
+use ast::{ty, pat};
+use syntax::codemap::{span};
+use syntax::visit;
+use syntax::print;
 
 fn indent<R>(op: fn() -> R) -> R {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
