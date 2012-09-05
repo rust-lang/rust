@@ -1,8 +1,6 @@
 // error-pattern:goodfail
 
 use std;
-import task;
-import comm;
 
 fn goodfail() {
     task::yield();

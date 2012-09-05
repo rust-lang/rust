@@ -1,7 +1,5 @@
 use std;
 
-import vec;
-import str;
 
 #[nolink]
 #[abi = "cdecl"]

@@ -1,5 +1,5 @@
 use std;
-import std::map::*;
+use std::map::*;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }
 

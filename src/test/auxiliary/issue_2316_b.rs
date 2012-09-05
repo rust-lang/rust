@@ -2,7 +2,7 @@ use issue_2316_a;
 
 mod cloth {
 
-import issue_2316_a::*;
+use issue_2316_a::*;
 
 export calico, gingham, flannel;
 export fabric;

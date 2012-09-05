@@ -12,25 +12,19 @@
 
 use std;
 
-import option = option;
-import option::Some;
-import option::None;
-import str;
-import std::map;
-import std::map::hashmap;
-import vec;
-import io;
-import io::WriterUtil;
+use option = option;
+use option::Some;
+use option::None;
+use std::map;
+use std::map::hashmap;
+use io::WriterUtil;
 
-import std::time;
-import u64;
+use std::time;
 
-import task;
-import comm;
-import comm::Chan;
-import comm::Port;
-import comm::recv;
-import comm::send;
+use comm::Chan;
+use comm::Port;
+use comm::recv;
+use comm::send;
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }

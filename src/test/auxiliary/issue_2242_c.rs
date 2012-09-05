@@ -3,7 +3,7 @@
 
 use a;
 
-import a::to_strz;
+use a::to_strz;
 
 impl bool: to_strz {
     fn to_strz() -> ~str { fmt!("%b", self) }

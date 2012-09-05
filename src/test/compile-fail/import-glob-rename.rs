@@ -1,6 +1,6 @@
 // error-pattern:expected
 
-import baz = foo::*;
+use baz = foo::*;
 
 mod foo {
     fn bar() {}

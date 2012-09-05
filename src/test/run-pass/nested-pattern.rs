@@ -2,9 +2,8 @@
 
 // a bug was causing this to complain about leaked memory on exit
 use std;
-import option;
-import option::Some;
-import option::None;
+use option::Some;
+use option::None;
 
 enum t { foo(int, uint), bar(int, Option<int>), }
 

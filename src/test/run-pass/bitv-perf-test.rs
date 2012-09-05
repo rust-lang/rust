@@ -1,5 +1,5 @@
 use std;
-import std::bitv::*;
+use std::bitv::*;
 
 fn bitv_test() -> bool {
     let v1 = ~Bitv(31, false);

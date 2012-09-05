@@ -1,6 +1,5 @@
 use std;
-import pipes;
-import pipes::send;
+use pipes::send;
 
 fn main() { test00(); }
 

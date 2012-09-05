@@ -1,6 +1,6 @@
 #!/usr/bin/env rustx
 // pp-exact
 
-import io::println;
+use io::println;
 
 fn main() { io::println(~"Hello World"); }

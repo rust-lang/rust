@@ -2,7 +2,7 @@
 // aux-build:cci_borrow_lib.rs
 
 use cci_borrow_lib;
-import cci_borrow_lib::foo;
+use cci_borrow_lib::foo;
 
 fn main() {
     let p = @22u;

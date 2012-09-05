@@ -1,9 +1,9 @@
 // xfail-pretty
 
 use std;
-import std::timer::sleep;
-import std::uv;
-import pipes::recv;
+use std::timer::sleep;
+use std::uv;
+use pipes::recv;
 
 proto! oneshot (
     waiting:send {

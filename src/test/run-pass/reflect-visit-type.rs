@@ -1,7 +1,7 @@
 // FIXME: un-xfail after snapshot
 // xfail-test
 
-import intrinsic::{tydesc, get_tydesc, visit_tydesc, ty_visitor};
+use intrinsic::{tydesc, get_tydesc, visit_tydesc, ty_visitor};
 enum my_visitor = @{ mut types: ~[str] };
 
 impl of ty_visitor for my_visitor {

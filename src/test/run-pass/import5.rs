@@ -1,4 +1,4 @@
-import foo::bar;
+use foo::bar;
 mod foo {
     import zed::bar;
     export bar;

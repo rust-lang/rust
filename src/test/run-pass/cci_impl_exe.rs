@@ -2,7 +2,7 @@
 // aux-build:cci_impl_lib.rs
 
 use cci_impl_lib;
-import cci_impl_lib::uint_helpers;
+use cci_impl_lib::uint_helpers;
 
 fn main() {
     //let bt0 = sys::frame_address();

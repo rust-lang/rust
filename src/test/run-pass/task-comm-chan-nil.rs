@@ -1,7 +1,6 @@
 // -*- rust -*-
 
 use std;
-import comm;
 
 // rustboot can't transmit nils across channels because they don't have
 // any size, but rustc currently can because they do have size. Whether

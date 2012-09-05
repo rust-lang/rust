@@ -1,4 +1,4 @@
-import cmp::Eq;
+use cmp::Eq;
 
 fn iter<T>(v: ~[T], it: fn(T) -> bool) {
     let mut i = 0u, l = v.len();

@@ -8,12 +8,12 @@
 
 // xfail-pretty
 
-import future::future;
+use future::future;
 
 use std;
-import std::time;
+use std::time;
 
-import pipes::recv;
+use pipes::recv;
 
 proto! ring (
     num:send {

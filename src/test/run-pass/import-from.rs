@@ -1,4 +1,4 @@
-import spam::{ham, eggs};
+use spam::{ham, eggs};
 
 mod spam {
     fn ham() { }

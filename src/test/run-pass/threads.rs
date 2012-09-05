@@ -1,7 +1,6 @@
 // -*- rust -*-
 
 use std;
-import task;
 
 fn main() {
     let mut i = 10;

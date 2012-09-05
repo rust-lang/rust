@@ -1,4 +1,4 @@
-import dvec::DVec;
+use dvec::DVec;
 
 type entry<A,B> = {key: A, value: B};
 type alist<A,B> = { eq_fn: fn@(A,A) -> bool, data: DVec<entry<A,B>> };

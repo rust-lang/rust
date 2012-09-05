@@ -1,7 +1,7 @@
 // xfail-fast
 // aux-build:cci_class_trait.rs
 use cci_class_trait;
-import cci_class_trait::animals::*;
+use cci_class_trait::animals::*;
 
 struct cat : noisy {
   priv {

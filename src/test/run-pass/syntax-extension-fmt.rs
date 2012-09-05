@@ -1,5 +1,4 @@
 use std;
-import str;
 
 fn test(actual: ~str, expected: ~str) {
     log(debug, actual);

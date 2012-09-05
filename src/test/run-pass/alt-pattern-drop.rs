@@ -1,7 +1,7 @@
 
 
 // -*- rust -*-
-import core::sys;
+use core::sys;
 
 enum t { make_t(@int), clam, }
 

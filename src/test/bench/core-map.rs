@@ -5,11 +5,10 @@
 */
 
 use std;
-import rand;
-import std::map;
-import managed::Managed;
-import send_map::linear::*;
-import io::WriterUtil;
+use std::map;
+use managed::Managed;
+use send_map::linear::*;
+use io::WriterUtil;
 
 struct Results {
     sequential_ints: float;

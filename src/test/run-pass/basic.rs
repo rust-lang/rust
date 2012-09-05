@@ -1,11 +1,9 @@
 // -*- rust -*-
 
 use std;
-import comm;
-import comm::send;
-import comm::Chan;
-import comm::recv;
-import task;
+use comm::send;
+use comm::Chan;
+use comm::recv;
 
 fn a(c: Chan<int>) {
     if true {

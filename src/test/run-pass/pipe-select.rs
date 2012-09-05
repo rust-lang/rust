@@ -2,10 +2,10 @@
 // xfail-win32
 
 use std;
-import std::timer::sleep;
-import std::uv;
+use std::timer::sleep;
+use std::uv;
 
-import pipes::{recv, select};
+use pipes::{recv, select};
 
 proto! oneshot (
     waiting:send {

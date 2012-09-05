@@ -1,7 +1,7 @@
 //buggy.rs
 use std;
-import std::map::hashmap;
-import std::map;
+use std::map::hashmap;
+use std::map;
 
 fn main() {
     let buggy_map :hashmap<uint, &uint> =

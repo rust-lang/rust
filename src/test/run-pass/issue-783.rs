@@ -1,6 +1,6 @@
 use std;
-import comm::*;
-import task::*;
+use comm::*;
+use task::*;
 
 fn a() {
     fn doit() {

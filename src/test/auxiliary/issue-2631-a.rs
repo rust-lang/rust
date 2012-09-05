@@ -3,9 +3,9 @@
 
 use std;
 
-import dvec::*;
-import dvec::DVec;
-import std::map::hashmap;
+use dvec::*;
+use dvec::DVec;
+use std::map::hashmap;
 
 type header_map = hashmap<~str, @DVec<@~str>>;
 

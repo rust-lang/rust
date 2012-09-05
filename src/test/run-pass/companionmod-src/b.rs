@@ -1,2 +1,2 @@
-import g = x::f;
+use g = x::f;
 export g;

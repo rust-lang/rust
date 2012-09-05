@@ -1,4 +1,4 @@
-import b::d;
+use b::d;
 
 type t = uint;
 

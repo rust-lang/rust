@@ -1,4 +1,4 @@
-import dvec::DVec;
+use dvec::DVec;
 
 fn main() {
     let d = DVec();

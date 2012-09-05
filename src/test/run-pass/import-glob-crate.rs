@@ -1,6 +1,6 @@
 
 use std;
-import vec::*;
+use vec::*;
 
 fn main() {
     let mut v = from_elem(0u, 0);

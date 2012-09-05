@@ -4,7 +4,7 @@
 
 use core;
 
-import core::{str, int, vec};
+use core::{str, int, vec};
 
 trait to_str {
     fn to_str() -> ~str;

@@ -1,7 +1,5 @@
 // xfail-win32
 use std;
-import task;
-import comm;
 
 struct complainer {
   let c: comm::Chan<bool>;

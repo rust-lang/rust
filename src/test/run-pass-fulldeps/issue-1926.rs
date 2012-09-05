@@ -1,12 +1,11 @@
 // xfail-test
 // fails pretty printing for some reason
 use syntax;
-import syntax::diagnostic;
-import syntax;
-import syntax::ast;
-import syntax::codemap;
-import syntax::print::pprust;
-import syntax::parse::parser;
+use syntax::diagnostic;
+use syntax::ast;
+use syntax::codemap;
+use syntax::print::pprust;
+use syntax::parse::parser;
 
 fn new_parse_sess() -> parser::parse_sess {
     let cm = codemap::new_codemap();

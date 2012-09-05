@@ -1,5 +1,5 @@
-import m::f;
-import m::g;
+use m::f;
+use m::g;
 
 mod m {
     export f, g;

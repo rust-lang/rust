@@ -3,8 +3,6 @@
 // xfail-pretty
 
 use std;
-import option;
-import vec;
 
 #[test]
 #[ignore(cfg(ignorecfg))]

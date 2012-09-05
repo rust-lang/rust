@@ -1,7 +1,7 @@
 // xfail-test
 use std;
-import std::arena;
-import std::arena::Arena;
+use std::arena;
+use std::arena::Arena;
 
 enum hold { s(str) }
 

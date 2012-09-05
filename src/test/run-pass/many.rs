@@ -1,8 +1,6 @@
 // -*- rust -*-
 
 use std;
-import task;
-import comm;
 
 fn sub(parent: comm::Chan<int>, id: int) {
     if id == 0 {

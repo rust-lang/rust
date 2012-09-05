@@ -1,5 +1,4 @@
 use std;
-import str;
 
 fn main() {
     // Make sure we properly handle repeated self-appends.

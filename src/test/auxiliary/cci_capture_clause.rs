@@ -1,6 +1,6 @@
 export foo;
 
-import comm::*;
+use comm::*;
 
 fn foo<T: send copy>(x: T) -> Port<T> {
     let p = Port();

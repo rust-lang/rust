@@ -1,12 +1,10 @@
 // -*- rust -*-
 
 use std;
-import comm;
-import comm::Port;
-import comm::send;
-import comm::Chan;
-import comm::recv;
-import task;
+use comm::Port;
+use comm::send;
+use comm::Chan;
+use comm::recv;
 
 fn a(c: Chan<int>) { debug!("task a0"); debug!("task a1"); send(c, 10); }
 

@@ -1,5 +1,4 @@
 use std;
-import vec;
 
 fn test_heap_to_heap() {
     // a spills onto the heap

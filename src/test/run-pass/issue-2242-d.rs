@@ -7,7 +7,7 @@ use a;
 use b;
 use c;
 
-import a::to_strz;
+use a::to_strz;
 
 fn main() {
     io::println((~"foo").to_strz());

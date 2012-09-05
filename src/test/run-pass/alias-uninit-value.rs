@@ -2,8 +2,7 @@
 
 // Regression test for issue #374
 use std;
-import option;
-import option::None;
+use option::None;
 
 enum sty { ty_nil, }
 

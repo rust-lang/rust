@@ -3,9 +3,8 @@
 // interior record which is then itself interior to
 // something else, shape calculations were off.
 use std;
-import std::list;
-import std::list::list;
-import option;
+use std::list;
+use std::list::list;
 
 enum opt_span {
 

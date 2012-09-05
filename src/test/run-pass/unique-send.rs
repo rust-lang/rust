@@ -1,6 +1,4 @@
 use std;
-import comm;
-import task;
 
 fn main() {
     let p = comm::Port();

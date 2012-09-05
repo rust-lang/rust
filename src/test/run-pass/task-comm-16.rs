@@ -1,11 +1,10 @@
 // -*- rust -*-
 
 use std;
-import pipes;
-import pipes::send;
-import pipes::Port;
-import pipes::recv;
-import pipes::Chan;
+use pipes::send;
+use pipes::Port;
+use pipes::recv;
+use pipes::Chan;
 
 // Tests of ports and channels on various types
 fn test_rec() {

@@ -1,7 +1,7 @@
 // error-pattern: mismatched types
 use std;
-import std::map::hashmap;
-import std::bitv;
+use std::map::hashmap;
+use std::bitv;
 
 type fn_info = {vars: hashmap<uint, var_info>};
 type var_info = {a: uint, b: uint};

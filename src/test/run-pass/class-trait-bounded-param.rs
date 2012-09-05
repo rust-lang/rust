@@ -1,7 +1,7 @@
 // xfail-test
 
 use std;
-import std::map::{map, hashmap, int_hash};
+use std::map::{map, hashmap, int_hash};
 
 class keys<K: copy, V: copy, M: copy map<K,V>>
     : iter::base_iter<K> {

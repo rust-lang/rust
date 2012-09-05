@@ -1,4 +1,3 @@
-import task;
 
 fn main() {
     let po = pipes::PortSet();

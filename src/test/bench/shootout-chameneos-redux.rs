@@ -1,9 +1,9 @@
 // chameneos
 
 use std;
-import std::map;
-import std::map::hashmap;
-import std::sort;
+use std::map;
+use std::map::hashmap;
+use std::sort;
 
 fn print_complements() {
     let all = ~[Blue, Red, Yellow];

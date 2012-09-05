@@ -1,4 +1,4 @@
-import a1::b1::word_traveler;
+use a1::b1::word_traveler;
 
 mod a1 {
     //

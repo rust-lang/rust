@@ -3,7 +3,6 @@
 // This test is specifically about spawning temporary closures.
 
 use std;
-import task;
 
 fn f() {
 }

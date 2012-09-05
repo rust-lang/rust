@@ -1,6 +1,6 @@
 // error-pattern: import
 
-import m::unexported;
+use m::unexported;
 
 mod m {
     export exported;

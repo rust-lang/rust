@@ -1,2 +1,2 @@
 // error-pattern:expected
-import foo::{bar}::baz
+use foo::{bar}::baz

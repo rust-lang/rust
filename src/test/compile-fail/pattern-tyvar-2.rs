@@ -1,8 +1,7 @@
 // -*- rust -*-
 
 use std;
-import option;
-import option::Some;
+use option::Some;
 
 // error-pattern: mismatched types
 

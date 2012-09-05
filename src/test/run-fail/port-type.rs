@@ -1,9 +1,9 @@
 // error-pattern:meep
 use std;
-import comm::Chan;
-import comm::Port;
-import comm::send;
-import comm::recv;
+use comm::Chan;
+use comm::Port;
+use comm::send;
+use comm::recv;
 
 fn echo<T: send>(c: Chan<T>, oc: Chan<Chan<T>>) {
     // Tests that the type argument in port gets

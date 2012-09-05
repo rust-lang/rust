@@ -1,4 +1,4 @@
-import ptr::to_uint;
+use ptr::to_uint;
 
 fn borrow(x: &int, f: fn(x: &int)) {
     f(x)

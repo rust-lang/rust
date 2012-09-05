@@ -1,6 +1,6 @@
 // error-pattern: cannot infer an appropriate lifetime
 use std;
-import std::sync;
+use std::sync;
 fn main() {
     let x = ~sync::RWlock();
     let mut y = None;

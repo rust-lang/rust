@@ -1,12 +1,10 @@
 // Issue #763
 
 use std;
-import task;
-import comm::Chan;
-import comm::send;
-import comm;
-import comm::Port;
-import comm::recv;
+use comm::Chan;
+use comm::send;
+use comm::Port;
+use comm::recv;
 
 enum request { quit, close(Chan<bool>), }
 

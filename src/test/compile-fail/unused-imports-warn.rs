@@ -1,6 +1,6 @@
 // error-pattern:unused import
 // compile-flags:-W unused-imports
-import cal = bar::c::cc;
+use cal = bar::c::cc;
 
 mod foo {
     type point = {x: int, y: int};

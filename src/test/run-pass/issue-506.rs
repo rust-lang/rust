@@ -5,7 +5,6 @@
 */
 
 use std;
-import task;
 
 #[abi = "cdecl"]
 extern mod rustrt {

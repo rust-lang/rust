@@ -1,5 +1,5 @@
 use std;
-import sys::refcount;
+use sys::refcount;
 
 fn main() unsafe {
     let i = ~@1;

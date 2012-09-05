@@ -1,5 +1,4 @@
 use std;
-import pipes;
 
 fn main() { test00(); }
 

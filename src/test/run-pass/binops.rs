@@ -1,9 +1,7 @@
 // Binop corner cases
 
 use std;
-import unsafe::reinterpret_cast;
-import task;
-import comm;
+use unsafe::reinterpret_cast;
 
 fn test_nil() {
     assert (() == ());

@@ -1,6 +1,6 @@
 use std;
-import std::map;
-import std::map::hashmap;
+use std::map;
+use std::map::hashmap;
 
 fn main() {
     let m = map::bytes_hash();

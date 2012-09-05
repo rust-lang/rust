@@ -1,6 +1,6 @@
 // error-pattern: reference is not valid outside of its lifetime
 use std;
-import std::sync;
+use std::sync;
 fn main() {
     let x = ~sync::RWlock();
     let mut y = None;

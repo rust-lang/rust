@@ -1,7 +1,6 @@
 // This test will call __morestack with various minimum stack sizes
 
 use std;
-import task;
 
 fn getbig(&&i: int) {
     if i != 0 {

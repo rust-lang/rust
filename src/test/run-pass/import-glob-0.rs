@@ -1,5 +1,5 @@
-import module_of_many_things::*;
-import dug::too::greedily::and::too::deep::*;
+use module_of_many_things::*;
+use dug::too::greedily::and::too::deep::*;
 
 mod module_of_many_things {
     export f1;

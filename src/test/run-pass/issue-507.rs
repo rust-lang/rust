@@ -7,12 +7,10 @@
 
 use std;
 
-import task;
-import comm;
-import comm::Chan;
-import comm::send;
-import comm::Port;
-import comm::recv;
+use comm::Chan;
+use comm::send;
+use comm::Port;
+use comm::recv;
 
 fn grandchild(c: Chan<int>) { send(c, 42); }
 

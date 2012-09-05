@@ -2,10 +2,9 @@
 
 // error-pattern:fail
 use std;
-import task;
-import comm::Chan;
-import comm::Port;
-import comm::recv;
+use comm::Chan;
+use comm::Port;
+use comm::recv;
 
 fn child() { fail; }
 

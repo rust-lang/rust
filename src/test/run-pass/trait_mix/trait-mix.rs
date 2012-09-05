@@ -1,4 +1,3 @@
-import u_trait_mix;
 
 impl f32: u_trait_mix::num {
     pure fn add(&&other: f32)    -> f32 { return self + other; }

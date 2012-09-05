@@ -1,5 +1,5 @@
 use std;
-import std::arena;
+use std::arena;
 
 fn main() {
     let p = &arena::Arena();

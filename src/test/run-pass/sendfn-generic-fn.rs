@@ -1,7 +1,7 @@
 use std;
 
-import comm::Chan;
-import comm::send;
+use comm::Chan;
+use comm::send;
 
 fn main() { test05(); }
 

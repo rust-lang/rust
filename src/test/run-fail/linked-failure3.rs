@@ -2,9 +2,8 @@
 
 // error-pattern:fail
 use std;
-import task;
-import comm::Port;
-import comm::recv;
+use comm::Port;
+use comm::recv;
 
 fn grandchild() { fail ~"grandchild dies"; }
 

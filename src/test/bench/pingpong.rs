@@ -4,8 +4,8 @@
 
 use std;
 
-import pipes::{spawn_service, recv};
-import std::time::precise_time_s;
+use pipes::{spawn_service, recv};
+use std::time::precise_time_s;
 
 proto! pingpong (
     ping: send {

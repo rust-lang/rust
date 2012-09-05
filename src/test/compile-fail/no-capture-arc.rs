@@ -1,8 +1,8 @@
 // error-pattern: copying a noncopyable value
 
 use std;
-import std::arc;
-import comm::*;
+use std::arc;
+use comm::*;
 
 fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];

@@ -5,8 +5,8 @@
 use issue2378a;
 use issue2378b;
 
-import issue2378a::{just, methods};
-import issue2378b::{methods};
+use issue2378a::{just, methods};
+use issue2378b::{methods};
 
 fn main() {
     let x = {a: just(3), b: just(5)};

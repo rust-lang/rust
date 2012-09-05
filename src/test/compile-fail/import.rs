@@ -1,7 +1,7 @@
 // xfail-test
 // error-pattern: unresolved
-import zed::bar;
-import zed::baz;
+use zed::bar;
+use zed::baz;
 mod zed {
     fn bar() { debug!("bar"); }
 }

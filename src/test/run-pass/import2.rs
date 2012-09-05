@@ -1,5 +1,5 @@
 
-import zed::bar;
+use zed::bar;
 
 mod zed {
     fn bar() { debug!("bar"); }

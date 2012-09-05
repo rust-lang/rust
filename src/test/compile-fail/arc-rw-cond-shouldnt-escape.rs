@@ -1,6 +1,6 @@
 // error-pattern: reference is not valid outside of its lifetime
 use std;
-import std::arc;
+use std::arc;
 fn main() {
     let x = ~arc::RWARC(1);
     let mut y = None;
