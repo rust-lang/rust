@@ -13,8 +13,8 @@ hexadecimal string and prints to standard output. If you have the
 OpenSSL libraries installed, it should 'just work'.
 
 ~~~~ {.xfail-test}
-use std;
-import libc::c_uint;
+extern mod std;
+use libc::c_uint;
 
 extern mod crypto {
     fn SHA1(src: *u8, sz: c_uint, out: *u8) -> *u8;
@@ -208,8 +208,8 @@ This program uses the POSIX function `gettimeofday` to get a
 microsecond-resolution timer.
 
 ~~~~
-use std;
-import libc::c_ulonglong;
+extern mod std;
+use libc::c_ulonglong;
 
 type timeval = {mut tv_sec: c_ulonglong,
                 mut tv_usec: c_ulonglong};

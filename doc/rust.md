@@ -203,7 +203,7 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 The keywords in [crate files](#crate-files) are the following strings:
 
 ~~~~~~~~ {.keyword}
-import export use mod
+export use mod
 ~~~~~~~~
 
 The keywords in [source files](#source-files) are the following strings:
@@ -215,7 +215,7 @@ check const copy
 drop
 else enum export extern
 fail false fn for
-if impl import
+if impl
 let log loop
 match mod mut
 pure
@@ -447,7 +447,7 @@ expression context, the final namespace qualifier is omitted.
 Two examples of paths with type arguments:
 
 ~~~~
-# import std::map;
+# use std::map;
 # fn f() {
 # fn id<T:copy>(t: T) -> T { t }
 type t = map::hashmap<int,~str>;  // Type arguments used in a type expression
@@ -619,8 +619,8 @@ or a *configuration* in Mesa.] A crate file describes:
   and copyright. These are used for linking, versioning and distributing
   crates.
 * The source-file and directory modules that make up the crate.
-* Any `use`, `import` or `export` [view items](#view-items) that apply to the
-  anonymous module at the top-level of the crate's module tree.
+* Any `use`, `extern mod` or `export` [view items](#view-items) that apply to
+  the anonymous module at the top-level of the crate's module tree.
 
 An example of a crate file:
 
@@ -636,7 +636,7 @@ An example of a crate file:
    author = "Jane Doe" ];
 
 // Import a module.
-use std (ver = "1.0");
+extern mod std (ver = "1.0");
 
 // Define some modules.
 #[path = "foo.rs"]
@@ -767,28 +767,28 @@ mod math {
 #### View items
 
 ~~~~~~~~ {.ebnf .gram}
-view_item : use_decl | import_decl | export_decl ;
+view_item : extern_mod_decl | use_decl | export_decl ;
 ~~~~~~~~
 
 A view item manages the namespace of a module; it does not define new items
 but simply changes the visibility of other items. There are several kinds of
 view item:
 
+ * [extern mod declarations](#extern-mod-declarations)
  * [use declarations](#use-declarations)
- * [import declarations](#import-declarations)
  * [export declarations](#export-declarations)
 
-##### Use declarations
+##### Extern mod declarations
 
 ~~~~~~~~ {.ebnf .gram}
-use_decl : "use" ident [ '(' link_attrs ')' ] ? ;
+extern_mod_decl : "extern" "mod" ident [ '(' link_attrs ')' ] ? ;
 link_attrs : link_attr [ ',' link_attrs ] + ;
 link_attr : ident '=' literal ;
 ~~~~~~~~
 
-A _use declaration_ specifies a dependency on an external crate. The external
-crate is then imported into the declaring scope as the `ident` provided in the
-`use_decl`.
+An _extern mod declaration_ specifies a dependency on an external crate. The
+external crate is then imported into the declaring scope as the `ident`
+provided in the `extern_mod_decl`.
 
 The external crate is resolved to a specific `soname` at compile time, and a
 runtime linkage requirement to that `soname` is passed to the linker for
@@ -798,51 +798,52 @@ compiler's library path and matching the `link_attrs` provided in the
 crate when it was compiled. If no `link_attrs` are provided, a default `name`
 attribute is assumed, equal to the `ident` given in the `use_decl`.
 
-Two examples of `use` declarations:
+Two examples of `extern mod` declarations:
 
 ~~~~~~~~{.xfail-test}
-use pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
+extern mod pcre (uuid = "54aba0f8-a7b1-4beb-92f1-4cf625264841");
 
-use std; // equivalent to: use std ( name = "std" );
+extern mod std; // equivalent to: extern mod std ( name = "std" );
 
-use ruststd (name = "std"); // linking to 'std' under another name
+extern mod ruststd (name = "std"); // linking to 'std' under another name
 ~~~~~~~~
 
-##### Import declarations
+##### Use declarations
 
 ~~~~~~~~ {.ebnf .gram}
-import_decl : "import" ident [ '=' path
-                             | "::" path_glob ] ;
+use_decl : "use" ident [ '=' path
+                          | "::" path_glob ] ;
 
 path_glob : ident [ "::" path_glob ] ?
           | '*'
           | '{' ident [ ',' ident ] * '}'
 ~~~~~~~~
 
-An _import declaration_ creates one or more local name bindings synonymous
-with some other [path](#paths). Usually an import declaration is used to
+A _use declaration_ creates one or more local name bindings synonymous
+with some other [path](#paths). Usually an use declaration is used to
 shorten the path required to refer to a module item.
 
-*Note*: unlike many languages, Rust's `import` declarations do *not* declare
+*Note*: unlike many languages, Rust's `use` declarations do *not* declare
 linkage-dependency with external crates. Linkage dependencies are
-independently declared with [`use` declarations](#use-declarations).
+independently declared with
+[`extern mod` declarations](#extern-mod-declarations).
 
 Imports support a number of "convenience" notations:
 
   * Importing as a different name than the imported name, using the
-    syntax `import x = p::q::r;`.
+    syntax `use x = p::q::r;`.
   * Importing a list of paths differing only in final element, using
-    the glob-like brace syntax `import a::b::{c,d,e,f};`
+    the glob-like brace syntax `use a::b::{c,d,e,f};`
   * Importing all paths matching a given prefix, using the glob-like
-    asterisk syntax `import a::b::*;`
+    asterisk syntax `use a::b::*;`
 
 An example of imports:
 
 ~~~~
-import foo = core::info;
-import core::float::sin;
-import core::str::{slice, to_upper};
-import core::option::Some;
+use foo = core::info;
+use core::float::sin;
+use core::str::{slice, to_upper};
+use core::option::Some;
 
 fn main() {
     // Equivalent to 'log(core::info, core::float::sin(1.0));'
@@ -1053,7 +1054,7 @@ verify the semantics of the pure functions they write.
 An example of a pure function that uses an unchecked block:
 
 ~~~~
-# import std::list::*;
+# use std::list::*;
 
 fn pure_foldl<T, U: copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
     match ls {
@@ -1347,7 +1348,7 @@ Rust functions, with the exception that they may not have a body and are
 instead terminated by a semi-colon.
 
 ~~~
-# import libc::{c_char, FILE};
+# use libc::{c_char, FILE};
 # #[nolink]
 
 extern mod c {
