@@ -1,6 +1,6 @@
 use std;
-import std::rand;
-import uint::range;
+use std::rand;
+use uint::range;
 
 // random uint less than n
 fn under(r : rand::rng, n : uint) -> uint {

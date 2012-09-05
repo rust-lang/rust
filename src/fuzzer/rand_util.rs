@@ -1,6 +1,5 @@
-use std;
-import std::rand;
-import vec;
+extern mod std;
+use std::rand;
 
 // random uint less than n
 fn under(r : rand::rng, n : uint) -> uint {

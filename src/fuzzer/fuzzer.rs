@@ -1,9 +1,9 @@
-import io::WriterUtil;
+use io::WriterUtil;
 
-import syntax::{ast, ast_util, fold, visit, codemap};
-import syntax::parse;
-import syntax::print::pprust;
-import syntax::diagnostic;
+use syntax::{ast, ast_util, fold, visit, codemap};
+use syntax::parse;
+use syntax::print::pprust;
+use syntax::diagnostic;
 
 enum test_mode { tm_converge, tm_run, }
 type context = { mode: test_mode }; // + rng
