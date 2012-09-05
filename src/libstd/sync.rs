@@ -154,14 +154,26 @@ impl &Sem<~[mut Waitqueue]> {
 #[doc(hidden)]
 struct SemRelease {
     sem: &Sem<()>;
-    new(sem: &Sem<()>) { self.sem = sem; }
     drop { self.sem.release(); }
 }
+
+fn SemRelease(sem: &r/Sem<()>) -> SemRelease/&r {
+    SemRelease {
+        sem: sem
+    }
+}
+
 #[doc(hidden)]
 struct SemAndSignalRelease {
     sem: &Sem<~[mut Waitqueue]>;
-    new(sem: &Sem<~[mut Waitqueue]>) { self.sem = sem; }
     drop { self.sem.release(); }
+}
+
+fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
+    -> SemAndSignalRelease/&r {
+    SemAndSignalRelease {
+        sem: sem
+    }
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
@@ -234,7 +246,6 @@ impl &Condvar {
         // bounded in when it gets released, this shouldn't hang forever.
         struct SemAndSignalReacquire {
             sem: &Sem<~[mut Waitqueue]>;
-            new(sem: &Sem<~[mut Waitqueue]>) { self.sem = sem; }
             drop unsafe {
                 // Needs to succeed, instead of itself dying.
                 do task::unkillable {
@@ -242,6 +253,14 @@ impl &Condvar {
                 }
             }
         }
+
+        fn SemAndSignalReacquire(sem: &r/Sem<~[mut Waitqueue]>)
+            -> SemAndSignalReacquire/&r {
+            SemAndSignalReacquire {
+                sem: sem
+            }
+        }
+        
     }
 
     /// Wake up a blocked task. Returns false if there was no blocked task.
@@ -567,7 +586,6 @@ impl &RWlock {
 #[doc(hidden)]
 struct RWlockReleaseRead {
     lock: &RWlock;
-    new(lock: &RWlock) { self.lock = lock; }
     drop unsafe {
         do task::unkillable {
             let mut last_reader = false;
@@ -587,11 +605,16 @@ struct RWlockReleaseRead {
     }
 }
 
+fn RWlockReleaseRead(lock: &r/RWlock) -> RWlockReleaseRead/&r {
+    RWlockReleaseRead {
+        lock: lock
+    }
+}
+
 // FIXME(#3136) should go inside of downgrade()
 #[doc(hidden)]
 struct RWlockReleaseDowngrade {
     lock: &RWlock;
-    new(lock: &RWlock) { self.lock = lock; }
     drop unsafe {
         do task::unkillable {
             let mut writer_or_last_reader = false;
@@ -615,6 +638,12 @@ struct RWlockReleaseDowngrade {
                 (&self.lock.access_lock).release();
             }
         }
+    }
+}
+
+fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
+    RWlockReleaseDowngrade {
+        lock: lock
     }
 }
 
@@ -929,8 +958,13 @@ mod tests {
         }
         struct SendOnFailure {
             c: pipes::Chan<()>;
-            new(+c: pipes::Chan<()>) { self.c = c; }
             drop { self.c.send(()); }
+        }
+
+        fn SendOnFailure(+c: pipes::Chan<()>) -> SendOnFailure {
+            SendOnFailure {
+                c: c
+            }
         }
     }
     #[test]

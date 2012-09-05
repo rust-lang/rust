@@ -223,10 +223,15 @@ fn check_poison(is_mutex: bool, failed: bool) {
 #[doc(hidden)]
 struct PoisonOnFail {
     failed: &mut bool;
-    new(failed: &mut bool) { self.failed = failed; }
     drop {
         /* assert !*self.failed; -- might be false in case of cond.wait() */
         if task::failing() { *self.failed = true; }
+    }
+}
+
+fn PoisonOnFail(failed: &r/mut bool) -> PoisonOnFail/&r {
+    PoisonOnFail {
+        failed: failed
     }
 }
 
