@@ -246,14 +246,13 @@ fn task() -> TaskBuilder {
         mut consumed: false,
     })
 }
-
 priv impl TaskBuilder {
     fn consume() -> TaskBuilder {
         if self.consumed {
             fail ~"Cannot copy a task_builder"; // Fake move mode on self
         }
         self.consumed = true;
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
@@ -278,7 +277,7 @@ impl TaskBuilder {
      * the other will not be killed.
      */
     fn unlinked() -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
@@ -300,7 +299,7 @@ impl TaskBuilder {
      * the child.
      */
     fn supervised() -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
@@ -321,7 +320,7 @@ impl TaskBuilder {
      * other will be killed.
      */
     fn linked() -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
@@ -388,7 +387,7 @@ impl TaskBuilder {
     }
     /// Configure a custom scheduler mode for the task.
     fn sched_mode(mode: SchedMode) -> TaskBuilder {
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
@@ -419,7 +418,7 @@ impl TaskBuilder {
      */
     fn add_wrapper(wrapper: fn@(+fn~()) -> fn~()) -> TaskBuilder {
         let prev_gen_body = self.gen_body;
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
             Some(option::swap_unwrap(&mut self.opts.notify_chan))
@@ -450,7 +449,7 @@ impl TaskBuilder {
      * must be greater than zero.
      */
     fn spawn(+f: fn~()) {
-        let notify_chan = if self.opts.notify_chan == None {
+        let notify_chan = if self.opts.notify_chan.is_none() {
             None
         } else {
             let swapped_notify_chan =
@@ -1267,7 +1266,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
             };
             assert !new_task.is_null();
             // Getting killed after here would leak the task.
-            let mut notify_chan = if opts.notify_chan == None {
+            let mut notify_chan = if opts.notify_chan.is_none() {
                 None
             } else {
                 Some(option::swap_unwrap(&mut opts.notify_chan))
