@@ -18,11 +18,9 @@ vec_edits is not an iter because iters might go away.
 
 */
 
-use std;
-import vec;
-import vec::slice;
-import vec::len;
-import int;
+extern mod std;
+use vec::slice;
+use vec::len;
 
 fn vec_omit<T: copy>(v: ~[T], i: uint) -> ~[T] {
     slice(v, 0u, i) + slice(v, i + 1u, len(v))

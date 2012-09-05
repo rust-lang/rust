@@ -1,5 +1,5 @@
 use std;
-import vec;
+use vec;
 
 fn vec_equal<T>(v: ~[T], u: ~[T],
                 element_equality_test: fn@(&&T, &&T) -> bool) ->
