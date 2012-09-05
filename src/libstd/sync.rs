@@ -260,7 +260,6 @@ impl &Condvar {
                 sem: sem
             }
         }
-        
     }
 
     /// Wake up a blocked task. Returns false if there was no blocked task.
