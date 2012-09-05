@@ -1,18 +1,18 @@
 // cargo.rs - Rust package manager
 
-import syntax::{ast, codemap, parse, visit, attr};
-import syntax::diagnostic::span_handler;
-import codemap::span;
-import rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
+use syntax::{ast, codemap, parse, visit, attr};
+use syntax::diagnostic::span_handler;
+use codemap::span;
+use rustc::metadata::filesearch::{get_cargo_root, get_cargo_root_nearest,
                                      get_cargo_sysroot, libdir};
-import syntax::diagnostic;
+use syntax::diagnostic;
 
-import result::{Ok, Err};
-import io::WriterUtil;
-import std::{map, json, tempfile, term, sort, getopts};
-import map::hashmap;
-import to_str::to_str;
-import getopts::{optflag, optopt, opt_present};
+use result::{Ok, Err};
+use io::WriterUtil;
+use std::{map, json, tempfile, term, sort, getopts};
+use map::hashmap;
+use to_str::to_str;
+use getopts::{optflag, optopt, opt_present};
 
 type package = {
     name: ~str,
