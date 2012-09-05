@@ -5,9 +5,9 @@
      an AST's attributes."
 )];
 
-import syntax::ast;
-import syntax::attr;
-import core::tuple;
+use syntax::ast;
+use syntax::attr;
+use core::tuple;
 
 export crate_attrs;
 export parse_crate, parse_desc;

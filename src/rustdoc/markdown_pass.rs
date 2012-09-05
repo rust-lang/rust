@@ -1,9 +1,9 @@
 //! Generate markdown from a document tree
 
-import doc::item_utils;
-import markdown_writer::writer;
-import markdown_writer::writer_utils;
-import markdown_writer::writer_factory;
+use doc::item_utils;
+use markdown_writer::writer;
+use markdown_writer::writer_utils;
+use markdown_writer::writer_factory;
 
 export mk_pass;
 export header_kind, header_name, header_text;

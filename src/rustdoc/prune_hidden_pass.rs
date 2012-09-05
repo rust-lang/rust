@@ -1,7 +1,7 @@
 //! Prunes things with the #[doc(hidden)] attribute
 
-import doc::item_utils;
-import std::map::hashmap;
+use doc::item_utils;
+use std::map::hashmap;
 export mk_pass;
 
 fn mk_pass() -> pass {

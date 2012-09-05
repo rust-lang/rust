@@ -1,5 +1,5 @@
-import result::Result;
-import std::getopts;
+use result::Result;
+use std::getopts;
 
 export output_format;
 export output_style;

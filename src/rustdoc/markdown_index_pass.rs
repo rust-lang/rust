@@ -1,6 +1,6 @@
 //! Build indexes as appropriate for the markdown pass
 
-import doc::item_utils;
+use doc::item_utils;
 
 export mk_pass;
 

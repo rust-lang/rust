@@ -1,12 +1,12 @@
 //! AST-parsing helpers
 
-import rustc::driver::driver;
-import driver::{file_input, str_input};
-import rustc::driver::session;
-import syntax::diagnostic;
-import syntax::ast;
-import syntax::codemap;
-import syntax::parse;
+use rustc::driver::driver;
+use driver::{file_input, str_input};
+use rustc::driver::session;
+use syntax::diagnostic;
+use syntax::ast;
+use syntax::codemap;
+use syntax::parse;
 
 export from_file, from_str, from_file_sess, from_str_sess;
 

@@ -5,7 +5,7 @@
  * is interpreted as the brief description.
  */
 
-import doc::item_utils;
+use doc::item_utils;
 
 export mk_pass;
 

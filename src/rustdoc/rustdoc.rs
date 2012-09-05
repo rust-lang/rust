@@ -1,7 +1,7 @@
 // Some utility interfaces
-import doc::item_utils;
-import doc::item;
-import doc::util;
+use doc::item_utils;
+use doc::item;
+use doc::util;
 
 /// A single operation on the document model
 type pass = {

@@ -1,6 +1,6 @@
 //! Generic pass for performing an operation on all descriptions
 
-import doc::item_utils;
+use doc::item_utils;
 
 export mk_pass;
 

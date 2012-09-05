@@ -1,7 +1,7 @@
 //! Converts the Rust AST to the rustdoc document model
 
-import syntax::ast;
-import doc::item_utils;
+use syntax::ast;
+use doc::item_utils;
 
 export from_srv, extract, to_str, interner;
 

@@ -1,6 +1,6 @@
 //! Sorts items by type
 
-import doc::item_utils;
+use doc::item_utils;
 
 export mk_pass;
 
