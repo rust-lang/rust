@@ -1041,8 +1041,7 @@ type method = {ident: ident, attrs: ~[attribute],
                tps: ~[ty_param], self_ty: self_ty,
                purity: purity, decl: fn_decl, body: blk,
                id: node_id, span: span, self_id: node_id,
-               vis: visibility};  // always public, unless it's a
-                                  // class method
+               vis: visibility};
 
 #[auto_serialize]
 type _mod = {view_items: ~[@view_item], items: ~[@item]};
