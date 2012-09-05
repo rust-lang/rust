@@ -40,12 +40,17 @@ extern mod rustrt {
  */
 struct TcpSocket {
   let socket_data: @TcpSocketData;
-  new(socket_data: @TcpSocketData) { self.socket_data = socket_data; }
   drop {
     unsafe {
         tear_down_socket_data(self.socket_data)
     }
   }
+}
+
+fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {
+    TcpSocket {
+        socket_data: socket_data
+    }
 }
 
 /**
@@ -56,7 +61,12 @@ struct TcpSocket {
  */
 struct TcpSocketBuf {
   let data: @TcpBufferedSocketData;
-  new(data: @TcpBufferedSocketData) { self.data = data; }
+}
+
+fn TcpSocketBuf(data: @TcpBufferedSocketData) -> TcpSocketBuf {
+    TcpSocketBuf {
+        data: data
+    }
 }
 
 /// Contains raw, string-based, error information returned from libuv

@@ -44,13 +44,18 @@ enum CVec<T> {
 
 struct DtorRes {
   let dtor: Option<fn@()>;
-  new(dtor: Option<fn@()>) { self.dtor = dtor; }
   drop {
     match self.dtor {
       option::None => (),
       option::Some(f) => f()
     }
   }
+}
+
+fn DtorRes(dtor: Option<fn@()>) -> DtorRes {
+    DtorRes {
+        dtor: dtor
+    }
 }
 
 /*
