@@ -1,9 +1,12 @@
-// xfail-test
-use iter::base_iter;
+use iter::BaseIter;
 
-impl Q<A> for base_iter<A> {
-   fn flat_map_to_vec<B:copy, IB:base_iter<B>>(op: fn(B) -> IB) -> ~[B] {
-      iter::flat_map_to_vec(self, op)
+trait FlatMapToVec<A> {
+  fn flat_map_to_vec<B:copy, IB:BaseIter<B>>(op: fn(A) -> IB) -> ~[B];
+}
+
+impl<A:copy> BaseIter<A>: FlatMapToVec<A> {
+   fn flat_map_to_vec<B:copy, IB:BaseIter<B>>(op: fn(A) -> IB) -> ~[B] {
+     iter::flat_map_to_vec(self, op)
    }
 }
 
