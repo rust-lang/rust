@@ -3,8 +3,9 @@
 
 use /*mod*/ syntax::ast;
 use /*mod*/ syntax::visit;
-use syntax::ast::{expr_field, ident, item_class, item_impl, item_trait};
-use syntax::ast::{local_crate, node_id, private, provided, required};
+use syntax::ast::{expr_field, expr_struct, ident, item_class, item_impl};
+use syntax::ast::{item_trait, local_crate, node_id, pat_struct, private};
+use syntax::ast::{provided, required};
 use syntax::ast_map::{node_item, node_method};
 use ty::ty_class;
 use typeck::{method_map, method_origin, method_param, method_static};
@@ -160,7 +161,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                             match method_map.find(expr.id) {
                                 None => {
                                     debug!("(privacy checking) checking \
-                                            field");
+                                            field access");
                                     check_field(expr.span, id, ident);
                                 }
                                 Some(entry) => {
@@ -173,10 +174,57 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                         _ => {}
                     }
                 }
+                expr_struct(_, fields, _) => {
+                    match ty::get(ty::expr_ty(tcx, expr)).struct {
+                        ty_class(id, _) => {
+                            if id.crate != local_crate ||
+                                    !privileged_items.contains(id.node) {
+                                for fields.each |field| {
+                                        debug!("(privacy checking) checking \
+                                                field in struct literal");
+                                    check_field(expr.span, id,
+                                                field.node.ident);
+                                }
+                            }
+                        }
+                        _ => {
+                            tcx.sess.span_bug(expr.span, ~"struct expr \
+                                                           didn't have \
+                                                           struct type?!");
+                        }
+                    }
+                }
                 _ => {}
             }
 
             visit::visit_expr(expr, method_map, visitor);
+        },
+        visit_pat: |pattern, method_map, visitor| {
+            match pattern.node {
+                pat_struct(_, fields, _) => {
+                    match ty::get(ty::pat_ty(tcx, pattern)).struct {
+                        ty_class(id, _) => {
+                            if id.crate != local_crate ||
+                                    !privileged_items.contains(id.node) {
+                                for fields.each |field| {
+                                        debug!("(privacy checking) checking \
+                                                struct pattern");
+                                    check_field(pattern.span, id,
+                                                field.ident);
+                                }
+                            }
+                        }
+                        _ => {
+                            tcx.sess.span_bug(pattern.span,
+                                              ~"struct pattern didn't have \
+                                                struct type?!");
+                        }
+                    }
+                }
+                _ => {}
+            }
+
+            visit::visit_pat(pattern, method_map, visitor);
         },
         .. *visit::default_visitor()
     });
