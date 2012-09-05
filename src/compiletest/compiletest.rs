@@ -122,7 +122,7 @@ fn run_tests(config: config) {
     if !res { fail ~"Some tests failed"; }
 }
 
-fn test_opts(config: config) -> test::test_opts {
+fn test_opts(config: config) -> test::TestOpts {
     {filter:
          match config.filter {
            option::Some(s) => option::Some(s),
@@ -137,7 +137,7 @@ fn test_opts(config: config) -> test::test_opts {
     }
 }
 
-fn make_tests(config: config) -> ~[test::test_desc] {
+fn make_tests(config: config) -> ~[test::TestDesc] {
     debug!("making tests from %s",
            config.src_base.to_str());
     let mut tests = ~[];
@@ -175,7 +175,7 @@ fn is_test(config: config, testfile: &Path) -> bool {
 }
 
 fn make_test(config: config, testfile: &Path) ->
-   test::test_desc {
+   test::TestDesc {
     {
         name: make_test_name(config, testfile),
         fn: make_test_closure(config, testfile),
@@ -188,7 +188,7 @@ fn make_test_name(config: config, testfile: &Path) -> ~str {
     fmt!("[%s] %s", mode_str(config.mode), testfile.to_str())
 }
 
-fn make_test_closure(config: config, testfile: &Path) -> test::test_fn {
+fn make_test_closure(config: config, testfile: &Path) -> test::TestFn {
     let testfile = testfile.to_str();
     fn~() { runtest::run(config, testfile) }
 }
