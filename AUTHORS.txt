@@ -21,6 +21,7 @@ Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Chris Double <chris.double@double.co.nz>
 Chris Peterson <cpeterson@mozilla.com>
+Coppola Ivano <rgbfirefox@gmail.com>
 Damian Gryski <damian@gryski.com>
 Damien Grassart <damien@grassart.com>
 Daniel Brooks <db48x@db48x.net>
