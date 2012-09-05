@@ -92,7 +92,6 @@ mod unicode;
 
 // Compiler support modules
 
-#[allow(non_camel_case_types)] // XXX
 mod test;
 #[allow(non_camel_case_types)] // XXX
 mod serialization;

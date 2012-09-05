@@ -264,7 +264,7 @@ fn mk_path(cx: test_ctxt, path: ~[ast::ident]) -> ~[ast::ident] {
 fn mk_test_desc_vec_ty(cx: test_ctxt) -> @ast::ty {
     let test_desc_ty_path =
         path_node(mk_path(cx, ~[cx.sess.ident_of(~"test"),
-                                cx.sess.ident_of(~"test_desc")]));
+                                cx.sess.ident_of(~"TestDesc")]));
 
     let test_desc_ty: ast::ty =
         {id: cx.sess.next_node_id(),
