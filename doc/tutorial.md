@@ -1214,32 +1214,6 @@ let your_crayons = ~[banana_mania, beaver, bittersweet];
 my_crayons += your_crayons;
 ~~~~
 
-## Strings
-
-The `~str` type in Rust is represented exactly the same way as a unique
-vector of immutable bytes (`~[u8]`). This sequence of bytes is
-interpreted as an UTF-8 encoded sequence of characters. This has the
-advantage that UTF-8 encoded I/O (which should really be the default
-for modern systems) is very fast, and that strings have, for most
-intents and purposes, a nicely compact representation. It has the
-disadvantage that you only get constant-time access by byte, not by
-character.
-
-~~~~
-let huh = ~"what?";
-let que: u8 = huh[4]; // indexing a string returns a `u8`
-assert que == '?' as u8;
-~~~~
-
-A lot of algorithms don't need constant-time indexed access (they
-iterate over all characters, which `str::chars` helps with), and
-for those that do, many don't need actual characters, and can operate
-on bytes. For algorithms that do really need to index by character,
-there are core library functions available.
-
-> ***Note:*** like vectors, strings will soon be allocatable in
-> the local heap and on the stack, in addition to the exchange heap.
-
 ## Vector and string methods
 
 Both vectors and strings support a number of useful
