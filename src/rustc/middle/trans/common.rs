@@ -972,11 +972,17 @@ fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef unsafe {
 fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
     return llvm::LLVMConstString(
         unsafe::reinterpret_cast(&vec::unsafe::to_ptr(bytes)),
+        bytes.len() as c_uint, True);
+}
+
+fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
+    return llvm::LLVMConstString(
+        unsafe::reinterpret_cast(&vec::unsafe::to_ptr(bytes)),
         bytes.len() as c_uint, False);
 }
 
 fn C_shape(ccx: @crate_ctxt, bytes: ~[u8]) -> ValueRef {
-    let llshape = C_bytes(bytes);
+    let llshape = C_bytes_plus_null(bytes);
     let llglobal = str::as_c_str(fmt!("shape%u", ccx.names(~"shape")), |buf| {
         llvm::LLVMAddGlobal(ccx.llmod, val_ty(llshape), buf)
     });

@@ -27,6 +27,7 @@ export encode_metadata;
 export encoded_ty;
 export reachable;
 export encode_inlined_item;
+export metadata_encoding_version;
 
 // used by astencode:
 export def_to_str;
@@ -1084,6 +1085,13 @@ fn encode_hash(ebml_w: ebml::Writer, hash: ~str) {
     ebml_w.end_tag();
 }
 
+// NB: Increment this as you change the metadata encoding version.
+const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
+                                            0x75, //'u' as u8,
+                                            0x73, //'s' as u8,
+                                            0x74, //'t' as u8,
+                                            0, 0, 0, 1 ];
+
 fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
     let buf = io::mem_buffer();
     let stats =
@@ -1163,7 +1171,18 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
     buf_w.write(&[0u8, 0u8, 0u8, 0u8]);
-    flate::deflate_buf(io::mem_buffer_buf(buf))
+
+    // FIXME #3396: weird bug here, for reasons unclear this emits random
+    // looking bytes (mostly 0x1) if we use the version byte-array constant
+    // above; so we use a string constant inline instead.
+    //
+    // Should be:
+    //
+    //   vec::from_slice(metadata_encoding_version) +
+
+    (do str::as_bytes(~"rust\x00\x00\x00\x01") |bytes| {
+        vec::slice(bytes, 0, 8)
+    }) + flate::deflate_buf(io::mem_buffer_buf(buf))
 }
 
 // Get the encoded string for a type

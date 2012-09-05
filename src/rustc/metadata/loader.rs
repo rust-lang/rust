@@ -185,11 +185,30 @@ fn get_metadata_section(os: os,
         if name == meta_section_name(os) {
             let cbuf = llvm::LLVMGetSectionContents(si.llsi);
             let csz = llvm::LLVMGetSectionSize(si.llsi) as uint;
+            let mut found = None;
             unsafe {
                 let cvbuf: *u8 = unsafe::reinterpret_cast(&cbuf);
-                let v = vec::unsafe::from_buf(cvbuf, csz);
-                let inflated = flate::inflate_buf(v);
-                return Some(@inflated);
+                let vlen = vec::len(encoder::metadata_encoding_version);
+                debug!("checking %u bytes of metadata-version stamp",
+                       vlen);
+                let minsz = uint::min(vlen, csz);
+                let mut version_ok = false;
+                do vec::unsafe::form_slice(cvbuf, minsz) |buf0| {
+                    version_ok = (buf0 ==
+                                  encoder::metadata_encoding_version);
+                }
+                if !version_ok { return None; }
+
+                let cvbuf1 = ptr::offset(cvbuf, vlen);
+                debug!("inflating %u bytes of compressed metadata",
+                       csz - vlen);
+                do vec::unsafe::form_slice(cvbuf1, csz-vlen) |buf| {
+                    let inflated = flate::inflate_buf(buf);
+                    found = move Some(@(move inflated));
+                }
+                if found != None {
+                    return found;
+                }
             }
         }
         llvm::LLVMMoveToNextSection(si.llsi);
