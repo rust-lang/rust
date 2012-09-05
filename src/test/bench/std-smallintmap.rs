@@ -1,9 +1,9 @@
 // Microbenchmark for the smallintmap library
 
 use std;
-import std::smallintmap;
-import std::smallintmap::SmallIntMap;
-import io::WriterUtil;
+use std::smallintmap;
+use std::smallintmap::SmallIntMap;
+use io::WriterUtil;
 
 fn append_sequential(min: uint, max: uint, map: SmallIntMap<uint>) {
     for uint::range(min, max) |i| {

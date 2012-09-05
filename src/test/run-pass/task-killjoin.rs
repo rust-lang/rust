@@ -6,7 +6,6 @@
 // longer needs to be wakened when the supervised task exits.
 
 use std;
-import task;
 
 fn supervised() {
     // Yield to make sure the supervisor joins before we fail. This is

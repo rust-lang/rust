@@ -1,6 +1,6 @@
 use std;
-import std::deque;
-import std::deque::Deque;
+use std::deque;
+use std::deque::Deque;
 
 fn main() {
     let Q = deque::create();

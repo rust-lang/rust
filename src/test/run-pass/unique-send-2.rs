@@ -1,7 +1,4 @@
 use std;
-import comm;
-import task;
-import uint;
 
 fn child(c: comm::Chan<~uint>, i: uint) {
     comm::send(c, ~i);

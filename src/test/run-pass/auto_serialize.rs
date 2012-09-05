@@ -3,10 +3,10 @@ use std;
 // These tests used to be separate files, but I wanted to refactor all
 // the common code.
 
-import cmp::Eq;
-import std::ebml;
-import io::Writer;
-import std::serialization::{serialize_uint, deserialize_uint};
+use cmp::Eq;
+use std::ebml;
+use io::Writer;
+use std::serialization::{serialize_uint, deserialize_uint};
 
 fn test_ser_and_deser<A:Eq>(a1: A,
                             expected: ~str,

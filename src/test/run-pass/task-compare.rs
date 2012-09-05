@@ -6,9 +6,7 @@
 // xfail-test
 
 use std;
-import task;
-import task::join;
-import comm;
+use task::join;
 
 fn child() { }
 

@@ -4,10 +4,9 @@
 use req;
 use std;
 
-import req::*;
-import std::map::*;
-import std::map::str_hash;
-import dvec;
+use req::*;
+use std::map::*;
+use std::map::str_hash;
 
 fn main() {
   let v = ~[mut @~"hi"];

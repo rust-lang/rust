@@ -1,7 +1,6 @@
 // -*- rust -*-
 use std;
-import task;
-import task::*;
+use task::*;
 
 fn main() {
     let mut result = None;

@@ -12,16 +12,16 @@
 
 use std;
 
-import std::{time, getopts};
-import io::WriterUtil;
-import int::range;
-import pipes::Port;
-import pipes::Chan;
-import pipes::send;
-import pipes::recv;
+use std::{time, getopts};
+use io::WriterUtil;
+use int::range;
+use pipes::Port;
+use pipes::Chan;
+use pipes::send;
+use pipes::recv;
 
-import core::result;
-import result::{Ok, Err};
+use core::result;
+use result::{Ok, Err};
 
 fn fib(n: int) -> int {
     fn pfib(c: Chan<int>, n: int) {

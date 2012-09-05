@@ -2,7 +2,7 @@
 // xfail-fast
 
 use std;
-import std::map::*;
+use std::map::*;
 
 class cat : map<int, bool> {
   priv {

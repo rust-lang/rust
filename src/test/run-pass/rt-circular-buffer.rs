@@ -3,13 +3,10 @@
 // Regression tests for circular_buffer when using a unit
 // that has a size that is not a power of two
 use std;
-import option;
-import uint;
-import comm;
-import comm::Port;
-import comm::Chan;
-import comm::send;
-import comm::recv;
+use comm::Port;
+use comm::Chan;
+use comm::send;
+use comm::recv;
 
 // A 12-byte unit to send over the channel
 type record = {val1: u32, val2: u32, val3: u32};

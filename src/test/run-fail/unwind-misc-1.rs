@@ -1,9 +1,8 @@
 // error-pattern:fail
 
 use std;
-import std::map;
-import std::map::hashmap;
-import uint;
+use std::map;
+use std::map::hashmap;
 
 fn main() {
     let count = @mut 0u;

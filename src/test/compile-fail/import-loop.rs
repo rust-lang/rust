@@ -1,6 +1,6 @@
 // error-pattern:import
 
-import y::x;
+use y::x;
 
 mod y {
     import x;

@@ -1,5 +1,4 @@
 use std;
-import vec;
 
 fn main() {
     let v =

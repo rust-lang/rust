@@ -2,7 +2,7 @@
 // Alignment of interior pointers to dynamic-size types
 
 use std;
-import ptr::addr_of;
+use ptr::addr_of;
 
 type x<T> = {
     a: T,

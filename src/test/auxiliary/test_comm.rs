@@ -4,7 +4,7 @@
   Could probably be more minimal.
  */
 
-import libc::size_t;
+use libc::size_t;
 
 export port::{};
 export port;

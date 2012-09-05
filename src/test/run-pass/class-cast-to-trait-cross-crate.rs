@@ -1,7 +1,7 @@
 // xfail-test
 
-import to_str::*;
-import to_str::to_str;
+use to_str::*;
+use to_str::to_str;
 
 class cat : to_str {
   priv {

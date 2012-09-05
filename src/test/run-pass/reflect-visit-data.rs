@@ -1,6 +1,6 @@
 
-import intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
-import libc::c_void;
+use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
+use libc::c_void;
 
 // FIXME: this is a near-duplicate of code in core::vec.
 type unboxed_vec_repr = {

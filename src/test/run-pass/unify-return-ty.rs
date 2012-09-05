@@ -2,7 +2,6 @@
 // unified with the type *T, and so the type variable
 // in that type gets resolved.
 use std;
-import unsafe;
 
 fn null<T>() -> *T unsafe { unsafe::reinterpret_cast(&0) }
 

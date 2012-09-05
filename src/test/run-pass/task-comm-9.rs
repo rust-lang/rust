@@ -1,5 +1,4 @@
 use std;
-import task;
 
 fn main() { test00(); }
 

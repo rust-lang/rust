@@ -1,6 +1,6 @@
 use std;
-import std::arena;
-import methods = std::arena::Arena;
+use std::arena;
+use methods = std::arena::Arena;
 
 enum tree/& { nil, node(&tree, &tree, int), }
 

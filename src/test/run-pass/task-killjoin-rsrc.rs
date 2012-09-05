@@ -4,7 +4,6 @@
 // the join.
 
 use std;
-import task;
 
 struct notify {
     let ch: comm::Chan<bool>; let v: @mut bool;

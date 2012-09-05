@@ -3,7 +3,7 @@
 
 use issue_2472_b;
 
-import issue_2472_b::{S, T};
+use issue_2472_b::{S, T};
 
 fn main() {
     let s = S(());

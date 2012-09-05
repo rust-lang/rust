@@ -1,8 +1,7 @@
 use std;
-import pipes;
-import pipes::send;
-import pipes::chan;
-import pipes::recv;
+use pipes::send;
+use pipes::chan;
+use pipes::recv;
 
 fn main() { test00(); }
 

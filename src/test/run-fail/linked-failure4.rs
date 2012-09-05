@@ -1,10 +1,9 @@
 // -*- rust -*-
 // error-pattern:1 == 2
 use std;
-import task;
-import comm::Chan;
-import comm::Port;
-import comm::recv;
+use comm::Chan;
+use comm::Port;
+use comm::recv;
 
 fn child() { assert (1 == 2); }
 

@@ -13,8 +13,8 @@
 //  writes pbm image to output path
 
 use std;
-import io::WriterUtil;
-import std::map::hashmap;
+use io::WriterUtil;
+use std::map::hashmap;
 
 struct cmplx {
     re: f64;

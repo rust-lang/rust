@@ -2,7 +2,7 @@
 // aux-build:cci_intrinsic.rs
 
 use cci_intrinsic;
-import cci_intrinsic::atomic_xchg;
+use cci_intrinsic::atomic_xchg;
 
 fn main() {
     let mut x = 1;

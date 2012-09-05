@@ -1,5 +1,5 @@
-import task::*;
-import comm::*;
+use task::*;
+use comm::*;
 
 struct test {
   let f: int;

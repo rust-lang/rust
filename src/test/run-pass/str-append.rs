@@ -2,7 +2,6 @@
 
 // -*- rust -*-
 use std;
-import str;
 
 fn test1() {
     let mut s: ~str = ~"hello";

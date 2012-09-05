@@ -1,6 +1,6 @@
 // error-pattern: unresolved name
 
-import module_of_many_things::*;
+use module_of_many_things::*;
 
 mod module_of_many_things {
     export f1;

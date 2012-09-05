@@ -4,6 +4,6 @@
 // aux-build:issue-2196-c.rc
 
 use c(name = "issue2196c");
-import c::t;
+use c::t;
 
 fn main() { }

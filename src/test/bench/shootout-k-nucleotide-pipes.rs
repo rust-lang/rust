@@ -3,11 +3,11 @@
 // multi tasking k-nucleotide
 
 use std;
-import std::map;
-import std::map::hashmap;
-import std::sort;
-import io::ReaderUtil;
-import pipes::{stream, Port, Chan};
+use std::map;
+use std::map::hashmap;
+use std::sort;
+use io::ReaderUtil;
+use pipes::{stream, Port, Chan};
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str { 

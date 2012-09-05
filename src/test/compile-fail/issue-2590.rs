@@ -1,4 +1,4 @@
-import dvec::DVec;
+use dvec::DVec;
 
 type parser = {
     tokens: DVec<int>,

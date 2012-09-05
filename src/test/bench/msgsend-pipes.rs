@@ -7,10 +7,10 @@
 // xfail-pretty
 
 use std;
-import io::Writer;
-import io::WriterUtil;
+use io::Writer;
+use io::WriterUtil;
 
-import pipes::{Port, PortSet, Chan};
+use pipes::{Port, PortSet, Chan};
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }

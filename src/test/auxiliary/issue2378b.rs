@@ -1,7 +1,7 @@
 use issue2378a;
 
-import issue2378a::maybe;
-import issue2378a::methods;
+use issue2378a::maybe;
+use issue2378a::methods;
 
 type two_maybes<T> = {a: maybe<T>, b: maybe<T>};
 

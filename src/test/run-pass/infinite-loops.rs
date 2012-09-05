@@ -5,7 +5,7 @@
 // xfail-test
 
 use std;
-import task::join;
+use task::join;
 
 fn loop(n: int) {
     let t1: task;

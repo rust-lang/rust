@@ -2,7 +2,7 @@
 // aux-build:cci_nested_lib.rs
 
 use cci_nested_lib;
-import cci_nested_lib::*;
+use cci_nested_lib::*;
 
 fn main() {
     let lst = new_int_alist();

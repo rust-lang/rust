@@ -5,8 +5,8 @@
 
 // xfail-pretty
 
-import double_buffer::client::*;
-import double_buffer::give_buffer;
+use double_buffer::client::*;
+use double_buffer::give_buffer;
 
 macro_rules! select_if (
     {

@@ -4,7 +4,7 @@
 //
 // http://theincredibleholk.wordpress.com/2012/07/06/rusty-pipes/
 
-import pipes::try_recv;
+use pipes::try_recv;
 
 type username = ~str;
 type password = ~str;

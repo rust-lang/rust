@@ -1,7 +1,4 @@
 use std;
-import int;
-import comm;
-import task;
 
 // We're trying to trigger a race between send and port destruction that
 // results in the string not being freed

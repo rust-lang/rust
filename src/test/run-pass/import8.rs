@@ -1,6 +1,6 @@
 
-import foo::x;
-import z = foo::x;
+use foo::x;
+use z = foo::x;
 
 mod foo {
     fn x(y: int) { log(debug, y); }

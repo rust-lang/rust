@@ -1,5 +1,5 @@
-import to_str::*;
-import to_str::ToStr;
+use to_str::*;
+use to_str::ToStr;
 
 mod kitty {
 

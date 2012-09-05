@@ -4,11 +4,11 @@
 // that things will look really good once we get that lock out of the
 // message path.
 
-import comm::*;
-import future::future;
+use comm::*;
+use future::future;
 
 use std;
-import std::time;
+use std::time;
 
 fn thread_ring(i: uint,
                count: uint,

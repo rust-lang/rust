@@ -1,5 +1,5 @@
-import libc::{c_double, c_int};
-import f64::*;
+use libc::{c_double, c_int};
+use f64::*;
 
 fn to_c_int(v: &mut int) -> &mut c_int unsafe {
     unsafe::reinterpret_cast(&v)

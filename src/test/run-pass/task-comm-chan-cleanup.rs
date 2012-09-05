@@ -1,5 +1,4 @@
 use std;
-import comm;
 
 fn main() {
     let p = comm::Port();

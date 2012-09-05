@@ -1,8 +1,7 @@
 // -*- rust -*-
 
 use std;
-import task;
-import comm::*;
+use comm::*;
 
 fn main() {
     let p = Port();

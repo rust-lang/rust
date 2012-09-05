@@ -1,6 +1,6 @@
 
-import baz::zed;
-import zed::bar;
+use baz::zed;
+use zed::bar;
 
 mod baz {
     mod zed {

@@ -1,6 +1,6 @@
 // xfail-test
 use std;
-import std::arc;
+use std::arc;
 fn dispose(+_x: arc::ARC<bool>) unsafe { }
 
 fn main() {

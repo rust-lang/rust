@@ -1,4 +1,4 @@
-import dvec::DVec;
+use dvec::DVec;
 
 struct c1<T: copy> {
   let x: T;

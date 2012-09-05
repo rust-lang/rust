@@ -1,8 +1,7 @@
 // -*- rust -*-
 
 use std;
-import task::yield;
-import task;
+use task::yield;
 
 fn x(s: ~str, n: int) {
     log(debug, s);

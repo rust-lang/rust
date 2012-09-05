@@ -2,7 +2,7 @@
 // aux-build:cci_no_inline_lib.rs
 
 use cci_no_inline_lib;
-import cci_no_inline_lib::iter;
+use cci_no_inline_lib::iter;
 
 fn main() {
     // Check that a cross-crate call function not marked as inline

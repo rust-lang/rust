@@ -1,6 +1,5 @@
 use std;
-import option;
-import cmp::Eq;
+use cmp::Eq;
 
 fn f<T:Eq>(&o: Option<T>) {
     assert o == option::None;

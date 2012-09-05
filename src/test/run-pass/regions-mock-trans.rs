@@ -1,4 +1,4 @@
-import libc, sys, unsafe;
+use libc, sys, unsafe;
 
 enum arena = ();
 

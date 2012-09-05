@@ -1,5 +1,5 @@
 // error-pattern:declaration of `None` shadows
-import option::*;
+use option::*;
 
 fn main() {
   let None: int = 42;

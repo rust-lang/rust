@@ -2,7 +2,7 @@
 
 export rust;
 
-import name_pool::add;
+use name_pool::add;
 
 mod name_pool {
 

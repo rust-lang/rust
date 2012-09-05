@@ -1,7 +1,7 @@
 // xfail-fast aux-build
 // aux-build:ambig_impl_2_lib.rs
 use ambig_impl_2_lib;
-import ambig_impl_2_lib::me;
+use ambig_impl_2_lib::me;
 trait me {
     fn me() -> uint;
 }

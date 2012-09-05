@@ -1,7 +1,7 @@
 // xfail-fast
 // aux-build:cci_class_4.rs
 use cci_class_4;
-import cci_class_4::kitties::*;
+use cci_class_4::kitties::*;
 
 fn main() {
   let nyan = cat(0u, 2, ~"nyan");

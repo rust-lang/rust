@@ -1,6 +1,6 @@
 use std;
 
-import std::list::*;
+use std::list::*;
 
 pure fn pure_length_go<T: copy>(ls: @List<T>, acc: uint) -> uint {
     match *ls { Nil => { acc } Cons(_, tl) => { pure_length_go(tl, acc + 1u) } }

@@ -1,9 +1,9 @@
 // xfail-test
 
 use std;
-import std::map::*;
-import vec::*;
-import dvec::{dvec, extensions};
+use std::map::*;
+use vec::*;
+use dvec::{dvec, extensions};
 
 enum furniture { chair, couch, bed }
 enum body_part { finger, toe, nose, ear }

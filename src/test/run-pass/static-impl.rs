@@ -1,4 +1,4 @@
-import a::*;
+use a::*;
 
 trait plus {
     fn plus() -> int;

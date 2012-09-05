@@ -1,6 +1,4 @@
 use std;
-import task;
-import pipes;
 
 fn start(c: pipes::Chan<pipes::Chan<~str>>) {
     let (ch, p) = pipes::stream();

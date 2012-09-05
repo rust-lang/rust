@@ -3,13 +3,13 @@
 use std;
 use syntax;
 
-import std::io::*;
+use std::io::*;
 
-import syntax::diagnostic;
-import syntax::ast;
-import syntax::codemap;
-import syntax::parse::parser;
-import syntax::print::*;
+use syntax::diagnostic;
+use syntax::ast;
+use syntax::codemap;
+use syntax::parse::parser;
+use syntax::print::*;
 
 fn new_parse_sess() -> parser::parse_sess {
   fail;

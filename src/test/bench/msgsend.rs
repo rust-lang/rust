@@ -5,8 +5,8 @@
 // I *think* it's the same, more or less.
 
 use std;
-import io::Writer;
-import io::WriterUtil;
+use io::Writer;
+use io::WriterUtil;
 
 enum request {
     get_count,

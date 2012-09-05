@@ -1,6 +1,5 @@
 
 use std;
-import option;
 
 fn foo<T>(y: Option<T>) {
     let mut x: int;

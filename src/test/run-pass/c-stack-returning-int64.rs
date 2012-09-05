@@ -1,5 +1,4 @@
 use std;
-import str;
 
 #[abi = "cdecl"]
 #[nolink]

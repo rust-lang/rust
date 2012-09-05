@@ -5,17 +5,17 @@ An implementation of the Graph500 Breadth First Search problem in Rust.
 */
 
 use std;
-import std::arc;
-import std::time;
-import std::map;
-import std::map::map;
-import std::map::hashmap;
-import std::deque;
-import std::deque::Deque;
-import std::par;
-import io::WriterUtil;
-import comm::*;
-import int::abs;
+use std::arc;
+use std::time;
+use std::map;
+use std::map::map;
+use std::map::hashmap;
+use std::deque;
+use std::deque::Deque;
+use std::par;
+use io::WriterUtil;
+use comm::*;
+use int::abs;
 
 type node_id = i64;
 type graph = ~[~[node_id]];

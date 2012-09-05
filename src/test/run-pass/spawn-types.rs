@@ -6,9 +6,6 @@
 
 use std;
 
-import str;
-import comm;
-import task;
 
 type ctx = comm::Chan<int>;
 

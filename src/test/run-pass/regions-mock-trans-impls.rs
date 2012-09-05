@@ -1,6 +1,6 @@
 use std;
-import libc, sys, unsafe;
-import std::arena::Arena;
+use libc, sys, unsafe;
+use std::arena::Arena;
 
 type bcx = {
     fcx: &fcx

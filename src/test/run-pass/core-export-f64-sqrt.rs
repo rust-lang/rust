@@ -1,6 +1,6 @@
 // Regression test that f64 exports things properly
 
-import io::println;
+use io::println;
 
 fn main() {
 

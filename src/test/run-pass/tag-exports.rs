@@ -1,4 +1,4 @@
-import alder::*;
+use alder::*;
 
 mod alder {
   export burnside;

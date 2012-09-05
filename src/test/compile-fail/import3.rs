@@ -1,4 +1,4 @@
 // error-pattern: unresolved
-import main::bar;
+use main::bar;
 
 fn main(args: ~[str]) { debug!("foo"); }

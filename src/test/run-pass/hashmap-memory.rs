@@ -6,19 +6,15 @@
 
 use std;
 
-import option = option;
-import option::Some;
-import option::None;
-import str;
-import vec;
-import std::map;
-import std::map::hashmap;
-import task;
-import comm::Chan;
-import comm::Port;
-import comm::send;
-import comm::recv;
-import comm;
+use option = option;
+use option::Some;
+use option::None;
+use std::map;
+use std::map::hashmap;
+use comm::Chan;
+use comm::Port;
+use comm::send;
+use comm::recv;
 
 fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 

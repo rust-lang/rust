@@ -1,7 +1,7 @@
 use std;
-import std::map;
-import std::map::hashmap;
-import std::map::map;
+use std::map;
+use std::map::hashmap;
+use std::map::map;
 
 // Test that trait types printed in error msgs include the type arguments.
 

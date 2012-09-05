@@ -2,8 +2,8 @@
 
 use std;
 
-import std::list::{List, Cons, Nil};
-import std::time::precise_time_s;
+use std::list::{List, Cons, Nil};
+use std::time::precise_time_s;
 
 fn main() {
     let (repeat, depth) = if os::getenv(~"RUST_BENCH").is_some() {

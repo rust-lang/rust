@@ -1,7 +1,7 @@
 /* Test that exporting a class also exports its
    public fields and methods */
 
-import kitty::*;
+use kitty::*;
 
 mod kitty {
   export cat;

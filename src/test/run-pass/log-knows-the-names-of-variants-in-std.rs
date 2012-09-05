@@ -1,5 +1,5 @@
 use std;
-import std::list;
+use std::list;
 
 enum foo {
   a(uint),

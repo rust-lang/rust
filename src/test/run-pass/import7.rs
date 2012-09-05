@@ -1,5 +1,5 @@
-import foo::zed;
-import bar::baz;
+use foo::zed;
+use bar::baz;
 mod foo {
     mod zed {
         fn baz() { debug!("baz"); }

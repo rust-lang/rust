@@ -1,5 +1,4 @@
 use std;
-import float;
 
 fn main() {
   let nan = float::NaN;

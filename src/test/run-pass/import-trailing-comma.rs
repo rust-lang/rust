@@ -1,4 +1,4 @@
-import foo::bar::{baz, quux,};
+use foo::bar::{baz, quux,};
 
 mod foo {
     mod bar {

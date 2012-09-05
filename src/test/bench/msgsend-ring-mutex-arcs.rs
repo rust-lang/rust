@@ -7,11 +7,11 @@
 
 // xfail-pretty
 
-import future::future;
+use future::future;
 
 use std;
-import std::time;
-import std::arc;
+use std::time;
+use std::arc;
 
 // A poor man's pipe.
 type pipe = arc::MutexARC<~[uint]>;

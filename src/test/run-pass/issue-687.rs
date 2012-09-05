@@ -1,11 +1,8 @@
 use std;
-import vec;
-import task;
-import comm;
-import comm::Chan;
-import comm::Port;
-import comm::recv;
-import comm::send;
+use comm::Chan;
+use comm::Port;
+use comm::recv;
+use comm::send;
 
 enum msg { closed, received(~[u8]), }
 

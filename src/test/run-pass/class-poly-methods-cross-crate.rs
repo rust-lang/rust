@@ -1,7 +1,7 @@
 // xfail-fast
 // aux-build:cci_class_6.rs
 use cci_class_6;
-import cci_class_6::kitties::*;
+use cci_class_6::kitties::*;
 
 fn main() {
   let nyan : cat<char> = cat::<char>(52u, 99, ~['p']);

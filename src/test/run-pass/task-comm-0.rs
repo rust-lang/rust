@@ -1,9 +1,7 @@
 use std;
 
-import pipes;
-import pipes::Chan;
-import pipes::Port;
-import task;
+use pipes::Chan;
+use pipes::Port;
 
 fn main() { test05(); }
 

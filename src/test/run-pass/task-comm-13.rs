@@ -1,7 +1,5 @@
 use std;
-import task;
-import pipes;
-import pipes::send;
+use pipes::send;
 
 fn start(c: pipes::Chan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;

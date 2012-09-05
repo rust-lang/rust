@@ -1,9 +1,7 @@
 use std;
-import task;
-import pipes;
-import pipes::Chan;
-import pipes::send;
-import pipes::recv;
+use pipes::Chan;
+use pipes::send;
+use pipes::recv;
 
 fn main() { debug!("===== WITHOUT THREADS ====="); test00(); }
 

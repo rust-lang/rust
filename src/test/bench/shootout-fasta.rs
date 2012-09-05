@@ -6,11 +6,7 @@
  * http://shootout.alioth.debian.org/
  */
 use std;
-import vec;
-import uint;
-import int;
-import str;
-import io::WriterUtil;
+use io::WriterUtil;
 
 fn LINE_LENGTH() -> uint { return 60u; }
 
