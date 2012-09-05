@@ -9,8 +9,13 @@ export context;
 
 struct arc_destruct<T:const> {
   let _data: int;
-  new(data: int) { self._data = data; }
   drop {}
+}
+
+fn arc_destruct<T: const>(data: int) -> arc_destruct<T> {
+    arc_destruct {
+        _data: data
+    }
 }
 
 fn arc<T: const>(_data: T) -> arc_destruct<T> {
@@ -24,9 +29,13 @@ fn init() -> arc_destruct<context_res> unsafe {
 struct context_res {
     let ctx : int;
 
-    new() { self.ctx = 0; }
-
     drop { }
+}
+
+fn context_res() -> context_res {
+    context_res {
+        ctx: 0
+    }
 }
 
 type context = arc_destruct<context_res>;

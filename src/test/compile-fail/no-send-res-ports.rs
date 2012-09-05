@@ -1,8 +1,13 @@
 fn main() {
     struct foo {
       let _x: comm::Port<()>;
-      new(x: comm::Port<()>) { self._x = x; }
       drop {}
+    }
+
+    fn foo(x: comm::Port<()>) -> foo {
+        foo {
+            _x: x
+        }
     }
    
     let x = ~mut Some(foo(comm::Port()));

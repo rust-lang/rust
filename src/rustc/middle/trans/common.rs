@@ -95,8 +95,13 @@ type stats =
 
 struct BuilderRef_res {
     let B: BuilderRef;
-    new(B: BuilderRef) { self.B = B; }
     drop { llvm::LLVMDisposeBuilder(self.B); }
+}
+
+fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
+    BuilderRef_res {
+        B: B
+    }
 }
 
 // Crate context.  Every crate we compile has one of these.
@@ -485,12 +490,21 @@ struct block_ {
     // The function context for the function to which this block is
     // attached.
     let fcx: fn_ctxt;
-    new(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
-        is_lpad: bool, node_info: Option<node_info>, fcx: fn_ctxt) {
-        // sigh
-        self.llbb = llbb; self.terminated = false; self.unreachable = false;
-        self.parent = parent; self.kind = kind; self.is_lpad = is_lpad;
-        self.node_info = node_info; self.fcx = fcx;
+}
+
+fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
+          is_lpad: bool, node_info: Option<node_info>, fcx: fn_ctxt)
+    -> block_ {
+
+    block_ {
+        llbb: llbb,
+        terminated: false,
+        unreachable: false,
+        parent: parent,
+        kind: kind,
+        is_lpad: is_lpad,
+        node_info: node_info,
+        fcx: fcx
     }
 }
 

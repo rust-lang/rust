@@ -1,7 +1,10 @@
 struct kitten {
     let cat: Option<cat>;
-    new(cat: Option<cat>) {
-       self.cat = cat;
+}
+
+fn kitten(cat: Option<cat>) -> kitten {
+    kitten {
+        cat: cat
     }
 }
 

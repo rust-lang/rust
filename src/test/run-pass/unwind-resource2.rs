@@ -3,8 +3,13 @@ use std;
 
 struct complainer {
   let c: @int;
-  new(c: @int) { self.c = c; }
   drop {}
+}
+
+fn complainer(c: @int) -> complainer {
+    complainer {
+        c: c
+    }
 }
 
 fn f() {

@@ -6,8 +6,13 @@ type closable = @mut bool;
 struct close_res {
   let i: closable;
  
-  new(i: closable) { self.i = i; }
   drop { *(self.i) = false; }
+}
+
+fn close_res(i: closable) -> close_res {
+    close_res {
+        i: i
+    }
 }
 
 enum option<T> { none, some(T), }

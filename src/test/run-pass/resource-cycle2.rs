@@ -8,10 +8,15 @@ type u = {
 
 struct r {
   let v: u;
-  new(v: u) { self.v = v; }
   drop unsafe {
     let v2: ~int = unsafe::reinterpret_cast(&self.v.c);
   }
+}
+
+fn r(v: u) -> r {
+    r {
+        v: v
+    }
 }
 
 enum t = {

@@ -12,13 +12,18 @@ struct r {
   let v: u;
   let w: int;
   let x: *int;
-  new(v: u, w: int, _x: *int) unsafe { self.v = v; self.w = w; 
-    self.x = unsafe::reinterpret_cast(&0);
-    /* self.x = x; */ }
   drop unsafe {
     let _v2: ~int = unsafe::reinterpret_cast(&self.v.c);
     // let _v3: ~int = unsafe::reinterpret_cast(self.x);
   }
+}
+
+fn r(v: u, w: int, _x: *int) -> r unsafe {
+    r {
+        v: v,
+        w: w,
+        x: unsafe::reinterpret_cast(&0)
+    }
 }
 
 enum t = {

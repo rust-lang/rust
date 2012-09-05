@@ -442,10 +442,12 @@ struct path_entry {
     let path_string: ~str;
     // The definition, implementation, or field that this path corresponds to.
     let def_like: def_like;
+}
 
-    new(path_string: ~str, def_like: def_like) {
-        self.path_string = path_string;
-        self.def_like = def_like;
+fn path_entry(path_string: ~str, def_like: def_like) -> path_entry {
+    path_entry {
+        path_string: path_string,
+        def_like: def_like
     }
 }
 

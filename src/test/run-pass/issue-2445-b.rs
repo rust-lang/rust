@@ -1,8 +1,12 @@
 struct c1<T: copy> {
   let x: T;
-  new(x: T) {self.x = x;}
-
     fn f1(x: int) {
+    }
+}
+
+fn c1<T: copy>(x: T) -> c1<T> {
+    c1 {
+        x: x
     }
 }
 

@@ -3,8 +3,13 @@ use comm::*;
 
 struct test {
   let f: int;
-  new(f: int) { self.f = f; }
   drop {}
+}
+
+fn test(f: int) -> test {
+    test {
+        f: f
+    }
 }
 
 fn main() {

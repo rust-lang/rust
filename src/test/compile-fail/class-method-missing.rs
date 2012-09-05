@@ -5,7 +5,12 @@ trait animal {
 
 struct cat : animal {
   let meows: uint;
-  new(in_x : uint) { self.meows = in_x; }
+}
+
+fn cat(in_x : uint) -> cat {
+    cat {
+        meows: in_x
+    }
 }
 
 fn main() {

@@ -80,7 +80,13 @@ extern mod test {
 struct p {
   let mut x: int;
   let mut y: int;
-  new(x: int, y: int) { self.x = x; self.y = y; }
+}
+
+fn p(x: int, y: int) -> p {
+    p {
+        x: x,
+        y: y
+    }
 }
 
 impl p : cmp::Eq {

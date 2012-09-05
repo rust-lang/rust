@@ -8,7 +8,12 @@ struct r {
   drop {
     os::set_exit_status(50);
   }
-  new(x:int) {self.x = x;}
+}
+
+fn r(x:int) -> r {
+    r {
+        x: x
+    }
 }
 
 fn main() {

@@ -113,7 +113,6 @@ mod blade_runner {
  */
 struct bored {
   let bored: bool;
-  new(bored: bool) { self.bored = bored; }
   drop { log(error, self.bored); }
 }
 

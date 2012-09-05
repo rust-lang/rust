@@ -2,8 +2,12 @@ struct cat {
 
   let name : ~str;
 
-  new(in_name: ~str)
-    { self.name = in_name; }
+}
+
+fn cat(in_name: ~str) -> cat {
+    cat {
+        name: in_name
+    }
 }
 
 fn main() {

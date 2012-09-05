@@ -9,9 +9,11 @@ fn empty<T>() -> Tree<T> { fail }
 
 struct Box {
     let tree: Tree<@Box>;
+}
 
-    new() {
-        self.tree = empty();
+fn Box() -> Box {
+    Box {
+        tree: empty()
     }
 }
 

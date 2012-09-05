@@ -1,6 +1,5 @@
 struct send_packet<T: copy> {
   let p: T;
-  new(p: T) { self.p = p; }
 }
 
 

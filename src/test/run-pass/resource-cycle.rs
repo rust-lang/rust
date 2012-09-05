@@ -2,19 +2,18 @@
 
 struct r {
   let v: *int;
-  new(v: *int) unsafe {
-    self.v = v;
-    debug!("r's ctor: v = %x, self = %x, self.v = %x",
-           unsafe::reinterpret_cast::<*int, uint>(&v),
-           unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(self)),
-           unsafe::reinterpret_cast::<**int, uint>(&ptr::addr_of(self.v)));
-     }
   drop unsafe {
     debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
            unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(self)),
            unsafe::reinterpret_cast::<**int, uint>(&ptr::addr_of(self.v)),
            unsafe::reinterpret_cast::<*int, uint>(&self.v));
     let v2: ~int = unsafe::reinterpret_cast(&self.v); }
+}
+
+fn r(v: *int) -> r unsafe {
+    r {
+        v: v
+    }
 }
 
 enum t = {

@@ -10,7 +10,13 @@ struct cat {
     self.meows += 1u;
     self.nap();
   }
-  new(in_x : uint, in_y : int) { self.meows = in_x; self.how_hungry = in_y; }
+}
+
+fn cat(in_x : uint, in_y : int) -> cat {
+    cat {
+        meows: in_x,
+        how_hungry: in_y
+    }
 }
 
 fn main() {

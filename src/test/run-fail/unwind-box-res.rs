@@ -6,10 +6,15 @@ fn failfn() {
 
 struct r {
   let v: *int;
-  new(v: *int) { self.v = v; }
   drop unsafe {
     let _v2: ~int = unsafe::reinterpret_cast(&self.v);
   }
+}
+
+fn r(v: *int) -> r {
+    r {
+        v: v
+    }
 }
 
 fn main() unsafe {

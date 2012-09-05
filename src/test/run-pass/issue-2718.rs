@@ -137,7 +137,6 @@ mod pipes {
 
     struct send_packet<T: send> {
         let mut p: Option<*packet<T>>;
-        new(p: *packet<T>) { self.p = Some(p); }
         drop {
             if self.p != None {
                 let mut p = None;
@@ -152,9 +151,14 @@ mod pipes {
         }
     }
 
+    fn send_packet<T: send>(p: *packet<T>) -> send_packet<T> {
+        send_packet {
+            p: Some(p)
+        }
+    }
+
     struct recv_packet<T: send> {
         let mut p: Option<*packet<T>>;
-        new(p: *packet<T>) { self.p = Some(p); }
         drop {
             if self.p != None {
                 let mut p = None;
@@ -166,6 +170,12 @@ mod pipes {
             let mut p = None;
             p <-> self.p;
             option::unwrap(p)
+        }
+    }
+
+    fn recv_packet<T: send>(p: *packet<T>) -> recv_packet<T> {
+        recv_packet {
+            p: Some(p)
         }
     }
 

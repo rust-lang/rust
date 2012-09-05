@@ -15,8 +15,13 @@ fn getbig_and_fail(&&i: int) {
 
 struct and_then_get_big_again {
   let x:int;
-  new(x:int) {self.x = x;}
   drop {}
+}
+
+fn and_then_get_big_again(x:int) -> and_then_get_big_again {
+    and_then_get_big_again {
+        x: x
+    }
 }
 
 fn main() {

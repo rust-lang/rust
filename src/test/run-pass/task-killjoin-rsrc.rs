@@ -7,7 +7,6 @@ use std;
 
 struct notify {
     let ch: comm::Chan<bool>; let v: @mut bool;
-    new(ch: comm::Chan<bool>, v: @mut bool) { self.ch = ch; self.v = v; }
     drop {
         error!("notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),
@@ -16,6 +15,13 @@ struct notify {
                *(self.v));
         let b = *(self.v);
         comm::send(self.ch, b);
+    }
+}
+
+fn notify(ch: comm::Chan<bool>, v: @mut bool) -> notify {
+    notify {
+        ch: ch,
+        v: v
     }
 }
 

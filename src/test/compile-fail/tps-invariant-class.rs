@@ -1,8 +1,10 @@
 struct box_impl<T> {
     let mut f: T;
+}
 
-    new(f: T) {
-        self.f = f;
+fn box_impl<T>(f: T) -> box_impl<T> {
+    box_impl {
+        f: f
     }
 }
 

@@ -4,8 +4,13 @@ fn u_foo<T: send>(unique: T) { }
 
 struct r {
   let i: int;
-  new(i:int) { self.i = i; }
   drop {}
+}
+
+fn r(i:int) -> r {
+    r {
+        i: i
+    }
 }
 
 fn main() {

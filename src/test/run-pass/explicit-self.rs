@@ -34,9 +34,13 @@ fn select_based_on_unit_circle<T>(
 
 struct thing {
     x: {mut a: @int};
-    new (x: {mut a: @int}) { self.x = copy x; }
 }
 
+fn thing(x: {mut a: @int}) -> thing {
+    thing {
+        x: copy x
+    }
+}
 
 impl thing {
     fn foo(@self) -> int { *self.x.a }

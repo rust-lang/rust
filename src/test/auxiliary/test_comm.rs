@@ -29,9 +29,6 @@ fn port<T: send>() -> port<T> {
 
 struct port_ptr<T:send> {
    let po: *rust_port;
-   new(po: *rust_port) {
-    debug!("in the port_ptr constructor");
-    self.po = po; }
    drop unsafe {
     debug!("in the port_ptr destructor");
        do task::unkillable {
@@ -51,6 +48,12 @@ struct port_ptr<T:send> {
   }
 }
 
+fn port_ptr<T: send>(po: *rust_port) -> port_ptr<T> {
+    debug!("in the port_ptr constructor");
+    port_ptr {
+        po: po
+    }
+}
 
 /**
  * Receive from a port.  If no data is available on the port then the

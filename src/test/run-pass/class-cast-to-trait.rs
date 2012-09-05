@@ -17,9 +17,6 @@ struct cat : noisy {
   let mut how_hungry : int;
   let name : ~str;
 
-  new(in_x : uint, in_y : int, in_name: ~str)
-    { self.meows = in_x; self.how_hungry = in_y; self.name = in_name; }
-
   fn speak() { self.meow(); }
 
   fn eat() -> bool {
@@ -34,6 +31,15 @@ struct cat : noisy {
     }
   }
 }
+
+fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
+    cat {
+        meows: in_x,
+        how_hungry: in_y,
+        name: in_name
+    }
+}
+
 
 fn main() {
   let nyan : noisy  = cat(0u, 2, ~"nyan") as noisy;

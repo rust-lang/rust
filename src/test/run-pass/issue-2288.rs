@@ -3,9 +3,14 @@ trait clam<A: copy> {
 }
 struct foo<A: copy> : clam<A> {
   let x: A;
-  new(b: A) { self.x = b; }
   fn chowder(y: A) {
   }
+}
+
+fn foo<A: copy>(b: A) -> foo<A> {
+    foo {
+        x: b
+    }
 }
 
 fn f<A: copy>(x: clam<A>, a: A) {

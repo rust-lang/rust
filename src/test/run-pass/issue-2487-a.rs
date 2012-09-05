@@ -1,14 +1,18 @@
 struct socket {
     let sock: int;
 
-    new() { self.sock = 1; }
-
     drop { }
 
     fn set_identity()  {
         do closure {
             setsockopt_bytes(copy self.sock)
         }
+    }
+}
+
+fn socket() -> socket {
+    socket {
+        sock: 1
     }
 }
 

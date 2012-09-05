@@ -1,11 +1,14 @@
 struct example {
     let x: int;
-    new() {
-        self.x = 1;
-    }
     drop {} //~ ERROR First destructor declared
     drop {
         debug!("Goodbye, cruel world");
+    }
+}
+
+fn example() -> example {
+    example {
+        x: 1
     }
 }
 

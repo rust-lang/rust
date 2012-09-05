@@ -3,7 +3,13 @@
 struct foo {
   let i: int;
   let j: char;
-  new(i:int, j: char) { self.i = i; self.j = j; }
+}
+
+fn foo(i:int, j: char) -> foo {
+    foo {
+        i: i,
+        j: j
+    }
 }
 
 fn main() {
