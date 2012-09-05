@@ -1,9 +1,11 @@
 use std::map::hashmap;
 use middle::ty;
 use middle::ty::{arg, canon_mode};
+use middle::ty::{bound_copy, bound_const, bound_owned, bound_send,
+        bound_trait};
 use middle::ty::{bound_region, br_anon, br_named, br_self, br_cap_avoid};
 use middle::ty::{ck_block, ck_box, ck_uniq, ctxt, field, method};
-use middle::ty::{mt, t};
+use middle::ty::{mt, t, param_bound};
 use middle::ty::{re_bound, re_free, re_scope, re_var, re_static, region};
 use middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
@@ -231,6 +233,16 @@ fn tys_to_str(cx: ctxt, ts: ~[t]) -> ~str {
     let mut rs = ~"";
     for ts.each |t| { rs += ty_to_str(cx, t); }
     rs
+}
+
+fn bound_to_str(cx: ctxt, b: param_bound) -> ~str {
+    match b {
+      bound_copy     => ~"copy",
+      bound_owned    => ~"owned",
+      bound_send     => ~"send",
+      bound_const    => ~"const",
+      bound_trait(t) => ty_to_str(cx, t)
+    }
 }
 
 fn ty_to_str(cx: ctxt, typ: t) -> ~str {

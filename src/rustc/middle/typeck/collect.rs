@@ -24,6 +24,8 @@ use astconv::{ast_conv, ty_of_fn_decl, ty_of_arg, ast_ty_to_ty};
 use ast_util::trait_method_to_ty_method;
 use rscope::*;
 use ty::{FnTyBase, FnMeta, FnSig};
+use util::common::pluralize;
+use util::ppaux::bound_to_str;
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
@@ -263,9 +265,13 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                           self type", tcx.sess.str_of(impl_m.ident)));
     }
 
-    if impl_m.tps != trait_m.tps {
-        tcx.sess.span_err(sp, ~"method `" + tcx.sess.str_of(trait_m.ident) +
-                          ~"` has an incompatible set of type parameters");
+    if impl_m.tps.len() != trait_m.tps.len() {
+        tcx.sess.span_err(sp, #fmt("method `%s` \
+           has %u type %s, but its trait declaration has %u type %s",
+           tcx.sess.str_of(trait_m.ident), impl_m.tps.len(),
+           pluralize(impl_m.tps.len(), ~"parameter"),
+           trait_m.tps.len(),
+           pluralize(trait_m.tps.len(), ~"parameter")));
         return;
     }
 
@@ -276,6 +282,28 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                                    vec::len(impl_m.fty.sig.inputs),
                                    vec::len(trait_m.fty.sig.inputs)));
         return;
+    }
+
+    for trait_m.tps.eachi() |i, trait_param_bounds| {
+        // For each of the corresponding impl ty param's bounds...
+        let impl_param_bounds = impl_m.tps[i];
+        // Make sure the bounds lists have the same length
+        // Would be nice to use the ty param names in the error message,
+        // but we don't have easy access to them here
+        if impl_param_bounds.len() != trait_param_bounds.len() {
+           tcx.sess.span_err(sp, #fmt("in method `%s`, \
+             type parameter %u has %u %s, but the same type \
+             parameter in its trait declaration has %u %s",
+             tcx.sess.str_of(trait_m.ident),
+             i, impl_param_bounds.len(),
+             pluralize(impl_param_bounds.len(), ~"bound"),
+             trait_param_bounds.len(),
+             pluralize(trait_param_bounds.len(), ~"bound")));
+           return;
+        }
+        // tjc: I'm mildly worried that there's something I'm
+        // not checking that require_same_types doesn't catch,
+        // but I can't figure out what.
     }
 
     // Perform substitutions so that the trait/impl methods are expressed
