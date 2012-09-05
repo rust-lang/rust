@@ -5,8 +5,8 @@
  * individual modules, pages for the crate, indexes, etc.
  */
 
-import doc::{item_utils, page_utils};
-import syntax::ast;
+use doc::{item_utils, page_utils};
+use syntax::ast;
 
 export mk_pass;
 

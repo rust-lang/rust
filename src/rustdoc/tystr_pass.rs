@@ -1,11 +1,11 @@
 //! Pulls type information out of the AST and attaches it to the document
 
-import doc::item_utils;
-import syntax::ast;
-import syntax::print::pprust;
-import syntax::ast_map;
-import std::map::hashmap;
-import extract::to_str;
+use doc::item_utils;
+use syntax::ast;
+use syntax::print::pprust;
+use syntax::ast_map;
+use std::map::hashmap;
+use extract::to_str;
 
 export mk_pass;
 

@@ -1,6 +1,6 @@
 //! Sorts items by name
 
-import doc::item_utils;
+use doc::item_utils;
 export mk_pass;
 
 fn mk_pass() -> pass {

@@ -6,11 +6,11 @@
      of the natural-language documentation for a crate."
 )];
 
-import doc::item_utils;
-import extract::to_str;
-import syntax::ast;
-import syntax::ast_map;
-import std::map::hashmap;
+use doc::item_utils;
+use extract::to_str;
+use syntax::ast;
+use syntax::ast_map;
+use std::map::hashmap;
 
 export mk_pass;
 

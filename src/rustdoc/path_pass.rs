@@ -1,7 +1,7 @@
 //! Records the full path to items
 
-import doc::item_utils;
-import syntax::ast;
+use doc::item_utils;
+use syntax::ast;
 
 export mk_pass;
 

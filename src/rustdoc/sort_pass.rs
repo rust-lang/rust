@@ -1,7 +1,7 @@
 //! A general sorting pass
 
-import doc::item_utils;
-import std::sort;
+use doc::item_utils;
+use std::sort;
 
 export item_lteq, mk_pass;
 

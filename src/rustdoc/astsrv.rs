@@ -7,19 +7,19 @@
      Rustdoc from its non-sendableness."
 )];
 
-import std::map::hashmap;
-import rustc::driver::session;
-import session::{basic_options, options};
-import session::session;
-import rustc::driver::driver;
-import syntax::diagnostic;
-import syntax::diagnostic::handler;
-import syntax::ast;
-import syntax::codemap;
-import syntax::ast_map;
-import rustc::back::link;
-import rustc::metadata::filesearch;
-import rustc::front;
+use std::map::hashmap;
+use rustc::driver::session;
+use session::{basic_options, options};
+use session::session;
+use rustc::driver::driver;
+use syntax::diagnostic;
+use syntax::diagnostic::handler;
+use syntax::ast;
+use syntax::codemap;
+use syntax::ast_map;
+use rustc::back::link;
+use rustc::metadata::filesearch;
+use rustc::front;
 
 export ctxt;
 export ctxt_handler;

@@ -1,5 +1,5 @@
-import doc::item_utils;
-import io::ReaderUtil;
+use doc::item_utils;
+use io::ReaderUtil;
 
 export writeinstr;
 export writer;
