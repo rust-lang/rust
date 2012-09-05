@@ -2262,6 +2262,30 @@ struct parser {
                     push(bounds, bound_const);
                 } else if self.eat_keyword(~"owned") {
                     push(bounds, bound_owned);
+                } else if is_ident(self.token) {
+                    // XXX: temporary until kinds become traits
+                    let maybe_bound = match self.token {
+                      token::IDENT(sid, _) => {
+                        match *self.id_to_str(sid) {
+                          ~"Send" => Some(bound_send),
+                          ~"Copy" => Some(bound_copy),
+                          ~"Const" => Some(bound_const),
+                          ~"Owned" => Some(bound_owned),
+                          _ => None
+                        }
+                      }
+                      _ => fail
+                    };
+
+                    match maybe_bound {
+                      Some(bound) => {
+                        self.bump();
+                        push(bounds, bound);
+                      }
+                      None => {
+                        push(bounds, bound_trait(self.parse_ty(false)));
+                      }
+                    }
                 } else {
                     push(bounds, bound_trait(self.parse_ty(false)));
                 }
