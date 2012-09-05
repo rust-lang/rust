@@ -4159,11 +4159,6 @@ struct Resolver {
                                                         xray) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
-                self.session.span_err(
-                    path.span,
-                    fmt!("unresolved name: %s::%s",
-                         self.atoms_to_str((*module_path_atoms).get()),
-                         self.session.str_of(name)));
                 return None;
             }
             ChildNameDefinition(def) | ImportNameDefinition(def) => {
@@ -4212,11 +4207,6 @@ struct Resolver {
                                                       xray) {
             NoNameDefinition => {
                 // We failed to resolve the name. Report an error.
-                self.session.span_err(
-                    path.span,
-                    fmt!("unresolved name: %s::%s", self.atoms_to_str(
-                        (*module_path_atoms).get()),
-                         self.session.str_of(name)));
                 return None;
             }
             ChildNameDefinition(def) | ImportNameDefinition(def) => {
