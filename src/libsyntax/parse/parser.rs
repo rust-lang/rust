@@ -2533,7 +2533,8 @@ struct parser {
         let mut meths = ~[];
         self.expect(token::LBRACE);
         while !self.eat(token::RBRACE) {
-            vec::push(meths, self.parse_method(public));
+            let vis = self.parse_visibility();
+            vec::push(meths, self.parse_method(vis));
         }
         (ident, item_impl(tps, traits, ty, meths), None)
     }
