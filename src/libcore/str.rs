@@ -39,6 +39,9 @@ export
    trim_left,
    trim_right,
    trim,
+   trim_left_chars,
+   trim_right_chars,
+   trim_chars,
 
    // Transforming strings
    to_bytes,
@@ -349,6 +352,58 @@ fn view_shift_char(s: &a/str) -> (char, &a/str) {
 
 /// Prepend a char to a string
 fn unshift_char(&s: ~str, ch: char) { s = from_char(ch) + s; }
+
+/**
+ * Returns a string with leading `chars_to_trim` removed.
+ *
+ * # Arguments
+ *
+ * * s - A string
+ * * chars_to_trim - A vector of chars
+ *
+ */
+pure fn trim_left_chars(s: &str, chars_to_trim: &[char]) -> ~str {
+    if chars_to_trim.is_empty() { return from_slice(s); }
+
+    match find(s, |c| !chars_to_trim.contains(c)) {
+      None => ~"",
+      Some(first) => unsafe { unsafe::slice_bytes(s, first, s.len()) }
+    }
+}
+
+/**
+ * Returns a string with trailing `chars_to_trim` removed.
+ *
+ * # Arguments
+ *
+ * * s - A string
+ * * chars_to_trim - A vector of chars
+ *
+ */
+pure fn trim_right_chars(s: &str, chars_to_trim: &[char]) -> ~str {
+    if chars_to_trim.is_empty() { return str::from_slice(s); }
+
+    match rfind(s, |c| !chars_to_trim.contains(c)) {
+      None => ~"",
+      Some(last) => {
+        let {next, _} = char_range_at(s, last);
+        unsafe { unsafe::slice_bytes(s, 0u, next) }
+      }
+    }
+}
+
+/**
+ * Returns a string with leading and trailing `chars_to_trim` removed.
+ *
+ * # Arguments
+ *
+ * * s - A string
+ * * chars_to_trim - A vector of chars
+ *
+ */
+pure fn trim_chars(s: &str, chars_to_trim: &[char]) -> ~str {
+    trim_left_chars(trim_right_chars(s, chars_to_trim), chars_to_trim)
+}
 
 /// Returns a string with leading whitespace removed
 pure fn trim_left(s: &str) -> ~str {
@@ -2729,6 +2784,30 @@ mod tests {
     #[ignore(cfg(windows))]
     fn test_slice_fail() {
         slice(~"中华Việt Nam", 0u, 2u);
+    }
+
+    #[test]
+    fn test_trim_left_chars() {
+        assert trim_left_chars(~" *** foo *** ", ~[]) == ~" *** foo *** ";
+        assert trim_left_chars(~" *** foo *** ", ~['*', ' ']) == ~"foo *** ";
+        assert trim_left_chars(~" ***  *** ", ~['*', ' ']) == ~"";
+        assert trim_left_chars(~"foo *** ", ~['*', ' ']) == ~"foo *** ";
+    }
+
+    #[test]
+    fn test_trim_right_chars() {
+        assert trim_right_chars(~" *** foo *** ", ~[]) == ~" *** foo *** ";
+        assert trim_right_chars(~" *** foo *** ", ~['*', ' ']) == ~" *** foo";
+        assert trim_right_chars(~" ***  *** ", ~['*', ' ']) == ~"";
+        assert trim_right_chars(~" *** foo", ~['*', ' ']) == ~" *** foo";
+    }
+
+    #[test]
+    fn test_trim_chars() {
+        assert trim_chars(~" *** foo *** ", ~[]) == ~" *** foo *** ";
+        assert trim_chars(~" *** foo *** ", ~['*', ' ']) == ~"foo";
+        assert trim_chars(~" ***  *** ", ~['*', ' ']) == ~"";
+        assert trim_chars(~"foo", ~['*', ' ']) == ~"foo";
     }
 
     #[test]
