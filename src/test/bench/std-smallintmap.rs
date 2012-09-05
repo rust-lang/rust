@@ -2,16 +2,16 @@
 
 use std;
 import std::smallintmap;
-import std::smallintmap::smallintmap;
+import std::smallintmap::SmallIntMap;
 import io::WriterUtil;
 
-fn append_sequential(min: uint, max: uint, map: smallintmap<uint>) {
+fn append_sequential(min: uint, max: uint, map: SmallIntMap<uint>) {
     for uint::range(min, max) |i| {
         map.insert(i, i + 22u);
     }
 }
 
-fn check_sequential(min: uint, max: uint, map: smallintmap<uint>) {
+fn check_sequential(min: uint, max: uint, map: SmallIntMap<uint>) {
     for uint::range(min, max) |i| {
         assert map.get(i) == i + 22u;
     }
