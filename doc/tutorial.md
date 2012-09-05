@@ -1222,7 +1222,7 @@ most vector functionality is provided by methods, so let's have a
 brief look at a few common ones.
 
 ~~~
-# import io::println;
+# use io::println;
 # enum crayon {
 #     almond, antique_brass, apricot,
 #     aquamarine, asparagus, atomic_tangerine,
@@ -1276,7 +1276,7 @@ Rust also supports _closures_, functions that can access variables in
 the enclosing scope.
 
 ~~~~
-# import println = io::println;
+# use println = io::println;
 fn call_closure_with_ten(b: fn(int)) { b(10); }
 
 let captured_var = 20;
@@ -1434,7 +1434,7 @@ takes a final closure argument.
 `do` is often used for task spawning.
 
 ~~~~
-import task::spawn;
+use task::spawn;
 
 do spawn() || {
     debug!("I'm a task, whatever");
@@ -1446,7 +1446,7 @@ argument lists back to back. Wouldn't it be great if they weren't
 there?
 
 ~~~~
-# import task::spawn;
+# use task::spawn;
 do spawn {
    debug!("Kablam!");
 }
@@ -1479,8 +1479,8 @@ fn each(v: ~[int], op: fn(int) -> bool) {
 And using this function to iterate over a vector:
 
 ~~~~
-# import each = vec::each;
-# import println = io::println;
+# use each = vec::each;
+# use println = io::println;
 each(~[2, 4, 8, 5, 16], |n| {
     if n % 2 != 0 {
         println(~"found odd number!");
@@ -1496,8 +1496,8 @@ out of the loop, you just write `break`. To skip ahead
 to the next iteration, write `again`.
 
 ~~~~
-# import each = vec::each;
-# import println = io::println;
+# use each = vec::each;
+# use println = io::println;
 for each(~[2, 4, 8, 5, 16]) |n| {
     if n % 2 != 0 {
         println(~"found odd number!");
@@ -1512,7 +1512,7 @@ normally allowed in closures, in a block that appears as the body of a
 function, not just the loop body.
 
 ~~~~
-# import each = vec::each;
+# use each = vec::each;
 fn contains(v: ~[int], elt: int) -> bool {
     for each(v) |x| {
         if (x == elt) { return true; }
@@ -1760,22 +1760,22 @@ that path is several modules deep). Rust allows you to import
 identifiers at the top of a file, module, or block.
 
 ~~~~
-use std;
-import io::println;
+extern mod std;
+use io::println;
 fn main() {
     println(~"that was easy");
 }
 ~~~~
 
-It is also possible to import just the name of a module (`import
+It is also possible to import just the name of a module (`use
 std::list;`, then use `list::find`), to import all identifiers exported
-by a given module (`import io::*`), or to import a specific set
-of identifiers (`import math::{min, max, pi}`).
+by a given module (`use io::*`), or to import a specific set
+of identifiers (`use math::{min, max, pi}`).
 
 You can rename an identifier when importing using the `=` operator:
 
 ~~~~
-import prnt = io::println;
+use prnt = io::println;
 ~~~~
 
 ## Exporting
@@ -1836,14 +1836,14 @@ fn main() {
 }
 ~~~~
 
-An `import` directive will only import into the namespaces for which
+An `use` directive will only import into the namespaces for which
 identifiers are actually found. Consider this example:
 
 ~~~~
 type bar = uint;
 mod foo { fn bar() {} }
 mod baz {
-    import foo::bar;
+    use foo::bar;
     const x: bar = 20u;
 }
 ~~~~
@@ -2089,8 +2089,8 @@ Spawning a task is done using the various spawn functions in the
 module `task`.  Let's begin with the simplest one, `task::spawn()`:
 
 ~~~~
-import task::spawn;
-import io::println;
+use task::spawn;
+use io::println;
 
 let some_value = 22;
 
@@ -2116,8 +2116,8 @@ receiving messages. The easiest way to create a pipe is to use
 computations in parallel.  We might write something like:
 
 ~~~~
-import task::spawn;
-import pipes::{stream, Port, Chan};
+use task::spawn;
+use pipes::{stream, Port, Chan};
 
 let (chan, port) = stream();
 
@@ -2137,7 +2137,7 @@ Let's walk through this code line-by-line.  The first line creates a
 stream for sending and receiving integers:
 
 ~~~~ {.ignore}
-# import pipes::stream;
+# use pipes::stream;
 let (chan, port) = stream();
 ~~~~
 
@@ -2146,8 +2146,8 @@ once it is complete.  The channel will be used by the child to send a
 message to the port.  The next statement actually spawns the child:
 
 ~~~~
-# import task::{spawn};
-# import comm::{Port, Chan};
+# use task::{spawn};
+# use comm::{Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 # let port = Port();
 # let chan = port.chan();
@@ -2167,7 +2167,7 @@ some other expensive computation and then waiting for the child's result
 to arrive on the port:
 
 ~~~~
-# import pipes::{stream, Port, Chan};
+# use pipes::{stream, Port, Chan};
 # fn some_other_expensive_computation() {}
 # let (chan, port) = stream::<int>();
 # chan.send(0);
@@ -2188,8 +2188,8 @@ the string in response.  The child terminates when `0` is received.
 Here is the function that implements the child task:
 
 ~~~~
-# import std::comm::DuplexStream;
-# import pipes::{Port, Chan};
+# use std::comm::DuplexStream;
+# use pipes::{Port, Chan};
 fn stringifier(channel: DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
@@ -2211,9 +2211,9 @@ response itself is simply the strified version of the received value,
 Here is the code for the parent task:
 
 ~~~~
-# import std::comm::DuplexStream;
-# import pipes::{Port, Chan};
-# import task::spawn;
+# use std::comm::DuplexStream;
+# use pipes::{Port, Chan};
+# use task::spawn;
 # fn stringifier(channel: DuplexStream<~str, uint>) {
 #     let mut value: uint;
 #     loop {
