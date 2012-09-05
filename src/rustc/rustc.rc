@@ -18,7 +18,7 @@ use core(vers = "0.4");
 use std(vers = "0.4");
 use syntax(vers = "0.4");
 
-import core::*;
+use core::*;
 
 /*
 Alternate names for some modules.
@@ -27,11 +27,11 @@ I am using this to help extract metadata into its own crate. In metadata.rs
 it redefines all these modules in order to gate access from metadata to the
 rest of the compiler, then uses these to access the original implementation.
 */
-import util_ = util;
-import lib_ = lib;
-import driver_ = driver;
-import middle_ = middle;
-import back_ = back;
+use util_ = util;
+use lib_ = lib;
+use driver_ = driver;
+use middle_ = middle;
+use back_ = back;
 
 mod middle {
     mod trans {

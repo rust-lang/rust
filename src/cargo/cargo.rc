@@ -26,6 +26,6 @@ use std(vers = "0.4");
 use rustc(vers = "0.4");
 use syntax(vers = "0.4");
 
-import core::*;
+use core::*;
 
 mod pgp;

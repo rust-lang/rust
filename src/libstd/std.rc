@@ -15,7 +15,7 @@
 #[warn(non_camel_case_types)];
 
 use core(vers = "0.4");
-import core::*;
+use core::*;
 
 export net, net_tcp, net_ip, net_url;
 export uv, uv_ll, uv_iotask, uv_global_loop;

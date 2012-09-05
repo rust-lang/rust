@@ -10,7 +10,7 @@ use core(vers = "0.4");
 use std(vers = "0.4");
 use syntax(vers = "0.4");
 
-import core::*;
+use core::*;
 
 // Local Variables:
 // fill-column: 78;
