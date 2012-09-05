@@ -9,7 +9,7 @@ struct cat {
     }
   }
 
-  new(in_x : uint) { self.meows = in_x; }
 }
+
 
  fn main() { }

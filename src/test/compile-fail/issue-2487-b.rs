@@ -1,8 +1,6 @@
 struct socket {
     let sock: int;
 
-    new() { self.sock = 1; }
-
     drop { }
 
     fn set_identity()  {

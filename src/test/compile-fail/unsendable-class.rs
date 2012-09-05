@@ -4,7 +4,13 @@
 struct foo {
   let i: int;
   let j: @~str;
-  new(i:int, j: @~str) { self.i = i; self.j = j; }
+}
+
+fn foo(i:int, j: @~str) -> foo {
+    foo {
+        i: i,
+        j: j
+    }
 }
 
 fn main() {

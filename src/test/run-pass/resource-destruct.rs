@@ -1,8 +1,13 @@
 struct shrinky_pointer {
   let i: @@mut int;
   fn look_at() -> int { return **(self.i); }
-  new(i: @@mut int) { self.i = i; }
   drop { log(error, ~"Hello!"); **(self.i) -= 1; }
+}
+
+fn shrinky_pointer(i: @@mut int) -> shrinky_pointer {
+    shrinky_pointer {
+        i: i
+    }
 }
 
 fn main() {

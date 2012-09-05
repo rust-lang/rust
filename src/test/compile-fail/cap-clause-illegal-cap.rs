@@ -1,6 +1,12 @@
 // error-pattern: copying a noncopyable value
 
-struct foo { let x: int; new(x: int) { self.x = x; } drop { } }
+struct foo { let x: int; drop { } }
+
+fn foo(x: int) -> foo {
+    foo {
+        x: x
+    }
+}
 
 fn to_lambda2(b: foo) -> fn@(uint) -> uint {
     // test case where copy clause specifies a value that is not used

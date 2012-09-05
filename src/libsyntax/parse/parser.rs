@@ -181,6 +181,37 @@ pure fn maybe_append(+lhs: ~[attribute], rhs: Option<~[attribute]>)
 
 /* ident is handled by common.rs */
 
+fn parser(sess: parse_sess, cfg: ast::crate_cfg,
+          +rdr: reader, ftype: file_type) -> parser {
+
+    let tok0 = rdr.next_token();
+    let span0 = tok0.sp;
+    let interner = rdr.interner();
+
+    parser {
+        reader: move rdr,
+        interner: move interner,
+        sess: sess,
+        cfg: cfg,
+        file_type: ftype,
+        token: tok0.tok,
+        span: span0,
+        last_span: span0,
+        buffer: [mut
+            {tok: tok0.tok, sp: span0},
+            {tok: tok0.tok, sp: span0},
+            {tok: tok0.tok, sp: span0},
+            {tok: tok0.tok, sp: span0}
+        ]/4,
+        buffer_start: 0,
+        buffer_end: 0,
+        restriction: UNRESTRICTED,
+        quote_depth: 0u,
+        keywords: token::keyword_table(),
+        restricted_keywords: token::restricted_keyword_table()
+    }
+}
+
 struct parser {
     let sess: parse_sess;
     let cfg: crate_cfg;
@@ -197,32 +228,6 @@ struct parser {
     let interner: interner<@~str>;
     let keywords: hashmap<~str, ()>;
     let restricted_keywords: hashmap<~str, ()>;
-
-    new(sess: parse_sess, cfg: ast::crate_cfg, +rdr: reader, ftype: file_type)
-    {
-        self.reader <- rdr;
-        self.interner = self.reader.interner();
-        let tok0 = self.reader.next_token();
-        let span0 = tok0.sp;
-        self.sess = sess;
-        self.cfg = cfg;
-        self.file_type = ftype;
-        self.token = tok0.tok;
-        self.span = span0;
-        self.last_span = span0;
-        self.buffer = [mut
-            {tok: tok0.tok, sp: span0},
-            {tok: tok0.tok, sp: span0},
-            {tok: tok0.tok, sp: span0},
-            {tok: tok0.tok, sp: span0}
-        ]/4;
-        self.buffer_start = 0;
-        self.buffer_end = 0;
-        self.restriction = UNRESTRICTED;
-        self.quote_depth = 0u;
-        self.keywords = token::keyword_table();
-        self.restricted_keywords = token::restricted_keyword_table();
-    }
 
     drop {} /* do not copy the parser; its state is tied to outside state */
 
@@ -2594,7 +2599,6 @@ struct parser {
         let class_name = self.parse_value_ident();
         self.parse_region_param();
         let ty_params = self.parse_ty_params();
-        let class_path = self.ident_to_path_tys(class_name, ty_params);
         let traits : ~[@trait_ref] = if self.eat(token::COLON)
             { self.parse_trait_ref_list(token::LBRACE) }
         else { ~[] };
@@ -2610,7 +2614,7 @@ struct parser {
             // It's a record-like struct.
             fields = ~[];
             while self.token != token::RBRACE {
-                match self.parse_class_item(class_path) {
+                match self.parse_class_item() {
                   ctor_decl(a_fn_decl, attrs, blk, s) => {
                       match the_ctor {
                         Some((_, _, _, s_first)) => {
@@ -2747,24 +2751,13 @@ struct parser {
         }
     }
 
-    fn parse_ctor(attrs: ~[attribute],
-                  result_ty: ast::ty_) -> class_contents {
-        let lo = self.last_span.lo;
-        let (decl_, _) = self.parse_fn_decl(|p| p.parse_arg());
-        let decl = {output: @{id: self.get_id(),
-                              node: result_ty, span: decl_.output.span},
-                    .. decl_};
-        let body = self.parse_block();
-        ctor_decl(decl, attrs, body, mk_sp(lo, self.last_span.hi))
-    }
-
     fn parse_dtor(attrs: ~[attribute]) -> class_contents {
         let lo = self.last_span.lo;
         let body = self.parse_block();
         dtor_decl(body, attrs, mk_sp(lo, self.last_span.hi))
     }
 
-    fn parse_class_item(class_name_with_tps: @path) -> class_contents {
+    fn parse_class_item() -> class_contents {
         if self.eat_keyword(~"priv") {
             // XXX: Remove after snapshot.
             match self.token {
@@ -2789,12 +2782,7 @@ struct parser {
 
         let attrs = self.parse_outer_attributes();
 
-        if self.eat_keyword(~"new") {
-            // result type is always the type of the class
-           return self.parse_ctor(attrs, ty_path(class_name_with_tps,
-                                        self.get_id()));
-        }
-        else if self.eat_keyword(~"drop") {
+        if self.eat_keyword(~"drop") {
            return self.parse_dtor(attrs);
         }
         else {
@@ -3019,12 +3007,12 @@ struct parser {
         }
     }
 
-    fn parse_struct_def(path: @path) -> @struct_def {
+    fn parse_struct_def() -> @struct_def {
         let mut the_dtor: Option<(blk, ~[attribute], codemap::span)> = None;
         let mut fields: ~[@struct_field] = ~[];
         let mut methods: ~[@method] = ~[];
         while self.token != token::RBRACE {
-            match self.parse_class_item(path) {
+            match self.parse_class_item() {
                 ctor_decl(*) => {
                     self.span_fatal(copy self.span,
                                     ~"deprecated explicit \
@@ -3076,7 +3064,7 @@ struct parser {
         };
     }
 
-    fn parse_enum_def(ident: ast::ident, ty_params: ~[ast::ty_param])
+    fn parse_enum_def(ty_params: ~[ast::ty_param])
                    -> enum_def {
         let mut variants: ~[variant] = ~[];
         let mut all_nullary = true, have_disr = false;
@@ -3092,8 +3080,7 @@ struct parser {
                     self.fatal(~"duplicate declaration of shared fields");
                 }
                 self.expect(token::LBRACE);
-                let path = self.ident_to_path_tys(ident, ty_params);
-                common_fields = Some(self.parse_struct_def(path));
+                common_fields = Some(self.parse_struct_def());
                 again;
             }
 
@@ -3105,7 +3092,7 @@ struct parser {
             if self.eat_keyword(~"enum") {
                 ident = self.parse_ident();
                 self.expect(token::LBRACE);
-                let nested_enum_def = self.parse_enum_def(ident, ty_params);
+                let nested_enum_def = self.parse_enum_def(ty_params);
                 kind = enum_variant_kind(move nested_enum_def);
                 needs_comma = false;
             } else {
@@ -3113,8 +3100,7 @@ struct parser {
                 if self.eat(token::LBRACE) {
                     // Parse a struct variant.
                     all_nullary = false;
-                    let path = self.ident_to_path_tys(ident, ty_params);
-                    kind = struct_variant_kind(self.parse_struct_def(path));
+                    kind = struct_variant_kind(self.parse_struct_def());
                 } else if self.token == token::LPAREN {
                     all_nullary = false;
                     let arg_tys = self.parse_unspanned_seq(
@@ -3176,7 +3162,7 @@ struct parser {
         }
         self.expect(token::LBRACE);
 
-        let enum_definition = self.parse_enum_def(id, ty_params);
+        let enum_definition = self.parse_enum_def(ty_params);
         (id, item_enum(enum_definition, ty_params), None)
     }
 

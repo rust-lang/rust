@@ -1,10 +1,13 @@
 // This test should behave exactly like issue-2735-2
 struct defer {
     let b: &mut bool;
-    new(b: &mut bool) {
-        self.b = b;
-    }   
     drop { *(self.b) = true; }
+}
+
+fn defer(b: &r/mut bool) -> defer/&r {
+    defer {
+        b: b
+    }
 }
 
 fn main() {

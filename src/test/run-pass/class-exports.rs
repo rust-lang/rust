@@ -10,8 +10,15 @@ mod kitty {
     let name: ~str;
 
     fn get_name() -> ~str {  self.name }
-    new(in_name: ~str) { self.name = in_name; self.meows = 0u; }
   }
+
+    fn cat(in_name: ~str) -> cat {
+        cat {
+            name: in_name,
+            meows: 0u
+        }
+    }
+
 }
 
 fn main() {

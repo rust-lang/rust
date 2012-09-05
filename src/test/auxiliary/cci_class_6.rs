@@ -8,14 +8,20 @@ struct cat<U> {
 
   let how_hungry : int;
 
-  new(in_x : uint, in_y : int, -in_info: ~[U])
-    { self.meows = in_x; self.how_hungry = in_y;
-      self.info <- in_info; }
-
   fn speak<T>(stuff: ~[T]) {
     self.meows += stuff.len();
   }
   fn meow_count() -> uint { self.meows }
 }
+
+
+fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
+    cat {
+        meows: in_x,
+        how_hungry: in_y,
+        info: in_info
+    }
+}
+
 
 }

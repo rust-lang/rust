@@ -3,8 +3,13 @@ fn main() {
   struct b {
     let i: int;
     fn do_stuff() -> int { return 37; }
-    new(i:int) { self.i = i; }
   }
+
+    fn b(i:int) -> b {
+        b {
+            i: i
+        }
+    }
 
   //  fn b(x:int) -> int { fail; }
 

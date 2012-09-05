@@ -22,7 +22,6 @@ fn getbig_call_c_and_fail(i: int) {
 
 struct and_then_get_big_again {
   let x:int;
-  new(x:int) {self.x = x;}
   drop {
     fn getbig(i: int) {
         if i != 0 {
@@ -31,6 +30,12 @@ struct and_then_get_big_again {
     }
     getbig(10000);
   }
+}
+
+fn and_then_get_big_again(x:int) -> and_then_get_big_again {
+    and_then_get_big_again {
+        x: x
+    }
 }
 
 fn main() {

@@ -56,11 +56,16 @@ use option::{is_none, is_some};
 
 struct icx_popper {
     let ccx: @crate_ctxt;
-    new(ccx: @crate_ctxt) { self.ccx = ccx; }
     drop {
       if self.ccx.sess.count_llvm_insns() {
           vec::pop(*(self.ccx.stats.llvm_insn_ctxt));
       }
+    }
+}
+
+fn icx_popper(ccx: @crate_ctxt) -> icx_popper {
+    icx_popper {
+        ccx: ccx
     }
 }
 

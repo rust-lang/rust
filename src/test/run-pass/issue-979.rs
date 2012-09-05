@@ -1,9 +1,12 @@
 struct r {
   let b: @mut int;
-  new(b: @mut int) {
-    self.b = b;
-  }
   drop { *(self.b) += 1; }
+}
+
+fn r(b: @mut int) -> r {
+    r {
+        b: b
+    }
 }
 
 fn main() {

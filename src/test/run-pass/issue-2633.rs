@@ -1,6 +1,11 @@
 struct cat {
     let mut meow: fn@();
-    new() { self.meow = fn@() { error!("meow"); };}
+}
+
+fn cat() -> cat {
+    cat {
+        meow: fn@() { error!("meow"); }
+    }
 }
 
 type kitty_info = {kitty: cat};

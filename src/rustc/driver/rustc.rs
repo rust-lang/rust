@@ -241,11 +241,10 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
 
         struct finally {
             let ch: comm::Chan<monitor_msg>;
-            new(ch: comm::Chan<monitor_msg>) { self.ch = ch; }
             drop { comm::send(self.ch, done); }
         }
 
-        let _finally = finally(ch);
+        let _finally = finally { ch: ch };
 
         f(demitter)
     } {

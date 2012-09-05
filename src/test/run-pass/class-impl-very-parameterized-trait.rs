@@ -29,9 +29,6 @@ struct cat<T: copy> : map<int, T> {
   let mut how_hungry : int;
   let name : T;
 
-  new(in_x : int, in_y : int, in_name: T)
-    { self.meows = in_x; self.how_hungry = in_y; self.name = in_name; }
-
   fn speak() { self.meow(); }
 
   fn eat() -> bool {
@@ -96,6 +93,13 @@ struct cat<T: copy> : map<int, T> {
   fn clear() { }
 }
 
+fn cat<T: copy>(in_x : int, in_y : int, in_name: T) -> cat<T> {
+    cat {
+        meows: in_x,
+        how_hungry: in_y,
+        name: in_name
+    }
+}
 
 fn main() {
   let nyan : cat<~str> = cat(0, 2, ~"nyan");

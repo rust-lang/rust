@@ -1,7 +1,9 @@
 // error-pattern: type cat cannot be dereferenced
-struct cat { new() {} }
+struct cat {
+    foo: ()
+}
 
 fn main() {
-  let nyan = cat();
-  log (error, *nyan);
+    let nyan = cat { foo: () };
+    log (error, *nyan);
 }

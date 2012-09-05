@@ -1,4 +1,9 @@
-struct thing { x: int; new () { self.x = 0; } drop { } }
+struct thing { x: int; drop { } }
+fn thing() -> thing {
+    thing {
+        x: 0
+    }
+}
 impl thing { fn f(self) {} }
 
 fn main() {

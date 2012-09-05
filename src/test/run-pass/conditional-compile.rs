@@ -27,12 +27,23 @@ enum tg { bar, }
 #[cfg(bogus)]
 struct r {
   let i: int;
-  new(i:int) { self.i = i; }
+}
+
+#[cfg(bogus)]
+fn r(i:int) -> r {
+    r {
+        i: i
+    }
 }
 
 struct r {
   let i: int;
-  new(i:int) { self.i = i; }
+}
+
+fn r(i:int) -> r {
+    r {
+        i: i
+    }
 }
 
 #[cfg(bogus)]

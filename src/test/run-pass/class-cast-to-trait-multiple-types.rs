@@ -21,9 +21,14 @@ struct dog : noisy {
 
   let volume : @mut int;
 
-  new() { self.volume = @mut 0; self.barks = @mut 0u; }
-
   fn speak() -> int { self.bark() }
+}
+
+fn dog() -> dog {
+    dog {
+        volume: @mut 0,
+        barks: @mut 0u
+    }
 }
 
 struct cat : noisy {
@@ -42,13 +47,18 @@ struct cat : noisy {
   let how_hungry : @mut int;
   let name : ~str;
 
-  new(in_x : uint, in_y : int, in_name: ~str)
-    { self.meows = @mut in_x; self.how_hungry = @mut in_y;
-      self.name = in_name; }
-
   fn speak() -> int { self.meow() as int }
   fn meow_count() -> uint { *self.meows }
 }
+
+fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
+    cat {
+        meows: @mut in_x,
+        how_hungry: @mut in_y,
+        name: in_name
+    }
+}
+
 
 fn annoy_neighbors<T: noisy>(critter: T) {
   for uint::range(0u, 10u) |i| { critter.speak(); }

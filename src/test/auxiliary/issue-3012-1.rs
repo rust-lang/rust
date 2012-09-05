@@ -7,7 +7,13 @@ export socket_handle;
 
 struct socket_handle {
     let sockfd: libc::c_int;
-    new(x: libc::c_int) {self.sockfd = x;}
     drop { /* c::close(self.sockfd); */ }
 }
+
+    fn socket_handle(x: libc::c_int) -> socket_handle {
+        socket_handle {
+            sockfd: x
+        }
+    }
+
 }

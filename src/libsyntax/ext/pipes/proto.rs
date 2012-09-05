@@ -118,19 +118,21 @@ fn protocol(name: ~str, +span: span) -> protocol {
     @protocol_(name, span)
 }
 
+fn protocol_(name: ~str, span: span) -> protocol_ {
+    protocol_ {
+        name: name,
+        span: span,
+        states: DVec(),
+        bounded: None
+    }
+}
+
 struct protocol_ {
     let name: ~str;
     let span: span;
     let states: DVec<state>;
 
     let mut bounded: Option<bool>;
-
-    new(name: ~str, span: span) {
-        self.name = name;
-        self.span = span;
-        self.states = DVec();
-        self.bounded = None;
-    }
 
     /// Get a state.
     fn get_state(name: ~str) -> state {

@@ -1,9 +1,12 @@
 struct finish<T: copy> {
   let arg: {val: T, fin: extern fn(T)};
-  new(arg: {val: T, fin: extern fn(T)}) {
-    self.arg = arg;
-  }
   drop { self.arg.fin(self.arg.val); }
+}
+
+fn finish<T: copy>(arg: {val: T, fin: extern fn(T)}) -> finish<T> {
+    finish {
+        arg: arg
+    }
 }
 
 fn main() {

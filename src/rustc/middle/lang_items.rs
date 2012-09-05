@@ -72,6 +72,41 @@ mod LanguageItems {
     }
 }
 
+fn LanguageItemCollector(crate: @crate, session: session,
+                         items: &r/LanguageItems)
+    -> LanguageItemCollector/&r {
+
+    let item_refs = str_hash();
+
+    item_refs.insert(~"const", &mut items.const_trait);
+    item_refs.insert(~"copy", &mut items.copy_trait);
+    item_refs.insert(~"send", &mut items.send_trait);
+    item_refs.insert(~"owned", &mut items.owned_trait);
+
+    item_refs.insert(~"add", &mut items.add_trait);
+    item_refs.insert(~"sub", &mut items.sub_trait);
+    item_refs.insert(~"mul", &mut items.mul_trait);
+    item_refs.insert(~"div", &mut items.div_trait);
+    item_refs.insert(~"modulo", &mut items.modulo_trait);
+    item_refs.insert(~"neg", &mut items.neg_trait);
+    item_refs.insert(~"bitxor", &mut items.bitxor_trait);
+    item_refs.insert(~"bitand", &mut items.bitand_trait);
+    item_refs.insert(~"bitor", &mut items.bitor_trait);
+    item_refs.insert(~"shl", &mut items.shl_trait);
+    item_refs.insert(~"shr", &mut items.shr_trait);
+    item_refs.insert(~"index", &mut items.index_trait);
+
+    item_refs.insert(~"eq", &mut items.eq_trait);
+    item_refs.insert(~"ord", &mut items.ord_trait);
+
+    LanguageItemCollector {
+        crate: crate,
+        session: session,
+        items: items,
+        item_refs: item_refs
+    }
+}
+
 struct LanguageItemCollector {
     let items: &LanguageItems;
 
@@ -79,34 +114,6 @@ struct LanguageItemCollector {
     let session: session;
 
     let item_refs: hashmap<~str,&mut Option<def_id>>;
-
-    new(crate: @crate, session: session, items: &self/LanguageItems) {
-        self.crate = crate;
-        self.session = session;
-        self.items = items;
-        self.item_refs = str_hash();
-
-        self.item_refs.insert(~"const", &mut self.items.const_trait);
-        self.item_refs.insert(~"copy", &mut self.items.copy_trait);
-        self.item_refs.insert(~"send", &mut self.items.send_trait);
-        self.item_refs.insert(~"owned", &mut self.items.owned_trait);
-
-        self.item_refs.insert(~"add", &mut self.items.add_trait);
-        self.item_refs.insert(~"sub", &mut self.items.sub_trait);
-        self.item_refs.insert(~"mul", &mut self.items.mul_trait);
-        self.item_refs.insert(~"div", &mut self.items.div_trait);
-        self.item_refs.insert(~"modulo", &mut self.items.modulo_trait);
-        self.item_refs.insert(~"neg", &mut self.items.neg_trait);
-        self.item_refs.insert(~"bitxor", &mut self.items.bitxor_trait);
-        self.item_refs.insert(~"bitand", &mut self.items.bitand_trait);
-        self.item_refs.insert(~"bitor", &mut self.items.bitor_trait);
-        self.item_refs.insert(~"shl", &mut self.items.shl_trait);
-        self.item_refs.insert(~"shr", &mut self.items.shr_trait);
-        self.item_refs.insert(~"index", &mut self.items.index_trait);
-
-        self.item_refs.insert(~"eq", &mut self.items.eq_trait);
-        self.item_refs.insert(~"ord", &mut self.items.ord_trait);
-    }
 
     fn match_and_collect_meta_item(item_def_id: def_id,
                                    meta_item: meta_item) {

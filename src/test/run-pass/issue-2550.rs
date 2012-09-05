@@ -1,8 +1,11 @@
 struct C {
     let x: uint;
 
-    new(x: uint) {
-        self.x = x;
+}
+
+fn C(x: uint) -> C {
+    C {
+        x: x
     }
 }
 

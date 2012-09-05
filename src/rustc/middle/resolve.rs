@@ -311,26 +311,30 @@ fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
 struct Rib {
     let bindings: hashmap<Atom,def_like>;
     let kind: RibKind;
+}
 
-    new(kind: RibKind) {
-        self.bindings = atom_hashmap();
-        self.kind = kind;
+fn Rib(kind: RibKind) -> Rib {
+    Rib {
+        bindings: atom_hashmap(),
+        kind: kind
     }
 }
+
 
 /// One import directive.
 struct ImportDirective {
     let module_path: @DVec<Atom>;
     let subclass: @ImportDirectiveSubclass;
     let span: span;
+}
 
-    new(module_path: @DVec<Atom>,
-        subclass: @ImportDirectiveSubclass,
-        span: span) {
-
-        self.module_path = module_path;
-        self.subclass = subclass;
-        self.span = span;
+fn ImportDirective(module_path: @DVec<Atom>,
+                   subclass: @ImportDirectiveSubclass,
+                   span: span) -> ImportDirective {
+    ImportDirective {
+        module_path: module_path,
+        subclass: subclass,
+        span: span
     }
 }
 
@@ -338,10 +342,12 @@ struct ImportDirective {
 struct Target {
     let target_module: @Module;
     let bindings: @NameBindings;
+}
 
-    new(target_module: @Module, bindings: @NameBindings) {
-        self.target_module = target_module;
-        self.bindings = bindings;
+fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
+    Target {
+        target_module: target_module,
+        bindings: bindings
     }
 }
 
@@ -360,24 +366,23 @@ struct ImportResolution {
 
     let mut used: bool;
 
-    new(span: span) {
-        self.span = span;
-
-        self.outstanding_references = 0u;
-
-        self.module_target = None;
-        self.value_target = None;
-        self.type_target = None;
-
-        self.used = false;
-    }
-
     fn target_for_namespace(namespace: Namespace) -> Option<Target> {
         match namespace {
             ModuleNS    => return copy self.module_target,
             TypeNS      => return copy self.type_target,
             ValueNS     => return copy self.value_target
         }
+    }
+}
+
+fn ImportResolution(span: span) -> ImportResolution {
+    ImportResolution {
+        span: span,
+        outstanding_references: 0u,
+        module_target: None,
+        value_target: None,
+        type_target: None,
+        used: false
     }
 }
 
@@ -430,24 +435,22 @@ struct Module {
     // The index of the import we're resolving.
     let mut resolved_import_count: uint;
 
-    new(parent_link: ParentLink, def_id: Option<def_id>) {
-        self.parent_link = parent_link;
-        self.def_id = def_id;
-
-        self.children = atom_hashmap();
-        self.imports = DVec();
-
-        self.anonymous_children = int_hash();
-
-        self.exported_names = atom_hashmap();
-
-        self.import_resolutions = atom_hashmap();
-        self.glob_count = 0u;
-        self.resolved_import_count = 0u;
-    }
-
     fn all_imports_resolved() -> bool {
         return self.imports.len() == self.resolved_import_count;
+    }
+}
+
+fn Module(parent_link: ParentLink, def_id: Option<def_id>) -> Module {
+    Module {
+        parent_link: parent_link,
+        def_id: def_id,
+        children: atom_hashmap(),
+        imports: DVec(),
+        anonymous_children: int_hash(),
+        exported_names: atom_hashmap(),
+        import_resolutions: atom_hashmap(),
+        glob_count: 0u,
+        resolved_import_count: 0u
     }
 }
 
@@ -500,15 +503,6 @@ struct NameBindings {
     let mut module_span: Option<span>;
     let mut type_span: Option<span>;
     let mut value_span: Option<span>;
-
-    new() {
-        self.module_def = NoModuleDef;
-        self.type_def = None;
-        self.value_def = None;
-        self.module_span = None;
-        self.type_span = None;
-        self.value_span = None;
-    }
 
     /// Creates a new module in this set of name bindings.
     fn define_module(parent_link: ParentLink, def_id: Option<def_id>,
@@ -598,30 +592,21 @@ struct NameBindings {
     }
 }
 
+fn NameBindings() -> NameBindings {
+    NameBindings {
+        module_def: NoModuleDef,
+        type_def: None,
+        value_def: None,
+        module_span: None,
+        type_span: None,
+        value_span: None
+    }
+}
+
+
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
     let primitive_types: hashmap<Atom,prim_ty>;
-
-    new(intr: ident_interner) {
-        self.primitive_types = atom_hashmap();
-
-        self.intern(intr, @~"bool",    ty_bool);
-        self.intern(intr, @~"char",    ty_int(ty_char));
-        self.intern(intr, @~"float",   ty_float(ty_f));
-        self.intern(intr, @~"f32",     ty_float(ty_f32));
-        self.intern(intr, @~"f64",     ty_float(ty_f64));
-        self.intern(intr, @~"int",     ty_int(ty_i));
-        self.intern(intr, @~"i8",      ty_int(ty_i8));
-        self.intern(intr, @~"i16",     ty_int(ty_i16));
-        self.intern(intr, @~"i32",     ty_int(ty_i32));
-        self.intern(intr, @~"i64",     ty_int(ty_i64));
-        self.intern(intr, @~"str",     ty_str);
-        self.intern(intr, @~"uint",    ty_uint(ty_u));
-        self.intern(intr, @~"u8",      ty_uint(ty_u8));
-        self.intern(intr, @~"u16",     ty_uint(ty_u16));
-        self.intern(intr, @~"u32",     ty_uint(ty_u32));
-        self.intern(intr, @~"u64",     ty_uint(ty_u64));
-    }
 
     fn intern(intr: ident_interner, string: @~str,
               primitive_type: prim_ty) {
@@ -630,12 +615,91 @@ struct PrimitiveTypeTable {
     }
 }
 
+fn PrimitiveTypeTable(intr: ident_interner) -> PrimitiveTypeTable {
+    let table = PrimitiveTypeTable {
+        primitive_types: atom_hashmap()
+    };
+
+    table.intern(intr, @~"bool",    ty_bool);
+    table.intern(intr, @~"char",    ty_int(ty_char));
+    table.intern(intr, @~"float",   ty_float(ty_f));
+    table.intern(intr, @~"f32",     ty_float(ty_f32));
+    table.intern(intr, @~"f64",     ty_float(ty_f64));
+    table.intern(intr, @~"int",     ty_int(ty_i));
+    table.intern(intr, @~"i8",      ty_int(ty_i8));
+    table.intern(intr, @~"i16",     ty_int(ty_i16));
+    table.intern(intr, @~"i32",     ty_int(ty_i32));
+    table.intern(intr, @~"i64",     ty_int(ty_i64));
+    table.intern(intr, @~"str",     ty_str);
+    table.intern(intr, @~"uint",    ty_uint(ty_u));
+    table.intern(intr, @~"u8",      ty_uint(ty_u8));
+    table.intern(intr, @~"u16",     ty_uint(ty_u16));
+    table.intern(intr, @~"u32",     ty_uint(ty_u32));
+    table.intern(intr, @~"u64",     ty_uint(ty_u64));
+
+    return table;
+}
+
+
 fn namespace_to_str(ns: Namespace) -> ~str {
     match ns {
       TypeNS   => ~"type",
       ValueNS  => ~"value",
       ModuleNS => ~"module"
     }
+}
+
+fn Resolver(session: session, lang_items: LanguageItems,
+            crate: @crate) -> Resolver {
+
+    let graph_root = @NameBindings();
+
+    (*graph_root).define_module(NoParentLink,
+                                Some({ crate: 0, node: 0 }),
+                                crate.span);
+
+    let current_module = (*graph_root).get_module();
+
+    let self = Resolver {
+        session: session,
+        lang_items: copy lang_items,
+        crate: crate,
+
+        // The outermost module has def ID 0; this is not reflected in the
+        // AST.
+
+        graph_root: graph_root,
+
+        unused_import_lint_level: unused_import_lint_level(session),
+
+        trait_info: new_def_hash(),
+        structs: new_def_hash(),
+
+        unresolved_imports: 0u,
+
+        current_module: current_module,
+        value_ribs: @DVec(),
+        type_ribs: @DVec(),
+        label_ribs: @DVec(),
+
+        xray_context: NoXray,
+        current_trait_refs: None,
+
+        self_atom: syntax::parse::token::special_idents::self_,
+        primitive_type_table: @PrimitiveTypeTable(session.
+                                                  parse_sess.interner),
+
+        namespaces: ~[ ModuleNS, TypeNS, ValueNS ],
+
+        def_map: int_hash(),
+        export_map: int_hash(),
+        export_map2: int_hash(),
+        trait_map: @int_hash(),
+
+        intr: session.intr()
+    };
+
+    return self;
 }
 
 /// The main resolver class.
@@ -689,48 +753,6 @@ struct Resolver {
     let export_map: ExportMap;
     let export_map2: ExportMap2;
     let trait_map: TraitMap;
-
-    new(session: session, lang_items: LanguageItems, crate: @crate) {
-        self.session = session;
-        self.lang_items = copy lang_items;
-        self.crate = crate;
-
-        // The outermost module has def ID 0; this is not reflected in the
-        // AST.
-
-        self.graph_root = @NameBindings();
-        (*self.graph_root).define_module(NoParentLink,
-                                         Some({ crate: 0, node: 0 }),
-                                         crate.span);
-
-        self.unused_import_lint_level = unused_import_lint_level(session);
-
-        self.trait_info = new_def_hash();
-        self.structs = new_def_hash();
-
-        self.unresolved_imports = 0u;
-
-        self.current_module = (*self.graph_root).get_module();
-        self.value_ribs = @DVec();
-        self.type_ribs = @DVec();
-        self.label_ribs = @DVec();
-
-        self.xray_context = NoXray;
-        self.current_trait_refs = None;
-
-        self.self_atom = syntax::parse::token::special_idents::self_;
-        self.primitive_type_table = @PrimitiveTypeTable(self.session.
-                                                        parse_sess.interner);
-
-        self.namespaces = ~[ ModuleNS, TypeNS, ValueNS ];
-
-        self.def_map = int_hash();
-        self.export_map = int_hash();
-        self.export_map2 = int_hash();
-        self.trait_map = @int_hash();
-
-        self.intr = session.intr();
-    }
 
     /// The main name resolution procedure.
     fn resolve(@self, this: @Resolver) {

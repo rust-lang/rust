@@ -2,8 +2,13 @@
 
 struct my_resource {
   let x: int;
-  new(x: int) { self.x = x; }
   drop { log(error, self.x); }
+}
+
+fn my_resource(x: int) -> my_resource {
+    my_resource {
+        x: x
+    }
 }
 
 fn main() {

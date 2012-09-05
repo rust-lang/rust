@@ -42,8 +42,13 @@ enum st {
 
 struct r {
   let _l: @nillist;
-  new(l: @nillist) { self._l = l; }
   drop {}
+}
+
+fn r(l: @nillist) -> r {
+    r {
+        _l: l
+    }
 }
 
 fn recurse_or_fail(depth: int, st: Option<st>) {

@@ -126,10 +126,22 @@ struct CoherenceInfo {
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
     let extension_methods: hashmap<def_id,@DVec<@Impl>>;
+}
 
-    new() {
-        self.inherent_methods = new_def_hash();
-        self.extension_methods = new_def_hash();
+fn CoherenceInfo() -> CoherenceInfo {
+    CoherenceInfo {
+        inherent_methods: new_def_hash(),
+        extension_methods: new_def_hash()
+    }
+}
+
+fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
+    CoherenceChecker {
+        crate_context: crate_context,
+        inference_context: new_infer_ctxt(crate_context.tcx),
+
+        base_type_def_ids: new_def_hash(),
+        privileged_implementations: int_hash()
     }
 }
 
@@ -146,14 +158,6 @@ struct CoherenceChecker {
     // implementations that are defined in the same scope as their base types.
 
     let privileged_implementations: hashmap<node_id,()>;
-
-    new(crate_context: @crate_ctxt) {
-        self.crate_context = crate_context;
-        self.inference_context = new_infer_ctxt(crate_context.tcx);
-
-        self.base_type_def_ids = new_def_hash();
-        self.privileged_implementations = int_hash();
-    }
 
     // Create a mapping containing a MethodInfo for every provided
     // method in every trait.

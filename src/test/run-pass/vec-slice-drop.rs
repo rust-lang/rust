@@ -1,8 +1,13 @@
 // Make sure that destructors get run on slice literals
 struct foo {
     let x: @mut int;
-    new(x: @mut int) { self.x = x; }
     drop { *self.x += 1; }
+}
+
+fn foo(x: @mut int) -> foo {
+    foo {
+        x: x
+    }
 }
 
 fn main() {

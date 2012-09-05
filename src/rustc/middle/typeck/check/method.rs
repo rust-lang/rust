@@ -63,6 +63,35 @@ fn get_mode_from_self_type(self_type: ast::self_ty_) -> ast::rmode {
     }
 }
 
+fn lookup(fcx: @fn_ctxt,
+
+        // In a call `a.b::<X, Y, ...>(...)`:
+        expr: @ast::expr,        // The expression `a.b`.
+        self_expr: @ast::expr,   // The expression `a`.
+        borrow_lb: ast::node_id, // Scope to borrow the expression `a` for.
+        node_id: ast::node_id,   // The node_id in which to store the type of
+                                 // `a.b`.
+        m_name: ast::ident,      // The ident `b`.
+        self_ty: ty::t,          // The type of `a`.
+        supplied_tps: ~[ty::t],  // The list of types X, Y, ... .
+        include_private: bool) -> lookup {
+
+    lookup {
+        fcx: fcx,
+        expr: expr,
+        self_expr: self_expr,
+        borrow_lb: borrow_lb,
+        node_id: node_id,
+        m_name: m_name,
+        self_ty: self_ty,
+        derefs: 0u,
+        candidates: DVec(),
+        candidate_impls: new_def_hash(),
+        supplied_tps: supplied_tps,
+        include_private: include_private
+    }
+}
+
 struct lookup {
     let fcx: @fn_ctxt;
     let expr: @ast::expr;
@@ -76,33 +105,6 @@ struct lookup {
     let candidate_impls: hashmap<def_id, ()>;
     let supplied_tps: ~[ty::t];
     let include_private: bool;
-
-    new(fcx: @fn_ctxt,
-
-        // In a call `a.b::<X, Y, ...>(...)`:
-        expr: @ast::expr,        // The expression `a.b`.
-        self_expr: @ast::expr,   // The expression `a`.
-        borrow_lb: ast::node_id, // Scope to borrow the expression `a` for.
-        node_id: ast::node_id,   // The node_id in which to store the type of
-                                 // `a.b`.
-        m_name: ast::ident,      // The ident `b`.
-        self_ty: ty::t,          // The type of `a`.
-        supplied_tps: ~[ty::t],  // The list of types X, Y, ... .
-        include_private: bool) {
-
-        self.fcx = fcx;
-        self.expr = expr;
-        self.self_expr = self_expr;
-        self.borrow_lb = borrow_lb;
-        self.node_id = node_id;
-        self.m_name = m_name;
-        self.self_ty = self_ty;
-        self.derefs = 0u;
-        self.candidates = DVec();
-        self.candidate_impls = new_def_hash();
-        self.supplied_tps = supplied_tps;
-        self.include_private = include_private;
-    }
 
     // Entrypoint:
     fn method() -> Option<method_map_entry> {

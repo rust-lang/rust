@@ -8,9 +8,14 @@ fn foo<T, U: bar<T>>(b: U) -> T {
 
 struct cbar : bar<int> {
     x: int;
-    new(x: int) { self.x = x; }
     fn get_bar() -> int {
         self.x
+    }
+}
+
+fn cbar(x: int) -> cbar {
+    cbar {
+        x: x
     }
 }
 

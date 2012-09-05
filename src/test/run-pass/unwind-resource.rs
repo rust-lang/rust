@@ -3,12 +3,16 @@ use std;
 
 struct complainer {
   let c: comm::Chan<bool>;
-  new(c: comm::Chan<bool>) {
-    error!("Hello!");
-    self.c = c; }
   drop { error!("About to send!");
     comm::send(self.c, true);
     error!("Sent!"); }
+}
+
+fn complainer(c: comm::Chan<bool>) -> complainer {
+    error!("Hello!");
+    complainer {
+        c: c
+    }
 }
 
 fn f(c: comm::Chan<bool>) {

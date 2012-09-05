@@ -1,6 +1,13 @@
 struct noncopyable {
-    i: (); new() { self.i = (); } drop { #error["dropped"]; }
+    i: (); drop { #error["dropped"]; }
 }
+
+fn noncopyable() -> noncopyable {
+    noncopyable {
+        i: ()
+    }
+}
+
 enum wrapper = noncopyable;
 
 fn main() {

@@ -3,10 +3,13 @@
 
 struct r {
   let i: @mut int;
-  new(i: @mut int) {
-    self.i = i;
-  }
   drop { *(self.i) = *(self.i) + 1; }
+}
+
+fn r(i: @mut int) -> r {
+    r {
+        i: i
+    }
 }
 
 fn test_box() {

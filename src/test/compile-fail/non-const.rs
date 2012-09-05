@@ -4,14 +4,24 @@ fn foo<T: const>(_x: T) { }
 
 struct r {
   let x:int;
-  new(x:int) { self.x = x; }
   drop {}
+}
+
+fn r(x:int) -> r {
+    r {
+        x: x
+    }
 }
 
 struct r2 {
   let x:@mut int;
-  new(x:@mut int) { self.x = x; }
   drop {}
+}
+
+fn r2(x:@mut int) -> r2 {
+    r2 {
+        x: x
+    }
 }
 
 fn main() {
