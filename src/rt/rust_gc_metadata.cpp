@@ -16,10 +16,10 @@ struct update_gc_entry_args {
 };
 
 static void
-update_gc_entry(const mod_entry* entry, void *cookie) {
+update_gc_entry(const mod_entry *entry, void *cookie) {
     update_gc_entry_args *args = (update_gc_entry_args *)cookie;
     if (!strcmp(entry->name, "_gc_module_metadata")) {
-        uintptr_t *next = entry->state;
+        uintptr_t *next = (uintptr_t *)entry->state;
         uint32_t num_safe_points = *(uint32_t *)next;
         next++;
 
