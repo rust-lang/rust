@@ -274,7 +274,7 @@ fn parse_ty(st: @pstate, conv: conv_did) -> ty::t {
         parse_ty_rust_fn(st, conv)
       }
       'X' => {
-        return ty::mk_var(st.tcx, ty::tv_vid(parse_int(st) as uint));
+        return ty::mk_var(st.tcx, ty::ty_vid(parse_int(st) as uint));
       }
       'Y' => return ty::mk_type(st.tcx),
       'C' => {

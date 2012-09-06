@@ -60,7 +60,7 @@ type variable is rather an "instance" of a type parameter: that is,
 given a generic function `fn foo<T>(t: T)`: while checking the
 function `foo`, the type `ty_param(0)` refers to the type `T`, which
 is treated in abstract.  When `foo()` is called, however, `T` will be
-substituted for a fresh type variable `ty_var(N)`.  This variable will
+substituted for a fresh type variable `N`.  This variable will
 eventually be resolved to some concrete type (which might itself be
 type parameter).
 
@@ -68,7 +68,7 @@ type parameter).
 
 use astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
 use astconv::{ast_region_to_region};
-use middle::ty::{tv_vid, vid};
+use middle::ty::{ty_vid, vid};
 use regionmanip::{replace_bound_regions_in_fn_ty};
 use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 use rscope::{in_binding_rscope, region_scope, type_rscope,
@@ -98,7 +98,7 @@ type self_info = {
 /// share the inherited fields.
 struct inherited {
     infcx: infer::infer_ctxt;
-    locals: hashmap<ast::node_id, tv_vid>;
+    locals: hashmap<ast::node_id, ty_vid>;
     node_types: hashmap<ast::node_id, ty::t>;
     node_type_substs: hashmap<ast::node_id, ty::substs>;
     borrowings: hashmap<ast::node_id, ty::borrow>;
@@ -749,33 +749,33 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
 
         // Some extra checks to detect weird cycles and so forth:
         match sty {
-          ty::ty_box(inner) | ty::ty_uniq(inner) | ty::ty_rptr(_, inner) => {
-            match ty::get(t1).struct {
-              ty::ty_var(v1) => {
-                ty::occurs_check(fcx.ccx.tcx, sp, v1,
-                                 ty::mk_box(fcx.ccx.tcx, inner));
-              }
-              _ => ()
+            ty::ty_box(inner) | ty::ty_uniq(inner) | ty::ty_rptr(_, inner) => {
+                match ty::get(t1).struct {
+                    ty::ty_infer(ty::TyVar(v1)) => {
+                        ty::occurs_check(fcx.ccx.tcx, sp, v1,
+                                         ty::mk_box(fcx.ccx.tcx, inner));
+                    }
+                    _ => ()
+                }
             }
-          }
-          ty::ty_enum(did, _) => {
-            // Watch out for a type like `enum t = @t`.  Such a type would
-            // otherwise infinitely auto-deref.  This is the only autoderef
-            // loop that needs to be concerned with this, as an error will be
-            // reported on the enum definition as well because the enum is not
-            // instantiable.
-            if vec::contains(enum_dids, did) {
-                return t1;
+            ty::ty_enum(did, _) => {
+                // Watch out for a type like `enum t = @t`.  Such a type would
+                // otherwise infinitely auto-deref.  This is the only autoderef
+                // loop that needs to be concerned with this, as an error will be
+                // reported on the enum definition as well because the enum is not
+                // instantiable.
+                if vec::contains(enum_dids, did) {
+                    return t1;
+                }
+                vec::push(enum_dids, did);
             }
-            vec::push(enum_dids, did);
-          }
-          _ => { /*ok*/ }
+            _ => { /*ok*/ }
         }
 
         // Otherwise, deref if type is derefable:
         match ty::deref_sty(fcx.ccx.tcx, &sty, false) {
-          None => return t1,
-          Some(mt) => t1 = mt.ty
+            None => return t1,
+            Some(mt) => t1 = mt.ty
         }
     };
 }
@@ -791,7 +791,7 @@ fn check_lit(fcx: @fn_ctxt, lit: @ast::lit) -> ty::t {
       ast::lit_int_unsuffixed(_) => {
         // An unsuffixed integer literal could have any integral type,
         // so we create an integral type variable for it.
-        ty::mk_var_integral(tcx, fcx.infcx().next_ty_var_integral_id())
+        ty::mk_int_var(tcx, fcx.infcx().next_int_var_id())
       }
       ast::lit_float(_, t) => ty::mk_mach_float(tcx, t),
       ast::lit_nil => ty::mk_nil(tcx),
@@ -2304,7 +2304,7 @@ fn self_ref(fcx: @fn_ctxt, id: ast::node_id) -> bool {
                         ast_util::is_self)
 }
 
-fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> tv_vid {
+fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ty_vid {
     match fcx.inh.locals.find(id) {
         Some(x) => x,
         _ => {
@@ -2441,7 +2441,7 @@ fn instantiate_path(fcx: @fn_ctxt,
 // resolution is possible, then an error is reported.
 fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
     match infer::resolve_type(fcx.infcx(), tp, force_tvar) {
-        Ok(t_s) if !ty::type_is_var(t_s) => return t_s,
+        Ok(t_s) if !ty::type_is_ty_var(t_s) => return t_s,
         _ => {
             fcx.ccx.tcx.sess.span_fatal
                 (sp, ~"the type of this value must be known in this context");

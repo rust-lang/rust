@@ -21,7 +21,7 @@ use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
 use std::serialization::{serialize_Option,
                             deserialize_Option};
 
-export tv_vid, tvi_vid, region_vid, vid;
+export ty_vid, int_vid, region_vid, vid;
 export br_hashmap;
 export is_instantiable;
 export node_id_to_type;
@@ -99,8 +99,8 @@ export ty_tup, mk_tup;
 export ty_type, mk_type;
 export ty_uint, mk_uint, mk_mach_uint;
 export ty_uniq, mk_uniq, mk_imm_uniq, type_is_unique_box;
-export ty_var, mk_var, type_is_var;
-export ty_var_integral, mk_var_integral, type_is_var_integral;
+export ty_infer, mk_infer, type_is_ty_var, mk_var, mk_int_var;
+export InferTy, TyVar, IntVar;
 export ty_self, mk_self, type_has_self;
 export ty_class;
 export region, bound_region, encl_region;
@@ -510,11 +510,10 @@ enum sty {
     ty_class(def_id, substs),
     ty_tup(~[t]),
 
-    ty_var(tv_vid), // type variable during typechecking
-    ty_var_integral(tvi_vid), // type variable during typechecking, for
-                              // integral types only
     ty_param(param_ty), // type parameter
     ty_self, // special, implicit `self` type parameter
+
+    ty_infer(InferTy), // soething used only during inference/typeck
 
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
@@ -568,21 +567,26 @@ enum param_bound {
     bound_trait(t),
 }
 
-enum tv_vid = uint;
-enum tvi_vid = uint;
+enum ty_vid = uint;
+enum int_vid = uint;
 enum region_vid = uint;
+
+enum InferTy {
+    TyVar(ty_vid),
+    IntVar(int_vid)
+}
 
 trait vid {
     pure fn to_uint() -> uint;
     pure fn to_str() -> ~str;
 }
 
-impl tv_vid: vid {
+impl ty_vid: vid {
     pure fn to_uint() -> uint { *self }
     pure fn to_str() -> ~str { fmt!("<V%u>", self.to_uint()) }
 }
 
-impl tvi_vid: vid {
+impl int_vid: vid {
     pure fn to_uint() -> uint { *self }
     pure fn to_str() -> ~str { fmt!("<VI%u>", self.to_uint()) }
 }
@@ -590,6 +594,22 @@ impl tvi_vid: vid {
 impl region_vid: vid {
     pure fn to_uint() -> uint { *self }
     pure fn to_str() -> ~str { fmt!("%?", self) }
+}
+
+impl InferTy {
+    pure fn to_hash() -> uint {
+        match self {
+            TyVar(v) => v.to_uint() << 1,
+            IntVar(v) => (v.to_uint() << 1) + 1
+        }
+    }
+
+    pure fn to_str() -> ~str {
+        match self {
+            TyVar(v) => v.to_str(),
+            IntVar(v) => v.to_str()
+        }
+    }
 }
 
 trait purity_to_str {
@@ -744,7 +764,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
       ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
       ty_opaque_box => (),
       ty_param(_) => flags |= has_params as uint,
-      ty_var(_) | ty_var_integral(_) => flags |= needs_infer as uint,
+      ty_infer(_) => flags |= needs_infer as uint,
       ty_self => flags |= has_self as uint,
       ty_enum(_, ref substs) | ty_class(_, ref substs)
       | ty_trait(_, ref substs, _) => {
@@ -882,11 +902,13 @@ fn mk_class(cx: ctxt, class_id: ast::def_id, +substs: substs) -> t {
     mk_t(cx, ty_class(class_id, substs))
 }
 
-fn mk_var(cx: ctxt, v: tv_vid) -> t { mk_t(cx, ty_var(v)) }
+fn mk_var(cx: ctxt, v: ty_vid) -> t { mk_infer(cx, TyVar(v)) }
 
-fn mk_var_integral(cx: ctxt, v: tvi_vid) -> t {
-    mk_t(cx, ty_var_integral(v))
+fn mk_int_var(cx: ctxt, v: int_vid) -> t {
+    mk_infer(cx, IntVar(v))
 }
+
+fn mk_infer(cx: ctxt, it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 
 fn mk_self(cx: ctxt) -> t { mk_t(cx, ty_self) }
 
@@ -939,8 +961,7 @@ fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     match get(ty).struct {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
-      ty_opaque_closure_ptr(_) | ty_var(_) | ty_var_integral(_) |
-      ty_param(_) => {
+      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) => {
       }
       ty_box(tm) | ty_evec(tm, _) | ty_unboxed_vec(tm) |
       ty_ptr(tm) | ty_rptr(_, tm) => {
@@ -1023,8 +1044,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
       }
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_closure_ptr(_) |
-      ty_opaque_box | ty_var(_) | ty_var_integral(_) |
-      ty_param(*) | ty_self => {
+      ty_opaque_box | ty_infer(_) | ty_param(*) | ty_self => {
         *sty
       }
     }
@@ -1240,16 +1260,9 @@ fn type_is_nil(ty: t) -> bool { get(ty).struct == ty_nil }
 
 fn type_is_bot(ty: t) -> bool { get(ty).struct == ty_bot }
 
-fn type_is_var(ty: t) -> bool {
+fn type_is_ty_var(ty: t) -> bool {
     match get(ty).struct {
-      ty_var(_) => true,
-      _ => false
-    }
-}
-
-fn type_is_var_integral(ty: t) -> bool {
-    match get(ty).struct {
-      ty_var_integral(_) => true,
+      ty_infer(TyVar(_)) => true,
       _ => false
     }
 }
@@ -1370,7 +1383,7 @@ pure fn type_is_unique(ty: t) -> bool {
 pure fn type_is_scalar(ty: t) -> bool {
     match get(ty).struct {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_var_integral(_) | ty_type | ty_ptr(_) => true,
+      ty_infer(IntVar(_)) | ty_type | ty_ptr(_) => true,
       _ => false
     }
 }
@@ -1852,7 +1865,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // is never bounded in any way, hence it has the bottom kind.
       ty_self => kind_noncopyable(),
 
-      ty_var(_) | ty_var_integral(_) => {
+      ty_infer(_) => {
         cx.sess.bug(~"Asked to compute kind of a type variable");
       }
       ty_type | ty_opaque_closure_ptr(_)
@@ -1923,7 +1936,7 @@ fn type_size(cx: ctxt, ty: t) -> uint {
         1
       }
 
-      ty_var(_) | ty_var_integral(_) => {
+      ty_infer(_) => {
         cx.sess.bug(~"Asked to compute kind of a type variable");
       }
       ty_type | ty_opaque_closure_ptr(_)
@@ -1969,8 +1982,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
           ty_float(_) |
           ty_estr(_) |
           ty_fn(_) |
-          ty_var(_) |
-          ty_var_integral(_) |
+          ty_infer(_) |
           ty_param(_) |
           ty_self |
           ty_type |
@@ -2103,7 +2115,7 @@ fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
 
 fn type_is_integral(ty: t) -> bool {
     match get(ty).struct {
-      ty_var_integral(_) | ty_int(_) | ty_uint(_) | ty_bool => true,
+      ty_infer(IntVar(_)) | ty_int(_) | ty_uint(_) | ty_bool => true,
       _ => false
     }
 }
@@ -2176,7 +2188,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
         result = false;
       }
 
-      ty_var(*) | ty_var_integral(*) | ty_self(*) => {
+      ty_infer(*) | ty_self(*) => {
         cx.sess.bug(~"non concrete type in type_is_pod");
       }
     }
@@ -2353,8 +2365,7 @@ pure fn hash_type_structure(st: &sty) -> uint {
         hash_subty(h, f.output)
       }
       ty_self => 28u,
-      ty_var(v) => hash_uint(29u, v.to_uint()),
-      ty_var_integral(v) => hash_uint(30u, v.to_uint()),
+      ty_infer(v) => hash_uint(29u, v.to_hash()),
       ty_param(p) => hash_def(hash_uint(31u, p.idx), p.def_id),
       ty_type => 32u,
       ty_bot => 34u,
@@ -2462,21 +2473,23 @@ fn is_pred_ty(fty: t) -> bool {
     is_fn_ty(fty) && type_is_bool(ty_fn_ret(fty))
 }
 
-fn ty_var_id(typ: t) -> tv_vid {
+/*
+fn ty_var_id(typ: t) -> ty_vid {
     match get(typ).struct {
-      ty_var(vid) => return vid,
+      ty_infer(TyVar(vid)) => return vid,
       _ => { error!("ty_var_id called on non-var ty"); fail; }
     }
 }
 
-fn ty_var_integral_id(typ: t) -> tvi_vid {
+fn int_var_id(typ: t) -> int_vid {
     match get(typ).struct {
-      ty_var_integral(vid) => return vid,
+      ty_infer(IntVar(vid)) => return vid,
       _ => { error!("ty_var_integral_id called on ty other than \
                   ty_var_integral");
          fail; }
     }
 }
+*/
 
 // Type accessors for AST nodes
 fn block_ty(cx: ctxt, b: &ast::blk) -> t {
@@ -2752,15 +2765,15 @@ fn param_tys_in_type(ty: t) -> ~[param_ty] {
     rslt
 }
 
-fn occurs_check(tcx: ctxt, sp: span, vid: tv_vid, rt: t) {
+fn occurs_check(tcx: ctxt, sp: span, vid: ty_vid, rt: t) {
 
     // Returns a vec of all the type variables occurring in `ty`. It may
     // contain duplicates.  (Integral type vars aren't counted.)
-    fn vars_in_type(ty: t) -> ~[tv_vid] {
+    fn vars_in_type(ty: t) -> ~[ty_vid] {
         let mut rslt = ~[];
         do walk_ty(ty) |ty| {
             match get(ty).struct {
-              ty_var(v) => vec::push(rslt, v),
+              ty_infer(TyVar(v)) => vec::push(rslt, v),
               _ => ()
             }
         }
@@ -2876,8 +2889,8 @@ fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_trait(id, _, _) => fmt!("trait %s", item_path_str(cx, id)),
       ty_class(id, _) => fmt!("class %s", item_path_str(cx, id)),
       ty_tup(_) => ~"tuple",
-      ty_var(_) => ~"variable",
-      ty_var_integral(_) => ~"integral variable",
+      ty_infer(TyVar(_)) => ~"inferred type",
+      ty_infer(IntVar(_)) => ~"integral variable",
       ty_param(_) => ~"type parameter",
       ty_self => ~"self"
     }
@@ -3487,7 +3500,7 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     fn tycat(ty: t) -> int {
         match get(ty).struct {
           ty_bool => tycat_bool,
-          ty_int(_) | ty_uint(_) | ty_var_integral(_) => tycat_int,
+          ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) => tycat_float,
           ty_rec(_) | ty_tup(_) | ty_enum(_, _) => tycat_struct,
           ty_bot => tycat_bot,
@@ -3706,14 +3719,14 @@ impl fn_ty : cmp::Eq {
     }
 }
 
-impl tv_vid: cmp::Eq {
-    pure fn eq(&&other: tv_vid) -> bool {
+impl ty_vid: cmp::Eq {
+    pure fn eq(&&other: ty_vid) -> bool {
         *self == *other
     }
 }
 
-impl tvi_vid: cmp::Eq {
-    pure fn eq(&&other: tvi_vid) -> bool {
+impl int_vid: cmp::Eq {
+    pure fn eq(&&other: int_vid) -> bool {
         *self == *other
     }
 }
@@ -3797,6 +3810,12 @@ impl substs : cmp::Eq {
         self.self_r == other.self_r &&
         self.self_ty == other.self_ty &&
         self.tps == other.tps
+    }
+}
+
+impl InferTy : cmp::Eq {
+    pure fn eq(&&other: InferTy) -> bool {
+        self.to_hash() == other.to_hash()
     }
 }
 
@@ -3912,15 +3931,9 @@ impl sty : cmp::Eq {
                     _ => false
                 }
             }
-            ty_var(e0a) => {
+            ty_infer(e0a) => {
                 match other {
-                    ty_var(e0b) => e0a == e0b,
-                    _ => false
-                }
-            }
-            ty_var_integral(e0a) => {
-                match other {
-                    ty_var_integral(e0b) => e0a == e0b,
+                    ty_infer(e0b) => e0a == e0b,
                     _ => false
                 }
             }

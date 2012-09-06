@@ -250,8 +250,8 @@ use std::smallintmap;
 use std::smallintmap::smallintmap;
 use std::map::hashmap;
 use middle::ty;
-use middle::ty::{tv_vid, tvi_vid, region_vid, vid,
-                    ty_int, ty_uint, get, terr_fn};
+use middle::ty::{ty_vid, int_vid, region_vid, vid,
+                 ty_int, ty_uint, get, terr_fn, TyVar, IntVar};
 use syntax::{ast, ast_util};
 use syntax::ast::{ret_style, purity};
 use util::ppaux::{ty_to_str, mt_to_str};
@@ -312,25 +312,25 @@ enum infer_ctxt = @{
     // We instantiate vals_and_bindings with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    ty_var_bindings: vals_and_bindings<ty::tv_vid, bounds<ty::t>>,
+    ty_var_bindings: vals_and_bindings<ty::ty_vid, bounds<ty::t>>,
 
     // The types that might instantiate an integral type variable are
     // represented by an int_ty_set.
-    ty_var_integral_bindings: vals_and_bindings<ty::tvi_vid, int_ty_set>,
+    int_var_bindings: vals_and_bindings<ty::int_vid, int_ty_set>,
 
     // For region variables.
     region_vars: RegionVarBindings,
 
     // For keeping track of existing type and region variables.
     ty_var_counter: @mut uint,
-    ty_var_integral_counter: @mut uint,
+    int_var_counter: @mut uint,
     region_var_counter: @mut uint
 };
 
 enum fixup_err {
-    unresolved_int_ty(tvi_vid),
-    unresolved_ty(tv_vid),
-    cyclic_ty(tv_vid),
+    unresolved_int_ty(int_vid),
+    unresolved_ty(ty_vid),
+    cyclic_ty(ty_vid),
     unresolved_region(region_vid),
     region_var_bound_by_region_var(region_vid, region_vid)
 }
@@ -358,10 +358,10 @@ fn new_vals_and_bindings<V:copy, T:copy>() -> vals_and_bindings<V, T> {
 fn new_infer_ctxt(tcx: ty::ctxt) -> infer_ctxt {
     infer_ctxt(@{tcx: tcx,
                  ty_var_bindings: new_vals_and_bindings(),
-                 ty_var_integral_bindings: new_vals_and_bindings(),
+                 int_var_bindings: new_vals_and_bindings(),
                  region_vars: RegionVarBindings(tcx),
                  ty_var_counter: @mut 0u,
-                 ty_var_integral_counter: @mut 0u,
+                 int_var_counter: @mut 0u,
                  region_var_counter: @mut 0u})}
 
 fn mk_subty(cx: infer_ctxt, a_is_expected: bool, span: span,
@@ -508,7 +508,7 @@ fn rollback_to<V:copy vid, T:copy>(
 
 struct Snapshot {
     ty_var_bindings_len: uint;
-    ty_var_integral_bindings_len: uint;
+    int_var_bindings_len: uint;
     region_vars_snapshot: uint;
 }
 
@@ -532,8 +532,8 @@ impl infer_ctxt {
         Snapshot {
             ty_var_bindings_len:
                 self.ty_var_bindings.bindings.len(),
-            ty_var_integral_bindings_len:
-                self.ty_var_integral_bindings.bindings.len(),
+            int_var_bindings_len:
+                self.int_var_bindings.bindings.len(),
             region_vars_snapshot:
                 self.region_vars.start_snapshot(),
         }
@@ -543,9 +543,9 @@ impl infer_ctxt {
         debug!("rollback!");
         rollback_to(&self.ty_var_bindings, snapshot.ty_var_bindings_len);
 
-        // FIXME(#3211) -- ty_var_integral not transactional
-        //rollback_to(&self.ty_var_integral_bindings,
-        //            snapshot.ty_var_integral_bindings_len);
+        // FIXME(#3211) -- int_var not transactional
+        //rollback_to(&self.int_var_bindings,
+        //            snapshot.int_var_bindings_len);
 
         self.region_vars.rollback_to(
             snapshot.region_vars_snapshot);
@@ -563,7 +563,7 @@ impl infer_ctxt {
             // destructors but kept the vec at its currently allocated
             // length
             self.ty_var_bindings.bindings = ~[];
-            self.ty_var_integral_bindings.bindings = ~[];
+            self.int_var_bindings.bindings = ~[];
             self.region_vars.commit();
             r
         }
@@ -596,12 +596,12 @@ impl infer_ctxt {
 }
 
 impl infer_ctxt {
-    fn next_ty_var_id() -> tv_vid {
+    fn next_ty_var_id() -> ty_vid {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;
         self.ty_var_bindings.vals.insert(id,
                                          root({lb: None, ub: None}, 0u));
-        return tv_vid(id);
+        return ty_vid(id);
     }
 
     fn next_ty_var() -> ty::t {
@@ -612,17 +612,17 @@ impl infer_ctxt {
         vec::from_fn(n, |_i| self.next_ty_var())
     }
 
-    fn next_ty_var_integral_id() -> tvi_vid {
-        let id = *self.ty_var_integral_counter;
-        *self.ty_var_integral_counter += 1u;
+    fn next_int_var_id() -> int_vid {
+        let id = *self.int_var_counter;
+        *self.int_var_counter += 1u;
 
-        self.ty_var_integral_bindings.vals.insert(id,
+        self.int_var_bindings.vals.insert(id,
                               root(int_ty_set_all(), 0u));
-        return tvi_vid(id);
+        return int_vid(id);
     }
 
-    fn next_ty_var_integral() -> ty::t {
-        ty::mk_var_integral(self.tcx, self.next_ty_var_integral_id())
+    fn next_int_var() -> ty::t {
+        ty::mk_int_var(self.tcx, self.next_int_var_id())
     }
 
     fn next_region_var_nb(span: span) -> ty::region {

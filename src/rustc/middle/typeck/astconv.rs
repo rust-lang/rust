@@ -422,7 +422,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
               // If the type is not specified, then this must be a fn expr.
               // Leave the mode as infer(_), it will get inferred based
               // on constraints elsewhere.
-              ty::ty_var(_) => a.mode,
+              ty::ty_infer(_) => a.mode,
 
               // If the type is known, then use the default for that type.
               // Here we unify m and the default.  This should update the

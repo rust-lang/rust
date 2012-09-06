@@ -9,7 +9,7 @@ use middle::ty::{ty_bool, ty_bot, ty_box, ty_class, ty_enum};
 use middle::ty::{ty_estr, ty_evec, ty_float, ty_fn, ty_trait, ty_int};
 use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rec, ty_rptr, ty_self, ty_tup};
-use middle::ty::{ty_type, ty_uniq, ty_uint, ty_var, ty_var_integral};
+use middle::ty::{ty_type, ty_uniq, ty_uint, ty_infer};
 use middle::ty::{ty_unboxed_vec, vid};
 use metadata::encoder;
 use syntax::codemap;
@@ -335,8 +335,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         fn_to_str(cx, f.purity, f.proto, None, f.inputs,
                   f.output, f.ret_style)
       }
-      ty_var(v) => v.to_str(),
-      ty_var_integral(v) => v.to_str(),
+      ty_infer(infer_ty) => infer_ty.to_str(),
       ty_param({idx: id, _}) => {
         ~"'" + str::from_bytes(~[('a' as u8) + (id as u8)])
       }

@@ -113,7 +113,7 @@ fn merge_bnds<C: combine>(
 
 fn set_var_to_merged_bounds<C: combine>(
     self: &C,
-    v_id: ty::tv_vid,
+    v_id: ty::ty_vid,
     a: bounds<ty::t>,
     b: bounds<ty::t>,
     rank: uint) -> ures {
@@ -175,8 +175,8 @@ fn set_var_to_merged_bounds<C: combine>(
 /// subtle and tricky process, as described in detail at the top
 /// of infer.rs
 fn var_sub_var<C: combine>(self: &C,
-                           a_id: ty::tv_vid,
-                           b_id: ty::tv_vid) -> ures {
+                           a_id: ty::ty_vid,
+                           b_id: ty::ty_vid) -> ures {
     let vb = &self.infcx().ty_var_bindings;
 
     // Need to make sub_id a subtype of sup_id.
@@ -241,7 +241,7 @@ fn var_sub_var<C: combine>(self: &C,
 }
 
 /// make variable a subtype of T
-fn var_sub_t<C: combine>(self: &C, a_id: ty::tv_vid, b: ty::t) -> ures {
+fn var_sub_t<C: combine>(self: &C, a_id: ty::ty_vid, b: ty::t) -> ures {
 
     let vb = &self.infcx().ty_var_bindings;
     let nde_a = self.infcx().get(vb, a_id);
@@ -257,7 +257,7 @@ fn var_sub_t<C: combine>(self: &C, a_id: ty::tv_vid, b: ty::t) -> ures {
 }
 
 /// make T a subtype of variable
-fn t_sub_var<C: combine>(self: &C, a: ty::t, b_id: ty::tv_vid) -> ures {
+fn t_sub_var<C: combine>(self: &C, a: ty::t, b_id: ty::ty_vid) -> ures {
 
     let vb = &self.infcx().ty_var_bindings;
     let a_bounds = {lb: Some(a), ub: None};
@@ -294,8 +294,8 @@ fn bnds<C: combine>(
 // Integral variables
 
 impl infer_ctxt {
-    fn vars_integral(a_id: ty::tvi_vid, b_id: ty::tvi_vid) -> ures {
-        let vb = &self.ty_var_integral_bindings;
+    fn int_vars(a_id: ty::int_vid, b_id: ty::int_vid) -> ures {
+        let vb = &self.int_var_bindings;
 
         let nde_a = self.get(vb, a_id);
         let nde_b = self.get(vb, b_id);
@@ -317,18 +317,18 @@ impl infer_ctxt {
 
         // Rank optimization
         if nde_a.rank > nde_b.rank {
-            debug!("vars_integral(): a has smaller rank");
+            debug!("int_vars(): a has smaller rank");
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
             self.set(vb, a_id, root(intersection, nde_a.rank));
             self.set(vb, b_id, redirect(a_id));
         } else if nde_a.rank < nde_b.rank {
-            debug!("vars_integral(): b has smaller rank");
+            debug!("int_vars(): b has smaller rank");
             // b has greater rank, so a should redirect to b.
             self.set(vb, b_id, root(intersection, nde_b.rank));
             self.set(vb, a_id, redirect(b_id));
         } else {
-            debug!("vars_integral(): a and b have equal rank");
+            debug!("int_vars(): a and b have equal rank");
             assert nde_a.rank == nde_b.rank;
             // If equal, just redirect one to the other and increment
             // the other's rank.  We choose arbitrarily to redirect b
@@ -340,10 +340,10 @@ impl infer_ctxt {
         uok()
     }
 
-    fn var_integral_sub_t(a_id: ty::tvi_vid, b: ty::t) -> ures {
+    fn int_var_sub_t(a_id: ty::int_vid, b: ty::t) -> ures {
         assert ty::type_is_integral(b);
 
-        let vb = &self.ty_var_integral_bindings;
+        let vb = &self.int_var_bindings;
         let nde_a = self.get(vb, a_id);
         let a_id = nde_a.root;
         let a_pt = nde_a.possible_types;
@@ -358,9 +358,9 @@ impl infer_ctxt {
         uok()
     }
 
-    fn t_sub_var_integral(a: ty::t, b_id: ty::tvi_vid) -> ures {
+    fn t_sub_int_var(a: ty::t, b_id: ty::int_vid) -> ures {
         assert ty::type_is_integral(a);
-        let vb = &self.ty_var_integral_bindings;
+        let vb = &self.int_var_bindings;
 
         let nde_b = self.get(vb, b_id);
         let b_id = nde_b.root;
