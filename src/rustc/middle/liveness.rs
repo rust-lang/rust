@@ -1461,7 +1461,15 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
             match ty::resolved_mode(self.tcx, arg_ty.mode) {
                 by_val | by_copy | by_ref => {}
                 by_move => {
-                    self.check_move_from_expr(*arg_expr, vt);
+                    if ty::expr_is_lval(self.tcx, self.ir.method_map,
+                                        *arg_expr) {
+                        // Probably a bad error message (what's an rvalue?)
+                        // but I can't think of anything better
+                        self.tcx.sess.span_err(arg_expr.span,
+                          #fmt("Move mode argument must be an rvalue: try \
+                          (move %s) instead", expr_to_str(*arg_expr,
+                                                self.tcx.sess.intr())));
+                    }
                 }
             }
         }
