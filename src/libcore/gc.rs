@@ -1,3 +1,30 @@
+/*! Precise Garbage Collector
+
+The precise GC exposes two functions, gc and
+cleanup_stack_for_failure. The gc function is the entry point to the
+garbage collector itself. The cleanup_stack_for_failure is the entry
+point for GC-based cleanup.
+
+Precise GC depends on changes to LLVM's GC which add support for
+automatic rooting and addrspace-based metadata marking. Rather than
+explicitly rooting pointers with LLVM's gcroot intrinsic, the GC
+merely creates allocas for pointers, and allows an LLVM pass to
+automatically infer roots based on the allocas present in a function
+(and live at a given location). The compiler communicates the type of
+the pointer to LLVM by setting the addrspace of the pointer type. The
+compiler then emits a map from addrspace to tydesc, which LLVM then
+uses to match pointers with their tydesc. The GC reads the metadata
+table produced by LLVM, and uses it to determine which glue functions
+to call to free objects on their respective heaps.
+
+GC-based cleanup is a replacement for landing pads which relies on the
+GC infrastructure to find pointers on the stack to cleanup. Whereas
+the normal GC needs to walk task-local heap allocations, the cleanup
+code needs to walk exchange heap allocations and stack-allocations
+with destructors.
+
+*/
+
 import stackwalk::Word;
 import libc::size_t;
 import libc::uintptr_t;
@@ -27,6 +54,7 @@ extern mod rustrt {
     fn rust_get_stack_segment() -> *StackSegment;
 }
 
+// Is fp contained in segment?
 unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
     let begin: Word = unsafe::reinterpret_cast(&segment);
     let end: Word = unsafe::reinterpret_cast(&(*segment).end);
@@ -37,6 +65,8 @@ unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
 
 type SafePoint = { sp_meta: *Word, fn_meta: *Word };
 
+// Returns the safe point metadata for the given program counter, if
+// any.
 unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
     let module_meta = rustrt::rust_gc_metadata();
     let num_safe_points_ptr: *u32 = unsafe::reinterpret_cast(&module_meta);
@@ -48,6 +78,7 @@ unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
         return None;
     }
 
+    // FIXME (#2997): Use binary rather than linear search.
     let mut sp = 0 as Word;
     while sp < num_safe_points {
         let sp_loc = *ptr::offset(safe_points, sp*3) as *Word;
@@ -74,6 +105,8 @@ unsafe fn align_to_pointer<T>(ptr: *T) -> *T {
     return unsafe::reinterpret_cast(&ptr);
 }
 
+// Walks the list of roots for the given safe point, and calls visitor
+// on each root.
 unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
     let fp_bytes: *u8 = unsafe::reinterpret_cast(&fp);
     let sp_meta_u32s: *u32 = unsafe::reinterpret_cast(&sp.sp_meta);
@@ -127,6 +160,10 @@ const stack:           Memory = 4;
 
 const need_cleanup:    Memory = exchange_heap | stack;
 
+// Find and return the segment containing the given frame pointer. At
+// stack segment boundaries, returns true for boundary, so that the
+// caller can do any special handling to identify where the correct
+// return address is in the stack frame.
 unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
     -> {segment: *StackSegment, boundary: bool} {
     // Check if frame is in either current frame or previous frame.
@@ -154,6 +191,8 @@ unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
     return {segment: segment, boundary: false};
 }
 
+// Walks stack, searching for roots of the requested type, and passes
+// each root to the visitor.
 unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
     let mut segment = rustrt::rust_get_stack_segment();
     let mut last_ret: *Word = ptr::null();
@@ -168,6 +207,15 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
             let {segment: next_segment, boundary: boundary} =
                 find_segment_for_frame(frame.fp, segment);
             segment = next_segment;
+            // Each stack segment is bounded by a morestack frame. The
+            // morestack frame includes two return addresses, one for
+            // morestack itself, at the normal offset from the frame
+            // pointer, and then a second return address for the
+            // function prologue (which called morestack after
+            // determining that it had hit the end of the stack).
+            // Since morestack itself takes two parameters, the offset
+            // for this second return address is 3 greater than the
+            // return address for morestack.
             let ret_offset = if boundary { 4 } else { 1 };
             last_ret = *ptr::offset(frame.fp, ret_offset) as *Word;
 
@@ -238,6 +286,10 @@ fn expect_sentinel() -> bool { true }
 #[cfg(nogc)]
 fn expect_sentinel() -> bool { false }
 
+// Entry point for GC-based cleanup. Walks stack looking for exchange
+// heap and stack allocations requiring drop, and runs all
+// destructors.
+//
 // This should only be called from fail, as it will drop the roots
 // which are *live* on the stack, rather than dropping those that are
 // dead.
