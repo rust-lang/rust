@@ -1330,7 +1330,7 @@ This code creates a closure that adds a given string to its argument,
 returns it from a function, and then calls it:
 
 ~~~~
-use std;
+extern mod std;
 
 fn mk_appender(suffix: ~str) -> fn@(~str) -> ~str {
     return fn@(s: ~str) -> ~str { s + suffix };
@@ -1680,9 +1680,10 @@ content to the `poultry` module itself.
 
 ## Using other crates
 
-Having compiled a crate that contains the `#[crate_type = "lib"]` attribute,
-you can use it in another crate with a `use` directive. We've already seen
-`use std` in several of the examples, which loads in the [standard library][std].
+Having compiled a crate that contains the `#[crate_type = "lib"]`
+attribute, you can use it in another crate with a `use`
+directive. We've already seen `extern mod std` in several of the
+examples, which loads in the [standard library][std].
 
 [std]: http://doc.rust-lang.org/doc/std/index/General.html
 
@@ -1738,7 +1739,7 @@ fn world() -> ~str { ~"world" }
 
 ~~~~ {.ignore}
 // main.rs
-use std;
+extern mod std;
 use mylib;
 fn main() { io::println(~"hello " + mylib::world()); }
 ~~~~
@@ -2254,7 +2255,7 @@ Tests can be interspersed with other code, and annotated with the
 ~~~~{.xfail-test}
 # // FIXME: xfailed because test_twice is a #[test] function it's not
 # // getting compiled
-use std;
+extern mod std;
 
 fn twice(x: int) -> int { x + x }
 
@@ -2302,7 +2303,7 @@ To indicate that a test is supposed to fail instead of pass, you can
 give it a `#[should_fail]` attribute.
 
 ~~~~
-use std;
+extern mod std;
 
 fn divide(a: float, b: float) -> float {
     if b == 0f { fail; }
