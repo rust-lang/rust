@@ -21,7 +21,6 @@ Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
 Chris Double <chris.double@double.co.nz>
 Chris Peterson <cpeterson@mozilla.com>
-Coppola Ivano <rgbfirefox@gmail.com>
 Damian Gryski <damian@gryski.com>
 Damien Grassart <damien@grassart.com>
 Daniel Brooks <db48x@db48x.net>
@@ -42,6 +41,7 @@ Graham Fawcett <fawcett@uwindsor.ca>
 Grahame Bowland <grahame@angrygoats.net>
 Haitao Li <lihaitao@gmail.com>
 Ian D. Bollinger <ian.bollinger@gmail.com>
+Ivano Coppola <rgbfirefox@gmail.com>
 Jacob Parker <j3parker@csclub.uwaterloo.ca>
 Jason Orendorff <jorendorff@mozilla.com>
 Jed Davis <jld@panix.com>
