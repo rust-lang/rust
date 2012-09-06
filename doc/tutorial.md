@@ -1951,8 +1951,8 @@ whose element type does not have a `to_str` implementation in scope.
 
 ## Polymorphic traits
 
-Traits may contain type parameters. This defines a trait for
-generalized sequence types:
+Traits may contain type parameters. A trait for
+generalized sequence types is:
 
 ~~~~
 trait seq<T> {
@@ -1967,11 +1967,8 @@ impl<T> ~[T]: seq<T> {
 }
 ~~~~
 
-Note that the implementation has to explicitly declare the type
-parameter that it binds, `T`, before using it to specify its trait type. This is
-needed because it could also, for example, specify an implementation
-of `seq<int>`—the `of` clause *refers* to a type, rather than defining
-one.
+The implementation has to explicitly declare the type
+parameter that it binds, `T`, before using it to specify its trait type. Rust requires this declaration because the `impl` could also, for example, specify an implementation of `seq<int>`. The trait type -- appearing after the colon in the `impl` -- *refers* to a type, rather than defining one.
 
 The type parameters bound by a trait are in scope in each of the
 method declarations. So, re-declaring the type parameter
@@ -2066,7 +2063,7 @@ more expensive than statically resolved method calls.
 
 If you only intend to use an implementation for static overloading,
 and there is no trait available that it conforms to, you are free
-to leave off the `of` clause.  However, this is only possible when you
+to leave off the type after the colon.  However, this is only possible when you
 are defining an implementation in the same module as the receiver
 type, and the receiver type is a named type (i.e., an enum or a
 class); [single-variant enums](#single_variant_enum) are a common

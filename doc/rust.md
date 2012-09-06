@@ -1309,8 +1309,8 @@ the same time.
 It is possible to define an implementation without referring to a
 trait.  The methods in such an implementation can only be used
 statically (as direct calls on the values of the type that the
-implementation targets). In such an implementation, the `of` clause is
-not given, and the name is mandatory.  Such implementations are
+implementation targets). In such an implementation, the type after the colon is omitted,
+and the name is mandatory.  Such implementations are
 limited to nominal types (enums, structs) and the implementation must
 appear in the same module or a sub-module as the receiver type.
 
