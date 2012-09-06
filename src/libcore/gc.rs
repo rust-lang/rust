@@ -54,46 +54,6 @@ extern mod rustrt {
     fn rust_get_stack_segment() -> *StackSegment;
 }
 
-// Is fp contained in segment?
-unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
-    let begin: Word = unsafe::reinterpret_cast(&segment);
-    let end: Word = unsafe::reinterpret_cast(&(*segment).end);
-    let frame: Word = unsafe::reinterpret_cast(&fp);
-
-    return begin <= frame && frame <= end;
-}
-
-type SafePoint = { sp_meta: *Word, fn_meta: *Word };
-
-// Returns the safe point metadata for the given program counter, if
-// any.
-unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
-    let module_meta = rustrt::rust_gc_metadata();
-    let num_safe_points_ptr: *u32 = unsafe::reinterpret_cast(&module_meta);
-    let num_safe_points = *num_safe_points_ptr as Word;
-    let safe_points: *Word =
-        ptr::offset(unsafe::reinterpret_cast(&module_meta), 1);
-
-    if ptr::is_null(pc) {
-        return None;
-    }
-
-    // FIXME (#2997): Use binary rather than linear search.
-    let mut sp = 0 as Word;
-    while sp < num_safe_points {
-        let sp_loc = *ptr::offset(safe_points, sp*3) as *Word;
-        if sp_loc == pc {
-            return Some(
-                {sp_meta: *ptr::offset(safe_points, sp*3 + 1) as *Word,
-                 fn_meta: *ptr::offset(safe_points, sp*3 + 2) as *Word});
-        }
-        sp += 1;
-    }
-    return None;
-}
-
-type Visitor = fn(root: **Word, tydesc: *Word) -> bool;
-
 unsafe fn bump<T, U>(ptr: *T, count: uint) -> *U {
     return unsafe::reinterpret_cast(&ptr::offset(ptr, count));
 }
@@ -105,23 +65,47 @@ unsafe fn align_to_pointer<T>(ptr: *T) -> *T {
     return unsafe::reinterpret_cast(&ptr);
 }
 
+type SafePoint = { sp_meta: *Word, fn_meta: *Word };
+
+// Returns the safe point metadata for the given program counter, if
+// any.
+unsafe fn is_safe_point(pc: *Word) -> Option<SafePoint> {
+    let module_meta = rustrt::rust_gc_metadata();
+    let num_safe_points = *module_meta;
+    let safe_points: *Word = bump(module_meta, 1);
+
+    if ptr::is_null(pc) {
+        return None;
+    }
+
+    // FIXME (#2997): Use binary rather than linear search.
+    let mut spi = 0;
+    while spi < num_safe_points {
+        let sp: **Word = bump(safe_points, spi*3);
+        let sp_loc = *sp;
+        if sp_loc == pc {
+            return Some({sp_meta: *bump(sp, 1), fn_meta: *bump(sp, 2)});
+        }
+        spi += 1;
+    }
+    return None;
+}
+
+type Visitor = fn(root: **Word, tydesc: *Word) -> bool;
+
 // Walks the list of roots for the given safe point, and calls visitor
 // on each root.
 unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
     let fp_bytes: *u8 = unsafe::reinterpret_cast(&fp);
-    let sp_meta_u32s: *u32 = unsafe::reinterpret_cast(&sp.sp_meta);
+    let sp_meta: *u32 = unsafe::reinterpret_cast(&sp.sp_meta);
 
-    let num_stack_roots = *sp_meta_u32s as uint;
-    let num_reg_roots = *ptr::offset(sp_meta_u32s, 1) as uint;
+    let num_stack_roots = *sp_meta as uint;
+    let num_reg_roots = *ptr::offset(sp_meta, 1) as uint;
 
-    let stack_roots: *u32 =
-        unsafe::reinterpret_cast(&ptr::offset(sp_meta_u32s, 2));
-    let reg_roots: *u8 =
-        unsafe::reinterpret_cast(&ptr::offset(stack_roots, num_stack_roots));
-    let addrspaces: *Word =
-        unsafe::reinterpret_cast(&ptr::offset(reg_roots, num_reg_roots));
-    let tydescs: ***Word =
-        unsafe::reinterpret_cast(&ptr::offset(addrspaces, num_stack_roots));
+    let stack_roots: *u32 = bump(sp_meta, 2);
+    let reg_roots: *u8 = bump(stack_roots, num_stack_roots);
+    let addrspaces: *Word = align_to_pointer(bump(reg_roots, num_reg_roots));
+    let tydescs: ***Word = bump(addrspaces, num_stack_roots);
 
     // Stack roots
     let mut sri = 0;
@@ -152,13 +136,14 @@ unsafe fn walk_safe_point(fp: *Word, sp: SafePoint, visitor: Visitor) {
     }
 }
 
-type Memory = uint;
+// Is fp contained in segment?
+unsafe fn is_frame_in_segment(fp: *Word, segment: *StackSegment) -> bool {
+    let begin: Word = unsafe::reinterpret_cast(&segment);
+    let end: Word = unsafe::reinterpret_cast(&(*segment).end);
+    let frame: Word = unsafe::reinterpret_cast(&fp);
 
-const task_local_heap: Memory = 1;
-const exchange_heap:   Memory = 2;
-const stack:           Memory = 4;
-
-const need_cleanup:    Memory = exchange_heap | stack;
+    return begin <= frame && frame <= end;
+}
 
 // Find and return the segment containing the given frame pointer. At
 // stack segment boundaries, returns true for boundary, so that the
@@ -190,6 +175,14 @@ unsafe fn find_segment_for_frame(fp: *Word, segment: *StackSegment)
     // Otherwise, we're somewhere on the inside of the frame.
     return {segment: segment, boundary: false};
 }
+
+type Memory = uint;
+
+const task_local_heap: Memory = 1;
+const exchange_heap:   Memory = 2;
+const stack:           Memory = 4;
+
+const need_cleanup:    Memory = exchange_heap | stack;
 
 // Walks stack, searching for roots of the requested type, and passes
 // each root to the visitor.
