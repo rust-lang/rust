@@ -181,8 +181,7 @@ fn to_str_common(num: float, digits: uint, exact: bool) -> ~str {
     } else {
         acc = sign + ones + ~"." + racc;
     }
-
-    return acc;
+    move acc
 }
 
 /**
