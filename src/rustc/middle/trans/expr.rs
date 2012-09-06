@@ -206,6 +206,18 @@ fn trans_to_datum(bcx: block, expr: @ast::expr) -> DatumBlock {
             } else {
                 let scratch = scratch_datum(bcx, ty, false);
                 bcx = trans_rvalue_dps(bcx, expr, SaveIn(scratch.val));
+
+                // Note: this is not obviously a good idea.  It causes
+                // immediate values to be loaded immediately after a
+                // return from a call or other similar expression,
+                // which in turn leads to alloca's having shorter
+                // lifetimes and hence larger stack frames.  However,
+                // in turn it can lead to more register pressure.
+                // Still, in practice it seems to increase
+                // performance, since we have fewer problems with
+                // morestack churn.
+                let scratch = scratch.to_appropriate_datum(bcx);
+
                 scratch.add_clean(bcx);
                 return DatumBlock {bcx: bcx, datum: scratch};
             }
