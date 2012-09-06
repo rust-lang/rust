@@ -377,7 +377,7 @@ more detail later on (the `T`s here stand for any other type):
   : Tuple type. Any arity above 1 is supported.
 
 `@T`, `~T`, `&T`
-  : Pointer types.
+  : Pointer types. See [Boxes and pointers](#boxes-and-pointers) for an explanation of what `@`, `~`, and `&` mean.
 
 Some types can only be manipulated by pointer, never directly. For instance,
 you cannot refer to a string (`str`); instead you refer to a pointer to a
