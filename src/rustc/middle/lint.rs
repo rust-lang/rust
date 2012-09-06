@@ -53,6 +53,7 @@ enum lint {
     deprecated_mode,
     deprecated_pattern,
     non_camel_case_types,
+    structural_records,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -169,6 +170,11 @@ fn get_lint_dict() -> lint_dict {
         (~"heap_memory",
          @{lint: heap_memory,
            desc: ~"use of any (~ type or @ type) heap memory",
+           default: allow}),
+
+        (~"structural_records",
+         @{lint: structural_records,
+           desc: ~"use of any structural records",
            default: allow}),
 
         /* FIXME(#3266)--make liveness warnings lintable
@@ -380,6 +386,7 @@ fn check_item(i: @ast::item, cx: ty::ctxt) {
     check_item_path_statement(cx, i);
     check_item_non_camel_case_types(cx, i);
     check_item_heap(cx, i);
+    check_item_structural_records(cx, i);
 }
 
 // Take a visitor, and modify it so that it will not proceed past subitems.
@@ -407,6 +414,23 @@ fn check_item_while_true(cx: ty::ctxt, it: @ast::item) {
              }
              _ => ()
           }
+        },
+        .. *visit::default_simple_visitor()
+    }));
+    visit::visit_item(it, (), visit);
+}
+
+fn check_item_structural_records(cx: ty::ctxt, it: @ast::item) {
+    let visit = item_stopping_visitor(visit::mk_simple_visitor(@{
+        visit_expr: fn@(e: @ast::expr) {
+           match e.node {
+             ast::expr_rec(*) =>
+                 cx.sess.span_lint(
+                                structural_records, e.id, it.id,
+                                e.span,
+                                ~"structural records are deprecated"),
+               _ => ()
+           }
         },
         .. *visit::default_simple_visitor()
     }));
