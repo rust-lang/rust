@@ -75,7 +75,7 @@ impl Assign {
                 Ok(None)
             }
 
-            (ty::ty_var(a_id), ty::ty_var(b_id)) => {
+            (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
                 let nde_a = self.infcx.get(&self.infcx.ty_var_bindings, a_id);
                 let nde_b = self.infcx.get(&self.infcx.ty_var_bindings, b_id);
                 let a_bounds = nde_a.possible_types;
@@ -86,7 +86,7 @@ impl Assign {
                 self.assign_tys_or_sub(a, b, a_bnd, b_bnd)
             }
 
-            (ty::ty_var(a_id), _) => {
+            (ty::ty_infer(TyVar(a_id)), _) => {
                 let nde_a = self.infcx.get(&self.infcx.ty_var_bindings, a_id);
                 let a_bounds = nde_a.possible_types;
 
@@ -94,7 +94,7 @@ impl Assign {
                 self.assign_tys_or_sub(a, b, a_bnd, Some(b))
             }
 
-            (_, ty::ty_var(b_id)) => {
+            (_, ty::ty_infer(TyVar(b_id))) => {
                 let nde_b = self.infcx.get(&self.infcx.ty_var_bindings, b_id);
                 let b_bounds = nde_b.possible_types;
 

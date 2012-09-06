@@ -55,7 +55,7 @@ type resolve_state_ = {
     infcx: infer_ctxt,
     modes: uint,
     mut err: Option<fixup_err>,
-    mut v_seen: ~[tv_vid]
+    mut v_seen: ~[ty_vid]
 };
 
 enum resolve_state {
@@ -113,11 +113,11 @@ impl resolve_state {
             if !ty::type_needs_infer(typ) { return typ; }
 
             match ty::get(typ).struct {
-              ty::ty_var(vid) => {
+              ty::ty_infer(TyVar(vid)) => {
                 self.resolve_ty_var(vid)
               }
-              ty::ty_var_integral(vid) => {
-                self.resolve_ty_var_integral(vid)
+              ty::ty_infer(IntVar(vid)) => {
+                self.resolve_int_var(vid)
               }
               _ => {
                 if !self.should(resolve_rvar) &&
@@ -169,7 +169,7 @@ impl resolve_state {
         }
     }
 
-    fn resolve_ty_var(vid: tv_vid) -> ty::t {
+    fn resolve_ty_var(vid: ty_vid) -> ty::t {
         if vec::contains(self.v_seen, vid) {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
@@ -202,12 +202,12 @@ impl resolve_state {
         }
     }
 
-    fn resolve_ty_var_integral(vid: tvi_vid) -> ty::t {
+    fn resolve_int_var(vid: int_vid) -> ty::t {
         if !self.should(resolve_ivar) {
-            return ty::mk_var_integral(self.infcx.tcx, vid);
+            return ty::mk_int_var(self.infcx.tcx, vid);
         }
 
-        let nde = self.infcx.get(&self.infcx.ty_var_integral_bindings, vid);
+        let nde = self.infcx.get(&self.infcx.int_var_bindings, vid);
         let pt = nde.possible_types;
 
         // If there's only one type in the set of possible types, then
@@ -219,13 +219,13 @@ impl resolve_state {
                 // As a last resort, default to int.
                 let ty = ty::mk_int(self.infcx.tcx);
                 self.infcx.set(
-                    &self.infcx.ty_var_integral_bindings, vid,
+                    &self.infcx.int_var_bindings, vid,
                     root(convert_integral_ty_to_int_ty_set(self.infcx.tcx,
                                                            ty),
                         nde.rank));
                 ty
             } else {
-                ty::mk_var_integral(self.infcx.tcx, vid)
+                ty::mk_int_var(self.infcx.tcx, vid)
             }
           }
         }

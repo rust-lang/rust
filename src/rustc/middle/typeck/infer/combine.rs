@@ -345,8 +345,8 @@ fn super_tys<C:combine>(
       // The "subtype" ought to be handling cases involving bot or var:
       (ty::ty_bot, _) |
       (_, ty::ty_bot) |
-      (ty::ty_var(_), _) |
-      (_, ty::ty_var(_)) => {
+      (ty::ty_infer(TyVar(_)), _) |
+      (_, ty::ty_infer(TyVar(_))) => {
         tcx.sess.bug(
             fmt!("%s: bot and var types should have been handled (%s,%s)",
                  self.tag(),
@@ -355,16 +355,16 @@ fn super_tys<C:combine>(
       }
 
       // Relate integral variables to other types
-      (ty::ty_var_integral(a_id), ty::ty_var_integral(b_id)) => {
-        self.infcx().vars_integral(a_id, b_id).then(|| Ok(a) )
+      (ty::ty_infer(IntVar(a_id)), ty::ty_infer(IntVar(b_id))) => {
+        self.infcx().int_vars(a_id, b_id).then(|| Ok(a) )
       }
-      (ty::ty_var_integral(a_id), ty::ty_int(_)) |
-      (ty::ty_var_integral(a_id), ty::ty_uint(_)) => {
-        self.infcx().var_integral_sub_t(a_id, b).then(|| Ok(a) )
+      (ty::ty_infer(IntVar(a_id)), ty::ty_int(_)) |
+      (ty::ty_infer(IntVar(a_id)), ty::ty_uint(_)) => {
+        self.infcx().int_var_sub_t(a_id, b).then(|| Ok(a) )
       }
-      (ty::ty_int(_), ty::ty_var_integral(b_id)) |
-      (ty::ty_uint(_), ty::ty_var_integral(b_id)) => {
-        self.infcx().t_sub_var_integral(a, b_id).then(|| Ok(a) )
+      (ty::ty_int(_), ty::ty_infer(IntVar(b_id))) |
+      (ty::ty_uint(_), ty::ty_infer(IntVar(b_id))) => {
+        self.infcx().t_sub_int_var(a, b_id).then(|| Ok(a) )
       }
 
       (ty::ty_int(_), _) |

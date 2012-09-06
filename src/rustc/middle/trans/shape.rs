@@ -363,7 +363,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         ~[shape_bare_fn],
       ty::ty_opaque_closure_ptr(_) =>
         ~[shape_opaque_closure_ptr],
-      ty::ty_var(_) | ty::ty_var_integral(_) | ty::ty_self =>
+      ty::ty_infer(_) | ty::ty_self =>
         ccx.sess.bug(~"shape_of: unexpected type struct found")
     }
 }

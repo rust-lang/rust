@@ -105,13 +105,13 @@ impl Sub: combine {
               (ty::ty_bot, _) => {
                 Ok(a)
               }
-              (ty::ty_var(a_id), ty::ty_var(b_id)) => {
+              (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
                 var_sub_var(&self, a_id, b_id).then(|| Ok(a) )
               }
-              (ty::ty_var(a_id), _) => {
+              (ty::ty_infer(TyVar(a_id)), _) => {
                 var_sub_t(&self, a_id, b).then(|| Ok(a) )
               }
-              (_, ty::ty_var(b_id)) => {
+              (_, ty::ty_infer(TyVar(b_id))) => {
                 t_sub_var(&self, a, b_id).then(|| Ok(a) )
               }
               (_, ty::ty_bot) => {

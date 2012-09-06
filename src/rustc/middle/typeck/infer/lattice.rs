@@ -46,17 +46,17 @@ fn lattice_tys<L:lattice_ops combine>(
           (ty::ty_bot, _) => self.ty_bot(b),
           (_, ty::ty_bot) => self.ty_bot(a),
 
-          (ty::ty_var(a_id), ty::ty_var(b_id)) => {
+          (ty::ty_infer(TyVar(a_id)), ty::ty_infer(TyVar(b_id))) => {
             lattice_vars(self, a, a_id, b_id,
                          |x, y| self.tys(x, y) )
           }
 
-          (ty::ty_var(a_id), _) => {
+          (ty::ty_infer(TyVar(a_id)), _) => {
             lattice_var_and_t(self, a_id, b,
                               |x, y| self.tys(x, y) )
           }
 
-          (_, ty::ty_var(b_id)) => {
+          (_, ty::ty_infer(TyVar(b_id))) => {
             lattice_var_and_t(self, b_id, a,
                               |x, y| self.tys(x, y) )
           }
@@ -68,7 +68,7 @@ fn lattice_tys<L:lattice_ops combine>(
 }
 
 fn lattice_vars<L:lattice_ops combine>(
-    self: &L, +a_t: ty::t, +a_vid: ty::tv_vid, +b_vid: ty::tv_vid,
+    self: &L, +a_t: ty::t, +a_vid: ty::ty_vid, +b_vid: ty::ty_vid,
     c_ts: fn(ty::t, ty::t) -> cres<ty::t>) -> cres<ty::t> {
 
     // The comments in this function are written for LUB and types,
@@ -112,7 +112,7 @@ fn lattice_vars<L:lattice_ops combine>(
 }
 
 fn lattice_var_and_t<L:lattice_ops combine>(
-    self: &L, a_id: ty::tv_vid, b: ty::t,
+    self: &L, a_id: ty::ty_vid, b: ty::t,
     c_ts: fn(ty::t, ty::t) -> cres<ty::t>) -> cres<ty::t> {
 
     let vb = &self.infcx().ty_var_bindings;

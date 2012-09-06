@@ -12,9 +12,9 @@ use middle::ty::{get, lookup_item_type, subst, t, ty_box};
 use middle::ty::{ty_uniq, ty_ptr, ty_rptr, ty_enum};
 use middle::ty::{ty_class, ty_nil, ty_bot, ty_bool, ty_int, ty_uint};
 use middle::ty::{ty_float, ty_estr, ty_evec, ty_rec};
-use middle::ty::{ty_fn, ty_trait, ty_tup, ty_var, ty_var_integral};
+use middle::ty::{ty_fn, ty_trait, ty_tup, ty_infer};
 use middle::ty::{ty_param, ty_self, ty_type, ty_opaque_box};
-use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_var};
+use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec, type_is_ty_var};
 use middle::typeck::infer::{infer_ctxt, can_mk_subty};
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use syntax::ast::{crate, def_id, def_mod};
@@ -43,7 +43,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
     match resolve_type(inference_context,
                      original_type,
                      resolve_ivar) {
-        Ok(resulting_type) if !type_is_var(resulting_type) => {
+        Ok(resulting_type) if !type_is_ty_var(resulting_type) => {
             resolved_type = resulting_type;
         }
         _ => {
@@ -72,7 +72,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
 
         ty_nil | ty_bot | ty_bool | ty_int(*) | ty_uint(*) | ty_float(*) |
         ty_estr(*) | ty_evec(*) | ty_rec(*) |
-        ty_fn(*) | ty_tup(*) | ty_var(*) | ty_var_integral(*) |
+        ty_fn(*) | ty_tup(*) | ty_infer(*) |
         ty_param(*) | ty_self | ty_type | ty_opaque_box |
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) => {
             debug!("(getting base type) no base type; found %?",

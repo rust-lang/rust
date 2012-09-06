@@ -274,11 +274,11 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       ty::ty_fn(f) => {
         enc_ty_fn(w, cx, f);
       }
-      ty::ty_var(id) => {
+      ty::ty_infer(ty::TyVar(id)) => {
         w.write_char('X');
         w.write_uint(id.to_uint());
       }
-      ty::ty_var_integral(id) => {
+      ty::ty_infer(ty::IntVar(id)) => {
         w.write_char('X');
         w.write_char('I');
         w.write_uint(id.to_uint());

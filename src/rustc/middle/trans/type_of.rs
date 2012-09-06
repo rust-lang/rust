@@ -171,11 +171,8 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
         common::T_named_struct(llvm_type_name(cx, a_class, did, substs.tps))
       }
       ty::ty_self => cx.tcx.sess.unimpl(~"type_of: ty_self"),
-      ty::ty_var(_) => cx.tcx.sess.bug(~"type_of with ty_var"),
+      ty::ty_infer(*) => cx.tcx.sess.bug(~"type_of with ty_infer"),
       ty::ty_param(*) => cx.tcx.sess.bug(~"type_of with ty_param"),
-      ty::ty_var_integral(_) => {
-        cx.tcx.sess.bug(~"type_of shouldn't see a ty_var_integral");
-      }
     };
 
     cx.lltypes.insert(t, llty);
