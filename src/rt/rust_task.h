@@ -214,8 +214,8 @@ rust_task : public kernel_owned<rust_task>
     // that location before waking us up.
     uintptr_t* rendezvous_ptr;
 
-    memory_region local_region;
     boxed_region boxed;
+    memory_region local_region;
 
     // Indicates that fail() has been called and we are cleaning up.
     // We use this to suppress the "killed" flag during calls to yield.
