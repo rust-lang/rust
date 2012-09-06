@@ -51,8 +51,8 @@ while cur < len(lines):
         if not ignore:
             if not re.search(r"\bfn main\b", block):
                 block = "fn main() {\n" + block + "\n}\n"
-            if not re.search(r"\buse std\b", block):
-                block = "use std;\n" + block;
+            if not re.search(r"\bextern mod std\b", block):
+                block = "extern mod std;\n" + block;
             if xfail:
                 block = "// xfail-test\n" + block
             filename = (dest + "/" + str(chapter)
