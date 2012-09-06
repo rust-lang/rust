@@ -66,7 +66,7 @@
                     "do" "drop"
                     "else" "export" "extern"
                     "fail" "for"
-                    "if" "import"
+                    "if" "use"
                     "let" "log" "loop"
                     "move" "new"
                     "pure"
