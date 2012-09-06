@@ -1091,23 +1091,24 @@ struct Resolver {
         let atom = variant.node.name;
         let (child, _) = self.add_child(atom, parent, ~[ValueNS],
                                         variant.span);
+        let privacy = self.visibility_to_privacy(variant.node.vis);
 
         match variant.node.kind {
             tuple_variant_kind(_) => {
-                (*child).define_value(Public,
+                (*child).define_value(privacy,
                                       def_variant(item_id,
                                                   local_def(variant.node.id)),
                                       variant.span);
             }
             struct_variant_kind(_) => {
-                (*child).define_type(Public,
+                (*child).define_type(privacy,
                                      def_variant(item_id,
                                                  local_def(variant.node.id)),
                                      variant.span);
                 self.structs.insert(local_def(variant.node.id), false);
             }
             enum_variant_kind(enum_definition) => {
-                (*child).define_type(Public,
+                (*child).define_type(privacy,
                                      def_ty(local_def(variant.node.id)),
                                      variant.span);
                 for enum_definition.variants.each |variant| {
