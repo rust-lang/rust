@@ -373,18 +373,39 @@ impl Datum {
              self.source)
     }
 
+    fn to_value_datum(bcx: block) -> Datum {
+        /*!
+         *
+         * Yields a by-ref form of this datum.  This may involve
+         * creation of a temporary stack slot.  The value returned by
+         * this function is not separately rooted from this datum, so
+         * it will not live longer than the current datum. */
+
+        match self.mode {
+            ByValue => self,
+            ByRef => {
+                Datum {val: self.to_value_llval(bcx), mode: ByValue,
+                       ty: self.ty, source: FromRvalue}
+            }
+        }
+    }
+
     fn to_value_llval(bcx: block) -> ValueRef {
         /*!
          *
          * Yields the value itself. */
 
-        match self.mode {
-            ByValue => self.val,
-            ByRef => Load(bcx, self.val)
+        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+            C_nil()
+        } else {
+            match self.mode {
+                ByValue => self.val,
+                ByRef => Load(bcx, self.val)
+            }
         }
     }
 
-    fn to_ref(bcx: block) -> Datum {
+    fn to_ref_datum(bcx: block) -> Datum {
         /*!
          *
          * Yields a by-ref form of this datum.  This may involve
@@ -405,25 +426,52 @@ impl Datum {
         match self.mode {
             ByRef => self.val,
             ByValue => {
-                let slot = alloc_ty(bcx, self.ty);
-                Store(bcx, self.val, slot);
-                slot
+                if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+                    C_null(T_ptr(type_of::type_of(bcx.ccx(), self.ty)))
+                } else {
+                    let slot = alloc_ty(bcx, self.ty);
+                    Store(bcx, self.val, slot);
+                    slot
+                }
             }
+        }
+    }
+
+    fn appropriate_mode() -> DatumMode {
+        /*!
+         *
+         * Indicates the "appropriate" mode for this value,
+         * which is either by ref or by value, depending
+         * on whether type is iimmediate or what. */
+
+        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+            ByValue
+        } else if ty::type_is_immediate(self.ty) {
+            ByValue
+        } else {
+            ByRef
         }
     }
 
     fn to_appropriate_llval(bcx: block) -> ValueRef {
         /*!
          *
-         * Yields something that is by value if the type is immediate
-         * and by ref otherwise. */
+         * Yields an llvalue with the `appropriate_mode()`. */
 
-        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
-            self.to_value_llval(bcx)
-        } else if ty::type_is_immediate(self.ty) {
-            self.to_value_llval(bcx)
-        } else {
-            self.to_ref_llval(bcx)
+        match self.appropriate_mode() {
+            ByValue => self.to_value_llval(bcx),
+            ByRef => self.to_ref_llval(bcx)
+        }
+    }
+
+    fn to_appropriate_datum(bcx: block) -> Datum {
+        /*!
+         *
+         * Yields a datum with the `appropriate_mode()`. */
+
+        match self.appropriate_mode() {
+            ByValue => self.to_value_datum(bcx),
+            ByRef => self.to_ref_datum(bcx)
         }
     }
 
