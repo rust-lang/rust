@@ -749,7 +749,8 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
 
         // Some extra checks to detect weird cycles and so forth:
         match sty {
-            ty::ty_box(inner) | ty::ty_uniq(inner) | ty::ty_rptr(_, inner) => {
+            ty::ty_box(inner) | ty::ty_uniq(inner) |
+            ty::ty_rptr(_, inner) => {
                 match ty::get(t1).struct {
                     ty::ty_infer(ty::TyVar(v1)) => {
                         ty::occurs_check(fcx.ccx.tcx, sp, v1,
@@ -759,11 +760,12 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
                 }
             }
             ty::ty_enum(did, _) => {
-                // Watch out for a type like `enum t = @t`.  Such a type would
-                // otherwise infinitely auto-deref.  This is the only autoderef
-                // loop that needs to be concerned with this, as an error will be
-                // reported on the enum definition as well because the enum is not
-                // instantiable.
+                // Watch out for a type like `enum t = @t`.  Such a
+                // type would otherwise infinitely auto-deref.  This
+                // is the only autoderef loop that needs to be
+                // concerned with this, as an error will be reported
+                // on the enum definition as well because the enum is
+                // not instantiable.
                 if vec::contains(enum_dids, did) {
                     return t1;
                 }
