@@ -1,7 +1,9 @@
 //! Misc low level stuff
 
 use cmp::{Eq, Ord};
+use libc::c_void;
 
+export FreeGlue;
 export TypeDesc;
 export Closure;
 export get_type_desc;
@@ -12,10 +14,15 @@ export refcount;
 export log_str;
 export shape_eq, shape_lt, shape_le;
 
+type FreeGlue = fn(*TypeDesc, *c_void);
+
 // Corresponds to runtime type_desc type
 enum TypeDesc = {
     size: uint,
-    align: uint
+    align: uint,
+    take_glue: uint,
+    drop_glue: uint,
+    free_glue: uint
     // Remaining fields not listed
 };
 
