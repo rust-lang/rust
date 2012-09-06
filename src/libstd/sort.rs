@@ -307,6 +307,28 @@ mod tests {
         let v2 = merge_sort(le, v1);
         assert v2 == ~[1, 2, 3];
     }
+
+    #[test]
+    fn test_merge_sort_stability()
+    {
+        // tjc: funny that we have to use parens
+        pure fn ile(x: &(&static/str), y: &(&static/str)) -> bool
+        {
+            unchecked            // to_lower is not pure...
+            {
+                let x = x.to_lower();
+                let y = y.to_lower();
+                x <= y
+            }
+        }
+
+        let names1 = ~["joe bob", "Joe Bob", "Jack Brown", "JOE Bob",
+                       "Sally Mae", "JOE BOB", "Alex Andy"];
+        let names2 = ~["Alex Andy", "Jack Brown", "joe bob", "Joe Bob",
+                       "JOE Bob", "JOE BOB", "Sally Mae"];
+        let names3 = merge_sort(ile, names1);
+        assert names3 == names2;
+    }
 }
 
 // Local Variables:
