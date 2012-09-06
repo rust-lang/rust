@@ -197,3 +197,4 @@ rust_call_tydesc_glue
 tdefl_compress_mem_to_heap
 tinfl_decompress_mem_to_heap
 rust_annihilate_box
+rust_gc_metadata
