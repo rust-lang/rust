@@ -228,7 +228,7 @@ fn push_char(&s: ~str, ch: char) {
 pure fn from_char(ch: char) -> ~str {
     let mut buf = ~"";
     unchecked { push_char(buf, ch); }
-    return buf;
+    move buf
 }
 
 /// Convert a vector of chars to a string
@@ -238,7 +238,7 @@ pure fn from_chars(chs: &[char]) -> ~str {
         reserve(buf, chs.len());
         for vec::each(chs) |ch| { push_char(buf, ch); }
     }
-    return buf;
+    move buf
 }
 
 /// Appends a string slice to the back of a string, without overallocating
@@ -281,7 +281,7 @@ pure fn append(+lhs: ~str, rhs: &str) -> ~str {
     unchecked {
         push_str_no_overallocate(v, rhs);
     }
-    return v;
+    move v
 }
 
 
@@ -289,7 +289,7 @@ pure fn append(+lhs: ~str, rhs: &str) -> ~str {
 pure fn concat(v: &[~str]) -> ~str {
     let mut s: ~str = ~"";
     for vec::each(v) |ss| { unchecked { push_str(s, ss) }; }
-    return s;
+    move s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
@@ -299,7 +299,7 @@ pure fn connect(v: &[~str], sep: &str) -> ~str {
         if first { first = false; } else { unchecked { push_str(s, sep); } }
         unchecked { push_str(s, ss) };
     }
-    return s;
+    move s
 }
 
 /*
@@ -436,13 +436,11 @@ Section: Transforming strings
  *
  * The result vector is not null-terminated.
  */
-pure fn to_bytes(s: &str) -> ~[u8] {
-    unsafe {
-        let mut s_copy = from_slice(s);
-        let mut v: ~[u8] = ::unsafe::transmute(s_copy);
-        vec::unsafe::set_len(v, len(s));
-        return v;
-    }
+pure fn to_bytes(s: &str) -> ~[u8] unsafe {
+    let mut s_copy = from_slice(s);
+    let mut v: ~[u8] = ::unsafe::transmute(s_copy);
+    vec::unsafe::set_len(v, len(s));
+    move v
 }
 
 /// Work with the string as a byte slice, not including trailing null.
@@ -462,7 +460,7 @@ pure fn chars(s: &str) -> ~[char] {
         unchecked { vec::push(buf, ch); }
         i = next;
     }
-    return buf;
+    move buf
 }
 
 /**
@@ -539,7 +537,7 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
         if allow_empty || start < l {
             unsafe { vec::push(result, unsafe::slice_bytes(s, start, l) ) };
         }
-        result
+        move result
     } else {
         splitn(s, |cur| cur == sep, count)
     }
@@ -582,7 +580,7 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
     if allow_empty || start < l unchecked {
         vec::push(result, unsafe { unsafe::slice_bytes(s, start, l) });
     }
-    result
+    move result
 }
 
 // See Issue #1932 for why this is a naive search
@@ -636,7 +634,7 @@ pure fn split_str(s: &a/str, sep: &b/str) -> ~[~str] {
     do iter_between_matches(s, sep) |from, to| {
         unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
     }
-    result
+    move result
 }
 
 pure fn split_str_nonempty(s: &a/str, sep: &b/str) -> ~[~str] {
@@ -646,7 +644,7 @@ pure fn split_str_nonempty(s: &a/str, sep: &b/str) -> ~[~str] {
             unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
         }
     }
-    result
+    move result
 }
 
 /**
@@ -665,7 +663,7 @@ pure fn lines_any(s: &str) -> ~[~str] {
         if l > 0u && s[l - 1u] == '\r' as u8 {
             unsafe { unsafe::set_len(cp, l - 1u); }
         }
-        cp
+        move cp
     })
 }
 
@@ -707,7 +705,7 @@ pure fn replace(s: &str, from: &str, to: &str) -> ~str {
         if first { first = false; } else { unchecked {push_str(result, to); }}
         unsafe { push_str(result, unsafe::slice_bytes(s, start, end)); }
     }
-    result
+    move result
 }
 
 /*
@@ -865,7 +863,7 @@ pure fn map(ss: &str, ff: fn(char) -> char) -> ~str {
             str::push_char(result, ff(cc));
         }
     }
-    result
+    move result
 }
 
 /// Iterate over the bytes in a string
@@ -1517,7 +1515,7 @@ pure fn to_utf16(s: &str) -> ~[u16] {
             vec::push_all(u, ~[w1, w2])
         }
     }
-    return u;
+    move u
 }
 
 pure fn utf16_chars(v: &[u16], f: fn(char)) {
@@ -1551,7 +1549,7 @@ pure fn from_utf16(v: &[u16]) -> ~str {
         reserve(buf, vec::len(v));
         utf16_chars(v, |ch| push_char(buf, ch));
     }
-    return buf;
+    move buf
 }
 
 
@@ -1931,7 +1929,7 @@ pure fn escape_default(s: &str) -> ~str {
         reserve_at_least(out, str::len(s));
         chars_iter(s, |c| push_str(out, char::escape_default(c)));
     }
-    return out;
+    move out
 }
 
 /// Escape each char in `s` with char::escape_unicode.
@@ -1941,7 +1939,7 @@ pure fn escape_unicode(s: &str) -> ~str {
         reserve_at_least(out, str::len(s));
         chars_iter(s, |c| push_str(out, char::escape_unicode(c)));
     }
-    return out;
+    move out
 }
 
 /// Unsafe operations

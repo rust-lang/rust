@@ -148,7 +148,7 @@ fn escape_unicode(c: char) -> ~str {
     str::push_str(out, str::from_char(c));
     for uint::range(str::len(s), pad) |_i| { str::push_str(out, ~"0"); }
     str::push_str(out, s);
-    return out;
+    move out
 }
 
 /**
