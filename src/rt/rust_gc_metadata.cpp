@@ -54,7 +54,7 @@ update_gc_metadata(const void* map) {
     if (!global_safe_points) return;
 
     uintptr_t *next = global_safe_points;
-    *(uint32_t *)next = safe_points.size();
+    *next = safe_points.size();
     next++;
     for (uint32_t i = 0; i < safe_points.size(); i++) {
         next[0] = safe_points[i].safe_point_loc;
