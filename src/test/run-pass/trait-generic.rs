@@ -5,17 +5,17 @@ impl int: to_str {
     fn to_str() -> ~str { int::str(self) }
 }
 impl ~str: to_str {
-    fn to_str() -> ~str { self }
+    fn to_str() -> ~str { copy self }
 }
 impl (): to_str {
     fn to_str() -> ~str { ~"()" }
 }
 
 trait map<T> {
-    fn map<U>(f: fn(T) -> U) -> ~[U];
+    fn map<U: copy>(f: fn(T) -> U) -> ~[U];
 }
 impl<T> ~[T]: map<T> {
-    fn map<U>(f: fn(T) -> U) -> ~[U] {
+    fn map<U: copy>(f: fn(T) -> U) -> ~[U] {
         let mut r = ~[];
         for self.each |x| { r += ~[f(x)]; }
         r
