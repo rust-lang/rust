@@ -241,17 +241,25 @@ fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
 
 fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
     debug!("kind::check_expr(%s)", expr_to_str(e, cx.tcx.sess.intr()));
+    let id_to_use = match e.node {
+        expr_index(*)|expr_assign_op(*)|
+        expr_unary(*)|expr_binary(*) => e.callee_id,
+        _ => e.id
+    };
 
     // Handle any kind bounds on type parameters
-    do option::iter(cx.tcx.node_type_substs.find(e.id)) |ts| {
+    do option::iter(cx.tcx.node_type_substs.find(id_to_use)) |ts| {
         let bounds = match e.node {
           expr_path(_) => {
             let did = ast_util::def_id_of_def(cx.tcx.def_map.get(e.id));
             ty::lookup_item_type(cx.tcx, did).bounds
           }
           _ => {
-            // Type substitions should only occur on paths and
+            // Type substitutions should only occur on paths and
             // method calls, so this needs to be a method call.
+
+            // Even though the callee_id may have been the id with
+            // node_type_substs, e.id is correct here.
             ty::method_call_bounds(cx.tcx, cx.method_map, e.id).expect(
                 ~"non path/method call expr has type substs??")
           }
@@ -265,7 +273,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
                       *bounds, (*bounds).len());
         }
         do vec::iter2(ts, *bounds) |ty, bound| {
-            check_bounds(cx, e.id, e.span, ty, bound)
+            check_bounds(cx, id_to_use, e.span, ty, bound)
         }
     }
 

@@ -1,16 +1,17 @@
 // A test case for #2548.
 
-// xfail-test
-
 struct foo {
     x: @mut int;
 
-    new(x: @mut int) { self.x = x; }
 
     drop {
         io::println("Goodbye, World!");
         *self.x += 1;
     }
+}
+
+fn foo(x: @mut int) -> foo {
+    foo { x: x }
 }
 
 fn main() {
@@ -20,7 +21,8 @@ fn main() {
         let mut res = foo(x);
         
         let mut v = ~[mut];
-        v <- ~[mut res] + v;
+        v <- ~[mut res] + v; //~ ERROR instantiating a type parameter with an incompatible type (needs `copy`, got `owned`, missing `copy`)
+        assert (v.len() == 2);
     }
 
     assert *x == 1;
