@@ -2160,8 +2160,8 @@ trait StrSlice {
     fn split_str(sep: &a/str) -> ~[~str];
     fn starts_with(needle: &a/str) -> bool;
     fn substr(begin: uint, n: uint) -> ~str;
-    fn to_lower() -> ~str;
-    fn to_upper() -> ~str;
+    pure fn to_lower() -> ~str;
+    pure fn to_upper() -> ~str;
     fn escape_default() -> ~str;
     fn escape_unicode() -> ~str;
     pure fn to_unique() -> ~str;
@@ -2262,10 +2262,10 @@ impl &str: StrSlice {
     fn substr(begin: uint, n: uint) -> ~str { substr(self, begin, n) }
     /// Convert a string to lowercase
     #[inline]
-    fn to_lower() -> ~str { to_lower(self) }
+    pure fn to_lower() -> ~str { to_lower(self) }
     /// Convert a string to uppercase
     #[inline]
-    fn to_upper() -> ~str { to_upper(self) }
+    pure fn to_upper() -> ~str { to_upper(self) }
     /// Escape each char in `s` with char::escape_default.
     #[inline]
     fn escape_default() -> ~str { escape_default(self) }
