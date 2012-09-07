@@ -1,5 +1,5 @@
-module a {}
+mod a {}
 
-module a {} //~ ERROR Duplicate definition of module a
+mod a {} //~ ERROR Duplicate definition of module a
 
 fn main() {}

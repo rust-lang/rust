@@ -2936,9 +2936,6 @@ struct parser {
         if self.is_keyword(~"mod") {
             must_be_named_mod = true;
             self.expect_keyword(~"mod");
-        } else if self.is_keyword(~"module") {
-            must_be_named_mod = true;
-            self.expect_keyword(~"module");
         } else if self.token != token::LBRACE {
             self.span_fatal(copy self.span,
                             fmt!("expected `{` or `mod` but found %s",
@@ -3244,8 +3241,7 @@ struct parser {
             }
             return self.parse_item_foreign_mod(lo, visibility, attrs,
                                                items_allowed);
-        } else if items_allowed && (self.eat_keyword(~"mod") ||
-                                    self.eat_keyword(~"module")) {
+        } else if items_allowed && self.eat_keyword(~"mod") {
             let (ident, item_, extra_attrs) = self.parse_item_mod();
             return iovi_item(self.mk_item(lo, self.last_span.hi, ident, item_,
                                           visibility,
@@ -3557,14 +3553,10 @@ struct parser {
         let expect_mod = vec::len(outer_attrs) > 0u;
 
         let lo = self.span.lo;
-        if expect_mod || self.is_keyword(~"mod") ||
-            self.is_keyword(~"module") {
+        if expect_mod || self.is_keyword(~"mod") {
 
-            if self.is_keyword(~"mod") {
-                self.expect_keyword(~"mod");
-            } else {
-                self.expect_keyword(~"module");
-            }
+            self.expect_keyword(~"mod");
+
             let id = self.parse_ident();
             match self.token {
               // mod x = "foo.rs";
@@ -3603,11 +3595,7 @@ struct parser {
         // accept seeing the terminator next, so if we do see it then fail the
         // same way parse_crate_directive would
         if vec::len(first_outer_attr) > 0u && self.token == term {
-            if self.is_keyword(~"mod") {
-                self.expect_keyword(~"mod");
-            } else {
-                self.expect_keyword(~"module");
-            }
+            self.expect_keyword(~"mod");
         }
 
         let mut cdirs: ~[@crate_directive] = ~[];
