@@ -447,13 +447,14 @@ fn trans_rvalue_dps(bcx: block, expr: @ast::expr, dest: Dest) -> block {
         ast::expr_fn_block(decl, body, cap_clause) => {
             let expr_ty = expr_ty(bcx, expr);
             match ty::get(expr_ty).struct {
-                ty::ty_fn({proto, _}) => {
+                ty::ty_fn(ref fn_ty) => {
                     debug!("translating fn_block %s with type %s",
                            expr_to_str(expr, tcx.sess.intr()),
                            ty_to_str(tcx, expr_ty));
-                    return closure::trans_expr_fn(bcx, proto, decl, body,
-                                                  expr.id, cap_clause, None,
-                                                  dest);
+                    return closure::trans_expr_fn(
+                        bcx, fn_ty.meta.proto, decl, body,
+                        expr.id, cap_clause, None,
+                        dest);
                 }
                 _ => {
                     bcx.sess().impossible_case(
@@ -463,11 +464,11 @@ fn trans_rvalue_dps(bcx: block, expr: @ast::expr, dest: Dest) -> block {
         }
         ast::expr_loop_body(blk) => {
             match ty::get(expr_ty(bcx, expr)).struct {
-                ty::ty_fn({proto, _}) => {
+                ty::ty_fn(ref fn_ty) => {
                     match blk.node {
                         ast::expr_fn_block(decl, body, cap) => {
                             return closure::trans_expr_fn(
-                                bcx, proto, decl, body, blk.id,
+                                bcx, fn_ty.meta.proto, decl, body, blk.id,
                                 cap, Some(None), dest);
                         }
                         _ => {

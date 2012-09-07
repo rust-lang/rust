@@ -659,7 +659,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
     match ty::get(fn_ty).struct {
       ty::ty_fn(fn_ty) => {
         let mut counter = 0;
-        do vec::iter2(fn_ty.inputs, decl.inputs) |arg_ty, arg_ast| {
+        do vec::iter2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {
             counter += 1;
             debug!("arg %d, ty=%s, mode=%s",
                    counter,

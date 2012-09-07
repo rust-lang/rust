@@ -2,7 +2,7 @@
 
 use coherence::get_base_type_def_id;
 use middle::resolve::{Impl, MethodInfo};
-use middle::ty::{mk_box, mk_rptr, mk_uniq};
+use middle::ty::{mk_box, mk_rptr, mk_uniq, FnTyBase, FnMeta, FnSig};
 use syntax::ast::{def_id,
                      sty_static, sty_box, sty_by_ref, sty_region, sty_uniq};
 use syntax::ast::{sty_value, by_ref, by_copy};
@@ -411,9 +411,12 @@ struct lookup {
 
     fn ty_from_did(did: ast::def_id) -> ty::t {
         match ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
-          ty::ty_fn(fty) => {
-            ty::mk_fn(self.tcx(),
-                      {proto: ty::proto_vstore(ty::vstore_box),.. fty})
+            ty::ty_fn(ref fty) => {
+                ty::mk_fn(self.tcx(), FnTyBase {
+                    meta: FnMeta {proto: ty::proto_vstore(ty::vstore_box),
+                                  ..fty.meta},
+                    sig: fty.sig
+                })
           }
           _ => fail ~"ty_from_did: not function ty"
         }
@@ -553,8 +556,11 @@ struct lookup {
 
         // a bit hokey, but the method unbound has a bare protocol, whereas
         // a.b has a protocol like fn@() (perhaps eventually fn&()):
-        let fty = ty::mk_fn(tcx, {proto: ty::proto_vstore(ty::vstore_box),
-                                  .. m.fty});
+        let fty = ty::mk_fn(tcx, FnTyBase {
+            meta: FnMeta {proto: ty::proto_vstore(ty::vstore_box),
+                          ..m.fty.meta},
+            sig: m.fty.sig
+        });
 
         self.candidates.push(
             {self_ty: self.self_ty,

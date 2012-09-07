@@ -255,38 +255,40 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).struct {
-      ty::ty_fn({purity: ast::impure_fn, proto: ty::proto_bare,
-                 inputs, output, ret_style: ast::return_val, _}) => {
-        match tcx.items.find(main_id) {
-         Some(ast_map::node_item(it,_)) => {
-             match it.node {
-               ast::item_fn(_,_,ps,_) if vec::is_not_empty(ps) => {
-                  tcx.sess.span_err(main_span,
-                    ~"main function is not allowed to have type parameters");
-                  return;
-               }
-               _ => ()
-             }
-         }
-         _ => ()
-        }
-        let mut ok = ty::type_is_nil(output);
-        let num_args = vec::len(inputs);
-        ok &= num_args == 0u || num_args == 1u &&
-              arg_is_argv_ty(tcx, inputs[0]);
-        if !ok {
-                tcx.sess.span_err(main_span,
-                   fmt!("Wrong type in main function: found `%s`, \
-                   expected `extern fn(~[str]) -> ()` \
-                   or `extern fn() -> ()`",
+        ty::ty_fn(fn_ty) => {
+            match tcx.items.find(main_id) {
+                Some(ast_map::node_item(it,_)) => {
+                    match it.node {
+                        ast::item_fn(_,_,ps,_) if vec::is_not_empty(ps) => {
+                            tcx.sess.span_err(
+                                main_span,
+                                ~"main function is not allowed \
+                                  to have type parameters");
+                            return;
+                        }
+                        _ => ()
+                    }
+                }
+                _ => ()
+            }
+            let mut ok = ty::type_is_nil(fn_ty.sig.output);
+            let num_args = vec::len(fn_ty.sig.inputs);
+            ok &= num_args == 0u || num_args == 1u &&
+                arg_is_argv_ty(tcx, fn_ty.sig.inputs[0]);
+            if !ok {
+                tcx.sess.span_err(
+                    main_span,
+                    fmt!("Wrong type in main function: found `%s`, \
+                          expected `extern fn(~[str]) -> ()` \
+                          or `extern fn() -> ()`",
                          ty_to_str(tcx, main_t)));
-         }
-      }
-      _ => {
-        tcx.sess.span_bug(main_span,
-                          ~"main has a non-function type: found `" +
+            }
+        }
+        _ => {
+            tcx.sess.span_bug(main_span,
+                              ~"main has a non-function type: found `" +
                               ty_to_str(tcx, main_t) + ~"`");
-      }
+        }
     }
 }
 

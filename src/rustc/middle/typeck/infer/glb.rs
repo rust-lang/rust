@@ -147,8 +147,16 @@ impl Glb: combine {
         super_args(&self, a, b)
     }
 
-    fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty> {
+    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
         super_fns(&self, a, b)
+    }
+
+    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
+        super_fn_metas(&self, a, b)
+    }
+
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+        super_fn_sigs(&self, a, b)
     }
 
     fn substs(did: ast::def_id,

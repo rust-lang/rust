@@ -45,6 +45,7 @@
 use check::fn_ctxt;
 use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 use rscope::{in_binding_rscope, region_scope, type_rscope};
+use ty::{FnTyBase, FnMeta, FnSig};
 
 trait ast_conv {
     fn tcx() -> ty::ctxt;
@@ -471,7 +472,7 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
     bounds: @~[ty::param_bound],
     decl: ast::fn_decl,
     expected_tys: expected_tys,
-    span: span) -> ty::fn_ty {
+    span: span) -> ty::FnTy {
 
     debug!("ty_of_fn_decl");
     do indent {
@@ -497,8 +498,14 @@ fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
 
         let proto = ast_proto_to_proto(self, rscope, span, ast_proto);
 
-        {purity: purity, proto: proto, bounds: bounds, inputs: input_tys,
-         output: output_ty, ret_style: decl.cf}
+        FnTyBase {
+            meta: FnMeta {purity: purity,
+                          proto: proto,
+                          bounds: bounds,
+                          ret_style: decl.cf},
+            sig: FnSig {inputs: input_tys,
+                        output: output_ty}
+        }
     }
 }
 

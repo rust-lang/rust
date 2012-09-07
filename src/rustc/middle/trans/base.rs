@@ -529,10 +529,10 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         let ccx = cx.ccx();
         let mut cx = cx;
         match ty::get(fn_ty).struct {
-          ty::ty_fn({inputs: args, _}) => {
+          ty::ty_fn(ref fn_ty) => {
             let mut j = 0u;
             let v_id = variant.id;
-            for vec::each(args) |a| {
+            for vec::each(fn_ty.sig.inputs) |a| {
                 let llfldp_a = GEP_enum(cx, a_tup, tid, v_id, tps, j);
                 let ty_subst = ty::subst_tps(ccx.tcx, tps, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
@@ -1984,7 +1984,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
     let main_takes_argv =
         // invariant!
         match ty::get(main_node_type).struct {
-          ty::ty_fn({inputs, _}) => inputs.len() != 0u,
+          ty::ty_fn(ref fn_ty) => fn_ty.sig.inputs.len() != 0u,
           _ => ccx.sess.span_fatal(sp, ~"main has a non-function type")
         };
 

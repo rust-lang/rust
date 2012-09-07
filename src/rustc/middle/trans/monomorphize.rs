@@ -10,6 +10,7 @@ use base::{trans_item, get_item_val, no_self, self_arg, trans_fn,
 use syntax::parse::token::special_idents;
 use type_of::type_of_fn_from_ty;
 use back::link::mangle_exported_name;
+use middle::ty::{FnTyBase, FnMeta, FnSig};
 
 fn monomorphic_fn(ccx: @crate_ctxt,
                   fn_id: ast::def_id,
@@ -198,27 +199,36 @@ fn monomorphic_fn(ccx: @crate_ctxt,
 fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
     // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
     match ty::get(ty).struct {
-      ty::ty_box(*) => {
-        Some(ty::mk_opaque_box(tcx))
-      }
-      ty::ty_fn(ref fty) => {
-        Some(ty::mk_fn(tcx, {purity: ast::impure_fn,
-                             proto: fty.proto,
-                             bounds: @~[],
-                             inputs: ~[],
-                             output: ty::mk_nil(tcx),
-                             ret_style: ast::return_val}))
-      }
-      ty::ty_trait(_, _, _) => {
-        Some(ty::mk_fn(tcx, {purity: ast::impure_fn,
-                             proto: ty::proto_vstore(ty::vstore_box),
-                             bounds: @~[],
-                             inputs: ~[],
-                             output: ty::mk_nil(tcx),
-                             ret_style: ast::return_val}))
-      }
-      ty::ty_ptr(_) => Some(ty::mk_uint(tcx)),
-      _ => None
+        ty::ty_box(*) => {
+            Some(ty::mk_opaque_box(tcx))
+        }
+        ty::ty_fn(ref fty) => {
+            Some(ty::mk_fn(
+                tcx,
+                FnTyBase {meta: FnMeta {purity: ast::impure_fn,
+                                        proto: fty.meta.proto,
+                                        bounds: @~[],
+                                        ret_style: ast::return_val},
+                          sig: FnSig {inputs: ~[],
+                                      output: ty::mk_nil(tcx)}}))
+        }
+        ty::ty_trait(_, _, _) => {
+            let box_proto = ty::proto_vstore(ty::vstore_box);
+            Some(ty::mk_fn(
+                tcx,
+                FnTyBase {meta: FnMeta {purity: ast::impure_fn,
+                                        proto: box_proto,
+                                        bounds: @~[],
+                                        ret_style: ast::return_val},
+                          sig: FnSig {inputs: ~[],
+                                      output: ty::mk_nil(tcx)}}))
+        }
+        ty::ty_ptr(_) => {
+            Some(ty::mk_uint(tcx))
+        }
+        _ => {
+            None
+        }
     }
 }
 

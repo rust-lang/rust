@@ -946,16 +946,14 @@ fn callee_modes(fcx: fn_ctxt, callee: node_id) -> ~[mode] {
     let ty = ty::type_autoderef(fcx.ccx.tcx,
                                 ty::node_id_to_type(fcx.ccx.tcx, callee));
     match ty::get(ty).struct {
-      ty::ty_fn({inputs: args, _}) {
-        let mut modes = ~[];
-        for args.each |arg| { vec::push(modes, arg.mode); }
-        return modes;
-      }
-      _ {
-        // Shouldn't happen; callee should be ty_fn.
-        fcx.ccx.tcx.sess.bug(~"non-fn callee type in callee_modes: " +
+        ty::ty_fn(ref fn_ty) {
+            return fn_ty.sig.inputs.map(|input| input.mode);
+        }
+        _ {
+            // Shouldn't happen; callee should be ty_fn.
+            fcx.ccx.tcx.sess.bug(~"non-fn callee type in callee_modes: " +
                                  util::ppaux::ty_to_str(fcx.ccx.tcx, ty));
-      }
+        }
     }
 }
 

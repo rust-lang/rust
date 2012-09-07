@@ -55,7 +55,7 @@ type resolve_state_ = {
     infcx: infer_ctxt,
     modes: uint,
     mut err: Option<fixup_err>,
-    mut v_seen: ~[ty_vid]
+    mut v_seen: ~[TyVid]
 };
 
 enum resolve_state {
@@ -153,14 +153,14 @@ impl resolve_state {
         }
     }
 
-    fn resolve_region_var(rid: region_vid) -> ty::region {
+    fn resolve_region_var(rid: RegionVid) -> ty::region {
         if !self.should(resolve_rvar) {
             return ty::re_var(rid)
         }
         self.infcx.region_vars.resolve_var(rid)
     }
 
-    fn assert_not_rvar(rid: region_vid, r: ty::region) {
+    fn assert_not_rvar(rid: RegionVid, r: ty::region) {
         match r {
           ty::re_var(rid2) => {
             self.err = Some(region_var_bound_by_region_var(rid, rid2));
@@ -169,7 +169,7 @@ impl resolve_state {
         }
     }
 
-    fn resolve_ty_var(vid: ty_vid) -> ty::t {
+    fn resolve_ty_var(vid: TyVid) -> ty::t {
         if vec::contains(self.v_seen, vid) {
             self.err = Some(cyclic_ty(vid));
             return ty::mk_var(self.infcx.tcx, vid);
@@ -202,7 +202,7 @@ impl resolve_state {
         }
     }
 
-    fn resolve_int_var(vid: int_vid) -> ty::t {
+    fn resolve_int_var(vid: IntVid) -> ty::t {
         if !self.should(resolve_ivar) {
             return ty::mk_int_var(self.infcx.tcx, vid);
         }

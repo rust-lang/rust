@@ -46,8 +46,8 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
     let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).struct {
-      ty::ty_fn({inputs, _}) => {
-        for vec::each(inputs) |arg| {
+      ty::ty_fn(ref fn_ty) => {
+        for vec::each(fn_ty.sig.inputs) |arg| {
             if arg.mode == expl(by_val) { type_needs(cx, use_repr, arg.ty); }
         }
       }

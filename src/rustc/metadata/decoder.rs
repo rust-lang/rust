@@ -585,7 +585,7 @@ fn get_enum_variants(intr: ident_interner, cdata: cmd, id: ast::node_id,
         let mut arg_tys: ~[ty::t] = ~[];
         match ty::get(ctor_ty).struct {
           ty::ty_fn(f) => {
-            for f.inputs.each |a| { vec::push(arg_tys, a.ty); }
+            for f.sig.inputs.each |a| { vec::push(arg_tys, a.ty); }
           }
           _ => { /* Nullary enum variant. */ }
         }

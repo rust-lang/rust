@@ -20,6 +20,7 @@ use util::ppaux::ty_to_str;
 use datum::*;
 use callee::*;
 use expr::{Dest, Ignore};
+use ty::{FnTyBase, FnMeta, FnSig};
 
 export link_name, trans_foreign_mod, register_foreign_fn, trans_foreign_fn,
        trans_intrinsic;
@@ -439,12 +440,12 @@ type c_stack_tys = {
 fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
                        id: ast::node_id) -> (~[TypeRef], TypeRef, ty::t) {
     match ty::get(ty::node_id_to_type(ccx.tcx, id)).struct {
-      ty::ty_fn({inputs: arg_tys, output: ret_ty, _}) => {
-        let llargtys = type_of_explicit_args(ccx, arg_tys);
-        let llretty = type_of::type_of(ccx, ret_ty);
-        (llargtys, llretty, ret_ty)
-      }
-      _ => ccx.sess.bug(~"c_arg_and_ret_lltys called on non-function type")
+        ty::ty_fn(ref fn_ty) => {
+            let llargtys = type_of_explicit_args(ccx, fn_ty.sig.inputs);
+            let llretty = type_of::type_of(ccx, fn_ty.sig.output);
+            (llargtys, llretty, fn_ty.sig.output)
+        }
+        _ => ccx.sess.bug(~"c_arg_and_ret_lltys called on non-function type")
     }
 }
 
@@ -953,20 +954,19 @@ fn trans_intrinsic(ccx: @crate_ctxt, decl: ValueRef, item: @ast::foreign_item,
         ~"frame_address" => {
             let frameaddress = ccx.intrinsics.get(~"llvm.frameaddress");
             let frameaddress_val = Call(bcx, frameaddress, ~[C_i32(0i32)]);
-            let fty = ty::mk_fn(bcx.tcx(), {
-                purity: ast::impure_fn,
-                proto:
-                    ty::proto_vstore(ty::vstore_slice(
-                        ty::re_bound(ty::br_anon(0)))),
-                bounds: @~[],
-                inputs: ~[{
-                    mode: ast::expl(ast::by_val),
-                    ty: ty::mk_imm_ptr(
-                        bcx.tcx(),
-                        ty::mk_mach_uint(bcx.tcx(), ast::ty_u8))
-                }],
-                output: ty::mk_nil(bcx.tcx()),
-                ret_style: ast::return_val
+            let star_u8 = ty::mk_imm_ptr(
+                bcx.tcx(),
+                ty::mk_mach_uint(bcx.tcx(), ast::ty_u8));
+            let fty = ty::mk_fn(bcx.tcx(), FnTyBase {
+                meta: FnMeta {purity: ast::impure_fn,
+                              proto:
+                                  ty::proto_vstore(ty::vstore_slice(
+                                      ty::re_bound(ty::br_anon(0)))),
+                              bounds: @~[],
+                              ret_style: ast::return_val},
+                sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),
+                                       ty: star_u8}],
+                            output: ty::mk_nil(bcx.tcx())}
             });
             let datum = Datum {val: get_param(decl, first_real_arg),
                                mode: ByRef, ty: fty, source: FromLvalue};

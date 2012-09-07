@@ -342,19 +342,19 @@ fn enc_purity(w: io::Writer, p: purity) {
     }
 }
 
-fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::fn_ty) {
-    enc_proto(w, cx, ft.proto);
-    enc_purity(w, ft.purity);
-    enc_bounds(w, cx, ft.bounds);
+fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
+    enc_proto(w, cx, ft.meta.proto);
+    enc_purity(w, ft.meta.purity);
+    enc_bounds(w, cx, ft.meta.bounds);
     w.write_char('[');
-    for ft.inputs.each |arg| {
+    for ft.sig.inputs.each |arg| {
         enc_mode(w, cx, arg.mode);
         enc_ty(w, cx, arg.ty);
     }
     w.write_char(']');
-    match ft.ret_style {
+    match ft.meta.ret_style {
       noreturn => w.write_char('!'),
-      _ => enc_ty(w, cx, ft.output)
+      _ => enc_ty(w, cx, ft.sig.output)
     }
 }
 

@@ -750,7 +750,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
                 encode_name(ecx, ebml_w, mty.ident);
                 encode_type_param_bounds(ebml_w, ecx, ty_m.tps);
                 encode_type(ecx, ebml_w, ty::mk_fn(tcx, mty.fty));
-                encode_family(ebml_w, purity_fn_family(mty.fty.purity));
+                encode_family(ebml_w, purity_fn_family(mty.fty.meta.purity));
                 encode_self_type(ebml_w, mty.self_ty);
                 ebml_w.end_tag();
               }

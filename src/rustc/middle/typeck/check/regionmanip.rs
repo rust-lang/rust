@@ -9,9 +9,9 @@ fn replace_bound_regions_in_fn_ty(
     tcx: ty::ctxt,
     isr: isr_alist,
     self_info: Option<self_info>,
-    fn_ty: &ty::fn_ty,
+    fn_ty: &ty::FnTy,
     mapf: fn(ty::bound_region) -> ty::region) ->
-    {isr: isr_alist, self_info: Option<self_info>, fn_ty: ty::fn_ty} {
+    {isr: isr_alist, self_info: Option<self_info>, fn_ty: ty::FnTy} {
 
     // Take self_info apart; the self_ty part is the only one we want
     // to update here.

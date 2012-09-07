@@ -283,8 +283,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
     fn method_to_str(cx: ctxt, m: method) -> ~str {
         return fn_to_str(
-            cx, m.fty.purity, m.fty.proto, Some(m.ident), m.fty.inputs,
-            m.fty.output, m.fty.ret_style) + ~";";
+            cx, m.fty.meta.purity, m.fty.meta.proto, Some(m.ident),
+            m.fty.sig.inputs, m.fty.sig.output,
+            m.fty.meta.ret_style) + ~";";
     }
     fn field_to_str(cx: ctxt, f: field) -> ~str {
         return cx.sess.str_of(f.ident) + ~": " + mt_to_str(cx, f.mt);
@@ -331,9 +332,9 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         for elems.each |elem| { vec::push(strs, ty_to_str(cx, elem)); }
         ~"(" + str::connect(strs, ~",") + ~")"
       }
-      ty_fn(f) => {
-        fn_to_str(cx, f.purity, f.proto, None, f.inputs,
-                  f.output, f.ret_style)
+      ty_fn(ref f) => {
+        fn_to_str(cx, f.meta.purity, f.meta.proto, None, f.sig.inputs,
+                  f.sig.output, f.meta.ret_style)
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_param({idx: id, _}) => {
