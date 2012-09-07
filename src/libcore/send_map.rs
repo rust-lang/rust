@@ -22,6 +22,8 @@ trait SendMap<K:Eq Hash, V: copy> {
     fn each_value_ref(&self, blk: fn(v: &V) -> bool);
     fn find(&const self, k: &K) -> Option<V>;
     fn get(&const self, k: &K) -> V;
+    fn with_find_ref<T>(&const self, k: &K, blk: fn(Option<&V>) -> T) -> T;
+    fn with_get_ref<T>(&const self, k: &K, blk: fn(v: &V) -> T) -> T;
 }
 
 /// Open addressing with linear probing.
@@ -290,6 +292,27 @@ mod linear {
         }
         */
 
+        fn with_find_ref<T>(&self, k: &K, blk: fn(Option<&V>) -> T) -> T {
+            match self.bucket_for_key(self.buckets, k) {
+                FoundEntry(idx) => {
+                    match self.buckets[idx] {
+                        Some(bkt) => blk(Some(&bkt.value)),
+                        None => fail ~"LinearMap::find: internal logic error"
+                    }
+                }
+                TableFull | FoundHole(_) => blk(None),
+            }
+        }
+
+        fn with_get_ref<T>(&self, k: &K, blk: fn(v: &V) -> T) -> T {
+            do self.with_find_ref(k) |v| {
+                match v {
+                    Some(v) => blk(v),
+                    None => fail fmt!("No entry found for key: %?", k),
+                }
+            }
+        }
+
         fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
                 let mut broke = false;
@@ -360,13 +383,9 @@ mod test {
 
     import linear::LinearMap;
 
-    fn int_linear_map<V>() -> LinearMap<uint,V> {
-        return LinearMap();
-    }
-
     #[test]
     fn inserts() {
-        let mut m = ~int_linear_map();
+        let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
         assert m.get(&1) == 2;
@@ -375,7 +394,7 @@ mod test {
 
     #[test]
     fn overwrite() {
-        let mut m = ~int_linear_map();
+        let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.get(&1) == 2;
         assert !m.insert(1, 3);
@@ -425,5 +444,13 @@ mod test {
             observed |= (1 << k);
         }
         assert observed == 0xFFFF_FFFF;
+    }
+
+    #[test]
+    fn with_find_ref() {
+        let mut m = ~LinearMap();
+        m.with_find_ref(&1, |v| assert v.is_none());
+        m.insert(1, 2);
+        m.with_find_ref(&1, |v| assert *v.get() == 1);
     }
 }
