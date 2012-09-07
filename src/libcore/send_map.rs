@@ -374,13 +374,9 @@ mod test {
 
     use linear::LinearMap;
 
-    fn int_linear_map<V>() -> LinearMap<uint,V> {
-        return LinearMap();
-    }
-
     #[test]
     fn inserts() {
-        let mut m = int_linear_map();
+        let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
         assert m.get(&1) == 2;
@@ -389,7 +385,7 @@ mod test {
 
     #[test]
     fn overwrite() {
-        let mut m = int_linear_map();
+        let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.get(&1) == 2;
         assert !m.insert(1, 3);
