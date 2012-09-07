@@ -45,11 +45,13 @@ fn main(args: ~[~str]) {
         let get_chan = Port();
         let get_chan_chan = Chan(get_chan);
 
-        futures += ~[do future::spawn |copy num_chan, move get_chan_chan| {
+        let new_future = do future::spawn
+            |copy num_chan, move get_chan_chan| {
             let p = Port();
             get_chan_chan.send(Chan(p));
             thread_ring(i, msg_per_task, num_chan,  p)
-        }];
+        };
+        vec::push(futures, new_future);
         
         num_chan = get_chan.recv();
     };

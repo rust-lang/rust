@@ -82,7 +82,7 @@ fn main(args: ~[~str]) {
         let num_chan2 = ~mut None;
         *num_chan2 <-> num_chan;
         let num_port = ~mut Some(num_port);
-        futures += ~[future::spawn(|move num_chan2, move num_port| {
+        let new_future = future::spawn(|move num_chan2, move num_port| {
             let mut num_chan = None;
             num_chan <-> *num_chan2;
             let mut num_port1 = None;
@@ -90,7 +90,8 @@ fn main(args: ~[~str]) {
             thread_ring(i, msg_per_task,
                         option::unwrap(num_chan),
                         option::unwrap(num_port1))
-        })];
+        });
+        vec::push(futures, new_future);
         num_chan = Some(new_chan);
     };
 
