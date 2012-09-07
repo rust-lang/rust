@@ -41,7 +41,7 @@ enum st {
 }
 
 struct r {
-  let _l: @nillist;
+  _l: @nillist,
   drop {}
 }
 

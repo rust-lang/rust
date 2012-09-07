@@ -1,6 +1,6 @@
 struct cat {
   priv {
-    let mut meows : uint;
+    mut meows : uint,
     fn sleep() { loop{} }
     fn meow() {
       error!("Meow");

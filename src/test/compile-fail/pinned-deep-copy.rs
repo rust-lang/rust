@@ -1,7 +1,7 @@
 // error-pattern: copying a noncopyable value
 
 struct r {
-  let i: @mut int;
+  i: @mut int,
   drop { *(self.i) = *(self.i) + 1; }
 }
 

@@ -6,8 +6,8 @@ use kitty::*;
 mod kitty {
   export cat;
   struct cat {
-    let meows: uint;
-    let name: ~str;
+    meows: uint,
+    name: ~str,
 
     fn get_name() -> ~str {  self.name }
   }

@@ -17,7 +17,7 @@ impl cat_type : cmp::Eq {
 struct cat<T: copy> : map<int, T> {
   priv {
     // Yes, you can have negative meows
-    let mut meows : int;
+    mut meows : int,
     fn meow() {
       self.meows += 1;
       error!("Meow %d", self.meows);
@@ -27,8 +27,8 @@ struct cat<T: copy> : map<int, T> {
     }
   }
 
-  let mut how_hungry : int;
-  let name : T;
+  mut how_hungry : int,
+  name : T,
 
   fn speak() { self.meow(); }
 

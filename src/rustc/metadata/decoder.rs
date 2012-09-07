@@ -440,9 +440,9 @@ fn def_like_to_def(def_like: def_like) -> ast::def {
 // A path.
 struct path_entry {
     // The full path, separated by '::'.
-    let path_string: ~str;
+    path_string: ~str,
     // The definition, implementation, or field that this path corresponds to.
-    let def_like: def_like;
+    def_like: def_like,
 }
 
 fn path_entry(path_string: ~str, def_like: def_like) -> path_entry {

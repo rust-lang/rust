@@ -1,6 +1,5 @@
 struct CMap {
-    let buf: &[u8];
-
+    buf: &[u8],
 }
 
 fn CMap(buf: &r/[u8]) -> CMap/&r {

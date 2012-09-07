@@ -6,7 +6,7 @@
 use std;
 
 struct notify {
-    let ch: comm::Chan<bool>; let v: @mut bool;
+    ch: comm::Chan<bool>, v: @mut bool,
     drop {
         error!("notify: task=%? v=%x unwinding=%b b=%b",
                task::get_task(),

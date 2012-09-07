@@ -8,7 +8,7 @@ use std;
 export context;
 
 struct arc_destruct<T:const> {
-  let _data: int;
+  _data: int,
   drop {}
 }
 
@@ -27,7 +27,7 @@ fn init() -> arc_destruct<context_res> unsafe {
 }
 
 struct context_res {
-    let ctx : int;
+    ctx : int,
 
     drop { }
 }

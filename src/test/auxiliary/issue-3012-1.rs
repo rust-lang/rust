@@ -6,7 +6,7 @@ mod socket {
 export socket_handle;
 
 struct socket_handle {
-    let sockfd: libc::c_int;
+    sockfd: libc::c_int,
     drop { /* c::close(self.sockfd); */ }
 }
 

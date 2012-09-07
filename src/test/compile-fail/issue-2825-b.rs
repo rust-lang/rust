@@ -1,5 +1,5 @@
 struct example {
-    let x: int;
+    x: int,
     drop {} //~ ERROR First destructor declared
     drop {
         debug!("Goodbye, cruel world");

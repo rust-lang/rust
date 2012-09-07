@@ -1,5 +1,5 @@
 struct finish<T: copy> {
-  let arg: {val: T, fin: extern fn(T)};
+  arg: {val: T, fin: extern fn(T)},
   drop { self.arg.fin(self.arg.val); }
 }
 

@@ -280,7 +280,7 @@ extern mod rustrt {
 }
 
 struct LittleLock {
-    let l: rust_little_lock;
+    l: rust_little_lock,
     drop { rustrt::rust_destroy_little_lock(self.l); }
 }
 
@@ -294,7 +294,7 @@ impl LittleLock {
     #[inline(always)]
     unsafe fn lock<T>(f: fn() -> T) -> T {
         struct Unlock {
-            let l: rust_little_lock;
+            l: rust_little_lock,
             drop { rustrt::rust_unlock_little_lock(self.l); }
         }
 

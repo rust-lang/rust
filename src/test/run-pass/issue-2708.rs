@@ -1,7 +1,7 @@
 struct Font {
-    let fontbuf: uint;
-    let cairo_font: uint;
-    let font_dtor: uint;
+    fontbuf: uint,
+    cairo_font: uint,
+    font_dtor: uint,
 
     drop { }
 }

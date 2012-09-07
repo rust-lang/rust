@@ -1,6 +1,6 @@
 // error-pattern: copying a noncopyable value
 
-struct foo { let x: int; drop { } }
+struct foo { x: int, drop { } }
 
 fn foo(x: int) -> foo {
     foo {

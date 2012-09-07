@@ -2,7 +2,7 @@ trait clam<A: copy> {
   fn chowder(y: A);
 }
 struct foo<A: copy> : clam<A> {
-  let x: A;
+  x: A,
   fn chowder(y: A) {
   }
 }

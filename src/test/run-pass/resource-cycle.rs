@@ -1,7 +1,7 @@
 // Don't leak the unique pointers
 
 struct r {
-  let v: *int;
+  v: *int,
   drop unsafe {
     debug!("r's dtor: self = %x, self.v = %x, self.v's value = %x",
            unsafe::reinterpret_cast::<*r, uint>(&ptr::addr_of(self)),

@@ -14,7 +14,7 @@ fn getbig_and_fail(&&i: int) {
 }
 
 struct and_then_get_big_again {
-  let x:int;
+  x:int,
   drop {}
 }
 

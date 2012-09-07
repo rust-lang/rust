@@ -213,21 +213,21 @@ fn parser(sess: parse_sess, cfg: ast::crate_cfg,
 }
 
 struct parser {
-    let sess: parse_sess;
-    let cfg: crate_cfg;
-    let file_type: file_type;
-    let mut token: token::token;
-    let mut span: span;
-    let mut last_span: span;
-    let mut buffer: [mut {tok: token::token, sp: span}]/4;
-    let mut buffer_start: int;
-    let mut buffer_end: int;
-    let mut restriction: restriction;
-    let mut quote_depth: uint; // not (yet) related to the quasiquoter
-    let reader: reader;
-    let interner: interner<@~str>;
-    let keywords: hashmap<~str, ()>;
-    let restricted_keywords: hashmap<~str, ()>;
+    sess: parse_sess,
+    cfg: crate_cfg,
+    file_type: file_type,
+    mut token: token::token,
+    mut span: span,
+    mut last_span: span,
+    mut buffer: [mut {tok: token::token, sp: span}]/4,
+    mut buffer_start: int,
+    mut buffer_end: int,
+    mut restriction: restriction,
+    mut quote_depth: uint, // not (yet) related to the quasiquoter
+    reader: reader,
+    interner: interner<@~str>,
+    keywords: hashmap<~str, ()>,
+    restricted_keywords: hashmap<~str, ()>,
 
     drop {} /* do not copy the parser; its state is tied to outside state */
 
@@ -2726,8 +2726,7 @@ struct parser {
     }
 
     fn parse_single_class_item(vis: visibility) -> @class_member {
-        if (self.eat_keyword(~"let") ||
-                self.token_is_keyword(~"mut", copy self.token) ||
+        if (self.token_is_keyword(~"mut", copy self.token) ||
                 !self.is_any_keyword(copy self.token)) &&
                 !self.token_is_pound_or_doc_comment(self.token) {
             let a_var = self.parse_instance_var(vis);

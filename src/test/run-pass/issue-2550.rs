@@ -1,6 +1,5 @@
 struct C {
-    let x: uint;
-
+    x: uint,
 }
 
 fn C(x: uint) -> C {

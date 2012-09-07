@@ -1,9 +1,9 @@
 struct cat {
   priv {
-    let mut meows : uint;
+    mut meows : uint,
   }
 
-  let how_hungry : int;
+  how_hungry : int,
 
   fn meow_count() -> uint { self.meows }
 }

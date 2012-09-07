@@ -195,7 +195,7 @@ unsafe fn weaken_task(f: fn(comm::Port<()>)) {
     f(po);
 
     struct Unweaken {
-      let ch: comm::Chan<()>;
+      ch: comm::Chan<()>,
       drop unsafe {
         rustrt::rust_task_unweaken(unsafe::reinterpret_cast(&self.ch));
       }

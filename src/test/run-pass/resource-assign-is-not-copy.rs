@@ -1,5 +1,5 @@
 struct r {
-  let i: @mut int;
+  i: @mut int,
   drop { *(self.i) += 1; }
 }
 

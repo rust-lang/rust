@@ -1,5 +1,5 @@
 struct box_impl<T> {
-    let mut f: T;
+    mut f: T,
 }
 
 fn box_impl<T>(f: T) -> box_impl<T> {

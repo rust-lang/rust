@@ -93,18 +93,18 @@ fn lookup(fcx: @fn_ctxt,
 }
 
 struct lookup {
-    let fcx: @fn_ctxt;
-    let expr: @ast::expr;
-    let self_expr: @ast::expr;
-    let borrow_lb: ast::node_id;
-    let node_id: ast::node_id;
-    let m_name: ast::ident;
-    let mut self_ty: ty::t;
-    let mut derefs: uint;
-    let candidates: DVec<candidate>;
-    let candidate_impls: hashmap<def_id, ()>;
-    let supplied_tps: ~[ty::t];
-    let include_private: bool;
+    fcx: @fn_ctxt,
+    expr: @ast::expr,
+    self_expr: @ast::expr,
+    borrow_lb: ast::node_id,
+    node_id: ast::node_id,
+    m_name: ast::ident,
+    mut self_ty: ty::t,
+    mut derefs: uint,
+    candidates: DVec<candidate>,
+    candidate_impls: hashmap<def_id, ()>,
+    supplied_tps: ~[ty::t],
+    include_private: bool,
 
     // Entrypoint:
     fn method() -> Option<method_map_entry> {

@@ -1,5 +1,5 @@
 struct cat {
-  let name: ~str;
+  name: ~str,
   #[cat_dropper]
   /**
      Actually, cats don't always land on their feet when you drop them.

@@ -1,6 +1,6 @@
 // Make sure that destructors get run on slice literals
 struct foo {
-    let x: @mut int;
+    x: @mut int,
     drop { *self.x += 1; }
 }
 

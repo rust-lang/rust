@@ -1,7 +1,7 @@
 // error-pattern: copying a noncopyable value
 
 struct foo {
-  let i: int;
+  i: int,
   drop {}
 }
 

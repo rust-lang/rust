@@ -1,11 +1,11 @@
 // error-pattern:call to private method not allowed
 struct cat {
   priv {
-    let mut meows : uint;
+    mut meows : uint,
       fn nap() { uint::range(1u, 10000u, |_i|{})}
   }
 
-  let how_hungry : int;
+  how_hungry : int,
 
 }
 

@@ -28,7 +28,7 @@ fn port<T: send>() -> port<T> {
 }
 
 struct port_ptr<T:send> {
-   let po: *rust_port;
+   po: *rust_port,
    drop unsafe {
     debug!("in the port_ptr destructor");
        do task::unkillable {

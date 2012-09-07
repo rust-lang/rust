@@ -1,7 +1,7 @@
 // error-pattern: copying a noncopyable value
 
 struct r {
-  let b:bool;
+  b:bool,
   drop {}
 }
 

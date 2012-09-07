@@ -314,8 +314,8 @@ fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
 
 /// One local scope.
 struct Rib {
-    let bindings: hashmap<Atom,def_like>;
-    let kind: RibKind;
+    bindings: hashmap<Atom,def_like>,
+    kind: RibKind,
 }
 
 fn Rib(kind: RibKind) -> Rib {
@@ -328,9 +328,9 @@ fn Rib(kind: RibKind) -> Rib {
 
 /// One import directive.
 struct ImportDirective {
-    let module_path: @DVec<Atom>;
-    let subclass: @ImportDirectiveSubclass;
-    let span: span;
+    module_path: @DVec<Atom>,
+    subclass: @ImportDirectiveSubclass,
+    span: span,
 }
 
 fn ImportDirective(module_path: @DVec<Atom>,
@@ -345,8 +345,8 @@ fn ImportDirective(module_path: @DVec<Atom>,
 
 /// The item that an import resolves to.
 struct Target {
-    let target_module: @Module;
-    let bindings: @NameBindings;
+    target_module: @Module,
+    bindings: @NameBindings,
 }
 
 fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
@@ -357,19 +357,19 @@ fn Target(target_module: @Module, bindings: @NameBindings) -> Target {
 }
 
 struct ImportResolution {
-    let span: span;
+    span: span,
 
     // The number of outstanding references to this name. When this reaches
     // zero, outside modules can count on the targets being correct. Before
     // then, all bets are off; future imports could override this name.
 
-    let mut outstanding_references: uint;
+    mut outstanding_references: uint,
 
-    let mut module_target: Option<Target>;
-    let mut value_target: Option<Target>;
-    let mut type_target: Option<Target>;
+    mut module_target: Option<Target>,
+    mut value_target: Option<Target>,
+    mut type_target: Option<Target>,
 
-    let mut used: bool;
+    mut used: bool,
 
     fn target_for_namespace(namespace: Namespace) -> Option<Target> {
         match namespace {
@@ -400,11 +400,11 @@ enum ParentLink {
 
 /// One node in the tree of modules.
 struct Module {
-    let parent_link: ParentLink;
-    let mut def_id: Option<def_id>;
+    parent_link: ParentLink,
+    mut def_id: Option<def_id>,
 
-    let children: hashmap<Atom,@NameBindings>;
-    let imports: DVec<@ImportDirective>;
+    children: hashmap<Atom,@NameBindings>,
+    imports: DVec<@ImportDirective>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -421,7 +421,7 @@ struct Module {
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
 
-    let anonymous_children: hashmap<node_id,@Module>;
+    anonymous_children: hashmap<node_id,@Module>,
 
     // XXX: This is about to be reworked so that exports are on individual
     // items, not names.
@@ -429,16 +429,16 @@ struct Module {
     // The atom is the name of the exported item, while the node ID is the
     // ID of the export path.
 
-    let exported_names: hashmap<Atom,node_id>;
+    exported_names: hashmap<Atom,node_id>,
 
     // The status of resolving each import in this module.
-    let import_resolutions: hashmap<Atom,@ImportResolution>;
+    import_resolutions: hashmap<Atom,@ImportResolution>,
 
     // The number of unresolved globs that this module exports.
-    let mut glob_count: uint;
+    mut glob_count: uint,
 
     // The index of the import we're resolving.
-    let mut resolved_import_count: uint;
+    mut resolved_import_count: uint,
 
     fn all_imports_resolved() -> bool {
         return self.imports.len() == self.resolved_import_count;
@@ -500,15 +500,15 @@ struct Definition {
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 struct NameBindings {
-    let mut module_def: ModuleDef;         //< Meaning in module namespace.
-    let mut type_def: Option<Definition>;  //< Meaning in type namespace.
-    let mut value_def: Option<Definition>; //< Meaning in value namespace.
+    mut module_def: ModuleDef,         //< Meaning in module namespace.
+    mut type_def: Option<Definition>,  //< Meaning in type namespace.
+    mut value_def: Option<Definition>, //< Meaning in value namespace.
 
     // For error reporting
     // XXX: Merge me into Definition.
-    let mut module_span: Option<span>;
-    let mut type_span: Option<span>;
-    let mut value_span: Option<span>;
+    mut module_span: Option<span>,
+    mut type_span: Option<span>,
+    mut value_span: Option<span>,
 
     /// Creates a new module in this set of name bindings.
     fn define_module(parent_link: ParentLink, def_id: Option<def_id>,
@@ -612,7 +612,7 @@ fn NameBindings() -> NameBindings {
 
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
-    let primitive_types: hashmap<Atom,prim_ty>;
+    primitive_types: hashmap<Atom,prim_ty>,
 
     fn intern(intr: ident_interner, string: @~str,
               primitive_type: prim_ty) {
@@ -710,55 +710,55 @@ fn Resolver(session: session, lang_items: LanguageItems,
 
 /// The main resolver class.
 struct Resolver {
-    let session: session;
-    let lang_items: LanguageItems;
-    let crate: @crate;
+    session: session,
+    lang_items: LanguageItems,
+    crate: @crate,
 
-    let intr: ident_interner;
+    intr: ident_interner,
 
-    let graph_root: @NameBindings;
+    graph_root: @NameBindings,
 
-    let unused_import_lint_level: level;
+    unused_import_lint_level: level,
 
-    let trait_info: hashmap<def_id,@hashmap<Atom,()>>;
-    let structs: hashmap<def_id,bool>;
+    trait_info: hashmap<def_id,@hashmap<Atom,()>>,
+    structs: hashmap<def_id,bool>,
 
     // The number of imports that are currently unresolved.
-    let mut unresolved_imports: uint;
+    mut unresolved_imports: uint,
 
     // The module that represents the current item scope.
-    let mut current_module: @Module;
+    mut current_module: @Module,
 
     // The current set of local scopes, for values.
     // XXX: Reuse ribs to avoid allocation.
-    let value_ribs: @DVec<@Rib>;
+    value_ribs: @DVec<@Rib>,
 
     // The current set of local scopes, for types.
-    let type_ribs: @DVec<@Rib>;
+    type_ribs: @DVec<@Rib>,
 
     // The current set of local scopes, for labels.
-    let label_ribs: @DVec<@Rib>;
+    label_ribs: @DVec<@Rib>,
 
     // Whether the current context is an X-ray context. An X-ray context is
     // allowed to access private names of any module.
-    let mut xray_context: XrayFlag;
+    mut xray_context: XrayFlag,
 
     // The trait that the current context can refer to.
-    let mut current_trait_refs: Option<@DVec<def_id>>;
+    mut current_trait_refs: Option<@DVec<def_id>>,
 
     // The atom for the keyword "self".
-    let self_atom: Atom;
+    self_atom: Atom,
 
     // The atoms for the primitive types.
-    let primitive_type_table: @PrimitiveTypeTable;
+    primitive_type_table: @PrimitiveTypeTable,
 
     // The four namespaces.
-    let namespaces: ~[Namespace];
+    namespaces: ~[Namespace],
 
-    let def_map: DefMap;
-    let export_map: ExportMap;
-    let export_map2: ExportMap2;
-    let trait_map: TraitMap;
+    def_map: DefMap,
+    export_map: ExportMap,
+    export_map2: ExportMap2,
+    trait_map: TraitMap,
 
     /// The main name resolution procedure.
     fn resolve(@self, this: @Resolver) {

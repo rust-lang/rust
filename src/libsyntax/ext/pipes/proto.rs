@@ -129,11 +129,11 @@ fn protocol_(name: ~str, span: span) -> protocol_ {
 }
 
 struct protocol_ {
-    let name: ~str;
-    let span: span;
-    let states: DVec<state>;
+    name: ~str,
+    span: span,
+    states: DVec<state>,
 
-    let mut bounded: Option<bool>;
+    mut bounded: Option<bool>,
 
     /// Get a state.
     fn get_state(name: ~str) -> state {

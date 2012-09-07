@@ -4,7 +4,7 @@ trait animal {
 }
 
 struct cat : animal {
-  let meows: uint;
+  meows: uint,
 }
 
 fn cat(in_x : uint) -> cat {

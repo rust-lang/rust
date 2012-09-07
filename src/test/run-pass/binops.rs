@@ -78,8 +78,8 @@ extern mod test {
 }
 
 struct p {
-  let mut x: int;
-  let mut y: int;
+  mut x: int,
+  mut y: int,
 }
 
 fn p(x: int, y: int) -> p {

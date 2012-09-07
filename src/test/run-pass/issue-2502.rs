@@ -1,5 +1,5 @@
 struct font {
-    let fontbuf: &self/~[u8];
+    fontbuf: &self/~[u8],
 
     fn buf() -> &self/~[u8] {
         self.fontbuf

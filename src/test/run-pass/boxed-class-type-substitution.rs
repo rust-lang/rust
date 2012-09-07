@@ -8,7 +8,7 @@ type Tree<T> = {
 fn empty<T>() -> Tree<T> { fail }
 
 struct Box {
-    let tree: Tree<@Box>;
+    tree: Tree<@Box>
 }
 
 fn Box() -> Box {

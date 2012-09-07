@@ -1,5 +1,5 @@
 struct socket {
-    let sock: int;
+    sock: int,
 
     drop { }
 

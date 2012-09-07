@@ -1,6 +1,6 @@
 struct cat {
-  let done : extern fn(uint);
-  let meows : uint;
+  done : extern fn(uint),
+  meows : uint,
   drop { self.done(self.meows); }
 }
 

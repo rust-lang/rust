@@ -244,7 +244,7 @@ impl Rng {
 }
 
 struct RandRes {
-    let c: *rctx;
+    c: *rctx,
     drop { rustrt::rand_free(self.c); }
 }
 

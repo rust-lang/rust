@@ -94,7 +94,7 @@ type stats =
      fn_times: @mut ~[{ident: ~str, time: int}]};
 
 struct BuilderRef_res {
-    let B: BuilderRef;
+    B: BuilderRef,
     drop { llvm::LLVMDisposeBuilder(self.B); }
 }
 
@@ -482,19 +482,19 @@ struct block_ {
     // block to the function pointed to by llfn.  We insert
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
-    let llbb: BasicBlockRef;
-    let mut terminated: bool;
-    let mut unreachable: bool;
-    let parent: Option<block>;
+    llbb: BasicBlockRef,
+    mut terminated: bool,
+    mut unreachable: bool,
+    parent: Option<block>,
     // The 'kind' of basic block this is.
-    let kind: block_kind;
+    kind: block_kind,
     // Is this block part of a landing pad?
-    let is_lpad: bool;
+    is_lpad: bool,
     // info about the AST node this block originated from, if any
-    let node_info: Option<node_info>;
+    node_info: Option<node_info>,
     // The function context for the function to which this block is
     // attached.
-    let fcx: fn_ctxt;
+    fcx: fn_ctxt
 }
 
 fn block_(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,

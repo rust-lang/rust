@@ -26,7 +26,7 @@ enum tg { bar, }
 
 #[cfg(bogus)]
 struct r {
-  let i: int;
+  i: int,
 }
 
 #[cfg(bogus)]
@@ -37,7 +37,7 @@ fn r(i:int) -> r {
 }
 
 struct r {
-  let i: int;
+  i: int,
 }
 
 fn r(i:int) -> r {

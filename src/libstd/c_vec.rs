@@ -43,7 +43,7 @@ enum CVec<T> {
 }
 
 struct DtorRes {
-  let dtor: Option<fn@()>;
+  dtor: Option<fn@()>,
   drop {
     match self.dtor {
       option::None => (),

@@ -7,7 +7,7 @@ type u = {
 };
 
 struct r {
-  let v: u;
+  v: u,
   drop unsafe {
     let v2: ~int = unsafe::reinterpret_cast(&self.v.c);
   }
