@@ -4530,7 +4530,7 @@ struct Resolver {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.ord_trait);
             }
-            expr_binary(eq, _, _) => {
+            expr_binary(eq, _, _) | expr_binary(ne, _, _) => {
                 self.add_fixed_trait_for_expr(expr.id,
                                               self.lang_items.eq_trait);
             }
