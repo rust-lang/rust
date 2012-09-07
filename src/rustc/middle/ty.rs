@@ -190,6 +190,7 @@ export serialize_region_variance, deserialize_region_variance;
 export opt_region_variance;
 export serialize_opt_region_variance, deserialize_opt_region_variance;
 export determine_inherited_purity;
+export provided_trait_methods;
 
 // Data types
 
@@ -3068,6 +3069,24 @@ fn def_has_ty_params(def: ast::def) -> bool {
 fn store_trait_methods(cx: ctxt, id: ast::node_id, ms: @~[method]) {
     cx.trait_method_cache.insert(ast_util::local_def(id), ms);
 }
+
+fn provided_trait_methods(cx: ctxt, id: ast::def_id) -> ~[@ast::method] {
+    if is_local(id) {
+        match cx.items.find(id.node) {
+            Some(ast_map::node_item(@{node: item_trait(_, _, ms),_}, _)) =>
+                match ast_util::split_trait_methods(ms) {
+                   (_, p) => p
+                },
+            _ => cx.sess.bug(#fmt("provided_trait_methods: %? is not a trait",
+                                  id))
+        }
+    }
+    else {
+        // FIXME #2794: default methods for traits don't work cross-crate
+        ~[]
+    }
+}
+
 
 fn trait_methods(cx: ctxt, id: ast::def_id) -> @~[method] {
     match cx.trait_method_cache.find(id) {

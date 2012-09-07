@@ -343,33 +343,22 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
               // implementation in the trait itself.  If not, raise a
               // "missing method" error.
 
-              match tcx.items.get(did.node) {
-                ast_map::node_item(
-                    @{node: ast::item_trait(_, _, trait_methods), _}, _) => {
-                  let (_, provided_methods) =
-                      split_trait_methods(trait_methods);
-
-                  match vec::find(provided_methods, |provided_method|
-                                provided_method.ident == trait_m.ident) {
-                    Some(_) => {
-                      // If there's a provided method with the name we
-                      // want, then we're fine; nothing else to do.
-                    }
-                    None => {
-                      tcx.sess.span_err(
-                          a_trait_ty.path.span,
-                          fmt!("missing method `%s`",
-                               tcx.sess.str_of(trait_m.ident)));
-                    }
-                  }
+              let provided_methods = ty::provided_trait_methods(tcx, did);
+              match vec::find(provided_methods, |provided_method|
+                              provided_method.ident == trait_m.ident) {
+                Some(_) => {
+                    // If there's a provided method with the name we
+                    // want, then we're fine; nothing else to do.
                 }
-                _ => {
-                    tcx.sess.bug(~"check_methods_against_trait(): trait_ref \
-                                   didn't refer to a trait");
+                None => {
+                    tcx.sess.span_err(
+                        a_trait_ty.path.span,
+                        fmt!("missing method `%s`",
+                             tcx.sess.str_of(trait_m.ident)));
                 }
               }
           }
-        } // alt
+        } // match
     } // |trait_m|
 } // fn
 
