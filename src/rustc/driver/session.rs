@@ -38,25 +38,26 @@ type config =
      uint_type: uint_ty,
      float_type: float_ty};
 
-const ppregions: uint = 1u;
-const time_passes: uint = 2u;
-const count_llvm_insns: uint = 4u;
-const time_llvm_passes: uint = 8u;
-const trans_stats: uint = 16u;
-const no_asm_comments: uint = 32u;
-const no_verify: uint = 64u;
-const trace: uint = 128u;
+const ppregions: uint = 1 << 0;
+const time_passes: uint = 1 << 1;
+const count_llvm_insns: uint = 1 << 2;
+const time_llvm_passes: uint = 1 << 3;
+const trans_stats: uint = 1 << 4;
+const no_asm_comments: uint = 1 << 5;
+const no_verify: uint = 1 << 6;
+const trace: uint = 1 << 7;
 // FIXME (#2377): This exists to transition to a Rust crate runtime
 // It should be removed
-const no_rt: uint = 256u;
-const coherence: uint = 512u;
-const borrowck_stats: uint = 1024u;
-const borrowck_note_pure: uint = 2048;
-const borrowck_note_loan: uint = 4096;
-const no_landing_pads: uint = 8192;
-const debug_llvm: uint = 16384;
-const count_type_sizes: uint = 32768;
-const meta_stats: uint = 65536;
+const no_rt: uint = 1 << 8;
+const coherence: uint = 1 << 9;
+const borrowck_stats: uint = 1 << 10;
+const borrowck_note_pure: uint = 1 << 11;
+const borrowck_note_loan: uint = 1 << 12;
+const no_landing_pads: uint = 1 << 13;
+const debug_llvm: uint = 1 << 14;
+const count_type_sizes: uint = 1 << 15;
+const meta_stats: uint = 1 << 16;
+const no_opt: uint = 1 << 17;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
     ~[(~"ppregions", ~"prettyprint regions with \
@@ -82,7 +83,8 @@ fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
      (~"debug-llvm", ~"enable debug output from LLVM", debug_llvm),
      (~"count-type-sizes", ~"count the sizes of aggregate types",
       count_type_sizes),
-     (~"meta-stats", ~"gather metadata statistics", meta_stats)
+     (~"meta-stats", ~"gather metadata statistics", meta_stats),
+     (~"no-opt", ~"do not optimize, even if -O is passed", no_opt),
     ]
 }
 
