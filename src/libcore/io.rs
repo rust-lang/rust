@@ -337,6 +337,7 @@ impl WriterType: Eq {
             (Screen, _) | (File, _) => false
         }
     }
+    pure fn ne(&&other: WriterType) -> bool { !self.eq(other) }
 }
 
 // FIXME (#2004): Seekable really should be orthogonal.

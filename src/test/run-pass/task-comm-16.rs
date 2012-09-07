@@ -71,6 +71,7 @@ impl t : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: t) -> bool { !self.eq(other) }
 }
 
 fn test_tag() {

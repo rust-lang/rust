@@ -40,6 +40,7 @@ impl Timespec : Eq {
     pure fn eq(&&other: Timespec) -> bool {
         self.sec == other.sec && self.nsec == other.nsec
     }
+    pure fn ne(&&other: Timespec) -> bool { !self.eq(other) }
 }
 
 /**
@@ -105,6 +106,7 @@ impl Tm_ : Eq {
         self.tm_zone == other.tm_zone &&
         self.tm_nsec == other.tm_nsec
     }
+    pure fn ne(&&other: Tm_) -> bool { !self.eq(other) }
 }
 
 enum Tm {
@@ -112,9 +114,8 @@ enum Tm {
 }
 
 impl Tm : Eq {
-    pure fn eq(&&other: Tm) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: Tm) -> bool { *self == *other }
+    pure fn ne(&&other: Tm) -> bool { *self != *other }
 }
 
 fn empty_tm() -> Tm {

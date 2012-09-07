@@ -114,6 +114,7 @@ impl PatternBindingMode : cmp::Eq {
     pure fn eq(&&other: PatternBindingMode) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: PatternBindingMode) -> bool { !self.eq(other) }
 }
 
 
@@ -154,6 +155,7 @@ impl Mutability : cmp::Eq {
     pure fn eq(&&other: Mutability) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: Mutability) -> bool { !self.eq(other) }
 }
 
 enum SelfBinding {
@@ -188,6 +190,7 @@ impl ImportDirectiveNS : cmp::Eq {
     pure fn eq(&&other: ImportDirectiveNS) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: ImportDirectiveNS) -> bool { !self.eq(other) }
 }
 
 /// Contains data for specific types of import directives.
@@ -274,6 +277,7 @@ impl XrayFlag : cmp::Eq {
     pure fn eq(&&other: XrayFlag) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: XrayFlag) -> bool { !self.eq(other) }
 }
 
 enum AllowCapturingSelfFlag {
@@ -285,6 +289,7 @@ impl AllowCapturingSelfFlag : cmp::Eq {
     pure fn eq(&&other: AllowCapturingSelfFlag) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: AllowCapturingSelfFlag) -> bool { !self.eq(other) }
 }
 
 enum EnumVariantOrConstResolution {
@@ -483,6 +488,7 @@ impl Privacy : cmp::Eq {
     pure fn eq(&&other: Privacy) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: Privacy) -> bool { !self.eq(other) }
 }
 
 // Records a possibly-private definition.

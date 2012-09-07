@@ -28,6 +28,7 @@ impl path_elt : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: path_elt) -> bool { !self.eq(other) }
 }
 
 type path = ~[path_elt];

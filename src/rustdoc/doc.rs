@@ -10,6 +10,7 @@ impl doc_ : cmp::Eq {
     pure fn eq(&&other: doc_) -> bool {
         self.pages == other.pages
     }
+    pure fn ne(&&other: doc_) -> bool { !self.eq(other) }
 }
 
 enum doc {
@@ -17,9 +18,8 @@ enum doc {
 }
 
 impl doc : cmp::Eq {
-    pure fn eq(&&other: doc) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: doc) -> bool { *self == *other }
+    pure fn ne(&&other: doc) -> bool { *self != *other }
 }
 
 enum page {
@@ -44,6 +44,7 @@ impl page : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: page) -> bool { !self.eq(other) }
 }
 
 enum implementation {
@@ -55,6 +56,7 @@ impl implementation : cmp::Eq {
     pure fn eq(&&other: implementation) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: implementation) -> bool { !self.eq(other) }
 }
 
 
@@ -71,6 +73,7 @@ impl section : cmp::Eq {
     pure fn eq(&&other: section) -> bool {
         self.header == other.header && self.body == other.body
     }
+    pure fn ne(&&other: section) -> bool { !self.eq(other) }
 }
 
 // FIXME (#2596): We currently give topmod the name of the crate.  There
@@ -84,6 +87,7 @@ impl cratedoc : cmp::Eq {
     pure fn eq(&&other: cratedoc) -> bool {
         self.topmod == other.topmod
     }
+    pure fn ne(&&other: cratedoc) -> bool { !self.eq(other) }
 }
 
 enum itemtag {
@@ -150,6 +154,7 @@ impl itemtag : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: itemtag) -> bool { !self.eq(other) }
 }
 
 type itemdoc = {
@@ -173,6 +178,7 @@ impl itemdoc : cmp::Eq {
         self.sections == other.sections &&
         self.reexport == other.reexport
     }
+    pure fn ne(&&other: itemdoc) -> bool { !self.eq(other) }
 }
 
 type simpleitemdoc = {
@@ -184,6 +190,7 @@ impl simpleitemdoc : cmp::Eq {
     pure fn eq(&&other: simpleitemdoc) -> bool {
         self.item == other.item && self.sig == other.sig
     }
+    pure fn ne(&&other: simpleitemdoc) -> bool { !self.eq(other) }
 }
 
 type moddoc_ = {
@@ -198,6 +205,7 @@ impl moddoc_ : cmp::Eq {
         self.items == other.items &&
         self.index == other.index
     }
+    pure fn ne(&&other: moddoc_) -> bool { !self.eq(other) }
 }
 
 enum moddoc {
@@ -205,9 +213,8 @@ enum moddoc {
 }
 
 impl moddoc : cmp::Eq {
-    pure fn eq(&&other: moddoc) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: moddoc) -> bool { *self == *other }
+    pure fn ne(&&other: moddoc) -> bool { *self != *other }
 }
 
 type nmoddoc = {
@@ -222,6 +229,7 @@ impl nmoddoc : cmp::Eq {
         self.fns == other.fns &&
         self.index == other.index
     }
+    pure fn ne(&&other: nmoddoc) -> bool { !self.eq(other) }
 }
 
 type constdoc = simpleitemdoc;
@@ -237,6 +245,7 @@ impl enumdoc : cmp::Eq {
     pure fn eq(&&other: enumdoc) -> bool {
         self.item == other.item && self.variants == other.variants
     }
+    pure fn ne(&&other: enumdoc) -> bool { !self.eq(other) }
 }
 
 type variantdoc = {
@@ -251,6 +260,7 @@ impl variantdoc : cmp::Eq {
         self.desc == other.desc &&
         self.sig == other.sig
     }
+    pure fn ne(&&other: variantdoc) -> bool { !self.eq(other) }
 }
 
 type traitdoc = {
@@ -262,6 +272,7 @@ impl traitdoc : cmp::Eq {
     pure fn eq(&&other: traitdoc) -> bool {
         self.item == other.item && self.methods == other.methods
     }
+    pure fn ne(&&other: traitdoc) -> bool { !self.eq(other) }
 }
 
 type methoddoc = {
@@ -282,6 +293,7 @@ impl methoddoc : cmp::Eq {
         self.sig == other.sig &&
         self.implementation == other.implementation
     }
+    pure fn ne(&&other: methoddoc) -> bool { !self.eq(other) }
 }
 
 type impldoc = {
@@ -298,6 +310,7 @@ impl impldoc : cmp::Eq {
         self.self_ty == other.self_ty &&
         self.methods == other.methods
     }
+    pure fn ne(&&other: impldoc) -> bool { !self.eq(other) }
 }
 
 type tydoc = simpleitemdoc;
@@ -310,6 +323,7 @@ impl index : cmp::Eq {
     pure fn eq(&&other: index) -> bool {
         self.entries == other.entries
     }
+    pure fn ne(&&other: index) -> bool { !self.eq(other) }
 }
 
 /**
@@ -336,6 +350,7 @@ impl index_entry : cmp::Eq {
         self.brief == other.brief &&
         self.link == other.link
     }
+    pure fn ne(&&other: index_entry) -> bool { !self.eq(other) }
 }
 
 impl doc {

@@ -138,6 +138,7 @@ impl ctor: cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: ctor) -> bool { !self.eq(other) }
 }
 
 // Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html

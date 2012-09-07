@@ -157,6 +157,7 @@ impl Dest : cmp::Eq {
             (Ignore, _) => false,
         }
     }
+    pure fn ne(&&other: Dest) -> bool { !self.eq(other) }
 }
 
 fn trans_to_appropriate_llval(bcx: block,
@@ -1265,6 +1266,7 @@ impl cast_kind : cmp::Eq {
             (cast_other, _) => false,
         }
     }
+    pure fn ne(&&other: cast_kind) -> bool { !self.eq(other) }
 }
 
 fn cast_type_kind(t: ty::t) -> cast_kind {

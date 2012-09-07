@@ -36,6 +36,7 @@ impl file_pos: cmp::Eq {
     pure fn eq(&&other: file_pos) -> bool {
         self.ch == other.ch && self.byte == other.byte
     }
+    pure fn ne(&&other: file_pos) -> bool { !self.eq(other) }
 }
 
 /* A codemap is a thing that maps uints to file/line/column positions
@@ -174,6 +175,7 @@ impl span : cmp::Eq {
     pure fn eq(&&other: span) -> bool {
         return self.lo == other.lo && self.hi == other.hi;
     }
+    pure fn ne(&&other: span) -> bool { !self.eq(other) }
 }
 
 fn span_to_str_no_adj(sp: span, cm: codemap) -> ~str {

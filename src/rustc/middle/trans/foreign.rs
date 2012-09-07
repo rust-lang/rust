@@ -44,6 +44,7 @@ impl x86_64_reg_class: cmp::Eq {
     pure fn eq(&&other: x86_64_reg_class) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: x86_64_reg_class) -> bool { !self.eq(other) }
 }
 
 fn is_sse(++c: x86_64_reg_class) -> bool {

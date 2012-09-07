@@ -165,6 +165,7 @@ impl TypeKind : cmp::Eq {
             (X86_MMX, _) => false,
         }
     }
+    pure fn ne(&&other: TypeKind) -> bool { !self.eq(other) }
 }
 
 enum AtomicBinOp {

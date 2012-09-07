@@ -96,6 +96,7 @@ impl TestResult : Eq {
     pure fn eq(&&other: TestResult) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: TestResult) -> bool { !self.eq(other) }
 }
 
 type ConsoleTestState =

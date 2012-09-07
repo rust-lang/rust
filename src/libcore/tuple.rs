@@ -81,6 +81,7 @@ impl<A: Eq, B: Eq> (A, B): Eq {
             }
         }
     }
+    pure fn ne(&&other: (A, B)) -> bool { !self.eq(other) }
 }
 
 impl<A: Ord, B: Ord> (A, B): Ord {
@@ -119,6 +120,7 @@ impl<A: Eq, B: Eq, C: Eq> (A, B, C): Eq {
             }
         }
     }
+    pure fn ne(&&other: (A, B, C)) -> bool { !self.eq(other) }
 }
 
 impl<A: Ord, B: Ord, C: Ord> (A, B, C): Ord {

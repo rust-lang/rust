@@ -748,4 +748,5 @@ impl CopyAction : cmp::Eq {
             (DROP_EXISTING, _) => false,
         }
     }
+    pure fn ne(&&other: CopyAction) -> bool { !self.eq(other) }
 }

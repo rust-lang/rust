@@ -76,9 +76,8 @@ impl T: Ord {
 }
 
 impl T: Eq {
-    pure fn eq(&&other: T) -> bool {
-        return self == other;
-    }
+    pure fn eq(&&other: T) -> bool { return self == other; }
+    pure fn ne(&&other: T) -> bool { return self != other; }
 }
 
 impl T: num::Num {

@@ -64,6 +64,7 @@ impl breaks : cmp::Eq {
             (inconsistent, _) => false,
         }
     }
+    pure fn ne(&&other: breaks) -> bool { !self.eq(other) }
 }
 
 type break_t = {offset: int, blank_space: int};

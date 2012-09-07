@@ -346,6 +346,7 @@ impl Constraint: cmp::Eq {
             (ConstrainVarSubReg(*), _) => false
         }
     }
+    pure fn ne(&&other: Constraint) -> bool { !self.eq(other) }
 }
 
 struct TwoRegions {
@@ -357,6 +358,7 @@ impl TwoRegions: cmp::Eq {
     pure fn eq(&&other: TwoRegions) -> bool {
         self.a == other.a && self.b == other.b
     }
+    pure fn ne(&&other: TwoRegions) -> bool { !self.eq(other) }
 }
 
 enum UndoLogEntry {
@@ -753,6 +755,7 @@ impl Direction : cmp::Eq {
     pure fn eq(&&other: Direction) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: Direction) -> bool { !self.eq(other) }
 }
 
 enum Classification { Expanding, Contracting }
@@ -761,6 +764,7 @@ impl Classification : cmp::Eq {
     pure fn eq(&&other: Classification) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: Classification) -> bool { !self.eq(other) }
 }
 
 enum GraphNodeValue { NoValue, Value(region), ErrorValue }

@@ -53,6 +53,7 @@ impl purity_cause : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: purity_cause) -> bool { !self.eq(other) }
 }
 
 fn check_loans(bccx: borrowck_ctxt,

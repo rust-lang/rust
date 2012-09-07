@@ -401,6 +401,7 @@ mod rt {
                 (pad_float, _) => false
             }
         }
+        pure fn ne(&&other: pad_mode) -> bool { !self.eq(other) }
     }
 
     fn pad(cv: conv, &s: ~str, mode: pad_mode) -> ~str {

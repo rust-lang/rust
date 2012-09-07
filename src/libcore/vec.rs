@@ -1406,23 +1406,23 @@ pure fn eq<T: Eq>(a: &[T], b: &[T]) -> bool {
 
 impl<T: Eq> &[T]: Eq {
     #[inline(always)]
-    pure fn eq(&&other: &[T]) -> bool {
-        eq(self, other)
-    }
+    pure fn eq(&&other: &[T]) -> bool { eq(self, other) }
+    #[inline(always)]
+    pure fn ne(&&other: &[T]) -> bool { !self.eq(other) }
 }
 
 impl<T: Eq> ~[T]: Eq {
     #[inline(always)]
-    pure fn eq(&&other: ~[T]) -> bool {
-        eq(self, other)
-    }
+    pure fn eq(&&other: ~[T]) -> bool { eq(self, other) }
+    #[inline(always)]
+    pure fn ne(&&other: ~[T]) -> bool { !self.eq(other) }
 }
 
 impl<T: Eq> @[T]: Eq {
     #[inline(always)]
-    pure fn eq(&&other: @[T]) -> bool {
-        eq(self, other)
-    }
+    pure fn eq(&&other: @[T]) -> bool { eq(self, other) }
+    #[inline(always)]
+    pure fn ne(&&other: @[T]) -> bool { !self.eq(other) }
 }
 
 // Lexicographical comparison

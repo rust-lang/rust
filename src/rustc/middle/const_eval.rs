@@ -201,6 +201,7 @@ impl const_val: cmp::Eq {
             (const_str(_), _) | (const_bool(_), _) => false
         }
     }
+    pure fn ne(&&other: const_val) -> bool { !self.eq(other) }
 }
 
 // FIXME: issue #1417

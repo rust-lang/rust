@@ -81,6 +81,7 @@ impl def_id: cmp::Eq {
     pure fn eq(&&other: def_id) -> bool {
         self.crate == other.crate && self.node == other.node
     }
+    pure fn ne(&&other: def_id) -> bool { !self.eq(other) }
 }
 
 const local_crate: crate_num = 0;
@@ -244,6 +245,7 @@ impl def : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: def) -> bool { !self.eq(other) }
 }
 
 // The set of meta_items that define the compilation environment of the crate,
@@ -337,6 +339,7 @@ impl binding_mode : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: binding_mode) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -368,6 +371,7 @@ impl mutability: cmp::Eq {
     pure fn eq(&&other: mutability) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: mutability) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -420,6 +424,7 @@ impl binop : cmp::Eq {
     pure fn eq(&&other: binop) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: binop) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -454,6 +459,7 @@ impl<T:cmp::Eq> inferable<T> : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: inferable<T>) -> bool { !self.eq(other) }
 }
 
 // "resolved" mode: the real modes.
@@ -464,6 +470,7 @@ impl rmode : cmp::Eq {
     pure fn eq(&&other: rmode) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: rmode) -> bool { !self.eq(other) }
 }
 
 // inferable mode.
@@ -504,6 +511,7 @@ impl init_op : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: init_op) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -547,6 +555,7 @@ impl blk_check_mode : cmp::Eq {
             (unsafe_blk, _) => false,
         }
     }
+    pure fn ne(&&other: blk_check_mode) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -781,6 +790,7 @@ impl ast::lit_: cmp::Eq {
             (lit_bool(_), _) => false
         }
     }
+    pure fn ne(&&other: ast::lit_) -> bool { !self.eq(other) }
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -828,6 +838,7 @@ impl int_ty: cmp::Eq {
             (ty_i64, _) => false,
         }
     }
+    pure fn ne(&&other: int_ty) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -848,6 +859,7 @@ impl uint_ty: cmp::Eq {
             (ty_u64, _) => false
         }
     }
+    pure fn ne(&&other: uint_ty) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -860,6 +872,7 @@ impl float_ty: cmp::Eq {
             (ty_f, _) | (ty_f32, _) | (ty_f64, _) => false
         }
     }
+    pure fn ne(&&other: float_ty) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -910,6 +923,7 @@ impl prim_ty : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: prim_ty) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -960,6 +974,7 @@ impl purity : cmp::Eq {
     pure fn eq(&&other: purity) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: purity) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -978,6 +993,7 @@ impl ret_style : cmp::Eq {
             (return_val, _) => false,
         }
     }
+    pure fn ne(&&other: ret_style) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -1031,6 +1047,7 @@ impl self_ty_ : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: self_ty_) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -1061,6 +1078,7 @@ impl foreign_mod_sort : cmp::Eq {
     pure fn eq(&&other: foreign_mod_sort) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: foreign_mod_sort) -> bool { !self.eq(other) }
 }
 
 impl foreign_abi : cmp::Eq {
@@ -1074,6 +1092,7 @@ impl foreign_abi : cmp::Eq {
             (foreign_abi_stdcall, _) => false,
         }
     }
+    pure fn ne(&&other: foreign_abi) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -1115,6 +1134,7 @@ impl namespace : cmp::Eq {
     pure fn eq(&&other: namespace) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: namespace) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -1162,6 +1182,7 @@ impl attr_style : cmp::Eq {
     pure fn eq(&&other: attr_style) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: attr_style) -> bool { !self.eq(other) }
 }
 
 // doc-comments are promoted to attributes that have is_sugared_doc = true
@@ -1194,6 +1215,7 @@ impl visibility : cmp::Eq {
             (inherited, _) => false,
         }
     }
+    pure fn ne(&&other: visibility) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -1262,6 +1284,7 @@ impl class_mutability : cmp::Eq {
             (class_immutable, _) => false,
         }
     }
+    pure fn ne(&&other: class_mutability) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]

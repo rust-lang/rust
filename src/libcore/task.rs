@@ -85,9 +85,8 @@ enum Task {
 }
 
 impl Task : cmp::Eq {
-    pure fn eq(&&other: Task) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: Task) -> bool { *self == *other }
+    pure fn ne(&&other: Task) -> bool { !self.eq(other) }
 }
 
 /**
@@ -113,6 +112,7 @@ impl TaskResult: Eq {
             (Success, _) | (Failure, _) => false
         }
     }
+    pure fn ne(&&other: TaskResult) -> bool { !self.eq(other) }
 }
 
 /// A message type for notifying of task lifecycle events
@@ -131,6 +131,7 @@ impl Notification : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: Notification) -> bool { !self.eq(other) }
 }
 
 /// Scheduler modes
@@ -1324,6 +1325,7 @@ impl LocalData: Eq {
         let ptr_b: (uint, uint) = unsafe::reinterpret_cast(&other);
         return ptr_a == ptr_b;
     }
+    pure fn ne(&&other: LocalData) -> bool { !self.eq(other) }
 }
 
 // We use dvec because it's the best data structure in core. If TLS is used

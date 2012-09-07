@@ -440,6 +440,7 @@ impl binop : cmp::Eq {
     pure fn eq(&&other: binop) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: binop) -> bool { !self.eq(other) }
 }
 
 impl token : cmp::Eq {
@@ -705,6 +706,7 @@ impl token : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: token) -> bool { !self.eq(other) }
 }
 
 // Local Variables:

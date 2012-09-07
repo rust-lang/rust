@@ -12,6 +12,7 @@ impl test_mode : cmp::Eq {
     pure fn eq(&&other: test_mode) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: test_mode) -> bool { !self.eq(other) }
 }
 
 fn write_file(filename: &Path, content: ~str) {

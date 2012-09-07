@@ -12,6 +12,7 @@ mod pipes {
         pure fn eq(&&other: state) -> bool {
             (self as uint) == (other as uint)
         }
+        pure fn ne(&&other: state) -> bool { !self.eq(other) }
     }
 
     type packet<T: send> = {

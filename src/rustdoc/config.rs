@@ -22,6 +22,7 @@ impl output_format : cmp::Eq {
     pure fn eq(&&other: output_format) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: output_format) -> bool { !self.eq(other) }
 }
 
 /// How to organize the output
@@ -36,6 +37,7 @@ impl output_style : cmp::Eq {
     pure fn eq(&&other: output_style) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: output_style) -> bool { !self.eq(other) }
 }
 
 /// The configuration for a rustdoc session

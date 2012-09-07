@@ -266,6 +266,7 @@ impl<T: Eq> Option<T> : Eq {
             }
         }
     }
+    pure fn ne(&&other: Option<T>) -> bool { !self.eq(other) }
 }
 
 #[test]

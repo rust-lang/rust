@@ -165,6 +165,7 @@ impl<T:Eq> List<T> : Eq {
             }
         }
     }
+    pure fn ne(&&other: List<T>) -> bool { !self.eq(other) }
 }
 
 #[cfg(test)]

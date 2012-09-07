@@ -31,6 +31,7 @@ impl Point : cmp::Eq {
     pure fn eq(&&other: Point) -> bool {
         self.x == other.x && self.y == other.y
     }
+    pure fn ne(&&other: Point) -> bool { !self.eq(other) }
 }
 
 fn main() {
