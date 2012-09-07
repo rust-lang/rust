@@ -140,6 +140,7 @@ impl compile_upto : cmp::Eq {
     pure fn eq(&&other: compile_upto) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: compile_upto) -> bool { !self.eq(other) }
 }
 
 fn compile_upto(sess: session, cfg: ast::crate_cfg,

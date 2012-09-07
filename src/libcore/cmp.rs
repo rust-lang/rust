@@ -26,11 +26,13 @@ trait Ord {
 #[lang="eq"]
 trait Eq {
     pure fn eq(&&other: self) -> bool;
+    pure fn ne(&&other: self) -> bool;
 }
 
 #[cfg(test)]
 trait Eq {
     pure fn eq(&&other: self) -> bool;
+    pure fn ne(&&other: self) -> bool;
 }
 
 pure fn lt<T: Ord>(v1: &T, v2: &T) -> bool {
@@ -43,6 +45,10 @@ pure fn le<T: Ord Eq>(v1: &T, v2: &T) -> bool {
 
 pure fn eq<T: Eq>(v1: &T, v2: &T) -> bool {
     v1.eq(v2)
+}
+
+pure fn ne<T: Eq>(v1: &T, v2: &T) -> bool {
+    v1.ne(v2)
 }
 
 pure fn ge<T: Ord>(v1: &T, v2: &T) -> bool {

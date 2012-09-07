@@ -373,6 +373,7 @@ impl<T:Eq,U:Eq> Result<T,U> : Eq {
             }
         }
     }
+    pure fn ne(&&other: Result<T,U>) -> bool { !self.eq(other) }
 }
 
 #[cfg(test)]

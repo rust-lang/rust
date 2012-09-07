@@ -288,6 +288,7 @@ impl cleantype : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: cleantype) -> bool { !self.eq(other) }
 }
 
 // Used to remember and reuse existing cleanup paths
@@ -1114,12 +1115,14 @@ impl mono_param_id: cmp::Eq {
             (mono_repr(*), _) => false
         }
     }
+    pure fn ne(&&other: mono_param_id) -> bool { !self.eq(other) }
 }
 
 impl mono_id_: cmp::Eq {
     pure fn eq(&&other: mono_id_) -> bool {
         return self.def == other.def && self.params == other.params;
     }
+    pure fn ne(&&other: mono_id_) -> bool { !self.eq(other) }
 }
 
 pure fn hash_mono_id(mi: &mono_id) -> uint {

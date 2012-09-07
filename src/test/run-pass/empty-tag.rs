@@ -4,6 +4,7 @@ impl chan : cmp::Eq {
     pure fn eq(&&other: chan) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: chan) -> bool { !self.eq(other) }
 }
 
 fn wrapper3(i: chan) {

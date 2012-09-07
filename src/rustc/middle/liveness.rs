@@ -128,15 +128,13 @@ enum Variable = uint;
 enum LiveNode = uint;
 
 impl Variable : cmp::Eq {
-    pure fn eq(&&other: Variable) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: Variable) -> bool { *self == *other }
+    pure fn ne(&&other: Variable) -> bool { *self != *other }
 }
 
 impl LiveNode : cmp::Eq {
-    pure fn eq(&&other: LiveNode) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: LiveNode) -> bool { *self == *other }
+    pure fn ne(&&other: LiveNode) -> bool { *self != *other }
 }
 
 enum LiveNodeKind {
@@ -175,6 +173,7 @@ impl LiveNodeKind : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: LiveNodeKind) -> bool { !self.eq(other) }
 }
 
 fn check_crate(tcx: ty::ctxt,

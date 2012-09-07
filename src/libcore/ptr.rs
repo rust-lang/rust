@@ -188,6 +188,7 @@ impl<T> *const T : Eq {
         let b: uint = unsafe::reinterpret_cast(&other);
         return a == b;
     }
+    pure fn ne(&&other: *const T) -> bool { !self.eq(other) }
 }
 
 // Comparison for pointers
@@ -216,9 +217,8 @@ impl<T> *const T : Ord {
 
 // Equality for region pointers
 impl<T:Eq> &const T : Eq {
-    pure fn eq(&&other: &const T) -> bool {
-        return *self == *other;
-    }
+    pure fn eq(&&other: &const T) -> bool { return *self == *other; }
+    pure fn ne(&&other: &const T) -> bool { return *self != *other; }
 }
 
 // Comparison for region pointers

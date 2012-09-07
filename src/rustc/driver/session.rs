@@ -16,6 +16,7 @@ impl os : cmp::Eq {
     pure fn eq(&&other: os) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: os) -> bool { !self.eq(other) }
 }
 
 enum arch { arch_x86, arch_x86_64, arch_arm, }
@@ -24,6 +25,7 @@ impl arch: cmp::Eq {
     pure fn eq(&&other: arch) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: arch) -> bool { !self.eq(other) }
 }
 
 enum crate_type { bin_crate, lib_crate, unknown_crate, }
@@ -95,6 +97,7 @@ impl OptLevel : cmp::Eq {
     pure fn eq(&&other: OptLevel) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: OptLevel) -> bool { !self.eq(other) }
 }
 
 type options =

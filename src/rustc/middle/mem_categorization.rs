@@ -115,6 +115,7 @@ impl categorization : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: categorization) -> bool { !self.eq(other) }
 }
 
 // different kinds of pointers:
@@ -154,6 +155,7 @@ impl ptr_kind : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: ptr_kind) -> bool { !self.eq(other) }
 }
 
 // I am coining the term "components" to mean "pieces of a data
@@ -196,6 +198,7 @@ impl comp_kind : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: comp_kind) -> bool { !self.eq(other) }
 }
 
 // different kinds of expressions we might evaluate
@@ -210,6 +213,7 @@ impl special_kind : cmp::Eq {
     pure fn eq(&&other: special_kind) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: special_kind) -> bool { !self.eq(other) }
 }
 
 // a complete categorization of a value indicating where it originated
@@ -233,6 +237,7 @@ impl cmt_ : cmp::Eq {
         self.mutbl == other.mutbl &&
         self.ty == other.ty
     }
+    pure fn ne(&&other: cmt_) -> bool { !self.eq(other) }
 }
 
 // a loan path is like a category, but it exists only when the data is
@@ -274,6 +279,7 @@ impl loan_path : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: loan_path) -> bool { !self.eq(other) }
 }
 
 // We pun on *T to mean both actual deref of a ptr as well

@@ -424,6 +424,7 @@ impl branch_kind : cmp::Eq {
     pure fn eq(&&other: branch_kind) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: branch_kind) -> bool { !self.eq(other) }
 }
 
 fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],

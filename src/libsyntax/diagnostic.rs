@@ -150,6 +150,7 @@ impl level : cmp::Eq {
     pure fn eq(&&other: level) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: level) -> bool { !self.eq(other) }
 }
 
 fn diagnosticstr(lvl: level) -> ~str {

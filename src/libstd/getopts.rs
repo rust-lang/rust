@@ -124,12 +124,14 @@ impl Name : Eq {
             }
         }
     }
+    pure fn ne(&&other: Name) -> bool { !self.eq(other) }
 }
 
 impl Occur : Eq {
     pure fn eq(&&other: Occur) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: Occur) -> bool { !self.eq(other) }
 }
 
 /// Create an option that is required and takes an argument
@@ -449,6 +451,7 @@ impl FailType : Eq {
     pure fn eq(&&other: FailType) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: FailType) -> bool { !self.eq(other) }
 }
 
 #[cfg(test)]

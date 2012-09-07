@@ -93,6 +93,7 @@ impl p : cmp::Eq {
     pure fn eq(&&other: p) -> bool {
         self.x == other.x && self.y == other.y
     }
+    pure fn ne(&&other: p) -> bool { !self.eq(other) }
 }
 
 fn test_class() {

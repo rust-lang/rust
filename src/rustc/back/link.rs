@@ -30,6 +30,7 @@ impl output_type : cmp::Eq {
     pure fn eq(&&other: output_type) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: output_type) -> bool { !self.eq(other) }
 }
 
 fn llvm_err(sess: session, msg: ~str) -> ! unsafe {

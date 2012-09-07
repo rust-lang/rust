@@ -780,6 +780,8 @@ impl &str: Eq {
     pure fn eq(&&other: &str) -> bool {
         eq_slice(self, other)
     }
+    #[inline(always)]
+    pure fn ne(&&other: &str) -> bool { !self.eq(other) }
 }
 
 impl ~str: Eq {
@@ -787,6 +789,8 @@ impl ~str: Eq {
     pure fn eq(&&other: ~str) -> bool {
         eq_slice(self, other)
     }
+    #[inline(always)]
+    pure fn ne(&&other: ~str) -> bool { !self.eq(other) }
 }
 
 impl @str: Eq {
@@ -794,6 +798,8 @@ impl @str: Eq {
     pure fn eq(&&other: @str) -> bool {
         eq_slice(self, other)
     }
+    #[inline(always)]
+    pure fn ne(&&other: @str) -> bool { !self.eq(other) }
 }
 
 impl ~str : Ord {

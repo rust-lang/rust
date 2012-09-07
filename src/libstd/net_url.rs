@@ -320,6 +320,7 @@ impl UserInfo : Eq {
     pure fn eq(&&other: UserInfo) -> bool {
         self.user == other.user && self.pass == other.pass
     }
+    pure fn ne(&&other: UserInfo) -> bool { !self.eq(other) }
 }
 
 fn query_from_str(rawquery: &str) -> Query {
@@ -386,6 +387,7 @@ impl Input: Eq {
             (Unreserved, _) => false
         }
     }
+    pure fn ne(&&other: Input) -> bool { !self.eq(other) }
 }
 
 // returns userinfo, host, port, and unparsed part, or an error

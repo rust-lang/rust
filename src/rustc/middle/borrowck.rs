@@ -365,6 +365,7 @@ impl bckerr_code : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: bckerr_code) -> bool { !self.eq(other) }
 }
 
 // Combination of an error code and the categorization of the expression
@@ -375,6 +376,7 @@ impl bckerr : cmp::Eq {
     pure fn eq(&&other: bckerr) -> bool {
         self.cmt == other.cmt && self.code == other.code
     }
+    pure fn ne(&&other: bckerr) -> bool { !self.eq(other) }
 }
 
 // shorthand for something that fails with `bckerr` or succeeds with `T`

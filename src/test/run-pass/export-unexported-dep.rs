@@ -12,6 +12,7 @@ mod foo {
         pure fn eq(&&other: t) -> bool {
             (self as uint) == (other as uint)
         }
+        pure fn ne(&&other: t) -> bool { !self.eq(other) }
     }
 
     fn f() -> t { return t1; }

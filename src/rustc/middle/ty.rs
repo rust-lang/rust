@@ -234,6 +234,7 @@ impl intern_key: cmp::Eq {
     pure fn eq(&&other: intern_key) -> bool {
         self.struct == other.struct && self.o_def_id == other.o_def_id
     }
+    pure fn ne(&&other: intern_key) -> bool { !self.eq(other) }
 }
 
 enum ast_ty_to_ty_cache_entry {
@@ -258,6 +259,7 @@ impl region_variance: cmp::Eq {
             (rv_contravariant, _) => false
         }
     }
+    pure fn ne(&&other: region_variance) -> bool { !self.eq(other) }
 }
 
 // N.B.: Borrows from inlined content are not accurately deserialized.  This
@@ -272,6 +274,7 @@ impl borrow : cmp::Eq {
     pure fn eq(&&other: borrow) -> bool {
         self.region == other.region && self.mutbl == other.mutbl
     }
+    pure fn ne(&&other: borrow) -> bool { !self.eq(other) }
 }
 
 type ctxt =
@@ -367,6 +370,7 @@ impl closure_kind : cmp::Eq {
     pure fn eq(&&other: closure_kind) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: closure_kind) -> bool { !self.eq(other) }
 }
 
 enum fn_proto {
@@ -391,6 +395,7 @@ impl fn_proto : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: fn_proto) -> bool { !self.eq(other) }
 }
 
 /**
@@ -436,6 +441,7 @@ impl param_ty: cmp::Eq {
     pure fn eq(&&other: param_ty) -> bool {
         self.idx == other.idx && self.def_id == other.def_id
     }
+    pure fn ne(&&other: param_ty) -> bool { !self.eq(other) }
 }
 
 /// Representation of regions:
@@ -3709,18 +3715,21 @@ impl mt : cmp::Eq {
     pure fn eq(&&other: mt) -> bool {
         self.ty == other.ty && self.mutbl == other.mutbl
     }
+    pure fn ne(&&other: mt) -> bool { !self.eq(other) }
 }
 
 impl arg : cmp::Eq {
     pure fn eq(&&other: arg) -> bool {
         self.mode == other.mode && self.ty == other.ty
     }
+    pure fn ne(&&other: arg) -> bool { !self.eq(other) }
 }
 
 impl field : cmp::Eq {
     pure fn eq(&&other: field) -> bool {
         self.ident == other.ident && self.mt == other.mt
     }
+    pure fn ne(&&other: field) -> bool { !self.eq(other) }
 }
 
 impl vstore : cmp::Eq {
@@ -3752,6 +3761,7 @@ impl vstore : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: vstore) -> bool { !self.eq(other) }
 }
 
 impl FnMeta : cmp::Eq {
@@ -3761,6 +3771,7 @@ impl FnMeta : cmp::Eq {
         self.bounds == other.bounds &&
         self.ret_style == other.ret_style
     }
+    pure fn ne(&&other: FnMeta) -> bool { !self.eq(other) }
 }
 
 impl FnSig : cmp::Eq {
@@ -3768,36 +3779,35 @@ impl FnSig : cmp::Eq {
         self.inputs == other.inputs &&
         self.output == other.output
     }
+    pure fn ne(&&other: FnSig) -> bool { !self.eq(other) }
+    
 }
 
 impl<M: cmp::Eq> FnTyBase<M> : cmp::Eq {
     pure fn eq(&&other: FnTyBase<M>) -> bool {
         self.meta == other.meta && self.sig == other.sig
     }
+    pure fn ne(&&other: FnTyBase<M>) -> bool { !self.eq(other) }
 }
 
 impl TyVid: cmp::Eq {
-    pure fn eq(&&other: TyVid) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: TyVid) -> bool { *self == *other }
+    pure fn ne(&&other: TyVid) -> bool { *self != *other }
 }
 
 impl IntVid: cmp::Eq {
-    pure fn eq(&&other: IntVid) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: IntVid) -> bool { *self == *other }
+    pure fn ne(&&other: IntVid) -> bool { *self != *other }
 }
 
 impl FnVid: cmp::Eq {
-    pure fn eq(&&other: FnVid) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: FnVid) -> bool { *self == *other }
+    pure fn ne(&&other: FnVid) -> bool { *self != *other }
 }
 
 impl RegionVid: cmp::Eq {
-    pure fn eq(&&other: RegionVid) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: RegionVid) -> bool { *self == *other }
+    pure fn ne(&&other: RegionVid) -> bool { *self != *other }
 }
 
 impl region : cmp::Eq {
@@ -3835,6 +3845,7 @@ impl region : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: region) -> bool { !self.eq(other) }
 }
 
 impl bound_region : cmp::Eq {
@@ -3866,6 +3877,7 @@ impl bound_region : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: bound_region) -> bool { !self.eq(other) }
 }
 
 impl substs : cmp::Eq {
@@ -3874,12 +3886,14 @@ impl substs : cmp::Eq {
         self.self_ty == other.self_ty &&
         self.tps == other.tps
     }
+    pure fn ne(&&other: substs) -> bool { !self.eq(other) }
 }
 
 impl InferTy : cmp::Eq {
     pure fn eq(&&other: InferTy) -> bool {
         self.to_hash() == other.to_hash()
     }
+    pure fn ne(&&other: InferTy) -> bool { !self.eq(other) }
 }
 
 impl sty : cmp::Eq {
@@ -4038,6 +4052,7 @@ impl sty : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: sty) -> bool { !self.eq(other) }
 }
 
 impl param_bound : cmp::Eq {
@@ -4075,12 +4090,12 @@ impl param_bound : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: param_bound) -> bool { !self.eq(other) }
 }
 
 impl kind : cmp::Eq {
-    pure fn eq(&&other: kind) -> bool {
-        *self == *other
-    }
+    pure fn eq(&&other: kind) -> bool { *self == *other }
+    pure fn ne(&&other: kind) -> bool { *self != *other }
 }
 
 

@@ -609,12 +609,12 @@ impl Error : Eq {
         self.col == other.col &&
         self.msg == other.msg
     }
+    pure fn ne(&&other: Error) -> bool { !self.eq(other) }
 }
 
 impl Json : Eq {
-    pure fn eq(&&other: Json) -> bool {
-        eq(self, other)
-    }
+    pure fn eq(&&other: Json) -> bool { eq(self, other) }
+    pure fn ne(&&other: Json) -> bool { !self.eq(other) }
 }
 
 trait ToJson { fn to_json() -> Json; }

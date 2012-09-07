@@ -100,6 +100,7 @@ impl mode : cmp::Eq {
     pure fn eq(&&other: mode) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: mode) -> bool { !self.eq(other) }
 }
 
 fn opts() -> ~[getopts::Opt] {

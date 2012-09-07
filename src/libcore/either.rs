@@ -143,6 +143,7 @@ impl<T:Eq,U:Eq> Either<T,U> : Eq {
             }
         }
     }
+    pure fn ne(&&other: Either<T,U>) -> bool { !self.eq(other) }
 }
 
 #[test]

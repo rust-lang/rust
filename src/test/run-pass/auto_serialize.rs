@@ -46,13 +46,14 @@ impl an_enum : cmp::Eq {
     pure fn eq(&&other: an_enum) -> bool {
         self.v == other.v
     }
+    pure fn ne(&&other: an_enum) -> bool { !self.eq(other) }
 }
 
 impl point : cmp::Eq {
     pure fn eq(&&other: point) -> bool {
-        self.x == other.x &&
-            self.y == other.y
+        self.x == other.x && self.y == other.y
     }
+    pure fn ne(&&other: point) -> bool { !self.eq(other) }
 }
 
 impl<T:cmp::Eq> quark<T> : cmp::Eq {
@@ -68,6 +69,7 @@ impl<T:cmp::Eq> quark<T> : cmp::Eq {
           }
         }
     }
+    pure fn ne(&&other: quark<T>) -> bool { !self.eq(other) }
 }
 
 
@@ -75,6 +77,7 @@ impl c_like : cmp::Eq {
     pure fn eq(&&other: c_like) -> bool {
         self as int == other as int
     }
+    pure fn ne(&&other: c_like) -> bool { !self.eq(other) }
 }
 
 impl expr : cmp::Eq {
@@ -100,6 +103,7 @@ impl expr : cmp::Eq {
             }
         }
     }
+    pure fn ne(&&other: expr) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]
@@ -109,6 +113,7 @@ impl<T:cmp::Eq> spanned<T> : cmp::Eq {
     pure fn eq(&&other: spanned<T>) -> bool {
         self.lo == other.lo && self.hi == other.hi && self.node.eq(other.node)
     }
+    pure fn ne(&&other: spanned<T>) -> bool { !self.eq(other) }
 }
 
 #[auto_serialize]

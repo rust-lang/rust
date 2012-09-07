@@ -133,6 +133,7 @@ impl Family : cmp::Eq {
     pure fn eq(&&other: Family) -> bool {
         (self as uint) == (other as uint)
     }
+    pure fn ne(&&other: Family) -> bool { !self.eq(other) }
 }
 
 fn item_family(item: ebml::Doc) -> Family {

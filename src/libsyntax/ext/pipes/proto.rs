@@ -14,6 +14,7 @@ impl direction : cmp::Eq {
             (recv, _) => false,
         }
     }
+    pure fn ne(&&other: direction) -> bool { !self.eq(other) }
 }
 
 impl direction: ToStr {
