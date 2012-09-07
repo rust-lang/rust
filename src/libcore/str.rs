@@ -713,7 +713,24 @@ Section: Comparing strings
 */
 
 /// Bytewise slice equality
+#[cfg(notest)]
 #[lang="str_eq"]
+pure fn eq_slice(a: &str, b: &str) -> bool {
+    do as_buf(a) |ap, alen| {
+        do as_buf(b) |bp, blen| {
+            if (alen != blen) { false }
+            else {
+                unsafe {
+                    libc::memcmp(ap as *libc::c_void,
+                                 bp as *libc::c_void,
+                                 (alen - 1) as libc::size_t) == 0
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 pure fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
