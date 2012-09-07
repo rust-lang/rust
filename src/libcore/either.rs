@@ -29,7 +29,7 @@ fn either<T, U, V>(f_left: fn((&T)) -> V,
     }
 }
 
-fn lefts<T: copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
+fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
     //! Extracts from a vector of either all the left values
 
     let mut result: ~[T] = ~[];
@@ -42,7 +42,7 @@ fn lefts<T: copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
     return result;
 }
 
-fn rights<T, U: copy>(eithers: &[Either<T, U>]) -> ~[U] {
+fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
     //! Extracts from a vector of either all the right values
 
     let mut result: ~[U] = ~[];
@@ -55,7 +55,7 @@ fn rights<T, U: copy>(eithers: &[Either<T, U>]) -> ~[U] {
     return result;
 }
 
-fn partition<T: copy, U: copy>(eithers: &[Either<T, U>])
+fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
     -> {lefts: ~[T], rights: ~[U]} {
     /*!
      * Extracts from a vector of either all the left values and right values
@@ -75,7 +75,7 @@ fn partition<T: copy, U: copy>(eithers: &[Either<T, U>])
     return {lefts: lefts, rights: rights};
 }
 
-pure fn flip<T: copy, U: copy>(eith: &Either<T, U>) -> Either<U, T> {
+pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
     //! Flips between left and right of a given either
 
     match *eith {
@@ -84,7 +84,7 @@ pure fn flip<T: copy, U: copy>(eith: &Either<T, U>) -> Either<U, T> {
     }
 }
 
-pure fn to_result<T: copy, U: copy>(eith: &Either<T, U>) -> Result<U, T> {
+pure fn to_result<T: Copy, U: Copy>(eith: &Either<T, U>) -> Result<U, T> {
     /*!
      * Converts either::t to a result::t
      *

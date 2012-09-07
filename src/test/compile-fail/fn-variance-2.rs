@@ -1,4 +1,4 @@
-fn reproduce<T:copy>(t: T) -> fn@() -> T {
+fn reproduce<T:Copy>(t: T) -> fn@() -> T {
     fn@() -> T { t }
 }
 

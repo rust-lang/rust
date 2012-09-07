@@ -23,7 +23,7 @@ impl ty::region: to_str {
     }
 }
 
-impl<V:copy to_str> bound<V>: to_str {
+impl<V:Copy to_str> bound<V>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
           Some(v) => v.to_str(cx),
@@ -32,7 +32,7 @@ impl<V:copy to_str> bound<V>: to_str {
     }
 }
 
-impl<T:copy to_str> bounds<T>: to_str {
+impl<T:Copy to_str> bounds<T>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         fmt!("{%s <: %s}",
              self.lb.to_str(cx),
@@ -48,7 +48,7 @@ impl int_ty_set: to_str {
     }
 }
 
-impl<V:copy vid, T:copy to_str> var_value<V, T>: to_str {
+impl<V:Copy vid, T:Copy to_str> var_value<V, T>: to_str {
     fn to_str(cx: infer_ctxt) -> ~str {
         match self {
           redirect(vid) => fmt!("redirect(%s)", vid.to_str()),

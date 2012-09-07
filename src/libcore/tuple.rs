@@ -12,7 +12,7 @@ trait TupleOps<T,U> {
     pure fn swap() -> (U, T);
 }
 
-impl<T: copy, U: copy> (T, U): TupleOps<T,U> {
+impl<T: Copy, U: Copy> (T, U): TupleOps<T,U> {
 
     /// Return the first element of self
     pure fn first() -> T {
@@ -39,7 +39,7 @@ trait ExtendedTupleOps<A,B> {
     fn map<C>(f: fn(A, B) -> C) -> ~[C];
 }
 
-impl<A: copy, B: copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
+impl<A: Copy, B: Copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
 
     fn zip() -> ~[(A, B)] {
         let (a, b) = self;
@@ -52,7 +52,7 @@ impl<A: copy, B: copy> (&[A], &[B]): ExtendedTupleOps<A,B> {
     }
 }
 
-impl<A: copy, B: copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
+impl<A: Copy, B: Copy> (~[A], ~[B]): ExtendedTupleOps<A,B> {
 
     fn zip() -> ~[(A, B)] {
         // XXX: Bad copy

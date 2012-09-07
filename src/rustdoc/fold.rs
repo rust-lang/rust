@@ -50,7 +50,7 @@ type t<T> = {
 
 // This exists because fn types don't infer correctly as record
 // initializers, but they do as function arguments
-fn mk_fold<T:copy>(
+fn mk_fold<T:Copy>(
     ctxt: T,
     +fold_doc: fold_doc<T>,
     +fold_crate: fold_crate<T>,
@@ -80,7 +80,7 @@ fn mk_fold<T:copy>(
     })
 }
 
-fn default_any_fold<T:send copy>(ctxt: T) -> fold<T> {
+fn default_any_fold<T:Send Copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -97,7 +97,7 @@ fn default_any_fold<T:send copy>(ctxt: T) -> fold<T> {
     )
 }
 
-fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
+fn default_seq_fold<T:Copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -114,7 +114,7 @@ fn default_seq_fold<T:copy>(ctxt: T) -> fold<T> {
     )
 }
 
-fn default_par_fold<T:send copy>(ctxt: T) -> fold<T> {
+fn default_par_fold<T:Send Copy>(ctxt: T) -> fold<T> {
     mk_fold(
         ctxt,
         |f, d| default_seq_fold_doc(f, d),
@@ -163,7 +163,7 @@ fn default_seq_fold_item<T>(
     doc
 }
 
-fn default_any_fold_mod<T:send copy>(
+fn default_any_fold_mod<T:Send Copy>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
@@ -189,7 +189,7 @@ fn default_seq_fold_mod<T>(
     })
 }
 
-fn default_par_fold_mod<T:send copy>(
+fn default_par_fold_mod<T:Send Copy>(
     fold: fold<T>,
     doc: doc::moddoc
 ) -> doc::moddoc {
@@ -202,7 +202,7 @@ fn default_par_fold_mod<T:send copy>(
     })
 }
 
-fn default_any_fold_nmod<T:send copy>(
+fn default_any_fold_nmod<T:Send Copy>(
     fold: fold<T>,
     doc: doc::nmoddoc
 ) -> doc::nmoddoc {
@@ -228,7 +228,7 @@ fn default_seq_fold_nmod<T>(
     }
 }
 
-fn default_par_fold_nmod<T:send copy>(
+fn default_par_fold_nmod<T:Send Copy>(
     fold: fold<T>,
     doc: doc::nmoddoc
 ) -> doc::nmoddoc {

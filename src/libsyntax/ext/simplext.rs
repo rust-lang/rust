@@ -88,7 +88,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
     }
 }
 
-fn option_flatten_map<T: copy, U: copy>(f: fn@(T) -> Option<U>, v: ~[T]) ->
+fn option_flatten_map<T: Copy, U: Copy>(f: fn@(T) -> Option<U>, v: ~[T]) ->
    Option<~[U]> {
     let mut res = ~[];
     for v.each |elem| {

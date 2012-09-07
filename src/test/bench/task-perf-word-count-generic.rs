@@ -39,9 +39,9 @@ trait hash_key {
     pure fn eq(&&k: self) -> bool;
 }
 
-fn mk_hash<K: const hash_key, V: copy>() -> map::hashmap<K, V> {
-    pure fn hashfn<K: const hash_key>(k: &K) -> uint { k.hash() }
-    pure fn hasheq<K: const hash_key>(k1: &K, k2: &K) -> bool { k1.eq(*k2) }
+fn mk_hash<K: Const hash_key, V: Copy>() -> map::hashmap<K, V> {
+    pure fn hashfn<K: Const hash_key>(k: &K) -> uint { k.hash() }
+    pure fn hasheq<K: Const hash_key>(k1: &K, k2: &K) -> bool { k1.eq(*k2) }
 
     map::hashmap(hashfn, hasheq)
 }
@@ -125,35 +125,35 @@ mod map_reduce {
     export reducer;
     export map_reduce;
 
-    type putter<K: send, V: send> = fn(K, V);
+    type putter<K: Send, V: Send> = fn(K, V);
 
-    type mapper<K1: send, K2: send, V: send> = fn~(K1, putter<K2, V>);
+    type mapper<K1: Send, K2: Send, V: Send> = fn~(K1, putter<K2, V>);
 
-    type getter<V: send> = fn() -> Option<V>;
+    type getter<V: Send> = fn() -> Option<V>;
 
-    type reducer<K: copy send, V: copy send> = fn~(K, getter<V>);
+    type reducer<K: Copy Send, V: Copy Send> = fn~(K, getter<V>);
 
-    enum ctrl_proto<K: copy send, V: copy send> {
+    enum ctrl_proto<K: Copy Send, V: Copy Send> {
         find_reducer(K, Chan<Chan<reduce_proto<V>>>),
         mapper_done
     }
 
 
     proto! ctrl_proto (
-        open: send<K: copy send, V: copy send> {
+        open: send<K: Copy Send, V: Copy Send> {
             find_reducer(K) -> reducer_response<K, V>,
             mapper_done -> !
         }
 
-        reducer_response: recv<K: copy send, V: copy send> {
+        reducer_response: recv<K: Copy Send, V: Copy Send> {
             reducer(Chan<reduce_proto<V>>) -> open<K, V>
         }
     )
 
-    enum reduce_proto<V: copy send> { emit_val(V), done, addref, release }
+    enum reduce_proto<V: Copy Send> { emit_val(V), done, addref, release }
 
-    fn start_mappers<K1: copy send, K2: const copy send hash_key,
-                     V: copy send>(
+    fn start_mappers<K1: Copy Send, K2: Const Copy Send hash_key,
+                     V: Copy Send>(
         map: mapper<K1, K2, V>,
         &ctrls: ~[ctrl_proto::server::open<K2, V>],
         inputs: ~[K1])
@@ -169,7 +169,7 @@ mod map_reduce {
         return tasks;
     }
 
-    fn map_task<K1: copy send, K2: const copy send hash_key, V: copy send>(
+    fn map_task<K1: Copy Send, K2: Const Copy Send hash_key, V: Copy Send>(
         map: mapper<K1, K2, V>,
         ctrl: box<ctrl_proto::client::open<K2, V>>,
         input: K1)
@@ -198,7 +198,7 @@ mod map_reduce {
             send(c.get(), emit_val(val));
         }
 
-        fn finish<K: copy send, V: copy send>(_k: K, v: Chan<reduce_proto<V>>)
+        fn finish<K: Copy Send, V: Copy Send>(_k: K, v: Chan<reduce_proto<V>>)
         {
             send(v, release);
         }
@@ -206,7 +206,7 @@ mod map_reduce {
         ctrl_proto::client::mapper_done(ctrl.unwrap());
     }
 
-    fn reduce_task<K: copy send, V: copy send>(
+    fn reduce_task<K: Copy Send, V: Copy Send>(
         reduce: reducer<K, V>, 
         key: K,
         out: Chan<Chan<reduce_proto<V>>>)
@@ -218,7 +218,7 @@ mod map_reduce {
         let mut ref_count = 0;
         let mut is_done = false;
 
-        fn get<V: copy send>(p: Port<reduce_proto<V>>,
+        fn get<V: Copy Send>(p: Port<reduce_proto<V>>,
                              &ref_count: int, &is_done: bool)
            -> Option<V> {
             while !is_done || ref_count > 0 {
@@ -241,7 +241,7 @@ mod map_reduce {
         reduce(key, || get(p, ref_count, is_done) );
     }
 
-    fn map_reduce<K1: copy send, K2: const copy send hash_key, V: copy send>(
+    fn map_reduce<K1: Copy Send, K2: Const Copy Send hash_key, V: Copy Send>(
         map: mapper<K1, K2, V>,
         reduce: reducer<K2, V>,
         inputs: ~[K1])

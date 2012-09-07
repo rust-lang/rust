@@ -1583,20 +1583,20 @@ unless you explicitly declare that type parameter to have copyable
 // This does not compile
 fn head_bad<T>(v: ~[T]) -> T { v[0] }
 // This does
-fn head<T: copy>(v: ~[T]) -> T { v[0] }
+fn head<T: Copy>(v: ~[T]) -> T { v[0] }
 ~~~~
 
 When instantiating a generic function, you can only instantiate it
 with types that fit its kinds. So you could not apply `head` to a
 resource type. Rust has several kinds that can be used as type bounds:
 
-* `copy` - Copyable types. All types are copyable unless they
+* `Copy` - Copyable types. All types are copyable unless they
   are classes with destructors or otherwise contain
   classes with destructors.
-* `send` - Sendable types. All types are sendable unless they
+* `Send` - Sendable types. All types are sendable unless they
   contain shared boxes, closures, or other local-heap-allocated
   types.
-* `const` - Constant types. These are types that do not contain
+* `Const` - Constant types. These are types that do not contain
   mutable fields nor shared boxes.
 
 > ***Note:*** Rust type kinds are syntactically very similar to
@@ -2002,7 +2002,7 @@ and one for values. This means that this code is valid:
 ~~~~
 mod buffalo {
     type buffalo = int;
-    fn buffalo<buffalo: copy>(buffalo: buffalo) -> buffalo { buffalo }
+    fn buffalo<buffalo>(+buffalo: buffalo) -> buffalo { buffalo }
 }
 fn main() {
     let buffalo: buffalo::buffalo = 1;

@@ -308,7 +308,7 @@ fn Atom(n: uint) -> Atom {
 }
 
 /// Creates a hash table of atoms.
-fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
+fn atom_hashmap<V:Copy>() -> hashmap<Atom,V> {
   hashmap::<Atom,V>()
 }
 

@@ -27,7 +27,7 @@ type GlobalPtr = *libc::uintptr_t;
  * or, if no channel exists creates and installs a new channel and sets up a
  * new task to receive from it.
  */
-unsafe fn chan_from_global_ptr<T: send>(
+unsafe fn chan_from_global_ptr<T: Send>(
     global: GlobalPtr,
     task_fn: fn() -> task::TaskBuilder,
     +f: fn~(comm::Port<T>)

@@ -16,7 +16,7 @@ enum Option<T> {
     Some(T),
 }
 
-pure fn get<T: copy>(opt: Option<T>) -> T {
+pure fn get<T: Copy>(opt: Option<T>) -> T {
     /*!
      * Gets the value out of an option
      *
@@ -45,7 +45,7 @@ pure fn get_ref<T>(opt: &r/Option<T>) -> &r/T {
     }
 }
 
-pure fn expect<T: copy>(opt: Option<T>, reason: ~str) -> T {
+pure fn expect<T: Copy>(opt: Option<T>, reason: ~str) -> T {
     /*!
      * Gets the value out of an option, printing a specified message on
      * failure
@@ -128,7 +128,7 @@ pure fn is_some<T>(opt: Option<T>) -> bool {
     !is_none(opt)
 }
 
-pure fn get_default<T: copy>(opt: Option<T>, def: T) -> T {
+pure fn get_default<T: Copy>(opt: Option<T>, def: T) -> T {
     //! Returns the contained value or a default
 
     match opt { Some(x) => x, None => def }
@@ -226,7 +226,7 @@ impl<T> &Option<T> {
     pure fn get_ref() -> &self/T { get_ref(self) }
 }
 
-impl<T: copy> Option<T> {
+impl<T: Copy> Option<T> {
     /**
      * Gets the value out of an option
      *

@@ -58,7 +58,7 @@ fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
     @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 
-fn new_nominal_id_hash<T: copy>() -> hashmap<nominal_id, T> {
+fn new_nominal_id_hash<T: Copy>() -> hashmap<nominal_id, T> {
     return hashmap();
 }
 

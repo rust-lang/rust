@@ -210,7 +210,7 @@ impl<A> DVec<A> {
     }
 }
 
-impl<A: copy> DVec<A> {
+impl<A: Copy> DVec<A> {
     /**
      * Append all elements of a vector to the end of the list
      *
@@ -327,7 +327,7 @@ impl<A: copy> DVec<A> {
     }
 }
 
-impl<A:copy> DVec<A>: Index<uint,A> {
+impl<A:Copy> DVec<A>: Index<uint,A> {
     pure fn index(&&idx: uint) -> A {
         self.get_elt(idx)
     }

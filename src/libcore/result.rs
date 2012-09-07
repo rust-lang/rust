@@ -18,7 +18,7 @@ enum Result<T, U> {
  *
  * If the result is an error
  */
-pure fn get<T: copy, U>(res: Result<T, U>) -> T {
+pure fn get<T: Copy, U>(res: Result<T, U>) -> T {
     match res {
       Ok(t) => t,
       Err(the_err) => unchecked {
@@ -50,7 +50,7 @@ pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
  *
  * If the result is not an error
  */
-pure fn get_err<T, U: copy>(res: Result<T, U>) -> U {
+pure fn get_err<T, U: Copy>(res: Result<T, U>) -> U {
     match res {
       Err(u) => u,
       Ok(_) => fail ~"get_err called on ok result"
@@ -76,7 +76,7 @@ pure fn is_err<T, U>(res: Result<T, U>) -> bool {
  * `ok` result variants are converted to `either::right` variants, `err`
  * result variants are converted to `either::left`.
  */
-pure fn to_either<T: copy, U: copy>(res: Result<U, T>) -> Either<T, U> {
+pure fn to_either<T: Copy, U: Copy>(res: Result<U, T>) -> Either<T, U> {
     match res {
       Ok(res) => either::Right(res),
       Err(fail_) => either::Left(fail_)
@@ -97,7 +97,7 @@ pure fn to_either<T: copy, U: copy>(res: Result<U, T>) -> Either<T, U> {
  *         ok(parse_buf(buf))
  *     }
  */
-fn chain<T, U: copy, V: copy>(res: Result<T, V>, op: fn(T) -> Result<U, V>)
+fn chain<T, U: Copy, V: Copy>(res: Result<T, V>, op: fn(T) -> Result<U, V>)
     -> Result<U, V> {
     match res {
       Ok(t) => op(t),
@@ -113,7 +113,7 @@ fn chain<T, U: copy, V: copy>(res: Result<T, V>, op: fn(T) -> Result<U, V>)
  * immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-fn chain_err<T: copy, U: copy, V: copy>(
+fn chain_err<T: Copy, U: Copy, V: Copy>(
     res: Result<T, V>,
     op: fn(V) -> Result<T, U>)
     -> Result<T, U> {
@@ -173,7 +173,7 @@ fn iter_err<T, E>(res: Result<T, E>, f: fn(E)) {
  *         parse_buf(buf)
  *     }
  */
-fn map<T, E: copy, U: copy>(res: Result<T, E>, op: fn(T) -> U)
+fn map<T, E: Copy, U: Copy>(res: Result<T, E>, op: fn(T) -> U)
   -> Result<U, E> {
     match res {
       Ok(t) => Ok(op(t)),
@@ -189,7 +189,7 @@ fn map<T, E: copy, U: copy>(res: Result<T, E>, op: fn(T) -> U)
  * is immediately returned.  This function can be used to pass through a
  * successful result while handling an error.
  */
-fn map_err<T: copy, E, F: copy>(res: Result<T, E>, op: fn(E) -> F)
+fn map_err<T: Copy, E, F: Copy>(res: Result<T, E>, op: fn(E) -> F)
   -> Result<T, F> {
     match res {
       Ok(t) => Ok(t),
@@ -217,10 +217,10 @@ impl<T, E> Result<T, E> {
     }
 }
 
-impl<T: copy, E> Result<T, E> {
+impl<T: Copy, E> Result<T, E> {
     fn get() -> T { get(self) }
 
-    fn map_err<F:copy>(op: fn(E) -> F) -> Result<T,F> {
+    fn map_err<F:Copy>(op: fn(E) -> F) -> Result<T,F> {
         match self {
           Ok(t) => Ok(t),
           Err(e) => Err(op(e))
@@ -228,10 +228,10 @@ impl<T: copy, E> Result<T, E> {
     }
 }
 
-impl<T, E: copy> Result<T, E> {
+impl<T, E: Copy> Result<T, E> {
     fn get_err() -> E { get_err(self) }
 
-    fn map<U:copy>(op: fn(T) -> U) -> Result<U,E> {
+    fn map<U:Copy>(op: fn(T) -> U) -> Result<U,E> {
         match self {
           Ok(t) => Ok(op(t)),
           Err(e) => Err(e)
@@ -239,12 +239,12 @@ impl<T, E: copy> Result<T, E> {
     }
 }
 
-impl<T: copy, E: copy> Result<T, E> {
-    fn chain<U:copy>(op: fn(T) -> Result<U,E>) -> Result<U,E> {
+impl<T: Copy, E: Copy> Result<T, E> {
+    fn chain<U:Copy>(op: fn(T) -> Result<U,E>) -> Result<U,E> {
         chain(self, op)
     }
 
-    fn chain_err<F:copy>(op: fn(E) -> Result<T,F>) -> Result<T,F> {
+    fn chain_err<F:Copy>(op: fn(E) -> Result<T,F>) -> Result<T,F> {
         chain_err(self, op)
     }
 }
@@ -266,7 +266,7 @@ impl<T: copy, E: copy> Result<T, E> {
  *         assert incd == ~[2u, 3u, 4u];
  *     }
  */
-fn map_vec<T,U:copy,V:copy>(
+fn map_vec<T,U:Copy,V:Copy>(
     ts: &[T], op: fn(T) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = ~[];
@@ -280,7 +280,7 @@ fn map_vec<T,U:copy,V:copy>(
     return Ok(vs);
 }
 
-fn map_opt<T,U:copy,V:copy>(
+fn map_opt<T,U:Copy,V:Copy>(
     o_t: Option<T>, op: fn(T) -> Result<V,U>) -> Result<Option<V>,U> {
 
     match o_t {
@@ -301,7 +301,7 @@ fn map_opt<T,U:copy,V:copy>(
  * used in 'careful' code contexts where it is both appropriate and easy
  * to accommodate an error like the vectors being of different lengths.
  */
-fn map_vec2<S,T,U:copy,V:copy>(ss: &[S], ts: &[T],
+fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
                                op: fn(S,T) -> Result<V,U>) -> Result<~[V],U> {
 
     assert vec::same_length(ss, ts);
@@ -324,7 +324,7 @@ fn map_vec2<S,T,U:copy,V:copy>(ss: &[S], ts: &[T],
  * error.  This could be implemented using `map2()` but it is more efficient
  * on its own as no result vector is built.
  */
-fn iter_vec2<S,T,U:copy>(ss: &[S], ts: &[T],
+fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
                          op: fn(S,T) -> Result<(),U>) -> Result<(),U> {
 
     assert vec::same_length(ss, ts);

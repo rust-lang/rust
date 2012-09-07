@@ -11,7 +11,7 @@ impl uint: to_opt {
     }
 }
 
-impl<T:copy> Option<T>: to_opt {
+impl<T:Copy> Option<T>: to_opt {
     fn to_option() -> Option<Option<T>> {
         Some(self)
     }

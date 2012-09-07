@@ -8,7 +8,7 @@ use cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
-trait SendMap<K:Eq Hash, V: copy> {
+trait SendMap<K:Eq Hash, V: Copy> {
     // FIXME(#3148)  ^^^^ once find_ref() works, we can drop V:copy
 
     fn insert(&mut self, +k: K, +v: V) -> bool;
@@ -315,7 +315,7 @@ mod linear {
         }
     }
 
-    impl<K:Hash IterBytes Eq, V: copy> LinearMap<K,V> {
+    impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
         fn find(&const self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
               FoundEntry(idx) => {
@@ -342,17 +342,17 @@ mod linear {
 
     }
 
-    impl<K: Hash IterBytes Eq copy, V: copy> LinearMap<K,V> {
+    impl<K: Hash IterBytes Eq Copy, V: Copy> LinearMap<K,V> {
         fn each(&self, blk: fn(+K,+V) -> bool) {
             self.each_ref(|k,v| blk(copy *k, copy *v));
         }
     }
-    impl<K: Hash IterBytes Eq copy, V> LinearMap<K,V> {
+    impl<K: Hash IterBytes Eq Copy, V> LinearMap<K,V> {
         fn each_key(&self, blk: fn(+K) -> bool) {
             self.each_key_ref(|k| blk(copy *k));
         }
     }
-    impl<K: Hash IterBytes Eq, V: copy> LinearMap<K,V> {
+    impl<K: Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
         fn each_value(&self, blk: fn(+V) -> bool) {
             self.each_value_ref(|v| blk(copy *v));
         }

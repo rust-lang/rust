@@ -1,19 +1,19 @@
-trait clam<A: copy> {
+trait clam<A: Copy> {
   fn chowder(y: A);
 }
-struct foo<A: copy> : clam<A> {
+struct foo<A: Copy> : clam<A> {
   x: A,
   fn chowder(y: A) {
   }
 }
 
-fn foo<A: copy>(b: A) -> foo<A> {
+fn foo<A: Copy>(b: A) -> foo<A> {
     foo {
         x: b
     }
 }
 
-fn f<A: copy>(x: clam<A>, a: A) {
+fn f<A: Copy>(x: clam<A>, a: A) {
   x.chowder(a);
 }
 

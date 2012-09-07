@@ -1,4 +1,4 @@
-fn f<T: copy>(t: T) -> T {
+fn f<T: Copy>(t: T) -> T {
     let t1 = t;
     t1
 }

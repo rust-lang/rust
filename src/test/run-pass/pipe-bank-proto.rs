@@ -36,7 +36,7 @@ macro_rules! move_it (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
 )
 
-fn switch<T: send, U>(+endp: pipes::RecvPacket<T>,
+fn switch<T: Send, U>(+endp: pipes::RecvPacket<T>,
                       f: fn(+Option<T>) -> U) -> U {
     f(pipes::try_recv(endp))
 }

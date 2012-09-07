@@ -1658,10 +1658,10 @@ fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
         for vec::each(*bounds) |bound| {
             nbsp(s);
             match bound {
-              ast::bound_copy => word(s.s, ~"copy"),
-              ast::bound_send => word(s.s, ~"send"),
-              ast::bound_const => word(s.s, ~"const"),
-              ast::bound_owned => word(s.s, ~"owned"),
+              ast::bound_copy => word(s.s, ~"Copy"),
+              ast::bound_send => word(s.s, ~"Send"),
+              ast::bound_const => word(s.s, ~"Const"),
+              ast::bound_owned => word(s.s, ~"Owned"),
               ast::bound_trait(t) => print_type(s, t)
             }
         }

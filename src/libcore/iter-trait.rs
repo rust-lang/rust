@@ -28,7 +28,7 @@ impl<A: Eq> IMPL_T<A>: iter::EqIter<A> {
     }
 }
 
-impl<A: copy> IMPL_T<A>: iter::CopyableIter<A> {
+impl<A: Copy> IMPL_T<A>: iter::CopyableIter<A> {
     pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A] {
         iter::filter_to_vec(self, pred)
     }
@@ -45,7 +45,7 @@ impl<A: copy> IMPL_T<A>: iter::CopyableIter<A> {
     pure fn find(p: fn(A) -> bool) -> Option<A> { iter::find(self, p) }
 }
 
-impl<A: copy Ord> IMPL_T<A>: iter::CopyableOrderedIter<A> {
+impl<A: Copy Ord> IMPL_T<A>: iter::CopyableOrderedIter<A> {
     pure fn min() -> A { iter::min(self) }
     pure fn max() -> A { iter::max(self) }
 }

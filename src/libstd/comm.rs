@@ -13,7 +13,7 @@ use pipes::{Channel, Recv, Chan, Port, Selectable};
 export DuplexStream;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
-struct DuplexStream<T: send, U: send> : Channel<T>, Recv<U>, Selectable {
+struct DuplexStream<T: Send, U: Send> : Channel<T>, Recv<U>, Selectable {
     priv chan: Chan<T>,
     priv port: Port <U>,
 
@@ -43,7 +43,7 @@ struct DuplexStream<T: send, U: send> : Channel<T>, Recv<U>, Selectable {
 }
 
 /// Creates a bidirectional stream.
-fn DuplexStream<T: send, U: send>()
+fn DuplexStream<T: Send, U: Send>()
     -> (DuplexStream<T, U>, DuplexStream<U, T>)
 {
     let (c2, p1) = pipes::stream();

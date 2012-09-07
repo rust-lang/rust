@@ -19,12 +19,12 @@ type Le<T> = pure fn(v1: &T, v2: &T) -> bool;
  * Has worst case O(n log n) performance, best case O(n), but
  * is not space efficient. This is a stable sort.
  */
-fn merge_sort<T: copy>(le: Le<T>, v: &[const T]) -> ~[T] {
+fn merge_sort<T: Copy>(le: Le<T>, v: &[const T]) -> ~[T] {
     type Slice = (uint, uint);
 
     return merge_sort_(le, v, (0u, len(v)));
 
-    fn merge_sort_<T: copy>(le: Le<T>, v: &[const T], slice: Slice)
+    fn merge_sort_<T: Copy>(le: Le<T>, v: &[const T], slice: Slice)
         -> ~[T] {
         let begin = slice.first();
         let end = slice.second();
@@ -39,7 +39,7 @@ fn merge_sort<T: copy>(le: Le<T>, v: &[const T]) -> ~[T] {
         return merge(le, merge_sort_(le, v, a), merge_sort_(le, v, b));
     }
 
-    fn merge<T: copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
+    fn merge<T: Copy>(le: Le<T>, a: &[T], b: &[T]) -> ~[T] {
         let mut rs = ~[];
         vec::reserve(rs, len(a) + len(b));
         let a_len = len(a);
@@ -58,7 +58,7 @@ fn merge_sort<T: copy>(le: Le<T>, v: &[const T]) -> ~[T] {
     }
 }
 
-fn part<T: copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
+fn part<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
                 right: uint, pivot: uint) -> uint {
     let pivot_value = arr[pivot];
     arr[pivot] <-> arr[right];
@@ -75,7 +75,7 @@ fn part<T: copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
     return storage_index;
 }
 
-fn qsort<T: copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
+fn qsort<T: Copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
              right: uint) {
     if right > left {
         let pivot = (left + right) / 2u;
@@ -94,12 +94,12 @@ fn qsort<T: copy>(compare_func: Le<T>, arr: &[mut T], left: uint,
  * Has worst case O(n^2) performance, average case O(n log n).
  * This is an unstable sort.
  */
-fn quick_sort<T: copy>(compare_func: Le<T>, arr: &[mut T]) {
+fn quick_sort<T: Copy>(compare_func: Le<T>, arr: &[mut T]) {
     if len::<T>(arr) == 0u { return; }
     qsort::<T>(compare_func, arr, 0u, len::<T>(arr) - 1u);
 }
 
-fn qsort3<T: copy Ord Eq>(arr: &[mut T], left: int, right: int) {
+fn qsort3<T: Copy Ord Eq>(arr: &[mut T], left: int, right: int) {
     if right <= left { return; }
     let v: T = arr[right];
     let mut i: int = left - 1;
@@ -156,7 +156,7 @@ fn qsort3<T: copy Ord Eq>(arr: &[mut T], left: int, right: int) {
  *
  * This is an unstable sort.
  */
-fn quick_sort3<T: copy Ord Eq>(arr: &[mut T]) {
+fn quick_sort3<T: Copy Ord Eq>(arr: &[mut T]) {
     if arr.len() <= 1 { return; }
     qsort3(arr, 0, (arr.len() - 1) as int);
 }
@@ -165,7 +165,7 @@ trait Sort {
     fn qsort(self);
 }
 
-impl<T: copy Ord Eq> &[mut T] : Sort {
+impl<T: Copy Ord Eq> &[mut T] : Sort {
     fn qsort(self) { quick_sort3(self); }
 }
 

@@ -1,7 +1,7 @@
 mod stream {
-    enum stream<T: send> { send(T, server::stream<T>), }
+    enum stream<T: Send> { send(T, server::stream<T>), }
     mod server {
-        impl<T: send> stream<T> {
+        impl<T: Send> stream<T> {
             fn recv() -> extern fn(+stream<T>) -> stream::stream<T> {
               // resolve really should report just one error here.
               // Change the test case when it changes.
@@ -14,7 +14,7 @@ mod stream {
                 recv
             }
         }
-        type stream<T: send> = pipes::RecvPacket<stream::stream<T>>;
+        type stream<T: Send> = pipes::RecvPacket<stream::stream<T>>;
     }
 }
 

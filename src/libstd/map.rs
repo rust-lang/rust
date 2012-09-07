@@ -24,7 +24,7 @@ type set<K:Eq IterBytes Hash> = hashmap<K, ()>;
 
 type hashmap<K:Eq IterBytes Hash, V> = chained::t<K, V>;
 
-trait map<K:Eq IterBytes Hash copy, V: copy> {
+trait map<K:Eq IterBytes Hash Copy, V: Copy> {
     /// Return the number of elements in the map
     pure fn size() -> uint;
 
@@ -123,7 +123,7 @@ mod chained {
         found_after(@entry<K,V>, @entry<K,V>)
     }
 
-    priv impl<K:Eq IterBytes Hash, V: copy> t<K, V> {
+    priv impl<K:Eq IterBytes Hash, V: Copy> t<K, V> {
         pure fn search_rem(k: &K, h: uint, idx: uint,
                            e_root: @entry<K,V>) -> search_result<K,V> {
             let mut e0 = e_root;
@@ -207,7 +207,7 @@ mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash copy, V: copy> t<K, V>: map<K, V> {
+    impl<K:Eq IterBytes Hash Copy, V: Copy> t<K, V>: map<K, V> {
         pure fn size() -> uint { self.count }
 
         fn contains_key(+k: K) -> bool {
@@ -330,7 +330,7 @@ mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash copy ToStr, V: ToStr copy> t<K, V>: ToStr {
+    impl<K:Eq IterBytes Hash Copy ToStr, V: ToStr Copy> t<K, V>: ToStr {
         fn to_writer(wr: io::Writer) {
             if self.count == 0u {
                 wr.write_str(~"{}");
@@ -356,7 +356,7 @@ mod chained {
         }
     }
 
-    impl<K:Eq IterBytes Hash copy, V: copy> t<K, V>: ops::Index<K, V> {
+    impl<K:Eq IterBytes Hash Copy, V: Copy> t<K, V>: ops::Index<K, V> {
         pure fn index(&&k: K) -> V {
             unchecked {
                 self.get(k)
@@ -368,7 +368,7 @@ mod chained {
         vec::to_mut(vec::from_elem(nchains, None))
     }
 
-    fn mk<K:Eq IterBytes Hash, V: copy>() -> t<K,V> {
+    fn mk<K:Eq IterBytes Hash, V: Copy>() -> t<K,V> {
         let slf: t<K, V> = @hashmap_ {count: 0u,
                                       chains: chains(initial_capacity)};
         slf
@@ -380,48 +380,48 @@ Function: hashmap
 
 Construct a hashmap.
 */
-fn hashmap<K:Eq IterBytes Hash const, V: copy>()
+fn hashmap<K:Eq IterBytes Hash Const, V: Copy>()
         -> hashmap<K, V> {
     chained::mk()
 }
 
 /// Construct a hashmap for string-slice keys
-fn str_slice_hash<V: copy>() -> hashmap<&str, V> {
+fn str_slice_hash<V: Copy>() -> hashmap<&str, V> {
     return hashmap();
 }
 
 /// Construct a hashmap for string keys
-fn str_hash<V: copy>() -> hashmap<~str, V> {
+fn str_hash<V: Copy>() -> hashmap<~str, V> {
     return hashmap();
 }
 
 /// Construct a hashmap for boxed string keys
-fn box_str_hash<V: copy>() -> hashmap<@~str, V> {
+fn box_str_hash<V: Copy>() -> hashmap<@~str, V> {
     hashmap()
 }
 
 /// Construct a hashmap for byte string keys
-fn bytes_hash<V: copy>() -> hashmap<~[u8], V> {
+fn bytes_hash<V: Copy>() -> hashmap<~[u8], V> {
     return hashmap();
 }
 
 /// Construct a hashmap for int keys
-fn int_hash<V: copy>() -> hashmap<int, V> {
+fn int_hash<V: Copy>() -> hashmap<int, V> {
     return hashmap();
 }
 
 /// Construct a hashmap for uint keys
-fn uint_hash<V: copy>() -> hashmap<uint, V> {
+fn uint_hash<V: Copy>() -> hashmap<uint, V> {
     return hashmap();
 }
 
 /// Convenience function for adding keys to a hashmap with nil type keys
-fn set_add<K:Eq IterBytes Hash const copy>(set: set<K>, +key: K) -> bool {
+fn set_add<K:Eq IterBytes Hash Const Copy>(set: set<K>, +key: K) -> bool {
     set.insert(key, ())
 }
 
 /// Convert a set into a vector.
-fn vec_from_set<T:Eq IterBytes Hash copy>(s: set<T>) -> ~[T] {
+fn vec_from_set<T:Eq IterBytes Hash Copy>(s: set<T>) -> ~[T] {
     let mut v = ~[];
     vec::reserve(v, s.size());
     do s.each_key() |k| {
@@ -432,7 +432,7 @@ fn vec_from_set<T:Eq IterBytes Hash copy>(s: set<T>) -> ~[T] {
 }
 
 /// Construct a hashmap from a vector
-fn hash_from_vec<K: Eq IterBytes Hash const copy, V: copy>(
+fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
     items: &[(K, V)]) -> hashmap<K, V> {
     let map = hashmap();
     do vec::iter(items) |item| {
@@ -443,27 +443,27 @@ fn hash_from_vec<K: Eq IterBytes Hash const copy, V: copy>(
 }
 
 /// Construct a hashmap from a vector with string keys
-fn hash_from_strs<V: copy>(items: &[(~str, V)]) -> hashmap<~str, V> {
+fn hash_from_strs<V: Copy>(items: &[(~str, V)]) -> hashmap<~str, V> {
     hash_from_vec(items)
 }
 
 /// Construct a hashmap from a vector with byte keys
-fn hash_from_bytes<V: copy>(items: &[(~[u8], V)]) -> hashmap<~[u8], V> {
+fn hash_from_bytes<V: Copy>(items: &[(~[u8], V)]) -> hashmap<~[u8], V> {
     hash_from_vec(items)
 }
 
 /// Construct a hashmap from a vector with int keys
-fn hash_from_ints<V: copy>(items: &[(int, V)]) -> hashmap<int, V> {
+fn hash_from_ints<V: Copy>(items: &[(int, V)]) -> hashmap<int, V> {
     hash_from_vec(items)
 }
 
 /// Construct a hashmap from a vector with uint keys
-fn hash_from_uints<V: copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
+fn hash_from_uints<V: Copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
     hash_from_vec(items)
 }
 
 // XXX Transitional
-impl<K: Eq IterBytes Hash copy, V: copy> Managed<LinearMap<K, V>>:
+impl<K: Eq IterBytes Hash Copy, V: Copy> Managed<LinearMap<K, V>>:
     map<K, V> {
     pure fn size() -> uint {
         unchecked {

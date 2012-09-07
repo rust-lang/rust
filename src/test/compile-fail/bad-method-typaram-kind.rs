@@ -3,11 +3,11 @@ fn foo<T>() {
 }
 
 trait bar {
-    fn bar<T:copy>();
+    fn bar<T:Copy>();
 }
 
 impl uint: bar {
-    fn bar<T:copy>() {
+    fn bar<T:Copy>() {
     }
 }
 

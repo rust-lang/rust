@@ -271,7 +271,7 @@ fn basic_options() -> @options {
 }
 
 // Seems out of place, but it uses session, so I'm putting it here
-fn expect<T: copy>(sess: session, opt: Option<T>, msg: fn() -> ~str) -> T {
+fn expect<T: Copy>(sess: session, opt: Option<T>, msg: fn() -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 

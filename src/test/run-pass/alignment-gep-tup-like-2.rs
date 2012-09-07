@@ -8,12 +8,12 @@ type _rec<A> = {
     mut rec: Option<@rec<A>>
 };
 
-fn make_cycle<A:copy>(a: A) {
+fn make_cycle<A:Copy>(a: A) {
     let g: @rec<A> = @rec({val: a, mut rec: None});
     g.rec = Some(g);
 }
 
-fn f<A:send copy, B:send copy>(a: A, b: B) -> fn@() -> (A, B) {
+fn f<A:Send Copy, B:Send Copy>(a: A, b: B) -> fn@() -> (A, B) {
     fn@() -> (A, B) { (a, b) }
 }
 

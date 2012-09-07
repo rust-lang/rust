@@ -93,7 +93,7 @@ fn emit_from_vec<S: serializer, T>(s: S, v: ~[T], f: fn(T)) {
     }
 }
 
-fn read_to_vec<D: deserializer, T: copy>(d: D, f: fn() -> T) -> ~[T] {
+fn read_to_vec<D: deserializer, T: Copy>(d: D, f: fn() -> T) -> ~[T] {
     do d.read_vec |len| {
         do vec::from_fn(len) |i| {
             d.read_vec_elt(i, || f())
@@ -112,11 +112,11 @@ impl<S: serializer> S: serializer_helpers {
 }
 
 trait deserializer_helpers {
-    fn read_to_vec<T: copy>(f: fn() -> T) -> ~[T];
+    fn read_to_vec<T: Copy>(f: fn() -> T) -> ~[T];
 }
 
 impl<D: deserializer> D: deserializer_helpers {
-    fn read_to_vec<T: copy>(f: fn() -> T) -> ~[T] {
+    fn read_to_vec<T: Copy>(f: fn() -> T) -> ~[T] {
         read_to_vec(self, f)
     }
 }
@@ -256,7 +256,7 @@ fn serialize_Option<S: serializer,T>(s: S, v: Option<T>, st: fn(T)) {
     }
 }
 
-fn deserialize_Option<D: deserializer,T: copy>(d: D, st: fn() -> T)
+fn deserialize_Option<D: deserializer,T: Copy>(d: D, st: fn() -> T)
     -> Option<T> {
     do d.read_enum(~"option") {
         do d.read_enum_variant |i| {

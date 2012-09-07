@@ -43,7 +43,7 @@ priv enum FutureState<A> {
 }
 
 /// Methods on the `future` type
-impl<A:copy> Future<A> {
+impl<A:Copy> Future<A> {
     fn get() -> A {
         //! Get the value of the future
 
@@ -74,7 +74,7 @@ fn from_value<A>(+val: A) -> Future<A> {
     Future {state: Forced(val)}
 }
 
-fn from_port<A:send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
+fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
     /*!
      * Create a future from a port
      *
@@ -105,7 +105,7 @@ fn from_fn<A>(+f: @fn() -> A) -> Future<A> {
     Future {state: Pending(f)}
 }
 
-fn spawn<A:send>(+blk: fn~() -> A) -> Future<A> {
+fn spawn<A:Send>(+blk: fn~() -> A) -> Future<A> {
     /*!
      * Create a future from a unique closure.
      *
@@ -156,7 +156,7 @@ fn get_ref<A>(future: &r/Future<A>) -> &r/A {
     }
 }
 
-fn get<A:copy>(future: &Future<A>) -> A {
+fn get<A:Copy>(future: &Future<A>) -> A {
     //! Get the value of the future
 
     *get_ref(future)
@@ -169,7 +169,7 @@ fn with<A,B>(future: &Future<A>, blk: fn((&A)) -> B) -> B {
 }
 
 proto! future_pipe (
-    waiting:recv<T:send> {
+    waiting:recv<T:Send> {
         completed(T) -> !
     }
 )

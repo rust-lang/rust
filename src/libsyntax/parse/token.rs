@@ -386,7 +386,7 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
         ~"else",
         ~"move",
         ~"priv", ~"pub",
-        ~"self", ~"send", ~"static",
+        ~"self", ~"static",
         ~"use"
     ];
     for keys.each |word| {
@@ -421,7 +421,6 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
         ~"if", ~"impl", ~"import",
         ~"let", ~"log", ~"loop",
         ~"match", ~"mod", ~"move", ~"mut",
-        ~"owned",
         ~"pure",
         ~"ref", ~"return",
         ~"struct",

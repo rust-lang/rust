@@ -5,7 +5,7 @@ trait bool_like {
     static fn select<A>(b: self, +x1: A, +x2: A) -> A;
 }
 
-fn andand<T: bool_like copy>(x1: T, x2: T) -> T {
+fn andand<T: bool_like Copy>(x1: T, x2: T) -> T {
     select(x1, x2, x1)
 }
 

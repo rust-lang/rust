@@ -50,13 +50,13 @@ impl &str: ToStr {
     fn to_str() -> ~str { str::from_slice(self) }
 }
 
-impl<A: ToStr copy, B: ToStr copy> (A, B): ToStr {
+impl<A: ToStr Copy, B: ToStr Copy> (A, B): ToStr {
     fn to_str() -> ~str {
         let (a, b) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~")"
     }
 }
-impl<A: ToStr copy, B: ToStr copy, C: ToStr copy> (A, B, C): ToStr {
+impl<A: ToStr Copy, B: ToStr Copy, C: ToStr Copy> (A, B, C): ToStr {
     fn to_str() -> ~str {
         let (a, b, c) = self;
         ~"(" + a.to_str() + ~", " + b.to_str() + ~", " + c.to_str() + ~")"

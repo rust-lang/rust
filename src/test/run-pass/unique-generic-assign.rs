@@ -1,6 +1,6 @@
 // Issue #976
 
-fn f<T: copy>(x: ~T) {
+fn f<T: Copy>(x: ~T) {
     let _x2 = x;
 }
 fn main() { }

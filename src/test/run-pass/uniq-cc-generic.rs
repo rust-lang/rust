@@ -8,7 +8,7 @@ type pointy = {
     d : fn~() -> uint,
 };
 
-fn make_uniq_closure<A:send copy>(a: A) -> fn~() -> uint {
+fn make_uniq_closure<A:Send Copy>(a: A) -> fn~() -> uint {
     fn~() -> uint { ptr::addr_of(a) as uint }
 }
 

@@ -1,6 +1,6 @@
 fn p_foo<T>(pinned: T) { }
-fn s_foo<T: copy>(shared: T) { }
-fn u_foo<T: send>(unique: T) { }
+fn s_foo<T: Copy>(shared: T) { }
+fn u_foo<T: Send>(unique: T) { }
 
 struct r {
   i: int,

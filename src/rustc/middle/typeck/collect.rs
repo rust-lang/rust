@@ -75,7 +75,7 @@ fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 }
 
 impl @crate_ctxt {
-    fn to_ty<RS: region_scope copy owned>(
+    fn to_ty<RS: region_scope Copy Owned>(
         rs: RS, ast_ty: @ast::ty) -> ty::t {
 
         ast_ty_to_ty(self, rs, ast_ty)

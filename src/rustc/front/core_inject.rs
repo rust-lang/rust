@@ -22,7 +22,7 @@ fn use_core(crate: @ast::crate) -> bool {
 fn inject_libcore_ref(sess: session,
                       crate: @ast::crate) -> @ast::crate {
 
-    fn spanned<T: copy>(x: T) -> @ast::spanned<T> {
+    fn spanned<T: Copy>(x: T) -> @ast::spanned<T> {
         return @{node: x,
             span: dummy_sp()};
     }

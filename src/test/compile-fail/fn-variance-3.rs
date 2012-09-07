@@ -1,4 +1,4 @@
-fn mk_identity<T:copy>() -> fn@(T) -> T {
+fn mk_identity<T:Copy>() -> fn@(T) -> T {
     fn@(t: T) -> T { t }
 }
 

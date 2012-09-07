@@ -129,7 +129,7 @@ enum debug_metadata {
     retval_metadata(@metadata<retval_md>),
 }
 
-fn cast_safely<T: copy, U>(val: T) -> U unsafe {
+fn cast_safely<T: Copy, U>(val: T) -> U unsafe {
     let val2 = val;
     return unsafe::transmute(val2);
 }
@@ -147,7 +147,7 @@ fn md_from_metadata<T>(val: debug_metadata) -> T unsafe {
     }
 }
 
-fn cached_metadata<T: copy>(cache: metadata_cache, mdtag: int,
+fn cached_metadata<T: Copy>(cache: metadata_cache, mdtag: int,
                            eq: fn(md: T) -> bool) -> Option<T> unsafe {
     if cache.contains_key(mdtag) {
         let items = cache.get(mdtag);

@@ -449,7 +449,7 @@ Two examples of paths with type arguments:
 ~~~~
 # use std::map;
 # fn f() {
-# fn id<T:copy>(t: T) -> T { t }
+# fn id<T:Copy>(t: T) -> T { t }
 type t = map::hashmap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
 # }
@@ -1056,7 +1056,7 @@ An example of a pure function that uses an unchecked block:
 ~~~~
 # use std::list::*;
 
-fn pure_foldl<T, U: copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
+fn pure_foldl<T, U: Copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
     match ls {
       Nil => u,
       Cons(hd, tl) => f(hd, pure_foldl(*tl, f(hd, u), f))
@@ -1110,7 +1110,7 @@ type can always be moved, but they can only be copied when the
 parameter is given a [`copy` bound](#type-kinds).
 
 ~~~~
-fn id<T: copy>(x: T) -> T { x }
+fn id<T: Copy>(x: T) -> T { x }
 ~~~~
 
 Similarly, [trait](#traits) bounds can be specified for type
@@ -2638,7 +2638,7 @@ Every struct item defines a type.
 Within the body of an item that has type parameter declarations, the names of its type parameters are types:
 
 ~~~~~~~
-fn map<A: copy, B: copy>(f: fn(A) -> B, xs: ~[A]) -> ~[B] {
+fn map<A: Copy, B: Copy>(f: fn(A) -> B, xs: ~[A]) -> ~[B] {
    if xs.len() == 0 { return ~[]; }
    let first: B = f(xs[0]);
    let rest: ~[B] = map(f, xs.slice(1, xs.len()));
@@ -2706,7 +2706,7 @@ Putting `x` into a shared box involves copying, and the `T` parameter
 is assumed to be noncopyable. To change that, a bound is declared:
 
 ~~~~
-fn box<T: copy>(x: T) -> @T { @x }
+fn box<T: Copy>(x: T) -> @T { @x }
 ~~~~
 
 Calling this second version of `box` on a noncopyable type is not

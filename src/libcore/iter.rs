@@ -28,14 +28,14 @@ trait TimesIx{
     pure fn timesi(it: fn(uint) -> bool);
 }
 
-trait CopyableIter<A:copy> {
+trait CopyableIter<A:Copy> {
     pure fn filter_to_vec(pred: fn(A) -> bool) -> ~[A];
     pure fn map_to_vec<B>(op: fn(A) -> B) -> ~[B];
     pure fn to_vec() -> ~[A];
     pure fn find(p: fn(A) -> bool) -> Option<A>;
 }
 
-trait CopyableOrderedIter<A:copy Ord> {
+trait CopyableOrderedIter<A:Copy Ord> {
     pure fn min() -> A;
     pure fn max() -> A;
 }
@@ -82,7 +82,7 @@ pure fn any<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     return false;
 }
 
-pure fn filter_to_vec<A:copy,IA:BaseIter<A>>(self: IA,
+pure fn filter_to_vec<A:Copy,IA:BaseIter<A>>(self: IA,
                                          prd: fn(A) -> bool) -> ~[A] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
@@ -91,7 +91,7 @@ pure fn filter_to_vec<A:copy,IA:BaseIter<A>>(self: IA,
     }
 }
 
-pure fn map_to_vec<A:copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B)
+pure fn map_to_vec<A:Copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B)
     -> ~[B] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
@@ -100,7 +100,7 @@ pure fn map_to_vec<A:copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B)
     }
 }
 
-pure fn flat_map_to_vec<A:copy,B:copy,IA:BaseIter<A>,IB:BaseIter<B>>(
+pure fn flat_map_to_vec<A:Copy,B:Copy,IA:BaseIter<A>,IB:BaseIter<B>>(
     self: IA, op: fn(A) -> IB) -> ~[B] {
 
     do vec::build |push| {
@@ -120,7 +120,7 @@ pure fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     return b;
 }
 
-pure fn to_vec<A:copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
+pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
     foldl::<A,~[A],IA>(self, ~[], |r, a| vec::append(copy r, ~[a]))
 }
 
@@ -163,7 +163,7 @@ pure fn repeat(times: uint, blk: fn() -> bool) {
     }
 }
 
-pure fn min<A:copy Ord,IA:BaseIter<A>>(self: IA) -> A {
+pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           Some(a_) if a_ < b => {
@@ -179,7 +179,7 @@ pure fn min<A:copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     }
 }
 
-pure fn max<A:copy,IA:BaseIter<A>>(self: IA) -> A {
+pure fn max<A:Copy,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           Some(a_) if a_ > b => {
@@ -195,7 +195,7 @@ pure fn max<A:copy,IA:BaseIter<A>>(self: IA) -> A {
     }
 }
 
-pure fn find<A: copy,IA:BaseIter<A>>(self: IA,
+pure fn find<A: Copy,IA:BaseIter<A>>(self: IA,
                                      p: fn(A) -> bool) -> Option<A> {
     for self.each |i| {
         if p(i) { return Some(i) }
@@ -271,7 +271,7 @@ pure fn from_fn<T,BT: Buildable<T>>(n_elts: uint, op: InitOp<T>) -> BT {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pure fn from_elem<T: copy,BT: Buildable<T>>(n_elts: uint, t: T) -> BT {
+pure fn from_elem<T: Copy,BT: Buildable<T>>(n_elts: uint, t: T) -> BT {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(t); i += 1u; }
@@ -280,7 +280,7 @@ pure fn from_elem<T: copy,BT: Buildable<T>>(n_elts: uint, t: T) -> BT {
 
 /// Appending two generic sequences
 #[inline(always)]
-pure fn append<T: copy,IT: BaseIter<T>,BT: Buildable<T>>(
+pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
     lhs: IT, rhs: IT) -> BT {
     let size_opt = lhs.size_hint().chain(
         |sz1| rhs.size_hint().map(|sz2| sz1+sz2));
@@ -293,7 +293,7 @@ pure fn append<T: copy,IT: BaseIter<T>,BT: Buildable<T>>(
 /// Copies a generic sequence, possibly converting it to a different
 /// type of sequence.
 #[inline(always)]
-pure fn copy_seq<T: copy,IT: BaseIter<T>,BT: Buildable<T>>(
+pure fn copy_seq<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
     v: IT) -> BT {
     do build_sized_opt(v.size_hint()) |push| {
         for v.each |x| { push(x); }

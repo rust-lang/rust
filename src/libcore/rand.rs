@@ -165,12 +165,12 @@ impl Rng {
     }
 
     /// Choose an item randomly, failing if values is empty
-    fn choose<T:copy>(values: &[T]) -> T {
+    fn choose<T:Copy>(values: &[T]) -> T {
         self.choose_option(values).get()
     }
 
     /// Choose Some(item) randomly, returning None if values is empty
-    fn choose_option<T:copy>(values: &[T]) -> Option<T> {
+    fn choose_option<T:Copy>(values: &[T]) -> Option<T> {
         if values.is_empty() {
             None
         } else {
@@ -182,7 +182,7 @@ impl Rng {
      * Choose an item respecting the relative weights, failing if the sum of
      * the weights is 0
      */
-    fn choose_weighted<T: copy>(v : &[Weighted<T>]) -> T {
+    fn choose_weighted<T: Copy>(v : &[Weighted<T>]) -> T {
         self.choose_weighted_option(v).get()
     }
 
@@ -190,7 +190,7 @@ impl Rng {
      * Choose Some(item) respecting the relative weights, returning none if
      * the sum of the weights is 0
      */
-    fn choose_weighted_option<T:copy>(v: &[Weighted<T>]) -> Option<T> {
+    fn choose_weighted_option<T:Copy>(v: &[Weighted<T>]) -> Option<T> {
         let mut total = 0u;
         for v.each |item| {
             total += item.weight;
@@ -213,7 +213,7 @@ impl Rng {
      * Return a vec containing copies of the items, in order, where
      * the weight of the item determines how many copies there are
      */
-    fn weighted_vec<T:copy>(v: &[Weighted<T>]) -> ~[T] {
+    fn weighted_vec<T:Copy>(v: &[Weighted<T>]) -> ~[T] {
         let mut r = ~[];
         for v.each |item| {
             for uint::range(0u, item.weight) |_i| {
@@ -224,7 +224,7 @@ impl Rng {
     }
 
     /// Shuffle a vec
-    fn shuffle<T:copy>(values: &[T]) -> ~[T] {
+    fn shuffle<T:Copy>(values: &[T]) -> ~[T] {
         let mut m = vec::from_slice(values);
         self.shuffle_mut(m);
         return m;

@@ -70,10 +70,10 @@ struct SemInner<Q> {
     blocked:   Q
 }
 #[doc(hidden)]
-enum Sem<Q: send> = Exclusive<SemInner<Q>>;
+enum Sem<Q: Send> = Exclusive<SemInner<Q>>;
 
 #[doc(hidden)]
-fn new_sem<Q: send>(count: int, +q: Q) -> Sem<Q> {
+fn new_sem<Q: Send>(count: int, +q: Q) -> Sem<Q> {
     Sem(exclusive(SemInner {
         mut count: count, waiters: new_waitqueue(), blocked: q }))
 }
@@ -88,7 +88,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
 }
 
 #[doc(hidden)]
-impl<Q: send> &Sem<Q> {
+impl<Q: Send> &Sem<Q> {
     fn acquire() {
         let mut waiter_nobe = None;
         unsafe {

@@ -239,7 +239,7 @@ fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
                      pprust::ty_to_str, replace_ty_in_crate, cx);
 }
 
-fn check_variants_T<T: copy>(
+fn check_variants_T<T: Copy>(
   crate: ast::crate,
   codemap: codemap::codemap,
   filename: &Path,
