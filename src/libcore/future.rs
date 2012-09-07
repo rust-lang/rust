@@ -43,7 +43,7 @@ struct Future<A> {
 priv enum FutureState<A> {
     Pending(fn~() -> A),
     Evaluating,
-    Forced(A)
+    Forced(~A)
 }
 
 /// Methods on the `future` type
@@ -75,7 +75,7 @@ fn from_value<A>(+val: A) -> Future<A> {
      * not block.
      */
 
-    Future {state: Forced(val)}
+    Future {state: Forced(~val)}
 }
 
 fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
@@ -139,7 +139,7 @@ fn get_ref<A>(future: &r/Future<A>) -> &r/A {
 
     match future.state {
       Forced(ref v) => { // v here has type &A, but with a shorter lifetime.
-        return unsafe{ copy_lifetime(future, v) }; // ...extend it.
+        return unsafe{ copy_lifetime(future, &**v) }; // ...extend it.
       }
       Evaluating => {
         fail ~"Recursive forcing of future!";
@@ -154,7 +154,7 @@ fn get_ref<A>(future: &r/Future<A>) -> &r/A {
         fail ~"Logic error.";
       }
       Pending(move f) => {
-        future.state = Forced(f());
+        future.state = Forced(~f());
         return get_ref(future);
       }
     }
