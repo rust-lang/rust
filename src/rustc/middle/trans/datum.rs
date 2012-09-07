@@ -241,6 +241,10 @@ impl Datum {
 
         let _icx = bcx.insn_ctxt("copy_to");
 
+        if ty::type_is_nil(self.ty) || ty::type_is_bot(self.ty) {
+            return bcx;
+        }
+
         debug!("copy_to(self=%s, action=%?, dst=%s)",
                self.to_str(bcx.ccx()), action, bcx.val_str(dst));
 

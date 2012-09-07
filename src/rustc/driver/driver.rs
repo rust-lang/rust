@@ -514,8 +514,10 @@ fn build_session_options(binary: ~str,
       link::output_type_llvm_assembly | link::output_type_assembly => (),
       _ => debugging_opts |= session::no_asm_comments
     }
-    let opt_level =
-        if opt_present(matches, ~"O") {
+    let opt_level = {
+        if (debugging_opts & session::no_opt) != 0 {
+            No
+        } else if opt_present(matches, ~"O") {
             if opt_present(matches, ~"opt-level") {
                 early_error(demitter, ~"-O and --opt-level both provided");
             }
@@ -531,7 +533,8 @@ fn build_session_options(binary: ~str,
                             ~"to be between 0-3")
               }
             }
-        } else { No };
+        } else { No }
+    };
     let target =
         match target_opt {
             None => host_triple(),
