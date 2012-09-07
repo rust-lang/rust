@@ -241,10 +241,10 @@ enum LocalKind {
 }
 
 struct LocalInfo {
-    id: node_id;
-    ident: ident;
-    is_mutbl: bool;
-    kind: LocalKind;
+    id: node_id,
+    ident: ident,
+    is_mutbl: bool,
+    kind: LocalKind,
 }
 
 enum VarKind {
@@ -268,18 +268,18 @@ fn relevant_def(def: def) -> Option<RelevantDef> {
 }
 
 struct IrMaps {
-    tcx: ty::ctxt;
-    method_map: typeck::method_map;
-    last_use_map: last_use_map;
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
+    last_use_map: last_use_map,
 
-    mut num_live_nodes: uint;
-    mut num_vars: uint;
-    live_node_map: hashmap<node_id, LiveNode>;
-    variable_map: hashmap<node_id, Variable>;
-    field_map: hashmap<ident, Variable>;
-    capture_map: hashmap<node_id, @~[CaptureInfo]>;
-    mut var_kinds: ~[VarKind];
-    mut lnks: ~[LiveNodeKind];
+    mut num_live_nodes: uint,
+    mut num_vars: uint,
+    live_node_map: hashmap<node_id, LiveNode>,
+    variable_map: hashmap<node_id, Variable>,
+    field_map: hashmap<ident, Variable>,
+    capture_map: hashmap<node_id, @~[CaptureInfo]>,
+    mut var_kinds: ~[VarKind],
+    mut lnks: ~[LiveNodeKind],
 }
 
 fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,

@@ -11,7 +11,7 @@ trait A {
 }
 
 struct E {
- f: int;
+ f: int
 }
 
 impl E: A {

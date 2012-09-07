@@ -5,10 +5,10 @@ mod argparse {
     import either::{Either, Left, Right};
 
     struct Flag {
-        name: &str;
-        desc: &str;
-        max_count: uint;
-        mut value: uint;
+        name: &str,
+        desc: &str,
+        max_count: uint,
+        mut value: uint
     }
 
     fn flag(name: &r/str, desc: &r/str) -> Flag/&r {

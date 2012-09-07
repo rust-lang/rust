@@ -1,17 +1,17 @@
 struct direct {
-    f: &int;
+    f: &int
 }
 
 struct indirect1 {
-    g: fn@(direct);
+    g: fn@(direct)
 }
 
 struct indirect2 {
-    g: fn@(direct/&);
+    g: fn@(direct/&)
 }
 
 struct indirect3 {
-    g: fn@(direct/&self);
+    g: fn@(direct/&self)
 }
 
 fn take_direct(p: direct) -> direct { p } //~ ERROR mismatched types

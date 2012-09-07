@@ -3,8 +3,8 @@ trait Product {
 }
 
 struct Foo {
-    x: int;
-    y: int;
+    x: int,
+    y: int,
 }
 
 impl Foo {

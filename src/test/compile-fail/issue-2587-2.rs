@@ -3,7 +3,7 @@ fn foo<T: copy>(+_t: T) { fail; }
 fn bar<T>(+_t: T) { fail; }
 
 struct S {
-    x: int;
+    x: int,
     drop {}
 }
 

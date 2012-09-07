@@ -2,7 +2,7 @@
 // literal syntax.
 
 struct Foo {
-    x: int;
+    x: int,
 
     drop {
         io::println("Goodbye!");

@@ -1,5 +1,5 @@
 struct boxed_int {
-    f: &int;
+    f: &int,
 }
 
 fn get(bi: &r/boxed_int) -> &r/int {

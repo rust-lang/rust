@@ -406,10 +406,10 @@ impl fn_proto : cmp::Eq {
  * - `bounds` is the parameter bounds on the function's upvars.
  * - `ret_style` indicates whether the function returns a value or fails. */
 struct FnMeta {
-    purity: ast::purity;
-    proto: fn_proto;
-    bounds: @~[param_bound];
-    ret_style: ret_style;
+    purity: ast::purity,
+    proto: fn_proto,
+    bounds: @~[param_bound],
+    ret_style: ret_style
 }
 
 /**
@@ -419,8 +419,8 @@ struct FnMeta {
  * - `inputs` is the list of arguments and their modes.
  * - `output` is the return type. */
 struct FnSig {
-    inputs: ~[arg];
-    output: t;
+    inputs: ~[arg],
+    output: t
 }
 
 /**
@@ -429,8 +429,8 @@ struct FnSig {
  * by the meta information because, in some cases, the
  * meta information is inferred. */
 struct FnTyBase<M: cmp::Eq> {
-    meta: M;
-    sig: FnSig;
+    meta: M,
+    sig: FnSig
 }
 
 type FnTy = FnTyBase<FnMeta>;
@@ -556,8 +556,8 @@ enum terr_vstore_kind {
 }
 
 struct expected_found<T> {
-    expected: T;
-    found: T;
+    expected: T,
+    found: T
 }
 
 // Data structures used in type unification

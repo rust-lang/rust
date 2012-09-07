@@ -5,15 +5,15 @@
 use cmp::Eq;
 
 struct WindowsPath {
-    host: Option<~str>;
-    device: Option<~str>;
-    is_absolute: bool;
-    components: ~[~str];
+    host: Option<~str>,
+    device: Option<~str>,
+    is_absolute: bool,
+    components: ~[~str],
 }
 
 struct PosixPath {
-    is_absolute: bool;
-    components: ~[~str];
+    is_absolute: bool,
+    components: ~[~str],
 }
 
 trait GenericPath {

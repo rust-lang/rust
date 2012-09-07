@@ -28,8 +28,8 @@ enum TypeDesc = {
 
 /// The representation of a Rust closure
 struct Closure {
-    code: *();
-    env: *();
+    code: *(),
+    env: *(),
 }
 
 #[abi = "cdecl"]

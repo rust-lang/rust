@@ -1,5 +1,5 @@
 struct closure_box {
-    cl: &fn();
+    cl: &fn(),
 }
 
 fn box_it(x: &r/fn()) -> closure_box/&r {

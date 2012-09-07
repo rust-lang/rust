@@ -1,5 +1,5 @@
 struct X {
-    x: ~str;
+    x: ~str,
     drop {
         error!("value: %s", self.x);
     }

@@ -33,7 +33,7 @@ export future_pipe;
 
 #[doc = "The future type"]
 struct Future<A> {
-    /*priv*/ mut state: FutureState<A>;
+    /*priv*/ mut state: FutureState<A>,
 }
 
 priv enum FutureState<A> {

@@ -1,6 +1,6 @@
 mod cat {
     struct Cat {
-        priv meows: uint;
+        priv meows: uint
     }
 
     fn new_cat() -> Cat {

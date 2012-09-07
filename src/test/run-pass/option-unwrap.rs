@@ -1,5 +1,5 @@
 struct dtor {
-    x: @mut int;
+    x: @mut int,
 
     drop {
         // abuse access to shared mutable state to write this code

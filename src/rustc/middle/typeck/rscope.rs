@@ -60,8 +60,8 @@ impl @anon_rscope: region_scope {
 }
 
 struct binding_rscope {
-    base: region_scope;
-    mut anon_bindings: uint;
+    base: region_scope,
+    mut anon_bindings: uint,
 }
 fn in_binding_rscope<RS: region_scope copy owned>(self: RS)
     -> @binding_rscope {

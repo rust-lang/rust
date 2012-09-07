@@ -1,5 +1,5 @@
 struct Foo {
-    x: int;
+    x: int,
 }
 
 trait Stuff {

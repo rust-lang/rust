@@ -1,5 +1,5 @@
 struct invariant {
-    f: fn@() -> @mut &self/int;
+    f: fn@() -> @mut &self/int
 }
 
 fn to_same_lifetime(bi: invariant/&r) {

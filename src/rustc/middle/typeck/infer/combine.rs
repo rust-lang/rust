@@ -79,9 +79,9 @@ trait combine {
 }
 
 struct combine_fields {
-    infcx: infer_ctxt;
-    a_is_expected: bool;
-    span: span;
+    infcx: infer_ctxt,
+    a_is_expected: bool,
+    span: span,
 }
 
 fn expected_found<C: combine,T>(

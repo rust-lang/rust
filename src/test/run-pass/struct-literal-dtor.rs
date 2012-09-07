@@ -1,5 +1,5 @@
 struct foo {
-    x: ~str;
+    x: ~str,
     drop { #error["%s", self.x]; }
 }
 

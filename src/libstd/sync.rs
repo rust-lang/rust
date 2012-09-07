@@ -24,8 +24,8 @@ type WaitEnd = pipes::PortOne<()>;
 type SignalEnd = pipes::ChanOne<()>;
 // A doubly-ended queue of waiting tasks.
 #[doc(hidden)]
-struct Waitqueue { head: pipes::Port<SignalEnd>;
-                   tail: pipes::Chan<SignalEnd>; }
+struct Waitqueue { head: pipes::Port<SignalEnd>,
+                   tail: pipes::Chan<SignalEnd> }
 
 fn new_waitqueue() -> Waitqueue {
     let (block_tail, block_head) = pipes::stream();
@@ -63,11 +63,11 @@ fn broadcast_waitqueue(q: &Waitqueue) -> uint {
 // The building-block used to make semaphores, mutexes, and rwlocks.
 #[doc(hidden)]
 struct SemInner<Q> {
-    mut count: int;
-    waiters:   Waitqueue;
+    mut count: int,
+    waiters:   Waitqueue,
     // Can be either unit or another waitqueue. Some sems shouldn't come with
     // a condition variable attached, others should.
-    blocked:   Q;
+    blocked:   Q
 }
 #[doc(hidden)]
 enum Sem<Q: send> = Exclusive<SemInner<Q>>;
@@ -153,7 +153,7 @@ impl &Sem<~[mut Waitqueue]> {
 // FIXME(#3136) should go inside of access()
 #[doc(hidden)]
 struct SemRelease {
-    sem: &Sem<()>;
+    sem: &Sem<()>,
     drop { self.sem.release(); }
 }
 
@@ -165,7 +165,7 @@ fn SemRelease(sem: &r/Sem<()>) -> SemRelease/&r {
 
 #[doc(hidden)]
 struct SemAndSignalRelease {
-    sem: &Sem<~[mut Waitqueue]>;
+    sem: &Sem<~[mut Waitqueue]>,
     drop { self.sem.release(); }
 }
 
@@ -177,7 +177,7 @@ fn SemAndSignalRelease(sem: &r/Sem<~[mut Waitqueue]>)
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-struct Condvar { priv sem: &Sem<~[mut Waitqueue]>; drop { } }
+struct Condvar { priv sem: &Sem<~[mut Waitqueue]>, drop { } }
 
 impl &Condvar {
     /**
@@ -245,7 +245,7 @@ impl &Condvar {
         // mutex during unwinding. As long as the wrapper (mutex, etc) is
         // bounded in when it gets released, this shouldn't hang forever.
         struct SemAndSignalReacquire {
-            sem: &Sem<~[mut Waitqueue]>;
+            sem: &Sem<~[mut Waitqueue]>,
             drop unsafe {
                 // Needs to succeed, instead of itself dying.
                 do task::unkillable {
@@ -338,7 +338,7 @@ impl &Sem<~[mut Waitqueue]> {
  ****************************************************************************/
 
 /// A counting, blocking, bounded-waiting semaphore.
-struct Semaphore { priv sem: Sem<()>; }
+struct Semaphore { priv sem: Sem<()> }
 
 /// Create a new semaphore with the specified count.
 fn semaphore(count: int) -> Semaphore {
@@ -377,7 +377,7 @@ impl &Semaphore {
  * A task which fails while holding a mutex will unlock the mutex as it
  * unwinds.
  */
-struct Mutex { priv sem: Sem<~[mut Waitqueue]>; }
+struct Mutex { priv sem: Sem<~[mut Waitqueue]> }
 
 /// Create a new mutex, with one associated condvar.
 fn Mutex() -> Mutex { mutex_with_condvars(1) }
@@ -412,8 +412,8 @@ impl &Mutex {
 
 #[doc(hidden)]
 struct RWlockInner {
-    read_mode:  bool;
-    read_count: uint;
+    read_mode:  bool,
+    read_count: uint
 }
 
 /**
@@ -424,9 +424,9 @@ struct RWlockInner {
  * unwinds.
  */
 struct RWlock {
-    /* priv */ order_lock:  Semaphore;
-    /* priv */ access_lock: Sem<~[mut Waitqueue]>;
-    /* priv */ state:       Exclusive<RWlockInner>;
+    /* priv */ order_lock:  Semaphore,
+    /* priv */ access_lock: Sem<~[mut Waitqueue]>,
+    /* priv */ state:       Exclusive<RWlockInner>
 }
 
 /// Create a new rwlock, with one associated condvar.
@@ -584,7 +584,7 @@ impl &RWlock {
 // FIXME(#3136) should go inside of read()
 #[doc(hidden)]
 struct RWlockReleaseRead {
-    lock: &RWlock;
+    lock: &RWlock,
     drop unsafe {
         do task::unkillable {
             let mut last_reader = false;
@@ -613,7 +613,7 @@ fn RWlockReleaseRead(lock: &r/RWlock) -> RWlockReleaseRead/&r {
 // FIXME(#3136) should go inside of downgrade()
 #[doc(hidden)]
 struct RWlockReleaseDowngrade {
-    lock: &RWlock;
+    lock: &RWlock,
     drop unsafe {
         do task::unkillable {
             let mut writer_or_last_reader = false;
@@ -647,9 +647,9 @@ fn RWlockReleaseDowngrade(lock: &r/RWlock) -> RWlockReleaseDowngrade/&r {
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
-struct RWlockWriteMode { /* priv */ lock: &RWlock; drop { } }
+struct RWlockWriteMode { /* priv */ lock: &RWlock, drop { } }
 /// The "read permission" token used for rwlock.write_downgrade().
-struct RWlockReadMode  { priv lock: &RWlock; drop { } }
+struct RWlockReadMode  { priv lock: &RWlock, drop { } }
 
 impl &RWlockWriteMode {
     /// Access the pre-downgrade rwlock in write mode.
@@ -956,7 +956,7 @@ mod tests {
             assert woken == 0;
         }
         struct SendOnFailure {
-            c: pipes::Chan<()>;
+            c: pipes::Chan<()>,
             drop { self.c.send(()); }
         }
 

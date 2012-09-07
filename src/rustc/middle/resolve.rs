@@ -67,8 +67,8 @@ use str_eq = str::eq;
 type DefMap = hashmap<node_id,def>;
 
 struct binding_info {
-    span: span;
-    binding_mode: binding_mode;
+    span: span,
+    binding_mode: binding_mode,
 }
 
 // Map from the name in a pattern to its binding mode.
@@ -100,9 +100,9 @@ type ExportMap = hashmap<node_id, ~[Export]>;
 type ExportMap2 = hashmap<node_id, ~[Export2]>;
 
 struct Export2 {
-    name: ~str;         // The name of the target.
-    def_id: def_id;     // The definition of the target.
-    reexport: bool;     // Whether this is a reexport.
+    name: ~str,         // The name of the target.
+    def_id: def_id,     // The definition of the target.
+    reexport: bool,     // Whether this is a reexport.
 }
 
 enum PatternBindingMode {
@@ -493,8 +493,8 @@ impl Privacy : cmp::Eq {
 
 // Records a possibly-private definition.
 struct Definition {
-    privacy: Privacy;
-    def: def;
+    privacy: Privacy,
+    def: def,
 }
 
 // Records the definitions (at most one for each namespace) that a name is

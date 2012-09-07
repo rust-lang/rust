@@ -465,7 +465,7 @@ fn try_recv<T: send, Tbuffer: send>(+p: RecvPacketBuffered<T, Tbuffer>)
     let p = unsafe { &*p_ };
 
     struct DropState {
-        p: &PacketHeader;
+        p: &PacketHeader,
 
         drop {
             if task::failing() {

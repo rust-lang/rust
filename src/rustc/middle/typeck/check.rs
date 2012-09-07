@@ -97,22 +97,22 @@ type self_info = {
 /// `bar()` will each have their own `fn_ctxt`, but they will
 /// share the inherited fields.
 struct inherited {
-    infcx: infer::infer_ctxt;
-    locals: hashmap<ast::node_id, TyVid>;
-    node_types: hashmap<ast::node_id, ty::t>;
-    node_type_substs: hashmap<ast::node_id, ty::substs>;
-    borrowings: hashmap<ast::node_id, ty::borrow>;
+    infcx: infer::infer_ctxt,
+    locals: hashmap<ast::node_id, TyVid>,
+    node_types: hashmap<ast::node_id, ty::t>,
+    node_type_substs: hashmap<ast::node_id, ty::substs>,
+    borrowings: hashmap<ast::node_id, ty::borrow>,
 }
 
 struct fn_ctxt {
     // var_bindings, locals and next_var_id are shared
     // with any nested functions that capture the environment
     // (and with any functions whose environment is being captured).
-    self_impl_def_id: Option<ast::def_id>;
-    ret_ty: ty::t;
+    self_impl_def_id: Option<ast::def_id>,
+    ret_ty: ty::t,
     // Used by loop bodies that return from the outer function
-    indirect_ret_ty: Option<ty::t>;
-    purity: ast::purity;
+    indirect_ret_ty: Option<ty::t>,
+    purity: ast::purity,
 
     // Sometimes we generate region pointers where the precise region
     // to use is not known. For example, an expression like `&x.f`
@@ -127,13 +127,13 @@ struct fn_ctxt {
     // inference selects the ultimate value.  Finally, borrowck is
     // charged with guaranteeing that the value whose address was taken
     // can actually be made to live as long as it needs to live.
-    mut region_lb: ast::node_id;
+    mut region_lb: ast::node_id,
 
-    in_scope_regions: isr_alist;
+    in_scope_regions: isr_alist,
 
-    inh: @inherited;
+    inh: @inherited,
 
-    ccx: @crate_ctxt;
+    ccx: @crate_ctxt,
 }
 
 fn blank_inherited(ccx: @crate_ctxt) -> @inherited {

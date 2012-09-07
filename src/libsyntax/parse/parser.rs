@@ -2731,7 +2731,7 @@ struct parser {
                 !self.token_is_pound_or_doc_comment(self.token) {
             let a_var = self.parse_instance_var(vis);
             match self.token {
-                token::SEMI | token::COMMA => {
+                token::COMMA => {
                     self.bump();
                 }
                 token::RBRACE => {}

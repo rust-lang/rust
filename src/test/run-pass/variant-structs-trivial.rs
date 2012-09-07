@@ -1,6 +1,6 @@
 enum Foo {
-    Bar { x: int; },
-    Baz { y: int; }
+    Bar { x: int },
+    Baz { y: int }
 }
 
 fn main() { }

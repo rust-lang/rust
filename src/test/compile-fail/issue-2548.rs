@@ -1,7 +1,7 @@
 // A test case for #2548.
 
 struct foo {
-    x: @mut int;
+    x: @mut int,
 
 
     drop {

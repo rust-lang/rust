@@ -118,10 +118,10 @@ fn make_drop_glue_unboxed(bcx: block, vptr: ValueRef, vec_ty: ty::t) ->
 }
 
 struct VecTypes {
-    vec_ty: ty::t;
-    unit_ty: ty::t;
-    llunit_ty: TypeRef;
-    llunit_size: ValueRef;
+    vec_ty: ty::t,
+    unit_ty: ty::t,
+    llunit_ty: TypeRef,
+    llunit_size: ValueRef
 }
 
 impl VecTypes {

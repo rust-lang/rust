@@ -415,8 +415,8 @@ impl ty::ctxt: get_type_for_node {
 }
 
 struct mem_categorization_ctxt {
-    tcx: ty::ctxt;
-    method_map: typeck::method_map;
+    tcx: ty::ctxt,
+    method_map: typeck::method_map,
 }
 
 impl &mem_categorization_ctxt {

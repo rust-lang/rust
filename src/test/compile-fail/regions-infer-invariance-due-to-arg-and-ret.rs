@@ -3,7 +3,7 @@
 // You cannot convert between regions.
 
 struct invariant {
-    f: fn(x: &self/int) -> &self/int;
+    f: fn(x: &self/int) -> &self/int
 }
 
 fn to_same_lifetime(bi: invariant/&r) {

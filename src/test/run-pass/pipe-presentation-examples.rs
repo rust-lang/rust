@@ -65,7 +65,7 @@ macro_rules! select (
 
 // Types and protocols
 struct Buffer {
-    foo: ();
+    foo: (),
 
     drop { }
 }

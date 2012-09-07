@@ -42,11 +42,11 @@ Encodes the bounding lifetime for a given AST node:
 type region_map = hashmap<ast::node_id, ast::node_id>;
 
 struct ctxt {
-    sess: session;
-    def_map: resolve::DefMap;
+    sess: session,
+    def_map: resolve::DefMap,
 
     // Generated maps:
-    region_map: region_map;
+    region_map: region_map,
 
     // Generally speaking, expressions are parented to their innermost
     // enclosing block. But some kinds of expressions serve as
@@ -55,7 +55,7 @@ struct ctxt {
     // the condition in a while loop is always a parent.  In those
     // cases, we add the node id of such an expression to this set so
     // that when we visit it we can view it as a parent.
-    root_exprs: hashmap<ast::node_id, ()>;
+    root_exprs: hashmap<ast::node_id, ()>,
 
     // The parent scope is the innermost block, statement, call, or alt
     // expression during the execution of which the current expression
@@ -88,7 +88,7 @@ struct ctxt {
     // Here, the first argument `&**x` will be a borrow of the `~int`,
     // but the second argument overwrites that very value! Bad.
     // (This test is borrowck-pure-scope-in-call.rs, btw)
-    parent: parent;
+    parent: parent,
 }
 
 /// Returns true if `subscope` is equal to or is lexically nested inside

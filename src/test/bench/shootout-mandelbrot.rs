@@ -17,8 +17,8 @@ use io::WriterUtil;
 use std::map::hashmap;
 
 struct cmplx {
-    re: f64;
-    im: f64;
+    re: f64,
+    im: f64
 }
 
 impl cmplx : ops::Mul<cmplx,cmplx> {

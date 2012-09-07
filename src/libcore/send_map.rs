@@ -30,16 +30,16 @@ mod linear {
 
     const initial_capacity: uint = 32u; // 2^5
     struct Bucket<K:Eq Hash,V> {
-        hash: uint;
-        key: K;
-        value: V;
+        hash: uint,
+        key: K,
+        value: V,
     }
     struct LinearMap<K:Eq Hash,V> {
-        k0: u64;
-        k1: u64;
-        resize_at: uint;
-        size: uint;
-        buckets: ~[Option<Bucket<K,V>>];
+        k0: u64,
+        k1: u64,
+        resize_at: uint,
+        size: uint,
+        buckets: ~[Option<Bucket<K,V>>],
     }
 
     // FIXME(#3148) -- we could rewrite found_entry

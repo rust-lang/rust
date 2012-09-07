@@ -4,7 +4,7 @@
 // the normal case.
 
 struct contravariant {
-    f: fn@() -> &self/int;
+    f: fn@() -> &self/int
 }
 
 fn to_same_lifetime(bi: contravariant/&r) {

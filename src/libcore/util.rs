@@ -54,7 +54,7 @@ fn replace<T>(dest: &mut T, +src: T) -> T {
 
 /// A non-copyable dummy type.
 struct NonCopyable {
-    i: ();
+    i: (),
     drop { }
 }
 

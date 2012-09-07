@@ -1,7 +1,7 @@
 // Test to make sure that explicit self params work inside closures
 
 struct Box {
-    x: uint;
+    x: uint
 }
 
 impl Box {

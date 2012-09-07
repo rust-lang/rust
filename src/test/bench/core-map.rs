@@ -11,13 +11,13 @@ use send_map::linear::*;
 use io::WriterUtil;
 
 struct Results {
-    sequential_ints: float;
-    random_ints: float;
-    delete_ints: float;
+    sequential_ints: float,
+    random_ints: float,
+    delete_ints: float,
 
-    sequential_strings: float;
-    random_strings: float;
-    delete_strings: float;
+    sequential_strings: float,
+    random_strings: float,
+    delete_strings: float
 }
 
 fn timed(result: &mut float,

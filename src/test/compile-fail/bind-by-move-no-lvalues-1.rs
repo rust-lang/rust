@@ -1,4 +1,4 @@
-struct X { x: (); drop { error!("destructor runs"); } }
+struct X { x: (), drop { error!("destructor runs"); } }
 
 fn main() {
     let x = Some(X { x: () });
