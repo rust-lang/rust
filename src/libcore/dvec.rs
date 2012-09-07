@@ -235,13 +235,13 @@ impl<A: copy> DVec<A> {
         }
     }
 
-    /*
     /**
      * Append all elements of an iterable.
      *
      * Failure will occur if the iterable's `each()` method
      * attempts to access this vector.
      */
+    /*
     fn append_iter<A, I:iter::base_iter<A>>(ts: I) {
         do self.swap |v| {
            let mut v = match ts.size_hint() {

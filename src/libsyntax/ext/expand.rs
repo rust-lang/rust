@@ -243,6 +243,7 @@ fn new_span(cx: ext_ctxt, sp: span) -> span {
 fn core_macros() -> ~str {
     return
 ~"{
+    macro_rules! ignore (($($x:tt)*) => (()))
     #macro[[#error[f, ...], log(core::error, #fmt[f, ...])]];
     #macro[[#warn[f, ...], log(core::warn, #fmt[f, ...])]];
     #macro[[#info[f, ...], log(core::info, #fmt[f, ...])]];
