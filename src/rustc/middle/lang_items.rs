@@ -13,8 +13,8 @@ use driver::session::session;
 use metadata::csearch::{each_path, get_item_attrs};
 use metadata::cstore::{iter_crate_data};
 use metadata::decoder::{dl_def, dl_field, dl_impl};
-use syntax::ast::{crate, def_id, def_ty, lit_str, meta_item, meta_list};
-use syntax::ast::{meta_name_value, meta_word};
+use syntax::ast::{crate, def_fn, def_id, def_ty, lit_str, meta_item};
+use syntax::ast::{meta_list, meta_name_value, meta_word};
 use syntax::ast_util::{local_def};
 use syntax::visit::{default_simple_visitor, mk_simple_visitor};
 use syntax::visit::{visit_crate, visit_item};
@@ -23,26 +23,28 @@ use std::map::{hashmap, str_hash};
 use str_eq = str::eq;
 
 struct LanguageItems {
-    mut const_trait: Option<def_id>;
-    mut copy_trait: Option<def_id>;
-    mut send_trait: Option<def_id>;
-    mut owned_trait: Option<def_id>;
+    mut const_trait: Option<def_id>,
+    mut copy_trait: Option<def_id>,
+    mut send_trait: Option<def_id>,
+    mut owned_trait: Option<def_id>,
 
-    mut add_trait: Option<def_id>;
-    mut sub_trait: Option<def_id>;
-    mut mul_trait: Option<def_id>;
-    mut div_trait: Option<def_id>;
-    mut modulo_trait: Option<def_id>;
-    mut neg_trait: Option<def_id>;
-    mut bitxor_trait: Option<def_id>;
-    mut bitand_trait: Option<def_id>;
-    mut bitor_trait: Option<def_id>;
-    mut shl_trait: Option<def_id>;
-    mut shr_trait: Option<def_id>;
-    mut index_trait: Option<def_id>;
+    mut add_trait: Option<def_id>,
+    mut sub_trait: Option<def_id>,
+    mut mul_trait: Option<def_id>,
+    mut div_trait: Option<def_id>,
+    mut modulo_trait: Option<def_id>,
+    mut neg_trait: Option<def_id>,
+    mut bitxor_trait: Option<def_id>,
+    mut bitand_trait: Option<def_id>,
+    mut bitor_trait: Option<def_id>,
+    mut shl_trait: Option<def_id>,
+    mut shr_trait: Option<def_id>,
+    mut index_trait: Option<def_id>,
 
-    mut eq_trait: Option<def_id>;
-    mut ord_trait: Option<def_id>;
+    mut eq_trait: Option<def_id>,
+    mut ord_trait: Option<def_id>,
+
+    mut str_eq_fn: Option<def_id>
 }
 
 mod LanguageItems {
@@ -67,7 +69,9 @@ mod LanguageItems {
             index_trait: None,
 
             eq_trait: None,
-            ord_trait: None
+            ord_trait: None,
+
+            str_eq_fn: None
         }
     }
 }
@@ -99,6 +103,8 @@ fn LanguageItemCollector(crate: @crate, session: session,
     item_refs.insert(~"eq", &mut items.eq_trait);
     item_refs.insert(~"ord", &mut items.ord_trait);
 
+    item_refs.insert(~"str_eq", &mut items.str_eq_fn);
+
     LanguageItemCollector {
         crate: crate,
         session: session,
@@ -117,7 +123,6 @@ struct LanguageItemCollector {
 
     fn match_and_collect_meta_item(item_def_id: def_id,
                                    meta_item: meta_item) {
-
         match meta_item.node {
             meta_name_value(key, literal) => {
                 match literal.node {
@@ -183,7 +188,7 @@ struct LanguageItemCollector {
             for each_path(crate_store, crate_number) |path_entry| {
                 let def_id;
                 match path_entry.def_like {
-                    dl_def(def_ty(did)) => {
+                    dl_def(def_ty(did)) | dl_def(def_fn(did, _)) => {
                         def_id = did;
                     }
                     dl_def(_) | dl_impl(_) | dl_field => {

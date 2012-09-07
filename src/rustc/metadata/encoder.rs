@@ -542,6 +542,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         encode_type_param_bounds(ebml_w, ecx, tps);
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        encode_attributes(ebml_w, item.attrs);
         if tps.len() > 0u || should_inline(item.attrs) {
             ecx.encode_inlined_item(ecx, ebml_w, path, ii_item(item));
         } else {

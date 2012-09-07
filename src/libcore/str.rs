@@ -713,6 +713,7 @@ Section: Comparing strings
 */
 
 /// Bytewise slice equality
+#[lang="str_eq"]
 pure fn eq_slice(a: &str, b: &str) -> bool {
     do as_buf(a) |ap, alen| {
         do as_buf(b) |bp, blen| {
