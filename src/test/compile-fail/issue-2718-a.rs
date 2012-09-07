@@ -1,5 +1,5 @@
 struct send_packet<T: copy> {
-  let p: T;
+  p: T
 }
 
 

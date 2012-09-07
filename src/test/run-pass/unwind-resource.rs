@@ -2,7 +2,7 @@
 use std;
 
 struct complainer {
-  let c: comm::Chan<bool>;
+  c: comm::Chan<bool>,
   drop { error!("About to send!");
     comm::send(self.c, true);
     error!("Sent!"); }

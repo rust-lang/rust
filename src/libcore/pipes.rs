@@ -134,7 +134,7 @@ impl State: Eq {
 struct BufferHeader {
     // Tracks whether this buffer needs to be freed. We can probably
     // get away with restricting it to 0 or 1, if we're careful.
-    let mut ref_count: int;
+    mut ref_count: int,
 
     // We may want a drop, and to be careful about stringing this
     // thing along.
@@ -158,12 +158,12 @@ type Buffer<T: send> = {
 };
 
 struct PacketHeader {
-    let mut state: State;
-    let mut blocked_task: *rust_task;
+    mut state: State,
+    mut blocked_task: *rust_task,
 
     // This is a reinterpret_cast of a ~buffer, that can also be cast
     // to a buffer_header if need be.
-    let mut buffer: *libc::c_void;
+    mut buffer: *libc::c_void,
 
     // Returns the old state.
     unsafe fn mark_blocked(this: *rust_task) -> State {
@@ -374,7 +374,7 @@ unsafe fn get_buffer<T: send>(p: *PacketHeader) -> ~Buffer<T> {
 
 // This could probably be done with SharedMutableState to avoid move_it!().
 struct BufferResource<T: send> {
-    let buffer: ~Buffer<T>;
+    buffer: ~Buffer<T>,
 
     drop unsafe {
         let b = move_it!(self.buffer);
@@ -779,8 +779,8 @@ fn send_packet<T: send>(p: *packet<T>) -> SendPacket<T> {
 }
 
 struct SendPacketBuffered<T: send, Tbuffer: send> {
-    let mut p: Option<*Packet<T>>;
-    let mut buffer: Option<BufferResource<Tbuffer>>;
+    mut p: Option<*Packet<T>>,
+    mut buffer: Option<BufferResource<Tbuffer>>,
     drop {
         //if self.p != none {
         //    debug!("drop send %?", option::get(self.p));
@@ -860,8 +860,8 @@ fn recv_packet<T: send>(p: *packet<T>) -> RecvPacket<T> {
 }
 
 struct RecvPacketBuffered<T: send, Tbuffer: send> : Selectable {
-    let mut p: Option<*Packet<T>>;
-    let mut buffer: Option<BufferResource<Tbuffer>>;
+    mut p: Option<*Packet<T>>,
+    mut buffer: Option<BufferResource<Tbuffer>>,
     drop {
         //if self.p != none {
         //    debug!("drop recv %?", option::get(self.p));
@@ -1098,7 +1098,7 @@ impl<T: send> Port<T>: Recv<T> {
 
 /// Treat many ports as one.
 struct PortSet<T: send> : Recv<T> {
-    let mut ports: ~[pipes::Port<T>];
+    mut ports: ~[pipes::Port<T>],
 
     fn add(+port: pipes::Port<T>) {
         vec::push(self.ports, port)

@@ -36,9 +36,9 @@ export cleanup_stack_for_failure;
 
 // Mirrors rust_stack.h stk_seg
 struct StackSegment {
-    let prev: *StackSegment;
-    let next: *StackSegment;
-    let end: uintptr_t;
+    prev: *StackSegment,
+    next: *StackSegment,
+    end: uintptr_t,
     // And other fields which we don't care about...
 }
 

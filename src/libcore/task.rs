@@ -610,7 +610,7 @@ fn get_task() -> Task {
  */
 unsafe fn unkillable<U>(f: fn() -> U) -> U {
     struct AllowFailure {
-        let t: *rust_task;
+        t: *rust_task,
         drop { rustrt::rust_task_allow_kill(self.t); }
     }
 
@@ -629,7 +629,7 @@ unsafe fn unkillable<U>(f: fn() -> U) -> U {
 /// The inverse of unkillable. Only ever to be used nested in unkillable().
 unsafe fn rekillable<U>(f: fn() -> U) -> U {
     struct DisallowFailure {
-        let t: *rust_task;
+        t: *rust_task,
         drop { rustrt::rust_task_inhibit_kill(self.t); }
     }
 
@@ -651,7 +651,7 @@ unsafe fn rekillable<U>(f: fn() -> U) -> U {
  */
 unsafe fn atomically<U>(f: fn() -> U) -> U {
     struct DeferInterrupts {
-        let t: *rust_task;
+        t: *rust_task,
         drop {
             rustrt::rust_task_allow_yield(self.t);
             rustrt::rust_task_allow_kill(self.t);
@@ -948,13 +948,13 @@ fn each_ancestor(list:        &mut AncestorList,
 
 // One of these per task.
 struct TCB {
-    let me:            *rust_task;
+    me:            *rust_task,
     // List of tasks with whose fates this one's is intertwined.
-    let tasks:         TaskGroupArc; // 'none' means the group has failed.
+    tasks:         TaskGroupArc, // 'none' means the group has failed.
     // Lists of tasks who will kill us if they fail, but whom we won't kill.
-    let mut ancestors: AncestorList;
-    let is_main:       bool;
-    let notifier:      Option<AutoNotify>;
+    mut ancestors: AncestorList,
+    is_main:       bool,
+    notifier:      Option<AutoNotify>,
     // Runs on task exit.
     drop {
         // If we are failing, the whole taskgroup needs to die.
@@ -995,8 +995,8 @@ fn TCB(me: *rust_task, +tasks: TaskGroupArc, +ancestors: AncestorList,
 }
 
 struct AutoNotify {
-    let notify_chan: comm::Chan<Notification>;
-    let mut failed:  bool;
+    notify_chan: comm::Chan<Notification>,
+    mut failed:  bool,
     drop {
         let result = if self.failed { Failure } else { Success };
         comm::send(self.notify_chan, Exit(get_task(), result));

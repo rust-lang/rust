@@ -3,7 +3,7 @@
 fn foo<T: const>(_x: T) { }
 
 struct r {
-  let x:int;
+  x:int,
   drop {}
 }
 
@@ -14,7 +14,7 @@ fn r(x:int) -> r {
 }
 
 struct r2 {
-  let x:@mut int;
+  x:@mut int,
   drop {}
 }
 

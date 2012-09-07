@@ -1,7 +1,7 @@
 fn main() {
   
   struct b {
-    let i: int;
+    i: int,
     fn do_stuff() -> int { return 37; }
   }
 

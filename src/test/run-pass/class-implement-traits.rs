@@ -4,7 +4,7 @@ trait noisy {
 
 struct cat : noisy {
   priv {
-    let mut meows : uint;
+    mut meows : uint,
     fn meow() {
       error!("Meow");
       self.meows += 1u;
@@ -14,8 +14,8 @@ struct cat : noisy {
     }
   }
 
-  let mut how_hungry : int;
-  let name : ~str;
+  mut how_hungry : int,
+  name : ~str,
 
   fn speak() { self.meow(); }
 

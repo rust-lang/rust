@@ -1,8 +1,8 @@
 // Test that a class with only sendable fields can be sent
 
 struct foo {
-  let i: int;
-  let j: char;
+  i: int,
+  j: char,
 }
 
 fn foo(i:int, j: char) -> foo {

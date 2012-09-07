@@ -98,7 +98,7 @@ fn listen<T: send, U>(f: fn(Chan<T>) -> U) -> U {
 }
 
 struct PortPtr<T:send> {
-  let po: *rust_port;
+    po: *rust_port,
   drop unsafe {
       do task::unkillable {
         // Once the port is detached it's guaranteed not to receive further
@@ -138,7 +138,7 @@ fn PortPtr<T: send>(po: *rust_port) -> PortPtr<T> {
 fn as_raw_port<T: send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
 
     struct PortRef {
-       let p: *rust_port;
+        p: *rust_port,
        drop {
          if !ptr::is_null(self.p) {
            rustrt::rust_port_drop(self.p);

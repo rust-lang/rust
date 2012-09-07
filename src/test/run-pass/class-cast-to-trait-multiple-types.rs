@@ -4,7 +4,7 @@ trait noisy {
 
 struct dog : noisy {
   priv {
-    let barks : @mut uint;
+    barks : @mut uint,
     fn bark() -> int {
       debug!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
@@ -19,7 +19,7 @@ struct dog : noisy {
     }
   }
 
-  let volume : @mut int;
+  volume : @mut int,
 
   fn speak() -> int { self.bark() }
 }
@@ -33,7 +33,7 @@ fn dog() -> dog {
 
 struct cat : noisy {
   priv {
-    let meows : @mut uint;
+    meows : @mut uint,
     fn meow() -> uint {
       debug!("Meow");
       *self.meows += 1u;
@@ -44,8 +44,8 @@ struct cat : noisy {
     }
   }
 
-  let how_hungry : @mut int;
-  let name : ~str;
+  how_hungry : @mut int,
+  name : ~str,
 
   fn speak() -> int { self.meow() as int }
   fn meow_count() -> uint { *self.meows }

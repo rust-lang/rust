@@ -1,5 +1,5 @@
 struct kitten {
-    let cat: Option<cat>;
+    cat: Option<cat>,
 }
 
 fn kitten(cat: Option<cat>) -> kitten {

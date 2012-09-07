@@ -1,10 +1,10 @@
 // error-pattern:assigning to immutable field
 struct cat {
   priv {
-    let mut meows : uint;
+    mut meows : uint,
   }
 
-  let how_hungry : int;
+  how_hungry : int,
 
   fn eat() {
     self.how_hungry -= 5;

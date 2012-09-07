@@ -2,7 +2,7 @@ use task::*;
 use comm::*;
 
 struct test {
-  let f: int;
+  f: int,
   drop {}
 }
 

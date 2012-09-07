@@ -2,8 +2,8 @@
 // sent
 
 struct foo {
-  let i: int;
-  let j: @~str;
+  i: int,
+  j: @~str,
 }
 
 fn foo(i:int, j: @~str) -> foo {

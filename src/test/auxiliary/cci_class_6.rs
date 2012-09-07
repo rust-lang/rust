@@ -2,11 +2,11 @@ mod kitties {
 
 struct cat<U> {
   priv {
-    let mut info : ~[U];
-    let mut meows : uint;
+    mut info : ~[U],
+    mut meows : uint,
   }
 
-  let how_hungry : int;
+  how_hungry : int,
 
   fn speak<T>(stuff: ~[T]) {
     self.meows += stuff.len();

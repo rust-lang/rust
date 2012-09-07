@@ -121,11 +121,11 @@ fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
 struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    let inherent_methods: hashmap<def_id,@DVec<@Impl>>;
+    inherent_methods: hashmap<def_id,@DVec<@Impl>>,
 
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
-    let extension_methods: hashmap<def_id,@DVec<@Impl>>;
+    extension_methods: hashmap<def_id,@DVec<@Impl>>,
 }
 
 fn CoherenceInfo() -> CoherenceInfo {
@@ -146,18 +146,18 @@ fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
 }
 
 struct CoherenceChecker {
-    let crate_context: @crate_ctxt;
-    let inference_context: infer_ctxt;
+    crate_context: @crate_ctxt,
+    inference_context: infer_ctxt,
 
     // A mapping from implementations to the corresponding base type
     // definition ID.
 
-    let base_type_def_ids: hashmap<def_id,def_id>;
+    base_type_def_ids: hashmap<def_id,def_id>,
 
     // A set of implementations in privileged scopes; i.e. those
     // implementations that are defined in the same scope as their base types.
 
-    let privileged_implementations: hashmap<node_id,()>;
+    privileged_implementations: hashmap<node_id,()>,
 
     // Create a mapping containing a MethodInfo for every provided
     // method in every trait.

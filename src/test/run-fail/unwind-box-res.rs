@@ -5,7 +5,7 @@ fn failfn() {
 }
 
 struct r {
-  let v: *int;
+  v: *int,
   drop unsafe {
     let _v2: ~int = unsafe::reinterpret_cast(&self.v);
   }

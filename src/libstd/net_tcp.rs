@@ -39,7 +39,7 @@ extern mod rustrt {
  * data structure that is used for read/write operations over a TCP stream.
  */
 struct TcpSocket {
-  let socket_data: @TcpSocketData;
+  socket_data: @TcpSocketData,
   drop {
     unsafe {
         tear_down_socket_data(self.socket_data)
@@ -60,7 +60,7 @@ fn TcpSocket(socket_data: @TcpSocketData) -> TcpSocket {
  * satisfy both the `io::reader` and `io::writer` traits.
  */
 struct TcpSocketBuf {
-  let data: @TcpBufferedSocketData;
+    data: @TcpBufferedSocketData,
 }
 
 fn TcpSocketBuf(data: @TcpBufferedSocketData) -> TcpSocketBuf {

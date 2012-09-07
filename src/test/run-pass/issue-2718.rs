@@ -137,7 +137,7 @@ mod pipes {
     }
 
     struct send_packet<T: send> {
-        let mut p: Option<*packet<T>>;
+        mut p: Option<*packet<T>>,
         drop {
             if self.p != None {
                 let mut p = None;
@@ -159,7 +159,7 @@ mod pipes {
     }
 
     struct recv_packet<T: send> {
-        let mut p: Option<*packet<T>>;
+        mut p: Option<*packet<T>>,
         drop {
             if self.p != None {
                 let mut p = None;

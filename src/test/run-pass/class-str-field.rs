@@ -1,6 +1,6 @@
 struct cat {
 
-  let name : ~str;
+  name : ~str,
 
 }
 

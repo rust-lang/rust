@@ -1,7 +1,7 @@
 // error-pattern:whatever
 
 struct r {
-  let x:int;
+  x:int,
             // Setting the exit status after the runtime has already
             // failed has no effect and the process exits with the
             // runtime's exit code

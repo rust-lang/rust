@@ -3,7 +3,7 @@ fn s_foo<T: copy>(shared: T) { }
 fn u_foo<T: send>(unique: T) { }
 
 struct r {
-  let i: int;
+  i: int,
   drop {}
 }
 

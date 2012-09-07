@@ -2,7 +2,7 @@
 // as a move unless the stored thing is used afterwards.
 
 struct r {
-  let i: @mut int;
+  i: @mut int,
   drop { *(self.i) = *(self.i) + 1; }
 }
 

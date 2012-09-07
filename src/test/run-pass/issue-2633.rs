@@ -1,5 +1,5 @@
 struct cat {
-    let mut meow: fn@();
+    mut meow: fn@(),
 }
 
 fn cat() -> cat {

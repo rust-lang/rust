@@ -112,7 +112,7 @@ mod blade_runner {
  * condimentum lacinia tincidunt.
  */
 struct bored {
-  let bored: bool;
+  bored: bool,
   drop { log(error, self.bored); }
 }
 

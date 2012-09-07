@@ -292,7 +292,7 @@ fn test_unwrap_str() {
 #[test]
 fn test_unwrap_resource() {
     struct R {
-       let i: @mut int;
+       i: @mut int,
        drop { *(self.i) += 1; }
     }
 

@@ -108,12 +108,12 @@ fn LanguageItemCollector(crate: @crate, session: session,
 }
 
 struct LanguageItemCollector {
-    let items: &LanguageItems;
+    items: &LanguageItems,
 
-    let crate: @crate;
-    let session: session;
+    crate: @crate,
+    session: session,
 
-    let item_refs: hashmap<~str,&mut Option<def_id>>;
+    item_refs: hashmap<~str,&mut Option<def_id>>,
 
     fn match_and_collect_meta_item(item_def_id: def_id,
                                    meta_item: meta_item) {

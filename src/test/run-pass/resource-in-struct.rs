@@ -4,7 +4,7 @@
 type closable = @mut bool;
 
 struct close_res {
-  let i: closable;
+  i: closable,
  
   drop { *(self.i) = false; }
 }

@@ -604,13 +604,13 @@ const ACC_WRITE: uint = 2u;
 const ACC_USE: uint = 4u;
 
 struct Liveness {
-    let tcx: ty::ctxt;
-    let ir: @IrMaps;
-    let s: Specials;
-    let successors: ~[mut LiveNode];
-    let users: ~[mut users];
-    let mut break_ln: LiveNode;
-    let mut cont_ln: LiveNode;
+    tcx: ty::ctxt,
+    ir: @IrMaps,
+    s: Specials,
+    successors: ~[mut LiveNode],
+    users: ~[mut users],
+    mut break_ln: LiveNode,
+    mut cont_ln: LiveNode,
 }
 
 fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {

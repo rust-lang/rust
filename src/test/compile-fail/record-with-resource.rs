@@ -1,7 +1,7 @@
 // error-pattern: copying a noncopyable value
 
 struct my_resource {
-  let x: int;
+  x: int,
   drop { log(error, self.x); }
 }
 

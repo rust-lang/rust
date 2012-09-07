@@ -3,7 +3,7 @@
 // Test that a class with a non-copyable field can't be
 // copied
 struct bar {
-  let x: int;
+  x: int,
   drop {}
 }
 
@@ -14,8 +14,8 @@ fn bar(x:int) -> bar {
 }
 
 struct foo {
-  let i: int;
-  let j: bar;
+  i: int,
+  j: bar,
 }
 
 fn foo(i:int) -> foo {

@@ -4,7 +4,7 @@
 
 enum an_enum = &int;
 trait a_trait { fn foo() -> &self/int; }
-struct a_class { let x:&self/int; }
+struct a_class { x:&self/int }
 
 fn a_fn1(e: an_enum/&a) -> an_enum/&b {
     return e; //~ ERROR mismatched types: expected `an_enum/&b` but found `an_enum/&a`

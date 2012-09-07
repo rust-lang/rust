@@ -1,6 +1,6 @@
 fn main() {
     struct foo {
-      let _x: comm::Port<()>;
+      _x: comm::Port<()>,
       drop {}
     }
 

@@ -1,5 +1,5 @@
 struct c1<T: copy> {
-  let x: T;
+    x: T,
     fn f1(x: int) {
     }
 }

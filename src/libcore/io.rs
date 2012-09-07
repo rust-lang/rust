@@ -246,7 +246,7 @@ impl<T: Reader, C> {base: T, cleanup: C}: Reader {
 }
 
 struct FILERes {
-    let f: *libc::FILE;
+    f: *libc::FILE,
     drop { libc::fclose(self.f); }
 }
 
@@ -422,7 +422,7 @@ impl fd_t: Writer {
 }
 
 struct FdRes {
-    let fd: fd_t;
+    fd: fd_t,
     drop { libc::close(self.fd); }
 }
 
@@ -778,7 +778,7 @@ mod fsync {
 
     // Artifacts that need to fsync on destruction
     struct Res<t> {
-        let arg: Arg<t>;
+        arg: Arg<t>,
         drop {
           match self.arg.opt_level {
             option::None => (),

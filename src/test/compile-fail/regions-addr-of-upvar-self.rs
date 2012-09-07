@@ -1,5 +1,5 @@
 struct dog {
-    let mut food: uint;
+    mut food: uint,
 
     fn chase_cat() {
         for uint::range(0u, 10u) |_i| {

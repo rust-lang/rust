@@ -1,10 +1,10 @@
 struct cat {
   priv {
-    let mut meows : uint;
+      mut meows : uint,
       fn nap() { for uint::range(1u, 10u) |_i| { }}
   }
 
-  let how_hungry : int;
+  how_hungry : int,
 
   fn play() {
     self.meows += 1u;

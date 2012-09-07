@@ -7,7 +7,7 @@ use sys::size_of;
 type Word = uint;
 
 struct Frame {
-    let fp: *Word;
+    fp: *Word
 }
 
 fn Frame(fp: *Word) -> Frame {

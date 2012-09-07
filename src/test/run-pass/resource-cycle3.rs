@@ -9,9 +9,9 @@ type u = {
 };
 
 struct r {
-  let v: u;
-  let w: int;
-  let x: *int;
+  v: u,
+  w: int,
+  x: *int,
   drop unsafe {
     let _v2: ~int = unsafe::reinterpret_cast(&self.v.c);
     // let _v3: ~int = unsafe::reinterpret_cast(self.x);

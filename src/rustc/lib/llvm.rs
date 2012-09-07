@@ -1175,7 +1175,7 @@ fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] unsafe {
 /* Memory-managed interface to target data. */
 
 struct target_data_res {
-    let TD: TargetDataRef;
+    TD: TargetDataRef,
     drop { llvm::LLVMDisposeTargetData(self.TD); }
 }
 
@@ -1196,7 +1196,7 @@ fn mk_target_data(string_rep: ~str) -> target_data {
 /* Memory-managed interface to pass managers. */
 
 struct pass_manager_res {
-    let PM: PassManagerRef;
+    PM: PassManagerRef,
     drop { llvm::LLVMDisposePassManager(self.PM); }
 }
 
@@ -1216,7 +1216,7 @@ fn mk_pass_manager() -> pass_manager {
 /* Memory-managed interface to object files. */
 
 struct object_file_res {
-    let ObjectFile: ObjectFileRef;
+    ObjectFile: ObjectFileRef,
     drop { llvm::LLVMDisposeObjectFile(self.ObjectFile); }
 }
 
@@ -1237,7 +1237,7 @@ fn mk_object_file(llmb: MemoryBufferRef) -> Option<object_file> {
 /* Memory-managed interface to section iterators. */
 
 struct section_iter_res {
-    let SI: SectionIteratorRef;
+    SI: SectionIteratorRef,
     drop { llvm::LLVMDisposeSectionIterator(self.SI); }
 }
 

@@ -1,6 +1,6 @@
 // This test should behave exactly like issue-2735-2
 struct defer {
-    let b: &mut bool;
+    b: &mut bool,
     drop { *(self.b) = true; }
 }
 

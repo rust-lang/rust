@@ -241,7 +241,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
         };
 
         struct finally {
-            let ch: comm::Chan<monitor_msg>;
+            ch: comm::Chan<monitor_msg>,
             drop { comm::send(self.ch, done); }
         }
 

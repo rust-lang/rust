@@ -2,7 +2,7 @@
 use std;
 
 struct complainer {
-  let c: @int;
+  c: @int,
   drop {}
 }
 

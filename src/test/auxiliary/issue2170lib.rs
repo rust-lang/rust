@@ -4,7 +4,7 @@ fn foo(_x: i32) {
 }
 
 struct rsrc {
-  let x: i32;
+  x: i32,
   drop { foo(self.x); }
 }
 

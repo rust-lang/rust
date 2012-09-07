@@ -49,7 +49,7 @@ fn f4b() -> int {
 
 // leave this in here just to trigger compile-fail:
 struct r {
-    let x: ();
+    x: (),
     drop {}
 }
 fn main() {
