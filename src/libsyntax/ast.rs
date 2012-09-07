@@ -1267,7 +1267,7 @@ enum item_ {
     item_class(@struct_def, ~[ty_param]),
     item_trait(~[ty_param], ~[@trait_ref], ~[trait_method]),
     item_impl(~[ty_param],
-              ~[@trait_ref], /* traits this impl implements */
+              Option<@trait_ref>, /* (optional) trait this impl implements */
               @ty, /* self */
               ~[@method]),
     item_mac(mac),

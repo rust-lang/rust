@@ -243,10 +243,10 @@ fn fold_impl(
     let (trait_types, self_ty) = do astsrv::exec(srv) |ctxt| {
         match ctxt.ast_map.get(doc.id()) {
           ast_map::node_item(@{
-            node: ast::item_impl(_, trait_types, self_ty, _), _
+            node: ast::item_impl(_, opt_trait_type, self_ty, _), _
           }, _) => {
-            let trait_types = vec::map(trait_types, |p| {
-                pprust::path_to_str(p.path, extract::interner())
+            let trait_types = opt_trait_type.map_default(~[], |p| {
+                ~[pprust::path_to_str(p.path, extract::interner())]
             });
             (trait_types, Some(pprust::ty_to_str(self_ty,
                                                  extract::interner())))

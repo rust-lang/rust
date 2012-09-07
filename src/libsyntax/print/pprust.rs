@@ -499,7 +499,7 @@ fn print_item(s: ps, &&item: @ast::item) {
           print_struct(s, struct_def, tps, item.ident, item.span);
       }
 
-      ast::item_impl(tps, traits, ty, methods) => {
+      ast::item_impl(tps, opt_trait, ty, methods) => {
         head(s, ~"impl");
         if tps.is_not_empty() {
             print_type_params(s, tps);
@@ -507,12 +507,13 @@ fn print_item(s: ps, &&item: @ast::item) {
         }
         print_type(s, ty);
 
-        if vec::len(traits) != 0u {
-            word_space(s, ~":");
-            do commasep(s, inconsistent, traits) |s, p| {
-                print_path(s, p.path, false);
+        match opt_trait {
+            Some(t) => {
+                word_space(s, ~":");
+                print_path(s, t.path, false);
             }
-        }
+            None => ()
+        };
         space(s.s);
 
         bopen(s);

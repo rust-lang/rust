@@ -3532,7 +3532,7 @@ struct Resolver {
     fn resolve_implementation(id: node_id,
                               span: span,
                               type_parameters: ~[ty_param],
-                              trait_references: ~[@trait_ref],
+                              opt_trait_reference: Option<@trait_ref>,
                               self_type: @ty,
                               methods: ~[@method],
                               visitor: ResolveVisitor) {
@@ -3549,10 +3549,10 @@ struct Resolver {
 
             // Resolve the trait reference, if necessary.
             let original_trait_refs = self.current_trait_refs;
-            if trait_references.len() >= 1 {
-                let mut new_trait_refs = @DVec();
-                for trait_references.each |trait_reference| {
-                    match self.resolve_path(
+            match opt_trait_reference {
+              Some(trait_reference) => {
+                let new_trait_refs = @DVec();
+                match self.resolve_path(
                         trait_reference.path, TypeNS, true, visitor) {
                         None => {
                             self.session.span_err(span,
@@ -3566,10 +3566,10 @@ struct Resolver {
                             (*new_trait_refs).push(def_id_of_def(def));
                         }
                     }
-                }
-
                 // Record the current set of trait references.
                 self.current_trait_refs = Some(new_trait_refs);
+            }
+            None => ()
             }
 
             // Resolve the self type.

@@ -699,7 +699,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
                                  else { None }, tps);
         }
       }
-      item_impl(tps, traits, _, methods) => {
+      item_impl(tps, opt_trait, _, methods) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, local_def(item.id));
@@ -714,10 +714,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
             ebml_w.writer.write(str::to_bytes(def_to_str(local_def(m.id))));
             ebml_w.end_tag();
         }
-        if traits.len() > 1 {
-            fail ~"multiple traits!!";
-        }
-        for traits.each |associated_trait| {
+        do opt_trait.iter() |associated_trait| {
            encode_trait_ref(ebml_w, ecx, associated_trait)
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));

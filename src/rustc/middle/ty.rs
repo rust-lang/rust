@@ -3121,13 +3121,13 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
         debug!("(impl_traits) searching for trait impl %?", id);
         match cx.items.find(id.node) {
            Some(ast_map::node_item(@{
-                        node: ast::item_impl(_, trait_refs, _, _),
+                        node: ast::item_impl(_, opt_trait, _, _),
                         _},
                     _)) => {
 
-                do vec::map(trait_refs) |trait_ref| {
-                    node_id_to_type(cx, trait_ref.ref_id)
-                }
+               do option::map_default(opt_trait, ~[]) |trait_ref| {
+                       ~[node_id_to_type(cx, trait_ref.ref_id)]
+                   }
            }
            Some(ast_map::node_item(@{node: ast::item_class(sd,_),
                            _},_)) => {
