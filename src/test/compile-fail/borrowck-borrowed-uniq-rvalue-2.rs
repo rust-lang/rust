@@ -1,5 +1,5 @@
 struct defer {
-    x: &[&str];
+    x: &[&str],
     drop { #error["%?", self.x]; }
 }
 

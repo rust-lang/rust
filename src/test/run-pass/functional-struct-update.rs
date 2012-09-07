@@ -1,6 +1,6 @@
 struct Foo {
-    x: int;
-    y: int;
+    x: int,
+    y: int
 }
 
 fn main() {

@@ -1,5 +1,5 @@
 
-struct foo { a: int; b: int; c: int; }
+struct foo { a: int, b: int, c: int }
 
 impl foo : cmp::Eq {
     pure fn eq(&&other: foo) -> bool {

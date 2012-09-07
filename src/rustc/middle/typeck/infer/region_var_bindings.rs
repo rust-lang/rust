@@ -350,8 +350,8 @@ impl Constraint: cmp::Eq {
 }
 
 struct TwoRegions {
-    a: region;
-    b: region;
+    a: region,
+    b: region,
 }
 
 impl TwoRegions: cmp::Eq {
@@ -371,12 +371,12 @@ enum UndoLogEntry {
 type CombineMap = hashmap<TwoRegions, RegionVid>;
 
 struct RegionVarBindings {
-    tcx: ty::ctxt;
-    var_spans: DVec<span>;
-    values: Cell<~[ty::region]>;
-    constraints: hashmap<Constraint, span>;
-    lubs: CombineMap;
-    glbs: CombineMap;
+    tcx: ty::ctxt,
+    var_spans: DVec<span>,
+    values: Cell<~[ty::region]>,
+    constraints: hashmap<Constraint, span>,
+    lubs: CombineMap,
+    glbs: CombineMap,
 
     // The undo log records actions that might later be undone.
     //
@@ -386,7 +386,7 @@ struct RegionVarBindings {
     // actively snapshotting.  The reason for this is that otherwise
     // we end up adding entries for things like the lower bound on
     // a variable and so forth, which can never be rolled back.
-    undo_log: DVec<UndoLogEntry>;
+    undo_log: DVec<UndoLogEntry>
 }
 
 fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
@@ -770,26 +770,26 @@ impl Classification : cmp::Eq {
 enum GraphNodeValue { NoValue, Value(region), ErrorValue }
 
 struct GraphNode {
-    span: span;
-    mut classification: Classification;
-    mut value: GraphNodeValue;
-    head_edge: [mut uint * 2]; // FIXME(#3226)--should not need mut
+    span: span,
+    mut classification: Classification,
+    mut value: GraphNodeValue,
+    head_edge: [mut uint * 2], // FIXME(#3226)--should not need mut
 }
 
 struct GraphEdge {
-    next_edge: [mut uint * 2]; // FIXME(#3226)--should not need mut
-    constraint: Constraint;
-    span: span;
+    next_edge: [mut uint * 2], // FIXME(#3226)--should not need mut
+    constraint: Constraint,
+    span: span,
 }
 
 struct Graph {
-    nodes: ~[GraphNode];
-    edges: ~[GraphEdge];
+    nodes: ~[GraphNode],
+    edges: ~[GraphEdge],
 }
 
 struct SpannedRegion {
-    region: region;
-    span: span;
+    region: region,
+    span: span,
 }
 
 type TwoRegionsMap = hashmap<TwoRegions, ()>;

@@ -507,9 +507,9 @@ fn rollback_to<V:copy vid, T:copy>(
 }
 
 struct Snapshot {
-    ty_var_bindings_len: uint;
-    int_var_bindings_len: uint;
-    region_vars_snapshot: uint;
+    ty_var_bindings_len: uint,
+    int_var_bindings_len: uint,
+    region_vars_snapshot: uint,
 }
 
 impl infer_ctxt {

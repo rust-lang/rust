@@ -21,14 +21,14 @@ use util::common::indenter;
 // item.  Note that this is just the fn-ptr and is not a Rust closure
 // value (which is a pair).
 struct FnData {
-    llfn: ValueRef;
+    llfn: ValueRef,
 }
 
 struct MethodData {
-    llfn: ValueRef;
-    llself: ValueRef;
-    self_ty: ty::t;
-    self_mode: ast::rmode;
+    llfn: ValueRef,
+    llself: ValueRef,
+    self_ty: ty::t,
+    self_mode: ast::rmode
 }
 
 enum CalleeData {
@@ -38,8 +38,8 @@ enum CalleeData {
 }
 
 struct Callee {
-    bcx: block;
-    data: CalleeData;
+    bcx: block,
+    data: CalleeData
 }
 
 fn trans(bcx: block, expr: @ast::expr) -> Callee {

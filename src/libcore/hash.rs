@@ -176,15 +176,15 @@ fn default_state() -> State {
 }
 
 struct SipState {
-    k0: u64;
-    k1: u64;
-    mut length: uint; // how many bytes we've processed
-    mut v0: u64;      // hash state
-    mut v1: u64;
-    mut v2: u64;
-    mut v3: u64;
-    tail: [mut u8]/8; // unprocessed bytes
-    mut ntail: uint;  // how many bytes in tail are valid
+    k0: u64,
+    k1: u64,
+    mut length: uint, // how many bytes we've processed
+    mut v0: u64,      // hash state
+    mut v1: u64,
+    mut v2: u64,
+    mut v3: u64,
+    tail: [mut u8]/8, // unprocessed bytes
+    mut ntail: uint,  // how many bytes in tail are valid
 }
 
 #[inline(always)]

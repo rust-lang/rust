@@ -113,17 +113,17 @@ mod chained {
     const initial_capacity: uint = 32u; // 2^5
 
     struct entry<K, V> {
-        hash: uint;
-        key: K;
-        value: V;
-        mut next: Option<@entry<K, V>>;
+        hash: uint,
+        key: K,
+        value: V,
+        mut next: Option<@entry<K, V>>
     }
 
     struct hashmap_<K, V> {
-        mut count: uint;
-        mut chains: ~[mut Option<@entry<K,V>>];
-        hasher: hashfn<K>;
-        eqer: eqfn<K>;
+        mut count: uint,
+        mut chains: ~[mut Option<@entry<K,V>>],
+        hasher: hashfn<K>,
+        eqer: eqfn<K>
     }
 
     type t<K, V> = @hashmap_<K, V>;

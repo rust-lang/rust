@@ -72,9 +72,9 @@ fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> opt {
 }
 
 struct binding {
-    val: ValueRef;
-    mode: ast::binding_mode;
-    ty: ty::t;
+    val: ValueRef,
+    mode: ast::binding_mode,
+    ty: ty::t
 }
 
 type bind_map = ~[{
@@ -683,10 +683,10 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
 }
 
 struct phi_binding {
-    pat_id: ast::node_id;
-    phi_val: ValueRef;
-    mode: ast::binding_mode;
-    ty: ty::t;
+    pat_id: ast::node_id,
+    phi_val: ValueRef,
+    mode: ast::binding_mode,
+    ty: ty::t
 }
 
 type phi_bindings_list = ~[phi_binding];

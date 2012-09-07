@@ -15,10 +15,10 @@ use io::*;
 use codemap::span;
 
 struct gather_item {
-    lo: uint;
-    hi: uint;
-    e: @ast::expr;
-    constr: ~str;
+    lo: uint,
+    hi: uint,
+    e: @ast::expr,
+    constr: ~str
 }
 
 type aq_ctxt = @{lo: uint, gather: DVec<gather_item>};

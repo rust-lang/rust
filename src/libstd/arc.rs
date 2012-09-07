@@ -19,7 +19,7 @@ export RWARC, rw_arc_with_condvars, RWWriteMode, RWReadMode;
 export unwrap_rw_arc;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signalling.
-struct Condvar { is_mutex: bool; failed: &mut bool; cond: &sync::Condvar; }
+struct Condvar { is_mutex: bool, failed: &mut bool, cond: &sync::Condvar }
 
 impl &Condvar {
     /// Atomically exit the associated ARC and block until a signal is sent.
@@ -69,7 +69,7 @@ impl &Condvar {
  ****************************************************************************/
 
 /// An atomically reference counted wrapper for shared immutable state.
-struct ARC<T: const send> { x: SharedMutableState<T>; }
+struct ARC<T: const send> { x: SharedMutableState<T> }
 
 /// Create an atomically reference counted wrapper.
 fn ARC<T: const send>(+data: T) -> ARC<T> {
@@ -114,9 +114,9 @@ fn unwrap<T: const send>(+rc: ARC<T>) -> T {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct MutexARCInner<T: send> { lock: Mutex; failed: bool; data: T; }
+struct MutexARCInner<T: send> { lock: Mutex, failed: bool, data: T }
 /// An ARC with mutable data protected by a blocking mutex.
-struct MutexARC<T: send> { x: SharedMutableState<MutexARCInner<T>>; }
+struct MutexARC<T: send> { x: SharedMutableState<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
 fn MutexARC<T: send>(+user_data: T) -> MutexARC<T> {
@@ -222,7 +222,7 @@ fn check_poison(is_mutex: bool, failed: bool) {
 
 #[doc(hidden)]
 struct PoisonOnFail {
-    failed: &mut bool;
+    failed: &mut bool,
     drop {
         /* assert !*self.failed; -- might be false in case of cond.wait() */
         if task::failing() { *self.failed = true; }
@@ -240,7 +240,7 @@ fn PoisonOnFail(failed: &r/mut bool) -> PoisonOnFail/&r {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct RWARCInner<T: const send> { lock: RWlock; failed: bool; data: T; }
+struct RWARCInner<T: const send> { lock: RWlock, failed: bool, data: T }
 /**
  * A dual-mode ARC protected by a reader-writer lock. The data can be accessed
  * mutably or immutably, and immutably-accessing tasks may run concurrently.
@@ -248,8 +248,8 @@ struct RWARCInner<T: const send> { lock: RWlock; failed: bool; data: T; }
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
 struct RWARC<T: const send> {
-    x: SharedMutableState<RWARCInner<T>>;
-    mut cant_nest: ();
+    x: SharedMutableState<RWARCInner<T>>,
+    mut cant_nest: ()
 }
 
 /// Create a reader/writer ARC with the supplied data.

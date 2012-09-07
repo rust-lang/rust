@@ -20,8 +20,8 @@ export Managed;
 enum Mode { ReadOnly, Mutable, Immutable }
 
 struct Data<T> {
-    priv mut value: T;
-    priv mut mode: Mode;
+    priv mut value: T,
+    priv mut mode: Mode
 }
 
 type Managed<T> = @Data<T>;

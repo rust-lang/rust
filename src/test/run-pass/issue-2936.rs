@@ -7,7 +7,7 @@ fn foo<T, U: bar<T>>(b: U) -> T {
 }
 
 struct cbar : bar<int> {
-    x: int;
+    x: int,
     fn get_bar() -> int {
         self.x
     }

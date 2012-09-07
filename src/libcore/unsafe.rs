@@ -86,15 +86,15 @@ unsafe fn copy_lifetime<S,T>(_ptr: &a/S, ptr: &T) -> &a/T {
 type UnwrapProto = ~mut Option<(pipes::ChanOne<()>, pipes::PortOne<bool>)>;
 
 struct ArcData<T> {
-    mut count:     libc::intptr_t;
-    mut unwrapper: libc::uintptr_t; // either a UnwrapProto or 0
+    mut count:     libc::intptr_t,
+    mut unwrapper: libc::uintptr_t, // either a UnwrapProto or 0
     // FIXME(#3224) should be able to make this non-option to save memory, and
     // in unwrap() use "let ~ArcData { data: result, _ } = thing" to unwrap it
-    mut data:      Option<T>;
+    mut data:      Option<T>,
 }
 
 struct ArcDestruct<T> {
-    mut data: *libc::c_void;
+    mut data: *libc::c_void,
     drop unsafe {
         if self.data.is_null() {
             return; // Happens when destructing an unwrapper's handle.
@@ -140,8 +140,8 @@ fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
 unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
-        mut ptr:      Option<~ArcData<T>>;
-        mut response: Option<pipes::ChanOne<bool>>;
+        mut ptr:      Option<~ArcData<T>>,
+        mut response: Option<pipes::ChanOne<bool>>,
         drop unsafe {
             let response = option::swap_unwrap(&mut self.response);
             // In case we get killed early, we need to tell the person who
@@ -312,11 +312,11 @@ impl LittleLock {
     }
 }
 
-struct ExData<T: send> { lock: LittleLock; mut failed: bool; mut data: T; }
+struct ExData<T: send> { lock: LittleLock, mut failed: bool, mut data: T, }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
-struct Exclusive<T: send> { x: SharedMutableState<ExData<T>>; }
+struct Exclusive<T: send> { x: SharedMutableState<ExData<T>> }
 
 fn exclusive<T:send >(+user_data: T) -> Exclusive<T> {
     let data = ExData {

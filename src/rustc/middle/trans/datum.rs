@@ -100,24 +100,24 @@ enum CopyAction {
 struct Datum {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `mode` below.
-    val: ValueRef;
+    val: ValueRef,
 
     /// The rust type of the value.
-    ty: ty::t;
+    ty: ty::t,
 
     /// Indicates whether this is by-ref or by-value.
-    mode: DatumMode;
+    mode: DatumMode,
 
     /// How did this value originate?  This is particularly important
     /// if the value is MOVED or prematurely DROPPED, because it
     /// describes how to cancel the cleanup that was scheduled before.
     /// See the def'n of the `DatumSource` type.
-    source: DatumSource;
+    source: DatumSource
 }
 
 struct DatumBlock {
-    bcx: block;
-    datum: Datum;
+    bcx: block,
+    datum: Datum,
 }
 
 enum DatumMode {

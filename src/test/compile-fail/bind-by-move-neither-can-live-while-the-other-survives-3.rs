@@ -1,4 +1,4 @@
-struct X { x: (); drop { error!("destructor runs"); } }
+struct X { x: (), drop { error!("destructor runs"); } }
 
 enum double_option<T,U> { some2(T,U), none2 }
 

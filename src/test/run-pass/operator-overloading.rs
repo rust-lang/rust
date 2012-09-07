@@ -1,6 +1,6 @@
 struct Point {
-    x: int;
-    y: int;
+    x: int,
+    y: int
 }
 
 impl Point : ops::Add<Point,Point> {

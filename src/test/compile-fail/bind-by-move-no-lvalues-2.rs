@@ -1,5 +1,5 @@
-struct X { x: (); drop { error!("destructor runs"); } }
-struct Y { y: Option<X>; }
+struct X { x: (), drop { error!("destructor runs"); } }
+struct Y { y: Option<X> }
 
 fn main() {
     let x = Y { y: Some(X { x: () }) };

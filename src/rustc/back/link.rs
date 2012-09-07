@@ -77,8 +77,8 @@ mod jit {
     }
 
     struct Closure {
-        code: *();
-        env: *();
+        code: *(),
+        env: *(),
     }
 
     fn exec(sess: session,

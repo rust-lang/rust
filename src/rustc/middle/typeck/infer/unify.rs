@@ -9,14 +9,14 @@ enum var_value<V:copy, T:copy> {
 }
 
 struct vals_and_bindings<V:copy, T:copy> {
-    vals: SmallIntMap<var_value<V, T>>;
-    mut bindings: ~[(V, var_value<V, T>)];
+    vals: SmallIntMap<var_value<V, T>>,
+    mut bindings: ~[(V, var_value<V, T>)],
 }
 
 struct node<V:copy, T:copy> {
-    root: V;
-    possible_types: T;
-    rank: uint;
+    root: V,
+    possible_types: T,
+    rank: uint,
 }
 
 impl infer_ctxt {

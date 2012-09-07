@@ -1,4 +1,4 @@
-struct thing { x: int; drop { } }
+struct thing { x: int, drop { } }
 fn thing() -> thing {
     thing {
         x: 0

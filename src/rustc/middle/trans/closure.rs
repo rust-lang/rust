@@ -100,8 +100,8 @@ enum EnvAction {
 }
 
 struct EnvValue {
-    action: EnvAction;
-    datum: Datum;
+    action: EnvAction,
+    datum: Datum
 }
 
 impl EnvAction {

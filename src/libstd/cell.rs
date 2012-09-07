@@ -5,7 +5,7 @@
 /// Similar to a mutable option type, but friendlier.
 
 struct Cell<T> {
-    mut value: Option<T>;
+    mut value: Option<T>
 }
 
 /// Creates a new full cell with the given value.

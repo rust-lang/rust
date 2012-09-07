@@ -1,17 +1,17 @@
 struct param1 {
-    g: &fn();
+    g: &fn()
 }
 
 struct param2 {
-    g: fn();
+    g: fn()
 }
 
 struct not_param1 {
-    g: @fn();
+    g: @fn()
 }
 
 struct not_param2 {
-    g: @fn();
+    g: @fn()
 }
 
 fn take1(p: param1) -> param1 { p } //~ ERROR mismatched types

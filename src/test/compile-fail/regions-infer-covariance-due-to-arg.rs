@@ -3,7 +3,7 @@
 // You can upcast to a *larger region* but not a smaller one.
 
 struct covariant {
-    f: fn@(x: &self/int) -> int;
+    f: fn@(x: &self/int) -> int
 }
 
 fn to_same_lifetime(bi: covariant/&r) {

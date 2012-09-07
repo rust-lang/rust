@@ -51,9 +51,9 @@ struct Arena {
     // The head is seperated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to
     // access the head.
-    priv mut head: Chunk;
-    priv mut pod_head: Chunk;
-    priv mut chunks: @List<Chunk>;
+    priv mut head: Chunk,
+    priv mut pod_head: Chunk,
+    priv mut chunks: @List<Chunk>,
     drop {
         unsafe {
             destroy_chunk(self.head);

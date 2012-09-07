@@ -33,7 +33,7 @@ fn select_based_on_unit_circle<T>(
 
 
 struct thing {
-    x: {mut a: @int};
+    x: {mut a: @int}
 }
 
 fn thing(x: {mut a: @int}) -> thing {

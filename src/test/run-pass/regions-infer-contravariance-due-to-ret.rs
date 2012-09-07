@@ -1,5 +1,5 @@
 struct boxed_int {
-    f: &int;
+    f: &int,
 }
 
 fn max(bi: &r/boxed_int, f: &r/int) -> int {

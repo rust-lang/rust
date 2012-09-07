@@ -176,9 +176,9 @@ type crate_ctxt = {
 
 // Types used for llself.
 struct ValSelfData {
-    v: ValueRef;
-    t: ty::t;
-    is_owned: bool;
+    v: ValueRef,
+    t: ty::t,
+    is_owned: bool
 }
 
 enum local_val { local_mem(ValueRef), local_imm(ValueRef), }
@@ -527,8 +527,8 @@ fn mk_block(llbb: BasicBlockRef, parent: Option<block>, -kind: block_kind,
 const first_real_arg: uint = 2u;
 
 struct Result {
-    bcx: block;
-    val: ValueRef;
+    bcx: block,
+    val: ValueRef
 }
 
 fn rslt(bcx: block, val: ValueRef) -> Result {

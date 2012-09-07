@@ -14,8 +14,8 @@ export DuplexStream;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 struct DuplexStream<T: send, U: send> : Channel<T>, Recv<U>, Selectable {
-    priv chan: Chan<T>;
-    priv port: Port <U>;
+    priv chan: Chan<T>,
+    priv port: Port <U>,
 
     fn send(+x: T) {
         self.chan.send(x)

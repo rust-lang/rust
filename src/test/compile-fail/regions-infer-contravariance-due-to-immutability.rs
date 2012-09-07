@@ -1,5 +1,5 @@
 struct contravariant {
-    f: &int;
+    f: &int
 }
 
 fn to_same_lifetime(bi: contravariant/&r) {

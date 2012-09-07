@@ -1,7 +1,7 @@
 enum Foo {
     struct {
-        x: int;
-        y: int;
+        x: int,
+        y: int,
     }
 
     Bar(int),
