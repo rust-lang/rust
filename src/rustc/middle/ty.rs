@@ -3780,7 +3780,6 @@ impl FnSig : cmp::Eq {
         self.output == other.output
     }
     pure fn ne(&&other: FnSig) -> bool { !self.eq(other) }
-    
 }
 
 impl<M: cmp::Eq> FnTyBase<M> : cmp::Eq {
