@@ -199,7 +199,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             let id = ast_util::def_id_of_def(fv.def).node;
 
             // skip over free variables that appear in the cap clause
-            if captured_vars.contains(id) { again; }
+            if captured_vars.contains(id) { loop; }
 
             // if this is the last use of the variable, then it will be
             // a move and not a copy

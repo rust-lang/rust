@@ -5,6 +5,6 @@ fn main() {
         assert (i > 0);
         log(debug, i);
         i -= 1;
-        again;
+        loop;
     }
 }

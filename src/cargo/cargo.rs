@@ -817,7 +817,7 @@ fn install_source(c: cargo, path: &Path) {
 
     for cratefiles.each |cf| {
         match load_crate(&cf) {
-            None => again,
+            None => loop,
             Some(crate) => {
               for crate.deps.each |query| {
                     // FIXME (#1356): handle cyclic dependencies

@@ -81,10 +81,10 @@ struct cat<T: copy> : map<int, T> {
   }
 
   pure fn each_key(&&f: fn(+int) -> bool) {
-    for self.each |k, _v| { if !f(k) { break; } again;};
+    for self.each |k, _v| { if !f(k) { break; } loop;};
   }
   pure fn each_value(&&f: fn(+T) -> bool) {
-    for self.each |_k, v| { if !f(v) { break; } again;};
+    for self.each |_k, v| { if !f(v) { break; } loop;};
   }
 
   pure fn each_ref(f: fn(k: &int, v: &T) -> bool) {}

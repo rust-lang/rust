@@ -305,7 +305,7 @@ fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
                                                   vec_len as c_uint);
                 vec::push(tys, vec_ty);
                 i += vec_len;
-                again;
+                loop;
             }
             sse_fs_class => {
                 vec::push(tys, T_f32());

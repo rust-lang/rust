@@ -2156,7 +2156,7 @@ struct Resolver {
             if !self.name_is_exported(containing_module, atom) {
                 debug!("(resolving glob import) name `%s` is unexported",
                        self.session.str_of(atom));
-                again;
+                loop;
             }
 
             debug!("(resolving glob import) writing module resolution \
@@ -2220,7 +2220,7 @@ struct Resolver {
             if !self.name_is_exported(containing_module, atom) {
                 debug!("(resolving glob import) name `%s` is unexported",
                        self.session.str_of(atom));
-                again;
+                loop;
             }
 
             let mut dest_import_resolution;

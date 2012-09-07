@@ -1323,7 +1323,7 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
         option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
       }
       ast::expr_again(opt_ident) => {
-        word(s.s, ~"again");
+        word(s.s, ~"loop");
         space(s.s);
         option::iter(opt_ident, |ident| {print_ident(s, ident); space(s.s)});
       }

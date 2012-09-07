@@ -266,7 +266,7 @@ impl check_loan_ctxt {
         for self.walk_loans(par_scope_id) |old_loan| {
             for (*new_loanss).each |new_loans| {
                 for (*new_loans).each |new_loan| {
-                    if old_loan.lp != new_loan.lp { again; }
+                    if old_loan.lp != new_loan.lp { loop; }
                     match (old_loan.mutbl, new_loan.mutbl) {
                       (m_const, _) | (_, m_const) |
                       (m_mutbl, m_mutbl) | (m_imm, m_imm) => {

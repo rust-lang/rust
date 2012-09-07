@@ -419,10 +419,10 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
     unchecked {
         for components.each |c| {
             unchecked {
-                if c == ~"." && components.len() > 1 { again; }
+                if c == ~"." && components.len() > 1 { loop; }
                 if c == ~".." && cs.len() != 0 {
                     vec::pop(cs);
-                    again;
+                    loop;
                 }
                 vec::push(cs, copy c);
             }

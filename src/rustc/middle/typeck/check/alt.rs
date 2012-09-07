@@ -381,7 +381,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         if !etc {
             for class_fields.eachi |i, field| {
                 if found_fields.contains_key(i) {
-                    again;
+                    loop;
                 }
                 tcx.sess.span_err(pat.span,
                                   fmt!("pattern does not mention field `%s`",

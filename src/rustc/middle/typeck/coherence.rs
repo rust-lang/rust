@@ -659,7 +659,7 @@ struct CoherenceChecker {
                 }
                 Some(_) => {
                     // Skip this one.
-                    again;
+                    loop;
                 }
             }
 
@@ -741,7 +741,7 @@ struct CoherenceChecker {
                     }
                     dl_def(_) | dl_impl(_) | dl_field => {
                         // Skip this.
-                        again;
+                        loop;
                     }
                 }
 

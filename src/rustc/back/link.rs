@@ -687,7 +687,7 @@ fn link_binary(sess: session,
     for cstore::get_used_crate_files(cstore).each |cratepath| {
         if cratepath.filetype() == Some(~"rlib") {
             vec::push(cc_args, cratepath.to_str());
-            again;
+            loop;
         }
         let dir = cratepath.dirname();
         if dir != ~"" { vec::push(cc_args, ~"-L" + dir); }

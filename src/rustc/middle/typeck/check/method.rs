@@ -298,7 +298,7 @@ struct lookup {
             let (trait_id, bound_substs) = match bound {
               ty::bound_copy | ty::bound_send | ty::bound_const |
               ty::bound_owned => {
-                again; /* ok */
+                loop; /* ok */
               }
               ty::bound_trait(bound_t) => {
                 match ty::get(bound_t).struct {
@@ -352,7 +352,7 @@ struct lookup {
 
         let ms = *ty::trait_methods(self.tcx(), did);
         for ms.eachi |i, m| {
-            if m.ident != self.m_name { again; }
+            if m.ident != self.m_name { loop; }
 
             let m_fty = ty::mk_fn(self.tcx(), m.fty);
 
@@ -391,7 +391,7 @@ struct lookup {
         let ms = *ty::trait_methods(self.tcx(), did);
 
         for ms.each |m| {
-            if m.ident != self.m_name { again; }
+            if m.ident != self.m_name { loop; }
 
             if m.vis == ast::private && !self.include_private {
                 self.tcx().sess.span_fatal(

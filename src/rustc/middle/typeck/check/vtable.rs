@@ -183,7 +183,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
 
                         // First, ensure we haven't processed this impl yet.
                         if impls_seen.contains_key(im.did) {
-                            again;
+                            loop;
                         }
                         impls_seen.insert(im.did, ());
 
@@ -208,7 +208,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             match ty::get(of_ty).struct {
                                 ty::ty_trait(id, _, _) => {
                                     // Not the trait we're looking for
-                                    if id != trait_id { again; }
+                                    if id != trait_id { loop; }
                                 }
                                 _ => { /* ok */ }
                             }
@@ -233,7 +233,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             let im_bs = ty::lookup_item_type(tcx,
                                                              im.did).bounds;
                             match fcx.mk_subty(false, expr.span, ty, for_ty) {
-                                result::Err(_) => again,
+                                result::Err(_) => loop,
                                 result::Ok(()) => ()
                             }
 

@@ -218,7 +218,7 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
             last_ret = *ptr::offset(frame.fp, ret_offset) as *Word;
 
             if ptr::is_null(pc) {
-                again;
+                loop;
             }
 
             let mut delay_reached_sentinel = reached_sentinel;
@@ -231,13 +231,13 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
                         if root == sentinel {
                             delay_reached_sentinel = true;
                         }
-                        again;
+                        loop;
                     }
 
                     // Skip null pointers, which can occur when a
                     // unique pointer has already been freed.
                     if ptr::is_null(*root) {
-                        again;
+                        loop;
                     }
 
                     if ptr::is_null(tydesc) {
@@ -324,7 +324,7 @@ fn cleanup_stack_for_failure() {
         for walk_gc_roots(need_cleanup, sentinel) |root, tydesc| {
             // Track roots to avoid double frees.
             if option::is_some(roots.find(&*root)) {
-                again;
+                loop;
             }
             roots.insert(*root, ());
 

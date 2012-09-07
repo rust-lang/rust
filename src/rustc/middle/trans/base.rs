@@ -2537,7 +2537,7 @@ fn crate_ctxt_to_encode_parms(cx: @crate_ctxt)
         let mut reexports = ~[];
         for cx.exp_map.each |exp_id, defs| {
             for defs.each |def| {
-                if !def.reexp { again; }
+                if !def.reexp { loop; }
                 let path = match cx.tcx.items.get(exp_id) {
                   ast_map::node_export(_, path) => {
                       ast_map::path_to_str(*path, cx.sess.parse_sess.interner)

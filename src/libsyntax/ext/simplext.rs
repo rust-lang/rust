@@ -719,7 +719,7 @@ fn add_new_extension(cx: ext_ctxt, sp: span, arg: ast::mac_arg,
         for clauses.each |c| {
             match use_selectors_to_bind(c.params, arg) {
               Some(bindings) => return transcribe(cx, bindings, c.body),
-              None => again
+              None => loop
             }
         }
         cx.span_fatal(sp, ~"no clauses match macro invocation");

@@ -6,7 +6,7 @@ use std;
 
 fn test_break() { loop { let x: @int = break; } }
 
-fn test_cont() { let mut i = 0; while i < 1 { i += 1; let x: @int = again; } }
+fn test_cont() { let mut i = 0; while i < 1 { i += 1; let x: @int = loop; } }
 
 fn test_ret() { let x: @int = return; }
 

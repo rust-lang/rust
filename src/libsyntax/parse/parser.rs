@@ -888,7 +888,7 @@ struct parser {
             return pexpr(self.parse_sugary_call_expr(~"do", expr_do_body));
         } else if self.eat_keyword(~"while") {
             return pexpr(self.parse_while_expr());
-        } else if self.eat_keyword(~"again") || self.eat_keyword(~"loop") {
+        } else if self.eat_keyword(~"loop") {
             return pexpr(self.parse_loop_expr());
         } else if self.eat_keyword(~"match") {
             return pexpr(self.parse_alt_expr());
@@ -1138,7 +1138,7 @@ struct parser {
                   }
                   _ => self.unexpected()
                 }
-                again;
+                loop;
             }
             if self.expr_is_complete(e) { break; }
             match copy self.token {
@@ -3096,7 +3096,7 @@ struct parser {
                 }
                 self.expect(token::LBRACE);
                 common_fields = Some(self.parse_struct_def());
-                again;
+                loop;
             }
 
             let vis = self.parse_visibility();
