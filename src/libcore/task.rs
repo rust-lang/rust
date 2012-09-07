@@ -1094,7 +1094,7 @@ struct AutoNotify {
     }
 }
 
-fn AutoNotify(chan: Chan<Notification>) -> AutoNotify {
+fn AutoNotify(+chan: Chan<Notification>) -> AutoNotify {
     AutoNotify {
         notify_chan: chan,
         failed: true // Un-set above when taskgroup successfully made.
@@ -1667,6 +1667,7 @@ fn test_spawn_raw_simple() {
 fn test_spawn_raw_unsupervise() {
     let opts = {
         linked: false,
+        mut notify_chan: None,
         .. default_task_opts()
     };
     do spawn_raw(opts) {
@@ -1842,7 +1843,7 @@ fn test_spawn_raw_notify_success() {
     let (notify_ch, notify_po) = pipes::stream();
 
     let opts = {
-        notify_chan: Some(move notify_ch)
+        notify_chan: Some(move notify_ch),
         .. default_task_opts()
     };
     do spawn_raw(opts) |move task_ch| {
