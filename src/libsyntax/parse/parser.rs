@@ -2571,11 +2571,11 @@ struct parser {
 
 
         // Parse traits, if necessary.
-        let traits = if self.token == token::COLON {
+        let opt_trait = if self.token == token::COLON {
             self.bump();
-            self.parse_trait_ref_list(token::LBRACE)
+            Some(self.parse_trait_ref())
         } else {
-            ~[]
+            None
         };
 
         let mut meths = ~[];
@@ -2584,7 +2584,7 @@ struct parser {
             let vis = self.parse_visibility();
             vec::push(meths, self.parse_method(vis));
         }
-        (ident, item_impl(tps, traits, ty, meths), None)
+        (ident, item_impl(tps, opt_trait, ty, meths), None)
     }
 
     // Instantiates ident <i> with references to <typarams> as arguments.

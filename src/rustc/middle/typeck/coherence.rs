@@ -231,8 +231,8 @@ struct CoherenceChecker {
                        self.crate_context.tcx.sess.str_of(item.ident));
 
                 match item.node {
-                    item_impl(_, associated_traits, _, _) => {
-                        self.check_implementation(item, associated_traits);
+                    item_impl(_, opt_trait, _, _) => {
+                        self.check_implementation(item, opt_trait.to_vec());
                     }
                     item_class(struct_def, _) => {
                         self.check_implementation(item, struct_def.traits);
@@ -432,7 +432,7 @@ struct CoherenceChecker {
                         // Then visit the module items.
                         visit_mod(module_, item.span, item.id, (), visitor);
                     }
-                    item_impl(_, associated_traits, _, _) => {
+                    item_impl(_, opt_trait, _, _) => {
                         match self.base_type_def_ids.find(
                             local_def(item.id)) {
 
@@ -453,7 +453,8 @@ struct CoherenceChecker {
                                     // if the traits are defined in the same
                                     // crate.
 
-                                    if associated_traits.len() == 0 {
+                                  match opt_trait {
+                                    None => {
                                         // There is no trait to implement, so
                                         // this is an error.
 
@@ -470,8 +471,10 @@ struct CoherenceChecker {
                                                           or new type \
                                                           instead");
                                     }
+                                    _ => ()
+                                  }
 
-                                    for associated_traits.each |trait_ref| {
+                                  do opt_trait.iter() |trait_ref| {
                                         // This is OK if and only if the
                                         // trait was defined in this
                                         // crate.
