@@ -177,8 +177,8 @@ fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
      * returns a by-ref Datum pointing to it.  You must arrange
      * any cleanups etc yourself! */
 
-    let scratch = alloc_ty(bcx, ty);
-    if zero { zero_mem(bcx, scratch, ty); }
+    let llty = type_of::type_of(bcx.ccx(), ty);
+    let scratch = alloca_maybe_zeroed(bcx, llty, zero);
     Datum { val: scratch, ty: ty, mode: ByRef, source: FromRvalue }
 }
 
