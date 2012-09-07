@@ -65,6 +65,11 @@ unsafe fn align_to_pointer<T>(ptr: *T) -> *T {
     return unsafe::reinterpret_cast(&ptr);
 }
 
+unsafe fn get_safe_point_count() -> uint {
+    let module_meta = rustrt::rust_gc_metadata();
+    return *module_meta;
+}
+
 type SafePoint = { sp_meta: *Word, fn_meta: *Word };
 
 // Returns the safe point metadata for the given program counter, if
@@ -260,6 +265,11 @@ unsafe fn walk_gc_roots(mem: Memory, sentinel: **Word, visitor: Visitor) {
 
 fn gc() {
     unsafe {
+        // Abort when GC is disabled.
+        if get_safe_point_count() == 0 {
+            return;
+        }
+
         for walk_gc_roots(task_local_heap, ptr::null()) |_root, _tydesc| {
             // FIXME(#2997): Walk roots and mark them.
             io::stdout().write([46]); // .
@@ -288,6 +298,11 @@ fn expect_sentinel() -> bool { false }
 // dead.
 fn cleanup_stack_for_failure() {
     unsafe {
+        // Abort when GC is disabled.
+        if get_safe_point_count() == 0 {
+            return;
+        }
+
         // Leave a sentinel on the stack to mark the current frame. The
         // stack walker will ignore any frames above the sentinel, thus
         // avoiding collecting any memory being used by the stack walker
