@@ -425,17 +425,15 @@ fn make_fn_glue(
         }
     };
 
-    return match ty::get(t).struct {
-      ty::ty_fn({proto: ty::proto_bare, _}) |
-      ty::ty_fn({proto: ty::proto_vstore(ty::vstore_slice(_)), _}) =>
-        bcx,
-      ty::ty_fn({proto: ty::proto_vstore(ty::vstore_uniq), _}) =>
-        fn_env(ty::ck_uniq),
-      ty::ty_fn({proto: ty::proto_vstore(ty::vstore_box), _}) =>
-        fn_env(ty::ck_box),
-      _ =>
-        fail ~"make_fn_glue invoked on non-function type"
-    };
+    let proto = ty::ty_fn_proto(t);
+    match proto {
+        ty::proto_bare | ty::proto_vstore(ty::vstore_slice(_)) => bcx,
+        ty::proto_vstore(ty::vstore_uniq) => fn_env(ty::ck_uniq),
+        ty::proto_vstore(ty::vstore_box) => fn_env(ty::ck_box),
+        ty::proto_vstore(ty::vstore_fixed(_)) => {
+            cx.sess().bug(~"Closure with fixed vstore");
+        }
+    }
 }
 
 fn make_opaque_cbox_take_glue(

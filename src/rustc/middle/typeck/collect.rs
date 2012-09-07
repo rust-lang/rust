@@ -23,6 +23,7 @@ are represented as `ty_param()` instances.
 use astconv::{ast_conv, ty_of_fn_decl, ty_of_arg, ast_ty_to_ty};
 use ast_util::trait_method_to_ty_method;
 use rscope::*;
+use ty::{FnTyBase, FnMeta, FnSig};
 
 fn collect_item_types(ccx: @crate_ctxt, crate: @ast::crate) {
 
@@ -127,14 +128,14 @@ fn get_enum_variant_types(ccx: @crate_ctxt,
                     let arg_ty = ccx.to_ty(rs, va.ty);
                     {mode: ast::expl(ast::by_copy), ty: arg_ty}
                 });
-                result_ty = Some(ty::mk_fn(tcx,
-                                           {purity: ast::pure_fn,
-                                            proto: ty::proto_vstore
-                                                (ty::vstore_box),
-                                            bounds: @~[],
-                                            inputs: args,
-                                            output: enum_ty,
-                                            ret_style: ast::return_val}));
+                result_ty = Some(ty::mk_fn(tcx, FnTyBase {
+                    meta: FnMeta {purity: ast::pure_fn,
+                                  proto: ty::proto_vstore(ty::vstore_box),
+                                  bounds: @~[],
+                                  ret_style: ast::return_val},
+                    sig: FnSig {inputs: args,
+                                output: enum_ty}
+                }));
             }
             ast::tuple_variant_kind(_) | ast::struct_variant_kind(_) => {
                 result_ty = Some(enum_ty);
@@ -247,7 +248,7 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
                        trait_m: ty::method, trait_substs: ty::substs,
                        self_ty: ty::t) {
 
-    if impl_m.fty.purity != trait_m.fty.purity {
+    if impl_m.fty.meta.purity != trait_m.fty.meta.purity {
         tcx.sess.span_err(
             sp, fmt!("method `%s`'s purity does \
                           not match the trait method's \
@@ -268,12 +269,12 @@ fn compare_impl_method(tcx: ty::ctxt, sp: span,
         return;
     }
 
-    if vec::len(impl_m.fty.inputs) != vec::len(trait_m.fty.inputs) {
+    if vec::len(impl_m.fty.sig.inputs) != vec::len(trait_m.fty.sig.inputs) {
         tcx.sess.span_err(sp,fmt!("method `%s` has %u parameters \
                                    but the trait has %u",
                                    tcx.sess.str_of(trait_m.ident),
-                                   vec::len(impl_m.fty.inputs),
-                                   vec::len(trait_m.fty.inputs)));
+                                   vec::len(impl_m.fty.sig.inputs),
+                                   vec::len(trait_m.fty.sig.inputs)));
         return;
     }
 
@@ -488,13 +489,15 @@ fn convert_struct(ccx: @crate_ctxt,
             {self_r: rscope::bound_self_region(rp),
              self_ty: None,
              tps: ty::ty_params_to_tys(tcx, tps)});
-        let t_ctor = ty::mk_fn(
-            tcx, {purity: ast::impure_fn,
-                  proto: ty::proto_vstore(ty::vstore_slice(ty::re_static)),
-                  bounds: @~[],
-                  inputs: t_args,
-                  output: t_res,
-                  ret_style: ast::return_val});
+        let proto = ty::proto_vstore(ty::vstore_slice(ty::re_static));
+        let t_ctor = ty::mk_fn(tcx, FnTyBase {
+            meta: FnMeta {purity: ast::impure_fn,
+                          proto: proto,
+                          bounds: @~[],
+                          ret_style: ast::return_val},
+            sig: FnSig {inputs: t_args,
+                        output: t_res}
+        });
         write_ty_to_tcx(tcx, ctor.node.id, t_ctor);
         tcx.tcache.insert(local_def(ctor.node.id),
                           {bounds: tpt.bounds,
@@ -755,12 +758,14 @@ fn ty_of_foreign_fn_decl(ccx: @crate_ctxt,
     let input_tys = decl.inputs.map(|a| ty_of_arg(ccx, rb, a, None) );
     let output_ty = ast_ty_to_ty(ccx, rb, decl.output);
 
-    let t_fn = ty::mk_fn(ccx.tcx, {purity: purity,
-                                   proto: ty::proto_bare,
-                                   bounds: @~[],
-                                   inputs: input_tys,
-                                   output: output_ty,
-                                   ret_style: ast::return_val});
+    let t_fn = ty::mk_fn(ccx.tcx, FnTyBase {
+        meta: FnMeta {purity: purity,
+                      proto: ty::proto_bare,
+                      bounds: @~[],
+                      ret_style: ast::return_val},
+        sig: FnSig {inputs: input_tys,
+                    output: output_ty}
+    });
     let tpt = {bounds: bounds, region_param: None, ty: t_fn};
     ccx.tcx.tcache.insert(def_id, tpt);
     return tpt;

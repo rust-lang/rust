@@ -124,7 +124,7 @@ impl Sub: combine {
         }
     }
 
-    fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty> {
+    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy> {
         // Rather than checking the subtype relationship between `a` and `b`
         // as-is, we need to do some extra work here in order to make sure
         // that function subtyping works correctly with respect to regions
@@ -169,6 +169,14 @@ impl Sub: combine {
 
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field> {
         super_flds(&self, a, b)
+    }
+
+    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta> {
+        super_fn_metas(&self, a, b)
+    }
+
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig> {
+        super_fn_sigs(&self, a, b)
     }
 
     fn vstores(vk: ty::terr_vstore_kind,

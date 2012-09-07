@@ -312,7 +312,7 @@ use std::map::{hashmap, uint_hash};
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 
-use ty::{region, region_vid, hash_region};
+use ty::{region, RegionVid, hash_region};
 use region::is_subregion_of;
 use syntax::codemap;
 use to_str::to_str;
@@ -324,9 +324,9 @@ export lub_regions;
 export glb_regions;
 
 enum Constraint {
-    ConstrainVarSubVar(region_vid, region_vid),
-    ConstrainRegSubVar(region, region_vid),
-    ConstrainVarSubReg(region_vid, region)
+    ConstrainVarSubVar(RegionVid, RegionVid),
+    ConstrainRegSubVar(region, RegionVid),
+    ConstrainVarSubReg(RegionVid, region)
 }
 
 impl Constraint: cmp::Eq {
@@ -361,12 +361,12 @@ impl TwoRegions: cmp::Eq {
 
 enum UndoLogEntry {
     Snapshot,
-    AddVar(region_vid),
+    AddVar(RegionVid),
     AddConstraint(Constraint),
     AddCombination(CombineMap, TwoRegions)
 }
 
-type CombineMap = hashmap<TwoRegions, region_vid>;
+type CombineMap = hashmap<TwoRegions, RegionVid>;
 
 struct RegionVarBindings {
     tcx: ty::ctxt;
@@ -470,10 +470,10 @@ impl RegionVarBindings {
         self.var_spans.len()
     }
 
-    fn new_region_var(span: span) -> region_vid {
+    fn new_region_var(span: span) -> RegionVid {
         let id = self.num_vars();
         self.var_spans.push(span);
-        let vid = region_vid(id);
+        let vid = RegionVid(id);
         if self.in_snapshot() {
             self.undo_log.push(AddVar(vid));
         }
@@ -568,7 +568,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn resolve_var(rid: region_vid) -> ty::region {
+    fn resolve_var(rid: RegionVid) -> ty::region {
         debug!("RegionVarBindings: resolve_var(%?)", rid);
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
@@ -857,7 +857,7 @@ impl RegionVarBindings {
         return graph;
 
         fn insert_edge(graph: &mut Graph,
-                       node_id: region_vid,
+                       node_id: RegionVid,
                        edge_dir: Direction,
                        edge_idx: uint) {
             let edge_dir = edge_dir as uint;
@@ -893,7 +893,7 @@ impl RegionVarBindings {
     }
 
     fn expand_node(a_region: region,
-                   b_vid: region_vid,
+                   b_vid: RegionVid,
                    b_node: &GraphNode) -> bool {
         debug!("expand_node(%?, %? == %?)",
                a_region, b_vid, b_node.value);
@@ -950,7 +950,7 @@ impl RegionVarBindings {
         }
     }
 
-    fn contract_node(a_vid: region_vid,
+    fn contract_node(a_vid: RegionVid,
                      a_node: &GraphNode,
                      b_region: region) -> bool {
         debug!("contract_node(%? == %?/%?, %?)",
@@ -980,7 +980,7 @@ impl RegionVarBindings {
         };
 
         fn check_node(self: &RegionVarBindings,
-                      a_vid: region_vid,
+                      a_vid: RegionVid,
                       a_node: &GraphNode,
                       a_region: region,
                       b_region: region) -> bool {
@@ -993,7 +993,7 @@ impl RegionVarBindings {
         }
 
         fn adjust_node(self: &RegionVarBindings,
-                       a_vid: region_vid,
+                       a_vid: RegionVid,
                        a_node: &GraphNode,
                        a_region: region,
                        b_region: region) -> bool {
@@ -1051,7 +1051,7 @@ impl RegionVarBindings {
               }
 
               ErrorValue => {
-                let node_vid = region_vid(idx);
+                let node_vid = RegionVid(idx);
                 match node.classification {
                   Expanding => {
                     self.report_error_for_expanding_node(
@@ -1078,7 +1078,7 @@ impl RegionVarBindings {
 
     fn report_error_for_expanding_node(graph: &Graph,
                                        dup_map: TwoRegionsMap,
-                                       node_idx: region_vid) {
+                                       node_idx: RegionVid) {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
         let lower_bounds =
@@ -1130,7 +1130,7 @@ impl RegionVarBindings {
 
     fn report_error_for_contracting_node(graph: &Graph,
                                          dup_map: TwoRegionsMap,
-                                         node_idx: region_vid) {
+                                         node_idx: RegionVid) {
         // Errors in contracting nodes result from two upper-bounds
         // that have no intersection.
         let upper_bounds = self.collect_concrete_regions(graph, node_idx,
@@ -1182,7 +1182,7 @@ impl RegionVarBindings {
     }
 
     fn collect_concrete_regions(graph: &Graph,
-                                orig_node_idx: region_vid,
+                                orig_node_idx: RegionVid,
                                 dir: Direction) -> ~[SpannedRegion] {
         let set = uint_hash();
         let mut stack = ~[orig_node_idx];
@@ -1224,7 +1224,7 @@ impl RegionVarBindings {
     }
 
     fn each_edge(graph: &Graph,
-                 node_idx: region_vid,
+                 node_idx: RegionVid,
                  dir: Direction,
                  op: fn(edge: &GraphEdge) -> bool) {
         let mut edge_idx = graph.nodes[*node_idx].head_edge[dir as uint];

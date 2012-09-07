@@ -178,14 +178,14 @@ impl reflector {
 
           // FIXME (#2594): fetch constants out of intrinsic:: for the
           // numbers.
-          ty::ty_fn(fty) => {
-            let pureval = match fty.purity {
+          ty::ty_fn(ref fty) => {
+            let pureval = match fty.meta.purity {
               ast::pure_fn => 0u,
               ast::unsafe_fn => 1u,
               ast::impure_fn => 2u,
               ast::extern_fn => 3u
             };
-            let protoval = match fty.proto {
+            let protoval = match fty.meta.proto {
               ty::proto_bare => 0u,
               ty::proto_vstore(ty::vstore_uniq) => 2u,
               ty::proto_vstore(ty::vstore_box) => 3u,
@@ -193,16 +193,16 @@ impl reflector {
               ty::proto_vstore(ty::vstore_fixed(_)) =>
                 fail ~"fixed unexpected"
             };
-            let retval = match fty.ret_style {
+            let retval = match fty.meta.ret_style {
               ast::noreturn => 0u,
               ast::return_val => 1u
             };
             let extra = ~[self.c_uint(pureval),
-                         self.c_uint(protoval),
-                         self.c_uint(vec::len(fty.inputs)),
-                         self.c_uint(retval)];
+                          self.c_uint(protoval),
+                          self.c_uint(vec::len(fty.sig.inputs)),
+                          self.c_uint(retval)];
             self.visit(~"enter_fn", extra);
-            for fty.inputs.eachi |i, arg| {
+            for fty.sig.inputs.eachi |i, arg| {
                 let modeval = match arg.mode {
                   ast::infer(_) => 0u,
                   ast::expl(e) => match e {
@@ -220,7 +220,7 @@ impl reflector {
             }
             self.visit(~"fn_output",
                        ~[self.c_uint(retval),
-                         self.c_tydesc(fty.output)]);
+                         self.c_tydesc(fty.sig.output)]);
             self.visit(~"leave_fn", extra);
           }
 

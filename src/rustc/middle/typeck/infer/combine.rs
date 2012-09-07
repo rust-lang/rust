@@ -45,6 +45,7 @@
 // now.
 
 use to_str::to_str;
+use ty::{FnTyBase, FnMeta, FnSig};
 
 trait combine {
     fn infcx() -> infer_ctxt;
@@ -62,7 +63,9 @@ trait combine {
     fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>>;
     fn substs(did: ast::def_id, as: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs>;
-    fn fns(a: &ty::fn_ty, b: &ty::fn_ty) -> cres<ty::fn_ty>;
+    fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy>;
+    fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
+    fn fn_metas(a: &ty::FnMeta, b: &ty::FnMeta) -> cres<ty::FnMeta>;
     fn flds(a: ty::field, b: ty::field) -> cres<ty::field>;
     fn modes(a: ast::mode, b: ast::mode) -> cres<ast::mode>;
     fn args(a: ty::arg, b: ty::arg) -> cres<ty::arg>;
@@ -302,37 +305,47 @@ fn super_vstores<C:combine>(
     }
 }
 
-fn super_fns<C:combine>(
-    self: &C, a_f: &ty::fn_ty, b_f: &ty::fn_ty) -> cres<ty::fn_ty> {
+fn super_fn_metas<C:combine>(
+    self: &C, a_f: &ty::FnMeta, b_f: &ty::FnMeta) -> cres<ty::FnMeta>
+{
+    do self.protos(a_f.proto, b_f.proto).chain |p| {
+        do self.ret_styles(a_f.ret_style, b_f.ret_style).chain |rs| {
+            do self.purities(a_f.purity, b_f.purity).chain |purity| {
+                Ok(FnMeta {purity: purity,
+                           proto: p,
+                           bounds: a_f.bounds, // XXX: This is wrong!
+                           ret_style: rs})
+            }
+        }
+    }
+}
 
+fn super_fn_sigs<C:combine>(
+    self: &C, a_f: &ty::FnSig, b_f: &ty::FnSig) -> cres<ty::FnSig>
+{
     fn argvecs<C:combine>(self: &C, a_args: ~[ty::arg],
                           b_args: ~[ty::arg]) -> cres<~[ty::arg]> {
 
         if vec::same_length(a_args, b_args) {
-            map_vec2(a_args, b_args, |a, b| self.args(a, b) )
+            map_vec2(a_args, b_args, |a, b| self.args(a, b))
         } else {
             Err(ty::terr_arg_count)
         }
     }
 
-    do self.protos(a_f.proto, b_f.proto).chain |p| {
-        do self.ret_styles(a_f.ret_style, b_f.ret_style).chain |rs| {
-            do argvecs(self, a_f.inputs, b_f.inputs).chain |inputs| {
-                do self.tys(a_f.output, b_f.output).chain |output| {
-                    do self.purities(a_f.purity, b_f.purity).chain |purity| {
-                    // FIXME: uncomment if #2588 doesn't get accepted:
-                    // self.infcx().constrvecs(a_f.constraints,
-                    //                         b_f.constraints).then {||
-                        Ok({purity: purity,
-                            proto: p,
-                            bounds: a_f.bounds, // XXX: This is wrong!
-                            inputs: inputs,
-                            output: output,
-                            ret_style: rs})
-                    // }
-                    }
-                }
-            }
+    do argvecs(self, a_f.inputs, b_f.inputs).chain |inputs| {
+        do self.tys(a_f.output, b_f.output).chain |output| {
+            Ok(FnSig {inputs: inputs, output: output})
+        }
+    }
+}
+
+fn super_fns<C:combine>(
+    self: &C, a_f: &ty::FnTy, b_f: &ty::FnTy) -> cres<ty::FnTy>
+{
+    do self.fn_metas(&a_f.meta, &b_f.meta).chain |m| {
+        do self.fn_sigs(&a_f.sig, &b_f.sig).chain |s| {
+            Ok(FnTyBase {meta: m, sig: s})
         }
     }
 }

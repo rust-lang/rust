@@ -68,7 +68,7 @@ type parameter).
 
 use astconv::{ast_conv, ast_path_to_ty, ast_ty_to_ty};
 use astconv::{ast_region_to_region};
-use middle::ty::{ty_vid, vid};
+use middle::ty::{TyVid, vid, FnTyBase, FnMeta, FnSig};
 use regionmanip::{replace_bound_regions_in_fn_ty};
 use rscope::{anon_rscope, binding_rscope, empty_rscope, in_anon_rscope};
 use rscope::{in_binding_rscope, region_scope, type_rscope,
@@ -98,7 +98,7 @@ type self_info = {
 /// share the inherited fields.
 struct inherited {
     infcx: infer::infer_ctxt;
-    locals: hashmap<ast::node_id, ty_vid>;
+    locals: hashmap<ast::node_id, TyVid>;
     node_types: hashmap<ast::node_id, ty::t>;
     node_type_substs: hashmap<ast::node_id, ty::substs>;
     borrowings: hashmap<ast::node_id, ty::borrow>;
@@ -211,7 +211,7 @@ fn check_bare_fn(ccx: @crate_ctxt,
 
 fn check_fn(ccx: @crate_ctxt,
             self_info: Option<self_info>,
-            fn_ty: &ty::fn_ty,
+            fn_ty: &ty::FnTy,
             decl: ast::fn_decl,
             body: ast::blk,
             indirect_ret: bool,
@@ -231,8 +231,8 @@ fn check_fn(ccx: @crate_ctxt,
                                        |br| ty::re_free(body.node.id, br))
     };
 
-    let arg_tys = fn_ty.inputs.map(|a| a.ty);
-    let ret_ty = fn_ty.output;
+    let arg_tys = fn_ty.sig.inputs.map(|a| a.ty);
+    let ret_ty = fn_ty.sig.output;
 
     debug!("check_fn(arg_tys=%?, ret_ty=%?, self_info.self_ty=%?)",
            arg_tys.map(|a| ty_to_str(tcx, a)),
@@ -245,12 +245,12 @@ fn check_fn(ccx: @crate_ctxt,
     let fcx: @fn_ctxt = {
         let (purity, inherited) = match old_fcx {
             None => {
-                (fn_ty.purity,
+                (fn_ty.meta.purity,
                  blank_inherited(ccx))
             }
             Some(fcx) => {
-                (ty::determine_inherited_purity(fcx.purity, fn_ty.purity,
-                                                fn_ty.proto),
+                (ty::determine_inherited_purity(fcx.purity, fn_ty.meta.purity,
+                                                fn_ty.meta.proto),
                  fcx.inh)
             }
         };
@@ -943,9 +943,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // Grab the argument types, supplying fresh type variables
         // if the wrong number of arguments were supplied
-        let expected_arg_count = vec::len(fn_ty.inputs);
+        let expected_arg_count = vec::len(fn_ty.sig.inputs);
         let arg_tys = if expected_arg_count == supplied_arg_count {
-            fn_ty.inputs.map(|a| a.ty)
+            fn_ty.sig.inputs.map(|a| a.ty)
         } else {
             fcx.ccx.tcx.sess.span_err(
                 sp, fmt!("this function takes %u parameter%s but %u \
@@ -1031,9 +1031,9 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // Pull the return type out of the type of the function.
         match structure_of(fcx, sp, fty) {
-          ty::ty_fn(f) => {
-            bot |= (f.ret_style == ast::noreturn);
-            fcx.write_ty(call_expr_id, f.output);
+          ty::ty_fn(ref f) => {
+            bot |= (f.meta.ret_style == ast::noreturn);
+            fcx.write_ty(call_expr_id, f.sig.output);
             return bot;
           }
           _ => fcx.ccx.tcx.sess.span_fatal(sp, ~"calling non-function")
@@ -1242,10 +1242,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     replace_bound_regions_in_fn_ty(
                         tcx, @Nil, None, fn_ty,
                         |br| ty::re_bound(ty::br_cap_avoid(expr.id, @br)));
-                (Some({inputs:fn_ty.inputs,
-                       output:fn_ty.output}),
-                 fn_ty.purity,
-                 fn_ty.proto)
+                (Some({inputs: fn_ty.sig.inputs,
+                       output: fn_ty.sig.output}),
+                 fn_ty.meta.purity,
+                 fn_ty.meta.proto)
               }
               _ => {
                 (None, ast::impure_fn, ty::proto_vstore(ty::vstore_box))
@@ -1268,8 +1268,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Patch up the function declaration, if necessary.
         match ast_proto_opt {
           None => {
-            fn_ty.purity = expected_purity;
-            fn_ty.proto = expected_proto;
+            fn_ty.meta.purity = expected_purity;
+            fn_ty.meta.proto = expected_proto;
           }
           Some(_) => { }
         }
@@ -1643,16 +1643,20 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         let inner_ty = match expected_sty {
           Some(ty::ty_fn(fty)) => {
             match fcx.mk_subty(false, expr.span,
-                               fty.output, ty::mk_bool(tcx)) {
+                               fty.sig.output, ty::mk_bool(tcx)) {
               result::Ok(_) => (),
               result::Err(_) => {
                 tcx.sess.span_fatal(
                     expr.span, fmt!("a `loop` function's last argument \
                                      should return `bool`, not `%s`",
-                                    fcx.infcx().ty_to_str(fty.output)));
+                                    fcx.infcx().ty_to_str(fty.sig.output)));
               }
             }
-            ty::mk_fn(tcx, {output: ty::mk_nil(tcx),.. fty})
+            ty::mk_fn(tcx, FnTyBase {
+                meta: fty.meta,
+                sig: FnSig {output: ty::mk_nil(tcx),
+                            ..fty.sig}
+            })
           }
           _ => {
             tcx.sess.span_fatal(expr.span, ~"a `loop` function's last \
@@ -1675,8 +1679,11 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             fcx, expr.span, fcx.node_ty(b.id));
         match ty::get(block_ty).struct {
           ty::ty_fn(fty) => {
-            fcx.write_ty(expr.id, ty::mk_fn(tcx, {output: ty::mk_bool(tcx),
-                                                  .. fty}));
+            fcx.write_ty(expr.id, ty::mk_fn(tcx, FnTyBase {
+                meta: fty.meta,
+                sig: FnSig {output: ty::mk_bool(tcx),
+                            ..fty.sig}
+            }))
           }
           _ => fail ~"expected fn type"
         }
@@ -2306,7 +2313,7 @@ fn self_ref(fcx: @fn_ctxt, id: ast::node_id) -> bool {
                         ast_util::is_self)
 }
 
-fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> ty_vid {
+fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> TyVid {
     match fcx.inh.locals.find(id) {
         Some(x) => x,
         _ => {
@@ -2571,20 +2578,18 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
                  arg(ast::by_ref, visitor_trait)], ty::mk_nil(tcx))
       }
       ~"frame_address" => {
-        let fty = ty::mk_fn(ccx.tcx, {
-            purity: ast::impure_fn,
-            proto:
-                ty::proto_vstore(ty::vstore_slice(
-                    ty::re_bound(ty::br_anon(0)))),
-            bounds: @~[],
-            inputs: ~[{
-                mode: ast::expl(ast::by_val),
-                ty: ty::mk_imm_ptr(
-                    ccx.tcx,
-                    ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
-            }],
-            output: ty::mk_nil(ccx.tcx),
-            ret_style: ast::return_val
+        let fty = ty::mk_fn(ccx.tcx, FnTyBase {
+            meta: FnMeta {purity: ast::impure_fn,
+                          proto: ty::proto_vstore(ty::vstore_slice(
+                              ty::re_bound(ty::br_anon(0)))),
+                          bounds: @~[],
+                          ret_style: ast::return_val},
+            sig: FnSig {inputs: ~[{mode: ast::expl(ast::by_val),
+                                   ty: ty::mk_imm_ptr(
+                                       ccx.tcx,
+                                       ty::mk_mach_uint(ccx.tcx, ast::ty_u8))
+                                  }],
+                        output: ty::mk_nil(ccx.tcx)}
         });
         (0u, ~[arg(ast::by_ref, fty)], ty::mk_nil(tcx))
       }
@@ -2597,11 +2602,14 @@ fn check_intrinsic_type(ccx: @crate_ctxt, it: @ast::foreign_item) {
         return;
       }
     };
-    let fty = ty::mk_fn(tcx, {purity: ast::impure_fn,
-                              proto: ty::proto_bare,
-                              bounds: @~[],
-                              inputs: inputs, output: output,
-                              ret_style: ast::return_val});
+    let fty = ty::mk_fn(tcx, FnTyBase {
+        meta: FnMeta {purity: ast::impure_fn,
+                      proto: ty::proto_bare,
+                      bounds: @~[],
+                      ret_style: ast::return_val},
+        sig: FnSig {inputs: inputs,
+                    output: output}
+    });
     let i_ty = ty::lookup_item_type(ccx.tcx, local_def(it.id));
     let i_n_tps = (*i_ty.bounds).len();
     if i_n_tps != n_tps {

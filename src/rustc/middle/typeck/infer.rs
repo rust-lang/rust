@@ -250,7 +250,7 @@ use std::smallintmap;
 use std::smallintmap::smallintmap;
 use std::map::hashmap;
 use middle::ty;
-use middle::ty::{ty_vid, int_vid, region_vid, vid,
+use middle::ty::{TyVid, IntVid, RegionVid, vid,
                  ty_int, ty_uint, get, terr_fn, TyVar, IntVar};
 use syntax::{ast, ast_util};
 use syntax::ast::{ret_style, purity};
@@ -312,11 +312,11 @@ enum infer_ctxt = @{
     // We instantiate vals_and_bindings with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    ty_var_bindings: vals_and_bindings<ty::ty_vid, bounds<ty::t>>,
+    ty_var_bindings: vals_and_bindings<ty::TyVid, bounds<ty::t>>,
 
     // The types that might instantiate an integral type variable are
     // represented by an int_ty_set.
-    int_var_bindings: vals_and_bindings<ty::int_vid, int_ty_set>,
+    int_var_bindings: vals_and_bindings<ty::IntVid, int_ty_set>,
 
     // For region variables.
     region_vars: RegionVarBindings,
@@ -328,11 +328,11 @@ enum infer_ctxt = @{
 };
 
 enum fixup_err {
-    unresolved_int_ty(int_vid),
-    unresolved_ty(ty_vid),
-    cyclic_ty(ty_vid),
-    unresolved_region(region_vid),
-    region_var_bound_by_region_var(region_vid, region_vid)
+    unresolved_int_ty(IntVid),
+    unresolved_ty(TyVid),
+    cyclic_ty(TyVid),
+    unresolved_region(RegionVid),
+    region_var_bound_by_region_var(RegionVid, RegionVid)
 }
 
 fn fixup_err_to_str(f: fixup_err) -> ~str {
@@ -596,12 +596,12 @@ impl infer_ctxt {
 }
 
 impl infer_ctxt {
-    fn next_ty_var_id() -> ty_vid {
+    fn next_ty_var_id() -> TyVid {
         let id = *self.ty_var_counter;
         *self.ty_var_counter += 1u;
         self.ty_var_bindings.vals.insert(id,
                                          root({lb: None, ub: None}, 0u));
-        return ty_vid(id);
+        return TyVid(id);
     }
 
     fn next_ty_var() -> ty::t {
@@ -612,13 +612,13 @@ impl infer_ctxt {
         vec::from_fn(n, |_i| self.next_ty_var())
     }
 
-    fn next_int_var_id() -> int_vid {
+    fn next_int_var_id() -> IntVid {
         let id = *self.int_var_counter;
         *self.int_var_counter += 1u;
 
         self.int_var_bindings.vals.insert(id,
                               root(int_ty_set_all(), 0u));
-        return int_vid(id);
+        return IntVid(id);
     }
 
     fn next_int_var() -> ty::t {

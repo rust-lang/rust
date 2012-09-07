@@ -113,7 +113,7 @@ fn merge_bnds<C: combine>(
 
 fn set_var_to_merged_bounds<C: combine>(
     self: &C,
-    v_id: ty::ty_vid,
+    v_id: ty::TyVid,
     a: bounds<ty::t>,
     b: bounds<ty::t>,
     rank: uint) -> ures {
@@ -175,8 +175,8 @@ fn set_var_to_merged_bounds<C: combine>(
 /// subtle and tricky process, as described in detail at the top
 /// of infer.rs
 fn var_sub_var<C: combine>(self: &C,
-                           a_id: ty::ty_vid,
-                           b_id: ty::ty_vid) -> ures {
+                           a_id: ty::TyVid,
+                           b_id: ty::TyVid) -> ures {
     let vb = &self.infcx().ty_var_bindings;
 
     // Need to make sub_id a subtype of sup_id.
@@ -241,7 +241,7 @@ fn var_sub_var<C: combine>(self: &C,
 }
 
 /// make variable a subtype of T
-fn var_sub_t<C: combine>(self: &C, a_id: ty::ty_vid, b: ty::t) -> ures {
+fn var_sub_t<C: combine>(self: &C, a_id: ty::TyVid, b: ty::t) -> ures {
 
     let vb = &self.infcx().ty_var_bindings;
     let nde_a = self.infcx().get(vb, a_id);
@@ -257,7 +257,7 @@ fn var_sub_t<C: combine>(self: &C, a_id: ty::ty_vid, b: ty::t) -> ures {
 }
 
 /// make T a subtype of variable
-fn t_sub_var<C: combine>(self: &C, a: ty::t, b_id: ty::ty_vid) -> ures {
+fn t_sub_var<C: combine>(self: &C, a: ty::t, b_id: ty::TyVid) -> ures {
 
     let vb = &self.infcx().ty_var_bindings;
     let a_bounds = {lb: Some(a), ub: None};
@@ -294,7 +294,7 @@ fn bnds<C: combine>(
 // Integral variables
 
 impl infer_ctxt {
-    fn int_vars(a_id: ty::int_vid, b_id: ty::int_vid) -> ures {
+    fn int_vars(a_id: ty::IntVid, b_id: ty::IntVid) -> ures {
         let vb = &self.int_var_bindings;
 
         let nde_a = self.get(vb, a_id);
@@ -340,7 +340,7 @@ impl infer_ctxt {
         uok()
     }
 
-    fn int_var_sub_t(a_id: ty::int_vid, b: ty::t) -> ures {
+    fn int_var_sub_t(a_id: ty::IntVid, b: ty::t) -> ures {
         assert ty::type_is_integral(b);
 
         let vb = &self.int_var_bindings;
@@ -358,7 +358,7 @@ impl infer_ctxt {
         uok()
     }
 
-    fn t_sub_int_var(a: ty::t, b_id: ty::int_vid) -> ures {
+    fn t_sub_int_var(a: ty::t, b_id: ty::IntVid) -> ures {
         assert ty::type_is_integral(a);
         let vb = &self.int_var_bindings;
 

@@ -218,13 +218,13 @@ impl check_loan_ctxt {
         let callee_ty = ty::node_id_to_type(tcx, callee_id);
         match ty::get(callee_ty).struct {
           ty::ty_fn(fn_ty) => {
-            match fn_ty.purity {
+            match fn_ty.meta.purity {
               ast::pure_fn => return, // case (c) above
               ast::impure_fn | ast::unsafe_fn | ast::extern_fn => {
                 self.report_purity_error(
                     pc, callee_span,
                     fmt!("access to %s function",
-                         pprust::purity_to_str(fn_ty.purity)));
+                         pprust::purity_to_str(fn_ty.meta.purity)));
               }
             }
           }

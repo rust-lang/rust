@@ -216,10 +216,13 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
           result::Err(_) => return,   // Typechecking will fail anyhow.
           result::Ok(function_type) => {
             match ty::get(function_type).struct {
-              ty::ty_fn({
-                proto: proto_vstore(vstore_slice(region)), _
-              }) => {
-                constrain_free_variables(rcx, region, e);
+              ty::ty_fn(ref fn_ty) => {
+                  match fn_ty.meta.proto {
+                      proto_vstore(vstore_slice(region)) => {
+                          constrain_free_variables(rcx, region, e);
+                      }
+                      _ => {}
+                  }
               }
               _ => ()
             }
