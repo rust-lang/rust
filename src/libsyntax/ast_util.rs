@@ -110,7 +110,8 @@ pure fn binop_to_method_name(op: binop) -> Option<~str> {
       ge => return Some(~"ge"),
       gt => return Some(~"gt"),
       eq => return Some(~"eq"),
-      and | or | ne => return None
+      ne => return Some(~"ne"),
+      and | or => return None
     }
 }
 

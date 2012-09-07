@@ -1108,7 +1108,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // Hack: Unify the two sides if this is a relational operator.
         match op {
-            ast::eq | ast::lt | ast::le | ast::ne | ast::ge | ast::gt => {
+            ast::eq | ast::ne | ast::lt | ast::le | ast::ge | ast::gt => {
                 check_expr_with(fcx, rhs, lhs_t);
             }
             _ => {}
