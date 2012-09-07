@@ -1037,11 +1037,7 @@ fn each_ancestor(list:        &mut AncestorList,
 struct TCB {
     me:            *rust_task,
     // List of tasks with whose fates this one's is intertwined.
-<<<<<<< HEAD
     tasks:         TaskGroupArc, // 'none' means the group has failed.
-=======
-    let tasks:         TaskGroupArc; // 'None' means the group has failed.
->>>>>>> core: port task.rs to comm::Chan/Port to pipes::Chan/Port
     // Lists of tasks who will kill us if they fail, but whom we won't kill.
     mut ancestors: AncestorList,
     is_main:       bool,
