@@ -88,7 +88,7 @@ fn act(po: comm::Port<msg>, source: ~str, parse: parser) {
     }
 }
 
-fn exec<T:send>(
+fn exec<T:Send>(
     srv: srv,
     +f: fn~(ctxt: ctxt) -> T
 ) -> T {

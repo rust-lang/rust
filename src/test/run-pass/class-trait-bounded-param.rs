@@ -3,7 +3,7 @@
 use std;
 use std::map::{map, hashmap, int_hash};
 
-class keys<K: copy, V: copy, M: copy map<K,V>>
+class keys<K: Copy, V: Copy, M: Copy map<K,V>>
     : iter::base_iter<K> {
 
     let map: M;

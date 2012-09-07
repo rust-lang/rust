@@ -1,7 +1,7 @@
 trait hax { } 
 impl <A> A: hax { } 
 
-fn perform_hax<T: owned>(x: @T) -> hax {
+fn perform_hax<T: Owned>(x: @T) -> hax {
     x as hax 
 }
 

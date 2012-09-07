@@ -17,7 +17,7 @@ pure fn ignore<T>(+_x: T) { }
 /// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the
 /// original value of `*ptr`.
 #[inline(always)]
-fn with<T: copy, R>(
+fn with<T: Copy, R>(
     ptr: &mut T,
     +new_value: T,
     op: &fn() -> R) -> R

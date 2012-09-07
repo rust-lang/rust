@@ -298,8 +298,8 @@ export assignment;
 export root, to_str;
 export int_ty_set_all;
 
-type bound<T:copy> = Option<T>;
-type bounds<T:copy> = {lb: bound<T>, ub: bound<T>};
+type bound<T:Copy> = Option<T>;
+type bounds<T:Copy> = {lb: bound<T>, ub: bound<T>};
 
 type cres<T> = Result<T,ty::type_err>; // "combine result"
 type ures = cres<()>; // "unify result"
@@ -348,7 +348,7 @@ fn fixup_err_to_str(f: fixup_err) -> ~str {
     }
 }
 
-fn new_vals_and_bindings<V:copy, T:copy>() -> vals_and_bindings<V, T> {
+fn new_vals_and_bindings<V:Copy, T:Copy>() -> vals_and_bindings<V, T> {
     vals_and_bindings {
         vals: smallintmap::mk(),
         mut bindings: ~[]
@@ -458,12 +458,12 @@ fn resolve_borrowings(cx: infer_ctxt) {
 */
 
 trait then {
-    fn then<T:copy>(f: fn() -> Result<T,ty::type_err>)
+    fn then<T:Copy>(f: fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err>;
 }
 
 impl ures: then {
-    fn then<T:copy>(f: fn() -> Result<T,ty::type_err>)
+    fn then<T:Copy>(f: fn() -> Result<T,ty::type_err>)
         -> Result<T,ty::type_err> {
         self.chain(|_i| f())
     }
@@ -474,7 +474,7 @@ trait cres_helpers<T> {
     fn compare(t: T, f: fn() -> ty::type_err) -> cres<T>;
 }
 
-impl<T:copy Eq> cres<T>: cres_helpers<T> {
+impl<T:Copy Eq> cres<T>: cres_helpers<T> {
     fn to_ures() -> ures {
         match self {
           Ok(_v) => Ok(()),
@@ -497,7 +497,7 @@ fn uok() -> ures {
     Ok(())
 }
 
-fn rollback_to<V:copy vid, T:copy>(
+fn rollback_to<V:Copy vid, T:Copy>(
     vb: &vals_and_bindings<V, T>, len: uint) {
 
     while vb.bindings.len() != len {

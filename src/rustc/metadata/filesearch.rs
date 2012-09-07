@@ -67,7 +67,7 @@ fn mk_filesearch(maybe_sysroot: Option<Path>,
      target_triple: str::from_slice(target_triple)} as filesearch
 }
 
-fn search<T: copy>(filesearch: filesearch, pick: pick<T>) -> Option<T> {
+fn search<T: Copy>(filesearch: filesearch, pick: pick<T>) -> Option<T> {
     let mut rslt = None;
     for filesearch.lib_search_paths().each |lib_search_path| {
         debug!("searching %s", lib_search_path.to_str());

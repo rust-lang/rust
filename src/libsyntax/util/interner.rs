@@ -8,18 +8,18 @@ use cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
-type hash_interner<T: const> =
+type hash_interner<T: Const> =
     {map: hashmap<T, uint>,
      vect: DVec<T>};
 
-fn mk<T:Eq IterBytes Hash const copy>() -> interner<T> {
+fn mk<T:Eq IterBytes Hash Const Copy>() -> interner<T> {
     let m = map::hashmap::<T, uint>();
     let hi: hash_interner<T> =
         {map: m, vect: DVec()};
     return hi as interner::<T>;
 }
 
-fn mk_prefill<T:Eq IterBytes Hash const copy>(init: ~[T]) -> interner<T> {
+fn mk_prefill<T:Eq IterBytes Hash Const Copy>(init: ~[T]) -> interner<T> {
     let rv = mk();
     for init.each() |v| { rv.intern(v); }
     return rv;
@@ -27,14 +27,14 @@ fn mk_prefill<T:Eq IterBytes Hash const copy>(init: ~[T]) -> interner<T> {
 
 
 /* when traits can extend traits, we should extend index<uint,T> to get [] */
-trait interner<T:Eq IterBytes Hash const copy> {
+trait interner<T:Eq IterBytes Hash Const Copy> {
     fn intern(T) -> uint;
     fn gensym(T) -> uint;
     pure fn get(uint) -> T;
     fn len() -> uint;
 }
 
-impl <T:Eq IterBytes Hash const copy> hash_interner<T>: interner<T> {
+impl <T:Eq IterBytes Hash Const Copy> hash_interner<T>: interner<T> {
     fn intern(val: T) -> uint {
         match self.map.find(val) {
           Some(idx) => return idx,

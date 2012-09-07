@@ -89,7 +89,7 @@ pure fn build_sized_opt<A>(size: Option<uint>,
 
 // Appending
 #[inline(always)]
-pure fn append<T: copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
+pure fn append<T: Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
         for vec::each(lhs) |x| { push(x); }
         for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
@@ -125,7 +125,7 @@ pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
-pure fn from_elem<T: copy>(n_elts: uint, t: T) -> @[T] {
+pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> @[T] {
     do build_sized(n_elts) |push| {
         let mut i: uint = 0u;
         while i < n_elts { push(t); i += 1u; }
@@ -133,7 +133,7 @@ pure fn from_elem<T: copy>(n_elts: uint, t: T) -> @[T] {
 }
 
 #[cfg(notest)]
-impl<T: copy> @[T]: Add<&[const T],@[T]> {
+impl<T: Copy> @[T]: Add<&[const T],@[T]> {
     #[inline(always)]
     pure fn add(rhs: &[const T]) -> @[T] {
         append(self, rhs)

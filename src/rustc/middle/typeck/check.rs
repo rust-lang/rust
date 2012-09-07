@@ -1203,7 +1203,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     // through the `unpack` function.  It there is no expected type or
     // resolution is not possible (e.g., no constraints yet present), just
     // returns `none`.
-    fn unpack_expected<O: copy>(fcx: @fn_ctxt, expected: Option<ty::t>,
+    fn unpack_expected<O: Copy>(fcx: @fn_ctxt, expected: Option<ty::t>,
                                 unpack: fn(ty::sty) -> Option<O>)
         -> Option<O> {
         match expected {

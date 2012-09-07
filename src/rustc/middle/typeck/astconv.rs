@@ -69,7 +69,7 @@ fn get_region_reporting_err(tcx: ty::ctxt,
     }
 }
 
-fn ast_region_to_region<AC: ast_conv, RS: region_scope copy owned>(
+fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
 
     let res = match a_r.node {
@@ -80,7 +80,7 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope copy owned>(
     get_region_reporting_err(self.tcx(), span, res)
 }
 
-fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
+fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS, did: ast::def_id,
     path: @ast::path) -> ty_param_substs_and_ty {
 
@@ -129,7 +129,7 @@ fn ast_path_to_substs_and_ty<AC: ast_conv, RS: region_scope copy owned>(
     {substs: substs, ty: ty::subst(tcx, &substs, decl_ty)}
 }
 
-fn ast_path_to_ty<AC: ast_conv, RS: region_scope copy owned>(
+fn ast_path_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC,
     rscope: RS,
     did: ast::def_id,
@@ -152,10 +152,10 @@ const NO_TPS: uint = 2u;
 // Parses the programmer's textual representation of a type into our
 // internal notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID:
-fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
+fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS, &&ast_ty: @ast::ty) -> ty::t {
 
-    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope copy owned>(
+    fn ast_mt_to_mt<AC: ast_conv, RS: region_scope Copy Owned>(
         self: AC, rscope: RS, mt: ast::mt) -> ty::mt {
 
         return {ty: ast_ty_to_ty(self, rscope, mt.ty), mutbl: mt.mutbl};
@@ -164,7 +164,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     // Handle @, ~, and & being able to mean estrs and evecs.
     // If a_seq_ty is a str or a vec, make it an estr/evec.
     // Also handle function sigils and first-class trait types.
-    fn mk_maybe_vstore<AC: ast_conv, RS: region_scope copy owned>(
+    fn mk_maybe_vstore<AC: ast_conv, RS: region_scope Copy Owned>(
         self: AC, rscope: RS, a_seq_ty: ast::mt, vst: ty::vstore,
         span: span, constr: fn(ty::mt) -> ty::t) -> ty::t {
 
@@ -400,7 +400,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope copy owned>(
     return typ;
 }
 
-fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
+fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS, a: ast::arg,
     expected_ty: Option<ty::arg>) -> ty::arg {
 
@@ -445,7 +445,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope copy owned>(
     {mode: mode, ty: ty}
 }
 
-fn ast_proto_to_proto<AC: ast_conv, RS: region_scope copy owned>(
+fn ast_proto_to_proto<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS, span: span, ast_proto: ast::proto) -> ty::fn_proto {
     match ast_proto {
         ast::proto_bare =>
@@ -465,7 +465,7 @@ fn ast_proto_to_proto<AC: ast_conv, RS: region_scope copy owned>(
 type expected_tys = Option<{inputs: ~[ty::arg],
                             output: ty::t}>;
 
-fn ty_of_fn_decl<AC: ast_conv, RS: region_scope copy owned>(
+fn ty_of_fn_decl<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS,
     ast_proto: ast::proto,
     purity: ast::purity,

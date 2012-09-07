@@ -1,8 +1,8 @@
-fn copy1<T: copy>(t: T) -> fn@() -> T {
+fn copy1<T: Copy>(t: T) -> fn@() -> T {
     fn@() -> T { t } //~ ERROR value may contain borrowed pointers
 }
 
-fn copy2<T: copy owned>(t: T) -> fn@() -> T {
+fn copy2<T: Copy Owned>(t: T) -> fn@() -> T {
     fn@() -> T { t }
 }
 

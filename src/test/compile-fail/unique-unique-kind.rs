@@ -1,4 +1,4 @@
-fn f<T: send>(_i: T) {
+fn f<T: Send>(_i: T) {
 }
 
 fn main() {

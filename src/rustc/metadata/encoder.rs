@@ -866,7 +866,7 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::Writer,
 
 // Path and definition ID indexing
 
-fn create_index<T: copy>(index: ~[entry<T>], hash_fn: fn@(T) -> uint) ->
+fn create_index<T: Copy>(index: ~[entry<T>], hash_fn: fn@(T) -> uint) ->
    ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
     for uint::range(0u, 256u) |_i| { vec::push(buckets, @mut ~[]); };

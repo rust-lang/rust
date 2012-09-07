@@ -1,4 +1,4 @@
-struct send_packet<T: copy> {
+struct send_packet<T: Copy> {
   p: T
 }
 

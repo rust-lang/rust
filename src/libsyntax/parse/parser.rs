@@ -2278,15 +2278,7 @@ struct parser {
         let mut bounds = ~[];
         if self.eat(token::COLON) {
             while is_ident(self.token) {
-                if self.eat_keyword(~"send") {
-                    push(bounds, bound_send); }
-                else if self.eat_keyword(~"copy") {
-                    push(bounds, bound_copy) }
-                else if self.eat_keyword(~"const") {
-                    push(bounds, bound_const);
-                } else if self.eat_keyword(~"owned") {
-                    push(bounds, bound_owned);
-                } else if is_ident(self.token) {
+                if is_ident(self.token) {
                     // XXX: temporary until kinds become traits
                     let maybe_bound = match self.token {
                       token::IDENT(sid, _) => {

@@ -33,7 +33,7 @@ enum TreeNode<K, V> {
 fn init<K, V>() -> Treemap<K, V> { @Empty }
 
 /// Insert a value into the map
-fn insert<K: copy Eq Ord, V: copy>(m: Treemap<K, V>, +k: K, +v: V)
+fn insert<K: Copy Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K, +v: V)
   -> Treemap<K, V> {
     @match m {
        @Empty => Node(@k, @v, @Empty, @Empty),
@@ -48,7 +48,7 @@ fn insert<K: copy Eq Ord, V: copy>(m: Treemap<K, V>, +k: K, +v: V)
 }
 
 /// Find a value based on the key
-fn find<K: Eq Ord, V: copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
+fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
     match *m {
       Empty => None,
       Node(@kk, @v, left, right) => {
@@ -60,7 +60,7 @@ fn find<K: Eq Ord, V: copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
 }
 
 /// Visit all pairs in the map in order.
-fn traverse<K, V: copy>(m: Treemap<K, V>, f: fn(K, V)) {
+fn traverse<K, V: Copy>(m: Treemap<K, V>, f: fn(K, V)) {
     match *m {
       Empty => (),
       /*

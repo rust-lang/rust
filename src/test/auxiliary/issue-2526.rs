@@ -7,18 +7,18 @@ use std;
 
 export context;
 
-struct arc_destruct<T:const> {
+struct arc_destruct<T:Const> {
   _data: int,
   drop {}
 }
 
-fn arc_destruct<T: const>(data: int) -> arc_destruct<T> {
+fn arc_destruct<T: Const>(data: int) -> arc_destruct<T> {
     arc_destruct {
         _data: data
     }
 }
 
-fn arc<T: const>(_data: T) -> arc_destruct<T> {
+fn arc<T: Const>(_data: T) -> arc_destruct<T> {
     arc_destruct(0)
 }
 

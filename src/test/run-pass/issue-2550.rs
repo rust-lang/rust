@@ -8,7 +8,7 @@ fn C(x: uint) -> C {
     }
 }
 
-fn f<T:copy>(_x: T) {
+fn f<T:Copy>(_x: T) {
 }
 
 #[deny(non_implicitly_copyable_typarams)]

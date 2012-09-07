@@ -1,4 +1,4 @@
-fn double<T: copy>(a: T) -> ~[T] { return ~[a] + ~[a]; }
+fn double<T: Copy>(a: T) -> ~[T] { return ~[a] + ~[a]; }
 
 fn double_int(a: int) -> ~[int] { return ~[a] + ~[a]; }
 

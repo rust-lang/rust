@@ -16,7 +16,7 @@ trait Deque<T> {
 
 // FIXME (#2343) eventually, a proper datatype plus an exported impl would
 // be preferrable.
-fn create<T: copy>() -> Deque<T> {
+fn create<T: Copy>() -> Deque<T> {
     type Cell<T> = Option<T>;
 
     let initial_capacity: uint = 32u; // 2^5
@@ -24,7 +24,7 @@ fn create<T: copy>() -> Deque<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: copy>(nelts: uint, lo: uint, -elts: ~[mut Cell<T>]) ->
+    fn grow<T: Copy>(nelts: uint, lo: uint, -elts: ~[mut Cell<T>]) ->
        ~[mut Cell<T>] {
         assert (nelts == vec::len(elts));
         let mut rv = ~[mut];
@@ -40,7 +40,7 @@ fn create<T: copy>() -> Deque<T> {
 
         return rv;
     }
-    fn get<T: copy>(elts: DVec<Cell<T>>, i: uint) -> T {
+    fn get<T: Copy>(elts: DVec<Cell<T>>, i: uint) -> T {
         match elts.get_elt(i) { Some(t) => t, _ => fail }
     }
 
@@ -49,7 +49,7 @@ fn create<T: copy>() -> Deque<T> {
                     mut hi: uint,
                     elts: DVec<Cell<T>>};
 
-    impl <T: copy> Repr<T>: Deque<T> {
+    impl <T: Copy> Repr<T>: Deque<T> {
         fn size() -> uint { return self.nelts; }
         fn add_front(t: T) {
             let oldlo: uint = self.lo;
@@ -193,7 +193,7 @@ mod tests {
 
     type EqFn<T> = fn@(T, T) -> bool;
 
-    fn test_parameterized<T: copy owned>(
+    fn test_parameterized<T: Copy Owned>(
         e: EqFn<T>, a: T, b: T, c: T, d: T) {
 
         let deq: deque::Deque<T> = deque::create::<T>();

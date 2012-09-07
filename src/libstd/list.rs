@@ -13,7 +13,7 @@ enum List<T> {
 }
 
 /// Cregate a list from a vector
-fn from_vec<T: copy>(v: &[T]) -> @List<T> {
+fn from_vec<T: Copy>(v: &[T]) -> @List<T> {
     vec::foldr(v, @Nil::<T>, |h, t| @Cons(h, t))
 }
 
@@ -30,7 +30,7 @@ fn from_vec<T: copy>(v: &[T]) -> @List<T> {
  * * z - The initial value
  * * f - The function to apply
  */
-fn foldl<T: copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
+fn foldl<T: Copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
     let mut accum: T = z;
     do iter(ls) |elt| { accum = f(&accum, &elt);}
     accum
@@ -43,7 +43,7 @@ fn foldl<T: copy, U>(+z: T, ls: @List<U>, f: fn((&T), (&U)) -> T) -> T {
  * When function `f` returns true then an option containing the element
  * is returned. If `f` matches no elements then none is returned.
  */
-fn find<T: copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
+fn find<T: Copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
     let mut ls = ls;
     loop {
         ls = match *ls {
@@ -57,7 +57,7 @@ fn find<T: copy>(ls: @List<T>, f: fn((&T)) -> bool) -> Option<T> {
 }
 
 /// Returns true if a list contains an element with the given value
-fn has<T: copy Eq>(ls: @List<T>, +elt: T) -> bool {
+fn has<T: Copy Eq>(ls: @List<T>, +elt: T) -> bool {
     for each(ls) |e| {
         if e == elt { return true; }
     }
@@ -65,7 +65,7 @@ fn has<T: copy Eq>(ls: @List<T>, +elt: T) -> bool {
 }
 
 /// Returns true if the list is empty
-pure fn is_empty<T: copy>(ls: @List<T>) -> bool {
+pure fn is_empty<T: Copy>(ls: @List<T>) -> bool {
     match *ls {
         Nil => true,
         _ => false
@@ -73,7 +73,7 @@ pure fn is_empty<T: copy>(ls: @List<T>) -> bool {
 }
 
 /// Returns true if the list is not empty
-pure fn is_not_empty<T: copy>(ls: @List<T>) -> bool {
+pure fn is_not_empty<T: Copy>(ls: @List<T>) -> bool {
     return !is_empty(ls);
 }
 
@@ -85,7 +85,7 @@ fn len<T>(ls: @List<T>) -> uint {
 }
 
 /// Returns all but the first element of a list
-pure fn tail<T: copy>(ls: @List<T>) -> @List<T> {
+pure fn tail<T: Copy>(ls: @List<T>) -> @List<T> {
     match *ls {
         Cons(_, tl) => return tl,
         Nil => fail ~"list empty"
@@ -93,7 +93,7 @@ pure fn tail<T: copy>(ls: @List<T>) -> @List<T> {
 }
 
 /// Returns the first element of a list
-pure fn head<T: copy>(ls: @List<T>) -> T {
+pure fn head<T: Copy>(ls: @List<T>) -> T {
     match *ls {
       Cons(hd, _) => hd,
       // makes me sad
@@ -102,7 +102,7 @@ pure fn head<T: copy>(ls: @List<T>) -> T {
 }
 
 /// Appends one list to another
-pure fn append<T: copy>(l: @List<T>, m: @List<T>) -> @List<T> {
+pure fn append<T: Copy>(l: @List<T>, m: @List<T>) -> @List<T> {
     match *l {
       Nil => return m,
       Cons(x, xs) => {
@@ -115,7 +115,7 @@ pure fn append<T: copy>(l: @List<T>, m: @List<T>) -> @List<T> {
 /*
 /// Push one element into the front of a list, returning a new list
 /// THIS VERSION DOESN'T ACTUALLY WORK
-pure fn push<T: copy>(ll: &mut @list<T>, +vv: T) {
+pure fn push<T: Copy>(ll: &mut @list<T>, +vv: T) {
     ll = &mut @cons(vv, *ll)
 }
 */

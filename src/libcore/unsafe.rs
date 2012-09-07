@@ -137,7 +137,7 @@ fn ArcDestruct<T>(data: *libc::c_void) -> ArcDestruct<T> {
     }
 }
 
-unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
+unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
         -> T {
     struct DeathThroes<T> {
         mut ptr:      Option<~ArcData<T>>,
@@ -207,9 +207,9 @@ unsafe fn unwrap_shared_mutable_state<T: send>(+rc: SharedMutableState<T>)
  * Data races between tasks can result in crashes and, with sufficient
  * cleverness, arbitrary type coercion.
  */
-type SharedMutableState<T: send> = ArcDestruct<T>;
+type SharedMutableState<T: Send> = ArcDestruct<T>;
 
-unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
+unsafe fn shared_mutable_state<T: Send>(+data: T) -> SharedMutableState<T> {
     let data = ~ArcData { count: 1, unwrapper: 0, data: Some(data) };
     unsafe {
         let ptr = unsafe::transmute(data);
@@ -218,7 +218,7 @@ unsafe fn shared_mutable_state<T: send>(+data: T) -> SharedMutableState<T> {
 }
 
 #[inline(always)]
-unsafe fn get_shared_mutable_state<T: send>(rc: &a/SharedMutableState<T>)
+unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
         -> &a/mut T {
     unsafe {
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
@@ -230,7 +230,7 @@ unsafe fn get_shared_mutable_state<T: send>(rc: &a/SharedMutableState<T>)
     }
 }
 #[inline(always)]
-unsafe fn get_shared_immutable_state<T: send>(rc: &a/SharedMutableState<T>)
+unsafe fn get_shared_immutable_state<T: Send>(rc: &a/SharedMutableState<T>)
         -> &a/T {
     unsafe {
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
@@ -242,7 +242,7 @@ unsafe fn get_shared_immutable_state<T: send>(rc: &a/SharedMutableState<T>)
     }
 }
 
-unsafe fn clone_shared_mutable_state<T: send>(rc: &SharedMutableState<T>)
+unsafe fn clone_shared_mutable_state<T: Send>(rc: &SharedMutableState<T>)
         -> SharedMutableState<T> {
     unsafe {
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
@@ -312,20 +312,20 @@ impl LittleLock {
     }
 }
 
-struct ExData<T: send> { lock: LittleLock, mut failed: bool, mut data: T, }
+struct ExData<T: Send> { lock: LittleLock, mut failed: bool, mut data: T, }
 /**
  * An arc over mutable data that is protected by a lock. For library use only.
  */
-struct Exclusive<T: send> { x: SharedMutableState<ExData<T>> }
+struct Exclusive<T: Send> { x: SharedMutableState<ExData<T>> }
 
-fn exclusive<T:send >(+user_data: T) -> Exclusive<T> {
+fn exclusive<T:Send >(+user_data: T) -> Exclusive<T> {
     let data = ExData {
         lock: LittleLock(), mut failed: false, mut data: user_data
     };
     Exclusive { x: unsafe { shared_mutable_state(data) } }
 }
 
-impl<T: send> Exclusive<T> {
+impl<T: Send> Exclusive<T> {
     // Duplicate an exclusive ARC, as std::arc::clone.
     fn clone() -> Exclusive<T> {
         Exclusive { x: unsafe { clone_shared_mutable_state(&self.x) } }
@@ -353,7 +353,7 @@ impl<T: send> Exclusive<T> {
 }
 
 // FIXME(#2585) make this a by-move method on the exclusive
-fn unwrap_exclusive<T: send>(+arc: Exclusive<T>) -> T {
+fn unwrap_exclusive<T: Send>(+arc: Exclusive<T>) -> T {
     let Exclusive { x: x } = arc;
     let inner = unsafe { unwrap_shared_mutable_state(x) };
     let ExData { data: data, _ } = inner;

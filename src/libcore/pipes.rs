@@ -152,7 +152,7 @@ fn buffer_header() -> BufferHeader { BufferHeader() }
 
 // This is for protocols to associate extra data to thread around.
 #[doc(hidden)]
-type Buffer<T: send> = {
+type Buffer<T: Send> = {
     header: BufferHeader,
     data: T,
 };
@@ -191,7 +191,7 @@ struct PacketHeader {
         reinterpret_cast(&self.buffer)
     }
 
-    fn set_buffer<T: send>(b: ~Buffer<T>) unsafe {
+    fn set_buffer<T: Send>(b: ~Buffer<T>) unsafe {
         self.buffer = reinterpret_cast(&b);
     }
 }
@@ -205,7 +205,7 @@ fn PacketHeader() -> PacketHeader {
 }
 
 #[doc(hidden)]
-type Packet<T: send> = {
+type Packet<T: Send> = {
     header: PacketHeader,
     mut payload: Option<T>,
 };
@@ -213,7 +213,7 @@ type Packet<T: send> = {
 // XXX remove me
 #[cfg(stage0)]
 #[allow(non_camel_case_types)]
-type packet<T: send> = Packet<T>;
+type packet<T: Send> = Packet<T>;
 
 #[doc(hidden)]
 trait HasBuffer {
@@ -221,7 +221,7 @@ trait HasBuffer {
     fn set_buffer_(b: *libc::c_void);
 }
 
-impl<T: send> Packet<T>: HasBuffer {
+impl<T: Send> Packet<T>: HasBuffer {
     fn set_buffer_(b: *libc::c_void) {
         self.header.buffer = b;
     }
@@ -235,14 +235,14 @@ trait has_buffer {
 }
 
 #[cfg(stage0)] // XXX remove me
-impl<T: send> packet<T>: has_buffer {
+impl<T: Send> packet<T>: has_buffer {
     fn set_buffer(b: *libc::c_void) {
         self.header.buffer = b;
     }
 }
 
 #[doc(hidden)]
-fn mk_packet<T: send>() -> Packet<T> {
+fn mk_packet<T: Send>() -> Packet<T> {
     {
         header: PacketHeader(),
         mut payload: None
@@ -250,7 +250,7 @@ fn mk_packet<T: send>() -> Packet<T> {
 }
 
 #[doc(hidden)]
-fn unibuffer<T: send>() -> ~Buffer<Packet<T>> {
+fn unibuffer<T: Send>() -> ~Buffer<Packet<T>> {
     let b = ~{
         header: BufferHeader(),
         data: {
@@ -267,7 +267,7 @@ fn unibuffer<T: send>() -> ~Buffer<Packet<T>> {
 }
 
 #[doc(hidden)]
-fn packet<T: send>() -> *Packet<T> {
+fn packet<T: Send>() -> *Packet<T> {
     let b = unibuffer();
     let p = ptr::addr_of(b.data);
     // We'll take over memory management from here.
@@ -276,7 +276,7 @@ fn packet<T: send>() -> *Packet<T> {
 }
 
 #[doc(hidden)]
-fn entangle_buffer<T: send, Tstart: send>(
+fn entangle_buffer<T: Send, Tstart: Send>(
     +buffer: ~Buffer<T>,
     init: fn(*libc::c_void, x: &T) -> *Packet<Tstart>)
     -> (SendPacketBuffered<Tstart, T>, RecvPacketBuffered<Tstart, T>)
@@ -368,12 +368,12 @@ fn swap_state_rel(+dst: &mut State, src: State) -> State {
 }
 
 #[doc(hidden)]
-unsafe fn get_buffer<T: send>(p: *PacketHeader) -> ~Buffer<T> {
+unsafe fn get_buffer<T: Send>(p: *PacketHeader) -> ~Buffer<T> {
     transmute((*p).buf_header())
 }
 
 // This could probably be done with SharedMutableState to avoid move_it!().
-struct BufferResource<T: send> {
+struct BufferResource<T: Send> {
     buffer: ~Buffer<T>,
 
     drop unsafe {
@@ -393,7 +393,7 @@ struct BufferResource<T: send> {
     }
 }
 
-fn BufferResource<T: send>(+b: ~Buffer<T>) -> BufferResource<T> {
+fn BufferResource<T: Send>(+b: ~Buffer<T>) -> BufferResource<T> {
     //let p = ptr::addr_of(*b);
     //error!("take %?", p);
     atomic_add_acq(&mut b.header.ref_count, 1);
@@ -404,7 +404,7 @@ fn BufferResource<T: send>(+b: ~Buffer<T>) -> BufferResource<T> {
 }
 
 #[doc(hidden)]
-fn send<T: send, Tbuffer: send>(+p: SendPacketBuffered<T, Tbuffer>,
+fn send<T: Send, Tbuffer: Send>(+p: SendPacketBuffered<T, Tbuffer>,
                                 +payload: T) -> bool {
     let header = p.header();
     let p_ = p.unwrap();
@@ -448,7 +448,7 @@ fn send<T: send, Tbuffer: send>(+p: SendPacketBuffered<T, Tbuffer>,
 Fails if the sender closes the connection.
 
 */
-fn recv<T: send, Tbuffer: send>(+p: RecvPacketBuffered<T, Tbuffer>) -> T {
+fn recv<T: Send, Tbuffer: Send>(+p: RecvPacketBuffered<T, Tbuffer>) -> T {
     option::unwrap_expect(try_recv(p), "connection closed")
 }
 
@@ -458,7 +458,7 @@ Returns `none` if the sender has closed the connection without sending
 a message, or `Some(T)` if a message was received.
 
 */
-fn try_recv<T: send, Tbuffer: send>(+p: RecvPacketBuffered<T, Tbuffer>)
+fn try_recv<T: Send, Tbuffer: Send>(+p: RecvPacketBuffered<T, Tbuffer>)
     -> Option<T>
 {
     let p_ = p.unwrap();
@@ -552,7 +552,7 @@ fn try_recv<T: send, Tbuffer: send>(+p: RecvPacketBuffered<T, Tbuffer>)
 }
 
 /// Returns true if messages are available.
-pure fn peek<T: send, Tb: send>(p: &RecvPacketBuffered<T, Tb>) -> bool {
+pure fn peek<T: Send, Tb: Send>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     match unsafe {(*p.header()).state} {
       Empty => false,
       Blocked => fail ~"peeking on blocked packet",
@@ -560,14 +560,14 @@ pure fn peek<T: send, Tb: send>(p: &RecvPacketBuffered<T, Tb>) -> bool {
     }
 }
 
-impl<T: send, Tb: send> RecvPacketBuffered<T, Tb> {
+impl<T: Send, Tb: Send> RecvPacketBuffered<T, Tb> {
     pure fn peek() -> bool {
         peek(&self)
     }
 }
 
 #[doc(hidden)]
-fn sender_terminate<T: send>(p: *Packet<T>) {
+fn sender_terminate<T: Send>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
       Empty => {
@@ -596,7 +596,7 @@ fn sender_terminate<T: send>(p: *Packet<T>) {
 }
 
 #[doc(hidden)]
-fn receiver_terminate<T: send>(p: *Packet<T>) {
+fn receiver_terminate<T: Send>(p: *Packet<T>) {
     let p = unsafe { &*p };
     match swap_state_rel(&mut p.header.state, Terminated) {
       Empty => {
@@ -704,7 +704,7 @@ Sometimes messages will be available on both endpoints at once. In
 this case, `select2` may return either `left` or `right`.
 
 */
-fn select2<A: send, Ab: send, B: send, Bb: send>(
+fn select2<A: Send, Ab: Send, B: Send, Bb: Send>(
     +a: RecvPacketBuffered<A, Ab>,
     +b: RecvPacketBuffered<B, Bb>)
     -> Either<(Option<A>, RecvPacketBuffered<B, Bb>),
@@ -746,7 +746,7 @@ fn select2i<A: Selectable, B: Selectable>(a: &A, b: &B) -> Either<(), ()> {
  list of the remaining endpoints.
 
 */
-fn select<T: send, Tb: send>(+endpoints: ~[RecvPacketBuffered<T, Tb>])
+fn select<T: Send, Tb: Send>(+endpoints: ~[RecvPacketBuffered<T, Tb>])
     -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
@@ -760,25 +760,25 @@ fn select<T: send, Tb: send>(+endpoints: ~[RecvPacketBuffered<T, Tb>])
 message.
 
 */
-type SendPacket<T: send> = SendPacketBuffered<T, Packet<T>>;
+type SendPacket<T: Send> = SendPacketBuffered<T, Packet<T>>;
 
 #[doc(hidden)]
-fn SendPacket<T: send>(p: *Packet<T>) -> SendPacket<T> {
+fn SendPacket<T: Send>(p: *Packet<T>) -> SendPacket<T> {
     SendPacketBuffered(p)
 }
 
 // XXX remove me
 #[cfg(stage0)]
 #[allow(non_camel_case_types)]
-type send_packet<T: send> = SendPacket<T>;
+type send_packet<T: Send> = SendPacket<T>;
 
 // XXX remove me
 #[cfg(stage0)]
-fn send_packet<T: send>(p: *packet<T>) -> SendPacket<T> {
+fn send_packet<T: Send>(p: *packet<T>) -> SendPacket<T> {
     SendPacket(p)
 }
 
-struct SendPacketBuffered<T: send, Tbuffer: send> {
+struct SendPacketBuffered<T: Send, Tbuffer: Send> {
     mut p: Option<*Packet<T>>,
     mut buffer: Option<BufferResource<Tbuffer>>,
     drop {
@@ -821,7 +821,7 @@ struct SendPacketBuffered<T: send, Tbuffer: send> {
     }
 }
 
-fn SendPacketBuffered<T: send, Tbuffer: send>(p: *Packet<T>)
+fn SendPacketBuffered<T: Send, Tbuffer: Send>(p: *Packet<T>)
     -> SendPacketBuffered<T, Tbuffer> {
         //debug!("take send %?", p);
     SendPacketBuffered {
@@ -836,30 +836,30 @@ fn SendPacketBuffered<T: send, Tbuffer: send>(p: *Packet<T>)
 // XXX remove me
 #[cfg(stage0)]
 #[allow(non_camel_case_types)]
-type send_packet_buffered<T: send, Tbuffer: send> =
+type send_packet_buffered<T: Send, Tbuffer: Send> =
     SendPacketBuffered<T, Tbuffer>;
 
 /// Represents the receive end of a pipe. It can receive exactly one
 /// message.
-type RecvPacket<T: send> = RecvPacketBuffered<T, Packet<T>>;
+type RecvPacket<T: Send> = RecvPacketBuffered<T, Packet<T>>;
 
 #[doc(hidden)]
-fn RecvPacket<T: send>(p: *Packet<T>) -> RecvPacket<T> {
+fn RecvPacket<T: Send>(p: *Packet<T>) -> RecvPacket<T> {
     RecvPacketBuffered(p)
 }
 
 // XXX remove me
 #[cfg(stage0)]
 #[allow(non_camel_case_types)]
-type recv_packet<T: send> = RecvPacket<T>;
+type recv_packet<T: Send> = RecvPacket<T>;
 
 // XXX remove me
 #[cfg(stage0)]
-fn recv_packet<T: send>(p: *packet<T>) -> RecvPacket<T> {
+fn recv_packet<T: Send>(p: *packet<T>) -> RecvPacket<T> {
     RecvPacket(p)
 }
 
-struct RecvPacketBuffered<T: send, Tbuffer: send> : Selectable {
+struct RecvPacketBuffered<T: Send, Tbuffer: Send> : Selectable {
     mut p: Option<*Packet<T>>,
     mut buffer: Option<BufferResource<Tbuffer>>,
     drop {
@@ -902,7 +902,7 @@ struct RecvPacketBuffered<T: send, Tbuffer: send> : Selectable {
     }
 }
 
-fn RecvPacketBuffered<T: send, Tbuffer: send>(p: *Packet<T>)
+fn RecvPacketBuffered<T: Send, Tbuffer: Send>(p: *Packet<T>)
     -> RecvPacketBuffered<T, Tbuffer> {
     //debug!("take recv %?", p);
     RecvPacketBuffered {
@@ -917,11 +917,11 @@ fn RecvPacketBuffered<T: send, Tbuffer: send>(p: *Packet<T>)
 // XXX remove me
 #[cfg(stage0)]
 #[allow(non_camel_case_types)]
-type recv_packet_buffered<T: send, Tbuffer: send> =
+type recv_packet_buffered<T: Send, Tbuffer: Send> =
     RecvPacketBuffered<T, Tbuffer>;
 
 #[doc(hidden)]
-fn entangle<T: send>() -> (SendPacket<T>, RecvPacket<T>) {
+fn entangle<T: Send>() -> (SendPacket<T>, RecvPacket<T>) {
     let p = packet();
     (SendPacket(p), RecvPacket(p))
 }
@@ -933,7 +933,7 @@ endpoint. The send endpoint is returned to the caller and the receive
 endpoint is passed to the new task.
 
 */
-fn spawn_service<T: send, Tb: send>(
+fn spawn_service<T: Send, Tb: Send>(
     init: extern fn() -> (SendPacketBuffered<T, Tb>,
                           RecvPacketBuffered<T, Tb>),
     +service: fn~(+RecvPacketBuffered<T, Tb>))
@@ -957,7 +957,7 @@ fn spawn_service<T: send, Tb: send>(
 receive state.
 
 */
-fn spawn_service_recv<T: send, Tb: send>(
+fn spawn_service_recv<T: Send, Tb: Send>(
     init: extern fn() -> (RecvPacketBuffered<T, Tb>,
                           SendPacketBuffered<T, Tb>),
     +service: fn~(+SendPacketBuffered<T, Tb>))
@@ -980,13 +980,13 @@ fn spawn_service_recv<T: send, Tb: send>(
 // Streams - Make pipes a little easier in general.
 
 proto! streamp (
-    Open:send<T: send> {
+    Open:send<T: Send> {
         data(T) -> Open<T>
     }
 )
 
 /// A trait for things that can send multiple messages.
-trait Channel<T: send> {
+trait Channel<T: Send> {
     // It'd be nice to call this send, but it'd conflict with the
     // built in send kind.
 
@@ -998,7 +998,7 @@ trait Channel<T: send> {
 }
 
 /// A trait for things that can receive multiple messages.
-trait Recv<T: send> {
+trait Recv<T: Send> {
     /// Receives a message, or fails if the connection closes.
     fn recv() -> T;
 
@@ -1016,18 +1016,18 @@ trait Recv<T: send> {
 }
 
 #[doc(hidden)]
-type Chan_<T:send> = { mut endp: Option<streamp::client::Open<T>> };
+type Chan_<T:Send> = { mut endp: Option<streamp::client::Open<T>> };
 
 /// An endpoint that can send many messages.
-enum Chan<T:send> {
+enum Chan<T:Send> {
     Chan_(Chan_<T>)
 }
 
 #[doc(hidden)]
-type Port_<T:send> = { mut endp: Option<streamp::server::Open<T>> };
+type Port_<T:Send> = { mut endp: Option<streamp::server::Open<T>> };
 
 /// An endpoint that can receive many messages.
-enum Port<T:send> {
+enum Port<T:Send> {
     Port_(Port_<T>)
 }
 
@@ -1036,13 +1036,13 @@ enum Port<T:send> {
 These allow sending or receiving an unlimited number of messages.
 
 */
-fn stream<T:send>() -> (Chan<T>, Port<T>) {
+fn stream<T:Send>() -> (Chan<T>, Port<T>) {
     let (c, s) = streamp::init();
 
     (Chan_({ mut endp: Some(c) }), Port_({ mut endp: Some(s) }))
 }
 
-impl<T: send> Chan<T>: Channel<T> {
+impl<T: Send> Chan<T>: Channel<T> {
     fn send(+x: T) {
         let mut endp = None;
         endp <-> self.endp;
@@ -1063,7 +1063,7 @@ impl<T: send> Chan<T>: Channel<T> {
     }
 }
 
-impl<T: send> Port<T>: Recv<T> {
+impl<T: Send> Port<T>: Recv<T> {
     fn recv() -> T {
         let mut endp = None;
         endp <-> self.endp;
@@ -1097,7 +1097,7 @@ impl<T: send> Port<T>: Recv<T> {
 }
 
 /// Treat many ports as one.
-struct PortSet<T: send> : Recv<T> {
+struct PortSet<T: Send> : Recv<T> {
     mut ports: ~[pipes::Port<T>],
 
     fn add(+port: pipes::Port<T>) {
@@ -1146,13 +1146,13 @@ struct PortSet<T: send> : Recv<T> {
     }
 }
 
-fn PortSet<T: send>() -> PortSet<T>{
+fn PortSet<T: Send>() -> PortSet<T>{
     PortSet {
         ports: ~[]
     }
 }
 
-impl<T: send> Port<T>: Selectable {
+impl<T: Send> Port<T>: Selectable {
     pure fn header() -> *PacketHeader unchecked {
         match self.endp {
           Some(endp) => endp.header(),
@@ -1162,9 +1162,9 @@ impl<T: send> Port<T>: Selectable {
 }
 
 /// A channel that can be shared between many senders.
-type SharedChan<T: send> = unsafe::Exclusive<Chan<T>>;
+type SharedChan<T: Send> = unsafe::Exclusive<Chan<T>>;
 
-impl<T: send> SharedChan<T>: Channel<T> {
+impl<T: Send> SharedChan<T>: Channel<T> {
     fn send(+x: T) {
         let mut xx = Some(x);
         do self.with |chan| {
@@ -1185,19 +1185,19 @@ impl<T: send> SharedChan<T>: Channel<T> {
 }
 
 /// Converts a `chan` into a `shared_chan`.
-fn SharedChan<T:send>(+c: Chan<T>) -> SharedChan<T> {
+fn SharedChan<T:Send>(+c: Chan<T>) -> SharedChan<T> {
     unsafe::exclusive(c)
 }
 
 /// Receive a message from one of two endpoints.
-trait Select2<T: send, U: send> {
+trait Select2<T: Send, U: Send> {
     /// Receive a message or return `none` if a connection closes.
     fn try_select() -> Either<Option<T>, Option<U>>;
     /// Receive a message or fail if a connection closes.
     fn select() -> Either<T, U>;
 }
 
-impl<T: send, U: send, Left: Selectable Recv<T>, Right: Selectable Recv<U>>
+impl<T: Send, U: Send, Left: Selectable Recv<T>, Right: Selectable Recv<U>>
     (Left, Right): Select2<T, U> {
 
     fn select() -> Either<T, U> {
@@ -1220,18 +1220,18 @@ impl<T: send, U: send, Left: Selectable Recv<T>, Right: Selectable Recv<U>>
 }
 
 proto! oneshot (
-    Oneshot:send<T:send> {
+    Oneshot:send<T:Send> {
         send(T) -> !
     }
 )
 
 /// The send end of a oneshot pipe.
-type ChanOne<T: send> = oneshot::client::Oneshot<T>;
+type ChanOne<T: Send> = oneshot::client::Oneshot<T>;
 /// The receive end of a oneshot pipe.
-type PortOne<T: send> = oneshot::server::Oneshot<T>;
+type PortOne<T: Send> = oneshot::server::Oneshot<T>;
 
 /// Initialiase a (send-endpoint, recv-endpoint) oneshot pipe pair.
-fn oneshot<T: send>() -> (ChanOne<T>, PortOne<T>) {
+fn oneshot<T: Send>() -> (ChanOne<T>, PortOne<T>) {
     oneshot::init()
 }
 
@@ -1239,13 +1239,13 @@ fn oneshot<T: send>() -> (ChanOne<T>, PortOne<T>) {
  * Receive a message from a oneshot pipe, failing if the connection was
  * closed.
  */
-fn recv_one<T: send>(+port: PortOne<T>) -> T {
+fn recv_one<T: Send>(+port: PortOne<T>) -> T {
     let oneshot::send(message) = recv(port);
     message
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
-fn try_recv_one<T: send> (+port: PortOne<T>) -> Option<T> {
+fn try_recv_one<T: Send> (+port: PortOne<T>) -> Option<T> {
     let message = try_recv(port);
 
     if message.is_none() { None }
@@ -1256,7 +1256,7 @@ fn try_recv_one<T: send> (+port: PortOne<T>) -> Option<T> {
 }
 
 /// Send a message on a oneshot pipe, failing if the connection was closed.
-fn send_one<T: send>(+chan: ChanOne<T>, +data: T) {
+fn send_one<T: Send>(+chan: ChanOne<T>, +data: T) {
     oneshot::client::send(chan, data);
 }
 
@@ -1264,7 +1264,7 @@ fn send_one<T: send>(+chan: ChanOne<T>, +data: T) {
  * Send a message on a oneshot pipe, or return false if the connection was
  * closed.
  */
-fn try_send_one<T: send>(+chan: ChanOne<T>, +data: T)
+fn try_send_one<T: Send>(+chan: ChanOne<T>, +data: T)
         -> bool {
     oneshot::client::try_send(chan, data).is_some()
 }

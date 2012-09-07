@@ -2,7 +2,7 @@
 
 
 // -*- rust -*-
-fn id<T: copy>(x: T) -> T { return x; }
+fn id<T: Copy>(x: T) -> T { return x; }
 
 type triple = {x: int, y: int, z: int};
 

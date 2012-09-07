@@ -2,11 +2,11 @@ use cmp::Eq;
 
 fn sendable() {
 
-    fn f<T: send Eq>(i: T, j: T) {
+    fn f<T: Send Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: send Eq>(i: T, j: T) {
+    fn g<T: Send Eq>(i: T, j: T) {
         assert i != j;
     }
 
@@ -20,11 +20,11 @@ fn sendable() {
 
 fn copyable() {
 
-    fn f<T: copy Eq>(i: T, j: T) {
+    fn f<T: Copy Eq>(i: T, j: T) {
         assert i == j;
     }
 
-    fn g<T: copy Eq>(i: T, j: T) {
+    fn g<T: Copy Eq>(i: T, j: T) {
         assert i != j;
     }
 

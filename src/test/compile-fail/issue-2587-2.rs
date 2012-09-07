@@ -1,4 +1,4 @@
-fn foo<T: copy>(+_t: T) { fail; }
+fn foo<T: Copy>(+_t: T) { fail; }
 
 fn bar<T>(+_t: T) { fail; }
 

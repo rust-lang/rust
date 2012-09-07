@@ -1,9 +1,9 @@
 trait vec_monad<A> {
-    fn bind<B: copy>(f: fn(A) -> ~[B]) -> ~[B];
+    fn bind<B: Copy>(f: fn(A) -> ~[B]) -> ~[B];
 }
 
 impl<A> ~[A]: vec_monad<A> {
-    fn bind<B: copy>(f: fn(A) -> ~[B]) -> ~[B] {
+    fn bind<B: Copy>(f: fn(A) -> ~[B]) -> ~[B] {
         let mut r = ~[];
         for self.each |elt| { r += f(elt); }
         r

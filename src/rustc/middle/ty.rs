@@ -799,7 +799,7 @@ fn mk_rcache() -> creader_cache {
     return map::hashmap();
 }
 
-fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
+fn new_ty_hash<V: Copy>() -> map::hashmap<t, V> {
     map::hashmap()
 }
 
@@ -2568,7 +2568,7 @@ pure fn hash_bound_region(br: &bound_region) -> uint {
     }
 }
 
-fn br_hashmap<V:copy>() -> hashmap<bound_region, V> {
+fn br_hashmap<V:Copy>() -> hashmap<bound_region, V> {
     map::hashmap()
 }
 
@@ -3081,7 +3081,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
 // the current head value for `m0`.
-fn canon<T:copy>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
+fn canon<T:Copy>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
                  +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
       ast::infer(id) => match tbl.find(id) {

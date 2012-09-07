@@ -3,24 +3,24 @@ use integral::*;
 use to_str::to_str;
 use std::smallintmap::SmallIntMap;
 
-enum var_value<V:copy, T:copy> {
+enum var_value<V:Copy, T:Copy> {
     redirect(V),
     root(T, uint),
 }
 
-struct vals_and_bindings<V:copy, T:copy> {
+struct vals_and_bindings<V:Copy, T:Copy> {
     vals: SmallIntMap<var_value<V, T>>,
     mut bindings: ~[(V, var_value<V, T>)],
 }
 
-struct node<V:copy, T:copy> {
+struct node<V:Copy, T:Copy> {
     root: V,
     possible_types: T,
     rank: uint,
 }
 
 impl infer_ctxt {
-    fn get<V:copy vid, T:copy>(
+    fn get<V:Copy vid, T:Copy>(
         vb: &vals_and_bindings<V, T>, vid: V) -> node<V, T> {
 
         let vid_u = vid.to_uint();
@@ -46,7 +46,7 @@ impl infer_ctxt {
         }
     }
 
-    fn set<V:copy vid, T:copy to_str>(
+    fn set<V:Copy vid, T:Copy to_str>(
         vb: &vals_and_bindings<V, T>, vid: V,
         +new_v: var_value<V, T>) {
 

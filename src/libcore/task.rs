@@ -380,7 +380,7 @@ impl TaskBuilder {
         spawn_raw(x.opts, x.gen_body(f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
-    fn spawn_with<A: send>(+arg: A, +f: fn~(+A)) {
+    fn spawn_with<A: Send>(+arg: A, +f: fn~(+A)) {
         let arg = ~mut Some(arg);
         do self.spawn {
             f(option::swap_unwrap(arg))
@@ -398,7 +398,7 @@ impl TaskBuilder {
      * otherwise be required to establish communication from the parent
      * to the child.
      */
-    fn spawn_listener<A: send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+    fn spawn_listener<A: Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
         let setup_po = comm::Port();
         let setup_ch = comm::Chan(setup_po);
         do self.spawn {
@@ -413,7 +413,7 @@ impl TaskBuilder {
     /**
      * Runs a new task, setting up communication in both directions
      */
-    fn spawn_conversation<A: send, B: send>
+    fn spawn_conversation<A: Send, B: Send>
         (+f: fn~(comm::Port<A>, comm::Chan<B>))
         -> (comm::Port<B>, comm::Chan<A>) {
         let from_child = comm::Port();
@@ -437,7 +437,7 @@ impl TaskBuilder {
      * # Failure
      * Fails if a future_result was already set for this task.
      */
-    fn try<T: send>(+f: fn~() -> T) -> Result<T,()> {
+    fn try<T: Send>(+f: fn~() -> T) -> Result<T,()> {
         let po = comm::Port();
         let ch = comm::Chan(po);
         let mut result = None;
@@ -504,7 +504,7 @@ fn spawn_supervised(+f: fn~()) {
     task().supervised().spawn(f)
 }
 
-fn spawn_with<A:send>(+arg: A, +f: fn~(+A)) {
+fn spawn_with<A:Send>(+arg: A, +f: fn~(+A)) {
     /*!
      * Runs a task, while transfering ownership of one argument to the
      * child.
@@ -518,7 +518,7 @@ fn spawn_with<A:send>(+arg: A, +f: fn~(+A)) {
     task().spawn_with(arg, f)
 }
 
-fn spawn_listener<A:send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
+fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     /*!
      * Runs a new task while providing a channel from the parent to the child
      *
@@ -528,7 +528,7 @@ fn spawn_listener<A:send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
     task().spawn_listener(f)
 }
 
-fn spawn_conversation<A: send, B: send>
+fn spawn_conversation<A: Send, B: Send>
     (+f: fn~(comm::Port<A>, comm::Chan<B>))
     -> (comm::Port<B>, comm::Chan<A>) {
     /*!
@@ -557,7 +557,7 @@ fn spawn_sched(mode: SchedMode, +f: fn~()) {
     task().sched_mode(mode).spawn(f)
 }
 
-fn try<T:send>(+f: fn~() -> T) -> Result<T,()> {
+fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
     /*!
      * Execute a function in another task and return either the return value
      * of the function or result::err.
@@ -1314,10 +1314,10 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
  *
  * These two cases aside, the interface is safe.
  */
-type LocalDataKey<T: owned> = &fn(+@T);
+type LocalDataKey<T: Owned> = &fn(+@T);
 
 trait LocalData { }
-impl<T: owned> @T: LocalData { }
+impl<T: Owned> @T: LocalData { }
 
 impl LocalData: Eq {
     pure fn eq(&&other: LocalData) -> bool unsafe {
@@ -1365,7 +1365,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
     }
 }
 
-unsafe fn key_to_key_value<T: owned>(
+unsafe fn key_to_key_value<T: Owned>(
     key: LocalDataKey<T>) -> *libc::c_void {
 
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
@@ -1375,7 +1375,7 @@ unsafe fn key_to_key_value<T: owned>(
 }
 
 // If returning Some(..), returns with @T with the map's reference. Careful!
-unsafe fn local_data_lookup<T: owned>(
+unsafe fn local_data_lookup<T: Owned>(
     map: TaskLocalMap, key: LocalDataKey<T>)
     -> Option<(uint, *libc::c_void)> {
 
@@ -1393,7 +1393,7 @@ unsafe fn local_data_lookup<T: owned>(
     }
 }
 
-unsafe fn local_get_helper<T: owned>(
+unsafe fn local_get_helper<T: Owned>(
     task: *rust_task, key: LocalDataKey<T>,
     do_pop: bool) -> Option<@T> {
 
@@ -1414,21 +1414,21 @@ unsafe fn local_get_helper<T: owned>(
     }
 }
 
-unsafe fn local_pop<T: owned>(
+unsafe fn local_pop<T: Owned>(
     task: *rust_task,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, true)
 }
 
-unsafe fn local_get<T: owned>(
+unsafe fn local_get<T: Owned>(
     task: *rust_task,
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get_helper(task, key, false)
 }
 
-unsafe fn local_set<T: owned>(
+unsafe fn local_set<T: Owned>(
     task: *rust_task, key: LocalDataKey<T>, +data: @T) {
 
     let map = get_task_local_map(task);
@@ -1460,7 +1460,7 @@ unsafe fn local_set<T: owned>(
     }
 }
 
-unsafe fn local_modify<T: owned>(
+unsafe fn local_modify<T: Owned>(
     task: *rust_task, key: LocalDataKey<T>,
     modify_fn: fn(Option<@T>) -> Option<@T>) {
 
@@ -1476,7 +1476,7 @@ unsafe fn local_modify<T: owned>(
  * Remove a task-local data value from the table, returning the
  * reference that was originally created to insert it.
  */
-unsafe fn local_data_pop<T: owned>(
+unsafe fn local_data_pop<T: Owned>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_pop(rustrt::rust_get_task(), key)
@@ -1485,7 +1485,7 @@ unsafe fn local_data_pop<T: owned>(
  * Retrieve a task-local data value. It will also be kept alive in the
  * table until explicitly removed.
  */
-unsafe fn local_data_get<T: owned>(
+unsafe fn local_data_get<T: Owned>(
     key: LocalDataKey<T>) -> Option<@T> {
 
     local_get(rustrt::rust_get_task(), key)
@@ -1494,7 +1494,7 @@ unsafe fn local_data_get<T: owned>(
  * Store a value in task-local data. If this key already has a value,
  * that value is overwritten (and its destructor is run).
  */
-unsafe fn local_data_set<T: owned>(
+unsafe fn local_data_set<T: Owned>(
     key: LocalDataKey<T>, +data: @T) {
 
     local_set(rustrt::rust_get_task(), key, data)
@@ -1503,7 +1503,7 @@ unsafe fn local_data_set<T: owned>(
  * Modify a task-local data value. If the function returns 'none', the
  * data is removed (and its reference dropped).
  */
-unsafe fn local_data_modify<T: owned>(
+unsafe fn local_data_modify<T: Owned>(
     key: LocalDataKey<T>,
     modify_fn: fn(Option<@T>) -> Option<@T>) {
 

@@ -1,4 +1,4 @@
-fn concat<T: copy>(v: ~[const ~[const T]]) -> ~[T] {
+fn concat<T: Copy>(v: ~[const ~[const T]]) -> ~[T] {
     let mut r = ~[];
 
     // Earlier versions of our type checker accepted this:

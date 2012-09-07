@@ -18,16 +18,16 @@ export recv;
  * transmitted. If a port value is copied, both copies refer to the same
  * port.  Ports may be associated with multiple `chan`s.
  */
-enum port<T: send> {
+enum port<T: Send> {
     port_t(@port_ptr<T>)
 }
 
 /// Constructs a port
-fn port<T: send>() -> port<T> {
+fn port<T: Send>() -> port<T> {
     port_t(@port_ptr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
 
-struct port_ptr<T:send> {
+struct port_ptr<T:Send> {
    po: *rust_port,
    drop unsafe {
     debug!("in the port_ptr destructor");
@@ -48,7 +48,7 @@ struct port_ptr<T:send> {
   }
 }
 
-fn port_ptr<T: send>(po: *rust_port) -> port_ptr<T> {
+fn port_ptr<T: Send>(po: *rust_port) -> port_ptr<T> {
     debug!("in the port_ptr constructor");
     port_ptr {
         po: po
@@ -59,11 +59,11 @@ fn port_ptr<T: send>(po: *rust_port) -> port_ptr<T> {
  * Receive from a port.  If no data is available on the port then the
  * task will block until data becomes available.
  */
-fn recv<T: send>(p: port<T>) -> T { recv_((**p).po) }
+fn recv<T: Send>(p: port<T>) -> T { recv_((**p).po) }
 
 
 /// Receive on a raw port pointer
-fn recv_<T: send>(p: *rust_port) -> T {
+fn recv_<T: Send>(p: *rust_port) -> T {
     let yield = 0u;
     let yieldp = ptr::addr_of(yield);
     let mut res;

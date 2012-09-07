@@ -18,7 +18,7 @@ const min_granularity : uint = 1024u;
  * This is used to build most of the other parallel vector functions,
  * like map or alli.
  */
-fn map_slices<A: copy send, B: copy send>(
+fn map_slices<A: Copy Send, B: Copy Send>(
     xs: &[A],
     f: fn() -> fn~(uint, v: &[A]) -> B)
     -> ~[B] {
@@ -73,7 +73,7 @@ fn map_slices<A: copy send, B: copy send>(
 }
 
 /// A parallel version of map.
-fn map<A: copy send, B: copy send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
+fn map<A: Copy Send, B: Copy Send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
     vec::concat(map_slices(xs, || {
         fn~(_base: uint, slice : &[A], copy f) -> ~[B] {
             vec::map(slice, |x| f(x))
@@ -82,7 +82,7 @@ fn map<A: copy send, B: copy send>(xs: ~[A], f: fn~(A) -> B) -> ~[B] {
 }
 
 /// A parallel version of mapi.
-fn mapi<A: copy send, B: copy send>(xs: ~[A],
+fn mapi<A: Copy Send, B: Copy Send>(xs: ~[A],
                                     f: fn~(uint, A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> ~[B] {
@@ -103,7 +103,7 @@ fn mapi<A: copy send, B: copy send>(xs: ~[A],
  * In this case, f is a function that creates functions to run over the
  * inner elements. This is to skirt the need for copy constructors.
  */
-fn mapi_factory<A: copy send, B: copy send>(
+fn mapi_factory<A: Copy Send, B: Copy Send>(
     xs: &[A], f: fn() -> fn~(uint, A) -> B) -> ~[B] {
     let slices = map_slices(xs, || {
         let f = f();
@@ -120,7 +120,7 @@ fn mapi_factory<A: copy send, B: copy send>(
 }
 
 /// Returns true if the function holds for all elements in the vector.
-fn alli<A: copy send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
+fn alli<A: Copy Send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
     do vec::all(map_slices(xs, || {
         fn~(base: uint, slice : &[A], copy f) -> bool {
             vec::alli(slice, |i, x| {
@@ -131,7 +131,7 @@ fn alli<A: copy send>(xs: ~[A], f: fn~(uint, A) -> bool) -> bool {
 }
 
 /// Returns true if the function holds for any elements in the vector.
-fn any<A: copy send>(xs: ~[A], f: fn~(A) -> bool) -> bool {
+fn any<A: Copy Send>(xs: ~[A], f: fn~(A) -> bool) -> bool {
     do vec::any(map_slices(xs, || {
         fn~(_base : uint, slice: &[A], copy f) -> bool {
             vec::any(slice, |x| f(x))

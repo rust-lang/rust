@@ -4,6 +4,6 @@
 // -*- rust -*-
 
 // Issue #45: infer type parameters in function applications
-fn id<T: copy>(x: T) -> T { return x; }
+fn id<T: Copy>(x: T) -> T { return x; }
 
 fn main() { let x: int = 42; let y: int = id(x); assert (x == y); }

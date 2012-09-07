@@ -4,7 +4,7 @@ import iter;
 import iter::BaseIter;
 
 trait A {
-  fn b<C:copy, D>(x: C) -> C;
+  fn b<C:Copy, D>(x: C) -> C;
 }
 
 struct E {
@@ -12,7 +12,7 @@ struct E {
 }
 
 impl E: A {
-  fn b<F:copy const, G>(_x: F) -> F { fail } //~ ERROR in method `b`, type parameter 0 has 2 bounds, but
+  fn b<F:Copy Const, G>(_x: F) -> F { fail } //~ ERROR in method `b`, type parameter 0 has 2 bounds, but
 }
 
 fn main() {}

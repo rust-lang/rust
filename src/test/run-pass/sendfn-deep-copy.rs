@@ -5,7 +5,7 @@ use comm::send;
 
 fn main() { test05(); }
 
-fn mk_counter<A:copy>() -> fn~(A) -> (A,uint) {
+fn mk_counter<A:Copy>() -> fn~(A) -> (A,uint) {
     // The only reason that the counter is generic is so that it closes
     // over both a type descriptor and some data.
     let v = ~[mut 0u];

@@ -2,7 +2,7 @@
 // are const.
 
 
-fn foo<T: copy const>(x: T) -> T { x }
+fn foo<T: Copy Const>(x: T) -> T { x }
 
 fn main() {
     foo(1);

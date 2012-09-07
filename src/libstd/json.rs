@@ -720,7 +720,7 @@ impl <A: ToJson> ~[A]: ToJson {
     fn to_json() -> Json { List(@self.map(|elt| elt.to_json())) }
 }
 
-impl <A: ToJson copy> hashmap<~str, A>: ToJson {
+impl <A: ToJson Copy> hashmap<~str, A>: ToJson {
     fn to_json() -> Json {
         let d = map::str_hash();
         for self.each() |key, value| {

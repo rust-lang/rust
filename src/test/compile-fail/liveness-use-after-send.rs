@@ -1,4 +1,4 @@
-fn send<T: send>(ch: _chan<T>, -data: T) {
+fn send<T: Send>(ch: _chan<T>, -data: T) {
     log(debug, ch);
     log(debug, data);
     fail;
