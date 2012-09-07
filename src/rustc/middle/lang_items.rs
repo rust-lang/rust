@@ -193,7 +193,7 @@ struct LanguageItemCollector {
                     }
                     dl_def(_) | dl_impl(_) | dl_field => {
                         // Skip this.
-                        again;
+                        loop;
                     }
                 }
 

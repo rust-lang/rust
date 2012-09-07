@@ -412,7 +412,7 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
 fn restricted_keyword_table() -> hashmap<~str, ()> {
     let words = str_hash();
     let keys = ~[
-        ~"again", ~"assert",
+        ~"assert",
         ~"break",
         ~"const", ~"copy",
         ~"do", ~"drop",

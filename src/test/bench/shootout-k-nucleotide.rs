@@ -154,7 +154,7 @@ fn main(args: ~[~str]) {
    while !rdr.eof() {
       let line: ~str = rdr.read_line();
 
-      if str::len(line) == 0u { again; }
+      if str::len(line) == 0u { loop; }
 
       match (line[0], proc_mode) {
 

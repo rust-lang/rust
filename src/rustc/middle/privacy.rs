@@ -36,7 +36,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
     let check_field = |span, id, ident| {
         let fields = ty::lookup_class_fields(tcx, id);
         for fields.each |field| {
-            if field.ident != ident { again; }
+            if field.ident != ident { loop; }
             if field.vis == private {
                 tcx.sess.span_err(span, fmt!("field `%s` is private",
                                              *tcx.sess.parse_sess.interner

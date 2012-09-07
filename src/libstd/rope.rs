@@ -1171,7 +1171,7 @@ mod node {
                   option::Some(_) => {
                     let next_char = get_next_char_in_leaf(it);
                     match (next_char) {
-                      option::None => again,
+                      option::None => loop,
                       option::Some(_) => return next_char
                     }
                   }

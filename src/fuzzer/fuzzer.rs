@@ -562,18 +562,18 @@ fn check_variants(files: &[Path], cx: context) {
             file_might_not_converge(&file) {
             error!("Skipping convergence test based on\
                     file_might_not_converge");
-            again;
+            loop;
         }
 
         let s = @result::get(io::read_whole_file_str(&file));
         if contains(*s, ~"#") {
-            again; // Macros are confusing
+            loop; // Macros are confusing
         }
         if cx.mode == tm_converge && content_might_not_converge(*s) {
-            again;
+            loop;
         }
         if cx.mode == tm_run && content_is_dangerous_to_compile(*s) {
-            again;
+            loop;
         }
 
         log(error, ~"check_variants: " + file.to_str());

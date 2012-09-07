@@ -772,7 +772,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         // maybe we should only ever handle the real type signatures.
         for vec::each(ms) |m| {
             let ty_m = ast_util::trait_method_to_ty_method(m);
-            if ty_m.self_ty.node != ast::sty_static { again; }
+            if ty_m.self_ty.node != ast::sty_static { loop; }
 
             vec::push(*index, {val: ty_m.id, pos: ebml_w.writer.tell()});
 

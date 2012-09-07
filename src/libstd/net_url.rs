@@ -347,12 +347,12 @@ fn query_to_str(+query: Query) -> ~str {
 fn get_scheme(rawurl: &str) -> result::Result<(~str, ~str), @~str> {
     for str::each_chari(rawurl) |i,c| {
         match c {
-          'A' .. 'Z' | 'a' .. 'z' => again,
+          'A' .. 'Z' | 'a' .. 'z' => loop,
           '0' .. '9' | '+' | '-' | '.' => {
             if i == 0 {
                 return result::Err(@~"url: Scheme must begin with a letter.");
             }
-            again;
+            loop;
           }
           ':' => {
             if i == 0 {
@@ -419,7 +419,7 @@ fn get_authority(rawurl: &str) ->
     let mut pos : uint = 0, begin : uint = 2, end : uint = len;
 
     for str::each_chari(rawurl) |i,c| {
-        if i < 2 { again; } // ignore the leading //
+        if i < 2 { loop; } // ignore the leading //
 
         // deal with input class first
         match c {
@@ -569,7 +569,7 @@ fn get_path(rawurl: &str, authority : bool) ->
           'A' .. 'Z' | 'a' .. 'z' | '0' .. '9' | '&' |'\'' | '(' | ')' | '.'
           | '@' | ':' | '%' | '/' | '+' | '!' | '*' | ',' | ';' | '='
           | '_' | '-' => {
-            again;
+            loop;
           }
           '?' | '#' => {
             end = i;

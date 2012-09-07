@@ -17,7 +17,7 @@ fn log_ret() { log(error, return); }
 
 fn log_break() { loop { log(error, break); } }
 
-fn log_again() { loop { log(error, again); } }
+fn log_again() { loop { log(error, loop); } }
 
 fn ret_ret() -> int { return (return 2) + 3; }
 
