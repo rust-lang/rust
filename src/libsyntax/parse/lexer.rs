@@ -267,21 +267,16 @@ fn consume_block_comment(rdr: string_reader)
                 sp: ast_util::mk_sp(start_chpos, rdr.chpos)
             });
         }
-    }
-
-    let mut level: int = 1;
-    while level > 0 {
-        if is_eof(rdr) { rdr.fatal(~"unterminated block comment"); }
-        if rdr.curr == '/' && nextch(rdr) == '*' {
-            bump(rdr);
-            bump(rdr);
-            level += 1;
-        } else {
+    } else {
+        loop {
+            if is_eof(rdr) { rdr.fatal(~"unterminated block comment"); }
             if rdr.curr == '*' && nextch(rdr) == '/' {
                 bump(rdr);
                 bump(rdr);
-                level -= 1;
-            } else { bump(rdr); }
+                break;
+            } else {
+                bump(rdr);
+            }
         }
     }
     // restart whitespace munch.

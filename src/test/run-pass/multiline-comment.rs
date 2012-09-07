@@ -1,9 +1,6 @@
-
-
-
 // -*- rust -*-
 
 /*
- * This is a /* depth-balanced */ multi-line comment.
+ * This is a multi-line comment.
  */
 fn main() { }
