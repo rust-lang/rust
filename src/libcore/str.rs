@@ -2303,7 +2303,7 @@ impl &str: StrSlice {
 #[cfg(test)]
 mod tests {
 
-    import libc::c_char;
+    use libc::c_char;
 
     #[test]
     fn test_eq() {

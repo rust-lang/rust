@@ -16,10 +16,8 @@ use ast_builder::{append_types, path, empty_span};
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
-    import ext;
-    export ext;
-    import parse;
-    export parse;
+    pub use ext;
+    pub use parse;
 }
 
 trait gen_send {
@@ -321,7 +319,7 @@ impl protocol: gen_init {
         };
 
         cx.parse_item(fmt!("fn init%s() -> (client::%s, server::%s)\
-                            { import pipes::HasBuffer; %s }",
+                            { use pipes::HasBuffer; %s }",
                            start_state.ty_params.to_source(cx),
                            start_state.to_ty(cx).to_source(cx),
                            start_state.to_ty(cx).to_source(cx),

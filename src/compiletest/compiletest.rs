@@ -1,20 +1,16 @@
-import option;
-import std::getopts;
-import std::test;
-import str;
-import vec;
-import task;
+use std::getopts;
+use std::test;
 
-import core::result;
-import result::{Ok, Err};
+use core::result;
+use result::{Ok, Err};
 
-import common::config;
-import common::mode_run_pass;
-import common::mode_run_fail;
-import common::mode_compile_fail;
-import common::mode_pretty;
-import common::mode;
-import util::logv;
+use common::config;
+use common::mode_run_pass;
+use common::mode_run_fail;
+use common::mode_compile_fail;
+use common::mode_pretty;
+use common::mode;
+use util::logv;
 
 fn main(args: ~[~str]) {
     let config = parse_config(args);

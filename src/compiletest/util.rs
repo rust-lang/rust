@@ -1,7 +1,6 @@
-import option;
-import os::getenv;
+use os::getenv;
 
-import common::config;
+use common::config;
 
 fn make_new_path(path: ~str) -> ~str {
 

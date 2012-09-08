@@ -7,7 +7,7 @@ mod a {
 }
 
 mod c {
-    import a::b::a;
+    use a::b::a;
     fn bar() { assert (a::foo() == 1); }
 }
 

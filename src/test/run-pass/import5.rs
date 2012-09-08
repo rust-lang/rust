@@ -1,6 +1,6 @@
 use foo::bar;
 mod foo {
-    import zed::bar;
+    use zed::bar;
     export bar;
     mod zed {
         fn bar() { debug!("foo"); }

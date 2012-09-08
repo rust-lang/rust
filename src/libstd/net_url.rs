@@ -1087,7 +1087,7 @@ mod tests {
 
     #[test]
     fn test_decode_form_urlencoded() {
-        import map::hash_from_strs;
+        use map::hash_from_strs;
 
         assert decode_form_urlencoded(~[]).size() == 0;
 

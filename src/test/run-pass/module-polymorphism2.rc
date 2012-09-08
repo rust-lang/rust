@@ -4,10 +4,10 @@ mod mystd {
     #[path = "float-template"]
     mod float {
         // The type of the float
-        import inst::T;
+        use inst::T;
 
         // Unfortunate
-        import template::*;
+        use template::*;
         export plus;
 
         // Define T as float
@@ -23,10 +23,10 @@ mod mystd {
     #[path = "float-template"]
     mod f64 {
 
-        import inst::T;
+        use inst::T;
 
         // Unfortunate
-        import template::*;
+        use template::*;
         export plus;
 
         // Define T as f64
@@ -41,10 +41,10 @@ mod mystd {
 
     #[path = "float-template"]
     mod f32 {
-        import inst::T;
+        use inst::T;
 
         // Unfortunate
-        import template::*;
+        use template::*;
         export plus;
 
         #[path = "inst_f32.rs"]

@@ -336,7 +336,7 @@ fn program_output(prog: &str, args: &[~str]) ->
 }
 
 fn writeclose(fd: c_int, s: &str) {
-    import io::WriterUtil;
+    use io::WriterUtil;
 
     error!("writeclose %d, %s", fd as int, s);
     let writer = io::fd_writer(fd, false);
@@ -402,7 +402,7 @@ fn waitpid(pid: pid_t) -> int {
 #[cfg(test)]
 mod tests {
 
-    import io::WriterUtil;
+    use io::WriterUtil;
 
     // Regression test for memory leaks
     #[ignore(cfg(windows))] // FIXME (#2626)

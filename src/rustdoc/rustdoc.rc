@@ -19,8 +19,8 @@ use std(vers = "0.4");
 use rustc(vers = "0.4");
 use syntax(vers = "0.4");
 
-import core::*;
-import std::par;
+use core::*;
+use std::par;
 
 mod config;
 mod parse;

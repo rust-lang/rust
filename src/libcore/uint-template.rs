@@ -276,7 +276,7 @@ fn test_from_str() {
 #[test]
 #[ignore]
 fn test_parse_buf() {
-    import str::to_bytes;
+    use str::to_bytes;
     assert parse_buf(to_bytes(~"123"), 10u) == Some(123u as T);
     assert parse_buf(to_bytes(~"1001"), 2u) == Some(9u as T);
     assert parse_buf(to_bytes(~"123"), 8u) == Some(83u as T);
@@ -304,7 +304,7 @@ fn to_str_radix17() {
 
 #[test]
 fn test_times() {
-    import iter::Times;
+    use iter::Times;
     let ten = 10 as T;
     let mut accum = 0;
     for ten.times { accum += 1; }

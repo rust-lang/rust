@@ -28,7 +28,7 @@ fn macros() {
 
 // Code
 fn test(+foo: foo::client::foo, +bar: bar::client::bar) {
-    import bar::do_baz;
+    use bar::do_baz;
 
     select! (
         foo => {

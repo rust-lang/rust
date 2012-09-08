@@ -4,14 +4,14 @@ mod a1 {
     //
     mod b1 {
         //
-        import a2::b1::*;
+        use a2::b1::*;
         //         <-\
         export word_traveler; //           |
     }
     //           |
     mod b2 {
         //           |
-        import a2::b2::*;
+        use a2::b2::*;
         // <-\  -\   |
         export word_traveler; //   |   |   |
     } //   |   |   |
@@ -24,7 +24,7 @@ mod a2 {
     #[nolink]
     extern mod b1 {
         //   |   |   |
-        import a1::b2::*;
+        use a1::b2::*;
         //   | <-/  -/
         export word_traveler; //   |
     }

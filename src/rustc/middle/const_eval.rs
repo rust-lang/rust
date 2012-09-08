@@ -206,7 +206,7 @@ impl const_val: cmp::Eq {
 
 // FIXME: issue #1417
 fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
-    import middle::ty;
+    use middle::ty;
     fn fromb(b: bool) -> const_val { const_int(b as i64) }
     match e.node {
       expr_unary(neg, inner) => {

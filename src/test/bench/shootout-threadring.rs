@@ -4,7 +4,7 @@ use std;
 const n_threads: int = 503;
 
 fn start(+token: int) {
-    import iter::*;
+    use iter::*;
 
     let p = comm::Port();
     let mut ch = comm::Chan(p);

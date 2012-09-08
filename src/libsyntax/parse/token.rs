@@ -279,7 +279,7 @@ pure fn is_bar(t: token) -> bool {
 
 
 mod special_idents {
-    import ast::ident;
+    use ast::ident;
     const underscore : ident = 0u;
     const anon : ident = 1u;
     const dtor : ident = 2u; // 'drop', but that's reserved
@@ -433,7 +433,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"do", ~"drop",
         ~"else", ~"enum", ~"export", ~"extern",
         ~"false", ~"for",
-        ~"if", ~"import",
+        ~"if",
         ~"let", ~"log", ~"loop",
         ~"match", ~"mod", ~"move", ~"mut",
         ~"pure",

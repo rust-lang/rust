@@ -13,11 +13,11 @@ proto! pingpong (
 )
 
 mod test {
-    import pipes::recv;
-    import pingpong::{ping, pong};
+    use pipes::recv;
+    use pingpong::{ping, pong};
 
     fn client(-chan: pingpong::client::ping) {
-        import pingpong::client;
+        use pingpong::client;
 
         let chan = client::ping(chan);
         log(error, ~"Sent ping");
@@ -26,7 +26,7 @@ mod test {
     }
     
     fn server(-chan: pingpong::server::ping) {
-        import pingpong::server;
+        use pingpong::server;
 
         let ping(chan) = recv(chan);
         log(error, ~"Received ping");

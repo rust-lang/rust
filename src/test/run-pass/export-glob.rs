@@ -4,7 +4,7 @@
 // Modified to not use export since it's going away. --pcw
 
 mod foo {
-    import bar::*;
+    use bar::*;
     export a;
     mod bar {
         const a : int = 10;

@@ -3345,15 +3345,6 @@ impl parser {
                 vis: visibility,
                 span: mk_sp(lo, self.last_span.hi)
             });
-        } else if self.eat_keyword(~"import") {
-            let view_paths = self.parse_view_paths();
-            self.expect(token::SEMI);
-            return iovi_view_item(@{
-                node: view_item_import(view_paths),
-                attrs: attrs,
-                vis: visibility,
-                span: mk_sp(lo, self.last_span.hi)
-            });
         } else if self.eat_keyword(~"export") {
             let view_paths = self.parse_view_paths();
             self.expect(token::SEMI);
@@ -3506,7 +3497,6 @@ impl parser {
             next_tok = self.look_ahead(2);
         };
         self.token_is_keyword(~"use", tok)
-            || self.token_is_keyword(~"import", tok)
             || self.token_is_keyword(~"export", tok)
             || (self.token_is_keyword(~"extern", tok) &&
                 self.token_is_keyword(~"mod", next_tok))
@@ -3516,8 +3506,6 @@ impl parser {
         let lo = self.span.lo, vis = self.parse_visibility();
         let node = if self.eat_keyword(~"use") {
             self.parse_use(vis)
-        } else if self.eat_keyword(~"import") {
-            view_item_import(self.parse_view_paths())
         } else if self.eat_keyword(~"export") {
             view_item_export(self.parse_view_paths())
         } else if self.eat_keyword(~"extern") {

@@ -72,7 +72,7 @@ fn switch<T: Send, Tb: Send, U>(+endp: pipes::RecvPacketBuffered<T, Tb>,
 // Here's the benchmark
 
 fn bounded(count: uint) {
-    import pingpong::*;
+    use pingpong::*;
 
     let mut ch = do spawn_service(init) |ch| {
         let mut count = count;
@@ -99,7 +99,7 @@ fn bounded(count: uint) {
 }
 
 fn unbounded(count: uint) {
-    import pingpong_unbounded::*;
+    use pingpong_unbounded::*;
 
     let mut ch = do spawn_service(init) |ch| {
         let mut count = count;

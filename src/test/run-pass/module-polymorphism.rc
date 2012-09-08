@@ -2,7 +2,7 @@
 mod my_float {
 
     // The type of the float
-    import inst::T;
+    use inst::T;
 
     // Define T as float
     #[path = "inst_float.rs"]
@@ -17,7 +17,7 @@ mod my_float {
 #[path = "module-polymorphism-files"]
 mod my_f64 {
 
-    import inst::T;
+    use inst::T;
 
     // Define T as f64
     #[path = "inst_f64.rs"]
@@ -31,7 +31,7 @@ mod my_f64 {
 
 #[path = "module-polymorphism-files"]
 mod my_f32 {
-    import inst::T;
+    use inst::T;
 
     #[path = "inst_f32.rs"]
     mod inst;

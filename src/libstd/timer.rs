@@ -181,7 +181,7 @@ mod test {
             for spec.each |spec| {
                 let (times, maxms) = spec;
                 do task::spawn {
-                    import rand::*;
+                    use rand::*;
                     let rng = Rng();
                     for iter::repeat(times) {
                         sleep(hl_loop, rng.next() as uint % maxms);

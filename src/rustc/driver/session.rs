@@ -296,7 +296,7 @@ fn building_library(req_crate_type: crate_type, crate: @ast::crate,
 }
 
 fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
-    import metadata::loader;
+    use metadata::loader;
 
     match os {
       os_win32 => loader::os_win32,
@@ -308,7 +308,7 @@ fn sess_os_to_meta_os(os: os) -> metadata::loader::os {
 
 #[cfg(test)]
 mod test {
-    import syntax::ast_util;
+    use syntax::ast_util;
 
     fn make_crate_type_attr(t: ~str) -> ast::attribute {
         ast_util::respan(ast_util::dummy_sp(), {

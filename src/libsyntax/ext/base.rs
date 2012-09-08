@@ -299,9 +299,9 @@ fn get_mac_body(cx: ext_ctxt, sp: span, args: ast::mac_body)
 // using new syntax. This will be obsolete when #old_macros go away.
 fn tt_args_to_original_flavor(cx: ext_ctxt, sp: span, arg: ~[ast::token_tree])
     -> ast::mac_arg {
-    import ast::{matcher, matcher_, match_tok, match_seq, match_nonterminal};
-    import parse::lexer::{new_tt_reader, reader};
-    import tt::macro_parser::{parse_or_else, matched_seq,
+    use ast::{matcher, matcher_, match_tok, match_seq, match_nonterminal};
+    use parse::lexer::{new_tt_reader, reader};
+    use tt::macro_parser::{parse_or_else, matched_seq,
                               matched_nonterminal};
 
     // these spans won't matter, anyways

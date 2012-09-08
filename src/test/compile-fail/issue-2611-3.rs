@@ -3,8 +3,7 @@
 // we let an impl method can have more permissive bounds than the trait
 // method it's implementing, the return type might be less specific than
 // needed. Just punt and make it invariant.
-import iter;
-import iter::BaseIter;
+use iter::BaseIter;
 
 trait A {
   fn b<C:Copy Const, D>(x: C) -> C;

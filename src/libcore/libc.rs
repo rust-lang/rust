@@ -1143,7 +1143,7 @@ mod funcs {
 
     #[cfg(target_os = "win32")]
     mod extra {
-        import types::os::arch::extra::*;
+        use types::os::arch::extra::*;
 
         #[abi = "stdcall"]
         extern mod kernel32 {
