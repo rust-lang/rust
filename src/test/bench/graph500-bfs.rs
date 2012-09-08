@@ -67,11 +67,9 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
     }
 }
 
-pure fn node_hash(n: &node_id) -> uint { *n as uint }
-
 fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     let graph = do vec::from_fn(N) |_i| {
-        map::hashmap::<node_id, ()>(node_hash, sys::shape_eq)
+        map::hashmap::<node_id, ()>()
     };
 
     do vec::each(edges) |e| {
@@ -87,7 +85,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
 }
 
 fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
-    let keys = map::hashmap::<node_id, ()>(node_hash, sys::shape_eq);
+    let keys = map::hashmap::<node_id, ()>();
     let r = rand::Rng();
 
     while keys.size() < n {

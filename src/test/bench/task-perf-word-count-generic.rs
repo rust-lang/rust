@@ -39,13 +39,6 @@ trait hash_key {
     pure fn eq(&&k: self) -> bool;
 }
 
-fn mk_hash<K: Const hash_key, V: Copy>() -> map::hashmap<K, V> {
-    pure fn hashfn<K: Const hash_key>(k: &K) -> uint { k.hash() }
-    pure fn hasheq<K: Const hash_key>(k1: &K, k2: &K) -> bool { k1.eq(*k2) }
-
-    map::hashmap(hashfn, hasheq)
-}
-
 impl ~str: hash_key {
     pure fn hash() -> uint { str::hash(&self) }
     pure fn eq(&&x: ~str) -> bool { self == x }
@@ -175,11 +168,12 @@ mod map_reduce {
         input: K1)
     {
         // log(error, "map_task " + input);
-        let intermediates = mk_hash();
+        let intermediates = map::hashmap();
 
         do map(input) |key, val| {
             let mut c = None;
-            match intermediates.find(key) {
+            let found = intermediates.find(key);
+            match found {
               Some(_c) => { c = Some(_c); }
               None => {
                 do ctrl.swap |ctrl| {
@@ -251,7 +245,7 @@ mod map_reduce {
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers = mk_hash();
+        let reducers = map::hashmap();
         let mut tasks = start_mappers(map, ctrl, inputs);
         let mut num_mappers = vec::len(inputs) as int;
 
