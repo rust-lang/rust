@@ -33,7 +33,7 @@ export future_pipe;
 
 #[doc = "The future type"]
 struct Future<A> {
-    /*priv*/ mut state: FutureState<A>;
+    /*priv*/ mut state: FutureState<A>,
 
     // FIXME(#2829) -- futures should not be copyable, because they close
     // over fn~'s that have pipes and so forth within!
