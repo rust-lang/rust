@@ -1856,7 +1856,7 @@ struct parser {
                   }) => {
                       let vst = @{id: self.get_id(), callee_id: self.get_id(),
                                   node: expr_vstore(e,
-                                          vstore_slice(self.region_from_name(None))),
+                                  vstore_slice(self.region_from_name(None))),
                                   span: mk_sp(lo, hi)};
                       pat_lit(vst)
                   }
