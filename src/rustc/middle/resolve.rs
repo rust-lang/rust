@@ -309,7 +309,7 @@ fn Atom(n: uint) -> Atom {
 
 /// Creates a hash table of atoms.
 fn atom_hashmap<V:copy>() -> hashmap<Atom,V> {
-  hashmap::<Atom,V>(|x| { uint::hash(*x) }, |x, y| { uint::eq(*x, *y) })
+  hashmap::<Atom,V>()
 }
 
 /// One local scope.

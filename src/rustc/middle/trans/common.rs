@@ -1125,24 +1125,24 @@ impl mono_id_: cmp::Eq {
     pure fn ne(&&other: mono_id_) -> bool { !self.eq(other) }
 }
 
-pure fn hash_mono_id(mi: &mono_id) -> uint {
-    let mut h = syntax::ast_util::hash_def(&mi.def);
-    for vec::each(mi.params) |param| {
-        h = h * match param {
-          mono_precise(ty, vts) => {
-            let mut h = ty::type_id(ty);
-            do option::iter(vts) |vts| {
-                for vec::each(vts) |vt| {
-                    h += hash_mono_id(&vt);
-                }
-            }
-            h
-          }
-          mono_any => 1u,
-          mono_repr(sz, align) => sz * (align + 2u)
+impl mono_param_id : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          mono_precise(t, mids) =>
+          to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), &mids, lsb0, f),
+
+          mono_any => 1u8.iter_bytes(lsb0, f),
+
+          mono_repr(a,b) =>
+          to_bytes::iter_bytes_3(&2u8, &a, &b, lsb0, f)
         }
     }
-    h
+}
+
+impl mono_id_ : core::to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
+    }
 }
 
 fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {

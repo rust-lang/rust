@@ -64,7 +64,7 @@ impl <A: IterBytes> A: Hash {
     pure fn hash_keyed(k0: u64, k1: u64) -> u64 {
         unchecked {
             let s = &State(k0, k1);
-            for self.iter_le_bytes |bytes| {
+            for self.iter_bytes(true) |bytes| {
                 s.input(bytes);
             }
             s.result_u64()
@@ -79,8 +79,8 @@ pure fn hash_keyed_2<A: IterBytes,
                                    k0: u64, k1: u64) -> u64 {
     unchecked {
         let s = &State(k0, k1);
-        for a.iter_le_bytes |bytes| { s.input(bytes); }
-        for b.iter_le_bytes |bytes| { s.input(bytes); }
+        for a.iter_bytes(true) |bytes| { s.input(bytes); }
+        for b.iter_bytes(true) |bytes| { s.input(bytes); }
         s.result_u64()
     }
 }
@@ -91,9 +91,9 @@ pure fn hash_keyed_3<A: IterBytes,
                                    k0: u64, k1: u64) -> u64 {
     unchecked {
         let s = &State(k0, k1);
-        for a.iter_le_bytes |bytes| { s.input(bytes); }
-        for b.iter_le_bytes |bytes| { s.input(bytes); }
-        for c.iter_le_bytes |bytes| { s.input(bytes); }
+        for a.iter_bytes(true) |bytes| { s.input(bytes); }
+        for b.iter_bytes(true) |bytes| { s.input(bytes); }
+        for c.iter_bytes(true) |bytes| { s.input(bytes); }
         s.result_u64()
     }
 }
@@ -105,10 +105,10 @@ pure fn hash_keyed_4<A: IterBytes,
                                    k0: u64, k1: u64) -> u64 {
     unchecked {
         let s = &State(k0, k1);
-        for a.iter_le_bytes |bytes| { s.input(bytes); }
-        for b.iter_le_bytes |bytes| { s.input(bytes); }
-        for c.iter_le_bytes |bytes| { s.input(bytes); }
-        for d.iter_le_bytes |bytes| { s.input(bytes); }
+        for a.iter_bytes(true) |bytes| { s.input(bytes); }
+        for b.iter_bytes(true) |bytes| { s.input(bytes); }
+        for c.iter_bytes(true) |bytes| { s.input(bytes); }
+        for d.iter_bytes(true) |bytes| { s.input(bytes); }
         s.result_u64()
     }
 }
@@ -121,11 +121,11 @@ pure fn hash_keyed_5<A: IterBytes,
                                    k0: u64, k1: u64) -> u64 {
     unchecked {
         let s = &State(k0, k1);
-        for a.iter_le_bytes |bytes| { s.input(bytes); }
-        for b.iter_le_bytes |bytes| { s.input(bytes); }
-        for c.iter_le_bytes |bytes| { s.input(bytes); }
-        for d.iter_le_bytes |bytes| { s.input(bytes); }
-        for e.iter_le_bytes |bytes| { s.input(bytes); }
+        for a.iter_bytes(true) |bytes| { s.input(bytes); }
+        for b.iter_bytes(true) |bytes| { s.input(bytes); }
+        for c.iter_bytes(true) |bytes| { s.input(bytes); }
+        for d.iter_bytes(true) |bytes| { s.input(bytes); }
+        for e.iter_bytes(true) |bytes| { s.input(bytes); }
         s.result_u64()
     }
 }

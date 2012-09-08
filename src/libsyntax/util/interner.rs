@@ -2,40 +2,39 @@
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
 use std::map;
-use std::map::{hashmap, hashfn, eqfn};
+use std::map::hashmap;
 use dvec::DVec;
+use cmp::Eq;
+use hash::Hash;
+use to_bytes::IterBytes;
 
 type hash_interner<T: const> =
     {map: hashmap<T, uint>,
-     vect: DVec<T>,
-     hasher: hashfn<T>,
-     eqer: eqfn<T>};
+     vect: DVec<T>};
 
-fn mk<T: const copy>(+hasher: hashfn<T>, +eqer: eqfn<T>) -> interner<T> {
-    let m = map::hashmap::<T, uint>(copy hasher, copy eqer);
+fn mk<T:Eq IterBytes Hash const copy>() -> interner<T> {
+    let m = map::hashmap::<T, uint>();
     let hi: hash_interner<T> =
-        {map: m, vect: DVec(), hasher: hasher, eqer: eqer};
+        {map: m, vect: DVec()};
     return hi as interner::<T>;
 }
 
-fn mk_prefill<T: const copy>(hasher: hashfn<T>, eqer: eqfn<T>,
-                             init: ~[T]) -> interner<T> {
-
-    let rv = mk(copy hasher, copy eqer);
+fn mk_prefill<T:Eq IterBytes Hash const copy>(init: ~[T]) -> interner<T> {
+    let rv = mk();
     for init.each() |v| { rv.intern(v); }
     return rv;
 }
 
 
 /* when traits can extend traits, we should extend index<uint,T> to get [] */
-trait interner<T: const copy> {
+trait interner<T:Eq IterBytes Hash const copy> {
     fn intern(T) -> uint;
     fn gensym(T) -> uint;
     pure fn get(uint) -> T;
     fn len() -> uint;
 }
 
-impl <T: const copy> hash_interner<T>: interner<T> {
+impl <T:Eq IterBytes Hash const copy> hash_interner<T>: interner<T> {
     fn intern(val: T) -> uint {
         match self.map.find(val) {
           Some(idx) => return idx,

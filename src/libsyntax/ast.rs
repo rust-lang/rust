@@ -310,6 +310,22 @@ enum binding_mode {
     bind_by_implicit_ref
 }
 
+impl binding_mode : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          bind_by_value => 0u8.iter_bytes(lsb0, f),
+
+          bind_by_move => 1u8.iter_bytes(lsb0, f),
+
+          bind_by_ref(ref m) =>
+          to_bytes::iter_bytes_2(&2u8, m, lsb0, f),
+
+          bind_by_implicit_ref =>
+          3u8.iter_bytes(lsb0, f),
+        }
+    }
+}
+
 impl binding_mode : cmp::Eq {
     pure fn eq(&&other: binding_mode) -> bool {
         match self {
@@ -367,6 +383,12 @@ enum pat_ {
 
 #[auto_serialize]
 enum mutability { m_mutbl, m_imm, m_const, }
+
+impl mutability : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
 
 impl mutability: cmp::Eq {
     pure fn eq(&&other: mutability) -> bool {
@@ -443,6 +465,18 @@ enum inferable<T> {
     infer(node_id)
 }
 
+impl<T: to_bytes::IterBytes> inferable<T> : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          expl(ref t) =>
+          to_bytes::iter_bytes_2(&0u8, t, lsb0, f),
+
+          infer(ref n) =>
+          to_bytes::iter_bytes_2(&1u8, n, lsb0, f),
+        }
+    }
+}
+
 impl<T:cmp::Eq> inferable<T> : cmp::Eq {
     pure fn eq(&&other: inferable<T>) -> bool {
         match self {
@@ -466,6 +500,13 @@ impl<T:cmp::Eq> inferable<T> : cmp::Eq {
 // "resolved" mode: the real modes.
 #[auto_serialize]
 enum rmode { by_ref, by_val, by_mutbl_ref, by_move, by_copy }
+
+impl rmode : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
+
 
 impl rmode : cmp::Eq {
     pure fn eq(&&other: rmode) -> bool {
@@ -822,6 +863,12 @@ enum trait_method {
 #[auto_serialize]
 enum int_ty { ty_i, ty_char, ty_i8, ty_i16, ty_i32, ty_i64, }
 
+impl int_ty : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
+
 impl int_ty: cmp::Eq {
     pure fn eq(&&other: int_ty) -> bool {
         match (self, other) {
@@ -845,6 +892,12 @@ impl int_ty: cmp::Eq {
 #[auto_serialize]
 enum uint_ty { ty_u, ty_u8, ty_u16, ty_u32, ty_u64, }
 
+impl uint_ty : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
+
 impl uint_ty: cmp::Eq {
     pure fn eq(&&other: uint_ty) -> bool {
         match (self, other) {
@@ -866,6 +919,11 @@ impl uint_ty: cmp::Eq {
 #[auto_serialize]
 enum float_ty { ty_f, ty_f32, ty_f64, }
 
+impl float_ty : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
 impl float_ty: cmp::Eq {
     pure fn eq(&&other: float_ty) -> bool {
         match (self, other) {
@@ -954,6 +1012,24 @@ enum ty_ {
     ty_infer,
 }
 
+// Equality and byte-iter (hashing) can be quite approximate for AST types.
+// since we only care about this for normalizing them to "real" types.
+impl ty : cmp::Eq {
+    pure fn eq(&&other: ty) -> bool {
+        ptr::addr_of(self) == ptr::addr_of(other)
+    }
+    pure fn ne(&&other: ty) -> bool {
+        ptr::addr_of(self) != ptr::addr_of(other)
+    }
+}
+
+impl ty : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.span.lo, &self.span.hi, lsb0, f);
+    }
+}
+
+
 #[auto_serialize]
 type arg = {mode: mode, ty: @ty, ident: ident, id: node_id};
 
@@ -971,6 +1047,12 @@ enum purity {
     extern_fn, // declared with "extern fn"
 }
 
+impl purity : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
+
 impl purity : cmp::Eq {
     pure fn eq(&&other: purity) -> bool {
         (self as uint) == (other as uint)
@@ -983,6 +1065,12 @@ enum ret_style {
     noreturn, // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
     return_val, // everything else
+}
+
+impl ret_style : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
 }
 
 impl ret_style : cmp::Eq {
@@ -1275,6 +1363,12 @@ enum item_ {
 
 #[auto_serialize]
 enum class_mutability { class_mutable, class_immutable }
+
+impl class_mutability : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
 
 impl class_mutability : cmp::Eq {
     pure fn eq(&&other: class_mutability) -> bool {

@@ -251,28 +251,16 @@ pure fn is_call_expr(e: @expr) -> bool {
     match e.node { expr_call(_, _, _) => true, _ => false }
 }
 
-pure fn eq_ty(a: &@ty, b: &@ty) -> bool { box::ptr_eq(*a, *b) }
-
-pure fn hash_ty(t: &@ty) -> uint {
-    let res = (t.span.lo << 16u) + t.span.hi;
-    return res;
-}
-
-pure fn def_eq(a: &ast::def_id, b: &ast::def_id) -> bool {
-    a.crate == b.crate && a.node == b.node
-}
-
-pure fn hash_def(d: &ast::def_id) -> uint {
-    let mut h = 5381u;
-    h = (h << 5u) + h ^ (d.crate as uint);
-    h = (h << 5u) + h ^ (d.node as uint);
-    return h;
+// This makes def_id hashable
+impl def_id : core::to_bytes::IterBytes {
+    #[inline(always)]
+    fn iter_bytes(lsb0: bool, f: core::to_bytes::Cb) {
+        core::to_bytes::iter_bytes_2(&self.crate, &self.node, lsb0, f);
+    }
 }
 
 fn new_def_hash<V: copy>() -> std::map::hashmap<ast::def_id, V> {
-    let hasher: std::map::hashfn<ast::def_id> = hash_def;
-    let eqer: std::map::eqfn<ast::def_id> = def_eq;
-    return std::map::hashmap::<ast::def_id, V>(hasher, eqer);
+    return std::map::hashmap::<ast::def_id, V>();
 }
 
 fn block_from_expr(e: @expr) -> blk {
