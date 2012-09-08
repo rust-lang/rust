@@ -15,6 +15,12 @@ use common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed,
                 seq_sep_none, token_to_str};
 use dvec::DVec;
 use vec::{push};
+use obsolete::{
+    ObsoleteReporter, ObsoleteSyntax,
+    ObsoleteLowerCaseKindBounds, ObsoleteLet,
+    ObsoleteFieldTerminator, ObsoleteStructCtor,
+    ObsoleteWith
+};
 use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
              bitand, bitor, bitxor, blk, blk_check_mode, bound_const,
@@ -208,7 +214,8 @@ fn parser(sess: parse_sess, cfg: ast::crate_cfg,
         restriction: UNRESTRICTED,
         quote_depth: 0u,
         keywords: token::keyword_table(),
-        restricted_keywords: token::restricted_keyword_table()
+        restricted_keywords: token::restricted_keyword_table(),
+        obsolete_set: std::map::hashmap(),
     }
 }
 
@@ -228,6 +235,9 @@ struct parser {
     interner: interner<@~str>,
     keywords: hashmap<~str, ()>,
     restricted_keywords: hashmap<~str, ()>,
+    /// The set of seen errors about obsolete syntax. Used to suppress
+    /// extra detail when the same error is seen twice
+    obsolete_set: hashmap<ObsoleteSyntax, ()>,
 
     drop {} /* do not copy the parser; its state is tied to outside state */
 
@@ -275,6 +285,12 @@ struct parser {
     }
     fn warn(m: ~str) {
         self.sess.span_diagnostic.span_warn(copy self.span, m)
+    }
+    fn span_err(sp: span, m: ~str) {
+        self.sess.span_diagnostic.span_err(sp, m)
+    }
+    fn abort_if_errors() {
+        self.sess.span_diagnostic.handler().abort_if_errors();
     }
     fn get_id() -> node_id { next_node_id(self.sess) }
 
@@ -1004,22 +1020,26 @@ struct parser {
                     // It's a struct literal.
                     self.bump();
                     let mut fields = ~[];
+                    let mut base = None;
                     vec::push(fields, self.parse_field(token::COLON));
                     while self.token != token::RBRACE {
+
+                        if self.try_parse_obsolete_with() {
+                            break;
+                        }
+
                         self.expect(token::COMMA);
-                        if self.token == token::RBRACE ||
-                                self.token == token::DOTDOT {
+
+                        if self.eat(token::DOTDOT) {
+                            base = Some(self.parse_expr());
+                            break;
+                        }
+
+                        if self.token == token::RBRACE {
                             // Accept an optional trailing comma.
                             break;
                         }
                         vec::push(fields, self.parse_field(token::COLON));
-                    }
-
-                    let base;
-                    if self.eat(token::DOTDOT) {
-                        base = Some(self.parse_expr());
-                    } else {
-                        base = None;
                     }
 
                     hi = pth.span.hi;
@@ -1664,6 +1684,10 @@ struct parser {
                 base = Some(self.parse_expr()); break;
             }
 
+            if self.try_parse_obsolete_with() {
+                break;
+            }
+
             self.expect(token::COMMA);
             if self.token == token::RBRACE {
                 // record ends by an optional trailing comma
@@ -2281,12 +2305,22 @@ struct parser {
                 if is_ident(self.token) {
                     // XXX: temporary until kinds become traits
                     let maybe_bound = match self.token {
-                      token::IDENT(sid, _) => {
+                      token::IDENT(copy sid, _) => {
                         match *self.id_to_str(sid) {
                           ~"Send" => Some(bound_send),
                           ~"Copy" => Some(bound_copy),
                           ~"Const" => Some(bound_const),
                           ~"Owned" => Some(bound_owned),
+
+                          ~"send"
+                          | ~"copy"
+                          | ~"const"
+                          | ~"owned" => {
+                            self.obsolete(copy self.span,
+                                          ObsoleteLowerCaseKindBounds);
+                            None
+                          }
+
                           _ => None
                         }
                       }
@@ -2737,11 +2771,18 @@ struct parser {
     }
 
     fn parse_single_class_item(vis: visibility) -> @class_member {
-        if (self.token_is_keyword(~"mut", copy self.token) ||
-                !self.is_any_keyword(copy self.token)) &&
-                !self.token_is_pound_or_doc_comment(self.token) {
+        let obsolete_let = self.eat_obsolete_ident("let");
+        if obsolete_let { self.obsolete(copy self.last_span, ObsoleteLet) }
+
+        if (obsolete_let || self.token_is_keyword(~"mut", copy self.token) ||
+            !self.is_any_keyword(copy self.token)) &&
+            !self.token_is_pound_or_doc_comment(self.token) {
             let a_var = self.parse_instance_var(vis);
             match self.token {
+                token::SEMI => {
+                    self.obsolete(copy self.span, ObsoleteFieldTerminator);
+                    self.bump();
+                }
                 token::COMMA => {
                     self.bump();
                 }
@@ -2791,6 +2832,10 @@ struct parser {
         }
 
         let attrs = self.parse_outer_attributes();
+
+        if self.try_parse_obsolete_struct_ctor() {
+            return members(~[]);
+        }
 
         if self.eat_keyword(~"drop") {
            return self.parse_dtor(attrs);

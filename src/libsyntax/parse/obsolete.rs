@@ -1,0 +1,145 @@
+/*!
+Support for parsing unsupported, old syntaxes, for the
+purpose of reporting errors. Parsing of these syntaxes
+is tested by compile-test/obsolete-syntax.rs.
+
+Obsolete syntax that becomes too hard to parse can be
+removed.
+*/
+
+use codemap::span;
+use ast::{expr, expr_lit, lit_nil};
+use ast_util::{respan};
+use token::token;
+
+/// The specific types of unsupported syntax
+pub enum ObsoleteSyntax {
+    ObsoleteLowerCaseKindBounds,
+    ObsoleteLet,
+    ObsoleteFieldTerminator,
+    ObsoleteStructCtor,
+    ObsoleteWith
+}
+
+impl ObsoleteSyntax : cmp::Eq {
+    pure fn eq(&&other: ObsoleteSyntax) -> bool {
+        self as uint == other as uint
+    }
+    pure fn ne(&&other: ObsoleteSyntax) -> bool {
+        !self.eq(other)
+    }
+}
+
+impl ObsoleteSyntax: to_bytes::IterBytes {
+    #[inline(always)]
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as uint).iter_bytes(lsb0, f);
+    }
+}
+
+pub trait ObsoleteReporter {
+    fn obsolete(sp: span, kind: ObsoleteSyntax);
+    fn obsolete_expr(sp: span, kind: ObsoleteSyntax) -> @expr;
+}
+
+impl parser : ObsoleteReporter {
+    /// Reports an obsolete syntax non-fatal error.
+    fn obsolete(sp: span, kind: ObsoleteSyntax) {
+        let (kind_str, desc) = match kind {
+            ObsoleteLowerCaseKindBounds => (
+                "lower-case kind bounds",
+                "the `send`, `copy`, `const`, and `owned` \
+                 kinds are represented as traits now, and \
+                 should be camel cased"
+            ),
+            ObsoleteLet => (
+                "`let` in field declaration",
+                "declare fields as `field: Type`"
+            ),
+            ObsoleteFieldTerminator => (
+                "field declaration terminated with semicolon",
+                "fields are now separated by commas"
+            ),
+            ObsoleteStructCtor => (
+                "struct constructor",
+                "structs are now constructed with `MyStruct { foo: val }` \
+                 syntax. Structs with private fields cannot be created \
+                 outside of their defining module"
+            ),
+            ObsoleteWith => (
+                "with",
+                "record update is done with `..`, e.g. \
+                 `MyStruct { foo: bar, .. baz }`"
+            ),
+        };
+
+        self.report(sp, kind, kind_str, desc);
+    }
+
+    // Reports an obsolete syntax non-fatal error, and returns
+    // a placeholder expression
+    fn obsolete_expr(sp: span, kind: ObsoleteSyntax) -> @expr {
+        self.obsolete(sp, kind);
+        self.mk_expr(sp.lo, sp.hi, expr_lit(@respan(sp, lit_nil)))
+    }
+
+    priv fn report(sp: span, kind: ObsoleteSyntax, kind_str: &str,
+                   desc: &str) {
+        self.span_err(sp, fmt!("obsolete syntax: %s", kind_str));
+
+        if !self.obsolete_set.contains_key(kind) {
+            self.sess.span_diagnostic.handler().note(fmt!("%s", desc));
+            self.obsolete_set.insert(kind, ());
+        }
+    }
+
+    fn token_is_obsolete_ident(ident: &str, token: token) -> bool {
+        match token {
+            token::IDENT(copy sid, _) => {
+                str::eq_slice(*self.id_to_str(sid), ident)
+            }
+            _ => false
+        }
+    }
+
+    fn is_obsolete_ident(ident: &str) -> bool {
+        self.token_is_obsolete_ident(ident, copy self.token)
+    }
+
+    fn eat_obsolete_ident(ident: &str) -> bool {
+        if self.is_obsolete_ident(ident) {
+            self.bump();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn try_parse_obsolete_struct_ctor() -> bool {
+        if self.eat_obsolete_ident("new") {
+            self.obsolete(copy self.last_span, ObsoleteStructCtor);
+            self.parse_fn_decl(|p| p.parse_arg());
+            self.parse_block();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn try_parse_obsolete_with() -> bool {
+        if self.token == token::COMMA
+            && self.token_is_obsolete_ident("with",
+                                            self.look_ahead(1u)) {
+            self.bump();
+        }
+        if self.eat_obsolete_ident("with") {
+            self.obsolete(copy self.last_span, ObsoleteWith);
+            self.parse_expr();
+            true
+        } else {
+            false
+        }
+    }
+
+}
+

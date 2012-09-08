@@ -78,6 +78,7 @@ fn parse_crate_from_crate_file(input: &Path, cfg: ast::crate_cfg,
         cx, cdirs, &prefix, &companionmod);
     let mut hi = p.span.hi;
     p.expect(token::EOF);
+    p.abort_if_errors();
     return @ast_util::respan(ast_util::mk_sp(lo, hi),
                           {directives: cdirs,
                            module: m,
@@ -100,6 +101,7 @@ fn parse_crate_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
     let r = p.parse_crate_mod(cfg);
+    p.abort_if_errors();
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     return r;
@@ -110,6 +112,7 @@ fn parse_expr_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
     let r = p.parse_expr();
+    p.abort_if_errors();
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     return r;
@@ -121,6 +124,7 @@ fn parse_item_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
     let r = p.parse_item(attrs);
+    p.abort_if_errors();
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     return r;
@@ -132,6 +136,7 @@ fn parse_stmt_from_source_str(name: ~str, source: @~str, cfg: ast::crate_cfg,
     let (p, rdr) = new_parser_etc_from_source_str(sess, cfg, name,
                                                   codemap::fss_none, source);
     let r = p.parse_stmt(attrs);
+    p.abort_if_errors();
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     return r;
@@ -149,6 +154,7 @@ fn parse_from_source_str<T>(f: fn (p: parser) -> T,
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
     }
+    p.abort_if_errors();
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
     return r;

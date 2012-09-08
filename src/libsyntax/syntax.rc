@@ -52,6 +52,9 @@ mod parse {
 
     /// Routines the parser uses to classify AST nodes
     mod classify;
+
+    /// Reporting obsolete syntax
+    mod obsolete;
 }
 
 mod print {
