@@ -17,6 +17,7 @@ use option::Some;
 use option::None;
 use std::map;
 use std::map::hashmap;
+use hash::Hash;
 use io::WriterUtil;
 
 use std::time;
@@ -25,6 +26,8 @@ use comm::Chan;
 use comm::Port;
 use comm::recv;
 use comm::send;
+use cmp::Eq;
+use to_bytes::IterBytes;
 
 macro_rules! move_out (
     { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
@@ -145,7 +148,7 @@ mod map_reduce {
 
     enum reduce_proto<V: Copy Send> { emit_val(V), done, addref, release }
 
-    fn start_mappers<K1: Copy Send, K2: Const Copy Send hash_key,
+    fn start_mappers<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send hash_key,
                      V: Copy Send>(
         map: mapper<K1, K2, V>,
         &ctrls: ~[ctrl_proto::server::open<K2, V>],
@@ -162,7 +165,7 @@ mod map_reduce {
         return tasks;
     }
 
-    fn map_task<K1: Copy Send, K2: Const Copy Send hash_key, V: Copy Send>(
+    fn map_task<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send hash_key, V: Copy Send>(
         map: mapper<K1, K2, V>,
         ctrl: box<ctrl_proto::client::open<K2, V>>,
         input: K1)
@@ -235,7 +238,7 @@ mod map_reduce {
         reduce(key, || get(p, ref_count, is_done) );
     }
 
-    fn map_reduce<K1: Copy Send, K2: Const Copy Send hash_key, V: Copy Send>(
+    fn map_reduce<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send hash_key, V: Copy Send>(
         map: mapper<K1, K2, V>,
         reduce: reducer<K2, V>,
         inputs: ~[K1])
