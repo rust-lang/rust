@@ -179,7 +179,7 @@ pure fn min<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     }
 }
 
-pure fn max<A:Copy,IA:BaseIter<A>>(self: IA) -> A {
+pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
     match do foldl::<A,Option<A>,IA>(self, None) |a, b| {
         match a {
           Some(a_) if a_ > b => {

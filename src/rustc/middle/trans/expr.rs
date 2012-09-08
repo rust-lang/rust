@@ -1117,12 +1117,21 @@ fn trans_eager_binop(bcx: block,
             AShr(bcx, lhs, rhs)
         } else { LShr(bcx, lhs, rhs) }
       }
+      ast::eq | ast::ne | ast::lt | ast::ge | ast::le | ast::gt => {
+        if ty::type_is_bot(rhs_t) {
+            C_bool(false)
+        } else {
+            if !ty::type_is_scalar(rhs_t) {
+                bcx.tcx().sess.span_bug(binop_expr.span,
+                                        ~"non-scalar comparison");
+            }
+            let cmpr = base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op);
+            bcx = cmpr.bcx;
+            cmpr.val
+        }
+      }
       _ => {
-        let cmpr = base::trans_compare(bcx, op,
-                                       lhs, lhs_t,
-                                       rhs, rhs_t);
-        bcx = cmpr.bcx;
-        cmpr.val
+        bcx.tcx().sess.span_bug(binop_expr.span, ~"unexpected binop");
       }
     };
 

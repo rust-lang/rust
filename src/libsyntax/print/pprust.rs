@@ -1616,10 +1616,13 @@ fn print_fn_args_and_ret(s: ps, decl: ast::fn_decl,
     pclose(s);
 
     maybe_print_comment(s, decl.output.span.lo);
-    if decl.output.node != ast::ty_nil {
-        space_if_not_bol(s);
-        word_space(s, ~"->");
-        print_type(s, decl.output);
+    match decl.output.node {
+        ast::ty_nil => {}
+        _ => {
+            space_if_not_bol(s);
+            word_space(s, ~"->");
+            print_type(s, decl.output);
+        }
     }
 }
 
@@ -1628,11 +1631,16 @@ fn print_fn_block_args(s: ps, decl: ast::fn_decl,
     word(s.s, ~"|");
     print_fn_args(s, decl, cap_items, None);
     word(s.s, ~"|");
-    if decl.output.node != ast::ty_infer {
-        space_if_not_bol(s);
-        word_space(s, ~"->");
-        print_type(s, decl.output);
+
+    match decl.output.node {
+        ast::ty_infer => {}
+        _ => {
+            space_if_not_bol(s);
+            word_space(s, ~"->");
+            print_type(s, decl.output);
+        }
     }
+
     maybe_print_comment(s, decl.output.span.lo);
 }
 
@@ -1829,14 +1837,19 @@ fn print_ty_fn(s: ps, opt_proto: Option<ast::proto>, purity: ast::purity,
     pclose(s);
 
     maybe_print_comment(s, decl.output.span.lo);
-    if decl.output.node != ast::ty_nil {
-        space_if_not_bol(s);
-        ibox(s, indent_unit);
-        word_space(s, ~"->");
-        if decl.cf == ast::noreturn { word_nbsp(s, ~"!"); }
-        else { print_type(s, decl.output); }
-        end(s);
+
+    match decl.output.node {
+        ast::ty_nil => {}
+        _ => {
+            space_if_not_bol(s);
+            ibox(s, indent_unit);
+            word_space(s, ~"->");
+            if decl.cf == ast::noreturn { word_nbsp(s, ~"!"); }
+            else { print_type(s, decl.output); }
+            end(s);
+        }
     }
+
     end(s);
 }
 

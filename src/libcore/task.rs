@@ -158,6 +158,46 @@ enum SchedMode {
     PlatformThread
 }
 
+impl SchedMode : cmp::Eq {
+    pure fn eq(&&other: SchedMode) -> bool {
+        match self {
+            SingleThreaded => {
+                match other {
+                    SingleThreaded => true,
+                    _ => false
+                }
+            }
+            ThreadPerCore => {
+                match other {
+                    ThreadPerCore => true,
+                    _ => false
+                }
+            }
+            ThreadPerTask => {
+                match other {
+                    ThreadPerTask => true,
+                    _ => false
+                }
+            }
+            ManualThreads(e0a) => {
+                match other {
+                    ManualThreads(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            PlatformThread => {
+                match other {
+                    PlatformThread => true,
+                    _ => false
+                }
+            }
+        }
+    }
+    pure fn ne(&&other: SchedMode) -> bool {
+        !self.eq(other)
+    }
+}
+
 /**
  * Scheduler configuration options
  *

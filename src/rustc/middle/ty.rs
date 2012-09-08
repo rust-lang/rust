@@ -3081,8 +3081,8 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
 // the current head value for `m0`.
-fn canon<T:Copy>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
-                 +m0: ast::inferable<T>) -> ast::inferable<T> {
+fn canon<T:Copy cmp::Eq>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
+                         +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
       ast::infer(id) => match tbl.find(id) {
         None => m0,

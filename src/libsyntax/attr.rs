@@ -337,6 +337,13 @@ enum inline_attr {
     ia_never,
 }
 
+impl inline_attr : cmp::Eq {
+    pure fn eq(&&other: inline_attr) -> bool {
+        (self as uint) == (other as uint)
+    }
+    pure fn ne(&&other: inline_attr) -> bool { !self.eq(other) }
+}
+
 /// True if something like #[inline] is found in the list of attrs.
 fn find_inline_attr(attrs: ~[ast::attribute]) -> inline_attr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline(always)]

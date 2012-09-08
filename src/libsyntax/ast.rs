@@ -405,6 +405,13 @@ enum proto {
     proto_block,   // fn&
 }
 
+impl proto : cmp::Eq {
+    pure fn eq(&&other: proto) -> bool {
+        (self as uint) == (other as uint)
+    }
+    pure fn ne(&&other: proto) -> bool { !self.eq(other) }
+}
+
 #[auto_serialize]
 enum vstore {
     // FIXME (#2112): Change uint to @expr (actually only constant exprs)
@@ -454,7 +461,49 @@ impl binop : cmp::Eq {
 enum unop {
     box(mutability),
     uniq(mutability),
-    deref, not, neg
+    deref,
+    not,
+    neg
+}
+
+impl unop : cmp::Eq {
+    pure fn eq(&&other: unop) -> bool {
+        match self {
+            box(e0a) => {
+                match other {
+                    box(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            uniq(e0a) => {
+                match other {
+                    uniq(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            deref => {
+                match other {
+                    deref => true,
+                    _ => false
+                }
+            }
+            not => {
+                match other {
+                    not => true,
+                    _ => false
+                }
+            }
+            neg => {
+                match other {
+                    neg => true,
+                    _ => false
+                }
+            }
+        }
+    }
+    pure fn ne(&&other: unop) -> bool {
+        !self.eq(other)
+    }
 }
 
 // Generally, after typeck you can get the inferred value

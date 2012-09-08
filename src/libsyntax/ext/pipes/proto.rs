@@ -143,7 +143,7 @@ struct protocol_ {
     fn get_state_by_id(id: uint) -> state { self.states[id] }
 
     fn has_state(name: ~str) -> bool {
-        self.states.find(|i| i.name == name) != None
+        self.states.find(|i| i.name == name).is_some()
     }
 
     fn filename() -> ~str {

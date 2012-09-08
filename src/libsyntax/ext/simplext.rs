@@ -68,7 +68,7 @@ fn elts_to_ell(cx: ext_ctxt, elts: ~[@expr]) ->
         match elt.node {
           expr_mac(m) => match m.node {
             ast::mac_ellipsis => {
-                if res != None {
+                if res.is_some() {
                     cx.span_fatal(m.span, ~"only one ellipsis allowed");
                 }
                 res =
@@ -449,7 +449,7 @@ fn p_t_s_rec(cx: ext_ctxt, m: matchable, s: selector, b: binders) {
                 }
               }
               {pre: pre, rep: None, post: post} => {
-                if post != ~[] {
+                if post.len() > 0 {
                     cx.bug(~"elts_to_ell provided an invalid result");
                 }
                 p_t_s_r_length(cx, vec::len(pre), false, s, b);

@@ -1132,7 +1132,13 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
             let result_t = match op {
               ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
-              ast::gt => ty::mk_bool(fcx.ccx.tcx),
+              ast::gt => {
+                if !ty::type_is_scalar(lhs_t) {
+                    fcx.ccx.tcx.sess.span_bug(expr.span,
+                                              ~"non-scalar compare");
+                }
+                ty::mk_bool(fcx.ccx.tcx)
+              }
               _ => lhs_t
             };
             fcx.write_ty(expr.id, result_t);
@@ -1409,23 +1415,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       ast::expr_lit(lit) => {
         let typ = check_lit(fcx, lit);
         fcx.write_ty(id, typ);
-      }
-
-      // Something of a hack: special rules for comparison operators that
-      // simply unify LHS and RHS.  This helps with inference as LHS and RHS
-      // do not need to be "resolvable".  Some tests, particularly those with
-      // complicated trait requirements, fail without this---I think this code
-      // can be removed if we improve trait resolution to be more eager when
-      // possible.
-      ast::expr_binary(ast::ne, lhs, rhs) |
-      ast::expr_binary(ast::le, lhs, rhs) |
-      ast::expr_binary(ast::gt, lhs, rhs) |
-      ast::expr_binary(ast::ge, lhs, rhs) => {
-        let tcx = fcx.ccx.tcx;
-        let tvar = fcx.infcx().next_ty_var();
-        bot |= check_expr_with(fcx, lhs, tvar);
-        bot |= check_expr_with(fcx, rhs, tvar);
-        fcx.write_ty(id, ty::mk_bool(tcx));
       }
       ast::expr_binary(op, lhs, rhs) => {
         bot |= check_binop(fcx, expr, op, lhs, rhs);
@@ -1806,7 +1795,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_rec(fields, base) => {
         option::iter(base, |b| { check_expr(fcx, b, expected); });
-        let expected = if expected == None && base != None {
+        let expected = if expected.is_none() && base.is_some() {
             Some(fcx.expr_ty(base.get()))
         } else { expected };
         let flds = unpack_expected(fcx, expected, |sty|
