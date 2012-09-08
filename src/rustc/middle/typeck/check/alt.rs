@@ -447,6 +447,22 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
           }
         }
       }
+      ast::pat_region(inner) => {
+        match structure_of(fcx, pat.span, expected) {
+          ty::ty_rptr(_, e_inner) => {
+            check_pat(pcx, inner, e_inner.ty);
+            fcx.write_ty(pat.id, expected);
+          }
+          _ => {
+            tcx.sess.span_fatal(
+                pat.span,
+                ~"mismatched types: expected `" +
+                fcx.infcx().ty_to_str(expected) +
+                ~"` found borrowed pointer");
+          }
+        }
+      }
+
     }
 }
 

@@ -595,7 +595,7 @@ fn walk_pat(pat: @pat, it: fn(@pat)) {
       pat_enum(_, Some(s)) | pat_tup(s) => for s.each |p| {
         walk_pat(p, it)
       },
-      pat_box(s) | pat_uniq(s) => walk_pat(s, it),
+      pat_box(s) | pat_uniq(s) | pat_region(s) => walk_pat(s, it),
       pat_wild | pat_lit(_) | pat_range(_, _) | pat_ident(_, _, _)
         | pat_enum(_, _) => ()
     }
