@@ -349,6 +349,21 @@ impl Constraint: cmp::Eq {
     pure fn ne(&&other: Constraint) -> bool { !self.eq(other) }
 }
 
+impl Constraint : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          ConstrainVarSubVar(ref v0, ref v1) =>
+          to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
+
+          ConstrainRegSubVar(ref ra, ref va) =>
+          to_bytes::iter_bytes_3(&1u8, ra, va, lsb0, f),
+
+          ConstrainVarSubReg(ref va, ref ra) =>
+          to_bytes::iter_bytes_3(&2u8, va, ra, lsb0, f)
+        }
+    }
+}
+
 struct TwoRegions {
     a: region,
     b: region,
@@ -359,6 +374,12 @@ impl TwoRegions: cmp::Eq {
         self.a == other.a && self.b == other.b
     }
     pure fn ne(&&other: TwoRegions) -> bool { !self.eq(other) }
+}
+
+impl TwoRegions : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
+    }
 }
 
 enum UndoLogEntry {
@@ -394,7 +415,7 @@ fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         tcx: tcx,
         var_spans: DVec(),
         values: empty_cell(),
-        constraints: hashmap(hash_constraint, sys::shape_eq),
+        constraints: hashmap(),
         lubs: CombineMap(),
         glbs: CombineMap(),
         undo_log: DVec()
@@ -405,16 +426,7 @@ fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
 // `b`!  Not obvious that this is the most efficient way to go about
 // it.
 fn CombineMap() -> CombineMap {
-    return hashmap(hash_two_regions, eq_two_regions);
-
-    pure fn hash_two_regions(rc: &TwoRegions) -> uint {
-        hash_region(&rc.a) ^ hash_region(&rc.b)
-    }
-
-    pure fn eq_two_regions(rc1: &TwoRegions, rc2: &TwoRegions) -> bool {
-        (rc1.a == rc2.a && rc1.b == rc2.b) ||
-            (rc1.a == rc2.b && rc1.b == rc2.a)
-    }
+    return hashmap();
 }
 
 pure fn hash_constraint(rc: &Constraint) -> uint {
@@ -795,11 +807,7 @@ struct SpannedRegion {
 type TwoRegionsMap = hashmap<TwoRegions, ()>;
 
 fn TwoRegionsMap() -> TwoRegionsMap {
-    return hashmap(hash_two_regions, sys::shape_eq);
-
-    pure fn hash_two_regions(rc: &TwoRegions) -> uint {
-        hash_region(&rc.a) ^ (hash_region(&rc.b) << 2)
-    }
+    return hashmap();
 }
 
 impl RegionVarBindings {

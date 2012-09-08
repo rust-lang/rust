@@ -226,7 +226,25 @@ type field_ty = {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-type creader_cache = hashmap<{cnum: int, pos: uint, len: uint}, t>;
+type creader_cache_key = {cnum: int, pos: uint, len: uint};
+type creader_cache = hashmap<creader_cache_key, t>;
+
+impl creader_cache_key : cmp::Eq {
+    pure fn eq(&&other: creader_cache_key) -> bool {
+        self.cnum == other.cnum &&
+            self.pos == other.pos &&
+            self.len == other.len
+    }
+    pure fn ne(&&other: creader_cache_key) -> bool {
+        !(self == other)
+    }
+}
+
+impl creader_cache_key : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
+    }
+}
 
 type intern_key = {struct: sty, o_def_id: Option<ast::def_id>};
 
@@ -235,6 +253,12 @@ impl intern_key: cmp::Eq {
         self.struct == other.struct && self.o_def_id == other.o_def_id
     }
     pure fn ne(&&other: intern_key) -> bool { !self.eq(other) }
+}
+
+impl intern_key : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.struct, &self.o_def_id, lsb0, f);
+    }
 }
 
 enum ast_ty_to_ty_cache_entry {
@@ -366,6 +390,12 @@ enum closure_kind {
     ck_uniq,
 }
 
+impl closure_kind : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (self as u8).iter_bytes(lsb0, f)
+    }
+}
+
 impl closure_kind : cmp::Eq {
     pure fn eq(&&other: closure_kind) -> bool {
         (self as uint) == (other as uint)
@@ -376,6 +406,18 @@ impl closure_kind : cmp::Eq {
 enum fn_proto {
     proto_bare,             // supertype of all other protocols
     proto_vstore(vstore)
+}
+
+impl fn_proto : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          proto_bare =>
+          0u8.iter_bytes(lsb0, f),
+
+          proto_vstore(ref v) =>
+          to_bytes::iter_bytes_2(&1u8, v, lsb0, f)
+        }
+    }
 }
 
 impl fn_proto : cmp::Eq {
@@ -443,6 +485,13 @@ impl param_ty: cmp::Eq {
     }
     pure fn ne(&&other: param_ty) -> bool { !self.eq(other) }
 }
+
+impl param_ty : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
+    }
+}
+
 
 /// Representation of regions:
 enum region {
@@ -606,6 +655,28 @@ enum InferTy {
     IntVar(IntVid)
 }
 
+impl InferTy : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
+          IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f)
+        }
+    }
+}
+
+impl param_bound : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          bound_copy => 0u8.iter_bytes(lsb0, f),
+          bound_owned => 1u8.iter_bytes(lsb0, f),
+          bound_send => 2u8.iter_bytes(lsb0, f),
+          bound_const => 3u8.iter_bytes(lsb0, f),
+          bound_trait(ref t) =>
+          to_bytes::iter_bytes_2(&4u8, t, lsb0, f)
+        }
+    }
+}
+
 trait vid {
     pure fn to_uint() -> uint;
     pure fn to_str() -> ~str;
@@ -657,6 +728,30 @@ impl purity: purity_to_str {
     }
 }
 
+impl RegionVid : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (*self).iter_bytes(lsb0, f)
+    }
+}
+
+impl TyVid : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (*self).iter_bytes(lsb0, f)
+    }
+}
+
+impl IntVid : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (*self).iter_bytes(lsb0, f)
+    }
+}
+
+impl FnVid : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        (*self).iter_bytes(lsb0, f)
+    }
+}
+
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     let mut kind = kind_noncopyable();
     for vec::each(*bounds) |bound| {
@@ -701,18 +796,11 @@ type node_type_table = @smallintmap::SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
-    pure fn hash_cache_entry(k: &val) -> uint {
-        (k.cnum as uint) + k.pos + k.len
-    }
-    pure fn eq_cache_entries(a: &val, b: &val) -> bool {
-        a.cnum == b.cnum && a.pos == b.pos && a.len == b.len
-    }
-    return map::hashmap(hash_cache_entry, eq_cache_entries);
+    return map::hashmap();
 }
 
 fn new_ty_hash<V: copy>() -> map::hashmap<t, V> {
-    map::hashmap(|t: &t| type_id(*t),
-                 |a: &t, b: &t| type_id(*a) == type_id(*b))
+    map::hashmap()
 }
 
 fn mk_ctxt(s: session::session,
@@ -721,11 +809,7 @@ fn mk_ctxt(s: session::session,
            freevars: freevars::freevar_map,
            region_map: middle::region::region_map,
            region_paramd_items: middle::region::region_paramd_items) -> ctxt {
-    pure fn hash_intern_key(k: &intern_key) -> uint {
-        hash_type_structure(&k.struct) +
-            option::map_default(k.o_def_id, 0u, |d| ast_util::hash_def(&d))
-    }
-    let interner = map::hashmap(hash_intern_key, sys::shape_eq);
+    let interner = map::hashmap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
@@ -750,8 +834,7 @@ fn mk_ctxt(s: session::session,
       needs_drop_cache: new_ty_hash(),
       needs_unwind_cleanup_cache: new_ty_hash(),
       kind_cache: new_ty_hash(),
-      ast_ty_to_ty_cache: map::hashmap(
-          ast_util::hash_ty, ast_util::eq_ty),
+      ast_ty_to_ty_cache: map::hashmap(),
       enum_var_cache: new_def_hash(),
       trait_method_cache: new_def_hash(),
       ty_param_bounds: map::int_hash(),
@@ -2314,6 +2397,167 @@ fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
     }
 }
 
+impl bound_region : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          ty::br_self => 0u8.iter_bytes(lsb0, f),
+
+          ty::br_anon(ref idx) =>
+          to_bytes::iter_bytes_2(&1u8, idx, lsb0, f),
+
+          ty::br_named(ref ident) =>
+          to_bytes::iter_bytes_2(&2u8, ident, lsb0, f),
+
+          ty::br_cap_avoid(ref id, ref br) =>
+          to_bytes::iter_bytes_3(&3u8, id, br, lsb0, f)
+        }
+    }
+}
+
+impl region : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          re_bound(ref br) =>
+          to_bytes::iter_bytes_2(&0u8, br, lsb0, f),
+
+          re_free(ref id, ref br) =>
+          to_bytes::iter_bytes_3(&1u8, id, br, lsb0, f),
+
+          re_scope(ref id) =>
+          to_bytes::iter_bytes_2(&2u8, id, lsb0, f),
+
+          re_var(ref id) =>
+          to_bytes::iter_bytes_2(&3u8, id, lsb0, f),
+
+          re_static => 4u8.iter_bytes(lsb0, f)
+        }
+    }
+}
+
+impl vstore : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          vstore_fixed(ref u) =>
+          to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
+
+          vstore_uniq => 1u8.iter_bytes(lsb0, f),
+          vstore_box => 2u8.iter_bytes(lsb0, f),
+
+          vstore_slice(ref r) =>
+          to_bytes::iter_bytes_2(&3u8, r, lsb0, f),
+        }
+    }
+}
+
+impl substs : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+          to_bytes::iter_bytes_3(&self.self_r,
+                                 &self.self_ty,
+                                 &self.tps, lsb0, f)
+    }
+}
+
+impl mt : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+          to_bytes::iter_bytes_2(&self.ty,
+                                 &self.mutbl, lsb0, f)
+    }
+}
+
+impl field : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+          to_bytes::iter_bytes_2(&self.ident,
+                                 &self.mt, lsb0, f)
+    }
+}
+
+impl arg : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+          to_bytes::iter_bytes_2(&self.mode,
+                                 &self.ty, lsb0, f)
+    }
+}
+
+impl sty : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        match self {
+          ty_nil => 0u8.iter_bytes(lsb0, f),
+          ty_bool => 1u8.iter_bytes(lsb0, f),
+
+          ty_int(ref t) =>
+          to_bytes::iter_bytes_2(&2u8, t, lsb0, f),
+
+          ty_uint(ref t) =>
+          to_bytes::iter_bytes_2(&3u8, t, lsb0, f),
+
+          ty_float(ref t) =>
+          to_bytes::iter_bytes_2(&4u8, t, lsb0, f),
+
+          ty_estr(ref v) =>
+          to_bytes::iter_bytes_2(&5u8, v, lsb0, f),
+
+          ty_enum(ref did, ref substs) =>
+          to_bytes::iter_bytes_3(&6u8, did, substs, lsb0, f),
+
+          ty_box(ref mt) =>
+          to_bytes::iter_bytes_2(&7u8, mt, lsb0, f),
+
+          ty_evec(ref mt, ref v) =>
+          to_bytes::iter_bytes_3(&8u8, mt, v, lsb0, f),
+
+          ty_unboxed_vec(ref mt) =>
+          to_bytes::iter_bytes_2(&9u8, mt, lsb0, f),
+
+          ty_tup(ref ts) =>
+          to_bytes::iter_bytes_2(&10u8, ts, lsb0, f),
+
+          ty_rec(ref fs) =>
+          to_bytes::iter_bytes_2(&11u8, fs, lsb0, f),
+
+          ty_fn(ref ft) =>
+          to_bytes::iter_bytes_7(&12u8,
+                                 &ft.meta.purity,
+                                 &ft.meta.proto,
+                                 &ft.meta.bounds,
+                                 &ft.sig.inputs,
+                                 &ft.sig.output,
+                                 &ft.meta.ret_style,
+                                 lsb0, f),
+
+          ty_self => 13u8.iter_bytes(lsb0, f),
+
+          ty_infer(ref v) =>
+          to_bytes::iter_bytes_2(&14u8, v, lsb0, f),
+
+          ty_param(ref p) =>
+          to_bytes::iter_bytes_2(&15u8, p, lsb0, f),
+
+          ty_type => 16u8.iter_bytes(lsb0, f),
+          ty_bot => 17u8.iter_bytes(lsb0, f),
+
+          ty_ptr(ref mt) =>
+          to_bytes::iter_bytes_2(&18u8, mt, lsb0, f),
+
+          ty_uniq(ref mt) =>
+          to_bytes::iter_bytes_2(&19u8, mt, lsb0, f),
+
+          ty_trait(ref did, ref substs, ref v) =>
+          to_bytes::iter_bytes_4(&20u8, did, substs, v, lsb0, f),
+
+          ty_opaque_closure_ptr(ref ck) =>
+          to_bytes::iter_bytes_2(&21u8, ck, lsb0, f),
+
+          ty_opaque_box => 22u8.iter_bytes(lsb0, f),
+
+          ty_class(ref did, ref substs) =>
+          to_bytes::iter_bytes_3(&23u8, did, substs, lsb0, f),
+
+          ty_rptr(ref r, ref mt) =>
+          to_bytes::iter_bytes_3(&24u8, r, mt, lsb0, f),
+        }
+    }
+}
+
 pure fn hash_bound_region(br: &bound_region) -> uint {
     match *br { // no idea if this is any good
       ty::br_self => 0u,
@@ -2325,7 +2569,7 @@ pure fn hash_bound_region(br: &bound_region) -> uint {
 }
 
 fn br_hashmap<V:copy>() -> hashmap<bound_region, V> {
-    map::hashmap(hash_bound_region, sys::shape_eq)
+    map::hashmap()
 }
 
 pure fn hash_region(r: &region) -> uint {
@@ -3328,7 +3572,7 @@ fn enum_variant_with_id(cx: ctxt, enum_id: ast::def_id,
     let mut i = 0u;
     while i < vec::len::<variant_info>(*variants) {
         let variant = variants[i];
-        if ast_util::def_eq(&variant.id, &variant_id) { return variant; }
+        if variant.id == variant_id { return variant; }
         i += 1u;
     }
     cx.sess.bug(~"enum_variant_with_id(): no variant exists with that ID");

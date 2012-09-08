@@ -1,7 +1,6 @@
 mod argparse {
     use std;
 
-    import std::map;
     import either::{Either, Left, Right};
 
     struct Flag {

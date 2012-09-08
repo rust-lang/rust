@@ -404,8 +404,24 @@ fn save_and_restore<T:copy,U>(&save_and_restore_t: T, f: fn() -> U) -> U {
 }
 
 /// Creates and returns a new root_map
+
+impl root_map_key : cmp::Eq {
+    pure fn eq(&&other: root_map_key) -> bool {
+        self.id == other.id && self.derefs == other.derefs
+    }
+    pure fn ne(&&other: root_map_key) -> bool {
+        ! (self == other)
+    }
+}
+
+impl root_map_key : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.id, &self.derefs, lsb0, f);
+    }
+}
+
 fn root_map() -> root_map {
-    return hashmap(root_map_key_hash, root_map_key_eq);
+    return hashmap();
 
     pure fn root_map_key_eq(k1: &root_map_key, k2: &root_map_key) -> bool {
         k1.id == k2.id && k1.derefs == k2.derefs

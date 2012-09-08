@@ -22,8 +22,34 @@ use option::is_some;
 
 use ty_ctxt = middle::ty::ctxt;
 
-type nominal_id = @{did: ast::def_id, parent_id: Option<ast::def_id>,
+type nominal_id_ = {did: ast::def_id, parent_id: Option<ast::def_id>,
                     tps: ~[ty::t]};
+type nominal_id = @nominal_id_;
+
+impl nominal_id_ : core::cmp::Eq {
+    pure fn eq(&&other: nominal_id_) -> bool {
+        if self.did != other.did ||
+            self.parent_id != other.parent_id {
+            false
+        } else {
+            do vec::all2(self.tps, other.tps) |m_tp, n_tp| {
+                ty::type_id(m_tp) == ty::type_id(n_tp)
+            }
+        }
+    }
+    pure fn ne(&&other: nominal_id_) -> bool {
+        ! (self == other)
+    }
+}
+
+impl nominal_id_ : to_bytes::IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        to_bytes::iter_bytes_2(&self.did, &self.parent_id, lsb0, f);
+        for self.tps.each |t| {
+            ty::type_id(t).iter_bytes(lsb0, f);
+        }
+    }
+}
 
 fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
                  parent_id: Option<ast::def_id>,
@@ -32,31 +58,8 @@ fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
     @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 
-pure fn hash_nominal_id(ri: &nominal_id) -> uint {
-    let mut h = 5381u;
-    h *= 33u;
-    h += ri.did.crate as uint;
-    h *= 33u;
-    h += ri.did.node as uint;
-    for vec::each(ri.tps) |t| {
-        h *= 33u;
-        h += ty::type_id(t);
-    }
-    return h;
-}
-
-pure fn eq_nominal_id(mi: &nominal_id, ni: &nominal_id) -> bool {
-    if mi.did != ni.did {
-        false
-    } else {
-        do vec::all2(mi.tps, ni.tps) |m_tp, n_tp| {
-            ty::type_id(m_tp) == ty::type_id(n_tp)
-        }
-    }
-}
-
 fn new_nominal_id_hash<T: copy>() -> hashmap<nominal_id, T> {
-    return hashmap(hash_nominal_id, eq_nominal_id);
+    return hashmap();
 }
 
 type enum_data = {did: ast::def_id, substs: ty::substs};
@@ -193,7 +196,7 @@ fn mk_ctxt(llmod: ModuleRef) -> ctxt {
          pad: 0u16,
          tag_id_to_index: new_nominal_id_hash(),
          tag_order: DVec(),
-         resources: interner::mk(hash_nominal_id, eq_nominal_id),
+         resources: interner::mk(),
          llshapetablesty: llshapetablesty,
          llshapetables: llshapetables};
 }

@@ -345,8 +345,7 @@ fn mk_ident_interner() -> ident_interner {
                      @~"dtor", @~"main", @~"<opaque>", @~"blk", @~"static",
                      @~"intrinsic", @~"__foreign_mod__"];
 
-    let rv = interner::mk_prefill::<@~str>(|x| str::hash(*x),
-                                           |x,y| str::eq(*x, *y), init_vec);
+    let rv = interner::mk_prefill::<@~str>(init_vec);
 
     /* having multiple interners will just confuse the serializer */
     unsafe{ assert task::local_data_get(interner_key!()).is_none() };
@@ -357,7 +356,7 @@ fn mk_ident_interner() -> ident_interner {
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
 fn mk_fake_ident_interner() -> ident_interner {
-    interner::mk::<@~str>(|x| str::hash(*x), |x,y| str::eq(*x, *y))
+    interner::mk::<@~str>()
 }
 
 /**
