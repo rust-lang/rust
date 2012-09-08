@@ -6,8 +6,11 @@ fn foo<T, U: bar<T>>(b: U) -> T {
     b.get_bar()
 }
 
-struct cbar : bar<int> {
+struct cbar {
     x: int,
+}
+
+impl cbar : bar<int> {
     fn get_bar() -> int {
         self.x
     }

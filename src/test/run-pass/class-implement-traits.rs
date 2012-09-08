@@ -2,9 +2,16 @@ trait noisy {
   fn speak();
 }
 
-struct cat : noisy {
+struct cat {
   priv {
     mut meows : uint,
+  }
+
+  mut how_hungry : int,
+  name : ~str,
+}
+
+priv impl cat {
     fn meow() {
       error!("Meow");
       self.meows += 1u;
@@ -12,13 +19,9 @@ struct cat : noisy {
           self.how_hungry += 1;
       }
     }
-  }
+}
 
-  mut how_hungry : int,
-  name : ~str,
-
-  fn speak() { self.meow(); }
-
+impl cat {
   fn eat() -> bool {
     if self.how_hungry > 0 {
         error!("OM NOM NOM");
@@ -30,6 +33,10 @@ struct cat : noisy {
         return false;
     }
   }
+}
+
+impl cat : noisy {
+  fn speak() { self.meow(); }
 }
 
 fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {

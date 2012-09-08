@@ -1,6 +1,9 @@
 trait clam<A: Copy> { }
 struct foo<A: Copy> {
     x: A,
+}
+
+impl<A: Copy> foo<A> {
    fn bar<B,C:clam<A>>(c: C) -> B {
      fail;
    }

@@ -5,7 +5,9 @@ struct cat {
   }
 
   how_hungry : int,
+}
 
+impl cat {
   fn eat() {
     self.how_hungry -= 5;
   }

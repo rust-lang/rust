@@ -7,9 +7,11 @@ struct cat {
 
   how_hungry : int,
 
-  fn speak() {}
 }
 
+    impl cat {
+        fn speak() {}
+    }
     fn cat(in_x : uint, in_y : int) -> cat {
         cat {
             meows: in_x,

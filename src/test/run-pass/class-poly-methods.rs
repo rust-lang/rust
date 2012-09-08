@@ -5,7 +5,9 @@ struct cat<U> {
   }
 
   how_hungry : int,
+}
 
+impl<U> cat<U> {
   fn speak<T>(stuff: ~[T]) {
     self.meows += stuff.len();
   }

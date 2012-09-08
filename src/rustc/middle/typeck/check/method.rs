@@ -105,6 +105,9 @@ struct lookup {
     candidate_impls: hashmap<def_id, ()>,
     supplied_tps: ~[ty::t],
     include_private: bool,
+}
+
+impl lookup {
 
     // Entrypoint:
     fn method() -> Option<method_map_entry> {

@@ -7,13 +7,14 @@ struct cat<U> {
   }
 
   how_hungry : int,
-
-  fn speak<T>(stuff: ~[T]) {
-    self.meows += stuff.len();
-  }
-  fn meow_count() -> uint { self.meows }
 }
 
+    impl<U> cat<U> {
+        fn speak<T>(stuff: ~[T]) {
+            self.meows += stuff.len();
+        }
+        fn meow_count() -> uint { self.meows }
+    }
 
 fn cat<U>(in_x : uint, in_y : int, -in_info: ~[U]) -> cat<U> {
     cat {

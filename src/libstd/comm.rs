@@ -13,10 +13,12 @@ use pipes::{Channel, Recv, Chan, Port, Selectable};
 export DuplexStream;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
-struct DuplexStream<T: Send, U: Send> : Channel<T>, Recv<U>, Selectable {
+struct DuplexStream<T: Send, U: Send> {
     priv chan: Chan<T>,
     priv port: Port <U>,
+}
 
+impl<T: Send, U: Send> DuplexStream<T, U> : Channel<T> {
     fn send(+x: T) {
         self.chan.send(x)
     }
@@ -24,7 +26,9 @@ struct DuplexStream<T: Send, U: Send> : Channel<T>, Recv<U>, Selectable {
     fn try_send(+x: T) -> bool {
         self.chan.try_send(x)
     }
+}
 
+impl<T: Send, U: Send> DuplexStream<T, U> : Recv<U> {
     fn recv() -> U {
         self.port.recv()
     }
@@ -36,7 +40,9 @@ struct DuplexStream<T: Send, U: Send> : Channel<T>, Recv<U>, Selectable {
     pure fn peek() -> bool {
         self.port.peek()
     }
+}
 
+impl<T: Send, U: Send> DuplexStream<T, U> : Selectable {
     pure fn header() -> *pipes::PacketHeader {
         self.port.header()
     }

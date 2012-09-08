@@ -2,6 +2,9 @@ use dvec::DVec;
 
 struct c1<T: Copy> {
     x: T,
+}
+
+impl<T: Copy> c1<T> {
     fn f1(x: T) {}
 }
 

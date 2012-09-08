@@ -4,7 +4,9 @@ struct cat {
   }
 
   how_hungry : int,
+}
 
+impl cat {
   fn meow_count() -> uint { self.meows }
 }
 

@@ -2,10 +2,16 @@ trait noisy {
   fn speak() -> int;
 }
 
-struct dog : noisy {
+struct dog {
   priv {
     barks : @mut uint,
-    fn bark() -> int {
+  }
+
+  volume : @mut int,
+}
+
+impl dog {
+    priv fn bark() -> int {
       debug!("Woof %u %d", *self.barks, *self.volume);
       *self.barks += 1u;
       if *self.barks % 3u == 0u {
@@ -17,10 +23,9 @@ struct dog : noisy {
       debug!("Grrr %u %d", *self.barks, *self.volume);
       *self.volume
     }
-  }
+}
 
-  volume : @mut int,
-
+impl dog : noisy {
   fn speak() -> int { self.bark() }
 }
 
@@ -31,9 +36,24 @@ fn dog() -> dog {
     }
 }
 
-struct cat : noisy {
+struct cat {
   priv {
     meows : @mut uint,
+  }
+
+  how_hungry : @mut int,
+  name : ~str,
+}
+
+impl cat : noisy {
+  fn speak() -> int { self.meow() as int }
+}
+
+impl cat {
+  fn meow_count() -> uint { *self.meows }
+}
+
+priv impl cat {
     fn meow() -> uint {
       debug!("Meow");
       *self.meows += 1u;
@@ -42,13 +62,6 @@ struct cat : noisy {
       }
       *self.meows
     }
-  }
-
-  how_hungry : @mut int,
-  name : ~str,
-
-  fn speak() -> int { self.meow() as int }
-  fn meow_count() -> uint { *self.meows }
 }
 
 fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
