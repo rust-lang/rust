@@ -20,7 +20,7 @@ struct node<V:Copy, T:Copy> {
 }
 
 impl infer_ctxt {
-    fn get<V:Copy vid, T:Copy>(
+    fn get<V:Copy vid Eq, T:Copy>(
         vb: &vals_and_bindings<V, T>, vid: V) -> node<V, T> {
 
         let vid_u = vid.to_uint();

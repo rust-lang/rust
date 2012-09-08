@@ -210,6 +210,15 @@ enum ResolveResult<T> {
     Success(T)      // Successfully resolved the import.
 }
 
+impl<T> ResolveResult<T> {
+    fn failed() -> bool {
+        match self { Failed => true, _ => false }
+    }
+    fn indeterminate() -> bool {
+        match self { Indeterminate => true, _ => false }
+    }
+}
+
 enum TypeParameters/& {
     NoTypeParameters,               //< No type parameters.
     HasTypeParameters(&~[ty_param], //< Type parameters.
@@ -558,9 +567,14 @@ struct NameBindings {
 
     fn defined_in_namespace(namespace: Namespace) -> bool {
         match namespace {
-            ModuleNS    => return self.module_def != NoModuleDef,
-            TypeNS      => return self.type_def != None,
-            ValueNS     => return self.value_def != None
+            ModuleNS => {
+                match self.module_def {
+                    NoModuleDef => false,
+                    _ => true
+                }
+            }
+            TypeNS   => return self.type_def.is_some(),
+            ValueNS  => return self.value_def.is_some()
         }
     }
 
@@ -1788,7 +1802,7 @@ struct Resolver {
         // processing imports here. (See the loop in
         // resolve_imports_for_module.)
 
-        if resolution_result != Indeterminate {
+        if !resolution_result.indeterminate() {
             match *import_directive.subclass {
                 GlobImport => {
                     assert module_.glob_count >= 1u;

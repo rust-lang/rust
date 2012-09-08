@@ -17,6 +17,15 @@ enum cmnt_style {
     blank_line, // Just a manual blank line "\n\n", for layout
 }
 
+impl cmnt_style : cmp::Eq {
+    pure fn eq(&&other: cmnt_style) -> bool {
+        (self as uint) == (other as uint)
+    }
+    pure fn ne(&&other: cmnt_style) -> bool {
+        (self as uint) != (other as uint)
+    }
+}
+
 type cmnt = {style: cmnt_style, lines: ~[~str], pos: uint};
 
 fn is_doc_comment(s: ~str) -> bool {

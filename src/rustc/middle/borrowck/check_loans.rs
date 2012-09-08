@@ -79,6 +79,13 @@ enum assignment_type {
     at_mutbl_ref,
 }
 
+impl assignment_type : cmp::Eq {
+    pure fn eq(&&other: assignment_type) -> bool {
+        (self as uint) == (other as uint)
+    }
+    pure fn ne(&&other: assignment_type) -> bool { !self.eq(other) }
+}
+
 impl assignment_type {
     fn checked_by_liveness() -> bool {
         // the liveness pass guarantees that immutable local variables

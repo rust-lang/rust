@@ -769,28 +769,17 @@ pure fn lt(a: &str, b: &str) -> bool {
 
 /// Bytewise less than or equal
 pure fn le(a: &str, b: &str) -> bool {
-    let (a_len, b_len) = (a.len(), b.len());
-    let mut end = uint::min(a_len, b_len);
-
-    let mut i = 0;
-    while i < end {
-        let (c_a, c_b) = (a[i], b[i]);
-        if c_a < c_b { return true; }
-        if c_a > c_b { return false; }
-        i += 1;
-    }
-
-    return a_len <= b_len;
+    !lt(b, a)
 }
 
 /// Bytewise greater than or equal
 pure fn ge(a: &str, b: &str) -> bool {
-    !lt(b, a)
+    !lt(a, b)
 }
 
 /// Bytewise greater than
 pure fn gt(a: &str, b: &str) -> bool {
-    !le(b, a)
+    !le(a, b)
 }
 
 impl &str: Eq {

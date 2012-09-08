@@ -3,11 +3,12 @@
 
 //! json serialization
 
-use core::cmp::Eq;
+use core::cmp::{Eq, Ord};
 use result::{Result, Ok, Err};
 use io::WriterUtil;
 use map::hashmap;
 use map::map;
+use sort::Sort;
 
 export Json;
 export Error;
@@ -603,6 +604,75 @@ pure fn eq(value0: Json, value1: Json) -> bool {
     }
 }
 
+/// Test if two json values are less than one another
+pure fn lt(value0: Json, value1: Json) -> bool {
+    match value0 {
+        Num(f0) => {
+            match value1 {
+                Num(f1) => f0 < f1,
+                String(_) | Boolean(_) | List(_) | Dict(_) | Null => true
+            }
+        }
+
+        String(s0) => {
+            match value1 {
+                Num(_) => false,
+                String(s1) => s0 < s1,
+                Boolean(_) | List(_) | Dict(_) | Null => true
+            }
+        }
+
+        Boolean(b0) => {
+            match value1 {
+                Num(_) | String(_) => false,
+                Boolean(b1) => b0 < b1,
+                List(_) | Dict(_) | Null => true
+            }
+        }
+
+        List(l0) => {
+            match value1 {
+                Num(_) | String(_) | Boolean(_) => false,
+                List(l1) => l0 < l1,
+                Dict(_) | Null => true
+            }
+        }
+
+        Dict(d0) => {
+            match value1 {
+                Num(_) | String(_) | Boolean(_) | List(_) => false,
+                Dict(d1) => {
+                    unchecked {
+                        let (d0_flat, d1_flat) = {
+                            let d0_flat = dvec::DVec();
+                            for d0.each |k, v| { d0_flat.push((k, v)); }
+                            let d0_flat = dvec::unwrap(d0_flat);
+                            d0_flat.qsort();
+
+                            let mut d1_flat = dvec::DVec();
+                            for d1.each |k, v| { d1_flat.push((k, v)); }
+                            let d1_flat = dvec::unwrap(d1_flat);
+                            d1_flat.qsort();
+
+                            (d0_flat, d1_flat)
+                        };
+
+                        d0_flat < d1_flat
+                    }
+                }
+                Null => true
+            }
+        }
+
+        Null => {
+            match value1 {
+                Num(_) | String(_) | Boolean(_) | List(_) | Dict(_) => false,
+                Null => true
+            }
+        }
+    }
+}
+
 impl Error : Eq {
     pure fn eq(&&other: Error) -> bool {
         self.line == other.line &&
@@ -615,6 +685,13 @@ impl Error : Eq {
 impl Json : Eq {
     pure fn eq(&&other: Json) -> bool { eq(self, other) }
     pure fn ne(&&other: Json) -> bool { !self.eq(other) }
+}
+
+impl Json : Ord {
+    pure fn lt(&&other: Json) -> bool { lt(self, other) }
+    pure fn le(&&other: Json) -> bool { !other.lt(self) }
+    pure fn ge(&&other: Json) -> bool { !self.lt(other) }
+    pure fn gt(&&other: Json) -> bool { other.lt(self)  }
 }
 
 trait ToJson { fn to_json() -> Json; }

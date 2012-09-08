@@ -516,12 +516,14 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
                             ranges[i].align.bounded &&
                             ranges[j].size.bounded &&
                             ranges[j].align.bounded {
-                            if ranges[i].size >= ranges[j].size &&
-                                ranges[i].align >= ranges[j].align {
+                            if ranges[i].size.min >= ranges[j].size.min &&
+                                ranges[i].align.min >= ranges[j].align.min {
                                 // Throw out j.
                                 candidates[j] = false;
-                            } else if ranges[j].size >= ranges[i].size &&
-                                ranges[j].align >= ranges[j].align {
+                            } else if ranges[j].size.min >=
+                                    ranges[i].size.min &&
+                                ranges[j].align.min >=
+                                    ranges[j].align.min {
                                 // Throw out i.
                                 candidates[i] = false;
                             }
