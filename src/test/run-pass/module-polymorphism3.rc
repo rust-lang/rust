@@ -8,7 +8,7 @@ mod mystd {
     #[path = "float-template"]
     mod float {
         // The type of the float
-        import inst::T;
+        use inst::T;
 
         // Define T as appropriate for platform
         #[path = "inst_float.rs"]
@@ -19,7 +19,7 @@ mod mystd {
     #[path = "float-template"]
     mod f64 {
 
-        import inst::T;
+        use inst::T;
 
         // Define T as f64
         #[path = "inst_f64.rs"]
@@ -28,7 +28,7 @@ mod mystd {
 
     #[path = "float-template"]
     mod f32 {
-        import inst::T;
+        use inst::T;
 
         #[path = "inst_f32.rs"]
         mod inst;

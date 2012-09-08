@@ -1757,7 +1757,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
       }
 
       ast::view_item_import(vps) => {
-        head(s, ~"import");
+        head(s, ~"use");
         print_view_paths(s, vps);
       }
 

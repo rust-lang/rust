@@ -12,7 +12,7 @@ proto! oneshot (
 )
 
 fn main() {
-    import oneshot::client::*;
+    use oneshot::client::*;
 
     let c = pipes::spawn_service(oneshot::init, |p| { recv(p); });
 

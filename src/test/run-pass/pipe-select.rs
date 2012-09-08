@@ -20,8 +20,8 @@ proto! stream (
 )
 
 fn main() {
-    import oneshot::client::*;
-    import stream::client::*;
+    use oneshot::client::*;
+    use stream::client::*;
 
     let iotask = uv::global_loop::get();
     

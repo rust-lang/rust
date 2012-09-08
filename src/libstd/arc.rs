@@ -444,7 +444,7 @@ impl<T: Const Send> &RWReadMode<T> {
 
 #[cfg(test)]
 mod tests {
-    import comm::*;
+    use comm::*;
 
     #[test]
     fn manually_share_arc() {

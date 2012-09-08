@@ -6,7 +6,6 @@
 
 use std;
 
-use option = option;
 use option::Some;
 use option::None;
 use std::map;

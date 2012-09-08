@@ -1,5 +1,5 @@
-import common::config;
-import io::ReaderUtil;
+use common::config;
+use io::ReaderUtil;
 
 export load_errors;
 export expected_error;

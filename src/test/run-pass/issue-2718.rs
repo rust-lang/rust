@@ -1,5 +1,5 @@
 mod pipes {
-    import unsafe::{forget, transmute};
+    use unsafe::{forget, transmute};
 
     enum state {
         empty,

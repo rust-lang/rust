@@ -362,7 +362,7 @@ mod linear {
 #[test]
 mod test {
 
-    import linear::LinearMap;
+    use linear::LinearMap;
 
     fn int_linear_map<V>() -> LinearMap<uint,V> {
         return LinearMap();

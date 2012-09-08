@@ -293,7 +293,7 @@ impl reflector {
 fn emit_calls_to_trait_visit_ty(bcx: block, t: ty::t,
                                 visitor_val: ValueRef,
                                 visitor_trait_id: def_id) -> block {
-    import syntax::parse::token::special_idents::tydesc;
+    use syntax::parse::token::special_idents::tydesc;
     let final = sub_block(bcx, ~"final");
     assert bcx.ccx().tcx.intrinsic_defs.contains_key(tydesc);
     let (_, tydesc_ty) = bcx.ccx().tcx.intrinsic_defs.get(tydesc);

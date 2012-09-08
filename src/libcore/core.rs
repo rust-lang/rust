@@ -97,7 +97,7 @@ mod core {
 #[cfg(test)]
 mod std {
     use std(vers = "0.4");
-    import std::test;
+    use std::test;
 }
 
 /**

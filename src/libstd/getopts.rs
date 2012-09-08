@@ -456,8 +456,8 @@ impl FailType : Eq {
 
 #[cfg(test)]
 mod tests {
-    import opt = getopts;
-    import result::{Err, Ok};
+    use opt = getopts;
+    use result::{Err, Ok};
 
     fn check_fail_type(+f: Fail_, ft: FailType) {
         match f {

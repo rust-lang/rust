@@ -75,7 +75,7 @@ export priv;
 /// Operations and constants for `int`
 #[path = "int-template"]
 mod int {
-    import inst::{ hash, pow };
+    use inst::{ hash, pow };
     export hash, pow;
     #[path = "int.rs"]
     mod inst;
@@ -112,7 +112,7 @@ mod i64 {
 /// Operations and constants for `uint`
 #[path = "uint-template"]
 mod uint {
-    import inst::{
+    use inst::{
         div_ceil, div_round, div_floor, hash, iterate,
         next_power_of_two
     };
@@ -126,7 +126,7 @@ mod uint {
 /// Operations and constants for `u8`
 #[path = "uint-template"]
 mod u8 {
-    import inst::is_ascii;
+    use inst::is_ascii;
     export is_ascii;
 
     #[path = "u8.rs"]

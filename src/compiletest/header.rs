@@ -1,8 +1,5 @@
-import option;
-import str;
-
-import common::config;
-import io::ReaderUtil;
+use common::config;
+use io::ReaderUtil;
 
 export test_props;
 export load_props;

@@ -848,7 +848,6 @@ impl Tm {
 
 #[cfg(test)]
 mod tests {
-    import task;
 
     #[test]
     fn test_get_time() {

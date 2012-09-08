@@ -138,7 +138,7 @@ unsafe fn ptr<T>(t: CVec<T>) -> *mut T {
 
 #[cfg(test)]
 mod tests {
-    import libc::*;
+    use libc::*;
 
     fn malloc(n: size_t) -> CVec<u8> {
         let mem = libc::malloc(n);

@@ -6,7 +6,7 @@ mod foo {
     }
 }
 mod bar {
-    import zed::baz;
+    use zed::baz;
     export baz;
 }
 fn main() { baz(); }

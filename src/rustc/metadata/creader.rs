@@ -55,7 +55,7 @@ fn dump_crates(crate_cache: DVec<cache_entry>) {
 
 fn warn_if_multiple_versions(e: env, diag: span_handler,
                              crate_cache: ~[cache_entry]) {
-    import either::*;
+    use either::*;
 
     if crate_cache.len() != 0u {
         let name = loader::crate_name_from_metas(*crate_cache.last().metas);

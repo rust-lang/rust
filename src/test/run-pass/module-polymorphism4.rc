@@ -2,7 +2,7 @@
 #[path = "module-polymorphism4-files"]
 mod cat {
 
-    import inst::*;
+    use inst::*;
 
     #[path = "cat.rs"]
     mod inst;
@@ -15,7 +15,7 @@ mod cat {
 #[path = "module-polymorphism4-files"]
 mod dog {
 
-    import inst::*;
+    use inst::*;
 
     #[path = "dog.rs"]
     mod inst;

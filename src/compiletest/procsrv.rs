@@ -1,6 +1,6 @@
-import run::spawn_process;
-import io::{ReaderUtil, WriterUtil};
-import libc::{c_int, pid_t};
+use run::spawn_process;
+use io::{ReaderUtil, WriterUtil};
+use libc::{c_int, pid_t};
 
 export run;
 

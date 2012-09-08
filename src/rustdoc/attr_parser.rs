@@ -21,11 +21,11 @@ type crate_attrs = {
 mod test {
 
     fn parse_attributes(source: ~str) -> ~[ast::attribute] {
-        import syntax::parse;
-        import parse::parser;
-        import parse::attr::parser_attr;
-        import syntax::codemap;
-        import syntax::diagnostic;
+        use syntax::parse;
+        use parse::parser;
+        use parse::attr::parser_attr;
+        use syntax::codemap;
+        use syntax::diagnostic;
 
         let parse_sess = syntax::parse::new_parse_sess(None);
         let parser = parse::new_parser_from_source_str(

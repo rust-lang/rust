@@ -263,8 +263,8 @@ fn test() {
 
 #[test]
 fn test_position() {
-    import str::as_c_str;
-    import libc::c_char;
+    use str::as_c_str;
+    use libc::c_char;
 
     let s = ~"hello";
     unsafe {

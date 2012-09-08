@@ -104,7 +104,7 @@ fn exec<T:Send>(
 fn build_ctxt(sess: session,
               ast: @ast::crate) -> ctxt {
 
-    import rustc::front::config;
+    use rustc::front::config;
 
     let ast = config::strip_unconfigured_items(ast);
     let ast = syntax::ext::expand::expand_crate(sess.parse_sess,
@@ -201,7 +201,7 @@ fn srv_should_build_ast_map() {
 
 #[test]
 fn should_ignore_external_import_paths_that_dont_exist() {
-    let source = ~"use forble; import forble::bippy;";
+    let source = ~"use forble; use forble::bippy;";
     from_str(source, |_srv| { } )
 }
 

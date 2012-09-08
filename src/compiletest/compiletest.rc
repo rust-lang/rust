@@ -7,7 +7,7 @@
 use core(vers = "0.4");
 use std(vers = "0.4");
 
-import core::*;
+use core::*;
 
 mod procsrv;
 mod util;

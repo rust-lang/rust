@@ -1,13 +1,13 @@
-import io::WriterUtil;
+use io::WriterUtil;
 
-import common::mode_run_pass;
-import common::mode_run_fail;
-import common::mode_compile_fail;
-import common::mode_pretty;
-import common::config;
-import header::load_props;
-import header::test_props;
-import util::logv;
+use common::mode_run_pass;
+use common::mode_run_fail;
+use common::mode_compile_fail;
+use common::mode_pretty;
+use common::config;
+use header::load_props;
+use header::test_props;
+use util::logv;
 
 export run;
 

@@ -3,10 +3,8 @@
 // no dependencies on rustc it can move into its own crate.
 
 mod middle {
-    import ty = middle_::ty;
-    export ty;
-    import resolve = middle_::resolve;
-    export resolve;
+    pub use middle_::ty;
+    pub use middle_::resolve;
 }
 
 mod front {
@@ -19,11 +17,9 @@ mod driver {
 }
 
 mod util {
-    import ppaux = util_::ppaux;
-    export ppaux;
+    pub use util_::ppaux;
 }
 
 mod lib {
-    import llvm = lib_::llvm;
-    export llvm;
+    pub use lib_::llvm;
 }

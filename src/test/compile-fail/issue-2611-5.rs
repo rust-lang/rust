@@ -1,7 +1,6 @@
 // Tests that ty params get matched correctly when comparing
 // an impl against a trait
-import iter;
-import iter::BaseIter;
+use iter::BaseIter;
 
 trait A {
   fn b<C:Copy, D>(x: C) -> C;

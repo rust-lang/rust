@@ -7,7 +7,7 @@ mod bar {
 }
 
 fn main() {
-    import bar::{alpha, charlie};
+    use bar::{alpha, charlie};
     match alpha {
       alpha | beta => {} //~ ERROR variable `beta` from pattern #2 is not bound in pattern #1
       charlie => {}

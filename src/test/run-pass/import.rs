@@ -3,8 +3,8 @@ mod foo {
 }
 
 mod bar {
-    import foo::x;
-    import z = foo::x;
+    use foo::x;
+    use z = foo::x;
     fn thing() { x(10); z(10); }
 }
 

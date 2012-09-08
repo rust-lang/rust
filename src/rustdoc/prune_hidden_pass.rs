@@ -34,7 +34,7 @@ fn fold_mod(
 }
 
 fn is_hidden(srv: astsrv::srv, doc: doc::itemdoc) -> bool {
-    import syntax::ast_map;
+    use syntax::ast_map;
 
     let id = doc.id;
     do astsrv::exec(srv) |ctxt| {

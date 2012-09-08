@@ -25,10 +25,10 @@ with destructors.
 
 */
 
-import stackwalk::Word;
-import libc::size_t;
-import libc::uintptr_t;
-import send_map::linear::LinearMap;
+use stackwalk::Word;
+use libc::size_t;
+use libc::uintptr_t;
+use send_map::linear::LinearMap;
 
 export Word;
 export gc;

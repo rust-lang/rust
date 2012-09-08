@@ -1220,7 +1220,7 @@ fn with_scope_datumblock(bcx: block, opt_node_info: Option<node_info>,
                          name: ~str, f: fn(block) -> datum::DatumBlock)
     -> datum::DatumBlock
 {
-    import datum::DatumBlock;
+    use datum::DatumBlock;
 
     let _icx = bcx.insn_ctxt("with_scope_result");
     let scope_cx = scope_block(bcx, opt_node_info, name);

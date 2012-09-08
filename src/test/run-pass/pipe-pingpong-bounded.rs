@@ -7,7 +7,7 @@
 // This was generated initially by the pipe compiler, but it's been
 // modified in hopefully straightforward ways.
 mod pingpong {
-    import pipes::*;
+    use pipes::*;
 
     type packets = {
         // This is probably a resolve bug, I forgot to export packet,
@@ -67,11 +67,11 @@ mod pingpong {
 }
 
 mod test {
-    import pipes::recv;
-    import pingpong::{ping, pong};
+    use pipes::recv;
+    use pingpong::{ping, pong};
 
     fn client(-chan: pingpong::client::ping) {
-        import pingpong::client;
+        use pingpong::client;
 
         let chan = client::ping(chan); return;
         log(error, "Sent ping");
@@ -80,7 +80,7 @@ mod test {
     }
     
     fn server(-chan: pingpong::server::ping) {
-        import pingpong::server;
+        use pingpong::server;
 
         let ping(chan) = recv(chan); return;
         log(error, "Received ping");
