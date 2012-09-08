@@ -235,7 +235,7 @@ fn pat_ctor_id(tcx: ty::ctxt, p: @pat) -> Option<ctor> {
       pat_range(lo, hi) => {
         Some(range(eval_const_expr(tcx, lo), eval_const_expr(tcx, hi)))
       }
-      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) |
+      pat_box(_) | pat_uniq(_) | pat_rec(_, _) | pat_tup(_) | pat_region(*) |
       pat_struct(*) => {
         Some(single)
       }
@@ -258,8 +258,8 @@ fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
 
 fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
     match ty::get(left_ty).struct {
-      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_tup(_) | ty::ty_rec(_) |
-      ty::ty_class(*) => {
+      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) | ty::ty_tup(_) |
+      ty::ty_rec(_) | ty::ty_class(*) => {
         for m.each |r| {
             if !is_wild(tcx, r[0]) { return None; }
         }
@@ -305,7 +305,7 @@ fn ctor_arity(tcx: ty::ctxt, ctor: ctor, ty: ty::t) -> uint {
     match ty::get(ty).struct {
       ty::ty_tup(fs) => fs.len(),
       ty::ty_rec(fs) => fs.len(),
-      ty::ty_box(_) | ty::ty_uniq(_) => 1u,
+      ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
       ty::ty_enum(eid, _) => {
           let id = match ctor { variant(id) => id,
           _ => fail ~"impossible case" };
@@ -386,7 +386,8 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         Some(vec::append(args, vec::tail(r)))
       }
       pat_tup(args) => Some(vec::append(args, vec::tail(r))),
-      pat_box(a) | pat_uniq(a) => Some(vec::append(~[a], vec::tail(r))),
+      pat_box(a) | pat_uniq(a) | pat_region(a) =>
+          Some(vec::append(~[a], vec::tail(r))),
       pat_lit(expr) => {
         let e_v = eval_const_expr(tcx, expr);
         let match_ = match ctor_id {
@@ -440,7 +441,8 @@ fn is_refutable(tcx: ty::ctxt, pat: @pat) -> bool {
     }
 
     match pat.node {
-      pat_box(sub) | pat_uniq(sub) | pat_ident(_, _, Some(sub)) => {
+      pat_box(sub) | pat_uniq(sub) | pat_region(sub) |
+      pat_ident(_, _, Some(sub)) => {
         is_refutable(tcx, sub)
       }
       pat_wild | pat_ident(_, _, None) => { false }

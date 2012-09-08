@@ -42,8 +42,8 @@ use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              mac_invoc_tt, mac_var, matcher, match_nonterminal, match_seq,
              match_tok, method, mode, module_ns, mt, mul, mutability,
              named_field, neg, noreturn, not, pat, pat_box, pat_enum,
-             pat_ident, pat_lit, pat_range, pat_rec, pat_struct, pat_tup,
-             pat_uniq, pat_wild, path, private, proto, proto_bare,
+             pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct,
+             pat_tup, pat_uniq, pat_wild, path, private, proto, proto_bare,
              proto_block, proto_box, proto_uniq, provided, public, pure_fn,
              purity, re_anon, re_named, region, rem, required, ret_style,
              return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
@@ -1843,6 +1843,25 @@ struct parser {
               _ => pat_uniq(sub)
             };
 
+          }
+          token::BINOP(token::AND) => {
+              let lo = self.span.lo;
+              self.bump();
+              let sub = self.parse_pat(refutable);
+              hi = sub.span.hi;
+              // HACK: parse &"..." as a literal of a borrowed str
+              pat = match sub.node {
+                  pat_lit(e@@{
+                      node: expr_lit(@{node: lit_str(_), span: _}), _
+                  }) => {
+                      let vst = @{id: self.get_id(), callee_id: self.get_id(),
+                                  node: expr_vstore(e, 
+                                          vstore_slice(self.region_from_name(None))),
+                                  span: mk_sp(lo, hi)};
+                      pat_lit(vst)
+                  }
+              _ => pat_region(sub)
+              };
           }
           token::LBRACE => {
             self.bump();

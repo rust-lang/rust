@@ -1537,6 +1537,10 @@ fn print_pat(s: ps, &&pat: @ast::pat) {
       }
       ast::pat_box(inner) => { word(s.s, ~"@"); print_pat(s, inner); }
       ast::pat_uniq(inner) => { word(s.s, ~"~"); print_pat(s, inner); }
+      ast::pat_region(inner) => {
+          word(s.s, ~"&");
+          print_pat(s, inner);
+      }
       ast::pat_lit(e) => print_expr(s, e),
       ast::pat_range(begin, end) => {
         print_expr(s, begin);

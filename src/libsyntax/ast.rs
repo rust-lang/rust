@@ -360,6 +360,7 @@ enum pat_ {
     pat_tup(~[@pat]),
     pat_box(@pat),
     pat_uniq(@pat),
+    pat_region(@pat), // borrowed pointer pattern
     pat_lit(@expr),
     pat_range(@expr, @expr),
 }

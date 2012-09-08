@@ -914,12 +914,8 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
                 bcx = bind_irrefutable_pat(bcx, elem, fldptr, make_copy);
             }
         }
-        ast::pat_box(inner) => {
-            let llbox = Load(bcx, val);
-            let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
-            bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);
-        }
-        ast::pat_uniq(inner) => {
+        ast::pat_box(inner) | ast::pat_uniq(inner) |
+        ast::pat_region(inner) => {
             let llbox = Load(bcx, val);
             let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
             bcx = bind_irrefutable_pat(bcx, inner, unboxed, true);

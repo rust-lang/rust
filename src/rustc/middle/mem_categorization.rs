@@ -898,8 +898,9 @@ impl &mem_categorization_ctxt {
             }
           }
 
-          ast::pat_box(subpat) | ast::pat_uniq(subpat) => {
-            // @p1, ~p1
+          ast::pat_box(subpat) | ast::pat_uniq(subpat) |
+          ast::pat_region(subpat) => {
+            // @p1, ~p1, &p1
             match self.cat_deref(subpat, cmt, 0u, true) {
               Some(subcmt) => {
                 self.cat_pattern(subcmt, subpat, op);
