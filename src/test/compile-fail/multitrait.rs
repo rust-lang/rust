@@ -1,5 +1,5 @@
 struct S {
- y: int;
+ y: int
 }
 
 impl S: Cmp, ToStr { //~ ERROR: expected `{` but found `,`
