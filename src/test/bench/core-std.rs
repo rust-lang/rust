@@ -66,7 +66,7 @@ fn read_line() {
 fn str_set() {
     let r = rand::Rng();
 
-    let s = map::hashmap(str::hash, str::eq);
+    let s = map::hashmap();
 
     for int::range(0, 1000) |_i| {
         map::set_add(s, r.gen_str(10));
