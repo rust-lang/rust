@@ -120,6 +120,9 @@ struct LanguageItemCollector {
     session: session,
 
     item_refs: hashmap<~str,&mut Option<def_id>>,
+}
+
+impl LanguageItemCollector {
 
     fn match_and_collect_meta_item(item_def_id: def_id,
                                    meta_item: meta_item) {

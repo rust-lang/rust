@@ -242,7 +242,9 @@ struct parser {
     obsolete_set: hashmap<ObsoleteSyntax, ()>,
 
     drop {} /* do not copy the parser; its state is tied to outside state */
+}
 
+impl parser {
     fn bump() {
         self.last_span = self.span;
         let next = if self.buffer_start == self.buffer_end {
@@ -2776,32 +2778,25 @@ struct parser {
         let obsolete_let = self.eat_obsolete_ident("let");
         if obsolete_let { self.obsolete(copy self.last_span, ObsoleteLet) }
 
-        if (obsolete_let || self.token_is_keyword(~"mut", copy self.token) ||
-            !self.is_any_keyword(copy self.token)) &&
-            !self.token_is_pound_or_doc_comment(self.token) {
-            let a_var = self.parse_instance_var(vis);
-            match self.token {
-                token::SEMI => {
-                    self.obsolete(copy self.span, ObsoleteFieldTerminator);
-                    self.bump();
-                }
-                token::COMMA => {
-                    self.bump();
-                }
-                token::RBRACE => {}
-                _ => {
-                    self.span_fatal(copy self.span,
-                                    fmt!("expected `;`, `,`, or '}' but \
-                                          found `%s`",
-                                         token_to_str(self.reader,
-                                                      self.token)));
-                }
-            }
-            return a_var;
-        } else {
-            let m = self.parse_method(vis);
-            return @method_member(m);
+        let a_var = self.parse_instance_var(vis);
+        match self.token {
+          token::SEMI => {
+            self.obsolete(copy self.span, ObsoleteFieldTerminator);
+            self.bump();
+          }
+          token::COMMA => {
+            self.bump();
+          }
+          token::RBRACE => {}
+          _ => {
+            self.span_fatal(copy self.span,
+                            fmt!("expected `;`, `,`, or '}' but \
+                                  found `%s`",
+                                 token_to_str(self.reader,
+                                              self.token)));
+          }
         }
+        return a_var;
     }
 
     fn parse_dtor(attrs: ~[attribute]) -> class_contents {

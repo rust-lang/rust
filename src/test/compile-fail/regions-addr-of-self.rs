@@ -1,6 +1,8 @@
 struct dog {
     mut cats_chased: uint,
+}
 
+impl dog {
     fn chase_cat() {
         let p: &static/mut uint = &mut self.cats_chased; //~ ERROR illegal borrow
         *p += 1u;

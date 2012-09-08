@@ -158,6 +158,9 @@ struct CoherenceChecker {
     // implementations that are defined in the same scope as their base types.
 
     privileged_implementations: hashmap<node_id,()>,
+}
+
+impl CoherenceChecker {
 
     // Create a mapping containing a MethodInfo for every provided
     // method in every trait.

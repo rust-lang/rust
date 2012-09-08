@@ -8,7 +8,9 @@ mod kitty {
   struct cat {
     meows: uint,
     name: ~str,
+  }
 
+  impl cat {
     fn get_name() -> ~str {  self.name }
   }
 

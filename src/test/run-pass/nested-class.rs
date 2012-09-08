@@ -2,6 +2,9 @@ fn main() {
   
   struct b {
     i: int,
+  }
+
+  impl b {
     fn do_stuff() -> int { return 37; }
   }
 

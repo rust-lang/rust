@@ -94,7 +94,9 @@ fn reduce(&&word: ~str, get: map_reduce::getter<int>) {
 
 struct box<T> {
     mut contents: Option<T>,
+}
 
+impl<T> box<T> {
     fn swap(f: fn(+T) -> T) {
         let mut tmp = None;
         self.contents <-> tmp;
@@ -344,10 +346,12 @@ fn is_word_char(c: char) -> bool {
     char::is_alphabetic(c) || char::is_digit(c) || c == '_'
 }
 
-struct random_word_reader: word_reader {
+struct random_word_reader {
     mut remaining: uint,
     rng: rand::Rng,
+}
 
+impl random_word_reader: word_reader {
     fn read_word() -> Option<~str> {
         if self.remaining > 0 {
             self.remaining -= 1;

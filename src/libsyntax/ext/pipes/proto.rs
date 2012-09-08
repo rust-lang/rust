@@ -134,6 +134,9 @@ struct protocol_ {
     states: DVec<state>,
 
     mut bounded: Option<bool>,
+}
+
+impl protocol_ {
 
     /// Get a state.
     fn get_state(name: ~str) -> state {

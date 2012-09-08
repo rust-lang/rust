@@ -6,11 +6,12 @@ struct cat {
   }
 
   how_hungry : int,
-
-  fn speak() { self.meows += 1u; }
-  fn meow_count() -> uint { self.meows }
-
 }
+
+    impl cat {
+        fn speak() { self.meows += 1u; }
+        fn meow_count() -> uint { self.meows }
+    }
 
     fn cat(in_x : uint, in_y : int) -> cat {
         cat {

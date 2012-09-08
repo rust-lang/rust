@@ -5,17 +5,13 @@ use to_str::ToStr;
 struct cat {
   priv {
     mut meows : uint,
-    fn meow() {
-      error!("Meow");
-      self.meows += 1u;
-      if self.meows % 5u == 0u {
-          self.how_hungry += 1;
-      }
-    }
   }
 
   mut how_hungry : int,
   name : ~str,
+}
+
+impl cat {
 
   fn speak() { self.meow(); }
 
@@ -30,6 +26,16 @@ struct cat {
         return false;
     }
   }
+}
+
+priv impl cat {
+    fn meow() {
+      error!("Meow");
+      self.meows += 1u;
+      if self.meows % 5u == 0u {
+          self.how_hungry += 1;
+      }
+    }
 }
 
 fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {

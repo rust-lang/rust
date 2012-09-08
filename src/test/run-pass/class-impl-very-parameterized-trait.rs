@@ -14,22 +14,17 @@ impl cat_type : cmp::Eq {
 // for any int value that's less than the meows field
 
 // ok: T should be in scope when resolving the trait ref for map
-struct cat<T: Copy> : map<int, T> {
+struct cat<T: Copy> {
   priv {
     // Yes, you can have negative meows
     mut meows : int,
-    fn meow() {
-      self.meows += 1;
-      error!("Meow %d", self.meows);
-      if self.meows % 5 == 0 {
-          self.how_hungry += 1;
-      }
-    }
   }
 
   mut how_hungry : int,
   name : T,
+}
 
+impl<T: Copy> cat<T> {
   fn speak() { self.meow(); }
 
   fn eat() -> bool {
@@ -43,7 +38,9 @@ struct cat<T: Copy> : map<int, T> {
         return false;
     }
   }
+}
 
+impl<T: Copy> cat<T> : map<int, T> {
   pure fn size() -> uint { self.meows as uint }
   fn insert(+k: int, +_v: T) -> bool {
     self.meows += k;
@@ -92,6 +89,16 @@ struct cat<T: Copy> : map<int, T> {
   pure fn each_value_ref(f: fn(k: &T) -> bool) {}
 
   fn clear() { }
+}
+
+priv impl<T: Copy> cat<T> {
+    fn meow() {
+      self.meows += 1;
+      error!("Meow %d", self.meows);
+      if self.meows % 5 == 0 {
+          self.how_hungry += 1;
+      }
+    }
 }
 
 fn cat<T: Copy>(in_x : int, in_y : int, in_name: T) -> cat<T> {

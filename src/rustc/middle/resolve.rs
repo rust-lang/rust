@@ -379,14 +379,6 @@ struct ImportResolution {
     mut type_target: Option<Target>,
 
     mut used: bool,
-
-    fn target_for_namespace(namespace: Namespace) -> Option<Target> {
-        match namespace {
-            ModuleNS    => return copy self.module_target,
-            TypeNS      => return copy self.type_target,
-            ValueNS     => return copy self.value_target
-        }
-    }
 }
 
 fn ImportResolution(span: span) -> ImportResolution {
@@ -397,6 +389,16 @@ fn ImportResolution(span: span) -> ImportResolution {
         value_target: None,
         type_target: None,
         used: false
+    }
+}
+
+impl ImportResolution {
+    fn target_for_namespace(namespace: Namespace) -> Option<Target> {
+        match namespace {
+            ModuleNS    => return copy self.module_target,
+            TypeNS      => return copy self.type_target,
+            ValueNS     => return copy self.value_target
+        }
     }
 }
 
@@ -448,10 +450,6 @@ struct Module {
 
     // The index of the import we're resolving.
     mut resolved_import_count: uint,
-
-    fn all_imports_resolved() -> bool {
-        return self.imports.len() == self.resolved_import_count;
-    }
 }
 
 fn Module(parent_link: ParentLink, def_id: Option<def_id>) -> Module {
@@ -465,6 +463,12 @@ fn Module(parent_link: ParentLink, def_id: Option<def_id>) -> Module {
         import_resolutions: atom_hashmap(),
         glob_count: 0u,
         resolved_import_count: 0u
+    }
+}
+
+impl Module {
+    fn all_imports_resolved() -> bool {
+        return self.imports.len() == self.resolved_import_count;
     }
 }
 
@@ -518,6 +522,9 @@ struct NameBindings {
     mut module_span: Option<span>,
     mut type_span: Option<span>,
     mut value_span: Option<span>,
+}
+
+impl NameBindings {
 
     /// Creates a new module in this set of name bindings.
     fn define_module(parent_link: ParentLink, def_id: Option<def_id>,
@@ -627,7 +634,9 @@ fn NameBindings() -> NameBindings {
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
     primitive_types: hashmap<Atom,prim_ty>,
+}
 
+impl PrimitiveTypeTable {
     fn intern(intr: ident_interner, string: @~str,
               primitive_type: prim_ty) {
         let atom = intr.intern(string);
@@ -773,6 +782,9 @@ struct Resolver {
     export_map: ExportMap,
     export_map2: ExportMap2,
     trait_map: TraitMap,
+}
+
+impl Resolver {
 
     /// The main name resolution procedure.
     fn resolve(@self, this: @Resolver) {

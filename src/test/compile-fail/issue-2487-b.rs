@@ -2,6 +2,9 @@ struct socket {
     sock: int,
 
     drop { }
+}
+
+impl socket {
 
     fn set_identity()  {
         do closure {

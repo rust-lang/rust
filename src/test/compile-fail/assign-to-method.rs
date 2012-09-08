@@ -4,6 +4,9 @@ struct cat {
   }
 
   how_hungry : int,
+}
+
+impl cat {
 
   fn speak() { self.meows += 1u; }
 }

@@ -145,6 +145,9 @@ mod pipes {
                 sender_terminate(option::unwrap(p))
             }
         }
+    }
+
+    impl<T: Send> send_packet<T> {
         fn unwrap() -> *packet<T> {
             let mut p = None;
             p <-> self.p;
@@ -167,6 +170,9 @@ mod pipes {
                 receiver_terminate(option::unwrap(p))
             }
         }
+    }
+
+    impl<T: Send> recv_packet<T> {
         fn unwrap() -> *packet<T> {
             let mut p = None;
             p <-> self.p;

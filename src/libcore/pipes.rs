@@ -164,7 +164,17 @@ struct PacketHeader {
     // This is a reinterpret_cast of a ~buffer, that can also be cast
     // to a buffer_header if need be.
     mut buffer: *libc::c_void,
+}
 
+fn PacketHeader() -> PacketHeader {
+    PacketHeader {
+        state: Empty,
+        blocked_task: ptr::null(),
+        buffer: ptr::null()
+    }
+}
+
+impl PacketHeader {
     // Returns the old state.
     unsafe fn mark_blocked(this: *rust_task) -> State {
         rustrt::rust_task_ref(this);
@@ -193,14 +203,6 @@ struct PacketHeader {
 
     fn set_buffer<T: Send>(b: ~Buffer<T>) unsafe {
         self.buffer = reinterpret_cast(&b);
-    }
-}
-
-fn PacketHeader() -> PacketHeader {
-    PacketHeader {
-        state: Empty,
-        blocked_task: ptr::null(),
-        buffer: ptr::null()
     }
 }
 
@@ -794,6 +796,21 @@ struct SendPacketBuffered<T: Send, Tbuffer: Send> {
         //                    "none"
         //                } else { "some" }); }
     }
+}
+
+fn SendPacketBuffered<T: Send, Tbuffer: Send>(p: *Packet<T>)
+    -> SendPacketBuffered<T, Tbuffer> {
+        //debug!("take send %?", p);
+    SendPacketBuffered {
+        p: Some(p),
+        buffer: unsafe {
+            Some(BufferResource(
+                get_buffer(ptr::addr_of((*p).header))))
+        }
+    }
+}
+
+impl<T: Send, Tbuffer: Send> SendPacketBuffered<T, Tbuffer> {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
@@ -817,18 +834,6 @@ struct SendPacketBuffered<T: Send, Tbuffer: Send> {
         let mut tmp = None;
         tmp <-> self.buffer;
         option::unwrap(tmp)
-    }
-}
-
-fn SendPacketBuffered<T: Send, Tbuffer: Send>(p: *Packet<T>)
-    -> SendPacketBuffered<T, Tbuffer> {
-        //debug!("take send %?", p);
-    SendPacketBuffered {
-        p: Some(p),
-        buffer: unsafe {
-            Some(BufferResource(
-                get_buffer(ptr::addr_of((*p).header))))
-        }
     }
 }
 
@@ -858,7 +863,7 @@ fn recv_packet<T: Send>(p: *packet<T>) -> RecvPacket<T> {
     RecvPacket(p)
 }
 
-struct RecvPacketBuffered<T: Send, Tbuffer: Send> : Selectable {
+struct RecvPacketBuffered<T: Send, Tbuffer: Send> {
     mut p: Option<*Packet<T>>,
     mut buffer: Option<BufferResource<Tbuffer>>,
     drop {
@@ -875,6 +880,9 @@ struct RecvPacketBuffered<T: Send, Tbuffer: Send> : Selectable {
         //                    "none"
         //                } else { "some" }); }
     }
+}
+
+impl<T: Send, Tbuffer: Send> RecvPacketBuffered<T, Tbuffer> : Selectable {
     fn unwrap() -> *Packet<T> {
         let mut p = None;
         p <-> self.p;
@@ -1095,9 +1103,27 @@ impl<T: Send> Port<T>: Recv<T> {
     }
 }
 
+impl<T: Send> Port<T>: Selectable {
+    pure fn header() -> *PacketHeader unchecked {
+        match self.endp {
+          Some(endp) => endp.header(),
+          None => fail ~"peeking empty stream"
+        }
+    }
+}
+
 /// Treat many ports as one.
-struct PortSet<T: Send> : Recv<T> {
+struct PortSet<T: Send> {
     mut ports: ~[pipes::Port<T>],
+}
+
+fn PortSet<T: Send>() -> PortSet<T>{
+    PortSet {
+        ports: ~[]
+    }
+}
+
+impl<T: Send> PortSet<T> : Recv<T> {
 
     fn add(+port: pipes::Port<T>) {
         vec::push(self.ports, move port)
@@ -1142,21 +1168,6 @@ struct PortSet<T: Send> : Recv<T> {
             if p.peek() { return true }
         }
         false
-    }
-}
-
-fn PortSet<T: Send>() -> PortSet<T>{
-    PortSet {
-        ports: ~[]
-    }
-}
-
-impl<T: Send> Port<T>: Selectable {
-    pure fn header() -> *PacketHeader unchecked {
-        match self.endp {
-          Some(endp) => endp.header(),
-          None => fail ~"peeking empty stream"
-        }
     }
 }
 
