@@ -3,16 +3,15 @@
 
 mod intrinsic {
 
-    import rusti::visit_tydesc;
-    export TyVisitor, get_tydesc, visit_tydesc, TyDesc;
+    pub use rusti::visit_tydesc;
 
     // FIXME (#2712): remove this when the interface has settled and the
     // version in sys is no longer present.
-    fn get_tydesc<T>() -> *TyDesc {
+    pub fn get_tydesc<T>() -> *TyDesc {
         rusti::get_tydesc::<T>() as *TyDesc
     }
 
-    enum TyDesc = {
+    pub enum TyDesc = {
         first_param: **u8,
         size: uint,
         align: uint
