@@ -984,14 +984,14 @@ fn test_more() {
 fn test_simplification() {
     let ext_cx = mk_ctxt();
     let item_in = ast::ii_item(#ast[item] {
-        fn new_int_alist<B: copy>() -> alist<int, B> {
+        fn new_int_alist<B: Copy>() -> alist<int, B> {
             fn eq_int(&&a: int, &&b: int) -> bool { a == b }
             return {eq_fn: eq_int, mut data: ~[]};
         }
     });
     let item_out = simplify_ast(item_in);
     let item_exp = ast::ii_item(#ast[item] {
-        fn new_int_alist<B: copy>() -> alist<int, B> {
+        fn new_int_alist<B: Copy>() -> alist<int, B> {
             return {eq_fn: eq_int, mut data: ~[]};
         }
     });
