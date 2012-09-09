@@ -420,17 +420,17 @@ fn test_select2_stress() {
         };
     }
 
-    let mut as = 0;
+    let mut as_ = 0;
     let mut bs = 0;
     for iter::repeat(msgs * times * 2u) {
         match select2(po_a, po_b) {
-          either::Left(~"a") => as += 1,
+          either::Left(~"a") => as_ += 1,
           either::Right(~"b") => bs += 1,
           _ => fail ~"test_select_2_stress failed"
         }
     }
 
-    assert as == 400;
+    assert as_ == 400;
     assert bs == 400;
 }
 

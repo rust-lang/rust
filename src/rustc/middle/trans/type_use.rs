@@ -116,17 +116,17 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     uses
 }
 
-fn type_needs(cx: ctx, use: uint, ty: ty::t) {
+fn type_needs(cx: ctx, use_: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
     for vec::each_mut(cx.uses) |u| {
-        if *u & use != use {
-            type_needs_inner(cx, use, ty, @Nil);
+        if *u & use_ != use_ {
+            type_needs_inner(cx, use_, ty, @Nil);
             return;
         }
     }
 }
 
-fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
+fn type_needs_inner(cx: ctx, use_: uint, ty: ty::t,
                     enums_seen: @List<def_id>) {
     do ty::maybe_walk_ty(ty) |ty| {
         if ty::type_has_params(ty) {
@@ -145,14 +145,14 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
                             let t = ty::subst(cx.ccx.tcx, &substs, aty);
-                            type_needs_inner(cx, use, t, seen);
+                            type_needs_inner(cx, use_, t, seen);
                         }
                     }
                 }
                 false
               }
               ty::ty_param(p) => {
-                cx.uses[p.idx] |= use;
+                cx.uses[p.idx] |= use_;
                 false
               }
               _ => true
@@ -161,8 +161,8 @@ fn type_needs_inner(cx: ctx, use: uint, ty: ty::t,
     }
 }
 
-fn node_type_needs(cx: ctx, use: uint, id: node_id) {
-    type_needs(cx, use, ty::node_id_to_type(cx.ccx.tcx, id));
+fn node_type_needs(cx: ctx, use_: uint, id: node_id) {
+    type_needs(cx, use_, ty::node_id_to_type(cx.ccx.tcx, id));
 }
 
 fn mark_for_expr(cx: ctx, e: @expr) {

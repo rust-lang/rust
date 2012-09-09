@@ -160,13 +160,13 @@ impl Glb: combine {
     }
 
     fn substs(did: ast::def_id,
-              as: &ty::substs,
+              as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs> {
-        super_substs(&self, did, as, bs)
+        super_substs(&self, did, as_, bs)
     }
 
-    fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
-        super_tps(&self, as, bs)
+    fn tps(as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
+        super_tps(&self, as_, bs)
     }
 
     fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>> {
