@@ -59,9 +59,9 @@ trait combine {
     fn mts(a: ty::mt, b: ty::mt) -> cres<ty::mt>;
     fn contratys(a: ty::t, b: ty::t) -> cres<ty::t>;
     fn tys(a: ty::t, b: ty::t) -> cres<ty::t>;
-    fn tps(as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
+    fn tps(as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]>;
     fn self_tys(a: Option<ty::t>, b: Option<ty::t>) -> cres<Option<ty::t>>;
-    fn substs(did: ast::def_id, as: &ty::substs,
+    fn substs(did: ast::def_id, as_: &ty::substs,
               bs: &ty::substs) -> cres<ty::substs>;
     fn fns(a: &ty::FnTy, b: &ty::FnTy) -> cres<ty::FnTy>;
     fn fn_sigs(a: &ty::FnSig, b: &ty::FnSig) -> cres<ty::FnSig>;
@@ -212,20 +212,20 @@ fn super_substs<C:combine>(
 }
 
 fn super_tps<C:combine>(
-    self: &C, as: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
+    self: &C, as_: &[ty::t], bs: &[ty::t]) -> cres<~[ty::t]> {
 
     // Note: type parameters are always treated as *invariant*
     // (otherwise the type system would be unsound).  In the
     // future we could allow type parameters to declare a
     // variance.
 
-    if vec::same_length(as, bs) {
-        iter_vec2(as, bs, |a, b| {
+    if vec::same_length(as_, bs) {
+        iter_vec2(as_, bs, |a, b| {
             eq_tys(self, a, b)
-        }).then(|| Ok(as.to_vec()) )
+        }).then(|| Ok(as_.to_vec()) )
     } else {
         Err(ty::terr_ty_param_size(
-            expected_found(self, as.len(), bs.len())))
+            expected_found(self, as_.len(), bs.len())))
     }
 }
 
@@ -383,9 +383,9 @@ fn super_tys<C:combine>(
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
       (ty::ty_float(_), _) => {
-        let as = ty::get(a).struct;
+        let as_ = ty::get(a).struct;
         let bs = ty::get(b).struct;
-        if as == bs {
+        if as_ == bs {
             Ok(a)
         } else {
             Err(ty::terr_sorts(expected_found(self, a, b)))
@@ -471,23 +471,23 @@ fn super_tys<C:combine>(
         }
       }
 
-      (ty::ty_rec(as), ty::ty_rec(bs)) => {
-        if vec::same_length(as, bs) {
-            map_vec2(as, bs, |a,b| {
+      (ty::ty_rec(as_), ty::ty_rec(bs)) => {
+        if vec::same_length(as_, bs) {
+            map_vec2(as_, bs, |a,b| {
                 self.flds(a, b)
             }).chain(|flds| Ok(ty::mk_rec(tcx, flds)) )
         } else {
-            Err(ty::terr_record_size(expected_found(self, as.len(),
+            Err(ty::terr_record_size(expected_found(self, as_.len(),
                                                     bs.len())))
         }
       }
 
-      (ty::ty_tup(as), ty::ty_tup(bs)) => {
-        if vec::same_length(as, bs) {
-            map_vec2(as, bs, |a, b| self.tys(a, b) )
+      (ty::ty_tup(as_), ty::ty_tup(bs)) => {
+        if vec::same_length(as_, bs) {
+            map_vec2(as_, bs, |a, b| self.tys(a, b) )
                 .chain(|ts| Ok(ty::mk_tup(tcx, ts)) )
         } else {
-            Err(ty::terr_tuple_size(expected_found(self, as.len(), bs.len())))
+            Err(ty::terr_tuple_size(expected_found(self, as_.len(), bs.len())))
         }
       }
 

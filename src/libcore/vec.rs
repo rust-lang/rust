@@ -1029,15 +1029,15 @@ pure fn rposition_between<T>(v: &[T], start: uint, end: uint,
  * Convert a vector of pairs into a pair of vectors, by reference. As unzip().
  */
 pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
-    let mut as = ~[], bs = ~[];
+    let mut as_ = ~[], bs = ~[];
     for each(v) |p| {
         let (a, b) = p;
         unchecked {
-            vec::push(as, a);
+            vec::push(as_, a);
             vec::push(bs, b);
         }
     }
-    return (as, bs);
+    return (as_, bs);
 }
 
 /**
