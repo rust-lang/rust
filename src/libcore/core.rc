@@ -32,8 +32,7 @@
 #[no_core];
 
 #[warn(vecs_implicitly_copyable)];
-// XXX: Switch to deny after snapshot
-#[warn(non_camel_case_types)];
+#[deny(non_camel_case_types)];
 
 export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;
