@@ -11,8 +11,7 @@
 #[no_core];
 
 #[allow(vecs_implicitly_copyable)];
-// XXX: deny after snapshot
-#[warn(non_camel_case_types)];
+#[deny(non_camel_case_types)];
 
 use core(vers = "0.4");
 use core::*;
