@@ -22,6 +22,8 @@ trait SendMap<K:Eq Hash, V: Copy> {
     fn each_value_ref(&self, blk: fn(v: &V) -> bool);
     fn find(&const self, k: &K) -> Option<V>;
     fn get(&const self, k: &K) -> V;
+    fn with_find_ref<T>(&const self, k: &K, blk: fn(Option<&V>) -> T) -> T;
+    fn with_get_ref<T>(&const self, k: &K, blk: fn(v: &V) -> T) -> T;
 }
 
 /// Open addressing with linear probing.
@@ -130,10 +132,10 @@ mod linear {
                                          k: &K) -> SearchResult {
             let _ = for self.bucket_sequence(hash) |i| {
                 match buckets[i] {
-                  Some(bkt) => if bkt.hash == hash && *k == bkt.key {
-                    return FoundEntry(i);
-                  },
-                  None => return FoundHole(i)
+                    Some(bkt) => if bkt.hash == hash && *k == bkt.key {
+                        return FoundEntry(i);
+                    },
+                    None => return FoundHole(i)
                 }
             };
             return TableFull;
@@ -158,12 +160,12 @@ mod linear {
 
         fn insert_opt_bucket(&mut self, +bucket: Option<Bucket<K,V>>) {
             match move bucket {
-              Some(Bucket {hash: move hash,
-                           key: move key,
-                           value: move value}) => {
-                self.insert_internal(hash, key, value);
-              }
-              None => {}
+                Some(Bucket {hash: move hash,
+                             key: move key,
+                             value: move value}) => {
+                    self.insert_internal(hash, key, value);
+                }
+                None => {}
             }
         }
 
@@ -172,24 +174,24 @@ mod linear {
         /// True if there was no previous entry with that key
         fn insert_internal(&mut self, hash: uint, +k: K, +v: V) -> bool {
             match self.bucket_for_key_with_hash(self.buckets, hash, &k) {
-              TableFull => {fail ~"Internal logic error";}
-              FoundHole(idx) => {
-                debug!("insert fresh (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash);
-                self.buckets[idx] = Some(Bucket {hash: hash,
-                                                 key: k,
-                                                 value: v});
-                self.size += 1;
-                return true;
-              }
-              FoundEntry(idx) => {
-                debug!("insert overwrite (%?->%?) at idx %?, hash %?",
-                       k, v, idx, hash);
-                self.buckets[idx] = Some(Bucket {hash: hash,
-                                                 key: k,
-                                                 value: v});
-                return false;
-              }
+                TableFull => { fail ~"Internal logic error"; }
+                FoundHole(idx) => {
+                    debug!("insert fresh (%?->%?) at idx %?, hash %?",
+                           k, v, idx, hash);
+                    self.buckets[idx] = Some(Bucket {hash: hash,
+                                                     key: k,
+                                                     value: v});
+                    self.size += 1;
+                    true
+                }
+                FoundEntry(idx) => {
+                    debug!("insert overwrite (%?->%?) at idx %?, hash %?",
+                           k, v, idx, hash);
+                    self.buckets[idx] = Some(Bucket {hash: hash,
+                                                     key: k,
+                                                     value: v});
+                    false
+                }
             }
         }
 
@@ -233,12 +235,8 @@ mod linear {
             // http://www.maths.lse.ac.uk/Courses/MA407/del-hash.pdf
 
             let mut idx = match self.bucket_for_key(self.buckets, k) {
-              TableFull | FoundHole(_) => {
-                return false;
-              }
-              FoundEntry(idx) => {
-                idx
-              }
+                TableFull | FoundHole(_) => return false,
+                FoundEntry(idx) => idx
             };
 
             let len_buckets = self.buckets.len();
@@ -272,8 +270,8 @@ mod linear {
         fn contains_key(&const self,
                         k: &K) -> bool {
             match self.bucket_for_key(self.buckets, k) {
-              FoundEntry(_) => {true}
-              TableFull | FoundHole(_) => {false}
+                FoundEntry(_) => {true}
+                TableFull | FoundHole(_) => {false}
             }
         }
 
@@ -293,6 +291,27 @@ mod linear {
             }
         }
         */
+
+        fn with_find_ref<T>(&self, k: &K, blk: fn(Option<&V>) -> T) -> T {
+            match self.bucket_for_key(self.buckets, k) {
+                FoundEntry(idx) => {
+                    match self.buckets[idx] {
+                        Some(bkt) => blk(Some(&bkt.value)),
+                        None => fail ~"LinearMap::find: internal logic error"
+                    }
+                }
+                TableFull | FoundHole(_) => blk(None),
+            }
+        }
+
+        fn with_get_ref<T>(&self, k: &K, blk: fn(v: &V) -> T) -> T {
+            do self.with_find_ref(k) |v| {
+                match v {
+                    Some(v) => blk(v),
+                    None => fail fmt!("No entry found for key: %?", k),
+                }
+            }
+        }
 
         fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
@@ -318,17 +337,17 @@ mod linear {
     impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
         fn find(&const self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
-              FoundEntry(idx) => {
-                // FIXME (#3148): Once we rewrite found_entry, this
-                // failure case won't be necessary
-                match self.buckets[idx] {
-                    Some(bkt) => {Some(copy bkt.value)}
-                    None => fail ~"LinearMap::find: internal logic error"
+                FoundEntry(idx) => {
+                    // FIXME (#3148): Once we rewrite found_entry, this
+                    // failure case won't be necessary
+                    match self.buckets[idx] {
+                        Some(bkt) => {Some(copy bkt.value)}
+                        None => fail ~"LinearMap::find: internal logic error"
+                    }
                 }
-              }
-              TableFull | FoundHole(_) => {
-                None
-              }
+                TableFull | FoundHole(_) => {
+                    None
+                }
             }
         }
 
@@ -364,13 +383,9 @@ mod test {
 
     import linear::LinearMap;
 
-    fn int_linear_map<V>() -> LinearMap<uint,V> {
-        return LinearMap();
-    }
-
     #[test]
     fn inserts() {
-        let mut m = ~int_linear_map();
+        let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
         assert m.get(&1) == 2;
@@ -379,7 +394,7 @@ mod test {
 
     #[test]
     fn overwrite() {
-        let mut m = ~int_linear_map();
+        let mut m = ~LinearMap();
         assert m.insert(1, 2);
         assert m.get(&1) == 2;
         assert !m.insert(1, 3);
@@ -429,5 +444,13 @@ mod test {
             observed |= (1 << k);
         }
         assert observed == 0xFFFF_FFFF;
+    }
+
+    #[test]
+    fn with_find_ref() {
+        let mut m = ~LinearMap();
+        m.with_find_ref(&1, |v| assert v.is_none());
+        m.insert(1, 2);
+        m.with_find_ref(&1, |v| assert *v.get() == 1);
     }
 }
