@@ -487,7 +487,8 @@ fn super_tys<C:combine>(
             map_vec2(as_, bs, |a, b| self.tys(a, b) )
                 .chain(|ts| Ok(ty::mk_tup(tcx, ts)) )
         } else {
-            Err(ty::terr_tuple_size(expected_found(self, as_.len(), bs.len())))
+            Err(ty::terr_tuple_size(
+                expected_found(self, as_.len(), bs.len())))
         }
       }
 
