@@ -247,7 +247,7 @@ mod test {
     #[test]
     fn test_sendable_future() {
         let expected = ~"schlorf";
-        let f = do spawn |copy expected| { expected };
+        let f = do spawn |copy expected| { copy expected };
         do task::spawn {
             let actual = get(&f);
             assert actual == expected;
