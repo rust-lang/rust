@@ -16,7 +16,7 @@ impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
     pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
-        iter::foldl(self, b0, blk)
+        iter::foldl(self, move b0, blk)
     }
 }
 

@@ -277,7 +277,7 @@ fn map_vec<T,U:Copy,V:Copy>(
           Err(u) => return Err(u)
         }
     }
-    return Ok(vs);
+    return Ok(move vs);
 }
 
 fn map_opt<T,U:Copy,V:Copy>(
@@ -316,7 +316,7 @@ fn map_vec2<S,T,U:Copy,V:Copy>(ss: &[S], ts: &[T],
         }
         i += 1u;
     }
-    return Ok(vs);
+    return Ok(move vs);
 }
 
 /**
@@ -343,7 +343,7 @@ fn iter_vec2<S,T,U:Copy>(ss: &[S], ts: &[T],
 /// Unwraps a result, assuming it is an `ok(T)`
 fn unwrap<T, U>(+res: Result<T, U>) -> T {
     match move res {
-      Ok(move t) => t,
+      Ok(move t) => move t,
       Err(_) => fail ~"unwrap called on an err result"
     }
 }
@@ -351,7 +351,7 @@ fn unwrap<T, U>(+res: Result<T, U>) -> T {
 /// Unwraps a result, assuming it is an `err(U)`
 fn unwrap_err<T, U>(+res: Result<T, U>) -> U {
     match move res {
-      Err(move u) => u,
+      Err(move u) => move u,
       Ok(_) => fail ~"unwrap called on an ok result"
     }
 }

@@ -39,7 +39,7 @@ fn lefts<T: Copy, U>(eithers: &[Either<T, U>]) -> ~[T] {
           _ => { /* fallthrough */ }
         }
     }
-    return result;
+    move result
 }
 
 fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
@@ -52,7 +52,7 @@ fn rights<T, U: Copy>(eithers: &[Either<T, U>]) -> ~[U] {
           _ => { /* fallthrough */ }
         }
     }
-    return result;
+    move result
 }
 
 fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
@@ -72,7 +72,7 @@ fn partition<T: Copy, U: Copy>(eithers: &[Either<T, U>])
           Right(r) => vec::push(rights, r)
         }
     }
-    return {lefts: lefts, rights: rights};
+    return {lefts: move lefts, rights: move rights};
 }
 
 pure fn flip<T: Copy, U: Copy>(eith: &Either<T, U>) -> Either<U, T> {
@@ -114,7 +114,7 @@ pure fn unwrap_left<T,U>(+eith: Either<T,U>) -> T {
     //! Retrieves the value in the left branch. Fails if the either is Right.
 
     match move eith {
-        Left(move x) => x, Right(_) => fail ~"either::unwrap_left Right"
+        Left(move x) => move x, Right(_) => fail ~"either::unwrap_left Right"
     }
 }
 
@@ -122,7 +122,7 @@ pure fn unwrap_right<T,U>(+eith: Either<T,U>) -> U {
     //! Retrieves the value in the right branch. Fails if the either is Left.
 
     match move eith {
-        Right(move x) => x, Left(_) => fail ~"either::unwrap_right Left"
+        Right(move x) => move x, Left(_) => fail ~"either::unwrap_right Left"
     }
 }
 

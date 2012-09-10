@@ -76,7 +76,7 @@ fn Port<T: Send>() -> Port<T> {
 impl<T: Send> Port<T> {
 
     fn chan() -> Chan<T> { Chan(self) }
-    fn send(+v: T) { self.chan().send(v) }
+    fn send(+v: T) { self.chan().send(move v) }
     fn recv() -> T { recv(self) }
     fn peek() -> bool { peek(self) }
 
@@ -85,7 +85,7 @@ impl<T: Send> Port<T> {
 impl<T: Send> Chan<T> {
 
     fn chan() -> Chan<T> { self }
-    fn send(+v: T) { send(self, v) }
+    fn send(+v: T) { send(self, move v) }
     fn recv() -> T { recv_chan(self) }
     fn peek() -> bool { peek_chan(self) }
 
@@ -103,17 +103,17 @@ struct PortPtr<T:Send> {
       do task::unkillable {
         // Once the port is detached it's guaranteed not to receive further
         // messages
-        let yield = 0u;
+        let yield = 0;
         let yieldp = ptr::addr_of(yield);
         rustrt::rust_port_begin_detach(self.po, yieldp);
-        if yield != 0u {
+        if yield != 0 {
             // Need to wait for the port to be detached
             task::yield();
         }
         rustrt::rust_port_end_detach(self.po);
 
         // Drain the port so that all the still-enqueued items get dropped
-        while rustrt::rust_port_size(self.po) > 0u as size_t {
+        while rustrt::rust_port_size(self.po) > 0 as size_t {
             recv_::<T>(self.po);
         }
         rustrt::del_port(self.po);
@@ -179,7 +179,7 @@ fn send<T: Send>(ch: Chan<T>, +data: T) {
     let Chan_(p) = ch;
     let data_ptr = ptr::addr_of(data) as *();
     let res = rustrt::rust_port_id_send(p, data_ptr);
-    if res != 0u unsafe {
+    if res != 0 unsafe {
         // Data sent successfully
         unsafe::forget(data);
     }
@@ -206,13 +206,13 @@ fn peek_chan<T: Send>(ch: comm::Chan<T>) -> bool {
 
 /// Receive on a raw port pointer
 fn recv_<T: Send>(p: *rust_port) -> T {
-    let yield = 0u;
+    let yield = 0;
     let yieldp = ptr::addr_of(yield);
     let mut res;
     res = rusti::init::<T>();
     rustrt::port_recv(ptr::addr_of(res) as *uint, p, yieldp);
 
-    if yield != 0u {
+    if yield != 0 {
         // Data isn't available yet, so res has not been initialized.
         task::yield();
     } else {
@@ -220,21 +220,21 @@ fn recv_<T: Send>(p: *rust_port) -> T {
         // this is a good place to yield
         task::yield();
     }
-    return res;
+    move res
 }
 
 fn peek_(p: *rust_port) -> bool {
     // Yield here before we check to see if someone sent us a message
-    // FIXME #524, if the compilergenerates yields, we don't need this
+    // FIXME #524, if the compiler generates yields, we don't need this
     task::yield();
-    rustrt::rust_port_size(p) != 0u as libc::size_t
+    rustrt::rust_port_size(p) != 0 as libc::size_t
 }
 
 /// Receive on one of two ports
 fn select2<A: Send, B: Send>(p_a: Port<A>, p_b: Port<B>)
     -> Either<A, B> {
     let ports = ~[(**p_a).po, (**p_b).po];
-    let yield = 0u, yieldp = ptr::addr_of(yield);
+    let yield = 0, yieldp = ptr::addr_of(yield);
 
     let mut resport: *rust_port;
     resport = rusti::init::<*rust_port>();
@@ -243,7 +243,7 @@ fn select2<A: Send, B: Send>(p_a: Port<A>, p_b: Port<B>)
                                  n_ports as size_t, yieldp);
     }
 
-    if yield != 0u {
+    if yield != 0 {
         // Wait for data
         task::yield();
     } else {
@@ -380,16 +380,16 @@ fn test_select2_rendezvous() {
     let ch_a = Chan(po_a);
     let ch_b = Chan(po_b);
 
-    for iter::repeat(10u) {
+    for iter::repeat(10) {
         do task::spawn {
-            for iter::repeat(10u) { task::yield() }
+            for iter::repeat(10) { task::yield() }
             send(ch_a, ~"a");
         };
 
         assert select2(po_a, po_b) == either::Left(~"a");
 
         do task::spawn {
-            for iter::repeat(10u) { task::yield() }
+            for iter::repeat(10) { task::yield() }
             send(ch_b, ~"b");
         };
 
@@ -404,7 +404,7 @@ fn test_select2_stress() {
     let ch_a = Chan(po_a);
     let ch_b = Chan(po_b);
 
-    let msgs = 100u;
+    let msgs = 100;
     let times = 4u;
 
     for iter::repeat(times) {
@@ -490,7 +490,7 @@ fn test_listen() {
 #[test]
 #[ignore(cfg(windows))]
 fn test_port_detach_fail() {
-    for iter::repeat(100u) {
+    for iter::repeat(100) {
         do task::spawn_unlinked {
             let po = Port();
             let ch = po.chan();

@@ -74,7 +74,7 @@ pure fn map_consume<T, U>(+opt: Option<T>, f: fn(+T) -> U) -> Option<U> {
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
      */
-    if opt.is_some() { Some(f(option::unwrap(opt))) } else { None }
+    if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
 }
 
 pure fn chain<T, U>(opt: Option<T>, f: fn(T) -> Option<U>) -> Option<U> {
@@ -101,8 +101,8 @@ pure fn or<T>(+opta: Option<T>, +optb: Option<T>) -> Option<T> {
      * Returns the leftmost some() value, or none if both are none.
      */
     match opta {
-        Some(_) => opta,
-        _ => optb
+        Some(_) => move opta,
+        _ => move optb
     }
 }
 
@@ -112,7 +112,7 @@ pure fn while_some<T>(+x: Option<T>, blk: fn(+T) -> Option<T>) {
 
     let mut opt <- x;
     while opt.is_some() {
-        opt = blk(unwrap(opt));
+        opt = blk(unwrap(move opt));
     }
 }
 
@@ -137,7 +137,7 @@ pure fn get_default<T: Copy>(opt: Option<T>, def: T) -> T {
 pure fn map_default<T, U>(opt: Option<T>, +def: U, f: fn(T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
-    match opt { None => def, Some(t) => f(t) }
+    match opt { None => move def, Some(t) => f(t) }
 }
 
 // This should replace map_default.
@@ -145,7 +145,7 @@ pure fn map_default_ref<T, U>(opt: &Option<T>, +def: U,
                               f: fn(x: &T) -> U) -> U {
     //! Applies a function to the contained value or returns a default
 
-    match *opt { None => def, Some(ref t) => f(t) }
+    match *opt { None => move def, Some(ref t) => f(t) }
 }
 
 // This should change to by-copy mode; use iter_ref below for by reference
@@ -169,7 +169,7 @@ pure fn unwrap<T>(+opt: Option<T>) -> T {
      * of option types without copying them.
      */
     match move opt {
-        Some(move x) => x,
+        Some(move x) => move x,
         None => fail ~"option::unwrap none"
     }
 }
@@ -184,7 +184,7 @@ fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 pure fn unwrap_expect<T>(+opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     if opt.is_none() { fail reason.to_unique(); }
-    unwrap(opt)
+    unwrap(move opt)
 }
 
 // Some of these should change to be &Option<T>, some should not. See below.
@@ -196,7 +196,7 @@ impl<T> Option<T> {
     pure fn chain<U>(f: fn(T) -> Option<U>) -> Option<U> { chain(self, f) }
     /// Applies a function to the contained value or returns a default
     pure fn map_default<U>(+def: U, f: fn(T) -> U) -> U
-        { map_default(self, def, f) }
+        { map_default(self, move def, f) }
     /// Performs an operation on the contained value or does nothing
     pure fn iter(f: fn(T)) { iter(self, f) }
     /// Returns true if the option equals `none`
@@ -217,7 +217,7 @@ impl<T> &Option<T> {
     }
     /// Applies a function to the contained value or returns a default
     pure fn map_default_ref<U>(+def: U, f: fn(x: &T) -> U) -> U
-        { map_default_ref(self, def, f) }
+        { map_default_ref(self, move def, f) }
     /// Performs an operation on the contained value by reference
     pure fn iter_ref(f: fn(x: &T)) { iter_ref(self, f) }
     /// Maps a `some` value from one type to another by reference

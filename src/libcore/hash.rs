@@ -201,7 +201,7 @@ fn SipState(key0: u64, key1: u64) -> SipState {
         mut ntail : 0u,
     };
     (&state).reset();
-    return state;
+    move state
 }
 
 
@@ -368,7 +368,7 @@ impl &SipState : Streaming {
         let r = self.result_bytes();
         let mut s = ~"";
         for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
-        return s;
+        move s
     }
 
     #[inline(always)]

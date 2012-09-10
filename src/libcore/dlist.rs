@@ -80,7 +80,7 @@ impl<T> DListNode<T> {
 
 /// Creates a new dlist node with the given data.
 pure fn new_dlist_node<T>(+data: T) -> DListNode<T> {
-    DListNode(@{data: data, mut linked: false,
+    DListNode(@{data: move data, mut linked: false,
                  mut prev: None, mut next: None})
 }
 
@@ -92,7 +92,7 @@ pure fn DList<T>() -> DList<T> {
 /// Creates a new dlist with a single element
 pure fn from_elem<T>(+data: T) -> DList<T> {
     let list = DList();
-    unchecked { list.push(data); }
+    unchecked { list.push(move data); }
     list
 }
 
@@ -115,7 +115,7 @@ fn concat<T>(lists: DList<DList<T>>) -> DList<T> {
 
 priv impl<T> DList<T> {
     pure fn new_link(-data: T) -> DListLink<T> {
-        Some(DListNode(@{data: data, mut linked: true,
+        Some(DListNode(@{data: move data, mut linked: true,
                           mut prev: None, mut next: None}))
     }
     pure fn assert_mine(nobe: DListNode<T>) {
@@ -442,7 +442,7 @@ impl<T: Copy> DList<T> {
                 v[index] = data;
             }
         }
-        v
+        move v
     }
 }
 

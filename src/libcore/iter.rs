@@ -117,7 +117,7 @@ pure fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     for self.each |a| {
         b = blk(b, a);
     }
-    return b;
+    move b
 }
 
 pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: IA) -> ~[A] {

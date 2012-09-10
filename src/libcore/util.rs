@@ -9,7 +9,7 @@ use cmp::Eq;
  */
 
 /// The identity function.
-pure fn id<T>(+x: T) -> T { x }
+pure fn id<T>(+x: T) -> T { move x }
 
 /// Ignores a value.
 pure fn ignore<T>(+_x: T) { }
@@ -47,9 +47,9 @@ fn swap<T>(x: &mut T, y: &mut T) {
  */
 #[inline(always)]
 fn replace<T>(dest: &mut T, +src: T) -> T {
-    let mut tmp = src;
+    let mut tmp <- src;
     swap(dest, &mut tmp);
-    tmp
+    move tmp
 }
 
 /// A non-copyable dummy type.
