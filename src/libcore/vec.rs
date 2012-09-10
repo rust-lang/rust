@@ -43,6 +43,7 @@ export grow;
 export grow_fn;
 export grow_set;
 export truncate;
+export unique;
 export map;
 export mapi;
 export map2;
@@ -624,6 +625,38 @@ fn truncate<T>(&v: ~[const T], newlen: uint) {
         }
     }
 }
+
+/**
+ * Remove consecutive repeated elements from a vector; if the vector is
+ * sorted, this removes all duplicates.
+ */
+fn unique<T: Eq>(&v: ~[mut T]) unsafe {
+    if v.len() < 1 { return; }
+    let mut last_written = 0, next_to_read = 1;
+    do as_mut_buf(v) |p, ln| {
+        // last_written < next_to_read <= ln
+        while next_to_read < ln {
+            // last_written < next_to_read < ln
+            if *ptr::mut_offset(p, next_to_read) ==
+                *ptr::mut_offset(p, last_written) {
+                let _dropped <- *ptr::mut_offset(p, next_to_read);
+            } else {
+                last_written += 1;
+                // last_written <= next_to_read < ln
+                if next_to_read != last_written {
+                    *ptr::mut_offset(p, last_written) <-
+                        *ptr::mut_offset(p, next_to_read);
+                }
+            }
+            // last_written <= next_to_read < ln
+            next_to_read += 1;
+            // last_written < next_to_read <= ln
+        }
+    }
+    // last_written < next_to_read == ln
+    unsafe::set_len(v, last_written + 1);
+}
+
 
 // Appending
 #[inline(always)]
@@ -2216,6 +2249,67 @@ mod tests {
         assert(v.len() == 1);
         assert(*(v[0]) == 6);
         // If the unsafe block didn't drop things properly, we blow up here.
+    }
+
+    #[test]
+    fn test_unique() {
+        fn case(-a: ~[uint], -b: ~[uint]) {
+            let mut v = vec::to_mut(a);
+            unique(v);
+            assert(v == vec::to_mut(b));
+        }
+        case(~[], ~[]);
+        case(~[1], ~[1]);
+        case(~[1,1], ~[1]);
+        case(~[1,2,3], ~[1,2,3]);
+        case(~[1,1,2,3], ~[1,2,3]);
+        case(~[1,2,2,3], ~[1,2,3]);
+        case(~[1,2,3,3], ~[1,2,3]);
+        case(~[1,1,2,2,2,3,3], ~[1,2,3]);
+    }
+
+    #[test]
+    fn test_unique_unique() {
+        enum Box = ~int;
+        impl Box : Eq {
+            pure fn eq(&&other: Box) -> bool { **self == **other }
+        }
+        fn testvec(v: &[int]) -> ~[mut Box] {
+            vec::to_mut(vec::map(v, |i| Box(~i)))
+        }
+
+        let mut v0 = testvec(~[1, 1, 2, 3]);
+        unique(v0);
+        let mut v1 = testvec(~[1, 2, 2, 3]);
+        unique(v1);
+        let mut v2 = testvec(~[1, 2, 3, 3]);
+        unique(v2);
+        /*
+         * If the ~pointers were leaked or otherwise misused, valgrind and/or
+         * rustrt should raise errors.
+         */
+    }
+
+    #[test]
+    fn test_unique_shared() {
+        enum Box = @int;
+        impl Box : Eq {
+            pure fn eq(&&other: Box) -> bool { **self == **other }
+        }
+        fn testvec(v: &[int]) -> ~[mut Box] {
+            vec::to_mut(vec::map(v, |i| Box(@i)))
+        }
+
+        let mut v0 = testvec(~[1, 1, 2, 3]);
+        unique(v0);
+        let mut v1 = testvec(~[1, 2, 2, 3]);
+        unique(v1);
+        let mut v2 = testvec(~[1, 2, 3, 3]);
+        unique(v2);
+        /*
+         * If the @pointers were leaked or otherwise misused, valgrind and/or
+         * rustrt should raise errors.
+         */
     }
 
     #[test]
