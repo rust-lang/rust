@@ -186,8 +186,11 @@ fn trans_static_method_callee(bcx: block,
                 bcx, mth_id, impl_did, callee_id, rcvr_origins);
 
             let FnData {llfn: lval} =
-                trans_fn_ref_with_vtables(bcx, mth_id, callee_id,
-                                          callee_substs, Some(callee_origins));
+                trans_fn_ref_with_vtables(bcx,
+                                          mth_id,
+                                          callee_id,
+                                          callee_substs,
+                                          Some(callee_origins));
 
             let callee_ty = node_id_type(bcx, callee_id);
             let llty = T_ptr(type_of_fn_from_ty(ccx, callee_ty));
