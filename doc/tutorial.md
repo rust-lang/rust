@@ -2321,5 +2321,5 @@ ignored.
 
 A program compiled as a test runner will have the configuration flag
 `test` defined, so that you can add code that won't be included in a
-normal compile with the `#[cfg(test)]` attribute (see [conditional
-compilation](#attributes)).
+normal compile with the `#[cfg(test)]` attribute (for a full explanation
+of attributes, see the [language reference](rust.html)).
