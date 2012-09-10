@@ -9,6 +9,7 @@ use dvec::DVec;
 use from_str::FromStr;
 use result::{Err, Ok};
 use to_str::ToStr;
+use to_bytes::IterBytes;
 
 export Url, Query;
 export from_str, to_str;
@@ -715,6 +716,28 @@ fn to_str(+url: Url) -> ~str {
 impl Url: to_str::ToStr {
     fn to_str() -> ~str {
         to_str(self)
+    }
+}
+
+impl Url: Eq {
+    pure fn eq(&&other: Url) -> bool {
+        self.scheme == other.scheme
+            && self.user == other.user
+            && self.host == other.host
+            && self.port == other.port
+            && self.path == other.path
+            && self.query == other.query
+            && self.fragment == other.fragment
+    }
+
+    pure fn ne(&&other: Url) -> bool {
+        !self.eq(other)
+    }
+}
+
+impl Url: IterBytes {
+    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        self.to_str().iter_bytes(lsb0, f)
     }
 }
 
