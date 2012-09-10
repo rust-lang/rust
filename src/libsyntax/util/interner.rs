@@ -2,18 +2,18 @@
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use dvec::DVec;
 use cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
 type hash_interner<T: Const> =
-    {map: hashmap<T, uint>,
+    {map: HashMap<T, uint>,
      vect: DVec<T>};
 
 fn mk<T:Eq IterBytes Hash Const Copy>() -> interner<T> {
-    let m = map::hashmap::<T, uint>();
+    let m = map::HashMap::<T, uint>();
     let hi: hash_interner<T> =
         {map: m, vect: DVec()};
     return hi as interner::<T>;

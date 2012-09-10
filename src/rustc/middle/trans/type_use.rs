@@ -17,7 +17,7 @@
 // much information, but have the disadvantage of being very
 // invasive.)
 
-use std::map::hashmap;
+use std::map::HashMap;
 use std::list;
 use std::list::{List, Cons, Nil};
 use driver::session::session;

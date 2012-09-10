@@ -10,7 +10,7 @@ use syntax::visit;
 use driver::session::session;
 use middle::ty;
 use middle::ty::*;
-use std::map::hashmap;
+use std::map::HashMap;
 
 fn check_crate(tcx: ty::ctxt, crate: @crate) {
     visit::visit_crate(*crate, (), visit::mk_vt(@{

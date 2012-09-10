@@ -4,12 +4,12 @@ use syntax::ast_util::{path_to_ident, respan, walk_pat};
 use syntax::fold;
 use syntax::fold::*;
 use syntax::codemap::span;
-use std::map::hashmap;
+use std::map::HashMap;
 
 export pat_binding_ids, pat_bindings, pat_id_map;
 export pat_is_variant;
 
-type pat_id_map = std::map::hashmap<ident, node_id>;
+type pat_id_map = std::map::HashMap<ident, node_id>;
 
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.

@@ -1,7 +1,7 @@
 // Type encoding
 
 use io::WriterUtil;
-use std::map::hashmap;
+use std::map::HashMap;
 use syntax::ast::*;
 use syntax::diagnostic::span_handler;
 use middle::ty;
@@ -31,7 +31,7 @@ type ctxt = {
 // Whatever format you choose should not contain pipe characters.
 type ty_abbrev = {pos: uint, len: uint, s: @~str};
 
-enum abbrev_ctxt { ac_no_abbrevs, ac_use_abbrevs(hashmap<ty::t, ty_abbrev>), }
+enum abbrev_ctxt { ac_no_abbrevs, ac_use_abbrevs(HashMap<ty::t, ty_abbrev>), }
 
 fn cx_uses_abbrevs(cx: @ctxt) -> bool {
     match cx.abbrevs {

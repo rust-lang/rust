@@ -14,7 +14,7 @@
 
 use std;
 use io::WriterUtil;
-use std::map::hashmap;
+use std::map::HashMap;
 
 struct cmplx {
     re: f64,

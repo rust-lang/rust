@@ -248,7 +248,7 @@ section on "Type Combining" below for details.
 
 use std::smallintmap;
 use std::smallintmap::smallintmap;
-use std::map::hashmap;
+use std::map::HashMap;
 use middle::ty;
 use middle::ty::{TyVid, IntVid, RegionVid, vid,
                  ty_int, ty_uint, get, terr_fn, TyVar, IntVar};

@@ -3,7 +3,7 @@
 
 use std::{map, smallintmap};
 use result::Result;
-use std::map::hashmap;
+use std::map::HashMap;
 use driver::session;
 use session::session;
 use syntax::{ast, ast_map};
@@ -228,7 +228,7 @@ type field_ty = {
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
 type creader_cache_key = {cnum: int, pos: uint, len: uint};
-type creader_cache = hashmap<creader_cache_key, t>;
+type creader_cache = HashMap<creader_cache_key, t>;
 
 impl creader_cache_key : cmp::Eq {
     pure fn eq(&&other: creader_cache_key) -> bool {
@@ -304,7 +304,7 @@ impl borrow : cmp::Eq {
 
 type ctxt =
     @{diag: syntax::diagnostic::span_handler,
-      interner: hashmap<intern_key, t_box>,
+      interner: HashMap<intern_key, t_box>,
       mut next_id: uint,
       vecs_implicitly_copyable: bool,
       cstore: metadata::cstore::cstore,
@@ -323,26 +323,26 @@ type ctxt =
       // of this node.  This only applies to nodes that refer to entities
       // parameterized by type parameters, such as generic fns, types, or
       // other items.
-      node_type_substs: hashmap<node_id, ~[t]>,
+      node_type_substs: HashMap<node_id, ~[t]>,
 
       items: ast_map::map,
-      intrinsic_defs: hashmap<ast::ident, (ast::def_id, t)>,
+      intrinsic_defs: HashMap<ast::ident, (ast::def_id, t)>,
       freevars: freevars::freevar_map,
       tcache: type_cache,
       rcache: creader_cache,
       ccache: constness_cache,
-      short_names_cache: hashmap<t, @~str>,
-      needs_drop_cache: hashmap<t, bool>,
-      needs_unwind_cleanup_cache: hashmap<t, bool>,
-      kind_cache: hashmap<t, kind>,
-      ast_ty_to_ty_cache: hashmap<@ast::ty, ast_ty_to_ty_cache_entry>,
-      enum_var_cache: hashmap<def_id, @~[variant_info]>,
-      trait_method_cache: hashmap<def_id, @~[method]>,
-      ty_param_bounds: hashmap<ast::node_id, param_bounds>,
-      inferred_modes: hashmap<ast::node_id, ast::mode>,
+      short_names_cache: HashMap<t, @~str>,
+      needs_drop_cache: HashMap<t, bool>,
+      needs_unwind_cleanup_cache: HashMap<t, bool>,
+      kind_cache: HashMap<t, kind>,
+      ast_ty_to_ty_cache: HashMap<@ast::ty, ast_ty_to_ty_cache_entry>,
+      enum_var_cache: HashMap<def_id, @~[variant_info]>,
+      trait_method_cache: HashMap<def_id, @~[method]>,
+      ty_param_bounds: HashMap<ast::node_id, param_bounds>,
+      inferred_modes: HashMap<ast::node_id, ast::mode>,
       // maps the id of borrowed expr to scope of borrowed ptr
-      borrowings: hashmap<ast::node_id, borrow>,
-      normalized_cache: hashmap<t, t>};
+      borrowings: HashMap<ast::node_id, borrow>,
+      normalized_cache: HashMap<t, t>};
 
 enum tbox_flag {
     has_params = 1,
@@ -789,19 +789,19 @@ type ty_param_bounds_and_ty = {bounds: @~[param_bounds],
                                region_param: Option<region_variance>,
                                ty: t};
 
-type type_cache = hashmap<ast::def_id, ty_param_bounds_and_ty>;
+type type_cache = HashMap<ast::def_id, ty_param_bounds_and_ty>;
 
-type constness_cache = hashmap<ast::def_id, const_eval::constness>;
+type constness_cache = HashMap<ast::def_id, const_eval::constness>;
 
 type node_type_table = @smallintmap::SmallIntMap<t>;
 
 fn mk_rcache() -> creader_cache {
     type val = {cnum: int, pos: uint, len: uint};
-    return map::hashmap();
+    return map::HashMap();
 }
 
-fn new_ty_hash<V: Copy>() -> map::hashmap<t, V> {
-    map::hashmap()
+fn new_ty_hash<V: Copy>() -> map::HashMap<t, V> {
+    map::HashMap()
 }
 
 fn mk_ctxt(s: session::session,
@@ -810,7 +810,7 @@ fn mk_ctxt(s: session::session,
            freevars: freevars::freevar_map,
            region_map: middle::region::region_map,
            region_paramd_items: middle::region::region_paramd_items) -> ctxt {
-    let interner = map::hashmap();
+    let interner = map::HashMap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
                        lint::vecs_implicitly_copyable) == allow;
@@ -835,7 +835,7 @@ fn mk_ctxt(s: session::session,
       needs_drop_cache: new_ty_hash(),
       needs_unwind_cleanup_cache: new_ty_hash(),
       kind_cache: new_ty_hash(),
-      ast_ty_to_ty_cache: map::hashmap(),
+      ast_ty_to_ty_cache: map::HashMap(),
       enum_var_cache: new_def_hash(),
       trait_method_cache: new_def_hash(),
       ty_param_bounds: map::int_hash(),
@@ -1604,7 +1604,7 @@ fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
-                              tycache: map::hashmap<t, ()>,
+                              tycache: map::HashMap<t, ()>,
                               encountered_box: bool) -> bool {
 
     // Prevent infinite recursion
@@ -2583,8 +2583,8 @@ pure fn hash_bound_region(br: &bound_region) -> uint {
     }
 }
 
-fn br_hashmap<V:Copy>() -> hashmap<bound_region, V> {
-    map::hashmap()
+fn br_hashmap<V:Copy>() -> HashMap<bound_region, V> {
+    map::HashMap()
 }
 
 pure fn hash_region(r: &region) -> uint {
@@ -3096,7 +3096,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
 
 // Maintains a little union-set tree for inferred modes.  `canon()` returns
 // the current head value for `m0`.
-fn canon<T:Copy cmp::Eq>(tbl: hashmap<ast::node_id, ast::inferable<T>>,
+fn canon<T:Copy cmp::Eq>(tbl: HashMap<ast::node_id, ast::inferable<T>>,
                          +m0: ast::inferable<T>) -> ast::inferable<T> {
     match m0 {
       ast::infer(id) => match tbl.find(id) {

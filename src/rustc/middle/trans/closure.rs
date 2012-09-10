@@ -16,7 +16,7 @@ use back::link::{
 use util::ppaux::ty_to_str;
 use syntax::ast_map::{path, path_mod, path_name};
 use driver::session::session;
-use std::map::hashmap;
+use std::map::HashMap;
 use datum::{Datum, INIT, ByRef, ByValue, FromLvalue};
 
 // ___Good to know (tm)__________________________________________________

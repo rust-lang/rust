@@ -222,7 +222,7 @@ use syntax::ast_map;
 use syntax::codemap::span;
 use util::ppaux::{ty_to_str, region_to_str, explain_region,
                   note_and_explain_region};
-use std::map::{int_hash, hashmap, set};
+use std::map::{int_hash, HashMap, Set};
 use std::list;
 use std::list::{List, Cons, Nil};
 use result::{Result, Ok, Err};
@@ -300,7 +300,7 @@ enum borrowck_ctxt {
 // a map mapping id's of expressions of gc'd type (@T, @[], etc) where
 // the box needs to be kept live to the id of the scope for which they
 // must stay live.
-type root_map = hashmap<root_map_key, ast::node_id>;
+type root_map = HashMap<root_map_key, ast::node_id>;
 
 // the keys to the root map combine the `id` of the expression with
 // the number of types that it is autodereferenced.  So, for example,
@@ -311,7 +311,7 @@ type root_map_key = {id: ast::node_id, derefs: uint};
 
 // set of ids of local vars / formal arguments that are modified / moved.
 // this is used in trans for optimization purposes.
-type mutbl_map = std::map::hashmap<ast::node_id, ()>;
+type mutbl_map = std::map::HashMap<ast::node_id, ()>;
 
 // Errors that can occur"]
 enum bckerr_code {
@@ -392,8 +392,8 @@ type loan = {lp: @loan_path, cmt: cmt, mutbl: ast::mutability};
 /// - `pure_map`: map from block/expr that must be pure to the error message
 ///   that should be reported if they are not pure
 type req_maps = {
-    req_loan_map: hashmap<ast::node_id, @DVec<@DVec<loan>>>,
-    pure_map: hashmap<ast::node_id, bckerr>
+    req_loan_map: HashMap<ast::node_id, @DVec<@DVec<loan>>>,
+    pure_map: HashMap<ast::node_id, bckerr>
 };
 
 fn save_and_restore<T:Copy,U>(&save_and_restore_t: T, f: fn() -> U) -> U {
@@ -421,7 +421,7 @@ impl root_map_key : to_bytes::IterBytes {
 }
 
 fn root_map() -> root_map {
-    return hashmap();
+    return HashMap();
 
     pure fn root_map_key_eq(k1: &root_map_key, k2: &root_map_key) -> bool {
         k1.id == k2.id && k1.derefs == k2.derefs

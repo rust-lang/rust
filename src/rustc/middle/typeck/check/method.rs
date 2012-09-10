@@ -102,7 +102,7 @@ struct lookup {
     mut self_ty: ty::t,
     mut derefs: uint,
     candidates: DVec<candidate>,
-    candidate_impls: hashmap<def_id, ()>,
+    candidate_impls: HashMap<def_id, ()>,
     supplied_tps: ~[ty::t],
     include_private: bool,
 }

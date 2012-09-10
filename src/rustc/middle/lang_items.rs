@@ -19,7 +19,7 @@ use syntax::ast_util::{local_def};
 use syntax::visit::{default_simple_visitor, mk_simple_visitor};
 use syntax::visit::{visit_crate, visit_item};
 
-use std::map::{hashmap, str_hash};
+use std::map::{HashMap, str_hash};
 use str_eq = str::eq;
 
 struct LanguageItems {
@@ -119,7 +119,7 @@ struct LanguageItemCollector {
     crate: @crate,
     session: session,
 
-    item_refs: hashmap<~str,&mut Option<def_id>>,
+    item_refs: HashMap<~str,&mut Option<def_id>>,
 }
 
 impl LanguageItemCollector {

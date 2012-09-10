@@ -23,7 +23,7 @@ type freevar_entry = {
     span: span     //< First span where it is accessed (there can be multiple)
 };
 type freevar_info = @~[@freevar_entry];
-type freevar_map = hashmap<ast::node_id, freevar_info>;
+type freevar_map = HashMap<ast::node_id, freevar_info>;
 
 // Searches through part of the AST for all references to locals or
 // upvars in this frame and returns the list of definition IDs thus found.

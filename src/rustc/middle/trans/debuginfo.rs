@@ -1,5 +1,5 @@
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use lib::llvm::llvm;
 use lib::llvm::ValueRef;
 use trans::common::*;
@@ -116,7 +116,7 @@ type block_md = {start: codemap::loc, end: codemap::loc};
 type argument_md = {id: ast::node_id};
 type retval_md = {id: ast::node_id};
 
-type metadata_cache = hashmap<int, ~[debug_metadata]>;
+type metadata_cache = HashMap<int, ~[debug_metadata]>;
 
 enum debug_metadata {
     file_metadata(@metadata<file_md>),

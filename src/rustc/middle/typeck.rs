@@ -55,7 +55,7 @@ use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{vstore_uniq};
 use std::smallintmap;
 use std::map;
-use std::map::{hashmap, int_hash};
+use std::map::{HashMap, int_hash};
 use std::serialization::{serialize_uint, deserialize_uint};
 use vec::each;
 use syntax::print::pprust::*;
@@ -122,7 +122,7 @@ type method_map_entry = {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-type method_map = hashmap<ast::node_id, method_map_entry>;
+type method_map = HashMap<ast::node_id, method_map_entry>;
 
 // Resolutions for bounds of all parameters, left to right, for a given path.
 type vtable_res = @~[vtable_origin];
@@ -173,12 +173,12 @@ impl vtable_origin {
     }
 }
 
-type vtable_map = hashmap<ast::node_id, vtable_res>;
+type vtable_map = HashMap<ast::node_id, vtable_res>;
 
 // Stores information about provided methods, aka "default methods" in traits.
 // Maps from a trait's def_id to a MethodInfo about
 // that method in that trait.
-type provided_methods_map = hashmap<ast::node_id,
+type provided_methods_map = HashMap<ast::node_id,
                                     ~[@resolve::MethodInfo]>;
 
 type ty_param_substs_and_ty = {substs: ty::substs, ty: ty::t};

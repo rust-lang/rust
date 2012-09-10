@@ -6,8 +6,8 @@
 use core::cmp::{Eq, Ord};
 use result::{Result, Ok, Err};
 use io::WriterUtil;
-use map::hashmap;
-use map::map;
+use map::HashMap;
+use map::Map;
 use sort::Sort;
 
 export Json;
@@ -34,7 +34,7 @@ enum Json {
     String(@~str),
     Boolean(bool),
     List(@~[Json]),
-    Dict(map::hashmap<~str, Json>),
+    Dict(map::HashMap<~str, Json>),
     Null,
 }
 
@@ -797,7 +797,7 @@ impl <A: ToJson> ~[A]: ToJson {
     fn to_json() -> Json { List(@self.map(|elt| elt.to_json())) }
 }
 
-impl <A: ToJson Copy> hashmap<~str, A>: ToJson {
+impl <A: ToJson Copy> HashMap<~str, A>: ToJson {
     fn to_json() -> Json {
         let d = map::str_hash();
         for self.each() |key, value| {

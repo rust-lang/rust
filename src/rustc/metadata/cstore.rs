@@ -2,7 +2,7 @@
 // crates and libraries
 
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use syntax::{ast, attr};
 use syntax::ast_util::new_def_hash;
 use syntax::parse::token::ident_interner;
@@ -33,12 +33,12 @@ export get_path;
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-type cnum_map = map::hashmap<ast::crate_num, ast::crate_num>;
+type cnum_map = map::HashMap<ast::crate_num, ast::crate_num>;
 
 // Multiple items may have the same def_id in crate metadata. They may be
 // renamed imports or reexports. This map keeps the "real" module path
 // and def_id.
-type mod_path_map = map::hashmap<ast::def_id, @~str>;
+type mod_path_map = map::HashMap<ast::def_id, @~str>;
 
 type crate_metadata = @{name: ~str,
                         data: @~[u8],
@@ -53,7 +53,7 @@ type crate_metadata = @{name: ~str,
 enum cstore { private(cstore_private), }
 
 type cstore_private =
-    @{metas: map::hashmap<ast::crate_num, crate_metadata>,
+    @{metas: map::HashMap<ast::crate_num, crate_metadata>,
       use_crate_map: use_crate_map,
       mod_path_map: mod_path_map,
       mut used_crate_files: ~[Path],
@@ -62,7 +62,7 @@ type cstore_private =
       intr: ident_interner};
 
 // Map from node_id's of local use statements to crate numbers
-type use_crate_map = map::hashmap<ast::node_id, ast::crate_num>;
+type use_crate_map = map::HashMap<ast::node_id, ast::crate_num>;
 
 // Internal method to retrieve the data from the cstore
 pure fn p(cstore: cstore) -> cstore_private {

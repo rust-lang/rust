@@ -8,7 +8,7 @@ use syntax::ast::*;
 use syntax::ast_util;
 use syntax::ast_util::respan;
 use middle::ty;
-use std::map::hashmap;
+use std::map::HashMap;
 use ty::{FnTyBase, FnMeta, FnSig};
 
 export parse_ty_data, parse_def_id, parse_ident;

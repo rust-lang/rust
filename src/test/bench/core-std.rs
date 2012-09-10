@@ -4,7 +4,7 @@ use std;
 
 use std::time::precise_time_s;
 use std::map;
-use std::map::{map, hashmap};
+use std::map::{Map, HashMap};
 
 use io::{Reader, ReaderUtil};
 
@@ -66,7 +66,7 @@ fn read_line() {
 fn str_set() {
     let r = rand::Rng();
 
-    let s = map::hashmap();
+    let s = map::HashMap();
 
     for int::range(0, 1000) |_i| {
         map::set_add(s, r.gen_str(10));

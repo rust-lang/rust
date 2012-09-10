@@ -4,13 +4,13 @@
 
 use std;
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use std::sort;
 use io::ReaderUtil;
 use cmp::Ord;
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str { 
+fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str { 
    fn pct(xx: uint, yy: uint) -> float {
       return (xx as float) * 100f / (yy as float);
    }
@@ -56,7 +56,7 @@ fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
+fn find(mm: HashMap<~[u8], uint>, key: ~str) -> uint {
    match mm.find(str::to_bytes(str::to_lower(key))) {
       option::None      => { return 0u; }
       option::Some(num) => { return num; }
@@ -64,7 +64,7 @@ fn find(mm: hashmap<~[u8], uint>, key: ~str) -> uint {
 }
 
 // given a map, increment the counter for a key
-fn update_freq(mm: hashmap<~[u8], uint>, key: &[u8]) {
+fn update_freq(mm: HashMap<~[u8], uint>, key: &[u8]) {
     let key = vec::slice(key, 0, key.len());
     match mm.find(key) {
       option::None      => { mm.insert(key, 1u      ); }
@@ -91,7 +91,7 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
                            to_parent: comm::Chan<~str>) {
    
-   let freqs: hashmap<~[u8], uint> = map::bytes_hash();
+   let freqs: HashMap<~[u8], uint> = map::bytes_hash();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
 

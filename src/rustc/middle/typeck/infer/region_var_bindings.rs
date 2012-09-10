@@ -308,7 +308,7 @@ because `&x` was created alone, but is relatable to `&A`.
 use dvec::DVec;
 use result::Result;
 use result::{Ok, Err};
-use std::map::{hashmap, uint_hash};
+use std::map::{HashMap, uint_hash};
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 
@@ -389,13 +389,13 @@ enum UndoLogEntry {
     AddCombination(CombineMap, TwoRegions)
 }
 
-type CombineMap = hashmap<TwoRegions, RegionVid>;
+type CombineMap = HashMap<TwoRegions, RegionVid>;
 
 struct RegionVarBindings {
     tcx: ty::ctxt,
     var_spans: DVec<span>,
     values: Cell<~[ty::region]>,
-    constraints: hashmap<Constraint, span>,
+    constraints: HashMap<Constraint, span>,
     lubs: CombineMap,
     glbs: CombineMap,
 
@@ -415,7 +415,7 @@ fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         tcx: tcx,
         var_spans: DVec(),
         values: empty_cell(),
-        constraints: hashmap(),
+        constraints: HashMap(),
         lubs: CombineMap(),
         glbs: CombineMap(),
         undo_log: DVec()
@@ -426,7 +426,7 @@ fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
 // `b`!  Not obvious that this is the most efficient way to go about
 // it.
 fn CombineMap() -> CombineMap {
-    return hashmap();
+    return HashMap();
 }
 
 pure fn hash_constraint(rc: &Constraint) -> uint {
@@ -804,10 +804,10 @@ struct SpannedRegion {
     span: span,
 }
 
-type TwoRegionsMap = hashmap<TwoRegions, ()>;
+type TwoRegionsMap = HashMap<TwoRegions, ()>;
 
 fn TwoRegionsMap() -> TwoRegionsMap {
-    return hashmap();
+    return HashMap();
 }
 
 impl RegionVarBindings {

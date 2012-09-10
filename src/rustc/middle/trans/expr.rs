@@ -716,7 +716,7 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
 
     fn take_local(bcx: block,
                   ref_id: ast::node_id,
-                  table: hashmap<ast::node_id, local_val>,
+                  table: HashMap<ast::node_id, local_val>,
                   nid: ast::node_id) -> Datum {
         let is_last_use = match bcx.ccx().maps.last_use_map.find(ref_id) {
             None => false,

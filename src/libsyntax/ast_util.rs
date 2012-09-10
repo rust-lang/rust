@@ -259,8 +259,8 @@ impl def_id : core::to_bytes::IterBytes {
     }
 }
 
-fn new_def_hash<V: Copy>() -> std::map::hashmap<ast::def_id, V> {
-    return std::map::hashmap::<ast::def_id, V>();
+fn new_def_hash<V: Copy>() -> std::map::HashMap<ast::def_id, V> {
+    return std::map::HashMap::<ast::def_id, V>();
 }
 
 fn block_from_expr(e: @expr) -> blk {

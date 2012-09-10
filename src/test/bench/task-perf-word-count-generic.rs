@@ -16,7 +16,7 @@ use option = option;
 use option::Some;
 use option::None;
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use hash::Hash;
 use io::WriterUtil;
 
@@ -173,7 +173,7 @@ mod map_reduce {
         input: K1)
     {
         // log(error, "map_task " + input);
-        let intermediates = map::hashmap();
+        let intermediates = map::HashMap();
 
         do map(input) |key, val| {
             let mut c = None;
@@ -250,7 +250,7 @@ mod map_reduce {
         // This task becomes the master control task. It task::_spawns
         // to do the rest.
 
-        let reducers = map::hashmap();
+        let reducers = map::HashMap();
         let mut tasks = start_mappers(map, ctrl, inputs);
         let mut num_mappers = vec::len(inputs) as int;
 

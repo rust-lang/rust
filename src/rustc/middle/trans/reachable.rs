@@ -10,12 +10,12 @@ use syntax::{visit, ast_util, ast_map};
 use syntax::ast_util::def_id_of_def;
 use syntax::attr;
 use syntax::print::pprust::expr_to_str;
-use std::map::hashmap;
+use std::map::HashMap;
 use driver::session::*;
 
 export map, find_reachable;
 
-type map = std::map::hashmap<node_id, ()>;
+type map = std::map::HashMap<node_id, ()>;
 
 type ctx = {exp_map: resolve::ExportMap,
             tcx: ty::ctxt,

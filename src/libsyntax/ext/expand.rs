@@ -1,4 +1,4 @@
-use std::map::hashmap;
+use std::map::HashMap;
 
 use ast::{crate, expr_, expr_mac, mac_invoc, mac_invoc_tt,
              tt_delim, tt_tok, item_mac};
@@ -10,7 +10,7 @@ use parse::{parser, parse_expr_from_source_str, new_parser_from_tt};
 
 use codemap::{span, expanded_from};
 
-fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
+fn expand_expr(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                e: expr_, s: span, fld: ast_fold,
                orig: fn@(expr_, span, ast_fold) -> (expr_, span))
     -> (expr_, span)
@@ -132,7 +132,7 @@ fn expand_expr(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
+fn expand_mod_items(exts: HashMap<~str, syntax_extension>, cx: ext_ctxt,
                     module_: ast::_mod, fld: ast_fold,
                     orig: fn@(ast::_mod, ast_fold) -> ast::_mod)
     -> ast::_mod
@@ -165,7 +165,7 @@ fn expand_mod_items(exts: hashmap<~str, syntax_extension>, cx: ext_ctxt,
 
 
 // When we enter a module, record it, for the sake of `module!`
-fn expand_item(exts: hashmap<~str, syntax_extension>,
+fn expand_item(exts: HashMap<~str, syntax_extension>,
                cx: ext_ctxt, &&it: @ast::item, fld: ast_fold,
                orig: fn@(&&@ast::item, ast_fold) -> Option<@ast::item>)
     -> Option<@ast::item>
@@ -193,7 +193,7 @@ fn expand_item(exts: hashmap<~str, syntax_extension>,
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-fn expand_item_mac(exts: hashmap<~str, syntax_extension>,
+fn expand_item_mac(exts: HashMap<~str, syntax_extension>,
                    cx: ext_ctxt, &&it: @ast::item,
                    fld: ast_fold) -> Option<@ast::item> {
     match it.node {

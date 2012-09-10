@@ -15,7 +15,7 @@ enum check_loan_ctxt = @{
     bccx: borrowck_ctxt,
     req_maps: req_maps,
 
-    reported: hashmap<ast::node_id, ()>,
+    reported: HashMap<ast::node_id, ()>,
 
     // Keep track of whether we're inside a ctor, so as to
     // allow mutating immutable fields in the same class if

@@ -7,7 +7,7 @@
      Rustdoc from its non-sendableness."
 )];
 
-use std::map::hashmap;
+use std::map::HashMap;
 use rustc::driver::session;
 use session::{basic_options, options};
 use session::session;

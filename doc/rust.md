@@ -450,7 +450,7 @@ Two examples of paths with type arguments:
 # use std::map;
 # fn f() {
 # fn id<T:Copy>(t: T) -> T { t }
-type t = map::hashmap<int,~str>;  // Type arguments used in a type expression
+type t = map::HashMap<int,~str>;  // Type arguments used in a type expression
 let x = id::<int>(10);           // Type arguments used in a call expression
 # }
 ~~~~

@@ -1,4 +1,4 @@
-use std::map::{hashmap};
+use std::map::{HashMap};
 use ast_util::spanned;
 use parser::parser;
 use lexer::reader;

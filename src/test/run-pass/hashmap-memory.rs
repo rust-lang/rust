@@ -10,7 +10,7 @@ use option = option;
 use option::Some;
 use option::None;
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use comm::Chan;
 use comm::Port;
 use comm::send;
@@ -38,7 +38,7 @@ mod map_reduce {
     fn map_task(ctrl: Chan<ctrl_proto>, input: ~str) {
         let intermediates = map::str_hash();
 
-        fn emit(im: map::hashmap<~str, int>, ctrl: Chan<ctrl_proto>, key: ~str,
+        fn emit(im: map::HashMap<~str, int>, ctrl: Chan<ctrl_proto>, key: ~str,
                 val: ~str) {
             let mut c;
             match im.find(key) {
@@ -65,7 +65,7 @@ mod map_reduce {
         // This task becomes the master control task. It spawns others
         // to do the rest.
 
-        let mut reducers: map::hashmap<~str, int>;
+        let mut reducers: map::HashMap<~str, int>;
 
         reducers = map::str_hash();
 

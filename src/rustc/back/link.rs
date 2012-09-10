@@ -7,7 +7,7 @@ use middle::ty;
 use metadata::{encoder, cstore};
 use middle::trans::common::crate_ctxt;
 use metadata::common::link_meta;
-use std::map::hashmap;
+use std::map::HashMap;
 use std::sha1::sha1;
 use syntax::ast;
 use syntax::print::pprust;

@@ -10,7 +10,7 @@ use syntax::diagnostic::span_handler;
 use syntax::diagnostic::expect;
 use ast_util::dummy_sp;
 use common::*;
-use std::map::hashmap;
+use std::map::HashMap;
 use dvec::DVec;
 
 export class_dtor;

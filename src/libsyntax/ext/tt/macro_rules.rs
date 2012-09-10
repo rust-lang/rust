@@ -7,7 +7,7 @@ use parse::token::{FAT_ARROW, SEMI, LBRACE, RBRACE, nt_matchers, nt_tt};
 use parse::parser::{parser, SOURCE_FILE};
 use macro_parser::{parse, parse_or_else, success, failure, named_match,
                       matched_seq, matched_nonterminal, error};
-use std::map::hashmap;
+use std::map::HashMap;
 use parse::token::special_idents;
 
 fn add_new_extension(cx: ext_ctxt, sp: span, name: ident,

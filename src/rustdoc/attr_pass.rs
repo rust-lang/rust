@@ -10,7 +10,7 @@ use doc::item_utils;
 use extract::to_str;
 use syntax::ast;
 use syntax::ast_map;
-use std::map::hashmap;
+use std::map::HashMap;
 
 export mk_pass;
 
