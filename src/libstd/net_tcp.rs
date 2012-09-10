@@ -14,7 +14,7 @@ use comm = core::comm;
 // tcp interfaces
 export TcpSocket;
 // buffered socket
-export TcpSocketBuf, SocketBuf;
+export TcpSocketBuf, socket_buf;
 // errors
 export TcpErrData, TcpConnectErrData;
 // operations on a tcp_socket
