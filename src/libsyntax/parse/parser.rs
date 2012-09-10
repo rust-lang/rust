@@ -215,6 +215,7 @@ fn parser(sess: parse_sess, cfg: ast::crate_cfg,
         quote_depth: 0u,
         keywords: token::keyword_table(),
         restricted_keywords: token::restricted_keyword_table(),
+        strict_keywords: token::strict_keyword_table(),
         obsolete_set: std::map::hashmap(),
     }
 }
@@ -235,6 +236,7 @@ struct parser {
     interner: interner<@~str>,
     keywords: hashmap<~str, ()>,
     restricted_keywords: hashmap<~str, ()>,
+    strict_keywords: hashmap<~str, ()>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
     obsolete_set: hashmap<ObsoleteSyntax, ()>,

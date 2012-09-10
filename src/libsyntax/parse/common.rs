@@ -84,6 +84,7 @@ impl parser: parser_common {
     }
 
     fn parse_ident() -> ast::ident {
+        self.check_strict_keywords();
         match copy self.token {
           token::IDENT(i, _) => { self.bump(); return i; }
           token::INTERPOLATED(token::nt_ident(*)) => { self.bug(
@@ -180,6 +181,26 @@ impl parser: parser_common {
     fn check_restricted_keywords_(w: ~str) {
         if self.is_restricted_keyword(w) {
             self.fatal(~"found `" + w + ~"` in restricted position");
+        }
+    }
+
+    fn is_strict_keyword(word: ~str) -> bool {
+        self.strict_keywords.contains_key_ref(&word)
+    }
+
+    fn check_strict_keywords() {
+        match self.token {
+          token::IDENT(_, false) => {
+            let w = token_to_str(self.reader, self.token);
+            self.check_strict_keywords_(w);
+          }
+          _ => ()
+        }
+    }
+
+    fn check_strict_keywords_(w: ~str) {
+        if self.is_strict_keyword(w) {
+            self.fatal(~"found `" + w + ~"` in ident position");
         }
     }
 
