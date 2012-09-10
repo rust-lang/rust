@@ -1,2 +1,2 @@
-fn true() { } //~ ERROR found `true` in restricted position
+fn true() { } //~ ERROR found `true` in ident position
 fn main() { }

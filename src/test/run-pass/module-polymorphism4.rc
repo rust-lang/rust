@@ -7,8 +7,8 @@ mod cat {
     #[path = "cat.rs"]
     mod inst;
 
-    #[path = "trait.rs"]
-    mod trait;
+    #[path = "trait_.rs"]
+    mod trait_;
 
 }
 
@@ -20,7 +20,7 @@ mod dog {
     #[path = "dog.rs"]
     mod inst;
 
-    #[path = "trait.rs"]
-    mod trait;
+    #[path = "trait_.rs"]
+    mod trait_;
 
 }
