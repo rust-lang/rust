@@ -50,7 +50,7 @@ pure fn capacity<T>(&&v: @[const T]) -> uint {
 pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
     let mut vec = @[];
     unsafe { unsafe::reserve(vec, size); }
-    builder(|+x| unsafe { unsafe::push(vec, x) });
+    builder(|+x| unsafe { unsafe::push(vec, move x) });
     return vec;
 }
 
@@ -163,10 +163,10 @@ mod unsafe {
         let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
-            push_fast(v, initval);
+            push_fast(v, move initval);
         }
         else {
-            push_slow(v, initval);
+            push_slow(v, move initval);
         }
     }
     // This doesn't bother to make sure we have space.
@@ -182,7 +182,7 @@ mod unsafe {
 
     unsafe fn push_slow<T>(&v: @[const T], +initval: T) {
         reserve_at_least(v, v.len() + 1u);
-        push_fast(v, initval);
+        push_fast(v, move initval);
     }
 
     /**

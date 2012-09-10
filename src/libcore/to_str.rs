@@ -72,7 +72,7 @@ impl<A: ToStr> ~[A]: ToStr {
             str::push_str(acc, elt.to_str());
         }
         str::push_char(acc, ']');
-        acc
+        move acc
     }
 }
 

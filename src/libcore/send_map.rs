@@ -152,7 +152,7 @@ mod linear {
             for uint::range(0, old_capacity) |i| {
                 let mut bucket = None;
                 bucket <-> old_buckets[i];
-                self.insert_opt_bucket(bucket);
+                self.insert_opt_bucket(move bucket);
             }
         }
 
@@ -161,7 +161,7 @@ mod linear {
               Some(Bucket {hash: move hash,
                            key: move key,
                            value: move value}) => {
-                self.insert_internal(hash, key, value);
+                self.insert_internal(hash, move key, move value);
               }
               None => {}
             }
@@ -213,7 +213,7 @@ mod linear {
             }
 
             let hash = k.hash_keyed(self.k0, self.k1) as uint;
-            self.insert_internal(hash, k, v)
+            self.insert_internal(hash, move k, move v)
         }
 
         fn remove(&mut self, k: &K) -> bool {
@@ -247,7 +247,7 @@ mod linear {
             while self.buckets[idx].is_some() {
                 let mut bucket = None;
                 bucket <-> self.buckets[idx];
-                self.insert_opt_bucket(bucket);
+                self.insert_opt_bucket(move bucket);
                 idx = self.next_bucket(idx, len_buckets);
             }
             self.size -= 1;
