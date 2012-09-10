@@ -88,35 +88,35 @@ mod ct {
         let lim = str::len(s);
         let mut buf = ~"";
         fn flush_buf(+buf: ~str, &pieces: ~[piece]) -> ~str {
-            if str::len(buf) > 0u {
-                let piece = piece_string(buf);
-                vec::push(pieces, piece);
+            if str::len(buf) > 0 {
+                let piece = piece_string(move buf);
+                vec::push(pieces, move piece);
             }
             return ~"";
         }
-        let mut i = 0u;
+        let mut i = 0;
         while i < lim {
             let size = str::utf8_char_width(s[i]);
             let curr = str::slice(s, i, i+size);
             if curr == ~"%" {
-                i += 1u;
+                i += 1;
                 if i >= lim {
                     error(~"unterminated conversion at end of string");
                 }
-                let curr2 = str::slice(s, i, i+1u);
+                let curr2 = str::slice(s, i, i+1);
                 if curr2 == ~"%" {
                     buf += curr2;
-                    i += 1u;
+                    i += 1;
                 } else {
-                    buf = flush_buf(buf, pieces);
+                    buf = flush_buf(move buf, pieces);
                     let rs = parse_conversion(s, i, lim, error);
                     vec::push(pieces, copy rs.piece);
                     i = rs.next;
                 }
             } else { buf += curr; i += size; }
         }
-        flush_buf(buf, pieces);
-        return pieces;
+        flush_buf(move buf, pieces);
+        move pieces
     }
     fn peek_num(s: ~str, i: uint, lim: uint) ->
        Option<{num: uint, next: uint}> {
@@ -173,7 +173,7 @@ mod ct {
     fn parse_flags(s: ~str, i: uint, lim: uint) ->
        {flags: ~[flag], next: uint} {
         let noflags: ~[flag] = ~[];
-        if i >= lim { return {flags: noflags, next: i}; }
+        if i >= lim { return {flags: move noflags, next: i}; }
 
         fn more_(f: flag, s: ~str, i: uint, lim: uint) ->
            {flags: ~[flag], next: uint} {
@@ -376,7 +376,7 @@ mod rt {
                     let diff = prec - len;
                     let pad = str::from_chars(vec::from_elem(diff, '0'));
                     pad + s
-                } else { s }
+                } else { move s }
             };
     }
     pure fn get_int_precision(cv: conv) -> uint {

@@ -53,7 +53,7 @@ unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
 unsafe fn transmute<L, G>(-thing: L) -> G {
     let newthing = reinterpret_cast(&thing);
     forget(thing);
-    return newthing;
+    move newthing
 }
 
 /// Coerce an immutable reference to be mutable.
@@ -113,9 +113,9 @@ struct ArcDestruct<T> {
                         unsafe::reinterpret_cast(&data.unwrapper);
                     let (message, response) = option::swap_unwrap(p);
                     // Send 'ready' and wait for a response.
-                    pipes::send_one(message, ());
+                    pipes::send_one(move message, ());
                     // Unkillable wait. Message guaranteed to come.
-                    if pipes::recv_one(response) {
+                    if pipes::recv_one(move response) {
                         // Other task got the data.
                         unsafe::forget(data);
                     } else {
@@ -147,13 +147,13 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
             // In case we get killed early, we need to tell the person who
             // tried to wake us whether they should hand-off the data to us.
             if task::failing() {
-                pipes::send_one(response, false);
+                pipes::send_one(move response, false);
                 // Either this swap_unwrap or the one below (at "Got here")
                 // ought to run.
                 unsafe::forget(option::swap_unwrap(&mut self.ptr));
             } else {
                 assert self.ptr.is_none();
-                pipes::send_one(response, true);
+                pipes::send_one(move response, true);
             }
         }
     }
@@ -162,7 +162,7 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&rc.data);
         let (c1,p1) = pipes::oneshot(); // ()
         let (c2,p2) = pipes::oneshot(); // bool
-        let server: UnwrapProto = ~mut Some((c1,p2));
+        let server: UnwrapProto = ~mut Some((move c1,move p2));
         let serverp: libc::uintptr_t = unsafe::transmute(server);
         // Try to put our server end in the unwrapper slot.
         if rustrt::rust_compare_and_swap_ptr(&mut ptr.unwrapper, 0, serverp) {
@@ -180,8 +180,9 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
             } else {
                 // The *next* person who sees the refcount hit 0 will wake us.
                 let end_result =
-                    DeathThroes { ptr: Some(ptr), response: Some(c2) };
-                let mut p1 = Some(p1); // argh
+                    DeathThroes { ptr: Some(move ptr),
+                                  response: Some(move c2) };
+                let mut p1 = Some(move p1); // argh
                 do task::rekillable {
                     pipes::recv_one(option::swap_unwrap(&mut p1));
                 }
@@ -210,7 +211,7 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
 type SharedMutableState<T: Send> = ArcDestruct<T>;
 
 unsafe fn shared_mutable_state<T: Send>(+data: T) -> SharedMutableState<T> {
-    let data = ~ArcData { count: 1, unwrapper: 0, data: Some(data) };
+    let data = ~ArcData { count: 1, unwrapper: 0, data: Some(move data) };
     unsafe {
         let ptr = unsafe::transmute(data);
         ArcDestruct(ptr)
@@ -322,7 +323,7 @@ fn exclusive<T:Send >(+user_data: T) -> Exclusive<T> {
     let data = ExData {
         lock: LittleLock(), mut failed: false, mut data: user_data
     };
-    Exclusive { x: unsafe { shared_mutable_state(data) } }
+    Exclusive { x: unsafe { shared_mutable_state(move data) } }
 }
 
 impl<T: Send> Exclusive<T> {
@@ -347,17 +348,17 @@ impl<T: Send> Exclusive<T> {
             rec.failed = true;
             let result = f(&mut rec.data);
             rec.failed = false;
-            result
+            move result
         }
     }
 }
 
 // FIXME(#2585) make this a by-move method on the exclusive
 fn unwrap_exclusive<T: Send>(+arc: Exclusive<T>) -> T {
-    let Exclusive { x: x } = arc;
-    let inner = unsafe { unwrap_shared_mutable_state(x) };
-    let ExData { data: data, _ } = inner;
-    data
+    let Exclusive { x: x } <- arc;
+    let inner = unsafe { unwrap_shared_mutable_state(move x) };
+    let ExData { data: data, _ } <- inner;
+    move data
 }
 
 /****************************************************************************

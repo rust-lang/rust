@@ -58,7 +58,7 @@ impl<T: Reader> T : ReaderUtil {
         let count = self.read(buf, len);
 
         unsafe { vec::unsafe::set_len(buf, count); }
-        vec::from_mut(buf)
+        vec::from_mut(move buf)
     }
     fn read_line() -> ~str {
         let mut buf = ~[];
@@ -128,7 +128,7 @@ impl Reader {
                 buf = vec::slice(buf, offset, vec::len(buf));
             }
         }
-        chars
+        move chars
     }
 
     fn read_char() -> char {
@@ -180,7 +180,7 @@ impl Reader {
     fn read_whole_stream() -> ~[u8] {
         let mut buf: ~[u8] = ~[];
         while !self.eof() { vec::push_all(buf, self.read_bytes(2048u)); }
-        buf
+        move buf
     }
 
     fn each_byte(it: fn(int) -> bool) {
@@ -688,7 +688,7 @@ impl MemBuffer: Writer {
 
             self.pos += v_len;
 
-            buf
+            move buf
         }
     }
     fn seek(offset: int, whence: SeekStyle) {

@@ -260,7 +260,7 @@ fn read_all(rd: io::Reader) -> ~str {
         let bytes = rd.read_bytes(4096u);
         buf += str::from_bytes(bytes);
     }
-    return buf;
+    move buf
 }
 
 /**
@@ -306,11 +306,11 @@ fn program_output(prog: &str, args: &[~str]) ->
     let ch = comm::Chan(p);
     do task::spawn_sched(task::SingleThreaded) {
         let errput = readclose(pipe_err.in);
-        comm::send(ch, (2, errput));
+        comm::send(ch, (2, move errput));
     };
     do task::spawn_sched(task::SingleThreaded) {
         let output = readclose(pipe_out.in);
-        comm::send(ch, (1, output));
+        comm::send(ch, (1, move output));
     };
     let status = run::waitpid(pid);
     let mut errs = ~"";
@@ -332,7 +332,7 @@ fn program_output(prog: &str, args: &[~str]) ->
         };
         count -= 1;
     };
-    return {status: status, out: outs, err: errs};
+    return {status: status, out: move outs, err: move errs};
 }
 
 fn writeclose(fd: c_int, s: &str) {
@@ -354,7 +354,7 @@ fn readclose(fd: c_int) -> ~str {
         buf += str::from_bytes(bytes);
     }
     os::fclose(file);
-    return buf;
+    move buf
 }
 
 /// Waits for a process to exit and returns the exit code
