@@ -113,7 +113,7 @@ export send_packet, recv_packet, buffer_header;
 const SPIN_COUNT: uint = 0;
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); move y } }
 )
 
 #[doc(hidden)]
@@ -262,8 +262,7 @@ fn unibuffer<T: Send>() -> ~Buffer<Packet<T>> {
     unsafe {
         b.data.header.buffer = reinterpret_cast(&b);
     }
-
-    b
+    move b
 }
 
 #[doc(hidden)]
@@ -411,7 +410,7 @@ fn send<T: Send, Tbuffer: Send>(+p: SendPacketBuffered<T, Tbuffer>,
     let p = unsafe { &*p_ };
     assert ptr::addr_of(p.header) == header;
     assert p.payload.is_none();
-    p.payload <- Some(payload);
+    p.payload <- Some(move payload);
     let old_state = swap_state_rel(&mut p.header.state, Full);
     match old_state {
         Empty => {
@@ -449,7 +448,7 @@ Fails if the sender closes the connection.
 
 */
 fn recv<T: Send, Tbuffer: Send>(+p: RecvPacketBuffered<T, Tbuffer>) -> T {
-    option::unwrap_expect(try_recv(p), "connection closed")
+    option::unwrap_expect(try_recv(move p), "connection closed")
 }
 
 /** Attempts to receive a message from a pipe.
@@ -713,8 +712,8 @@ fn select2<A: Send, Ab: Send, B: Send, Bb: Send>(
     let i = wait_many([a.header(), b.header()]/_);
 
     match i {
-      0 => Left((try_recv(a), b)),
-      1 => Right((a, try_recv(b))),
+      0 => Left((try_recv(move a), move b)),
+      1 => Right((move a, try_recv(move b))),
       _ => fail ~"select2 return an invalid packet"
     }
 }
@@ -750,10 +749,10 @@ fn select<T: Send, Tb: Send>(+endpoints: ~[RecvPacketBuffered<T, Tb>])
     -> (uint, Option<T>, ~[RecvPacketBuffered<T, Tb>])
 {
     let ready = wait_many(endpoints.map(|p| p.header()));
-    let mut remaining = endpoints;
+    let mut remaining <- endpoints;
     let port = vec::swap_remove(remaining, ready);
-    let result = try_recv(port);
-    (ready, result, remaining)
+    let result = try_recv(move port);
+    (ready, move result, move remaining)
 }
 
 /** The sending end of a pipe. It can be used to send exactly one
@@ -943,14 +942,14 @@ fn spawn_service<T: Send, Tb: Send>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(server);
-    do task::spawn |move service| {
+    let server = ~mut Some(move server);
+    do task::spawn |move service, move server| {
         let mut server_ = None;
         server_ <-> *server;
         service(option::unwrap(server_))
     }
 
-    client
+    move client
 }
 
 /** Like `spawn_service_recv`, but for protocols that start in the
@@ -967,14 +966,14 @@ fn spawn_service_recv<T: Send, Tb: Send>(
 
     // This is some nasty gymnastics required to safely move the pipe
     // into a new task.
-    let server = ~mut Some(server);
-    do task::spawn |move service| {
+    let server = ~mut Some(move server);
+    do task::spawn |move service, move server| {
         let mut server_ = None;
         server_ <-> *server;
         service(option::unwrap(server_))
     }
 
-    client
+    move client
 }
 
 // Streams - Make pipes a little easier in general.
@@ -1039,7 +1038,7 @@ These allow sending or receiving an unlimited number of messages.
 fn stream<T:Send>() -> (Chan<T>, Port<T>) {
     let (c, s) = streamp::init();
 
-    (Chan_({ mut endp: Some(c) }), Port_({ mut endp: Some(s) }))
+    (Chan_({ mut endp: Some(move c) }), Port_({ mut endp: Some(move s) }))
 }
 
 impl<T: Send> Chan<T>: Channel<T> {
@@ -1047,15 +1046,15 @@ impl<T: Send> Chan<T>: Channel<T> {
         let mut endp = None;
         endp <-> self.endp;
         self.endp = Some(
-            streamp::client::data(unwrap(endp), x))
+            streamp::client::data(unwrap(endp), move x))
     }
 
     fn try_send(+x: T) -> bool {
         let mut endp = None;
         endp <-> self.endp;
-        match move streamp::client::try_data(unwrap(endp), x) {
+        match move streamp::client::try_data(unwrap(endp), move x) {
             Some(move next) => {
-                self.endp = Some(next);
+                self.endp = Some(move next);
                 true
             }
             None => false
@@ -1068,8 +1067,8 @@ impl<T: Send> Port<T>: Recv<T> {
         let mut endp = None;
         endp <-> self.endp;
         let streamp::data(x, endp) = pipes::recv(unwrap(endp));
-        self.endp = Some(endp);
-        x
+        self.endp = Some(move endp);
+        move x
     }
 
     fn try_recv() -> Option<T> {
@@ -1077,8 +1076,8 @@ impl<T: Send> Port<T>: Recv<T> {
         endp <-> self.endp;
         match move pipes::try_recv(unwrap(endp)) {
           Some(streamp::data(move x, move endp)) => {
-            self.endp = Some(endp);
-            Some(x)
+            self.endp = Some(move endp);
+            Some(move x)
           }
           None => None
         }
@@ -1101,13 +1100,13 @@ struct PortSet<T: Send> : Recv<T> {
     mut ports: ~[pipes::Port<T>],
 
     fn add(+port: pipes::Port<T>) {
-        vec::push(self.ports, port)
+        vec::push(self.ports, move port)
     }
 
     fn chan() -> Chan<T> {
         let (ch, po) = stream();
-        self.add(po);
-        ch
+        self.add(move po);
+        move ch
     }
 
     fn try_recv() -> Option<T> {
@@ -1120,7 +1119,7 @@ struct PortSet<T: Send> : Recv<T> {
             let i = wait_many(ports);
             match move ports[i].try_recv() {
                 Some(move m) => {
-                  result = Some(m);
+                  result = Some(move m);
                 }
                 None => {
                     // Remove this port.
@@ -1129,7 +1128,7 @@ struct PortSet<T: Send> : Recv<T> {
             }
         }
         ports <-> self.ports;
-        result
+        move result
     }
 
     fn recv() -> T {
@@ -1166,7 +1165,7 @@ type SharedChan<T: Send> = unsafe::Exclusive<Chan<T>>;
 
 impl<T: Send> SharedChan<T>: Channel<T> {
     fn send(+x: T) {
-        let mut xx = Some(x);
+        let mut xx = Some(move x);
         do self.with |chan| {
             let mut x = None;
             x <-> xx;
@@ -1175,7 +1174,7 @@ impl<T: Send> SharedChan<T>: Channel<T> {
     }
 
     fn try_send(+x: T) -> bool {
-        let mut xx = Some(x);
+        let mut xx = Some(move x);
         do self.with |chan| {
             let mut x = None;
             x <-> xx;
@@ -1186,7 +1185,7 @@ impl<T: Send> SharedChan<T>: Channel<T> {
 
 /// Converts a `chan` into a `shared_chan`.
 fn SharedChan<T:Send>(+c: Chan<T>) -> SharedChan<T> {
-    unsafe::exclusive(c)
+    unsafe::exclusive(move c)
 }
 
 /// Receive a message from one of two endpoints.
@@ -1240,24 +1239,24 @@ fn oneshot<T: Send>() -> (ChanOne<T>, PortOne<T>) {
  * closed.
  */
 fn recv_one<T: Send>(+port: PortOne<T>) -> T {
-    let oneshot::send(message) = recv(port);
-    message
+    let oneshot::send(message) = recv(move port);
+    move message
 }
 
 /// Receive a message from a oneshot pipe unless the connection was closed.
 fn try_recv_one<T: Send> (+port: PortOne<T>) -> Option<T> {
-    let message = try_recv(port);
+    let message = try_recv(move port);
 
     if message.is_none() { None }
     else {
         let oneshot::send(message) = option::unwrap(message);
-        Some(message)
+        Some(move message)
     }
 }
 
 /// Send a message on a oneshot pipe, failing if the connection was closed.
 fn send_one<T: Send>(+chan: ChanOne<T>, +data: T) {
-    oneshot::client::send(chan, data);
+    oneshot::client::send(move chan, move data);
 }
 
 /**
@@ -1266,13 +1265,13 @@ fn send_one<T: Send>(+chan: ChanOne<T>, +data: T) {
  */
 fn try_send_one<T: Send>(+chan: ChanOne<T>, +data: T)
         -> bool {
-    oneshot::client::try_send(chan, data).is_some()
+    oneshot::client::try_send(move chan, move data).is_some()
 }
 
 mod rt {
     // These are used to hide the option constructors from the
     // compiler because their names are changing
-    fn make_some<T>(+val: T) -> Option<T> { Some(val) }
+    fn make_some<T>(+val: T) -> Option<T> { Some(move val) }
     fn make_none<T>() -> Option<T> { None }
 }
 

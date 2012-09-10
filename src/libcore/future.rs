@@ -75,7 +75,7 @@ fn from_value<A>(+val: A) -> Future<A> {
      * not block.
      */
 
-    Future {state: Forced(~val)}
+    Future {state: Forced(~(move val))}
 }
 
 fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
@@ -86,13 +86,13 @@ fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
      * waiting for the result to be received on the port.
      */
 
-    let port = ~mut Some(port);
+    let port = ~mut Some(move port);
     do from_fn |move port| {
         let mut port_ = None;
         port_ <-> *port;
         let port = option::unwrap(port_);
-        match recv(port) {
-            future_pipe::completed(move data) => data
+        match recv(move port) {
+            future_pipe::completed(move data) => move data
         }
     }
 }
@@ -106,7 +106,7 @@ fn from_fn<A>(+f: ~fn() -> A) -> Future<A> {
      * function. It is not spawned into another task.
      */
 
-    Future {state: Pending(f)}
+    Future {state: Pending(move f)}
 }
 
 fn spawn<A:Send>(+blk: fn~() -> A) -> Future<A> {
@@ -117,8 +117,8 @@ fn spawn<A:Send>(+blk: fn~() -> A) -> Future<A> {
      * value of the future.
      */
 
-    from_port(pipes::spawn_service_recv(future_pipe::init, |ch| {
-        future_pipe::server::completed(ch, blk());
+    from_port(pipes::spawn_service_recv(future_pipe::init, |move blk, ch| {
+        future_pipe::server::completed(move ch, blk());
     }))
 }
 
