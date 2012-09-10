@@ -7,6 +7,7 @@ use std::map;
 use std::map::hashmap;
 use std::sort;
 use io::ReaderUtil;
+use cmp::Ord;
 
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: hashmap<~[u8], uint>, total: uint) -> ~str { 
