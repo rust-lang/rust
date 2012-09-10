@@ -672,10 +672,12 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
                                 Result {val: vbegin, _},
                                 Result {bcx, val: vend}) =>
                             {
-                                let Result {bcx, val: llge} = trans_compare(
-                                    bcx, ast::ge, test_val, t, vbegin, t);
-                                let Result {bcx, val: llle} = trans_compare(
-                                    bcx, ast::le, test_val, t, vend, t);
+                                let Result {bcx, val: llge} =
+                                    compare_scalar_types(bcx, test_val,
+                                                         vbegin, t, ast::ge);
+                                let Result {bcx, val: llle} =
+                                    compare_scalar_types(bcx, test_val, vend,
+                                                         t, ast::le);
                                 rslt(bcx, And(bcx, llge, llle))
                             }
                         }
