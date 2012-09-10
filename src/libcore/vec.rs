@@ -1799,7 +1799,7 @@ mod unsafe {
             let mut box2 = None;
             box2 <-> box;
             rusti::move_val_init(*ptr::mut_offset(p, i),
-                                 option::unwrap(move box2));
+                                 option::unwrap(box2));
         }
     }
 
