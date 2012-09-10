@@ -19,6 +19,7 @@ Benjamin Jackman <ben@jackman.biz>
 Benjamin Kircher <benjamin.kircher@gmail.com>
 Brendan Eich <brendan@mozilla.org>
 Brian Anderson <banderson@mozilla.com>
+Brian J. Burg <burg@cs.washington.edu>
 Chris Double <chris.double@double.co.nz>
 Chris Peterson <cpeterson@mozilla.com>
 Damian Gryski <damian@gryski.com>
