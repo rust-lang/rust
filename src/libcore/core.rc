@@ -57,7 +57,7 @@ export hash;
 export cmp;
 export num;
 export path;
-export managed;
+export mutable;
 export flate;
 export unit;
 export uniq;
@@ -225,7 +225,7 @@ mod run;
 mod sys;
 mod unsafe;
 
-mod managed;
+mod mutable;
 
 mod flate;
 

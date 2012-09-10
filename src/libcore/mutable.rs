@@ -15,7 +15,7 @@ mutation when the data structure should be immutable.
 use util::with;
 use unsafe::transmute_immut;
 
-export Managed;
+export Mut;
 
 enum Mode { ReadOnly, Mutable, Immutable }
 
@@ -24,18 +24,26 @@ struct Data<T> {
     priv mut mode: Mode
 }
 
-type Managed<T> = @Data<T>;
+type Mut<T> = Data<T>;
 
-fn Managed<T>(+t: T) -> Managed<T> {
-    @Data {value: t, mode: ReadOnly}
+fn Mut<T>(+t: T) -> Mut<T> {
+    Data {value: t, mode: ReadOnly}
+}
+
+fn unwrap<T>(+m: Mut<T>) -> T {
+    // Borrowck should prevent us from calling unwrap while the value
+    // is in use, as that would be a move from a borrowed value.
+    assert (m.mode as uint) == (ReadOnly as uint);
+    let Data {value, mode: _} = m;
+    return move value;
 }
 
 impl<T> Data<T> {
     fn borrow_mut<R>(op: &fn(t: &mut T) -> R) -> R {
         match self.mode {
-          Immutable => fail fmt!("%? currently immutable",
-                                 self.value),
-          ReadOnly | Mutable => {}
+            Immutable => fail fmt!("%? currently immutable",
+                                   self.value),
+            ReadOnly | Mutable => {}
         }
 
         do with(&mut self.mode, Mutable) {
@@ -64,7 +72,7 @@ impl<T> Data<T> {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_mut_in_imm() {
-    let m = Managed(1);
+    let m = @Mut(1);
     do m.borrow_imm |_p| {
         do m.borrow_mut |_q| {
             // should not be permitted
@@ -76,7 +84,7 @@ fn test_mut_in_imm() {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_imm_in_mut() {
-    let m = Managed(1);
+    let m = @Mut(1);
     do m.borrow_mut |_p| {
         do m.borrow_imm |_q| {
             // should not be permitted
@@ -86,7 +94,7 @@ fn test_imm_in_mut() {
 
 #[test]
 fn test_const_in_mut() {
-    let m = Managed(1);
+    let m = @Mut(1);
     do m.borrow_mut |p| {
         do m.borrow_const |q| {
             assert *p == *q;
@@ -98,7 +106,7 @@ fn test_const_in_mut() {
 
 #[test]
 fn test_mut_in_const() {
-    let m = Managed(1);
+    let m = @Mut(1);
     do m.borrow_const |p| {
         do m.borrow_mut |q| {
             assert *p == *q;
@@ -110,7 +118,7 @@ fn test_mut_in_const() {
 
 #[test]
 fn test_imm_in_const() {
-    let m = Managed(1);
+    let m = @Mut(1);
     do m.borrow_const |p| {
         do m.borrow_imm |q| {
             assert *p == *q;
@@ -120,7 +128,7 @@ fn test_imm_in_const() {
 
 #[test]
 fn test_const_in_imm() {
-    let m = Managed(1);
+    let m = @Mut(1);
     do m.borrow_imm |p| {
         do m.borrow_const |q| {
             assert *p == *q;
@@ -133,7 +141,7 @@ fn test_const_in_imm() {
 #[ignore(cfg(windows))]
 #[should_fail]
 fn test_mut_in_imm_in_const() {
-    let m = Managed(1);
+    let m = @Mut(1);
     do m.borrow_const |_p| {
         do m.borrow_imm |_q| {
             do m.borrow_mut |_r| {
