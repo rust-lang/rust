@@ -411,22 +411,13 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
 fn restricted_keyword_table() -> hashmap<~str, ()> {
     let words = str_hash();
     let keys = ~[
-        ~"as",
-        ~"assert",
-        ~"break",
         ~"const", ~"copy",
-        ~"do", ~"drop",
-        ~"else", ~"enum", ~"export", ~"extern",
-        ~"fail", ~"false", ~"fn", ~"for",
-        ~"if", ~"impl", ~"import",
-        ~"let", ~"log", ~"loop",
-        ~"match", ~"mod", ~"move", ~"mut",
-        ~"priv", ~"pub", ~"pure",
-        ~"ref", ~"return",
+        ~"fail", ~"fn",
+        ~"impl",
+        ~"priv", ~"pub",
+        ~"return",
         ~"struct",
-        ~"true", ~"trait", ~"type",
-        ~"unchecked", ~"unsafe", ~"use",
-        ~"while"
+        ~"unsafe"
     ];
     for keys.each |word| {
         words.insert(word, ());
@@ -438,6 +429,19 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
 fn strict_keyword_table() -> hashmap<~str, ()> {
     let words = str_hash();
     let keys = ~[
+        ~"as", ~"assert",
+        ~"break",
+        ~"do", ~"drop",
+        ~"else", ~"enum", ~"export", ~"extern",
+        ~"false", ~"for",
+        ~"if", ~"import",
+        ~"let", ~"log", ~"loop",
+        ~"match", ~"mod", ~"move", ~"mut",
+        ~"pure",
+        ~"ref",
+        ~"true", ~"trait", ~"type",
+        ~"unchecked", ~"use",
+        ~"while"
     ];
     for keys.each |word| {
         words.insert(word, ());

@@ -1,5 +1,5 @@
-// error-pattern:found `let` in restricted position
+// error-pattern:found `fail` in restricted position
 
 fn main() {
-    enum let = int;
+    enum fail = int;
 }
