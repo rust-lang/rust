@@ -34,7 +34,16 @@ fn lookup_vtables(fcx: @fn_ctxt,
                   bounds: @~[ty::param_bounds],
                   substs: &ty::substs,
                   allow_unsafe: bool,
-                  is_early: bool) -> vtable_res {
+                  is_early: bool) -> vtable_res
+{
+    debug!("lookup_vtables(expr=%?/%s, \
+            # bounds=%?, \
+            substs=%s",
+           expr.id, fcx.expr_to_str(expr),
+           bounds.len(),
+           ty::substs_to_str(fcx.tcx(), substs));
+    let _i = indenter();
+
     let tcx = fcx.ccx.tcx;
     let mut result = ~[], i = 0u;
     for substs.tps.each |ty| {
@@ -391,6 +400,12 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
     }
 }
 
+fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id, vtables: vtable_res) {
+    debug!("insert_vtables(callee_id=%d, vtables=%?)",
+           callee_id, vtables.map(|v| v.to_str(ccx.tcx)));
+    ccx.vtable_map.insert(callee_id, vtables);
+}
+
 fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id %? (early: %b): %s",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
@@ -424,7 +439,9 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
                 let substs = fcx.node_ty_substs(callee_id);
                 let vtbls = lookup_vtables(fcx, ex, bounds,
                                            &substs, false, is_early);
-                if !is_early { cx.vtable_map.insert(callee_id, vtbls); }
+                if !is_early {
+                    insert_vtables(cx, callee_id, vtbls);
+                }
             }
           }
           None => ()

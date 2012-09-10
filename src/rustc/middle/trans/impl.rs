@@ -134,8 +134,8 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         typeck::method_param({trait_id:trait_id, method_num:off,
                               param_num:p, bound_num:b}) => {
             match bcx.fcx.param_substs {
-                Some(substs) => {
-                    let vtbl = find_vtable_in_fn_ctxt(substs, p, b);
+                Some(ref substs) => {
+                    let vtbl = base::find_vtable(bcx.tcx(), substs, p, b);
                     trans_monomorphized_callee(bcx, callee_id, self, mentry,
                                                trait_id, off, vtbl)
                 }
@@ -177,19 +177,17 @@ fn trans_static_method_callee(bcx: block,
         bcx.fcx, ccx.maps.vtable_map.get(callee_id));
 
     match vtbls[0] { // is index 0 always the one we want?
-        typeck::vtable_static(impl_did, impl_substs, sub_origins) => {
+        typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
 
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
-            let n_m_tps = method_ty_param_count(ccx, mth_id, impl_did);
-            let node_substs = node_id_type_params(bcx, callee_id);
-            let ty_substs
-                = vec::append(impl_substs,
-                              vec::tailn(node_substs,
-                                         node_substs.len() - n_m_tps));
+            let callee_substs = combine_impl_and_methods_tps(
+                bcx, mth_id, impl_did, callee_id, rcvr_substs);
+            let callee_origins = combine_impl_and_methods_origins(
+                bcx, mth_id, impl_did, callee_id, rcvr_origins);
 
             let FnData {llfn: lval} =
                 trans_fn_ref_with_vtables(bcx, mth_id, callee_id,
-                                          ty_substs, Some(sub_origins));
+                                          callee_substs, Some(callee_origins));
 
             let callee_ty = node_id_type(bcx, callee_id);
             let llty = T_ptr(type_of_fn_from_ty(ccx, callee_ty));
@@ -248,8 +246,8 @@ fn trans_monomorphized_callee(bcx: block,
     -> Callee
 {
     let _icx = bcx.insn_ctxt("impl::trans_monomorphized_callee");
-    match vtbl {
-      typeck::vtable_static(impl_did, impl_substs, sub_origins) => {
+    return match vtbl {
+      typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
           let mname = ty::trait_methods(ccx.tcx, trait_id)[n_method].ident;
           let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
@@ -260,20 +258,14 @@ fn trans_monomorphized_callee(bcx: block,
 
           // create a concatenated set of substitutions which includes
           // those from the impl and those from the method:
-          let n_m_tps = method_ty_param_count(ccx, mth_id, impl_did);
-          let node_substs = node_id_type_params(bcx, callee_id);
-          let ty_substs
-              = vec::append(impl_substs,
-                            vec::tailn(node_substs,
-                                       node_substs.len() - n_m_tps));
-          debug!("n_m_tps=%?", n_m_tps);
-          debug!("impl_substs=%?", impl_substs.map(|t| bcx.ty_to_str(t)));
-          debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(t)));
-          debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(t)));
+          let callee_substs = combine_impl_and_methods_tps(
+              bcx, mth_id, impl_did, callee_id, rcvr_substs);
+          let callee_origins = combine_impl_and_methods_origins(
+              bcx, mth_id, impl_did, callee_id, rcvr_origins);
 
           // translate the function
           let callee = trans_fn_ref_with_vtables(
-              bcx, mth_id, callee_id, ty_substs, Some(sub_origins));
+              bcx, mth_id, callee_id, callee_substs, Some(callee_origins));
 
           // create a llvalue that represents the fn ptr
           let fn_ty = node_id_type(bcx, callee_id);
@@ -297,8 +289,98 @@ fn trans_monomorphized_callee(bcx: block,
       typeck::vtable_param(*) => {
           fail ~"vtable_param left in monomorphized function's vtable substs";
       }
-    }
+    };
+
 }
+
+fn combine_impl_and_methods_tps(bcx: block,
+                                mth_did: ast::def_id,
+                                impl_did: ast::def_id,
+                                callee_id: ast::node_id,
+                                rcvr_substs: ~[ty::t])
+    -> ~[ty::t]
+{
+    /*!
+    *
+    * Creates a concatenated set of substitutions which includes
+    * those from the impl and those from the method.  This are
+    * some subtle complications here.  Statically, we have a list
+    * of type parameters like `[T0, T1, T2, M1, M2, M3]` where
+    * `Tn` are type parameters that appear on the receiver.  For
+    * example, if the receiver is a method parameter `A` with a
+    * bound like `trait<B,C,D>` then `Tn` would be `[B,C,D]`.
+    *
+    * The weird part is that the type `A` might now be bound to
+    * any other type, such as `foo<X>`.  In that case, the vector
+    * we want is: `[X, M1, M2, M3]`.  Therefore, what we do now is
+    * to slice off the method type parameters and append them to
+    * the type parameters from the type that the receiver is
+    * mapped to. */
+
+    let ccx = bcx.ccx();
+    let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
+    let node_substs = node_id_type_params(bcx, callee_id);
+    let ty_substs
+        = vec::append(rcvr_substs,
+                      vec::tailn(node_substs,
+                                 node_substs.len() - n_m_tps));
+    debug!("n_m_tps=%?", n_m_tps);
+    debug!("rcvr_substs=%?", rcvr_substs.map(|t| bcx.ty_to_str(t)));
+    debug!("node_substs=%?", node_substs.map(|t| bcx.ty_to_str(t)));
+    debug!("ty_substs=%?", ty_substs.map(|t| bcx.ty_to_str(t)));
+
+    return ty_substs;
+}
+
+fn combine_impl_and_methods_origins(bcx: block,
+                                    mth_did: ast::def_id,
+                                    impl_did: ast::def_id,
+                                    callee_id: ast::node_id,
+                                    rcvr_origins: typeck::vtable_res)
+    -> typeck::vtable_res
+{
+    /*!
+     *
+     * Similar to `combine_impl_and_methods_tps`, but for vtables.
+     * This is much messier because of the flattened layout we are
+     * currently using (for some reason that I fail to understand).
+     * The proper fix is described in #3446.
+     */
+
+
+    // Find the bounds for the method, which are the tail of the
+    // bounds found in the item type, as the item type combines the
+    // rcvr + method bounds.
+    let ccx = bcx.ccx(), tcx = bcx.tcx();
+    let n_m_tps = method_ty_param_count(ccx, mth_did, impl_did);
+    let {bounds: r_m_bounds, _} = ty::lookup_item_type(tcx, mth_did);
+    let n_r_m_tps = r_m_bounds.len(); // rcvr + method tps
+    let m_boundss = vec::view(*r_m_bounds, n_r_m_tps - n_m_tps, n_r_m_tps);
+
+    // Flatten out to find the number of vtables the method expects.
+    let m_vtables = m_boundss.foldl(0, |sum, m_bounds| {
+        m_bounds.foldl(sum, |sum, m_bound| {
+            sum + match m_bound {
+                ty::bound_copy | ty::bound_owned |
+                ty::bound_send | ty::bound_const => 0,
+                ty::bound_trait(_) => 1
+            }
+        })
+    });
+
+    // Find the vtables we computed at type check time and monomorphize them
+    let r_m_origins = match node_vtables(bcx, callee_id) {
+        Some(vt) => vt,
+        None => @~[]
+    };
+
+    // Extract those that belong to method:
+    let m_origins = vec::tailn(*r_m_origins, r_m_origins.len() - m_vtables);
+
+    // Combine rcvr + method to find the final result:
+    @vec::append(*rcvr_origins, m_origins)
+}
+
 
 fn trans_trait_callee(bcx: block,
                       callee_id: ast::node_id,
@@ -365,54 +447,6 @@ fn trans_trait_callee_from_llval(bcx: block,
             /* XXX: Some(llbox) */
         })
     };
-}
-
-fn find_vtable_in_fn_ctxt(ps: param_substs, n_param: uint, n_bound: uint)
-    -> typeck::vtable_origin
-{
-    let mut vtable_off = n_bound, i = 0u;
-    // Vtables are stored in a flat array, finding the right one is
-    // somewhat awkward
-    for vec::each(*ps.bounds) |bounds| {
-        if i >= n_param { break; }
-        for vec::each(*bounds) |bound| {
-            match bound { ty::bound_trait(_) => vtable_off += 1u, _ => () }
-        }
-        i += 1u;
-    }
-    option::get(ps.vtables)[vtable_off]
-}
-
-fn resolve_vtables_in_fn_ctxt(fcx: fn_ctxt, vts: typeck::vtable_res)
-    -> typeck::vtable_res {
-    @vec::map(*vts, |d| resolve_vtable_in_fn_ctxt(fcx, d))
-}
-
-// Apply the typaram substitutions in the fn_ctxt to a vtable. This should
-// eliminate any vtable_params.
-fn resolve_vtable_in_fn_ctxt(fcx: fn_ctxt, vt: typeck::vtable_origin)
-    -> typeck::vtable_origin {
-    match vt {
-      typeck::vtable_static(trait_id, tys, sub) => {
-        let tys = match fcx.param_substs {
-          Some(substs) => {
-            vec::map(tys, |t| ty::subst_tps(fcx.ccx.tcx, substs.tys, t))
-          }
-          _ => tys
-        };
-        typeck::vtable_static(trait_id, tys,
-                              resolve_vtables_in_fn_ctxt(fcx, sub))
-      }
-      typeck::vtable_param(n_param, n_bound) => {
-        match fcx.param_substs {
-          Some(substs) => {
-            find_vtable_in_fn_ctxt(substs, n_param, n_bound)
-          }
-          _ => fail ~"resolve_vtable_in_fn_ctxt: no substs"
-        }
-      }
-      _ => vt
-    }
 }
 
 fn vtable_id(ccx: @crate_ctxt, origin: typeck::vtable_origin) -> mono_id {
