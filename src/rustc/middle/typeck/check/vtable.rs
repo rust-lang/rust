@@ -400,7 +400,8 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
     }
 }
 
-fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id, vtables: vtable_res) {
+fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id,
+                  vtables: vtable_res) {
     debug!("insert_vtables(callee_id=%d, vtables=%?)",
            callee_id, vtables.map(|v| v.to_str(ccx.tcx)));
     ccx.vtable_map.insert(callee_id, vtables);
