@@ -15,7 +15,7 @@
 
 use libc::{c_uint, c_ulonglong};
 use std::{map, time, list};
-use std::map::hashmap;
+use std::map::HashMap;
 use std::map::{int_hash, str_hash};
 use driver::session;
 use session::session;
@@ -124,7 +124,7 @@ fn decl_internal_cdecl_fn(llmod: ModuleRef, name: ~str, llty: TypeRef) ->
     return llfn;
 }
 
-fn get_extern_fn(externs: hashmap<~str, ValueRef>,
+fn get_extern_fn(externs: HashMap<~str, ValueRef>,
                  llmod: ModuleRef, name: ~str,
                  cc: lib::llvm::CallConv, ty: TypeRef) -> ValueRef {
     if externs.contains_key(name) { return externs.get(name); }
@@ -133,7 +133,7 @@ fn get_extern_fn(externs: hashmap<~str, ValueRef>,
     return f;
 }
 
-fn get_extern_const(externs: hashmap<~str, ValueRef>, llmod: ModuleRef,
+fn get_extern_const(externs: HashMap<~str, ValueRef>, llmod: ModuleRef,
                     name: ~str, ty: TypeRef) -> ValueRef {
     if externs.contains_key(name) { return externs.get(name); }
     let c = str::as_c_str(name, |buf| llvm::LLVMAddGlobal(llmod, ty, buf));
@@ -142,7 +142,7 @@ fn get_extern_const(externs: hashmap<~str, ValueRef>, llmod: ModuleRef,
 }
 
 fn get_simple_extern_fn(cx: block,
-                        externs: hashmap<~str, ValueRef>,
+                        externs: HashMap<~str, ValueRef>,
                         llmod: ModuleRef,
                         name: ~str, n_args: int) -> ValueRef {
     let _icx = cx.insn_ctxt("get_simple_extern_fn");
@@ -153,7 +153,7 @@ fn get_simple_extern_fn(cx: block,
     return get_extern_fn(externs, llmod, name, lib::llvm::CCallConv, t);
 }
 
-fn trans_foreign_call(cx: block, externs: hashmap<~str, ValueRef>,
+fn trans_foreign_call(cx: block, externs: HashMap<~str, ValueRef>,
                       llmod: ModuleRef, name: ~str, args: ~[ValueRef]) ->
    ValueRef {
     let _icx = cx.insn_ctxt("trans_foreign_call");
@@ -2265,7 +2265,7 @@ fn p2i(ccx: @crate_ctxt, v: ValueRef) -> ValueRef {
     return llvm::LLVMConstPtrToInt(v, ccx.int_type);
 }
 
-fn declare_intrinsics(llmod: ModuleRef) -> hashmap<~str, ValueRef> {
+fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let T_memmove32_args: ~[TypeRef] =
         ~[T_ptr(T_i8()), T_ptr(T_i8()), T_i32(), T_i32(), T_i1()];
     let T_memmove64_args: ~[TypeRef] =
@@ -2314,7 +2314,7 @@ fn declare_intrinsics(llmod: ModuleRef) -> hashmap<~str, ValueRef> {
 }
 
 fn declare_dbg_intrinsics(llmod: ModuleRef,
-                          intrinsics: hashmap<~str, ValueRef>) {
+                          intrinsics: HashMap<~str, ValueRef>) {
     let declare =
         decl_cdecl_fn(llmod, ~"llvm.dbg.declare",
                       T_fn(~[T_metadata(), T_metadata()], T_void()));
@@ -2630,10 +2630,10 @@ fn trans_crate(sess: session::session,
           tydescs: ty::new_ty_hash(),
           mut finished_tydescs: false,
           external: ast_util::new_def_hash(),
-          monomorphized: map::hashmap(),
+          monomorphized: map::HashMap(),
           monomorphizing: ast_util::new_def_hash(),
           type_use_cache: ast_util::new_def_hash(),
-          vtables: map::hashmap(),
+          vtables: map::HashMap(),
           const_cstr_cache: map::str_hash(),
           const_globals: int_hash::<ValueRef>(),
           module_data: str_hash::<ValueRef>(),

@@ -12,7 +12,7 @@ use syntax::codemap::span;
 use syntax::print::pprust::pat_to_str;
 use middle::resolve::DefMap;
 use back::abi;
-use std::map::hashmap;
+use std::map::HashMap;
 use dvec::DVec;
 use datum::*;
 use common::*;

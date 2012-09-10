@@ -72,7 +72,7 @@ node twice.
 use base::*;
 use codemap::span;
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 
 export expand;
 
@@ -84,8 +84,8 @@ mod syntax {
     export parse;
 }
 
-type ser_tps_map = map::hashmap<ast::ident, fn@(@ast::expr) -> ~[@ast::stmt]>;
-type deser_tps_map = map::hashmap<ast::ident, fn@() -> @ast::expr>;
+type ser_tps_map = map::HashMap<ast::ident, fn@(@ast::expr) -> ~[@ast::stmt]>;
+type deser_tps_map = map::HashMap<ast::ident, fn@() -> @ast::expr>;
 
 fn expand(cx: ext_ctxt,
           span: span,

@@ -2,7 +2,7 @@ use syntax::{ast, ast_util};
 use driver::session::session;
 use syntax::codemap::span;
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 
 export capture_mode;
 export capture_var;
@@ -28,7 +28,7 @@ type capture_var = {
     mode: capture_mode                   // How variable is being accessed
 };
 
-type capture_map = map::hashmap<ast::def_id, capture_var>;
+type capture_map = map::HashMap<ast::def_id, capture_var>;
 
 // checks the capture clause for a fn_expr() and issues warnings or
 // errors for any irregularities which we identify.

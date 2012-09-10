@@ -5,9 +5,9 @@ use std;
 
 use dvec::*;
 use dvec::DVec;
-use std::map::hashmap;
+use std::map::HashMap;
 
-type header_map = hashmap<~str, @DVec<@~str>>;
+type header_map = HashMap<~str, @DVec<@~str>>;
 
 // the unused ty param is necessary so this gets monomorphized
 fn request<T: Copy>(req: header_map) {

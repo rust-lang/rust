@@ -28,7 +28,7 @@ fn timed(result: &mut float,
     *result = (end - start);
 }
 
-fn int_benchmarks<M: map::map<uint, uint>>(make_map: fn() -> M,
+fn int_benchmarks<M: map::Map<uint, uint>>(make_map: fn() -> M,
                                            rng: @rand::Rng,
                                            num_keys: uint,
                                            results: &mut Results) {
@@ -69,7 +69,7 @@ fn int_benchmarks<M: map::map<uint, uint>>(make_map: fn() -> M,
     }
 }
 
-fn str_benchmarks<M: map::map<~str, uint>>(make_map: fn() -> M,
+fn str_benchmarks<M: map::Map<~str, uint>>(make_map: fn() -> M,
                                            rng: @rand::Rng,
                                            num_keys: uint,
                                            results: &mut Results) {
@@ -156,9 +156,9 @@ fn main(args: ~[~str]) {
     {
         let rng = rand::seeded_rng(copy seed);
         let mut results = empty_results();
-        int_benchmarks::<map::hashmap<uint, uint>>(
+        int_benchmarks::<map::HashMap<uint, uint>>(
             map::uint_hash, rng, num_keys, &mut results);
-        str_benchmarks::<map::hashmap<~str, uint>>(
+        str_benchmarks::<map::HashMap<~str, uint>>(
             map::str_hash, rng, num_keys, &mut results);
         write_results("libstd::map::hashmap", &results);
     }

@@ -17,7 +17,7 @@ use util::ppaux::ty_to_str;
 use syntax::codemap::span;
 use dvec::DVec;
 
-use std::map::hashmap;
+use std::map::HashMap;
 use option::is_some;
 
 use ty_ctxt = middle::ty::ctxt;
@@ -58,8 +58,8 @@ fn mk_nominal_id(tcx: ty::ctxt, did: ast::def_id,
     @{did: did, parent_id: parent_id, tps: tps_norm}
 }
 
-fn new_nominal_id_hash<T: Copy>() -> hashmap<nominal_id, T> {
-    return hashmap();
+fn new_nominal_id_hash<T: Copy>() -> HashMap<nominal_id, T> {
+    return HashMap();
 }
 
 type enum_data = {did: ast::def_id, substs: ty::substs};
@@ -67,7 +67,7 @@ type enum_data = {did: ast::def_id, substs: ty::substs};
 type ctxt =
     {mut next_tag_id: u16,
      pad: u16,
-     tag_id_to_index: hashmap<nominal_id, u16>,
+     tag_id_to_index: HashMap<nominal_id, u16>,
      tag_order: DVec<enum_data>,
      resources: interner::interner<nominal_id>,
      llshapetablesty: TypeRef,

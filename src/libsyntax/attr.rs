@@ -1,7 +1,7 @@
 // Functions dealing with attributes and meta_items
 
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use either::Either;
 use diagnostic::span_handler;
 use ast_util::{spanned, dummy_spanned};

@@ -99,10 +99,10 @@ type self_info = {
 /// share the inherited fields.
 struct inherited {
     infcx: infer::infer_ctxt,
-    locals: hashmap<ast::node_id, TyVid>,
-    node_types: hashmap<ast::node_id, ty::t>,
-    node_type_substs: hashmap<ast::node_id, ty::substs>,
-    borrowings: hashmap<ast::node_id, ty::borrow>,
+    locals: HashMap<ast::node_id, TyVid>,
+    node_types: HashMap<ast::node_id, ty::t>,
+    node_type_substs: HashMap<ast::node_id, ty::substs>,
+    borrowings: HashMap<ast::node_id, ty::borrow>,
 }
 
 struct fn_ctxt {

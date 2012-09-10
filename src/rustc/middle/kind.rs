@@ -3,7 +3,7 @@ use syntax::ast::*;
 use syntax::codemap::span;
 use ty::{kind, kind_copyable, kind_noncopyable, kind_const};
 use driver::session::session;
-use std::map::hashmap;
+use std::map::HashMap;
 use util::ppaux::{ty_to_str, tys_to_str};
 use syntax::print::pprust::expr_to_str;
 use freevars::freevar_entry;
@@ -58,7 +58,7 @@ fn kind_to_str(k: kind) -> ~str {
     str::connect(kinds, ~" ")
 }
 
-type rval_map = std::map::hashmap<node_id, ()>;
+type rval_map = std::map::HashMap<node_id, ()>;
 
 type ctx = {tcx: ty::ctxt,
             method_map: typeck::method_map,

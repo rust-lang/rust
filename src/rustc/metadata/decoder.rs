@@ -1,7 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 use std::{ebml, map};
-use std::map::{hashmap, str_hash};
+use std::map::{HashMap, str_hash};
 use io::WriterUtil;
 use dvec::DVec;
 use syntax::{ast, ast_util};

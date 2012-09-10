@@ -10,7 +10,7 @@ use syntax::diagnostic;
 use result::{Ok, Err};
 use io::WriterUtil;
 use std::{map, json, tempfile, term, sort, getopts};
-use map::hashmap;
+use map::HashMap;
 use to_str::to_str;
 use getopts::{optflag, optopt, opt_present};
 
@@ -71,9 +71,9 @@ type cargo = {
     libdir: Path,
     workdir: Path,
     sourcedir: Path,
-    sources: map::hashmap<~str, source>,
+    sources: map::HashMap<~str, source>,
     mut current_install: ~str,
-    dep_cache: map::hashmap<~str, bool>,
+    dep_cache: map::HashMap<~str, bool>,
     opts: options
 };
 
@@ -454,7 +454,7 @@ fn parse_source(name: ~str, j: json::Json) -> source {
     };
 }
 
-fn try_parse_sources(filename: &Path, sources: map::hashmap<~str, source>) {
+fn try_parse_sources(filename: &Path, sources: map::HashMap<~str, source>) {
     if !os::path_exists(filename)  { return; }
     let c = io::read_whole_file_str(filename);
     match json::from_str(result::get(c)) {
@@ -469,7 +469,7 @@ fn try_parse_sources(filename: &Path, sources: map::hashmap<~str, source>) {
     }
 }
 
-fn load_one_source_package(src: source, p: map::hashmap<~str, json::Json>) {
+fn load_one_source_package(src: source, p: map::HashMap<~str, json::Json>) {
     let name = match p.find(~"name") {
         Some(json::String(n)) => {
             if !valid_pkg_name(*n) {

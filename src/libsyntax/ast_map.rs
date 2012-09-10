@@ -1,5 +1,5 @@
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use ast::*;
 use print::pprust;
 use ast_util::{path_to_ident, stmt_id};
@@ -79,7 +79,7 @@ enum ast_node {
     node_block(blk),
 }
 
-type map = std::map::hashmap<node_id, ast_node>;
+type map = std::map::HashMap<node_id, ast_node>;
 type ctx = {map: map, mut path: path,
             mut local_id: uint, diag: span_handler};
 type vt = visit::vt<ctx>;

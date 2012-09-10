@@ -61,7 +61,6 @@ mod bitv;
 mod deque;
 mod fun_treemap;
 mod list;
-#[allow(non_camel_case_types)] // XXX
 mod map;
 mod rope;
 mod smallintmap;

@@ -60,11 +60,11 @@ use vec::pop;
 use syntax::parse::token::ident_interner;
 
 use std::list::{Cons, List, Nil};
-use std::map::{hashmap, int_hash, uint_hash};
+use std::map::{HashMap, int_hash, uint_hash};
 use str_eq = str::eq;
 
 // Definition mapping
-type DefMap = hashmap<node_id,def>;
+type DefMap = HashMap<node_id,def>;
 
 struct binding_info {
     span: span,
@@ -72,7 +72,7 @@ struct binding_info {
 }
 
 // Map from the name in a pattern to its binding mode.
-type BindingMap = hashmap<ident,binding_info>;
+type BindingMap = HashMap<ident,binding_info>;
 
 // Implementation resolution
 //
@@ -89,15 +89,15 @@ type MethodInfo = {
 type Impl = { did: def_id, ident: ident, methods: ~[@MethodInfo] };
 
 // Trait method resolution
-type TraitMap = @hashmap<node_id,@DVec<def_id>>;
+type TraitMap = @HashMap<node_id,@DVec<def_id>>;
 
 // Export mapping
 type Export = { reexp: bool, id: def_id };
-type ExportMap = hashmap<node_id, ~[Export]>;
+type ExportMap = HashMap<node_id, ~[Export]>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-type ExportMap2 = hashmap<node_id, ~[Export2]>;
+type ExportMap2 = HashMap<node_id, ~[Export2]>;
 
 struct Export2 {
     name: ~str,         // The name of the target.
@@ -317,13 +317,13 @@ fn Atom(n: uint) -> Atom {
 }
 
 /// Creates a hash table of atoms.
-fn atom_hashmap<V:Copy>() -> hashmap<Atom,V> {
-  hashmap::<Atom,V>()
+fn atom_hashmap<V:Copy>() -> HashMap<Atom,V> {
+  HashMap::<Atom,V>()
 }
 
 /// One local scope.
 struct Rib {
-    bindings: hashmap<Atom,def_like>,
+    bindings: HashMap<Atom,def_like>,
     kind: RibKind,
 }
 
@@ -414,7 +414,7 @@ struct Module {
     parent_link: ParentLink,
     mut def_id: Option<def_id>,
 
-    children: hashmap<Atom,@NameBindings>,
+    children: HashMap<Atom,@NameBindings>,
     imports: DVec<@ImportDirective>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
@@ -432,7 +432,7 @@ struct Module {
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
 
-    anonymous_children: hashmap<node_id,@Module>,
+    anonymous_children: HashMap<node_id,@Module>,
 
     // XXX: This is about to be reworked so that exports are on individual
     // items, not names.
@@ -440,10 +440,10 @@ struct Module {
     // The atom is the name of the exported item, while the node ID is the
     // ID of the export path.
 
-    exported_names: hashmap<Atom,node_id>,
+    exported_names: HashMap<Atom,node_id>,
 
     // The status of resolving each import in this module.
-    import_resolutions: hashmap<Atom,@ImportResolution>,
+    import_resolutions: HashMap<Atom,@ImportResolution>,
 
     // The number of unresolved globs that this module exports.
     mut glob_count: uint,
@@ -633,7 +633,7 @@ fn NameBindings() -> NameBindings {
 
 /// Interns the names of the primitive types.
 struct PrimitiveTypeTable {
-    primitive_types: hashmap<Atom,prim_ty>,
+    primitive_types: HashMap<Atom,prim_ty>,
 }
 
 impl PrimitiveTypeTable {
@@ -743,8 +743,8 @@ struct Resolver {
 
     unused_import_lint_level: level,
 
-    trait_info: hashmap<def_id,@hashmap<Atom,()>>,
-    structs: hashmap<def_id,bool>,
+    trait_info: HashMap<def_id,@HashMap<Atom,()>>,
+    structs: HashMap<def_id,bool>,
 
     // The number of imports that are currently unresolved.
     mut unresolved_imports: uint,
@@ -1386,7 +1386,7 @@ impl Resolver {
         visit_block(block, new_parent, visitor);
     }
 
-    fn handle_external_def(def: def, modules: hashmap<def_id, @Module>,
+    fn handle_external_def(def: def, modules: HashMap<def_id, @Module>,
                            child_name_bindings: @NameBindings,
                            final_ident: ~str,
                            atom: Atom, new_parent: ReducedGraphParent) {
@@ -3835,7 +3835,7 @@ impl Resolver {
                        mutability: Mutability,
                        // Maps idents to the node ID for the (outermost)
                        // pattern that binds them
-                       bindings_list: Option<hashmap<Atom,node_id>>,
+                       bindings_list: Option<HashMap<Atom,node_id>>,
                        visitor: ResolveVisitor) {
 
         let pat_id = pattern.id;

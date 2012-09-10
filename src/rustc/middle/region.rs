@@ -20,7 +20,7 @@ use ty::{region_variance, rv_covariant, rv_invariant, rv_contravariant};
 
 use std::list;
 use std::list::list;
-use std::map::{hashmap, int_hash};
+use std::map::{HashMap, int_hash};
 
 type parent = Option<ast::node_id>;
 
@@ -39,7 +39,7 @@ Encodes the bounding lifetime for a given AST node:
 - Variables and bindings are mapped to the block in which they are declared.
 
 */
-type region_map = hashmap<ast::node_id, ast::node_id>;
+type region_map = HashMap<ast::node_id, ast::node_id>;
 
 struct ctxt {
     sess: session,
@@ -55,7 +55,7 @@ struct ctxt {
     // the condition in a while loop is always a parent.  In those
     // cases, we add the node id of such an expression to this set so
     // that when we visit it we can view it as a parent.
-    root_exprs: hashmap<ast::node_id, ()>,
+    root_exprs: HashMap<ast::node_id, ()>,
 
     // The parent scope is the innermost block, statement, call, or alt
     // expression during the execution of which the current expression
@@ -370,9 +370,9 @@ fn resolve_crate(sess: session, def_map: resolve::DefMap,
 // a worklist.  We can then process the worklist, propagating indirect
 // dependencies until a fixed point is reached.
 
-type region_paramd_items = hashmap<ast::node_id, region_variance>;
+type region_paramd_items = HashMap<ast::node_id, region_variance>;
 type region_dep = {ambient_variance: region_variance, id: ast::node_id};
-type dep_map = hashmap<ast::node_id, @DVec<region_dep>>;
+type dep_map = HashMap<ast::node_id, @DVec<region_dep>>;
 
 impl region_dep: cmp::Eq {
     pure fn eq(&&other: region_dep) -> bool {

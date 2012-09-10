@@ -32,7 +32,7 @@ use util::ppaux::ty_to_str;
 
 use dvec::DVec;
 use result::Ok;
-use std::map::{hashmap, int_hash};
+use std::map::{HashMap, int_hash};
 use uint::range;
 use vec::{len, push};
 
@@ -121,11 +121,11 @@ fn method_to_MethodInfo(ast_method: @method) -> @MethodInfo {
 struct CoherenceInfo {
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_methods: hashmap<def_id,@DVec<@Impl>>,
+    inherent_methods: HashMap<def_id,@DVec<@Impl>>,
 
     // Contains implementations of methods associated with a trait. For these,
     // the associated trait must be imported at the call site.
-    extension_methods: hashmap<def_id,@DVec<@Impl>>,
+    extension_methods: HashMap<def_id,@DVec<@Impl>>,
 }
 
 fn CoherenceInfo() -> CoherenceInfo {
@@ -152,12 +152,12 @@ struct CoherenceChecker {
     // A mapping from implementations to the corresponding base type
     // definition ID.
 
-    base_type_def_ids: hashmap<def_id,def_id>,
+    base_type_def_ids: HashMap<def_id,def_id>,
 
     // A set of implementations in privileged scopes; i.e. those
     // implementations that are defined in the same scope as their base types.
 
-    privileged_implementations: hashmap<node_id,()>,
+    privileged_implementations: HashMap<node_id,()>,
 }
 
 impl CoherenceChecker {
@@ -645,7 +645,7 @@ impl CoherenceChecker {
 
     // External crate handling
 
-    fn add_impls_for_module(impls_seen: hashmap<def_id,()>,
+    fn add_impls_for_module(impls_seen: HashMap<def_id,()>,
                             crate_store: cstore,
                             module_def_id: def_id) {
 

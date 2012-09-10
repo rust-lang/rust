@@ -1,4 +1,4 @@
-use std::map::{hashmap, str_hash};
+use std::map::{HashMap, str_hash};
 use libc::{c_uint, c_int};
 use lib::llvm::llvm;
 use syntax::codemap;

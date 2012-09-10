@@ -40,7 +40,7 @@ impl<T: Copy> cat<T> {
   }
 }
 
-impl<T: Copy> cat<T> : map<int, T> {
+impl<T: Copy> cat<T> : Map<int, T> {
   pure fn size() -> uint { self.meows as uint }
   fn insert(+k: int, +_v: T) -> bool {
     self.meows += k;

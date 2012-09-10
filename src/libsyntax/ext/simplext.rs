@@ -1,5 +1,5 @@
 use codemap::span;
-use std::map::{hashmap, str_hash, uint_hash};
+use std::map::{HashMap, str_hash, uint_hash};
 use dvec::DVec;
 
 use base::*;
@@ -123,9 +123,9 @@ fn compose_sels(s1: selector, s2: selector) -> selector {
 
 
 type binders =
-    {real_binders: hashmap<ident, selector>,
+    {real_binders: HashMap<ident, selector>,
      literal_ast_matchers: DVec<selector>};
-type bindings = hashmap<ident, arb_depth<matchable>>;
+type bindings = HashMap<ident, arb_depth<matchable>>;
 
 fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 
@@ -237,9 +237,9 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: Option<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
-    let idents: hashmap<ident, ()> = uint_hash::<()>();
+    let idents: HashMap<ident, ()> = uint_hash::<()>();
     fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
-                  idents: hashmap<ident, ()>) -> ident {
+                  idents: HashMap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }
         return i;
     }

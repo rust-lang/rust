@@ -1,6 +1,6 @@
 use util::interner;
 use util::interner::interner;
-use std::map::{hashmap, str_hash};
+use std::map::{HashMap, str_hash};
 use std::serialization::{serializer,
                             deserializer,
                             serialize_uint,
@@ -368,7 +368,7 @@ fn mk_fake_ident_interner() -> ident_interner {
  * that might otherwise contain _value identifiers_.  Strict keywords may not
  * appear as identifiers.
  */
-fn keyword_table() -> hashmap<~str, ()> {
+fn keyword_table() -> HashMap<~str, ()> {
     let keywords = str_hash();
     for contextual_keyword_table().each_key |word| {
         keywords.insert(word, ());
@@ -383,7 +383,7 @@ fn keyword_table() -> hashmap<~str, ()> {
 }
 
 /// Keywords that may be used as identifiers
-fn contextual_keyword_table() -> hashmap<~str, ()> {
+fn contextual_keyword_table() -> HashMap<~str, ()> {
     let words = str_hash();
     let keys = ~[
         ~"self", ~"static",
@@ -408,7 +408,7 @@ fn contextual_keyword_table() -> hashmap<~str, ()> {
  * * `true` or `false` as identifiers would always be shadowed by
  *   the boolean constants
  */
-fn restricted_keyword_table() -> hashmap<~str, ()> {
+fn restricted_keyword_table() -> HashMap<~str, ()> {
     let words = str_hash();
     let keys = ~[
         ~"const", ~"copy",
@@ -426,7 +426,7 @@ fn restricted_keyword_table() -> hashmap<~str, ()> {
 }
 
 /// Full keywords. May not appear anywhere else.
-fn strict_keyword_table() -> hashmap<~str, ()> {
+fn strict_keyword_table() -> HashMap<~str, ()> {
     let words = str_hash();
     let keys = ~[
         ~"as", ~"assert",

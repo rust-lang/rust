@@ -5,7 +5,7 @@ use syntax::{ast, ast_util};
 use syntax::attr;
 use syntax::visit;
 use syntax::codemap::span;
-use std::map::{hashmap, int_hash};
+use std::map::{HashMap, int_hash};
 use syntax::print::pprust;
 use filesearch::filesearch;
 use common::*;

@@ -4,8 +4,8 @@ use middle::ty;
 use syntax::{ast, ast_util, visit};
 use syntax::attr;
 use syntax::codemap::span;
-use std::map::{map,hashmap,int_hash,hash_from_strs};
-use std::smallintmap::{map,SmallIntMap};
+use std::map::{Map,HashMap,int_hash,hash_from_strs};
+use std::smallintmap::{Map,SmallIntMap};
 use io::WriterUtil;
 use util::ppaux::{ty_to_str};
 use middle::pat_util::{pat_bindings};
@@ -95,7 +95,7 @@ type lint_spec = @{lint: lint,
                    desc: ~str,
                    default: level};
 
-type lint_dict = hashmap<~str,lint_spec>;
+type lint_dict = HashMap<~str,lint_spec>;
 
 /*
   Pass names should not contain a '-', as the compiler normalizes
@@ -196,7 +196,7 @@ fn get_lint_dict() -> lint_dict {
 
 // This is a highly not-optimal set of data structure decisions.
 type lint_modes = SmallIntMap<level>;
-type lint_mode_map = hashmap<ast::node_id, lint_modes>;
+type lint_mode_map = HashMap<ast::node_id, lint_modes>;
 
 // settings_map maps node ids of items with non-default lint settings
 // to their settings; default_settings contains the settings for everything

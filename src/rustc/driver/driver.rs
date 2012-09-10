@@ -13,7 +13,7 @@ use std::getopts;
 use io::WriterUtil;
 use getopts::{optopt, optmulti, optflag, optflagopt, opt_present};
 use back::{x86, x86_64};
-use std::map::hashmap;
+use std::map::HashMap;
 use lib::llvm::llvm;
 
 enum pp_mode {ppm_normal, ppm_expanded, ppm_typed, ppm_identified,

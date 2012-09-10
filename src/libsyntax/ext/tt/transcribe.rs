@@ -4,7 +4,7 @@ use macro_parser::{named_match, matched_seq, matched_nonterminal};
 use codemap::span;
 use parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
                       ident_interner};
-use std::map::{hashmap, box_str_hash};
+use std::map::{HashMap, box_str_hash};
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
 
@@ -28,7 +28,7 @@ type tt_reader = @{
     interner: ident_interner,
     mut cur: tt_frame,
     /* for MBE-style macro transcription */
-    interpolations: std::map::hashmap<ident, @named_match>,
+    interpolations: std::map::HashMap<ident, @named_match>,
     mut repeat_idx: ~[mut uint],
     mut repeat_len: ~[uint],
     /* cached: */
@@ -40,7 +40,7 @@ type tt_reader = @{
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
 fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
-                 interp: Option<std::map::hashmap<ident,@named_match>>,
+                 interp: Option<std::map::HashMap<ident,@named_match>>,
                  src: ~[ast::token_tree])
     -> tt_reader {
     let r = @{sp_diag: sp_diag, interner: itr,

@@ -11,7 +11,7 @@ use core::*;
 // -*- rust -*-
 use result::{Ok, Err};
 use std::getopts;
-use std::map::hashmap;
+use std::map::HashMap;
 use getopts::{opt_present};
 use rustc::driver::driver::*;
 use syntax::codemap;

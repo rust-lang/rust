@@ -3,7 +3,7 @@
 use util::ppaux::ty_to_str;
 
 use std::{ebml, map};
-use std::map::hashmap;
+use std::map::HashMap;
 use io::WriterUtil;
 use ebml::Writer;
 use syntax::ast::*;
@@ -35,7 +35,7 @@ export encode_ctxt;
 export write_type;
 export encode_def_id;
 
-type abbrev_map = map::hashmap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = map::HashMap<ty::t, tyencode::ty_abbrev>;
 
 type encode_inlined_item = fn@(ecx: @encode_ctxt,
                                ebml_w: ebml::Writer,
@@ -45,11 +45,11 @@ type encode_inlined_item = fn@(ecx: @encode_ctxt,
 type encode_parms = {
     diag: span_handler,
     tcx: ty::ctxt,
-    reachable: hashmap<ast::node_id, ()>,
+    reachable: HashMap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: hashmap<ast::node_id, ~str>,
-    discrim_symbols: hashmap<ast::node_id, ~str>,
+    item_symbols: HashMap<ast::node_id, ~str>,
+    discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
     cstore: cstore::cstore,
     encode_inlined_item: encode_inlined_item
@@ -72,11 +72,11 @@ enum encode_ctxt = {
     tcx: ty::ctxt,
     buf: io::MemBuffer,
     stats: stats,
-    reachable: hashmap<ast::node_id, ()>,
+    reachable: HashMap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: hashmap<ast::node_id, ~str>,
-    discrim_symbols: hashmap<ast::node_id, ~str>,
+    item_symbols: HashMap<ast::node_id, ~str>,
+    discrim_symbols: HashMap<ast::node_id, ~str>,
     link_meta: link_meta,
     cstore: cstore::cstore,
     encode_inlined_item: encode_inlined_item,

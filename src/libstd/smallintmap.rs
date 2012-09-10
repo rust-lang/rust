@@ -8,7 +8,7 @@
 use core::option;
 use core::option::{Some, None};
 use dvec::DVec;
-use map::map;
+use map::Map;
 
 // FIXME (#2347): Should not be @; there's a bug somewhere in rustc that
 // requires this to be.
@@ -66,7 +66,7 @@ fn contains_key<T: Copy>(self: SmallIntMap<T>, key: uint) -> bool {
 }
 
 /// Implements the map::map interface for smallintmap
-impl<V: Copy> SmallIntMap<V>: map::map<uint, V> {
+impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     pure fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
@@ -146,6 +146,6 @@ impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
 }
 
 /// Cast the given smallintmap to a map::map
-fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::map<uint, V> {
-    s as map::map::<uint, V>
+fn as_map<V: Copy>(s: SmallIntMap<V>) -> map::Map<uint, V> {
+    s as map::Map::<uint, V>
 }

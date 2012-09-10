@@ -1,5 +1,5 @@
 use std::map;
-use std::map::hashmap;
+use std::map::HashMap;
 use metadata::cstore;
 use driver::session;
 use metadata::filesearch;

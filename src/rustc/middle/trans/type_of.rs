@@ -3,7 +3,7 @@ use lib::llvm::{TypeRef};
 use syntax::ast;
 use lib::llvm::llvm;
 use driver::session::session;
-use std::map::hashmap;
+use std::map::HashMap;
 
 export type_of;
 export type_of_dtor;

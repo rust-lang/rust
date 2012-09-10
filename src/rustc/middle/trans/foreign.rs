@@ -15,7 +15,7 @@ use common::*;
 use build::*;
 use base::*;
 use type_of::*;
-use std::map::hashmap;
+use std::map::HashMap;
 use util::ppaux::ty_to_str;
 use datum::*;
 use callee::*;

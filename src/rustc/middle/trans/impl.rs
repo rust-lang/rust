@@ -12,7 +12,7 @@ use back::{link, abi};
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
 use lib::llvm::llvm::LLVMGetParam;
-use std::map::hashmap;
+use std::map::HashMap;
 use util::ppaux::{ty_to_str, tys_to_str};
 use callee::*;
 use syntax::print::pprust::expr_to_str;

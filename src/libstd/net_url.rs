@@ -3,7 +3,7 @@
 #[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;
-use map::{hashmap, str_hash};
+use map::{HashMap, str_hash};
 use io::{Reader, ReaderUtil};
 use dvec::DVec;
 use from_str::FromStr;
@@ -184,7 +184,7 @@ fn encode_plus(s: &str) -> ~str {
 /**
  * Encode a hashmap to the 'application/x-www-form-urlencoded' media type.
  */
-fn encode_form_urlencoded(m: hashmap<~str, @DVec<@~str>>) -> ~str {
+fn encode_form_urlencoded(m: HashMap<~str, @DVec<@~str>>) -> ~str {
     let mut out = ~"";
     let mut first = true;
 
@@ -211,7 +211,7 @@ fn encode_form_urlencoded(m: hashmap<~str, @DVec<@~str>>) -> ~str {
  * type into a hashmap.
  */
 fn decode_form_urlencoded(s: ~[u8]) ->
-    map::hashmap<~str, @dvec::DVec<@~str>> {
+    map::HashMap<~str, @dvec::DVec<@~str>> {
     do io::with_bytes_reader(s) |rdr| {
         let m = str_hash();
         let mut key = ~"";

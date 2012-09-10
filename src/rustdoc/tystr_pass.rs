@@ -4,7 +4,7 @@ use doc::item_utils;
 use syntax::ast;
 use syntax::print::pprust;
 use syntax::ast_map;
-use std::map::hashmap;
+use std::map::HashMap;
 use extract::to_str;
 
 export mk_pass;

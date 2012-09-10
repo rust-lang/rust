@@ -1,4 +1,4 @@
-use std::map::hashmap;
+use std::map::HashMap;
 use parse::parser;
 use diagnostic::span_handler;
 use codemap::{codemap, span, expn_info, expanded_from};
@@ -65,7 +65,7 @@ enum syntax_extension {
 
 // A temporary hard-coded map of methods for expanding syntax extension
 // AST nodes into full ASTs
-fn syntax_expander_table() -> hashmap<~str, syntax_extension> {
+fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     fn builtin(f: syntax_expander_) -> syntax_extension
         {normal({expander: f, span: None})}
     fn builtin_expr_tt(f: syntax_expander_tt_) -> syntax_extension {

@@ -1,4 +1,4 @@
-use std::map::hashmap;
+use std::map::HashMap;
 use middle::ty;
 use middle::ty::{arg, canon_mode};
 use middle::ty::{bound_copy, bound_const, bound_owned, bound_send,

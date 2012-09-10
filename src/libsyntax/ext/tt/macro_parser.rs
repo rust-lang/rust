@@ -10,7 +10,7 @@ use parse::parse_sess;
 use dvec::DVec;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use ast_util::mk_sp;
-use std::map::{hashmap, uint_hash};
+use std::map::{HashMap, uint_hash};
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -168,9 +168,9 @@ enum named_match {
 type earley_item = matcher_pos;
 
 fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
-    -> hashmap<ident,@named_match> {
+    -> HashMap<ident,@named_match> {
     fn n_rec(p_s: parse_sess, m: matcher, res: ~[@named_match],
-             ret_val: hashmap<ident, @named_match>) {
+             ret_val: HashMap<ident, @named_match>) {
         match m {
           {node: match_tok(_), span: _} => (),
           {node: match_seq(more_ms, _, _, _, _), span: _} => {
@@ -191,13 +191,13 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
 }
 
 enum parse_result {
-    success(hashmap<ident, @named_match>),
+    success(HashMap<ident, @named_match>),
     failure(codemap::span, ~str),
     error(codemap::span, ~str)
 }
 
 fn parse_or_else(sess: parse_sess, cfg: ast::crate_cfg, rdr: reader,
-                 ms: ~[matcher]) -> hashmap<ident, @named_match> {
+                 ms: ~[matcher]) -> HashMap<ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),

@@ -10,7 +10,7 @@ use syntax::codemap::span;
 use std::ebml;
 use std::ebml::Writer;
 use std::ebml::get_doc;
-use std::map::hashmap;
+use std::map::HashMap;
 use std::serialization::serializer;
 use std::serialization::deserializer;
 use std::serialization::serializer_helpers;

@@ -5,7 +5,7 @@
 
 use libc::c_uint;
 use vec::unsafe::to_ptr;
-use std::map::{hashmap,set};
+use std::map::{HashMap,Set};
 use syntax::{ast, ast_map};
 use driver::session;
 use session::session;
@@ -90,7 +90,7 @@ type stats =
      mut n_null_glues: uint,
      mut n_real_glues: uint,
      llvm_insn_ctxt: @mut ~[~str],
-     llvm_insns: hashmap<~str, uint>,
+     llvm_insns: HashMap<~str, uint>,
      fn_times: @mut ~[{ident: ~str, time: int}]};
 
 struct BuilderRef_res {
@@ -110,50 +110,50 @@ type crate_ctxt = {
      llmod: ModuleRef,
      td: target_data,
      tn: type_names,
-     externs: hashmap<~str, ValueRef>,
-     intrinsics: hashmap<~str, ValueRef>,
-     item_vals: hashmap<ast::node_id, ValueRef>,
+     externs: HashMap<~str, ValueRef>,
+     intrinsics: HashMap<~str, ValueRef>,
+     item_vals: HashMap<ast::node_id, ValueRef>,
      exp_map: resolve::ExportMap,
      exp_map2: resolve::ExportMap2,
      reachable: reachable::map,
-     item_symbols: hashmap<ast::node_id, ~str>,
+     item_symbols: HashMap<ast::node_id, ~str>,
      mut main_fn: Option<ValueRef>,
      link_meta: link_meta,
-     enum_sizes: hashmap<ty::t, uint>,
-     discrims: hashmap<ast::def_id, ValueRef>,
-     discrim_symbols: hashmap<ast::node_id, ~str>,
-     tydescs: hashmap<ty::t, @tydesc_info>,
+     enum_sizes: HashMap<ty::t, uint>,
+     discrims: HashMap<ast::def_id, ValueRef>,
+     discrim_symbols: HashMap<ast::node_id, ~str>,
+     tydescs: HashMap<ty::t, @tydesc_info>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
      mut finished_tydescs: bool,
      // Track mapping of external ids to local items imported for inlining
-     external: hashmap<ast::def_id, Option<ast::node_id>>,
+     external: HashMap<ast::def_id, Option<ast::node_id>>,
      // Cache instances of monomorphized functions
-     monomorphized: hashmap<mono_id, ValueRef>,
-     monomorphizing: hashmap<ast::def_id, uint>,
+     monomorphized: HashMap<mono_id, ValueRef>,
+     monomorphizing: HashMap<ast::def_id, uint>,
      // Cache computed type parameter uses (see type_use.rs)
-     type_use_cache: hashmap<ast::def_id, ~[type_use::type_uses]>,
+     type_use_cache: HashMap<ast::def_id, ~[type_use::type_uses]>,
      // Cache generated vtables
-     vtables: hashmap<mono_id, ValueRef>,
+     vtables: HashMap<mono_id, ValueRef>,
      // Cache of constant strings,
-     const_cstr_cache: hashmap<~str, ValueRef>,
+     const_cstr_cache: HashMap<~str, ValueRef>,
      // Reverse-direction for const ptrs cast from globals,
      // since the ptr -> init association is lost any
      // time a GlobalValue is cast.
-     const_globals: hashmap<int, ValueRef>,
-     module_data: hashmap<~str, ValueRef>,
-     lltypes: hashmap<ty::t, TypeRef>,
+     const_globals: HashMap<int, ValueRef>,
+     module_data: HashMap<~str, ValueRef>,
+     lltypes: HashMap<ty::t, TypeRef>,
      names: namegen,
      next_addrspace: addrspace_gen,
      symbol_hasher: @hash::State,
-     type_hashcodes: hashmap<ty::t, ~str>,
-     type_short_names: hashmap<ty::t, ~str>,
-     all_llvm_symbols: set<~str>,
+     type_hashcodes: HashMap<ty::t, ~str>,
+     type_short_names: HashMap<ty::t, ~str>,
+     all_llvm_symbols: Set<~str>,
      tcx: ty::ctxt,
      maps: astencode::maps,
      stats: stats,
      upcalls: @upcall::upcalls,
-     rtcalls: hashmap<~str, ast::def_id>,
+     rtcalls: HashMap<~str, ast::def_id>,
      tydesc_type: TypeRef,
      int_type: TypeRef,
      float_type: TypeRef,
@@ -171,7 +171,7 @@ type crate_ctxt = {
      // used in base::trans_closure
      // parent_class must be a def_id because ctors can be
      // inlined, so the parent may be in a different crate
-     class_ctors: hashmap<ast::node_id, ast::def_id>,
+     class_ctors: HashMap<ast::node_id, ast::def_id>,
      mut do_not_commit_warning_issued: bool};
 
 // Types used for llself.
@@ -231,12 +231,12 @@ type fn_ctxt = @{
     mut loop_ret: Option<{flagptr: ValueRef, retptr: ValueRef}>,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: hashmap<ast::node_id, local_val>,
+    llargs: HashMap<ast::node_id, local_val>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: hashmap<ast::node_id, local_val>,
+    lllocals: HashMap<ast::node_id, local_val>,
     // Same as above, but for closure upvars
-    llupvars: hashmap<ast::node_id, ValueRef>,
+    llupvars: HashMap<ast::node_id, ValueRef>,
 
     // The node_id of the function, or -1 if it doesn't correspond to
     // a user-defined function.

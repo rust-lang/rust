@@ -101,7 +101,7 @@
  */
 
 use dvec::DVec;
-use std::map::{hashmap, int_hash, str_hash, uint_hash};
+use std::map::{HashMap, int_hash, str_hash, uint_hash};
 use syntax::{visit, ast_util};
 use syntax::print::pprust::{expr_to_str};
 use visit::vt;
@@ -122,7 +122,7 @@ export last_use_map;
 //
 // Very subtle (#2633): borrowck will remove entries from this table
 // if it detects an outstanding loan (that is, the addr is taken).
-type last_use_map = hashmap<node_id, @DVec<node_id>>;
+type last_use_map = HashMap<node_id, @DVec<node_id>>;
 
 enum Variable = uint;
 enum LiveNode = uint;
@@ -274,10 +274,10 @@ struct IrMaps {
 
     mut num_live_nodes: uint,
     mut num_vars: uint,
-    live_node_map: hashmap<node_id, LiveNode>,
-    variable_map: hashmap<node_id, Variable>,
-    field_map: hashmap<ident, Variable>,
-    capture_map: hashmap<node_id, @~[CaptureInfo]>,
+    live_node_map: HashMap<node_id, LiveNode>,
+    variable_map: HashMap<node_id, Variable>,
+    field_map: HashMap<ident, Variable>,
+    capture_map: HashMap<node_id, @~[CaptureInfo]>,
     mut var_kinds: ~[VarKind],
     mut lnks: ~[LiveNodeKind],
 }

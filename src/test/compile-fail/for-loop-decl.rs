@@ -1,9 +1,9 @@
 // error-pattern: mismatched types
 use std;
-use std::map::hashmap;
+use std::map::HashMap;
 use std::bitv;
 
-type fn_info = {vars: hashmap<uint, var_info>};
+type fn_info = {vars: HashMap<uint, var_info>};
 type var_info = {a: uint, b: uint};
 
 fn bitv_to_str(enclosing: fn_info, v: ~bitv::Bitv) -> str {

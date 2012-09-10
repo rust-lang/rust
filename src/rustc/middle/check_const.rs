@@ -1,7 +1,7 @@
 use syntax::ast::*;
 use syntax::{visit, ast_util, ast_map};
 use driver::session::session;
-use std::map::hashmap;
+use std::map::HashMap;
 use dvec::DVec;
 
 fn check_crate(sess: session, crate: @crate, ast_map: ast_map::map,

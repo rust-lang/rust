@@ -2,7 +2,7 @@ use print::pprust::expr_to_str;
 
 use result::Result;
 use either::{Either, Left, Right};
-use std::map::{hashmap, str_hash};
+use std::map::{HashMap, str_hash};
 use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
                INTERPOLATED};
 use codemap::{span,fss_none};
@@ -216,7 +216,7 @@ fn parser(sess: parse_sess, cfg: ast::crate_cfg,
         keywords: token::keyword_table(),
         restricted_keywords: token::restricted_keyword_table(),
         strict_keywords: token::strict_keyword_table(),
-        obsolete_set: std::map::hashmap(),
+        obsolete_set: std::map::HashMap(),
     }
 }
 
@@ -234,12 +234,12 @@ struct parser {
     mut quote_depth: uint, // not (yet) related to the quasiquoter
     reader: reader,
     interner: interner<@~str>,
-    keywords: hashmap<~str, ()>,
-    restricted_keywords: hashmap<~str, ()>,
-    strict_keywords: hashmap<~str, ()>,
+    keywords: HashMap<~str, ()>,
+    restricted_keywords: HashMap<~str, ()>,
+    strict_keywords: HashMap<~str, ()>,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
-    obsolete_set: hashmap<ObsoleteSyntax, ()>,
+    obsolete_set: HashMap<ObsoleteSyntax, ()>,
 
     drop {} /* do not copy the parser; its state is tied to outside state */
 }

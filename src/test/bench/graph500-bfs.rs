@@ -8,8 +8,8 @@ use std;
 use std::arc;
 use std::time;
 use std::map;
-use std::map::map;
-use std::map::hashmap;
+use std::map::Map;
+use std::map::HashMap;
 use std::deque;
 use std::deque::Deque;
 use std::par;
@@ -69,7 +69,7 @@ fn make_edges(scale: uint, edgefactor: uint) -> ~[(node_id, node_id)] {
 
 fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     let graph = do vec::from_fn(N) |_i| {
-        map::hashmap::<node_id, ()>()
+        map::HashMap::<node_id, ()>()
     };
 
     do vec::each(edges) |e| {
@@ -85,7 +85,7 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
 }
 
 fn gen_search_keys(graph: graph, n: uint) -> ~[node_id] {
-    let keys = map::hashmap::<node_id, ()>();
+    let keys = map::HashMap::<node_id, ()>();
     let r = rand::Rng();
 
     while keys.size() < n {
