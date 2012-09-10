@@ -64,10 +64,10 @@ impl message: gen_send {
 
             if this.proto.is_bounded() {
                 let (sp, rp) = match (this.dir, next.dir) {
-                  (send, send) => (~"c", ~"s"),
+                  (send, send) => (~"move c", ~"move s"),
                   (send, recv) => (~"s", ~"c"),
                   (recv, send) => (~"s", ~"c"),
-                  (recv, recv) => (~"c", ~"s")
+                  (recv, recv) => (~"move c", ~"move s")
                 };
 
                 body += ~"let b = pipe.reuse_buffer();\n";
@@ -80,10 +80,10 @@ impl message: gen_send {
             }
             else {
                 let pat = match (this.dir, next.dir) {
-                  (send, send) => "(c, s)",
+                  (send, send) => "(move c, move s)",
                   (send, recv) => "(s, c)",
                   (recv, send) => "(s, c)",
-                  (recv, recv) => "(c, s)"
+                  (recv, recv) => "(move c, move s)"
                 };
 
                 body += fmt!("let %s = pipes::entangle();\n", pat);
@@ -92,17 +92,17 @@ impl message: gen_send {
                          this.proto.name,
                          self.name(),
                          str::connect(vec::append_one(
-                             arg_names.map(|x| cx.str_of(x)), ~"s"),
-                                      ~", "));
+                           arg_names.map(|x| ~"move " + cx.str_of(x)),
+                             ~"move s"), ~", "));
 
             if !try {
-                body += fmt!("pipes::send(pipe, message);\n");
+                body += fmt!("pipes::send(move pipe, move message);\n");
                 // return the new channel
-                body += ~"c }";
+                body += ~"move c }";
             }
             else {
-                body += fmt!("if pipes::send(pipe, message) {\n \
-                                  pipes::rt::make_some(c) \
+                body += fmt!("if pipes::send(move pipe, move message) {\n \
+                                  pipes::rt::make_some(move c) \
                               } else { pipes::rt::make_none() } }");
             }
 
@@ -145,7 +145,8 @@ impl message: gen_send {
                     ~""
                 }
                 else {
-                    ~"(" + str::connect(arg_names, ~", ") + ~")"
+                    ~"(" + str::connect(arg_names.map(|x| ~"move " + x),
+                                        ~", ") + ~")"
                 };
 
                 let mut body = ~"{ ";
@@ -155,10 +156,10 @@ impl message: gen_send {
                              message_args);
 
                 if !try {
-                    body += fmt!("pipes::send(pipe, message);\n");
+                    body += fmt!("pipes::send(move pipe, move message);\n");
                     body += ~" }";
                 } else {
-                    body += fmt!("if pipes::send(pipe, message) { \
+                    body += fmt!("if pipes::send(move pipe, move message) { \
                                       pipes::rt::make_some(()) \
                                   } else { pipes::rt::make_none() } }");
                 }
@@ -301,7 +302,7 @@ impl protocol: gen_init {
               recv => {
                 #ast {{
                     let (s, c) = pipes::entangle();
-                    (c, s)
+                    (move c, move s)
                 }}
               }
             }
@@ -313,7 +314,7 @@ impl protocol: gen_init {
               recv => {
                 #ast {{
                     let (s, c) = $(body);
-                    (c, s)
+                    (move c, move s)
                 }}
               }
             }
@@ -356,7 +357,7 @@ impl protocol: gen_init {
 
         #ast {{
             let buffer = $(buffer);
-            do pipes::entangle_buffer(buffer) |buffer, data| {
+            do pipes::entangle_buffer(move buffer) |buffer, data| {
                 $(entangle_body)
             }
         }}
