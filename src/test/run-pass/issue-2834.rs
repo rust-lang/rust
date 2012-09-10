@@ -2,7 +2,7 @@
 //
 
 proto! streamp (
-    open:send<T: send> {
+    open:send<T: Send> {
         data(T) -> open<T>
     }
 )
