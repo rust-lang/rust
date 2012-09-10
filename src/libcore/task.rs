@@ -79,7 +79,7 @@ export ManualThreads;
 export PlatformThread;
 
 macro_rules! move_it (
-    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); y } }
+    { $x:expr } => { unsafe { let y <- *ptr::addr_of($x); move y } }
 )
 
 /* Data types */
@@ -281,7 +281,7 @@ enum TaskBuilder = {
 fn task() -> TaskBuilder {
     TaskBuilder({
         opts: default_task_opts(),
-        gen_body: |body| body, // Identity function
+        gen_body: |body| move body, // Identity function
         can_not_copy: None,
         mut consumed: false,
     })
@@ -301,7 +301,7 @@ priv impl TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: notify_chan,
+                mut notify_chan: move notify_chan,
                 sched: self.opts.sched
             },
             gen_body: self.gen_body,
@@ -326,7 +326,7 @@ impl TaskBuilder {
             opts: {
                 linked: false,
                 supervised: self.opts.supervised,
-                mut notify_chan: notify_chan,
+                mut notify_chan: move notify_chan,
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -348,7 +348,7 @@ impl TaskBuilder {
             opts: {
                 linked: false,
                 supervised: true,
-                mut notify_chan: notify_chan,
+                mut notify_chan: move notify_chan,
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -369,7 +369,7 @@ impl TaskBuilder {
             opts: {
                 linked: true,
                 supervised: false,
-                mut notify_chan: notify_chan,
+                mut notify_chan: move notify_chan,
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -407,7 +407,7 @@ impl TaskBuilder {
         // Construct the future and give it to the caller.
         let (notify_pipe_ch, notify_pipe_po) = stream::<Notification>();
 
-        blk(do future::from_fn {
+        blk(do future::from_fn |move notify_pipe_po| {
             match notify_pipe_po.recv() {
               Exit(_, result) => result
             }
@@ -418,7 +418,7 @@ impl TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: Some(notify_pipe_ch),
+                mut notify_chan: Some(move notify_pipe_ch),
                 sched: self.opts.sched
             },
             can_not_copy: None,
@@ -436,7 +436,7 @@ impl TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: notify_chan,
+                mut notify_chan: move notify_chan,
                 sched: Some({ mode: mode, foreign_stack_size: None})
             },
             can_not_copy: None,
@@ -467,10 +467,10 @@ impl TaskBuilder {
             opts: {
                 linked: self.opts.linked,
                 supervised: self.opts.supervised,
-                mut notify_chan: notify_chan,
+                mut notify_chan: move notify_chan,
                 sched: self.opts.sched
             },
-            gen_body: |body| { wrapper(prev_gen_body(body)) },
+            gen_body: |body| { wrapper(prev_gen_body(move body)) },
             can_not_copy: None,
             .. *self.consume()
         })
@@ -494,21 +494,21 @@ impl TaskBuilder {
         } else {
             let swapped_notify_chan =
                 option::swap_unwrap(&mut self.opts.notify_chan);
-            Some(swapped_notify_chan)
+            Some(move swapped_notify_chan)
         };
         let x = self.consume();
         let opts = {
             linked: x.opts.linked,
             supervised: x.opts.supervised,
-            mut notify_chan: notify_chan,
+            mut notify_chan: move notify_chan,
             sched: x.opts.sched
         };
-        spawn_raw(opts, x.gen_body(f));
+        spawn_raw(move opts, x.gen_body(move f));
     }
     /// Runs a task, while transfering ownership of one argument to the child.
     fn spawn_with<A: Send>(+arg: A, +f: fn~(+A)) {
-        let arg = ~mut Some(arg);
-        do self.spawn {
+        let arg = ~mut Some(move arg);
+        do self.spawn |move arg, move f|{
             f(option::swap_unwrap(arg))
         }
     }
@@ -527,11 +527,11 @@ impl TaskBuilder {
     fn spawn_listener<A: Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
         let setup_po = comm::Port();
         let setup_ch = comm::Chan(setup_po);
-        do self.spawn {
+        do self.spawn |move f| {
             let po = comm::Port();
             let ch = comm::Chan(po);
             comm::send(setup_ch, ch);
-            f(po);
+            f(move po);
         }
         comm::recv(setup_po)
     }
@@ -544,7 +544,7 @@ impl TaskBuilder {
         -> (comm::Port<B>, comm::Chan<A>) {
         let from_child = comm::Port();
         let to_parent = comm::Chan(from_child);
-        let to_child = do self.spawn_listener |from_parent| {
+        let to_child = do self.spawn_listener |move f, from_parent| {
             f(from_parent, to_parent)
         };
         (from_child, to_child)
@@ -568,8 +568,10 @@ impl TaskBuilder {
         let ch = comm::Chan(po);
         let mut result = None;
 
-        let fr_task_builder = self.future_result(|+r| { result = Some(r); });
-        do fr_task_builder.spawn {
+        let fr_task_builder = self.future_result(|+r| {
+            result = Some(move r);
+        });
+        do fr_task_builder.spawn |move f| {
             comm::send(ch, f());
         }
         match future::get(&option::unwrap(result)) {
@@ -610,7 +612,7 @@ fn spawn(+f: fn~()) {
      * This function is equivalent to `task().spawn(f)`.
      */
 
-    task().spawn(f)
+    task().spawn(move f)
 }
 
 fn spawn_unlinked(+f: fn~()) {
@@ -619,7 +621,7 @@ fn spawn_unlinked(+f: fn~()) {
      * task or the child task fails, the other will not be killed.
      */
 
-    task().unlinked().spawn(f)
+    task().unlinked().spawn(move f)
 }
 
 fn spawn_supervised(+f: fn~()) {
@@ -628,7 +630,7 @@ fn spawn_supervised(+f: fn~()) {
      * task or the child task fails, the other will not be killed.
      */
 
-    task().supervised().spawn(f)
+    task().supervised().spawn(move f)
 }
 
 fn spawn_with<A:Send>(+arg: A, +f: fn~(+A)) {
@@ -642,7 +644,7 @@ fn spawn_with<A:Send>(+arg: A, +f: fn~(+A)) {
      * This function is equivalent to `task().spawn_with(arg, f)`.
      */
 
-    task().spawn_with(arg, f)
+    task().spawn_with(move arg, move f)
 }
 
 fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
@@ -652,7 +654,7 @@ fn spawn_listener<A:Send>(+f: fn~(comm::Port<A>)) -> comm::Chan<A> {
      * This function is equivalent to `task().spawn_listener(f)`.
      */
 
-    task().spawn_listener(f)
+    task().spawn_listener(move f)
 }
 
 fn spawn_conversation<A: Send, B: Send>
@@ -664,7 +666,7 @@ fn spawn_conversation<A: Send, B: Send>
      * This function is equivalent to `task().spawn_conversation(f)`.
      */
 
-    task().spawn_conversation(f)
+    task().spawn_conversation(move f)
 }
 
 fn spawn_sched(mode: SchedMode, +f: fn~()) {
@@ -681,7 +683,7 @@ fn spawn_sched(mode: SchedMode, +f: fn~()) {
      * greater than zero.
      */
 
-    task().sched_mode(mode).spawn(f)
+    task().sched_mode(mode).spawn(move f)
 }
 
 fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
@@ -692,7 +694,7 @@ fn try<T:Send>(+f: fn~() -> T) -> Result<T,()> {
      * This is equivalent to task().supervised().try.
      */
 
-    task().supervised().try(f)
+    task().supervised().try(move f)
 }
 
 
@@ -1054,7 +1056,7 @@ fn each_ancestor(list:        &mut AncestorList,
                     // Swap the list out here; the caller replaces us with it.
                     let rest = util::replace(&mut nobe.ancestors,
                                              AncestorList(None));
-                    (Some(rest), need_unwind)
+                    (Some(move rest), need_unwind)
                 } else {
                     (None, need_unwind)
                 }
@@ -1067,8 +1069,8 @@ fn each_ancestor(list:        &mut AncestorList,
             // If this trips, more likely the problem is 'blk' failed inside.
             let tmp_arc = option::swap_unwrap(parent_group);
             let result = do access_group(&tmp_arc) |tg_opt| { blk(tg_opt) };
-            *parent_group <- Some(tmp_arc);
-            result
+            *parent_group <- Some(move tmp_arc);
+            move result
         }
     }
 }
@@ -1145,7 +1147,7 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
         let group = option::unwrap(newstate);
         taskset_insert(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
-        *state = Some(group);
+        *state = Some(move group);
         true
     } else {
         false
@@ -1160,7 +1162,7 @@ fn leave_taskgroup(state: TaskGroupInner, me: *rust_task, is_member: bool) {
         let group = option::unwrap(newstate);
         taskset_remove(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
-        *state = Some(group);
+        *state = Some(move group);
     }
 }
 
@@ -1220,11 +1222,11 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             let mut members = new_taskset();
             taskset_insert(&mut members, spawner);
             let tasks =
-                unsafe::exclusive(Some({ mut members:     members,
+                unsafe::exclusive(Some({ mut members:     move members,
                                          mut descendants: new_taskset() }));
             // Main task/group has no ancestors, no notifier, etc.
             let group =
-                @TCB(spawner, tasks, AncestorList(None), true, None);
+                @TCB(spawner, move tasks, AncestorList(None), true, None);
             unsafe { local_set(spawner, taskgroup_key!(), group); }
             group
         }
@@ -1239,7 +1241,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         // Child's ancestors are spawner's ancestors.
         let a = share_ancestors(&mut spawner_group.ancestors);
         // Propagate main-ness.
-        (g, a, spawner_group.is_main)
+        (move g, move a, spawner_group.is_main)
     } else {
         // Child is in a separate group from spawner.
         let g = unsafe::exclusive(Some({ mut members:     new_taskset(),
@@ -1260,12 +1262,12 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             AncestorList(Some(unsafe::exclusive(
                 { generation:       new_generation,
                   mut parent_group: Some(spawner_group.tasks.clone()),
-                  mut ancestors:    old_ancestors })))
+                  mut ancestors:    move old_ancestors })))
         } else {
             // Child has no ancestors.
             AncestorList(None)
         };
-        (g,a, false)
+        (move g, move a, false)
     };
 
     fn share_ancestors(ancestors: &mut AncestorList) -> AncestorList {
@@ -1277,8 +1279,8 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         if tmp.is_some() {
             let ancestor_arc = option::unwrap(tmp);
             let result = ancestor_arc.clone();
-            **ancestors <- Some(ancestor_arc);
-            AncestorList(Some(result))
+            **ancestors <- Some(move ancestor_arc);
+            AncestorList(Some(move result))
         } else {
             AncestorList(None)
         }
@@ -1290,7 +1292,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
         gen_child_taskgroup(opts.linked, opts.supervised);
 
     unsafe {
-        let child_data = ~mut Some((child_tg, ancestors, f));
+        let child_data = ~mut Some((move child_tg, move ancestors, move f));
         // Being killed with the unsafe task/closure pointers would leak them.
         do unkillable {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
@@ -1308,9 +1310,8 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
                 Some(option::swap_unwrap(&mut opts.notify_chan))
             };
 
-            let child_wrapper =
-                make_child_wrapper(new_task, child_tg, ancestors, is_main,
-                                   notify_chan, f);
+            let child_wrapper = make_child_wrapper(new_task, move child_tg,
+                  move ancestors, is_main, move notify_chan, move f);
             let fptr = ptr::addr_of(child_wrapper);
             let closure: *rust_closure = unsafe::reinterpret_cast(&fptr);
 
@@ -1332,8 +1333,8 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
                           +ancestors: AncestorList, is_main: bool,
                           +notify_chan: Option<Chan<Notification>>,
                           +f: fn~()) -> fn~() {
-        let child_data = ~mut Some((child_arc, ancestors));
-        return fn~(move notify_chan) {
+        let child_data = ~mut Some((move child_arc, move ancestors));
+        return fn~(move notify_chan, move child_data, move f) {
             // Agh. Get move-mode items into the closure. FIXME (#2829)
             let mut (child_arc, ancestors) = option::swap_unwrap(child_data);
             // Child task runs this code.
@@ -1345,14 +1346,14 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
             let notifier = match notify_chan {
                 Some(notify_chan_value) => {
                     let moved_ncv = move_it!(notify_chan_value);
-                    Some(AutoNotify(moved_ncv))
+                    Some(AutoNotify(move moved_ncv))
                 }
                 _ => None
             };
 
             if enlist_many(child, &child_arc, &mut ancestors) {
-                let group = @TCB(child, child_arc, ancestors,
-                                 is_main, notifier);
+                let group = @TCB(child, move child_arc, move ancestors,
+                                 is_main, move notifier);
                 unsafe { local_set(child, taskgroup_key!(), group); }
                 // Run the child's body.
                 f();
