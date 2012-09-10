@@ -427,6 +427,35 @@ impl branch_kind : cmp::Eq {
     pure fn ne(&&other: branch_kind) -> bool { !self.eq(other) }
 }
 
+// Compiles a comparison between two things.
+fn trans_compare(cx: block, op: ast::binop, lhs: ValueRef,
+                 _lhs_t: ty::t, rhs: ValueRef, rhs_t: ty::t) -> Result {
+    let _icx = cx.insn_ctxt("trans_compare");
+    if ty::type_is_scalar(rhs_t) {
+      let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, op);
+      return rslt(rs.bcx, rs.val);
+    }
+
+    // Determine the operation we need.
+    let llop = {
+        match op {
+          ast::eq | ast::ne => C_u8(abi::cmp_glue_op_eq),
+          ast::lt | ast::ge => C_u8(abi::cmp_glue_op_lt),
+          ast::le | ast::gt => C_u8(abi::cmp_glue_op_le),
+          _ => cx.tcx().sess.bug(~"trans_compare got non-comparison-op")
+        }
+    };
+
+    let cmpval = glue::call_cmp_glue(cx, lhs, rhs, rhs_t, llop);
+
+    // Invert the result if necessary.
+    match op {
+      ast::eq | ast::lt | ast::le => rslt(cx, cmpval),
+      ast::ne | ast::ge | ast::gt => rslt(cx, Not(cx, cmpval)),
+      _ => cx.tcx().sess.bug(~"trans_compare got non-comparison-op")
+    }
+}
+
 fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
                     chk: Option<mk_fail>, &exits: ~[exit_node]) {
     /*
