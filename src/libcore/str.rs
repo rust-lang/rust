@@ -1967,10 +1967,10 @@ mod raw {
    export
       from_buf,
       from_buf_len,
-      from_buf_len_nocopy,
       from_c_str,
       from_c_str_len,
       from_bytes,
+      form_slice,
       slice_bytes,
       view_bytes,
       push_byte,
@@ -2003,14 +2003,6 @@ mod raw {
         return ::unsafe::transmute(move v);
     }
 
-    /// Create a Rust string from a *u8 buffer of the given length
-    /// without copying
-    unsafe fn from_buf_len_nocopy(buf: &a / *u8, len: uint) -> &a / str {
-        let v = (*buf, len + 1);
-        assert is_utf8(::unsafe::reinterpret_cast(&v));
-        return ::unsafe::transmute(move v);
-    }
-
     /// Create a Rust string from a null-terminated C string
     unsafe fn from_c_str(c_str: *libc::c_char) -> ~str {
         from_buf(::unsafe::reinterpret_cast(&c_str))
@@ -2030,6 +2022,13 @@ mod raw {
 
     /// Converts a byte to a string.
     unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes([u]) }
+
+    /// Form a slice from a *u8 buffer of the given length without copying.
+    unsafe fn buf_as_slice<T>(buf: *u8, len: uint, f: fn(&& &str) -> T) -> T {
+        let v = (*buf, len + 1);
+        assert is_utf8(::unsafe::reinterpret_cast(&v));
+        f(::unsafe::transmute(move v))
+    }
 
     /**
      * Takes a bytewise (not UTF-8) slice from a string.
