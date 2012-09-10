@@ -156,6 +156,7 @@ export ck_block;
 export ck_box;
 export ck_uniq;
 export param_bound, param_bounds, bound_copy, bound_owned;
+export param_bounds_to_str, param_bound_to_str;
 export bound_send, bound_trait;
 export param_bounds_to_kind;
 export default_arg_mode_for_ty;
@@ -1336,6 +1337,20 @@ fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
          substs.self_r.map_default(~"none", |r| region_to_str(cx, r)),
          substs.self_ty.map_default(~"none", |t| ty_to_str(cx, t)),
          substs.tps.map(|t| ty_to_str(cx, t)))
+}
+
+fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
+    match *pb {
+        bound_copy => ~"copy",
+        bound_owned => ~"owned",
+        bound_send => ~"send",
+        bound_const => ~"const",
+        bound_trait(t) => ty_to_str(cx, t)
+    }
+}
+
+fn param_bounds_to_str(cx: ctxt, pbs: param_bounds) -> ~str {
+    fmt!("%?", pbs.map(|pb| param_bound_to_str(cx, &pb)))
 }
 
 fn subst(cx: ctxt,

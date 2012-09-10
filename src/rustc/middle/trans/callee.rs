@@ -120,21 +120,18 @@ fn trans_fn_ref_to_callee(bcx: block,
 fn trans_fn_ref(bcx: block,
                 def_id: ast::def_id,
                 ref_id: ast::node_id) -> FnData {
-    //!
-    //
-    // Translates a reference (with id `ref_id`) to the fn/method
-    // with id `def_id` into a function pointer.  This may require
-    // monomorphization or inlining.
+    /*!
+     *
+     * Translates a reference (with id `ref_id`) to the fn/method
+     * with id `def_id` into a function pointer.  This may require
+     * monomorphization or inlining. */
 
     let _icx = bcx.insn_ctxt("trans_fn");
 
     let type_params = node_id_type_params(bcx, ref_id);
 
-    let raw_vtables = bcx.ccx().maps.vtable_map.find(ref_id);
-    let resolved_vtables = raw_vtables.map(
-        |vts| impl::resolve_vtables_in_fn_ctxt(bcx.fcx, vts));
-    trans_fn_ref_with_vtables(bcx, def_id, ref_id, type_params,
-                              resolved_vtables)
+    let vtables = node_vtables(bcx, ref_id);
+    trans_fn_ref_with_vtables(bcx, def_id, ref_id, type_params, vtables)
 }
 
 fn trans_fn_ref_with_vtables_to_callee(bcx: block,
@@ -173,6 +170,13 @@ fn trans_fn_ref_with_vtables(
     let _icx = bcx.insn_ctxt("trans_fn_with_vtables");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
+
+    debug!("trans_fn_ref_with_vtables(bcx=%s, def_id=%?, ref_id=%?, \
+            type_params=%?, vtables=%?)",
+           bcx.to_str(), def_id, ref_id,
+           type_params.map(|t| bcx.ty_to_str(t)),
+           vtables);
+    let _indenter = indenter();
 
     // Polytype of the function item (may have type params)
     let fn_tpt = ty::lookup_item_type(tcx, def_id);

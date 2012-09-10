@@ -76,6 +76,7 @@ use rscope::{in_binding_rscope, region_scope, type_rscope,
 use syntax::ast::ty_i;
 use typeck::infer::{resolve_type, force_tvar};
 use result::{Result, Ok, Err};
+use syntax::print::pprust;
 
 use std::map::{str_hash, uint_hash};
 
@@ -587,9 +588,16 @@ impl @fn_ctxt: region_scope {
 
 impl @fn_ctxt {
     fn tag() -> ~str { fmt!("%x", ptr::addr_of(*self) as uint) }
+
+    fn expr_to_str(expr: @ast::expr) -> ~str {
+        fmt!("expr(%?:%s)", expr.id,
+             pprust::expr_to_str(expr, self.tcx().sess.intr()))
+    }
+
     fn block_region() -> ty::region {
         ty::re_scope(self.region_lb)
     }
+
     #[inline(always)]
     fn write_ty(node_id: ast::node_id, ty: ty::t) {
         debug!("write_ty(%d, %s) in fcx %s",
@@ -598,6 +606,10 @@ impl @fn_ctxt {
     }
     fn write_substs(node_id: ast::node_id, +substs: ty::substs) {
         if !ty::substs_is_noop(&substs) {
+            debug!("write_substs(%d, %s) in fcx %s",
+                   node_id,
+                   ty::substs_to_str(self.tcx(), &substs),
+                   self.tag());
             self.inh.node_type_substs.insert(node_id, substs);
         }
     }
