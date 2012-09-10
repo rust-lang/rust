@@ -31,7 +31,7 @@ fn deflate_buf(buf: &[const u8]) -> ~[u8] {
             let out = vec::unsafe::from_buf(res as *u8,
                                             outsz as uint);
             libc::free(res);
-            out
+            move out
         }
     }
 }
@@ -49,7 +49,7 @@ fn inflate_buf(buf: &[const u8]) -> ~[u8] {
             let out = vec::unsafe::from_buf(res as *u8,
                                             outsz as uint);
             libc::free(res);
-            out
+            move out
         }
     }
 }

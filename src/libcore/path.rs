@@ -99,7 +99,7 @@ impl PosixPath : GenericPath {
             if s.len() == 0 {
                 ~"."
             } else {
-                s
+                move s
             }
         }
     }
@@ -139,7 +139,7 @@ impl PosixPath : GenericPath {
         let dpath = from_str::<PosixPath>(d);
         match self.filename() {
           Some(ref f) => dpath.push(*f),
-          None => dpath
+          None => move dpath
         }
     }
 
@@ -197,8 +197,7 @@ impl PosixPath : GenericPath {
     }
 
     pure fn push_many(cs: &[~str]) -> PosixPath {
-        return PosixPath { components: self.components + cs,
-                           ..self }
+       PosixPath { components: (copy self.components) + copy cs, ..self }
     }
 
     pure fn push(s: &str) -> PosixPath {
@@ -288,7 +287,7 @@ impl WindowsPath : GenericPath {
             if s.len() == 0 {
                 ~"."
             } else {
-                s
+                move s
             }
         }
     }
@@ -328,7 +327,7 @@ impl WindowsPath : GenericPath {
         let dpath = from_str::<WindowsPath>(d);
         match self.filename() {
           Some(ref f) => dpath.push(*f),
-          None => dpath
+          None => move dpath
         }
     }
 
@@ -386,7 +385,7 @@ impl WindowsPath : GenericPath {
     }
 
     pure fn push_many(cs: &[~str]) -> WindowsPath {
-        return WindowsPath { components: self.components + cs,
+        return WindowsPath { components: (copy self.components) + (copy cs),
                             ..self }
     }
 
@@ -428,7 +427,7 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
             }
         }
     }
-    cs
+    move cs
 }
 
 mod posix {
@@ -525,7 +524,7 @@ mod windows {
                 if s[i] == '\\' as u8 {
                     let pre = s.slice(2, i);
                     let rest = s.slice(i, s.len());
-                    return Some((pre, rest));
+                    return Some((move pre, move rest));
                 }
                 i += 1;
             }
@@ -543,7 +542,7 @@ mod windows {
                 } else {
                     s.slice(2, s.len())
                 };
-                return Some((s.slice(0,1), rest));
+                return Some((s.slice(0,1), move rest));
             }
             None
         }

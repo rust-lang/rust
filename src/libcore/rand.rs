@@ -154,7 +154,7 @@ impl Rng {
             s = s + str::from_char(self.gen_char_from(charset));
             i += 1u;
         }
-        s
+        move s
     }
 
     /// Return a random byte string of the specified length
@@ -220,14 +220,14 @@ impl Rng {
                 vec::push(r, item.item);
             }
         }
-        r
+        move r
     }
 
     /// Shuffle a vec
     fn shuffle<T:Copy>(values: &[T]) -> ~[T] {
         let mut m = vec::from_slice(values);
         self.shuffle_mut(m);
-        return m;
+        move m
     }
 
     /// Shuffle a mutable vec in place

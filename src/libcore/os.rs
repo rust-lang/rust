@@ -215,7 +215,7 @@ mod global_env {
                 assert vec::len(vs) == 2u;
                 vec::push(pairs, (copy vs[0], copy vs[1]));
             }
-            return pairs;
+            move pairs
         }
 
         #[cfg(unix)]

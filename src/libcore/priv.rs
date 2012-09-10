@@ -46,7 +46,7 @@ unsafe fn chan_from_global_ptr<T: Send>(
         // There's no global channel. We must make it
 
         let (setup_po, setup_ch) = do task_fn().spawn_conversation
-            |setup_po, setup_ch| {
+            |move f, setup_po, setup_ch| {
             let po = comm::Port::<T>();
             let ch = comm::Chan(po);
             comm::send(setup_ch, ch);
@@ -54,7 +54,7 @@ unsafe fn chan_from_global_ptr<T: Send>(
             // Wait to hear if we are the official instance of
             // this global task
             match comm::recv::<Msg>(setup_po) {
-              Proceed => f(po),
+              Proceed => f(move po),
               Abort => ()
             }
         };
