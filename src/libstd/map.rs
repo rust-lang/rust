@@ -5,7 +5,7 @@
 
 use io::WriterUtil;
 use to_str::ToStr;
-use managed::Managed;
+use mutable::Mut;
 use send_map::linear::LinearMap;
 
 use core::cmp::Eq;
@@ -463,7 +463,7 @@ fn hash_from_uints<V: Copy>(items: &[(uint, V)]) -> hashmap<uint, V> {
 }
 
 // XXX Transitional
-impl<K: Eq IterBytes Hash Copy, V: Copy> Managed<LinearMap<K, V>>:
+impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     map<K, V> {
     pure fn size() -> uint {
         unchecked {

@@ -6,7 +6,7 @@
 
 use std;
 use std::map;
-use managed::Managed;
+use mutable::Mut;
 use send_map::linear::*;
 use io::WriterUtil;
 
@@ -166,11 +166,11 @@ fn main(args: ~[~str]) {
     {
         let rng = rand::seeded_rng(copy seed);
         let mut results = empty_results();
-        int_benchmarks::<Managed<LinearMap<uint, uint>>>(
-            || Managed(LinearMap()),
+        int_benchmarks::<@Mut<LinearMap<uint, uint>>>(
+            || @Mut(LinearMap()),
             rng, num_keys, &mut results);
-        str_benchmarks::<Managed<LinearMap<~str, uint>>>(
-            || Managed(LinearMap()),
+        str_benchmarks::<@Mut<LinearMap<~str, uint>>>(
+            || @Mut(LinearMap()),
             rng, num_keys, &mut results);
         write_results("libstd::map::hashmap", &results);
     }
