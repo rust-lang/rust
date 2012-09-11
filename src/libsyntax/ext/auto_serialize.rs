@@ -583,7 +583,7 @@ fn mk_ser_fn(cx: ext_ctxt, span: span, name: ast::ident,
         ast::bound_trait(cx.ty_path(span,
                                     ~[cx.ident_of(~"std"),
                                       cx.ident_of(~"serialization"),
-                                      cx.ident_of(~"serializer")],
+                                      cx.ident_of(~"Serializer")],
                                     ~[]))];
 
     let ser_tps: ~[ast::ty_param] =
@@ -789,7 +789,7 @@ fn mk_deser_fn(cx: ext_ctxt, span: span,
         ast::bound_trait(cx.ty_path(
             span,
             ~[cx.ident_of(~"std"), cx.ident_of(~"serialization"),
-              cx.ident_of(~"deserializer")],
+              cx.ident_of(~"Deserializer")],
             ~[]))];
 
     let deser_tps: ~[ast::ty_param] =

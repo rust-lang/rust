@@ -91,7 +91,6 @@ mod unicode;
 // Compiler support modules
 
 mod test;
-#[allow(non_camel_case_types)] // XXX
 mod serialization;
 
 // Local Variables:

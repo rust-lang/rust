@@ -11,11 +11,11 @@ use std::ebml;
 use std::ebml::Writer;
 use std::ebml::get_doc;
 use std::map::HashMap;
-use std::serialization::serializer;
-use std::serialization::deserializer;
-use std::serialization::serializer_helpers;
-use std::serialization::deserializer_helpers;
-use std::prettyprint::serializer;
+use std::serialization::Serializer;
+use std::serialization::Deserializer;
+use std::serialization::SerializerHelpers;
+use std::serialization::DeserializerHelpers;
+use std::prettyprint::Serializer;
 use middle::{ty, typeck};
 use middle::typeck::{method_origin, method_map_entry,
                         serialize_method_map_entry,
@@ -189,7 +189,7 @@ trait def_id_serializer_helpers {
     fn emit_def_id(did: ast::def_id);
 }
 
-impl<S: serializer> S: def_id_serializer_helpers {
+impl<S: Serializer> S: def_id_serializer_helpers {
     fn emit_def_id(did: ast::def_id) {
         ast::serialize_def_id(self, did)
     }
@@ -199,7 +199,7 @@ trait def_id_deserializer_helpers {
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id;
 }
 
-impl<D: deserializer> D: def_id_deserializer_helpers {
+impl<D: Deserializer> D: def_id_deserializer_helpers {
 
     fn read_def_id(xcx: extended_decode_ctxt) -> ast::def_id {
         let did = ast::deserialize_def_id(self);

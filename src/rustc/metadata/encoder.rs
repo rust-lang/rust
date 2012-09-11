@@ -16,8 +16,6 @@ use middle::ty::node_id_to_type;
 use middle::resolve;
 use syntax::ast_map;
 use syntax::attr;
-use std::serialization::serializer;
-use std::ebml::serializer;
 use str::to_bytes;
 use syntax::ast;
 use syntax::diagnostic::span_handler;
