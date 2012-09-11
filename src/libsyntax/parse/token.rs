@@ -1,8 +1,8 @@
 use util::interner;
 use util::interner::interner;
 use std::map::{HashMap, str_hash};
-use std::serialization::{serializer,
-                            deserializer,
+use std::serialization::{Serializer,
+                            Deserializer,
                             serialize_uint,
                             deserialize_uint,
                             serialize_i64,

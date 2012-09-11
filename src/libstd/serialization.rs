@@ -1,12 +1,18 @@
 //! Support code for serialization.
 
-use core;
+// XXX remove
+#[cfg(stage0)]
+#[allow(non_camel_case_types)]
+type serializer = Serializer;
+#[cfg(stage0)]
+#[allow(non_camel_case_types)]
+type deserializer = Deserializer;
 
 /*
 Core serialization interfaces.
 */
 
-trait serializer {
+trait Serializer {
     // Primitive types:
     fn emit_nil();
     fn emit_uint(v: uint);
@@ -39,7 +45,7 @@ trait serializer {
     fn emit_tup_elt(idx: uint, f: fn());
 }
 
-trait deserializer {
+trait Deserializer {
     // Primitive types:
     fn read_nil() -> ();
 
@@ -83,7 +89,7 @@ trait deserializer {
 //
 // In some cases, these should eventually be coded as traits.
 
-fn emit_from_vec<S: serializer, T>(s: S, v: ~[T], f: fn(T)) {
+fn emit_from_vec<S: Serializer, T>(s: S, v: ~[T], f: fn(T)) {
     do s.emit_vec(vec::len(v)) {
         do vec::iteri(v) |i,e| {
             do s.emit_vec_elt(i) {
@@ -93,7 +99,7 @@ fn emit_from_vec<S: serializer, T>(s: S, v: ~[T], f: fn(T)) {
     }
 }
 
-fn read_to_vec<D: deserializer, T: Copy>(d: D, f: fn() -> T) -> ~[T] {
+fn read_to_vec<D: Deserializer, T: Copy>(d: D, f: fn() -> T) -> ~[T] {
     do d.read_vec |len| {
         do vec::from_fn(len) |i| {
             d.read_vec_elt(i, || f())
@@ -101,147 +107,147 @@ fn read_to_vec<D: deserializer, T: Copy>(d: D, f: fn() -> T) -> ~[T] {
     }
 }
 
-trait serializer_helpers {
+trait SerializerHelpers {
     fn emit_from_vec<T>(v: ~[T], f: fn(T));
 }
 
-impl<S: serializer> S: serializer_helpers {
+impl<S: Serializer> S: SerializerHelpers {
     fn emit_from_vec<T>(v: ~[T], f: fn(T)) {
         emit_from_vec(self, v, f)
     }
 }
 
-trait deserializer_helpers {
+trait DeserializerHelpers {
     fn read_to_vec<T: Copy>(f: fn() -> T) -> ~[T];
 }
 
-impl<D: deserializer> D: deserializer_helpers {
+impl<D: Deserializer> D: DeserializerHelpers {
     fn read_to_vec<T: Copy>(f: fn() -> T) -> ~[T] {
         read_to_vec(self, f)
     }
 }
 
-fn serialize_uint<S: serializer>(s: S, v: uint) {
+fn serialize_uint<S: Serializer>(s: S, v: uint) {
     s.emit_uint(v);
 }
 
-fn deserialize_uint<D: deserializer>(d: D) -> uint {
+fn deserialize_uint<D: Deserializer>(d: D) -> uint {
     d.read_uint()
 }
 
-fn serialize_u8<S: serializer>(s: S, v: u8) {
+fn serialize_u8<S: Serializer>(s: S, v: u8) {
     s.emit_u8(v);
 }
 
-fn deserialize_u8<D: deserializer>(d: D) -> u8 {
+fn deserialize_u8<D: Deserializer>(d: D) -> u8 {
     d.read_u8()
 }
 
-fn serialize_u16<S: serializer>(s: S, v: u16) {
+fn serialize_u16<S: Serializer>(s: S, v: u16) {
     s.emit_u16(v);
 }
 
-fn deserialize_u16<D: deserializer>(d: D) -> u16 {
+fn deserialize_u16<D: Deserializer>(d: D) -> u16 {
     d.read_u16()
 }
 
-fn serialize_u32<S: serializer>(s: S, v: u32) {
+fn serialize_u32<S: Serializer>(s: S, v: u32) {
     s.emit_u32(v);
 }
 
-fn deserialize_u32<D: deserializer>(d: D) -> u32 {
+fn deserialize_u32<D: Deserializer>(d: D) -> u32 {
     d.read_u32()
 }
 
-fn serialize_u64<S: serializer>(s: S, v: u64) {
+fn serialize_u64<S: Serializer>(s: S, v: u64) {
     s.emit_u64(v);
 }
 
-fn deserialize_u64<D: deserializer>(d: D) -> u64 {
+fn deserialize_u64<D: Deserializer>(d: D) -> u64 {
     d.read_u64()
 }
 
-fn serialize_int<S: serializer>(s: S, v: int) {
+fn serialize_int<S: Serializer>(s: S, v: int) {
     s.emit_int(v);
 }
 
-fn deserialize_int<D: deserializer>(d: D) -> int {
+fn deserialize_int<D: Deserializer>(d: D) -> int {
     d.read_int()
 }
 
-fn serialize_i8<S: serializer>(s: S, v: i8) {
+fn serialize_i8<S: Serializer>(s: S, v: i8) {
     s.emit_i8(v);
 }
 
-fn deserialize_i8<D: deserializer>(d: D) -> i8 {
+fn deserialize_i8<D: Deserializer>(d: D) -> i8 {
     d.read_i8()
 }
 
-fn serialize_i16<S: serializer>(s: S, v: i16) {
+fn serialize_i16<S: Serializer>(s: S, v: i16) {
     s.emit_i16(v);
 }
 
-fn deserialize_i16<D: deserializer>(d: D) -> i16 {
+fn deserialize_i16<D: Deserializer>(d: D) -> i16 {
     d.read_i16()
 }
 
-fn serialize_i32<S: serializer>(s: S, v: i32) {
+fn serialize_i32<S: Serializer>(s: S, v: i32) {
     s.emit_i32(v);
 }
 
-fn deserialize_i32<D: deserializer>(d: D) -> i32 {
+fn deserialize_i32<D: Deserializer>(d: D) -> i32 {
     d.read_i32()
 }
 
-fn serialize_i64<S: serializer>(s: S, v: i64) {
+fn serialize_i64<S: Serializer>(s: S, v: i64) {
     s.emit_i64(v);
 }
 
-fn deserialize_i64<D: deserializer>(d: D) -> i64 {
+fn deserialize_i64<D: Deserializer>(d: D) -> i64 {
     d.read_i64()
 }
 
-fn serialize_str<S: serializer>(s: S, v: &str) {
+fn serialize_str<S: Serializer>(s: S, v: &str) {
     s.emit_str(v);
 }
 
-fn deserialize_str<D: deserializer>(d: D) -> ~str {
+fn deserialize_str<D: Deserializer>(d: D) -> ~str {
     d.read_str()
 }
 
-fn serialize_float<S: serializer>(s: S, v: float) {
+fn serialize_float<S: Serializer>(s: S, v: float) {
     s.emit_float(v);
 }
 
-fn deserialize_float<D: deserializer>(d: D) -> float {
+fn deserialize_float<D: Deserializer>(d: D) -> float {
     d.read_float()
 }
 
-fn serialize_f32<S: serializer>(s: S, v: f32) {
+fn serialize_f32<S: Serializer>(s: S, v: f32) {
     s.emit_f32(v);
 }
 
-fn deserialize_f32<D: deserializer>(d: D) -> f32 {
+fn deserialize_f32<D: Deserializer>(d: D) -> f32 {
     d.read_f32()
 }
 
-fn serialize_f64<S: serializer>(s: S, v: f64) {
+fn serialize_f64<S: Serializer>(s: S, v: f64) {
     s.emit_f64(v);
 }
 
-fn deserialize_f64<D: deserializer>(d: D) -> f64 {
+fn deserialize_f64<D: Deserializer>(d: D) -> f64 {
     d.read_f64()
 }
 
-fn serialize_bool<S: serializer>(s: S, v: bool) {
+fn serialize_bool<S: Serializer>(s: S, v: bool) {
     s.emit_bool(v);
 }
 
-fn deserialize_bool<D: deserializer>(d: D) -> bool {
+fn deserialize_bool<D: Deserializer>(d: D) -> bool {
     d.read_bool()
 }
 
-fn serialize_Option<S: serializer,T>(s: S, v: Option<T>, st: fn(T)) {
+fn serialize_Option<S: Serializer,T>(s: S, v: Option<T>, st: fn(T)) {
     do s.emit_enum(~"option") {
         match v {
           None => do s.emit_enum_variant(~"none", 0u, 0u) {
@@ -256,7 +262,7 @@ fn serialize_Option<S: serializer,T>(s: S, v: Option<T>, st: fn(T)) {
     }
 }
 
-fn deserialize_Option<D: deserializer,T: Copy>(d: D, st: fn() -> T)
+fn deserialize_Option<D: Deserializer,T: Copy>(d: D, st: fn() -> T)
     -> Option<T> {
     do d.read_enum(~"option") {
         do d.read_enum_variant |i| {

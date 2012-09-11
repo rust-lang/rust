@@ -1,8 +1,8 @@
 // The Rust abstract syntax tree.
 
 use codemap::{span, filename};
-use std::serialization::{serializer,
-                            deserializer,
+use std::serialization::{Serializer,
+                            Deserializer,
                             serialize_Option,
                             deserialize_Option,
                             serialize_uint,
@@ -38,7 +38,7 @@ macro_rules! interner_key (
         (-3 as uint, 0u)))
 )
 
-fn serialize_ident<S: serializer>(s: S, i: ident) {
+fn serialize_ident<S: Serializer>(s: S, i: ident) {
     let intr = match unsafe{task::local_data_get(interner_key!())}{
         None => fail ~"serialization: TLS interner not set up",
         Some(intr) => intr
@@ -46,7 +46,7 @@ fn serialize_ident<S: serializer>(s: S, i: ident) {
 
     s.emit_str(*(*intr).get(i));
 }
-fn deserialize_ident<D: deserializer>(d: D) -> ident  {
+fn deserialize_ident<D: Deserializer>(d: D) -> ident  {
     let intr = match unsafe{task::local_data_get(interner_key!())}{
         None => fail ~"deserialization: TLS interner not set up",
         Some(intr) => intr

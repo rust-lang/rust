@@ -340,7 +340,7 @@ impl ebml::Writer: SerializerPriv {
     }
 }
 
-impl ebml::Writer: serialization::serializer {
+impl ebml::Writer: serialization::Serializer {
     fn emit_nil() {}
 
     fn emit_uint(v: uint) { self.wr_tagged_u64(EsUint as uint, v as u64); }
@@ -462,7 +462,7 @@ priv impl EbmlDeserializer {
     }
 }
 
-impl EbmlDeserializer: serialization::deserializer {
+impl EbmlDeserializer: serialization::Deserializer {
     fn read_nil() -> () { () }
 
     fn read_u64() -> u64 { ebml::doc_as_u64(self.next_doc(EsU64)) }

@@ -3,9 +3,9 @@
 
 use io::Writer;
 use io::WriterUtil;
-use serialization::serializer;
+use serialization::Serializer;
 
-impl Writer: serializer {
+impl Writer: Serializer {
     fn emit_nil() {
         self.write_str(~"()")
     }
