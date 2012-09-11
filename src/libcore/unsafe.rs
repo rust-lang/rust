@@ -51,6 +51,7 @@ unsafe fn bump_box_refcount<T>(+t: @T) { forget(move t); }
  *
  *     assert transmute("L") == ~[76u8, 0u8];
  */
+#[inline(always)]
 unsafe fn transmute<L, G>(-thing: L) -> G {
     debug!(">>> in transmute! <<<");
     debug!("transmute 1: %?", &thing);
@@ -61,26 +62,33 @@ unsafe fn transmute<L, G>(-thing: L) -> G {
 }
 
 /// Coerce an immutable reference to be mutable.
+#[inline(always)]
 unsafe fn transmute_mut<T>(+ptr: &a/T) -> &a/mut T { transmute(move ptr) }
 
 /// Coerce a mutable reference to be immutable.
+#[inline(always)]
 unsafe fn transmute_immut<T>(+ptr: &a/mut T) -> &a/T { transmute(move ptr) }
 
 /// Coerce a borrowed pointer to have an arbitrary associated region.
+#[inline(always)]
 unsafe fn transmute_region<T>(+ptr: &a/T) -> &b/T { transmute(move ptr) }
 
 /// Coerce an immutable reference to be mutable.
+#[inline(always)]
 unsafe fn transmute_mut_unsafe<T>(+ptr: *const T) -> *mut T { transmute(ptr) }
 
 /// Coerce an immutable reference to be mutable.
+#[inline(always)]
 unsafe fn transmute_immut_unsafe<T>(+ptr: *const T) -> *T { transmute(ptr) }
 
 /// Coerce a borrowed mutable pointer to have an arbitrary associated region.
+#[inline(always)]
 unsafe fn transmute_mut_region<T>(+ptr: &a/mut T) -> &b/mut T {
     transmute(move ptr)
 }
 
 /// Transforms lifetime of the second pointer to match the first.
+#[inline(always)]
 unsafe fn copy_lifetime<S,T>(_ptr: &a/S, ptr: &T) -> &a/T {
     transmute_region(ptr)
 }
