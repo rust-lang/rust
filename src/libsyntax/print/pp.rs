@@ -124,7 +124,7 @@ const size_infinity: int = 0xffff;
 fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
-    let n: uint = 3u * linewidth;
+    let n: uint = 3 * linewidth;
     debug!("mk_printer %u", linewidth);
     let token: ~[mut token] = vec::to_mut(vec::from_elem(n, EOF));
     let size: ~[mut int] = vec::to_mut(vec::from_elem(n, 0));
@@ -133,16 +133,16 @@ fn mk_printer(out: io::Writer, linewidth: uint) -> printer {
                buf_len: n,
                mut margin: linewidth as int,
                mut space: linewidth as int,
-               mut left: 0u,
-               mut right: 0u,
-               token: token,
-               size: size,
+               mut left: 0,
+               mut right: 0,
+               token: move token,
+               size: move size,
                mut left_total: 0,
                mut right_total: 0,
-               mut scan_stack: scan_stack,
+               mut scan_stack: move scan_stack,
                mut scan_stack_empty: true,
-               mut top: 0u,
-               mut bottom: 0u,
+               mut top: 0,
+               mut bottom: 0,
                print_stack: DVec(),
                mut pending_indentation: 0,
                mut token_tree_last_was_ident: false})

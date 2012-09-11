@@ -157,7 +157,7 @@ fn parse_from_source_str<T>(f: fn (p: parser) -> T,
     p.abort_if_errors();
     sess.chpos = rdr.chpos;
     sess.byte_pos = sess.byte_pos + rdr.pos;
-    return r;
+    move r
 }
 
 fn next_node_id(sess: parse_sess) -> node_id {
@@ -184,7 +184,7 @@ fn new_parser_from_source_str(sess: parse_sess, cfg: ast::crate_cfg,
                               +name: ~str, +ss: codemap::file_substr,
                               source: @~str) -> parser {
     let (p, _) = new_parser_etc_from_source_str(sess, cfg, name, ss, source);
-    return p;
+    move p
 }
 
 
@@ -208,7 +208,7 @@ fn new_parser_etc_from_file(sess: parse_sess, cfg: ast::crate_cfg,
 fn new_parser_from_file(sess: parse_sess, cfg: ast::crate_cfg, path: &Path,
                         ftype: parser::file_type) -> parser {
     let (p, _) = new_parser_etc_from_file(sess, cfg, path, ftype);
-    return p;
+    move p
 }
 
 fn new_parser_from_tt(sess: parse_sess, cfg: ast::crate_cfg,

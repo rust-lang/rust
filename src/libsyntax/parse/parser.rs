@@ -3578,8 +3578,8 @@ impl parser {
         }
 
         {attrs_remaining: attrs,
-         view_items: vec::from_mut(dvec::unwrap(view_items)),
-         items: vec::from_mut(dvec::unwrap(items))}
+         view_items: vec::from_mut(dvec::unwrap(move view_items)),
+         items: vec::from_mut(dvec::unwrap(move items))}
     }
 
     // Parses a source module as a crate

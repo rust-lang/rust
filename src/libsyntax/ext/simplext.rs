@@ -143,7 +143,7 @@ fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
         return Some(leaf(m));
     }
     p_t_s_rec(cx, match_expr(e), trivial_selector, res);
-    return res;
+    move res
 }
 
 

@@ -34,7 +34,7 @@ fn unwrap<T>(+m: Mut<T>) -> T {
     // Borrowck should prevent us from calling unwrap while the value
     // is in use, as that would be a move from a borrowed value.
     assert (m.mode as uint) == (ReadOnly as uint);
-    let Data {value, mode: _} = m;
+    let Data {value, mode: _} <- m;
     return move value;
 }
 
