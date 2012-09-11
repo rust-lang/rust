@@ -253,27 +253,6 @@ fn call_tydesc_glue(++cx: block, v: ValueRef, t: ty::t, field: uint)
     return cx;
 }
 
-fn call_cmp_glue(bcx: block, lhs: ValueRef, rhs: ValueRef, t: ty::t,
-                 llop: ValueRef) -> ValueRef {
-    // We can't use call_tydesc_glue_full() and friends here because compare
-    // glue has a special signature.
-    let _icx = bcx.insn_ctxt("call_cmp_glue");
-
-    let lllhs = spill_if_immediate(bcx, lhs, t);
-    let llrhs = spill_if_immediate(bcx, rhs, t);
-
-    let llrawlhsptr = BitCast(bcx, lllhs, T_ptr(T_i8()));
-    let llrawrhsptr = BitCast(bcx, llrhs, T_ptr(T_i8()));
-    let lltydesc = get_tydesc_simple(bcx.ccx(), t);
-
-    let llfn = bcx.ccx().upcalls.cmp_type;
-
-    let llcmpresultptr = alloca(bcx, T_i1());
-    Call(bcx, llfn, ~[llcmpresultptr, lltydesc,
-                      llrawlhsptr, llrawrhsptr, llop]);
-    return Load(bcx, llcmpresultptr);
-}
-
 fn make_visit_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_visit_glue");
     let mut bcx = bcx;
