@@ -18,7 +18,6 @@ type upcalls =
      mark: ValueRef,
      str_new_uniq: ValueRef,
      str_new_shared: ValueRef,
-     cmp_type: ValueRef,
      log_type: ValueRef,
      call_shim_on_c_stack: ValueRef,
      call_shim_on_rust_stack: ValueRef,
@@ -74,12 +73,6 @@ fn declare_upcalls(targ_cfg: @session::config,
           str_new_shared:
               nothrow(d(~"str_new_shared", ~[T_ptr(T_i8()), int_t],
                         T_ptr(T_i8()))),
-          cmp_type:
-              dv(~"cmp_type",
-                 ~[T_ptr(T_i1()), T_ptr(tydesc_type),
-                  T_ptr(T_i8()),
-                  T_ptr(T_i8()),
-                  T_i8()]),
           log_type:
               dv(~"log_type", ~[T_ptr(tydesc_type),
                               T_ptr(T_i8()), T_i32()]),

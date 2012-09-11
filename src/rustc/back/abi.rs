@@ -43,12 +43,6 @@ const tydesc_field_shape: uint = 6u;
 const tydesc_field_shape_tables: uint = 7u;
 const n_tydesc_fields: uint = 8u;
 
-const cmp_glue_op_eq: uint = 0u;
-
-const cmp_glue_op_lt: uint = 1u;
-
-const cmp_glue_op_le: uint = 2u;
-
 // The two halves of a closure: code and environment.
 const fn_field_code: uint = 0u;
 const fn_field_box: uint = 1u;
