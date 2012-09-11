@@ -14,23 +14,6 @@ fn run_passes(
     doc: doc::doc,
     passes: ~[pass]
 ) -> doc::doc {
-
-    #[doc(
-        brief =
-        "Run a series of passes over the document",
-        args(
-            srv =
-            "The AST service to provide to the passes",
-            doc =
-            "The document to transform",
-            passes =
-            "The list of passes used to transform the document"
-        ),
-        return =
-        "The transformed document that results from folding the \
-         original through each pass"
-    )];
-
     let mut passno = 0;
     do vec::foldl(doc, passes) |doc, pass| {
         log(debug, fmt!("pass #%d", passno));
