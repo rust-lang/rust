@@ -1,3 +1,5 @@
+// xfail-test
+// xfail-fast
 // -*- rust -*-
 fn f1(ref_string: &str) {
     match ref_string {
