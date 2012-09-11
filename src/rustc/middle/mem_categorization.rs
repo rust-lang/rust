@@ -290,7 +290,7 @@ enum deref_kind {deref_ptr(ptr_kind), deref_comp(comp_kind)}
 // derefable (we model an index as the combination of a deref and then a
 // pointer adjustment).
 fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_uniq(*) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) => {
@@ -424,7 +424,7 @@ impl &mem_categorization_ctxt {
         // Any expression can be borrowed (to account for auto-ref on method
         // receivers), but @, ~, @vec, and ~vec are handled specially.
         let expr_ty = ty::expr_ty(self.tcx, expr);
-        match ty::get(expr_ty).struct {
+        match ty::get(expr_ty).sty {
           ty::ty_evec(*) | ty::ty_estr(*) => {
             self.cat_index(expr, expr)
           }
@@ -1013,7 +1013,7 @@ impl &mem_categorization_ctxt {
           cat_comp(_, comp_tuple) => ~"tuple content",
           cat_comp(_, comp_variant(_)) => ~"enum content",
           cat_comp(_, comp_index(t, _)) => {
-            match ty::get(t).struct {
+            match ty::get(t).sty {
               ty::ty_evec(*) => mut_str + ~" vec content",
               ty::ty_estr(*) => mut_str + ~" str content",
               _ => mut_str + ~" indexed content"
@@ -1034,7 +1034,7 @@ fn field_mutbl(tcx: ty::ctxt,
                base_ty: ty::t,
                f_name: ast::ident) -> Option<ast::mutability> {
     // Need to refactor so that records/class fields can be treated uniformly.
-    match ty::get(base_ty).struct {
+    match ty::get(base_ty).sty {
       ty::ty_rec(fields) => {
         for fields.each |f| {
             if f.ident == f_name {

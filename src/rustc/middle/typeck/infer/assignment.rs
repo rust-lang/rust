@@ -70,7 +70,7 @@ impl Assign {
                b.to_str(self.infcx));
         let _r = indenter();
 
-        match (ty::get(a).struct, ty::get(b).struct) {
+        match (ty::get(a).sty, ty::get(b).sty) {
             (ty::ty_bot, _) => {
                 Ok(None)
             }
@@ -130,7 +130,7 @@ priv impl Assign {
             (Some(a_bnd), Some(b_bnd)) => {
                 // check for a case where a non-region pointer (@, ~) is
                 // being assigned to a region pointer:
-                match (ty::get(a_bnd).struct, ty::get(b_bnd).struct) {
+                match (ty::get(a_bnd).sty, ty::get(b_bnd).sty) {
                     (ty::ty_box(_), ty::ty_rptr(r_b, mt_b)) => {
                         let nr_b = ty::mk_box(self.infcx.tcx,
                                               {ty: mt_b.ty, mutbl: m_const});

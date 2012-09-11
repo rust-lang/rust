@@ -19,7 +19,7 @@ use util::common::indenter;
 fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
         ty::mk_imm_uniq(tcx, unboxed_vec_ty)
       }
@@ -431,7 +431,7 @@ fn get_base_and_len(bcx: block,
     let ccx = bcx.ccx();
     let vt = vec_types(bcx, vec_ty);
 
-    let vstore = match ty::get(vt.vec_ty).struct {
+    let vstore = match ty::get(vt.vec_ty).sty {
       ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
       _ => ty::vstore_uniq
     };

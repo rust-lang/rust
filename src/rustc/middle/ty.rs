@@ -247,18 +247,18 @@ impl creader_cache_key : to_bytes::IterBytes {
     }
 }
 
-type intern_key = {struct: sty, o_def_id: Option<ast::def_id>};
+type intern_key = {sty: sty, o_def_id: Option<ast::def_id>};
 
 impl intern_key: cmp::Eq {
     pure fn eq(&&other: intern_key) -> bool {
-        self.struct == other.struct && self.o_def_id == other.o_def_id
+        self.sty == other.sty && self.o_def_id == other.o_def_id
     }
     pure fn ne(&&other: intern_key) -> bool { !self.eq(other) }
 }
 
 impl intern_key : to_bytes::IterBytes {
     fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
-        to_bytes::iter_bytes_2(&self.struct, &self.o_def_id, lsb0, f);
+        to_bytes::iter_bytes_2(&self.sty, &self.o_def_id, lsb0, f);
     }
 }
 
@@ -356,7 +356,7 @@ enum tbox_flag {
     needs_subst = 1 | 2 | 8
 }
 
-type t_box = @{struct: sty,
+type t_box = @{sty: sty,
                id: uint,
                flags: uint,
                o_def_id: Option<ast::def_id>};
@@ -854,7 +854,7 @@ fn mk_t(cx: ctxt, +st: sty) -> t { mk_t_with_id(cx, st, None) }
 // Interns a type/name combination, stores the resulting box in cx.interner,
 // and returns the box as cast to an unsafe ptr (see comments for t above).
 fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
-    let key = {struct: st, o_def_id: o_def_id};
+    let key = {sty: st, o_def_id: o_def_id};
     match cx.interner.find(key) {
       Some(t) => unsafe { return unsafe::reinterpret_cast(&t); },
       _ => ()
@@ -911,7 +911,7 @@ fn mk_t_with_id(cx: ctxt, +st: sty, o_def_id: Option<ast::def_id>) -> t {
         flags |= get(f.sig.output).flags;
       }
     }
-    let t = @{struct: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
+    let t = @{sty: st, id: cx.next_id, flags: flags, o_def_id: o_def_id};
     cx.interner.insert(key, t);
     cx.next_id += 1u;
     unsafe { unsafe::reinterpret_cast(&t) }
@@ -1046,12 +1046,12 @@ fn mk_opaque_closure_ptr(cx: ctxt, ck: closure_kind) -> t {
 fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
 
 fn mk_with_id(cx: ctxt, base: t, def_id: ast::def_id) -> t {
-    mk_t_with_id(cx, get(base).struct, Some(def_id))
+    mk_t_with_id(cx, get(base).sty, Some(def_id))
 }
 
 // Converts s to its machine type equivalent
 pure fn mach_sty(cfg: @session::config, t: t) -> sty {
-    match get(t).struct {
+    match get(t).sty {
       ty_int(ast::ty_i) => ty_int(cfg.int_type),
       ty_uint(ast::ty_u) => ty_uint(cfg.uint_type),
       ty_float(ast::ty_f) => ty_float(cfg.float_type),
@@ -1079,7 +1079,7 @@ fn walk_ty(ty: t, f: fn(t)) {
 
 fn maybe_walk_ty(ty: t, f: fn(t) -> bool) {
     if !f(ty) { return; }
-    match get(ty).struct {
+    match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) => {
@@ -1176,7 +1176,7 @@ fn fold_sty(sty: &sty, fldop: fn(t) -> t) -> sty {
 
 // Folds types from the bottom up.
 fn fold_ty(cx: ctxt, t0: t, fldop: fn(t) -> t) -> t {
-    let sty = fold_sty(&get(t0).struct, |t| fold_ty(cx, fldop(t), fldop));
+    let sty = fold_sty(&get(t0).sty, |t| fold_ty(cx, fldop(t), fldop));
     fldop(mk_t(cx, sty))
 }
 
@@ -1213,7 +1213,7 @@ fn fold_regions_and_ty(
     }
 
     let tb = ty::get(ty);
-    match tb.struct {
+    match tb.sty {
       ty::ty_rptr(r, mt) => {
         let m_r = fldr(r);
         let m_t = fldt(mt.ty);
@@ -1288,7 +1288,7 @@ fn fold_region(cx: ctxt, t0: t, fldop: fn(region, bool) -> region) -> t {
                fldop: fn(region, bool) -> region) -> t {
         let tb = get(t0);
         if !tbox_has_flag(tb, has_regions) { return t0; }
-        match tb.struct {
+        match tb.sty {
           ty_rptr(r, {ty: t1, mutbl: m}) => {
             let m_r = fldop(r, under_r);
             let m_t1 = do_fold(cx, t1, true, fldop);
@@ -1323,7 +1323,7 @@ fn subst_tps(cx: ctxt, tps: &[t], typ: t) -> t {
     if tps.len() == 0u { return typ; }
     let tb = ty::get(typ);
     if !tbox_has_flag(tb, has_params) { return typ; }
-    match tb.struct {
+    match tb.sty {
       ty_param(p) => tps[p.idx],
       ref sty => fold_sty_to_ty(cx, sty, |t| subst_tps(cx, tps, t))
     }
@@ -1374,7 +1374,7 @@ fn subst(cx: ctxt,
                 typ: t) -> t {
         let tb = get(typ);
         if !tbox_has_flag(tb, needs_subst) { return typ; }
-        match tb.struct {
+        match tb.sty {
           ty_param(p) => substs.tps[p.idx],
           ty_self => substs.self_ty.get(),
           _ => {
@@ -1393,21 +1393,21 @@ fn subst(cx: ctxt,
 
 // Type utilities
 
-fn type_is_nil(ty: t) -> bool { get(ty).struct == ty_nil }
+fn type_is_nil(ty: t) -> bool { get(ty).sty == ty_nil }
 
-fn type_is_bot(ty: t) -> bool { get(ty).struct == ty_bot }
+fn type_is_bot(ty: t) -> bool { get(ty).sty == ty_bot }
 
 fn type_is_ty_var(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_infer(TyVar(_)) => true,
       _ => false
     }
 }
 
-fn type_is_bool(ty: t) -> bool { get(ty).struct == ty_bool }
+fn type_is_bool(ty: t) -> bool { get(ty).sty == ty_bool }
 
 fn type_is_structural(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_rec(_) | ty_class(*) | ty_tup(_) | ty_enum(*) | ty_fn(_) |
       ty_trait(*) |
       ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
@@ -1422,21 +1422,21 @@ fn type_is_copyable(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_is_sequence(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_estr(_) | ty_evec(_, _) => true,
       _ => false
     }
 }
 
 fn type_is_str(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_estr(_) => true,
       _ => false
     }
 }
 
 fn sequence_element_type(cx: ctxt, ty: t) -> t {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_estr(_) => return mk_mach_uint(cx, ast::ty_u8),
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
       _ => cx.sess.bug(
@@ -1445,7 +1445,7 @@ fn sequence_element_type(cx: ctxt, ty: t) -> t {
 }
 
 fn get_element_type(ty: t, i: uint) -> t {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_rec(flds) => return flds[i].mt.ty,
       ty_tup(ts) => return ts[i],
       _ => fail ~"get_element_type called on invalid type"
@@ -1453,14 +1453,14 @@ fn get_element_type(ty: t, i: uint) -> t {
 }
 
 pure fn type_is_box(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_box(_) => return true,
       _ => return false
     }
 }
 
 pure fn type_is_boxed(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_box(_) | ty_opaque_box |
       ty_evec(_, vstore_box) | ty_estr(vstore_box) => true,
       _ => false
@@ -1468,35 +1468,35 @@ pure fn type_is_boxed(ty: t) -> bool {
 }
 
 pure fn type_is_region_ptr(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_rptr(_, _) => true,
       _ => false
     }
 }
 
 pure fn type_is_slice(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_)) => true,
       _ => return false
     }
 }
 
 pure fn type_is_unique_box(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_uniq(_) => return true,
       _ => return false
     }
 }
 
 pure fn type_is_unsafe_ptr(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_ptr(_) => return true,
       _ => return false
     }
 }
 
 pure fn type_is_vec(ty: t) -> bool {
-    return match get(ty).struct {
+    return match get(ty).sty {
           ty_evec(_, _) | ty_unboxed_vec(_) => true,
           ty_estr(_) => true,
           _ => false
@@ -1504,7 +1504,7 @@ pure fn type_is_vec(ty: t) -> bool {
 }
 
 pure fn type_is_unique(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_uniq(_) => return true,
       ty_evec(_, vstore_uniq) => true,
       ty_estr(vstore_uniq) => true,
@@ -1518,7 +1518,7 @@ pure fn type_is_unique(ty: t) -> bool {
  contents are abstract to rustc.)
 */
 pure fn type_is_scalar(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_nil | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_type | ty_ptr(_) => true,
       _ => false
@@ -1537,7 +1537,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     }
 
     let mut accum = false;
-    let result = match get(ty).struct {
+    let result = match get(ty).sty {
       // scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_rptr(_, _) |
@@ -1620,7 +1620,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
     let mut needs_unwind_cleanup = false;
     do maybe_walk_ty(ty) |ty| {
         let old_encountered_box = encountered_box;
-        let result = match get(ty).struct {
+        let result = match get(ty).sty {
           ty_box(_) | ty_opaque_box => {
             encountered_box = true;
             true
@@ -1873,7 +1873,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
     // Insert a default in case we loop back on self recursively.
     cx.kind_cache.insert(ty, kind_top());
 
-    let mut result = match get(ty).struct {
+    let mut result = match get(ty).sty {
       // Scalar and unique types are sendable, constant, and owned
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) => {
@@ -2025,7 +2025,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
 /// gives a rough estimate of how much space it takes to represent
 /// an instance of `ty`.  Used for the mode transition.
 fn type_size(cx: ctxt, ty: t) -> uint {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_ptr(_) | ty_box(_) | ty_uniq(_) | ty_estr(vstore_uniq) |
       ty_trait(*) | ty_rptr(*) | ty_evec(_, vstore_uniq) |
@@ -2093,7 +2093,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ty_to_str(cx, ty));
 
         let r = {
-            get(r_ty).struct == get(ty).struct ||
+            get(r_ty).sty == get(ty).sty ||
                 subtypes_require(cx, seen, r_ty, ty)
         };
 
@@ -2110,7 +2110,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ty_to_str(cx, r_ty),
                ty_to_str(cx, ty));
 
-        let r = match get(ty).struct {
+        let r = match get(ty).sty {
           ty_nil |
           ty_bot |
           ty_bool |
@@ -2197,7 +2197,7 @@ fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
 
 fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
    bool {
-    let sty = &get(ty).struct;
+    let sty = &get(ty).sty;
     debug!("type_structurally_contains: %s", ty_to_str(cx, ty));
     if test(sty) { return true; }
     match *sty {
@@ -2251,14 +2251,14 @@ fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_is_integral(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_infer(IntVar(_)) | ty_int(_) | ty_uint(_) | ty_bool => true,
       _ => false
     }
 }
 
 fn type_is_fp(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_float(_) => true,
       _ => false
     }
@@ -2269,7 +2269,7 @@ fn type_is_numeric(ty: t) -> bool {
 }
 
 fn type_is_signed(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_int(_) => true,
       _ => false
     }
@@ -2279,7 +2279,7 @@ fn type_is_signed(ty: t) -> bool {
 // that the cycle collector might care about.
 fn type_is_pod(cx: ctxt, ty: t) -> bool {
     let mut result = true;
-    match get(ty).struct {
+    match get(ty).sty {
       // Scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) => result = true,
@@ -2334,7 +2334,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_is_enum(ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_enum(_, _) => return true,
       _ => return false
     }
@@ -2343,7 +2343,7 @@ fn type_is_enum(ty: t) -> bool {
 // Whether a type is enum like, that is a enum type with only nullary
 // constructors
 fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_enum(did, _) => {
         let variants = enum_variants(cx, did);
         let some_n_ary = vec::any(*variants, |v| vec::len(v.args) > 0u);
@@ -2354,7 +2354,7 @@ fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
 }
 
 fn type_param(ty: t) -> Option<uint> {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_param(p) => return Some(p.idx),
       _ => {/* fall through */ }
     }
@@ -2366,7 +2366,7 @@ fn type_param(ty: t) -> Option<uint> {
 // The parameter `expl` indicates if this is an *explicit* dereference.  Some
 // types---notably unsafe ptrs---can only be dereferenced explicitly.
 fn deref(cx: ctxt, t: t, expl: bool) -> Option<mt> {
-    deref_sty(cx, &get(t).struct, expl)
+    deref_sty(cx, &get(t).sty, expl)
 }
 fn deref_sty(cx: ctxt, sty: &sty, expl: bool) -> Option<mt> {
     match *sty {
@@ -2404,7 +2404,7 @@ fn type_autoderef(cx: ctxt, t: t) -> t {
 
 // Returns the type and mutability of t[i]
 fn index(cx: ctxt, t: t) -> Option<mt> {
-    index_sty(cx, &get(t).struct)
+    index_sty(cx, &get(t).sty)
 }
 
 fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
@@ -2714,49 +2714,49 @@ fn node_id_has_type_params(cx: ctxt, id: ast::node_id) -> bool {
 
 // Type accessors for substructures of types
 fn ty_fn_args(fty: t) -> ~[arg] {
-    match get(fty).struct {
+    match get(fty).sty {
       ty_fn(ref f) => f.sig.inputs,
       _ => fail ~"ty_fn_args() called on non-fn type"
     }
 }
 
 fn ty_fn_proto(fty: t) -> fn_proto {
-    match get(fty).struct {
+    match get(fty).sty {
       ty_fn(ref f) => f.meta.proto,
       _ => fail ~"ty_fn_proto() called on non-fn type"
     }
 }
 
 fn ty_fn_purity(fty: t) -> ast::purity {
-    match get(fty).struct {
+    match get(fty).sty {
       ty_fn(ref f) => f.meta.purity,
       _ => fail ~"ty_fn_purity() called on non-fn type"
     }
 }
 
 pure fn ty_fn_ret(fty: t) -> t {
-    match get(fty).struct {
+    match get(fty).sty {
       ty_fn(ref f) => f.sig.output,
       _ => fail ~"ty_fn_ret() called on non-fn type"
     }
 }
 
 fn ty_fn_ret_style(fty: t) -> ast::ret_style {
-    match get(fty).struct {
+    match get(fty).sty {
       ty_fn(ref f) => f.meta.ret_style,
       _ => fail ~"ty_fn_ret_style() called on non-fn type"
     }
 }
 
 fn is_fn_ty(fty: t) -> bool {
-    match get(fty).struct {
+    match get(fty).sty {
       ty_fn(_) => true,
       _ => false
     }
 }
 
 fn ty_region(ty: t) -> region {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_rptr(r, _) => r,
       s => fail fmt!("ty_region() invoked on non-rptr: %?", s)
     }
@@ -2775,14 +2775,14 @@ fn is_pred_ty(fty: t) -> bool {
 
 /*
 fn ty_var_id(typ: t) -> TyVid {
-    match get(typ).struct {
+    match get(typ).sty {
       ty_infer(TyVar(vid)) => return vid,
       _ => { error!("ty_var_id called on non-var ty"); fail; }
     }
 }
 
 fn int_var_id(typ: t) -> IntVid {
-    match get(typ).struct {
+    match get(typ).sty {
       ty_infer(IntVar(vid)) => return vid,
       _ => { error!("ty_var_integral_id called on ty other than \
                   ty_var_integral");
@@ -3036,7 +3036,7 @@ fn get_field(tcx: ctxt, rec_ty: t, id: ast::ident) -> field {
 }
 
 fn get_fields(rec_ty:t) -> ~[field] {
-    match get(rec_ty).struct {
+    match get(rec_ty).sty {
       ty_rec(fields) => fields,
       // Can we check at the caller?
       _ => fail ~"get_fields: not a record type"
@@ -3055,7 +3055,7 @@ fn method_idx(id: ast::ident, meths: &[method]) -> Option<uint> {
 fn param_tys_in_type(ty: t) -> ~[param_ty] {
     let mut rslt = ~[];
     do walk_ty(ty) |ty| {
-        match get(ty).struct {
+        match get(ty).sty {
           ty_param(p) => {
             vec::push(rslt, p);
           }
@@ -3072,7 +3072,7 @@ fn occurs_check(tcx: ctxt, sp: span, vid: TyVid, rt: t) {
     fn vars_in_type(ty: t) -> ~[TyVid] {
         let mut rslt = ~[];
         do walk_ty(ty) |ty| {
-            match get(ty).struct {
+            match get(ty).sty {
               ty_infer(TyVar(v)) => vec::push(rslt, v),
               _ => ()
             }
@@ -3170,7 +3170,7 @@ fn set_default_mode(cx: ctxt, m: ast::mode, m_def: ast::rmode) {
 }
 
 fn ty_sort_str(cx: ctxt, t: t) -> ~str {
-    match get(t).struct {
+    match get(t).sty {
       ty_nil | ty_bot | ty_bool | ty_int(_) |
       ty_uint(_) | ty_float(_) | ty_estr(_) |
       ty_type | ty_opaque_box | ty_opaque_closure_ptr(_) => {
@@ -3405,7 +3405,7 @@ fn impl_traits(cx: ctxt, id: ast::def_id) -> ~[t] {
 }
 
 fn ty_to_def_id(ty: t) -> Option<ast::def_id> {
-    match get(ty).struct {
+    match get(ty).sty {
       ty_trait(id, _, _) | ty_class(id, _) | ty_enum(id, _) => Some(id),
       _ => None
     }
@@ -3512,7 +3512,7 @@ fn enum_is_univariant(cx: ctxt, id: ast::def_id) -> bool {
 }
 
 fn type_is_empty(cx: ctxt, t: t) -> bool {
-    match ty::get(t).struct {
+    match ty::get(t).sty {
        ty_enum(did, _) => (*enum_variants(cx, did)).is_empty(),
        _ => false
      }
@@ -3816,7 +3816,7 @@ fn is_binopable(_cx: ctxt, ty: t, op: ast::binop) -> bool {
     }
 
     fn tycat(ty: t) -> int {
-        match get(ty).struct {
+        match get(ty).sty {
           ty_bool => tycat_bool,
           ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
           ty_float(_) => tycat_float,
@@ -3866,7 +3866,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
       None => ()
     }
 
-    let t = match get(t).struct {
+    let t = match get(t).sty {
         ty_evec(mt, vstore) =>
             // This type has a vstore. Get rid of it
             mk_evec(cx, normalize_mt(cx, mt), normalize_vstore(vstore)),
@@ -3917,7 +3917,7 @@ fn normalize_ty(cx: ctxt, t: t) -> t {
     // types, which isn't necessary after #2187
     let t = mk_t(cx, mach_sty(cx.sess.targ_cfg, t));
 
-    let sty = fold_sty(&get(t).struct, |t| { normalize_ty(cx, t) });
+    let sty = fold_sty(&get(t).sty, |t| { normalize_ty(cx, t) });
     let t_norm = mk_t(cx, sty);
     cx.normalized_cache.insert(t, t_norm);
     return t_norm;

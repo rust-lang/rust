@@ -189,7 +189,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         match rcx.resolve_node_type(e.id) {
           result::Err(_) => { return; /* typeck will fail anyhow */ }
           result::Ok(target_ty) => {
-            match ty::get(target_ty).struct {
+            match ty::get(target_ty).sty {
               ty::ty_trait(_, substs, _) => {
                 let trait_region = match substs.self_r {
                   Some(r) => {r}
@@ -215,7 +215,7 @@ fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
         match rcx.resolve_node_type(e.id) {
           result::Err(_) => return,   // Typechecking will fail anyhow.
           result::Ok(function_type) => {
-            match ty::get(function_type).struct {
+            match ty::get(function_type).sty {
               ty::ty_fn(ref fn_ty) => {
                   match fn_ty.meta.proto {
                       proto_vstore(vstore_slice(region)) => {

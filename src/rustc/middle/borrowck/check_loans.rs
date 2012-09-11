@@ -224,7 +224,7 @@ impl check_loan_ctxt {
         }
 
         let callee_ty = ty::node_id_to_type(tcx, callee_id);
-        match ty::get(callee_ty).struct {
+        match ty::get(callee_ty).sty {
           ty::ty_fn(fn_ty) => {
             match fn_ty.meta.purity {
               ast::pure_fn => return, // case (c) above

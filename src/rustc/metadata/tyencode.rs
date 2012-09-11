@@ -47,7 +47,7 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
           Some(s) => *s,
           None => {
             let buf = io::mem_buffer();
-            enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).struct);
+            enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).sty);
             cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
             io::mem_buffer_str(buf)
           }
@@ -72,7 +72,7 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
               }
               _ => {}
             }
-            enc_sty(w, cx, ty::get(t).struct);
+            enc_sty(w, cx, ty::get(t).sty);
             let end = w.tell();
             let len = end - pos;
             fn estimate_sz(u: uint) -> uint {

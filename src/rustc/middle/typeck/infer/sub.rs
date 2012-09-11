@@ -101,7 +101,7 @@ impl Sub: combine {
                a.to_str(self.infcx), b.to_str(self.infcx));
         if a == b { return Ok(a); }
         do indent {
-            match (ty::get(a).struct, ty::get(b).struct) {
+            match (ty::get(a).sty, ty::get(b).sty) {
               (ty::ty_bot, _) => {
                 Ok(a)
               }

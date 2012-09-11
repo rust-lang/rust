@@ -201,7 +201,7 @@ fn check_bare_fn(ccx: @crate_ctxt,
                  id: ast::node_id,
                  self_info: Option<self_info>) {
     let fty = ty::node_id_to_type(ccx.tcx, id);
-    match ty::get(fty).struct {
+    match ty::get(fty).sty {
         ty::ty_fn(ref fn_ty) => {
             check_fn(ccx, self_info, fn_ty, decl, body, false, None)
         }
@@ -763,7 +763,7 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
         match sty {
             ty::ty_box(inner) | ty::ty_uniq(inner) |
             ty::ty_rptr(_, inner) => {
-                match ty::get(t1).struct {
+                match ty::get(t1).sty {
                     ty::ty_infer(ty::TyVar(v1)) => {
                         ty::occurs_check(fcx.ccx.tcx, sp, v1,
                                          ty::mk_box(fcx.ccx.tcx, inner));
@@ -1127,7 +1127,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
 
         let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
-        return match (op, ty::get(lhs_t).struct) {
+        return match (op, ty::get(lhs_t).sty) {
           (_, _) if ty::type_is_integral(lhs_t) &&
           ast_util::is_shift_binop(op) => {
             // Shift is a special case: rhs can be any integral type
@@ -1191,7 +1191,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // If the or operator is used it might be that the user forgot to
         // supply the do keyword.  Let's be more helpful in that situation.
         if op == ast::or {
-          match ty::get(lhs_resolved_t).struct {
+          match ty::get(lhs_resolved_t).sty {
             ty::ty_fn(_) => {
               tcx.sess.span_note(
                   ex.span, ~"did you forget the 'do' keyword for the call?");
@@ -1227,7 +1227,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         match expected {
             Some(t) => {
                 match resolve_type(fcx.infcx(), t, force_tvar) {
-                    Ok(t) => unpack(ty::get(t).struct),
+                    Ok(t) => unpack(ty::get(t).sty),
                     _ => None
                 }
             }
@@ -1500,7 +1500,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           ast::not => {
             oprnd_t = structurally_resolved_type(fcx, oprnd.span, oprnd_t);
             if !(ty::type_is_integral(oprnd_t) ||
-                 ty::get(oprnd_t).struct == ty::ty_bool) {
+                 ty::get(oprnd_t).sty == ty::ty_bool) {
                 oprnd_t = check_user_unop(fcx, ~"!", ~"not", expr,
                                          oprnd, oprnd_t);
             }
@@ -1678,7 +1678,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
-        match ty::get(block_ty).struct {
+        match ty::get(block_ty).sty {
           ty::ty_fn(fty) => {
             fcx.write_ty(expr.id, ty::mk_fn(tcx, FnTyBase {
                 meta: fty.meta,
@@ -1714,7 +1714,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
         let block_ty = structurally_resolved_type(
             fcx, expr.span, fcx.node_ty(b.id));
-        match ty::get(block_ty).struct {
+        match ty::get(block_ty).sty {
           ty::ty_fn(fty) => {
             fcx.write_ty(expr.id, ty::mk_fn(tcx, fty));
           }
@@ -1742,7 +1742,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         debug!("t_1=%s", fcx.infcx().ty_to_str(t_1));
         debug!("t_e=%s", fcx.infcx().ty_to_str(t_e));
 
-        match ty::get(t_1).struct {
+        match ty::get(t_1).sty {
           // This will be looked up later on
           ty::ty_trait(*) => (),
 
@@ -2461,7 +2461,7 @@ fn structurally_resolved_type(fcx: @fn_ctxt, sp: span, tp: ty::t) -> ty::t {
 
 // Returns the one-level-deep structure of the given type.
 fn structure_of(fcx: @fn_ctxt, sp: span, typ: ty::t) -> ty::sty {
-    ty::get(structurally_resolved_type(fcx, sp, typ)).struct
+    ty::get(structurally_resolved_type(fcx, sp, typ)).sty
 }
 
 fn type_is_integral(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
@@ -2511,7 +2511,7 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
         ccx.tcx, ty,
         |_r| {},
         |t| {
-            match ty::get(t).struct {
+            match ty::get(t).sty {
               ty::ty_param({idx, _}) => { tps_used[idx] = true; }
               _ => ()
             }

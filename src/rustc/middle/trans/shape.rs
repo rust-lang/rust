@@ -215,7 +215,7 @@ fn add_substr(&dest: ~[u8], src: ~[u8]) {
 }
 
 fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
-    match ty::get(t).struct {
+    match ty::get(t).sty {
         ty::ty_nil | ty::ty_bool | ty::ty_uint(ast::ty_u8) |
         ty::ty_bot => ~[shape_u8],
         ty::ty_int(ast::ty_i) => ~[s_int(ccx.tcx)],
@@ -719,7 +719,7 @@ fn llalign_of(cx: @crate_ctxt, t: TypeRef) -> ValueRef {
 // Computes the size of the data part of an enum.
 fn static_size_of_enum(cx: @crate_ctxt, t: ty::t) -> uint {
     if cx.enum_sizes.contains_key(t) { return cx.enum_sizes.get(t); }
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_enum(tid, ref substs) => {
         // Compute max(variant sizes).
         let mut max_size = 0u;
@@ -753,7 +753,7 @@ fn simplify_type(tcx: ty::ctxt, typ: ty::t) -> ty::t {
         ty::mk_ptr(tcx, {ty: ty::mk_nil(tcx), mutbl: ast::m_imm})
     }
     fn simplifier(tcx: ty::ctxt, typ: ty::t) -> ty::t {
-        match ty::get(typ).struct {
+        match ty::get(typ).sty {
           ty::ty_box(_) | ty::ty_opaque_box | ty::ty_uniq(_) |
           ty::ty_evec(_, ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_box) |
           ty::ty_estr(ty::vstore_uniq) | ty::ty_estr(ty::vstore_box) |

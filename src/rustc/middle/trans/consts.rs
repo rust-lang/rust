@@ -10,7 +10,7 @@ fn const_lit(cx: @crate_ctxt, e: @ast::expr, lit: ast::lit)
       ast::lit_uint(u, t) => C_integral(T_uint_ty(cx, t), u, False),
       ast::lit_int_unsuffixed(i) => {
         let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
-        match ty::get(lit_int_ty).struct {
+        match ty::get(lit_int_ty).sty {
           ty::ty_int(t) => {
             C_integral(T_int_ty(cx, t), i as u64, True)
           }
@@ -76,7 +76,7 @@ fn const_autoderef(cx: @crate_ctxt, ty: ty::t, v: ValueRef)
     let mut v1 = v;
     loop {
         // Only rptrs can be autoderef'ed in a const context.
-        match ty::get(ty).struct {
+        match ty::get(ty).sty {
             ty::ty_rptr(_, mt) => {
                 t1 = mt.ty;
                 v1 = const_deref(cx, v1);
@@ -184,7 +184,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
                                     ~"index is not an integer-constant \
                                       expression")
           };
-          let (arr, _len) = match ty::get(bt).struct {
+          let (arr, _len) = match ty::get(bt).sty {
               ty::ty_evec(_, vstore) | ty::ty_estr(vstore) =>
                   match vstore {
                   ty::vstore_fixed(u) =>
@@ -236,7 +236,7 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
           // we can get the value (as a number) out of.
 
           let len = llvm::LLVMGetArrayLength(val_ty(arr)) as u64;
-          let len = match ty::get(bt).struct {
+          let len = match ty::get(bt).sty {
               ty::ty_estr(*) => {assert len > 0; len - 1},
               _ => len
           };

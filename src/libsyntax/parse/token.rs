@@ -415,7 +415,6 @@ fn restricted_keyword_table() -> HashMap<~str, ()> {
         ~"fail", ~"fn",
         ~"impl",
         ~"priv", ~"pub",
-        ~"struct",
         ~"unsafe"
     ];
     for keys.each |word| {
@@ -438,6 +437,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"match", ~"mod", ~"move", ~"mut",
         ~"pure",
         ~"ref", ~"return",
+        ~"struct",
         ~"true", ~"trait", ~"type",
         ~"unchecked", ~"use",
         ~"while"

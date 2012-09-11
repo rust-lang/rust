@@ -185,7 +185,7 @@ fn ast_ty_to_ty<AC: ast_conv, RS: region_scope Copy Owned>(
               Some(ast::def_ty(type_def_id)) => {
                 let result = ast_path_to_substs_and_ty(self, rscope,
                                                        type_def_id, path);
-                match ty::get(result.ty).struct {
+                match ty::get(result.ty).sty {
                     ty::ty_trait(trait_def_id, substs, _) => {
                         if vst != ty::vstore_box {
                             tcx.sess.span_unimpl(path.span,
@@ -419,7 +419,7 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Owned>(
                                     found: a.mode}))
           }
           ast::infer(_) => {
-            match ty::get(ty).struct {
+            match ty::get(ty).sty {
               // If the type is not specified, then this must be a fn expr.
               // Leave the mode as infer(_), it will get inferred based
               // on constraints elsewhere.

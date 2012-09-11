@@ -603,7 +603,7 @@ fn instantiate_trait_ref(ccx: @crate_ctxt, t: @ast::trait_ref,
       ast::def_ty(t_id) => {
         let tpt = astconv::ast_path_to_ty(ccx, rscope, t_id, t.path,
                                           t.ref_id);
-        match ty::get(tpt.ty).struct {
+        match ty::get(tpt.ty).sty {
            ty::ty_trait(*) => {
               (t_id, tpt)
            }
@@ -732,7 +732,7 @@ fn compute_bounds(ccx: @crate_ctxt,
           ast::bound_owned => ~[ty::bound_owned],
           ast::bound_trait(t) => {
             let ity = ast_ty_to_ty(ccx, empty_rscope, t);
-            match ty::get(ity).struct {
+            match ty::get(ity).sty {
               ty::ty_trait(*) => {
                 ~[ty::bound_trait(ity)]
               }

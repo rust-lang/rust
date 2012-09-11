@@ -69,7 +69,7 @@ fn fixup_substs(fcx: @fn_ctxt, expr: @ast::expr,
     // use a dummy type just to package up the substs that need fixing up
     let t = ty::mk_trait(tcx, id, substs, ty::vstore_slice(ty::re_static));
     do fixup_ty(fcx, expr, t, is_early).map |t_f| {
-        match ty::get(t_f).struct {
+        match ty::get(t_f).sty {
           ty::ty_trait(_, substs_f, _) => substs_f,
           _ => fail ~"t_f should be a trait"
         }
@@ -99,7 +99,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
     let _i = indenter();
 
     let tcx = fcx.ccx.tcx;
-    let (trait_id, trait_substs) = match ty::get(trait_ty).struct {
+    let (trait_id, trait_substs) = match ty::get(trait_ty).sty {
         ty::ty_trait(did, substs, _) => (did, substs),
         _ => tcx.sess.impossible_case(expr.span,
                                       "lookup_vtable: \
@@ -117,7 +117,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
         }
     };
 
-    match ty::get(ty).struct {
+    match ty::get(ty).sty {
         ty::ty_param({idx: n, def_id: did}) => {
             let mut n_bound = 0;
             for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
@@ -127,7 +127,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                         /* ignore */
                     }
                     ty::bound_trait(ity) => {
-                        match ty::get(ity).struct {
+                        match ty::get(ity).sty {
                             ty::ty_trait(idid, _, _) => {
                                 if trait_id == idid {
                                     debug!("(checking vtable) @0 relating \
@@ -214,7 +214,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                         // unify it with trait_ty in order to get all
                         // the ty vars sorted out.
                         for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
-                            match ty::get(of_ty).struct {
+                            match ty::get(of_ty).sty {
                                 ty::ty_trait(id, _, _) => {
                                     // Not the trait we're looking for
                                     if id != trait_id { loop; }
@@ -389,8 +389,8 @@ fn connect_trait_tps(fcx: @fn_ctxt, expr: @ast::expr, impl_tys: ~[ty::t],
     let ity = ty::impl_traits(tcx, impl_did)[0];
     let trait_ty = ty::subst_tps(tcx, impl_tys, ity);
     debug!("(connect trait tps) trait type is %?, impl did is %?",
-           ty::get(trait_ty).struct, impl_did);
-    match ty::get(trait_ty).struct {
+           ty::get(trait_ty).sty, impl_did);
+    match ty::get(trait_ty).sty {
      ty::ty_trait(_, substs, _) => {
         vec::iter2(substs.tps, trait_tys,
                    |a, b| demand::suptype(fcx, expr.span, a, b));
@@ -450,7 +450,7 @@ fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
       }
       ast::expr_cast(src, _) => {
         let target_ty = fcx.expr_ty(ex);
-        match ty::get(target_ty).struct {
+        match ty::get(target_ty).sty {
           ty::ty_trait(*) => {
             /*
             Look up vtables for the type we're casting to,

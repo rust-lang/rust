@@ -55,7 +55,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         }
     }
 
-    match get(resolved_type).struct {
+    match get(resolved_type).sty {
         ty_box(base_mutability_and_type) |
         ty_uniq(base_mutability_and_type) |
         ty_ptr(base_mutability_and_type) |
@@ -76,7 +76,7 @@ fn get_base_type(inference_context: infer_ctxt, span: span, original_type: t)
         ty_param(*) | ty_self | ty_type | ty_opaque_box |
         ty_opaque_closure_ptr(*) | ty_unboxed_vec(*) => {
             debug!("(getting base type) no base type; found %?",
-                   get(original_type).struct);
+                   get(original_type).sty);
             None
         }
     }
@@ -93,7 +93,7 @@ fn get_base_type_def_id(inference_context: infer_ctxt,
             return None;
         }
         Some(base_type) => {
-            match get(base_type).struct {
+            match get(base_type).sty {
                 ty_enum(def_id, _) |
                 ty_class(def_id, _) |
                 ty_trait(def_id, _, _) => {
@@ -694,7 +694,7 @@ impl CoherenceChecker {
 
             // Record all the trait methods.
             for associated_traits.each |trait_type| {
-                match get(trait_type).struct {
+                match get(trait_type).sty {
                     ty_trait(trait_id, _, _) => {
                         self.add_trait_method(trait_id, implementation);
                     }

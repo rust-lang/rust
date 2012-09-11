@@ -198,7 +198,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
 
 fn normalize_for_monomorphization(tcx: ty::ctxt, ty: ty::t) -> Option<ty::t> {
     // FIXME[mono] could do this recursively. is that worthwhile? (#2529)
-    match ty::get(ty).struct {
+    match ty::get(ty).sty {
         ty::ty_box(*) => {
             Some(ty::mk_opaque_box(tcx))
         }
