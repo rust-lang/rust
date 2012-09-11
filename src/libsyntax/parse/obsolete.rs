@@ -20,7 +20,8 @@ pub enum ObsoleteSyntax {
     ObsoleteStructCtor,
     ObsoleteWith,
     ObsoleteClassMethod,
-    ObsoleteClassTraits
+    ObsoleteClassTraits,
+    ObsoletePrivSection
 }
 
 impl ObsoleteSyntax : cmp::Eq {
@@ -81,6 +82,11 @@ impl parser : ObsoleteReporter {
                 "class traits",
                 "implemented traits are specified on the impl, as in \
                  `impl foo : bar {`"
+            ),
+            ObsoletePrivSection => (
+                "private section",
+                "the `priv` keyword is applied to individual items, methods, \
+                 and fields"
             ),
         };
 
@@ -152,5 +158,19 @@ impl parser : ObsoleteReporter {
         }
     }
 
+    fn try_parse_obsolete_priv_section() -> bool {
+        if self.is_keyword(~"priv") && self.look_ahead(1) == token::LBRACE {
+            self.obsolete(copy self.span, ObsoletePrivSection);
+            self.eat_keyword(~"priv");
+            self.bump();
+            while self.token != token::RBRACE {
+                self.parse_single_class_item(ast::private);
+            }
+            self.bump();
+            true
+        } else {
+            false
+        }
+    }
 }
 

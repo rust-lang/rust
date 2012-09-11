@@ -15,10 +15,8 @@ impl cat_type : cmp::Eq {
 
 // ok: T should be in scope when resolving the trait ref for map
 struct cat<T: Copy> {
-  priv {
-    // Yes, you can have negative meows
-    mut meows : int,
-  }
+  // Yes, you can have negative meows
+  priv mut meows : int,
 
   mut how_hungry : int,
   name : T,

@@ -4,10 +4,7 @@ use to_str::ToStr;
 mod kitty {
 
 struct cat {
-  priv {
-    mut meows : uint,
-  }
-
+  priv mut meows : uint,
   mut how_hungry : int,
   name : ~str,
 }

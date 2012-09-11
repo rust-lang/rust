@@ -3,9 +3,7 @@ use to_str::*;
 use to_str::ToStr;
 
 struct cat {
-  priv {
-    mut meows : uint,
-  }
+  priv mut meows : uint,
 
   mut how_hungry : int,
   name : ~str,

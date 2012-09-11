@@ -1,7 +1,5 @@
 struct cat<U> {
-  priv {
-    mut meows : uint,
-  }
+  priv mut meows : uint,
 
   how_hungry : int,
 }
