@@ -2,15 +2,15 @@ use codemap::span;
 use ast::*;
 
 pure fn spanned<T>(lo: uint, hi: uint, +t: T) -> spanned<T> {
-    respan(mk_sp(lo, hi), t)
+    respan(mk_sp(lo, hi), move t)
 }
 
 pure fn respan<T>(sp: span, +t: T) -> spanned<T> {
-    {node: t, span: sp}
+    {node: move t, span: sp}
 }
 
 pure fn dummy_spanned<T>(+t: T) -> spanned<T> {
-    respan(dummy_sp(), t)
+    respan(dummy_sp(), move t)
 }
 
 /* assuming that we're not in macro expansion */

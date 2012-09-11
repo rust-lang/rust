@@ -222,14 +222,14 @@ fn mk_ctxt(parse_sess: parse::parse_sess,
             self.parse_sess.interner.intern(@st)
         }
     }
-    let imp : ctxt_repr = {
+    let imp: ctxt_repr = {
         parse_sess: parse_sess,
         cfg: cfg,
         mut backtrace: None,
         mut mod_path: ~[],
         mut trace_mac: false
     };
-    return imp as ext_ctxt
+    move (imp as ext_ctxt)
 }
 
 fn expr_to_str(cx: ext_ctxt, expr: @ast::expr, error: ~str) -> ~str {

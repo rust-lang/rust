@@ -181,7 +181,7 @@ mod ct {
             let rest = copy next.flags;
             let j = next.next;
             let curr: ~[flag] = ~[f];
-            return {flags: vec::append(curr, rest), next: j};
+            return {flags: vec::append(move curr, rest), next: j};
         }
         let more = |x, copy s| more_(x, copy s, i, lim);
         let f = s[i];
@@ -195,7 +195,7 @@ mod ct {
                 more(flag_sign_always)
             } else if f == '#' as u8 {
                 more(flag_alternate)
-            } else { {flags: noflags, next: i} };
+            } else { {flags: move noflags, next: i} };
     }
     fn parse_count(s: ~str, i: uint, lim: uint)
         -> {count: count, next: uint} {

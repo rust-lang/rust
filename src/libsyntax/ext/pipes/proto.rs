@@ -188,7 +188,7 @@ impl protocol {
             span: self.span,
             dir: dir,
             ty_params: ty_params,
-            messages: messages,
+            messages: move messages,
             proto: self
         });
 
