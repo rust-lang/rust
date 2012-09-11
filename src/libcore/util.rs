@@ -9,9 +9,11 @@ use cmp::Eq;
  */
 
 /// The identity function.
+#[inline(always)]
 pure fn id<T>(+x: T) -> T { move x }
 
 /// Ignores a value.
+#[inline(always)]
 pure fn ignore<T>(+_x: T) { }
 
 /// Sets `*ptr` to `new_value`, invokes `op()`, and then restores the

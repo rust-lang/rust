@@ -65,6 +65,7 @@ pure fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
  * Useful for calling certain function in the Rust runtime or otherwise
  * performing dark magick.
  */
+#[inline(always)]
 pure fn get_type_desc<T>() -> *TypeDesc {
     unchecked { rusti::get_tydesc::<T>() as *TypeDesc }
 }
@@ -93,6 +94,7 @@ pure fn pref_align_of<T>() -> uint {
 }
 
 /// Returns the refcount of a shared box (as just before calling this)
+#[inline(always)]
 pure fn refcount<T>(+t: @T) -> uint {
     unsafe {
         let ref_ptr: *uint = unsafe::reinterpret_cast(&t);
