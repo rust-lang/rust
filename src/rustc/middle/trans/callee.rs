@@ -273,6 +273,11 @@ fn trans_rtcall(bcx: block, name: ~str, args: ~[ValueRef], dest: expr::Dest)
     -> block
 {
     let did = bcx.ccx().rtcalls[name];
+    return trans_rtcall_or_lang_call(bcx, did, args, dest);
+}
+
+fn trans_rtcall_or_lang_call(bcx: block, did: ast::def_id, args: ~[ValueRef],
+                             dest: expr::Dest) -> block {
     let fty = if did.crate == ast::local_crate {
         ty::node_id_to_type(bcx.ccx().tcx, did.node)
     } else {

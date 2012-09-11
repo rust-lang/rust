@@ -44,7 +44,8 @@ struct LanguageItems {
     mut eq_trait: Option<def_id>,
     mut ord_trait: Option<def_id>,
 
-    mut str_eq_fn: Option<def_id>
+    mut str_eq_fn: Option<def_id>,
+    mut uniq_str_eq_fn: Option<def_id>
 }
 
 mod LanguageItems {
@@ -71,7 +72,8 @@ mod LanguageItems {
             eq_trait: None,
             ord_trait: None,
 
-            str_eq_fn: None
+            str_eq_fn: None,
+            uniq_str_eq_fn: None
         }
     }
 }
@@ -104,6 +106,7 @@ fn LanguageItemCollector(crate: @crate, session: session,
     item_refs.insert(~"ord", &mut items.ord_trait);
 
     item_refs.insert(~"str_eq", &mut items.str_eq_fn);
+    item_refs.insert(~"uniq_str_eq", &mut items.uniq_str_eq_fn);
 
     LanguageItemCollector {
         crate: crate,

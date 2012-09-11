@@ -747,6 +747,13 @@ pure fn eq_slice(a: &str, b: &str) -> bool {
 }
 
 /// Bytewise string equality
+#[cfg(notest)]
+#[lang="uniq_str_eq"]
+pure fn eq(a: &~str, b: &~str) -> bool {
+    eq_slice(*a, *b)
+}
+
+#[cfg(test)]
 pure fn eq(a: &~str, b: &~str) -> bool {
     eq_slice(*a, *b)
 }

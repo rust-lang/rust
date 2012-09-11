@@ -342,7 +342,8 @@ type ctxt =
       inferred_modes: HashMap<ast::node_id, ast::mode>,
       // maps the id of borrowed expr to scope of borrowed ptr
       borrowings: HashMap<ast::node_id, borrow>,
-      normalized_cache: HashMap<t, t>};
+      normalized_cache: HashMap<t, t>,
+      lang_items: middle::lang_items::LanguageItems};
 
 enum tbox_flag {
     has_params = 1,
@@ -809,7 +810,8 @@ fn mk_ctxt(s: session::session,
            amap: ast_map::map,
            freevars: freevars::freevar_map,
            region_map: middle::region::region_map,
-           region_paramd_items: middle::region::region_paramd_items) -> ctxt {
+           region_paramd_items: middle::region::region_paramd_items,
+           +lang_items: middle::lang_items::LanguageItems) -> ctxt {
     let interner = map::HashMap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
@@ -841,7 +843,8 @@ fn mk_ctxt(s: session::session,
       ty_param_bounds: map::int_hash(),
       inferred_modes: map::int_hash(),
       borrowings: map::int_hash(),
-      normalized_cache: new_ty_hash()}
+      normalized_cache: new_ty_hash(),
+      lang_items: move lang_items}
 }
 
 

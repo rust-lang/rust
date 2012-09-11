@@ -436,10 +436,27 @@ fn compare_values(cx: block, lhs: ValueRef, rhs: ValueRef, rhs_t: ty::t) ->
       return rslt(rs.bcx, rs.val);
     }
 
-    // Determine the operation we need.
-    let llop = C_u8(abi::cmp_glue_op_eq);
-    let cmpval = glue::call_cmp_glue(cx, lhs, rhs, rhs_t, llop);
-    rslt(cx, cmpval)
+    match ty::get(rhs_t).struct {
+        ty::ty_estr(ty::vstore_uniq) => {
+            let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
+                                               false);
+            let scratch_lhs = alloca(cx, val_ty(lhs));
+            Store(cx, lhs, scratch_lhs);
+            let scratch_rhs = alloca(cx, val_ty(rhs));
+            Store(cx, rhs, scratch_rhs);
+            let did = cx.tcx().lang_items.uniq_str_eq_fn.get();
+            let bcx = callee::trans_rtcall_or_lang_call(cx, did,
+                                                        ~[scratch_lhs,
+                                                          scratch_rhs],
+                                                        expr::SaveIn(
+                                                         scratch_result.val));
+            return scratch_result.to_result(bcx);
+        }
+        _ => {
+            cx.tcx().sess.bug(~"only scalars and unique strings supported in \
+                                compare_values");
+        }
+    }
 }
 
 fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
