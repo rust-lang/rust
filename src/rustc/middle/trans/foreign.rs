@@ -256,27 +256,27 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
                 if cls[i] == sseup_class {
                     cls[i] = sse_int_class;
                 } else if is_sse(cls[i]) {
-                    i += 1u;
+                    i += 1;
                     while cls[i] == sseup_class { i += 1u; }
                 } else if cls[i] == x87_class {
-                    i += 1u;
+                    i += 1;
                     while cls[i] == x87up_class { i += 1u; }
                 } else {
-                    i += 1u;
+                    i += 1;
                 }
             }
         }
     }
 
-    let words = (ty_size(ty) + 7u) / 8u;
+    let words = (ty_size(ty) + 7) / 8;
     let cls = vec::to_mut(vec::from_elem(words, no_class));
-    if words > 4u {
+    if words > 4 {
         all_mem(cls);
-        return vec::from_mut(cls);
+        return vec::from_mut(move cls);
     }
-    classify(ty, cls, 0u, 0u);
+    classify(ty, cls, 0, 0);
     fixup(ty, cls);
-    return vec::from_mut(cls);
+    return vec::from_mut(move cls);
 }
 
 fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {

@@ -11,7 +11,7 @@ fn indent<R>(op: fn() -> R) -> R {
     debug!(">>");
     let r <- op();
     debug!("<< (Result = %?)", r);
-    return r;
+    move r
 }
 
 struct _indenter {
