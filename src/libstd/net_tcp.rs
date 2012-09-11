@@ -577,7 +577,7 @@ fn listen(-host_ip: ip::IpAddr, port: uint, backlog: uint,
     -> result::Result<(), TcpListenErrData> unsafe {
     do listen_common(host_ip, port, backlog, iotask, on_establish_cb)
         // on_connect_cb
-        |handle| unsafe {
+        |move new_connect_cb, handle| unsafe {
             let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
                 as *TcpListenFcData;
             let new_conn = NewTcpConn(handle);
@@ -727,7 +727,7 @@ fn listen_common(-host_ip: ip::IpAddr, port: uint, backlog: uint,
  * A buffered wrapper that you can cast as an `io::reader` or `io::writer`
  */
 fn socket_buf(-sock: TcpSocket) -> TcpSocketBuf {
-    TcpSocketBuf(@{ sock: sock, mut buf: ~[] })
+    TcpSocketBuf(@{ sock: move sock, mut buf: ~[] })
 }
 
 /// Convenience methods extending `net::tcp::tcp_socket`
@@ -1520,7 +1520,7 @@ mod test {
                         log(debug,
                             ~"SERVER/WORKER: send on cont ch");
                         cont_ch.send(());
-                        let sock = result::unwrap(accept_result);
+                        let sock = result::unwrap(move accept_result);
                         log(debug, ~"SERVER: successfully accepted"+
                             ~"connection!");
                         let received_req_bytes = read(sock, 0u);
@@ -1607,7 +1607,7 @@ mod test {
             Err(err_data)
         }
         else {
-            let sock = result::unwrap(connect_result);
+            let sock = result::unwrap(move connect_result);
             let resp_bytes = str::to_bytes(resp);
             tcp_write_single(sock, resp_bytes);
             let read_result = sock.read(0u);

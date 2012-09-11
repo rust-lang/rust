@@ -41,7 +41,7 @@ fn map_slices<A: Copy Send, B: Copy Send>(
             let end = uint::min(len, base + items_per_task);
             do vec::as_buf(xs) |p, _len| {
                 let f = f();
-                let f = do future_spawn() |copy base| {
+                let f = do future_spawn() |move f, copy base| {
                     unsafe {
                         let len = end - base;
                         let slice = (ptr::offset(p, base),
@@ -55,7 +55,7 @@ fn map_slices<A: Copy Send, B: Copy Send>(
                         f(base, slice)
                     }
                 };
-                vec::push(futures, f);
+                vec::push(futures, move f);
             };
             base += items_per_task;
         }

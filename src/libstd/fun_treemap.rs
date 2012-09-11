@@ -54,7 +54,7 @@ fn find<K: Eq Ord, V: Copy>(m: Treemap<K, V>, +k: K) -> Option<V> {
       Node(@kk, @v, left, right) => {
         if k == kk {
             Some(v)
-        } else if k < kk { find(left, k) } else { find(right, k) }
+        } else if k < kk { find(left, move k) } else { find(right, move k) }
       }
     }
 }

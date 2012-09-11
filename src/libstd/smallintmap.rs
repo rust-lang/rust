@@ -21,7 +21,7 @@ enum SmallIntMap<T:Copy> {
 /// Create a smallintmap
 fn mk<T: Copy>() -> SmallIntMap<T> {
     let v = DVec();
-    return SmallIntMap_(@{v: v});
+    return SmallIntMap_(@{v: move v});
 }
 
 /**

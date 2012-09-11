@@ -291,9 +291,9 @@ fn run_tests(opts: TestOpts, tests: ~[TestDesc],
     debug!("using %u test tasks", concurrency);
 
     let total = vec::len(filtered_tests);
-    let mut run_idx = 0u;
-    let mut wait_idx = 0u;
-    let mut done_idx = 0u;
+    let mut run_idx = 0;
+    let mut wait_idx = 0;
+    let mut done_idx = 0;
 
     let p = core::comm::Port();
     let ch = core::comm::Chan(p);
@@ -301,24 +301,24 @@ fn run_tests(opts: TestOpts, tests: ~[TestDesc],
     while done_idx < total {
         while wait_idx < concurrency && run_idx < total {
             let test = copy filtered_tests[run_idx];
-            if concurrency == 1u {
+            if concurrency == 1 {
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
                 // that hang forever.
                 callback(TeWait(copy test));
             }
-            run_test(test, ch);
-            wait_idx += 1u;
-            run_idx += 1u;
+            run_test(move test, ch);
+            wait_idx += 1;
+            run_idx += 1;
         }
 
         let (test, result) = core::comm::recv(p);
-        if concurrency != 1u {
+        if concurrency != 1 {
             callback(TeWait(copy test));
         }
-        callback(TeResult(test, result));
-        wait_idx -= 1u;
-        done_idx += 1u;
+        callback(TeResult(move test, result));
+        wait_idx -= 1;
+        done_idx += 1;
     }
 }
 
@@ -342,7 +342,7 @@ fn filter_tests(opts: TestOpts,
 
     // Remove tests that don't match the test filter
     filtered = if option::is_none(opts.filter) {
-        filtered
+        move filtered
     } else {
         let filter_str =
             match opts.filter {
@@ -362,7 +362,7 @@ fn filter_tests(opts: TestOpts,
 
     // Maybe pull out the ignored test and unignore them
     filtered = if !opts.run_ignored {
-        filtered
+        move filtered
     } else {
         fn filter(test: TestDesc) -> Option<TestDesc> {
             if test.ignore {
@@ -384,7 +384,7 @@ fn filter_tests(opts: TestOpts,
         sort::merge_sort(lteq, filtered)
     };
 
-    return filtered;
+    move filtered
 }
 
 type TestFuture = {test: TestDesc, wait: fn@() -> TestResult};
@@ -395,12 +395,12 @@ fn run_test(+test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
         return;
     }
 
-    do task::spawn {
+    do task::spawn |move test| {
         let testfn = copy test.fn;
         let mut result_future = None; // task::future_result(builder);
         task::task().unlinked().future_result(|+r| {
-            result_future = Some(r);
-        }).spawn(testfn);
+            result_future = Some(move r);
+        }).spawn(move testfn);
         let task_result = future::get(&option::unwrap(result_future));
         let test_result = calc_result(test, task_result == task::Success);
         comm::send(monitor_ch, (copy test, test_result));

@@ -646,15 +646,15 @@ pure fn lt(value0: Json, value1: Json) -> bool {
                         let (d0_flat, d1_flat) = {
                             let d0_flat = dvec::DVec();
                             for d0.each |k, v| { d0_flat.push((k, v)); }
-                            let d0_flat = dvec::unwrap(d0_flat);
+                            let d0_flat = dvec::unwrap(move d0_flat);
                             d0_flat.qsort();
 
                             let mut d1_flat = dvec::DVec();
                             for d1.each |k, v| { d1_flat.push((k, v)); }
-                            let d1_flat = dvec::unwrap(d1_flat);
+                            let d1_flat = dvec::unwrap(move d1_flat);
                             d1_flat.qsort();
 
-                            (d0_flat, d1_flat)
+                            (move d0_flat, move d1_flat)
                         };
 
                         d0_flat < d1_flat

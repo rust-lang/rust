@@ -38,7 +38,7 @@ fn create<T: Copy>() -> Deque<T> {
             i += 1u;
         }
 
-        return rv;
+        move rv
     }
     fn get<T: Copy>(elts: DVec<Cell<T>>, i: uint) -> T {
         match elts.get_elt(i) { Some(t) => t, _ => fail }
@@ -111,7 +111,7 @@ fn create<T: Copy>() -> Deque<T> {
                 vec::to_mut(
                     vec::from_elem(initial_capacity, None)))
     };
-    repr as Deque::<T>
+    move (repr as Deque::<T>)
 }
 
 #[cfg(test)]

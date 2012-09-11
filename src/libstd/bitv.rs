@@ -541,7 +541,7 @@ fn from_fn(len: uint, f: fn(index: uint) -> bool) -> Bitv {
     for uint::range(0, len) |i| {
         bitv.set(i, f(i));
     }
-    return bitv;
+    move bitv
 }
 
 const uint_bits: uint = 32u + (1u << 32u >> 27u);

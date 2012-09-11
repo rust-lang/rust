@@ -343,7 +343,7 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
         i += 1u;
     }
     return Ok({opts: vec::from_slice(opts),
-               vals: vec::from_mut(vals),
+               vals: vec::from_mut(move vals),
                free: free});
 }
 
