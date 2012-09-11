@@ -620,7 +620,7 @@ fn adapt_borrowed_value(bcx: block,
            datum.to_str(bcx.ccx()),
            bcx.expr_to_str(expr));
 
-    match ty::get(datum.ty).struct {
+    match ty::get(datum.ty).sty {
         ty::ty_uniq(_) | ty::ty_box(_) => {
             let body_datum = datum.box_body(bcx);
             let rptr_datum = body_datum.to_rptr(bcx);

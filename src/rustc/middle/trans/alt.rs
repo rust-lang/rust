@@ -293,8 +293,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
    {vals: ~[ValueRef], bcx: block} {
     let _icx = bcx.insn_ctxt("alt::extract_variant_args");
     let ccx = bcx.fcx.ccx;
-    let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id))
-        .struct {
+    let enum_ty_substs = match ty::get(node_id_type(bcx, pat_id)).sty {
       ty::ty_enum(id, substs) => { assert id == vdefs.enm; substs.tps }
       _ => bcx.sess().bug(~"extract_variant_args: pattern has non-enum type")
     };
@@ -436,7 +435,7 @@ fn compare_values(cx: block, lhs: ValueRef, rhs: ValueRef, rhs_t: ty::t) ->
       return rslt(rs.bcx, rs.val);
     }
 
-    match ty::get(rhs_t).struct {
+    match ty::get(rhs_t).sty {
         ty::ty_estr(ty::vstore_uniq) => {
             let scratch_result = scratch_datum(cx, ty::mk_bool(cx.tcx()),
                                                false);
@@ -559,7 +558,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
 
     if any_tup_pat(m, col) {
         let tup_ty = node_id_type(bcx, pat_id);
-        let n_tup_elts = match ty::get(tup_ty).struct {
+        let n_tup_elts = match ty::get(tup_ty).sty {
           ty::ty_tup(elts) => elts.len(),
           _ => ccx.sess.bug(~"non-tuple type in tuple pattern")
         };

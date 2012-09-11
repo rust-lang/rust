@@ -55,7 +55,7 @@ fn single_type_contained_in(tcx: ty::ctxt, a: int_ty_set) ->
 fn convert_integral_ty_to_int_ty_set(tcx: ty::ctxt, t: ty::t)
     -> int_ty_set {
 
-    match get(t).struct {
+    match get(t).sty {
       ty_int(int_ty) => match int_ty {
         ast::ty_i8   => int_ty_set(INT_TY_SET_i8),
         ast::ty_i16  => int_ty_set(INT_TY_SET_i16),

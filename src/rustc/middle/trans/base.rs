@@ -422,7 +422,7 @@ fn compare_scalar_types(cx: block, lhs: ValueRef, rhs: ValueRef,
                         t: ty::t, op: ast::binop) -> Result {
     let f = |a| compare_scalar_values(cx, lhs, rhs, a, op);
 
-    match ty::get(t).struct {
+    match ty::get(t).sty {
         ty::ty_nil => rslt(cx, f(nil_type)),
         ty::ty_bool | ty::ty_ptr(_) => rslt(cx, f(unsigned_int)),
         ty::ty_int(_) => rslt(cx, f(signed_int)),
@@ -528,7 +528,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         let fn_ty = variant.ctor_ty;
         let ccx = cx.ccx();
         let mut cx = cx;
-        match ty::get(fn_ty).struct {
+        match ty::get(fn_ty).sty {
           ty::ty_fn(ref fn_ty) => {
             let mut j = 0u;
             let v_id = variant.id;
@@ -548,7 +548,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
     Typestate constraint that shows the unimpl case doesn't happen?
     */
     let mut cx = cx;
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_rec(*) | ty::ty_class(*) => {
           do expr::with_field_tys(cx.tcx(), t) |_has_dtor, field_tys| {
               for vec::eachi(field_tys) |i, field_ty| {
@@ -655,7 +655,7 @@ fn fail_if_zero(cx: block, span: span, divmod: ast::binop,
     } else {
         ~"modulo zero"
     };
-    let is_zero = match ty::get(rhs_t).struct {
+    let is_zero = match ty::get(rhs_t).sty {
       ty::ty_int(t) => {
         let zero = C_integral(T_int_ty(cx.ccx(), t), 0u64, False);
         ICmp(cx, lib::llvm::IntEQ, rhs, zero)
@@ -681,7 +681,7 @@ fn null_env_ptr(bcx: block) -> ValueRef {
 fn trans_external_path(ccx: @crate_ctxt, did: ast::def_id, t: ty::t)
     -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_fn(_) => {
         let llty = type_of_fn_from_ty(ccx, t);
         return get_extern_fn(ccx.externs, ccx.llmod, name,
@@ -1956,7 +1956,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
 
     let main_takes_argv =
         // invariant!
-        match ty::get(main_node_type).struct {
+        match ty::get(main_node_type).sty {
           ty::ty_fn(ref fn_ty) => fn_ty.sig.inputs.len() != 0u,
           _ => ccx.sess.span_fatal(sp, ~"main has a non-function type")
         };

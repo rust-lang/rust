@@ -284,7 +284,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         for inputs.each |a| { vec::push(strs, fn_input_to_str(cx, a)); }
         s += str::connect(strs, ~", ");
         s += ~")";
-        if ty::get(output).struct != ty_nil {
+        if ty::get(output).sty != ty_nil {
             s += ~" -> ";
             match cf {
               ast::noreturn => { s += ~"!"; }
@@ -310,7 +310,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
     }
 
     // pretty print the structural type representation:
-    return match ty::get(typ).struct {
+    return match ty::get(typ).sty {
       ty_nil => ~"()",
       ty_bot => ~"_|_",
       ty_bool => ~"bool",

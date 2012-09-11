@@ -447,7 +447,7 @@ fn trans_rvalue_dps(bcx: block, expr: @ast::expr, dest: Dest) -> block {
         }
         ast::expr_fn_block(decl, body, cap_clause) => {
             let expr_ty = expr_ty(bcx, expr);
-            match ty::get(expr_ty).struct {
+            match ty::get(expr_ty).sty {
                 ty::ty_fn(ref fn_ty) => {
                     debug!("translating fn_block %s with type %s",
                            expr_to_str(expr, tcx.sess.intr()),
@@ -464,7 +464,7 @@ fn trans_rvalue_dps(bcx: block, expr: @ast::expr, dest: Dest) -> block {
             }
         }
         ast::expr_loop_body(blk) => {
-            match ty::get(expr_ty(bcx, expr)).struct {
+            match ty::get(expr_ty(bcx, expr)).sty {
                 ty::ty_fn(ref fn_ty) => {
                     match blk.node {
                         ast::expr_fn_block(decl, body, cap) => {
@@ -774,7 +774,7 @@ fn fn_data_to_datum(bcx: block,
 
 fn with_field_tys<R>(tcx: ty::ctxt, ty: ty::t,
                      op: fn(bool, (&[ty::field])) -> R) -> R {
-    match ty::get(ty).struct {
+    match ty::get(ty).sty {
         ty::ty_rec(ref fields) => {
             op(false, *fields)
         }
@@ -1279,7 +1279,7 @@ impl cast_kind : cmp::Eq {
 }
 
 fn cast_type_kind(t: ty::t) -> cast_kind {
-    match ty::get(t).struct {
+    match ty::get(t).sty {
         ty::ty_float(*)   => cast_float,
         ty::ty_ptr(*)     => cast_pointer,
         ty::ty_rptr(*)    => cast_pointer,

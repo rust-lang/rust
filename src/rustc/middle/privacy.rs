@@ -154,7 +154,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
         visit_expr: |expr, method_map: &method_map, visitor| {
             match expr.node {
                 expr_field(base, ident, _) => {
-                    match ty::get(ty::expr_ty(tcx, base)).struct {
+                    match ty::get(ty::expr_ty(tcx, base)).sty {
                         ty_class(id, _)
                         if id.crate != local_crate ||
                            !privileged_items.contains(id.node) => {
@@ -175,7 +175,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
                     }
                 }
                 expr_struct(_, fields, _) => {
-                    match ty::get(ty::expr_ty(tcx, expr)).struct {
+                    match ty::get(ty::expr_ty(tcx, expr)).sty {
                         ty_class(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(id.node) {
@@ -202,7 +202,7 @@ fn check_crate(tcx: ty::ctxt, method_map: &method_map, crate: @ast::crate) {
         visit_pat: |pattern, method_map, visitor| {
             match pattern.node {
                 pat_struct(_, fields, _) => {
-                    match ty::get(ty::pat_ty(tcx, pattern)).struct {
+                    match ty::get(ty::pat_ty(tcx, pattern)).sty {
                         ty_class(id, _) => {
                             if id.crate != local_crate ||
                                     !privileged_items.contains(id.node) {

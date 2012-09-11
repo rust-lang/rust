@@ -66,7 +66,7 @@ fn replace_bound_regions_in_fn_ty(
 
     return {isr: isr,
          self_info: new_self_info,
-         fn_ty: match ty::get(t_fn).struct { ty::ty_fn(o) => o,
+         fn_ty: match ty::get(t_fn).sty { ty::ty_fn(o) => o,
           _ => tcx.sess.bug(~"replace_bound_regions_in_fn_ty: impossible")}};
 
 

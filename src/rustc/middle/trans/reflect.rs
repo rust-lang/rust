@@ -114,7 +114,7 @@ impl reflector {
         debug!("reflect::visit_ty %s",
                ty_to_str(bcx.ccx().tcx, t));
 
-        match ty::get(t).struct {
+        match ty::get(t).sty {
           ty::ty_bot => self.leaf(~"bot"),
           ty::ty_nil => self.leaf(~"nil"),
           ty::ty_bool => self.leaf(~"bool"),

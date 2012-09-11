@@ -45,7 +45,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     ccx.type_use_cache.insert(fn_id, vec::from_elem(n_tps, 3u));
 
     let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
-    match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).struct {
+    match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
       ty::ty_fn(ref fn_ty) => {
         for vec::each(fn_ty.sig.inputs) |arg| {
             if arg.mode == expl(by_val) { type_needs(cx, use_repr, arg.ty); }
@@ -130,7 +130,7 @@ fn type_needs_inner(cx: ctx, use_: uint, ty: ty::t,
                     enums_seen: @List<def_id>) {
     do ty::maybe_walk_ty(ty) |ty| {
         if ty::type_has_params(ty) {
-            match ty::get(ty).struct {
+            match ty::get(ty).sty {
                 /*
                  This previously included ty_box -- that was wrong
                  because if we cast an @T to an trait (for example) and return
@@ -178,7 +178,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
       }
       expr_cast(base, _) => {
         let result_t = ty::node_id_to_type(cx.ccx.tcx, e.id);
-        match ty::get(result_t).struct {
+        match ty::get(result_t).sty {
             ty::ty_trait(*) => {
               // When we're casting to an trait, we need the
               // tydesc for the expr that's being cast.

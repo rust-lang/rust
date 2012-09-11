@@ -300,7 +300,7 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
           Some(ex) => {
             // All noncopyable fields must be overridden
             let t = ty::expr_ty(cx.tcx, ex);
-            let ty_fields = match ty::get(t).struct {
+            let ty_fields = match ty::get(t).sty {
               ty::ty_rec(f) => f,
               _ => cx.tcx.sess.span_bug(ex.span, ~"bad expr type in record")
             };
@@ -504,7 +504,7 @@ fn check_send(cx: ctx, ty: ty::t, sp: span) -> bool {
 // note: also used from middle::typeck::regionck!
 fn check_owned(tcx: ty::ctxt, ty: ty::t, sp: span) -> bool {
     if !ty::kind_is_owned(ty::type_kind(tcx, ty)) {
-        match ty::get(ty).struct {
+        match ty::get(ty).sty {
           ty::ty_param(*) => {
             tcx.sess.span_err(sp, ~"value may contain borrowed \
                                     pointers; use `owned` bound");
@@ -551,7 +551,7 @@ fn check_cast_for_escaping_regions(
     // Determine what type we are casting to; if it is not an trait, then no
     // worries.
     let target_ty = ty::expr_ty(cx.tcx, target);
-    let target_substs = match ty::get(target_ty).struct {
+    let target_substs = match ty::get(target_ty).sty {
       ty::ty_trait(_, substs, _) => {substs}
       _ => { return; /* not a cast to a trait */ }
     };
@@ -574,7 +574,7 @@ fn check_cast_for_escaping_regions(
     let target_params = ty::param_tys_in_type(target_ty);
     let source_ty = ty::expr_ty(cx.tcx, source);
     do ty::walk_ty(source_ty) |ty| {
-        match ty::get(ty).struct {
+        match ty::get(ty).sty {
           ty::ty_param(source_param) => {
             if target_params.contains(source_param) {
                 /* case (2) */

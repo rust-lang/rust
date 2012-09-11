@@ -39,7 +39,7 @@ fn check_expr(tcx: ty::ctxt, ex: @expr, &&s: (), v: visit::vt<()>) {
            // If the type *is* empty, it's vacuously exhaustive
            return;
        }
-       match ty::get(pat_ty).struct {
+       match ty::get(pat_ty).sty {
           ty_enum(did, _) => {
               if (*enum_variants(tcx, did)).is_empty() && arms.is_empty() {
 
@@ -85,7 +85,7 @@ fn check_exhaustive(tcx: ty::ctxt, sp: span, pats: ~[@pat]) {
       not_useful => return, // This is good, wildcard pattern isn't reachable
       useful_ => None,
       useful(ty, ctor) => {
-        match ty::get(ty).struct {
+        match ty::get(ty).sty {
           ty::ty_bool => {
             match ctor {
               val(const_bool(true)) => Some(~"true"),
@@ -167,7 +167,7 @@ fn is_useful(tcx: ty::ctxt, m: matrix, v: ~[@pat]) -> useful {
       None => {
         match missing_ctor(tcx, m, left_ty) {
           None => {
-            match ty::get(left_ty).struct {
+            match ty::get(left_ty).sty {
               ty::ty_bool => {
                 match is_useful_specialized(tcx, m, v, val(const_bool(true)),
                                           0u, left_ty){
@@ -257,7 +257,7 @@ fn is_wild(tcx: ty::ctxt, p: @pat) -> bool {
 }
 
 fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
-    match ty::get(left_ty).struct {
+    match ty::get(left_ty).sty {
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) | ty::ty_tup(_) |
       ty::ty_rec(_) | ty::ty_class(*) => {
         for m.each |r| {
@@ -302,7 +302,7 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
 }
 
 fn ctor_arity(tcx: ty::ctxt, ctor: ctor, ty: ty::t) -> uint {
-    match ty::get(ty).struct {
+    match ty::get(ty).sty {
       ty::ty_tup(fs) => fs.len(),
       ty::ty_rec(fs) => fs.len(),
       ty::ty_box(_) | ty::ty_uniq(_) | ty::ty_rptr(*) => 1u,
@@ -352,7 +352,7 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
         }
       }
       pat_rec(flds, _) => {
-        let ty_flds = match ty::get(left_ty).struct {
+        let ty_flds = match ty::get(left_ty).sty {
             ty::ty_rec(flds) => flds,
             _ => fail ~"bad type for pat_rec"
         };
@@ -367,7 +367,7 @@ fn specialize(tcx: ty::ctxt, r: ~[@pat], ctor_id: ctor, arity: uint,
       pat_struct(_, flds, _) => {
         // Grab the class data that we care about.
         let class_fields, class_id;
-        match ty::get(left_ty).struct {
+        match ty::get(left_ty).sty {
             ty::ty_class(cid, _) => {
                 class_id = cid;
                 class_fields = ty::lookup_class_fields(tcx, class_id);

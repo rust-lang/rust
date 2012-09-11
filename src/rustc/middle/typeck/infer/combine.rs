@@ -354,7 +354,7 @@ fn super_tys<C:combine>(
     self: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
 
     let tcx = self.infcx().tcx;
-    match (ty::get(a).struct, ty::get(b).struct) {
+    match (ty::get(a).sty, ty::get(b).sty) {
       // The "subtype" ought to be handling cases involving bot or var:
       (ty::ty_bot, _) |
       (_, ty::ty_bot) |
@@ -383,8 +383,8 @@ fn super_tys<C:combine>(
       (ty::ty_int(_), _) |
       (ty::ty_uint(_), _) |
       (ty::ty_float(_), _) => {
-        let as_ = ty::get(a).struct;
-        let bs = ty::get(b).struct;
+        let as_ = ty::get(a).sty;
+        let bs = ty::get(b).sty;
         if as_ == bs {
             Ok(a)
         } else {

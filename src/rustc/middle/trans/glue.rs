@@ -51,7 +51,7 @@ fn drop_ty_root(bcx: block, v: ValueRef, rooted: bool, t: ty::t) -> block {
 
 fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
     let _icx = bcx.insn_ctxt("drop_ty_immediate");
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_uniq(_) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) => {
@@ -68,7 +68,7 @@ fn drop_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
 
 fn take_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> Result {
     let _icx = bcx.insn_ctxt("take_ty_immediate");
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
       ty::ty_evec(_, ty::vstore_box) |
       ty::ty_estr(ty::vstore_box) => {
@@ -97,7 +97,7 @@ fn free_ty(cx: block, v: ValueRef, t: ty::t) -> block {
 
 fn free_ty_immediate(bcx: block, v: ValueRef, t: ty::t) -> block {
     let _icx = bcx.insn_ctxt("free_ty_immediate");
-    match ty::get(t).struct {
+    match ty::get(t).sty {
       ty::ty_uniq(_) |
       ty::ty_evec(_, ty::vstore_uniq) |
       ty::ty_estr(ty::vstore_uniq) |
@@ -268,7 +268,7 @@ fn make_free_glue(bcx: block, v: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = bcx.insn_ctxt("make_free_glue");
     let ccx = bcx.ccx();
-    let bcx = match ty::get(t).struct {
+    let bcx = match ty::get(t).sty {
       ty::ty_box(body_mt) => {
         let v = Load(bcx, v);
         let body = GEPi(bcx, v, [0u, abi::box_field_body]);
@@ -357,7 +357,7 @@ fn make_drop_glue(bcx: block, v0: ValueRef, t: ty::t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = bcx.insn_ctxt("make_drop_glue");
     let ccx = bcx.ccx();
-    let bcx = match ty::get(t).struct {
+    let bcx = match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
       ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), t)
@@ -418,7 +418,7 @@ fn decr_refcnt_maybe_free(bcx: block, box_ptr: ValueRef, t: ty::t) -> block {
 fn make_take_glue(bcx: block, v: ValueRef, t: ty::t) {
     let _icx = bcx.insn_ctxt("make_take_glue");
     // NB: v is a *pointer* to type t here, not a direct value.
-    let bcx = match ty::get(t).struct {
+    let bcx = match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
       ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
         incr_refcnt_of_boxed(bcx, Load(bcx, v)); bcx

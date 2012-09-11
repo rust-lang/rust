@@ -114,7 +114,7 @@ impl lookup {
         debug!("method lookup(m_name=%s, self_ty=%s, %?)",
                self.fcx.tcx().sess.str_of(self.m_name),
                self.fcx.infcx().ty_to_str(self.self_ty),
-               ty::get(self.self_ty).struct);
+               ty::get(self.self_ty).sty);
 
         // Determine if there are any inherent methods we can call.
         // (An inherent method is one that belongs to no trait, but is
@@ -155,7 +155,7 @@ impl lookup {
             // autoderef.
             // Try each of the possible matching semantics in turn.
             for matching_modes.each |mode| {
-                match ty::get(self.self_ty).struct {
+                match ty::get(self.self_ty).sty {
                   ty::ty_box(mt) | ty::ty_uniq(mt) | ty::ty_rptr(_, mt) => {
                     self.add_candidates_from_type(mt.ty, mode);
                   }
@@ -260,7 +260,7 @@ impl lookup {
     }
 
     fn add_candidates_from_type(inner_ty: ty::t, mode: method_lookup_mode) {
-        match ty::get(inner_ty).struct {
+        match ty::get(inner_ty).sty {
           // First, see whether this is a bounded parameter.
           ty::ty_param(p) => {
             self.add_candidates_from_param(inner_ty, mode, p.idx, p.def_id);
@@ -304,7 +304,7 @@ impl lookup {
                 loop; /* ok */
               }
               ty::bound_trait(bound_t) => {
-                match ty::get(bound_t).struct {
+                match ty::get(bound_t).sty {
                   ty::ty_trait(i, substs, _) => (i, substs),
                   _ => fail ~"add_candidates_from_param: non-trait bound"
                 }
@@ -413,7 +413,7 @@ impl lookup {
     }
 
     fn ty_from_did(did: ast::def_id) -> ty::t {
-        match ty::get(ty::lookup_item_type(self.tcx(), did).ty).struct {
+        match ty::get(ty::lookup_item_type(self.tcx(), did).ty).sty {
             ty::ty_fn(ref fty) => {
                 ty::mk_fn(self.tcx(), FnTyBase {
                     meta: FnMeta {proto: ty::proto_vstore(ty::vstore_box),
@@ -434,7 +434,7 @@ impl lookup {
             }
         } else {
             match check ty::get(csearch::get_type(self.tcx(), did).ty)
-              .struct {
+              .sty {
 
               ty::ty_fn(fty) {
                 ty::mk_fn(self.tcx(), {proto: ast::proto_box with fty})

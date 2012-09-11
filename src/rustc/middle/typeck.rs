@@ -261,10 +261,10 @@ fn require_same_types(
 }
 
 fn arg_is_argv_ty(_tcx: ty::ctxt, a: ty::arg) -> bool {
-    match ty::get(a.ty).struct {
+    match ty::get(a.ty).sty {
       ty::ty_evec(mt, vstore_uniq) => {
         if mt.mutbl != ast::m_imm { return false; }
-        match ty::get(mt.ty).struct {
+        match ty::get(mt.ty).sty {
           ty::ty_estr(vstore_uniq) => return true,
           _ => return false
         }
@@ -279,7 +279,7 @@ fn check_main_fn_ty(ccx: @crate_ctxt,
 
     let tcx = ccx.tcx;
     let main_t = ty::node_id_to_type(tcx, main_id);
-    match ty::get(main_t).struct {
+    match ty::get(main_t).sty {
         ty::ty_fn(fn_ty) => {
             match tcx.items.find(main_id) {
                 Some(ast_map::node_item(it,_)) => {

@@ -317,7 +317,7 @@ fn eval_const_expr(tcx: middle::ty::ctxt, e: @expr) -> const_val {
       expr_cast(base, _) => {
         let ety = ty::expr_ty(tcx, e);
         let base = eval_const_expr(tcx, base);
-        match ty::get(ety).struct {
+        match ty::get(ety).sty {
           ty::ty_float(_) => {
             match base {
               const_uint(u) => const_float(u as f64),

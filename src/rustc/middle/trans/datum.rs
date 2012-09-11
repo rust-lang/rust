@@ -528,7 +528,7 @@ impl Datum {
          * This datum must represent an @T or ~T box.  Returns a new
          * by-ref datum of type T, pointing at the contents. */
 
-        let content_ty = match ty::get(self.ty).struct {
+        let content_ty = match ty::get(self.ty).sty {
             ty::ty_box(mt) | ty::ty_uniq(mt) => mt.ty,
             _ => {
                 bcx.tcx().sess.bug(fmt!(
@@ -583,7 +583,7 @@ impl Datum {
             }
         }
 
-        match ty::get(self.ty).struct {
+        match ty::get(self.ty).sty {
             ty::ty_box(_) | ty::ty_uniq(_) => {
                 return Some(self.box_body(bcx));
             }

@@ -112,7 +112,7 @@ impl resolve_state {
         indent(fn&() -> ty::t {
             if !ty::type_needs_infer(typ) { return typ; }
 
-            match ty::get(typ).struct {
+            match ty::get(typ).sty {
               ty::ty_infer(TyVar(vid)) => {
                 self.resolve_ty_var(vid)
               }

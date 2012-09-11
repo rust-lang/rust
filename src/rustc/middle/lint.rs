@@ -498,7 +498,7 @@ fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
             let mut n_box = 0;
             let mut n_uniq = 0;
             ty::fold_ty(cx, ty, |t| {
-                match ty::get(t).struct {
+                match ty::get(t).sty {
                   ty::ty_box(_) => n_box += 1,
                   ty::ty_uniq(_) => n_uniq += 1,
                   _ => ()
@@ -658,7 +658,7 @@ fn check_fn(tcx: ty::ctxt, fk: visit::fn_kind, decl: ast::fn_decl,
     }
 
     let fn_ty = ty::node_id_to_type(tcx, id);
-    match ty::get(fn_ty).struct {
+    match ty::get(fn_ty).sty {
       ty::ty_fn(fn_ty) => {
         let mut counter = 0;
         do vec::iter2(fn_ty.sig.inputs, decl.inputs) |arg_ty, arg_ast| {

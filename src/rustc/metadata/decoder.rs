@@ -584,7 +584,7 @@ fn get_enum_variants(intr: ident_interner, cdata: cmd, id: ast::node_id,
                                 tcx, cdata);
         let name = item_name(intr, item);
         let mut arg_tys: ~[ty::t] = ~[];
-        match ty::get(ctor_ty).struct {
+        match ty::get(ctor_ty).sty {
           ty::ty_fn(f) => {
             for f.sig.inputs.each |a| { vec::push(arg_tys, a.ty); }
           }
@@ -696,7 +696,7 @@ fn get_trait_methods(intr: ident_interner, cdata: cmd, id: ast::node_id,
         let bounds = item_ty_param_bounds(mth, tcx, cdata);
         let name = item_name(intr, mth);
         let ty = doc_type(mth, tcx, cdata);
-        let fty = match ty::get(ty).struct {
+        let fty = match ty::get(ty).sty {
           ty::ty_fn(f) => f,
           _ => {
             tcx.diag.handler().bug(

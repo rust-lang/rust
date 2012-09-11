@@ -440,7 +440,7 @@ type c_stack_tys = {
 
 fn c_arg_and_ret_lltys(ccx: @crate_ctxt,
                        id: ast::node_id) -> (~[TypeRef], TypeRef, ty::t) {
-    match ty::get(ty::node_id_to_type(ccx.tcx, id)).struct {
+    match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
         ty::ty_fn(ref fn_ty) => {
             let llargtys = type_of_explicit_args(ccx, fn_ty.sig.inputs);
             let llretty = type_of::type_of(ccx, fn_ty.sig.output);
