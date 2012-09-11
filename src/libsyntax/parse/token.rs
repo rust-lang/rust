@@ -415,7 +415,6 @@ fn restricted_keyword_table() -> HashMap<~str, ()> {
         ~"fail", ~"fn",
         ~"impl",
         ~"priv", ~"pub",
-        ~"return",
         ~"struct",
         ~"unsafe"
     ];
@@ -438,7 +437,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"let", ~"log", ~"loop",
         ~"match", ~"mod", ~"move", ~"mut",
         ~"pure",
-        ~"ref",
+        ~"ref", ~"return",
         ~"true", ~"trait", ~"type",
         ~"unchecked", ~"use",
         ~"while"
