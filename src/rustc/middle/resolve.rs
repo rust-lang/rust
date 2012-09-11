@@ -728,7 +728,7 @@ fn Resolver(session: session, lang_items: LanguageItems,
         intr: session.intr()
     };
 
-    return self;
+    move self
 }
 
 /// The main resolver class.

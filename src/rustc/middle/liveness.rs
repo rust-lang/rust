@@ -1466,7 +1466,7 @@ impl Liveness {
         let r <- f();
         self.break_ln = bl;
         self.cont_ln = cl;
-        return r;
+        move r
     }
 }
 

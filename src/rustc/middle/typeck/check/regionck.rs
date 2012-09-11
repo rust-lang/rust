@@ -92,18 +92,18 @@ impl @rcx {
 }
 
 fn regionck_expr(fcx: @fn_ctxt, e: @ast::expr) {
-    let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
+    let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
     let v = regionck_visitor();
-    v.visit_expr(e, @rcx, v);
+    v.visit_expr(e, @(move rcx), v);
     fcx.infcx().resolve_regions();
 }
 
 fn regionck_fn(fcx: @fn_ctxt,
                _decl: ast::fn_decl,
                blk: ast::blk) {
-    let rcx = rcx_({fcx:fcx, mut errors_reported: 0u});
+    let rcx = rcx_({fcx:fcx, mut errors_reported: 0});
     let v = regionck_visitor();
-    v.visit_block(blk, @rcx, v);
+    v.visit_block(blk, @(move rcx), v);
     fcx.infcx().resolve_regions();
 }
 

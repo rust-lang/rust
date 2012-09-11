@@ -565,7 +565,7 @@ impl infer_ctxt {
             self.ty_var_bindings.bindings = ~[];
             self.int_var_bindings.bindings = ~[];
             self.region_vars.commit();
-            r
+            move r
         }
     }
 
@@ -579,7 +579,7 @@ impl infer_ctxt {
               Ok(_) => (),
               Err(_) => self.rollback_to(&snapshot)
             }
-            r
+            move r
         }
     }
 
@@ -590,7 +590,7 @@ impl infer_ctxt {
             let snapshot = self.start_snapshot();
             let r = self.try(f);
             self.rollback_to(&snapshot);
-            r
+            move r
         }
     }
 }

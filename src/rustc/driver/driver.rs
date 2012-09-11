@@ -125,7 +125,7 @@ fn time<T>(do_it: bool, what: ~str, thunk: fn() -> T) -> T {
     let end = std::time::precise_time_s();
     io::stdout().write_str(fmt!("time: %3.3f s\t%s\n",
                                 end - start, what));
-    return rv;
+    move rv
 }
 
 enum compile_upto {

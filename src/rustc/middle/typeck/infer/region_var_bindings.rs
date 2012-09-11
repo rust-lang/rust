@@ -866,7 +866,7 @@ impl RegionVarBindings {
             }
         }
 
-        return graph;
+        return (move graph);
 
         fn insert_edge(graph: &mut Graph,
                        node_id: RegionVid,

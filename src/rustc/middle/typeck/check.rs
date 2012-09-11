@@ -740,7 +740,7 @@ impl @fn_ctxt {
         self.region_lb = lb;
         let v <- f();
         self.region_lb = old_region_lb;
-        return v;
+        move v
     }
 
     fn region_var_if_parameterized(rp: Option<ty::region_variance>,

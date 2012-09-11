@@ -1103,7 +1103,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
         diag: parms.diag,
         tcx: parms.tcx,
         buf: buf,
-        stats: stats,
+        stats: move stats,
         reachable: parms.reachable,
         reexports: parms.reexports,
         reexports2: parms.reexports2,
