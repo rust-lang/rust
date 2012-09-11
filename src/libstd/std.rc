@@ -35,7 +35,7 @@ export bitv, deque, fun_treemap, list, map;
 export smallintmap, sort, treemap;
 export rope, arena, par;
 export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
-export test, tempfile, serialization;
+export test, tempfile, serialization, serialization2;
 export cmp;
 export base64;
 export cell;
@@ -144,6 +144,8 @@ mod unicode;
 mod test;
 #[legacy_exports]
 mod serialization;
+#[legacy_exports]
+mod serialization2;
 
 // Local Variables:
 // mode: rust;
