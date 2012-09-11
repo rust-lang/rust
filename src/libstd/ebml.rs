@@ -570,11 +570,11 @@ impl EbmlDeserializer: serialization::Deserializer {
 
 #[test]
 fn test_option_int() {
-    fn serialize_1<S: serialization::serializer>(s: S, v: int) {
+    fn serialize_1<S: serialization::Serializer>(s: S, v: int) {
         s.emit_i64(v as i64);
     }
 
-    fn serialize_0<S: serialization::serializer>(s: S, v: Option<int>) {
+    fn serialize_0<S: serialization::Serializer>(s: S, v: Option<int>) {
         do s.emit_enum(~"core::option::t") {
             match v {
               None => s.emit_enum_variant(
@@ -588,11 +588,11 @@ fn test_option_int() {
         }
     }
 
-    fn deserialize_1<S: serialization::deserializer>(s: S) -> int {
+    fn deserialize_1<S: serialization::Deserializer>(s: S) -> int {
         s.read_i64() as int
     }
 
-    fn deserialize_0<S: serialization::deserializer>(s: S) -> Option<int> {
+    fn deserialize_0<S: serialization::Deserializer>(s: S) -> Option<int> {
         do s.read_enum(~"core::option::t") {
             do s.read_enum_variant |i| {
                 match i {
