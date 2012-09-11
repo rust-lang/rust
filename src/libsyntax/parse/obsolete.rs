@@ -18,7 +18,8 @@ pub enum ObsoleteSyntax {
     ObsoleteLet,
     ObsoleteFieldTerminator,
     ObsoleteStructCtor,
-    ObsoleteWith
+    ObsoleteWith,
+    ObsoleteClassMethod,
 }
 
 impl ObsoleteSyntax : cmp::Eq {
@@ -70,6 +71,10 @@ impl parser : ObsoleteReporter {
                 "with",
                 "record update is done with `..`, e.g. \
                  `MyStruct { foo: bar, .. baz }`"
+            ),
+            ObsoleteClassMethod => (
+                "class method",
+                "methods should be defined inside impls"
             ),
         };
 

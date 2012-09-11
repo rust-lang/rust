@@ -19,7 +19,7 @@ use obsolete::{
     ObsoleteReporter, ObsoleteSyntax,
     ObsoleteLowerCaseKindBounds, ObsoleteLet,
     ObsoleteFieldTerminator, ObsoleteStructCtor,
-    ObsoleteWith
+    ObsoleteWith, ObsoleteClassMethod
 };
 use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
@@ -2778,25 +2778,35 @@ impl parser {
         let obsolete_let = self.eat_obsolete_ident("let");
         if obsolete_let { self.obsolete(copy self.last_span, ObsoleteLet) }
 
-        let a_var = self.parse_instance_var(vis);
-        match self.token {
-          token::SEMI => {
-            self.obsolete(copy self.span, ObsoleteFieldTerminator);
-            self.bump();
-          }
-          token::COMMA => {
-            self.bump();
-          }
-          token::RBRACE => {}
-          _ => {
-            self.span_fatal(copy self.span,
-                            fmt!("expected `;`, `,`, or '}' but \
-                                  found `%s`",
-                                 token_to_str(self.reader,
-                                              self.token)));
-          }
+        let parse_obsolete_method =
+            !((obsolete_let || self.is_keyword(~"mut") ||
+               !self.is_any_keyword(copy self.token))
+              && !self.token_is_pound_or_doc_comment(copy self.token));
+
+        if !parse_obsolete_method {
+            let a_var = self.parse_instance_var(vis);
+            match self.token {
+              token::SEMI => {
+                self.obsolete(copy self.span, ObsoleteFieldTerminator);
+                self.bump();
+              }
+              token::COMMA => {
+                self.bump();
+              }
+              token::RBRACE => {}
+              _ => {
+                self.span_fatal(copy self.span,
+                                fmt!("expected `;`, `,`, or '}' but \
+                                      found `%s`",
+                                     token_to_str(self.reader,
+                                                  self.token)));
+              }
+            }
+            return a_var;
+        } else {
+            self.obsolete(copy self.span, ObsoleteClassMethod);
+            return @method_member(self.parse_method(vis));
         }
-        return a_var;
     }
 
     fn parse_dtor(attrs: ~[attribute]) -> class_contents {
