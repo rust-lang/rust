@@ -73,7 +73,7 @@ struct ARC<T: Const Send> { x: SharedMutableState<T> }
 
 /// Create an atomically reference counted wrapper.
 fn ARC<T: Const Send>(+data: T) -> ARC<T> {
-    ARC { x: unsafe { shared_mutable_state(data) } }
+    ARC { x: unsafe { shared_mutable_state(move data) } }
 }
 
 /**
@@ -105,8 +105,8 @@ fn clone<T: Const Send>(rc: &ARC<T>) -> ARC<T> {
  * guaranteed to deadlock.
  */
 fn unwrap<T: Const Send>(+rc: ARC<T>) -> T {
-    let ARC { x: x } = rc;
-    unsafe { unwrap_shared_mutable_state(x) }
+    let ARC { x: x } <- rc;
+    unsafe { unwrap_shared_mutable_state(move x) }
 }
 
 /****************************************************************************
@@ -120,7 +120,7 @@ struct MutexARC<T: Send> { x: SharedMutableState<MutexARCInner<T>> }
 
 /// Create a mutex-protected ARC with the supplied data.
 fn MutexARC<T: Send>(+user_data: T) -> MutexARC<T> {
-    mutex_arc_with_condvars(user_data, 1)
+    mutex_arc_with_condvars(move user_data, 1)
 }
 /**
  * Create a mutex-protected ARC with the supplied data and a specified number
@@ -131,7 +131,7 @@ fn mutex_arc_with_condvars<T: Send>(+user_data: T,
     let data =
         MutexARCInner { lock: mutex_with_condvars(num_condvars),
                           failed: false, data: user_data };
-    MutexARC { x: unsafe { shared_mutable_state(data) } }
+    MutexARC { x: unsafe { shared_mutable_state(move data) } }
 }
 
 impl<T: Send> &MutexARC<T> {
@@ -198,13 +198,13 @@ impl<T: Send> &MutexARC<T> {
  */
 // FIXME(#2585) make this a by-move method on the arc
 fn unwrap_mutex_arc<T: Send>(+arc: MutexARC<T>) -> T {
-    let MutexARC { x: x } = arc;
-    let inner = unsafe { unwrap_shared_mutable_state(x) };
-    let MutexARCInner { failed: failed, data: data, _ } = inner;
+    let MutexARC { x: x } <- arc;
+    let inner = unsafe { unwrap_shared_mutable_state(move x) };
+    let MutexARCInner { failed: failed, data: data, _ } <- inner;
     if failed {
         fail ~"Can't unwrap poisoned MutexARC - another task failed inside!"
     }
-    data
+    move data
 }
 
 // Common code for {mutex.access,rwlock.write}{,_cond}.
@@ -254,7 +254,7 @@ struct RWARC<T: Const Send> {
 
 /// Create a reader/writer ARC with the supplied data.
 fn RWARC<T: Const Send>(+user_data: T) -> RWARC<T> {
-    rw_arc_with_condvars(user_data, 1)
+    rw_arc_with_condvars(move user_data, 1)
 }
 /**
  * Create a reader/writer ARC with the supplied data and a specified number
@@ -265,7 +265,7 @@ fn rw_arc_with_condvars<T: Const Send>(+user_data: T,
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
                      failed: false, data: user_data };
-    RWARC { x: unsafe { shared_mutable_state(data) }, cant_nest: () }
+    RWARC { x: unsafe { shared_mutable_state(move data) }, cant_nest: () }
 }
 
 impl<T: Const Send> &RWARC<T> {
@@ -344,7 +344,7 @@ impl<T: Const Send> &RWARC<T> {
         let state = unsafe { get_shared_mutable_state(&self.x) };
         do borrow_rwlock(state).write_downgrade |write_mode| {
             check_poison(false, state.failed);
-            blk(RWWriteMode((&mut state.data, write_mode,
+            blk(RWWriteMode((&mut state.data, move write_mode,
                               PoisonOnFail(&mut state.failed))))
         }
     }
@@ -353,9 +353,9 @@ impl<T: Const Send> &RWARC<T> {
     fn downgrade(+token: RWWriteMode/&a<T>) -> RWReadMode/&a<T> {
         // The rwlock should assert that the token belongs to us for us.
         let state = unsafe { get_shared_immutable_state(&self.x) };
-        let RWWriteMode((data, t, _poison)) = token;
+        let RWWriteMode((data, t, _poison)) <- token;
         // Let readers in
-        let new_token = (&state.lock).downgrade(t);
+        let new_token = (&state.lock).downgrade(move t);
         // Whatever region the input reference had, it will be safe to use
         // the same region for the output reference. (The only 'unsafe' part
         // of this cast is removing the mutability.)
@@ -363,7 +363,7 @@ impl<T: Const Send> &RWARC<T> {
         // Downgrade ensured the token belonged to us. Just a sanity check.
         assert ptr::ref_eq(&state.data, new_data);
         // Produce new token
-        RWReadMode((new_data, new_token))
+        RWReadMode((new_data, move new_token))
     }
 }
 
@@ -376,13 +376,13 @@ impl<T: Const Send> &RWARC<T> {
  */
 // FIXME(#2585) make this a by-move method on the arc
 fn unwrap_rw_arc<T: Const Send>(+arc: RWARC<T>) -> T {
-    let RWARC { x: x, _ } = arc;
-    let inner = unsafe { unwrap_shared_mutable_state(x) };
-    let RWARCInner { failed: failed, data: data, _ } = inner;
+    let RWARC { x: x, _ } <- arc;
+    let inner = unsafe { unwrap_shared_mutable_state(move x) };
+    let RWARCInner { failed: failed, data: data, _ } <- inner;
     if failed {
         fail ~"Can't unwrap poisoned RWARC - another task failed inside!"
     }
-    data
+    move data
 }
 
 // Borrowck rightly complains about immutably aliasing the rwlock in order to

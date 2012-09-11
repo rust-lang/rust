@@ -84,7 +84,7 @@ fn new_sem_and_signal(count: int, num_condvars: uint)
     for num_condvars.times {
         vec::push(queues, new_waitqueue());
     }
-    new_sem(count, queues)
+    new_sem(count, move queues)
 }
 
 #[doc(hidden)]
@@ -98,9 +98,9 @@ impl<Q: Send> &Sem<Q> {
                     // Create waiter nobe.
                     let (SignalEnd, WaitEnd) = pipes::oneshot();
                     // Tell outer scope we need to block.
-                    waiter_nobe = Some(WaitEnd);
+                    waiter_nobe = Some(move WaitEnd);
                     // Enqueue ourself.
-                    state.waiters.tail.send(SignalEnd);
+                    state.waiters.tail.send(move SignalEnd);
                 }
             }
         }
@@ -203,8 +203,8 @@ impl &Condvar {
     fn wait_on(condvar_id: uint) {
         // Create waiter nobe.
         let (SignalEnd, WaitEnd) = pipes::oneshot();
-        let mut WaitEnd   = Some(WaitEnd);
-        let mut SignalEnd = Some(SignalEnd);
+        let mut WaitEnd   = Some(move WaitEnd);
+        let mut SignalEnd = Some(move SignalEnd);
         let mut reacquire = None;
         let mut out_of_bounds = None;
         unsafe {
@@ -219,7 +219,7 @@ impl &Condvar {
                         }
                         // Enqueue ourself to be woken up by a signaller.
                         let SignalEnd = option::swap_unwrap(&mut SignalEnd);
-                        state.blocked[condvar_id].tail.send(SignalEnd);
+                        state.blocked[condvar_id].tail.send(move SignalEnd);
                     } else {
                         out_of_bounds = Some(vec::len(state.blocked));
                     }

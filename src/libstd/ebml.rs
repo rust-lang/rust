@@ -452,7 +452,7 @@ priv impl EbmlDeserializer {
         let r = f();
         self.parent = old_parent;
         self.pos = old_pos;
-        return r;
+        move r
     }
 
     fn _next_uint(exp_tag: EbmlSerializerTag) -> uint {

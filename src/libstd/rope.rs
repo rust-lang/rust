@@ -1112,13 +1112,13 @@ mod node {
 
         fn empty() -> T {
             let stack : ~[mut @Node] = ~[mut];
-            return {stack: stack, mut stackpos: -1}
+            return {stack: move stack, mut stackpos: -1}
         }
 
         fn start(node: @Node) -> T {
             let stack = vec::to_mut(vec::from_elem(height(node)+1u, node));
             return {
-                stack:             stack,
+                stack:         move stack,
                 mut stackpos:  0
             }
         }

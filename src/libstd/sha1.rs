@@ -253,7 +253,7 @@ fn sha1() -> Sha1 {
         mut computed: false,
         work_buf: @vec::to_mut(vec::from_elem(work_buf_len, 0u32))
     };
-    let sh = st as Sha1;
+    let sh <- st as Sha1;
     sh.reset();
     return sh;
 }
