@@ -1,7 +1,5 @@
 struct cat {
-  priv {
-    mut meows : uint,
-  }
+  priv mut meows : uint,
 }
 
 priv impl cat {

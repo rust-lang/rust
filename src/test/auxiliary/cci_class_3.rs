@@ -1,9 +1,7 @@
 mod kitties {
 
 struct cat {
-  priv {
-    mut meows : uint,
-  }
+  priv mut meows : uint,
 
   how_hungry : int,
 }

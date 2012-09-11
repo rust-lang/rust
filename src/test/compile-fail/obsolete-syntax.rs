@@ -31,6 +31,13 @@ struct q : r {
     //~^ ERROR obsolete syntax: class traits
 }
 
+struct sss {
+    priv {
+    //~^ ERROR obsolete syntax: private section
+        foo: ()
+    }
+}
+
 fn obsolete_with() {
     struct S {
         foo: (),

@@ -3,9 +3,7 @@ trait noisy {
 }
 
 struct dog {
-  priv {
-    barks : @mut uint,
-  }
+  priv barks : @mut uint,
 
   volume : @mut int,
 }
@@ -37,9 +35,7 @@ fn dog() -> dog {
 }
 
 struct cat {
-  priv {
-    meows : @mut uint,
-  }
+  priv meows : @mut uint,
 
   how_hungry : @mut int,
   name : ~str,

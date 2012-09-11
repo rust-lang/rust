@@ -2818,22 +2818,13 @@ impl parser {
     }
 
     fn parse_class_item() -> class_contents {
+
+        if self.try_parse_obsolete_priv_section() {
+            return members(~[]);
+        }
+
         if self.eat_keyword(~"priv") {
-            // XXX: Remove after snapshot.
-            match self.token {
-                token::LBRACE => {
-                    self.bump();
-                    let mut results = ~[];
-                    while self.token != token::RBRACE {
-                        vec::push(results,
-                                  self.parse_single_class_item(private));
-                    }
-                    self.bump();
-                    return members(results);
-                }
-                _ =>
-                   return members(~[self.parse_single_class_item(private)])
-            }
+            return members(~[self.parse_single_class_item(private)])
         }
 
         if self.eat_keyword(~"pub") {
