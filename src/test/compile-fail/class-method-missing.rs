@@ -3,8 +3,11 @@ trait animal {
   fn eat();
 }
 
-struct cat : animal {
+struct cat {
   meows: uint,
+}
+
+impl cat : animal {
 }
 
 fn cat(in_x : uint) -> cat {

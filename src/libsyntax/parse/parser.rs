@@ -19,7 +19,7 @@ use obsolete::{
     ObsoleteReporter, ObsoleteSyntax,
     ObsoleteLowerCaseKindBounds, ObsoleteLet,
     ObsoleteFieldTerminator, ObsoleteStructCtor,
-    ObsoleteWith, ObsoleteClassMethod
+    ObsoleteWith, ObsoleteClassMethod, ObsoleteClassTraits
 };
 use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              bind_by_ref, bind_by_implicit_ref, bind_by_value, bind_by_move,
@@ -2648,8 +2648,10 @@ impl parser {
         let class_name = self.parse_value_ident();
         self.parse_region_param();
         let ty_params = self.parse_ty_params();
-        let traits : ~[@trait_ref] = if self.eat(token::COLON)
-            { self.parse_trait_ref_list(token::LBRACE) }
+        let traits : ~[@trait_ref] = if self.eat(token::COLON) {
+            self.obsolete(copy self.span, ObsoleteClassTraits);
+            self.parse_trait_ref_list(token::LBRACE)
+        }
         else { ~[] };
 
         let mut fields: ~[@struct_field];

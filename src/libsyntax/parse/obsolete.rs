@@ -20,6 +20,7 @@ pub enum ObsoleteSyntax {
     ObsoleteStructCtor,
     ObsoleteWith,
     ObsoleteClassMethod,
+    ObsoleteClassTraits
 }
 
 impl ObsoleteSyntax : cmp::Eq {
@@ -75,6 +76,11 @@ impl parser : ObsoleteReporter {
             ObsoleteClassMethod => (
                 "class method",
                 "methods should be defined inside impls"
+            ),
+            ObsoleteClassTraits => (
+                "class traits",
+                "implemented traits are specified on the impl, as in \
+                 `impl foo : bar {`"
             ),
         };
 

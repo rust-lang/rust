@@ -27,6 +27,10 @@ struct ss {
     //~^ ERROR obsolete syntax: class method
 }
 
+struct q : r {
+    //~^ ERROR obsolete syntax: class traits
+}
+
 fn obsolete_with() {
     struct S {
         foo: (),
