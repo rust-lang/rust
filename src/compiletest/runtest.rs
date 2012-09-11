@@ -289,9 +289,9 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
             was_expected = true;
         }
 
-        if !was_expected && (str::contains(line, ~"error") ||
-                             str::contains(line, ~"warning")) {
-            fatal_procres(fmt!("unexpected error pattern '%s'!", line),
+        if !was_expected && is_compiler_error_or_warning(line) {
+            fatal_procres(fmt!("unexpected compiler error or warning: '%s'",
+                               line),
                           procres);
         }
     }
@@ -303,6 +303,81 @@ fn check_expected_errors(expected_errors: ~[errors::expected_error],
                                ee.kind, ee.line, ee.msg), procres);
         }
     }
+}
+
+fn is_compiler_error_or_warning(line: ~str) -> bool {
+    let mut i = 0u;
+    return
+        scan_until_char(line, ':', &mut i) &&
+        scan_char(line, ':', &mut i) &&
+        scan_integer(line, &mut i) &&
+        scan_char(line, ':', &mut i) &&
+        scan_integer(line, &mut i) &&
+        scan_char(line, ':', &mut i) &&
+        scan_char(line, ' ', &mut i) &&
+        scan_integer(line, &mut i) &&
+        scan_char(line, ':', &mut i) &&
+        scan_integer(line, &mut i) &&
+        scan_char(line, ' ', &mut i) &&
+        (scan_string(line, ~"error", &mut i) ||
+         scan_string(line, ~"warning", &mut i));
+}
+
+fn scan_until_char(haystack: ~str, needle: char, idx: &mut uint) -> bool {
+    if *idx >= haystack.len() {
+        return false;
+    }
+    let opt = str::find_char_from(haystack, needle, *idx);
+    if opt.is_none() {
+        return false;
+    }
+    *idx = opt.get();
+    return true;
+}
+
+fn scan_char(haystack: ~str, needle: char, idx: &mut uint) -> bool {
+    if *idx >= haystack.len() {
+        return false;
+    }
+    let {ch, next} = str::char_range_at(haystack, *idx);
+    if ch != needle {
+        return false;
+    }
+    *idx = next;
+    return true;
+}
+
+fn scan_integer(haystack: ~str, idx: &mut uint) -> bool {
+    let mut i = *idx;
+    while i < haystack.len() {
+        let {ch, next} = str::char_range_at(haystack, i);
+        if ch < '0' || '9' < ch {
+            break;
+        }
+        i = next;
+    }
+    if i == *idx {
+        return false;
+    }
+    *idx = i;
+    return true;
+}
+
+fn scan_string(haystack: ~str, needle: ~str, idx: &mut uint) -> bool {
+    let mut haystack_i = *idx;
+    let mut needle_i = 0u;
+    while needle_i < needle.len() {
+        if haystack_i >= haystack.len() {
+            return false;
+        }
+        let {ch, next} = str::char_range_at(haystack, haystack_i);
+        haystack_i = next;
+        if !scan_char(needle, ch, &mut needle_i) {
+            return false;
+        }
+    }
+    *idx = haystack_i;
+    return true;
 }
 
 type procargs = {prog: ~str, args: ~[~str]};
