@@ -45,7 +45,7 @@ type TestFn = fn~();
 // these.
 type TestDesc = {
     name: TestName,
-    fn: TestFn,
+    testfn: TestFn,
     ignore: bool,
     should_fail: bool
 };
@@ -238,14 +238,14 @@ fn should_sort_failures_before_printing_them() {
 
     let test_a = {
         name: ~"a",
-        fn: fn~() { },
+        testfn: fn~() { },
         ignore: false,
         should_fail: false
     };
 
     let test_b = {
         name: ~"b",
-        fn: fn~() { },
+        testfn: fn~() { },
         ignore: false,
         should_fail: false
     };
@@ -367,7 +367,7 @@ fn filter_tests(opts: TestOpts,
         fn filter(test: TestDesc) -> Option<TestDesc> {
             if test.ignore {
                 return option::Some({name: test.name,
-                                  fn: copy test.fn,
+                                  testfn: copy test.testfn,
                                   ignore: false,
                                   should_fail: test.should_fail});
             } else { return option::None; }
@@ -396,7 +396,7 @@ fn run_test(+test: TestDesc, monitor_ch: comm::Chan<MonitorMsg>) {
     }
 
     do task::spawn |move test| {
-        let testfn = copy test.fn;
+        let testfn = copy test.testfn;
         let mut result_future = None; // task::future_result(builder);
         task::task().unlinked().future_result(|+r| {
             result_future = Some(move r);
@@ -425,7 +425,7 @@ mod tests {
         fn f() { fail; }
         let desc = {
             name: ~"whatever",
-            fn: f,
+            testfn: f,
             ignore: true,
             should_fail: false
         };
@@ -441,7 +441,7 @@ mod tests {
         fn f() { }
         let desc = {
             name: ~"whatever",
-            fn: f,
+            testfn: f,
             ignore: true,
             should_fail: false
         };
@@ -458,7 +458,7 @@ mod tests {
         fn f() { fail; }
         let desc = {
             name: ~"whatever",
-            fn: f,
+            testfn: f,
             ignore: false,
             should_fail: true
         };
@@ -474,7 +474,7 @@ mod tests {
         fn f() { }
         let desc = {
             name: ~"whatever",
-            fn: f,
+            testfn: f,
             ignore: false,
             should_fail: true
         };
@@ -513,8 +513,10 @@ mod tests {
         let opts = {filter: option::None, run_ignored: true,
             logfile: option::None};
         let tests =
-            ~[{name: ~"1", fn: fn~() { }, ignore: true, should_fail: false},
-             {name: ~"2", fn: fn~() { }, ignore: false, should_fail: false}];
+            ~[{name: ~"1", testfn: fn~() { },
+               ignore: true, should_fail: false},
+             {name: ~"2", testfn: fn~() { },
+              ignore: false, should_fail: false}];
         let filtered = filter_tests(opts, tests);
 
         assert (vec::len(filtered) == 1u);
@@ -539,7 +541,7 @@ mod tests {
         let testfn = fn~() { };
         let mut tests = ~[];
             for vec::each(names) |name| {
-            let test = {name: name, fn: copy testfn, ignore: false,
+            let test = {name: name, testfn: copy testfn, ignore: false,
                         should_fail: false};
             tests += ~[test];
         }
