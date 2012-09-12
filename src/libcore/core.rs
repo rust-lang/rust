@@ -4,10 +4,6 @@
 
 use option::{Some, None};
 use Option = option::Option;
-// XXX: snapshot rustc is generating code that wants lower-case option
-#[cfg(stage0)]
-use option = option::Option;
-
 use result::{Result, Ok, Err};
 
 use Path = path::Path;

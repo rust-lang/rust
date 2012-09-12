@@ -268,13 +268,11 @@ mod ct {
     }
 }
 
-
 // Functions used by the fmt extension at runtime. For now there are a lot of
 // decisions made a runtime. If it proves worthwhile then some of these
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it 0this way, I think.
-// XXX Rename to rt after snapshot
-mod rt2 {
+mod rt {
     const flag_none : u32 = 0u32;
     const flag_left_justify   : u32 = 0b00000000000000000000000000000001u32;
     const flag_left_zero_pad  : u32 = 0b00000000000000000000000000000010u32;
@@ -461,9 +459,8 @@ mod rt2 {
     }
 }
 
-// XXX remove after snappies
-#[allow(non_camel_case_types)]
-mod rt {
+// XXX remove after snapshots
+mod rt2 {
     const flag_none : u32 = 0u32;
     const flag_left_justify   : u32 = 0b00000000000000000000000000000001u32;
     const flag_left_zero_pad  : u32 = 0b00000000000000000000000000000010u32;
@@ -471,12 +468,12 @@ mod rt {
     const flag_sign_always    : u32 = 0b00000000000000000000000000001000u32;
     const flag_alternate      : u32 = 0b00000000000000000000000000010000u32;
 
-    enum count { count_is(int), count_implied, }
-    enum ty { ty_default, ty_bits, ty_hex_upper, ty_hex_lower, ty_octal, }
+    enum Count { CountIs(int), CountImplied, }
+    enum Ty { TyDefault, TyBits, TyHexUpper, TyHexLower, TyOctal, }
 
-    type conv = {flags: u32, width: count, precision: count, ty: ty};
+    type Conv = {flags: u32, width: Count, precision: Count, ty: Ty};
 
-    pure fn conv_int(cv: conv, i: int) -> ~str {
+    pure fn conv_int(cv: Conv, i: int) -> ~str {
         let radix = 10u;
         let prec = get_int_precision(cv);
         let mut s : ~str = int_to_str_prec(i, radix, prec);
@@ -487,47 +484,47 @@ mod rt {
                 unchecked { str::unshift_char(s, ' ') };
             }
         }
-        return unchecked { pad(cv, s, pad_signed) };
+        return unchecked { pad(cv, s, PadSigned) };
     }
-    pure fn conv_uint(cv: conv, u: uint) -> ~str {
+    pure fn conv_uint(cv: Conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
         let mut rs =
             match cv.ty {
-              ty_default => uint_to_str_prec(u, 10u, prec),
-              ty_hex_lower => uint_to_str_prec(u, 16u, prec),
-              ty_hex_upper => str::to_upper(uint_to_str_prec(u, 16u, prec)),
-              ty_bits => uint_to_str_prec(u, 2u, prec),
-              ty_octal => uint_to_str_prec(u, 8u, prec)
+              TyDefault => uint_to_str_prec(u, 10u, prec),
+              TyHexLower => uint_to_str_prec(u, 16u, prec),
+              TyHexUpper => str::to_upper(uint_to_str_prec(u, 16u, prec)),
+              TyBits => uint_to_str_prec(u, 2u, prec),
+              TyOctal => uint_to_str_prec(u, 8u, prec)
             };
-        return unchecked { pad(cv, rs, pad_unsigned) };
+        return unchecked { pad(cv, rs, PadUnsigned) };
     }
-    pure fn conv_bool(cv: conv, b: bool) -> ~str {
+    pure fn conv_bool(cv: Conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
         return conv_str(cv, s);
     }
-    pure fn conv_char(cv: conv, c: char) -> ~str {
+    pure fn conv_char(cv: Conv, c: char) -> ~str {
         let mut s = str::from_char(c);
-        return unchecked { pad(cv, s, pad_nozero) };
+        return unchecked { pad(cv, s, PadNozero) };
     }
-    pure fn conv_str(cv: conv, s: &str) -> ~str {
+    pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
         // displayed
         let mut unpadded = match cv.precision {
-          count_implied => s.to_unique(),
-          count_is(max) => if max as uint < str::char_len(s) {
+          CountImplied => s.to_unique(),
+          CountIs(max) => if max as uint < str::char_len(s) {
             str::substr(s, 0u, max as uint)
           } else {
             s.to_unique()
           }
         };
-        return unchecked { pad(cv, unpadded, pad_nozero) };
+        return unchecked { pad(cv, unpadded, PadNozero) };
     }
-    pure fn conv_float(cv: conv, f: float) -> ~str {
+    pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
-              count_is(c) => (float::to_str_exact, c as uint),
-              count_implied => (float::to_str, 6u)
+              CountIs(c) => (float::to_str_exact, c as uint),
+              CountImplied => (float::to_str, 6u)
         };
         let mut s = unchecked { to_str(f, digits) };
         if 0.0 <= f {
@@ -537,9 +534,9 @@ mod rt {
                 s = ~" " + s;
             }
         }
-        return unchecked { pad(cv, s, pad_float) };
+        return unchecked { pad(cv, s, PadFloat) };
     }
-    pure fn conv_poly<T>(cv: conv, v: T) -> ~str {
+    pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
         let s = sys::log_str(v);
         return conv_str(cv, s);
     }
@@ -568,35 +565,35 @@ mod rt {
                 } else { move s }
             };
     }
-    pure fn get_int_precision(cv: conv) -> uint {
+    pure fn get_int_precision(cv: Conv) -> uint {
         return match cv.precision {
-              count_is(c) => c as uint,
-              count_implied => 1u
+              CountIs(c) => c as uint,
+              CountImplied => 1u
             };
     }
 
-    enum pad_mode { pad_signed, pad_unsigned, pad_nozero, pad_float }
+    enum PadMode { PadSigned, PadUnsigned, PadNozero, PadFloat }
 
-    impl pad_mode: Eq {
-        pure fn eq(&&other: pad_mode) -> bool {
+    impl PadMode: Eq {
+        pure fn eq(&&other: PadMode) -> bool {
             match (self, other) {
-                (pad_signed, pad_signed) => true,
-                (pad_unsigned, pad_unsigned) => true,
-                (pad_nozero, pad_nozero) => true,
-                (pad_float, pad_float) => true,
-                (pad_signed, _) => false,
-                (pad_unsigned, _) => false,
-                (pad_nozero, _) => false,
-                (pad_float, _) => false
+                (PadSigned, PadSigned) => true,
+                (PadUnsigned, PadUnsigned) => true,
+                (PadNozero, PadNozero) => true,
+                (PadFloat, PadFloat) => true,
+                (PadSigned, _) => false,
+                (PadUnsigned, _) => false,
+                (PadNozero, _) => false,
+                (PadFloat, _) => false
             }
         }
-        pure fn ne(&&other: pad_mode) -> bool { !self.eq(other) }
+        pure fn ne(&&other: PadMode) -> bool { !self.eq(other) }
     }
 
-    fn pad(cv: conv, &s: ~str, mode: pad_mode) -> ~str {
+    fn pad(cv: Conv, &s: ~str, mode: PadMode) -> ~str {
         let uwidth : uint = match cv.width {
-          count_implied => return copy s,
-          count_is(width) => {
+          CountImplied => return copy s,
+          CountIs(width) => {
               // FIXME: width should probably be uint (see Issue #1996)
               width as uint
           }
@@ -610,17 +607,17 @@ mod rt {
             return s + padstr;
         }
         let {might_zero_pad, signed} = match mode {
-          pad_nozero => {might_zero_pad:false, signed:false},
-          pad_signed => {might_zero_pad:true,  signed:true },
-          pad_float => {might_zero_pad:true,  signed:true},
-          pad_unsigned => {might_zero_pad:true,  signed:false}
+          PadNozero => {might_zero_pad:false, signed:false},
+          PadSigned => {might_zero_pad:true,  signed:true },
+          PadFloat => {might_zero_pad:true,  signed:true},
+          PadUnsigned => {might_zero_pad:true,  signed:false}
         };
-        pure fn have_precision(cv: conv) -> bool {
-            return match cv.precision { count_implied => false, _ => true };
+        pure fn have_precision(cv: Conv) -> bool {
+            return match cv.precision { CountImplied => false, _ => true };
         }
         let zero_padding = {
             if might_zero_pad && have_flag(cv.flags, flag_left_zero_pad) &&
-                (!have_precision(cv) || mode == pad_float) {
+                (!have_precision(cv) || mode == PadFloat) {
                 padchar = '0';
                 true
             } else {
@@ -649,7 +646,6 @@ mod rt {
         flags & f != 0
     }
 }
-
 
 #[cfg(test)]
 mod test {
