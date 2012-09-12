@@ -188,13 +188,13 @@ mod global_env {
                 loop {
                     match comm::select2(msg_po, weak_po) {
                       either::Left(MsgGetEnv(n, resp_ch)) => {
-                        comm::send(resp_ch, impl::getenv(n))
+                        comm::send(resp_ch, impl_::getenv(n))
                       }
                       either::Left(MsgSetEnv(n, v, resp_ch)) => {
-                        comm::send(resp_ch, impl::setenv(n, v))
+                        comm::send(resp_ch, impl_::setenv(n, v))
                       }
                       either::Left(MsgEnv(resp_ch)) => {
-                        comm::send(resp_ch, impl::env())
+                        comm::send(resp_ch, impl_::env())
                       }
                       either::Right(_) => break
                     }
@@ -203,7 +203,7 @@ mod global_env {
         }
     }
 
-    mod impl {
+    mod impl_ {
         extern mod rustrt {
             fn rust_env_pairs() -> ~[~str];
         }

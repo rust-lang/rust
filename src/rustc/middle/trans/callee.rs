@@ -53,7 +53,7 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
         ast::expr_field(base, _, _) => {
             match bcx.ccx().maps.method_map.find(expr.id) {
                 Some(origin) => { // An impl method
-                    return impl::trans_method_callee(bcx, expr.id,
+                    return meth::trans_method_callee(bcx, expr.id,
                                                      base, origin);
                 }
                 None => {} // not a method, just a field
@@ -79,7 +79,7 @@ fn trans(bcx: block, expr: @ast::expr) -> Callee {
                 fn_callee(bcx, trans_fn_ref(bcx, did, ref_expr.id))
             }
             ast::def_static_method(did, _) => {
-                fn_callee(bcx, impl::trans_static_method_callee(bcx, did,
+                fn_callee(bcx, meth::trans_static_method_callee(bcx, did,
                                                                 ref_expr.id))
             }
             ast::def_variant(tid, vid) => {

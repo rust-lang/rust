@@ -519,7 +519,7 @@ fn trans_rvalue_dps(bcx: block, expr: @ast::expr, dest: Dest) -> block {
             return trans_overloaded_op(bcx, expr, base, ~[idx], dest);
         }
         ast::expr_cast(val, _) => {
-            return impl::trans_trait_cast(bcx, val, expr.id, dest);
+            return meth::trans_trait_cast(bcx, val, expr.id, dest);
         }
         ast::expr_assign_op(op, dst, src) => {
             return trans_assign_op(bcx, expr, op, dst, src);
@@ -549,7 +549,7 @@ fn trans_def_dps(bcx: block, ref_expr: @ast::expr,
             return fn_data_to_datum(bcx, did, fn_data, lldest);
         }
         ast::def_static_method(did, _) => {
-            let fn_data = impl::trans_static_method_callee(bcx, did,
+            let fn_data = meth::trans_static_method_callee(bcx, did,
                                                            ref_expr.id);
             return fn_data_to_datum(bcx, did, fn_data, lldest);
         }
@@ -1222,7 +1222,7 @@ fn trans_overloaded_op(bcx: block,
     return callee::trans_call_inner(
         bcx, expr.info(), fty,
         expr_ty(bcx, expr),
-        |bcx| impl::trans_method_callee(bcx, expr.callee_id, rcvr, origin),
+        |bcx| meth::trans_method_callee(bcx, expr.callee_id, rcvr, origin),
         callee::ArgExprs(args), dest);
 }
 

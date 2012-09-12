@@ -72,7 +72,7 @@ impl reflector {
         let scratch = scratch_datum(bcx, bool_ty, false);
         let bcx = callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
-            |bcx| impl::trans_trait_callee_from_llval(bcx, mth_ty,
+            |bcx| meth::trans_trait_callee_from_llval(bcx, mth_ty,
                                                       mth_idx, v),
             ArgVals(args), SaveIn(scratch.val));
         let result = scratch.to_value_llval(bcx);
