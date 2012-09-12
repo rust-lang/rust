@@ -362,15 +362,15 @@ fn mk_fake_ident_interner() -> ident_interner {
 /**
  * All the valid words that have meaning in the Rust language.
  *
- * Rust keywords are either 'contextual', 'restricted', or 'strict'.
- * Contextual keywords may be used as identifiers because their appearance in
- * the grammar is unambiguous. Restricted keywords may not appear in positions
- * that might otherwise contain _value identifiers_.  Strict keywords may not
- * appear as identifiers.
+ * Rust keywords are either 'temporary', 'restricted', or 'strict'.  Temporary
+ * keywords are contextual and may be used as identifiers anywhere.  They are
+ * expected to disappear from the grammar soon.  Restricted keywords may not
+ * appear in positions that might otherwise contain _value identifiers_.
+ * Strict keywords may not appear as identifiers at all.
  */
 fn keyword_table() -> HashMap<~str, ()> {
     let keywords = str_hash();
-    for contextual_keyword_table().each_key |word| {
+    for temporary_keyword_table().each_key |word| {
         keywords.insert(word, ());
     }
     for restricted_keyword_table().each_key |word| {
@@ -386,7 +386,7 @@ fn keyword_table() -> HashMap<~str, ()> {
 }
 
 /// Keywords that may be used as identifiers
-fn contextual_keyword_table() -> HashMap<~str, ()> {
+fn temporary_keyword_table() -> HashMap<~str, ()> {
     let words = str_hash();
     let keys = ~[
         ~"self", ~"static",
