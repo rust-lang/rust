@@ -1,6 +1,6 @@
 // xfail-fast
 // aux-build:issue-3012-1.rs
-use socketlib;
+extern mod socketlib;
 use socketlib::socket;
 
 fn main() {

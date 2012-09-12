@@ -1,6 +1,6 @@
 // xfail-test
 
-use std;
+extern mod std;
 use std::map::{map, hashmap, int_hash};
 
 class keys<K: Copy, V: Copy, M: Copy map<K,V>>

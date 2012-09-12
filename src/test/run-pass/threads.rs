@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-use std;
+extern mod std;
 
 fn main() {
     let mut i = 10;

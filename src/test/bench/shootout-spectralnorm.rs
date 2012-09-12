@@ -1,6 +1,6 @@
 // Based on spectalnorm.gcc by Sebastien Loisel
 
-use std;
+extern mod std;
 
 fn eval_A(i: uint, j: uint) -> float {
     1.0/(((i+j)*(i+j+1u)/2u+i+1u) as float)

@@ -1,7 +1,7 @@
 // xfail-test
 // xfail-fast
 
-use std;
+extern mod std;
 use std::map::*;
 
 class cat : map<int, bool> {

@@ -4,7 +4,7 @@
 //
 // I *think* it's the same, more or less.
 
-use std;
+extern mod std;
 use io::Writer;
 use io::WriterUtil;
 

@@ -1,7 +1,7 @@
 // xfail-pretty
 
-use std;
-use syntax;
+extern mod std;
+extern mod syntax;
 
 use io::*;
 

@@ -1,5 +1,5 @@
 
-use std;
+extern mod std;
 use vec::*;
 
 fn main() {

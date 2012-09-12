@@ -1,6 +1,6 @@
 // error-pattern:fail
 
-use std;
+extern mod std;
 use std::map;
 use std::map::HashMap;
 

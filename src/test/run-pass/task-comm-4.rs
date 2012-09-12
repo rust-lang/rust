@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use pipes::send;
 
 fn main() { test00(); }

@@ -1,5 +1,5 @@
 // xfail-test
-use std;
+extern mod std;
 use std::arc;
 fn dispose(+_x: arc::ARC<bool>) unsafe { }
 

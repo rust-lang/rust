@@ -1,5 +1,5 @@
 // xfail-win32
-use std;
+extern mod std;
 
 fn start(c: pipes::Chan<int>, i0: int) {
     let mut i = i0;

@@ -4,7 +4,7 @@
 
 */
 
-use std;
+extern mod std;
 use std::map;
 use mutable::Mut;
 use send_map::linear::*;

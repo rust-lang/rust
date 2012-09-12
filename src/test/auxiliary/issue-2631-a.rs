@@ -1,7 +1,7 @@
 #[link(name = "req")];
 #[crate_type = "lib"];
 
-use std;
+extern mod std;
 
 use dvec::*;
 use dvec::DVec;

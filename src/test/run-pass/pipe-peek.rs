@@ -1,6 +1,6 @@
 // xfail-pretty
 
-use std;
+extern mod std;
 use std::timer::sleep;
 use std::uv;
 

@@ -4,7 +4,7 @@
 // This test makes sure we can do cross-crate inlining on functions
 // that use capture clauses.
 
-use cci_capture_clause;
+extern mod cci_capture_clause;
 
 use comm::recv;
 

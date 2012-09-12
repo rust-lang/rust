@@ -13,7 +13,7 @@
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 
-use core(vers = "0.4");
+extern mod core(vers = "0.4");
 use core::*;
 
 export net, net_tcp, net_ip, net_url;

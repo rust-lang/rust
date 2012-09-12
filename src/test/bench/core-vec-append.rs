@@ -1,6 +1,6 @@
 // A raw test of vector appending performance.
 
-use std;
+extern mod std;
 use dvec::DVec;
 use io::WriterUtil;
 

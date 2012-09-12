@@ -1747,7 +1747,7 @@ fn print_view_item(s: ps, item: @ast::view_item) {
     print_outer_attributes(s, item.attrs);
     match item.node {
       ast::view_item_use(id, mta, _) => {
-        head(s, ~"use");
+        head(s, ~"extern mod");
         print_ident(s, id);
         if vec::len(mta) > 0u {
             popen(s);

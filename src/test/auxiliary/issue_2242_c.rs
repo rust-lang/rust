@@ -1,7 +1,7 @@
 #[link(name = "c", vers = "0.1")];
 #[crate_type = "lib"];
 
-use a;
+extern mod a;
 
 use a::to_strz;
 

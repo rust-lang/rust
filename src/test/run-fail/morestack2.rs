@@ -5,7 +5,7 @@
 // See the hack in upcall_call_shim_on_c_stack where it messes
 // with the stack limit.
 
-use std;
+extern mod std;
 
 extern mod rustrt {
     fn last_os_error() -> ~str;

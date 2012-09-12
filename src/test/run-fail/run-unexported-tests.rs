@@ -1,7 +1,7 @@
 // error-pattern:runned an unexported test
 // compile-flags:--test
 
-use std;
+extern mod std;
 
 mod m {
     export exported;

@@ -1,6 +1,6 @@
 // xfail-test
 // error-pattern: instantiating a type parameter with an incompatible type
-use std;
+extern mod std;
 use std::arc::rw_arc;
 
 fn main() {

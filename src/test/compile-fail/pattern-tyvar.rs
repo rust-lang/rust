@@ -1,5 +1,5 @@
 // -*- rust -*-
-use std;
+extern mod std;
 use option::Some;
 
 // error-pattern: mismatched types

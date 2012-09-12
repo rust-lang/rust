@@ -7,7 +7,7 @@
 use comm::*;
 use future::future;
 
-use std;
+extern mod std;
 use std::time;
 
 fn thread_ring(i: uint,

@@ -1,6 +1,6 @@
 // error-pattern: mismatched types
 
-use std;
+extern mod std;
 
 fn main() {
     let a = ~[0];

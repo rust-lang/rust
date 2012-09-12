@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 fn asSendfn( f : fn~()->uint ) -> uint {
    return f();

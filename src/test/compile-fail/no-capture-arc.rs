@@ -1,6 +1,6 @@
 // error-pattern: copying a noncopyable value
 
-use std;
+extern mod std;
 use std::arc;
 use comm::*;
 

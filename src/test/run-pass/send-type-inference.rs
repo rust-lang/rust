@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use comm::Chan;
 use comm::send;
 use comm::Port;

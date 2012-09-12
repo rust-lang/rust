@@ -3,7 +3,7 @@
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
-use std;
+extern mod std;
 
 struct notify {
     ch: comm::Chan<bool>, v: @mut bool,

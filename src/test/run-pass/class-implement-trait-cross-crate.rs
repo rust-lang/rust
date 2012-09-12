@@ -1,6 +1,6 @@
 // xfail-fast
 // aux-build:cci_class_trait.rs
-use cci_class_trait;
+extern mod cci_class_trait;
 use cci_class_trait::animals::*;
 
 struct cat {

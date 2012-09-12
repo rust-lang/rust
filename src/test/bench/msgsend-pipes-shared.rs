@@ -10,7 +10,7 @@
 
 // xfail-pretty
 
-use std;
+extern mod std;
 use io::Writer;
 use io::WriterUtil;
 

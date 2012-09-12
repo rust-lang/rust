@@ -2,6 +2,6 @@
 // aux-build:issue-2414-a.rs
 // aux-build:issue-2414-b.rs
 
-use b;
+extern mod b;
 
 fn main() {}

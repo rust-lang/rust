@@ -1,6 +1,6 @@
 // Microbenchmark for the smallintmap library
 
-use std;
+extern mod std;
 use std::smallintmap;
 use std::smallintmap::SmallIntMap;
 use io::WriterUtil;

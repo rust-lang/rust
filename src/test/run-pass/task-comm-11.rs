@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 fn start(c: pipes::Chan<pipes::Chan<int>>) {
     let (ch, p) = pipes::stream();

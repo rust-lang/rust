@@ -1,5 +1,5 @@
 // xfail-win32
-use std;
+extern mod std;
 
 fn f() {
     let a = ~0;

@@ -1,5 +1,5 @@
 //buggy.rs
-use std;
+extern mod std;
 use std::map::HashMap;
 use std::map;
 

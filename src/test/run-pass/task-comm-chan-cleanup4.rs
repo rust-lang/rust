@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 // We're trying to trigger a race between send and port destruction that
 // results in the string not being freed

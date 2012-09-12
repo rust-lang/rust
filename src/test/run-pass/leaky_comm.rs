@@ -1,7 +1,7 @@
 // xfail-fast
 // aux-build:test_comm.rs
 
-use test_comm;
+extern mod test_comm;
 
 fn main() {
   let p = test_comm::port();

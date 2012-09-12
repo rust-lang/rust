@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 /**
  * A function that returns a hash of a value

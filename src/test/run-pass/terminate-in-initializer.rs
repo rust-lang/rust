@@ -2,7 +2,7 @@
 // Issue #787
 // Don't try to clean up uninitialized locals
 
-use std;
+extern mod std;
 
 fn test_break() { loop { let x: @int = break; } }
 

@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 fn main() {
     task::spawn(|| child(~"Hello") );
 }

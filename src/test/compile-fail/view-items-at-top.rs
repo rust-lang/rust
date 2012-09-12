@@ -1,6 +1,6 @@
 // xfail-test
 
-use std;
+extern mod std;
 
 fn f() {
 }

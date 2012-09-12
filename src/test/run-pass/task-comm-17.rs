@@ -2,7 +2,7 @@
 
 // This test is specifically about spawning temporary closures.
 
-use std;
+extern mod std;
 
 fn f() {
 }

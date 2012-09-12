@@ -3,9 +3,9 @@
 // aux-build:issue_2242_b.rs
 // aux-build:issue_2242_c.rs
 
-use a;
-use b;
-use c;
+extern mod a;
+extern mod b;
+extern mod c;
 
 use a::to_strz;
 

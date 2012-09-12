@@ -1,6 +1,6 @@
 // xfail-fast
 // aux-build:cci_class_6.rs
-use cci_class_6;
+extern mod cci_class_6;
 use cci_class_6::kitties::*;
 
 fn main() {

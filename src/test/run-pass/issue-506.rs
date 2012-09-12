@@ -4,7 +4,7 @@
   Testing spawning foreign functions
 */
 
-use std;
+extern mod std;
 
 #[abi = "cdecl"]
 extern mod rustrt {

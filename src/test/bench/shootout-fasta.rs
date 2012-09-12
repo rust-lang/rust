@@ -5,7 +5,7 @@
  * Computer Language Benchmarks Game
  * http://shootout.alioth.debian.org/
  */
-use std;
+extern mod std;
 use io::WriterUtil;
 
 fn LINE_LENGTH() -> uint { return 60u; }

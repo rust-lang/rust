@@ -1,6 +1,6 @@
 // aux-build:noexporttypelib.rs
 
-use noexporttypelib;
+extern mod noexporttypelib;
 
 fn main() {
     // Here, the type returned by foo() is not exported.

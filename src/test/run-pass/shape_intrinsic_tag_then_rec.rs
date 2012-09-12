@@ -2,7 +2,7 @@
 // on x86_64: when there is a enum embedded in an
 // interior record which is then itself interior to
 // something else, shape calculations were off.
-use std;
+extern mod std;
 use std::list;
 use std::list::list;
 

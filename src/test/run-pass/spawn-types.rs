@@ -4,7 +4,7 @@
   Arnold.
  */
 
-use std;
+extern mod std;
 
 
 type ctx = comm::Chan<int>;

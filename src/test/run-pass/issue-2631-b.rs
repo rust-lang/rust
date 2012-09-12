@@ -1,8 +1,8 @@
 // xfail-fast
 // aux-build:issue-2631-a.rs
 
-use req;
-use std;
+extern mod req;
+extern mod std;
 
 use req::*;
 use std::map::*;

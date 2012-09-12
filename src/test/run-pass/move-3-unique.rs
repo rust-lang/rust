@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 fn test(x: bool, foo: ~{x: int, y: int, z: int}) -> int {
     let bar = foo;

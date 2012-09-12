@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 fn child(c: comm::Chan<~uint>, i: uint) {
     comm::send(c, ~i);

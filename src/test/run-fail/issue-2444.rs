@@ -1,6 +1,6 @@
 // error-pattern:explicit failure
 
-use std;
+extern mod std;
 use std::arc;
 
 enum e<T: Const Send> { e(arc::ARC<T>) }

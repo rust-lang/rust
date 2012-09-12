@@ -4,7 +4,7 @@
 */
 // xfail-test
 
-use std;
+extern mod std;
 use task::join;
 
 fn loop(n: int) {

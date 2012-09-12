@@ -2,7 +2,7 @@
 
 mod m {
   #[foo = "bar"]
-  use std;
+  extern mod std;
 }
 
 fn main() {

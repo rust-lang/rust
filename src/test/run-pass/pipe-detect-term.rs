@@ -3,7 +3,7 @@
 // xfail-pretty
 // xfail-win32
 
-use std;
+extern mod std;
 use std::timer::sleep;
 use std::uv;
 

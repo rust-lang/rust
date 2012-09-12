@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-use std;
+extern mod std;
 use comm::*;
 
 fn main() {

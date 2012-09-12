@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 // error-pattern:fail
-use std;
+extern mod std;
 use comm::Chan;
 use comm::Port;
 use comm::recv;

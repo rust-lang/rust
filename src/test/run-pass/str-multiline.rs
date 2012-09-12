@@ -1,7 +1,7 @@
 
 
 // -*- rust -*-
-use std;
+extern mod std;
 
 fn main() {
     let a: ~str = ~"this \

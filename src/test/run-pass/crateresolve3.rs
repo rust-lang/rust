@@ -6,12 +6,12 @@
 // as long as no name collision on invoked functions.
 
 mod a {
-    use crateresolve3(vers = "0.1");
+    extern mod crateresolve3(vers = "0.1");
     fn f() { assert crateresolve3::f() == 10; }
 }
 
 mod b {
-    use crateresolve3(vers = "0.2");
+    extern mod crateresolve3(vers = "0.2");
     fn f() { assert crateresolve3::g() == 20; }
 }
 
