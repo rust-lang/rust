@@ -50,7 +50,7 @@ export unwrap;
  * type could only produce 47 million pushes/second.
  */
 type DVec_<A> = {
-    mut data: ~[mut A]
+    mut data: ~[A]
 };
 
 enum DVec<A> {
@@ -59,21 +59,21 @@ enum DVec<A> {
 
 /// Creates a new, empty dvec
 fn DVec<A>() -> DVec<A> {
-    DVec_({mut data: ~[mut]})
+    DVec_({mut data: ~[]})
 }
 
 /// Creates a new dvec with a single element
 fn from_elem<A>(+e: A) -> DVec<A> {
-    DVec_({mut data: ~[mut move e]})
+    DVec_({mut data: ~[move e]})
 }
 
 /// Creates a new dvec with the contents of a vector
-fn from_vec<A>(+v: ~[mut A]) -> DVec<A> {
+fn from_vec<A>(+v: ~[A]) -> DVec<A> {
     DVec_({mut data: move v})
 }
 
 /// Consumes the vector and returns its contents
-fn unwrap<A>(+d: DVec<A>) -> ~[mut A] {
+fn unwrap<A>(+d: DVec<A>) -> ~[A] {
     let DVec_({data: v}) <- d;
     move v
 }
@@ -89,7 +89,7 @@ priv impl<A> DVec<A> {
     }
 
     #[inline(always)]
-    fn check_out<B>(f: fn(-~[mut A]) -> B) -> B {
+    fn check_out<B>(f: fn(-~[A]) -> B) -> B {
         unsafe {
             let mut data = unsafe::reinterpret_cast(&null::<()>());
             data <-> self.data;
@@ -100,9 +100,9 @@ priv impl<A> DVec<A> {
     }
 
     #[inline(always)]
-    fn give_back(-data: ~[mut A]) {
+    fn give_back(+data: ~[A]) {
         unsafe {
-            self.data <- data;
+            self.data = move data;
         }
     }
 }
@@ -122,8 +122,20 @@ impl<A> DVec<A> {
      * and return a new vector to replace it with.
      */
     #[inline(always)]
-    fn swap(f: fn(-~[mut A]) -> ~[mut A]) {
+    fn swap(f: fn(-~[A]) -> ~[A]) {
         self.check_out(|v| self.give_back(f(move v)))
+    }
+
+    /**
+     * Swaps out the current vector and hands it off to a user-provided
+     * function `f`.  The function should transform it however is desired
+     * and return a new vector to replace it with.
+     */
+    #[inline(always)]
+    fn swap_mut(f: fn(-~[mut A]) -> ~[mut A]) {
+        do self.swap |v| {
+            vec::from_mut(f(vec::to_mut(move v)))
+        }
     }
 
     /// Returns the number of elements currently in the dvec
@@ -138,7 +150,7 @@ impl<A> DVec<A> {
     }
 
     /// Overwrite the current contents
-    fn set(+w: ~[mut A]) {
+    fn set(+w: ~[A]) {
         self.check_not_borrowed();
         self.data <- w;
     }
@@ -161,7 +173,7 @@ impl<A> DVec<A> {
             let data_ptr: *() = unsafe::reinterpret_cast(&data);
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
             log(error, ~"a");
-            self.data <- ~[mut move t];
+            self.data <- ~[move t];
             vec::push_all_move(self.data, move data);
             log(error, ~"b");
         }
@@ -176,9 +188,9 @@ impl<A> DVec<A> {
     /// Remove and return the first element
     fn shift() -> A {
         do self.check_out |v| {
-            let mut v = vec::from_mut(move v);
+            let mut v = move v;
             let result = vec::shift(v);
-            self.give_back(vec::to_mut(move v));
+            self.give_back(move v);
             move result
         }
     }
@@ -186,6 +198,7 @@ impl<A> DVec<A> {
     /// Reverse the elements in the list, in place
     fn reverse() {
         do self.check_out |v| {
+            let mut v = move v;
             vec::reverse(v);
             self.give_back(move v);
         }
@@ -203,6 +216,7 @@ impl<A> DVec<A> {
     /// Gives access to the vector as a slice with mutable contents
     fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
         do self.check_out |v| {
+            let mut v = move v;
             let result = op(v);
             self.give_back(move v);
             move result
@@ -268,7 +282,7 @@ impl<A: Copy> DVec<A> {
     pure fn get() -> ~[A] {
         unchecked {
             do self.check_out |v| {
-                let w = vec::from_mut(copy v);
+                let w = copy v;
                 self.give_back(move v);
                 move w
             }
@@ -295,9 +309,9 @@ impl<A: Copy> DVec<A> {
      */
     fn grow_set_elt(idx: uint, initval: A, val: A) {
         do self.swap |v| {
-            let mut v <- v;
+            let mut v = vec::to_mut(move v);
             vec::grow_set(v, idx, initval, val);
-            move v
+            move vec::from_mut(v)
         }
     }
 

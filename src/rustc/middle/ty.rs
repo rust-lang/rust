@@ -247,7 +247,7 @@ impl creader_cache_key : cmp::Eq {
 }
 
 impl creader_cache_key : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_3(&self.cnum, &self.pos, &self.len, lsb0, f);
     }
 }
@@ -262,7 +262,7 @@ impl intern_key: cmp::Eq {
 }
 
 impl intern_key : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.sty, &self.o_def_id, lsb0, f);
     }
 }
@@ -404,7 +404,7 @@ enum closure_kind {
 }
 
 impl closure_kind : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         (self as u8).iter_bytes(lsb0, f)
     }
 }
@@ -422,7 +422,7 @@ enum fn_proto {
 }
 
 impl fn_proto : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           proto_bare =>
           0u8.iter_bytes(lsb0, f),
@@ -500,7 +500,7 @@ impl param_ty: cmp::Eq {
 }
 
 impl param_ty : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.idx, &self.def_id, lsb0, f)
     }
 }
@@ -674,7 +674,7 @@ enum InferTy {
 }
 
 impl InferTy : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           TyVar(ref tv) => to_bytes::iter_bytes_2(&0u8, tv, lsb0, f),
           IntVar(ref iv) => to_bytes::iter_bytes_2(&1u8, iv, lsb0, f)
@@ -683,7 +683,7 @@ impl InferTy : to_bytes::IterBytes {
 }
 
 impl param_bound : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           bound_copy => 0u8.iter_bytes(lsb0, f),
           bound_owned => 1u8.iter_bytes(lsb0, f),
@@ -747,25 +747,25 @@ impl purity: purity_to_str {
 }
 
 impl RegionVid : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
 
 impl TyVid : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
 
 impl IntVid : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
 
 impl FnVid : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         (*self).iter_bytes(lsb0, f)
     }
 }
@@ -2432,7 +2432,7 @@ fn index_sty(cx: ctxt, sty: &sty) -> Option<mt> {
 }
 
 impl bound_region : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           ty::br_self => 0u8.iter_bytes(lsb0, f),
 
@@ -2449,7 +2449,7 @@ impl bound_region : to_bytes::IterBytes {
 }
 
 impl region : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           re_bound(ref br) =>
           to_bytes::iter_bytes_2(&0u8, br, lsb0, f),
@@ -2469,7 +2469,7 @@ impl region : to_bytes::IterBytes {
 }
 
 impl vstore : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           vstore_fixed(ref u) =>
           to_bytes::iter_bytes_2(&0u8, u, lsb0, f),
@@ -2484,7 +2484,7 @@ impl vstore : to_bytes::IterBytes {
 }
 
 impl substs : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_3(&self.self_r,
                                  &self.self_ty,
                                  &self.tps, lsb0, f)
@@ -2492,28 +2492,28 @@ impl substs : to_bytes::IterBytes {
 }
 
 impl mt : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ty,
                                  &self.mutbl, lsb0, f)
     }
 }
 
 impl field : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.ident,
                                  &self.mt, lsb0, f)
     }
 }
 
 impl arg : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
           to_bytes::iter_bytes_2(&self.mode,
                                  &self.ty, lsb0, f)
     }
 }
 
 impl sty : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           ty_nil => 0u8.iter_bytes(lsb0, f),
           ty_bool => 1u8.iter_bytes(lsb0, f),

@@ -92,7 +92,7 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
         old.is_some()
     }
     fn clear() {
-        self.v.set(~[mut]);
+        self.v.set(~[]);
     }
     fn contains_key(+key: uint) -> bool {
         contains_key(self, key)

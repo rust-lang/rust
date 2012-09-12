@@ -77,7 +77,7 @@ export swap;
 export reverse;
 export reversed;
 export iter, iter_between, each, eachi, reach, reachi;
-export each_mut, each_const;
+export each_ref, each_mut_ref, each_const_ref;
 export iter2;
 export iteri;
 export riter;
@@ -336,7 +336,8 @@ pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
     do as_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
-                &(ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+                &(ptr::offset(p, start),
+                  (end - start) * sys::size_of::<T>()))
         }
     }
 }
@@ -345,10 +346,11 @@ pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
 pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
     assert (start <= end);
     assert (end <= len(v));
-    do as_buf(v) |p, _len| {
+    do as_mut_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
-                &(ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+                &(ptr::mut_offset(p, start),
+                  (end - start) * sys::size_of::<T>()))
         }
     }
 }
@@ -357,10 +359,11 @@ pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
 pure fn const_view<T>(v: &[const T], start: uint, end: uint) -> &[const T] {
     assert (start <= end);
     assert (end <= len(v));
-    do as_buf(v) |p, _len| {
+    do as_const_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
-                &(ptr::offset(p, start), (end - start) * sys::size_of::<T>()))
+                &(ptr::const_offset(p, start),
+                  (end - start) * sys::size_of::<T>()))
         }
     }
 }
@@ -1141,7 +1144,7 @@ fn swap<T>(v: &[mut T], a: uint, b: uint) {
 }
 
 /// Reverse the order of elements in a vector, in place
-fn reverse<T>(v: ~[mut T]) {
+fn reverse<T>(v: &[mut T]) {
     let mut i: uint = 0u;
     let ln = len::<T>(v);
     while i < ln / 2u { v[i] <-> v[ln - i - 1u]; i += 1u; }
@@ -1203,7 +1206,12 @@ pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
+pure fn each<T>(v: &[T], f: fn(T) -> bool) {
+    //             ^^^^
+    // NB---this CANNOT be &[const T]!  The reason
+    // is that you are passing it to `f()` using
+    // an immutable.
+
     do vec::as_buf(v) |p, n| {
         let mut n = n;
         let mut p = p;
@@ -1217,21 +1225,52 @@ pure fn each<T>(v: &[const T], f: fn(T) -> bool) {
     }
 }
 
+/**
+ * Iterates over a vector, with option to break
+ *
+ * Return true to continue, false to break.
+ */
+#[inline(always)]
+pure fn each_ref<T>(v: &r/[T], f: fn(v: &r/T) -> bool) {
+    // this is not the most efficient impl, as it repeats the bound checks,
+    // but it's good enough
+    let mut i = 0;
+    let n = v.len();
+    while i < n {
+        if !f(&v[i]) {
+            return;
+        }
+        i += 1;
+    }
+}
+
 /// Like `each()`, but for the case where you have
 /// a vector with mutable contents and you would like
 /// to mutate the contents as you iterate.
 #[inline(always)]
-pure fn each_mut<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
-    do vec::as_mut_buf(v) |p, n| {
-        let mut n = n;
-        let mut p = p;
-        while n > 0u {
-            unsafe {
-                if !f(&mut *p) { break; }
-                p = ptr::mut_offset(p, 1u);
-            }
-            n -= 1u;
+fn each_mut_ref<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
+    let mut i = 0;
+    let n = v.len();
+    while i < n {
+        if !f(&mut v[i]) {
+            return;
         }
+        i += 1;
+    }
+}
+
+/// Like `each()`, but for the case where you have
+/// a vector with mutable contents and you would like
+/// to mutate the contents as you iterate.
+#[inline(always)]
+pure fn each_const_ref<T>(v: &[const T], f: fn(elem: &const T) -> bool) {
+    let mut i = 0;
+    let n = v.len();
+    while i < n {
+        if !f(&const v[i]) {
+            return;
+        }
+        i += 1;
     }
 }
 
@@ -1241,7 +1280,7 @@ pure fn each_mut<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
  * Return true to continue, false to break.
  */
 #[inline(always)]
-pure fn eachi<T>(v: &[const T], f: fn(uint, T) -> bool) {
+pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
     do vec::as_buf(v) |p, n| {
         let mut i = 0u;
         let mut p = p;
@@ -1392,10 +1431,18 @@ pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
  * foreign interop.
  */
 #[inline(always)]
-pure fn as_buf<T,U>(s: &[const T],
+pure fn as_buf<T,U>(s: &[T], /* NB---this CANNOT be const, see below */
                     f: fn(*T, uint) -> U) -> U {
+
+    // NB---People keep changing the type of s to `&[const T]`.  This is
+    // unsound.  The reason is that we are going to create immutable pointers
+    // into `s` and pass them to `f()`, but in fact they are potentially
+    // pointing at *mutable memory*.  Use `as_const_buf` or `as_mut_buf`
+    // instead!
+
     unsafe {
-        let v : *(*T,uint) = ::unsafe::reinterpret_cast(&ptr::addr_of(s));
+        let v : *(*T,uint) =
+            ::unsafe::reinterpret_cast(&ptr::addr_of(s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1405,11 +1452,12 @@ pure fn as_buf<T,U>(s: &[const T],
 #[inline(always)]
 pure fn as_const_buf<T,U>(s: &[const T],
                           f: fn(*const T, uint) -> U) -> U {
-    do as_buf(s) |p, len| {
-        unsafe {
-            let pp : *const T = ::unsafe::reinterpret_cast(&p);
-            f(pp, len)
-        }
+
+    unsafe {
+        let v : *(*const T,uint) =
+            ::unsafe::reinterpret_cast(&ptr::addr_of(s));
+        let (buf,len) = *v;
+        f(buf, len / sys::size_of::<T>())
     }
 }
 
@@ -1417,11 +1465,12 @@ pure fn as_const_buf<T,U>(s: &[const T],
 #[inline(always)]
 pure fn as_mut_buf<T,U>(s: &[mut T],
                         f: fn(*mut T, uint) -> U) -> U {
-    do as_buf(s) |p, len| {
-        unsafe {
-            let pp : *mut T = ::unsafe::reinterpret_cast(&p);
-            f(pp, len)
-        }
+
+    unsafe {
+        let v : *(*mut T,uint) =
+            ::unsafe::reinterpret_cast(&ptr::addr_of(s));
+        let (buf,len) = *v;
+        f(buf, len / sys::size_of::<T>())
     }
 }
 
@@ -1765,7 +1814,7 @@ mod unsafe {
         let mut dst = ~[];
         reserve(dst, elts);
         set_len(dst, elts);
-        as_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
+        as_mut_buf(dst, |p_dst, _len_dst| ptr::memcpy(p_dst, ptr, elts));
         move dst
     }
 
@@ -1792,18 +1841,24 @@ mod unsafe {
      * would also make any pointers to it invalid.
      */
     #[inline(always)]
-    unsafe fn to_ptr<T>(v: ~[const T]) -> *T {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
-    }
-
-
-    #[inline(always)]
-    unsafe fn to_ptr_slice<T>(v: &[const T]) -> *T {
+    unsafe fn to_ptr<T>(v: &[T]) -> *T {
         let repr: **SliceRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
     }
 
+    /** see `to_ptr()` */
+    #[inline(always)]
+    unsafe fn to_const_ptr<T>(v: &[const T]) -> *const T {
+        let repr: **SliceRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
+    }
+
+    /** see `to_ptr()` */
+    #[inline(always)]
+    unsafe fn to_mut_ptr<T>(v: &[mut T]) -> *mut T {
+        let repr: **SliceRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
+    }
 
     /**
      * Form a slice from a pointer and length (as a number of units,
@@ -1822,7 +1877,7 @@ mod unsafe {
      */
     #[inline(always)]
     unsafe fn get<T: Copy>(v: &[const T], i: uint) -> T {
-        as_buf(v, |p, _len| *ptr::offset(p, i))
+        as_const_buf(v, |p, _len| *ptr::const_offset(p, i))
     }
 
     /**
@@ -1846,8 +1901,8 @@ mod unsafe {
       * may overlap.
       */
     unsafe fn memcpy<T>(dst: &[mut T], src: &[const T], count: uint) {
-        do as_buf(dst) |p_dst, _len_dst| {
-            do as_buf(src) |p_src, _len_src| {
+        do as_mut_buf(dst) |p_dst, _len_dst| {
+            do as_const_buf(src) |p_src, _len_src| {
                 ptr::memcpy(p_dst, p_src, count)
             }
         }
@@ -1860,8 +1915,8 @@ mod unsafe {
       * may overlap.
       */
     unsafe fn memmove<T>(dst: &[mut T], src: &[const T], count: uint) {
-        do as_buf(dst) |p_dst, _len_dst| {
-            do as_buf(src) |p_src, _len_src| {
+        do as_mut_buf(dst) |p_dst, _len_dst| {
+            do as_const_buf(src) |p_src, _len_src| {
                 ptr::memmove(p_dst, p_src, count)
             }
         }
@@ -1952,12 +2007,12 @@ mod u8 {
 // This cannot be used with iter-trait.rs because of the region pointer
 // required in the slice.
 
-impl<A> &[const A]: iter::BaseIter<A> {
+impl<A> &[A]: iter::BaseIter<A> {
     pure fn each(blk: fn(A) -> bool) { each(self, blk) }
     pure fn size_hint() -> Option<uint> { Some(len(self)) }
 }
 
-impl<A> &[const A]: iter::ExtendedIter<A> {
+impl<A> &[A]: iter::ExtendedIter<A> {
     pure fn eachi(blk: fn(uint, A) -> bool) { iter::eachi(self, blk) }
     pure fn all(blk: fn(A) -> bool) -> bool { iter::all(self, blk) }
     pure fn any(blk: fn(A) -> bool) -> bool { iter::any(self, blk) }

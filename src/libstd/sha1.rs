@@ -161,7 +161,7 @@ fn sha1() -> Sha1 {
     fn mk_result(st: &Sha1State) -> ~[u8] {
         if !(*st).computed { pad_msg(st); (*st).computed = true; }
         let mut rs: ~[u8] = ~[];
-        for vec::each_mut((*st).h) |ptr_hpart| {
+        for vec::each_mut_ref((*st).h) |ptr_hpart| {
             let hpart = *ptr_hpart;
             let a = (hpart >> 24u32 & 0xFFu32) as u8;
             let b = (hpart >> 16u32 & 0xFFu32) as u8;

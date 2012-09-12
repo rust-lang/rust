@@ -214,7 +214,7 @@ fn convert_whence(whence: SeekStyle) -> i32 {
 
 impl *libc::FILE: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
-        do vec::as_buf(buf) |buf_p, buf_len| {
+        do vec::as_mut_buf(buf) |buf_p, buf_len| {
             assert buf_len <= len;
 
             let count = libc::fread(buf_p as *mut c_void, 1u as size_t,

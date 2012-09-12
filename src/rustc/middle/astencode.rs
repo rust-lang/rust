@@ -951,7 +951,7 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
                 let ids = val_dsr.read_to_vec(|| {
                     xcx.tr_id(val_dsr.read_int())
                 });
-                let dvec = @dvec::from_vec(vec::to_mut(ids));
+                let dvec = @dvec::from_vec(move ids);
                 dcx.maps.last_use_map.insert(id, dvec);
             } else if tag == (c::tag_table_method_map as uint) {
                 dcx.maps.method_map.insert(

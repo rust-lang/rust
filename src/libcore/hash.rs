@@ -130,7 +130,7 @@ pure fn hash_keyed_5<A: IterBytes,
     }
 }
 
-pure fn hash_bytes_keyed(val: &[const u8], k0: u64, k1: u64) -> u64 {
+pure fn hash_bytes_keyed(val: &[u8], k0: u64, k1: u64) -> u64 {
     val.hash_keyed(k0, k1)
 }
 pure fn hash_str_keyed(val: &str, k0: u64, k1: u64) -> u64 {
@@ -152,7 +152,7 @@ pure fn hash_uint_keyed(val: uint, k0: u64, k1: u64) -> u64 {
     val.hash_keyed(k0, k1)
 }
 
-pure fn hash_bytes(val: &[const u8]) -> u64 { hash_bytes_keyed(val, 0, 0) }
+pure fn hash_bytes(val: &[u8]) -> u64 { hash_bytes_keyed(val, 0, 0) }
 pure fn hash_str(val: &str) -> u64 { hash_str_keyed(val, 0, 0) }
 pure fn hash_u64(val: u64) -> u64 { hash_u64_keyed(val, 0, 0) }
 pure fn hash_u32(val: u32) -> u64 { hash_u32_keyed(val, 0, 0) }

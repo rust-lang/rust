@@ -5,7 +5,7 @@ fn main() {
     d.push(3);
     d.push(4);
     assert d.get() == ~[3, 4];
-    d.set(~[mut 5]);
+    d.set(~[5]);
     d.push(6);
     d.push(7);
     d.push(8);
@@ -23,6 +23,6 @@ fn main() {
         assert e == exp[i];
     }
 
-    let v = vec::from_mut(dvec::unwrap(move d));
+    let v = dvec::unwrap(move d);
     assert v == exp;
 }

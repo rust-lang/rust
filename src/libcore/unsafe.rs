@@ -2,6 +2,7 @@
 
 export reinterpret_cast, forget, bump_box_refcount, transmute;
 export transmute_mut, transmute_immut, transmute_region, transmute_mut_region;
+export transmute_mut_unsafe, transmute_immut_unsafe;
 
 export SharedMutableState, shared_mutable_state, clone_shared_mutable_state;
 export get_shared_mutable_state, get_shared_immutable_state;
@@ -68,6 +69,12 @@ unsafe fn transmute_immut<T>(+ptr: &a/mut T) -> &a/T { transmute(move ptr) }
 /// Coerce a borrowed pointer to have an arbitrary associated region.
 unsafe fn transmute_region<T>(+ptr: &a/T) -> &b/T { transmute(move ptr) }
 
+/// Coerce an immutable reference to be mutable.
+unsafe fn transmute_mut_unsafe<T>(+ptr: *const T) -> *mut T { transmute(ptr) }
+
+/// Coerce an immutable reference to be mutable.
+unsafe fn transmute_immut_unsafe<T>(+ptr: *const T) -> *T { transmute(ptr) }
+
 /// Coerce a borrowed mutable pointer to have an arbitrary associated region.
 unsafe fn transmute_mut_region<T>(+ptr: &a/mut T) -> &b/mut T {
     transmute(move ptr)
@@ -76,6 +83,11 @@ unsafe fn transmute_mut_region<T>(+ptr: &a/mut T) -> &b/mut T {
 /// Transforms lifetime of the second pointer to match the first.
 unsafe fn copy_lifetime<S,T>(_ptr: &a/S, ptr: &T) -> &a/T {
     transmute_region(ptr)
+}
+
+/// Transforms lifetime of the second pointer to match the first.
+unsafe fn copy_lifetime_to_unsafe<S,T>(_ptr: &a/S, +ptr: *T) -> &a/T {
+    transmute(ptr)
 }
 
 

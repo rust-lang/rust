@@ -1133,7 +1133,7 @@ impl mono_id_: cmp::Eq {
 }
 
 impl mono_param_id : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           mono_precise(t, mids) =>
           to_bytes::iter_bytes_3(&0u8, &ty::type_id(t), &mids, lsb0, f),
@@ -1147,7 +1147,7 @@ impl mono_param_id : to_bytes::IterBytes {
 }
 
 impl mono_id_ : core::to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.def, &self.params, lsb0, f);
     }
 }

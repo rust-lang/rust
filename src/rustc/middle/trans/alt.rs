@@ -285,7 +285,7 @@ fn get_options(ccx: @crate_ctxt, m: match_, col: uint) -> ~[opt] {
             }
         }
     }
-    return vec::from_mut(dvec::unwrap(move found));
+    return dvec::unwrap(move found);
 }
 
 fn extract_variant_args(bcx: block, pat_id: ast::node_id,

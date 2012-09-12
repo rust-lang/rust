@@ -736,8 +736,8 @@ impl Url: Eq {
 }
 
 impl Url: IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
-        self.to_str().iter_bytes(lsb0, f)
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+        unchecked { self.to_str() }.iter_bytes(lsb0, f)
     }
 }
 
@@ -1077,11 +1077,11 @@ mod tests {
         assert encode_form_urlencoded(m) == ~"";
 
         let m = str_hash();
-        m.insert(~"foo", @dvec::from_vec(~[mut @~"bar", @~"123"]));
+        m.insert(~"foo", @dvec::from_vec(~[@~"bar", @~"123"]));
         assert encode_form_urlencoded(m) == ~"foo=bar&foo=123";
 
         let m = str_hash();
-        m.insert(~"foo bar", @dvec::from_vec(~[mut @~"abc", @~"12 = 34"]));
+        m.insert(~"foo bar", @dvec::from_vec(~[@~"abc", @~"12 = 34"]));
         assert encode_form_urlencoded(m) == ~"foo+bar=abc&foo+bar=12+%3D+34";
     }
 
