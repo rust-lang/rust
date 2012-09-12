@@ -365,19 +365,19 @@ fn ser_variant(cx: ext_ctxt,
         let arg_blk =
             cx.blk(
                 span,
-                ser_ty(cx, tps, tys[i], cx.clone(s), v));
+                ser_ty(cx, tps, tys[i], cx.clone(s), move v));
         cx.stmt(argfn(cx.clone(s), i, arg_blk))
     };
 
     let body_blk = cx.blk(span, stmts);
-    let body = cx.blk(span, ~[cx.stmt(bodyfn(s, body_blk))]);
+    let body = cx.blk(span, ~[cx.stmt(bodyfn(move s, body_blk))]);
 
     {pats: ~[pat], guard: None, body: body}
 }
 
 fn ser_lambda(cx: ext_ctxt, tps: ser_tps_map, ty: @ast::ty,
               -s: @ast::expr, -v: @ast::expr) -> @ast::expr {
-    cx.lambda(cx.blk(ty.span, ser_ty(cx, tps, ty, s, v)))
+    cx.lambda(cx.blk(ty.span, ser_ty(cx, tps, ty, move s, move v)))
 }
 
 fn is_vec_or_str(ty: @ast::ty) -> bool {
@@ -415,7 +415,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
 
       // For unique evecs/estrs, just pass through to underlying vec or str
       ast::ty_uniq(mt) if is_vec_or_str(mt.ty) => {
-        ser_ty(cx, tps, mt.ty, s, v)
+        ser_ty(cx, tps, mt.ty, move s, move v)
       }
 
       ast::ty_uniq(mt) => {
@@ -439,7 +439,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
             let f = cx.lit_str(fld.span, cx.parse_sess().interner.get(
                 fld.node.ident));
             let i = cx.lit_uint(fld.span, fidx);
-            let l = ser_lambda(cx, tps, fld.node.mt.ty, cx.clone(s), vf);
+            let l = ser_lambda(cx, tps, fld.node.mt.ty, cx.clone(s), move vf);
             #ast[stmt]{$(s).emit_rec_field($(f), $(i), $(l));}
         };
         let fld_lambda = cx.lambda(cx.blk(ty.span, fld_stmts));
@@ -463,7 +463,7 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
         let arms = ~[
             ser_variant(
 
-                cx, tps, tys, ty.span, s,
+                cx, tps, tys, ty.span, move s,
 
                 // Generate pattern (v1, v2, v3)
                 |pats| ast::pat_tup(pats),
@@ -482,20 +482,19 @@ fn ser_ty(cx: ext_ctxt, tps: ser_tps_map,
                     #ast{ $(s).emit_tup_elt($(idx), $(body)) }
                 })
         ];
-        ~[cx.alt_stmt(arms, ty.span, v)]
+        ~[cx.alt_stmt(arms, ty.span, move v)]
       }
 
       ast::ty_path(path, _) => {
-        if vec::len(path.idents) == 1u &&
-            vec::is_empty(path.types) {
+        if path.idents.len() == 1 && path.types.is_empty() {
             let ident = path.idents[0];
 
             match tps.find(ident) {
               Some(f) => f(v),
-              None => ser_path(cx, tps, path, s, v)
+              None => ser_path(cx, tps, path, move s, move v)
             }
         } else {
-            ser_path(cx, tps, path, s, v)
+            ser_path(cx, tps, path, move s, move v)
         }
       }
 
@@ -634,7 +633,7 @@ fn deser_path(cx: ext_ctxt, tps: deser_tps_map, path: @ast::path,
 
 fn deser_lambda(cx: ext_ctxt, tps: deser_tps_map, ty: @ast::ty,
                 -d: @ast::expr) -> @ast::expr {
-    cx.lambda(cx.expr_blk(deser_ty(cx, tps, ty, d)))
+    cx.lambda(cx.expr_blk(deser_ty(cx, tps, ty, move d)))
 }
 
 fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
@@ -658,7 +657,7 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
 
       // For unique evecs/estrs, just pass through to underlying vec or str
       ast::ty_uniq(mt) if is_vec_or_str(mt.ty) => {
-        deser_ty(cx, tps, mt.ty, d)
+        deser_ty(cx, tps, mt.ty, move d)
       }
 
       ast::ty_uniq(mt) => {
@@ -719,10 +718,10 @@ fn deser_ty(cx: ext_ctxt, tps: deser_tps_map,
 
             match tps.find(ident) {
               Some(f) => f(),
-              None => deser_path(cx, tps, path, d)
+              None => deser_path(cx, tps, path, move d)
             }
         } else {
-            deser_path(cx, tps, path, d)
+            deser_path(cx, tps, path, move d)
         }
       }
 
@@ -822,8 +821,9 @@ fn ty_fns(cx: ext_ctxt, name: ast::ident,
 
     let span = ty.span;
     ~[
-        mk_ser_fn(cx, span, name, tps, |a,b,c,d| ser_ty(a, b, ty, c, d)),
-        mk_deser_fn(cx, span, name, tps, |a,b,c| deser_ty(a, b, ty, c))
+        mk_ser_fn(cx, span, name, tps, |a,b,c,d| ser_ty(a, b, ty, move c,
+                                                        move d)),
+        mk_deser_fn(cx, span, name, tps, |a,b,c| deser_ty(a, b, ty, move c))
     ]
 }
 
@@ -881,7 +881,7 @@ fn ser_enum(cx: ext_ctxt, tps: ser_tps_map, e_name: ast::ident,
                 fail ~"struct variants unimplemented for auto serialize"
         }
     };
-    let lam = cx.lambda(cx.blk(e_span, ~[cx.alt_stmt(arms, e_span, v)]));
+    let lam = cx.lambda(cx.blk(e_span, ~[cx.alt_stmt(arms, e_span, move v)]));
     let e_name = cx.lit_str(e_span, @cx.str_of(e_name));
     ~[#ast[stmt]{ $(s).emit_enum($(e_name), $(lam)) }]
 }
@@ -954,8 +954,9 @@ fn enum_fns(cx: ext_ctxt, e_name: ast::ident, e_span: span,
     -> ~[@ast::item] {
     ~[
         mk_ser_fn(cx, e_span, e_name, tps,
-                  |a,b,c,d| ser_enum(a, b, e_name, e_span, variants, c, d)),
+                  |a,b,c,d| ser_enum(a, b, e_name, e_span, variants, move c,
+                                     move d)),
         mk_deser_fn(cx, e_span, e_name, tps,
-                    |a,b,c| deser_enum(a, b, e_name, e_span, variants, c))
+          |a,b,c| deser_enum(a, b, e_name, e_span, variants, move c))
     ]
 }

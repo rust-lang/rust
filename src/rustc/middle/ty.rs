@@ -383,7 +383,7 @@ type t = *t_opaque;
 pure fn get(t: t) -> t_box unsafe {
     let t2 = unsafe::reinterpret_cast::<t, t_box>(&t);
     let t3 = t2;
-    unsafe::forget(t2);
+    unsafe::forget(move t2);
     t3
 }
 
