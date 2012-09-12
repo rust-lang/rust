@@ -108,7 +108,7 @@ impl<Q: Send> &Sem<Q> {
         /* for 1000.times { task::yield(); } */
         // Need to wait outside the exclusive.
         if waiter_nobe.is_some() {
-            let _ = pipes::recv_one(option::unwrap(waiter_nobe));
+            let _ = pipes::recv_one(option::unwrap(move waiter_nobe));
         }
     }
     fn release() {

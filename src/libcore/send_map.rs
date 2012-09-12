@@ -337,7 +337,7 @@ mod linear {
             if value.is_none() {
                 fail fmt!("No entry found for key: %?", k);
             }
-            option::unwrap(value)
+            option::unwrap(move value)
         }
 
     }

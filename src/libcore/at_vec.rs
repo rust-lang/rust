@@ -177,7 +177,7 @@ mod unsafe {
         (**repr).fill += sys::size_of::<T>();
         let p = ptr::addr_of((**repr).data);
         let p = ptr::offset(p, fill) as *mut T;
-        rusti::move_val_init(*p, initval);
+        rusti::move_val_init(*p, move initval);
     }
 
     unsafe fn push_slow<T>(&v: @[const T], +initval: T) {

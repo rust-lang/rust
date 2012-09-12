@@ -26,7 +26,7 @@ impl<T> Cell<T> {
 
         let mut value = None;
         value <-> self.value;
-        return option::unwrap(value);
+        return option::unwrap(move value);
     }
 
     /// Returns the value, failing if the cell is full.

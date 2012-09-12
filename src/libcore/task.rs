@@ -574,7 +574,7 @@ impl TaskBuilder {
         do fr_task_builder.spawn |move f| {
             comm::send(ch, f());
         }
-        match future::get(&option::unwrap(result)) {
+        match future::get(&option::unwrap(move result)) {
             Success => result::Ok(comm::recv(po)),
             Failure => result::Err(())
         }
@@ -972,7 +972,7 @@ fn each_ancestor(list:        &mut AncestorList,
         if coalesce_this.is_some() {
             // Needed coalesce. Our next ancestor becomes our old
             // ancestor's next ancestor. ("next = old_next->next;")
-            *list <- option::unwrap(coalesce_this);
+            *list <- option::unwrap(move coalesce_this);
         } else {
             // No coalesce; restore from tmp. ("next = old_next;")
             *list <- tmp_list;
@@ -1144,7 +1144,7 @@ fn enlist_in_taskgroup(state: TaskGroupInner, me: *rust_task,
     let newstate = util::replace(state, None);
     // If 'None', the group was failing. Can't enlist.
     if newstate.is_some() {
-        let group = option::unwrap(newstate);
+        let group = option::unwrap(move newstate);
         taskset_insert(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
         *state = Some(move group);
@@ -1159,7 +1159,7 @@ fn leave_taskgroup(state: TaskGroupInner, me: *rust_task, is_member: bool) {
     let newstate = util::replace(state, None);
     // If 'None', already failing and we've already gotten a kill signal.
     if newstate.is_some() {
-        let group = option::unwrap(newstate);
+        let group = option::unwrap(move newstate);
         taskset_remove(if is_member { &mut group.members }
                        else         { &mut group.descendants }, me);
         *state = Some(move group);
@@ -1181,7 +1181,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
     // That's ok; only one task needs to do the dirty work. (Might also
     // see 'None' if Somebody already failed and we got a kill signal.)
     if newstate.is_some() {
-        let group = option::unwrap(newstate);
+        let group = option::unwrap(move newstate);
         for taskset_each(&group.members) |+sibling| {
             // Skip self - killing ourself won't do much good.
             if sibling != me {
@@ -1277,7 +1277,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         //    None               { ancestor_list(None) }
         let tmp = util::replace(&mut **ancestors, None);
         if tmp.is_some() {
-            let ancestor_arc = option::unwrap(tmp);
+            let ancestor_arc = option::unwrap(move tmp);
             let result = ancestor_arc.clone();
             **ancestors <- Some(move ancestor_arc);
             AncestorList(Some(move result))
@@ -1319,7 +1319,7 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
             // closure. (Reordering them wouldn't help - then getting killed
             // between them would leak.)
             rustrt::start_task(new_task, closure);
-            unsafe::forget(child_wrapper);
+            unsafe::forget(move child_wrapper);
         }
     }
 
@@ -1500,7 +1500,7 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
         unsafe::bump_box_refcount(map);
         map
     } else {
-        let map = unsafe::transmute(map_ptr);
+        let map = unsafe::transmute(move map_ptr);
         unsafe::bump_box_refcount(map);
         map
     }
@@ -1546,7 +1546,7 @@ unsafe fn local_get_helper<T: Owned>(
         // overwriting the local_data_box we need to give an extra reference.
         // We must also give an extra reference when not removing.
         let (index, data_ptr) = result;
-        let data: @T = unsafe::transmute(data_ptr);
+        let data: @T = unsafe::transmute(move data_ptr);
         unsafe::bump_box_refcount(data);
         if do_pop {
             (*map).set_elt(index, None);
@@ -1608,7 +1608,7 @@ unsafe fn local_modify<T: Owned>(
     // Could be more efficient by doing the lookup work, but this is easy.
     let newdata = modify_fn(local_pop(task, key));
     if newdata.is_some() {
-        local_set(task, key, option::unwrap(newdata));
+        local_set(task, key, option::unwrap(move newdata));
     }
 }
 

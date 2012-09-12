@@ -95,7 +95,7 @@ priv impl<A> DVec<A> {
             data <-> self.data;
             let data_ptr: *() = unsafe::reinterpret_cast(&data);
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
-            return f(data);
+            return f(move data);
         }
     }
 
@@ -123,7 +123,7 @@ impl<A> DVec<A> {
      */
     #[inline(always)]
     fn swap(f: fn(-~[mut A]) -> ~[mut A]) {
-        self.check_out(|v| self.give_back(f(v)))
+        self.check_out(|v| self.give_back(f(move v)))
     }
 
     /// Returns the number of elements currently in the dvec
@@ -131,7 +131,7 @@ impl<A> DVec<A> {
         unchecked {
             do self.check_out |v| {
                 let l = v.len();
-                self.give_back(v);
+                self.give_back(move v);
                 l
             }
         }
@@ -148,7 +148,7 @@ impl<A> DVec<A> {
         do self.check_out |v| {
             let mut v <- v;
             let result = vec::pop(v);
-            self.give_back(v);
+            self.give_back(move v);
             move result
         }
     }
@@ -162,7 +162,7 @@ impl<A> DVec<A> {
             if data_ptr.is_null() { fail ~"Recursive use of dvec"; }
             log(error, ~"a");
             self.data <- ~[mut move t];
-            vec::push_all_move(self.data, data);
+            vec::push_all_move(self.data, move data);
             log(error, ~"b");
         }
     }
@@ -187,7 +187,7 @@ impl<A> DVec<A> {
     fn reverse() {
         do self.check_out |v| {
             vec::reverse(v);
-            self.give_back(v);
+            self.give_back(move v);
         }
     }
 
@@ -195,7 +195,7 @@ impl<A> DVec<A> {
     fn borrow<R>(op: fn(x: &[A]) -> R) -> R {
         do self.check_out |v| {
             let result = op(v);
-            self.give_back(v);
+            self.give_back(move v);
             move result
         }
     }
@@ -204,7 +204,7 @@ impl<A> DVec<A> {
     fn borrow_mut<R>(op: fn(x: &[mut A]) -> R) -> R {
         do self.check_out |v| {
             let result = op(v);
-            self.give_back(v);
+            self.give_back(move v);
             move result
         }
     }
@@ -269,7 +269,7 @@ impl<A: Copy> DVec<A> {
         unchecked {
             do self.check_out |v| {
                 let w = vec::from_mut(copy v);
-                self.give_back(v);
+                self.give_back(move v);
                 move w
             }
         }

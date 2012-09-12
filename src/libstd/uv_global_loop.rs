@@ -104,7 +104,7 @@ fn spawn_loop() -> IoTask {
             }
         }
     };
-    spawn_iotask(builder)
+    spawn_iotask(move builder)
 }
 
 #[cfg(test)]

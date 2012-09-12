@@ -74,7 +74,7 @@ pure fn map_consume<T, U>(+opt: Option<T>, f: fn(+T) -> U) -> Option<U> {
      * As `map`, but consumes the option and gives `f` ownership to avoid
      * copying.
      */
-    if opt.is_some() { Some(f(option::unwrap(opt))) } else { None }
+    if opt.is_some() { Some(f(option::unwrap(move opt))) } else { None }
 }
 
 pure fn chain<T, U>(opt: Option<T>, f: fn(T) -> Option<U>) -> Option<U> {
@@ -112,7 +112,7 @@ pure fn while_some<T>(+x: Option<T>, blk: fn(+T) -> Option<T>) {
 
     let mut opt <- x;
     while opt.is_some() {
-        opt = blk(unwrap(opt));
+        opt = blk(unwrap(move opt));
     }
 }
 
@@ -186,7 +186,7 @@ fn swap_unwrap<T>(opt: &mut Option<T>) -> T {
 pure fn unwrap_expect<T>(+opt: Option<T>, reason: &str) -> T {
     //! As unwrap, but with a specified failure message.
     if opt.is_none() { fail reason.to_unique(); }
-    unwrap(opt)
+    unwrap(move opt)
 }
 
 // Some of these should change to be &Option<T>, some should not. See below.
