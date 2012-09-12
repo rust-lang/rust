@@ -340,7 +340,7 @@ fn trans_fail_value(bcx: block, sp_opt: Option<span>, V_fail_str: ValueRef)
     let V_str = PointerCast(bcx, V_fail_str, T_ptr(T_i8()));
     let V_filename = PointerCast(bcx, V_filename, T_ptr(T_i8()));
     let args = ~[V_str, V_filename, C_int(ccx, V_line)];
-    let bcx = callee::trans_rtcall(bcx, ~"fail", args, expr::Ignore);
+    let bcx = callee::trans_rtcall(bcx, ~"fail_", args, expr::Ignore);
     Unreachable(bcx);
     return bcx;
 }
