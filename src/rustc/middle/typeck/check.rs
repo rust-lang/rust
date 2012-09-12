@@ -938,7 +938,6 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         call_expr_id: ast::node_id,
         in_fty: ty::t,
         callee_expr: @ast::expr,
-        check_args: bool,
         args: ~[@ast::expr]) -> {fty: ty::t, bot: bool} {
 
         let mut bot = false;
@@ -1028,15 +1027,10 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                     debug!("checking the argument");
                     let formal_ty = formal_tys[i];
 
-                    if check_args {
-                        bot |= check_expr_with_unifier(
-                            fcx, arg, Some(formal_ty),
-                            || demand::assign(fcx, arg.span, formal_ty, arg)
-                        );
-                    } else {
-                        demand::assign(fcx, arg.span, formal_ty, arg);
-                        bot |= ty::type_is_bot(fcx.expr_ty(arg));
-                    }
+                    bot |= check_expr_with_unifier(
+                        fcx, arg, Some(formal_ty),
+                        || demand::assign(fcx, arg.span, formal_ty, arg)
+                    );
                 }
             }
         }
@@ -1070,7 +1064,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Call the generic checker.
         let fty = {
             let r = check_call_inner(fcx, sp, call_expr_id,
-                                     fn_ty, f, true, args);
+                                     fn_ty, f, args);
             bot |= r.bot;
             r.fty
         };
@@ -1126,8 +1120,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
                         self_ex: @ast::expr, self_t: ty::t,
-                        opname: ast::ident, check_args: bool,
-                        args: ~[@ast::expr])
+                        opname: ast::ident, args: ~[@ast::expr])
         -> Option<(ty::t, bool)>
     {
         match method::lookup(fcx, op_ex, self_ex,
@@ -1136,7 +1129,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
                 check_call_inner(fcx, op_ex.span, op_ex.id,
-                                 method_ty, op_ex, check_args, args)
+                                 method_ty, op_ex, args)
             };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             Some((ty::ty_fn_ret(method_ty), bot))
@@ -1145,51 +1138,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
     }
 
-    fn check_rel_op(fcx: @fn_ctxt,
-                    expr: @ast::expr,
-                    op: ast::binop,
-                    lhs: @ast::expr,
-                    rhs: @ast::expr) -> bool
-    {
-        // We know that only things of equal type can be compared, so
-        // go ahead and unify the two types before we do anything else
-        // (with other operators, we must be much more careful not to
-        // make assumptions, due to the possibility of operator
-        // overloading; but overloaded == still enforces the
-        // requirement that only equal types are compared).
-        let tcx = fcx.ccx.tcx;
-        let lhs_bot = check_expr(fcx, lhs, None);
-        let lhs_t = fcx.expr_ty(lhs);
-        let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
-
-        let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
-        if ty::is_binopable(tcx, lhs_t, op) {
-            let result_t = ty::mk_bool(tcx);
-            fcx.write_ty(expr.id, result_t);
-            return lhs_bot | rhs_bot;
-        }
-
-        let (result, rhs_bot) =
-            check_user_binop(fcx, expr, lhs, lhs_t, op, false, rhs);
-        fcx.write_ty(expr.id, result);
-        return lhs_bot | rhs_bot;
-    }
-
     // could be either a expr_binop or an expr_assign_binop
     fn check_binop(fcx: @fn_ctxt, expr: @ast::expr,
                    op: ast::binop,
                    lhs: @ast::expr,
                    rhs: @ast::expr) -> bool {
         let tcx = fcx.ccx.tcx;
-
-        // Relational operators are different for type inferencing
-        // reasons.
-        match op {
-            ast::eq | ast::ne | ast::lt | ast::le | ast::ge | ast::gt => {
-                return check_rel_op(fcx, expr, op, lhs, rhs);
-            }
-            _ => {}
-        }
 
         let lhs_bot = check_expr(fcx, lhs, None);
         let lhs_t = fcx.expr_ty(lhs);
@@ -1208,7 +1162,16 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
             let tvar = fcx.infcx().next_ty_var();
             demand::suptype(fcx, expr.span, tvar, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
-            let result_t = lhs_t;
+
+            let result_t = match op {
+                ast::eq | ast::ne | ast::lt | ast::le | ast::ge | ast::gt => {
+                    ty::mk_bool(tcx)
+                }
+                _ => {
+                    lhs_t
+                }
+            };
+
             fcx.write_ty(expr.id, result_t);
             return {
                 if !ast_util::lazy_binop(op) { lhs_bot | rhs_bot }
@@ -1217,22 +1180,21 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         }
 
         let (result, rhs_bot) =
-            check_user_binop(fcx, expr, lhs, lhs_t, op, true, rhs);
+            check_user_binop(fcx, expr, lhs, lhs_t, op, rhs);
         fcx.write_ty(expr.id, result);
         return lhs_bot | rhs_bot;
     }
 
     fn check_user_binop(fcx: @fn_ctxt, ex: @ast::expr,
                         lhs_expr: @ast::expr, lhs_resolved_t: ty::t,
-                        op: ast::binop, check_rhs: bool,
-                        rhs: @ast::expr) -> (ty::t, bool)
+                        op: ast::binop, rhs: @ast::expr) -> (ty::t, bool)
     {
         let tcx = fcx.ccx.tcx;
         match ast_util::binop_to_method_name(op) {
           Some(name) => {
             match lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
                                    fcx.tcx().sess.ident_of(name),
-                                   check_rhs, ~[rhs]) {
+                                   ~[rhs]) {
               Some(pair) => return pair,
               _ => ()
             }
@@ -1266,7 +1228,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr, rhs_t: ty::t) -> ty::t {
         match lookup_op_method(fcx, ex, rhs_expr, rhs_t,
-                               fcx.tcx().sess.ident_of(mname), true, ~[]) {
+                               fcx.tcx().sess.ident_of(mname), ~[]) {
           Some((ret_ty, _)) => ret_ty,
           _ => {
             fcx.ccx.tcx.sess.span_err(
@@ -2073,7 +2035,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                   let resolved = structurally_resolved_type(fcx, expr.span,
                                                             raw_base_t);
                   match lookup_op_method(fcx, expr, base, resolved,
-                                         tcx.sess.ident_of(~"index"), true,
+                                         tcx.sess.ident_of(~"index"),
                                          ~[idx]) {
                       Some((ret_ty, _)) => fcx.write_ty(id, ret_ty),
                       _ => {

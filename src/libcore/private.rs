@@ -63,7 +63,7 @@ unsafe fn chan_from_global_ptr<T: Send>(
         // This is the proposed global channel
         let ch = comm::recv(setup_po);
         // 0 is our sentinal value. It is not a valid channel
-        assert unsafe::reinterpret_cast(&ch) != 0u;
+        assert *ch != 0;
 
         // Install the channel
         log(debug,~"BEFORE COMPARE AND SWAP");
