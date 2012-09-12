@@ -273,10 +273,8 @@ mod ct {
 // decisions made a runtime. If it proves worthwhile then some of these
 // conditions can be evaluated at compile-time. For now though it's cleaner to
 // implement it 0this way, I think.
-#[cfg(stage1)]
-#[cfg(stage2)]
-#[cfg(stage3)]
-mod rt {
+// XXX Rename to rt after snapshot
+mod rt2 {
     const flag_none : u32 = 0u32;
     const flag_left_justify   : u32 = 0b00000000000000000000000000000001u32;
     const flag_left_zero_pad  : u32 = 0b00000000000000000000000000000010u32;
@@ -464,7 +462,6 @@ mod rt {
 }
 
 // XXX remove after snappies
-#[cfg(stage0)]
 #[allow(non_camel_case_types)]
 mod rt {
     const flag_none : u32 = 0u32;
