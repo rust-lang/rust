@@ -370,7 +370,7 @@ mod test {
 
     #[test]
     fn inserts() {
-        let mut m = ~int_linear_map();
+        let mut m = int_linear_map();
         assert m.insert(1, 2);
         assert m.insert(2, 4);
         assert m.get(&1) == 2;
@@ -379,7 +379,7 @@ mod test {
 
     #[test]
     fn overwrite() {
-        let mut m = ~int_linear_map();
+        let mut m = int_linear_map();
         assert m.insert(1, 2);
         assert m.get(&1) == 2;
         assert !m.insert(1, 3);
@@ -388,7 +388,7 @@ mod test {
 
     #[test]
     fn conflicts() {
-        let mut m = ~linear::linear_map_with_capacity(4);
+        let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
         assert m.insert(9, 4);
@@ -399,7 +399,7 @@ mod test {
 
     #[test]
     fn conflict_remove() {
-        let mut m = ~linear::linear_map_with_capacity(4);
+        let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert m.insert(5, 3);
         assert m.insert(9, 4);
@@ -410,7 +410,7 @@ mod test {
 
     #[test]
     fn empty() {
-        let mut m = ~linear::linear_map_with_capacity(4);
+        let mut m = linear::linear_map_with_capacity(4);
         assert m.insert(1, 2);
         assert !m.is_empty();
         assert m.remove(&1);
@@ -421,10 +421,10 @@ mod test {
     fn iterate() {
         let mut m = linear::linear_map_with_capacity(4);
         for uint::range(0, 32) |i| {
-            assert (&mut m).insert(i, i*2);
+            assert m.insert(i, i*2);
         }
         let mut observed = 0;
-        for (&m).each |k, v| {
+        for m.each |k, v| {
             assert v == k*2;
             observed |= (1 << k);
         }
