@@ -379,6 +379,9 @@ fn keyword_table() -> HashMap<~str, ()> {
     for strict_keyword_table().each_key |word| {
         keywords.insert(word, ());
     }
+    for reserved_keyword_table().each_key |word| {
+        keywords.insert(word, ());
+    }
     keywords
 }
 
@@ -440,6 +443,17 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"true", ~"trait", ~"type",
         ~"unchecked", ~"use",
         ~"while"
+    ];
+    for keys.each |word| {
+        words.insert(word, ());
+    }
+    words
+}
+
+fn reserved_keyword_table() -> HashMap<~str, ()> {
+    let words = str_hash();
+    let keys = ~[
+        ~"be"
     ];
     for keys.each |word| {
         words.insert(word, ());
