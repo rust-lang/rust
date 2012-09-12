@@ -39,7 +39,6 @@ fn declare_upcalls(targ_cfg: @session::config,
     let dv = |a,b| decl(llmod, ~"upcall_", a, b, T_void());
 
     let int_t = T_int(targ_cfg);
-    let size_t = T_size_t(targ_cfg);
 
     return @{trace: dv(~"trace", ~[T_ptr(T_i8()),
                               T_ptr(T_i8()),
