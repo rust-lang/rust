@@ -1046,7 +1046,7 @@ fn new_block(cx: fn_ctxt, parent: Option<block>, +kind: block_kind,
     let llbb: BasicBlockRef = str::as_c_str(cx.ccx.sess.str_of(s), |buf| {
         llvm::LLVMAppendBasicBlock(cx.llfn, buf)
     });
-    let bcx = mk_block(llbb, parent, kind, is_lpad, opt_node_info, cx);
+    let bcx = mk_block(llbb, parent, move kind, is_lpad, opt_node_info, cx);
     do option::iter(parent) |cx| {
         if cx.unreachable { Unreachable(bcx); }
     };

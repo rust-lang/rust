@@ -131,7 +131,7 @@ enum debug_metadata {
 
 fn cast_safely<T: Copy, U>(val: T) -> U unsafe {
     let val2 = val;
-    return unsafe::transmute(val2);
+    return unsafe::transmute(move val2);
 }
 
 fn md_from_metadata<T>(val: debug_metadata) -> T unsafe {

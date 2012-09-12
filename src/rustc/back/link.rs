@@ -96,7 +96,7 @@ mod jit {
                 code: ptr,
                 env: ptr::null()
             };
-            let func: fn(~[~str]) = unsafe::transmute(closure);
+            let func: fn(~[~str]) = unsafe::transmute(move closure);
 
             func(~[sess.opts.binary]);
         }
