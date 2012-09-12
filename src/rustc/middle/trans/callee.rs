@@ -570,7 +570,7 @@ fn trans_arg_expr(bcx: block,
                 if arg_mode == ast::by_move {
                     // NDM---Doesn't seem like this should be necessary
                     if !arg_datum.store_will_move() {
-                        bcx.sess().span_err(
+                        bcx.sess().span_bug(
                             arg_expr.span,
                             fmt!("move mode but datum will not store: %s",
                                  arg_datum.to_str(bcx.ccx())));
