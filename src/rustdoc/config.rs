@@ -73,7 +73,7 @@ fn opts() -> ~[(getopts::Opt, ~str)] {
 fn usage() {
     use io::println;
 
-    println(~"Usage: rustdoc ~[options] <cratefile>\n");
+    println(~"Usage: rustdoc [options] <cratefile>\n");
     println(~"Options:\n");
     for opts().each |opt| {
         println(fmt!("    %s", opt.second()));
