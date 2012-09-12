@@ -39,6 +39,12 @@ fn rt_fail(expr: *c_char, file: *c_char, line: size_t) {
     rustrt::rust_upcall_fail(expr, file, line);
 }
 
+#[rt(fail_)]
+fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) {
+    cleanup_stack_for_failure();
+    rustrt::rust_upcall_fail(expr, file, line);
+}
+
 #[rt(exchange_malloc)]
 fn rt_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     return rustrt::rust_upcall_exchange_malloc(td, size);

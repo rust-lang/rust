@@ -2403,7 +2403,7 @@ fn gather_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
     // in some obscure place in LLVM if the user provides the wrong signature
     // for an rtcall.
     let expected_rtcalls =
-        ~[~"exchange_free", ~"exchange_malloc", ~"fail", ~"free", ~"malloc"];
+        ~[~"exchange_free", ~"exchange_malloc", ~"fail_", ~"free", ~"malloc"];
     for vec::each(expected_rtcalls) |name| {
         if !ccx.rtcalls.contains_key(name) {
             fail fmt!("no definition for runtime call %s", name);
