@@ -400,7 +400,7 @@ mod tests {
 
     #[test]
     fn test_reinterpret_cast() {
-        assert unsafe { reinterpret_cast(&1) } == 1u;
+        assert 1u == unsafe { reinterpret_cast(&1) };
     }
 
     #[test]
@@ -431,7 +431,7 @@ mod tests {
     #[test]
     fn test_transmute2() {
         unsafe {
-            assert transmute(~"L") == ~[76u8, 0u8];
+            assert ~[76u8, 0u8] == transmute(~"L");
         }
     }
 
