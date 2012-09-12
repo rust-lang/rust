@@ -101,14 +101,6 @@ export recv_one, try_recv_one, send_one, try_send_one;
 // Functions used by the protocol compiler
 export rt;
 
-// XXX remove me
-#[cfg(stage0)]
-export has_buffer, buffer_header, packet;
-#[cfg(stage0)]
-export recv_packet_buffered, send_packet_buffered;
-#[cfg(stage0)]
-export send_packet, recv_packet, buffer_header;
-
 #[doc(hidden)]
 const SPIN_COUNT: uint = 0;
 
@@ -145,10 +137,6 @@ fn BufferHeader() -> BufferHeader{
         ref_count: 0
     }
 }
-
-// XXX remove me
-#[cfg(stage0)]
-fn buffer_header() -> BufferHeader { BufferHeader() }
 
 // This is for protocols to associate extra data to thread around.
 #[doc(hidden)]
@@ -212,11 +200,6 @@ type Packet<T: Send> = {
     mut payload: Option<T>,
 };
 
-// XXX remove me
-#[cfg(stage0)]
-#[allow(non_camel_case_types)]
-type packet<T: Send> = Packet<T>;
-
 #[doc(hidden)]
 trait HasBuffer {
     // XXX This should not have a trailing underscore
@@ -225,20 +208,6 @@ trait HasBuffer {
 
 impl<T: Send> Packet<T>: HasBuffer {
     fn set_buffer_(b: *libc::c_void) {
-        self.header.buffer = b;
-    }
-}
-
-#[cfg(stage0)] // XXX remove me
-#[doc(hidden)]
-#[allow(non_camel_case_types)]
-trait has_buffer {
-    fn set_buffer(b: *libc::c_void);
-}
-
-#[cfg(stage0)] // XXX remove me
-impl<T: Send> packet<T>: has_buffer {
-    fn set_buffer(b: *libc::c_void) {
         self.header.buffer = b;
     }
 }
@@ -768,17 +737,6 @@ fn SendPacket<T: Send>(p: *Packet<T>) -> SendPacket<T> {
     SendPacketBuffered(p)
 }
 
-// XXX remove me
-#[cfg(stage0)]
-#[allow(non_camel_case_types)]
-type send_packet<T: Send> = SendPacket<T>;
-
-// XXX remove me
-#[cfg(stage0)]
-fn send_packet<T: Send>(p: *packet<T>) -> SendPacket<T> {
-    SendPacket(p)
-}
-
 struct SendPacketBuffered<T: Send, Tbuffer: Send> {
     mut p: Option<*Packet<T>>,
     mut buffer: Option<BufferResource<Tbuffer>>,
@@ -837,12 +795,6 @@ impl<T: Send, Tbuffer: Send> SendPacketBuffered<T, Tbuffer> {
     }
 }
 
-// XXX remove me
-#[cfg(stage0)]
-#[allow(non_camel_case_types)]
-type send_packet_buffered<T: Send, Tbuffer: Send> =
-    SendPacketBuffered<T, Tbuffer>;
-
 /// Represents the receive end of a pipe. It can receive exactly one
 /// message.
 type RecvPacket<T: Send> = RecvPacketBuffered<T, Packet<T>>;
@@ -850,17 +802,6 @@ type RecvPacket<T: Send> = RecvPacketBuffered<T, Packet<T>>;
 #[doc(hidden)]
 fn RecvPacket<T: Send>(p: *Packet<T>) -> RecvPacket<T> {
     RecvPacketBuffered(p)
-}
-
-// XXX remove me
-#[cfg(stage0)]
-#[allow(non_camel_case_types)]
-type recv_packet<T: Send> = RecvPacket<T>;
-
-// XXX remove me
-#[cfg(stage0)]
-fn recv_packet<T: Send>(p: *packet<T>) -> RecvPacket<T> {
-    RecvPacket(p)
 }
 
 struct RecvPacketBuffered<T: Send, Tbuffer: Send> {
@@ -920,12 +861,6 @@ fn RecvPacketBuffered<T: Send, Tbuffer: Send>(p: *Packet<T>)
         }
     }
 }
-
-// XXX remove me
-#[cfg(stage0)]
-#[allow(non_camel_case_types)]
-type recv_packet_buffered<T: Send, Tbuffer: Send> =
-    RecvPacketBuffered<T, Tbuffer>;
 
 #[doc(hidden)]
 fn entangle<T: Send>() -> (SendPacket<T>, RecvPacket<T>) {

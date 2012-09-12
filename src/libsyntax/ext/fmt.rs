@@ -39,7 +39,7 @@ fn pieces_to_expr(cx: ext_ctxt, sp: span,
    -> @ast::expr {
     fn make_path_vec(_cx: ext_ctxt, ident: @~str) -> ~[ast::ident] {
         let intr = _cx.parse_sess().interner;
-        return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt2"),
+        return ~[intr.intern(@~"extfmt"), intr.intern(@~"rt"),
                  intr.intern(ident)];
     }
     fn make_rt_path_expr(cx: ext_ctxt, sp: span, nm: @~str) -> @ast::expr {
