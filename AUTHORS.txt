@@ -30,6 +30,7 @@ Daniel Patterson <dbp@riseup.net>
 Dave Herman <dherman@mozilla.com>
 David Rajchenbach-Teller <dteller@mozilla.com>
 Donovan Preston <donovanpreston@gmail.com>
+Drew Willcoxon <adw@mozilla.com>
 Elly Fong-Jones <elly@leptoquark.net>
 Eric Holk <eric.holk@gmail.com>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
