@@ -1554,6 +1554,7 @@ fn trans_closure(ccx: @crate_ctxt, path: path, decl: ast::fn_decl,
                  id: ast::node_id,
                  maybe_load_env: fn(fn_ctxt),
                  finish: fn(block)) {
+    ccx.stats.n_closures += 1;
     let _icx = ccx.insn_ctxt("trans_closure");
     set_uwtable(llfndecl);
 
@@ -1619,6 +1620,7 @@ fn trans_fn(ccx: @crate_ctxt,
     let start = if do_time { time::get_time() }
                 else { {sec: 0i64, nsec: 0i32} };
     let _icx = ccx.insn_ctxt("trans_fn");
+    ccx.stats.n_fns += 1;
     trans_closure(ccx, path, decl, body, llfndecl, ty_self,
                   param_substs, id,
                   |fcx| {
@@ -2651,6 +2653,10 @@ fn trans_crate(sess: session::session,
                mut n_glues_created: 0u,
                mut n_null_glues: 0u,
                mut n_real_glues: 0u,
+               mut n_fns: 0u,
+               mut n_monos: 0u,
+               mut n_inlines: 0u,
+               mut n_closures: 0u,
                llvm_insn_ctxt: @mut ~[],
                llvm_insns: str_hash(),
                fn_times: @mut ~[]},
@@ -2704,13 +2710,20 @@ fn trans_crate(sess: session::session,
         io::println(fmt!("n_null_glues: %u", ccx.stats.n_null_glues));
         io::println(fmt!("n_real_glues: %u", ccx.stats.n_real_glues));
 
+        io::println(fmt!("n_fns: %u", ccx.stats.n_fns));
+        io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
+        io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
+        io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
+
         // FIXME (#2280): this temporary shouldn't be
         // necessary, but seems to be, for borrowing.
+        /*
         let times = copy *ccx.stats.fn_times;
         for vec::each(times) |timing| {
             io::println(fmt!("time: %s took %d ms", timing.ident,
                              timing.time));
         }
+        */
     }
 
     if ccx.sess.count_llvm_insns() {

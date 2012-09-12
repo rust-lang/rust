@@ -1546,6 +1546,7 @@ fn type_is_immediate(ty: t) -> bool {
         type_is_unique(ty) || type_is_region_ptr(ty);
 }
 
+
 fn type_needs_drop(cx: ctxt, ty: t) -> bool {
     match cx.needs_drop_cache.find(ty) {
       Some(result) => return result,
@@ -1557,8 +1558,22 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       // scalar types
       ty_nil | ty_bot | ty_bool | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_type | ty_ptr(_) | ty_rptr(_, _) |
-      ty_estr(vstore_fixed(_)) | ty_estr(vstore_slice(_)) |
-      ty_evec(_, vstore_slice(_)) => false,
+      ty_estr(vstore_fixed(_)) |
+      ty_estr(vstore_slice(_)) |
+      ty_evec(_, vstore_slice(_)) |
+      ty_self => false,
+
+      ty_box(_) | ty_uniq(_) |
+      ty_opaque_box | ty_opaque_closure_ptr(*) |
+      ty_estr(vstore_uniq) |
+      ty_estr(vstore_box) |
+      ty_evec(_, vstore_uniq) |
+      ty_evec(_, vstore_box) => true,
+
+      ty_trait(*) => true,
+
+      ty_param(*) | ty_infer(*) => true,
+
       ty_evec(mt, vstore_fixed(_)) => type_needs_drop(cx, mt.ty),
       ty_unboxed_vec(mt) => type_needs_drop(cx, mt.ty),
       ty_rec(flds) => {
@@ -1598,7 +1613,6 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
           _ => true
         }
       }
-      _ => true
     };
 
     cx.needs_drop_cache.insert(ty, result);

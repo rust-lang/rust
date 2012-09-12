@@ -97,6 +97,8 @@ fn monomorphic_fn(ccx: @crate_ctxt,
     let mono_ty = ty::subst_tps(ccx.tcx, substs, llitem_ty);
     let llfty = type_of_fn_from_ty(ccx, mono_ty);
 
+    ccx.stats.n_monos += 1;
+
     let depth = option::get_default(ccx.monomorphizing.find(fn_id), 0u);
     // Random cut-off -- code that needs to instantiate the same function
     // recursively more than ten times can probably safely be assumed to be

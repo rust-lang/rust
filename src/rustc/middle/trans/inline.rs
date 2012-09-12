@@ -30,6 +30,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
           }
           csearch::found(ast::ii_item(item)) => {
             ccx.external.insert(fn_id, Some(item.id));
+            ccx.stats.n_inlines += 1;
             trans_item(ccx, *item);
             local_def(item.id)
           }
@@ -64,6 +65,7 @@ fn maybe_instantiate_inline(ccx: @crate_ctxt, fn_id: ast::def_id)
                with a non-item parent");
           }
           csearch::found(ast::ii_method(impl_did, mth)) => {
+            ccx.stats.n_inlines += 1;
             ccx.external.insert(fn_id, Some(mth.id));
             let {bounds: impl_bnds, region_param: _, ty: impl_ty} =
                 ty::lookup_item_type(ccx.tcx, impl_did);

@@ -121,10 +121,103 @@ fn lazily_emit_all_tydesc_glue(ccx: @crate_ctxt,
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_visit_glue, static_ti);
 }
 
+fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
+
+    if (field == abi::tydesc_field_take_glue ||
+        field == abi::tydesc_field_drop_glue ||
+        field == abi::tydesc_field_free_glue) &&
+        ! ty::type_needs_drop(tcx, t) {
+          return ty::mk_u32(tcx);
+    }
+
+    if field == abi::tydesc_field_take_glue {
+        match ty::get(t).sty {
+          ty::ty_unboxed_vec(*) => { return ty::mk_u32(tcx); }
+          _ => ()
+        }
+    }
+
+    if field == abi::tydesc_field_take_glue &&
+        ty::type_is_boxed(t) {
+          return ty::mk_imm_box(tcx, ty::mk_u32(tcx));
+    }
+
+    if field == abi::tydesc_field_free_glue {
+        match ty::get(t).sty {
+          ty::ty_fn(*) |
+          ty::ty_box(*) |
+          ty::ty_opaque_box |
+          ty::ty_uniq(*) |
+          ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
+          ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) |
+          ty::ty_opaque_closure_ptr(*) => (),
+          _ => { return ty::mk_u32(tcx); }
+        }
+    }
+
+    if (field == abi::tydesc_field_free_glue ||
+        field == abi::tydesc_field_drop_glue) {
+        match ty::get(t).sty {
+          ty::ty_box(mt) |
+          ty::ty_evec(mt, ty::vstore_box)
+          if ! ty::type_needs_drop(tcx, mt.ty) =>
+          return ty::mk_imm_box(tcx, ty::mk_u32(tcx)),
+
+          ty::ty_uniq(mt) |
+          ty::ty_evec(mt, ty::vstore_uniq)
+          if ! ty::type_needs_drop(tcx, mt.ty) =>
+          return ty::mk_imm_uniq(tcx, ty::mk_u32(tcx)),
+
+          _ => ()
+        }
+    }
+
+    return t;
+}
+
+pure fn cast_glue(ccx: @crate_ctxt, ti: @tydesc_info, v: ValueRef)
+    -> ValueRef {
+    unchecked {
+        let llfnty = type_of_glue_fn(ccx, ti.ty);
+        llvm::LLVMConstPointerCast(v, T_ptr(llfnty))
+    }
+}
+
+fn lazily_emit_simplified_tydesc_glue(ccx: @crate_ctxt, field: uint,
+                                      ti: @tydesc_info) -> bool {
+    let _icx = ccx.insn_ctxt("lazily_emit_simplified_tydesc_glue");
+    let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
+    if simpl != ti.ty {
+        let simpl_ti = base::get_tydesc(ccx, simpl);
+        lazily_emit_tydesc_glue(ccx, field, simpl_ti);
+        if field == abi::tydesc_field_take_glue {
+            ti.take_glue =
+                simpl_ti.take_glue.map(|v| cast_glue(ccx, ti, v));
+        } else if field == abi::tydesc_field_drop_glue {
+            ti.drop_glue =
+                simpl_ti.drop_glue.map(|v| cast_glue(ccx, ti, v));
+        } else if field == abi::tydesc_field_free_glue {
+            ti.free_glue =
+                simpl_ti.free_glue.map(|v| cast_glue(ccx, ti, v));
+        } else if field == abi::tydesc_field_visit_glue {
+            ti.visit_glue =
+                simpl_ti.visit_glue.map(|v| cast_glue(ccx, ti, v));
+        }
+        return true;
+    }
+    return false;
+}
+
+
 fn lazily_emit_tydesc_glue(ccx: @crate_ctxt, field: uint,
                            ti: @tydesc_info) {
     let _icx = ccx.insn_ctxt("lazily_emit_tydesc_glue");
     let llfnty = type_of_glue_fn(ccx, ti.ty);
+
+    if lazily_emit_simplified_tydesc_glue(ccx, field, ti) {
+        return;
+    }
+
     if field == abi::tydesc_field_take_glue {
         match ti.take_glue {
           Some(_) => (),
@@ -502,7 +595,9 @@ fn declare_tydesc(ccx: @crate_ctxt, t: ty::t) -> @tydesc_info {
     //XXX this triggers duplicate LLVM symbols
     let name = if false /*ccx.sess.opts.debuginfo*/ {
         mangle_internal_name_by_type_only(ccx, t, ~"tydesc")
-    } else { mangle_internal_name_by_seq(ccx, ~"tydesc") };
+    } else {
+        mangle_internal_name_by_seq(ccx, ~"tydesc")
+    };
     note_unique_llvm_symbol(ccx, name);
     log(debug, fmt!("+++ declare_tydesc %s %s", ty_to_str(ccx.tcx, t), name));
     let gvar = str::as_c_str(name, |buf| {
@@ -535,6 +630,7 @@ fn declare_generic_glue(ccx: @crate_ctxt, t: ty::t, llfnty: TypeRef,
     } else {
         fn_nm = mangle_internal_name_by_seq(ccx, (~"glue_" + name));
     }
+    debug!("%s is for type %s", fn_nm, ty_to_str(ccx.tcx, t));
     note_unique_llvm_symbol(ccx, fn_nm);
     let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
     set_glue_inlining(llfn, t);
