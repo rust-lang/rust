@@ -2329,7 +2329,9 @@ impl parser {
                           | ~"owned" => {
                             self.obsolete(copy self.span,
                                           ObsoleteLowerCaseKindBounds);
-                            None
+                            // Bogus value, but doesn't matter, since
+                            // is an error
+                            Some(bound_send)
                           }
 
                           _ => None

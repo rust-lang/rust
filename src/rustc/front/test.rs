@@ -335,7 +335,7 @@ fn mk_test_desc_rec(cx: test_ctxt, test: test) -> @ast::expr {
     let fn_wrapper_expr = mk_test_wrapper(cx, fn_expr, span);
 
     let fn_field: ast::field =
-        nospan({mutbl: ast::m_imm, ident: cx.sess.ident_of(~"fn"),
+        nospan({mutbl: ast::m_imm, ident: cx.sess.ident_of(~"testfn"),
                 expr: fn_wrapper_expr});
 
     let ignore_lit: ast::lit = nospan(ast::lit_bool(test.ignore));

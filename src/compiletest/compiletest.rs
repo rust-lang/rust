@@ -174,7 +174,7 @@ fn make_test(config: config, testfile: &Path) ->
    test::TestDesc {
     {
         name: make_test_name(config, testfile),
-        fn: make_test_closure(config, testfile),
+        testfn: make_test_closure(config, testfile),
         ignore: header::is_test_ignored(config, testfile),
         should_fail: false
     }
