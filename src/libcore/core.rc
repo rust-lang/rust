@@ -67,7 +67,7 @@ export option_iter;
 
 // This creates some APIs that I do not want to commit to, but it must be
 // exported from core in order for uv to remain in std (see #2648).
-export priv;
+export private;
 
 
 // Built-in-type support modules
@@ -241,7 +241,7 @@ mod rt;
 // For internal use, not exported
 
 mod unicode;
-mod priv;
+mod private;
 mod cmath;
 mod stackwalk;
 

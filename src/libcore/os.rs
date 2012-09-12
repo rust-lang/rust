@@ -174,7 +174,7 @@ mod global_env {
     fn get_global_env_chan() -> comm::Chan<Msg> {
         let global_ptr = rustrt::rust_global_env_chan_ptr();
         unsafe {
-            priv::chan_from_global_ptr(global_ptr, || {
+            private::chan_from_global_ptr(global_ptr, || {
                 // FIXME (#2621): This would be a good place to use a very
                 // small foreign stack
                 task::task().sched_mode(task::SingleThreaded).unlinked()
@@ -184,7 +184,7 @@ mod global_env {
 
     fn global_env_task(msg_po: comm::Port<Msg>) {
         unsafe {
-            do priv::weaken_task |weak_po| {
+            do private::weaken_task |weak_po| {
                 loop {
                     match comm::select2(msg_po, weak_po) {
                       either::Left(MsgGetEnv(n, resp_ch)) => {
