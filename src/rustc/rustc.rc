@@ -51,7 +51,7 @@ mod middle {
         mod uniq;
         mod closure;
         mod tvec;
-        mod impl;
+        mod meth;
         mod foreign;
         mod reflect;
         mod shape;

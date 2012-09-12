@@ -1838,7 +1838,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
         }
       }
       ast::item_impl(tps, _, _, ms) => {
-        impl::trans_impl(ccx, *path, item.ident, ms, tps);
+        meth::trans_impl(ccx, *path, item.ident, ms, tps);
       }
       ast::item_mod(m) => {
         trans_mod(ccx, m);
@@ -1890,7 +1890,7 @@ fn trans_struct_def(ccx: @crate_ctxt, struct_def: @ast::struct_def,
     // If there are ty params, the ctor will get monomorphized
 
     // Translate methods
-    impl::trans_impl(ccx, *path, ident, struct_def.methods, tps);
+    meth::trans_impl(ccx, *path, ident, struct_def.methods, tps);
 }
 
 fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],
@@ -1898,7 +1898,7 @@ fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],
                path: @ast_map::path, ident: ast::ident) {
     // Translate any methods that have provided implementations
     let (_, provided_methods) = ast_util::split_trait_methods(trait_methods);
-    impl::trans_impl(ccx, *path, ident, provided_methods, tps);
+    meth::trans_impl(ccx, *path, ident, provided_methods, tps);
 }
 
 // Translate a module. Doing this amounts to translating the items in the

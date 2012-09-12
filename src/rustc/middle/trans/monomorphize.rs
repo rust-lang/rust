@@ -156,7 +156,7 @@ fn monomorphic_fn(ccx: @crate_ctxt,
       ast_map::node_method(mth, _, _) => {
         let d = mk_lldecl();
         set_inline_hint_if_appr(mth.attrs, d);
-        impl::trans_method(ccx, pt, mth, psubsts, d);
+        meth::trans_method(ccx, pt, mth, psubsts, d);
         d
       }
       ast_map::node_ctor(_, tps, ctor, parent_id, _) => {
@@ -244,7 +244,7 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
             for vec::each(*bounds) |bound| {
                 match bound {
                   ty::bound_trait(_) => {
-                    vec::push(v, impl::vtable_id(ccx, vts[i]));
+                    vec::push(v, meth::vtable_id(ccx, vts[i]));
                     i += 1u;
                   }
                   _ => ()
