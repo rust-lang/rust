@@ -57,7 +57,7 @@ fn create<T: Copy>() -> Deque<T> {
                 self.lo = self.elts.len() - 1u;
             } else { self.lo -= 1u; }
             if self.lo == self.hi {
-                self.elts.swap(|v| grow(self.nelts, oldlo, move v));
+                self.elts.swap_mut(|v| grow(self.nelts, oldlo, move v));
                 self.lo = self.elts.len() - 1u;
                 self.hi = self.nelts;
             }
@@ -66,7 +66,7 @@ fn create<T: Copy>() -> Deque<T> {
         }
         fn add_back(t: T) {
             if self.lo == self.hi && self.nelts != 0u {
-                self.elts.swap(|v| grow(self.nelts, self.lo, move v));
+                self.elts.swap_mut(|v| grow(self.nelts, self.lo, move v));
                 self.lo = 0u;
                 self.hi = self.nelts;
             }
@@ -108,8 +108,7 @@ fn create<T: Copy>() -> Deque<T> {
         mut hi: 0u,
         elts:
             dvec::from_vec(
-                vec::to_mut(
-                    vec::from_elem(initial_capacity, None)))
+                vec::from_elem(initial_capacity, None))
     };
     (move repr) as Deque::<T>
 }

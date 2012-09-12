@@ -5,11 +5,11 @@ type parser = {
 };
 
 trait parse {
-    fn parse() -> ~[mut int];
+    fn parse() -> ~[int];
 }
 
 impl parser: parse {
-    fn parse() -> ~[mut int] {
+    fn parse() -> ~[int] {
         dvec::unwrap(move self.tokens) //~ ERROR illegal move from self
     }
 }

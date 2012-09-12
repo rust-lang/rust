@@ -43,7 +43,7 @@ impl nominal_id_ : core::cmp::Eq {
 }
 
 impl nominal_id_ : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.did, &self.parent_id, lsb0, f);
         for self.tps.each |t| {
             ty::type_id(t).iter_bytes(lsb0, f);

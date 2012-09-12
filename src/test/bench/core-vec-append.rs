@@ -12,7 +12,7 @@ fn collect_raw(num: uint) -> ~[uint] {
     return result;
 }
 
-fn collect_dvec(num: uint) -> ~[mut uint] {
+fn collect_dvec(num: uint) -> ~[uint] {
     let result = DVec();
     for uint::range(0u, num) |i| {
         result.push(i);
@@ -43,7 +43,7 @@ fn main(args: ~[~str]) {
 
     let raw = mid - start;
     let dvec = end - mid;
-    
+
     let maxf = max as float;
     let rawf = raw as float;
     let dvecf = dvec as float;

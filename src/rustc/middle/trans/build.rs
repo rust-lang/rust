@@ -446,7 +446,7 @@ fn InBoundsGEP(cx: block, Pointer: ValueRef, Indices: &[ValueRef]) ->
     unsafe {
         count_insn(cx, "inboundsgep");
     return llvm::LLVMBuildInBoundsGEP(B(cx), Pointer,
-                                       vec::unsafe::to_ptr_slice(Indices),
+                                       vec::unsafe::to_ptr(Indices),
                                        Indices.len() as c_uint,
                                        noname());
     }

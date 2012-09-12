@@ -350,7 +350,7 @@ impl Constraint: cmp::Eq {
 }
 
 impl Constraint : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+   pure  fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         match self {
           ConstrainVarSubVar(ref v0, ref v1) =>
           to_bytes::iter_bytes_3(&0u8, v0, v1, lsb0, f),
@@ -377,7 +377,7 @@ impl TwoRegions: cmp::Eq {
 }
 
 impl TwoRegions : to_bytes::IterBytes {
-    fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
+    pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.a, &self.b, lsb0, f)
     }
 }

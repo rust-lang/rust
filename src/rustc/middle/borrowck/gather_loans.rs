@@ -408,7 +408,7 @@ impl gather_loan_ctxt {
             }
             None => {
                 self.req_maps.req_loan_map.insert(
-                    scope_id, @dvec::from_vec(~[mut loans]));
+                    scope_id, @dvec::from_vec(~[loans]));
             }
         }
     }

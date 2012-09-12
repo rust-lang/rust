@@ -89,7 +89,7 @@ fn round_up_to(base: uint, align: uint) -> uint {
 // in it.
 unsafe fn destroy_chunk(chunk: Chunk) {
     let mut idx = 0;
-    let buf = vec::unsafe::to_ptr_slice(chunk.data);
+    let buf = vec::unsafe::to_ptr(chunk.data);
     let fill = chunk.fill;
 
     while idx < fill {
@@ -156,7 +156,7 @@ impl &Arena {
         //       start, n_bytes, align, head.fill);
 
         unsafe {
-            ptr::offset(vec::unsafe::to_ptr_slice(head.data), start)
+            ptr::offset(vec::unsafe::to_ptr(head.data), start)
         }
     }
 
@@ -200,7 +200,7 @@ impl &Arena {
         //       start, n_bytes, align, head.fill);
 
         unsafe {
-            let buf = vec::unsafe::to_ptr_slice(head.data);
+            let buf = vec::unsafe::to_ptr(head.data);
             return (ptr::offset(buf, tydesc_start), ptr::offset(buf, start));
         }
     }
