@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-use std;
+extern mod std;
 use task::yield;
 
 fn x(s: ~str, n: int) {

@@ -1,7 +1,7 @@
 
 
 // a bug was causing this to complain about leaked memory on exit
-use std;
+extern mod std;
 use option::Some;
 use option::None;
 

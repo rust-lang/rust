@@ -1,5 +1,5 @@
 // error-pattern: mismatched types
 
-use std;
+extern mod std;
 
 fn main() { task::spawn(fn~() -> int { 10 }); }

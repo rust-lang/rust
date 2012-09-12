@@ -1,6 +1,6 @@
 /// Map representation
 
-use std;
+extern mod std;
 
 enum square {
     bot,

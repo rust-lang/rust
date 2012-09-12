@@ -5,12 +5,12 @@
 // aux-build:crateresolve4b-2.rs
 
 mod a {
-    use crateresolve4b(vers = "0.1");
+    extern mod crateresolve4b(vers = "0.1");
     fn f() { assert crateresolve4b::f() == 20; }
 }
 
 mod b {
-    use crateresolve4b(vers = "0.2");
+    extern mod crateresolve4b(vers = "0.2");
     fn f() { assert crateresolve4b::g() == 10; }
 }
 

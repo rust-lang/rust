@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use cmp::Eq;
 
 fn f<T:Eq>(&o: Option<T>) {

@@ -3,8 +3,8 @@
 // aux-build:crateresolve5-2.rs
 // error-pattern:mismatched types
 
-use cr5_1 (name = "crateresolve5", vers = "0.1");
-use cr5_2 (name = "crateresolve5", vers = "0.2");
+extern mod cr5_1 (name = "crateresolve5", vers = "0.1");
+extern mod cr5_2 (name = "crateresolve5", vers = "0.2");
 
 fn main() {
     // Nominal types from two multiple versions of a crate are different types

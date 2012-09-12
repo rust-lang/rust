@@ -12,7 +12,7 @@
 //
 //  writes pbm image to output path
 
-use std;
+extern mod std;
 use io::WriterUtil;
 use std::map::HashMap;
 

@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use std::map::*;
 
 enum cat_type { tuxedo, tabby, tortoiseshell }

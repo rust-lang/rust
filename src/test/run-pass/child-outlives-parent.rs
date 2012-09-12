@@ -1,6 +1,6 @@
 // Reported as issue #126, child leaks the string.
 
-use std;
+extern mod std;
 
 fn child2(&&s: ~str) { }
 

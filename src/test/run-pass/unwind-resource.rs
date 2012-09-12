@@ -1,5 +1,5 @@
 // xfail-win32
-use std;
+extern mod std;
 
 struct complainer {
   c: comm::Chan<bool>,

@@ -1,3 +1,3 @@
 // error-pattern:moop
-use std;
+extern mod std;
 fn main() { fail ~"moop"; }

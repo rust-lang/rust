@@ -1,5 +1,5 @@
 // error-pattern:not enough arguments
 
-use std;
+extern mod std;
 
 fn main() { let s = fmt!("%s%s%s", "test", "test"); }

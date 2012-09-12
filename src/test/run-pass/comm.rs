@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-use std;
+extern mod std;
 use comm::Chan;
 use comm::send;
 use comm::recv;

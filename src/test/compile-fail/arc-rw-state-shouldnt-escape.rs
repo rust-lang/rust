@@ -1,5 +1,5 @@
 // error-pattern: reference is not valid outside of its lifetime
-use std;
+extern mod std;
 use std::arc;
 fn main() {
     let x = ~arc::RWARC(1);

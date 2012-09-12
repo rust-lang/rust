@@ -3,7 +3,7 @@
 
 #[no_core];
 
-use core;
+extern mod core;
 
 fn last<T: Copy>(v: ~[const T]) -> core::Option<T> {
     fail;

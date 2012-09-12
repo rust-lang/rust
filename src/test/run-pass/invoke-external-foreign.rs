@@ -5,7 +5,7 @@
 // successfully (and safely) invoke external, cdecl
 // functions from outside the crate.
 
-use foreign_lib;
+extern mod foreign_lib;
 
 fn main() {
     let foo = foreign_lib::rustrt::last_os_error();

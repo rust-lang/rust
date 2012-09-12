@@ -2,7 +2,7 @@
 // xfail-fast
 // xfail-pretty
 
-use std;
+extern mod std;
 
 #[test]
 #[ignore(cfg(ignorecfg))]

@@ -1,4 +1,4 @@
-use issue_2316_a;
+extern mod issue_2316_a;
 
 mod cloth {
 

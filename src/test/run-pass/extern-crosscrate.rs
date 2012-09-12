@@ -1,7 +1,7 @@
 // xfail-fast
 //aux-build:extern-crosscrate-source.rs
 
-use externcallback(vers = "0.1");
+extern mod externcallback(vers = "0.1");
 
 fn fact(n: uint) -> uint {
     debug!("n = %?", n);

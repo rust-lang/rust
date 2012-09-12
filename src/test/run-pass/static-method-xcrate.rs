@@ -1,7 +1,7 @@
 // xfail-fast
 // aux-build:static-methods-crate.rs
 
-use static_methods_crate;
+extern mod static_methods_crate;
 use static_methods_crate::read;
 use readMaybeRenamed = static_methods_crate::readMaybe;
 

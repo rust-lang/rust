@@ -5,7 +5,7 @@
    https://github.com/graydon/rust/issues/507
 */
 
-use std;
+extern mod std;
 
 use comm::Chan;
 use comm::send;

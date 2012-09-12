@@ -1,5 +1,5 @@
 // error-pattern: cannot infer an appropriate lifetime
-use std;
+extern mod std;
 use std::sync;
 fn main() {
     let x = ~sync::RWlock();

@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 fn main() {
     // Chars of 1, 2, 3, and 4 bytes

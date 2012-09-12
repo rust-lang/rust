@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-use std;
+extern mod std;
 use pipes::send;
 use pipes::Port;
 use pipes::recv;

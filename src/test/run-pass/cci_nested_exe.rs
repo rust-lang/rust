@@ -1,7 +1,7 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_nested_lib.rs
 
-use cci_nested_lib;
+extern mod cci_nested_lib;
 use cci_nested_lib::*;
 
 fn main() {

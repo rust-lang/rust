@@ -3,7 +3,7 @@
        uuid = "54cc1bc9-02b8-447c-a227-75ebc923bc29")];
 #[crate_type = "lib"];
 
-use std;
+extern mod std;
 
 export context;
 

@@ -1,7 +1,7 @@
 // aux-build:issue_2472_b.rs
 // xfail-fast
 
-use issue_2472_b;
+extern mod issue_2472_b;
 
 use issue_2472_b::{S, T};
 

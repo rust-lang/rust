@@ -4,7 +4,7 @@
    This originally came from the word-count benchmark.
 */
 
-use std;
+extern mod std;
 
 use option::Some;
 use option::None;

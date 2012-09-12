@@ -1,5 +1,5 @@
 // error-pattern: mismatched types
-use std;
+extern mod std;
 use std::map::HashMap;
 use std::bitv;
 

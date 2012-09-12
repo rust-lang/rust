@@ -10,7 +10,7 @@
 
 */
 
-use std;
+extern mod std;
 
 use std::{time, getopts};
 use io::WriterUtil;

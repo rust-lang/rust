@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-use std;
+extern mod std;
 
 fn sub(parent: comm::Chan<int>, id: int) {
     if id == 0 {

@@ -5,7 +5,7 @@
 // FIXME: This won't work until we can compare resources (#2601)
 // xfail-test
 
-use std;
+extern mod std;
 use task::join;
 
 fn child() { }

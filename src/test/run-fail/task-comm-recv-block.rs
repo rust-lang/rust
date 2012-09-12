@@ -1,6 +1,6 @@
 // error-pattern:goodfail
 
-use std;
+extern mod std;
 
 fn goodfail() {
     task::yield();

@@ -1,6 +1,6 @@
 //xfail-test
 
-use std;
+extern mod std;
 
 fn f(x : @{a:int, b:int}) {
     assert (x.a == 10);

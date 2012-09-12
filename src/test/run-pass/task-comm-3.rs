@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use pipes::Chan;
 use pipes::send;
 use pipes::recv;

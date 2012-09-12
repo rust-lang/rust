@@ -1,5 +1,5 @@
 // xfail-win32 leaks
-use std;
+extern mod std;
 
 fn die() {
     fail;

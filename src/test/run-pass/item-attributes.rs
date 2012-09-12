@@ -140,7 +140,7 @@ mod test_attr_inner_then_outer_multi {
 
 mod test_distinguish_syntax_ext {
 
-    use std;
+    extern mod std;
 
     fn f() {
         fmt!("test%s", ~"s");

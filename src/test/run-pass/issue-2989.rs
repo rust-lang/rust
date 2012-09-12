@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 trait methods {
     fn to_bytes() -> ~[u8];

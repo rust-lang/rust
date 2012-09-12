@@ -1,6 +1,6 @@
 // xfail-fast
 // aux-build:cci_class_3.rs
-use cci_class_3;
+extern mod cci_class_3;
 use cci_class_3::kitties::*;
 
 fn main() {

@@ -3,7 +3,7 @@
 // aux-build:crateresolve_calories-2.rs
 // aux-build:crateresolve7x.rs
 
-use crateresolve7x;
+extern mod crateresolve7x;
 
 fn main() {
     assert crateresolve7x::a::f() == 100;

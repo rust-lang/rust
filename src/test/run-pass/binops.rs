@@ -1,6 +1,6 @@
 // Binop corner cases
 
-use std;
+extern mod std;
 use unsafe::reinterpret_cast;
 
 fn test_nil() {

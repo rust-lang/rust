@@ -1,6 +1,6 @@
 // xfail-win32
 
-use std;
+extern mod std;
 
 use std::list::{List, Cons, Nil};
 use std::time::precise_time_s;

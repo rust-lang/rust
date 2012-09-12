@@ -1,6 +1,6 @@
 // xfail-fast
 // aux-build:cci_class_cast.rs
-use cci_class_cast;
+extern mod cci_class_cast;
 use to_str::ToStr;
 use cci_class_cast::kitty::*;
 

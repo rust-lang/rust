@@ -1,5 +1,5 @@
 
-use std;
+extern mod std;
 
 fn foo<T>(y: Option<T>) {
     let mut x: int;

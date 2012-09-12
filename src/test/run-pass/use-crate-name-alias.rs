@@ -1,4 +1,4 @@
 // Issue #1706
-use stdlib(name="std");
+extern mod stdlib(name="std");
 
 fn main() {}

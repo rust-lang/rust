@@ -1,5 +1,5 @@
 // xfail-test
-use std;
+extern mod std;
 use std::arena;
 use std::arena::Arena;
 

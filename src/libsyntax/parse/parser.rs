@@ -3328,7 +3328,7 @@ impl parser {
                                           visibility,
                                           maybe_append(attrs, extra_attrs)));
         } else if self.eat_keyword(~"use") {
-            let view_item = self.parse_use(visibility);
+            let view_item = self.parse_use();
             self.expect(token::SEMI);
             return iovi_view_item(@{
                 node: view_item,
@@ -3379,15 +3379,7 @@ impl parser {
         }
     }
 
-    fn parse_use(vis: visibility) -> view_item_ {
-        if vis != public && (self.look_ahead(1) == token::SEMI ||
-                             self.look_ahead(1) == token::LPAREN) {
-            // Old-style "use"; i.e. what we now call "extern mod".
-            let ident = self.parse_ident();
-            let metadata = self.parse_optional_meta();
-            return view_item_use(ident, metadata, self.get_id());
-        }
-
+    fn parse_use() -> view_item_ {
         return view_item_import(self.parse_view_paths());
     }
 
@@ -3496,7 +3488,7 @@ impl parser {
     fn parse_view_item(+attrs: ~[attribute]) -> @view_item {
         let lo = self.span.lo, vis = self.parse_visibility();
         let node = if self.eat_keyword(~"use") {
-            self.parse_use(vis)
+            self.parse_use()
         } else if self.eat_keyword(~"export") {
             view_item_export(self.parse_view_paths())
         } else if self.eat_keyword(~"extern") {

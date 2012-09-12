@@ -2,7 +2,7 @@
 
 // Regression tests for circular_buffer when using a unit
 // that has a size that is not a power of two
-use std;
+extern mod std;
 use comm::Port;
 use comm::Chan;
 use comm::send;

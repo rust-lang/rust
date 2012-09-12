@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use sys::refcount;
 
 fn main() unsafe {

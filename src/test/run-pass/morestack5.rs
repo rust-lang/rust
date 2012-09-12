@@ -1,6 +1,6 @@
 // This test will call __morestack with various minimum stack sizes
 
-use std;
+extern mod std;
 
 fn getbig(&&i: int) {
     if i != 0 {

@@ -3,6 +3,6 @@
 #[link(name = "crateresolve4b", vers = "0.2")];
 #[crate_type = "lib"];
 
-use crateresolve4a(vers="0.1");
+extern mod crateresolve4a(vers="0.1");
 
 fn g() -> int { crateresolve4a::f() }

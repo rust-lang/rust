@@ -10,7 +10,7 @@
 
 use future::future;
 
-use std;
+extern mod std;
 use std::time;
 
 use pipes::recv;

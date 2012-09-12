@@ -1,6 +1,6 @@
 // Microbenchmarks for various functions in core and std
 
-use std;
+extern mod std;
 
 use std::time::precise_time_s;
 use std::map;

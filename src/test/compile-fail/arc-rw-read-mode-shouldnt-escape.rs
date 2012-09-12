@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use std::arc;
 fn main() {
     let x = ~arc::RWARC(1);

@@ -1,5 +1,5 @@
 mod argparse {
-    use std;
+    extern mod std;
 
     use either::{Either, Left, Right};
 

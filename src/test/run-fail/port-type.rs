@@ -1,5 +1,5 @@
 // error-pattern:meep
-use std;
+extern mod std;
 use comm::Chan;
 use comm::Port;
 use comm::send;

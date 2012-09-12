@@ -2,7 +2,7 @@
 
 #[no_core];
 
-use core;
+extern mod core;
 
 use core::{str, int, vec};
 

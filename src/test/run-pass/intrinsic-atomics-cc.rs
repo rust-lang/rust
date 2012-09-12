@@ -1,7 +1,7 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_intrinsic.rs
 
-use cci_intrinsic;
+extern mod cci_intrinsic;
 use cci_intrinsic::atomic_xchg;
 
 fn main() {

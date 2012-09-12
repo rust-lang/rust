@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 fn test_heap_to_heap() {
     // a spills onto the heap

@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 
 fn main() {
     // Make sure we properly handle repeated self-appends.

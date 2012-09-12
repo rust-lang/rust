@@ -3,7 +3,7 @@
 // aux-build:crateresolve1-3.rs
 // error-pattern:multiple matching crates for `crateresolve1`
 
-use crateresolve1;
+extern mod crateresolve1;
 
 fn main() {
 }

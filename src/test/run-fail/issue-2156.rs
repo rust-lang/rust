@@ -1,6 +1,6 @@
 // error-pattern:explicit failure
 // Don't double free the string
-use std;
+extern mod std;
 use io::Reader;
 
 fn main() {

@@ -1,6 +1,6 @@
 // xfail-test
 
-use std;
+extern mod std;
 use std::map::*;
 use vec::*;
 use dvec::{dvec, extensions};

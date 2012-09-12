@@ -1,6 +1,6 @@
 // xfail-test
 // -*- rust -*-
-use std;
+extern mod std;
 
 type cell = {mut c: @list};
 

@@ -1,5 +1,5 @@
 // Based on threadring.erlang by Jira Isa
-use std;
+extern mod std;
 
 const n_threads: int = 503;
 

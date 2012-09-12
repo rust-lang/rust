@@ -1,6 +1,6 @@
 // xfail-test
 use sys::rustrt::size_of;
-use std;
+extern mod std;
 
 fn main() {
     assert (size_of::<u8>() == 1 as uint);

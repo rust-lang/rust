@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use comm::*;
 use task::*;
 

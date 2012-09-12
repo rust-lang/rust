@@ -1,7 +1,7 @@
 // xfail-fast - check-fast doesn't understand aux-build
 // aux-build:cci_impl_lib.rs
 
-use cci_impl_lib;
+extern mod cci_impl_lib;
 use cci_impl_lib::uint_helpers;
 
 fn main() {

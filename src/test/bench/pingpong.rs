@@ -2,7 +2,7 @@
 
 // xfail-pretty
 
-use std;
+extern mod std;
 
 use pipes::{spawn_service, recv};
 use std::time::precise_time_s;

@@ -1,7 +1,7 @@
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
-use std;
+extern mod std;
 
 // Using sqrt from the standard library is way slower than using libc
 // directly even though std just calls libc, I guess it must be

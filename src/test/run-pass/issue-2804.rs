@@ -1,4 +1,4 @@
-use std;
+extern mod std;
 use io::WriterUtil;
 use std::map::HashMap;
 
