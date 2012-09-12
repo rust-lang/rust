@@ -149,8 +149,7 @@ pure fn from_slice(s: &str) -> ~str {
  */
 pure fn from_byte(b: u8) -> ~str {
     assert b < 128u8;
-    let mut v = ~[b, 0u8];
-    unsafe { ::unsafe::transmute(v) }
+    unsafe { ::unsafe::transmute(~[b, 0u8]) }
 }
 
 /// Appends a character at the end of a string
@@ -437,8 +436,7 @@ Section: Transforming strings
  * The result vector is not null-terminated.
  */
 pure fn to_bytes(s: &str) -> ~[u8] unsafe {
-    let mut s_copy = from_slice(s);
-    let mut v: ~[u8] = ::unsafe::transmute(s_copy);
+    let mut v: ~[u8] = ::unsafe::transmute(from_slice(s));
     vec::unsafe::set_len(v, len(s));
     move v
 }
@@ -1997,7 +1995,7 @@ mod unsafe {
         vec::push(v, 0u8);
 
         assert is_utf8(v);
-        return ::unsafe::transmute(v);
+        return ::unsafe::transmute(move v);
     }
 
     /// Create a Rust string from a *u8 buffer of the given length
@@ -2005,7 +2003,7 @@ mod unsafe {
     unsafe fn from_buf_len_nocopy(buf: &a / *u8, len: uint) -> &a / str {
         let v = (*buf, len + 1);
         assert is_utf8(::unsafe::reinterpret_cast(&v));
-        return ::unsafe::transmute(v);
+        return ::unsafe::transmute(move v);
     }
 
     /// Create a Rust string from a null-terminated C string
@@ -2052,7 +2050,7 @@ mod unsafe {
                 }
                 vec::unsafe::set_len(v, end - begin);
                 vec::push(v, 0u8);
-                ::unsafe::transmute(v)
+                ::unsafe::transmute(move v)
             }
         }
     }

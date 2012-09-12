@@ -198,27 +198,27 @@ impl<T> DList<T> {
 
     /// Add data to the head of the list. O(1).
     fn push_head(+data: T) {
-        self.add_head(self.new_link(data));
+        self.add_head(self.new_link(move data));
     }
     /**
      * Add data to the head of the list, and get the new containing
      * node. O(1).
      */
     fn push_head_n(+data: T) -> DListNode<T> {
-        let mut nobe = self.new_link(data);
+        let mut nobe = self.new_link(move data);
         self.add_head(nobe);
         option::get(nobe)
     }
     /// Add data to the tail of the list. O(1).
     fn push(+data: T) {
-        self.add_tail(self.new_link(data));
+        self.add_tail(self.new_link(move data));
     }
     /**
      * Add data to the tail of the list, and get the new containing
      * node. O(1).
      */
     fn push_n(+data: T) -> DListNode<T> {
-        let mut nobe = self.new_link(data);
+        let mut nobe = self.new_link(move data);
         self.add_tail(nobe);
         option::get(nobe)
     }
@@ -227,7 +227,7 @@ impl<T> DList<T> {
      * O(1).
      */
     fn insert_before(+data: T, neighbour: DListNode<T>) {
-        self.insert_left(self.new_link(data), neighbour);
+        self.insert_left(self.new_link(move data), neighbour);
     }
     /**
      * Insert an existing node in the middle of the list, left of the
@@ -242,7 +242,7 @@ impl<T> DList<T> {
      * and get its containing node. O(1).
      */
     fn insert_before_n(+data: T, neighbour: DListNode<T>) -> DListNode<T> {
-        let mut nobe = self.new_link(data);
+        let mut nobe = self.new_link(move data);
         self.insert_left(nobe, neighbour);
         option::get(nobe)
     }
@@ -251,7 +251,7 @@ impl<T> DList<T> {
      * O(1).
      */
     fn insert_after(+data: T, neighbour: DListNode<T>) {
-        self.insert_right(neighbour, self.new_link(data));
+        self.insert_right(neighbour, self.new_link(move data));
     }
     /**
      * Insert an existing node in the middle of the list, right of the
@@ -266,7 +266,7 @@ impl<T> DList<T> {
      * and get its containing node. O(1).
      */
     fn insert_after_n(+data: T, neighbour: DListNode<T>) -> DListNode<T> {
-        let mut nobe = self.new_link(data);
+        let mut nobe = self.new_link(move data);
         self.insert_right(neighbour, nobe);
         option::get(nobe)
     }

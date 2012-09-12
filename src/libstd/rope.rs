@@ -814,11 +814,11 @@ mod node {
                     offset += 1u;
                     i      += 1u;
                 }
-                unsafe::forget(local_buf);
+                unsafe::forget(move local_buf);
               }
             }
         }
-        return unsafe::transmute(buf);
+        return unsafe::transmute(move buf);
     }
 
     /**

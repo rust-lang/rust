@@ -32,15 +32,15 @@ unsafe fn reinterpret_cast<T, U>(src: &T) -> U {
  * reinterpret_cast on managed pointer types.
  */
 #[inline(always)]
-unsafe fn forget<T>(-thing: T) { rusti::forget(thing); }
+unsafe fn forget<T>(-thing: T) { rusti::forget(move thing); }
 
 /**
  * Force-increment the reference count on a shared box. If used
- * uncarefully, this can leak the box. Use this in conjunction with transmute
+ * carelessly, this can leak the box. Use this in conjunction with transmute
  * and/or reinterpret_cast when such calls would otherwise scramble a box's
  * reference count
  */
-unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
+unsafe fn bump_box_refcount<T>(+t: @T) { forget(move t); }
 
 /**
  * Transform a value of one type into a value of another type.
@@ -51,23 +51,26 @@ unsafe fn bump_box_refcount<T>(+t: @T) { forget(t); }
  *     assert transmute("L") == ~[76u8, 0u8];
  */
 unsafe fn transmute<L, G>(-thing: L) -> G {
-    let newthing = reinterpret_cast(&thing);
-    forget(thing);
+    debug!(">>> in transmute! <<<");
+    debug!("transmute 1: %?", &thing);
+    let newthing: G = reinterpret_cast(&thing);
+    forget(move thing);
+    debug!("transmute 2: %?", &newthing);
     move newthing
 }
 
 /// Coerce an immutable reference to be mutable.
-unsafe fn transmute_mut<T>(+ptr: &a/T) -> &a/mut T { transmute(ptr) }
+unsafe fn transmute_mut<T>(+ptr: &a/T) -> &a/mut T { transmute(move ptr) }
 
 /// Coerce a mutable reference to be immutable.
-unsafe fn transmute_immut<T>(+ptr: &a/mut T) -> &a/T { transmute(ptr) }
+unsafe fn transmute_immut<T>(+ptr: &a/mut T) -> &a/T { transmute(move ptr) }
 
 /// Coerce a borrowed pointer to have an arbitrary associated region.
-unsafe fn transmute_region<T>(+ptr: &a/T) -> &b/T { transmute(ptr) }
+unsafe fn transmute_region<T>(+ptr: &a/T) -> &b/T { transmute(move ptr) }
 
 /// Coerce a borrowed mutable pointer to have an arbitrary associated region.
 unsafe fn transmute_mut_region<T>(+ptr: &a/mut T) -> &b/mut T {
-    transmute(ptr)
+    transmute(move ptr)
 }
 
 /// Transforms lifetime of the second pointer to match the first.
@@ -117,7 +120,7 @@ struct ArcDestruct<T> {
                     // Unkillable wait. Message guaranteed to come.
                     if pipes::recv_one(move response) {
                         // Other task got the data.
-                        unsafe::forget(data);
+                        unsafe::forget(move data);
                     } else {
                         // Other task was killed. drop glue takes over.
                     }
@@ -125,7 +128,7 @@ struct ArcDestruct<T> {
                     // drop glue takes over.
                 }
             } else {
-                unsafe::forget(data);
+                unsafe::forget(move data);
             }
         }
     }
@@ -163,7 +166,7 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
         let (c1,p1) = pipes::oneshot(); // ()
         let (c2,p2) = pipes::oneshot(); // bool
         let server: UnwrapProto = ~mut Some((move c1,move p2));
-        let serverp: libc::uintptr_t = unsafe::transmute(server);
+        let serverp: libc::uintptr_t = unsafe::transmute(move server);
         // Try to put our server end in the unwrapper slot.
         if rustrt::rust_compare_and_swap_ptr(&mut ptr.unwrapper, 0, serverp) {
             // Got in. Step 0: Tell destructor not to run. We are now it.
@@ -174,7 +177,7 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
             if new_count == 0 {
                 // We were the last owner. Can unwrap immediately.
                 // Also we have to free the server endpoints.
-                let _server: UnwrapProto = unsafe::transmute(serverp);
+                let _server: UnwrapProto = unsafe::transmute(move serverp);
                 option::swap_unwrap(&mut ptr.data)
                 // drop glue takes over.
             } else {
@@ -194,9 +197,9 @@ unsafe fn unwrap_shared_mutable_state<T: Send>(+rc: SharedMutableState<T>)
             }
         } else {
             // Somebody else was trying to unwrap. Avoid guaranteed deadlock.
-            unsafe::forget(ptr);
+            unsafe::forget(move ptr);
             // Also we have to free the (rejected) server endpoints.
-            let _server: UnwrapProto = unsafe::transmute(serverp);
+            let _server: UnwrapProto = unsafe::transmute(move serverp);
             fail ~"Another task is already unwrapping this ARC!";
         }
     }
@@ -213,7 +216,7 @@ type SharedMutableState<T: Send> = ArcDestruct<T>;
 unsafe fn shared_mutable_state<T: Send>(+data: T) -> SharedMutableState<T> {
     let data = ~ArcData { count: 1, unwrapper: 0, data: Some(move data) };
     unsafe {
-        let ptr = unsafe::transmute(data);
+        let ptr = unsafe::transmute(move data);
         ArcDestruct(ptr)
     }
 }
@@ -226,7 +229,7 @@ unsafe fn get_shared_mutable_state<T: Send>(rc: &a/SharedMutableState<T>)
         assert ptr.count > 0;
         // Cast us back into the correct region
         let r = unsafe::transmute_region(option::get_ref(&ptr.data));
-        unsafe::forget(ptr);
+        unsafe::forget(move ptr);
         return unsafe::transmute_mut(r);
     }
 }
@@ -238,7 +241,7 @@ unsafe fn get_shared_immutable_state<T: Send>(rc: &a/SharedMutableState<T>)
         assert ptr.count > 0;
         // Cast us back into the correct region
         let r = unsafe::transmute_region(option::get_ref(&ptr.data));
-        unsafe::forget(ptr);
+        unsafe::forget(move ptr);
         return r;
     }
 }
@@ -249,7 +252,7 @@ unsafe fn clone_shared_mutable_state<T: Send>(rc: &SharedMutableState<T>)
         let ptr: ~ArcData<T> = unsafe::reinterpret_cast(&(*rc).data);
         let new_count = rustrt::rust_atomic_increment(&mut ptr.count);
         assert new_count >= 2;
-        unsafe::forget(ptr);
+        unsafe::forget(move ptr);
     }
     ArcDestruct((*rc).data)
 }

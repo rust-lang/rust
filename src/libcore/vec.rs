@@ -271,12 +271,12 @@ pure fn build_sized_opt<A>(size: Option<uint>,
 
 /// Produces a mut vector from an immutable vector.
 pure fn to_mut<T>(+v: ~[T]) -> ~[mut T] {
-    unsafe { ::unsafe::transmute(v) }
+    unsafe { ::unsafe::transmute(move v) }
 }
 
 /// Produces an immutable vector from a mut vector.
 pure fn from_mut<T>(+v: ~[mut T]) -> ~[T] {
-    unsafe { ::unsafe::transmute(v) }
+    unsafe { ::unsafe::transmute(move v) }
 }
 
 // Accessors
@@ -580,7 +580,7 @@ unsafe fn push_fast<T>(&v: ~[const T], +initval: T) {
     (**repr).fill += sys::size_of::<T>();
     let p = ptr::addr_of((**repr).data);
     let p = ptr::offset(p, fill) as *mut T;
-    rusti::move_val_init(*p, initval);
+    rusti::move_val_init(*p, move initval);
 }
 
 #[inline(never)]
@@ -1835,7 +1835,7 @@ mod unsafe {
             let mut box2 = None;
             box2 <-> box;
             rusti::move_val_init(*ptr::mut_offset(p, i),
-                                 option::unwrap(box2));
+                                 option::unwrap(move box2));
         }
     }
 

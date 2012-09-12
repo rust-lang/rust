@@ -279,7 +279,7 @@ mod chained {
             if opt_v.is_none() {
                 fail fmt!("Key not found in table: %?", k);
             }
-            option::unwrap(opt_v)
+            option::unwrap(move opt_v)
         }
 
         fn remove(+k: K) -> bool {

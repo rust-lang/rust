@@ -155,7 +155,7 @@ fn connect(-input_ip: ip::IpAddr, port: uint,
     // we can send into the interact cb to be handled in libuv..
     log(debug, fmt!("stream_handle_ptr outside interact %?",
         stream_handle_ptr));
-    do iotask::interact(iotask) |loop_ptr| unsafe {
+    do iotask::interact(iotask) |move input_ip, loop_ptr| unsafe {
         log(debug, ~"in interact cb for tcp client connect..");
         log(debug, fmt!("stream_handle_ptr in interact %?",
             stream_handle_ptr));
@@ -575,7 +575,7 @@ fn listen(-host_ip: ip::IpAddr, port: uint, backlog: uint,
           +new_connect_cb: fn~(TcpNewConnection,
                                comm::Chan<Option<TcpErrData>>))
     -> result::Result<(), TcpListenErrData> unsafe {
-    do listen_common(host_ip, port, backlog, iotask, on_establish_cb)
+    do listen_common(move host_ip, port, backlog, iotask, on_establish_cb)
         // on_connect_cb
         |move new_connect_cb, handle| unsafe {
             let server_data_ptr = uv::ll::get_data_for_uv_handle(handle)
@@ -600,7 +600,7 @@ fn listen_common(-host_ip: ip::IpAddr, port: uint, backlog: uint,
         server_stream_ptr: server_stream_ptr,
         stream_closed_ch: core::comm::Chan(stream_closed_po),
         kill_ch: kill_ch,
-        on_connect_cb: on_connect_cb,
+        on_connect_cb: move on_connect_cb,
         iotask: iotask,
         mut active: true
     };
@@ -614,7 +614,7 @@ fn listen_common(-host_ip: ip::IpAddr, port: uint, backlog: uint,
         // tcp::connect (because the iotask::interact cb isn't
         // nested within a core::comm::listen block)
         let loc_ip = copy(host_ip);
-        do iotask::interact(iotask) |loop_ptr| unsafe {
+        do iotask::interact(iotask) |move loc_ip, loop_ptr| unsafe {
             match uv::ll::tcp_init(loop_ptr, server_stream_ptr) {
               0i32 => {
                 uv::ll::set_data_for_uv_handle(
@@ -739,7 +739,7 @@ impl TcpSocket {
     fn read_stop(-read_port:
                  comm::Port<result::Result<~[u8], TcpErrData>>) ->
         result::Result<(), TcpErrData> {
-        read_stop(self, read_port)
+        read_stop(self, move read_port)
     }
     fn read(timeout_msecs: uint) ->
         result::Result<~[u8], TcpErrData> {
@@ -1491,7 +1491,8 @@ mod test {
                           cont_ch: comm::Chan<()>,
                           iotask: IoTask) -> ~str {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
-        let listen_result = listen(server_ip_addr, server_port, 128u, iotask,
+        let listen_result = listen(move server_ip_addr, server_port, 128,
+                                   iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
                 log(debug, fmt!("establish_cb %?",
@@ -1574,7 +1575,8 @@ mod test {
     fn run_tcp_test_server_fail(server_ip: ~str, server_port: uint,
                           iotask: IoTask) -> TcpListenErrData {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
-        let listen_result = listen(server_ip_addr, server_port, 128u, iotask,
+        let listen_result = listen(move server_ip_addr, server_port, 128,
+                                   iotask,
             // on_establish_cb -- called when listener is set up
             |kill_ch| {
                 log(debug, fmt!("establish_cb %?",
@@ -1600,7 +1602,8 @@ mod test {
         let server_ip_addr = ip::v4::parse_addr(server_ip);
 
         log(debug, ~"CLIENT: starting..");
-        let connect_result = connect(server_ip_addr, server_port, iotask);
+        let connect_result = connect(move server_ip_addr, server_port,
+                                     iotask);
         if result::is_err(connect_result) {
             log(debug, ~"CLIENT: failed to connect");
             let err_data = result::get_err(connect_result);

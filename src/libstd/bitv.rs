@@ -221,7 +221,7 @@ fn Bitv (nbits: uint, init: bool) -> Bitv {
                      if nbits % uint_bits == 0 {0} else {1};
         let elem = if init {!0} else {0};
         let s = to_mut(from_elem(nelems, elem));
-        Big(~BigBitv(s))
+        Big(~BigBitv(move s))
     };
     Bitv {rep: rep, nbits: nbits}
 }

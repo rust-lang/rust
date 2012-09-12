@@ -90,7 +90,7 @@ fn from_port<A:Send>(+port: future_pipe::client::waiting<A>) -> Future<A> {
     do from_fn |move port| {
         let mut port_ = None;
         port_ <-> *port;
-        let port = option::unwrap(port_);
+        let port = option::unwrap(move port_);
         match recv(move port) {
             future_pipe::completed(move data) => move data
         }
