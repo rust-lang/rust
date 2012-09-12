@@ -89,6 +89,10 @@ type stats =
      mut n_glues_created: uint,
      mut n_null_glues: uint,
      mut n_real_glues: uint,
+     mut n_fns: uint,
+     mut n_monos: uint,
+     mut n_inlines: uint,
+     mut n_closures: uint,
      llvm_insn_ctxt: @mut ~[~str],
      llvm_insns: HashMap<~str, uint>,
      fn_times: @mut ~[{ident: ~str, time: int}]};
