@@ -7,6 +7,5 @@ fn f<T:Eq>(&o: Option<T>) {
 
 fn main() {
     f::<int>(option::None);
-    //~^ ERROR taking mut reference to static item
-    //~^^ ERROR illegal borrow: creating mutable alias to aliasable, immutable memory
+    //~^ ERROR illegal borrow: creating mutable alias to static item
 }

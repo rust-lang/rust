@@ -794,7 +794,7 @@ impl TcpSocketBuf: io::Reader {
         count
     }
     fn read_byte() -> int {
-        let bytes = ~[0];
+        let mut bytes = ~[0];
         if self.read(bytes, 1u) == 0 { fail } else { bytes[0] as int }
     }
     fn unread_byte(amt: int) {

@@ -1177,7 +1177,7 @@ type SharedChan<T: Send> = unsafe::Exclusive<Chan<T>>;
 impl<T: Send> SharedChan<T>: Channel<T> {
     fn send(+x: T) {
         let mut xx = Some(move x);
-        do self.with |chan| {
+        do self.with_imm |chan| {
             let mut x = None;
             x <-> xx;
             chan.send(option::unwrap(move x))
@@ -1186,7 +1186,7 @@ impl<T: Send> SharedChan<T>: Channel<T> {
 
     fn try_send(+x: T) -> bool {
         let mut xx = Some(move x);
-        do self.with |chan| {
+        do self.with_imm |chan| {
             let mut x = None;
             x <-> xx;
             chan.try_send(option::unwrap(move x))

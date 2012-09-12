@@ -604,7 +604,7 @@ impl block {
     }
 
     fn expr_to_str(e: @ast::expr) -> ~str {
-        fmt!("expr(%d: %s)", e.id, expr_to_str(e, self.sess().intr()))
+        util::ppaux::expr_repr(self.tcx(), e)
     }
 
     fn expr_is_lval(e: @ast::expr) -> bool {
@@ -1180,13 +1180,17 @@ fn path_str(sess: session::session, p: path) -> ~str {
     r
 }
 
+fn monomorphize_type(bcx: block, t: ty::t) -> ty::t {
+    match bcx.fcx.param_substs {
+        Some(substs) => ty::subst_tps(bcx.tcx(), substs.tys, t),
+        _ => { assert !ty::type_has_params(t); t }
+    }
+}
+
 fn node_id_type(bcx: block, id: ast::node_id) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
-    match bcx.fcx.param_substs {
-      Some(substs) => ty::subst_tps(tcx, substs.tys, t),
-      _ => { assert !ty::type_has_params(t); t }
-    }
+    monomorphize_type(bcx, t)
 }
 
 fn expr_ty(bcx: block, ex: @ast::expr) -> ty::t {

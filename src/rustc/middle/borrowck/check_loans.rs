@@ -75,8 +75,7 @@ fn check_loans(bccx: borrowck_ctxt,
 
 enum assignment_type {
     at_straight_up,
-    at_swap,
-    at_mutbl_ref,
+    at_swap
 }
 
 impl assignment_type : cmp::Eq {
@@ -92,15 +91,13 @@ impl assignment_type {
         // are only assigned once; but it doesn't consider &mut
         match self {
           at_straight_up => true,
-          at_swap => true,
-          at_mutbl_ref => false
+          at_swap => true
         }
     }
     fn ing_form(desc: ~str) -> ~str {
         match self {
           at_straight_up => ~"assigning to " + desc,
-          at_swap => ~"swapping to and from " + desc,
-          at_mutbl_ref => ~"taking mut reference to " + desc
+          at_swap => ~"swapping to and from " + desc
         }
     }
 }
@@ -369,11 +366,9 @@ impl check_loan_ctxt {
         // taking a mutable ref.  that will create a loan of its own
         // which will be checked for compat separately in
         // check_for_conflicting_loans()
-        if at != at_mutbl_ref {
-            for cmt.lp.each |lp| {
-                self.check_for_loan_conflicting_with_assignment(
-                    at, ex, cmt, lp);
-            }
+        for cmt.lp.each |lp| {
+            self.check_for_loan_conflicting_with_assignment(
+                at, ex, cmt, lp);
         }
 
         self.bccx.add_to_mutbl_map(cmt);
@@ -430,8 +425,8 @@ impl check_loan_ctxt {
                 self.tcx().sess.span_err(
                     e.cmt.span,
                     fmt!("illegal borrow unless pure: %s",
-                         self.bccx.bckerr_code_to_str(e.code)));
-                self.bccx.note_and_explain_bckerr(e.code);
+                         self.bccx.bckerr_to_str(e)));
+                self.bccx.note_and_explain_bckerr(e);
                 self.tcx().sess.span_note(
                     sp,
                     fmt!("impure due to %s", msg));
@@ -531,14 +526,12 @@ impl check_loan_ctxt {
                 ty::node_id_to_type(self.tcx(), callee_id));
         do vec::iter2(args, arg_tys) |arg, arg_ty| {
             match ty::resolved_mode(self.tcx(), arg_ty.mode) {
-              ast::by_move => {
-                self.check_move_out(arg);
-              }
-              ast::by_mutbl_ref => {
-                self.check_assignment(at_mutbl_ref, arg);
-              }
-              ast::by_ref | ast::by_copy | ast::by_val => {
-              }
+                ast::by_move => {
+                    self.check_move_out(arg);
+                }
+                ast::by_mutbl_ref | ast::by_ref |
+                ast::by_copy | ast::by_val => {
+                }
             }
         }
     }
@@ -643,19 +636,6 @@ fn check_loans_in_expr(expr: @ast::expr,
                                             ty::mk_nil(self.tcx()), def);
                 self.check_move_out_from_cmt(cmt);
             }
-        }
-      }
-      ast::expr_addr_of(mutbl, base) => {
-        match mutbl {
-          m_const => { /*all memory is const*/ }
-          m_mutbl => {
-            // If we are taking an &mut ptr, make sure the memory
-            // being pointed at is assignable in the first place:
-            self.check_assignment(at_mutbl_ref, base);
-          }
-          m_imm => {
-            // XXX explain why no check is req'd here
-          }
         }
       }
       ast::expr_call(f, args, _) => {

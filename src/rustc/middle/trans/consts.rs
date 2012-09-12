@@ -312,10 +312,10 @@ fn const_expr(cx: @crate_ctxt, e: @ast::expr) -> ValueRef {
         let (v, _, _) = const_vec(cx, e, es);
         v
       }
-      ast::expr_vstore(e, ast::vstore_fixed(_)) => {
+      ast::expr_vstore(e, ast::expr_vstore_fixed(_)) => {
         const_expr(cx, e)
       }
-      ast::expr_vstore(sub, ast::vstore_slice(_)) => {
+      ast::expr_vstore(sub, ast::expr_vstore_slice) => {
         match sub.node {
           ast::expr_lit(lit) => {
             match lit.node {

@@ -40,7 +40,7 @@ fn check_pat(p: @pat, &&_is_const: bool, v: visit::vt<bool>) {
     fn is_str(e: @expr) -> bool {
         match e.node {
           expr_vstore(@{node: expr_lit(@{node: lit_str(_), _}), _},
-                      vstore_uniq) => true,
+                      expr_vstore_uniq) => true,
           _ => false
         }
     }
@@ -98,8 +98,8 @@ fn check_expr(sess: session, def_map: resolve::DefMap,
               }
             }
           }
-          expr_vstore(_, vstore_slice(_)) |
-          expr_vstore(_, vstore_fixed(_)) |
+          expr_vstore(_, expr_vstore_slice) |
+          expr_vstore(_, expr_vstore_fixed(_)) |
           expr_vec(_, m_imm) |
           expr_addr_of(m_imm, _) |
           expr_field(*) |

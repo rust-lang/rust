@@ -4,6 +4,7 @@ use infer::{resolve_type, resolve_and_force_all_but_regions,
 use ast_util::new_def_hash;
 use syntax::print::pprust;
 use result::{Result, Ok, Err};
+use util::common::indenter;
 
 // vtable resolution looks for places where trait bounds are
 // subsituted in and figures out which vtable is used. There is some
@@ -410,6 +411,8 @@ fn insert_vtables(ccx: @crate_ctxt, callee_id: ast::node_id,
 fn early_resolve_expr(ex: @ast::expr, &&fcx: @fn_ctxt, is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id %? (early: %b): %s",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
+    let _indent = indenter();
+
     let cx = fcx.ccx;
     match ex.node {
       ast::expr_path(*) => {

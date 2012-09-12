@@ -41,7 +41,7 @@ fn trans_if(bcx: block,
 
     let _icx = bcx.insn_ctxt("trans_if");
     let Result {bcx, val: cond_val} =
-        expr::trans_to_appropriate_llval(bcx, cond);
+        expr::trans_to_datum(bcx, cond).to_result();
 
     let then_bcx_in = scope_block(bcx, thn.info(), ~"then");
     let else_bcx_in = scope_block(bcx, els.info(), ~"else");
@@ -121,7 +121,7 @@ fn trans_while(bcx: block, cond: @ast::expr, body: ast::blk)
 
     // compile the condition
     let Result {bcx: cond_bcx_out, val: cond_val} =
-        expr::trans_to_appropriate_llval(cond_bcx_in, cond);
+        expr::trans_to_datum(cond_bcx_in, cond).to_result();
     let cond_bcx_out =
         trans_block_cleanups(cond_bcx_out, block_cleanups(cond_bcx_in));
     CondBr(cond_bcx_out, cond_val, body_bcx_in.llbb, next_bcx.llbb);
@@ -179,7 +179,7 @@ fn trans_log(log_ex: @ast::expr,
     let current_level = Load(bcx, global);
     let level = unpack_result!(bcx, {
         do with_scope_result(bcx, lvl.info(), ~"level") |bcx| {
-            expr::trans_to_appropriate_llval(bcx, lvl)
+            expr::trans_to_datum(bcx, lvl).to_result()
         }
     });
 
@@ -278,7 +278,7 @@ fn trans_check_expr(bcx: block, chk_expr: @ast::expr,
         + ~" failed";
     let Result {bcx, val} = {
         do with_scope_result(bcx, chk_expr.info(), ~"check") |bcx| {
-            expr::trans_to_appropriate_llval(bcx, pred_expr)
+            expr::trans_to_datum(bcx, pred_expr).to_result()
         }
     };
     do with_cond(bcx, Not(bcx, val)) |bcx| {

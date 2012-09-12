@@ -3,7 +3,7 @@ struct Foo {
 }
 
 impl Foo {
-    fn f(&self) {}
+    fn f(&const self) {}
 }
 
 fn g(x: &mut Foo) {

@@ -340,17 +340,6 @@ fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
     }
 }
 
-fn cat_borrow_of_expr(
-    tcx: ty::ctxt,
-    method_map: typeck::method_map,
-    expr: @ast::expr) -> cmt {
-
-    let mcx = &mem_categorization_ctxt {
-        tcx: tcx, method_map: method_map
-    };
-    return mcx.cat_borrow_of_expr(expr);
-}
-
 fn cat_expr(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
@@ -420,33 +409,40 @@ struct mem_categorization_ctxt {
 }
 
 impl &mem_categorization_ctxt {
-    fn cat_borrow_of_expr(expr: @ast::expr) -> cmt {
-        // Any expression can be borrowed (to account for auto-ref on method
-        // receivers), but @, ~, @vec, and ~vec are handled specially.
-        let expr_ty = ty::expr_ty(self.tcx, expr);
-        match ty::get(expr_ty).sty {
-          ty::ty_evec(*) | ty::ty_estr(*) => {
-            self.cat_index(expr, expr)
-          }
+    fn cat_expr(expr: @ast::expr) -> cmt {
+        match self.tcx.adjustments.find(expr.id) {
+            None => {
+                // No adjustments.
+                self.cat_expr_unadjusted(expr)
+            }
 
-          ty::ty_uniq(*) | ty::ty_box(*) | ty::ty_rptr(*) => {
-            let cmt = self.cat_expr(expr);
-            self.cat_deref(expr, cmt, 0u, true).get()
-          }
-
-          /*
-          ty::ty_fn({proto, _}) {
-            self.cat_call(expr, expr, proto)
-          }
-          */
-
-          _ => {
-            self.cat_rvalue(expr, expr_ty)
-          }
+            Some(adjustment) => {
+                match adjustment.autoref {
+                    Some(_) => {
+                        // Equivalent to &*expr or something similar.
+                        // This is an rvalue, effectively.
+                        let expr_ty = ty::expr_ty(self.tcx, expr);
+                        self.cat_rvalue(expr, expr_ty)
+                    }
+                    None => {
+                        // Equivalent to *expr or something similar.
+                        self.cat_expr_autoderefd(expr, adjustment)
+                    }
+                }
+            }
         }
     }
 
-    fn cat_expr(expr: @ast::expr) -> cmt {
+    fn cat_expr_autoderefd(expr: @ast::expr,
+                           adjustment: &ty::AutoAdjustment) -> cmt {
+        let mut cmt = self.cat_expr_unadjusted(expr);
+        for uint::range(1, adjustment.autoderefs+1) |deref| {
+            cmt = self.cat_deref(expr, cmt, deref);
+        }
+        return cmt;
+    }
+
+    fn cat_expr_unadjusted(expr: @ast::expr) -> cmt {
         debug!("cat_expr: id=%d expr=%s",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -459,15 +455,7 @@ impl &mem_categorization_ctxt {
             }
 
             let base_cmt = self.cat_expr(e_base);
-            match self.cat_deref(expr, base_cmt, 0u, true) {
-              Some(cmt) => return cmt,
-              None => {
-                tcx.sess.span_bug(
-                    e_base.span,
-                    fmt!("Explicit deref of non-derefable type `%s`",
-                         ty_to_str(tcx, tcx.ty(e_base))));
-              }
-            }
+            self.cat_deref(expr, base_cmt, 0)
           }
 
           ast::expr_field(base, f_name, _) => {
@@ -475,7 +463,7 @@ impl &mem_categorization_ctxt {
                 return self.cat_method_ref(expr, expr_ty);
             }
 
-            let base_cmt = self.cat_autoderef(base);
+            let base_cmt = self.cat_expr(base);
             self.cat_field(expr, base_cmt, f_name)
           }
 
@@ -484,7 +472,8 @@ impl &mem_categorization_ctxt {
                 return self.cat_rvalue(expr, expr_ty);
             }
 
-            self.cat_index(expr, base)
+            let base_cmt = self.cat_expr(base);
+            self.cat_index(expr, base_cmt)
           }
 
           ast::expr_path(_) => {
@@ -666,11 +655,21 @@ impl &mem_categorization_ctxt {
           mutbl: m, ty: self.tcx.ty(node)}
     }
 
-    fn cat_deref<N:ast_node>(node: N, base_cmt: cmt, derefs: uint,
-                             expl: bool) -> Option<cmt> {
-        do ty::deref(self.tcx, base_cmt.ty, expl).map |mt| {
-            match deref_kind(self.tcx, base_cmt.ty) {
-              deref_ptr(ptr) => {
+    fn cat_deref<N:ast_node>(node: N,
+                             base_cmt: cmt,
+                             deref_cnt: uint) -> cmt {
+        let mt = match ty::deref(self.tcx, base_cmt.ty, true) {
+            Some(mt) => mt,
+            None => {
+                self.tcx.sess.span_bug(
+                    node.span(),
+                    fmt!("Explicit deref of non-derefable type: %s",
+                         ty_to_str(self.tcx, base_cmt.ty)));
+            }
+        };
+
+        match deref_kind(self.tcx, base_cmt.ty) {
+            deref_ptr(ptr) => {
                 let lp = do base_cmt.lp.chain |l| {
                     // Given that the ptr itself is loanable, we can
                     // loan out deref'd uniq ptrs as the data they are
@@ -678,41 +677,38 @@ impl &mem_categorization_ctxt {
                     // Other ptr types admit aliases and are therefore
                     // not loanable.
                     match ptr {
-                      uniq_ptr => {Some(@lp_deref(l, ptr))}
-                      gc_ptr | region_ptr(_) | unsafe_ptr => {None}
+                        uniq_ptr => {Some(@lp_deref(l, ptr))}
+                        gc_ptr | region_ptr(_) | unsafe_ptr => {None}
                     }
                 };
 
                 // for unique ptrs, we inherit mutability from the
                 // owning reference.
                 let m = match ptr {
-                  uniq_ptr => {
-                    self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
-                  }
-                  gc_ptr | region_ptr(_) | unsafe_ptr => {
-                    mt.mutbl
-                  }
+                    uniq_ptr => {
+                        self.inherited_mutability(base_cmt.mutbl, mt.mutbl)
+                    }
+                    gc_ptr | region_ptr(_) | unsafe_ptr => {
+                        mt.mutbl
+                    }
                 };
 
                 @{id:node.id(), span:node.span(),
-                  cat:cat_deref(base_cmt, derefs, ptr), lp:lp,
+                  cat:cat_deref(base_cmt, deref_cnt, ptr), lp:lp,
                   mutbl:m, ty:mt.ty}
-              }
+            }
 
-              deref_comp(comp) => {
+            deref_comp(comp) => {
                 let lp = base_cmt.lp.map(|l| @lp_comp(l, comp) );
                 let m = self.inherited_mutability(base_cmt.mutbl, mt.mutbl);
                 @{id:node.id(), span:node.span(),
                   cat:cat_comp(base_cmt, comp), lp:lp,
                   mutbl:m, ty:mt.ty}
-              }
             }
         }
     }
 
-    fn cat_index(expr: @ast::expr, base: @ast::expr) -> cmt {
-        let base_cmt = self.cat_autoderef(base);
-
+    fn cat_index(expr: @ast::expr, base_cmt: cmt) -> cmt {
         let mt = match ty::index(self.tcx, base_cmt.ty) {
           Some(mt) => mt,
           None => {
@@ -779,25 +775,6 @@ impl &mem_categorization_ctxt {
         @{id:expr.id, span:expr.span,
           cat:cat_special(sk_method), lp:None,
           mutbl:m_imm, ty:expr_ty}
-    }
-
-    fn cat_autoderef(base: @ast::expr) -> cmt {
-        // Creates a string of implicit derefences so long as base is
-        // dereferencable.  n.b., it is important that these dereferences are
-        // associated with the field/index that caused the autoderef (expr).
-        // This is used later to adjust ref counts and so forth in trans.
-
-        // Given something like base.f where base has type @m1 @m2 T, we want
-        // to yield the equivalent categories to (**base).f.
-        let mut cmt = self.cat_expr(base);
-        let mut ctr = 0u;
-        loop {
-            ctr += 1u;
-            match self.cat_deref(base, cmt, ctr, false) {
-              None => return cmt,
-              Some(cmt1) => cmt = cmt1
-            }
-        }
     }
 
     fn cat_pattern(cmt: cmt, pat: @ast::pat, op: fn(cmt, @ast::pat)) {
@@ -900,15 +877,9 @@ impl &mem_categorization_ctxt {
 
           ast::pat_box(subpat) | ast::pat_uniq(subpat) |
           ast::pat_region(subpat) => {
-            // @p1, ~p1, &p1
-            match self.cat_deref(subpat, cmt, 0u, true) {
-              Some(subcmt) => {
-                self.cat_pattern(subcmt, subpat, op);
-              }
-              None => {
-                tcx.sess.span_bug(pat.span, ~"Non derefable type");
-              }
-            }
+            // @p1, ~p1
+            let subcmt = self.cat_deref(subpat, cmt, 0);
+            self.cat_pattern(subcmt, subpat, op);
           }
 
           ast::pat_lit(_) | ast::pat_range(_, _) => { /*always ok*/ }

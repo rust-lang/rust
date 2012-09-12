@@ -53,7 +53,7 @@ fn c() {
     (*q).purem();
 
     // ...but not impure fns
-    (*q).impurem(); //~ ERROR illegal borrow unless pure: creating immutable alias to aliasable, mutable memory
+    (*q).impurem(); //~ ERROR illegal borrow unless pure
     //~^ NOTE impure due to access to impure function
 }
 

@@ -27,10 +27,9 @@ fn eqtype(fcx: @fn_ctxt, sp: span,
 }
 
 // Checks that the type `actual` can be assigned to `expected`.
-fn assign(fcx: @fn_ctxt, sp: span, borrow_lb: ast::node_id,
-          expected: ty::t, expr: @ast::expr) {
+fn assign(fcx: @fn_ctxt, sp: span, expected: ty::t, expr: @ast::expr) {
     let expr_ty = fcx.expr_ty(expr);
-    match fcx.mk_assignty(expr, borrow_lb, expr_ty, expected) {
+    match fcx.mk_assignty(expr, expr_ty, expected) {
       result::Ok(()) => { /* ok */ }
       result::Err(ref err) => {
         fcx.report_mismatched_types(sp, expected, expr_ty, err);

@@ -95,18 +95,17 @@ fn trans_method(ccx: @crate_ctxt,
 fn trans_self_arg(bcx: block, base: @ast::expr,
                   mentry: typeck::method_map_entry) -> Result {
     let _icx = bcx.insn_ctxt("impl::trans_self_arg");
-    let basety = expr_ty(bcx, base);
-    let mode = ast::expl(mentry.self_mode);
     let mut temp_cleanups = ~[];
-    let result = trans_arg_expr(bcx, {mode: mode, ty: basety}, base,
-                                &mut temp_cleanups, None, mentry.derefs);
+    let self_arg = {mode: mentry.self_arg.mode,
+                    ty: monomorphize_type(bcx, mentry.self_arg.ty)};
+    let result = trans_arg_expr(bcx, self_arg, base,
+                                &mut temp_cleanups, None);
 
-    // by-ref self argument should not require cleanup in the case of
-    // other arguments failing:
-    //assert temp_cleanups == ~[];
-    //do vec::iter(temp_cleanups) |c| {
-    //    revoke_clean(bcx, c)
-    //}
+    // FIXME(#3446)---this is wrong, actually.  The temp_cleanups
+    // should be revoked only after all arguments have been passed.
+    for temp_cleanups.each |c| {
+        revoke_clean(bcx, c)
+    }
 
     return result;
 }
@@ -120,14 +119,14 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
         typeck::method_static(did) => {
             let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
             let Result {bcx, val} = trans_self_arg(bcx, self, mentry);
-
+            let tcx = bcx.tcx();
             Callee {
                 bcx: bcx,
                 data: Method(MethodData {
                     llfn: callee_fn.llfn,
                     llself: val,
                     self_ty: node_id_type(bcx, self.id),
-                    self_mode: mentry.self_mode
+                    self_mode: ty::resolved_mode(tcx, mentry.self_arg.mode)
                 })
             }
         }
@@ -144,7 +143,7 @@ fn trans_method_callee(bcx: block, callee_id: ast::node_id,
             }
         }
         typeck::method_trait(_, off) => {
-            trans_trait_callee(bcx, callee_id, off, self, mentry.derefs)
+            trans_trait_callee(bcx, callee_id, off, self)
         }
     }
 }
@@ -176,7 +175,9 @@ fn trans_static_method_callee(bcx: block,
     let vtbls = resolve_vtables_in_fn_ctxt(
         bcx.fcx, ccx.maps.vtable_map.get(callee_id));
 
-    match vtbls[0] { // is index 0 always the one we want?
+    // FIXME(#3446) -- I am pretty sure index 0 is not the right one,
+    // if the static method is implemented on a generic type. (NDM)
+    match vtbls[0] {
         typeck::vtable_static(impl_did, rcvr_substs, rcvr_origins) => {
 
             let mth_id = method_with_name(bcx.ccx(), impl_did, mname);
@@ -276,18 +277,19 @@ fn trans_monomorphized_callee(bcx: block,
           let llfn_val = PointerCast(bcx, callee.llfn, llfn_ty);
 
           // combine the self environment with the rest
+          let tcx = bcx.tcx();
           Callee {
               bcx: bcx,
               data: Method(MethodData {
                   llfn: llfn_val,
                   llself: llself_val,
                   self_ty: node_id_type(bcx, base.id),
-                  self_mode: mentry.self_mode
+                  self_mode: ty::resolved_mode(tcx, mentry.self_arg.mode)
               })
           }
       }
       typeck::vtable_trait(*) => {
-          trans_trait_callee(bcx, callee_id, n_method, base, mentry.derefs)
+          trans_trait_callee(bcx, callee_id, n_method, base)
       }
       typeck::vtable_param(*) => {
           fail ~"vtable_param left in monomorphized function's vtable substs";
@@ -388,8 +390,7 @@ fn combine_impl_and_methods_origins(bcx: block,
 fn trans_trait_callee(bcx: block,
                       callee_id: ast::node_id,
                       n_method: uint,
-                      self_expr: @ast::expr,
-                      autoderefs: uint)
+                      self_expr: @ast::expr)
     -> Callee
 {
     //!
@@ -404,7 +405,6 @@ fn trans_trait_callee(bcx: block,
     let _icx = bcx.insn_ctxt("impl::trans_trait_callee");
     let mut bcx = bcx;
     let self_datum = unpack_datum!(bcx, expr::trans_to_datum(bcx, self_expr));
-    let self_datum = self_datum.autoderef(bcx, self_expr.id, autoderefs);
     let llpair = self_datum.to_ref_llval(bcx);
     let callee_ty = node_id_type(bcx, callee_id);
     trans_trait_callee_from_llval(bcx, callee_ty, n_method, llpair)

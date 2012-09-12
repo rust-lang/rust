@@ -60,7 +60,7 @@ use std::serialization::{serialize_uint, deserialize_uint};
 use vec::each;
 use syntax::print::pprust::*;
 use util::ppaux::{ty_to_str, tys_to_str, region_to_str,
-                     bound_region_to_str, vstore_to_str};
+                  bound_region_to_str, vstore_to_str, expr_repr};
 use util::common::{indent, indenter};
 use std::list;
 use list::{List, Nil, Cons};
@@ -86,7 +86,7 @@ enum method_origin {
     // method invoked on a type parameter with a bounded trait
     method_param(method_param),
 
-    // method invoked on a boxed trait
+    // method invoked on a trait instance
     method_trait(ast::def_id, uint),
 }
 
@@ -108,13 +108,10 @@ type method_param = {
     bound_num: uint
 };
 
-#[auto_serialize]
 type method_map_entry = {
-    // number of derefs that are required on the receiver
-    derefs: uint,
-
-    // the mode by which the self parameter needs to be passed
-    self_mode: ast::rmode,
+    // the type and mode of the self parameter, which is not reflected
+    // in the fn type (FIXME #3446)
+    self_arg: ty::arg,
 
     // method details being invoked
     origin: method_origin

@@ -27,30 +27,53 @@ fn resolve_type_vars_in_type(fcx: @fn_ctxt, sp: span, typ: ty::t)
     }
 }
 
+fn resolve_method_map_entry(fcx: @fn_ctxt, sp: span, id: ast::node_id)
+{
+    // Resolve any method map entry
+    match fcx.ccx.method_map.find(id) {
+        None => {}
+        Some(ref mme) => {
+            for resolve_type_vars_in_type(fcx, sp, mme.self_arg.ty).each |t| {
+                fcx.ccx.method_map.insert(
+                    id,
+                    {self_arg: {mode: mme.self_arg.mode, ty: t},
+                     ..*mme});
+            }
+        }
+    }
+}
+
 fn resolve_type_vars_for_node(wbcx: wb_ctxt, sp: span, id: ast::node_id)
     -> Option<ty::t>
 {
     let fcx = wbcx.fcx, tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
-    match fcx.inh.borrowings.find(id) {
+    match fcx.inh.adjustments.find(id) {
         None => (),
-        Some(borrow) => {
-            match resolve_region(fcx.infcx(), borrow.region,
-                                 resolve_all | force_all) {
-                Err(e) => {
-                    // This should not, I think, happen.
-                    fcx.ccx.tcx.sess.span_err(
-                        sp, fmt!("cannot resolve scope of borrow: %s",
-                                 infer::fixup_err_to_str(e)));
+        Some(adj) => {
+            let resolved_autoref = match adj.autoref {
+                Some(ref autoref) => {
+                    match resolve_region(fcx.infcx(), autoref.region,
+                                         resolve_all | force_all) {
+                        Err(e) => {
+                            // This should not, I think, happen.
+                            fcx.ccx.tcx.sess.span_err(
+                                sp, fmt!("cannot resolve scope of borrow: %s",
+                                         infer::fixup_err_to_str(e)));
+                            Some(*autoref)
+                        }
+                        Ok(r) => {
+                            Some({region: r, ..*autoref})
+                        }
+                    }
                 }
-                Ok(r) => {
-                    debug!("Borrowing node %d -> region %?, mutbl %?",
-                           id, r, borrow.mutbl);
-                    fcx.tcx().borrowings.insert(id, {region: r,
-                                                     mutbl: borrow.mutbl});
-                }
-            }
+                None => None
+            };
+
+            let resolved_adj = @{autoref: resolved_autoref, ..*adj};
+            debug!("Adjustments for node %d: %?", id, resolved_adj);
+            fcx.tcx().adjustments.insert(id, resolved_adj);
         }
     }
 
@@ -109,6 +132,8 @@ fn visit_stmt(s: @ast::stmt, wbcx: wb_ctxt, v: wb_vt) {
 fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, e.span, e.id);
+    resolve_method_map_entry(wbcx.fcx, e.span, e.id);
+    resolve_method_map_entry(wbcx.fcx, e.span, e.callee_id);
     match e.node {
       ast::expr_fn(_, decl, _, _) |
       ast::expr_fn_block(decl, _, _) => {

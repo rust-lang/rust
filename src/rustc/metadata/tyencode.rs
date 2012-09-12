@@ -15,6 +15,7 @@ export ac_use_abbrevs;
 export enc_ty;
 export enc_bounds;
 export enc_mode;
+export enc_arg;
 
 type ctxt = {
     diag: span_handler,
@@ -323,6 +324,11 @@ fn enc_proto(w: io::Writer, cx: @ctxt, proto: ty::fn_proto) {
     }
 }
 
+fn enc_arg(w: io::Writer, cx: @ctxt, arg: ty::arg) {
+    enc_mode(w, cx, arg.mode);
+    enc_ty(w, cx, arg.ty);
+}
+
 fn enc_mode(w: io::Writer, cx: @ctxt, m: mode) {
     match ty::resolved_mode(cx.tcx, m) {
       by_mutbl_ref => w.write_char('&'),
@@ -348,8 +354,7 @@ fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
     enc_bounds(w, cx, ft.meta.bounds);
     w.write_char('[');
     for ft.sig.inputs.each |arg| {
-        enc_mode(w, cx, arg.mode);
-        enc_ty(w, cx, arg.ty);
+        enc_arg(w, cx, arg);
     }
     w.write_char(']');
     match ft.meta.ret_style {
