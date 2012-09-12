@@ -453,8 +453,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
         do vec::iteri(arg_exprs) |i, arg_expr| {
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx, arg_tys[i], arg_expr, &mut temp_cleanups,
-                               if i == last { ret_flag } else { None },
-                               0u)
+                               if i == last { ret_flag } else { None })
             });
             vec::push(llargs, arg_val);
         }
@@ -480,18 +479,17 @@ fn trans_arg_expr(bcx: block,
                   formal_ty: ty::arg,
                   arg_expr: @ast::expr,
                   temp_cleanups: &mut ~[ValueRef],
-                  ret_flag: Option<ValueRef>,
-                  derefs: uint)
+                  ret_flag: Option<ValueRef>)
     -> Result
 {
     let _icx = bcx.insn_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
     debug!("trans_arg_expr(formal_ty=(%?,%s), arg_expr=%s, \
-            ret_flag=%?, derefs=%?)",
+            ret_flag=%?)",
            formal_ty.mode, bcx.ty_to_str(formal_ty.ty),
            bcx.expr_to_str(arg_expr),
-           ret_flag.map(|v| bcx.val_str(v)), derefs);
+           ret_flag.map(|v| bcx.val_str(v)));
     let _indenter = indenter();
 
     // translate the arg expr to a datum
@@ -528,20 +526,7 @@ fn trans_arg_expr(bcx: block,
     let mut arg_datum = arg_datumblock.datum;
     let mut bcx = arg_datumblock.bcx;
 
-    debug!("   initial value: %s", arg_datum.to_str(bcx.ccx()));
-
-    // auto-deref value as required (this only applies to method
-    // call receivers) of method
-    if derefs != 0 {
-        arg_datum = arg_datum.autoderef(bcx, arg_expr.id, derefs);
-        debug!("   deref'd value: %s", arg_datum.to_str(bcx.ccx()));
-    };
-
-    // borrow value (convert from @T to &T and so forth)
-    let arg_datum = unpack_datum!(bcx, {
-        adapt_borrowed_value(bcx, arg_datum, arg_expr)
-    });
-    debug!("   borrowed value: %s", arg_datum.to_str(bcx.ccx()));
+    debug!("   arg datum: %s", arg_datum.to_str(bcx.ccx()));
 
     // finally, deal with the various modes
     let arg_mode = ty::resolved_mode(ccx.tcx, formal_ty.mode);
@@ -599,76 +584,5 @@ fn trans_arg_expr(bcx: block,
 
     debug!("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
     return rslt(bcx, val);
-}
-
-// when invoking a method, an argument of type @T or ~T can be implicltly
-// converted to an argument of type &T. Similarly, ~[T] can be converted to
-// &[T] and so on.  If such a conversion (called borrowing) is necessary,
-// then the borrowings table will have an appropriate entry inserted.  This
-// routine consults this table and performs these adaptations.  It returns a
-// new location for the borrowed result as well as a new type for the argument
-// that reflects the borrowed value and not the original.
-fn adapt_borrowed_value(bcx: block,
-                        datum: Datum,
-                        expr: @ast::expr) -> DatumBlock
-{
-    if !expr_is_borrowed(bcx, expr) {
-        return DatumBlock {bcx: bcx, datum: datum};
-    }
-
-    debug!("adapt_borrowed_value(datum=%s, expr=%s)",
-           datum.to_str(bcx.ccx()),
-           bcx.expr_to_str(expr));
-
-    match ty::get(datum.ty).sty {
-        ty::ty_uniq(_) | ty::ty_box(_) => {
-            let body_datum = datum.box_body(bcx);
-            let rptr_datum = body_datum.to_rptr(bcx);
-            return DatumBlock {bcx: bcx, datum: rptr_datum};
-        }
-
-        ty::ty_estr(_) | ty::ty_evec(_, _) => {
-            let ccx = bcx.ccx();
-            let val = datum.to_appropriate_llval(bcx);
-
-            let unit_ty = ty::sequence_element_type(ccx.tcx, datum.ty);
-            let llunit_ty = type_of::type_of(ccx, unit_ty);
-            let (base, len) = datum.get_base_and_len(bcx);
-            let p = alloca(bcx, T_struct(~[T_ptr(llunit_ty), ccx.int_type]));
-
-            debug!("adapt_borrowed_value: adapting %s to %s",
-                   val_str(bcx.ccx().tn, val),
-                   val_str(bcx.ccx().tn, p));
-
-            Store(bcx, base, GEPi(bcx, p, [0u, abi::slice_elt_base]));
-            Store(bcx, len, GEPi(bcx, p, [0u, abi::slice_elt_len]));
-
-            // this isn't necessarily the type that rust would assign
-            // but it's close enough for trans purposes, as it will
-            // have the same runtime representation
-            let slice_ty = ty::mk_evec(bcx.tcx(),
-                                       {ty: unit_ty, mutbl: ast::m_imm},
-                                       ty::vstore_slice(ty::re_static));
-
-            return DatumBlock {bcx: bcx,
-                               datum: Datum {val: p,
-                                             mode: ByRef,
-                                             ty: slice_ty,
-                                             source: FromRvalue}};
-        }
-
-        _ => {
-            // Just take a reference. This is basically like trans_addr_of.
-            //
-            // NDM---this code is almost certainly wrong.  I presume its
-            // purpose is auto-ref? What if an @T is autoref'd? No good.
-            let rptr_datum = datum.to_rptr(bcx);
-            return DatumBlock {bcx: bcx, datum: rptr_datum};
-        }
-    }
-
-    fn expr_is_borrowed(bcx: block, e: @ast::expr) -> bool {
-        bcx.tcx().borrowings.contains_key(e.id)
-    }
 }
 

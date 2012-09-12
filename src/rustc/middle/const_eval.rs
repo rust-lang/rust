@@ -87,12 +87,12 @@ fn classify(e: @expr,
               }
 
               ast::expr_vstore(e, vstore) => {
-                match vstore {
-                  ast::vstore_fixed(_) |
-                  ast::vstore_slice(_) => classify(e, def_map, tcx),
-                  ast::vstore_uniq |
-                  ast::vstore_box => non_const
-                }
+                  match vstore {
+                      ast::expr_vstore_fixed(_) |
+                      ast::expr_vstore_slice => classify(e, def_map, tcx),
+                      ast::expr_vstore_uniq |
+                      ast::expr_vstore_box => non_const
+                  }
               }
 
               ast::expr_struct(_, fs, None) |

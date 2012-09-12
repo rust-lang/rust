@@ -120,7 +120,7 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_spill = 0x5f,
     tag_table_method_map = 0x60,
     tag_table_vtable_map = 0x61,
-    tag_table_borrowings = 0x62
+    tag_table_adjustments = 0x62
 }
 
 // djb's cdb hashes.

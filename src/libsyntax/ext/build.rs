@@ -65,24 +65,26 @@ fn mk_base_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
     let vecexpr = ast::expr_vec(exprs, ast::m_imm);
     mk_expr(cx, sp, vecexpr)
 }
-fn mk_vstore_e(cx: ext_ctxt, sp: span, expr: @ast::expr, vst: ast::vstore) ->
+fn mk_vstore_e(cx: ext_ctxt, sp: span, expr: @ast::expr,
+               vst: ast::expr_vstore) ->
    @ast::expr {
     mk_expr(cx, sp, ast::expr_vstore(expr, vst))
 }
 fn mk_uniq_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
    @ast::expr {
-    mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::vstore_uniq)
+    mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::expr_vstore_uniq)
 }
 fn mk_fixed_vec_e(cx: ext_ctxt, sp: span, exprs: ~[@ast::expr]) ->
    @ast::expr {
-    mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs), ast::vstore_fixed(None))
+    mk_vstore_e(cx, sp, mk_base_vec_e(cx, sp, exprs),
+                ast::expr_vstore_fixed(None))
 }
 fn mk_base_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
     let lit = ast::lit_str(@s);
     return mk_lit(cx, sp, lit);
 }
 fn mk_uniq_str(cx: ext_ctxt, sp: span, s: ~str) -> @ast::expr {
-    mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::vstore_uniq)
+    mk_vstore_e(cx, sp, mk_base_str(cx, sp, s), ast::expr_vstore_uniq)
 }
 
 fn mk_rec_e(cx: ext_ctxt, sp: span,

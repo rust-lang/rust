@@ -19,4 +19,5 @@ fn cat(in_x : uint, in_y : int) -> cat {
 fn main() {
   let nyan : cat = cat(52u, 99);
   nyan.speak = fn@() { debug!("meow"); }; //~ ERROR attempted to take value of method
+  //~^ ERROR mismatched types
 }

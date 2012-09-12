@@ -221,7 +221,7 @@ use syntax::ast_util;
 use syntax::ast_map;
 use syntax::codemap::span;
 use util::ppaux::{ty_to_str, region_to_str, explain_region,
-                  note_and_explain_region};
+                  expr_repr, note_and_explain_region};
 use std::map::{int_hash, HashMap, Set};
 use std::list;
 use std::list::{List, Cons, Nil};
@@ -318,7 +318,7 @@ enum bckerr_code {
     err_mut_uniq,
     err_mut_variant,
     err_root_not_permitted,
-    err_mutbl(ast::mutability, ast::mutability),
+    err_mutbl(ast::mutability),
     err_out_of_root_scope(ty::region, ty::region), // superscope, subscope
     err_out_of_scope(ty::region, ty::region) // superscope, subscope
 }
@@ -344,9 +344,9 @@ impl bckerr_code : cmp::Eq {
                     _ => false
                 }
             }
-            err_mutbl(e0a, e1a) => {
+            err_mutbl(e0a) => {
                 match other {
-                    err_mutbl(e0b, e1b) => e0a == e0b && e1a == e1b,
+                    err_mutbl(e0b) => e0a == e0b,
                     _ => false
                 }
             }
@@ -444,10 +444,6 @@ impl borrowck_ctxt {
         cat_expr(self.tcx, self.method_map, expr)
     }
 
-    fn cat_borrow_of_expr(expr: @ast::expr) -> cmt {
-        cat_borrow_of_expr(self.tcx, self.method_map, expr)
-    }
-
     fn cat_def(id: ast::node_id,
                span: span,
                ty: ty::t,
@@ -482,8 +478,8 @@ impl borrowck_ctxt {
         self.span_err(
             err.cmt.span,
             fmt!("illegal borrow: %s",
-                 self.bckerr_code_to_str(err.code)));
-        self.note_and_explain_bckerr(err.code);
+                 self.bckerr_to_str(err)));
+        self.note_and_explain_bckerr(err);
     }
 
     fn span_err(s: span, m: ~str) {
@@ -506,11 +502,12 @@ impl borrowck_ctxt {
         }
     }
 
-    fn bckerr_code_to_str(code: bckerr_code) -> ~str {
-        match code {
-            err_mutbl(req, act) => {
-                fmt!("creating %s alias to aliasable, %s memory",
-                     self.mut_to_str(req), self.mut_to_str(act))
+    fn bckerr_to_str(err: bckerr) -> ~str {
+        match err.code {
+            err_mutbl(req) => {
+                fmt!("creating %s alias to %s",
+                     self.mut_to_str(req),
+                     self.cmt_to_str(err.cmt))
             }
             err_mut_uniq => {
                 ~"unique value in aliasable, mutable location"
@@ -533,7 +530,8 @@ impl borrowck_ctxt {
         }
     }
 
-    fn note_and_explain_bckerr(code: bckerr_code) {
+    fn note_and_explain_bckerr(err: bckerr) {
+        let code = err.code;
         match code {
             err_mutbl(*) | err_mut_uniq | err_mut_variant |
             err_root_not_permitted => {}

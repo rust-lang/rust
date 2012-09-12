@@ -421,6 +421,15 @@ enum vstore {
     vstore_slice(@region)         // &[1,2,3,4](foo)?
 }
 
+#[auto_serialize]
+enum expr_vstore {
+    // FIXME (#2112): Change uint to @expr (actually only constant exprs)
+    expr_vstore_fixed(Option<uint>),   // [1,2,3,4]/_ or 4
+    expr_vstore_uniq,                  // ~[1,2,3,4]
+    expr_vstore_box,                   // @[1,2,3,4]
+    expr_vstore_slice                  // &[1,2,3,4]
+}
+
 pure fn is_blockish(p: ast::proto) -> bool {
     match p {
       proto_block => true,
@@ -662,7 +671,7 @@ enum alt_mode { alt_check, alt_exhaustive, }
 
 #[auto_serialize]
 enum expr_ {
-    expr_vstore(@expr, vstore),
+    expr_vstore(@expr, expr_vstore),
     expr_vec(~[@expr], mutability),
     expr_rec(~[field], Option<@expr>),
     expr_call(@expr, ~[@expr], bool), // True iff last argument is a block

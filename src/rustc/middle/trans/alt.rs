@@ -500,7 +500,7 @@ fn compile_submatch(bcx: block, m: match_, vals: ~[ValueRef],
 
             let Result {bcx: guard_cx, val} = {
                 do with_scope_result(bcx, e.info(), ~"guard") |bcx| {
-                    expr::trans_to_appropriate_llval(bcx, e)
+                    expr::trans_to_datum(bcx, e).to_result()
                 }
             };
 

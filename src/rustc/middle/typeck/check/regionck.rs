@@ -155,116 +155,157 @@ fn visit_block(b: ast::blk, &&rcx: @rcx, v: rvt) {
     visit::visit_block(b, rcx, v);
 }
 
-fn visit_expr(e: @ast::expr, &&rcx: @rcx, v: rvt) {
+fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!("visit_expr(e=%s)",
-           pprust::expr_to_str(e, rcx.fcx.tcx().sess.intr()));
+           pprust::expr_to_str(expr, rcx.fcx.tcx().sess.intr()));
 
-    match e.node {
-      ast::expr_path(*) => {
-        // Avoid checking the use of local variables, as we already
-        // check their definitions.  The def'n always encloses the
-        // use.  So if the def'n is enclosed by the region, then the
-        // uses will also be enclosed (and otherwise, an error will
-        // have been reported at the def'n site).
-        match lookup_def(rcx.fcx, e.span, e.id) {
-          ast::def_local(*) | ast::def_arg(*) | ast::def_upvar(*) => return,
-          _ => ()
-        }
-      }
+    // constrain_auto_ref(rcx, expr);
 
-      ast::expr_cast(source, _) => {
-        // Determine if we are casting `source` to an trait instance.
-        // If so, we have to be sure that the type of the source obeys
-        // the trait's region bound.
-        //
-        // Note: there is a subtle point here concerning type
-        // parameters.  It is possible that the type of `source`
-        // contains type parameters, which in turn may contain regions
-        // that are not visible to us (only the caller knows about
-        // them).  The kind checker is ultimately responsible for
-        // guaranteeing region safety in that particular case.  There
-        // is an extensive comment on the function
-        // check_cast_for_escaping_regions() in kind.rs explaining how
-        // it goes about doing that.
-        match rcx.resolve_node_type(e.id) {
-          result::Err(_) => { return; /* typeck will fail anyhow */ }
-          result::Ok(target_ty) => {
-            match ty::get(target_ty).sty {
-              ty::ty_trait(_, substs, _) => {
-                let trait_region = match substs.self_r {
-                  Some(r) => {r}
-                  None => {ty::re_static}
-                };
-                let source_ty = rcx.fcx.expr_ty(source);
-                constrain_regions_in_type(rcx, trait_region,
-                                          e.span, source_ty);
-              }
-              _ => ()
+    match expr.node {
+        ast::expr_path(*) => {
+            // Avoid checking the use of local variables, as we
+            // already check their definitions.  The def'n always
+            // encloses the use.  So if the def'n is enclosed by the
+            // region, then the uses will also be enclosed (and
+            // otherwise, an error will have been reported at the
+            // def'n site).
+            match lookup_def(rcx.fcx, expr.span, expr.id) {
+                ast::def_local(*) | ast::def_arg(*) |
+                ast::def_upvar(*) => return,
+                _ => ()
             }
-          }
-        };
-      }
-
-      ast::expr_addr_of(*) => {
-        // FIXME(#3148) -- in some cases, we need to capture a dependency
-        // between the regions found in operand the resulting region type.
-        // See #3148 for more details.
-      }
-
-      ast::expr_fn(*) | ast::expr_fn_block(*) => {
-        match rcx.resolve_node_type(e.id) {
-          result::Err(_) => return,   // Typechecking will fail anyhow.
-          result::Ok(function_type) => {
-            match ty::get(function_type).sty {
-              ty::ty_fn(ref fn_ty) => {
-                  match fn_ty.meta.proto {
-                      proto_vstore(vstore_slice(region)) => {
-                          constrain_free_variables(rcx, region, e);
-                      }
-                      _ => {}
-                  }
-              }
-              _ => ()
-            }
-          }
         }
-      }
 
-      _ => ()
+        ast::expr_cast(source, _) => {
+            // Determine if we are casting `source` to an trait
+            // instance.  If so, we have to be sure that the type of
+            // the source obeys the trait's region bound.
+            //
+            // Note: there is a subtle point here concerning type
+            // parameters.  It is possible that the type of `source`
+            // contains type parameters, which in turn may contain
+            // regions that are not visible to us (only the caller
+            // knows about them).  The kind checker is ultimately
+            // responsible for guaranteeing region safety in that
+            // particular case.  There is an extensive comment on the
+            // function check_cast_for_escaping_regions() in kind.rs
+            // explaining how it goes about doing that.
+            match rcx.resolve_node_type(expr.id) {
+                result::Err(_) => { return; /*typeck will fail anyhow*/ }
+                result::Ok(target_ty) => {
+                    match ty::get(target_ty).sty {
+                        ty::ty_trait(_, substs, _) => {
+                            let trait_region = match substs.self_r {
+                                Some(r) => {r}
+                                None => {ty::re_static}
+                            };
+                            let source_ty = rcx.fcx.expr_ty(source);
+                            constrain_regions_in_type(rcx, trait_region,
+                                                      expr.span, source_ty);
+                        }
+                        _ => ()
+                    }
+                }
+            };
+        }
+
+        ast::expr_addr_of(*) => {
+            // FIXME(#3148) -- in some cases, we need to capture a
+            // dependency between the regions found in operand the
+            // resulting region type.  See #3148 for more details.
+        }
+
+        ast::expr_fn(*) | ast::expr_fn_block(*) => {
+            match rcx.resolve_node_type(expr.id) {
+                result::Err(_) => return, // Typechecking will fail anyhow.
+                result::Ok(function_type) => {
+                    match ty::get(function_type).sty {
+                        ty::ty_fn(ref fn_ty) => {
+                            match fn_ty.meta.proto {
+                                proto_vstore(vstore_slice(region)) => {
+                                    constrain_free_variables(rcx, region,
+                                                             expr);
+                                }
+                                _ => {}
+                            }
+                        }
+                        _ => ()
+                    }
+                }
+            }
+        }
+
+        _ => ()
     }
 
-    if !visit_node(e.id, e.span, rcx) { return; }
-    visit::visit_expr(e, rcx, v);
+    if !visit_node(expr.id, expr.span, rcx) { return; }
+    visit::visit_expr(expr, rcx, v);
 }
 
 fn visit_stmt(s: @ast::stmt, &&rcx: @rcx, v: rvt) {
     visit::visit_stmt(s, rcx, v);
 }
 
-// checks the type of the node `id` and reports an error if it
-// references a region that is not in scope for that node.  Returns
-// false if an error is reported; this is used to cause us to cut off
-// region checking for that subtree to avoid reporting tons of errors.
 fn visit_node(id: ast::node_id, span: span, rcx: @rcx) -> bool {
-    let fcx = rcx.fcx;
+    /*!
+     *
+     * checks the type of the node `id` and reports an error if it
+     * references a region that is not in scope for that node.
+     * Returns false if an error is reported; this is used to cause us
+     * to cut off region checking for that subtree to avoid reporting
+     * tons of errors. */
 
-    // Try to resolve the type.  If we encounter an error, then typeck
-    // is going to fail anyway, so just stop here and let typeck
-    // report errors later on in the writeback phase.
-    let ty = match rcx.resolve_node_type(id) {
-      result::Err(_) => return true,
-      result::Ok(ty) => ty
-    };
+    let fcx = rcx.fcx;
 
     // find the region where this expr evaluation is taking place
     let tcx = fcx.ccx.tcx;
     let encl_region = ty::encl_region(tcx, id);
 
-    debug!("visit_node(ty=%s, id=%d, encl_region=%?)",
-           ty_to_str(tcx, ty), id, encl_region);
-
     // Otherwise, look at the type and see if it is a region pointer.
-    return constrain_regions_in_type(rcx, encl_region, span, ty);
+    constrain_regions_in_type_of_node(rcx, id, encl_region, span)
+}
+
+fn constrain_auto_ref(
+    rcx: @rcx,
+    expr: @ast::expr)
+{
+    /*!
+     *
+     * If `expr` is auto-ref'd (e.g., as part of a borrow), then this
+     * function ensures that the lifetime of the resulting borrowed
+     * ptr includes at least the expression `expr`. */
+
+    let adjustment = rcx.fcx.inh.adjustments.find(expr.id);
+    let region = match adjustment {
+        Some(@{autoref: Some(ref auto_ref), _}) => auto_ref.region,
+        _ => { return; }
+    };
+
+    let tcx = rcx.fcx.tcx();
+    let expr_region = ty::re_scope(expr.id);
+    match rcx.fcx.mk_subr(true, expr.span, expr_region, region) {
+        result::Ok(()) => {}
+        result::Err(_) => {
+            // In practice, this cannot happen: `region` is always a
+            // region variable, and constraints on region variables
+            // are collected and then resolved later.  However, I
+            // included the span_err() here (rather than, say,
+            // span_bug()) because it seemed more future-proof: if,
+            // for some reason, the code were to change so that in
+            // some cases `region` is not a region variable, then
+            // reporting an error would be the correct path.
+            tcx.sess.span_err(
+                expr.span,
+                ~"lifetime of borrowed pointer does not include \
+                  the expression being borrowed");
+            note_and_explain_region(
+                tcx,
+                ~"lifetime of the borrowed pointer is",
+                region,
+                ~"");
+            rcx.errors_reported += 1;
+        }
+    }
 }
 
 fn constrain_free_variables(
@@ -272,9 +313,11 @@ fn constrain_free_variables(
     region: ty::region,
     expr: @ast::expr)
 {
-    // Make sure that all regions referenced by the free
-    // variables inside the closure outlive the closure
-    // itself.
+    /*!
+     *
+     * Make sure that all free variables referenced inside the closure
+     * outlive the closure itself. */
+
     let tcx = rcx.fcx.ccx.tcx;
     for get_freevars(tcx, expr.id).each |freevar| {
         debug!("freevar def is %?", freevar.def);
@@ -302,11 +345,44 @@ fn constrain_free_variables(
     }
 }
 
+fn constrain_regions_in_type_of_node(
+    rcx: @rcx,
+    id: ast::node_id,
+    encl_region: ty::region,
+    span: span) -> bool
+{
+    let tcx = rcx.fcx.tcx();
+
+    // Try to resolve the type.  If we encounter an error, then typeck
+    // is going to fail anyway, so just stop here and let typeck
+    // report errors later on in the writeback phase.
+    let ty = match rcx.resolve_node_type(id) {
+      result::Err(_) => return true,
+      result::Ok(ty) => ty
+    };
+
+    debug!("constrain_regions_in_type_of_node(\
+            ty=%s, id=%d, encl_region=%?)",
+           ty_to_str(tcx, ty), id, encl_region);
+
+    constrain_regions_in_type(rcx, encl_region, span, ty)
+}
+
 fn constrain_regions_in_type(
     rcx: @rcx,
     encl_region: ty::region,
     span: span,
-    ty: ty::t) -> bool {
+    ty: ty::t) -> bool
+{
+    /*!
+     *
+     * Requires that any regions which appear in `ty` must be
+     * superregions of `encl_region`.  This prevents regions from
+     * being used outside of the block in which they are valid.
+     * Recall that regions represent blocks of code or expressions:
+     * this requirement basically says "any place that uses or may use
+     * a region R must be within the block of code that R corresponds
+     * to." */
 
     let e = rcx.errors_reported;
     ty::walk_regions_and_ty(

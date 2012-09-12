@@ -102,7 +102,7 @@ struct inherited {
     locals: HashMap<ast::node_id, TyVid>,
     node_types: HashMap<ast::node_id, ty::t>,
     node_type_substs: HashMap<ast::node_id, ty::substs>,
-    borrowings: HashMap<ast::node_id, ty::borrow>,
+    adjustments: HashMap<ast::node_id, @ty::AutoAdjustment>
 }
 
 struct fn_ctxt {
@@ -143,7 +143,7 @@ fn blank_inherited(ccx: @crate_ctxt) -> @inherited {
         locals: int_hash(),
         node_types: map::int_hash(),
         node_type_substs: map::int_hash(),
-        borrowings: map::int_hash()
+        adjustments: map::int_hash()
     }
 }
 
@@ -604,6 +604,7 @@ impl @fn_ctxt {
                node_id, ty_to_str(self.tcx(), ty), self.tag());
         self.inh.node_types.insert(node_id, ty);
     }
+
     fn write_substs(node_id: ast::node_id, +substs: ty::substs) {
         if !ty::substs_is_noop(&substs) {
             debug!("write_substs(%d, %s) in fcx %s",
@@ -613,12 +614,24 @@ impl @fn_ctxt {
             self.inh.node_type_substs.insert(node_id, substs);
         }
     }
+
     fn write_ty_substs(node_id: ast::node_id, ty: ty::t,
                        +substs: ty::substs) {
         let ty = ty::subst(self.tcx(), &substs, ty);
         self.write_ty(node_id, ty);
         self.write_substs(node_id, substs);
     }
+
+    fn write_autoderef_adjustment(node_id: ast::node_id, derefs: uint) {
+        if derefs == 0 { return; }
+        self.write_adjustment(node_id, @{autoderefs: derefs, autoref: None});
+    }
+
+    fn write_adjustment(node_id: ast::node_id, adj: @ty::AutoAdjustment) {
+        debug!("write_adjustment(node_id=%?, adj=%?)", node_id, adj);
+        self.inh.adjustments.insert(node_id, adj);
+    }
+
     fn write_nil(node_id: ast::node_id) {
         self.write_ty(node_id, ty::mk_nil(self.tcx()));
     }
@@ -630,14 +643,17 @@ impl @fn_ctxt {
         ast_ty_to_ty(self, self, ast_t)
     }
 
+    fn expr_to_str(expr: @ast::expr) -> ~str {
+        expr_repr(self.tcx(), expr)
+    }
+
     fn expr_ty(ex: @ast::expr) -> ty::t {
         match self.inh.node_types.find(ex.id) {
             Some(t) => t,
             None => {
                 self.tcx().sess.bug(
-                    fmt!("no type for expr %d (%s) in fcx %s",
-                         ex.id, expr_to_str(ex, self.ccx.tcx.sess.intr()),
-                         self.tag()));
+                    fmt!("no type for %s in fcx %s",
+                         self.expr_to_str(ex), self.tag()));
             }
         }
     }
@@ -691,22 +707,15 @@ impl @fn_ctxt {
         infer::can_mk_subty(self.infcx(), sub, sup)
     }
 
-    fn mk_assignty(expr: @ast::expr, borrow_lb: ast::node_id,
-                   sub: ty::t, sup: ty::t) -> Result<(), ty::type_err> {
+    fn mk_assignty(expr: @ast::expr, sub: ty::t, sup: ty::t)
+        -> Result<(), ty::type_err>
+    {
         match infer::mk_assignty(self.infcx(), false, expr.span, sub, sup) {
             Ok(None) => result::Ok(()),
             Err(e) => result::Err(e),
-            Ok(Some(borrow)) => {
-                match self.mk_subr(true, expr.span,
-                                   ty::re_scope(borrow_lb), borrow.region) {
-                    Err(e) => Err(e),
-                    Ok(()) => {
-                        debug!("inserting borrowing of expr %?: %?",
-                               expr.id, borrow);
-                        self.inh.borrowings.insert(expr.id, borrow);
-                        Ok(())
-                    }
-                }
+            Ok(Some(adjustment)) => {
+                self.write_adjustment(expr.id, adjustment);
+                Ok(())
             }
         }
     }
@@ -753,9 +762,18 @@ impl @fn_ctxt {
     }
 }
 
-fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
+fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> (ty::t, uint) {
+    /*!
+     *
+     * Autoderefs the type `t` as many times as possible, returning
+     * a new type and a counter for how many times the type was
+     * deref'd.  If the counter is non-zero, the receiver is responsible
+     * for inserting an AutoAdjustment record into `tcx.adjustments`
+     * so that trans/borrowck/etc know about this autoderef. */
+
     let mut t1 = t;
     let mut enum_dids = ~[];
+    let mut autoderefs = 0;
     loop {
         let sty = structure_of(fcx, sp, t1);
 
@@ -773,13 +791,14 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
             }
             ty::ty_enum(did, _) => {
                 // Watch out for a type like `enum t = @t`.  Such a
-                // type would otherwise infinitely auto-deref.  This
-                // is the only autoderef loop that needs to be
+                // type would otherwise infinitely auto-deref.  Only
+                // autoderef loops during typeck (basically, this one
+                // and the loops in typeck::check::method) need to be
                 // concerned with this, as an error will be reported
                 // on the enum definition as well because the enum is
                 // not instantiable.
                 if vec::contains(enum_dids, did) {
-                    return t1;
+                    return (t1, autoderefs);
                 }
                 vec::push(enum_dids, did);
             }
@@ -788,8 +807,13 @@ fn do_autoderef(fcx: @fn_ctxt, sp: span, t: ty::t) -> ty::t {
 
         // Otherwise, deref if type is derefable:
         match ty::deref_sty(fcx.ccx.tcx, &sty, false) {
-            None => return t1,
-            Some(mt) => t1 = mt.ty
+            None => {
+                return (t1, autoderefs);
+            }
+            Some(mt) => {
+                autoderefs += 1;
+                t1 = mt.ty
+            }
         }
     };
 }
@@ -904,16 +928,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                            expected: Option<ty::t>,
                            unifier: fn()) -> bool {
 
-    debug!(
-        ">> typechecking expr %d (%s)",
-        expr.id, syntax::print::pprust::expr_to_str(expr,
-                                                    fcx.ccx.tcx.sess.intr()));
+    debug!(">> typechecking %s", fcx.expr_to_str(expr));
 
     // A generic function to factor out common logic from call and
     // overloaded operations
     fn check_call_inner(
-        fcx: @fn_ctxt, sp: span, call_expr_id: ast::node_id, in_fty: ty::t,
+        fcx: @fn_ctxt,
+        sp: span,
+        call_expr_id: ast::node_id,
+        in_fty: ty::t,
         callee_expr: @ast::expr,
+        check_args: bool,
         args: ~[@ast::expr]) -> {fty: ty::t, bot: bool} {
 
         let mut bot = false;
@@ -956,7 +981,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Grab the argument types, supplying fresh type variables
         // if the wrong number of arguments were supplied
         let expected_arg_count = vec::len(fn_ty.sig.inputs);
-        let arg_tys = if expected_arg_count == supplied_arg_count {
+        let formal_tys = if expected_arg_count == supplied_arg_count {
             fn_ty.sig.inputs.map(|a| a.ty)
         } else {
             fcx.ccx.tcx.sess.span_err(
@@ -983,6 +1008,8 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         for [false, true]/_.each |check_blocks| {
+            debug!("check_blocks=%b", check_blocks);
+
             // More awful hacks: before we check the blocks, try to do
             // an "opportunistic" vtable resolution of any trait
             // bounds on the call.
@@ -990,19 +1017,26 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
                 vtable::early_resolve_expr(callee_expr, fcx, true);
             }
 
-            for args.eachi |i, a| {
-                let is_block = match a.node {
-                  ast::expr_fn_block(*) | ast::expr_loop_body(*) |
-                  ast::expr_do_body(*) => true,
-                  _ => false
+            for args.eachi |i, arg| {
+                let is_block = match arg.node {
+                    ast::expr_fn_block(*) | ast::expr_loop_body(*) |
+                    ast::expr_do_body(*) => true,
+                    _ => false
                 };
+
                 if is_block == check_blocks {
-                    let arg_ty = arg_tys[i];
-                    bot |= check_expr_with_unifier(
-                        fcx, a, Some(arg_ty),
-                        || demand::assign(fcx, a.span, call_expr_id,
-                                          arg_ty, a)
+                    debug!("checking the argument");
+                    let formal_ty = formal_tys[i];
+
+                    if check_args {
+                        bot |= check_expr_with_unifier(
+                            fcx, arg, Some(formal_ty),
+                            || demand::assign(fcx, arg.span, formal_ty, arg)
                         );
+                    } else {
+                        demand::assign(fcx, arg.span, formal_ty, arg);
+                        bot |= ty::type_is_bot(fcx.expr_ty(arg));
+                    }
                 }
             }
         }
@@ -1036,7 +1070,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // Call the generic checker.
         let fty = {
             let r = check_call_inner(fcx, sp, call_expr_id,
-                                     fn_ty, f, args);
+                                     fn_ty, f, true, args);
             bot |= r.bot;
             r.fty
         };
@@ -1092,16 +1126,17 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
     fn lookup_op_method(fcx: @fn_ctxt, op_ex: @ast::expr,
                         self_ex: @ast::expr, self_t: ty::t,
-                        opname: ast::ident, args: ~[@ast::expr])
-        -> Option<(ty::t, bool)> {
-        let lkup = method::lookup(fcx, op_ex, self_ex, op_ex.id,
-                     op_ex.callee_id, opname, self_t, ~[], false);
-        match lkup.method() {
+                        opname: ast::ident, check_args: bool,
+                        args: ~[@ast::expr])
+        -> Option<(ty::t, bool)>
+    {
+        match method::lookup(fcx, op_ex, self_ex,
+                             op_ex.callee_id, opname, self_t, ~[]) {
           Some(origin) => {
             let {fty: method_ty, bot: bot} = {
                 let method_ty = fcx.node_ty(op_ex.callee_id);
                 check_call_inner(fcx, op_ex.span, op_ex.id,
-                                 method_ty, op_ex, args)
+                                 method_ty, op_ex, check_args, args)
             };
             fcx.ccx.method_map.insert(op_ex.id, origin);
             Some((ty::ty_fn_ret(method_ty), bot))
@@ -1109,71 +1144,95 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           _ => None
         }
     }
+
+    fn check_rel_op(fcx: @fn_ctxt,
+                    expr: @ast::expr,
+                    op: ast::binop,
+                    lhs: @ast::expr,
+                    rhs: @ast::expr) -> bool
+    {
+        // We know that only things of equal type can be compared, so
+        // go ahead and unify the two types before we do anything else
+        // (with other operators, we must be much more careful not to
+        // make assumptions, due to the possibility of operator
+        // overloading; but overloaded == still enforces the
+        // requirement that only equal types are compared).
+        let tcx = fcx.ccx.tcx;
+        let lhs_bot = check_expr(fcx, lhs, None);
+        let lhs_t = fcx.expr_ty(lhs);
+        let rhs_bot = check_expr_with(fcx, rhs, lhs_t);
+
+        let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
+        if ty::is_binopable(tcx, lhs_t, op) {
+            let result_t = ty::mk_bool(tcx);
+            fcx.write_ty(expr.id, result_t);
+            return lhs_bot | rhs_bot;
+        }
+
+        let (result, rhs_bot) =
+            check_user_binop(fcx, expr, lhs, lhs_t, op, false, rhs);
+        fcx.write_ty(expr.id, result);
+        return lhs_bot | rhs_bot;
+    }
+
     // could be either a expr_binop or an expr_assign_binop
     fn check_binop(fcx: @fn_ctxt, expr: @ast::expr,
                    op: ast::binop,
                    lhs: @ast::expr,
                    rhs: @ast::expr) -> bool {
         let tcx = fcx.ccx.tcx;
-        let lhs_bot = check_expr(fcx, lhs, None);
-        let lhs_t = fcx.expr_ty(lhs);
 
-        // Hack: Unify the two sides if this is a relational operator.
+        // Relational operators are different for type inferencing
+        // reasons.
         match op {
             ast::eq | ast::ne | ast::lt | ast::le | ast::ge | ast::gt => {
-                check_expr_with(fcx, rhs, lhs_t);
+                return check_rel_op(fcx, expr, op, lhs, rhs);
             }
             _ => {}
         }
 
+        let lhs_bot = check_expr(fcx, lhs, None);
+        let lhs_t = fcx.expr_ty(lhs);
         let lhs_t = structurally_resolved_type(fcx, lhs.span, lhs_t);
-        return match (op, ty::get(lhs_t).sty) {
-          (_, _) if ty::type_is_integral(lhs_t) &&
-          ast_util::is_shift_binop(op) => {
+
+        if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
             // Shift is a special case: rhs can be any integral type
             let rhs_bot = check_expr(fcx, rhs, None);
             let rhs_t = fcx.expr_ty(rhs);
             require_integral(fcx, rhs.span, rhs_t);
             fcx.write_ty(expr.id, lhs_t);
-            lhs_bot | rhs_bot
-          }
+            return lhs_bot | rhs_bot;
+        }
 
-          (_, _) if ty::is_binopable(tcx, lhs_t, op) => {
+        if ty::is_binopable(tcx, lhs_t, op) {
             let tvar = fcx.infcx().next_ty_var();
             demand::suptype(fcx, expr.span, tvar, lhs_t);
             let rhs_bot = check_expr_with(fcx, rhs, tvar);
-            let result_t = match op {
-              ast::eq | ast::lt | ast::le | ast::ne | ast::ge |
-              ast::gt => {
-                if !ty::type_is_scalar(lhs_t) {
-                    fcx.ccx.tcx.sess.span_bug(expr.span,
-                                              ~"non-scalar compare");
-                }
-                ty::mk_bool(fcx.ccx.tcx)
-              }
-              _ => lhs_t
-            };
+            let result_t = lhs_t;
             fcx.write_ty(expr.id, result_t);
-            if !ast_util::lazy_binop(op) { lhs_bot | rhs_bot }
-            else { lhs_bot }
-          }
+            return {
+                if !ast_util::lazy_binop(op) { lhs_bot | rhs_bot }
+                else { lhs_bot }
+            };
+        }
 
-          (_, _) => {
-            let (result, rhs_bot) =
-                check_user_binop(fcx, expr, lhs, lhs_t, op, rhs);
-            fcx.write_ty(expr.id, result);
-            lhs_bot | rhs_bot
-          }
-        };
+        let (result, rhs_bot) =
+            check_user_binop(fcx, expr, lhs, lhs_t, op, true, rhs);
+        fcx.write_ty(expr.id, result);
+        return lhs_bot | rhs_bot;
     }
+
     fn check_user_binop(fcx: @fn_ctxt, ex: @ast::expr,
                         lhs_expr: @ast::expr, lhs_resolved_t: ty::t,
-                        op: ast::binop, rhs: @ast::expr) -> (ty::t, bool) {
+                        op: ast::binop, check_rhs: bool,
+                        rhs: @ast::expr) -> (ty::t, bool)
+    {
         let tcx = fcx.ccx.tcx;
         match ast_util::binop_to_method_name(op) {
           Some(name) => {
             match lookup_op_method(fcx, ex, lhs_expr, lhs_resolved_t,
-                                   fcx.tcx().sess.ident_of(name), ~[rhs]) {
+                                   fcx.tcx().sess.ident_of(name),
+                                   check_rhs, ~[rhs]) {
               Some(pair) => return pair,
               _ => ()
             }
@@ -1202,11 +1261,12 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         (lhs_resolved_t, false)
     }
+
     fn check_user_unop(fcx: @fn_ctxt, op_str: ~str, mname: ~str,
                        ex: @ast::expr,
                        rhs_expr: @ast::expr, rhs_t: ty::t) -> ty::t {
         match lookup_op_method(fcx, ex, rhs_expr, rhs_t,
-                               fcx.tcx().sess.ident_of(mname), ~[]) {
+                               fcx.tcx().sess.ident_of(mname), true, ~[]) {
           Some((ret_ty, _)) => ret_ty,
           _ => {
             fcx.ccx.tcx.sess.span_err(
@@ -1308,87 +1368,84 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
     // Check field access expressions
     fn check_field(fcx: @fn_ctxt, expr: @ast::expr, is_callee: bool,
                    base: @ast::expr, field: ast::ident, tys: ~[@ast::ty])
-        -> bool {
+        -> bool
+    {
         let tcx = fcx.ccx.tcx;
         let bot = check_expr(fcx, base, None);
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
-        let base_t = do_autoderef(fcx, expr.span, expr_t);
-        let mut handled = false;
+        let (base_t, derefs) = do_autoderef(fcx, expr.span, expr_t);
         let n_tys = vec::len(tys);
         match structure_of(fcx, expr.span, base_t) {
-          ty::ty_rec(fields) => {
-            match ty::field_idx(field, fields) {
-              Some(ix) => {
-                if n_tys > 0u {
-                    tcx.sess.span_err(expr.span,
-                                      ~"can't provide type parameters \
-                                       to a field access");
-                }
-                fcx.write_ty(expr.id, fields[ix].mt.ty);
-                handled = true;
-              }
-              _ => ()
-            }
-          }
-          ty::ty_class(base_id, substs) => {
-              // This is just for fields -- the same code handles
-              // methods in both classes and traits
-
-              // (1) verify that the class id actually has a field called
-              // field
-              debug!("class named %s", ty_to_str(tcx, base_t));
-              let cls_items = ty::lookup_class_fields(tcx, base_id);
-              match lookup_field_ty(tcx, base_id, cls_items, field, &substs) {
-                 Some(field_ty) => {
-                    // (2) look up what field's type is, and return it
-                     fcx.write_ty(expr.id, field_ty);
-                     handled = true;
-                 }
-                 None => ()
-              }
-          }
-          _ => ()
-        }
-        if !handled {
-            let tps = vec::map(tys, |ty| fcx.to_ty(ty));
-            let is_self_ref = self_ref(fcx, base.id);
-
-            // this will be the call or block that immediately
-            // encloses the method call
-            let borrow_lb = fcx.tcx().region_map.get(expr.id);
-
-            let lkup = method::lookup(fcx, expr, base, borrow_lb,
-                                      expr.id, field, expr_t, tps,
-                                      is_self_ref);
-            match lkup.method() {
-                Some(entry) => {
-                    fcx.ccx.method_map.insert(expr.id, entry);
-
-                    // If we have resolved to a method but this is not in
-                    // a callee position, error
-                    if !is_callee {
-                        tcx.sess.span_err(
-                            expr.span,
-                            ~"attempted to take value of method \
-                              (try writing an anonymous function)");
+            ty::ty_rec(fields) => {
+                match ty::field_idx(field, fields) {
+                    Some(ix) => {
+                        if n_tys > 0u {
+                            tcx.sess.span_err(
+                                expr.span,
+                                ~"can't provide type parameters \
+                                  to a field access");
+                        }
+                        fcx.write_ty(expr.id, fields[ix].mt.ty);
+                        fcx.write_autoderef_adjustment(base.id, derefs);
+                        return bot;
                     }
-                }
-                None => {
-                    let t_err =
-                        fcx.infcx().resolve_type_vars_if_possible(expr_t);
-                    let msg =
-                        fmt!(
-                            "attempted access of field `%s` on type `%s`, \
-                             but no field or method with that name was found",
-                            tcx.sess.str_of(field),
-                            fcx.infcx().ty_to_str(t_err));
-                    tcx.sess.span_err(expr.span, msg);
-                    // NB: Add bogus type to allow typechecking to continue
-                    fcx.write_ty(expr.id, fcx.infcx().next_ty_var());
+                    _ => ()
                 }
             }
+            ty::ty_class(base_id, substs) => {
+                // This is just for fields -- the same code handles
+                // methods in both classes and traits
+
+                // (1) verify that the class id actually has a field called
+                // field
+                debug!("class named %s", ty_to_str(tcx, base_t));
+                let cls_items = ty::lookup_class_fields(tcx, base_id);
+                match lookup_field_ty(tcx, base_id, cls_items,
+                                      field, &substs) {
+                    Some(field_ty) => {
+                        // (2) look up what field's type is, and return it
+                        fcx.write_ty(expr.id, field_ty);
+                        fcx.write_autoderef_adjustment(base.id, derefs);
+                        return bot;
+                    }
+                    None => ()
+                }
+            }
+            _ => ()
         }
+
+        let tps = vec::map(tys, |ty| fcx.to_ty(ty));
+
+        match method::lookup(fcx, expr, base, expr.id,
+                             field, expr_t, tps) {
+            Some(entry) => {
+                fcx.ccx.method_map.insert(expr.id, entry);
+
+                // If we have resolved to a method but this is not in
+                // a callee position, error
+                if !is_callee {
+                    tcx.sess.span_err(
+                        expr.span,
+                        ~"attempted to take value of method \
+                          (try writing an anonymous function)");
+                }
+            }
+            None => {
+                let t_err =
+                    fcx.infcx().resolve_type_vars_if_possible(expr_t);
+                let msg =
+                    fmt!(
+                        "attempted access of field `%s` on type `%s`, \
+                         but no field or method with that name was found",
+                        tcx.sess.str_of(field),
+                        fcx.infcx().ty_to_str(t_err));
+                tcx.sess.span_err(expr.span, msg);
+                // NB: Add bogus type to allow typechecking to continue
+                fcx.write_ty(expr.id, fcx.infcx().next_ty_var());
+            }
+        }
+
         return bot;
     }
 
@@ -2000,32 +2057,33 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         bot = check_field(fcx, expr, false, base, field, tys);
       }
       ast::expr_index(base, idx) => {
-        bot |= check_expr(fcx, base, None);
-        let raw_base_t = fcx.expr_ty(base);
-        let base_t = do_autoderef(fcx, expr.span, raw_base_t);
-        bot |= check_expr(fcx, idx, None);
-        let idx_t = fcx.expr_ty(idx);
-        let base_sty = structure_of(fcx, expr.span, base_t);
-        match ty::index_sty(tcx, &base_sty) {
-          Some(mt) => {
-            require_integral(fcx, idx.span, idx_t);
-            fcx.write_ty(id, mt.ty);
-          }
-          None => {
-            let resolved = structurally_resolved_type(fcx, expr.span,
-                                                      raw_base_t);
-            match lookup_op_method(fcx, expr, base, resolved,
-                                   tcx.sess.ident_of(~"index"),
-                                 ~[idx]) {
-              Some((ret_ty, _)) => fcx.write_ty(id, ret_ty),
-              _ => {
-                tcx.sess.span_fatal(
-                    expr.span, ~"cannot index a value of type `" +
-                    fcx.infcx().ty_to_str(base_t) + ~"`");
+          bot |= check_expr(fcx, base, None);
+          let raw_base_t = fcx.expr_ty(base);
+          let (base_t, derefs) = do_autoderef(fcx, expr.span, raw_base_t);
+          bot |= check_expr(fcx, idx, None);
+          let idx_t = fcx.expr_ty(idx);
+          let base_sty = structure_of(fcx, expr.span, base_t);
+          match ty::index_sty(tcx, &base_sty) {
+              Some(mt) => {
+                  require_integral(fcx, idx.span, idx_t);
+                  fcx.write_ty(id, mt.ty);
+                  fcx.write_autoderef_adjustment(base.id, derefs);
               }
-            }
+              None => {
+                  let resolved = structurally_resolved_type(fcx, expr.span,
+                                                            raw_base_t);
+                  match lookup_op_method(fcx, expr, base, resolved,
+                                         tcx.sess.ident_of(~"index"), true,
+                                         ~[idx]) {
+                      Some((ret_ty, _)) => fcx.write_ty(id, ret_ty),
+                      _ => {
+                          tcx.sess.span_fatal(
+                              expr.span, ~"cannot index a value of type `" +
+                              fcx.infcx().ty_to_str(base_t) + ~"`");
+                      }
+                  }
+              }
           }
-        }
       }
     }
     if bot { fcx.write_bot(expr.id); }
@@ -2304,16 +2362,6 @@ fn check_enum_variants(ccx: @crate_ctxt,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-// Determines whether the given node ID is a use of the def of
-// the self ID for the current method, if there is one
-// self IDs in an outer scope count. so that means that you can
-// call your own private methods from nested functions inside
-// class methods
-fn self_ref(fcx: @fn_ctxt, id: ast::node_id) -> bool {
-    option::map_default(fcx.ccx.tcx.def_map.find(id), false,
-                        ast_util::is_self)
-}
-
 fn lookup_local(fcx: @fn_ctxt, sp: span, id: ast::node_id) -> TyVid {
     match fcx.inh.locals.find(id) {
         Some(x) => x,
@@ -2480,19 +2528,19 @@ fn type_is_c_like_enum(fcx: @fn_ctxt, sp: span, typ: ty::t) -> bool {
 }
 
 fn ast_expr_vstore_to_vstore(fcx: @fn_ctxt, e: @ast::expr, n: uint,
-                             v: ast::vstore) -> ty::vstore {
+                             v: ast::expr_vstore) -> ty::vstore {
     match v {
-        ast::vstore_fixed(None) => ty::vstore_fixed(n),
-        ast::vstore_fixed(Some(u)) => {
+        ast::expr_vstore_fixed(None) => ty::vstore_fixed(n),
+        ast::expr_vstore_fixed(Some(u)) => {
             if n != u {
                 let s = fmt!("fixed-size sequence mismatch: %u vs. %u",u, n);
                 fcx.ccx.tcx.sess.span_err(e.span,s);
             }
             ty::vstore_fixed(u)
         }
-        ast::vstore_uniq => ty::vstore_uniq,
-        ast::vstore_box => ty::vstore_box,
-        ast::vstore_slice(_) => {
+        ast::expr_vstore_uniq => ty::vstore_uniq,
+        ast::expr_vstore_box => ty::vstore_box,
+        ast::expr_vstore_slice => {
             let r = fcx.infcx().next_region_var(e.span, e.id);
             ty::vstore_slice(r)
         }

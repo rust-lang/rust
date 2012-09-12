@@ -314,6 +314,8 @@ enum EbmlSerializerTag {
     EsEnum, EsEnumVid, EsEnumBody,
     EsVec, EsVecLen, EsVecElt,
 
+    EsOpaque,
+
     EsLabel // Used only when debugging
 }
 
@@ -337,6 +339,14 @@ impl ebml::Writer: SerializerPriv {
         // labels and then they will be checked by deserializer to
         // try and check failures more quickly.
         if debug { self.wr_tagged_str(EsLabel as uint, label) }
+    }
+}
+
+impl ebml::Writer {
+    fn emit_opaque(f: fn()) {
+        do self.wr_tag(EsOpaque as uint) {
+            f()
+        }
     }
 }
 
@@ -397,7 +407,7 @@ impl ebml::Writer: serialization::Serializer {
 }
 
 type EbmlDeserializer_ = {mut parent: ebml::Doc,
-                           mut pos: uint};
+                          mut pos: uint};
 
 enum EbmlDeserializer {
     EbmlDeserializer_(EbmlDeserializer_)
@@ -459,6 +469,14 @@ priv impl EbmlDeserializer {
         let r = ebml::doc_as_u32(self.next_doc(exp_tag));
         debug!("_next_uint exp_tag=%? result=%?", exp_tag, r);
         return r as uint;
+    }
+}
+
+impl EbmlDeserializer {
+    fn read_opaque<R>(op: fn(ebml::Doc) -> R) -> R {
+        do self.push_doc(self.next_doc(EsOpaque)) {
+            op(copy self.parent)
+        }
     }
 }
 

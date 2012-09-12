@@ -11,8 +11,10 @@ use middle::ty;
 use std::map::HashMap;
 use ty::{FnTyBase, FnMeta, FnSig};
 
-export parse_ty_data, parse_def_id, parse_ident;
+export parse_state_from_data;
+export parse_arg_data, parse_ty_data, parse_def_id, parse_ident;
 export parse_bounds_data;
+export pstate;
 
 // Compact string representation for ty::t values. API ty_str &
 // parse_from_str. Extra parameters are for converting to/from def_ids in the
@@ -53,11 +55,23 @@ fn parse_ident_(st: @pstate, is_last: fn@(char) -> bool) ->
     return st.tcx.sess.ident_of(rslt);
 }
 
+fn parse_state_from_data(data: @~[u8], crate_num: int,
+                         pos: uint, tcx: ty::ctxt)
+    -> @pstate
+{
+    @{data: data, crate: crate_num, mut pos: pos, tcx: tcx}
+}
 
 fn parse_ty_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
                  conv: conv_did) -> ty::t {
-    let st = @{data: data, crate: crate_num, mut pos: pos, tcx: tcx};
+    let st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_ty(st, conv)
+}
+
+fn parse_arg_data(data: @~[u8], crate_num: int, pos: uint, tcx: ty::ctxt,
+                  conv: conv_did) -> ty::arg {
+    let st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_arg(st, conv)
 }
 
 fn parse_ret_ty(st: @pstate, conv: conv_did) -> (ast::ret_style, ty::t) {
@@ -373,6 +387,23 @@ fn parse_purity(c: char) -> purity {
     }
 }
 
+fn parse_arg(st: @pstate, conv: conv_did) -> ty::arg {
+    {mode: parse_mode(st),
+     ty: parse_ty(st, conv)}
+}
+
+fn parse_mode(st: @pstate) -> ast::mode {
+    let m = ast::expl(match next(st) {
+        '&' => ast::by_mutbl_ref,
+        '-' => ast::by_move,
+        '+' => ast::by_copy,
+        '=' => ast::by_ref,
+        '#' => ast::by_val,
+        _ => fail ~"bad mode"
+    });
+    return m;
+}
+
 fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
     let proto = parse_proto(st);
     let purity = parse_purity(next(st));
@@ -380,16 +411,8 @@ fn parse_ty_fn(st: @pstate, conv: conv_did) -> ty::FnTy {
     assert (next(st) == '[');
     let mut inputs: ~[ty::arg] = ~[];
     while peek(st) != ']' {
-        let mode = match peek(st) {
-          '&' => ast::by_mutbl_ref,
-          '-' => ast::by_move,
-          '+' => ast::by_copy,
-          '=' => ast::by_ref,
-          '#' => ast::by_val,
-          _ => fail ~"bad mode"
-        };
-        st.pos += 1u;
-        vec::push(inputs, {mode: ast::expl(mode), ty: parse_ty(st, conv)});
+        let mode = parse_mode(st);
+        vec::push(inputs, {mode: mode, ty: parse_ty(st, conv)});
     }
     st.pos += 1u; // eat the ']'
     let (ret_style, ret_ty) = parse_ret_ty(st, conv);
@@ -432,8 +455,9 @@ fn parse_def_id(buf: &[u8]) -> ast::def_id {
 
 fn parse_bounds_data(data: @~[u8], start: uint,
                      crate_num: int, tcx: ty::ctxt, conv: conv_did)
-    -> @~[ty::param_bound] {
-    let st = @{data: data, crate: crate_num, mut pos: start, tcx: tcx};
+    -> @~[ty::param_bound]
+{
+    let st = parse_state_from_data(data, crate_num, start, tcx);
     parse_bounds(st, conv)
 }
 

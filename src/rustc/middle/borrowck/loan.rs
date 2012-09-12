@@ -36,23 +36,40 @@ enum loan_ctxt {
 impl loan_ctxt {
     fn tcx() -> ty::ctxt { self.bccx.tcx }
 
-    fn ok_with_loan_of(cmt: cmt,
-                       scope_ub: ty::region,
-                       mutbl: ast::mutability) -> bckres<()> {
+    fn issue_loan(cmt: cmt,
+                  scope_ub: ty::region,
+                  req_mutbl: ast::mutability) -> bckres<()> {
         if self.bccx.is_subregion_of(self.scope_region, scope_ub) {
-            // Note: all cmt's that we deal with will have a non-none
-            // lp, because the entry point into this routine,
-            // `borrowck_ctxt::loan()`, rejects any cmt with a
-            // none-lp.
-            (*self.loans).push({lp: option::get(cmt.lp),
-                                cmt: cmt,
-                                mutbl: mutbl});
-            Ok(())
+            match req_mutbl {
+                m_mutbl => {
+                    // We do not allow non-mutable data to be loaned
+                    // out as mutable under any circumstances.
+                    if cmt.mutbl != m_mutbl {
+                        return Err({cmt:cmt,
+                                    code:err_mutbl(req_mutbl)});
+                    }
+                }
+                m_const | m_imm => {
+                    // However, mutable data can be loaned out as
+                    // immutable (and any data as const).  The
+                    // `check_loans` pass will then guarantee that no
+                    // writes occur for the duration of the loan.
+                }
+            }
+
+            (*self.loans).push({
+                // Note: cmt.lp must be Some(_) because otherwise this
+                // loan process does not apply at all.
+                lp: cmt.lp.get(),
+                cmt: cmt,
+                mutbl: req_mutbl});
+            return Ok(());
         } else {
             // The loan being requested lives longer than the data
             // being loaned out!
-            Err({cmt:cmt, code:err_out_of_scope(scope_ub,
-                                                self.scope_region)})
+            return Err({cmt:cmt,
+                        code:err_out_of_scope(scope_ub,
+                                              self.scope_region)});
         }
     }
 
@@ -78,7 +95,7 @@ impl loan_ctxt {
           }
           cat_local(local_id) | cat_arg(local_id) => {
             let local_scope_id = self.tcx().region_map.get(local_id);
-            self.ok_with_loan_of(cmt, ty::re_scope(local_scope_id), req_mutbl)
+            self.issue_loan(cmt, ty::re_scope(local_scope_id), req_mutbl)
           }
           cat_stack_upvar(cmt) => {
             self.loan(cmt, req_mutbl) // NDM correct?
@@ -138,7 +155,7 @@ impl loan_ctxt {
         do self.loan(cmt_base, base_mutbl).chain |_ok| {
             // can use static for the scope because the base
             // determines the lifetime, ultimately
-            self.ok_with_loan_of(cmt, ty::re_static, req_mutbl)
+            self.issue_loan(cmt, ty::re_static, req_mutbl)
         }
     }
 
@@ -153,7 +170,7 @@ impl loan_ctxt {
         // could change.
         do self.loan(cmt_base, m_imm).chain |_ok| {
             // can use static, as in loan_stable_comp()
-            self.ok_with_loan_of(cmt, ty::re_static, req_mutbl)
+            self.issue_loan(cmt, ty::re_static, req_mutbl)
         }
     }
 }

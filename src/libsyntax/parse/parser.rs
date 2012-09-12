@@ -64,7 +64,9 @@ use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              variant, view_item, view_item_, view_item_export,
              view_item_import, view_item_use, view_path, view_path_glob,
              view_path_list, view_path_simple, visibility, vstore, vstore_box,
-             vstore_fixed, vstore_slice, vstore_uniq};
+             vstore_fixed, vstore_slice, vstore_uniq,
+             expr_vstore_fixed, expr_vstore_slice, expr_vstore_box,
+             expr_vstore_uniq};
 
 export file_type;
 export parser;
@@ -1071,7 +1073,8 @@ impl parser {
             None => (),
             Some(v) => {
                 hi = self.span.hi;
-                ex = expr_vstore(self.mk_expr(lo, hi, ex), vstore_fixed(v));
+                ex = expr_vstore(self.mk_expr(lo, hi, ex),
+                                 expr_vstore_fixed(v));
             }
           },
           _ => ()
@@ -1370,7 +1373,7 @@ impl parser {
                 ex = match e.node {
                   expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
                   if m == m_imm => {
-                    expr_vstore(e, vstore_slice(self.region_from_name(None)))
+                    expr_vstore(e, expr_vstore_slice)
                   }
                   _ => expr_addr_of(m, e)
                 };
@@ -1386,7 +1389,7 @@ impl parser {
             // HACK: turn @[...] into a @-evec
             ex = match e.node {
               expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
-              if m == m_imm => expr_vstore(e, vstore_box),
+              if m == m_imm => expr_vstore(e, expr_vstore_box),
               _ => expr_unary(box(m), e)
             };
           }
@@ -1398,7 +1401,7 @@ impl parser {
             // HACK: turn ~[...] into a ~-evec
             ex = match e.node {
               expr_vec(*) | expr_lit(@{node: lit_str(_), span: _})
-              if m == m_imm => expr_vstore(e, vstore_uniq),
+              if m == m_imm => expr_vstore(e, expr_vstore_uniq),
               _ => expr_unary(uniq(m), e)
             };
           }
@@ -1849,7 +1852,7 @@ impl parser {
                 node: expr_lit(@{node: lit_str(_), span: _}), _
               }) => {
                 let vst = @{id: self.get_id(), callee_id: self.get_id(),
-                            node: expr_vstore(e, vstore_box),
+                            node: expr_vstore(e, expr_vstore_box),
                             span: mk_sp(lo, hi)};
                 pat_lit(vst)
               }
@@ -1866,7 +1869,7 @@ impl parser {
                 node: expr_lit(@{node: lit_str(_), span: _}), _
               }) => {
                 let vst = @{id: self.get_id(), callee_id: self.get_id(),
-                            node: expr_vstore(e, vstore_uniq),
+                            node: expr_vstore(e, expr_vstore_uniq),
                             span: mk_sp(lo, hi)};
                 pat_lit(vst)
               }
@@ -1884,10 +1887,12 @@ impl parser {
                   pat_lit(e@@{
                       node: expr_lit(@{node: lit_str(_), span: _}), _
                   }) => {
-                      let vst = @{id: self.get_id(), callee_id: self.get_id(),
-                                  node: expr_vstore(e,
-                                  vstore_slice(self.region_from_name(None))),
-                                  span: mk_sp(lo, hi)};
+                      let vst = @{
+                          id: self.get_id(),
+                          callee_id: self.get_id(),
+                          node: expr_vstore(e, expr_vstore_slice),
+                          span: mk_sp(lo, hi)
+                      };
                       pat_lit(vst)
                   }
               _ => pat_region(sub)

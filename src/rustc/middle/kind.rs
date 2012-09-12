@@ -332,8 +332,13 @@ fn check_expr(e: @expr, cx: ctx, v: visit::vt<ctx>) {
         // If this is a method call with a by-val argument, we need
         // to check the copy
         match cx.method_map.find(e.id) {
-          Some({self_mode: by_copy, _}) => maybe_copy(cx, lhs, None),
-          _ => ()
+            Some(ref mme) => {
+                match ty::arg_mode(cx.tcx, mme.self_arg) {
+                    by_copy => maybe_copy(cx, lhs, None),
+                    by_ref | by_val | by_mutbl_ref | by_move => ()
+                }
+            }
+            _ => ()
         }
       }
       expr_repeat(element, count_expr, _) => {
@@ -437,10 +442,17 @@ fn check_copy_ex(cx: ctx, ex: @expr, implicit_copy: bool,
         !is_nullary_variant(cx, ex) &&
 
         // borrowed unique value isn't really a copy
-        !cx.tcx.borrowings.contains_key(ex.id)
+        !is_autorefd(cx, ex)
     {
         let ty = ty::expr_ty(cx.tcx, ex);
         check_copy(cx, ex.id, ty, ex.span, implicit_copy, why);
+    }
+
+    fn is_autorefd(cx: ctx, ex: @expr) -> bool {
+        match cx.tcx.adjustments.find(ex.id) {
+            None => false,
+            Some(ref adj) => adj.autoref.is_some()
+        }
     }
 }
 

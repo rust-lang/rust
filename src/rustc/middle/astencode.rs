@@ -18,10 +18,8 @@ use std::serialization::DeserializerHelpers;
 use std::prettyprint::Serializer;
 use middle::{ty, typeck};
 use middle::typeck::{method_origin, method_map_entry,
-                        serialize_method_map_entry,
-                        deserialize_method_map_entry,
-                        vtable_res,
-                        vtable_origin};
+                     vtable_res,
+                     vtable_origin};
 use driver::session::session;
 use middle::freevars::{freevar_entry,
                           serialize_freevar_entry,
@@ -386,6 +384,45 @@ impl ast::def: tr {
 }
 
 // ______________________________________________________________________
+// Encoding and decoding of adjustment information
+
+impl ty::AutoAdjustment: tr {
+    fn tr(xcx: extended_decode_ctxt) -> ty::AutoAdjustment {
+        {autoderefs: self.autoderefs,
+         autoref: self.autoref.map(|ar| ar.tr(xcx))}
+    }
+}
+
+impl ty::AutoRef: tr {
+    fn tr(xcx: extended_decode_ctxt) -> ty::AutoRef {
+        {kind: self.kind,
+         region: self.region.tr(xcx),
+         mutbl: self.mutbl}
+    }
+}
+
+impl ty::region: tr {
+    fn tr(xcx: extended_decode_ctxt) -> ty::region {
+        match self {
+            ty::re_bound(br) => ty::re_bound(br.tr(xcx)),
+            ty::re_free(id, br) => ty::re_free(xcx.tr_id(id), br.tr(xcx)),
+            ty::re_scope(id) => ty::re_scope(xcx.tr_id(id)),
+            ty::re_static | ty::re_var(*) => self,
+        }
+    }
+}
+
+impl ty::bound_region: tr {
+    fn tr(xcx: extended_decode_ctxt) -> ty::bound_region {
+        match self {
+            ty::br_anon(_) | ty::br_named(_) | ty::br_self => self,
+            ty::br_cap_avoid(id, br) => ty::br_cap_avoid(xcx.tr_id(id),
+                                                         @br.tr(xcx))
+        }
+    }
+}
+
+// ______________________________________________________________________
 // Encoding and decoding of freevar information
 
 fn encode_freevar_entry(ebml_w: ebml::Writer, fv: freevar_entry) {
@@ -416,12 +453,31 @@ trait read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry;
 }
 
+fn serialize_method_map_entry(ecx: @e::encode_ctxt,
+                              ebml_w: ebml::Writer,
+                              mme: method_map_entry) {
+    do ebml_w.emit_rec {
+        do ebml_w.emit_rec_field(~"self_arg", 0u) {
+            ebml_w.emit_arg(ecx, mme.self_arg);
+        }
+        do ebml_w.emit_rec_field(~"origin", 1u) {
+            typeck::serialize_method_origin(ebml_w, mme.origin);
+        }
+    }
+}
+
 impl ebml::EbmlDeserializer: read_method_map_entry_helper {
     fn read_method_map_entry(xcx: extended_decode_ctxt) -> method_map_entry {
-        let mme = deserialize_method_map_entry(self);
-        {derefs: mme.derefs,
-         self_mode: mme.self_mode,
-         origin: mme.origin.tr(xcx)}
+        do self.read_rec {
+            {self_arg:
+                 self.read_rec_field(~"self_arg", 0u, || {
+                     self.read_arg(xcx)
+                 }),
+             origin:
+                 self.read_rec_field(~"origin", 1u, || {
+                     typeck::deserialize_method_origin(self).tr(xcx)
+                 })}
+        }
     }
 }
 
@@ -445,8 +501,8 @@ impl method_origin: tr {
 // Encoding and decoding vtable_res
 
 fn encode_vtable_res(ecx: @e::encode_ctxt,
-                   ebml_w: ebml::Writer,
-                   dr: typeck::vtable_res) {
+                     ebml_w: ebml::Writer,
+                     dr: typeck::vtable_res) {
     // can't autogenerate this code because automatic serialization of
     // ty::t doesn't work, and there is no way (atm) to have
     // hand-written serialization routines combine with auto-generated
@@ -573,6 +629,7 @@ impl @e::encode_ctxt: get_ty_str_ctxt {
 }
 
 trait ebml_writer_helpers {
+    fn emit_arg(ecx: @e::encode_ctxt, arg: ty::arg);
     fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t);
     fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]);
     fn emit_bounds(ecx: @e::encode_ctxt, bs: ty::param_bounds);
@@ -581,17 +638,27 @@ trait ebml_writer_helpers {
 
 impl ebml::Writer: ebml_writer_helpers {
     fn emit_ty(ecx: @e::encode_ctxt, ty: ty::t) {
-        e::write_type(ecx, self, ty)
-    }
-
-    fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]) {
-        do self.emit_from_vec(tys) |ty| {
+        do self.emit_opaque {
             e::write_type(ecx, self, ty)
         }
     }
 
+    fn emit_arg(ecx: @e::encode_ctxt, arg: ty::arg) {
+        do self.emit_opaque {
+            tyencode::enc_arg(self.writer, ecx.ty_str_ctxt(), arg);
+        }
+    }
+
+    fn emit_tys(ecx: @e::encode_ctxt, tys: ~[ty::t]) {
+        do self.emit_from_vec(tys) |ty| {
+            self.emit_ty(ecx, ty)
+        }
+    }
+
     fn emit_bounds(ecx: @e::encode_ctxt, bs: ty::param_bounds) {
-        tyencode::enc_bounds(self.writer, ecx.ty_str_ctxt(), bs)
+        do self.emit_opaque {
+            tyencode::enc_bounds(self.writer, ecx.ty_str_ctxt(), bs)
+        }
     }
 
     fn emit_tpbt(ecx: @e::encode_ctxt, tpbt: ty::ty_param_bounds_and_ty) {
@@ -664,7 +731,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_node_type) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                e::write_type(ecx, ebml_w, ty)
+                ebml_w.emit_ty(ecx, ty);
             }
         }
     }
@@ -743,7 +810,7 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         do ebml_w.tag(c::tag_table_method_map) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                serialize_method_map_entry(ebml_w, mme)
+                serialize_method_map_entry(ecx, ebml_w, mme)
             }
         }
     }
@@ -757,13 +824,11 @@ fn encode_side_tables_for_id(ecx: @e::encode_ctxt,
         }
     }
 
-    do option::iter(tcx.borrowings.find(id)) |_borrow| {
-        do ebml_w.tag(c::tag_table_borrowings) {
+    do option::iter(tcx.adjustments.find(id)) |adj| {
+        do ebml_w.tag(c::tag_table_adjustments) {
             ebml_w.id(id);
             do ebml_w.tag(c::tag_table_val) {
-                // N.B. We don't actually serialize borrows as, in
-                // trans, we only care whether a value is borrowed or
-                // not.
+                ty::serialize_AutoAdjustment(ebml_w, *adj)
             }
         }
     }
@@ -782,6 +847,7 @@ impl ebml::Doc: doc_decoder_helpers {
 }
 
 trait ebml_deserializer_decoder_helpers {
+    fn read_arg(xcx: extended_decode_ctxt) -> ty::arg;
     fn read_ty(xcx: extended_decode_ctxt) -> ty::t;
     fn read_tys(xcx: extended_decode_ctxt) -> ~[ty::t];
     fn read_bounds(xcx: extended_decode_ctxt) -> @~[ty::param_bound];
@@ -791,15 +857,25 @@ trait ebml_deserializer_decoder_helpers {
 
 impl ebml::EbmlDeserializer: ebml_deserializer_decoder_helpers {
 
+    fn read_arg(xcx: extended_decode_ctxt) -> ty::arg {
+        do self.read_opaque |doc| {
+            tydecode::parse_arg_data(
+                doc.data, xcx.dcx.cdata.cnum, doc.start, xcx.dcx.tcx,
+                |a| xcx.tr_def_id(a))
+        }
+    }
+
     fn read_ty(xcx: extended_decode_ctxt) -> ty::t {
         // Note: regions types embed local node ids.  In principle, we
         // should translate these node ids into the new decode
         // context.  However, we do not bother, because region types
         // are not used during trans.
 
-        tydecode::parse_ty_data(
-            self.parent.data, xcx.dcx.cdata.cnum, self.pos, xcx.dcx.tcx,
-            |a| xcx.tr_def_id(a) )
+        do self.read_opaque |doc| {
+            tydecode::parse_ty_data(
+                doc.data, xcx.dcx.cdata.cnum, doc.start, xcx.dcx.tcx,
+                |a| xcx.tr_def_id(a))
+        }
     }
 
     fn read_tys(xcx: extended_decode_ctxt) -> ~[ty::t] {
@@ -807,13 +883,16 @@ impl ebml::EbmlDeserializer: ebml_deserializer_decoder_helpers {
     }
 
     fn read_bounds(xcx: extended_decode_ctxt) -> @~[ty::param_bound] {
-        tydecode::parse_bounds_data(
-            self.parent.data, self.pos, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
-            |a| xcx.tr_def_id(a) )
+        do self.read_opaque |doc| {
+            tydecode::parse_bounds_data(
+                doc.data, doc.start, xcx.dcx.cdata.cnum, xcx.dcx.tcx,
+                |a| xcx.tr_def_id(a))
+        }
     }
 
     fn read_ty_param_bounds_and_ty(xcx: extended_decode_ctxt)
-        -> ty::ty_param_bounds_and_ty {
+        -> ty::ty_param_bounds_and_ty
+    {
         do self.read_rec {
             {
                 bounds: self.read_rec_field(~"bounds", 0u, || {
@@ -881,12 +960,9 @@ fn decode_side_tables(xcx: extended_decode_ctxt,
             } else if tag == (c::tag_table_vtable_map as uint) {
                 dcx.maps.vtable_map.insert(id,
                                            val_dsr.read_vtable_res(xcx));
-            } else if tag == (c::tag_table_borrowings as uint) {
-                // N.B.: we don't actually *serialize* borrows because, in
-                // trans, the only thing we care about is whether a value was
-                // borrowed or not.
-                let borrow = {region: ty::re_static, mutbl: ast::m_imm};
-                dcx.tcx.borrowings.insert(id, borrow);
+            } else if tag == (c::tag_table_adjustments as uint) {
+                let adj = @ty::deserialize_AutoAdjustment(val_dsr).tr(xcx);
+                dcx.tcx.adjustments.insert(id, adj);
             } else {
                 xcx.dcx.tcx.sess.bug(
                     fmt!("unknown tag found in side tables: %x", tag));

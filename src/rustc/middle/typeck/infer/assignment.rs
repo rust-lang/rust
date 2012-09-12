@@ -134,18 +134,24 @@ priv impl Assign {
                     (ty::ty_box(_), ty::ty_rptr(r_b, mt_b)) => {
                         let nr_b = ty::mk_box(self.infcx.tcx,
                                               {ty: mt_b.ty, mutbl: m_const});
-                        self.try_assign(a, nr_b, mt_b.mutbl, r_b)
+                        self.try_assign(1, ty::AutoPtr,
+                                        a, nr_b,
+                                        mt_b.mutbl, r_b)
                     }
                     (ty::ty_uniq(_), ty::ty_rptr(r_b, mt_b)) => {
                         let nr_b = ty::mk_uniq(self.infcx.tcx,
                                                {ty: mt_b.ty, mutbl: m_const});
-                        self.try_assign(a, nr_b, mt_b.mutbl, r_b)
+                        self.try_assign(1, ty::AutoPtr,
+                                        a, nr_b,
+                                        mt_b.mutbl, r_b)
                     }
                     (ty::ty_estr(vs_a),
                      ty::ty_estr(ty::vstore_slice(r_b)))
                     if is_borrowable(vs_a) => {
                         let nr_b = ty::mk_estr(self.infcx.tcx, vs_a);
-                        self.try_assign(a, nr_b, m_imm, r_b)
+                        self.try_assign(0, ty::AutoSlice,
+                                        a, nr_b,
+                                        m_imm, r_b)
                     }
 
                     (ty::ty_evec(_, vs_a),
@@ -154,7 +160,9 @@ priv impl Assign {
                         let nr_b = ty::mk_evec(self.infcx.tcx,
                                                {ty: mt_b.ty, mutbl: m_const},
                                                vs_a);
-                        self.try_assign(a, nr_b, mt_b.mutbl, r_b)
+                        self.try_assign(0, ty::AutoSlice,
+                                        a, nr_b,
+                                        mt_b.mutbl, r_b)
                     }
 
                     _ => {
@@ -177,7 +185,9 @@ priv impl Assign {
     /// variable `r_a >= r_b` and returns a corresponding assignment
     /// record.  See the discussion at the top of this file for more
     /// details.
-    fn try_assign(a: ty::t,
+    fn try_assign(autoderefs: uint,
+                  kind: ty::AutoRefKind,
+                  a: ty::t,
                   nr_b: ty::t,
                   m: ast::mutability,
                   r_b: ty::region) -> ares {
@@ -193,7 +203,14 @@ priv impl Assign {
             do sub.tys(a, nr_b).chain |_t| {
                 let r_a = self.infcx.next_region_var_nb(self.span);
                 do sub.contraregions(r_a, r_b).chain |_r| {
-                    Ok(Some({region: r_a, mutbl: m}))
+                    Ok(Some(@{
+                        autoderefs: autoderefs,
+                        autoref: Some({
+                            kind: kind,
+                            region: r_a,
+                            mutbl: m
+                        })
+                    }))
                 }
             }
         }

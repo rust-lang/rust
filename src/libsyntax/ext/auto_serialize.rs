@@ -260,7 +260,7 @@ impl ext_ctxt: ext_ctxt_helpers {
                     ast::expr_lit(
                         @{node: ast::lit_str(s),
                           span: span})),
-                ast::vstore_uniq))
+                ast::expr_vstore_uniq))
     }
 
     fn lit_uint(span: span, i: uint) -> @ast::expr {

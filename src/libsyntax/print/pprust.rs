@@ -976,6 +976,16 @@ fn print_vstore(s: ps, t: ast::vstore) {
     }
 }
 
+fn print_expr_vstore(s: ps, t: ast::expr_vstore) {
+    match t {
+      ast::expr_vstore_fixed(Some(i)) => word(s.s, fmt!("%u", i)),
+      ast::expr_vstore_fixed(None) => word(s.s, ~"_"),
+      ast::expr_vstore_uniq => word(s.s, ~"~"),
+      ast::expr_vstore_box => word(s.s, ~"@"),
+      ast::expr_vstore_slice => word(s.s, ~"&"),
+    }
+}
+
 fn print_expr(s: ps, &&expr: @ast::expr) {
     fn print_field(s: ps, field: ast::field) {
         ibox(s, indent_unit);
@@ -992,17 +1002,17 @@ fn print_expr(s: ps, &&expr: @ast::expr) {
     let ann_node = node_expr(s, expr);
     s.ann.pre(ann_node);
     match expr.node {
-      ast::expr_vstore(e, v) => match v {
-        ast::vstore_fixed(_) => {
-            print_expr(s, e);
-              word(s.s, ~"/");
-              print_vstore(s, v);
-          }
-        _ => {
-            print_vstore(s, v);
-              print_expr(s, e);
-          }
-      },
+        ast::expr_vstore(e, v) => match v {
+            ast::expr_vstore_fixed(_) => {
+                print_expr(s, e);
+                word(s.s, ~"/");
+                print_expr_vstore(s, v);
+            }
+            _ => {
+                print_expr_vstore(s, v);
+                print_expr(s, e);
+            }
+        },
       ast::expr_vec(exprs, mutbl) => {
         ibox(s, indent_unit);
         word(s.s, ~"[");

@@ -18,7 +18,7 @@ use syntax::codemap;
 use syntax::codemap::span;
 use syntax::print::pprust;
 use syntax::print::pprust::{path_to_str, proto_to_str,
-                               mode_to_str, purity_to_str};
+                            mode_to_str, purity_to_str};
 use syntax::{ast, ast_util};
 use syntax::ast_map;
 use driver::session::session;
@@ -229,10 +229,15 @@ fn proto_ty_to_str(cx: ctxt, proto: ty::fn_proto) -> ~str {
     }
 }
 
+fn expr_repr(cx: ctxt, expr: @ast::expr) -> ~str {
+    fmt!("expr(%d: %s)",
+         expr.id,
+         pprust::expr_to_str(expr, cx.sess.intr()))
+}
+
 fn tys_to_str(cx: ctxt, ts: ~[t]) -> ~str {
-    let mut rs = ~"";
-    for ts.each |t| { rs += ty_to_str(cx, t); }
-    rs
+    let tstrs = ts.map(|t| ty_to_str(cx, t));
+    fmt!("[%s]", str::connect(tstrs, ", "))
 }
 
 fn bound_to_str(cx: ctxt, b: param_bound) -> ~str {

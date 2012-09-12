@@ -354,6 +354,13 @@ impl<T: Send> Exclusive<T> {
             move result
         }
     }
+
+    #[inline(always)]
+    unsafe fn with_imm<U>(f: fn(x: &T) -> U) -> U {
+        do self.with |x| {
+            f(unsafe::transmute_immut(x))
+        }
+    }
 }
 
 // FIXME(#2585) make this a by-move method on the exclusive

@@ -19,7 +19,9 @@ use syntax::ast::*;
 use syntax::print::pprust::*;
 use util::ppaux::{ty_to_str, proto_ty_to_str, tys_to_str};
 use std::serialization::{serialize_Option,
-                            deserialize_Option};
+                         deserialize_Option,
+                         serialize_uint,
+                         deserialize_uint};
 
 export TyVid, IntVid, FnVid, RegionVid, vid;
 export br_hashmap;
@@ -155,6 +157,7 @@ export closure_kind;
 export ck_block;
 export ck_box;
 export ck_uniq;
+export param_ty;
 export param_bound, param_bounds, bound_copy, bound_owned;
 export param_bounds_to_str, param_bound_to_str;
 export bound_send, bound_trait;
@@ -192,6 +195,8 @@ export opt_region_variance;
 export serialize_opt_region_variance, deserialize_opt_region_variance;
 export determine_inherited_purity;
 export provided_trait_methods;
+export AutoAdjustment, serialize_AutoAdjustment, deserialize_AutoAdjustment;
+export AutoRef, AutoRefKind, AutoSlice, AutoPtr;
 
 // Data types
 
@@ -287,19 +292,26 @@ impl region_variance: cmp::Eq {
     pure fn ne(&&other: region_variance) -> bool { !self.eq(other) }
 }
 
-// N.B.: Borrows from inlined content are not accurately deserialized.  This
-// is because we don't need the details in trans, we only care if there is an
-// entry in the table or not.
-type borrow = {
-    region: ty::region,
+#[auto_serialize]
+type AutoAdjustment = {
+    autoderefs: uint,
+    autoref: Option<AutoRef>
+};
+
+#[auto_serialize]
+type AutoRef = {
+    kind: AutoRefKind,
+    region: region,
     mutbl: ast::mutability
 };
 
-impl borrow : cmp::Eq {
-    pure fn eq(&&other: borrow) -> bool {
-        self.region == other.region && self.mutbl == other.mutbl
-    }
-    pure fn ne(&&other: borrow) -> bool { !self.eq(other) }
+#[auto_serialize]
+enum AutoRefKind {
+    /// Convert from @[]/~[] to &[] (or str)
+    AutoSlice,
+
+    /// Convert from T to &T
+    AutoPtr
 }
 
 type ctxt =
@@ -340,8 +352,7 @@ type ctxt =
       trait_method_cache: HashMap<def_id, @~[method]>,
       ty_param_bounds: HashMap<ast::node_id, param_bounds>,
       inferred_modes: HashMap<ast::node_id, ast::mode>,
-      // maps the id of borrowed expr to scope of borrowed ptr
-      borrowings: HashMap<ast::node_id, borrow>,
+      adjustments: HashMap<ast::node_id, @AutoAdjustment>,
       normalized_cache: HashMap<t, t>,
       lang_items: middle::lang_items::LanguageItems};
 
@@ -496,6 +507,7 @@ impl param_ty : to_bytes::IterBytes {
 
 
 /// Representation of regions:
+#[auto_serialize]
 enum region {
     /// Bound regions are found (primarily) in function types.  They indicate
     /// region parameters that have yet to be replaced with actual regions
@@ -523,6 +535,7 @@ enum region {
     re_var(RegionVid)
 }
 
+#[auto_serialize]
 enum bound_region {
     /// The self region for classes, impls (&T in a type defn or &self/T)
     br_self,
@@ -533,35 +546,37 @@ enum bound_region {
     /// Named region parameters for functions (a in &a/T)
     br_named(ast::ident),
 
-    /// Handles capture-avoiding substitution in a rather subtle case.  If you
-    /// have a closure whose argument types are being inferred based on the
-    /// expected type, and the expected type includes bound regions, then we
-    /// will wrap those bound regions in a br_cap_avoid() with the id of the
-    /// fn expression.  This ensures that the names are not "captured" by the
-    /// enclosing scope, which may define the same names.  For an example of
-    /// where this comes up, see src/test/compile-fail/regions-ret-borrowed.rs
-    /// and regions-ret-borrowed-1.rs.
+    /**
+     * Handles capture-avoiding substitution in a rather subtle case.  If you
+     * have a closure whose argument types are being inferred based on the
+     * expected type, and the expected type includes bound regions, then we
+     * will wrap those bound regions in a br_cap_avoid() with the id of the
+     * fn expression.  This ensures that the names are not "captured" by the
+     * enclosing scope, which may define the same names.  For an example of
+     * where this comes up, see src/test/compile-fail/regions-ret-borrowed.rs
+     * and regions-ret-borrowed-1.rs. */
     br_cap_avoid(ast::node_id, @bound_region),
 }
 
 type opt_region = Option<region>;
 
-/// The type substs represents the kinds of things that can be substituted to
-/// convert a polytype into a monotype.  Note however that substituting bound
-/// regions other than `self` is done through a different mechanism.
-///
-/// `tps` represents the type parameters in scope.  They are indexed according
-/// to the order in which they were declared.
-///
-/// `self_r` indicates the region parameter `self` that is present on nominal
-/// types (enums, classes) declared as having a region parameter.  `self_r`
-/// should always be none for types that are not region-parameterized and
-/// Some(_) for types that are.  The only bound region parameter that should
-/// appear within a region-parameterized type is `self`.
-///
-/// `self_ty` is the type to which `self` should be remapped, if any.  The
-/// `self` type is rather funny in that it can only appear on traits and
-/// is always substituted away to the implementing type for a trait.
+/**
+ * The type substs represents the kinds of things that can be substituted to
+ * convert a polytype into a monotype.  Note however that substituting bound
+ * regions other than `self` is done through a different mechanism:
+ *
+ * - `tps` represents the type parameters in scope.  They are indexed
+ *   according to the order in which they were declared.
+ *
+ * - `self_r` indicates the region parameter `self` that is present on nominal
+ *   types (enums, classes) declared as having a region parameter.  `self_r`
+ *   should always be none for types that are not region-parameterized and
+ *   Some(_) for types that are.  The only bound region parameter that should
+ *   appear within a region-parameterized type is `self`.
+ *
+ * - `self_ty` is the type to which `self` should be remapped, if any.  The
+ *   `self` type is rather funny in that it can only appear on traits and is
+ *   always substituted away to the implementing type for a trait. */
 type substs = {
     self_r: opt_region,
     self_ty: Option<ty::t>,
@@ -650,6 +665,7 @@ enum param_bound {
 enum TyVid = uint;
 enum IntVid = uint;
 enum FnVid = uint;
+#[auto_serialize]
 enum RegionVid = uint;
 
 enum InferTy {
@@ -842,7 +858,7 @@ fn mk_ctxt(s: session::session,
       trait_method_cache: new_def_hash(),
       ty_param_bounds: map::int_hash(),
       inferred_modes: map::int_hash(),
-      borrowings: map::int_hash(),
+      adjustments: map::int_hash(),
       normalized_cache: new_ty_hash(),
       lang_items: move lang_items}
 }
@@ -1339,7 +1355,7 @@ fn substs_to_str(cx: ctxt, substs: &substs) -> ~str {
     fmt!("substs(self_r=%s, self_ty=%s, tps=%?)",
          substs.self_r.map_default(~"none", |r| region_to_str(cx, r)),
          substs.self_ty.map_default(~"none", |t| ty_to_str(cx, t)),
-         substs.tps.map(|t| ty_to_str(cx, t)))
+         tys_to_str(cx, substs.tps))
 }
 
 fn param_bound_to_str(cx: ctxt, pb: &param_bound) -> ~str {
@@ -2939,8 +2955,8 @@ fn expr_kind(tcx: ctxt,
         ast::expr_unary_move(*) |
         ast::expr_repeat(*) |
         ast::expr_lit(@{node: lit_str(_), _}) |
-        ast::expr_vstore(_, ast::vstore_slice(_)) |
-        ast::expr_vstore(_, ast::vstore_fixed(_)) |
+        ast::expr_vstore(_, ast::expr_vstore_slice) |
+        ast::expr_vstore(_, ast::expr_vstore_fixed(_)) |
         ast::expr_vec(*) => {
             RvalueDpsExpr
         }
@@ -2990,8 +3006,8 @@ fn expr_kind(tcx: ctxt,
         ast::expr_unary(*) |
         ast::expr_addr_of(*) |
         ast::expr_binary(*) |
-        ast::expr_vstore(_, ast::vstore_box) |
-        ast::expr_vstore(_, ast::vstore_uniq) => {
+        ast::expr_vstore(_, ast::expr_vstore_box) |
+        ast::expr_vstore(_, ast::expr_vstore_uniq) => {
             RvalueDatumExpr
         }
 

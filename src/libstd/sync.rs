@@ -775,7 +775,7 @@ mod tests {
         let (c,p) = pipes::stream();
         let m = ~Mutex();
         let m2 = ~m.clone();
-        let sharedstate = ~0;
+        let mut sharedstate = ~0;
         let ptr = ptr::addr_of(*sharedstate);
         do task::spawn {
             let sharedstate: &mut int =
@@ -1047,7 +1047,7 @@ mod tests {
         // mutex mutual exclusion test, a ways above.
         let (c,p) = pipes::stream();
         let x2 = ~x.clone();
-        let sharedstate = ~0;
+        let mut sharedstate = ~0;
         let ptr = ptr::addr_of(*sharedstate);
         do task::spawn {
             let sharedstate: &mut int =

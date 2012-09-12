@@ -174,8 +174,12 @@ fn scratch_datum(bcx: block, ty: ty::t, zero: bool) -> Datum {
     /*!
      *
      * Allocates temporary space on the stack using alloca() and
-     * returns a by-ref Datum pointing to it.  You must arrange
-     * any cleanups etc yourself! */
+     * returns a by-ref Datum pointing to it.  If `zero` is true, the
+     * space will be zeroed when it is allocated; this is normally not
+     * necessary, but in the case of automatic rooting in match
+     * statements it is possible to have temporaries that may not get
+     * initialized if a certain arm is not taken, so we must zero
+     * them. You must arrange any cleanups etc yourself! */
 
     let llty = type_of::type_of(bcx.ccx(), ty);
     let scratch = alloca_maybe_zeroed(bcx, llty, zero);

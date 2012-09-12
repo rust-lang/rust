@@ -169,7 +169,7 @@ priv impl &preserve_ctxt {
                   }
                   Err(e) => {
                     debug!("must root @T, err: %s",
-                           self.bccx.bckerr_code_to_str(e.code));
+                           self.bccx.bckerr_to_str(e));
                     self.attempt_root(cmt, base, derefs)
                   }
                 }
