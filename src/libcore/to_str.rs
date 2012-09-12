@@ -49,6 +49,9 @@ impl ~str: ToStr {
 impl &str: ToStr {
     fn to_str() -> ~str { str::from_slice(self) }
 }
+impl @str: ToStr {
+    fn to_str() -> ~str { str::from_slice(self) }
+}
 
 impl<A: ToStr Copy, B: ToStr Copy> (A, B): ToStr {
     fn to_str() -> ~str {
@@ -96,6 +99,7 @@ mod tests {
         assert false.to_str() == ~"false";
         assert ().to_str() == ~"()";
         assert (~"hi").to_str() == ~"hi";
+        assert (@"hi").to_str() == ~"hi";
     }
 
     #[test]
