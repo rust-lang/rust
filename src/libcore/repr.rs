@@ -184,7 +184,7 @@ impl ReprPrinterWrapper {
             self.printer.ptr = transmute(&(*box).data);
             intrinsic::visit_tydesc((*box).type_desc, self as @TyVisitor);
             let box_size = sys::size_of::<*BoxRepr>();
-            self.printer.ptr = transmute(self.printer.ptr as uint + box_size);
+            self.printer.ptr = transmute(box_ptr as uint + box_size);
             true
         }
     }
@@ -200,7 +200,7 @@ impl ReprPrinterWrapper {
                 intrinsic::visit_tydesc(inner, self as @TyVisitor);
             }
             let ptr_size = sys::size_of::<*c_void>();
-            self.printer.ptr = transmute(self.printer.ptr as uint + ptr_size);
+            self.printer.ptr = transmute(data_ptr as uint + ptr_size);
             true
         }
     }
