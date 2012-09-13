@@ -1,4 +1,7 @@
 fn main() {
-    assert ~"~[1, 2, 3]" == sys::log_str(~[1, 2, 3]);
-    assert fmt!("%?/%6?", ~[1, 2, 3], ~"hi") == ~"~[1, 2, 3]/ ~\"hi\"";
+    let act = sys::log_str(~[1, 2, 3]);
+    assert ~"~[ 1, 2, 3 ]" == act;
+
+    let act = fmt!("%?/%6?", ~[1, 2, 3], ~"hi");
+    assert act == ~"~[ 1, 2, 3 ]/ ~\"hi\"";
 }
