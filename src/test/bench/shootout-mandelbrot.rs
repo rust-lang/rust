@@ -118,7 +118,7 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
     };
     cout.write_line(~"P4");
     cout.write_line(fmt!("%u %u", size, size));
-    let lines = std::map::uint_hash();
+    let lines: HashMap<uint, ~[u8]> = std::map::uint_hash();
     let mut done = 0_u;
     let mut i = 0_u;
     while i < size {
@@ -131,10 +131,7 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
             while prev <= i {
                 if lines.contains_key(prev) {
                     debug!("WS %u", prev);
-                    // FIXME (#2280): this temporary shouldn't be
-                    // necessary, but seems to be, for borrowing.
-                    let v : ~[u8] = lines.get(prev);
-                    cout.write(v);
+                    cout.write(lines.get(prev));
                     done += 1_u;
                     lines.remove(prev);
                     prev += 1_u;
