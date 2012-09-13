@@ -49,7 +49,7 @@ use metadata::csearch;
 use driver::session::session;
 use util::common::may_break;
 use syntax::codemap::span;
-use pat_util::{pat_is_variant, pat_id_map};
+use pat_util::{pat_is_variant, pat_id_map, PatIdMap};
 use middle::ty;
 use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{vstore_uniq};

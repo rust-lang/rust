@@ -111,7 +111,7 @@ fn check_legality_of_move_bindings(fcx: @fn_ctxt,
 
 type pat_ctxt = {
     fcx: @fn_ctxt,
-    map: pat_id_map,
+    map: PatIdMap,
     alt_region: ty::region,   // Region for the alt as a whole
     block_region: ty::region, // Region for the block of the arm
 };
