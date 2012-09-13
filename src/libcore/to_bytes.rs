@@ -6,7 +6,28 @@ use io::Writer;
 
 type Cb = fn(buf: &[const u8]) -> bool;
 
+/**
+ * A trait to implement in order to make a type hashable;
+ * This works in combination with the trait `Hash::Hash`, and
+ * may in the future be merged with that trait or otherwise
+ * modified when default methods and trait inheritence are
+ * completed.
+ */
 trait IterBytes {
+    /**
+     * Call the provided callback `f` one or more times with
+     * byte-slices that should be used when computing a hash
+     * value or otherwise "flattening" the structure into
+     * a sequence of bytes. The `lsb0` parameter conveys
+     * whether the caller is asking for little-endian bytes
+     * (`true`) or big-endian (`false`); this should only be
+     * relevant in implementations that represent a single
+     * multi-byte datum such as a 32 bit integer or 64 bit
+     * floating-point value. It can be safely ignored for
+     * larger structured types as they are usually processed
+     * left-to-right in declaration order, regardless of
+     * underlying memory endianness.
+     */
     pure fn iter_bytes(lsb0: bool, f: Cb);
 }
 
