@@ -2,5 +2,5 @@ fn main() {
     let arr = [1,2,3]/3;
     let struc = {a: 13u8, b: arr, c: 42};
     let s = sys::log_str(struc);
-    assert(s == ~"(13, [1, 2, 3]/3, 42)");
+    assert(s == ~"{ a: 13, b: [ 1, 2, 3 ], c: 42 }");
 }

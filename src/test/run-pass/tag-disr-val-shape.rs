@@ -7,8 +7,10 @@ enum color {
 }
 
 fn main() {
-    assert uint::to_str(red as uint, 10u) == fmt!("%?", red);
-    assert uint::to_str(green as uint, 10u) == fmt!("%?", green);
-    assert uint::to_str(white as uint, 10u) == fmt!("%?", white);
+    let act = fmt!("%?", red);
+    io::println(act);
+    assert ~"red" == act;
+    assert ~"green" == fmt!("%?", green);
+    assert ~"white" == fmt!("%?", white);
 }
 
