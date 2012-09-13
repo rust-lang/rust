@@ -16,8 +16,8 @@
  * # Example
  *
  * ~~~
- * let po = comm::port();
- * let ch = comm::chan(po);
+ * let po = comm::Port();
+ * let ch = comm::Chan(po);
  *
  * do task::spawn {
  *     comm::send(ch, "Hello, World");
