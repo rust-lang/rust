@@ -2714,16 +2714,6 @@ fn trans_crate(sess: session::session,
         io::println(fmt!("n_monos: %u", ccx.stats.n_monos));
         io::println(fmt!("n_inlines: %u", ccx.stats.n_inlines));
         io::println(fmt!("n_closures: %u", ccx.stats.n_closures));
-
-        // FIXME (#2280): this temporary shouldn't be
-        // necessary, but seems to be, for borrowing.
-        /*
-        let times = copy *ccx.stats.fn_times;
-        for vec::each(times) |timing| {
-            io::println(fmt!("time: %s took %d ms", timing.ident,
-                             timing.time));
-        }
-        */
     }
 
     if ccx.sess.count_llvm_insns() {
