@@ -79,6 +79,7 @@ Patrick Walton <pwalton@mozilla.com>
 Patrik Kårlin <patrik.karlin@gmail.com>
 Paul Stansifer <paul.stansifer@gmail.com>
 Peter Hull <peterhull90@gmail.com>
+Philipp Brüschweiler <blei42@gmail.com>
 Rafael Ávila de Espíndola <respindola@mozilla.com>
 Ralph Giles <giles@thaumas.net>
 Reuben Morais <reuben.morais@gmail.com>
