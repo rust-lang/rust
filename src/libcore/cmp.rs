@@ -5,6 +5,14 @@
 /// Interfaces used for comparison.
 
 // Awful hack to work around duplicate lang items in core test.
+
+/**
+ * Trait for values that can be compared for a sort-order.
+ *
+ * Eventually this may be simplified to only require
+ * an `le` method, with the others generated from
+ * default implementations.
+ */
 #[cfg(notest)]
 #[lang="ord"]
 trait Ord {
@@ -24,6 +32,14 @@ trait Ord {
 
 #[cfg(notest)]
 #[lang="eq"]
+/**
+ * Trait for values that can be compared for equality
+ * and inequality.
+ *
+ * Eventually this may be simplified to only require
+ * an `eq` method, with the other generated from
+ * a default implementation.
+ */
 trait Eq {
     pure fn eq(&&other: self) -> bool;
     pure fn ne(&&other: self) -> bool;

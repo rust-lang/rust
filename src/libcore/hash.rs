@@ -34,8 +34,31 @@ export hash_u16;
 export hash_u8;
 export hash_uint;
 
-/// Types that can meaningfully be hashed should implement this.
+/**
+ * Types that can meaningfully be hashed should implement this.
+ *
+ * Note that this trait is likely to change somewhat as it is
+ * closely related to `to_bytes::IterBytes` and in almost all
+ * cases presently the two are (and must be) used together.
+ *
+ * In general, most types only need to implement `IterBytes`,
+ * and the implementation of `Hash` below will take care of
+ * the rest. This is the recommended approach, since constructing
+ * good keyed hash functions is quite difficult.
+ */
 trait Hash {
+    /**
+     * Compute a "keyed" hash of the value implementing the trait,
+     * taking `k0` and `k1` as "keying" parameters that randomize or
+     * otherwise perturb the hash function in such a way that a
+     * hash table built using such "keyed hash functions" cannot
+     * be made to perform linearly by an attacker controlling the
+     * hashtable's contents.
+     *
+     * In practical terms, we implement this using the SipHash 2-4
+     * function and require most types to only implement the
+     * IterBytes trait, that feeds SipHash.
+     */
     pure fn hash_keyed(k0: u64, k1: u64) -> u64;
 }
 
