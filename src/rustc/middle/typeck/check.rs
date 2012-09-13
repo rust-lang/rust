@@ -861,8 +861,7 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
 // variables.
 fn impl_self_ty(fcx: @fn_ctxt,
                 expr: @ast::expr, // (potential) receiver for this impl
-                did: ast::def_id,
-                require_rp: bool) -> ty_param_substs_and_ty {
+                did: ast::def_id) -> ty_param_substs_and_ty {
     let tcx = fcx.ccx.tcx;
 
     let {n_tps, region_param, raw_ty} = if did.crate == ast::local_crate {
@@ -897,7 +896,7 @@ fn impl_self_ty(fcx: @fn_ctxt,
          raw_ty: ity.ty}
     };
 
-    let self_r = if region_param.is_some() || require_rp {
+    let self_r = if region_param.is_some() {
         Some(fcx.infcx().next_region_var(expr.span, expr.id))
     } else {
         None

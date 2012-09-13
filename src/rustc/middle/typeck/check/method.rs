@@ -99,7 +99,10 @@ fn lookup(
         inherent_candidates: DVec(),
         extension_candidates: DVec()
     };
-    return lcx.do_lookup(self_ty);
+    let mme = lcx.do_lookup(self_ty);
+    debug!("method lookup for %s yielded %?",
+           expr_repr(fcx.tcx(), expr), mme);
+    return move mme;
 }
 
 struct LookupContext {
@@ -333,6 +336,10 @@ impl LookupContext {
             let rcvr_ty = ty::mk_param(tcx, param_ty.idx, param_ty.def_id);
             let rcvr_substs = {self_ty: Some(rcvr_ty), ..bound_substs};
 
+            let (rcvr_ty, rcvr_substs) =
+                self.create_rcvr_ty_and_substs_for_method(
+                    method.self_ty, rcvr_ty, move rcvr_substs);
+
             self.inherent_candidates.push(Candidate {
                 rcvr_ty: rcvr_ty,
                 rcvr_substs: rcvr_substs,
@@ -384,8 +391,12 @@ impl LookupContext {
         // candidate be selected if the method refers to `self`.
         let rcvr_substs = {self_ty: Some(self_ty), ..*substs};
 
+        let (rcvr_ty, rcvr_substs) =
+            self.create_rcvr_ty_and_substs_for_method(
+                method.self_ty, self_ty, move rcvr_substs);
+
         self.inherent_candidates.push(Candidate {
-            rcvr_ty: self_ty,
+            rcvr_ty: rcvr_ty,
             rcvr_substs: move rcvr_substs,
             num_method_tps: method.tps.len(),
             self_mode: get_mode_from_self_type(method.self_ty),
@@ -424,18 +435,14 @@ impl LookupContext {
         let tcx = self.tcx();
         let method = &impl_info.methods[idx];
 
-        let need_rp = match method.self_type {
-            ast::sty_region(_) => true,
-            _ => false
-        };
-
         // determine the `self` of the impl with fresh
         // variables for each parameter:
         let {substs: impl_substs, ty: impl_ty} =
-            impl_self_ty(self.fcx, self.self_expr, impl_info.did, need_rp);
+            impl_self_ty(self.fcx, self.self_expr, impl_info.did);
 
-        let impl_ty = transform_self_type_for_method(
-            tcx, impl_substs.self_r, impl_ty, method.self_type);
+        let (impl_ty, impl_substs) =
+            self.create_rcvr_ty_and_substs_for_method(
+                method.self_type, impl_ty, move impl_substs);
 
         candidates.push(Candidate {
             rcvr_ty: impl_ty,
@@ -444,6 +451,48 @@ impl LookupContext {
             self_mode: get_mode_from_self_type(method.self_type),
             origin: method_static(method.did)
         });
+    }
+
+    fn create_rcvr_ty_and_substs_for_method(&self,
+                                            self_decl: ast::self_ty_,
+                                            self_ty: ty::t,
+                                            +self_substs: ty::substs)
+        -> (ty::t, ty::substs)
+    {
+        // If the self type includes a region (like &self), we need to
+        // ensure that the receiver substitutions have a self region.
+        // If the receiver type does not itself contain borrowed
+        // pointers, there may not be one yet.
+        //
+        // FIXME(#3446)--this awkward situation comes about because
+        // the regions in the receiver are substituted before (and
+        // differently from) those in the argument types.  This
+        // shouldn't really have to be.
+        let rcvr_substs = {
+            match self_decl {
+                sty_static | sty_value | sty_by_ref |
+                sty_box(_) | sty_uniq(_) => {
+                    move self_substs
+                }
+                sty_region(_) if self_substs.self_r.is_some() => {
+                    move self_substs
+                }
+                sty_region(_) => {
+                    {self_r:
+                         Some(self.infcx().next_region_var(
+                             self.expr.span,
+                             self.expr.id)),
+                     ..self_substs}
+                }
+            }
+        };
+
+        let rcvr_ty =
+            transform_self_type_for_method(
+                self.tcx(), rcvr_substs.self_r,
+                self_ty, self_decl);
+
+        (rcvr_ty, rcvr_substs)
     }
 
     // ______________________________________________________________________
