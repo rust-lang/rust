@@ -572,6 +572,12 @@ rust_get_sched_id() {
     return task->sched->get_id();
 }
 
+extern "C" CDECL uintptr_t
+rust_num_threads() {
+    rust_task *task = rust_get_current_task();
+    return task->kernel->env->num_sched_threads;
+}
+
 extern "C" CDECL rust_sched_id
 rust_new_sched(uintptr_t threads) {
     rust_task *task = rust_get_current_task();
@@ -620,7 +626,7 @@ start_task(rust_task *target, fn_env_pair *f) {
     target->start(f->f, f->env, NULL);
 }
 
-extern "C" CDECL int
+extern "C" CDECL size_t
 sched_threads() {
     rust_task *task = rust_get_current_task();
     return task->sched->number_of_threads();
