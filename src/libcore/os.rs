@@ -394,7 +394,7 @@ fn self_exe_path() -> Option<Path> {
                 let mib = ~[CTL_KERN as c_int,
                            KERN_PROC as c_int,
                            KERN_PROC_PATHNAME as c_int, -1 as c_int];
-                sysctl(vec::unsafe::to_ptr(mib), vec::len(mib) as c_uint,
+                sysctl(vec::raw::to_ptr(mib), vec::len(mib) as c_uint,
                        buf as *mut c_void, ptr::mut_addr_of(sz),
                        ptr::null(), 0u as size_t) == (0 as c_int)
             }
