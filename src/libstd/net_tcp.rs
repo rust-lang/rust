@@ -968,7 +968,7 @@ fn write_common_impl(socket_data_ptr: *TcpSocketData,
     let stream_handle_ptr =
         (*socket_data_ptr).stream_handle_ptr;
     let write_buf_vec =  ~[ uv::ll::buf_init(
-        vec::unsafe::to_ptr(raw_write_data),
+        vec::raw::to_ptr(raw_write_data),
         vec::len(raw_write_data)) ];
     let write_buf_vec_ptr = ptr::addr_of(write_buf_vec);
     let result_po = core::comm::Port::<TcpWriteResult>();
@@ -1103,7 +1103,7 @@ extern fn on_tcp_read_cb(stream: *uv::ll::uv_stream_t,
         log(debug, fmt!("tcp on_read_cb nread: %d", nread as int));
         let reader_ch = (*socket_data_ptr).reader_ch;
         let buf_base = uv::ll::get_base_from_buf(buf);
-        let new_bytes = vec::unsafe::from_buf(buf_base, nread as uint);
+        let new_bytes = vec::raw::from_buf(buf_base, nread as uint);
         core::comm::send(reader_ch, result::Ok(new_bytes));
       }
     }

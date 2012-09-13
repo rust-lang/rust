@@ -87,7 +87,7 @@ export windowed;
 export as_buf;
 export as_mut_buf;
 export as_const_buf;
-export unsafe;
+export raw;
 export u8;
 export extensions;
 export ConstVector;
@@ -101,7 +101,7 @@ export vec_concat;
 #[abi = "cdecl"]
 extern mod rustrt {
     fn vec_reserve_shared(++t: *sys::TypeDesc,
-                          ++v: **unsafe::VecRepr,
+                          ++v: **raw::VecRepr,
                           ++n: libc::size_t);
 }
 
@@ -139,7 +139,7 @@ pure fn same_length<T, U>(xs: &[const T], ys: &[const U]) -> bool {
 fn reserve<T>(&v: ~[const T], n: uint) {
     // Only make the (slow) call into the runtime if we have to
     if capacity(v) < n {
-        let ptr = ptr::addr_of(v) as **unsafe::VecRepr;
+        let ptr = ptr::addr_of(v) as **raw::VecRepr;
         rustrt::vec_reserve_shared(sys::get_type_desc::<T>(),
                                    ptr, n as size_t);
     }
@@ -168,7 +168,7 @@ fn reserve_at_least<T>(&v: ~[const T], n: uint) {
 #[inline(always)]
 pure fn capacity<T>(&&v: ~[const T]) -> uint {
     unsafe {
-        let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).alloc / sys::size_of::<T>()
     }
 }
@@ -189,8 +189,8 @@ pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
     let mut v = ~[];
     unchecked{reserve(v, n_elts);}
     let mut i: uint = 0u;
-    while i < n_elts unsafe { unsafe::set(v, i, op(i)); i += 1u; }
-    unsafe { unsafe::set_len(v, n_elts); }
+    while i < n_elts unsafe { raw::set(v, i, op(i)); i += 1u; }
+    unsafe { raw::set_len(v, n_elts); }
     move v
 }
 
@@ -205,8 +205,8 @@ pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> ~[T] {
     unchecked{reserve(v, n_elts)}
     let mut i: uint = 0u;
     unsafe { // because unsafe::set is unsafe
-        while i < n_elts { unsafe::set(v, i, t); i += 1u; }
-        unsafe { unsafe::set_len(v, n_elts); }
+        while i < n_elts { raw::set(v, i, t); i += 1u; }
+        unsafe { raw::set_len(v, n_elts); }
     }
     move v
 }
@@ -478,7 +478,7 @@ fn shift<T>(&v: ~[T]) -> T {
     unsafe {
         let mut rr;
         {
-            let vv = unsafe::to_ptr(vv);
+            let vv = raw::to_ptr(vv);
             rr <- *vv;
 
             for uint::range(1, ln) |i| {
@@ -486,7 +486,7 @@ fn shift<T>(&v: ~[T]) -> T {
                 push(v, move r);
             }
         }
-        unsafe::set_len(vv, 0);
+        raw::set_len(vv, 0);
 
         move rr
     }
@@ -509,7 +509,7 @@ fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
         }
     }
 
-    unsafe::set_len(v, 0);
+    raw::set_len(v, 0);
 }
 
 fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +T)) unsafe {
@@ -520,7 +520,7 @@ fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +T)) unsafe {
         }
     }
 
-    unsafe::set_len(v, 0);
+    raw::set_len(v, 0);
 }
 
 /// Remove the last element from a vector and return it
@@ -532,7 +532,7 @@ fn pop<T>(&v: ~[const T]) -> T {
     let valptr = ptr::mut_addr_of(v[ln - 1u]);
     unsafe {
         let val <- *valptr;
-        unsafe::set_len(v, ln - 1u);
+        raw::set_len(v, ln - 1u);
         move val
     }
 }
@@ -555,7 +555,7 @@ fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
             let valptr = ptr::mut_addr_of(v[index]);
             *valptr <-> val;
         }
-        unsafe::set_len(v, ln - 1);
+        raw::set_len(v, ln - 1);
         move val
     }
 }
@@ -564,7 +564,7 @@ fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
 #[inline(always)]
 fn push<T>(&v: ~[const T], +initval: T) {
     unsafe {
-        let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
         let fill = (**repr).fill;
         if (**repr).alloc > fill {
             push_fast(v, move initval);
@@ -578,7 +578,7 @@ fn push<T>(&v: ~[const T], +initval: T) {
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(&v: ~[const T], +initval: T) {
-    let repr: **unsafe::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+    let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
     let fill = (**repr).fill;
     (**repr).fill += sys::size_of::<T>();
     let p = ptr::addr_of((**repr).data);
@@ -597,7 +597,7 @@ fn push_all<T: Copy>(&v: ~[const T], rhs: &[const T]) {
     reserve(v, v.len() + rhs.len());
 
     for uint::range(0u, rhs.len()) |i| {
-        push(v, unsafe { unsafe::get(rhs, i) })
+        push(v, unsafe { raw::get(rhs, i) })
     }
 }
 
@@ -611,7 +611,7 @@ fn push_all_move<T>(&v: ~[const T], -rhs: ~[const T]) {
                 push(v, move x);
             }
         }
-        unsafe::set_len(rhs, 0);
+        raw::set_len(rhs, 0);
     }
 }
 
@@ -624,7 +624,7 @@ fn truncate<T>(&v: ~[const T], newlen: uint) {
             for uint::range(newlen, oldlen) |i| {
                 let _dropped <- *ptr::offset(p, i);
             }
-            unsafe::set_len(v, newlen);
+            raw::set_len(v, newlen);
         }
     }
 }
@@ -660,7 +660,7 @@ fn dedup<T: Eq>(&v: ~[const T]) unsafe {
         }
     }
     // last_written < next_to_read == ln
-    unsafe::set_len(v, last_written + 1);
+    raw::set_len(v, last_written + 1);
 }
 
 
@@ -1786,7 +1786,7 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
 }
 
 /// Unsafe operations
-mod unsafe {
+mod raw {
     // FIXME: This should have crate visibility (#1893 blocks that)
     /// The internal representation of a vector
     type VecRepr = {
@@ -1936,8 +1936,8 @@ mod u8 {
         let b_len = len(*b);
         let n = uint::min(a_len, b_len) as libc::size_t;
         let r = unsafe {
-            libc::memcmp(unsafe::to_ptr(*a) as *libc::c_void,
-                         unsafe::to_ptr(*b) as *libc::c_void, n) as int
+            libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
+                         raw::to_ptr(*b) as *libc::c_void, n) as int
         };
 
         if r != 0 { r } else {
@@ -1984,7 +1984,7 @@ mod u8 {
         assert dst.len() >= count;
         assert src.len() >= count;
 
-        unsafe { vec::unsafe::memcpy(dst, src, count) }
+        unsafe { vec::raw::memcpy(dst, src, count) }
     }
 
     /**
@@ -1997,7 +1997,7 @@ mod u8 {
         assert dst.len() >= count;
         assert src.len() >= count;
 
-        unsafe { vec::unsafe::memmove(dst, src, count) }
+        unsafe { vec::raw::memmove(dst, src, count) }
     }
 }
 
@@ -2076,8 +2076,8 @@ mod tests {
         unsafe {
             // Test on-stack copy-from-buf.
             let a = ~[1, 2, 3];
-            let mut ptr = unsafe::to_ptr(a);
-            let b = unsafe::from_buf(ptr, 3u);
+            let mut ptr = raw::to_ptr(a);
+            let b = raw::from_buf(ptr, 3u);
             assert (len(b) == 3u);
             assert (b[0] == 1);
             assert (b[1] == 2);
@@ -2085,8 +2085,8 @@ mod tests {
 
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
-            ptr = unsafe::to_ptr(c);
-            let d = unsafe::from_buf(ptr, 5u);
+            ptr = raw::to_ptr(c);
+            let d = raw::from_buf(ptr, 5u);
             assert (len(d) == 5u);
             assert (d[0] == 1);
             assert (d[1] == 2);
@@ -2869,9 +2869,9 @@ mod tests {
     fn to_mut_no_copy() {
         unsafe {
             let x = ~[1, 2, 3];
-            let addr = unsafe::to_ptr(x);
+            let addr = raw::to_ptr(x);
             let x_mut = to_mut(x);
-            let addr_mut = unsafe::to_ptr(x_mut);
+            let addr_mut = raw::to_ptr(x_mut);
             assert addr == addr_mut;
         }
     }
@@ -2880,9 +2880,9 @@ mod tests {
     fn from_mut_no_copy() {
         unsafe {
             let x = ~[mut 1, 2, 3];
-            let addr = unsafe::to_ptr(x);
+            let addr = raw::to_ptr(x);
             let x_imm = from_mut(x);
-            let addr_imm = unsafe::to_ptr(x_imm);
+            let addr_imm = raw::to_ptr(x_imm);
             assert addr == addr_imm;
         }
     }

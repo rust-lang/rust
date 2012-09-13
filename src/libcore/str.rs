@@ -439,7 +439,7 @@ Section: Transforming strings
  */
 pure fn to_bytes(s: &str) -> ~[u8] unsafe {
     let mut v: ~[u8] = ::unsafe::transmute(from_slice(s));
-    vec::unsafe::set_len(v, len(s));
+    vec::raw::set_len(v, len(s));
     move v
 }
 
@@ -447,7 +447,7 @@ pure fn to_bytes(s: &str) -> ~[u8] unsafe {
 #[inline(always)]
 pure fn byte_slice<T>(s: &str, f: fn(v: &[u8]) -> T) -> T {
     do as_buf(s) |p,n| {
-        unsafe { vec::unsafe::form_slice(p, n-1u, f) }
+        unsafe { vec::raw::form_slice(p, n-1u, f) }
     }
 }
 
@@ -1996,7 +1996,7 @@ mod unsafe {
             let vbuf = ::unsafe::transmute_mut_unsafe(vbuf);
             ptr::memcpy(vbuf, buf as *u8, len)
         });
-        vec::unsafe::set_len(v, len);
+        vec::raw::set_len(v, len);
         vec::push(v, 0u8);
 
         assert is_utf8(v);
@@ -2054,7 +2054,7 @@ mod unsafe {
                     let src = ptr::offset(sbuf, begin);
                     ptr::memcpy(vbuf, src, end - begin);
                 }
-                vec::unsafe::set_len(v, end - begin);
+                vec::raw::set_len(v, end - begin);
                 vec::push(v, 0u8);
                 ::unsafe::transmute(move v)
             }
@@ -2118,7 +2118,7 @@ mod unsafe {
 
     /// Sets the length of the string and adds the null terminator
     unsafe fn set_len(&v: ~str, new_len: uint) {
-        let repr: *vec::unsafe::VecRepr = ::unsafe::reinterpret_cast(&v);
+        let repr: *vec::raw::VecRepr = ::unsafe::reinterpret_cast(&v);
         (*repr).fill = new_len + 1u;
         let null = ptr::mut_offset(ptr::mut_addr_of((*repr).data), new_len);
         *null = 0u8;
@@ -2128,7 +2128,7 @@ mod unsafe {
     fn test_from_buf_len() {
         unsafe {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-            let b = vec::unsafe::to_ptr(a);
+            let b = vec::raw::to_ptr(a);
             let c = from_buf_len(b, 3u);
             assert (c == ~"AAA");
         }
@@ -2940,7 +2940,7 @@ mod tests {
     fn test_from_buf() {
         unsafe {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-            let b = vec::unsafe::to_ptr(a);
+            let b = vec::raw::to_ptr(a);
             let c = unsafe::from_buf(b);
             assert (c == ~"AAAAAAA");
         }

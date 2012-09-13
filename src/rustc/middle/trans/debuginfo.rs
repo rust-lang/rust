@@ -66,7 +66,7 @@ fn lli1(bval: bool) -> ValueRef {
     C_bool(bval)
 }
 fn llmdnode(elems: ~[ValueRef]) -> ValueRef unsafe {
-    llvm::LLVMMDNode(vec::unsafe::to_ptr(elems),
+    llvm::LLVMMDNode(vec::raw::to_ptr(elems),
                      vec::len(elems) as libc::c_uint)
 }
 fn llunused() -> ValueRef {

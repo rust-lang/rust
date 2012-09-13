@@ -749,7 +749,7 @@ unsafe fn accept(server: *libc::c_void, client: *libc::c_void)
 
 unsafe fn write<T>(req: *uv_write_t, stream: *T,
          buf_in: *~[uv_buf_t], cb: *u8) -> libc::c_int {
-    let buf_ptr = vec::unsafe::to_ptr(*buf_in);
+    let buf_ptr = vec::raw::to_ptr(*buf_in);
     let buf_cnt = vec::len(*buf_in) as i32;
     return rustrt::rust_uv_write(req as *libc::c_void,
                               stream as *libc::c_void,
@@ -1046,7 +1046,7 @@ mod test {
                   as *request_wrapper;
             let buf_base = get_base_from_buf(buf);
             let buf_len = get_len_from_buf(buf);
-            let bytes = vec::unsafe::from_buf(buf_base, buf_len as uint);
+            let bytes = vec::raw::from_buf(buf_base, buf_len as uint);
             let read_chan = *((*client_data).read_chan);
             let msg_from_server = str::from_bytes(bytes);
             core::comm::send(read_chan, msg_from_server);
@@ -1122,7 +1122,7 @@ mod test {
         // struct that we'd cast to a void* and store as the
         // data field in our uv_connect_t struct
         let req_str_bytes = str::to_bytes(req_str);
-        let req_msg_ptr: *u8 = vec::unsafe::to_ptr(req_str_bytes);
+        let req_msg_ptr: *u8 = vec::raw::to_ptr(req_str_bytes);
         log(debug, fmt!("req_msg ptr: %u", req_msg_ptr as uint));
         let req_msg = ~[
             buf_init(req_msg_ptr, vec::len(req_str_bytes))
@@ -1221,7 +1221,7 @@ mod test {
                             buf_base as uint,
                             buf_len as uint,
                             nread));
-            let bytes = vec::unsafe::from_buf(buf_base, buf_len);
+            let bytes = vec::raw::from_buf(buf_base, buf_len);
             let request_str = str::from_bytes(bytes);
 
             let client_data = get_data_for_uv_handle(
@@ -1370,7 +1370,7 @@ mod test {
         let server_write_req_ptr = ptr::addr_of(server_write_req);
 
         let resp_str_bytes = str::to_bytes(server_resp_msg);
-        let resp_msg_ptr: *u8 = vec::unsafe::to_ptr(resp_str_bytes);
+        let resp_msg_ptr: *u8 = vec::raw::to_ptr(resp_str_bytes);
         log(debug, fmt!("resp_msg ptr: %u", resp_msg_ptr as uint));
         let resp_msg = ~[
             buf_init(resp_msg_ptr, vec::len(resp_str_bytes))

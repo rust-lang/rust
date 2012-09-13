@@ -1105,7 +1105,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         let n_args = llvm::LLVMCountParamTypes(ty) as uint;
         let args = vec::from_elem(n_args, 0 as TypeRef);
         unsafe {
-            llvm::LLVMGetParamTypes(ty, vec::unsafe::to_ptr(args));
+            llvm::LLVMGetParamTypes(ty, vec::raw::to_ptr(args));
         }
         s += tys_str(names, outer, args);
         s += ~") -> ";
@@ -1117,7 +1117,7 @@ fn type_to_str_inner(names: type_names, outer0: ~[TypeRef], ty: TypeRef) ->
         let n_elts = llvm::LLVMCountStructElementTypes(ty) as uint;
         let elts = vec::from_elem(n_elts, 0 as TypeRef);
         unsafe {
-            llvm::LLVMGetStructElementTypes(ty, vec::unsafe::to_ptr(elts));
+            llvm::LLVMGetStructElementTypes(ty, vec::raw::to_ptr(elts));
         }
         s += tys_str(names, outer, elts);
         s += ~"}";
@@ -1167,7 +1167,7 @@ fn float_width(llt: TypeRef) -> uint {
 fn fn_ty_param_tys(fn_ty: TypeRef) -> ~[TypeRef] unsafe {
     let args = vec::from_elem(llvm::LLVMCountParamTypes(fn_ty) as uint,
                              0 as TypeRef);
-    llvm::LLVMGetParamTypes(fn_ty, vec::unsafe::to_ptr(args));
+    llvm::LLVMGetParamTypes(fn_ty, vec::raw::to_ptr(args));
     return args;
 }
 

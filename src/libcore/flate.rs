@@ -28,7 +28,7 @@ fn deflate_buf(buf: &[const u8]) -> ~[u8] {
                                                    ptr::addr_of(outsz),
                                                    lz_norm);
             assert res as int != 0;
-            let out = vec::unsafe::from_buf(res as *u8,
+            let out = vec::raw::from_buf(res as *u8,
                                             outsz as uint);
             libc::free(res);
             move out
@@ -46,7 +46,7 @@ fn inflate_buf(buf: &[const u8]) -> ~[u8] {
                                                      ptr::addr_of(outsz),
                                                      0);
             assert res as int != 0;
-            let out = vec::unsafe::from_buf(res as *u8,
+            let out = vec::raw::from_buf(res as *u8,
                                             outsz as uint);
             libc::free(res);
             move out

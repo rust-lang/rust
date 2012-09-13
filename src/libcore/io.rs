@@ -53,11 +53,11 @@ impl<T: Reader> T : ReaderUtil {
     fn read_bytes(len: uint) -> ~[u8] {
         let mut buf = ~[mut];
         vec::reserve(buf, len);
-        unsafe { vec::unsafe::set_len(buf, len); }
+        unsafe { vec::raw::set_len(buf, len); }
 
         let count = self.read(buf, len);
 
-        unsafe { vec::unsafe::set_len(buf, count); }
+        unsafe { vec::raw::set_len(buf, count); }
         vec::from_mut(move buf)
     }
     fn read_line() -> ~str {
@@ -682,7 +682,7 @@ impl MemBuffer: Writer {
 
             let count = uint::max(buf_len, self.pos + v_len);
             vec::reserve(buf, count);
-            unsafe { vec::unsafe::set_len(buf, count); }
+            unsafe { vec::raw::set_len(buf, count); }
 
             vec::u8::memcpy(vec::mut_view(buf, self.pos, count), v, v_len);
 
