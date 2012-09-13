@@ -37,6 +37,12 @@ impl u64: ToStr {
 impl float: ToStr {
     fn to_str() -> ~str { float::to_str(self, 4u) }
 }
+impl f32: ToStr {
+    fn to_str() -> ~str { float::to_str(self as float, 4u) }
+}
+impl f64: ToStr {
+    fn to_str() -> ~str { float::to_str(self as float, 4u) }
+}
 impl bool: ToStr {
     fn to_str() -> ~str { bool::to_str(self) }
 }
