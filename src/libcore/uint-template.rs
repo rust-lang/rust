@@ -174,7 +174,7 @@ fn from_str_radix(buf: &str, radix: u64) -> Option<u64> {
  */
 pure fn to_str(num: T, radix: uint) -> ~str {
     do to_str_bytes(false, num, radix) |slice| {
-        do vec::as_buf(slice) |p, len| {
+        do vec::as_imm_buf(slice) |p, len| {
             unsafe { str::raw::from_buf_len(p, len) }
         }
     }
@@ -219,7 +219,7 @@ pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
     // in-bounds, no extra cost.
 
     unsafe {
-        do vec::as_buf(buf) |p, len| {
+        do vec::as_imm_buf(buf) |p, len| {
             let mp = p as *mut u8;
             let mut i = len;
             let mut n = num;

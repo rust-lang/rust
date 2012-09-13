@@ -238,7 +238,7 @@ fn select2<A: Send, B: Send>(p_a: Port<A>, p_b: Port<B>)
 
     let mut resport: *rust_port;
     resport = rusti::init::<*rust_port>();
-    do vec::as_buf(ports) |ports, n_ports| {
+    do vec::as_imm_buf(ports) |ports, n_ports| {
         rustrt::rust_port_select(ptr::addr_of(resport), ports,
                                  n_ports as size_t, yieldp);
     }

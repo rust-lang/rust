@@ -679,7 +679,7 @@ fn Call(cx: block, Fn: ValueRef, Args: &[ValueRef]) -> ValueRef {
                val_str(cx.ccx().tn, Fn),
                Args.map(|arg| val_str(cx.ccx().tn, arg)));
 
-        do vec::as_buf(Args) |ptr, len| {
+        do vec::as_imm_buf(Args) |ptr, len| {
             llvm::LLVMBuildCall(B(cx), Fn, ptr, len as c_uint, noname())
         }
     }

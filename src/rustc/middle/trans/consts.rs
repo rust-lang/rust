@@ -60,7 +60,7 @@ fn const_deref(cx: @crate_ctxt, v: ValueRef) -> ValueRef {
 }
 
 fn const_get_elt(cx: @crate_ctxt, v: ValueRef, us: &[c_uint]) -> ValueRef {
-    let r = do vec::as_buf(us) |p, len| {
+    let r = do vec::as_imm_buf(us) |p, len| {
         llvm::LLVMConstExtractValue(v, p, len as c_uint)
     };
 
