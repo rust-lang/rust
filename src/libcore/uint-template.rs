@@ -239,7 +239,7 @@ pure fn to_str_bytes<U>(neg: bool, num: T, radix: uint,
                 *ptr::mut_offset(mp, i) = '-' as u8;
             }
 
-            vec::unsafe::form_slice(ptr::offset(p, i),
+            vec::raw::form_slice(ptr::offset(p, i),
                                     len - i, f)
         }
     }

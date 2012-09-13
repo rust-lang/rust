@@ -4,7 +4,7 @@
 */
 
 use libc::c_uint;
-use vec::unsafe::to_ptr;
+use vec::raw::to_ptr;
 use std::map::{HashMap,Set};
 use syntax::{ast, ast_map};
 use driver::session;
@@ -1052,7 +1052,7 @@ fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
     let mut i = 0u;
     let mut elts: ~[ValueRef] = ~[];
     while i < size { vec::push(elts, C_u8(0u)); i += 1u; }
-    return llvm::LLVMConstArray(T_i8(), vec::unsafe::to_ptr(elts),
+    return llvm::LLVMConstArray(T_i8(), vec::raw::to_ptr(elts),
                              elts.len() as c_uint);
 }
 
@@ -1069,19 +1069,19 @@ fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
 }
 
 fn C_array(ty: TypeRef, elts: ~[ValueRef]) -> ValueRef unsafe {
-    return llvm::LLVMConstArray(ty, vec::unsafe::to_ptr(elts),
+    return llvm::LLVMConstArray(ty, vec::raw::to_ptr(elts),
                              elts.len() as c_uint);
 }
 
 fn C_bytes(bytes: ~[u8]) -> ValueRef unsafe {
     return llvm::LLVMConstString(
-        unsafe::reinterpret_cast(&vec::unsafe::to_ptr(bytes)),
+        unsafe::reinterpret_cast(&vec::raw::to_ptr(bytes)),
         bytes.len() as c_uint, True);
 }
 
 fn C_bytes_plus_null(bytes: ~[u8]) -> ValueRef unsafe {
     return llvm::LLVMConstString(
-        unsafe::reinterpret_cast(&vec::unsafe::to_ptr(bytes)),
+        unsafe::reinterpret_cast(&vec::raw::to_ptr(bytes)),
         bytes.len() as c_uint, False);
 }
 

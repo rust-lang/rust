@@ -15,7 +15,7 @@ export unsafe;
 #[abi = "cdecl"]
 extern mod rustrt {
     fn vec_reserve_shared_actual(++t: *sys::TypeDesc,
-                                 ++v: **vec::unsafe::VecRepr,
+                                 ++v: **vec::raw::VecRepr,
                                  ++n: libc::size_t);
 }
 
@@ -142,8 +142,8 @@ impl<T: Copy> @[T]: Add<&[const T],@[T]> {
 
 
 mod unsafe {
-    type VecRepr = vec::unsafe::VecRepr;
-    type SliceRepr = vec::unsafe::SliceRepr;
+    type VecRepr = vec::raw::VecRepr;
+    type SliceRepr = vec::raw::SliceRepr;
 
     /**
      * Sets the length of a vector

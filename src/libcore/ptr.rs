@@ -265,14 +265,14 @@ fn test() {
         let mut v0 = ~[32000u16, 32001u16, 32002u16];
         let mut v1 = ~[0u16, 0u16, 0u16];
 
-        ptr::memcpy(ptr::mut_offset(vec::unsafe::to_mut_ptr(v1), 1u),
-                    ptr::offset(vec::unsafe::to_ptr(v0), 1u), 1u);
+        ptr::memcpy(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 1u),
+                    ptr::offset(vec::raw::to_ptr(v0), 1u), 1u);
         assert (v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-        ptr::memcpy(vec::unsafe::to_mut_ptr(v1),
-                    ptr::offset(vec::unsafe::to_ptr(v0), 2u), 1u);
+        ptr::memcpy(vec::raw::to_mut_ptr(v1),
+                    ptr::offset(vec::raw::to_ptr(v0), 2u), 1u);
         assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 0u16);
-        ptr::memcpy(ptr::mut_offset(vec::unsafe::to_mut_ptr(v1), 2u),
-                    vec::unsafe::to_ptr(v0), 1u);
+        ptr::memcpy(ptr::mut_offset(vec::raw::to_mut_ptr(v1), 2u),
+                    vec::raw::to_ptr(v0), 1u);
         assert (v1[0] == 32002u16 && v1[1] == 32001u16 && v1[2] == 32000u16);
     }
 }
