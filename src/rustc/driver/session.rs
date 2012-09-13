@@ -38,7 +38,7 @@ type config =
      uint_type: uint_ty,
      float_type: float_ty};
 
-const ppregions: uint = 1 << 0;
+const verbose: uint = 1 << 0;
 const time_passes: uint = 1 << 1;
 const count_llvm_insns: uint = 1 << 2;
 const time_llvm_passes: uint = 1 << 3;
@@ -60,8 +60,7 @@ const meta_stats: uint = 1 << 16;
 const no_opt: uint = 1 << 17;
 
 fn debugging_opts_map() -> ~[(~str, ~str, uint)] {
-    ~[(~"ppregions", ~"prettyprint regions with \
-                    internal repr details", ppregions),
+    ~[(~"verbose", ~"in general, enable more debug printouts", verbose),
      (~"time-passes", ~"measure time of each rustc pass", time_passes),
      (~"count-llvm-insns", ~"count where LLVM \
                            instrs originate", count_llvm_insns),
@@ -219,7 +218,7 @@ impl session {
     fn impossible_case(sp: span, msg: &str) -> ! {
         self.span_bug(sp, #fmt("Impossible case reached: %s", msg));
     }
-    fn ppregions() -> bool { self.debugging_opt(ppregions) }
+    fn verbose() -> bool { self.debugging_opt(verbose) }
     fn time_passes() -> bool { self.debugging_opt(time_passes) }
     fn count_llvm_insns() -> bool { self.debugging_opt(count_llvm_insns) }
     fn count_type_sizes() -> bool { self.debugging_opt(count_type_sizes) }

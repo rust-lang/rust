@@ -112,17 +112,17 @@ fn explain_region_and_span(cx: ctxt, region: ty::region)
 fn bound_region_to_str(cx: ctxt, br: bound_region) -> ~str {
     match br {
       br_named(id)                   => fmt!("&%s", cx.sess.str_of(id)),
-      br_self if cx.sess.ppregions() => ~"&<self>",
+      br_self if cx.sess.verbose() => ~"&<self>",
       br_self                        => ~"&self",
 
       br_anon(idx) => {
-        if cx.sess.ppregions() {fmt!("&%u", idx)} else {~"&"}
+        if cx.sess.verbose() {fmt!("&%u", idx)} else {~"&"}
       }
 
       // FIXME(#3011) -- even if this arm is removed, exhaustiveness checking
       // does not fail
       br_cap_avoid(id, br) => {
-        if cx.sess.ppregions() {
+        if cx.sess.verbose() {
             fmt!("br_cap_avoid(%?, %s)", id, bound_region_to_str(cx, *br))
         } else {
             bound_region_to_str(cx, *br)
@@ -175,7 +175,7 @@ fn re_scope_id_to_str(cx: ctxt, node_id: ast::node_id) -> ~str {
 // you should use `explain_region()` or, better yet,
 // `note_and_explain_region()`
 fn region_to_str(cx: ctxt, region: region) -> ~str {
-    if cx.sess.ppregions() {
+    if cx.sess.verbose() {
         return fmt!("&%?", region);
     }
 
