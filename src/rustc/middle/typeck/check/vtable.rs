@@ -239,7 +239,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             // to some_trait.  If not, then we try the next
                             // impl.
                             let {substs: substs, ty: for_ty} =
-                                impl_self_ty(fcx, expr, im.did, false);
+                                impl_self_ty(fcx, expr, im.did);
                             let im_bs = ty::lookup_item_type(tcx,
                                                              im.did).bounds;
                             match fcx.mk_subty(false, expr.span, ty, for_ty) {
