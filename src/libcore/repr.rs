@@ -508,7 +508,7 @@ impl ReprPrinterWrapper : TyVisitor {
                                 _disr_val: int,
                                 n_fields: uint,
                                 _name: &str) -> bool {
-        if !self.printer.skip && n_fields > 1 {
+        if !self.printer.skip && n_fields >= 1 {
             self.printer.writer.write_char(')');
         }
         true
