@@ -13,6 +13,7 @@ use std::{map, json, tempfile, term, sort, getopts};
 use map::HashMap;
 use to_str::to_str;
 use getopts::{optflag, optopt, opt_present};
+use dvec::DVec;
 
 type package = {
     name: ~str,
@@ -60,7 +61,7 @@ type source = @{
     mut method: ~str,
     mut key: Option<~str>,
     mut keyfp: Option<~str>,
-    mut packages: ~[mut package]
+    packages: DVec<package>
 };
 
 type cargo = {
@@ -448,7 +449,7 @@ fn parse_source(name: ~str, j: json::Json) -> source {
                 mut method: method,
                 mut key: key,
                 mut keyfp: keyfp,
-                mut packages: ~[mut] };
+                packages: DVec() };
         }
         _ => fail ~"needed dict value in source"
     };
@@ -558,14 +559,14 @@ fn load_one_source_package(src: source, p: map::HashMap<~str, json::Json>) {
         versions: ~[]
     };
 
-    match vec::position(src.packages, |pkg| pkg.uuid == uuid) {
-      Some(idx) => {
-        src.packages[idx] = newpkg;
-        log(debug, ~"  updated package: " + src.name + ~"/" + name);
-      }
-      None => {
-        vec::grow(src.packages, 1u, newpkg);
-      }
+    match src.packages.position(|pkg| pkg.uuid == uuid) {
+        Some(idx) => {
+            src.packages.set_elt(idx, newpkg);
+            log(debug, ~"  updated package: " + src.name + ~"/" + name);
+        }
+        None => {
+            src.packages.push(newpkg);
+        }
     }
 
     log(debug, ~"  loaded package: " + src.name + ~"/" + name);
@@ -713,10 +714,7 @@ fn configure(opts: options) -> cargo {
 
 fn for_each_package(c: cargo, b: fn(source, package)) {
     for c.sources.each_value |v| {
-        // FIXME (#2280): this temporary shouldn't be
-        // necessary, but seems to be, for borrowing.
-        let pks = copy v.packages;
-        for vec::each(pks) |p| {
+        for v.packages.each |p| {
             b(v, p);
         }
     }
@@ -948,16 +946,15 @@ fn install_named(c: cargo, wd: &Path, name: ~str) {
 
 fn install_uuid_specific(c: cargo, wd: &Path, src: ~str, uuid: ~str) {
     match c.sources.find(src) {
-      Some(s) => {
-        let packages = copy s.packages;
-        if vec::any(packages, |p| {
-            if p.uuid == uuid {
-                install_package(c, src, wd, p);
-                true
-            } else { false }
-        }) { return; }
-      }
-      _ => ()
+        Some(s) => {
+            for s.packages.each |p| {
+                if p.uuid == uuid {
+                    install_package(c, src, wd, p);
+                    return;
+                }
+            }
+        }
+        _ => ()
     }
     error(~"can't find package: " + src + ~"/" + uuid);
 }
@@ -965,13 +962,12 @@ fn install_uuid_specific(c: cargo, wd: &Path, src: ~str, uuid: ~str) {
 fn install_named_specific(c: cargo, wd: &Path, src: ~str, name: ~str) {
     match c.sources.find(src) {
         Some(s) => {
-          let packages = copy s.packages;
-          if vec::any(packages, |p| {
+            for s.packages.each |p| {
                 if p.name == name {
                     install_package(c, src, wd, p);
-                    true
-                } else { false }
-            }) { return; }
+                    return;
+                }
+            }
         }
         _ => ()
     }
@@ -1500,8 +1496,7 @@ fn print_pkg(s: source, p: package) {
 fn print_source(s: source) {
     info(s.name + ~" (" + s.url + ~")");
 
-    let unsorted_pks = s.packages;  // to prevent illegal borrow?
-    let pks = sort::merge_sort(sys::shape_lt, unsorted_pks);
+    let pks = sort::merge_sort(sys::shape_lt, s.packages.get());
     let l = vec::len(pks);
 
     print(io::with_str_writer(|writer| {
@@ -1685,7 +1680,7 @@ fn cmd_sources(c: cargo) {
                     mut method: assume_source_method(url),
                     mut key: None,
                     mut keyfp: None,
-                    mut packages: ~[mut]
+                    packages: DVec()
                 });
                 info(fmt!("added source: %s", name));
             }
