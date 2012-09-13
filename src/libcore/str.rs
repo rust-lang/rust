@@ -114,7 +114,7 @@ export
    escape_default,
    escape_unicode,
 
-   unsafe,
+   raw,
    extensions,
    StrSlice,
    UniqueStr;
@@ -132,12 +132,12 @@ Section: Creating a string
  */
 pure fn from_bytes(vv: &[const u8]) -> ~str {
     assert is_utf8(vv);
-    return unsafe { unsafe::from_bytes(vv) };
+    return unsafe { raw::from_bytes(vv) };
 }
 
 /// Copy a slice into a new unique str
 pure fn from_slice(s: &str) -> ~str {
-    unsafe { unsafe::slice_bytes(s, 0, len(s)) }
+    unsafe { raw::slice_bytes(s, 0, len(s)) }
 }
 
 /**
@@ -219,7 +219,7 @@ fn push_char(&s: ~str, ch: char) {
             }
         }
 
-        unsafe::set_len(s, new_len);
+        raw::set_len(s, new_len);
     }
 }
 
@@ -254,7 +254,7 @@ fn push_str_no_overallocate(&lhs: ~str, rhs: &str) {
                 ptr::memcpy(dst, rbuf, rlen);
             }
         }
-        unsafe::set_len(lhs, llen + rlen);
+        raw::set_len(lhs, llen + rlen);
     }
 }
 /// Appends a string slice to the back of a string
@@ -271,7 +271,7 @@ fn push_str(&lhs: ~str, rhs: &str) {
                 ptr::memcpy(dst, rbuf, rlen);
             }
         }
-        unsafe::set_len(lhs, llen + rlen);
+        raw::set_len(lhs, llen + rlen);
     }
 }
 
@@ -318,7 +318,7 @@ fn pop_char(&s: ~str) -> char {
     let end = len(s);
     assert end > 0u;
     let {ch, prev} = char_range_at_reverse(s, end);
-    unsafe { unsafe::set_len(s, prev); }
+    unsafe { raw::set_len(s, prev); }
     return ch;
 }
 
@@ -331,7 +331,7 @@ fn pop_char(&s: ~str) -> char {
  */
 fn shift_char(&s: ~str) -> char {
     let {ch, next} = char_range_at(s, 0u);
-    s = unsafe { unsafe::slice_bytes(s, next, len(s)) };
+    s = unsafe { raw::slice_bytes(s, next, len(s)) };
     return ch;
 }
 
@@ -347,7 +347,7 @@ fn shift_char(&s: ~str) -> char {
 #[inline]
 fn view_shift_char(s: &a/str) -> (char, &a/str) {
     let {ch, next} = char_range_at(s, 0u);
-    let next_s = unsafe { unsafe::view_bytes(s, next, len(s)) };
+    let next_s = unsafe { raw::view_bytes(s, next, len(s)) };
     return (ch, next_s);
 }
 
@@ -368,7 +368,7 @@ pure fn trim_left_chars(s: &str, chars_to_trim: &[char]) -> ~str {
 
     match find(s, |c| !chars_to_trim.contains(c)) {
       None => ~"",
-      Some(first) => unsafe { unsafe::slice_bytes(s, first, s.len()) }
+      Some(first) => unsafe { raw::slice_bytes(s, first, s.len()) }
     }
 }
 
@@ -388,7 +388,7 @@ pure fn trim_right_chars(s: &str, chars_to_trim: &[char]) -> ~str {
       None => ~"",
       Some(last) => {
         let {next, _} = char_range_at(s, last);
-        unsafe { unsafe::slice_bytes(s, 0u, next) }
+        unsafe { raw::slice_bytes(s, 0u, next) }
       }
     }
 }
@@ -410,7 +410,7 @@ pure fn trim_chars(s: &str, chars_to_trim: &[char]) -> ~str {
 pure fn trim_left(s: &str) -> ~str {
     match find(s, |c| !char::is_whitespace(c)) {
       None => ~"",
-      Some(first) => unsafe { unsafe::slice_bytes(s, first, len(s)) }
+      Some(first) => unsafe { raw::slice_bytes(s, first, len(s)) }
     }
 }
 
@@ -420,7 +420,7 @@ pure fn trim_right(s: &str) -> ~str {
       None => ~"",
       Some(last) => {
         let {next, _} = char_range_at(s, last);
-        unsafe { unsafe::slice_bytes(s, 0u, next) }
+        unsafe { raw::slice_bytes(s, 0u, next) }
       }
     }
 }
@@ -482,7 +482,7 @@ pure fn substr(s: &str, begin: uint, n: uint) -> ~str {
 pure fn slice(s: &str, begin: uint, end: uint) -> ~str {
     assert is_char_boundary(s, begin);
     assert is_char_boundary(s, end);
-    unsafe { unsafe::slice_bytes(s, begin, end) }
+    unsafe { raw::slice_bytes(s, begin, end) }
 }
 
 /**
@@ -494,7 +494,7 @@ pure fn slice(s: &str, begin: uint, end: uint) -> ~str {
 pure fn view(s: &a/str, begin: uint, end: uint) -> &a/str {
     assert is_char_boundary(s, begin);
     assert is_char_boundary(s, end);
-    unsafe { unsafe::view_bytes(s, begin, end) }
+    unsafe { raw::view_bytes(s, begin, end) }
 }
 
 /// Splits a string into substrings at each occurrence of a given character
@@ -527,7 +527,7 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
             if s[i] == b {
                 if allow_empty || start < i unchecked {
                     vec::push(result,
-                              unsafe { unsafe::slice_bytes(s, start, i) });
+                              unsafe { raw::slice_bytes(s, start, i) });
                 }
                 start = i + 1u;
                 done += 1u;
@@ -535,7 +535,7 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
             i += 1u;
         }
         if allow_empty || start < l {
-            unsafe { vec::push(result, unsafe::slice_bytes(s, start, l) ) };
+            unsafe { vec::push(result, raw::slice_bytes(s, start, l) ) };
         }
         move result
     } else {
@@ -570,7 +570,7 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
         let {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
             if allow_empty || start < i unchecked {
-                vec::push(result, unsafe { unsafe::slice_bytes(s, start, i)});
+                vec::push(result, unsafe { raw::slice_bytes(s, start, i)});
             }
             start = next;
             done += 1u;
@@ -578,7 +578,7 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
         i = next;
     }
     if allow_empty || start < l unchecked {
-        vec::push(result, unsafe { unsafe::slice_bytes(s, start, l) });
+        vec::push(result, unsafe { raw::slice_bytes(s, start, l) });
     }
     move result
 }
@@ -632,7 +632,7 @@ pure fn iter_between_matches(s: &a/str, sep: &b/str, f: fn(uint, uint)) {
 pure fn split_str(s: &a/str, sep: &b/str) -> ~[~str] {
     let mut result = ~[];
     do iter_between_matches(s, sep) |from, to| {
-        unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
+        unsafe { vec::push(result, raw::slice_bytes(s, from, to)); }
     }
     move result
 }
@@ -641,7 +641,7 @@ pure fn split_str_nonempty(s: &a/str, sep: &b/str) -> ~[~str] {
     let mut result = ~[];
     do iter_between_matches(s, sep) |from, to| {
         if to > from {
-            unsafe { vec::push(result, unsafe::slice_bytes(s, from, to)); }
+            unsafe { vec::push(result, raw::slice_bytes(s, from, to)); }
         }
     }
     move result
@@ -661,7 +661,7 @@ pure fn lines_any(s: &str) -> ~[~str] {
         let l = len(s);
         let mut cp = copy s;
         if l > 0u && s[l - 1u] == '\r' as u8 {
-            unsafe { unsafe::set_len(cp, l - 1u); }
+            unsafe { raw::set_len(cp, l - 1u); }
         }
         move cp
     })
@@ -703,7 +703,7 @@ pure fn replace(s: &str, from: &str, to: &str) -> ~str {
     let mut result = ~"", first = true;
     do iter_between_matches(s, from) |start, end| {
         if first { first = false; } else { unchecked {push_str(result, to); }}
-        unsafe { push_str(result, unsafe::slice_bytes(s, start, end)); }
+        unsafe { push_str(result, raw::slice_bytes(s, start, end)); }
     }
     move result
 }
@@ -1963,7 +1963,7 @@ pure fn escape_unicode(s: &str) -> ~str {
 }
 
 /// Unsafe operations
-mod unsafe {
+mod raw {
    export
       from_buf,
       from_buf_len,
@@ -2029,7 +2029,7 @@ mod unsafe {
     }
 
     /// Converts a byte to a string.
-    unsafe fn from_byte(u: u8) -> ~str { unsafe::from_bytes([u]) }
+    unsafe fn from_byte(u: u8) -> ~str { raw::from_bytes([u]) }
 
     /**
      * Takes a bytewise (not UTF-8) slice from a string.
@@ -2112,7 +2112,7 @@ mod unsafe {
         let len = len(s);
         assert (len > 0u);
         let b = s[0];
-        s = unsafe { unsafe::slice_bytes(s, 1u, len) };
+        s = unsafe { raw::slice_bytes(s, 1u, len) };
         return b;
     }
 
@@ -2646,9 +2646,9 @@ mod tests {
     #[test]
     fn test_unsafe_slice() {
         unsafe {
-            assert ~"ab" == unsafe::slice_bytes(~"abc", 0u, 2u);
-            assert ~"bc" == unsafe::slice_bytes(~"abc", 1u, 3u);
-            assert ~"" == unsafe::slice_bytes(~"abc", 1u, 1u);
+            assert ~"ab" == raw::slice_bytes(~"abc", 0u, 2u);
+            assert ~"bc" == raw::slice_bytes(~"abc", 1u, 3u);
+            assert ~"" == raw::slice_bytes(~"abc", 1u, 1u);
             fn a_million_letter_a() -> ~str {
                 let mut i = 0;
                 let mut rs = ~"";
@@ -2662,7 +2662,7 @@ mod tests {
                 return rs;
             }
             assert half_a_million_letter_a() ==
-                unsafe::slice_bytes(a_million_letter_a(), 0u, 500000u);
+                raw::slice_bytes(a_million_letter_a(), 0u, 500000u);
         }
     }
 
@@ -2881,7 +2881,7 @@ mod tests {
     #[test]
     fn test_shift_byte() {
         let mut s = ~"ABC";
-        let b = unsafe { unsafe::shift_byte(s) };
+        let b = unsafe { raw::shift_byte(s) };
         assert (s == ~"BC");
         assert (b == 65u8);
     }
@@ -2889,7 +2889,7 @@ mod tests {
     #[test]
     fn test_pop_byte() {
         let mut s = ~"ABC";
-        let b = unsafe { unsafe::pop_byte(s) };
+        let b = unsafe { raw::pop_byte(s) };
         assert (s == ~"AB");
         assert (b == 67u8);
     }
@@ -2897,7 +2897,7 @@ mod tests {
     #[test]
     fn test_unsafe_from_bytes() {
         let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8];
-        let b = unsafe { unsafe::from_bytes(a) };
+        let b = unsafe { raw::from_bytes(a) };
         assert (b == ~"AAAAAAA");
     }
 
@@ -2941,7 +2941,7 @@ mod tests {
         unsafe {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
             let b = vec::raw::to_ptr(a);
-            let c = unsafe::from_buf(b);
+            let c = raw::from_buf(b);
             assert (c == ~"AAAAAAA");
         }
     }
@@ -2979,7 +2979,7 @@ mod tests {
         unsafe {
             let s = ~"hello";
             let sb = as_buf(s, |b, _l| b);
-            let s_cstr = unsafe::from_buf(sb);
+            let s_cstr = raw::from_buf(sb);
             assert s_cstr == s;
         }
     }

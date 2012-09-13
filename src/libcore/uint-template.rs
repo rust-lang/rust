@@ -175,7 +175,7 @@ fn from_str_radix(buf: &str, radix: u64) -> Option<u64> {
 pure fn to_str(num: T, radix: uint) -> ~str {
     do to_str_bytes(false, num, radix) |slice| {
         do vec::as_buf(slice) |p, len| {
-            unsafe { str::unsafe::from_buf_len(p, len) }
+            unsafe { str::raw::from_buf_len(p, len) }
         }
     }
 }
