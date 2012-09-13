@@ -1403,11 +1403,9 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
 
         let num_threads = match opts.mode {
           SingleThreaded => 1u,
-          ThreadPerCore => {
-            fail ~"thread_per_core scheduling mode unimplemented"
-          }
+          ThreadPerCore => rustrt::rust_num_threads(),
           ThreadPerTask => {
-            fail ~"thread_per_task scheduling mode unimplemented"
+            fail ~"ThreadPerTask scheduling mode unimplemented"
           }
           ManualThreads(threads) => {
             if threads == 0u {
@@ -1657,6 +1655,8 @@ extern mod rustrt {
 
     fn rust_get_sched_id() -> sched_id;
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
+    fn sched_threads() -> libc::size_t;
+    fn rust_num_threads() -> libc::uintptr_t;
 
     fn get_task_id() -> task_id;
     #[rust_stack]
@@ -2421,4 +2421,14 @@ fn test_tls_cleanup_on_failure() unsafe {
     // Not quite nondeterministic.
     local_data_set(int_key, @31337);
     fail;
+}
+
+#[test]
+fn test_sched_thread_per_core() {
+    let cores = rustrt::rust_num_threads();
+    let mut reported_threads = 0u;
+    do spawn_sched(ThreadPerCore) {
+        reported_threads = rustrt::sched_threads();
+    }
+    assert(cores == reported_threads);
 }
