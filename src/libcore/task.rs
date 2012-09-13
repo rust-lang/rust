@@ -2425,10 +2425,14 @@ fn test_tls_cleanup_on_failure() unsafe {
 
 #[test]
 fn test_sched_thread_per_core() {
-    let cores = rustrt::rust_num_threads();
-    let mut reported_threads = 0u;
+    let (chan, port) = pipes::stream();
+
     do spawn_sched(ThreadPerCore) {
-        reported_threads = rustrt::sched_threads();
+        let cores = rustrt::rust_num_threads();
+        let reported_threads = rustrt::sched_threads();
+        assert(cores as uint == reported_threads as uint);
+        chan.send(());
     }
-    assert(cores == reported_threads);
+
+    port.recv();
 }
