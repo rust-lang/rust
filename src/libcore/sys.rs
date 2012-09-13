@@ -32,11 +32,6 @@ struct Closure {
     env: *(),
 }
 
-#[abi = "cdecl"]
-extern mod rustrt {
-    pure fn shape_log_str(t: *sys::TypeDesc, data: *()) -> ~str;
-}
-
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     fn get_tydesc<T>() -> *();
@@ -104,8 +99,10 @@ pure fn refcount<T>(+t: @T) -> uint {
 
 pure fn log_str<T>(t: T) -> ~str {
     unsafe {
-        let data_ptr: *() = unsafe::reinterpret_cast(&ptr::addr_of(t));
-        rustrt::shape_log_str(get_type_desc::<T>(), data_ptr)
+        let buffer = io::mem_buffer();
+        let writer = io::mem_buffer_writer(buffer);
+        repr::write_repr(writer, &t);
+        return io::mem_buffer_str(buffer);  // XXX: Extra malloc and copy.
     }
 }
 
