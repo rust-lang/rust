@@ -61,6 +61,7 @@ export mutable;
 export flate;
 export unit;
 export uniq;
+export repr;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
@@ -224,10 +225,9 @@ mod rand;
 mod run;
 mod sys;
 mod unsafe;
-
 mod mutable;
-
 mod flate;
+mod repr;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface
