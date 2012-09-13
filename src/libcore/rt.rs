@@ -33,12 +33,6 @@ extern mod rustrt {
 // FIXME (#2861): This needs both the attribute, and the name prefixed with
 // 'rt_', otherwise the compiler won't find it. To fix this, see
 // gather_rust_rtcalls.
-#[rt(fail)]
-fn rt_fail(expr: *c_char, file: *c_char, line: size_t) {
-    cleanup_stack_for_failure();
-    rustrt::rust_upcall_fail(expr, file, line);
-}
-
 #[rt(fail_)]
 fn rt_fail_(expr: *c_char, file: *c_char, line: size_t) {
     cleanup_stack_for_failure();
