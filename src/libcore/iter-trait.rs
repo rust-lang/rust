@@ -18,14 +18,14 @@ impl<A> IMPL_T<A>: iter::ExtendedIter<A> {
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B {
         iter::foldl(self, move b0, blk)
     }
+    pure fn position(f: fn(A) -> bool) -> Option<uint> {
+        iter::position(self, f)
+    }
 }
 
 impl<A: Eq> IMPL_T<A>: iter::EqIter<A> {
     pure fn contains(x: A) -> bool { iter::contains(self, x) }
     pure fn count(x: A) -> uint { iter::count(self, x) }
-    pure fn position(f: fn(A) -> bool) -> Option<uint> {
-        iter::position(self, f)
-    }
 }
 
 impl<A: Copy> IMPL_T<A>: iter::CopyableIter<A> {

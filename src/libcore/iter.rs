@@ -13,12 +13,12 @@ trait ExtendedIter<A> {
     pure fn all(blk: fn(A) -> bool) -> bool;
     pure fn any(blk: fn(A) -> bool) -> bool;
     pure fn foldl<B>(+b0: B, blk: fn(B, A) -> B) -> B;
+    pure fn position(f: fn(A) -> bool) -> Option<uint>;
 }
 
 trait EqIter<A:Eq> {
     pure fn contains(x: A) -> bool;
     pure fn count(x: A) -> uint;
-    pure fn position(f: fn(A) -> bool) -> Option<uint>;
 }
 
 trait Times {
@@ -142,7 +142,8 @@ pure fn count<A:Eq,IA:BaseIter<A>>(self: IA, x: A) -> uint {
 }
 
 pure fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
-        -> Option<uint> {
+    -> Option<uint>
+{
     let mut i = 0;
     for self.each |a| {
         if f(a) { return Some(i); }
