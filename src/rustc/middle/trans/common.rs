@@ -1057,13 +1057,13 @@ fn C_zero_byte_arr(size: uint) -> ValueRef unsafe {
 }
 
 fn C_struct(elts: &[ValueRef]) -> ValueRef {
-    do vec::as_buf(elts) |ptr, len| {
+    do vec::as_imm_buf(elts) |ptr, len| {
         llvm::LLVMConstStruct(ptr, len as c_uint, False)
     }
 }
 
 fn C_named_struct(T: TypeRef, elts: &[ValueRef]) -> ValueRef {
-    do vec::as_buf(elts) |ptr, len| {
+    do vec::as_imm_buf(elts) |ptr, len| {
         llvm::LLVMConstNamedStruct(T, ptr, len as c_uint)
     }
 }

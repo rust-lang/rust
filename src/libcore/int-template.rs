@@ -169,7 +169,7 @@ impl T : FromStr {
 /// Convert to a string in a given base
 fn to_str(n: T, radix: uint) -> ~str {
     do to_str_bytes(n, radix) |slice| {
-        do vec::as_buf(slice) |p, len| {
+        do vec::as_imm_buf(slice) |p, len| {
             unsafe { str::raw::from_buf_len(p, len) }
         }
     }

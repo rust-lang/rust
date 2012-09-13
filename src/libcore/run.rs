@@ -92,7 +92,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
         vec::push_all(argptrs, str::as_c_str(*t, |b| ~[b]));
     }
     vec::push(argptrs, ptr::null());
-    vec::as_buf(argptrs, |buf, _len| cb(buf))
+    vec::as_imm_buf(argptrs, |buf, _len| cb(buf))
 }
 
 #[cfg(unix)]
@@ -112,7 +112,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
             vec::push_all(ptrs, str::as_c_str(*t, |b| ~[b]));
         }
         vec::push(ptrs, ptr::null());
-        vec::as_buf(ptrs, |p, _len|
+        vec::as_imm_buf(ptrs, |p, _len|
             unsafe { cb(::unsafe::reinterpret_cast(&p)) }
         )
       }
@@ -138,7 +138,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
                 ::unsafe::forget(v);
             }
             blk += ~[0_u8];
-            vec::as_buf(blk, |p, _len| cb(::unsafe::reinterpret_cast(&p)))
+            vec::as_imm_buf(blk, |p, _len| cb(::unsafe::reinterpret_cast(&p)))
           }
           _ => cb(ptr::null())
         }

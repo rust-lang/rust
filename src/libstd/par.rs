@@ -39,7 +39,7 @@ fn map_slices<A: Copy Send, B: Copy Send>(
         log(info, ~"spawning tasks");
         while base < len {
             let end = uint::min(len, base + items_per_task);
-            do vec::as_buf(xs) |p, _len| {
+            do vec::as_imm_buf(xs) |p, _len| {
                 let f = f();
                 let f = do future_spawn() |move f, copy base| {
                     unsafe {

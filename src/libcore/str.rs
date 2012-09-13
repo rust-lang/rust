@@ -1992,7 +1992,7 @@ mod raw {
     unsafe fn from_buf_len(buf: *const u8, len: uint) -> ~str {
         let mut v: ~[mut u8] = ~[mut];
         vec::reserve(v, len + 1u);
-        vec::as_buf(v, |vbuf, _len| {
+        vec::as_imm_buf(v, |vbuf, _len| {
             let vbuf = ::unsafe::transmute_mut_unsafe(vbuf);
             ptr::memcpy(vbuf, buf as *u8, len)
         });
@@ -2049,7 +2049,7 @@ mod raw {
             let mut v = ~[];
             vec::reserve(v, end - begin + 1u);
             unsafe {
-                do vec::as_buf(v) |vbuf, _vlen| {
+                do vec::as_imm_buf(v) |vbuf, _vlen| {
                     let vbuf = ::unsafe::transmute_mut_unsafe(vbuf);
                     let src = ptr::offset(sbuf, begin);
                     ptr::memcpy(vbuf, src, end - begin);

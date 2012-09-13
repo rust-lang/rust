@@ -84,7 +84,7 @@ export riter;
 export riteri;
 export permute;
 export windowed;
-export as_buf;
+export as_imm_buf;
 export as_mut_buf;
 export as_const_buf;
 export raw;
@@ -333,7 +333,7 @@ pure fn slice<T: Copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
 pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
     assert (start <= end);
     assert (end <= len(v));
-    do as_buf(v) |p, _len| {
+    do as_imm_buf(v) |p, _len| {
         unsafe {
             ::unsafe::reinterpret_cast(
                 &(ptr::offset(p, start),
@@ -502,7 +502,7 @@ fn unshift<T>(&v: ~[T], +x: T) {
 }
 
 fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
-    do as_buf(v) |p, ln| {
+    do as_imm_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
             let x <- *ptr::offset(p, i);
             f(i, move x);
@@ -513,7 +513,7 @@ fn consume<T>(+v: ~[T], f: fn(uint, +T)) unsafe {
 }
 
 fn consume_mut<T>(+v: ~[mut T], f: fn(uint, +T)) unsafe {
-    do as_buf(v) |p, ln| {
+    do as_imm_buf(v) |p, ln| {
         for uint::range(0, ln) |i| {
             let x <- *ptr::offset(p, i);
             f(i, move x);
@@ -605,7 +605,7 @@ fn push_all<T: Copy>(&v: ~[const T], rhs: &[const T]) {
 fn push_all_move<T>(&v: ~[const T], -rhs: ~[const T]) {
     reserve(v, v.len() + rhs.len());
     unsafe {
-        do as_buf(rhs) |p, len| {
+        do as_imm_buf(rhs) |p, len| {
             for uint::range(0, len) |i| {
                 let x <- *ptr::offset(p, i);
                 push(v, move x);
@@ -617,7 +617,7 @@ fn push_all_move<T>(&v: ~[const T], -rhs: ~[const T]) {
 
 /// Shorten a vector, dropping excess elements.
 fn truncate<T>(&v: ~[const T], newlen: uint) {
-    do as_buf(v) |p, oldlen| {
+    do as_imm_buf(v) |p, oldlen| {
         assert(newlen <= oldlen);
         unsafe {
             // This loop is optimized out for non-drop types.
@@ -1185,7 +1185,7 @@ element's value.
 */
 #[inline(always)]
 pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
-    do as_buf(v) |base_ptr, len| {
+    do as_imm_buf(v) |base_ptr, len| {
         assert start <= end;
         assert end <= len;
         unsafe {
@@ -1212,7 +1212,7 @@ pure fn each<T>(v: &[T], f: fn(T) -> bool) {
     // is that you are passing it to `f()` using
     // an immutable.
 
-    do vec::as_buf(v) |p, n| {
+    do vec::as_imm_buf(v) |p, n| {
         let mut n = n;
         let mut p = p;
         while n > 0u {
@@ -1259,9 +1259,8 @@ fn each_mut_ref<T>(v: &[mut T], f: fn(elem: &mut T) -> bool) {
     }
 }
 
-/// Like `each()`, but for the case where you have
-/// a vector with mutable contents and you would like
-/// to mutate the contents as you iterate.
+/// Like `each()`, but for the case where you have a vector that *may or may
+/// not* have mutable contents.
 #[inline(always)]
 pure fn each_const_ref<T>(v: &[const T], f: fn(elem: &const T) -> bool) {
     let mut i = 0;
@@ -1281,7 +1280,7 @@ pure fn each_const_ref<T>(v: &[const T], f: fn(elem: &const T) -> bool) {
  */
 #[inline(always)]
 pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
-    do vec::as_buf(v) |p, n| {
+    do vec::as_imm_buf(v) |p, n| {
         let mut i = 0u;
         let mut p = p;
         while i < n {
@@ -1301,7 +1300,7 @@ pure fn eachi<T>(v: &[T], f: fn(uint, T) -> bool) {
  */
 #[inline(always)]
 pure fn reach<T>(v: &[T], blk: fn(T) -> bool) {
-    do vec::as_buf(v) |p, n| {
+    do vec::as_imm_buf(v) |p, n| {
         let mut i = 1;
         while i <= n {
             unsafe {
@@ -1319,7 +1318,7 @@ pure fn reach<T>(v: &[T], blk: fn(T) -> bool) {
  */
 #[inline(always)]
 pure fn reachi<T>(v: &[T], blk: fn(uint, T) -> bool) {
-    do vec::as_buf(v) |p, n| {
+    do vec::as_imm_buf(v) |p, n| {
         let mut i = 1;
         while i <= n {
             unsafe {
@@ -1431,10 +1430,10 @@ pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
  * foreign interop.
  */
 #[inline(always)]
-pure fn as_buf<T,U>(s: &[T], /* NB---this CANNOT be const, see below */
-                    f: fn(*T, uint) -> U) -> U {
+pure fn as_imm_buf<T,U>(s: &[T], /* NB---this CANNOT be const, see below */
+                        f: fn(*T, uint) -> U) -> U {
 
-    // NB---People keep changing the type of s to `&[const T]`.  This is
+    // NB---Do not change the type of s to `&[const T]`.  This is
     // unsound.  The reason is that we are going to create immutable pointers
     // into `s` and pass them to `f()`, but in fact they are potentially
     // pointing at *mutable memory*.  Use `as_const_buf` or `as_mut_buf`
@@ -1448,7 +1447,7 @@ pure fn as_buf<T,U>(s: &[T], /* NB---this CANNOT be const, see below */
     }
 }
 
-/// Similar to `as_buf` but passing a `*const T`
+/// Similar to `as_imm_buf` but passing a `*const T`
 #[inline(always)]
 pure fn as_const_buf<T,U>(s: &[const T],
                           f: fn(*const T, uint) -> U) -> U {
@@ -1461,7 +1460,7 @@ pure fn as_const_buf<T,U>(s: &[const T],
     }
 }
 
-/// Similar to `as_buf` but passing a `*mut T`
+/// Similar to `as_imm_buf` but passing a `*mut T`
 #[inline(always)]
 pure fn as_mut_buf<T,U>(s: &[mut T],
                         f: fn(*mut T, uint) -> U) -> U {
