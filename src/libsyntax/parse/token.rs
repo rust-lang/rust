@@ -414,7 +414,6 @@ fn temporary_keyword_table() -> HashMap<~str, ()> {
 fn restricted_keyword_table() -> HashMap<~str, ()> {
     let words = str_hash();
     let keys = ~[
-        ~"fail",
         ~"unsafe"
     ];
     for keys.each |word| {
@@ -432,7 +431,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"const", ~"copy",
         ~"do", ~"drop",
         ~"else", ~"enum", ~"export", ~"extern",
-        ~"false", ~"fn", ~"for",
+        ~"fail", ~"false", ~"fn", ~"for",
         ~"if", ~"impl",
         ~"let", ~"log", ~"loop",
         ~"match", ~"mod", ~"move", ~"mut",
