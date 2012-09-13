@@ -53,11 +53,8 @@ unsafe fn bump_box_refcount<T>(+t: @T) { forget(move t); }
  */
 #[inline(always)]
 unsafe fn transmute<L, G>(-thing: L) -> G {
-    debug!(">>> in transmute! <<<");
-    debug!("transmute 1: %?", &thing);
     let newthing: G = reinterpret_cast(&thing);
     forget(move thing);
-    debug!("transmute 2: %?", &newthing);
     move newthing
 }
 
