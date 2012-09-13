@@ -1,5 +1,8 @@
 // Rust JSON serialization library
 // Copyright (c) 2011 Google Inc.
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+#[forbid(non_camel_case_types)];
 
 //! json serialization
 
@@ -174,7 +177,7 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
     }
 }
 
-fn escape_str(s: ~str) -> ~str {
+fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
     do str::chars_iter(s) |c| {
         match c {
@@ -574,7 +577,7 @@ fn from_reader(rdr: io::Reader) -> Result<Json, Error> {
 }
 
 /// Deserializes a json value from a string
-fn from_str(s: ~str) -> Result<Json, Error> {
+fn from_str(s: &str) -> Result<Json, Error> {
     io::with_str_reader(s, from_reader)
 }
 
@@ -828,7 +831,7 @@ impl Error: to_str::ToStr {
 
 #[cfg(test)]
 mod tests {
-    fn mk_dict(items: ~[(~str, Json)]) -> Json {
+    fn mk_dict(items: &[(~str, Json)]) -> Json {
         let d = map::str_hash();
 
         do vec::iter(items) |item| {

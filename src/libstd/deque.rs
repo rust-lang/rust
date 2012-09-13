@@ -1,7 +1,11 @@
 //! A deque. Untested as of yet. Likely buggy
+#[forbid(deprecated_mode)];
+#[forbid(deprecated_pattern)];
+#[forbid(non_camel_case_types)];
 
 use option::{Some, None};
 use dvec::DVec;
+use core::cmp::{Eq};
 
 trait Deque<T> {
     fn size() -> uint;
@@ -24,8 +28,9 @@ fn create<T: Copy>() -> Deque<T> {
       * Grow is only called on full elts, so nelts is also len(elts), unlike
       * elsewhere.
       */
-    fn grow<T: Copy>(nelts: uint, lo: uint, -elts: ~[mut Cell<T>]) ->
-       ~[mut Cell<T>] {
+    fn grow<T: Copy>(nelts: uint, lo: uint, +elts: ~[mut Cell<T>])
+      -> ~[mut Cell<T>] {
+        let elts = move elts;
         assert (nelts == vec::len(elts));
         let mut rv = ~[mut];
 
@@ -40,8 +45,8 @@ fn create<T: Copy>() -> Deque<T> {
 
         move rv
     }
-    fn get<T: Copy>(elts: DVec<Cell<T>>, i: uint) -> T {
-        match elts.get_elt(i) { Some(t) => t, _ => fail }
+    fn get<T: Copy>(elts: &DVec<Cell<T>>, i: uint) -> T {
+        match (*elts).get_elt(i) { Some(t) => t, _ => fail }
     }
 
     type Repr<T> = {mut nelts: uint,
@@ -79,7 +84,7 @@ fn create<T: Copy>() -> Deque<T> {
          * that we don't keep anyone's refcount up unexpectedly.
          */
         fn pop_front() -> T {
-            let t: T = get(self.elts, self.lo);
+            let t: T = get(&self.elts, self.lo);
             self.elts.set_elt(self.lo, None);
             self.lo = (self.lo + 1u) % self.elts.len();
             self.nelts -= 1u;
@@ -89,16 +94,16 @@ fn create<T: Copy>() -> Deque<T> {
             if self.hi == 0u {
                 self.hi = self.elts.len() - 1u;
             } else { self.hi -= 1u; }
-            let t: T = get(self.elts, self.hi);
+            let t: T = get(&self.elts, self.hi);
             self.elts.set_elt(self.hi, None);
             self.nelts -= 1u;
             return t;
         }
-        fn peek_front() -> T { return get(self.elts, self.lo); }
-        fn peek_back() -> T { return get(self.elts, self.hi - 1u); }
+        fn peek_front() -> T { return get(&self.elts, self.lo); }
+        fn peek_back() -> T { return get(&self.elts, self.hi - 1u); }
         fn get(i: int) -> T {
             let idx = (self.lo + (i as uint)) % self.elts.len();
-            return get(self.elts, idx);
+            return get(&self.elts, idx);
         }
     }
 
@@ -160,7 +165,13 @@ mod tests {
         assert (d.get(3) == 4);
     }
 
-    fn test_boxes(a: @int, b: @int, c: @int, d: @int) {
+    #[test]
+    fn test_boxes() {
+        let a: @int = @5;
+        let b: @int = @72;
+        let c: @int = @64;
+        let d: @int = @175;
+
         let deq: deque::Deque<@int> = deque::create::<@int>();
         assert (deq.size() == 0u);
         deq.add_front(a);
@@ -190,11 +201,7 @@ mod tests {
         assert (deq.get(3) == d);
     }
 
-    type EqFn<T> = fn@(T, T) -> bool;
-
-    fn test_parameterized<T: Copy Owned>(
-        e: EqFn<T>, a: T, b: T, c: T, d: T) {
-
+    fn test_parameterized<T: Copy Eq Owned>(+a: T, +b: T, +c: T, +d: T) {
         let deq: deque::Deque<T> = deque::create::<T>();
         assert (deq.size() == 0u);
         deq.add_front(a);
@@ -203,12 +210,12 @@ mod tests {
         assert (deq.size() == 3u);
         deq.add_back(d);
         assert (deq.size() == 4u);
-        assert (e(deq.peek_front(), b));
-        assert (e(deq.peek_back(), d));
-        assert (e(deq.pop_front(), b));
-        assert (e(deq.pop_back(), d));
-        assert (e(deq.pop_back(), c));
-        assert (e(deq.pop_back(), a));
+        assert deq.peek_front() == b;
+        assert deq.peek_back() == d;
+        assert deq.pop_front() == b;
+        assert deq.pop_back() == d;
+        assert deq.pop_back() == c;
+        assert deq.pop_back() == a;
         assert (deq.size() == 0u);
         deq.add_back(c);
         assert (deq.size() == 1u);
@@ -218,10 +225,10 @@ mod tests {
         assert (deq.size() == 3u);
         deq.add_front(a);
         assert (deq.size() == 4u);
-        assert (e(deq.get(0), a));
-        assert (e(deq.get(1), b));
-        assert (e(deq.get(2), c));
-        assert (e(deq.get(3), d));
+        assert deq.get(0) == a;
+        assert deq.get(1) == b;
+        assert deq.get(2) == c;
+        assert deq.get(3) == d;
     }
 
     enum Taggy { One(int), Two(int, int), Three(int, int, int), }
@@ -232,78 +239,86 @@ mod tests {
 
     type RecCy = {x: int, y: int, t: Taggy};
 
-    #[test]
-    fn test() {
-        fn inteq(&&a: int, &&b: int) -> bool { return a == b; }
-        fn intboxeq(&&a: @int, &&b: @int) -> bool { return a == b; }
-        fn taggyeq(a: Taggy, b: Taggy) -> bool {
-            match a {
-              One(a1) => match b {
+    impl Taggy : Eq {
+        pure fn eq(other: Taggy) -> bool {
+            match self {
+              One(a1) => match other {
                 One(b1) => return a1 == b1,
                 _ => return false
               },
-              Two(a1, a2) => match b {
+              Two(a1, a2) => match other {
                 Two(b1, b2) => return a1 == b1 && a2 == b2,
                 _ => return false
               },
-              Three(a1, a2, a3) => match b {
+              Three(a1, a2, a3) => match other {
                 Three(b1, b2, b3) => return a1 == b1 && a2 == b2 && a3 == b3,
                 _ => return false
               }
             }
         }
-        fn taggypareq<T>(a: Taggypar<T>, b: Taggypar<T>) -> bool {
-            match a {
-              Onepar::<T>(a1) => match b {
-                Onepar::<T>(b1) => return a1 == b1,
-                _ => return false
-              },
-              Twopar::<T>(a1, a2) => match b {
-                Twopar::<T>(b1, b2) => return a1 == b1 && a2 == b2,
-                _ => return false
-              },
-              Threepar::<T>(a1, a2, a3) => match b {
-                Threepar::<T>(b1, b2, b3) => {
-                    return a1 == b1 && a2 == b2 && a3 == b3
-                }
-                _ => return false
-              }
-            }
-        }
-        fn reccyeq(a: RecCy, b: RecCy) -> bool {
-            return a.x == b.x && a.y == b.y && taggyeq(a.t, b.t);
-        }
-        debug!("*** test boxes");
-        test_boxes(@5, @72, @64, @175);
-        debug!("*** end test boxes");
-        debug!("test parameterized: int");
-        let eq1: EqFn<int> = inteq;
-        test_parameterized::<int>(eq1, 5, 72, 64, 175);
-        debug!("*** test parameterized: @int");
-        let eq2: EqFn<@int> = intboxeq;
-        test_parameterized::<@int>(eq2, @5, @72, @64, @175);
-        debug!("*** end test parameterized @int");
-        debug!("test parameterized: taggy");
-        let eq3: EqFn<Taggy> = taggyeq;
-        test_parameterized::<Taggy>(eq3, One(1), Two(1, 2), Three(1, 2, 3),
-                                    Two(17, 42));
+        pure fn ne(other: Taggy) -> bool { !self.eq(other) }
+    }
 
-        debug!("*** test parameterized: taggypar<int>");
-        let eq4: EqFn<Taggypar<int>> = |x,y| taggypareq::<int>(x, y);
-        test_parameterized::<Taggypar<int>>(eq4, Onepar::<int>(1),
+    impl Taggypar<int> : Eq {
+        //let eq4: EqFn<Taggypar<int>> = |x,y| taggypareq::<int>(x, y);
+        pure fn eq(other: Taggypar<int>) -> bool {
+                  match self {
+                    Onepar::<int>(a1) => match other {
+                      Onepar::<int>(b1) => return a1 == b1,
+                      _ => return false
+                    },
+                    Twopar::<int>(a1, a2) => match other {
+                      Twopar::<int>(b1, b2) => return a1 == b1 && a2 == b2,
+                      _ => return false
+                    },
+                    Threepar::<int>(a1, a2, a3) => match other {
+                      Threepar::<int>(b1, b2, b3) => {
+                          return a1 == b1 && a2 == b2 && a3 == b3
+                      }
+                      _ => return false
+                    }
+                  }
+        }
+        pure fn ne(other: Taggypar<int>) -> bool { !self.eq(other) }
+    }
+
+    impl RecCy : Eq {
+        pure fn eq(other: RecCy) -> bool {
+          return self.x == other.x && self.y == other.y && self.t == other.t;
+        }
+        pure fn ne(other: RecCy) -> bool { !self.eq(other) }
+    }
+
+    #[test]
+    fn test_param_int() {
+        test_parameterized::<int>(5, 72, 64, 175);
+    }
+
+    #[test]
+    fn test_param_at_int() {
+        test_parameterized::<@int>(@5, @72, @64, @175);
+    }
+
+    #[test]
+    fn test_param_taggy() {
+        test_parameterized::<Taggy>(One(1), Two(1, 2), Three(1, 2, 3),
+                                    Two(17, 42));
+    }
+
+    #[test]
+    fn test_param_taggypar() {
+        test_parameterized::<Taggypar<int>>(Onepar::<int>(1),
                                             Twopar::<int>(1, 2),
                                             Threepar::<int>(1, 2, 3),
                                             Twopar::<int>(17, 42));
-        debug!("*** end test parameterized: taggypar::<int>");
+    }
 
-        debug!("*** test parameterized: reccy");
+    #[test]
+    fn test_param_reccy() {
         let reccy1: RecCy = {x: 1, y: 2, t: One(1)};
         let reccy2: RecCy = {x: 345, y: 2, t: Two(1, 2)};
         let reccy3: RecCy = {x: 1, y: 777, t: Three(1, 2, 3)};
         let reccy4: RecCy = {x: 19, y: 252, t: Two(17, 42)};
-        let eq5: EqFn<RecCy> = reccyeq;
-        test_parameterized::<RecCy>(eq5, reccy1, reccy2, reccy3, reccy4);
-        debug!("*** end test parameterized: reccy");
-        debug!("*** done");
+        test_parameterized::<RecCy>(reccy1, reccy2, reccy3, reccy4);
     }
 }
