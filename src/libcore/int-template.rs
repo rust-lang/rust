@@ -170,7 +170,7 @@ impl T : FromStr {
 fn to_str(n: T, radix: uint) -> ~str {
     do to_str_bytes(n, radix) |slice| {
         do vec::as_buf(slice) |p, len| {
-            unsafe { str::unsafe::from_buf_len(p, len) }
+            unsafe { str::raw::from_buf_len(p, len) }
         }
     }
 }

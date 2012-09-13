@@ -49,7 +49,7 @@ fn sort_and_fmt(mm: HashMap<~[u8], uint>, total: uint) -> ~str {
 
    pairs_sorted.each(fn&(kv: (~[u8], float)) -> bool unsafe {
       let (k,v) = kv;
-      buffer += (fmt!("%s %0.3f\n", str::to_upper(str::unsafe::from_bytes(k)), v));
+      buffer += (fmt!("%s %0.3f\n", str::to_upper(str::raw::from_bytes(k)), v));
       return true;
    });
 

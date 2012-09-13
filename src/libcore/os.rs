@@ -69,7 +69,7 @@ fn fill_charp_buf(f: fn(*mut c_char, size_t) -> bool)
     let buf = vec::to_mut(vec::from_elem(tmpbuf_sz, 0u8 as c_char));
     do vec::as_mut_buf(buf) |b, sz| {
         if f(b, sz as size_t) unsafe {
-            Some(str::unsafe::from_buf(b as *u8))
+            Some(str::raw::from_buf(b as *u8))
         } else {
             None
         }
@@ -226,7 +226,7 @@ mod global_env {
                     option::None::<~str>
                 } else {
                     let s = unsafe::reinterpret_cast(&s);
-                    option::Some::<~str>(str::unsafe::from_buf(s))
+                    option::Some::<~str>(str::raw::from_buf(s))
                 };
             }
         }

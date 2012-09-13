@@ -834,7 +834,7 @@ unsafe fn ip4_name(src: &sockaddr_in) -> ~str {
         // to see if it is the string representation of
         // INADDR_NONE (0xffffffff or 255.255.255.255 on
         // many platforms)
-        str::unsafe::from_buf(dst_buf)
+        str::raw::from_buf(dst_buf)
     }
 }
 unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
@@ -852,7 +852,7 @@ unsafe fn ip6_name(src: &sockaddr_in6) -> ~str {
         let result = rustrt::rust_uv_ip6_name(src_unsafe_ptr,
                                               dst_buf, size as libc::size_t);
         match result {
-          0i32 => str::unsafe::from_buf(dst_buf),
+          0i32 => str::raw::from_buf(dst_buf),
           _ => ~""
         }
     }
@@ -962,8 +962,8 @@ unsafe fn free_base_of_buf(buf: uv_buf_t) {
 unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
     let err = last_error(uv_loop);
     let err_ptr = ptr::addr_of(err);
-    let err_name = str::unsafe::from_c_str(err_name(err_ptr));
-    let err_msg = str::unsafe::from_c_str(strerror(err_ptr));
+    let err_name = str::raw::from_c_str(err_name(err_ptr));
+    let err_msg = str::raw::from_c_str(strerror(err_ptr));
     return fmt!("LIBUV ERROR: name: %s msg: %s",
                     err_name, err_msg);
 }
@@ -971,8 +971,8 @@ unsafe fn get_last_err_info(uv_loop: *libc::c_void) -> ~str {
 unsafe fn get_last_err_data(uv_loop: *libc::c_void) -> uv_err_data {
     let err = last_error(uv_loop);
     let err_ptr = ptr::addr_of(err);
-    let err_name = str::unsafe::from_c_str(err_name(err_ptr));
-    let err_msg = str::unsafe::from_c_str(strerror(err_ptr));
+    let err_name = str::raw::from_c_str(err_name(err_ptr));
+    let err_msg = str::raw::from_c_str(strerror(err_ptr));
     { err_name: err_name, err_msg: err_msg }
 }
 

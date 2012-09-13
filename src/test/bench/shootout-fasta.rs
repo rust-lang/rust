@@ -59,7 +59,7 @@ fn make_repeat_fasta(wr: io::Writer, id: ~str, desc: ~str, s: ~str, n: int) unsa
     let mut op: ~str = ~"";
     let sl: uint = str::len(s);
     for uint::range(0u, n as uint) |i| {
-        str::unsafe::push_byte(op, s[i % sl]);
+        str::raw::push_byte(op, s[i % sl]);
         if str::len(op) >= LINE_LENGTH() {
             wr.write_line(op);
             op = ~"";
