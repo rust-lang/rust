@@ -219,12 +219,8 @@ fn under(n: uint, it: fn(uint)) {
     while i < n { it(i); i += 1u; }
 }
 
-fn devnull() -> io::Writer { io::mem_buffer_writer(io::mem_buffer()) }
-
 fn as_str(f: fn@(io::Writer)) -> ~str {
-    let buf = io::mem_buffer();
-    f(io::mem_buffer_writer(buf));
-    io::mem_buffer_str(buf)
+    io::with_str_writer(f)
 }
 
 fn check_variants_of_ast(crate: ast::crate, codemap: codemap::codemap,
