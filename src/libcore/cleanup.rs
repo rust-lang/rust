@@ -5,6 +5,8 @@ use rt::rt_free;
 use sys::TypeDesc;
 use unsafe::transmute;
 
+export annihilate;
+
 /**
  * Runtime structures
  *
@@ -65,8 +67,7 @@ struct Task {
  * This runs at task death to free all boxes.
  */
 
-/// Destroys all managed memory (i.e. @ boxes) held by the current task.
-pub unsafe fn annihilate() {
+unsafe fn do_annihilate() {
     let task: *Task = transmute(rustrt::rust_get_task());
 
     // Pass 1: Make all boxes immortal.
@@ -104,6 +105,18 @@ pub unsafe fn annihilate() {
     }
 }
 
+/// Destroys all managed memory (i.e. @ boxes) held by the current task.
+#[cfg(notest)]
+#[lang="annihilate"]
+pub unsafe fn annihilate() {
+    do_annihilate();
+}
+
+#[cfg(test)]
+pub unsafe fn annihilate() {
+    do_annihilate();
+}
+
 /// Bindings to the runtime
 extern mod rustrt {
     #[rust_stack]
@@ -116,7 +129,7 @@ extern mod rustrt {
 
 #[cfg(test)]
 mod tests {
-    /*struct Knot {
+    struct Knot {
         mut a: Option<@Knot>
     }
 
@@ -147,6 +160,6 @@ mod tests {
             unsafe::forget(f_ref);
             unsafe::forget(f);
         }
-    }*/
+    }
 }
 
