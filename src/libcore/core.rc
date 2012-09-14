@@ -62,6 +62,7 @@ export flate;
 export unit;
 export uniq;
 export repr;
+export cleanup;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
@@ -228,6 +229,7 @@ mod unsafe;
 mod mutable;
 mod flate;
 mod repr;
+mod cleanup;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface
@@ -244,7 +246,6 @@ mod unicode;
 mod private;
 mod cmath;
 mod stackwalk;
-mod cleanup;
 
 // Local Variables:
 // mode: rust;
