@@ -244,6 +244,7 @@ mod unicode;
 mod private;
 mod cmath;
 mod stackwalk;
+mod cleanup;
 
 // Local Variables:
 // mode: rust;
