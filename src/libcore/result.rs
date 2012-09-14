@@ -94,7 +94,7 @@ pure fn to_either<T: Copy, U: Copy>(res: Result<U, T>) -> Either<T, U> {
  * Example:
  *
  *     let res = chain(read_file(file)) { |buf|
- *         ok(parse_buf(buf))
+ *         ok(parse_bytes(buf))
  *     }
  */
 fn chain<T, U: Copy, V: Copy>(res: Result<T, V>, op: fn(T) -> Result<U, V>)
@@ -170,7 +170,7 @@ fn iter_err<T, E>(res: Result<T, E>, f: fn(E)) {
  * Example:
  *
  *     let res = map(read_file(file)) { |buf|
- *         parse_buf(buf)
+ *         parse_bytes(buf)
  *     }
  */
 fn map<T, E: Copy, U: Copy>(res: Result<T, E>, op: fn(T) -> U)
