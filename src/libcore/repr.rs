@@ -118,12 +118,29 @@ impl char : Repr {
     fn write_repr(writer: @Writer) { writer.write_char(self); }
 }
 
+enum EnumVisitState {
+    PreVariant,     // We're before the variant we're interested in.
+    InVariant,      // We're inside the variant we're interested in.
+    PostVariant     // We're after the variant we're interested in.
+}
+
+impl EnumVisitState : cmp::Eq {
+    pure fn eq(&&other: EnumVisitState) -> bool {
+        (self as uint) == (other as uint)
+    }
+    pure fn ne(&&other: EnumVisitState) -> bool { !self.eq(other) }
+}
+
+struct EnumState {
+    end_ptr: *c_void,
+    state: EnumVisitState
+}
+
 /// XXX: This should not use a boxed writer!
 struct ReprPrinter {
     mut ptr: *c_void,
     writer: @Writer,    // XXX: This should not use a boxed trait.
-    mut skip: bool,
-    enum_stack: DVec<*c_void>
+    enum_stack: DVec<EnumState>
 }
 
 /// FIXME (issue #3462): This is horrible.
@@ -467,8 +484,9 @@ impl ReprPrinterWrapper : TyVisitor {
             self.printer.align(align);
 
             // Write in the location of the end of this enum.
-            let new_pos = self.printer.ptr as uint + sz;
-            self.printer.enum_stack.push(transmute(new_pos));
+            let end_ptr = transmute(self.printer.ptr as uint + sz);
+            let new_state = EnumState { end_ptr: end_ptr, state: PreVariant };
+            self.printer.enum_stack.push(new_state);
 
             true
         }
@@ -479,20 +497,26 @@ impl ReprPrinterWrapper : TyVisitor {
                                 _n_fields: uint,
                                 name: &str) -> bool {
         unsafe {
-            let disr_ptr = self.printer.ptr as *int;
-            if *disr_ptr == disr_val {
-                self.printer.skip = false;  // Don't skip this variant.
-                self.printer.writer.write_str(name);
-                self.printer.bump(sys::size_of::<int>());
-            } else {
-                self.printer.skip = true;   // Skip this variant.
+            let stack = &self.printer.enum_stack;
+            let mut enum_state = stack.last();
+            match enum_state.state {
+                PreVariant => {
+                    let disr_ptr = self.printer.ptr as *int;
+                    if *disr_ptr == disr_val {
+                        enum_state.state = InVariant;
+                        self.printer.writer.write_str(name);
+                        self.printer.bump(sys::size_of::<int>());
+                        stack.set_elt(stack.len() - 1, enum_state);
+                    }
+                }
+                InVariant | PostVariant => {}
             }
             true
         }
     }
 
     fn visit_enum_variant_field(i: uint, inner: *TyDesc) -> bool {
-        if !self.printer.skip {
+        if self.printer.enum_stack.last().state == InVariant {
             if i == 0 {
                 self.printer.writer.write_char('(');
             } else {
@@ -508,14 +532,21 @@ impl ReprPrinterWrapper : TyVisitor {
                                 _disr_val: int,
                                 n_fields: uint,
                                 _name: &str) -> bool {
-        if !self.printer.skip && n_fields >= 1 {
-            self.printer.writer.write_char(')');
+        let stack = &self.printer.enum_stack;
+        let mut enum_state = stack.last();
+        match enum_state.state {
+            InVariant => {
+                if n_fields >= 1 { self.printer.writer.write_char(')'); }
+                enum_state.state = PostVariant;
+                stack.set_elt(stack.len() - 1, enum_state);
+            }
+            PreVariant | PostVariant => {}
         }
         true
     }
 
     fn visit_leave_enum(_n_variants: uint, _sz: uint, _align: uint) -> bool {
-        self.printer.ptr = self.printer.enum_stack.pop();
+        self.printer.ptr = self.printer.enum_stack.pop().end_ptr;
         true
     }
 
@@ -564,7 +595,6 @@ pub fn write_repr<T>(writer: @Writer, object: &T) {
         let repr_printer = @ReprPrinter {
             ptr: ptr,
             writer: writer,
-            skip: false,
             enum_stack: DVec()
         };
 
