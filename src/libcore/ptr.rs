@@ -9,6 +9,7 @@ export offset;
 export const_offset;
 export mut_offset;
 export null;
+export mut_null;
 export is_null;
 export is_not_null;
 export memcpy;
@@ -97,6 +98,10 @@ unsafe fn position<T>(buf: *T, f: fn(T) -> bool) -> uint {
 /// Create an unsafe null pointer
 #[inline(always)]
 pure fn null<T>() -> *T { unsafe { unsafe::reinterpret_cast(&0u) } }
+
+/// Create an unsafe mutable null pointer
+#[inline(always)]
+pure fn mut_null<T>() -> *mut T { unsafe { unsafe::reinterpret_cast(&0u) } }
 
 /// Returns true if the pointer is equal to the null pointer.
 pure fn is_null<T>(ptr: *const T) -> bool { ptr == null() }
