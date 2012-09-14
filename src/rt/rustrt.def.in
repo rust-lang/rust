@@ -30,6 +30,7 @@ rand_new_seeded
 rand_next
 rand_seed
 rust_get_sched_id
+rust_max_sched_threads
 rust_new_sched
 rust_new_task_in_sched
 rust_num_threads
@@ -48,6 +49,7 @@ rust_port_size
 rust_process_wait
 rust_ptr_eq
 rust_run_program
+rust_sched_threads
 rust_set_exit_status
 rust_start
 rust_getcwd
@@ -58,7 +60,6 @@ rust_get_task
 rust_get_stack_segment
 rust_task_weaken
 rust_task_unweaken
-sched_threads
 shape_log_str
 start_task
 vec_reserve_shared_actual

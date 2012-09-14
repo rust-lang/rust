@@ -31,9 +31,10 @@ rust_kernel::rust_kernel(rust_env *env) :
 
     // Create the single threaded scheduler that will run on the platform's
     // main thread
-    rust_manual_sched_launcher_factory launchfac;
-    osmain_scheduler = create_scheduler(&launchfac, 1, false);
-    osmain_driver = launchfac.get_driver();
+    rust_manual_sched_launcher_factory *launchfac =
+        new rust_manual_sched_launcher_factory();
+    osmain_scheduler = create_scheduler(launchfac, 1, false);
+    osmain_driver = launchfac->get_driver();
     sched_reaper.start();
 }
 
@@ -79,8 +80,9 @@ void rust_kernel::free(void *mem) {
 
 rust_sched_id
 rust_kernel::create_scheduler(size_t num_threads) {
-    rust_thread_sched_launcher_factory launchfac;
-    return create_scheduler(&launchfac, num_threads, true);
+    rust_thread_sched_launcher_factory *launchfac =
+        new rust_thread_sched_launcher_factory();
+    return create_scheduler(launchfac, num_threads, true);
 }
 
 rust_sched_id

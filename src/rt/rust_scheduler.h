@@ -30,19 +30,17 @@ private:
     uintptr_t live_tasks;
     size_t cur_thread;
     bool may_exit;
+    bool killed;
 
+    rust_sched_launcher_factory *launchfac;
     array_list<rust_sched_launcher *> threads;
-    const size_t num_threads;
+    const size_t max_num_threads;
 
     rust_sched_id id;
 
-    void create_task_threads(rust_sched_launcher_factory *launchfac,
-                             bool killed);
     void destroy_task_threads();
 
-    rust_sched_launcher *
-    create_task_thread(rust_sched_launcher_factory *launchfac, int id,
-                       bool killed);
+    rust_sched_launcher *create_task_thread(int id);
     void destroy_task_thread(rust_sched_launcher *thread);
 
     void exit();
@@ -51,7 +49,7 @@ private:
     void delete_this();
 
 public:
-    rust_scheduler(rust_kernel *kernel, size_t num_threads,
+    rust_scheduler(rust_kernel *kernel, size_t max_num_threads,
                    rust_sched_id id, bool allow_exit, bool killed,
                    rust_sched_launcher_factory *launchfac);
 
@@ -62,6 +60,7 @@ public:
 
     void release_task();
 
+    size_t max_number_of_threads();
     size_t number_of_threads();
     // Called by each thread when it terminates. When all threads
     // terminate the scheduler does as well.

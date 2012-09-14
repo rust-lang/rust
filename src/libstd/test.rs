@@ -26,7 +26,7 @@ export run_tests_console;
 
 #[abi = "cdecl"]
 extern mod rustrt {
-    fn sched_threads() -> libc::size_t;
+    fn rust_max_sched_threads() -> libc::size_t;
 }
 
 // The name of a test. By convention this follows the rules for rust
@@ -327,7 +327,7 @@ const sched_overcommit : uint = 1u;
 const sched_overcommit : uint = 4u;
 
 fn get_concurrency() -> uint {
-    let threads = rustrt::sched_threads() as uint;
+    let threads = rustrt::rust_max_sched_threads() as uint;
     if threads == 1u { 1u }
     else { threads * sched_overcommit }
 }
