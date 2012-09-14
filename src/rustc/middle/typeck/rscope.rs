@@ -3,6 +3,7 @@ use syntax::parse::token::special_idents;
 
 trait region_scope {
     fn anon_region(span: span) -> Result<ty::region, ~str>;
+    fn self_region(span: span) -> Result<ty::region, ~str>;
     fn named_region(span: span, id: ast::ident) -> Result<ty::region, ~str>;
 }
 
@@ -11,9 +12,13 @@ impl empty_rscope: region_scope {
     fn anon_region(_span: span) -> Result<ty::region, ~str> {
         result::Ok(ty::re_static)
     }
-    fn named_region(_span: span, id: ast::ident) -> Result<ty::region, ~str> {
-        if id == special_idents::static { result::Ok(ty::re_static) }
-        else { result::Err(~"only the static region is allowed here") }
+    fn self_region(_span: span) -> Result<ty::region, ~str> {
+        result::Err(~"only the static region is allowed here")
+    }
+    fn named_region(_span: span, _id: ast::ident)
+        -> Result<ty::region, ~str>
+    {
+        result::Err(~"only the static region is allowed here")
     }
 }
 
@@ -26,14 +31,13 @@ impl type_rscope: region_scope {
                                 type must be declared with a region bound")
         }
     }
+    fn self_region(span: span) -> Result<ty::region, ~str> {
+        self.anon_region(span)
+    }
     fn named_region(span: span, id: ast::ident) -> Result<ty::region, ~str> {
         do empty_rscope.named_region(span, id).chain_err |_e| {
-            if id == special_idents::self_ {
-                self.anon_region(span)
-            } else {
-                result::Err(~"named regions other than `self` are not \
-                             allowed as part of a type declaration")
-            }
+            result::Err(~"named regions other than `self` are not \
+                          allowed as part of a type declaration")
         }
     }
 }
@@ -54,6 +58,9 @@ impl @anon_rscope: region_scope {
     fn anon_region(_span: span) -> Result<ty::region, ~str> {
         result::Ok(self.anon)
     }
+    fn self_region(span: span) -> Result<ty::region, ~str> {
+        self.base.self_region(span)
+    }
     fn named_region(span: span, id: ast::ident) -> Result<ty::region, ~str> {
         self.base.named_region(span, id)
     }
@@ -73,6 +80,9 @@ impl @binding_rscope: region_scope {
         let idx = self.anon_bindings;
         self.anon_bindings += 1;
         result::Ok(ty::re_bound(ty::br_anon(idx)))
+    }
+    fn self_region(span: span) -> Result<ty::region, ~str> {
+        self.base.self_region(span)
     }
     fn named_region(span: span, id: ast::ident) -> Result<ty::region, ~str> {
         do self.base.named_region(span, id).chain_err |_e| {

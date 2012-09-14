@@ -4,7 +4,7 @@ use result::Result;
 use either::{Either, Left, Right};
 use std::map::{HashMap, str_hash};
 use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
-               INTERPOLATED};
+            INTERPOLATED, special_idents};
 use codemap::{span,fss_none};
 use util::interner::interner;
 use ast_util::{spanned, respan, mk_sp, ident_to_path, operator_prec};
@@ -51,7 +51,8 @@ use ast::{_mod, add, alt_check, alt_exhaustive, arg, arm, attribute,
              pat_ident, pat_lit, pat_range, pat_rec, pat_region, pat_struct,
              pat_tup, pat_uniq, pat_wild, path, private, proto, proto_bare,
              proto_block, proto_box, proto_uniq, provided, public, pure_fn,
-             purity, re_anon, re_named, region, rem, required, ret_style,
+             purity, re_static, re_self, re_anon, re_named, region,
+             rem, required, ret_style,
              return_val, self_ty, shl, shr, stmt, stmt_decl, stmt_expr,
              stmt_semi, struct_def, struct_field, struct_variant_kind,
              subtract, sty_box, sty_by_ref, sty_region, sty_static, sty_uniq,
@@ -432,8 +433,10 @@ impl parser {
 
     fn region_from_name(s: Option<ident>) -> @region {
         let r = match s {
-          Some (id) => re_named(id),
-          None => re_anon
+            Some(id) if id == special_idents::static => ast::re_static,
+            Some(id) if id == special_idents::self_ => re_self,
+            Some(id) => re_named(id),
+            None => re_anon
         };
 
         @{id: self.get_id(), node: r}
@@ -614,7 +617,7 @@ impl parser {
                 let name = self.parse_value_ident();
                 self.bump();
                 name
-            } else { token::special_idents::invalid }
+            } else { special_idents::invalid }
         };
 
         let t = self.parse_ty(false);
@@ -2388,7 +2391,7 @@ impl parser {
 
     fn is_self_ident() -> bool {
         match self.token {
-          token::IDENT(id, false) if id == token::special_idents::self_
+          token::IDENT(id, false) if id == special_idents::self_
             => true,
           _ => false
         }
@@ -2603,7 +2606,7 @@ impl parser {
 
         // This is a new-style impl declaration.
         // XXX: clownshoes
-        let ident = token::special_idents::clownshoes_extensions;
+        let ident = special_idents::clownshoes_extensions;
 
         // Parse the type.
         let ty = self.parse_ty(false);
@@ -3019,7 +3022,7 @@ impl parser {
                 }
 
                 (ast::anonymous,
-                 token::special_idents::clownshoes_foreign_mod)
+                 special_idents::clownshoes_foreign_mod)
             }
         };
 

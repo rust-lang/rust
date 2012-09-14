@@ -1047,7 +1047,12 @@ impl prim_ty : cmp::Eq {
 type region = {id: node_id, node: region_};
 
 #[auto_serialize]
-enum region_ { re_anon, re_named(ident) }
+enum region_ {
+    re_anon,
+    re_static,
+    re_self,
+    re_named(ident)
+}
 
 #[auto_serialize]
 enum ty_ {
