@@ -99,10 +99,9 @@ pure fn refcount<T>(+t: @T) -> uint {
 
 pure fn log_str<T>(t: T) -> ~str {
     unsafe {
-        let buffer = io::mem_buffer();
-        let writer = io::mem_buffer_writer(buffer);
-        repr::write_repr(writer, &t);
-        return io::mem_buffer_str(buffer);  // XXX: Extra malloc and copy.
+        do io::with_str_writer |wr| {
+            repr::write_repr(wr, &t)
+        }
     }
 }
 

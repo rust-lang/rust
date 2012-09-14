@@ -68,7 +68,6 @@ type stats = {
 enum encode_ctxt = {
     diag: span_handler,
     tcx: ty::ctxt,
-    buf: io::MemBuffer,
     stats: stats,
     reachable: HashMap<ast::node_id, ()>,
     reexports: ~[(~str, def_id)],
@@ -1089,7 +1088,7 @@ const metadata_encoding_version : &[u8] = &[0x72, //'r' as u8,
                                             0, 0, 0, 1 ];
 
 fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
-    let buf = io::mem_buffer();
+    let wr = io::BytesWriter();
     let stats =
         {mut inline_bytes: 0,
          mut attr_bytes: 0,
@@ -1102,7 +1101,6 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
     let ecx: @encode_ctxt = @encode_ctxt({
         diag: parms.diag,
         tcx: parms.tcx,
-        buf: buf,
         stats: move stats,
         reachable: parms.reachable,
         reexports: parms.reexports,
@@ -1115,37 +1113,36 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
         type_abbrevs: ty::new_ty_hash()
      });
 
-    let buf_w = io::mem_buffer_writer(buf);
-    let ebml_w = ebml::Writer(buf_w);
+    let ebml_w = ebml::Writer(wr as io::Writer);
 
     encode_hash(ebml_w, ecx.link_meta.extras_hash);
 
-    let mut i = buf.pos;
+    let mut i = wr.pos;
     let crate_attrs = synthesize_crate_attrs(ecx, crate);
     encode_attributes(ebml_w, crate_attrs);
-    ecx.stats.attr_bytes = buf.pos - i;
+    ecx.stats.attr_bytes = wr.pos - i;
 
-    i = buf.pos;
+    i = wr.pos;
     encode_crate_deps(ecx, ebml_w, ecx.cstore);
-    ecx.stats.dep_bytes = buf.pos - i;
+    ecx.stats.dep_bytes = wr.pos - i;
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
-    i = buf.pos;
+    i = wr.pos;
     let items_index = encode_info_for_items(ecx, ebml_w, crate);
-    ecx.stats.item_bytes = buf.pos - i;
+    ecx.stats.item_bytes = wr.pos - i;
 
-    i = buf.pos;
+    i = wr.pos;
     let items_buckets = create_index(items_index, hash_node_id);
     encode_index(ebml_w, items_buckets, write_int);
-    ecx.stats.index_bytes = buf.pos - i;
+    ecx.stats.index_bytes = wr.pos - i;
     ebml_w.end_tag();
 
-    ecx.stats.total_bytes = buf.pos;
+    ecx.stats.total_bytes = wr.pos;
 
     if (parms.tcx.sess.meta_stats()) {
 
-        do buf.buf.borrow |v| {
+        do wr.buf.borrow |v| {
             do v.each |e| {
                 if e == 0 {
                     ecx.stats.zero_bytes += 1;
@@ -1166,7 +1163,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
-    buf_w.write(&[0u8, 0u8, 0u8, 0u8]);
+    wr.write(&[0u8, 0u8, 0u8, 0u8]);
 
     // FIXME #3396: weird bug here, for reasons unclear this emits random
     // looking bytes (mostly 0x1) if we use the version byte-array constant
@@ -1178,7 +1175,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     (do str::as_bytes(~"rust\x00\x00\x00\x01") |bytes| {
         vec::slice(bytes, 0, 8)
-    }) + flate::deflate_bytes(io::mem_buffer_buf(buf))
+    }) + flate::deflate_bytes(wr.buf.check_out(|buf| buf))
 }
 
 // Get the encoded string for a type
@@ -1188,9 +1185,9 @@ fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
                tcx: tcx,
                reachable: |_id| false,
                abbrevs: tyencode::ac_no_abbrevs};
-    let buf = io::mem_buffer();
-    tyencode::enc_ty(io::mem_buffer_writer(buf), cx, t);
-    return io::mem_buffer_str(buf);
+    do io::with_str_writer |wr| {
+        tyencode::enc_ty(wr, cx, t);
+    }
 }
 
 

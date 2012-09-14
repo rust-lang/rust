@@ -1012,10 +1012,11 @@ fn mk_ctxt() -> fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: @ast::item) {
-    let mbuf = io::mem_buffer();
-    let ebml_w = ebml::Writer(io::mem_buffer_writer(mbuf));
-    encode_item_ast(ebml_w, in_item);
-    let ebml_doc = ebml::Doc(@io::mem_buffer_buf(mbuf));
+    let bytes = do io::with_bytes_writer |wr| {
+        let ebml_w = ebml::Writer(wr);
+        encode_item_ast(ebml_w, in_item);
+    };
+    let ebml_doc = ebml::Doc(@bytes);
     let out_item = decode_item_ast(ebml_doc);
 
     let exp_str =
