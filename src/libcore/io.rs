@@ -74,7 +74,7 @@ impl<T: Reader> T : ReaderUtil {
 impl Reader {
     fn read_chars(n: uint) -> ~[char] {
         // returns the (consumed offset, n_req), appends characters to &chars
-        fn chars_from_buf(buf: ~[u8], &chars: ~[char]) -> (uint, uint) {
+        fn chars_from_bytes(buf: ~[u8], &chars: ~[char]) -> (uint, uint) {
             let mut i = 0u;
             while i < vec::len(buf) {
                 let b0 = buf[i];
@@ -118,7 +118,7 @@ impl Reader {
                 break;
             }
             vec::push_all(buf, data);
-            let (offset, nbreq) = chars_from_buf(buf, chars);
+            let (offset, nbreq) = chars_from_bytes(buf, chars);
             let ncreq = n - vec::len(chars);
             // again we either know we need a certain number of bytes
             // to complete a character, or we make sure we don't
