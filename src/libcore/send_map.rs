@@ -22,8 +22,8 @@ trait SendMap<K:Eq Hash, V: Copy> {
     fn each_value_ref(&self, blk: fn(v: &V) -> bool);
     fn find(&const self, k: &K) -> Option<V>;
     fn get(&const self, k: &K) -> V;
-    fn with_find_ref<T>(&const self, k: &K, blk: fn(Option<&V>) -> T) -> T;
-    fn with_get_ref<T>(&const self, k: &K, blk: fn(v: &V) -> T) -> T;
+    fn find_ref(&self, k: &K) -> Option<&self/V>;
+    fn get_ref(&self, k: &K) -> &self/V;
 }
 
 /// Open addressing with linear probing.
@@ -301,6 +301,13 @@ mod linear {
                 TableFull | FoundHole(_) => {
                     None
                 }
+            }
+        }
+
+        fn get_ref(&self, k: &K) -> &self/V {
+            match self.find_ref(k) {
+                Some(v) => v,
+                None => fail fmt!("No entry found for key: %?", k),
             }
         }
 
