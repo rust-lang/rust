@@ -21,10 +21,11 @@ fn test_ser_and_deser<A:Eq>(a1: A,
     assert s == expected;
 
     // check the EBML serializer:
-    let buf = io::mem_buffer();
-    let w = ebml::Writer(buf as io::Writer);
-    ebml_ser_fn(w, a1);
-    let d = ebml::Doc(@io::mem_buffer_buf(buf));
+    let bytes = do io::with_bytes_writer |wr| {
+        let w = ebml::Writer(wr);
+        ebml_ser_fn(w, a1);
+    };
+    let d = ebml::Doc(@bytes);
     let a2 = ebml_deser_fn(ebml::ebml_deserializer(d));
     io::print(~"\na1 = ");
     io_ser_fn(io::stdout(), a1);
