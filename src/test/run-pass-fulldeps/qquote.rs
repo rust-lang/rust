@@ -85,14 +85,14 @@ fn main() {
 
 fn check_pp<T>(cx: fake_ext_ctxt,
                expr: T, f: fn(pprust::ps, T), expect: ~str) {
-    let buf = mem_buffer();
-    let pp = pprust::rust_printer(buf as io::Writer,cx.parse_sess().interner);
-    f(pp, expr);
-    pp::eof(pp.s);
-    let str = mem_buffer_str(buf);
-    stdout().write_line(str);
+    let s = do io::with_str_writer |wr| {
+        let pp = pprust::rust_printer(wr, cx.parse_sess().interner);
+        f(pp, expr);
+        pp::eof(pp.s);
+    };
+    stdout().write_line(s);
     if expect != ~"" {
-        error!("expect: '%s', got: '%s'", expect, str);
+        error!("expect: '%s', got: '%s'", expect, s);
         assert str == expect;
     }
 }

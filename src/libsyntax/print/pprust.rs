@@ -125,13 +125,13 @@ fn path_to_str(&&p: @ast::path, intr: ident_interner) -> ~str {
 
 fn fun_to_str(decl: ast::fn_decl, name: ast::ident,
               params: ~[ast::ty_param], intr: ident_interner) -> ~str {
-    let buffer = io::mem_buffer();
-    let s = rust_printer(io::mem_buffer_writer(buffer), intr);
-    print_fn(s, decl, None, name, params, None);
-    end(s); // Close the head box
-    end(s); // Close the outer box
-    eof(s.s);
-    io::mem_buffer_str(buffer)
+    do io::with_str_writer |wr| {
+        let s = rust_printer(wr, intr);
+        print_fn(s, decl, None, name, params, None);
+        end(s); // Close the head box
+        end(s); // Close the outer box
+        eof(s.s);
+    }
 }
 
 #[test]
@@ -148,15 +148,15 @@ fn test_fun_to_str() {
 }
 
 fn block_to_str(blk: ast::blk, intr: ident_interner) -> ~str {
-    let buffer = io::mem_buffer();
-    let s = rust_printer(io::mem_buffer_writer(buffer), intr);
-    // containing cbox, will be closed by print-block at }
-    cbox(s, indent_unit);
-    // head-ibox, will be closed by print-block after {
-    ibox(s, 0u);
-    print_block(s, blk);
-    eof(s.s);
-    io::mem_buffer_str(buffer)
+    do io::with_str_writer |wr| {
+        let s = rust_printer(wr, intr);
+        // containing cbox, will be closed by print-block at }
+        cbox(s, indent_unit);
+        // head-ibox, will be closed by print-block after {
+        ibox(s, 0u);
+        print_block(s, blk);
+        eof(s.s);
+    }
 }
 
 fn meta_item_to_str(mi: @ast::meta_item, intr: ident_interner) -> ~str {
@@ -2026,11 +2026,11 @@ fn print_string(s: ps, st: ~str) {
 }
 
 fn to_str<T>(t: T, f: fn@(ps, T), intr: ident_interner) -> ~str {
-    let buffer = io::mem_buffer();
-    let s = rust_printer(io::mem_buffer_writer(buffer), intr);
-    f(s, t);
-    eof(s.s);
-    io::mem_buffer_str(buffer)
+    do io::with_str_writer |wr| {
+        let s = rust_printer(wr, intr);
+        f(s, t);
+        eof(s.s);
+    }
 }
 
 fn next_comment(s: ps) -> Option<comments::cmnt> {
