@@ -15,7 +15,7 @@ export is_nonpositive, is_nonnegative;
 export range;
 export compl;
 export to_str, to_str_bytes;
-export from_str, from_str_radix, str, parse_buf;
+export from_str, from_str_radix, str, parse_bytes;
 export num, ord, eq, times, timesi;
 export bits, bytes;
 
@@ -126,7 +126,7 @@ impl T: iter::TimesIx {
  *
  * `buf` must not be empty
  */
-fn parse_buf(buf: &[const u8], radix: uint) -> Option<T> {
+fn parse_bytes(buf: &[const u8], radix: uint) -> Option<T> {
     if vec::len(buf) == 0u { return None; }
     let mut i = vec::len(buf) - 1u;
     let mut power = 1u as T;
@@ -143,7 +143,7 @@ fn parse_buf(buf: &[const u8], radix: uint) -> Option<T> {
 }
 
 /// Parse a string to an int
-fn from_str(s: &str) -> Option<T> { parse_buf(str::to_bytes(s), 10u) }
+fn from_str(s: &str) -> Option<T> { parse_bytes(str::to_bytes(s), 10u) }
 
 impl T : FromStr {
     static fn from_str(s: &str) -> Option<T> { from_str(s) }
@@ -275,17 +275,17 @@ fn test_from_str() {
 
 #[test]
 #[ignore]
-fn test_parse_buf() {
+fn test_parse_bytes() {
     use str::to_bytes;
-    assert parse_buf(to_bytes(~"123"), 10u) == Some(123u as T);
-    assert parse_buf(to_bytes(~"1001"), 2u) == Some(9u as T);
-    assert parse_buf(to_bytes(~"123"), 8u) == Some(83u as T);
-    assert parse_buf(to_bytes(~"123"), 16u) == Some(291u as T);
-    assert parse_buf(to_bytes(~"ffff"), 16u) == Some(65535u as T);
-    assert parse_buf(to_bytes(~"z"), 36u) == Some(35u as T);
+    assert parse_bytes(to_bytes(~"123"), 10u) == Some(123u as T);
+    assert parse_bytes(to_bytes(~"1001"), 2u) == Some(9u as T);
+    assert parse_bytes(to_bytes(~"123"), 8u) == Some(83u as T);
+    assert parse_bytes(to_bytes(~"123"), 16u) == Some(291u as T);
+    assert parse_bytes(to_bytes(~"ffff"), 16u) == Some(65535u as T);
+    assert parse_bytes(to_bytes(~"z"), 36u) == Some(35u as T);
 
-    assert parse_buf(to_bytes(~"Z"), 10u).is_none();
-    assert parse_buf(to_bytes(~"_"), 2u).is_none();
+    assert parse_bytes(to_bytes(~"Z"), 10u).is_none();
+    assert parse_bytes(to_bytes(~"_"), 2u).is_none();
 }
 
 #[test]

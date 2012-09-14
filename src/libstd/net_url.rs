@@ -116,7 +116,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
             match rdr.read_char() {
               '%' => {
                 let bytes = rdr.read_bytes(2u);
-                let ch = uint::parse_buf(bytes, 16u).get() as char;
+                let ch = uint::parse_bytes(bytes, 16u).get() as char;
 
                 if full_url {
                     // Only decode some characters:
@@ -241,7 +241,7 @@ fn decode_form_urlencoded(s: ~[u8]) ->
               ch => {
                 let ch = match ch {
                   '%' => {
-                    uint::parse_buf(rdr.read_bytes(2u), 16u).get() as char
+                    uint::parse_bytes(rdr.read_bytes(2u), 16u).get() as char
                   }
                   '+' => ' ',
                   ch => ch
