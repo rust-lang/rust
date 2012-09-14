@@ -275,40 +275,31 @@ mod linear {
             }
         }
 
-        /*
-        FIXME(#3148)--region inference fails to capture needed deps
-
-        fn find_ref(&self, k: &K) -> option<&self/V> {
-            match self.bucket_for_key(self.buckets, k) {
-              FoundEntry(idx) => {
-                match check self.buckets[idx] {
-                  some(ref bkt) => some(&bkt.value)
-                }
-              }
-              TableFull | FoundHole(_) => {
-                none
-              }
-            }
-        }
-        */
-
-        fn with_find_ref<T>(&self, k: &K, blk: fn(Option<&V>) -> T) -> T {
+        fn find_ref(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
                     match self.buckets[idx] {
-                        Some(bkt) => blk(Some(&bkt.value)),
-                        None => fail ~"LinearMap::find: internal logic error"
+                        Some(ref bkt) => {
+                            let ptr = unsafe {
+                                // FIXME(#3148)--region inference
+                                // fails to capture needed deps.
+                                // Here, the bucket value is known to
+                                // live as long as self, because self
+                                // is immutable.  But the region
+                                // inference stupidly infers a
+                                // lifetime for `ref bkt` that is
+                                // shorter than it needs to be.
+                                unsafe::copy_lifetime(self, &bkt.value)
+                            };
+                            Some(ptr)
+                        }
+                        None => {
+                            fail ~"LinearMap::find: internal logic error"
+                        }
                     }
                 }
-                TableFull | FoundHole(_) => blk(None),
-            }
-        }
-
-        fn with_get_ref<T>(&self, k: &K, blk: fn(v: &V) -> T) -> T {
-            do self.with_find_ref(k) |v| {
-                match v {
-                    Some(v) => blk(v),
-                    None => fail fmt!("No entry found for key: %?", k),
+                TableFull | FoundHole(_) => {
+                    None
                 }
             }
         }
@@ -451,10 +442,13 @@ mod test {
     }
 
     #[test]
-    fn with_find_ref() {
+    fn find_ref() {
         let mut m = ~LinearMap();
-        m.with_find_ref(&1, |v| assert v.is_none());
+        assert m.find_ref(&1).is_none();
         m.insert(1, 2);
-        m.with_find_ref(&1, |v| assert *v.get() == 2);
+        match m.find_ref(&1) {
+            None => fail,
+            Some(v) => assert *v == 2
+        }
     }
 }
