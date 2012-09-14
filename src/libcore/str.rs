@@ -2916,7 +2916,7 @@ mod tests {
                   0x20_u8, 0x4e_u8, 0x61_u8,
                   0x6d_u8];
 
-         assert ss == from_bytes(bb);
+        assert ss == from_bytes(bb);
     }
 
     #[test]
