@@ -1,7 +1,6 @@
 use libc::{c_char, c_void, intptr_t, uintptr_t};
 use ptr::{mut_null, null, to_unsafe_ptr};
 use repr::BoxRepr;
-use rt::rt_free;
 use sys::TypeDesc;
 use unsafe::transmute;
 
@@ -67,7 +66,12 @@ struct Task {
  * This runs at task death to free all boxes.
  */
 
-unsafe fn do_annihilate() {
+/// Destroys all managed memory (i.e. @ boxes) held by the current task.
+#[cfg(notest)]
+#[lang="annihilate"]
+pub unsafe fn annihilate() {
+    use rt::rt_free;
+
     let task: *Task = transmute(rustrt::rust_get_task());
 
     // Pass 1: Make all boxes immortal.
@@ -105,61 +109,9 @@ unsafe fn do_annihilate() {
     }
 }
 
-/// Destroys all managed memory (i.e. @ boxes) held by the current task.
-#[cfg(notest)]
-#[lang="annihilate"]
-pub unsafe fn annihilate() {
-    do_annihilate();
-}
-
-#[cfg(test)]
-pub unsafe fn annihilate() {
-    do_annihilate();
-}
-
 /// Bindings to the runtime
 extern mod rustrt {
     #[rust_stack]
     /*priv*/ fn rust_get_task() -> *c_void;
-}
-
-/*
- * Tests
- */
-
-#[cfg(test)]
-mod tests {
-    struct Knot {
-        mut a: Option<@Knot>
-    }
-
-    struct Blah {
-        x: int,
-        drop { io::println("Blah!"); }
-    }
-
-    #[test]
-    fn test_box_annihilation() {
-        let knot = @Knot { a: None };
-        knot.a = Some(knot);
-
-        let x = @~"foo";
-
-        let blah = @Blah { x: 3 };
-
-        let f_ref = @mut None;
-        let f = || { util::ignore(f_ref); };
-        *f_ref = Some(f);
-
-        unsafe { annihilate(); }
-
-        unsafe {
-            unsafe::forget(knot);
-            unsafe::forget(x);
-            unsafe::forget(blah);
-            unsafe::forget(f_ref);
-            unsafe::forget(f);
-        }
-    }
 }
 
