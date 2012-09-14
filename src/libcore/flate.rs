@@ -18,8 +18,8 @@ const lz_fast : c_int = 0x1;   // LZ with only one probe
 const lz_norm : c_int = 0x80;  // LZ with 128 probes, "normal"
 const lz_best : c_int = 0xfff; // LZ with 4095 probes, "best"
 
-fn deflate_buf(buf: &[const u8]) -> ~[u8] {
-    do vec::as_const_buf(buf) |b, len| {
+fn deflate_bytes(bytes: &[const u8]) -> ~[u8] {
+    do vec::as_const_buf(bytes) |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
@@ -36,8 +36,8 @@ fn deflate_buf(buf: &[const u8]) -> ~[u8] {
     }
 }
 
-fn inflate_buf(buf: &[const u8]) -> ~[u8] {
-    do vec::as_const_buf(buf) |b, len| {
+fn inflate_bytes(bytes: &[const u8]) -> ~[u8] {
+    do vec::as_const_buf(bytes) |b, len| {
         unsafe {
             let mut outsz : size_t = 0;
             let res =
@@ -69,8 +69,8 @@ fn test_flate_round_trip() {
         }
         debug!("de/inflate of %u bytes of random word-sequences",
                in.len());
-        let cmp = flate::deflate_buf(in);
-        let out = flate::inflate_buf(cmp);
+        let cmp = flate::deflate_bytes(in);
+        let out = flate::inflate_bytes(cmp);
         debug!("%u bytes deflated to %u (%.1f%% size)",
                in.len(), cmp.len(),
                100.0 * ((cmp.len() as float) / (in.len() as float)));

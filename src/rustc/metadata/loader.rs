@@ -202,8 +202,8 @@ fn get_metadata_section(os: os,
                 let cvbuf1 = ptr::offset(cvbuf, vlen);
                 debug!("inflating %u bytes of compressed metadata",
                        csz - vlen);
-                do vec::raw::form_slice(cvbuf1, csz-vlen) |buf| {
-                    let inflated = flate::inflate_buf(buf);
+                do vec::raw::form_slice(cvbuf1, csz-vlen) |bytes| {
+                    let inflated = flate::inflate_bytes(bytes);
                     found = move Some(@(move inflated));
                 }
                 if found != None {
