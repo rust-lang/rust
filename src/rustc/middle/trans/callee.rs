@@ -484,6 +484,7 @@ fn trans_arg_expr(bcx: block,
 {
     let _icx = bcx.insn_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
+    let mut bcx = bcx;
 
     debug!("trans_arg_expr(formal_ty=(%?,%s), arg_expr=%s, \
             ret_flag=%?)",
@@ -492,97 +493,104 @@ fn trans_arg_expr(bcx: block,
            ret_flag.map(|v| bcx.val_str(v)));
     let _indenter = indenter();
 
-    // translate the arg expr to a datum
-    let arg_datumblock = match ret_flag {
-        None => expr::trans_to_datum(bcx, arg_expr),
-
-        // If there is a ret_flag, this *must* be a loop body
-        Some(_) => {
-            match arg_expr.node {
-                ast::expr_loop_body(
-                    blk @ @{node:ast::expr_fn_block(decl, body, cap), _}) =>
-                {
-                    let scratch_ty = expr_ty(bcx, blk);
-                    let scratch = alloc_ty(bcx, scratch_ty);
-                    let arg_ty = expr_ty(bcx, arg_expr);
-                    let proto = ty::ty_fn_proto(arg_ty);
-                    let bcx = closure::trans_expr_fn(
-                        bcx, proto, decl, body, blk.id,
-                        cap, Some(ret_flag), expr::SaveIn(scratch));
-                    DatumBlock {bcx: bcx,
-                                datum: Datum {val: scratch,
-                                              ty: scratch_ty,
-                                              mode: ByRef,
-                                              source: FromRvalue}}
-                }
-                _ => {
-                    bcx.sess().impossible_case(
-                        arg_expr.span, ~"ret_flag with non-loop-\
-                                         body expr");
-                }
-            }
-        }
-    };
-    let mut arg_datum = arg_datumblock.datum;
-    let mut bcx = arg_datumblock.bcx;
-
-    debug!("   arg datum: %s", arg_datum.to_str(bcx.ccx()));
-
     // finally, deal with the various modes
     let arg_mode = ty::resolved_mode(ccx.tcx, formal_ty.mode);
     let mut val;
-    if ty::type_is_bot(arg_datum.ty) {
-        // For values of type _|_, we generate an
-        // "undef" value, as such a value should never
-        // be inspected. It's important for the value
-        // to have type lldestty (the callee's expected type).
-        let llformal_ty = type_of::type_of(ccx, formal_ty.ty);
-        val = llvm::LLVMGetUndef(llformal_ty);
-    } else {
-        match arg_mode {
-            ast::by_ref | ast::by_mutbl_ref => {
-                val = arg_datum.to_ref_llval(bcx);
-            }
-
-            ast::by_val => {
-                // NB: avoid running the take glue.
-                val = arg_datum.to_value_llval(bcx);
-            }
-
-            ast::by_copy | ast::by_move => {
-                let scratch = scratch_datum(bcx, arg_datum.ty, false);
-
-                if arg_mode == ast::by_move {
-                    // NDM---Doesn't seem like this should be necessary
-                    if !arg_datum.store_will_move() {
-                        bcx.sess().span_bug(
-                            arg_expr.span,
-                            fmt!("move mode but datum will not store: %s",
-                                 arg_datum.to_str(bcx.ccx())));
-                    }
-                }
-
-                arg_datum.store_to_datum(bcx, INIT, scratch);
-
-                // Technically, ownership of val passes to the callee.
-                // However, we must cleanup should we fail before the
-                // callee is actually invoked.
-                scratch.add_clean(bcx);
-                vec::push(*temp_cleanups, scratch.val);
-                val = scratch.val;
-          }
+    match arg_mode {
+        ast::by_ref | ast::by_mutbl_ref => {
+            let datum = unpack_datum!(bcx, {
+                trans_arg_expr_to_datum(bcx, arg_expr, ret_flag)
+            });
+            val = datum.to_ref_llval(bcx);
         }
 
-        if formal_ty.ty != arg_datum.ty {
-            // this could happen due to e.g. subtyping
-            let llformal_ty = type_of::type_of_explicit_arg(ccx, formal_ty);
-            debug!("casting actual type (%s) to match formal (%s)",
-                   bcx.val_str(val), bcx.llty_str(llformal_ty));
-            val = PointerCast(bcx, val, llformal_ty);
+        ast::by_val => {
+            let datum = unpack_datum!(bcx, {
+                trans_arg_expr_to_datum(bcx, arg_expr, ret_flag)
+            });
+            val = datum.to_value_llval(bcx);
+        }
+
+        ast::by_copy | ast::by_move => {
+            let scratch = scratch_datum(bcx, formal_ty.ty, false);
+            bcx = trans_arg_expr_into(bcx, arg_expr, ret_flag,
+                                      expr::SaveIn(scratch.val));
+
+            // Technically, ownership of val passes to the callee.
+            // However, we must cleanup should we fail before the
+            // callee is actually invoked.
+            scratch.add_clean(bcx);
+            vec::push(*temp_cleanups, scratch.val);
+            val = scratch.val;
         }
     }
 
+    /*
+    if formal_ty.ty != arg_datum.ty {
+        // this could happen due to e.g. subtyping
+        let llformal_ty = type_of::type_of_explicit_arg(ccx, formal_ty);
+        debug!("casting actual type (%s) to match formal (%s)",
+               bcx.val_str(val), bcx.llty_str(llformal_ty));
+        val = PointerCast(bcx, val, llformal_ty);
+    }
+    */
+
     debug!("--- trans_arg_expr passing %s", val_str(bcx.ccx().tn, val));
     return rslt(bcx, val);
+
+    fn trans_arg_expr_to_datum(bcx: block,
+                               arg_expr: @ast::expr,
+                               ret_flag: Option<ValueRef>) -> DatumBlock {
+        match ret_flag {
+            None => {
+                expr::trans_to_datum(bcx, arg_expr)
+            }
+
+            // If there is a ret_flag, this *must* be a loop body
+            Some(_) => {
+                match arg_expr.node {
+                    ast::expr_loop_body(
+                        blk @ @{node:ast::expr_fn_block(decl, body,
+                                                        cap), _}) =>
+                    {
+                        let scratch_ty = expr_ty(bcx, blk);
+                        let scratch = alloc_ty(bcx, scratch_ty);
+                        let arg_ty = expr_ty(bcx, arg_expr);
+                        let proto = ty::ty_fn_proto(arg_ty);
+                        let bcx = closure::trans_expr_fn(
+                            bcx, proto, decl, body, blk.id,
+                            cap, Some(ret_flag), expr::SaveIn(scratch));
+                        DatumBlock {bcx: bcx,
+                                    datum: Datum {val: scratch,
+                                                  ty: scratch_ty,
+                                                  mode: ByRef,
+                                                  source: FromRvalue}}
+                    }
+                    _ => {
+                        bcx.sess().impossible_case(
+                            arg_expr.span, ~"ret_flag with non-loop-\
+                                             body expr");
+                    }
+                }
+            }
+        }
+    }
+
+    fn trans_arg_expr_into(bcx: block,
+                           arg_expr: @ast::expr,
+                           ret_flag: Option<ValueRef>,
+                           dest: expr::Dest) -> block {
+        match ret_flag {
+            None => {
+                expr::trans_into(bcx, arg_expr, dest)
+            }
+
+            Some(_) => {
+                let DatumBlock {bcx, datum} =
+                    trans_arg_expr_to_datum(bcx, arg_expr, ret_flag);
+                datum.store_to_dest(bcx, dest)
+            }
+        }
+    }
 }
 
