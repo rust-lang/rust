@@ -2520,15 +2520,15 @@ mod tests {
         assert results == ~[~[]];
 
         results = ~[];
-        permute(~[7], |v| results += ~[copy v]);
+        permute(~[7], |v| push(results, copy v));
         assert results == ~[~[7]];
 
         results = ~[];
-        permute(~[1,1], |v| results += ~[copy v]);
+        permute(~[1,1], |v| push(results, copy v));
         assert results == ~[~[1,1],~[1,1]];
 
         results = ~[];
-        permute(~[5,2,0], |v| results += ~[copy v]);
+        permute(~[5,2,0], |v| push(results, copy v));
         assert results ==
             ~[~[5,2,0],~[5,0,2],~[2,5,0],~[2,0,5],~[0,5,2],~[0,2,5]];
     }
