@@ -1178,7 +1178,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
     (do str::as_bytes(~"rust\x00\x00\x00\x01") |bytes| {
         vec::slice(bytes, 0, 8)
-    }) + flate::deflate_buf(io::mem_buffer_buf(buf))
+    }) + flate::deflate_bytes(io::mem_buffer_buf(buf))
 }
 
 // Get the encoded string for a type
