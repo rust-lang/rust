@@ -432,7 +432,6 @@ impl LookupContext {
             }
         };
 
-        let tcx = self.tcx();
         let method = &impl_info.methods[idx];
 
         // determine the `self` of the impl with fresh
