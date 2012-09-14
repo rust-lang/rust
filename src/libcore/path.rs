@@ -197,14 +197,19 @@ impl PosixPath : GenericPath {
     }
 
     pure fn push_many(cs: &[~str]) -> PosixPath {
-       PosixPath { components: (copy self.components) + copy cs, ..self }
+        let mut v = copy self.components;
+        for cs.each |e| {
+            let mut ss = str::split_nonempty(e, |c| windows::is_sep(c as u8));
+            unchecked { vec::push_all_move(v, move ss); }
+        }
+        PosixPath { components: move v, ..self }
     }
 
     pure fn push(s: &str) -> PosixPath {
-        let mut cs = copy self.components;
-        unchecked { vec::push(cs, move str::from_slice(s)); }
-        return PosixPath { components: move cs,
-                           ..self }
+        let mut v = copy self.components;
+        let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
+        unchecked { vec::push_all_move(v, move ss); }
+        PosixPath { components: move v, ..self }
     }
 
     pure fn pop() -> PosixPath {
@@ -385,15 +390,19 @@ impl WindowsPath : GenericPath {
     }
 
     pure fn push_many(cs: &[~str]) -> WindowsPath {
-        return WindowsPath { components: (copy self.components) + (copy cs),
-                            ..self }
+        let mut v = copy self.components;
+        for cs.each |e| {
+            let mut ss = str::split_nonempty(e, |c| windows::is_sep(c as u8));
+            unchecked { vec::push_all_move(v, move ss); }
+        }
+        return WindowsPath { components: move v, ..self }
     }
 
     pure fn push(s: &str) -> WindowsPath {
-        let mut cs = copy self.components;
-        unchecked { vec::push(cs, move str::from_slice(s)); }
-        return WindowsPath { components: move cs,
-                             ..self }
+        let mut v = copy self.components;
+        let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
+        unchecked { vec::push_all_move(v, move ss); }
+        return WindowsPath { components: move v, ..self }
     }
 
     pure fn pop() -> WindowsPath {
@@ -419,6 +428,7 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
         for components.each |c| {
             unchecked {
                 if c == ~"." && components.len() > 1 { loop; }
+                if c == ~"" { loop; }
                 if c == ~".." && cs.len() != 0 {
                     vec::pop(cs);
                     loop;
@@ -428,6 +438,20 @@ pure fn normalize(components: &[~str]) -> ~[~str] {
         }
     }
     move cs
+}
+
+#[test]
+fn test_double_slash_collapsing()
+{
+    let path = from_str::<PosixPath>("tmp/");
+    let path = path.push("/hmm");
+    let path = path.normalize();
+    assert ~"tmp/hmm" == path.to_str();
+
+    let path = from_str::<WindowsPath>("tmp/");
+    let path = path.push("/hmm");
+    let path = path.normalize();
+    assert ~"tmp\\hmm" == path.to_str();
 }
 
 mod posix {
