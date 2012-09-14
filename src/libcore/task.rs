@@ -1661,7 +1661,8 @@ extern mod rustrt {
 
     fn rust_get_sched_id() -> sched_id;
     fn rust_new_sched(num_threads: libc::uintptr_t) -> sched_id;
-    fn sched_threads() -> libc::size_t;
+    fn rust_max_sched_threads() -> libc::size_t;
+    fn rust_sched_threads() -> libc::size_t;
     fn rust_num_threads() -> libc::uintptr_t;
 
     fn get_task_id() -> task_id;
@@ -2435,8 +2436,34 @@ fn test_sched_thread_per_core() {
 
     do spawn_sched(ThreadPerCore) {
         let cores = rustrt::rust_num_threads();
-        let reported_threads = rustrt::sched_threads();
+        let reported_threads = rustrt::rust_max_sched_threads();
         assert(cores as uint == reported_threads as uint);
+        chan.send(());
+    }
+
+    port.recv();
+}
+
+#[test]
+fn test_spawn_thread_on_demand() {
+    let (chan, port) = pipes::stream();
+
+    do spawn_sched(ManualThreads(2)) {
+        let max_threads = rustrt::rust_max_sched_threads();
+        assert(max_threads as int == 2);
+        let running_threads = rustrt::rust_sched_threads();
+        assert(running_threads as int == 1);
+
+        let (chan2, port2) = pipes::stream();
+
+        do spawn() {
+            chan2.send(());
+        }
+
+        let running_threads2 = rustrt::rust_sched_threads();
+        assert(running_threads2 as int == 2);
+
+        port2.recv();
         chan.send(());
     }
 
