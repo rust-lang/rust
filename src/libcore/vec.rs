@@ -88,7 +88,7 @@ export as_imm_buf;
 export as_mut_buf;
 export as_const_buf;
 export raw;
-export u8;
+export bytes;
 export extensions;
 export ConstVector;
 export CopyableVector;
@@ -1929,7 +1929,7 @@ mod raw {
 }
 
 /// Operations on `[u8]`
-mod u8 {
+mod bytes {
     export cmp;
     export lt, le, eq, ne, ge, gt;
     export hash;

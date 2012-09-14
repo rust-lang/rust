@@ -292,9 +292,8 @@ impl ByteBuf: Reader {
     fn read(buf: &[mut u8], len: uint) -> uint {
         let count = uint::min(len, self.buf.len() - self.pos);
 
-        vec::u8::memcpy(buf,
-                        vec::const_view(self.buf, self.pos, self.buf.len()),
-                        count);
+        let view = vec::const_view(self.buf, self.pos, self.buf.len());
+        vec::bytes::memcpy(buf, view, count);
 
         self.pos += count;
 
@@ -684,7 +683,8 @@ impl MemBuffer: Writer {
             vec::reserve(buf, count);
             unsafe { vec::raw::set_len(buf, count); }
 
-            vec::u8::memcpy(vec::mut_view(buf, self.pos, count), v, v_len);
+            let view = vec::mut_view(buf, self.pos, count);
+            vec::bytes::memcpy(view, v, v_len);
 
             self.pos += v_len;
 
