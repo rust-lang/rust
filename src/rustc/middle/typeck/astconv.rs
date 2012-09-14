@@ -73,8 +73,10 @@ fn ast_region_to_region<AC: ast_conv, RS: region_scope Copy Owned>(
     self: AC, rscope: RS, span: span, a_r: @ast::region) -> ty::region {
 
     let res = match a_r.node {
-      ast::re_anon => rscope.anon_region(span),
-      ast::re_named(id) => rscope.named_region(span, id)
+        ast::re_static => Ok(ty::re_static),
+        ast::re_anon => rscope.anon_region(span),
+        ast::re_self => rscope.self_region(span),
+        ast::re_named(id) => rscope.named_region(span, id)
     };
 
     get_region_reporting_err(self.tcx(), span, res)

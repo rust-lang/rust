@@ -522,10 +522,10 @@ impl determine_rp_ctxt {
     // that flag to false when we enter a method.
     fn region_is_relevant(r: @ast::region) -> bool {
         match r.node {
+            ast::re_static => false,
             ast::re_anon => self.anon_implies_rp,
-            ast::re_named(id) => {
-                id == syntax::parse::token::special_idents::self_
-            }
+            ast::re_self => true,
+            ast::re_named(_) => false
         }
     }
 

@@ -328,14 +328,24 @@ fn print_foreign_mod(s: ps, nmod: ast::foreign_mod,
     for nmod.items.each |item| { print_foreign_item(s, item); }
 }
 
-fn print_region(s: ps, region: @ast::region) {
+fn print_region(s: ps, region: @ast::region, sep: ~str) {
     match region.node {
-      ast::re_anon => word_space(s, ~"&"),
-      ast::re_named(name) => {
-        word(s.s, ~"&");
-        print_ident(s, name);
-      }
+        ast::re_anon => {
+            word_space(s, ~"&");
+            return;
+        }
+        ast::re_static => {
+            word_space(s, ~"&static")
+        }
+        ast::re_self => {
+            word_space(s, ~"&self")
+        }
+        ast::re_named(name) => {
+            word(s.s, ~"&");
+            print_ident(s, name);
+        }
     }
+    word(s.s, sep);
 }
 
 fn print_type(s: ps, &&ty: @ast::ty) {
@@ -362,11 +372,8 @@ fn print_type_ex(s: ps, &&ty: @ast::ty, print_colons: bool) {
       }
       ast::ty_ptr(mt) => { word(s.s, ~"*"); print_mt(s, mt); }
       ast::ty_rptr(region, mt) => {
-        match region.node {
-          ast::re_anon => word(s.s, ~"&"),
-          _ => { print_region(s, region); word(s.s, ~"/"); }
-        }
-        print_mt(s, mt);
+          print_region(s, region, ~"/");
+          print_mt(s, mt);
       }
       ast::ty_rec(fields) => {
         word(s.s, ~"{");
@@ -961,18 +968,11 @@ fn print_mac(s: ps, m: ast::mac) {
 
 fn print_vstore(s: ps, t: ast::vstore) {
     match t {
-      ast::vstore_fixed(Some(i)) => word(s.s, fmt!("%u", i)),
-      ast::vstore_fixed(None) => word(s.s, ~"_"),
-      ast::vstore_uniq => word(s.s, ~"~"),
-      ast::vstore_box => word(s.s, ~"@"),
-      ast::vstore_slice(r) => match r.node {
-        ast::re_anon => word(s.s, ~"&"),
-        ast::re_named(name) => {
-            word(s.s, ~"&");
-            print_ident(s, name);
-            word(s.s, ~".");
-        }
-      }
+        ast::vstore_fixed(Some(i)) => word(s.s, fmt!("%u", i)),
+        ast::vstore_fixed(None) => word(s.s, ~"_"),
+        ast::vstore_uniq => word(s.s, ~"~"),
+        ast::vstore_box => word(s.s, ~"@"),
+        ast::vstore_slice(r) => print_region(s, r, ~"/")
     }
 }
 
@@ -1455,7 +1455,7 @@ fn print_path(s: ps, &&path: @ast::path, colons_before_params: bool) {
           None => { /* ok */ }
           Some(r) => {
             word(s.s, ~"/");
-            print_region(s, r);
+            print_region(s, r, ~"");
           }
         }
 

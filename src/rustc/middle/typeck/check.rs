@@ -77,6 +77,7 @@ use syntax::ast::ty_i;
 use typeck::infer::{resolve_type, force_tvar};
 use result::{Result, Ok, Err};
 use syntax::print::pprust;
+use syntax::parse::token::special_idents;
 
 use std::map::{str_hash, uint_hash};
 
@@ -567,22 +568,34 @@ impl @fn_ctxt: ast_conv {
     }
 }
 
+impl @fn_ctxt {
+    fn search_in_scope_regions(br: ty::bound_region)
+        -> Result<ty::region, ~str>
+    {
+        match self.in_scope_regions.find(br) {
+            Some(r) => result::Ok(r),
+            None => {
+                let blk_br = ty::br_named(special_idents::blk);
+                if br == blk_br {
+                    result::Ok(self.block_region())
+                } else {
+                    result::Err(fmt!("named region `%s` not in scope here",
+                                     bound_region_to_str(self.tcx(), br)))
+                }
+            }
+        }
+    }
+}
+
 impl @fn_ctxt: region_scope {
     fn anon_region(span: span) -> Result<ty::region, ~str> {
         result::Ok(self.infcx().next_region_var_nb(span))
     }
-    fn named_region(span: span, id: ast::ident) -> Result<ty::region, ~str> {
-        do empty_rscope.named_region(span, id).chain_err |_e| {
-            match self.in_scope_regions.find(ty::br_named(id)) {
-              Some(r) => result::Ok(r),
-              None if id == syntax::parse::token::special_idents::blk
-                  => result::Ok(self.block_region()),
-              None => {
-                result::Err(fmt!("named region `%s` not in scope here",
-                                 self.ccx.tcx.sess.str_of(id)))
-              }
-            }
-        }
+    fn self_region(_span: span) -> Result<ty::region, ~str> {
+        self.search_in_scope_regions(ty::br_self)
+    }
+    fn named_region(_span: span, id: ast::ident) -> Result<ty::region, ~str> {
+        self.search_in_scope_regions(ty::br_named(id))
     }
 }
 
