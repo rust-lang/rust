@@ -1355,10 +1355,16 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
                 let group = @TCB(child, move child_arc, move ancestors,
                                  is_main, move notifier);
                 unsafe { local_set(child, taskgroup_key!(), group); }
+
                 // Run the child's body.
                 f();
+
                 // TLS cleanup code will exit the taskgroup.
             }
+
+            // Run the box annihilator.
+            // XXX: Crashy.
+            // unsafe { cleanup::annihilate(); }
         };
 
         // Set up membership in taskgroup and descendantship in all ancestor
