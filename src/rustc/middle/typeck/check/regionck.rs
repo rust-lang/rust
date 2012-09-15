@@ -159,8 +159,6 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
     debug!("visit_expr(e=%s)",
            pprust::expr_to_str(expr, rcx.fcx.tcx().sess.intr()));
 
-    // constrain_auto_ref(rcx, expr);
-
     match expr.node {
         ast::expr_path(*) => {
             // Avoid checking the use of local variables, as we
@@ -173,6 +171,36 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
                 ast::def_local(*) | ast::def_arg(*) |
                 ast::def_upvar(*) => return,
                 _ => ()
+            }
+        }
+
+        ast::expr_call(callee, args, _) => {
+            // Check for a.b() where b is a method.  Ensure that
+            // any types in the callee are valid for the entire
+            // method call.
+
+            // FIXME(#3387)--we should really invoke
+            // `constrain_auto_ref()` on all exprs.  But that causes a
+            // lot of spurious errors because of how the region
+            // hierarchy is setup.
+            let tcx = rcx.fcx.tcx();
+            if rcx.fcx.ccx.method_map.contains_key(callee.id) {
+                match callee.node {
+                    ast::expr_field(base, _, _) => {
+                        constrain_auto_ref(rcx, base);
+                    }
+                    _ => {
+                        tcx.sess.span_bug(
+                            callee.span,
+                            ~"call of method that is not a field");
+                    }
+                }
+            } else {
+                constrain_auto_ref(rcx, callee);
+            }
+
+            for args.each |arg| {
+                constrain_auto_ref(rcx, arg);
             }
         }
 
@@ -275,6 +303,8 @@ fn constrain_auto_ref(
      * function ensures that the lifetime of the resulting borrowed
      * ptr includes at least the expression `expr`. */
 
+    debug!("constrain_auto_ref(expr=%s)", rcx.fcx.expr_to_str(expr));
+
     let adjustment = rcx.fcx.inh.adjustments.find(expr.id);
     let region = match adjustment {
         Some(@{autoref: Some(ref auto_ref), _}) => auto_ref.region,
@@ -282,8 +312,8 @@ fn constrain_auto_ref(
     };
 
     let tcx = rcx.fcx.tcx();
-    let expr_region = ty::re_scope(expr.id);
-    match rcx.fcx.mk_subr(true, expr.span, expr_region, region) {
+    let encl_region = ty::encl_region(tcx, expr.id);
+    match rcx.fcx.mk_subr(true, expr.span, encl_region, region) {
         result::Ok(()) => {}
         result::Err(_) => {
             // In practice, this cannot happen: `region` is always a
