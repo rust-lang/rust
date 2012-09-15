@@ -5,8 +5,25 @@
 #[forbid(deprecated_pattern)];
 
 use cmp::{Eq, Ord};
+use intrinsic::TyDesc;
 
-export ptr_eq;
+export ptr_eq, raw;
+
+mod raw {
+
+    struct BoxHeaderRepr {
+        ref_count: uint,
+        type_desc: *TyDesc,
+        prev: *BoxRepr,
+        next: *BoxRepr,
+    }
+
+    struct BoxRepr {
+        header: BoxHeaderRepr,
+        data: u8
+    }
+
+}
 
 pure fn ptr_eq<T>(a: @T, b: @T) -> bool {
     //! Determine if two shared boxes point to the same object

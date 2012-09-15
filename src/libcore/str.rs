@@ -2119,8 +2119,9 @@ mod raw {
     /// Sets the length of the string and adds the null terminator
     unsafe fn set_len(&v: ~str, new_len: uint) {
         let repr: *vec::raw::VecRepr = ::unsafe::reinterpret_cast(&v);
-        (*repr).fill = new_len + 1u;
-        let null = ptr::mut_offset(ptr::mut_addr_of((*repr).data), new_len);
+        (*repr).unboxed.fill = new_len + 1u;
+        let null = ptr::mut_offset(ptr::mut_addr_of((*repr).unboxed.data),
+                                   new_len);
         *null = 0u8;
     }
 
