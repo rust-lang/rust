@@ -12,7 +12,6 @@ mod intrinsic {
     }
 
     pub enum TyDesc = {
-        first_param: **u8,
         size: uint,
         align: uint
         // Remaining fields not listed

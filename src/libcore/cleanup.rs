@@ -80,8 +80,8 @@ pub unsafe fn annihilate() {
     let mut box: *mut BoxRepr = transmute(copy box);
     while box != mut_null() {
         debug!("making box immortal: %x", box as uint);
-        (*box).ref_count = 0x77777777;
-        box = transmute(copy (*box).next);
+        (*box).header.ref_count = 0x77777777;
+        box = transmute(copy (*box).header.next);
     }
 
     // Pass 2: Drop all boxes.
@@ -89,11 +89,11 @@ pub unsafe fn annihilate() {
     let mut box: *mut BoxRepr = transmute(copy box);
     while box != mut_null() {
         debug!("calling drop glue for box: %x", box as uint);
-        let tydesc: *TypeDesc = transmute(copy (*box).type_desc);
+        let tydesc: *TypeDesc = transmute(copy (*box).header.type_desc);
         let drop_glue: DropGlue = transmute(((*tydesc).drop_glue, 0));
         drop_glue(to_unsafe_ptr(&tydesc), transmute(&(*box).data));
 
-        box = transmute(copy (*box).next);
+        box = transmute(copy (*box).header.next);
     }
 
     // Pass 3: Free all boxes.
@@ -101,7 +101,7 @@ pub unsafe fn annihilate() {
         let box = (*task).boxed_region.live_allocs;
         if box == null() { break; }
         let mut box: *mut BoxRepr = transmute(copy box);
-        assert (*box).prev == null();
+        assert (*box).header.prev == null();
 
         debug!("freeing box: %x", box as uint);
         rt_free(transmute(box));

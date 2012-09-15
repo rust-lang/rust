@@ -63,6 +63,7 @@ export unit;
 export uniq;
 export repr;
 export cleanup;
+export reflect;
 
 // NDM seems to be necessary for resolve to work
 export option_iter;
@@ -230,6 +231,7 @@ mod mutable;
 mod flate;
 mod repr;
 mod cleanup;
+mod reflect;
 
 // Modules supporting compiler-generated code
 // Exported but not part of the public interface

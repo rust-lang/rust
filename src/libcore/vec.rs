@@ -169,7 +169,7 @@ fn reserve_at_least<T>(&v: ~[const T], n: uint) {
 pure fn capacity<T>(&&v: ~[const T]) -> uint {
     unsafe {
         let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-        (**repr).alloc / sys::size_of::<T>()
+        (**repr).unboxed.alloc / sys::size_of::<T>()
     }
 }
 
@@ -565,8 +565,8 @@ fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
 fn push<T>(&v: ~[const T], +initval: T) {
     unsafe {
         let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-        let fill = (**repr).fill;
-        if (**repr).alloc > fill {
+        let fill = (**repr).unboxed.fill;
+        if (**repr).unboxed.alloc > fill {
             push_fast(v, move initval);
         }
         else {
@@ -579,9 +579,9 @@ fn push<T>(&v: ~[const T], +initval: T) {
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(&v: ~[const T], +initval: T) {
     let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-    let fill = (**repr).fill;
-    (**repr).fill += sys::size_of::<T>();
-    let p = ptr::addr_of((**repr).data);
+    let fill = (**repr).unboxed.fill;
+    (**repr).unboxed.fill += sys::size_of::<T>();
+    let p = ptr::addr_of((**repr).unboxed.data);
     let p = ptr::offset(p, fill) as *mut T;
     rusti::move_val_init(*p, move initval);
 }
@@ -1787,13 +1787,19 @@ impl<T: Copy> &[T]: ImmutableCopyableVector<T> {
 /// Unsafe operations
 mod raw {
     // FIXME: This should have crate visibility (#1893 blocks that)
-    /// The internal representation of a vector
-    type VecRepr = {
-        box_header: (uint, uint, uint, uint),
+
+    /// The internal representation of a (boxed) vector
+    struct VecRepr {
+        box_header: box::raw::BoxHeaderRepr,
+        unboxed: UnboxedVecRepr
+    }
+
+    /// The internal 'unboxed' representation of a vector
+    struct UnboxedVecRepr {
         mut fill: uint,
         mut alloc: uint,
         data: u8
-    };
+    }
 
     type SliceRepr = {
         mut data: *u8,
@@ -1827,7 +1833,7 @@ mod raw {
     #[inline(always)]
     unsafe fn set_len<T>(&&v: ~[const T], new_len: uint) {
         let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-        (**repr).fill = new_len * sys::size_of::<T>();
+        (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
     /**
