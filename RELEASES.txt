@@ -1,3 +1,51 @@
+Version 0.4 (September 2012)
+
+   * ~1500 changes
+
+   * Syntax
+      * All keywords are now strict and may not be used as identifiers anywhere
+      * Keyword removal: 'again', 'import', 'check', 'new', 'owned', 'send',
+        'of', 'with', 'to', 'class'.
+      * Classes are replaced with simpler structs
+      * Method self types
+      * `ret` became `return` and `alt` became `match`
+
+   * Semantics
+      * Trait implementations are now coherent, ala Haskell typeclasses
+      * Borrowed pointers are much more mature and recommended for use
+      * Strings and vectors in the static region are stored in constant memory
+      * Typestate was removed
+      * Resolution is rewritten to be more reliable
+      * Support for 'dual-mode' data structures (freezing and thawing)
+      * Last-use analysis is only used for warnings now. Moves must be explicit
+        for lvalues (TODO: confirm)
+
+   * Libraries
+      * Most binary operators can now be overloaded via the traits in
+        `core::ops'
+      * `std::net::url` for representing URLs
+      * Sendable hash maps in `core::send_map`
+      * `core::task' gained a (currently very unsafe) task-local storage API
+
+   * Concurrency
+      * An effecient new intertask communication primitive called `core::pipes`
+      * `std::arc`, an atomically reference counted, immutable, shared memory
+        type
+      * `std::sync`, various exotic synchronization tools based on arcs and pipes
+      * Futures are now based on pipes and sendable
+      * More robust linked task failure
+      * Improved task builder API
+
+   * Other
+      * Improved error reporting
+      * Preliminary JIT support
+      * Preliminary work on precise GC
+      * Extensive architectural improvements to rustc
+      * Begun a transition away from buggy C++-based reflection (shape) code to
+        Rust-based (visitor) code
+      * Hash functions improved across the codebase (TODO: need details)
+      * New lint checks (TODO: which?)
+
 Version 0.3  (July 2012)
 ------------------------
 
