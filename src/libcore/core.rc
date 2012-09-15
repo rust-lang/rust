@@ -38,7 +38,7 @@ export int, i8, i16, i32, i64;
 export uint, u8, u16, u32, u64;
 export float, f32, f64;
 export box, char, str, ptr, vec, at_vec, bool;
-export either, option, result, iter;
+export either, option, reflect, result, iter;
 export gc, io, libc, os, run, rand, sys, unsafe, logging;
 export comm, task, future, pipes;
 export extfmt;
@@ -187,6 +187,7 @@ mod option_iter {
     #[path = "option.rs"]
     mod inst;
 }
+mod reflect;
 mod result;
 mod to_str;
 mod to_bytes;
