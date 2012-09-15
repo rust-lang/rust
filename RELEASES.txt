@@ -9,13 +9,19 @@ Version 0.4 (September 2012)
       * Classes are replaced with simpler structs
       * Method self types
       * `ret` became `return` and `alt` became `match`
+      * `import` is now `use`; `use is now `extern mod`
+      * `extern mod { ... }` is now `extern { ... }`
+      * `use mod` is the recommended way to import modules
+      * `pub` and `priv` replace deprecated export lists
 
    * Semantics
       * Trait implementations are now coherent, ala Haskell typeclasses
+      * Trait methods may be static
+      * Argument modes are deprecated
       * Borrowed pointers are much more mature and recommended for use
       * Strings and vectors in the static region are stored in constant memory
       * Typestate was removed
-      * Resolution is rewritten to be more reliable
+      * Resolution rewritten to be more reliable
       * Support for 'dual-mode' data structures (freezing and thawing)
       * Last-use analysis is only used for warnings now. Moves must be explicit
         for lvalues (TODO: confirm)
@@ -28,7 +34,8 @@ Version 0.4 (September 2012)
       * `core::task' gained a (currently very unsafe) task-local storage API
 
    * Concurrency
-      * An effecient new intertask communication primitive called `core::pipes`
+      * An efficient new intertask communication primitive called the pipe,
+        along with a number of higher-level channel types, in `core::pipes`
       * `std::arc`, an atomically reference counted, immutable, shared memory
         type
       * `std::sync`, various exotic synchronization tools based on arcs and pipes
