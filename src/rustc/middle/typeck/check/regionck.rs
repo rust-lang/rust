@@ -183,16 +183,15 @@ fn visit_expr(expr: @ast::expr, &&rcx: @rcx, v: rvt) {
             // `constrain_auto_ref()` on all exprs.  But that causes a
             // lot of spurious errors because of how the region
             // hierarchy is setup.
-            let tcx = rcx.fcx.tcx();
             if rcx.fcx.ccx.method_map.contains_key(callee.id) {
                 match callee.node {
                     ast::expr_field(base, _, _) => {
                         constrain_auto_ref(rcx, base);
                     }
                     _ => {
-                        tcx.sess.span_bug(
-                            callee.span,
-                            ~"call of method that is not a field");
+                        // This can happen if you have code like
+                        // (x[0])() where `x[0]` is overloaded.  Just
+                        // ignore it.
                     }
                 }
             } else {
