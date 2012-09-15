@@ -1984,6 +1984,7 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         let bcx = top_scope_block(fcx, None);
         let lltop = bcx.llbb;
 
+        // Call main.
         let lloutputarg = llvm::LLVMGetParam(llfdecl, 0 as c_uint);
         let llenvarg = llvm::LLVMGetParam(llfdecl, 1 as c_uint);
         let mut args = ~[lloutputarg, llenvarg];
@@ -1991,10 +1992,14 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
             vec::push(args, llvm::LLVMGetParam(llfdecl, 2 as c_uint));
         }
         Call(bcx, main_llfn, args);
+
+        // Call the box annihilator.
+        let did = bcx.tcx().lang_items.annihilate_fn.get();
+        let bcx = callee::trans_rtcall_or_lang_call(bcx, did, ~[],
+                                                    expr::Ignore);
+
         build_return(bcx);
-
         finish_fn(fcx, lltop);
-
         return llfdecl;
     }
 
