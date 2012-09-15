@@ -71,13 +71,13 @@ struct Task {
 #[lang="annihilate"]
 pub unsafe fn annihilate() {
     use rt::rt_free;
+    use io::WriterUtil;
 
     let task: *Task = transmute(rustrt::rust_get_task());
 
     // Pass 1: Make all boxes immortal.
     let box = (*task).boxed_region.live_allocs;
     let mut box: *mut BoxRepr = transmute(copy box);
-    assert (*box).prev == null();
     while box != mut_null() {
         debug!("making box immortal: %x", box as uint);
         (*box).ref_count = 0x77777777;
@@ -87,7 +87,6 @@ pub unsafe fn annihilate() {
     // Pass 2: Drop all boxes.
     let box = (*task).boxed_region.live_allocs;
     let mut box: *mut BoxRepr = transmute(copy box);
-    assert (*box).prev == null();
     while box != mut_null() {
         debug!("calling drop glue for box: %x", box as uint);
         let tydesc: *TypeDesc = transmute(copy (*box).type_desc);
