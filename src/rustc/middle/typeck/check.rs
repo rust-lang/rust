@@ -488,6 +488,11 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 }
 
 fn check_item(ccx: @crate_ctxt, it: @ast::item) {
+    debug!("check_item(it.id=%d, it.ident=%s)",
+           it.id,
+           ty::item_path_str(ccx.tcx, local_def(it.id)));
+    let _indenter = indenter();
+
     match it.node {
       ast::item_const(_, e) => check_const(ccx, it.span, e, it.id),
       ast::item_enum(enum_definition, _) => {
@@ -2525,6 +2530,9 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
                          span: span,
                          tps: ~[ast::ty_param],
                          ty: ty::t) {
+    debug!("check_bounds_are_used(n_tps=%u, ty=%s)",
+           tps.len(), ty_to_str(ccx.tcx, ty));
+
     // make a vector of booleans initially false, set to true when used
     if tps.len() == 0u { return; }
     let tps_used = vec::to_mut(vec::from_elem(tps.len(), false));
@@ -2534,7 +2542,10 @@ fn check_bounds_are_used(ccx: @crate_ctxt,
         |_r| {},
         |t| {
             match ty::get(t).sty {
-              ty::ty_param({idx, _}) => { tps_used[idx] = true; }
+              ty::ty_param({idx, _}) => {
+                  debug!("Found use of ty param #%u", idx);
+                  tps_used[idx] = true;
+              }
               _ => ()
             }
             true
