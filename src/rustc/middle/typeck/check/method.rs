@@ -758,6 +758,9 @@ impl LookupContext {
     }
 
     fn is_relevant(&self, self_ty: ty::t, candidate: &Candidate) -> bool {
+        debug!("is_relevant(self_ty=%s, candidate=%s)",
+               self.ty_to_str(self_ty), self.cand_to_str(candidate));
+
         self.fcx.can_mk_subty(self_ty, candidate.rcvr_ty).is_ok()
     }
 
@@ -782,7 +785,7 @@ impl LookupContext {
         }
     }
 
-    fn report_candidate(idx: uint, origin: &method_origin) {
+    fn report_candidate(&self, idx: uint, origin: &method_origin) {
         match *origin {
             method_static(impl_did) => {
                 self.report_static_candidate(idx, impl_did)
@@ -796,7 +799,7 @@ impl LookupContext {
         }
     }
 
-    fn report_static_candidate(idx: uint, did: def_id) {
+    fn report_static_candidate(&self, idx: uint, did: def_id) {
         let span = if did.crate == ast::local_crate {
             match self.tcx().items.get(did.node) {
               ast_map::node_method(m, _, _) => m.span,
@@ -812,7 +815,7 @@ impl LookupContext {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn report_param_candidate(idx: uint, did: def_id) {
+    fn report_param_candidate(&self, idx: uint, did: def_id) {
         self.tcx().sess.span_note(
             self.expr.span,
             fmt!("candidate #%u derives from the bound `%s`",
@@ -820,7 +823,7 @@ impl LookupContext {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn report_trait_candidate(idx: uint, did: def_id) {
+    fn report_trait_candidate(&self, idx: uint, did: def_id) {
         self.tcx().sess.span_note(
             self.expr.span,
             fmt!("candidate #%u derives from the type of the receiver, \
@@ -829,23 +832,31 @@ impl LookupContext {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn infcx() -> infer::infer_ctxt {
+    fn infcx(&self) -> infer::infer_ctxt {
         self.fcx.inh.infcx
     }
 
-    fn tcx() -> ty::ctxt {
+    fn tcx(&self) -> ty::ctxt {
         self.fcx.tcx()
     }
 
-    fn ty_to_str(t: ty::t) -> ~str {
+    fn ty_to_str(&self, t: ty::t) -> ~str {
         self.fcx.infcx().ty_to_str(t)
     }
 
-    fn did_to_str(did: def_id) -> ~str {
+    fn cand_to_str(&self, cand: &Candidate) -> ~str {
+        fmt!("Candidate(rcvr_ty=%s, rcvr_substs=%s, self_mode=%?, origin=%?)",
+             self.ty_to_str(cand.rcvr_ty),
+             ty::substs_to_str(self.tcx(), &cand.rcvr_substs),
+             cand.self_mode,
+             cand.origin)
+    }
+
+    fn did_to_str(&self, did: def_id) -> ~str {
         ty::item_path_str(self.tcx(), did)
     }
 
-    fn bug(s: ~str) -> ! {
+    fn bug(&self, s: ~str) -> ! {
         self.tcx().sess.bug(s)
     }
 }

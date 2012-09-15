@@ -338,39 +338,49 @@ impl gather_loan_ctxt {
             };
 
             match result {
-              Ok(pc_ok) => {
-                // we were able guarantee the validity of the ptr,
-                // perhaps by rooting or because it is immutably
-                // rooted.  good.
-                self.bccx.stable_paths += 1;
-              }
-              Ok(pc_if_pure(e)) => {
-                // we are only able to guarantee the validity if
-                // the scope is pure
-                match scope_r {
-                  ty::re_scope(pure_id) => {
-                    // if the scope is some block/expr in the fn,
-                    // then just require that this scope be pure
-                    self.req_maps.pure_map.insert(pure_id, e);
-                    self.bccx.req_pure_paths += 1;
+                Ok(pc_ok) => {
+                    debug!("result of preserve: pc_ok");
 
-                    if self.tcx().sess.borrowck_note_pure() {
-                        self.bccx.span_note(
-                            cmt.span,
-                            fmt!("purity required"));
-                    }
-                  }
-                  _ => {
-                    // otherwise, we can't enforce purity for that
-                    // scope, so give up and report an error
-                    self.bccx.report(e);
-                  }
+                    // we were able guarantee the validity of the ptr,
+                    // perhaps by rooting or because it is immutably
+                    // rooted.  good.
+                    self.bccx.stable_paths += 1;
                 }
-              }
-              Err(e) => {
-                // we cannot guarantee the validity of this pointer
-                self.bccx.report(e);
-              }
+                Ok(pc_if_pure(e)) => {
+                    debug!("result of preserve: %?", pc_if_pure(e));
+
+                    // we are only able to guarantee the validity if
+                    // the scope is pure
+                    match scope_r {
+                        ty::re_scope(pure_id) => {
+                            // if the scope is some block/expr in the
+                            // fn, then just require that this scope
+                            // be pure
+                            self.req_maps.pure_map.insert(pure_id, e);
+                            self.bccx.req_pure_paths += 1;
+
+                            debug!("requiring purity for scope %?",
+                                   scope_r);
+
+                            if self.tcx().sess.borrowck_note_pure() {
+                                self.bccx.span_note(
+                                    cmt.span,
+                                    fmt!("purity required"));
+                            }
+                        }
+                        _ => {
+                            // otherwise, we can't enforce purity for
+                            // that scope, so give up and report an
+                            // error
+                            self.bccx.report(e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    // we cannot guarantee the validity of this pointer
+                    debug!("result of preserve: error");
+                    self.bccx.report(e);
+                }
             }
           }
         }
@@ -386,13 +396,19 @@ impl gather_loan_ctxt {
     // mutable memory.
     fn check_mutbl(req_mutbl: ast::mutability,
                    cmt: cmt) -> bckres<preserve_condition> {
+        debug!("check_mutbl(req_mutbl=%?, cmt.mutbl=%?)",
+               req_mutbl, cmt.mutbl);
+
         if req_mutbl == m_const || req_mutbl == cmt.mutbl {
+            debug!("required is const or they are the same");
             Ok(pc_ok)
         } else {
             let e = {cmt: cmt,
                      code: err_mutbl(req_mutbl)};
             if req_mutbl == m_imm {
                 // you can treat mutable things as imm if you are pure
+                debug!("imm required, must be pure");
+
                 Ok(pc_if_pure(e))
             } else {
                 Err(e)

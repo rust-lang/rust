@@ -583,7 +583,7 @@ impl RegionVarBindings {
     }
 
     fn resolve_var(rid: RegionVid) -> ty::region {
-        debug!("RegionVarBindings: resolve_var(%?)", rid);
+        debug!("RegionVarBindings: resolve_var(%?=%u)", rid, *rid);
         if self.values.is_empty() {
             self.tcx.sess.span_bug(
                 self.var_spans[*rid],
