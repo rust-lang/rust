@@ -16,14 +16,14 @@ trait SendMap<K:Eq Hash, V: Copy> {
     fn clear(&mut self);
     pure fn len(&const self) -> uint;
     pure fn is_empty(&const self) -> bool;
-    fn contains_key(&const self, k: &K) -> bool;
-    fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool);
-    fn each_key_ref(&self, blk: fn(k: &K) -> bool);
-    fn each_value_ref(&self, blk: fn(v: &V) -> bool);
-    fn find(&const self, k: &K) -> Option<V>;
-    fn get(&const self, k: &K) -> V;
-    fn find_ref(&self, k: &K) -> Option<&self/V>;
-    fn get_ref(&self, k: &K) -> &self/V;
+    pure fn contains_key(&const self, k: &K) -> bool;
+    pure fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool);
+    pure fn each_key_ref(&self, blk: fn(k: &K) -> bool);
+    pure fn each_value_ref(&self, blk: fn(v: &V) -> bool);
+    pure fn find(&const self, k: &K) -> Option<V>;
+    pure fn get(&const self, k: &K) -> V;
+    pure fn find_ref(&self, k: &K) -> Option<&self/V>;
+    pure fn get_ref(&self, k: &K) -> &self/V;
 }
 
 /// Open addressing with linear probing.
@@ -267,7 +267,7 @@ mod linear {
             self.len() == 0
         }
 
-        fn contains_key(&const self,
+        pure fn contains_key(&const self,
                         k: &K) -> bool {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(_) => {true}
@@ -275,7 +275,7 @@ mod linear {
             }
         }
 
-        fn find_ref(&self, k: &K) -> Option<&self/V> {
+        pure fn find_ref(&self, k: &K) -> Option<&self/V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
                     match self.buckets[idx] {
@@ -304,14 +304,14 @@ mod linear {
             }
         }
 
-        fn get_ref(&self, k: &K) -> &self/V {
+        pure fn get_ref(&self, k: &K) -> &self/V {
             match self.find_ref(k) {
                 Some(v) => v,
                 None => fail fmt!("No entry found for key: %?", k),
             }
         }
 
-        fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool) {
+        pure fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
                 let mut broke = false;
                 do slot.iter |bucket| {
@@ -323,17 +323,17 @@ mod linear {
             }
         }
 
-        fn each_key_ref(&self, blk: fn(k: &K) -> bool) {
+        pure fn each_key_ref(&self, blk: fn(k: &K) -> bool) {
             self.each_ref(|k, _v| blk(k))
         }
 
-        fn each_value_ref(&self, blk: fn(v: &V) -> bool) {
+        pure fn each_value_ref(&self, blk: fn(v: &V) -> bool) {
             self.each_ref(|_k, v| blk(v))
         }
     }
 
     impl<K:Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
-        fn find(&const self, k: &K) -> Option<V> {
+        pure fn find(&const self, k: &K) -> Option<V> {
             match self.bucket_for_key(self.buckets, k) {
                 FoundEntry(idx) => {
                     // FIXME (#3148): Once we rewrite found_entry, this
@@ -349,7 +349,7 @@ mod linear {
             }
         }
 
-        fn get(&const self, k: &K) -> V {
+        pure fn get(&const self, k: &K) -> V {
             let value = self.find(k);
             if value.is_none() {
                 fail fmt!("No entry found for key: %?", k);
@@ -360,17 +360,17 @@ mod linear {
     }
 
     impl<K: Hash IterBytes Eq Copy, V: Copy> LinearMap<K,V> {
-        fn each(&self, blk: fn(+K,+V) -> bool) {
+        pure fn each(&self, blk: fn(+K,+V) -> bool) {
             self.each_ref(|k,v| blk(copy *k, copy *v));
         }
     }
     impl<K: Hash IterBytes Eq Copy, V> LinearMap<K,V> {
-        fn each_key(&self, blk: fn(+K) -> bool) {
+        pure fn each_key(&self, blk: fn(+K) -> bool) {
             self.each_key_ref(|k| blk(copy *k));
         }
     }
     impl<K: Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
-        fn each_value(&self, blk: fn(+V) -> bool) {
+        pure fn each_value(&self, blk: fn(+V) -> bool) {
             self.each_value_ref(|v| blk(copy *v));
         }
     }
