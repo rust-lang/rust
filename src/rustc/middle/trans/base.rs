@@ -1994,9 +1994,10 @@ fn create_main_wrapper(ccx: @crate_ctxt, sp: span, main_llfn: ValueRef,
         Call(bcx, main_llfn, args);
 
         // Call the box annihilator.
-        let did = bcx.tcx().lang_items.annihilate_fn.get();
-        let bcx = callee::trans_rtcall_or_lang_call(bcx, did, ~[],
-                                                    expr::Ignore);
+        // XXX: Crashes.
+        //let did = bcx.tcx().lang_items.annihilate_fn.get();
+        //let bcx = callee::trans_rtcall_or_lang_call(bcx, did, ~[],
+        //                                            expr::Ignore);
 
         build_return(bcx);
         finish_fn(fcx, lltop);
