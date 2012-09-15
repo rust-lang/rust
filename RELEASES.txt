@@ -1,4 +1,5 @@
 Version 0.4 (September 2012)
+----------------------------
 
    * ~1500 changes, numerous bugfixes
 
