@@ -123,9 +123,9 @@ source on Windows requires some extra steps: please see the [getting
 started][wiki-get-started] page on the Rust wiki.
 
 ~~~~ {.notrust}
-$ wget http://dl.rust-lang.org/dist/rust-0.3.tar.gz
-$ tar -xzf rust-0.3.tar.gz
-$ cd rust-0.3
+$ wget http://dl.rust-lang.org/dist/rust-0.4.tar.gz
+$ tar -xzf rust-0.4.tar.gz
+$ cd rust-0.4
 $ ./configure
 $ make && make install
 ~~~~
@@ -144,7 +144,7 @@ When complete, `make install` will place the following programs into
   * `cargo`, the Rust package manager
 
 [wiki-get-started]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[tarball]: http://dl.rust-lang.org/dist/rust-0.3.tar.gz
+[tarball]: http://dl.rust-lang.org/dist/rust-0.4.tar.gz
 
 ## Compiling your first program
 
