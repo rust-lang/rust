@@ -815,33 +815,33 @@ Enum variants need not have type parameters. This, for example, is
 equivalent to a C enum:
 
 ~~~~
-enum direction {
-    north,
-    east,
-    south,
-    west
+enum Direction {
+    North,
+    East,
+    South,
+    West
 }
 ~~~~
 
-This will define `north`, `east`, `south`, and `west` as constants,
-all of which have type `direction`.
+This will define `North`, `East`, `South`, and `West` as constants,
+all of which have type `Direction`.
 
 When an enum is C-like, that is, when none of the variants have
 parameters, it is possible to explicitly set the discriminator values
 to an integer value:
 
 ~~~~
-enum color {
-  red = 0xff0000,
-  green = 0x00ff00,
-  blue = 0x0000ff
+enum Color {
+  Red = 0xff0000,
+  Green = 0x00ff00,
+  Blue = 0x0000ff
 }
 ~~~~
 
 If an explicit discriminator is not specified for a variant, the value
 defaults to the value of the previous variant plus one. If the first
 variant does not have a discriminator, it defaults to 0. For example,
-the value of `north` is 0, `east` is 1, etc.
+the value of `North` is 0, `East` is 1, etc.
 
 When an enum is C-like the `as` cast operator can be used to get the
 discriminator's value.
@@ -853,21 +853,21 @@ used to define new types in such a way that the new name is not just a
 synonym for an existing type, but its own distinct type. If you say:
 
 ~~~~
-enum gizmo_id = int;
+enum GizmoId = int;
 ~~~~
 
 That is a shorthand for this:
 
 ~~~~
-enum gizmo_id { gizmo_id(int) }
+enum GizmoId { GizmoId(int) }
 ~~~~
 
 Enum types like this can have their content extracted with the
 dereference (`*`) unary operator:
 
 ~~~~
-# enum gizmo_id = int;
-let my_gizmo_id = gizmo_id(10);
+# enum GizmoId = int;
+let my_gizmo_id = GizmoId(10);
 let id_int: int = *my_gizmo_id;
 ~~~~
 
@@ -878,12 +878,12 @@ get at their contents. All variant constructors can be used as
 patterns, as in this definition of `area`:
 
 ~~~~
-# type point = {x: float, y: float};
-# enum shape { circle(point, float), rectangle(point, point) }
-fn area(sh: shape) -> float {
+# type Point = {x: float, y: float};
+# enum Shape { Circle(Point, float), Rectangle(Point, Point) }
+fn area(sh: Shape) -> float {
     match sh {
-        circle(_, size) => float::consts::pi * size * size,
-        rectangle({x, y}, {x: x2, y: y2}) => (x2 - x) * (y2 - y)
+        Circle(_, size) => float::consts::pi * size * size,
+        Rectangle({x, y}, {x: x2, y: y2}) => (x2 - x) * (y2 - y)
     }
 }
 ~~~~
@@ -891,14 +891,14 @@ fn area(sh: shape) -> float {
 Another example, matching nullary enum variants:
 
 ~~~~
-# type point = {x: float, y: float};
-# enum direction { north, east, south, west }
-fn point_from_direction(dir: direction) -> point {
+# type Point = {x: float, y: float};
+# enum Direction { North, East, South, West }
+fn point_from_direction(dir: Direction) -> Point {
     match dir {
-        north => {x:  0f, y:  1f},
-        east  => {x:  1f, y:  0f},
-        south => {x:  0f, y: -1f},
-        west  => {x: -1f, y:  0f}
+        North => {x:  0f, y:  1f},
+        East  => {x:  1f, y:  0f},
+        South => {x:  0f, y: -1f},
+        West  => {x: -1f, y:  0f}
     }
 }
 ~~~~
@@ -1133,18 +1133,18 @@ values of the same type. Like other types in Rust, vectors can be
 stored on the stack, the local heap, or the exchange heap.
 
 ~~~
-enum crayon {
-    almond, antique_brass, apricot,
-    aquamarine, asparagus, atomic_tangerine,
-    banana_mania, beaver, bittersweet
+enum Crayon {
+    Almond, AntiqueBrass, Apricot,
+    Aquamarine, Asparagus, AtomicTangerine,
+    BananaMania, Beaver, Bittersweet
 }
 
 // A stack vector of crayons
-let stack_crayons: &[crayon] = &[almond, antique_brass, apricot];
+let stack_crayons: &[Crayon] = &[Almond, AntiqueBrass, Apricot];
 // A local heap (shared) vector of crayons
-let local_crayons: @[crayon] = @[aquamarine, asparagus, atomic_tangerine];
+let local_crayons: @[Crayon] = @[Aquamarine, Asparagus, AtomicTangerine];
 // An exchange heap (unique) vector of crayons
-let exchange_crayons: ~[crayon] = ~[banana_mania, beaver, bittersweet];
+let exchange_crayons: ~[Crayon] = ~[BananaMania, Beaver, Bittersweet];
 ~~~
 
 > ***Note:*** Until recently Rust only had unique vectors, using the
@@ -1161,15 +1161,15 @@ Vector literals are enclosed in square brackets and dereferencing is
 also done with square brackets (zero-based):
 
 ~~~~
-# enum crayon { almond, antique_brass, apricot,
-#               aquamarine, asparagus, atomic_tangerine,
-#               banana_mania, beaver, bittersweet };
-# fn draw_scene(c: crayon) { }
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
+# fn draw_scene(c: Crayon) { }
 
-let crayons = ~[banana_mania, beaver, bittersweet];
+let crayons = ~[BananaMania, Beaver, Bittersweet];
 match crayons[0] {
-	   bittersweet => draw_scene(crayons[0]),
-       _ => ()
+    Bittersweet => draw_scene(crayons[0]),
+    _ => ()
 }
 ~~~~
 
@@ -1179,23 +1179,23 @@ elements. Mutable vector literals are written `~[mut]` (empty) or `~[mut
 1, 2, 3]` (with elements).
 
 ~~~~
-# enum crayon { almond, antique_brass, apricot,
-#               aquamarine, asparagus, atomic_tangerine,
-#               banana_mania, beaver, bittersweet };
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
 
-let crayons = ~[mut banana_mania, beaver, bittersweet];
-crayons[0] = atomic_tangerine;
+let crayons = ~[mut BananaMania, Beaver, Bittersweet];
+crayons[0] = AtomicTangerine;
 ~~~~
 
 The `+` operator means concatenation when applied to vector types.
 
 ~~~~
-# enum crayon { almond, antique_brass, apricot,
-#               aquamarine, asparagus, atomic_tangerine,
-#               banana_mania, beaver, bittersweet };
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
 
-let my_crayons = ~[almond, antique_brass, apricot];
-let your_crayons = ~[banana_mania, beaver, bittersweet];
+let my_crayons = ~[Almond, AntiqueBrass, Apricot];
+let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 
 let our_crayons = my_crayons + your_crayons;
 ~~~~
@@ -1204,12 +1204,12 @@ The `+=` operator also works as expected, provided the assignee
 lives in a mutable slot.
 
 ~~~~
-# enum crayon { almond, antique_brass, apricot,
-#               aquamarine, asparagus, atomic_tangerine,
-#               banana_mania, beaver, bittersweet };
+# enum Crayon { Almond, AntiqueBrass, Apricot,
+#               Aquamarine, Asparagus, AtomicTangerine,
+#               BananaMania, Beaver, Bittersweet };
 
-let mut my_crayons = ~[almond, antique_brass, apricot];
-let your_crayons = ~[banana_mania, beaver, bittersweet];
+let mut my_crayons = ~[Almond, AntiqueBrass, Apricot];
+let your_crayons = ~[BananaMania, Beaver, Bittersweet];
 
 my_crayons += your_crayons;
 ~~~~
@@ -1223,17 +1223,17 @@ brief look at a few common ones.
 
 ~~~
 # use io::println;
-# enum crayon {
-#     almond, antique_brass, apricot,
-#     aquamarine, asparagus, atomic_tangerine,
-#     banana_mania, beaver, bittersweet
+# enum Crayon {
+#     Almond, AntiqueBrass, Apricot,
+#     Aquamarine, Asparagus, AtomicTangerine,
+#     BananaMania, Beaver, Bittersweet
 # }
-# fn unwrap_crayon(c: crayon) -> int { 0 }
+# fn unwrap_crayon(c: Crayon) -> int { 0 }
 # fn eat_crayon_wax(i: int) { }
-# fn store_crayon_in_nasal_cavity(i: uint, c: crayon) { }
-# fn crayon_to_str(c: crayon) -> ~str { ~"" }
+# fn store_crayon_in_nasal_cavity(i: uint, c: Crayon) { }
+# fn crayon_to_str(c: Crayon) -> ~str { ~"" }
 
-let crayons = ~[almond, antique_brass, apricot];
+let crayons = ~[Almond, AntiqueBrass, Apricot];
 
 // Check the length of the vector
 assert crayons.len() == 3;
@@ -1625,7 +1625,7 @@ For example, we could declare the trait `to_str` for things that
 can be converted to a string, with a single method of the same name:
 
 ~~~~
-trait to_str {
+trait ToStr {
     fn to_str() -> ~str;
 }
 ~~~~
@@ -1637,11 +1637,11 @@ is used. This defines implementations of `to_str` for the `int` and
 `~str` types.
 
 ~~~~
-# trait to_str { fn to_str() -> ~str; }
-impl int: to_str {
+# trait ToStr { fn to_str() -> ~str; }
+impl int: ToStr {
     fn to_str() -> ~str { int::to_str(self, 10u) }
 }
-impl ~str: to_str {
+impl ~str: ToStr {
     fn to_str() -> ~str { self }
 }
 ~~~~
@@ -1662,8 +1662,8 @@ known at compile time, it is possible to specify 'bounds' for type
 parameters.
 
 ~~~~
-# trait to_str { fn to_str() -> ~str; }
-fn comma_sep<T: to_str>(elts: ~[T]) -> ~str {
+# trait ToStr { fn to_str() -> ~str; }
+fn comma_sep<T: ToStr>(elts: ~[T]) -> ~str {
     let mut result = ~"", first = true;
     for elts.each |elt| {
         if first { first = false; }
@@ -1688,11 +1688,11 @@ Traits may contain type parameters. A trait for
 generalized sequence types is:
 
 ~~~~
-trait seq<T> {
+trait Seq<T> {
     fn len() -> uint;
     fn iter(fn(T));
 }
-impl<T> ~[T]: seq<T> {
+impl<T> ~[T]: Seq<T> {
     fn len() -> uint { vec::len(self) }
     fn iter(b: fn(T)) {
         for self.each |elt| { b(elt); }
@@ -1716,11 +1716,11 @@ type parameter. An implementation of the trait for any given type
 trait describes types that support an equality operation:
 
 ~~~~
-trait eq {
+trait Eq {
   fn equals(&&other: self) -> bool;
 }
 
-impl int: eq {
+impl int: Eq {
   fn equals(&&other: int) -> bool { other == self }
 }
 ~~~~
@@ -1735,14 +1735,14 @@ values of *an* unknown type that conforms to a given trait.
 However, consider this function:
 
 ~~~~
-# type circle = int; type rectangle = int;
-# trait drawable { fn draw(); }
-# impl int: drawable { fn draw() {} }
+# type Circle = int; type Rectangle = int;
+# trait Drawable { fn draw(); }
+# impl int: Drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
-fn draw_all<T: drawable>(shapes: ~[T]) {
+fn draw_all<T: Drawable>(shapes: ~[T]) {
     for shapes.each |shape| { shape.draw(); }
 }
-# let c: circle = new_circle();
+# let c: Circle = new_circle();
 # draw_all(~[c]);
 ~~~~
 
@@ -1754,8 +1754,8 @@ When this is needed, a trait name can be used as a type, causing
 the function to be written simply like this:
 
 ~~~~
-# trait drawable { fn draw(); }
-fn draw_all(shapes: ~[drawable]) {
+# trait Drawable { fn draw(); }
+fn draw_all(shapes: ~[Drawable]) {
     for shapes.each |shape| { shape.draw(); }
 }
 ~~~~
@@ -1772,15 +1772,15 @@ To construct such a value, you use the `as` operator to cast a value
 to a trait type:
 
 ~~~~
-# type circle = int; type rectangle = int;
-# trait drawable { fn draw(); }
-# impl int: drawable { fn draw() {} }
+# type Circle = int; type Rectangle = int;
+# trait Drawable { fn draw(); }
+# impl int: Drawable { fn draw() {} }
 # fn new_circle() -> int { 1 }
 # fn new_rectangle() -> int { 2 }
-# fn draw_all(shapes: ~[drawable]) {}
-let c: circle = new_circle();
-let r: rectangle = new_rectangle();
-draw_all(~[c as drawable, r as drawable]);
+# fn draw_all(shapes: ~[Drawable]) {}
+let c: Circle = new_circle();
+let r: Rectangle = new_rectangle();
+draw_all(~[c as Drawable, r as Drawable]);
 ~~~~
 
 This will store the value into a box, along with information about the
@@ -1893,7 +1893,7 @@ It is possible to provide more specific information when using an
 external crate.
 
 ~~~~ {.ignore}
-use myfarm (name = "farm", vers = "2.7");
+extern mod myfarm (name = "farm", vers = "2.7");
 ~~~~
 
 When a comma-separated list of name/value pairs is given after `use`,
@@ -1936,8 +1936,7 @@ fn world() -> ~str { ~"world" }
 
 ~~~~ {.ignore}
 // main.rs
-extern mod std;
-use mylib;
+extern mod mylib;
 fn main() { io::println(~"hello " + mylib::world()); }
 ~~~~
 
@@ -1984,9 +1983,9 @@ restricted with `export` directives at the top of the module or file.
 ~~~~
 mod enc {
     export encrypt, decrypt;
-    const super_secret_number: int = 10;
-    fn encrypt(n: int) -> int { n + super_secret_number }
-    fn decrypt(n: int) -> int { n - super_secret_number }
+    const SUPER_SECRET_NUMBER: int = 10;
+    fn encrypt(n: int) -> int { n + SUPER_SECRET_NUMBER }
+    fn decrypt(n: int) -> int { n - SUPER_SECRET_NUMBER }
 }
 ~~~~
 
@@ -2012,8 +2011,7 @@ fn main() {
 
 You don't want to write things like that, but it *is* very practical
 to not have to worry about name clashes between types, values, and
-modules. This allows us to have a module `core::str`, for example, even
-though `str` is a built-in type name.
+modules.
 
 ## Resolution
 
@@ -2027,10 +2025,10 @@ Identifiers can shadow each other. In this program, `x` is of type
 `int`:
 
 ~~~~
-type t = ~str;
+type MyType = ~str;
 fn main() {
-    type t = int;
-    let x: t;
+    type MyType = int;
+    let x: MyType;
 }
 ~~~~
 
@@ -2038,18 +2036,22 @@ An `use` directive will only import into the namespaces for which
 identifiers are actually found. Consider this example:
 
 ~~~~
-type bar = uint;
 mod foo { fn bar() {} }
-mod baz {
-    use foo::bar;
-    const x: bar = 20u;
+fn baz() {
+    let bar = 10u;
+
+    {
+        use foo::bar;
+        let quux = bar;
+    }
 }
 ~~~~
 
-When resolving the type name `bar` in the `const` definition, the
-resolver will first look at the module context for `baz`. This has an
-import named `bar`, but that's a function, not a type, So it continues
-to the top level and finds a type named `bar` defined there.
+When resolving the type name `bar` in the `quux` definition, the
+resolver will first look at local block context for `baz`. This has an
+import named `bar`, but that's function, not a value, So it continues
+to the `baz` function context and finds a value named `bar` defined
+there.
 
 Normally, multiple definitions of the same identifier in a scope are
 disallowed. Local variables defined with `let` are an exception to
