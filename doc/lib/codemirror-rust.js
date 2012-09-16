@@ -2,14 +2,14 @@ CodeMirror.defineMode("rust", function() {
   var indentUnit = 4, altIndentUnit = 2;
   var valKeywords = {
     "if": "if-style", "while": "if-style", "loop": "if-style", "else": "else-style",
-    "do": "else-style", "ret": "else-style", "fail": "else-style",
+    "do": "else-style", "return": "else-style", "fail": "else-style",
     "break": "atom", "cont": "atom", "const": "let", "resource": "fn",
-    "let": "let", "fn": "fn", "for": "for", "alt": "alt", "trait": "trait",
+    "let": "let", "fn": "fn", "for": "for", "match": "match", "trait": "trait",
     "impl": "impl", "type": "type", "enum": "enum", "class": "atom", "mod": "mod",
     "as": "op", "true": "atom", "false": "atom", "assert": "op", "check": "op",
     "claim": "op", "extern": "ignore", "unsafe": "ignore", "import": "else-style",
-    "export": "else-style", "copy": "op", "log": "op", "log_err": "op",
-    "use": "op", "bind": "op", "self": "atom", "new": "atom"
+    "export": "else-style", "copy": "op", "log": "op",
+    "use": "op", "self": "atom"
   };
   var typeKeywords = function() {
     var keywords = {"fn": "fn"};
@@ -197,7 +197,7 @@ CodeMirror.defineMode("rust", function() {
     if (type == "if-style") return cont(expression, expression);
     if (type == "else-style" || type == "op") return cont(expression);
     if (type == "for") return cont(pattern, maybetype, inop, expression, expression);
-    if (type == "alt") return cont(expression, altbody);
+    if (type == "match") return cont(expression, altbody);
     if (type == "fn") return cont(fndef);
     if (type == "macro") return cont(macro);
     return cont();
@@ -346,7 +346,7 @@ CodeMirror.defineMode("rust", function() {
     else return pass();
   }
   function altbody(type) {
-    if (type == "{") return cont(pushlex("}", "alt"), altblock1, poplex);
+    if (type == "{") return cont(pushlex("}", "match"), altblock1, poplex);
     return pass();
   }
   function altblock1(type) {
@@ -357,7 +357,7 @@ CodeMirror.defineMode("rust", function() {
     return pass(pattern, altblock2);
   }
   function altblock2(type) {
-    if (type == "{") return cont(pushlex("}", "alt"), block, poplex, altblock1);
+    if (type == "{") return cont(pushlex("}", "match"), block, poplex, altblock1);
     else return pass(altblock1);
   }
 
@@ -422,7 +422,7 @@ CodeMirror.defineMode("rust", function() {
           type = lexical.type, closing = firstChar == type;
       if (type == "stat") return lexical.indented + indentUnit;
       if (lexical.align) return lexical.column + (closing ? 0 : 1);
-      return lexical.indented + (closing ? 0 : (lexical.info == "alt" ? altIndentUnit : indentUnit));
+      return lexical.indented + (closing ? 0 : (lexical.info == "match" ? altIndentUnit : indentUnit));
     },
 
     electricChars: "{}"
