@@ -500,7 +500,8 @@ fn test_repr2() {
 enum EnumVisitState {
     PreVariant,     // We're before the variant we're interested in.
     InVariant,      // We're inside the variant we're interested in.
-    PostVariant     // We're after the variant we're interested in.
+    PostVariant,    // We're after the variant we're interested in.
+    Newtype         // This is a newtyped enum.
 }
 
 impl EnumVisitState : cmp::Eq {
@@ -859,13 +860,14 @@ impl ReprPrinterWrapper : TyVisitor {
 
     // Enums
 
-    fn visit_enter_enum(_n_variants: uint, sz: uint, align: uint) -> bool {
+    fn visit_enter_enum(n_variants: uint, sz: uint, align: uint) -> bool {
         unsafe {
             self.printer.align(align);
 
             // Write in the location of the end of this enum.
             let end_ptr = transmute(self.printer.ptr as uint + sz);
-            let new_state = EnumState { end_ptr: end_ptr, state: PreVariant };
+            let state = if n_variants == 1 { Newtype } else { PreVariant };
+            let new_state = EnumState { end_ptr: end_ptr, state: state };
             self.printer.enum_stack.push(new_state);
 
             true
@@ -889,6 +891,9 @@ impl ReprPrinterWrapper : TyVisitor {
                         stack.set_elt(stack.len() - 1, enum_state);
                     }
                 }
+                Newtype => {
+                    self.printer.writer.write_str(name);
+                }
                 InVariant | PostVariant => {}
             }
             true
@@ -896,14 +901,17 @@ impl ReprPrinterWrapper : TyVisitor {
     }
 
     fn visit_enum_variant_field(i: uint, inner: *TyDesc) -> bool {
-        if self.printer.enum_stack.last().state == InVariant {
-            if i == 0 {
-                self.printer.writer.write_char('(');
-            } else {
-                self.printer.writer.write_str(", ");
-            }
+        match self.printer.enum_stack.last().state {
+            InVariant | Newtype => {
+                if i == 0 {
+                    self.printer.writer.write_char('(');
+                } else {
+                    self.printer.writer.write_str(", ");
+                }
 
-            intrinsic::visit_tydesc(inner, self as @TyVisitor);
+                intrinsic::visit_tydesc(inner, self as @TyVisitor);
+            }
+            PreVariant | PostVariant => {}
         }
         true
     }
@@ -919,6 +927,9 @@ impl ReprPrinterWrapper : TyVisitor {
                 if n_fields >= 1 { self.printer.writer.write_char(')'); }
                 enum_state.state = PostVariant;
                 stack.set_elt(stack.len() - 1, enum_state);
+            }
+            Newtype => {
+                if n_fields >= 1 { self.printer.writer.write_char(')'); }
             }
             PreVariant | PostVariant => {}
         }
