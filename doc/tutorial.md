@@ -1010,10 +1010,6 @@ uniquely-owned boxes allocated on the exchange heap, and `&T`, for
 borrowed pointers, which may point to any memory, and whose lifetimes
 are governed by the call stack.
 
-Rust also has an unsafe pointer, written `*T`, which is a completely
-unchecked pointer type only used in unsafe code (and thus, in typical
-Rust code, very rarely).
-
 All pointer types can be dereferenced with the `*` unary operator.
 
 ## Shared boxes
