@@ -28,9 +28,9 @@ fn as_hex(data: ~[u8]) -> ~str {
 
 fn sha1(data: ~str) -> ~str unsafe {
     let bytes = str::to_bytes(data);
-    let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
+    let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
                             vec::len(bytes) as c_uint, ptr::null());
-    return as_hex(vec::unsafe::from_buf(hash, 20u));
+    return as_hex(vec::raw::from_buf(hash, 20u));
 }
 
 fn main(args: ~[~str]) {
@@ -128,9 +128,9 @@ The `sha1` function is the most obscure part of the program.
 fn sha1(data: ~str) -> ~str {
     unsafe {
         let bytes = str::to_bytes(data);
-        let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
+        let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
                                 vec::len(bytes), ptr::null());
-        return as_hex(vec::unsafe::from_buf(hash, 20u));
+        return as_hex(vec::raw::from_buf(hash, 20u));
     }
 }
 ~~~~
@@ -171,15 +171,15 @@ Let's look at our `sha1` function again.
 # fn x(data: ~str) -> ~str {
 # unsafe {
 let bytes = str::to_bytes(data);
-let hash = crypto::SHA1(vec::unsafe::to_ptr(bytes),
+let hash = crypto::SHA1(vec::raw::to_ptr(bytes),
                         vec::len(bytes), ptr::null());
-return as_hex(vec::unsafe::from_buf(hash, 20u));
+return as_hex(vec::raw::from_buf(hash, 20u));
 # }
 # }
 ~~~~
 
 The `str::to_bytes` function is perfectly safe: it converts a string to
-a `[u8]`. This byte array is then fed to `vec::unsafe::to_ptr`, which
+a `[u8]`. This byte array is then fed to `vec::raw::to_ptr`, which
 returns an unsafe pointer to its contents.
 
 This pointer will become invalid as soon as the vector it points into
@@ -193,7 +193,7 @@ unsafe null pointer of the correct type (Rust generics are awesome
 like that—they can take the right form depending on the type that they
 are expected to return).
 
-Finally, `vec::unsafe::from_buf` builds up a new `[u8]` from the
+Finally, `vec::raw::from_buf` builds up a new `[u8]` from the
 unsafe pointer that was returned by `SHA1`. SHA1 digests are always
 twenty bytes long, so we can pass `20u` for the length of the new
 vector.

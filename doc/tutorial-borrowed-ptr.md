@@ -40,6 +40,7 @@ example, in this code, each of these three local variables contains a
 point, but allocated in a different place:
 
 ~~~
+# type point = {x: float, y: float};
 let on_the_stack : point  =  {x: 3.0, y: 4.0};
 let shared_box   : @point = @{x: 5.0, y: 1.0};
 let unique_box   : ~point = ~{x: 7.0, y: 9.0};
@@ -58,6 +59,8 @@ define a function that takes the points by pointer. We can use
 borrowed pointers to do this:
 
 ~~~
+# type point = {x: float, y: float};
+# fn sqrt(f: float) -> float { 0f }
 fn compute_distance(p1: &point, p2: &point) -> float {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
@@ -67,7 +70,12 @@ fn compute_distance(p1: &point, p2: &point) -> float {
 
 Now we can call `compute_distance()` in various ways:
 
-~~~
+~~~ {.xfail-test}
+# type point = {x: float, y: float};
+# let on_the_stack : point  =  {x: 3.0, y: 4.0};
+# let shared_box   : @point = @{x: 5.0, y: 1.0};
+# let unique_box   : ~point = ~{x: 7.0, y: 9.0};
+# fn compute_distance(p1: &point, p2: &point) -> float { 0f }
 compute_distance(&on_the_stack, shared_box)
 compute_distance(shared_box, unique_box)
 ~~~
@@ -100,6 +108,7 @@ it again.
 In the previous example, the value `on_the_stack` was defined like so:
 
 ~~~
+# type point = {x: float, y: float};
 let on_the_stack : point = {x: 3.0, y: 4.0};
 ~~~
 
@@ -109,6 +118,7 @@ pointer. Sometimes however it is more convenient to move the &
 operator into the definition of `on_the_stack`:
 
 ~~~
+# type point = {x: float, y: float};
 let on_the_stack2 : &point = &{x: 3.0, y: 4.0};
 ~~~
 
@@ -116,6 +126,7 @@ Applying `&` to an rvalue (non-assignable location) is just a convenient
 shorthand for creating a temporary and taking its address:
 
 ~~~
+# type point = {x: float, y: float};
 let tmp = {x: 3.0, y: 4.0};
 let on_the_stack2 : &point = &tmp;
 ~~~
@@ -144,7 +155,14 @@ let rect_unique = ~{origin: {x: 5, y: 6}, size: {w: 3, h: 4}};
 In each case I can use the `&` operator to extact out individual
 subcomponents. For example, I could write:
 
-~~~
+~~~ {.xfail-test}
+# type point = {x: float, y: float};
+# type size = {w: float, h: float}; // as before
+# type rectangle = {origin: point, size: size};
+# let rect_stack  = &{origin: {x: 1, y: 2}, size: {w: 3, h: 4}};
+# let rect_shared = @{origin: {x: 3, y: 4}, size: {w: 3, h: 4}};
+# let rect_unique = ~{origin: {x: 5, y: 6}, size: {w: 3, h: 4}};
+# fn compute_distance(p1: &point, p2: &point) -> float { 0f }
 compute_distance(&rect_stack.origin, &rect_shared.origin);
 ~~~
 
@@ -238,14 +256,16 @@ mean that the unique box is stored in immutable memory. For example,
 the following function is legal:
 
 ~~~
+# fn some_condition() -> bool { true }
 fn example3() -> int {
     let mut x = ~{f: 3};
-    if some_condition {
+    if some_condition() {
         let y = &x.f;      // -+ L
-        ret *y;            //  |
+        return *y;         //  |
     }                      // -+
     x = ~{f: 4};
     ...
+# return 0;
 }
 ~~~
 
@@ -261,7 +281,7 @@ _as soon as their owning reference is changed or goes out of
 scope_. Therefore, a program like this is illegal (and would be
 rejected by the compiler):
 
-~~~
+~~~ {.xfail-test}
 fn example3() -> int {
     let mut x = ~{f: 3};
     let y = &x.f;
@@ -308,7 +328,7 @@ frame_. So we could modify the previous example to introduce
 additional unique pointers and records, and the compiler will still be
 able to detect possible mutations:
 
-~~~
+~~~ {.xfail-test}
 fn example3() -> int {
     let mut x = ~{mut f: ~{g: 3}};
     let y = &x.f.g;
@@ -326,8 +346,8 @@ Things get tricker when the unique box is not uniquely owned by the
 stack frame (or when the compiler doesn’t know who the owner
 is). Consider a program like this:
 
-~~~
-fn example5a(x: @{mut f: ~{g: int}}, ...) -> int {
+~~~ {.xfail-test}
+fn example5a(x: @{mut f: ~{g: int}} ...) -> int {
     let y = &x.f.g;   // Error reported here.
     ...
 }
@@ -359,9 +379,10 @@ unique found in aliasable memory is to ensure that it is stored within
 unique fields, as in the following example:
 
 ~~~
-fn example5b(x: @{f: ~{g: int}}, ...) -> int {
+fn example5b(x: @{f: ~{g: int}}) -> int {
     let y = &x.f.g;
     ...
+# return 0;
 }
 ~~~
 
@@ -373,13 +394,15 @@ If you do have a unique box in a mutable field, and you wish to borrow
 it, one option is to use the swap operator to bring that unique box
 onto your stack:
 
-~~~
-fn example5c(x: @{mut f: ~int}, ...) -> int {
+~~~ {.xfail-test}
+fn example5c(x: @{mut f: ~int}) -> int {
     let mut v = ~0;
     v <-> x.f;         // Swap v and x.f
     let y = &v;
     ...
     x.f <- v;          // Replace x.f
+    ...
+# return 0;
 }
 ~~~
 
@@ -412,8 +435,15 @@ function takes a borrowed pointer to a shape to avoid the need of
 copying them.
 
 ~~~
+# type point = {x: float, y: float}; // as before
+# type size = {w: float, h: float}; // as before
+# enum shape {
+#     circle(point, float),   // origin, radius
+#     rectangle(point, size)  // upper-left, dimensions
+# }
+# const tau: float = 6.28f;
 fn compute_area(shape: &shape) -> float {
-    alt *shape {
+    match *shape {
         circle(_, radius) => 0.5 * tau * radius * radius,
         rectangle(_, ref size) => size.w * size.h
     }
@@ -502,7 +532,7 @@ but as we’ll see this is more limited.
 
 For example, we could write a subroutine like this:
 
-~~~
+~~~ {.xfail-test}
 type point = {x: float, y: float};
 fn get_x(p: &point) -> &float { &p.x }
 ~~~
@@ -535,7 +565,7 @@ the compiler is satisfied with the function `get_x()`.
 To drill in this point, let’s look at a variation on the example, this
 time one which does not compile:
 
-~~~
+~~~ {.xfail-test}
 type point = {x: float, y: float};
 fn get_x_sh(p: @point) -> &float {
     &p.x // Error reported here
@@ -574,7 +604,14 @@ pointer. However, sometimes if a function takes many parameters, it is
 useful to be able to group those parameters by lifetime. For example,
 consider this function:
 
-~~~
+~~~ {.xfail-test}
+# type point = {x: float, y: float}; // as before
+# type size = {w: float, h: float}; // as before
+# enum shape {
+#     circle(point, float),   // origin, radius
+#     rectangle(point, size)  // upper-left, dimensions
+# }
+# fn compute_area(shape: &shape) -> float { 0f }
 fn select<T>(shape: &shape, threshold: float,
              a: &T, b: &T) -> &T {
     if compute_area(shape) > threshold {a} else {b}
@@ -588,7 +625,19 @@ lifetime of the returned value will be the intersection of the
 lifetime of the three region parameters. This may be overloy
 conservative, as in this example:
 
-~~~
+~~~ {.xfail-test}
+# type point = {x: float, y: float}; // as before
+# type size = {w: float, h: float}; // as before
+# enum shape {
+#     circle(point, float),   // origin, radius
+#     rectangle(point, size)  // upper-left, dimensions
+# }
+# fn compute_area(shape: &shape) -> float { 0f }
+# fn select<T>(shape: &shape, threshold: float,
+#              a: &T, b: &T) -> &T {
+#     if compute_area(shape) > threshold {a} else {b}
+# }
+
                                               // -+ L
 fn select_based_on_unit_circle<T>(            //  |-+ B
     threshold: float, a: &T, b: &T) -> &T {   //  | |
@@ -618,7 +667,14 @@ second lifetime parameter for the function; named lifetime parameters
 do not need to be declared, you just use them. Here is how the new
 `select()` might look:
 
-~~~
+~~~ {.xfail-test}
+# type point = {x: float, y: float}; // as before
+# type size = {w: float, h: float}; // as before
+# enum shape {
+#     circle(point, float),   // origin, radius
+#     rectangle(point, size)  // upper-left, dimensions
+# }
+# fn compute_area(shape: &shape) -> float { 0f }
 fn select<T>(shape: &tmp/shape, threshold: float,
              a: &T, b: &T) -> &T {
     if compute_area(shape) > threshold {a} else {b}
@@ -632,7 +688,14 @@ lifetime parameter.
 You could also write `select()` using all named lifetime parameters,
 which might look like:
 
-~~~
+~~~ {.xfail-test}
+# type point = {x: float, y: float}; // as before
+# type size = {w: float, h: float}; // as before
+# enum shape {
+#     circle(point, float),   // origin, radius
+#     rectangle(point, size)  // upper-left, dimensions
+# }
+# fn compute_area(shape: &shape) -> float { 0f }
 fn select<T>(shape: &tmp/shape, threshold: float,
              a: &r/T, b: &r/T) -> &r/T {
     if compute_area(shape) > threshold {a} else {b}
@@ -658,7 +721,7 @@ a unique box found in an aliasable, mutable location, only now we’ve
 replaced the `...` with some specific code:
 
 ~~~
-fn example5a(x: @{mut f: ~{g: int}}, ...) -> int {
+fn example5a(x: @{mut f: ~{g: int}} ...) -> int {
     let y = &x.f.g;   // Unsafe
     *y + 1        
 }
@@ -676,8 +739,9 @@ fn add_one(x: &int) -> int { *x + 1 }
 
 We can now update `example5a()` to use `add_one()`:
 
-~~~
-fn example5a(x: @{mut f: ~{g: int}}, ...) -> int {
+~~~ {.xfail-test}
+# fn add_one(x: &int) -> int { *x + 1 }
+fn example5a(x: @{mut f: ~{g: int}} ...) -> int {
     let y = &x.f.g;
     add_one(y)        // Error reported here
 }

@@ -47,7 +47,11 @@ while cur < len(lines):
             if re.match("~~~", line):
                 break
             else:
-                block += re.sub("^# ", "", line)
+                # Lines beginning with '# ' are turned into valid code
+                line = re.sub("^# ", "", line)
+                # Allow elipses in code snippets
+                line = re.sub("\.\.\.", "/*...*/", line)
+                block += line
         if not ignore:
             if not re.search(r"\bfn main\b", block):
                 block = "fn main() {\n" + block + "\n}\n"
