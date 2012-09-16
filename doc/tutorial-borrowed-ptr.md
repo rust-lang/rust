@@ -70,14 +70,14 @@ fn compute_distance(p1: &point, p2: &point) -> float {
 
 Now we can call `compute_distance()` in various ways:
 
-~~~ {.xfail-test}
+~~~
 # type point = {x: float, y: float};
 # let on_the_stack : point  =  {x: 3.0, y: 4.0};
 # let shared_box   : @point = @{x: 5.0, y: 1.0};
 # let unique_box   : ~point = ~{x: 7.0, y: 9.0};
 # fn compute_distance(p1: &point, p2: &point) -> float { 0f }
-compute_distance(&on_the_stack, shared_box)
-compute_distance(shared_box, unique_box)
+compute_distance(&on_the_stack, shared_box);
+compute_distance(shared_box, unique_box);
 ~~~
 
 Here the `&` operator is used to take the address of the variable
@@ -147,21 +147,21 @@ type rectangle = {origin: point, size: size};
 Now again I can define rectangles in a few different ways:
 
 ~~~
-let rect_stack  = &{origin: {x: 1, y: 2}, size: {w: 3, h: 4}};
-let rect_shared = @{origin: {x: 3, y: 4}, size: {w: 3, h: 4}};
-let rect_unique = ~{origin: {x: 5, y: 6}, size: {w: 3, h: 4}};
+let rect_stack  = &{origin: {x: 1f, y: 2f}, size: {w: 3f, h: 4f}};
+let rect_shared = @{origin: {x: 3f, y: 4f}, size: {w: 3f, h: 4f}};
+let rect_unique = ~{origin: {x: 5f, y: 6f}, size: {w: 3f, h: 4f}};
 ~~~
 
 In each case I can use the `&` operator to extact out individual
 subcomponents. For example, I could write:
 
-~~~ {.xfail-test}
+~~~
 # type point = {x: float, y: float};
 # type size = {w: float, h: float}; // as before
 # type rectangle = {origin: point, size: size};
-# let rect_stack  = &{origin: {x: 1, y: 2}, size: {w: 3, h: 4}};
-# let rect_shared = @{origin: {x: 3, y: 4}, size: {w: 3, h: 4}};
-# let rect_unique = ~{origin: {x: 5, y: 6}, size: {w: 3, h: 4}};
+# let rect_stack  = &{origin: {x: 1f, y: 2f}, size: {w: 3f, h: 4f}};
+# let rect_shared = @{origin: {x: 3f, y: 4f}, size: {w: 3f, h: 4f}};
+# let rect_unique = ~{origin: {x: 5f, y: 6f}, size: {w: 3f, h: 4f}};
 # fn compute_distance(p1: &point, p2: &point) -> float { 0f }
 compute_distance(&rect_stack.origin, &rect_shared.origin);
 ~~~
