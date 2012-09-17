@@ -49,7 +49,10 @@ candidates in the same way.
 If find no matching candidate at all, we proceed to auto-deref the
 receiver type and search again.  We keep doing that until we cannot
 auto-deref any longer.  At that point, we will attempt an auto-ref.
-If THAT fails, method lookup fails altogether.
+If THAT fails, method lookup fails altogether.  Autoref itself comes
+in two varieties, autoslice and autoptr.  The former converts `~[]` to
+`&[]` and the latter converts any type `T` to `&mut T`, `&const T`, or
+`&T`.
 
 ## Why two phases?
 
@@ -513,19 +516,83 @@ impl LookupContext {
         }
     }
 
-    fn search_for_appr_autorefd_method(
+    fn search_for_any_autorefd_method(
         &self,
         self_ty: ty::t,
         autoderefs: uint)
         -> Option<method_map_entry>
     {
+        /*!
+         *
+         * Attempts both auto-slice and auto-ptr, as appropriate.
+         */
+
         let tcx = self.tcx();
 
-        // Next, try auto-ref. The precise kind of auto-ref depends on
-        // the fully deref'd receiver type.  In particular, we must
-        // treat dynamically sized types like `str`, `[]` or `fn`
-        // differently than other types because they cannot be fully
-        // deref'd, unlike say @T.
+        match self.search_for_autosliced_method(self_ty, autoderefs) {
+            Some(mme) => { return mme; }
+            None => {}
+        }
+
+        match self.search_for_autoptrd_method(self_ty, autoderefs) {
+            Some(mme) => { return mme; }
+            None => {}
+        }
+
+        return None;
+    }
+
+    fn search_for_autosliced_method(
+        &self,
+        self_ty: ty::t,
+        autoderefs: uint)
+        -> Option<method_map_entry>
+    {
+        /*!
+         *
+         * Searches for a candidate by converting things like
+         * `~[]` to `&[]`. */
+
+        match ty::get(self_ty).sty {
+            ty_evec(mt, vstore_box) |
+            ty_evec(mt, vstore_uniq) |
+            ty_evec(mt, vstore_fixed(_)) => {
+                self.search_for_some_kind_of_autorefd_method(
+                    AutoSlice, autoderefs, [m_const, m_imm, m_mutbl],
+                    |m,r| ty::mk_evec(tcx,
+                                      {ty:mt.ty, mutbl:m},
+                                      vstore_slice(r)))
+            }
+
+            ty_estr(vstore_box) |
+            ty_estr(vstore_uniq) |
+            ty_estr(vstore_fixed(_)) => {
+                self.search_for_some_kind_of_autorefd_method(
+                    AutoSlice, autoderefs, [m_imm],
+                    |_m,r| ty::mk_estr(tcx, vstore_slice(r)))
+            }
+
+            ty_trait(*) | ty_fn(*) => {
+                // NDM---eventually these should be some variant of autoref
+                None
+            }
+
+            _ => None
+        }
+    }
+
+    fn search_for_autoptrd_method(
+        &self,
+        self_ty: ty::t,
+        autoderefs: uint)
+        -> Option<method_map_entry>
+    {
+        /*!
+         *
+         * Converts any type `T` to `&M T` where `M` is an
+         * appropriate mutability.
+         */
+
         match ty::get(self_ty).sty {
             ty_box(*) | ty_uniq(*) | ty_rptr(*) => {
                 // we should be fully autoderef'd
@@ -538,38 +605,11 @@ impl LookupContext {
             ty_self | ty_param(*) | ty_nil | ty_bot | ty_bool |
             ty_int(*) | ty_uint(*) |
             ty_float(*) | ty_enum(*) | ty_ptr(*) | ty_rec(*) |
-            ty_class(*) | ty_tup(*) => {
-                return self.search_for_autorefd_method(
-                    AutoPtr, autoderefs, [m_const, m_imm, m_mutbl],
-                    |m,r| ty::mk_rptr(tcx, r, {ty:self_ty, mutbl:m}));
-            }
-
+            ty_class(*) | ty_tup(*) | ty_estr(*) | ty_evec(*) |
             ty_trait(*) | ty_fn(*) => {
-                // NDM---eventually these should be some variant of autoref
-                return None;
-            }
-
-            ty_estr(vstore_slice(_)) |
-            ty_evec(_, vstore_slice(_)) => {
-                return None;
-            }
-
-            ty_evec(mt, vstore_box) |
-            ty_evec(mt, vstore_uniq) |
-            ty_evec(mt, vstore_fixed(_)) => {
-                return self.search_for_autorefd_method(
-                    AutoSlice, autoderefs, [m_const, m_imm, m_mutbl],
-                    |m,r| ty::mk_evec(tcx,
-                                      {ty:mt.ty, mutbl:m},
-                                      vstore_slice(r)));
-            }
-
-            ty_estr(vstore_box) |
-            ty_estr(vstore_uniq) |
-            ty_estr(vstore_fixed(_)) => {
-                return self.search_for_autorefd_method(
-                    AutoSlice, autoderefs, [m_imm],
-                    |_m,r| ty::mk_estr(tcx, vstore_slice(r)));
+                self.search_for_some_kind_of_autorefd_method(
+                    AutoPtr, autoderefs, [m_const, m_imm, m_mutbl],
+                    |m,r| ty::mk_rptr(tcx, r, {ty:self_ty, mutbl:m}))
             }
 
             ty_opaque_closure_ptr(_) | ty_unboxed_vec(_) |
@@ -580,7 +620,7 @@ impl LookupContext {
         }
     }
 
-    fn search_for_autorefd_method(
+    fn search_for_some_kind_of_autorefd_method(
         &self,
         kind: AutoRefKind,
         autoderefs: uint,
