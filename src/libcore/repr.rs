@@ -501,7 +501,7 @@ enum EnumVisitState {
     PreVariant,     // We're before the variant we're interested in.
     InVariant,      // We're inside the variant we're interested in.
     PostVariant,    // We're after the variant we're interested in.
-    Newtype         // This is a newtyped enum.
+    Degenerate      // This is a degenerate enum (exactly 1 variant)
 }
 
 impl EnumVisitState : cmp::Eq {
@@ -866,7 +866,7 @@ impl ReprPrinterWrapper : TyVisitor {
 
             // Write in the location of the end of this enum.
             let end_ptr = transmute(self.printer.ptr as uint + sz);
-            let state = if n_variants == 1 { Newtype } else { PreVariant };
+            let state = if n_variants == 1 { Degenerate } else { PreVariant };
             let new_state = EnumState { end_ptr: end_ptr, state: state };
             self.printer.enum_stack.push(new_state);
 
@@ -891,7 +891,7 @@ impl ReprPrinterWrapper : TyVisitor {
                         stack.set_elt(stack.len() - 1, enum_state);
                     }
                 }
-                Newtype => {
+                Degenerate => {
                     self.printer.writer.write_str(name);
                 }
                 InVariant | PostVariant => {}
@@ -902,7 +902,7 @@ impl ReprPrinterWrapper : TyVisitor {
 
     fn visit_enum_variant_field(i: uint, inner: *TyDesc) -> bool {
         match self.printer.enum_stack.last().state {
-            InVariant | Newtype => {
+            InVariant | Degenerate => {
                 if i == 0 {
                     self.printer.writer.write_char('(');
                 } else {
@@ -928,7 +928,7 @@ impl ReprPrinterWrapper : TyVisitor {
                 enum_state.state = PostVariant;
                 stack.set_elt(stack.len() - 1, enum_state);
             }
-            Newtype => {
+            Degenerate => {
                 if n_fields >= 1 { self.printer.writer.write_char(')'); }
             }
             PreVariant | PostVariant => {}
