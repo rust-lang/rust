@@ -45,12 +45,13 @@ fn enc_ty(w: io::Writer, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
         let result_str = match cx.tcx.short_names_cache.find(t) {
-          Some(s) => *s,
-          None => {
-            let buf = io::mem_buffer();
-            enc_sty(io::mem_buffer_writer(buf), cx, ty::get(t).sty);
-            cx.tcx.short_names_cache.insert(t, @io::mem_buffer_str(buf));
-            io::mem_buffer_str(buf)
+            Some(s) => *s,
+            None => {
+                let s = do io::with_str_writer |wr| {
+                    enc_sty(wr, cx, ty::get(t).sty);
+                };
+                cx.tcx.short_names_cache.insert(t, @s);
+                s
           }
         };
         w.write_str(result_str);

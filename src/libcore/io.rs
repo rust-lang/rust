@@ -670,9 +670,12 @@ fn stderr() -> Writer { fd_writer(libc::STDERR_FILENO as c_int, false) }
 fn print(s: &str) { stdout().write_str(s); }
 fn println(s: &str) { stdout().write_line(s); }
 
-type MemBuffer = @{buf: DVec<u8>, mut pos: uint};
+struct BytesWriter {
+    buf: DVec<u8>,
+    mut pos: uint,
+}
 
-impl MemBuffer: Writer {
+impl @BytesWriter: Writer {
     fn write(v: &[const u8]) {
         do self.buf.swap |buf| {
             let mut buf <- buf;
@@ -701,27 +704,24 @@ impl MemBuffer: Writer {
     fn get_type() -> WriterType { File }
 }
 
-fn mem_buffer() -> MemBuffer {
-    @{buf: DVec(), mut pos: 0u}
+fn BytesWriter() -> @BytesWriter {
+    @BytesWriter { buf: DVec(), mut pos: 0u }
 }
-fn mem_buffer_writer(b: MemBuffer) -> Writer { b as Writer }
-fn mem_buffer_buf(b: MemBuffer) -> ~[u8] { b.buf.get() }
-fn mem_buffer_str(b: MemBuffer) -> ~str {
-    str::from_bytes(b.buf.get())
+
+fn with_bytes_writer(f: fn(Writer)) -> ~[u8] {
+    let wr = BytesWriter();
+    f(wr as Writer);
+    wr.buf.check_out(|buf| buf)
 }
 
 fn with_str_writer(f: fn(Writer)) -> ~str {
-    let buf = mem_buffer();
-    let wr = mem_buffer_writer(buf);
-    f(wr);
-    io::mem_buffer_str(buf)
-}
+    let mut v = with_bytes_writer(f);
 
-fn with_buf_writer(f: fn(Writer)) -> ~[u8] {
-    let buf = mem_buffer();
-    let wr = mem_buffer_writer(buf);
-    f(wr);
-    io::mem_buffer_buf(buf)
+    // Make sure the vector has a trailing null and is proper utf8.
+    vec::push(v, 0);
+    assert str::is_utf8(v);
+
+    unsafe { move ::unsafe::transmute(v) }
 }
 
 // Utility functions
@@ -946,18 +946,18 @@ mod tests {
     }
 
     #[test]
-    fn mem_buffer_overwrite() {
-        let mbuf = mem_buffer();
-        mbuf.write(~[0u8, 1u8, 2u8, 3u8]);
-        assert mem_buffer_buf(mbuf) == ~[0u8, 1u8, 2u8, 3u8];
-        mbuf.seek(-2, SeekCur);
-        mbuf.write(~[4u8, 5u8, 6u8, 7u8]);
-        assert mem_buffer_buf(mbuf) == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8];
-        mbuf.seek(-2, SeekEnd);
-        mbuf.write(~[8u8]);
-        mbuf.seek(1, SeekSet);
-        mbuf.write(~[9u8]);
-        assert mem_buffer_buf(mbuf) == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8];
+    fn bytes_buffer_overwrite() {
+        let wr = BytesWriter();
+        wr.write(~[0u8, 1u8, 2u8, 3u8]);
+        assert wr.buf.borrow(|buf| buf == ~[0u8, 1u8, 2u8, 3u8]);
+        wr.seek(-2, SeekCur);
+        wr.write(~[4u8, 5u8, 6u8, 7u8]);
+        assert wr.buf.borrow(|buf| buf == ~[0u8, 1u8, 4u8, 5u8, 6u8, 7u8]);
+        wr.seek(-2, SeekEnd);
+        wr.write(~[8u8]);
+        wr.seek(1, SeekSet);
+        wr.write(~[9u8]);
+        assert wr.buf.borrow(|buf| buf == ~[0u8, 9u8, 4u8, 5u8, 8u8, 7u8]);
     }
 }
 

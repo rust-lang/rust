@@ -233,36 +233,33 @@ fn print_failures(st: ConsoleTestState) {
 
 #[test]
 fn should_sort_failures_before_printing_them() {
-    let buffer = io::mem_buffer();
-    let writer = io::mem_buffer_writer(buffer);
+    let s = do io::with_str_writer |wr| {
+        let test_a = {
+            name: ~"a",
+            testfn: fn~() { },
+            ignore: false,
+            should_fail: false
+        };
 
-    let test_a = {
-        name: ~"a",
-        testfn: fn~() { },
-        ignore: false,
-        should_fail: false
+        let test_b = {
+            name: ~"b",
+            testfn: fn~() { },
+            ignore: false,
+            should_fail: false
+        };
+
+        let st =
+            @{out: wr,
+              log_out: option::None,
+              use_color: false,
+              mut total: 0u,
+              mut passed: 0u,
+              mut failed: 0u,
+              mut ignored: 0u,
+              mut failures: ~[test_b, test_a]};
+
+        print_failures(st);
     };
-
-    let test_b = {
-        name: ~"b",
-        testfn: fn~() { },
-        ignore: false,
-        should_fail: false
-    };
-
-    let st =
-        @{out: writer,
-          log_out: option::None,
-          use_color: false,
-          mut total: 0u,
-          mut passed: 0u,
-          mut failed: 0u,
-          mut ignored: 0u,
-          mut failures: ~[test_b, test_a]};
-
-    print_failures(st);
-
-    let s = io::mem_buffer_str(buffer);
 
     let apos = option::get(str::find_str(s, ~"a"));
     let bpos = option::get(str::find_str(s, ~"b"));
