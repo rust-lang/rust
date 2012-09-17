@@ -25,7 +25,12 @@ struct Env { priv opaque: () }
 struct AllocHeader { priv opaque: () }
 struct MemoryRegion { priv opaque: () }
 
-// XXX: i386
+#[cfg(target_arch="x86")]
+struct Registers {
+    data: [u32 * 13]
+}
+
+#[cfg(target_arch="x86_64")]
 struct Registers {
     data: [u64 * 22]
 }
