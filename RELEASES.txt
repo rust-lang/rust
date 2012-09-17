@@ -14,6 +14,7 @@ Version 0.4 (September 2012)
       * `extern mod { ... }` is now `extern { ... }`
       * `use mod` is the recommended way to import modules
       * `pub` and `priv` replace deprecated export lists
+      * The syntax of `match` pattern arms now uses fat arrow (=>)
 
    * Semantics
       * Trait implementations are now coherent, ala Haskell typeclasses
