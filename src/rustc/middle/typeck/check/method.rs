@@ -168,8 +168,8 @@ impl LookupContext {
                     // around newtype enums.  They can be further
                     // deref'd, but they may also have intrinsic
                     // methods hanging off of them with interior type.
-                    match self.search_for_appr_autorefd_method(self_ty,
-                                                               autoderefs) {
+                    match self.search_for_any_autorefd_method(self_ty,
+                                                              autoderefs) {
                         Some(move mme) => { return Some(mme); }
                         None => {}
                     }
@@ -186,7 +186,7 @@ impl LookupContext {
             }
         }
 
-        self.search_for_appr_autorefd_method(self_ty, autoderefs)
+        self.search_for_any_autorefd_method(self_ty, autoderefs)
     }
 
     fn deref(ty: ty::t, enum_dids: &DVec<ast::def_id>) -> Option<ty::t> {
@@ -527,15 +527,13 @@ impl LookupContext {
          * Attempts both auto-slice and auto-ptr, as appropriate.
          */
 
-        let tcx = self.tcx();
-
         match self.search_for_autosliced_method(self_ty, autoderefs) {
-            Some(mme) => { return mme; }
+            Some(move mme) => { return Some(move mme); }
             None => {}
         }
 
         match self.search_for_autoptrd_method(self_ty, autoderefs) {
-            Some(mme) => { return mme; }
+            Some(move mme) => { return Some(move mme); }
             None => {}
         }
 
@@ -553,6 +551,7 @@ impl LookupContext {
          * Searches for a candidate by converting things like
          * `~[]` to `&[]`. */
 
+        let tcx = self.tcx();
         match ty::get(self_ty).sty {
             ty_evec(mt, vstore_box) |
             ty_evec(mt, vstore_uniq) |
@@ -593,6 +592,7 @@ impl LookupContext {
          * appropriate mutability.
          */
 
+        let tcx = self.tcx();
         match ty::get(self_ty).sty {
             ty_box(*) | ty_uniq(*) | ty_rptr(*) => {
                 // we should be fully autoderef'd
