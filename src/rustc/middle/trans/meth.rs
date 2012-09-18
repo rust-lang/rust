@@ -8,7 +8,7 @@ use syntax::{ast, ast_map};
 use ast_map::{path, path_mod, path_name, node_id_to_str};
 use syntax::ast_util::local_def;
 use metadata::csearch;
-use back::abi;
+use back::{link, abi};
 use lib::llvm::llvm;
 use lib::llvm::{ValueRef, TypeRef};
 use lib::llvm::llvm::LLVMGetParam;

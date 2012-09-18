@@ -165,7 +165,7 @@ fn trans_log(log_ex: @ast::expr,
     let global = if ccx.module_data.contains_key(modname) {
         ccx.module_data.get(modname)
     } else {
-        let s = linkage::mangle_internal_name_by_path_and_seq(
+        let s = link::mangle_internal_name_by_path_and_seq(
             ccx, modpath, ~"loglevel");
         let global = str::as_c_str(s, |buf| {
             llvm::LLVMAddGlobal(ccx.llmod, T_i32(), buf)
