@@ -23,6 +23,7 @@ rust_scheduler::rust_scheduler(rust_kernel *kernel,
     id(id)
 {
     // Create the first thread
+    scoped_lock with(lock);
     threads.push(create_task_thread(0));
 }
 
@@ -34,6 +35,7 @@ void rust_scheduler::delete_this() {
 
 rust_sched_launcher *
 rust_scheduler::create_task_thread(int id) {
+    lock.must_have_lock();
     live_threads++;
     rust_sched_launcher *thread = launchfac->create(this, id, killed);
     KLOG(kernel, kern, "created task thread: " PTR
@@ -50,6 +52,7 @@ rust_scheduler::destroy_task_thread(rust_sched_launcher *thread) {
 
 void
 rust_scheduler::destroy_task_threads() {
+    scoped_lock with(lock);
     for(size_t i = 0; i < threads.size(); ++i) {
         destroy_task_thread(threads[i]);
     }
@@ -58,6 +61,7 @@ rust_scheduler::destroy_task_threads() {
 void
 rust_scheduler::start_task_threads()
 {
+    scoped_lock with(lock);
     for(size_t i = 0; i < threads.size(); ++i) {
         rust_sched_launcher *thread = threads[i];
         thread->start();
@@ -67,6 +71,7 @@ rust_scheduler::start_task_threads()
 void
 rust_scheduler::join_task_threads()
 {
+    scoped_lock with(lock);
     for(size_t i = 0; i < threads.size(); ++i) {
         rust_sched_launcher *thread = threads[i];
         thread->join();
@@ -75,8 +80,16 @@ rust_scheduler::join_task_threads()
 
 void
 rust_scheduler::kill_all_tasks() {
-    for(size_t i = 0; i < threads.size(); ++i) {
-        rust_sched_launcher *thread = threads[i];
+    array_list<rust_sched_launcher *> copied_threads;
+    {
+        scoped_lock with(lock);
+        killed = true;
+        for (size_t i = 0; i < threads.size(); ++i) {
+            copied_threads.push(threads[i]);
+        }
+    }
+    for(size_t i = 0; i < copied_threads.size(); ++i) {
+        rust_sched_launcher *thread = copied_threads[i];
         thread->get_loop()->kill_all_tasks();
     }
 }
@@ -88,26 +101,16 @@ rust_scheduler::create_task(rust_task *spawner, const char *name) {
         scoped_lock with(lock);
         live_tasks++;
 
-        // Find unoccupied thread
-        for (thread_no = 0; thread_no < threads.size(); ++thread_no) {
-            if (threads[thread_no]->get_loop()->number_of_live_tasks() == 0)
-                break;
+        if (cur_thread < threads.size()) {
+            thread_no = cur_thread;
+        } else {
+            assert(threads.size() < max_num_threads);
+            thread_no = threads.size();
+            rust_sched_launcher *thread = create_task_thread(thread_no);
+            thread->start();
+            threads.push(thread);
         }
-
-        if (thread_no == threads.size()) {
-            if (threads.size() < max_num_threads) {
-                // Else create new thread
-                thread_no = threads.size();
-                rust_sched_launcher *thread = create_task_thread(thread_no);
-                thread->start();
-                threads.push(thread);
-            } else {
-                // Or use round robin allocation
-                thread_no = cur_thread++;
-                if (cur_thread >= max_num_threads)
-                    cur_thread = 0;
-            }
-        }
+        cur_thread = (thread_no + 1) % max_num_threads;
     }
     KLOG(kernel, kern, "Creating task %s, on thread %d.", name, thread_no);
     kernel->register_task();
@@ -135,6 +138,12 @@ void
 rust_scheduler::exit() {
     // Take a copy of the number of threads. After the last thread exits this
     // scheduler will get destroyed, and our fields will cease to exist.
+    //
+    // This is also the reason we can't use the lock here (as in the other
+    // cases when accessing `threads`), after the loop the lock won't exist
+    // anymore. This is safe because this method is only called when all the
+    // task are dead, so there is no chance of a task trying to create new
+    // threads.
     size_t current_num_threads = threads.size();
     for(size_t i = 0; i < current_num_threads; ++i) {
         threads[i]->get_loop()->exit();
@@ -148,6 +157,7 @@ rust_scheduler::max_number_of_threads() {
 
 size_t
 rust_scheduler::number_of_threads() {
+    scoped_lock with(lock);
     return threads.size();
 }
 

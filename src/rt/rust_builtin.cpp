@@ -627,13 +627,13 @@ start_task(rust_task *target, fn_env_pair *f) {
 }
 
 extern "C" CDECL size_t
-rust_sched_threads() {
+rust_sched_current_nonlazy_threads() {
     rust_task *task = rust_get_current_task();
     return task->sched->number_of_threads();
 }
 
 extern "C" CDECL size_t
-rust_max_sched_threads() {
+rust_sched_threads() {
     rust_task *task = rust_get_current_task();
     return task->sched->max_number_of_threads();
 }

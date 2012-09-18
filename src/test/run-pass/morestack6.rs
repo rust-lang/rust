@@ -8,7 +8,7 @@ extern mod rustrt {
     fn last_os_error() -> ~str;
     fn rust_getcwd() -> ~str;
     fn get_task_id() -> libc::intptr_t;
-    fn rust_max_sched_threads();
+    fn rust_sched_threads();
     fn rust_get_task();
 }
 
@@ -16,7 +16,7 @@ fn calllink01() { rustrt::rust_get_sched_id(); }
 fn calllink02() { rustrt::last_os_error(); }
 fn calllink03() { rustrt::rust_getcwd(); }
 fn calllink08() { rustrt::get_task_id(); }
-fn calllink09() { rustrt::rust_max_sched_threads(); }
+fn calllink09() { rustrt::rust_sched_threads(); }
 fn calllink10() { rustrt::rust_get_task(); }
 
 fn runtest(f: fn~(), frame_backoff: u32) {
