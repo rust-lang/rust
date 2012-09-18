@@ -141,7 +141,7 @@ priv impl<T> DList<T> {
     // Link two nodes together. If either of them are 'none', also sets
     // the head and/or tail pointers appropriately.
     #[inline(always)]
-    fn link(+before: DListLink<T>, +after: DListLink<T>) {
+    fn link_nodes(+before: DListLink<T>, +after: DListLink<T>) {
         match before {
             Some(neighbour) => neighbour.next = after,
             None            => self.hd        = after
@@ -155,7 +155,7 @@ priv impl<T> DList<T> {
     fn unlink(nobe: DListNode<T>) {
         self.assert_mine(nobe);
         assert self.size > 0;
-        self.link(nobe.prev, nobe.next);
+        self.link_nodes(nobe.prev, nobe.next);
         nobe.prev = None; // Release extraneous references.
         nobe.next = None;
         nobe.linked = false;
@@ -163,27 +163,27 @@ priv impl<T> DList<T> {
     }
 
     fn add_head(+nobe: DListLink<T>) {
-        self.link(nobe, self.hd); // Might set tail too.
+        self.link_nodes(nobe, self.hd); // Might set tail too.
         self.hd = nobe;
         self.size += 1;
     }
     fn add_tail(+nobe: DListLink<T>) {
-        self.link(self.tl, nobe); // Might set head too.
+        self.link_nodes(self.tl, nobe); // Might set head too.
         self.tl = nobe;
         self.size += 1;
     }
     fn insert_left(nobe: DListLink<T>, neighbour: DListNode<T>) {
         self.assert_mine(neighbour);
         assert self.size > 0;
-        self.link(neighbour.prev, nobe);
-        self.link(nobe, Some(neighbour));
+        self.link_nodes(neighbour.prev, nobe);
+        self.link_nodes(nobe, Some(neighbour));
         self.size += 1;
     }
     fn insert_right(neighbour: DListNode<T>, nobe: DListLink<T>) {
         self.assert_mine(neighbour);
         assert self.size > 0;
-        self.link(nobe, neighbour.next);
-        self.link(Some(neighbour), nobe);
+        self.link_nodes(nobe, neighbour.next);
+        self.link_nodes(Some(neighbour), nobe);
         self.size += 1;
     }
 }
@@ -315,7 +315,7 @@ impl<T> DList<T> {
             fail ~"Cannot append a dlist to itself!"
         }
         if them.len() > 0 {
-            self.link(self.tl, them.hd);
+            self.link_nodes(self.tl, them.hd);
             self.tl    = them.tl;
             self.size += them.size;
             them.size  = 0;
@@ -332,7 +332,7 @@ impl<T> DList<T> {
             fail ~"Cannot prepend a dlist to itself!"
         }
         if them.len() > 0 {
-            self.link(them.tl, self.hd);
+            self.link_nodes(them.tl, self.hd);
             self.hd    = them.hd;
             self.size += them.size;
             them.size  = 0;
@@ -366,11 +366,11 @@ impl<T> DList<T> {
 
     /// Iterate over nodes.
     pure fn each_node(f: fn(DListNode<T>) -> bool) {
-        let mut link = self.peek_n();
-        while link.is_some() {
-            let nobe = link.get();
+        let mut link_node = self.peek_n();
+        while link_node.is_some() {
+            let nobe = link_node.get();
             if !f(nobe) { break; }
-            link = nobe.next_link();
+            link_node = nobe.next_link();
         }
     }
 
@@ -381,10 +381,10 @@ impl<T> DList<T> {
         }
         // iterate forwards
         let mut count = 0;
-        let mut link = self.peek_n();
-        let mut rabbit = link;
-        while option::is_some(link) {
-            let nobe = option::get(link);
+        let mut link_node = self.peek_n();
+        let mut rabbit = link_node;
+        while option::is_some(link_node) {
+            let nobe = option::get(link_node);
             assert nobe.linked;
             // check cycle
             if option::is_some(rabbit) { rabbit = option::get(rabbit).next; }
@@ -393,15 +393,15 @@ impl<T> DList<T> {
                 assert !box::ptr_eq(*option::get(rabbit), *nobe);
             }
             // advance
-            link = nobe.next_link();
+            link_node = nobe.next_link();
             count += 1;
         }
         assert count == self.len();
         // iterate backwards - some of this is probably redundant.
-        link = self.peek_tail_n();
-        rabbit = link;
-        while option::is_some(link) {
-            let nobe = option::get(link);
+        link_node = self.peek_tail_n();
+        rabbit = link_node;
+        while option::is_some(link_node) {
+            let nobe = option::get(link_node);
             assert nobe.linked;
             // check cycle
             if option::is_some(rabbit) { rabbit = option::get(rabbit).prev; }
@@ -410,7 +410,7 @@ impl<T> DList<T> {
                 assert !box::ptr_eq(*option::get(rabbit), *nobe);
             }
             // advance
-            link = nobe.prev_link();
+            link_node = nobe.prev_link();
             count -= 1;
         }
         assert count == 0;

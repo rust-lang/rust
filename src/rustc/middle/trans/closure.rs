@@ -10,7 +10,7 @@ use type_of::*;
 use back::abi;
 use syntax::codemap::span;
 use syntax::print::pprust::expr_to_str;
-use back::link::{
+use back::linkage::{
     mangle_internal_name_by_path,
     mangle_internal_name_by_path_and_seq};
 use util::ppaux::ty_to_str;

@@ -10,7 +10,7 @@ use lib::llvm::{ llvm, TypeRef, ValueRef, Integer, Pointer, Float, Double,
     StructRetAttribute, ByValAttribute,
     SequentiallyConsistent, Acquire, Release, Xchg };
 use syntax::{ast, ast_util};
-use back::{link, abi};
+use back::{linkage, abi};
 use common::*;
 use build::*;
 use base::*;
@@ -1007,7 +1007,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
                      id: ast::node_id) -> ValueRef {
         let _icx = ccx.insn_ctxt("foreign::foreign::build_rust_fn");
         let t = ty::node_id_to_type(ccx.tcx, id);
-        let ps = link::mangle_internal_name_by_path(
+        let ps = linkage::mangle_internal_name_by_path(
             ccx, vec::append_one(path, ast_map::path_name(
                 syntax::parse::token::special_idents::clownshoe_abi
             )));
@@ -1046,7 +1046,7 @@ fn trans_foreign_fn(ccx: @crate_ctxt, path: ast_map::path, decl: ast::fn_decl,
             // is wired directly into the return slot in the shim struct
         }
 
-        let shim_name = link::mangle_internal_name_by_path(
+        let shim_name = linkage::mangle_internal_name_by_path(
             ccx, vec::append_one(path, ast_map::path_name(
                 syntax::parse::token::special_idents::clownshoe_stack_shim
             )));
