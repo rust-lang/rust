@@ -129,6 +129,8 @@ mod ext {
     #[legacy_exports]
     mod auto_serialize;
     #[legacy_exports]
+    mod auto_serialize2;
+    #[legacy_exports]
     mod source_util;
 
     mod pipes {
