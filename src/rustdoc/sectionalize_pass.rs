@@ -1,18 +1,18 @@
 //! Breaks rustdocs into sections according to their headers
 
-use doc::item_utils;
+use doc::ItemUtils;
 
 export mk_pass;
 
-fn mk_pass() -> pass {
+fn mk_pass() -> Pass {
     {
         name: ~"sectionalize",
         f: run
     }
 }
 
-fn run(_srv: astsrv::srv, doc: doc::doc) -> doc::doc {
-    let fold = fold::fold({
+fn run(_srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
+    let fold = fold::Fold({
         fold_item: fold_item,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
@@ -21,7 +21,7 @@ fn run(_srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     fold.fold_doc(fold, doc)
 }
 
-fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
+fn fold_item(fold: fold::Fold<()>, doc: doc::ItemDoc) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
     let (desc, sections) = sectionalize(doc.desc);
 
@@ -32,7 +32,7 @@ fn fold_item(fold: fold::fold<()>, doc: doc::itemdoc) -> doc::itemdoc {
     }
 }
 
-fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
+fn fold_trait(fold: fold::Fold<()>, doc: doc::TraitDoc) -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
@@ -49,7 +49,7 @@ fn fold_trait(fold: fold::fold<()>, doc: doc::traitdoc) -> doc::traitdoc {
     }
 }
 
-fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
+fn fold_impl(fold: fold::Fold<()>, doc: doc::ImplDoc) -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {
@@ -66,7 +66,7 @@ fn fold_impl(fold: fold::fold<()>, doc: doc::impldoc) -> doc::impldoc {
     }
 }
 
-fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::section]) {
+fn sectionalize(desc: Option<~str>) -> (Option<~str>, ~[doc::Section]) {
 
     /*!
      * Take a description of the form
@@ -227,7 +227,7 @@ fn should_sectionalize_impl_methods() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: ~str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);

@@ -1,27 +1,27 @@
 //! Generic pass for performing an operation on all descriptions
 
-use doc::item_utils;
+use doc::ItemUtils;
 
 export mk_pass;
 
-fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> pass {
+fn mk_pass(name: ~str, +op: fn~(~str) -> ~str) -> Pass {
     {
         name: name,
-        f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
+        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
             run(srv, doc, op)
         }
     }
 }
 
-type op = fn~(~str) -> ~str;
+type Op = fn~(~str) -> ~str;
 
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
-    _srv: astsrv::srv,
-    doc: doc::doc,
-    op: op
-) -> doc::doc {
-    let fold = fold::fold({
+    _srv: astsrv::Srv,
+    doc: doc::Doc,
+    op: Op
+) -> doc::Doc {
+    let fold = fold::Fold({
         fold_item: fold_item,
         fold_enum: fold_enum,
         fold_trait: fold_trait,
@@ -31,11 +31,11 @@ fn run(
     fold.fold_doc(fold, doc)
 }
 
-fn maybe_apply_op(op: op, s: Option<~str>) -> Option<~str> {
+fn maybe_apply_op(op: Op, s: Option<~str>) -> Option<~str> {
     option::map(s, |s| op(s) )
 }
 
-fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
+fn fold_item(fold: fold::Fold<Op>, doc: doc::ItemDoc) -> doc::ItemDoc {
     let doc = fold::default_seq_fold_item(fold, doc);
 
     {
@@ -46,14 +46,14 @@ fn fold_item(fold: fold::fold<op>, doc: doc::itemdoc) -> doc::itemdoc {
     }
 }
 
-fn apply_to_sections(op: op, sections: ~[doc::section]) -> ~[doc::section] {
+fn apply_to_sections(op: Op, sections: ~[doc::Section]) -> ~[doc::Section] {
     par::map(sections, |section, copy op| {
         header: op(section.header),
         body: op(section.body)
     })
 }
 
-fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
+fn fold_enum(fold: fold::Fold<Op>, doc: doc::EnumDoc) -> doc::EnumDoc {
     let doc = fold::default_seq_fold_enum(fold, doc);
 
     {
@@ -67,7 +67,7 @@ fn fold_enum(fold: fold::fold<op>, doc: doc::enumdoc) -> doc::enumdoc {
     }
 }
 
-fn fold_trait(fold: fold::fold<op>, doc: doc::traitdoc) -> doc::traitdoc {
+fn fold_trait(fold: fold::Fold<Op>, doc: doc::TraitDoc) -> doc::TraitDoc {
     let doc = fold::default_seq_fold_trait(fold, doc);
 
     {
@@ -76,7 +76,7 @@ fn fold_trait(fold: fold::fold<op>, doc: doc::traitdoc) -> doc::traitdoc {
     }
 }
 
-fn apply_to_methods(op: op, docs: ~[doc::methoddoc]) -> ~[doc::methoddoc] {
+fn apply_to_methods(op: Op, docs: ~[doc::MethodDoc]) -> ~[doc::MethodDoc] {
     do par::map(docs) |doc, copy op| {
         {
             brief: maybe_apply_op(op, doc.brief),
@@ -87,7 +87,7 @@ fn apply_to_methods(op: op, docs: ~[doc::methoddoc]) -> ~[doc::methoddoc] {
     }
 }
 
-fn fold_impl(fold: fold::fold<op>, doc: doc::impldoc) -> doc::impldoc {
+fn fold_impl(fold: fold::Fold<Op>, doc: doc::ImplDoc) -> doc::ImplDoc {
     let doc = fold::default_seq_fold_impl(fold, doc);
 
     {
@@ -252,7 +252,7 @@ fn should_execute_on_impl_method_section_bodies() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: ~str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);

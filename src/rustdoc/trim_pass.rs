@@ -5,11 +5,11 @@
  * is interpreted as the brief description.
  */
 
-use doc::item_utils;
+use doc::ItemUtils;
 
 export mk_pass;
 
-fn mk_pass() -> pass {
+fn mk_pass() -> Pass {
     text_pass::mk_pass(~"trim", |s| str::trim(s) )
 }
 
@@ -22,7 +22,7 @@ fn should_trim_text() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: ~str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             let doc = attr_pass::mk_pass().f(srv, doc);

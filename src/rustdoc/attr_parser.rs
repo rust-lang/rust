@@ -9,11 +9,11 @@ use syntax::ast;
 use syntax::attr;
 use core::tuple;
 
-export crate_attrs;
+export CrateAttrs;
 export parse_crate, parse_desc;
 export parse_hidden;
 
-type crate_attrs = {
+type CrateAttrs = {
     name: Option<~str>
 };
 
@@ -59,7 +59,7 @@ fn doc_meta(
     }
 }
 
-fn parse_crate(attrs: ~[ast::attribute]) -> crate_attrs {
+fn parse_crate(attrs: ~[ast::attribute]) -> CrateAttrs {
     let link_metas = attr::find_linkage_metas(attrs);
 
     {

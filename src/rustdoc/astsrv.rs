@@ -21,53 +21,53 @@ use rustc::back::link;
 use rustc::metadata::filesearch;
 use rustc::front;
 
-export ctxt;
-export ctxt_handler;
-export srv;
+export Ctxt;
+export CtxtHandler;
+export Srv;
 export from_str;
 export from_file;
 export exec;
 
-type ctxt = {
+type Ctxt = {
     ast: @ast::crate,
     ast_map: ast_map::map
 };
 
-type srv_owner<T> = fn(srv: srv) -> T;
-type ctxt_handler<T> = fn~(ctxt: ctxt) -> T;
-type parser = fn~(session, ~str) -> @ast::crate;
+type SrvOwner<T> = fn(srv: Srv) -> T;
+type CtxtHandler<T> = fn~(ctxt: Ctxt) -> T;
+type Parser = fn~(session, ~str) -> @ast::crate;
 
-enum msg {
-    handle_request(fn~(ctxt)),
-    exit
+enum Msg {
+    HandleRequest(fn~(Ctxt)),
+    Exit
 }
 
-enum srv = {
-    ch: comm::Chan<msg>
+enum Srv = {
+    ch: comm::Chan<Msg>
 };
 
-fn from_str<T>(source: ~str, owner: srv_owner<T>) -> T {
+fn from_str<T>(source: ~str, owner: SrvOwner<T>) -> T {
     run(owner, source, parse::from_str_sess)
 }
 
-fn from_file<T>(file: ~str, owner: srv_owner<T>) -> T {
+fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
     run(owner, file, |sess, f| parse::from_file_sess(sess, &Path(f)))
 }
 
-fn run<T>(owner: srv_owner<T>, source: ~str, +parse: parser) -> T {
+fn run<T>(owner: SrvOwner<T>, source: ~str, +parse: Parser) -> T {
 
-    let srv_ = srv({
+    let srv_ = Srv({
         ch: do task::spawn_listener |po| {
             act(po, source, parse);
         }
     });
 
     let res = owner(srv_);
-    comm::send(srv_.ch, exit);
+    comm::send(srv_.ch, Exit);
     return res;
 }
 
-fn act(po: comm::Port<msg>, source: ~str, parse: parser) {
+fn act(po: comm::Port<Msg>, source: ~str, parse: Parser) {
     let sess = build_session();
 
     let ctxt = build_ctxt(
@@ -78,10 +78,10 @@ fn act(po: comm::Port<msg>, source: ~str, parse: parser) {
     let mut keep_going = true;
     while keep_going {
         match comm::recv(po) {
-          handle_request(f) => {
+          HandleRequest(f) => {
             f(ctxt);
           }
-          exit => {
+          Exit => {
             keep_going = false;
           }
         }
@@ -89,12 +89,12 @@ fn act(po: comm::Port<msg>, source: ~str, parse: parser) {
 }
 
 fn exec<T:Send>(
-    srv: srv,
-    +f: fn~(ctxt: ctxt) -> T
+    srv: Srv,
+    +f: fn~(ctxt: Ctxt) -> T
 ) -> T {
     let po = comm::Port();
     let ch = comm::Chan(po);
-    let msg = handle_request(fn~(move f, ctxt: ctxt) {
+    let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
         comm::send(ch, f(ctxt))
     });
     comm::send(srv.ch, msg);
@@ -102,7 +102,7 @@ fn exec<T:Send>(
 }
 
 fn build_ctxt(sess: session,
-              ast: @ast::crate) -> ctxt {
+              ast: @ast::crate) -> Ctxt {
 
     use rustc::front::config;
 
@@ -129,7 +129,7 @@ fn build_session() -> session {
     session
 }
 
-type error_handlers = {
+type ErrorHandlers = {
     emitter: diagnostic::emitter,
     span_handler: diagnostic::span_handler
 };
@@ -138,13 +138,13 @@ type error_handlers = {
 // errors
 fn build_error_handlers(
     codemap: codemap::codemap
-) -> error_handlers {
+) -> ErrorHandlers {
 
-    type diagnostic_handler = {
+    type DiagnosticHandler = {
         inner: diagnostic::handler,
     };
 
-    impl diagnostic_handler: diagnostic::handler {
+    impl DiagnosticHandler: diagnostic::handler {
         fn fatal(msg: ~str) -> ! { self.inner.fatal(msg) }
         fn err(msg: ~str) { self.inner.err(msg) }
         fn bump_err_count() {

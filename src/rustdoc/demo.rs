@@ -14,21 +14,21 @@
 /// The base price of a muffin on a non-holiday
 const price_of_a_muffin: float = 70f;
 
-type waitperson = {
+type WaitPerson = {
     hair_color: ~str
 };
 
 /// The type of things that produce omnomnom
-enum omnomnomy {
+enum OmNomNomy {
     /// Delicious sugar cookies
-    cookie,
+    Cookie,
     /// It's pizza
-    pizza_pie(~[uint])
+    PizzaPie(~[uint])
 }
 
 fn take_my_order_please(
-    _waitperson: waitperson,
-    _order: ~[omnomnomy]
+    _waitperson: WaitPerson,
+    _order: ~[OmNomNomy]
 ) -> uint {
 
     /*!
@@ -111,7 +111,7 @@ mod blade_runner {
  * eget ante feugiat tortor congue auctor ac quis ante. Proin
  * condimentum lacinia tincidunt.
  */
-struct bored {
+struct Bored {
   bored: bool,
   drop { log(error, self.bored); }
 }
@@ -132,7 +132,7 @@ struct bored {
  * neighboring hillside churchyard of St. John's, whose hidden expanse of
  * Eighteenth Century gravestones had for him a peculiar fascination.
  */
-trait the_shunned_house {
+trait TheShunnedHouse {
     /**
      * Now the irony is this. In this walk, so many times repeated, the
      * world's greatest master of the terrible and the bizarre was
@@ -175,7 +175,7 @@ trait the_shunned_house {
 }
 
 /// Whatever
-impl omnomnomy: the_shunned_house {
+impl OmNomNomy: TheShunnedHouse {
     fn dingy_house(_unkempt_yard: int) {
     }
 

@@ -6,7 +6,7 @@
      of the natural-language documentation for a crate."
 )];
 
-use doc::item_utils;
+use doc::ItemUtils;
 use extract::to_str;
 use syntax::ast;
 use syntax::ast_map;
@@ -14,7 +14,7 @@ use std::map::HashMap;
 
 export mk_pass;
 
-fn mk_pass() -> pass {
+fn mk_pass() -> Pass {
     {
         name: ~"attr",
         f: run
@@ -22,10 +22,10 @@ fn mk_pass() -> pass {
 }
 
 fn run(
-    srv: astsrv::srv,
-    doc: doc::doc
-) -> doc::doc {
-    let fold = fold::fold({
+    srv: astsrv::Srv,
+    doc: doc::Doc
+) -> doc::Doc {
+    let fold = fold::Fold({
         fold_crate: fold_crate,
         fold_item: fold_item,
         fold_enum: fold_enum,
@@ -37,9 +37,9 @@ fn run(
 }
 
 fn fold_crate(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::cratedoc
-) -> doc::cratedoc {
+    fold: fold::Fold<astsrv::Srv>,
+    doc: doc::CrateDoc
+) -> doc::CrateDoc {
 
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_crate(fold, doc);
@@ -50,7 +50,7 @@ fn fold_crate(
     };
 
     {
-        topmod: doc::moddoc_({
+        topmod: doc::ModDoc_({
             item: {
                 name: option::get_default(attrs.name, doc.topmod.name()),
                 .. doc.topmod.item
@@ -67,9 +67,9 @@ fn should_replace_top_module_name_with_crate_name() {
 }
 
 fn fold_item(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::itemdoc
-) -> doc::itemdoc {
+    fold: fold::Fold<astsrv::Srv>,
+    doc: doc::ItemDoc
+) -> doc::ItemDoc {
 
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_item(fold, doc);
@@ -90,8 +90,8 @@ fn fold_item(
 }
 
 fn parse_item_attrs<T:Send>(
-    srv: astsrv::srv,
-    id: doc::ast_id,
+    srv: astsrv::Srv,
+    id: doc::AstId,
     +parse_attrs: fn~(~[ast::attribute]) -> T) -> T {
     do astsrv::exec(srv) |ctxt| {
         let attrs = match ctxt.ast_map.get(id) {
@@ -134,9 +134,9 @@ fn should_extract_fn_attributes() {
 }
 
 fn fold_enum(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::enumdoc
-) -> doc::enumdoc {
+    fold: fold::Fold<astsrv::Srv>,
+    doc: doc::EnumDoc
+) -> doc::EnumDoc {
 
     let srv = fold.ctxt;
     let doc_id = doc.id();
@@ -184,9 +184,9 @@ fn should_extract_variant_docs() {
 }
 
 fn fold_trait(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::traitdoc
-) -> doc::traitdoc {
+    fold: fold::Fold<astsrv::Srv>,
+    doc: doc::TraitDoc
+) -> doc::TraitDoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_trait(fold, doc);
 
@@ -197,10 +197,10 @@ fn fold_trait(
 }
 
 fn merge_method_attrs(
-    srv: astsrv::srv,
-    item_id: doc::ast_id,
-    docs: ~[doc::methoddoc]
-) -> ~[doc::methoddoc] {
+    srv: astsrv::Srv,
+    item_id: doc::AstId,
+    docs: ~[doc::MethodDoc]
+) -> ~[doc::MethodDoc] {
 
     // Create an assoc list from method name to attributes
     let attrs: ~[(~str, Option<~str>)] = do astsrv::exec(srv) |ctxt| {
@@ -259,9 +259,9 @@ fn should_extract_trait_method_docs() {
 
 
 fn fold_impl(
-    fold: fold::fold<astsrv::srv>,
-    doc: doc::impldoc
-) -> doc::impldoc {
+    fold: fold::Fold<astsrv::Srv>,
+    doc: doc::ImplDoc
+) -> doc::ImplDoc {
     let srv = fold.ctxt;
     let doc = fold::default_seq_fold_impl(fold, doc);
 
@@ -290,7 +290,7 @@ fn should_extract_impl_method_docs() {
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(source: ~str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc)

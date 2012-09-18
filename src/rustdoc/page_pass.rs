@@ -5,27 +5,27 @@
  * individual modules, pages for the crate, indexes, etc.
  */
 
-use doc::{item_utils, page_utils};
+use doc::{ItemUtils, PageUtils};
 use syntax::ast;
 
 export mk_pass;
 
-fn mk_pass(output_style: config::output_style) -> pass {
+fn mk_pass(output_style: config::OutputStyle) -> Pass {
     {
         name: ~"page",
-        f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
+        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
             run(srv, doc, output_style)
         }
     }
 }
 
 fn run(
-    _srv: astsrv::srv,
-    doc: doc::doc,
-    output_style: config::output_style
-) -> doc::doc {
+    _srv: astsrv::Srv,
+    doc: doc::Doc,
+    output_style: config::OutputStyle
+) -> doc::Doc {
 
-    if output_style == config::doc_per_crate {
+    if output_style == config::DocPerCrate {
         return doc;
     }
 
@@ -38,10 +38,10 @@ fn run(
     comm::recv(result_port)
 }
 
-type page_port = comm::Port<Option<doc::page>>;
-type page_chan = comm::Chan<Option<doc::page>>;
+type PagePort = comm::Port<Option<doc::Page>>;
+type PageChan = comm::Chan<Option<doc::Page>>;
 
-fn make_doc_from_pages(page_port: page_port) -> doc::doc {
+fn make_doc_from_pages(page_port: PagePort) -> doc::Doc {
     let mut pages = ~[];
     loop {
         let val = comm::recv(page_port);
@@ -51,13 +51,13 @@ fn make_doc_from_pages(page_port: page_port) -> doc::doc {
             break;
         }
     }
-    doc::doc_({
+    doc::Doc_({
         pages: pages
     })
 }
 
-fn find_pages(doc: doc::doc, page_chan: page_chan) {
-    let fold = fold::fold({
+fn find_pages(doc: doc::Doc, page_chan: PageChan) {
+    let fold = fold::Fold({
         fold_crate: fold_crate,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
@@ -69,13 +69,13 @@ fn find_pages(doc: doc::doc, page_chan: page_chan) {
 }
 
 fn fold_crate(
-    fold: fold::fold<page_chan>,
-    doc: doc::cratedoc
-) -> doc::cratedoc {
+    fold: fold::Fold<PageChan>,
+    doc: doc::CrateDoc
+) -> doc::CrateDoc {
 
     let doc = fold::default_seq_fold_crate(fold, doc);
 
-    let page = doc::cratepage({
+    let page = doc::CratePage({
         topmod: strip_mod(doc.topmod),
         .. doc
     });
@@ -86,28 +86,28 @@ fn fold_crate(
 }
 
 fn fold_mod(
-    fold: fold::fold<page_chan>,
-    doc: doc::moddoc
-) -> doc::moddoc {
+    fold: fold::Fold<PageChan>,
+    doc: doc::ModDoc
+) -> doc::ModDoc {
 
     let doc = fold::default_any_fold_mod(fold, doc);
 
     if doc.id() != ast::crate_node_id {
 
         let doc = strip_mod(doc);
-        let page = doc::itempage(doc::modtag(doc));
+        let page = doc::ItemPage(doc::ModTag(doc));
         comm::send(fold.ctxt, Some(page));
     }
 
     doc
 }
 
-fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
-    doc::moddoc_({
+fn strip_mod(doc: doc::ModDoc) -> doc::ModDoc {
+    doc::ModDoc_({
         items: do vec::filter(doc.items) |item| {
             match item {
-              doc::modtag(_) => false,
-              doc::nmodtag(_) => false,
+              doc::ModTag(_) => false,
+              doc::NmodTag(_) => false,
               _ => true
             }
         },
@@ -116,11 +116,11 @@ fn strip_mod(doc: doc::moddoc) -> doc::moddoc {
 }
 
 fn fold_nmod(
-    fold: fold::fold<page_chan>,
-    doc: doc::nmoddoc
-) -> doc::nmoddoc {
+    fold: fold::Fold<PageChan>,
+    doc: doc::NmodDoc
+) -> doc::NmodDoc {
     let doc = fold::default_seq_fold_nmod(fold, doc);
-    let page = doc::itempage(doc::nmodtag(doc));
+    let page = doc::ItemPage(doc::NmodTag(doc));
     comm::send(fold.ctxt, Some(page));
     return doc;
 }
@@ -128,7 +128,7 @@ fn fold_nmod(
 #[test]
 fn should_not_split_the_doc_into_pages_for_doc_per_crate() {
     let doc = test::mk_doc_(
-        config::doc_per_crate,
+        config::DocPerCrate,
         ~"mod a { } mod b { mod c { } }"
     );
     assert doc.pages.len() == 1u;
@@ -161,16 +161,16 @@ fn should_remove_foreign_mods_from_containing_mods() {
 #[cfg(test)]
 mod test {
     fn mk_doc_(
-        output_style: config::output_style,
+        output_style: config::OutputStyle,
         source: ~str
-    ) -> doc::doc {
+    ) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, ~"");
             run(srv, doc, output_style)
         }
     }
 
-    fn mk_doc(source: ~str) -> doc::doc {
-        mk_doc_(config::doc_per_mod, source)
+    fn mk_doc(source: ~str) -> doc::Doc {
+        mk_doc_(config::DocPerMod, source)
     }
 }

@@ -1,7 +1,7 @@
 //! Converts the Rust AST to the rustdoc document model
 
 use syntax::ast;
-use doc::item_utils;
+use doc::ItemUtils;
 
 export from_srv, extract, to_str, interner;
 
@@ -26,9 +26,9 @@ fn interner() -> syntax::parse::token::ident_interner {
 }
 
 fn from_srv(
-    srv: astsrv::srv,
+    srv: astsrv::Srv,
     default_name: ~str
-) -> doc::doc {
+) -> doc::Doc {
 
     //! Use the AST service to create a document tree
 
@@ -40,25 +40,25 @@ fn from_srv(
 fn extract(
     crate: @ast::crate,
     default_name: ~str
-) -> doc::doc {
-    doc::doc_({
+) -> doc::Doc {
+    doc::Doc_({
         pages: ~[
-            doc::cratepage({
-                topmod: top_moddoc_from_crate(crate, default_name),
+            doc::CratePage({
+                topmod: top_ModDoc_from_crate(crate, default_name),
             })
         ]
     })
 }
 
-fn top_moddoc_from_crate(
+fn top_ModDoc_from_crate(
     crate: @ast::crate,
     default_name: ~str
-) -> doc::moddoc {
-    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
+) -> doc::ModDoc {
+    ModDoc_from_mod(mk_ItemDoc(ast::crate_node_id, default_name),
                     crate.node.module)
 }
 
-fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::itemdoc {
+fn mk_ItemDoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {
     {
         id: id,
         name: name,
@@ -70,53 +70,53 @@ fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::itemdoc {
     }
 }
 
-fn moddoc_from_mod(
-    itemdoc: doc::itemdoc,
+fn ModDoc_from_mod(
+    ItemDoc: doc::ItemDoc,
     module_: ast::_mod
-) -> doc::moddoc {
-    doc::moddoc_({
-        item: itemdoc,
+) -> doc::ModDoc {
+    doc::ModDoc_({
+        item: ItemDoc,
         items: do vec::filter_map(module_.items) |item| {
-            let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
+            let ItemDoc = mk_ItemDoc(item.id, to_str(item.ident));
             match item.node {
               ast::item_mod(m) => {
-                Some(doc::modtag(
-                    moddoc_from_mod(itemdoc, m)
+                Some(doc::ModTag(
+                    ModDoc_from_mod(ItemDoc, m)
                 ))
               }
               ast::item_foreign_mod(nm) => {
-                Some(doc::nmodtag(
-                    nmoddoc_from_mod(itemdoc, nm)
+                Some(doc::NmodTag(
+                    nModDoc_from_mod(ItemDoc, nm)
                 ))
               }
               ast::item_fn(*) => {
-                Some(doc::fntag(
-                    fndoc_from_fn(itemdoc)
+                Some(doc::FnTag(
+                    FnDoc_from_fn(ItemDoc)
                 ))
               }
               ast::item_const(_, _) => {
-                Some(doc::consttag(
-                    constdoc_from_const(itemdoc)
+                Some(doc::ConstTag(
+                    ConstDoc_from_const(ItemDoc)
                 ))
               }
               ast::item_enum(enum_definition, _) => {
-                Some(doc::enumtag(
-                    enumdoc_from_enum(itemdoc, enum_definition.variants)
+                Some(doc::EnumTag(
+                    EnumDoc_from_enum(ItemDoc, enum_definition.variants)
                 ))
               }
               ast::item_trait(_, _, methods) => {
-                Some(doc::traittag(
-                    traitdoc_from_trait(itemdoc, methods)
+                Some(doc::TraitTag(
+                    TraitDoc_from_trait(ItemDoc, methods)
                 ))
               }
               ast::item_impl(_, _, _, methods) => {
-                Some(doc::impltag(
-                    impldoc_from_impl(itemdoc, methods)
+                Some(doc::ImplTag(
+                    ImplDoc_from_impl(ItemDoc, methods)
                 ))
               }
               ast::item_ty(_, _) => {
-                Some(doc::tytag(
-                    tydoc_from_ty(itemdoc)
+                Some(doc::TyTag(
+                    TyDoc_from_ty(ItemDoc)
                 ))
               }
               _ => None
@@ -126,37 +126,37 @@ fn moddoc_from_mod(
     })
 }
 
-fn nmoddoc_from_mod(
-    itemdoc: doc::itemdoc,
+fn nModDoc_from_mod(
+    ItemDoc: doc::ItemDoc,
     module_: ast::foreign_mod
-) -> doc::nmoddoc {
+) -> doc::NmodDoc {
     let mut fns = ~[];
     for module_.items.each |item| {
-        let itemdoc = mk_itemdoc(item.id, to_str(item.ident));
+        let ItemDoc = mk_ItemDoc(item.id, to_str(item.ident));
         match item.node {
           ast::foreign_item_fn(*) => {
-            vec::push(fns, fndoc_from_fn(itemdoc));
+            vec::push(fns, FnDoc_from_fn(ItemDoc));
           }
           ast::foreign_item_const(*) => {} // XXX: Not implemented.
         }
     }
     {
-        item: itemdoc,
+        item: ItemDoc,
         fns: fns,
         index: None
     }
 }
 
-fn fndoc_from_fn(itemdoc: doc::itemdoc) -> doc::fndoc {
+fn FnDoc_from_fn(ItemDoc: doc::ItemDoc) -> doc::FnDoc {
     {
-        item: itemdoc,
+        item: ItemDoc,
         sig: None
     }
 }
 
-fn constdoc_from_const(itemdoc: doc::itemdoc) -> doc::constdoc {
+fn ConstDoc_from_const(ItemDoc: doc::ItemDoc) -> doc::ConstDoc {
     {
-        item: itemdoc,
+        item: ItemDoc,
         sig: None
     }
 }
@@ -168,23 +168,23 @@ fn should_extract_const_name_and_id() {
     assert doc.cratemod().consts()[0].name() == ~"a";
 }
 
-fn enumdoc_from_enum(
-    itemdoc: doc::itemdoc,
+fn EnumDoc_from_enum(
+    ItemDoc: doc::ItemDoc,
     variants: ~[ast::variant]
-) -> doc::enumdoc {
+) -> doc::EnumDoc {
     {
-        item: itemdoc,
+        item: ItemDoc,
         variants: variantdocs_from_variants(variants)
     }
 }
 
 fn variantdocs_from_variants(
     variants: ~[ast::variant]
-) -> ~[doc::variantdoc] {
+) -> ~[doc::VariantDoc] {
     vec::map(variants, variantdoc_from_variant)
 }
 
-fn variantdoc_from_variant(variant: ast::variant) -> doc::variantdoc {
+fn variantdoc_from_variant(variant: ast::variant) -> doc::VariantDoc {
 
     {
         name: to_str(variant.node.name),
@@ -206,12 +206,12 @@ fn should_extract_enum_variants() {
     assert doc.cratemod().enums()[0].variants[0].name == ~"v";
 }
 
-fn traitdoc_from_trait(
-    itemdoc: doc::itemdoc,
+fn TraitDoc_from_trait(
+    ItemDoc: doc::ItemDoc,
     methods: ~[ast::trait_method]
-) -> doc::traitdoc {
+) -> doc::TraitDoc {
     {
-        item: itemdoc,
+        item: ItemDoc,
         methods: do vec::map(methods) |method| {
             match method {
               ast::required(ty_m) => {
@@ -221,7 +221,7 @@ fn traitdoc_from_trait(
                     desc: None,
                     sections: ~[],
                     sig: None,
-                    implementation: doc::required,
+                    implementation: doc::Required,
                 }
               }
               ast::provided(m) => {
@@ -231,7 +231,7 @@ fn traitdoc_from_trait(
                     desc: None,
                     sections: ~[],
                     sig: None,
-                    implementation: doc::provided,
+                    implementation: doc::Provided,
                 }
               }
             }
@@ -251,12 +251,12 @@ fn should_extract_trait_methods() {
     assert doc.cratemod().traits()[0].methods[0].name == ~"f";
 }
 
-fn impldoc_from_impl(
-    itemdoc: doc::itemdoc,
+fn ImplDoc_from_impl(
+    ItemDoc: doc::ItemDoc,
     methods: ~[@ast::method]
-) -> doc::impldoc {
+) -> doc::ImplDoc {
     {
-        item: itemdoc,
+        item: ItemDoc,
         trait_types: ~[],
         self_ty: None,
         methods: do vec::map(methods) |method| {
@@ -266,7 +266,7 @@ fn impldoc_from_impl(
                 desc: None,
                 sections: ~[],
                 sig: None,
-                implementation: doc::provided,
+                implementation: doc::Provided,
             }
         }
     }
@@ -278,11 +278,11 @@ fn should_extract_impl_methods() {
     assert doc.cratemod().impls()[0].methods[0].name == ~"f";
 }
 
-fn tydoc_from_ty(
-    itemdoc: doc::itemdoc
-) -> doc::tydoc {
+fn TyDoc_from_ty(
+    ItemDoc: doc::ItemDoc
+) -> doc::TyDoc {
     {
-        item: itemdoc,
+        item: ItemDoc,
         sig: None
     }
 }
@@ -296,7 +296,7 @@ fn should_extract_tys() {
 #[cfg(test)]
 mod test {
 
-    fn mk_doc(source: ~str) -> doc::doc {
+    fn mk_doc(source: ~str) -> doc::Doc {
         let ast = parse::from_str(source);
         extract(ast, ~"")
     }

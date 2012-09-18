@@ -1,29 +1,29 @@
 //! Records the full path to items
 
-use doc::item_utils;
+use doc::ItemUtils;
 use syntax::ast;
 
 export mk_pass;
 
-fn mk_pass() -> pass {
+fn mk_pass() -> Pass {
     {
         name: ~"path",
         f: run
     }
 }
 
-type ctxt = {
-    srv: astsrv::srv,
+type Ctxt = {
+    srv: astsrv::Srv,
     mut path: ~[~str]
 };
 
 #[allow(non_implicitly_copyable_typarams)]
-fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
+fn run(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
     let ctxt = {
         srv: srv,
         mut path: ~[]
     };
-    let fold = fold::fold({
+    let fold = fold::Fold({
         fold_item: fold_item,
         fold_mod: fold_mod,
         fold_nmod: fold_nmod,
@@ -32,7 +32,7 @@ fn run(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
     fold.fold_doc(fold, doc)
 }
 
-fn fold_item(fold: fold::fold<ctxt>, doc: doc::itemdoc) -> doc::itemdoc {
+fn fold_item(fold: fold::Fold<Ctxt>, doc: doc::ItemDoc) -> doc::ItemDoc {
     {
         path: fold.ctxt.path,
         .. doc
@@ -40,20 +40,20 @@ fn fold_item(fold: fold::fold<ctxt>, doc: doc::itemdoc) -> doc::itemdoc {
 }
 
 #[allow(non_implicitly_copyable_typarams)]
-fn fold_mod(fold: fold::fold<ctxt>, doc: doc::moddoc) -> doc::moddoc {
+fn fold_mod(fold: fold::Fold<Ctxt>, doc: doc::ModDoc) -> doc::ModDoc {
     let is_topmod = doc.id() == ast::crate_node_id;
 
     if !is_topmod { vec::push(fold.ctxt.path, doc.name()); }
     let doc = fold::default_any_fold_mod(fold, doc);
     if !is_topmod { vec::pop(fold.ctxt.path); }
 
-    doc::moddoc_({
+    doc::ModDoc_({
         item: fold.fold_item(fold, doc.item),
         .. *doc
     })
 }
 
-fn fold_nmod(fold: fold::fold<ctxt>, doc: doc::nmoddoc) -> doc::nmoddoc {
+fn fold_nmod(fold: fold::Fold<Ctxt>, doc: doc::NmodDoc) -> doc::NmodDoc {
     vec::push(fold.ctxt.path, doc.name());
     let doc = fold::default_seq_fold_nmod(fold, doc);
     vec::pop(fold.ctxt.path);

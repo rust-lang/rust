@@ -1,10 +1,10 @@
 //! Sorts items by name
 
-use doc::item_utils;
+use doc::ItemUtils;
 export mk_pass;
 
-fn mk_pass() -> pass {
-    pure fn by_item_name(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
+fn mk_pass() -> Pass {
+    pure fn by_item_name(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
         (*item1).name() <= (*item2).name()
     }
     sort_pass::mk_pass(~"sort_item_name", by_item_name)
