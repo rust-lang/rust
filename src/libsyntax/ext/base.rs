@@ -82,6 +82,8 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     syntax_expanders.insert(~"fmt", builtin(ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(~"auto_serialize",
                             item_decorator(ext::auto_serialize::expand));
+    syntax_expanders.insert(~"auto_serialize2",
+                            item_decorator(ext::auto_serialize2::expand));
     syntax_expanders.insert(~"env", builtin(ext::env::expand_syntax_ext));
     syntax_expanders.insert(~"concat_idents",
                             builtin(ext::concat_idents::expand_syntax_ext));
