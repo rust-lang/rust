@@ -749,15 +749,15 @@ An example of a module:
 mod math {
     type complex = (f64, f64);
     fn sin(f: f64) -> f64 {
-        // ...
+        ...
 # fail;
     }
     fn cos(f: f64) -> f64 {
-        // ...
+        ...
 # fail;
     }
     fn tan(f: f64) -> f64 {
-        // ...
+        ...
 # fail;
     }
 }
@@ -884,7 +884,7 @@ mod foo {
     }
 
     fn helper(x: int, y: int) {
-        // ...
+        ...
     }
 }
 
@@ -912,11 +912,11 @@ mod foo {
     }
 
     fn secondary() {
-        // ...
+        ...
     }
 
     fn helper(x: int, y: int) {
-        // ...
+        ...
     }
 }
 ~~~~~~~~
@@ -1028,7 +1028,7 @@ pure fn lt_42(x: int) -> bool {
 Pure functions may call other pure functions:
 
 ~~~~{.xfail-test}
-pure fn pure_length<T>(ls: List<T>) -> uint { /* ... */ }
+pure fn pure_length<T>(ls: List<T>) -> uint { ... }
 
 pure fn nonempty_list<T>(ls: List<T>) -> bool { pure_length(ls) > 0u }
 ~~~~
@@ -1327,7 +1327,7 @@ specified, after the `impl` keyword.
 # trait seq<T> { }
 
 impl<T> ~[T]: seq<T> {
-   // ...
+   ...
 }
 impl u32: seq<bool> {
    /* Treat the integer as a sequence of bits */
@@ -1426,13 +1426,13 @@ An example of attributes:
 // A function marked as a unit test
 #[test]
 fn test_foo() {
-  // ...
+  ...
 }
 
 // A conditionally-compiled module
 #[cfg(target_os="linux")]
 mod bar {
-  // ...
+  ...
 }
 
 // A documentation attribute
@@ -3036,7 +3036,7 @@ let ch = comm::Chan(po);
 
 do task::spawn {
     // let task run, do other things
-    // ...
+    ...
     comm::send(ch, true);
 };
 
