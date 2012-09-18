@@ -30,7 +30,6 @@ rand_new_seeded
 rand_next
 rand_seed
 rust_get_sched_id
-rust_max_sched_threads
 rust_new_sched
 rust_new_task_in_sched
 rust_num_threads
@@ -49,6 +48,7 @@ rust_port_size
 rust_process_wait
 rust_ptr_eq
 rust_run_program
+rust_sched_current_nonlazy_threads
 rust_sched_threads
 rust_set_exit_status
 rust_start
