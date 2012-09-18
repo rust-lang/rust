@@ -34,7 +34,9 @@ export sync, arc, comm;
 export bitv, deque, fun_treemap, list, map;
 export smallintmap, sort, treemap;
 export rope, arena, par;
-export ebml, dbg, getopts, json, rand, sha1, term, time, prettyprint;
+export ebml, ebml2;
+export dbg, getopts, json, rand, sha1, term, time;
+export prettyprint, prettyprint2;
 export test, tempfile, serialization, serialization2;
 export cmp;
 export base64;
@@ -107,6 +109,8 @@ mod treemap;
 #[legacy_exports]
 mod ebml;
 #[legacy_exports]
+mod ebml2;
+#[legacy_exports]
 mod dbg;
 #[legacy_exports]
 mod getopts;
@@ -124,6 +128,8 @@ mod term;
 mod time;
 #[legacy_exports]
 mod prettyprint;
+#[legacy_exports]
+mod prettyprint2;
 #[legacy_exports]
 mod arena;
 #[legacy_exports]
