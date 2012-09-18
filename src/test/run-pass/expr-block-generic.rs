@@ -1,7 +1,6 @@
-
-
-
 // -*- rust -*-
+
+#[legacy_modes];
 
 // Tests for standalone blocks as expressions with dynamic type sizes
 type compare<T> = fn@(T, T) -> bool;

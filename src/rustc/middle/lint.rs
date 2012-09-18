@@ -13,7 +13,7 @@ use syntax::ast_util::{path_to_ident};
 use syntax::print::pprust::{expr_to_str, mode_to_str, pat_to_str};
 export lint, ctypes, unused_imports, while_true, path_statement, old_vecs;
 export unrecognized_lint, non_implicitly_copyable_typarams;
-export vecs_implicitly_copyable, implicit_copies;
+export vecs_implicitly_copyable, implicit_copies, legacy_modes;
 export level, allow, warn, deny, forbid;
 export lint_dict, get_lint_dict, level_to_str;
 export get_lint_level, get_lint_settings_level;
@@ -58,6 +58,8 @@ enum lint {
     managed_heap_memory,
     owned_heap_memory,
     heap_memory,
+
+    legacy_modes,
 
     // FIXME(#3266)--make liveness warnings lintable
     // unused_variable,
@@ -178,6 +180,11 @@ fn get_lint_dict() -> lint_dict {
          @{lint: structural_records,
            desc: ~"use of any structural records",
            default: allow}),
+
+        (~"legacy modes",
+         @{lint: legacy_modes,
+           desc: ~"allow legacy modes",
+           default: forbid}),
 
         /* FIXME(#3266)--make liveness warnings lintable
         (~"unused_variable",

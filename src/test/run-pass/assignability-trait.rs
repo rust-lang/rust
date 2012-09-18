@@ -2,6 +2,8 @@
 // making method calls, but only if there aren't any matches without
 // it.
 
+#[legacy_modes];
+
 trait iterable<A> {
     fn iterate(blk: fn(A) -> bool);
 }

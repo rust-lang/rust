@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 extern mod std;
 
 fn main() { test00(); }

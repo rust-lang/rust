@@ -258,7 +258,7 @@ fn ty_to_str(cx: ctxt, typ: t) -> ~str {
           ast::infer(_) => ~"",
           ast::expl(m) => {
             if !ty::type_needs_infer(ty) &&
-                m == ty::default_arg_mode_for_ty(ty) {
+                m == ty::default_arg_mode_for_ty(cx, ty) {
                 ~""
             } else {
                 mode_to_str(ast::expl(m))

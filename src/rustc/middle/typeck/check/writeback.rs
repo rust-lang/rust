@@ -145,7 +145,7 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
             match (r_ty, input.mode) {
               (Some(t), ast::infer(_)) => {
                 let tcx = wbcx.fcx.ccx.tcx;
-                let m_def = ty::default_arg_mode_for_ty(t);
+                let m_def = ty::default_arg_mode_for_ty(tcx, t);
                 ty::set_default_mode(tcx, input.mode, m_def);
               }
               _ => ()

@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 extern mod std;
 
 // These tests used to be separate files, but I wanted to refactor all

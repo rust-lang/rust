@@ -10,6 +10,8 @@
 
 #[no_core];
 
+#[legacy_modes];
+
 #[allow(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 

@@ -31,6 +31,8 @@
 // Don't link to core. We are core.
 #[no_core];
 
+#[legacy_modes];
+
 #[warn(vecs_implicitly_copyable)];
 #[deny(non_camel_case_types)];
 

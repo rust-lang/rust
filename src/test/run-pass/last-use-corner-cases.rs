@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 fn main() {
     // Make sure closing over can be a last use
     let q = ~10;

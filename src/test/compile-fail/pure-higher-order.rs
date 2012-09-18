@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 // Test rules governing higher-order pure fns.
 
 pure fn range(from: uint, to: uint, f: fn(uint)) {

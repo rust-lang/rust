@@ -1,3 +1,4 @@
+#[legacy_modes];
 
 use intrinsic::{TyDesc, get_tydesc, visit_tydesc, TyVisitor};
 use libc::c_void;

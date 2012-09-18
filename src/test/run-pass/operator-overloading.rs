@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 struct Point {
     x: int,
     y: int

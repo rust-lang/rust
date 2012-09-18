@@ -6,6 +6,8 @@
 
 // xfail-pretty
 
+#[legacy_modes];
+
 extern mod std;
 use io::Writer;
 use io::WriterUtil;

@@ -1,6 +1,7 @@
 #[no_core];
 #[allow(vecs_implicitly_copyable)];
 #[allow(non_camel_case_types)];
+#[legacy_modes];
 
 extern mod core(vers = "0.4");
 extern mod std(vers = "0.4");

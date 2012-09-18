@@ -1,4 +1,6 @@
 // xfail-win32
+#[legacy_modes];
+
 extern mod std;
 
 fn start(c: pipes::Chan<int>, i0: int) {

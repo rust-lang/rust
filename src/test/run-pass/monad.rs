@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 trait vec_monad<A> {
     fn bind<B: Copy>(f: fn(A) -> ~[B]) -> ~[B];
 }

@@ -319,6 +319,7 @@ type ctxt =
       interner: HashMap<intern_key, t_box>,
       mut next_id: uint,
       vecs_implicitly_copyable: bool,
+      legacy_modes: bool,
       cstore: metadata::cstore::cstore,
       sess: session::session,
       def_map: resolve::DefMap,
@@ -827,7 +828,19 @@ fn mk_ctxt(s: session::session,
            freevars: freevars::freevar_map,
            region_map: middle::region::region_map,
            region_paramd_items: middle::region::region_paramd_items,
-           +lang_items: middle::lang_items::LanguageItems) -> ctxt {
+           +lang_items: middle::lang_items::LanguageItems,
+           crate: @ast::crate) -> ctxt {
+    let mut legacy_modes = false;
+    for crate.node.attrs.each |attribute| {
+        match attribute.node.value.node {
+            ast::meta_word(w) if w == ~"legacy_modes" => {
+                legacy_modes = true;
+                break;
+            }
+            _ => {}
+        }
+    }
+
     let interner = map::HashMap();
     let vecs_implicitly_copyable =
         get_lint_level(s.lint_settings.default_settings,
@@ -836,6 +849,7 @@ fn mk_ctxt(s: session::session,
       interner: interner,
       mut next_id: 0u,
       vecs_implicitly_copyable: vecs_implicitly_copyable,
+      legacy_modes: legacy_modes,
       cstore: s.cstore,
       sess: s,
       def_map: dm,
@@ -1075,9 +1089,14 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
     }
 }
 
-fn default_arg_mode_for_ty(ty: ty::t) -> ast::rmode {
-    if ty::type_is_immediate(ty) { ast::by_val }
-    else { ast::by_ref }
+fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
+    if ty::type_is_immediate(ty) {
+        ast::by_val
+    } else if tcx.legacy_modes {
+        ast::by_ref
+    } else {
+        ast::by_copy
+    }
 }
 
 // Returns the narrowest lifetime enclosing the evaluation of the expression

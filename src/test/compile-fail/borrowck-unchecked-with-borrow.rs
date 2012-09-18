@@ -1,3 +1,7 @@
+// xfail-test
+// xfail-fast
+#[legacy_modes];
+
 fn impure(_i: int) {}
 
 // check that unchecked alone does not override borrowck:

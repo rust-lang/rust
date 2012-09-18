@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 trait noisy {
   fn speak();
 }

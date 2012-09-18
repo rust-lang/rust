@@ -1,5 +1,7 @@
 // xfail-pretty
 
+#[legacy_modes];
+
 extern mod std;
 extern mod syntax;
 

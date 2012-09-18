@@ -1,3 +1,4 @@
+#[legacy_modes];
 #[abi = "rust-intrinsic"]
 extern mod rusti {
     fn frame_address(f: fn(*u8));

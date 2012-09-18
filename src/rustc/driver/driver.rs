@@ -206,7 +206,7 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
         middle::region::determine_rp_in_crate(sess, ast_map, def_map, crate));
 
     let ty_cx = ty::mk_ctxt(sess, def_map, ast_map, freevars,
-                            region_map, rp_set, move lang_items);
+                            region_map, rp_set, move lang_items, crate);
 
     let (method_map, vtable_map) = time(time_passes, ~"typechecking", ||
                                         typeck::check_crate(ty_cx,
