@@ -28,7 +28,7 @@ extern mod rusti {
 #[inline(always)]
 pure fn capacity<T>(&&v: @[const T]) -> uint {
     unsafe {
-        let repr: **unsafe::VecRepr =
+        let repr: **raw::VecRepr =
             ::unsafe::reinterpret_cast(&addr_of(v));
         (**repr).unboxed.alloc / sys::size_of::<T>()
     }
@@ -49,8 +49,8 @@ pure fn capacity<T>(&&v: @[const T]) -> uint {
 #[inline(always)]
 pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> @[A] {
     let mut vec = @[];
-    unsafe { unsafe::reserve(vec, size); }
-    builder(|+x| unsafe { unsafe::push(vec, move x) });
+    unsafe { raw::reserve(vec, size); }
+    builder(|+x| unsafe { raw::push(vec, move x) });
     return vec;
 }
 
@@ -141,7 +141,7 @@ impl<T: Copy> @[T]: Add<&[const T],@[T]> {
 }
 
 
-mod unsafe {
+mod raw {
     type VecRepr = vec::raw::VecRepr;
     type SliceRepr = vec::raw::SliceRepr;
 
