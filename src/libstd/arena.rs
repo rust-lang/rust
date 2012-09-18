@@ -66,7 +66,7 @@ struct Arena {
 
 fn chunk(size: uint, is_pod: bool) -> Chunk {
     let mut v = @[];
-    unsafe { at_vec::unsafe::reserve(v, size); }
+    unsafe { at_vec::raw::reserve(v, size); }
     { data: v, mut fill: 0u, is_pod: is_pod }
 }
 
