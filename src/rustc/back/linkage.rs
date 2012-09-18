@@ -685,7 +685,7 @@ fn link_binary(sess: session,
 
     let cstore = sess.cstore;
     for cstore::get_used_crate_files(cstore).each |cratepath| {
-        if cratepath.filetype() == Some(~"rlib") {
+        if cratepath.filetype() == Some(~".rlib") {
             vec::push(cc_args, cratepath.to_str());
             loop;
         }

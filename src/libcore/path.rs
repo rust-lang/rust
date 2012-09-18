@@ -128,7 +128,7 @@ impl PosixPath : GenericPath {
           None => None,
           Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              Some(p) if p+1 < f.len() => Some(f.slice(p+1, f.len())),
+              Some(p) if p < f.len() => Some(f.slice(p, f.len())),
               _ => None
             }
           }
@@ -153,8 +153,7 @@ impl PosixPath : GenericPath {
     pure fn with_filestem(s: &str) -> PosixPath {
         match self.filetype() {
           None => self.with_filename(s),
-          Some(ref t) =>
-          self.with_filename(str::from_slice(s) + "." + *t)
+          Some(ref t) => self.with_filename(str::from_slice(s) + *t)
         }
     }
 
@@ -168,8 +167,7 @@ impl PosixPath : GenericPath {
             let t = ~"." + str::from_slice(t);
             match self.filestem() {
               None => self.with_filename(t),
-              Some(ref s) =>
-              self.with_filename(*s + t)
+              Some(ref s) => self.with_filename(*s + t)
             }
         }
     }
@@ -321,7 +319,7 @@ impl WindowsPath : GenericPath {
           None => None,
           Some(ref f) => {
             match str::rfind_char(*f, '.') {
-              Some(p) if p+1 < f.len() => Some(f.slice(p+1, f.len())),
+              Some(p) if p < f.len() => Some(f.slice(p, f.len())),
               _ => None
             }
           }
@@ -344,8 +342,7 @@ impl WindowsPath : GenericPath {
     pure fn with_filestem(s: &str) -> WindowsPath {
         match self.filetype() {
           None => self.with_filename(s),
-          Some(ref t) =>
-          self.with_filename(str::from_slice(s) + "." + *t)
+          Some(ref t) => self.with_filename(str::from_slice(s) + *t)
         }
     }
 
@@ -468,6 +465,18 @@ mod posix {
             debug!("expected %s", sss);
             assert ss == sss;
         }
+    }
+
+    #[test]
+    fn test_filetype_foo_bar() {
+        let wp = mk("foo.bar");
+        assert wp.filetype() == Some(~".bar");
+    }
+
+    #[test]
+    fn test_filetype_foo() {
+        let wp = mk("foo");
+        assert wp.filetype() == None;
     }
 
     #[test]
@@ -640,6 +649,21 @@ mod windows {
             .with_filename("librustc.dll")),
           "c:\\program files (x86)\\rust\\lib\\librustc.dll");
 
+    }
+
+    #[cfg(test)]
+    fn mk(s: &str) -> PosixPath { from_str::<PosixPath>(s) }
+
+    #[test]
+    fn test_filetype_foo_bar() {
+        let wp = mk("foo.bar");
+        assert wp.filetype() == Some(~".bar");
+    }
+
+    #[test]
+    fn test_filetype_foo() {
+        let wp = mk("foo");
+        assert wp.filetype() == None;
     }
 
 }
