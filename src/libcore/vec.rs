@@ -2239,8 +2239,8 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = ~[::unsafe::exclusive(()), ::unsafe::exclusive(()),
-                      ::unsafe::exclusive(())];
+        let mut v = ~[::private::exclusive(()), ::private::exclusive(()),
+                      ::private::exclusive(())];
         let mut _e = swap_remove(v, 0);
         assert (len(v) == 2);
         _e = swap_remove(v, 1);

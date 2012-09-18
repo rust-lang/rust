@@ -1107,7 +1107,7 @@ impl<T: Send> PortSet<T> : Recv<T> {
 }
 
 /// A channel that can be shared between many senders.
-type SharedChan<T: Send> = unsafe::Exclusive<Chan<T>>;
+type SharedChan<T: Send> = private::Exclusive<Chan<T>>;
 
 impl<T: Send> SharedChan<T>: Channel<T> {
     fn send(+x: T) {
@@ -1131,7 +1131,7 @@ impl<T: Send> SharedChan<T>: Channel<T> {
 
 /// Converts a `chan` into a `shared_chan`.
 fn SharedChan<T:Send>(+c: Chan<T>) -> SharedChan<T> {
-    unsafe::exclusive(move c)
+    private::exclusive(move c)
 }
 
 /// Receive a message from one of two endpoints.
