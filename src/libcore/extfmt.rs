@@ -291,12 +291,12 @@ mod rt {
         let mut s : ~str = int_to_str_prec(i, radix, prec);
         if 0 <= i {
             if have_flag(cv.flags, flag_sign_always) {
-                unchecked { str::unshift_char(s, '+') };
+                unsafe { str::unshift_char(s, '+') };
             } else if have_flag(cv.flags, flag_space_for_sign) {
-                unchecked { str::unshift_char(s, ' ') };
+                unsafe { str::unshift_char(s, ' ') };
             }
         }
-        return unchecked { pad(cv, s, PadSigned) };
+        return unsafe { pad(cv, s, PadSigned) };
     }
     pure fn conv_uint(cv: Conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
@@ -308,7 +308,7 @@ mod rt {
               TyBits => uint_to_str_prec(u, 2u, prec),
               TyOctal => uint_to_str_prec(u, 8u, prec)
             };
-        return unchecked { pad(cv, rs, PadUnsigned) };
+        return unsafe { pad(cv, rs, PadUnsigned) };
     }
     pure fn conv_bool(cv: Conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
@@ -318,7 +318,7 @@ mod rt {
     }
     pure fn conv_char(cv: Conv, c: char) -> ~str {
         let mut s = str::from_char(c);
-        return unchecked { pad(cv, s, PadNozero) };
+        return unsafe { pad(cv, s, PadNozero) };
     }
     pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
@@ -331,14 +331,14 @@ mod rt {
             s.to_unique()
           }
         };
-        return unchecked { pad(cv, unpadded, PadNozero) };
+        return unsafe { pad(cv, unpadded, PadNozero) };
     }
     pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str, 6u)
         };
-        let mut s = unchecked { to_str(f, digits) };
+        let mut s = unsafe { to_str(f, digits) };
         if 0.0 <= f {
             if have_flag(cv.flags, flag_sign_always) {
                 s = ~"+" + s;
@@ -346,7 +346,7 @@ mod rt {
                 s = ~" " + s;
             }
         }
-        return unchecked { pad(cv, s, PadFloat) };
+        return unsafe { pad(cv, s, PadFloat) };
     }
     pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
         let s = sys::log_str(v);
@@ -479,12 +479,12 @@ mod rt2 {
         let mut s : ~str = int_to_str_prec(i, radix, prec);
         if 0 <= i {
             if have_flag(cv.flags, flag_sign_always) {
-                unchecked { str::unshift_char(s, '+') };
+                unsafe { str::unshift_char(s, '+') };
             } else if have_flag(cv.flags, flag_space_for_sign) {
-                unchecked { str::unshift_char(s, ' ') };
+                unsafe { str::unshift_char(s, ' ') };
             }
         }
-        return unchecked { pad(cv, s, PadSigned) };
+        return unsafe { pad(cv, s, PadSigned) };
     }
     pure fn conv_uint(cv: Conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
@@ -496,7 +496,7 @@ mod rt2 {
               TyBits => uint_to_str_prec(u, 2u, prec),
               TyOctal => uint_to_str_prec(u, 8u, prec)
             };
-        return unchecked { pad(cv, rs, PadUnsigned) };
+        return unsafe { pad(cv, rs, PadUnsigned) };
     }
     pure fn conv_bool(cv: Conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
@@ -506,7 +506,7 @@ mod rt2 {
     }
     pure fn conv_char(cv: Conv, c: char) -> ~str {
         let mut s = str::from_char(c);
-        return unchecked { pad(cv, s, PadNozero) };
+        return unsafe { pad(cv, s, PadNozero) };
     }
     pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
@@ -519,14 +519,14 @@ mod rt2 {
             s.to_unique()
           }
         };
-        return unchecked { pad(cv, unpadded, PadNozero) };
+        return unsafe { pad(cv, unpadded, PadNozero) };
     }
     pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
               CountIs(c) => (float::to_str_exact, c as uint),
               CountImplied => (float::to_str, 6u)
         };
-        let mut s = unchecked { to_str(f, digits) };
+        let mut s = unsafe { to_str(f, digits) };
         if 0.0 <= f {
             if have_flag(cv.flags, flag_sign_always) {
                 s = ~"+" + s;
@@ -534,7 +534,7 @@ mod rt2 {
                 s = ~" " + s;
             }
         }
-        return unchecked { pad(cv, s, PadFloat) };
+        return unsafe { pad(cv, s, PadFloat) };
     }
     pure fn conv_poly<T>(cv: Conv, v: T) -> ~str {
         let s = sys::log_str(v);

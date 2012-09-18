@@ -43,7 +43,7 @@ type TaggedDoc = {tag: uint, doc: Doc};
 
 impl Doc: ops::Index<uint,Doc> {
     pure fn index(&&tag: uint) -> Doc {
-        unchecked {
+        unsafe {
             get_doc(self, tag)
         }
     }

@@ -47,7 +47,7 @@ extern mod rusti {
 
 /// Get an unsafe pointer to a value
 #[inline(always)]
-pure fn addr_of<T>(val: T) -> *T { unchecked { rusti::addr_of(val) } }
+pure fn addr_of<T>(val: T) -> *T { unsafe { rusti::addr_of(val) } }
 
 /// Get an unsafe mut pointer to a value
 #[inline(always)]

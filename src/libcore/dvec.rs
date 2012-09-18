@@ -140,7 +140,7 @@ impl<A> DVec<A> {
 
     /// Returns the number of elements currently in the dvec
     pure fn len() -> uint {
-        unchecked {
+        unsafe {
             do self.check_out |v| {
                 let l = v.len();
                 self.give_back(move v);
@@ -280,7 +280,7 @@ impl<A: Copy> DVec<A> {
      * See `unwrap()` if you do not wish to copy the contents.
      */
     pure fn get() -> ~[A] {
-        unchecked {
+        unsafe {
             do self.check_out |v| {
                 let w = copy v;
                 self.give_back(move v);

@@ -177,7 +177,7 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 
 pure fn cast_glue(ccx: @crate_ctxt, ti: @tydesc_info, v: ValueRef)
     -> ValueRef {
-    unchecked {
+    unsafe {
         let llfnty = type_of_glue_fn(ccx, ti.ty);
         llvm::LLVMConstPointerCast(v, T_ptr(llfnty))
     }

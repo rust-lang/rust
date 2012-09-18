@@ -226,14 +226,14 @@ fn push_char(&s: ~str, ch: char) {
 /// Convert a char to a string
 pure fn from_char(ch: char) -> ~str {
     let mut buf = ~"";
-    unchecked { push_char(buf, ch); }
+    unsafe { push_char(buf, ch); }
     move buf
 }
 
 /// Convert a vector of chars to a string
 pure fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
-    unchecked {
+    unsafe {
         reserve(buf, chs.len());
         for vec::each(chs) |ch| { push_char(buf, ch); }
     }
@@ -279,7 +279,7 @@ fn push_str(&lhs: ~str, rhs: &str) {
 #[inline(always)]
 pure fn append(+lhs: ~str, rhs: &str) -> ~str {
     let mut v <- lhs;
-    unchecked {
+    unsafe {
         push_str_no_overallocate(v, rhs);
     }
     move v
@@ -289,7 +289,7 @@ pure fn append(+lhs: ~str, rhs: &str) -> ~str {
 /// Concatenate a vector of strings
 pure fn concat(v: &[~str]) -> ~str {
     let mut s: ~str = ~"";
-    for vec::each(v) |ss| { unchecked { push_str(s, ss) }; }
+    for vec::each(v) |ss| { unsafe { push_str(s, ss) }; }
     move s
 }
 
@@ -297,8 +297,8 @@ pure fn concat(v: &[~str]) -> ~str {
 pure fn connect(v: &[~str], sep: &str) -> ~str {
     let mut s = ~"", first = true;
     for vec::each(v) |ss| {
-        if first { first = false; } else { unchecked { push_str(s, sep); } }
-        unchecked { push_str(s, ss) };
+        if first { first = false; } else { unsafe { push_str(s, sep); } }
+        unsafe { push_str(s, ss) };
     }
     move s
 }
@@ -457,7 +457,7 @@ pure fn chars(s: &str) -> ~[char] {
     let len = len(s);
     while i < len {
         let {ch, next} = char_range_at(s, i);
-        unchecked { vec::push(buf, ch); }
+        unsafe { vec::push(buf, ch); }
         i = next;
     }
     move buf
@@ -525,7 +525,7 @@ pure fn split_char_inner(s: &str, sep: char, count: uint, allow_empty: bool)
         let mut i = 0u, start = 0u;
         while i < l && done < count {
             if s[i] == b {
-                if allow_empty || start < i unchecked {
+                if allow_empty || start < i unsafe {
                     vec::push(result,
                               unsafe { raw::slice_bytes(s, start, i) });
                 }
@@ -569,7 +569,7 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
     while i < l && done < count {
         let {ch, next} = char_range_at(s, i);
         if sepfn(ch) {
-            if allow_empty || start < i unchecked {
+            if allow_empty || start < i unsafe {
                 vec::push(result, unsafe { raw::slice_bytes(s, start, i)});
             }
             start = next;
@@ -577,7 +577,7 @@ pure fn split_inner(s: &str, sepfn: fn(cc: char) -> bool, count: uint,
         }
         i = next;
     }
-    if allow_empty || start < l unchecked {
+    if allow_empty || start < l unsafe {
         vec::push(result, unsafe { raw::slice_bytes(s, start, l) });
     }
     move result
@@ -675,14 +675,14 @@ pure fn words(s: &str) -> ~[~str] {
 /// Convert a string to lowercase. ASCII only
 pure fn to_lower(s: &str) -> ~str {
     map(s,
-        |c| unchecked{(libc::tolower(c as libc::c_char)) as char}
+        |c| unsafe{(libc::tolower(c as libc::c_char)) as char}
     )
 }
 
 /// Convert a string to uppercase. ASCII only
 pure fn to_upper(s: &str) -> ~str {
     map(s,
-        |c| unchecked{(libc::toupper(c as libc::c_char)) as char}
+        |c| unsafe{(libc::toupper(c as libc::c_char)) as char}
     )
 }
 
@@ -702,7 +702,7 @@ pure fn to_upper(s: &str) -> ~str {
 pure fn replace(s: &str, from: &str, to: &str) -> ~str {
     let mut result = ~"", first = true;
     do iter_between_matches(s, from) |start, end| {
-        if first { first = false; } else { unchecked {push_str(result, to); }}
+        if first { first = false; } else { unsafe {push_str(result, to); }}
         unsafe { push_str(result, raw::slice_bytes(s, start, end)); }
     }
     move result
@@ -877,7 +877,7 @@ pure fn any(ss: &str, pred: fn(char) -> bool) -> bool {
 /// Apply a function to each character
 pure fn map(ss: &str, ff: fn(char) -> char) -> ~str {
     let mut result = ~"";
-    unchecked {
+    unsafe {
         reserve(result, len(ss));
         do chars_iter(ss) |cc| {
             str::push_char(result, ff(cc));
@@ -1522,11 +1522,11 @@ pure fn to_utf16(s: &str) -> ~[u16] {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = cch as u32;
 
-        if (ch & 0xFFFF_u32) == ch unchecked {
+        if (ch & 0xFFFF_u32) == ch unsafe {
             // The BMP falls through (assuming non-surrogate, as it should)
             assert ch <= 0xD7FF_u32 || ch >= 0xE000_u32;
             vec::push(u, ch as u16)
-        } else unchecked {
+        } else unsafe {
             // Supplementary planes break into surrogates.
             assert ch >= 0x1_0000_u32 && ch <= 0x10_FFFF_u32;
             ch -= 0x1_0000_u32;
@@ -1565,7 +1565,7 @@ pure fn utf16_chars(v: &[u16], f: fn(char)) {
 
 pure fn from_utf16(v: &[u16]) -> ~str {
     let mut buf = ~"";
-    unchecked {
+    unsafe {
         reserve(buf, vec::len(v));
         utf16_chars(v, |ch| push_char(buf, ch));
     }
@@ -1945,7 +1945,7 @@ pure fn capacity(&&s: ~str) -> uint {
 /// Escape each char in `s` with char::escape_default.
 pure fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    unchecked {
+    unsafe {
         reserve_at_least(out, str::len(s));
         chars_iter(s, |c| push_str(out, char::escape_default(c)));
     }
@@ -1955,7 +1955,7 @@ pure fn escape_default(s: &str) -> ~str {
 /// Escape each char in `s` with char::escape_unicode.
 pure fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
-    unchecked {
+    unsafe {
         reserve_at_least(out, str::len(s));
         chars_iter(s, |c| push_str(out, char::escape_unicode(c)));
     }

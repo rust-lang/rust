@@ -85,7 +85,7 @@ trait Streaming {
 impl <A: IterBytes> A: Hash {
     #[inline(always)]
     pure fn hash_keyed(k0: u64, k1: u64) -> u64 {
-        unchecked {
+        unsafe {
             let s = &State(k0, k1);
             for self.iter_bytes(true) |bytes| {
                 s.input(bytes);
@@ -100,7 +100,7 @@ impl <A: IterBytes> A: Hash {
 pure fn hash_keyed_2<A: IterBytes,
                      B: IterBytes>(a: &A, b: &B,
                                    k0: u64, k1: u64) -> u64 {
-    unchecked {
+    unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }
         for b.iter_bytes(true) |bytes| { s.input(bytes); }
@@ -112,7 +112,7 @@ pure fn hash_keyed_3<A: IterBytes,
                      B: IterBytes,
                      C: IterBytes>(a: &A, b: &B, c: &C,
                                    k0: u64, k1: u64) -> u64 {
-    unchecked {
+    unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }
         for b.iter_bytes(true) |bytes| { s.input(bytes); }
@@ -126,7 +126,7 @@ pure fn hash_keyed_4<A: IterBytes,
                      C: IterBytes,
                      D: IterBytes>(a: &A, b: &B, c: &C, d: &D,
                                    k0: u64, k1: u64) -> u64 {
-    unchecked {
+    unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }
         for b.iter_bytes(true) |bytes| { s.input(bytes); }
@@ -142,7 +142,7 @@ pure fn hash_keyed_5<A: IterBytes,
                      D: IterBytes,
                      E: IterBytes>(a: &A, b: &B, c: &C, d: &D, e: &E,
                                    k0: u64, k1: u64) -> u64 {
-    unchecked {
+    unsafe {
         let s = &State(k0, k1);
         for a.iter_bytes(true) |bytes| { s.input(bytes); }
         for b.iter_bytes(true) |bytes| { s.input(bytes); }
