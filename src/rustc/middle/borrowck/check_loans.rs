@@ -673,9 +673,6 @@ fn check_loans_in_block(blk: ast::blk,
         match blk.node.rules {
           ast::default_blk => {
           }
-          ast::unchecked_blk => {
-            self.declared_purity = ast::impure_fn;
-          }
           ast::unsafe_blk => {
             self.declared_purity = ast::unsafe_fn;
           }
