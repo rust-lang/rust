@@ -50,7 +50,7 @@ while cur < len(lines):
                 # Lines beginning with '# ' are turned into valid code
                 line = re.sub("^# ", "", line)
                 # Allow elipses in code snippets
-                line = re.sub("\.\.\.", "/*...*/", line)
+                line = re.sub("\.\.\.", "", line)
                 block += line
         if not ignore:
             if not re.search(r"\bfn main\b", block):
