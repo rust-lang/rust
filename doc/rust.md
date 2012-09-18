@@ -1327,7 +1327,7 @@ specified, after the `impl` keyword.
 # trait seq<T> { }
 
 impl<T> ~[T]: seq<T> {
-    /* ... */
+   // ...
 }
 impl u32: seq<bool> {
    /* Treat the integer as a sequence of bits */
