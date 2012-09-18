@@ -1,51 +1,51 @@
 use result::Result;
 use std::getopts;
 
-export output_format;
-export output_style;
-export config;
+export OutputFormat;
+export OutputStyle;
+export Config;
 export default_config;
 export parse_config;
 export usage;
-export markdown, pandoc_html;
-export doc_per_crate, doc_per_mod;
+export Markdown, PandocHtml;
+export DocPerCrate, DocPerMod;
 
 /// The type of document to output
-enum output_format {
+enum OutputFormat {
     /// Markdown
-    markdown,
+    Markdown,
     /// HTML, via markdown and pandoc
-    pandoc_html
+    PandocHtml
 }
 
-impl output_format : cmp::Eq {
-    pure fn eq(&&other: output_format) -> bool {
+impl OutputFormat : cmp::Eq {
+    pure fn eq(&&other: OutputFormat) -> bool {
         (self as uint) == (other as uint)
     }
-    pure fn ne(&&other: output_format) -> bool { !self.eq(other) }
+    pure fn ne(&&other: OutputFormat) -> bool { !self.eq(other) }
 }
 
 /// How to organize the output
-enum output_style {
+enum OutputStyle {
     /// All in a single document
-    doc_per_crate,
+    DocPerCrate,
     /// Each module in its own document
-    doc_per_mod
+    DocPerMod
 }
 
-impl output_style : cmp::Eq {
-    pure fn eq(&&other: output_style) -> bool {
+impl OutputStyle : cmp::Eq {
+    pure fn eq(&&other: OutputStyle) -> bool {
         (self as uint) == (other as uint)
     }
-    pure fn ne(&&other: output_style) -> bool { !self.eq(other) }
+    pure fn ne(&&other: OutputStyle) -> bool { !self.eq(other) }
 }
 
 /// The configuration for a rustdoc session
-type config = {
+type Config = {
     input_crate: Path,
     output_dir: Path,
-    output_format: output_format,
-    output_style: output_style,
+    output_format: OutputFormat,
+    output_style: OutputStyle,
     pandoc_cmd: Option<~str>
 };
 
@@ -81,17 +81,17 @@ fn usage() {
     println(~"");
 }
 
-fn default_config(input_crate: &Path) -> config {
+fn default_config(input_crate: &Path) -> Config {
     {
         input_crate: *input_crate,
         output_dir: Path("."),
-        output_format: pandoc_html,
-        output_style: doc_per_mod,
+        output_format: PandocHtml,
+        output_style: DocPerMod,
         pandoc_cmd: None
     }
 }
 
-type program_output = fn~((&str), (&[~str])) ->
+type ProgramOutput = fn~((&str), (&[~str])) ->
     {status: int, out: ~str, err: ~str};
 
 fn mock_program_output(_prog: &str, _args: &[~str]) -> {
@@ -104,14 +104,14 @@ fn mock_program_output(_prog: &str, _args: &[~str]) -> {
     }
 }
 
-fn parse_config(args: ~[~str]) -> Result<config, ~str> {
+fn parse_config(args: ~[~str]) -> Result<Config, ~str> {
     parse_config_(args, run::program_output)
 }
 
 fn parse_config_(
     args: ~[~str],
-    program_output: program_output
-) -> Result<config, ~str> {
+    program_output: ProgramOutput
+) -> Result<Config, ~str> {
     let args = vec::tail(args);
     let opts = vec::unzip(opts()).first();
     match getopts::getopts(args, opts) {
@@ -134,8 +134,8 @@ fn parse_config_(
 fn config_from_opts(
     input_crate: &Path,
     matches: getopts::Matches,
-    program_output: program_output
-) -> Result<config, ~str> {
+    program_output: ProgramOutput
+) -> Result<Config, ~str> {
 
     let config = default_config(input_crate);
     let result = result::Ok(config);
@@ -190,28 +190,28 @@ fn config_from_opts(
     return result;
 }
 
-fn parse_output_format(output_format: ~str) -> Result<output_format, ~str> {
+fn parse_output_format(output_format: ~str) -> Result<OutputFormat, ~str> {
     match output_format {
-      ~"markdown" => result::Ok(markdown),
-      ~"html" => result::Ok(pandoc_html),
+      ~"markdown" => result::Ok(Markdown),
+      ~"html" => result::Ok(PandocHtml),
       _ => result::Err(fmt!("unknown output format '%s'", output_format))
     }
 }
 
-fn parse_output_style(output_style: ~str) -> Result<output_style, ~str> {
+fn parse_output_style(output_style: ~str) -> Result<OutputStyle, ~str> {
     match output_style {
-      ~"doc-per-crate" => result::Ok(doc_per_crate),
-      ~"doc-per-mod" => result::Ok(doc_per_mod),
+      ~"doc-per-crate" => result::Ok(DocPerCrate),
+      ~"doc-per-mod" => result::Ok(DocPerMod),
       _ => result::Err(fmt!("unknown output style '%s'", output_style))
     }
 }
 
 fn maybe_find_pandoc(
-    config: config,
+    config: Config,
     maybe_pandoc_cmd: Option<~str>,
-    program_output: program_output
+    program_output: ProgramOutput
 ) -> Result<Option<~str>, ~str> {
-    if config.output_format != pandoc_html {
+    if config.output_format != PandocHtml {
         return result::Ok(maybe_pandoc_cmd);
     }
 
@@ -243,7 +243,7 @@ fn maybe_find_pandoc(
 #[test]
 fn should_find_pandoc() {
     let config = {
-        output_format: pandoc_html,
+        output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
     let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
@@ -260,7 +260,7 @@ fn should_find_pandoc() {
 #[test]
 fn should_error_with_no_pandoc() {
     let config = {
-        output_format: pandoc_html,
+        output_format: PandocHtml,
         .. default_config(&Path("test"))
     };
     let mock_program_output = fn~(_prog: &str, _args: &[~str]) -> {
@@ -276,7 +276,7 @@ fn should_error_with_no_pandoc() {
 
 #[cfg(test)]
 mod test {
-    fn parse_config(args: ~[~str]) -> Result<config, ~str> {
+    fn parse_config(args: ~[~str]) -> Result<Config, ~str> {
         parse_config_(args, mock_program_output)
     }
 }
@@ -311,7 +311,7 @@ fn should_set_output_dir_if_provided() {
 #[test]
 fn should_set_output_format_to_pandoc_html_if_not_provided() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).output_format == pandoc_html;
+    assert result::get(config).output_format == PandocHtml;
 }
 
 #[test]
@@ -319,7 +319,7 @@ fn should_set_output_format_to_markdown_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-format", ~"markdown"
     ]);
-    assert result::get(config).output_format == markdown;
+    assert result::get(config).output_format == Markdown;
 }
 
 #[test]
@@ -327,7 +327,7 @@ fn should_set_output_format_to_pandoc_html_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-format", ~"html"
     ]);
-    assert result::get(config).output_format == pandoc_html;
+    assert result::get(config).output_format == PandocHtml;
 }
 
 #[test]
@@ -341,7 +341,7 @@ fn should_error_on_bogus_format() {
 #[test]
 fn should_set_output_style_to_doc_per_mod_by_default() {
     let config = test::parse_config(~[~"rustdoc", ~"crate.rc"]);
-    assert result::get(config).output_style == doc_per_mod;
+    assert result::get(config).output_style == DocPerMod;
 }
 
 #[test]
@@ -349,7 +349,7 @@ fn should_set_output_style_to_one_doc_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-style", ~"doc-per-crate"
     ]);
-    assert result::get(config).output_style == doc_per_crate;
+    assert result::get(config).output_style == DocPerCrate;
 }
 
 #[test]
@@ -357,7 +357,7 @@ fn should_set_output_style_to_doc_per_mod_if_requested() {
     let config = test::parse_config(~[
         ~"rustdoc", ~"crate.rc", ~"--output-style", ~"doc-per-mod"
     ]);
-    assert result::get(config).output_style == doc_per_mod;
+    assert result::get(config).output_style == DocPerMod;
 }
 
 #[test]

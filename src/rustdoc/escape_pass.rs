@@ -2,7 +2,7 @@
 
 export mk_pass;
 
-fn mk_pass() -> pass {
+fn mk_pass() -> Pass {
     text_pass::mk_pass(~"escape", escape)
 }
 

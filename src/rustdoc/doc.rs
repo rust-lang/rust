@@ -1,62 +1,62 @@
 //! The document model
 
-type ast_id = int;
+type AstId = int;
 
-type doc_ = {
-    pages: ~[page]
+type Doc_ = {
+    pages: ~[Page]
 };
 
-impl doc_ : cmp::Eq {
-    pure fn eq(&&other: doc_) -> bool {
+impl Doc_ : cmp::Eq {
+    pure fn eq(&&other: Doc_) -> bool {
         self.pages == other.pages
     }
-    pure fn ne(&&other: doc_) -> bool { !self.eq(other) }
+    pure fn ne(&&other: Doc_) -> bool { !self.eq(other) }
 }
 
-enum doc {
-    doc_(doc_)
+enum Doc {
+    Doc_(Doc_)
 }
 
-impl doc : cmp::Eq {
-    pure fn eq(&&other: doc) -> bool { *self == *other }
-    pure fn ne(&&other: doc) -> bool { *self != *other }
+impl Doc : cmp::Eq {
+    pure fn eq(&&other: Doc) -> bool { *self == *other }
+    pure fn ne(&&other: Doc) -> bool { *self != *other }
 }
 
-enum page {
-    cratepage(cratedoc),
-    itempage(itemtag)
+enum Page {
+    CratePage(CrateDoc),
+    ItemPage(ItemTag)
 }
 
-impl page : cmp::Eq {
-    pure fn eq(&&other: page) -> bool {
+impl Page : cmp::Eq {
+    pure fn eq(&&other: Page) -> bool {
         match self {
-            cratepage(e0a) => {
+            CratePage(e0a) => {
                 match other {
-                    cratepage(e0b) => e0a == e0b,
+                    CratePage(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            itempage(e0a) => {
+            ItemPage(e0a) => {
                 match other {
-                    itempage(e0b) => e0a == e0b,
+                    ItemPage(e0b) => e0a == e0b,
                     _ => false
                 }
             }
         }
     }
-    pure fn ne(&&other: page) -> bool { !self.eq(other) }
+    pure fn ne(&&other: Page) -> bool { !self.eq(other) }
 }
 
-enum implementation {
-    required,
-    provided,
+enum Implementation {
+    Required,
+    Provided,
 }
 
-impl implementation : cmp::Eq {
-    pure fn eq(&&other: implementation) -> bool {
+impl Implementation : cmp::Eq {
+    pure fn eq(&&other: Implementation) -> bool {
         (self as uint) == (other as uint)
     }
-    pure fn ne(&&other: implementation) -> bool { !self.eq(other) }
+    pure fn ne(&&other: Implementation) -> bool { !self.eq(other) }
 }
 
 
@@ -64,112 +64,112 @@ impl implementation : cmp::Eq {
  * Most rustdocs can be parsed into 'sections' according to their markdown
  * headers
  */
-type section = {
+type Section = {
     header: ~str,
     body: ~str
 };
 
-impl section : cmp::Eq {
-    pure fn eq(&&other: section) -> bool {
+impl Section : cmp::Eq {
+    pure fn eq(&&other: Section) -> bool {
         self.header == other.header && self.body == other.body
     }
-    pure fn ne(&&other: section) -> bool { !self.eq(other) }
+    pure fn ne(&&other: Section) -> bool { !self.eq(other) }
 }
 
 // FIXME (#2596): We currently give topmod the name of the crate.  There
 // would probably be fewer special cases if the crate had its own name
 // and topmod's name was the empty string.
-type cratedoc = {
-    topmod: moddoc,
+type CrateDoc = {
+    topmod: ModDoc,
 };
 
-impl cratedoc : cmp::Eq {
-    pure fn eq(&&other: cratedoc) -> bool {
+impl CrateDoc : cmp::Eq {
+    pure fn eq(&&other: CrateDoc) -> bool {
         self.topmod == other.topmod
     }
-    pure fn ne(&&other: cratedoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: CrateDoc) -> bool { !self.eq(other) }
 }
 
-enum itemtag {
-    modtag(moddoc),
-    nmodtag(nmoddoc),
-    consttag(constdoc),
-    fntag(fndoc),
-    enumtag(enumdoc),
-    traittag(traitdoc),
-    impltag(impldoc),
-    tytag(tydoc)
+enum ItemTag {
+    ModTag(ModDoc),
+    NmodTag(NmodDoc),
+    ConstTag(ConstDoc),
+    FnTag(FnDoc),
+    EnumTag(EnumDoc),
+    TraitTag(TraitDoc),
+    ImplTag(ImplDoc),
+    TyTag(TyDoc)
 }
 
-impl itemtag : cmp::Eq {
-    pure fn eq(&&other: itemtag) -> bool {
+impl ItemTag : cmp::Eq {
+    pure fn eq(&&other: ItemTag) -> bool {
         match self {
-            modtag(e0a) => {
+            ModTag(e0a) => {
                 match other {
-                    modtag(e0b) => e0a == e0b,
+                    ModTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            nmodtag(e0a) => {
+            NmodTag(e0a) => {
                 match other {
-                    nmodtag(e0b) => e0a == e0b,
+                    NmodTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            consttag(e0a) => {
+            ConstTag(e0a) => {
                 match other {
-                    consttag(e0b) => e0a == e0b,
+                    ConstTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            fntag(e0a) => {
+            FnTag(e0a) => {
                 match other {
-                    fntag(e0b) => e0a == e0b,
+                    FnTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            enumtag(e0a) => {
+            EnumTag(e0a) => {
                 match other {
-                    enumtag(e0b) => e0a == e0b,
+                    EnumTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            traittag(e0a) => {
+            TraitTag(e0a) => {
                 match other {
-                    traittag(e0b) => e0a == e0b,
+                    TraitTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            impltag(e0a) => {
+            ImplTag(e0a) => {
                 match other {
-                    impltag(e0b) => e0a == e0b,
+                    ImplTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
-            tytag(e0a) => {
+            TyTag(e0a) => {
                 match other {
-                    tytag(e0b) => e0a == e0b,
+                    TyTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
         }
     }
-    pure fn ne(&&other: itemtag) -> bool { !self.eq(other) }
+    pure fn ne(&&other: ItemTag) -> bool { !self.eq(other) }
 }
 
-type itemdoc = {
-    id: ast_id,
+type ItemDoc = {
+    id: AstId,
     name: ~str,
     path: ~[~str],
     brief: Option<~str>,
     desc: Option<~str>,
-    sections: ~[section],
+    sections: ~[Section],
     // Indicates that this node is a reexport of a different item
     reexport: bool
 };
 
-impl itemdoc : cmp::Eq {
-    pure fn eq(&&other: itemdoc) -> bool {
+impl ItemDoc : cmp::Eq {
+    pure fn eq(&&other: ItemDoc) -> bool {
         self.id == other.id &&
         self.name == other.name &&
         self.path == other.path &&
@@ -178,114 +178,114 @@ impl itemdoc : cmp::Eq {
         self.sections == other.sections &&
         self.reexport == other.reexport
     }
-    pure fn ne(&&other: itemdoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: ItemDoc) -> bool { !self.eq(other) }
 }
 
-type simpleitemdoc = {
-    item: itemdoc,
+type SimpleItemDoc = {
+    item: ItemDoc,
     sig: Option<~str>
 };
 
-impl simpleitemdoc : cmp::Eq {
-    pure fn eq(&&other: simpleitemdoc) -> bool {
+impl SimpleItemDoc : cmp::Eq {
+    pure fn eq(&&other: SimpleItemDoc) -> bool {
         self.item == other.item && self.sig == other.sig
     }
-    pure fn ne(&&other: simpleitemdoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: SimpleItemDoc) -> bool { !self.eq(other) }
 }
 
-type moddoc_ = {
-    item: itemdoc,
-    items: ~[itemtag],
-    index: Option<index>
+type ModDoc_ = {
+    item: ItemDoc,
+    items: ~[ItemTag],
+    index: Option<Index>
 };
 
-impl moddoc_ : cmp::Eq {
-    pure fn eq(&&other: moddoc_) -> bool {
+impl ModDoc_ : cmp::Eq {
+    pure fn eq(&&other: ModDoc_) -> bool {
         self.item == other.item &&
         self.items == other.items &&
         self.index == other.index
     }
-    pure fn ne(&&other: moddoc_) -> bool { !self.eq(other) }
+    pure fn ne(&&other: ModDoc_) -> bool { !self.eq(other) }
 }
 
-enum moddoc {
-    moddoc_(moddoc_)
+enum ModDoc {
+    ModDoc_(ModDoc_)
 }
 
-impl moddoc : cmp::Eq {
-    pure fn eq(&&other: moddoc) -> bool { *self == *other }
-    pure fn ne(&&other: moddoc) -> bool { *self != *other }
+impl ModDoc : cmp::Eq {
+    pure fn eq(&&other: ModDoc) -> bool { *self == *other }
+    pure fn ne(&&other: ModDoc) -> bool { *self != *other }
 }
 
-type nmoddoc = {
-    item: itemdoc,
-    fns: ~[fndoc],
-    index: Option<index>
+type NmodDoc = {
+    item: ItemDoc,
+    fns: ~[FnDoc],
+    index: Option<Index>
 };
 
-impl nmoddoc : cmp::Eq {
-    pure fn eq(&&other: nmoddoc) -> bool {
+impl NmodDoc : cmp::Eq {
+    pure fn eq(&&other: NmodDoc) -> bool {
         self.item == other.item &&
         self.fns == other.fns &&
         self.index == other.index
     }
-    pure fn ne(&&other: nmoddoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: NmodDoc) -> bool { !self.eq(other) }
 }
 
-type constdoc = simpleitemdoc;
+type ConstDoc = SimpleItemDoc;
 
-type fndoc = simpleitemdoc;
+type FnDoc = SimpleItemDoc;
 
-type enumdoc = {
-    item: itemdoc,
-    variants: ~[variantdoc]
+type EnumDoc = {
+    item: ItemDoc,
+    variants: ~[VariantDoc]
 };
 
-impl enumdoc : cmp::Eq {
-    pure fn eq(&&other: enumdoc) -> bool {
+impl EnumDoc : cmp::Eq {
+    pure fn eq(&&other: EnumDoc) -> bool {
         self.item == other.item && self.variants == other.variants
     }
-    pure fn ne(&&other: enumdoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: EnumDoc) -> bool { !self.eq(other) }
 }
 
-type variantdoc = {
+type VariantDoc = {
     name: ~str,
     desc: Option<~str>,
     sig: Option<~str>
 };
 
-impl variantdoc : cmp::Eq {
-    pure fn eq(&&other: variantdoc) -> bool {
+impl VariantDoc : cmp::Eq {
+    pure fn eq(&&other: VariantDoc) -> bool {
         self.name == other.name &&
         self.desc == other.desc &&
         self.sig == other.sig
     }
-    pure fn ne(&&other: variantdoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: VariantDoc) -> bool { !self.eq(other) }
 }
 
-type traitdoc = {
-    item: itemdoc,
-    methods: ~[methoddoc]
+type TraitDoc = {
+    item: ItemDoc,
+    methods: ~[MethodDoc]
 };
 
-impl traitdoc : cmp::Eq {
-    pure fn eq(&&other: traitdoc) -> bool {
+impl TraitDoc : cmp::Eq {
+    pure fn eq(&&other: TraitDoc) -> bool {
         self.item == other.item && self.methods == other.methods
     }
-    pure fn ne(&&other: traitdoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: TraitDoc) -> bool { !self.eq(other) }
 }
 
-type methoddoc = {
+type MethodDoc = {
     name: ~str,
     brief: Option<~str>,
     desc: Option<~str>,
-    sections: ~[section],
+    sections: ~[Section],
     sig: Option<~str>,
-    implementation: implementation,
+    implementation: Implementation,
 };
 
-impl methoddoc : cmp::Eq {
-    pure fn eq(&&other: methoddoc) -> bool {
+impl MethodDoc : cmp::Eq {
+    pure fn eq(&&other: MethodDoc) -> bool {
         self.name == other.name &&
         self.brief == other.brief &&
         self.desc == other.desc &&
@@ -293,37 +293,37 @@ impl methoddoc : cmp::Eq {
         self.sig == other.sig &&
         self.implementation == other.implementation
     }
-    pure fn ne(&&other: methoddoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: MethodDoc) -> bool { !self.eq(other) }
 }
 
-type impldoc = {
-    item: itemdoc,
+type ImplDoc = {
+    item: ItemDoc,
     trait_types: ~[~str],
     self_ty: Option<~str>,
-    methods: ~[methoddoc]
+    methods: ~[MethodDoc]
 };
 
-impl impldoc : cmp::Eq {
-    pure fn eq(&&other: impldoc) -> bool {
+impl ImplDoc : cmp::Eq {
+    pure fn eq(&&other: ImplDoc) -> bool {
         self.item == other.item &&
         self.trait_types == other.trait_types &&
         self.self_ty == other.self_ty &&
         self.methods == other.methods
     }
-    pure fn ne(&&other: impldoc) -> bool { !self.eq(other) }
+    pure fn ne(&&other: ImplDoc) -> bool { !self.eq(other) }
 }
 
-type tydoc = simpleitemdoc;
+type TyDoc = SimpleItemDoc;
 
-type index = {
-    entries: ~[index_entry]
+type Index = {
+    entries: ~[IndexEntry]
 };
 
-impl index : cmp::Eq {
-    pure fn eq(&&other: index) -> bool {
+impl Index : cmp::Eq {
+    pure fn eq(&&other: Index) -> bool {
         self.entries == other.entries
     }
-    pure fn ne(&&other: index) -> bool { !self.eq(other) }
+    pure fn ne(&&other: Index) -> bool { !self.eq(other) }
 }
 
 /**
@@ -336,254 +336,254 @@ impl index : cmp::Eq {
  * * brief - The brief description
  * * link - A format-specific string representing the link target
  */
-type index_entry = {
+type IndexEntry = {
     kind: ~str,
     name: ~str,
     brief: Option<~str>,
     link: ~str
 };
 
-impl index_entry : cmp::Eq {
-    pure fn eq(&&other: index_entry) -> bool {
+impl IndexEntry : cmp::Eq {
+    pure fn eq(&&other: IndexEntry) -> bool {
         self.kind == other.kind &&
         self.name == other.name &&
         self.brief == other.brief &&
         self.link == other.link
     }
-    pure fn ne(&&other: index_entry) -> bool { !self.eq(other) }
+    pure fn ne(&&other: IndexEntry) -> bool { !self.eq(other) }
 }
 
-impl doc {
-    fn cratedoc() -> cratedoc {
+impl Doc {
+    fn CrateDoc() -> CrateDoc {
         option::get(vec::foldl(None, self.pages, |_m, page| {
             match page {
-              doc::cratepage(doc) => Some(doc),
+              doc::CratePage(doc) => Some(doc),
               _ => None
             }
         }))
     }
 
-    fn cratemod() -> moddoc {
-        self.cratedoc().topmod
+    fn cratemod() -> ModDoc {
+        self.CrateDoc().topmod
     }
 }
 
-/// Some helper methods on moddoc, mostly for testing
-impl moddoc {
+/// Some helper methods on ModDoc, mostly for testing
+impl ModDoc {
 
-    fn mods() -> ~[moddoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              modtag(moddoc) => Some(moddoc),
+    fn mods() -> ~[ModDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              ModTag(ModDoc) => Some(ModDoc),
               _ => None
             }
         }
     }
 
-    fn nmods() -> ~[nmoddoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              nmodtag(nmoddoc) => Some(nmoddoc),
+    fn nmods() -> ~[NmodDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              NmodTag(nModDoc) => Some(nModDoc),
               _ => None
             }
         }
     }
 
-    fn fns() -> ~[fndoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              fntag(fndoc) => Some(fndoc),
+    fn fns() -> ~[FnDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              FnTag(FnDoc) => Some(FnDoc),
               _ => None
             }
         }
     }
 
-    fn consts() -> ~[constdoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              consttag(constdoc) => Some(constdoc),
+    fn consts() -> ~[ConstDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              ConstTag(ConstDoc) => Some(ConstDoc),
               _ => None
             }
         }
     }
 
-    fn enums() -> ~[enumdoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              enumtag(enumdoc) => Some(enumdoc),
+    fn enums() -> ~[EnumDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              EnumTag(EnumDoc) => Some(EnumDoc),
               _ => None
             }
         }
     }
 
-    fn traits() -> ~[traitdoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              traittag(traitdoc) => Some(traitdoc),
+    fn traits() -> ~[TraitDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              TraitTag(TraitDoc) => Some(TraitDoc),
               _ => None
             }
         }
     }
 
-    fn impls() -> ~[impldoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              impltag(impldoc) => Some(impldoc),
+    fn impls() -> ~[ImplDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              ImplTag(ImplDoc) => Some(ImplDoc),
               _ => None
             }
         }
     }
 
-    fn types() -> ~[tydoc] {
-        do vec::filter_map(self.items) |itemtag| {
-            match itemtag {
-              tytag(tydoc) => Some(tydoc),
-              _ => None
-            }
-        }
-    }
-}
-
-trait page_utils {
-    fn mods() -> ~[moddoc];
-    fn nmods() -> ~[nmoddoc];
-    fn fns() -> ~[fndoc];
-    fn consts() -> ~[constdoc];
-    fn enums() -> ~[enumdoc];
-    fn traits() -> ~[traitdoc];
-    fn impls() -> ~[impldoc];
-    fn types() -> ~[tydoc];
-}
-
-impl ~[page]: page_utils {
-
-    fn mods() -> ~[moddoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(modtag(moddoc)) => Some(moddoc),
-              _ => None
-            }
-        }
-    }
-
-    fn nmods() -> ~[nmoddoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(nmodtag(nmoddoc)) => Some(nmoddoc),
-              _ => None
-            }
-        }
-    }
-
-    fn fns() -> ~[fndoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(fntag(fndoc)) => Some(fndoc),
-              _ => None
-            }
-        }
-    }
-
-    fn consts() -> ~[constdoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(consttag(constdoc)) => Some(constdoc),
-              _ => None
-            }
-        }
-    }
-
-    fn enums() -> ~[enumdoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(enumtag(enumdoc)) => Some(enumdoc),
-              _ => None
-            }
-        }
-    }
-
-    fn traits() -> ~[traitdoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(traittag(traitdoc)) => Some(traitdoc),
-              _ => None
-            }
-        }
-    }
-
-    fn impls() -> ~[impldoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(impltag(impldoc)) => Some(impldoc),
-              _ => None
-            }
-        }
-    }
-
-    fn types() -> ~[tydoc] {
-        do vec::filter_map(self) |page| {
-            match page {
-              itempage(tytag(tydoc)) => Some(tydoc),
+    fn types() -> ~[TyDoc] {
+        do vec::filter_map(self.items) |ItemTag| {
+            match ItemTag {
+              TyTag(TyDoc) => Some(TyDoc),
               _ => None
             }
         }
     }
 }
 
-trait item {
-    pure fn item() -> itemdoc;
+trait PageUtils {
+    fn mods() -> ~[ModDoc];
+    fn nmods() -> ~[NmodDoc];
+    fn fns() -> ~[FnDoc];
+    fn consts() -> ~[ConstDoc];
+    fn enums() -> ~[EnumDoc];
+    fn traits() -> ~[TraitDoc];
+    fn impls() -> ~[ImplDoc];
+    fn types() -> ~[TyDoc];
 }
 
-impl itemtag: item {
-    pure fn item() -> itemdoc {
+impl ~[Page]: PageUtils {
+
+    fn mods() -> ~[ModDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(ModTag(ModDoc)) => Some(ModDoc),
+              _ => None
+            }
+        }
+    }
+
+    fn nmods() -> ~[NmodDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(NmodTag(nModDoc)) => Some(nModDoc),
+              _ => None
+            }
+        }
+    }
+
+    fn fns() -> ~[FnDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(FnTag(FnDoc)) => Some(FnDoc),
+              _ => None
+            }
+        }
+    }
+
+    fn consts() -> ~[ConstDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(ConstTag(ConstDoc)) => Some(ConstDoc),
+              _ => None
+            }
+        }
+    }
+
+    fn enums() -> ~[EnumDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(EnumTag(EnumDoc)) => Some(EnumDoc),
+              _ => None
+            }
+        }
+    }
+
+    fn traits() -> ~[TraitDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(TraitTag(TraitDoc)) => Some(TraitDoc),
+              _ => None
+            }
+        }
+    }
+
+    fn impls() -> ~[ImplDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(ImplTag(ImplDoc)) => Some(ImplDoc),
+              _ => None
+            }
+        }
+    }
+
+    fn types() -> ~[TyDoc] {
+        do vec::filter_map(self) |page| {
+            match page {
+              ItemPage(TyTag(TyDoc)) => Some(TyDoc),
+              _ => None
+            }
+        }
+    }
+}
+
+trait Item {
+    pure fn item() -> ItemDoc;
+}
+
+impl ItemTag: Item {
+    pure fn item() -> ItemDoc {
         match self {
-          doc::modtag(doc) => doc.item,
-          doc::nmodtag(doc) => doc.item,
-          doc::fntag(doc) => doc.item,
-          doc::consttag(doc) => doc.item,
-          doc::enumtag(doc) => doc.item,
-          doc::traittag(doc) => doc.item,
-          doc::impltag(doc) => doc.item,
-          doc::tytag(doc) => doc.item
+          doc::ModTag(doc) => doc.item,
+          doc::NmodTag(doc) => doc.item,
+          doc::FnTag(doc) => doc.item,
+          doc::ConstTag(doc) => doc.item,
+          doc::EnumTag(doc) => doc.item,
+          doc::TraitTag(doc) => doc.item,
+          doc::ImplTag(doc) => doc.item,
+          doc::TyTag(doc) => doc.item
         }
     }
 }
 
-impl simpleitemdoc: item {
-    pure fn item() -> itemdoc { self.item }
+impl SimpleItemDoc: Item {
+    pure fn item() -> ItemDoc { self.item }
 }
 
-impl moddoc: item {
-    pure fn item() -> itemdoc { self.item }
+impl ModDoc: Item {
+    pure fn item() -> ItemDoc { self.item }
 }
 
-impl nmoddoc: item {
-    pure fn item() -> itemdoc { self.item }
+impl NmodDoc: Item {
+    pure fn item() -> ItemDoc { self.item }
 }
 
-impl enumdoc: item {
-    pure fn item() -> itemdoc { self.item }
+impl EnumDoc: Item {
+    pure fn item() -> ItemDoc { self.item }
 }
 
-impl traitdoc: item {
-    pure fn item() -> itemdoc { self.item }
+impl TraitDoc: Item {
+    pure fn item() -> ItemDoc { self.item }
 }
 
-impl impldoc: item {
-    pure fn item() -> itemdoc { self.item }
+impl ImplDoc: Item {
+    pure fn item() -> ItemDoc { self.item }
 }
 
-trait item_utils {
-    pure fn id() -> ast_id;
+trait ItemUtils {
+    pure fn id() -> AstId;
     pure fn name() -> ~str;
     pure fn path() -> ~[~str];
     pure fn brief() -> Option<~str>;
     pure fn desc() -> Option<~str>;
-    pure fn sections() -> ~[section];
+    pure fn sections() -> ~[Section];
 }
 
-impl<A:item> A: item_utils {
-    pure fn id() -> ast_id {
+impl<A:Item> A: ItemUtils {
+    pure fn id() -> AstId {
         self.item().id
     }
 
@@ -603,7 +603,7 @@ impl<A:item> A: item_utils {
         self.item().desc
     }
 
-    pure fn sections() -> ~[section] {
+    pure fn sections() -> ~[Section] {
         self.item().sections
     }
 }

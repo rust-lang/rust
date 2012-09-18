@@ -1,21 +1,21 @@
 //! Sorts items by type
 
-use doc::item_utils;
+use doc::ItemUtils;
 
 export mk_pass;
 
-fn mk_pass() -> pass {
-    pure fn by_score(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
-        pure fn score(item: &doc::itemtag) -> int {
+fn mk_pass() -> Pass {
+    pure fn by_score(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
+        pure fn score(item: &doc::ItemTag) -> int {
             match *item {
-              doc::consttag(_) => 0,
-              doc::tytag(_) => 1,
-              doc::enumtag(_) => 2,
-              doc::traittag(_) => 3,
-              doc::impltag(_) => 4,
-              doc::fntag(_) => 5,
-              doc::modtag(_) => 6,
-              doc::nmodtag(_) => 7
+              doc::ConstTag(_) => 0,
+              doc::TyTag(_) => 1,
+              doc::EnumTag(_) => 2,
+              doc::TraitTag(_) => 3,
+              doc::ImplTag(_) => 4,
+              doc::FnTag(_) => 5,
+              doc::ModTag(_) => 6,
+              doc::NmodTag(_) => 7
             }
         }
 

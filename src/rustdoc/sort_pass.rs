@@ -1,16 +1,16 @@
 //! A general sorting pass
 
-use doc::item_utils;
+use doc::ItemUtils;
 use std::sort;
 
 export item_lteq, mk_pass;
 
-type item_lteq = pure fn~(v1: &doc::itemtag, v2:  &doc::itemtag) -> bool;
+type ItemLtEq = pure fn~(v1: &doc::ItemTag, v2:  &doc::ItemTag) -> bool;
 
-fn mk_pass(name: ~str, +lteq: item_lteq) -> pass {
+fn mk_pass(name: ~str, +lteq: ItemLtEq) -> Pass {
     {
         name: name,
-        f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
+        f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
             run(srv, doc, lteq)
         }
     }
@@ -18,11 +18,11 @@ fn mk_pass(name: ~str, +lteq: item_lteq) -> pass {
 
 #[allow(non_implicitly_copyable_typarams)]
 fn run(
-    _srv: astsrv::srv,
-    doc: doc::doc,
-    lteq: item_lteq
-) -> doc::doc {
-    let fold = fold::fold({
+    _srv: astsrv::Srv,
+    doc: doc::Doc,
+    lteq: ItemLtEq
+) -> doc::Doc {
+    let fold = fold::Fold({
         fold_mod: fold_mod,
         .. *fold::default_any_fold(lteq)
     });
@@ -31,11 +31,11 @@ fn run(
 
 #[allow(non_implicitly_copyable_typarams)]
 fn fold_mod(
-    fold: fold::fold<item_lteq>,
-    doc: doc::moddoc
-) -> doc::moddoc {
+    fold: fold::Fold<ItemLtEq>,
+    doc: doc::ModDoc
+) -> doc::ModDoc {
     let doc = fold::default_any_fold_mod(fold, doc);
-    doc::moddoc_({
+    doc::ModDoc_({
         items: sort::merge_sort(fold.ctxt, doc.items),
         .. *doc
     })
@@ -43,7 +43,7 @@ fn fold_mod(
 
 #[test]
 fn test() {
-    pure fn name_lteq(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
+    pure fn name_lteq(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
         (*item1).name() <= (*item2).name()
     }
 
@@ -60,7 +60,7 @@ fn test() {
 
 #[test]
 fn should_be_stable() {
-    pure fn always_eq(_item1: &doc::itemtag, _item2: &doc::itemtag) -> bool {
+    pure fn always_eq(_item1: &doc::ItemTag, _item2: &doc::ItemTag) -> bool {
         true
     }
 

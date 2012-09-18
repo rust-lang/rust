@@ -1,19 +1,19 @@
 // Some utility interfaces
-use doc::item_utils;
-use doc::item;
+use doc::ItemUtils;
+use doc::Item;
 use doc::util;
 
 /// A single operation on the document model
-type pass = {
+type Pass = {
     name: ~str,
-    f: fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc
+    f: fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc
 };
 
 fn run_passes(
-    srv: astsrv::srv,
-    doc: doc::doc,
-    passes: ~[pass]
-) -> doc::doc {
+    srv: astsrv::Srv,
+    doc: doc::Doc,
+    passes: ~[Pass]
+) -> doc::Doc {
     let mut passno = 0;
     do vec::foldl(doc, passes) |doc, pass| {
         log(debug, fmt!("pass #%d", passno));
@@ -28,13 +28,13 @@ fn run_passes(
 #[test]
 fn test_run_passes() {
     fn pass1(
-        _srv: astsrv::srv,
-        doc: doc::doc
-    ) -> doc::doc {
-        doc::doc_({
+        _srv: astsrv::Srv,
+        doc: doc::Doc
+    ) -> doc::Doc {
+        doc::Doc_({
             pages: ~[
-                doc::cratepage({
-                    topmod: doc::moddoc_({
+                doc::CratePage({
+                    topmod: doc::ModDoc_({
                         item: {
                             name: doc.cratemod().name() + ~"two",
                             .. doc.cratemod().item
@@ -47,13 +47,13 @@ fn test_run_passes() {
         })
     }
     fn pass2(
-        _srv: astsrv::srv,
-        doc: doc::doc
-    ) -> doc::doc {
-        doc::doc_({
+        _srv: astsrv::Srv,
+        doc: doc::Doc
+    ) -> doc::Doc {
+        doc::Doc_({
             pages: ~[
-                doc::cratepage({
-                    topmod: doc::moddoc_({
+                doc::CratePage({
+                    topmod: doc::ModDoc_({
                         item: {
                             name: doc.cratemod().name() + ~"three",
                             .. doc.cratemod().item
@@ -110,7 +110,7 @@ fn time<T>(what: ~str, f: fn() -> T) -> T {
 }
 
 /// Runs rustdoc over the given file
-fn run(config: config::config) {
+fn run(config: config::Config) {
 
     let source_file = config.input_crate;
     do astsrv::from_file(source_file.to_str()) |srv| {

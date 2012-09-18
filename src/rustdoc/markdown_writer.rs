@@ -1,32 +1,31 @@
-use doc::item_utils;
+use doc::ItemUtils;
 use io::ReaderUtil;
 
-export writeinstr;
-export writer;
-export writer_factory;
-export writer_util;
-export writer_utils;
+export WriteInstr;
+export Writer;
+export WriterFactory;
+export WriterUtils;
 export make_writer_factory;
 export future_writer_factory;
 export make_filename;
 
-enum writeinstr {
-    write(~str),
-    done
+enum WriteInstr {
+    Write(~str),
+    Done
 }
 
-type writer = fn~(+writeinstr);
-type writer_factory = fn~(page: doc::page) -> writer;
+type Writer = fn~(+WriteInstr);
+type WriterFactory = fn~(page: doc::Page) -> Writer;
 
-trait writer_utils {
+trait WriterUtils {
     fn write_str(str: ~str);
     fn write_line(str: ~str);
     fn write_done();
 }
 
-impl writer: writer_utils {
+impl Writer: WriterUtils {
     fn write_str(str: ~str) {
-        self(write(str));
+        self(Write(str));
     }
 
     fn write_line(str: ~str) {
@@ -34,37 +33,37 @@ impl writer: writer_utils {
     }
 
     fn write_done() {
-        self(done)
+        self(Done)
     }
 }
 
-fn make_writer_factory(config: config::config) -> writer_factory {
+fn make_writer_factory(config: config::Config) -> WriterFactory {
     match config.output_format {
-      config::markdown => {
+      config::Markdown => {
         markdown_writer_factory(config)
       }
-      config::pandoc_html => {
+      config::PandocHtml => {
         pandoc_writer_factory(config)
       }
     }
 }
 
-fn markdown_writer_factory(config: config::config) -> writer_factory {
-    fn~(page: doc::page) -> writer {
+fn markdown_writer_factory(config: config::Config) -> WriterFactory {
+    fn~(page: doc::Page) -> Writer {
         markdown_writer(config, page)
     }
 }
 
-fn pandoc_writer_factory(config: config::config) -> writer_factory {
-    fn~(page: doc::page) -> writer {
+fn pandoc_writer_factory(config: config::Config) -> WriterFactory {
+    fn~(page: doc::Page) -> Writer {
         pandoc_writer(config, page)
     }
 }
 
 fn markdown_writer(
-    config: config::config,
-    page: doc::page
-) -> writer {
+    config: config::Config,
+    page: doc::Page
+) -> Writer {
     let filename = make_local_filename(config, page);
     do generic_writer |markdown| {
         write_file(&filename, markdown);
@@ -72,9 +71,9 @@ fn markdown_writer(
 }
 
 fn pandoc_writer(
-    config: config::config,
-    page: doc::page
-) -> writer {
+    config: config::Config,
+    page: doc::Page
+) -> Writer {
     assert option::is_some(config.pandoc_cmd);
     let pandoc_cmd = option::get(config.pandoc_cmd);
     let filename = make_local_filename(config, page);
@@ -146,55 +145,55 @@ fn readclose(fd: libc::c_int) -> ~str {
     return buf;
 }
 
-fn generic_writer(+process: fn~(markdown: ~str)) -> writer {
-    let ch = do task::spawn_listener |po: comm::Port<writeinstr>| {
+fn generic_writer(+process: fn~(markdown: ~str)) -> Writer {
+    let ch = do task::spawn_listener |po: comm::Port<WriteInstr>| {
         let mut markdown = ~"";
         let mut keep_going = true;
         while keep_going {
             match comm::recv(po) {
-              write(s) => markdown += s,
-              done => keep_going = false
+              Write(s) => markdown += s,
+              Done => keep_going = false
             }
         }
         process(markdown);
     };
 
-    fn~(+instr: writeinstr) {
+    fn~(+instr: WriteInstr) {
         comm::send(ch, instr);
     }
 }
 
 fn make_local_filename(
-    config: config::config,
-    page: doc::page
+    config: config::Config,
+    page: doc::Page
 ) -> Path {
     let filename = make_filename(config, page);
     config.output_dir.push_rel(&filename)
 }
 
 fn make_filename(
-    config: config::config,
-    page: doc::page
+    config: config::Config,
+    page: doc::Page
 ) -> Path {
     let filename = {
         match page {
-          doc::cratepage(doc) => {
-            if config.output_format == config::pandoc_html &&
-                config.output_style == config::doc_per_mod {
+          doc::CratePage(doc) => {
+            if config.output_format == config::PandocHtml &&
+                config.output_style == config::DocPerMod {
                 ~"index"
             } else {
                 assert doc.topmod.name() != ~"";
                 doc.topmod.name()
             }
           }
-          doc::itempage(doc) => {
+          doc::ItemPage(doc) => {
             str::connect(doc.path() + ~[doc.name()], ~"_")
           }
         }
     };
     let ext = match config.output_format {
-      config::markdown => ~"md",
-      config::pandoc_html => ~"html"
+      config::Markdown => ~"md",
+      config::PandocHtml => ~"html"
     };
 
     Path(filename).with_filetype(ext)
@@ -204,12 +203,12 @@ fn make_filename(
 fn should_use_markdown_file_name_based_off_crate() {
     let config = {
         output_dir: Path("output/dir"),
-        output_format: config::markdown,
-        output_style: config::doc_per_crate,
+        output_format: config::Markdown,
+        output_style: config::DocPerCrate,
         .. config::default_config(&Path("input/test.rc"))
     };
     let doc = test::mk_doc(~"test", ~"");
-    let page = doc::cratepage(doc.cratedoc());
+    let page = doc::CratePage(doc.CrateDoc());
     let filename = make_local_filename(config, page);
     assert filename.to_str() == ~"output/dir/test.md";
 }
@@ -218,12 +217,12 @@ fn should_use_markdown_file_name_based_off_crate() {
 fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
     let config = {
         output_dir: Path("output/dir"),
-        output_format: config::pandoc_html,
-        output_style: config::doc_per_mod,
+        output_format: config::PandocHtml,
+        output_style: config::DocPerMod,
         .. config::default_config(&Path("input/test.rc"))
     };
     let doc = test::mk_doc(~"", ~"");
-    let page = doc::cratepage(doc.cratedoc());
+    let page = doc::CratePage(doc.CrateDoc());
     let filename = make_local_filename(config, page);
     assert filename.to_str() == ~"output/dir/index.html";
 }
@@ -232,20 +231,20 @@ fn should_name_html_crate_file_name_index_html_when_doc_per_mod() {
 fn should_name_mod_file_names_by_path() {
     let config = {
         output_dir: Path("output/dir"),
-        output_format: config::pandoc_html,
-        output_style: config::doc_per_mod,
+        output_format: config::PandocHtml,
+        output_style: config::DocPerMod,
         .. config::default_config(&Path("input/test.rc"))
     };
     let doc = test::mk_doc(~"", ~"mod a { mod b { } }");
     let modb = doc.cratemod().mods()[0].mods()[0];
-    let page = doc::itempage(doc::modtag(modb));
+    let page = doc::ItemPage(doc::ModTag(modb));
     let filename = make_local_filename(config, page);
     assert  filename == Path("output/dir/a_b.html");
 }
 
 #[cfg(test)]
 mod test {
-    fn mk_doc(name: ~str, source: ~str) -> doc::doc {
+    fn mk_doc(name: ~str, source: ~str) -> doc::Doc {
         do astsrv::from_str(source) |srv| {
             let doc = extract::from_srv(srv, name);
             let doc = path_pass::mk_pass().f(srv, doc);
@@ -266,10 +265,10 @@ fn write_file(path: &Path, s: ~str) {
 }
 
 fn future_writer_factory(
-) -> (writer_factory, comm::Port<(doc::page, ~str)>) {
+) -> (WriterFactory, comm::Port<(doc::Page, ~str)>) {
     let markdown_po = comm::Port();
     let markdown_ch = comm::Chan(markdown_po);
-    let writer_factory = fn~(page: doc::page) -> writer {
+    let writer_factory = fn~(page: doc::Page) -> Writer {
         let writer_po = comm::Port();
         let writer_ch = comm::Chan(writer_po);
         do task::spawn {
@@ -284,17 +283,17 @@ fn future_writer_factory(
     (writer_factory, markdown_po)
 }
 
-fn future_writer() -> (writer, future::Future<~str>) {
+fn future_writer() -> (Writer, future::Future<~str>) {
     let (chan, port) = pipes::stream();
-    let writer = fn~(+instr: writeinstr) {
+    let writer = fn~(+instr: WriteInstr) {
         chan.send(copy instr);
     };
     let future = do future::from_fn {
         let mut res = ~"";
         loop {
             match port.recv() {
-              write(s) => res += s,
-              done => break
+              Write(s) => res += s,
+              Done => break
             }
         }
         res

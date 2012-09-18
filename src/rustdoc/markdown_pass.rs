@@ -1,15 +1,15 @@
 //! Generate markdown from a document tree
 
-use doc::item_utils;
-use markdown_writer::writer;
-use markdown_writer::writer_utils;
-use markdown_writer::writer_factory;
+use doc::ItemUtils;
+use markdown_writer::Writer;
+use markdown_writer::WriterUtils;
+use markdown_writer::WriterFactory;
 
 export mk_pass;
 export header_kind, header_name, header_text;
 
-fn mk_pass(+writer_factory: writer_factory) -> pass {
-    let f = fn~(srv: astsrv::srv, doc: doc::doc) -> doc::doc {
+fn mk_pass(+writer_factory: WriterFactory) -> Pass {
+    let f = fn~(srv: astsrv::Srv, doc: doc::Doc) -> doc::Doc {
         run(srv, doc, copy writer_factory)
     };
 
@@ -20,15 +20,15 @@ fn mk_pass(+writer_factory: writer_factory) -> pass {
 }
 
 fn run(
-    srv: astsrv::srv,
-    doc: doc::doc,
-    +writer_factory: writer_factory
-) -> doc::doc {
+    srv: astsrv::Srv,
+    doc: doc::Doc,
+    +writer_factory: WriterFactory
+) -> doc::Doc {
 
-    pure fn mods_last(item1: &doc::itemtag, item2: &doc::itemtag) -> bool {
-        pure fn is_mod(item: &doc::itemtag) -> bool {
+    pure fn mods_last(item1: &doc::ItemTag, item2: &doc::ItemTag) -> bool {
+        pure fn is_mod(item: &doc::ItemTag) -> bool {
             match *item {
-              doc::modtag(_) => true,
+              doc::ModTag(_) => true,
               _ => false
             }
         }
@@ -75,13 +75,13 @@ fn should_write_modules_last() {
     assert idx_a < idx_c;
 }
 
-type ctxt = {
-    w: writer
+type Ctxt = {
+    w: Writer
 };
 
 fn write_markdown(
-    doc: doc::doc,
-    +writer_factory: writer_factory
+    doc: doc::Doc,
+    +writer_factory: WriterFactory
 ) {
     // FIXME #2484: There is easy parallelism to be had here but
     // we don't want to spawn too many pandoc processes
@@ -93,13 +93,13 @@ fn write_markdown(
     };
 }
 
-fn write_page(ctxt: ctxt, page: doc::page) {
+fn write_page(ctxt: Ctxt, page: doc::Page) {
     write_title(ctxt, page);
     match page {
-      doc::cratepage(doc) => {
+      doc::CratePage(doc) => {
         write_crate(ctxt, doc);
       }
-      doc::itempage(doc) => {
+      doc::ItemPage(doc) => {
         // We don't write a header for item's pages because their
         // header in the html output is created by the page title
         write_item_no_header(ctxt, doc);
@@ -115,7 +115,7 @@ fn should_request_new_writer_for_each_page() {
     let (writer_factory, po) = markdown_writer::future_writer_factory();
     let (srv, doc) = test::create_doc_srv(~"mod a { }");
     // Split the document up into pages
-    let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
+    let doc = page_pass::mk_pass(config::DocPerMod).f(srv, doc);
     write_markdown(doc, writer_factory);
     // We expect two pages to have been written
     for iter::repeat(2u) {
@@ -123,18 +123,18 @@ fn should_request_new_writer_for_each_page() {
     }
 }
 
-fn write_title(ctxt: ctxt, page: doc::page) {
+fn write_title(ctxt: Ctxt, page: doc::Page) {
     ctxt.w.write_line(fmt!("%% %s", make_title(page)));
     ctxt.w.write_line(~"");
 }
 
-fn make_title(page: doc::page) -> ~str {
+fn make_title(page: doc::Page) -> ~str {
     let item = match page {
-      doc::cratepage(cratedoc) => {
-        doc::modtag(cratedoc.topmod)
+      doc::CratePage(CrateDoc) => {
+        doc::ModTag(CrateDoc.topmod)
       }
-      doc::itempage(itemtag) => {
-        itemtag
+      doc::ItemPage(ItemTag) => {
+        ItemTag
       }
     };
     let title = markdown_pass::header_text(item);
@@ -147,82 +147,82 @@ fn should_write_title_for_each_page() {
     let (writer_factory, po) = markdown_writer::future_writer_factory();
     let (srv, doc) = test::create_doc_srv(
         ~"#[link(name = \"core\")]; mod a { }");
-    let doc = page_pass::mk_pass(config::doc_per_mod).f(srv, doc);
+    let doc = page_pass::mk_pass(config::DocPerMod).f(srv, doc);
     write_markdown(doc, writer_factory);
     for iter::repeat(2u) {
         let (page, markdown) = comm::recv(po);
         match page {
-          doc::cratepage(_) => {
+          doc::CratePage(_) => {
             assert str::contains(markdown, ~"% Crate core");
           }
-          doc::itempage(_) => {
+          doc::ItemPage(_) => {
             assert str::contains(markdown, ~"% Module a");
           }
         }
     }
 }
 
-enum hlvl {
-    h1 = 1,
-    h2 = 2,
-    h3 = 3,
-    h4 = 4
+enum Hlvl {
+    H1 = 1,
+    H2 = 2,
+    H3 = 3,
+    H4 = 4
 }
 
-fn write_header(ctxt: ctxt, lvl: hlvl, doc: doc::itemtag) {
+fn write_header(ctxt: Ctxt, lvl: Hlvl, doc: doc::ItemTag) {
     let text = header_text(doc);
     write_header_(ctxt, lvl, text);
 }
 
-fn write_header_(ctxt: ctxt, lvl: hlvl, title: ~str) {
+fn write_header_(ctxt: Ctxt, lvl: Hlvl, title: ~str) {
     let hashes = str::from_chars(vec::from_elem(lvl as uint, '#'));
     ctxt.w.write_line(fmt!("%s %s", hashes, title));
     ctxt.w.write_line(~"");
 }
 
-fn header_kind(doc: doc::itemtag) -> ~str {
+fn header_kind(doc: doc::ItemTag) -> ~str {
     match doc {
-      doc::modtag(_) => {
+      doc::ModTag(_) => {
         if doc.id() == syntax::ast::crate_node_id {
             ~"Crate"
         } else {
             ~"Module"
         }
       }
-      doc::nmodtag(_) => {
+      doc::NmodTag(_) => {
         ~"Foreign module"
       }
-      doc::fntag(_) => {
+      doc::FnTag(_) => {
         ~"Function"
       }
-      doc::consttag(_) => {
+      doc::ConstTag(_) => {
         ~"Const"
       }
-      doc::enumtag(_) => {
+      doc::EnumTag(_) => {
         ~"Enum"
       }
-      doc::traittag(_) => {
+      doc::TraitTag(_) => {
         ~"Interface"
       }
-      doc::impltag(_) => {
+      doc::ImplTag(_) => {
         ~"Implementation"
       }
-      doc::tytag(_) => {
+      doc::TyTag(_) => {
         ~"Type"
       }
     }
 }
 
-fn header_name(doc: doc::itemtag) -> ~str {
+fn header_name(doc: doc::ItemTag) -> ~str {
     let fullpath = str::connect(doc.path() + ~[doc.name()], ~"::");
     match doc {
-      doc::modtag(_) if doc.id() != syntax::ast::crate_node_id => {
+      doc::ModTag(_) if doc.id() != syntax::ast::crate_node_id => {
         fullpath
       }
-      doc::nmodtag(_) => {
+      doc::NmodTag(_) => {
         fullpath
       }
-      doc::impltag(doc) => {
+      doc::ImplTag(doc) => {
         assert option::is_some(doc.self_ty);
         let self_ty = option::get(doc.self_ty);
         let mut trait_part = ~"";
@@ -242,15 +242,15 @@ fn header_name(doc: doc::itemtag) -> ~str {
     }
 }
 
-fn header_text(doc: doc::itemtag) -> ~str {
+fn header_text(doc: doc::ItemTag) -> ~str {
     match doc {
-      doc::impltag(impldoc) => {
+      doc::ImplTag(ImplDoc) => {
         let header_kind = header_kind(doc);
-        let desc = if impldoc.trait_types.is_empty() {
-            fmt!("for `%s`", impldoc.self_ty.get())
+        let desc = if ImplDoc.trait_types.is_empty() {
+            fmt!("for `%s`", ImplDoc.self_ty.get())
         } else {
-            fmt!("of `%s` for `%s`", impldoc.trait_types[0],
-                 impldoc.self_ty.get())
+            fmt!("of `%s` for `%s`", ImplDoc.trait_types[0],
+                 ImplDoc.self_ty.get())
         };
         fmt!("%s %s", header_kind, desc)
       }
@@ -265,24 +265,24 @@ fn header_text_(kind: ~str, name: ~str) -> ~str {
 }
 
 fn write_crate(
-    ctxt: ctxt,
-    doc: doc::cratedoc
+    ctxt: Ctxt,
+    doc: doc::CrateDoc
 ) {
     write_top_module(ctxt, doc.topmod);
 }
 
 fn write_top_module(
-    ctxt: ctxt,
-    moddoc: doc::moddoc
+    ctxt: Ctxt,
+    ModDoc: doc::ModDoc
 ) {
-    write_mod_contents(ctxt, moddoc);
+    write_mod_contents(ctxt, ModDoc);
 }
 
 fn write_mod(
-    ctxt: ctxt,
-    moddoc: doc::moddoc
+    ctxt: Ctxt,
+    ModDoc: doc::ModDoc
 ) {
-    write_mod_contents(ctxt, moddoc);
+    write_mod_contents(ctxt, ModDoc);
 }
 
 #[test]
@@ -292,16 +292,16 @@ fn should_write_full_path_to_mod() {
 }
 
 fn write_common(
-    ctxt: ctxt,
+    ctxt: Ctxt,
     desc: Option<~str>,
-    sections: ~[doc::section]
+    sections: ~[doc::Section]
 ) {
     write_desc(ctxt, desc);
     write_sections(ctxt, sections);
 }
 
 fn write_desc(
-    ctxt: ctxt,
+    ctxt: Ctxt,
     desc: Option<~str>
 ) {
     match desc {
@@ -313,14 +313,14 @@ fn write_desc(
     }
 }
 
-fn write_sections(ctxt: ctxt, sections: ~[doc::section]) {
+fn write_sections(ctxt: Ctxt, sections: ~[doc::Section]) {
     do vec::iter(sections) |section| {
         write_section(ctxt, section);
     }
 }
 
-fn write_section(ctxt: ctxt, section: doc::section) {
-    write_header_(ctxt, h4, section.header);
+fn write_section(ctxt: Ctxt, section: doc::Section) {
+    write_header_(ctxt, H4, section.header);
     ctxt.w.write_line(section.body);
     ctxt.w.write_line(~"");
 }
@@ -336,52 +336,52 @@ fn should_write_sections() {
 }
 
 fn write_mod_contents(
-    ctxt: ctxt,
-    doc: doc::moddoc
+    ctxt: Ctxt,
+    doc: doc::ModDoc
 ) {
     write_common(ctxt, doc.desc(), doc.sections());
     if option::is_some(doc.index) {
         write_index(ctxt, option::get(doc.index));
     }
 
-    for doc.items.each |itemtag| {
-        write_item(ctxt, itemtag);
+    for doc.items.each |ItemTag| {
+        write_item(ctxt, ItemTag);
     }
 }
 
-fn write_item(ctxt: ctxt, doc: doc::itemtag) {
+fn write_item(ctxt: Ctxt, doc: doc::ItemTag) {
     write_item_(ctxt, doc, true);
 }
 
-fn write_item_no_header(ctxt: ctxt, doc: doc::itemtag) {
+fn write_item_no_header(ctxt: Ctxt, doc: doc::ItemTag) {
     write_item_(ctxt, doc, false);
 }
 
-fn write_item_(ctxt: ctxt, doc: doc::itemtag, write_header: bool) {
+fn write_item_(ctxt: Ctxt, doc: doc::ItemTag, write_header: bool) {
     if write_header {
         write_item_header(ctxt, doc);
     }
 
     match doc {
-      doc::modtag(moddoc) => write_mod(ctxt, moddoc),
-      doc::nmodtag(nmoddoc) => write_nmod(ctxt, nmoddoc),
-      doc::fntag(fndoc) => write_fn(ctxt, fndoc),
-      doc::consttag(constdoc) => write_const(ctxt, constdoc),
-      doc::enumtag(enumdoc) => write_enum(ctxt, enumdoc),
-      doc::traittag(traitdoc) => write_trait(ctxt, traitdoc),
-      doc::impltag(impldoc) => write_impl(ctxt, impldoc),
-      doc::tytag(tydoc) => write_type(ctxt, tydoc)
+      doc::ModTag(ModDoc) => write_mod(ctxt, ModDoc),
+      doc::NmodTag(nModDoc) => write_nmod(ctxt, nModDoc),
+      doc::FnTag(FnDoc) => write_fn(ctxt, FnDoc),
+      doc::ConstTag(ConstDoc) => write_const(ctxt, ConstDoc),
+      doc::EnumTag(EnumDoc) => write_enum(ctxt, EnumDoc),
+      doc::TraitTag(TraitDoc) => write_trait(ctxt, TraitDoc),
+      doc::ImplTag(ImplDoc) => write_impl(ctxt, ImplDoc),
+      doc::TyTag(TyDoc) => write_type(ctxt, TyDoc)
     }
 }
 
-fn write_item_header(ctxt: ctxt, doc: doc::itemtag) {
+fn write_item_header(ctxt: Ctxt, doc: doc::ItemTag) {
     write_header(ctxt, item_header_lvl(doc), doc);
 }
 
-fn item_header_lvl(doc: doc::itemtag) -> hlvl {
+fn item_header_lvl(doc: doc::ItemTag) -> Hlvl {
     match doc {
-      doc::modtag(_) | doc::nmodtag(_) => h1,
-      _ => h2
+      doc::ModTag(_) | doc::NmodTag(_) => H1,
+      _ => H2
     }
 }
 
@@ -391,7 +391,7 @@ fn should_write_crate_description() {
     assert str::contains(markdown, ~"this is the crate");
 }
 
-fn write_index(ctxt: ctxt, index: doc::index) {
+fn write_index(ctxt: Ctxt, index: doc::Index) {
     if vec::is_empty(index.entries) {
         return;
     }
@@ -440,15 +440,15 @@ fn should_write_index_for_foreign_mods() {
     );
 }
 
-fn write_nmod(ctxt: ctxt, doc: doc::nmoddoc) {
+fn write_nmod(ctxt: Ctxt, doc: doc::NmodDoc) {
     write_common(ctxt, doc.desc(), doc.sections());
     if option::is_some(doc.index) {
         write_index(ctxt, option::get(doc.index));
     }
 
-    for doc.fns.each |fndoc| {
-        write_item_header(ctxt, doc::fntag(fndoc));
-        write_fn(ctxt, fndoc);
+    for doc.fns.each |FnDoc| {
+        write_item_header(ctxt, doc::FnTag(FnDoc));
+        write_fn(ctxt, FnDoc);
     }
 }
 
@@ -474,8 +474,8 @@ fn should_write_foreign_fn_headers() {
 }
 
 fn write_fn(
-    ctxt: ctxt,
-    doc: doc::fndoc
+    ctxt: Ctxt,
+    doc: doc::FnDoc
 ) {
     write_fnlike(
         ctxt,
@@ -486,16 +486,16 @@ fn write_fn(
 }
 
 fn write_fnlike(
-    ctxt: ctxt,
+    ctxt: Ctxt,
     sig: Option<~str>,
     desc: Option<~str>,
-    sections: ~[doc::section]
+    sections: ~[doc::Section]
 ) {
     write_sig(ctxt, sig);
     write_common(ctxt, desc, sections);
 }
 
-fn write_sig(ctxt: ctxt, sig: Option<~str>) {
+fn write_sig(ctxt: Ctxt, sig: Option<~str>) {
     match sig {
       Some(sig) => {
         ctxt.w.write_line(code_block_indent(sig));
@@ -532,17 +532,17 @@ fn should_insert_blank_line_after_fn_signature() {
 #[test]
 fn should_correctly_indent_fn_signature() {
     let doc = test::create_doc(~"fn a() { }");
-    let doc = doc::doc_({
+    let doc = doc::Doc_({
         pages: ~[
-            doc::cratepage({
-                topmod: doc::moddoc_({
-                    items: ~[doc::fntag({
+            doc::CratePage({
+                topmod: doc::ModDoc_({
+                    items: ~[doc::FnTag({
                         sig: Some(~"line 1\nline 2"),
                         .. doc.cratemod().fns()[0]
                     })],
                     .. *doc.cratemod()
                 }),
-                .. doc.cratedoc()
+                .. doc.CrateDoc()
             })
         ]
     });
@@ -557,8 +557,8 @@ fn should_leave_blank_line_between_fn_header_and_sig() {
 }
 
 fn write_const(
-    ctxt: ctxt,
-    doc: doc::constdoc
+    ctxt: Ctxt,
+    doc: doc::ConstDoc
 ) {
     write_sig(ctxt, doc.sig);
     write_common(ctxt, doc.desc(), doc.sections());
@@ -579,8 +579,8 @@ fn should_write_const_description() {
 }
 
 fn write_enum(
-    ctxt: ctxt,
-    doc: doc::enumdoc
+    ctxt: Ctxt,
+    doc: doc::EnumDoc
 ) {
     write_common(ctxt, doc.desc(), doc.sections());
     write_variants(ctxt, doc.variants);
@@ -600,21 +600,21 @@ fn should_write_enum_description() {
 }
 
 fn write_variants(
-    ctxt: ctxt,
-    docs: ~[doc::variantdoc]
+    ctxt: Ctxt,
+    docs: ~[doc::VariantDoc]
 ) {
     if vec::is_empty(docs) {
         return;
     }
 
-    write_header_(ctxt, h4, ~"Variants");
+    write_header_(ctxt, H4, ~"Variants");
 
     vec::iter(docs, |variant| write_variant(ctxt, variant) );
 
     ctxt.w.write_line(~"");
 }
 
-fn write_variant(ctxt: ctxt, doc: doc::variantdoc) {
+fn write_variant(ctxt: Ctxt, doc: doc::VariantDoc) {
     assert option::is_some(doc.sig);
     let sig = option::get(doc.sig);
     match doc.desc {
@@ -660,17 +660,17 @@ fn should_write_variant_list_with_signatures() {
          \n* `c(int)` - a\n\n");
 }
 
-fn write_trait(ctxt: ctxt, doc: doc::traitdoc) {
+fn write_trait(ctxt: Ctxt, doc: doc::TraitDoc) {
     write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
 
-fn write_methods(ctxt: ctxt, docs: ~[doc::methoddoc]) {
+fn write_methods(ctxt: Ctxt, docs: ~[doc::MethodDoc]) {
     do vec::iter(docs) |doc| { write_method(ctxt, doc) }
 }
 
-fn write_method(ctxt: ctxt, doc: doc::methoddoc) {
-    write_header_(ctxt, h3, header_text_(~"Method", doc.name));
+fn write_method(ctxt: Ctxt, doc: doc::MethodDoc) {
+    write_header_(ctxt, H3, header_text_(~"Method", doc.name));
     write_fnlike(
         ctxt,
         doc.sig,
@@ -706,7 +706,7 @@ fn should_write_trait_method_signature() {
     assert str::contains(markdown, ~"\n    fn a()");
 }
 
-fn write_impl(ctxt: ctxt, doc: doc::impldoc) {
+fn write_impl(ctxt: Ctxt, doc: doc::ImplDoc) {
     write_common(ctxt, doc.desc(), doc.sections());
     write_methods(ctxt, doc.methods);
 }
@@ -745,8 +745,8 @@ fn should_write_impl_method_signature() {
 }
 
 fn write_type(
-    ctxt: ctxt,
-    doc: doc::tydoc
+    ctxt: Ctxt,
+    doc: doc::TyDoc
 ) {
     write_sig(ctxt, doc.sig);
     write_common(ctxt, doc.desc(), doc.sections());
@@ -780,11 +780,11 @@ mod test {
         markdown
     }
 
-    fn create_doc_srv(source: ~str) -> (astsrv::srv, doc::doc) {
+    fn create_doc_srv(source: ~str) -> (astsrv::Srv, doc::Doc) {
         do astsrv::from_str(source) |srv| {
 
             let config = {
-                output_style: config::doc_per_crate,
+                output_style: config::DocPerCrate,
                 .. config::default_config(&Path("whatever"))
             };
 
@@ -810,13 +810,13 @@ mod test {
         }
     }
 
-    fn create_doc(source: ~str) -> doc::doc {
+    fn create_doc(source: ~str) -> doc::Doc {
         let (_, doc) = create_doc_srv(source);
         doc
     }
 
     fn write_markdown_str(
-        doc: doc::doc
+        doc: doc::Doc
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         write_markdown(doc, writer_factory);
@@ -824,8 +824,8 @@ mod test {
     }
 
     fn write_markdown_str_srv(
-        srv: astsrv::srv,
-        doc: doc::doc
+        srv: astsrv::Srv,
+        doc: doc::Doc
     ) -> ~str {
         let (writer_factory, po) = markdown_writer::future_writer_factory();
         let pass = mk_pass(writer_factory);
