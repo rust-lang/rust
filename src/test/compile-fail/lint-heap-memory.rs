@@ -1,6 +1,6 @@
 #[forbid(heap_memory)];
 
-type foo = { //~ ERROR type uses managed
+type Foo = { //~ ERROR type uses managed
     x: @int
 };
 
