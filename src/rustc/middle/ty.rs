@@ -1950,7 +1950,11 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // Trait instances are (for now) like shared boxes, basically
       ty_trait(_, _, _) => kind_safe_for_default_mode() | kind_owned(),
 
-      // Region pointers are copyable but NOT owned nor sendable
+      // Static region pointers are copyable and sendable, but not owned
+      ty_rptr(re_static, mt) =>
+      kind_safe_for_default_mode() | mutable_type_kind(cx, mt),
+
+      // General region pointers are copyable but NOT owned nor sendable
       ty_rptr(_, _) => kind_safe_for_default_mode(),
 
       // Unique boxes and vecs have the kind of their contained type,
@@ -1972,6 +1976,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       ty_evec(tm, vstore_box) => {
         remove_send(kind_safe_for_default_mode() | mutable_type_kind(cx, tm))
       }
+      ty_evec(tm, vstore_slice(re_static)) => {
+        kind_safe_for_default_mode() | mutable_type_kind(cx, tm)
+      }
       ty_evec(tm, vstore_slice(_)) => {
         remove_owned_send(kind_safe_for_default_mode() |
                           mutable_type_kind(cx, tm))
@@ -1983,6 +1990,9 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
       // All estrs are copyable; uniques and interiors are sendable.
       ty_estr(vstore_box) => {
         kind_safe_for_default_mode() | kind_const() | kind_owned()
+      }
+      ty_estr(vstore_slice(re_static)) => {
+        kind_safe_for_default_mode() | kind_send_copy() | kind_const()
       }
       ty_estr(vstore_slice(_)) => {
         kind_safe_for_default_mode() | kind_const()
