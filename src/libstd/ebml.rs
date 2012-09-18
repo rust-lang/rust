@@ -631,10 +631,11 @@ fn test_option_int() {
 
     fn test_v(v: Option<int>) {
         debug!("v == %?", v);
-        let mbuf = io::mem_buffer();
-        let ebml_w = ebml::Writer(io::mem_buffer_writer(mbuf));
-        serialize_0(ebml_w, v);
-        let ebml_doc = ebml::Doc(@io::mem_buffer_buf(mbuf));
+        let bytes = do io::with_bytes_writer |wr| {
+            let ebml_w = ebml::Writer(wr);
+            serialize_0(ebml_w, v);
+        };
+        let ebml_doc = ebml::Doc(@bytes);
         let deser = ebml_deserializer(ebml_doc);
         let v1 = deserialize_0(deser);
         debug!("v1 == %?", v1);

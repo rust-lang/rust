@@ -373,10 +373,10 @@ trait ToBytes {
 
 impl<A: IterBytes> A: ToBytes {
     fn to_bytes(lsb0: bool) -> ~[u8] {
-        let buf = io::mem_buffer();
-        for self.iter_bytes(lsb0) |bytes| {
-            buf.write(bytes)
+        do io::with_bytes_writer |wr| {
+            for self.iter_bytes(lsb0) |bytes| {
+                wr.write(bytes)
+            }
         }
-        io::mem_buffer_buf(buf)
     }
 }
