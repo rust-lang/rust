@@ -222,7 +222,7 @@ pure
 return
 struct
 true trait type
-unchecked unsafe
+unsafe
 while
 ~~~~~~~~
 
@@ -1035,23 +1035,24 @@ pure fn nonempty_list<T>(ls: List<T>) -> bool { pure_length(ls) > 0u }
 
 *TODO:* should actually define referential transparency.
 
-The effect checking rules previously enumerated are a restricted set of
-typechecking rules meant to approximate the universe of observably
-referentially transparent Rust procedures conservatively. Sometimes, these
-rules are *too* restrictive. Rust allows programmers to violate these rules by
-writing pure functions that the compiler cannot prove to be referentially
-transparent, using an escape-hatch feature called "unchecked blocks". When
-writing code that uses unchecked blocks, programmers should always be aware
-that they have an obligation to show that the code *behaves* referentially
-transparently at all times, even if the compiler cannot *prove* automatically
-that the code is referentially transparent. In the presence of unchecked
-blocks, the compiler provides no static guarantee that the code will behave as
-expected at runtime. Rather, the programmer has an independent obligation to
-verify the semantics of the pure functions they write.
+The effect checking rules previously enumerated are a restricted set
+of typechecking rules meant to approximate the universe of observably
+referentially transparent Rust procedures conservatively. Sometimes,
+these rules are *too* restrictive. Rust allows programmers to violate
+these rules by writing pure functions that the compiler cannot prove
+to be referentially transparent, using "unsafe blocks". When writing
+code that uses unsafe blocks, programmers should always be aware that
+they have an obligation to show that the code *behaves* referentially
+transparently at all times, even if the compiler cannot *prove*
+automatically that the code is referentially transparent. In the
+presence of unsafe blocks, the compiler provides no static guarantee
+that the code will behave as expected at runtime. Rather, the
+programmer has an independent obligation to verify the semantics of
+the pure functions they write.
 
 *TODO:* last two sentences are vague.
 
-An example of a pure function that uses an unchecked block:
+An example of a pure function that uses an unsafe block:
 
 ~~~~
 # use std::list::*;
@@ -1065,7 +1066,7 @@ fn pure_foldl<T, U: Copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
 
 pure fn pure_length<T>(ls: List<T>) -> uint {
     fn count<T>(_t: T, &&u: uint) -> uint { u + 1u }
-    unchecked {
+    unsafe {
         pure_foldl(ls, 0u, count)
     }
 }
