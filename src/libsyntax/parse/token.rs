@@ -439,7 +439,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
         ~"ref", ~"return",
         ~"struct",
         ~"true", ~"trait", ~"type",
-        ~"unchecked", ~"use",
+        ~"use",
         ~"while"
     ];
     for keys.each |word| {

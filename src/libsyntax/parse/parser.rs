@@ -926,8 +926,6 @@ impl parser {
               _ => { /* fallthrough */ }
             }
             return pexpr(self.parse_fn_expr(proto));
-        } else if self.eat_keyword(~"unchecked") {
-            return pexpr(self.parse_block_expr(lo, unchecked_blk));
         } else if self.eat_keyword(~"unsafe") {
             return pexpr(self.parse_block_expr(lo, unsafe_blk));
         } else if self.token == token::LBRACKET {
@@ -2210,12 +2208,7 @@ impl parser {
         }
 
         let lo = self.span.lo;
-        if self.eat_keyword(~"unchecked") {
-            self.expect(token::LBRACE);
-            let {inner, next} = maybe_parse_inner_attrs_and_next(self,
-                                                                 parse_attrs);
-            return (inner, self.parse_block_tail_(lo, unchecked_blk, next));
-        } else if self.eat_keyword(~"unsafe") {
+        if self.eat_keyword(~"unsafe") {
             self.expect(token::LBRACE);
             let {inner, next} = maybe_parse_inner_attrs_and_next(self,
                                                                  parse_attrs);
