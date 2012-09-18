@@ -1,4 +1,4 @@
-
+#[legacy_modes];
 
 fn mk() -> int { return 1; }
 

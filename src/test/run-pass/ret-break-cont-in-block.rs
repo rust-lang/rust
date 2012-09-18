@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 use cmp::Eq;
 
 fn iter<T>(v: ~[T], it: fn(T) -> bool) {

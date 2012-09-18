@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 fn region_identity(x: &r/uint) -> &r/uint { x }
 
 fn apply<T>(t: T, f: fn(T) -> T) -> T { f(t) }

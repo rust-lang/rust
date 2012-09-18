@@ -2,6 +2,8 @@
 
 // multi tasking k-nucleotide
 
+#[legacy_modes];
+
 extern mod std;
 use std::map;
 use std::map::HashMap;

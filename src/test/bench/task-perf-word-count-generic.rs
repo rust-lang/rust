@@ -10,6 +10,8 @@
 
 // xfail-pretty
 
+#[legacy_modes];
+
 extern mod std;
 
 use option = option;

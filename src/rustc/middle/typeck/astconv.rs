@@ -432,7 +432,8 @@ fn ty_of_arg<AC: ast_conv, RS: region_scope Copy Owned>(
               // tables in tcx but should never fail, because nothing else
               // will have been unified with m yet:
               _ => {
-                let m1 = ast::expl(ty::default_arg_mode_for_ty(ty));
+                let m1 = ast::expl(ty::default_arg_mode_for_ty(self.tcx(),
+                                                               ty));
                 result::get(ty::unify_mode(
                     self.tcx(),
                     ty::expected_found {expected: m1,

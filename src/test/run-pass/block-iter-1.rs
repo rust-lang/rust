@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 fn iter_vec<T>(v: ~[T], f: fn(T)) { for v.each |x| { f(x); } }
 
 fn main() {

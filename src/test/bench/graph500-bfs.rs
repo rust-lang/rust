@@ -4,6 +4,8 @@ An implementation of the Graph500 Breadth First Search problem in Rust.
 
 */
 
+#[legacy_modes];
+
 extern mod std;
 use std::arc;
 use std::time;

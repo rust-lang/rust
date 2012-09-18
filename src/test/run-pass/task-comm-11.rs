@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 extern mod std;
 
 fn start(c: pipes::Chan<pipes::Chan<int>>) {

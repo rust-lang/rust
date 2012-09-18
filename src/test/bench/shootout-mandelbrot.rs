@@ -12,6 +12,8 @@
 //
 //  writes pbm image to output path
 
+#[legacy_modes];
+
 extern mod std;
 use io::WriterUtil;
 use std::map::HashMap;

@@ -1,3 +1,4 @@
+#[legacy_modes];
 
 // A trait for objects that can be used to do an if-then-else
 // (No actual need for this to be static, but it is a simple test.)

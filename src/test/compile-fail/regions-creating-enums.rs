@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 enum ast {
     num(uint),
     add(&ast, &ast)

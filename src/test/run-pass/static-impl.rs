@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 use a::*;
 
 trait plus {

@@ -1,3 +1,5 @@
+#[legacy_modes];
+
 fn fix_help<A, B>(f: extern fn(fn@(A) -> B, A) -> B, x: A) -> B {
     return f({|a|fix_help(f, a)}, x);
 }
