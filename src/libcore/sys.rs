@@ -62,13 +62,13 @@ pure fn shape_le<T:Ord>(x1: &T, x2: &T) -> bool {
  */
 #[inline(always)]
 pure fn get_type_desc<T>() -> *TypeDesc {
-    unchecked { rusti::get_tydesc::<T>() as *TypeDesc }
+    unsafe { rusti::get_tydesc::<T>() as *TypeDesc }
 }
 
 /// Returns the size of a type
 #[inline(always)]
 pure fn size_of<T>() -> uint {
-    unchecked { rusti::size_of::<T>() }
+    unsafe { rusti::size_of::<T>() }
 }
 
 /**
@@ -79,13 +79,13 @@ pure fn size_of<T>() -> uint {
  */
 #[inline(always)]
 pure fn min_align_of<T>() -> uint {
-    unchecked { rusti::min_align_of::<T>() }
+    unsafe { rusti::min_align_of::<T>() }
 }
 
 /// Returns the preferred alignment of a type
 #[inline(always)]
 pure fn pref_align_of<T>() -> uint {
-    unchecked { rusti::pref_align_of::<T>() }
+    unsafe { rusti::pref_align_of::<T>() }
 }
 
 /// Returns the refcount of a shared box (as just before calling this)

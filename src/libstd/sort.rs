@@ -314,7 +314,7 @@ mod tests {
         // tjc: funny that we have to use parens
         pure fn ile(x: &(&static/str), y: &(&static/str)) -> bool
         {
-            unchecked            // to_lower is not pure...
+            unsafe            // to_lower is not pure...
             {
                 let x = x.to_lower();
                 let y = y.to_lower();

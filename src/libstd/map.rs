@@ -137,7 +137,7 @@ mod chained {
                   }
                   Some(e1) => {
                     comp += 1u;
-                    unchecked {
+                    unsafe {
                         if e1.hash == h && e1.key == *k {
                             debug!("search_tbl: present, comp %u, \
                                     hash %u, idx %u",
@@ -161,7 +161,7 @@ mod chained {
                 return NotFound;
               }
               Some(e) => {
-                unchecked {
+                unsafe {
                     if e.hash == h && e.key == *k {
                         debug!("search_tbl: present, comp %u, hash %u, \
                                 idx %u", 1u, h, idx);
@@ -265,7 +265,7 @@ mod chained {
         }
 
         pure fn find(+k: K) -> Option<V> {
-            unchecked {
+            unsafe {
                 match self.search_tbl(&k, k.hash_keyed(0,0) as uint) {
                   NotFound => None,
                   FoundFirst(_, entry) => Some(entry.value),
@@ -358,7 +358,7 @@ mod chained {
 
     impl<K:Eq IterBytes Hash Copy, V: Copy> T<K, V>: ops::Index<K, V> {
         pure fn index(&&k: K) -> V {
-            unchecked {
+            unsafe {
                 self.get(k)
             }
         }
@@ -466,7 +466,7 @@ fn hash_from_uints<V: Copy>(items: &[(uint, V)]) -> HashMap<uint, V> {
 impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     Map<K, V> {
     pure fn size() -> uint {
-        unchecked {
+        unsafe {
             do self.borrow_const |p| {
                 p.len()
             }
@@ -498,7 +498,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     }
 
     pure fn find(+key: K) -> Option<V> {
-        unchecked {
+        unsafe {
             do self.borrow_const |p| {
                 p.find(&key)
             }
@@ -518,7 +518,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     }
 
     pure fn each(op: fn(+key: K, +value: V) -> bool) {
-        unchecked {
+        unsafe {
             do self.borrow_imm |p| {
                 p.each(op)
             }
@@ -526,7 +526,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     }
 
     pure fn each_key(op: fn(+key: K) -> bool) {
-        unchecked {
+        unsafe {
             do self.borrow_imm |p| {
                 p.each_key(op)
             }
@@ -534,7 +534,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     }
 
     pure fn each_value(op: fn(+value: V) -> bool) {
-        unchecked {
+        unsafe {
             do self.borrow_imm |p| {
                 p.each_value(op)
             }
@@ -542,7 +542,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     }
 
     pure fn each_ref(op: fn(key: &K, value: &V) -> bool) {
-        unchecked {
+        unsafe {
             do self.borrow_imm |p| {
                 p.each_ref(op)
             }
@@ -550,7 +550,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     }
 
     pure fn each_key_ref(op: fn(key: &K) -> bool) {
-        unchecked {
+        unsafe {
             do self.borrow_imm |p| {
                 p.each_key_ref(op)
             }
@@ -558,7 +558,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     }
 
     pure fn each_value_ref(op: fn(value: &V) -> bool) {
-        unchecked {
+        unsafe {
             do self.borrow_imm |p| {
                 p.each_value_ref(op)
             }

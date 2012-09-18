@@ -1026,7 +1026,7 @@ impl<T: Send> Port<T>: Recv<T> {
         }
     }
 
-    pure fn peek() -> bool unchecked {
+    pure fn peek() -> bool unsafe {
         let mut endp = None;
         endp <-> self.endp;
         let peek = match endp {
@@ -1039,7 +1039,7 @@ impl<T: Send> Port<T>: Recv<T> {
 }
 
 impl<T: Send> Port<T>: Selectable {
-    pure fn header() -> *PacketHeader unchecked {
+    pure fn header() -> *PacketHeader unsafe {
         match self.endp {
           Some(endp) => endp.header(),
           None => fail ~"peeking empty stream"

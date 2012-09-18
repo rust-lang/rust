@@ -94,7 +94,7 @@ impl PosixPath : GenericPath {
     }
 
     pure fn dirname() -> ~str {
-        unchecked {
+        unsafe {
             let s = self.dir_path().to_str();
             if s.len() == 0 {
                 ~"."
@@ -144,7 +144,7 @@ impl PosixPath : GenericPath {
     }
 
     pure fn with_filename(f: &str) -> PosixPath {
-        unchecked {
+        unsafe {
             assert ! str::any(f, |c| windows::is_sep(c as u8));
             self.dir_path().push(f)
         }
@@ -198,7 +198,7 @@ impl PosixPath : GenericPath {
         let mut v = copy self.components;
         for cs.each |e| {
             let mut ss = str::split_nonempty(e, |c| windows::is_sep(c as u8));
-            unchecked { vec::push_all_move(v, move ss); }
+            unsafe { vec::push_all_move(v, move ss); }
         }
         PosixPath { components: move v, ..self }
     }
@@ -206,14 +206,14 @@ impl PosixPath : GenericPath {
     pure fn push(s: &str) -> PosixPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unchecked { vec::push_all_move(v, move ss); }
+        unsafe { vec::push_all_move(v, move ss); }
         PosixPath { components: move v, ..self }
     }
 
     pure fn pop() -> PosixPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unchecked { vec::pop(cs); }
+            unsafe { vec::pop(cs); }
         }
         return PosixPath { components: move cs, ..self }
     }
@@ -285,7 +285,7 @@ impl WindowsPath : GenericPath {
     }
 
     pure fn dirname() -> ~str {
-        unchecked {
+        unsafe {
             let s = self.dir_path().to_str();
             if s.len() == 0 {
                 ~"."
@@ -390,7 +390,7 @@ impl WindowsPath : GenericPath {
         let mut v = copy self.components;
         for cs.each |e| {
             let mut ss = str::split_nonempty(e, |c| windows::is_sep(c as u8));
-            unchecked { vec::push_all_move(v, move ss); }
+            unsafe { vec::push_all_move(v, move ss); }
         }
         return WindowsPath { components: move v, ..self }
     }
@@ -398,14 +398,14 @@ impl WindowsPath : GenericPath {
     pure fn push(s: &str) -> WindowsPath {
         let mut v = copy self.components;
         let mut ss = str::split_nonempty(s, |c| windows::is_sep(c as u8));
-        unchecked { vec::push_all_move(v, move ss); }
+        unsafe { vec::push_all_move(v, move ss); }
         return WindowsPath { components: move v, ..self }
     }
 
     pure fn pop() -> WindowsPath {
         let mut cs = copy self.components;
         if cs.len() != 0 {
-            unchecked { vec::pop(cs); }
+            unsafe { vec::pop(cs); }
         }
         return WindowsPath { components: move cs, ..self }
     }
@@ -421,9 +421,9 @@ impl WindowsPath : GenericPath {
 
 pure fn normalize(components: &[~str]) -> ~[~str] {
     let mut cs = ~[];
-    unchecked {
+    unsafe {
         for components.each |c| {
-            unchecked {
+            unsafe {
                 if c == ~"." && components.len() > 1 { loop; }
                 if c == ~"" { loop; }
                 if c == ~".." && cs.len() != 0 {
@@ -566,7 +566,7 @@ mod windows {
     }
 
     pure fn extract_drive_prefix(s: &str) -> Option<(~str,~str)> {
-        unchecked {
+        unsafe {
             if (s.len() > 1 &&
                 libc::isalpha(s[0] as libc::c_int) != 0 &&
                 s[1] == ':' as u8) {

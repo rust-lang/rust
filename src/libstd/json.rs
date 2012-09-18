@@ -645,7 +645,7 @@ pure fn lt(value0: Json, value1: Json) -> bool {
             match value1 {
                 Num(_) | String(_) | Boolean(_) | List(_) => false,
                 Dict(d1) => {
-                    unchecked {
+                    unsafe {
                         let (d0_flat, d1_flat) = {
                             let d0_flat = dvec::DVec();
                             for d0.each |k, v| { d0_flat.push((k, v)); }

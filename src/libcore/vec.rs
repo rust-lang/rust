@@ -187,7 +187,7 @@ pure fn len<T>(&&v: &[const T]) -> uint {
  */
 pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
     let mut v = ~[];
-    unchecked{reserve(v, n_elts);}
+    unsafe{reserve(v, n_elts);}
     let mut i: uint = 0u;
     while i < n_elts unsafe { raw::set(v, i, op(i)); i += 1u; }
     unsafe { raw::set_len(v, n_elts); }
@@ -202,7 +202,7 @@ pure fn from_fn<T>(n_elts: uint, op: iter::InitOp<T>) -> ~[T] {
  */
 pure fn from_elem<T: Copy>(n_elts: uint, t: T) -> ~[T] {
     let mut v = ~[];
-    unchecked{reserve(v, n_elts)}
+    unsafe{reserve(v, n_elts)}
     let mut i: uint = 0u;
     unsafe { // because unsafe::set is unsafe
         while i < n_elts { raw::set(v, i, t); i += 1u; }
@@ -231,8 +231,8 @@ pure fn from_slice<T: Copy>(t: &[T]) -> ~[T] {
 #[inline(always)]
 pure fn build_sized<A>(size: uint, builder: fn(push: pure fn(+A))) -> ~[A] {
     let mut vec = ~[];
-    unchecked { reserve(vec, size); }
-    builder(|+x| unchecked { push(vec, move x) });
+    unsafe { reserve(vec, size); }
+    builder(|+x| unsafe { push(vec, move x) });
     move vec
 }
 
@@ -323,7 +323,7 @@ pure fn slice<T: Copy>(v: &[const T], start: uint, end: uint) -> ~[T] {
     assert (start <= end);
     assert (end <= len(v));
     let mut result = ~[];
-    unchecked {
+    unsafe {
         for uint::range(start, end) |i| { vec::push(result, v[i]) }
     }
     move result
@@ -668,7 +668,7 @@ fn dedup<T: Eq>(&v: ~[const T]) unsafe {
 #[inline(always)]
 pure fn append<T: Copy>(+lhs: ~[T], rhs: &[const T]) -> ~[T] {
     let mut v <- lhs;
-    unchecked {
+    unsafe {
         push_all(v, rhs);
     }
     move v
@@ -677,7 +677,7 @@ pure fn append<T: Copy>(+lhs: ~[T], rhs: &[const T]) -> ~[T] {
 #[inline(always)]
 pure fn append_one<T>(+lhs: ~[T], +x: T) -> ~[T] {
     let mut v <- lhs;
-    unchecked { push(v, move x); }
+    unsafe { push(v, move x); }
     move v
 }
 
@@ -754,7 +754,7 @@ fn grow_set<T: Copy>(&v: ~[mut T], index: uint, initval: T, val: T) {
 /// Apply a function to each element of a vector and return the results
 pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> ~[U] {
     let mut result = ~[];
-    unchecked{reserve(result, len(v));}
+    unsafe{reserve(result, len(v));}
     for each(v) |elem| { unsafe { push(result, f(elem)); } }
     move result
 }
@@ -770,7 +770,7 @@ fn map_consume<T, U>(+v: ~[T], f: fn(+T) -> U) -> ~[U] {
 /// Apply a function to each element of a vector and return the results
 pure fn mapi<T, U>(v: &[T], f: fn(uint, T) -> U) -> ~[U] {
     let mut result = ~[];
-    unchecked{reserve(result, len(v));}
+    unsafe{reserve(result, len(v));}
     for eachi(v) |i, elem| { unsafe { push(result, f(i, elem)); } }
     move result
 }
@@ -781,7 +781,7 @@ pure fn mapi<T, U>(v: &[T], f: fn(uint, T) -> U) -> ~[U] {
  */
 pure fn flat_map<T, U>(v: &[T], f: fn(T) -> ~[U]) -> ~[U] {
     let mut result = ~[];
-    for each(v) |elem| { unchecked{ push_all_move(result, f(elem)); } }
+    for each(v) |elem| { unsafe{ push_all_move(result, f(elem)); } }
     move result
 }
 
@@ -849,7 +849,7 @@ pure fn connect<T: Copy>(v: &[~[T]], sep: T) -> ~[T] {
     let mut first = true;
     for each(v) |inner| {
         if first { first = false; } else { unsafe { push(r, sep); } }
-        unchecked { push_all(r, inner) };
+        unsafe { push_all(r, inner) };
     }
     move r
 }
@@ -1071,7 +1071,7 @@ pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
     let mut as_ = ~[], bs = ~[];
     for each(v) |p| {
         let (a, b) = p;
-        unchecked {
+        unsafe {
             vec::push(as_, a);
             vec::push(bs, b);
         }
@@ -1089,7 +1089,7 @@ pure fn unzip_slice<T: Copy, U: Copy>(v: &[(T, U)]) -> (~[T], ~[U]) {
  */
 pure fn unzip<T,U>(+v: ~[(T, U)]) -> (~[T], ~[U]) {
     let mut ts = ~[], us = ~[];
-    unchecked {
+    unsafe {
         do consume(move v) |_i, p| {
             let (a,b) = move p;
             push(ts, move a);
@@ -1108,7 +1108,7 @@ pure fn zip_slice<T: Copy, U: Copy>(v: &[const T], u: &[const U])
     let sz = len(v);
     let mut i = 0u;
     assert sz == len(u);
-    while i < sz unchecked { vec::push(zipped, (v[i], u[i])); i += 1u; }
+    while i < sz unsafe { vec::push(zipped, (v[i], u[i])); i += 1u; }
     move zipped
 }
 
@@ -1123,10 +1123,10 @@ pure fn zip<T, U>(+v: ~[const T], +u: ~[const U]) -> ~[(T, U)] {
     assert i == len(u);
     let mut w = ~[mut];
     while i > 0 {
-        unchecked { push(w, (pop(v),pop(u))); }
+        unsafe { push(w, (pop(v),pop(u))); }
         i -= 1;
     }
-    unchecked { reverse(w); }
+    unsafe { reverse(w); }
     from_mut(move w)
 }
 
@@ -1156,7 +1156,7 @@ pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
     let mut i = len::<T>(v);
     if i == 0 { return (move rs); } else { i -= 1; }
-    unchecked {
+    unsafe {
         while i != 0 { vec::push(rs, v[i]); i -= 1; }
         vec::push(rs, v[0]);
     }
@@ -1400,7 +1400,7 @@ pure fn permute<T: Copy>(v: &[const T], put: fn(~[T])) {
         while i < ln {
             let elt = v[i];
             let mut rest = slice(v, 0u, i);
-            unchecked {
+            unsafe {
                 push_all(rest, const_view(v, i+1u, ln));
                 permute(rest, |permutation| {
                     put(append(~[elt], permutation))
@@ -1416,7 +1416,7 @@ pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     assert 1u <= nn;
     vec::iteri (xx, |ii, _x| {
         let len = vec::len(xx);
-        if ii+nn <= len unchecked {
+        if ii+nn <= len unsafe {
             vec::push(ww, vec::slice(xx, ii, ii+nn));
         }
     });

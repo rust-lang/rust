@@ -92,7 +92,7 @@ pure fn DList<T>() -> DList<T> {
 /// Creates a new dlist with a single element
 pure fn from_elem<T>(+data: T) -> DList<T> {
     let list = DList();
-    unchecked { list.push(move data); }
+    unsafe { list.push(move data); }
     list
 }
 
@@ -435,7 +435,7 @@ impl<T: Copy> DList<T> {
     /// Get the elements of the list as a vector. O(n).
     pure fn to_vec() -> ~[mut T] {
         let mut v = ~[mut];
-        unchecked {
+        unsafe {
             vec::reserve(v, self.size);
             // Take this out of the unchecked when iter's functions are pure
             for self.eachi |index,data| {

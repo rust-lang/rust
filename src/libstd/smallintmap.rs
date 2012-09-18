@@ -139,7 +139,7 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
 
 impl<V: Copy> SmallIntMap<V>: ops::Index<uint, V> {
     pure fn index(&&key: uint) -> V {
-        unchecked {
+        unsafe {
             get(self, key)
         }
     }

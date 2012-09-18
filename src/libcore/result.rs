@@ -21,7 +21,7 @@ enum Result<T, U> {
 pure fn get<T: Copy, U>(res: Result<T, U>) -> T {
     match res {
       Ok(t) => t,
-      Err(the_err) => unchecked {
+      Err(the_err) => unsafe {
         fail fmt!("get called on error result: %?", the_err)
       }
     }
@@ -37,7 +37,7 @@ pure fn get<T: Copy, U>(res: Result<T, U>) -> T {
 pure fn get_ref<T, U>(res: &a/Result<T, U>) -> &a/T {
     match *res {
         Ok(ref t) => t,
-        Err(ref the_err) => unchecked {
+        Err(ref the_err) => unsafe {
             fail fmt!("get_ref called on error result: %?", the_err)
         }
     }

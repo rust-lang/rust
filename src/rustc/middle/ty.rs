@@ -1789,7 +1789,7 @@ fn remove_copyable(k: kind) -> kind {
 
 impl kind: ops::BitAnd<kind,kind> {
     pure fn bitand(other: kind) -> kind {
-        unchecked {
+        unsafe {
             lower_kind(self, other)
         }
     }
@@ -1797,7 +1797,7 @@ impl kind: ops::BitAnd<kind,kind> {
 
 impl kind: ops::BitOr<kind,kind> {
     pure fn bitor(other: kind) -> kind {
-        unchecked {
+        unsafe {
             raise_kind(self, other)
         }
     }
@@ -1805,7 +1805,7 @@ impl kind: ops::BitOr<kind,kind> {
 
 impl kind: ops::Sub<kind,kind> {
     pure fn sub(other: kind) -> kind {
-        unchecked {
+        unsafe {
             kind_(*self & !*other)
         }
     }
