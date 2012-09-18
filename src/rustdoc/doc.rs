@@ -334,13 +334,13 @@ impl index : cmp::Eq {
  * * kind - The type of thing being indexed, e.g. 'Module'
  * * name - The name of the thing
  * * brief - The brief description
- * * link - A format-specific string representing the link target
+ * * lnk - A format-specific string representing the link target
  */
 type index_entry = {
     kind: ~str,
     name: ~str,
     brief: Option<~str>,
-    link: ~str
+    lnk: ~str
 };
 
 impl index_entry : cmp::Eq {
@@ -348,7 +348,7 @@ impl index_entry : cmp::Eq {
         self.kind == other.kind &&
         self.name == other.name &&
         self.brief == other.brief &&
-        self.link == other.link
+        self.lnk == other.lnk
     }
     pure fn ne(&&other: index_entry) -> bool { !self.eq(other) }
 }

@@ -10,7 +10,7 @@ use syntax::{ast, ast_map};
 use driver::session;
 use session::session;
 use middle::ty;
-use back::{link, abi, upcall};
+use back::{linkage, abi, upcall};
 use syntax::codemap::span;
 use lib::llvm::{llvm, target_data, type_names, associate_type,
                    name_has_type};

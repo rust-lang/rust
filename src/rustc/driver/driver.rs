@@ -7,7 +7,7 @@ use syntax::attr;
 use middle::{trans, freevars, kind, ty, typeck, lint};
 use syntax::print::{pp, pprust};
 use util::ppaux;
-use back::link;
+use back::linkage;
 use result::{Ok, Err};
 use std::getopts;
 use io::WriterUtil;
@@ -258,20 +258,20 @@ fn compile_upto(sess: session, cfg: ast::crate_cfg,
                                  exp_map, exp_map2, maps));
 
     time(time_passes, ~"LLVM passes", ||
-        link::write::run_passes(sess, llmod,
-                                &outputs.obj_filename));
+        linkage::write::run_passes(sess, llmod,
+                                   &outputs.obj_filename));
 
     let stop_after_codegen =
-        sess.opts.output_type != link::output_type_exe ||
-        (sess.opts.static && sess.building_library)    ||
+        sess.opts.output_type != linkage::output_type_exe ||
+        (sess.opts.static && sess.building_library)       ||
         sess.opts.jit;
 
     if stop_after_codegen { return {crate: crate, tcx: Some(ty_cx)}; }
 
     time(time_passes, ~"linking", ||
-         link::link_binary(sess,
-                           &outputs.obj_filename,
-                           &outputs.out_filename, link_meta));
+         linkage::link_binary(sess,
+                              &outputs.obj_filename,
+                              &outputs.out_filename, link_meta));
 
     return {crate: crate, tcx: Some(ty_cx)};
 }
@@ -492,17 +492,19 @@ fn build_session_options(binary: ~str,
     let jit = opt_present(matches, ~"jit");
     let output_type =
         if parse_only || no_trans {
-            link::output_type_none
+            linkage::output_type_none
         } else if opt_present(matches, ~"S") &&
                   opt_present(matches, ~"emit-llvm") {
-            link::output_type_llvm_assembly
+            linkage::output_type_llvm_assembly
         } else if opt_present(matches, ~"S") {
-            link::output_type_assembly
+            linkage::output_type_assembly
         } else if opt_present(matches, ~"c") {
-            link::output_type_object
+            linkage::output_type_object
         } else if opt_present(matches, ~"emit-llvm") {
-            link::output_type_bitcode
-        } else { link::output_type_exe };
+            linkage::output_type_bitcode
+        } else {
+            linkage::output_type_exe
+        };
     let extra_debuginfo = opt_present(matches, ~"xg");
     let debuginfo = opt_present(matches, ~"g") || extra_debuginfo;
     let sysroot_opt = getopts::opt_maybe_str(matches, ~"sysroot");
@@ -511,7 +513,8 @@ fn build_session_options(binary: ~str,
     let save_temps = getopts::opt_present(matches, ~"save-temps");
     match output_type {
       // unless we're emitting huamn-readable assembly, omit comments.
-      link::output_type_llvm_assembly | link::output_type_assembly => (),
+      linkage::output_type_llvm_assembly |
+      linkage::output_type_assembly => (),
       _ => debugging_opts |= session::no_asm_comments
     }
     let opt_level = {
@@ -657,18 +660,18 @@ fn build_output_filenames(input: input,
     let out_path;
     let sopts = sess.opts;
     let stop_after_codegen =
-        sopts.output_type != link::output_type_exe ||
+        sopts.output_type != linkage::output_type_exe ||
             sopts.static && sess.building_library;
 
 
     let obj_suffix =
         match sopts.output_type {
-          link::output_type_none => ~"none",
-          link::output_type_bitcode => ~"bc",
-          link::output_type_assembly => ~"s",
-          link::output_type_llvm_assembly => ~"ll",
+          linkage::output_type_none => ~"none",
+          linkage::output_type_bitcode => ~"bc",
+          linkage::output_type_assembly => ~"s",
+          linkage::output_type_llvm_assembly => ~"ll",
           // Object and exe output both use the '.o' extension here
-          link::output_type_object | link::output_type_exe => ~"o"
+          linkage::output_type_object | linkage::output_type_exe => ~"o"
         };
 
     match *ofile {

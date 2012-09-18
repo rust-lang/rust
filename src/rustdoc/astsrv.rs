@@ -17,7 +17,6 @@ use syntax::diagnostic::handler;
 use syntax::ast;
 use syntax::codemap;
 use syntax::ast_map;
-use rustc::back::link;
 use rustc::metadata::filesearch;
 use rustc::front;
 

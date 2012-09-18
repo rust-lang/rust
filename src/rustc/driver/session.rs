@@ -6,7 +6,7 @@ use syntax::ast::{int_ty, uint_ty, float_ty};
 use syntax::parse::parse_sess;
 use metadata::filesearch;
 use back::target_strs;
-use back::link;
+use back::linkage;
 use middle::lint;
 
 
@@ -113,7 +113,7 @@ type options =
      lint_opts: ~[(lint::lint, lint::level)],
      save_temps: bool,
      jit: bool,
-     output_type: back::link::output_type,
+     output_type: back::linkage::output_type,
      addl_lib_search_paths: ~[Path],
      maybe_sysroot: Option<Path>,
      target_triple: ~str,
@@ -256,7 +256,7 @@ fn basic_options() -> @options {
         lint_opts: ~[],
         save_temps: false,
         jit: false,
-        output_type: link::output_type_exe,
+        output_type: linkage::output_type_exe,
         addl_lib_search_paths: ~[],
         maybe_sysroot: None,
         target_triple: driver::host_triple(),

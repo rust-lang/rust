@@ -398,7 +398,7 @@ fn write_index(ctxt: ctxt, index: doc::index) {
 
     for index.entries.each |entry| {
         let header = header_text_(entry.kind, entry.name);
-        let id = entry.link;
+        let id = entry.lnk;
         if option::is_some(entry.brief) {
             ctxt.w.write_line(fmt!("* [%s](%s) - %s",
                                    header, id, option::get(entry.brief)));

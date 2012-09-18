@@ -78,7 +78,7 @@ fn item_to_entry(
     doc: doc::itemtag,
     config: config::config
 ) -> doc::index_entry {
-    let link = match doc {
+    let lnk = match doc {
       doc::modtag(_) | doc::nmodtag(_)
       if config.output_style == config::doc_per_mod => {
         markdown_writer::make_filename(config, doc::itempage(doc)).to_str()
@@ -92,7 +92,7 @@ fn item_to_entry(
         kind: markdown_pass::header_kind(doc),
         name: markdown_pass::header_name(doc),
         brief: doc.brief(),
-        link: link
+        lnk: lnk
     }
 }
 
@@ -156,13 +156,13 @@ fn should_index_mod_contents() {
         kind: ~"Module",
         name: ~"a",
         brief: None,
-        link: ~"#module-a"
+        lnk: ~"#module-a"
     };
     assert option::get(doc.cratemod().index).entries[1] == {
         kind: ~"Function",
         name: ~"b",
         brief: None,
-        link: ~"#function-b"
+        lnk: ~"#function-b"
     };
 }
 
@@ -176,13 +176,13 @@ fn should_index_mod_contents_multi_page() {
         kind: ~"Module",
         name: ~"a",
         brief: None,
-        link: ~"a.html"
+        lnk: ~"a.html"
     };
     assert option::get(doc.cratemod().index).entries[1] == {
         kind: ~"Function",
         name: ~"b",
         brief: None,
-        link: ~"#function-b"
+        lnk: ~"#function-b"
     };
 }
 
@@ -196,7 +196,7 @@ fn should_index_foreign_mod_pages() {
         kind: ~"Foreign module",
         name: ~"a",
         brief: None,
-        link: ~"a.html"
+        lnk: ~"a.html"
     };
 }
 
@@ -220,7 +220,7 @@ fn should_index_foreign_mod_contents() {
         kind: ~"Function",
         name: ~"b",
         brief: None,
-        link: ~"#function-b"
+        lnk: ~"#function-b"
     };
 }
 
