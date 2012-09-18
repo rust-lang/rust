@@ -51,9 +51,9 @@ fn new_parse_sess_special_handler(sh: span_handler, cm: codemap::codemap)
 
 fn parse_crate_from_file(input: &Path, cfg: ast::crate_cfg,
                          sess: parse_sess) -> @ast::crate {
-    if input.filetype() == Some(~"rc") {
+    if input.filetype() == Some(~".rc") {
         parse_crate_from_crate_file(input, cfg, sess)
-    } else if input.filetype() == Some(~"rs") {
+    } else if input.filetype() == Some(~".rs") {
         parse_crate_from_source_file(input, cfg, sess)
     } else {
         sess.span_diagnostic.handler().fatal(~"unknown input file type: " +

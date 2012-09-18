@@ -804,7 +804,7 @@ fn install_source(c: cargo, path: &Path) {
 
     let mut cratefiles = ~[];
     for os::walk_dir(&Path(".")) |p| {
-        if p.filetype() == Some(~"rc") {
+        if p.filetype() == Some(~".rc") {
             vec::push(cratefiles, *p);
         }
     }

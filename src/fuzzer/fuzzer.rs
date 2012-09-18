@@ -26,7 +26,7 @@ fn contains(haystack: ~str, needle: ~str) -> bool {
 }
 
 fn find_rust_files(files: &mut ~[Path], path: &Path) {
-    if path.filetype() == Some(~"rs") && !contains(path.to_str(), ~"utf8") {
+    if path.filetype() == Some(~".rs") && !contains(path.to_str(), ~"utf8") {
         // ignoring "utf8" tests because something is broken
         vec::push(*files, *path);
     } else if os::path_is_dir(path)
