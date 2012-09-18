@@ -156,7 +156,7 @@ fn get_lint_dict() -> lint_dict {
 
         (~"non_camel_case_types",
          @{lint: non_camel_case_types,
-           desc: ~"types, variants and traits must have camel case names",
+           desc: ~"types, variants and traits should have camel case names",
            default: warn}),
 
         (~"managed_heap_memory",
@@ -605,7 +605,8 @@ fn check_item_non_camel_case_types(cx: ty::ctxt, it: @ast::item) {
         if !is_camel_case(cx, ident) {
             cx.sess.span_lint(
                 non_camel_case_types, expr_id, item_id, span,
-                ~"type, variant, or trait must be camel case");
+                ~"type, variant, or trait should have \
+                  a camel case identifier");
         }
     }
 
