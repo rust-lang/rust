@@ -20,7 +20,7 @@ use std::map::{int_hash, str_hash};
 use driver::session;
 use session::session;
 use syntax::attr;
-use back::{linkage, abi, upcall};
+use back::{link, abi, upcall};
 use syntax::{ast, ast_util, codemap, ast_map};
 use ast_util::{local_def, path_to_ident};
 use syntax::visit;
@@ -32,7 +32,7 @@ use util::common::is_main_name;
 use lib::llvm::{llvm, mk_target_data, mk_type_names};
 use lib::llvm::{ModuleRef, ValueRef, TypeRef, BasicBlockRef};
 use lib::llvm::{True, False};
-use linkage::{mangle_internal_name_by_type_only,
+use link::{mangle_internal_name_by_type_only,
               mangle_internal_name_by_seq,
               mangle_internal_name_by_path,
               mangle_internal_name_by_path_and_seq,
@@ -2571,7 +2571,7 @@ fn trans_crate(sess: session::session,
 
     let symbol_hasher = @hash::default_state();
     let link_meta =
-        linkage::build_link_meta(sess, *crate, output, symbol_hasher);
+        link::build_link_meta(sess, *crate, output, symbol_hasher);
     let reachable = reachable::find_reachable(crate.node.module, emap, tcx,
                                               maps.method_map);
 

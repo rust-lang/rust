@@ -9,7 +9,7 @@ use base::{trans_item, get_item_val, no_self, self_arg, trans_fn,
               get_insn_ctxt};
 use syntax::parse::token::special_idents;
 use type_of::type_of_fn_from_ty;
-use back::linkage::mangle_exported_name;
+use back::link::mangle_exported_name;
 use middle::ty::{FnTyBase, FnMeta, FnSig};
 
 fn monomorphic_fn(ccx: @crate_ctxt,

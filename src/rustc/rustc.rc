@@ -121,7 +121,7 @@ mod front {
 }
 
 mod back {
-    mod linkage;
+    mod link;
     mod abi;
     mod upcall;
     mod x86;

@@ -1033,8 +1033,7 @@ mod funcs {
             fn getppid() -> pid_t;
             fn getuid() -> uid_t;
             fn isatty(fd: c_int) -> c_int;
-            #[link_name="link"]
-            fn lnk(src: *c_char, dst: *c_char) -> c_int;
+            fn link(src: *c_char, dst: *c_char) -> c_int;
             fn lseek(fd: c_int, offset: off_t, whence: c_int) -> off_t;
             fn pathconf(path: *c_char, name: c_int) -> c_long;
             fn pause() -> c_int;

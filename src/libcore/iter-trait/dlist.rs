@@ -9,9 +9,9 @@ type IMPL_T<A> = dlist::DList<A>;
  * node is forbidden.
  */
 pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
-    let mut link_node = self.peek_n();
-    while option::is_some(link_node) {
-        let nobe = option::get(link_node);
+    let mut link = self.peek_n();
+    while option::is_some(link) {
+        let nobe = option::get(link);
         assert nobe.linked;
         if !f(nobe.data) { break; }
         // Check (weakly) that the user didn't do a remove.
@@ -25,7 +25,7 @@ pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
                || box::ptr_eq(*self.tl.expect(~"tailless dlist?"), *nobe)))) {
             fail ~"Removing a dlist node during iteration is forbidden!"
         }
-        link_node = nobe.next_link();
+        link = nobe.next_link();
     }
 }
 
