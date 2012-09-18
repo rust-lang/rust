@@ -900,7 +900,7 @@ type TaskGroupData = {
     // tasks in this group.
     mut descendants: TaskSet,
 };
-type TaskGroupArc = unsafe::Exclusive<Option<TaskGroupData>>;
+type TaskGroupArc = private::Exclusive<Option<TaskGroupData>>;
 
 type TaskGroupInner = &mut Option<TaskGroupData>;
 
@@ -929,7 +929,7 @@ type AncestorNode = {
     // Recursive rest of the list.
     mut ancestors:    AncestorList,
 };
-enum AncestorList = Option<unsafe::Exclusive<AncestorNode>>;
+enum AncestorList = Option<private::Exclusive<AncestorNode>>;
 
 // Accessors for taskgroup arcs and ancestor arcs that wrap the unsafety.
 #[inline(always)]
@@ -938,7 +938,7 @@ fn access_group<U>(x: &TaskGroupArc, blk: fn(TaskGroupInner) -> U) -> U {
 }
 
 #[inline(always)]
-fn access_ancestors<U>(x: &unsafe::Exclusive<AncestorNode>,
+fn access_ancestors<U>(x: &private::Exclusive<AncestorNode>,
                        blk: fn(x: &mut AncestorNode) -> U) -> U {
     unsafe { x.with(blk) }
 }
@@ -1222,7 +1222,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
             let mut members = new_taskset();
             taskset_insert(&mut members, spawner);
             let tasks =
-                unsafe::exclusive(Some({ mut members:     move members,
+                private::exclusive(Some({ mut members:     move members,
                                          mut descendants: new_taskset() }));
             // Main task/group has no ancestors, no notifier, etc.
             let group =
@@ -1244,7 +1244,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
         (move g, move a, spawner_group.is_main)
     } else {
         // Child is in a separate group from spawner.
-        let g = unsafe::exclusive(Some({ mut members:     new_taskset(),
+        let g = private::exclusive(Some({ mut members:     new_taskset(),
                                          mut descendants: new_taskset() }));
         let a = if supervised {
             // Child's ancestors start with the spawner.
@@ -1259,7 +1259,7 @@ fn gen_child_taskgroup(linked: bool, supervised: bool)
                 };
             assert new_generation < uint::max_value;
             // Build a new node in the ancestor list.
-            AncestorList(Some(unsafe::exclusive(
+            AncestorList(Some(private::exclusive(
                 { generation:       new_generation,
                   mut parent_group: Some(spawner_group.tasks.clone()),
                   mut ancestors:    move old_ancestors })))

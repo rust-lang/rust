@@ -6,7 +6,7 @@
  * between tasks.
  */
 
-use unsafe::{SharedMutableState, shared_mutable_state,
+use private::{SharedMutableState, shared_mutable_state,
                 clone_shared_mutable_state, unwrap_shared_mutable_state,
                 get_shared_mutable_state, get_shared_immutable_state};
 use sync::{Mutex,  mutex_with_condvars,
