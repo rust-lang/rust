@@ -527,12 +527,12 @@ impl LookupContext {
          * Attempts both auto-slice and auto-ptr, as appropriate.
          */
 
-        match self.search_for_autoptrd_method(self_ty, autoderefs) {
+        match self.search_for_autosliced_method(self_ty, autoderefs) {
             Some(move mme) => { return Some(move mme); }
             None => {}
         }
 
-        match self.search_for_autosliced_method(self_ty, autoderefs) {
+        match self.search_for_autoptrd_method(self_ty, autoderefs) {
             Some(move mme) => { return Some(move mme); }
             None => {}
         }
