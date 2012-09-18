@@ -642,16 +642,14 @@ type field_ = {mutbl: mutability, ident: ident, expr: @expr};
 type field = spanned<field_>;
 
 #[auto_serialize]
-enum blk_check_mode { default_blk, unchecked_blk, unsafe_blk, }
+enum blk_check_mode { default_blk, unsafe_blk, }
 
 impl blk_check_mode : cmp::Eq {
     pure fn eq(&&other: blk_check_mode) -> bool {
         match (self, other) {
             (default_blk, default_blk) => true,
-            (unchecked_blk, unchecked_blk) => true,
             (unsafe_blk, unsafe_blk) => true,
             (default_blk, _) => false,
-            (unchecked_blk, _) => false,
             (unsafe_blk, _) => false,
         }
     }

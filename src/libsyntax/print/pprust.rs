@@ -857,7 +857,6 @@ fn print_possibly_embedded_block_(s: ps, blk: ast::blk, embedded: embed_type,
                                   indented: uint, attrs: ~[ast::attribute],
                                   close_box: bool) {
     match blk.node.rules {
-      ast::unchecked_blk => word(s.s, ~"unchecked"),
       ast::unsafe_blk => word(s.s, ~"unsafe"),
       ast::default_blk => ()
     }

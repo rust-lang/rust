@@ -2168,7 +2168,6 @@ fn check_block_no_value(fcx: @fn_ctxt, blk: ast::blk) -> bool {
 
 fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
     let fcx = match blk.node.rules {
-      ast::unchecked_blk => @fn_ctxt {purity: ast::impure_fn,.. *fcx0},
       ast::unsafe_blk => @fn_ctxt {purity: ast::unsafe_fn,.. *fcx0},
       ast::default_blk => fcx0
     };
