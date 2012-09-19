@@ -20,6 +20,9 @@ use str::to_bytes;
 use syntax::ast;
 use syntax::diagnostic::span_handler;
 
+use hash::{Hash, HashUtil};
+use to_bytes::IterBytes;
+
 export encode_parms;
 export encode_metadata;
 export encoded_ty;
@@ -679,7 +682,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
            }
         }
         /* Each class has its own index -- encode it */
-        let bkts = create_index(idx, hash_node_id);
+        let bkts = create_index(idx);
         encode_index(ebml_w, bkts, write_int);
         ebml_w.end_tag();
 
@@ -865,13 +868,13 @@ fn encode_info_for_items(ecx: @encode_ctxt, ebml_w: ebml::Writer,
 
 // Path and definition ID indexing
 
-fn create_index<T: Copy>(index: ~[entry<T>], hash_fn: fn@(T) -> uint) ->
+fn create_index<T: Copy Hash IterBytes>(index: ~[entry<T>]) ->
    ~[@~[entry<T>]] {
     let mut buckets: ~[@mut ~[entry<T>]] = ~[];
     for uint::range(0u, 256u) |_i| { vec::push(buckets, @mut ~[]); };
     for index.each |elt| {
-        let h = hash_fn(elt.val);
-        vec::push(*buckets[h % 256u], elt);
+        let h = elt.val.hash() as uint;
+        vec::push(*buckets[h % 256], elt);
     }
 
     let mut buckets_frozen = ~[];
@@ -1135,7 +1138,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
     ecx.stats.item_bytes = wr.pos - i;
 
     i = wr.pos;
-    let items_buckets = create_index(items_index, hash_node_id);
+    let items_buckets = create_index(items_index);
     encode_index(ebml_w, items_buckets, write_int);
     ecx.stats.index_bytes = wr.pos - i;
     ebml_w.end_tag();

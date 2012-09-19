@@ -123,16 +123,5 @@ enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_table_adjustments = 0x62
 }
 
-// djb's cdb hashes.
-fn hash_node_id(&&node_id: int) -> uint {
-    return 177573u ^ (node_id as uint);
-}
-
-fn hash_path(&&s: ~str) -> uint {
-    let mut h = 5381u;
-    for str::each(s) |ch| { h = (h << 5u) + h ^ (ch as uint); }
-    return h;
-}
-
 type link_meta = {name: ~str, vers: ~str, extras_hash: ~str};
 
