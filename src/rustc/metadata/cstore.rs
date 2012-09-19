@@ -69,8 +69,8 @@ pure fn p(cstore: cstore) -> cstore_private {
 }
 
 fn mk_cstore(intr: ident_interner) -> cstore {
-    let meta_cache = map::HashMap::<int,crate_metadata>();
-    let crate_map = map::HashMap::<int,ast::crate_num>();
+    let meta_cache = map::HashMap();
+    let crate_map = map::HashMap();
     let mod_path_map = HashMap();
     return private(@{metas: meta_cache,
                      use_crate_map: crate_map,
