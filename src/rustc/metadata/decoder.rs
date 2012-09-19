@@ -16,7 +16,7 @@ use util::ppaux::ty_to_str;
 use syntax::diagnostic::span_handler;
 use common::*;
 use syntax::parse::token::ident_interner;
-
+use hash::{Hash, HashUtil};
 
 export class_dtor;
 export get_class_fields;
@@ -88,7 +88,7 @@ fn maybe_find_item(item_id: int, items: ebml::Doc) -> Option<ebml::Doc> {
     }
     lookup_hash(items,
                 |a| eq_item(a, item_id),
-                hash_node_id(item_id))
+                item_id.hash() as uint)
 }
 
 fn find_item(item_id: int, items: ebml::Doc) -> ebml::Doc {
