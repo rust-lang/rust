@@ -1,3 +1,4 @@
+// xfail-fast
 #[legacy_modes];
 
 fn fix_help<A: Owned, B: Send>(f: extern fn(fn@(A) -> B, A) -> B, x: A) -> B {

@@ -1,3 +1,4 @@
+// xfail-fast
 #[legacy_modes];
 
 fn p_foo<T>(pinned: T) { }

@@ -1,3 +1,4 @@
+// xfail-fast
 #[legacy_modes];
 
 // A trait for objects that can be used to do an if-then-else

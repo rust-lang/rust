@@ -1,3 +1,4 @@
+// xfail-fast
 // xfail-win32
 #[legacy_modes];
 

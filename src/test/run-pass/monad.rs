@@ -1,3 +1,4 @@
+// xfail-fast
 #[legacy_modes];
 
 trait vec_monad<A> {

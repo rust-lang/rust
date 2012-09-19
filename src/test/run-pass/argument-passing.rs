@@ -1,3 +1,4 @@
+// xfail-fast
 #[legacy_modes];
 
 fn f1(a: {mut x: int}, &b: int, -c: int) -> int {
