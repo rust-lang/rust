@@ -55,7 +55,7 @@ pub fn delayed_send<T: Send>(iotask: IoTask,
             // delayed_send_cb has been processed by libuv
             core::comm::recv(timer_done_po);
             // notify the caller immediately
-            core::comm::send(ch, copy(val));
+            core::comm::send(ch, move(val));
             // uv_close for this timer has been processed
             core::comm::recv(timer_done_po);
     };

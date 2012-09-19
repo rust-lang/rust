@@ -329,8 +329,8 @@ pub fn Parser(rdr: io::Reader) -> Parser {
     Parser {
         rdr: rdr,
         ch: rdr.read_char(),
-        line: 1u,
-        col: 1u,
+        line: 1,
+        col: 1,
     }
 }
 
@@ -342,7 +342,7 @@ pub impl Parser {
             self.parse_whitespace();
             // Make sure there is no trailing characters.
             if self.eof() {
-                Ok(value)
+                Ok(move value)
             } else {
                 self.error(~"trailing characters")
             }
@@ -610,12 +610,12 @@ priv impl Parser {
 
         if self.ch == ']' {
             self.bump();
-            return Ok(List(values));
+            return Ok(List(move values));
         }
 
         loop {
             match move self.parse_value() {
-              Ok(move v) => values.push(v),
+              Ok(move v) => values.push(move v),
               Err(move e) => return Err(e)
             }
 
@@ -626,7 +626,7 @@ priv impl Parser {
 
             match self.ch {
               ',' => self.bump(),
-              ']' => { self.bump(); return Ok(List(values)); }
+              ']' => { self.bump(); return Ok(List(move values)); }
               _ => return self.error(~"expected `,` or `]`")
             }
         };
@@ -640,7 +640,7 @@ priv impl Parser {
 
         if self.ch == '}' {
           self.bump();
-          return Ok(Object(values));
+          return Ok(Object(move values));
         }
 
         while !self.eof() {
@@ -664,14 +664,14 @@ priv impl Parser {
             self.bump();
 
             match move self.parse_value() {
-              Ok(move value) => { values.insert(key, value); }
+              Ok(move value) => { values.insert(key, move value); }
               Err(move e) => return Err(e)
             }
             self.parse_whitespace();
 
             match self.ch {
               ',' => self.bump(),
-              '}' => { self.bump(); return Ok(Object(values)); }
+              '}' => { self.bump(); return Ok(Object(move values)); }
               _ => {
                   if self.eof() { break; }
                   return self.error(~"expected `,` or `}`");
@@ -703,7 +703,7 @@ pub struct Deserializer {
 pub fn Deserializer(rdr: io::Reader) -> Result<Deserializer, Error> {
     match move from_reader(rdr) {
         Ok(move json) => {
-            let des = Deserializer { json: json, stack: ~[] };
+            let des = Deserializer { json: move json, stack: ~[] };
             Ok(move des)
         }
         Err(move e) => Err(e)
@@ -819,7 +819,7 @@ pub impl Deserializer: serialization::Deserializer {
         };
         let res = f(len);
         self.pop();
-        res
+        move res
     }
 
     fn read_managed_vec<T>(&self, f: fn(uint) -> T) -> T {
@@ -830,7 +830,7 @@ pub impl Deserializer: serialization::Deserializer {
         };
         let res = f(len);
         self.pop();
-        res
+        move res
     }
 
     fn read_vec_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
@@ -851,14 +851,14 @@ pub impl Deserializer: serialization::Deserializer {
         debug!("read_rec()");
         let value = f();
         self.pop();
-        value
+        move value
     }
 
     fn read_struct<T>(&self, _name: &str, f: fn() -> T) -> T {
         debug!("read_struct()");
         let value = f();
         self.pop();
-        value
+        move value
     }
 
     fn read_field<T>(&self, name: &str, idx: uint, f: fn() -> T) -> T {
@@ -891,7 +891,7 @@ pub impl Deserializer: serialization::Deserializer {
         debug!("read_tup(len=%u)", len);
         let value = f();
         self.pop();
-        value
+        move value
     }
 
     fn read_tup_elt<T>(&self, idx: uint, f: fn() -> T) -> T {
@@ -1183,11 +1183,11 @@ mod tests {
 
         for items.each |item| {
             match *item {
-                (copy key, copy value) => { d.insert(key, value); },
+                (copy key, copy value) => { d.insert(key, move value); },
             }
         };
 
-        Object(d)
+        Object(move d)
     }
 
     #[test]

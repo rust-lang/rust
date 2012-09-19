@@ -124,7 +124,7 @@ pub fn mutex_arc_with_condvars<T: Send>(user_data: T,
                                     num_condvars: uint) -> MutexARC<T> {
     let data =
         MutexARCInner { lock: mutex_with_condvars(num_condvars),
-                          failed: false, data: user_data };
+                          failed: false, data: move user_data };
     MutexARC { x: unsafe { shared_mutable_state(move data) } }
 }
 
@@ -258,7 +258,7 @@ pub fn rw_arc_with_condvars<T: Const Send>(user_data: T,
                                        num_condvars: uint) -> RWARC<T> {
     let data =
         RWARCInner { lock: rwlock_with_condvars(num_condvars),
-                     failed: false, data: user_data };
+                     failed: false, data: move user_data };
     RWARC { x: unsafe { shared_mutable_state(move data) }, cant_nest: () }
 }
 
@@ -448,7 +448,7 @@ mod tests {
 
         let (c, p) = pipes::stream();
 
-        do task::spawn() {
+        do task::spawn() |move c| {
             let p = pipes::PortSet();
             c.send(p.chan());
 
@@ -471,8 +471,8 @@ mod tests {
         let arc = ~MutexARC(false);
         let arc2 = ~arc.clone();
         let (c,p) = pipes::oneshot();
-        let (c,p) = (~mut Some(c), ~mut Some(p));
-        do task::spawn {
+        let (c,p) = (~mut Some(move c), ~mut Some(move p));
+        do task::spawn |move arc2, move p| {
             // wait until parent gets in
             pipes::recv_one(option::swap_unwrap(p));
             do arc2.access_cond |state, cond| {
@@ -494,7 +494,7 @@ mod tests {
         let arc2 = ~arc.clone();
         let (c,p) = pipes::stream();
 
-        do task::spawn_unlinked {
+        do task::spawn_unlinked |move arc2, move p| {
             let _ = p.recv();
             do arc2.access_cond |one, cond| {
                 cond.signal();
@@ -513,7 +513,7 @@ mod tests {
     fn test_mutex_arc_poison() {
         let arc = ~MutexARC(1);
         let arc2 = ~arc.clone();
-        do task::try {
+        do task::try |move arc2| {
             do arc2.access |one| {
                 assert *one == 2;
             }
@@ -527,21 +527,21 @@ mod tests {
         let arc = MutexARC(1);
         let arc2 = ~(&arc).clone();
         let (c,p) = pipes::stream();
-        do task::spawn {
+        do task::spawn |move c, move arc2| {
             do arc2.access |one| {
                 c.send(());
                 assert *one == 2;
             }
         }
         let _ = p.recv();
-        let one = unwrap_mutex_arc(arc);
+        let one = unwrap_mutex_arc(move arc);
         assert one == 1;
     }
     #[test] #[should_fail] #[ignore(cfg(windows))]
     fn test_rw_arc_poison_wr() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
-        do task::try {
+        do task::try |move arc2| {
             do arc2.write |one| {
                 assert *one == 2;
             }
@@ -554,7 +554,7 @@ mod tests {
     fn test_rw_arc_poison_ww() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
-        do task::try {
+        do task::try |move arc2| {
             do arc2.write |one| {
                 assert *one == 2;
             }
@@ -567,7 +567,7 @@ mod tests {
     fn test_rw_arc_poison_dw() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
-        do task::try {
+        do task::try |move arc2| {
             do arc2.write_downgrade |write_mode| {
                 do (&write_mode).write |one| {
                     assert *one == 2;
@@ -582,7 +582,7 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
-        do task::try {
+        do task::try |move arc2| {
             do arc2.read |one| {
                 assert *one == 2;
             }
@@ -595,7 +595,7 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
-        do task::try {
+        do task::try |move arc2| {
             do arc2.read |one| {
                 assert *one == 2;
             }
@@ -608,9 +608,9 @@ mod tests {
     fn test_rw_arc_no_poison_dr() {
         let arc = ~RWARC(1);
         let arc2 = ~arc.clone();
-        do task::try {
+        do task::try |move arc2| {
             do arc2.write_downgrade |write_mode| {
-                let read_mode = arc2.downgrade(write_mode);
+                let read_mode = arc2.downgrade(move write_mode);
                 do (&read_mode).read |one| {
                     assert *one == 2;
                 }
@@ -626,7 +626,7 @@ mod tests {
         let arc2 = ~arc.clone();
         let (c,p) = pipes::stream();
 
-        do task::spawn {
+        do task::spawn |move arc2, move c| {
             do arc2.write |num| {
                 for 10.times {
                     let tmp = *num;
@@ -642,7 +642,8 @@ mod tests {
         let mut children = ~[];
         for 5.times {
             let arc3 = ~arc.clone();
-            do task::task().future_result(|+r| children.push(r)).spawn {
+            do task::task().future_result(|+r| children.push(move r)).spawn
+                |move arc3| {
                 do arc3.read |num| {
                     assert *num >= 0;
                 }
@@ -670,9 +671,9 @@ mod tests {
         let mut reader_convos = ~[];
         for 10.times {
             let ((rc1,rp1),(rc2,rp2)) = (pipes::stream(),pipes::stream());
-            reader_convos.push((rc1,rp2));
+            reader_convos.push((move rc1, move rp2));
             let arcn = ~arc.clone();
-            do task::spawn {
+            do task::spawn |move rp1, move rc2, move arcn| {
                 rp1.recv(); // wait for downgrader to give go-ahead
                 do arcn.read |state| {
                     assert *state == 31337;
@@ -684,7 +685,7 @@ mod tests {
         // Writer task
         let arc2 = ~arc.clone();
         let ((wc1,wp1),(wc2,wp2)) = (pipes::stream(),pipes::stream());
-        do task::spawn {
+        do task::spawn |move arc2, move wc2, move wp1| {
             wp1.recv();
             do arc2.write_cond |state, cond| {
                 assert *state == 0;
@@ -717,7 +718,7 @@ mod tests {
                     }
                 }
             }
-            let read_mode = arc.downgrade(write_mode);
+            let read_mode = arc.downgrade(move write_mode);
             do (&read_mode).read |state| {
                 // complete handshake with other readers
                 for vec::each(reader_convos) |x| {
