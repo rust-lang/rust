@@ -12,7 +12,7 @@ fn echo<T: Send>(c: Chan<T>, oc: Chan<Chan<T>>) {
     send(oc, Chan(&p));
 
     let x = recv(p);
-    send(c, x);
+    send(c, move x);
 }
 
 fn main() { fail ~"meep"; }
