@@ -17,5 +17,5 @@ fn main() {
   let cat = ~"kitty";
   let po = comm::Port();         //~ ERROR missing `send`
   let ch = comm::Chan(&po);       //~ ERROR missing `send`
-  comm::send(ch, foo(42, @cat)); //~ ERROR missing `send`
+  comm::send(ch, foo(42, @(move cat))); //~ ERROR missing `send`
 }
