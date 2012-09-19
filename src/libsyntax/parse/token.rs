@@ -362,18 +362,15 @@ fn mk_fake_ident_interner() -> ident_interner {
 /**
  * All the valid words that have meaning in the Rust language.
  *
- * Rust keywords are either 'temporary', 'restricted', or 'strict'.  Temporary
+ * Rust keywords are either 'temporary', 'strict' or 'reserved'.  Temporary
  * keywords are contextual and may be used as identifiers anywhere.  They are
- * expected to disappear from the grammar soon.  Restricted keywords may not
- * appear in positions that might otherwise contain _value identifiers_.
- * Strict keywords may not appear as identifiers at all.
+ * expected to disappear from the grammar soon.  Strict keywords may not
+ * appear as identifiers at all. Reserved keywords are not used anywhere in
+ * the language and may not appear as identifiers.
  */
 fn keyword_table() -> HashMap<~str, ()> {
     let keywords = str_hash();
     for temporary_keyword_table().each_key |word| {
-        keywords.insert(word, ());
-    }
-    for restricted_keyword_table().each_key |word| {
         keywords.insert(word, ());
     }
     for strict_keyword_table().each_key |word| {
@@ -390,30 +387,6 @@ fn temporary_keyword_table() -> HashMap<~str, ()> {
     let words = str_hash();
     let keys = ~[
         ~"self", ~"static",
-    ];
-    for keys.each |word| {
-        words.insert(word, ());
-    }
-    words
-}
-
-/**
- * Keywords that may not appear in any position that might otherwise contain a
- * _value identifier_. Restricted keywords may still be used as other types of
- * identifiers.
- *
- * Reasons:
- *
- * * For some (most?), if used at the start of a line, they will cause the
- *   line to be interpreted as a specific kind of statement, which would be
- *   confusing.
- *
- * * `true` or `false` as identifiers would always be shadowed by
- *   the boolean constants
- */
-fn restricted_keyword_table() -> HashMap<~str, ()> {
-    let words = str_hash();
-    let keys = ~[
     ];
     for keys.each |word| {
         words.insert(word, ());
