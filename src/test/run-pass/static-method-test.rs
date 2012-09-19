@@ -13,13 +13,13 @@ fn andand<T: bool_like Copy>(x1: T, x2: T) -> T {
 
 impl bool: bool_like {
     static fn select<A>(&&b: bool, +x1: A, +x2: A) -> A {
-        if b { x1 } else { x2 }
+        if b { move x1 } else { move x2 }
     }
 }
 
 impl int: bool_like {
     static fn select<A>(&&b: int, +x1: A, +x2: A) -> A {
-        if b != 0 { x1 } else { x2 }
+        if b != 0 { move x1 } else { move x2 }
     }
 }
 

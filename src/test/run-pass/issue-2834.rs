@@ -9,7 +9,7 @@ proto! streamp (
 
 fn rendezvous() {
     let (c, s) = streamp::init();
-    let streams: ~[streamp::client::open<int>] = ~[c];
+    let streams: ~[streamp::client::open<int>] = ~[move c];
 
     error!("%?", streams[0]);
 }

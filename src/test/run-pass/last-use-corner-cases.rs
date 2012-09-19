@@ -5,7 +5,7 @@ fn main() {
     // Make sure closing over can be a last use
     let q = ~10;
     let addr = ptr::addr_of(&(*q));
-    let f = fn@() -> *int { ptr::addr_of(&(*q)) };
+    let f = fn@(move q) -> *int { ptr::addr_of(&(*q)) };
     assert addr == f();
 
     // But only when it really is the last use

@@ -91,7 +91,7 @@ fn test_tag() {
 fn test_chan() {
     let (ch, po) = pipes::stream();
     let (ch0, po0) = pipes::stream();
-    ch.send(ch0);
+    ch.send(move ch0);
     let ch1 = po.recv();
     // Does the transmitted channel still work?
 
