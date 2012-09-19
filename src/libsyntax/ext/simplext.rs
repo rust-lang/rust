@@ -237,7 +237,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: Option<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
-    let idents: HashMap<ident, ()> = HashMap();
+    let idents = HashMap();
     fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
                   idents: HashMap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }

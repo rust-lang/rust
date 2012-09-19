@@ -47,7 +47,7 @@ fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: None, up: tt_frame_up(option::None)},
               interpolations: match interp { /* just a convienience */
-                None => std::map::HashMap::<uint,@named_match>(),
+                None => std::map::HashMap(),
                 Some(x) => x
               },
               mut repeat_idx: ~[],

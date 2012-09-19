@@ -967,7 +967,7 @@ fn get_crate_module_paths(intr: ident_interner, cdata: cmd)
     // find all module (path, def_ids), which are not
     // fowarded path due to renamed import or reexport
     let mut res = ~[];
-    let mods = map::HashMap::<~str,bool>();
+    let mods = map::HashMap();
     do iter_crate_items(intr, cdata) |path, did| {
         let m = mod_of_path(path);
         if str::is_not_empty(m) {
