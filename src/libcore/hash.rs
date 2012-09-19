@@ -390,7 +390,9 @@ impl &SipState : Streaming {
     fn result_str() -> ~str {
         let r = self.result_bytes();
         let mut s = ~"";
-        for vec::each(r) |b| { s += uint::to_str(b as uint, 16u); }
+        for vec::each_ref(r) |b| {
+            s += uint::to_str(*b as uint, 16u);
+        }
         move s
     }
 
@@ -483,7 +485,9 @@ fn test_siphash() {
 
     fn to_hex_str(r:  &[u8]/8) -> ~str {
         let mut s = ~"";
-        for vec::each(*r) |b| { s += uint::to_str(b as uint, 16u); }
+        for vec::each_ref(*r) |b| {
+            s += uint::to_str(*b as uint, 16u);
+        }
         return s;
     }
 

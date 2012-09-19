@@ -86,8 +86,8 @@ fn with_argv<T>(prog: &str, args: &[~str],
                 cb: fn(**libc::c_char) -> T) -> T {
     let mut argptrs = str::as_c_str(prog, |b| ~[b]);
     let mut tmps = ~[];
-    for vec::each(args) |arg| {
-        let t = @copy arg;
+    for vec::each_ref(args) |arg| {
+        let t = @copy *arg;
         vec::push(tmps, t);
         vec::push_all(argptrs, str::as_c_str(*t, |b| ~[b]));
     }
@@ -105,8 +105,8 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
         let mut tmps = ~[];
         let mut ptrs = ~[];
 
-        for vec::each(es) |e| {
-            let (k,v) = copy e;
+        for vec::each_ref(es) |e| {
+            let (k,v) = copy *e;
             let t = @(fmt!("%s=%s", k, v));
             vec::push(tmps, t);
             vec::push_all(ptrs, str::as_c_str(*t, |b| ~[b]));
@@ -130,8 +130,8 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
         match *env {
           Some(es) if !vec::is_empty(es) => {
             let mut blk : ~[u8] = ~[];
-            for vec::each(es) |e| {
-                let (k,v) = e;
+            for vec::each_ref(es) |e| {
+                let (k,v) = *e;
                 let t = fmt!("%s=%s", k, v);
                 let mut v : ~[u8] = ::unsafe::reinterpret_cast(&t);
                 blk += v;

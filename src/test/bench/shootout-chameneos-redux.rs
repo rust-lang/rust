@@ -7,10 +7,10 @@ use std::sort;
 
 fn print_complements() {
     let all = ~[Blue, Red, Yellow];
-    for vec::each(all) |aa| {
-        for vec::each(all) |bb| {
-            io::println(show_color(aa) + ~" + " + show_color(bb) +
-                ~" -> " + show_color(transform(aa,bb)));
+    for vec::each_ref(all) |aa| {
+        for vec::each_ref(all) |bb| {
+            io::println(show_color(*aa) + ~" + " + show_color(*bb) +
+                ~" -> " + show_color(transform(*aa, *bb)));
         }
     }
 }
@@ -162,7 +162,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // save each creature's meeting stats
     let mut report = ~[];
-    for vec::each(to_creature) |_to_one| {
+    for vec::each_ref(to_creature) |_to_one| {
         vec::push(report, comm::recv(from_creatures_log));
     }
 
@@ -170,8 +170,8 @@ fn rendezvous(nn: uint, set: ~[color]) {
     io::println(show_color_list(set));
 
     // print each creature's stats
-    for vec::each(report) |rep| {
-        io::println(rep);
+    for vec::each_ref(report) |rep| {
+        io::println(*rep);
     }
 
     // print the total number of creatures met

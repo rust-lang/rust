@@ -429,13 +429,13 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             match vi.node {
               view_item_use(_, _, id) => vfn(id),
               view_item_import(vps) | view_item_export(vps) => {
-                do vec::iter(vps) |vp| {
-                    match vp.node {
-                      view_path_simple(_, _, _, id) => vfn(id),
-                      view_path_glob(_, id) => vfn(id),
-                      view_path_list(_, _, id) => vfn(id)
-                    }
-                }
+                  for vec::each_ref(vps) |vp| {
+                      match vp.node {
+                          view_path_simple(_, _, _, id) => vfn(id),
+                          view_path_glob(_, id) => vfn(id),
+                          view_path_list(_, _, id) => vfn(id)
+                      }
+                  }
               }
             }
         },
@@ -490,7 +490,9 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
         },
 
         visit_ty_params: fn@(ps: ~[ty_param]) {
-            vec::iter(ps, |p| vfn(p.id))
+            for vec::each_ref(ps) |p| {
+                vfn(p.id);
+            }
         },
 
         visit_fn: fn@(fk: visit::fn_kind, d: ast::fn_decl,
@@ -498,34 +500,34 @@ fn id_visitor(vfn: fn@(node_id)) -> visit::vt<()> {
             vfn(id);
 
             match fk {
-              visit::fk_ctor(_, _, tps, self_id, parent_id) => {
-                vec::iter(tps, |tp| vfn(tp.id));
-                vfn(id);
-                vfn(self_id);
-                vfn(parent_id.node);
-              }
-              visit::fk_dtor(tps, _, self_id, parent_id) => {
-                vec::iter(tps, |tp| vfn(tp.id));
-                vfn(id);
-                vfn(self_id);
-                vfn(parent_id.node);
-              }
-              visit::fk_item_fn(_, tps, _) => {
-                vec::iter(tps, |tp| vfn(tp.id));
-              }
-              visit::fk_method(_, tps, m) => {
-                vfn(m.self_id);
-                vec::iter(tps, |tp| vfn(tp.id));
-              }
-              visit::fk_anon(_, capture_clause)
-              | visit::fk_fn_block(capture_clause) => {
-                for vec::each(*capture_clause) |clause| {
-                    vfn(clause.id);
+                visit::fk_ctor(_, _, tps, self_id, parent_id) => {
+                    for vec::each_ref(tps) |tp| { vfn(tp.id); }
+                    vfn(id);
+                    vfn(self_id);
+                    vfn(parent_id.node);
                 }
-              }
+                visit::fk_dtor(tps, _, self_id, parent_id) => {
+                    for vec::each_ref(tps) |tp| { vfn(tp.id); }
+                    vfn(id);
+                    vfn(self_id);
+                    vfn(parent_id.node);
+                }
+                visit::fk_item_fn(_, tps, _) => {
+                    for vec::each_ref(tps) |tp| { vfn(tp.id); }
+                }
+                visit::fk_method(_, tps, m) => {
+                    vfn(m.self_id);
+                    for vec::each_ref(tps) |tp| { vfn(tp.id); }
+                }
+                visit::fk_anon(_, capture_clause) |
+                visit::fk_fn_block(capture_clause) => {
+                    for vec::each_ref(*capture_clause) |clause| {
+                        vfn(clause.id);
+                    }
+                }
             }
 
-            do vec::iter(d.inputs) |arg| {
+            for vec::each_ref(d.inputs) |arg| {
                 vfn(arg.id)
             }
         },

@@ -91,7 +91,7 @@ trait Deserializer {
 
 fn emit_from_vec<S: Serializer, T>(s: S, v: ~[T], f: fn(T)) {
     do s.emit_vec(vec::len(v)) {
-        do vec::iteri(v) |i,e| {
+        for vec::eachi(v) |i,e| {
             do s.emit_vec_elt(i) {
                 f(e)
             }

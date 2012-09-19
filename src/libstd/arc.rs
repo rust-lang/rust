@@ -642,6 +642,7 @@ mod tests {
                 c.send(());
             }
         }
+
         // Readers try to catch the writer in the act
         let mut children = ~[];
         for 5.times {
@@ -652,8 +653,10 @@ mod tests {
                 }
             }
         }
+
         // Wait for children to pass their asserts
-        for vec::each(children) |r| { future::get(&r); }
+        for vec::each_ref(children) |r| { future::get(r); }
+
         // Wait for writer to finish
         p.recv();
         do arc.read |num| { assert *num == 10; }
@@ -713,8 +716,8 @@ mod tests {
                 assert *state == 42;
                 *state = 31337;
                 // send to other readers
-                for vec::each(reader_convos) |x| {
-                    match x {
+                for vec::each_ref(reader_convos) |x| {
+                    match *x {
                         (rc, _) => rc.send(()),
                     }
                 }
@@ -722,8 +725,8 @@ mod tests {
             let read_mode = arc.downgrade(write_mode);
             do (&read_mode).read |state| {
                 // complete handshake with other readers
-                for vec::each(reader_convos) |x| {
-                    match x {
+                for vec::each_ref(reader_convos) |x| {
+                    match *x {
                         (_, rp) => rp.recv(),
                     }
                 }

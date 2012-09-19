@@ -31,11 +31,11 @@ fn trans_impl(ccx: @crate_ctxt, path: path, name: ast::ident,
     let _icx = ccx.insn_ctxt("impl::trans_impl");
     if tps.len() > 0u { return; }
     let sub_path = vec::append_one(path, path_name(name));
-    for vec::each(methods) |method| {
+    for vec::each_ref(methods) |method| {
         if method.tps.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(sub_path, path_name(method.ident));
-            trans_method(ccx, path, method, None, llfn);
+            trans_method(ccx, path, *method, None, llfn);
         }
     }
 }

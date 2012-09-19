@@ -75,7 +75,7 @@ impl<A: ToStr Copy, B: ToStr Copy, C: ToStr Copy> (A, B, C): ToStr {
 impl<A: ToStr> ~[A]: ToStr {
     fn to_str() -> ~str {
         let mut acc = ~"[", first = true;
-        for vec::each(self) |elt| {
+        for vec::each_ref(self) |elt| {
             if first { first = false; }
             else { str::push_str(acc, ~", "); }
             str::push_str(acc, elt.to_str());

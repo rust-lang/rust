@@ -137,20 +137,20 @@ fn visit_expr(e: @ast::expr, wbcx: wb_ctxt, v: wb_vt) {
     match e.node {
       ast::expr_fn(_, decl, _, _) |
       ast::expr_fn_block(decl, _, _) => {
-        do vec::iter(decl.inputs) |input| {
-            let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
+          for vec::each_ref(decl.inputs) |input| {
+              let r_ty = resolve_type_vars_for_node(wbcx, e.span, input.id);
 
-            // Just in case we never constrained the mode to anything,
-            // constrain it to the default for the type in question.
-            match (r_ty, input.mode) {
-              (Some(t), ast::infer(_)) => {
-                let tcx = wbcx.fcx.ccx.tcx;
-                let m_def = ty::default_arg_mode_for_ty(tcx, t);
-                ty::set_default_mode(tcx, input.mode, m_def);
+              // Just in case we never constrained the mode to anything,
+              // constrain it to the default for the type in question.
+              match (r_ty, input.mode) {
+                  (Some(t), ast::infer(_)) => {
+                      let tcx = wbcx.fcx.ccx.tcx;
+                      let m_def = ty::default_arg_mode_for_ty(tcx, t);
+                      ty::set_default_mode(tcx, input.mode, m_def);
+                  }
+                  _ => ()
               }
-              _ => ()
-            }
-        }
+          }
       }
 
       ast::expr_binary(*) | ast::expr_unary(*) | ast::expr_assign_op(*)

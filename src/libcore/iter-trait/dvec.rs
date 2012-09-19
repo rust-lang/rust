@@ -7,7 +7,12 @@ type IMPL_T<A> = dvec::DVec<A>;
  * Attempts to access this dvec during iteration will fail.
  */
 pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
-    unsafe { self.swap(|v| { vec::each(v, f); move v }) }
+    unsafe {
+        do self.swap |v| {
+            vec::each(v, f);
+            move v
+        }
+    }
 }
 
 pure fn SIZE_HINT<A>(self: IMPL_T<A>) -> Option<uint> {

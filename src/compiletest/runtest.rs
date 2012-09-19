@@ -425,8 +425,8 @@ fn compose_and_run_compiler(
     let extra_link_args = ~[~"-L",
                             aux_output_dir_name(config, testfile).to_str()];
 
-    do vec::iter(props.aux_builds) |rel_ab| {
-        let abs_ab = config.aux_base.push_rel(&Path(rel_ab));
+    for vec::each_ref(props.aux_builds) |rel_ab| {
+        let abs_ab = config.aux_base.push_rel(&Path(*rel_ab));
         let aux_args =
             make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);

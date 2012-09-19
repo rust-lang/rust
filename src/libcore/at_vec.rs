@@ -91,7 +91,7 @@ pure fn build_sized_opt<A>(size: Option<uint>,
 #[inline(always)]
 pure fn append<T: Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
     do build_sized(lhs.len() + rhs.len()) |push| {
-        for vec::each(lhs) |x| { push(x); }
+        for vec::each_ref(lhs) |x| { push(*x); }
         for uint::range(0, rhs.len()) |i| { push(rhs[i]); }
     }
 }
@@ -100,8 +100,8 @@ pure fn append<T: Copy>(lhs: @[T], rhs: &[const T]) -> @[T] {
 /// Apply a function to each element of a vector and return the results
 pure fn map<T, U>(v: &[T], f: fn(T) -> U) -> @[U] {
     do build_sized(v.len()) |push| {
-        for vec::each(v) |elem| {
-            push(f(elem));
+        for vec::each_ref(v) |elem| {
+            push(f(*elem));
         }
     }
 }

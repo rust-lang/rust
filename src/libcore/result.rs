@@ -267,11 +267,11 @@ impl<T: Copy, E: Copy> Result<T, E> {
  *     }
  */
 fn map_vec<T,U:Copy,V:Copy>(
-    ts: &[T], op: fn(T) -> Result<V,U>) -> Result<~[V],U> {
+    ts: &[T], op: fn((&T)) -> Result<V,U>) -> Result<~[V],U> {
 
     let mut vs: ~[V] = ~[];
     vec::reserve(vs, vec::len(ts));
-    for vec::each(ts) |t| {
+    for vec::each_ref(ts) |t| {
         match op(t) {
           Ok(v) => vec::push(vs, v),
           Err(u) => return Err(u)

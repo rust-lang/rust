@@ -971,7 +971,7 @@ fn trans_rec_or_struct(bcx: block,
         Ignore => {
             // just evaluate the values for each field and drop them
             // on the floor
-            for vec::each(fields) |fld| {
+            for vec::each_ref(fields) |fld| {
                 bcx = trans_into(bcx, fld.node.expr, Ignore);
             }
             return bcx;
@@ -1027,7 +1027,9 @@ fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: Dest) -> block {
     let mut bcx = bcx;
     let addr = match dest {
         Ignore => {
-            for vec::each(elts) |ex| { bcx = trans_into(bcx, ex, Ignore); }
+            for vec::each_ref(elts) |ex| {
+                bcx = trans_into(bcx, *ex, Ignore);
+            }
             return bcx;
         }
         SaveIn(pos) => pos,
@@ -1040,7 +1042,9 @@ fn trans_tup(bcx: block, elts: ~[@ast::expr], dest: Dest) -> block {
         add_clean_temp_mem(bcx, dest, e_ty);
         vec::push(temp_cleanups, dest);
     }
-    for vec::each(temp_cleanups) |cleanup| { revoke_clean(bcx, cleanup); }
+    for vec::each_ref(temp_cleanups) |cleanup| {
+        revoke_clean(bcx, *cleanup);
+    }
     return bcx;
 }
 

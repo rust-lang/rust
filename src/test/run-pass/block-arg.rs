@@ -3,8 +3,8 @@ fn main() {
     let v = ~[-1f, 0f, 1f, 2f, 3f];
 
     // Statement form does not require parentheses:
-    do vec::iter(v) |i| {
-        log(info, i);
+    for vec::each_ref(v) |i| {
+        log(info, *i);
     }
 
     // Usable at all:
