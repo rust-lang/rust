@@ -11,11 +11,12 @@ fn mk_pass() -> Pass {
               doc::ConstTag(_) => 0,
               doc::TyTag(_) => 1,
               doc::EnumTag(_) => 2,
-              doc::TraitTag(_) => 3,
-              doc::ImplTag(_) => 4,
-              doc::FnTag(_) => 5,
-              doc::ModTag(_) => 6,
-              doc::NmodTag(_) => 7
+              doc::StructTag(_) => 3,
+              doc::TraitTag(_) => 4,
+              doc::ImplTag(_) => 5,
+              doc::FnTag(_) => 6,
+              doc::ModTag(_) => 7,
+              doc::NmodTag(_) => 8
             }
         }
 
@@ -35,17 +36,19 @@ fn test() {
          enum ienum { ivar } \
          trait itrait { fn a(); } \
          impl int { fn a() { } } \
-         type itype = int;";
+         type itype = int; \
+         struct istruct { f: () }";
     do astsrv::from_str(source) |srv| {
         let doc = extract::from_srv(srv, ~"");
         let doc = mk_pass().f(srv, doc);
         assert doc.cratemod().items[0].name() == ~"iconst";
         assert doc.cratemod().items[1].name() == ~"itype";
         assert doc.cratemod().items[2].name() == ~"ienum";
-        assert doc.cratemod().items[3].name() == ~"itrait";
-        assert doc.cratemod().items[4].name() == ~"__extensions__";
-        assert doc.cratemod().items[5].name() == ~"ifn";
-        assert doc.cratemod().items[6].name() == ~"imod";
-        assert doc.cratemod().items[7].name() == ~"inmod";
+        assert doc.cratemod().items[3].name() == ~"istruct";
+        assert doc.cratemod().items[4].name() == ~"itrait";
+        assert doc.cratemod().items[5].name() == ~"__extensions__";
+        assert doc.cratemod().items[6].name() == ~"ifn";
+        assert doc.cratemod().items[7].name() == ~"imod";
+        assert doc.cratemod().items[8].name() == ~"inmod";
     }
 }

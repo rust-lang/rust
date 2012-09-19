@@ -119,6 +119,11 @@ fn moddoc_from_mod(
                     tydoc_from_ty(ItemDoc)
                 ))
               }
+              ast::item_class(def, _) => {
+                Some(doc::StructTag(
+                    structdoc_from_struct(ItemDoc, def)
+                ))
+              }
               _ => None
             }
         },
@@ -291,6 +296,34 @@ fn tydoc_from_ty(
 fn should_extract_tys() {
     let doc = test::mk_doc(~"type a = int;");
     assert doc.cratemod().types()[0].name() == ~"a";
+}
+
+fn structdoc_from_struct(
+    itemdoc: doc::ItemDoc,
+    struct_def: @ast::struct_def
+) -> doc::StructDoc {
+    {
+        item: itemdoc,
+        fields: do struct_def.fields.map |field| {
+            match field.node.kind {
+                ast::named_field(ident, _, _) => to_str(ident),
+                ast::unnamed_field => fail ~"what is an unnamed struct field?"
+            }
+        },
+        sig: None
+    }
+}
+
+#[test]
+fn should_extract_structs() {
+    let doc = test::mk_doc(~"struct Foo { field: () }");
+    assert doc.cratemod().structs()[0].name() == ~"Foo";
+}
+
+#[test]
+fn should_extract_struct_fields() {
+    let doc = test::mk_doc(~"struct Foo { field: () }");
+    assert doc.cratemod().structs()[0].fields[0] == ~"field";
 }
 
 #[cfg(test)]

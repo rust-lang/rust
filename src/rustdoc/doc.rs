@@ -98,7 +98,8 @@ enum ItemTag {
     EnumTag(EnumDoc),
     TraitTag(TraitDoc),
     ImplTag(ImplDoc),
-    TyTag(TyDoc)
+    TyTag(TyDoc),
+    StructTag(StructDoc)
 }
 
 impl ItemTag : cmp::Eq {
@@ -149,6 +150,12 @@ impl ItemTag : cmp::Eq {
             TyTag(e0a) => {
                 match other {
                     TyTag(e0b) => e0a == e0b,
+                    _ => false
+                }
+            }
+            StructTag(e0a) => {
+                match other {
+                    StructTag(e0b) => e0a == e0b,
                     _ => false
                 }
             }
@@ -315,6 +322,21 @@ impl ImplDoc : cmp::Eq {
 
 type TyDoc = SimpleItemDoc;
 
+type StructDoc = {
+    item: ItemDoc,
+    fields: ~[~str],
+    sig: Option<~str>
+};
+
+impl StructDoc : cmp::Eq {
+    pure fn eq(&&other: StructDoc) -> bool {
+        return self.item == other.item
+            && self.fields == other.fields
+            && self.sig == other.sig;
+    }
+    pure fn ne(&&other: StructDoc) -> bool { !self.eq(other) }
+}
+
 type Index = {
     entries: ~[IndexEntry]
 };
@@ -442,6 +464,15 @@ impl ModDoc {
             }
         }
     }
+
+    fn structs() -> ~[StructDoc] {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
+                StructTag(StructDoc) => Some(StructDoc),
+                _ => None
+            }
+        }
+    }
 }
 
 trait PageUtils {
@@ -544,7 +575,8 @@ impl ItemTag: Item {
           doc::EnumTag(doc) => doc.item,
           doc::TraitTag(doc) => doc.item,
           doc::ImplTag(doc) => doc.item,
-          doc::TyTag(doc) => doc.item
+          doc::TyTag(doc) => doc.item,
+          doc::StructTag(doc) => doc.item
         }
     }
 }
@@ -570,6 +602,10 @@ impl TraitDoc: Item {
 }
 
 impl ImplDoc: Item {
+    pure fn item() -> ItemDoc { self.item }
+}
+
+impl StructDoc: Item {
     pure fn item() -> ItemDoc { self.item }
 }
 
