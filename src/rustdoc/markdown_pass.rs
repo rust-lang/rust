@@ -210,6 +210,9 @@ fn header_kind(doc: doc::ItemTag) -> ~str {
       doc::TyTag(_) => {
         ~"Type"
       }
+      doc::StructTag(_) => {
+        ~"Struct"
+      }
     }
 }
 
@@ -370,7 +373,8 @@ fn write_item_(ctxt: Ctxt, doc: doc::ItemTag, write_header: bool) {
       doc::EnumTag(EnumDoc) => write_enum(ctxt, EnumDoc),
       doc::TraitTag(TraitDoc) => write_trait(ctxt, TraitDoc),
       doc::ImplTag(ImplDoc) => write_impl(ctxt, ImplDoc),
-      doc::TyTag(TyDoc) => write_type(ctxt, TyDoc)
+      doc::TyTag(TyDoc) => write_type(ctxt, TyDoc),
+      doc::StructTag(StructDoc) => write_struct(ctxt, StructDoc),
     }
 }
 
@@ -773,6 +777,20 @@ fn should_write_type_desc() {
 fn should_write_type_signature() {
     let markdown = test::render(~"type t = int;");
     assert str::contains(markdown, ~"\n\n    type t = int\n\n");
+}
+
+fn write_struct(
+    ctxt: Ctxt,
+    doc: doc::StructDoc
+) {
+    write_sig(ctxt, doc.sig);
+    write_common(ctxt, doc.desc(), doc.sections());
+}
+
+#[test]
+fn should_write_struct_header() {
+    let markdown = test::render(~"struct S { field: () }");
+    assert str::contains(markdown, ~"## Struct `S`\n\n");
 }
 
 #[cfg(test)]

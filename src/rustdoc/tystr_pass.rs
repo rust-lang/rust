@@ -27,6 +27,7 @@ fn run(
         fold_trait: fold_trait,
         fold_impl: fold_impl,
         fold_type: fold_type,
+        fold_struct: fold_struct,
         .. *fold::default_any_fold(srv)
     });
     fold.fold_doc(fold, doc)
@@ -320,6 +321,32 @@ fn fold_type(
 fn should_add_type_signatures() {
     let doc = test::mk_doc(~"type t<T> = int;");
     assert doc.cratemod().types()[0].sig == Some(~"type t<T> = int");
+}
+
+fn fold_struct(
+    fold: fold::Fold<astsrv::Srv>,
+    doc: doc::StructDoc
+) -> doc::StructDoc {
+    let srv = fold.ctxt;
+
+    {
+        sig: do astsrv::exec(srv) |ctxt| {
+            match ctxt.ast_map.get(doc.id()) {
+                ast_map::node_item(item, _) => {
+                    Some(pprust::item_to_str(item,
+                                             extract::interner()))
+                }
+                _ => fail ~"not an item"
+            }
+        },
+        .. doc
+    }
+}
+
+#[test]
+fn should_add_struct_defs() {
+    let doc = test::mk_doc(~"struct S { field: () }");
+    assert doc.cratemod().structs()[0].sig.get().contains("struct S {");
 }
 
 #[cfg(test)]

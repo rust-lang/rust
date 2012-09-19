@@ -11,6 +11,7 @@ export default_seq_fold_enum;
 export default_seq_fold_trait;
 export default_seq_fold_impl;
 export default_seq_fold_type;
+export default_seq_fold_struct;
 export default_par_fold;
 export default_par_fold_mod;
 export default_par_fold_nmod;
@@ -31,6 +32,8 @@ type FoldEnum<T> = fn~(fold: Fold<T>, doc: doc::EnumDoc) -> doc::EnumDoc;
 type FoldTrait<T> = fn~(fold: Fold<T>, doc: doc::TraitDoc) -> doc::TraitDoc;
 type FoldImpl<T> = fn~(fold: Fold<T>, doc: doc::ImplDoc) -> doc::ImplDoc;
 type FoldType<T> = fn~(fold: Fold<T>, doc: doc::TyDoc) -> doc::TyDoc;
+type FoldStruct<T> = fn~(fold: Fold<T>,
+                         doc: doc::StructDoc) -> doc::StructDoc;
 
 type Fold_<T> = {
     ctxt: T,
@@ -44,7 +47,8 @@ type Fold_<T> = {
     fold_enum: FoldEnum<T>,
     fold_trait: FoldTrait<T>,
     fold_impl: FoldImpl<T>,
-    fold_type: FoldType<T>
+    fold_type: FoldType<T>,
+    fold_struct: FoldStruct<T>
 };
 
 
@@ -62,7 +66,8 @@ fn mk_fold<T:Copy>(
     +fold_enum: FoldEnum<T>,
     +fold_trait: FoldTrait<T>,
     +fold_impl: FoldImpl<T>,
-    +fold_type: FoldType<T>
+    +fold_type: FoldType<T>,
+    +fold_struct: FoldStruct<T>
 ) -> Fold<T> {
     Fold({
         ctxt: ctxt,
@@ -76,7 +81,8 @@ fn mk_fold<T:Copy>(
         fold_enum: fold_enum,
         fold_trait: fold_trait,
         fold_impl: fold_impl,
-        fold_type: fold_type
+        fold_type: fold_type,
+        fold_struct: fold_struct,
     })
 }
 
@@ -93,7 +99,8 @@ fn default_any_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
         |f, d| default_seq_fold_enum(f, d),
         |f, d| default_seq_fold_trait(f, d),
         |f, d| default_seq_fold_impl(f, d),
-        |f, d| default_seq_fold_type(f, d)
+        |f, d| default_seq_fold_type(f, d),
+        |f, d| default_seq_fold_struct(f, d)
     )
 }
 
@@ -110,7 +117,8 @@ fn default_seq_fold<T:Copy>(ctxt: T) -> Fold<T> {
         |f, d| default_seq_fold_enum(f, d),
         |f, d| default_seq_fold_trait(f, d),
         |f, d| default_seq_fold_impl(f, d),
-        |f, d| default_seq_fold_type(f, d)
+        |f, d| default_seq_fold_type(f, d),
+        |f, d| default_seq_fold_struct(f, d)
     )
 }
 
@@ -127,7 +135,8 @@ fn default_par_fold<T:Send Copy>(ctxt: T) -> Fold<T> {
         |f, d| default_seq_fold_enum(f, d),
         |f, d| default_seq_fold_trait(f, d),
         |f, d| default_seq_fold_impl(f, d),
-        |f, d| default_seq_fold_type(f, d)
+        |f, d| default_seq_fold_type(f, d),
+        |f, d| default_seq_fold_struct(f, d)
     )
 }
 
@@ -267,6 +276,9 @@ fn fold_ItemTag<T>(fold: Fold<T>, doc: doc::ItemTag) -> doc::ItemTag {
       doc::TyTag(TyDoc) => {
         doc::TyTag(fold.fold_type(fold, TyDoc))
       }
+      doc::StructTag(StructDoc) => {
+        doc::StructTag(fold.fold_struct(fold, StructDoc))
+      }
     }
 }
 
@@ -324,6 +336,16 @@ fn default_seq_fold_type<T>(
     fold: Fold<T>,
     doc: doc::TyDoc
 ) -> doc::TyDoc {
+    {
+        item: fold.fold_item(fold, doc.item),
+        .. doc
+    }
+}
+
+fn default_seq_fold_struct<T>(
+    fold: Fold<T>,
+    doc: doc::StructDoc
+) -> doc::StructDoc {
     {
         item: fold.fold_item(fold, doc.item),
         .. doc
