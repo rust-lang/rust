@@ -748,13 +748,13 @@ fn trans_def_lvalue(bcx: block, ref_expr: @ast::expr,
         _ => {
             DatumBlock {
                 bcx: bcx,
-                datum: trans_local_var(bcx, ref_expr.id, def)
+                datum: trans_local_var(bcx, def)
             }
         }
     }
 }
 
-fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
+fn trans_local_var(bcx: block, def: ast::def) -> Datum {
     let _icx = bcx.insn_ctxt("trans_local_var");
 
     return match def {
@@ -776,10 +776,10 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
             }
         }
         ast::def_arg(nid, _) => {
-            take_local(bcx, ref_id, bcx.fcx.llargs, nid)
+            take_local(bcx, bcx.fcx.llargs, nid)
         }
         ast::def_local(nid, _) | ast::def_binding(nid, _) => {
-            take_local(bcx, ref_id, bcx.fcx.lllocals, nid)
+            take_local(bcx, bcx.fcx.lllocals, nid)
         }
         ast::def_self(nid) => {
             let self_info: ValSelfData = match bcx.fcx.llself {
@@ -809,15 +809,8 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
     };
 
     fn take_local(bcx: block,
-                  ref_id: ast::node_id,
                   table: HashMap<ast::node_id, local_val>,
                   nid: ast::node_id) -> Datum {
-        let is_last_use = match bcx.ccx().maps.last_use_map.find(ref_id) {
-            None => false,
-            Some(vars) => (*vars).contains(&nid)
-        };
-
-        let source = if is_last_use {FromLastUseLvalue} else {FromLvalue};
 
         let (v, mode) = match table.find(nid) {
             Some(local_mem(v)) => (v, ByRef),
@@ -829,10 +822,10 @@ fn trans_local_var(bcx: block, ref_id: ast::node_id, def: ast::def) -> Datum {
         };
         let ty = node_id_type(bcx, nid);
 
-        debug!("take_local(nid=%?, last_use=%b, v=%s, mode=%?, ty=%s)",
-               nid, is_last_use, bcx.val_str(v), mode, bcx.ty_to_str(ty));
+        debug!("take_local(nid=%?, v=%s, mode=%?, ty=%s)",
+               nid, bcx.val_str(v), mode, bcx.ty_to_str(ty));
 
-        Datum { val: v, ty: ty, mode: mode, source: source }
+        Datum { val: v, ty: ty, mode: mode, source: FromLvalue }
     }
 }
 
