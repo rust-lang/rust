@@ -7,7 +7,7 @@ export capacity;
 export build_sized, build, build_sized_opt;
 export map;
 export from_fn, from_elem;
-export unsafe;
+export raw;
 
 /// Code for dealing with @-vectors. This is pretty incomplete, and
 /// contains a bunch of duplication from the code for ~-vectors.
