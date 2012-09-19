@@ -237,7 +237,7 @@ fn header_name(doc: doc::ItemTag) -> ~str {
             }
             trait_part += trait_type;
         }
-        fmt!("%s%s for %s", doc.name(), trait_part, self_ty)
+        fmt!("%s for %s", trait_part, self_ty)
       }
       _ => {
         doc.name()
