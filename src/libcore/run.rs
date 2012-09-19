@@ -133,12 +133,12 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
             for vec::each(es) |e| {
                 let (k,v) = e;
                 let t = fmt!("%s=%s", k, v);
-                let mut v : ~[u8] = ::unsafe::reinterpret_cast(&t);
+                let mut v : ~[u8] = ::cast::reinterpret_cast(&t);
                 blk += v;
-                ::unsafe::forget(v);
+                ::cast::forget(v);
             }
             blk += ~[0_u8];
-            vec::as_imm_buf(blk, |p, _len| cb(::unsafe::reinterpret_cast(&p)))
+            vec::as_imm_buf(blk, |p, _len| cb(::cast::reinterpret_cast(&p)))
           }
           _ => cb(ptr::null())
         }

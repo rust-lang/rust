@@ -597,7 +597,7 @@ fn make_dir(p: &Path, mode: c_int) -> bool {
         use win32::*;
         // FIXME: turn mode into something useful? #2623
         do as_utf16_p(p.to_str()) |buf| {
-            CreateDirectoryW(buf, unsafe { unsafe::reinterpret_cast(&0) })
+            CreateDirectoryW(buf, unsafe { cast::reinterpret_cast(&0) })
                 != (0 as BOOL)
         }
     }
