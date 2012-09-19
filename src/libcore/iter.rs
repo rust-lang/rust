@@ -1,3 +1,9 @@
+/*!
+
+The iteration traits and common implementation
+
+*/
+
 use cmp::{Eq, Ord};
 
 /// A function used to initialize the elements of a sequence

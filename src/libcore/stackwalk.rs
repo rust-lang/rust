@@ -1,4 +1,4 @@
-// NB: Don't rely on other core mods here as this has to move into the rt
+#[doc(hidden)]; // FIXME #3538
 
 use cast::reinterpret_cast;
 use ptr::offset;

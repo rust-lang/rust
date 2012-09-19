@@ -1,3 +1,15 @@
+/*!
+
+The `Ord` and `Eq` comparison traits
+
+This module contains the definition of both `Ord` and `Eq` which define
+the common interfaces for doing comparison. Both are language items
+that the compiler uses to implement the comparison operators. Rust code
+may implement `Ord` to overload the `<`, `<=`, `>`, and `>=` operators,
+and `Eq` to overload the `==` and `!=` operators.
+
+*/
+
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
@@ -30,8 +42,6 @@ trait Ord {
     pure fn gt(&&other: self) -> bool;
 }
 
-#[cfg(notest)]
-#[lang="eq"]
 /**
  * Trait for values that can be compared for equality
  * and inequality.
@@ -40,6 +50,8 @@ trait Ord {
  * an `eq` method, with the other generated from
  * a default implementation.
  */
+#[cfg(notest)]
+#[lang="eq"]
 trait Eq {
     pure fn eq(&&other: self) -> bool;
     pure fn ne(&&other: self) -> bool;

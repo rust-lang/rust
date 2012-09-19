@@ -1,4 +1,4 @@
-/*! Precise Garbage Collector
+/*! Precise garbage collector
 
 The precise GC exposes two functions, gc and
 cleanup_stack_for_failure. The gc function is the entry point to the

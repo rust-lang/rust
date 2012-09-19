@@ -1,13 +1,17 @@
+/*!
+
+Dynamic vector
+
+A growable vector that makes use of unique pointers so that the
+result can be sent between tasks and so forth.
+
+Note that recursive use is not permitted.
+
+*/
+
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
-
-// Dynamic Vector
-//
-// A growable vector that makes use of unique pointers so that the
-// result can be sent between tasks and so forth.
-//
-// Note that recursive use is not permitted.
 
 use cast::reinterpret_cast;
 use ptr::null;

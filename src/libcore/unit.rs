@@ -1,6 +1,8 @@
-/**
- * Functions for the unit type.
- */
+/*!
+
+Functions for the unit type.
+
+*/
 
 use cmp::{Eq, Ord};
 

@@ -1,4 +1,4 @@
-/// An interface for numbers.
+//! An interface for numeric types
 
 trait Num {
     // FIXME: Trait composition. (#2616)

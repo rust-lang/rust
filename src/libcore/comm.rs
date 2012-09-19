@@ -1,31 +1,40 @@
+/*!
+
+Deprecated communication between tasks
+
+Communication between tasks is facilitated by ports (in the receiving
+task), and channels (in the sending task). Any number of channels may
+feed into a single port.  Ports and channels may only transmit values
+of unique types; that is, values that are statically guaranteed to be
+accessed by a single 'owner' at a time.  Unique types include scalars,
+vectors, strings, and records, tags, tuples and unique boxes (`~T`)
+thereof. Most notably, shared boxes (`@T`) may not be transmitted
+across channels.
+
+# Example
+
+~~~
+let po = comm::Port();
+let ch = comm::Chan(po);
+
+do task::spawn {
+    comm::send(ch, "Hello, World");
+}
+
+io::println(comm::recv(p));
+~~~
+
+# Note
+
+Use of this module is deprecated in favor of `core::pipes`. In the
+`core::comm` will likely be rewritten with pipes, at which point it
+will once again be the preferred module for intertask communication.
+
+*/
+
 // NB: transitionary, de-mode-ing.
 #[forbid(deprecated_mode)];
 #[forbid(deprecated_pattern)];
-/*!
- * Communication between tasks
- *
- * Communication between tasks is facilitated by ports (in the receiving
- * task), and channels (in the sending task). Any number of channels may
- * feed into a single port.  Ports and channels may only transmit values
- * of unique types; that is, values that are statically guaranteed to be
- * accessed by a single 'owner' at a time.  Unique types include scalars,
- * vectors, strings, and records, tags, tuples and unique boxes (`~T`)
- * thereof. Most notably, shared boxes (`@T`) may not be transmitted
- * across channels.
- *
- * # Example
- *
- * ~~~
- * let po = comm::Port();
- * let ch = comm::Chan(po);
- *
- * do task::spawn {
- *     comm::send(ch, "Hello, World");
- * }
- *
- * io::println(comm::recv(p));
- * ~~~
- */
 
 use either::Either;
 use libc::size_t;

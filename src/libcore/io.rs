@@ -1,7 +1,7 @@
-/*
-Module: io
+/*!
 
 Basic input/output
+
 */
 
 use result::Result;
