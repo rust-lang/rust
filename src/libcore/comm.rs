@@ -30,15 +30,6 @@
 use either::Either;
 use libc::size_t;
 
-export Port;
-export Chan;
-export send;
-export recv;
-export peek;
-export recv_chan;
-export select2;
-export methods;
-export listen;
 
 
 /**
@@ -48,7 +39,7 @@ export listen;
  * transmitted. If a port value is copied, both copies refer to the same
  * port.  Ports may be associated with multiple `chan`s.
  */
-enum Port<T: Send> {
+pub enum Port<T: Send> {
     Port_(@PortPtr<T>)
 }
 
@@ -64,12 +55,12 @@ enum Port<T: Send> {
  * data will be silently dropped.  Channels may be duplicated and
  * themselves transmitted over other channels.
  */
-enum Chan<T: Send> {
+pub enum Chan<T: Send> {
     Chan_(port_id)
 }
 
 /// Constructs a port
-fn Port<T: Send>() -> Port<T> {
+pub fn Port<T: Send>() -> Port<T> {
     Port_(@PortPtr(rustrt::new_port(sys::size_of::<T>() as size_t)))
 }
 
@@ -92,7 +83,7 @@ impl<T: Send> Chan<T> {
 }
 
 /// Open a new receiving channel for the duration of a function
-fn listen<T: Send, U>(f: fn(Chan<T>) -> U) -> U {
+pub fn listen<T: Send, U>(f: fn(Chan<T>) -> U) -> U {
     let po = Port();
     f(po.chan())
 }
@@ -167,7 +158,7 @@ fn as_raw_port<T: Send, U>(ch: comm::Chan<T>, f: fn(*rust_port) -> U) -> U {
  * Constructs a channel. The channel is bound to the port used to
  * construct it.
  */
-fn Chan<T: Send>(p: Port<T>) -> Chan<T> {
+pub fn Chan<T: Send>(p: Port<T>) -> Chan<T> {
     Chan_(rustrt::get_port_id((**p).po))
 }
 
@@ -175,7 +166,7 @@ fn Chan<T: Send>(p: Port<T>) -> Chan<T> {
  * Sends data over a channel. The sent data is moved into the channel,
  * whereupon the caller loses access to it.
  */
-fn send<T: Send>(ch: Chan<T>, +data: T) {
+pub fn send<T: Send>(ch: Chan<T>, +data: T) {
     let Chan_(p) = ch;
     let data_ptr = ptr::addr_of(data) as *();
     let res = rustrt::rust_port_id_send(p, data_ptr);
@@ -190,13 +181,13 @@ fn send<T: Send>(ch: Chan<T>, +data: T) {
  * Receive from a port.  If no data is available on the port then the
  * task will block until data becomes available.
  */
-fn recv<T: Send>(p: Port<T>) -> T { recv_((**p).po) }
+pub fn recv<T: Send>(p: Port<T>) -> T { recv_((**p).po) }
 
 /// Returns true if there are messages available
-fn peek<T: Send>(p: Port<T>) -> bool { peek_((**p).po) }
+pub fn peek<T: Send>(p: Port<T>) -> bool { peek_((**p).po) }
 
 #[doc(hidden)]
-fn recv_chan<T: Send>(ch: comm::Chan<T>) -> T {
+pub fn recv_chan<T: Send>(ch: comm::Chan<T>) -> T {
     as_raw_port(ch, |x|recv_(x))
 }
 
@@ -231,7 +222,7 @@ fn peek_(p: *rust_port) -> bool {
 }
 
 /// Receive on one of two ports
-fn select2<A: Send, B: Send>(p_a: Port<A>, p_b: Port<B>)
+pub fn select2<A: Send, B: Send>(p_a: Port<A>, p_b: Port<B>)
     -> Either<A, B> {
     let ports = ~[(**p_a).po, (**p_b).po];
     let yield = 0, yieldp = ptr::addr_of(yield);
