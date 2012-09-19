@@ -1,4 +1,4 @@
-/**
+/*!
    A parallel word-frequency counting program.
 
    This is meant primarily to demonstrate Rust's MapReduce framework.

@@ -1,4 +1,4 @@
-/**
+/*!
 
 An implementation of the Graph500 Breadth First Search problem in Rust.
 
