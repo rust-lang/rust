@@ -217,7 +217,6 @@ fn parser(sess: parse_sess, cfg: ast::crate_cfg,
         restriction: UNRESTRICTED,
         quote_depth: 0u,
         keywords: token::keyword_table(),
-        restricted_keywords: token::restricted_keyword_table(),
         strict_keywords: token::strict_keyword_table(),
         reserved_keywords: token::reserved_keyword_table(),
         obsolete_set: std::map::HashMap(),
@@ -239,7 +238,6 @@ struct parser {
     reader: reader,
     interner: interner<@~str>,
     keywords: HashMap<~str, ()>,
-    restricted_keywords: HashMap<~str, ()>,
     strict_keywords: HashMap<~str, ()>,
     reserved_keywords: HashMap<~str, ()>,
     /// The set of seen errors about obsolete syntax. Used to suppress
@@ -3200,7 +3198,6 @@ impl parser {
         let ty_params = self.parse_ty_params();
         // Newtype syntax
         if self.token == token::EQ {
-            self.check_restricted_keywords_(*self.id_to_str(id));
             self.bump();
             let ty = self.parse_ty(false);
             self.expect(token::SEMI);
