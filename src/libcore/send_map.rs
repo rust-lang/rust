@@ -185,8 +185,8 @@ pub mod linear {
                     debug!("insert fresh (%?->%?) at idx %?, hash %?",
                            k, v, idx, hash);
                     self.buckets[idx] = Some(Bucket {hash: hash,
-                                                     key: k,
-                                                     value: v});
+                                                     key: move k,
+                                                     value: move v});
                     self.size += 1;
                     true
                 }
@@ -194,8 +194,8 @@ pub mod linear {
                     debug!("insert overwrite (%?->%?) at idx %?, hash %?",
                            k, v, idx, hash);
                     self.buckets[idx] = Some(Bucket {hash: hash,
-                                                     key: k,
-                                                     value: v});
+                                                     key: move k,
+                                                     value: move v});
                     false
                 }
             }
@@ -230,7 +230,7 @@ pub mod linear {
                 None => None,
                 Some(move bucket) => {
                     let Bucket { value: move value, _ } = move bucket;
-                    Some(value)
+                    Some(move value)
                 },
             };
 
@@ -243,7 +243,7 @@ pub mod linear {
             }
             self.size -= 1;
 
-            value
+            move value
 
         }
 
@@ -297,9 +297,9 @@ pub mod linear {
                 self.expand();
             }
 
-            self.insert_internal(hash, k, v);
+            self.insert_internal(hash, move k, move v);
 
-            old_value
+            move old_value
         }
 
         fn consume(&mut self, f: fn(K, V)) {
@@ -307,7 +307,7 @@ pub mod linear {
             self.buckets <-> buckets;
             self.size = 0;
 
-            do vec::consume(buckets) |_i, bucket| {
+            do vec::consume(move buckets) |_i, bucket| {
                 match move bucket {
                     None => { },
                     Some(move bucket) => {
@@ -316,7 +316,7 @@ pub mod linear {
                             value: move value,
                             _
                         } = move bucket;
-                        f(key, value)
+                        f(move key, move value)
                     }
                 }
             }

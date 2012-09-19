@@ -226,7 +226,7 @@ pub fn start_program(prog: &str, args: &[~str]) -> Program {
 
     fn ProgRes(r: ProgRepr) -> ProgRes {
         ProgRes {
-            r: r
+            r: move r
         }
     }
 
@@ -313,10 +313,10 @@ pub fn program_output(prog: &str, args: &[~str]) ->
         let stream = comm::recv(p);
         match stream {
             (1, copy s) => {
-                outs = s;
+                outs = move s;
             }
             (2, copy s) => {
-                errs = s;
+                errs = move s;
             }
             (n, _) => {
                 fail(fmt!("program_output received an unexpected file \

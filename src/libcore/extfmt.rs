@@ -301,7 +301,7 @@ pub mod rt {
                 unsafe { str::unshift_char(&mut s, ' ') };
             }
         }
-        return unsafe { pad(cv, s, PadSigned) };
+        return unsafe { pad(cv, move s, PadSigned) };
     }
     pub pure fn conv_uint(cv: Conv, u: uint) -> ~str {
         let prec = get_int_precision(cv);
@@ -313,7 +313,7 @@ pub mod rt {
               TyBits => uint_to_str_prec(u, 2u, prec),
               TyOctal => uint_to_str_prec(u, 8u, prec)
             };
-        return unsafe { pad(cv, rs, PadUnsigned) };
+        return unsafe { pad(cv, move rs, PadUnsigned) };
     }
     pub pure fn conv_bool(cv: Conv, b: bool) -> ~str {
         let s = if b { ~"true" } else { ~"false" };
@@ -323,7 +323,7 @@ pub mod rt {
     }
     pub pure fn conv_char(cv: Conv, c: char) -> ~str {
         let mut s = str::from_char(c);
-        return unsafe { pad(cv, s, PadNozero) };
+        return unsafe { pad(cv, move s, PadNozero) };
     }
     pub pure fn conv_str(cv: Conv, s: &str) -> ~str {
         // For strings, precision is the maximum characters
@@ -336,7 +336,7 @@ pub mod rt {
             s.to_unique()
           }
         };
-        return unsafe { pad(cv, unpadded, PadNozero) };
+        return unsafe { pad(cv, move unpadded, PadNozero) };
     }
     pub pure fn conv_float(cv: Conv, f: float) -> ~str {
         let (to_str, digits) = match cv.precision {
@@ -351,7 +351,7 @@ pub mod rt {
                 s = ~" " + s;
             }
         }
-        return unsafe { pad(cv, s, PadFloat) };
+        return unsafe { pad(cv, move s, PadFloat) };
     }
     pub pure fn conv_poly<T>(cv: Conv, v: &T) -> ~str {
         let s = sys::log_str(v);
@@ -411,14 +411,14 @@ pub mod rt {
     pub fn pad(cv: Conv, s: ~str, mode: PadMode) -> ~str {
         let mut s = move s; // sadtimes
         let uwidth : uint = match cv.width {
-          CountImplied => return s,
+          CountImplied => return (move s),
           CountIs(width) => {
               // FIXME: width should probably be uint (see Issue #1996)
               width as uint
           }
         };
         let strlen = str::char_len(s);
-        if uwidth <= strlen { return s; }
+        if uwidth <= strlen { return (move s); }
         let mut padchar = ' ';
         let diff = uwidth - strlen;
         if have_flag(cv.flags, flag_left_justify) {

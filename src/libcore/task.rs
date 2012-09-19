@@ -424,7 +424,11 @@ impl TaskBuilder {
                 mut notify_chan: move notify_chan,
                 sched: self.opts.sched
             },
-            gen_body: |body| { wrapper(prev_gen_body(move body)) },
+            // tjc: I think this is the line that gets miscompiled
+            // w/ last-use off, if we leave out the move prev_gen_body?
+            // that makes no sense, though...
+            gen_body: |move prev_gen_body,
+                       body| { wrapper(prev_gen_body(move body)) },
             can_not_copy: None,
             .. *self.consume()
         })
@@ -931,7 +935,7 @@ fn test_add_wrapper() {
     let ch = comm::Chan(&po);
     let b0 = task();
     let b1 = do b0.add_wrapper |body| {
-        fn~() {
+        fn~(move body) {
             body();
             comm::send(ch, ());
         }
@@ -944,14 +948,15 @@ fn test_add_wrapper() {
 #[ignore(cfg(windows))]
 fn test_future_result() {
     let mut result = None;
-    do task().future_result(|+r| { result = Some(r); }).spawn { }
-    assert future::get(&option::unwrap(result)) == Success;
+    do task().future_result(|+r| { result = Some(move r); }).spawn { }
+    assert future::get(&option::unwrap(move result)) == Success;
 
     result = None;
-    do task().future_result(|+r| { result = Some(r); }).unlinked().spawn {
+    do task().future_result(|+r|
+        { result = Some(move r); }).unlinked().spawn {
         fail;
     }
-    assert future::get(&option::unwrap(result)) == Failure;
+    assert future::get(&option::unwrap(move result)) == Failure;
 }
 
 #[test] #[should_fail] #[ignore(cfg(windows))]
@@ -981,7 +986,7 @@ fn test_spawn_conversation() {
     let (recv_str, send_int) = do spawn_conversation |recv_int, send_str| {
         let input = comm::recv(recv_int);
         let output = int::str(input);
-        comm::send(send_str, output);
+        comm::send(send_str, move output);
     };
     comm::send(send_int, 1);
     assert comm::recv(recv_str) == ~"1";
@@ -1134,7 +1139,7 @@ fn avoid_copying_the_body(spawnfn: fn(v: fn~())) {
     let x = ~1;
     let x_in_parent = ptr::addr_of(&(*x)) as uint;
 
-    do spawnfn {
+    do spawnfn |move x| {
         let x_in_child = ptr::addr_of(&(*x)) as uint;
         comm::send(ch, x_in_child);
     }
@@ -1160,7 +1165,7 @@ fn test_avoid_copying_the_body_spawn_listener() {
 #[test]
 fn test_avoid_copying_the_body_task_spawn() {
     do avoid_copying_the_body |f| {
-        do task().spawn {
+        do task().spawn |move f| {
             f();
         }
     }
@@ -1178,7 +1183,7 @@ fn test_avoid_copying_the_body_spawn_listener_1() {
 #[test]
 fn test_avoid_copying_the_body_try() {
     do avoid_copying_the_body |f| {
-        do try {
+        do try |move f| {
             f()
         };
     }
@@ -1187,7 +1192,7 @@ fn test_avoid_copying_the_body_try() {
 #[test]
 fn test_avoid_copying_the_body_unlinked() {
     do avoid_copying_the_body |f| {
-        do spawn_unlinked {
+        do spawn_unlinked |move f| {
             f();
         }
     }
@@ -1212,7 +1217,7 @@ fn test_unkillable() {
 
     // We want to do this after failing
     do spawn_unlinked {
-        for iter::repeat(10u) { yield() }
+        for iter::repeat(10) { yield() }
         ch.send(());
     }
 
@@ -1226,12 +1231,12 @@ fn test_unkillable() {
     unsafe {
         do unkillable {
             let p = ~0;
-            let pp: *uint = cast::transmute(p);
+            let pp: *uint = cast::transmute(move p);
 
             // If we are killed here then the box will leak
             po.recv();
 
-            let _p: ~int = cast::transmute(pp);
+            let _p: ~int = cast::transmute(move pp);
         }
     }
 
@@ -1246,8 +1251,8 @@ fn test_unkillable_nested() {
     let (ch, po) = pipes::stream();
 
     // We want to do this after failing
-    do spawn_unlinked {
-        for iter::repeat(10u) { yield() }
+    do spawn_unlinked |move ch| {
+        for iter::repeat(10) { yield() }
         ch.send(());
     }
 
@@ -1262,12 +1267,12 @@ fn test_unkillable_nested() {
         do unkillable {
             do unkillable {} // Here's the difference from the previous test.
             let p = ~0;
-            let pp: *uint = cast::transmute(p);
+            let pp: *uint = cast::transmute(move p);
 
             // If we are killed here then the box will leak
             po.recv();
 
-            let _p: ~int = cast::transmute(pp);
+            let _p: ~int = cast::transmute(move pp);
         }
     }
 
@@ -1311,7 +1316,7 @@ fn test_child_doesnt_ref_parent() {
 fn test_sched_thread_per_core() {
     let (chan, port) = pipes::stream();
 
-    do spawn_sched(ThreadPerCore) {
+    do spawn_sched(ThreadPerCore) |move chan| {
         let cores = rt::rust_num_threads();
         let reported_threads = rt::rust_sched_threads();
         assert(cores as uint == reported_threads as uint);
@@ -1325,7 +1330,7 @@ fn test_sched_thread_per_core() {
 fn test_spawn_thread_on_demand() {
     let (chan, port) = pipes::stream();
 
-    do spawn_sched(ManualThreads(2)) {
+    do spawn_sched(ManualThreads(2)) |move chan| {
         let max_threads = rt::rust_sched_threads();
         assert(max_threads as int == 2);
         let running_threads = rt::rust_sched_current_nonlazy_threads();
@@ -1333,7 +1338,7 @@ fn test_spawn_thread_on_demand() {
 
         let (chan2, port2) = pipes::stream();
 
-        do spawn() {
+        do spawn() |move chan2| {
             chan2.send(());
         }
 

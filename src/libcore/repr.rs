@@ -156,7 +156,7 @@ impl ReprVisitor {
     fn visit_ptr_inner(ptr: *c_void, inner: *TyDesc) -> bool {
         let mut u = ReprVisitor(ptr, self.writer);
         let v = reflect::MovePtrAdaptor(move u);
-        visit_tydesc(inner, v as @TyVisitor);
+        visit_tydesc(inner, (move v) as @TyVisitor);
         true
     }
 
@@ -453,7 +453,7 @@ pub fn write_repr2<T>(writer: @Writer, object: &T) {
     let tydesc = intrinsic::get_tydesc::<T>();
     let mut u = ReprVisitor(ptr, writer);
     let v = reflect::MovePtrAdaptor(move u);
-    visit_tydesc(tydesc, v as @TyVisitor)
+    visit_tydesc(tydesc, (move v) as @TyVisitor)
 }
 
 #[test]
@@ -992,7 +992,7 @@ pub fn write_repr<T>(writer: @Writer, object: &T) {
     unsafe {
         let ptr = ptr::to_unsafe_ptr(object) as *c_void;
         let tydesc = sys::get_type_desc::<T>();
-        let tydesc = cast::transmute(tydesc);
+        let tydesc = cast::transmute(move tydesc);
 
         let repr_printer = @ReprPrinter {
             ptr: ptr,

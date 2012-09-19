@@ -122,9 +122,9 @@ pub mod tests {
     pub fn test_transmute() {
         unsafe {
             let x = @1;
-            let x: *int = transmute(x);
+            let x: *int = transmute(move x);
             assert *x == 1;
-            let _x: @int = transmute(x);
+            let _x: @int = transmute(move x);
         }
     }
 
