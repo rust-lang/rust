@@ -1,3 +1,12 @@
+/*!
+
+The Rust standard library.
+
+The Rust standand library provides a number of useful features that are
+not required in or otherwise suitable for the core library.
+
+*/
+
 #[link(name = "std",
        vers = "0.4",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
@@ -6,7 +15,6 @@
 #[comment = "The Rust standard library"];
 #[license = "MIT"];
 #[crate_type = "lib"];
-//! The Rust standard library
 
 #[no_core];
 
