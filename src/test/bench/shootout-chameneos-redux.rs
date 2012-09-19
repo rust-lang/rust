@@ -9,8 +9,8 @@ fn print_complements() {
     let all = ~[Blue, Red, Yellow];
     for vec::each(all) |aa| {
         for vec::each(all) |bb| {
-            io::println(show_color(aa) + ~" + " + show_color(bb) +
-                ~" -> " + show_color(transform(aa,bb)));
+            io::println(show_color(*aa) + ~" + " + show_color(*bb) +
+                ~" -> " + show_color(transform(*aa, *bb)));
         }
     }
 }
@@ -171,7 +171,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
 
     // print each creature's stats
     for vec::each(report) |rep| {
-        io::println(rep);
+        io::println(*rep);
     }
 
     // print the total number of creatures met

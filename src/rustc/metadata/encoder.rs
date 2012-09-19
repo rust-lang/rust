@@ -267,7 +267,9 @@ fn encode_path(ecx: @encode_ctxt, ebml_w: ebml::Writer, path: ast_map::path,
 
     do ebml_w.wr_tag(tag_path) {
         ebml_w.wr_tagged_u32(tag_path_len, (vec::len(path) + 1u) as u32);
-        do vec::iter(path) |pe| { encode_path_elt(ecx, ebml_w, pe); }
+        for vec::each(path) |pe| {
+            encode_path_elt(ecx, ebml_w, *pe);
+        }
         encode_path_elt(ecx, ebml_w, name);
     }
 }
@@ -768,7 +770,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         // written. Here, we output the *real* type signatures. I feel like
         // maybe we should only ever handle the real type signatures.
         for vec::each(ms) |m| {
-            let ty_m = ast_util::trait_method_to_ty_method(m);
+            let ty_m = ast_util::trait_method_to_ty_method(*m);
             if ty_m.self_ty.node != ast::sty_static { loop; }
 
             vec::push(*index, {val: ty_m.id, pos: ebml_w.writer.tell()});

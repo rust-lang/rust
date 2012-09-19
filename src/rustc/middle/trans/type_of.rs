@@ -158,7 +158,7 @@ fn type_of(cx: @crate_ctxt, t: ty::t) -> TypeRef {
       ty::ty_tup(elts) => {
         let mut tys = ~[];
         for vec::each(elts) |elt| {
-            vec::push(tys, type_of(cx, elt));
+            vec::push(tys, type_of(cx, *elt));
         }
         T_struct(tys)
       }

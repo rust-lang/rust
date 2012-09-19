@@ -211,7 +211,7 @@ pure fn follow(m: arb_depth<matchable>, idx_path: &[uint]) ->
     for vec::each(idx_path) |idx| {
         res = match res {
           leaf(_) => return res,/* end of the line */
-          seq(new_ms, _) => new_ms[idx]
+          seq(new_ms, _) => new_ms[*idx]
         }
     }
     return res;

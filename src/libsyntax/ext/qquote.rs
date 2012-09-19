@@ -228,7 +228,7 @@ fn finish<T: qq_helper>
     let mut state = active;
     let mut i = 0u, j = 0u;
     let g_len = cx.gather.len();
-    do str::chars_iter(*str) |ch| {
+    for str::chars_each(*str) |ch| {
         if (j < g_len && i == cx.gather[j].lo) {
             assert ch == '$';
             let repl = fmt!("$%u ", j);

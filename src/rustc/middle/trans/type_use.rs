@@ -118,7 +118,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
 
 fn type_needs(cx: ctx, use_: uint, ty: ty::t) {
     // Optimization -- don't descend type if all params already have this use
-    for vec::each_mut_ref(cx.uses) |u| {
+    for vec::each_mut(cx.uses) |u| {
         if *u & use_ != use_ {
             type_needs_inner(cx, use_, ty, @Nil);
             return;
@@ -144,7 +144,7 @@ fn type_needs_inner(cx: ctx, use_: uint, ty: ty::t,
                     let seen = @Cons(did, enums_seen);
                     for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
                         for vec::each(v.args) |aty| {
-                            let t = ty::subst(cx.ccx.tcx, &substs, aty);
+                            let t = ty::subst(cx.ccx.tcx, &substs, *aty);
                             type_needs_inner(cx, use_, t, seen);
                         }
                     }
@@ -247,14 +247,16 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
-        vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)), |a| {
-            match a.mode {
-              expl(by_move) | expl(by_copy) | expl(by_val) => {
-                type_needs(cx, use_repr, a.ty);
+          for vec::each(
+              ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))
+          ) |a| {
+              match a.mode {
+                  expl(by_move) | expl(by_copy) | expl(by_val) => {
+                      type_needs(cx, use_repr, a.ty);
+                  }
+                  _ => ()
               }
-              _ => ()
-            }
-        })
+          }
       }
       expr_match(*) | expr_block(_) | expr_if(*) |
       expr_while(*) | expr_fail(_) | expr_break(_) | expr_again(_) |

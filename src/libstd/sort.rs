@@ -260,7 +260,7 @@ mod test_qsort {
 
         let pairs = vec::zip(expected, immut_names);
         for vec::each(pairs) |p| {
-            let (a, b) = p;
+            let (a, b) = *p;
             debug!("%d %d", a, b);
             assert (a == b);
         }

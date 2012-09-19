@@ -293,7 +293,7 @@ impl LookupContext {
         let mut next_bound_idx = 0; // count only trait bounds
         let bounds = tcx.ty_param_bounds.get(param_ty.def_id.node);
         for vec::each(*bounds) |bound| {
-            let bound_t = match bound {
+            let bound_t = match *bound {
                 ty::bound_trait(bound_t) => bound_t,
 
                 ty::bound_copy | ty::bound_send |

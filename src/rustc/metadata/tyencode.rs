@@ -366,7 +366,7 @@ fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
 
 fn enc_bounds(w: io::Writer, cx: @ctxt, bs: @~[ty::param_bound]) {
     for vec::each(*bs) |bound| {
-        match bound {
+        match *bound {
           ty::bound_send => w.write_char('S'),
           ty::bound_copy => w.write_char('C'),
           ty::bound_const => w.write_char('K'),

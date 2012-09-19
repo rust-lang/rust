@@ -124,13 +124,13 @@ fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
-enum opt {
+enum Opt {
     lit(@ast::expr),
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr)
 }
-fn opt_eq(tcx: ty::ctxt, a: opt, b: opt) -> bool {
-    match (a, b) {
+fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
+    match (*a, *b) {
       (lit(a), lit(b)) => const_eval::compare_lit_exprs(tcx, a, b) == 0,
       (range(a1, a2), range(b1, b2)) => {
         const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
@@ -145,11 +145,11 @@ enum opt_result {
     single_result(Result),
     range_result(Result, Result),
 }
-fn trans_opt(bcx: block, o: opt) -> opt_result {
+fn trans_opt(bcx: block, o: &Opt) -> opt_result {
     let _icx = bcx.insn_ctxt("alt::trans_opt");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
-    match o {
+    match *o {
         lit(lit_expr) => {
             let datumblock = expr::trans_to_datum(bcx, lit_expr);
             return single_result(datumblock.to_result());
@@ -164,7 +164,7 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
     }
 }
 
-fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> opt {
+fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
     let vdef = ast_util::variant_def_ids(tcx.def_map.get(pat_id));
     let variants = ty::enum_variants(tcx, vdef.enm);
     for vec::each(*variants) |v| {
@@ -337,7 +337,7 @@ fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
-fn enter_opt(bcx: block, m: &[@Match/&r], opt: opt, col: uint,
+fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
              variant_size: uint, val: ValueRef)
     -> ~[@Match/&r]
 {
@@ -353,7 +353,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: opt, col: uint,
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
         match p.node {
             ast::pat_enum(_, subpats) => {
-                if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
+                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
                     Some(option::get_default(subpats,
                                              vec::from_elem(variant_size,
                                                             dummy)))
@@ -362,17 +362,17 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: opt, col: uint,
                 }
             }
             ast::pat_ident(_, _, None) if pat_is_variant(tcx.def_map, p) => {
-                if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
+                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
                     Some(~[])
                 } else {
                     None
                 }
             }
             ast::pat_lit(l) => {
-                if opt_eq(tcx, lit(l), opt) { Some(~[]) } else { None }
+                if opt_eq(tcx, &lit(l), opt) {Some(~[])} else {None}
             }
             ast::pat_range(l1, l2) => {
-                if opt_eq(tcx, range(l1, l2), opt) { Some(~[]) } else { None }
+                if opt_eq(tcx, &range(l1, l2), opt) {Some(~[])} else {None}
             }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
@@ -397,7 +397,7 @@ fn enter_rec_or_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
             ast::pat_rec(fpats, _) | ast::pat_struct(_, fpats, _) => {
                 let mut pats = ~[];
                 for vec::each(fields) |fname| {
-                    match fpats.find(|p| p.ident == fname) {
+                    match fpats.find(|p| p.ident == *fname) {
                         None => vec::push(pats, dummy),
                         Some(pat) => vec::push(pats, pat.pat)
                     }
@@ -487,9 +487,9 @@ fn enter_uniq(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
-fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[opt] {
-    fn add_to_set(tcx: ty::ctxt, set: &DVec<opt>, val: opt) {
-        if set.any(|l| opt_eq(tcx, l, val)) {return;}
+fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
+    fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, val: Opt) {
+        if set.any(|l| opt_eq(tcx, &l, &val)) {return;}
         set.push(val);
     }
 
@@ -628,12 +628,14 @@ fn pick_col(m: &[@Match]) -> uint {
     let scores = vec::to_mut(vec::from_elem(m[0].pats.len(), 0u));
     for vec::each(m) |br| {
         let mut i = 0u;
-        for vec::each(br.pats) |p| { scores[i] += score(p); i += 1u; }
+        for vec::each(br.pats) |p| { scores[i] += score(*p); i += 1u; }
     }
     let mut max_score = 0u;
     let mut best_col = 0u;
     let mut i = 0u;
     for vec::each(scores) |score| {
+        let score = *score;
+
         // Irrefutable columns always go first, they'd only be duplicated in
         // the branches.
         if score == 0u { return i; }
@@ -959,7 +961,7 @@ fn compile_submatch(bcx: block,
         }
     }
     for vec::each(opts) |o| {
-        match o {
+        match *o {
             range(_, _) => { kind = compare; break }
             _ => ()
         }
@@ -1037,7 +1039,7 @@ fn compile_submatch(bcx: block,
 
         let mut size = 0u;
         let mut unpacked = ~[];
-        match opt {
+        match *opt {
             var(_, vdef) => {
                 let args = extract_variant_args(opt_cx, pat_id, vdef, val);
                 size = args.vals.len();
@@ -1087,7 +1089,7 @@ fn trans_alt_inner(scope_cx: block,
     }
 
     let mut arm_datas = ~[], matches = ~[];
-    for vec::each_ref(arms) |arm| {
+    for vec::each(arms) |arm| {
         let body = scope_block(bcx, arm.body.info(), ~"case_body");
 
         // Create the bindings map, which is a mapping from each binding name
@@ -1129,7 +1131,7 @@ fn trans_alt_inner(scope_cx: block,
                                  bindings_map: bindings_map};
         vec::push(arm_datas, arm_data);
         for vec::each(arm.pats) |p| {
-            vec::push(matches, @Match {pats: ~[p], data: arm_data});
+            vec::push(matches, @Match {pats: ~[*p], data: arm_data});
         }
     }
 

@@ -435,9 +435,12 @@ fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
 fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
     items: &[(K, V)]) -> HashMap<K, V> {
     let map = HashMap();
-    do vec::iter(items) |item| {
-        let (key, value) = item;
-        map.insert(key, value);
+    for vec::each(items) |item| {
+        match *item {
+            (key, value) => {
+                map.insert(key, value);
+            }
+        }
     }
     map
 }
@@ -520,7 +523,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     pure fn each(op: fn(+key: K, +value: V) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
-                p.each(op)
+                p.each(|k, v| op(*k, *v))
             }
         }
     }
@@ -528,7 +531,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     pure fn each_key(op: fn(+key: K) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
-                p.each_key(op)
+                p.each_key(|k| op(*k))
             }
         }
     }
@@ -536,7 +539,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     pure fn each_value(op: fn(+value: V) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
-                p.each_value(op)
+                p.each_value(|v| op(*v))
             }
         }
     }
@@ -544,7 +547,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     pure fn each_ref(op: fn(key: &K, value: &V) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
-                p.each_ref(op)
+                p.each(op)
             }
         }
     }
@@ -552,7 +555,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     pure fn each_key_ref(op: fn(key: &K) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
-                p.each_key_ref(op)
+                p.each_key(op)
             }
         }
     }
@@ -560,7 +563,7 @@ impl<K: Eq IterBytes Hash Copy, V: Copy> @Mut<LinearMap<K, V>>:
     pure fn each_value_ref(op: fn(value: &V) -> bool) {
         unsafe {
             do self.borrow_imm |p| {
-                p.each_value_ref(op)
+                p.each_value(op)
             }
         }
     }

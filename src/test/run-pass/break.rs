@@ -7,7 +7,7 @@ fn main() {
     loop { i += 1; if i == 20 { break; } }
     assert (i == 20);
     for vec::each(~[1, 2, 3, 4, 5, 6]) |x| {
-        if x == 3 { break; } assert (x <= 3);
+        if *x == 3 { break; } assert (*x <= 3);
     }
     i = 0;
     while i < 10 { i += 1; if i % 2 == 0 { loop; } assert (i % 2 != 0); }
@@ -17,7 +17,7 @@ fn main() {
         if i >= 10 { break; }
     }
     for vec::each(~[1, 2, 3, 4, 5, 6]) |x| {
-        if x % 2 == 0 { loop; }
-        assert (x % 2 != 0);
+        if *x % 2 == 0 { loop; }
+        assert (*x % 2 != 0);
     }
 }

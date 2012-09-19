@@ -314,8 +314,8 @@ fn write_desc(
 }
 
 fn write_sections(ctxt: Ctxt, sections: ~[doc::Section]) {
-    do vec::iter(sections) |section| {
-        write_section(ctxt, section);
+    for vec::each(sections) |section| {
+        write_section(ctxt, *section);
     }
 }
 
@@ -609,7 +609,9 @@ fn write_variants(
 
     write_header_(ctxt, H4, ~"Variants");
 
-    vec::iter(docs, |variant| write_variant(ctxt, variant) );
+    for vec::each(docs) |variant| {
+        write_variant(ctxt, *variant);
+    }
 
     ctxt.w.write_line(~"");
 }
@@ -666,7 +668,9 @@ fn write_trait(ctxt: Ctxt, doc: doc::TraitDoc) {
 }
 
 fn write_methods(ctxt: Ctxt, docs: ~[doc::MethodDoc]) {
-    do vec::iter(docs) |doc| { write_method(ctxt, doc) }
+    for vec::each(docs) |doc| {
+        write_method(ctxt, *doc);
+    }
 }
 
 fn write_method(ctxt: Ctxt, doc: doc::MethodDoc) {

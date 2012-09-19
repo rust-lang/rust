@@ -179,7 +179,7 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
 
 fn escape_str(s: &str) -> ~str {
     let mut escaped = ~"\"";
-    do str::chars_iter(s) |c| {
+    for str::chars_each(s) |c| {
         match c {
           '"' => escaped += ~"\\\"",
           '\\' => escaped += ~"\\\\",
@@ -834,8 +834,8 @@ mod tests {
     fn mk_dict(items: &[(~str, Json)]) -> Json {
         let d = map::str_hash();
 
-        do vec::iter(items) |item| {
-            let (key, value) = copy item;
+        for vec::each(items) |item| {
+            let (key, value) = copy *item;
             d.insert(key, value);
         };
 

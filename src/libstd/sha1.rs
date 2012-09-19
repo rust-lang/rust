@@ -66,7 +66,7 @@ fn sha1() -> Sha1 {
     fn add_input(st: &Sha1State, msg: &[u8]) {
         assert (!st.computed);
         for vec::each(msg) |element| {
-            st.msg_block[st.msg_block_idx] = element;
+            st.msg_block[st.msg_block_idx] = *element;
             st.msg_block_idx += 1u;
             st.len_low += 8u32;
             if st.len_low == 0u32 {
@@ -161,7 +161,7 @@ fn sha1() -> Sha1 {
     fn mk_result(st: &Sha1State) -> ~[u8] {
         if !(*st).computed { pad_msg(st); (*st).computed = true; }
         let mut rs: ~[u8] = ~[];
-        for vec::each_mut_ref((*st).h) |ptr_hpart| {
+        for vec::each_mut((*st).h) |ptr_hpart| {
             let hpart = *ptr_hpart;
             let a = (hpart >> 24u32 & 0xFFu32) as u8;
             let b = (hpart >> 16u32 & 0xFFu32) as u8;
@@ -240,7 +240,9 @@ fn sha1() -> Sha1 {
         fn result_str() -> ~str {
             let rr = mk_result(&self);
             let mut s = ~"";
-            for vec::each(rr) |b| { s += uint::to_str(b as uint, 16u); }
+            for vec::each(rr) |b| {
+                s += uint::to_str(*b as uint, 16u);
+            }
             return s;
         }
     }

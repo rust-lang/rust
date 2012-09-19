@@ -211,7 +211,7 @@ mod global_env {
         fn env() -> ~[(~str,~str)] {
             let mut pairs = ~[];
             for vec::each(rustrt::rust_env_pairs()) |p| {
-                let vs = str::splitn_char(p, '=', 1u);
+                let vs = str::splitn_char(*p, '=', 1u);
                 assert vec::len(vs) == 2u;
                 vec::push(pairs, (copy vs[0], copy vs[1]));
             }
@@ -893,7 +893,7 @@ mod tests {
         let e = env();
         assert vec::len(e) > 0u;
         for vec::each(e) |p| {
-            let (n, v) = copy p;
+            let (n, v) = copy *p;
             log(debug, n);
             let v2 = getenv(n);
             // MingW seems to set some funky environment variables like
@@ -985,7 +985,9 @@ mod tests {
         // Just assuming that we've got some contents in the current directory
         assert (vec::len(dirs) > 0u);
 
-        for vec::each(dirs) |dir| { log(debug, dir); }
+        for vec::each(dirs) |dir| {
+            log(debug, *dir);
+        }
     }
 
     #[test]

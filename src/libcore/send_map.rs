@@ -17,7 +17,7 @@ trait SendMap<K:Eq Hash, V: Copy> {
     pure fn len(&const self) -> uint;
     pure fn is_empty(&const self) -> bool;
     pure fn contains_key(&const self, k: &K) -> bool;
-    pure fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool);
+    pure fn each(&self, blk: fn(k: &K, v: &V) -> bool);
     pure fn each_key_ref(&self, blk: fn(k: &K) -> bool);
     pure fn each_value_ref(&self, blk: fn(v: &V) -> bool);
     pure fn find(&const self, k: &K) -> Option<V>;
@@ -311,7 +311,7 @@ mod linear {
             }
         }
 
-        pure fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool) {
+        pure fn each(&self, blk: fn(k: &K, v: &V) -> bool) {
             for vec::each(self.buckets) |slot| {
                 let mut broke = false;
                 do slot.iter |bucket| {
@@ -323,12 +323,12 @@ mod linear {
             }
         }
 
-        pure fn each_key_ref(&self, blk: fn(k: &K) -> bool) {
-            self.each_ref(|k, _v| blk(k))
+        pure fn each_key(&self, blk: fn(k: &K) -> bool) {
+            self.each(|k, _v| blk(k))
         }
 
-        pure fn each_value_ref(&self, blk: fn(v: &V) -> bool) {
-            self.each_ref(|_k, v| blk(v))
+        pure fn each_value(&self, blk: fn(v: &V) -> bool) {
+            self.each(|_k, v| blk(v))
         }
     }
 
@@ -357,22 +357,6 @@ mod linear {
             option::unwrap(move value)
         }
 
-    }
-
-    impl<K: Hash IterBytes Eq Copy, V: Copy> LinearMap<K,V> {
-        pure fn each(&self, blk: fn(+K,+V) -> bool) {
-            self.each_ref(|k,v| blk(copy *k, copy *v));
-        }
-    }
-    impl<K: Hash IterBytes Eq Copy, V> LinearMap<K,V> {
-        pure fn each_key(&self, blk: fn(+K) -> bool) {
-            self.each_key_ref(|k| blk(copy *k));
-        }
-    }
-    impl<K: Hash IterBytes Eq, V: Copy> LinearMap<K,V> {
-        pure fn each_value(&self, blk: fn(+V) -> bool) {
-            self.each_value_ref(|v| blk(copy *v));
-        }
     }
 }
 
@@ -438,8 +422,8 @@ mod test {
         }
         let mut observed = 0;
         for m.each |k, v| {
-            assert v == k*2;
-            observed |= (1 << k);
+            assert *v == *k * 2;
+            observed |= (1 << *k);
         }
         assert observed == 0xFFFF_FFFF;
     }
