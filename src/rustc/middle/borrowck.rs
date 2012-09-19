@@ -222,7 +222,7 @@ use syntax::ast_map;
 use syntax::codemap::span;
 use util::ppaux::{ty_to_str, region_to_str, explain_region,
                   expr_repr, note_and_explain_region};
-use std::map::{int_hash, HashMap, Set};
+use std::map::{HashMap, Set};
 use std::list;
 use std::list::{List, Cons, Nil};
 use result::{Result, Ok, Err};
@@ -244,7 +244,7 @@ fn check_crate(tcx: ty::ctxt,
                                 method_map: method_map,
                                 last_use_map: last_use_map,
                                 root_map: root_map(),
-                                mutbl_map: int_hash(),
+                                mutbl_map: HashMap(),
                                 mut loaned_paths_same: 0,
                                 mut loaned_paths_imm: 0,
                                 mut stable_paths: 0,

@@ -157,9 +157,9 @@ fn main(args: ~[~str]) {
         let rng = rand::seeded_rng(copy seed);
         let mut results = empty_results();
         int_benchmarks::<map::HashMap<uint, uint>>(
-            map::uint_hash, rng, num_keys, &mut results);
+            map::HashMap, rng, num_keys, &mut results);
         str_benchmarks::<map::HashMap<~str, uint>>(
-            map::str_hash, rng, num_keys, &mut results);
+            map::HashMap, rng, num_keys, &mut results);
         write_results("libstd::map::hashmap", &results);
     }
 

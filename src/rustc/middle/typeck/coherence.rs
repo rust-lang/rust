@@ -23,7 +23,7 @@ use syntax::ast::{item_foreign_mod, item_impl, item_mac, item_mod};
 use syntax::ast::{item_trait, item_ty, local_crate, method, node_id};
 use syntax::ast::{trait_ref};
 use syntax::ast_map::node_item;
-use syntax::ast_util::{def_id_of_def, dummy_sp, new_def_hash};
+use syntax::ast_util::{def_id_of_def, dummy_sp};
 use syntax::codemap::span;
 use syntax::visit::{default_simple_visitor, default_visitor};
 use syntax::visit::{mk_simple_visitor, mk_vt, visit_crate, visit_item};
@@ -32,7 +32,7 @@ use util::ppaux::ty_to_str;
 
 use dvec::DVec;
 use result::Ok;
-use std::map::{HashMap, int_hash};
+use std::map::HashMap;
 use uint::range;
 use vec::{len, push};
 
@@ -130,8 +130,8 @@ struct CoherenceInfo {
 
 fn CoherenceInfo() -> CoherenceInfo {
     CoherenceInfo {
-        inherent_methods: new_def_hash(),
-        extension_methods: new_def_hash()
+        inherent_methods: HashMap(),
+        extension_methods: HashMap()
     }
 }
 
@@ -140,8 +140,8 @@ fn CoherenceChecker(crate_context: @crate_ctxt) -> CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
 
-        base_type_def_ids: new_def_hash(),
-        privileged_implementations: int_hash()
+        base_type_def_ids: HashMap(),
+        privileged_implementations: HashMap()
     }
 }
 
@@ -728,7 +728,7 @@ impl CoherenceChecker {
     }
 
     fn add_external_crates() {
-        let impls_seen = new_def_hash();
+        let impls_seen = HashMap();
 
         let crate_store = self.crate_context.tcx.sess.cstore;
         do iter_crate_data(crate_store) |crate_number, _crate_metadata| {

@@ -24,7 +24,7 @@ type ctx = {exp_map: resolve::ExportMap,
 
 fn find_reachable(crate_mod: _mod, exp_map: resolve::ExportMap,
                   tcx: ty::ctxt, method_map: typeck::method_map) -> map {
-    let rmap = std::map::int_hash();
+    let rmap = std::map::HashMap();
     let cx = {exp_map: exp_map, tcx: tcx, method_map: method_map, rmap: rmap};
     traverse_public_mod(cx, crate_mod);
     traverse_all_resources_and_impls(cx, crate_mod);

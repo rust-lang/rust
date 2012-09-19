@@ -42,7 +42,7 @@ use syntax::ast::{ty_u16, ty_u32, ty_u64, ty_u8, ty_uint, type_value_ns};
 use syntax::ast::{variant, view_item, view_item_export, view_item_import};
 use syntax::ast::{view_item_use, view_path_glob, view_path_list};
 use syntax::ast::{view_path_simple, visibility, anonymous, named};
-use syntax::ast_util::{def_id_of_def, dummy_sp, local_def, new_def_hash};
+use syntax::ast_util::{def_id_of_def, dummy_sp, local_def};
 use syntax::ast_util::{path_to_ident, walk_pat, trait_method_to_ty_method};
 use syntax::attr::{attr_metas, contains_name};
 use syntax::print::pprust::{pat_to_str, path_to_str};
@@ -60,7 +60,7 @@ use vec::pop;
 use syntax::parse::token::ident_interner;
 
 use std::list::{Cons, List, Nil};
-use std::map::{HashMap, int_hash, uint_hash};
+use std::map::HashMap;
 use str_eq = str::eq;
 
 // Definition mapping
@@ -458,7 +458,7 @@ fn Module(parent_link: ParentLink, def_id: Option<def_id>) -> Module {
         def_id: def_id,
         children: atom_hashmap(),
         imports: DVec(),
-        anonymous_children: int_hash(),
+        anonymous_children: HashMap(),
         exported_names: atom_hashmap(),
         import_resolutions: atom_hashmap(),
         glob_count: 0u,
@@ -701,8 +701,8 @@ fn Resolver(session: session, lang_items: LanguageItems,
 
         unused_import_lint_level: unused_import_lint_level(session),
 
-        trait_info: new_def_hash(),
-        structs: new_def_hash(),
+        trait_info: HashMap(),
+        structs: HashMap(),
 
         unresolved_imports: 0u,
 
@@ -720,10 +720,10 @@ fn Resolver(session: session, lang_items: LanguageItems,
 
         namespaces: ~[ ModuleNS, TypeNS, ValueNS ],
 
-        def_map: int_hash(),
-        export_map: int_hash(),
-        export_map2: int_hash(),
-        trait_map: @int_hash(),
+        def_map: HashMap(),
+        export_map: HashMap(),
+        export_map2: HashMap(),
+        trait_map: @HashMap(),
 
         intr: session.intr()
     };
@@ -1510,7 +1510,7 @@ impl Resolver {
      * crate.
      */
     fn build_reduced_graph_for_external_crate(root: @Module) {
-        let modules = new_def_hash();
+        let modules = HashMap();
 
         // Create all the items reachable by paths.
         for each_path(self.session.cstore, get(root.def_id).crate)
@@ -3664,7 +3664,7 @@ impl Resolver {
     }
 
     fn binding_mode_map(pat: @pat) -> BindingMap {
-        let result = uint_hash();
+        let result = HashMap();
         do pat_bindings(self.def_map, pat) |binding_mode, _id, sp, path| {
             let ident = path_to_ident(path);
             result.insert(ident,

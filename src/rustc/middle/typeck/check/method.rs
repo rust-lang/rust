@@ -76,7 +76,7 @@ use syntax::ast::{def_id, sty_by_ref, sty_value, sty_region, sty_box,
                   m_const, m_mutbl, m_imm};
 use syntax::ast_map;
 use syntax::ast_map::node_id_to_str;
-use syntax::ast_util::{dummy_sp, new_def_hash};
+use syntax::ast_util::dummy_sp;
 use dvec::DVec;
 
 fn lookup(
@@ -98,7 +98,7 @@ fn lookup(
         callee_id: callee_id,
         m_name: m_name,
         supplied_tps: supplied_tps,
-        impl_dups: new_def_hash(),
+        impl_dups: HashMap(),
         inherent_candidates: DVec(),
         extension_candidates: DVec()
     };

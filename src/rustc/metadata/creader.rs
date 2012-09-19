@@ -5,7 +5,7 @@ use syntax::{ast, ast_util};
 use syntax::attr;
 use syntax::visit;
 use syntax::codemap::span;
-use std::map::{HashMap, int_hash};
+use std::map::HashMap;
 use syntax::print::pprust;
 use filesearch::filesearch;
 use common::*;
@@ -248,7 +248,7 @@ fn resolve_crate_deps(e: env, cdata: @~[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
-    let cnum_map = int_hash::<ast::crate_num>();
+    let cnum_map = HashMap::<int,ast::crate_num>();
     for decoder::get_crate_deps(e.intr, cdata).each |dep| {
         let extrn_cnum = dep.cnum;
         let cname = dep.name;

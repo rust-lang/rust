@@ -668,11 +668,11 @@ fn configure(opts: options) -> cargo {
 
     let p = result::get(get_cargo_dir());
 
-    let sources = map::str_hash();
+    let sources = map::HashMap();
     try_parse_sources(&home.push("sources.json"), sources);
     try_parse_sources(&home.push("local-sources.json"), sources);
 
-    let dep_cache = map::str_hash();
+    let dep_cache = map::HashMap();
 
     let mut c = {
         pgp: pgp::supported(),
@@ -1577,7 +1577,7 @@ fn dump_cache(c: &cargo) {
     need_dir(&c.root);
 
     let out = c.root.push("cache.json");
-    let _root = json::Dict(map::str_hash());
+    let _root = json::Dict(map::HashMap());
 
     if os::path_exists(&out) {
         copy_warn(&out, &c.root.push("cache.json.old"));
@@ -1598,11 +1598,11 @@ fn dump_sources(c: &cargo) {
 
     match io::buffered_file_writer(&out) {
         result::Ok(writer) => {
-            let hash = map::str_hash();
+            let hash = map::HashMap();
             let root = json::Dict(hash);
 
           for c.sources.each |k, v| {
-                let chash = map::str_hash();
+                let chash = map::HashMap();
                 let child = json::Dict(chash);
 
                 chash.insert(~"url", json::String(@v.url));

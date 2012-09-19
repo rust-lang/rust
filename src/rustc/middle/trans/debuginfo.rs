@@ -91,7 +91,7 @@ type debug_ctxt = {
 };
 
 fn mk_ctxt(crate: ~str, intr: ident_interner) -> debug_ctxt {
-    {llmetadata: map::int_hash(),
+    {llmetadata: map::HashMap(),
      names: new_namegen(intr),
      crate_file: crate}
 }

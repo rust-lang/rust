@@ -4,7 +4,7 @@ use middle::ty;
 use syntax::{ast, ast_util, visit};
 use syntax::attr;
 use syntax::codemap::span;
-use std::map::{Map,HashMap,int_hash,hash_from_strs};
+use std::map::{Map,HashMap};
 use std::smallintmap::{Map,SmallIntMap};
 use io::WriterUtil;
 use util::ppaux::{ty_to_str};
@@ -198,7 +198,7 @@ fn get_lint_dict() -> lint_dict {
            default: warn}),
         */
     ];
-    hash_from_strs(v)
+    std::map::hash_from_vec(v)
 }
 
 // This is a highly not-optimal set of data structure decisions.
@@ -215,7 +215,7 @@ type lint_settings = {
 
 fn mk_lint_settings() -> lint_settings {
     {default_settings: std::smallintmap::mk(),
-     settings_map: int_hash()}
+     settings_map: HashMap()}
 }
 
 fn get_lint_level(modes: lint_modes, lint: lint) -> level {

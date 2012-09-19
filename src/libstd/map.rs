@@ -12,11 +12,8 @@ use core::cmp::Eq;
 use hash::Hash;
 use to_bytes::IterBytes;
 
-export HashMap, hashfn, eqfn, Set, Map, chained, hashmap, str_hash;
-export box_str_hash;
-export bytes_hash, int_hash, uint_hash, set_add;
-export hash_from_vec, hash_from_strs, hash_from_bytes;
-export hash_from_ints, hash_from_uints;
+export HashMap, hashfn, eqfn, Set, Map, chained, set_add;
+export hash_from_vec;
 export vec_from_set;
 
 /// A convenience type to treat a hashmap as a set
@@ -385,36 +382,6 @@ fn HashMap<K:Eq IterBytes Hash Const, V: Copy>()
     chained::mk()
 }
 
-/// Construct a hashmap for string-slice keys
-fn str_slice_hash<V: Copy>() -> HashMap<&str, V> {
-    return HashMap();
-}
-
-/// Construct a hashmap for string keys
-fn str_hash<V: Copy>() -> HashMap<~str, V> {
-    return HashMap();
-}
-
-/// Construct a hashmap for boxed string keys
-fn box_str_hash<V: Copy>() -> HashMap<@~str, V> {
-    HashMap()
-}
-
-/// Construct a hashmap for byte string keys
-fn bytes_hash<V: Copy>() -> HashMap<~[u8], V> {
-    return HashMap();
-}
-
-/// Construct a hashmap for int keys
-fn int_hash<V: Copy>() -> HashMap<int, V> {
-    return HashMap();
-}
-
-/// Construct a hashmap for uint keys
-fn uint_hash<V: Copy>() -> HashMap<uint, V> {
-    return HashMap();
-}
-
 /// Convenience function for adding keys to a hashmap with nil type keys
 fn set_add<K:Eq IterBytes Hash Const Copy>(set: Set<K>, +key: K) -> bool {
     set.insert(key, ())
@@ -443,26 +410,6 @@ fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
         }
     }
     map
-}
-
-/// Construct a hashmap from a vector with string keys
-fn hash_from_strs<V: Copy>(items: &[(~str, V)]) -> HashMap<~str, V> {
-    hash_from_vec(items)
-}
-
-/// Construct a hashmap from a vector with byte keys
-fn hash_from_bytes<V: Copy>(items: &[(~[u8], V)]) -> HashMap<~[u8], V> {
-    hash_from_vec(items)
-}
-
-/// Construct a hashmap from a vector with int keys
-fn hash_from_ints<V: Copy>(items: &[(int, V)]) -> HashMap<int, V> {
-    hash_from_vec(items)
-}
-
-/// Construct a hashmap from a vector with uint keys
-fn hash_from_uints<V: Copy>(items: &[(uint, V)]) -> HashMap<uint, V> {
-    hash_from_vec(items)
 }
 
 // XXX Transitional
@@ -810,7 +757,7 @@ mod tests {
 
     #[test]
     fn test_hash_from_vec() {
-        let map = map::hash_from_strs(~[
+        let map = map::hash_from_vec(~[
             (~"a", 1),
             (~"b", 2),
             (~"c", 3)

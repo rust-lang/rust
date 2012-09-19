@@ -1,6 +1,6 @@
 use util::interner;
 use util::interner::interner;
-use std::map::{HashMap, str_hash};
+use std::map::HashMap;
 use std::serialization::{Serializer,
                             Deserializer,
                             serialize_uint,
@@ -369,7 +369,7 @@ fn mk_fake_ident_interner() -> ident_interner {
  * the language and may not appear as identifiers.
  */
 fn keyword_table() -> HashMap<~str, ()> {
-    let keywords = str_hash();
+    let keywords = HashMap();
     for temporary_keyword_table().each_key |word| {
         keywords.insert(word, ());
     }
@@ -384,7 +384,7 @@ fn keyword_table() -> HashMap<~str, ()> {
 
 /// Keywords that may be used as identifiers
 fn temporary_keyword_table() -> HashMap<~str, ()> {
-    let words = str_hash();
+    let words = HashMap();
     let keys = ~[
         ~"self", ~"static",
     ];
@@ -396,7 +396,7 @@ fn temporary_keyword_table() -> HashMap<~str, ()> {
 
 /// Full keywords. May not appear anywhere else.
 fn strict_keyword_table() -> HashMap<~str, ()> {
-    let words = str_hash();
+    let words = HashMap();
     let keys = ~[
         ~"as", ~"assert",
         ~"break",
@@ -421,7 +421,7 @@ fn strict_keyword_table() -> HashMap<~str, ()> {
 }
 
 fn reserved_keyword_table() -> HashMap<~str, ()> {
-    let words = str_hash();
+    let words = HashMap();
     let keys = ~[
         ~"be"
     ];

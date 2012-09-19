@@ -35,7 +35,7 @@ mod map_reduce {
     }
 
     fn map_task(ctrl: Chan<ctrl_proto>, input: ~str) {
-        let intermediates = map::str_hash();
+        let intermediates = map::HashMap();
 
         fn emit(im: map::HashMap<~str, int>, ctrl: Chan<ctrl_proto>, key: ~str,
                 val: ~str) {
@@ -66,7 +66,7 @@ mod map_reduce {
 
         let mut reducers: map::HashMap<~str, int>;
 
-        reducers = map::str_hash();
+        reducers = map::HashMap();
 
         start_mappers(Chan(ctrl), inputs);
 

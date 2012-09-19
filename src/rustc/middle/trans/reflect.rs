@@ -1,4 +1,4 @@
-use std::map::{HashMap,str_hash};
+use std::map::HashMap;
 use driver::session::session;
 use lib::llvm::{TypeRef, ValueRef};
 use syntax::ast;

@@ -259,10 +259,6 @@ impl def_id : core::to_bytes::IterBytes {
     }
 }
 
-fn new_def_hash<V: Copy>() -> std::map::HashMap<ast::def_id, V> {
-    return std::map::HashMap::<ast::def_id, V>();
-}
-
 fn block_from_expr(e: @expr) -> blk {
     let blk_ = default_block(~[], option::Some::<@expr>(e), e.id);
     return {node: blk_, span: e.span};

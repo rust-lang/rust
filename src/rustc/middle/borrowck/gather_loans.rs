@@ -47,8 +47,8 @@ enum gather_loan_ctxt = @{bccx: borrowck_ctxt,
 
 fn gather_loans(bccx: borrowck_ctxt, crate: @ast::crate) -> req_maps {
     let glcx = gather_loan_ctxt(@{bccx: bccx,
-                                  req_maps: {req_loan_map: int_hash(),
-                                             pure_map: int_hash()},
+                                  req_maps: {req_loan_map: HashMap(),
+                                             pure_map: HashMap()},
                                   mut item_ub: 0,
                                   mut root_ub: 0});
     let v = visit::mk_vt(@{visit_expr: req_loans_in_expr,

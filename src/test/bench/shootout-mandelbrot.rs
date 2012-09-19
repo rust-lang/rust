@@ -120,7 +120,7 @@ fn writer(path: ~str, writech: comm::Chan<comm::Chan<line>>, size: uint)
     };
     cout.write_line(~"P4");
     cout.write_line(fmt!("%u %u", size, size));
-    let lines: HashMap<uint, ~[u8]> = std::map::uint_hash();
+    let lines: HashMap<uint, ~[u8]> = HashMap();
     let mut done = 0_u;
     let mut i = 0_u;
     while i < size {

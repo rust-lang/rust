@@ -308,7 +308,7 @@ because `&x` was created alone, but is relatable to `&A`.
 use dvec::DVec;
 use result::Result;
 use result::{Ok, Err};
-use std::map::{HashMap, uint_hash};
+use std::map::HashMap;
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 
@@ -1188,7 +1188,7 @@ impl RegionVarBindings {
     fn collect_concrete_regions(graph: &Graph,
                                 orig_node_idx: RegionVid,
                                 dir: Direction) -> ~[SpannedRegion] {
-        let set = uint_hash();
+        let set = HashMap();
         let mut stack = ~[orig_node_idx];
         set.insert(*orig_node_idx, ());
         let mut result = ~[];

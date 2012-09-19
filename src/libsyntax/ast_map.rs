@@ -103,7 +103,7 @@ fn mk_ast_map_visitor() -> vt {
 }
 
 fn map_crate(diag: span_handler, c: crate) -> map {
-    let cx = {map: std::map::int_hash(),
+    let cx = {map: std::map::HashMap(),
               mut path: ~[],
               mut local_id: 0u,
               diag: diag};

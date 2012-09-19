@@ -1,7 +1,7 @@
 // Decoding metadata from a single crate's metadata
 
 use std::{ebml, map};
-use std::map::{HashMap, str_hash};
+use std::map::HashMap;
 use io::WriterUtil;
 use dvec::DVec;
 use syntax::{ast, ast_util};
@@ -969,7 +969,7 @@ fn get_crate_module_paths(intr: ident_interner, cdata: cmd)
     // find all module (path, def_ids), which are not
     // fowarded path due to renamed import or reexport
     let mut res = ~[];
-    let mods = map::str_hash();
+    let mods = map::HashMap::<~str,bool>();
     do iter_crate_items(intr, cdata) |path, did| {
         let m = mod_of_path(path);
         if str::is_not_empty(m) {

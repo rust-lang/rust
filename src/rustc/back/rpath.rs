@@ -167,7 +167,7 @@ fn get_install_prefix_rpath(target_triple: &str) -> Path {
 }
 
 fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
-    let set = map::str_hash::<()>();
+    let set = map::HashMap();
     let mut minimized = ~[];
     for rpaths.each |rpath| {
         let s = rpath.to_str();

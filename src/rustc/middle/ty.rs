@@ -8,7 +8,7 @@ use driver::session;
 use session::session;
 use syntax::{ast, ast_map};
 use syntax::ast_util;
-use syntax::ast_util::{is_local, local_def, new_def_hash};
+use syntax::ast_util::{is_local, local_def};
 use syntax::codemap::span;
 use metadata::csearch;
 use util::ppaux::{region_to_str, explain_region, vstore_to_str,
@@ -856,23 +856,23 @@ fn mk_ctxt(s: session::session,
       region_map: region_map,
       region_paramd_items: region_paramd_items,
       node_types: @smallintmap::mk(),
-      node_type_substs: map::int_hash(),
+      node_type_substs: map::HashMap(),
       items: amap,
-      intrinsic_defs: map::uint_hash(),
+      intrinsic_defs: map::HashMap(),
       freevars: freevars,
-      tcache: ast_util::new_def_hash(),
+      tcache: HashMap(),
       rcache: mk_rcache(),
-      ccache: ast_util::new_def_hash(),
+      ccache: HashMap(),
       short_names_cache: new_ty_hash(),
       needs_drop_cache: new_ty_hash(),
       needs_unwind_cleanup_cache: new_ty_hash(),
       kind_cache: new_ty_hash(),
-      ast_ty_to_ty_cache: map::HashMap(),
-      enum_var_cache: new_def_hash(),
-      trait_method_cache: new_def_hash(),
-      ty_param_bounds: map::int_hash(),
-      inferred_modes: map::int_hash(),
-      adjustments: map::int_hash(),
+      ast_ty_to_ty_cache: HashMap(),
+      enum_var_cache: HashMap(),
+      trait_method_cache: HashMap(),
+      ty_param_bounds: HashMap(),
+      inferred_modes: HashMap(),
+      adjustments: HashMap(),
       normalized_cache: new_ty_hash(),
       lang_items: move lang_items}
 }

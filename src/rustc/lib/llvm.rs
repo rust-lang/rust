@@ -1058,7 +1058,7 @@ fn mk_type_names() -> type_names {
     pure fn hash(t: &TypeRef) -> uint { *t as uint }
     pure fn eq(a: &TypeRef, b: &TypeRef) -> bool { *a == *b }
     @{type_names: std::map::HashMap(),
-      named_types: std::map::str_hash()}
+      named_types: std::map::HashMap()}
 }
 
 fn type_to_str(names: type_names, ty: TypeRef) -> ~str {

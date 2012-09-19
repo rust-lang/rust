@@ -1,4 +1,4 @@
-use std::map::{HashMap, str_hash};
+use std::map::HashMap;
 use libc::{c_uint, c_int};
 use lib::llvm::llvm;
 use syntax::codemap;
@@ -24,7 +24,7 @@ fn count_insn(cx: block, category: &str) {
         // Build version of path with cycles removed.
 
         // Pass 1: scan table mapping str -> rightmost pos.
-        let mm = str_hash();
+        let mm = HashMap();
         let len = vec::len(*v);
         let mut i = 0u;
         while i < len {

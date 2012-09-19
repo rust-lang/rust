@@ -55,7 +55,7 @@ use middle::ty::{arg, field, node_type_table, mk_nil, ty_param_bounds_and_ty};
 use middle::ty::{vstore_uniq};
 use std::smallintmap;
 use std::map;
-use std::map::{HashMap, int_hash};
+use std::map::HashMap;
 use std::serialization::{serialize_uint, deserialize_uint};
 use syntax::print::pprust::*;
 use util::ppaux::{ty_to_str, tys_to_str, region_to_str,
@@ -329,10 +329,10 @@ fn check_crate(tcx: ty::ctxt,
             -> (method_map, vtable_map) {
 
     let ccx = @crate_ctxt_({trait_map: trait_map,
-                            method_map: std::map::int_hash(),
-                            vtable_map: std::map::int_hash(),
+                            method_map: std::map::HashMap(),
+                            vtable_map: std::map::HashMap(),
                             coherence_info: @coherence::CoherenceInfo(),
-                            provided_methods_map: std::map::int_hash(),
+                            provided_methods_map: std::map::HashMap(),
                             tcx: tcx});
     collect::collect_item_types(ccx, crate);
     coherence::check_coherence(ccx, crate);

@@ -3,7 +3,7 @@
 #[forbid(deprecated_pattern)];
 
 use core::cmp::Eq;
-use map::{HashMap, str_hash};
+use map::HashMap;
 use io::{Reader, ReaderUtil};
 use dvec::DVec;
 use from_str::FromStr;
@@ -213,7 +213,7 @@ fn encode_form_urlencoded(m: HashMap<~str, @DVec<@~str>>) -> ~str {
 fn decode_form_urlencoded(s: ~[u8]) ->
     map::HashMap<~str, @dvec::DVec<@~str>> {
     do io::with_bytes_reader(s) |rdr| {
-        let m = str_hash();
+        let m = HashMap();
         let mut key = ~"";
         let mut value = ~"";
         let mut parsing_key = true;
@@ -1069,26 +1069,24 @@ mod tests {
 
     #[test]
     fn test_encode_form_urlencoded() {
-        let m = str_hash();
+        let m = HashMap();
         assert encode_form_urlencoded(m) == ~"";
 
         m.insert(~"", @DVec());
         m.insert(~"foo", @DVec());
         assert encode_form_urlencoded(m) == ~"";
 
-        let m = str_hash();
+        let m = HashMap();
         m.insert(~"foo", @dvec::from_vec(~[@~"bar", @~"123"]));
         assert encode_form_urlencoded(m) == ~"foo=bar&foo=123";
 
-        let m = str_hash();
+        let m = HashMap();
         m.insert(~"foo bar", @dvec::from_vec(~[@~"abc", @~"12 = 34"]));
         assert encode_form_urlencoded(m) == ~"foo+bar=abc&foo+bar=12+%3D+34";
     }
 
     #[test]
     fn test_decode_form_urlencoded() {
-        use map::hash_from_strs;
-
         assert decode_form_urlencoded(~[]).size() == 0;
 
         let s = str::to_bytes(~"a=1&foo+bar=abc&foo+bar=12+%3D+34");

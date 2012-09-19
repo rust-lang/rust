@@ -10,7 +10,7 @@ use parse::parse_sess;
 use dvec::DVec;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, ident};
 use ast_util::mk_sp;
-use std::map::{HashMap, uint_hash};
+use std::map::HashMap;
 
 /* This is an Earley-like parser, without support for in-grammar nonterminals,
 only by calling out to the main rust parser for named nonterminals (which it
@@ -185,7 +185,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
           }
         }
     }
-    let ret_val = uint_hash::<@named_match>();
+    let ret_val = HashMap::<uint,@named_match>();
     for ms.each() |m| { n_rec(p_s, m, res, ret_val) }
     return ret_val;
 }
