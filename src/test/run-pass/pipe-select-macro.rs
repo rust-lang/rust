@@ -1,3 +1,5 @@
+// tjc: un-xfail after snapshot
+// xfail-test
 // xfail-pretty
 
 // Protocols

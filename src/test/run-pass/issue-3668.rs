@@ -1,3 +1,4 @@
+// xfail-test
 struct P { child: Option<@mut P> }
 trait PTrait {
    fn getChildOption() -> Option<@P>;

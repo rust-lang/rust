@@ -7,5 +7,5 @@ proto! stream (
 fn main() {
     let (bc, _bp) = stream::init();
 
-    stream::client::send(bc, ~"abc");
+    stream::client::send(move bc, ~"abc");
 }

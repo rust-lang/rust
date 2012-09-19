@@ -22,10 +22,10 @@ macro_rules! select_if (
         ], )*
     } => {
         if $index == $count {
-            match move pipes::try_recv($port) {
+            match move pipes::try_recv(move $port) {
               $(Some($message($($(move $x,)+)* move next)) => {
-                let $next = next;
-                $e
+                let $next = move next;
+                move $e
               })+
               _ => fail
             }
@@ -90,33 +90,33 @@ fn render(_buffer: &Buffer) {
 }
 
 fn draw_frame(+channel: double_buffer::client::acquire) {
-    let channel = request(channel);
+    let channel = request(move channel);
     select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(channel, move buffer)
+                release(move channel, move buffer)
             }
         }
     );
 }
 
 fn draw_two_frames(+channel: double_buffer::client::acquire) {
-    let channel = request(channel);
+    let channel = request(move channel);
     let channel = select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(channel, move buffer)
+                release(move channel, move buffer)
             }
         }
     );
-    let channel = request(channel);
+    let channel = request(move channel);
     select! (
         channel => {
             give_buffer(buffer) -> channel {
                 render(&buffer);
-                release(channel, move buffer)
+                release(move channel, move buffer)
             }
         }
     );

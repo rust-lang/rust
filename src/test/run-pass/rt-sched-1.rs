@@ -35,6 +35,6 @@ fn main() unsafe {
     };
     let fptr = cast::reinterpret_cast(&ptr::addr_of(&f));
     rustrt::start_task(new_task_id, fptr);
-    cast::forget(f);
+    cast::forget(move f);
     comm::recv(po);
 }

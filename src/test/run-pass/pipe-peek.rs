@@ -15,7 +15,7 @@ fn main() {
 
     assert !pipes::peek(&p);
 
-    oneshot::client::signal(c);
+    oneshot::client::signal(move c);
 
     assert pipes::peek(&p);
 }
