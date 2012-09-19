@@ -1054,7 +1054,7 @@ the pure functions they write.
 
 An example of a pure function that uses an unsafe block:
 
-~~~~
+~~~~ {.xfail-test}
 # use std::list::*;
 
 fn pure_foldl<T, U: Copy>(ls: List<T>, u: U, f: fn(&&T, &&U) -> U) -> U {
@@ -1085,7 +1085,7 @@ appear in its signature. Each type parameter must be explicitly
 declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
-~~~~
+~~~~ {.xfail-test}
 fn iter<T>(seq: ~[T], f: fn(T)) {
     for seq.each |elt| { f(elt); }
 }
