@@ -267,7 +267,9 @@ fn encode_path(ecx: @encode_ctxt, ebml_w: ebml::Writer, path: ast_map::path,
 
     do ebml_w.wr_tag(tag_path) {
         ebml_w.wr_tagged_u32(tag_path_len, (vec::len(path) + 1u) as u32);
-        do vec::iter(path) |pe| { encode_path_elt(ecx, ebml_w, pe); }
+        for vec::each_ref(path) |pe| {
+            encode_path_elt(ecx, ebml_w, *pe);
+        }
         encode_path_elt(ecx, ebml_w, name);
     }
 }
@@ -737,7 +739,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         let mut i = 0u;
-        for vec::each(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
+        for vec::each_ref(*ty::trait_methods(tcx, local_def(item.id))) |mty| {
             match ms[i] {
               required(ty_m) => {
                 ebml_w.start_tag(tag_item_trait_method);
@@ -767,8 +769,8 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         // method info, we output static methods with type signatures as
         // written. Here, we output the *real* type signatures. I feel like
         // maybe we should only ever handle the real type signatures.
-        for vec::each(ms) |m| {
-            let ty_m = ast_util::trait_method_to_ty_method(m);
+        for vec::each_ref(ms) |m| {
+            let ty_m = ast_util::trait_method_to_ty_method(*m);
             if ty_m.self_ty.node != ast::sty_static { loop; }
 
             vec::push(*index, {val: ty_m.id, pos: ebml_w.writer.tell()});
@@ -888,7 +890,7 @@ fn encode_index<T>(ebml_w: ebml::Writer, buckets: ~[@~[entry<T>]],
     for buckets.each |bucket| {
         vec::push(bucket_locs, ebml_w.writer.tell());
         ebml_w.start_tag(tag_index_buckets_bucket);
-        for vec::each(*bucket) |elt| {
+        for vec::each_ref(*bucket) |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
             assert elt.pos < 0xffff_ffff;
             writer.write_be_u32(elt.pos as u32);

@@ -1099,7 +1099,7 @@ impl<T: Send> PortSet<T> : Recv<T> {
     pure fn peek() -> bool {
         // It'd be nice to use self.port.each, but that version isn't
         // pure.
-        for vec::each(self.ports) |p| {
+        for vec::each_ref(self.ports) |p| {
             if p.peek() { return true }
         }
         false

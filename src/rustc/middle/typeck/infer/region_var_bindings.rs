@@ -1098,8 +1098,8 @@ impl RegionVarBindings {
         let upper_bounds =
             self.collect_concrete_regions(graph, node_idx, Outgoing);
 
-        for vec::each(lower_bounds) |lower_bound| {
-            for vec::each(upper_bounds) |upper_bound| {
+        for vec::each_ref(lower_bounds) |lower_bound| {
+            for vec::each_ref(upper_bounds) |upper_bound| {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
 
@@ -1148,8 +1148,8 @@ impl RegionVarBindings {
         let upper_bounds = self.collect_concrete_regions(graph, node_idx,
                                                          Outgoing);
 
-        for vec::each(upper_bounds) |upper_bound_1| {
-            for vec::each(upper_bounds) |upper_bound_2| {
+        for vec::each_ref(upper_bounds) |upper_bound_1| {
+            for vec::each_ref(upper_bounds) |upper_bound_2| {
                 match self.glb_concrete_regions(upper_bound_1.region,
                                                 upper_bound_2.region) {
                   Ok(_) => {}

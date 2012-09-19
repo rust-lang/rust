@@ -48,8 +48,8 @@ fn lookup_vtables(fcx: @fn_ctxt,
     let tcx = fcx.ccx.tcx;
     let mut result = ~[], i = 0u;
     for substs.tps.each |ty| {
-        for vec::each(*bounds[i]) |bound| {
-            match bound {
+        for vec::each_ref(*bounds[i]) |bound| {
+            match *bound {
               ty::bound_trait(i_ty) => {
                 let i_ty = ty::subst(tcx, substs, i_ty);
                 vec::push(result, lookup_vtable(fcx, expr, ty, i_ty,
@@ -121,8 +121,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
     match ty::get(ty).sty {
         ty::ty_param({idx: n, def_id: did}) => {
             let mut n_bound = 0;
-            for vec::each(*tcx.ty_param_bounds.get(did.node)) |bound| {
-                match bound {
+            for vec::each_ref(*tcx.ty_param_bounds.get(did.node)) |bound| {
+                match *bound {
                     ty::bound_send | ty::bound_copy | ty::bound_const |
                     ty::bound_owned => {
                         /* ignore */
@@ -156,7 +156,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
 
             relate_trait_tys(fcx, expr, trait_ty, ty);
             if !allow_unsafe && !is_early {
-                for vec::each(*ty::trait_methods(tcx, did)) |m| {
+                for vec::each_ref(*ty::trait_methods(tcx, did)) |m| {
                     if ty::type_has_self(ty::mk_fn(tcx, m.fty)) {
                         tcx.sess.span_err(
                             expr.span,
@@ -214,8 +214,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
                         // it's the same trait as trait_ty, we need to
                         // unify it with trait_ty in order to get all
                         // the ty vars sorted out.
-                        for vec::each(ty::impl_traits(tcx, im.did)) |of_ty| {
-                            match ty::get(of_ty).sty {
+                        for vec::each_ref(ty::impl_traits(tcx, im.did)) |of_ty| {
+                            match ty::get(*of_ty).sty {
                                 ty::ty_trait(id, _, _) => {
                                     // Not the trait we're looking for
                                     if id != trait_id { loop; }
@@ -271,8 +271,8 @@ fn lookup_vtable(fcx: @fn_ctxt,
                             debug!("(checking vtable) @2 relating trait \
                                     ty %s to of_ty %s",
                                    fcx.infcx().ty_to_str(trait_ty),
-                                   fcx.infcx().ty_to_str(of_ty));
-                            let of_ty = ty::subst(tcx, &substs, of_ty);
+                                   fcx.infcx().ty_to_str(*of_ty));
+                            let of_ty = ty::subst(tcx, &substs, *of_ty);
                             relate_trait_tys(fcx, expr, trait_ty, of_ty);
 
                             // Recall that trait_ty -- the trait type

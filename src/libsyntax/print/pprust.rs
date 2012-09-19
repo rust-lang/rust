@@ -1672,9 +1672,9 @@ fn print_arg_mode(s: ps, m: ast::mode) {
 fn print_bounds(s: ps, bounds: @~[ast::ty_param_bound]) {
     if vec::len(*bounds) > 0u {
         word(s.s, ~":");
-        for vec::each(*bounds) |bound| {
+        for vec::each_ref(*bounds) |bound| {
             nbsp(s);
-            match bound {
+            match *bound {
               ast::bound_copy => word(s.s, ~"Copy"),
               ast::bound_send => word(s.s, ~"Send"),
               ast::bound_const => word(s.s, ~"Const"),

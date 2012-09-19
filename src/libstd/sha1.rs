@@ -65,8 +65,8 @@ fn sha1() -> Sha1 {
 
     fn add_input(st: &Sha1State, msg: &[u8]) {
         assert (!st.computed);
-        for vec::each(msg) |element| {
-            st.msg_block[st.msg_block_idx] = element;
+        for vec::each_ref(msg) |element| {
+            st.msg_block[st.msg_block_idx] = *element;
             st.msg_block_idx += 1u;
             st.len_low += 8u32;
             if st.len_low == 0u32 {
@@ -240,7 +240,9 @@ fn sha1() -> Sha1 {
         fn result_str() -> ~str {
             let rr = mk_result(&self);
             let mut s = ~"";
-            for vec::each(rr) |b| { s += uint::to_str(b as uint, 16u); }
+            for vec::each_ref(rr) |b| {
+                s += uint::to_str(*b as uint, 16u);
+            }
             return s;
         }
     }
@@ -329,7 +331,7 @@ mod tests {
         // Test that it works when accepting the message all at once
 
         let sh = sha1::sha1();
-        for vec::each(tests) |t| {
+        for vec::each_ref(tests) |t| {
             sh.input_str(t.input);
             let out = sh.result();
             check_vec_eq(t.output, out);
@@ -338,7 +340,7 @@ mod tests {
 
 
         // Test that it works when accepting the message in pieces
-        for vec::each(tests) |t| {
+        for vec::each_ref(tests) |t| {
             let len = str::len(t.input);
             let mut left = len;
             while left > 0u {

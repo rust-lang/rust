@@ -450,7 +450,7 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
     match args {
       ArgExprs(arg_exprs) => {
         let last = arg_exprs.len() - 1u;
-        do vec::iteri(arg_exprs) |i, arg_expr| {
+        for vec::eachi(arg_exprs) |i, arg_expr| {
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx, arg_tys[i], arg_expr, &mut temp_cleanups,
                                if i == last { ret_flag } else { None })
@@ -466,8 +466,8 @@ fn trans_args(cx: block, llenv: ValueRef, args: CallArgs, fn_ty: ty::t,
     // now that all arguments have been successfully built, we can revoke any
     // temporary cleanups, as they are only needed if argument construction
     // should fail (for example, cleanup of copy mode args).
-    do vec::iter(temp_cleanups) |c| {
-        revoke_clean(bcx, c)
+    for vec::each_ref(temp_cleanups) |c| {
+        revoke_clean(bcx, *c)
     }
 
     return {bcx: bcx, args: llargs, retslot: llretslot};

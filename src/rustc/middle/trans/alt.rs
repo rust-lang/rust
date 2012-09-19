@@ -124,13 +124,13 @@ fn macros() { include!("macros.rs"); } // FIXME(#3114): Macro import/export.
 
 // An option identifying a branch (either a literal, a enum variant or a
 // range)
-enum opt {
+enum Opt {
     lit(@ast::expr),
     var(/* disr val */int, /* variant dids */{enm: def_id, var: def_id}),
     range(@ast::expr, @ast::expr)
 }
-fn opt_eq(tcx: ty::ctxt, a: opt, b: opt) -> bool {
-    match (a, b) {
+fn opt_eq(tcx: ty::ctxt, a: &Opt, b: &Opt) -> bool {
+    match (*a, *b) {
       (lit(a), lit(b)) => const_eval::compare_lit_exprs(tcx, a, b) == 0,
       (range(a1, a2), range(b1, b2)) => {
         const_eval::compare_lit_exprs(tcx, a1, b1) == 0 &&
@@ -145,11 +145,11 @@ enum opt_result {
     single_result(Result),
     range_result(Result, Result),
 }
-fn trans_opt(bcx: block, o: opt) -> opt_result {
+fn trans_opt(bcx: block, o: &Opt) -> opt_result {
     let _icx = bcx.insn_ctxt("alt::trans_opt");
     let ccx = bcx.ccx();
     let mut bcx = bcx;
-    match o {
+    match *o {
         lit(lit_expr) => {
             let datumblock = expr::trans_to_datum(bcx, lit_expr);
             return single_result(datumblock.to_result());
@@ -164,10 +164,10 @@ fn trans_opt(bcx: block, o: opt) -> opt_result {
     }
 }
 
-fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> opt {
+fn variant_opt(tcx: ty::ctxt, pat_id: ast::node_id) -> Opt {
     let vdef = ast_util::variant_def_ids(tcx.def_map.get(pat_id));
     let variants = ty::enum_variants(tcx, vdef.enm);
-    for vec::each(*variants) |v| {
+    for vec::each_ref(*variants) |v| {
         if vdef.var == v.id { return var(v.disr_val, vdef); }
     }
     core::unreachable();
@@ -221,7 +221,7 @@ fn matches_to_str(bcx: block, m: &[@Match]) -> ~str {
 }
 
 fn has_nested_bindings(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         match br.pats[col].node {
           ast::pat_ident(_, _, Some(_)) => return true,
           _ => ()
@@ -285,7 +285,7 @@ fn enter_match(bcx: block, dm: DefMap, m: &[@Match/&r],
     let _indenter = indenter();
 
     let mut result = ~[];
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         match e(br.pats[col]) {
             Some(sub) => {
                 let pats =
@@ -337,7 +337,7 @@ fn enter_default(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
-fn enter_opt(bcx: block, m: &[@Match/&r], opt: opt, col: uint,
+fn enter_opt(bcx: block, m: &[@Match/&r], opt: &Opt, col: uint,
              variant_size: uint, val: ValueRef)
     -> ~[@Match/&r]
 {
@@ -353,7 +353,7 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: opt, col: uint,
     do enter_match(bcx, tcx.def_map, m, col, val) |p| {
         match p.node {
             ast::pat_enum(_, subpats) => {
-                if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
+                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
                     Some(option::get_default(subpats,
                                              vec::from_elem(variant_size,
                                                             dummy)))
@@ -362,17 +362,17 @@ fn enter_opt(bcx: block, m: &[@Match/&r], opt: opt, col: uint,
                 }
             }
             ast::pat_ident(_, _, None) if pat_is_variant(tcx.def_map, p) => {
-                if opt_eq(tcx, variant_opt(tcx, p.id), opt) {
+                if opt_eq(tcx, &variant_opt(tcx, p.id), opt) {
                     Some(~[])
                 } else {
                     None
                 }
             }
             ast::pat_lit(l) => {
-                if opt_eq(tcx, lit(l), opt) { Some(~[]) } else { None }
+                if opt_eq(tcx, &lit(l), opt) { Some(~[]) } else { None }
             }
             ast::pat_range(l1, l2) => {
-                if opt_eq(tcx, range(l1, l2), opt) { Some(~[]) } else { None }
+                if opt_eq(tcx, &range(l1, l2), opt) { Some(~[]) } else { None }
             }
             _ => {
                 assert_is_binding_or_wild(bcx, p);
@@ -396,8 +396,8 @@ fn enter_rec_or_struct(bcx: block, dm: DefMap, m: &[@Match/&r], col: uint,
         match p.node {
             ast::pat_rec(fpats, _) | ast::pat_struct(_, fpats, _) => {
                 let mut pats = ~[];
-                for vec::each(fields) |fname| {
-                    match fpats.find(|p| p.ident == fname) {
+                for vec::each_ref(fields) |fname| {
+                    match fpats.find(|p| p.ident == *fname) {
                         None => vec::push(pats, dummy),
                         Some(pat) => vec::push(pats, pat.pat)
                     }
@@ -487,14 +487,14 @@ fn enter_uniq(bcx: block, dm: DefMap, m: &[@Match/&r],
     }
 }
 
-fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[opt] {
-    fn add_to_set(tcx: ty::ctxt, set: &DVec<opt>, val: opt) {
-        if set.any(|l| opt_eq(tcx, l, val)) {return;}
+fn get_options(ccx: @crate_ctxt, m: &[@Match], col: uint) -> ~[Opt] {
+    fn add_to_set(tcx: ty::ctxt, set: &DVec<Opt>, val: Opt) {
+        if set.any(|l| opt_eq(tcx, &l, &val)) {return;}
         set.push(val);
     }
 
     let found = DVec();
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         let cur = br.pats[col];
         if pat_is_variant(ccx.tcx.def_map, cur) {
             add_to_set(ccx.tcx, &found, variant_opt(ccx.tcx, cur.id));
@@ -544,7 +544,7 @@ fn extract_variant_args(bcx: block, pat_id: ast::node_id,
 
 fn collect_record_or_struct_fields(m: &[@Match], col: uint) -> ~[ast::ident] {
     let mut fields: ~[ast::ident] = ~[];
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         match br.pats[col].node {
           ast::pat_rec(fs, _) => extend(&mut fields, fs),
           ast::pat_struct(_, fs, _) => extend(&mut fields, fs),
@@ -566,7 +566,7 @@ fn collect_record_or_struct_fields(m: &[@Match], col: uint) -> ~[ast::ident] {
 fn root_pats_as_necessary(bcx: block, m: &[@Match],
                           col: uint, val: ValueRef)
 {
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         let pat_id = br.pats[col].id;
 
         match bcx.ccx().maps.root_map.find({id:pat_id, derefs:0u}) {
@@ -586,7 +586,7 @@ fn root_pats_as_necessary(bcx: block, m: &[@Match],
 }
 
 fn any_box_pat(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         match br.pats[col].node {
           ast::pat_box(_) => return true,
           _ => ()
@@ -596,7 +596,7 @@ fn any_box_pat(m: &[@Match], col: uint) -> bool {
 }
 
 fn any_uniq_pat(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         match br.pats[col].node {
           ast::pat_uniq(_) => return true,
           _ => ()
@@ -606,7 +606,7 @@ fn any_uniq_pat(m: &[@Match], col: uint) -> bool {
 }
 
 fn any_tup_pat(m: &[@Match], col: uint) -> bool {
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         match br.pats[col].node {
           ast::pat_tup(_) => return true,
           _ => ()
@@ -626,14 +626,16 @@ fn pick_col(m: &[@Match]) -> uint {
         }
     }
     let scores = vec::to_mut(vec::from_elem(m[0].pats.len(), 0u));
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         let mut i = 0u;
-        for vec::each(br.pats) |p| { scores[i] += score(p); i += 1u; }
+        for vec::each_ref(br.pats) |p| { scores[i] += score(*p); i += 1u; }
     }
     let mut max_score = 0u;
     let mut best_col = 0u;
     let mut i = 0u;
-    for vec::each(scores) |score| {
+    for vec::each_ref(scores) |score| {
+        let score = *score;
+
         // Irrefutable columns always go first, they'd only be duplicated in
         // the branches.
         if score == 0u { return i; }
@@ -871,7 +873,7 @@ fn compile_submatch(bcx: block,
                                 vec::view(vals, col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
-    for vec::each(m) |br| {
+    for vec::each_ref(m) |br| {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
         if pat_id == 0 { pat_id = br.pats[col].id; }
@@ -958,8 +960,8 @@ fn compile_submatch(bcx: block,
             }
         }
     }
-    for vec::each(opts) |o| {
-        match o {
+    for vec::each_ref(opts) |o| {
+        match *o {
             range(_, _) => { kind = compare; break }
             _ => ()
         }
@@ -980,7 +982,7 @@ fn compile_submatch(bcx: block,
     let mut i = 0u;
 
     // Compile subtrees for each option
-    for vec::each(opts) |opt| {
+    for vec::each_ref(opts) |opt| {
         i += 1u;
         let mut opt_cx = else_cx;
         if !exhaustive || i < len {
@@ -1037,7 +1039,7 @@ fn compile_submatch(bcx: block,
 
         let mut size = 0u;
         let mut unpacked = ~[];
-        match opt {
+        match *opt {
             var(_, vdef) => {
                 let args = extract_variant_args(opt_cx, pat_id, vdef, val);
                 size = args.vals.len();
@@ -1128,8 +1130,8 @@ fn trans_alt_inner(scope_cx: block,
                                  arm: arm,
                                  bindings_map: bindings_map};
         vec::push(arm_datas, arm_data);
-        for vec::each(arm.pats) |p| {
-            vec::push(matches, @Match {pats: ~[p], data: arm_data});
+        for vec::each_ref(arm.pats) |p| {
+            vec::push(matches, @Match {pats: ~[*p], data: arm_data});
         }
     }
 
@@ -1224,7 +1226,7 @@ fn bind_irrefutable_pat(bcx: block, pat: @ast::pat, val: ValueRef,
             let tcx = bcx.tcx();
             let pat_ty = node_id_type(bcx, pat.id);
             do expr::with_field_tys(tcx, pat_ty) |_has_dtor, field_tys| {
-                for vec::each(fields) |f| {
+                for vec::each_ref(fields) |f| {
                     let ix = ty::field_idx_strict(tcx, f.ident, field_tys);
                     let fldptr = GEPi(bcx, val, struct_field(ix));
                     bcx = bind_irrefutable_pat(bcx, f.pat, fldptr, make_copy);

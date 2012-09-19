@@ -435,9 +435,12 @@ fn vec_from_set<T:Eq IterBytes Hash Copy>(s: Set<T>) -> ~[T] {
 fn hash_from_vec<K: Eq IterBytes Hash Const Copy, V: Copy>(
     items: &[(K, V)]) -> HashMap<K, V> {
     let map = HashMap();
-    do vec::iter(items) |item| {
-        let (key, value) = item;
-        map.insert(key, value);
+    for vec::each_ref(items) |item| {
+        match *item {
+            (key, value) => {
+                map.insert(key, value);
+            }
+        }
     }
     map
 }

@@ -208,10 +208,10 @@ fn transcribe(cx: ext_ctxt, b: bindings, body: @expr) -> @expr {
 pure fn follow(m: arb_depth<matchable>, idx_path: &[uint]) ->
    arb_depth<matchable> {
     let mut res: arb_depth<matchable> = m;
-    for vec::each(idx_path) |idx| {
+    for vec::each_ref(idx_path) |idx| {
         res = match res {
           leaf(_) => return res,/* end of the line */
-          seq(new_ms, _) => new_ms[idx]
+          seq(new_ms, _) => new_ms[*idx]
         }
     }
     return res;

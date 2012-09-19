@@ -450,8 +450,8 @@ fn mk_file_writer(path: &Path, flags: ~[FileFlag])
     fn wb() -> c_int { O_WRONLY as c_int }
 
     let mut fflags: c_int = wb();
-    for vec::each(flags) |f| {
-        match f {
+    for vec::each_ref(flags) |f| {
+        match *f {
           Append => fflags |= O_APPEND as c_int,
           Create => fflags |= O_CREAT as c_int,
           Truncate => fflags |= O_TRUNC as c_int,
