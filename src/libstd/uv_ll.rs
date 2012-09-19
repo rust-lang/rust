@@ -707,7 +707,7 @@ unsafe fn tcp_init(loop_handle: *libc::c_void, handle: *uv_tcp_t)
 unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
                       tcp_handle_ptr: *uv_tcp_t,
                       addr_ptr: *sockaddr_in,
-                      ++after_connect_cb: *u8)
+                      after_connect_cb: *u8)
 -> libc::c_int {
     log(debug, fmt!("b4 foreign tcp_connect--addr port: %u cb: %u",
                     (*addr_ptr).sin_port as uint, after_connect_cb as uint));
@@ -718,7 +718,7 @@ unsafe fn tcp_connect(connect_ptr: *uv_connect_t,
 unsafe fn tcp_connect6(connect_ptr: *uv_connect_t,
                       tcp_handle_ptr: *uv_tcp_t,
                       addr_ptr: *sockaddr_in6,
-                      ++after_connect_cb: *u8)
+                      after_connect_cb: *u8)
 -> libc::c_int {
     return rustrt::rust_uv_tcp_connect6(connect_ptr, tcp_handle_ptr,
                                     after_connect_cb, addr_ptr);
@@ -787,7 +787,7 @@ unsafe fn async_init(loop_handle: *libc::c_void,
 unsafe fn async_send(async_handle: *uv_async_t) {
     return rustrt::rust_uv_async_send(async_handle);
 }
-unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
+unsafe fn buf_init(input: *u8, len: uint) -> uv_buf_t {
     let out_buf = { base: ptr::null(), len: 0 as libc::size_t };
     let out_buf_ptr = ptr::addr_of(out_buf);
     log(debug, fmt!("buf_init - input %u len %u out_buf: %u",
@@ -807,14 +807,14 @@ unsafe fn buf_init(++input: *u8, len: uint) -> uv_buf_t {
     return out_buf;
     //return result;
 }
-unsafe fn ip4_addr(ip: ~str, port: int)
+unsafe fn ip4_addr(ip: &str, port: int)
 -> sockaddr_in {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip4_addr(ip_buf as *u8,
                                  port as libc::c_int)
     }
 }
-unsafe fn ip6_addr(ip: ~str, port: int)
+unsafe fn ip6_addr(ip: &str, port: int)
 -> sockaddr_in6 {
     do str::as_c_str(ip) |ip_buf| {
         rustrt::rust_uv_ip6_addr(ip_buf as *u8,
@@ -1020,7 +1020,7 @@ mod test {
     }
 
     extern fn on_alloc_cb(handle: *libc::c_void,
-                         ++suggested_size: libc::size_t)
+                         suggested_size: libc::size_t)
         -> uv_buf_t unsafe {
         log(debug, ~"on_alloc_cb!");
         let char_ptr = malloc_buf_base_of(suggested_size);
@@ -1108,7 +1108,7 @@ mod test {
         log(debug, ~"finishing on_connect_cb");
     }
 
-    fn impl_uv_tcp_request(ip: ~str, port: int, req_str: ~str,
+    fn impl_uv_tcp_request(ip: &str, port: int, req_str: &str,
                           client_chan: *comm::Chan<~str>) unsafe {
         let test_loop = loop_new();
         let tcp_handle = tcp_t();
@@ -1353,10 +1353,10 @@ mod test {
         close(async_handle as *libc::c_void, async_close_cb);
     }
 
-    fn impl_uv_tcp_server(server_ip: ~str,
+    fn impl_uv_tcp_server(server_ip: &str,
                           server_port: int,
-                          kill_server_msg: ~str,
-                          server_resp_msg: ~str,
+                          +kill_server_msg: ~str,
+                          +server_resp_msg: ~str,
                           server_chan: *comm::Chan<~str>,
                           continue_chan: *comm::Chan<bool>) unsafe {
         let test_loop = loop_new();
