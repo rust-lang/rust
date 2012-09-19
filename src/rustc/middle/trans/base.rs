@@ -16,7 +16,6 @@
 use libc::{c_uint, c_ulonglong};
 use std::{map, time, list};
 use std::map::HashMap;
-use std::map::{int_hash, str_hash};
 use driver::session;
 use session::session;
 use syntax::attr;
@@ -1407,9 +1406,9 @@ fn new_fn_ctxt_w_id(ccx: @crate_ctxt, path: path,
           mut llself: None,
           mut personality: None,
           mut loop_ret: None,
-          llargs: int_hash::<local_val>(),
-          lllocals: int_hash::<local_val>(),
-          llupvars: int_hash::<ValueRef>(),
+          llargs: HashMap::<int,local_val>(),
+          lllocals: HashMap::<int,local_val>(),
+          llupvars: HashMap::<int,ValueRef>(),
           id: id,
           param_substs: param_substs,
           span: sp,
@@ -2309,7 +2308,7 @@ fn declare_intrinsics(llmod: ModuleRef) -> HashMap<~str, ValueRef> {
     let frameaddress = decl_cdecl_fn(llmod, ~"llvm.frameaddress",
                                      T_fn(T_frameaddress_args,
                                           T_ptr(T_i8())));
-    let intrinsics = str_hash::<ValueRef>();
+    let intrinsics = HashMap::<~str,ValueRef>();
     intrinsics.insert(~"llvm.gcroot", gcroot);
     intrinsics.insert(~"llvm.gcread", gcread);
     intrinsics.insert(~"llvm.memmove.p0i8.p0i8.i32", memmove32);
@@ -2624,35 +2623,35 @@ fn trans_crate(sess: session::session,
           llmod: llmod,
           td: td,
           tn: tn,
-          externs: str_hash::<ValueRef>(),
+          externs: HashMap::<~str,ValueRef>(),
           intrinsics: intrinsics,
-          item_vals: int_hash::<ValueRef>(),
+          item_vals: HashMap::<int,ValueRef>(),
           exp_map: emap,
           exp_map2: emap2,
           reachable: reachable,
-          item_symbols: int_hash::<~str>(),
+          item_symbols: HashMap::<int,~str>(),
           mut main_fn: None::<ValueRef>,
           link_meta: link_meta,
           enum_sizes: ty::new_ty_hash(),
-          discrims: ast_util::new_def_hash::<ValueRef>(),
-          discrim_symbols: int_hash::<~str>(),
+          discrims: HashMap(),
+          discrim_symbols: HashMap::<int,~str>(),
           tydescs: ty::new_ty_hash(),
           mut finished_tydescs: false,
-          external: ast_util::new_def_hash(),
-          monomorphized: map::HashMap(),
-          monomorphizing: ast_util::new_def_hash(),
-          type_use_cache: ast_util::new_def_hash(),
+          external: HashMap(),
+          monomorphized: HashMap(),
+          monomorphizing: HashMap(),
+          type_use_cache: HashMap(),
           vtables: map::HashMap(),
-          const_cstr_cache: map::str_hash(),
-          const_globals: int_hash::<ValueRef>(),
-          module_data: str_hash::<ValueRef>(),
+          const_cstr_cache: HashMap(),
+          const_globals: HashMap::<int,ValueRef>(),
+          module_data: HashMap::<~str,ValueRef>(),
           lltypes: ty::new_ty_hash(),
           names: new_namegen(sess.parse_sess.interner),
           next_addrspace: new_addrspace_gen(),
           symbol_hasher: symbol_hasher,
           type_hashcodes: ty::new_ty_hash(),
           type_short_names: ty::new_ty_hash(),
-          all_llvm_symbols: str_hash::<()>(),
+          all_llvm_symbols: HashMap::<~str,()>(),
           tcx: tcx,
           maps: maps,
           stats:
@@ -2665,12 +2664,12 @@ fn trans_crate(sess: session::session,
                mut n_inlines: 0u,
                mut n_closures: 0u,
                llvm_insn_ctxt: @mut ~[],
-               llvm_insns: str_hash(),
+               llvm_insns: HashMap(),
                fn_times: @mut ~[]},
           upcalls:
               upcall::declare_upcalls(targ_cfg, tn, tydesc_type,
                                       llmod),
-          rtcalls: str_hash::<ast::def_id>(),
+          rtcalls: HashMap::<~str,ast::def_id>(),
           tydesc_type: tydesc_type,
           int_type: int_type,
           float_type: float_type,
@@ -2681,7 +2680,7 @@ fn trans_crate(sess: session::session,
           crate_map: crate_map,
           mut uses_gc: false,
           dbg_cx: dbg_cx,
-          class_ctors: int_hash::<ast::def_id>(),
+          class_ctors: HashMap::<int,ast::def_id>(),
           mut do_not_commit_warning_issued: false};
 
 

@@ -349,13 +349,13 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
 
         // Index the class fields.
-        let field_map = std::map::uint_hash();
+        let field_map = std::map::HashMap();
         for class_fields.eachi |i, class_field| {
             field_map.insert(class_field.ident, i);
         }
 
         // Typecheck each field.
-        let found_fields = std::map::uint_hash();
+        let found_fields = std::map::HashMap();
         for fields.each |field| {
             match field_map.find(field.ident) {
                 Some(index) => {

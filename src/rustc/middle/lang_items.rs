@@ -19,7 +19,7 @@ use syntax::ast_util::{local_def};
 use syntax::visit::{default_simple_visitor, mk_simple_visitor};
 use syntax::visit::{visit_crate, visit_item};
 
-use std::map::{HashMap, str_hash};
+use std::map::HashMap;
 use str_eq = str::eq;
 
 struct LanguageItems {
@@ -84,7 +84,7 @@ fn LanguageItemCollector(crate: @crate, session: session,
                          items: &r/LanguageItems)
     -> LanguageItemCollector/&r {
 
-    let item_refs = str_hash();
+    let item_refs = HashMap();
 
     item_refs.insert(~"const", &mut items.const_trait);
     item_refs.insert(~"copy", &mut items.copy_trait);

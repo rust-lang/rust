@@ -12,7 +12,6 @@ use middle::ty;
 use syntax::{ast, visit};
 use syntax::codemap::span;
 use syntax::print::pprust;
-use syntax::ast_util::new_def_hash;
 use syntax::ast_map;
 use dvec::DVec;
 use metadata::csearch;
@@ -20,7 +19,7 @@ use ty::{region_variance, rv_covariant, rv_invariant, rv_contravariant};
 
 use std::list;
 use std::list::list;
-use std::map::{HashMap, int_hash};
+use std::map::HashMap;
 
 type parent = Option<ast::node_id>;
 
@@ -333,8 +332,8 @@ fn resolve_crate(sess: session, def_map: resolve::DefMap,
                  crate: @ast::crate) -> region_map {
     let cx: ctxt = ctxt {sess: sess,
                          def_map: def_map,
-                         region_map: int_hash(),
-                         root_exprs: int_hash(),
+                         region_map: HashMap(),
+                         root_exprs: HashMap(),
                          parent: None};
     let visitor = visit::mk_vt(@{
         visit_block: resolve_block,
@@ -762,8 +761,8 @@ fn determine_rp_in_crate(sess: session,
     let cx = determine_rp_ctxt_(@{sess: sess,
                                   ast_map: ast_map,
                                   def_map: def_map,
-                                  region_paramd_items: int_hash(),
-                                  dep_map: int_hash(),
+                                  region_paramd_items: HashMap(),
+                                  dep_map: HashMap(),
                                   worklist: DVec(),
                                   mut item_id: 0,
                                   mut anon_implies_rp: false,

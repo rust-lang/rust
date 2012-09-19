@@ -11,7 +11,7 @@ use back::abi;
 use middle::ty;
 use middle::ty::field;
 use syntax::ast;
-use syntax::ast_util::{dummy_sp, new_def_hash};
+use syntax::ast_util::dummy_sp;
 use syntax::util::interner;
 use util::ppaux::ty_to_str;
 use syntax::codemap::span;

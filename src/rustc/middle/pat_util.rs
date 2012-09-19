@@ -14,7 +14,7 @@ type PatIdMap = std::map::HashMap<ident, node_id>;
 // This is used because same-named variables in alternative patterns need to
 // use the node_id of their namesake in the first pattern.
 fn pat_id_map(dm: resolve::DefMap, pat: @pat) -> PatIdMap {
-    let map = std::map::uint_hash();
+    let map = std::map::HashMap();
     do pat_bindings(dm, pat) |_bm, p_id, _s, n| {
       map.insert(path_to_ident(n), p_id);
     };

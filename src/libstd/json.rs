@@ -517,7 +517,7 @@ impl Parser {
         self.bump();
         self.parse_whitespace();
 
-        let values = map::str_hash();
+        let values = map::HashMap();
 
         if self.ch == '}' {
           self.bump();
@@ -802,7 +802,7 @@ impl <A: ToJson> ~[A]: ToJson {
 
 impl <A: ToJson Copy> HashMap<~str, A>: ToJson {
     fn to_json() -> Json {
-        let d = map::str_hash();
+        let d = map::HashMap();
         for self.each() |key, value| {
             d.insert(copy key, value.to_json());
         }
@@ -832,7 +832,7 @@ impl Error: to_str::ToStr {
 #[cfg(test)]
 mod tests {
     fn mk_dict(items: &[(~str, Json)]) -> Json {
-        let d = map::str_hash();
+        let d = map::HashMap();
 
         for vec::each(items) |item| {
             let (key, value) = copy *item;

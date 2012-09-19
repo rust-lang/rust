@@ -61,7 +61,7 @@ fn check_loans(bccx: borrowck_ctxt,
                crate: @ast::crate) {
     let clcx = check_loan_ctxt(@{bccx: bccx,
                                  req_maps: req_maps,
-                                 reported: int_hash(),
+                                 reported: HashMap(),
                                  mut in_ctor: false,
                                  mut declared_purity: ast::impure_fn,
                                  mut fn_args: @~[]});

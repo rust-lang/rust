@@ -101,7 +101,7 @@
  */
 
 use dvec::DVec;
-use std::map::{HashMap, int_hash, str_hash, uint_hash};
+use std::map::HashMap;
 use syntax::{visit, ast_util};
 use syntax::print::pprust::{expr_to_str};
 use visit::vt;
@@ -187,7 +187,7 @@ fn check_crate(tcx: ty::ctxt,
         .. *visit::default_visitor()
     });
 
-    let last_use_map = int_hash();
+    let last_use_map = HashMap();
     let initial_maps = @IrMaps(tcx, method_map, last_use_map);
     visit::visit_crate(*crate, initial_maps, visitor);
     tcx.sess.abort_if_errors();
@@ -290,10 +290,10 @@ fn IrMaps(tcx: ty::ctxt, method_map: typeck::method_map,
         last_use_map: last_use_map,
         num_live_nodes: 0u,
         num_vars: 0u,
-        live_node_map: int_hash(),
-        variable_map: int_hash(),
-        capture_map: int_hash(),
-        field_map: uint_hash(),
+        live_node_map: HashMap(),
+        variable_map: HashMap(),
+        capture_map: HashMap(),
+        field_map: HashMap(),
         var_kinds: ~[],
         lnks: ~[]
     }

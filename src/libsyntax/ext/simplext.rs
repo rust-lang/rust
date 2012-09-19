@@ -1,5 +1,5 @@
 use codemap::span;
-use std::map::{HashMap, str_hash, uint_hash};
+use std::map::HashMap;
 use dvec::DVec;
 
 use base::*;
@@ -135,7 +135,7 @@ fn acumm_bindings(_cx: ext_ctxt, _b_dest: bindings, _b_src: bindings) { }
 
 fn pattern_to_selectors(cx: ext_ctxt, e: @expr) -> binders {
     let res: binders =
-        {real_binders: uint_hash::<selector>(),
+        {real_binders: HashMap(),
          literal_ast_matchers: DVec()};
     //this oughta return binders instead, but macro args are a sequence of
     //expressions, rather than a single expression
@@ -153,7 +153,7 @@ bindings. Most of the work is done in p_t_s, which generates the
 selectors. */
 
 fn use_selectors_to_bind(b: binders, e: @expr) -> Option<bindings> {
-    let res = uint_hash::<arb_depth<matchable>>();
+    let res = HashMap();
     //need to do this first, to check vec lengths.
     for b.literal_ast_matchers.each |sel| {
         match sel(match_expr(e)) { None => return None, _ => () }
@@ -237,7 +237,7 @@ fn follow_for_trans(cx: ext_ctxt, mmaybe: Option<arb_depth<matchable>>,
 
 /* helper for transcribe_exprs: what vars from `b` occur in `e`? */
 fn free_vars(b: bindings, e: @expr, it: fn(ident)) {
-    let idents: HashMap<ident, ()> = uint_hash::<()>();
+    let idents: HashMap<ident, ()> = HashMap();
     fn mark_ident(&&i: ident, _fld: ast_fold, b: bindings,
                   idents: HashMap<ident, ()>) -> ident {
         if b.contains_key(i) { idents.insert(i, ()); }

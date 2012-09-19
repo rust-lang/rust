@@ -4,7 +4,6 @@
 use std::map;
 use std::map::HashMap;
 use syntax::{ast, attr};
-use syntax::ast_util::new_def_hash;
 use syntax::parse::token::ident_interner;
 
 export cstore;
@@ -70,9 +69,9 @@ pure fn p(cstore: cstore) -> cstore_private {
 }
 
 fn mk_cstore(intr: ident_interner) -> cstore {
-    let meta_cache = map::int_hash::<crate_metadata>();
-    let crate_map = map::int_hash::<ast::crate_num>();
-    let mod_path_map = new_def_hash();
+    let meta_cache = map::HashMap::<int,crate_metadata>();
+    let crate_map = map::HashMap::<int,ast::crate_num>();
+    let mod_path_map = HashMap();
     return private(@{metas: meta_cache,
                      use_crate_map: crate_map,
                      mod_path_map: mod_path_map,

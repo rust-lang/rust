@@ -91,7 +91,7 @@ fn windows_with_carry(bb: &[u8], nn: uint,
 fn make_sequence_processor(sz: uint, from_parent: comm::Port<~[u8]>,
                            to_parent: comm::Chan<~str>) {
    
-   let freqs: HashMap<~[u8], uint> = map::bytes_hash();
+   let freqs: HashMap<~[u8], uint> = map::HashMap();
    let mut carry: ~[u8] = ~[];
    let mut total: uint = 0u;
 

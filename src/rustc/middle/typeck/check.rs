@@ -79,7 +79,7 @@ use result::{Result, Ok, Err};
 use syntax::print::pprust;
 use syntax::parse::token::special_idents;
 
-use std::map::{str_hash, uint_hash};
+use std::map::HashMap;
 
 type self_info = {
     self_ty: ty::t,
@@ -141,10 +141,10 @@ struct fn_ctxt {
 fn blank_inherited(ccx: @crate_ctxt) -> @inherited {
     @inherited {
         infcx: infer::new_infer_ctxt(ccx.tcx),
-        locals: int_hash(),
-        node_types: map::int_hash(),
-        node_type_substs: map::int_hash(),
-        adjustments: map::int_hash()
+        locals: HashMap(),
+        node_types: map::HashMap(),
+        node_type_substs: map::HashMap(),
+        adjustments: map::HashMap()
     }
 }
 
@@ -425,7 +425,7 @@ fn check_method(ccx: @crate_ctxt, method: @ast::method,
 
 fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
                              ~[(ast::ident, span)]) {
-    let field_names = uint_hash();
+    let field_names = HashMap();
 
     for fields.each |p| {
         let (id, sp) = p;
@@ -1963,7 +1963,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
 
         // Look up the class fields and build up a map.
         let class_fields = ty::lookup_class_fields(tcx, class_id);
-        let class_field_map = uint_hash();
+        let class_field_map = HashMap();
         let mut fields_found = 0;
         for class_fields.each |field| {
             // XXX: Check visibility here.

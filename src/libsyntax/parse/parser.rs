@@ -2,7 +2,7 @@ use print::pprust::expr_to_str;
 
 use result::Result;
 use either::{Either, Left, Right};
-use std::map::{HashMap, str_hash};
+use std::map::HashMap;
 use token::{can_begin_expr, is_ident, is_ident_or_path, is_plain_ident,
             INTERPOLATED, special_idents};
 use codemap::{span,fss_none};

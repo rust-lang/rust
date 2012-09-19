@@ -4,7 +4,7 @@ use macro_parser::{named_match, matched_seq, matched_nonterminal};
 use codemap::span;
 use parse::token::{EOF, INTERPOLATED, IDENT, token, nt_ident,
                       ident_interner};
-use std::map::{HashMap, box_str_hash};
+use std::map::HashMap;
 
 export tt_reader,  new_tt_reader, dup_tt_reader, tt_next_token;
 
@@ -47,7 +47,7 @@ fn new_tt_reader(sp_diag: span_handler, itr: ident_interner,
               mut cur: @{readme: src, mut idx: 0u, dotdotdoted: false,
                          sep: None, up: tt_frame_up(option::None)},
               interpolations: match interp { /* just a convienience */
-                None => std::map::uint_hash::<@named_match>(),
+                None => std::map::HashMap::<uint,@named_match>(),
                 Some(x) => x
               },
               mut repeat_idx: ~[mut], mut repeat_len: ~[],

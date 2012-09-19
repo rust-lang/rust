@@ -1,7 +1,6 @@
 use check::{fn_ctxt, impl_self_ty};
 use infer::{resolve_type, resolve_and_force_all_but_regions,
                fixup_err_to_str};
-use ast_util::new_def_hash;
 use syntax::print::pprust;
 use result::{Result, Ok, Err};
 use util::common::indenter;
@@ -177,7 +176,7 @@ fn lookup_vtable(fcx: @fn_ctxt,
         _ => {
             let mut found = ~[];
 
-            let mut impls_seen = new_def_hash();
+            let mut impls_seen = HashMap();
 
             match fcx.ccx.coherence_info.extension_methods.find(trait_id) {
                 None => {
