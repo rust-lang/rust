@@ -1,3 +1,4 @@
+// xfail-fast
 #[legacy_modes];
 
 fn region_identity(x: &r/uint) -> &r/uint { x }

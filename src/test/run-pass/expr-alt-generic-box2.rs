@@ -1,3 +1,4 @@
+// xfail-fast
 // -*- rust -*-
 
 #[legacy_modes];

@@ -1,3 +1,4 @@
+// xfail-fast
 #[legacy_modes];
 #[abi = "rust-intrinsic"]
 extern mod rusti {

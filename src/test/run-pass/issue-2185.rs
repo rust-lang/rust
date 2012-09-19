@@ -1,3 +1,4 @@
+// xfail-fast
 // This test had to do with an outdated version of the iterable trait.
 // However, the condition it was testing seemed complex enough to
 // warrant still having a test, so I inlined the old definitions.
