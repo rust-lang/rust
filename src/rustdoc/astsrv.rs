@@ -57,14 +57,14 @@ fn from_file<T>(file: ~str, owner: SrvOwner<T>) -> T {
 fn run<T>(owner: SrvOwner<T>, source: ~str, +parse: Parser) -> T {
 
     let srv_ = Srv({
-        ch: do task::spawn_listener |po| {
+        ch: do task::spawn_listener |move parse, po| {
             act(po, source, parse);
         }
     });
 
     let res = owner(srv_);
     comm::send(srv_.ch, Exit);
-    return res;
+    move res
 }
 
 fn act(po: comm::Port<Msg>, source: ~str, parse: Parser) {
@@ -97,7 +97,7 @@ fn exec<T:Send>(
     let msg = HandleRequest(fn~(move f, ctxt: Ctxt) {
         comm::send(ch, f(ctxt))
     });
-    comm::send(srv.ch, msg);
+    comm::send(srv.ch, move msg);
     comm::recv(po)
 }
 
