@@ -134,7 +134,7 @@ fn IndirectBr(cx: block, Addr: ValueRef, NumDests: uint) {
 // lot more efficient) than doing str::as_c_str("", ...) every time.
 fn noname() -> *libc::c_char unsafe {
     const cnull: uint = 0u;
-    return unsafe::reinterpret_cast(&ptr::addr_of(cnull));
+    return cast::reinterpret_cast(&ptr::addr_of(cnull));
 }
 
 fn Invoke(cx: block, Fn: ValueRef, Args: ~[ValueRef],
@@ -629,8 +629,8 @@ fn Phi(cx: block, Ty: TypeRef, vals: ~[ValueRef], bbs: ~[BasicBlockRef])
 fn AddIncomingToPhi(phi: ValueRef, val: ValueRef, bb: BasicBlockRef) {
     if llvm::LLVMIsUndef(phi) == lib::llvm::True { return; }
     unsafe {
-        let valptr = unsafe::reinterpret_cast(&ptr::addr_of(val));
-        let bbptr = unsafe::reinterpret_cast(&ptr::addr_of(bb));
+        let valptr = cast::reinterpret_cast(&ptr::addr_of(val));
+        let bbptr = cast::reinterpret_cast(&ptr::addr_of(bb));
         llvm::LLVMAddIncoming(phi, valptr, bbptr, 1 as c_uint);
     }
 }

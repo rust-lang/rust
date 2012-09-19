@@ -2,7 +2,7 @@
 #[forbid(deprecated_pattern)];
 //! Unsafe debugging functions for inspecting values.
 
-use unsafe::reinterpret_cast;
+use cast::reinterpret_cast;
 
 export debug_tydesc;
 export debug_opaque;

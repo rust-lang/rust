@@ -17,7 +17,7 @@
 
 use either::Either;
 use pipes::recv;
-use unsafe::copy_lifetime;
+use cast::copy_lifetime;
 
 export Future;
 export extensions;

@@ -168,7 +168,7 @@ fn reserve_at_least<T>(&v: ~[const T], n: uint) {
 #[inline(always)]
 pure fn capacity<T>(&&v: ~[const T]) -> uint {
     unsafe {
-        let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **raw::VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         (**repr).unboxed.alloc / sys::size_of::<T>()
     }
 }
@@ -271,12 +271,12 @@ pure fn build_sized_opt<A>(size: Option<uint>,
 
 /// Produces a mut vector from an immutable vector.
 pure fn to_mut<T>(+v: ~[T]) -> ~[mut T] {
-    unsafe { ::unsafe::transmute(move v) }
+    unsafe { ::cast::transmute(move v) }
 }
 
 /// Produces an immutable vector from a mut vector.
 pure fn from_mut<T>(+v: ~[mut T]) -> ~[T] {
-    unsafe { ::unsafe::transmute(move v) }
+    unsafe { ::cast::transmute(move v) }
 }
 
 // Accessors
@@ -335,7 +335,7 @@ pure fn view<T>(v: &[T], start: uint, end: uint) -> &[T] {
     assert (end <= len(v));
     do as_imm_buf(v) |p, _len| {
         unsafe {
-            ::unsafe::reinterpret_cast(
+            ::cast::reinterpret_cast(
                 &(ptr::offset(p, start),
                   (end - start) * sys::size_of::<T>()))
         }
@@ -348,7 +348,7 @@ pure fn mut_view<T>(v: &[mut T], start: uint, end: uint) -> &[mut T] {
     assert (end <= len(v));
     do as_mut_buf(v) |p, _len| {
         unsafe {
-            ::unsafe::reinterpret_cast(
+            ::cast::reinterpret_cast(
                 &(ptr::mut_offset(p, start),
                   (end - start) * sys::size_of::<T>()))
         }
@@ -361,7 +361,7 @@ pure fn const_view<T>(v: &[const T], start: uint, end: uint) -> &[const T] {
     assert (end <= len(v));
     do as_const_buf(v) |p, _len| {
         unsafe {
-            ::unsafe::reinterpret_cast(
+            ::cast::reinterpret_cast(
                 &(ptr::const_offset(p, start),
                   (end - start) * sys::size_of::<T>()))
         }
@@ -564,7 +564,7 @@ fn swap_remove<T>(&v: ~[const T], index: uint) -> T {
 #[inline(always)]
 fn push<T>(&v: ~[const T], +initval: T) {
     unsafe {
-        let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **raw::VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         let fill = (**repr).unboxed.fill;
         if (**repr).unboxed.alloc > fill {
             push_fast(v, move initval);
@@ -578,7 +578,7 @@ fn push<T>(&v: ~[const T], +initval: T) {
 // This doesn't bother to make sure we have space.
 #[inline(always)] // really pretty please
 unsafe fn push_fast<T>(&v: ~[const T], +initval: T) {
-    let repr: **raw::VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+    let repr: **raw::VecRepr = ::cast::reinterpret_cast(&addr_of(v));
     let fill = (**repr).unboxed.fill;
     (**repr).unboxed.fill += sys::size_of::<T>();
     let p = ptr::addr_of((**repr).unboxed.data);
@@ -1441,7 +1441,7 @@ pure fn as_imm_buf<T,U>(s: &[T], /* NB---this CANNOT be const, see below */
 
     unsafe {
         let v : *(*T,uint) =
-            ::unsafe::reinterpret_cast(&ptr::addr_of(s));
+            ::cast::reinterpret_cast(&ptr::addr_of(s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1454,7 +1454,7 @@ pure fn as_const_buf<T,U>(s: &[const T],
 
     unsafe {
         let v : *(*const T,uint) =
-            ::unsafe::reinterpret_cast(&ptr::addr_of(s));
+            ::cast::reinterpret_cast(&ptr::addr_of(s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1467,7 +1467,7 @@ pure fn as_mut_buf<T,U>(s: &[mut T],
 
     unsafe {
         let v : *(*mut T,uint) =
-            ::unsafe::reinterpret_cast(&ptr::addr_of(s));
+            ::cast::reinterpret_cast(&ptr::addr_of(s));
         let (buf,len) = *v;
         f(buf, len / sys::size_of::<T>())
     }
@@ -1832,7 +1832,7 @@ mod raw {
      */
     #[inline(always)]
     unsafe fn set_len<T>(&&v: ~[const T], new_len: uint) {
-        let repr: **VecRepr = ::unsafe::reinterpret_cast(&addr_of(v));
+        let repr: **VecRepr = ::cast::reinterpret_cast(&addr_of(v));
         (**repr).unboxed.fill = new_len * sys::size_of::<T>();
     }
 
@@ -1847,22 +1847,22 @@ mod raw {
      */
     #[inline(always)]
     unsafe fn to_ptr<T>(v: &[T]) -> *T {
-        let repr: **SliceRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
+        let repr: **SliceRepr = ::cast::reinterpret_cast(&addr_of(v));
+        return ::cast::reinterpret_cast(&addr_of((**repr).data));
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     unsafe fn to_const_ptr<T>(v: &[const T]) -> *const T {
-        let repr: **SliceRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
+        let repr: **SliceRepr = ::cast::reinterpret_cast(&addr_of(v));
+        return ::cast::reinterpret_cast(&addr_of((**repr).data));
     }
 
     /** see `to_ptr()` */
     #[inline(always)]
     unsafe fn to_mut_ptr<T>(v: &[mut T]) -> *mut T {
-        let repr: **SliceRepr = ::unsafe::reinterpret_cast(&addr_of(v));
-        return ::unsafe::reinterpret_cast(&addr_of((**repr).data));
+        let repr: **SliceRepr = ::cast::reinterpret_cast(&addr_of(v));
+        return ::cast::reinterpret_cast(&addr_of((**repr).data));
     }
 
     /**
@@ -1873,7 +1873,7 @@ mod raw {
     unsafe fn form_slice<T,U>(p: *T, len: uint, f: fn(&& &[T]) -> U) -> U {
         let pair = (p, len * sys::size_of::<T>());
         let v : *(&blk/[T]) =
-            ::unsafe::reinterpret_cast(&ptr::addr_of(pair));
+            ::cast::reinterpret_cast(&ptr::addr_of(pair));
         f(*v)
     }
 

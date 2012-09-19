@@ -181,7 +181,7 @@ fn send<T: Send>(ch: Chan<T>, +data: T) {
     let res = rustrt::rust_port_id_send(p, data_ptr);
     if res != 0 unsafe {
         // Data sent successfully
-        unsafe::forget(move data);
+        cast::forget(move data);
     }
     task::yield();
 }

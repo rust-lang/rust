@@ -13,7 +13,7 @@ mutation when the data structure should be immutable.
 #[forbid(deprecated_pattern)];
 
 use util::with;
-use unsafe::transmute_immut;
+use cast::transmute_immut;
 
 export Mut;
 

@@ -721,7 +721,7 @@ fn with_str_writer(f: fn(Writer)) -> ~str {
     vec::push(v, 0);
     assert str::is_utf8(v);
 
-    unsafe { move ::unsafe::transmute(v) }
+    unsafe { move ::cast::transmute(v) }
 }
 
 // Utility functions

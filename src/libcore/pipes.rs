@@ -77,7 +77,7 @@ bounded and unbounded protocols allows for less code duplication.
 #[forbid(deprecated_pattern)];
 
 use cmp::Eq;
-use unsafe::{forget, reinterpret_cast, transmute};
+use cast::{forget, reinterpret_cast, transmute};
 use either::{Either, Left, Right};
 use option::unwrap;
 

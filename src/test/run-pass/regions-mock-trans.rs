@@ -1,4 +1,4 @@
-use libc, sys, unsafe;
+use libc, sys, cast;
 
 enum arena = ();
 
@@ -16,7 +16,7 @@ type ccx = {
 };
 
 fn alloc(_bcx : &arena) -> &bcx unsafe {
-    return unsafe::reinterpret_cast(
+    return cast::reinterpret_cast(
         &libc::malloc(sys::size_of::<bcx/&blk>() as libc::size_t));
 }
 
@@ -28,7 +28,7 @@ fn g(fcx : &fcx) {
     let bcx = { fcx: fcx };
     let bcx2 = h(&bcx);
     unsafe {
-        libc::free(unsafe::reinterpret_cast(&bcx2));
+        libc::free(cast::reinterpret_cast(&bcx2));
     }
 }
 

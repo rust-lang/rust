@@ -1,7 +1,7 @@
 // Binop corner cases
 
 extern mod std;
-use unsafe::reinterpret_cast;
+use cast::reinterpret_cast;
 
 fn test_nil() {
     assert (() == ());
@@ -56,9 +56,9 @@ fn test_box() {
 }
 
 fn test_ptr() unsafe {
-    let p1: *u8 = unsafe::reinterpret_cast(&0);
-    let p2: *u8 = unsafe::reinterpret_cast(&0);
-    let p3: *u8 = unsafe::reinterpret_cast(&1);
+    let p1: *u8 = cast::reinterpret_cast(&0);
+    let p2: *u8 = cast::reinterpret_cast(&0);
+    let p3: *u8 = cast::reinterpret_cast(&1);
 
     assert p1 == p2;
     assert p1 != p3;
@@ -102,8 +102,8 @@ fn test_class() {
   
   unsafe {
   error!("q = %x, r = %x",
-         (unsafe::reinterpret_cast::<*p, uint>(&ptr::addr_of(q))),
-         (unsafe::reinterpret_cast::<*p, uint>(&ptr::addr_of(r))));
+         (cast::reinterpret_cast::<*p, uint>(&ptr::addr_of(q))),
+         (cast::reinterpret_cast::<*p, uint>(&ptr::addr_of(r))));
   }
   assert(q == r);
   r.y = 17;

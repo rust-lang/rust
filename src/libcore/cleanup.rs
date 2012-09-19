@@ -2,7 +2,7 @@ use libc::{c_char, c_void, intptr_t, uintptr_t};
 use ptr::{mut_null, null, to_unsafe_ptr};
 use repr::BoxRepr;
 use sys::TypeDesc;
-use unsafe::transmute;
+use cast::transmute;
 
 export annihilate;
 

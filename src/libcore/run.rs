@@ -113,7 +113,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
         }
         vec::push(ptrs, ptr::null());
         vec::as_imm_buf(ptrs, |p, _len|
-            unsafe { cb(::unsafe::reinterpret_cast(&p)) }
+            unsafe { cb(::cast::reinterpret_cast(&p)) }
         )
       }
       _ => cb(ptr::null())

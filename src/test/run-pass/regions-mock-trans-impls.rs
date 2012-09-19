@@ -1,5 +1,5 @@
 extern mod std;
-use libc, sys, unsafe;
+use libc, sys, cast;
 use std::arena::Arena;
 
 type bcx = {

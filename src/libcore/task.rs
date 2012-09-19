@@ -1206,7 +1206,7 @@ fn kill_taskgroup(state: TaskGroupInner, me: *rust_task, is_main: bool) {
 // a proper closure because the #[test]s won't understand. Have to fake it.
 macro_rules! taskgroup_key (
     // Use a "code pointer" value that will never be a real code pointer.
-    () => (unsafe::transmute((-2 as uint, 0u)))
+    () => (cast::transmute((-2 as uint, 0u)))
 )
 
 fn gen_child_taskgroup(linked: bool, supervised: bool)
@@ -1313,13 +1313,13 @@ fn spawn_raw(+opts: TaskOpts, +f: fn~()) {
             let child_wrapper = make_child_wrapper(new_task, move child_tg,
                   move ancestors, is_main, move notify_chan, move f);
             let fptr = ptr::addr_of(child_wrapper);
-            let closure: *rust_closure = unsafe::reinterpret_cast(&fptr);
+            let closure: *rust_closure = cast::reinterpret_cast(&fptr);
 
             // Getting killed between these two calls would free the child's
             // closure. (Reordering them wouldn't help - then getting killed
             // between them would leak.)
             rustrt::start_task(new_task, closure);
-            unsafe::forget(move child_wrapper);
+            cast::forget(move child_wrapper);
         }
     }
 
@@ -1466,8 +1466,8 @@ impl<T: Owned> @T: LocalData { }
 
 impl LocalData: Eq {
     pure fn eq(&&other: LocalData) -> bool unsafe {
-        let ptr_a: (uint, uint) = unsafe::reinterpret_cast(&self);
-        let ptr_b: (uint, uint) = unsafe::reinterpret_cast(&other);
+        let ptr_a: (uint, uint) = cast::reinterpret_cast(&self);
+        let ptr_b: (uint, uint) = cast::reinterpret_cast(&other);
         return ptr_a == ptr_b;
     }
     pure fn ne(&&other: LocalData) -> bool { !self.eq(other) }
@@ -1482,7 +1482,7 @@ type TaskLocalMap = @dvec::DVec<Option<TaskLocalElement>>;
 extern fn cleanup_task_local_map(map_ptr: *libc::c_void) unsafe {
     assert !map_ptr.is_null();
     // Get and keep the single reference that was created at the beginning.
-    let _map: TaskLocalMap = unsafe::reinterpret_cast(&map_ptr);
+    let _map: TaskLocalMap = cast::reinterpret_cast(&map_ptr);
     // All local_data will be destroyed along with the map.
 }
 
@@ -1498,14 +1498,14 @@ unsafe fn get_task_local_map(task: *rust_task) -> TaskLocalMap {
         let map: TaskLocalMap = @dvec::DVec();
         // Use reinterpret_cast -- transmute would take map away from us also.
         rustrt::rust_set_task_local_data(
-            task, unsafe::reinterpret_cast(&map));
+            task, cast::reinterpret_cast(&map));
         rustrt::rust_task_local_data_atexit(task, cleanup_task_local_map);
         // Also need to reference it an extra time to keep it for now.
-        unsafe::bump_box_refcount(map);
+        cast::bump_box_refcount(map);
         map
     } else {
-        let map = unsafe::transmute(move map_ptr);
-        unsafe::bump_box_refcount(map);
+        let map = cast::transmute(move map_ptr);
+        cast::bump_box_refcount(map);
         map
     }
 }
@@ -1515,7 +1515,7 @@ unsafe fn key_to_key_value<T: Owned>(
 
     // Keys are closures, which are (fnptr,envptr) pairs. Use fnptr.
     // Use reintepret_cast -- transmute would leak (forget) the closure.
-    let pair: (*libc::c_void, *libc::c_void) = unsafe::reinterpret_cast(&key);
+    let pair: (*libc::c_void, *libc::c_void) = cast::reinterpret_cast(&key);
     pair.first()
 }
 
@@ -1550,8 +1550,8 @@ unsafe fn local_get_helper<T: Owned>(
         // overwriting the local_data_box we need to give an extra reference.
         // We must also give an extra reference when not removing.
         let (index, data_ptr) = result;
-        let data: @T = unsafe::transmute(move data_ptr);
-        unsafe::bump_box_refcount(data);
+        let data: @T = cast::transmute(move data_ptr);
+        cast::bump_box_refcount(data);
         if do_pop {
             (*map).set_elt(index, None);
         }
@@ -1584,7 +1584,7 @@ unsafe fn local_set<T: Owned>(
     // own on it can be dropped when the box is destroyed. The unsafe pointer
     // does not have a reference associated with it, so it may become invalid
     // when the box is destroyed.
-    let data_ptr = unsafe::reinterpret_cast(&data);
+    let data_ptr = cast::reinterpret_cast(&data);
     let data_box = data as LocalData;
     // Construct new entry to store in the map.
     let new_entry = Some((keyval, data_ptr, data_box));
@@ -2232,12 +2232,12 @@ fn test_unkillable() {
     unsafe {
         do unkillable {
             let p = ~0;
-            let pp: *uint = unsafe::transmute(p);
+            let pp: *uint = cast::transmute(p);
 
             // If we are killed here then the box will leak
             po.recv();
 
-            let _p: ~int = unsafe::transmute(pp);
+            let _p: ~int = cast::transmute(pp);
         }
     }
 
@@ -2273,12 +2273,12 @@ fn test_unkillable_nested() {
         do unkillable {
             do unkillable {} // Here's the difference from the previous test.
             let p = ~0;
-            let pp: *uint = unsafe::transmute(p);
+            let pp: *uint = cast::transmute(p);
 
             // If we are killed here then the box will leak
             po.recv();
 
-            let _p: ~int = unsafe::transmute(pp);
+            let _p: ~int = cast::transmute(pp);
         }
     }
 
