@@ -96,7 +96,7 @@ impl PosixPath : GenericPath {
         let mut components = str::split_nonempty(s, |c| c == '/');
         let is_absolute = (s.len() != 0 && s[0] == '/' as u8);
         return PosixPath { is_absolute: is_absolute,
-                           components: components }
+                           components: move components }
     }
 
     pure fn dirname() -> ~str {
@@ -192,7 +192,7 @@ impl PosixPath : GenericPath {
           Some(ref f) => ~[copy *f]
         };
         return PosixPath { is_absolute: false,
-                           components: cs }
+                           components: move cs }
     }
 
     pure fn push_rel(other: &PosixPath) -> PosixPath {
@@ -208,7 +208,8 @@ impl PosixPath : GenericPath {
                 |c| windows::is_sep(c as u8));
             unsafe { v.push_all_move(move ss); }
         }
-        PosixPath { components: move v, ..self }
+        PosixPath { is_absolute: self.is_absolute,
+                    components: move v }
     }
 
     pure fn push(s: &str) -> PosixPath {
@@ -223,13 +224,18 @@ impl PosixPath : GenericPath {
         if cs.len() != 0 {
             unsafe { cs.pop(); }
         }
-        return PosixPath { components: move cs, ..self }
+        return PosixPath {
+            is_absolute: self.is_absolute,
+            components: move cs
+        }
+                          //..self }
     }
 
     pure fn normalize() -> PosixPath {
         return PosixPath {
-            components: normalize(self.components),
-            ..self
+            is_absolute: self.is_absolute,
+            components: normalize(self.components)
+          //  ..self
         }
     }
 }
@@ -286,10 +292,10 @@ impl WindowsPath : GenericPath {
         let mut components =
             str::split_nonempty(rest, |c| windows::is_sep(c as u8));
         let is_absolute = (rest.len() != 0 && windows::is_sep(rest[0]));
-        return WindowsPath { host: host,
-                             device: device,
+        return WindowsPath { host: move host,
+                             device: move device,
                              is_absolute: is_absolute,
-                             components: components }
+                             components: move components }
     }
 
     pure fn dirname() -> ~str {
@@ -386,7 +392,7 @@ impl WindowsPath : GenericPath {
         return WindowsPath { host: None,
                              device: None,
                              is_absolute: false,
-                             components: cs }
+                             components: move cs }
     }
 
     pure fn push_rel(other: &WindowsPath) -> WindowsPath {
@@ -402,7 +408,13 @@ impl WindowsPath : GenericPath {
                 |c| windows::is_sep(c as u8));
             unsafe { v.push_all_move(move ss); }
         }
-        return WindowsPath { components: move v, ..self }
+        // tedious, but as-is, we can't use ..self
+        return WindowsPath {
+            host: copy self.host,
+            device: copy self.device,
+            is_absolute: self.is_absolute,
+            components: move v
+        }
     }
 
     pure fn push(s: &str) -> WindowsPath {
@@ -417,13 +429,20 @@ impl WindowsPath : GenericPath {
         if cs.len() != 0 {
             unsafe { cs.pop(); }
         }
-        return WindowsPath { components: move cs, ..self }
+        return WindowsPath {
+            host: copy self.host,
+            device: copy self.device,
+            is_absolute: self.is_absolute,
+            components: move cs
+        }
     }
 
     pure fn normalize() -> WindowsPath {
         return WindowsPath {
-            components: normalize(self.components),
-            ..self
+            host: copy self.host,
+            device: copy self.device,
+            is_absolute: self.is_absolute,
+            components: normalize(self.components)
         }
     }
 }

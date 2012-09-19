@@ -142,7 +142,7 @@ pub unsafe fn annihilate() {
         assert (*box).header.prev == null();
 
         debug!("freeing box: %x", box as uint);
-        rt_free(transmute(box));
+        rt_free(transmute(move box));
     }
 }
 

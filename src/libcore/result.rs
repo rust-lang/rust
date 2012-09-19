@@ -106,7 +106,7 @@ pub pure fn to_either<T: Copy, U: Copy>(res: &Result<U, T>)
 pub fn chain<T, U: Copy, V: Copy>(res: Result<T, V>, op: fn(t: T)
     -> Result<U, V>) -> Result<U, V> {
     match move res {
-        Ok(move t) => op(t),
+        Ok(move t) => op(move t),
         Err(move e) => Err(e)
     }
 }
