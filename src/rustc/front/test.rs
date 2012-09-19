@@ -285,7 +285,7 @@ fn mk_test_desc_vec(cx: test_ctxt) -> @ast::expr {
     debug!("building test vector from %u tests", cx.testfns.len());
     let mut descs = ~[];
     for cx.testfns.each |test| {
-        vec::push(descs, mk_test_desc_rec(cx, test));
+        vec::push(descs, mk_test_desc_rec(cx, *test));
     }
 
     let inner_expr = @{id: cx.sess.next_node_id(),

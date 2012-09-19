@@ -123,9 +123,9 @@ fn bfs(graph: graph, key: node_id) -> bfs_result {
         let t = Q.pop_front();
 
         do graph[t].each() |k| {
-            if marks[k] == -1i64 {
-                marks[k] = t;
-                Q.add_back(k);
+            if marks[*k] == -1i64 {
+                marks[*k] = t;
+                Q.add_back(*k);
             }
             true
         };
@@ -183,8 +183,8 @@ fn bfs2(graph: graph, key: node_id) -> bfs_result {
                 let mut color = white;
 
                 do neighbors.each() |k| {
-                    if is_gray(colors[k]) {
-                        color = gray(k);
+                    if is_gray(colors[*k]) {
+                        color = gray(*k);
                         false
                     }
                     else { true }
@@ -264,8 +264,8 @@ fn pbfs(&&graph: arc::ARC<graph>, key: node_id) -> bfs_result {
                     let mut color = white;
 
                     do neighbors.each() |k| {
-                        if is_gray(colors[k]) {
-                            color = gray(k);
+                        if is_gray(colors[*k]) {
+                            color = gray(*k);
                             false
                         }
                         else { true }

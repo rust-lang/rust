@@ -102,7 +102,7 @@ impl state {
     /// from this state.
     fn reachable(f: fn(state) -> bool) {
         for self.messages.each |m| {
-            match m {
+            match *m {
               message(_, _, _, _, Some({state: id, _})) => {
                 let state = self.proto.get_state(id);
                 if !f(state) { break }

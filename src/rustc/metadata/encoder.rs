@@ -100,7 +100,7 @@ fn encode_region_param(ecx: @encode_ctxt, ebml_w: ebml::Writer,
     let opt_rp = ecx.tcx.region_paramd_items.find(it.id);
     for opt_rp.each |rp| {
         do ebml_w.wr_tag(tag_region_param) {
-            ty::serialize_region_variance(ebml_w, rp);
+            ty::serialize_region_variance(ebml_w, *rp);
         }
     }
 }
@@ -153,7 +153,7 @@ fn encode_ty_type_param_bounds(ebml_w: ebml::Writer, ecx: @encode_ctxt,
                         abbrevs: tyencode::ac_use_abbrevs(ecx.type_abbrevs)};
     for params.each |param| {
         ebml_w.start_tag(tag_items_data_item_ty_param_bounds);
-        tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, param);
+        tyencode::enc_bounds(ebml_w.writer, ty_str_ctxt, *param);
         ebml_w.end_tag();
     }
 }
@@ -421,7 +421,7 @@ fn encode_info_for_class(ecx: @encode_ctxt, ebml_w: ebml::Writer,
                 debug!("encode_info_for_class: doing %s %d",
                        ecx.tcx.sess.str_of(m.ident), m.id);
                 encode_info_for_method(ecx, ebml_w, impl_path,
-                                       should_inline(m.attrs), id, m,
+                                       should_inline(m.attrs), id, *m,
                                        vec::append(class_tps, m.tps));
             }
             _ => { /* don't encode private methods */ }
@@ -633,7 +633,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_region_param(ecx, ebml_w, item);
         for struct_def.traits.each |t| {
-           encode_trait_ref(ebml_w, ecx, t);
+           encode_trait_ref(ebml_w, ecx, *t);
         }
         /* Encode the dtor */
         /* Encode id for dtor */
@@ -696,7 +696,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
             });
             encode_info_for_ctor(ecx, ebml_w, ctor.node.id, item.ident,
                                  path, if tps.len() > 0u {
-                                     Some(ii_ctor(ctor, item.ident, tps,
+                                     Some(ii_ctor(*ctor, item.ident, tps,
                                                   local_def(item.id))) }
                                  else { None }, tps);
         }
@@ -727,7 +727,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         for methods.each |m| {
             vec::push(*index, {val: m.id, pos: ebml_w.writer.tell()});
             encode_info_for_method(ecx, ebml_w, impl_path,
-                                   should_inline(m.attrs), item.id, m,
+                                   should_inline(m.attrs), item.id, *m,
                                    vec::append(tps, m.tps));
         }
       }
@@ -764,7 +764,7 @@ fn encode_info_for_item(ecx: @encode_ctxt, ebml_w: ebml::Writer, item: @item,
         }
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         for traits.each |associated_trait| {
-           encode_trait_ref(ebml_w, ecx, associated_trait)
+           encode_trait_ref(ebml_w, ecx, *associated_trait)
         }
         ebml_w.end_tag();
 
@@ -874,12 +874,12 @@ fn create_index<T: Copy Hash IterBytes>(index: ~[entry<T>]) ->
     for uint::range(0u, 256u) |_i| { vec::push(buckets, @mut ~[]); };
     for index.each |elt| {
         let h = elt.val.hash() as uint;
-        vec::push(*buckets[h % 256], elt);
+        vec::push(*buckets[h % 256], *elt);
     }
 
     let mut buckets_frozen = ~[];
     for buckets.each |bucket| {
-        vec::push(buckets_frozen, @*bucket);
+        vec::push(buckets_frozen, @**bucket);
     }
     return buckets_frozen;
 }
@@ -893,7 +893,7 @@ fn encode_index<T>(ebml_w: ebml::Writer, buckets: ~[@~[entry<T>]],
     for buckets.each |bucket| {
         vec::push(bucket_locs, ebml_w.writer.tell());
         ebml_w.start_tag(tag_index_buckets_bucket);
-        for vec::each(*bucket) |elt| {
+        for vec::each(**bucket) |elt| {
             ebml_w.start_tag(tag_index_buckets_bucket_elt);
             assert elt.pos < 0xffff_ffff;
             writer.write_be_u32(elt.pos as u32);
@@ -905,8 +905,8 @@ fn encode_index<T>(ebml_w: ebml::Writer, buckets: ~[@~[entry<T>]],
     ebml_w.end_tag();
     ebml_w.start_tag(tag_index_table);
     for bucket_locs.each |pos| {
-        assert pos < 0xffff_ffff;
-        writer.write_be_u32(pos as u32);
+        assert *pos < 0xffff_ffff;
+        writer.write_be_u32(*pos as u32);
     }
     ebml_w.end_tag();
     ebml_w.end_tag();
@@ -949,7 +949,7 @@ fn encode_meta_item(ebml_w: ebml::Writer, mi: meta_item) {
         ebml_w.writer.write(str::to_bytes(name));
         ebml_w.end_tag();
         for items.each |inner_item| {
-            encode_meta_item(ebml_w, *inner_item);
+            encode_meta_item(ebml_w, **inner_item);
         }
         ebml_w.end_tag();
       }
@@ -1000,15 +1000,15 @@ fn synthesize_crate_attrs(ecx: @encode_ctxt, crate: @crate) -> ~[attribute] {
     for crate.node.attrs.each |attr| {
         vec::push(
             attrs,
-            if attr::get_attr_name(attr) != ~"link" {
-                attr
+            if attr::get_attr_name(*attr) != ~"link" {
+                *attr
             } else {
                 match attr.node.value.node {
                   meta_list(_, l) => {
                     found_link_attr = true;;
                     synthesize_link_attr(ecx, l)
                   }
-                  _ => attr
+                  _ => *attr
                 }
             });
     }
@@ -1059,7 +1059,7 @@ fn encode_crate_deps(ecx: @encode_ctxt, ebml_w: ebml::Writer,
     // but is enough to get transitive crate dependencies working.
     ebml_w.start_tag(tag_crate_deps);
     for get_ordered_deps(ecx, cstore).each |dep| {
-        encode_crate_dep(ecx, ebml_w, dep);
+        encode_crate_dep(ecx, ebml_w, *dep);
     }
     ebml_w.end_tag();
 }
@@ -1149,7 +1149,7 @@ fn encode_metadata(parms: encode_parms, crate: @crate) -> ~[u8] {
 
         do wr.buf.borrow |v| {
             do v.each |e| {
-                if e == 0 {
+                if *e == 0 {
                     ecx.stats.zero_bytes += 1;
                 }
                 true

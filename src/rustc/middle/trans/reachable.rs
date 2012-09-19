@@ -166,7 +166,9 @@ fn traverse_ty(ty: @ty, cx: ctx, v: visit::vt<ctx>) {
           Some(d) => traverse_def_id(cx, def_id_of_def(d)),
           None    => { /* do nothing -- but should we fail here? */ }
         }
-        for p.types.each |t| { v.visit_ty(t, cx, v); };
+        for p.types.each |t| {
+            v.visit_ty(*t, cx, v);
+        }
       }
       _ => visit::visit_ty(ty, cx, v)
     }

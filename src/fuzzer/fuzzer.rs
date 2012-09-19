@@ -33,7 +33,7 @@ fn find_rust_files(files: &mut ~[Path], path: &Path) {
         && !contains(path.to_str(), ~"compile-fail")
         && !contains(path.to_str(), ~"build") {
         for os::list_dir_path(path).each |p| {
-            find_rust_files(files, p);
+            find_rust_files(files, *p);
         }
     }
 }
@@ -463,7 +463,7 @@ fn content_is_dangerous_to_run(code: ~str) -> bool {
          ~"unsafe",
          ~"log"];    // python --> rust pipe deadlock?
 
-    for dangerous_patterns.each |p| { if contains(code, p) { return true; } }
+    for dangerous_patterns.each |p| { if contains(code, *p) { return true; } }
     return false;
 }
 
@@ -471,7 +471,7 @@ fn content_is_dangerous_to_compile(code: ~str) -> bool {
     let dangerous_patterns =
         ~[~"xfail-test"];
 
-    for dangerous_patterns.each |p| { if contains(code, p) { return true; } }
+    for dangerous_patterns.each |p| { if contains(code, *p) { return true; } }
     return false;
 }
 
@@ -487,7 +487,7 @@ fn content_might_not_converge(code: ~str) -> bool {
          ~"\n\n\n\n\n"  // https://github.com/mozilla/rust/issues/850
         ];
 
-    for confusing_patterns.each |p| { if contains(code, p) { return true; } }
+    for confusing_patterns.each |p| { if contains(code, *p) { return true; } }
     return false;
 }
 
@@ -502,7 +502,7 @@ fn file_might_not_converge(filename: &Path) -> bool {
 
 
     for confusing_files.each |f| {
-        if contains(filename.to_str(), f) {
+        if contains(filename.to_str(), *f) {
             return true;
         }
     }
@@ -540,8 +540,8 @@ fn check_roundtrip_convergence(code: @~str, maxIters: uint) {
 fn check_convergence(files: &[Path]) {
     error!("pp convergence tests: %u files", vec::len(files));
     for files.each |file| {
-        if !file_might_not_converge(&file) {
-            let s = @result::get(io::read_whole_file_str(&file));
+        if !file_might_not_converge(file) {
+            let s = @result::get(io::read_whole_file_str(file));
             if !content_might_not_converge(*s) {
                 error!("pp converge: %s", file.to_str());
                 // Change from 7u to 2u once
@@ -555,13 +555,13 @@ fn check_convergence(files: &[Path]) {
 fn check_variants(files: &[Path], cx: context) {
     for files.each |file| {
         if cx.mode == tm_converge &&
-            file_might_not_converge(&file) {
+            file_might_not_converge(file) {
             error!("Skipping convergence test based on\
                     file_might_not_converge");
             loop;
         }
 
-        let s = @result::get(io::read_whole_file_str(&file));
+        let s = @result::get(io::read_whole_file_str(file));
         if contains(*s, ~"#") {
             loop; // Macros are confusing
         }
@@ -572,11 +572,13 @@ fn check_variants(files: &[Path], cx: context) {
             loop;
         }
 
-        log(error, ~"check_variants: " + file.to_str());
+        let file_str = file.to_str();
+
+        log(error, ~"check_variants: " + file_str);
         let sess = parse::new_parse_sess(option::None);
         let crate =
             parse::parse_crate_from_source_str(
-                file.to_str(),
+                file_str,
                 s, ~[], sess);
         io::with_str_reader(*s, |rdr| {
             error!("%s",
@@ -586,12 +588,12 @@ fn check_variants(files: &[Path], cx: context) {
                        syntax::parse::token::mk_fake_ident_interner(),
                        sess.span_diagnostic,
                        crate,
-                       file.to_str(),
+                       file_str,
                        rdr, a,
                        pprust::no_ann(),
-                       false) ))
+                       false)))
         });
-        check_variants_of_ast(*crate, sess.cm, &file, cx);
+        check_variants_of_ast(*crate, sess.cm, file, cx);
     }
 }
 

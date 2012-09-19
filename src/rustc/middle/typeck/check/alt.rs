@@ -23,7 +23,7 @@ fn check_alt(fcx: @fn_ctxt,
             block_region: ty::re_scope(arm.body.node.id)
         };
 
-        for arm.pats.each |p| { check_pat(pcx, p, pattern_ty);}
+        for arm.pats.each |p| { check_pat(pcx, *p, pattern_ty);}
         check_legality_of_move_bindings(fcx,
                                         is_lvalue,
                                         arm.guard.is_some(),
@@ -58,7 +58,7 @@ fn check_legality_of_move_bindings(fcx: @fn_ctxt,
     let mut by_ref = None;
     let mut any_by_move = false;
     for pats.each |pat| {
-        do pat_util::pat_bindings(def_map, pat) |bm, _id, span, _path| {
+        do pat_util::pat_bindings(def_map, *pat) |bm, _id, span, _path| {
             match bm {
                 ast::bind_by_ref(_) | ast::bind_by_implicit_ref => {
                     by_ref = Some(span);
@@ -73,7 +73,7 @@ fn check_legality_of_move_bindings(fcx: @fn_ctxt,
 
     if !any_by_move { return; } // pointless micro-optimization
     for pats.each |pat| {
-        do walk_pat(pat) |p| {
+        do walk_pat(*pat) |p| {
             if !pat_is_variant(def_map, p) {
                 match p.node {
                     ast::pat_ident(ast::bind_by_move, _, sub) => {
@@ -411,7 +411,7 @@ fn check_pat(pcx: pat_ctxt, pat: @ast::pat, expected: ty::t) {
         }
         let mut i = 0u;
         for elts.each |elt| {
-            check_pat(pcx, elt, ex_elts[i]);
+            check_pat(pcx, *elt, ex_elts[i]);
             i += 1u;
         }
 

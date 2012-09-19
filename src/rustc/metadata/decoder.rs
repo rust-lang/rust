@@ -595,7 +595,7 @@ fn get_enum_variants(intr: ident_interner, cdata: cmd, id: ast::node_id,
           _         => { /* empty */ }
         }
         vec::push(infos, @{args: arg_tys, ctor_ty: ctor_ty, name: name,
-                           id: did, disr_val: disr_val});
+                           id: *did, disr_val: disr_val});
         disr_val += 1;
     }
     return infos;
@@ -881,7 +881,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::attribute] {
 fn list_meta_items(intr: ident_interner,
                    meta_items: ebml::Doc, out: io::Writer) {
     for get_meta_items(meta_items).each |mi| {
-        out.write_str(fmt!("%s\n", pprust::meta_item_to_str(mi, intr)));
+        out.write_str(fmt!("%s\n", pprust::meta_item_to_str(*mi, intr)));
     }
 }
 
@@ -890,7 +890,7 @@ fn list_crate_attributes(intr: ident_interner, md: ebml::Doc, hash: ~str,
     out.write_str(fmt!("=Crate Attributes (%s)=\n", hash));
 
     for get_attributes(md).each |attr| {
-        out.write_str(fmt!("%s\n", pprust::attribute_to_str(attr, intr)));
+        out.write_str(fmt!("%s\n", pprust::attribute_to_str(*attr, intr)));
     }
 
     out.write_str(~"\n\n");

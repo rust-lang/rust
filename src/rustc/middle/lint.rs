@@ -278,7 +278,7 @@ impl ctxt {
         let mut triples = ~[];
 
         for [allow, warn, deny, forbid].each |level| {
-            let level_name = level_to_str(level);
+            let level_name = level_to_str(*level);
             let metas =
                 attr::attr_metas(attr::find_attrs_by_name(attrs,
                                                           level_name));
@@ -288,7 +288,7 @@ impl ctxt {
                     for metas.each |meta| {
                         match meta.node {
                           ast::meta_word(lintname) => {
-                            vec::push(triples, (meta, level, lintname));
+                            vec::push(triples, (*meta, *level, lintname));
                           }
                           _ => {
                             self.sess.span_err(
@@ -307,7 +307,7 @@ impl ctxt {
         }
 
         for triples.each |pair| {
-            let (meta, level, lintname) = pair;
+            let (meta, level, lintname) = *pair;
             match self.dict.find(lintname) {
               None => {
                 self.span_lint(
@@ -367,7 +367,7 @@ fn build_settings_crate(sess: session::session, crate: @ast::crate) {
 
     // Install command-line options, overriding defaults.
     for sess.opts.lint_opts.each |pair| {
-        let (lint,level) = pair;
+        let (lint,level) = *pair;
         cx.set_level(lint, level);
     }
 
@@ -534,7 +534,7 @@ fn check_item_heap(cx: ty::ctxt, it: @ast::item) {
             for [managed_heap_memory,
                  owned_heap_memory,
                  heap_memory].each |lint| {
-                check_type_for_lint(cx, lint, node, item, span, ty);
+                check_type_for_lint(cx, *lint, node, item, span, ty);
             }
     }
 

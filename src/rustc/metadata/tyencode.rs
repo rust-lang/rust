@@ -120,7 +120,7 @@ fn enc_substs(w: io::Writer, cx: @ctxt, substs: ty::substs) {
     do enc_opt(w, substs.self_r) |r| { enc_region(w, cx, r) }
     do enc_opt(w, substs.self_ty) |t| { enc_ty(w, cx, t) }
     w.write_char('[');
-    for substs.tps.each |t| { enc_ty(w, cx, t); }
+    for substs.tps.each |t| { enc_ty(w, cx, *t); }
     w.write_char(']');
 }
 
@@ -243,7 +243,7 @@ fn enc_sty(w: io::Writer, cx: @ctxt, st: ty::sty) {
       }
       ty::ty_tup(ts) => {
         w.write_str(&"T[");
-        for ts.each |t| { enc_ty(w, cx, t); }
+        for ts.each |t| { enc_ty(w, cx, *t); }
         w.write_char(']');
       }
       ty::ty_box(mt) => { w.write_char('@'); enc_mt(w, cx, mt); }
@@ -355,7 +355,7 @@ fn enc_ty_fn(w: io::Writer, cx: @ctxt, ft: ty::FnTy) {
     enc_bounds(w, cx, ft.meta.bounds);
     w.write_char('[');
     for ft.sig.inputs.each |arg| {
-        enc_arg(w, cx, arg);
+        enc_arg(w, cx, *arg);
     }
     w.write_char(']');
     match ft.meta.ret_style {

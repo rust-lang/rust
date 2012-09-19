@@ -272,7 +272,7 @@ impl<A: Copy> DVec<A> {
             }
            };
 
-        for ts.each |t| { vec::push(v, t) };
+        for ts.each |t| { vec::push(v, *t) };
            v
         }
     }

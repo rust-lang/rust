@@ -61,7 +61,7 @@ fn to_writer(wr: io::Writer, j: Json) {
                 wr.write_str(~", ");
             }
             first = false;
-            to_writer(wr, item);
+            to_writer(wr, *item);
         };
         wr.write_char(']');
       }
@@ -122,7 +122,7 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
                 wr.write_str(spaces(inner_indent));
             }
             first = false;
-            to_writer_pretty(wr, item, inner_indent);
+            to_writer_pretty(wr, *item, inner_indent);
         };
 
         // ]
@@ -156,7 +156,7 @@ fn to_writer_pretty(wr: io::Writer, j: Json, indent: uint) {
         //   k: v }
         let mut first = true;
         for sorted_pairs.each |kv| {
-            let (key, value) = kv;
+            let (key, value) = *kv;
             if !first {
                 wr.write_str(~",\n");
                 wr.write_str(spaces(inner_indent));

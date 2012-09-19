@@ -838,8 +838,8 @@ impl &mem_categorization_ctxt {
             };
 
             for subpats.each |subpat| {
-                let subcmt = self.cat_variant(subpat, enum_did, cmt);
-                self.cat_pattern(subcmt, subpat, op);
+                let subcmt = self.cat_variant(*subpat, enum_did, cmt);
+                self.cat_pattern(subcmt, *subpat, op);
             }
           }
 
@@ -870,8 +870,8 @@ impl &mem_categorization_ctxt {
           ast::pat_tup(subpats) => {
             // (p1, ..., pN)
             for subpats.each |subpat| {
-                let subcmt = self.cat_tuple_elt(subpat, cmt);
-                self.cat_pattern(subcmt, subpat, op);
+                let subcmt = self.cat_tuple_elt(*subpat, cmt);
+                self.cat_pattern(subcmt, *subpat, op);
             }
           }
 

@@ -6,7 +6,7 @@ fn expand_syntax_ext(cx: ext_ctxt, sp: codemap::span, arg: ast::mac_arg,
     let mut res_str = ~"";
     for args.each |e| {
         res_str += *cx.parse_sess().interner.get(
-            expr_to_ident(cx, e, ~"expected an ident"));
+            expr_to_ident(cx, *e, ~"expected an ident"));
     }
     let res = cx.parse_sess().interner.intern(@res_str);
 

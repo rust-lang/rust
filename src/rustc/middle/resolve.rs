@@ -484,7 +484,7 @@ pure fn is_none<T>(x: Option<T>) -> bool {
 
 fn unused_import_lint_level(session: session) -> level {
     for session.opts.lint_opts.each |lint_option_pair| {
-        let (lint_type, lint_level) = lint_option_pair;
+        let (lint_type, lint_level) = *lint_option_pair;
         if lint_type == unused_imports {
             return lint_level;
         }
@@ -1040,7 +1040,7 @@ impl Resolver {
                      sp);
 
                 for enum_definition.variants.each |variant| {
-                    self.build_reduced_graph_for_variant(variant,
+                    self.build_reduced_graph_for_variant(*variant,
                                                          local_def(item.id),
                                                          new_parent,
                                                          visitor);
@@ -1097,7 +1097,7 @@ impl Resolver {
                 // Add the names of all the methods to the trait info.
                 let method_names = @atom_hashmap();
                 for methods.each |method| {
-                    let ty_m = trait_method_to_ty_method(method);
+                    let ty_m = trait_method_to_ty_method(*method);
 
                     let atom = ty_m.ident;
                     // Add it to the trait info if not static,
@@ -1166,7 +1166,7 @@ impl Resolver {
                                      def_ty(local_def(variant.node.id)),
                                      variant.span);
                 for enum_definition.variants.each |variant| {
-                    self.build_reduced_graph_for_variant(variant, item_id,
+                    self.build_reduced_graph_for_variant(*variant, item_id,
                                                          parent, visitor);
                 }
             }
@@ -1203,7 +1203,7 @@ impl Resolver {
                         view_path_glob(module_ident_path, _) |
                         view_path_list(module_ident_path, _, _) => {
                             for module_ident_path.idents.each |ident| {
-                                (*module_path).push(ident);
+                                (*module_path).push(*ident);
                             }
                         }
                     }
@@ -1466,7 +1466,7 @@ impl Resolver {
               Some(method_names) => {
                 let interned_method_names = @atom_hashmap();
                 for method_names.each |method_data| {
-                    let (method_name, self_ty) = method_data;
+                    let (method_name, self_ty) = *method_data;
                     debug!("(building reduced graph for \
                             external crate) ... adding \
                             trait method '%s'",
@@ -1530,7 +1530,7 @@ impl Resolver {
 
             let mut current_module = root;
             for pieces.each |ident_str| {
-                let ident = self.session.ident_of(ident_str);
+                let ident = self.session.ident_of(*ident_str);
                 // Create or reuse a graph node for the child.
                 let (child_name_bindings, new_parent) =
                     self.add_child(ident,
@@ -1542,7 +1542,7 @@ impl Resolver {
                 match child_name_bindings.module_def {
                     NoModuleDef => {
                         debug!("(building reduced graph for external crate) \
-                                autovivifying %s", ident_str);
+                                autovivifying %s", *ident_str);
                         let parent_link = self.get_parent_link(new_parent,
                                                                ident);
                         (*child_name_bindings).define_module(parent_link,
@@ -1667,7 +1667,7 @@ impl Resolver {
         self.resolve_imports_for_module(module_);
 
         for module_.children.each |_name, child_node| {
-            match (*child_node).get_module_if_available() {
+            match child_node.get_module_if_available() {
                 None => {
                     // Nothing to do.
                 }
@@ -1724,7 +1724,7 @@ impl Resolver {
             } else {
                 result += ~"::";
             }
-            result += self.session.str_of(atom);
+            result += self.session.str_of(*atom);
         }
         // XXX: Shouldn't copy here. We need string builder functionality.
         return result;
@@ -2757,7 +2757,7 @@ impl Resolver {
 
         // Descend into children and anonymous children.
         for module_.children.each |_name, child_node| {
-            match (*child_node).get_module_if_available() {
+            match child_node.get_module_if_available() {
                 None => {
                     // Continue.
                 }
@@ -2809,7 +2809,7 @@ impl Resolver {
         self.record_exports_for_module(module_);
 
         for module_.children.each |_atom, child_name_bindings| {
-            match (*child_name_bindings).get_module_if_available() {
+            match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
                 }
@@ -2830,9 +2830,9 @@ impl Resolver {
             let mut exports = ~[];
             for self.namespaces.each |namespace| {
                 match self.resolve_definition_of_name_in_module(module_,
-                                                              name,
-                                                              namespace,
-                                                              Xray) {
+                                                                name,
+                                                                *namespace,
+                                                                Xray) {
                     NoNameDefinition => {
                         // Nothing to do.
                     }
@@ -3158,7 +3158,7 @@ impl Resolver {
                         //
                         // XXX: Do we need a node ID here?
 
-                        match method {
+                        match *method {
                           required(ty_m) => {
                             do self.with_type_parameter_rib
                                 (HasTypeParameters(&ty_m.tps,
@@ -3222,12 +3222,12 @@ impl Resolver {
                                                        OpaqueFunctionRibKind))
                                         || {
 
-                                    visit_foreign_item(foreign_item, (),
+                                    visit_foreign_item(*foreign_item, (),
                                                        visitor);
                                 }
                             }
                             foreign_item_const(_) => {
-                                visit_foreign_item(foreign_item, (),
+                                visit_foreign_item(*foreign_item, (),
                                                    visitor);
                             }
                         }
@@ -3338,9 +3338,9 @@ impl Resolver {
                 // Resolve each captured item.
                 for (*capture_clause).each |capture_item| {
                     match self.resolve_identifier(capture_item.name,
-                                                ValueNS,
-                                                true,
-                                                capture_item.span) {
+                                                  ValueNS,
+                                                  true,
+                                                  capture_item.span) {
                         None => {
                             self.session.span_err(capture_item.span,
                                                   ~"unresolved name in \
@@ -3422,8 +3422,8 @@ impl Resolver {
                                visitor: ResolveVisitor) {
 
         for type_parameters.each |type_parameter| {
-            for (*type_parameter.bounds).each |bound| {
-                match bound {
+            for type_parameter.bounds.each |bound| {
+                match *bound {
                     bound_copy | bound_send | bound_const | bound_owned => {
                         // Nothing to do.
                     }
@@ -3482,7 +3482,7 @@ impl Resolver {
             // Resolve methods.
             for methods.each |method| {
                 self.resolve_method(MethodRibKind(id, Provided(method.id)),
-                                    method,
+                                    *method,
                                     outer_type_parameter_count,
                                     visitor);
             }
@@ -3605,7 +3605,7 @@ impl Resolver {
                 // We also need a new scope for the method-specific
                 // type parameters.
                 self.resolve_method(MethodRibKind(id, Provided(method.id)),
-                                    method,
+                                    *method,
                                     outer_type_parameter_count,
                                     visitor);
 /*
@@ -3718,7 +3718,7 @@ impl Resolver {
 
         let bindings_list = atom_hashmap();
         for arm.pats.each |pattern| {
-            self.resolve_pattern(pattern, RefutableMode, Immutable,
+            self.resolve_pattern(*pattern, RefutableMode, Immutable,
                                  Some(bindings_list), visitor);
         }
 
@@ -3939,7 +3939,7 @@ impl Resolver {
 
                     // Check the types in the path pattern.
                     for path.types.each |ty| {
-                        self.resolve_type(ty, visitor);
+                        self.resolve_type(*ty, visitor);
                     }
                 }
 
@@ -3964,7 +3964,7 @@ impl Resolver {
 
                     // Check the types in the path pattern.
                     for path.types.each |ty| {
-                        self.resolve_type(ty, visitor);
+                        self.resolve_type(*ty, visitor);
                     }
                 }
 
@@ -4057,7 +4057,7 @@ impl Resolver {
 
         // First, resolve the types.
         for path.types.each |ty| {
-            self.resolve_type(ty, visitor);
+            self.resolve_type(*ty, visitor);
         }
 
         if path.global {
@@ -4583,7 +4583,7 @@ impl Resolver {
                 Some(trait_def_ids) => {
                     for trait_def_ids.each |trait_def_id| {
                         self.add_trait_info_if_containing_method
-                            (found_traits, trait_def_id, name);
+                            (found_traits, *trait_def_id, name);
                     }
                 }
                 None => {

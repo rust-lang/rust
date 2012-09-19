@@ -178,7 +178,7 @@ impl CoherenceChecker {
                                 trait `%s` with id %d",
                                 sess.str_of(item.ident), item.id);
 
-                        match trait_method {
+                        match *trait_method {
                             required(_) => { /* fall through */}
                             provided(m) => {
                                 // For every provided method in the
@@ -293,7 +293,7 @@ impl CoherenceChecker {
 
         for associated_traits.each |associated_trait| {
             let trait_did =
-                self.trait_ref_to_trait_def_id(associated_trait);
+                self.trait_ref_to_trait_def_id(*associated_trait);
             debug!("(checking implementation) adding impl for trait \
                     '%s', item '%s'",
                     ast_map::node_id_to_str(
@@ -547,7 +547,7 @@ impl CoherenceChecker {
                     debug!(
                         "(creating impl) adding provided method `%s` to impl",
                         sess.str_of(provided_method.ident));
-                    push(methods, provided_method);
+                    push(methods, *provided_method);
                 }
             }
 
@@ -560,7 +560,7 @@ impl CoherenceChecker {
 
                 for ast_methods.each |ast_method| {
                     push(methods,
-                         method_to_MethodInfo(ast_method));
+                         method_to_MethodInfo(*ast_method));
                 }
 
                 // For each trait that the impl implements, see what
@@ -569,7 +569,8 @@ impl CoherenceChecker {
                 // impl, use the provided definition in the trait.
                 for trait_refs.each |trait_ref| {
 
-                    let trait_did = self.trait_ref_to_trait_def_id(trait_ref);
+                    let trait_did =
+                        self.trait_ref_to_trait_def_id(*trait_ref);
 
                     match self.crate_context.provided_methods_map
                         .find(trait_did.node) {
@@ -694,9 +695,9 @@ impl CoherenceChecker {
 
             // Record all the trait methods.
             for associated_traits.each |trait_type| {
-                match get(trait_type).sty {
+                match get(*trait_type).sty {
                     ty_trait(trait_id, _, _) => {
-                        self.add_trait_method(trait_id, implementation);
+                        self.add_trait_method(trait_id, *implementation);
                     }
                     _ => {
                         self.crate_context.tcx.sess.bug(~"trait type \
@@ -718,7 +719,7 @@ impl CoherenceChecker {
                 }
                 Some(base_type_def_id) => {
                     self.add_inherent_method(base_type_def_id,
-                                             implementation);
+                                             *implementation);
 
                     self.base_type_def_ids.insert(implementation.did,
                                                   base_type_def_id);

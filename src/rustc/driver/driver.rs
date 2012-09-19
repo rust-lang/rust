@@ -93,7 +93,9 @@ fn parse_cfgspecs(cfgspecs: ~[~str]) -> ast::crate_cfg {
     // varieties of meta_item here. At the moment we just support the
     // meta_word variant.
     let mut words = ~[];
-    for cfgspecs.each |s| { vec::push(words, attr::mk_word_item(s)); }
+    for cfgspecs.each |s| {
+        vec::push(words, attr::mk_word_item(*s));
+    }
     return words;
 }
 
@@ -453,19 +455,19 @@ fn build_session_options(binary: ~str,
     let mut lint_opts = ~[];
     let lint_dict = lint::get_lint_dict();
     for lint_levels.each |level| {
-        let level_name = lint::level_to_str(level);
+        let level_name = lint::level_to_str(*level);
         let level_short = level_name.substr(0,1).to_upper();
         let flags = vec::append(getopts::opt_strs(matches, level_short),
                                 getopts::opt_strs(matches, level_name));
         for flags.each |lint_name| {
-            let lint_name = str::replace(lint_name, ~"-", ~"_");
+            let lint_name = str::replace(*lint_name, ~"-", ~"_");
             match lint_dict.find(lint_name) {
               None => {
                 early_error(demitter, fmt!("unknown %s flag: %s",
                                            level_name, lint_name));
               }
               Some(lint) => {
-                vec::push(lint_opts, (lint.lint, level));
+                vec::push(lint_opts, (lint.lint, *level));
               }
             }
         }
@@ -477,11 +479,11 @@ fn build_session_options(binary: ~str,
     for debug_flags.each |debug_flag| {
         let mut this_bit = 0u;
         for debug_map.each |pair| {
-            let (name, _, bit) = pair;
-            if name == debug_flag { this_bit = bit; break; }
+            let (name, _, bit) = *pair;
+            if name == *debug_flag { this_bit = bit; break; }
         }
         if this_bit == 0u {
-            early_error(demitter, fmt!("unknown debug flag: %s", debug_flag))
+            early_error(demitter, fmt!("unknown debug flag: %s", *debug_flag))
         }
         debugging_opts |= this_bit;
     }

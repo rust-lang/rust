@@ -153,7 +153,8 @@ mod map_reduce {
         for inputs.each |i| {
             let (ctrl, ctrl_server) = ctrl_proto::init();
             let ctrl = box(ctrl);
-            vec::push(tasks, spawn_joinable(|| map_task(map, ctrl, i) ));
+            let i = copy *i;
+            vec::push(tasks, spawn_joinable(|move i| map_task(map, ctrl, i)));
             vec::push(ctrls, ctrl_server);
         }
         return tasks;
@@ -283,7 +284,7 @@ mod map_reduce {
 
         for reducers.each_value |v| { send(v, done) }
 
-        for tasks.each |t| { join(t); }
+        for tasks.each |t| { join(*t); }
     }
 }
 

@@ -495,7 +495,7 @@ fn visit_local(local: @local, &&self: @IrMaps, vt: vt<@IrMaps>) {
 fn visit_arm(arm: arm, &&self: @IrMaps, vt: vt<@IrMaps>) {
     let def_map = self.tcx.def_map;
     for arm.pats.each |pat| {
-        do pat_util::pat_bindings(def_map, pat) |bm, p_id, sp, path| {
+        do pat_util::pat_bindings(def_map, *pat) |bm, p_id, sp, path| {
             debug!("adding local variable %d from match with bm %?",
                    p_id, bm);
             let name = ast_util::path_to_ident(path);
@@ -1524,7 +1524,7 @@ fn check_expr(expr: @expr, &&self: @Liveness, vt: vt<@Liveness>) {
       expr_path(_) => {
         for self.variable_from_def_map(expr.id, expr.span).each |var| {
             let ln = self.live_node(expr.id, expr.span);
-            self.consider_last_use(expr, ln, var);
+            self.consider_last_use(expr, ln, *var);
         }
 
         visit::visit_expr(expr, self, vt);
@@ -1911,11 +1911,11 @@ impl @Liveness {
                     // FIXME(#3266)--make liveness warnings lintable
                     self.tcx.sess.span_warn(
                         sp, fmt!("variable `%s` is assigned to, \
-                                  but never used", name));
+                                  but never used", *name));
                 } else {
                     // FIXME(#3266)--make liveness warnings lintable
                     self.tcx.sess.span_warn(
-                        sp, fmt!("unused variable: `%s`", name));
+                        sp, fmt!("unused variable: `%s`", *name));
                 }
             }
             return true;
@@ -1929,7 +1929,7 @@ impl @Liveness {
                 // FIXME(#3266)--make liveness warnings lintable
                 self.tcx.sess.span_warn(
                     sp,
-                    fmt!("value assigned to `%s` is never read", name));
+                    fmt!("value assigned to `%s` is never read", *name));
             }
         }
     }

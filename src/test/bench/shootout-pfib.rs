@@ -78,7 +78,7 @@ fn stress(num_tasks: int) {
             stress_task(i);
         }
     }
-    for results.each |r| { future::get(&r); }
+    for results.each |r| { future::get(r); }
 }
 
 fn main(args: ~[~str]) {

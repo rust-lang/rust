@@ -347,8 +347,8 @@ fn write_mod_contents(
         write_index(ctxt, option::get(doc.index));
     }
 
-    for doc.items.each |ItemTag| {
-        write_item(ctxt, ItemTag);
+    for doc.items.each |itemTag| {
+        write_item(ctxt, *itemTag);
     }
 }
 
@@ -451,8 +451,8 @@ fn write_nmod(ctxt: Ctxt, doc: doc::NmodDoc) {
     }
 
     for doc.fns.each |FnDoc| {
-        write_item_header(ctxt, doc::FnTag(FnDoc));
-        write_fn(ctxt, FnDoc);
+        write_item_header(ctxt, doc::FnTag(*FnDoc));
+        write_fn(ctxt, *FnDoc);
     }
 }
 

@@ -91,7 +91,7 @@ fn attr_meta(attr: ast::attribute) -> @ast::meta_item { @attr.node.value }
 // Get the meta_items from inside a vector of attributes
 fn attr_metas(attrs: ~[ast::attribute]) -> ~[@ast::meta_item] {
     let mut mitems = ~[];
-    for attrs.each |a| { vec::push(mitems, attr_meta(a)); }
+    for attrs.each |a| { vec::push(mitems, attr_meta(*a)); }
     return mitems;
 }
 
@@ -189,7 +189,7 @@ fn find_meta_items_by_name(metas: ~[@ast::meta_item], name: ~str) ->
  */
 fn contains(haystack: ~[@ast::meta_item], needle: @ast::meta_item) -> bool {
     for haystack.each |item| {
-        if eq(item, needle) { return true; }
+        if eq(*item, needle) { return true; }
     }
     return false;
 }
@@ -370,7 +370,7 @@ fn require_unique_names(diagnostic: span_handler,
                         metas: ~[@ast::meta_item]) {
     let map = map::HashMap();
     for metas.each |meta| {
-        let name = get_meta_item_name(meta);
+        let name = get_meta_item_name(*meta);
 
         // FIXME: How do I silence the warnings? --pcw (#2619)
         if map.contains_key(name) {

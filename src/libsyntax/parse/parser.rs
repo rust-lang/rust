@@ -2244,7 +2244,7 @@ impl parser {
                                             IMPORTS_AND_ITEMS_ALLOWED);
 
         for items.each |item| {
-            let decl = @spanned(item.span.lo, item.span.hi, decl_item(item));
+            let decl = @spanned(item.span.lo, item.span.hi, decl_item(*item));
             push(stmts, @spanned(item.span.lo, item.span.hi,
                                  stmt_decl(decl, self.get_id())));
         }
@@ -2699,7 +2699,7 @@ impl parser {
                   }
                   members(mms) => {
                     for mms.each |mm| {
-                        match mm {
+                        match *mm {
                             @field_member(struct_field) =>
                                 vec::push(fields, struct_field),
                             @method_member(the_method_member) =>
@@ -3090,7 +3090,7 @@ impl parser {
                 }
                 members(mms) => {
                     for mms.each |mm| {
-                        match mm {
+                        match *mm {
                             @field_member(struct_field) =>
                                 vec::push(fields, struct_field),
                             @method_member(the_method_member) =>
@@ -3163,7 +3163,7 @@ impl parser {
                         seq_sep_trailing_disallowed(token::COMMA),
                         |p| p.parse_ty(false));
                     for arg_tys.each |ty| {
-                        vec::push(args, {ty: ty, id: self.get_id()});
+                        vec::push(args, {ty: *ty, id: self.get_id()});
                     }
                     kind = tuple_variant_kind(args);
                 } else if self.eat(token::EQ) {

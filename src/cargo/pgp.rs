@@ -95,7 +95,7 @@ fn verify(root: &Path, data: &Path, sig: &Path, keyfp: ~str) -> bool {
                   ~"--verify", sig.to_str(),
                  data.to_str()]);
     let res = ~"Primary key fingerprint: " + keyfp;
-    for str::split_char(p.err, '\n').each |line| {
+    for str::split_char_each(p.err, '\n') |line| {
         if line == res { return true; }
     }
     return false;

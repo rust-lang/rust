@@ -453,7 +453,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
 
         let cms = convert_methods(ccx, ms, rp, i_bounds);
         for trait_ref.each |t| {
-            check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
+            check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
         }
       }
       ast::item_trait(tps, _, trait_methods) => {
@@ -469,7 +469,7 @@ fn convert(ccx: @crate_ctxt, it: @ast::item) {
         // FIXME (#2616): something like this, when we start having
         // trait inheritance?
         // for trait_ref.each |t| {
-        // check_methods_against_trait(ccx, tps, rp, selfty, t, cms);
+        // check_methods_against_trait(ccx, tps, rp, selfty, *t, cms);
         // }
       }
       ast::item_class(struct_def, tps) => {
@@ -539,13 +539,13 @@ fn convert_struct(ccx: @crate_ctxt,
 
     // Write the type of each of the members
     for struct_def.fields.each |f| {
-       convert_field(ccx, rp, tpt.bounds, f);
+       convert_field(ccx, rp, tpt.bounds, *f);
     }
     let {bounds, substs} = mk_substs(ccx, tps, rp);
     let selfty = ty::mk_class(tcx, local_def(id), substs);
     let cms = convert_methods(ccx, struct_def.methods, rp, bounds);
     for struct_def.traits.each |trait_ref| {
-        check_methods_against_trait(ccx, tps, rp, selfty, trait_ref, cms);
+        check_methods_against_trait(ccx, tps, rp, selfty, *trait_ref, cms);
         // trait_ref.impl_id represents (class, trait) pair
         write_ty_to_tcx(tcx, trait_ref.impl_id, tpt.ty);
         tcx.tcache.insert(local_def(trait_ref.impl_id), tpt);

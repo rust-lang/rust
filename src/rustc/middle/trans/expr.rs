@@ -687,7 +687,7 @@ fn trans_lvalue_unadjusted(bcx: block, expr: @ast::expr) -> DatumBlock {
     // at the end of the scope with id `scope_id`:
     let root_key = {id:expr.id, derefs:0u};
     for bcx.ccx().maps.root_map.find(root_key).each |scope_id| {
-        unrooted_datum.root(bcx, scope_id);
+        unrooted_datum.root(bcx, *scope_id);
     }
 
     return DatumBlock {bcx: bcx, datum: unrooted_datum};
@@ -996,7 +996,7 @@ fn trans_rec_or_struct(bcx: block,
         // functional record update)
         for base.each |base_expr| {
             let base_datum = unpack_datum!(
-                bcx, trans_to_datum(bcx, base_expr));
+                bcx, trans_to_datum(bcx, *base_expr));
 
             // Copy over inherited fields
             for field_tys.eachi |i, field_ty| {
@@ -1017,7 +1017,9 @@ fn trans_rec_or_struct(bcx: block,
 
         // Now revoke the cleanups as we pass responsibility for the data
         // structure on to the caller
-        for temp_cleanups.each |cleanup| { revoke_clean(bcx, cleanup); }
+        for temp_cleanups.each |cleanup| {
+            revoke_clean(bcx, *cleanup);
+        }
         bcx
     }
 }

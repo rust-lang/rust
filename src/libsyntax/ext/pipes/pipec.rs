@@ -202,7 +202,7 @@ impl state: to_type_decls {
         let mut items_msg = ~[];
 
         for self.messages.each |m| {
-            let message(name, span, tys, this, next) = m;
+            let message(name, span, tys, this, next) = *m;
 
             let tys = match next {
               Some({state: next, tys: next_tys}) => {
@@ -366,7 +366,7 @@ impl protocol: gen_init {
         for (copy self.states).each |s| {
             for s.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
-                  None => vec::push(params, tp),
+                  None => vec::push(params, *tp),
                   _ => ()
                 }
             }
@@ -382,7 +382,7 @@ impl protocol: gen_init {
         let fields = do (copy self.states).map_to_vec |s| {
             for s.ty_params.each |tp| {
                 match params.find(|tpp| tp.ident == tpp.ident) {
-                  None => vec::push(params, tp),
+                  None => vec::push(params, *tp),
                   _ => ()
                 }
             }

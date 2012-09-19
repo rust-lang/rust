@@ -46,7 +46,7 @@ impl nominal_id_ : to_bytes::IterBytes {
     pure fn iter_bytes(lsb0: bool, f: to_bytes::Cb) {
         to_bytes::iter_bytes_2(&self.did, &self.parent_id, lsb0, f);
         for self.tps.each |t| {
-            ty::type_id(t).iter_bytes(lsb0, f);
+            ty::type_id(*t).iter_bytes(lsb0, f);
         }
     }
 }
@@ -415,7 +415,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
     let mut inf_sz = 0u16;
     for enum_variants.each |variants| {
-        let num_variants = vec::len(*variants) as u16;
+        let num_variants = vec::len(**variants) as u16;
         add_u16(header, header_sz + inf_sz);
         inf_sz += 2u16 * (num_variants + 2u16) + 3u16;
     }
@@ -427,31 +427,29 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     let mut lv_table = ~[];
     let mut i = 0u;
     for enum_variants.each |variants| {
-        add_u16(inf, vec::len(*variants) as u16);
+        add_u16(inf, vec::len(**variants) as u16);
 
         // Construct the largest-variants table.
         add_u16(inf,
                 header_sz + inf_sz + data_sz + (vec::len(lv_table) as u16));
 
-        let lv = largest_variants(ccx, variants);
+        let lv = largest_variants(ccx, *variants);
         add_u16(lv_table, vec::len(lv) as u16);
         for vec::each(lv) |v| { add_u16(lv_table, *v as u16); }
 
         // Determine whether the enum has dynamic size.
-        assert !vec::any(*variants, |v| {
-            vec::any(v.args, |t| ty::type_has_params(t))
-        });
+        assert !variants.any(|v| v.args.any(|t| ty::type_has_params(t)));
 
         // If we can, write in the static size and alignment of the enum.
         // Otherwise, write a placeholder.
-        let size_align = compute_static_enum_size(ccx, lv, variants);
+        let size_align = compute_static_enum_size(ccx, lv, *variants);
 
         // Write in the static size and alignment of the enum.
         add_u16(inf, size_align.size);
         inf += ~[size_align.align];
 
         // Now write in the offset of each variant.
-        for vec::each(*variants) |_v| {
+        for variants.each |_v| {
             add_u16(inf, header_sz + inf_sz + offsets[i]);
             i += 1u;
         }
@@ -584,7 +582,7 @@ fn gen_resource_shapes(ccx: @crate_ctxt) -> ValueRef {
     let len = ccx.shape_cx.resources.len();
     for uint::range(0u, len) |i| {
         let ri = ccx.shape_cx.resources.get(i);
-        for ri.tps.each() |s| { assert !ty::type_has_params(s); }
+        for ri.tps.each() |s| { assert !ty::type_has_params(*s); }
         do option::iter(ri.parent_id) |id| {
             dtors += ~[trans::base::get_res_dtor(ccx, ri.did, id, ri.tps)];
         }
@@ -613,7 +611,7 @@ fn force_declare_tydescs(ccx: @crate_ctxt) {
     let len = ccx.shape_cx.resources.len();
     for uint::range(0u, len) |i| {
         let ri = ccx.shape_cx.resources.get(i);
-        for ri.tps.each() |s| { assert !ty::type_has_params(s); }
+        for ri.tps.each() |s| { assert !ty::type_has_params(*s); }
         do option::iter(ri.parent_id) |id| {
             trans::base::get_res_dtor(ccx, ri.did, id, ri.tps);
         }

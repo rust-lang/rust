@@ -150,7 +150,7 @@ fn visit_item(e: env, i: @ast::item) {
         }
 
         for link_args.each |a| {
-            match attr::get_meta_item_value_str(attr::attr_meta(a)) {
+            match attr::get_meta_item_value_str(attr::attr_meta(*a)) {
               Some(linkarg) => {
                 cstore::add_used_link_args(cstore, linkarg);
               }

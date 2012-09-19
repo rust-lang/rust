@@ -428,7 +428,7 @@ fn check_no_duplicate_fields(tcx: ty::ctxt, fields:
     let field_names = HashMap();
 
     for fields.each |p| {
-        let (id, sp) = p;
+        let (id, sp) = *p;
         match field_names.find(id) {
           Some(orig_sp) => {
             tcx.sess.span_err(sp, fmt!("Duplicate field \
@@ -477,7 +477,7 @@ fn check_struct(ccx: @crate_ctxt, struct_def: @ast::struct_def,
 
     // typecheck the methods
     for struct_def.methods.each |m| {
-        check_method(ccx, m, self_ty, local_def(id));
+        check_method(ccx, *m, self_ty, local_def(id));
     }
     // Check that there's at least one field
     if struct_def.fields.len() < 1u {
@@ -507,12 +507,12 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
                ccx.tcx.sess.str_of(it.ident), it.id, rp);
         let self_ty = ccx.to_ty(rscope::type_rscope(rp), ty);
         for ms.each |m| {
-            check_method(ccx, m, self_ty, local_def(it.id));
+            check_method(ccx, *m, self_ty, local_def(it.id));
         }
       }
       ast::item_trait(_, _, trait_methods) => {
         for trait_methods.each |trait_method| {
-            match trait_method {
+            match *trait_method {
               required(*) => {
                 // Nothing to do, since required methods don't have
                 // bodies to check.
@@ -542,7 +542,7 @@ fn check_item(ccx: @crate_ctxt, it: @ast::item) {
         if syntax::attr::foreign_abi(it.attrs) ==
             either::Right(ast::foreign_abi_rust_intrinsic) {
             for m.items.each |item| {
-                check_intrinsic_type(ccx, item);
+                check_intrinsic_type(ccx, *item);
             }
         } else {
             for m.items.each |item| {
@@ -868,7 +868,7 @@ fn check_expr(fcx: @fn_ctxt, expr: @ast::expr,
               expected: Option<ty::t>) -> bool {
     return do check_expr_with_unifier(fcx, expr, expected) {
         for expected.each |t| {
-            demand::suptype(fcx, expr.span, t, fcx.expr_ty(expr));
+            demand::suptype(fcx, expr.span, *t, fcx.expr_ty(expr));
         }
     };
 }
@@ -1024,6 +1024,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
         // of arguments when we typecheck the functions. This isn't really the
         // right way to do this.
         for [false, true]/_.each |check_blocks| {
+            let check_blocks = *check_blocks;
             debug!("check_blocks=%b", check_blocks);
 
             // More awful hacks: before we check the blocks, try to do
@@ -1442,7 +1443,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
           ast::expr_vec(args, mutbl) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vec::len(args), vst);
             let t: ty::t = fcx.infcx().next_ty_var();
-            for args.each |e| { bot |= check_expr_with(fcx, e, t); }
+            for args.each |e| { bot |= check_expr_with(fcx, *e, t); }
             ty::mk_evec(tcx, {ty: t, mutbl: mutbl}, tt)
           }
           ast::expr_repeat(element, count_expr, mutbl) => {
@@ -1813,7 +1814,7 @@ fn check_expr_with_unifier(fcx: @fn_ctxt,
       }
       ast::expr_vec(args, mutbl) => {
         let t: ty::t = fcx.infcx().next_ty_var();
-        for args.each |e| { bot |= check_expr_with(fcx, e, t); }
+        for args.each |e| { bot |= check_expr_with(fcx, *e, t); }
         let typ = ty::mk_evec(tcx, {ty: t, mutbl: mutbl},
                               ty::vstore_fixed(args.len()));
         fcx.write_ty(id, typ);
@@ -2138,7 +2139,7 @@ fn check_stmt(fcx: @fn_ctxt, stmt: @ast::stmt) -> bool {
         node_id = id;
         match decl.node {
           ast::decl_local(ls) => for ls.each |l| {
-            bot |= check_decl_local(fcx, l);
+            bot |= check_decl_local(fcx, *l);
           },
           ast::decl_item(_) => {/* ignore for now */ }
         }
@@ -2186,7 +2187,7 @@ fn check_block(fcx0: @fn_ctxt, blk: ast::blk) -> bool {
                 fcx.ccx.tcx.sess.span_warn(s.span, ~"unreachable statement");
                 warned = true;
             }
-            bot |= check_stmt(fcx, s);
+            bot |= check_stmt(fcx, *s);
         }
         match blk.node.expr {
           None => fcx.write_nil(blk.node.id),

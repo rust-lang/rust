@@ -70,7 +70,7 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     pure fn size() -> uint {
         let mut sz = 0u;
         for self.v.each |item| {
-            match item {
+            match *item {
               Some(_) => sz += 1u,
               _ => ()
             }

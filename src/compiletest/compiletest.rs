@@ -138,7 +138,7 @@ fn make_tests(config: config) -> ~[test::TestDesc] {
            config.src_base.to_str());
     let mut tests = ~[];
     for os::list_dir_path(&config.src_base).each |file| {
-        let file = copy file;
+        let file = copy *file;
         debug!("inspecting file %s", file.to_str());
         if is_test(config, file) {
             vec::push(tests, make_test(config, file))
@@ -160,11 +160,11 @@ fn is_test(config: config, testfile: &Path) -> bool {
     let mut valid = false;
 
     for valid_extensions.each |ext| {
-        if str::ends_with(name, ext) { valid = true; }
+        if str::ends_with(name, *ext) { valid = true; }
     }
 
     for invalid_prefixes.each |pre| {
-        if str::starts_with(name, pre) { valid = false; }
+        if str::starts_with(name, *pre) { valid = false; }
     }
 
     return valid;

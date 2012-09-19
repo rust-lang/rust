@@ -111,7 +111,7 @@ fn describe_warnings() {
 fn describe_debug_flags() {
     io::println(fmt!("\nAvailable debug options:\n"));
     for session::debugging_opts_map().each |pair| {
-        let (name, desc, _) = pair;
+        let (name, desc, _) = *pair;
         io::println(fmt!("    -Z%-20s -- %s", name, desc));
     }
 }
@@ -267,7 +267,7 @@ fn monitor(+f: fn~(diagnostic::emitter)) {
                      to get further details and report the results \
                      to github.com/mozilla/rust/issues"
                 ]/_.each |note| {
-                    diagnostic::emit(None, note, diagnostic::note)
+                    diagnostic::emit(None, *note, diagnostic::note)
                 }
             }
             // Fail so the process returns a failure code

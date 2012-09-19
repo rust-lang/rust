@@ -172,7 +172,7 @@ fn minimize_rpaths(rpaths: &[Path]) -> ~[Path] {
     for rpaths.each |rpath| {
         let s = rpath.to_str();
         if !set.contains_key(s) {
-            vec::push(minimized, rpath);
+            vec::push(minimized, *rpath);
             set.insert(s, ());
         }
     }

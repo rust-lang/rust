@@ -78,12 +78,12 @@ fn compute_capture_vars(tcx: ty::ctxt,
             if vec::any(*freevars, |fv| fv.def == cap_def ) {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
-                                            cap_item: Some(cap_item),
+                                            cap_item: Some(*cap_item),
                                             mode:cap_move});
             } else {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
-                                            cap_item: Some(cap_item),
+                                            cap_item: Some(*cap_item),
                                             mode:cap_drop});
             }
         } else {
@@ -92,7 +92,7 @@ fn compute_capture_vars(tcx: ty::ctxt,
             if vec::any(*freevars, |fv| fv.def == cap_def ) {
                 cap_map.insert(cap_def_id, {def:cap_def,
                                             span: cap_item.span,
-                                            cap_item: Some(cap_item),
+                                            cap_item: Some(*cap_item),
                                             mode:cap_copy});
             }
         }

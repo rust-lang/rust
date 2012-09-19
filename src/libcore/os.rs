@@ -529,7 +529,7 @@ fn walk_dir(p: &Path, f: fn((&Path)) -> bool) {
     fn walk_dir_(p: &Path, f: fn((&Path)) -> bool) -> bool {
         let mut keepgoing = true;
         do list_dir(p).each |q| {
-            let path = &p.push(q);
+            let path = &p.push(*q);
             if !f(path) {
                 keepgoing = false;
                 false

@@ -8,12 +8,12 @@ type IMPL_T<A> = dlist::DList<A>;
  * e.g. breadth-first search with in-place enqueues), but removing the current
  * node is forbidden.
  */
-pure fn EACH<A>(self: IMPL_T<A>, f: fn(A) -> bool) {
+pure fn EACH<A>(self: IMPL_T<A>, f: fn(v: &A) -> bool) {
     let mut link = self.peek_n();
     while option::is_some(link) {
         let nobe = option::get(link);
         assert nobe.linked;
-        if !f(nobe.data) { break; }
+        if !f(&nobe.data) { break; }
         // Check (weakly) that the user didn't do a remove.
         if self.size == 0 {
             fail ~"The dlist became empty during iteration??"

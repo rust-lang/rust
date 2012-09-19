@@ -30,7 +30,8 @@ mod map_reduce {
 
     fn start_mappers(ctrl: Chan<ctrl_proto>, inputs: ~[~str]) {
         for inputs.each |i| {
-            task::spawn(|| map_task(ctrl, i) );
+            let i = *i;
+            task::spawn(|move i| map_task(ctrl, i) );
         }
     }
 

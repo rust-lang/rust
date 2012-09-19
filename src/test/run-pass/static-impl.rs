@@ -36,10 +36,10 @@ trait vec_utils<T> {
 
 impl<T> ~[T]: vec_utils<T> {
     fn length_() -> uint { vec::len(self) }
-    fn iter_(f: fn(T)) { for self.each |x| { f(x); } }
+    fn iter_(f: fn(T)) { for self.each |x| { f(*x); } }
     fn map_<U: Copy>(f: fn(T) -> U) -> ~[U] {
         let mut r = ~[];
-        for self.each |elt| { r += ~[f(elt)]; }
+        for self.each |elt| { r += ~[f(*elt)]; }
         r
     }
 }

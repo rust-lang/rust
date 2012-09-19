@@ -10,7 +10,7 @@ use cmp::{Eq, Ord};
 type InitOp<T> = fn(uint) -> T;
 
 trait BaseIter<A> {
-    pure fn each(blk: fn(A) -> bool);
+    pure fn each(blk: fn(v: &A) -> bool);
     pure fn size_hint() -> Option<uint>;
 }
 
@@ -69,21 +69,21 @@ trait Buildable<A> {
 pure fn eachi<A,IA:BaseIter<A>>(self: IA, blk: fn(uint, A) -> bool) {
     let mut i = 0u;
     for self.each |a| {
-        if !blk(i, a) { break; }
+        if !blk(i, *a) { break; }
         i += 1u;
     }
 }
 
 pure fn all<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
-        if !blk(a) { return false; }
+        if !blk(*a) { return false; }
     }
     return true;
 }
 
 pure fn any<A,IA:BaseIter<A>>(self: IA, blk: fn(A) -> bool) -> bool {
     for self.each |a| {
-        if blk(a) { return true; }
+        if blk(*a) { return true; }
     }
     return false;
 }
@@ -92,7 +92,7 @@ pure fn filter_to_vec<A:Copy,IA:BaseIter<A>>(self: IA,
                                          prd: fn(A) -> bool) -> ~[A] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
-            if prd(a) { push(a); }
+            if prd(*a) { push(*a); }
         }
     }
 }
@@ -101,7 +101,7 @@ pure fn map_to_vec<A:Copy,B,IA:BaseIter<A>>(self: IA, op: fn(A) -> B)
     -> ~[B] {
     do vec::build_sized_opt(self.size_hint()) |push| {
         for self.each |a| {
-            push(op(a));
+            push(op(*a));
         }
     }
 }
@@ -111,8 +111,8 @@ pure fn flat_map_to_vec<A:Copy,B:Copy,IA:BaseIter<A>,IB:BaseIter<B>>(
 
     do vec::build |push| {
         for self.each |a| {
-            for op(a).each |b| {
-                push(b);
+            for op(*a).each |b| {
+                push(*b);
             }
         }
     }
@@ -121,7 +121,7 @@ pure fn flat_map_to_vec<A:Copy,B:Copy,IA:BaseIter<A>,IB:BaseIter<B>>(
 pure fn foldl<A,B,IA:BaseIter<A>>(self: IA, +b0: B, blk: fn(B, A) -> B) -> B {
     let mut b <- b0;
     for self.each |a| {
-        b = blk(b, a);
+        b = blk(b, *a);
     }
     move b
 }
@@ -132,7 +132,7 @@ pure fn to_vec<A:Copy,IA:BaseIter<A>>(self: IA) -> ~[A] {
 
 pure fn contains<A:Eq,IA:BaseIter<A>>(self: IA, x: A) -> bool {
     for self.each |a| {
-        if a == x { return true; }
+        if *a == x { return true; }
     }
     return false;
 }
@@ -152,7 +152,7 @@ pure fn position<A,IA:BaseIter<A>>(self: IA, f: fn(A) -> bool)
 {
     let mut i = 0;
     for self.each |a| {
-        if f(a) { return Some(i); }
+        if f(*a) { return Some(i); }
         i += 1;
     }
     return None;
@@ -205,7 +205,7 @@ pure fn max<A:Copy Ord,IA:BaseIter<A>>(self: IA) -> A {
 pure fn find<A: Copy,IA:BaseIter<A>>(self: IA,
                                      p: fn(A) -> bool) -> Option<A> {
     for self.each |i| {
-        if p(i) { return Some(i) }
+        if p(*i) { return Some(*i) }
     }
     return None;
 }
@@ -254,7 +254,7 @@ pure fn build_sized_opt<A,B: Buildable<A>>(
 fn map<T,IT: BaseIter<T>,U,BU: Buildable<U>>(v: IT, f: fn(T) -> U) -> BU {
     do build_sized_opt(v.size_hint()) |push| {
         for v.each() |elem| {
-            push(f(elem));
+            push(f(*elem));
         }
     }
 }
@@ -292,8 +292,8 @@ pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
     let size_opt = lhs.size_hint().chain(
         |sz1| rhs.size_hint().map(|sz2| sz1+sz2));
     do build_sized_opt(size_opt) |push| {
-        for lhs.each |x| { push(x); }
-        for rhs.each |x| { push(x); }
+        for lhs.each |x| { push(*x); }
+        for rhs.each |x| { push(*x); }
     }
 }
 
@@ -303,6 +303,6 @@ pure fn append<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
 pure fn copy_seq<T: Copy,IT: BaseIter<T>,BT: Buildable<T>>(
     v: IT) -> BT {
     do build_sized_opt(v.size_hint()) |push| {
-        for v.each |x| { push(x); }
+        for v.each |x| { push(*x); }
     }
 }

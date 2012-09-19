@@ -179,7 +179,7 @@ mod test {
         for iter::repeat(repeat) {
 
             for spec.each |spec| {
-                let (times, maxms) = spec;
+                let (times, maxms) = *spec;
                 do task::spawn {
                     use rand::*;
                     let rng = Rng();
