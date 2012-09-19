@@ -1090,12 +1090,22 @@ pure fn mach_sty(cfg: @session::config, t: t) -> sty {
 }
 
 fn default_arg_mode_for_ty(tcx: ctxt, ty: ty::t) -> ast::rmode {
-    if ty::type_is_immediate(ty) {
+    return if ty::type_is_immediate(ty) {
         ast::by_val
-    } else if tcx.legacy_modes {
+    } else if tcx.legacy_modes || type_is_fn(ty) {
+        //                        ^^^^^^^^^^^^^^
+        // FIXME(#2202) --- We retain by-ref by default to workaround a memory
+        // leak that otherwise results when @fn is upcast to &fn.
         ast::by_ref
     } else {
         ast::by_copy
+    };
+
+    fn type_is_fn(ty: t) -> bool {
+        match get(ty).sty {
+            ty_fn(*) => true,
+            _ => false
+        }
     }
 }
 
