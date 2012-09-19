@@ -74,13 +74,10 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
         map::HashMap::<node_id, ()>()
     };
 
-    do vec::each_ref(edges) |e| {
-        match *e {
-            (i, j) => {
-                map::set_add(graph[i], j);
-                map::set_add(graph[j], i);
-            }
-        }
+    do vec::each(edges) |e| {
+        let (i, j) = e;
+        map::set_add(graph[i], j);
+        map::set_add(graph[j], i);
         true
     }
 
@@ -410,7 +407,7 @@ fn main(args: ~[~str]) {
     let stop = time::precise_time_s();
 
     let mut total_edges = 0u;
-    vec::each_ref(graph, |edges| { total_edges += edges.len(); true });
+    vec::each(graph, |edges| { total_edges += edges.len(); true });
 
     io::stdout().write_line(fmt!("Generated graph with %? edges in %? seconds.",
                                  total_edges / 2u,

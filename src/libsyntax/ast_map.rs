@@ -293,10 +293,8 @@ fn map_struct_def(struct_def: @ast::struct_def, parent_node: ast_node,
     }
     let d_id = ast_util::local_def(id);
     let p = extend(cx, ident);
-    // only need to handle methods
-    for vec::each_ref(struct_def.methods) |m| {
-        map_method(d_id, p, *m, cx);
-    }
+     // only need to handle methods
+    do vec::iter(struct_def.methods) |m| { map_method(d_id, p, m, cx); }
 }
 
 fn map_view_item(vi: @view_item, cx: ctx, _v: vt) {

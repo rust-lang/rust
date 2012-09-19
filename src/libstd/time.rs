@@ -1023,7 +1023,7 @@ mod tests {
             }
         }
 
-        for vec::each_ref([
+        [
             ~"Sunday",
             ~"Monday",
             ~"Tuesday",
@@ -1031,11 +1031,9 @@ mod tests {
             ~"Thursday",
             ~"Friday",
             ~"Saturday"
-        ]) |day| {
-            assert test(*day, ~"%A");
-        }
+        ]/_.iter(|day| assert test(day, ~"%A"));
 
-        for vec::each_ref([
+        [
             ~"Sun",
             ~"Mon",
             ~"Tue",
@@ -1043,11 +1041,9 @@ mod tests {
             ~"Thu",
             ~"Fri",
             ~"Sat"
-        ]) |day| {
-            assert test(*day, ~"%a");
-        }
+        ]/_.iter(|day| assert test(day, ~"%a"));
 
-        for vec::each_ref([
+        [
             ~"January",
             ~"February",
             ~"March",
@@ -1060,11 +1056,9 @@ mod tests {
             ~"October",
             ~"November",
             ~"December"
-        ]) |day| {
-            assert test(*day, ~"%B");
-        }
+        ]/_.iter(|day| assert test(day, ~"%B"));
 
-        for vec::each_ref([
+        [
             ~"Jan",
             ~"Feb",
             ~"Mar",
@@ -1077,9 +1071,7 @@ mod tests {
             ~"Oct",
             ~"Nov",
             ~"Dec"
-        ]) |day| {
-            assert test(*day, ~"%b");
-        }
+        ]/_.iter(|day| assert test(day, ~"%b"));
 
         assert test(~"19", ~"%C");
         assert test(~"Fri Feb 13 23:31:30 2009", ~"%c");

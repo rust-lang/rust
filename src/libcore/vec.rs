@@ -76,9 +76,12 @@ export zip, zip_slice;
 export swap;
 export reverse;
 export reversed;
-export each, eachi, reach, reachi;
+export iter, iter_between, each, eachi, reach, reachi;
 export each_ref, each_mut_ref, each_const_ref;
 export iter2;
+export iteri;
+export riter;
+export riteri;
 export permute;
 export windowed;
 export as_imm_buf;
@@ -854,8 +857,8 @@ pure fn connect<T: Copy>(v: &[~[T]], sep: T) -> ~[T] {
 /// Reduce a vector from left to right
 pure fn foldl<T: Copy, U>(z: T, v: &[U], p: fn(T, U) -> T) -> T {
     let mut accum = z;
-    for each_ref(v) |elt| {
-        accum = p(accum, *elt);
+    do iter(v) |elt| {
+        accum = p(accum, elt);
     }
     return accum;
 }
@@ -863,7 +866,7 @@ pure fn foldl<T: Copy, U>(z: T, v: &[U], p: fn(T, U) -> T) -> T {
 /// Reduce a vector from right to left
 pure fn foldr<T, U: Copy>(v: &[T], z: U, p: fn(T, U) -> U) -> U {
     let mut accum = z;
-    for reach(v) |elt| {
+    do riter(v) |elt| {
         accum = p(elt, accum);
     }
     return accum;
@@ -1147,6 +1150,7 @@ fn reverse<T>(v: &[mut T]) {
     while i < ln / 2u { v[i] <-> v[ln - i - 1u]; i += 1u; }
 }
 
+
 /// Returns a vector with the order of elements reversed
 pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
     let mut rs: ~[T] = ~[];
@@ -1157,6 +1161,43 @@ pure fn reversed<T: Copy>(v: &[const T]) -> ~[T] {
         vec::push(rs, v[0]);
     }
     move rs
+}
+
+/**
+ * Iterates over a slice
+ *
+ * Iterates over slice `v` and, for each element, calls function `f` with the
+ * element's value.
+ */
+#[inline(always)]
+pure fn iter<T>(v: &[T], f: fn(T)) {
+    iter_between(v, 0u, vec::len(v), f)
+}
+
+/*
+Function: iter_between
+
+Iterates over a slice
+
+Iterates over slice `v` and, for each element, calls function `f` with the
+element's value.
+
+*/
+#[inline(always)]
+pure fn iter_between<T>(v: &[T], start: uint, end: uint, f: fn(T)) {
+    do as_imm_buf(v) |base_ptr, len| {
+        assert start <= end;
+        assert end <= len;
+        unsafe {
+            let mut n = end;
+            let mut p = ptr::offset(base_ptr, start);
+            while n > start {
+                f(*p);
+                p = ptr::offset(p, 1u);
+                n -= 1u;
+            }
+        }
+    }
 }
 
 /**
@@ -1304,6 +1345,43 @@ fn iter2<U, T>(v1: &[U], v2: &[T], f: fn(U, T)) {
 }
 
 /**
+ * Iterates over a vector's elements and indexes
+ *
+ * Iterates over vector `v` and, for each element, calls function `f` with the
+ * element's value and index.
+ */
+#[inline(always)]
+pure fn iteri<T>(v: &[T], f: fn(uint, T)) {
+    let mut i = 0u;
+    let l = len(v);
+    while i < l { f(i, v[i]); i += 1u; }
+}
+
+/**
+ * Iterates over a vector in reverse
+ *
+ * Iterates over vector `v` and, for each element, calls function `f` with the
+ * element's value.
+ */
+pure fn riter<T>(v: &[T], f: fn(T)) {
+    riteri(v, |_i, v| f(v))
+}
+
+/**
+ * Iterates over a vector's elements and indexes in reverse
+ *
+ * Iterates over vector `v` and, for each element, calls function `f` with the
+ * element's value and index.
+ */
+pure fn riteri<T>(v: &[T], f: fn(uint, T)) {
+    let mut i = len(v);
+    while 0u < i {
+        i -= 1u;
+        f(i, v[i]);
+    };
+}
+
+/**
  * Iterate over all permutations of vector `v`.
  *
  * Permutations are produced in lexicographic order with respect to the order
@@ -1336,12 +1414,12 @@ pure fn permute<T: Copy>(v: &[const T], put: fn(~[T])) {
 pure fn windowed<TT: Copy>(nn: uint, xx: &[TT]) -> ~[~[TT]] {
     let mut ww = ~[];
     assert 1u <= nn;
-    for vec::eachi (xx) |ii, _x| {
+    vec::iteri (xx, |ii, _x| {
         let len = vec::len(xx);
         if ii+nn <= len unsafe {
             vec::push(ww, vec::slice(xx, ii, ii+nn));
         }
-    }
+    });
     move ww
 }
 
@@ -1548,6 +1626,10 @@ impl<T: Copy> &[const T]: CopyableVector<T> {
 
 trait ImmutableVector<T> {
     pure fn foldr<U: Copy>(z: U, p: fn(T, U) -> U) -> U;
+    pure fn iter(f: fn(T));
+    pure fn iteri(f: fn(uint, T));
+    pure fn riter(f: fn(T));
+    pure fn riteri(f: fn(uint, T));
     pure fn map<U>(f: fn(T) -> U) -> ~[U];
     pure fn mapi<U>(f: fn(uint, T) -> U) -> ~[U];
     fn map_r<U>(f: fn(x: &T) -> U) -> ~[U];
@@ -1568,6 +1650,38 @@ impl<T> &[T]: ImmutableVector<T> {
     /// Reduce a vector from right to left
     #[inline]
     pure fn foldr<U: Copy>(z: U, p: fn(T, U) -> U) -> U { foldr(self, z, p) }
+    /**
+     * Iterates over a vector
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value.
+     */
+    #[inline]
+    pure fn iter(f: fn(T)) { iter(self, f) }
+    /**
+     * Iterates over a vector's elements and indexes
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value and index.
+     */
+    #[inline]
+    pure fn iteri(f: fn(uint, T)) { iteri(self, f) }
+    /**
+     * Iterates over a vector in reverse
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value.
+     */
+    #[inline]
+    pure fn riter(f: fn(T)) { riter(self, f) }
+    /**
+     * Iterates over a vector's elements and indexes in reverse
+     *
+     * Iterates over vector `v` and, for each element, calls function `f` with
+     * the element's value and index.
+     */
+    #[inline]
+    pure fn riteri(f: fn(uint, T)) { riteri(self, f) }
     /// Apply a function to each element of a vector and return the results
     #[inline]
     pure fn map<U>(f: fn(T) -> U) -> ~[U] { map(self, f) }
@@ -2351,57 +2465,55 @@ mod tests {
     }
 
     #[test]
-    fn test_each_empty() {
-        for each_ref::<int>(~[]) |_v| {
-            fail; // should never be executed
-        }
+    fn test_iter_empty() {
+        let mut i = 0;
+        iter::<int>(~[], |_v| i += 1);
+        assert i == 0;
     }
 
     #[test]
     fn test_iter_nonempty() {
         let mut i = 0;
-        for each_ref(~[1, 2, 3]) |v| {
-            i += *v;
-        }
+        iter(~[1, 2, 3], |v| i += v);
         assert i == 6;
     }
 
     #[test]
     fn test_iteri() {
         let mut i = 0;
-        for eachi(~[1, 2, 3]) |j, v| {
+        iteri(~[1, 2, 3], |j, v| {
             if i == 0 { assert v == 1; }
             assert j + 1u == v as uint;
             i += v;
-        }
+        });
         assert i == 6;
     }
 
     #[test]
-    fn test_reach_empty() {
-        for reach::<int>(~[]) |_v| {
-            fail; // should never execute
-        }
+    fn test_riter_empty() {
+        let mut i = 0;
+        riter::<int>(~[], |_v| i += 1);
+        assert i == 0;
     }
 
     #[test]
     fn test_riter_nonempty() {
         let mut i = 0;
-        for reach(~[1, 2, 3]) |v| {
+        riter(~[1, 2, 3], |v| {
             if i == 0 { assert v == 3; }
             i += v
-        }
+        });
         assert i == 6;
     }
 
     #[test]
-    fn test_reachi() {
+    fn test_riteri() {
         let mut i = 0;
-        for reachi(~[0, 1, 2]) |j, v| {
+        riteri(~[0, 1, 2], |j, v| {
             if i == 0 { assert v == 2; }
             assert j == v as uint;
             i += v;
-        }
+        });
         assert i == 3;
     }
 

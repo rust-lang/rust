@@ -11,9 +11,9 @@ fn trans_block(bcx: block, b: ast::blk, dest: expr::Dest) -> block {
     do block_locals(b) |local| {
         bcx = alloc_local(bcx, local);
     };
-    for vec::each_ref(b.node.stmts) |s| {
+    for vec::each(b.node.stmts) |s| {
         debuginfo::update_source_pos(bcx, b.span);
-        bcx = trans_stmt(bcx, **s);
+        bcx = trans_stmt(bcx, *s);
     }
     match b.node.expr {
         Some(e) => {
@@ -83,9 +83,9 @@ fn trans_if(bcx: block,
 fn join_blocks(parent_bcx: block, in_cxs: ~[block]) -> block {
     let out = sub_block(parent_bcx, ~"join");
     let mut reachable = false;
-    for vec::each_ref(in_cxs) |bcx| {
+    for vec::each(in_cxs) |bcx| {
         if !bcx.unreachable {
-            Br(*bcx, out.llbb);
+            Br(bcx, out.llbb);
             reachable = true;
         }
     }

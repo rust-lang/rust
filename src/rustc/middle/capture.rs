@@ -108,16 +108,16 @@ fn compute_capture_vars(tcx: ty::ctxt,
         implicit_mode = cap_copy;
     }
 
-    for vec::each_ref(*freevars) |fvar| {
+    do vec::iter(*freevars) |fvar| {
         let fvar_def_id = ast_util::def_id_of_def(fvar.def).node;
         match cap_map.find(fvar_def_id) {
-            option::Some(_) => { /* was explicitly named, do nothing */ }
-            option::None => {
-                cap_map.insert(fvar_def_id, {def:fvar.def,
-                                             span: fvar.span,
-                                             cap_item: None,
-                                             mode:implicit_mode});
-            }
+          option::Some(_) => { /* was explicitly named, do nothing */ }
+          option::None => {
+            cap_map.insert(fvar_def_id, {def:fvar.def,
+                                         span: fvar.span,
+                                         cap_item: None,
+                                         mode:implicit_mode});
+          }
         }
     }
 

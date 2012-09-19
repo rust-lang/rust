@@ -292,16 +292,16 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                 }
             }
             let mut name_pos = 0u;
-            for vec::each_ref(names) |nm| {
+            for vec::each(names) |nm| {
                 name_pos += 1u;
-                let optid = match find_opt(opts, *nm) {
+                let optid = match find_opt(opts, nm) {
                   Some(id) => id,
-                  None => return Err(UnrecognizedOption(name_str(nm)))
+                  None => return Err(UnrecognizedOption(name_str(&nm)))
                 };
                 match opts[optid].hasarg {
                   No => {
                     if !option::is_none::<~str>(i_arg) {
-                        return Err(UnexpectedArgument(name_str(nm)));
+                        return Err(UnexpectedArgument(name_str(&nm)));
                     }
                     vec::push(vals[optid], Given);
                   }
@@ -318,7 +318,7 @@ fn getopts(args: &[~str], opts: &[Opt]) -> Result unsafe {
                         vec::push(vals[optid],
                                   Val(option::get::<~str>(i_arg)));
                     } else if i + 1u == l {
-                        return Err(ArgumentMissing(name_str(nm)));
+                        return Err(ArgumentMissing(name_str(&nm)));
                     } else { i += 1u; vec::push(vals[optid], Val(args[i])); }
                   }
                 }
@@ -366,8 +366,8 @@ fn opt_present(+mm: Matches, nm: &str) -> bool {
 
 /// Returns true if any of several options were matched
 fn opts_present(+mm: Matches, names: &[~str]) -> bool {
-    for vec::each_ref(names) |nm| {
-        match find_opt(mm.opts, mkname(*nm)) {
+    for vec::each(names) |nm| {
+        match find_opt(mm.opts, mkname(nm)) {
           Some(_) => return true,
           None    => ()
         }
@@ -393,8 +393,8 @@ fn opt_str(+mm: Matches, nm: &str) -> ~str {
  * option took an argument
  */
 fn opts_str(+mm: Matches, names: &[~str]) -> ~str {
-    for vec::each_ref(names) |nm| {
-        match opt_val(mm, *nm) {
+    for vec::each(names) |nm| {
+        match opt_val(mm, nm) {
           Val(s) => return s,
           _ => ()
         }
@@ -411,8 +411,8 @@ fn opts_str(+mm: Matches, names: &[~str]) -> ~str {
  */
 fn opt_strs(+mm: Matches, nm: &str) -> ~[~str] {
     let mut acc: ~[~str] = ~[];
-    for vec::each_ref(opt_vals(mm, nm)) |v| {
-        match *v { Val(s) => vec::push(acc, s), _ => () }
+    for vec::each(opt_vals(mm, nm)) |v| {
+        match v { Val(s) => vec::push(acc, s), _ => () }
     }
     return acc;
 }

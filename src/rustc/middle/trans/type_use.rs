@@ -47,7 +47,7 @@ fn type_uses_for(ccx: @crate_ctxt, fn_id: def_id, n_tps: uint)
     let cx = {ccx: ccx, uses: vec::to_mut(vec::from_elem(n_tps, 0u))};
     match ty::get(ty::lookup_item_type(cx.ccx.tcx, fn_id).ty).sty {
       ty::ty_fn(ref fn_ty) => {
-        for vec::each_ref(fn_ty.sig.inputs) |arg| {
+        for vec::each(fn_ty.sig.inputs) |arg| {
             if arg.mode == expl(by_val) { type_needs(cx, use_repr, arg.ty); }
         }
       }
@@ -142,9 +142,9 @@ fn type_needs_inner(cx: ctx, use_: uint, ty: ty::t,
               ty::ty_enum(did, substs) => {
                 if option::is_none(list::find(enums_seen, |id| *id == did)) {
                     let seen = @Cons(did, enums_seen);
-                    for vec::each_ref(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
-                        for vec::each_ref(v.args) |aty| {
-                            let t = ty::subst(cx.ccx.tcx, &substs, *aty);
+                    for vec::each(*ty::enum_variants(cx.ccx.tcx, did)) |v| {
+                        for vec::each(v.args) |aty| {
+                            let t = ty::subst(cx.ccx.tcx, &substs, aty);
                             type_needs_inner(cx, use_, t, seen);
                         }
                     }
@@ -209,7 +209,7 @@ fn mark_for_expr(cx: ctx, e: @expr) {
           ty::proto_bare | ty::proto_vstore(ty::vstore_uniq) => {}
           ty::proto_vstore(ty::vstore_box) |
           ty::proto_vstore(ty::vstore_slice(_)) => {
-            for vec::each_ref(*freevars::get_freevars(cx.ccx.tcx, e.id)) |fv| {
+            for vec::each(*freevars::get_freevars(cx.ccx.tcx, e.id)) |fv| {
                 let node_id = ast_util::def_id_of_def(fv.def).node;
                 node_type_needs(cx, use_repr, node_id);
             }
@@ -247,16 +247,14 @@ fn mark_for_expr(cx: ctx, e: @expr) {
         node_type_needs(cx, use_tydesc, val.id);
       }
       expr_call(f, _, _) => {
-          for vec::each_ref(
-              ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id))
-          ) |a| {
-              match a.mode {
-                  expl(by_move) | expl(by_copy) | expl(by_val) => {
-                      type_needs(cx, use_repr, a.ty);
-                  }
-                  _ => ()
+        vec::iter(ty::ty_fn_args(ty::node_id_to_type(cx.ccx.tcx, f.id)), |a| {
+            match a.mode {
+              expl(by_move) | expl(by_copy) | expl(by_val) => {
+                type_needs(cx, use_repr, a.ty);
               }
-          }
+              _ => ()
+            }
+        })
       }
       expr_match(*) | expr_block(_) | expr_if(*) |
       expr_while(*) | expr_fail(_) | expr_break(_) | expr_again(_) |

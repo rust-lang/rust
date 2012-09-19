@@ -39,8 +39,8 @@ fn color_supported() -> bool {
                            ~"screen-bce", ~"xterm-256color"];
     return match os::getenv(~"TERM") {
           option::Some(env) => {
-            for vec::each_ref(supported_terms) |term| {
-                if *term == env { return true; }
+            for vec::each(supported_terms) |term| {
+                if term == env { return true; }
             }
             false
           }

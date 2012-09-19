@@ -158,7 +158,7 @@ impl ReprVisitor {
 
     fn write_escaped_slice(slice: &str) {
         self.writer.write_char('"');
-        for str::chars_each(slice) |ch| {
+        do str::chars_iter(slice) |ch| {
             self.writer.write_escaped_char(ch);
         }
         self.writer.write_char('"');
@@ -563,7 +563,7 @@ impl ReprPrinterWrapper {
             let vec_repr = *vec_repr_ptr;
             let data_ptr = ptr::to_unsafe_ptr(&(*vec_repr).unboxed.data);
             let slice: &str = transmute((data_ptr, (*vec_repr).unboxed.fill));
-            for str::chars_each(slice) |ch| {
+            do str::chars_iter(slice) |ch| {
                 self.printer.writer.write_escaped_char(ch);
             }
             self.printer.writer.write_char('"');
@@ -686,7 +686,7 @@ impl ReprPrinterWrapper : TyVisitor {
             self.printer.writer.write_char('"');
             let slice_ptr: *&str = transmute(copy self.printer.ptr);
             let slice = *slice_ptr;
-            for str::chars_each(slice) |ch| {
+            do str::chars_iter(slice) |ch| {
                 self.printer.writer.write_escaped_char(ch);
             }
             self.printer.writer.write_char('"');

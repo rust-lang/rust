@@ -72,12 +72,12 @@ export
    map,
    each, eachi,
    each_char, each_chari,
-   bytes_each,
-   chars_each,
-   split_char_each,
-   splitn_char_each,
-   words_each,
-   lines_each,
+   bytes_iter,
+   chars_iter,
+   split_char_iter,
+   splitn_char_iter,
+   words_iter,
+   lines_iter,
 
    // Searching
    find, find_from, find_between,
@@ -235,9 +235,7 @@ pure fn from_chars(chs: &[char]) -> ~str {
     let mut buf = ~"";
     unsafe {
         reserve(buf, chs.len());
-        for vec::each_ref(chs) |ch| {
-            push_char(buf, *ch);
-        }
+        for vec::each(chs) |ch| { push_char(buf, ch); }
     }
     move buf
 }
@@ -291,18 +289,16 @@ pure fn append(+lhs: ~str, rhs: &str) -> ~str {
 /// Concatenate a vector of strings
 pure fn concat(v: &[~str]) -> ~str {
     let mut s: ~str = ~"";
-    for vec::each_ref(v) |ss| {
-        unsafe { push_str(s, *ss) };
-    }
+    for vec::each(v) |ss| { unsafe { push_str(s, ss) }; }
     move s
 }
 
 /// Concatenate a vector of strings, placing a given separator between each
 pure fn connect(v: &[~str], sep: &str) -> ~str {
     let mut s = ~"", first = true;
-    for vec::each_ref(v) |ss| {
+    for vec::each(v) |ss| {
         if first { first = false; } else { unsafe { push_str(s, sep); } }
-        unsafe { push_str(s, *ss) };
+        unsafe { push_str(s, ss) };
     }
     move s
 }
@@ -883,7 +879,7 @@ pure fn map(ss: &str, ff: fn(char) -> char) -> ~str {
     let mut result = ~"";
     unsafe {
         reserve(result, len(ss));
-        for chars_each(ss) |cc| {
+        do chars_iter(ss) |cc| {
             str::push_char(result, ff(cc));
         }
     }
@@ -891,12 +887,12 @@ pure fn map(ss: &str, ff: fn(char) -> char) -> ~str {
 }
 
 /// Iterate over the bytes in a string
-pure fn bytes_each(ss: &str, it: fn(u8) -> bool) {
+pure fn bytes_iter(ss: &str, it: fn(u8)) {
     let mut pos = 0u;
     let len = len(ss);
 
     while (pos < len) {
-        if !it(ss[pos]) { return; }
+        it(ss[pos]);
         pos += 1u;
     }
 }
@@ -937,40 +933,40 @@ pure fn each_chari(s: &str, it: fn(uint, char) -> bool) {
 }
 
 /// Iterate over the characters in a string
-pure fn chars_each(s: &str, it: fn(char) -> bool) {
+pure fn chars_iter(s: &str, it: fn(char)) {
     let mut pos = 0u;
     let len = len(s);
     while (pos < len) {
         let {ch, next} = char_range_at(s, pos);
         pos = next;
-        if !it(ch) { return; }
+        it(ch);
     }
 }
 
 /// Apply a function to each substring after splitting by character
-pure fn split_char_each(ss: &str, cc: char, ff: fn(v: &str) -> bool) {
-    vec::each_ref(split_char(ss, cc), |s| ff(*s))
+pure fn split_char_iter(ss: &str, cc: char, ff: fn(&&~str)) {
+   vec::iter(split_char(ss, cc), ff)
 }
 
 /**
  * Apply a function to each substring after splitting by character, up to
  * `count` times
  */
-pure fn splitn_char_each(ss: &str, sep: char, count: uint,
-                         ff: fn(v: &str) -> bool) {
-    vec::each_ref(splitn_char(ss, sep, count), |s| ff(*s))
+pure fn splitn_char_iter(ss: &str, sep: char, count: uint,
+                         ff: fn(&&~str)) {
+   vec::iter(splitn_char(ss, sep, count), ff)
 }
 
 /// Apply a function to each word
-pure fn words_each(ss: &str, ff: fn(v: &str) -> bool) {
-    vec::each_ref(words(ss), |s| ff(*s))
+pure fn words_iter(ss: &str, ff: fn(&&~str)) {
+    vec::iter(words(ss), ff)
 }
 
 /**
  * Apply a function to each line (by '\n')
  */
-pure fn lines_each(ss: &str, ff: fn(v: &str) -> bool) {
-    vec::each_ref(lines(ss), |s| ff(*s))
+pure fn lines_iter(ss: &str, ff: fn(&&~str)) {
+    vec::iter(lines(ss), ff)
 }
 
 /*
@@ -1522,7 +1518,7 @@ pure fn is_utf16(v: &[u16]) -> bool {
 /// Converts to a vector of `u16` encoded as UTF-16
 pure fn to_utf16(s: &str) -> ~[u16] {
     let mut u = ~[];
-    for chars_each(s) |cch| {
+    do chars_iter(s) |cch| {
         // Arithmetic with u32 literals is easier on the eyes than chars.
         let mut ch = cch as u32;
 
@@ -1951,9 +1947,7 @@ pure fn escape_default(s: &str) -> ~str {
     let mut out: ~str = ~"";
     unsafe {
         reserve_at_least(out, str::len(s));
-        for chars_each(s) |c| {
-            push_str(out, char::escape_default(c));
-        }
+        chars_iter(s, |c| push_str(out, char::escape_default(c)));
     }
     move out
 }
@@ -1963,9 +1957,7 @@ pure fn escape_unicode(s: &str) -> ~str {
     let mut out: ~str = ~"";
     unsafe {
         reserve_at_least(out, str::len(s));
-        for chars_each(s) |c| {
-            push_str(out, char::escape_unicode(c));
-        }
+        chars_iter(s, |c| push_str(out, char::escape_unicode(c)));
     }
     move out
 }
@@ -2102,7 +2094,7 @@ mod raw {
     /// Appends a vector of bytes to a string. (Not UTF-8 safe).
     unsafe fn push_bytes(&s: ~str, bytes: ~[u8]) {
         reserve_at_least(s, s.len() + bytes.len());
-        for vec::each_ref(bytes) |byte| { push_byte(s, *byte); }
+        for vec::each(bytes) |byte| { push_byte(s, byte); }
     }
 
     /// Removes the last byte from a string and returns it. (Not UTF-8 safe).
@@ -3052,52 +3044,50 @@ mod tests {
     }
 
     #[test]
-    fn test_chars_each() {
+    fn test_chars_iter() {
         let mut i = 0;
-        for chars_each(~"x\u03c0y") |ch| {
+        do chars_iter(~"x\u03c0y") |ch| {
             match i {
               0 => assert ch == 'x',
               1 => assert ch == '\u03c0',
               2 => assert ch == 'y',
-              _ => fail ~"test_chars_each failed"
+              _ => fail ~"test_chars_iter failed"
             }
             i += 1;
         }
 
-        chars_each(~"", |_ch| fail ); // should not fail
+        chars_iter(~"", |_ch| fail ); // should not fail
     }
 
     #[test]
-    fn test_bytes_each() {
+    fn test_bytes_iter() {
         let mut i = 0;
 
-        for bytes_each(~"xyz") |bb| {
+        do bytes_iter(~"xyz") |bb| {
             match i {
               0 => assert bb == 'x' as u8,
               1 => assert bb == 'y' as u8,
               2 => assert bb == 'z' as u8,
-              _ => fail ~"test_bytes_each failed"
+              _ => fail ~"test_bytes_iter failed"
             }
             i += 1;
         }
 
-        for bytes_each(~"") |bb| {
-            assert bb == 0u8;
-        }
+        bytes_iter(~"", |bb| assert bb == 0u8);
     }
 
     #[test]
-    fn test_split_char_each() {
+    fn test_split_char_iter() {
         let data = ~"\nMary had a little lamb\nLittle lamb\n";
 
         let mut ii = 0;
 
-        for split_char_each(data, ' ') |xx| {
+        do split_char_iter(data, ' ') |xx| {
             match ii {
-              0 => assert "\nMary" == xx,
-              1 => assert "had"    == xx,
-              2 => assert "a"      == xx,
-              3 => assert "little" == xx,
+              0 => assert ~"\nMary" == xx,
+              1 => assert ~"had"    == xx,
+              2 => assert ~"a"      == xx,
+              3 => assert ~"little" == xx,
               _ => ()
             }
             ii += 1;
@@ -3105,16 +3095,16 @@ mod tests {
     }
 
     #[test]
-    fn test_splitn_char_each() {
+    fn test_splitn_char_iter() {
         let data = ~"\nMary had a little lamb\nLittle lamb\n";
 
         let mut ii = 0;
 
-        for splitn_char_each(data, ' ', 2u) |xx| {
+        do splitn_char_iter(data, ' ', 2u) |xx| {
             match ii {
-              0 => assert "\nMary" == xx,
-              1 => assert "had"    == xx,
-              2 => assert "a little lamb\nLittle lamb\n" == xx,
+              0 => assert ~"\nMary" == xx,
+              1 => assert ~"had"    == xx,
+              2 => assert ~"a little lamb\nLittle lamb\n" == xx,
               _ => ()
             }
             ii += 1;
@@ -3122,37 +3112,37 @@ mod tests {
     }
 
     #[test]
-    fn test_words_each() {
+    fn test_words_iter() {
         let data = ~"\nMary had a little lamb\nLittle lamb\n";
 
         let mut ii = 0;
 
-        for words_each(data) |ww| {
+        do words_iter(data) |ww| {
             match ii {
-              0 => assert "Mary"   == ww,
-              1 => assert "had"    == ww,
-              2 => assert "a"      == ww,
-              3 => assert "little" == ww,
+              0 => assert ~"Mary"   == ww,
+              1 => assert ~"had"    == ww,
+              2 => assert ~"a"      == ww,
+              3 => assert ~"little" == ww,
               _ => ()
             }
             ii += 1;
         }
 
-        words_each(~"", |_x| fail); // should not fail
+        words_iter(~"", |_x| fail); // should not fail
     }
 
     #[test]
-    fn test_lines_each () {
+    fn test_lines_iter () {
         let lf = ~"\nMary had a little lamb\nLittle lamb\n";
 
         let mut ii = 0;
 
-        for lines_each(lf) |x| {
+        do lines_iter(lf) |x| {
             match ii {
-                0 => assert "" == x,
-                1 => assert "Mary had a little lamb" == x,
-                2 => assert "Little lamb" == x,
-                3 => assert "" == x,
+                0 => assert ~"" == x,
+                1 => assert ~"Mary had a little lamb" == x,
+                2 => assert ~"Little lamb" == x,
+                3 => assert ~"" == x,
                 _ => ()
             }
             ii += 1;
@@ -3230,8 +3220,8 @@ mod tests {
                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
                0x000a_u16 ]) ];
 
-        for vec::each_ref(pairs) |p| {
-            let (s, u) = copy *p;
+        for vec::each(pairs) |p| {
+            let (s, u) = copy p;
             assert to_utf16(s) == u;
             assert from_utf16(u) == s;
             assert from_utf16(to_utf16(s)) == s;

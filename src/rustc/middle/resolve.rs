@@ -4343,11 +4343,11 @@ impl Resolver {
           let rib = self.type_ribs.get_elt(i);
           match rib.kind {
             MethodRibKind(node_id, _) =>
-              for vec::each_ref(self.crate.node.module.items) |item| {
+              for vec::each(self.crate.node.module.items) |item| {
                 if item.id == node_id {
                   match item.node {
                     item_class(class_def, _) => {
-                      for vec::each_ref(class_def.fields) |field| {
+                      for vec::each(class_def.fields) |field| {
                         match field.node.kind {
                           syntax::ast::unnamed_field
                             => {},
@@ -4360,7 +4360,7 @@ impl Resolver {
                             }
                         }
                       }
-                      for vec::each_ref(class_def.methods) |method| {
+                      for vec::each(class_def.methods) |method| {
                         if str::eq_slice(self.session.str_of(method.ident),
                                          name) {
                           return true

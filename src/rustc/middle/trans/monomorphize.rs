@@ -243,8 +243,8 @@ fn make_mono_id(ccx: @crate_ctxt, item: ast::def_id, substs: ~[ty::t],
         let mut i = 0u;
         vec::map2(*bounds, substs, |bounds, subst| {
             let mut v = ~[];
-            for vec::each_ref(*bounds) |bound| {
-                match *bound {
+            for vec::each(*bounds) |bound| {
+                match bound {
                   ty::bound_trait(_) => {
                     vec::push(v, meth::vtable_id(ccx, vts[i]));
                     i += 1u;
