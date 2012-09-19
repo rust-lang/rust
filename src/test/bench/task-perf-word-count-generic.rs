@@ -39,16 +39,6 @@ trait word_reader {
     fn read_word() -> Option<~str>;
 }
 
-trait hash_key {
-    pure fn hash() -> uint;
-    pure fn eq(&&k: self) -> bool;
-}
-
-impl ~str: hash_key {
-    pure fn hash() -> uint { str::hash(&self) }
-    pure fn eq(&&x: ~str) -> bool { self == x }
-}
-
 // These used to be in task, but they disappeard.
 type joinable_task = Port<()>;
 fn spawn_joinable(+f: fn~()) -> joinable_task {
@@ -152,7 +142,7 @@ mod map_reduce {
 
     enum reduce_proto<V: Copy Send> { emit_val(V), done, addref, release }
 
-    fn start_mappers<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send hash_key,
+    fn start_mappers<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send,
                      V: Copy Send>(
         map: mapper<K1, K2, V>,
         &ctrls: ~[ctrl_proto::server::open<K2, V>],
@@ -169,7 +159,7 @@ mod map_reduce {
         return tasks;
     }
 
-    fn map_task<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send hash_key, V: Copy Send>(
+    fn map_task<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send, V: Copy Send>(
         map: mapper<K1, K2, V>,
         ctrl: box<ctrl_proto::client::open<K2, V>>,
         input: K1)
@@ -242,7 +232,7 @@ mod map_reduce {
         reduce(key, || get(p, ref_count, is_done) );
     }
 
-    fn map_reduce<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send hash_key, V: Copy Send>(
+    fn map_reduce<K1: Copy Send, K2: Hash IterBytes Eq Const Copy Send, V: Copy Send>(
         map: mapper<K1, K2, V>,
         reduce: reducer<K2, V>,
         inputs: ~[K1])
