@@ -80,8 +80,8 @@ export private;
 /// Operations and constants for `int`
 #[path = "int-template"]
 mod int {
-    use inst::{ hash, pow };
-    export hash, pow;
+    use inst::{ pow };
+    export pow;
     #[path = "int.rs"]
     mod inst;
 }
@@ -118,10 +118,10 @@ mod i64 {
 #[path = "uint-template"]
 mod uint {
     use inst::{
-        div_ceil, div_round, div_floor, hash, iterate,
+        div_ceil, div_round, div_floor, iterate,
         next_power_of_two
     };
-    export div_ceil, div_round, div_floor, hash, iterate,
+    export div_ceil, div_round, div_floor, iterate,
     next_power_of_two;
 
     #[path = "uint.rs"]

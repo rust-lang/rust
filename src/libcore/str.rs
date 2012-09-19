@@ -853,11 +853,6 @@ impl @str : Ord {
     pure fn gt(&&other: @str) -> bool { gt(self, other) }
 }
 
-/// String hash function
-pure fn hash(s: &~str) -> uint {
-    hash::hash_str(*s) as uint
-}
-
 /*
 Section: Iterating through strings
 */

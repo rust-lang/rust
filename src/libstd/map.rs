@@ -658,12 +658,6 @@ mod tests {
     fn test_removal() {
         debug!("*** starting test_removal");
         let num_to_insert: uint = 64u;
-        fn eq(x: &uint, y: &uint) -> bool { *x == *y }
-        fn hash(u: &uint) -> uint {
-            // This hash function intentionally causes collisions between
-            // consecutive integer pairs.
-            *u / 2u * 2u
-        }
         assert (hash(&0u) == hash(&1u));
         assert (hash(&2u) == hash(&3u));
         assert (hash(&0u) != hash(&2u));

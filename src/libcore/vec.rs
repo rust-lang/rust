@@ -1799,7 +1799,6 @@ mod raw {
 mod bytes {
     export cmp;
     export lt, le, eq, ne, ge, gt;
-    export hash;
     export memcpy, memmove;
 
     /// Bytewise string comparison
@@ -1840,11 +1839,6 @@ mod bytes {
 
     /// Bytewise greater than
     pure fn gt(a: &~[u8], b: &~[u8]) -> bool { cmp(a, b) > 0 }
-
-    /// Byte-vec hash function
-    pure fn hash(s: &~[u8]) -> uint {
-        hash::hash_bytes(*s) as uint
-    }
 
     /**
       * Copies data from one vector to another.
