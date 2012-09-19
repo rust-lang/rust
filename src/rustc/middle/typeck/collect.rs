@@ -358,12 +358,12 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
     if did.crate == ast::local_crate {
         ensure_trait_methods(ccx, did.node, tpt.ty);
     }
-    for vec::each_ref(*ty::trait_methods(tcx, did)) |trait_m| {
+    for vec::each(*ty::trait_methods(tcx, did)) |trait_m| {
         match vec::find(impl_ms, |impl_m| trait_m.ident == impl_m.mty.ident) {
           Some({mty: impl_m, span, _}) => {
             compare_impl_method(
                 ccx.tcx, span, impl_m, vec::len(tps),
-                *trait_m, tpt.substs, selfty);
+                trait_m, tpt.substs, selfty);
           }
           None => {
               // If we couldn't find an implementation for trait_m in

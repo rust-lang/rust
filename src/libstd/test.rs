@@ -226,8 +226,8 @@ fn print_failures(st: ConsoleTestState) {
     let failures = copy st.failures;
     let failures = vec::map(failures, |test| test.name);
     let failures = sort::merge_sort(|x, y| str::le(*x, *y), failures);
-    for vec::each_ref(failures) |name| {
-        st.out.write_line(fmt!("    %s", *name));
+    for vec::each(failures) |name| {
+        st.out.write_line(fmt!("    %s", name));
     }
 }
 
@@ -535,34 +535,30 @@ mod tests {
              ~"test::sort_tests"];
         let tests =
         {
-            let testfn = fn~() { };
-            let mut tests = ~[];
-            for vec::each_ref(names) |name| {
-                let test = {name: *name, testfn: copy testfn, ignore: false,
-                            should_fail: false};
-                vec::push(tests, test);
-            }
-            tests
-        };
-        let filtered = filter_tests(opts, tests);
-
-        let expected =
-            ~[~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
-              ~"test::do_not_run_ignored_tests",
-              ~"test::filter_for_ignored_option",
-              ~"test::first_free_arg_should_be_a_filter",
-              ~"test::ignored_tests_result_in_ignored",
-              ~"test::parse_ignored_flag",
-              ~"test::sort_tests"];
-
-        let pairs = vec::zip(expected, filtered);
-
-        for vec::each_ref(pairs) |p| {
-            match *p {
-                (a, b) => { assert (a == b.name); }
-            }
+        let testfn = fn~() { };
+        let mut tests = ~[];
+            for vec::each(names) |name| {
+            let test = {name: name, testfn: copy testfn, ignore: false,
+                        should_fail: false};
+            tests += ~[test];
         }
-    }
+        tests
+    };
+    let filtered = filter_tests(opts, tests);
+
+    let expected =
+        ~[~"int::test_pow", ~"int::test_to_str", ~"sha1::test",
+          ~"test::do_not_run_ignored_tests",
+          ~"test::filter_for_ignored_option",
+          ~"test::first_free_arg_should_be_a_filter",
+          ~"test::ignored_tests_result_in_ignored",
+          ~"test::parse_ignored_flag",
+          ~"test::sort_tests"];
+
+    let pairs = vec::zip(expected, filtered);
+
+    for vec::each(pairs) |p| { let (a, b) = copy p; assert (a == b.name); }
+}
 }
 
 

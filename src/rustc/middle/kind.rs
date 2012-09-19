@@ -195,7 +195,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
 
         // Iterate over any free variables that may not have appeared in the
         // capture list.  Ensure that they too are of the appropriate kind.
-        for vec::each_ref(*freevars::get_freevars(cx.tcx, fn_id)) |fv| {
+        for vec::each(*freevars::get_freevars(cx.tcx, fn_id)) |fv| {
             let id = ast_util::def_id_of_def(fv.def).node;
 
             // skip over free variables that appear in the cap clause
@@ -211,7 +211,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             };
 
             let ty = ty::node_id_to_type(cx.tcx, id);
-            chk(cx, fn_id, Some(*fv), is_move, ty, fv.span);
+            chk(cx, fn_id, Some(fv), is_move, ty, fv.span);
         }
     }
 
@@ -227,8 +227,8 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 }
 
 fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
-    for vec::each_ref(a.pats) |p| {
-        do pat_util::pat_bindings(cx.tcx.def_map, *p) |mode, id, span, _path| {
+    for vec::each(a.pats) |p| {
+        do pat_util::pat_bindings(cx.tcx.def_map, p) |mode, id, span, _path| {
             if mode == bind_by_value {
                 let t = ty::node_id_to_type(cx.tcx, id);
                 let reason = "consider binding with `ref` or `move` instead";

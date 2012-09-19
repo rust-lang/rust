@@ -160,7 +160,11 @@ fn trans_foreign_call(cx: block, externs: HashMap<~str, ValueRef>,
     let n = args.len() as int;
     let llforeign: ValueRef =
         get_simple_extern_fn(cx, externs, llmod, name, n);
-    return Call(cx, llforeign, args);
+    let mut call_args: ~[ValueRef] = ~[];
+    for vec::each(args) |a| {
+        vec::push(call_args, a);
+    }
+    return Call(cx, llforeign, call_args);
 }
 
 fn umax(cx: block, a: ValueRef, b: ValueRef) -> ValueRef {
@@ -528,7 +532,7 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
           ty::ty_fn(ref fn_ty) => {
             let mut j = 0u;
             let v_id = variant.id;
-            for vec::each_ref(fn_ty.sig.inputs) |a| {
+            for vec::each(fn_ty.sig.inputs) |a| {
                 let llfldp_a = GEP_enum(cx, a_tup, tid, v_id, tps, j);
                 let ty_subst = ty::subst_tps(ccx.tcx, tps, a.ty);
                 cx = f(cx, llfldp_a, ty_subst);
@@ -588,14 +592,14 @@ fn iter_structural_ty(cx: block, av: ValueRef, t: ty::t,
         Unreachable(unr_cx);
         let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb, n_variants);
         let next_cx = sub_block(cx, ~"enum-iter-next");
-        for vec::each_ref(*variants) |variant| {
+        for vec::each(*variants) |variant| {
             let variant_cx =
                 sub_block(cx,
                                    ~"enum-iter-variant-" +
                                        int::to_str(variant.disr_val, 10u));
             AddCase(llswitch, C_int(ccx, variant.disr_val), variant_cx.llbb);
             let variant_cx =
-                iter_variant(variant_cx, llunion_a_ptr, *variant,
+                iter_variant(variant_cx, llunion_a_ptr, variant,
                              substs.tps, tid, f);
             Br(variant_cx, next_cx.llbb);
         }
@@ -743,8 +747,8 @@ fn need_invoke(bcx: block) -> bool {
     loop {
         match cur.kind {
           block_scope(inf) => {
-            for vec::each_ref(inf.cleanups) |cleanup| {
-                match *cleanup {
+            for vec::each(inf.cleanups) |cleanup| {
+                match cleanup {
                   clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
                     if cleanup_type == normal_exit_and_unwind {
                         return true;
@@ -1015,10 +1019,10 @@ fn trans_stmt(cx: block, s: ast::stmt) -> block {
         ast::stmt_decl(d, _) => {
             match d.node {
                 ast::decl_local(locals) => {
-                    for vec::each_ref(locals) |local| {
-                        bcx = init_local(bcx, *local);
+                    for vec::each(locals) |local| {
+                        bcx = init_local(bcx, local);
                         if cx.sess().opts.extra_debuginfo {
-                            debuginfo::create_local_var(bcx, *local);
+                            debuginfo::create_local_var(bcx, local);
                         }
                     }
                 }
@@ -1114,7 +1118,7 @@ fn trans_block_cleanups_(bcx: block,
         bcx.ccx().sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return bcx; }
     let mut bcx = bcx;
-    for vec::reach(cleanups) |cu| {
+    do vec::riter(cleanups) |cu| {
             match cu {
               clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
                 // Some types don't need to be cleaned up during
@@ -1226,14 +1230,12 @@ fn with_scope_datumblock(bcx: block, opt_node_info: Option<node_info>,
 }
 
 fn block_locals(b: ast::blk, it: fn(@ast::local)) {
-    for vec::each_ref(b.node.stmts) |s| {
+    for vec::each(b.node.stmts) |s| {
         match s.node {
           ast::stmt_decl(d, _) => {
             match d.node {
               ast::decl_local(locals) => {
-                for vec::each_ref(locals) |local| {
-                    it(*local);
-                }
+                for vec::each(locals) |local| { it(local); }
               }
               _ => {/* fall through */ }
             }
@@ -1462,7 +1464,7 @@ fn create_llargs_for_fn_args(cx: fn_ctxt,
 
     // Populate the llargs field of the function context with the ValueRefs
     // that we get from llvm::LLVMGetParam for each argument.
-    for vec::each_ref(args) |arg| {
+    for vec::each(args) |arg| {
         let llarg = llvm::LLVMGetParam(cx.llfn, arg_n as c_uint);
         assert (llarg as int != 0);
         // Note that this uses local_mem even for things passed by value.
@@ -1497,7 +1499,7 @@ fn copy_args_to_allocas(fcx: fn_ctxt, bcx: block, args: ~[ast::arg],
       _ => {}
     }
 
-    for vec::each_ref(arg_tys) |arg| {
+    for vec::each(arg_tys) |arg| {
         let id = args[arg_n].id;
         let argval = match fcx.llargs.get(id) {
           local_mem(v) => v,
@@ -1780,14 +1782,14 @@ fn trans_enum_def(ccx: @crate_ctxt, enum_definition: ast::enum_def,
                   id: ast::node_id, tps: ~[ast::ty_param], degen: bool,
                   path: @ast_map::path, vi: @~[ty::variant_info],
                   i: &mut uint) {
-    for vec::each_ref(enum_definition.variants) |variant| {
+    for vec::each(enum_definition.variants) |variant| {
         let disr_val = vi[*i].disr_val;
         *i += 1;
 
         match variant.node.kind {
             ast::tuple_variant_kind(args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
-                trans_enum_variant(ccx, id, *variant, args, disr_val,
+                trans_enum_variant(ccx, id, variant, args, disr_val,
                                    degen, None, llfn);
             }
             ast::tuple_variant_kind(_) => {
@@ -1827,7 +1829,7 @@ fn trans_item(ccx: @crate_ctxt, item: ast::item) {
                      vec::append(*path, ~[path_name(item.ident)]),
                      decl, body, llfndecl, no_self, None, item.id);
         } else {
-            for vec::each_ref(body.node.stmts) |stmt| {
+            for vec::each(body.node.stmts) |stmt| {
                 match stmt.node {
                   ast::stmt_decl(@{node: ast::decl_item(i), _}, _) => {
                     trans_item(ccx, *i);
@@ -1908,9 +1910,7 @@ fn trans_trait(ccx: @crate_ctxt, tps: ~[ast::ty_param],
 // and control visibility.
 fn trans_mod(ccx: @crate_ctxt, m: ast::_mod) {
     let _icx = ccx.insn_ctxt("trans_mod");
-    for vec::each_ref(m.items) |item| {
-        trans_item(ccx, **item);
-    }
+    for vec::each(m.items) |item| { trans_item(ccx, *item); }
 }
 
 fn get_pair_fn_ty(llpairty: TypeRef) -> TypeRef {
@@ -2236,7 +2236,7 @@ fn trans_constant(ccx: @crate_ctxt, it: @ast::item) {
                                              node: it.id});
         let mut i = 0;
         let path = item_path(ccx, it);
-        for vec::each_ref(enum_definition.variants) |variant| {
+        for vec::each(enum_definition.variants) |variant| {
             let p = vec::append(path, ~[path_name(variant.node.name),
                                         path_name(special_idents::descrim)]);
             let s = mangle_exported_name(ccx, p, ty::mk_int(ccx.tcx));
@@ -2352,21 +2352,21 @@ fn push_rtcall(ccx: @crate_ctxt, name: ~str, did: ast::def_id) {
 fn gather_local_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
     visit::visit_crate(*crate, (), visit::mk_simple_visitor(@{
         visit_item: |item| match item.node {
-            ast::item_fn(*) => {
-                let attr_metas = attr::attr_metas(
-                    attr::find_attrs_by_name(item.attrs, ~"rt"));
-                for vec::each_ref(attr_metas) |attr_meta| {
-                    match attr::get_meta_item_list(*attr_meta) {
-                        Some(list) => {
-                            let name = attr::get_meta_item_name(vec::head(list));
-                            push_rtcall(ccx, name, {crate: ast::local_crate,
-                                                    node: item.id});
-                        }
-                        None => ()
-                    }
+          ast::item_fn(*) => {
+            let attr_metas = attr::attr_metas(
+                attr::find_attrs_by_name(item.attrs, ~"rt"));
+            do vec::iter(attr_metas) |attr_meta| {
+                match attr::get_meta_item_list(attr_meta) {
+                  Some(list) => {
+                    let name = attr::get_meta_item_name(vec::head(list));
+                    push_rtcall(ccx, name, {crate: ast::local_crate,
+                                            node: item.id});
+                  }
+                  None => ()
                 }
             }
-            _ => ()
+          }
+          _ => ()
         },
         ..*visit::default_simple_visitor()
     }));
@@ -2412,9 +2412,9 @@ fn gather_rtcalls(ccx: @crate_ctxt, crate: @ast::crate) {
     // for an rtcall.
     let expected_rtcalls =
         ~[~"exchange_free", ~"exchange_malloc", ~"fail_", ~"free", ~"malloc"];
-    for vec::each_ref(expected_rtcalls) |name| {
-        if !ccx.rtcalls.contains_key(*name) {
-            fail fmt!("no definition for runtime call %s", *name);
+    for vec::each(expected_rtcalls) |name| {
+        if !ccx.rtcalls.contains_key(name) {
+            fail fmt!("no definition for runtime call %s", name);
         }
     }
 }

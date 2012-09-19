@@ -274,7 +274,7 @@ fn missing_ctor(tcx: ty::ctxt, m: matrix, left_ty: ty::t) -> Option<ctor> {
         }
         let variants = ty::enum_variants(tcx, eid);
         if found.len() != (*variants).len() {
-            for vec::each_ref(*variants) |v| {
+            for vec::each(*variants) |v| {
                 if !found.contains(variant(v.id)) {
                     return Some(variant(v.id));
                 }

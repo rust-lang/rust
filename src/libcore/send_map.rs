@@ -312,7 +312,7 @@ mod linear {
         }
 
         pure fn each_ref(&self, blk: fn(k: &K, v: &V) -> bool) {
-            for vec::each_ref(self.buckets) |slot| {
+            for vec::each(self.buckets) |slot| {
                 let mut broke = false;
                 do slot.iter |bucket| {
                     if !blk(&bucket.key, &bucket.value) {

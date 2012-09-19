@@ -33,11 +33,11 @@ fn find_reachable(crate_mod: _mod, exp_map: resolve::ExportMap,
 
 fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
     let mut found_export = false;
-    for vec::each_ref(vis) |vi| {
+    for vec::each(vis) |vi| {
         match vi.node {
           view_item_export(vps) => {
             found_export = true;
-            for vec::each_ref(vps) |vp| {
+            for vec::each(vps) |vp| {
                 match vp.node {
                   view_path_simple(_, _, _, id) | view_path_glob(_, id) |
                   view_path_list(_, _, id) => {
@@ -54,9 +54,7 @@ fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
 
 fn traverse_export(cx: ctx, exp_id: node_id) {
     do option::iter(cx.exp_map.find(exp_id)) |defs| {
-        for vec::each_ref(defs) |def| {
-            traverse_def_id(cx, def.id);
-        }
+        for vec::each(defs) |def| { traverse_def_id(cx, def.id); }
     }
 }
 
@@ -84,9 +82,7 @@ fn traverse_def_id(cx: ctx, did: def_id) {
 fn traverse_public_mod(cx: ctx, m: _mod) {
     if !traverse_exports(cx, m.view_items) {
         // No exports, so every local item is exported
-        for vec::each_ref(m.items) |item| {
-            traverse_public_item(cx, *item);
-        }
+        for vec::each(m.items) |item| { traverse_public_item(cx, item); }
     }
 }
 
@@ -97,9 +93,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
       item_mod(m) => traverse_public_mod(cx, m),
       item_foreign_mod(nm) => {
           if !traverse_exports(cx, nm.view_items) {
-              for vec::each_ref(nm.items) |item| {
-                  cx.rmap.insert(item.id, ());
-              }
+              for vec::each(nm.items) |item| { cx.rmap.insert(item.id, ()); }
           }
       }
       item_fn(_, _, tps, blk) => {
@@ -109,7 +103,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
         }
       }
       item_impl(tps, _, _, ms) => {
-        for vec::each_ref(ms) |m| {
+        for vec::each(ms) |m| {
             if tps.len() > 0u || m.tps.len() > 0u ||
                attr::find_inline_attr(m.attrs) != attr::ia_none {
                 cx.rmap.insert(m.id, ());
@@ -132,7 +126,7 @@ fn traverse_public_item(cx: ctx, item: @item) {
                 traverse_inline_body(cx, dtor.node.body);
             }
         }
-        for vec::each_ref(struct_def.methods) |m| {
+        for vec::each(struct_def.methods) |m| {
             cx.rmap.insert(m.id, ());
             if tps.len() > 0 ||
                     attr::find_inline_attr(m.attrs) != attr::ia_none {

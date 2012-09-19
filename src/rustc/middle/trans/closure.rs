@@ -209,7 +209,7 @@ fn store_environment(bcx: block,
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    for vec::eachi(bound_values) |i, bv| {
+    do vec::iteri(bound_values) |i, bv| {
         debug!("Copy %s into closure", bv.to_str(ccx));
 
         if !ccx.sess.no_asm_comments() {
@@ -232,9 +232,7 @@ fn store_environment(bcx: block,
         }
 
     }
-    for vec::each_ref(temp_cleanups) |cleanup| {
-        revoke_clean(bcx, *cleanup);
-    }
+    for vec::each(temp_cleanups) |cleanup| { revoke_clean(bcx, cleanup); }
 
     return {llbox: llbox, cdata_ty: cdata_ty, bcx: bcx};
 }
@@ -253,8 +251,8 @@ fn build_closure(bcx0: block,
 
     // Package up the captured upvars
     let mut env_vals = ~[];
-    for vec::each_ref(cap_vars) |cap_var| {
-        debug!("Building closure: captured variable %?", *cap_var);
+    do vec::iter(cap_vars) |cap_var| {
+        debug!("Building closure: captured variable %?", cap_var);
         let datum = expr::trans_local_var(bcx, id, cap_var.def);
         match cap_var.mode {
             capture::cap_ref => {
@@ -318,7 +316,7 @@ fn load_environment(fcx: fn_ctxt,
 
     // Populate the upvars from the environment.
     let mut i = 0u;
-    for vec::each_ref(cap_vars) |cap_var| {
+    do vec::iter(cap_vars) |cap_var| {
         match cap_var.mode {
           capture::cap_drop => { /* ignore */ }
           _ => {

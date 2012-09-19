@@ -773,8 +773,8 @@ impl FnVid : to_bytes::IterBytes {
 
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     let mut kind = kind_noncopyable();
-    for vec::each_ref(*bounds) |bound| {
-        match *bound {
+    for vec::each(*bounds) |bound| {
+        match bound {
           bound_copy => {
             kind = raise_kind(kind, kind_implicitly_copyable());
           }
@@ -1604,10 +1604,10 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       ty_class(did, ref substs) => {
          // Any class with a dtor needs a drop
          option::is_some(ty_dtor(cx, did)) || {
-             for vec::each_ref(ty::class_items_as_fields(cx, did, substs)) |f| {
-                 if type_needs_drop(cx, f.mt.ty) { accum = true; }
-             }
-             accum
+             for vec::each(ty::class_items_as_fields(cx, did, substs)) |f| {
+             if type_needs_drop(cx, f.mt.ty) { accum = true; }
+           }
+           accum
          }
       }
       ty_tup(elts) => {
@@ -1616,7 +1616,7 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
       }
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
-          for vec::each_ref(*variants) |variant| {
+          for vec::each(*variants) |variant| {
               for variant.args.each |aty| {
                 // Perform any type parameter substitutions.
                 let arg_ty = subst(cx, substs, aty);
@@ -1680,7 +1680,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             true
           }
           ty_enum(did, ref substs) => {
-            for vec::each_ref(*enum_variants(cx, did)) |v| {
+            for vec::each(*enum_variants(cx, did)) |v| {
                 for v.args.each |aty| {
                     let t = subst(cx, substs, aty);
                     needs_unwind_cleanup |=
@@ -2041,7 +2041,7 @@ fn type_kind(cx: ctxt, ty: t) -> kind {
         if vec::len(*variants) == 0u {
             lowest = kind_send_only() | kind_owned();
         } else {
-            for vec::each_ref(*variants) |variant| {
+            for vec::each(*variants) |variant| {
                 for variant.args.each |aty| {
                     // Perform any type parameter substitutions.
                     let arg_ty = subst(cx, substs, aty);
@@ -2261,7 +2261,7 @@ fn type_structurally_contains(cx: ctxt, ty: t, test: fn(x: &sty) -> bool) ->
     if test(sty) { return true; }
     match *sty {
       ty_enum(did, ref substs) => {
-        for vec::each_ref(*enum_variants(cx, did)) |variant| {
+        for vec::each(*enum_variants(cx, did)) |variant| {
             for variant.args.each |aty| {
                 let sty = subst(cx, substs, aty);
                 if type_structurally_contains(cx, sty, test) { return true; }
@@ -2350,7 +2350,7 @@ fn type_is_pod(cx: ctxt, ty: t) -> bool {
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
-        for vec::each_ref(*variants) |variant| {
+        for vec::each(*variants) |variant| {
             let tup_ty = mk_tup(cx, variant.args);
 
             // Perform any type parameter substitutions.
@@ -2672,7 +2672,7 @@ pure fn hash_type_structure(st: &sty) -> uint {
     }
     pure fn hash_subtys(id: uint, subtys: ~[t]) -> uint {
         let mut h = id;
-        for vec::each_ref(subtys) |s| { h = (h << 2u) + type_id(*s) }
+        for vec::each(subtys) |s| { h = (h << 2u) + type_id(s) }
         h
     }
     pure fn hash_substs(h: uint, substs: &substs) -> uint {
@@ -2713,12 +2713,12 @@ pure fn hash_type_structure(st: &sty) -> uint {
       ty_tup(ts) => hash_subtys(25u, ts),
       ty_rec(fields) => {
         let mut h = 26u;
-        for vec::each_ref(fields) |f| { h = hash_subty(h, f.mt.ty); }
+        for vec::each(fields) |f| { h = hash_subty(h, f.mt.ty); }
         h
       }
       ty_fn(ref f) => {
         let mut h = 27u;
-        for vec::each_ref(f.sig.inputs) |a| {
+        for vec::each(f.sig.inputs) |a| {
             h = hash_subty(h, a.ty);
         }
         hash_subty(h, f.sig.output)

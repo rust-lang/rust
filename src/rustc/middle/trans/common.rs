@@ -1174,14 +1174,12 @@ fn align_to(cx: block, off: ValueRef, align: ValueRef) -> ValueRef {
 
 fn path_str(sess: session::session, p: path) -> ~str {
     let mut r = ~"", first = true;
-    for vec::each_ref(p) |e| {
-        match *e {
-            ast_map::path_name(s) | ast_map::path_mod(s) => {
-                if first { first = false; }
-                else { r += ~"::"; }
-                r += sess.str_of(s);
-            }
-        }
+    for vec::each(p) |e| {
+        match e { ast_map::path_name(s) | ast_map::path_mod(s) => {
+          if first { first = false; }
+          else { r += ~"::"; }
+          r += sess.str_of(s);
+        } }
     }
     r
 }
@@ -1269,10 +1267,10 @@ fn find_vtable(tcx: ty::ctxt, ps: &param_substs,
     let mut vtable_off = n_bound, i = 0u;
     // Vtables are stored in a flat array, finding the right one is
     // somewhat awkward
-    for vec::each_ref(*ps.bounds) |bounds| {
+    for vec::each(*ps.bounds) |bounds| {
         if i >= n_param { break; }
-        for vec::each_ref(**bounds) |bound| {
-            match *bound { ty::bound_trait(_) => vtable_off += 1u, _ => () }
+        for vec::each(*bounds) |bound| {
+            match bound { ty::bound_trait(_) => vtable_off += 1u, _ => () }
         }
         i += 1u;
     }
