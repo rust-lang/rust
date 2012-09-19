@@ -312,7 +312,7 @@ use std::map::{HashMap, uint_hash};
 use std::cell::{Cell, empty_cell};
 use std::list::{List, Nil, Cons};
 
-use ty::{region, RegionVid, hash_region};
+use ty::{region, RegionVid};
 use region::is_subregion_of;
 use syntax::codemap;
 use to_str::to_str;
@@ -427,14 +427,6 @@ fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
 // it.
 fn CombineMap() -> CombineMap {
     return HashMap();
-}
-
-pure fn hash_constraint(rc: &Constraint) -> uint {
-    match *rc {
-      ConstrainVarSubVar(a, b) => *a ^ *b,
-      ConstrainRegSubVar(ref r, b) => ty::hash_region(r) ^ *b,
-      ConstrainVarSubReg(a, ref r) => *a ^ ty::hash_region(r)
-    }
 }
 
 impl RegionVarBindings {
