@@ -363,7 +363,7 @@ fn check_methods_against_trait(ccx: @crate_ctxt,
           Some({mty: impl_m, span, _}) => {
             compare_impl_method(
                 ccx.tcx, span, impl_m, vec::len(tps),
-                trait_m, tpt.substs, selfty);
+                *trait_m, tpt.substs, selfty);
           }
           None => {
               // If we couldn't find an implementation for trait_m in

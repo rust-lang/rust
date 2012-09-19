@@ -335,7 +335,7 @@ fn write_content(bcx: block,
                         vec::push(temp_cleanups, lleltptr);
                     }
                     for vec::each(temp_cleanups) |cleanup| {
-                        revoke_clean(bcx, cleanup);
+                        revoke_clean(bcx, *cleanup);
                     }
                 }
             }
@@ -373,7 +373,7 @@ fn write_content(bcx: block,
                     }
 
                     for vec::each(temp_cleanups) |cleanup| {
-                        revoke_clean(bcx, cleanup);
+                        revoke_clean(bcx, *cleanup);
                     }
 
                     return bcx;

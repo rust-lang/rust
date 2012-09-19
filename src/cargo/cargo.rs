@@ -1502,7 +1502,7 @@ fn print_source(s: source) {
     print(io::with_str_writer(|writer| {
         let mut list = ~"   >> ";
 
-        do vec::iteri(pks) |i, pk| {
+        for vec::eachi(pks) |i, pk| {
             if str::len(list) > 78u {
                 writer.write_line(list);
                 list = ~"   >> ";
@@ -1518,16 +1518,17 @@ fn cmd_list(c: &cargo) {
     sync(c);
 
     if vec::len(c.opts.free) >= 3u {
-        do vec::iter_between(c.opts.free, 2u, vec::len(c.opts.free)) |name| {
-            if !valid_pkg_name(name) {
-                error(fmt!("'%s' is an invalid source name", name));
+        let v = vec::view(c.opts.free, 2u, vec::len(c.opts.free));
+        for vec::each(v) |name| {
+            if !valid_pkg_name(*name) {
+                error(fmt!("'%s' is an invalid source name", *name));
             } else {
-                match c.sources.find(name) {
+                match c.sources.find(*name) {
                     Some(source) => {
                         print_source(source);
                     }
                     None => {
-                        error(fmt!("no such source: %s", name));
+                        error(fmt!("no such source: %s", *name));
                     }
                 }
             }

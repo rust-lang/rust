@@ -6,7 +6,7 @@ trait sum {
 impl &[int]: sum {
     fn sum() -> int {
         let mut sum = 0;
-        for vec::each(self) |e| { sum += e; }
+        for vec::each(self) |e| { sum += *e; }
         return sum;
     }
 }

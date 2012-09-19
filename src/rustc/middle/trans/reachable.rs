@@ -54,7 +54,9 @@ fn traverse_exports(cx: ctx, vis: ~[@view_item]) -> bool {
 
 fn traverse_export(cx: ctx, exp_id: node_id) {
     do option::iter(cx.exp_map.find(exp_id)) |defs| {
-        for vec::each(defs) |def| { traverse_def_id(cx, def.id); }
+        for vec::each(defs) |def| {
+            traverse_def_id(cx, def.id);
+        }
     }
 }
 
@@ -82,7 +84,9 @@ fn traverse_def_id(cx: ctx, did: def_id) {
 fn traverse_public_mod(cx: ctx, m: _mod) {
     if !traverse_exports(cx, m.view_items) {
         // No exports, so every local item is exported
-        for vec::each(m.items) |item| { traverse_public_item(cx, item); }
+        for vec::each(m.items) |item| {
+            traverse_public_item(cx, *item);
+        }
     }
 }
 
@@ -93,7 +97,9 @@ fn traverse_public_item(cx: ctx, item: @item) {
       item_mod(m) => traverse_public_mod(cx, m),
       item_foreign_mod(nm) => {
           if !traverse_exports(cx, nm.view_items) {
-              for vec::each(nm.items) |item| { cx.rmap.insert(item.id, ()); }
+              for vec::each(nm.items) |item| {
+                  cx.rmap.insert(item.id, ());
+              }
           }
       }
       item_fn(_, _, tps, blk) => {

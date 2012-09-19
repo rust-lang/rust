@@ -31,9 +31,9 @@ fn calc(children: uint, parent_ch: comm::Chan<msg>) {
 
     match comm::recv(port) {
         start => {
-          do vec::iter (child_chs) |child_ch| {
-              comm::send(child_ch, start);
-          }
+            for vec::each(child_chs) |child_ch| {
+                comm::send(*child_ch, start);
+            }
         }
         _ => fail ~"task-perf-one-million failed (port not in start state)"
     }

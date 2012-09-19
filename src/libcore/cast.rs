@@ -4,7 +4,7 @@ export reinterpret_cast, forget, bump_box_refcount, transmute;
 export transmute_mut, transmute_immut, transmute_region, transmute_mut_region;
 export transmute_mut_unsafe, transmute_immut_unsafe;
 
-export copy_lifetime;
+export copy_lifetime, copy_lifetime_vec;
 
 #[abi = "rust-intrinsic"]
 extern mod rusti {
@@ -85,8 +85,9 @@ unsafe fn copy_lifetime<S,T>(_ptr: &a/S, ptr: &T) -> &a/T {
 }
 
 /// Transforms lifetime of the second pointer to match the first.
-unsafe fn copy_lifetime_to_unsafe<S,T>(_ptr: &a/S, +ptr: *T) -> &a/T {
-    transmute(ptr)
+#[inline(always)]
+unsafe fn copy_lifetime_vec<S,T>(_ptr: &a/[S], ptr: &T) -> &a/T {
+    transmute_region(ptr)
 }
 
 

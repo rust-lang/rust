@@ -774,7 +774,7 @@ impl FnVid : to_bytes::IterBytes {
 fn param_bounds_to_kind(bounds: param_bounds) -> kind {
     let mut kind = kind_noncopyable();
     for vec::each(*bounds) |bound| {
-        match bound {
+        match *bound {
           bound_copy => {
             kind = raise_kind(kind, kind_implicitly_copyable());
           }
@@ -1615,9 +1615,9 @@ fn type_needs_drop(cx: ctxt, ty: t) -> bool {
          // Any class with a dtor needs a drop
          option::is_some(ty_dtor(cx, did)) || {
              for vec::each(ty::class_items_as_fields(cx, did, substs)) |f| {
-             if type_needs_drop(cx, f.mt.ty) { accum = true; }
-           }
-           accum
+                 if type_needs_drop(cx, f.mt.ty) { accum = true; }
+             }
+             accum
          }
       }
       ty_tup(elts) => {
@@ -2682,7 +2682,7 @@ pure fn hash_type_structure(st: &sty) -> uint {
     }
     pure fn hash_subtys(id: uint, subtys: ~[t]) -> uint {
         let mut h = id;
-        for vec::each(subtys) |s| { h = (h << 2u) + type_id(s) }
+        for vec::each(subtys) |s| { h = (h << 2u) + type_id(*s) }
         h
     }
     pure fn hash_substs(h: uint, substs: &substs) -> uint {

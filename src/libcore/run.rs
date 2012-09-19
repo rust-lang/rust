@@ -87,7 +87,7 @@ fn with_argv<T>(prog: &str, args: &[~str],
     let mut argptrs = str::as_c_str(prog, |b| ~[b]);
     let mut tmps = ~[];
     for vec::each(args) |arg| {
-        let t = @copy arg;
+        let t = @copy *arg;
         vec::push(tmps, t);
         vec::push_all(argptrs, str::as_c_str(*t, |b| ~[b]));
     }
@@ -106,7 +106,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
         let mut ptrs = ~[];
 
         for vec::each(es) |e| {
-            let (k,v) = copy e;
+            let (k,v) = copy *e;
             let t = @(fmt!("%s=%s", k, v));
             vec::push(tmps, t);
             vec::push_all(ptrs, str::as_c_str(*t, |b| ~[b]));
@@ -131,7 +131,7 @@ fn with_envp<T>(env: &Option<~[(~str,~str)]>,
           Some(es) if !vec::is_empty(es) => {
             let mut blk : ~[u8] = ~[];
             for vec::each(es) |e| {
-                let (k,v) = e;
+                let (k,v) = *e;
                 let t = fmt!("%s=%s", k, v);
                 let mut v : ~[u8] = ::cast::reinterpret_cast(&t);
                 blk += v;

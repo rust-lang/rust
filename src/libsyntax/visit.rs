@@ -263,7 +263,7 @@ fn visit_foreign_item<E>(ni: @foreign_item, e: E, v: vt<E>) {
 
 fn visit_ty_param_bounds<E>(bounds: @~[ty_param_bound], e: E, v: vt<E>) {
     for vec::each(*bounds) |bound| {
-        match bound {
+        match *bound {
           bound_trait(t) => v.visit_ty(t, e, v),
           bound_copy | bound_send | bound_const | bound_owned => ()
         }

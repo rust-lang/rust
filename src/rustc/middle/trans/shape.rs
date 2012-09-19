@@ -323,7 +323,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
         ty::ty_tup(elts) => {
             let mut s = ~[shape_struct], sub = ~[];
             for vec::each(elts) |elt| {
-                sub += shape_of(ccx, elt);
+                sub += shape_of(ccx, *elt);
             }
             add_substr(s, sub);
             s
@@ -376,7 +376,7 @@ fn shape_of(ccx: @crate_ctxt, t: ty::t) -> ~[u8] {
 
 fn shape_of_variant(ccx: @crate_ctxt, v: ty::variant_info) -> ~[u8] {
     let mut s = ~[];
-    for vec::each(v.args) |t| { s += shape_of(ccx, t); }
+    for vec::each(v.args) |t| { s += shape_of(ccx, *t); }
     return s;
 }
 
@@ -391,10 +391,10 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
     while i < ccx.shape_cx.tag_order.len() {
         let {did, substs} = ccx.shape_cx.tag_order[i];
         let variants = @ty::substd_enum_variants(ccx.tcx, did, &substs);
-        do vec::iter(*variants) |v| {
+        for vec::each(*variants) |v| {
             offsets += ~[vec::len(data) as u16];
 
-            let variant_shape = shape_of_variant(ccx, v);
+            let variant_shape = shape_of_variant(ccx, *v);
             add_substr(data, variant_shape);
 
             let zname = str::to_bytes(ccx.sess.str_of(v.name)) + ~[0u8];
@@ -435,7 +435,7 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
 
         let lv = largest_variants(ccx, variants);
         add_u16(lv_table, vec::len(lv) as u16);
-        for vec::each(lv) |v| { add_u16(lv_table, v as u16); }
+        for vec::each(lv) |v| { add_u16(lv_table, *v as u16); }
 
         // Determine whether the enum has dynamic size.
         assert !vec::any(*variants, |v| {
@@ -482,13 +482,13 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
             let mut bounded = true;
             let mut min_size = 0u, min_align = 0u;
             for vec::each(variant.args) |elem_t| {
-                if ty::type_has_params(elem_t) {
+                if ty::type_has_params(*elem_t) {
                     // NB: We could do better here; this causes us to
                     // conservatively assume that (int, T) has minimum size 0,
                     // when in fact it has minimum size sizeof(int).
                     bounded = false;
                 } else {
-                    let llty = type_of::type_of(ccx, elem_t);
+                    let llty = type_of::type_of(ccx, *elem_t);
                     min_size += llsize_of_real(ccx, llty);
                     min_align += llalign_of_pref(ccx, llty);
                 }
@@ -553,8 +553,8 @@ fn gen_enum_shapes(ccx: @crate_ctxt) -> ValueRef {
         for vec::each(largest_variants) |vid| {
             // We increment a "virtual data pointer" to compute the size.
             let mut lltys = ~[];
-            for vec::each(variants[vid].args) |typ| {
-                lltys += ~[type_of::type_of(ccx, typ)];
+            for vec::each(variants[*vid].args) |typ| {
+                lltys += ~[type_of::type_of(ccx, *typ)];
             }
 
             let llty = trans::common::T_struct(lltys);

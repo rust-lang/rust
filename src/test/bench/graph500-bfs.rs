@@ -75,9 +75,12 @@ fn make_graph(N: uint, edges: ~[(node_id, node_id)]) -> graph {
     };
 
     do vec::each(edges) |e| {
-        let (i, j) = e;
-        map::set_add(graph[i], j);
-        map::set_add(graph[j], i);
+        match *e {
+            (i, j) => {
+                map::set_add(graph[i], j);
+                map::set_add(graph[j], i);
+            }
+        }
         true
     }
 

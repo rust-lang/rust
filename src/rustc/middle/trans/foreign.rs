@@ -165,9 +165,9 @@ fn classify_ty(ty: TypeRef) -> ~[x86_64_reg_class] {
         } else {
             let mut field_off = off;
             for vec::each(tys) |ty| {
-                field_off = align(field_off, ty);
-                classify(ty, cls, i, field_off);
-                field_off += ty_size(ty);
+                field_off = align(field_off, *ty);
+                classify(*ty, cls, i, field_off);
+                field_off += ty_size(*ty);
             }
         }
     }
@@ -283,7 +283,7 @@ fn llreg_ty(cls: ~[x86_64_reg_class]) -> TypeRef {
     fn llvec_len(cls: ~[x86_64_reg_class]) -> uint {
         let mut len = 1u;
         for vec::each(cls) |c| {
-            if c != sseup_class {
+            if *c != sseup_class {
                 break;
             }
             len += 1u;
@@ -377,7 +377,7 @@ fn x86_64_tys(atys: ~[TypeRef],
     let mut arg_tys = ~[];
     let mut attrs = ~[];
     for vec::each(atys) |t| {
-        let (ty, attr) = x86_64_ty(t, is_pass_byval, ByValAttribute);
+        let (ty, attr) = x86_64_ty(*t, is_pass_byval, ByValAttribute);
         vec::push(arg_tys, ty);
         vec::push(attrs, attr);
     }
@@ -410,7 +410,7 @@ fn decl_x86_64_fn(tys: x86_64_tys,
     let fnty = T_fn(atys, rty);
     let llfn = decl(fnty);
 
-    do vec::iteri(tys.attrs) |i, a| {
+    for vec::eachi(tys.attrs) |i, a| {
         match a {
             option::Some(attr) => {
                 let llarg = get_param(llfn, i);
@@ -640,7 +640,7 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
             let _icx = bcx.insn_ctxt("foreign::shim::build_ret");
             match tys.x86_64_tys {
                 Some(x86_64) => {
-                  do vec::iteri(x86_64.attrs) |i, a| {
+                  for vec::eachi(x86_64.attrs) |i, a| {
                         match a {
                             Some(attr) => {
                                 llvm::LLVMAddInstrAttribute(
@@ -771,9 +771,9 @@ fn trans_foreign_mod(ccx: @crate_ctxt,
               let tys = c_stack_tys(ccx, id);
               if attr::attrs_contains_name(foreign_item.attrs,
                                            ~"rust_stack") {
-                  build_direct_fn(ccx, llwrapfn, foreign_item, tys, cc);
+                  build_direct_fn(ccx, llwrapfn, *foreign_item, tys, cc);
               } else {
-                  let llshimfn = build_shim_fn(ccx, foreign_item, tys, cc);
+                  let llshimfn = build_shim_fn(ccx, *foreign_item, tys, cc);
                   build_wrap_fn(ccx, tys, llshimfn, llwrapfn);
               }
           } else {

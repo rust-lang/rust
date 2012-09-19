@@ -103,21 +103,15 @@ impl<V: Copy> SmallIntMap<V>: map::Map<uint, V> {
     fn get(+key: uint) -> V { get(self, key) }
     pure fn find(+key: uint) -> Option<V> { find(self, key) }
     fn rehash() { fail }
+
     pure fn each(it: fn(+key: uint, +value: V) -> bool) {
-        let mut idx = 0u, l = self.v.len();
-        while idx < l {
-            match self.v.get_elt(idx) {
-              Some(elt) => if !it(idx, elt) { break },
-              None => ()
-            }
-            idx += 1u;
-        }
+        self.each_ref(|k, v| it(*k, *v))
     }
     pure fn each_key(it: fn(+key: uint) -> bool) {
-        self.each(|k, _v| it(k))
+        self.each_ref(|k, _v| it(*k))
     }
     pure fn each_value(it: fn(+value: V) -> bool) {
-        self.each(|_k, v| it(v))
+        self.each_ref(|_k, v| it(*v))
     }
     pure fn each_ref(it: fn(key: &uint, value: &V) -> bool) {
         let mut idx = 0u, l = self.v.len();

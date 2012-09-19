@@ -44,7 +44,9 @@ fn run(args: ~[~str]) {
             }
         };
     }
-    vec::iter(worker_results, |r| { future::get(&r); } );
+    for vec::each(worker_results) |r| {
+        future::get(r);
+    }
     comm::send(to_child, stop);
     let result = comm::recv(from_child);
     let end = std::time::precise_time_s();

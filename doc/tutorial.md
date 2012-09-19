@@ -1235,14 +1235,14 @@ let crayons = ~[Almond, AntiqueBrass, Apricot];
 assert crayons.len() == 3;
 assert !crayons.is_empty();
 
-// Iterate over a vector
+// Iterate over a vector, obtaining a pointer to each element
 for crayons.each |crayon| {
     let delicious_crayon_wax = unwrap_crayon(crayon);
     eat_crayon_wax(delicious_crayon_wax);
 }
 
 // Map vector elements
-let crayon_names = crayons.map(crayon_to_str);
+let crayon_names = crayons.map(|v| crayon_to_str(v));
 let favorite_crayon_name = crayon_names[0];
 
 // Remove whitespace from before and after the string
@@ -1384,28 +1384,32 @@ call_twice(bare_function);
 Closures in Rust are frequently used in combination with higher-order
 functions to simulate control structures like `if` and
 `loop`. Consider this function that iterates over a vector of
-integers, applying an operator to each:
+integers, passing in a pointer to each integer in the vector:
 
 ~~~~
-fn each(v: ~[int], op: fn(int)) {
+fn each(v: ~[int], op: fn(v: &int)) {
    let mut n = 0;
    while n < v.len() {
-       op(v[n]);
+       op(&v[n]);
        n += 1;
    }
 }
 ~~~~
 
-As a caller, if we use a closure to provide the final operator
-argument, we can write it in a way that has a pleasant, block-like
-structure.
+The reason we pass in a *pointer* to an integer rather than the
+integer itself is that this is how the actual `each()` function for
+vectors works.  Using a pointer means that the function can be used
+for vectors of any type, even large records that would be impractical
+to copy out of the vector on each iteration.  As a caller, if we use a
+closure to provide the final operator argument, we can write it in a
+way that has a pleasant, block-like structure.
 
 ~~~~
-# fn each(v: ~[int], op: fn(int)) {}
+# fn each(v: ~[int], op: fn(v: &int)) { }
 # fn do_some_work(i: int) { }
 each(~[1, 2, 3], |n| {
-    debug!("%i", n);
-    do_some_work(n);
+    debug!("%i", *n);
+    do_some_work(*n);
 });
 ~~~~
 
@@ -1413,11 +1417,11 @@ This is such a useful pattern that Rust has a special form of function
 call that can be written more like a built-in control structure:
 
 ~~~~
-# fn each(v: ~[int], op: fn(int)) {}
+# fn each(v: ~[int], op: fn(v: &int)) { }
 # fn do_some_work(i: int) { }
 do each(~[1, 2, 3]) |n| {
-    debug!("%i", n);
-    do_some_work(n);
+    debug!("%i", *n);
+    do_some_work(*n);
 }
 ~~~~
 
@@ -1461,10 +1465,10 @@ Consider again our `each` function, this time improved to
 break early when the iteratee returns `false`:
 
 ~~~~
-fn each(v: ~[int], op: fn(int) -> bool) {
+fn each(v: ~[int], op: fn(v: &int) -> bool) {
    let mut n = 0;
    while n < v.len() {
-       if !op(v[n]) {
+       if !op(&v[n]) {
            break;
        }
        n += 1;
@@ -1478,7 +1482,7 @@ And using this function to iterate over a vector:
 # use each = vec::each;
 # use println = io::println;
 each(~[2, 4, 8, 5, 16], |n| {
-    if n % 2 != 0 {
+    if *n % 2 != 0 {
         println(~"found odd number!");
         false
     } else { true }
@@ -1495,7 +1499,7 @@ to the next iteration, write `again`.
 # use each = vec::each;
 # use println = io::println;
 for each(~[2, 4, 8, 5, 16]) |n| {
-    if n % 2 != 0 {
+    if *n % 2 != 0 {
         println(~"found odd number!");
         break;
     }
@@ -1511,7 +1515,7 @@ function, not just the loop body.
 # use each = vec::each;
 fn contains(v: ~[int], elt: int) -> bool {
     for each(v) |x| {
-        if (x == elt) { return true; }
+        if (*x == elt) { return true; }
     }
     false
 }
@@ -1529,9 +1533,9 @@ every type they apply to. Thus, Rust allows functions and datatypes to have
 type parameters.
 
 ~~~~
-fn map<T, U>(vector: &[T], function: fn(T) -> U) -> ~[U] {
+fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
     let mut accumulator = ~[];
-    for vector.each |element| {
+    for vec::each(vector) |element| {
         vec::push(accumulator, function(element));
     }
     return accumulator;
@@ -1544,7 +1548,12 @@ type of the vector's content agree with each other.
 
 Inside a generic function, the names of the type parameters
 (capitalized by convention) stand for opaque types. You can't look
-inside them, but you can pass them around.
+inside them, but you can pass them around.  Note that instances of
+generic types are almost always passed by pointer.  For example, the
+parameter `function()` is supplied with a pointer to a value of type
+`T` and not a value of type `T` itself.  This ensures that the
+function works with the broadest set of types possible, since some
+types are expensive or illegal to copy and pass by value.
 
 ## Generic datatypes
 
@@ -1686,12 +1695,12 @@ generalized sequence types is:
 ~~~~
 trait Seq<T> {
     fn len() -> uint;
-    fn iter(fn(T));
+    fn iter(b: fn(v: &T));
 }
 impl<T> ~[T]: Seq<T> {
     fn len() -> uint { vec::len(self) }
-    fn iter(b: fn(T)) {
-        for self.each |elt| { b(elt); }
+    fn iter(b: fn(v: &T)) {
+        for vec::each(self) |elt| { b(elt); }
     }
 }
 ~~~~
@@ -2186,7 +2195,7 @@ Here is the function that implements the child task:
 ~~~~
 # use std::comm::DuplexStream;
 # use pipes::{Port, Chan};
-fn stringifier(channel: DuplexStream<~str, uint>) {
+fn stringifier(channel: &DuplexStream<~str, uint>) {
     let mut value: uint;
     loop {
         value = channel.recv();
@@ -2210,7 +2219,7 @@ Here is the code for the parent task:
 # use std::comm::DuplexStream;
 # use pipes::{Port, Chan};
 # use task::spawn;
-# fn stringifier(channel: DuplexStream<~str, uint>) {
+# fn stringifier(channel: &DuplexStream<~str, uint>) {
 #     let mut value: uint;
 #     loop {
 #         value = channel.recv();
@@ -2223,7 +2232,7 @@ Here is the code for the parent task:
 let (from_child, to_child) = DuplexStream();
 
 do spawn || {
-    stringifier(to_child);
+    stringifier(&to_child);
 };
 
 from_child.send(22u);

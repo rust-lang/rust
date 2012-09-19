@@ -364,12 +364,12 @@ mod test {
         log(debug, fmt!("test_get_addr: Number of results for %s: %?",
                         localhost_name, vec::len(results)));
         for vec::each(results) |r| {
-            let ipv_prefix = match r {
+            let ipv_prefix = match *r {
               Ipv4(_) => ~"IPv4",
               Ipv6(_) => ~"IPv6"
             };
             log(debug, fmt!("test_get_addr: result %s: '%s'",
-                            ipv_prefix, format_addr(&r)));
+                            ipv_prefix, format_addr(r)));
         }
         // at least one result.. this is going to vary from system
         // to system, based on stuff like the contents of /etc/hosts

@@ -40,7 +40,7 @@ fn color_supported() -> bool {
     return match os::getenv(~"TERM") {
           option::Some(env) => {
             for vec::each(supported_terms) |term| {
-                if term == env { return true; }
+                if *term == env { return true; }
             }
             false
           }

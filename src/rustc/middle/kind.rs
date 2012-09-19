@@ -211,7 +211,7 @@ fn check_fn(fk: visit::fn_kind, decl: fn_decl, body: blk, sp: span,
             };
 
             let ty = ty::node_id_to_type(cx.tcx, id);
-            chk(cx, fn_id, Some(fv), is_move, ty, fv.span);
+            chk(cx, fn_id, Some(*fv), is_move, ty, fv.span);
         }
     }
 
@@ -228,7 +228,7 @@ fn check_block(b: blk, cx: ctx, v: visit::vt<ctx>) {
 
 fn check_arm(a: arm, cx: ctx, v: visit::vt<ctx>) {
     for vec::each(a.pats) |p| {
-        do pat_util::pat_bindings(cx.tcx.def_map, p) |mode, id, span, _path| {
+        do pat_util::pat_bindings(cx.tcx.def_map, *p) |mode, id, span, _pth| {
             if mode == bind_by_value {
                 let t = ty::node_id_to_type(cx.tcx, id);
                 let reason = "consider binding with `ref` or `move` instead";
