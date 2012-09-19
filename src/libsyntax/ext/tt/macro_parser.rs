@@ -185,7 +185,7 @@ fn nameize(p_s: parse_sess, ms: ~[matcher], res: ~[@named_match])
           }
         }
     }
-    let ret_val = HashMap::<uint,@named_match>();
+    let ret_val = HashMap();
     for ms.each() |m| { n_rec(p_s, *m, res, ret_val) }
     return ret_val;
 }

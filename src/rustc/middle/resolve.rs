@@ -314,7 +314,7 @@ fn Atom(n: uint) -> Atom {
 
 /// Creates a hash table of atoms.
 fn atom_hashmap<V:Copy>() -> HashMap<Atom,V> {
-  HashMap::<Atom,V>()
+  HashMap()
 }
 
 /// One local scope.

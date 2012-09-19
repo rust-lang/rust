@@ -73,7 +73,7 @@ fn syntax_expander_table() -> HashMap<~str, syntax_extension> {
     fn builtin_item_tt(f: syntax_expander_tt_item_) -> syntax_extension {
         item_tt({expander: f, span: None})
     }
-    let syntax_expanders = HashMap::<~str,syntax_extension>();
+    let syntax_expanders = HashMap();
     syntax_expanders.insert(~"macro",
                             macro_defining(ext::simplext::add_new_extension));
     syntax_expanders.insert(~"macro_rules",
