@@ -44,21 +44,21 @@ fn extract(
     doc::Doc_({
         pages: ~[
             doc::CratePage({
-                topmod: top_ModDoc_from_crate(crate, default_name),
+                topmod: top_moddoc_from_crate(crate, default_name),
             })
         ]
     })
 }
 
-fn top_ModDoc_from_crate(
+fn top_moddoc_from_crate(
     crate: @ast::crate,
     default_name: ~str
 ) -> doc::ModDoc {
-    ModDoc_from_mod(mk_ItemDoc(ast::crate_node_id, default_name),
+    moddoc_from_mod(mk_itemdoc(ast::crate_node_id, default_name),
                     crate.node.module)
 }
 
-fn mk_ItemDoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {
+fn mk_itemdoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {
     {
         id: id,
         name: name,
@@ -70,53 +70,53 @@ fn mk_ItemDoc(id: ast::node_id, name: ~str) -> doc::ItemDoc {
     }
 }
 
-fn ModDoc_from_mod(
-    ItemDoc: doc::ItemDoc,
+fn moddoc_from_mod(
+    itemdoc: doc::ItemDoc,
     module_: ast::_mod
 ) -> doc::ModDoc {
     doc::ModDoc_({
-        item: ItemDoc,
+        item: itemdoc,
         items: do vec::filter_map(module_.items) |item| {
-            let ItemDoc = mk_ItemDoc(item.id, to_str(item.ident));
+            let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
             match item.node {
               ast::item_mod(m) => {
                 Some(doc::ModTag(
-                    ModDoc_from_mod(ItemDoc, m)
+                    moddoc_from_mod(ItemDoc, m)
                 ))
               }
               ast::item_foreign_mod(nm) => {
                 Some(doc::NmodTag(
-                    nModDoc_from_mod(ItemDoc, nm)
+                    nmoddoc_from_mod(ItemDoc, nm)
                 ))
               }
               ast::item_fn(*) => {
                 Some(doc::FnTag(
-                    FnDoc_from_fn(ItemDoc)
+                    fndoc_from_fn(ItemDoc)
                 ))
               }
               ast::item_const(_, _) => {
                 Some(doc::ConstTag(
-                    ConstDoc_from_const(ItemDoc)
+                    constdoc_from_const(ItemDoc)
                 ))
               }
               ast::item_enum(enum_definition, _) => {
                 Some(doc::EnumTag(
-                    EnumDoc_from_enum(ItemDoc, enum_definition.variants)
+                    enumdoc_from_enum(ItemDoc, enum_definition.variants)
                 ))
               }
               ast::item_trait(_, _, methods) => {
                 Some(doc::TraitTag(
-                    TraitDoc_from_trait(ItemDoc, methods)
+                    traitdoc_from_trait(ItemDoc, methods)
                 ))
               }
               ast::item_impl(_, _, _, methods) => {
                 Some(doc::ImplTag(
-                    ImplDoc_from_impl(ItemDoc, methods)
+                    impldoc_from_impl(ItemDoc, methods)
                 ))
               }
               ast::item_ty(_, _) => {
                 Some(doc::TyTag(
-                    TyDoc_from_ty(ItemDoc)
+                    tydoc_from_ty(ItemDoc)
                 ))
               }
               _ => None
@@ -126,37 +126,37 @@ fn ModDoc_from_mod(
     })
 }
 
-fn nModDoc_from_mod(
-    ItemDoc: doc::ItemDoc,
+fn nmoddoc_from_mod(
+    itemdoc: doc::ItemDoc,
     module_: ast::foreign_mod
 ) -> doc::NmodDoc {
     let mut fns = ~[];
     for module_.items.each |item| {
-        let ItemDoc = mk_ItemDoc(item.id, to_str(item.ident));
+        let ItemDoc = mk_itemdoc(item.id, to_str(item.ident));
         match item.node {
           ast::foreign_item_fn(*) => {
-            vec::push(fns, FnDoc_from_fn(ItemDoc));
+            vec::push(fns, fndoc_from_fn(ItemDoc));
           }
           ast::foreign_item_const(*) => {} // XXX: Not implemented.
         }
     }
     {
-        item: ItemDoc,
+        item: itemdoc,
         fns: fns,
         index: None
     }
 }
 
-fn FnDoc_from_fn(ItemDoc: doc::ItemDoc) -> doc::FnDoc {
+fn fndoc_from_fn(itemdoc: doc::ItemDoc) -> doc::FnDoc {
     {
-        item: ItemDoc,
+        item: itemdoc,
         sig: None
     }
 }
 
-fn ConstDoc_from_const(ItemDoc: doc::ItemDoc) -> doc::ConstDoc {
+fn constdoc_from_const(itemdoc: doc::ItemDoc) -> doc::ConstDoc {
     {
-        item: ItemDoc,
+        item: itemdoc,
         sig: None
     }
 }
@@ -168,12 +168,12 @@ fn should_extract_const_name_and_id() {
     assert doc.cratemod().consts()[0].name() == ~"a";
 }
 
-fn EnumDoc_from_enum(
-    ItemDoc: doc::ItemDoc,
+fn enumdoc_from_enum(
+    itemdoc: doc::ItemDoc,
     variants: ~[ast::variant]
 ) -> doc::EnumDoc {
     {
-        item: ItemDoc,
+        item: itemdoc,
         variants: variantdocs_from_variants(variants)
     }
 }
@@ -206,12 +206,12 @@ fn should_extract_enum_variants() {
     assert doc.cratemod().enums()[0].variants[0].name == ~"v";
 }
 
-fn TraitDoc_from_trait(
-    ItemDoc: doc::ItemDoc,
+fn traitdoc_from_trait(
+    itemdoc: doc::ItemDoc,
     methods: ~[ast::trait_method]
 ) -> doc::TraitDoc {
     {
-        item: ItemDoc,
+        item: itemdoc,
         methods: do vec::map(methods) |method| {
             match method {
               ast::required(ty_m) => {
@@ -251,12 +251,12 @@ fn should_extract_trait_methods() {
     assert doc.cratemod().traits()[0].methods[0].name == ~"f";
 }
 
-fn ImplDoc_from_impl(
-    ItemDoc: doc::ItemDoc,
+fn impldoc_from_impl(
+    itemdoc: doc::ItemDoc,
     methods: ~[@ast::method]
 ) -> doc::ImplDoc {
     {
-        item: ItemDoc,
+        item: itemdoc,
         trait_types: ~[],
         self_ty: None,
         methods: do vec::map(methods) |method| {
@@ -278,11 +278,11 @@ fn should_extract_impl_methods() {
     assert doc.cratemod().impls()[0].methods[0].name == ~"f";
 }
 
-fn TyDoc_from_ty(
-    ItemDoc: doc::ItemDoc
+fn tydoc_from_ty(
+    itemdoc: doc::ItemDoc
 ) -> doc::TyDoc {
     {
-        item: ItemDoc,
+        item: itemdoc,
         sig: None
     }
 }

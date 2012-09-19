@@ -372,8 +372,8 @@ impl Doc {
 impl ModDoc {
 
     fn mods() -> ~[ModDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               ModTag(ModDoc) => Some(ModDoc),
               _ => None
             }
@@ -381,8 +381,8 @@ impl ModDoc {
     }
 
     fn nmods() -> ~[NmodDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               NmodTag(nModDoc) => Some(nModDoc),
               _ => None
             }
@@ -390,8 +390,8 @@ impl ModDoc {
     }
 
     fn fns() -> ~[FnDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               FnTag(FnDoc) => Some(FnDoc),
               _ => None
             }
@@ -399,8 +399,8 @@ impl ModDoc {
     }
 
     fn consts() -> ~[ConstDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               ConstTag(ConstDoc) => Some(ConstDoc),
               _ => None
             }
@@ -408,8 +408,8 @@ impl ModDoc {
     }
 
     fn enums() -> ~[EnumDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               EnumTag(EnumDoc) => Some(EnumDoc),
               _ => None
             }
@@ -417,8 +417,8 @@ impl ModDoc {
     }
 
     fn traits() -> ~[TraitDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               TraitTag(TraitDoc) => Some(TraitDoc),
               _ => None
             }
@@ -426,8 +426,8 @@ impl ModDoc {
     }
 
     fn impls() -> ~[ImplDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               ImplTag(ImplDoc) => Some(ImplDoc),
               _ => None
             }
@@ -435,8 +435,8 @@ impl ModDoc {
     }
 
     fn types() -> ~[TyDoc] {
-        do vec::filter_map(self.items) |ItemTag| {
-            match ItemTag {
+        do vec::filter_map(self.items) |itemtag| {
+            match itemtag {
               TyTag(TyDoc) => Some(TyDoc),
               _ => None
             }
