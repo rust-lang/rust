@@ -161,7 +161,7 @@ use pipes::{stream, Port, Chan};
 
 let (chan, port): (Chan<int>, Port<int>) = stream();
 
-do spawn {
+do spawn |move chan| {
     let result = some_expensive_computation();
     chan.send(result);
 }
@@ -192,7 +192,7 @@ spawns the child task.
 # use pipes::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
 # let (chan, port) = stream();
-do spawn {
+do spawn |move chan| {
     let result = some_expensive_computation();
     chan.send(result);
 }
@@ -229,7 +229,7 @@ following program is ill-typed:
 # fn some_expensive_computation() -> int { 42 }
 let (chan, port) = stream();
 
-do spawn {
+do spawn |move chan| {
     chan.send(some_expensive_computation());
 }
 
@@ -253,7 +253,7 @@ let chan = SharedChan(move chan);
 for uint::range(0, 3) |init_val| {
     // Create a new channel handle to distribute to the child task
     let child_chan = chan.clone();
-    do spawn {
+    do spawn |move child_chan| {
         child_chan.send(some_expensive_computation(init_val));
     }
 }
@@ -283,10 +283,10 @@ might look like the example below.
 // Create a vector of ports, one for each child task
 let ports = do vec::from_fn(3) |init_val| {
     let (chan, port) = stream();
-    do spawn {
+    do spawn |move chan| {
         chan.send(some_expensive_computation(init_val));
     }
-    port
+    move port
 };
 
 // Wait on each port, accumulating the results
@@ -398,13 +398,13 @@ before returning. Hence:
 # fn sleep_forever() { loop { task::yield() } }
 # do task::try {
 let (sender, receiver): (Chan<int>, Port<int>) = stream();
-do spawn {  // Bidirectionally linked
+do spawn |move receiver| {  // Bidirectionally linked
     // Wait for the supervised child task to exist.
     let message = receiver.recv();
     // Kill both it and the parent task.
     assert message != 42;
 }
-do try {  // Unidirectionally linked
+do try |move sender| {  // Unidirectionally linked
     sender.send(42);
     sleep_forever();  // Will get woken up by force
 }
@@ -505,7 +505,7 @@ Here is the code for the parent task:
 
 let (from_child, to_child) = DuplexStream();
 
-do spawn || {
+do spawn |move to_child| {
     stringifier(&to_child);
 };
 

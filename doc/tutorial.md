@@ -1827,7 +1827,7 @@ fn map<T, U>(vector: &[T], function: fn(v: &T) -> U) -> ~[U] {
     for vec::each(vector) |element| {
         accumulator.push(function(element));
     }
-    return accumulator;
+    return (move accumulator);
 }
 ~~~~
 
